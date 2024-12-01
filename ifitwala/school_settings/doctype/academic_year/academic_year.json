@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-30 22:03:51.638414",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_llx0",
+  "academic_year_name",
+  "section_break_eha5",
+  "year_start_date",
+  "column_break_w4nd",
+  "year_end_date",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_llx0",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "academic_year_name",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Academic Year Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "year_start_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Year Start Date"
+  },
+  {
+   "fieldname": "year_end_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Year End Date"
+  },
+  {
+   "fieldname": "section_break_eha5",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_w4nd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Academic Year",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-11-30 22:20:59.373470",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Academic Year",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
