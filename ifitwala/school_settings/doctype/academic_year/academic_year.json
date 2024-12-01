@@ -1,22 +1,31 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
+ "autoname": "field:title",
  "creation": "2024-11-30 22:03:51.638414",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_llx0",
   "academic_year_name",
+  "column_break_iudv",
+  "school",
   "section_break_eha5",
   "year_start_date",
   "column_break_w4nd",
   "year_end_date",
-  "amended_from"
+  "school_events_section",
+  "ay_start",
+  "column_break_co9o",
+  "ay_end",
+  "title"
  ],
  "fields": [
   {
    "fieldname": "section_break_llx0",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Academic Year"
   },
   {
    "fieldname": "academic_year_name",
@@ -48,23 +57,64 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Academic Year",
+   "fieldname": "column_break_iudv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Title",
    "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
+   "unique": 1
+  },
+  {
+   "fieldname": "school_events_section",
+   "fieldtype": "Section Break",
+   "label": "School Events"
+  },
+  {
+   "fieldname": "ay_start",
+   "fieldtype": "Link",
+   "label": "Start of Year Event",
+   "no_copy": 1,
+   "options": "School Event",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_co9o",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ay_end",
+   "fieldtype": "Link",
+   "label": "End of Year Event",
+   "no_copy": 1,
+   "options": "School Event",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "remember_last_selected_value": 1,
+   "reqd": 1
   }
  ],
+ "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
- "is_submittable": 1,
  "links": [],
- "modified": "2024-11-30 22:20:59.373470",
+ "modified": "2024-12-01 12:47:14.562129",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -77,8 +127,61 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Organization IT",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Schedule Maker",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
   }
  ],
  "sort_field": "modified",
