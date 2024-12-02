@@ -1,3 +1,5 @@
 Ifitwala
 Students
 School Settings
+Stock
+Setup
