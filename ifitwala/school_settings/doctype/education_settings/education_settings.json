@@ -1,0 +1,147 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-03 13:00:59.917877",
+ "description": "On this page, you are setting up things for your whole school",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_ko0p",
+  "current_academic_year",
+  "current_academic_term",
+  "column_break_4kuq",
+  "attendance_freeze_date",
+  "default_school",
+  "calendar_color_section",
+  "meeting_color",
+  "weekend_color",
+  "default_break_color",
+  "column_break_egzs",
+  "course_color",
+  "todo_color"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_ko0p",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "current_academic_year",
+   "fieldtype": "Link",
+   "label": "Current Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "current_academic_term",
+   "fieldtype": "Link",
+   "label": "Current Academic Term",
+   "options": "Academic Term"
+  },
+  {
+   "fieldname": "column_break_4kuq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "attendance_freeze_date",
+   "fieldtype": "Date",
+   "label": "Attendance Freeze Date"
+  },
+  {
+   "fieldname": "default_school",
+   "fieldtype": "Link",
+   "label": "Default School",
+   "options": "Organization"
+  },
+  {
+   "fieldname": "calendar_color_section",
+   "fieldtype": "Section Break",
+   "label": "Calendar Color"
+  },
+  {
+   "default": "#a4f3dd",
+   "description": "Default color when a calendar event is created from a meeting Doctype.",
+   "fieldname": "meeting_color",
+   "fieldtype": "Color",
+   "label": "Default Calendar Meeting Color"
+  },
+  {
+   "default": "#ffd19c",
+   "fieldname": "weekend_color",
+   "fieldtype": "Color",
+   "label": "Default Weekend Color"
+  },
+  {
+   "default": "#a6e4ff",
+   "fieldname": "default_break_color",
+   "fieldtype": "Color",
+   "label": "Default Break Color"
+  },
+  {
+   "fieldname": "column_break_egzs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "#dac7ff",
+   "fieldname": "course_color",
+   "fieldtype": "Data",
+   "label": "Default Course Color"
+  },
+  {
+   "default": "#ffc4c4",
+   "description": "Default color when an assignment (todo) is created from a meeting. ",
+   "fieldname": "todo_color",
+   "fieldtype": "Data",
+   "label": "Default Todo Meeting Color"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2024-12-03 13:27:48.149628",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Education Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Organization IT",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Schedule Maker",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Academic Admin",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

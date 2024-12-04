@@ -1,6 +1,8 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
+ "autoname": "SEVENT-.YYYY.-.######",
  "creation": "2024-12-01 11:52:33.351389",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -9,7 +11,16 @@
   "subject",
   "event_category",
   "color",
-  "all_day"
+  "all_day",
+  "school",
+  "starts_on",
+  "ends_on",
+  "room",
+  "column_break_vb8a",
+  "reference_section_section",
+  "reference_type",
+  "column_break_i1ra",
+  "reference_name"
  ],
  "fields": [
   {
@@ -41,14 +52,65 @@
    "fieldtype": "Check",
    "label": "All Day",
    "options": "0"
+  },
+  {
+   "fieldname": "reference_section_section",
+   "fieldtype": "Section Break",
+   "label": "Reference Section"
+  },
+  {
+   "fieldname": "reference_type",
+   "fieldtype": "Link",
+   "label": "Reference Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "column_break_i1ra",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "in_standard_filter": 1,
+   "label": "Reference Name",
+   "mandatory_depends_on": "reference_type",
+   "options": "reference_type"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "starts_on",
+   "fieldtype": "Datetime",
+   "label": "Starts On"
+  },
+  {
+   "fieldname": "ends_on",
+   "fieldtype": "Datetime",
+   "label": "Ends On"
+  },
+  {
+   "fieldname": "room",
+   "fieldtype": "Link",
+   "label": "Room",
+   "options": "Location"
+  },
+  {
+   "fieldname": "column_break_vb8a",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
+ "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2024-12-01 12:04:36.058314",
+ "modified": "2024-12-03 11:56:21.531866",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Event",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -60,6 +122,60 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Student",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Organization IT",
    "share": 1,
    "write": 1
   }

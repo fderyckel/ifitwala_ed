@@ -1,0 +1,171 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-03 13:02:14.593981",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_srcu",
+  "academic_year",
+  "term_name",
+  "school",
+  "column_break_yx8a",
+  "term_start_date",
+  "term_end_date",
+  "school_event_section_section",
+  "at_start",
+  "column_break_hxxn",
+  "at_end"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_srcu",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "term_name",
+   "fieldtype": "Data",
+   "label": "Term Name",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "academic_year.school",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_yx8a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "term_start_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Term Start Date"
+  },
+  {
+   "fieldname": "term_end_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Term End Date"
+  },
+  {
+   "fieldname": "school_event_section_section",
+   "fieldtype": "Section Break",
+   "label": "School Event Section"
+  },
+  {
+   "fieldname": "at_start",
+   "fieldtype": "Link",
+   "label": "Start of Term Event",
+   "no_copy": 1,
+   "options": "School Event",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "at_end",
+   "fieldtype": "Link",
+   "label": "End of Term Event",
+   "no_copy": 1,
+   "options": "School Event",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_hxxn",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-12-03 13:16:55.981461",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Academic Term",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Schedule Maker",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Organization IT",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
