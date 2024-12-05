@@ -75,7 +75,7 @@
   },
   {
    "fieldname": "section_break_n0mc",
-   "fieldtype": "Section Break"
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "total_holiday_days",
@@ -183,7 +183,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2024-12-03 15:06:50.490874",
+ "modified": "2024-12-04 11:50:21.818188",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Calendar",

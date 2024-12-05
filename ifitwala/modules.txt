@@ -3,5 +3,4 @@ Students
 School Settings
 Stock
 Setup
-School Setup
 HR
