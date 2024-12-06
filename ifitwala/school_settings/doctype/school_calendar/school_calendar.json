@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:calendar_name",
  "creation": "2024-12-03 13:33:47.840677",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -183,10 +184,11 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2024-12-04 11:50:21.818188",
+ "modified": "2024-12-05 20:28:45.507548",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Calendar",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

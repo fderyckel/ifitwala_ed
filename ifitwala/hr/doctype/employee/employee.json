@@ -1,0 +1,176 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "HR-EMP-.#####",
+ "creation": "2024-12-06 10:03:50.788876",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_hbse",
+  "salutation",
+  "employee_first_name",
+  "employee_middle_name",
+  "employee_last_name",
+  "employee_gender",
+  "employee_full_name",
+  "employee_preferred_name",
+  "nationality",
+  "column_break_adik",
+  "employee_professional_email",
+  "employee_mobile_phone",
+  "employee_personal_email",
+  "employee_date_of_birth",
+  "employee_image",
+  "user_id",
+  "create_user",
+  "create_user_permission"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_hbse",
+   "fieldtype": "Section Break",
+   "label": "Personal Info"
+  },
+  {
+   "fieldname": "salutation",
+   "fieldtype": "Link",
+   "label": "Salutation",
+   "options": "Salutation"
+  },
+  {
+   "fieldname": "employee_first_name",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "First Name",
+   "no_copy": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee_middle_name",
+   "fieldtype": "Data",
+   "label": "Middle Name",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "employee_last_name",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "label": "Last Name",
+   "no_copy": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee_gender",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Gender",
+   "options": "Female\nMale\nPrefer not to say\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee_full_name",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Full Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee_preferred_name",
+   "fieldtype": "Data",
+   "label": "Preferred Name"
+  },
+  {
+   "fieldname": "nationality",
+   "fieldtype": "Link",
+   "label": "Nationality",
+   "options": "Country"
+  },
+  {
+   "fieldname": "column_break_adik",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "employee_professional_email",
+   "fieldtype": "Data",
+   "label": "Professional Email",
+   "no_copy": 1,
+   "options": "Email",
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee_mobile_phone",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Mobile Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "employee_personal_email",
+   "fieldtype": "Data",
+   "label": "Personal Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "employee_date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "employee_image",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "label": "Employee Image"
+  },
+  {
+   "fieldname": "user_id",
+   "fieldtype": "Link",
+   "label": "User ID",
+   "no_copy": 1,
+   "options": "User"
+  },
+  {
+   "depends_on": "eval:(!doc.user_id)",
+   "fieldname": "create_user",
+   "fieldtype": "Button",
+   "label": "Create User"
+  },
+  {
+   "default": "1",
+   "depends_on": "user_id",
+   "fieldname": "create_user_permission",
+   "fieldtype": "Check",
+   "label": "Create User Permission"
+  }
+ ],
+ "image_field": "employee_image",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-12-06 11:25:19.529113",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Employee",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

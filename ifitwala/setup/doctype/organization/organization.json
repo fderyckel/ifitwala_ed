@@ -1,18 +1,24 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:organization_name",
  "creation": "2024-12-02 20:53:03.645837",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_th0s",
+  "organization_name",
+  "is_group",
   "abbr",
+  "date_of_incorporation",
+  "organization_logo",
+  "address__html",
+  "column_break_yqlg",
+  "parent_organization",
+  "section_break_bvun",
   "lft",
   "rgt",
-  "is_group",
-  "old_parent",
-  "parent_organization",
-  "organization_logo"
+  "old_parent"
  ],
  "fields": [
   {
@@ -58,7 +64,7 @@
    "fieldname": "abbr",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Organization Name",
+   "label": "Organization Abbreviation",
    "reqd": 1,
    "unique": 1
   },
@@ -67,15 +73,44 @@
    "fieldtype": "Attach Image",
    "hidden": 1,
    "label": "Organization Logo"
+  },
+  {
+   "fieldname": "organization_name",
+   "fieldtype": "Data",
+   "label": "Organization Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "date_of_incorporation",
+   "fieldtype": "Date",
+   "label": "Date of Incorporation"
+  },
+  {
+   "depends_on": "!doc.__islocal",
+   "fieldname": "address__html",
+   "fieldtype": "HTML",
+   "label": "Address  HTML",
+   "no_copy": 1,
+   "print_hide": 1
+  },
+  {
+   "fieldname": "column_break_yqlg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_bvun",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2024-12-02 21:02:15.365562",
+ "modified": "2024-12-05 20:56:43.344005",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Organization",
+ "naming_rule": "By fieldname",
  "nsm_parent_field": "parent_organization",
  "owner": "Administrator",
  "permissions": [

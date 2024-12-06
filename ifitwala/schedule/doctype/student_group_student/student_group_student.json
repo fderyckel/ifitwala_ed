@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-06 14:22:10.439708",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_2yqg",
+  "student",
+  "student_name",
+  "group_roll_number",
+  "active",
+  "user_id"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_2yqg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "student.student_full_name",
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Student Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "group_roll_number",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Group Roll Number"
+  },
+  {
+   "default": "1",
+   "fieldname": "active",
+   "fieldtype": "Check",
+   "label": "Active"
+  },
+  {
+   "fetch_from": "student.student_email",
+   "fetch_if_empty": 1,
+   "fieldname": "user_id",
+   "fieldtype": "Data",
+   "label": "User ID",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-12-06 16:08:07.035769",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "Student Group Student",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

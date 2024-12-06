@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:title",
  "creation": "2024-12-03 13:02:14.593981",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -15,7 +16,8 @@
   "school_event_section_section",
   "at_start",
   "column_break_hxxn",
-  "at_end"
+  "at_end",
+  "title"
  ],
  "fields": [
   {
@@ -88,14 +90,23 @@
   {
    "fieldname": "column_break_hxxn",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "title",
+   "print_hide": 1,
+   "unique": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-03 13:16:55.981461",
+ "modified": "2024-12-05 20:23:45.700546",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Term",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

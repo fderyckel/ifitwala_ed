@@ -4,3 +4,7 @@ School Settings
 Stock
 Setup
 HR
+Schedule
+Curriculum
+Assessment
+Admission

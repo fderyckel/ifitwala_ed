@@ -1,0 +1,139 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:program_name",
+ "creation": "2024-12-06 07:18:22.173140",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_othe",
+  "program_name",
+  "school",
+  "column_break_zxmc",
+  "program_abbreviation",
+  "course_section_section",
+  "courses",
+  "description_section",
+  "is_published",
+  "allow_self_enroll",
+  "is_featured",
+  "program_image",
+  "column_break_lkjg",
+  "description",
+  "intro_video"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_othe",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "program_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Program Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "column_break_zxmc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "program_abbreviation",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Program Abbreviation"
+  },
+  {
+   "fieldname": "course_section_section",
+   "fieldtype": "Section Break",
+   "label": "Course Section"
+  },
+  {
+   "fieldname": "courses",
+   "fieldtype": "Table",
+   "label": "Courses",
+   "options": "Program Course"
+  },
+  {
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "label": "Is Published"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval: doc.is_published == 1",
+   "fieldname": "allow_self_enroll",
+   "fieldtype": "Check",
+   "label": "Allow Self Enroll"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval: doc.is_published == 1",
+   "fieldname": "is_featured",
+   "fieldtype": "Check",
+   "label": "Is Featured"
+  },
+  {
+   "fieldname": "program_image",
+   "fieldtype": "Attach Image",
+   "label": "Program Image"
+  },
+  {
+   "fieldname": "column_break_lkjg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "is_published",
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "depends_on": "is_published",
+   "fieldname": "intro_video",
+   "fieldtype": "Data",
+   "label": "Intro Video"
+  }
+ ],
+ "image_field": "program_image",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-12-06 11:31:10.036670",
+ "modified_by": "Administrator",
+ "module": "Curriculum",
+ "name": "Program",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

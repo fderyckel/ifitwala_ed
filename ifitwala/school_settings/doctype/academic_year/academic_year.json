@@ -110,11 +110,10 @@
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-01 12:47:14.562129",
+ "modified": "2024-12-05 20:24:16.845722",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",
- "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

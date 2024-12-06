@@ -1,0 +1,203 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "STU-.YYYY.-.#####",
+ "creation": "2024-12-06 14:26:44.955491",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_w2rn",
+  "student_id",
+  "student_first_name",
+  "student_middle_name",
+  "student_last_name",
+  "student_preferred_name",
+  "student_email",
+  "student_first_language",
+  "student_second_language",
+  "column_break_oaht",
+  "student_image",
+  "student_applicant",
+  "student_date_of_birth",
+  "student_gender",
+  "student_mobile_number",
+  "student_joining_date",
+  "student_nationality",
+  "student_second_nationality",
+  "cohort",
+  "home_address_section",
+  "student_full_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_w2rn",
+   "fieldtype": "Section Break",
+   "label": "Personal Info"
+  },
+  {
+   "fieldname": "student_id",
+   "fieldtype": "Data",
+   "label": "Student ID",
+   "unique": 1
+  },
+  {
+   "fieldname": "student_first_name",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "First Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student_middle_name",
+   "fieldtype": "Data",
+   "label": "Middle Name"
+  },
+  {
+   "fieldname": "student_last_name",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "Last Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student_preferred_name",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "label": "Preferred Name"
+  },
+  {
+   "description": "This is to be used as the username for the student to login.  If changed, you need to manually change the linked user. ",
+   "fieldname": "student_email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "student_first_language",
+   "fieldtype": "Link",
+   "label": "First Language",
+   "options": "Language"
+  },
+  {
+   "fieldname": "student_second_language",
+   "fieldtype": "Link",
+   "label": "Second Language",
+   "options": "Language"
+  },
+  {
+   "fieldname": "column_break_oaht",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "student_image",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "in_preview": 1,
+   "label": "Student Image"
+  },
+  {
+   "fieldname": "student_applicant",
+   "fieldtype": "Link",
+   "label": "Student Applicant",
+   "options": "Student Applicant"
+  },
+  {
+   "fieldname": "student_date_of_birth",
+   "fieldtype": "Date",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "student_gender",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "label": "Student Gender",
+   "options": "Female\nMale\nOther"
+  },
+  {
+   "fieldname": "student_mobile_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Mobile Number",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "student_joining_date",
+   "fieldtype": "Date",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "label": "Joining Date"
+  },
+  {
+   "fieldname": "student_nationality",
+   "fieldtype": "Link",
+   "label": "Nationality",
+   "options": "Country"
+  },
+  {
+   "fieldname": "student_second_nationality",
+   "fieldtype": "Link",
+   "label": "Second Nationality",
+   "options": "Country"
+  },
+  {
+   "fieldname": "cohort",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Cohort",
+   "options": "Student Cohort"
+  },
+  {
+   "fieldname": "home_address_section",
+   "fieldtype": "Section Break",
+   "label": "Home Address"
+  },
+  {
+   "fieldname": "student_full_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "in_global_search": 1,
+   "label": "Title"
+  }
+ ],
+ "image_field": "student_image",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-12-06 16:01:40.744069",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Student",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

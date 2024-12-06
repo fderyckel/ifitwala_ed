@@ -1,0 +1,224 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:title",
+ "creation": "2024-12-05 21:20:40.799247",
+ "default_view": "List",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_skvf",
+  "team_name",
+  "team_lead",
+  "enabled",
+  "school",
+  "column_break_qbdv",
+  "organization",
+  "lead_full_name",
+  "school_abbreviation",
+  "organization_abbreviation",
+  "team_members_section",
+  "members",
+  "dpt_philosophy_section",
+  "philosphy",
+  "settings_section",
+  "title"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_skvf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "title",
+   "unique": 1
+  },
+  {
+   "fieldname": "team_name",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "Team Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "team_members_section",
+   "fieldtype": "Section Break",
+   "label": "Team Members"
+  },
+  {
+   "fieldname": "team_lead",
+   "fieldtype": "Link",
+   "label": "Team Lead",
+   "options": "User",
+   "print_hide": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "column_break_qbdv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization"
+  },
+  {
+   "fetch_from": "team_lead.full_name",
+   "fieldname": "lead_full_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Lead Full Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "school.abbr",
+   "fieldname": "school_abbreviation",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "School Abbreviation",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "organization.abbr",
+   "fieldname": "organization_abbreviation",
+   "fieldtype": "Data",
+   "label": "Organization Abbreviation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "members",
+   "fieldtype": "Table",
+   "label": "Members",
+   "options": "Team Member"
+  },
+  {
+   "fieldname": "dpt_philosophy_section",
+   "fieldtype": "Section Break",
+   "label": "Dpt. Philosophy"
+  },
+  {
+   "fieldname": "philosphy",
+   "fieldtype": "Text Editor",
+   "label": "Philosphy"
+  },
+  {
+   "fieldname": "settings_section",
+   "fieldtype": "Section Break",
+   "label": "Settings"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-12-05 21:55:09.075162",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Team",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Schedule Maker",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "ASC",
+ "states": []
+}

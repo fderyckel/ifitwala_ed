@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:school_name",
  "creation": "2024-12-01 11:28:37.353618",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -91,10 +92,11 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2024-12-01 12:44:07.536315",
+ "modified": "2024-12-05 20:26:04.898068",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
+ "naming_rule": "By fieldname",
  "nsm_parent_field": "parent_school",
  "owner": "Administrator",
  "permissions": [

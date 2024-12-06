@@ -1,0 +1,82 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:course_name",
+ "creation": "2024-12-06 07:23:35.322475",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_49sx",
+  "course_name",
+  "school",
+  "column_break_0iy3",
+  "team",
+  "course_group",
+  "curriculum_section"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_49sx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "course_name",
+   "fieldtype": "Data",
+   "label": "Course Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "column_break_0iy3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "label": "Team",
+   "options": "Team"
+  },
+  {
+   "fieldname": "course_group",
+   "fieldtype": "Link",
+   "label": "Course Group",
+   "options": "Course Group"
+  },
+  {
+   "fieldname": "curriculum_section",
+   "fieldtype": "Section Break",
+   "label": "Curriculum"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-12-06 07:27:23.893410",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "Course",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
