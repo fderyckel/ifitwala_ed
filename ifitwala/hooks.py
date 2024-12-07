@@ -1,9 +1,9 @@
 app_name = "ifitwala"
 app_title = "Ifitwala"
-app_publisher = "fdR"
+app_publisher = "François de Ryckel"
 app_description = "School management System"
-app_email = "fdr@gmail.com"
-app_license = "mit"
+app_email = "f.deryckel@gmail.com"
+app_license = "MIT"
 
 # Apps
 # ------------------
@@ -107,6 +107,8 @@ app_license = "mit"
 # before_app_uninstall = "ifitwala.utils.before_app_uninstall"
 # after_app_uninstall = "ifitwala.utils.after_app_uninstall"
 
+calendars = ["School Event", "School Calendar"]
+
 # Desk Notifications
 # ------------------
 # See frappe.core.notifications.get_notification_config
@@ -117,13 +119,13 @@ app_license = "mit"
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
+permission_query_conditions = {
+ 	"School Event": "ifitwala.school_settings.doctype.school_event.school_event.get_permission_query_conditions",
+}
 #
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+has_permission = {
+	"School Event": "ifitwala.school_settings.doctype.school_event.school_event.event_has_permission",
+}
 
 # DocType Class
 # ---------------
