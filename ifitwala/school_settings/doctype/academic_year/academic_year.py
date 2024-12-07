@@ -71,7 +71,7 @@ class AcademicYear(Document):
 				"school": self.school, 
 				"event_type": "Public",
 				"all_day": 1, 
-				"color": "#7575ff"
+				"color": "#7575ff",
 				"reference_doctype": "Academic Year",
 				"reference_docname": self.name
 			})
