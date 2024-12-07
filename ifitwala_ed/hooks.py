@@ -1,4 +1,4 @@
-app_name = "ifitwala"
+app_name = "ifitwala_ed"
 app_title = "Ifitwala"
 app_publisher = "François de Ryckel"
 app_description = "School management System"
