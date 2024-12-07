@@ -6,8 +6,6 @@ frappe.ui.form.on("Academic Year", {
     if (!frm.doc.islocal) {
       frm.add_custom_button(__("Create School Event"), function () {
         frm.events.start_school_calendar(frm);
-        //frappe.route_options = { 'school': 'school', 'academic_year': 'title'};
-        //frappe.set_route('Form', 'School Calendar');
       });
     }
   },

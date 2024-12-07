@@ -120,11 +120,11 @@ calendars = ["School Event", "School Calendar"]
 # Permissions evaluated in scripted ways
 
 permission_query_conditions = {
- 	"School Event": "ifitwala.school_settings.doctype.school_event.school_event.get_permission_query_conditions",
+ 	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.get_permission_query_conditions",
 }
 #
 has_permission = {
-	"School Event": "ifitwala.school_settings.doctype.school_event.school_event.event_has_permission",
+	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.event_has_permission",
 }
 
 # DocType Class
