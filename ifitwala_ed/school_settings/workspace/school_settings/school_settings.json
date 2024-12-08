@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"type\":\"header\",\"data\":{\"text\":\"School Settings\"}}]",
+ "content": "[{\"id\":\"YBdNUngdLt\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">School Settings</span>\",\"col\":12}},{\"id\":\"pX8QnaEo7n\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & Teams\",\"col\":4}},{\"id\":\"JirRP0qGNK\",\"type\":\"card\",\"data\":{\"card_name\":\"Year & Terms\",\"col\":4}},{\"id\":\"-Mc3FDzh4d\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}}]",
  "creation": "2024-12-08 09:38:24.893527",
  "custom_blocks": [],
  "docstatus": 0,
@@ -16,8 +16,77 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "School Settings",
+   "label": "Academic Year",
    "link_count": 0,
+   "link_to": "Academic Year",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Academic Term",
+   "link_count": 0,
+   "link_to": "Academic Term",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School Calendar",
+   "link_count": 0,
+   "link_to": "School Calendar",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Schools & Teams",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Organization",
+   "link_count": 0,
+   "link_to": "Organization",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School",
+   "link_count": 0,
+   "link_to": "School",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Location",
+   "link_count": 0,
+   "link_to": "Location",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Year & Terms",
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -55,8 +124,18 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Schedule",
+   "label": "School Event",
    "link_count": 0,
+   "link_to": "School Event",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 1,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -64,14 +143,15 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "calendar",
+   "label": "School Settings",
    "link_count": 0,
+   "link_to": "Education Settings",
    "link_type": "DocType",
    "onboard": 0,
-   "type": "Card Break"
+   "type": "Link"
   }
  ],
- "modified": "2024-12-08 09:51:08.058760",
+ "modified": "2024-12-08 12:13:13.340528",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Settings",
