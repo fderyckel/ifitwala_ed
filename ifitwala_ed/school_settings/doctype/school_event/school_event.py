@@ -100,11 +100,11 @@ def get_school_events(start, end, user=None, filters=None):
 	if isinstance(filters, string_types):
 		filters = json.loads(filters)
 
-	filters_condition = get_filters_cond('School Event', filters, [])
+	filter_condition = get_filters_cond('School Event', filters, [])
 
 	tables = ["`tabSchool Event`"]
-	if "`tabSchool Event Participants`" in filters_condition:
-		tables.append("`tabSchool Event Participants`")
+	if "`tabSchool Event Participant`" in filter_condition:
+		tables.append("`tabSchool Event Participant`")
 		
 	events = frappe.db.sql(
 		"""
