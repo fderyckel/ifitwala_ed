@@ -82,18 +82,6 @@ def event_has_permission(doc, user):
 
 @frappe.whitelist()
 def get_school_events(start, end, user=None, filters=None):
-	"""
-	Fetches school events within a specified date range and filters.
-
-	Args:
-		start (str): The start date for fetching events.
-		end (str): The end date for fetching events.
-		user (str, optional): The user for whom to fetch events. Defaults to the current session user.
-		filters (dict or str, optional): Additional filters for fetching events. Can be a dictionary or a JSON string.
-
-	Returns:
-		list: A list of dictionaries containing event details.
-	"""
 	if not user:
 		user = frappe.session.user
 
@@ -123,7 +111,7 @@ def get_school_events(start, end, user=None, filters=None):
 		WHERE
 			(date(`tabSchool Event`.starts_on) BETWEEN date(%(start)s) AND date(%(end)s))
 			OR (date(`tabSchool Event`.ends_on) BETWEEN date(%(start)s) AND date(%(end)s))
-		{filters_condition}
+		{filter_condition}
 		ORDER BY `tabSchool Event`.starts_on
 		""".format(tables=", ".join(tables), filter_condition=filter_condition),
 		{"start": start, "end": end, "user": user},
