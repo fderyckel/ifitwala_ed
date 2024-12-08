@@ -10,14 +10,19 @@
   "section_break_hpxc",
   "subject",
   "event_category",
+  "event_type",
   "color",
   "all_day",
+  "column_break_ot2t",
   "school",
   "starts_on",
   "ends_on",
   "room",
-  "column_break_vb8a",
   "reference_section_section",
+  "description",
+  "participants_section",
+  "participants",
+  "references_section",
   "reference_type",
   "column_break_i1ra",
   "reference_name"
@@ -38,7 +43,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Event Category",
-   "options": "Course\nMeeting\nActivity\nOther"
+   "options": "Course\nMeeting\nActivity\nAppointment\nOther"
   },
   {
    "fieldname": "color",
@@ -99,14 +104,42 @@
    "options": "Location"
   },
   {
-   "fieldname": "column_break_vb8a",
+   "fieldname": "event_type",
+   "fieldtype": "Select",
+   "label": "Event Type",
+   "options": "Private\nPublic"
+  },
+  {
+   "fieldname": "column_break_ot2t",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "fieldname": "participants_section",
+   "fieldtype": "Section Break",
+   "label": "Participants"
+  },
+  {
+   "fieldname": "participants",
+   "fieldtype": "Table",
+   "ignore_user_permissions": 1,
+   "label": "Participants",
+   "options": "School Event Participant"
+  },
+  {
+   "fieldname": "references_section",
+   "fieldtype": "Section Break",
+   "label": "References"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2024-12-08 12:19:48.204831",
+ "modified": "2024-12-08 14:22:02.149727",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Event",
@@ -190,5 +223,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_views": 1
 }
