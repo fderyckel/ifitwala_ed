@@ -39,19 +39,32 @@ def get_permission_query_conditions(user):
     if not user:
         user = frappe.session.user
 
-    SchoolEventParticipant = frappe.qb.DocType("School Event Participant")
-    SchoolCalendar = frappe.qb.DocType("SchoolCalendar")
+    participant = frappe.qb.DocType("School Event Participant")
+    event = frappe.qb.DocType("School Event")  # Correct table
 
     query = (
-        frappe.qb.from_(SchoolCalendar)
-        .left_join(SchoolEventParticipant)
-        .on(SchoolCalendar.name == SchoolEventParticipant.parent)
-        .where(
-            (SchoolEventParticipant.participant == user) | (SchoolCalendar.owner == user)
-        )
-    ).select(SchoolCalendar.name)
+        frappe.qb.from_(participant)
+        .join(event).on(participant.parent == event.name)  # Correct join condition
+        .where(participant.participant == user)
+        .select(event.name)  # Select the event name
+    )
 
-    return query
+    names = [r[0] for r in query.run()]  # Get all event names
+
+    if names:
+        name_condition = f"name IN ({', '.join([frappe.db.escape(n) for n in names])})"
+    else:
+        name_condition = "" # Handle no participants
+
+    owner_condition = f"owner = {frappe.db.escape(user)}"
+
+    if name_condition:
+        combined_condition = f"({name_condition} OR {owner_condition})"
+    else:
+        combined_condition = owner_condition
+
+    return combined_condition
+
 
 def event_has_permission(doc, user):
 	if doc.is_new():
