@@ -99,7 +99,7 @@ def get_school_events(start, end, user=None, filters=None):
 		f"""
 		SELECT `tabSchool Event`.* 
 		FROM `tabSchool Event` 
-		LEFT JOIN `tabSchool Event Participant` ON `tabSchool Event`.parent = `tabSchool Event Participant`.name
+		LEFT JOIN `tabSchool Event Participant` ON `tabSchool Event`.name = `tabSchool Event Participant`.parent
 		WHERE
 			(DATE(`tabSchool Event`.starts_on) BETWEEN DATE(%(start)s) AND DATE(%(end)s))
 			OR (DATE(`tabSchool Event`.ends_on) BETWEEN DATE(%(start)s) AND DATE(%(end)s))
