@@ -5,7 +5,24 @@ frappe.ui.form.on("Academic Year", {
   refresh: function (frm) {
     if (!frm.doc.islocal) {
       frm.add_custom_button(__("Create School Event"), function () {
-        frm.events.start_school_calendar(frm);
+        frappe.call({
+          method:
+            "ifitwala_ed.school_settings.doctype.academic_year.academic_year.create_calendar_event",
+          doc: frm.doc,
+          callback: function (r) {
+            if (r.message) {
+              frappe.show_alert({
+                message: __("School Event created"),
+                indicator: "green",
+              });
+              frm.reload_doc();
+            } else if (r.exc) {
+              frappe.msgprint(
+                __("Error creating School Events " + (r.exc || "Unknown error"))
+              );
+            }
+          },
+        });
       });
     }
   },
@@ -21,26 +38,5 @@ frappe.ui.form.on("Academic Year", {
         frappe.datetime.add_days(a_year_from_start, -1)
       );
     }
-  },
-
-  start_school_calendar: function (frm) {
-    frappe.call({
-      method:
-        "ifitwala_ed.school_settings.doctype.academic_year.academic_year.create_calendar_event",
-      doc: frm.doc,
-      callback: function (r) {
-        if (r.message) {
-          frappe.show_alert({
-            message: __("School Event created"),
-            indicator: "green",
-          });
-          frm.reload_doc();
-        } else if (r.exc) {
-          frappe.msgprint(
-            __("Error creating School Events " + (r.exc || "Unknown error"))
-          );
-        }
-      },
-    });
   },
 });
