@@ -49,8 +49,9 @@ class AcademicYear(Document):
 		if self.ay_start:
 			start_ay = frappe.get_doc("School Event", self.ay_start)
 			if getdate(start_ay.starts_on) != getdate(self.year_start_date):
-				start_ay.db_set("starts_on", self.year_start_date)
-				start_ay.db_set("ends_on", self.year_start_date)
+				start_ay.starts_on =  self.year_start_date
+				start_ay.ends_on = self.year_start_date
+				start_ay.save(ignore_permissions=True)
 				frappe.msgprint(_("The Date for the start of the Academic Year {0} has been updated in the calendar event {0}").format(self.year_start_date, get_link_to_form("School Event", start_ay.name)))
 
 		if self.ay_end:
@@ -77,7 +78,8 @@ class AcademicYear(Document):
 				"reference_docname": self.name
 			})
 			start_year.insert(ignore_permissions=True)
-			self.db_set("ay_start", start_year.name)
+			self.ay_start = start_year.name
+			self.save(ignore_permissions=True)
 			frappe.msgprint(_("A calendar event has been created for the start of the Academic Year {0}").format(self.year_start_date, get_link_to_form("School Event", start_year.name)))
 
 		if not self.ay_end: 
@@ -98,7 +100,8 @@ class AcademicYear(Document):
         "reference_name": self.name 
 			})
 			end_year.insert(ignore_permissions=True) 
-			self.db_set("ay_end", end_year.name) 
+			self.ay_end = end_year.name  
+			self.save(ignore_permissions=True)
 			frappe.msgprint(_("Date for the end of the year {0} has been created on the School Event Calendar {1}").format(self.year_end_date, get_link_to_form("School Event", end_year.name))) 
 
 		frappe.db.commit()
