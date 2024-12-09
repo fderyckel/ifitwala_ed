@@ -28,6 +28,7 @@
    "fieldname": "academic_year",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Academic Year",
    "options": "Academic Year",
    "reqd": 1
@@ -102,7 +103,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-05 20:23:45.700546",
+ "modified": "2024-12-09 14:31:50.383435",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Term",

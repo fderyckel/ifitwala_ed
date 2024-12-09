@@ -35,6 +35,7 @@
   {
    "fieldname": "subject",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Subject"
   },
   {
@@ -84,6 +85,9 @@
   {
    "fieldname": "school",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "School",
    "options": "School"
   },
@@ -139,7 +143,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2024-12-08 14:22:02.149727",
+ "modified": "2024-12-09 19:42:23.887351",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Event",
@@ -221,7 +225,7 @@
    "share": 1
   }
  ],
- "sort_field": "modified",
+ "sort_field": "starts_on",
  "sort_order": "DESC",
  "states": [],
  "track_views": 1
