@@ -18,27 +18,42 @@ frappe.ui.form.on("Academic Year", {
               frappe.call({
                 method:
                   "ifitwala_ed.school_settings.doctype.academic_year.academic_year.create_calendar_event",
-                args: {
-                  academic_year: frm.doc.name,
-                  school: frm.doc.school,
-                },
+                args: { academic_year: frm.doc.name, school: frm.doc.school },
                 callback: function (r) {
                   if (r.message) {
                     frappe.show_alert({
-                      message: __("School Event created"),
+                      message: __("School Events created"),
                       indicator: "green",
                     });
-                    frm.reload_doc();
+                    // frm.reload_doc();  // Remove this line - reload is unnecessary
                   } else if (r.exc) {
                     frappe.msgprint({
                       title: __("Error"),
                       message: __(
-                        "Error creating School Events " +
+                        "Error creating School Events: " +
                           (r.exc || "Unknown error")
                       ),
+                      indicator: "red",
+                    });
+                  } else {
+                    // Handle other failures
+                    frappe.msgprint({
+                      title: __("Error"),
+                      message: __(
+                        "School Events not created. Please contact the system administrator."
+                      ),
+                      indicator: "red",
                     });
                   }
                 },
+              });
+            } else if (r.exc) {
+              frappe.msgprint({
+                title: __("Error"),
+                message: __(
+                  "Error saving Academic Year: " + (r.exc || "Unknown error")
+                ),
+                indicator: "red",
               });
             }
           },
