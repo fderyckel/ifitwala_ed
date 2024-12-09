@@ -80,6 +80,7 @@ def event_has_permission(doc, user):
 			return True
 	return False
 
+
 @frappe.whitelist()
 def get_school_events(start, end, user=None, filters=None):
 	if not user:
@@ -88,38 +89,29 @@ def get_school_events(start, end, user=None, filters=None):
 	if isinstance(filters, string_types):
 		filters = json.loads(filters)
 
-	filter_condition = get_filters_cond('School Event', filters, [])
+	filters_condition = get_filters_cond("School Event", filters, [])
 
 	tables = ["`tabSchool Event`"]
-	if "`tabSchool Event Participant`" in filter_condition:
+	if "`tabSchool Event Participant`" in filters_condition:
 		tables.append("`tabSchool Event Participant`")
 		
 	events = frappe.db.sql(
-		"""
-		SELECT
-			`tabSchool Event`.name,
-			`tabSchool Event`.subject,
-			`tabSchool Event`.color,
-			`tabSchool Event`.starts_on,
-			`tabSchool Event`.ends_on,
-			`tabSchool Event`.owner,
-			`tabSchool Event`.all_day,
-			`tabSchool Event`.event_category,
-			`tabSchool Event`.school,
-			`tabSchool Event`.room
-		FROM {tables}
+		f"""
+		SELECT `tabSchool Event`.* 
+		FROM `tabSchool Event` 
+		LEFT JOIN `tabSchool Event Participant` ON `tabSchool Event`.parent = `tabSchool Event Participant`.name
 		WHERE
-			(date(`tabSchool Event`.starts_on) BETWEEN date(%(start)s) AND date(%(end)s))
-			OR (date(`tabSchool Event`.ends_on) BETWEEN date(%(start)s) AND date(%(end)s))
-		{filter_condition}
+			(DATE(`tabSchool Event`.starts_on) BETWEEN DATE(%(start)s) AND DATE(%(end)s))
+			OR (DATE(`tabSchool Event`.ends_on) BETWEEN DATE(%(start)s) AND DATE(%(end)s))
+			{filters_condition} 
 		ORDER BY `tabSchool Event`.starts_on
-		""".format(tables=", ".join(tables), filter_condition=filter_condition),
-		{"start": start, "end": end, "user": user},
-		as_dict=1
+		""", 
+		{"start": start, "end": end},
+		as_dict=True, 
 	)
 	allowed_events = []
 	for event in events:
-		if frappe.get_doc("School Event", event.name).has_permission():
+		if frappe.get_doc("School Event", event["name"]).has_permission(user=user):
 			allowed_events.append(event)
 
 	return allowed_events
