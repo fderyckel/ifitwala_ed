@@ -79,8 +79,4 @@ class AcademicYear(Document):
 			self.db_set("ay_start", start_year.name)
 			frappe.msgprint(_("A calendar event has been created for the start of the Academic Year {0}").format(self.year_start_date, get_link_to_form("School Event", start_year.name)))
 
-@frappe.whitelist()
-def start_school_calendar(**args):
-    args = frappe._dict(args)
-    ref_doc = frappe.get_doc(args.dt, args.dn)
 

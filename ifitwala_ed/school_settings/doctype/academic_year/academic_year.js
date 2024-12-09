@@ -24,13 +24,22 @@ frappe.ui.form.on("Academic Year", {
   },
 
   start_school_calendar: function (frm) {
-    return frappe.call({
+    frappe.call({
       method:
-        "ifitwala_ed.school_settings.doctype.academic_year.academic_year.start_school_calendar",
-      args: { school: frm.doc.school, academic_year: frm.doc.title },
+        "ifitwala_ed.school_settings.doctype.academic_year.academic_year.create_calendar_event",
+      doc: frm.doc,
       callback: function (r) {
-        var doc = frappe.model.sync(r.message);
-        frappe.set_route("Form", doc[0].doctype, doc[0].name);
+        if (r.message) {
+          frappe.show_alert({
+            message: __("School Event created"),
+            indicator: "green",
+          });
+          frm.reload_doc();
+        } else if (r.exc) {
+          frappe.msgprint(
+            __("Error creating School Events " + (r.exc || "Unknown error"))
+          );
+        }
       },
     });
   },
