@@ -1,63 +1,11 @@
-// Copyright (c) 2024, fdR and contributors
+// Copyright (c) 2020, ifitwala and contributors
 // For license information, please see license.txt
 
 frappe.ui.form.on("Academic Year", {
   refresh: function (frm) {
     if (!frm.doc.islocal) {
       frm.add_custom_button(__("Create School Event"), function () {
-        frappe.call({
-          method: "frappe.desk.form.save.savedocs",
-          args: {
-            doc: frm.doc,
-            action: "Save",
-          },
-          freeze: true,
-          freeze_message: __("Creating School Event..."),
-          callback: function (r) {
-            if (r.message) {
-              frappe.call({
-                method:
-                  "ifitwala_ed.school_settings.doctype.academic_year.academic_year.create_calendar_event",
-                args: { academic_year: frm.doc.name, school: frm.doc.school },
-                callback: function (r) {
-                  if (r.message) {
-                    frappe.show_alert({
-                      message: __("School Events created"),
-                      indicator: "green",
-                    });
-                    // frm.reload_doc();  // Remove this line - reload is unnecessary
-                  } else if (r.exc) {
-                    frappe.msgprint({
-                      title: __("Error"),
-                      message: __(
-                        "Error creating School Events: " +
-                          (r.exc || "Unknown error")
-                      ),
-                      indicator: "red",
-                    });
-                  } else {
-                    // Handle other failures
-                    frappe.msgprint({
-                      title: __("Error"),
-                      message: __(
-                        "School Events not created. Please contact the system administrator."
-                      ),
-                      indicator: "red",
-                    });
-                  }
-                },
-              });
-            } else if (r.exc) {
-              frappe.msgprint({
-                title: __("Error"),
-                message: __(
-                  "Error saving Academic Year: " + (r.exc || "Unknown error")
-                ),
-                indicator: "red",
-              });
-            }
-          },
-        });
+        frm.events.start_school_calendar(frm);
       });
     }
   },
@@ -73,5 +21,17 @@ frappe.ui.form.on("Academic Year", {
         frappe.datetime.add_days(a_year_from_start, -1)
       );
     }
+  },
+
+  start_school_calendar: function (frm) {
+    return frappe.call({
+      method:
+        "ifitwala_ed.school_settings.doctype.academic_year.academic_year.start_school_calendar",
+      args: { school: frm.doc.school, academic_year: frm.doc.title },
+      callback: function (r) {
+        var doc = frappe.model.sync(r.message);
+        frappe.set_route("Form", doc[0].doctype, doc[0].name);
+      },
+    });
   },
 });
