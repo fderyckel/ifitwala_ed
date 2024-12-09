@@ -18,7 +18,7 @@ frappe.views.calendar["School Event"] = {
     {
       fieldtype: "Select",
       fieldname: "event_category",
-      options: "Meeting\nCourse\nAppointment\nOther",
+      options: "Meeting\nCourse\nActivity\nAppointment\nOther",
       label: __("Event Category"),
     },
     {
