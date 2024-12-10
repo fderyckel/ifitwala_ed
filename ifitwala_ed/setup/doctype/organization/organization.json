@@ -3,6 +3,7 @@
  "allow_rename": 1,
  "autoname": "field:organization_name",
  "creation": "2024-12-02 20:53:03.645837",
+ "description": "The organization is the legal entities under which your schools operate.  It manages your school HR, stocks, accounts, etc. ",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -106,7 +107,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2024-12-05 20:56:43.344005",
+ "modified": "2024-12-10 21:26:07.851121",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Organization",
