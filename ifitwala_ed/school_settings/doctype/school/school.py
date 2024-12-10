@@ -1,16 +1,13 @@
 # Copyright (c) 2024, fdR and contributors
 # For license information, please see license.txt
 
-import frappe, os, json
+import frappe 
 import frappe.defaults
 from frappe import _
-from frappe.utils.nestedset import NestedSet, get_root_of
-from frappe.model.document import Document
+from frappe.utils.nestedset import NestedSet
 from frappe.cache_manager import clear_defaults_cache
 from frappe.contacts.address_and_contact import load_address_and_contact
 
-from past.builtins import cmp
-import functools
 
 class School(NestedSet):
 	nsm_parent_field = 'parent_school'
