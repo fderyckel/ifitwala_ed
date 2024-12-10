@@ -4,7 +4,7 @@
 import frappe
 import json
 from frappe import _
-from frappe.utils import get_link_to_form, today, getdate, formatdate, date_diff, cint
+from frappe.utils import get_link_to_form, getdate, formatdate, date_diff, cint
 from frappe.model.document import Document
 
 
