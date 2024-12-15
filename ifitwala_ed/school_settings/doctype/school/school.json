@@ -7,16 +7,22 @@
  "engine": "InnoDB",
  "field_order": [
   "school_name",
-  "section_break_lys0",
-  "lft",
-  "rgt",
+  "existing_school",
   "is_group",
-  "old_parent",
-  "parent_school",
   "abbr",
   "school_logo",
+  "address__html",
+  "organization",
+  "column_break_zyeu",
+  "parent_school",
+  "change_abbr",
+  "contact_html",
+  "section_break_lys0",
   "mission_vision_values_section",
-  "school_philosophy"
+  "school_philosophy",
+  "lft",
+  "rgt",
+  "old_parent"
  ],
  "fields": [
   {
@@ -55,12 +61,14 @@
    "fieldname": "parent_school",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
+   "in_list_view": 1,
    "label": "Parent School",
    "options": "School"
   },
   {
    "fieldname": "school_logo",
    "fieldtype": "Attach Image",
+   "hidden": 1,
    "label": "School Logo"
   },
   {
@@ -73,6 +81,7 @@
   {
    "fieldname": "abbr",
    "fieldtype": "Data",
+   "ignore_user_permissions": 1,
    "in_list_view": 1,
    "label": "School Abbreviation",
    "reqd": 1
@@ -87,12 +96,53 @@
    "fieldname": "school_philosophy",
    "fieldtype": "Text Editor",
    "label": "School Philosophy"
+  },
+  {
+   "fieldname": "existing_school",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Existing School",
+   "no_copy": 1,
+   "options": "School"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "address__html",
+   "fieldtype": "HTML",
+   "label": "Address  HTML",
+   "no_copy": 1,
+   "print_hide": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_zyeu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal && in_list(frappe.user_roles, 'System Manager')",
+   "fieldname": "change_abbr",
+   "fieldtype": "Button",
+   "label": "Change Abbreviation"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "contact_html",
+   "fieldtype": "HTML",
+   "label": "Contact HTML",
+   "no_copy": 1,
+   "print_hide": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2024-12-05 20:26:04.898068",
+ "modified": "2024-12-10 22:34:34.012654",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
@@ -111,6 +161,22 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
   }
  ],
  "sort_field": "modified",

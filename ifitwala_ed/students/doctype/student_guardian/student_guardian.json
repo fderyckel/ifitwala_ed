@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-11 16:26:59.931876",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_px1a",
+  "guardian",
+  "guardian_name",
+  "relation",
+  "email",
+  "phone"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_px1a",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "guardian",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Guardian",
+   "options": "Guardian",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "guardian.guardian_full_name",
+   "fieldname": "guardian_name",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "label": "Guardian Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "relation",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Relation",
+   "options": "Mother\nFather\nStepmother\nStepfather\nGrandmother\nGrandfather\nAunt\nUncle\nSister\nBrother\nOther",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "guardian.guardian_email",
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email"
+  },
+  {
+   "fetch_from": "guardian.guardian_mobile_phone",
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Phone",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-12-11 16:33:49.575717",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Student Guardian",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"YBdNUngdLt\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">School Settings</span>\",\"col\":12}},{\"id\":\"pX8QnaEo7n\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & Teams\",\"col\":4}},{\"id\":\"JirRP0qGNK\",\"type\":\"card\",\"data\":{\"card_name\":\"Year & Terms\",\"col\":4}},{\"id\":\"-Mc3FDzh4d\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}}]",
+ "content": "[{\"id\":\"YBdNUngdLt\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">School Settings</span>\",\"col\":12}},{\"id\":\"pX8QnaEo7n\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & Teams\",\"col\":4}},{\"id\":\"JirRP0qGNK\",\"type\":\"card\",\"data\":{\"card_name\":\"Year & Terms\",\"col\":4}},{\"id\":\"-Mc3FDzh4d\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"rgD7b9NDDR\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}}]",
  "creation": "2024-12-08 09:38:24.893527",
  "custom_blocks": [],
  "docstatus": 0,
@@ -149,9 +149,28 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Students",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student",
+   "link_count": 0,
+   "link_to": "Student",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2024-12-08 12:13:13.340528",
+ "modified": "2024-12-11 15:56:50.738159",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Settings",
