@@ -38,6 +38,7 @@ class AcademicTerm(Document):
 
 
     def validate_duplicate(self):
+        ## this might not be necessary... because we have a duplicateEntryError with primary key. 
         terms = frappe.qb.DocType("Academic Term")
         query = (
             frappe.qb.from_(terms)

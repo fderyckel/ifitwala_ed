@@ -10,9 +10,9 @@ from frappe.model.document import Document
 
 class SchoolCalendar(Document):
   def onload(self):
-    weekend_color = frappe.get_single("Education Settings").weekend_color
+    weekend_color = frappe.db.get_single_value("Education Settings", "weekend_color")
     self.set_onload('weekend_color', weekend_color)
-    break_color = frappe.get_single("Education Settings").break_color
+    break_color = frappe.db.get_single_value("Education Settings", "break_color")
     self.set_onload("break_color", break_color)
 
   def validate(self):
