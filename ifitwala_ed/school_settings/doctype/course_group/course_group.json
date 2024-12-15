@@ -1,0 +1,121 @@
+{
+  "actions": [],
+  "allow_import": 1,
+  "allow_rename": 1,
+  "autoname": "field:course_group_name",
+  "creation": "2024-12-06 07:14:46.713545",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "section_break_rq2c",
+    "course_group_name",
+    "learning_unit_color",
+    "scheduled_course_color",
+    "column_break_wyln",
+    "maximum_size_group"
+  ],
+  "fields": [
+    {
+      "fieldname": "section_break_rq2c",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "course_group_name",
+      "fieldtype": "Data",
+      "label": "Course Group Name",
+      "unique": 1
+    },
+    {
+      "fieldname": "learning_unit_color",
+      "fieldtype": "Color",
+      "label": "Learning Unit Color"
+    },
+    {
+      "fieldname": "scheduled_course_color",
+      "fieldtype": "Color",
+      "label": "Scheduled Course Color"
+    },
+    {
+      "fieldname": "column_break_wyln",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "maximum_size_group",
+      "fieldtype": "Int",
+      "label": "Maximum Size Group"
+    }
+  ],
+  "index_web_pages_for_search": 1,
+  "links": [],
+  "modified": "2024-12-06 07:17:30.236664",
+  "modified_by": "Administrator",
+  "module": "School Settings",
+  "name": "Course Group",
+  "naming_rule": "By fieldname",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Schedule Maker",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Curriculum Coordinator",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Instructor",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Academic Admin",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": []
+}
