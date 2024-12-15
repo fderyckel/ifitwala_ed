@@ -32,14 +32,14 @@
   },
   {
    "fieldname": "color",
-   "fieldtype": "Data",
+   "fieldtype": "Color",
    "label": "Color"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-03 14:26:19.788774",
+ "modified": "2024-12-15 18:33:51.850766",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Holiday",

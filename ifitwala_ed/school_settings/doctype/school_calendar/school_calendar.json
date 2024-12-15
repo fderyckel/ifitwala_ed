@@ -29,7 +29,7 @@
   "column_break_bzdr",
   "weekend_color",
   "section_break_pslk",
-  "holiday",
+  "holidays",
   "clear_table"
  ],
  "fields": [
@@ -169,22 +169,22 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "holiday",
-   "fieldtype": "Table",
-   "label": "holidays",
-   "options": "Holiday"
-  },
-  {
    "fieldname": "clear_table",
    "fieldtype": "Button",
    "label": "Clear Table",
    "options": "clear_table"
+  },
+  {
+   "fieldname": "holidays",
+   "fieldtype": "Table",
+   "label": "holidays",
+   "options": "Holiday"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2024-12-15 18:03:55.568664",
+ "modified": "2024-12-15 18:33:23.596542",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Calendar",

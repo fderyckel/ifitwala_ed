@@ -24,14 +24,14 @@
   },
   {
    "fieldname": "start",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Start",
    "read_only": 1
   },
   {
    "fieldname": "end",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "in_list_view": 1,
    "label": "End",
    "read_only": 1
@@ -40,7 +40,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-03 14:04:12.173805",
+ "modified": "2024-12-15 22:27:44.283802",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Calendar Term",
