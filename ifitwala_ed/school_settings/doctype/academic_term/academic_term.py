@@ -39,9 +39,15 @@ class AcademicTerm(Document):
 
     def validate_duplicate(self):
         terms = frappe.qb.DocType("Academic Term")
-        query = frappe.qb.from_("Academic Term").select(terms.name).where(terms.academic_year == self.academic_year, terms.term_name == self.term_name, terms.name != self.name).run()
-        #term = frappe.db.sql("""select name from `tabAcademic Term` where academic_year= %s and term_name= %s and docstatus<2 and name != %s""", (self.academic_year, self.term_name, self.name))
-        #if term:
+        query = (
+            frappe.qb.from_(terms)
+            .select(terms.name)
+            .where(
+                (terms.academic_year == self.academic_year)
+                & (terms.term_name == self.term_name)
+                & (terms.name != self.name)
+            )
+        ).run()
         if query:
             frappe.throw(_("An academic term with this academic year {0} and this name {1} already exisit. Please adjust the name if necessary.").format(self.academic_year, self.term_name))
 
