@@ -4,6 +4,7 @@
  "allow_rename": 1,
  "autoname": "SEVENT-.YYYY.-.######",
  "creation": "2024-12-01 11:52:33.351389",
+ "default_view": "Calendar",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -77,7 +78,7 @@
   {
    "fieldname": "reference_name",
    "fieldtype": "Dynamic Link",
-   "in_standard_filter": 1,
+   "in_list_view": 1,
    "label": "Reference Name",
    "mandatory_depends_on": "reference_type",
    "options": "reference_type"
@@ -94,6 +95,8 @@
   {
    "fieldname": "starts_on",
    "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Starts On"
   },
   {
@@ -104,6 +107,8 @@
   {
    "fieldname": "room",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Room",
    "options": "Location"
   },
@@ -140,10 +145,11 @@
    "label": "References"
   }
  ],
+ "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2024-12-09 19:42:23.887351",
+ "modified": "2024-12-21 15:21:41.863711",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Event",
@@ -163,13 +169,11 @@
    "write": 1
   },
   {
-   "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Student",
-   "share": 1
+   "select": 1
   },
   {
    "email": 1,
@@ -193,15 +197,13 @@
    "write": 1
   },
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Academic Staff",
-   "share": 1,
-   "write": 1
+   "select": 1,
+   "share": 1
   },
   {
    "create": 1,
@@ -225,8 +227,10 @@
    "share": 1
   }
  ],
+ "search_fields": "subject, event_category, room",
  "sort_field": "starts_on",
  "sort_order": "DESC",
  "states": [],
+ "title_field": "subject",
  "track_views": 1
 }
