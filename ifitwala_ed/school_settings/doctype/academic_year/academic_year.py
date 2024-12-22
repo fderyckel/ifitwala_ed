@@ -90,5 +90,17 @@ class AcademicYear(Document):
         	})
             end_year.insert()
             self.db_set("ay_end", end_year.name)
-            frappe.msgprint(_("Date for the end of the year {0} has been created on the School Event Calendar {1}").format(self.year_end_date, get_link_to_form("School Event", end_year.name)))
+            frappe.msgprint(_("Date for the end of the year {0} has been created on the School Event Calendar {1}").format(self.year_end_date, get_link_to_form("School Event", end_year.name))) 
+
+    @frappe.whitelist()
+    def create_academic_term(self):
+        academic_term = frappe.new_doc("Academic Term")
+        academic_term.academic_year = self.name
+        academic_term.school = self.school
+        academic_term.save()
+
+        frappe.response["type"] = "redirect"
+        frappe.response["location"] = frappe.get_doc("Academic Term", academic_term.name).get_url()
+
+
 

@@ -2,7 +2,22 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Academic Year", {
-  refresh: function (frm) {},
+  refresh: function (frm) {
+    if (!frm.is_new()) {
+      frm.add_custom_button(__("Create Academic Terms"), function () {
+        frappe.call({
+          method:
+            "ifitwala_ed.school_settings.doctype.academic_year.academic_year.create_academic_terms",
+          doc: frm.doc,
+          callback: function (r) {
+            if (r.message) {
+              frappe.set_route("Form", "Academic Term", r.message);
+            }
+          },
+        });
+      });
+    }
+  },
 
   year_start_date: function (frm) {
     if (frm.doc.year_start_date && !frm.doc.year_end_date) {
