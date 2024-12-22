@@ -4,10 +4,10 @@
 frappe.ui.form.on("Academic Year", {
   refresh: function (frm) {
     if (!frm.is_new()) {
-      frm.add_custom_button(__("Create Academic Terms"), function () {
+      frm.add_custom_button(__("Create Academic Term"), function () {
         frappe.call({
           method:
-            "ifitwala_ed.school_settings.doctype.academic_year.academic_year.create_academic_terms",
+            "ifitwala_ed.school_settings.doctype.academic_year.academic_year.create_academic_term",
           doc: frm.doc,
           callback: function (r) {
             if (r.message) {
