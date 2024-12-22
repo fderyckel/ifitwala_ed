@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2021, ifitwala and contributors
+# Copyright (c) 2024, François de Ryckel
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
@@ -92,15 +92,14 @@ class AcademicYear(Document):
             self.db_set("ay_end", end_year.name)
             frappe.msgprint(_("Date for the end of the year {0} has been created on the School Event Calendar {1}").format(self.year_end_date, get_link_to_form("School Event", end_year.name))) 
 
+
     @frappe.whitelist()
-    def create_academic_term(self):
+    def create_academic_term(self):  # Make sure this is at the same level as other methods
         academic_term = frappe.new_doc("Academic Term")
         academic_term.academic_year = self.name
         academic_term.school = self.school
         academic_term.save()
-
         frappe.response["type"] = "redirect"
         frappe.response["location"] = frappe.get_doc("Academic Term", academic_term.name).get_url()
-
 
 
