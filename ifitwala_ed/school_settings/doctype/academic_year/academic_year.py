@@ -94,7 +94,7 @@ class AcademicYear(Document):
 
 
     @frappe.whitelist()
-    def create_academic_term(self):  # Make sure this is at the same level as other methods
+    def create_academic_term(self):  
         academic_term = frappe.new_doc("Academic Term")
         academic_term.academic_year = self.name
         academic_term.school = self.school

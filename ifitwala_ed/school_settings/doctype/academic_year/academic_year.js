@@ -8,7 +8,7 @@ frappe.ui.form.on("Academic Year", {
         frappe.call({
           method:
             "ifitwala_ed.school_settings.doctype.academic_year.academic_year.create_academic_term",
-          doc: frm.doc,
+          args: { doc: frm.doc },
           callback: function (r) {
             if (r.message) {
               frappe.set_route("Form", "Academic Term", r.message);
