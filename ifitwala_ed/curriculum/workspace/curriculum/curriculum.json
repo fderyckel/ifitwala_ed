@@ -27,7 +27,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Program",
-   "link_count": 1,
+   "link_count": 2,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -41,9 +41,19 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course",
+   "link_count": 0,
+   "link_to": "Course",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2024-12-08 12:01:50.730671",
+ "modified": "2024-12-22 21:32:10.348801",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",
