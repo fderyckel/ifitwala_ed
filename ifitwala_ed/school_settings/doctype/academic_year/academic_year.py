@@ -97,7 +97,7 @@ class AcademicYear(Document):
     def create_academic_term(self):  
         academic_term = frappe.new_doc("Academic Term")
         academic_term.academic_year = self.name
-        academic_term.school = self.school
+        academic_term.term_name = "Term 1"
         academic_term.save()
         frappe.response["type"] = "redirect"
         frappe.response["location"] = frappe.get_doc("Academic Term", academic_term.name).get_url()
