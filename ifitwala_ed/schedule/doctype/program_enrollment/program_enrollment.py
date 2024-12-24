@@ -4,7 +4,7 @@
 import frappe
 from frappe import msgprint, _
 from frappe.model.document import Document
-from frappe.desk.reportview import get_match_cond, get_filters_cond
+from frappe.desk.reportview import get_match_cond
 from frappe.utils import getdate, get_link_to_form
 
 class ProgramEnrollment(Document):

@@ -5,7 +5,6 @@ import frappe
 from frappe import _
 from frappe.model.mapper import get_mapped_doc
 from frappe.email.doctype.email_group.email_group import add_subscribers
-import json
 
 
 @frappe.whitelist()

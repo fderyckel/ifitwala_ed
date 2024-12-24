@@ -5,7 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, get_link_to_form
-from ifitwala_ed.sechedule.utils import validate_duplicate_student
+from ifitwala_ed.schedule.utils import validate_duplicate_student
 
 class StudentGroup(Document):
 	def autoname(self):
