@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:cohort_name",
  "creation": "2024-12-06 13:55:09.749904",
@@ -25,7 +26,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-06 13:58:20.858678",
+ "modified": "2024-12-24 12:28:19.002166",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Cohort",

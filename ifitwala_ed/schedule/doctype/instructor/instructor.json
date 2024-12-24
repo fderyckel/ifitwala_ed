@@ -99,7 +99,7 @@
  "image_field": "instructor_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-06 17:37:02.519820",
+ "modified": "2024-12-24 11:38:41.400873",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Instructor",
@@ -159,9 +159,15 @@
    "report": 1,
    "role": "Instructor",
    "share": 1
+  },
+  {
+   "read": 1,
+   "role": "Student"
   }
  ],
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "instructor_name"
 }
