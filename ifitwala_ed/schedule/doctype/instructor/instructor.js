@@ -1,8 +1,8 @@
-// Copyright (c) 2024, fdR and contributors
+// Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
-// frappe.ui.form.on("Instructor", {
-// 	refresh(frm) {
+cur_frm.add_fetch("employee", "employee_image", "image");
 
-// 	},
-// });
+frappe.ui.form.on("Instructor", {
+  refresh: function (frm) {},
+});

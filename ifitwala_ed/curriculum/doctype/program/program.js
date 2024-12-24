@@ -1,17 +1,9 @@
-// Copyright (c) 2024, fdR and contributors
+// Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
 frappe.ui.form.on("Program", {
-  onload: function (frm) {
-    // this part below is not working
-    frm.set_query("course", "courses", function () {
-      return {
-        filters: {
-          status: "Active",
-        },
-      };
-    });
-  },
+  onload: function (frm) {},
+
   refresh: function (frm) {},
 
   onload_post_render: function (frm) {
@@ -30,7 +22,12 @@ frappe.ui.form.on("Program Course", {
       $.each(doc.courses, function (idx, val) {
         if (val.course) course_list.push(val.course);
       });
-      return { filters: [["Course", "name", "not in", course_list]] };
+      return {
+        filters: [
+          ["Course", "name", "not in", course_list], //Prevent to add duplicate courses on the list
+          ["Course", "status", "=", "Active"], //Filter only the courses that are set to active
+        ],
+      };
     };
   },
 });
