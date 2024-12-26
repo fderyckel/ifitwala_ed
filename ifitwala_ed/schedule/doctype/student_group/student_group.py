@@ -10,7 +10,7 @@ from ifitwala_ed.schedule.utils import validate_duplicate_student
 class StudentGroup(Document):
 	def autoname(self):
 		if self.group_based_on == "Course" or self.group_based_on == "Activity":
-			self.name = self.student_group_abbreviation + "/" + self.academic_term
+			self.name = self.student_group_abbreviation + "/" + self.term
 		else:
 			self.name = self.student_group_abbreviation + "/" + self.cohort
 
@@ -23,14 +23,14 @@ class StudentGroup(Document):
 		self.validate_and_set_child_table_fields()
 		validate_duplicate_student(self.students)
 		if self.group_based_on == "Course" or self.group_based_on == "Activity":
-			self.title = self.student_group_abbreviation + "/" + self.academic_term
+			self.title = self.student_group_abbreviation + "/" + self.term
 		else:
 			self.title = self.student_group_abbreviation + "/" + self.cohort
 
 	def validate_term(self):
-		term_year = frappe.get_doc("Academic Term", self.academic_term)
+		term_year = frappe.get_doc("Term", self.term)
 		if self.academic_year != term_year.academic_year:
-			frappe.throw(_("The term {0} does not belong to the academic year {1}.").format(self.academic_term, self.academic_year))
+			frappe.throw(_("The term {0} does not belong to the academic year {1}.").format(self.term, self.academic_year))
 
 	def validate_course(self):
 		courses = frappe.get_all("Program Course", fields = ["course_name"], filters = {"parent":self.program})
@@ -56,7 +56,7 @@ class StudentGroup(Document):
 	# you should not be able to make a group that include inactive students.
 	# this is to ensure students are still active students (aka not graduated or not transferred, etc.)
 	def validate_students(self):
-		program_enrollment = get_program_enrollment(self.academic_year, self.academic_term, self.program, self.cohort, self.course)
+		program_enrollment = get_program_enrollment(self.academic_year, self.term, self.program, self.cohort, self.course)
 		students = [d.student for d in program_enrollment] if program_enrollment else []
 		for d in self.students:
 			if not frappe.db.get_value("Student", d.student, "enabled") and d.active and not self.disabled:
@@ -116,8 +116,8 @@ def group_has_permission(user, doc):
 	return False
 
 @frappe.whitelist()
-def get_students(academic_year, group_based_on, academic_term=None, program=None, cohort=None, course=None):
-	enrolled_students = get_program_enrollment(academic_year, academic_term, program, cohort, course)
+def get_students(academic_year, group_based_on, term=None, program=None, cohort=None, course=None):
+	enrolled_students = get_program_enrollment(academic_year, term, program, cohort, course)
 
 	if enrolled_students:
 		student_list = []
@@ -134,12 +134,12 @@ def get_students(academic_year, group_based_on, academic_term=None, program=None
 
 
 
-def get_program_enrollment(academic_year, academic_term=None, program=None, cohort=None, course=None):
+def get_program_enrollment(academic_year, term=None, program=None, cohort=None, course=None):
 
 	condition1 = " "
 	condition2 = " "
 	if academic_term:
-		condition1 += " and pe.academic_term = %(academic_term)s"
+		condition1 += " and pe.term = %(term)s"
 	if program:
 		condition1 += " and pe.program = %(program)s"
 	if cohort:
@@ -158,13 +158,13 @@ def get_program_enrollment(academic_year, academic_term=None, program=None, coho
 		order by
 			pe.student_name asc
 		'''.format(condition1=condition1, condition2=condition2),
-		({"academic_year": academic_year, "academic_term":academic_term, "program": program, "cohort": cohort, "course": course}), as_dict=1)
+		({"academic_year": academic_year, "term":term, "program": program, "cohort": cohort, "course": course}), as_dict=1)
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 	if filters.get("group_based_on") != "Activity":
-		enrolled_students = get_program_enrollment(filters.get('academic_year'), filters.get('academic_term'),
+		enrolled_students = get_program_enrollment(filters.get('academic_year'), filters.get('term'),
 			filters.get('program'), filters.get('cohort'))
 		student_group_student = frappe.db.sql_list('''select student from `tabStudent Group Student` where parent=%s''',
 			(filters.get('student_group')))

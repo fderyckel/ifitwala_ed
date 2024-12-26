@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-# Copyright (c) 2020, ifitwala and contributors
+# Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
@@ -39,7 +38,7 @@ class Term(Document):
 
     def validate_duplicate(self):
         ## this might not be necessary... because we have a duplicateEntryError with primary key. 
-        terms = frappe.qb.DocType("Academic Term")
+        terms = frappe.qb.DocType("Term")
         query = (
             frappe.qb.from_(terms)
             .select(terms.name)
@@ -50,7 +49,7 @@ class Term(Document):
             )
         ).run()
         if query:
-            frappe.throw(_("An academic term with this academic year {0} and this name {1} already exisit. Please adjust the name if necessary.").format(self.academic_year, self.term_name))
+            frappe.throw(_("A term with this academic year {0} and this name {1} already exisit. Please adjust the name if necessary.").format(self.academic_year, self.term_name))
 
     def create_calendar_events(self):
         if self.at_start:
@@ -79,7 +78,7 @@ class Term(Document):
         	    "event_type": "Public",
                 "all_day": "1",
         	    "color": "#7575ff",
-                "reference_type": "Academic Term",
+                "reference_type": "Term",
                 "reference_name": self.name
         	})
             start_term.insert()
@@ -98,7 +97,7 @@ class Term(Document):
                 "event_type": "Public",
                 "all_day": "1",
         	    "color": "#7575ff",
-                "reference_type": "Academic Term",
+                "reference_type": "Term",
                 "reference_name": self.name
         	})
             end_term.insert()

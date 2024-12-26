@@ -4,7 +4,7 @@
 frappe.ui.form.on("Program Enrollment", {
   onload: function (frm) {
     // to filter academic terms that matches the given academic year.
-    frm.set_query("academic_term", function () {
+    frm.set_query("term", function () {
       return {
         filters: {
           academic_year: frm.doc.academic_year,

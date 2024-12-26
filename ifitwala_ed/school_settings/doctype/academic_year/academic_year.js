@@ -1,4 +1,4 @@
-// Copyright (c) 2020, ifitwala and contributors
+// Copyright (c) 2020, François de Ryckel and contributors
 // For license information, please see license.txt
 
 frappe.ui.form.on("Academic Year", {

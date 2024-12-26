@@ -18,13 +18,13 @@ class ProgramEnrollment(Document):
 			self.extend("courses", self.get_courses())
 
 		if self.academic_term:
-			term_dates = frappe.get_doc("Academic Term", self.academic_term)
+			term_dates = frappe.get_doc("Term", self.term)
 			if term_dates.academic_year != self.academic_year:
 				frappe.throw(_("The term does not belong to that academic year."))
 			if self.enrollment_date and getdate(term_dates.term_start_date) and getdate(self.enrollment_date) < getdate(term_dates.term_start_date):
-				frappe.throw(_("The enrollment date for this program is before the start of the term.  Please revise the date or change the term {0}.").format(get_link_to_form("Academic Term", self.academic_term)))
+				frappe.throw(_("The enrollment date for this program is before the start of the term.  Please revise the date or change the term {0}.").format(get_link_to_form("Term", self.term)))
 			if self.enrollment_date and getdate(term_dates.term_end_date) and getdate(self.enrollment_date) > getdate(term_dates.term_end_date):
-				frappe.throw(_("The enrollment date for this program is after the end the term.  Pease revise the joining date or change the term {0}.").format(get_link_to_form("Academic Term", self.academic_term)))
+				frappe.throw(_("The enrollment date for this program is after the end the term.  Pease revise the joining date or change the term {0}.").format(get_link_to_form("Term", self.term)))
 
 	def on_submit(self):
 		self.update_student_joining_date()
@@ -36,7 +36,7 @@ class ProgramEnrollment(Document):
 				filters = {
 					"student": self.student,
 					"academic_year": self.academic_year,
-					"academic_term": self.academic_term,
+					"term": self.term,
 					"program": self.program,
 					"docstatus": ("<", 2),
 					"name": ("!=", self.name)
@@ -110,14 +110,14 @@ def get_program_courses(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_students(doctype, txt, searchfield, start, page_len, filters):
-	if not filters.get("academic_term"):
-		filters["academic_term"] = frappe.defaults.get_defaults().academic_term
+	if not filters.get("term"):
+		filters["term"] = frappe.defaults.get_defaults().term
 
 	if not filters.get("academic_year"):
 		filters["academic_year"] = frappe.defaults.get_defaults().academic_year
 
 	enrolled_students = frappe.get_list("Program Enrollment", filters={
-		"academic_term": filters.get('academic_term'),
+		"term": filters.get('term'),
 		"academic_year": filters.get('academic_year')
 	}, fields=["student"])
 
