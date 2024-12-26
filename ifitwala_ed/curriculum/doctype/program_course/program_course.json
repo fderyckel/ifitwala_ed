@@ -9,7 +9,7 @@
   "section_break_ivb6",
   "course",
   "course_name",
-  "mandatory"
+  "required"
  ],
  "fields": [
   {
@@ -36,17 +36,16 @@
   },
   {
    "default": "0",
-   "fieldname": "mandatory",
+   "fieldname": "required",
    "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Mandatory",
-   "reqd": 1
+   "label": "Mandatory"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-06 11:31:58.005481",
+ "modified": "2024-12-24 21:44:07.416537",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program Course",

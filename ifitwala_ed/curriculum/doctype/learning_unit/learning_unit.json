@@ -66,7 +66,7 @@
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
    "label": "Academic term",
-   "options": "Academic Term"
+   "options": "Term"
   },
   {
    "fieldname": "duration",
@@ -88,7 +88,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-06 08:19:33.513658",
+ "modified": "2024-12-26 09:52:30.397770",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Learning Unit",

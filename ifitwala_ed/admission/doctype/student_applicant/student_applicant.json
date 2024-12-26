@@ -56,7 +56,7 @@
    "fieldname": "academic_term",
    "fieldtype": "Link",
    "label": "Academic Term",
-   "options": "Academic Term"
+   "options": "Term"
   },
   {
    "fieldname": "applicant_image",
@@ -72,7 +72,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-06 15:47:04.943358",
+ "modified": "2024-12-26 09:52:30.684652",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",

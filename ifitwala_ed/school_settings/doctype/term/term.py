@@ -8,7 +8,7 @@ from frappe import _
 from frappe.utils import getdate, cstr, get_link_to_form
 from frappe.model.document import Document
 
-class AcademicTerm(Document):
+class Term(Document):
     # create automatically the name of the term.
     def autoname(self):
         self.name = self.academic_year + " ({})".format(self.term_name) if self.term_name else ""

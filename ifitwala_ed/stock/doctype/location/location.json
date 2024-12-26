@@ -82,9 +82,10 @@
   }
  ],
  "index_web_pages_for_search": 1,
+ "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2024-12-02 21:18:03.277826",
+ "modified": "2024-12-26 09:55:41.873220",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Location",

@@ -11,6 +11,7 @@
   "term_name",
   "school",
   "column_break_yx8a",
+  "term_type",
   "term_start_date",
   "term_end_date",
   "school_event_section_section",
@@ -99,14 +100,21 @@
    "label": "title",
    "print_hide": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "term_type",
+   "fieldtype": "Select",
+   "label": "Term Type",
+   "options": "Academic\nActivity\nOther",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-09 14:31:50.383435",
+ "modified": "2024-12-26 09:53:40.847710",
  "modified_by": "Administrator",
  "module": "School Settings",
- "name": "Academic Term",
+ "name": "Term",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
