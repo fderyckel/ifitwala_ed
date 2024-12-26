@@ -13,7 +13,7 @@
   "maximum_size",
   "student_group_abbreviation",
   "column_break_ttdt",
-  "academic_term",
+  "term",
   "student_group_name",
   "program",
   "cohort",
@@ -66,15 +66,6 @@
   {
    "fieldname": "column_break_ttdt",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "academic_term",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Academic Term",
-   "options": "Term",
-   "reqd": 1
   },
   {
    "description": "You can leave this blank and it will create the name automatically using the course name, program and academic term.",
@@ -154,11 +145,20 @@
    "hidden": 1,
    "label": "Title",
    "print_hide": 1
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Term",
+   "options": "Term",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-26 09:52:29.764517",
+ "modified": "2024-12-26 10:34:12.125250",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",
