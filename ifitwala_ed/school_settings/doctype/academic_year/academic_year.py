@@ -1,7 +1,6 @@
 # Copyright (c) 2024, François de Ryckel
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe.utils import getdate, get_link_to_form, cstr
 from frappe import _
@@ -30,6 +29,20 @@ class AcademicYear(Document):
     def on_update(self):
         if self.year_start_date and self.year_end_date:
             self.create_calendar_events()
+
+    def on_trash(self): 
+        # first inform user that we will also delete the 2 school events related to that academic year
+        frappe.msgprint(_("This is also delete the 2 School Events related to this Academic Year."), 
+                        title = _("Warning"), indicator = "orange")
+        
+        # delete the 2 school events related to the academic year
+        school_events = frappe.get_list("School Event", filters = {"reference_type": "Academic Year", "reference_name": self.name}, fields = ["name"])
+        for event in school_events: 
+            frappe.delete_doc("School Event", event.name)
+        
+        # confirmation message
+        frappe.msgprint(_("The 2 School Events related to this Academic Year have been deleted."), 
+                        title = _("Deletion Successful"), indicator = "green")
 
     def validate_duplicate(self):
         year = frappe.db.sql("""select name from `tabAcademic Year` where school=%s and academic_year_name=%s and docstatus<2 and name!=%s""", (self.school, self.academic_year_name, self.name))
