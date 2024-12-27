@@ -138,7 +138,7 @@ def get_program_enrollment(academic_year, term=None, program=None, cohort=None, 
 
 	condition1 = " "
 	condition2 = " "
-	if academic_term:
+	if term:
 		condition1 += " and pe.term = %(term)s"
 	if program:
 		condition1 += " and pe.program = %(program)s"

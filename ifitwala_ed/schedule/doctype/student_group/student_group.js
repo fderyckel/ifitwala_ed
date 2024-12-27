@@ -5,7 +5,7 @@ frappe.ui.form.on("Student Group", {
   onload: function (frm) {
     frm.add_fetch("student", "student_full_name", "student_name");
     // will filter the academic terms  based on the chosen academic year.
-    frm.set_query("academic_term", function () {
+    frm.set_query("term", function () {
       return {
         filters: {
           academic_year: frm.doc.academic_year,
@@ -21,7 +21,7 @@ frappe.ui.form.on("Student Group", {
           filters: {
             academic_year: frm.doc.academic_year,
             group_based_on: frm.doc.group_based_on,
-            academic_term: frm.doc.academic_term,
+            term: frm.doc.term,
             program: frm.doc.program,
             cohort: frm.doc.cohort,
             course: frm.doc.course,
@@ -144,7 +144,7 @@ frappe.ui.form.on("Student Group", {
             "ifitwala_ed.schedule.doctype.student_group.student_group.get_students",
           args: {
             academic_year: frm.doc.academic_year,
-            academic_term: frm.doc.academic_term,
+            term: frm.doc.term,
             group_based_on: frm.doc.group_based_on,
             program: frm.doc.program,
             cohort: frm.doc.cohort,

@@ -8,7 +8,7 @@ from frappe.model.document import Document
 education_keydict = {
 	# "key in defaults": "key in Global Defaults"
 	"academic_year": "current_academic_year",
-	"academic_term": "current_academic_term",
+	"term": "current_academic_term",
 	"validate_course": "validate_course",
 	"school": "default_school",
 	"meeting_color": "meeting_color",

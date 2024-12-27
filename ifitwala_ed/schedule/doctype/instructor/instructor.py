@@ -40,5 +40,5 @@ class Instructor(Document):
 		groups = frappe.get_all("Student Group Instructor", filters = {"instructor":self.name}, fields = ["parent", "designation"])
 		for group in groups:
 			yo = frappe.get_doc("Student Group", group.parent)
-			self.append("instructor_log", {"academic_year":yo.academic_year, "academic_term":yo.academic_term,
+			self.append("instructor_log", {"academic_year":yo.academic_year, "academic":yo.academic,
 						"designation":group.designation, "student_group":yo.name, "course":yo.course})

@@ -8,6 +8,6 @@ frappe.listview_settings["Program Enrollment"] = {
     status: 3,
     student_cohort: 6,
     Program: 5,
-    academic_term: 6,
+    term: 6,
   },
 };
