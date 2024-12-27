@@ -32,17 +32,28 @@ class AcademicYear(Document):
 
     def on_trash(self): 
         # first inform user that we will also delete the 2 school events related to that academic year
-        frappe.msgprint(_("This is also delete the 2 School Events related to this Academic Year."), 
+        frappe.msgprint(_("This will also delete the 2 School Events related to this Academic Year."), 
                         title = _("Warning"), indicator = "orange")
         
         # delete the 2 school events related to the academic year
-        school_events = frappe.get_list("School Event", filters = {"reference_type": "Academic Year", "reference_name": self.name}, fields = ["name"])
-        for event in school_events: 
-            frappe.delete_doc("School Event", event.name, ignore_permissions=True)
-        
-        # confirmation message
-        frappe.msgprint(_("The 2 School Events related to this Academic Year have been deleted."), 
-                        title = _("Deletion Successful"), indicator = "green")
+        try:
+            # Efficiently delete the records using frappe.db.delete
+            frappe.db.delete(
+                "School Event",
+                {
+                    "reference_type": "Academic Year",
+                    "reference_name": self.name
+                }
+            )
+            frappe.db.commit() # Commit the changes to the database
+            frappe.msgprint(_("The School Events related to this Academic Year have been deleted."),
+                            title=_("Deletion Successful"), indicator="green")
+
+        except Exception as e:
+            frappe.msgprint(_("An error occurred while deleting School Events: {0}").format(e),
+                            title=_("Deletion Error"), indicator="red")
+            frappe.db.rollback() # Rollback in case of an error to prevent data corruption
+            raise
 
     def validate_duplicate(self):
         year = frappe.db.sql("""select name from `tabAcademic Year` where school=%s and academic_year_name=%s and docstatus<2 and name!=%s""", (self.school, self.academic_year_name, self.name))
