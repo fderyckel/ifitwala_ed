@@ -38,7 +38,7 @@ class AcademicYear(Document):
         # delete the 2 school events related to the academic year
         school_events = frappe.get_list("School Event", filters = {"reference_type": "Academic Year", "reference_name": self.name}, fields = ["name"])
         for event in school_events: 
-            frappe.delete_doc("School Event", event.name)
+            frappe.delete_doc("School Event", event.name, ignore_permissions=True)
         
         # confirmation message
         frappe.msgprint(_("The 2 School Events related to this Academic Year have been deleted."), 
