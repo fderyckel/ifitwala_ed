@@ -13,7 +13,7 @@
   "unit_status",
   "column_break_bw7c",
   "course",
-  "academic_term",
+  "term",
   "duration",
   "section_break_2dqf",
   "unit_name"
@@ -62,13 +62,6 @@
    "options": "Course"
   },
   {
-   "fieldname": "academic_term",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Academic term",
-   "options": "Term"
-  },
-  {
    "fieldname": "duration",
    "fieldtype": "Data",
    "label": "Duration"
@@ -84,11 +77,18 @@
    "no_copy": 1,
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Term",
+   "options": "Term"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-26 09:52:30.397770",
+ "modified": "2024-12-27 16:49:17.061134",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Learning Unit",

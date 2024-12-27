@@ -11,7 +11,7 @@
   "student_cohort",
   "column_break_7ta8",
   "academic_year",
-  "academic_term",
+  "term",
   "section_break_pyyy",
   "get_students",
   "students",
@@ -21,7 +21,7 @@
   "enroll_students",
   "column_break_ekje",
   "new_academic_year",
-  "new_academic_term",
+  "new_term",
   "new_enrollment_date"
  ],
  "fields": [
@@ -60,12 +60,6 @@
    "fieldtype": "Link",
    "label": "Academic Year",
    "options": "Academic Year"
-  },
-  {
-   "fieldname": "academic_term",
-   "fieldtype": "Link",
-   "label": "Academic Term",
-   "options": "Term"
   },
   {
    "fieldname": "section_break_pyyy",
@@ -116,23 +110,29 @@
    "options": "Academic Year"
   },
   {
-   "fieldname": "new_academic_term",
-   "fieldtype": "Link",
-   "label": "New Academic Term",
-   "options": "Term"
-  },
-  {
    "description": "Indicate the date of the first day for this new enrollment. If left blank, by default, it will be the first day of the indicated academic year or academic term if indicated. ",
    "fieldname": "new_enrollment_date",
    "fieldtype": "Date",
    "label": "New enrollment Date"
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "label": "Term",
+   "options": "Term"
+  },
+  {
+   "fieldname": "new_term",
+   "fieldtype": "Link",
+   "label": "New Term",
+   "options": "Term"
   }
  ],
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-12-26 09:52:31.769049",
+ "modified": "2024-12-27 16:52:15.576259",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Tool",

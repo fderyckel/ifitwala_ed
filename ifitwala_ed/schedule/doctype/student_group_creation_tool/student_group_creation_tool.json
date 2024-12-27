@@ -7,7 +7,7 @@
  "field_order": [
   "section_break_i1kg",
   "academic_year",
-  "academic_term",
+  "term",
   "get_course",
   "column_break_tjtj",
   "program",
@@ -27,12 +27,6 @@
    "label": "Academic Year",
    "options": "Academic Year",
    "reqd": 1
-  },
-  {
-   "fieldname": "academic_term",
-   "fieldtype": "Link",
-   "label": "Academic Term",
-   "options": "Academic Year"
   },
   {
    "fieldname": "get_course",
@@ -67,13 +61,19 @@
    "label": "Courses",
    "options": "Student Group Creation Tool Course",
    "reqd": 1
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "label": "Term",
+   "options": "Academic Year"
   }
  ],
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-12-25 22:12:03.181425",
+ "modified": "2024-12-27 16:53:24.649303",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group Creation Tool",

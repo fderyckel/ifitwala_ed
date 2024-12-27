@@ -8,7 +8,7 @@
  "field_order": [
   "section_break_tqih",
   "academic_year",
-  "academic_term",
+  "term",
   "course",
   "designation",
   "student_group",
@@ -26,13 +26,6 @@
    "fieldtype": "Link",
    "label": "Academic Year",
    "options": "Academic Year"
-  },
-  {
-   "columns": 2,
-   "fieldname": "academic_term",
-   "fieldtype": "Link",
-   "label": "Academic Term",
-   "options": "Term"
   },
   {
    "fieldname": "course",
@@ -66,12 +59,19 @@
    "fieldtype": "Link",
    "label": "Program",
    "options": "Program"
+  },
+  {
+   "columns": 2,
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "label": "Term",
+   "options": "Term"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-26 09:52:30.157682",
+ "modified": "2024-12-27 16:51:06.448410",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Instructor Log",
