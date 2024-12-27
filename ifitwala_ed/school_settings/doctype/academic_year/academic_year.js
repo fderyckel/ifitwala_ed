@@ -1,19 +1,12 @@
-// Copyright (c) 2020, François de Ryckel and contributors
+// Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
 frappe.ui.form.on("Academic Year", {
   refresh: function (frm) {
     if (!frm.is_new()) {
-      frm.add_custom_button(__("Create Academic Term"), function () {
-        frappe.call({
-          method:
-            "ifitwala_ed.school_settings.doctype.academic_year.academic_year.create_academic_term",
-          doc: frm.doc,
-          callback: function (r) {
-            if (r.message) {
-              frappe.set_route("Form", "Academic Term", r.message);
-            }
-          },
+      frm.add_custom_button(__("Create Term"), () => {
+        frappe.new_doc("Term", {}, ay => {
+          ay.academic_year = frm.doc.name;
         });
       });
     }

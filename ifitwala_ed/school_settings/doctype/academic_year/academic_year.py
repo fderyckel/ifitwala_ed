@@ -31,6 +31,9 @@ class AcademicYear(Document):
             self.create_calendar_events()
 
     def on_trash(self): 
+        ## This is just a trial... it will effectively not worked once the AY is linked to other documents. 
+        ## this is just in case you want to delete an academic year that has not been linked to any other document except of the 2 school events.
+
         # first inform user that we will also delete the 2 school events related to that academic year
         frappe.msgprint(_("This will also delete the 2 School Events related to this Academic Year."), 
                         title = _("Warning"), indicator = "orange")
@@ -114,15 +117,3 @@ class AcademicYear(Document):
             end_year.insert()
             self.db_set("ay_end", end_year.name)
             frappe.msgprint(_("Date for the end of the year {0} has been created on the School Event Calendar {1}").format(self.year_end_date, get_link_to_form("School Event", end_year.name))) 
-
-
-    @frappe.whitelist()
-    def create_academic_term(self):  
-        academic_term = frappe.new_doc("Academic Term")
-        academic_term.academic_year = self.name
-        academic_term.term_name = "Term 1"
-        academic_term.save()
-        frappe.response["type"] = "redirect"
-        frappe.response["location"] = frappe.get_doc("Academic Term", academic_term.name).get_url()
-
-
