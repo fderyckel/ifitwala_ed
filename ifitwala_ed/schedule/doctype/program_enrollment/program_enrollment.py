@@ -17,7 +17,7 @@ class ProgramEnrollment(Document):
 		if not self.courses:
 			self.extend("courses", self.get_courses())
 
-		if self.academic_term:
+		if self.term:
 			term_dates = frappe.get_doc("Term", self.term)
 			if term_dates.academic_year != self.academic_year:
 				frappe.throw(_("The term does not belong to that academic year."))

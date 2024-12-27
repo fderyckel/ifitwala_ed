@@ -3,7 +3,7 @@
 
 frappe.ui.form.on("Education Settings", {
   onload: function (frm) {
-    frm.set_query("current_academic_term", function () {
+    frm.set_query("current_term", function () {
       return {
         filters: {
           academic_year: frm.doc.current_academic_year,
