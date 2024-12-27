@@ -29,15 +29,16 @@
    "label": "Academic Year"
   },
   {
+   "columns": 2,
    "fieldname": "academic_year_name",
    "fieldtype": "Data",
    "in_global_search": 1,
    "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Academic Year Name",
    "reqd": 1
   },
   {
+   "columns": 2,
    "fieldname": "year_start_date",
    "fieldtype": "Date",
    "in_list_view": 1,
@@ -97,6 +98,7 @@
    "read_only": 1
   },
   {
+   "columns": 5,
    "fieldname": "school",
    "fieldtype": "Link",
    "in_global_search": 1,
@@ -111,7 +113,7 @@
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-09 19:41:07.020901",
+ "modified": "2024-12-27 11:38:34.344536",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",
