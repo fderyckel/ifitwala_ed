@@ -98,7 +98,7 @@
    "read_only": 1
   },
   {
-   "columns": 5,
+   "columns": 7,
    "fieldname": "school",
    "fieldtype": "Link",
    "in_global_search": 1,
@@ -113,7 +113,7 @@
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-27 11:38:34.344536",
+ "modified": "2024-12-27 15:57:01.440011",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",
