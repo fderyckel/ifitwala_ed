@@ -133,25 +133,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Settings",
-   "link_count": 1,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "School Settings",
-   "link_count": 0,
-   "link_to": "Education Settings",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Schedule",
    "link_count": 2,
    "link_type": "DocType",
@@ -182,7 +163,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Year & Terms",
-   "link_count": 4,
+   "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -210,12 +191,21 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "School Calendar",
+   "label": "School Event",
    "link_count": 0,
-   "link_to": "School Calendar",
+   "link_to": "School Event",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
   },
   {
    "hidden": 0,
@@ -226,9 +216,19 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School Calendar",
+   "link_count": 0,
+   "link_to": "School Calendar",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2024-12-26 09:57:36.255275",
+ "modified": "2024-12-27 11:01:50.386510",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Settings",

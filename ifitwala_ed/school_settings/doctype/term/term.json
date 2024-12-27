@@ -26,6 +26,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "description": "A term is always linked to an academic year. ",
    "fieldname": "academic_year",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -35,12 +36,14 @@
    "reqd": 1
   },
   {
+   "description": "Choose the name appropriately as terms are used both for academic and activity.  Maybe use 'Semester' or 'Quarter' for Academic type and 'season' for sport and activity. ",
    "fieldname": "term_name",
    "fieldtype": "Data",
    "label": "Term Name",
    "reqd": 1
   },
   {
+   "description": "This is fetch automatically from the Academic Year link. ",
    "fetch_from": "academic_year.school",
    "fieldname": "school",
    "fieldtype": "Link",
@@ -55,18 +58,21 @@
    "fieldtype": "Column Break"
   },
   {
+   "description": "First day of your term.",
    "fieldname": "term_start_date",
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Term Start Date"
   },
   {
+   "description": "Last day of your term.",
    "fieldname": "term_end_date",
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Term End Date"
   },
   {
+   "description": "Creating a term, create automatically a school Event (acessible via the school event calendar).  Links to both term start and term end are in this section.",
    "fieldname": "school_event_section_section",
    "fieldtype": "Section Break",
    "label": "School Event Section"
@@ -102,8 +108,11 @@
    "unique": 1
   },
   {
+   "description": "You have 3 different type of terms.  Academic (for learning unit, reporting time frame, etc.).  You also have Activity term, usually linked to sporting seasons, or extra-curricular seasons. ",
    "fieldname": "term_type",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Term Type",
    "options": "Academic\nActivity\nOther",
    "reqd": 1
@@ -111,7 +120,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-26 09:53:40.847710",
+ "modified": "2024-12-26 11:37:33.808022",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Term",
