@@ -42,15 +42,18 @@ class School(NestedSet):
 		if not self.abbr.strip():
 			frappe.throw(_("Abbreviation is mandatory")) 
 
+		### CHANGETO: use frappe.db.exist()
 		if frappe.db.sql("""SELECT abbr FROM `tabSchool` WHERE name!=%s AND abbr=%s""", (self.name, self.abbr)):
 			frappe.throw(_("Abbreviation {0} is already used for another school.").format(self.abbr))
 
 	def validate_parent_school(self):
 		if self.parent_school:
-			is_group = frappe.get_value('School', self.parent_school, 'is_group')
+			is_group = frappe.db.get_value('School', self.parent_school, 'is_group')
 			if not is_group:
 				frappe.throw(_("Parent School must be a group school."))
 
+	## TOTHINK: why would a school need to create a building?  Isn't it what the organization should do?
+	## maybe just create an office? 
 	def create_default_location(self):
 		for loc_detail in [
 			{"location_name": self.name, "is_group": 1},

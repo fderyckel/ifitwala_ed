@@ -59,9 +59,16 @@ class AcademicYear(Document):
             raise
 
     def validate_duplicate(self):
-        year = frappe.db.sql("""select name from `tabAcademic Year` where school=%s and academic_year_name=%s and docstatus<2 and name!=%s""", (self.school, self.academic_year_name, self.name))
+        year = frappe.db.exit("Academic Year", 
+                              {
+                                    "school": self.school,
+                                    "academic_year_name": self.academic_year_name,
+                                    "docstatus": ("<", 2),
+                                    "name": ("!=", self.name)
+                              })
         if year:
-            frappe.throw(_("An academic year with this name {0} and this school {1} already exist.").format(self.academic_year_name, get_link_to_form("School", self.school)), title=_("Duplicate Entry"))
+            frappe.throw(_("An academic year with this name {0} and this school {1} already exist.").format(self.academic_year_name, get_link_to_form("School", self.school)), 
+                         title=_("Duplicate Entry"))
 
     def create_calendar_events(self):
         if self.ay_start:

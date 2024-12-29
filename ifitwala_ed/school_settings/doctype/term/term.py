@@ -22,7 +22,7 @@ class Term(Document):
         if self.term_start_date and self.term_end_date and getdate(self.term_start_date) > getdate(self.term_end_date):
             frappe.throw(_("The start of the term has to be before its end. "))
 
-        year = frappe.get_doc("Academic Year", self.academic_year)
+        year = frappe.db.get_value("Academic Year", self.academic_year, ["year_start_date", "year_end_date"], as_dict=True)
         # start of term can not be before start of academic year
         if self.term_start_date and getdate(year.year_start_date) and getdate(self.term_start_date) < getdate(year.year_start_date):
             frappe.throw(_("The start of the term cannot be before the start of the linked academic year. The start of the academic year {0} has been set to {1}.  Please adjust the dates").format(self.academic_year, year.year_start_date))
