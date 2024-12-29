@@ -22,11 +22,11 @@
   "contact_html",
   "address_html",
   "children_section",
-  "student",
+  "students",
   "work_details_section",
   "work_place",
-  "section_break_dln4",
   "guardian_designation",
+  "column_break_eijl",
   "guardian_work_email",
   "guardian_work_phone"
  ],
@@ -128,13 +128,6 @@
    "label": "Children"
   },
   {
-   "fieldname": "student",
-   "fieldtype": "Table",
-   "label": "Student",
-   "options": "Guardian Student",
-   "read_only": 1
-  },
-  {
    "fieldname": "work_details_section",
    "fieldtype": "Section Break",
    "label": "Work Details"
@@ -143,10 +136,6 @@
    "fieldname": "work_place",
    "fieldtype": "Data",
    "label": "work_place"
-  },
-  {
-   "fieldname": "section_break_dln4",
-   "fieldtype": "Section Break"
   },
   {
    "fieldname": "guardian_designation",
@@ -162,12 +151,23 @@
    "fieldname": "guardian_work_phone",
    "fieldtype": "Data",
    "label": "Work Phone"
+  },
+  {
+   "fieldname": "column_break_eijl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "students",
+   "fieldtype": "Table",
+   "label": "Students",
+   "options": "Guardian Student",
+   "read_only": 1
   }
  ],
  "image_field": "guardian_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-11 16:21:30.073016",
+ "modified": "2024-12-29 22:24:08.890798",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Guardian",

@@ -27,10 +27,20 @@
   "student_second_nationality",
   "cohort",
   "home_address_section",
-  "student_full_name",
   "contact_html",
+  "column_break_mdf1",
   "address_html",
-  "guardians_section"
+  "guardians_section",
+  "guardians",
+  "siblings_section",
+  "siblings",
+  "exit_section",
+  "student_exit_date",
+  "student_exit_reason",
+  "enabled",
+  "column_break_czxj",
+  "additional_comment",
+  "student_full_name"
  ],
  "fields": [
   {
@@ -198,12 +208,64 @@
    "fieldname": "guardians_section",
    "fieldtype": "Section Break",
    "label": "Guardians"
+  },
+  {
+   "fieldname": "guardians",
+   "fieldtype": "Table",
+   "label": "Guardians",
+   "options": "Student Guardian"
+  },
+  {
+   "fieldname": "column_break_mdf1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "siblings_section",
+   "fieldtype": "Section Break",
+   "label": "Siblings"
+  },
+  {
+   "fieldname": "siblings",
+   "fieldtype": "Table",
+   "label": "Siblings",
+   "options": "Student Sibling"
+  },
+  {
+   "fieldname": "exit_section",
+   "fieldtype": "Section Break",
+   "label": "Exit"
+  },
+  {
+   "fieldname": "student_exit_date",
+   "fieldtype": "Date",
+   "label": "Student Exit Date"
+  },
+  {
+   "fieldname": "student_exit_reason",
+   "fieldtype": "Select",
+   "label": "Student Exit Reason",
+   "options": "Graduation\nMoving\nOther"
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "column_break_czxj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "additional_comment",
+   "fieldtype": "Text Editor",
+   "label": "Additional Comment"
   }
  ],
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-25 22:29:58.964550",
+ "modified": "2024-12-29 23:14:07.822555",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",

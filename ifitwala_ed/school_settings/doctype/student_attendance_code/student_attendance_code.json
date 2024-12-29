@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:attendance_code",
+ "creation": "2024-12-29 22:37:27.094651",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_efuq",
+  "attendance_code",
+  "count_as_present",
+  "code_description"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_efuq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "attendance_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Attendance Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "count_as_present",
+   "fieldtype": "Check",
+   "label": "Count as Present"
+  },
+  {
+   "fieldname": "code_description",
+   "fieldtype": "Text Editor",
+   "label": "Code description"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-12-29 22:40:13.474994",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Student Attendance Code",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Schedule Maker",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Instructor"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
