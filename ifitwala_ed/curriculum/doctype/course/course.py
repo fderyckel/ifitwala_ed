@@ -8,7 +8,7 @@ from frappe.model.document import Document
 
 class Course(Document):
 	def validate(self):
-		self.validate_sum_weighting
+		self.validate_sum_weighting()
 		ass_criteria = []
 		for d in self.assessment_criteria:
 			if d.assessment_criteria in ass_criteria:
