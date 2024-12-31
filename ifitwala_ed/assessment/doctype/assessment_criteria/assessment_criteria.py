@@ -8,7 +8,19 @@ from frappe import _
 STD_CRITERIA = ["total", "total score", "total grade", "maximum score", "score", "grade"]
 
 class AssessmentCriteria(Document):  
-	
+	def autoname(self):
+		if self.course_group or self.abbr: 
+			title_parts = ["Crit"]
+			if self.course_group:
+				title_parts.append(self.course_group)
+			if self.abbr:
+				title_parts.append(self.abbr)
+			self.name = "-".join(title_parts)
+		else:
+			words = self.assessment_criteria.split()
+			abbreviation = "".join(word[:2].capitalize() for word in words)
+			self.name = f"CRIT-{abbreviation}"
+
 	def validate(self):
 		if self.assessment_criteria.lower() in STD_CRITERIA:
 			frappe.throw(_("These are reserved Key words. Please rename the criteria"))
