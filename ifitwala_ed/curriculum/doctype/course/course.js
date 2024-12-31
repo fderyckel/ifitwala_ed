@@ -79,9 +79,7 @@ frappe.ui.form.on("Course", {
 // to filter out assessment criteria that have already been picked out in the course.
 frappe.ui.form.on("Course Assessment Criteria", {
   criteria_add: function (frm) {
-    frm.fields_dict["assessment_criteria"].grid.get_field(
-      "assessment_criteria"
-    ).get_query = function (doc) {
+    frm.fields_dict["assessment_criteria"].grid.get_field("assessment_criteria").get_query = function (doc) {
       var criteria_list = [];
       if (!doc.__islocal) criteria_list.push(doc.name);
       $.each(doc.assessment_criteria, function (idx, val) {
