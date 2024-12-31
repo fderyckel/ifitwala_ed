@@ -91,7 +91,7 @@ frappe.ui.form.on("Course Assessment Criteria", {
       });
       return {
         filters: [
-          ["Assessment Criteria", "subject_group", "=", frm.doc.subject_group], 
+          ["Assessment Criteria", "course_group", "=", frm.doc.course_group], 
           ["Assessment Criteria", "name", "not in", criteria_list]
         ],
       };
