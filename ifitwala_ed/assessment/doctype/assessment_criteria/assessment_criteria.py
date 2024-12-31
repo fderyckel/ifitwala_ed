@@ -21,7 +21,7 @@ class AssessmentCriteria(Document):
 				title_parts.append(self.abbr)
 			self.title = "-".join(title_parts)
 		else:
-			words = self.assement_criteria.split()
+			words = self.assessment_criteria.split()
 			abbreviation = "".join(word[:2].capitalize() for word in words)
 			self.title = f"CRIT-{abbreviation}"
 
