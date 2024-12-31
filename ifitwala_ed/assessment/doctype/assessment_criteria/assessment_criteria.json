@@ -78,7 +78,9 @@
   {
    "fieldname": "title",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "Title",
+   "print_hide": 1,
    "unique": 1
   },
   {
@@ -89,7 +91,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-31 10:36:18.352204",
+ "modified": "2024-12-31 12:00:52.111363",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Assessment Criteria",
@@ -145,6 +147,5 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
- "title_field": "title"
+ "states": []
 }
