@@ -82,7 +82,7 @@ frappe.ui.form.on("Course", {
 // BUGS: #2 this filter is still not working properly.  It is not filtering out the already selected assessment criteria.
 frappe.ui.form.on("Course Assessment Criteria", {
   criteria_add: function (frm) {
-    frm.fields_dict["assessment_criteria"].grid.get_field("assessment_criteria").get_query = function (doc) {
+    frm.fields_dict["assessment_criteria"].grid.get_field("assessment_criteria").get_query = function (doc, cdt, cdn) {
       var criteria_list = [];
       if (!doc.__islocal) criteria_list.push(doc.name);
       $.each(doc.assessment_criteria, function (idx, val) {

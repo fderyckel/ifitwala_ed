@@ -20,8 +20,8 @@ class Course(Document):
 	def validate_sum_weighting(self):
 		if self.assessment_criteria:
 			total_weight = 0
-			for criteria in assessment_criteria:
-				total_weight += assessment_criteria.criteria_weighting or 0
+			for criteria in self.assessment_criteria:
+				total_weight += criteria.criteria_weighting or 0
 			if total_weight != 100:
 				frappe.throw(_("The sum of the Criteria Weighting should be 100%.  Please adjust and try to save again."))
 
