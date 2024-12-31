@@ -6,6 +6,8 @@ frappe.ui.form.on("Course", {
     frm.add_fetch("team", "school", "school");
   },
 
+  onload: function (frm) {}, 
+
   refresh: function (frm) {
     if (!cur_frm.doc.__islocal) {
       frm.add_custom_button(
@@ -77,6 +79,7 @@ frappe.ui.form.on("Course", {
 });
 
 // to filter out assessment criteria that have already been picked out in the course.
+// BUGS: #2 this filter is still not working properly.  It is not filtering out the already selected assessment criteria.
 frappe.ui.form.on("Course Assessment Criteria", {
   criteria_add: function (frm) {
     frm.fields_dict["assessment_criteria"].grid.get_field("assessment_criteria").get_query = function (doc) {
