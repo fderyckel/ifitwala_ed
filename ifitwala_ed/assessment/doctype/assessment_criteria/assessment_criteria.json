@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:title",
  "creation": "2024-12-06 11:48:33.888669",
@@ -8,6 +9,7 @@
  "field_order": [
   "section_break_uv10",
   "assessment_criteria",
+  "abbr",
   "maximum_mark",
   "course_group",
   "assessment_color",
@@ -78,11 +80,16 @@
    "fieldtype": "Data",
    "label": "Title",
    "unique": 1
+  },
+  {
+   "fieldname": "abbr",
+   "fieldtype": "Data",
+   "label": "Assessment Criteria Abbreviation"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-31 10:26:36.685832",
+ "modified": "2024-12-31 10:36:18.352204",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Assessment Criteria",
@@ -100,9 +107,44 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
   }
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "title"
 }
