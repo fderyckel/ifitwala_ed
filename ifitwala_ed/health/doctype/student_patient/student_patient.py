@@ -10,14 +10,9 @@ class StudentPatient(Document):
 
 @frappe.whitelist()
 def get_student_detail(student_patient):
-	patient_dict = frappe.db.sql("""
-			SELECT
-				student_name, date_of_birth, blood_group, gender
-			FROM
-				`tabStudent Patient`
-			WHERE
-				name = %s""", (student_patient), as_dict=1)
-	if not patient_dict:
-		frappe.throw(_('Student as patient not found'))
-	details = patient_dict[0]
+	details = frappe.get_value("Student Patient", student_patient, 
+														["student_name", "date_of_birth", "blood_group", "gender"], 
+														as_dict=1)
+	if not details:
+		frappe.throw(_(f'Student patient "{student_patient}" not found. Please verify the name is correct and the record exists.'))
 	return details
