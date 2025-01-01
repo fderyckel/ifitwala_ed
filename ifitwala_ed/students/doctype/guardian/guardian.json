@@ -36,6 +36,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "depends_on": "eval: doc.__islocal",
    "fieldname": "salutation",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -74,6 +75,7 @@
    "options": "Female\nMale\nOther\nPrefer Not To Say"
   },
   {
+   "depends_on": "eval: doc.__islocal",
    "fieldname": "guardian_mobile_phone",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -84,6 +86,7 @@
   {
    "fieldname": "guardian_email",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Personal Email",
    "options": "Email",
@@ -167,7 +170,7 @@
  "image_field": "guardian_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-29 22:24:08.890798",
+ "modified": "2025-01-01 14:35:01.534856",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Guardian",
@@ -247,6 +250,7 @@
    "write": 1
   }
  ],
+ "search_fields": "guardian_first_name, guardian_last_name, guardian_email, guardian_mobile_phone",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
