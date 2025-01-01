@@ -11,9 +11,13 @@ frappe.ui.form.on('Student Patient', {
 	}, 
 	
 	refresh: function(frm) { 
+    console.log("refresh function triggered"); 
     calculateAge(frm);
 
-    frappe.user.has_role("Nurse", () => {
+    console.log("Current user roles:", frappe.get_roles());
+    frappe.user.has_role("Nurse", () => { 
+      console.log("User has Nurse role"); // Check if this is logged
+      console.log("frm.doc.student:", frm.doc.student); 
       if (frm.doc.student) {
           frm.add_custom_button(
               __("Guardian Details"),
