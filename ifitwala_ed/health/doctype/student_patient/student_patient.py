@@ -16,3 +16,19 @@ def get_student_detail(student_patient):
 	if not details:
 		frappe.throw(_(f'Student patient "{student_patient}" not found. Please verify the name is correct and the record exists.'))
 	return details
+
+@frappe.whitelist()
+def get_guardian_details(student):
+    student_doc = frappe.get_doc("Student", student)
+    guardians = []
+    for guardian in student_doc.student_guardians:  # Access the child table
+        guardians.append({
+            "guardian_name": guardian.guardian_name,
+            "relation": guardian.relation,
+            "email_address": guardian.email,
+            "mobile_number": guardian.phone
+        })
+
+    return guardians
+
+

@@ -16,7 +16,7 @@ frappe.ui.form.on('Student Patient', {
 		
 });
 
-function calculateAndDisplayAge(frm) {
+function calculateAge(frm) {
   if (frm.doc.date_of_birth) {
       const dob = moment(frm.doc.date_of_birth);
       const today = moment();
