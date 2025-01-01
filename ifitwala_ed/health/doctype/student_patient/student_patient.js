@@ -18,7 +18,7 @@ frappe.ui.form.on('Student Patient', {
             frm.add_custom_button( __("Guardian Details"),
                 function () {
                     frappe.call({
-                        method: "ifitwala_ed.health.student_patient.get_guardian_details", // Replace with your app and module name
+                        method: "ifitwala_ed.health.student_patient.student_patient.get_guardian_details", // Replace with your app and module name
                         args: {student_name: frm.doc.student},
                         callback: function (r) {
                             if (r.message) {
