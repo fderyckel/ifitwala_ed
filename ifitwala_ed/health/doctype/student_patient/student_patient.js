@@ -12,8 +12,51 @@ frappe.ui.form.on('Student Patient', {
 	
 	refresh: function(frm) { 
     calculateAge(frm);
-	}
-		
+
+    frappe.user.has_role("Nurse", () => {
+      if (frm.doc.student) {
+          frm.add_custom_button(
+              __("Guardian Details"),
+              function () {
+                  frappe.call({
+                      method: "ifitwala_ed.health.student_patient.get_guardian_details", // Replace with your app and module name
+                      args: {
+                          student: frm.doc.student,
+                      },
+                      callback: function (r) {
+                          if (r.message) {
+                              let guardian_details = r.message;
+                              let message = "";
+                              for (let guardian of guardian_details) {
+                                  message += `
+                                      <div style="margin-bottom: 10px; padding: 10px; border: 1px solid #d1d8dd;">
+                                          <b>Guardian Name:</b> ${guardian.guardian_name}<br>
+                                          <b>Relation:</b> ${guardian.relation}<br>
+                                          <b>Email:</b> ${guardian.email_address || 'N/A'}<br>
+                                          <b>Mobile:</b> ${guardian.mobile_number || 'N/A'}
+                                      </div>
+                                  `;
+                              }
+
+                              // Display details in a dialog
+                              frappe.msgprint({
+                                  title: __("Guardian Details"),
+                                  message: __(message),
+                                  indicator: 'blue',
+                              });
+                          } else {
+                              frappe.msgprint(
+                                  __("No guardian details found for this student.")
+                              );
+                          }
+                      },
+                  });
+              },
+              __("Actions")
+          );
+      }
+  });
+  },
 });
 
 function calculateAge(frm) {
