@@ -21,7 +21,7 @@ def get_student_detail(student_patient):
 def get_guardian_details(student_name):
     student_doc = frappe.get_doc("Student", student_name)
     guardians = []
-    for guardian in student_doc.student_guardians:  # Access the child table
+    for guardian in student_doc.guardians:  
         guardians.append({
             "guardian_name": guardian.guardian_name,
             "relation": guardian.relation,
