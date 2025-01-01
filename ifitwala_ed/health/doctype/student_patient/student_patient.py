@@ -18,8 +18,8 @@ def get_student_detail(student_patient):
 	return details
 
 @frappe.whitelist()
-def get_guardian_details(student):
-    student_doc = frappe.get_doc("Student", student)
+def get_guardian_details(student_name):
+    student_doc = frappe.get_doc("Student", student_name)
     guardians = []
     for guardian in student_doc.student_guardians:  # Access the child table
         guardians.append({
