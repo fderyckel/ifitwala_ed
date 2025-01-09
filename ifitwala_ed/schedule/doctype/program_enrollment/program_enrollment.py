@@ -53,16 +53,21 @@ class ProgramEnrollment(Document):
 								ORDER BY idx""", (self.program), as_dict=1)
 
 	def validate_duplicate_course(self):
-		found = []
-		pc = frappe.get_list("Program Course", fields = ["Course"], filters = [["parent", "=", self.program]])
-		pc_list = [c.Course for c in pc]
-		for course in self.courses:
-			if course.course in found:
-				frappe.throw(_("Course {0} entered twice.").format(course.course))
-			elif course.course not in pc_list:
-				frappe.throw(_("Course {0} is not part of program {1}").format(get_link_to_form("Course", course.course), get_link_to_form("Program", self.program)))
+		seen_courses = []
+		program_courses = {row[0] for row in frappe.db.get_values("Program Course", filters = {"parent": self.program}, fieldname = "course")}
+		for course_entry in self.courses:
+			if course_entry.course in seen_courses:
+				frappe.throw(_("Course {0} entered twice.").format(
+					get_link_to_form("Course",course_entry.course))
+				)
 			else:
-				found.append(course.course)
+				seen_courses.append(course_entry.course)
+			
+			if course_entry.course not in program_courses:
+				frappe.throw(_("Course {0} is not part of program {1}").format(
+					get_link_to_form("Course", course_entry.course),
+					get_link_to_form("Program", self.program))
+				)
 
 	# This will update the joining date on the student doctype in function of the joining date of the program.
 	def update_student_joining_date(self):
