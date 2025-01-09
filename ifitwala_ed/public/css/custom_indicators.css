@@ -10,3 +10,7 @@
 .indicator.other-indicator { /* Create a custom class for other */
   background-color: #D2B48C; /* Light Brown (Tan) */
 }
+
+.indicator.test-indicator {
+  background-color: #FF0000 !important; /* Bright red - very noticeable */
+}
