@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"YBdNUngdLt\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">School Settings</span>\",\"col\":12}},{\"id\":\"pX8QnaEo7n\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & Teams\",\"col\":4}},{\"id\":\"JirRP0qGNK\",\"type\":\"card\",\"data\":{\"card_name\":\"Year & Terms\",\"col\":4}},{\"id\":\"-Mc3FDzh4d\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"FqGjo5okqc\",\"type\":\"card\",\"data\":{\"card_name\":\"Admission\",\"col\":4}},{\"id\":\"rgD7b9NDDR\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"kwiU_QnNLW\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"7r_L8_bxFJ\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"SALbBsv_U5\",\"type\":\"card\",\"data\":{\"card_name\":\"Assessment\",\"col\":4}},{\"id\":\"tkz4n9kU1N\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"WntPHsS_7L\",\"type\":\"card\",\"data\":{\"card_name\":\"Health\",\"col\":4}}]",
+ "content": "[{\"id\":\"YBdNUngdLt\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">School Settings</span>\",\"col\":12}},{\"id\":\"pX8QnaEo7n\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & Teams\",\"col\":4}},{\"id\":\"JirRP0qGNK\",\"type\":\"card\",\"data\":{\"card_name\":\"Year & Terms\",\"col\":4}},{\"id\":\"-Mc3FDzh4d\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"1fDRPCvDEw\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Admin Dashboard\",\"col\":3}},{\"id\":\"JlFL0YlIb9\",\"type\":\"paragraph\",\"data\":{\"text\":\"Dashboard\",\"col\":12}},{\"id\":\"rgD7b9NDDR\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"kwiU_QnNLW\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"FqGjo5okqc\",\"type\":\"card\",\"data\":{\"card_name\":\"Admission\",\"col\":4}},{\"id\":\"7r_L8_bxFJ\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"SALbBsv_U5\",\"type\":\"card\",\"data\":{\"card_name\":\"Assessment\",\"col\":4}},{\"id\":\"tkz4n9kU1N\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"WntPHsS_7L\",\"type\":\"card\",\"data\":{\"card_name\":\"Health\",\"col\":4}}]",
  "creation": "2024-12-08 09:38:24.893527",
  "custom_blocks": [],
  "docstatus": 0,
@@ -39,45 +39,6 @@
    "label": "School Calendar",
    "link_count": 0,
    "link_to": "School Calendar",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Schools & Teams",
-   "link_count": 3,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Organization",
-   "link_count": 0,
-   "link_to": "Organization",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "School",
-   "link_count": 0,
-   "link_to": "School",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Location",
-   "link_count": 0,
-   "link_to": "Location",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -432,9 +393,58 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Schools & Teams",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Organization",
+   "link_count": 0,
+   "link_to": "Organization",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School",
+   "link_count": 0,
+   "link_to": "School",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Location",
+   "link_count": 0,
+   "link_to": "Location",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Dashboards",
+   "link_count": 0,
+   "link_to": "Dashboard",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-01-06 23:03:18.615715",
+ "modified": "2025-01-09 22:29:51.820102",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Settings",
@@ -445,6 +455,14 @@
  "quick_lists": [],
  "roles": [],
  "sequence_id": 28.0,
- "shortcuts": [],
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Admin Dashboard",
+   "link_to": "Admin Dashboard",
+   "type": "Dashboard"
+  }
+ ],
  "title": "School Settings"
 }
