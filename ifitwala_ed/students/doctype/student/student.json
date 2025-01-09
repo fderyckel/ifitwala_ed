@@ -136,6 +136,7 @@
    "in_filter": 1,
    "in_list_view": 1,
    "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "Student Gender",
    "options": "Female\nMale\nOther"
   },
@@ -172,6 +173,7 @@
    "ignore_user_permissions": 1,
    "in_filter": 1,
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Cohort",
    "options": "Student Cohort"
   },
@@ -265,7 +267,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-01 23:13:41.818364",
+ "modified": "2025-01-09 12:22:27.849618",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
