@@ -86,10 +86,9 @@ class ProgramEnrollment(Document):
 
 	# This will update the joining date on the student doctype in function of the joining date of the program.
 	def update_student_joining_date(self):
-		date_result = frappe.db.sql("""select min(enrollment_date) from `tabProgram Enrollment` where student= %s""", self.student)
-		if date_result and date_result[0] and date_result[0][0]:
-			date = date_result[0][0] 
-			frappe.db.set_value("Student", self.student, "student_joining_date", date)
+		date = frappe.db.sql("""select min(enrollment_date) from `tabProgram Enrollment` where student= %s""", self.student)
+		if date and date[0] and date[0][0]:
+			frappe.db.set_value("Student", self.student, "student_joining_date", date[0][0])
 
 	def create_course_enrollment(self):
 		program = frappe.get_doc("Program", self.program)
