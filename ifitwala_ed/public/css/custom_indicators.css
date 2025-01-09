@@ -1,0 +1,12 @@
+/* custom_indicators.css */
+.indicator.female-indicator { /* Create a custom class for female */
+  background-color: #FFC0CB; /* Light Pink */
+}
+
+.indicator.male-indicator { /* Create a custom class for male */
+  background-color: #ADD8E6; /* Light Blue */
+}
+
+.indicator.other-indicator { /* Create a custom class for other */
+  background-color: #D2B48C; /* Light Brown (Tan) */
+}
