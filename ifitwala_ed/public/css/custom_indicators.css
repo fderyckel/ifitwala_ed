@@ -1,16 +1,18 @@
 /* custom_indicators.css */
-.indicator.female-indicator { /* Create a custom class for female */
+/* More specific selector */
+.list-row-col .indicator-pill.test-indicator {
+  background-color: #FF0000 !important; /* Bright red */
+}
+
+/* You can add your other indicator styles here later: */
+.list-row-col .indicator-pill.female-indicator {
   background-color: #FFC0CB; /* Light Pink */
 }
 
-.indicator.male-indicator { /* Create a custom class for male */
+.list-row-col .indicator-pill.male-indicator {
   background-color: #ADD8E6; /* Light Blue */
 }
 
-.indicator.other-indicator { /* Create a custom class for other */
+.list-row-col .indicator-pill.other-indicator {
   background-color: #D2B48C; /* Light Brown (Tan) */
-}
-
-.indicator.test-indicator {
-  background-color: #FF0000 !important; /* Bright red - very noticeable */
 }
