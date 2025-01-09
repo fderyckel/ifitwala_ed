@@ -63,6 +63,7 @@
    "fieldname": "course_group",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Course Group",
    "options": "Course Group"
   },
@@ -165,7 +166,7 @@
  "image_field": "course_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-23 21:38:07.493154",
+ "modified": "2025-01-08 23:11:40.586883",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Course",

@@ -7,7 +7,6 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_rwhk",
   "student",
   "gender",
   "blood_group",
@@ -337,7 +336,7 @@
  "image_field": "photo",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-01 11:01:41.331095",
+ "modified": "2025-01-01 23:09:29.904175",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient",
@@ -390,6 +389,7 @@
    "share": 1
   }
  ],
+ "search_fields": "student_name, preferred_name, gender",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

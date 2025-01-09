@@ -1,12 +1,14 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:log_type",
  "creation": "2024-12-26 08:50:31.223582",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_ozlu",
-  "log_type"
+  "log_type",
+  "abbr"
  ],
  "fields": [
   {
@@ -16,16 +18,25 @@
   {
    "fieldname": "log_type",
    "fieldtype": "Data",
-   "label": "Log Type"
+   "in_list_view": 1,
+   "label": "Log Type",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "abbr",
+   "fieldtype": "Data",
+   "label": "Log Type Abbreviation"
   }
  ],
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-26 08:52:36.414090",
+ "modified": "2025-01-01 23:23:44.527752",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Type",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -61,6 +72,7 @@
    "role": "Instructor"
   }
  ],
+ "search_fields": "log_type",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

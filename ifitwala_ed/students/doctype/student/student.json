@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "STU-.YYYY.-.#####",
+ "autoname": "format:STU-{YYYY}-{#####}",
  "creation": "2024-12-06 14:26:44.955491",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -265,7 +265,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-29 23:14:07.822555",
+ "modified": "2025-01-01 23:13:41.818364",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
@@ -297,16 +297,12 @@
    "write": 1
   },
   {
-   "create": 1,
    "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Instructor",
-   "share": 1,
-   "write": 1
+   "role": "Instructor"
   },
   {
    "create": 1,
@@ -321,19 +317,14 @@
    "write": 1
   },
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Counselor",
-   "share": 1,
-   "write": 1
+   "role": "Counselor"
   }
  ],
- "search_fields": "student_full_name",
+ "search_fields": "student_full_name, student_preferred_name",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

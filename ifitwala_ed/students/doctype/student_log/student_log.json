@@ -1,183 +1,185 @@
 {
-  "actions": [],
-  "allow_import": 1,
-  "allow_rename": 1,
-  "creation": "2024-12-26 08:56:34.075578",
-  "doctype": "DocType",
-  "engine": "InnoDB",
-  "field_order": [
-    "section_break_meaj",
-    "student",
-    "student_name",
-    "student_log_type",
-    "date",
-    "author",
-    "author_name",
-    "column_break_qdix",
-    "academic_year",
-    "term",
-    "program",
-    "log_entry_section",
-    "log",
-    "next_step",
-    "follow_up_section",
-    "follow_up",
-    "follow_up_person",
-    "amended_from"
-  ],
-  "fields": [
-    {
-      "fieldname": "section_break_meaj",
-      "fieldtype": "Section Break"
-    },
-    {
-      "fieldname": "student",
-      "fieldtype": "Link",
-      "in_list_view": 1,
-      "label": "Student",
-      "options": "Student",
-      "reqd": 1
-    },
-    {
-      "fetch_from": "student.student_full_name",
-      "fieldname": "student_name",
-      "fieldtype": "Data",
-      "in_list_view": 1,
-      "label": "Student Name",
-      "read_only": 1
-    },
-    {
-      "fieldname": "student_log_type",
-      "fieldtype": "Link",
-      "in_filter": 1,
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "Student Log Type",
-      "options": "Student Log Type",
-      "reqd": 1
-    },
-    {
-      "fieldname": "date",
-      "fieldtype": "Date",
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "Date",
-      "reqd": 1
-    },
-    {
-      "fieldname": "author",
-      "fieldtype": "Link",
-      "hidden": 1,
-      "in_filter": 1,
-      "in_list_view": 1,
-      "label": "Author",
-      "options": "Employee"
-    },
-    {
-      "fetch_from": "author.employee_full_name",
-      "fieldname": "author_name",
-      "fieldtype": "Data",
-      "hidden": 1,
-      "label": "Author Name"
-    },
-    {
-      "fieldname": "column_break_qdix",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "academic_year",
-      "fieldtype": "Data",
-      "label": "Academic Year"
-    },
-    {
-      "fieldname": "term",
-      "fieldtype": "Data",
-      "label": "Term"
-    },
-    {
-      "fieldname": "program",
-      "fieldtype": "Link",
-      "label": "Program",
-      "options": "Program"
-    },
-    {
-      "fieldname": "log_entry_section",
-      "fieldtype": "Section Break",
-      "label": "Log Entry"
-    },
-    {
-      "fieldname": "log",
-      "fieldtype": "Text Editor",
-      "label": "Log"
-    },
-    {
-      "fieldname": "amended_from",
-      "fieldtype": "Link",
-      "label": "Amended From",
-      "no_copy": 1,
-      "options": "Student Log",
-      "print_hide": 1,
-      "read_only": 1,
-      "search_index": 1
-    },
-    {
-      "fieldname": "next_step",
-      "fieldtype": "Link",
-      "label": "Next Step",
-      "options": "Student Log Next Step"
-    },
-    {
-      "fieldname": "follow_up_section",
-      "fieldtype": "Section Break",
-      "label": "Follow Up"
-    },
-    {
-      "fieldname": "follow_up",
-      "fieldtype": "Text Editor",
-      "label": "Follow up"
-    },
-    {
-      "fieldname": "follow_up_person",
-      "fieldtype": "Link",
-      "label": "Follow up Person",
-      "options": "Employee"
-    }
-  ],
-  "index_web_pages_for_search": 1,
-  "is_submittable": 1,
-  "links": [],
-  "modified": "2024-12-27 09:35:02.301522",
-  "modified_by": "Administrator",
-  "module": "Students",
-  "name": "Student Log",
-  "owner": "Administrator",
-  "permissions": [
-    {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "System Manager",
-      "share": 1,
-      "write": 1
-    },
-    {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "Academic Admin",
-      "share": 1,
-      "write": 1
-    }
-  ],
-  "sort_field": "modified",
-  "sort_order": "DESC",
-  "states": []
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:SLOG-{YYYY}-{#####}",
+ "creation": "2024-12-26 08:56:34.075578",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_meaj",
+  "student",
+  "student_name",
+  "log_type",
+  "date",
+  "author",
+  "author_name",
+  "column_break_qdix",
+  "academic_year",
+  "term",
+  "program",
+  "log_entry_section",
+  "log",
+  "next_step",
+  "follow_up_section",
+  "follow_up",
+  "follow_up_person",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_meaj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "student.student_full_name",
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Student Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "author",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Author",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "author.employee_full_name",
+   "fieldname": "author_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Author Name"
+  },
+  {
+   "fieldname": "column_break_qdix",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Data",
+   "label": "Academic Year"
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Data",
+   "label": "Term"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
+  },
+  {
+   "fieldname": "log_entry_section",
+   "fieldtype": "Section Break",
+   "label": "Log Entry"
+  },
+  {
+   "fieldname": "log",
+   "fieldtype": "Text Editor",
+   "label": "Log"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Student Log",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "next_step",
+   "fieldtype": "Link",
+   "label": "Next Step",
+   "options": "Student Log Next Step"
+  },
+  {
+   "fieldname": "follow_up_section",
+   "fieldtype": "Section Break",
+   "label": "Follow Up"
+  },
+  {
+   "fieldname": "follow_up",
+   "fieldtype": "Text Editor",
+   "label": "Follow up"
+  },
+  {
+   "fieldname": "follow_up_person",
+   "fieldtype": "Link",
+   "label": "Follow up Person",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "log_type",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Log Type",
+   "options": "Student Log Type",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-01-01 23:12:52.698086",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Student Log",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
 }

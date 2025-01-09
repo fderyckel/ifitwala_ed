@@ -2,13 +2,14 @@
  "actions": [],
  "allow_events_in_timeline": 1,
  "allow_rename": 1,
+ "autoname": "format:PAV-{YYYY}-{#####}",
  "creation": "2025-01-01 09:41:54.513356",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_su5a",
   "date",
-  "student_patient", 
+  "student_patient",
   "student_name",
   "gender",
   "column_break_4",
@@ -59,185 +60,186 @@
    "in_standard_filter": 1,
    "label": "Student Patient",
    "options": "Student Patient"
-  }, 
+  },
   {
-    "fetch_from": "student_patient.student_name",
-    "fieldname": "student_name",
-    "fieldtype": "Data",
-    "in_list_view": 1,
-    "in_standard_filter": 1,
-    "label": "Student Name",
-    "read_only": 1
-   },
-   {
-    "fieldname": "student_age",
-    "fieldtype": "Data",
-    "label": "Student Age",
-    "read_only": 1
-   },
-   {
-    "fieldname": "vitals_section",
-    "fieldtype": "Section Break",
-    "label": "Vitals"
-   },
-   {
-    "fieldname": "body_temperature",
-    "fieldtype": "Data",
-    "label": "Body Temperature"
-   },
-   {
-    "fieldname": "heart_rate__pulse",
-    "fieldtype": "Data",
-    "label": "Heart Rate / Pulse"
-   },
-   {
-    "fieldname": "respiratory_rate",
-    "fieldtype": "Data",
-    "label": "Respiratory Rate"
-   },
-   {
-    "fieldname": "tongue",
-    "fieldtype": "Select",
-    "label": "Tongue",
-    "options": "\nCoated\nVery Coated\nNormal\nFurry\nCuts"
-   },
-   {
-    "fieldname": "abdomen",
-    "fieldtype": "Select",
-    "label": "Abdomen",
-    "options": "\nNormal\nBloated\nFull\nFluid\nConstipated"
-   },
-   {
-    "fieldname": "refexes",
-    "fieldtype": "Select",
-    "label": "Refexes",
-    "options": "\nNormal\nHyper\nVery Hyper\nOne Sided"
-   },
-   {
-    "fieldname": "bp_systolic",
-    "fieldtype": "Data",
-    "label": "Blood Pressure (systolic)"
-   },
-   {
-    "fieldname": "bp_diastolic",
-    "fieldtype": "Data",
-    "label": "Blood Pressure (diastolic)"
-   },
-   {
-    "fieldname": "bp",
-    "fieldtype": "Data",
-    "label": "Blood pressure",
-    "read_only": 1
-   },
-   {
-    "fieldname": "column_break_12",
-    "fieldtype": "Column Break"
-   },
-   {
-    "fieldname": "section_break_17",
-    "fieldtype": "Section Break"
-   },
-   {
-    "fieldname": "height",
-    "fieldtype": "Data",
-    "label": "Height"
-   },
-   {
-    "fieldname": "weight",
-    "fieldtype": "Data",
-    "label": "Weight"
-   },
-   {
-    "fieldname": "bmi",
-    "fieldtype": "Data",
-    "in_list_view": 1,
-    "label": "BMI",
-    "read_only": 1
-   },
-   {
-    "fieldname": "column_break_21",
-    "fieldtype": "Column Break"
-   },
-   {
-    "description": "Leave a non-confidential note to inform faculty about the reasons for the student visit to the health centre. The note will create an automatic medical log entry for the student.",
-    "fieldname": "note",
-    "fieldtype": "Text",
-    "label": "Note"
-   },
-   {
-    "fieldname": "column_break_4",
-    "fieldtype": "Column Break"
-   },
-   {
-    "fieldname": "amended_from",
-    "fieldtype": "Link",
-    "label": "Amended From",
-    "no_copy": 1,
-    "options": "Student Patient Visit",
-    "print_hide": 1,
-    "read_only": 1
-   },
-   {
-    "fieldname": "care_administered_section",
-    "fieldtype": "Section Break",
-    "label": "Care Administered"
-   },
-   {
-    "fieldname": "treatment",
-    "fieldtype": "Text Editor",
-    "label": "Treatment"
-   },
-   {
-    "fetch_from": "student_patient.date_of_birth",
-    "fieldname": "date_of_birth",
-    "fieldtype": "Read Only",
-    "in_list_view": 1,
-    "in_standard_filter": 1,
-    "label": "Date of Birth",
-    "read_only": 1
-   },
-   {
-    "fetch_from": "student_patient.gender",
-    "fieldname": "gender",
-    "fieldtype": "Data",
-    "in_list_view": 1,
-    "in_standard_filter": 1,
-    "label": "Gender",
-    "read_only": 1
-   },
-   {
-    "fetch_from": "student_patient.blood_group",
-    "fieldname": "blood_group",
-    "fieldtype": "Read Only",
-    "label": "Blood Group"
-   },
-   {
-    "fetch_from": "student_patient.photo",
-    "fieldname": "photo",
-    "fieldtype": "Attach Image",
-    "hidden": 1,
-    "label": "photo"
-   },
-   {
-    "fieldname": "time_of_arrival",
-    "fieldtype": "Time",
-    "label": "Time of Arrival",
-    "reqd": 1
-   },
-   {
-    "fieldname": "time_of_discharge",
-    "fieldtype": "Time",
-    "label": "Time of Discharge",
-    "reqd": 1
-   }
+   "fetch_from": "student_patient.student_name",
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Student Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "student_age",
+   "fieldtype": "Data",
+   "label": "Student Age",
+   "read_only": 1
+  },
+  {
+   "fieldname": "vitals_section",
+   "fieldtype": "Section Break",
+   "label": "Vitals"
+  },
+  {
+   "fieldname": "body_temperature",
+   "fieldtype": "Data",
+   "label": "Body Temperature"
+  },
+  {
+   "fieldname": "heart_rate__pulse",
+   "fieldtype": "Data",
+   "label": "Heart Rate / Pulse"
+  },
+  {
+   "fieldname": "respiratory_rate",
+   "fieldtype": "Data",
+   "label": "Respiratory Rate"
+  },
+  {
+   "fieldname": "tongue",
+   "fieldtype": "Select",
+   "label": "Tongue",
+   "options": "\nCoated\nVery Coated\nNormal\nFurry\nCuts"
+  },
+  {
+   "fieldname": "abdomen",
+   "fieldtype": "Select",
+   "label": "Abdomen",
+   "options": "\nNormal\nBloated\nFull\nFluid\nConstipated"
+  },
+  {
+   "fieldname": "refexes",
+   "fieldtype": "Select",
+   "label": "Refexes",
+   "options": "\nNormal\nHyper\nVery Hyper\nOne Sided"
+  },
+  {
+   "fieldname": "bp_systolic",
+   "fieldtype": "Data",
+   "label": "Blood Pressure (systolic)"
+  },
+  {
+   "fieldname": "bp_diastolic",
+   "fieldtype": "Data",
+   "label": "Blood Pressure (diastolic)"
+  },
+  {
+   "fieldname": "bp",
+   "fieldtype": "Data",
+   "label": "Blood pressure",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_12",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_17",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "height",
+   "fieldtype": "Data",
+   "label": "Height"
+  },
+  {
+   "fieldname": "weight",
+   "fieldtype": "Data",
+   "label": "Weight"
+  },
+  {
+   "fieldname": "bmi",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "BMI",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_21",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Leave a non-confidential note to inform faculty about the reasons for the student visit to the health centre. The note will create an automatic medical log entry for the student.",
+   "fieldname": "note",
+   "fieldtype": "Text",
+   "label": "Note"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Student Patient Visit",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "care_administered_section",
+   "fieldtype": "Section Break",
+   "label": "Care Administered"
+  },
+  {
+   "fieldname": "treatment",
+   "fieldtype": "Text Editor",
+   "label": "Treatment"
+  },
+  {
+   "fetch_from": "student_patient.date_of_birth",
+   "fieldname": "date_of_birth",
+   "fieldtype": "Read Only",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date of Birth",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "student_patient.gender",
+   "fieldname": "gender",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Gender",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "student_patient.blood_group",
+   "fieldname": "blood_group",
+   "fieldtype": "Read Only",
+   "label": "Blood Group"
+  },
+  {
+   "fetch_from": "student_patient.photo",
+   "fieldname": "photo",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "label": "photo"
+  },
+  {
+   "fieldname": "time_of_arrival",
+   "fieldtype": "Time",
+   "label": "Time of Arrival",
+   "reqd": 1
+  },
+  {
+   "fieldname": "time_of_discharge",
+   "fieldtype": "Time",
+   "label": "Time of Discharge",
+   "reqd": 1
+  }
  ],
  "image_field": "photo",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-01 10:40:19.108425",
+ "modified": "2025-01-01 23:17:12.622483",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient Visit",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -265,20 +267,18 @@
    "write": 1
   },
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Admission Officer",
-   "share": 1,
-   "write": 1
+   "role": "Academic Admin",
+   "share": 1
   }
  ],
+ "search_fields": "student_name, gender",
  "sort_field": "modified",
  "sort_order": "DESC",
- "title_field": "student_name",
- "states": []
+ "states": [],
+ "title_field": "student_name"
 }

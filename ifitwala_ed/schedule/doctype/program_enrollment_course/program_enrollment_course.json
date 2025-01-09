@@ -25,6 +25,7 @@
   },
   {
    "fetch_from": "course.course_name",
+   "fetch_if_empty": 1,
    "fieldname": "course_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -35,7 +36,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-24 16:53:48.320986",
+ "modified": "2025-01-08 23:21:44.646977",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Course",
