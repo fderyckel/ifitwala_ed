@@ -6,15 +6,17 @@
   background-color: #FF0000 !important; /* Bright red - very noticeable */
 }
 
-/* You can add your other indicator styles here later, targeting the outer <span>: */
 .list-row-col .ellipsis > .indicator-pill.female-indicator {
   background-color: #FFC0CB; /* Light Pink */
+  display: flex; /* Add flex to the indicator-pill */
 }
 
 .list-row-col .ellipsis > .indicator-pill.male-indicator {
   background-color: #ADD8E6; /* Light Blue */
+  display: flex; /* Add flex to the indicator-pill */
 }
 
 .list-row-col .ellipsis > .indicator-pill.other-indicator {
   background-color: #D2B48C; /* Light Brown (Tan) */
+  display: flex; /* Add flex to the indicator-pill */
 }
