@@ -1,7 +1,5 @@
-# Copyright (c) 2024, François de Ryckel and contributors
+# Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
-
-# In your_app_name/your_module/student.py
 
 import frappe
 import os
@@ -20,29 +18,39 @@ def handle_student_image(doc, method):
             # Get the student's ID
             student_id = doc.name
 
-            # Create the "student" folder if it doesn't exist
-            student_folder_path = os.path.join(get_site_path(), "public", "files", "student")
+            # Create the "student" folder if it doesn't exist (in the private files directory)
+            student_folder_fm_path = "Home/student"  # Path in the File Manager
+            student_folder_path = os.path.join(get_site_path(), "private", "files", "student") # Path in the Private files directory
+
             if not os.path.exists(student_folder_path):
                 os.makedirs(student_folder_path)
+                # Also create the folder in the File Manager
+                if not frappe.db.exists("File", {"file_name": "student", "folder": "Home"}):
+                    student_folder = frappe.get_doc({
+                        "doctype": "File",
+                        "file_name": "student",
+                        "is_folder": 1,
+                        "folder": "Home"
+                    })
+                    student_folder.insert()
 
             # Construct the new file name and path
             file_extension = os.path.splitext(file_doc.file_name)[1]
             new_file_name = f"{student_id}{file_extension}"
-            new_file_path = os.path.join("student", new_file_name)  # Relative path for the file manager
+            new_file_path = os.path.join("student", new_file_name)
 
-            # Get the current full file path
-            current_file_full_path = os.path.join(get_site_path(), "public", "files", file_doc.file_name)
+            # Get the current full file path (should now be in the private files directory)
+            current_file_full_path = file_doc.get_full_path()
 
-            # Rename and move the file
-            new_file_full_path = os.path.join(get_site_path(), "public", "files", new_file_path)
+            # Rename and move the file (within the private files directory)
+            new_file_full_path = os.path.join(get_site_path(), "private", "files", new_file_path)
             os.rename(current_file_full_path, new_file_full_path)
-
 
             # Update file document and student document
             file_doc.file_name = new_file_name
-            file_doc.file_url = f"/files/{new_file_path}"
-            file_doc.folder = "student"  # Assuming a File doctype folder named "student" exists
-            file_doc.is_private = 0 # Set to public, 1 for private. Private is going to be in the private folder.
+            file_doc.file_url = f"/private/files/{new_file_path}" # Update file_url to be under private
+            file_doc.folder = student_folder_fm_path
+            file_doc.is_private = 1  # Keep the file private
             file_doc.save()
 
             doc.student_image = file_doc.file_url
@@ -50,4 +58,4 @@ def handle_student_image(doc, method):
 
         except Exception as e:
             frappe.log_error(f"Error handling student image for {doc.name}: {e}")
-            # Optionally: frappe.throw("An error occurred while processing the image.")
+            frappe.msgprint(f"Error handling student image for {doc.name}: {e}")
