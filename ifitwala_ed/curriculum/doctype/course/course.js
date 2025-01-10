@@ -14,8 +14,7 @@ frappe.ui.form.on("Course", {
         __("Add to Programs"),
         function () {
           frm.trigger("add_course_to_programs");
-        },
-        __("Action")
+        }
       );
     }
 
