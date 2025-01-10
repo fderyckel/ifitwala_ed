@@ -149,7 +149,7 @@ has_permission = {
 
 doc_events = {
     "Student": {
-        "after_save": "ifitwala_ed.utilities.student_utils.handle_student_image",
+        "on_update": "ifitwala_ed.utilities.student_utils.handle_student_image",
     }
 }
 
