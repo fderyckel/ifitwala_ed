@@ -60,33 +60,36 @@ class Student(Document):
 	# create student as website user
 	def create_student_user(self):
 		if not frappe.db.exists("User", self.student_email):
-			student_user = frappe.get_doc({
-				"doctype": "User",
-				"enabled": 1,
-				"first_name": self.student_first_name,
-				"last_name": self.student_last_name,
-				"email": self.student_email,
-				"username": self.student_email,
-				"gender": self.student_gender,
-				"language": self.student_first_language,
-				"send_welcome_email": 1,
-				"user_type": "Website User"
+			try:
+				student_user = frappe.get_doc({
+					"doctype": "User",
+					"enabled": 1,
+					"first_name": self.student_first_name,
+					"last_name": self.student_last_name,
+					"email": self.student_email,
+					"username": self.student_email,
+					"gender": self.student_gender,
+					"language": self.student_first_language,
+					"send_welcome_email": 0,  # Set to 0 to disable welcome email during import
+					"user_type": "Website User"
 				})
-			student_user.flags.ignore_permissions = True
-			student_user.add_roles("Student")
-			student_user.save()
-			#update_password_link = student_user.reset_password()
-			frappe.msgprint(_("User {0} has been created").format(get_link_to_form("User", self.student_email)))
+				student_user.flags.ignore_permissions = True
+				student_user.add_roles("Student")
+				student_user.insert()  # Use insert() instead of save() for new users
+				frappe.msgprint(_("User {0} has been created").format(get_link_to_form("User", self.student_email)))
+			except Exception as e:
+				frappe.log_error(f"Error creating user for student {self.name}: {e}")
+				frappe.msgprint(f"Error creating user for student {self.name}. Check Error Log for details.")
 
-	# Create student as patient
-	def create_student_patient(self):
-		if not frappe.db.exists("Student Patient", {"student_name": self.student_full_name}):
-			student_patient = frappe.get_doc({
-				"doctype": "Student Patient",
-				"student": self.name
-				})
-			student_patient.save()
-			frappe.msgprint(_("Student Patient {0} linked to this student has been created").format(self.student_full_name))
+		# Create student as patient
+		def create_student_patient(self):
+			if not frappe.db.exists("Student Patient", {"student_name": self.student_full_name}):
+				student_patient = frappe.get_doc({
+					"doctype": "Student Patient",
+					"student": self.name
+					})
+				student_patient.save()
+				frappe.msgprint(_("Student Patient {0} linked to this student has been created").format(self.student_full_name))
 
 
 	# will update user main info if the student info change
