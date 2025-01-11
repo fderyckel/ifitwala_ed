@@ -127,6 +127,10 @@ has_permission = {
 	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.event_has_permission",
 }
 
+default_roles = [
+	{'role': 'Student', 'doctype':'Student', 'email_field': 'student_email'},
+]
+
 # DocType Class
 # ---------------
 # Override standard doctype classes
@@ -150,6 +154,9 @@ has_permission = {
 doc_events = {
     "Student": {
         "on_update": "ifitwala_ed.utilities.student_utils.handle_student_image",
+    }, 
+    "Contact": {
+        "on_update": "ifitwala_ed.ifitwala_ed.utils.update_profile_from_contact"
     }
 }
 
