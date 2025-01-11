@@ -156,7 +156,7 @@ doc_events = {
         "on_update": "ifitwala_ed.utilities.student_utils.handle_student_image",
     }, 
     "Contact": {
-        "on_update": "ifitwala_ed.ifitwala_ed.utils.update_profile_from_contact"
+        "on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"
     }
 }
 
