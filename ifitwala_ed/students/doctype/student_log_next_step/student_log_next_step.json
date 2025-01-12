@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:next_step",
  "creation": "2024-12-26 08:53:09.394443",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -16,15 +17,17 @@
   {
    "fieldname": "next_step",
    "fieldtype": "Data",
-   "label": "Next Step"
+   "label": "Next Step",
+   "unique": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-26 08:56:18.213163",
+ "modified": "2025-01-12 12:22:57.310755",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Next Step",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -64,7 +67,9 @@
    "role": "Counselor"
   }
  ],
+ "search_fields": "next_step",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "next_step"
 }

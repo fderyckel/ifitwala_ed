@@ -2,8 +2,9 @@
  "actions": [],
  "allow_events_in_timeline": 1,
  "allow_rename": 1,
- "autoname": "format:PAV-{YYYY}-{#####}",
+ "autoname": "format:PAV-{YYMM}-{#####}",
  "creation": "2025-01-01 09:41:54.513356",
+ "default_view": "Image",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -37,8 +38,8 @@
   "note",
   "care_administered_section",
   "treatment",
-  "amended_from",
-  "photo"
+  "photo",
+  "amended_from"
  ],
  "fields": [
   {
@@ -217,7 +218,8 @@
    "fieldname": "photo",
    "fieldtype": "Attach Image",
    "hidden": 1,
-   "label": "photo"
+   "label": "photo",
+   "read_only": 1
   },
   {
    "fieldname": "time_of_arrival",
@@ -235,14 +237,16 @@
  "image_field": "photo",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-01 23:17:12.622483",
+ "modified": "2025-01-12 11:07:32.093340",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient Visit",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -252,9 +256,12 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -264,6 +271,7 @@
    "report": 1,
    "role": "Nurse",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {

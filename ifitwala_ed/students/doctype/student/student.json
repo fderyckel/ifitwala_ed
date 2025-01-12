@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:STU-{YYYY}-{#####}",
+ "autoname": "format:STUD-{YYYY}-{#####}",
  "creation": "2024-12-06 14:26:44.955491",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -267,11 +267,11 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-09 12:22:27.849618",
+ "modified": "2025-01-10 20:54:50.758240",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

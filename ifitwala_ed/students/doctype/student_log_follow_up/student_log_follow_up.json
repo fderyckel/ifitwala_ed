@@ -1,0 +1,114 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-12 11:31:27.923201",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_ko22",
+  "student_log",
+  "date",
+  "column_break_gbux",
+  "student",
+  "student_name",
+  "follow_up",
+  "author",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_ko22",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Student Log Follow Up",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "student_log",
+   "fieldtype": "Link",
+   "label": "Student Log",
+   "options": "Student Log"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "options": "Today"
+  },
+  {
+   "fieldname": "column_break_gbux",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "student_log.student",
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "student_log.student_name",
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "label": "Student Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "follow_up",
+   "fieldtype": "Text Editor",
+   "label": "Follow up"
+  },
+  {
+   "fieldname": "author",
+   "fieldtype": "Link",
+   "label": "author",
+   "options": "Employee"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-01-12 11:40:35.152703",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Student Log Follow Up",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

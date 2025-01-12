@@ -2,8 +2,9 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:SLOG-{YYYY}-{#####}",
+ "autoname": "format:SLOG-{YYYY}{MM}-{####}",
  "creation": "2024-12-26 08:56:34.075578",
+ "default_view": "List",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -18,13 +19,24 @@
   "academic_year",
   "term",
   "program",
+  "time",
+  "section_break_7miy",
+  "visible_to_student",
+  "column_break_llsc",
+  "visible_to_guardians",
   "log_entry_section",
   "log",
-  "next_step",
   "follow_up_section",
-  "follow_up",
+  "next_step",
+  "column_break_yils",
+  "follow_up_role",
   "follow_up_person",
-  "amended_from"
+  "amended_from",
+  "student_photo",
+  "references_section",
+  "reference_type",
+  "column_break_rsj6",
+  "reference_name"
  ],
  "fields": [
   {
@@ -48,6 +60,7 @@
    "read_only": 1
   },
   {
+   "default": "Today",
    "fieldname": "date",
    "fieldtype": "Date",
    "in_list_view": 1,
@@ -99,7 +112,8 @@
   {
    "fieldname": "log",
    "fieldtype": "Text Editor",
-   "label": "Log"
+   "label": "Log",
+   "reqd": 1
   },
   {
    "fieldname": "amended_from",
@@ -123,11 +137,6 @@
    "label": "Follow Up"
   },
   {
-   "fieldname": "follow_up",
-   "fieldtype": "Text Editor",
-   "label": "Follow up"
-  },
-  {
    "fieldname": "follow_up_person",
    "fieldtype": "Link",
    "label": "Follow up Person",
@@ -142,12 +151,76 @@
    "label": "Log Type",
    "options": "Student Log Type",
    "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "visible_to_student",
+   "fieldtype": "Check",
+   "label": "Visible to Student"
+  },
+  {
+   "default": "1",
+   "fieldname": "visible_to_guardians",
+   "fieldtype": "Check",
+   "label": "Visible to Guardians"
+  },
+  {
+   "fieldname": "section_break_7miy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_llsc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "time",
+   "fieldtype": "Data",
+   "label": "Time"
+  },
+  {
+   "fetch_from": "student.student_image",
+   "fieldname": "student_photo",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "label": "student_photo",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_yils",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "follow_up_role",
+   "fieldtype": "Data",
+   "label": "Follow up Role"
+  },
+  {
+   "fieldname": "references_section",
+   "fieldtype": "Section Break",
+   "label": "References"
+  },
+  {
+   "fieldname": "reference_type",
+   "fieldtype": "Link",
+   "label": "Reference Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "column_break_rsj6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Name",
+   "options": "reference_type"
   }
  ],
+ "image_field": "student_photo",
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-01 23:12:52.698086",
+ "modified": "2025-01-12 13:02:31.995609",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",
@@ -171,15 +244,27 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Academic Admin",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
   }
  ],
- "sort_field": "modified",
+ "search_fields": "student_name",
+ "sort_field": "date",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "student_name"
 }

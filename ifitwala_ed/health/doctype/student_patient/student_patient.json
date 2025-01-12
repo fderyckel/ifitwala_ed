@@ -2,8 +2,9 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "PAT-.YYYY.-.#####",
+ "autoname": "format:PAT-{YYYY}-{####}",
  "creation": "2024-12-29 23:28:37.257871",
+ "default_view": "List",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -53,7 +54,10 @@
   "vaccination_data_section",
   "vaccinations",
   "photo",
-  "status"
+  "section_break_g004",
+  "status",
+  "column_break_xbbr",
+  "completion_state"
  ],
  "fields": [
   {
@@ -331,16 +335,32 @@
    "in_standard_filter": 1,
    "label": "Preferred Name",
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_g004",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_xbbr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Missing Info",
+   "fieldname": "completion_state",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Completion State",
+   "options": "Completed\nMissing Info"
   }
  ],
  "image_field": "photo",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-01 23:09:29.904175",
+ "modified": "2025-01-12 09:55:31.177267",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -390,6 +410,7 @@
   }
  ],
  "search_fields": "student_name, preferred_name, gender",
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

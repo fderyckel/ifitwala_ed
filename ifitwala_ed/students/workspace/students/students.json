@@ -1,0 +1,70 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"cC3uR-LMl7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students</span>\",\"col\":12}},{\"id\":\"3yLEn1ktSt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Students\",\"col\":3}},{\"id\":\"gYrrSnLhqm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log\",\"col\":3}},{\"id\":\"7IQuivH16s\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Events\",\"col\":3}},{\"id\":\"MqGuK03POl\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Guardians\",\"col\":3}},{\"id\":\"ZSzWDk7aWM\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log Follow Up\",\"col\":3}}]",
+ "creation": "2025-01-12 12:30:32.526105",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "users",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Students",
+ "links": [],
+ "modified": "2025-01-12 14:50:31.338889",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Students",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 6.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Students",
+   "link_to": "Student",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Guardians",
+   "link_to": "Guardian",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Student Log Follow Up",
+   "link_to": "Student Log Follow Up",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Student Log",
+   "link_to": "Student Log",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "Calendar",
+   "label": "School Events",
+   "link_to": "School Event",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Students"
+}
