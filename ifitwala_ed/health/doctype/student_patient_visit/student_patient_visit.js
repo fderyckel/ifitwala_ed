@@ -8,14 +8,26 @@ frappe.ui.form.on('Student Patient Visit', {
 			return {
 				filters: {'status': 'Active'}
 			};
-		});
+		}); 
+
+    // Set Time of Arrival on document load if not already set
+    if (!frm.doc.time_of_arrival && !frm.doc.__islocal) {
+			frm.set_value('time_of_arrival', frappe.datetime.now_time());
+		}
 
 	}, 
 	
+	before_submit: function(frm) {
+		// Set Time of Discharge on before_submit if not already set
+		if (!frm.doc.time_of_discharge) {
+				frm.set_value('time_of_discharge', frappe.datetime.now_time());
+		}
+	}, 
+
 	student_patient: function(frm) { 
 		frm.events.set_student_info(frm);
 	}, 
-		  
+	
 	set_student_info: function(frm) { 
 		frappe.call({
 			method: 'ifitwala_ed.health.doctype.student_patient.student_patient.get_student_detail',
