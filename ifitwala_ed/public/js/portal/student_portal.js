@@ -1,4 +1,4 @@
-frappe.provide("ifitwala_ed.student-portal");
+frappe.provide("ifitwala_ed.student_portal");
 
 ifitwala_ed.student_portal = {
     init: function() {
@@ -18,24 +18,27 @@ ifitwala_ed.student_portal = {
         content_area.empty();
 
         if (section === "student-log") {
+            $("#about-me-content").hide();
+            $("#student-log-content").show();
             ifitwala_ed.student_portal.load_student_log(content_area);
         } else if (section === "about-me") {
+            $("#student-log-content").hide();
+            $("#about-me-content").show();
             ifitwala_ed.student_portal.load_about_me(content_area);
         }
     },
 
     load_student_log: function(content_area) {
         frappe.call({
-            method: "ifitwala_ed.utilities.student_portal_utils.get_student_logs",
+            method: "ifitwala_ed.www.student-portal.student-portal.get_context",
             callback: function(r) {
                 if (r.message) {
                     // Render the student_log.html template with the logs data
-                    r.message.logs = r.message;
-                    frappe.render_template("student_log", r.message).then(html => {
-                        content_area.html(html);
+                    frappe.render_template("student-portal/student_log", r.message).then(html => {
+                        $("#student-log-content").html(html);
                     });
                 } else {
-                    content_area.html("<p>No Student Logs found.</p>");
+                    $("#student-log-content").html("<p>No Student Logs found.</p>");
                 }
             }
         });
@@ -43,15 +46,15 @@ ifitwala_ed.student_portal = {
 
     load_about_me: function(content_area) {
         frappe.call({
-            method: "ifitwala_ed.utilities.student_portal_utils.get_context",
+            method: "ifitwala_ed.www.student-portal.student-portal.get_context",
             callback: function(r) {
                 if (r.message) {
                     // Display Personal Info (using a simple div for now)
-                    frappe.render_template("about_me", r.message).then(html => {
-                        content_area.html(html);
+                    frappe.render_template("student-portal/about_me", r.message.student).then(html => {
+                        $("#about-me-content").html(html);
                     });
                 } else {
-                    content_area.html("<p>Could not retrieve student information.</p>");
+                    $("#about-me-content").html("<p>Could not retrieve student information.</p>");
                 }
             }
         });

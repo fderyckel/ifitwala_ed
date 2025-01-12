@@ -44,7 +44,7 @@ app_include_css = [
 
 # include js in page
 page_js = {
-    "student-portal": "public/js/student_portal.js"
+    "student-portal": "public/js/portal/student_portal.js"
 }
 
 # include js in doctype views
@@ -263,5 +263,7 @@ doc_events = {
 # }
 
 website_route_rules = [
-    {'from_route': '/student-portal', 'to_route': 'student-portal'}
+    {'from_route': '/student-portal', 'to_route': 'student-portal/student-portal'}
 ]
+
+on_session_creation = "ifitwala_ed.utilities.student_utils.redirect_student_to_portal"
