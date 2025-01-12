@@ -1,0 +1,24 @@
+{
+ "content": null,
+ "creation": "2025-01-12 15:10:36.127678",
+ "docstatus": 0,
+ "doctype": "Page",
+ "icon": "fa-graduation-cap",
+ "idx": 0,
+ "modified": "2025-01-12 15:10:36.127678",
+ "modified_by": "Administrator",
+ "module": "Student Portal",
+ "name": "stud_portal",
+ "owner": "Administrator",
+ "page_name": "stud_portal",
+ "roles": [
+  {
+   "role": "Student"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Student Portal"
+}
