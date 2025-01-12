@@ -36,6 +36,31 @@ def get_student_logs():
     )
     return logs
 
+def create_student_portal_page():
+    """Creates the Student Portal page if it doesn't exist."""
+
+    if not frappe.db.exists("Page", "student-portal"):
+        try:
+            page = frappe.new_doc("Page")
+            page.title = "Student Portal"
+            page.name = "student-portal"  # Use hyphen
+            page.module = "ifitwala_ed"
+            page.container = "Build"
+            page.style = "Standard"
+            page.icon = "users"
+            # Render the Jinja template using the correct path
+            page.content = frappe.render_template("ifitwala_ed/www/student-portal/student-portal.html")
+            page.public = 0
+            page.insert(ignore_permissions=True)
+
+            page.append("allow_roles", {"role": "Student"})
+            page.save(ignore_permissions=True)
+
+            frappe.log_error("Student Portal page created")
+
+        except Exception as e:
+            frappe.log_error(f"Error creating Student Portal page: {e}")
+
 @frappe.whitelist()
 def get_context(context):
     """Provides context for the student portal."""

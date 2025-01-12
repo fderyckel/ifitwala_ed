@@ -1,4 +1,4 @@
-frappe.provide("ifitwala_ed.student_portal");
+frappe.provide("ifitwala_ed.student-portal");
 
 ifitwala_ed.student_portal = {
     init: function() {
