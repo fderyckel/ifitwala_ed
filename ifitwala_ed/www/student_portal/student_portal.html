@@ -1,0 +1,24 @@
+{% extends "templates/base.html" %}
+
+{% block page_content %}
+<div class="ifitwala-student-portal">
+    <div class="sidebar">
+        <ul>
+            <li><a href="#" data-section="about-me">About Me</a></li>
+            <li><a href="#" data-section="student-log">Student Log</a></li>
+        </ul>
+    </div>
+    <div class="content-area">
+        <div id="about-me-content">
+            {% include "ifitwala_ed/www/student-portal/about_me.html" %}
+        </div>
+        <div id="student-log-content" style="display: none;">
+            {% include "ifitwala_ed/www/student-portal/student_log.html" %}
+        </div>
+    </div>
+</div>
+
+<script>
+    frappe.require("student_portal.js");
+</script>
+{% endblock %}
