@@ -16,11 +16,45 @@ def get_context(context):
         frappe.throw(_("You are not authorized to access this page."), frappe.PermissionError)
 
     # Fetch the student document linked to the user
-    student = frappe.get_value("Student", {"student_email": frappe.session.user}, "student_preferred_name")
-    if not student:
+    student_data = frappe.db.get_value(
+        "Student",
+        {"student_email": frappe.session.user},
+        ["student_preferred_name", "student_image"],
+        as_dict=True
+    )
+
+    if not student_data:
         frappe.throw(_("Student profile not found. Please contact the administrator."))
 
-    # Add the preferred name to the context
-    context.student_preferred_name = student
+    # Add the preferred name and image to the context
+    context.student_preferred_name = student_data.get("student_preferred_name", "Student")
+    context.student_image = student_data.get("student_image", None)
     context.title = "Student Portal"
     return context
+
+
+
+@frappe.whitelist()
+def get_student_image():
+    """
+    Securely fetches the image of the currently logged-in student.
+    """
+    # Ensure the user is logged in
+    if frappe.session.user == "Guest":
+        frappe.throw(_("You must be logged in to access this resource."), frappe.PermissionError)
+
+    # Fetch the student linked to the user
+    student = frappe.db.get_value("Student", {"student_email": frappe.session.user}, ["name", "student_image"], as_dict=True)
+
+    if not student:
+        frappe.throw(_("Student profile not found."))
+
+    # Check if the student has an image
+    if not student.student_image:
+        frappe.throw(_("No image found for this student."))
+
+    # Generate the URL for the private file
+    file_path = student.student_image
+    file_url = frappe.utils.get_url(file_path)
+
+    return file_url

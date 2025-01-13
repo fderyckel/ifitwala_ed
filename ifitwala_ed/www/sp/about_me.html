@@ -1,0 +1,94 @@
+{% extends "templates/base.html" %}
+
+{% block title %}About Me{% endblock %}
+
+{% block head_include %}
+<style>
+  .about-me-container {
+    max-width: 800px;
+    margin: 3rem auto;
+    text-align: center;
+  }
+
+  .profile-picture {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    margin-bottom: 1.5rem;
+    object-fit: cover;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .student-details {
+    margin-top: 2rem;
+    text-align: left;
+    font-size: 1rem;
+  }
+
+  .student-details th {
+    text-align: left;
+    padding: 0.5rem 1rem;
+    vertical-align: top;
+    color: #555;
+  }
+
+  .student-details td {
+    padding: 0.5rem 1rem;
+    color: #333;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="about-me-container">
+  <img
+    src="{{ student_image or '/assets/img/default-profile.png' }}"
+    alt="Student Picture"
+    class="profile-picture"
+  />
+  <h1>{{ student_first_name }} {{ student_last_name }}</h1>
+
+  <table class="student-details">
+    <tbody>
+      <tr>
+        <th>First Name:</th>
+        <td>{{ student_first_name }}</td>
+      </tr>
+      <tr>
+        <th>Middle Name:</th>
+        <td>{{ student_middle_name or 'N/A' }}</td>
+      </tr>
+      <tr>
+        <th>Last Name:</th>
+        <td>{{ student_last_name }}</td>
+      </tr>
+      <tr>
+        <th>Email:</th>
+        <td>{{ student_email }}</td>
+      </tr>
+      <tr>
+        <th>Mobile Phone:</th>
+        <td>{{ student_mobile_phone }}</td>
+      </tr>
+      <tr>
+        <th>Date of Birth:</th>
+        <td>{{ student_dob }}</td>
+      </tr>
+      <tr>
+        <th>Gender:</th>
+        <td>{{ student_gender }}</td>
+      </tr>
+      <tr>
+        <th>First Language:</th>
+        <td>{{ student_first_language }}</td>
+      </tr>
+      {% if student_second_language %}
+      <tr>
+        <th>Second Language:</th>
+        <td>{{ student_second_language }}</td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
