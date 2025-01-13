@@ -21,8 +21,8 @@ def get_context(context):
     context.student_middle_name = student.student_middle_name
     context.student_last_name = student.student_last_name
     context.student_email = student.student_email
-    context.student_mobile_phone = student.student_mobile_phone
-    context.student_dob = student.student_dob
+    context.student_mobile_number = student.student_mobile_number
+    context.student_dob = student.student_date_of_birth
     context.student_gender = student.student_gender
     context.student_first_language = student.student_first_language
     context.student_second_language = student.student_second_language or None
