@@ -62,21 +62,15 @@
       <a href="/sp/about-me" class="no-decoration">
         <div class="portal-card-placeholder">
           <img
-            src="{{ student_image or '/assets/img/default-profile.png' }}"
-            alt="Student Image"
-            style="
-              width: 100px;
-              height: 100px;
-              border-radius: 50%;
-              margin-bottom: 1rem;
-            "
+          src="/api/method/ifitwala_ed.www.sp.index.get_student_image"
+          alt="Student Profile Picture"
+          style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;"
           />
           About Me
         </div>
       </a>
     </div>
   </div>
-    {% endfor %}
   </div>
 </div>
 {% endblock %}

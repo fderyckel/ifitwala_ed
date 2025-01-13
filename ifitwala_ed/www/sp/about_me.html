@@ -42,9 +42,9 @@
 {% block content %}
 <div class="about-me-container">
   <img
-    src="{{ student_image or '/assets/img/default-profile.png' }}"
-    alt="Student Picture"
-    class="profile-picture"
+  src="/api/method/ifitwala_ed.www.sp.index.get_student_image"
+  alt="Student Profile Picture"
+  style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;"
   />
   <h1>{{ student_first_name }} {{ student_last_name }}</h1>
 
