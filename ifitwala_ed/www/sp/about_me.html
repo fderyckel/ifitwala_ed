@@ -41,11 +41,10 @@
 
 {% block content %}
 <div class="about-me-container">
-  <img
-  src="/api/method/ifitwala_ed.www.sp.index.get_student_image"
-  alt="Student Profile Picture"
-  style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;"
-  />
+  <img src="/api/method/ifitwala_ed.www.sp.index.get_student_image_file"
+  alt="Student Image"
+  style=" width: 100px; height: 100px; border-radius: 50%; margin-bottom: 1rem;"
+/>
   <h1>{{ student_first_name }} {{ student_last_name }}</h1>
 
   <table class="student-details">
@@ -68,7 +67,7 @@
       </tr>
       <tr>
         <th>Mobile Phone:</th>
-        <td>{{ student_mobile_phone }}</td>
+        <td>{{ student_mobile_number }}</td>
       </tr>
       <tr>
         <th>Date of Birth:</th>

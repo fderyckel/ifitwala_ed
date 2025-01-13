@@ -58,3 +58,32 @@ def get_student_image():
     file_url = frappe.utils.get_url(file_path)
 
     return file_url
+
+@frappe.whitelist(allow_guest=False)
+def get_student_image_file():
+    """Fetch the content of the student's image securely."""
+    user = frappe.session.user
+    # Fetch the student document linked to the logged-in user
+    student = frappe.get_doc("Student", {"student_email": user})
+    if not student:
+        frappe.throw(_("Student profile not found. Please contact the administrator."))
+
+    # Verify the image file path
+    file_path = student.student_image
+    if not file_path:
+        frappe.throw(_("No image found for the student."))
+
+    # Verify file exists
+    file_doc = frappe.get_doc("File", {"file_url": file_path})
+    if not file_doc:
+        frappe.throw(_("File not found."))
+
+    # Ensure user authorization (Student or specific roles)
+    if user != student.student_email:
+        frappe.throw(_("You are not authorized to access this file."))
+
+    # Read and return the file content
+    file_content = frappe.utils.file_manager.get_file(file_doc.file_url).get("file_content")
+    frappe.local.response.filename = file_doc.file_name
+    frappe.local.response.filecontent = file_content
+    frappe.local.response.type = "download"
