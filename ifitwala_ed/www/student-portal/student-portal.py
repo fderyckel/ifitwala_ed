@@ -5,8 +5,6 @@ import frappe
 from ifitwala_ed.utilities.student_portal_utils import get_student_data, get_student_logs
 from frappe import _
 
-
-@frappe.whitelist()
 def get_context(context):
     """Provides context for the student portal."""
     if "Student" not in frappe.get_roles():
@@ -19,3 +17,5 @@ def get_context(context):
     context.update(get_student_data())
     context["logs"] = get_student_logs()
     context["no_cache"] = 1
+
+    return context
