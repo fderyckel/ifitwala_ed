@@ -16,7 +16,7 @@ def get_context(context):
         frappe.throw(_("You are not authorized to access this page."), frappe.PermissionError)
 
     # Fetch the student document linked to the user
-    student = frappe.get_value("Student", {"user_id": frappe.session.user}, "student_preferred_name")
+    student = frappe.get_value("Student", {"student_email": frappe.session.user}, "student_preferred_name")
     if not student:
         frappe.throw(_("Student profile not found. Please contact the administrator."))
 
