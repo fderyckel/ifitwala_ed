@@ -1,1 +1,31 @@
-<H1>Hello World!</H1>
+{% extends "templates/web.html" %}
+{% block title %}Student Portal{% endblock %}
+{% from "sp/card.html" import student_card %}
+
+{% block header %}
+    {% include "templates/includes/web_header.html" %}
+{% endblock %}
+
+{% block page_content %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Welcome, {{ user.first_name }}!</h1>
+
+    <div class="row">
+        {# Create 6 blank cards using the macro #}
+        {{ student_card() }}
+        {{ student_card() }}
+        {{ student_card() }}
+        {{ student_card() }}
+        {{ student_card() }}
+        {{ student_card() }}
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+    frappe.ready(() => {
+        // Add any client-side interactions here if needed
+    });
+</script>
+{% endblock %}
