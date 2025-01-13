@@ -1,6 +1,6 @@
-{% extends "templates/web.html" %}
+{% extends "templates/base.html" %}
 {% block title %}Student Portal{% endblock %}
-{% from "sp/card.html" import student_card %}
+{% from "www/sp/card.html" import student_card %}
 
 {% block header %}
     {% include "templates/includes/web_header.html" %}
@@ -20,12 +20,4 @@
         {{ student_card() }}
     </div>
 </div>
-{% endblock %}
-
-{% block script %}
-<script>
-    frappe.ready(() => {
-        // Add any client-side interactions here if needed
-    });
-</script>
 {% endblock %}
