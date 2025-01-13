@@ -35,55 +35,50 @@ def get_context(context):
 
 
 @frappe.whitelist()
-def get_student_image():
-    """
-    Securely fetches the image of the currently logged-in student.
-    """
-    # Ensure the user is logged in
+def get_student_image_url():
+    """Fetches the URL of the logged-in student's image securely."""
     if frappe.session.user == "Guest":
         frappe.throw(_("You must be logged in to access this resource."), frappe.PermissionError)
 
-    # Fetch the student linked to the user
-    student = frappe.db.get_value("Student", {"student_email": frappe.session.user}, ["name", "student_image"], as_dict=True)
+    student = frappe.db.get_value(
+        "Student",
+        {"student_email": frappe.session.user},
+        ["student_image"],
+        as_dict=True,
+    )
 
-    if not student:
-        frappe.throw(_("Student profile not found."))
-
-    # Check if the student has an image
-    if not student.student_image:
+    if not student or not student.student_image:
         frappe.throw(_("No image found for this student."))
 
-    # Generate the URL for the private file
-    file_path = student.student_image
-    file_url = frappe.utils.get_url(file_path)
+    return frappe.utils.file_manager.get_file_url(student.student_image)
 
-    return file_url
 
 @frappe.whitelist(allow_guest=False)
-def get_student_image_file():
-    """Fetch the content of the student's image securely."""
-    user = frappe.session.user
-    # Fetch the student document linked to the logged-in user
-    student = frappe.get_doc("Student", {"student_email": user})
-    if not student:
-        frappe.throw(_("Student profile not found. Please contact the administrator."))
+def get_student_image_file(student_email=None):
+    """Fetch the student's image file content securely."""
+    if frappe.session.user == "Guest":
+        frappe.throw(_("You must be logged in to access this resource."), frappe.PermissionError)
 
-    # Verify the image file path
-    file_path = student.student_image
-    if not file_path:
-        frappe.throw(_("No image found for the student."))
+    # Verify the student and image path
+    student = frappe.db.get_value(
+        "Student", {"student_email": student_email or frappe.session.user}, ["student_image"], as_dict=True
+    )
 
-    # Verify file exists
-    file_doc = frappe.get_doc("File", {"file_url": file_path})
+    if not student or not student.student_image:
+        frappe.throw(_("No image found for the specified student."))
+
+    # Fetch the file document
+    file_doc = frappe.get_doc("File", {"file_url": student.student_image})
     if not file_doc:
-        frappe.throw(_("File not found."))
+        frappe.throw(_("File document not found."))
 
-    # Ensure user authorization (Student or specific roles)
-    if user != student.student_email:
+    # Verify authorization
+    if frappe.session.user != student_email:
         frappe.throw(_("You are not authorized to access this file."))
 
-    # Read and return the file content
+    # Serve the file content
     file_content = frappe.utils.file_manager.get_file(file_doc.file_url).get("file_content")
     frappe.local.response.filename = file_doc.file_name
     frappe.local.response.filecontent = file_content
-    frappe.local.response.type = "download"
+    frappe.local.response.type = "binary"  # Correct for inline display
+
