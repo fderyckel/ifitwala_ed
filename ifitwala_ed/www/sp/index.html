@@ -1,19 +1,53 @@
 {% extends "templates/base.html" %}
+
 {% block title %}Student Portal{% endblock %}
-{% from "www/sp/card.html" import student_card %}
 
-{% block page_content %}
-<div class="container mt-5">
-    <h1 class="text-center mb-4">Welcome, {{ user.first_name }}!</h1>
+{% block head_include %}
+<style>
+  .portal-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 3rem;
+  }
 
-    <div class="row">
-        {# Create 6 blank cards using the macro #}
-        {{ student_card() }}
-        {{ student_card() }}
-        {{ student_card() }}
-        {{ student_card() }}
-        {{ student_card() }}
-        {{ student_card() }}
+  .portal-card {
+    border: 1px solid #d1d8dd;
+    border-radius: 8px;
+    background-color: #fafbfc;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  .portal-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .portal-card-placeholder {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #d1d8dd;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1>Student Portal</h1>
+  <p class="lead">Welcome to your portal. Select an option below to proceed.</p>
+
+  <div class="portal-container">
+    {% for i in range(6) %}
+    <div class="portal-card">
+      <div class="portal-card-placeholder">Card {{ i + 1 }}</div>
     </div>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}
