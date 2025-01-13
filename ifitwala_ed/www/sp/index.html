@@ -40,7 +40,7 @@
 {% block content %}
 <div class="container">
   <h1>Student Portal</h1>
-  <p class="lead">Welcome to your portal. Select an option below to proceed.</p>
+  <p class="lead">Welcome {{ student_preferred_name }}</p>
 
   <div class="portal-container">
     {% for i in range(6) %}
