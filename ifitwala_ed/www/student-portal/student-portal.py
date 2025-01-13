@@ -3,6 +3,7 @@
 
 import frappe
 from ifitwala_ed.utilities.student_portal_utils import get_student_data, get_student_logs
+from frappe import _
 
 
 @frappe.whitelist()
