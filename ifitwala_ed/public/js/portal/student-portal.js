@@ -1,4 +1,4 @@
-frappe.provide("ifitwala_ed.student_portal");
+frappe.provide("ifitwala_ed.student-portal");
 
 ifitwala_ed.student_portal = {
     init: function() {
@@ -34,7 +34,7 @@ ifitwala_ed.student_portal = {
             callback: function(r) {
                 if (r.message) {
                     // Render the student_log.html template with the logs data
-                    frappe.render_template("student-portal/student_log", r.message).then(html => {
+                    frappe.render_template("student-portal/student-log", r.message).then(html => {
                         $("#student-log-content").html(html);
                     });
                 } else {
@@ -50,7 +50,7 @@ ifitwala_ed.student_portal = {
             callback: function(r) {
                 if (r.message) {
                     // Display Personal Info (using a simple div for now)
-                    frappe.render_template("student-portal/about_me", r.message.student).then(html => {
+                    frappe.render_template("student-portal/about-me", r.message.student).then(html => {
                         $("#about-me-content").html(html);
                     });
                 } else {
