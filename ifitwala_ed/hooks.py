@@ -27,7 +27,7 @@ app_license = "MIT"
 # include js, css files in header of desk.html
 app_include_css = [
   "/assets/ifitwala_ed/css/custom_indicators.css", 
-  "assets/ifitwala_ed/css/student_portal.css"
+  "assets/ifitwala_ed/css/student-portal.css"
 ]
 # app_include_js = "/assets/ifitwala/js/ifitwala.js"
 
@@ -44,7 +44,7 @@ app_include_css = [
 
 # include js in page
 page_js = {
-    "student-portal": "public/js/portal/student_portal.js"
+    "student-portal": "public/js/portal/student-portal.js"
 }
 
 # include js in doctype views
@@ -263,7 +263,7 @@ doc_events = {
 # }
 
 website_route_rules = [
-    {'from_route': '/student-portal', 'to_route': 'student-portal/student-portal'}
+    {'from_route': '/student-portal', 'to_route': 'student-portal/'}
 ]
 
 on_session_creation = "ifitwala_ed.utilities.student_utils.redirect_student_to_portal"
