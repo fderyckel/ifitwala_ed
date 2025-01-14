@@ -47,11 +47,12 @@ def get_student_image_file():
         # Get the file using frappe.utils.file_manager.get_file
         file_content, file_name = get_file(student_image)
 
+        # Decode the file_name from bytes to string
+        file_name = file_name.decode("utf-8")
+
         # Manually determine content type based on file extension
         if file_name.lower().endswith(".jpg") or file_name.lower().endswith(".jpeg"):
             content_type = "image/jpeg"
-        elif file_name.lower().endswith(".jpeg"):
-            content_type = "image/jpeg"            
         elif file_name.lower().endswith(".png"):
             content_type = "image/png"
         elif file_name.lower().endswith(".gif"):
