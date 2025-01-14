@@ -82,7 +82,6 @@ def get_student_image_file(student_email=None):
     #frappe.local.response.filecontent = file_content
     #frappe.local.response.type = "binary"  # Correct for inline display
 
-        # Use Frappe's `download_private_file` utility to serve the file
-    from frappe.utils.file_manager import download_private_file
+    #return frappe.local.response
     return frappe.utils.response.download_private_file(file_path)
 
