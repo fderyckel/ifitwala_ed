@@ -47,13 +47,22 @@ def get_student_image_file():
         # Get the file using frappe.utils.file_manager.get_file
         file_content, file_name = get_file(student_image)
 
-        # Determine the content type using mimetypes
-        content_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+        # Manually determine content type based on file extension
+        if file_name.lower().endswith(".jpg") or file_name.lower().endswith(".jpeg"):
+            content_type = "image/jpeg"
+        elif file_name.lower().endswith(".jpeg"):
+            content_type = "image/jpeg"            
+        elif file_name.lower().endswith(".png"):
+            content_type = "image/png"
+        elif file_name.lower().endswith(".gif"):
+            content_type = "image/gif"
+        else:
+            content_type = "application/octet-stream"  # Default fallback
 
         # Build the response
         response = build_response("binary")
         response.data = file_content
-        response.headers["Content-Disposition"] = f'inline; filename="{file_name}"'  # Added 'inline' here
+        response.headers["Content-Disposition"] = f'inline; filename="{file_name}"'
         response.headers["Content-Type"] = content_type
         return response
 
