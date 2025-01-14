@@ -62,31 +62,36 @@ def get_student_image_file():
     if frappe.session.user == "Guest":
         frappe.throw(_("You must be logged in to access this resource."), frappe.PermissionError)
 
-    # Step 1: Get the student image file path
+    # Step 1: Retrieve student image path
     student_image = frappe.db.get_value("Student", {"student_email": frappe.session.user}, "student_image")
+
+    frappe.log_error(f"Retrieved student_image: {student_image}", title="Debug: Student Image Path")
+
     if not student_image:
         frappe.throw(_("No image found for this student."))
 
-    # Debug log for `student_image`
-    frappe.log_error(message=f"Student image path: {student_image}", title="Debug: Student Image Retrieval")
-
     try:
-        # Step 2: Fetch file content and metadata
+        # Step 2: Validate file existence in the File doctype
+        file_doc = frappe.get_doc("File", {"file_url": student_image})
+        if not file_doc:
+            frappe.throw(_("File record not found for the given image."))
+
+        frappe.log_error(f"File document found: {file_doc.file_name}", title="Debug: File Document")
+
+        # Step 3: Fetch the file content
         file_content, file_name = get_file(student_image)
 
-        # Validate `file_name`
+        frappe.log_error(f"File Content Retrieved: Length = {len(file_content)}", title="Debug: File Content")
+
         if not file_name or not isinstance(file_name, str):
-            frappe.log_error(message=f"Invalid file metadata. student_image: {student_image}, file_name: {file_name}",
-                             title="Debug: Invalid File Metadata")
             frappe.throw(_("Invalid file name. Please contact the administrator."))
 
-        # Step 3: Determine MIME type
+        # Step 4: Determine MIME type
         content_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
 
-        # Debug log for MIME type and file_name
-        frappe.log_error(message=f"Content-Type: {content_type}, File Name: {file_name}", title="Debug: File Metadata")
+        frappe.log_error(f"Determined Content Type: {content_type}", title="Debug: Content Type")
 
-        # Step 4: Build the response
+        # Step 5: Build and return the response
         response = Response(file_content, content_type=content_type)
         response.headers["Content-Disposition"] = f'inline; filename="{file_name}"'
         return response
