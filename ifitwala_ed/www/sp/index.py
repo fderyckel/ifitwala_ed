@@ -62,24 +62,31 @@ def get_student_image_file():
     if frappe.session.user == "Guest":
         frappe.throw(_("You must be logged in to access this resource."), frappe.PermissionError)
 
-    # Fetch the student document associated with the logged-in user
+    # Step 1: Get the student image file path
     student_image = frappe.db.get_value("Student", {"student_email": frappe.session.user}, "student_image")
-
     if not student_image:
         frappe.throw(_("No image found for this student."))
 
+    # Debug log for `student_image`
+    frappe.log_error(message=f"Student image path: {student_image}", title="Debug: Student Image Retrieval")
+
     try:
-        # Get the file content and file name
+        # Step 2: Fetch file content and metadata
         file_content, file_name = get_file(student_image)
 
-        # Ensure file_name is a valid string
-        if not isinstance(file_name, str):
+        # Validate `file_name`
+        if not file_name or not isinstance(file_name, str):
+            frappe.log_error(message=f"Invalid file metadata. student_image: {student_image}, file_name: {file_name}",
+                             title="Debug: Invalid File Metadata")
             frappe.throw(_("Invalid file name. Please contact the administrator."))
 
-        # Determine the MIME type based on the file name
+        # Step 3: Determine MIME type
         content_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
 
-        # Build the response
+        # Debug log for MIME type and file_name
+        frappe.log_error(message=f"Content-Type: {content_type}, File Name: {file_name}", title="Debug: File Metadata")
+
+        # Step 4: Build the response
         response = Response(file_content, content_type=content_type)
         response.headers["Content-Disposition"] = f'inline; filename="{file_name}"'
         return response
