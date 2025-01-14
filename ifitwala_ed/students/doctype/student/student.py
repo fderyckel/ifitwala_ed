@@ -10,7 +10,8 @@ from frappe.contacts.address_and_contact import load_address_and_contact
 import os
 import random
 import string
-from frappe.utils.file_manager import get_file, get_files_path, move_file
+from frappe.utils.file_manager import get_file, get_files_path
+from frappe.core.doctype.file.file import move_file
 
 
 class Student(Document):
