@@ -75,7 +75,7 @@ class Student(Document):
 				})
 				student_user.flags.ignore_permissions = True
 				student_user.add_roles("Student")
-				student_user.insert()  # Use insert() instead of save() for new users
+				student_user.save()  # Use insert() instead of save() for new users
 				frappe.msgprint(_("User {0} has been created").format(get_link_to_form("User", self.student_email)))
 			except Exception as e:
 				frappe.log_error(f"Error creating user for student {self.name}: {e}")
@@ -103,18 +103,6 @@ class Student(Document):
 			user.gender = self.student_gender
 		if self.student_first_language:
 			user.language = self.student_first_language
-		#if self.photo:
-		#	if not user.user_image:
-		#		user.user_image = self.photo
-		#		try:
-		#			frappe.get_doc({
-		#				"doctype": "File",
-		#				"file_name": self.photo,
-		#				"attached_to_doctype": "User",
-		#				"attached_to_name": self.student_email
-		#			}).insert()
-		#		except frappe.DuplicateEntryError:
-		#			pass
 		user.save()
 
 	def update_student_patient(self):
