@@ -2,7 +2,7 @@ import frappe
 from frappe import _
 from frappe.utils.file_manager import get_file
 import mimetypes
-from werkzeug.wsgi import Response
+from werkzeug.wrappers import Response
 
 def get_context(context):
     """
