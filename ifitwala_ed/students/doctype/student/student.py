@@ -81,15 +81,15 @@ class Student(Document):
 				frappe.log_error(f"Error creating user for student {self.name}: {e}")
 				frappe.msgprint(f"Error creating user for student {self.name}. Check Error Log for details.")
 
-		# Create student as patient
-		def create_student_patient(self):
-			if not frappe.db.exists("Student Patient", {"student_name": self.student_full_name}):
-				student_patient = frappe.get_doc({
-					"doctype": "Student Patient",
-					"student": self.name
-					})
-				student_patient.save()
-				frappe.msgprint(_("Student Patient {0} linked to this student has been created").format(self.student_full_name))
+	# Create student as patient
+	def create_student_patient(self):
+		if not frappe.db.exists("Student Patient", {"student_name": self.student_full_name}):
+			student_patient = frappe.get_doc({
+				"doctype": "Student Patient",
+				"student": self.name
+			})
+			student_patient.save()
+			frappe.msgprint(_("Student Patient {0} linked to this student has been created").format(self.student_full_name))
 
 
 	# will update user main info if the student info change
