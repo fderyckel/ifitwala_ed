@@ -81,16 +81,6 @@ def get_student_image_file(student_email=None):
     if frappe.session.user != student.student_email:
         frappe.throw(_("You are not authorized to access this file."))
 
-    # Serve the file content
-    #file_content = frappe.utils.file_manager.get_file(file_doc.file_url).get("file_content")
-    #frappe.local.response.filename = file_doc.file_name
-    #frappe.local.response.filecontent = file_content
-    #frappe.local.response.type = "binary"  # Correct for inline display
-
-    #return frappe.local.response
-    #return frappe.utils.response.download_private_file(file_path)
-
-    # Verify that the file exists
     full_path = frappe.get_site_path(file_doc.file_url.strip("/"))
     if not os.path.exists(full_path):
         frappe.throw(_("File not found on disk."))
