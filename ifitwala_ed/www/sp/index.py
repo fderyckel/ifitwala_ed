@@ -34,38 +34,48 @@ def get_context(context):
 @frappe.whitelist(allow_guest=False)
 def get_student_image_file():
     """Fetches the student's image file content securely."""
+    frappe.log_error("Starting get_student_image_file function", "Debug: Student Image")
+
     if frappe.session.user == "Guest":
+        frappe.log_error("User is a Guest", "Debug: Student Image")
         frappe.throw(_("You must be logged in to access this resource."), frappe.PermissionError)
 
     # Fetch the student document associated with the logged-in user
     student_image = frappe.db.get_value("Student", {"student_email": frappe.session.user}, "student_image")
+    frappe.log_error(f"Student image value: {student_image}", "Debug: Student Image")
 
     if not student_image:
+        frappe.log_error("No image found for this student", "Debug: Student Image")
         frappe.throw(_("No image found for this student."))
 
     try:
         # Get the file using frappe.utils.file_manager.get_file
         file_content, file_name = get_file(student_image)
+        frappe.log_error(f"File name from get_file: {file_name}", "Debug: Student Image")
 
-        # Decode the file_name from bytes to string
-        file_name = file_name.decode("utf-8")
+        # Get the file extension
+        file_extension = file_name.split(".")[-1].lower()
+        frappe.log_error(f"File Extension: {file_extension}", "Debug: Student Image")
 
-        # Manually determine content type based on file extension
-        if file_name.lower().endswith(".jpg") or file_name.lower().endswith(".jpeg"):
+        # Determine the content type based on the file extension
+        if file_extension == "jpg" or file_extension == "jpeg":
             content_type = "image/jpeg"
-        elif file_name.lower().endswith(".png"):
+        elif file_extension == "png":
             content_type = "image/png"
-        elif file_name.lower().endswith(".gif"):
+        elif file_extension == "gif":
             content_type = "image/gif"
         else:
-            content_type = "application/octet-stream"  # Default fallback
+            content_type = "application/octet-stream"
+        frappe.log_error(f"Content Type: {content_type}", "Debug: Student Image")
 
         # Build the response
         response = build_response("binary")
         response.data = file_content
-        response.headers["Content-Disposition"] = f'inline; filename="{file_name}"'
+        response.headers["Content-Disposition"] = f"inline; filename={file_name}"
         response.headers["Content-Type"] = content_type
+        frappe.log_error("Response built successfully", "Debug: Student Image")
         return response
 
-    except Exception:
+    except Exception as e:
+        frappe.log_error(f"Exception in get_student_image_file: {e}", "Debug: Student Image")
         frappe.throw(_("Unable to retrieve the image. Please contact the administrator."))
