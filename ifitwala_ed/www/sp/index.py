@@ -96,10 +96,11 @@ def get_student_image_file(student_email=None):
         frappe.throw(_("File not found on disk."))
 
     # Serve the file content securely
-    file_content = open(full_path, "rb")
-    frappe.local.response.filename = file_doc.file_name
-    frappe.local.response.filecontent = wrap_file(frappe.local.request.environ, file_content)
-    frappe.local.response.type = mimetypes.guess_type(file_doc.file_name)[0] or "application/octet-stream"
+    with open(full_path, "rb") as file_content:
+        frappe.local.response.filename = file_doc.file_name
+        frappe.local.response.filecontent = wrap_file(frappe.local.request.environ, file_content)
+        frappe.local.response.type = "download"
+        frappe.local.response.headers["Content-Type"] = mimetypes.guess_type(file_doc.file_name)[0] or "application/octet-stream"
 
     return frappe.local.response
 
