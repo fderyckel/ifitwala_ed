@@ -43,9 +43,6 @@ app_include_css = [
 # webform_include_css = {"doctype": "public/css/doctype.css"}
 
 # include js in page
-page_js = {
-    "student_portal/student_portal": "public/js/portal/student_portal.js"
-}
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
@@ -157,9 +154,6 @@ default_roles = [
 # }
 
 doc_events = {
-    "Student": {
-        "on_update": "ifitwala_ed.utilities.student_utils.handle_student_image",
-    }, 
     "Contact": {
         "on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"
     }
@@ -261,7 +255,3 @@ doc_events = {
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-
-website_route_rules = [
-    {'from_route': '/student_portal', 'to_route': 'student_portal/student_portal'}
-]

@@ -16,6 +16,7 @@ class Student(Document):
 	def validate(self):
 		self.student_full_name = " ".join(filter(None, [self.student_first_name, self.student_middle_name, self.student_last_name]))
 		self.validate_email()
+		self.rename_student_image()
 
 		if frappe.get_value("Student", self.name, "student_full_name") != self.student_full_name:
 			self.update_student_name_in_linked_doctype()
@@ -129,3 +130,43 @@ class Student(Document):
 			return frappe.get_doc("Course Enrollment", enrollment_name)
 		else:
 			return enrollment
+		
+	def rename_student_image(self):
+		if self.student_image:
+			try:
+				file_url = self.student_image
+				# Check if the file URL has already been renamed (contains student ID)
+				if self.name in file_url:
+					return
+				file_name, file_extension = os.path.splitext(os.path.basename(file_url))
+				random_chars = random_string(4)
+				new_file_name = f"{self.name}-{random_chars}{file_extension}"
+				new_file_url = f"/files/{new_file_name}"
+
+				# Get the file document and update its name
+				file_doc = frappe.get_doc("File", {"file_url": file_url, "attached_to_doctype": self.doctype, "attached_to_name": self.name})
+
+				# Rename the actual file on the filesystem
+				if file_doc.is_folder:
+					frappe.throw(_("Cannot rename a folder."))
+				old_file_path = file_doc.get_full_path()
+
+				file_doc.name = new_file_name
+				file_doc.file_name = new_file_name
+				file_doc.file_url = new_file_url
+				file_doc.save()
+
+				new_file_path = file_doc.get_full_path()
+
+				# Update file_url in the Student document
+				self.student_image = new_file_url
+				self.save()
+
+				if old_file_path != new_file_path:
+					os.rename(old_file_path, new_file_path)
+					frappe.msgprint(_("Student image renamed successfully!"))
+
+			except Exception as e:
+				frappe.log_error(f"Error renaming student image for {self.name}: {e}")
+				frappe.msgprint(f"Error renaming student image for {self.name}. Check Error Log for details.")
+
