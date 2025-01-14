@@ -8,6 +8,9 @@ from frappe.model.document import Document
 from frappe.desk.form.linked_with import get_linked_doctypes
 from frappe.contacts.address_and_contact import load_address_and_contact
 import os
+import random
+import string
+from frappe.utils.file_manager import get_file, get_files_path, move_file
 
 
 class Student(Document):
@@ -17,7 +20,6 @@ class Student(Document):
 	def validate(self):
 		self.student_full_name = " ".join(filter(None, [self.student_first_name, self.student_middle_name, self.student_last_name]))
 		self.validate_email()
-		self.rename_student_image()
 
 		if frappe.get_value("Student", self.name, "student_full_name") != self.student_full_name:
 			self.update_student_name_in_linked_doctype()
@@ -58,6 +60,7 @@ class Student(Document):
 	def on_update(self):
 		self.update_student_user()
 		self.update_student_patient()
+		self.rename_student_image()
 
 	# create student as website user
 	def create_student_user(self):
@@ -132,54 +135,38 @@ class Student(Document):
 		else:
 			return enrollment
 		
-	
+
 	def rename_student_image(self):
-		if self.student_image:
-			try:
-				file_url = self.student_image
+		# Check if a student image exists and if it has already been renamed
+		if not self.student_image:
+			return  # No image uploaded, nothing to do
 
-				# Check if the file URL has already been renamed (contains student ID)
-				if self.name in file_url:
-					return
+		file_url = self.student_image
+		file_doc = get_file(file_url)
 
-				file_name, file_extension = os.path.splitext(os.path.basename(file_url))
-				random_chars = random_string(4)
-				new_file_name = f"{self.name}-{random_chars}{file_extension}"
+		# Skip renaming if the image already resides in the "student" folder
+		if "student/" in file_doc.file_url:
+			return
 
-				# Construct the new file URL within the "student" subfolder
-				new_file_url = f"/files/student/{new_file_name}"
+		# Generate the new filename: Student Name/ID + 6 random characters + extension
+		file_extension = os.path.splitext(file_doc.file_name)[1]  # Get file extension
+		random_suffix = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+		new_filename = f"{self.name}_{random_suffix}{file_extension}"
 
-				# Get the file document
-				file_doc = frappe.get_doc("File", {"file_url": file_url, "attached_to_doctype": self.doctype, "attached_to_name": self.name})
+		# Define the new file path
+		student_folder = os.path.join(get_files_path(), "student")
+		os.makedirs(student_folder, exist_ok=True)  # Ensure the folder exists
+		new_file_path = os.path.join(student_folder, new_filename)
 
-				# Get the full paths for the old and new files
-				old_file_path = file_doc.get_full_path()
-				new_file_path = os.path.join(frappe.utils.get_site_path(), "public", "files", "student", new_file_name)
+		# Move the file to the new location with the new name
+		new_file_url = f"/files/student/{new_filename}"
+		move_file(file_doc.file_url, new_file_url)
 
-				# Create the "student" subfolder if it doesn't exist
-				student_folder_path = os.path.join(frappe.utils.get_site_path(), "public", "files", "student")
-				if not os.path.exists(student_folder_path):
-					os.makedirs(student_folder_path)
-
-				# Rename the file on the filesystem
-				if old_file_path != new_file_path:
-					os.rename(old_file_path, new_file_path)
-
-				# Update the file document
-				file_doc.name = new_file_name
-				file_doc.file_name = new_file_name
-				file_doc.file_url = new_file_url
-				file_doc.folder = "Home/Attachments/student" # Update the folder in the File document
-				file_doc.save()
-
-				# Update file_url in the Student document
-				self.student_image = new_file_url
-				self.save()
-				frappe.msgprint(_("Student image renamed successfully!"))
-
-			except Exception as e:
-				frappe.log_error(f"Error renaming student image for {self.name}: {e}")
-				frappe.msgprint(f"Error renaming student image for {self.name}. Check Error Log for details.")
-
-
+		# Update the doctype field to reflect the new file URL
+		self.student_image = new_file_url
+		self.db_update()
+		
+		# Update the doctype field to reflect the new file URL
+		self.student_image = new_file_url
+		self.db_update()
 				
