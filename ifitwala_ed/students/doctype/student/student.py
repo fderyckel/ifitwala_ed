@@ -137,36 +137,40 @@ class Student(Document):
 		
 
 	def rename_student_image(self):
-		# Check if a student image exists and if it has already been renamed
-		if not self.student_image:
-			return  # No image uploaded, nothing to do
+			# Check if a student image exists and if it has already been renamed
+			if not self.student_image:
+					return  # No image uploaded, nothing to do
 
-		file_url = self.student_image
-		file_doc = get_file(file_url)
+			file_url = self.student_image
+			file_doc = get_file(file_url)
 
-		# Skip renaming if the image already resides in the "student" folder
-		if "student/" in file_doc.file_url:
-			return
+			# Skip renaming if the image already resides in the "student" folder
+			if "student/" in file_doc.file_url:
+					return
 
-		# Generate the new filename: Student Name/ID + 6 random characters + extension
-		file_extension = os.path.splitext(file_doc.file_name)[1]  # Get file extension
-		random_suffix = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
-		new_filename = f"{self.name}_{random_suffix}{file_extension}"
+			# Generate the new filename: Student Name/ID + 6 random characters + extension
+			file_extension = os.path.splitext(file_doc.file_name)[1]  # Get file extension
+			random_suffix = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+			new_filename = f"{self.name}_{random_suffix}{file_extension}"
 
-		# Define the new file path
-		student_folder = os.path.join(get_files_path(), "student")
-		os.makedirs(student_folder, exist_ok=True)  # Ensure the folder exists
-		new_file_path = os.path.join(student_folder, new_filename)
+			# Define the new file path
+			student_folder = os.path.join(get_files_path(is_private=False), "student")  # Ensure public path
+			os.makedirs(student_folder, exist_ok=True)  # Ensure the folder exists
+			new_file_path = os.path.join(student_folder, new_filename)
 
-		# Move the file to the new location with the new name
-		new_file_url = f"/files/student/{new_filename}"
-		move_file(file_doc.file_url, new_file_url)
+			# Move the file to the new location with the new name
+			new_file_url = f"/files/student/{new_filename}"
+			try:
+					move_file(file_doc.file_url, new_file_url)
+					# Update the is_private property to ensure the file is public
+					frappe.db.set_value("File", file_doc.name, "is_private", 0)
+			except Exception as e:
+					frappe.log_error(message=f"Error moving file {file_doc.file_url} to {new_file_url}: {e}", title="File Rename Error")
+					return
 
-		# Update the doctype field to reflect the new file URL
-		self.student_image = new_file_url
-		self.db_update()
-		
-		# Update the doctype field to reflect the new file URL
-		self.student_image = new_file_url
-		self.db_update()
+			# Update the doctype field to reflect the new file URL
+			self.student_image = new_file_url
+			self.db_update()
+
+
 				
