@@ -3,15 +3,14 @@
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, today, get_link_to_form, validate_email_address, random_string
+from frappe.utils import getdate, today, get_link_to_form, validate_email_address
 from frappe.model.document import Document
 from frappe.desk.form.linked_with import get_linked_doctypes
 from frappe.contacts.address_and_contact import load_address_and_contact
 import os
 import random
 import string
-from frappe.utils.file_manager import get_file, get_files_path
-from frappe.core.doctype.file.file import move_file
+from frappe.utils.file_manager import get_files_path
 
 
 class Student(Document):
@@ -135,15 +134,15 @@ class Student(Document):
 			return frappe.get_doc("Course Enrollment", enrollment_name)
 		else:
 			return enrollment
-		
-
+			
 	def rename_student_image(self):
 			# Check if a student image exists and if it has already been renamed
 			if not self.student_image:
 					return  # No image uploaded, nothing to do
 
+			# Get the current file URL and File document
 			file_url = self.student_image
-			file_doc = get_file(file_url)
+			file_doc = frappe.get_doc("File", {"file_url": file_url})
 
 			# Skip renaming if the image already resides in the "student" folder
 			if "student/" in file_doc.file_url:
@@ -155,23 +154,25 @@ class Student(Document):
 			new_filename = f"{self.name}_{random_suffix}{file_extension}"
 
 			# Define the new file path
-			student_folder = os.path.join(get_files_path(is_private=False), "student")  # Ensure public path
-			os.makedirs(student_folder, exist_ok=True)  # Ensure the folder exists
-			new_file_path = os.path.join(student_folder, new_filename)
+			student_folder_path = os.path.join(get_files_path(), "student")
+			os.makedirs(student_folder_path, exist_ok=True)  # Ensure the folder exists
+			new_file_path = os.path.join(student_folder_path, new_filename)
 
-			# Move the file to the new location with the new name
+			# Move the file to the new location
+			old_file_path = frappe.utils.get_files_path(file_doc.file_name)
+			if os.path.exists(old_file_path):
+					os.rename(old_file_path, new_file_path)
+			else:
+					frappe.throw(_("Original file not found: {0}").format(old_file_path))
+
+			# Update the file URL and set to public
 			new_file_url = f"/files/student/{new_filename}"
-			try:
-					move_file(file_doc.file_url, new_file_url)
-					# Update the is_private property to ensure the file is public
-					frappe.db.set_value("File", file_doc.name, "is_private", 0)
-			except Exception as e:
-					frappe.log_error(message=f"Error moving file {file_doc.file_url} to {new_file_url}: {e}", title="File Rename Error")
-					return
+			file_doc.file_url = new_file_url
+			file_doc.is_private = 0  # Set file to public
+			file_doc.save()
 
-			# Update the doctype field to reflect the new file URL
+			# Update the student record with the new file URL
 			self.student_image = new_file_url
 			self.db_update()
 
-
-				
+			frappe.msgprint(_("Image successfully renamed and moved to: {0}").format(new_file_url))
