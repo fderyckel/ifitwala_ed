@@ -1,8 +1,8 @@
 import frappe
 from frappe import _
-import os
+from frappe.utils.file_manager import get_file
 import mimetypes
-from werkzeug.wsgi import wrap_file
+from werkzeug.wsgi import Response
 
 def get_context(context):
     """
@@ -57,40 +57,31 @@ def get_student_image_url():
 
 
 @frappe.whitelist(allow_guest=False)
-def get_student_image_file(student_email=None):
-    """Fetch the student's image file content securely."""
+def get_student_image_file():
+    """Fetch and serve the student's image securely."""
     if frappe.session.user == "Guest":
         frappe.throw(_("You must be logged in to access this resource."), frappe.PermissionError)
 
-    # Fetch the student document associated with the logged-in user
-    student = frappe.get_doc("Student", {"student_email": frappe.session.user})
-    if not student:
-        frappe.throw(_("Student profile not found. Please contact the administrator."))
+    # Fetch the student's image path
+    student_image = frappe.db.get_value("Student", {"student_email": frappe.session.user}, "student_image")
 
-    # Check if the student has an image
-    file_path = student.student_image
-    if not file_path:
+    if not student_image:
         frappe.throw(_("No image found for this student."))
 
-    # Validate that the file exists
-    file_doc = frappe.get_doc("File", {"file_url": file_path})
-    if not file_doc:
-        frappe.throw(_("File record not found."))
+    try:
+        # Retrieve the file content and name
+        file_content, file_name = get_file(student_image)
 
-    # Verify if the user is authorized
-    if frappe.session.user != student.student_email:
-        frappe.throw(_("You are not authorized to access this file."))
+        # Guess the MIME type based on the file name
+        content_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
 
-    full_path = frappe.get_site_path(file_doc.file_url.strip("/"))
-    if not os.path.exists(full_path):
-        frappe.throw(_("File not found on disk."))
+        # Manually build the response
+        response = Response(file_content)
+        response.headers["Content-Type"] = content_type
+        response.headers["Content-Disposition"] = f'inline; filename="{file_name}"'
+        return response
 
-    # Serve the file content securely
-    with open(full_path, "rb") as file_content:
-        frappe.local.response.filename = file_doc.file_name
-        frappe.local.response.filecontent = wrap_file(frappe.local.request.environ, file_content)
-        frappe.local.response.type = "download"
-        frappe.local.response.headers["Content-Type"] = mimetypes.guess_type(file_doc.file_name)[0] or "application/octet-stream"
-
-    return frappe.local.response
+    except Exception as e:
+        frappe.log_error(f"Error retrieving student image: {str(e)}", _("Student Image Retrieval Error"))
+        frappe.throw(_("Unable to retrieve the image. Please contact the administrator."))
 

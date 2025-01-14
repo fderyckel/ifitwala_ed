@@ -3,6 +3,7 @@ from frappe import _
 from frappe.utils.file_manager import get_file
 from frappe.utils.response import build_response
 
+
 def get_context(context):
     # ... (rest of your get_context function remains the same)
     if frappe.session.user == "Guest":
@@ -51,7 +52,7 @@ def get_student_image_file():
         # Build the response
         response = build_response("binary")
         response.data = file_content
-        response.headers["Content-Disposition"] = f'filename="{file_name}"'
+        response.headers["Content-Disposition"] = f'inline; filename="{file_name}"'
         response.headers["Content-Type"] = content_type
         return response
 
