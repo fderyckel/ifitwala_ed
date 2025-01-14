@@ -58,30 +58,32 @@ def get_student_image_url():
 
 @frappe.whitelist(allow_guest=False)
 def get_student_image_file():
-    """Fetch and serve the student's image securely."""
+    """Fetches the student's image file content securely."""
     if frappe.session.user == "Guest":
         frappe.throw(_("You must be logged in to access this resource."), frappe.PermissionError)
 
-    # Fetch the student's image path
+    # Fetch the student document associated with the logged-in user
     student_image = frappe.db.get_value("Student", {"student_email": frappe.session.user}, "student_image")
 
     if not student_image:
         frappe.throw(_("No image found for this student."))
 
     try:
-        # Retrieve the file content and name
+        # Get the file content and file name
         file_content, file_name = get_file(student_image)
 
-        # Guess the MIME type based on the file name
+        # Ensure file_name is a valid string
+        if not isinstance(file_name, str):
+            frappe.throw(_("Invalid file name. Please contact the administrator."))
+
+        # Determine the MIME type based on the file name
         content_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
 
-        # Manually build the response
-        response = Response(file_content)
-        response.headers["Content-Type"] = content_type
+        # Build the response
+        response = Response(file_content, content_type=content_type)
         response.headers["Content-Disposition"] = f'inline; filename="{file_name}"'
         return response
 
     except Exception as e:
-        frappe.log_error(f"Error retrieving student image: {str(e)}", _("Student Image Retrieval Error"))
+        frappe.log_error(message=str(e), title="Error in get_student_image_file")
         frappe.throw(_("Unable to retrieve the image. Please contact the administrator."))
-
