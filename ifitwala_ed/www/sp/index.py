@@ -77,8 +77,12 @@ def get_student_image_file(student_email=None):
         frappe.throw(_("You are not authorized to access this file."))
 
     # Serve the file content
-    file_content = frappe.utils.file_manager.get_file(file_doc.file_url).get("file_content")
-    frappe.local.response.filename = file_doc.file_name
-    frappe.local.response.filecontent = file_content
-    frappe.local.response.type = "binary"  # Correct for inline display
+    #file_content = frappe.utils.file_manager.get_file(file_doc.file_url).get("file_content")
+    #frappe.local.response.filename = file_doc.file_name
+    #frappe.local.response.filecontent = file_content
+    #frappe.local.response.type = "binary"  # Correct for inline display
+
+        # Use Frappe's `download_private_file` utility to serve the file
+    from frappe.utils.file_manager import download_private_file
+    return frappe.utils.response.download_private_file(file_path)
 
