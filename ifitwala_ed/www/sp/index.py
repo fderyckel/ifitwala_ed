@@ -1,5 +1,8 @@
 import frappe
 from frappe import _
+import os
+import mimetypes
+from werkzeug.wsgi import wrap_file
 
 def get_context(context):
     """
@@ -85,5 +88,18 @@ def get_student_image_file(student_email=None):
     #frappe.local.response.type = "binary"  # Correct for inline display
 
     #return frappe.local.response
-    return frappe.utils.response.download_private_file(file_path)
+    #return frappe.utils.response.download_private_file(file_path)
+
+    # Verify that the file exists
+    full_path = frappe.get_site_path(file_doc.file_url.strip("/"))
+    if not os.path.exists(full_path):
+        frappe.throw(_("File not found on disk."))
+
+    # Serve the file content securely
+    file_content = open(full_path, "rb")
+    frappe.local.response.filename = file_doc.file_name
+    frappe.local.response.filecontent = wrap_file(frappe.local.request.environ, file_content)
+    frappe.local.response.type = mimetypes.guess_type(file_doc.file_name)[0] or "application/octet-stream"
+
+    return frappe.local.response
 
