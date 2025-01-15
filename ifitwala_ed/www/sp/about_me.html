@@ -13,6 +13,9 @@
     background-color: #f9f9f9; /* Soft background color */
     font-family: 'Arial', sans-serif; /* Use a clean and modern font */
   }
+  .profile-picture-wrapper { /* Add a wrapper for the image */
+    text-align: center;
+  }
 
   .profile-picture {
     width: 150px;
@@ -52,7 +55,6 @@
 
   .back-to-menu {
     margin-top: 2rem;
-    display: inline-block;
     padding: 0.5rem 1rem;
     font-size: 1rem;
     color: #fff;
@@ -60,6 +62,9 @@
     text-decoration: none;
     border-radius: 5px;
     transition: background-color 0.3s ease;
+    display: block; /* Make the button a block element */
+    margin: 2rem auto; 
+    text-align: center;
   }
 
   .back-to-menu:hover {
@@ -117,6 +122,5 @@
     </tbody>
   </table>
   <a href="/sp/index" class="back-to-menu">Back to Main Menu</a>
-
 </div>
 {% endblock %}
