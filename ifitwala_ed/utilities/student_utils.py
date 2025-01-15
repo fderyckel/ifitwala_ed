@@ -62,6 +62,7 @@ def rename_student_image(doc, method):
         os.rename(old_file_path, new_file_path)  # Rename using os.rename
         file_doc.file_name = new_file_name  # Update the file_name in the File document
         file_doc.file_url = f"/files/student/{new_file_name}"  # Update the file_url
+        file_doc.folder = "Home/student"
         file_doc.is_private = 0  # Set the file to public
         file_doc.save()
       else:
