@@ -5,11 +5,11 @@ import random
 import string
 from frappe.utils import get_files_path
 
-def rename_student_image(doc,method):  # Accept additional arguments
+def rename_student_image(doc, method):
   """
   Handles student image after Student document update:
-  - Renames the image to the student's ID.
-  - Moves the image to the "student" folder in the file manager.
+  - Renames the image to the student's ID + 6 random characters + extension.
+  - Moves the image to the "student" folder in the public file manager.
   - Skips processing if an image with the same name already exists.
   """
   if doc.student_image:
@@ -19,12 +19,14 @@ def rename_student_image(doc,method):  # Accept additional arguments
 
       # Construct the expected file name
       file_extension = os.path.splitext(doc.student_image)[1]
-      expected_file_name = f"{student_id}{file_extension}"
+      random_suffix = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+      expected_file_name = f"{student_id}_{random_suffix}{file_extension}"  # Include random suffix
 
       # Check if a file with the expected name already exists in the "student" folder
       student_folder_fm_path = "Home/student"
       expected_file_path = os.path.join(student_folder_fm_path, expected_file_name)
-      if frappe.db.exists("File", {"file_url": f"/private/files/{expected_file_path}"}):
+      # Check in public files
+      if frappe.db.exists("File", {"file_url": f"/files/{expected_file_path}"}):  
         frappe.log_error(f"Image with name {expected_file_name} already exists for student {student_id}. Skipping.")
         return
 
@@ -42,15 +44,17 @@ def rename_student_image(doc,method):  # Accept additional arguments
         student_folder.insert()
 
       # Construct the new file name and path
-      new_file_name = f"{student_id}{file_extension}"
+      new_file_name = expected_file_name  # Use the expected file name with random suffix
       new_file_path = os.path.join("student", new_file_name)
 
-      # Rename and move the file using Frappe's File API
-      file_doc.rename(new_file_name)
+      # Move the file first, then rename using Frappe's File API
       file_doc.move(student_folder_fm_path)
+      file_doc.file_name = new_file_name  # Rename after moving
+      file_doc.is_private = 0  # Set the file to public
+      file_doc.save()
 
       # Update file document
-      file_doc.file_url = f"/private/files/{new_file_path}"  # Update file_url after moving
+      file_doc.file_url = f"/files/{new_file_path}"  # Update file_url (public) after renaming
       file_doc.save()
 
       # Update student document
