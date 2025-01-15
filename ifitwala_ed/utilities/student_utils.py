@@ -1,4 +1,3 @@
-# /utilities/student_utils.py
 import frappe
 import os
 import random
@@ -45,17 +44,18 @@ def rename_student_image(doc, method):
 
       # Construct the new file name and path
       new_file_name = expected_file_name  # Use the expected file name with random suffix
-      new_file_path = os.path.join("student", new_file_name)
+      new_file_path = os.path.join(get_files_path(), "student", new_file_name)  # Get the full path
 
-      # Move the file first, then rename using Frappe's File API
-      file_doc.move(student_folder_fm_path)
-      file_doc.file_name = new_file_name  # Rename after moving
-      file_doc.is_private = 0  # Set the file to public
-      file_doc.save()
-
-      # Update file document
-      file_doc.file_url = f"/files/{new_file_path}"  # Update file_url (public) after renaming
-      file_doc.save()
+      # Rename the file first
+      old_file_path = frappe.utils.get_files_path(file_doc.file_name)  # Get the current file path
+      if os.path.exists(old_file_path):
+        os.rename(old_file_path, new_file_path)  # Rename using os.rename
+        file_doc.file_name = new_file_name  # Update the file_name in the File document
+        file_doc.file_url = f"/files/student/{new_file_name}"  # Update the file_url
+        file_doc.is_private = 0  # Set the file to public
+        file_doc.save()
+      else:
+        frappe.throw(_("Original file not found: {0}").format(old_file_path))
 
       # Update student document
       doc.student_image = file_doc.file_url
@@ -64,4 +64,3 @@ def rename_student_image(doc, method):
     except Exception as e:
       frappe.log_error(f"Error handling student image for {doc.name}: {e}")
       frappe.msgprint(f"Error handling student image for {doc.name}: {e}")
-
