@@ -7,16 +7,28 @@
   .about-me-container {
     max-width: 800px;
     margin: 3rem auto;
-    text-align: center;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background-color: #f9f9f9; /* Soft background color */
+    font-family: 'Arial', sans-serif; /* Use a clean and modern font */
   }
 
   .profile-picture {
     width: 150px;
     height: 150px;
     border-radius: 50%;
-    margin-bottom: 1.5rem;
+    margin: 0 auto 1.5rem auto; /* Center the image */
     object-fit: cover;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    border: 4px solid #fff; /* Add a white border to the image */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* More pronounced shadow */
+  }
+
+  .student-name {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #333; /* Darker color for the name */
   }
 
   .student-details {
@@ -29,7 +41,8 @@
     text-align: left;
     padding: 0.5rem 1rem;
     vertical-align: top;
-    color: #555;
+    color: #666; /* Slightly darker color for labels */
+    font-weight: 500; /* Slightly bolder labels */
   }
 
   .student-details td {
@@ -52,16 +65,14 @@
   .back-to-menu:hover {
     background-color: #0056b3;
   }
+
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="about-me-container">
-  <img src="{{ student_image }}"
-  alt="Student Image"
-  style=" width: 100px; height: 100px; border-radius: 50%; margin-bottom: 1rem;"
-/>
-  <h1>{{ student_first_name }} {{ student_last_name }}</h1>
+  <img class="profile-picture" src="{{ student_image }}" alt="Student Image" />
+  <h1 class="student-name">{{ student_first_name }} {{ student_last_name }}</h1>
 
   <table class="student-details">
     <tbody>
@@ -83,7 +94,7 @@
       </tr>
       <tr>
         <th>Mobile Phone:</th>
-        <td>{{ student_mobile_number }}</td>
+        <td>{{ student_mobile_number or 'N/A' }}</td>
       </tr>
       <tr>
         <th>Date of Birth:</th>
@@ -106,5 +117,6 @@
     </tbody>
   </table>
   <a href="/sp/index" class="back-to-menu">Back to Main Menu</a>
+
 </div>
 {% endblock %}
