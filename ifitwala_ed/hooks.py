@@ -153,7 +153,10 @@ default_roles = [
 # 	}
 # }
 
-doc_events = {
+doc_events = { 
+    "Student": {
+        "after_insert": "utilities.student_utils.rename_student_image"
+    }, 
     "Contact": {
         "on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"
     }
