@@ -59,7 +59,7 @@ class AcademicYear(Document):
             raise
 
     def validate_duplicate(self):
-        year = frappe.db.exit("Academic Year", 
+        year = frappe.db.exists("Academic Year", 
                               {
                                     "school": self.school,
                                     "academic_year_name": self.academic_year_name,
