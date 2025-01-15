@@ -3,6 +3,7 @@ import os
 import random
 import string
 from frappe.utils import get_files_path
+from frappe import _
 
 def rename_student_image(doc, method):
   """
