@@ -15,7 +15,16 @@ def rename_student_image(doc, method):
   if doc.student_image:
     try:
       # Get the student's ID
-      student_id = doc.name
+      student_id = doc.name 
+
+      # Extract the current file name from the URL
+      current_file_name = os.path.basename(doc.student_image)
+
+      # Check if the image already follows the correct naming convention
+      if current_file_name.startswith(student_id + "_") and \
+         len(current_file_name.split("_")[1].split(".")[0]) == 6 and \
+         current_file_name.split(".")[1].lower() in ["jpg", "jpeg", "png", "gif"]:
+        return  # No need to throw an error, just exit
 
       # Construct the expected file name
       file_extension = os.path.splitext(doc.student_image)[1]
@@ -61,6 +70,8 @@ def rename_student_image(doc, method):
       # Update student document
       doc.student_image = file_doc.file_url
       doc.db_update()
+
+      frappe.msgprint(f"Image for student {student_id} has been renamed and moved to /files/student/{new_file_name}")
 
     except Exception as e:
       frappe.log_error(f"Error handling student image for {doc.name}: {e}")
