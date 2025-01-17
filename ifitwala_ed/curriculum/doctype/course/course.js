@@ -30,49 +30,92 @@ frappe.ui.form.on("Course", {
 
   add_course_to_programs: function (frm) {
     get_programs_without_course(frm.doc.name).then((r) => {
-      if (r.message.length) {
-        frappe.prompt(
-          [
-            {
-              fieldname: "programs",
-              label: __("Programs"),
-              fieldtype: "MultiSelectPills",
-              get_data: function () {
-                return r.message;
-              },
-            },
-            {
-              fieldtype: "Check",
-              label: __("Is Mandatory"),
-              fieldname: "mandatory",
-            },
-          ],
-          function (data) {
-            frappe.call({
-              method:
-                "ifitwala_ed.curriculum.doctype.course.course.add_course_to_programs",
-              args: {
-                course: frm.doc.name,
-                programs: data.programs,
-                mandatory: data.mandatory,
-              },
-              callback: function (r) {
-                if (!r.exc) {
-                  frm.reload_doc();
-                }
-              },
-              freeze: true,
-              freeze_message: __("...Adding Course to Programs"),
-            });
-          },
-          __("Add Course to Programs"),
-          __("Add")
-        );
-      } else {
-        frappe.msgprint(
-          __("This course is already added to the existing programs")
-        );
-      }
+        if (r.message.length) {
+            frappe.prompt(
+                [
+                    {
+                        fieldname: "programs",
+                        label: __("Programs"),
+                        fieldtype: "MultiSelectPills",
+                        get_data: function (txt) {
+                            return r.message; // Use the program names directly
+                        }
+                    },
+                    {
+                        fieldtype: "Check",
+                        label: __("Is Mandatory"),
+                        fieldname: "mandatory",
+                    },
+                ],
+                function (data) {
+                    // --- Client-Side Modification Starts Here ---
+                    if (data.programs && data.programs.length > 0) {
+                        let update_promises = data.programs.map(program_name => {
+                            return new Promise((resolve) => {
+                                frappe.model.with_doc("Program", program_name, function () {
+                                    let program_doc = frappe.get_doc("Program", program_name);
+                                    let course_row = null;
+
+                                    // Find the course in the program's child table
+                                    for (let i = 0; i < program_doc.courses.length; i++) {
+                                        if (program_doc.courses[i].course === frm.doc.name) {
+                                            course_row = program_doc.courses[i];
+                                            break;
+                                        }
+                                    }
+
+                                    // If the course exists, update it, otherwise add it
+                                    if (course_row) {
+                                        course_row.mandatory = data.mandatory;
+                                    } else {
+                                        program_doc.append("courses", {
+                                            course: frm.doc.name,
+                                            course_name: frm.doc.course_name,
+                                            mandatory: data.mandatory
+                                        });
+                                    }
+
+                                    // Notify that the program doc has been updated
+                                    program_doc.notify_update();
+                                    resolve();
+                                });
+                            });
+                        });
+
+                        // Wait for all program updates to complete
+                        Promise.all(update_promises).then(() => {
+                            // --- Client-Side Modification Ends Here ---
+
+                            frappe.call({
+                                method: "ifitwala_ed.curriculum.doctype.course.course.add_course_to_programs",
+                                args: {
+                                    course: frm.doc.name,
+                                    programs: data.programs,
+                                    mandatory: data.mandatory, // Still useful for server-side consistency
+                                },
+                                callback: function (r) {
+                                    if (!r.exc) {
+                                        // Refresh the related Program docs after the server-side call
+                                        data.programs.forEach(program_name => {
+                                            frappe.model.remove_from_local_cache("Program", program_name);
+                                        });
+                                        frm.reload_doc();
+                                    }
+                                },
+                                freeze: true,
+                                freeze_message: __("...Adding Course to Programs"),
+                            });
+                        });
+                    }
+                },
+                __("Add Course to Programs"),
+                __("Add")
+            );
+        } else {
+            frappe.msgprint(
+                __("This course is already added to the existing programs")
+            );
+        }
     });
   },
 });
