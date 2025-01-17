@@ -67,6 +67,7 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Title",
+   "no_copy": 1,
    "print_hide": 1,
    "unique": 1
   },
@@ -113,7 +114,7 @@
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-27 15:57:01.440011",
+ "modified": "2025-01-16 07:34:16.888747",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",

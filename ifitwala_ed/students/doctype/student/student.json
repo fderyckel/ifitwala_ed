@@ -97,13 +97,13 @@
    "fieldname": "student_first_language",
    "fieldtype": "Link",
    "label": "First Language",
-   "options": "Language"
+   "options": "Language Xtra"
   },
   {
    "fieldname": "student_second_language",
    "fieldtype": "Link",
    "label": "Second Language",
-   "options": "Language"
+   "options": "Language Xtra"
   },
   {
    "fieldname": "column_break_oaht",
@@ -267,7 +267,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-14 11:28:56.074225",
+ "modified": "2025-01-17 13:05:25.572009",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
