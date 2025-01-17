@@ -43,7 +43,7 @@ def add_course_to_programs(course, programs, mandatory=False):
 		program.append('courses', {
 			'course': course,
 			'course_name': course,
-			'mandatory': mandatory
+			'required': mandatory
 		})
 		program.flags.ignore_mandatory = True
 		program.save()
