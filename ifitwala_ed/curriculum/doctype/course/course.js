@@ -67,16 +67,21 @@ frappe.ui.form.on("Course", {
                                     // If the course exists, update it, otherwise add it
                                     if (course_row) {
                                         course_row.mandatory = data.mandatory;
+                                        // Update the existing course row in the program's courses array
+                                        program_doc.courses.splice(i, 1, course_row); 
                                     } else {
-                                        program_doc.append("courses", {
+                                        // Create a new course row
+                                        course_row = {
                                             course: frm.doc.name,
                                             course_name: frm.doc.course_name,
                                             mandatory: data.mandatory
-                                        });
+                                        };
+                                        // Add the new course row to the program's courses array
+                                        program_doc.courses.push(course_row); 
                                     }
-
-                                    // Notify that the program doc has been updated
-                                    program_doc.notify_update();
+                                  
+                                    // Set the 'courses' field with the updated array
+                                    frappe.model.set_value("Program", program_name, "courses", program_doc.courses);
                                     resolve();
                                 });
                             });
@@ -91,7 +96,7 @@ frappe.ui.form.on("Course", {
                                 args: {
                                     course: frm.doc.name,
                                     programs: data.programs,
-                                    mandatory: data.mandatory, // Still useful for server-side consistency
+                                    mandatory: data.mandatory, 
                                 },
                                 callback: function (r) {
                                     if (!r.exc) {
