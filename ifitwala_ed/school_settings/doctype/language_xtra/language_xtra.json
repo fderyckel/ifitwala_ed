@@ -1,0 +1,123 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:language_code",
+ "creation": "2025-01-17 08:58:01.389328",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_4nu2",
+  "language_name",
+  "iso_name",
+  "language_code",
+  "column_break_dz6d",
+  "enabled",
+  "language_type",
+  "language_frappe"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_4nu2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "language_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Language Name",
+   "reqd": 1,
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "language_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Language Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_dz6d",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "language_type",
+   "fieldtype": "Select",
+   "label": "Language Type",
+   "options": "Individual\nMacrolanguage"
+  },
+  {
+   "fieldname": "language_frappe",
+   "fieldtype": "Link",
+   "label": "Language Frappe",
+   "options": "Language"
+  },
+  {
+   "fieldname": "iso_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "ISO Name"
+  }
+ ],
+ "hide_toolbar": 1,
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-17 10:30:59.253279",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Language Xtra",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Academic Staff"
+  },
+  {
+   "read": 1,
+   "role": "Nurse"
+  },
+  {
+   "read": 1,
+   "role": "Employee"
+  }
+ ],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "language_name"
+}
