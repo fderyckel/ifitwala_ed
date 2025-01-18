@@ -13,7 +13,9 @@
   "column_break_wyln",
   "learning_unit_color",
   "scheduled_course_color",
-  "assessment_color"
+  "assessment_color",
+  "section_break_oizt",
+  "subject_group_image"
  ],
  "fields": [
   {
@@ -29,12 +31,14 @@
   {
    "fieldname": "learning_unit_color",
    "fieldtype": "Color",
-   "label": "Learning Unit Color"
+   "label": "Learning Unit Color",
+   "no_copy": 1
   },
   {
    "fieldname": "scheduled_course_color",
    "fieldtype": "Color",
-   "label": "Scheduled Course Color"
+   "label": "Scheduled Course Color",
+   "no_copy": 1
   },
   {
    "fieldname": "column_break_wyln",
@@ -50,12 +54,22 @@
    "fieldname": "assessment_color",
    "fieldtype": "Color",
    "in_list_view": 1,
-   "label": "Assessment Color"
+   "label": "Assessment Color",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "section_break_oizt",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "subject_group_image",
+   "fieldtype": "Attach Image",
+   "label": "Subject Group Image"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-31 10:11:03.187309",
+ "modified": "2025-01-17 18:40:35.731560",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Course Group",

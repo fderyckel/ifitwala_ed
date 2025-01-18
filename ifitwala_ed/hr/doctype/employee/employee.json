@@ -1,41 +1,77 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "HR-EMP-.#####",
+ "autoname": "format:HR-EMP-{####}",
  "creation": "2024-12-06 10:03:50.788876",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "overview_tab",
   "section_break_hbse",
-  "salutation",
+  "employee_salutation",
   "employee_first_name",
   "employee_middle_name",
-  "employee_last_name",
   "employee_gender",
-  "employee_full_name",
-  "employee_preferred_name",
   "nationality",
-  "column_break_adik",
+  "first_language",
   "employee_professional_email",
-  "employee_mobile_phone",
-  "employee_personal_email",
   "employee_date_of_birth",
+  "column_break_adik",
+  "employee_full_name",
+  "employee_last_name",
+  "employee_preferred_name",
+  "employee_mobile_phone",
+  "employee_second_nationality",
+  "employee_second_language",
+  "employee_personal_email",
   "employee_image",
+  "addresses_section",
+  "contact_html",
+  "address_html",
+  "column_break_ctna",
+  "emergency_contact_person",
+  "user_info_section",
   "user_id",
   "create_user",
-  "create_user_permission"
+  "create_user_permission",
+  "professional_tab",
+  "professional_section",
+  "date_of_joining",
+  "status",
+  "employment_type",
+  "designation",
+  "column_break_qbdg",
+  "organization",
+  "school",
+  "reports_to",
+  "approver_section",
+  "expense_approver",
+  "column_break_mba6",
+  "leave_approver",
+  "work_history_section",
+  "internal_work_history",
+  "attendance_and_leaves_details",
+  "current_holiday_lis",
+  "exit_tab",
+  "notice_date",
+  "relieving_date",
+  "exit_interview_date",
+  "exit_interview",
+  "section_break_tol6",
+  "lft",
+  "rgt",
+  "is_group",
+  "old_parent",
+  "parent_employee",
+  "hiring_and_onboarding",
+  "bio",
+  "biography"
  ],
  "fields": [
   {
    "fieldname": "section_break_hbse",
    "fieldtype": "Section Break",
    "label": "Personal Info"
-  },
-  {
-   "fieldname": "salutation",
-   "fieldtype": "Link",
-   "label": "Salutation",
-   "options": "Salutation"
   },
   {
    "fieldname": "employee_first_name",
@@ -107,6 +143,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Mobile Phone",
+   "no_copy": 1,
    "options": "Phone"
   },
   {
@@ -123,7 +160,6 @@
   {
    "fieldname": "employee_image",
    "fieldtype": "Attach Image",
-   "hidden": 1,
    "label": "Employee Image"
   },
   {
@@ -145,16 +181,273 @@
    "fieldname": "create_user_permission",
    "fieldtype": "Check",
    "label": "Create User Permission"
+  },
+  {
+   "fieldname": "lft",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Left",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "rgt",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Right",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_group",
+   "fieldtype": "Check",
+   "label": "Is Group"
+  },
+  {
+   "fieldname": "old_parent",
+   "fieldtype": "Link",
+   "label": "Old Parent",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "parent_employee",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Parent Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "employee_salutation",
+   "fieldtype": "Link",
+   "label": "Salutation",
+   "options": "Salutation"
+  },
+  {
+   "fieldname": "first_language",
+   "fieldtype": "Link",
+   "label": "First language",
+   "options": "Language Xtra"
+  },
+  {
+   "fieldname": "employee_second_nationality",
+   "fieldtype": "Link",
+   "label": "Second Nationality",
+   "options": "Country"
+  },
+  {
+   "fieldname": "employee_second_language",
+   "fieldtype": "Link",
+   "label": "Second Language",
+   "options": "Language Xtra"
+  },
+  {
+   "fieldname": "professional_section",
+   "fieldtype": "Section Break",
+   "label": "Professional Info",
+   "search_index": 1
+  },
+  {
+   "fieldname": "date_of_joining",
+   "fieldtype": "Date",
+   "label": "Date of Joining",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Active\nTemporary Leave\nLeft\nSuspended",
+   "reqd": 1
+  },
+  {
+   "fieldname": "employment_type",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Employment Type",
+   "options": "Employment Type"
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Designation",
+   "options": "Designation"
+  },
+  {
+   "fieldname": "column_break_qbdg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_preview": 1,
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "reports_to",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Reports To",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "section_break_tol6",
+   "fieldtype": "Section Break"
+  },
+  {
+   "description": "Current holiday list for the employee. ",
+   "fieldname": "current_holiday_lis",
+   "fieldtype": "Link",
+   "label": "Current Holiday Lis",
+   "options": "Staff Calendar"
+  },
+  {
+   "fieldname": "approver_section",
+   "fieldtype": "Section Break",
+   "label": "Approver"
+  },
+  {
+   "fieldname": "expense_approver",
+   "fieldtype": "Link",
+   "label": "Expense Approver",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_mba6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "leave_approver",
+   "fieldtype": "Link",
+   "label": "Leave Approver",
+   "options": "User"
+  },
+  {
+   "fieldname": "addresses_section",
+   "fieldtype": "Section Break",
+   "label": "Addresses"
+  },
+  {
+   "fieldname": "overview_tab",
+   "fieldtype": "Tab Break",
+   "label": "Overview"
+  },
+  {
+   "fieldname": "user_info_section",
+   "fieldtype": "Section Break",
+   "label": "User info"
+  },
+  {
+   "fieldname": "professional_tab",
+   "fieldtype": "Tab Break",
+   "label": "Professional"
+  },
+  {
+   "fieldname": "attendance_and_leaves_details",
+   "fieldtype": "Tab Break",
+   "label": "Attendance & Leaves"
+  },
+  {
+   "fieldname": "exit_tab",
+   "fieldtype": "Tab Break",
+   "label": "Exit"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "contact_html",
+   "fieldtype": "HTML",
+   "label": "Contact HTML",
+   "report_hide": 1
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "address_html",
+   "fieldtype": "HTML",
+   "label": "Address HTML",
+   "report_hide": 1
+  },
+  {
+   "fieldname": "column_break_ctna",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "emergency_contact_person",
+   "fieldtype": "Text",
+   "label": "Emergency Contact Person"
+  },
+  {
+   "fieldname": "work_history_section",
+   "fieldtype": "Section Break",
+   "label": "Work History"
+  },
+  {
+   "fieldname": "internal_work_history",
+   "fieldtype": "Table",
+   "label": "Internal Work History",
+   "options": "Employee Internal Work History"
+  },
+  {
+   "fieldname": "hiring_and_onboarding",
+   "fieldtype": "Tab Break",
+   "label": "Hiring & Onboarding"
+  },
+  {
+   "fieldname": "bio",
+   "fieldtype": "Section Break",
+   "label": "Bio"
+  },
+  {
+   "fieldname": "biography",
+   "fieldtype": "Text Editor",
+   "label": "Biography"
+  },
+  {
+   "fieldname": "notice_date",
+   "fieldtype": "Date",
+   "label": "Notice Date"
+  },
+  {
+   "fieldname": "relieving_date",
+   "fieldtype": "Date",
+   "label": "Relieving Date"
+  },
+  {
+   "fieldname": "exit_interview_date",
+   "fieldtype": "Date",
+   "label": "Exit Interview Date"
+  },
+  {
+   "fieldname": "exit_interview",
+   "fieldtype": "Text Editor",
+   "label": "Exit Interview"
   }
  ],
  "image_field": "employee_image",
  "index_web_pages_for_search": 1,
+ "is_tree": 1,
  "links": [],
- "modified": "2024-12-06 11:25:19.529113",
+ "modified": "2025-01-18 13:50:06.478106",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
+ "nsm_parent_field": "parent_employee",
  "owner": "Administrator",
  "permissions": [
   {
@@ -168,8 +461,42 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
   }
  ],
+ "search_fields": "employee_full_name",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

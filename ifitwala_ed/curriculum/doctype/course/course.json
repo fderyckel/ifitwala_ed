@@ -166,7 +166,7 @@
  "image_field": "course_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-08 23:11:40.586883",
+ "modified": "2025-01-17 18:31:49.768308",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Course",
@@ -198,13 +198,8 @@
    "write": 1
   },
   {
-   "email": 1,
-   "print": 1,
    "read": 1,
-   "report": 1,
-   "role": "Academic Staff",
-   "select": 1,
-   "share": 1
+   "role": "Academic Staff"
   },
   {
    "email": 1,
@@ -212,18 +207,11 @@
    "read": 1,
    "report": 1,
    "role": "Instructor",
-   "select": 1,
    "share": 1
   },
   {
-   "email": 1,
-   "export": 1,
-   "print": 1,
    "read": 1,
-   "report": 1,
-   "role": "Admission Officer",
-   "select": 1,
-   "share": 1
+   "role": "Admission Officer"
   },
   {
    "create": 1,
