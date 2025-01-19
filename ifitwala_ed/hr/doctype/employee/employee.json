@@ -9,31 +9,34 @@
   "overview_tab",
   "section_break_hbse",
   "employee_salutation",
-  "employee_first_name",
   "employee_middle_name",
   "employee_gender",
   "nationality",
   "first_language",
-  "employee_professional_email",
-  "employee_date_of_birth",
   "column_break_adik",
-  "employee_full_name",
-  "employee_last_name",
+  "employee_first_name",
   "employee_preferred_name",
   "employee_mobile_phone",
   "employee_second_nationality",
   "employee_second_language",
-  "employee_personal_email",
+  "column_break_jbjk",
+  "employee_last_name",
+  "employee_full_name",
+  "employee_date_of_birth",
+  "employee_professional_email",
   "employee_image",
-  "addresses_section",
-  "contact_html",
-  "address_html",
-  "column_break_ctna",
-  "emergency_contact_person",
   "user_info_section",
   "user_id",
   "create_user",
   "create_user_permission",
+  "addresses_section",
+  "contact_html",
+  "address_html",
+  "employee_personal_email",
+  "column_break_ctna",
+  "emergency_contact_person",
+  "emergency_contact_details",
+  "emergency_contact_relation",
   "professional_tab",
   "professional_section",
   "date_of_joining",
@@ -44,6 +47,8 @@
   "organization",
   "school",
   "reports_to",
+  "preferred_contact_email",
+  "preferred_email",
   "approver_section",
   "expense_approver",
   "column_break_mba6",
@@ -178,6 +183,7 @@
   {
    "default": "1",
    "depends_on": "user_id",
+   "description": "This restrict user access to other employee records",
    "fieldname": "create_user_permission",
    "fieldtype": "Check",
    "label": "Create User Permission"
@@ -314,7 +320,7 @@
    "description": "Current holiday list for the employee. ",
    "fieldname": "current_holiday_lis",
    "fieldtype": "Link",
-   "label": "Current Holiday Lis",
+   "label": "Current Holiday List",
    "options": "Staff Calendar"
   },
   {
@@ -341,7 +347,7 @@
   {
    "fieldname": "addresses_section",
    "fieldtype": "Section Break",
-   "label": "Addresses"
+   "label": "Contact Details"
   },
   {
    "fieldname": "overview_tab",
@@ -388,8 +394,8 @@
   },
   {
    "fieldname": "emergency_contact_person",
-   "fieldtype": "Text",
-   "label": "Emergency Contact Person"
+   "fieldtype": "Data",
+   "label": "Emergency Contact Name"
   },
   {
    "fieldname": "work_history_section",
@@ -436,13 +442,40 @@
    "fieldname": "exit_interview",
    "fieldtype": "Text Editor",
    "label": "Exit Interview"
+  },
+  {
+   "fieldname": "column_break_jbjk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "emergency_contact_details",
+   "fieldtype": "Small Text",
+   "label": "Emergency Contact Details"
+  },
+  {
+   "fieldname": "emergency_contact_relation",
+   "fieldtype": "Data",
+   "label": "Emergency Contact Relation"
+  },
+  {
+   "fieldname": "preferred_contact_email",
+   "fieldtype": "Select",
+   "label": "Preferred Contact Email",
+   "options": "Organization Email\nPersonal Email\nUser ID"
+  },
+  {
+   "fieldname": "preferred_email",
+   "fieldtype": "Data",
+   "label": "Preferred Email",
+   "options": "Email",
+   "read_only": 1
   }
  ],
  "image_field": "employee_image",
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-01-18 13:50:06.478106",
+ "modified": "2025-01-19 09:38:15.805937",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
