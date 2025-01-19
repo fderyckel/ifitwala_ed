@@ -154,11 +154,15 @@ default_roles = [
 # }
 
 doc_events = { 
-    "Student": {
-        "on_update": "ifitwala_ed.utilities.student_utils.rename_student_image"
+    "Student": { 
+      "on_update": "ifitwala_ed.utilities.student_utils.rename_student_image"
     }, 
     "Contact": {
-        "on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"
+      "on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"
+    }, 
+    "User":{
+      "validate": "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role", 
+      "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions"
     }
 }
 
