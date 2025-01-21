@@ -6,7 +6,7 @@ import json
 from datetime import date
 
 from frappe import _
-from frappe.utils import getdate, today, formatdate, cint, date_diff
+from frappe.utils import getdate, formatdate, date_diff
 from frappe.model.document import Document
 
 

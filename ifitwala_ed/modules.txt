@@ -9,4 +9,3 @@ Curriculum
 Assessment
 Admission
 Health
-Student Portal
