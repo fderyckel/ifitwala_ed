@@ -202,3 +202,9 @@ def get_events(start, end, filters=None):
             "`tabHoliday`.holiday_date", "`tabHoliday`.description", "`tabHoliday`.color"],
     filters=filters,
     update={"allDay": 1})
+
+def local_country_name(country_code: str) -> str:
+	"""Return the localized country name for the given country code."""
+	from babel import Locale
+
+	return Locale.parse(frappe.local.lang, sep="-").territories.get(country_code, country_code)
