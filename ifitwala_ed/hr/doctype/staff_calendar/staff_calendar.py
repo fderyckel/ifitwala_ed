@@ -20,8 +20,6 @@ class StaffCalendar(Document):
     self.sort_holidays()
 
   def validate_days(self):
-    if not self.start_of_break and not self.end_of_break:
-      frappe.throw(_("Please select first the start and end of your break."))
     if getdate(self.from_date) > getdate(self.to_date):
       frappe.throw(_("From Date cannot be after To Date. Please adjust the date."))
     for day in self.get("holidays"):
