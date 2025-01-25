@@ -50,12 +50,12 @@ class StaffCalendar(Document):
       if d in existing_holidays:
         continue
       
-    self.append("holidays", {
+      self.append("holidays", {
         "holiday_date": d,
         "description": _("weekly off"),
         "color": self.weekend_color,
         "weekly_off": 1
-    })
+      })
 
   # Function to generate the list of weekly off dates
   def get_weekly_off_dates_list(self, start_date, end_date):
@@ -64,7 +64,7 @@ class StaffCalendar(Document):
     from dateutil import relativedelta
     from datetime import timedelta
     import calendar
-    
+
     date_list = []
     existing_date_list = []
     weekday = getattr(calendar, (self.weekly_off).upper())
@@ -78,31 +78,31 @@ class StaffCalendar(Document):
 
     return date_list
   
-  def get_holidays(self) -> list[date]:
+  def get_holidays(self) -> list[date]: 
     return [getdate(holiday.holiday_date) for holiday in self.holidays]
 
-	# logic for the button "get_long_break_dates"
+  # logic for the button "get_long_break_dates"
   @frappe.whitelist()
-  def get_country_holidays(self): 
+  def get_country_holidays(self):
     from holidays import country_holidays
 
-    if not self.country: 
+    if not self.country:
       frappe.throw(_("Please select the country first."))
 
     existing_holidays = self.get_holidays()
     from_date = getdate(self.from_date)
     to_date = getdate(self.to_date)
 
-    for holiday_date, holiday_name in country_holidays(
-      self.country, 
+    for holiday_date, holiday_name in country_holidays( 
+      self.country,
       subdiv = self.subdivision,
-      years = list(range(from_date.year, to_date.year + 1)), 
-      language = frappe.local.lang
-    ).item(): 
-      if holiday_date in existing_holidays: 
+      years = list(range(from_date.year, to_date.year + 1)),
+      language = frappe.local.lang 
+    ).items():
+      if holiday_date in existing_holidays:
         continue
 
-      if holiday_date < from_date or holiday_date > to_date: 
+      if holiday_date < from_date or holiday_date > to_date:
         continue
 
       self.append("holidays", {
@@ -113,11 +113,25 @@ class StaffCalendar(Document):
       })
 
   @frappe.whitelist()
+  def get_supported_countries(self):
+    from holidays.utils import list_supported_countries 
+    
+    subdivisions_by_country = list_supported_countries() 
+    countries = [ 
+      {"value": country, "label": local_country_name(country)} 
+      for country in subdivisions_by_country.keys() 
+      ]
+    return { 
+      "countries": countries,
+      "subdivisions_by_country": subdivisions_by_country,
+    }
+
+  @frappe.whitelist()
   def get_break_holidays(self):
     self.validate_break_values()
     existing_holidays = self.get_holidays()
 
-    for d in self.get_long_break_dates_list(self.start_of_break, self.end_of_break): 
+    for d in self.get_long_break_dates_list(self.start_of_break, self.end_of_break):
       if d in existing_holidays: 
         continue
 
@@ -128,7 +142,7 @@ class StaffCalendar(Document):
         "weekly_off": 0
       })
 
-      
+
   def validate_break_values(self):
     if not self.start_of_break and not self.end_of_break:
       frappe.throw(_("Please select first the start and end of your break."))
@@ -161,14 +175,14 @@ class StaffCalendar(Document):
   def clear_table(self):
     self.set("holidays", [])
 
-  def get_holidays(self) -> list[date]:
+  def get_holidays(self) -> list[date]: 
     return [getdate(holiday.holiday_date) for holiday in self.holidays]
 
 
 
 @frappe.whitelist()
 def get_events(start, end, filters=None):
-  """Returns events for Gantt/Calendar view rendering. 
+  """Returns events for Gantt/Calendar view rendering.
 	:param start: Start date-time.
 	:param end: End date-time.
 	:param filters: Filters (JSON).
@@ -184,7 +198,7 @@ def get_events(start, end, filters=None):
     filters.append(['Holiday', 'holiday_date', '<', getdate(end)])
 
   return frappe.get_list('Staff Calendar',
-    fields=["name", "academic_year", "school", 
+    fields=["name", "academic_year", "school",
             "`tabHoliday`.holiday_date", "`tabHoliday`.description", "`tabHoliday`.color"],
     filters=filters,
     update={"allDay": 1})
