@@ -175,8 +175,6 @@ class StaffCalendar(Document):
   def clear_table(self):
     self.set("holidays", [])
 
-  def get_holidays(self) -> list[date]: 
-    return [getdate(holiday.holiday_date) for holiday in self.holidays]
 
 
 
