@@ -77,8 +77,9 @@
   },
   {
    "fieldname": "school",
-   "fieldtype": "Data",
-   "label": "School"
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
   },
   {
    "fieldname": "to_date",
@@ -189,7 +190,8 @@
   {
    "fieldname": "get_break_holidays",
    "fieldtype": "Button",
-   "label": "Add Breaks"
+   "label": "Add Breaks",
+   "options": "get_break_holidays"
   },
   {
    "fieldname": "start_of_break",
@@ -205,7 +207,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2025-01-21 22:56:48.694088",
+ "modified": "2025-01-25 23:39:04.742969",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Staff Calendar",
