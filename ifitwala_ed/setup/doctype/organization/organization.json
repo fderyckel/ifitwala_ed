@@ -9,13 +9,16 @@
  "field_order": [
   "section_break_th0s",
   "organization_name",
-  "is_group",
   "abbr",
+  "is_group",
   "date_of_incorporation",
-  "organization_logo",
-  "address__html",
+  "default_currency",
+  "country",
+  "default_staff_calendar",
   "column_break_yqlg",
+  "address__html",
   "parent_organization",
+  "organization_logo",
   "section_break_bvun",
   "lft",
   "rgt",
@@ -102,12 +105,30 @@
   {
    "fieldname": "section_break_bvun",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "default_currency",
+   "fieldtype": "Link",
+   "label": "Default Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Link",
+   "label": "Country",
+   "options": "Country"
+  },
+  {
+   "fieldname": "default_staff_calendar",
+   "fieldtype": "Link",
+   "label": "Default Staff Calendar",
+   "options": "Staff Calendar"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2024-12-10 21:26:07.851121",
+ "modified": "2025-01-26 10:20:16.949528",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Organization",

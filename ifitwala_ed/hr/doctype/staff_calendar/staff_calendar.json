@@ -68,7 +68,7 @@
   },
   {
    "fieldname": "from_date",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "From Date"
   },
   {
@@ -185,7 +185,8 @@
   {
    "fieldname": "get_country_holidays",
    "fieldtype": "Button",
-   "label": "Add To Holidays"
+   "label": "Add Local Holidays",
+   "options": "get_country_holidays"
   },
   {
    "fieldname": "get_break_holidays",
@@ -207,7 +208,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2025-01-25 23:39:04.742969",
+ "modified": "2025-01-26 10:10:14.045954",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Staff Calendar",
