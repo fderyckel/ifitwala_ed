@@ -1,0 +1,7 @@
+
+{
+	"js/hierarchy-chart.min.js": [
+		"public/js/hierarchy_chart/hierarchy_chart_desktop.js",
+		"public/js/hierarchy_chart/hierarchy_chart_mobile.js"
+	]
+}

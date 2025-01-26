@@ -29,7 +29,7 @@ app_include_css = [
   "/assets/ifitwala_ed/css/custom_indicators.css", 
   "assets/ifitwala_ed/css/student_portal.css"
 ]
-# app_include_js = "/assets/ifitwala/js/ifitwala.js"
+app_include_js = ["/assets/ifitwala/js/ifitwala.js", "ifitwala_ed.bundle.js"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/ifitwala/css/ifitwala.css"
@@ -45,7 +45,7 @@ app_include_css = [
 # include js in page
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Contact": "public/js/contact.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}

@@ -155,7 +155,7 @@ class StaffCalendar(Document):
   def get_long_break_dates_list(self, start_date, end_date):
     start_date, end_date = getdate(start_date), getdate(end_date)
 
-    from dateutil import relativedelta
+    #from dateutil import relativedelta
     from datetime import timedelta
     import calendar
 
