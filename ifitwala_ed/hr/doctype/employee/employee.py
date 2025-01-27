@@ -209,8 +209,8 @@ class Employee(NestedSet):
 	def reset_employee_emails_cache(self):
 		prev_doc = self.get_doc_before_save() or {}
 		cell_number = cstr(self.get("employee_mobile_phone"))
-		prev_number = cstr(self.prev_doc("employee_mobile_phone"))
-		if (cell_number != prev_number or self.get("user_id") != self.pre_doc("user_id")):
+		prev_number = cstr(prev_doc.get("employee_mobile_phone"))
+		if (cell_number != prev_number or self.get("user_id") != prev_doc.get("user_id")):
 			frappe.cache().hdel("employees_with_number", cell_number)
 			frappe.cache().hdel("employees_with_number", prev_number)
 
