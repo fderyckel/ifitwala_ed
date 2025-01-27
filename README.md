@@ -1,6 +1,6 @@
 ## Ifitwala
 
-School management System
+A School ERP System that focuses on analytics
 
 #### License
 
