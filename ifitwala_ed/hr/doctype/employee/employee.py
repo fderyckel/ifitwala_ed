@@ -87,7 +87,7 @@ class Employee(NestedSet):
 			reports_to = frappe.db.get_all("Employee", filters={"reports_to": self.name, "status": "Active"}, fields=["name","employee_full_name"])
 			if reports_to:
 				link_to_employees = [frappe.utils.get_link_to_form("Employee", employee.name, label=employee.employee_full_name) for employee in reports_to]
-				message = _("The following employees are currently still reporting to {0}:").format(frappe.bold(self.employee_name))
+				message = _("The following employees are currently still reporting to {0}:").format(frappe.bold(self.employee_full_name))
 				message += "<br><br><ul><li>" + "</li><li>".join(link_to_employees)
 				message += "</li></ul><br>"
 				message += _("Please make sure the employees above report to another Active employee.")
@@ -308,6 +308,16 @@ def update_user_permissions(doc, method):
 		employee = frappe.get_doc("Employee", {"user_id": doc.name})
 		employee.update_user_permissions()
 
+def has_user_permission_for_employee(user_name, employee_name):
+	return frappe.db.exists(
+		{
+			"doctype": "User Permission",
+			"user": user_name,
+			"allow": "Employee",
+			"for_value": employee_name,
+		}
+	)
+
 
 def has_upload_permission(doc, ptype='read', user=None):
 	if not user:
@@ -315,25 +325,3 @@ def has_upload_permission(doc, ptype='read', user=None):
 	if get_doc_permissions(doc, user=user, ptype=ptype).get(ptype):
 		return True
 	return doc.user_id == user
-
-def get_employee_email(employee_doc):
-	return employee_doc.get("user_id") or employee_doc.get("employee_professional_email") or employee_doc.get("employee_personal_email")
-
-def get_employee_emails(employee_list):
-	'''Return list of employee email based on either user_id or professional_email '''
-	employee_emails = []
-	for employee in employee_list:
-		if not employee:
-			continue
-		user, employee_professional_email = frappe.db.get_value("Employee", employee, ["user_id", "employee_professional_email"])
-		email = user or employee_professional_email
-		if email:
-			employee_emails.append(email)
-	return employee_emails
-
-def get_holiday_list_for_employee(employee, raise_exception=True):
-	if employee:
-		holiday_list, organization = frappe.db.get_value("Employee", employee, ["current_holiday_list", "organization"])
-	else:
-		holiday_list = ""
-		organization = frappe.db.get_value("Global Defaults", "None", "default_organization")
