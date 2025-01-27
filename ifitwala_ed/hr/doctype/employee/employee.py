@@ -113,11 +113,11 @@ class Employee(NestedSet):
 		Raises:
 			frappe.msgprint: If the required field for the preferred contact email is not filled.
 		"""
-		if self.prefered_contact_email:
-			if self.prefered_contact_email == "User ID" and not self.get("user_id"):
-				frappe.msgprint(_("Please enter {0}").format(self.prefered_contact_email))
-			elif self.prefered_contact_email and not self.get("employee_" + scrub(self.prefered_contact_email)):
-				frappe.msgprint(_("Please enter {0}").format(self.prefered_contact_email))	
+		if self.preferred_contact_email:
+			if self.preferred_contact_email == "User ID" and not self.get("user_id"):
+				frappe.msgprint(_("Please enter {0}").format(self.preferred_contact_email))
+			elif self.preferred_contact_email and not self.get("employee_" + scrub(self.preferred_contact_email)):
+				frappe.msgprint(_("Please enter {0}").format(self.preferred_contact_email))	
 
 	# call on validate.  Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):
