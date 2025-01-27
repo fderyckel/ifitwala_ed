@@ -1,0 +1,83 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:employee_group_name",
+ "creation": "2025-01-27 08:22:24.491204",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_9mwr",
+  "employee_group_name",
+  "employee_list_section",
+  "employee_list"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_9mwr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "employee_group_name",
+   "fieldtype": "Data",
+   "label": "Group Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "employee_list_section",
+   "fieldtype": "Section Break",
+   "label": "Employee List"
+  },
+  {
+   "fieldname": "employee_list",
+   "fieldtype": "Table",
+   "label": "Employee",
+   "options": "Employee Group Table"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-27 08:31:47.939815",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Employee Group",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "format:HR-EMP-{####}",
  "creation": "2024-12-06 10:03:50.788876",
@@ -30,9 +31,11 @@
   "create_user",
   "create_user_permission",
   "addresses_section",
+  "preferred_contact_email",
+  "employee_personal_email",
+  "preferred_email",
   "contact_html",
   "address_html",
-  "employee_personal_email",
   "column_break_ctna",
   "emergency_contact_person",
   "emergency_contact_details",
@@ -43,12 +46,12 @@
   "status",
   "employment_type",
   "designation",
+  "department",
+  "employee_group",
   "column_break_qbdg",
   "organization",
   "school",
   "reports_to",
-  "preferred_contact_email",
-  "preferred_email",
   "approver_section",
   "expense_approver",
   "column_break_mba6",
@@ -63,14 +66,13 @@
   "exit_interview_date",
   "exit_interview",
   "section_break_tol6",
-  "lft",
-  "rgt",
-  "is_group",
-  "old_parent",
-  "parent_employee",
   "hiring_and_onboarding",
   "bio",
-  "biography"
+  "biography",
+  "is_group",
+  "lft",
+  "rgt",
+  "old_parent"
  ],
  "fields": [
   {
@@ -213,14 +215,8 @@
   {
    "fieldname": "old_parent",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Old Parent",
-   "options": "Employee"
-  },
-  {
-   "fieldname": "parent_employee",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Parent Employee",
    "options": "Employee"
   },
   {
@@ -469,18 +465,30 @@
    "label": "Preferred Email",
    "options": "Email",
    "read_only": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "employee_group",
+   "fieldtype": "Link",
+   "label": "Employee Group",
+   "options": "Employee Group"
   }
  ],
  "image_field": "employee_image",
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-01-19 09:38:15.805937",
+ "modified": "2025-01-27 10:10:31.664067",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
  "naming_rule": "Expression",
- "nsm_parent_field": "parent_employee",
+ "nsm_parent_field": "reports_to",
  "owner": "Administrator",
  "permissions": [
   {
@@ -526,6 +534,15 @@
    "read": 1,
    "report": 1,
    "role": "Academic Admin",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
    "share": 1
   }
  ],
