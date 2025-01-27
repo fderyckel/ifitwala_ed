@@ -64,7 +64,7 @@ class Employee(NestedSet):
 	def validate_date(self):
 		if self.employee_date_of_birth and getdate(self.employee_date_of_birth) > getdate(today()):
 			frappe.throw(_("Date of Birth cannot be after today.")) 
-		if self.employee_date_of_birth and getdate(self.employee_date_of_birth) > getdate(add_years(today() - 16)):
+		if self.employee_date_of_birth and getdate(self.employee_date_of_birth) > getdate(add_years(today(), - 16)):
 			frappe.throw(_("Maybe you are too young to be an employee of this school!"))	
 		if self.employee_date_of_birth and self.date_of_joining and getdate(self.employee_date_of_birth) >= getdate(self.date_of_joining):
 			frappe.throw(_("Date of Joining must be after Date of Birth"))
