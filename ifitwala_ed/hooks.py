@@ -33,7 +33,7 @@ app_include_js = ["/assets/ifitwala_ed/js/ifitwala_ed.bundle.js",
                   "/assets/ifitwala_ed/js/hierachy-chart.bundle.js",]
 
 app_include_scss = [
-    "assets/ifitwala_ed/scss/hierarchy_chart.bundle.scss",  # SCSS files
+    "assets/ifitwala_ed/scss/ifitwala_ed.bundle.scss",  # SCSS files
 ]
 
 # include js, css files in header of web template
