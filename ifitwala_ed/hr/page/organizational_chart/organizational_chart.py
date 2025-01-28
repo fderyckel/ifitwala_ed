@@ -27,7 +27,7 @@ def get_children(parent=None, organization=None, exclude_node=None):
 			"lft",
 			"rgt",
 			"reports_to",
-			"image",
+			"employee_image",
 			"designation as title",
 		],
 		filters=filters,
