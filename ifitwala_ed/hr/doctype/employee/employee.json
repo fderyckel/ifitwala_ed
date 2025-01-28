@@ -60,15 +60,14 @@
   "internal_work_history",
   "attendance_and_leaves_details",
   "current_holiday_lis",
+  "hiring_and_onboarding",
+  "bio",
+  "biography",
   "exit_tab",
   "notice_date",
   "relieving_date",
   "exit_interview_date",
   "exit_interview",
-  "section_break_tol6",
-  "hiring_and_onboarding",
-  "bio",
-  "biography",
   "is_group",
   "lft",
   "rgt",
@@ -309,10 +308,7 @@
    "options": "Employee"
   },
   {
-   "fieldname": "section_break_tol6",
-   "fieldtype": "Section Break"
-  },
-  {
+   "depends_on": "eval:doc.status == \"Active\"",
    "description": "Current holiday list for the employee. ",
    "fieldname": "current_holiday_lis",
    "fieldtype": "Link",
@@ -454,10 +450,11 @@
    "label": "Emergency Contact Relation"
   },
   {
+   "default": "Professional Email",
    "fieldname": "preferred_contact_email",
    "fieldtype": "Select",
    "label": "Preferred Contact Email",
-   "options": "Organization Email\nPersonal Email\nUser ID"
+   "options": "Professional Email\nPersonal Email\nUser ID"
   },
   {
    "fieldname": "preferred_email",
@@ -483,7 +480,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-01-27 10:10:31.664067",
+ "modified": "2025-01-28 07:12:57.712430",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
@@ -528,13 +525,8 @@
    "write": 1
   },
   {
-   "email": 1,
-   "export": 1,
-   "print": 1,
    "read": 1,
-   "report": 1,
-   "role": "Academic Admin",
-   "share": 1
+   "role": "Academic Admin"
   },
   {
    "email": 1,
