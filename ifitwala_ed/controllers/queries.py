@@ -41,3 +41,14 @@ def employee_query(doctype, txt, searchfield, start, page_len, filters):
 		),
 		{"txt": "%%%s%%" % txt, "_txt": txt.replace("%", ""), "start": start, "page_len": page_len},
 	)
+
+def get_fields(doctype, fields=None):
+	if fields is None:
+		fields = []
+	meta = frappe.get_meta(doctype)
+	fields.extend(meta.get_search_fields())
+
+	if meta.title_field and meta.title_field.strip() not in fields:
+		fields.insert(1, meta.title_field.strip())
+
+	return unique(fields)
