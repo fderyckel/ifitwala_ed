@@ -7,7 +7,7 @@ frappe.treeview_settings["Employee"] = {
 		{
 			fieldname: "organization",
 			fieldtype: "Select",
-			options: ["All Organizations"].concat(erpnext.utils.get_tree_options("organization")),
+			options: ["All Organizations"].concat(ifitwala_ed.utils.get_tree_options("organization")),
 			label: __("Organization"),
 			default: erpnext.utils.get_tree_default("organization"),
 		},
