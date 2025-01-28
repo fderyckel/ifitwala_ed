@@ -17,7 +17,7 @@ from pypika import Order
 def employee_query(doctype, txt, searchfield, start, page_len, filters):
 	doctype = "Employee"
 	conditions = []
-	fields = get_fields(doctype, ["name", "employee_name"])
+	fields = get_fields(doctype, ["name", "employee_full_name"])
 
 	return frappe.db.sql(
 		"""select {fields} from `tabEmployee`
