@@ -9,9 +9,6 @@ frappe.pages["organizational-chart"].on_page_load = function (wrapper) {
 		frappe.require("hierarchy-chart.bundle.js", () => {
 			let organizational_chart;
 			let method = "ifitwala_ed.hr.page.organizational_chart.organizational_chart.get_children";
-			console.log("Fetching organization chart data...");
-
-      console.log("Organization chart data:", response.message);			
 
 			if (frappe.is_mobile()) {
 				organizational_chart = new ifitwala_ed.HierarchyChartMobile("Employee", wrapper, method);
