@@ -25,7 +25,7 @@ app_license = "MIT"
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "student_portal.css"
+app_include_css = "ifitwala_ed.bundle.css"
 
 app_include_js = ["ifitwala_ed.bundle.js", 
                   "hierarchy-chart.bundle.js",]
