@@ -15,7 +15,7 @@ frappe.pages["organizational-chart"].on_page_load = function (wrapper) {
       // Fetch and log the data
       frappe.call({
         method: method,
-        args: {},
+        args: { organization: "Ifitwala Organization" },
         callback: function (response) {
           console.log("Organization chart data:", response.message);
 
