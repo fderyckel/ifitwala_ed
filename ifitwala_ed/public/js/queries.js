@@ -2,9 +2,9 @@
 // For license information, please see license.txt
 
 // searches for enabled users
-frappe.provide("erpnext.queries");
+frappe.provide("ifitwala_ed.queries");
 
-$.extend(erpnext.queries, {
+$.extend(ifitwala_ed.queries, {
 	user: function () {
 		return { query: "frappe.core.doctype.user.user.user_query" };
 	},
