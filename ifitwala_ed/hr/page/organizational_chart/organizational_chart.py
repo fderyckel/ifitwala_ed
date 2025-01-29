@@ -6,9 +6,9 @@ from frappe.query_builder.functions import Count
 
 
 @frappe.whitelist()
-def get_children(parent=None, organization="All Organizations", exclude_node=None):
+def get_children(parent=None, organization="All Organizations", exclude_node=None): 
 	if not organization:
-    frappe.throw(_("Please select an organisation first."))
+		frappe.throw(_("Please select an organisation first."))
 
 	filters = [["status", "=", "Active"]]
 	if organization and organization != "All Organizations":
