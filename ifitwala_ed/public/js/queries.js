@@ -103,7 +103,7 @@ $.extend(ifitwala_ed.queries, {
 	},
 });
 
-erpnext.queries.setup_queries = function (frm, options, query_fn) {
+ifitwala_ed.queries.setup_queries = function (frm, options, query_fn) {
 	var me = this;
 	var set_query = function (doctype, parentfield) {
 		var link_fields = frappe.meta.get_docfields(doctype, frm.doc.name, {
