@@ -30,7 +30,6 @@ app_include_js = "ifitwala_ed.bundle.js"
 
 app_include_scss = "ifitwala_ed.bundle.scss"
 
-#app_include_scss = "ifitwala_ed.bundle.scss"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/ifitwala/css/ifitwala.css"
