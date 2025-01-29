@@ -1,5 +1,4 @@
 
-import html2canvas from "html2canvas";
 ifitwala_ed.HierarchyChartMobile = class {
 	/* Options:
 		- doctype
