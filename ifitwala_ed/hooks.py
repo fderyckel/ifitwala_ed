@@ -164,6 +164,7 @@ doc_events = {
       "on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"
     }, 
     "User":{
+      "after_insert": "frappe.contacts.doctype.contact.contact.update_contact",
       "validate": "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role", 
       "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions"
     }
