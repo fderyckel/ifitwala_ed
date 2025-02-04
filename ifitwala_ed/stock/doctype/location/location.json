@@ -3,6 +3,7 @@
  "allow_import": 1,
  "allow_rename": 1,
  "creation": "2024-12-02 20:50:27.272427",
+ "description": "Locations are the physical spaces within the organization.  They can be classroom, meetings rooms, offices, etc.  They are used for scheduling and assets monitoring.",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -85,7 +86,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2024-12-26 09:55:41.873220",
+ "modified": "2025-02-04 10:03:44.820022",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Location",

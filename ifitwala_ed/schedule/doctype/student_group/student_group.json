@@ -80,7 +80,6 @@
    "fieldname": "program",
    "fieldtype": "Link",
    "label": "Program",
-   "mandatory_depends_on": "eval:doc.group_based_on == 'Course'",
    "options": "Program"
   },
   {
@@ -152,13 +151,12 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Term",
-   "options": "Term",
-   "reqd": 1
+   "options": "Term"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-26 10:34:12.125250",
+ "modified": "2025-01-30 22:43:48.330112",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",

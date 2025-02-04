@@ -4,6 +4,7 @@
  "allow_rename": 1,
  "autoname": "field:program_name",
  "creation": "2024-12-06 07:18:22.173140",
+ "description": "Think of a program as a box that contains a list of courses.  All active students should be enrolled in a program. ",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -113,7 +114,7 @@
  "image_field": "program_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-06 11:31:10.036670",
+ "modified": "2025-02-04 10:06:02.253642",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",
