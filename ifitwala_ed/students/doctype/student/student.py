@@ -69,7 +69,7 @@ class Student(Document):
 					"email": self.student_email,
 					"username": self.student_email,
 					"gender": self.student_gender,
-					"language": self.student_first_language,
+					#"language": self.student_first_language,  # this create issue becuase language is not the same as the frappe language.
 					"send_welcome_email": 0,  # Set to 0 to disable welcome email during import
 					"user_type": "Website User"
 				})

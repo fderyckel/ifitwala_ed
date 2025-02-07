@@ -9,23 +9,35 @@ from ifitwala_ed.schedule.utils import validate_duplicate_student
 
 class StudentGroup(Document):
 	def autoname(self):
-		if self.group_based_on == "Course" or self.group_based_on == "Activity":
-			self.name = self.student_group_abbreviation + "/" + self.term
-		else:
+		if self.group_based_on == "Course" or self.group_based_on == "Activity": 
+			if self.term: 
+				self.name = self.student_group_abbreviation + "/" + self.term
+			else: 
+				self.name = self.student_group_abbreviation + "/" + self.academic_year
+		elif self.group_based_on == "Cohort":
 			self.name = self.student_group_abbreviation + "/" + self.cohort
+		else:
+			self.name = self.student_group_abbreviation
+		
 
 	def validate(self):
-		self.validate_term()
+		if self.term: 
+			self.validate_term()
 		self.validate_course()
 		self.validate_mandatory_fields()
 		self.validate_size()
 		self.validate_students()
 		self.validate_and_set_child_table_fields()
 		validate_duplicate_student(self.students)
-		if self.group_based_on == "Course" or self.group_based_on == "Activity":
-			self.title = self.student_group_abbreviation + "/" + self.term
-		else:
+		if self.group_based_on in ["Course", "Activity"]:
+			if self.term: 
+				self.title = self.student_group_abbreviation + "/" + self.term
+			else: 
+				self.title = self.student_group_abbreviation + "/" + self.academic_year
+		elif self.group_based_on == "Cohort":
 			self.title = self.student_group_abbreviation + "/" + self.cohort
+		else:
+			self.title = self.student_group_abbreviation
 
 	def validate_term(self):
 		term_year = frappe.get_doc("Term", self.term)
