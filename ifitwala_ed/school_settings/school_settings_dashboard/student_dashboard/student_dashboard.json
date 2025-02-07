@@ -16,11 +16,19 @@
    "width": "Half"
   },
   {
-   "chart": "Students by Gender",
+   "chart": "Students by First Nationality",
    "width": "Half"
   },
   {
-   "chart": "Students by First Language",
+   "chart": "Students by Second Language",
+   "width": "Half"
+  },
+  {
+   "chart": "Students by Second Nationality",
+   "width": "Half"
+  },
+  {
+   "chart": "Students by Gender",
    "width": "Half"
   },
   {
@@ -36,15 +44,15 @@
   }
  ],
  "creation": "2025-01-09 22:17:38.961559",
- "dashboard_name": "Admin Dashboard",
+ "dashboard_name": "Student Dashboard",
  "docstatus": 0,
  "doctype": "Dashboard",
  "idx": 0,
  "is_default": 0,
  "is_standard": 1,
- "modified": "2025-02-04 11:55:02.801306",
+ "modified": "2025-02-04 13:02:41.832142",
  "modified_by": "Administrator",
  "module": "School Settings",
- "name": "Admin Dashboard",
+ "name": "Student Dashboard",
  "owner": "Administrator"
 }

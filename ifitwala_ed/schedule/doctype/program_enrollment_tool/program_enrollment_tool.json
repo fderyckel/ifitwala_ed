@@ -34,7 +34,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Get Students From",
-   "options": "Get Students From\nOther",
+   "options": "Program Enrollment\nStudent Applicant\nOthers",
    "reqd": 1
   },
   {
@@ -59,7 +59,8 @@
    "fieldname": "academic_year",
    "fieldtype": "Link",
    "label": "Academic Year",
-   "options": "Academic Year"
+   "options": "Academic Year",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_pyyy",
@@ -68,7 +69,8 @@
   {
    "fieldname": "get_students",
    "fieldtype": "Button",
-   "label": "Get Students"
+   "label": "Get Students",
+   "options": "get_students"
   },
   {
    "fieldname": "students",
@@ -97,7 +99,8 @@
   {
    "fieldname": "enroll_students",
    "fieldtype": "Button",
-   "label": "Enroll Students"
+   "label": "Enroll Students",
+   "options": "enroll_students"
   },
   {
    "fieldname": "column_break_ekje",
@@ -132,7 +135,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-12-27 16:52:15.576259",
+ "modified": "2025-02-07 22:24:45.263376",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Tool",
