@@ -23,7 +23,7 @@ class StudentGroup(Document):
 	def validate(self):
 		if self.term: 
 			self.validate_term()
-		self.validate_course()
+		self.validate_program_and_course()
 		self.validate_mandatory_fields()
 		self.validate_size()
 		self.validate_students()
@@ -39,24 +39,29 @@ class StudentGroup(Document):
 		else:
 			self.title = self.student_group_abbreviation
 
-	def validate_term(self):
+	def validate_term(self) -> None:
 		term_year = frappe.get_doc("Term", self.term)
 		if self.academic_year != term_year.academic_year:
 			frappe.throw(_("The term {0} does not belong to the academic year {1}.").format(self.term, self.academic_year))
 
-	def validate_course(self):
-		courses = frappe.get_all("Program Course", fields = ["course_name"], filters = {"parent":self.program})
-		course_list = [course.course_name for course in courses]
-		if self.course not in course_list:
-			frappe.throw(_("{0} is not part of the {1} Program. Either select a different coures or the appropriate program.").format(self.course, get_link_to_form("Program", self.program)))
+def validate_program_and_course(self) -> None:
+	"""Validates the course against the program if group_based_on is 'Course'."""
+	# Added: Condition to check group_based_on and program before validating.
+	if self.group_based_on == "Course" and self.program:
+		if not self.course:
+			frappe.throw(_("Course is required when Group Based On is Course and a Program is selected."))
 
-	def validate_mandatory_fields(self):
+		# Changed: Use frappe.db.exists for efficient existence check.
+		if not frappe.db.exists("Program Course", {"parent": self.program, "course": self.course}):
+			frappe.throw(_("{0} is not a valid course for the {1} program. Please select a different course or the appropriate program."
+						).format(get_link_to_form("Course", self.course), get_link_to_form("Program", self.program))
+			)
+
+	def validate_mandatory_fields(self) -> None:
 		if self.group_based_on == "Course" and not self.course:
 			frappe.throw(_("Please select a course."))
 		if self.group_based_on == "Cohort" and not self.cohort:
 			frappe.throw(_("Please select a cohort."))
-		if self.group_based_on == "Course" and not self.program:
-			frappe.throw(_("Please select a program"))
 
 	# Throwing message if more students than maximum size in the group
 	def validate_size(self):
@@ -68,11 +73,47 @@ class StudentGroup(Document):
 	# you should not be able to make a group that include inactive students.
 	# this is to ensure students are still active students (aka not graduated or not transferred, etc.)
 	def validate_students(self):
-		program_enrollment = get_program_enrollment(self.academic_year, self.term, self.program, self.cohort, self.course)
-		students = [d.student for d in program_enrollment] if program_enrollment else []
-		for d in self.students:
-			if not frappe.db.get_value("Student", d.student, "enabled") and d.active and not self.disabled:
-				frappe.throw(_("{0} - {1} is inactive student".format(d.group_roll_number, d.student_name)))
+		if not self.students: 
+			return	# Nothing to validate if the child table is empty
+		
+		student_names = [s.student for s in self.students if s.student]
+		if not student_names:
+			return	# Nothing to validate if student names are not present
+		
+		enabled_map = frappe.db.get_value(
+			"Student", 
+			{"name": ("in", student_names)}, 
+			"enabled",
+			as_dict=True
+		)
+
+		# Convert to a dictionary for easy lookup: {student_name: enabled_status}
+		enabled_dict = {student: enabled for student, enabled in enabled_map}  
+		
+		for student in self.students: 
+			if not student.student:
+				continue
+
+      # Check if the student is enabled using the retrieved values 
+			is_enabled = enabled_dict.get(student.student) 
+			if is_enabled is None: 
+				frappe.throw(_("Student data not found for {0}").format(student.student))  
+				
+			if not is_enabled and student.active: 
+				frappe.throw(_("{0} - {1} is an inactive student").format(student.group_roll_number, student.student_name)) 
+				
+			# Program Enrollment Check (if applicable) 
+			if self.program: 
+				if not frappe.db.exists("Program Enrollment", {"student": student.student, "program": self.program, "academic_year": self.academic_year, "docstatus": 1}): 
+					frappe.throw(_("Student {0} ({1}) is not enrolled in the program {2} for academic year {3}."
+                    ).format(student.student_name, student.student, get_link_to_form("Program", self.program), self.academic_year)
+          )
+		
+			# Cohort check
+			if self.cohort: 
+				if not frappe.db.exists("Program Enrollment", {"student": student.student, "cohort": self.cohort, "academic_year": self.academic_year, "docstatus":1}): 
+					frappe.throw(_("Student {0} ({1}) is not in  cohort {2} for academic year {3}.").format(student.student_name,
+                        student.student, get_link_to_form("Student Cohort", self.cohort), self.academic_year))		
 
 	# to input the roll number field in child table
 	def validate_and_set_child_table_fields(self):
