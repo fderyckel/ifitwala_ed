@@ -44,18 +44,18 @@ class StudentGroup(Document):
 		if self.academic_year != term_year.academic_year:
 			frappe.throw(_("The term {0} does not belong to the academic year {1}.").format(self.term, self.academic_year))
 
-def validate_program_and_course(self) -> None:
-	"""Validates the course against the program if group_based_on is 'Course'."""
-	# Added: Condition to check group_based_on and program before validating.
-	if self.group_based_on == "Course" and self.program:
-		if not self.course:
-			frappe.throw(_("Course is required when Group Based On is Course and a Program is selected."))
+	def validate_program_and_course(self) -> None:
+		"""Validates the course against the program if group_based_on is 'Course'."""
+		# Added: Condition to check group_based_on and program before validating.
+		if self.group_based_on == "Course" and self.program:
+			if not self.course:
+				frappe.throw(_("Course is required when Group Based On is Course and a Program is selected."))
 
-		# Changed: Use frappe.db.exists for efficient existence check.
-		if not frappe.db.exists("Program Course", {"parent": self.program, "course": self.course}):
-			frappe.throw(_("{0} is not a valid course for the {1} program. Please select a different course or the appropriate program."
-						).format(get_link_to_form("Course", self.course), get_link_to_form("Program", self.program))
-			)
+			# Changed: Use frappe.db.exists for efficient existence check.
+			if not frappe.db.exists("Program Course", {"parent": self.program, "course": self.course}):
+				frappe.throw(_("{0} is not a valid course for the {1} program. Please select a different course or the appropriate program."
+							).format(get_link_to_form("Course", self.course), get_link_to_form("Program", self.program))
+				)
 
 	def validate_mandatory_fields(self) -> None:
 		if self.group_based_on == "Course" and not self.course:
