@@ -35,10 +35,8 @@ frappe.ui.form.on('Program Enrollment Tool', {
 	get_students: function(frm) {
 		frm.set_value("students", []);
 		frappe.call({
-			method: "ifitwala_ed.schedule.doctype.program_enrollment_tool.program_enrollment_tool.get_students",
-			args: {
-        doc: frm.doc,
-      },
+			doc: frm.doc,
+			method: "get_students",
 			callback: function(r) {
 				if(r.message) {
 					frm.set_value("students", r.message);
@@ -50,10 +48,8 @@ frappe.ui.form.on('Program Enrollment Tool', {
 	// logic for the "enroll student" button.
 	enroll_students: function(frm) {
 		frappe.call({
-			method: "ifitwawla_ed.schedule.doctype.program_enrollment_tool.program_enrollment_tool.enroll_students",
-			args: {
-        doc:frm.doc,
-      }, 
+			doc:frm.doc,
+			method: "enroll_students",
 			callback: function(r) {
 				frm.set_value("students", []);
 			}
