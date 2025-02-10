@@ -22,8 +22,24 @@ class ProgramEnrollmentTool(Document):
 		else:
 
 			if self.get_students_from == "Others":
-				frappe.throw(_("Not yet developped. Choose another option"))
+				frappe.throw(_("Not yet developped. Choose another option")) 
 			
+			elif self.get_students_from == "Cohort": 
+				# New branch for getting students by Cohort 
+				if not self.student_cohort: 
+					frappe.throw(_("Please specify the Student Cohort."))  
+				
+				student = frappe.qb.DocType("Student") 
+				query = frappe.qb.from_(student).select(
+					student.name.as_("student"),
+          student.student_full_name.as_("student_name"),
+          student.cohort.as_("student_cohort")
+          ).where(
+          (student.cohort == self.student_cohort)
+          & (student.enabled == 1)
+          )
+				students = query.run(as_dict=1)
+				
 			elif self.get_students_from == "Program Enrollment":
 				program_enrollment = frappe.qb.DocType("Program Enrollment")
 				query = frappe.qb.from_(program_enrollment).select(
