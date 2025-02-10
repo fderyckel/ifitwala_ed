@@ -14,8 +14,6 @@ class ProgramEnrollmentTool(Document):
 		students = []
 		if not self.get_students_from:
 			frappe.throw(_("Fill first the mandatory field: Get Students From.  Also fill, if not already done, Academic Year and Program."))
-		elif not self.program:
-			frappe.throw(_("Fill first the mandatory field: Program.  Also fill, if not already done, Program and Get Students From."))
 		elif not self.academic_year:
 			frappe.throw(_("Fill first the mandatory field: Academic Year.  Also fill, if not already done, Program and Get Students From."))
 
@@ -41,6 +39,8 @@ class ProgramEnrollmentTool(Document):
 				students = query.run(as_dict=1)
 				
 			elif self.get_students_from == "Program Enrollment":
+				if not self.program: 
+					frappe.throw(_("Please specify the Program first."))  				
 				program_enrollment = frappe.qb.DocType("Program Enrollment")
 				query = frappe.qb.from_(program_enrollment).select(
 					program_enrollment.student,
@@ -98,7 +98,7 @@ class ProgramEnrollmentTool(Document):
 				pe.cohort = stud.student_cohort if stud.student_cohort else self.new_student_cohort
 				pe.program = self.new_program
 				pe.academic_year = self.new_academic_year
-				pe.academic_term = self.new_academic_term if self.new_academic_term else ""
+				pe.academic_term = self.new_term if self.new_term else ""
 				pe.enrollment_date = enrdate
 				pe.save()
 		frappe.msgprint(_("{0} students have been enrolled").format(total))
