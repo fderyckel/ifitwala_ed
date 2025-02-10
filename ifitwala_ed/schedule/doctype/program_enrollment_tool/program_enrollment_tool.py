@@ -81,12 +81,13 @@ class ProgramEnrollmentTool(Document):
 	@frappe.whitelist()
 	def enroll_students(self):
 		total = len(self.students)	# note how this gives the length (number of row) of a child table
-		term_start = frappe.get_doc("Term", self.new_term)
-		year_start = frappe.get_doc("Academic Year", self.new_academic_year)
+		
 		enrdate = getdate(today())
 		if self.new_academic_year:
+			year_start = frappe.get_doc("Academic Year", self.new_academic_year)
 			enrdate = getdate(year_start.year_start_date)
 		if self.new_term:
+			term_start = frappe.get_doc("Term", self.new_term)
 			enrdate = getdate(term_start.term_start_date)
 
 		for i, stud in enumerate(self.students):
