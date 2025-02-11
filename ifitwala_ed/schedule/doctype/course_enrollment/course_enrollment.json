@@ -13,7 +13,7 @@
   "column_break_9kt3",
   "course",
   "enrollment_date",
-  "status"
+  "current"
  ],
  "fields": [
   {
@@ -53,7 +53,7 @@
   {
    "fetch_from": "program_enrollment.academic_year",
    "fieldname": "academic_year",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Academic Year",
    "options": "Academic Year",
@@ -72,17 +72,16 @@
    "set_only_once": 1
   },
   {
-   "default": "Current",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "Current\nRetired",
+   "default": "1",
+   "fieldname": "current",
+   "fieldtype": "Check",
+   "label": "Current",
    "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-24 17:58:47.413882",
+ "modified": "2025-02-11 07:19:56.961151",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Course Enrollment",

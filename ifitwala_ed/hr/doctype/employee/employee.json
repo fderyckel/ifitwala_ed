@@ -71,7 +71,8 @@
   "is_group",
   "lft",
   "rgt",
-  "old_parent"
+  "old_parent",
+  "dashboard_tab"
  ],
  "fields": [
   {
@@ -474,13 +475,19 @@
    "fieldtype": "Link",
    "label": "Employee Group",
    "options": "Employee Group"
+  },
+  {
+   "fieldname": "dashboard_tab",
+   "fieldtype": "Tab Break",
+   "label": "Dashboard",
+   "show_dashboard": 1
   }
  ],
  "image_field": "employee_image",
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-01-28 07:12:57.712430",
+ "modified": "2025-02-11 14:03:04.532400",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",

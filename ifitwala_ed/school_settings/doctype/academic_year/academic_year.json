@@ -12,6 +12,7 @@
   "academic_year_name",
   "column_break_iudv",
   "school",
+  "status",
   "section_break_eha5",
   "year_start_date",
   "column_break_w4nd",
@@ -109,12 +110,19 @@
    "options": "School",
    "remember_last_selected_value": 1,
    "reqd": 1
+  },
+  {
+   "default": "1",
+   "description": "Box should be check if this is the currently active Academic Year. Box should be unchecked once the Academic Year is over. ",
+   "fieldname": "status",
+   "fieldtype": "Check",
+   "label": "Status"
   }
  ],
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-16 07:34:16.888747",
+ "modified": "2025-02-11 13:58:49.050032",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",

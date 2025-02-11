@@ -2,6 +2,7 @@
  "based_on": "",
  "chart_name": "Enrolled Students by School",
  "chart_type": "Group By",
+ "color": "#B4CD29",
  "creation": "2025-01-09 22:49:27.427009",
  "docstatus": 0,
  "doctype": "Dashboard Chart",
@@ -13,19 +14,27 @@
  "idx": 0,
  "is_public": 0,
  "is_standard": 1,
- "modified": "2025-01-09 22:49:27.427009",
+ "last_synced_on": "2025-02-10 15:04:11.078802",
+ "modified": "2025-02-10 15:06:59.615543",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Enrolled Students by School",
  "number_of_groups": 0,
  "owner": "Administrator",
  "parent_document_type": "",
- "roles": [],
+ "roles": [
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Curriculum Coordinator"
+  }
+ ],
  "source": "",
  "time_interval": "Yearly",
  "timeseries": 0,
  "timespan": "Last Year",
- "type": "Line",
+ "type": "Bar",
  "use_report_chart": 0,
  "value_based_on": "",
  "y_axis": []

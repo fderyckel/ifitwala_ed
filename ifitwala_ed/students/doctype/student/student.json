@@ -26,21 +26,23 @@
   "student_nationality",
   "student_second_nationality",
   "cohort",
-  "home_address_section",
-  "contact_html",
-  "column_break_mdf1",
-  "address_html",
-  "guardians_section",
-  "guardians",
-  "siblings_section",
-  "siblings",
   "exit_section",
   "student_exit_date",
   "student_exit_reason",
   "enabled",
   "column_break_czxj",
   "additional_comment",
-  "student_full_name"
+  "student_full_name",
+  "dashboard_tab",
+  "guardians_tab",
+  "guardians_section",
+  "guardians",
+  "siblings_section",
+  "siblings",
+  "home_address_section",
+  "contact_html",
+  "column_break_mdf1",
+  "address_html"
  ],
  "fields": [
   {
@@ -262,12 +264,23 @@
    "fieldname": "additional_comment",
    "fieldtype": "Text Editor",
    "label": "Additional Comment"
+  },
+  {
+   "fieldname": "dashboard_tab",
+   "fieldtype": "Tab Break",
+   "label": "Dashboard",
+   "show_dashboard": 1
+  },
+  {
+   "fieldname": "guardians_tab",
+   "fieldtype": "Tab Break",
+   "label": "Family and Address"
   }
  ],
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-17 13:05:25.572009",
+ "modified": "2025-02-11 12:59:07.053481",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",

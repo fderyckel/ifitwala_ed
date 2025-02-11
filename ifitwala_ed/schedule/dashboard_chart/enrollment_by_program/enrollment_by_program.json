@@ -13,7 +13,8 @@
  "idx": 0,
  "is_public": 0,
  "is_standard": 1,
- "modified": "2025-01-09 22:33:35.645333",
+ "last_synced_on": "2025-02-10 15:14:23.291512",
+ "modified": "2025-02-10 15:15:05.416625",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Enrollment By Program",
@@ -25,7 +26,7 @@
  "time_interval": "Yearly",
  "timeseries": 0,
  "timespan": "Last Year",
- "type": "Pie",
+ "type": "Bar",
  "use_report_chart": 0,
  "value_based_on": "",
  "y_axis": []

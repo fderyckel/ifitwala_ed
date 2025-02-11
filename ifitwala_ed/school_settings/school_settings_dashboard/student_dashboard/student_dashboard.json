@@ -1,16 +1,10 @@
 {
  "cards": [
   {
-   "card": "Number of Students Enrolled"
-  },
-  {
-   "card": "Number of Courses"
+   "card": "Number of Active Students"
   }
  ],
  "charts": [
-  {
-   "width": "Half"
-  },
   {
    "chart": "Students by First Language",
    "width": "Half"
@@ -30,17 +24,6 @@
   {
    "chart": "Students by Gender",
    "width": "Half"
-  },
-  {
-   "width": "Full"
-  },
-  {
-   "chart": "Enrollment By Program",
-   "width": "Half"
-  },
-  {
-   "chart": "Enrolled Students by School",
-   "width": "Half"
   }
  ],
  "creation": "2025-01-09 22:17:38.961559",
@@ -50,7 +33,7 @@
  "idx": 0,
  "is_default": 0,
  "is_standard": 1,
- "modified": "2025-02-04 13:02:41.832142",
+ "modified": "2025-02-10 15:13:42.488906",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Student Dashboard",

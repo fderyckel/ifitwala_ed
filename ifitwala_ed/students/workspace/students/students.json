@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"cC3uR-LMl7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students</span>\",\"col\":12}},{\"id\":\"3yLEn1ktSt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Students\",\"col\":3}},{\"id\":\"gYrrSnLhqm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log\",\"col\":3}},{\"id\":\"7IQuivH16s\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Events\",\"col\":3}},{\"id\":\"MqGuK03POl\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Guardians\",\"col\":3}},{\"id\":\"ZSzWDk7aWM\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log Follow Up\",\"col\":3}}]",
+ "content": "[{\"id\":\"cC3uR-LMl7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students</span>\",\"col\":12}},{\"id\":\"VXnehq0TQa\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Demographics\",\"col\":6}},{\"id\":\"3yLEn1ktSt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Students\",\"col\":3}},{\"id\":\"gYrrSnLhqm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log\",\"col\":3}},{\"id\":\"7IQuivH16s\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Events\",\"col\":3}},{\"id\":\"MqGuK03POl\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Guardians\",\"col\":3}},{\"id\":\"ZSzWDk7aWM\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log Follow Up\",\"col\":3}}]",
  "creation": "2025-01-12 12:30:32.526105",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Students",
  "links": [],
- "modified": "2025-01-19 09:36:34.515632",
+ "modified": "2025-02-10 14:57:28.731312",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Students",
@@ -25,6 +25,13 @@
  "roles": [],
  "sequence_id": 1.0,
  "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Student Demographics",
+   "link_to": "Student Dashboard",
+   "type": "Dashboard"
+  },
   {
    "color": "Grey",
    "doc_view": "List",
