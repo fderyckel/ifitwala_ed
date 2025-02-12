@@ -5,8 +5,8 @@ from frappe import _
 
 def get_data(): 
   return {
-    fieldname: "student",
-    transactions: [
+    "fieldname": "student",
+    "transactions": [
       {
         label: _("Academic"),
         items: ["Program Enrollment", "Course Enrollment", "Student Group"]
