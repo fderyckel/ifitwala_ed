@@ -57,7 +57,40 @@ class ProgramEnrollment(Document):
 		if existing_enrollment_name: 
 			student_name = frappe.db.get_value("student", self.student, "student_name")
 			link_to_existing_enrollment = get_link_to_form("Program Enrollment", existing_enrollment_name)
-			frappe.throw(_("Student {0} is already enrolled in this program for this term. See existing enrollment {1}").format(student_name, link_to_existing_enrollment))
+			frappe.throw(_("Student {0} is already enrolled in this program for this term. See existing enrollment {1}").format(student_name, link_to_existing_enrollment)) 
+			
+	def validate_only_one_active_enrollment(self): 
+		"""
+    Checks if there's another active (status=1) Program Enrollment for the same student.
+    Raises an error if another active enrollment is found.
+    """ 
+		if not self.status: 
+			return # if status is not checked. 
+		
+		existing_enrollment = frappe.db.get_value( 
+			"Program Enrollment", 
+			{ 
+				"student": self.student, 
+				"status": 1,  # Check for active enrollments 
+				"name": ("!=", self.name),  # Exclude the current document 
+				"docstatus": ("<", 2) # not cancelled or draft 
+			}, 
+			["name", "program", "academic_year"],  # Retrieve name, program and year for the error message 
+			as_dict=True
+		) 
+		
+		if existing_enrollment: 
+			frappe.throw(_( 
+				"Student {0} already has an active Program Enrollment for program {1} in academic year {2}.  See {3}."
+			).format( 
+					self.student_name, 
+					get_link_to_form("Program", existing_enrollment.program), 
+					existing_enrollment.academic_year, 
+					get_link_to_form("Program Enrollment", existing_enrollment.name)
+					),title=_("Active Enrollment Exists") # added for better UI message.
+      )
+
+
 
 	# If a student is in a program and that program has required courses (non elective), then these courses are loaded automatically.
 	@frappe.whitelist()

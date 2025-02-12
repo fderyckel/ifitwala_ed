@@ -8,15 +8,16 @@ def get_data():
     "fieldname": "student",
     "transactions": [
       {
-        label: _("Academic"),
-        items: ["Program Enrollment", "Course Enrollment", "Student Group"]
+        "label": _("Academic"),
+        "items": ["Program Enrollment", "Course Enrollment", "Student Group"]
       }, 
-      {label: _("Communication"),
-       items: ["Student Log"]
+      {
+        "label": _("Communication"),
+        "items": ["Student Log"]
        }, 
       {
-        label: _("Health"),
-        items: ["Student Patient", "Student Patient Visit"]
+        "label": _("Health"),
+        "items": ["Student Patient", "Student Patient Visit"]
       }
     ]
   }
