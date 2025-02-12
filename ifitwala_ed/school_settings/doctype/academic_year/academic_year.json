@@ -21,7 +21,8 @@
   "ay_start",
   "column_break_co9o",
   "ay_end",
-  "title"
+  "title",
+  "connections_tab"
  ],
  "fields": [
   {
@@ -117,12 +118,33 @@
    "fieldname": "status",
    "fieldtype": "Check",
    "label": "Status"
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections"
   }
  ],
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2025-02-11 13:58:49.050032",
+ "links": [
+  {
+   "group": "Terms and Programs ",
+   "link_doctype": "Term",
+   "link_fieldname": "academic_year"
+  },
+  {
+   "group": "Terms and Programs ",
+   "link_doctype": "Program Enrollment",
+   "link_fieldname": "academic_year"
+  },
+  {
+   "group": "Terms and Programs ",
+   "link_doctype": "Course Enrollment",
+   "link_fieldname": "academic_year"
+  }
+ ],
+ "modified": "2025-02-13 01:13:04.469133",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",
@@ -142,13 +164,16 @@
    "write": 1
   },
   {
+   "create": 1,
+   "delete": 1,
    "email": 1,
+   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Curriculum Coordinator",
-   "select": 1,
-   "share": 1
+   "role": "Organization IT",
+   "share": 1,
+   "write": 1
   },
   {
    "create": 1,
@@ -164,16 +189,13 @@
    "write": 1
   },
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Organization IT",
-   "share": 1,
-   "write": 1
+   "role": "Curriculum Coordinator",
+   "select": 1,
+   "share": 1
   },
   {
    "create": 1,

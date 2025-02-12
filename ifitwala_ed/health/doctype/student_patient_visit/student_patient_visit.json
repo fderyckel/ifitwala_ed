@@ -237,7 +237,7 @@
  "image_field": "photo",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-12 11:07:32.093340",
+ "modified": "2025-02-13 01:18:39.350322",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient Visit",
@@ -284,7 +284,7 @@
    "share": 1
   }
  ],
- "search_fields": "student_name, gender",
+ "search_fields": "student_name",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

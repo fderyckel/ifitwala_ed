@@ -280,7 +280,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-11 12:59:07.053481",
+ "modified": "2025-02-13 01:16:49.713313",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
@@ -339,7 +339,7 @@
    "role": "Counselor"
   }
  ],
- "search_fields": "student_full_name, student_preferred_name",
+ "search_fields": "student_full_name, student_preferred_name, student_first_name, student_last_name",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

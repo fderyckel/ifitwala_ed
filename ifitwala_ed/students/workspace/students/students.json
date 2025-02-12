@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"cC3uR-LMl7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students</span>\",\"col\":12}},{\"id\":\"VXnehq0TQa\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Demographics\",\"col\":6}},{\"id\":\"3yLEn1ktSt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Students\",\"col\":3}},{\"id\":\"gYrrSnLhqm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log\",\"col\":3}},{\"id\":\"7IQuivH16s\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Events\",\"col\":3}},{\"id\":\"MqGuK03POl\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Guardians\",\"col\":3}},{\"id\":\"ZSzWDk7aWM\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log Follow Up\",\"col\":3}}]",
+ "content": "[{\"id\":\"cC3uR-LMl7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students</span>\",\"col\":12}},{\"id\":\"3yLEn1ktSt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Students\",\"col\":3}},{\"id\":\"VXnehq0TQa\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Demographics\",\"col\":3}},{\"id\":\"7IQuivH16s\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Events\",\"col\":3}},{\"id\":\"7TNlZk2eVz\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"klHzqEQXNG\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs & Attendance\",\"col\":4}}]",
  "creation": "2025-01-12 12:30:32.526105",
  "custom_blocks": [],
  "docstatus": 0,
@@ -12,8 +12,67 @@
  "indicator_color": "",
  "is_hidden": 0,
  "label": "Students",
- "links": [],
- "modified": "2025-02-10 14:57:28.731312",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Students",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student",
+   "link_count": 0,
+   "link_to": "Student",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Guardian",
+   "link_count": 0,
+   "link_to": "Guardian",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Logs & Attendance",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Log",
+   "link_count": 0,
+   "link_to": "Student Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Log Follow up ",
+   "link_count": 0,
+   "link_to": "Student Log Follow Up",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-02-11 15:30:47.374430",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Students",
@@ -33,42 +92,18 @@
    "type": "Dashboard"
   },
   {
+   "color": "Pink",
+   "doc_view": "Calendar",
+   "label": "School Events",
+   "link_to": "School Event",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
    "color": "Grey",
    "doc_view": "List",
    "label": "Students",
    "link_to": "Student",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Guardians",
-   "link_to": "Guardian",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Student Log Follow Up",
-   "link_to": "Student Log Follow Up",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Student Log",
-   "link_to": "Student Log",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "Calendar",
-   "label": "School Events",
-   "link_to": "School Event",
    "stats_filter": "[]",
    "type": "DocType"
   }
