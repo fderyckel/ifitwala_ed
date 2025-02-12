@@ -17,7 +17,7 @@ def get_data():
        }, 
       {
         "label": _("Health"),
-        "items": ["Student Patient", "Student Patient Visit"]
+        "items": ["Student Patient"]
       }
     ]
   }
