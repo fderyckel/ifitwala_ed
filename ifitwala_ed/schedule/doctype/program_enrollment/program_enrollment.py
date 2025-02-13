@@ -40,6 +40,9 @@ class ProgramEnrollment(Document):
 			if self.enrollment_date and getdate(term_dates.term_end_date) and getdate(self.enrollment_date) > getdate(term_dates.term_end_date):
 				frappe.throw(_("The enrollment date for this program is after the end the term.  Pease revise the joining date or change the term {0}.").format(get_link_to_form("Term", self.term)))
 
+	def before_submit(self):
+		self.validate_only_one_active_enrollment()
+
 	def on_submit(self):
 		self.update_student_joining_date()
 		self.create_course_enrollment()
