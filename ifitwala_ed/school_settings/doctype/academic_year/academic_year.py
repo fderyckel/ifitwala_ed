@@ -123,4 +123,36 @@ class AcademicYear(Document):
         	})
             end_year.insert()
             self.db_set("ay_end", end_year.name)
-            frappe.msgprint(_("Date for the end of the year {0} has been created on the School Event Calendar {1}").format(self.year_end_date, get_link_to_form("School Event", end_year.name))) 
+            frappe.msgprint(_("Date for the end of the year {0} has been created on the School Event Calendar {1}").format(self.year_end_date, get_link_to_form("School Event", end_year.name)))  
+
+    @frappe.whitelist()
+    def retire_ay(self):
+        # Retire all active Program Enrollments for this Academic Year
+        frappe.db.sql("""
+            UPDATE `tabProgram Enrollment`
+            SET status = 0
+            WHERE academic_year = %s
+            AND docstatus = 1
+            AND status = 1
+        """, (self.name,))
+        
+        # Retire all active Course Enrollments for this Academic Year
+        frappe.db.sql("""
+            UPDATE `tabCourse Enrollment`
+            SET status = 0
+            WHERE academic_year = %s
+            AND docstatus = 1
+            AND status = 1
+        """, (self.name,))
+        
+        # Update the Academic Year's own status to indicate it is retired
+        self.db_set("status", 0)
+        frappe.db.commit()
+        frappe.msgprint(_("Academic Year retired successfully."))
+        return "Academic Year retired successfully."   
+
+@frappe.whitelist()
+def retire_academic_year(academic_year):
+    # Fetch the Academic Year doc and call its retire method
+    doc = frappe.get_doc("Academic Year", academic_year)
+    return doc.retire_ay() 

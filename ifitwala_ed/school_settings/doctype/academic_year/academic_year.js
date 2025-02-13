@@ -3,6 +3,35 @@
 
 frappe.ui.form.on("Academic Year", {
   refresh: function (frm) {
+    // Add "Retire Academic Year" button if the document is not new and is active
+    if (!frm.is_new() && frm.doc.status == 1) {
+      frm.add_custom_button(__("Retire Academic Year"), function() {
+        frappe.confirm(
+          __("Are you sure you want to continue?"),
+          function() {
+            // On confirm, call the server-side method to retire the academic year
+            frappe.call({
+              method: "ifitwala_ed.school_settings.doctype.academic_year.academic_year.retire_academic_year", // Update with your correct module path
+              args: {
+                academic_year: frm.doc.name
+              },
+              callback: function(r) {
+                if (r.message) {
+                  frappe.msgprint(r.message);
+                  // Optionally update the form field to reflect the retired status
+                  frm.set_value("status", 0);
+                }
+              }
+            });
+          },
+          function() {
+            // On cancel, do nothing
+          }
+        );
+      }, __("Actions")).addClass("btn-danger");
+    }
+    
+    // Custom button for creating term
     if (!frm.is_new()) {
       frm.add_custom_button(__("Create Term"), () => {
         frappe.new_doc("Term", {}, ay => {
