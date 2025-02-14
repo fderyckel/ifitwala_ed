@@ -40,7 +40,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2025-02-14 09:56:52.423338",
+ "modified": "2025-02-14 13:41:11.030629",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Course Enrollment",
@@ -49,7 +49,7 @@
  "query": "SELECT\n    pe.program as program,\n    pe.school as school,\n    COUNT(ce.name) as enrollment_count\nFROM `tabCourse Enrollment` ce\nJOIN `tabProgram Enrollment` pe ON ce.program_enrollment = pe.name\nWHERE 1=1 {{conditions}}\nGROUP BY pe.program, pe.school\nORDER BY enrollment_count DESC",
  "ref_doctype": "Course Enrollment",
  "report_name": "Course Enrollment",
- "report_type": "Query Report",
+ "report_type": "Script Report",
  "roles": [],
  "timeout": 0
 }
