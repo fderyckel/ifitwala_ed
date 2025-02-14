@@ -22,13 +22,16 @@ def execute(filters=None):
 
 def get_program_columns(filters):
     return [
-        {"label": "Academic Year", "fieldname": "academic_year", "fieldtype": "Data", "width": 200},
+        {"label": "Academic Year", "fieldname": "academic_year", "fieldtype": "Link", "options": "Academic Year", "width": 200},
+        {"label": "Program", "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 200},
         {"label": "Enrollment Count", "fieldname": "enrollment_count", "fieldtype": "Int", "width": 150},
     ]
 
 def get_program_data(filters):
-    # Build dynamic conditions; none of the filters (school, program, academic_year) are compulsory.
+    # Build dynamic conditions; none of the filters are compulsory.
     conditions = []
+    conditions.append("status = 1")           # Only active enrollments
+    conditions.append("docstatus < 2")          # Not cancelled (draft or submitted)
     
     if filters.get("school"):
         conditions.append("school = %(school)s")
@@ -37,27 +40,32 @@ def get_program_data(filters):
     if filters.get("academic_year"):
         conditions.append("academic_year = %(academic_year)s")
     
-    # Build the WHERE clause only if there are conditions
     where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
     
     sql = f"""
     SELECT
-        IFNULL(academic_year, 'Not Specified') as academic_year,
-        COUNT(name) as enrollment_count
-    FROM `tabProgram Enrollment`
+        pe.academic_year as academic_year,
+        pe.program as program,
+        COUNT(pe.name) as enrollment_count,
+        ay.year_start_date as year_start_date
+    FROM `tabProgram Enrollment` pe
+    LEFT JOIN `tabAcademic Year` ay ON pe.academic_year = ay.name
     {where_clause}
-    GROUP BY academic_year
-    ORDER BY enrollment_count DESC
+    GROUP BY pe.academic_year, pe.program, ay.year_start_date
+    ORDER BY ay.year_start_date DESC
     """
     
     return frappe.db.sql(sql, filters, as_dict=True)
 
 def get_program_chart_data(data):
+    # For chart labels, we concatenate Academic Year and Program.
+    labels = [f"{row.academic_year} - {row.program}" for row in data]
+    values = [row.enrollment_count for row in data]
     return {
         "data": {
-            "labels": [row.academic_year for row in data],
+            "labels": labels,
             "datasets": [
-                {"name": "Enrollments", "values": [row.enrollment_count for row in data]}
+                {"name": "Enrollments", "values": values}
             ]
         },
         "type": "bar",
@@ -72,8 +80,8 @@ def get_course_columns(filters):
     ]
 
 def get_course_data(filters):
-    # Build dynamic conditions; school, program, and academic_year filters are optional.
-    conditions = ["ce.current = 1"]
+    # Build dynamic conditions; school, program, and academic_year are optional.
+    conditions = ["ce.current = 1", "ce.docstatus < 2"]
     
     if filters.get("academic_year"):
         conditions.append("ce.academic_year = %(academic_year)s")
@@ -98,14 +106,15 @@ def get_course_data(filters):
     return frappe.db.sql(sql, filters, as_dict=True)
 
 def get_course_chart_data(data):
+    labels = [row.course for row in data]
+    values = [row.enrollment_count for row in data]
     return {
         "data": {
-            "labels": [row.course for row in data],
-            "datasets": [
-                {"name": "Enrollments", "values": [row.enrollment_count for row in data]}
-            ]
+            "labels": labels,
+            "datasets": [{"name": "Enrollments", "values": values}]
         },
         "type": "bar",
         "fieldtype": "Data",
         "colors": ["#7cd6fd"]
     }
+
