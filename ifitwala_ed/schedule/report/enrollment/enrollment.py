@@ -3,6 +3,8 @@
 
 import frappe
 
+import frappe
+
 def execute(filters=None):
     if not filters:
         filters = {}
@@ -27,7 +29,7 @@ def get_program_columns(filters):
     ]
 
 def get_program_data(filters):
-    
+    # Build dynamic conditions; none of the filters (school, program, academic_year) are compulsory.
     conditions = []
     
     if filters.get("school"):
@@ -37,17 +39,19 @@ def get_program_data(filters):
     if filters.get("academic_year"):
         conditions.append("academic_year = %(academic_year)s")
     
-    condition_sql = " AND ".join(conditions)
+    # Build the WHERE clause only if there are conditions
+    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
     
     sql = f"""
     SELECT
         IFNULL(academic_year, 'Not Specified') as academic_year,
         COUNT(name) as enrollment_count
     FROM `tabProgram Enrollment`
-    WHERE {condition_sql}
+    {where_clause}
     GROUP BY academic_year
     ORDER BY enrollment_count DESC
     """
+    
     return frappe.db.sql(sql, filters, as_dict=True)
 
 def get_program_chart_data(data):
@@ -70,7 +74,7 @@ def get_course_columns(filters):
     ]
 
 def get_course_data(filters):
-    # Build dynamic conditions; school, program, and academic_year filters are optional
+    # Build dynamic conditions; school, program, and academic_year filters are optional.
     conditions = ["ce.current = 1"]
     
     if filters.get("academic_year"):
@@ -80,7 +84,7 @@ def get_course_data(filters):
     if filters.get("program"):
         conditions.append("pe.program = %(program)s")
     
-    condition_sql = " AND ".join(conditions)
+    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
     
     sql = f"""
     SELECT
@@ -88,7 +92,7 @@ def get_course_data(filters):
         COUNT(ce.name) as enrollment_count
     FROM `tabCourse Enrollment` ce
     JOIN `tabProgram Enrollment` pe ON ce.program_enrollment = pe.name
-    WHERE {condition_sql}
+    {where_clause}
     GROUP BY ce.course
     ORDER BY enrollment_count DESC
     """
@@ -107,4 +111,3 @@ def get_course_chart_data(data):
         "fieldtype": "Data",
         "colors": ["#7cd6fd"]
     }
-
