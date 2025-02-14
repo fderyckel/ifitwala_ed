@@ -30,34 +30,6 @@ class AcademicYear(Document):
         if self.year_start_date and self.year_end_date:
             self.create_calendar_events()
 
-    def on_trash(self): 
-        ## This is just a trial... it will effectively not worked once the AY is linked to other documents. 
-        ## this is just in case you want to delete an academic year that has not been linked to any other document except of the 2 school events.
-
-        # first inform user that we will also delete the 2 school events related to that academic year
-        frappe.msgprint(_("This will also delete the 2 School Events related to this Academic Year."), 
-                        title = _("Warning"), indicator = "orange")
-        
-        # delete the 2 school events related to the academic year
-        try:
-            # Efficiently delete the records using frappe.db.delete
-            frappe.db.delete(
-                "School Event",
-                {
-                    "reference_type": "Academic Year",
-                    "reference_name": self.name
-                }
-            )
-            frappe.db.commit() # Commit the changes to the database
-            frappe.msgprint(_("The School Events related to this Academic Year have been deleted."),
-                            title=_("Deletion Successful"), indicator="green")
-
-        except Exception as e:
-            frappe.msgprint(_("An error occurred while deleting School Events: {0}").format(e),
-                            title=_("Deletion Error"), indicator="red")
-            frappe.db.rollback() # Rollback in case of an error to prevent data corruption
-            raise
-
     def validate_duplicate(self):
         year = frappe.db.exists("Academic Year", 
                               {
@@ -139,10 +111,10 @@ class AcademicYear(Document):
         # Retire all active Course Enrollments for this Academic Year
         frappe.db.sql("""
             UPDATE `tabCourse Enrollment`
-            SET status = 0
+            SET current = 0
             WHERE academic_year = %s
-            AND docstatus = 1
-            AND status = 1
+            AND docstatus = 0
+            AND current = 1
         """, (self.name,))
         
         # Update the Academic Year's own status to indicate it is retired
