@@ -3,8 +3,6 @@
 
 import frappe
 
-import frappe
-
 def execute(filters=None):
     if not filters:
         filters = {}
