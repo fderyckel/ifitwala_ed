@@ -22,29 +22,30 @@ def execute(filters=None):
 
 def get_program_columns(filters):
     return [
-        {"label": "Term", "fieldname": "term", "fieldtype": "Data", "width": 200},
+        {"label": "Academic Year", "fieldname": "academic_year", "fieldtype": "Data", "width": 200},
         {"label": "Enrollment Count", "fieldname": "enrollment_count", "fieldtype": "Int", "width": 150},
     ]
 
 def get_program_data(filters):
-    # Validate required filters for Program view
-    if not filters.get("school") or not filters.get("program"):
-        frappe.throw("Please set School and Program filters.")
     
-    term_condition = ""
-    if filters.get("term"):
-        term_condition = "AND term = %(term)s"
+    conditions = []
+    
+    if filters.get("school"):
+        conditions.append("school = %(school)s")
+    if filters.get("program"):
+        conditions.append("program = %(program)s")
+    if filters.get("academic_year"):
+        conditions.append("academic_year = %(academic_year)s")
+    
+    condition_sql = " AND ".join(conditions)
     
     sql = f"""
     SELECT
-        IFNULL(term, 'Not Specified') as term,
+        IFNULL(academic_year, 'Not Specified') as academic_year,
         COUNT(name) as enrollment_count
     FROM `tabProgram Enrollment`
-    WHERE status = 1
-      AND school = %(school)s
-      AND program = %(program)s
-      {term_condition}
-    GROUP BY term
+    WHERE {condition_sql}
+    GROUP BY academic_year
     ORDER BY enrollment_count DESC
     """
     return frappe.db.sql(sql, filters, as_dict=True)
@@ -52,7 +53,7 @@ def get_program_data(filters):
 def get_program_chart_data(data):
     return {
         "data": {
-            "labels": [row.term for row in data],
+            "labels": [row.academic_year for row in data],
             "datasets": [
                 {"name": "Enrollments", "values": [row.enrollment_count for row in data]}
             ]
@@ -69,23 +70,29 @@ def get_course_columns(filters):
     ]
 
 def get_course_data(filters):
-    # Validate required filters for Course view
-    if not filters.get("school") or not filters.get("program") or not filters.get("academic_year"):
-        frappe.throw("Please set School, Program, and Academic Year filters.")
+    # Build dynamic conditions; school, program, and academic_year filters are optional
+    conditions = ["ce.current = 1"]
     
-    sql = """
+    if filters.get("academic_year"):
+        conditions.append("ce.academic_year = %(academic_year)s")
+    if filters.get("school"):
+        conditions.append("pe.school = %(school)s")
+    if filters.get("program"):
+        conditions.append("pe.program = %(program)s")
+    
+    condition_sql = " AND ".join(conditions)
+    
+    sql = f"""
     SELECT
         ce.course as course,
         COUNT(ce.name) as enrollment_count
     FROM `tabCourse Enrollment` ce
     JOIN `tabProgram Enrollment` pe ON ce.program_enrollment = pe.name
-    WHERE ce.current = 1
-      AND ce.academic_year = %(academic_year)s
-      AND pe.school = %(school)s
-      AND pe.program = %(program)s
+    WHERE {condition_sql}
     GROUP BY ce.course
     ORDER BY enrollment_count DESC
     """
+    
     return frappe.db.sql(sql, filters, as_dict=True)
 
 def get_course_chart_data(data):
