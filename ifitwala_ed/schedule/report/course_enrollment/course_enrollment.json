@@ -1,0 +1,55 @@
+{
+ "add_total_row": 0,
+ "columns": [],
+ "creation": "2025-02-14 09:51:46.021116",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [
+  {
+   "fieldname": "Program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "mandatory": 0,
+   "options": "Program",
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "School",
+   "fieldtype": "Link",
+   "label": "School",
+   "mandatory": 0,
+   "options": "School",
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date",
+   "mandatory": 0,
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date",
+   "mandatory": 0,
+   "wildcard_filter": 0
+  }
+ ],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letterhead": null,
+ "modified": "2025-02-14 09:56:52.423338",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "Course Enrollment",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "SELECT\n    pe.program as program,\n    pe.school as school,\n    COUNT(ce.name) as enrollment_count\nFROM `tabCourse Enrollment` ce\nJOIN `tabProgram Enrollment` pe ON ce.program_enrollment = pe.name\nWHERE 1=1 {{conditions}}\nGROUP BY pe.program, pe.school\nORDER BY enrollment_count DESC",
+ "ref_doctype": "Course Enrollment",
+ "report_name": "Course Enrollment",
+ "report_type": "Query Report",
+ "roles": [],
+ "timeout": 0
+}
