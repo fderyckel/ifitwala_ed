@@ -30,16 +30,19 @@ def get_program_columns(filters):
 def get_program_data(filters):
     # Build dynamic conditions; none of the filters are compulsory.
     conditions = []
-    conditions.append("status = 1")           # Only active enrollments
-    conditions.append("docstatus < 2")          # Not cancelled (draft or submitted)
+    
+    # Only active enrollments and not cancelled:
+    conditions.append("pe.status = 1")
+    conditions.append("pe.docstatus < 2")
     
     if filters.get("school"):
-        conditions.append("school = %(school)s")
+        conditions.append("pe.school = %(school)s")
     if filters.get("program"):
-        conditions.append("program = %(program)s")
+        conditions.append("pe.program = %(program)s")
     if filters.get("academic_year"):
-        conditions.append("academic_year = %(academic_year)s")
+        conditions.append("pe.academic_year = %(academic_year)s")
     
+    # Build the WHERE clause only if conditions exist
     where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
     
     sql = f"""
@@ -56,6 +59,7 @@ def get_program_data(filters):
     """
     
     return frappe.db.sql(sql, filters, as_dict=True)
+
 
 def get_program_chart_data(data):
     # For chart labels, we concatenate Academic Year and Program.
