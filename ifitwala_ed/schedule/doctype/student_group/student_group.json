@@ -39,8 +39,7 @@
    "in_standard_filter": 1,
    "label": "Academic Year",
    "options": "Academic Year",
-   "reqd": 1,
-   "set_only_once": 1
+   "reqd": 1
   },
   {
    "fieldname": "group_based_on",
@@ -156,7 +155,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-30 22:43:48.330112",
+ "modified": "2025-02-16 10:23:14.264958",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",
