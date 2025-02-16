@@ -80,15 +80,15 @@ class StudentGroup(Document):
 		if not student_names:
 			return	# Nothing to validate if student names are not present
 		
-		enabled_map = frappe.db.get_value(
+		enabled_records = frappe.db.get_values(
 			"Student", 
-			{"name": ("in", student_names)}, 
-			"enabled",
+			{"name": ["in", student_names]}, 
+			["name", "enabled"],
 			as_dict=True
 		)
 
 		# Convert to a dictionary for easy lookup: {student_name: enabled_status}
-		enabled_dict = {student: enabled for student, enabled in enabled_map}  
+		enabled_dict = {rec.name: rec.enabled for rec in enabled_records}  
 		
 		for student in self.students: 
 			if not student.student:

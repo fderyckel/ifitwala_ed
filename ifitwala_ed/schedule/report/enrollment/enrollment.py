@@ -32,7 +32,6 @@ def get_program_data(filters):
     conditions = []
     
     # Only active enrollments and not cancelled:
-    conditions.append("pe.status = 1")
     conditions.append("pe.docstatus < 2")
     
     if filters.get("school"):
@@ -85,7 +84,7 @@ def get_course_columns(filters):
 
 def get_course_data(filters):
     # Build dynamic conditions; school, program, and academic_year are optional.
-    conditions = ["ce.current = 1", "ce.docstatus < 2"]
+    conditions = ["ce.docstatus < 2"]
     
     if filters.get("academic_year"):
         conditions.append("ce.academic_year = %(academic_year)s")

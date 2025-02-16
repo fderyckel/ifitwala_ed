@@ -1,7 +1,7 @@
 {
  "add_total_row": 0,
  "columns": [],
- "creation": "2025-02-14 14:15:31.814512",
+ "creation": "2025-02-15 14:15:31.814512",
  "disabled": 0,
  "docstatus": 0,
  "doctype": "Report",
@@ -16,7 +16,7 @@
  "owner": "Administrator",
  "prepared_report": 0,
  "ref_doctype": "Program Enrollment",
- "report_name": "Enrollment",
+ "report_name": "Enrollment Report",
  "report_type": "Script Report",
  "roles": [
   {
