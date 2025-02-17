@@ -3,80 +3,15 @@
 {% block title %}About Me{% endblock %}
 
 {% block head_include %}
-<style>
-  .about-me-container {
-    max-width: 800px;
-    margin: 3rem auto;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    background-color: #f9f9f9; /* Soft background color */
-    font-family: 'Arial', sans-serif; /* Use a clean and modern font */
-  }
-  .profile-picture-wrapper { /* Add a wrapper for the image */
-    text-align: center;
-  }
-
-  .profile-picture {
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    margin: 0 auto 1.5rem auto; /* Center the image */
-    object-fit: cover;
-    border: 4px solid #fff; /* Add a white border to the image */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* More pronounced shadow */
-  }
-
-  .student-name {
-    font-size: 1.8rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    color: #333; /* Darker color for the name */
-  }
-
-  .student-details {
-    margin-top: 2rem;
-    text-align: left;
-    font-size: 1rem;
-  }
-
-  .student-details th {
-    text-align: left;
-    padding: 0.5rem 1rem;
-    vertical-align: top;
-    color: #666; /* Slightly darker color for labels */
-    font-weight: 500; /* Slightly bolder labels */
-  }
-
-  .student-details td {
-    padding: 0.5rem 1rem;
-    color: #333;
-  }
-
-  .back-to-menu {
-    margin-top: 2rem;
-    padding: 0.5rem 1rem;
-    font-size: 1rem;
-    color: #fff;
-    background-color: #007bff;
-    text-decoration: none;
-    border-radius: 5px;
-    transition: background-color 0.3s ease;
-    display: block; /* Make the button a block element */
-    margin: 2rem auto; 
-    text-align: center;
-  }
-
-  .back-to-menu:hover {
-    background-color: #0056b3;
-  }
-
-</style>
+  <link rel="stylesheet" href="/assets/ifitwala_ed/css/student_portal.css">
+  <link rel="stylesheet" href="/assets/frappe/css/fonts/fontawesome/font-awesome.min.css">
 {% endblock %}
 
 {% block content %}
 <div class="about-me-container">
-  <img class="profile-picture" src="{{ student_image }}" alt="Student Image" />
+  <div class="profile-picture-wrapper">
+    <img class="profile-picture" src="{{ student_image }}" alt="Student Image" />
+  </div>
   <h1 class="student-name">{{ student_first_name }} {{ student_last_name }}</h1>
 
   <table class="student-details">

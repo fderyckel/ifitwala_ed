@@ -96,6 +96,78 @@ body {
 }
 
 /* =========================================
+   About Me Page Specific Styles
+   ========================================= */
+.about-me-container {
+  max-width: 800px;
+  margin: 3rem auto;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  background-color: var(--secondary-color);
+}
+
+.profile-picture-wrapper {
+  text-align: center;
+}
+
+.profile-picture {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  margin: 0 auto 1.5rem auto;
+  object-fit: cover;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.student-name {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+}
+
+.student-details {
+  margin-top: 2rem;
+  text-align: left;
+  font-size: 1rem;
+  width: 100%;
+}
+
+.student-details th {
+  text-align: left;
+  padding: 0.5rem 1rem;
+  vertical-align: top;
+  color: #666;
+  font-weight: 500;
+}
+
+.student-details td {
+  padding: 0.5rem 1rem;
+  color: var(--text-color);
+}
+
+.back-to-menu {
+  margin-top: 2rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  color: #fff;
+  background-color: var(--primary-color);
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+  display: block;
+  margin: 2rem auto;
+  text-align: center;
+}
+
+.back-to-menu:hover {
+  background-color: #0056b3;
+}
+
+
+/* =========================================
    Miscellaneous
    ========================================= */
 .no-decoration {
