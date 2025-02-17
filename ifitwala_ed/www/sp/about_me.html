@@ -18,12 +18,11 @@
 
 {% block breadcrumbs %}
 	{% include "templates/includes/breadcrumbs.html" %}
-  <pre>{{ parents | tojson }}</pre>
 {% endblock %}
 
 {% block content %}
 <div class="container">
-  {# Built-in breadcrumbs will render automatically via context.parents #}
+  {% include "templates/includes/breadcrumbs.html" %}
 
   <!-- Header using student-info styles -->
   <div class="student-info" style="justify-content: center; margin-top: 2rem;">
