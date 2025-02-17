@@ -1,92 +1,115 @@
-.ifitwala-student-portal .sidebar {
-  float: left;
-  width: 200px;
-  margin-right: 20px;
+/* =========================================
+   Student Portal - Unified CSS
+   ========================================= */
+
+/* Import Google Fonts for a clean, modern look */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+
+/* Global Styles */
+:root {
+  --primary-color: #2C5282; /* Deep blue - main theme */
+  --secondary-color: #EDF2F7; /* Light grayish background */
+  --card-bg: #FFFFFF;
+  --card-hover-bg: #F7FAFC;
+  --text-color: #2D3748;
+  --accent-color: #3182CE; /* Brighter blue for highlights */
+  --border-radius: 10px;
+  --shadow-light: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-.ifitwala-student-portal .content-area {
-  float: left;
-  width: calc(100% - 220px);
-}
-
-.ifitwala-student-portal .student-photo {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.ifitwala-student-portal .about-me-section h2 {
-  margin-top: 0;
-}
-
-.ifitwala-student-portal .avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  color: white;
-  margin: 0 auto;
-  margin-bottom: 20px;
-}
-
-.ifitwala-student-portal .avatar-frame {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-
-/* Student Log CSS */
-.student-logs-list {
-  list-style: none;
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+  margin: 0;
   padding: 0;
 }
 
-.student-log-entry {
-  border: 1px solid #ddd;
-  margin-bottom: 10px;
-  padding: 10px;
-  border-radius: 5px;
+.container {
+  max-width: 1100px;
+  margin: auto;
+  padding: 20px;
 }
 
-.log-header, .log-footer {
-  font-size: 0.9em;
-  color: #777;
+/* =========================================
+   Portal Layout
+   ========================================= */
+.portal-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
 }
 
-.log-header .log-date {
-  font-weight: bold;
+.portal-card {
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-light);
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
-.log-content {
-  margin: 10px 0;
-}
-
-
-
-
-
-/* for the sp portal */
-
-
-.student-card {
-  transition: transform 0.2s ease-in-out;
-}
-
-.student-card:hover {
+.portal-card:hover {
+  background: var(--card-hover-bg);
   transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.icon-container {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background-color: #f5f5f5; /* Light gray, adjust as needed */
+.portal-card-placeholder {
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--text-color);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+.portal-card-placeholder i {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  color: var(--primary-color);
+}
+
+/* =========================================
+   Student Profile Section
+   ========================================= */
+.student-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.student-info img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  box-shadow: var(--shadow-light);
+}
+
+.student-info h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+/* =========================================
+   Miscellaneous
+   ========================================= */
+.no-decoration {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .portal-container {
+    grid-template-columns: repeat(auto-fit, minmax(100%, 1fr));
+  }
+  .student-info {
+    flex-direction: column;
+    text-align: center;
+  }
 }

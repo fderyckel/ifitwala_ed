@@ -5,7 +5,6 @@ from frappe.utils.response import build_response
 import mimetypes
 
 def get_context(context):
-    # ... (rest of your get_context function remains the same)
     if frappe.session.user == "Guest":
         frappe.throw(_("You must be logged in to access this page."), frappe.PermissionError)
 

@@ -50,4 +50,4 @@ def validate_duplicate_student(students):
 		else:
 			unique_students.append(stud.student)
 
-		return None
+	return None
