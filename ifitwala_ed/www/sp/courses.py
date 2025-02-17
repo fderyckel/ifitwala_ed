@@ -28,5 +28,9 @@ def get_context(context):
     context.student_preferred_name = student_data.get("student_preferred_name", "Student")
     context.courses = get_current_courses()
     context.title = "My Courses"
+
+    # Enable built-in next/prev navigation links
+    context.add_next_prev_links = True
+    context.parents = [{"title": _("Portal"), "route": "/sp"}]
     
     return context

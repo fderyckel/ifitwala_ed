@@ -8,54 +8,60 @@
 {% endblock %}
 
 {% block content %}
-<div class="about-me-container">
-  <div class="profile-picture-wrapper">
-    <img class="profile-picture" src="{{ student_image }}" alt="Student Image" />
-  </div>
-  <h1 class="student-name">{{ student_first_name }} {{ student_last_name }}</h1>
+<div class="container">
+  {# Built-in breadcrumbs will render automatically via context.parents #}
 
-  <table class="student-details">
-    <tbody>
-      <tr>
-        <th>First Name:</th>
-        <td>{{ student_first_name }}</td>
-      </tr>
-      <tr>
-        <th>Middle Name:</th>
-        <td>{{ student_middle_name or 'N/A' }}</td>
-      </tr>
-      <tr>
-        <th>Last Name:</th>
-        <td>{{ student_last_name }}</td>
-      </tr>
-      <tr>
-        <th>Email:</th>
-        <td>{{ student_email }}</td>
-      </tr>
-      <tr>
-        <th>Mobile Phone:</th>
-        <td>{{ student_mobile_number or 'N/A' }}</td>
-      </tr>
-      <tr>
-        <th>Date of Birth:</th>
-        <td>{{ student_dob }}</td>
-      </tr>
-      <tr>
-        <th>Gender:</th>
-        <td>{{ student_gender }}</td>
-      </tr>
-      <tr>
-        <th>First Language:</th>
-        <td>{{ student_first_language }}</td>
-      </tr>
-      {% if student_second_language %}
-      <tr>
-        <th>Second Language:</th>
-        <td>{{ student_second_language }}</td>
-      </tr>
-      {% endif %}
-    </tbody>
-  </table>
-  <a href="/sp/index" class="back-to-menu">Back to Main Menu</a>
+  <!-- Header using student-info styles -->
+  <div class="student-info" style="justify-content: center; margin-top: 2rem;">
+    <img src="{{ student_image }}" alt="Student Image">
+    <h1>{{ student_first_name }} {{ student_last_name }}</h1>
+  </div>
+
+  <!-- About Me Details -->
+  <div class="about-me-container" style="margin-top: 2rem;">
+    <table class="student-details">
+      <tbody>
+        <tr>
+          <th>First Name:</th>
+          <td>{{ student_first_name }}</td>
+        </tr>
+        <tr>
+          <th>Middle Name:</th>
+          <td>{{ student_middle_name or 'N/A' }}</td>
+        </tr>
+        <tr>
+          <th>Last Name:</th>
+          <td>{{ student_last_name }}</td>
+        </tr>
+        <tr>
+          <th>Email:</th>
+          <td>{{ student_email }}</td>
+        </tr>
+        <tr>
+          <th>Mobile Phone:</th>
+          <td>{{ student_mobile_number or 'N/A' }}</td>
+        </tr>
+        <tr>
+          <th>Date of Birth:</th>
+          <td>{{ student_dob }}</td>
+        </tr>
+        <tr>
+          <th>Gender:</th>
+          <td>{{ student_gender }}</td>
+        </tr>
+        <tr>
+          <th>First Language:</th>
+          <td>{{ student_first_language }}</td>
+        </tr>
+        {% if student_second_language %}
+        <tr>
+          <th>Second Language:</th>
+          <td>{{ student_second_language }}</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+    <a href="/sp" class="back-to-menu">Return to Portal</a>
+  </div>
 </div>
 {% endblock %}

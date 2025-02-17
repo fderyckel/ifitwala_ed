@@ -10,7 +10,9 @@
 
 {% block content %}
 <div class="container">
-  <h3>Your current courses</h3>
+  <div class="student-info">
+    <h3>Your current courses</h3>
+  </div>
   <div class="course-container">
     {% for course in courses %}
       <div class="course-card" onclick="window.location.href='/sp/course/{{ course.course }}'">

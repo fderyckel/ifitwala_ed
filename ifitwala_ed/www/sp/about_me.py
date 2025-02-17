@@ -27,4 +27,7 @@ def get_context(context):
     context.student_first_language = student.student_first_language
     context.student_second_language = student.student_second_language or None
     context.title = "About Me"
+    context.parents = [{"title": _("Portal"), "route": "/sp"}]
+    context.add_next_prev_links = True
+    
     return context
