@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}My Portal{% endblock %}</title>
+  
+  {# Head includes for CSS and meta tags #}
+  {% block head_include %}
+    <link rel="stylesheet" href="/assets/frappe/css/frappe.css">
+  {% endblock %}
+</head>
+<body>
+  <header>
+    {# You can add a header logo or navigation if needed #}
+  </header>
+
+<!-- Breadcrumbs -->
+{% block breadcrumbs %}
+  {% if parents %}
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        {% for parent in parents %}
+          <li class="breadcrumb-item">
+            <a href="{{ parent.route }}">{{ parent.title }}</a>
+          </li>
+        {% endfor %}
+        <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+      </ol>
+    </nav>
+  {% endif %}
+{% endblock %}
+
+<!-- Next/Previous Links -->
+{% block next_prev %}
+  {% if add_next_prev_links %}
+    <div class="next-prev-links">
+      {% if prev_link %}
+        <a href="{{ prev_link.route }}" class="prev-link">← {{ prev_link.title }}</a>
+      {% endif %}
+      {% if next_link %}
+        <a href="{{ next_link.route }}" class="next-link">{{ next_link.title }} →</a>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}
+
+  <main class="container">
+    {% block content %}
+      {# Main page content will be inserted here by child templates #}
+    {% endblock %}
+  </main>
+
+  <footer>
+    {% block footer %}
+      <!-- Optional footer content -->
+    {% endblock %}
+  </footer>
+
+  {# Scripts – include any JavaScript files here #}
+  {% block scripts %}
+    <script src="/assets/frappe/js/frappe.min.js"></script>
+  {% endblock %}
+</body>
+</html>

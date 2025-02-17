@@ -29,5 +29,6 @@ def get_context(context):
     context.title = "About Me"
     context.parents = [{"title": _("Portal"), "route": "/sp"}]
     context.add_next_prev_links = True
+    context.no_breadcrumbs = False
     
     return context
