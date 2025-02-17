@@ -5,6 +5,19 @@
 {% block head_include %}
   <link rel="stylesheet" href="/assets/ifitwala_ed/css/student_portal.css">
   <link rel="stylesheet" href="/assets/frappe/css/fonts/fontawesome/font-awesome.min.css">
+  <style>
+    /* Center the student-details table and update header color */
+    .about-me-container .student-details {
+      margin: 0 auto;
+    }
+    .about-me-container .student-details th {
+      color: var(--primary-color);
+    }
+  </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+  {% include "templates/includes/breadcrumbs.html" %}
 {% endblock %}
 
 {% block content %}
