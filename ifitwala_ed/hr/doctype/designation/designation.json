@@ -12,8 +12,8 @@
   "school",
   "column_break_frxq",
   "designation_name",
-  "description_section",
   "reports_to",
+  "description_section",
   "position_summary",
   "job_description",
   "desired_competencies",
@@ -52,6 +52,7 @@
   {
    "fieldname": "reports_to",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Reports to",
    "options": "Designation"
   },
@@ -83,7 +84,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-06 13:28:22.275982",
+ "modified": "2025-02-17 13:38:44.210662",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Designation",
