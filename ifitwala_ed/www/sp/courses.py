@@ -18,7 +18,7 @@ def get_context(context):
     # Fetch the student record using the session email
     student_data = frappe.db.get_value(
         "Student", {"student_email": frappe.session.user},
-        ["student_preferred_name", "student_image"],
+        ["student_preferred_name"],
         as_dict=True
     )
     if not student_data:
@@ -26,7 +26,6 @@ def get_context(context):
     
     # Populate the context with student information and current courses
     context.student_preferred_name = student_data.get("student_preferred_name", "Student")
-    context.student_image = student_data.get("student_image", None)
     context.courses = get_current_courses()
     context.title = "My Courses"
     

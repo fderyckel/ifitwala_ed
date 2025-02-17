@@ -9,14 +9,7 @@
 
 {% block content %}
 <div class="container">
-  <!-- Student Header -->
-  <div class="student-info">
-    <img src="{{ student_image }}" alt="Student Image">
-    <h1>Welcome, {{ student_preferred_name }}</h1>
-  </div>
-  
-  <!-- Courses Section -->
-  <h2>My Courses</h2>
+  <h2>Hello {{ student_preferred_name }} ! Here are your current courses</h2>
   <div class="course-container">
     {% for course in courses %}
       <div class="course-card" onclick="window.location.href='/sp/course/{{ course.course }}'">
