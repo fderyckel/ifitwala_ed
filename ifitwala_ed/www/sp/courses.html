@@ -3,13 +3,14 @@
 {% block title %}My Courses{% endblock %}
 
 {% block head_include %}
+  <link rel="stylesheet" href="/assets/ifitwala_ed/css/student_portal.css"> 
   <link rel="stylesheet" href="/assets/ifitwala_ed/css/student_course.css">
   <link rel="stylesheet" href="/assets/frappe/css/fonts/fontawesome/font-awesome.min.css">
 {% endblock %}
 
 {% block content %}
 <div class="container">
-  <h2>Hello {{ student_preferred_name }} ! Here are your current courses</h2>
+  <h3>Your current courses</h3>
   <div class="course-container">
     {% for course in courses %}
       <div class="course-card" onclick="window.location.href='/sp/course/{{ course.course }}'">
