@@ -22,7 +22,9 @@
   "program_image",
   "column_break_lkjg",
   "description",
-  "intro_video"
+  "intro_video",
+  "program_coordinators_section",
+  "coordinators"
  ],
  "fields": [
   {
@@ -109,12 +111,24 @@
    "fieldname": "intro_video",
    "fieldtype": "Data",
    "label": "Intro Video"
+  },
+  {
+   "description": "Program Coordinator can see all the courses in the program in the student portal.",
+   "fieldname": "program_coordinators_section",
+   "fieldtype": "Section Break",
+   "label": "Program Coordinators"
+  },
+  {
+   "fieldname": "coordinators",
+   "fieldtype": "Table",
+   "label": "Coordinators",
+   "options": "Program Coordinator"
   }
  ],
  "image_field": "program_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-04 10:06:02.253642",
+ "modified": "2025-02-17 13:43:15.887447",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",

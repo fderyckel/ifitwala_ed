@@ -45,13 +45,14 @@
   "date_of_joining",
   "status",
   "employment_type",
-  "designation",
-  "department",
   "employee_group",
+  "designation",
   "column_break_qbdg",
   "organization",
   "school",
   "reports_to",
+  "department",
+  "is_group",
   "approver_section",
   "expense_approver",
   "column_break_mba6",
@@ -65,13 +66,15 @@
   "biography",
   "exit_tab",
   "notice_date",
+  "column_break_hkhj",
   "relieving_date",
+  "exit_interview_section",
   "exit_interview_date",
   "exit_interview",
-  "is_group",
+  "section_break_tvmi",
+  "old_parent",
   "lft",
   "rgt",
-  "old_parent",
   "dashboard_tab"
  ],
  "fields": [
@@ -481,13 +484,26 @@
    "fieldtype": "Tab Break",
    "label": "Dashboard",
    "show_dashboard": 1
+  },
+  {
+   "fieldname": "column_break_hkhj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "exit_interview_section",
+   "fieldtype": "Section Break",
+   "label": "Exit Interview"
+  },
+  {
+   "fieldname": "section_break_tvmi",
+   "fieldtype": "Section Break"
   }
  ],
  "image_field": "employee_image",
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-02-11 14:03:04.532400",
+ "modified": "2025-02-17 13:31:21.738217",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
