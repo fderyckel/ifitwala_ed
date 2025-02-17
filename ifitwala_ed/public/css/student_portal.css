@@ -95,6 +95,10 @@ body {
   color: var(--primary-color);
 }
 
+.student-info h3 {
+  color: var(--primary-color);
+}
+
 /* =========================================
    About Me Page Specific Styles
    ========================================= */

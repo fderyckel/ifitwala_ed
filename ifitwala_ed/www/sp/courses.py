@@ -30,7 +30,7 @@ def get_context(context):
     context.title = "My Courses"
 
     # Enable built-in next/prev navigation links
-    context.add_next_prev_links = True
+    context.add_next_prev_links = True 
     context.parents = [{"title": _("Portal"), "route": "/sp"}]
     
     return context

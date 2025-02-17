@@ -8,15 +8,15 @@
   <link rel="stylesheet" href="/assets/frappe/css/fonts/fontawesome/font-awesome.min.css">
 {% endblock %}
 
-{% block breadcrumbs %}
-  {% include "templates/includes/breadcrumbs.html" %}
-{% endblock %}
 
 {% block content %}
 <div class="container">
+  {% include "ifitwala_ed/templates/includes/breadcrumbs.html" %}
+  
   <div class="student-info">
     <h3>Your current courses</h3>
   </div>
+
   <div class="course-container">
     {% for course in courses %}
       <div class="course-card" onclick="window.location.href='/sp/course/{{ course.course }}'">
