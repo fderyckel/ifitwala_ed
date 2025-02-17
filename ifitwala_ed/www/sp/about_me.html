@@ -18,6 +18,7 @@
 
 {% block breadcrumbs %}
 	{% include "templates/includes/breadcrumbs.html" %}
+  <pre>{{ parents | tojson }}</pre>
 {% endblock %}
 
 {% block content %}
