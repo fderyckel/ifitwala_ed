@@ -51,3 +51,58 @@ def validate_duplicate_student(students):
 			unique_students.append(stud.student)
 
 	return None
+
+## For the student portal - course page. 
+def get_current_courses():
+    """
+    Returns a list of courses the current logged-in student is enrolled in.
+    Each course record is merged with details from the Course doctype.
+    Optimized to use frappe.db.get_values() for better performance.
+    """
+    # Validate the user
+    if frappe.session.user == "Guest":
+        frappe.throw(_("You must be logged in to access this page."), frappe.PermissionError)
+    
+    # Fetch the student record using the session email
+    student = frappe.db.get_value("Student", {"student_email": frappe.session.user}, "name")
+    if not student:
+        frappe.throw(_("Student profile not found. Please contact the administrator."))
+    
+    # Fetch current course enrollments for the student using get_values
+    enrollments = frappe.db.get_values(
+        "Course Enrollment",
+        filters={"student": student, "current": 1},
+        fieldname=["name", "course"],
+        as_dict=True
+    )
+    
+    if not enrollments:
+        return []  # Return empty list if no enrollments found
+
+    # Efficiently fetch Course details including course_group and course_image
+    course_ids = [enrollment.get("course") for enrollment in enrollments]
+    courses = frappe.db.get_values(
+        "Course",
+        filters={"name": ["in", course_ids]},
+        fieldname=["name", "course_name", "course_group", "course_image"],
+        as_dict=True
+    )
+    
+    # Map Course details by course id for fast lookup
+    course_map = {course["name"]: course for course in courses}
+    
+    # Merge enrollment and course data
+    current_courses = []
+    for enrollment in enrollments:
+        course_detail = course_map.get(enrollment["course"], {})
+        course_info = {
+            "enrollment_id": enrollment["name"],
+            "course": enrollment["course"],
+            "course_name": course_detail.get("course_name") or enrollment["course"],
+            "course_group": course_detail.get("course_group"),
+            "course_image": course_detail.get("course_image")
+        }
+        current_courses.append(course_info)
+    
+    return current_courses
+

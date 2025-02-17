@@ -1,0 +1,36 @@
+{% extends "templates/base.html" %}
+
+{% block title %}My Courses{% endblock %}
+
+{% block head_include %}
+  <link rel="stylesheet" href="/assets/ifitwala_ed/css/student_course.css">
+  <link rel="stylesheet" href="/assets/frappe/css/fonts/fontawesome/font-awesome.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <!-- Student Header -->
+  <div class="student-info">
+    <img src="{{ student_image }}" alt="Student Image">
+    <h1>Welcome, {{ student_preferred_name }}</h1>
+  </div>
+  
+  <!-- Courses Section -->
+  <h2>My Courses</h2>
+  <div class="course-container">
+    {% for course in courses %}
+      <div class="course-card" onclick="window.location.href='/sp/course/{{ course.course }}'">
+        {% if course.course_image %}
+          <img src="{{ course.course_image }}" alt="{{ course.course_name }}" class="course-image">
+        {% else %}
+          <img src="/assets/ifitwala_ed/images/course_placeholder.png" alt="{{ course.course_name }}" class="course-image">
+        {% endif %}
+        <div class="course-info">
+          <div class="course-title">{{ course.course_name }}</div>
+          <div class="course-subtitle">{{ course.course_group }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

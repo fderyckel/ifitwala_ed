@@ -1,0 +1,77 @@
+
+/* =========================================
+   Student Course - Unified CSS
+   ========================================= */
+
+/* Assuming global variables are already defined in student_portal.css,
+   but in case they are not, you can define them here as needed */
+   :root {
+    --primary-color: #2C5282; /* Deep blue - main theme */
+    --secondary-color: #EDF2F7; /* Light grayish background */
+    --card-bg: #FFFFFF;
+    --card-hover-bg: #F7FAFC;
+    --text-color: #2D3748;
+    --border-radius: 10px;
+    --shadow-light: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Container for Course Cards */
+  .course-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+    padding: 0 10px;
+  }
+  
+  /* Course Card Styles */
+  .course-card {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-light);
+    overflow: hidden;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    padding-bottom: 15px; /* extra space for text */
+  }
+  
+  .course-card:hover {
+    background: var(--card-hover-bg);
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Course Image */
+  .course-image {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-top-left-radius: var(--border-radius);
+    border-top-right-radius: var(--border-radius);
+  }
+  
+  /* Course Information */
+  .course-info {
+    padding: 15px;
+  }
+  
+  .course-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin: 10px 0 5px;
+  }
+  
+  .course-subtitle {
+    font-size: 1rem;
+    color: var(--text-color);
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .course-container {
+      grid-template-columns: 1fr;
+    }
+  }
+  
