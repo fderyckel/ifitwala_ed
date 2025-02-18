@@ -57,7 +57,7 @@ doctype_js = {"Contact": "public/js/contact.js"}
 
 # Home Pages
 # ----------
-
+after_login = "ifitwala_ed.api.redirect_student_to_portal"
 # application home page (will override Website Settings)
 # home_page = "login"
 
@@ -85,7 +85,7 @@ doctype_js = {"Contact": "public/js/contact.js"}
 # ------------
 
 # before_install = "ifitwala.install.before_install"
-# after_install = "ifitwala.install.after_install"
+after_install = "ifitwala_ed.setup.setup.setup_education"
 
 # Uninstallation
 # ------------

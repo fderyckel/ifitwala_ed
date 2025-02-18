@@ -13,7 +13,6 @@ def setup_education():
 	create_attendance_code()
 	create_location_type()
 	add_other_records()
-	add_uom_data()
 	update_global_search_doctypes()
 
 
@@ -79,3 +78,18 @@ def create_location_type():
 		{"doctype": "Location Type", "location_type_name": "Transit"},
 	]
 	insert_record(data)
+
+def add_other_records(country=None):
+	records = [
+		# item group
+		#{'doctype': 'Item Group', 'item_group_name': _('All Item Groups'), 'is_group': 1, 'parent_item_group': ''},
+
+		# Employment Type
+		{'doctype': 'Employment Type', 'employment_type_name': _('Full-time')},
+		{'doctype': 'Employment Type', 'employment_type_name': _('Part-time')},
+		{'doctype': 'Employment Type', 'employment_type_name': _('Probation')},
+		{'doctype': 'Employment Type', 'employment_type_name': _('Contract')},
+		{'doctype': 'Employment Type', 'employment_type_name': _('Intern')},
+		{'doctype': 'Employment Type', 'employment_type_name': _('Apprentice')},
+	]
+	insert_record(records)	
