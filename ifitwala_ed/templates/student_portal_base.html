@@ -30,8 +30,6 @@
 		{%- endif %}
 	{%- endblock -%}
 
-	{# Removed Esperanto-specific block #}
-
 	<script>
 		window.frappe = {};
 		window._version_number = "{{ build_version }}";
@@ -64,7 +62,7 @@
 	{%- endblock -%}
 
 	<!-- Custom Student Portal Layout -->
-	<div class="portal-layout container">
+	<div class="portal-layout portal-wrapper">
 		<div class="portal-sidebar-col">
 			{% block portal_sidebar %}
 				{% include "ifitwala_ed/templates/includes/portal_sidebar.html" %}

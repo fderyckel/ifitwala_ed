@@ -16,13 +16,7 @@
   </style>
 {% endblock %}
 
-{% block breadcrumbs %}
-	{% include "templates/includes/breadcrumbs.html" %}
-{% endblock %}
-
 {% block content %}
-<div class="container">
-
   <!-- Header using student-info styles -->
   <div class="student-info" style="justify-content: center; margin-top: 2rem;">
     <img src="{{ student_image }}" alt="Student Image">
@@ -75,5 +69,4 @@
     </table>
     <a href="/sp" class="back-to-menu">Return to Portal</a>
   </div>
-</div>
 {% endblock %}
