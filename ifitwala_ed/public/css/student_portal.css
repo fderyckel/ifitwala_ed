@@ -26,7 +26,7 @@ body {
 }
 
 .portal-wrapper {
-  max-width: 1200px;
+  max-width: 1100px;
   margin: auto;
   padding: 20px;
 }
@@ -90,14 +90,11 @@ body {
   padding: 15px;
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-light);
-  position: sticky;
-  top: 20px; /* Makes sidebar sticky */
 }
 
 /* Main Content Column */
 .portal-main-col {
   flex: 1;
-  min-width: 0; /* Prevent flex overflow */
   background-color: var(--card-bg);
   padding: 20px;
   border-radius: var(--border-radius);
@@ -109,8 +106,9 @@ body {
   .portal-layout {
     flex-direction: column;
   }
-  .portal-sidebar-col {
-    position: static; /* Disable sticky on mobile */
+  .portal-sidebar-col,
+  .portal-main-col {
+    flex: 1;
   }
 }
 
