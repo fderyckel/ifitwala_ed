@@ -56,6 +56,7 @@ class Student(Document):
 	def on_update(self):
 		self.update_student_user()
 		self.update_student_patient()
+		self.update_links
 
 	# create student as website user
 	def create_student_user(self):
@@ -91,6 +92,14 @@ class Student(Document):
 			student_patient.save()
 			frappe.msgprint(_("Student Patient {0} linked to this student has been created").format(self.student_full_name))
 
+	def update_links(self):
+		contact_doc = frappe.get_doc("Contact", {"user": self.student_email})
+		if self.contact_doc:
+			self.contact_doc.append("links", {
+				"link_doctype": "Student",
+				"link_name": self.name
+			})
+			self.contact_doc.save()
 
 	# will update user main info if the student info change
 	def update_student_user(self):

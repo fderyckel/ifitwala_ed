@@ -55,7 +55,8 @@ class Guardian(Document):
         if self.guardian_email:
             contact.append("email_ids", {"email_id": self.guardian_email, "is_primary": 1})
         if self.guardian_mobile_phone:
-            contact.append("phone_nos", {"phone": self.guardian_mobile_phone})
+            contact.update({"mobile_no": self.guardian_mobile_phone})
+            contact.append("phone_nos", {"phone": self.guardian_mobile_phone,  "is_primary": 1})
         contact.insert(ignore_permissions=True)
 
         return contact
