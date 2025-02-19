@@ -1,6 +1,6 @@
 @import "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap";
 
-/* ../../../../../tmp/tmp-145913-6IkxXR2pgSRP/ifitwala_ed/ifitwala_ed/public/scss/ifitwala_ed.bundle.css */
+/* ../../../../../tmp/tmp-159136-617AghztG5Pr/ifitwala_ed/ifitwala_ed/public/scss/ifitwala_ed.bundle.css */
 .node-card {
   background: white;
   border-radius: 0.5rem;
@@ -262,8 +262,8 @@ body {
   margin: 0;
   padding: 0;
 }
-.container {
-  max-width: 1100px;
+.portal-wrapper {
+  max-width: 1500px;
   margin: auto;
   padding: 20px;
 }
@@ -303,11 +303,14 @@ body {
 }
 .portal-layout {
   display: flex;
-  flex-wrap: wrap;
   gap: 20px;
   margin-top: 20px;
+  flex-wrap: nowrap;
+  align-items: flex-start;
 }
 .portal-sidebar-col {
+  position: sticky;
+  top: 20px;
   flex: 0 0 250px;
   background-color: var(--secondary-color);
   padding: 15px;
@@ -479,4 +482,4 @@ body {
     grid-template-columns: 1fr;
   }
 }
-/*# sourceMappingURL=ifitwala_ed.bundle.CS3JTAWA.css.map */
+/*# sourceMappingURL=ifitwala_ed.bundle.S7EZ45O7.css.map */

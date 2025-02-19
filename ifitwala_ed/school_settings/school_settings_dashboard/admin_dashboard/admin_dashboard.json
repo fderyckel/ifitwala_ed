@@ -1,7 +1,7 @@
 {
  "cards": [
   {
-   "card": "Number of Students Enrolled"
+   "card": "Number of Active Students"
   },
   {
    "card": "Number of Courses"
@@ -24,14 +24,11 @@
    "width": "Half"
   },
   {
+   "chart": "Enrollment By Program",
    "width": "Full"
   },
   {
-   "chart": "Enrollment By Program",
-   "width": "Half"
-  },
-  {
-   "chart": "Enrolled Students by School",
+   "chart": "Enrolled by School",
    "width": "Half"
   }
  ],
@@ -42,7 +39,7 @@
  "idx": 0,
  "is_default": 0,
  "is_standard": 1,
- "modified": "2025-02-04 11:55:02.801306",
+ "modified": "2025-02-19 11:24:26.288853",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Admin Dashboard",

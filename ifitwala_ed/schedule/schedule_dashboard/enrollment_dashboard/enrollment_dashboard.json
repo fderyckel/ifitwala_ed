@@ -2,8 +2,8 @@
  "cards": [],
  "charts": [
   {
-   "chart": "Enrolled Students by School",
-   "width": "Full"
+   "chart": "Enrollment by School",
+   "width": "Half"
   },
   {
    "chart": "Enrollment By Program",
@@ -18,10 +18,10 @@
  "dashboard_name": "Enrollment Dashboard",
  "docstatus": 0,
  "doctype": "Dashboard",
- "idx": 0,
+ "idx": 6,
  "is_default": 0,
  "is_standard": 1,
- "modified": "2025-02-14 09:21:36.952888",
+ "modified": "2025-02-19 11:26:00.995085",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Enrollment Dashboard",
