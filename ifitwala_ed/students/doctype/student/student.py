@@ -93,26 +93,35 @@ class Student(Document):
 			student_patient.save()
 			frappe.msgprint(_("Student Patient {0} linked to this student has been created").format(self.student_full_name))
 
-	def update_links(self):
-		contact_doc = frappe.get_doc("Contact", {"user": self.student_email})
-		if contact_doc:
-			contact_doc.append("links", {
-				"link_doctype": "Student",
-				"link_name": self.name
-			})
-		contact_doc.save()
-
-	# will update user main info if the student info change
-	def update_student_user(self):
-		user = frappe.get_doc("User", self.student_email)
-		user.flags.ignore_permissions = True
-		user.first_name = self.student_first_name
-		user.last_name = self.student_last_name
-		user.full_name = self.student_full_name
-		if self.student_gender:
-			user.gender = self.student_gender
-		if self.student_first_language:
-			user.language = self.student_first_language
+	def update_links(self): 
+		# Fetch the contact name linked to the user (student_email)
+		contact_name = frappe.db.get_value("Contact", {"user": self.student_email}, "name")  
+		if contact_name: 
+			contact_doc = frappe.get_doc("Contact", contact_name) 
+		
+		# Ensure the link does not already exist 
+		existing_links = [link.link_name for link in contact_doc.links]
+		
+		if self.name not in existing_links: 
+			contact_doc.append("links", {"link_doctype": "Student", "link_name": self.name}) 
+			contact_doc.flags.ignore_permissions = True 
+			contact_doc.save() 
+			frappe.msgprint(_("Contact for {0} updated with student link").format(self.student_full_name)) 
+		else:
+			frappe.msgprint(_("No Contact found for Student Email: {0}. Ensure a Contact is created.").format(self.student_email)) 
+				
+				
+	# will update user main info if the student info change  
+	def update_student_user(self): 
+		user = frappe.get_doc("User", self.student_email) 
+		user.flags.ignore_permissions = True 
+		user.first_name = self.student_first_name 
+		user.last_name = self.student_last_name 
+		user.full_name = self.student_full_name 
+		if self.student_gender: 
+			user.gender = self.student_gender 
+		if self.student_first_language: 
+			user.language = self.student_first_language 
 		user.save()
 
 	def update_student_patient(self):
