@@ -94,12 +94,12 @@ class Student(Document):
 
 	def update_links(self):
 		contact_doc = frappe.get_doc("Contact", {"user": self.student_email})
-		if self.contact_doc:
-			self.contact_doc.append("links", {
+		if contact_doc:
+			contact_doc.append("links", {
 				"link_doctype": "Student",
 				"link_name": self.name
 			})
-			self.contact_doc.save()
+		contact_doc.save()
 
 	# will update user main info if the student info change
 	def update_student_user(self):
