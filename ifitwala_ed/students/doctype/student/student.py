@@ -52,11 +52,12 @@ class Student(Document):
 	def after_insert(self):
 		self.create_student_user()
 		self.create_student_patient()
+		self.update_links()
 
 	def on_update(self):
 		self.update_student_user()
 		self.update_student_patient()
-		self.update_links
+		self.update_links()
 
 	# create student as website user
 	def create_student_user(self):
