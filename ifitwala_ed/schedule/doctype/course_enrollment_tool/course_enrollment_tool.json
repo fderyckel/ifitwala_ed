@@ -1,0 +1,117 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-21 14:16:22.622367",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_ac5f",
+  "academic_year",
+  "program",
+  "column_break_ehuh",
+  "term",
+  "course",
+  "section_break_z4cm",
+  "student",
+  "section_break_mane",
+  "add_course"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_ac5f",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "label": "Term",
+   "options": "Term"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fieldname": "column_break_ehuh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_z4cm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Table MultiSelect",
+   "label": "Student",
+   "options": "Course Enrollment Tool Student"
+  },
+  {
+   "fieldname": "section_break_mane",
+   "fieldtype": "Section Break"
+  },
+  {
+   "description": "By pressing this button, you will add this course to all the student's program enrollment. ",
+   "fieldname": "add_course",
+   "fieldtype": "Button",
+   "label": "Add Course",
+   "options": "add_course"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-02-21 14:34:29.208294",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "Course Enrollment Tool",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Schedule Maker",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
