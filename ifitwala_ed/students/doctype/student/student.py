@@ -52,7 +52,6 @@ class Student(Document):
 	def after_insert(self):
 		self.create_student_user()
 		self.create_student_patient()
-		self.update_links()
 
 	def on_update(self):
 		self.update_student_user()
@@ -98,15 +97,14 @@ class Student(Document):
 		contact_name = frappe.db.get_value("Contact", {"user": self.student_email}, "name")  
 		if contact_name: 
 			contact_doc = frappe.get_doc("Contact", contact_name) 
+			# Ensure the link does not already exist 
+			existing_links = [link.link_name for link in contact_doc.links]
 		
-		# Ensure the link does not already exist 
-		existing_links = [link.link_name for link in contact_doc.links]
-		
-		if self.name not in existing_links: 
-			contact_doc.append("links", {"link_doctype": "Student", "link_name": self.name}) 
-			contact_doc.flags.ignore_permissions = True 
-			contact_doc.save() 
-			frappe.msgprint(_("Contact for {0} updated with student link").format(self.student_full_name)) 
+			if self.name not in existing_links: 
+				contact_doc.append("links", {"link_doctype": "Student", "link_name": self.name}) 
+				contact_doc.flags.ignore_permissions = True 
+				contact_doc.save() 
+				frappe.msgprint(_("Contact for {0} updated with student link").format(self.student_full_name)) 
 		else:
 			frappe.msgprint(_("No Contact found for Student Email: {0}. Ensure a Contact is created.").format(self.student_email)) 
 				

@@ -177,16 +177,14 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 
 	students = [d.student for d in enrolled_students] if enrolled_students else [""]
 
-	return frappe.db.sql("""select
-			name, student_full_name from tabStudent
-		where
-			name not in (%s)
-		and
+	return frappe.db.sql("""		
+		SELECT name, student_full_name 
+		FROM tabStudent
+		WHERE name NOT IN ({})
+		AND enabled = 1
+		AND `{}` LIKE %s
 			`%s` LIKE %s
-		order by
-			idx desc, name
-		limit %s, %s"""%(
-			", ".join(['%s']*len(students)), searchfield, "%s", "%s", "%s"),
-			tuple(students + ["%%%s%%" % txt, start, page_len]
-		)
+		ORDER BY idx DESC, name
+		limit %s, %s""".format(", ".join(['%s'] * len(students)), searchfield),
+        tuple(students + ["%%%s%%" % txt, start, page_len])
 	)
