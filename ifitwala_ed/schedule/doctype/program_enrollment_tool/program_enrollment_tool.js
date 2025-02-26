@@ -31,7 +31,7 @@ frappe.ui.form.on('Program Enrollment Tool', {
 		});
 	},
 
-	// logic for the "get students" button.  Calling the get_students funciton in .py file.
+	// logic for the "get students" button.  Calling the get_students function in .py file.
 	get_students: function(frm) {
 		frm.set_value("students", []);
 		frappe.call({
