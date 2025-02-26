@@ -37,6 +37,40 @@ frappe.ui.form.on("Course Enrollment Tool", {
     }); 
   },
 
+  student: function(frm, cdt, cdn) {
+    const row = frappe.get_doc(cdt, cdn);
+
+    // Only run if Program, Academic Year are set in the parent
+    if (!frm.doc.program || !frm.doc.academic_year) {
+      frappe.msgprint(__("Please select Program and Academic Year first"));
+      return;
+    }
+
+    // Attempt to find an existing Program Enrollment for this Student, Program, Year, Term
+    frappe.call({
+      method: "frappe.db.get_value",
+      args: {
+        doctype: "Program Enrollment",
+        filters: {
+          student: row.student,
+          program: frm.doc.program,
+          academic_year: frm.doc.academic_year,
+          term: frm.doc.term || ""
+        },
+        fieldname: "name"
+      },
+      callback: function(r) {
+        if (r.message && r.message.name) {
+          // Found a matching Program Enrollment
+          frappe.model.set_value(cdt, cdn, "program_enrollment", r.message.name);
+        } else {
+          // No Program Enrollment found => leave it blank (should not happen normally)
+          frappe.model.set_value(cdt, cdn, "program_enrollment", null);
+        }
+      }
+    });
+  },
+
   // 4) Single button "Add Course" that calls add_course_to_program_enrollment() on the server
   add_course: function(frm) {
     frappe.call({
