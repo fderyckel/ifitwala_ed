@@ -69,15 +69,12 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
     academic_year = filters.get("academic_year")
     program = filters.get("program")
     term = filters.get("term")
-    course = filters.get("course")
 
     if not academic_year:
       frappe.throw(_("Academic Year is required to fetch students."))
-    if not course:
-      frappe.throw(_("Course is required to fetch students."))	
       
     # 3) Build conditions and parameter list
-    conditions = ["s.enabled = 'Active'", "pe.docstatus = 0"]
+    conditions = ["s.enabled = 1", "pe.docstatus = 0"]
     values = []
 
     # Filter by academic_year if provided
