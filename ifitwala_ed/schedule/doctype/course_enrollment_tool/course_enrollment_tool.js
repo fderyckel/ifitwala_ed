@@ -37,6 +37,22 @@ frappe.ui.form.on("Course Enrollment Tool", {
     }); 
   },
 
+  // 4) Single button "Add Course" that calls add_course_to_program_enrollment() on the server
+  add_course: function(frm) {
+    frappe.call({
+      doc: frm.doc,
+      method: "add_course_to_program_enrollment",
+      callback: function(r) {
+        if (!r.exc) {
+          frm.reload_doc();
+        }
+      }
+    });
+  }
+});
+
+
+frappe.ui.form.on("Course Enrollment Tool Student", {
   student: function(frm, cdt, cdn) {
     const row = frappe.get_doc(cdt, cdn);
 
@@ -46,7 +62,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
       return;
     }
 
-    // Find an existing Program Enrollment for the Student, Program, Year, Term
+    // Attempt to find an existing Program Enrollment for the Student, Program, Year, Term
     frappe.call({
       method: "frappe.db.get_value",
       args: {
@@ -64,24 +80,10 @@ frappe.ui.form.on("Course Enrollment Tool", {
           // Found a matching Program Enrollment
           frappe.model.set_value(cdt, cdn, "program_enrollment", r.message.name);
         } else {
-          // No Program Enrollment found => leave it blank (should not happen normally)
+          // No Program Enrollment found => either leave it blank or handle differently
           frappe.model.set_value(cdt, cdn, "program_enrollment", null);
-        }
-      }
-    });
-  },
-
-  // 4) Single button "Add Course" that calls add_course_to_program_enrollment() on the server
-  add_course: function(frm) {
-    frappe.call({
-      doc: frm.doc,
-      method: "add_course_to_program_enrollment",
-      callback: function(r) {
-        if (!r.exc) {
-          frm.reload_doc();
         }
       }
     });
   }
 });
-
