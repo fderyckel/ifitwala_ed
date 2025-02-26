@@ -29,13 +29,13 @@ class CourseEnrollmentTool(Document):
       already_exists = any(c.course == self.course for c in pe_doc.get("courses", []))
       if already_exists: 
         frappe.msgprint(_("Course {0} already exists in Program Enrollment {1}."
-          ).format(get_link_to_form("Course", self.course),get_link_to_form("Program Enrollment", pe_doc.name)))
+          ).format(get_link_to_form("Course", self.course), get_link_to_form("Program Enrollment", pe_doc.name)))
       else:
         # Append the course to Program Enrollment child table
         pe_doc.append("courses", {"course": self.course})
         pe_doc.save()  # Save (not submit)
         frappe.msgprint(_( "Course {0} successfully added to Program Enrollment {1}."
-          ).format(get_link_to_form("Course", self.course, label=self.course), get_link_to_form("Program Enrollment", pe_doc.name)))
+          ).format(get_link_to_form("Course", self.course), get_link_to_form("Program Enrollment", pe_doc.name)))
 
     # Finally, save the Course Enrollment Tool doc if anything changed
     self.save()
