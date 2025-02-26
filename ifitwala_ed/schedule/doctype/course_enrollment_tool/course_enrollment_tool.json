@@ -12,7 +12,7 @@
   "term",
   "course",
   "section_break_z4cm",
-  "student",
+  "students",
   "section_break_mane",
   "add_course"
  ],
@@ -24,8 +24,10 @@
   {
    "fieldname": "academic_year",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Academic Year",
-   "options": "Academic Year"
+   "options": "Academic Year",
+   "reqd": 1
   },
   {
    "fieldname": "term",
@@ -42,8 +44,10 @@
   {
    "fieldname": "course",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Course",
-   "options": "Course"
+   "options": "Course",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_ehuh",
@@ -52,12 +56,6 @@
   {
    "fieldname": "section_break_z4cm",
    "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "student",
-   "fieldtype": "Table MultiSelect",
-   "label": "Student",
-   "options": "Course Enrollment Tool Student"
   },
   {
    "fieldname": "section_break_mane",
@@ -69,12 +67,18 @@
    "fieldtype": "Button",
    "label": "Add Course",
    "options": "add_course"
+  },
+  {
+   "fieldname": "students",
+   "fieldtype": "Table",
+   "label": "Students",
+   "options": "Course Enrollment Tool Student"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-02-21 14:34:29.208294",
+ "modified": "2025-02-25 00:12:21.572168",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Course Enrollment Tool",
