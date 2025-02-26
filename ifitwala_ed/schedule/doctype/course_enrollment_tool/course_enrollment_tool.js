@@ -64,16 +64,16 @@ frappe.ui.form.on("Course Enrollment Tool Student", {
 
     // Attempt to find an existing Program Enrollment for the Student, Program, Year, Term
     frappe.call({
-      method: "frappe.db.get_value",
+      method: "frappe.client.get_value",
       args: {
-        doctype: "Program Enrollment",
+        doctype: "Program Enrollment", 
+        fieldname: "name", 
         filters: {
           student: row.student,
           program: frm.doc.program,
           academic_year: frm.doc.academic_year,
           term: frm.doc.term || ""
-        },
-        fieldname: "name"
+        }
       },
       callback: function(r) {
         if (r.message && r.message.name) {
