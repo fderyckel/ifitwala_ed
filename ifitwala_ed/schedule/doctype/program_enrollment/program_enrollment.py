@@ -145,7 +145,7 @@ class ProgramEnrollment(Document):
 @frappe.validate_and_sanitize_search_inputs
 def get_program_courses(doctype, txt, searchfield, start, page_len, filters):
 
-	return frappe.db.sql("""select course, course_name 
+	return frappe.db.sql(f"""select course, course_name 
 		FROM `tabProgram Course`
 		WHERE parent = %(program)s AND course LIKE %(txt)s
 		ORDER BY
