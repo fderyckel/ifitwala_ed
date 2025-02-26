@@ -43,7 +43,7 @@ class CourseEnrollmentTool(Document):
 
 
 @frappe.whitelist()
-def fetch_eligible_students_link_query(doctype, txt, searchfield, start, page_len, filters=None):
+def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=None):
     """
     This method is designed for Link field queries in Frappe.
 
@@ -133,3 +133,61 @@ def fetch_eligible_students_link_query(doctype, txt, searchfield, start, page_le
 
     return final
 
+
+
+@frappe.whitelist()
+def get_courses_for_program(doctype, txt, searchfield, start, page_len, filters=None):
+    """
+    Return a list of [value, label] for the "course" Link field,
+    showing only courses that are in Program's child table "Program Course".
+    
+    - doctype: "Course" (the link doctype)
+    - txt: user-typed text for partial matching
+    - searchfield, start, page_len: for pagination
+    - filters: dict with {'program': <program_name>}
+    
+    Steps:
+      1) Check if 'program' is in filters.
+      2) Query 'Program Course' joined to 'Course' if needed.
+      3) Return [[course_name, "COURSE123 - Some Course Title"], ...].
+    """
+
+    start = cint(start)
+    page_len = cint(page_len)
+
+    if not filters:
+        filters = {}
+
+    program = filters.get("program")
+    if not program:
+        # No program chosen => No results or you might show all courses
+        return []
+
+    # We'll match partial text on the Course name or Course's course_name
+    conditions = ["pc.parent = %s"]
+    values = [program]
+
+    if txt:
+        conditions.append("(c.name LIKE %s OR c.course_name LIKE %s)")
+        values.append(f"%{txt}%")
+        values.append(f"%{txt}%")
+
+    where_clause = " AND ".join(conditions)
+
+    results = frappe.db.sql(f"""
+        SELECT c.name, c.course_name
+        FROM `tabProgram Course` pc
+        JOIN `tabCourse` c ON c.name = pc.course
+        WHERE {where_clause}
+        ORDER BY c.name
+        LIMIT {start}, {page_len}
+    """, values, as_dict=True)
+
+    final = []
+    for row in results:
+        course_id = row["name"]
+        course_label = row["course_name"] or ""
+        label = f"{course_id} - {course_label}".strip(" -")
+        final.append([course_id, label])
+
+    return final

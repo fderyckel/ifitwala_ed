@@ -10,13 +10,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
     //    Frappe calls our Python method "fetch_eligible_students" to filter the results.
     frm.set_query("student", "students", function(doc, cdt, cdn) {
       return {
-        // This is the path to your whitelisted Python method in course_enrollment_tool.py
-        // e.g. "my_app.my_module.course_enrollment_tool.fetch_eligible_students"
-        query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.fetch_eligible_students",
-        // We can pass filters to the Python method as needed.
-        // The standard Link query expects a structure where the method can handle
-        // doctype, txt, searchfield, page_len, start, filters, etc.
-        // But for simplicity, you can check `filters` directly in your code.
+        query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.fetch_eligible_students",
         filters: {
           academic_year: frm.doc.academic_year,
           program: frm.doc.program,
@@ -25,13 +19,30 @@ frappe.ui.form.on("Course Enrollment Tool", {
         }
       };
     });
+
+    // 3) Set a custom query on the "course" field so that once Program is chosen,
+    //    only courses from that Program appear in the dropdown.
+    frm.set_query("course", function() {
+      // If Program is not chosen, you can either return all courses or show an empty list.
+      if (!frm.doc.program) {
+        // Return an empty filter (aka show all courses)
+        return {};
+      }
+      // Otherwise, call a custom server-side query that filters by Program
+      return {
+        query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.get_courses_for_program",
+        filters: {
+          program: frm.doc.program
+        }
+      };
+    }); 
   },
 
-  // 3) Single button "Add Course" that calls add_course_to_program_enrollment() on the server
+  // 4) Single button "Add Course" that calls add_course_to_program_enrollment() on the server
   add_course: function(frm) {
     frappe.call({
       doc: frm.doc,
-      method: "ifitwala_ed.schedule.doctype.course_enrollment_tool.add_course_to_program_enrollment",
+      method: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.add_course_to_program_enrollment",
       callback: function(r) {
         if (!r.exc) {
           frm.reload_doc();
