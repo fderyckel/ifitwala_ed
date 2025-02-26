@@ -107,7 +107,6 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
         FROM `tabStudent` s
         JOIN `tabProgram Enrollment` pe ON pe.student = s.name
         JOIN `tabProgram` pr ON pr.name = pe.program
-        JOIN `tabProgram Course` pc ON pc.parent = pr.name
         WHERE {where_clause}
         ORDER BY s.name
         LIMIT {start}, {page_len}

@@ -151,14 +151,15 @@ def get_program_courses(doctype, txt, searchfield, start, page_len, filters):
 			if(locate(%(_txt)s, course), locate(%(_txt)s, course), 99999),
 			idx desc,
 			`tabProgram Course`.course asc
-		limit {start}, {page_len}""".format(
-			match_cond=get_match_cond(doctype),
-			start=start,
-			page_len=page_len), {
-				"txt": "%{0}%".format(txt),
-				"_txt": txt.replace('%', ''),
-				"program": filters['program']
-			})
+		limit {start}, {page_len}""", 
+		{
+			"txt": f"%{txt}%",
+			"_txt": txt.replace('%', ''),
+			"program": filters["program"],
+			"start": start,
+			"page_len": page_len
+			}
+	)
 
 # from JS to filter out students that have already been enrolled for a given year and/or term
 @frappe.whitelist()
