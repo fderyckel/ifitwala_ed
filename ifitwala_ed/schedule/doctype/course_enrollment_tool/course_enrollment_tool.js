@@ -46,7 +46,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
       return;
     }
 
-    // Attempt to find an existing Program Enrollment for this Student, Program, Year, Term
+    // Find an existing Program Enrollment for the Student, Program, Year, Term
     frappe.call({
       method: "frappe.db.get_value",
       args: {
