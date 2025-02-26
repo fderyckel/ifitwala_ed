@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe import msgprint, _
+from frappe import _
 from frappe.model.document import Document
 from frappe.desk.reportview import get_match_cond
 from frappe.utils import getdate, get_link_to_form
@@ -147,12 +147,12 @@ def get_program_courses(doctype, txt, searchfield, start, page_len, filters):
 
 	return frappe.db.sql("""select course, course_name 
 		FROM `tabProgram Course`
-		WHERE parent = %(program)s AND course like %(txt)s
+		WHERE parent = %(program)s AND course LIKE %(txt)s
 		ORDER BY
-			if(locate(%(_txt)s, course), locate(%(_txt)s, course), 99999),
-			idx desc,
-			`tabProgram Course`.course asc
-		limit {start}, {page_len}""", 
+			IF(LOCATE(%(_txt)s, course), LOCATE(%(_txt)s, course), 99999),
+			idx DESC,
+			`tabProgram Course`.course ASC
+		LIMIT {start}, {page_len}""", 
 		{
 			"txt": f"%{txt}%",
 			"_txt": txt.replace('%', ''),

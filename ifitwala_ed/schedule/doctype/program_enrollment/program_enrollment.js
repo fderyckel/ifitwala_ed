@@ -28,21 +28,20 @@ frappe.ui.form.on("Program Enrollment", {
 
   onload_post_render: function (frm) {
     frm.get_field("courses").grid.set_multiple_add("course");
-  },
-
-  program: function (frm) {
-    frm.events.get_courses(frm);
+    
     frm.set_query("course", "courses", function (doc, cdt, cdn) {
       return {
-        query:
-          "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_program_courses",
-        filters: {
-          program: frm.doc.program,
-        },
+        query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_program_courses",
+        filters: {program: frm.doc.program},
       };
     });
   },
 
+  program: function (frm) {
+    frm.events.get_courses(frm);
+  },
+
+  // to get the mandatory courses of a given program
   get_courses: function (frm) {
     frm.set_value("courses", []);
     frappe.call({
