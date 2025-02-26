@@ -60,12 +60,7 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
     """
     # 1) Convert start/page_len to integers
     start = cint(start)
-    page_len = cint(page_len)
-    
-    if not academic_year:
-      frappe.throw(_("Academic Year is required to fetch students."))
-    if not course:
-      frappe.throw(_("Course is required to fetch students."))		
+    page_len = cint(page_len)	
 
     if not filters:
         filters = {}
@@ -76,6 +71,11 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
     term = filters.get("term")
     course = filters.get("course")
 
+    if not academic_year:
+      frappe.throw(_("Academic Year is required to fetch students."))
+    if not course:
+      frappe.throw(_("Course is required to fetch students."))	
+      
     # 3) Build conditions and parameter list
     conditions = ["s.student_status = 'Active'", "pe.docstatus = 0"]
     values = []
