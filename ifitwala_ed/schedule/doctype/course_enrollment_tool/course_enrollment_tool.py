@@ -112,7 +112,7 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
     # 4) Run a single SQL query with JOINs
     #    DISTINCT ensures we don't get duplicates if multiple PEs match for the same student
     results = frappe.db.sql(f"""
-        SELECT DISTINCT s.name, s.student_name
+        SELECT DISTINCT s.name, s.student_full_name
         FROM `tabStudent` s
         JOIN `tabProgram Enrollment` pe ON pe.student = s.name
         JOIN `tabProgram` pr ON pr.name = pe.program
