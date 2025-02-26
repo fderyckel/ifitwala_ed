@@ -42,7 +42,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
   add_course: function(frm) {
     frappe.call({
       doc: frm.doc,
-      method: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.add_course_to_program_enrollment",
+      method: "add_course_to_program_enrollment",
       callback: function(r) {
         if (!r.exc) {
           frm.reload_doc();
