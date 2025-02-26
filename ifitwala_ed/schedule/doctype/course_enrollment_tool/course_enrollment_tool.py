@@ -95,12 +95,6 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
         conditions.append("pe.term = %s")
         values.append(term)
 
-    # Filter by course if provided
-    # i.e. only programs that have this course in their Program Course child table
-    if course:
-        conditions.append("pc.course = %s")
-        values.append(course)
-
     # Filter by txt, matching either student ID or student_name
     if txt:
         conditions.append("(s.name LIKE %s OR s.student_full_name LIKE %s)")
