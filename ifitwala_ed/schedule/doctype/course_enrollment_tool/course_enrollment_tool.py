@@ -126,7 +126,7 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
     final = []
     for row in results:
         student_id = row["name"]
-        student_label = row["student_name"] or ""
+        student_label = row["student_full_name"] or ""
         # The label is displayed in the dropdown, so let's do: "STUD0001 - John Smith"
         label = f"{student_id} - {student_label}".strip(" -")
         final.append([student_id, label])
