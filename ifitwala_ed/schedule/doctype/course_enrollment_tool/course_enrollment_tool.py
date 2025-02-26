@@ -16,7 +16,7 @@ class CourseEnrollmentTool(Document):
       program_doc = frappe.get_doc("Program", self.program)
       valid_courses = {pc.course for pc in program_doc.courses}
       if self.course not in valid_courses:
-        frappe.throw(_("{course} is not part of {program}. Please correct your selection."
+        frappe.throw(_("Course {0} is not part of Program {1}. Please correct your selection."
           ).format(get_link_to_form("Course", self.course), get_link_to_form("Program", self.program)))
 
     for row in self.students: 
@@ -28,13 +28,13 @@ class CourseEnrollmentTool(Document):
       # Check if course is already in this Program Enrollment
       already_exists = any(c.course == self.course for c in pe_doc.get("courses", []))
       if already_exists: 
-        frappe.msgprint(_("Course {course} already exists in Program Enrollment {pe}."
+        frappe.msgprint(_("Course {0} already exists in Program Enrollment {1}."
           ).format(get_link_to_form("Course", self.course),get_link_to_form("Program Enrollment", pe_doc.name)))
       else:
         # Append the course to Program Enrollment child table
         pe_doc.append("courses", {"course": self.course})
         pe_doc.save()  # Save (not submit)
-        frappe.msgprint(_( "Course {course} successfully added to Program Enrollment {pe}."
+        frappe.msgprint(_( "Course {0} successfully added to Program Enrollment {1}."
           ).format(get_link_to_form("Course", self.course, label=self.course), get_link_to_form("Program Enrollment", pe_doc.name)))
 
     # Finally, save the Course Enrollment Tool doc if anything changed
