@@ -103,7 +103,7 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
 
     # Filter by txt, matching either student ID or student_name
     if txt:
-        conditions.append("(s.name LIKE %s OR s.student_name LIKE %s)")
+        conditions.append("(s.name LIKE %s OR s.student_full_name LIKE %s)")
         values.append(f"%{txt}%")
         values.append(f"%{txt}%")
 
