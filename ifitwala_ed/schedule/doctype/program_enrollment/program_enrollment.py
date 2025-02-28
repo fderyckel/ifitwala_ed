@@ -47,6 +47,27 @@ class ProgramEnrollment(Document):
 		self.update_student_joining_date()
 		self.create_course_enrollment()
 
+	def on_cancel(self):
+		self.uncheck_course_enrollments()
+
+
+	def validate_duplicate_course(self):
+		seen_courses = []
+		program_courses = {row[0] for row in frappe.db.get_values("Program Course", filters = {"parent": self.program}, fieldname = "course")}
+		for course_entry in self.courses:
+			if course_entry.course in seen_courses:
+				frappe.throw(_("Course {0} entered twice.").format(
+					get_link_to_form("Course",course_entry.course))
+				)
+			else:
+				seen_courses.append(course_entry.course)
+			
+			if course_entry.course not in program_courses:
+				frappe.throw(_("Course {0} is not part of program {1}").format(
+					get_link_to_form("Course", course_entry.course),
+					get_link_to_form("Program", self.program))
+				)
+
 	# you cannot enrolled twice for a same program, same year, same term.
 	def validate_duplication(self): 
 		existing_enrollment_name = frappe.db.exists("Program Enrollment", { 
@@ -93,8 +114,6 @@ class ProgramEnrollment(Document):
 					),title=_("Active Enrollment Exists") # added for better UI message.
       )
 
-
-
 	# If a student is in a program and that program has required courses (non elective), then these courses are loaded automatically.
 	@frappe.whitelist()
 	def get_courses(self):
@@ -102,23 +121,6 @@ class ProgramEnrollment(Document):
 								FROM `tabProgram Course`
 								WHERE parent = %s AND required = 1
 								ORDER BY idx""", (self.program), as_dict=1)
-
-	def validate_duplicate_course(self):
-		seen_courses = []
-		program_courses = {row[0] for row in frappe.db.get_values("Program Course", filters = {"parent": self.program}, fieldname = "course")}
-		for course_entry in self.courses:
-			if course_entry.course in seen_courses:
-				frappe.throw(_("Course {0} entered twice.").format(
-					get_link_to_form("Course",course_entry.course))
-				)
-			else:
-				seen_courses.append(course_entry.course)
-			
-			if course_entry.course not in program_courses:
-				frappe.throw(_("Course {0} is not part of program {1}").format(
-					get_link_to_form("Course", course_entry.course),
-					get_link_to_form("Program", self.program))
-				)
 
 	# This will update the joining date on the student doctype in function of the joining date of the program.
 	def update_student_joining_date(self):
@@ -138,8 +140,15 @@ class ProgramEnrollment(Document):
 		course_enrollment_names = frappe.get_list("Course Enrollment", filters={'program_enrollment': self.name})
 		return [frappe.get_doc('Course Enrollment', course_enrollment.name) for course_enrollment in course_enrollment_names]
 
-
-
+	def uncheck_course_enrollments(self):
+    # Fetch course enrollments linked to this program_enrollment 
+		frappe.db.sql("""
+			UPDATE `tabCourse Enrollment`
+      SET current = 0
+      WHERE program_enrollment = %s
+      AND current = 1
+      """, (self.name,))
+		
 # from JS. to filter out course that are only present in the program list of courses.
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
