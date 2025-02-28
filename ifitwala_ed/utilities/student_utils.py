@@ -39,11 +39,26 @@ def rename_student_image(doc, method):
       expected_file_path = os.path.join(student_folder_fm_path, expected_file_name)
       # Check in public files
       if frappe.db.exists("File", {"file_url": f"/files/{expected_file_path}"}):  
-        frappe.log_error(f"Image with name {expected_file_name} already exists for student {student_id}. Skipping.")
-        return
-
-      # If the image doesn't exist, proceed with renaming and moving
-      file_doc = frappe.get_doc("File", {"file_url": doc.student_image, "attached_to_doctype": "Student", "attached_to_name": doc.name})
+        frappe.log_error(
+          title=_("Image Rename Skipped"),  
+          message=_("Image with name {0} already exists for student {1}.").format(expected_file_name, student_id)
+        )
+        return 
+      
+      file_filters = {
+        "file_url": doc.student_image,
+        "attached_to_doctype": "Student",
+        "attached_to_name": doc.name
+      }
+      file_name = frappe.db.get_value("File", file_filters, "name")
+      if not file_name:
+        frappe.log_error(
+          title=_("Missing File Doc"),  # shortened title
+          message=_("No File doc found for file_url {0}, attached_to_doctype=Student, attached_to_name={1}")
+                  .format(doc.student_image, doc.name)
+        )
+        return 
+      file_doc = frappe.get_doc("File", file_name)
 
       # Create the "student" folder if it doesn't exist
       if not frappe.db.exists("File", {"file_name": "student", "folder": "Home"}):
@@ -78,5 +93,8 @@ def rename_student_image(doc, method):
       frappe.msgprint(f"Image for student {student_id} has been renamed and moved to /files/student/{new_file_name}")
 
     except Exception as e:
-      frappe.log_error(f"Error handling student image for {doc.name}: {e}")
+      frappe.log_error(
+        title=_("Student Image Error"),
+        message=f"Error handling student image for {doc.name}: {e}"
+      )
       frappe.msgprint(f"Error handling student image for {doc.name}: {e}")
