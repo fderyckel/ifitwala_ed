@@ -20,7 +20,7 @@ class SchoolCalendar(Document):
       frappe.throw(_("The selected school ({0}) does not have an abbreviation defined.").format(self.school))
 
     # Construct and set the document name
-    self.name = "{0} {1}".format(self.academic_year, school_abbr)
+    self.calendar_name = "{0} ({1})".format(self.academic_year, school_abbr)
 
   def onload(self):
     weekend_color = frappe.db.get_single_value("Education Settings", "weekend_color")
