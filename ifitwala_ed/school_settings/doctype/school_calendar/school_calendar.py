@@ -72,7 +72,7 @@ class SchoolCalendar(Document):
     ay = frappe.get_doc("Academic Year", self.academic_year)
     if not self.start_of_break or not self.end_of_break:
       frappe.throw(_("Please select first the start and end dates of your break"))
-    if getdate(self.start_of_break) > getdate(self.year_start_date):
+    if getdate(self.start_of_break) > getdate(self.end_of_break):
         frappe.throw(_("The start date of the break must be prior to the end date of the break"))
     if not (getdate(ay.year_start_date) <= getdate(self.start_of_break) <= getdate(ay.year_end_date)) or not (getdate(ay.year_start_date) <= getdate(self.end_of_break) <= getdate(ay.year_end_date)):
       frappe.throw(_("The holiday called {0} should be within your academic year {1} dates.").format(self.break_description, get_link_to_form("Academic Year", self.academic_year))) 
