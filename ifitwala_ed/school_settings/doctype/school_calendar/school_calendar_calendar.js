@@ -31,5 +31,5 @@ frappe.views.calendar["School Calendar"] = {
     },
   ],
   get_events_method:
-    "ifitwala.school_settings.doctype.school_calendar.school_calendar.get_events",
+    "ifitwala_ed.school_settings.doctype.school_calendar.school_calendar.get_events",
 };

@@ -35,7 +35,8 @@ class SchoolCalendar(Document):
       fields=['name as term', 'term_start_date as start', 'term_end_date as end'])
 
     if not terms:
-      frappe.throw(_("No term found for the selected academic year. You need to add at least one academic term for this academic year {0}.").format(get_link_to_form("Academic Year", self.academic_year)))
+      frappe.msgprint(_("No term found for the selected academic year. You need to add at least one academic term for this academic year {0}.").format(get_link_to_form("Academic Year", self.academic_year)))
+      return
 
     for term in terms:
       self.append("terms", {
