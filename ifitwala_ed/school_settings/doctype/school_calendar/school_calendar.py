@@ -15,7 +15,7 @@ class SchoolCalendar(Document):
       frappe.throw(_("Academic Year and School are required to generate the Calendar Name."))
 
     # Efficiently get the school's abbreviation using frappe.db.get_value
-    school_abbr = frappe.db.get_value("School", self.school, "abbreviation")
+    school_abbr = frappe.db.get_value("School", self.school, "abbr")
     if not school_abbr:
       frappe.throw(_("The selected school ({0}) does not have an abbreviation defined.").format(self.school))
 
