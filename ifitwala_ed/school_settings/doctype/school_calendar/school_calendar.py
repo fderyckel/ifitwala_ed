@@ -45,6 +45,8 @@ class SchoolCalendar(Document):
         "end": term.end,
         "length": date_diff(getdate(term.end), getdate(term.start)) + 1
         })
+      
+    return self.terms
 
   def validate_dates(self):
     """Ensure holidays are within the academic year"""
