@@ -36,7 +36,7 @@ class SchoolCalendar(Document):
 
     if not terms:
       frappe.msgprint(_("No term found for the selected academic year. You need to add at least one academic term for this academic year {0}.").format(get_link_to_form("Academic Year", self.academic_year)))
-      return
+      return []
 
     for term in terms:
       self.append("terms", {
@@ -66,6 +66,7 @@ class SchoolCalendar(Document):
         ch.color = self.break_color if self.break_color else ""
         ch.holiday_date = d
         ch.idx = last_idx + i + 1
+    frappe.msgprint(_("Break dates for '{0}' have been successfully added to the holidays table.").format(self.break_description))
 
 
   def validate_break_dates(self):
