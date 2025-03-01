@@ -114,7 +114,6 @@
   {
    "fieldname": "student_image",
    "fieldtype": "Attach Image",
-   "hidden": 1,
    "in_preview": 1,
    "label": "Student Image"
   },
@@ -280,7 +279,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-13 01:16:49.713313",
+ "modified": "2025-02-28 11:51:05.922373",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",

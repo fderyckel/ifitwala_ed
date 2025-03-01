@@ -18,7 +18,18 @@
   "parent_school",
   "change_abbr",
   "contact_html",
-  "section_break_lys0",
+  "current_calendar_events_section",
+  "current_academic_year",
+  "current_term",
+  "column_break_vud1",
+  "current_school_calendar",
+  "calendar_colors_section",
+  "meeting_color",
+  "weekend_color",
+  "break_color",
+  "column_break_1mhp",
+  "course_color",
+  "todo_color",
   "mission_vision_values_section",
   "school_philosophy",
   "lft",
@@ -26,10 +37,6 @@
   "old_parent"
  ],
  "fields": [
-  {
-   "fieldname": "section_break_lys0",
-   "fieldtype": "Section Break"
-  },
   {
    "fieldname": "lft",
    "fieldtype": "Int",
@@ -138,12 +145,78 @@
    "label": "Contact HTML",
    "no_copy": 1,
    "print_hide": 1
+  },
+  {
+   "fieldname": "current_academic_year",
+   "fieldtype": "Link",
+   "label": "Current Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "current_term",
+   "fieldtype": "Link",
+   "label": "Current Term",
+   "options": "Term"
+  },
+  {
+   "fieldname": "current_school_calendar",
+   "fieldtype": "Link",
+   "label": "Current School Calendar",
+   "options": "School Calendar"
+  },
+  {
+   "fieldname": "current_calendar_events_section",
+   "fieldtype": "Section Break",
+   "label": "Current Calendar Events"
+  },
+  {
+   "fieldname": "column_break_vud1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "calendar_colors_section",
+   "fieldtype": "Section Break",
+   "label": "Calendar Colors"
+  },
+  {
+   "default": "#a4f3dd",
+   "fieldname": "meeting_color",
+   "fieldtype": "Color",
+   "label": "Default Calendar Meeting Color"
+  },
+  {
+   "default": "#CAE9FF",
+   "fieldname": "weekend_color",
+   "fieldtype": "Color",
+   "label": "Default Weekend Color"
+  },
+  {
+   "default": "#87BCDE",
+   "fieldname": "break_color",
+   "fieldtype": "Color",
+   "label": "Default Break Color"
+  },
+  {
+   "fieldname": "column_break_1mhp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "#FFCB77",
+   "fieldname": "course_color",
+   "fieldtype": "Color",
+   "label": "Default Course Color"
+  },
+  {
+   "default": "#DE6B48",
+   "fieldname": "todo_color",
+   "fieldtype": "Color",
+   "label": "Default Todo Meeting Color"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-02-04 10:02:13.705146",
+ "modified": "2025-03-01 18:24:12.101487",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",

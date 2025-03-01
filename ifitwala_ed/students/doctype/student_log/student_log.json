@@ -47,6 +47,7 @@
    "fieldname": "student",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Student",
    "options": "Student",
    "reqd": 1
@@ -71,9 +72,9 @@
   {
    "fieldname": "author",
    "fieldtype": "Link",
-   "hidden": 1,
    "in_filter": 1,
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Author",
    "options": "Employee"
   },
@@ -81,7 +82,10 @@
    "fetch_from": "author.employee_full_name",
    "fieldname": "author_name",
    "fieldtype": "Data",
-   "label": "Author Name"
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Author Name",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_qdix",
@@ -220,7 +224,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-13 01:19:37.982102",
+ "modified": "2025-02-28 21:50:04.899829",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",
