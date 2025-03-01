@@ -9,6 +9,19 @@ from frappe.model.document import Document
 
 
 class SchoolCalendar(Document):
+  def autoname(self):
+    # Ensure both academic_year and school are set
+    if not self.academic_year or not self.school:
+      frappe.throw(_("Academic Year and School are required to generate the Calendar Name."))
+
+    # Efficiently get the school's abbreviation using frappe.db.get_value
+    school_abbr = frappe.db.get_value("School", self.school, "abbreviation")
+    if not school_abbr:
+      frappe.throw(_("The selected school ({0}) does not have an abbreviation defined.").format(self.school))
+
+    # Construct and set the document name
+    self.name = "{0} {1}".format(self.academic_year, school_abbr)
+
   def onload(self):
     weekend_color = frappe.db.get_single_value("Education Settings", "weekend_color")
     self.set_onload('weekend_color', weekend_color)
