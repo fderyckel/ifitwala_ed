@@ -227,7 +227,6 @@ class Employee(NestedSet):
 
 
 
-
 @frappe.whitelist()
 def create_user(employee, user = None, email=None):
 	emp = frappe.get_doc("Employee", employee)
@@ -251,7 +250,11 @@ def create_user(employee, user = None, email=None):
 		"birth_date": birth_date,
 		"mobile_no": phone
 	})
-	user.insert()
+
+	user.insert() 
+	emp.user_id = user.name 
+	emp.save(ignore_permissions=True)
+	
 	return user.name
 
 @frappe.whitelist()
