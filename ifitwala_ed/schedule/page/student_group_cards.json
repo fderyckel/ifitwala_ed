@@ -1,0 +1,12 @@
+{
+  "doctype": "Page",
+  "name": "student_group_cards",
+  "module": "Schedule",
+  "label": "Student Group Cards",
+  "icon": "octicon octicon-file-directory",
+  "route": "student_group_cards/<group_id>",
+  "script_path": "ifitwala_ed.schedule.page.student_group_cards.student_group_cards",
+  "content": "",
+  "title": "Student Group Cards",
+  "modified_by": "Administrator"
+}
