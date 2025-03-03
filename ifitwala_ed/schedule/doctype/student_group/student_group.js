@@ -33,23 +33,18 @@ frappe.ui.form.on("Student Group", {
   },
 
   refresh: function (frm) {
-    if (!frm.doc.__islocal && !in_list(frappe.user_roles, "Student")) {
-      var stud = frm.doc.name;
-      var guard = frm.doc.name;
-
+    if (!frm.doc.__islocal) {
       frm.add_custom_button(
-        __("Update Guardians and Students to Email Group"),
+        __("Open Student Cards"),
         function () {
-          frappe.call({
-            method: "ifitwala_ed.ifitwala_ed.api.update_email_group",
-            args: {
-              doctype: "Student Group",
-              name: frm.doc.name,
-            },
-          });
-        },
-        __("Communication")
+          // Route to the custom page 'student_group_cards/<group_id>'
+          frappe.set_route("student_group_cards", frm.doc.name);
+          // This will go to /app/student_group_cards/SG-0001 (if frm.doc.name is "SG-0001")
+        }
       );
+    };  
+
+    if (!frm.doc.__islocal && !in_list(frappe.user_roles, "Student")) {
 
       frm.add_custom_button(
         __("Add a session"),
@@ -62,35 +57,6 @@ frappe.ui.form.on("Student Group", {
           };
           frappe.set_route("List", "School Event");
         },
-        __("Tools")
-      );
-
-      frm.add_custom_button(__("Add Assessment"), function () {
-        frappe.route_options = { student_group: frm.doc.name };
-        frappe.set_route("Form", "Learning Task");
-      });
-
-      frm.add_custom_button(
-        __("Students Newsletter"),
-        function () {
-          frappe.route_options = {
-            "Newsletter Email Group.email_group": stud.concat("|students"),
-          };
-          frappe.set_route("List", "Newsletter");
-        },
-        __("Communication")
-      );
-
-      frm.add_custom_button(
-        __("Guardians Newsletter"),
-        function () {
-          frappe.route_options = {
-            "Newsletter Email Group.email_group":
-              frm.doc.name.concat("|guardians"),
-          };
-          frappe.set_route("List", "Newsletter");
-        },
-        __("Communication")
       );
     }
   },
