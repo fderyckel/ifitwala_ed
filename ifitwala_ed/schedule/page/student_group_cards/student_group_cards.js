@@ -8,11 +8,26 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
     single_column: true,
   });
 
-  // Load template (now stored in frappe.templates["student_group_cards"])
-  page.main.html(frappe.render_template("student_group_cards"));
+  // Load the template from public/templates/
+  frappe.call({
+    method: "frappe.client.get",
+    args: {
+      doctype: "File",
+      name: "student_group_cards.html",
+    },
+    callback: function (r) {
+      if (r.message) {
+        page.main.html(r.message.content);
+      }
+    },
+  });
 
-  // Create filters using page.add_field
+  // Create filters container
+  let filters_container = $('<div id="filters-container"></div>').prependTo(page.main);
+
+  // Add filters
   let program_field = page.add_field({
+    parent: filters_container,
     fieldname: "program",
     label: __("Program"),
     fieldtype: "Link",
@@ -21,6 +36,7 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
   });
 
   let course_field = page.add_field({
+    parent: filters_container,
     fieldname: "course",
     label: __("Course"),
     fieldtype: "Link",
@@ -29,6 +45,7 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
   });
 
   let instructor_field = page.add_field({
+    parent: filters_container,
     fieldname: "instructor",
     label: __("Instructor"),
     fieldtype: "Link",
@@ -37,6 +54,7 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
   });
 
   let student_group_field = page.add_field({
+    parent: filters_container,
     fieldname: "student_group",
     label: __("Student Group"),
     fieldtype: "Link",
@@ -91,20 +109,12 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
 
     students.forEach((stu) => {
       let image_url = stu.student_image || "/assets/frappe/images/no-image.jpg";
-      let card_html = `
-        <div class="student-card">
-          <div class="student-img">
-            <img src="${image_url}" alt="Student Image" />
-          </div>
-          <div class="student-info">
-            <div class="student-full-name">${frappe.utils.escape_html(stu.student_full_name || "")}</div>
-            <div class="student-preferred-name">${frappe.utils.escape_html(stu.student_preferred_name || "")}</div>
-          </div>
-        </div>
-      `;
+      let card_html = frappe.render_template("student_card", {
+        student_image: image_url,
+        student_full_name: stu.student_full_name || "",
+        student_preferred_name: stu.student_preferred_name || "",
+      });
       container.append(card_html);
     });
   }
 };
-
-  
