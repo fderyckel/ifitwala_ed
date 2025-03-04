@@ -116,6 +116,7 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
           </div>
         `;
         container.append(card_html);
+        console.log("Container HTML now:", container.html());
       });
     }
   };
