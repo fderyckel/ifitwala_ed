@@ -1,8 +1,9 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
+
 frappe.pages["student_group_cards"].on_page_load = function (wrapper) { 
-  frappe.require("/assets/ifitwala_ed/css/student_group.css");
+  frappe.require_css("/assets/ifitwala_ed/css/student_group.css");
   
   const page = frappe.ui.make_app_page({
     parent: wrapper,
