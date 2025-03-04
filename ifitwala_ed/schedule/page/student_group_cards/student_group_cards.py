@@ -3,31 +3,36 @@
 
 import frappe
 from frappe import _
+from frappe.utils import cint
 
 @frappe.whitelist()
-def get_student_groups(program=None, course=None, instructor=None, text=""):
+def get_student_groups_query(doctype, txt, searchfield, start, page_len, filters):
     """
-    Return a list of Student Groups that match the given filters (program, course, instructor)
-    and contain 'text' in their name (for autocomplete).
-    We only want the groups for which there's at least one Instructor match (if instructor given).
+    This method is called by the link field for Student Group.
+    'filters' will have { "program": ..., "course": ..., "instructor": ... }.
+    We only return 'Active' groups that match those filters.
+    We also match 'txt' against name or student_group_name.
+    The return format is a list of [name, label, ...].
     """
 
-    # Build conditions
-    conditions = ["sg.status = 'Active'"]  # only active groups
-    values = {}
+    program = filters.get("program")
+    course = filters.get("course")
+    instructor = filters.get("instructor")
 
-    # Program filter
+    start = cint(start)
+    page_len = cint(page_len)
+
+    conditions = ["sg.status = 'Active'"]
+    vals = {}
+
     if program:
         conditions.append("sg.program = %(program)s")
-        values["program"] = program
+        vals["program"] = program
 
-    # Course filter
     if course:
         conditions.append("sg.course = %(course)s")
-        values["course"] = course
+        vals["course"] = course
 
-    # If we filter by instructor, we need to check the child table "Student Group Instructor"
-    # to see if that instructor is part of the group.
     instructor_join = ""
     if instructor:
         instructor_join = """
@@ -35,42 +40,42 @@ def get_student_groups(program=None, course=None, instructor=None, text=""):
                 ON sgi.parent = sg.name
                 AND sgi.instructor = %(instructor)s
         """
-        values["instructor"] = instructor
+        vals["instructor"] = instructor
 
-    # If text is provided, match it against the student_group_name or name (wildcard search).
-    if text:
-        conditions.append("(sg.student_group_name LIKE %(text)s OR sg.name LIKE %(text)s)")
-        values["text"] = f"%{text}%"
+    if txt:
+        conditions.append("(sg.name LIKE %(txt)s OR sg.student_group_name LIKE %(txt)s)")
+        vals["txt"] = f"%{txt}%"
 
     where_clause = " AND ".join(conditions)
 
-    # Query
     data = frappe.db.sql(f"""
         SELECT
-            sg.name,
-            sg.student_group_name
+            sg.name, sg.student_group_name
         FROM `tabStudent Group` sg
         {instructor_join}
         WHERE {where_clause}
         ORDER BY sg.student_group_name ASC
-        LIMIT 50
-    """, values=values, as_dict=True)
+        LIMIT {start}, {page_len}
+    """, vals)
 
-    return data
+    # For a link query, we typically return a list of tuples [ [name, label], ... ]
+    # "label" is what the user sees in the search dropdown.
+    # data might look like [(SG-0001, "Grade 10 - Math"), (SG-0002, "Grade 11 - History"), ...]
+    # We'll transform it so that name=SG-0001, label=Grade 10 - Math
+    return [[d[0], d[1]] for d in data]
 
 
 @frappe.whitelist()
 def get_students_in_group(student_group):
     """
-    Return a list of active students in the given Student Group.
-    We only want child rows with active=1 and the linked Student doc is also enabled=1.
-    We'll fetch student_image, student_full_name, and student_preferred_name.
+    Return a list of up to 25 active students in the given Student Group.
+    (sgs.active=1, s.enabled=1).
+    We'll fetch student_image, student_full_name, student_preferred_name.
     """
+
     if not student_group:
         return []
 
-    # Query the child table and join the Student doc
-    # to get the student's image, full name, etc.
     students = frappe.db.sql("""
         SELECT
             s.student_image AS student_image,
@@ -80,11 +85,11 @@ def get_students_in_group(student_group):
         INNER JOIN `tabStudent` s
             ON sgs.student = s.name
         WHERE
-            sgs.parent = %(student_group)s
+            sgs.parent = %(group)s
             AND sgs.active = 1
             AND s.enabled = 1
         ORDER BY s.student_full_name
         LIMIT 25
-    """, {"student_group": student_group}, as_dict=True)
+    """, {"group": student_group}, as_dict=True)
 
     return students
