@@ -8,9 +8,10 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
       single_column: true,
     });
   
+    // Render our HTML template (which contains the div for cards) into the main page area
     page.main.html(frappe.render_template("student_group_cards"));
-       
-    // Create filters
+  
+    // Create filters using page.add_field
     let program_field = page.add_field({
       fieldname: "program",
       label: __("Program"),
@@ -35,14 +36,13 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
       change: () => clear_student_group(),
     });
   
-    // Student Group filter. We'll dynamically limit results with a custom query.
+    // Student Group filter with custom query
     let student_group_field = page.add_field({
       fieldname: "student_group",
       label: __("Student Group"),
       fieldtype: "Link",
       options: "Student Group",
       get_query: function () {
-        // Provide a custom method that respects the three filters.
         return {
           query: "ifitwala_ed.schedule.page.student_group_cards.student_group_cards.get_student_groups_query",
           filters: {
@@ -62,26 +62,16 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
       },
     });
   
-    /**
-     * Reset the Student Group field when Program/Course/Instructor changes.
-     * This encourages the user to pick a new Student Group from the updated filter set.
-     */
     function clear_student_group() {
       student_group_field.set_value("");
       render_cards([]);
     }
   
-    /**
-     * Fetch the students in a given Student Group, then display as cards.
-     */
     function load_students(student_group_name) {
       frappe.call({
         method: "ifitwala_ed.schedule.page.student_group_cards.student_group_cards.get_students_in_group",
-        args: {
-          student_group: student_group_name,
-        },
-        callback: (r) => { 
-          console.log("Response from server:", r);  
+        args: { student_group: student_group_name },
+        callback: (r) => {
           if (r && r.message) {
             render_cards(r.message);
           } else {
@@ -91,11 +81,7 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
       });
     }
   
-    /**
-     * Render array of students in the container.
-     */
-    function render_cards(students) { 
-        console.log("Rendering cards for:", students);
+    function render_cards(students) {
       let container = $("#student-group-cards-container");
       container.empty();
   
@@ -118,8 +104,8 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
           </div>
         `;
         container.append(card_html);
-        console.log("Container HTML now:", container.html());
       });
     }
   };
+  
   
