@@ -78,7 +78,8 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
         args: {
           student_group: student_group_name,
         },
-        callback: (r) => {
+        callback: (r) => { 
+          console.log("Response from server:", r);  
           if (r && r.message) {
             render_cards(r.message);
           } else {
