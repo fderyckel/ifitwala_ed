@@ -2,52 +2,6 @@
 Minimal HTML structure. The filters and data rendering will be handled in the JS file.
 {% endcomment %}
 
-<style>
-  .student-group-cards-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 1rem;
-      padding: 1rem;
-  }
-  
-  .student-card {
-      background: white;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  
-  .student-img {
-      height: 200px;
-      background: #f5f5f5;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-  }
-  
-  .student-img img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-  }
-  
-  .student-info {
-      padding: 1rem;
-      text-align: center;
-  }
-  
-  .student-full-name {
-      font-weight: 600;
-      margin-bottom: 4px;
-  }
-  
-  .student-preferred-name {
-      color: #666;
-      font-size: 0.9em;
-  }
-  </style>
-
 <div class="student-group-cards-page">
   <div id="student-group-cards-container" class="student-group-cards-container">
     <!-- Student cards get injected here in JS -->

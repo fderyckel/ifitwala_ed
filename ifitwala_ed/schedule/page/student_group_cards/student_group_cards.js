@@ -8,6 +8,8 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
       single_column: true,
     });
   
+    page.main.html(frappe.render_template("student_group_cards"));
+       
     // Create filters
     let program_field = page.add_field({
       fieldname: "program",
