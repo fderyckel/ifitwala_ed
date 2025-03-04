@@ -11,18 +11,7 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
   });
 
   // Load the template from public/templates/
-  frappe.call({
-    method: "frappe.client.get",
-    args: {
-      doctype: "File",
-      name: "public/templates/student_group_cards.html",
-    },
-    callback: function (r) {
-      if (r.message) {
-        page.main.html(r.message.content);
-      }
-    },
-  });
+  page.main.html(frappe.render_template("student_group_cards"));
 
   // Create filters container
   let filters_container = $('<div id="filters-container"></div>').prependTo(page.main);
