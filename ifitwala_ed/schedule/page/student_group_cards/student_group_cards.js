@@ -15,7 +15,7 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
     method: "frappe.client.get",
     args: {
       doctype: "File",
-      name: "student_group_cards.html",
+      name: "public/templates/student_group_cards.html",
     },
     callback: function (r) {
       if (r.message) {
