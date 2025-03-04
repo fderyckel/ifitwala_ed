@@ -23,8 +23,7 @@
   "get_students",
   "students",
   "instructors_section",
-  "instructors",
-  "title"
+  "instructors"
  ],
  "fields": [
   {
@@ -138,13 +137,6 @@
    "options": "Student Group Instructor"
   },
   {
-   "fieldname": "title",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Title",
-   "print_hide": 1
-  },
-  {
    "fieldname": "term",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -155,7 +147,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-16 10:23:14.264958",
+ "modified": "2025-03-03 07:37:49.741549",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",
@@ -175,22 +167,12 @@
    "write": 1
   },
   {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
    "role": "Instructor",
-   "share": 1
+   "select": 1
   },
   {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
    "role": "Student",
-   "share": 1
+   "select": 1
   },
   {
    "create": 1,
