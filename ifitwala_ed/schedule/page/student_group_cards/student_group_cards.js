@@ -98,6 +98,12 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
       return;
     }
 
+    if (!frappe.templates["student_card"]) {
+      console.error("Error: Template student_card not found.");
+      container.html(`<div class="text-danger">${__("Error: student_card template missing.")}</div>`);
+      return;
+    }
+
     students.forEach((stu) => {
       let image_url = stu.student_image || "/assets/frappe/images/no-image.jpg";
       let card_html = frappe.render_template("student_card", {
