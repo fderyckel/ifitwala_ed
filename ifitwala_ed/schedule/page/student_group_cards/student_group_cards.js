@@ -92,7 +92,8 @@ frappe.pages["student_group_cards"].on_page_load = function (wrapper) {
     /**
      * Render array of students in the container.
      */
-    function render_cards(students) {
+    function render_cards(students) { 
+        console.log("Rendering cards for:", students);
       let container = $("#student-group-cards-container");
       container.empty();
   
