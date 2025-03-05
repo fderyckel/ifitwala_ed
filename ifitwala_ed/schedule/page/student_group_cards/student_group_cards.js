@@ -1,117 +1,88 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-
-frappe.pages["student_group_cards"].on_page_load = function (wrapper) { 
+frappe.pages['student-group-cards'].on_page_load = function(wrapper) {
+  let page = frappe.ui.make_app_page({
+      parent: wrapper,
+      title: 'Student Group Cards',
+      single_column: true
+  });
   
-  const page = frappe.ui.make_app_page({
-    parent: wrapper,
-    title: __("Student Group Cards"),
-    single_column: true,
-  });
+  $(wrapper).append(`
+      <div class="filters">
+          <select id="program-filter" class="form-control">
+              <option value="">Select Program</option>
+          </select>
+          <select id="course-filter" class="form-control">
+              <option value="">Select Course</option>
+          </select>
+          <select id="cohort-filter" class="form-control">
+              <option value="">Select Cohort</option>
+          </select>
+          <select id="student-group-filter" class="form-control">
+              <option value="">Select Student Group</option>
+          </select>
+      </div>
+      <div id="student-cards" class="student-grid"></div>
+      <button id="load-more" class="btn btn-primary">Load More</button>
+  `);
 
-  // Load the template from public/templates/
-  page.main.html(frappe.render_template("student_group_cards"));
-
-  // Create filters container
-  let filters_container = $('<div id="filters-container"></div>').prependTo(page.main);
-
-  // Add filters
-  let program_field = page.add_field({
-    parent: filters_container,
-    fieldname: "program",
-    label: __("Program"),
-    fieldtype: "Link",
-    options: "Program",
-    change: () => clear_student_group(),
-  });
-
-  let course_field = page.add_field({
-    parent: filters_container,
-    fieldname: "course",
-    label: __("Course"),
-    fieldtype: "Link",
-    options: "Course",
-    change: () => clear_student_group(),
-  });
-
-  let instructor_field = page.add_field({
-    parent: filters_container,
-    fieldname: "instructor",
-    label: __("Instructor"),
-    fieldtype: "Link",
-    options: "Instructor",
-    change: () => clear_student_group(),
-  });
-
-  let student_group_field = page.add_field({
-    parent: filters_container,
-    fieldname: "student_group",
-    label: __("Student Group"),
-    fieldtype: "Link",
-    options: "Student Group",
-    get_query: function () {
-      return {
-        query: "ifitwala_ed.schedule.page.student_group_cards.student_group_cards.get_student_groups_query",
-        filters: {
-          program: program_field.get_value(),
-          course: course_field.get_value(),
-          instructor: instructor_field.get_value(),
-        },
-      };
-    },
-    change: function () {
-      let group_val = student_group_field.get_value();
-      if (group_val) {
-        load_students(group_val);
-      } else {
-        render_cards([]);
-      }
-    },
-  });
-
-  function clear_student_group() {
-    student_group_field.set_value("");
-    render_cards([]);
-  }
-
-  function load_students(student_group_name) {
-    frappe.call({
-      method: "ifitwala_ed.schedule.page.student_group_cards.student_group_cards.get_students_in_group",
-      args: { student_group: student_group_name },
-      callback: (r) => {
-        if (r && r.message) {
-          render_cards(r.message);
-        } else {
-          render_cards([]);
-        }
-      },
-    });
-  }
-
-  function render_cards(students) {
-    let container = $("#student-group-cards-container");
-    container.empty();
-
-    if (!students || !students.length) {
-      container.html(`<div class="text-muted">${__("No students found")}</div>`);
-      return;
-    }
-
-    if (!frappe.templates["student_card"]) {
-      console.error("Error: Template student_card not found.");
-      container.html(`<div class="text-danger">${__("Error: student_card template missing.")}</div>`);
-      return;
-    }
-
-    students.forEach((stu) => {
-      let image_url = stu.student_image || "/assets/frappe/images/no-image.jpg";
-      let card_html = frappe.render_template("student_card", {
-        student_image: image_url,
-        student_full_name: stu.student_full_name || "",
-        student_preferred_name: stu.student_preferred_name || "",
+  let start = 0;
+  let student_group = "";
+  const page_length = 25;
+  let total_students = 0;
+  
+  function fetchFilters() {
+      frappe.call({
+          method: 'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups',
+          callback: function(data) {
+              let options = '<option value="">Select Student Group</option>';
+              data.message.forEach(group => {
+                  options += `<option value="${group.name}">${group.student_group_name}</option>`;
+              });
+              $('#student-group-filter').html(options);
+          }
       });
-      container.append(card_html);
-    });
   }
+  
+  function fetchStudents(reset=false) {
+      if (!student_group) return;
+      if (reset) start = 0;
+
+      frappe.call({
+          method: 'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students',
+          args: { student_group, start, page_length },
+          callback: function(data) {
+              if (reset) $('#student-cards').html('');
+              start = data.message.start;
+              total_students = data.message.total;
+              renderStudents(data.message.students);
+              $('#load-more').toggle(start < total_students);
+          }
+      });
+  }
+  
+  function renderStudents(students) {
+      students.forEach(student => {
+          let img_src = student.image || 'path/to/placeholder.png';
+          $('#student-cards').append(`
+              <div class="student-card">
+                  <img src="${img_src}" class="student-image">
+                  <div class="student-name">${student.student_name}</div>
+                  <div class="student-preferred-name">${student.preferred_name}</div>
+              </div>
+          `);
+      });
+  }
+
+  $('#student-group-filter').change(function() {
+      student_group = $(this).val();
+      fetchStudents(true);
+  });
+
+  $('#load-more').click(function() {
+      fetchStudents();
+  });
+
+  fetchFilters();
 };
