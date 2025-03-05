@@ -2,18 +2,6 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe import _
-
-def get_context(context):
-    context.programs = frappe.db.get_values("Program", {"status": "Active"}, ["name", "program_name"], as_dict=True)
-    context.courses = frappe.db.get_values("Course", {"status": "Active"}, ["name", "course_name"], as_dict=True)
-    context.cohorts = frappe.db.get_values("Student Cohort", {}, ["name", "cohort_name"], as_dict=True)
-    context.student_groups = []
-    context.student_group_selected = None
-    context.students = []
-    context.start = 0
-    context.page_length = 25
-    context.total_students = 0
 
 def get_student_group_students(student_group, start=0, page_length=25):
     student_data = frappe.get_all(
