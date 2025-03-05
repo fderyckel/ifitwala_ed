@@ -1,7 +1,7 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-frappe.pages['student-group-cards'].on_page_load = function(wrapper) {
+frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
   let page = frappe.ui.make_app_page({
       parent: wrapper,
       title: 'Student Group Cards',
