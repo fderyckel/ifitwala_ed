@@ -8,44 +8,65 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
       single_column: true
   });
   
+  // Add standard Frappe filters
+  let program_field = page.add_field({
+      fieldname: "program",
+      label: __("Program"),
+      fieldtype: "Link",
+      options: "Program",
+      change: () => fetch_student_groups()
+  });
+  
+  let course_field = page.add_field({
+      fieldname: "course",
+      label: __("Course"),
+      fieldtype: "Link",
+      options: "Course",
+      change: () => fetch_student_groups()
+  });
+  
+  let cohort_field = page.add_field({
+      fieldname: "cohort",
+      label: __("Cohort"),
+      fieldtype: "Link",
+      options: "Student Cohort",
+      change: () => fetch_student_groups()
+  });
+  
+  let student_group_field = page.add_field({
+      fieldname: "student_group",
+      label: __("Student Group"),
+      fieldtype: "Link",
+      options: "Student Group",
+      change: () => fetch_students(true)
+  });
+  
   $(wrapper).append(`
-      <div class="filters">
-          <select id="program-filter" class="form-control">
-              <option value="">Select Program</option>
-          </select>
-          <select id="course-filter" class="form-control">
-              <option value="">Select Course</option>
-          </select>
-          <select id="cohort-filter" class="form-control">
-              <option value="">Select Cohort</option>
-          </select>
-          <select id="student-group-filter" class="form-control">
-              <option value="">Select Student Group</option>
-          </select>
-      </div>
       <div id="student-cards" class="student-grid"></div>
       <button id="load-more" class="btn btn-primary">Load More</button>
   `);
-
+  
   let start = 0;
-  let student_group = "";
   const page_length = 25;
   let total_students = 0;
   
-  function fetchFilters() {
+  function fetch_student_groups() {
       frappe.call({
           method: 'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups',
+          args: {
+              program: program_field.get_value(),
+              course: course_field.get_value(),
+              cohort: cohort_field.get_value()
+          },
           callback: function(data) {
-              let options = '<option value="">Select Student Group</option>';
-              data.message.forEach(group => {
-                  options += `<option value="${group.name}">${group.student_group_name}</option>`;
-              });
-              $('#student-group-filter').html(options);
+              student_group_field.df.options = data.message.map(group => group.name);
+              student_group_field.refresh();
           }
       });
   }
   
-  function fetchStudents(reset=false) {
+  function fetch_students(reset=false) {
+      let student_group = student_group_field.get_value();
       if (!student_group) return;
       if (reset) start = 0;
 
@@ -56,15 +77,15 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
               if (reset) $('#student-cards').html('');
               start = data.message.start;
               total_students = data.message.total;
-              renderStudents(data.message.students);
+              render_students(data.message.students);
               $('#load-more').toggle(start < total_students);
           }
       });
   }
   
-  function renderStudents(students) {
+  function render_students(students) {
       students.forEach(student => {
-          let img_src = student.image || 'path/to/placeholder.png';
+          let img_src = student.student_image && student.student_image.startsWith('/files/') ? student.student_image : '/files/default-profile.png';
           $('#student-cards').append(`
               <div class="student-card">
                   <img src="${img_src}" class="student-image">
@@ -75,14 +96,7 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
       });
   }
 
-  $('#student-group-filter').change(function() {
-      student_group = $(this).val();
-      fetchStudents(true);
-  });
-
   $('#load-more').click(function() {
-      fetchStudents();
+      fetch_students();
   });
-
-  fetchFilters();
 };
