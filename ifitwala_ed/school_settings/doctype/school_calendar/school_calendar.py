@@ -37,7 +37,7 @@ class SchoolCalendar(Document):
     self.validate_dates()
     self.total_holiday_days = len(self.holidays)
     self.total_number_day = date_diff(getdate(ay.year_end_date), getdate(ay.year_start_date))
-    self.total_instruction_days = date_diff(getdate(ay.year_end_date), getdate(ay.year_start_date)) - self.total_holidays_day
+    self.total_instruction_days = date_diff(getdate(ay.year_end_date), getdate(ay.year_start_date)) - self.total_holiday_days
 
   @frappe.whitelist()
   def get_terms(self):
