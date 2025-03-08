@@ -13,7 +13,9 @@
   "rotation_days",
   "include_holidays_in_rotation",
   "section_break_bb4r",
+  "generate_blocks_btn",
   "school_schedule_day",
+  "clear_schedule_btn",
   "section_break_llpo",
   "course_schedule_block"
  ],
@@ -76,11 +78,21 @@
    "fieldtype": "Table",
    "label": "Course Schedule Block",
    "options": "School Schedule Block"
+  },
+  {
+   "fieldname": "generate_blocks_btn",
+   "fieldtype": "Button",
+   "label": "Clear Schedule"
+  },
+  {
+   "fieldname": "clear_schedule_btn",
+   "fieldtype": "Button",
+   "label": "Generate Blocks"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-08 13:29:27.157141",
+ "modified": "2025-03-08 14:59:31.891587",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "School Schedule",
