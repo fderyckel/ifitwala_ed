@@ -1,0 +1,59 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-07 20:02:54.709377",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_owwi",
+  "rotation_day",
+  "block_number",
+  "from_time",
+  "to_time",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_owwi",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "rotation_day",
+   "fieldtype": "Int",
+   "label": "Rotation Day"
+  },
+  {
+   "fieldname": "block_number",
+   "fieldtype": "Int",
+   "label": "Block Number"
+  },
+  {
+   "fieldname": "from_time",
+   "fieldtype": "Time",
+   "label": "From Time"
+  },
+  {
+   "fieldname": "to_time",
+   "fieldtype": "Time",
+   "label": "To Time"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "label": "Description"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-07 20:04:32.228522",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "School Schedule Block",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

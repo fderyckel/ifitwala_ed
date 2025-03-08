@@ -1,0 +1,129 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-07 19:19:11.963992",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_pgsr",
+  "school",
+  "schedule_type",
+  "column_break_fra2",
+  "school_calendar",
+  "rotation_days",
+  "include_holidays_in_rotation",
+  "section_break_bb4r",
+  "school_schedule_day",
+  "section_break_llpo",
+  "course_schedule_block"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_pgsr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "column_break_fra2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "school_calendar",
+   "fieldtype": "Link",
+   "label": "School Calendar",
+   "options": "School Calendar"
+  },
+  {
+   "fieldname": "schedule_type",
+   "fieldtype": "Select",
+   "label": "Schedule type",
+   "options": "Weekly\nRotation\nBi-Weekly"
+  },
+  {
+   "fieldname": "rotation_days",
+   "fieldtype": "Int",
+   "label": "Number of Rotation days"
+  },
+  {
+   "default": "0",
+   "fieldname": "include_holidays_in_rotation",
+   "fieldtype": "Check",
+   "label": "Include Holidays in Rotation"
+  },
+  {
+   "fieldname": "section_break_bb4r",
+   "fieldtype": "Section Break",
+   "label": "Organize Rotation Days"
+  },
+  {
+   "fieldname": "school_schedule_day",
+   "fieldtype": "Table",
+   "label": "School Schedule Day",
+   "options": "School Schedule Day"
+  },
+  {
+   "fieldname": "section_break_llpo",
+   "fieldtype": "Section Break",
+   "label": "Organize Block Timings"
+  },
+  {
+   "fieldname": "course_schedule_block",
+   "fieldtype": "Table",
+   "label": "Course Schedule Block",
+   "options": "School Schedule Block"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-03-08 13:29:27.157141",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "School Schedule",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Schedule Maker",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

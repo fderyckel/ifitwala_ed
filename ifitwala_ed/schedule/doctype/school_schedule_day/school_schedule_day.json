@@ -1,0 +1,50 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-07 19:52:58.132503",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_a8wn",
+  "rotation_day",
+  "rotation_label",
+  "number_of_blocks"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_a8wn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "rotation_day",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Rotation Day"
+  },
+  {
+   "fieldname": "rotation_label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Rotation Label"
+  },
+  {
+   "fieldname": "number_of_blocks",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Number of Blocks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-07 19:57:55.966724",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "School Schedule Day",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
