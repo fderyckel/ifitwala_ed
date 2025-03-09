@@ -8,14 +8,15 @@
   "section_break_pgsr",
   "school",
   "schedule_type",
+  "generate_rotation_days_btn",
   "column_break_fra2",
   "school_calendar",
   "rotation_days",
   "include_holidays_in_rotation",
   "section_break_bb4r",
-  "generate_blocks_btn",
-  "school_schedule_day",
   "clear_schedule_btn",
+  "school_schedule_day",
+  "generate_blocks_btn",
   "section_break_llpo",
   "course_schedule_block"
  ],
@@ -82,17 +83,22 @@
   {
    "fieldname": "generate_blocks_btn",
    "fieldtype": "Button",
-   "label": "Clear Schedule"
+   "label": "Generate Blocks"
   },
   {
    "fieldname": "clear_schedule_btn",
    "fieldtype": "Button",
-   "label": "Generate Blocks"
+   "label": "Clear Schedule"
+  },
+  {
+   "fieldname": "generate_rotation_days_btn",
+   "fieldtype": "Button",
+   "label": "Generate Rotation Days"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-08 14:59:31.891587",
+ "modified": "2025-03-08 21:55:13.232601",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "School Schedule",
