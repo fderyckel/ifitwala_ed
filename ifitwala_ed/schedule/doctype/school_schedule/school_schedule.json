@@ -83,22 +83,25 @@
   {
    "fieldname": "generate_blocks_btn",
    "fieldtype": "Button",
-   "label": "Generate Blocks"
+   "label": "Generate Blocks",
+   "options": "generate_blocks"
   },
   {
    "fieldname": "clear_schedule_btn",
    "fieldtype": "Button",
-   "label": "Clear Schedule"
+   "label": "Clear Schedule",
+   "options": "clear_schedule"
   },
   {
    "fieldname": "generate_rotation_days_btn",
    "fieldtype": "Button",
-   "label": "Generate Rotation Days"
+   "label": "Generate Rotation Days",
+   "options": "generate_rotation_days"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-08 21:55:13.232601",
+ "modified": "2025-03-09 19:13:29.710488",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "School Schedule",

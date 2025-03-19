@@ -9,21 +9,23 @@
  "field_order": [
   "section_break_hbvd",
   "academic_year",
+  "term",
   "group_based_on",
   "maximum_size",
-  "student_group_abbreviation",
+  "status",
   "column_break_ttdt",
-  "term",
   "student_group_name",
+  "student_group_abbreviation",
   "program",
   "cohort",
   "course",
-  "status",
   "students_section",
   "get_students",
   "students",
   "instructors_section",
-  "instructors"
+  "instructors",
+  "schedule_section",
+  "student_group_schedule"
  ],
  "fields": [
   {
@@ -143,11 +145,22 @@
    "in_standard_filter": 1,
    "label": "Term",
    "options": "Term"
+  },
+  {
+   "fieldname": "schedule_section",
+   "fieldtype": "Section Break",
+   "label": "Schedule"
+  },
+  {
+   "fieldname": "student_group_schedule",
+   "fieldtype": "Table",
+   "label": "Student Group Schedule",
+   "options": "Student Group Schedule"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-03 07:37:49.741549",
+ "modified": "2025-03-11 17:48:32.715976",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",

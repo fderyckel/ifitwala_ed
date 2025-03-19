@@ -1,0 +1,55 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-11 17:40:06.440431",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_dcwn",
+  "rotation_day",
+  "block_number",
+  "location",
+  "instructors"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_dcwn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "rotation_day",
+   "fieldtype": "Int",
+   "label": "Rotation Day"
+  },
+  {
+   "fieldname": "block_number",
+   "fieldtype": "Int",
+   "label": "Block Number"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "label": "Location",
+   "options": "Location"
+  },
+  {
+   "fieldname": "instructors",
+   "fieldtype": "Link",
+   "label": "Instructors",
+   "options": "Instructor"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-11 17:48:07.890654",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "Student Group Schedule",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
