@@ -22,6 +22,44 @@ frappe.ui.form.on("School", {
     });
   },
 
+  refresh: function (frm) { 
+    if(!frm.isnew()) {
+      frm.add_custom_button(__("Create Academic Year"), () => {
+        frappe.new_doc("Academic Year", {}, ay => {
+          ay.school = frm.doc.name;
+        });
+      });
+
+      frm.add_custom_button(__("Create School Calendar"), () => {
+        frappe.new_doc("School Calendar", {}, sc => {
+          sc.school = frm.doc.name;
+        });
+      });
+    }
+
+    if (!frm.doc.__islocal) {
+      frm.doc.abbr && frm.set_df_property("abbr", "read_only", 1);
+      frm.set_df_property("parent_school", "read_only", 1);
+    }
+
+    frm.toggle_display("address_html", !frm.doc.__islocal);
+    if (!frm.doc.__islocal) {
+      frappe.contacts.render_address_and_contact(frm);
+    }
+
+    frm.set_query("current_academic_year", function() { 
+      return { 
+        filters: {school: frm.doc.name}
+      };
+    });
+
+    frm.set_query("current_school_calendar", function() {
+      return { 
+        filters: {school: frm.doc.name}
+      }
+    });
+  }, 
+
   school_name: function (frm) {
     if (frm.doc.__islocal) {
       let parts = frm.doc.school_name.split();
@@ -37,17 +75,6 @@ frappe.ui.form.on("School", {
     frm.set_value("existing_school", bool ? frm.doc.parent_school : "");
   },
 
-  refresh: function (frm) {
-    if (!frm.doc.__islocal) {
-      frm.doc.abbr && frm.set_df_property("abbr", "read_only", 1);
-      frm.set_df_property("parent_school", "read_only", 1);
-    }
-
-    frm.toggle_display("address_html", !frm.doc.__islocal);
-    if (!frm.doc.__islocal) {
-      frappe.contacts.render_address_and_contact(frm);
-    }
-  },
 });
 
 cur_frm.cscript.change_abbr = function () {

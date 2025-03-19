@@ -38,6 +38,13 @@ frappe.ui.form.on("Academic Year", {
           ay.academic_year = frm.doc.name;
         });
       });
+
+      frm.add_custom_button(__("Create School Calendar"), () => {
+        frappe.new_doc("School Calendar", {}, ay => {
+          ay.academic_year = frm.doc.name; 
+          ay.school = frm.doc.school;
+        })
+      }); 
     }
   },
 
