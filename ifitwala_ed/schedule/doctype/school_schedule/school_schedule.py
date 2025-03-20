@@ -63,8 +63,8 @@ class SchoolSchedule(Document):
             schedule_day.num_blocks = 0  # Default value, user must update later
 
         # Save the document to persist the changes
-        #self.flags.ignore_validate = True # Skip validation to allow saving
-        self.save()
+        self.flags.ignore_validate = True # Skip validation to allow saving
+        #self.save()
 
         frappe.msgprint(f"{self.rotation_days} Rotation Days have been generated.")
 
