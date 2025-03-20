@@ -42,22 +42,17 @@ class SchoolSchedule(Document):
             )      
 
     @frappe.whitelist()
-    def generate_rotation_days(self, overwrite=False):
-        """Generate rotation days based on rotation_days count, allowing overwrite if requested."""
+    def generate_rotation_days(self):
+        """Generate rotation days based on rotation_days count."""
         
         if not self.rotation_days or self.rotation_days <= 0:
             frappe.throw("Please set a valid number of rotation days before generating.")
 
         # Check existing rotation days
-        if self.get("school_schedule_day") and not overwrite:
+        if self.get("school_schedule_day"):
             frappe.throw(
                 "Rotation days already exist. If you want to regenerate them, please clear them first "
-                "or use the overwrite option."
             )
-
-        # Clear existing rotation days if overwrite is enabled
-        if self.get("school_schedule_day") and overwrite:
-            self.set("school_schedule_day", [])  # Clears the child table
 
         # Generate new rotation days and append them to the child table
         for day in range(1, self.rotation_days + 1):
@@ -68,7 +63,7 @@ class SchoolSchedule(Document):
             schedule_day.num_blocks = 0  # Default value, user must update later
 
         # Save the document to persist the changes
-        self.flags.ignore_validate = True # Skip validation to allow saving
+        #self.flags.ignore_validate = True # Skip validation to allow saving
         self.save()
 
         frappe.msgprint(f"{self.rotation_days} Rotation Days have been generated.")
