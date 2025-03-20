@@ -23,7 +23,7 @@ frappe.ui.form.on("School", {
   },
 
   refresh: function (frm) { 
-    if(!frm.isnew()) {
+    if(!frm.is_new()) {
       frm.add_custom_button(__("Create Academic Year"), () => {
         frappe.new_doc("Academic Year", {}, ay => {
           ay.school = frm.doc.name;
