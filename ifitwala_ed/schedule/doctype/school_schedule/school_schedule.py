@@ -93,6 +93,7 @@ class SchoolSchedule(Document):
         frappe.db.commit()
         frappe.msgprint("School Schedule Days and Blocks have been cleared.")
 
+
     @frappe.whitelist()
     def generate_blocks(self):
         """Manually generate School Schedule Blocks based on School Schedule Days."""
@@ -115,7 +116,7 @@ class SchoolSchedule(Document):
                     "Please set the number of blocks before generating them."
                 )
 
-            for block_number in range(1, day.num_blocks + 1):
+            for block_number in range(1, day.number_of_blocks + 1):
                 block = self.append("course_schedule_block", {})
                 block.rotation_day = day.rotation_day
                 block.block_number = block_number
