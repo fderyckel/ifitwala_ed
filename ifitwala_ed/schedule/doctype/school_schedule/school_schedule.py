@@ -18,6 +18,9 @@ class SchoolSchedule(Document):
                     f"Please choose a calendar associated with {self.school}."
                 )
 
+        if self.is_new():
+            return
+
         # Fetch existing rotation days
         existing_rotation_days = frappe.get_all("School Schedule Day",
             filters={"parent": self.name},
