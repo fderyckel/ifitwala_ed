@@ -60,7 +60,7 @@ class SchoolSchedule(Document):
             schedule_day = self.append("school_schedule_day", {})
             schedule_day.rotation_day = day
             schedule_day.rotation_label = rotation_label
-            schedule_day.num_blocks = 0  # Default value, user must update later
+            schedule_day.number_of_blocks = 0  # Default value, user must update later
 
         # Save the document to persist the changes
         self.flags.ignore_validate = True # Skip validation to allow saving
@@ -91,26 +91,22 @@ class SchoolSchedule(Document):
         frappe.msgprint("School Schedule Days and Blocks have been cleared.")
 
     @frappe.whitelist()
-    def generate_blocks(self, overwrite=False):
+    def generate_blocks(self):
         """Manually generate School Schedule Blocks based on School Schedule Days."""
 
         if not self.get("school_schedule_day"):
             frappe.throw("No School Schedule Days found. Please generate rotation days first.")
 
         # Check if blocks already exist in the child table
-        if self.get("course_schedule_block") and not overwrite:
+        if self.get("course_schedule_block"):
             frappe.throw(
                 "Blocks already exist. If you want to regenerate them, please clear them first "
                 "or use the overwrite option."
             )
 
-        # Clear existing blocks if overwrite is enabled
-        if self.get("course_schedule_block") and overwrite:
-            self.set("course_schedule_block", [])  # Clears the blocks child table
-
         # Generate blocks for each rotation day
         for day in self.get("school_schedule_day"):
-            if day.num_blocks <= 0:
+            if day.number_of_blocks <= 0:
                 frappe.throw(
                     f"Rotation Day {day.rotation_day} does not have a valid number of blocks. "
                     "Please set the number of blocks before generating them."
