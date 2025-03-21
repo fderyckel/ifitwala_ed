@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import get_link_to_form
 from datetime import timedelta
 
 class SchoolSchedule(Document): 
@@ -13,9 +14,20 @@ class SchoolSchedule(Document):
         if self.school_calendar:
             school_in_calendar = frappe.db.get_value("School Calendar", self.school_calendar, "school")
             if school_in_calendar and school_in_calendar != self.school:
-                frappe.throw(
+                frappe.throw(_(
                     f"The selected School Calendar ({self.school_calendar}) belongs to a different School ({school_in_calendar}). "
-                    f"Please choose a calendar associated with {self.school}."
+                    f"Please choose a calendar associated with {self.school}.")
+                )
+            
+            dulplicate = frappe.db.exists("School Schedule",{
+                "school_calendar": self.school_calendar,
+                "name": ["!=", self.name]
+                }
+            )
+            if dulplicate:
+                frappe.throw( 
+                    _("A School Schedule already exists for School Calendar {0}"
+                    ).format(get_link_to_form("School Calendar", self.school_calendar))
                 )
 
         if self.is_new():
