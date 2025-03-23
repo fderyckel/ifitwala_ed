@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format: Schedule-{school_calendar}",
  "creation": "2025-03-07 19:19:11.963992",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -28,6 +29,8 @@
   {
    "fieldname": "school",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "School",
    "options": "School"
   },
@@ -38,6 +41,7 @@
   {
    "fieldname": "school_calendar",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "School Calendar",
    "options": "School Calendar"
   },
@@ -101,10 +105,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-09 19:13:29.710488",
+ "modified": "2025-03-21 23:06:28.791021",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "School Schedule",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

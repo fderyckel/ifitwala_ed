@@ -80,9 +80,10 @@
   }
  ],
  "index_web_pages_for_search": 1,
+ "is_calendar_and_gantt": 1,
  "is_virtual": 1,
  "links": [],
- "modified": "2025-03-19 13:56:12.551436",
+ "modified": "2025-03-23 10:04:35.950593",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Schedule",

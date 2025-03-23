@@ -6,48 +6,66 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "section_break_owwi",
   "rotation_day",
   "block_number",
   "from_time",
   "to_time",
+  "block_type",
+  "column_break_zihu",
   "description"
  ],
  "fields": [
   {
-   "fieldname": "section_break_owwi",
-   "fieldtype": "Section Break"
-  },
-  {
+   "columns": 1,
    "fieldname": "rotation_day",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Rotation Day"
   },
   {
+   "columns": 1,
    "fieldname": "block_number",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Block Number"
   },
   {
+   "columns": 2,
    "fieldname": "from_time",
    "fieldtype": "Time",
+   "in_list_view": 1,
    "label": "From Time"
   },
   {
+   "columns": 2,
    "fieldname": "to_time",
    "fieldtype": "Time",
+   "in_list_view": 1,
    "label": "To Time"
   },
   {
+   "columns": 3,
    "fieldname": "description",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Description"
+  },
+  {
+   "fieldname": "column_break_zihu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "block_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Block type",
+   "options": "Course\nActivity\nRecess\nAssembly\nOther"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-07 20:04:32.228522",
+ "modified": "2025-03-22 11:34:13.016450",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "School Schedule Block",
