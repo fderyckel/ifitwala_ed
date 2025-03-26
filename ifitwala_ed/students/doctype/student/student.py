@@ -57,9 +57,6 @@ class Student(Document):
 		self.create_student_user()
 		self.create_student_patient()
 
-	def before_save(self):
-		self.rename_student_image()
-
 	def on_update(self):
 		self.update_student_user()
 		self.update_student_patient()
@@ -83,7 +80,7 @@ class Student(Document):
 				})
 				student_user.flags.ignore_permissions = True
 				student_user.add_roles("Student")
-				student_user.insert(ignore_permissions=True)  # Use insert() instead of save() for new users
+				student_user.insert(ignore_permissions=True)  
 				frappe.msgprint(_("User {0} has been created").format(get_link_to_form("User", self.student_email)))
 			except Exception as e:
 				frappe.log_error(f"Error creating user for student {self.name}: {e}")
@@ -110,93 +107,12 @@ class Student(Document):
 			if self.name not in existing_links: 
 				contact_doc.append("links", {"link_doctype": "Student", "link_name": self.name}) 
 				contact_doc.flags.ignore_permissions = True 
-				contact_doc.save(ignore_version=True) 
+				contact_doc.save() 
 				frappe.msgprint(_("Contact for {0} updated with student link").format(self.student_full_name)) 
 		else:
 			frappe.msgprint(_("No Contact found for Student Email: {0}. Ensure a Contact is created.").format(self.student_email)) 
 
-	def rename_student_image(self):
-		# Only proceed if there's a student_image
-		if not self.student_image:
-			return
-
-		student_id = self.name
-		current_file_name = os.path.basename(self.student_image)
-
-		# Check if it already has "STU-XXXX_XXXXXX.jpg" format
-		if (current_file_name.startswith(student_id + "_")
-		and len(current_file_name.split("_")[1].split(".")[0]) == 6
-		and current_file_name.split(".")[1].lower() in ["jpg", "jpeg", "png", "gif"]):
-			return
-
-		file_extension = os.path.splitext(self.student_image)[1]
-		random_suffix = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
-		expected_file_name = f"{student_id}_{random_suffix}{file_extension}"
-
-		student_folder_fm_path = "Home/student"
-		expected_file_path = os.path.join(student_folder_fm_path, expected_file_name)
-
-		# Check if a file with the new expected name already exists
-		if frappe.db.exists("File", {"file_url": f"/files/{expected_file_path}"}):
-			frappe.log_error(title=_("Image Rename Skipped"),
-				message=_("Image {0} already exists for student {1}").format(expected_file_name, student_id))
-			return
-
-		# Check if the original file doc exists
-		file_name = frappe.db.get_value("File",
-				{"file_url": self.student_image, "attached_to_doctype": "Student", "attached_to_name": self.name},
-				"name"
-			)
-		if not file_name:
-			frappe.log_error(title=_("Missing File Doc"),
-				message=_("No File doc found for {0}, attached_to=Student {1}")
-				.format(self.student_image, self.name),
-				)
-			return
-
-		file_doc = frappe.get_doc("File", file_name)
-
-		# Ensure the "student" folder exists
-		if not frappe.db.exists("File", {"file_name": "student", "folder": "Home"}):
-			student_folder = frappe.get_doc({
-				"doctype": "File",
-				"file_name": "student",
-				"is_folder": 1,
-				"folder": "Home"
-			})
-			student_folder.insert()
-
-		# Rename the file on disk
-		new_file_path = os.path.join(get_files_path(), "student", expected_file_name)
-		old_file_path = os.path.join(get_files_path(), file_doc.file_name)
-
-		try: 
-			if os.path.exists(old_file_path):
-				os.rename(old_file_path, new_file_path)
-			else:
-				frappe.throw(_("Original file not found: {0}").format(old_file_path))
-
-			file_doc.file_name = expected_file_name
-			file_doc.file_url = f"/files/student/{expected_file_name}"
-			file_doc.folder = "Home/student"
-			file_doc.is_private = 0
-			file_doc.save()
-			# Update doc.student_image to reflect new URL
-			self.student_image = file_doc.file_url
-			
-			frappe.msgprint(
-				_("Image renamed to {0} and moved to /files/student/").format(expected_file_name)
-			)
-
-		except Exception as e:
-			frappe.log_error(
-				title=_("Student Image Error"),
-				message=f"Error handling student image for {self.name}: {e}"
-			)
-			frappe.msgprint(
-				_("Error handling student image for {0}: {1}").format(self.name, e)
-			)
-				
+	
 	# will update user main info if the student info change  
 	def update_student_user(self): 
 		user = frappe.get_doc("User", self.student_email) 
@@ -206,7 +122,7 @@ class Student(Document):
 		user.full_name = self.student_full_name 
 		if self.student_gender: 
 			user.gender = self.student_gender 
-		user.save(ignore_version=True)
+		user.save()
 
 	def update_student_patient(self):
 		patient = frappe.db.get_value("Student Patient", {"student":self.name}, "name")
