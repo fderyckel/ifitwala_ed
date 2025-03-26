@@ -83,7 +83,7 @@ class Student(Document):
 				})
 				student_user.flags.ignore_permissions = True
 				student_user.add_roles("Student")
-				student_user.save()  # Use insert() instead of save() for new users
+				student_user.insert(ignore_permissions=True)  # Use insert() instead of save() for new users
 				frappe.msgprint(_("User {0} has been created").format(get_link_to_form("User", self.student_email)))
 			except Exception as e:
 				frappe.log_error(f"Error creating user for student {self.name}: {e}")
@@ -110,7 +110,7 @@ class Student(Document):
 			if self.name not in existing_links: 
 				contact_doc.append("links", {"link_doctype": "Student", "link_name": self.name}) 
 				contact_doc.flags.ignore_permissions = True 
-				contact_doc.save() 
+				contact_doc.save(ignore_version=True) 
 				frappe.msgprint(_("Contact for {0} updated with student link").format(self.student_full_name)) 
 		else:
 			frappe.msgprint(_("No Contact found for Student Email: {0}. Ensure a Contact is created.").format(self.student_email)) 
@@ -206,9 +206,7 @@ class Student(Document):
 		user.full_name = self.student_full_name 
 		if self.student_gender: 
 			user.gender = self.student_gender 
-		if self.student_first_language: 
-			user.language = self.student_first_language 
-		user.save()
+		user.save(ignore_version=True)
 
 	def update_student_patient(self):
 		patient = frappe.db.get_value("Student Patient", {"student":self.name}, "name")
