@@ -80,7 +80,7 @@ class Student(Document):
 				})
 				student_user.flags.ignore_permissions = True
 				student_user.add_roles("Student")
-				student_user.insert(ignore_permissions=True)  
+				student_user.save()  
 				frappe.msgprint(_("User {0} has been created").format(get_link_to_form("User", self.student_email)))
 			except Exception as e:
 				frappe.log_error(f"Error creating user for student {self.name}: {e}")
