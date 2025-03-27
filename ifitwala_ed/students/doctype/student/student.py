@@ -91,14 +91,14 @@ class Student(Document):
 			student_patient.save()
 			frappe.msgprint(_("Student Patient {0} linked to this student has been created").format(self.student_full_name))
 
-
-	###### Update methods ######
-  def update_student_emabled_status(self):
-    patient = frappe.db.get_value("Student Patient", {"student":self.name}, "name")
-    if self.enabled == 0:
-      frappe.db.set_value("Student Patient", patient, "status", "Disabled")
-    else:
-      frappe.db.set_value("Student Patient", patient, "status", "Active")
+	############################################
+	###### Update methods ###### 
+	def update_student_enabled_status(self): 
+		patient = frappe.db.get_value("Student Patient", {"student":self.name}, "name") 
+		if self.enabled == 0: 
+			frappe.db.set_value("Student Patient", patient, "status", "Disabled") 
+		else: 
+			frappe.db.set_value("Student Patient", patient, "status", "Active")
 
 
 	####### From schedule module #######
