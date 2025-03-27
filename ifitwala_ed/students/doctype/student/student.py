@@ -65,11 +65,12 @@ class Student(Document):
 					"doctype": "User",
 					"enabled": 1,
 					"first_name": self.student_first_name,
+					"middle_name": self.student_middle_name,
 					"last_name": self.student_last_name,
 					"email": self.student_email,
 					"username": self.student_email,
 					"gender": self.student_gender,
-					#"language": self.student_first_language,  # this create issue becuase language is not the same as the frappe language.
+					#"language": self.student_first_language,  # this create issue because our language is not the same as the frappe language.
 					"send_welcome_email": 0,  # Set to 0 to disable welcome email during import
 					"user_type": "Website User"
 				})
@@ -98,8 +99,31 @@ class Student(Document):
 		if self.enabled == 0: 
 			frappe.db.set_value("Student Patient", patient, "status", "Disabled") 
 		else: 
-			frappe.db.set_value("Student Patient", patient, "status", "Active")
+			frappe.db.set_value("Student Patient", patient, "status", "Active") 
+		
+	def ensure_contact_links_to_student(self):
+		if not self.student_email: 
+			return
 
+    # Check if User exists
+		if not frappe.db.exists("User", self.student_email): 
+			return 
+		
+		contact_name = frappe.db.get_value("Contact", {"user": self.student_email}, "name") 
+		if not contact_name: 
+			return 
+		
+		contact = frappe.get_doc("Contact", contact_name) 
+		# Check if the Student is already linked in the Contact's dynamic links 
+		existing_links = [link.link_name for link in contact.links] 
+		
+		if self.name not in existing_links: 
+			contact.append("links", {
+        "link_doctype": "Student",
+        "link_name": self.name
+      }) 
+			contact.save(ignore_permissions=True) 
+			frappe.msgprint(f"Linked Contact <b>{contact.name}</b> to Student <b>{self.name}</b>.")
 
 	####### From schedule module #######
 	def enroll_in_course(self, course_name, program_enrollment, enrollment_date):
