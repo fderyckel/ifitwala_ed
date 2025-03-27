@@ -26,6 +26,13 @@ frappe.ui.form.on('Student', {
             frm.reload_doc();
             frappe.show_alert({message:__("Student image updated."), indicator:'green'});
         }
-      });      
+      });
+
+      // Sync pending_student_image safely
+      if (frm.doc.pending_student_image && frm.doc.student_image !== frm.doc.pending_student_image) {
+          frm.set_value('student_image', frm.doc.pending_student_image);
+          frm.set_value('pending_student_image', '');
+          frm.save();
+      }     
     }
 });

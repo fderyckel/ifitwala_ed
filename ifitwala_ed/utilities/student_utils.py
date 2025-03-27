@@ -72,10 +72,7 @@ def rename_and_move_student_image(student_docname, current_image_url):
         file_doc.save(ignore_permissions=True)
 
         # Update student_image in Student doc safely via db.set_value
-        frappe.db.set_value(
-            "Student",
-            student_docname,
-            "student_image",
+        frappe.db.set_value("Student", student_docname, "pending_student_image",
             file_doc.file_url,
             update_modified=False  # Prevents changing modified timestamp
         )
