@@ -7,7 +7,7 @@ from frappe.utils import getdate, today, get_link_to_form, validate_email_addres
 from frappe.model.document import Document
 from frappe.desk.form.linked_with import get_linked_doctypes
 from frappe.contacts.address_and_contact import load_address_and_contact
-from ifitwala_ed.student.student_utils import rename_and_move_student_image
+from ifitwala_ed.utilities.student_utils import rename_and_move_student_image
 
 
 class Student(Document):
