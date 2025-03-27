@@ -55,6 +55,7 @@ class Student(Document):
 
 	def on_update(self): 
 		self.update_student_enabled_status()
+		self.ensure_contact_links_to_student()
 
 
 	# create student as website user
