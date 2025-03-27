@@ -7,7 +7,6 @@ from frappe.utils import getdate, today, get_link_to_form, validate_email_addres
 from frappe.model.document import Document
 from frappe.desk.form.linked_with import get_linked_doctypes
 from frappe.contacts.address_and_contact import load_address_and_contact
-from ifitwala_ed.utilities.student_utils import rename_and_move_student_image
 
 
 class Student(Document):
@@ -29,11 +28,6 @@ class Student(Document):
 
 		if self.student_joining_date and self.student_exit_date and getdate(self.student_joining_date) > getdate(self.student_exit_date):
 			frappe.throw(_("Check again the exit date. The joining date has to be earlier than the exit date."))
-
-		if self.student_image:
-			new_image_url = rename_and_move_student_image(self.name, self.student_image) 
-			if new_image_url != self.student_image: 
-				self.student_image = new_image_url
 
 
 	def validate_email(self):

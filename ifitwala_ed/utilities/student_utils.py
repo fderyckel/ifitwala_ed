@@ -8,59 +8,54 @@ import string
 from frappe.utils import get_files_path
 from frappe import _
 
-def rename_and_move_student_image(student_docname, current_image_url):
-  current_file_name = os.path.basename(current_image_url)
+def rename_student_uploaded_image(doc, method):
+    if doc.attached_to_doctype != "Student":
+        return  # Clearly exit early if not attached to a Student doc
 
-  # Check if already in correct format
-  if (current_file_name.startswith(student_docname + "_") and
-      len(current_file_name.split("_")[1].split(".")[0]) == 6):
-    return current_image_url 
+    student_docname = doc.attached_to_name
+    current_file_name = doc.file_name
 
-  file_extension = os.path.splitext(current_file_name)[1]
-  random_suffix = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
-  expected_file_name = f"{student_docname}_{random_suffix}{file_extension}" 
-  
-  student_folder_fm_path = "Home/student"
+    # Clearly avoid double renaming
+    if current_file_name.startswith(student_docname + "_") and len(current_file_name.split("_")[1].split(".")[0]) == 6:
+        return
 
-  if not frappe.db.exists("File", {"file_name": "student", "folder": "Home"}): 
-    student_folder = frappe.get_doc({
-      "doctype": "File",
-      "file_name": "student",
-      "is_folder": 1,
-      "folder": "Home"
-    })
-    student_folder.insert(ignore_permissions=True)
+    # Clearly generate new filename
+    file_extension = os.path.splitext(doc.file_name)[1]
+    random_suffix = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+    expected_file_name = f"{student_docname}_{random_suffix}{file_extension}"
 
-  file_name = frappe.db.get_value("File",
-        {
-            "file_url": current_image_url,
-            "attached_to_doctype": "Student",
-            "attached_to_name": student_docname
-        },
-        "name"
-  )
+    # Ensure "student" folder clearly exists
+    if not frappe.db.exists("File", {"file_name": "student", "folder": "Home"}):
+        student_folder = frappe.get_doc({
+            "doctype": "File",
+            "file_name": "student",
+            "is_folder": 1,
+            "folder": "Home"
+        })
+        student_folder.insert(ignore_permissions=True)
 
-  if not file_name: 
-    frappe.log_error(       
-       _("No File doc found for {0}, attached_to=Student {1}").format(current_image_url, student_docname)
+    old_file_path = os.path.join(get_files_path(), doc.file_name)
+    new_file_path = os.path.join(get_files_path(), "student", expected_file_name)
+
+    if os.path.exists(old_file_path):
+        os.rename(old_file_path, new_file_path)
+    else:
+        frappe.log_error(_("Original file not found: {0}").format(old_file_path))
+        return
+
+    # Update File doc explicitly (robust!)
+    doc.file_name = expected_file_name
+    doc.file_url = f"/files/student/{expected_file_name}"
+    doc.folder = "Home/student"
+    doc.is_private = 0
+    doc.save(ignore_permissions=True)
+
+    # Clearly update Student field safely (but no timestamp issues, as it’s in the same transaction as File insertion)
+    frappe.db.set_value(
+        "Student",
+        student_docname,
+        "student_image",
+        doc.file_url,
+        update_modified=False
     )
-    return
 
-  file_doc = frappe.get_doc("File", file_name)
-
-  old_file_path = os.path.join(get_files_path(), file_doc.file_name)
-  new_file_path = os.path.join(get_files_path(), "student", expected_file_name)
-
-  if os.path.exists(old_file_path):
-    os.rename(old_file_path, new_file_path)
-  else:
-    frappe.log_error(_("Original file not found: {0}").format(old_file_path))
-    return
-
-  file_doc.file_name = expected_file_name
-  file_doc.file_url = f"/files/student/{expected_file_name}"
-  file_doc.folder = "Home/student"
-  file_doc.is_private = 0
-  file_doc.save(ignore_permissions=True)
-
-  return file_doc.file_url 
