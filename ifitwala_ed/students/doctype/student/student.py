@@ -53,10 +53,6 @@ class Student(Document):
 		self.create_student_user()
 		self.create_student_patient()
 
-	def on_update(self):
-		self.update_student_user()
-		self.update_student_patient()
-
 	# create student as website user
 	def create_student_user(self):
 		if not frappe.db.exists("User", self.student_email):
@@ -94,24 +90,6 @@ class Student(Document):
 
 ###### Update methods ######
 
-	# will update user main info if the student info change  
-	def update_student_user(self): 
-		user = frappe.get_doc("User", self.student_email) 
-		user.flags.ignore_permissions = True 
-		user.first_name = self.student_first_name 
-		user.last_name = self.student_last_name 
-		user.full_name = self.student_full_name 
-		if self.student_gender: 
-			user.gender = self.student_gender 
-		user.save()
-
-	# disactivate the student patient if the student is disactivated
-	def update_student_patient(self):
-		patient = frappe.db.get_value("Student Patient", {"student":self.name}, "name")
-		if self.enabled == 0:
-			frappe.db.set_value("Student Patient", patient, "status", "Disabled")
-		else:
-			frappe.db.set_value("Student Patient", patient, "status", "Active")
 
 ####### From schedule module #######
 	def enroll_in_course(self, course_name, program_enrollment, enrollment_date):
