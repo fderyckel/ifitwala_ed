@@ -1,8 +1,5 @@
 import frappe
 from frappe import _
-from frappe.utils.file_manager import get_file
-from frappe.utils.response import build_response
-import mimetypes
 
 def get_context(context):
     if frappe.session.user == "Guest":

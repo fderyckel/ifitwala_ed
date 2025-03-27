@@ -21,5 +21,11 @@ frappe.ui.form.on('Student', {
   			frappe.contacts.clear_address_and_contact(frm);
   		}
 
+      frappe.realtime.on('student_image_updated', (data) => {
+        if (data.student === frm.doc.name) {
+            frm.reload_doc();
+            frappe.show_alert({message:__("Student image updated."), indicator:'green'});
+        }
+      });      
     }
 });
