@@ -63,9 +63,4 @@ def rename_and_move_student_image(student_docname, current_image_url):
   file_doc.is_private = 0
   file_doc.save(ignore_permissions=True)
 
-  frappe.publish_realtime('student_image_updated', {
-    'student': student_docname,
-    'file_url': file_doc.file_url
-  })
-
   return file_doc.file_url 
