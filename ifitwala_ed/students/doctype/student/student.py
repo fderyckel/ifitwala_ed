@@ -202,7 +202,7 @@ class Student(Document):
 			self.student_image = file_doc.file_url
  			# Don't call self.save() or self.db_update() here—on_update is already saving
 			
-			self.db_update()
+			self.save()
 			
 			frappe.msgprint(_("Image renamed to {0} and moved to /files/student/").format(expected_file_name))
 			
