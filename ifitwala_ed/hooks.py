@@ -161,9 +161,6 @@ doc_events = {
       "after_insert": "frappe.contacts.doctype.contact.contact.update_contact",
       "validate": "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role", 
       "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions"
-    }, 
-    "file":{
-      "after_insert": "ifitwala_ed.utilities.student_utils.rename_student_uploaded_image"
     }
 }
 

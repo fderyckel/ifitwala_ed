@@ -2,6 +2,9 @@
 # For license information, please see license.txt
 
 import frappe
+import os
+import random
+import string
 from frappe import _
 from frappe.utils import getdate, today, get_link_to_form, validate_email_address
 from frappe.model.document import Document
