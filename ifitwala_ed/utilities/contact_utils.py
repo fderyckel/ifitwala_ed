@@ -28,3 +28,4 @@ def update_profile_from_contact(doc, method=None):
     #    student_doc = frappe.get_doc("Student", student)
     #    student_doc.student_mobile_phone = primary_mobile
     #    student_doc.save()    
+
