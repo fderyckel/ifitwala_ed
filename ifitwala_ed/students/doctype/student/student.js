@@ -18,23 +18,6 @@ frappe.ui.form.on('Student', {
     } else {
       frappe.contacts.clear_address_and_contact(frm);
     }
-
-    frappe.realtime.on('student_image_updated', (data) => {
-      if (data.student === frm.doc.name) {
-        frm.reload_doc().then(() => {
-          if (frm.doc.student_image !== data.file_url) {
-            frm.set_value('student_image', data.file_url).then(() => {
-              // explicit debounce save (ensures reload completes fully)
-              setTimeout(() => {
-                frm.save().then(() => {
-                  frappe.show_alert({message: __("Student image updated successfully."), indicator: 'green'});
-                });
-              }, 500); // half-second ensures safe debounce
-            });
-          }
-        });
-      }
-    });
   }
 });
 

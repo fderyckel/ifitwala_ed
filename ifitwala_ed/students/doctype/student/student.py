@@ -30,6 +30,11 @@ class Student(Document):
 		if self.student_joining_date and self.student_exit_date and getdate(self.student_joining_date) > getdate(self.student_exit_date):
 			frappe.throw(_("Check again the exit date. The joining date has to be earlier than the exit date."))
 
+		if self.student_image:
+			new_image_url = rename_and_move_student_image(self.name, self.student_image) 
+			if new_image_url != self.student_image: 
+				self.student_image = new_image_url
+
 
 	def validate_email(self):
 		if self.student_email:
@@ -58,15 +63,6 @@ class Student(Document):
 		self.update_student_user()
 		self.update_student_patient()
 		self.update_links()
-		
-		if self.student_image: 
-			frappe.enqueue(
-				rename_and_move_student_image, 
-				student_docname=self.name,
-				current_image_url=self.student_image,
-				queue='default', 
-				timeout=300
-      )	
 
 	# create student as website user
 	def create_student_user(self):
