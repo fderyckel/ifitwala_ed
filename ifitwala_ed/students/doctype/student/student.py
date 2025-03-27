@@ -56,6 +56,7 @@ class Student(Document):
 	def on_update(self): 
 		self.update_student_enabled_status()
 		self.ensure_contact_links_to_student()
+		self.rename_student_image()
 
 
 	# create student as website user
@@ -125,6 +126,90 @@ class Student(Document):
       }) 
 			contact.save(ignore_permissions=True) 
 			frappe.msgprint(f"Linked Contact <b>{contact.name}</b> to Student <b>{self.name}</b>.")
+
+
+	def rename_student_image(self): 
+		# Only proceed if there's a student_image
+		if not self.student_image: 
+			return 
+			 
+		try: 
+			student_id = self.name
+			current_file_name = os.path.basename(self.student_image) 
+			
+			# Check if it already has "STU-XXXX_XXXXXX.jpg" format
+			if (current_file_name.startswith(student_id + "_")
+ 				and len(current_file_name.split("_")[1].split(".")[0]) == 6
+ 				and current_file_name.split(".")[1].lower() in ["jpg", "jpeg", "png", "gif"]): 
+				return 
+			
+			file_extension = os.path.splitext(self.student_image)[1] 
+			random_suffix = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+			expected_file_name = f"{student_id}_{random_suffix}{file_extension}"
+			
+			student_folder_fm_path = "Home/student"
+			expected_file_path = os.path.join(student_folder_fm_path, expected_file_name)
+ 
+ 			# Check if a file with the new expected name already exists
+			if frappe.db.exists("File", {"file_url": f"/files/{expected_file_path}"}):
+				frappe.log_error(
+					title=_("Image Rename Skipped"),
+					message=_("Image {0} already exists for student {1}").format(expected_file_name, student_id),
+ 				)
+				return
+ 
+ 			# Check if the original file doc exists
+			file_name = frappe.db.get_value("File",
+				{"file_url": self.student_image, "attached_to_doctype": "Student", "attached_to_name": self.name},
+ 				"name"
+			)
+			
+			if not file_name: 
+				frappe.log_error(
+ 					title=_("Missing File Doc"),
+ 					message=_("No File doc found for {0}, attached_to=Student {1}")
+ 						.format(self.student_image, self.name),
+ 				)
+				return
+			
+			file_doc = frappe.get_doc("File", file_name)
+ 
+ 			# Ensure the "student" folder exists
+			if not frappe.db.exists("File", {"file_name": "student", "folder": "Home"}): 
+				student_folder = frappe.get_doc({
+ 					"doctype": "File",
+ 					"file_name": "student",
+ 					"is_folder": 1,
+ 					"folder": "Home"
+				})
+				student_folder.insert()
+ 
+ 			# Rename the file on disk
+			new_file_path = os.path.join(get_files_path(), "student", expected_file_name)
+			old_file_path = os.path.join(get_files_path(), file_doc.file_name)
+			
+			if os.path.exists(old_file_path):
+				os.rename(old_file_path, new_file_path)
+				file_doc.file_name = expected_file_name
+				file_doc.file_url = f"/files/student/{expected_file_name}"
+				file_doc.folder = "Home/student"
+				file_doc.is_private = 0
+				file_doc.save()
+			else:
+				frappe.throw(_("Original file not found: {0}").format(old_file_path))
+ 
+ 			# Update doc.student_image to reflect new URL
+			self.student_image = file_doc.file_url
+ 			# Don't call self.save() or self.db_update() here—on_update is already saving
+			
+			self.db_update()
+			
+			frappe.msgprint(_("Image renamed to {0} and moved to /files/student/").format(expected_file_name))
+			
+		except Exception as e:
+			frappe.log_error(title=_("Student Image Error"),message=f"Error handling student image for {self.name}: {e}")
+			frappe.msgprint(_("Error handling student image for {0}: {1}").format(self.name, e))
+
 
 	####### From schedule module #######
 	def enroll_in_course(self, course_name, program_enrollment, enrollment_date):

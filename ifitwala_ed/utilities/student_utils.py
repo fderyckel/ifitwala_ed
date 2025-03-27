@@ -59,3 +59,5 @@ def rename_student_uploaded_image(doc, method):
         update_modified=False
     )
 
+
+
