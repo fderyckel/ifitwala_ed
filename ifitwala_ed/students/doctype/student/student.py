@@ -7,6 +7,7 @@ import random
 import string
 from frappe import _
 from frappe.utils import getdate, today, get_link_to_form, validate_email_address
+from frappe.utils import get_files_path
 from frappe.model.document import Document
 from frappe.desk.form.linked_with import get_linked_doctypes
 from frappe.contacts.address_and_contact import load_address_and_contact
