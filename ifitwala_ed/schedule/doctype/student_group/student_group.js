@@ -35,7 +35,8 @@ frappe.ui.form.on("Student Group", {
   refresh: function (frm) {
     if (!frm.doc.__islocal) {
       frm.add_custom_button(__('Open Student Cards'), () => {
-        frappe.set_route('student_group_cards', { student_group: frm.doc.name });
+        frappe.route_options = { student_group: frm.doc.name };
+        frappe.set_route('student_group_cards');
       });
     }  
 
