@@ -89,7 +89,7 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
       let health_icon = '';
       if (student.medical_info) {
         health_icon = `
-          <span class="medical-alert" title="Click to view health info"
+          <span class="medical-alert" data-tooltip="Click to view health info"
             onclick='frappe.msgprint({
               title: "Health Note for ${frappe.utils.escape_html(student.student_name)}",
               message: \`${student.medical_info}\`,
