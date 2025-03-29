@@ -81,17 +81,20 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
   // Function to render the students' cards
   function render_students(students) {
     students.forEach(student => {
+      const student_name = frappe.utils.escape_html(student.student_name);
+      const preferred_name = frappe.utils.escape_html(student.preferred_name);
+      const student_id = frappe.utils.escape_html(student.student);
       const img_src = student.student_image && student.student_image.startsWith('/files/')
         ? student.student_image
         : '/files/default-profile.png';
   
-      // Add red cross icon if medical_info exists
+      // Red cross icon for medical info
       let health_icon = '';
       if (student.medical_info) {
         health_icon = `
           <span class="medical-alert" data-tooltip="Click to view health info"
             onclick='frappe.msgprint({
-              title: "Health Note for ${frappe.utils.escape_html(student.student_name)}",
+              title: "Health Note for ${student_name}",
               message: \`${student.medical_info}\`,
               indicator: "red"
             })'>
@@ -102,15 +105,21 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
   
       $('#student-cards').append(`
         <div class="student-card">
-          <img src="${img_src}" class="student-image">
+          <a href="/app/student/${student_id}" target="_blank" rel="noopener">
+            <img src="${img_src}" class="student-image">
+          </a>
           <div class="student-name">
-            ${frappe.utils.escape_html(student.student_name)} ${health_icon}
+            <a href="/app/student/${student_id}" target="_blank" rel="noopener">
+              ${student_name}
+            </a>
+            ${health_icon}
           </div>
-          <div class="student-preferred-name">${frappe.utils.escape_html(student.preferred_name)}</div>
+          <div class="student-preferred-name">${preferred_name}</div>
         </div>
       `);
     });
   }
+  
   
   $('#load-more').click(() => fetch_students());
 };
