@@ -6,13 +6,21 @@ from frappe import _
 from frappe.model.document import Document
 
 class StudentPatient(Document):
-	pass
+    def validate(self):
+        self.sync_photo_from_student()
+
+    def sync_photo_from_student(self):
+        if not self.student:
+            return
+
+        student_image = frappe.db.get_value("Student", self.student, "student_image")
+        self.photo = student_image
 
 @frappe.whitelist()
 def get_student_detail(student_patient):
 	details = frappe.get_value("Student Patient", student_patient, 
-														["student_name", "date_of_birth", "blood_group", "gender"], 
-														as_dict=1)
+		["student_name", "date_of_birth", "blood_group", "gender"], as_dict=1)
+	
 	if not details:
 		frappe.throw(_(f'Student patient "{student_patient}" not found. Please verify the name is correct and the record exists.'))
 	return details

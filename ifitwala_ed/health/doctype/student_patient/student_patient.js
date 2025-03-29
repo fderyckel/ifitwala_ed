@@ -3,15 +3,12 @@
 
 frappe.ui.form.on('Student Patient', {
 	onload(frm) {
-		cur_frm.add_fetch('student', 'student_gender', 'gender');
-		cur_frm.add_fetch('student', 'student_date_of_birth', 'date_of_birth');
-		cur_frm.add_fetch('student', 'student_preferred_name', 'preferred_name');
-		cur_frm.add_fetch('student', 'student_full_name', 'student_name');
+        render_student_info(frm);
 
 	}, 
 	
 	refresh: function(frm) { 
-        console.log("refresh function triggered"); 
+        render_student_info(frm);
         calculateAge(frm);
 
         if (frm.doc.student) {
@@ -54,6 +51,35 @@ frappe.ui.form.on('Student Patient', {
     },
   });
 
+
+// function to render student information
+  function render_student_info(frm) {
+	if (!frm.doc.student) return;
+
+	frappe.db.get_value('Student', frm.doc.student, [
+		'student_full_name',
+		'student_preferred_name',
+		'student_gender',
+		'student_date_of_birth',
+		'student_image'
+	]).then(r => {
+		if (!r.message) return;
+
+		const student = r.message;
+		const html = `
+			<div>
+				<b>Name:</b> ${student.student_full_name || '—'}<br>
+				<b>Preferred Name:</b> ${student.student_preferred_name || '—'}<br>
+				<b>Gender:</b> ${student.student_gender || '—'}<br>
+				<b>Date of Birth:</b> ${frappe.format(student.student_date_of_birth, { fieldtype: 'Date' })}<br>
+				${student.student_image ? `<img src="${student.student_image}" style="margin-top:10px;max-width:150px;">` : ''}
+			</div>
+		`;
+		frm.fields_dict.student_info.$wrapper.html(html);
+	});
+}
+
+// function to calculate age of the student as patient
 function calculateAge(frm) {
   if (frm.doc.date_of_birth) {
       const dob = moment(frm.doc.date_of_birth);
