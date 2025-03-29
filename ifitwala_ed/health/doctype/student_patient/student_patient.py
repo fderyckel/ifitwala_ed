@@ -4,26 +4,26 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from ifitwala_ed.utilities.student_utils import get_basic_student_info
 
 class StudentPatient(Document):
     def validate(self):
         self.sync_photo_from_student()
 
+    # ensure that the nurse role has the current picture of the student
     def sync_photo_from_student(self):
         if not self.student:
             return
-
+        
         student_image = frappe.db.get_value("Student", self.student, "student_image")
         self.photo = student_image
 
 @frappe.whitelist()
-def get_student_detail(student_patient):
-	details = frappe.get_value("Student Patient", student_patient, 
-		["student_name", "date_of_birth", "blood_group", "gender"], as_dict=1)
-	
-	if not details:
-		frappe.throw(_(f'Student patient "{student_patient}" not found. Please verify the name is correct and the record exists.'))
-	return details
+def get_student_basic_info(student):
+	if not frappe.has_permission("Student Patient", "read"):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+	return get_basic_student_info(student)
 
 @frappe.whitelist()
 def get_guardian_details(student_name):
