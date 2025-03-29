@@ -28,6 +28,16 @@ frappe.ui.form.on('Student Patient Visit', {
 
 	}, 
 	
+	// to show a non-clickable message to inform that a student log has been created
+	after_save: function (frm) {
+		if (frm.doc.docstatus === 1) {
+			frappe.show_alert({
+				message: '✅ Student Log has been created for this visit.',
+				indicator: 'green'
+			});
+		}
+	}, 
+
 	before_submit: function(frm) {
 		// Set Time of Discharge on before_submit if not already set
 		if (!frm.doc.time_of_discharge) {
