@@ -9,7 +9,6 @@ frappe.ui.form.on('Student Patient', {
 	
 	refresh: function(frm) { 
         fetch_and_render_student_info(frm);
-        calculateAge(frm);
 
 
 		if (frm.doc.student) {
@@ -18,7 +17,7 @@ frappe.ui.form.on('Student Patient', {
 				show_guardian_details_dialog(frm.doc.student);
 			});
 
-            // logif for the Student Visit button
+            // logic for the Student Visit button
 	        frm.add_custom_button(__('Student Visit'), function () { 
                 frappe.new_doc('Student Patient Visit', { 
                     student: frm.doc.student,
