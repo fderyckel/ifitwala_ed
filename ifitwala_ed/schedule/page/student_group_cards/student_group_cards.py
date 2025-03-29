@@ -20,7 +20,18 @@ def get_student_group_students(student_group, start=0, page_length=25):
         ["name", "student_full_name", "student_preferred_name", "student_image"], 
         as_dict=True
     )
-    student_dict = {s["name"]: s for s in student_details}
+    student_dict = {s["name"]: s for s in student_details} 
+    
+    medical_info_data = frappe.db.get_values( 
+        "Student Patient", 
+        {"student": ["in", student_ids]}, 
+        ["student", "medical_info"], 
+        as_dict=True)
+    
+    # Inject only if medical_info is non-empty
+    for entry in medical_info_data:
+        if entry.medical_info:
+            student_dict[entry.student]["medical_info"] = entry.medical_info
 
     students = []
     for student_id, student_name in student_data:
@@ -29,7 +40,8 @@ def get_student_group_students(student_group, start=0, page_length=25):
             "student": student_id,
             "student_name": student_info.get("student_full_name", student_name),
             "preferred_name": student_info.get("student_preferred_name", ""),
-            "student_image": student_info.get("student_image", "")
+            "student_image": student_info.get("student_image", ""), 
+            "medical_info": student_info.get("medical_info", "")
         })
     
     return students
