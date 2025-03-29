@@ -34,18 +34,12 @@ frappe.ui.form.on("Student Group", {
 
   refresh: function (frm) {
     if (!frm.doc.__islocal) {
-      frm.add_custom_button(
-        __("Open Student Cards"),
-        function () {
-          // Route to the custom page 'student_group_cards/<group_id>'
-          frappe.set_route("student_group_cards", frm.doc.name);
-          // This will go to /app/student_group_cards/SG-0001 (if frm.doc.name is "SG-0001")
-        }
-      );
-    };  
+      frm.add_custom_button(__('Open Student Cards'), () => {
+        frappe.set_route('student_group_cards', { student_group: frm.doc.name });
+      });
+    }  
 
     if (!frm.doc.__islocal && !in_list(frappe.user_roles, "Student")) {
-
       frm.add_custom_button(
         __("Add a session"),
         function () {

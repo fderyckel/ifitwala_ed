@@ -101,4 +101,14 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
   $('#load-more').click(function() {
       fetch_students();
   });
+
+  frappe.after_ajax(() => {
+    const route_options = frappe.get_route_options();
+    if (route_options && route_options.student_group) {
+      student_group_field.set_value(route_options.student_group).then(() => {
+        fetch_students(true);
+      });
+    }
+  });
+  
 };
