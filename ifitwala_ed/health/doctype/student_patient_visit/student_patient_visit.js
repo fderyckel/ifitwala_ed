@@ -7,6 +7,10 @@ frappe.ui.form.on('Student Patient Visit', {
 		if (frm.doc.student_patient) {
 			frm.events.set_student_info(frm);
 		}
+
+		if (!frm.doc.time_of_arrival) {
+			frm.set_value('time_of_arrival', frappe.datetime.now_time());
+		}
 	},
 
 	refresh: function(frm) { 
