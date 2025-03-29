@@ -239,15 +239,17 @@
    "label": "Exit"
   },
   {
+   "depends_on": "eval:doc.enabled==0",
    "fieldname": "student_exit_date",
    "fieldtype": "Date",
    "label": "Student Exit Date"
   },
   {
+   "depends_on": "eval:doc.enabled==0",
    "fieldname": "student_exit_reason",
    "fieldtype": "Select",
    "label": "Student Exit Reason",
-   "options": "Graduation\nMoving\nOther"
+   "options": "\nGraduation\nMoving\nOther"
   },
   {
    "default": "1",
@@ -279,7 +281,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-28 11:51:05.922373",
+ "modified": "2025-03-27 16:44:25.503032",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",

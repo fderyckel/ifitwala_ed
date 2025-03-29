@@ -9,14 +9,12 @@
  "engine": "InnoDB",
  "field_order": [
   "student",
-  "gender",
+  "student_name",
+  "preferred_name",
   "blood_group",
   "column_break_3",
-  "preferred_name",
-  "student_name",
-  "date_of_birth",
   "student_age",
-  "patient_relations_section",
+  "student_info",
   "section_break_7",
   "allergies",
   "food_allergies",
@@ -57,7 +55,9 @@
   "section_break_g004",
   "status",
   "column_break_xbbr",
-  "completion_state"
+  "completion_state",
+  "note_to_staff_section",
+  "medical_info"
  ],
  "fields": [
   {
@@ -73,19 +73,10 @@
    "fetch_from": "student.student_full_name",
    "fieldname": "student_name",
    "fieldtype": "Data",
+   "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Student Name",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "student.student_gender",
-   "fetch_if_empty": 1,
-   "fieldname": "gender",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Gender",
    "read_only": 1
   },
   {
@@ -99,11 +90,6 @@
    "in_list_view": 1,
    "label": "Blood Group",
    "options": "\nA Positive\nA Negative\nAB Positive\nAB Negative\nB Positive\nB Negative\nO Positive\nO Negative"
-  },
-  {
-   "fieldname": "patient_relations_section",
-   "fieldtype": "Section Break",
-   "label": "Patient Relations"
   },
   {
    "fieldname": "section_break_7",
@@ -279,6 +265,7 @@
    "label": "Others"
   },
   {
+   "description": "Add any other relevant medical information that would be useful for the nurses.",
    "fieldname": "other_medical_information",
    "fieldtype": "Text Editor",
    "label": "Other Medical Information"
@@ -295,7 +282,6 @@
    "label": "Vaccination Data"
   },
   {
-   "fetch_from": "student.student_image",
    "fieldname": "photo",
    "fieldtype": "Attach Image",
    "hidden": 1,
@@ -304,19 +290,10 @@
    "read_only": 1
   },
   {
-   "fetch_from": "student.student_date_of_birth",
-   "fieldname": "date_of_birth",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Date Of Birth",
-   "read_only": 1
-  },
-  {
    "default": "Active",
    "fieldname": "status",
    "fieldtype": "Select",
-   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
    "options": "Active\nDisabled"
   },
@@ -331,6 +308,7 @@
    "fetch_if_empty": 1,
    "fieldname": "preferred_name",
    "fieldtype": "Data",
+   "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Preferred Name",
@@ -348,15 +326,34 @@
    "default": "Missing Info",
    "fieldname": "completion_state",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Completion State",
    "options": "Completed\nMissing Info"
+  },
+  {
+   "fieldname": "student_info",
+   "fieldtype": "HTML",
+   "label": "Student Info",
+   "read_only": 1
+  },
+  {
+   "description": "Share below all appropriate and relevant information for the instructors of that student.  ",
+   "fieldname": "note_to_staff_section",
+   "fieldtype": "Section Break",
+   "label": "Note to Staff"
+  },
+  {
+   "fieldname": "medical_info",
+   "fieldtype": "Text Editor",
+   "label": "Medical Info"
   }
  ],
+ "grid_page_length": 50,
  "image_field": "photo",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-12 09:55:31.177267",
+ "modified": "2025-03-29 10:47:31.997939",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient",
@@ -376,16 +373,13 @@
    "write": 1
   },
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Academic Admin",
-   "share": 1,
-   "write": 1
+   "share": 1
   },
   {
    "create": 1,
@@ -398,19 +392,11 @@
    "role": "Nurse",
    "share": 1,
    "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Admission Officer",
-   "share": 1
   }
  ],
- "search_fields": "student_name, preferred_name, gender",
+ "search_fields": "student_name, preferred_name",
  "show_name_in_global_search": 1,
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

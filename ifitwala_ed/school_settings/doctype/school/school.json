@@ -34,7 +34,8 @@
   "school_philosophy",
   "lft",
   "rgt",
-  "old_parent"
+  "old_parent",
+  "dashboard_tab"
  ],
  "fields": [
   {
@@ -211,12 +212,18 @@
    "fieldname": "todo_color",
    "fieldtype": "Color",
    "label": "Default Todo Meeting Color"
+  },
+  {
+   "fieldname": "dashboard_tab",
+   "fieldtype": "Tab Break",
+   "label": "Dashboard"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-03-01 18:24:12.101487",
+ "modified": "2025-03-23 15:27:26.528214",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",

@@ -27,14 +27,14 @@
   "heart_rate__pulse",
   "column_break_12",
   "respiratory_rate",
+  "height",
+  "weight",
+  "bmi",
+  "column_break_tcfj",
   "tongue",
   "abdomen",
   "refexes",
   "section_break_17",
-  "height",
-  "weight",
-  "bmi",
-  "column_break_21",
   "note",
   "care_administered_section",
   "treatment",
@@ -157,13 +157,9 @@
    "read_only": 1
   },
   {
-   "fieldname": "column_break_21",
-   "fieldtype": "Column Break"
-  },
-  {
    "description": "Leave a non-confidential note to inform faculty about the reasons for the student visit to the health centre. The note will create an automatic medical log entry for the student.",
    "fieldname": "note",
-   "fieldtype": "Text",
+   "fieldtype": "Text Editor",
    "label": "Note"
   },
   {
@@ -232,12 +228,17 @@
    "fieldtype": "Time",
    "label": "Time of Discharge",
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_tcfj",
+   "fieldtype": "Column Break"
   }
  ],
+ "grid_page_length": 50,
  "image_field": "photo",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-13 01:18:39.350322",
+ "modified": "2025-03-29 07:49:23.742088",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient Visit",
