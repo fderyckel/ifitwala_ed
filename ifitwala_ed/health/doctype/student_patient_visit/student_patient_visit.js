@@ -2,6 +2,13 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Student Patient Visit', {
+	// to ensure that when we opening the form using the frappe.new_doc(), the getting info is still triggered.
+	onload(frm) {
+		if (frm.doc.student_patient) {
+			frm.events.set_student_info(frm);
+		}
+	},
+
 	refresh: function(frm) { 
 		
 		frm.set_query('student_patient', function() {
@@ -9,9 +16,9 @@ frappe.ui.form.on('Student Patient Visit', {
 				filters: {'status': 'Active'}
 			};
 		}); 
-
-    // Set Time of Arrival on document load if not already set
-    if (!frm.doc.time_of_arrival && !frm.doc.__islocal) {
+		
+		// Set Time of Arrival on document load if not already set
+		if (!frm.doc.time_of_arrival && !frm.doc.__islocal) {
 			frm.set_value('time_of_arrival', frappe.datetime.now_time());
 		}
 
@@ -28,26 +35,37 @@ frappe.ui.form.on('Student Patient Visit', {
 		frm.events.set_student_info(frm);
 	}, 
 	
-	set_student_info: function(frm) { 
-		frappe.call({
-			method: 'ifitwala_ed.health.doctype.student_patient.student_patient.get_student_detail',
-			args: {
-				student_patient: frm.doc.student_patient
-			},
-			callback: function(data) {
-				let age = '';
-				if (data.message.date_of_birth) {
-					age = calculate_age(data.message.date_of_birth);
-				}
-				let values = {
-					'student_age': age,
-					'student_name':data.message.student_name,
-					'gender': data.message.gender,
-					'blood_group': data.message.blood_group
-				};
-				frm.set_value(values);
-			}
-		});
+	set_student_info: function(frm) {
+		// Step 1: Get the Student linked to this Student Patient
+		if (!frm.doc.student_patient) return;
+	
+		frappe.db.get_value('Student Patient', frm.doc.student_patient, 'student')
+			.then(r => {
+				const student_id = r.message?.student;
+				if (!student_id) return;
+	
+				// Step 2: Fetch student bio info from utility method
+				frappe.call({
+					method: 'ifitwala_ed.health.doctype.student_patient.student_patient.get_student_basic_info',
+					args: { student: student_id },
+					callback: function(res) {
+						if (!res.message) return;
+	
+						const student = res.message;
+						const age = student.student_date_of_birth
+							? calculate_age(student.student_date_of_birth)
+							: '';
+	
+						frm.set_value({
+							student: student_id,
+							student_name: student.student_full_name,
+							gender: student.student_gender,
+							date_of_birth: student.student_date_of_birth,
+							student_age: age
+						});
+					}
+				});
+			});
 	}
 });
 
