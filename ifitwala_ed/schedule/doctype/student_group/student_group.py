@@ -138,18 +138,27 @@ class StudentGroup(Document):
 
 			# 🔁 Soft validation for duplicate assignment to same course & term (Course-based groups only)
 			if self.group_based_on == "Course" and self.course:
+				# Use term from Student Group if set
 				conflict_term = self.term
 
-				# Attempt to infer term if not explicitly set
+				# If not set, try to infer term from Program Enrollment + Course
 				if not conflict_term:
-					conflict_term = frappe.db.get_value("Program Enrollment", {
-						"student": student.student,
-						"course": self.course,
-						"academic_year": self.academic_year,
-						"docstatus": 1
-					}, "term", order_by="modified desc")
+					conflict_term_result = frappe.db.sql("""
+						SELECT pe.term
+						FROM `tabProgram Enrollment` pe
+						INNER JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
+						WHERE pe.student = %s
+							AND pec.course = %s
+							AND pe.academic_year = %s
+							AND pe.docstatus = 1
+						ORDER BY pe.modified DESC
+						LIMIT 1
+					""", (student.student, self.course, self.academic_year), as_dict=1)
 
-				# Only proceed if term is available (either from group or enrollment)
+					# Only use the term if it's present
+					conflict_term = conflict_term_result[0].term if conflict_term_result and conflict_term_result[0].term else None
+
+				# Only check for duplicate group if we now have a term
 				if conflict_term:
 					conflict = frappe.db.sql("""
 						SELECT sg.name
@@ -172,13 +181,13 @@ class StudentGroup(Document):
 					})
 
 					if conflict:
-						# 🔔 Warn user but do not block
 						frappe.msgprint(
 							_("<span style='color: orange; font-weight: bold;'>Heads up:</span> Student <b>{0} ({1})</b> is already assigned to another Course-based group <b>{2}</b> for the same course and term.")
 							.format(student.student_name, student.student, conflict[0][0]),
 							title=_("Possible Duplicate Assignment"),
 							indicator="orange"
 						)
+
 
 	# to input the roll number field in child table
 	def validate_and_set_child_table_fields(self):
@@ -240,6 +249,18 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 	group_based_on = filters.get("group_based_on")
 
 	if group_based_on == "Other":
+		# Students with no enrollment requirement
+		return frappe.db.sql(f"""
+			SELECT name, student_full_name 
+			FROM `tabStudent`
+			WHERE enabled = 1
+				AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
+			ORDER BY idx DESC, name
+			LIMIT %s, %s
+		""", (f"%{txt}%", f"%{txt}%", start, page_len))
+
+	elif group_based_on == "Activity":
+		# May become specific in future (e.g., filter by activity type or tag)
 		return frappe.db.sql(f"""
 			SELECT name, student_full_name 
 			FROM `tabStudent`
@@ -258,77 +279,42 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 			course=filters.get('course')
 		)
 
-		existing_students = frappe.db.sql_list('''
-			SELECT student 
-			FROM `tabStudent Group Student` 
-			WHERE parent = %s
-		''', (filters.get('student_group'),))
-
-		student_ids = [
-			d.student for d in enrolled_students 
-			if d.student not in existing_students
-		] if enrolled_students else []
-
-		if not student_ids:
-			return []
-
-		placeholders = ', '.join(['%s'] * len(student_ids))
-		args = tuple(student_ids + [f"%{txt}%", f"%{txt}%", start, page_len])
-
-		query = f"""
-			SELECT name, student_full_name 
-			FROM `tabStudent`
-			WHERE name IN ({placeholders})
-				AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
-			ORDER BY idx DESC, name
-			LIMIT %s, %s
-		"""
-		return frappe.db.sql(query, args)
-
-	# Activity: placeholder for future refinement
-	elif group_based_on == "Activity":
-		return frappe.db.sql(f"""
-			SELECT name, student_full_name 
-			FROM `tabStudent`
-			WHERE enabled = 1
-				AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
-			ORDER BY idx DESC, name
-			LIMIT %s, %s
-		""", (f"%{txt}%", f"%{txt}%", start, page_len))
-
-	# Fallback: Assume Cohort group
-	else:
+	elif group_based_on == "Cohort":
 		enrolled_students = get_program_enrollment(
 			academic_year=filters.get('academic_year'),
 			term=filters.get('term'),
 			program=filters.get('program'),
 			cohort=filters.get('cohort'),
-			course=None  # Not relevant in this case
+			course=None
 		)
 
-		existing_students = frappe.db.sql_list('''
-			SELECT student 
-			FROM `tabStudent Group Student` 
-			WHERE parent = %s
-		''', (filters.get('student_group'),))
+	else:
+		return []
 
-		student_ids = [
-			d.student for d in enrolled_students 
-			if d.student not in existing_students
-		] if enrolled_students else []
+	# Shared logic for course or cohort results
+	existing_students = get_existing_students(filters.get('student_group'))
 
-		if not student_ids:
-			return []
+	student_ids = [
+		d.student for d in enrolled_students 
+		if d.student not in existing_students
+	] if enrolled_students else []
 
-		return frappe.db.sql(f"""
-			SELECT name, student_full_name 
-			FROM `tabStudent`
-			WHERE name IN ({', '.join(['%s'] * len(student_ids))})
-				AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
-			ORDER BY idx DESC, name
-			LIMIT %s, %s
-		""", tuple(student_ids + [f"%{txt}%", f"%{txt}%", start, page_len]))
+	if not student_ids:
+		return []
 
+	placeholders = build_in_clause_placeholders(student_ids)
+	args = tuple(student_ids + [f"%{txt}%", f"%{txt}%", start, page_len])
+
+	query = f"""
+		SELECT name, student_full_name 
+		FROM `tabStudent`
+		WHERE name IN ({placeholders})
+			AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
+		ORDER BY idx DESC, name
+		LIMIT %s, %s
+	"""
+
+	return frappe.db.sql(query, args)
 
 
 def get_program_enrollment(academic_year, term=None, program=None, cohort=None, course=None):
@@ -380,3 +366,14 @@ def group_has_permission(user, doc):
 		return True
 
 	return False
+
+def get_existing_students(student_group: str) -> list[str]:
+	"""Returns a list of student IDs already in the student group"""
+	return frappe.db.sql_list('''
+		SELECT student FROM `tabStudent Group Student` WHERE parent = %s
+	''', (student_group,))
+
+
+def build_in_clause_placeholders(values: list) -> str:
+	"""Returns a string like '%s, %s, %s' based on list length"""
+	return ', '.join(['%s'] * len(values))
