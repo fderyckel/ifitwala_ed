@@ -1,6 +1,6 @@
 @import "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap";
 
-/* ../../../../../tmp/tmp-3045589-iu5JqoplYV3T/ifitwala_ed/ifitwala_ed/public/scss/ifitwala_ed.bundle.css */
+/* ../../../../../tmp/tmp-3644829-6tzXIuxGS9yQ/ifitwala_ed/ifitwala_ed/public/scss/ifitwala_ed.bundle.css */
 .node-card {
   background: white;
   border-radius: 0.5rem;
@@ -529,6 +529,36 @@ body {
   color: #777;
   margin-top: 5px;
 }
+.medical-alert {
+  position: relative;
+  color: red;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  margin-left: 6px;
+  vertical-align: middle;
+  display: inline-block;
+}
+.medical-alert::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: #fff;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+  z-index: 10;
+}
+.medical-alert:hover::after {
+  opacity: 1;
+}
 #load-more {
   display: block;
   margin: 20px auto;
@@ -557,4 +587,4 @@ body {
     grid-template-columns: 1fr;
   }
 }
-/*# sourceMappingURL=ifitwala_ed.bundle.T2DMPZ2B.css.map */
+/*# sourceMappingURL=ifitwala_ed.bundle.2GW45C3S.css.map */

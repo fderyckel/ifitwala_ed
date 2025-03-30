@@ -128,10 +128,11 @@
    "label": "Status"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-19 11:27:21.859628",
+ "modified": "2025-03-30 16:27:24.627790",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment",
@@ -197,5 +198,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

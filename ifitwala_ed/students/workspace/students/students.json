@@ -16,8 +16,37 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Students",
+   "label": "Logs & Attendance",
    "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Log",
+   "link_count": 0,
+   "link_to": "Student Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Log Follow up ",
+   "link_count": 0,
+   "link_to": "Student Log Follow Up",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Students",
+   "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -45,34 +74,15 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Logs & Attendance",
-   "link_count": 2,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Log",
+   "label": "Student Group Cards",
    "link_count": 0,
-   "link_to": "Student Log",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Log Follow up ",
-   "link_count": 0,
-   "link_to": "Student Log Follow Up",
-   "link_type": "DocType",
+   "link_to": "student_group_cards",
+   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2025-02-11 15:30:47.374430",
+ "modified": "2025-03-29 23:06:19.744979",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Students",

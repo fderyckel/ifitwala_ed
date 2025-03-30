@@ -8,7 +8,11 @@
  "field_order": [
   "section_break_i1gn",
   "course",
-  "course_name"
+  "course_name",
+  "status",
+  "term_start",
+  "term_end",
+  "dropped_date"
  ],
  "fields": [
   {
@@ -31,12 +35,39 @@
    "in_list_view": 1,
    "label": "Course Name",
    "read_only": 1
+  },
+  {
+   "default": "Enrolled",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Enrolled\nDropped\nCompleted"
+  },
+  {
+   "fieldname": "term_start",
+   "fieldtype": "Link",
+   "label": "Term Start",
+   "options": "Term"
+  },
+  {
+   "fieldname": "term_end",
+   "fieldtype": "Link",
+   "label": "Term End",
+   "options": "Term"
+  },
+  {
+   "depends_on": "eval:doc.status == 'Dropped'",
+   "fieldname": "dropped_date",
+   "fieldtype": "Date",
+   "label": "Dropped Date",
+   "mandatory_depends_on": "eval:doc.status == 'Dropped'"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-08 23:21:44.646977",
+ "modified": "2025-03-30 22:10:57.991772",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Course",

@@ -183,6 +183,7 @@
   },
   {
    "fetch_from": "student.student_image",
+   "fetch_if_empty": 1,
    "fieldname": "student_photo",
    "fieldtype": "Attach Image",
    "hidden": 1,
@@ -220,11 +221,12 @@
    "options": "reference_type"
   }
  ],
+ "grid_page_length": 50,
  "image_field": "student_photo",
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-28 21:50:04.899829",
+ "modified": "2025-03-29 16:23:35.211605",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",

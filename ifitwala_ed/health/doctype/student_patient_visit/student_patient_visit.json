@@ -63,7 +63,6 @@
    "options": "Student Patient"
   },
   {
-   "fetch_from": "student_patient.student_name",
    "fieldname": "student_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -186,7 +185,6 @@
    "label": "Treatment"
   },
   {
-   "fetch_from": "student_patient.date_of_birth",
    "fieldname": "date_of_birth",
    "fieldtype": "Read Only",
    "in_list_view": 1,
@@ -195,7 +193,6 @@
    "read_only": 1
   },
   {
-   "fetch_from": "student_patient.gender",
    "fieldname": "gender",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -220,14 +217,12 @@
   {
    "fieldname": "time_of_arrival",
    "fieldtype": "Time",
-   "label": "Time of Arrival",
-   "reqd": 1
+   "label": "Time of Arrival"
   },
   {
    "fieldname": "time_of_discharge",
    "fieldtype": "Time",
-   "label": "Time of Discharge",
-   "reqd": 1
+   "label": "Time of Discharge"
   },
   {
    "fieldname": "column_break_tcfj",
@@ -238,7 +233,7 @@
  "image_field": "photo",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-29 07:49:23.742088",
+ "modified": "2025-03-29 16:03:54.251083",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient Visit",
