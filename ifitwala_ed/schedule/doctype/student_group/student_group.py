@@ -272,14 +272,18 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 		if not student_ids:
 			return []
 
-		return frappe.db.sql(f"""
+		placeholders = ', '.join(['%s'] * len(student_ids))
+		args = tuple(student_ids + [f"%{txt}%", f"%{txt}%", start, page_len])
+
+		query = f"""
 			SELECT name, student_full_name 
 			FROM `tabStudent`
-			WHERE name IN ({', '.join(['%s'] * len(student_ids))})
+			WHERE name IN ({placeholders})
 				AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
 			ORDER BY idx DESC, name
 			LIMIT %s, %s
-		""", tuple(student_ids + [f"%{txt}%", f"%{txt}%", start, page_len]))
+		"""
+		return frappe.db.sql(query, args)
 
 	# Activity: placeholder for future refinement
 	elif group_based_on == "Activity":
@@ -328,31 +332,34 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 
 
 def get_program_enrollment(academic_year, term=None, program=None, cohort=None, course=None):
+	# Build dynamic WHERE clause using parameterized approach
+	conditions = ["pe.academic_year = %(academic_year)s", "pe.docstatus = 1"]
+	params = {"academic_year": academic_year}
 
-	condition1 = " "
-	condition2 = " "
+	joins = ""
 	if term:
-		condition1 += " and pe.term = %(term)s"
+		conditions.append("pe.term = %(term)s")
+		params["term"] = term
 	if program:
-		condition1 += " and pe.program = %(program)s"
+		conditions.append("pe.program = %(program)s")
+		params["program"] = program
 	if cohort:
-		condition1 += " and pe.cohort = %(cohort)s"
+		conditions.append("pe.cohort = %(cohort)s")
+		params["cohort"] = cohort
 	if course:
-		condition1 += " and pe.name = pec.parent and pec.course = %(course)s"
-		condition2 = ", `tabProgram Enrollment Course` pec"
+		joins = "INNER JOIN `tabProgram Enrollment Course` pec ON pe.name = pec.parent"
+		conditions.append("pec.course = %(course)s")
+		params["course"] = course
 
-	return frappe.db.sql('''
-		select
-			pe.student, pe.student_name
-		from
-			`tabProgram Enrollment` pe {condition2}
-		where
-			pe.academic_year = %(academic_year)s  {condition1} and pe.docstatus=1
-		order by
-			pe.student_name asc
-		'''.format(condition1=condition1, condition2=condition2),
-		({"academic_year": academic_year, "term":term, "program": program, "cohort": cohort, "course": course}), as_dict=1)
+	query = f"""
+		SELECT pe.student, pe.student_name
+		FROM `tabProgram Enrollment` pe
+		{joins}
+		WHERE {" AND ".join(conditions)}
+		ORDER BY pe.student_name ASC
+	"""
 
+	return frappe.db.sql(query, params, as_dict=1)
 
 
 ########################## Permissions ##########################
