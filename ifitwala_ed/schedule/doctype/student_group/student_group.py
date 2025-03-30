@@ -73,47 +73,112 @@ class StudentGroup(Document):
 	# you should not be able to make a group that include inactive students.
 	# this is to ensure students are still active students (aka not graduated or not transferred, etc.)
 	def validate_students(self):
-		if not self.students: 
-			return	# Nothing to validate if the child table is empty
-		
+		if not self.students:
+			return
+
+		# Skip all validation for "Other"
+		if self.group_based_on == "Other":
+			return
+
 		student_names = [s.student for s in self.students if s.student]
 		if not student_names:
-			return	# Nothing to validate if student names are not present
-		
+			return
+
+		# Fetch enabled status for all listed students
 		enabled_records = frappe.db.get_values(
-			"Student", 
-			{"name": ["in", student_names]}, 
+			"Student",
+			{"name": ["in", student_names]},
 			["name", "enabled"],
 			as_dict=True
 		)
+		enabled_dict = {rec.name: rec.enabled for rec in enabled_records}
 
-		# Convert to a dictionary for easy lookup: {student_name: enabled_status}
-		enabled_dict = {rec.name: rec.enabled for rec in enabled_records}  
-		
-		for student in self.students: 
+		for student in self.students:
 			if not student.student:
 				continue
 
-      # Check if the student is enabled using the retrieved values 
-			is_enabled = enabled_dict.get(student.student) 
-			if is_enabled is None: 
-				frappe.throw(_("Student data not found for {0}").format(student.student))  
-				
-			if not is_enabled and student.active: 
-				frappe.throw(_("{0} - {1} is an inactive student").format(student.group_roll_number, student.student_name)) 
-				
-			# Program Enrollment Check (if applicable) 
-			if self.program: 
-				if not frappe.db.exists("Program Enrollment", {"student": student.student, "program": self.program, "academic_year": self.academic_year, "docstatus": 1}): 
-					frappe.throw(_("Student {0} ({1}) is not enrolled in the program {2} for academic year {3}."
-                    ).format(student.student_name, student.student, get_link_to_form("Program", self.program), self.academic_year)
-          )
-		
-			# Cohort check
-			if self.cohort: 
-				if not frappe.db.exists("Program Enrollment", {"student": student.student, "cohort": self.cohort, "academic_year": self.academic_year, "docstatus":1}): 
-					frappe.throw(_("Student {0} ({1}) is not in  cohort {2} for academic year {3}.").format(student.student_name,
-                        student.student, get_link_to_form("Student Cohort", self.cohort), self.academic_year))		
+			is_enabled = enabled_dict.get(student.student)
+			if is_enabled is None:
+				frappe.throw(_("Student data not found for {0}").format(student.student))
+
+			if not is_enabled and student.active:
+				frappe.throw(_("{0} - {1} is an inactive student").format(
+					student.group_roll_number, student.student_name
+				))
+
+			# Check program enrollment (optional)
+			if self.program:
+				if not frappe.db.exists("Program Enrollment", {
+					"student": student.student,
+					"program": self.program,
+					"academic_year": self.academic_year,
+					"docstatus": 1
+				}):
+					frappe.throw(_("Student {0} ({1}) is not enrolled in the program {2} for academic year {3}.").format(
+						student.student_name,
+						student.student,
+						get_link_to_form("Program", self.program),
+						self.academic_year
+					))
+
+			# Check cohort (optional)
+			if self.cohort:
+				if not frappe.db.exists("Program Enrollment", {
+					"student": student.student,
+					"cohort": self.cohort,
+					"academic_year": self.academic_year,
+					"docstatus": 1
+				}):
+					frappe.throw(_("Student {0} ({1}) is not in cohort {2} for academic year {3}.").format(
+						student.student_name,
+						student.student,
+						get_link_to_form("Student Cohort", self.cohort),
+						self.academic_year
+					))
+
+			# 🔁 Soft validation for duplicate assignment to same course & term (Course-based groups only)
+			if self.group_based_on == "Course" and self.course:
+				conflict_term = self.term
+
+				# Attempt to infer term if not explicitly set
+				if not conflict_term:
+					conflict_term = frappe.db.get_value("Program Enrollment", {
+						"student": student.student,
+						"course": self.course,
+						"academic_year": self.academic_year,
+						"docstatus": 1
+					}, "term", order_by="modified desc")
+
+				# Only proceed if term is available (either from group or enrollment)
+				if conflict_term:
+					conflict = frappe.db.sql("""
+						SELECT sg.name
+						FROM `tabStudent Group` sg
+						INNER JOIN `tabStudent Group Student` sgs ON sgs.parent = sg.name
+						WHERE
+							sg.name != %(current_group)s
+							AND sgs.student = %(student)s
+							AND sg.group_based_on = 'Course'
+							AND sg.academic_year = %(academic_year)s
+							AND sg.course = %(course)s
+							AND sg.term = %(term)s
+						LIMIT 1
+					""", {
+						"student": student.student,
+						"current_group": self.name,
+						"academic_year": self.academic_year,
+						"course": self.course,
+						"term": conflict_term
+					})
+
+					if conflict:
+						# 🔔 Warn user but do not block
+						frappe.msgprint(
+							_("<span style='color: orange; font-weight: bold;'>Heads up:</span> Student <b>{0} ({1})</b> is already assigned to another Course-based group <b>{2}</b> for the same course and term.")
+							.format(student.student_name, student.student, conflict[0][0]),
+							title=_("Possible Duplicate Assignment"),
+							indicator="orange"
+						)
 
 	# to input the roll number field in child table
 	def validate_and_set_child_table_fields(self):
@@ -151,23 +216,6 @@ def get_permission_query_conditions(user):
 		if role in super_viewer:
 			return ""
 
-
-def group_has_permission(user, doc):
-	current_user = frappe.get_doc("User", user)
-	roles = [role.role for role in current_user.roles]
-	super_viewer = ["Administrator", "System Manager", "Academic Admin", "Schedule Maker", "Admission Officer"]
-	for role in roles:
-		if role in super_viewer:
-			return True
-
-	if current_user.name in [i.user_id.lower() for i in doc.instructors]:
-		return True
-
-	if current_user.name in [i.user_id.lower() for i in doc.students]:
-		return True
-
-	return False
-
 @frappe.whitelist()
 def get_students(academic_year, group_based_on, term=None, program=None, cohort=None, course=None):
 	enrolled_students = get_program_enrollment(academic_year, term, program, cohort, course)
@@ -184,6 +232,98 @@ def get_students(academic_year, group_based_on, term=None, program=None, cohort=
 	else:
 		frappe.msgprint(_("No students found"))
 		return []
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def fetch_students(doctype, txt, searchfield, start, page_len, filters):
+	group_based_on = filters.get("group_based_on")
+
+	if group_based_on == "Other":
+		return frappe.db.sql(f"""
+			SELECT name, student_full_name 
+			FROM `tabStudent`
+			WHERE enabled = 1
+				AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
+			ORDER BY idx DESC, name
+			LIMIT %s, %s
+		""", (f"%{txt}%", f"%{txt}%", start, page_len))
+
+	elif group_based_on == "Course":
+		enrolled_students = get_program_enrollment(
+			academic_year=filters.get('academic_year'),
+			term=filters.get('term'),
+			program=filters.get('program'),
+			cohort=filters.get('cohort'),
+			course=filters.get('course')
+		)
+
+		existing_students = frappe.db.sql_list('''
+			SELECT student 
+			FROM `tabStudent Group Student` 
+			WHERE parent = %s
+		''', (filters.get('student_group'),))
+
+		student_ids = [
+			d.student for d in enrolled_students 
+			if d.student not in existing_students
+		] if enrolled_students else []
+
+		if not student_ids:
+			return []
+
+		return frappe.db.sql(f"""
+			SELECT name, student_full_name 
+			FROM `tabStudent`
+			WHERE name IN ({', '.join(['%s'] * len(student_ids))})
+				AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
+			ORDER BY idx DESC, name
+			LIMIT %s, %s
+		""", tuple(student_ids + [f"%{txt}%", f"%{txt}%", start, page_len]))
+
+	# Activity: placeholder for future refinement
+	elif group_based_on == "Activity":
+		return frappe.db.sql(f"""
+			SELECT name, student_full_name 
+			FROM `tabStudent`
+			WHERE enabled = 1
+				AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
+			ORDER BY idx DESC, name
+			LIMIT %s, %s
+		""", (f"%{txt}%", f"%{txt}%", start, page_len))
+
+	# Fallback: Assume Cohort group
+	else:
+		enrolled_students = get_program_enrollment(
+			academic_year=filters.get('academic_year'),
+			term=filters.get('term'),
+			program=filters.get('program'),
+			cohort=filters.get('cohort'),
+			course=None  # Not relevant in this case
+		)
+
+		existing_students = frappe.db.sql_list('''
+			SELECT student 
+			FROM `tabStudent Group Student` 
+			WHERE parent = %s
+		''', (filters.get('student_group'),))
+
+		student_ids = [
+			d.student for d in enrolled_students 
+			if d.student not in existing_students
+		] if enrolled_students else []
+
+		if not student_ids:
+			return []
+
+		return frappe.db.sql(f"""
+			SELECT name, student_full_name 
+			FROM `tabStudent`
+			WHERE name IN ({', '.join(['%s'] * len(student_ids))})
+				AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
+			ORDER BY idx DESC, name
+			LIMIT %s, %s
+		""", tuple(student_ids + [f"%{txt}%", f"%{txt}%", start, page_len]))
 
 
 
@@ -213,24 +353,23 @@ def get_program_enrollment(academic_year, term=None, program=None, cohort=None, 
 		'''.format(condition1=condition1, condition2=condition2),
 		({"academic_year": academic_year, "term":term, "program": program, "cohort": cohort, "course": course}), as_dict=1)
 
-@frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def fetch_students(doctype, txt, searchfield, start, page_len, filters):
-	if filters.get("group_based_on") != "Activity":
-		enrolled_students = get_program_enrollment(filters.get('academic_year'), filters.get('term'),
-			filters.get('program'), filters.get('cohort'))
-		student_group_student = frappe.db.sql_list('''select student from `tabStudent Group Student` where parent=%s''',
-			(filters.get('student_group')))
-		students = ([d.student for d in enrolled_students if d.student not in student_group_student]
-			if enrolled_students else [""]) or [""]
-		return frappe.db.sql("""select name, student_full_name from tabStudent
-			where name in ({0}) and (`{1}` LIKE %s or student_full_name LIKE %s)
-			order by idx desc, name
-			limit %s, %s""".format(", ".join(['%s']*len(students)), searchfield),
-			tuple(students + ["%%%s%%" % txt, "%%%s%%" % txt, start, page_len]))
-	else:
-		return frappe.db.sql("""select name, student_full_name from tabStudent
-			where `{0}` LIKE %s or student_full_name LIKE %s
-			order by idx desc, name
-			limit %s, %s""".format(searchfield),
-			tuple(["%%%s%%" % txt, "%%%s%%" % txt, start, page_len]))
+
+
+########################## Permissions ##########################
+##### Used in other parts
+
+def group_has_permission(user, doc):
+	current_user = frappe.get_doc("User", user)
+	roles = [role.role for role in current_user.roles]
+	super_viewer = ["Administrator", "System Manager", "Academic Admin", "Schedule Maker", "Admission Officer"]
+	for role in roles:
+		if role in super_viewer:
+			return True
+
+	if current_user.name in [i.user_id.lower() for i in doc.instructors]:
+		return True
+
+	if current_user.name in [i.user_id.lower() for i in doc.students]:
+		return True
+
+	return False
