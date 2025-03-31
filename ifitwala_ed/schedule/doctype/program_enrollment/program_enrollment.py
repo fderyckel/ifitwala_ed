@@ -176,25 +176,40 @@ def get_program_courses(doctype, txt, searchfield, start, page_len, filters):
 @frappe.validate_and_sanitize_search_inputs
 def get_students(doctype, txt, searchfield, start, page_len, filters):
 	if not filters.get("term"):
-		filters["term"] = frappe.defaults.get_defaults().term
+		filters["term"] = frappe.defaults.get_defaults().get("term")
 
 	if not filters.get("academic_year"):
-		filters["academic_year"] = frappe.defaults.get_defaults().academic_year
+		filters["academic_year"] = frappe.defaults.get_defaults().get("academic_year")
 
-	enrolled_students = frappe.get_list("Program Enrollment", filters={
-		"term": filters.get('term'),
-		"academic_year": filters.get('academic_year')
-	}, fields=["student"])
+	# Get already enrolled students
+	enrolled_students = frappe.get_list(
+		"Program Enrollment",
+		filters={
+			"term": filters.get('term'),
+			"academic_year": filters.get('academic_year')
+		},
+		fields=["student"]
+	)
+	excluded_students = [d.student for d in enrolled_students]
 
-	students = [d.student for d in enrolled_students] if enrolled_students else [""]
+	# To prevent empty IN () error
+	if not excluded_students:
+		excluded_students = [""]  # will not exclude anyone
 
-	return frappe.db.sql(f"""		
+	# Build SQL
+	sql = f"""
 		SELECT name, student_full_name 
 		FROM tabStudent
-		WHERE name NOT IN ({', '.join(['%s'] * len(students))})
+		WHERE name NOT IN ({', '.join(['%s'] * len(excluded_students))})
 		AND enabled = 1
 		AND `{searchfield}` LIKE %s
 		ORDER BY idx DESC, name
 		LIMIT %s, %s
-	""", tuple(students + [f"%{txt}%", start, page_len]))
+	"""
+
+	# Params: excluded list + search text + pagination
+	params = excluded_students + [f"%{txt}%", start, page_len]
+
+	return frappe.db.sql(sql, params)
+
 
