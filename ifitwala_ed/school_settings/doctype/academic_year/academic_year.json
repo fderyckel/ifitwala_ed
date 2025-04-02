@@ -125,26 +125,11 @@
    "label": "Connections"
   }
  ],
+ "grid_page_length": 50,
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
- "links": [
-  {
-   "group": "Terms and Programs ",
-   "link_doctype": "Term",
-   "link_fieldname": "academic_year"
-  },
-  {
-   "group": "Terms and Programs ",
-   "link_doctype": "Program Enrollment",
-   "link_fieldname": "academic_year"
-  },
-  {
-   "group": "Terms and Programs ",
-   "link_doctype": "Course Enrollment",
-   "link_fieldname": "academic_year"
-  }
- ],
- "modified": "2025-02-13 01:13:04.469133",
+ "links": [],
+ "modified": "2025-03-31 17:20:18.197922",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",

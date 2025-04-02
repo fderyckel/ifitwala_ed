@@ -8,11 +8,12 @@
  "field_order": [
   "section_break_i1gn",
   "course",
-  "course_name",
   "status",
   "term_start",
-  "term_end",
-  "dropped_date"
+  "column_break_ikkd",
+  "course_name",
+  "dropped_date",
+  "term_end"
  ],
  "fields": [
   {
@@ -20,6 +21,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "columns": 4,
    "fieldname": "course",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -32,26 +34,31 @@
    "fetch_if_empty": 1,
    "fieldname": "course_name",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Course Name",
    "read_only": 1
   },
   {
+   "columns": 2,
    "default": "Enrolled",
    "fieldname": "status",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Status",
    "options": "Enrolled\nDropped\nCompleted"
   },
   {
+   "columns": 2,
    "fieldname": "term_start",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Term Start",
    "options": "Term"
   },
   {
+   "columns": 2,
    "fieldname": "term_end",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Term End",
    "options": "Term"
   },
@@ -61,13 +68,17 @@
    "fieldtype": "Date",
    "label": "Dropped Date",
    "mandatory_depends_on": "eval:doc.status == 'Dropped'"
+  },
+  {
+   "fieldname": "column_break_ikkd",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-30 22:10:57.991772",
+ "modified": "2025-03-31 17:29:22.111780",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Course",
