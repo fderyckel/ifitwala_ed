@@ -1,7 +1,7 @@
 {
  "charts": [],
  "content": "[{\"id\":\"f2XOfukGGP\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Admin Dashboard\",\"col\":3}},{\"id\":\"F4mrDbesrC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Enrollment Dashboards\",\"col\":3}},{\"id\":\"3-EC5XwxKZ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Students Demographics\",\"col\":4}},{\"id\":\"P0AkGF37hs\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"YBdNUngdLt\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">School Settings</span>\",\"col\":12}},{\"id\":\"pX8QnaEo7n\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & Teams\",\"col\":4}},{\"id\":\"JirRP0qGNK\",\"type\":\"card\",\"data\":{\"card_name\":\"Year & Terms\",\"col\":4}},{\"id\":\"-Mc3FDzh4d\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"nv62VY0p4d\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Students</b></span>\",\"col\":12}},{\"id\":\"t9p4hrk4FT\",\"type\":\"card\",\"data\":{\"card_name\":\"Student Settings\",\"col\":4}},{\"id\":\"WntPHsS_7L\",\"type\":\"card\",\"data\":{\"card_name\":\"Health\",\"col\":4}},{\"id\":\"FqGjo5okqc\",\"type\":\"card\",\"data\":{\"card_name\":\"Admission\",\"col\":4}},{\"id\":\"2nVXktkB7B\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Schedule And Curriculum</b></span>\",\"col\":12}},{\"id\":\"7r_L8_bxFJ\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"SALbBsv_U5\",\"type\":\"card\",\"data\":{\"card_name\":\"Assessment\",\"col\":4}},{\"id\":\"tkz4n9kU1N\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"qQ5toFMF0i\",\"type\":\"card\",\"data\":{\"card_name\":\"ECA\",\"col\":4}},{\"id\":\"Ktv-XrWiG2\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
- "creation": "2024-12-08 09:38:24.893527",
+ "creation": "2025-04-01 09:38:24",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
@@ -333,16 +333,6 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Education Settings",
-   "link_count": 0,
-   "link_to": "Education Settings",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
   },
   {
    "hidden": 0,
