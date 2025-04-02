@@ -23,9 +23,12 @@ class SchoolCalendar(Document):
     self.calendar_name = "{0} ({1})".format(self.academic_year, school_abbr)
 
   def onload(self):
-    weekend_color = frappe.db.get_single_value("Education Settings", "weekend_color")
+    if not self.school: 
+       return
+    
+    weekend_color = frappe.db.get_value("School", self.school, "weekend_color")
     self.set_onload('weekend_color', weekend_color)
-    break_color = frappe.db.get_single_value("Education Settings", "break_color")
+    break_color = frappe.db.get_value("School", self.school, "break_color")
     self.set_onload("break_color", break_color)
 
   def validate(self):
