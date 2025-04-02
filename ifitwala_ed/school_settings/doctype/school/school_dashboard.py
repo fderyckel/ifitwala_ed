@@ -16,10 +16,6 @@ def get_data():
         "items": ["Pogram", "Course"]
        }, 
       {
-        "label": _("Schedule"),
-        "items": ["Student Group"]
-      }, 
-      {
         "label": _("Admin"),
         "items": ["Employee"]
       }      
