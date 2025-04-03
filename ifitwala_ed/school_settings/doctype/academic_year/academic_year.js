@@ -19,7 +19,9 @@ frappe.ui.form.on("Academic Year", {
                 if (r.message) {
                   frappe.msgprint(r.message);
                   // Optionally update the form field to reflect the retired status
-                  frm.set_value("status", 0);
+                  //frm.set_value("status", 0);
+                  // Reload the doc from the server so status and timestamp are synced
+                  frm.reload_doc();
                 }
               }
             });
