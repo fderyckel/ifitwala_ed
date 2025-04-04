@@ -45,10 +45,6 @@ class ProgramEnrollment(Document):
 
 	def on_submit(self):
 		self.update_student_joining_date()
-		self.create_course_enrollment()
-
-	def on_cancel(self):
-		self.uncheck_course_enrollments()
 
 
 	def validate_duplicate_course(self):
@@ -128,26 +124,7 @@ class ProgramEnrollment(Document):
 		if date and date[0] and date[0][0]:
 			frappe.db.set_value("Student", self.student, "student_joining_date", date[0][0])
 
-	def create_course_enrollment(self):
-		program = frappe.get_doc("Program", self.program)
-		student = frappe.get_doc("Student", self.student)
-		course_list = [course.course for course in self.courses]
-		for course_name in course_list:
-			student.enroll_in_course(course_name=course_name, program_enrollment=self.name, enrollment_date = self.enrollment_date)
 
-	# used (later) below with quiz and assessment
-	def get_all_course_enrollments(self):
-		course_enrollment_names = frappe.get_list("Course Enrollment", filters={'program_enrollment': self.name})
-		return [frappe.get_doc('Course Enrollment', course_enrollment.name) for course_enrollment in course_enrollment_names]
-
-	def uncheck_course_enrollments(self):
-    # Fetch course enrollments linked to this program_enrollment 
-		frappe.db.sql("""
-			UPDATE `tabCourse Enrollment`
-      SET current = 0
-      WHERE program_enrollment = %s
-      AND current = 1
-      """, (self.name,))
 		
 # from JS. to filter out course that are only present in the program list of courses.
 @frappe.whitelist()
