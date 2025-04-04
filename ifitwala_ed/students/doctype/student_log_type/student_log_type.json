@@ -26,13 +26,15 @@
   {
    "fieldname": "abbr",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Log Type Abbreviation"
   }
  ],
+ "grid_page_length": 50,
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-01 23:23:44.527752",
+ "modified": "2025-04-04 09:26:32.758752",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Type",
@@ -72,6 +74,7 @@
    "role": "Instructor"
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "log_type",
  "sort_field": "modified",
  "sort_order": "DESC",
