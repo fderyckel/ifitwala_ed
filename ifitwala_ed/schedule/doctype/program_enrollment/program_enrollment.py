@@ -151,16 +151,11 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
     filters={
         "academic_year": filters.get("academic_year")
     },
-    fieldname="student",
-    as_list=True
+    fieldname="student"
 	)
 
 	# flatten list of tuples
-	excluded_students = [row[0] for row in enrolled_students] or [""]
-
-	# To prevent empty IN () error
-	if not excluded_students:
-		excluded_students = [""]  # will not exclude anyone
+	excluded_students = [d["student"] for d in excluded_students] or [""]
 
 	# Build SQL
 	sql = f"""
