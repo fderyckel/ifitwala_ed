@@ -117,6 +117,8 @@
    "description": "Box should be check if this is the currently active Academic Year. Box should be unchecked once the Academic Year is over. ",
    "fieldname": "status",
    "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status"
   },
   {
@@ -129,7 +131,7 @@
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-31 17:20:18.197922",
+ "modified": "2025-04-03 15:20:20.600273",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",
@@ -213,6 +215,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "year_start_date",
  "sort_order": "DESC",
  "states": []

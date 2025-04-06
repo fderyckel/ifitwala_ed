@@ -77,7 +77,6 @@
   {
    "fieldname": "school_logo",
    "fieldtype": "Attach Image",
-   "hidden": 1,
    "label": "School Logo"
   },
   {
@@ -220,10 +219,11 @@
   }
  ],
  "grid_page_length": 50,
+ "image_field": "school_logo",
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-03-23 15:27:26.528214",
+ "modified": "2025-04-03 15:14:19.943692",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
@@ -260,6 +260,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
