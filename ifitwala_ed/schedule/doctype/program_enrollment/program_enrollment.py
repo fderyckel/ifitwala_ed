@@ -31,15 +31,6 @@ class ProgramEnrollment(Document):
 						year_dates.year_end_date
 					))
 
-		if self.term:
-			term_dates = frappe.get_doc("Term", self.term)
-			if term_dates.academic_year != self.academic_year:
-				frappe.throw(_("The term does not belong to that academic year."))
-			if self.enrollment_date and getdate(term_dates.term_start_date) and getdate(self.enrollment_date) < getdate(term_dates.term_start_date):
-				frappe.throw(_("The enrollment date for this program is before the start of the term.  Please revise the date or change the term {0}.").format(get_link_to_form("Term", self.term)))
-			if self.enrollment_date and getdate(term_dates.term_end_date) and getdate(self.enrollment_date) > getdate(term_dates.term_end_date):
-				frappe.throw(_("The enrollment date for this program is after the end the term.  Pease revise the joining date or change the term {0}.").format(get_link_to_form("Term", self.term)))
-
 	def before_submit(self):
 		self.validate_only_one_active_enrollment()
 
@@ -152,22 +143,20 @@ def get_program_courses(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_students(doctype, txt, searchfield, start, page_len, filters):
-	if not filters.get("term"):
-		filters["term"] = frappe.defaults.get_defaults().get("term")
-
 	if not filters.get("academic_year"):
-		filters["academic_year"] = frappe.defaults.get_defaults().get("academic_year")
+		return []
 
-	# Get already enrolled students
-	enrolled_students = frappe.get_list(
-		"Program Enrollment",
-		filters={
-			"term": filters.get('term'),
-			"academic_year": filters.get('academic_year')
-		},
-		fields=["student"]
+	enrolled_students = frappe.db.get_values(
+    "Program Enrollment",
+    filters={
+        "academic_year": filters.get("academic_year")
+    },
+    fieldname="student",
+    as_list=True
 	)
-	excluded_students = [d.student for d in enrolled_students]
+
+	# flatten list of tuples
+	excluded_students = [row[0] for row in enrolled_students] or [""]
 
 	# To prevent empty IN () error
 	if not excluded_students:
@@ -189,4 +178,16 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 
 	return frappe.db.sql(sql, params)
 
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_academic_years(doctype, txt, searchfield, start, page_len, filters):
+    return frappe.get_all(
+        "Academic Year",
+        fields=["name"],
+        filters={},
+        order_by="year_start_date DESC",
+        limit_start=start,
+        limit_page_length=page_len,
+        as_list=True
+    )
 

@@ -7,17 +7,7 @@ frappe.ui.form.on("Program Enrollment", {
     // to filter academic year by descending order  
     frm.set_query("academic_year", function () {
       return {
-        order_by: "year_start_date desc"
-      };
-    });
-
-    // to filter academic terms that matches the given academic year.
-    frm.set_query("term", function () {
-      return {
-        filters: {
-          academic_year: frm.doc.academic_year,
-        },
-        order_by: "term_start_date desc"
+        query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_academic_years",
       };
     });
 
@@ -29,13 +19,30 @@ frappe.ui.form.on("Program Enrollment", {
           "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_students",
         filters: {
           academic_year: frm.doc.academic_year,
-          term: frm.doc.term,
         },
       };
     });
   },
 
   onload_post_render: function (frm) {
+    // Filter term_start in child table based on academic_year
+    frm.set_query("term_start", "courses", function (doc, cdt, cdn) {
+      return {
+        filters: {
+          academic_year: frm.doc.academic_year
+        }
+      };
+    });
+
+    // Filter term_end in child table based on academic_year
+    frm.set_query("term_end", "courses", function (doc, cdt, cdn) {
+      return {
+        filters: {
+          academic_year: frm.doc.academic_year
+        }
+      };
+    });
+
     frm.get_field("courses").grid.set_multiple_add("course");
     
     frm.set_query("course", "courses", function (doc, cdt, cdn) {
