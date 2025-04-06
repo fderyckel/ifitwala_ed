@@ -3,12 +3,21 @@
 
 frappe.ui.form.on("Program Enrollment", {
   onload: function (frm) {
+
+    // to filter academic year by descending order  
+    frm.set_query("academic_year", function () {
+      return {
+        order_by: "year_start_date desc"
+      };
+    });
+
     // to filter academic terms that matches the given academic year.
     frm.set_query("term", function () {
       return {
         filters: {
           academic_year: frm.doc.academic_year,
         },
+        order_by: "term_start_date desc"
       };
     });
 

@@ -111,8 +111,7 @@ class StudentGroup(Document):
 				if not frappe.db.exists("Program Enrollment", {
 					"student": student.student,
 					"program": self.program,
-					"academic_year": self.academic_year,
-					"docstatus": 1
+					"academic_year": self.academic_year
 				}):
 					frappe.throw(_("Student {0} ({1}) is not enrolled in the program {2} for academic year {3}.").format(
 						student.student_name,
@@ -126,14 +125,12 @@ class StudentGroup(Document):
 				if not frappe.db.exists("Program Enrollment", {
 					"student": student.student,
 					"cohort": self.cohort,
-					"academic_year": self.academic_year,
-					"docstatus": 1
+					"academic_year": self.academic_year
 				}):
-					frappe.throw(_("Student {0} ({1}) is not in cohort {2} for academic year {3}.").format(
+					frappe.throw(_("Student {0} ({1}) is not part of the cohort {2}.").format(
 						student.student_name,
 						student.student,
-						get_link_to_form("Student Cohort", self.cohort),
-						self.academic_year
+						get_link_to_form("Student Cohort", self.cohort)
 					))
 
 			# 🔁 Soft validation for duplicate assignment to same course & term (Course-based groups only)
@@ -150,7 +147,6 @@ class StudentGroup(Document):
 						WHERE pe.student = %s
 							AND pec.course = %s
 							AND pe.academic_year = %s
-							AND pe.docstatus = 1
 						ORDER BY pe.modified DESC
 						LIMIT 1
 					""", (student.student, self.course, self.academic_year), as_dict=1)
@@ -319,7 +315,7 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 
 def get_program_enrollment(academic_year, term=None, program=None, cohort=None, course=None):
 	# Build dynamic WHERE clause using parameterized approach
-	conditions = ["pe.academic_year = %(academic_year)s", "pe.docstatus = 1"]
+	conditions = ["pe.academic_year = %(academic_year)s"]
 	params = {"academic_year": academic_year}
 
 	joins = ""
