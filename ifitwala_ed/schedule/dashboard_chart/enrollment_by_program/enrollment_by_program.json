@@ -7,21 +7,28 @@
  "doctype": "Dashboard Chart",
  "document_type": "Program Enrollment",
  "dynamic_filters_json": "[]",
- "filters_json": "[[\"Program Enrollment\",\"status\",\"=\",1,false]]",
+ "filters_json": "[]",
  "group_by_based_on": "program",
  "group_by_type": "Count",
- "idx": 0,
+ "idx": 4,
  "is_public": 0,
  "is_standard": 1,
- "last_synced_on": "2025-02-13 22:28:16.017836",
- "modified": "2025-02-13 22:29:07.895533",
+ "last_synced_on": "2025-04-06 16:13:57.327038",
+ "modified": "2025-04-06 16:15:03.848855",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Enrollment By Program",
  "number_of_groups": 0,
  "owner": "Administrator",
  "parent_document_type": "",
- "roles": [],
+ "roles": [
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Curriculum Coordinator"
+  }
+ ],
  "source": "",
  "time_interval": "Yearly",
  "timeseries": 0,

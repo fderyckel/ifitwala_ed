@@ -2,7 +2,7 @@
  "actions": [],
  "allow_events_in_timeline": 1,
  "allow_rename": 1,
- "autoname": "format:PAV-{YYMM}-{#####}",
+ "autoname": "format:PAV-{YYYY}[MM}-{#####}",
  "creation": "2025-01-01 09:41:54.513356",
  "default_view": "Image",
  "doctype": "DocType",
@@ -233,7 +233,7 @@
  "image_field": "photo",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-29 16:03:54.251083",
+ "modified": "2025-04-04 14:34:14.677425",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient Visit",
@@ -280,6 +280,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "student_name",
  "sort_field": "modified",
  "sort_order": "DESC",

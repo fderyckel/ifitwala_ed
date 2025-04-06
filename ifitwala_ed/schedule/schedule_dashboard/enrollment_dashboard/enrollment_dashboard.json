@@ -8,10 +8,6 @@
   {
    "chart": "Enrollment By Program",
    "width": "Full"
-  },
-  {
-   "chart": "Enrollment By Course",
-   "width": "Full"
   }
  ],
  "creation": "2025-02-10 15:06:43.468151",
@@ -21,7 +17,7 @@
  "idx": 6,
  "is_default": 0,
  "is_standard": 1,
- "modified": "2025-02-19 11:26:00.995085",
+ "modified": "2025-04-06 16:26:41.037295",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Enrollment Dashboard",

@@ -19,23 +19,12 @@
   "term",
   "status",
   "enrolled_courses_section",
-  "courses",
-  "amended_from"
+  "courses"
  ],
  "fields": [
   {
    "fieldname": "section_break_kcvg",
    "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Program Enrollment",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
   },
   {
    "fieldname": "student",
@@ -115,8 +104,9 @@
    "fetch_from": "program.school",
    "fetch_if_empty": 1,
    "fieldname": "school",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "label": "School",
+   "options": "School",
    "read_only": 1
   },
   {
@@ -129,9 +119,8 @@
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "is_submittable": 1,
  "links": [],
- "modified": "2025-03-31 17:19:43.866903",
+ "modified": "2025-04-06 16:33:11.587028",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment",
@@ -148,7 +137,6 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
@@ -195,6 +183,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
