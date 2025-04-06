@@ -155,7 +155,7 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 	)
 
 	# flatten list of tuples
-	excluded_students = [d["student"] for d in excluded_students] or [""]
+	excluded_students = [d["student"] for d in enrolled_students] or [""]
 
 	# Build SQL
 	sql = f"""
