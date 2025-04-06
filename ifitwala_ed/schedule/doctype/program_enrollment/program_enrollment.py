@@ -152,7 +152,7 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
         "academic_year": filters.get("academic_year")
     },
     fieldname="student"
-	)
+	) or []
 
 	# flatten list of tuples
 	excluded_students = [d["student"] for d in enrolled_students] or [""]
