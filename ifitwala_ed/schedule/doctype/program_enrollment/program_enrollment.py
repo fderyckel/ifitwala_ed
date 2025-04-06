@@ -31,6 +31,19 @@ class ProgramEnrollment(Document):
 						year_dates.year_end_date
 					))
 
+		# Ensure the academic year and program belong to the same school
+		if self.program and self.academic_year:
+			program_school = frappe.db.get_value("Program", self.program, "school")
+			academic_year_school = frappe.db.get_value("Academic Year", self.academic_year, "school")
+
+			if program_school and academic_year_school and program_school != academic_year_school:
+				frappe.throw(_(
+					"The selected Program {0} belongs to School {1}, but the Academic Year {2} belongs to School {3}. Please choose matching values."
+				).format(
+					get_link_to_form("Program", self.program), program_school,
+					get_link_to_form("Academic Year", self.academic_year), academic_year_school
+				), title=_("School Mismatch"))					
+
 	def before_submit(self):
 		self.validate_only_one_active_enrollment()
 
