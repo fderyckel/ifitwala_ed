@@ -165,8 +165,12 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
     fieldname="student"
 	) or []
 
+	# Efficient and clean conversion to list of dicts (if you want it)
+	#students_dicts = [{"student": s[0]} for s in enrolled_students]
+	excluded_students = [d[0] for d in enrolled_students] or [""]
+	#excluded_students = [d["student"] for d in students_dicts] or [""]
 	# flatten list of tuples
-	excluded_students = [d["student"] for d in enrolled_students] or [""]
+	#excluded_students = [d["student"] for d in enrolled_students] or [""]
 
 	# Build SQL
 	sql = f"""
