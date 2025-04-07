@@ -50,8 +50,7 @@ class ProgramEnrollmentTool(Document):
 				)
 				.where(
 					(program_enrollment.program == self.program) &
-					(program_enrollment.academic_year == self.academic_year) &
-					(program_enrollment.docstatus == 1)
+					(program_enrollment.academic_year == self.academic_year)
 				)
 			)
 
