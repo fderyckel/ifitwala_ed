@@ -187,13 +187,18 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_academic_years(doctype, txt, searchfield, start, page_len, filters):
-    return frappe.get_all(
-        "Academic Year",
-        fields=["name"],
-        filters={},
-        order_by="year_start_date DESC",
-        limit_start=start,
-        limit_page_length=page_len,
-        as_list=True
-    )
+
+	filters = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
+	
+	frappe.logger().info(f"[get_academic_years] Filters passed: {filters}")
+	
+	return frappe.get_all(
+		"Academic Year",
+    fields=["name"],
+    filters=filters,
+    order_by="year_start_date DESC",
+    limit_start=start,
+    limit_page_length=page_len,
+    as_list=True
+  )
 
