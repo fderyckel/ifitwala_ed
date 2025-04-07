@@ -73,9 +73,7 @@ class ProgramEnrollment(Document):
 		existing_enrollment_name = frappe.db.exists("Program Enrollment", { 
 			"student": self.student, 
 			"academic_year": self.academic_year, 
-			"term": self.term, 
 			"program": self.program, 
-			"docstatus": ("<", 2), 
 			"name": ("!=", self.name)
 		})
 		if existing_enrollment_name: 

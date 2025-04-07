@@ -13,18 +13,6 @@ frappe.ui.form.on("Program Enrollment", {
         },
       };
     });
-
-    // To filter the students showing up in the student fields (will not show up students already enrolled for that year  or term)
-    // only  work if academic term or academic year have already been selected
-    frm.set_query("student", function () {
-      return {
-        query:
-          "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_students",
-        filters: {
-          academic_year: frm.doc.academic_year,
-        },
-      };
-    });
   },
 
   onload_post_render: function (frm) {
@@ -51,14 +39,44 @@ frappe.ui.form.on("Program Enrollment", {
     frm.set_query("course", "courses", function (doc, cdt, cdn) {
       return {
         query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_program_courses",
-        filters: {program: frm.doc.program},
+        filters: {
+          program: frm.doc.program
+        },
       };
     });
   },
 
   program: function (frm) {
+    frm.set_value("academic_year", null);
+    frm.set_value("courses", []);
     frm.events.get_courses(frm);
+
+    // Once school is fetched (read-only), apply academic year filter
+    if (frm.doc.school) {
+      frm.set_query("academic_year", function () {
+        return {
+          query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_academic_years",
+          filters: {
+            school: frm.doc.school
+          }
+        };
+      });
+    }    
   },
+
+  academic_year: function (frm) {
+    // Just set the student query based on academic_year
+    frm.set_value("student", null);
+
+    frm.set_query("student", function () {
+      return {
+        query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_students",
+        filters: {
+          academic_year: frm.doc.academic_year
+        },
+      };
+    });
+  }, 
 
   // to get the mandatory courses of a given program
   get_courses: function (frm) {
