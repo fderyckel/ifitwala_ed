@@ -176,15 +176,20 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 	sql = f"""
 		SELECT name, student_full_name 
 		FROM tabStudent
-		WHERE name NOT IN ({', '.join(['%s'] * len(excluded_students))})
-		AND enabled = 1
-		AND `{searchfield}` LIKE %s
+		WHERE 
+			enabled = 1
+			AND name NOT IN ({', '.join(['%s'] * len(excluded_students))})
+			AND (
+			  name LIKE %s
+        OR student_full_name LIKE %s
+			)
 		ORDER BY idx DESC, name
 		LIMIT %s, %s
 	"""
 
 	# Params: excluded list + search text + pagination
-	params = excluded_students + [f"%{txt}%", start, page_len]
+	#params = excluded_students + [f"%{txt}%", start, page_len]
+	params = excluded_students + [f"%{txt}%", f"%{txt}%", start, page_len]
 
 	return frappe.db.sql(sql, params)
 
