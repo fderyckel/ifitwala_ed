@@ -81,29 +81,28 @@ class ProgramEnrollmentTool(Document):
 		else:
 			frappe.throw(_("No students found with the given criteria."))
 
+	@frappe.whitelist()
+	def enroll_students(self):
+		total = len(self.students)
+		if not self.new_program or not self.new_academic_year:
+			frappe.throw(_("New Program and New Academic Year are required."))
 
-@frappe.whitelist()
-def enroll_students(self):
-	total = len(self.students)
-	if not self.new_program or not self.new_academic_year:
-		frappe.throw(_("New Program and New Academic Year are required."))
+		enrdate = self.new_enrollment_date
+		if not enrdate:
+			year = frappe.get_doc("Academic Year", self.new_academic_year)
+			enrdate = getdate(year.year_start_date)
 
-	enrdate = self.new_enrollment_date
-	if not enrdate:
-		year = frappe.get_doc("Academic Year", self.new_academic_year)
-		enrdate = getdate(year.year_start_date)
+		for i, stud in enumerate(self.students):
+			frappe.publish_realtime("program_enrollment_tool", dict(progress=[i+1, total]), user=frappe.session.user)
 
-	for i, stud in enumerate(self.students):
-		frappe.publish_realtime("program_enrollment_tool", dict(progress=[i+1, total]), user=frappe.session.user)
+			if stud.student:
+				pe = frappe.new_doc("Program Enrollment")
+				pe.student = stud.student
+				pe.student_name = stud.student_name
+				pe.cohort = stud.student_cohort or self.new_student_cohort
+				pe.program = self.new_program
+				pe.academic_year = self.new_academic_year
+				pe.enrollment_date = enrdate
+				pe.save()
 
-		if stud.student:
-			pe = frappe.new_doc("Program Enrollment")
-			pe.student = stud.student
-			pe.student_name = stud.student_name
-			pe.cohort = stud.student_cohort or self.new_student_cohort
-			pe.program = self.new_program
-			pe.academic_year = self.new_academic_year
-			pe.enrollment_date = enrdate
-			pe.save()
-
-	frappe.msgprint(_("{0} students have been enrolled.").format(total))
+		frappe.msgprint(_("{0} students have been enrolled.").format(total))
