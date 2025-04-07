@@ -9,22 +9,6 @@ frappe.ui.form.on('Program Enrollment Tool', {
 
     frm.add_fetch('student', 'student_full_name', 'student_name');
 
-		frm.set_query('term', () => {
-			return {
-				'filters': {
-					'academic_year': (frm.doc.academic_year)
-				}
-			};
-		});
-
-		frm.set_query('term', function() {
-			return {
-				'filters': {
-					'academic_year': (frm.doc.new_academic_year)
-				}
-			};
-		});
-
 		frappe.realtime.on("program_enrollment_tool", data => {
 			frappe.hide_msgprint(true);
 			frappe.show_progress(__("Enrolling students"), data.progress[0], data.progress[1]);
@@ -33,6 +17,23 @@ frappe.ui.form.on('Program Enrollment Tool', {
 
 	// logic for the "get students" button.  Calling the get_students function in .py file.
 	get_students: function(frm) {
+		if (!frm.doc.get_students_from) {
+			frappe.msgprint(__('Please select "Get Students From" before fetching students.'));
+			return;
+		}
+
+		if (frm.doc.get_students_from === "Program Enrollment") {
+			if (!frm.doc.academic_year || !frm.doc.program) {
+				frappe.msgprint(__('Please select both Academic Year and Program.'));
+				return;
+			}
+		}
+
+		if (frm.doc.get_students_from === "Cohort" && !frm.doc.student_cohort) {
+			frappe.msgprint(__('Please select a Student Cohort.'));
+			return;
+		}
+		
 		frm.set_value("students", []);
 		frappe.call({
 			doc: frm.doc,
