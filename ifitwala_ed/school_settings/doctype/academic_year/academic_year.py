@@ -108,15 +108,6 @@ class AcademicYear(Document):
             AND status = 1
         """, (self.name,))
         
-        # Retire all active Course Enrollments for this Academic Year
-        frappe.db.sql("""
-            UPDATE `tabCourse Enrollment`
-            SET current = 0
-            WHERE academic_year = %s
-            AND docstatus = 0
-            AND current = 1
-        """, (self.name,))
-        
         # Update the Academic Year's own status to indicate it is retired
         self.db_set("status", 0)
         frappe.db.commit()
