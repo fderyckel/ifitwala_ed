@@ -154,6 +154,8 @@ def get_program_courses(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_students(doctype, txt, searchfield, start, page_len, filters):
+	page_len = 50
+
 	if not filters.get("academic_year"):
 		return []
 
@@ -166,11 +168,7 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 	) or []
 
 	# Efficient and clean conversion to list of dicts (if you want it)
-	#students_dicts = [{"student": s[0]} for s in enrolled_students]
 	excluded_students = [d[0] for d in enrolled_students] or [""]
-	#excluded_students = [d["student"] for d in students_dicts] or [""]
-	# flatten list of tuples
-	#excluded_students = [d["student"] for d in enrolled_students] or [""]
 
 	# Build SQL
 	sql = f"""
