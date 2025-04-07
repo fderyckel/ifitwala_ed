@@ -104,7 +104,6 @@ class AcademicYear(Document):
             UPDATE `tabProgram Enrollment`
             SET status = 0
             WHERE academic_year = %s
-            AND docstatus = 1
             AND status = 1
         """, (self.name,))
         
