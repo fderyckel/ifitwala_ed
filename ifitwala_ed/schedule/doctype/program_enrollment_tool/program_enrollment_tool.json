@@ -7,11 +7,10 @@
  "field_order": [
   "section_break_hyyt",
   "get_students_from",
+  "academic_year",
+  "column_break_7ta8",
   "program",
   "student_cohort",
-  "column_break_7ta8",
-  "academic_year",
-  "term",
   "section_break_pyyy",
   "get_students",
   "students",
@@ -21,7 +20,6 @@
   "enroll_students",
   "column_break_ekje",
   "new_academic_year",
-  "new_term",
   "new_enrollment_date"
  ],
  "fields": [
@@ -117,25 +115,14 @@
    "fieldname": "new_enrollment_date",
    "fieldtype": "Date",
    "label": "New enrollment Date"
-  },
-  {
-   "fieldname": "term",
-   "fieldtype": "Link",
-   "label": "Term",
-   "options": "Term"
-  },
-  {
-   "fieldname": "new_term",
-   "fieldtype": "Link",
-   "label": "New Term",
-   "options": "Term"
   }
  ],
+ "grid_page_length": 50,
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-02-10 14:06:58.451760",
+ "modified": "2025-04-07 21:43:18.376700",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Tool",
@@ -182,6 +169,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -39,6 +39,7 @@
    "fieldname": "term_name",
    "fieldtype": "Data",
    "label": "Term Name",
+   "no_copy": 1,
    "reqd": 1
   },
   {
@@ -126,7 +127,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-03 22:49:14.310708",
+ "modified": "2025-04-09 09:12:43.711924",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Term",
