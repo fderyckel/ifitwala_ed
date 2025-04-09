@@ -125,7 +125,7 @@ class ProgramEnrollment(Document):
 		# Get bounds once per call
 		bounds = None
 		if self.school:
-			bounds = get_school_term_bounds(self.school)
+			bounds = get_school_term_bounds(self.school, self.academic_year)
 			
 		for row in rows:
 			row["status"] = "Enrolled"
