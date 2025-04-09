@@ -102,6 +102,13 @@ class ProgramEnrollmentTool(Document):
 				pe.program = self.new_program
 				pe.academic_year = self.new_academic_year
 				pe.enrollment_date = enrdate
+				
+				# Set status only if mark_status_as_checked is True 
+				if self.mark_status_as_checked: 
+					pe.status = 1  # active
+				else:
+					pe.status = 0  # inactive/unchecked
+
 				pe.save()
 
 		frappe.msgprint(_("{0} students have been enrolled.").format(total))

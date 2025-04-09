@@ -16,22 +16,21 @@ frappe.ui.form.on("Program Enrollment", {
   },
 
   onload_post_render: function (frm) {
-    // Filter term_start in child table based on academic_year
-    frm.set_query("term_start", "courses", function (doc, cdt, cdn) {
-      return {
-        filters: {
-          academic_year: frm.doc.academic_year
-        }
-      };
-    });
+    // Ensure filtering of term fields in the child table
+    ["term_start", "term_end"].forEach((field) => {
+      frm.set_query(field, "courses", function () {
+        const filters = {};
 
-    // Filter term_end in child table based on academic_year
-    frm.set_query("term_end", "courses", function (doc, cdt, cdn) {
-      return {
-        filters: {
-          academic_year: frm.doc.academic_year
+        if (frm.doc.academic_year) {
+          filters.academic_year = frm.doc.academic_year;
         }
-      };
+
+        if (frm.doc.school) {
+          filters.school = frm.doc.school;
+        }
+
+        return { filters };
+      });
     });
 
     frm.get_field("courses").grid.set_multiple_add("course");
@@ -118,7 +117,10 @@ frappe.ui.form.on("Program Enrollment Course", {
         if (!frm.term_bounds_cache[frm.doc.school]) {
           const res = await frappe.call({
             method: "ifitwala_ed.schedule.schedule_utils.get_school_term_bounds",
-            args: { school: frm.doc.school }
+            args: { 
+              school: frm.doc.school, 
+              academic_year: frm.doc.academic_year
+            }
           });
 
           frm.term_bounds_cache[frm.doc.school] = res.message || {};

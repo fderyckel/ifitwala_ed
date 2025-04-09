@@ -10,15 +10,15 @@ from frappe import _
 ## function to get the start and end dates of the current academic year
 ## used in program enrollment, course enrollment too. 
 @frappe.whitelist()
-def get_school_term_bounds(school):
-	if not school:
+def get_school_term_bounds(school, academic_year):
+	if not school or not academic_year:
 		return {}
 
 	terms = frappe.db.sql("""
 		SELECT name, term_start_date, term_end_date
 		FROM `tabTerm`
-		WHERE school = %s
-	    """, (school,), as_dict=True)
+		WHERE school = %s AND academic_year = %s
+	    """, (school,academic_year), as_dict=True)
 
 	if not terms:
 		return {}
