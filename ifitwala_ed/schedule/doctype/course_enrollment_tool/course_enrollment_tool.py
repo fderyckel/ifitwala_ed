@@ -6,6 +6,7 @@ from frappe import _
 from frappe.utils import get_link_to_form, cint
 from frappe.model.document import Document
 from frappe.query_builder import DocType
+from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 
 class CourseEnrollmentTool(Document):
 

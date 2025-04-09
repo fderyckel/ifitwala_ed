@@ -7,7 +7,33 @@ from datetime import timedelta
 from frappe.utils import today
 from frappe import _
 
+## function to get the start and end dates of the current academic year
+## used in program enrollment, course enrollment too. 
+@frappe.whitelist()
+def get_school_term_bounds(school):
+	if not school:
+		return {}
 
+	terms = frappe.db.sql("""
+		SELECT name, term_start_date, term_end_date
+		FROM `tabTerm`
+		WHERE school = %s
+	    """, (school,), as_dict=True)
+
+	if not terms:
+		return {}
+
+	# Sort in memory
+	term_start = min(terms, key=lambda t: t["term_start_date"])
+	term_end = max(terms, key=lambda t: t["term_end_date"])
+
+	return {
+		"term_start": term_start["name"],
+		"term_end": term_end["name"]
+	}
+
+
+## used in schedule.py (our virtual doctype for showing the schedules)
 def current_academic_year():
     today_date = today()
     academic_year = frappe.db.get_value("Academic Year",

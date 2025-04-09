@@ -49,6 +49,10 @@ frappe.ui.form.on("Program Enrollment", {
   program: function (frm) {
     frm.set_value("academic_year", null);
     frm.set_value("courses", []);
+    
+    // Clear term bounds cache because school may change
+    frm.term_bounds_cache = {};
+
     frm.events.get_courses(frm);
 
     // Once school is fetched (read-only), apply academic year filter
@@ -91,4 +95,43 @@ frappe.ui.form.on("Program Enrollment", {
       },
     });
   },
+});
+
+frappe.ui.form.on("Program Enrollment Course", {
+  course: async function (frm, cdt, cdn) {
+    const row = frappe.get_doc(cdt, cdn);
+
+    // 1. Set default status if not set
+    if (!row.status) {
+      frappe.model.set_value(cdt, cdn, "status", "Enrolled");
+    }
+
+    // 2. Get Course doc to check if it's year-long
+    if (row.course && frm.doc.school) {
+      const course = await frappe.db.get_doc("Course", row.course);
+
+      if (!course.term_long) {
+        // Init cache container if not already done
+        frm.term_bounds_cache = frm.term_bounds_cache || {};
+
+        // Use cached term bounds if available
+        if (!frm.term_bounds_cache[frm.doc.school]) {
+          const res = await frappe.call({
+            method: "ifitwala_ed.schedule.schedule_utils.get_school_term_bounds",
+            args: { school: frm.doc.school }
+          });
+
+          frm.term_bounds_cache[frm.doc.school] = res.message || {};
+        }
+
+        const bounds = frm.term_bounds_cache[frm.doc.school];
+        if (bounds.term_start) {
+          frappe.model.set_value(cdt, cdn, "term_start", bounds.term_start);
+        }
+        if (bounds.term_end) {
+          frappe.model.set_value(cdt, cdn, "term_end", bounds.term_end);
+        }
+      }
+    }
+  }
 });

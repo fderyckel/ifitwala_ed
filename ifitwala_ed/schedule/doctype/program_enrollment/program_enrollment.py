@@ -4,8 +4,8 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.desk.reportview import get_match_cond
 from frappe.utils import getdate, get_link_to_form
+from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 
 class ProgramEnrollment(Document):
 
@@ -115,10 +115,28 @@ class ProgramEnrollment(Document):
 	# If a student is in a program and that program has required courses (non elective), then these courses are loaded automatically.
 	@frappe.whitelist()
 	def get_courses(self):
-		return frappe.db.sql("""SELECT course
-								FROM `tabProgram Course`
-								WHERE parent = %s AND required = 1
-								ORDER BY idx""", (self.program), as_dict=1)
+		rows = frappe.db.sql("""
+			SELECT course
+			FROM `tabProgram Course`
+			WHERE parent = %s AND required = 1
+			ORDER BY idx
+			""", (self.program), as_dict=1)
+		
+		# Get bounds once per call
+		bounds = None
+		if self.school:
+			bounds = get_school_term_bounds(self.school)
+			
+		for row in rows:
+			row["status"] = "Enrolled"
+
+			term_long = frappe.db.get_value("Course", row["course"], "term_long")
+			if not term_long and bounds:
+				row["term_start"] = bounds.get("term_start")
+				row["term_end"] = bounds.get("term_end")
+
+		return rows
+
 
 	# This will update the joining date on the student doctype in function of the joining date of the program.
 	def update_student_joining_date(self):
