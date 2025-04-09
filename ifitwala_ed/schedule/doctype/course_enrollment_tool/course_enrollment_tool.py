@@ -9,38 +9,70 @@ from frappe.query_builder import DocType
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 
 class CourseEnrollmentTool(Document):
+    @frappe.whitelist()
+    def add_course_to_program_enrollment(self):
+        if self.program:
+            # Validate course belongs to the program
+            program_doc = frappe.get_doc("Program", self.program)
+            valid_courses = {pc.course for pc in program_doc.courses}
+            if self.course not in valid_courses:
+                frappe.throw(_("Course {0} is not part of Program {1}. Please correct your selection.").format(
+                    get_link_to_form("Course", self.course), get_link_to_form("Program", self.program)
+                ))
 
-  @frappe.whitelist()
-  def add_course_to_program_enrollment(self): 
-    if self.program:
-      # Check if the chosen course is part of the Program
-      program_doc = frappe.get_doc("Program", self.program)
-      valid_courses = {pc.course for pc in program_doc.courses}
-      if self.course not in valid_courses:
-        frappe.throw(_("Course {0} is not part of Program {1}. Please correct your selection."
-          ).format(get_link_to_form("Course", self.course), get_link_to_form("Program", self.program)))
+        # 🔁 Caching for performance
+        course_cache = {}
+        term_bounds_cache = {}
 
-    for row in self.students: 
-      if not row.program_enrollment:
-        # If no Program Enrollment is linked in the child row, skip or handle differently
-        continue
+        # Fetch and cache term_long for the selected course
+        term_long = course_cache.get(self.course)
+        if term_long is None:
+            term_long = frappe.db.get_value("Course", self.course, "term_long")
+            course_cache[self.course] = term_long
 
-      pe_doc = frappe.get_doc("Program Enrollment", row.program_enrollment)
-      # Check if course is already in this Program Enrollment
-      already_exists = any(c.course == self.course for c in pe_doc.get("courses", []))
-      if already_exists: 
-        frappe.msgprint(_("Course {0} already exists in Program Enrollment {1}."
-          ).format(get_link_to_form("Course", self.course), get_link_to_form("Program Enrollment", pe_doc.name)))
-      else:
-        # Append the course to Program Enrollment child table
-        pe_doc.append("courses", {"course": self.course})
-        pe_doc.save()  # Save (not submit)
-        frappe.msgprint(_( "Course {0} successfully added to Program Enrollment {1}."
-          ).format(get_link_to_form("Course", self.course), get_link_to_form("Program Enrollment", pe_doc.name)))
+        for row in self.students:
+            if not row.program_enrollment:
+                continue
 
-    # Finally, save the Course Enrollment Tool doc if anything changed
-    self.save()
-    frappe.msgprint(_("Done updating Program Enrollments."))
+            pe_doc = frappe.get_doc("Program Enrollment", row.program_enrollment)
+
+            # Check if course already exists
+            if any(c.course == self.course for c in pe_doc.courses):
+                frappe.msgprint(_("Course {0} already exists in Program Enrollment {1}.").format(
+                    get_link_to_form("Course", self.course),
+                    get_link_to_form("Program Enrollment", pe_doc.name)
+                ))
+                continue
+
+            # Fetch term bounds only if needed (not term-long)
+            term_start, term_end = None, None
+            if not term_long:
+                cache_key = (pe_doc.school, pe_doc.academic_year)
+                if cache_key not in term_bounds_cache:
+                    bounds = get_school_term_bounds(pe_doc.school, pe_doc.academic_year)
+                    term_bounds_cache[cache_key] = bounds or {}
+                else:
+                    bounds = term_bounds_cache[cache_key]
+
+                term_start = bounds.get("term_start")
+                term_end = bounds.get("term_end")
+
+            # Append course row with appropriate data
+            pe_doc.append("courses", {
+                "course": self.course,
+                "status": "Enrolled",
+                "term_start": term_start,
+                "term_end": term_end
+            })
+
+            pe_doc.save()
+            frappe.msgprint(_("Course {0} successfully added to Program Enrollment {1}.").format(
+                get_link_to_form("Course", self.course),
+                get_link_to_form("Program Enrollment", pe_doc.name)
+            ))
+
+        self.save()
+        frappe.msgprint(_("Done updating Program Enrollments."))
 
 
 @frappe.whitelist()
