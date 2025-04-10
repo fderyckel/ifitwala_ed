@@ -108,8 +108,7 @@ frappe.ui.form.on("Course Enrollment Tool Student", {
         filters: {
           student: row.student,
           program: frm.doc.program,
-          academic_year: frm.doc.academic_year,
-          term: frm.doc.term || ""
+          academic_year: frm.doc.academic_year
         }
       },
       callback: function(r) {
