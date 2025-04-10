@@ -106,7 +106,6 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
     # 2) Extract custom filters
     academic_year = filters.get("academic_year")
     program = filters.get("program")
-    term = filters.get("term")
 
     if not academic_year:
       frappe.throw(_("Academic Year is required to fetch students."))
@@ -124,11 +123,6 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
     if program:
         conditions.append("pe.program = %s")
         values.append(program)
-
-    # Filter by term if provided
-    if term:
-        conditions.append("pe.term = %s")
-        values.append(term)
 
     # Filter by txt, matching either student ID or student_name
     if txt:

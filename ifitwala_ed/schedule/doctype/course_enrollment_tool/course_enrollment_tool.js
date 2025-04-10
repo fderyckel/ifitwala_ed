@@ -72,6 +72,15 @@ frappe.ui.form.on("Course Enrollment Tool", {
     if (!is_term_long) {
       frm.set_value("term", null);
     }
+
+    // Only show terms from selected academic year
+    frm.set_query("term", function() {
+      return {
+        filters: {
+          academic_year: frm.doc.academic_year || ""  // Defensive fallback
+        }
+      };
+    });
   },
   
   // 4) Single button "Add Course" that calls add_course_to_program_enrollment() on the server
