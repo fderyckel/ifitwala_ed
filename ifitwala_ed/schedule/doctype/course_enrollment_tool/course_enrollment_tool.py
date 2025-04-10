@@ -17,18 +17,14 @@ class CourseEnrollmentTool(Document):
             valid_courses = {pc.course for pc in program_doc.courses}
             if self.course not in valid_courses:
                 frappe.throw(_("Course {0} is not part of Program {1}. Please correct your selection.").format(
-                    get_link_to_form("Course", self.course), get_link_to_form("Program", self.program)
+                    get_link_to_form("Course", self.course), 
+                    get_link_to_form("Program", self.program)
                 ))
 
-        # 🔁 Caching for performance
-        course_cache = {}
+        # Caching for performance
         term_bounds_cache = {}
 
-        # Fetch and cache term_long for the selected course
-        term_long = course_cache.get(self.course)
-        if term_long is None:
-            term_long = frappe.db.get_value("Course", self.course, "term_long")
-            course_cache[self.course] = term_long
+        term_long = frappe.db.get_value("Course", self.course, "term_long")
 
         for row in self.students:
             if not row.program_enrollment:
@@ -44,27 +40,36 @@ class CourseEnrollmentTool(Document):
                 ))
                 continue
 
-            # Fetch term bounds only if needed (not term-long)
-            term_start, term_end = None, None
-            if not term_long:
+            # Prepare child row
+            new_course_row = {
+                "course": self.course,
+                "status": "Enrolled"
+            }
+
+            if term_long:
+                # If course is term-long, use selected tool term
+                if self.term:
+                    new_course_row["term_start"] = self.term
+                    new_course_row["term_end"] = self.term
+            else:
+                # Not term-long: fetch bounds once per (school, year)
                 cache_key = (pe_doc.school, pe_doc.academic_year)
                 if cache_key not in term_bounds_cache:
                     bounds = get_school_term_bounds(pe_doc.school, pe_doc.academic_year)
                     term_bounds_cache[cache_key] = bounds or {}
-                else:
-                    bounds = term_bounds_cache[cache_key]
+                bounds = term_bounds_cache[cache_key]
 
-                term_start = bounds.get("term_start")
-                term_end = bounds.get("term_end")
+                # 🔐 Validate presence of term bounds
+                if not bounds.get("term_start") or not bounds.get("term_end"):
+                    frappe.throw(_("Cannot determine term boundaries for School {0}, Academic Year {1}. Please configure terms.").format(
+                        pe_doc.school, pe_doc.academic_year
+                    ))
 
-            # Append course row with appropriate data
-            pe_doc.append("courses", {
-                "course": self.course,
-                "status": "Enrolled",
-                "term_start": term_start,
-                "term_end": term_end
-            })
+                new_course_row["term_start"] = bounds.get("term_start")
+                new_course_row["term_end"] = bounds.get("term_end")
 
+            # Append to PE
+            pe_doc.append("courses", new_course_row)
             pe_doc.save()
             frappe.msgprint(_("Course {0} successfully added to Program Enrollment {1}.").format(
                 get_link_to_form("Course", self.course),
@@ -214,3 +219,26 @@ def get_courses_for_program(doctype, txt, searchfield, start, page_len, filters=
         final.append([course_id, label])
 
     return final
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_academic_years_from_program(doctype, txt, searchfield, start, page_len, filters=None):
+    filters = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
+
+    program = filters.get("program")
+    if not program:
+        return []
+
+    school = frappe.db.get_value("Program", program, "school")
+    if not school:
+        return []
+
+    return frappe.get_all(
+        "Academic Year",
+        fields=["name"],
+        filters={"school": school},
+        order_by="year_start_date DESC",
+        limit_start=start,
+        limit_page_length=page_len,
+        as_list=True
+    )

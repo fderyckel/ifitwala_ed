@@ -1,7 +1,26 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("Course Enrollment Tool", {
+frappe.ui.form.on("Course Enrollment Tool", { 
+  onload: function(frm) { 
+    // Hide term field by default
+    frm.set_df_property("term", "hidden", 1);
+    
+    // Set academic_year filter based on selected program
+    frm.set_query("academic_year", function () {
+      return {
+        query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.get_academic_years_from_program",
+        filters: {
+          program: frm.doc.program
+        }
+      };
+    });
+  },
+
+  program: function(frm) {
+    frm.set_value("academic_year", null);
+  }, 
+
   onload_post_render: function(frm) {
     // 1) Enable multiple add on the child table "students", for link field "student"
     frm.get_field("students").grid.set_multiple_add("student");
@@ -37,6 +56,24 @@ frappe.ui.form.on("Course Enrollment Tool", {
     }); 
   },
 
+  course: async function(frm) {
+    if (!frm.doc.course) {
+      frm.set_df_property("term", "hidden", 1);
+      return;
+    }
+  
+    // Fetch Course to check if it's term-long
+    const course = await frappe.db.get_doc("Course", frm.doc.course);
+    const is_term_long = !!course.term_long;
+  
+    // Show or hide 'term' field
+    frm.set_df_property("term", "hidden", !is_term_long);
+  
+    if (!is_term_long) {
+      frm.set_value("term", null);
+    }
+  },
+  
   // 4) Single button "Add Course" that calls add_course_to_program_enrollment() on the server
   add_course: function(frm) {
     frappe.call({
