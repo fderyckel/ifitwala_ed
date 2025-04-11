@@ -38,9 +38,21 @@ class SchoolCalendar(Document):
     if ay.school != self.school:
       frappe.throw(_("The academic year {0} is not for the school {1}").format(get_link_to_form("Academic Year", self.academic_year), get_link_to_form("School", self.school)))
     self.validate_dates()
+    self.validate_holiday_uniqueness()
+
     self.total_holiday_days = len(self.holidays)
     self.total_number_day = date_diff(getdate(ay.year_end_date), getdate(ay.year_start_date))
     self.total_instruction_days = date_diff(getdate(ay.year_end_date), getdate(ay.year_start_date)) - self.total_holiday_days
+
+  # Check for duplicate holidays in the list
+  def validate_holiday_uniqueness(self):
+    seen = set()
+    for h in self.get("holidays"):
+        d = getdate(h.holiday_date)
+        if d in seen:
+            frappe.throw(_("Duplicate holiday date found: {0}").format(formatdate(d)))
+        seen.add(d)
+
 
   @frappe.whitelist()
   def get_terms(self):

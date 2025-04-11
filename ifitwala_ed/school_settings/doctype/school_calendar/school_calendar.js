@@ -46,13 +46,21 @@ frappe.ui.form.on("School Calendar", {
   },
 
   get_terms: function (frm) {
-    frm.set_value("terms", []);
+        
+    // Clear existing terms before re-adding
+    frm.clear_table("terms");
+    frm.refresh_field("terms");
+    
     frappe.call({
       method: "get_terms",
       doc: frm.doc,
       callback: function (r) {
         if (r.message) {
-          frm.set_value("terms", r.message);
+          // Populate fresh terms
+          r.message.forEach(term => {
+            let row = frm.add_child("terms", term);
+          });
+          frm.refresh_field("terms");
         }
       },
     });
