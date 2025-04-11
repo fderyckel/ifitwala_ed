@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import get_link_to_form
+from frappe import _
 from datetime import timedelta
 
 class SchoolSchedule(Document): 
