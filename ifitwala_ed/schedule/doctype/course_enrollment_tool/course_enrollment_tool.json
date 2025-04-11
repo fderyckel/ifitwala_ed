@@ -6,11 +6,11 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_ac5f",
-  "academic_year",
   "program",
-  "column_break_ehuh",
-  "term",
   "course",
+  "column_break_ehuh",
+  "academic_year",
+  "term",
   "section_break_z4cm",
   "students",
   "section_break_mane",
@@ -78,7 +78,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-02-25 00:12:21.572168",
+ "modified": "2025-04-10 16:02:34.872010",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Course Enrollment Tool",
@@ -115,6 +115,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
