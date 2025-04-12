@@ -20,19 +20,18 @@ class SchoolSchedule(Document):
                     f"Please choose a calendar associated with {self.school}.")
                 )
             
-            dulplicate = frappe.db.exists("School Schedule",{
-                "school_calendar": self.school_calendar,
-                "name": ["!=", self.name]
-                }
-            )
-            if dulplicate:
-                frappe.throw( 
-                    _("A School Schedule already exists for School Calendar {0}"
-                    ).format(get_link_to_form("School Calendar", self.school_calendar))
-                )
+            if self.is_new(): 
+                duplicate = frappe.db.exists("School Schedule",{
+                    "school_calendar": self.school_calendar,
+                    "name": ["!=", self.name]
+                })
 
-        if self.is_new():
-            return
+                if duplicate:
+                    frappe.throw( 
+                        _("A School Schedule already exists for School Calendar {0}"
+                        ).format(get_link_to_form("School Calendar", self.school_calendar))
+                    )
+
 
         # Fetch existing rotation days
         existing_rotation_days = frappe.get_all("School Schedule Day",
