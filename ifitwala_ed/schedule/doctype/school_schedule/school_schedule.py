@@ -32,14 +32,7 @@ class SchoolSchedule(Document):
                         ).format(get_link_to_form("School Calendar", self.school_calendar))
                     )
 
-
-        # Fetch existing rotation days
-        existing_rotation_days = frappe.get_all("School Schedule Day",
-            filters={"parent": self.name},
-            fields=["rotation_day"]
-        )
-
-        rotation_day_count = len(existing_rotation_days)
+        rotation_day_count = len(self.get("school_schedule_day") or [])
 
         # Check for mismatch
         if rotation_day_count > self.rotation_days:
@@ -76,10 +69,6 @@ class SchoolSchedule(Document):
             schedule_day.rotation_day = day
             schedule_day.rotation_label = rotation_label
             schedule_day.number_of_blocks = 0  # Default value, user must update later
-
-        # Save the document to persist the changes
-        #self.flags.ignore_validate = True # Skip validation to allow saving
-        #self.save()
 
         frappe.msgprint(f"{self.rotation_days} Rotation Days have been generated.")
 
@@ -132,9 +121,6 @@ class SchoolSchedule(Document):
                 block = self.append("course_schedule_block", {})
                 block.rotation_day = day.rotation_day
                 block.block_number = block_number
-
-        # Save the document to persist the changes
-        #self.save()
 
         frappe.msgprint("School Schedule Blocks have been generated.")
 
