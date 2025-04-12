@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2025-04-12 22:35:35.467051",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-04-12 22:37:10.605941",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "school_schedule_calendar",
+ "owner": "Administrator",
+ "page_name": "school_schedule_calendar",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 1,
+ "title": "School Schedule Calendar"
+}

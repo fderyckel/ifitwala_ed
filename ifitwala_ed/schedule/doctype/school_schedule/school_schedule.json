@@ -9,16 +9,16 @@
   "section_break_pgsr",
   "school",
   "schedule_type",
-  "generate_rotation_days_btn",
   "column_break_fra2",
   "school_calendar",
   "rotation_days",
   "include_holidays_in_rotation",
   "section_break_bb4r",
-  "clear_schedule_btn",
+  "generate_rotation_days_btn",
   "school_schedule_day",
-  "generate_blocks_btn",
+  "clear_schedule_btn",
   "section_break_llpo",
+  "generate_blocks_btn",
   "course_schedule_block"
  ],
  "fields": [
@@ -105,7 +105,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-21 23:06:28.791021",
+ "modified": "2025-04-12 15:15:19.356440",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "School Schedule",
@@ -149,6 +149,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
