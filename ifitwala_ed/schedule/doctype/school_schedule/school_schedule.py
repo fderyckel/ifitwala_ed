@@ -32,9 +32,15 @@ class SchoolSchedule(Document):
                         ).format(get_link_to_form("School Calendar", self.school_calendar))
                     )
 
-        rotation_day_count = len(self.get("school_schedule_day") or [])
+        # Get in-memory school_schedule_day
+        schedule_days = self.get("school_schedule_day")
+        
+        # Fallback to DB only if not loaded (e.g. when doc saved without child data)
+        if not schedule_days:
+            schedule_days = frappe.get_all("School Schedule Day", filters={"parent": self.name}, fields=["name"])
 
-        # Check for mismatch
+        rotation_day_count = len(schedule_days)
+
         if rotation_day_count > self.rotation_days:
             frappe.throw(
                 f"You have defined {rotation_day_count} rotation days, "
@@ -47,7 +53,7 @@ class SchoolSchedule(Document):
                 f"You have defined only {rotation_day_count} rotation days, "
                 f"but the schedule requires {self.rotation_days}. "
                 "Please add the missing rotation days."
-            )      
+            )     
 
     @frappe.whitelist()
     def generate_rotation_days(self):
@@ -93,6 +99,9 @@ class SchoolSchedule(Document):
         )
         frappe.db.commit()
         frappe.msgprint("School Schedule Days and Blocks have been cleared.")
+        # Also clear in-memory tables
+        self.set("school_schedule_day", [])
+        self.set("course_schedule_block", [])
 
 
     @frappe.whitelist()
