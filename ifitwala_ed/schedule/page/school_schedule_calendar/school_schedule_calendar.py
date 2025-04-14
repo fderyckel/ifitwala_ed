@@ -6,16 +6,28 @@ from frappe.utils import getdate, add_days, format_time
 from datetime import timedelta
 
 @frappe.whitelist()
-def get_schedule_events():
-    schedules = frappe.get_all("School Schedule", fields=["name", "rotation_days", "include_holidays_in_rotation", "school_calendar"])
+def get_schedule_events(school=None):
+    filters = {}
+    if school:
+        filters["school"] = school
+
+    schedules = frappe.get_all("School Schedule", filters=filters,
+        fields=["name", "rotation_days", "include_holidays_in_rotation", "school_calendar", "school"])
+
     all_events = []
 
     for sched in schedules:
         calendar = frappe.get_doc("School Calendar", sched.school_calendar)
         ay = frappe.get_doc("Academic Year", calendar.academic_year)
         holidays = {getdate(h.holiday_date) for h in calendar.holidays}
-        rotation_days = frappe.get_all("School Schedule Day", filters={"parent": sched.name}, fields=["rotation_day", "number_of_blocks"])
         blocks = frappe.get_all("School Schedule Block", filters={"parent": sched.name}, fields=["rotation_day", "block_number", "from_time", "to_time", "block_type"])
+
+        total_rotation_days = sched.rotation_days
+
+        # Skip if invalid configuration
+        if not total_rotation_days or total_rotation_days == 0:
+            frappe.logger().warning(f"[School Schedule Calendar] Skipping schedule '{sched.name}' with 0 rotation days.")
+            continue
 
         # Group blocks by rotation day
         block_map = {}
@@ -28,8 +40,7 @@ def get_schedule_events():
         total_rotation_days = sched.rotation_days
 
         while date_cursor <= end_date:
-            is_holiday = date_cursor in holidays
-
+            is_holiday = getdate(date_cursor) in holidays
             if is_holiday and not sched.include_holidays_in_rotation:
                 date_cursor += timedelta(days=1)
                 continue
@@ -56,3 +67,4 @@ def get_schedule_events():
             rotation_index += 1
 
     return all_events
+

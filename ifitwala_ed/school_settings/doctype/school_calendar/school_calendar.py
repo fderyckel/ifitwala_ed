@@ -14,13 +14,8 @@ class SchoolCalendar(Document):
     if not self.academic_year or not self.school:
       frappe.throw(_("Academic Year and School are required to generate the Calendar Name."))
 
-    # Efficiently get the school's abbreviation using frappe.db.get_value
-    school_abbr = frappe.db.get_value("School", self.school, "abbr")
-    if not school_abbr:
-      frappe.throw(_("The selected school ({0}) does not have an abbreviation defined.").format(self.school))
-
     # Construct and set the document name
-    self.calendar_name = "{0} ({1})".format(self.academic_year, school_abbr)
+    self.calendar_name = "{0}".format(self.academic_year)
 
   def onload(self):
     if not self.school: 
@@ -31,9 +26,26 @@ class SchoolCalendar(Document):
     break_color = frappe.db.get_value("School", self.school, "break_color")
     self.set_onload("break_color", break_color)
 
-  def validate(self):
-    if not self.terms:
-      self.extend("terms", self.get_terms())
+  def validate(self): 
+    exists = frappe.db.exists("School Calendar",
+      {
+        "academic_year": self.academic_year,
+        "school": self.school,
+        "name": ["!=", self.name]
+      }
+    )
+    if exists:
+        frappe.throw(_(
+           "There is already a School Calendar for {0} at {1}. You can only have one per academic year and school.")
+              .format(
+                 get_link_to_form("Academic Year", self.academic_year), 
+                 get_link_to_form("School", self.school)
+              )
+        )
+    
+    self.set("terms", [])  # Clear first
+    self.extend("terms", self.get_terms())
+
     ay = frappe.get_doc("Academic Year", self.academic_year)
     if ay.school != self.school:
       frappe.throw(_("The academic year {0} is not for the school {1}").format(get_link_to_form("Academic Year", self.academic_year), get_link_to_form("School", self.school)))
@@ -56,7 +68,6 @@ class SchoolCalendar(Document):
 
   @frappe.whitelist()
   def get_terms(self):
-    self.terms = []
     terms = frappe.get_list(
       "Term",
       filters={"academic_year": self.academic_year},
@@ -167,20 +178,58 @@ class SchoolCalendar(Document):
       reference_date += timedelta(days=7)
 
     return date_list
-    
+  
+
 @frappe.whitelist()
 def get_events(start, end, filters=None):
-	if filters:
-		filters = json.loads(filters)
-	else:
-		filters = []
+    """
+    Fetch holiday events from School Calendar's child table (School Calendar Holidays)
+    for calendar view.
+    """
+    from frappe.utils import getdate
 
-	if start:
-		filters.append(['Holiday', 'holiday_date', '>', getdate(start)])
-	if end:
-		filters.append(['Holiday', 'holiday_date', '<', getdate(end)])
+    if filters:
+        filters = json.loads(filters)
+    else:
+        filters = {}
 
-	return frappe.get_list('School Calendar',
-		fields=['name', 'academic_year', 'school', '`tabHoliday`.holiday_date', '`tabHoliday`.description', '`tabHoliday`.color'],
-		filters = filters,
-		update={"allDay": 1})
+    conditions = []
+    values = {}
+
+    if "school" in filters:
+        conditions.append("sc.school = %(school)s")
+        values["school"] = filters["school"]
+
+    if "academic_year" in filters:
+        conditions.append("sc.academic_year = %(academic_year)s")
+        values["academic_year"] = filters["academic_year"]
+
+    if "school_calendar" in filters:
+        conditions.append("sc.name = %(school_calendar)s")
+        values["school_calendar"] = filters["school_calendar"]
+
+    if start:
+        conditions.append("sch.holiday_date >= %(start)s")
+        values["start"] = getdate(start)
+
+    if end:
+        conditions.append("sch.holiday_date <= %(end)s")
+        values["end"] = getdate(end)
+
+    condition_sql = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+    data = frappe.db.sql(f"""
+        SELECT 
+            sc.name AS name,
+            sch.holiday_date AS start,
+            sch.holiday_date AS end,
+            sch.description AS title,
+            sch.color,
+            1 AS allDay
+        FROM `tabSchool Calendar` sc
+        JOIN `tabSchool Calendar Holidays` sch ON sch.parent = sc.name
+        {condition_sql}
+    """, values, as_dict=True)
+
+    return data
+

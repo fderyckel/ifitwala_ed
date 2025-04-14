@@ -16,6 +16,11 @@ frappe.ui.form.on("School Calendar", {
   },  
 
   refresh: function (frm) {
+
+    frm.set_df_property("terms", "read_only", 1);
+    frm.set_df_property("terms", "cannot_add_rows", true);
+    frm.set_df_property("terms", "cannot_delete_rows", true);
+
     // Only proceed if school is chosen
     if (frm.doc.school) {
       frappe.call({
@@ -34,6 +39,8 @@ frappe.ui.form.on("School Calendar", {
         }
       });
     }
+
+    frm.trigger("get_terms");
   },
 
   school: function(frm) {
