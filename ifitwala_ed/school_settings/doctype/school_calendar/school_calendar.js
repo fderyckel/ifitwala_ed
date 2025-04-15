@@ -33,17 +33,12 @@ frappe.ui.form.on("School Calendar", {
           if (r.message) {
             // r.message holds the school doc
             let schoolDoc = r.message;
-            //frm.set_value("break_color", schoolDoc.break_color);
-            //frm.set_value("weekend_color", schoolDoc.weekend_color);
+            frm.set_value("break_color", schoolDoc.break_color);
+            frm.set_value("weekend_color", schoolDoc.weekend_color);
           }
         }
       });
     }
-
-    // Only call get_terms if both school and academic_year are selected
-    //if (frm.doc.school && frm.doc.academic_year) {
-    //  frm.trigger("get_terms");
-    //}
   },
 
   school: function(frm) {
@@ -67,15 +62,13 @@ frappe.ui.form.on("School Calendar", {
         }
       });
     }
-    
-    if (frm.doc.school && frm.doc.academic_year) {
-      frm.trigger("get_terms");
-    }
-
   },
   
   academic_year: function (frm) {
     frm.events.get_terms(frm);
+    if (frm.doc.school && frm.doc.academic_year) {
+      frm.trigger("get_terms");
+    }
   },
 
   get_terms: function (frm) {
