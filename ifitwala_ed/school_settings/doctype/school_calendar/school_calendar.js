@@ -40,7 +40,10 @@ frappe.ui.form.on("School Calendar", {
       });
     }
 
-    frm.trigger("get_terms");
+    // Only call get_terms if both school and academic_year are selected
+    if (frm.doc.school && frm.doc.academic_year) {
+      frm.trigger("get_terms");
+    }
   },
 
   school: function(frm) {

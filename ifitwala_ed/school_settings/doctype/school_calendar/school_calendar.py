@@ -42,9 +42,6 @@ class SchoolCalendar(Document):
                  get_link_to_form("School", self.school)
               )
         )
-    
-    self.set("terms", [])  # Clear first
-    self.extend("terms", self.get_terms())
 
     ay = frappe.get_doc("Academic Year", self.academic_year)
     if ay.school != self.school:
@@ -77,15 +74,15 @@ class SchoolCalendar(Document):
       frappe.msgprint(_("No term found for the selected academic year. You need to add at least one academic term for this academic year {0}.").format(get_link_to_form("Academic Year", self.academic_year)))
       return []
 
-    for term in terms:
-      self.append("terms", {
-        "term": term.term,
-        "start": term.start,
-        "end": term.end,
-        "length": date_diff(getdate(term.end), getdate(term.start)) + 1
-        })
-      
-    return self.terms
+    return [
+        {
+            "term": t.term,
+            "start": t.start,
+            "end": t.end,
+            "length": date_diff(getdate(t.end), getdate(t.start)) + 1
+        }
+        for t in terms
+    ]
 
   def validate_dates(self):
     """Ensure holidays are within the academic year"""
