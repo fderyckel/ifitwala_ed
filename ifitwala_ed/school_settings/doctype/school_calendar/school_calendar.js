@@ -47,8 +47,31 @@ frappe.ui.form.on("School Calendar", {
   },
 
   school: function(frm) {
+
     // Re-trigger the query whenever School changes
     frm.refresh_field("academic_year");
+
+    if (frm.doc.school) {
+      frappe.call({
+        method: "frappe.client.get",
+        args: {
+          doctype: "School",
+          name: frm.doc.school
+        },
+        callback: function (r) {
+          if (r.message) {
+            let schoolDoc = r.message;
+            frm.set_value("break_color", schoolDoc.break_color);
+            frm.set_value("weekend_color", schoolDoc.weekend_color);
+          }
+        }
+      });
+    }
+    
+    if (frm.doc.school && frm.doc.academic_year) {
+      frm.trigger("get_terms");
+    }
+
   },
   
   academic_year: function (frm) {
@@ -75,4 +98,10 @@ frappe.ui.form.on("School Calendar", {
       },
     });
   },
+});
+
+frappe.ui.form.on("School Calendar Holidays", {
+  holiday_date: function (frm, cdt, cdn) {
+    frm.save();
+  }
 });
