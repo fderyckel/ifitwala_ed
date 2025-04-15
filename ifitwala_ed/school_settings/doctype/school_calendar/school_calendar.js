@@ -45,7 +45,7 @@ frappe.ui.form.on("School Calendar", {
       frm.add_custom_button(__("Go to School Schedule"), function () {
         const route_options = {
           school: frm.doc.school,
-          academic_year: frm.doc.academic_year
+          school_calendar: frm.doc.name,
         };
         frappe.set_route("Form", "School Schedule", route_options);
       }); 
