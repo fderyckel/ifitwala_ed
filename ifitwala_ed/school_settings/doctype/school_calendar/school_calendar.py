@@ -178,56 +178,19 @@ class SchoolCalendar(Document):
   
 
 @frappe.whitelist()
-def get_events(start, end, filters=None):
-    """
-    Fetch holiday events from School Calendar's child table (School Calendar Holidays)
-    for calendar view.
-    """
-    from frappe.utils import getdate
-
-    if filters:
-        filters = json.loads(filters)
-    else:
-        filters = {}
-
-    conditions = []
-    values = {}
-
-    if "school" in filters:
-        conditions.append("sc.school = %(school)s")
-        values["school"] = filters["school"]
-
-    if "academic_year" in filters:
-        conditions.append("sc.academic_year = %(academic_year)s")
-        values["academic_year"] = filters["academic_year"]
-
-    if "school_calendar" in filters:
-        conditions.append("sc.name = %(school_calendar)s")
-        values["school_calendar"] = filters["school_calendar"]
-
-    if start:
-        conditions.append("sch.holiday_date >= %(start)s")
-        values["start"] = getdate(start)
-
-    if end:
-        conditions.append("sch.holiday_date <= %(end)s")
-        values["end"] = getdate(end)
-
-    condition_sql = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-
-    data = frappe.db.sql(f"""
-        SELECT 
-            sc.name AS name,
-            DATE_FORMAT(sch.holiday_date, '%%Y-%%m-%%d') AS start,
-            DATE_FORMAT(sch.holiday_date, '%%Y-%%m-%%d') AS end,
-            sch.description,
-            sch.description AS title,
-            sch.color,
-            1 AS allDay
-        FROM `tabSchool Calendar` sc
-        JOIN `tabSchool Calendar Holidays` sch ON sch.parent = sc.name
-        {condition_sql}
-    """, values, as_dict=True)
-
-    return data
-
+def get_events(start, end, filters=None): 
+  if filters: 
+    filters = json.loads(filters) 
+  else: 
+    filters = [] 
+  
+  if start: 
+    filters.append(['School Calendar Holidays', 'holiday_date', '>', getdate(start)]) 
+  if end: 
+    filters.append(['School Calendar Holidays', 'holiday_date', '<', getdate(end)]) 
+    
+  return frappe.get_list('School Calendar', 
+    fields=['name', 'academic_year', 'school', '`tabSchool Calendar Holidays`.holiday_date', 
+            '`tabSchool Calendar Holidays`.description', '`tabSchool Calendar Holidays`.color'],
+ 		filters = filters,
+ 		update={"allDay": 1})
