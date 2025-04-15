@@ -218,8 +218,8 @@ def get_events(start, end, filters=None):
     data = frappe.db.sql(f"""
         SELECT 
             sc.name AS name,
-            sch.holiday_date AS start,
-            sch.holiday_date AS end,
+            DATE_FORMAT(sch.holiday_date, '%%Y-%%m-%%d') AS start,
+            DATE_FORMAT(sch.holiday_date, '%%Y-%%m-%%d') AS end,
             sch.description,
             sch.description AS title,
             sch.color,
