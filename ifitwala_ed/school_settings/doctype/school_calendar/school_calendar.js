@@ -39,6 +39,17 @@ frappe.ui.form.on("School Calendar", {
         }
       });
     }
+
+    // button to school schedule
+    if (frm.doc.school && frm.doc.academic_year) {
+      frm.add_custom_button(__("Go to School Schedule"), function () {
+        const route_options = {
+          school: frm.doc.school,
+          academic_year: frm.doc.academic_year
+        };
+        frappe.set_route("Form", "School Schedule", route_options);
+      }); 
+    }  
   },
 
   school: function(frm) {
