@@ -19,5 +19,19 @@ frappe.ui.form.on('School Schedule', {
               return {};
           });
       }
-  }
+  }, 
+
+  school_calendar: function(frm) {
+    if (frm.doc.school_calendar) {
+      frappe.db.get_value("School Calendar", frm.doc.school_calendar, "academic_year", function(res) {
+        if (res.academic_year) {
+          frappe.db.get_value("Academic Year", res.academic_year, "year_start_date", function(ay) {
+            frm.set_value("first_day_of_academic_year", ay.year_start_date);
+          });
+        }
+      });
+    } else {
+      frm.set_value("first_day_of_academic_year", null);
+    }
+  }  
 });

@@ -53,7 +53,14 @@ class SchoolSchedule(Document):
                 f"You have defined only {rotation_day_count} rotation days, "
                 f"but the schedule requires {self.rotation_days}. "
                 "Please add the missing rotation days."
-            )     
+            )  
+
+        if self.first_day_rotation_day: 
+            if not 1 <= self.first_day_rotation_day <= self.rotation_days: 
+                frappe.throw(_(
+                    f"The chosen rotation day ({self.first_day_rotation_day}) for the first academic day "
+                    f"is out of range. You must choose a value between 1 and {self.rotation_days}."
+                ))   
 
     @frappe.whitelist()
     def generate_rotation_days(self):
