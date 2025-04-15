@@ -33,8 +33,8 @@ frappe.ui.form.on("School Calendar", {
           if (r.message) {
             // r.message holds the school doc
             let schoolDoc = r.message;
-            frm.set_value("break_color", schoolDoc.break_color);
-            frm.set_value("weekend_color", schoolDoc.weekend_color);
+            //frm.set_value("break_color", schoolDoc.break_color);
+            //frm.set_value("weekend_color", schoolDoc.weekend_color);
           }
         }
       });
