@@ -100,7 +100,8 @@
    "fieldname": "terms",
    "fieldtype": "Table",
    "label": "School Calendar Term",
-   "options": "School Calendar Term"
+   "options": "School Calendar Term",
+   "read_only": 1
   },
   {
    "fieldname": "add_school_break_section",
@@ -184,7 +185,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2025-04-13 20:58:05.271345",
+ "modified": "2025-04-14 21:45:35.035862",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Calendar",

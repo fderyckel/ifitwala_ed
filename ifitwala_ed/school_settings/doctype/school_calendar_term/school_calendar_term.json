@@ -3,7 +3,6 @@
  "allow_rename": 1,
  "creation": "2024-12-03 13:51:38.018412",
  "doctype": "DocType",
- "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "section_break_igix",
@@ -38,15 +37,17 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-01 18:30:57.610465",
+ "modified": "2025-04-14 21:49:22.210273",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Calendar Term",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
