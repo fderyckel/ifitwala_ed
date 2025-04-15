@@ -220,6 +220,7 @@ def get_events(start, end, filters=None):
             sc.name AS name,
             sch.holiday_date AS start,
             sch.holiday_date AS end,
+            sch.description,
             sch.description AS title,
             sch.color,
             1 AS allDay
