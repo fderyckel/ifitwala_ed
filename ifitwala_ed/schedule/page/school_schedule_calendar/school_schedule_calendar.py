@@ -36,10 +36,29 @@ def get_schedule_events(school=None):
         for b in blocks:
             block_map.setdefault(b.rotation_day, []).append(b)
 
+        # Fetch school-level default colors
+        school_colors = frappe.db.get_value("School", sched.school, ["weekend_color", "break_color"], as_dict=True)
+
+        for h in calendar.holidays:
+            date_str = str(h.holiday_date)
+            desc = h.description or ("Weekly Off" if h.weekly_off else "Holiday")
+            color = h.color
+
+            # Fallback to School default colors
+            if not color:
+                color = school_colors.weekend_color if h.weekly_off else school_colors.break_color
+
+            all_events.append({
+                "title": desc,
+                "start": date_str,
+                "allDay": True,
+                "display": "background",
+                "color": color or "#e0e0e0"  # Fallback to light gray if really nothing is set
+            })    
+
         date_cursor = getdate(ay.year_start_date)
         end_date = getdate(ay.year_end_date)
         rotation_index = 0
-        total_rotation_days = sched.rotation_days
 
         while date_cursor <= end_date:
             is_holiday = getdate(date_cursor) in holidays
