@@ -12,7 +12,15 @@ def get_schedule_events(school=None):
         filters["school"] = school
 
     schedules = frappe.get_all("School Schedule", filters=filters,
-        fields=["name", "rotation_days", "include_holidays_in_rotation", "school_calendar", "school"])
+        fields=[ 
+            "name", 
+            "rotation_days", 
+            "include_holidays_in_rotation", 
+            "school_calendar", 
+            "school", 
+            "first_day_rotation_day"
+        ]
+    )
 
     all_events = []
 
