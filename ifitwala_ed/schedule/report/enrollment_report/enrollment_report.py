@@ -64,8 +64,8 @@ def get_program_chart_data(data):
     data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
 
     # For chart labels, we concatenate Academic Year and Program.
-    labels = [f"{row.academic_year} - {row.program}" for row in data]
-    values = [row.enrollment_count for row in data]
+    labels = [f"{row.academic_year} - {row.program}" for row in data_sorted]
+    values = [row.enrollment_count for row in data_sorted]
     return {
         "data": {
             "labels": labels,
@@ -155,9 +155,22 @@ def get_course_chart_data(data):
     }
 
 @frappe.whitelist()
-def get_academic_years_for_school(school):
-    return frappe.db.get_list("Academic Year", 
-        filters={"school": school},
-        fields=["name"],
-        order_by="year_start_date desc"
-    )
+def get_academic_years_for_school(doctype, txt, searchfield, start, page_len, filters):
+    import json
+    filters = json.loads(filters or "{}")
+    school = filters.get("school")
+
+    conditions = ""
+    if school:
+        conditions = "WHERE school = %(school)s"
+
+    return frappe.db.sql(f"""
+        SELECT name FROM `tabAcademic Year`
+        {conditions}
+        ORDER BY year_start_date DESC
+        LIMIT %(page_len)s OFFSET %(start)s
+    """, {
+        "school": school,
+        "start": start,
+        "page_len": page_len
+    })
