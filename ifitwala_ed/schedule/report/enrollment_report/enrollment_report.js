@@ -27,7 +27,16 @@ frappe.query_reports["Enrollment Report"] = {
 					"label": "Academic Year",
 					"fieldtype": "Link",
 					"options": "Academic Year",
-					"depends_on": "eval:doc.report_type=='Course' || doc.report_type=='Program'"
+					"depends_on": "eval:doc.report_type=='Course' || doc.report_type=='Program'", 
+					"get_query": function (doc) {
+						let school = frappe.query_report.get_filter_value("school");
+						if (school) {
+								return {
+										query: "ifitwala_ed.schedule.report.enrollment_report.enrollment_report.get_academic_years_for_school",
+										filters: { school: school }
+								};
+						}
+					}
 			}
 	],
 	"chart_type": "bar",

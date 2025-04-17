@@ -28,6 +28,37 @@ function render_school_schedule_page(wrapper) {
     </div>
   `).appendTo(page.body);
 
+  // Add legend for event colors
+  const legend = $(`
+    <div class="flex flex-wrap gap-4 items-center mb-4">
+      <div class="flex items-center gap-2">
+        <div style="width:16px; height:16px; background-color: #CAE9FF; border:1px solid #ccc;"></div>
+        <span>Weekend</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <div style="width:16px; height:16px; background-color: #87BCDE; border:1px solid #ccc;"></div>
+        <span>Holiday</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <div style="width:16px; height:16px; background-color: #4caf50;"></div>
+        <span>Course</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <div style="width:16px; height:16px; background-color: #2196f3;"></div>
+        <span>Activity</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <div style="width:16px; height:16px; background-color: #ff9800;"></div>
+        <span>Recess</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <div style="width:16px; height:16px; background-color: #9c27b0;"></div>
+        <span>Assembly</span>
+      </div>
+    </div>
+  `).appendTo(page.body);
+  
+
   // Fetch schools and populate dropdown
   frappe.db.get_list("School", {
     fields: ["name"]
