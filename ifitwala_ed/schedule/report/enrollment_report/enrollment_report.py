@@ -23,6 +23,7 @@ def execute(filters=None):
 
 def get_program_columns(filters):
     return [
+        {"label": "School", "fieldname": "school", "fieldtype": "Link", "options": "School", "width": 200},
         {"label": "Academic Year", "fieldname": "academic_year", "fieldtype": "Link", "options": "Academic Year", "width": 200},
         {"label": "Program", "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 200},
         {"label": "Enrollment Count", "fieldname": "enrollment_count", "fieldtype": "Int", "width": 150},
@@ -80,7 +81,7 @@ def get_program_chart_data(data):
 
 def get_course_columns(filters):
     return [
-        {"label": "Course", "fieldname": "course", "fieldtype": "Data", "width": 200},
+        {"label": "Course", "fieldname": "course", "fieldtype": "Data", "width": 300},
         {"label": "Enrollment Count", "fieldname": "enrollment_count", "fieldtype": "Int", "width": 150},
     ]
 
@@ -157,7 +158,13 @@ def get_course_chart_data(data):
 @frappe.whitelist()
 def get_academic_years_for_school(doctype, txt, searchfield, start, page_len, filters):
     import json
-    filters = json.loads(filters or "{}")
+
+    # Safely handle filters passed as str or dict
+    if isinstance(filters, str):
+        filters = json.loads(filters)
+    elif filters is None:
+        filters = {}
+
     school = filters.get("school")
 
     conditions = ""
