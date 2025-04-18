@@ -46,31 +46,33 @@ frappe.query_reports["Enrollment Report"] = {
 		frappe.after_ajax(() => {
 			let tries = 0;
 			const interval = setInterval(() => {
-				const chartObj = report.chartObj;
+				const chartObj = report.chartObj?.chart;
 				const breakdown = report.chart?.custom_options?.tooltip_breakdown;
 	
-				if (chartObj && chartObj.chart && breakdown) {
+				if (chartObj && breakdown) {
 					clearInterval(interval);
 	
-					// ✅ Replace the tooltip function
-					const originalFormat = chartObj.chart.options.tooltipOptions.formatTooltipY;
-					chartObj.chart.options.tooltipOptions.formatTooltipY = (value, name, opts, index) => {
-						const label = chartObj.chart.data.labels[index];
-						if (breakdown[label]) {
-							return `<strong>${label}</strong><br>${breakdown[label].join("<br>")}`;
+					// 👇 Override tooltip formatter
+					chartObj.options.tooltipOptions = {
+						formatTooltipX: d => d,  // keep year
+						formatTooltipY: (value, name, opts, index) => {
+							const label = chartObj.data.labels[index];
+							const items = breakdown[label];
+							if (items?.length) {
+								return `<strong>${label}</strong><br>${items.join("<br>")}`;
+							}
+							return `${name}: ${value}`;
 						}
-						// fallback
-						return originalFormat(value, name, opts, index);
 					};
 	
-					// 🔁 Force chart to re-render with new tooltip logic
-					chartObj.chart.update(chartObj.chart.data);
+					chartObj.update(chartObj.data);  // force apply
 				}
 	
 				if (++tries > 20) clearInterval(interval);
 			}, 250);
 		});
 	}
+	
 	
 	
 };
