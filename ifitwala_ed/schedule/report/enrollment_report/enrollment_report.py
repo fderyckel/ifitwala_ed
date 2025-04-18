@@ -69,18 +69,13 @@ def get_program_chart_data(data, filters=None):
     if not school_filter:
         # Aggregate by school + academic year
         school_year_totals = defaultdict(lambda: defaultdict(int))  # [school][year] = total_enrollment
-        tooltip_map = defaultdict(lambda: defaultdict(list))        # [school][year] = [program: count, ...]
-
         academic_years = set()
 
         for row in data:
             school = row.school_abbr or row.school or "Unknown"
             year = row.academic_year
             count = row.enrollment_count
-            program = row.program
-
             school_year_totals[school][year] += count
-            tooltip_map[school][year].append(f"{program}: {count}")
             academic_years.add(year)
 
         labels = sorted(academic_years)
@@ -91,15 +86,8 @@ def get_program_chart_data(data, filters=None):
             "#ffa3ef", "#99cc00", "#6b5b95", "#00b894", "#fab1a0"
         ]
 
-        for school, year_data in school_year_totals.items():
-            values = []
-            for year in labels:
-                value = year_data.get(year, 0)
-                tooltip = "\n".join(tooltip_map[school].get(year, [])) or "No enrollments"
-                values.append({
-                    "value": value,
-                    "tooltip": f"{school} ({year})\n{tooltip}"
-                })
+        for i, (school, year_data) in enumerate(school_year_totals.items()):
+            values = [year_data.get(year, 0) for year in labels]  # ✅ Just integers
             datasets.append({
                 "name": school,
                 "values": values
@@ -119,7 +107,7 @@ def get_program_chart_data(data, filters=None):
         }
 
     else:
-        # If a school is selected, show programs per year (same as before)
+        # Single school selected → one dataset only
         data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
         labels = [f"{row.academic_year} - {row.program}" for row in data_sorted]
         values = [row.enrollment_count for row in data_sorted]
@@ -138,7 +126,6 @@ def get_program_chart_data(data, filters=None):
             },
             "truncateLegends": False
         }
-
 
 
 def get_course_columns(filters):
