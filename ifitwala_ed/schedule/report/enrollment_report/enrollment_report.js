@@ -40,5 +40,24 @@ frappe.query_reports["Enrollment Report"] = {
 			}
 	],
 	"chart_type": "bar",
-	"default_columns": 2
+	"default_columns": 2,
+
+	// ✅ Tooltip logic added here
+	onload: function (report) {
+		// Wait for chart to be initialized
+		frappe.after_ajax(() => {
+			report.chartObj.wrapper.on('chart-hover', function (ev) {
+				const label = ev.label;
+				const chart = report.chart;
+				const breakdown = chart?.custom_options?.tooltip_breakdown;
+
+				if (breakdown?.[label]) {
+					const items = breakdown[label];
+					const tooltipHtml = `<strong>${label}</strong><br>` + items.join("<br>");
+					ev.tooltip.setContent(tooltipHtml);
+				}
+			});
+		});
+	}
+
 };
