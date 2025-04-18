@@ -131,7 +131,11 @@ def get_program_chart_data(data, filters=None):
 
 def get_course_columns(filters):
     return [
-        {"label": "Course", "fieldname": "course", "fieldtype": "Data", "width": 300},
+        {"label": "School", "fieldname": "school", "fieldtype": "Link", "options": "School", "width": 200},
+        {"label": "Academic Year", "fieldname": "academic_year", "fieldtype": "Link", "options": "Academic Year", "width": 150},
+        {"label": "Program", "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 200},
+        {"label": "Course", "fieldname": "course", "fieldtype": "Data", "width": 200},
+        {"label": "Status", "fieldname": "status", "fieldtype": "Select", "width": 120},
         {"label": "Enrollment Count", "fieldname": "enrollment_count", "fieldtype": "Int", "width": 150},
     ]
 
@@ -150,16 +154,20 @@ def get_course_data(filters):
     sql = f"""
     SELECT
         pec.course AS course,
+        pe.program AS program,
+        pe.school AS school,
+        pe.academic_year AS academic_year,
         pec.status AS status,
         COUNT(*) AS enrollment_count
     FROM `tabProgram Enrollment Course` pec
     JOIN `tabProgram Enrollment` pe ON pec.parent = pe.name
     {where_clause}
-    GROUP BY pec.course, pec.status
-    ORDER BY pec.course, pec.status
+    GROUP BY pec.course, pe.program, pe.school, pe.academic_year, pec.status
+    ORDER BY pe.academic_year DESC, pec.course, pe.program, pe.school
     """
 
     return frappe.db.sql(sql, filters, as_dict=True)
+
 
 def get_course_chart_data(data):
     # Build {status: {course: count}} mapping
