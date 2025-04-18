@@ -44,32 +44,33 @@ frappe.query_reports["Enrollment Report"] = {
 
 	onload: function (report) {
 		frappe.after_ajax(() => {
-			// Wait for chart to exist
 			let tries = 0;
 			const interval = setInterval(() => {
 				const chartObj = report.chartObj;
 				const breakdown = report.chart?.custom_options?.tooltip_breakdown;
 	
-				if (chartObj && chartObj.wrapper && breakdown) {
+				if (chartObj && chartObj.chart && breakdown) {
 					clearInterval(interval);
 	
-					chartObj.wrapper.addEventListener("chart-hover", function (e) {
-						const label = e.detail?.label;
-						const breakdown = report.chart?.custom_options?.tooltip_breakdown;
-					
-						if (label && breakdown?.[label]) {
-							const content = `<strong>${label}</strong><br>${breakdown[label].join("<br>")}`;
-							e.detail.tooltip.setContent(content);
+					// ✅ Replace the tooltip function
+					const originalFormat = chartObj.chart.options.tooltipOptions.formatTooltipY;
+					chartObj.chart.options.tooltipOptions.formatTooltipY = (value, name, opts, index) => {
+						const label = chartObj.chart.data.labels[index];
+						if (breakdown[label]) {
+							return `<strong>${label}</strong><br>${breakdown[label].join("<br>")}`;
 						}
-					});					
+						// fallback
+						return originalFormat(value, name, opts, index);
+					};
+	
+					// 🔁 Force chart to re-render with new tooltip logic
+					chartObj.chart.update(chartObj.chart.data);
 				}
 	
-				// Timeout safety after 5 seconds
-				if (++tries > 20) {
-					clearInterval(interval);
-				}
+				if (++tries > 20) clearInterval(interval);
 			}, 250);
 		});
 	}
+	
 	
 };
