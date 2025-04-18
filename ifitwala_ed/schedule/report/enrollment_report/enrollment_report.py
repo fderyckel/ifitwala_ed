@@ -46,38 +46,88 @@ def get_program_data(filters):
     
     sql = f"""
     SELECT
-        pe.academic_year as academic_year,
-        pe.program as program,
-        COUNT(pe.name) as enrollment_count,
-        ay.year_start_date as year_start_date
+        pe.school AS school,
+        pe.academic_year AS academic_year,
+        pe.program AS program,
+        COUNT(pe.name) AS enrollment_count,
+        ay.year_start_date AS year_start_date
     FROM `tabProgram Enrollment` pe
     LEFT JOIN `tabAcademic Year` ay ON pe.academic_year = ay.name
     {where_clause}
-    GROUP BY pe.academic_year, pe.program, ay.year_start_date
+    GROUP BY pe.school, pe.academic_year, pe.program, ay.year_start_date
     ORDER BY ay.year_start_date DESC
     """
     
     return frappe.db.sql(sql, filters, as_dict=True)
 
 
-def get_program_chart_data(data): 
-    # Reverse data for chart to show oldest to newest
-    data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
+def get_program_chart_data(data, filters=None):
+    filters = filters or {}
+    school_filter = filters.get("school")
 
-    # For chart labels, we concatenate Academic Year and Program.
-    labels = [f"{row.academic_year} - {row.program}" for row in data_sorted]
-    values = [row.enrollment_count for row in data_sorted]
-    return {
-        "data": {
-            "labels": labels,
-            "datasets": [
-                {"name": "Enrollments", "values": values}
-            ]
-        },
-        "type": "bar",
-        "fieldtype": "Data",
-        "colors": ["#7cd6fd"]
-    }
+    if not school_filter:
+        # 👥 No school selected → show grouped bars by school
+        # Structure: {school: {label: count}}
+        school_map = defaultdict(lambda: defaultdict(int))
+        labels_set = set()
+
+        for row in data:
+            label = f"{row.academic_year} - {row.program}"
+            school = row.school or "Unknown"
+            count = row.enrollment_count
+
+            school_map[school][label] += count
+            labels_set.add(label)
+
+        labels = sorted(labels_set)
+        datasets = []
+
+        color_palette = [
+            "#7cd6fd", "#5e64ff", "#743ee2", "#ff5858", "#ffa00a", "#00b0f0", "#00a65a"
+        ]
+        color_index = 0
+
+        for school, label_map in school_map.items():
+            values = [label_map.get(label, 0) for label in labels]
+            datasets.append({
+                "name": school,
+                "values": values
+            })
+
+        return {
+            "data": {
+                "labels": labels,
+                "datasets": datasets
+            },
+            "type": "bar",
+            "colors": color_palette[:len(datasets)],
+            "barOptions": {
+                "stacked": False  # Grouped bars by default
+            },
+            "truncateLegends": False
+        }
+
+    else:
+        # 🎯 School selected → single bar series
+        data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
+        labels = [f"{row.academic_year} - {row.program}" for row in data_sorted]
+        values = [row.enrollment_count for row in data_sorted]
+
+        return {
+            "data": {
+                "labels": labels,
+                "datasets": [
+                    {"name": "Enrollments", "values": values}
+                ]
+            },
+            "type": "bar",
+            "colors": ["#7cd6fd"],
+            "barOptions": {
+                "stacked": False
+            },
+            "truncateLegends": False
+        }
+
 
 def get_course_columns(filters):
     return [
