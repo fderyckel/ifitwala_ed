@@ -42,21 +42,21 @@ frappe.query_reports["Enrollment Report"] = {
 	"chart_type": "bar",
 	"default_columns": 2,
 
-	// ✅ Tooltip logic added here
 	onload: function (report) {
-		// Wait for chart to be initialized
-		frappe.after_ajax(() => {
-			report.chartObj.wrapper.on('chart-hover', function (ev) {
-				const label = ev.label;
-				const chart = report.chart;
-				const breakdown = chart?.custom_options?.tooltip_breakdown;
+		// Use get_data promise to wait until chart is ready
+		report.get_data().then(() => {
+			const chartObj = report.chart?.chart; // FrappeChart instance
+			const breakdown = report.chart?.custom_options?.tooltip_breakdown;
 
-				if (breakdown?.[label]) {
-					const items = breakdown[label];
-					const tooltipHtml = `<strong>${label}</strong><br>` + items.join("<br>");
-					ev.tooltip.setContent(tooltipHtml);
-				}
-			});
+			if (chartObj && breakdown) {
+				chartObj.wrapper.addEventListener('chart-hover', function (e) {
+					const label = e.detail?.label;
+					if (label && breakdown[label]) {
+						const content = `<strong>${label}</strong><br>${breakdown[label].join("<br>")}`;
+						e.detail.tooltip.setContent(content);
+					}
+				});
+			}
 		});
 	}
 
