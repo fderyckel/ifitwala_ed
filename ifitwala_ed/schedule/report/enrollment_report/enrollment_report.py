@@ -47,48 +47,59 @@ def get_program_data(filters):
     sql = f"""
     SELECT
         pe.school AS school,
+        sc.abbr AS school_abbr,
         pe.academic_year AS academic_year,
         pe.program AS program,
         COUNT(pe.name) AS enrollment_count,
         ay.year_start_date AS year_start_date
     FROM `tabProgram Enrollment` pe
     LEFT JOIN `tabAcademic Year` ay ON pe.academic_year = ay.name
+    LEFT JOIN `tabSchool` sc ON pe.school = sc.name
     {where_clause}
-    GROUP BY pe.school, pe.academic_year, pe.program, ay.year_start_date
+    GROUP BY pe.school, sc.abbr, pe.academic_year, pe.program, ay.year_start_date
     ORDER BY ay.year_start_date DESC
     """
     
     return frappe.db.sql(sql, filters, as_dict=True)
-
 
 def get_program_chart_data(data, filters=None):
     filters = filters or {}
     school_filter = filters.get("school")
 
     if not school_filter:
-        # 👥 No school selected → show grouped bars by school
-        # Structure: {school: {label: count}}
-        school_map = defaultdict(lambda: defaultdict(int))
-        labels_set = set()
+        # Aggregate by school + academic year
+        school_year_totals = defaultdict(lambda: defaultdict(int))  # [school][year] = total_enrollment
+        tooltip_map = defaultdict(lambda: defaultdict(list))        # [school][year] = [program: count, ...]
+
+        academic_years = set()
 
         for row in data:
-            label = f"{row.academic_year} - {row.program}"
-            school = row.school or "Unknown"
+            school = row.school_abbr or row.school or "Unknown"
+            year = row.academic_year
             count = row.enrollment_count
+            program = row.program
 
-            school_map[school][label] += count
-            labels_set.add(label)
+            school_year_totals[school][year] += count
+            tooltip_map[school][year].append(f"{program}: {count}")
+            academic_years.add(year)
 
-        labels = sorted(labels_set)
+        labels = sorted(academic_years)
         datasets = []
 
         color_palette = [
-            "#7cd6fd", "#5e64ff", "#743ee2", "#ff5858", "#ffa00a", "#00b0f0", "#00a65a"
+            "#7cd6fd", "#5e64ff", "#743ee2", "#ff5858", "#ffa00a", "#00b0f0", "#00a65a",
+            "#ffa3ef", "#99cc00", "#6b5b95", "#00b894", "#fab1a0"
         ]
-        color_index = 0
 
-        for school, label_map in school_map.items():
-            values = [label_map.get(label, 0) for label in labels]
+        for school, year_data in school_year_totals.items():
+            values = []
+            for year in labels:
+                value = year_data.get(year, 0)
+                tooltip = "\n".join(tooltip_map[school].get(year, [])) or "No enrollments"
+                values.append({
+                    "value": value,
+                    "tooltip": f"{school} ({year})\n{tooltip}"
+                })
             datasets.append({
                 "name": school,
                 "values": values
@@ -102,13 +113,13 @@ def get_program_chart_data(data, filters=None):
             "type": "bar",
             "colors": color_palette[:len(datasets)],
             "barOptions": {
-                "stacked": False  # Grouped bars by default
+                "stacked": False
             },
             "truncateLegends": False
         }
 
     else:
-        # 🎯 School selected → single bar series
+        # If a school is selected, show programs per year (same as before)
         data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
         labels = [f"{row.academic_year} - {row.program}" for row in data_sorted]
         values = [row.enrollment_count for row in data_sorted]
@@ -127,6 +138,7 @@ def get_program_chart_data(data, filters=None):
             },
             "truncateLegends": False
         }
+
 
 
 def get_course_columns(filters):
