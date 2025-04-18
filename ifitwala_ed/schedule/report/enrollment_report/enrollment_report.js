@@ -43,21 +43,31 @@ frappe.query_reports["Enrollment Report"] = {
 	"default_columns": 2,
 
 	onload: function (report) {
-		// Use get_data promise to wait until chart is ready
-		report.get_data().then(() => {
-			const chartObj = report.chart?.chart; // FrappeChart instance
-			const breakdown = report.chart?.custom_options?.tooltip_breakdown;
-
-			if (chartObj && breakdown) {
-				chartObj.wrapper.addEventListener('chart-hover', function (e) {
-					const label = e.detail?.label;
-					if (label && breakdown[label]) {
-						const content = `<strong>${label}</strong><br>${breakdown[label].join("<br>")}`;
-						e.detail.tooltip.setContent(content);
-					}
-				});
-			}
+		frappe.after_ajax(() => {
+			// Wait for chart to exist
+			let tries = 0;
+			const interval = setInterval(() => {
+				const chartObj = report.chartObj;
+				const breakdown = report.chart?.custom_options?.tooltip_breakdown;
+	
+				if (chartObj && chartObj.wrapper && breakdown) {
+					clearInterval(interval);
+	
+					chartObj.wrapper.addEventListener("chart-hover", function (e) {
+						const label = e.detail?.label;
+						if (label && breakdown[label]) {
+							const content = `<strong>${label}</strong><br>${breakdown[label].join("<br>")}`;
+							e.detail.tooltip.setContent(content);
+						}
+					});
+				}
+	
+				// Timeout safety after 5 seconds
+				if (++tries > 20) {
+					clearInterval(interval);
+				}
+			}, 250);
 		});
 	}
-
+	
 };
