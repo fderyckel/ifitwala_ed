@@ -62,19 +62,16 @@ def get_program_data(filters):
     
     return frappe.db.sql(sql, filters, as_dict=True)
 
-from collections import defaultdict
-
 def get_program_chart_data(data, filters=None):
     filters = filters or {}
     school_filter = filters.get("school")
     program_filter = filters.get("program")
 
-    # Sort by year_start_date if available
+    # Sort for consistency
     data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
 
+    # CASE 3: School + Program selected
     if school_filter and program_filter:
-        # Case 3: School and Program selected
-        # One bar per academic year for that program
         labels = [row.academic_year for row in data_sorted]
         values = [row.enrollment_count for row in data_sorted]
 
@@ -82,109 +79,89 @@ def get_program_chart_data(data, filters=None):
             "data": {
                 "labels": labels,
                 "datasets": [
-                    {"name": "Enrollments", "values": values}
+                    {"name": program_filter, "values": values}
                 ]
             },
             "type": "bar",
             "colors": ["#7cd6fd"],
-            "barOptions": {
-                "stacked": False
-            },
+            "barOptions": {"stacked": False},
             "truncateLegends": False
         }
 
-    elif school_filter:
-        # Case 2: Only School selected
+    # CASE 2: School selected (program not selected) => breakdown per program
+    if school_filter:
         year_totals = defaultdict(int)
-        program_breakdown = defaultdict(list)
+        breakdown = defaultdict(list)
 
         for row in data_sorted:
             year = row.academic_year
             program = row.program
             count = row.enrollment_count
+
             year_totals[year] += count
-            program_breakdown[year].append(f"{program}: {count}")
+            breakdown[year].append(f"{program}: {count}")
 
         labels = list(year_totals.keys())
         values = list(year_totals.values())
 
-        # Tooltip logic will need to be frontend-driven (JS override)
         return {
             "data": {
                 "labels": labels,
                 "datasets": [
-                    {
-                        "name": school_filter,
-                        "values": values
-                    }
+                    {"name": school_filter, "values": values}
                 ]
             },
             "type": "bar",
             "colors": ["#7cd6fd"],
-            "barOptions": {
-                "stacked": False
-            },
+            "barOptions": {"stacked": False},
             "truncateLegends": False,
             "custom_options": {
-                "program_breakdown": dict(program_breakdown)
+                "tooltip_breakdown": dict(breakdown)
             }
         }
 
-    else:
-        # Case 1: No school selected → group by school
-        school_colors = [
-            "#7cd6fd", "#5e64ff", "#743ee2", "#ff5858", "#ffa00a", "#00b0f0", "#00a65a"
-        ]
+    # CASE 1: No school selected => one bar per academic year, school inferred
+    totals = []
+    labels = []
+    colors = []
+    tooltip_map = {}
 
-        # [academic_year][school] = total
-        year_school_totals = defaultdict(lambda: defaultdict(int))
-        program_breakdown = defaultdict(lambda: defaultdict(list))
-        schools = set()
-        years = set()
+    school_color_map = {}
+    color_palette = [
+        "#7cd6fd", "#5e64ff", "#743ee2", "#ff5858", "#ffa00a", "#00b0f0", "#00a65a"
+    ]
+    color_index = 0
 
-        for row in data_sorted:
-            year = row.academic_year
-            school = row.school_abbr or row.school or "Unknown"
-            program = row.program
-            count = row.enrollment_count
+    for row in data_sorted:
+        year = row.academic_year
+        school = row.school_abbr or row.school or "Unknown"
+        count = row.enrollment_count
 
-            year_school_totals[year][school] += count
-            program_breakdown[year][school].append(f"{program}: {count}")
-            years.add(year)
-            schools.add(school)
+        labels.append(year)
+        totals.append(count)
+        tooltip_map[year] = f"Total Enrollment: {count}"
 
-        sorted_years = sorted(years)
-        sorted_schools = sorted(schools)
+        if school not in school_color_map:
+            school_color_map[school] = color_palette[color_index % len(color_palette)]
+            color_index += 1
 
-        datasets = []
-        for i, school in enumerate(sorted_schools):
-            values = [year_school_totals[year].get(school, 0) for year in sorted_years]
-            datasets.append({
-                "name": school,
-                "values": values
-            })
+        colors.append(school_color_map[school])
 
-        return {
-            "data": {
-                "labels": sorted_years,
-                "datasets": datasets
-            },
-            "type": "bar",
-            "colors": school_colors[:len(datasets)],
-            "barOptions": {
-                "stacked": False
-            },
-            "truncateLegends": False,
-            "custom_options": {
-                "program_breakdown": {
-                    year: {
-                        school: program_breakdown[year][school]
-                        for school in program_breakdown[year]
-                    } for year in program_breakdown
-                }
-            }
+    return {
+        "data": {
+            "labels": labels,
+            "datasets": [
+                {"name": "Enrollments", "values": totals}
+            ]
+        },
+        "type": "bar",
+        "colors": colors,
+        "barOptions": {"stacked": False},
+        "truncateLegends": False,
+        "custom_options": {
+            "tooltip_totals": tooltip_map
         }
-
+    }
 
 
 def get_course_columns(filters):
