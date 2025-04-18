@@ -119,53 +119,52 @@ def get_program_chart_data(data, filters=None):
             }
         }
 
-    # 🎯 CASE 1: No school selected (color bar by school, not group by it!)
-    year_totals = defaultdict(int)
-    year_colors = []
-    color_map = {}
-    program_breakdown = defaultdict(list)
-
+    # 🎯 CASE 1: No school selected (one bar per year, color by school, legend = abbr)
     color_palette = [
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
         "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"
     ]
+    color_map = {}
+    program_breakdown = {}
+    datasets = []
+    labels = []  # Just placeholder to satisfy the structure
+
     color_index = 0
+    year_seen = set()
 
-    sorted_data = sorted(data_sorted, key=lambda x: x.academic_year)
-
-    for row in sorted_data:
+    for row in data_sorted:
         year = row.academic_year
+        if year in year_seen:
+            continue  # skip duplicate rows per academic year
+        year_seen.add(year)
+
         school_abbr = row.school_abbr or "Unknown"
-        program = row.program
-        count = row.enrollment_count
-
-        year_totals[year] += count
-        program_breakdown[year].append(f"{program}: {count}")
-
         if school_abbr not in color_map:
             color_map[school_abbr] = color_palette[color_index % len(color_palette)]
             color_index += 1
 
-    sorted_years = sorted(year_totals)
-    values = [year_totals[year] for year in sorted_years]
-    bar_colors = [color_map.get(
-        next(row.school_abbr for row in data_sorted if row.academic_year == year),
-        "#cccccc"
-    ) for year in sorted_years]
+        # Sum total for that year
+        total = sum(r.enrollment_count for r in data_sorted if r.academic_year == year)
+        breakdown_lines = [f"{r.program}: {r.enrollment_count}" for r in data_sorted if r.academic_year == year]
+        program_breakdown[year] = breakdown_lines
+
+        datasets.append({
+            "name": school_abbr,
+            "values": [total]
+        })
+        labels.append(year)
 
     return {
         "data": {
-            "labels": sorted_years,
-            "datasets": [
-                {"name": "Enrollments", "values": values}
-            ]
+            "labels": labels,
+            "datasets": datasets
         },
         "type": "bar",
-        "colors": bar_colors,
+        "colors": [color_map[ds["name"]] for ds in datasets],
         "barOptions": {"stacked": False},
         "truncateLegends": False,
         "custom_options": {
-            "tooltip_breakdown": dict(program_breakdown)
+            "tooltip_breakdown": program_breakdown
         }
     }
 
