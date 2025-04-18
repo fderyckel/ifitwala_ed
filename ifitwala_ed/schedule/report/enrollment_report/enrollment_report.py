@@ -67,35 +67,44 @@ def get_program_chart_data(data, filters=None):
     school_filter = filters.get("school")
 
     if not school_filter:
-        # Aggregate by school + academic year
-        school_year_totals = defaultdict(lambda: defaultdict(int))  # [school][year] = total_enrollment
-        academic_years = set()
+        # Reorganize: datasets = years, labels = schools
+        year_school_totals = defaultdict(lambda: defaultdict(int))  # [year][school] = total_enrollment
+        tooltip_map = defaultdict(lambda: defaultdict(list))        # [year][school] = [program: count]
+        schools = set()
+        years = set()
 
         for row in data:
             school = row.school_abbr or row.school or "Unknown"
             year = row.academic_year
+            program = row.program
             count = row.enrollment_count
-            school_year_totals[school][year] += count
-            academic_years.add(year)
 
-        labels = sorted(academic_years)
+            year_school_totals[year][school] += count
+            tooltip_map[year][school].append(f"{program}: {count}")
+            schools.add(school)
+            years.add(year)
+
+        sorted_schools = sorted(schools)
+        sorted_years = sorted(years)
+
         datasets = []
-
         color_palette = [
             "#7cd6fd", "#5e64ff", "#743ee2", "#ff5858", "#ffa00a", "#00b0f0", "#00a65a",
             "#ffa3ef", "#99cc00", "#6b5b95", "#00b894", "#fab1a0"
         ]
 
-        for i, (school, year_data) in enumerate(school_year_totals.items()):
-            values = [year_data.get(year, 0) for year in labels]  # ✅ Just integers
+        for i, year in enumerate(sorted_years):
+            values = []
+            for school in sorted_schools:
+                values.append(year_school_totals[year].get(school, 0))
             datasets.append({
-                "name": school,
+                "name": year,
                 "values": values
             })
 
         return {
             "data": {
-                "labels": labels,
+                "labels": sorted_schools,
                 "datasets": datasets
             },
             "type": "bar",
@@ -107,7 +116,7 @@ def get_program_chart_data(data, filters=None):
         }
 
     else:
-        # Single school selected → one dataset only
+        # If a school is selected, fallback to detailed view per program
         data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
         labels = [f"{row.academic_year} - {row.program}" for row in data_sorted]
         values = [row.enrollment_count for row in data_sorted]
@@ -126,6 +135,8 @@ def get_program_chart_data(data, filters=None):
             },
             "truncateLegends": False
         }
+
+
 
 
 def get_course_columns(filters):
