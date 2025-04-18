@@ -62,63 +62,20 @@ def get_program_data(filters):
     
     return frappe.db.sql(sql, filters, as_dict=True)
 
+from collections import defaultdict
+
 def get_program_chart_data(data, filters=None):
     filters = filters or {}
     school_filter = filters.get("school")
+    program_filter = filters.get("program")
 
-    if not school_filter:
-        # Reorganize: datasets = years, labels = schools
-        year_school_totals = defaultdict(lambda: defaultdict(int))  # [year][school] = total_enrollment
-        tooltip_map = defaultdict(lambda: defaultdict(list))        # [year][school] = [program: count]
-        schools = set()
-        years = set()
+    # Sort by year_start_date if available
+    data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
 
-        for row in data:
-            school = row.school_abbr or row.school or "Unknown"
-            year = row.academic_year
-            program = row.program
-            count = row.enrollment_count
-
-            year_school_totals[year][school] += count
-            tooltip_map[year][school].append(f"{program}: {count}")
-            schools.add(school)
-            years.add(year)
-
-        sorted_schools = sorted(schools)
-        sorted_years = sorted(years)
-
-        datasets = []
-        color_palette = [
-            "#7cd6fd", "#5e64ff", "#743ee2", "#ff5858", "#ffa00a", "#00b0f0", "#00a65a",
-            "#ffa3ef", "#99cc00", "#6b5b95", "#00b894", "#fab1a0"
-        ]
-
-        for i, year in enumerate(sorted_years):
-            values = []
-            for school in sorted_schools:
-                values.append(year_school_totals[year].get(school, 0))
-            datasets.append({
-                "name": year,
-                "values": values
-            })
-
-        return {
-            "data": {
-                "labels": sorted_schools,
-                "datasets": datasets
-            },
-            "type": "bar",
-            "colors": color_palette[:len(datasets)],
-            "barOptions": {
-                "stacked": False
-            },
-            "truncateLegends": False
-        }
-
-    else:
-        # If a school is selected, fallback to detailed view per program
-        data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
-        labels = [f"{row.academic_year} - {row.program}" for row in data_sorted]
+    if school_filter and program_filter:
+        # Case 3: School and Program selected
+        # One bar per academic year for that program
+        labels = [row.academic_year for row in data_sorted]
         values = [row.enrollment_count for row in data_sorted]
 
         return {
@@ -136,6 +93,97 @@ def get_program_chart_data(data, filters=None):
             "truncateLegends": False
         }
 
+    elif school_filter:
+        # Case 2: Only School selected
+        year_totals = defaultdict(int)
+        program_breakdown = defaultdict(list)
+
+        for row in data_sorted:
+            year = row.academic_year
+            program = row.program
+            count = row.enrollment_count
+            year_totals[year] += count
+            program_breakdown[year].append(f"{program}: {count}")
+
+        labels = list(year_totals.keys())
+        values = list(year_totals.values())
+
+        # Tooltip logic will need to be frontend-driven (JS override)
+        return {
+            "data": {
+                "labels": labels,
+                "datasets": [
+                    {
+                        "name": school_filter,
+                        "values": values
+                    }
+                ]
+            },
+            "type": "bar",
+            "colors": ["#7cd6fd"],
+            "barOptions": {
+                "stacked": False
+            },
+            "truncateLegends": False,
+            "custom_options": {
+                "program_breakdown": dict(program_breakdown)
+            }
+        }
+
+    else:
+        # Case 1: No school selected → group by school
+        school_colors = [
+            "#7cd6fd", "#5e64ff", "#743ee2", "#ff5858", "#ffa00a", "#00b0f0", "#00a65a"
+        ]
+
+        # [academic_year][school] = total
+        year_school_totals = defaultdict(lambda: defaultdict(int))
+        program_breakdown = defaultdict(lambda: defaultdict(list))
+        schools = set()
+        years = set()
+
+        for row in data_sorted:
+            year = row.academic_year
+            school = row.school_abbr or row.school or "Unknown"
+            program = row.program
+            count = row.enrollment_count
+
+            year_school_totals[year][school] += count
+            program_breakdown[year][school].append(f"{program}: {count}")
+            years.add(year)
+            schools.add(school)
+
+        sorted_years = sorted(years)
+        sorted_schools = sorted(schools)
+
+        datasets = []
+        for i, school in enumerate(sorted_schools):
+            values = [year_school_totals[year].get(school, 0) for year in sorted_years]
+            datasets.append({
+                "name": school,
+                "values": values
+            })
+
+        return {
+            "data": {
+                "labels": sorted_years,
+                "datasets": datasets
+            },
+            "type": "bar",
+            "colors": school_colors[:len(datasets)],
+            "barOptions": {
+                "stacked": False
+            },
+            "truncateLegends": False,
+            "custom_options": {
+                "program_breakdown": {
+                    year: {
+                        school: program_breakdown[year][school]
+                        for school in program_breakdown[year]
+                    } for year in program_breakdown
+                }
+            }
+        }
 
 
 
