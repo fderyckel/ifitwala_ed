@@ -46,17 +46,16 @@ frappe.query_reports["Enrollment Report"] = {
 		frappe.after_ajax(() => {
 			let tries = 0;
 			const interval = setInterval(() => {
-				const chartObj = report.chartObj?.chart;
+				const chart = report.chartObj?.chart;
 				const breakdown = report.chart?.custom_options?.tooltip_breakdown;
 	
-				if (chartObj && breakdown) {
+				if (chart && breakdown) {
 					clearInterval(interval);
 	
-					// 👇 Override tooltip formatter
-					chartObj.options.tooltipOptions = {
-						formatTooltipX: d => d,  // keep year
+					chart.options.tooltipOptions = {
+						formatTooltipX: label => label,
 						formatTooltipY: (value, name, opts, index) => {
-							const label = chartObj.data.labels[index];
+							const label = chart.data.labels[index];
 							const items = breakdown[label];
 							if (items?.length) {
 								return `<strong>${label}</strong><br>${items.join("<br>")}`;
@@ -65,14 +64,12 @@ frappe.query_reports["Enrollment Report"] = {
 						}
 					};
 	
-					chartObj.update(chartObj.data);  // force apply
+					chart.update(chart.data);
 				}
 	
 				if (++tries > 20) clearInterval(interval);
 			}, 250);
 		});
 	}
-	
-	
 	
 };
