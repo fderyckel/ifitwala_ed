@@ -62,18 +62,23 @@ def get_program_data(filters):
     
     return frappe.db.sql(sql, filters, as_dict=True)
 
+from collections import defaultdict
+
 def get_program_chart_data(data, filters=None):
     filters = filters or {}
     school_filter = filters.get("school")
     program_filter = filters.get("program")
 
-    # Sort for consistency
     data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
 
-    # CASE 3: School + Program selected
+    # CASE 3: School + Program selected → one bar per academic year, for that program only
     if school_filter and program_filter:
-        labels = [row.academic_year for row in data_sorted]
-        values = [row.enrollment_count for row in data_sorted]
+        labels = []
+        values = []
+
+        for row in data_sorted:
+            labels.append(row.academic_year)
+            values.append(row.enrollment_count)
 
         return {
             "data": {
@@ -88,10 +93,10 @@ def get_program_chart_data(data, filters=None):
             "truncateLegends": False
         }
 
-    # CASE 2: School selected (program not selected) => breakdown per program
-    if school_filter:
+    # CASE 2: School selected → one bar per academic year, grouped total, tooltip shows program breakdown
+    if school_filter and not program_filter:
         year_totals = defaultdict(int)
-        breakdown = defaultdict(list)
+        year_program_breakdown = defaultdict(list)
 
         for row in data_sorted:
             year = row.academic_year
@@ -99,10 +104,10 @@ def get_program_chart_data(data, filters=None):
             count = row.enrollment_count
 
             year_totals[year] += count
-            breakdown[year].append(f"{program}: {count}")
+            year_program_breakdown[year].append(f"{program}: {count}")
 
         labels = list(year_totals.keys())
-        values = list(year_totals.values())
+        values = [year_totals[year] for year in labels]
 
         return {
             "data": {
@@ -116,20 +121,20 @@ def get_program_chart_data(data, filters=None):
             "barOptions": {"stacked": False},
             "truncateLegends": False,
             "custom_options": {
-                "tooltip_breakdown": dict(breakdown)
+                "tooltip_breakdown": dict(year_program_breakdown)
             }
         }
 
-    # CASE 1: No school selected => one bar per academic year, school inferred
-    totals = []
-    labels = []
-    colors = []
+    # CASE 1: No school selected → one bar per academic year, color by school, tooltip = total only
+    year_totals = {}
+    year_schools = {}
     tooltip_map = {}
 
-    school_color_map = {}
     color_palette = [
-        "#7cd6fd", "#5e64ff", "#743ee2", "#ff5858", "#ffa00a", "#00b0f0", "#00a65a"
+        "#7cd6fd", "#5e64ff", "#743ee2", "#ff5858", "#ffa00a", "#00b0f0", "#00a65a",
+        "#ffa3ef", "#99cc00", "#6b5b95", "#00b894", "#fab1a0"
     ]
+    school_colors = {}
     color_index = 0
 
     for row in data_sorted:
@@ -137,25 +142,27 @@ def get_program_chart_data(data, filters=None):
         school = row.school_abbr or row.school or "Unknown"
         count = row.enrollment_count
 
-        labels.append(year)
-        totals.append(count)
-        tooltip_map[year] = f"Total Enrollment: {count}"
+        year_totals[year] = year_totals.get(year, 0) + count
+        year_schools[year] = school
+        tooltip_map[year] = f"Total Enrollment: {year_totals[year]}"
 
-        if school not in school_color_map:
-            school_color_map[school] = color_palette[color_index % len(color_palette)]
+        if school not in school_colors:
+            school_colors[school] = color_palette[color_index % len(color_palette)]
             color_index += 1
 
-        colors.append(school_color_map[school])
+    sorted_years = sorted(year_totals.keys())
+    values = [year_totals[year] for year in sorted_years]
+    bar_colors = [school_colors[year_schools[year]] for year in sorted_years]
 
     return {
         "data": {
-            "labels": labels,
+            "labels": sorted_years,
             "datasets": [
-                {"name": "Enrollments", "values": totals}
+                {"name": "Enrollments", "values": values}
             ]
         },
         "type": "bar",
-        "colors": colors,
+        "colors": bar_colors,
         "barOptions": {"stacked": False},
         "truncateLegends": False,
         "custom_options": {
