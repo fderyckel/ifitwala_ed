@@ -55,11 +55,13 @@ frappe.query_reports["Enrollment Report"] = {
 	
 					chartObj.wrapper.addEventListener("chart-hover", function (e) {
 						const label = e.detail?.label;
-						if (label && breakdown[label]) {
+						const breakdown = report.chart?.custom_options?.tooltip_breakdown;
+					
+						if (label && breakdown?.[label]) {
 							const content = `<strong>${label}</strong><br>${breakdown[label].join("<br>")}`;
 							e.detail.tooltip.setContent(content);
 						}
-					});
+					});					
 				}
 	
 				// Timeout safety after 5 seconds
