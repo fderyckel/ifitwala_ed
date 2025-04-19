@@ -227,3 +227,15 @@ def get_academic_years(doctype, txt, searchfield, start, page_len, filters):
     as_list=True
   )
 
+@frappe.whitelist()
+def get_program_courses_for_enrollment(program):
+	courses = frappe.db.get_values(
+		"Program Course",
+		{"parent": program},
+		"course",
+		order_by="idx"
+	)
+
+	# Flatten to list of course names
+	return [c[0] for c in courses if c[0]]
+

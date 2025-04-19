@@ -31,17 +31,14 @@ frappe.ui.form.on("Program Enrollment", {
     // Initial course filter setup — if program is already set on load
     if (frm.doc.program) {
       frappe.call({
-        method: "frappe.client.get_list",
+        method: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_program_courses_for_enrollment",
         args: {
-          doctype: "Program Course",
-          fields: ["course"],
-          filters: { parent: frm.doc.program },
-          limit_page_length: 1000
+          program: frm.doc.program
         },
         callback: function (r) {
-          const valid_courses = (r.message || []).map(row => row.course);
+          const valid_courses = r.message || [];
           frm.valid_program_courses = valid_courses;
-  
+      
           frm.fields_dict["courses"].grid.get_field("course").get_query = function (doc) {
             const selected_courses = (doc.courses || []).map(row => row.course).filter(Boolean);
             return {
@@ -74,17 +71,14 @@ frappe.ui.form.on("Program Enrollment", {
   
     // Refresh course query for this program
     frappe.call({
-      method: "frappe.client.get_list",
+      method: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_program_courses_for_enrollment",
       args: {
-        doctype: "Program Course",
-        fields: ["course"],
-        filters: { parent: frm.doc.program },
-        limit_page_length: 1000
+        program: frm.doc.program
       },
       callback: function (r) {
-        const valid_courses = (r.message || []).map(row => row.course);
+        const valid_courses = r.message || [];
         frm.valid_program_courses = valid_courses;
-  
+    
         frm.fields_dict["courses"].grid.get_field("course").get_query = function (doc) {
           const selected_courses = (doc.courses || []).map(row => row.course).filter(Boolean);
           return {
