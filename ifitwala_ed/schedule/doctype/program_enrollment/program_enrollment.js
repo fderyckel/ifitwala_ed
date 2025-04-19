@@ -31,7 +31,7 @@ frappe.ui.form.on("Program Enrollment", {
     // Initial course filter setup — if program is already set on load
     if (frm.doc.program) {
       frappe.call({
-        method: "frappe.db.get_list",
+        method: "frappe.client.get_list",
         args: {
           doctype: "Program Course",
           fields: ["course"],
@@ -74,7 +74,7 @@ frappe.ui.form.on("Program Enrollment", {
   
     // Refresh course query for this program
     frappe.call({
-      method: "frappe.db.get_list",
+      method: "frappe.client.get_list",
       args: {
         doctype: "Program Course",
         fields: ["course"],
