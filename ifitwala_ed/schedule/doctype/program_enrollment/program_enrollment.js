@@ -16,61 +16,88 @@ frappe.ui.form.on("Program Enrollment", {
   },
 
   onload_post_render: function (frm) {
-    // Ensure filtering of term fields in the child table
+    // Filter term fields in child table
     ["term_start", "term_end"].forEach((field) => {
       frm.set_query(field, "courses", function () {
         const filters = {};
-
-        if (frm.doc.academic_year) {
-          filters.academic_year = frm.doc.academic_year;
-        }
-
-        if (frm.doc.school) {
-          filters.school = frm.doc.school;
-        }
-
+        if (frm.doc.academic_year) filters.academic_year = frm.doc.academic_year;
+        if (frm.doc.school) filters.school = frm.doc.school;
         return { filters };
       });
     });
-
+  
     frm.get_field("courses").grid.set_multiple_add("course");
-    
-    // Exclude already selected courses
-    frm.fields_dict["courses"].grid.get_field("course").get_query = function (doc) {
-      const selected_courses = [];
-      (doc.courses || []).forEach(row => {
-        if (row.course) selected_courses.push(row.course);
+  
+    // Initial course filter setup — if program is already set on load
+    if (frm.doc.program) {
+      frappe.call({
+        method: "frappe.db.get_list",
+        args: {
+          doctype: "Program Course",
+          fields: ["course"],
+          filters: { parent: frm.doc.program },
+          limit_page_length: 1000
+        },
+        callback: function (r) {
+          const valid_courses = (r.message || []).map(row => row.course);
+          frm.valid_program_courses = valid_courses;
+  
+          frm.fields_dict["courses"].grid.get_field("course").get_query = function (doc) {
+            const selected_courses = (doc.courses || []).map(row => row.course).filter(Boolean);
+            return {
+              filters: [
+                ["Course", "name", "in", valid_courses.filter(c => !selected_courses.includes(c))]
+              ]
+            };
+          };
+        }
       });
-
-      return {
-        filters: [
-          ["Course", "name", "not in", selected_courses]
-        ],
-      };
-    };
-  },
+    }
+  }, 
 
   program: function (frm) {
     frm.set_value("academic_year", null);
     frm.set_value("courses", []);
-    
-    // Clear term bounds cache because school may change
     frm.term_bounds_cache = {};
-
+  
     frm.events.get_courses(frm);
-
-    // Once school is fetched (read-only), apply academic year filter
+  
+    // Set academic year filter
     if (frm.doc.school) {
       frm.set_query("academic_year", function () {
         return {
           query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_academic_years",
-          filters: {
-            school: frm.doc.school
-          }
+          filters: { school: frm.doc.school }
         };
       });
-    }    
-  },
+    }
+  
+    // Refresh course query for this program
+    frappe.call({
+      method: "frappe.db.get_list",
+      args: {
+        doctype: "Program Course",
+        fields: ["course"],
+        filters: { parent: frm.doc.program },
+        limit_page_length: 1000
+      },
+      callback: function (r) {
+        const valid_courses = (r.message || []).map(row => row.course);
+        frm.valid_program_courses = valid_courses;
+  
+        frm.fields_dict["courses"].grid.get_field("course").get_query = function (doc) {
+          const selected_courses = (doc.courses || []).map(row => row.course).filter(Boolean);
+          return {
+            filters: [
+              ["Course", "name", "in", valid_courses.filter(c => !selected_courses.includes(c))]
+            ]
+          };
+        };
+      }
+    });
+  }, 
+  
+
 
   academic_year: function (frm) {
     // Just set the student query based on academic_year
