@@ -68,8 +68,9 @@ def get_program_data(filters):
     
     return frappe.db.sql(sql, filters, as_dict=True)
 
+
+
 def get_program_chart_data(data, filters=None):
-    from collections import defaultdict
 
     filters = filters or {}
     school_filter = filters.get("school")
@@ -77,7 +78,7 @@ def get_program_chart_data(data, filters=None):
 
     data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
 
-    # 🎯 CASE 3: School + Program selected
+    # 🎯 CASE 3: School + Program selected → Single program, no stacking
     if school_filter and program_filter:
         labels = [row.academic_year for row in data_sorted]
         values = [row.enrollment_count for row in data_sorted]
@@ -94,48 +95,58 @@ def get_program_chart_data(data, filters=None):
             "truncateLegends": False
         }
 
-    # 🎯 CASE 2: School selected (program breakdown)
+    # 🎯 CASE 2: School selected → Stack by program per academic year
     if school_filter and not program_filter:
-        year_totals = defaultdict(int)
-        breakdown = defaultdict(list)
+        program_map = defaultdict(lambda: defaultdict(int))  # {program: {year: count}}
+        year_set = set()
 
         for row in data_sorted:
             year = row.academic_year
-            year_totals[year] += row.enrollment_count
-            breakdown[year].append(f"{row.program}: {row.enrollment_count}")
+            program = row.program
+            count = row.enrollment_count
+            program_map[program][year] += count
+            year_set.add(year)
 
-        sorted_years = sorted(year_totals)
-        values = [year_totals[year] for year in sorted_years]
+        sorted_years = sorted(year_set)
+        datasets = []
+
+        color_palette = [
+            "#7cd6fd", "#5e64ff", "#743ee2", "#ffa00a", "#00b0f0", "#ff5858", "#00a65a",
+            "#ffa3ef", "#99cc00", "#6b5b95", "#00b894", "#fab1a0"
+        ]
+        color_index = 0
+
+        for program, year_map in program_map.items():
+            values = [year_map.get(year, 0) for year in sorted_years]
+            datasets.append({
+                "name": program,
+                "values": values,
+                "chartType": "bar"
+            })
 
         return {
             "data": {
                 "labels": sorted_years,
-                "datasets": [
-                    {"name": school_filter, "values": values}
-                ]
+                "datasets": datasets
             },
             "type": "bar",
-            "colors": ["#7cd6fd"],
-            "barOptions": {"stacked": False},
-            "truncateLegends": False,
-            "custom_options": {
-                "tooltip_breakdown": dict(breakdown)
-            }
+            "colors": color_palette[:len(datasets)],
+            "barOptions": {"stacked": True},
+            "truncateLegends": False
         }
-    # 🎯 CASE 1: No school selected — one dataset, one bar per academic year, color-coded if needed
+
+    # 🎯 CASE 1: No school selected → One bar per academic year (no stacking)
     labels = []
     values = []
+    seen_years = set()
 
-    year_seen = set()
     for row in data_sorted:
         year = row.academic_year
-        if year in year_seen:
+        if year in seen_years:
             continue
-        year_seen.add(year)
+        seen_years.add(year)
 
-        year_rows = [r for r in data_sorted if r.academic_year == year]
-        total = sum(r.enrollment_count for r in year_rows)
-
+        total = sum(r.enrollment_count for r in data_sorted if r.academic_year == year)
         labels.append(year)
         values.append(total)
 
@@ -143,17 +154,15 @@ def get_program_chart_data(data, filters=None):
         "data": {
             "labels": labels,
             "datasets": [
-                {
-                    "name": "Enrollments",
-                    "values": values
-                }
+                {"name": "Enrollments", "values": values}
             ]
         },
         "type": "bar",
-        "colors": ["#7cd6fd"],  # Optional: single consistent color
+        "colors": ["#7cd6fd"],
         "barOptions": {"stacked": False},
         "truncateLegends": False
     }
+
 
 def get_cohort_columns(filters):
     return [
