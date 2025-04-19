@@ -137,32 +137,49 @@ def get_program_chart_data(data, filters=None):
         }
 
     # 🎯 CASE 1: No school selected → One bar per academic year (no stacking)
-    labels = []
-    values = []
-    seen_years = set()
+    if not school_filter:
+        label_rows = []
+        for row in data:
+            label = f"{row.academic_year} ({row.school_abbr})"
+            label_rows.append((label, row))
 
-    for row in data_sorted:
-        year = row.academic_year
-        if year in seen_years:
-            continue
-        seen_years.add(year)
+        # 2. sort by year_start_date asc, then school_abbr
+        label_rows.sort(key=lambda x: (x[1].year_start_date, x[1].school_abbr))
 
-        total = sum(r.enrollment_count for r in data_sorted if r.academic_year == year)
-        labels.append(year)
-        values.append(total)
+        labels = [lbl for lbl, _ in label_rows]
 
-    return {
-        "data": {
-            "labels": labels,
-            "datasets": [
-                {"name": "Enrollments", "values": values}
-            ]
-        },
-        "type": "bar",
-        "colors": ["#7cd6fd"],
-        "barOptions": {"stacked": True},
-        "truncateLegends": False
-    }
+        # 3. school_map[school][label] = total_count
+        from collections import defaultdict
+        school_map = defaultdict(lambda: defaultdict(int))
+
+        for label, row in label_rows:
+            school = row.school_abbr
+            school_map[school][label] += row.enrollment_count
+
+        # 4. datasets
+        color_palette = [
+            "#7cd6fd", "#00b894", "#ff9f43",
+            "#5e64ff", "#ff5858", "#00b0f0", "#ffa3ef"
+        ]
+        datasets = []
+        for idx, (school, label_counts) in enumerate(school_map.items()):
+            values = [label_counts.get(l, 0) for l in labels]
+            datasets.append({
+                "name": school,
+                "values": values,
+                "chartType": "bar"
+            })
+
+        return {
+            "data": {
+                "labels": labels,
+                "datasets": datasets
+            },
+            "type": "bar",
+            "colors": color_palette[:len(datasets)],
+            "barOptions": {"stacked": False},
+            "truncateLegends": False
+        }
 
 
 def get_cohort_columns(filters):
