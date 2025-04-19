@@ -91,7 +91,7 @@ def get_program_chart_data(data, filters=None):
             },
             "type": "bar",
             "colors": ["#7cd6fd"],
-            "barOptions": {"stacked": False},
+            "barOptions": {"stacked": True},
             "truncateLegends": False
         }
 
@@ -131,8 +131,9 @@ def get_program_chart_data(data, filters=None):
             },
             "type": "bar",
             "colors": color_palette[:len(datasets)],
-            "barOptions": {"stacked": True},
-            "truncateLegends": False
+            "barOptions": {
+                "stacked": True
+            }
         }
 
     # 🎯 CASE 1: No school selected → One bar per academic year (no stacking)
