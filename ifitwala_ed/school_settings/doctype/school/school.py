@@ -137,31 +137,3 @@ def add_node():
 
 	frappe.get_doc(args).insert()
 
-
-def get_dashboard_data(doc):
-    return {
-        "fieldname": "school",
-        "transactions": [
-            {
-                "label": _("Academic"),
-                "items": [
-                    {
-                        "type": "doctype",
-                        "name": "Program Enrollment",
-                        "filters": {"status": 1}
-                    },
-                    "Academic Year",
-                    "Term",
-                    "School Calendar"
-                ]
-            },
-            {
-                "label": _("Curriculum"),
-                "items": ["Program", "Course"]
-            },
-            {
-                "label": _("Admin"),
-                "items": ["Employee"]
-            }
-        ]
-    }
