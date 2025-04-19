@@ -20,7 +20,18 @@ frappe.query_reports["Enrollment Report"] = {
 			"fieldname": "program",
 			"label": "Program",
 			"fieldtype": "Link",
-			"options": "Program"
+			"options": "Program", 
+			"depends_on": "eval:doc.school",
+			"get_query": function () {
+				let school = frappe.query_report.get_filter_value("school");
+				if (school) {
+					return {
+						filters: {
+							school: school
+						}
+					};
+				}
+			}
 		},
 		{
 			"fieldname": "student_cohort",
@@ -34,7 +45,7 @@ frappe.query_reports["Enrollment Report"] = {
 			"label": "Academic Year",
 			"fieldtype": "Link",
 			"options": "Academic Year",
-			"depends_on": "eval:doc.report_type=='Course' || doc.report_type=='Program'", 
+			"depends_on": "eval:doc.school",
 			"get_query": function (doc) {
 				let school = frappe.query_report.get_filter_value("school");
 				if (school) {
