@@ -73,8 +73,8 @@ def get_program_data(filters):
 def get_program_chart_data(data, filters=None):
 
     filters = filters or {}
-    school_filter = filters.get("school")
-    program_filter = filters.get("program")
+    school_filter = (filters.get("school") or "").strip() or None
+    program_filter = (filters.get("program") or "").strip() or None
 
     data_sorted = sorted(data, key=lambda x: x.get("year_start_date") or "")
 
