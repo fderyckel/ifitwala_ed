@@ -117,45 +117,67 @@ def get_program_chart_data(data, filters=None):
             }
         }
 
-    # 🎯 CASE 1: No school selected
-    year_index = {}
-    all_years = sorted(set(row.academic_year for row in data_sorted))
-    for i, year in enumerate(all_years):
-        year_index[year] = i
+    # 🎯 CASE 1: No school selected — one dataset, colored bars per academic year based on school
+    year_totals = []
+    labels = []
+    bar_colors = []
+    tooltip_breakdown = {}
+    school_color_map = {}
+    legend_labels = []
+    legend_colors = []
 
-    # {school: [0, 0, ...]}
-    school_data = defaultdict(lambda: [0] * len(all_years))
-    tooltip_breakdown = defaultdict(list)
+    color_palette = [
+        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"
+    ]
+    color_index = 0
+    seen_years = set()
 
     for row in data_sorted:
         year = row.academic_year
-        school = row.school_abbr or "Unknown"
-        count = row.enrollment_count
-        program = row.program
+        if year in seen_years:
+            continue
+        seen_years.add(year)
 
-        idx = year_index[year]
-        school_data[school][idx] += count
-        tooltip_breakdown[year].append(f"{program}: {count}")
+        # Filter rows for this academic year
+        rows_for_year = [r for r in data_sorted if r.academic_year == year]
+        total = sum(r.enrollment_count for r in rows_for_year)
+        program_lines = [f"{r.program}: {r.enrollment_count}" for r in rows_for_year]
+        tooltip_breakdown[year] = program_lines
 
-    datasets = []
-    for school, values in school_data.items():
-        datasets.append({
-            "name": school,
-            "values": values
-        })
+        # Get school color
+        school_abbr = row.school_abbr or "Unknown"
+        if school_abbr not in school_color_map:
+            school_color_map[school_abbr] = color_palette[color_index % len(color_palette)]
+            legend_labels.append(school_abbr)
+            legend_colors.append(school_color_map[school_abbr])
+            color_index += 1
+
+        labels.append(year)
+        year_totals.append(total)
+        bar_colors.append(school_color_map[school_abbr])
 
     return {
         "data": {
-            "labels": all_years,
-            "datasets": datasets
+            "labels": labels,
+            "datasets": [
+                {
+                    "name": "Enrollments",
+                    "values": year_totals
+                }
+            ]
         },
         "type": "bar",
+        "colors": bar_colors,
         "barOptions": {"stacked": False},
         "truncateLegends": False,
         "custom_options": {
-            "tooltip_breakdown": dict(tooltip_breakdown)
+            "tooltip_breakdown": tooltip_breakdown,
+            "legend_labels": legend_labels,
+            "legend_colors": legend_colors
         }
     }
+
 
 
 

@@ -66,6 +66,33 @@ frappe.query_reports["Enrollment Report"] = {
 	
 					chart.update(chart.data);
 				}
+
+				// Add legend manually based on school_colors
+				const labels = report.chart?.custom_options?.legend_labels || [];
+				const colors = report.chart?.custom_options?.legend_colors || [];
+
+				if (labels.length && colors.length) {
+					const wrapper = report.chartObj?.wrapper;
+					const legend = document.createElement("div");
+					legend.style.display = "flex";
+					legend.style.gap = "12px";
+					legend.style.marginTop = "16px";
+					legend.style.flexWrap = "wrap";
+
+					labels.forEach((label, i) => {
+						const item = document.createElement("div");
+						item.style.display = "flex";
+						item.style.alignItems = "center";
+						item.innerHTML = `
+							<div style="width:12px; height:12px; background:${colors[i]}; border-radius:3px; margin-right:6px;"></div>
+							<span>${label}</span>
+						`;
+						legend.appendChild(item);
+					});
+
+					wrapper?.parentElement?.appendChild(legend);
+				}
+
 	
 				if (++tries > 20) clearInterval(interval);
 			}, 250);
