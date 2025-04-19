@@ -15,7 +15,7 @@ def execute(filters=None):
         data = get_course_data(filters)
         chart = get_course_chart_data(data)
 
-    if report_type == "Cohort": 
+    elif report_type == "Cohort": 
         columns = get_cohort_columns(filters)
         data = get_cohort_data(filters)
         chart = get_cohort_chart_data(data)   
