@@ -35,14 +35,20 @@ frappe.ui.form.on("Program Enrollment", {
 
     frm.get_field("courses").grid.set_multiple_add("course");
     
-    frm.set_query("course", "courses", function (doc, cdt, cdn) {
+    // Exclude already selected courses
+    frm.fields_dict["courses"].grid.get_field("course").get_query = function (doc) {
+      const selected_courses = [];
+      (doc.courses || []).forEach(row => {
+        if (row.course) selected_courses.push(row.course);
+      });
+
       return {
-        query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_program_courses",
-        filters: {
-          program: frm.doc.program
-        },
+        filters: [
+          ["Course", "name", "not in", selected_courses],
+          ["Course", "disabled", "!=", 1]
+        ],
       };
-    });
+    };
   },
 
   program: function (frm) {
