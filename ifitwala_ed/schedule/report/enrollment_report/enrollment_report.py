@@ -23,7 +23,7 @@ def execute(filters=None):
     else:
         columns = get_program_columns(filters)
         data = get_program_data(filters)
-        chart = get_program_chart_data(data)
+        chart = get_program_chart_data(data, filters)
     
     return columns, data, None, chart
 
