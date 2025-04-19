@@ -45,7 +45,6 @@ frappe.query_reports["Enrollment Report"] = {
 			"label": "Academic Year",
 			"fieldtype": "Link",
 			"options": "Academic Year",
-			"depends_on": "eval:doc.school",
 			"get_query": function (doc) {
 				let school = frappe.query_report.get_filter_value("school");
 				if (school) {
