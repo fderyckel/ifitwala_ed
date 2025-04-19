@@ -47,14 +47,16 @@ frappe.query_reports["Enrollment Report"] = {
 			let tries = 0;
 			const interval = setInterval(() => {
 				const chart = report.chartObj?.chart;
-				const breakdown = report.chart?.custom_options?.tooltip_breakdown;
+				const opts = report.chart?.custom_options;
 	
-				if (chart && breakdown) {
+				if (chart && opts?.tooltip_breakdown) {
 					clearInterval(interval);
 	
+					// ✅ Tooltip override
 					chart.options.tooltipOptions = {
 						formatTooltipX: label => label,
 						formatTooltipY: (value, name, opts, index) => {
+							const breakdown = report.chart.custom_options.tooltip_breakdown;
 							const label = chart.data.labels[index];
 							const items = breakdown[label];
 							if (items?.length) {
@@ -65,11 +67,39 @@ frappe.query_reports["Enrollment Report"] = {
 					};
 	
 					chart.update(chart.data);
+	
+					// ✅ Custom Legend
+					const legendLabels = opts.legend_labels || [];
+					const legendColors = opts.legend_colors || [];
+	
+					if (legendLabels.length && legendColors.length) {
+						const container = document.createElement("div");
+						container.className = "custom-legend";
+						container.style.display = "flex";
+						container.style.flexWrap = "wrap";
+						container.style.marginTop = "12px";
+						container.style.gap = "12px";
+	
+						legendLabels.forEach((label, i) => {
+							const item = document.createElement("div");
+							item.style.display = "flex";
+							item.style.alignItems = "center";
+							item.innerHTML = `
+								<span style="width: 12px; height: 12px; background: ${legendColors[i]}; display: inline-block; margin-right: 6px; border-radius: 3px;"></span>
+								<span>${label}</span>
+							`;
+							container.appendChild(item);
+						});
+	
+						const chartWrapper = report.chartObj.wrapper;
+						chartWrapper.parentElement.appendChild(container);
+					}
 				}
 	
 				if (++tries > 20) clearInterval(interval);
 			}, 250);
 		});
 	}
+	
 	
 };

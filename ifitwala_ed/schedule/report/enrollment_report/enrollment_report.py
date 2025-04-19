@@ -119,13 +119,14 @@ def get_program_chart_data(data, filters=None):
             }
         }
 
-    # 🎯 CASE 1: No school selected (one dataset, colored per bar, legend = school)
+    # CASE 1: No school selected → one bar per academic year, color-coded by school, custom legend
     year_totals = []
     labels = []
     bar_colors = []
     program_breakdown = {}
     school_color_map = {}
-    legend_map = {}
+    legend_labels = []
+    legend_colors = []
 
     color_palette = [
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
@@ -134,26 +135,28 @@ def get_program_chart_data(data, filters=None):
     color_index = 0
 
     seen_years = set()
+
     for row in data_sorted:
         year = row.academic_year
         if year in seen_years:
             continue
         seen_years.add(year)
 
-        school_abbr = row.school_abbr or row.school or "Unknown"
+        school_abbr = row.school_abbr or "Unknown"
         if school_abbr not in school_color_map:
             school_color_map[school_abbr] = color_palette[color_index % len(color_palette)]
-            legend_map[school_abbr] = school_abbr
+            legend_labels.append(school_abbr)
+            legend_colors.append(color_palette[color_index % len(color_palette)])
             color_index += 1
 
-        # Collect all rows for this academic year
+        color = school_color_map[school_abbr]
         year_rows = [r for r in data_sorted if r.academic_year == year]
         total = sum(r.enrollment_count for r in year_rows)
         breakdown_lines = [f"{r.program}: {r.enrollment_count}" for r in year_rows]
 
-        year_totals.append(total)
         labels.append(year)
-        bar_colors.append(school_color_map[school_abbr])
+        year_totals.append(total)
+        bar_colors.append(color)
         program_breakdown[year] = breakdown_lines
 
     return {
@@ -172,10 +175,11 @@ def get_program_chart_data(data, filters=None):
         "truncateLegends": False,
         "custom_options": {
             "tooltip_breakdown": program_breakdown,
-            "legend_labels": list(school_color_map.keys()),
-            "legend_colors": list(school_color_map.values())
+            "legend_labels": legend_labels,
+            "legend_colors": legend_colors
         }
     }
+
 
 
 
