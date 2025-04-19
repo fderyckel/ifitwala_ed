@@ -167,6 +167,11 @@ def get_program_chart_data(data, filters=None):
             colors.append(school_color_map[school])
             tooltip_breakdown[year_data["academic_year"]] = year_data["programs"]
 
+        print("DEBUG - Chart Components:")
+        print("Labels:", [yd["academic_year"] for yd in sorted_years])
+        print("School Colors:", school_color_map)
+        print("Tooltip Breakdown:", tooltip_breakdown)    
+
         return {
             "data": {
                 "labels": labels,

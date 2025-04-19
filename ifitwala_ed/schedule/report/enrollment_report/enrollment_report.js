@@ -44,6 +44,7 @@ frappe.query_reports["Enrollment Report"] = {
 	
 	onload: function(report) {
 		frappe.after_ajax(() => {
+			console.log("RAW CHART DATA:", report.chart);  // Add this line
 				const setupChart = () => {
 						const chart = report.chartObj?.chart;
 						if (!chart) return;
@@ -62,6 +63,7 @@ frappe.query_reports["Enrollment Report"] = {
 								formatTooltipX: label => label,
 								formatTooltipY: (value, name, opts, index) => {
 										const label = chart.data.labels[index];
+										console.log("TOOLTIP DATA FOR:", label, "BREAKDOWN:", breakdown[label]); 
 										const items = breakdown[label] || [];
 										return items.length > 0 
 												? `<strong>${label}</strong><br>${items.join("<br>")}`
@@ -72,11 +74,16 @@ frappe.query_reports["Enrollment Report"] = {
 						// 2. Create legend if needed
 						if (legend_labels.length > 0) {
 								const legend = document.createElement("div");
-								legend.className = "custom-legend";
+								legend.style.position = "absolute";
+								legend.style.bottom = "-40px";
+								legend.style.left = "20px";
 								legend.style.display = "flex";
 								legend.style.gap = "12px";
-								legend.style.marginTop = "16px";
-								legend.style.flexWrap = "wrap";
+								legend.style.padding = "8px";
+								legend.style.background = "white";
+								legend.style.border = "1px solid #ddd";
+								legend.style.borderRadius = "4px";
+								
 
 								legend_labels.forEach((label, i) => {
 										const item = document.createElement("div");
