@@ -42,4 +42,61 @@ frappe.query_reports["Enrollment Report"] = {
 	"chart_type": "bar",
 	"default_columns": 2,
 	
+	onload: function(report) {
+		frappe.after_ajax(() => {
+				let tries = 0;
+				const interval = setInterval(() => {
+						const chart = report.chartObj?.chart;
+						const breakdown = report.chart?.custom_options?.tooltip_breakdown;
+						const legend_labels = report.chart?.custom_options?.legend_labels || [];
+						const legend_colors = report.chart?.custom_options?.legend_colors || [];
+
+						if (chart) {
+								clearInterval(interval);
+
+								// 1. Handle tooltips
+								chart.options.tooltipOptions = {
+										formatTooltipX: label => label,
+										formatTooltipY: (value, name, opts, index) => {
+												const label = chart.data.labels[index];
+												const items = breakdown?.[label] || [];
+												return items.length 
+														? `<strong>${label}</strong><br>${items.join("<br>")}`
+														: `${name}: ${value}`;
+										}
+								};
+
+								// 2. Always create legend if we have labels
+								if (legend_labels.length) {
+										const wrapper = chart.wrapper.parentElement;
+										const legend = document.createElement("div");
+										legend.style.display = "flex";
+										legend.style.gap = "12px";
+										legend.style.marginTop = "16px";
+										legend.style.flexWrap = "wrap";
+
+										legend_labels.forEach((label, i) => {
+												const item = document.createElement("div");
+												item.style.display = "flex";
+												item.style.alignItems = "center";
+												item.innerHTML = `
+														<div style="width:12px; height:12px; 
+																background:${legend_colors[i] || '#999'}; 
+																border-radius:3px; margin-right:6px;">
+														</div>
+														<span>${label}</span>
+												`;
+												legend.appendChild(item);
+										});
+
+										wrapper?.appendChild(legend);
+								}
+
+								chart.update(chart.data);
+						}
+
+						if (++tries > 20) clearInterval(interval);
+				}, 250);
+		});
+	}
 };
