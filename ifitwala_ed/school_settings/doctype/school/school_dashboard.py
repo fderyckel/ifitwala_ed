@@ -3,21 +3,32 @@
 
 from frappe import _
 
-def get_data(): 
-  return {
-    "fieldname": "school",
-    "transactions": [
-      {
-        "label": _("Academic"),
-        "items": ["Academic Year", "Term", "School Calendar", "Program Enrollment"]
-      }, 
-      {
-        "label": _("Curriculum"),
-        "items": ["Program", "Course"]
-       }, 
-      {
-        "label": _("Admin"),
-        "items": ["Employee"]
-      }      
-    ]
-  }
+def get_dashboard_data(doc):
+    return {
+        "fieldname": "school",
+        "transactions": [
+            {
+                "label": _("Academic"),
+                "items": [
+                    {
+                        "type": "doctype",
+                        "name": "Program Enrollment",
+                        "filters": {"status": 1}
+                    },
+                    "Academic Year",
+                    "Term",
+                    "School Calendar"
+                ]
+            },
+            {
+                "label": _("Curriculum"),
+                "items": ["Program", "Course"]
+            },
+            {
+                "label": _("Admin"),
+                "items": ["Employee"]
+            }
+        ]
+    }
+
+
