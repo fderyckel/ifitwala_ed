@@ -14,6 +14,12 @@ def execute(filters=None):
         columns = get_course_columns(filters)
         data = get_course_data(filters)
         chart = get_course_chart_data(data)
+
+    if report_type == "Cohort": 
+        columns = get_cohort_columns(filters)
+        data = get_cohort_data(filters)
+        chart = get_cohort_chart_data(data)   
+        
     else:
         columns = get_program_columns(filters)
         data = get_program_data(filters)
@@ -149,6 +155,84 @@ def get_program_chart_data(data, filters=None):
         "truncateLegends": False
     }
 
+def get_cohort_columns(filters):
+    return [
+        {"label": "Academic Year", "fieldname": "academic_year", "fieldtype": "Link", "options": "Academic Year", "width": 200},
+        {"label": "Program", "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 200},
+        {"label": "Enrollment Count", "fieldname": "enrollment_count", "fieldtype": "Int", "width": 150},
+    ]
+
+def get_cohort_data(filters):
+    if not filters.get("student_cohort"):
+        return []
+
+    conditions = ["pe.student_cohort = %(student_cohort)s"]
+
+    if filters.get("school"):
+        conditions.append("pe.school = %(school)s")
+    if filters.get("academic_year"):
+        conditions.append("pe.academic_year = %(academic_year)s")
+    if filters.get("program"):
+        conditions.append("pe.program = %(program)s")
+
+    where_clause = "WHERE " + " AND ".join(conditions)
+
+    return frappe.db.sql(f"""
+        SELECT
+            pe.academic_year,
+            pe.program,
+            COUNT(pe.name) as enrollment_count,
+            ay.year_start_date
+        FROM `tabProgram Enrollment` pe
+        LEFT JOIN `tabAcademic Year` ay ON pe.academic_year = ay.name
+        {where_clause}
+        GROUP BY pe.academic_year, pe.program, ay.year_start_date
+        ORDER BY ay.year_start_date ASC
+    """, filters, as_dict=True)
+
+def get_cohort_chart_data(data):
+
+    # program_map[program][year] = count
+    program_map = defaultdict(lambda: defaultdict(int))
+    year_set = set()
+
+    for row in data:
+        year = row.academic_year
+        program = row.program
+        count = row.enrollment_count
+
+        program_map[program][year] += count
+        year_set.add(year)
+
+    sorted_years = sorted(year_set)
+    datasets = []
+
+    color_palette = [
+        "#7cd6fd", "#5e64ff", "#743ee2", "#ffa00a", "#00b0f0", "#ff5858", "#00a65a",
+        "#ffa3ef", "#99cc00", "#6b5b95", "#00b894", "#fab1a0"
+    ]
+    color_index = 0
+
+    for program, year_counts in program_map.items():
+        values = [year_counts.get(year, 0) for year in sorted_years]
+        datasets.append({
+            "name": program,
+            "values": values,
+            "chartType": "bar"
+        })
+
+    return {
+        "data": {
+            "labels": sorted_years,
+            "datasets": datasets
+        },
+        "type": "bar",
+        "colors": color_palette[:len(datasets)],
+        "barOptions": {
+            "stacked": True
+        },
+        "truncateLegends": False
+    }
 
 
 
