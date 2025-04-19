@@ -138,23 +138,23 @@ def get_program_chart_data(data, filters=None):
 
     # 🎯 CASE 1: No school selected → One bar per academic year (no stacking)
     if not school_filter:
-        label_rows = []
-        for row in data:
-            label = f"{row.academic_year} ({row.school_abbr})"
-            label_rows.append((label, row))
+        label_rows = sorted(
+            data,
+            key=lambda r: (r.year_start_date, r.school_abbr)
+        )
 
-        # 2. sort by year_start_date asc, then school_abbr
-        label_rows.sort(key=lambda x: (x[1].year_start_date, x[1].school_abbr))
-
-        labels = [lbl for lbl, _ in label_rows]
-
-        # 3. school_map[school][label] = total_count
-        from collections import defaultdict
-        school_map = defaultdict(lambda: defaultdict(int))
-
-        for label, row in label_rows:
+        # # 2) ordered‑unique labels built only from AY (abbr already inside)
+        labels, seen = [], set()
+        for row in label_rows: 
+            if row.academic_year not in seen:
+                labels.append(row.academic_year)
+                seen.add(row.academic_year)
+    
+        # 3) totals per school per label
+        school_map = defaultdict(lambda: defaultdict(int)) 
+        for row in data: 
             school = row.school_abbr
-            school_map[school][label] += row.enrollment_count
+            school_map[school][row.academic_year] += row.enrollment_count
 
         # 4. datasets
         color_palette = [
