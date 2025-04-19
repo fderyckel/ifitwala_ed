@@ -44,8 +44,7 @@ frappe.ui.form.on("Program Enrollment", {
 
       return {
         filters: [
-          ["Course", "name", "not in", selected_courses],
-          ["Course", "disabled", "!=", 1]
+          ["Course", "name", "not in", selected_courses]
         ],
       };
     };
