@@ -135,6 +135,12 @@ def get_program_chart_data(data, filters=None):
             }
         }
 
+    import hashlib
+
+    def _hash_color(key: str) -> str:
+        """Return a deterministic hex colour for any string."""
+        return "#" + hashlib.md5(key.encode()).hexdigest()[:6]
+
     # 🎯 CASE 1: No school selected → one dataset, distributed colours
     if not school_filter:
         # 1) sort rows chronologically, then by school abbr
@@ -148,7 +154,6 @@ def get_program_chart_data(data, filters=None):
         palette_idx   = 0
         school_colour = {}                         # {school_abbr: hex}
 
-        from frappe.utils import get_hex_color     # deterministic fallback
 
         labels, values, colours = [], [], []
 
@@ -165,7 +170,7 @@ def get_program_chart_data(data, filters=None):
                     school_colour[abbr] = base_palette[palette_idx]
                     palette_idx += 1
                 else:
-                    school_colour[abbr] = get_hex_color(abbr)  # unlimited fallback
+                    school_colour[abbr] = _hash_color(abbr)  # unlimited fallback
 
             labels.append(ay)
             values.append(r.enrollment_count)
