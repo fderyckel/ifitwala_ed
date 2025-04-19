@@ -159,7 +159,7 @@ def get_program_chart_data(data, filters=None):
         },
         "type": "bar",
         "colors": ["#7cd6fd"],
-        "barOptions": {"stacked": False},
+        "barOptions": {"stacked": True},
         "truncateLegends": False
     }
 
