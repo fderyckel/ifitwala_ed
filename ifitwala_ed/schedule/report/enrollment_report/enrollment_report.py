@@ -136,49 +136,59 @@ def get_program_chart_data(data, filters=None):
             }
         }
 
-    # 🎯 CASE 1: No school selected → One bar per academic year (no stacking)
+    # 🎯 CASE 1: No school selected → one dataset, distributed colours
     if not school_filter:
-        # 1) sort rows
+        # 1) sort rows chronologically, then by school abbr
         rows = sorted(data, key=lambda r: (r.year_start_date, r.school_abbr))
 
-        # 2) ordered‑unique labels
-        labels, seen = [], set()
+        # 2) predefined palette to draw from
+        base_palette = [
+            "#7cd6fd", "#00b894", "#ff9f43",  # add / change if you like
+            "#5e64ff", "#ff5858", "#00b0f0", "#ffa3ef"
+        ]
+        palette_idx   = 0
+        school_colour = {}                         # {school_abbr: hex}
+
+        from frappe.utils import get_hex_color     # deterministic fallback
+
+        labels, values, colours = [], [], []
+
         for r in rows:
-            if r.academic_year not in seen:
-                labels.append(r.academic_year)
-                seen.add(r.academic_year)
+            ay    = r.academic_year
+            abbr  = r.school_abbr
 
-        # 3) totals per school per label
-        school_map = defaultdict(lambda: defaultdict(int))
-        for r in data:
-            school_map[r.school_abbr][r.academic_year] += r.enrollment_count
+            if ay in labels:            # Academic Year already recorded
+                continue
 
-        # 4) build datasets → use **None** for missing values
-        color_palette = ["#7cd6fd", "#00b894", "#ff9f43",
-                        "#5e64ff", "#ff5858", "#00b0f0", "#ffa3ef"]
+            # assign colour to school if not yet done
+            if abbr not in school_colour:
+                if palette_idx < len(base_palette):
+                    school_colour[abbr] = base_palette[palette_idx]
+                    palette_idx += 1
+                else:
+                    school_colour[abbr] = get_hex_color(abbr)  # unlimited fallback
 
-        datasets = []
-        for school, counts in school_map.items():
-            values = [counts.get(label)  # returns None when key absent
-                    for label in labels]
-            datasets.append({
-                "name": school,
-                "values": values,
-                "chartType": "bar"
-            })
+            labels.append(ay)
+            values.append(r.enrollment_count)
+            colours.append(school_colour[abbr])
 
         return {
             "data": {
                 "labels": labels,
-                "datasets": datasets
+                "datasets": [{
+                    "name": "Enrollments",       # single dataset
+                    "values": values,
+                    "chartType": "bar"
+                }]
             },
             "type": "bar",
-            "colors": color_palette[:len(datasets)],
-            # 👉 stack to eliminate sideways gaps
-            "barOptions": {"stacked": True},
+            "colors": colours,                   # colour per bar
+            "barOptions": {
+                "stacked": False,
+                "distributed": True              # avoids side‑gaps
+            },
             "truncateLegends": False
         }
-
 
 def get_cohort_columns(filters):
     return [
