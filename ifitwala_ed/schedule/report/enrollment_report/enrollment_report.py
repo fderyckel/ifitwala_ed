@@ -91,7 +91,7 @@ def get_program_chart_data(data, filters=None):
             },
             "type": "bar",
             "colors": ["#7cd6fd"],
-            "barOptions": {"stacked": True},
+            "barOptions": {"stacked": False},
             "truncateLegends": False
         }
 
@@ -114,7 +114,6 @@ def get_program_chart_data(data, filters=None):
             "#7cd6fd", "#5e64ff", "#743ee2", "#ffa00a", "#00b0f0", "#ff5858", "#00a65a",
             "#ffa3ef", "#99cc00", "#6b5b95", "#00b894", "#fab1a0"
         ]
-        color_index = 0
 
         for program, year_map in program_map.items():
             values = [year_map.get(year, 0) for year in sorted_years]
