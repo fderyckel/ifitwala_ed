@@ -166,7 +166,7 @@ def get_cohort_data(filters):
     if not filters.get("student_cohort"):
         return []
 
-    conditions = ["pe.student_cohort = %(student_cohort)s"]
+    conditions = ["pe.cohort = %(student_cohort)s"]
 
     if filters.get("school"):
         conditions.append("pe.school = %(school)s")
