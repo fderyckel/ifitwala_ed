@@ -138,32 +138,29 @@ def get_program_chart_data(data, filters=None):
 
     # 🎯 CASE 1: No school selected → One bar per academic year (no stacking)
     if not school_filter:
-        label_rows = sorted(
-            data,
-            key=lambda r: (r.year_start_date, r.school_abbr)
-        )
+        # 1) sort rows
+        rows = sorted(data, key=lambda r: (r.year_start_date, r.school_abbr))
 
-        # # 2) ordered‑unique labels built only from AY (abbr already inside)
+        # 2) ordered‑unique labels
         labels, seen = [], set()
-        for row in label_rows: 
-            if row.academic_year not in seen:
-                labels.append(row.academic_year)
-                seen.add(row.academic_year)
-    
-        # 3) totals per school per label
-        school_map = defaultdict(lambda: defaultdict(int)) 
-        for row in data: 
-            school = row.school_abbr
-            school_map[school][row.academic_year] += row.enrollment_count
+        for r in rows:
+            if r.academic_year not in seen:
+                labels.append(r.academic_year)
+                seen.add(r.academic_year)
 
-        # 4. datasets
-        color_palette = [
-            "#7cd6fd", "#00b894", "#ff9f43",
-            "#5e64ff", "#ff5858", "#00b0f0", "#ffa3ef"
-        ]
+        # 3) totals per school per label
+        school_map = defaultdict(lambda: defaultdict(int))
+        for r in data:
+            school_map[r.school_abbr][r.academic_year] += r.enrollment_count
+
+        # 4) build datasets → use **None** for missing values
+        color_palette = ["#7cd6fd", "#00b894", "#ff9f43",
+                        "#5e64ff", "#ff5858", "#00b0f0", "#ffa3ef"]
+
         datasets = []
-        for idx, (school, label_counts) in enumerate(school_map.items()):
-            values = [label_counts.get(l, 0) for l in labels]
+        for school, counts in school_map.items():
+            values = [counts.get(label)  # returns None when key absent
+                    for label in labels]
             datasets.append({
                 "name": school,
                 "values": values,
@@ -177,7 +174,8 @@ def get_program_chart_data(data, filters=None):
             },
             "type": "bar",
             "colors": color_palette[:len(datasets)],
-            "barOptions": {"stacked": False},
+            # 👉 stack to eliminate sideways gaps
+            "barOptions": {"stacked": True},
             "truncateLegends": False
         }
 
