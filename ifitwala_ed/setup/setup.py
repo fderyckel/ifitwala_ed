@@ -48,21 +48,27 @@ def create_designations():
 def create_log_type():
 	data = [
 			{"doctype": "Student Log Type", "log_type": "Behaviour"},
-			{"doctype": "Student Log Type", "log_type": "Academic"},
-			{"doctype": "Student Log Type", "log_type": "Medical"}
+			{"doctype": "Student Log Type", "log_type": "Academic Concern"},
+			{"doctype": "Student Log Type", "log_type": "Medical"}, 
+			{"doctype": "Student Log Type", "log_type": "Other"}, 
+			{"doctype": "Student Log Type", "log_type": "Dress Code"}, 
+			{"doctype": "Student Log Type", "log_type": "Medical"}, 
+			{"doctype": "Student Log Type", "log_type": "Academic Honesty"}, 
+			{"doctype": "Student Log Type", "log_type": "Social-Emotional"}, 
+			{"doctype": "Student Log Type", "log_type": "Positive Attitude Towards Learning"}
 	]
 	insert_record(data)
 
-def create_attendance_code():
-	data = [
-			{"doctype": "Student Attendance Code", "attendance_code": "Present"},
-			{"doctype": "Student Attendance Code", "attendance_code": "Absent"},
-			{"doctype": "Student Attendance Code", "attendance_code": "Tardy"},
-			{"doctype": "Student Attendance Code", "attendance_code": "Excused Absence"},
-			{"doctype": "Student Attendance Code", "attendance_code": "Field Trip"},
-			{"doctype": "Student Attendance Code", "attendance_code": "Excused Tardy"}
-	]
-	insert_record(data)
+# def create_attendance_code():
+# 	data = [
+# 			{"doctype": "Student Attendance Code", "attendance_code": "Present"},
+# 			{"doctype": "Student Attendance Code", "attendance_code": "Absent"},
+# 			{"doctype": "Student Attendance Code", "attendance_code": "Tardy"},
+# 			{"doctype": "Student Attendance Code", "attendance_code": "Excused Absence"},
+# 			{"doctype": "Student Attendance Code", "attendance_code": "Field Trip"},
+# 			{"doctype": "Student Attendance Code", "attendance_code": "Excused Tardy"}
+# 	]
+# 	insert_record(data)
 
 def create_location_type():
 	data = [

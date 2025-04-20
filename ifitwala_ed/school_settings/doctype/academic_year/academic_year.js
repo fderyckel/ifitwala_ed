@@ -7,11 +7,11 @@ frappe.ui.form.on("Academic Year", {
     if (!frm.is_new() && frm.doc.status == 1) {
       frm.add_custom_button(__("Retire Academic Year"), function() {
         frappe.confirm(
-          __("This will set the status of Program enrollment and Course enrollment to 0 (aka retired). Are you sure you want to continue?"),
+          __("This will set the status of Program enrollment to 0 (aka retired). Are you sure you want to continue?"),
           function() {
             // On confirm, call the server-side method to retire the academic year
             frappe.call({
-              method: "ifitwala_ed.school_settings.doctype.academic_year.academic_year.retire_academic_year", // Update with your correct module path
+              method: "ifitwala_ed.school_settings.doctype.academic_year.academic_year.retire_academic_year", 
               args: {
                 academic_year: frm.doc.name
               },
@@ -19,7 +19,6 @@ frappe.ui.form.on("Academic Year", {
                 if (r.message) {
                   frappe.msgprint(r.message);
                   // Optionally update the form field to reflect the retired status
-                  //frm.set_value("status", 0);
                   // Reload the doc from the server so status and timestamp are synced
                   frm.reload_doc();
                 }
@@ -44,7 +43,6 @@ frappe.ui.form.on("Academic Year", {
       frm.add_custom_button(__("Create School Calendar"), () => {
         frappe.new_doc("School Calendar", {}, ay => {
           ay.academic_year = frm.doc.name; 
-          ay.school = frm.doc.school;
         })
       }); 
     }

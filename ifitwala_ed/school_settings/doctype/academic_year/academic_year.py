@@ -10,17 +10,12 @@ from frappe.model.document import Document
 class AcademicYear(Document):
 
     def autoname(self):
-        if self.school:
-            sch_abbr = frappe.get_value("School", self.school, "abbr")
-        self.name = self.academic_year_name + " ({})".format(sch_abbr) if self.school else ""
+        self.name = self.academic_year_name
 
     def validate(self):
         self.validate_duplicate()
 
-        if self.school:
-            sch_abbr = frappe.get_value("School", self.school, "abbr")
-
-        self.title = self.academic_year_name + " ({})".format(sch_abbr) if self.school else ""
+        self.title = self.academic_year_name
 
         # The start of the year has to be before the end of the academic year.
         if self.year_start_date and self.year_end_date and getdate(self.year_start_date) > getdate(self.year_end_date):
@@ -33,13 +28,12 @@ class AcademicYear(Document):
     def validate_duplicate(self):
         year = frappe.db.exists("Academic Year", 
                               {
-                                    "school": self.school,
                                     "academic_year_name": self.academic_year_name,
                                     "docstatus": ("<", 2),
                                     "name": ("!=", self.name)
                               })
         if year:
-            frappe.throw(_("An academic year with this name {0} and this school {1} already exist.").format(self.academic_year_name, get_link_to_form("School", self.school)), 
+            frappe.throw(_("An academic year with this name {0} already exist.").format(self.academic_year_name), 
                          title=_("Duplicate Entry"))
 
     def create_calendar_events(self):
@@ -65,7 +59,6 @@ class AcademicYear(Document):
                 "starts_on": getdate(self.year_start_date),
                 "ends_on": getdate(self.year_start_date),
                 "status": "Closed",
-                "school": self.school,
         	    "event_category": "Other",
         	    "event_type": "Public",
                 "all_day": "1",
@@ -85,7 +78,6 @@ class AcademicYear(Document):
         	    "starts_on": getdate(self.year_end_date),
         	    "ends_on": getdate(self.year_end_date),
         	    "status": "Closed",
-                "school": self.school,
                 "event_category": "Other",
                 "event_type": "Public",
                 "all_day": "1",

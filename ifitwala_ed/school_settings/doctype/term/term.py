@@ -10,7 +10,8 @@ from frappe.model.document import Document
 class Term(Document):
     # create automatically the name of the term.
     def autoname(self):
-        self.name = self.academic_year + " ({})".format(self.term_name) if self.term_name else ""
+        suffix = f" - {self.school}" if self.school else ""
+        self.name = f"{self.term_name} {suffix}"
 
     def validate(self):
         # first, we'll check that there are no other terms that are the same.
@@ -45,6 +46,7 @@ class Term(Document):
             .where(
                 (terms.academic_year == self.academic_year)
                 & (terms.term_name == self.term_name)
+                & ((terms.school == self.school) | ((terms.school.isnull()) & (self.school is None))) 
                 & (terms.name != self.name)
             )
         ).run()
@@ -73,7 +75,7 @@ class Term(Document):
                 "subject": "Start of the " + cstr(self.name) + " Academic Term",
                 "starts_on": getdate(self.term_start_date),
                 "ends_on": getdate(self.term_start_date),
-                "school": self.school,
+                "school": self.school if self.school else None,
         	    "event_category": "Other",
         	    "event_type": "Public",
                 "all_day": "1",
@@ -92,7 +94,7 @@ class Term(Document):
         	    "subject": "End of the " + cstr(self.name) + " Academic Term",
         	    "starts_on": getdate(self.term_end_date),
         	    "ends_on": getdate(self.term_end_date),
-                "school": self.school,
+                "school": self.school if self.school else None,
                 "event_category": "Other",
                 "event_type": "Public",
                 "all_day": "1",

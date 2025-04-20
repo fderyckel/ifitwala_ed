@@ -47,12 +47,6 @@ frappe.ui.form.on("School", {
       frappe.contacts.render_address_and_contact(frm);
     }
 
-    frm.set_query("current_academic_year", function() { 
-      return { 
-        filters: {school: frm.doc.name}
-      };
-    });
-
     frm.set_query("current_school_calendar", function() {
       return { 
         filters: {school: frm.doc.name}

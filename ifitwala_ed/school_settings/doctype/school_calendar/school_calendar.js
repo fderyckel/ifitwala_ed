@@ -3,18 +3,6 @@
 
 frappe.ui.form.on("School Calendar", { 
 
-  // run this early so filters are set as soon as the form is loaded or refreshed
-  setup: function(frm) {
-    frm.set_query("academic_year", function() {
-      // Only return academic years tied to the chosen school
-      return {
-        filters: {
-          school: frm.doc.school
-        }
-      };
-    });
-  },  
-
   refresh: function (frm) {
 
     frm.set_df_property("terms", "read_only", 1);
@@ -49,13 +37,49 @@ frappe.ui.form.on("School Calendar", {
         };
         frappe.set_route("Form", "School Schedule", route_options);
       }); 
-    }  
-  },
+    }
+    
+    // Clone Calendar button
+    if (frappe.user_roles.includes("Schedule Maker") || frappe.user_roles.includes("Academic Admin")) {
+      frm.add_custom_button(__("Clone Calendar…"), () => {
+        frappe.prompt(
+          [
+            {
+              fieldtype: "Link",
+              label: "New Academic Year",
+              fieldname: "academic_year",
+              options: "Academic Year",
+              reqd: 1
+            },
+            {
+              fieldtype: "MultiSelect",
+              label: "Target School(s)",
+              fieldname: "schools",
+              options: "School",
+              reqd: 1
+            }
+          ],
+          async (values) => {
+            await frappe.call({
+              method: "ifitwala_ed.school_settings.doctype.school_calendar.school_calendar.clone_calendar",
+              args: {
+                source_calendar: frm.doc.name,
+                academic_year: values.academic_year,
+                schools: values.schools
+              },
+              callback: r => {
+                frappe.msgprint(r.message);
+              }
+            });
+          },
+          __("Clone Calendar"),
+          __("Create")
+        );
+      });
+    }
+  },    
 
   school: function(frm) {
-
-    // Re-trigger the query whenever School changes
-    frm.refresh_field("academic_year");
 
     if (frm.doc.school) {
       frappe.call({

@@ -36,7 +36,7 @@ class SchoolCalendar(Document):
     )
     if exists:
         frappe.throw(_(
-           "There is already a School Calendar for {0} at {1}. You can only have one per academic year and school.")
+           "There is already a School Calendar for {0} at {1}. You can only have one per academic year per school.")
               .format(
                  get_link_to_form("Academic Year", self.academic_year), 
                  get_link_to_form("School", self.school)
@@ -44,8 +44,6 @@ class SchoolCalendar(Document):
         )
 
     ay = frappe.get_doc("Academic Year", self.academic_year)
-    if ay.school != self.school:
-      frappe.throw(_("The academic year {0} is not for the school {1}").format(get_link_to_form("Academic Year", self.academic_year), get_link_to_form("School", self.school)))
     self.validate_dates()
     self.validate_holiday_uniqueness()
 
@@ -194,3 +192,21 @@ def get_events(start, end, filters=None):
             '`tabSchool Calendar Holidays`.description', '`tabSchool Calendar Holidays`.color'],
  		filters = filters,
  		update={"allDay": 1})
+
+
+@frappe.whitelist()
+def clone_calendar(source_calendar, academic_year, schools):
+    src = frappe.get_doc("School Calendar", source_calendar)
+    created = []
+    for school in frappe.parse_json(schools):
+        if frappe.db.exists("School Calendar", {"academic_year": academic_year, "school": school}):
+            continue  # skip existing
+
+        dup = frappe.copy_doc(src, ignore_no_copy=True)
+        dup.school = school
+        dup.academic_year = academic_year
+        dup.calendar_name = academic_year
+        dup.save()
+        created.append(get_link_to_form("School Calendar", dup.name))
+
+    return ", ".join(created) if created else "No new calendars created (already exist)."
