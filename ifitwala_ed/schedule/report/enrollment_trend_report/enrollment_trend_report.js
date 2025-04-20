@@ -2,7 +2,13 @@
 // For license information, please see license.txt
 
 frappe.query_reports["Enrollment Trend Report"] = {
-	"filters": [
-
-	]
+  filters: [
+    {
+      fieldname: "school",
+      label: "School",
+      fieldtype: "Link",
+      options: "School",
+      reqd: 0
+    }
+  ]
 };
