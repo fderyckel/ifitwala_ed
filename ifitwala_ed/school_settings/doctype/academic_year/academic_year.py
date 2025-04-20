@@ -91,7 +91,16 @@ class AcademicYear(Document):
 
     @frappe.whitelist()
     def retire_ay(self):
-        # Retire all active Program Enrollments for this Academic Year
+
+        # 1. Retire all active Terms linked to this Academic Year
+        frappe.db.sql("""
+            UPDATE `tabTerm`
+            SET status = 0
+            WHERE academic_year = %s
+            AND status = 1
+        """, (self.name,))
+
+        # 2. Retire all active Program Enrollments for this Academic Year
         frappe.db.sql("""
             UPDATE `tabProgram Enrollment`
             SET status = 0
@@ -102,7 +111,7 @@ class AcademicYear(Document):
         # Update the Academic Year's own status to indicate it is retired
         self.db_set("status", 0)
         frappe.db.commit()
-        frappe.msgprint(_("Academic Year retired successfully."))
+        frappe.msgprint(_("Academic Year retired successfully. Set status to 0 for linked program enrollments and terms"))
         return "Academic Year retired successfully."   
 
 @frappe.whitelist()
