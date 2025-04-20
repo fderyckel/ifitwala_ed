@@ -10,10 +10,10 @@ def setup_education():
 	disable_desk_access_for_guardian_role()
 	create_designations()
 	create_log_type()
-	create_attendance_code()
+	#create_attendance_code()
 	create_location_type()
 	add_other_records()
-	update_global_search_doctypes()
+	#update_global_search_doctypes()
 
 
 def disable_desk_access_for_guardian_role():
