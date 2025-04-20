@@ -32,17 +32,8 @@ class ProgramEnrollment(Document):
 					))
 
 		# Ensure the academic year and program belong to the same school
-		if self.program and self.academic_year:
-			program_school = frappe.db.get_value("Program", self.program, "school")
-			academic_year_school = frappe.db.get_value("Academic Year", self.academic_year, "school")
-
-			if program_school and academic_year_school and program_school != academic_year_school:
-				frappe.throw(_(
-					"The selected Program {0} belongs to School {1}, but the Academic Year {2} belongs to School {3}. Please choose matching values."
-				).format(
-					get_link_to_form("Program", self.program), program_school,
-					get_link_to_form("Academic Year", self.academic_year), academic_year_school
-				), title=_("School Mismatch"))					
+		if self.program and not self.school: 
+			self.school = frappe.db.get_value("Program", self.program, "school")			
 
 	def before_submit(self):
 		self.validate_only_one_active_enrollment()
@@ -209,23 +200,32 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 
 	return frappe.db.sql(sql, params)
 
+# from JS to display AY in descending order 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_academic_years(doctype, txt, searchfield, start, page_len, filters):
+    filters = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
 
-	filters = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
-	
-	frappe.logger().info(f"[get_academic_years] Filters passed: {filters}")
-	
-	return frappe.get_all(
-		"Academic Year",
-    fields=["name"],
-    filters=filters,
-    order_by="year_start_date DESC",
-    limit_start=start,
-    limit_page_length=page_len,
-    as_list=True
-  )
+    conditions = []
+    values = {}
+
+    if txt:
+        conditions.append("name LIKE %(txt)s")
+        values["txt"] = f"%{txt}%"
+
+    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+    return frappe.db.sql(f"""
+        SELECT name
+        FROM `tabAcademic Year`
+        {where_clause}
+        ORDER BY year_start_date DESC
+        LIMIT %(start)s, %(page_len)s
+    """, {
+        **values,
+        "start": start,
+        "page_len": page_len
+    })
 
 @frappe.whitelist()
 def get_program_courses_for_enrollment(program):

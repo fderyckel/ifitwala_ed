@@ -1,114 +1,184 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+import csv
+import io
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import getdate, today
+from frappe.utils import getdate
+
+# ----------------------------
+# Helper for large batch enqueue
+# ----------------------------
+
+def _enroll_batch(tool_doctype, tool_name):
+    tool = frappe.get_doc(tool_doctype, tool_name)
+    tool._run_enroll(batch_mode=True)
 
 class ProgramEnrollmentTool(Document):
 
-	@frappe.whitelist()
-	def get_students(self):
-		students = []
+    # ----------------------------
+    # PUBLIC APIS (called from JS)
+    # ----------------------------
 
-		if not self.get_students_from:
-			frappe.throw(_("Please select an option for 'Get Students From'."))
+    @frappe.whitelist()
+    def get_students(self):
+        """Populate the child table based on UI filters and mark duplicates."""
+        students = self._fetch_students()
+        if not students:
+            frappe.throw(_("No students found with the given criteria."))
 
-		# --- COHORT PATH ---
-		if self.get_students_from == "Cohort":
-			if not self.student_cohort: 
-				frappe.throw(_("Please specify the Student Cohort."))
+        # Mark duplicates for UI preview (already enrolled in target AY+Program)
+        if self.new_program and self.new_academic_year:
+            dup_ids = set(
+                frappe.get_all(
+                    "Program Enrollment",
+                    filters={
+                        "program": self.new_program,
+                        "academic_year": self.new_academic_year,
+                        "student": ["in", [s["student"] for s in students]],
+                    },
+                    pluck="student",
+                )
+            )
+            for s in students:
+                s["already_enrolled"] = 1 if s["student"] in dup_ids else 0
 
-			student = frappe.qb.DocType("Student")
-			query = (
-				frappe.qb.from_(student)
-				.select(
-					student.name.as_("student"),
-					student.student_full_name.as_("student_name"),
-					student.cohort.as_("student_cohort")
-				)
-				.where(
-					(student.cohort == self.student_cohort) & 
-					(student.enabled == 1)
-				)
-			)
-			students = query.run(as_dict=True)
+        return students
 
-		# --- PROGRAM ENROLLMENT PATH ---
-		elif self.get_students_from == "Program Enrollment":
-			if not self.academic_year or not self.program:
-				frappe.throw(_("Please specify both Program and Academic Year."))
+    @frappe.whitelist()
+    def enroll_students(self):
+        """Kick off enrollment – async if >100, else sync."""
+        total = len(self.students)
+        if total == 0:
+            frappe.throw(_("No students in the list."))
+        if not self.new_program or not self.new_academic_year:
+            frappe.throw(_("New Program and New Academic Year are required."))
 
-			program_enrollment = frappe.qb.DocType("Program Enrollment")
-			query = (
-				frappe.qb.from_(program_enrollment)
-				.select(
-					program_enrollment.student,
-					program_enrollment.student_name,
-					program_enrollment.cohort.as_("student_cohort")
-				)
-				.where(
-					(program_enrollment.program == self.program) &
-					(program_enrollment.academic_year == self.academic_year)
-				)
-			)
+        # Enqueue if large batch
+        if total > 100:
+            job = frappe.enqueue(
+                _enroll_batch,
+                queue="long",
+                job_name=f"Enroll {total} students PE Tool",
+                tool_doctype=self.doctype,
+                tool_name=self.name,
+            )
+            frappe.msgprint(_(
+                "{0} students queued for enrollment. You will be notified when the job completes."
+            ).format(total))
+            return
 
-			if self.student_cohort:
-				query = query.where(program_enrollment.cohort == self.student_cohort)
+        # Else run inline
+        summary = self._run_enroll(batch_mode=False)
+        return summary
 
-			students = query.run(as_dict=True)
+    # ----------------------------
+    # INTERNALS
+    # ----------------------------
 
-			# Remove inactive students
-			student_list = [s.student for s in students]
+    def _fetch_students(self):
+        """Return list of dicts with keys: student, student_name, student_cohort"""
+        out = []
+        if self.get_students_from == "Cohort":
+            if not self.student_cohort:
+                frappe.throw(_("Please specify the Student Cohort."))
+            out = frappe.get_all(
+                "Student",
+                filters={"cohort": self.student_cohort, "enabled": 1},
+                fields=["name as student", "student_full_name as student_name", "cohort as student_cohort"],
+            )
+        elif self.get_students_from == "Program Enrollment":
+            if not self.academic_year or not self.program:
+                frappe.throw(_("Please specify both Program and Academic Year."))
+            filters = {"program": self.program, "academic_year": self.academic_year}
+            if self.student_cohort:
+                filters["cohort"] = self.student_cohort
+            out = frappe.get_all(
+                "Program Enrollment",
+                filters=filters,
+                fields=["student", "student_name", "cohort as student_cohort"],
+            )
+            # remove disabled students
+            ids = [s["student"] for s in out]
+            if ids:
+                disabled = set(
+                    frappe.get_all("Student", filters={"name": ["in", ids], "enabled": 0}, pluck="name")
+                )
+                out = [s for s in out if s["student"] not in disabled]
+        else:
+            frappe.throw(_(f"Unsupported option {self.get_students_from}"))
+        return out
 
-			if student_list:
-				student = frappe.qb.DocType("Student")
-				inactive = (
-					frappe.qb.from_(student)
-					.select(student.name)
-					.where((student.name.isin(student_list)) & (student.enabled == 0))
-				).run(as_dict=True)
-				inactive_ids = {s.name for s in inactive}
-				students = [s for s in students if s["student"] not in inactive_ids]
+    # Core enrollment routine (batch_mode true = called by worker)
+    def _run_enroll(self, batch_mode=False):
+        created, skipped, failed = [], [], []
+        status_flag = 1 if getattr(self, "mark_status_as_checked", 1) else 0
 
-		else:
-			frappe.throw(_("Unsupported 'Get Students From' value."))
+        year_doc = frappe.get_doc("Academic Year", self.new_academic_year)
+        enr_date = self.new_enrollment_date or getdate(year_doc.year_start_date)
 
-		if students:
-			return students
-		else:
-			frappe.throw(_("No students found with the given criteria."))
+        total = len(self.students)
+        for idx, row in enumerate(self.students):
+            try:
+                if frappe.db.exists(
+                    "Program Enrollment",
+                    {
+                        "student": row.student,
+                        "program": self.new_program,
+                        "academic_year": self.new_academic_year,
+                    },
+                ):
+                    skipped.append(row.student)
+                    continue
 
-	@frappe.whitelist()
-	def enroll_students(self):
-		total = len(self.students)
-		if not self.new_program or not self.new_academic_year:
-			frappe.throw(_("New Program and New Academic Year are required."))
+                pe = frappe.get_doc({
+                    "doctype": "Program Enrollment",
+                    "student": row.student,
+                    "student_name": row.student_name,
+                    "cohort": row.student_cohort or self.new_student_cohort,
+                    "program": self.new_program,
+                    "academic_year": self.new_academic_year,
+                    "enrollment_date": enr_date,
+                    "status": status_flag,
+                })
+                pe.insert(ignore_permissions=True)
+                created.append(row.student)
+            except Exception as e:
+                failed.append(f"{row.student}: {e}")
 
-		enrdate = self.new_enrollment_date
-		if not enrdate:
-			year = frappe.get_doc("Academic Year", self.new_academic_year)
-			enrdate = getdate(year.year_start_date)
+            if not batch_mode:
+                frappe.publish_realtime(
+                    "program_enrollment_tool",
+                    dict(progress=[idx + 1, total]),
+                    user=frappe.session.user,
+                )
 
-		for i, stud in enumerate(self.students):
-			frappe.publish_realtime("program_enrollment_tool", dict(progress=[i+1, total]), user=frappe.session.user)
+        # Build summary
+        summary = {
+            "created": len(created),
+            "skipped": len(skipped),
+            "failed": len(failed),
+        }
 
-			if stud.student:
-				pe = frappe.new_doc("Program Enrollment")
-				pe.student = stud.student
-				pe.student_name = stud.student_name
-				pe.cohort = stud.student_cohort or self.new_student_cohort
-				pe.program = self.new_program
-				pe.academic_year = self.new_academic_year
-				pe.enrollment_date = enrdate
-				
-				# Set status only if mark_status_as_checked is True 
-				if self.mark_status_as_checked: 
-					pe.status = 1  # active
-				else:
-					pe.status = 0  # inactive/unchecked
+        # Write CSV for failures if any
+        if failed:
+            csv_buf = io.StringIO()
+            csv.writer(csv_buf).writerows([[f] for f in failed])
+            fname = f"pe_tool_failures_{self.name}.csv"
+            frappe.utils.file_manager.save_file(fname, csv_buf.getvalue(), self.doctype, self.name, is_private=1)
+            summary["fail_link"] = fname
 
-				pe.save()
-
-		frappe.msgprint(_("{0} students have been enrolled.").format(total))
+        # Notify user when background job finishes
+        if batch_mode:
+            frappe.publish_realtime(
+                "program_enrollment_tool_done",
+                summary,
+                user=self.owner,
+            )
+        else:
+            frappe.msgprint(_(
+                "Created: {0}, Skipped: {1}, Failed: {2}".format(*summary.values())
+            ))
+        return summary

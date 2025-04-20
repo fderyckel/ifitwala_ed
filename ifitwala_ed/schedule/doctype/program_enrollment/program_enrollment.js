@@ -8,9 +8,6 @@ frappe.ui.form.on("Program Enrollment", {
     frm.set_query("academic_year", function () {
       return {
         query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_academic_years",
-        filters: {
-          school: frm.doc.school
-        },
       };
     });
   },
@@ -64,7 +61,6 @@ frappe.ui.form.on("Program Enrollment", {
       frm.set_query("academic_year", function () {
         return {
           query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_academic_years",
-          filters: { school: frm.doc.school }
         };
       });
     }
