@@ -141,55 +141,61 @@ def get_program_chart_data(data, filters=None):
         """Return a deterministic hex colour for any string."""
         return "#" + hashlib.md5(key.encode()).hexdigest()[:6]
 
-    # 🎯 CASE 1: No school selected → one dataset, distributed colours
+    # 🎯 CASE 1: No school selected → distributed bars
     if not school_filter:
-        # 1) sort rows chronologically, then by school abbr
-        rows = sorted(data, key=lambda r: (r.year_start_date, r.school_abbr))
+        # 1) aggregate totals per label (= AY string) and capture school abbr
+        totals = defaultdict(int)      # {label: total_enrollments}
+        label_school = {}              # {label: school_abbr}
 
-        # 2) predefined palette to draw from
+        for r in data:
+            label = r.academic_year          # e.g. "2024-2025 (ISS)"
+            totals[label] += r.enrollment_count
+            label_school[label] = r.school_abbr
+
+        # 2) sort labels by underlying date, then school
+        labels = sorted(
+            totals.keys(),
+            key=lambda lbl: (
+                next(x.year_start_date for x in data if x.academic_year == lbl),
+                label_school[lbl]
+            )
+        )
+
+        # 3) build colour map on first appearance of each school
         base_palette = [
-            "#7cd6fd", "#00b894", "#ff9f43",  # add / change if you like
+            "#7cd6fd", "#00b894", "#ff9f43",
             "#5e64ff", "#ff5858", "#00b0f0", "#ffa3ef"
         ]
-        palette_idx   = 0
-        school_colour = {}                         # {school_abbr: hex}
+        palette_idx, school_colour = 0, {}
+        import hashlib
+        def _hash_color(k): return "#" + hashlib.md5(k.encode()).hexdigest()[:6]
 
-
-        labels, values, colours = [], [], []
-
-        for r in rows:
-            ay    = r.academic_year
-            abbr  = r.school_abbr
-
-            if ay in labels:            # Academic Year already recorded
-                continue
-
-            # assign colour to school if not yet done
+        colours, values = [], []
+        for lbl in labels:
+            abbr = label_school[lbl]
             if abbr not in school_colour:
                 if palette_idx < len(base_palette):
-                    school_colour[abbr] = base_palette[palette_idx]
-                    palette_idx += 1
+                    school_colour[abbr] = base_palette[palette_idx]; palette_idx += 1
                 else:
-                    school_colour[abbr] = _hash_color(abbr)  # unlimited fallback
+                    school_colour[abbr] = _hash_color(abbr)
 
-            labels.append(ay)
-            values.append(r.enrollment_count)
             colours.append(school_colour[abbr])
+            values.append(totals[lbl])
 
         return {
             "data": {
                 "labels": labels,
                 "datasets": [{
-                    "name": "Enrollments",       # single dataset
+                    "name": "Enrollments",
                     "values": values,
                     "chartType": "bar"
                 }]
             },
             "type": "bar",
-            "colors": colours,                   # colour per bar
+            "colors": colours,
             "barOptions": {
                 "stacked": False,
-                "distributed": True              # avoids side‑gaps
+                "distributed": True
             },
             "truncateLegends": False
         }
