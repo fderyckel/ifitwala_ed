@@ -141,61 +141,57 @@ def get_program_chart_data(data, filters=None):
         """Return a deterministic hex colour for any string."""
         return "#" + hashlib.md5(key.encode()).hexdigest()[:6]
 
-    # 🎯 CASE 1: No school selected → distributed bars
+    # 🎯 CASE 1: No school filter → one dataset, distributed colours
     if not school_filter:
-        # 1) aggregate totals per label (= AY string) and capture school abbr
-        totals = defaultdict(int)      # {label: total_enrollments}
-        label_school = {}              # {label: school_abbr}
+        # 1) aggregate totals for each (AY + School) label
+        totals        = defaultdict(int)       # {label: total}
+        label_school  = {}                     # {label: abbr}
+        year_start    = {}                     # {label: date}
 
         for r in data:
-            label = r.academic_year          # e.g. "2024-2025 (ISS)"
-            totals[label] += r.enrollment_count
-            label_school[label] = r.school_abbr
+            lbl = r.academic_year             # already contains "(ISS)"
+            totals[lbl]       += r.enrollment_count
+            label_school[lbl]  = r.school_abbr
+            year_start[lbl]    = r.year_start_date
 
-        # 2) sort labels by underlying date, then school
-        labels = sorted(
-            totals.keys(),
-            key=lambda lbl: (
-                next(x.year_start_date for x in data if x.academic_year == lbl),
-                label_school[lbl]
-            )
-        )
+        # 2) stable chronological order then by school abbr
+        labels = sorted(totals.keys(),
+                        key=lambda l: (year_start[l], label_school[l]))
 
-        # 3) build colour map on first appearance of each school
-        base_palette = [
-            "#7cd6fd", "#00b894", "#ff9f43",
-            "#5e64ff", "#ff5858", "#00b0f0", "#ffa3ef"
-        ]
+        # 3) colour map – first N from palette, then md5‑hash fallback
+        base_palette = ["#7cd6fd", "#00b894", "#ff9f43",
+                        "#5e64ff", "#ff5858", "#00b0f0", "#ffa3ef"]
         palette_idx, school_colour = 0, {}
-        import hashlib
-        def _hash_color(k): return "#" + hashlib.md5(k.encode()).hexdigest()[:6]
 
-        colours, values = [], []
+        import hashlib
+        def _hash_color(txt):
+            return "#" + hashlib.md5(txt.encode()).hexdigest()[:6]
+
+        values, colours = [], []
         for lbl in labels:
             abbr = label_school[lbl]
             if abbr not in school_colour:
-                if palette_idx < len(base_palette):
-                    school_colour[abbr] = base_palette[palette_idx]; palette_idx += 1
-                else:
-                    school_colour[abbr] = _hash_color(abbr)
-
-            colours.append(school_colour[abbr])
+                school_colour[abbr] = (base_palette[palette_idx]
+                                        if palette_idx < len(base_palette)
+                                        else _hash_color(abbr))
+                palette_idx += 1
             values.append(totals[lbl])
+            colours.append(school_colour[abbr])
 
         return {
             "data": {
                 "labels": labels,
                 "datasets": [{
-                    "name": "Enrollments",
+                    "name": "Enrollments",          # single dataset
                     "values": values,
                     "chartType": "bar"
                 }]
             },
             "type": "bar",
-            "colors": colours,
+            "colors": colours,                      # one colour per bar
             "barOptions": {
                 "stacked": False,
-                "distributed": True
+                "distributed": True                 # no side‑gaps
             },
             "truncateLegends": False
         }
