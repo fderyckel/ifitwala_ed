@@ -3,9 +3,6 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, add_days
-from frappe.utils import add_days, flt, get_datetime_str, nowdate
-from ifitwala_ed import get_default_organization
 
 
 def get_root_of(doctype):

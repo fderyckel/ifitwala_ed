@@ -4,7 +4,6 @@
 import frappe
 from frappe import _
 from ifitwala_ed.setup.utils import insert_record
-from frappe.desk.doctype.global_search_settings.global_search_settings import update_global_search_doctypes
 
 def setup_education():
 	disable_desk_access_for_guardian_role()
