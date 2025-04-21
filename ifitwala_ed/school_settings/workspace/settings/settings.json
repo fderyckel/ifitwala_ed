@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"SmAh1J3Oa3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Dashboard\",\"col\":3}},{\"id\":\"iQwNMsHOnV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Enrollment Report\",\"col\":3}},{\"id\":\"OvNhvhv77w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Admin Dashboard\",\"col\":3}},{\"id\":\"tu9mEuIi00\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Group\",\"col\":3}},{\"id\":\"ZGOFPWekLC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"l0x8umx3AZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Org and School\",\"col\":4}},{\"id\":\"-wlMmbli5N\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & calendars\",\"col\":4}},{\"id\":\"9aXFnNP1ub\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}},{\"id\":\"qTX3BEK67B\",\"type\":\"card\",\"data\":{\"card_name\":\"Health\",\"col\":4}},{\"id\":\"VM1mCwF6pW\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"xKozqy_a84\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fzg1kF2Gr1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Schedule</span>\",\"col\":12}},{\"id\":\"T0f0dXZid9\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"XFxZlnRb64\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"7sRer6iX3b\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}}]",
+ "content": "[{\"id\":\"SmAh1J3Oa3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Dashboard\",\"col\":3}},{\"id\":\"OvNhvhv77w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Admin Dashboard\",\"col\":3}},{\"id\":\"tu9mEuIi00\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Group\",\"col\":3}},{\"id\":\"ZGOFPWekLC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fzg1kF2Gr1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students, Schedule &amp; Enrollments</span>\",\"col\":12}},{\"id\":\"T0f0dXZid9\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"7sRer6iX3b\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"XFxZlnRb64\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"VM1mCwF6pW\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"xKozqy_a84\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"lXOrx_IXWL\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Settings</b></span>\",\"col\":12}},{\"id\":\"l0x8umx3AZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Org and School\",\"col\":4}},{\"id\":\"-wlMmbli5N\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & calendars\",\"col\":4}},{\"id\":\"9aXFnNP1ub\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}}]",
  "creation": "2025-04-02 12:29:42.749017",
  "custom_blocks": [],
  "docstatus": 0,
@@ -8,40 +8,11 @@
  "for_user": "",
  "hide_custom": 0,
  "icon": "setting-gear",
- "idx": 0,
+ "idx": 1,
  "indicator_color": "green",
  "is_hidden": 0,
  "label": "Settings",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Health",
-   "link_count": 2,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Patient",
-   "link_count": 0,
-   "link_to": "Student Patient",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Patient Visit",
-   "link_count": 0,
-   "link_to": "Student Patient Visit",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -357,7 +328,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-04-11 21:31:43.771311",
+ "modified": "2025-04-21 20:15:50.017646",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Settings",
@@ -366,7 +337,14 @@
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
- "roles": [],
+ "roles": [
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Administrator"
+  }
+ ],
  "sequence_id": 5.0,
  "shortcuts": [
   {
@@ -389,14 +367,6 @@
    "label": "Admin Dashboard",
    "link_to": "Admin Dashboard",
    "type": "Dashboard"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Enrollment Report",
-   "link_to": "Enrollment Report",
-   "report_ref_doctype": "Program Enrollment",
-   "type": "Report"
   }
  ],
  "title": "Settings"

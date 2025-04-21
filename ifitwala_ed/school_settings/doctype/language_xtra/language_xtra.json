@@ -71,7 +71,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-17 10:30:59.253279",
+ "modified": "2025-04-21 22:08:40.420904",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Language Xtra",
@@ -113,9 +113,15 @@
   {
    "read": 1,
    "role": "Employee"
+  },
+  {
+   "read": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

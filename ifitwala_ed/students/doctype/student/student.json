@@ -281,7 +281,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-27 16:44:25.503032",
+ "modified": "2025-04-21 22:11:48.568828",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
@@ -338,8 +338,14 @@
    "read": 1,
    "report": 1,
    "role": "Counselor"
+  },
+  {
+   "read": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "student_full_name, student_preferred_name, student_first_name, student_last_name",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
