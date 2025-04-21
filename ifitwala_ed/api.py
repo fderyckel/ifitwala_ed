@@ -22,6 +22,15 @@ def set_default_workspace_based_on_roles(doc, method):
     if doc.user_type != "System User":
         return
 
+    # Do not override if a manual workspace is already set
+    if doc.default_workspace:
+        frappe.msgprint(
+            f"This user already has a default workspace set to <b>{doc.default_workspace}</b>. No automatic update applied.",
+            title="Default Workspace Preserved",
+            indicator="yellow"
+        )
+        return
+
     roles = [r.role for r in doc.roles]
     new_workspace = None
 
@@ -31,17 +40,16 @@ def set_default_workspace_based_on_roles(doc, method):
         new_workspace = "Settings"
 
     if new_workspace:
+        doc.default_workspace = new_workspace
         frappe.msgprint(
-            f"This user’s default workspace will be set to <b>{new_workspace}</b>.",
+            f"This user’s default workspace has been set to <b>{new_workspace}</b> based on their role.",
             title="Default Workspace Updated",
             indicator="blue"
         )
 
-        if doc.default_workspace != new_workspace:
-            doc.default_workspace = new_workspace
+        # Send notification to the user
+        frappe.enqueue(send_workspace_notification, user=doc.name, workspace=new_workspace)
 
-            # Send notification to the user
-            frappe.enqueue(send_workspace_notification, user=doc.name, workspace=new_workspace)
 
 def send_workspace_notification(user, workspace):
     if not frappe.db.exists("User", user):
