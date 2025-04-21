@@ -19,4 +19,9 @@ def redirect_student_to_portal():
     # 🏥 Redirect Nurses to Health Workspace (Desk app)
     elif "Nurse" in roles:
         frappe.local.response["type"] = "redirect"
-        frappe.local.response["location"] = "/app/health"            
+        frappe.local.response["location"] = "/app/health"
+
+    # 🏥 Redirect Nurses to Health Workspace (Desk app)
+    elif "Academic Admin" in roles:
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = "/app/settings"             
