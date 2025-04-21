@@ -5,9 +5,10 @@ import frappe
 
 def redirect_student_to_portal():
     user = frappe.session.user
+    roles = frappe.get_roles(user)
 
     # Only proceed if the user has the Student role
-    if "Student" in frappe.get_roles(user):
+    if "Student" in roles:
         # Check that the user has a linked Student record
         if frappe.db.exists("Student", {"student_user_id": user}):
             frappe.local.response["type"] = "redirect"
