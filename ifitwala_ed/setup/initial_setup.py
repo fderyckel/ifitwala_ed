@@ -4,6 +4,8 @@
 import frappe
 from frappe import _
 # ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist()
 def is_setup_done():
     """Return True‹bool› if at least one Organization exists OR the flag is set."""
     return bool(frappe.db.exists("Organization")) or frappe.db.get_single_value(
