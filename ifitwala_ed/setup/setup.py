@@ -1,16 +1,19 @@
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
+import os
 import frappe
 from frappe import _
 from ifitwala_ed.setup.utils import insert_record
+from frappe.utils import get_files_path
 
 def setup_education():
-	create_roles_with_homepage()
-	create_designations()
-	create_log_type()
-	create_location_type()
-	add_other_records()
+  create_roles_with_homepage()
+  create_designations()
+  create_log_type()
+  create_location_type()
+  add_other_records() 
+  create_student_file_folder()
 
 def create_roles_with_homepage():
     """Create or update roles with home_page and desk_access."""
@@ -109,3 +112,16 @@ def add_other_records(country=None):
 		{'doctype': 'Employment Type', 'employment_type_name': _('Apprentice')},
 	]
 	insert_record(records)	
+      
+def create_student_file_folder():
+	records = [{
+		"doctype": "File",
+		"file_name": "student",
+		"is_folder": 1,
+		"folder": "Home"
+	}]
+	insert_record(records)
+  
+	# 🔐 Ensure the physical folder also exists
+	os.makedirs(os.path.join(get_files_path(), "student"), exist_ok=True)
+	
