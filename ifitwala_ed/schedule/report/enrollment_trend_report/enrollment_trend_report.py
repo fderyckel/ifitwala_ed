@@ -41,12 +41,13 @@ def execute(filters=None):
         })
 
     columns = [
-        {"label": _("Academic Year"), "fieldname": "academic_year", "fieldtype": "Link", "options": "Academic Year", "width": 200},
-        {"label": _("Enrollment Count"), "fieldname": "enrollment_count", "fieldtype": "Int", "width": 150},
+        {"label": _("Academic Year"), "fieldname": "academic_year", "fieldtype": "Link", "options": "Academic Year", "width": 150},
+        {"label": _("School"), "fieldname": "school", "fieldtype": "Link", "options": "School", "width": 250},
+        {"label": _("Enrollment Count"), "fieldname": "enrollment_count", "fieldtype": "Int", "width": 100},
     ]
 
     # For table output — optional (flat view, not charted)
-    data = [[r.academic_year, r.enrollment_count] for r in rows]
+    data = [[r.academic_year, r.school, r.enrollment_count] for r in rows]
 
     chart = {
         "data": {
