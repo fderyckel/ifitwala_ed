@@ -6,32 +6,43 @@ from frappe import _
 from ifitwala_ed.setup.utils import insert_record
 
 def setup_education():
-	disable_desk_access_for_guardian_role()
+	create_roles_with_homepage()
 	create_designations()
 	create_log_type()
-	#create_attendance_code()
 	create_location_type()
 	add_other_records()
-	#update_global_search_doctypes()
+
+def create_roles_with_homepage():
+    """Create or update roles with home_page and desk_access."""
+    roles = [
+        {"role_name": "Student", "desk_access": 0, "home_page": "/sp"},
+        {"role_name": "Guardian", "desk_access": 0, "home_page": "/sp"},
+        {"role_name": "Nurse", "desk_access": 1, "home_page": "/app/health"},
+        {"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/settings"},
+    ]
+
+    for role in roles:
+        existing = frappe.db.exists("Role", role["role_name"])
+        if existing:
+            doc = frappe.get_doc("Role", role["role_name"])
+            updated = False
+
+            if doc.home_page != role["home_page"]:
+                doc.home_page = role["home_page"]
+                updated = True
+            if doc.desk_access != role["desk_access"]:
+                doc.desk_access = role["desk_access"]
+                updated = True
+
+            if updated:
+                doc.save(ignore_permissions=True)
+        else:
+            frappe.get_doc({
+                "doctype": "Role",
+                **role
+            }).insert(ignore_permissions=True)
 
 
-def disable_desk_access_for_guardian_role():
-	try:
-		guardian_role = frappe.get_doc("Role", "Guardian")
-	except frappe.DoesNotExistError:
-		create_guardian_role()
-		return
-
-	guardian_role.desk_access = 0
-	guardian_role.save()
-
-def create_guardian_role():
-	guardian_role = frappe.get_doc({
-		"doctype": "Role",
-		"role_name": "Guardian",
-		"desk_access": 0
-	})
-	guardian_role.insert()
 
 def create_designations():
 	data = [

@@ -160,7 +160,10 @@ doc_events = {
     }, 
     "User":{
       "after_insert": "frappe.contacts.doctype.contact.contact.update_contact",
-      "validate": "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role", 
+      "validate": [ 
+        "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role", 
+        "ifitwala_ed.hooks.user_hooks.set_default_workspace_based_on_roles"
+      ], 
       "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions"
     }
 }
