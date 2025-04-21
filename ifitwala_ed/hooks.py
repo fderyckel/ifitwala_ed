@@ -86,6 +86,7 @@ after_login = "ifitwala_ed.api.redirect_student_to_portal"
 
 # before_install = "ifitwala.install.before_install"
 after_install = "ifitwala_ed.setup.setup.setup_education"
+fixtures = ["Custom Field"]
 
 # Uninstallation
 # ------------
