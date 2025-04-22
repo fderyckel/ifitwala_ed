@@ -137,21 +137,25 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
       }
 
       let birthday_icon = '';
-      if (student.birth_date) {
-        const birth = frappe.datetime.str_to_obj(student.birth_date);
-        const today = frappe.datetime.str_to_obj(frappe.datetime.now_date());
-
-        // normalize to current year
-        const birth_this_year = new Date(today.getFullYear(), birth.getMonth(), birth.getDate());
-        const diff_days = Math.floor((birth_this_year - today) / (1000 * 60 * 60 * 24));
-
-        if (Math.abs(diff_days) <= 5) {
-          const formatted = frappe.format_date(birth, "d MMMM");
-          birthday_icon = `
-            <span class="birthday-icon" title="Birthday on ${formatted}">🎂</span>
-          `;
+      try {
+        if (student.birth_date) {
+          const birth = frappe.datetime.str_to_obj(student.birth_date);
+          const today = frappe.datetime.str_to_obj(frappe.datetime.now_date());
+      
+          const birth_this_year = new Date(today.getFullYear(), birth.getMonth(), birth.getDate());
+          const diff_days = Math.floor((birth_this_year - today) / (1000 * 60 * 60 * 24));
+      
+          if (Math.abs(diff_days) <= 5) {
+            const formatted = moment(birth).format("D MMMM");
+            birthday_icon = `
+              <span class="birthday-icon" title="Birthday on ${formatted}">🎂</span>
+            `;
+          }
         }
+      } catch (e) {
+        console.warn("Invalid birth_date for student", student.student, e);
       }
+      
   
       $('#student-cards').append(`
         <div class="student-card">
