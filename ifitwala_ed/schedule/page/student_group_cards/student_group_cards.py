@@ -64,7 +64,19 @@ def fetch_student_groups(program=None, course=None, cohort=None):
 def fetch_students(student_group, start=0, page_length=25):
     students = get_student_group_students(student_group, start, page_length)
     total_students = frappe.db.count("Student Group Student", {"parent": student_group})
-    return {"students": students, "start": start + page_length, "total": total_students}
+    group_doc = frappe.get_doc("Student Group", student_group)
+    group_info = {
+        "name": group_doc.name,
+        "program": group_doc.program,
+        "course": group_doc.course,
+        "cohort": group_doc.cohort
+    }
+    return {
+        "students": students,
+        "start": start + page_length,
+        "total": total_students,
+        "group_info": group_info
+    }
 
 @frappe.whitelist()
 def reset_student_fetch(student_group):

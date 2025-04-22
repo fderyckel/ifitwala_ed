@@ -64,10 +64,10 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
   let total_students = 0;
   
   function update_title() {
-    const group = student_group_field.get_value();
-    const program = program_field.get_value();
-    const course = course_field.get_value();
-    const cohort = cohort_field.get_value();
+    const group = group_info.name;
+    const program = group_info.program;
+    const course = group_info.course;
+    const cohort = group_info.cohort;
   
     if (!group) {
       $('#student-group-title').html('');
@@ -84,12 +84,13 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
     let subtitle_html = subtitle_parts.length ? `<div class="subtitle">${subtitle_parts.join(' – ')}</div>` : '';
   
     $('#student-group-title').html(`${title_html}${subtitle_html}`);
-
-
   }
 
   
   function fetch_students(reset = false) {
+
+    let group_info = {};
+
     const student_group = student_group_field.get_value();
     if (!student_group) return;
     if (reset) start = 0; 
@@ -101,6 +102,7 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
         if (reset) $('#student-cards').html('');
         start = data.message.start;
         total_students = data.message.total;
+        group_info = data.message.group_info || {}; 
         render_students(data.message.students);
         $('#load-more').toggle(start < total_students);
         update_title();
