@@ -74,23 +74,18 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
       return;
     }
   
-    let title = `<h2>${group}</h2>`;
-    let subtitle = '';
+    let title_html = `<h2>${group}</h2>`;
+    let subtitle_parts = [];
   
-    if (course) {
-      subtitle += `Course: ${course}`;
-    } else if (cohort) {
-      subtitle += `Cohort: ${cohort}`;
-    }
+    if (program) subtitle_parts.push(program);
+    if (course) subtitle_parts.push(course);
+    if (cohort) subtitle_parts.push(cohort);
   
-    if (program) {
-      subtitle += `${subtitle ? ' • ' : ''}Program: ${program}`;
-    }
+    let subtitle_html = subtitle_parts.length ? `<div class="subtitle">${subtitle_parts.join(' – ')}</div>` : '';
   
-    $('#student-group-title').html(`
-      ${title}
-      ${subtitle ? `<div class="subtitle">${subtitle}</div>` : ''}
-    `);
+    $('#student-group-title').html(`${title_html}${subtitle_html}`);
+
+
   }
 
   
@@ -139,18 +134,36 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
           </span>
         `;
       }
+
+      let birthday_icon = '';
+      if (student.birth_date) {
+        const birth = frappe.datetime.str_to_obj(student.birth_date);
+        const today = frappe.datetime.str_to_obj(frappe.datetime.now_date());
+
+        // normalize to current year
+        const birth_this_year = new Date(today.getFullYear(), birth.getMonth(), birth.getDate());
+        const diff_days = Math.floor((birth_this_year - today) / (1000 * 60 * 60 * 24));
+
+        if (Math.abs(diff_days) <= 5) {
+          const formatted = frappe.datetime.format_date(birth, "d MMMM");
+          birthday_icon = `
+            <span class="birthday-icon" title="Birthday on ${formatted}">🎂</span>
+          `;
+        }
+      }
   
       $('#student-cards').append(`
         <div class="student-card">
           <a href="/app/student/${student_id}" target="_blank" rel="noopener">
             <img src="${img_src}" class="student-image">
           </a>
-          <div class="student-name">
-            <a href="/app/student/${student_id}" target="_blank" rel="noopener">
-              ${student_name}
-            </a>
-            ${health_icon}
-          </div>
+        <div class="student-name">
+          <a href="/app/student/${student_id}" target="_blank" rel="noopener">
+            ${student_name}
+          </a>
+          ${health_icon}
+          ${birthday_icon}
+        </div>
           <div class="student-preferred-name">${preferred_name}</div>
         </div>
       `);

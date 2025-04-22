@@ -76,6 +76,13 @@
   display: inline-block;
 }
 
+.birthday-icon {
+  font-size: 18px;
+  margin-left: 6px;
+  vertical-align: middle;
+  cursor: default;
+}
+
 /* Tooltip bubble */
 .medical-alert::after {
   content: attr(data-tooltip);

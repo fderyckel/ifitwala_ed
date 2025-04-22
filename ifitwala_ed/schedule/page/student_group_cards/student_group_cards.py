@@ -17,7 +17,7 @@ def get_student_group_students(student_group, start=0, page_length=25):
     student_details = frappe.db.get_values(
         "Student", 
         {"name": ("in", student_ids)}, 
-        ["name", "student_full_name", "student_preferred_name", "student_image"], 
+        ["name", "student_full_name", "student_preferred_name", "student_image", "student_date_of_birth"], 
         as_dict=True
     )
     student_dict = {s["name"]: s for s in student_details} 
@@ -41,7 +41,8 @@ def get_student_group_students(student_group, start=0, page_length=25):
             "student_name": student_info.get("student_full_name", student_name),
             "preferred_name": student_info.get("student_preferred_name", ""),
             "student_image": student_info.get("student_image", ""), 
-            "medical_info": student_info.get("medical_info", "")
+            "medical_info": student_info.get("medical_info", ""), 
+            "birth_date": student_info.get("student_date_of_birth")
         })
     
     return students
