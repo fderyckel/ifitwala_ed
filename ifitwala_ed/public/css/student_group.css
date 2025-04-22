@@ -133,3 +133,25 @@
       grid-template-columns: 1fr;
   }
 }
+
+.filters-and-title {
+  position: sticky;
+  top: 65px; /* below navbar and filters */
+  background: #fff;
+  z-index: 10;
+  padding: 10px 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+#student-group-title {
+  text-align: center;
+  margin: 0;
+}
+
+#student-group-title h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  padding: 5px 10px;
+  color: #333;
+}

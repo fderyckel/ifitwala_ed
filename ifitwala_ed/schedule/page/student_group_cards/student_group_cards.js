@@ -52,18 +52,41 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
 
   // Main content and button
   $(wrapper).append(`
-    <div id="student-cards" class="student-grid"></div>
+    <div class="filters-and-title">
+      <div id="student-group-title" class="student-group-title"></div>
+    </div>
+    <div id="student-cards" class="student-grid container"></div>
     <button id="load-more" class="btn btn-primary">Load More</button>
   `);
 
   let start = 0;
   const page_length = 25;
   let total_students = 0;
+  
+  function update_title() {
+    const group = student_group_field.get_value();
+    const program = program_field.get_value();
+    const course = course_field.get_value();
+    const cohort = cohort_field.get_value();
+  
+    if (!group) {
+      $('#student-group-title').html('');
+      return;
+    }
+  
+    let parts = [group];
+    if (course) parts.push(`+ ${course}`);
+    if (cohort && !course) parts.push(`+ ${cohort}`);
+    if (program) parts.push(`(${program})`);
+  
+    $('#student-group-title').html(`<h2>${parts.join(' ')}</h2>`);
+  }
 
+  
   function fetch_students(reset = false) {
     const student_group = student_group_field.get_value();
     if (!student_group) return;
-    if (reset) start = 0;
+    if (reset) start = 0; 
 
     frappe.call({
       method: 'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students',
@@ -74,8 +97,11 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
         total_students = data.message.total;
         render_students(data.message.students);
         $('#load-more').toggle(start < total_students);
+        update_title();
       }
     });
+
+    
   }
 
   // Function to render the students' cards
