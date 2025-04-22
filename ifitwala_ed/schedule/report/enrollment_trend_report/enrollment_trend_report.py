@@ -73,7 +73,7 @@ def execute(filters=None):
             "options": "Program" if school_filter else "School",
             "width": 200
         },
-        {"label": _("Enrollment Count"), "fieldname": "enrollment_count", "fieldtype": "Int", "width": 120}
+        {"label": _("Enrollment Count"), "fieldname": "enrollment_count", "fieldtype": "Int", "width": 150, "align": "center"}
     ]
 
     # 📋 Data

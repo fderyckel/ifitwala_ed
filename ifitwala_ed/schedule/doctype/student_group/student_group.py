@@ -138,10 +138,10 @@ class StudentGroup(Document):
 				# Use term from Student Group if set
 				conflict_term = self.term
 
-				# If not set, try to infer term from Program Enrollment + Course
+				# We use `term_start` from Program Enrollment Course for conflict check.
 				if not conflict_term:
 					conflict_term_result = frappe.db.sql("""
-						SELECT pe.term
+						SELECT pec.term_start
 						FROM `tabProgram Enrollment` pe
 						INNER JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
 						WHERE pe.student = %s
@@ -151,8 +151,10 @@ class StudentGroup(Document):
 						LIMIT 1
 					""", (student.student, self.course, self.academic_year), as_dict=1)
 
-					# Only use the term if it's present
-					conflict_term = conflict_term_result[0].term if conflict_term_result and conflict_term_result[0].term else None
+					conflict_term = (
+						conflict_term_result[0].term_start
+						if conflict_term_result and conflict_term_result[0].term_start else None
+					)
 
 				# Only check for duplicate group if we now have a term
 				if conflict_term:
@@ -319,8 +321,11 @@ def get_program_enrollment(academic_year, term=None, program=None, cohort=None, 
 	params = {"academic_year": academic_year}
 
 	joins = ""
+	if course or term:
+		joins = "INNER JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name"
+
 	if term:
-		conditions.append("pe.term = %(term)s")
+		conditions.append("pec.term_start = %(term)s")
 		params["term"] = term
 	if program:
 		conditions.append("pe.program = %(program)s")
@@ -329,7 +334,6 @@ def get_program_enrollment(academic_year, term=None, program=None, cohort=None, 
 		conditions.append("pe.cohort = %(cohort)s")
 		params["cohort"] = cohort
 	if course:
-		joins = "INNER JOIN `tabProgram Enrollment Course` pec ON pe.name = pec.parent"
 		conditions.append("pec.course = %(course)s")
 		params["course"] = course
 
@@ -342,6 +346,7 @@ def get_program_enrollment(academic_year, term=None, program=None, cohort=None, 
 	"""
 
 	return frappe.db.sql(query, params, as_dict=1)
+
 
 
 ########################## Permissions ##########################
