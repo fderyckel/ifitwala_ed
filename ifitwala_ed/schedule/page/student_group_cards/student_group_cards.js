@@ -145,7 +145,7 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
         const diff_days = Math.floor((birth_this_year - today) / (1000 * 60 * 60 * 24));
 
         if (Math.abs(diff_days) <= 5) {
-          const formatted = frappe.datetime.format_date(birth, "d MMMM");
+          const formatted = frappe.format_date(birth, "d MMMM");
           birthday_icon = `
             <span class="birthday-icon" title="Birthday on ${formatted}">🎂</span>
           `;
