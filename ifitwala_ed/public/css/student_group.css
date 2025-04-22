@@ -155,3 +155,10 @@
   padding: 5px 10px;
   color: #333;
 }
+
+#student-group-title .subtitle {
+  font-size: 15px;
+  color: #666;
+  margin-top: 4px;
+  font-weight: 400;
+}

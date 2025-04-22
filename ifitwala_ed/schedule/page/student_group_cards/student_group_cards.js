@@ -74,12 +74,23 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
       return;
     }
   
-    let parts = [group];
-    if (course) parts.push(`+ ${course}`);
-    if (cohort && !course) parts.push(`+ ${cohort}`);
-    if (program) parts.push(`(${program})`);
+    let title = `<h2>${group}</h2>`;
+    let subtitle = '';
   
-    $('#student-group-title').html(`<h2>${parts.join(' ')}</h2>`);
+    if (course) {
+      subtitle += `Course: ${course}`;
+    } else if (cohort) {
+      subtitle += `Cohort: ${cohort}`;
+    }
+  
+    if (program) {
+      subtitle += `${subtitle ? ' • ' : ''}Program: ${program}`;
+    }
+  
+    $('#student-group-title').html(`
+      ${title}
+      ${subtitle ? `<div class="subtitle">${subtitle}</div>` : ''}
+    `);
   }
 
   
