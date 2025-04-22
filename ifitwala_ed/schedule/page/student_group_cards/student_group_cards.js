@@ -62,6 +62,7 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
   let start = 0;
   const page_length = 25;
   let total_students = 0;
+  let group_info = {};
   
   function update_title() {
     const group = group_info.name;
@@ -88,8 +89,6 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
 
   
   function fetch_students(reset = false) {
-
-    let group_info = {};
 
     const student_group = student_group_field.get_value();
     if (!student_group) return;
