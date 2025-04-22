@@ -38,27 +38,41 @@ class Term(Document):
 
 
     def validate_duplicate(self):
-        ## this might not be necessary... because we have a duplicateEntryError with primary key. 
         terms = frappe.qb.DocType("Term")
-        
-        if self.school: 
-            school_condition = (terms.school == self.school) 
-        else: 
-            school_condition = terms.school.isnull()
 
+        # Prevent boolean contamination by explicitly branching
+        if self.school:
+            # Case: school is defined → match same school
+            query = (
+                frappe.qb.from_(terms)
+                .select(terms.name)
+                .where(
+                    (terms.academic_year == self.academic_year)
+                    & (terms.term_name == self.term_name)
+                    & (terms.school == self.school)
+                    & (terms.name != self.name)
+                )
+            ).run()
+        else:
+            # Case: school is None → match where school IS NULL
+            query = (
+                frappe.qb.from_(terms)
+                .select(terms.name)
+                .where(
+                    (terms.academic_year == self.academic_year)
+                    & (terms.term_name == self.term_name)
+                    & terms.school.isnull()
+                    & (terms.name != self.name)
+                )
+            ).run()
 
-        query = (
-            frappe.qb.from_(terms)
-            .select(terms.name)
-            .where(
-                (terms.academic_year == self.academic_year)
-                & (terms.term_name == self.term_name)
-                & school_condition
-                & (terms.name != self.name)
-            )
-        ).run()
         if query:
-            frappe.throw(_("A term with this academic year {0} and this name {1} already exisit. Please adjust the name if necessary.").format(self.academic_year, self.term_name))
+            frappe.throw(
+                _("A term with this academic year {0} and this name {1} already exists. Please adjust the name if necessary.").format(
+                    self.academic_year, self.term_name
+                )
+            )
+
 
     def create_calendar_events(self):
         if self.at_start:
