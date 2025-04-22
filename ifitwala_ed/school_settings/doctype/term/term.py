@@ -40,13 +40,20 @@ class Term(Document):
     def validate_duplicate(self):
         ## this might not be necessary... because we have a duplicateEntryError with primary key. 
         terms = frappe.qb.DocType("Term")
+        
+        if self.school: 
+            school_condition = (terms.school == self.school) 
+        else: 
+            school_condition = terms.school.isnull()
+
+
         query = (
             frappe.qb.from_(terms)
             .select(terms.name)
             .where(
                 (terms.academic_year == self.academic_year)
                 & (terms.term_name == self.term_name)
-                & ((terms.school == self.school) | ((terms.school.isnull()) & (self.school is None))) 
+                & school_condition
                 & (terms.name != self.name)
             )
         ).run()
