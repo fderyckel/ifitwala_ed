@@ -213,23 +213,4 @@ class Student(Document):
 		except Exception as e:
 			frappe.log_error(title=_("Student Image Error"),message=f"Error handling student image for {self.name}: {e}")
 			frappe.msgprint(_("Error handling student image for {0}: {1}").format(self.name, e))
-
-
-	####### From schedule module #######
-	def enroll_in_course(self, course_name, program_enrollment, enrollment_date):
-		try:
-			enrollment = frappe.get_doc({
-					"doctype": "Course Enrollment",
-					"student": self.name,
-					"course": course_name,
-					"program_enrollment": program_enrollment,
-					"enrollment_date": enrollment_date,
-					"status": "Current"
-				})
-			enrollment.save(ignore_permissions=True)
-		except frappe.exceptions.ValidationError:
-			enrollment_name = frappe.get_list("Course Enrollment", filters={"student": self.name, "course": course_name, "program_enrollment": program_enrollment})[0].name
-			return frappe.get_doc("Course Enrollment", enrollment_name)
-		else:
-			return enrollment
 			

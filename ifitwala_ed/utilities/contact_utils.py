@@ -23,9 +23,21 @@ def update_profile_from_contact(doc, method=None):
         guardian_doc.guardian_mobile_phone = primary_mobile
         guardian_doc.save()
 
-    #### I think this is what created all my issues!!!!
-    #if student:
-    #    student_doc = frappe.get_doc("Student", student)
-    #    student_doc.student_mobile_phone = primary_mobile
-    #    student_doc.save()    
+def contact_has_permission(doc, ptype, user):
+    if ptype != "read":
+        return False
+
+    if user == "Administrator":
+        return True
+
+    roles = frappe.get_roles(user)
+
+    # Academic Admins can read any contact linked to a Student
+    if "Academic Admin" in roles:
+        for link in doc.links:
+            if link.link_doctype == "Student":
+                return True
+
+    # Let Frappe handle all standard logic (user match, owner, etc.)
+    return None  # Let framework decide
 
