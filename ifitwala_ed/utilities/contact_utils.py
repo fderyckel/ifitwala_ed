@@ -23,21 +23,47 @@ def update_profile_from_contact(doc, method=None):
         guardian_doc.guardian_mobile_phone = primary_mobile
         guardian_doc.save()
 
-def contact_has_permission(doc, ptype, user):
-    if ptype != "read":
-        return False
+import frappe
+from frappe.contacts.address_and_contact import has_permission as _core_has_permission
 
+# ------------------------------------------------------------------ #
+#  Doc‑level gate
+# ------------------------------------------------------------------ #
+def contact_has_permission(doc, ptype, user):
+    """Allow Academic Admin to read any Contact that links to a Student he/she can read."""
+    # Non‑read checks → fall back
+    if ptype != "read":
+        return _core_has_permission(doc, ptype, user)
+
+    # Site owner always ok
     if user == "Administrator":
         return True
 
-    roles = frappe.get_roles(user)
-
-    # Academic Admins can read any contact linked to a Student
-    if "Academic Admin" in roles:
+    if "Academic Admin" in frappe.get_roles(user):
         for link in doc.links:
-            if link.link_doctype == "Student":
+            if (
+                link.link_doctype == "Student"
+                and frappe.has_permission("Student", "read", user=user, doc=link.link_name)
+            ):
                 return True
 
-    # Let Frappe handle all standard logic (user match, owner, etc.)
-    return None  # Let framework decide
+    # Everything else → default logic (owner, other roles, etc.)
+    return _core_has_permission(doc, ptype, user)
 
+
+# ------------------------------------------------------------------ #
+#  List / report filter
+# ------------------------------------------------------------------ #
+def contact_permission_query_conditions(user):
+    """Academic Admin sees only contacts that reference a Student."""
+    if "Academic Admin" not in frappe.get_roles(user):
+        return ""   # everyone else — no extra condition
+
+    return """
+        EXISTS (
+            SELECT 1 FROM `tabDynamic Link` dl
+            WHERE dl.parent = `tabContact`.name
+              AND dl.parenttype = 'Contact'
+              AND dl.link_doctype = 'Student'
+        )
+    """
