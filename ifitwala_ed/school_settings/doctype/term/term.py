@@ -10,14 +10,21 @@ from frappe.model.document import Document
 class Term(Document):
     # create automatically the name of the term.
     def autoname(self):
-        suffix = f" - {self.school}" if self.school else ""
-        self.name = f"{self.term_name} {suffix}"
+        if self.school:
+            school_abbr = frappe.db.get_value("School", self.school, "abbr") or self.school
+            self.name = f"{self.term_name} ({school_abbr})"
+        else:
+            self.name = self.term_name
 
     def validate(self):
         # first, we'll check that there are no other terms that are the same.
         self.validate_duplicate()
 
-        self.title = self.academic_year + " ({})".format(self.term_name) if self.term_name else ""
+        if self.school:
+            school_abbr = frappe.db.get_value("School", self.school, "abbr") or self.school
+            self.title = f"{self.term_name} ({school_abbr}) - {self.academic_year}"
+        else:
+            self.title = f"{self.term_name} - {self.academic_year}"
 
         # start of term cannot be after end of term (or vice versa)
         if self.term_start_date and self.term_end_date and getdate(self.term_start_date) > getdate(self.term_end_date):
