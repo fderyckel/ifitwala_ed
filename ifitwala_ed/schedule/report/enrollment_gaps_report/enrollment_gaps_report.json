@@ -1,7 +1,28 @@
 {
  "add_total_row": 0,
  "add_translate_data": 0,
- "columns": [],
+ "columns": [
+  {
+    "fieldname": "course",
+    "label": "Course",
+    "fieldtype": "Link",
+    "options": "Course",
+    "width": 240
+  }, 
+  {
+    "fieldname": "program",
+    "label": "Program",
+    "fieldtype": "Link",
+    "options": "Program",
+    "width": 150
+  }, 
+  {
+    "fieldname": "student_name",
+    "label": "Student Name",
+    "fieldtype": "data",
+    "width": 200
+  }
+ ],
  "creation": "2025-04-23 09:52:09.483338",
  "disabled": 0,
  "docstatus": 0,
