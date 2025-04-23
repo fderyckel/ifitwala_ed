@@ -19,25 +19,16 @@ frappe.ready(function () {
   }
 
   // === Dynamically filter Academic Years with end_date >= today ===
-  frappe.call({
-    method: "frappe.client.get_list",
-    args: {
-      doctype: "Academic Year",
-      filters: [
-        ["end_date", ">=", frappe.datetime.get_today()]
-      ],
-      fields: ["name"],
-      order_by: "start_date asc"
-    },
-    callback: function (r) {
-      if (r.message) {
-        const options = r.message.map(row => `<option value="${row.name}">${row.name}</option>`).join("");
-        const fieldEl = document.querySelector('[data-fieldname="proposed_academic_year"] select');
-
-        if (fieldEl) {
-          fieldEl.innerHTML = `<option value="">Select...</option>` + options;
-        }
-      }
-    }
-  });
+	frappe.call({
+		method: "ifitwala_ed.admission.web_form.registration_of_interest.registration_of_interest.get_valid_academic_years",
+		callback: function (r) {
+			const fieldEl = document.querySelector('[data-fieldname="proposed_academic_year"] select');
+			if (r.message && fieldEl) {
+				const options = r.message.map(row =>
+					`<option value="${row.name}">${row.name}</option>`
+				).join("");
+				fieldEl.innerHTML = `<option value="">Select...</option>` + options;
+			}
+		}
+	});
 });
