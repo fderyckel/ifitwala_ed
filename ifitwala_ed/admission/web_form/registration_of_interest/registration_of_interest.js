@@ -22,6 +22,7 @@ frappe.ready(function () {
 	frappe.call({
 		method: "ifitwala_ed.admission.web_form.registration_of_interest.registration_of_interest.get_valid_academic_years",
 		callback: function (r) {
+			console.log("Filtered academic years:", r.message);  // 🔍 Add this
 			const fieldEl = document.querySelector('[data-fieldname="proposed_academic_year"] select');
 			if (r.message && fieldEl) {
 				const options = r.message.map(row =>
