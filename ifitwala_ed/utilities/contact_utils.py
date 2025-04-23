@@ -70,20 +70,4 @@ def contact_permission_query_conditions(user):
 
 import frappe
 
-def execute():
-    if not frappe.db.exists(
-        "Custom DocPerm",
-        {"parent": "Contact", "role": "Academic Admin", "permlevel": 0},
-    ):
-        frappe.get_doc(
-            {
-                "doctype": "Custom DocPerm",
-                "parent": "Contact",
-                "role": "Academic Admin",
-                "permlevel": 0,
-                "read": 1,
-                "share": 1,      # optional
-            }
-        ).insert()
 
-        frappe.clear_cache(doctype="Contact")
