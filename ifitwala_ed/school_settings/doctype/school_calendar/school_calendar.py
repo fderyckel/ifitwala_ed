@@ -15,7 +15,7 @@ class SchoolCalendar(Document):
         frappe.throw(_("Academic Year and School are required to generate the Calendar Name."))
 
     # Get school abbreviation
-    school_abbr = frappe.db.get_value("School", self.school, "school_abbr") or self.school
+    school_abbr = frappe.db.get_value("School", self.school, "abbr") or self.school
 
     # Set calendar name as "2024-2025 (ISS)"
     self.calendar_name = f"{self.academic_year} ({school_abbr})"
