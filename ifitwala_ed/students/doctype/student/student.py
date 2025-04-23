@@ -131,7 +131,6 @@ class Student(Document):
 			contact.save(ignore_permissions=True) 
 			frappe.msgprint(f"Linked Contact <b>{contact.name}</b> to Student <b>{self.name}</b>.")
 
-
 	def rename_student_image(self): 
 		# Only proceed if there's a student_image
 		if not self.student_image: 
@@ -214,3 +213,15 @@ class Student(Document):
 			frappe.log_error(title=_("Student Image Error"),message=f"Error handling student image for {self.name}: {e}")
 			frappe.msgprint(_("Error handling student image for {0}: {1}").format(self.name, e))
 			
+
+@frappe.whitelist()
+def get_contact_linked_to_student(student_name):
+    return frappe.db.get_value(
+        "Dynamic Link",
+        {
+            "link_doctype": "Student",
+            "link_name": student_name,
+            "parenttype": "Contact"
+        },
+        "parent"
+    )

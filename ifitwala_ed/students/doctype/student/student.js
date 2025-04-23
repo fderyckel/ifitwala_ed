@@ -10,11 +10,25 @@ frappe.ui.form.on('Student', {
     });
   },
 
-  refresh: function(frm) {
-    frappe.dynamic_link = {doc: frm.doc, fieldname: 'name', doctype: 'Student'};
-
+  refresh: async function(frm) {
+    frappe.dynamic_link = { doc: frm.doc, fieldname: 'name', doctype: 'Student' };
+  
     if (!frm.is_new()) {
       frappe.contacts.render_address_and_contact(frm);
+  
+      // ✅ Check if linked Contact exists
+      const r = await frappe.call({
+        method: 'ifitwala_ed.utilities.contact_utils.get_contact_linked_to_student',
+        args: { student_name: frm.doc.name }
+      });
+  
+      // ✅ Add button only if a contact is found
+      if (r.message) {
+        frm.add_custom_button(__('Student Contact'), () => {
+          frappe.set_route('Form', 'Contact', r.message);
+        });
+      }
+  
     } else {
       frappe.contacts.clear_address_and_contact(frm);
     }
