@@ -15,9 +15,9 @@ frappe.query_reports["Enrollment Gaps Report"] = {
     // Pale color styling for type column
     if (column.fieldname === "type") {
       if (data.type === "Missing Program") {
-        value = `<span style="color: rgba(255, 99, 71, 0.6); font-weight: bold;">${value}</span>`;
+        value = `<span style="color: rgba(220, 53, 69, 0.65); font-weight: bold;">${value}</span>`;
       } else if (data.type === "Missing Student Group") {
-        value = `<span style="color: rgba(255, 165, 0, 0.6); font-weight: bold;">${value}</span>`;
+        value = `<span style="color: rgba(255, 140, 0, 0.65); font-weight: bold;">${value}</span>`;
       }
     }
 
