@@ -3,50 +3,49 @@
  "add_translate_data": 0,
  "columns": [
   {
-    "fieldname": "type",
-    "label": "Type",
-    "fieldtype": "Data",
-    "width": 200
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "width": 200
   },
   {
-    "fieldname": "student",
-    "label": "Student",
-    "fieldtype": "Link",
-    "options": "Student",
-    "width": 200
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student",
+   "width": 150
   },
   {
-    "fieldname": "student_name",
-    "label": "Student Name",
-    "fieldtype": "Data",
-    "width": 200
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "label": "Student Name",
+   "width": 250
   },
   {
-    "fieldname": "program",
-    "label": "Program",
-    "fieldtype": "Link",
-    "options": "Program",
-    "width": 150
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program",
+   "width": 100
   },
   {
-    "fieldname": "course",
-    "label": "Course",
-    "fieldtype": "Link",
-    "options": "Course",
-    "width": 250
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Course",
+   "width": 350
   },
   {
-    "fieldname": "term",
-    "label": "Term",
-    "fieldtype": "Link",
-    "options": "Term",
-    "width": 100
+   "fieldname": "term",
+   "fieldtype": "Data",
+   "label": "Term",
+   "width": 150
   },
   {
-    "fieldname": "missing",
-    "label": "Missing",
-    "fieldtype": "Data",
-    "width": 150
+   "fieldname": "missing",
+   "fieldtype": "Data",
+   "label": "Missing",
+   "width": 150
   }
  ],
  "creation": "2025-04-23 09:52:09.483338",
@@ -66,7 +65,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2025-04-23 10:02:06.353329",
+ "modified": "2025-04-23 10:33:27.252526",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Enrollment Gaps Report",
