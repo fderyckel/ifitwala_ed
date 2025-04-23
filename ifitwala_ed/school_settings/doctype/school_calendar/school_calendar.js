@@ -55,9 +55,15 @@ frappe.ui.form.on("School Calendar", {
               fieldtype: "MultiSelect",
               label: "Target School(s)",
               fieldname: "schools",
-              get_data: async function (txt) {
-                const schools = await frappe.db.get_link_options("School", txt);
-                return (schools || []).map(d => ({ label: d.label, value: d.value }));
+              get_data: function (txt) {
+                return new Promise((resolve) => {
+                  frappe.db.get_link_options("School", txt).then(schools => {
+                    resolve((schools || []).map(d => ({
+                      label: d.label,
+                      value: d.value
+                    })));
+                  });
+                });
               }, 
               reqd: 1
             }
