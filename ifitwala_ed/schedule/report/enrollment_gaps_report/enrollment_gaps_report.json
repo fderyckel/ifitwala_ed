@@ -3,24 +3,50 @@
  "add_translate_data": 0,
  "columns": [
   {
-    "fieldname": "course",
-    "label": "Course",
+    "fieldname": "type",
+    "label": "Type",
+    "fieldtype": "Data",
+    "width": 200
+  },
+  {
+    "fieldname": "student",
+    "label": "Student",
     "fieldtype": "Link",
-    "options": "Course",
-    "width": 240
-  }, 
+    "options": "Student",
+    "width": 200
+  },
+  {
+    "fieldname": "student_name",
+    "label": "Student Name",
+    "fieldtype": "Data",
+    "width": 200
+  },
   {
     "fieldname": "program",
     "label": "Program",
     "fieldtype": "Link",
     "options": "Program",
     "width": 150
-  }, 
+  },
   {
-    "fieldname": "student_name",
-    "label": "Student Name",
-    "fieldtype": "data",
-    "width": 200
+    "fieldname": "course",
+    "label": "Course",
+    "fieldtype": "Link",
+    "options": "Course",
+    "width": 250
+  },
+  {
+    "fieldname": "term",
+    "label": "Term",
+    "fieldtype": "Link",
+    "options": "Term",
+    "width": 100
+  },
+  {
+    "fieldname": "missing",
+    "label": "Missing",
+    "fieldtype": "Data",
+    "width": 150
   }
  ],
  "creation": "2025-04-23 09:52:09.483338",
