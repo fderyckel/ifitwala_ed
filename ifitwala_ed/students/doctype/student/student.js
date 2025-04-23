@@ -18,7 +18,7 @@ frappe.ui.form.on('Student', {
   
       // ✅ Check if linked Contact exists
       const r = await frappe.call({
-        method: 'ifitwala_ed.utilities.contact_utils.get_contact_linked_to_student',
+        method: 'ifitwala_ed.students.doctype.student.student.get_contact_linked_to_student',
         args: { student_name: frm.doc.name }
       });
   
