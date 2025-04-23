@@ -124,12 +124,12 @@ calendars = ["School Event", "School Calendar"]
 
 permission_query_conditions = {
  	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.get_permission_query_conditions", 
-  "contact": "ifitwala_ed.utilities.contact_utils.contact_permission_query_conditions",
+  "Contact": "ifitwala_ed.utilities.contact_utils.contact_permission_query_conditions",
 }
 #
 has_permission = {
 	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.event_has_permission",
-  "contact": "ifitwala_ed.utilities.contact_utils.contact_has_permission"
+  "Contact": "ifitwala_ed.utilities.contact_utils.contact_has_permission"
 }
 
 default_roles = [
