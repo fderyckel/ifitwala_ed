@@ -12,10 +12,13 @@ class SchoolCalendar(Document):
   def autoname(self):
     # Ensure both academic_year and school are set
     if not self.academic_year or not self.school:
-      frappe.throw(_("Academic Year and School are required to generate the Calendar Name."))
+        frappe.throw(_("Academic Year and School are required to generate the Calendar Name."))
 
-    # Construct and set the document name
-    self.calendar_name = "{0}".format(self.academic_year)
+    # Get school abbreviation
+    school_abbr = frappe.db.get_value("School", self.school, "school_abbr") or self.school
+
+    # Set calendar name as "2024-2025 (ISS)"
+    self.calendar_name = f"{self.academic_year} ({school_abbr})"
 
   def onload(self):
     if not self.school: 
