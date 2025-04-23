@@ -23,7 +23,6 @@ def update_profile_from_contact(doc, method=None):
         guardian_doc.guardian_mobile_phone = primary_mobile
         guardian_doc.save()
 
-import frappe
 from frappe.contacts.address_and_contact import has_permission as _core_has_permission
 
 # ------------------------------------------------------------------ #

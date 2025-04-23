@@ -133,58 +133,72 @@ class StudentGroup(Document):
 						get_link_to_form("Student Cohort", self.cohort)
 					))
 
-			# 🔁 Soft validation for duplicate assignment to same course & term (Course-based groups only)
-			if self.group_based_on == "Course" and self.course:
-				# Use term from Student Group if set
-				conflict_term = self.term
+		if self.group_based_on == "Course" and self.course and self.term:
+			for student in self.students:
+				if not student.student:
+					continue
 
-				# We use `term_start` from Program Enrollment Course for conflict check.
-				if not conflict_term:
-					conflict_term_result = frappe.db.sql("""
-						SELECT pec.term_start
-						FROM `tabProgram Enrollment` pe
-						INNER JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
-						WHERE pe.student = %s
-							AND pec.course = %s
-							AND pe.academic_year = %s
-						ORDER BY pe.modified DESC
-						LIMIT 1
-					""", (student.student, self.course, self.academic_year), as_dict=1)
+				# 🔍 Check if already assigned to another Course-based group (same course, year, term)
+				conflict_group = frappe.db.sql("""
+					SELECT sg.name
+					FROM `tabStudent Group` sg
+					INNER JOIN `tabStudent Group Student` sgs ON sg.name = sgs.parent
+					WHERE sg.name != %(current_group)s
+						AND sgs.student = %(student)s
+						AND sg.group_based_on = 'Course'
+						AND sg.academic_year = %(academic_year)s
+						AND sg.course = %(course)s
+						AND sg.term = %(term)s
+					LIMIT 1
+				""", {
+					"current_group": self.name,
+					"student": student.student,
+					"academic_year": self.academic_year,
+					"course": self.course,
+					"term": self.term
+				})
 
-					conflict_term = (
-						conflict_term_result[0].term_start
-						if conflict_term_result and conflict_term_result[0].term_start else None
-					)
+				if conflict_group:
+					frappe.throw(_(
+						"Student <b>{0} ({1})</b> is already assigned to Course-based group {2} "
+						"for <b>{3}</b> during <b>{4}</b>."
+					).format(
+						student.student_name,
+						student.student,
+						get_link_to_form("Student Group", conflict_group[0][0]),
+						get_link_to_form("Course", self.course),
+						get_link_to_form("Term", self.term)
+					))
 
-				# Only check for duplicate group if we now have a term
-				if conflict_term:
-					conflict = frappe.db.sql("""
-						SELECT sg.name
-						FROM `tabStudent Group` sg
-						INNER JOIN `tabStudent Group Student` sgs ON sgs.parent = sg.name
-						WHERE
-							sg.name != %(current_group)s
-							AND sgs.student = %(student)s
-							AND sg.group_based_on = 'Course'
-							AND sg.academic_year = %(academic_year)s
-							AND sg.course = %(course)s
-							AND sg.term = %(term)s
-						LIMIT 1
-					""", {
-						"student": student.student,
-						"current_group": self.name,
-						"academic_year": self.academic_year,
-						"course": self.course,
-						"term": conflict_term
-					})
+				# ✅ Enrollment integrity check: Student must have a Program Enrollment Course entry
+				valid_enrollment = frappe.db.sql("""
+					SELECT pe.name
+					FROM `tabProgram Enrollment` pe
+					INNER JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
+					WHERE pe.student = %(student)s
+						AND pe.academic_year = %(academic_year)s
+						AND pe.program = %(program)s
+						AND pec.course = %(course)s
+						AND pec.term_start = %(term)s
+					LIMIT 1
+				""", {
+					"student": student.student,
+					"academic_year": self.academic_year,
+					"program": self.program,
+					"course": self.course,
+					"term": self.term
+				}, as_dict=True)
 
-					if conflict:
-						frappe.msgprint(
-							_("<span style='color: orange; font-weight: bold;'>Heads up:</span> Student <b>{0} ({1})</b> is already assigned to another Course-based group <b>{2}</b> for the same course and term.")
-							.format(student.student_name, student.student, conflict[0][0]),
-							title=_("Possible Duplicate Assignment"),
-							indicator="orange"
-						)
+				if not valid_enrollment:
+					frappe.throw(_(
+						"Student <b>{0} ({1})</b> does not have a valid Program Enrollment for "
+						"<b>{2}</b> in term <b>{3}</b>. Please ensure they are enrolled in the course."
+					).format(
+						student.student_name,
+						student.student,
+						get_link_to_form("Course", self.course),
+						get_link_to_form("Term", self.term)
+					))
 
 
 	# to input the roll number field in child table
@@ -274,7 +288,8 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 			term=filters.get('term'),
 			program=filters.get('program'),
 			cohort=filters.get('cohort'),
-			course=filters.get('course')
+			course=filters.get('course'), 
+			exclude_in_group=filters.get('student_group') 
 		)
 
 	elif group_based_on == "Cohort":
@@ -315,8 +330,7 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 	return frappe.db.sql(query, args)
 
 
-def get_program_enrollment(academic_year, term=None, program=None, cohort=None, course=None):
-	# Build dynamic WHERE clause using parameterized approach
+def get_program_enrollment(academic_year, term=None, program=None, cohort=None, course=None, exclude_in_group=None):
 	conditions = ["pe.academic_year = %(academic_year)s"]
 	params = {"academic_year": academic_year}
 
@@ -337,6 +351,22 @@ def get_program_enrollment(academic_year, term=None, program=None, cohort=None, 
 		conditions.append("pec.course = %(course)s")
 		params["course"] = course
 
+	# Exclude students already assigned to another group for same course+term+year
+	if exclude_in_group and course and term:
+		conditions.append("""
+			pe.student NOT IN (
+				SELECT sgs.student
+				FROM `tabStudent Group` sg
+				INNER JOIN `tabStudent Group Student` sgs ON sgs.parent = sg.name
+				WHERE sg.name != %(exclude_group)s
+					AND sg.group_based_on = 'Course'
+					AND sg.course = %(course)s
+					AND sg.academic_year = %(academic_year)s
+					AND sg.term = %(term)s
+			)
+		""")
+		params["exclude_group"] = exclude_in_group
+
 	query = f"""
 		SELECT pe.student, pe.student_name
 		FROM `tabProgram Enrollment` pe
@@ -347,10 +377,23 @@ def get_program_enrollment(academic_year, term=None, program=None, cohort=None, 
 
 	return frappe.db.sql(query, params, as_dict=1)
 
+def get_existing_students(student_group: str) -> list[str]:
+	"""Returns a list of student IDs already in the student group"""
+	return frappe.db.sql_list('''
+		SELECT student FROM `tabStudent Group Student` WHERE parent = %s
+	''', (student_group,))
+
+
+def build_in_clause_placeholders(values: list) -> str:
+	"""Returns a string like '%s, %s, %s' based on list length"""
+	return ', '.join(['%s'] * len(values))
+
+
 
 
 ########################## Permissions ##########################
 ##### Used in other parts
+#################################################################
 
 def group_has_permission(user, doc):
 	current_user = frappe.get_doc("User", user)
@@ -367,14 +410,3 @@ def group_has_permission(user, doc):
 		return True
 
 	return False
-
-def get_existing_students(student_group: str) -> list[str]:
-	"""Returns a list of student IDs already in the student group"""
-	return frappe.db.sql_list('''
-		SELECT student FROM `tabStudent Group Student` WHERE parent = %s
-	''', (student_group,))
-
-
-def build_in_clause_placeholders(values: list) -> str:
-	"""Returns a string like '%s, %s, %s' based on list length"""
-	return ', '.join(['%s'] * len(values))
