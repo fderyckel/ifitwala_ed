@@ -12,7 +12,7 @@ def get_valid_academic_years():
     today = frappe.utils.today()
     return frappe.get_all(
         "Academic Year",
-        filters={"end_date": [">=", today]},
+        filters={"year_end_date": [">=", today]},
         fields=["name"],
         order_by="start_date asc"
     )
