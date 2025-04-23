@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"SmAh1J3Oa3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Dashboard\",\"col\":3}},{\"id\":\"OvNhvhv77w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Admin Dashboard\",\"col\":3}},{\"id\":\"tu9mEuIi00\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Group\",\"col\":3}},{\"id\":\"ZGOFPWekLC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fzg1kF2Gr1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students, Schedule &amp; Enrollments</span>\",\"col\":12}},{\"id\":\"T0f0dXZid9\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"7sRer6iX3b\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"XFxZlnRb64\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"VM1mCwF6pW\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"xKozqy_a84\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"lXOrx_IXWL\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Settings</b></span>\",\"col\":12}},{\"id\":\"l0x8umx3AZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Org and School\",\"col\":4}},{\"id\":\"-wlMmbli5N\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & calendars\",\"col\":4}},{\"id\":\"9aXFnNP1ub\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}}]",
+ "content": "[{\"id\":\"SmAh1J3Oa3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Dashboard\",\"col\":3}},{\"id\":\"OvNhvhv77w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Admin Dashboard\",\"col\":3}},{\"id\":\"tu9mEuIi00\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Group\",\"col\":3}},{\"id\":\"ZGOFPWekLC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fzg1kF2Gr1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students, Schedule &amp; Enrollments</span>\",\"col\":12}},{\"id\":\"T0f0dXZid9\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"7sRer6iX3b\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"XFxZlnRb64\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"VM1mCwF6pW\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"xKozqy_a84\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"lXOrx_IXWL\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Settings</b></span>\",\"col\":12}},{\"id\":\"l0x8umx3AZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Org and School\",\"col\":4}},{\"id\":\"-wlMmbli5N\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & calendars\",\"col\":4}}]",
  "creation": "2025-04-02 12:29:42.749017",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,75 +13,6 @@
  "is_hidden": 0,
  "label": "Settings",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "HR",
-   "link_count": 6,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Designation",
-   "link_count": 0,
-   "link_to": "Designation",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Department",
-   "link_count": 0,
-   "link_to": "Department",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Employee Group",
-   "link_count": 0,
-   "link_to": "Employee Group",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Employment Type",
-   "link_count": 0,
-   "link_to": "Employment Type",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Employee",
-   "link_count": 0,
-   "link_to": "Employee",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Staff Calendar",
-   "link_count": 0,
-   "link_to": "Staff Calendar",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -271,26 +202,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Reports",
-   "link_count": 1,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Enrollment Report",
-   "link_count": 0,
-   "link_to": "Enrollment Report",
-   "link_type": "Report",
-   "onboard": 0,
-   "report_ref_doctype": "Program Enrollment",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Tools",
    "link_count": 3,
    "link_type": "DocType",
@@ -326,9 +237,48 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Enrollment Report",
+   "link_count": 0,
+   "link_to": "Enrollment Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Enrollment Gaps Report",
+   "link_count": 0,
+   "link_to": "Enrollment Gaps Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Enrollment Trend Report",
+   "link_count": 0,
+   "link_to": "Enrollment Trend Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-04-21 20:15:50.017646",
+ "modified": "2025-04-23 11:27:33.848090",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Settings",
@@ -345,7 +295,7 @@
    "role": "Administrator"
   }
  ],
- "sequence_id": 5.0,
+ "sequence_id": 3.0,
  "shortcuts": [
   {
    "color": "Grey",

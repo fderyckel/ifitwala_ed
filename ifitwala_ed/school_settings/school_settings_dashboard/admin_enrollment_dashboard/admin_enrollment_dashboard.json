@@ -18,18 +18,22 @@
   {
    "chart": "Current Enrollment By Program",
    "width": "Full"
+  },
+  {
+   "chart": "Enrollment Trends",
+   "width": "Full"
   }
  ],
  "creation": "2025-01-09 22:17:38.961559",
- "dashboard_name": "Admin Dashboard",
+ "dashboard_name": "Admin Enrollment Dashboard",
  "docstatus": 0,
  "doctype": "Dashboard",
  "idx": 19,
  "is_default": 0,
  "is_standard": 1,
- "modified": "2025-04-23 11:33:42.479359",
+ "modified": "2025-04-23 11:36:35.735815",
  "modified_by": "Administrator",
  "module": "School Settings",
- "name": "Admin Dashboard",
+ "name": "Admin Enrollment Dashboard",
  "owner": "Administrator"
 }
