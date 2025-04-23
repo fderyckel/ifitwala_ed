@@ -1,4 +1,4 @@
-frappe.query_reports["Enrollment Gaps — Missing Program or Group"] = {
+frappe.query_reports["Enrollment Gaps Report"] = {
   filters: [
     {
       fieldname: "academic_year",
