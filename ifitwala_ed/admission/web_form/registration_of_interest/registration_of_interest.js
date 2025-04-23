@@ -1,6 +1,6 @@
 frappe.ready(function () {
   // === Banner logic (unchanged) ===
-  const bannerImage = frappe.web_form.web_form.banner_image;
+  const bannerImage = frappe.web_form.banner_image;
   const bannerContainer = document.querySelector('.page-banner');
   if (bannerImage && bannerContainer) {
     bannerContainer.style.background = 'none';
