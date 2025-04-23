@@ -58,9 +58,10 @@ class Student(Document):
 		self.create_student_patient()
 
 	def on_update(self): 
-		self.update_student_enabled_status()
-		self.ensure_contact_links_to_student()
 		self.rename_student_image()
+		self.ensure_contact_links_to_student()
+		self.update_student_enabled_status()
+		self.sync_student_contact_image()
 
 
 	# create student as website user
@@ -213,6 +214,26 @@ class Student(Document):
 			frappe.log_error(title=_("Student Image Error"),message=f"Error handling student image for {self.name}: {e}")
 			frappe.msgprint(_("Error handling student image for {0}: {1}").format(self.name, e))
 			
+	# Sync the student image to the linked contact. This method is called after the student image is renamed		
+	def sync_student_contact_image(self):
+		if not self.student_image:
+			return
+		
+		contact_name = frappe.db.get_value(
+			"Dynamic Link",
+			filters={
+        "link_doctype": "Student",
+        "link_name": self.name,
+        "parenttype": "Contact"
+      },
+      fieldname="parent"
+		)
+		
+		if contact_name:
+			contact = frappe.get_doc("Contact", contact_name)
+			if contact.image != self.student_image:
+				contact.image = self.student_image
+				contact.save(ignore_permissions=True)
 
 @frappe.whitelist()
 def get_contact_linked_to_student(student_name):
