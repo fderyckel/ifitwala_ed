@@ -55,7 +55,9 @@ frappe.ui.form.on("School Calendar", {
               fieldtype: "MultiSelect",
               label: "Target School(s)",
               fieldname: "schools",
-              options: "School",
+              get_data: function(txt) {
+                return frappe.db.get_link_options("School", txt);
+              }, 
               reqd: 1
             }
           ],
@@ -65,7 +67,7 @@ frappe.ui.form.on("School Calendar", {
               args: {
                 source_calendar: frm.doc.name,
                 academic_year: values.academic_year,
-                schools: values.schools
+                schools: JSON.stringify(values.schools)
               },
               callback: r => {
                 frappe.msgprint(r.message);
