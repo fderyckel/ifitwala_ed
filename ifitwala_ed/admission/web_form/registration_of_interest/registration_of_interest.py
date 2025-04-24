@@ -1,18 +1,29 @@
+# admission/web_form/registration_of_interest/registration_of_interest.py
+# ---------------------------------------------------------------------
 import frappe
+
 
 def get_context(context):
-	# do your magic here
-	pass
+	"""Inject extra data for Jinja (optional)."""
+	today = frappe.utils.today()
+	context.future_years = [
+		y.name
+		for y in frappe.get_all(
+			"Academic Year",
+			filters={"year_end_date": (">=", today)},
+			order_by="year_start_date asc",
+		)
+	]
+	# You can use {{ future_years }} in the .js/.html template if needed.
 
-import frappe
-from frappe import _
 
 @frappe.whitelist(allow_guest=True)
 def get_valid_academic_years():
-    today = frappe.utils.today()
-    return frappe.get_all(
-        "Academic Year",
-        filters={"year_end_date": [">=", today]},
-        fields=["name"],
-        order_by="year_start_date asc"
-    )
+	"""STAYS here only if some other code (or future Select field) calls it."""
+	today = frappe.utils.today()
+	return frappe.get_all(
+		"Academic Year",
+		filters={"year_end_date": (">=", today)},
+		fields=["name"],
+		order_by="year_start_date asc",
+	)
