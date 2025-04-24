@@ -67,4 +67,4 @@ def _ensure_school_page(school, lang):
         print(f"✅ created {route}")
 
     # optional: clear route cache so the page appears immediately
-    frappe.website.clear_sitemap_cache()
+    frappe.website.router.clear_sitemap_cache()
