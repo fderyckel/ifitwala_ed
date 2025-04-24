@@ -101,3 +101,38 @@ def _ensure_program_navlink(program, school, lang):
 def sync_course(course):
     # Similar logic to program sync
     pass
+
+
+# =============================
+# NAVBAR SYNC
+# =============================
+
+def _ensure_navbar(school, lang):
+    """Create or update a Website Navbar for this campus-language combo."""
+    navbar_name = f"{school.website_slug}-{lang}-navbar"
+    label = f"{school.school_name} ({lang.upper()})"
+
+    existing = frappe.db.exists("Website Navbar", navbar_name)
+    if not existing:
+        navbar = frappe.new_doc("Website Navbar")
+        navbar.name = navbar_name
+        navbar.title = label
+        navbar.is_standard = 0
+        navbar.items = [
+            {
+                "item_label": _("Home"),
+                "item_type": "Route",
+                "route": f"/{school.website_slug}/{lang}"
+            },
+            {
+                "item_label": _("Programs"),
+                "item_type": "Group",
+                "parent_label": "",
+                "child_items": []
+            }
+        ]
+        navbar.insert(ignore_permissions=True)
+        print(f"[Website Sync] Created navbar: {navbar_name}")
+    else:
+        # Future: update logic (if structure changes)
+        print(f"[Website Sync] Navbar exists: {navbar_name}")
