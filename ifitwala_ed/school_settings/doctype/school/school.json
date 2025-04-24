@@ -37,7 +37,7 @@
   "old_parent",
   "dashboard_tab",
   "website_tab",
-  "site_languages",
+  "gallery_image",
   "website_slug",
   "hero_image",
   "about_snippet",
@@ -225,12 +225,6 @@
    "show_dashboard": 1
   },
   {
-   "fieldname": "site_languages",
-   "fieldtype": "Table",
-   "label": "Site Languages",
-   "options": "Website Language"
-  },
-  {
    "fieldname": "website_slug",
    "fieldtype": "Data",
    "label": "Website Slug",
@@ -256,6 +250,12 @@
    "fieldname": "website_tab",
    "fieldtype": "Tab Break",
    "label": "Website"
+  },
+  {
+   "fieldname": "gallery_image",
+   "fieldtype": "Table",
+   "label": "Gallery Image",
+   "options": "Gallery Image"
   }
  ],
  "grid_page_length": 50,
@@ -263,7 +263,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-04-24 10:55:17.695708",
+ "modified": "2025-04-24 19:29:36.071144",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
