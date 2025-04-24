@@ -3,30 +3,29 @@
 console.log("≡ RoI script LOADED");
 
 frappe.ready(function () {
-	// ───────────────── step 1 ─────────────────
-	console.log("[RoI] frappe.ready – initialising hooks …");
+	console.log("[RoI] frappe.ready – wiring hooks …");
 
-	// Fires once the Web-Form HTML is in the DOM
+	// Fires once all fields are in the DOM
 	frappe.web_form.events.on("after_load", () => {
 		console.log("[RoI] after_load – form rendered");
 
-		const field = frappe.web_form.fields_dict["proposed_academic_year"];
-		if (!field) {
-			console.warn("[RoI] ❗ field object not found");
+		// Grab the Link control object
+		const ac_year = frappe.web_form.get_field("proposed_academic_year");
+		if (!ac_year) {
+			console.warn("[RoI] ❗ proposed_academic_year control not found");
 			return;
 		}
 
-		console.log("[RoI] attaching dynamic get_query to proposed_academic_year");
-
-		field.get_query = () => {
-			const today = frappe.datetime.get_today();
+		console.log("[RoI] attaching ac_year.set_query …");
+		ac_year.set_query(() => {
+			const today   = frappe.datetime.get_today();
 			const filters = [
 				["Academic Year", "year_end_date", ">=", today]
 			];
-			console.log("[RoI] get_query invoked – returning filters →", filters);
+			console.log("[RoI] set_query invoked – returning", filters);
 			return { filters };
-		};
+		});
 	});
 
-	console.log("[RoI] hooks wired – waiting for after_load …");
+	console.log("[RoI] hooks wired – awaiting after_load");
 });
