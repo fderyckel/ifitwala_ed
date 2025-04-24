@@ -36,7 +36,7 @@
   "rgt",
   "old_parent",
   "dashboard_tab",
-  "school_website_section",
+  "website_tab",
   "site_languages",
   "website_slug",
   "hero_image",
@@ -221,12 +221,8 @@
   {
    "fieldname": "dashboard_tab",
    "fieldtype": "Tab Break",
-   "label": "Dashboard"
-  },
-  {
-   "fieldname": "school_website_section",
-   "fieldtype": "Section Break",
-   "label": "School Website"
+   "label": "Dashboard",
+   "show_dashboard": 1
   },
   {
    "fieldname": "site_languages",
@@ -255,6 +251,11 @@
    "fieldname": "brand_palette",
    "fieldtype": "Code",
    "label": "Brand Palette"
+  },
+  {
+   "fieldname": "website_tab",
+   "fieldtype": "Tab Break",
+   "label": "Website"
   }
  ],
  "grid_page_length": 50,
@@ -262,7 +263,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-04-24 10:10:32.569002",
+ "modified": "2025-04-24 10:55:17.695708",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
