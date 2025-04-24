@@ -1,30 +1,28 @@
-frappe.ready(function () {
-	frappe.ready(function () {
-		frappe.web_form.after_render = () => {
-			// Retry logic in case the field hasn't rendered yet
-			const tryUpdateDropdown = () => {
-				const fieldEl = document.querySelector('[data-fieldname="proposed_academic_year"] select');
-	
-				if (fieldEl) {
-					frappe.call({
-						method: "ifitwala_ed.admission.web_form.registration_of_interest.registration_of_interest.get_valid_academic_years",
-						callback: function (r) {
-							console.log("Filtered academic years:", r.message);
-							const options = r.message.map(row =>
-								`<option value="${row.name}">${row.name}</option>`
-							).join("");
-							fieldEl.innerHTML = `<option value="">Select...</option>` + options;
-						}
-					});
-				} else {
-					// Retry after a short delay
-					console.log("Dropdown not yet rendered, retrying...");
-					setTimeout(tryUpdateDropdown, 100);
-				}
-			};
-	
-			tryUpdateDropdown();
-		};
-	});
-	
+// registration_of_interest.js
+console.log("≡ RoI script LOADED");
+
+function populate_academic_years() {
+    const ddl = document.querySelector(
+        '[data-fieldname="proposed_academic_year"] select'
+    );
+    if (!ddl) return console.warn("DDL not yet in DOM");
+
+    frappe.call({
+        type: 'GET',                                          // guests ⇒ GET
+        method: 'ifitwala_ed.admission.web_form.registration_of_interest.registration_of_interest.get_valid_academic_years',
+        callback: ({ message }) => {
+            const opts = (message || [])
+                .map(r => `<option value="${r.name}">${r.name}</option>`)
+                .join('');
+            ddl.innerHTML = `<option value="">Select…</option>${opts}`;
+        }
+    });
+}
+
+/* Life-cycle:
+   website.js finished     →  trigger_ready() done
+   webform_script.js       →  renders form → triggers frappe.web_form.events.after_load
+*/
+frappe.ready(() => {
+    frappe.web_form.events.on('after_load', populate_academic_years);
 });
