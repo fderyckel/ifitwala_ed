@@ -177,11 +177,6 @@ doc_events = {
       "after_insert": "ifitwala_ed.school_site.website_sync.enqueue_sync",
       "on_update": "ifitwala_ed.school_site.website_sync.enqueue_sync",
       "on_rename": "ifitwala_ed.school_site.website_sync.enqueue_sync"
-    },
-    "Course": {
-      "after_insert": "ifitwala_ed.school_site.website_sync.enqueue_sync",
-      "on_update": "ifitwala_ed.school_site.website_sync.enqueue_sync",
-      "on_rename": "ifitwala_ed.school_site.website_sync.enqueue_sync"
     }
 }
 
