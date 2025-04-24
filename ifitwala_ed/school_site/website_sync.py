@@ -47,8 +47,13 @@ def _validate_languages(school):
 # --------------------------------------------------------------------
 # NAVBAR SETTINGS + ITEMS
 # --------------------------------------------------------------------
+# --------------------------------------------------------------------
+# NAVBAR SETTINGS + ITEMS  (fixed field name)
+# --------------------------------------------------------------------
 def _ensure_navbar_settings(school, lang):
+    """Create or update Navbar Settings for this campus–language."""
     settings_name = f"{school.website_slug}-{lang}-navbar"
+
     if frappe.db.exists("Navbar Settings", settings_name):
         return frappe.get_doc("Navbar Settings", settings_name)
 
@@ -57,19 +62,22 @@ def _ensure_navbar_settings(school, lang):
     nav.app   = "website"
     nav.label = f"{school.school_name} {lang.upper()}"
 
-    # HOME link
-    nav.append("items", {
+    # -- HOME link ---------------------------------------------------
+    nav.append("top_bar_items", {
         "item_label": _("Home"),
         "item_type": "Route",
-        "route": f"/{school.website_slug}/{lang}"
+        "route": f"/{school.website_slug}/{lang}",
     })
-    # empty Programs group; filled on first program sync
-    nav.append("items", {
+
+    # -- empty Programs dropdown (children added later) --------------
+    nav.append("top_bar_items", {
         "item_label": _("Programs"),
-        "item_type": "Group"
+        "item_type": "Group",
     })
+
     nav.insert(ignore_permissions=True)
     return nav
+
 
 # --------------------------------------------------------------------
 # LANDING PAGE
@@ -112,24 +120,20 @@ def _ensure_program_nav_item(program, school, lang):
     settings_name = f"{school.website_slug}-{lang}-navbar"
     nav = frappe.get_doc("Navbar Settings", settings_name)
 
-    # find Programs group
-    group = next((i for i in nav.items if i.item_label == "Programs"), None)
-    if not group:
-        return
+    # Exists already?
+    for item in nav.top_bar_items:
+        if (item.parent_label == _("Programs")
+                and item.route == f"/{school.website_slug}/{lang}/programs/{program.website_slug}"):
+            return
 
-    # does link exist?
-    exists = [i for i in nav.items
-              if i.parent_label == "Programs" and i.route.endswith(program.website_slug)]
-    if exists:
-        return
-
-    nav.append("items", {
+    nav.append("top_bar_items", {
         "item_label": program.program_name,
         "item_type": "Route",
         "route": f"/{school.website_slug}/{lang}/programs/{program.website_slug}",
-        "parent_label": "Programs"
+        "parent_label": _("Programs")
     })
     nav.save(ignore_permissions=True)
+
 
 def remove_program_from_site(program):
     # Remove from all navbars; leave Web Page cleanup for later
