@@ -4,135 +4,140 @@
 import frappe
 from frappe import _
 
-# =============================
-# ENQUEUED ENTRY POINT
-# =============================
-
+# --------------------------------------------------------------------
+# ENTRY: enqueue from hooks
+# --------------------------------------------------------------------
 def enqueue_sync(doc, method=None):
-    """Enqueue hook for any doc update that needs website sync."""
-    if isinstance(doc, dict):  # might come from hooks.py
+    if isinstance(doc, dict):
         doc = frappe.get_doc(doc)
-
-    frappe.enqueue(
-        "ifitwala_ed.school_site.website_sync.route_sync",
-        doc=doc.as_dict(),
-        queue="long"
-    )
-
-# =============================
-# ROUTING LOGIC
-# =============================
+    frappe.enqueue("ifitwala_ed.school_site.website_sync.route_sync",
+                   doc=doc.as_dict(), queue="long")
 
 def route_sync(doc: dict):
-    """Main dispatcher for background syncs."""
     doctype = doc.get("doctype")
-
     if doctype == "School":
         sync_school(frappe.get_doc(doc))
     elif doctype == "Program":
-        sync_program(frappe.get_doc(doc))
-    elif doctype == "Course":
-        sync_course(frappe.get_doc(doc))
-    else:
-        frappe.logger().debug(f"[Website Sync] Ignored Doctype: {doctype}")
+        if doc.get("is_published"):
+            sync_program(frappe.get_doc(doc))
+        else:
+            remove_program_from_site(frappe.get_doc(doc))
+    # ignore Course/etc. for now
 
-# =============================
+# --------------------------------------------------------------------
 # SCHOOL SYNC
-# =============================
-
+# --------------------------------------------------------------------
 def sync_school(school):
-    """Sync all website artifacts related to a School."""
     _validate_languages(school)
 
-    langs = [
-        row.language_code
-        for row in school.site_languages or []
-        if row.publish
-    ]
+    langs = [row.language_code for row in school.site_languages if row.publish]
 
     for lang in langs:
-        _ensure_navbar(school, lang)
-        _ensure_landing_page(school, lang)
-
+        nav = _ensure_navbar_settings(school, lang)
+        page = _ensure_landing_page(school, lang, nav.name)
+        print(f"[OK] {school.name}: {lang} → {nav.name} / {page.route}")
 
 def _validate_languages(school):
     published = [l for l in school.site_languages if l.publish]
     if len(published) > 3:
         frappe.throw(_("A campus may publish at most 3 languages."))
-    if not any(row.is_default for row in published):
-        frappe.throw(_("At least one website language must be marked as default."))
+    if not any(r.is_default for r in published):
+        frappe.throw(_("Mark one default site language."))
 
-def _ensure_navbar(school, lang):
-    # Placeholder – this will create or update a Website Navbar doc
-    print(f"[Website Sync] Sync navbar for {school.website_slug} ({lang})")
+# --------------------------------------------------------------------
+# NAVBAR SETTINGS + ITEMS
+# --------------------------------------------------------------------
+def _ensure_navbar_settings(school, lang):
+    settings_name = f"{school.website_slug}-{lang}-navbar"
+    if frappe.db.exists("Navbar Settings", settings_name):
+        return frappe.get_doc("Navbar Settings", settings_name)
 
-def _ensure_landing_page(school, lang):
-    # Placeholder – this will create or update Web Page for /<slug>/<lang>
-    print(f"[Website Sync] Sync landing page for {school.website_slug} ({lang})")
+    nav = frappe.new_doc("Navbar Settings")
+    nav.name  = settings_name
+    nav.app   = "website"
+    nav.label = f"{school.school_name} {lang.upper()}"
 
+    # HOME link
+    nav.append("items", {
+        "item_label": _("Home"),
+        "item_type": "Route",
+        "route": f"/{school.website_slug}/{lang}"
+    })
+    # empty Programs group; filled on first program sync
+    nav.append("items", {
+        "item_label": _("Programs"),
+        "item_type": "Group"
+    })
+    nav.insert(ignore_permissions=True)
+    return nav
 
-# =============================
-# PROGRAM SYNC (to be fleshed)
-# =============================
+# --------------------------------------------------------------------
+# LANDING PAGE
+# --------------------------------------------------------------------
+def _ensure_landing_page(school, lang, navbar_name):
+    route = f"/{school.website_slug}/{lang}"
+    existing = frappe.db.get_value("Web Page", {"route": route})
+    ctx = {
+        "school_name": school.name,
+        "navbar_settings": navbar_name
+    }
 
+    if not existing:
+        page = frappe.new_doc("Web Page")
+        page.route       = route
+        page.title       = school.school_name
+        page.published   = 0            # Draft first
+        page.template    = "ifitwala_ed/school_site/templates/pages/school_landing.html"
+        page.meta_json   = frappe.as_json(ctx)
+        page.insert(ignore_permissions=True)
+    else:
+        page = frappe.get_doc("Web Page", existing)
+        page.meta_json = frappe.as_json(ctx)
+        page.save(ignore_permissions=True)
+
+    return page
+
+# --------------------------------------------------------------------
+# PROGRAM SYNC
+# --------------------------------------------------------------------
 def sync_program(program):
     school = frappe.get_doc("School", program.school)
-    langs = [
-        row.language_code
-        for row in school.site_languages or []
-        if row.publish
-    ]
+    navs   = {row.language_code: row
+              for row in school.site_languages if row.publish}
 
-    for lang in langs:
-        _ensure_program_page(program, school, lang)
-        _ensure_program_navlink(program, school, lang)
+    for lang in navs:
+        _ensure_program_nav_item(program, school, lang)
 
-def _ensure_program_page(program, school, lang):
-    print(f"[Website Sync] Create/update program page {program.website_slug} in {lang} for {school.website_slug}")
+def _ensure_program_nav_item(program, school, lang):
+    settings_name = f"{school.website_slug}-{lang}-navbar"
+    nav = frappe.get_doc("Navbar Settings", settings_name)
 
-def _ensure_program_navlink(program, school, lang):
-    print(f"[Website Sync] Ensure navlink exists for program {program.website_slug} in navbar of {school.website_slug} ({lang})")
+    # find Programs group
+    group = next((i for i in nav.items if i.item_label == "Programs"), None)
+    if not group:
+        return
 
+    # does link exist?
+    exists = [i for i in nav.items
+              if i.parent_label == "Programs" and i.route.endswith(program.website_slug)]
+    if exists:
+        return
 
-# =============================
-# COURSE SYNC (future)
-# =============================
+    nav.append("items", {
+        "item_label": program.program_name,
+        "item_type": "Route",
+        "route": f"/{school.website_slug}/{lang}/programs/{program.website_slug}",
+        "parent_label": "Programs"
+    })
+    nav.save(ignore_permissions=True)
 
-def sync_course(course):
-    # Similar logic to program sync
-    pass
-
-
-# =============================
-# NAVBAR SYNC
-# =============================
-
-def _ensure_navbar(school, lang):
-    """Create or update a Website Navbar for this campus-language combo."""
-    navbar_name = f"{school.website_slug}-{lang}-navbar"
-    label = f"{school.school_name} ({lang.upper()})"
-
-    existing = frappe.db.exists("Website Navbar", navbar_name)
-    if not existing:
-        navbar = frappe.new_doc("Website Navbar")
-        navbar.name = navbar_name
-        navbar.title = label
-        navbar.is_standard = 0
-        navbar.items = [
-            {
-                "item_label": _("Home"),
-                "item_type": "Route",
-                "route": f"/{school.website_slug}/{lang}"
-            },
-            {
-                "item_label": _("Programs"),
-                "item_type": "Group",
-                "parent_label": "",
-                "child_items": []
-            }
-        ]
-        navbar.insert(ignore_permissions=True)
-        print(f"[Website Sync] Created navbar: {navbar_name}")
-    else:
-        # Future: update logic (if structure changes)
-        print(f"[Website Sync] Navbar exists: {navbar_name}")
+def remove_program_from_site(program):
+    # Remove from all navbars; leave Web Page cleanup for later
+    for nav in frappe.get_all("Navbar Settings", pluck="name"):
+        doc = frappe.get_doc("Navbar Settings", nav)
+        changed = False
+        doc.items = [i for i in doc.items
+                     if not (i.parent_label == "Programs"
+                             and i.route and i.route.endswith(program.website_slug))]
+        if changed:
+            doc.save(ignore_permissions=True)
