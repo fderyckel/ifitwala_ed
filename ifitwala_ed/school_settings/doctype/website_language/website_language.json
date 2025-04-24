@@ -1,0 +1,55 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-24 09:44:55.635908",
+ "description": "Setting up the languages that the public web page will be available in. ",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_dr9z",
+  "language_code",
+  "is_default",
+  "publish"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_dr9z",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "language_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Language Code",
+   "options": "Language"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_default",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Default"
+  },
+  {
+   "default": "0",
+   "fieldname": "publish",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Publish"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-04-24 10:03:21.462809",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Website Language",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
