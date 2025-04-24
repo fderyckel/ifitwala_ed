@@ -167,16 +167,6 @@ doc_events = {
         "ifitwala_ed.api.set_default_workspace_based_on_roles"
       ], 
       "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions"
-    }, 
-    "School": {
-      "after_insert": "ifitwala_ed.school_site.website_sync.enqueue_sync",
-      "on_update": "ifitwala_ed.school_site.website_sync.enqueue_sync",
-      "on_rename": "ifitwala_ed.school_site.website_sync.enqueue_sync"
-    },
-    "Program": {
-      "after_insert": "ifitwala_ed.school_site.website_sync.enqueue_sync",
-      "on_update": "ifitwala_ed.school_site.website_sync.enqueue_sync",
-      "on_rename": "ifitwala_ed.school_site.website_sync.enqueue_sync"
     }
 }
 
