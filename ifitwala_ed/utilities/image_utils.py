@@ -87,6 +87,7 @@ def resize_and_save(original_path, target_folder, base_filename, width, quality=
         frappe.log_error(f"Error resizing image: {e}", "File Auto-Resize Error")
 
 def handle_file_after_insert(doc, method=None):
+    frappe.logger().info(f"[AutoResize] New File Inserted: {doc.name} attached to {doc.attached_to_doctype} ({doc.attached_to_name})")
     """Triggered after a File is inserted — resize images if applicable."""
     allowed_doctypes = ["Employee", "School"]
     target_widths = [1600, 300, 140]
