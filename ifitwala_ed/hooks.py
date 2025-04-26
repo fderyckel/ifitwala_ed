@@ -167,7 +167,10 @@ doc_events = {
         "ifitwala_ed.api.set_default_workspace_based_on_roles"
       ], 
       "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions"
-    }
+    }, 
+    "File": {
+        "after_insert": "ifitwala_ed.utilities.image_utils.handle_file_after_insert"
+    }    
 }
 
 # Scheduled Tasks
