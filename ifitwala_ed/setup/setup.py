@@ -14,6 +14,7 @@ def setup_education():
   create_location_type()
   add_other_records() 
   create_student_file_folder()
+  setup_website_top_bar()
 
 def create_roles_with_homepage():
     """Create or update roles with home_page and desk_access."""
@@ -46,7 +47,6 @@ def create_roles_with_homepage():
             }).insert(ignore_permissions=True)
 
 
-
 def create_designations():
 	data = [
 		{"doctype": "Designation", "designation_name": "Director"},
@@ -71,17 +71,6 @@ def create_log_type():
 			{"doctype": "Student Log Type", "log_type": "Positive Attitude Towards Learning"}
 	]
 	insert_record(data)
-
-# def create_attendance_code():
-# 	data = [
-# 			{"doctype": "Student Attendance Code", "attendance_code": "Present"},
-# 			{"doctype": "Student Attendance Code", "attendance_code": "Absent"},
-# 			{"doctype": "Student Attendance Code", "attendance_code": "Tardy"},
-# 			{"doctype": "Student Attendance Code", "attendance_code": "Excused Absence"},
-# 			{"doctype": "Student Attendance Code", "attendance_code": "Field Trip"},
-# 			{"doctype": "Student Attendance Code", "attendance_code": "Excused Tardy"}
-# 	]
-# 	insert_record(data)
 
 def create_location_type():
 	data = [
@@ -124,4 +113,40 @@ def create_student_file_folder():
   
 	# 🔐 Ensure the physical folder also exists
 	os.makedirs(os.path.join(get_files_path(), "student"), exist_ok=True)
+     
+def setup_website_top_bar():
+    top_bar_items = [
+        # Primary items
+        {"label": "Home", "url": "/"},
+        {"label": "About Us", "url": "/about"},
+        {"label": "Academics", "url": "/academics"},
+        {"label": "Admission", "url": "/admission"},
+        {"label": "News & Events", "url": "/news-events"},
+        {"label": "Community", "url": "/community"},
+        {"label": "Contact Us", "url": "/contact"},
+
+        # About Us Submenu
+        {"label": "Mission & Values", "url": "/mission-values", "parent_label": "About Us"},
+        {"label": "Leadership & Administration", "url": "/leadership", "parent_label": "About Us"},
+        {"label": "Our History", "url": "/our-history", "parent_label": "About Us"},
+
+        # Academics Submenu
+        {"label": "Programs", "url": "/programs", "parent_label": "Academics"},
+        {"label": "Curriculum & Learning", "url": "/curriculum", "parent_label": "Academics"},
+        {"label": "Resources & Support", "url": "/resources", "parent_label": "Academics"},
+
+        # Community Submenu
+        {"label": "Community Engagement", "url": "/engagement", "parent_label": "Community"},
+        {"label": "Parents & Families", "url": "/parents", "parent_label": "Community"},
+        {"label": "Alumni", "url": "/alumni", "parent_label": "Community"},
+        {"label": "Recruitment", "url": "/recruitment", "parent_label": "Community"},
+    ]
+
+    ws = frappe.get_single("Website Settings")
+    ws.top_bar_items = []
+
+    for item in top_bar_items:
+        ws.append("top_bar_items", item)
+
+    ws.save(ignore_permissions=True)
 	

@@ -35,6 +35,22 @@ frappe.ui.form.on("School", {
           sc.school = frm.doc.name;
         });
       });
+
+      frm.add_custom_button(__('Add to Website'), () => {
+        frappe.call({
+          method: 'ifitwala_ed.school.doctype.school.school.add_school_to_navbar',
+          args: {
+              school_name: frm.doc.school_name,
+              abbreviation: frm.doc.abbreviation,
+              website_slug: frm.doc.website_slug || null
+          },
+          callback: (r) => {
+              if (r.message) {
+                  frappe.msgprint(r.message);
+              }
+          }
+      });
+    });
     }
 
     if (!frm.doc.__islocal) {

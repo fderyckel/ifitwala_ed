@@ -21,6 +21,10 @@ class School(NestedSet):
 
 	def on_update(self):
 		NestedSet.on_update(self)
+		
+	def after_save(self): 
+		if self.is_dirty("abbreviation"): 
+			self.update_navbar_item_for_abbreviation_change()		
 
 	def on_trash(self):
 		NestedSet.validate_if_child_exists(self)
@@ -50,28 +54,22 @@ class School(NestedSet):
 		if self.parent_school:
 			is_group = frappe.db.get_value('School', self.parent_school, 'is_group')
 			if not is_group:
-				frappe.throw(_("Parent School must be a group school."))
-
-	## TOTHINK: why would a school need to create a building?  Isn't it what the organization should do?
-	## maybe just create an office? 
-	def create_default_location(self):
-		for loc_detail in [
-			{"location_name": self.name, "is_group": 1},
-			{"location_name": _("Classroom 1"), "is_group": 0, "location_type": "Classroom"},
-			{"location_name": _("Office 1"), "is_group": 0, "location_type": "Office"}]:
-			if not frappe.db.exists("Location", "{0} - {1}".format(loc_detail["location_name"], self.abbr)):
-				location = frappe.get_doc({
-					"doctype": "Location",
-					"location_name": loc_detail["location_name"],
-					"is_group": loc_detail["is_group"],
-					"organization": self.organization,
-					"school": self.name,
-					"parent_location": "{0} - {1}".format(_("All Locations"), self.abbr) if not loc_detail["is_group"] else "",
-					"location_type" : loc_detail["location_type"] if "location_type" in loc_detail else None
-				})
-			location.flags.ignore_permissions = True
-			location.flags.ignore_mandatory = True
-			location.insert()
+				frappe.throw(_("Parent School must be a group school.")) 
+	
+	def update_navbar_item_for_abbreviation_change(self): 
+		old_abbr = self.get_doc_before_save().abbreviation
+		new_url = f"/school/{self.abbreviation}"
+		old_url = f"/school/{old_abbr}"
+		
+		ws = frappe.get_single("Website Settings")
+		
+		for item in ws.top_bar_items: 
+			if item.url == old_url: 
+				item.url = new_url 
+				item.label = self.school_name 
+				ws.save(ignore_permissions=True) 
+				frappe.msgprint(_("Navbar item updated to new abbreviation.")) 
+				break
 
 @frappe.whitelist()
 def enqueue_replace_abbr(school, old, new):
@@ -137,3 +135,29 @@ def add_node():
 
 	frappe.get_doc(args).insert()
 
+@frappe.whitelist()
+def add_school_to_navbar(school_name, abbreviation, website_slug=None):
+    url_segment = website_slug or abbreviation
+    url_path = f"/school/{url_segment}"
+    ws = frappe.get_single("Website Settings")
+
+    existing = next(
+        (item for item in ws.top_bar_items if item.url == url_path),
+        None
+    )
+
+    if existing:
+        if existing.label != school_name:
+            existing.label = school_name
+            ws.save(ignore_permissions=True)
+            return "Updated existing nav item."
+        return "Nav item already exists."
+
+    # Add new item
+    ws.append("top_bar_items", {
+        "label": school_name,
+        "url": url_path,
+        "parent_label": "Home"
+    })
+    ws.save(ignore_permissions=True)
+    return "Added new nav item."
