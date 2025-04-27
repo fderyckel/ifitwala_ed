@@ -27,9 +27,11 @@ def resize_and_save(doc, original_path, base_filename, doctype_folder, size_labe
                 return  # No need to resize
             img.thumbnail((width, width))
             if preserve_format == "PNG":
+                os.makedirs(os.path.dirname(resized_path), exist_ok=True)
                 img.save(resized_path, format="PNG", optimize=True)
             else:
                 img = img.convert("RGB")  # Remove alpha if saving JPEG
+                os.makedirs(os.path.dirname(resized_path), exist_ok=True)
                 img.save(resized_path, format="JPEG", optimize=True, quality=quality)
     except Exception as e:
         frappe.log_error(f"Error resizing image: {e}", "File Auto-Resize Error")
@@ -70,7 +72,10 @@ def resize_and_save(doc, original_path, base_filename, doctype_folder, size_labe
             }).insert(ignore_permissions=True)
 
     except Exception as e:
-        frappe.log_error(f"Error registering resized file: {e}", "File Auto-Resize Register Error")
+        frappe.log_error( 
+            title="File Auto-Resize Error", 
+            message=f"Error resizing image {doc.name}: {e}"
+        )
 
 def handle_file_after_insert(doc, method=None):
     """Triggered after a File is inserted — resize images if applicable."""
