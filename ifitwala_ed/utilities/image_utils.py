@@ -162,9 +162,9 @@ def rebuild_resized_images(doctype):
 
         # Small, Medium, Large
         target_widths = {
-            "small": 300,
-            "medium": 800,
             "large": 1600,
+            "medium": 800,
+            "small": 300
         }
 
         for size_label, width in target_widths.items():
