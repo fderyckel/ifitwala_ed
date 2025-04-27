@@ -114,3 +114,7 @@ def handle_file_after_insert(doc, method=None):
 
             for width in target_widths:
                 resize_and_save(original_path, resized_folder, base_filename, width=width, quality=quality, preserve_format=original_format)
+
+def handle_file_on_update(doc, method=None):
+    """Handle file updates — same logic as after_insert."""
+    handle_file_after_insert(doc, method)

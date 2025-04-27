@@ -169,7 +169,8 @@ doc_events = {
       "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions"
     }, 
     "File": {
-        "after_insert": "ifitwala_ed.utilities.image_utils.handle_file_after_insert"
+        "after_insert": "ifitwala_ed.utilities.image_utils.handle_file_after_insert", 
+        "on_update": "ifitwala_ed.utilities.image_utils.handle_file_on_update"
     }    
 }
 
