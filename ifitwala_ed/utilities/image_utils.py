@@ -86,14 +86,20 @@ def handle_file_after_insert(doc, method=None):
     allowed_doctypes = ["Employee", "School", "Course", "Program", "Blog Post"]  # extend if needed
     image_extensions = [".jpg", ".jpeg", ".png"]
     target_widths = {
-        "small": 300,
-        "medium": 800,
-        "large": 1600,
+        "real_small": 300,
+        "real_medium": 800,
+        "real_large": 1600,
     }
     quality = 80
 
     if doc.attached_to_doctype not in allowed_doctypes:
         return
+    
+    # Skip if file is already a Frappe-generated small_ or medium_ thumbnail
+    filename = os.path.basename(doc.file_url)
+    if filename.startswith("small_") or filename.startswith("medium_"):
+        return
+
 
     if not any(doc.file_url.lower().endswith(ext) for ext in image_extensions):
         return
