@@ -155,35 +155,50 @@ class Employee(NestedSet):
 
 	# to update the user fields when employee fields are changing
 	def update_user(self):
-		# add employee role if missing
-		user = frappe.get_doc("User", self.user_id)
-		user.flags.ignore_permissions = True
+			user = frappe.get_doc("User", self.user_id)
+			user.flags.ignore_permissions = True
 
-		if "Employee" not in user.get("roles"):
-			user.append_roles("Employee")
+			if "Employee" not in user.get("roles"):
+					user.append_roles("Employee")
 
-		user.first_name = self.employee_first_name
-		user.last_name = self.employee_last_name
-		user.full_name = self.employee_full_name
+			user.first_name = self.employee_first_name
+			user.last_name = self.employee_last_name
+			user.full_name = self.employee_full_name
 
-		if self.employee_date_of_birth:
-			user.birth_date = self.employee_date_of_birth
-		if self.employee_image:
-			if not user.user_image:
-				user.user_image = self.employee_image
-				try:
-					frappe.get_doc(
-						{
-							"doctype": "File", 
-							"file_url": self.employee_image,
-							"attached_to_doctype": "User",
-							"attached_to_name": self.user_id
-						}
-					).insert(ignore_permissions=True)
-				except frappe.DuplicateEntryError:
-					# already exists
-					pass
-		user.save()
+			if self.employee_date_of_birth:
+					user.birth_date = self.employee_date_of_birth
+
+			if self.employee_image:
+					if not user.user_image:
+							user.user_image = self.employee_image
+
+					# 🛠️ New: Check if a matching File already exists
+					existing_file = frappe.db.exists(
+							"File",
+							{
+									"file_url": self.employee_image,
+									"attached_to_doctype": "User",
+									"attached_to_name": self.user_id,
+									"attached_to_field": "user_image",
+							}
+					)
+
+					if not existing_file:
+							try:
+									frappe.get_doc(
+											{
+													"doctype": "File",
+													"file_url": self.employee_image,
+													"attached_to_doctype": "User",
+													"attached_to_name": self.user_id,
+													"attached_to_field": "user_image",
+											}
+									).insert(ignore_permissions=True)
+							except frappe.DuplicateEntryError:
+									pass
+
+			user.save()
+
 
 	def update_user_permissions(self):
 		if not self.create_user_permission: 
