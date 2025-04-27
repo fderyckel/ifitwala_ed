@@ -86,9 +86,9 @@ def handle_file_after_insert(doc, method=None):
     allowed_doctypes = ["Employee", "School", "Course", "Program", "Blog Post"]  # extend if needed
     image_extensions = [".jpg", ".jpeg", ".png"]
     target_widths = {
-        "real_small": 300,
-        "real_medium": 800,
-        "real_large": 1600,
+        "small": 300,
+        "medium": 800,
+        "large": 1200,
     }
     quality = 80
 
@@ -97,7 +97,7 @@ def handle_file_after_insert(doc, method=None):
     
     # Skip if file is already a Frappe-generated small_ or medium_ thumbnail
     filename = os.path.basename(doc.file_url)
-    if filename.startswith("small_") or filename.startswith("medium_"):
+    if filename.startswith(("large_", "medium_", "small_")):
         return
 
 
@@ -152,6 +152,10 @@ def rebuild_resized_images(doctype):
         if not file.file_url or not any(file.file_url.lower().endswith(ext) for ext in allowed_image_extensions):
             continue
 
+        filename = os.path.basename(file.file_url)
+        if filename.startswith(("large_", "medium_", "small_")):
+            continue  # 🛡️ Skip already resized files
+
         original_path = frappe.utils.get_site_path("public", file.file_url.lstrip("/"))
         base_filename = os.path.splitext(os.path.basename(file.file_url))[0]
         doctype_folder = file.attached_to_doctype.lower()
@@ -168,7 +172,7 @@ def rebuild_resized_images(doctype):
 
         # Small, Medium, Large
         target_widths = {
-            "large": 1600,
+            "large": 1200,
             "medium": 800,
             "small": 300
         }
