@@ -3,6 +3,7 @@
 
 import os
 import frappe
+from frappe import _  
 from PIL import Image
 
 def resize_and_save(doc, original_path, base_filename, doctype_folder, size_label, width, quality=80, preserve_format="JPEG"):
