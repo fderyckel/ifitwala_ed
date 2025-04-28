@@ -22,6 +22,9 @@ class FileManagement(Document):
 
         # --- Step 1: Move misfiled attached images ---
         for row in self.managed_doctypes:
+            if not row.move_image: 
+                continue
+
             if not row.active:
                 continue
 
@@ -61,9 +64,18 @@ class FileManagement(Document):
                     frappe.db.set_value("File", f.name, {
                         "file_url": f"/{new_relative_path}",
                         "folder": f"Home/{target_folder}"
-                    }, update_modified=False)
+                    })
 
-                moved_files.append(f.file_name)
+                    if f.attached_to_doctype and f.attached_to_name and f.attached_to_field:
+                        try:
+                            frappe.db.set_value(
+                                f.attached_to_doctype,
+                                f.attached_to_name,
+                                f.attached_to_field,
+                                f"/{new_relative_path}"
+                            )
+                        except Exception as e:
+                            frappe.log_error(f"Error updating linked document {f.attached_to_doctype} {f.attached_to_name}: {e}", "Linked Doc Update Error")
 
         # --- Step 2: Clean orphaned thumbnails ---
         public_files_path = Path(get_files_path())
