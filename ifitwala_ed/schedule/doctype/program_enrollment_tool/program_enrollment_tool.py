@@ -18,10 +18,6 @@ def _enroll_batch(tool_doctype, tool_name):
 
 class ProgramEnrollmentTool(Document):
 
-    # ----------------------------
-    # PUBLIC APIS (called from JS)
-    # ----------------------------
-
     @frappe.whitelist()
     def get_students(self):
         """Populate the child table based on UI filters and mark duplicates."""

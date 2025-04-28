@@ -10,6 +10,7 @@ from pathlib import Path
 
 class FileManagement(Document):
 
+    @frappe.whitelist()
     def run_dry_run(self):
         """Triggered by the native Button field (Dry Run)."""
         self._file_management_executor(dry_run=True)
