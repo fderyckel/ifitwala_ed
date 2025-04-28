@@ -59,6 +59,10 @@ class FileManagement(Document):
                 new_relative_path = f"files/{target_folder}/{f.file_name}"
                 new_full_path = frappe.utils.get_site_path("public", new_relative_path)
 
+                # ⚡ Correct sequence: first "register" intention
+                moved_files.append(f.file_name)
+
+                # ⚡ Only real move if dry_run is False
                 if not dry_run:
                     os.rename(old_full_path, new_full_path)
                     frappe.db.set_value("File", f.name, {
@@ -75,7 +79,10 @@ class FileManagement(Document):
                                 f"/{new_relative_path}"
                             )
                         except Exception as e:
-                            frappe.log_error(f"Error updating linked document {f.attached_to_doctype} {f.attached_to_name}: {e}", "Linked Doc Update Error")
+                            frappe.log_error(
+                                f"Error updating linked document {f.attached_to_doctype} {f.attached_to_name}: {e}",
+                                "Linked Doc Update Error"
+                            )
 
         # --- Step 2: Clean orphaned thumbnails ---
         public_files_path = Path(get_files_path())
