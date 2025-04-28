@@ -45,12 +45,8 @@ class FileManagement(Document):
             for f in files:
                 if not f.file_url:
                     continue
-
-                # Skip files already correctly moved
                 if f.folder and f.folder.lower() == f"home/{target_folder}":
                     continue
-
-                # Skip small_, medium_, large_ system thumbnails
                 if any(f.file_name.startswith(prefix) for prefix in ["small_", "medium_", "large_"]):
                     continue
 
@@ -86,28 +82,26 @@ class FileManagement(Document):
                 if not dry_run:
                     try:
                         file_path.unlink()
-
                         file_doc_name = frappe.db.get_value(
                             "File", {"file_url": f"/files/{file_path.name}"}, "name"
                         )
                         if file_doc_name:
                             frappe.delete_doc("File", file_doc_name, force=1)
-
                     except Exception as e:
                         frappe.log_error(f"Error deleting thumbnail {file_path.name}: {e}", "Thumbnail Deletion Error")
 
                 deleted_thumbnails.append(file_path.name)
 
-        # --- Step 3: Save admin notes (only if real execution) ---
+        # --- Step 3: Save admin notes (ALWAYS now) ---
         summary = []
         summary.append(f"Moved {len(moved_files)} file(s).")
         summary.append(f"Deleted {len(deleted_thumbnails)} orphaned thumbnail(s).")
         summary.append(f"Skipped {len(skipped_files)} missing file(s).")
 
-        if not dry_run:
-            self.admin_notes = "\n".join(summary)
-            self.last_action_date = frappe.utils.now_datetime()
-            self.save(ignore_permissions=True)
+        self.admin_notes = "\n".join(summary)
+        self.last_action_date = frappe.utils.now_datetime()
+
+        self.save(ignore_permissions=True)
 
         return {
             "moved_files": moved_files,
@@ -116,3 +110,4 @@ class FileManagement(Document):
             "dry_run": dry_run,
             "summary": summary,
         }
+
