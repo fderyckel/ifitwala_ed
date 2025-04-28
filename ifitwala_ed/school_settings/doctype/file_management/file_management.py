@@ -15,11 +15,6 @@ class FileManagement(Document):
         """Triggered by the native Button field (Dry Run)."""
         self._file_management_executor(dry_run=True)
 
-    @frappe.whitelist()
-    def run_execute(self):
-        """Triggered by the JS button (Real Execute)."""
-        self._file_management_executor(dry_run=False)
-
     def _file_management_executor(self, dry_run=True):
         moved_files = []
         deleted_thumbnails = []
@@ -94,9 +89,25 @@ class FileManagement(Document):
 
         # --- Step 3: Save admin notes (ALWAYS now) ---
         summary = []
-        summary.append(f"Moved {len(moved_files)} file(s).")
-        summary.append(f"Deleted {len(deleted_thumbnails)} orphaned thumbnail(s).")
-        summary.append(f"Skipped {len(skipped_files)} missing file(s).")
+
+        if dry_run:
+            summary.append(f"We found {len(moved_files)} file(s) to be moved:")
+            for f in moved_files:
+                summary.append(f"  - {f}")
+
+            summary.append(f"\nWe found {len(deleted_thumbnails)} orphaned thumbnail(s) to be deleted:")
+            for f in deleted_thumbnails:
+                summary.append(f"  - {f}")
+
+            summary.append(f"\nWe found {len(skipped_files)} missing file(s) on disk:")
+            for f in skipped_files:
+                summary.append(f"  - {f}")
+        else:
+            summary.append(f"Moved {len(moved_files)} file(s).")
+            summary.append("")
+            summary.append(f"Deleted {len(deleted_thumbnails)} orphaned thumbnail(s).")
+            summary.append("")
+            summary.append(f"Skipped {len(skipped_files)} missing file(s).")
 
         self.admin_notes = "\n".join(summary)
         self.last_action_date = frappe.utils.now_datetime()
@@ -111,3 +122,7 @@ class FileManagement(Document):
             "summary": summary,
         }
 
+@frappe.whitelist()
+def run_execute():
+    fm = frappe.get_single("File Management")
+    return fm._file_management_executor(dry_run=False)

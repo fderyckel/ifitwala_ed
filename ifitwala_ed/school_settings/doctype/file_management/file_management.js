@@ -1,8 +1,6 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-// Copyright (c) 2025, François de Ryckel and contributors
-// For license information, please see license.txt
 
 frappe.ui.form.on('File Management', {
   refresh(frm) {
@@ -23,7 +21,7 @@ frappe.ui.form.on('File Management', {
           });
         }
       );
-    }, __("Maintenance")); // Group name
+    }); // Group name
     
     // Add danger style manually
     setTimeout(() => {
