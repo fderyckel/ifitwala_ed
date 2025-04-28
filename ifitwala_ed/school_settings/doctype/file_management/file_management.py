@@ -5,6 +5,7 @@
 
 import frappe
 import os
+from frappe.model.document import Document
 from frappe import _
 from frappe.utils import get_files_path
 from pathlib import Path
