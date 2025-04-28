@@ -1,8 +1,6 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# ifitwala_ed/school_settings/doctype/file_management/file_management.py
-
 import frappe
 import os
 from frappe.model.document import Document
@@ -12,20 +10,17 @@ from pathlib import Path
 
 class FileManagement(Document):
     def run_dry_run(self):
-        """Triggered when clicking the Button field in the form."""
-        return run_dry_run()  
-
-@frappe.whitelist()
-def run_dry_run():
-    """Dry run of File Management maintenance."""
-    return _file_management_executor(dry_run=True)
+        """Triggered by Button field on the form (Dry Run)."""
+        return _file_management_executor(dry_run=True)
 
 @frappe.whitelist()
 def run_execute():
-    """Real execution of File Management maintenance."""
+    """Triggered by JS button (Real Execute)."""
     return _file_management_executor(dry_run=False)
 
+# Private Helper
 def _file_management_executor(dry_run=True):
+    """Main logic to move files and cleanup orphaned thumbnails."""
     moved_files = []
     deleted_thumbnails = []
     skipped_files = []
@@ -39,26 +34,28 @@ def _file_management_executor(dry_run=True):
 
         target_folder = row.doctype_link.lower()
 
-        files = frappe.get_all("File", fields=["name", "file_url", "attached_to_doctype", "attached_to_name", "folder", "file_name"],
+        files = frappe.get_all(
+            "File",
+            fields=["name", "file_url", "attached_to_doctype", "attached_to_name", "folder", "file_name"],
             filters={
                 "attached_to_doctype": row.doctype_link,
                 "is_folder": 0,
                 "is_private": 0
-            })
+            }
+        )
 
         for f in files:
             if not f.file_url:
                 continue
 
-            # Skip files that are already correctly moved
+            # Already moved correctly?
             if f.folder and f.folder.lower() == f"home/{target_folder}":
                 continue
 
-            # Skip Frappe generated thumbnails (small_, medium_, large_) in filename
+            # Skip generated thumbnails
             if any(f.file_name.startswith(prefix) for prefix in ["small_", "medium_", "large_"]):
                 continue
 
-            # Check if file physically exists
             old_full_path = frappe.utils.get_site_path("public", f.file_url.lstrip("/"))
             if not os.path.exists(old_full_path):
                 skipped_files.append(f"Missing on disk: {f.file_url}")
@@ -68,28 +65,32 @@ def _file_management_executor(dry_run=True):
             folder_path = frappe.utils.get_site_path("public", "files", target_folder)
             os.makedirs(folder_path, exist_ok=True)
 
-            # New relative path
             new_relative_path = f"files/{target_folder}/{f.file_name}"
             new_full_path = frappe.utils.get_site_path("public", new_relative_path)
 
             if not dry_run:
                 os.rename(old_full_path, new_full_path)
-                frappe.db.set_value("File", f.name, {
-                    "file_url": f"/{new_relative_path}",
-                    "folder": f"Home/{target_folder}"
-                }, update_modified=False)
+                frappe.db.set_value(
+                    "File",
+                    f.name,
+                    {
+                        "file_url": f"/{new_relative_path}",
+                        "folder": f"Home/{target_folder}"
+                    },
+                    update_modified=False
+                )
 
             moved_files.append(f.file_name)
 
-    # --- Step 2: Clean orphaned small_, medium_, large_ thumbnails ---
+    # --- Step 2: Clean orphaned thumbnails ---
     public_files_path = Path(get_files_path())
 
     for file_path in public_files_path.glob("*_*.*"):
         if file_path.name.startswith(("small_", "medium_", "large_")):
-            # Check if equivalent exists in gallery_resized
+            # Only delete if NOT present in gallery_resized
             gallery_match = public_files_path / "gallery_resized" / file_path.name
             if gallery_match.exists():
-                continue  # OK, file is protected
+                continue
 
             if not dry_run:
                 try:
@@ -100,11 +101,12 @@ def _file_management_executor(dry_run=True):
 
             deleted_thumbnails.append(file_path.name)
 
-    # --- Step 3: Save admin notes ---
-    summary = []
-    summary.append(f"Moved {len(moved_files)} file(s).")
-    summary.append(f"Deleted {len(deleted_thumbnails)} orphaned thumbnail(s).")
-    summary.append(f"Skipped {len(skipped_files)} missing file(s).")
+    # --- Step 3: Save Admin Notes (only if real execution) ---
+    summary = [
+        f"Moved {len(moved_files)} file(s).",
+        f"Deleted {len(deleted_thumbnails)} orphaned thumbnail(s).",
+        f"Skipped {len(skipped_files)} missing file(s)."
+    ]
 
     if not dry_run:
         file_management_settings.admin_notes = "\n".join(summary)
@@ -118,4 +120,3 @@ def _file_management_executor(dry_run=True):
         "dry_run": dry_run,
         "summary": summary,
     }
-

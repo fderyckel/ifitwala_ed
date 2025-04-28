@@ -6,27 +6,13 @@
 
 frappe.ui.form.on('File Management', {
   refresh(frm) {
-    frm.add_custom_button('Dry Run Cleanup', () => {
-      frappe.confirm(
-        'Are you sure you want to simulate the file reorganization and cleanup?',
-        () => {
-          frappe.call({
-            method: 'ifitwala_ed.school_settings.doctype.file_management.file_management.run_dry_run',
-            freeze: true,
-            freeze_message: __('Simulating cleanup...'),
-            callback: (r) => {
-              if (r.message) {
-                frappe.msgprint(__(r.message));
-              }
-            }
-          });
-        }
-      );
-    }, 'Actions');
+// ifitwala_ed/school_settings/doctype/file_management/file_management.js
 
-    frm.add_custom_button('Execute Cleanup', () => {
+frappe.ui.form.on('File Management', {
+  refresh(frm) {
+    frm.add_custom_button(__('Execute Cleanup'), () => {
       frappe.confirm(
-        '⚠️ Are you absolutely sure? This will MOVE and DELETE files. Proceed?',
+        __('⚠️ Are you sure? This will MOVE and DELETE files. Proceed?'),
         () => {
           frappe.call({
             method: 'ifitwala_ed.school_settings.doctype.file_management.file_management.run_execute',
@@ -34,14 +20,22 @@ frappe.ui.form.on('File Management', {
             freeze_message: __('Executing cleanup...'),
             callback: (r) => {
               if (r.message) {
-                frappe.msgprint(__(r.message));
+                frappe.msgprint(__('Cleanup complete!'));
                 frm.reload_doc();
               }
             }
           });
         }
       );
-    }, 'Actions');
+    }, __("Maintenance")); // Group name
+    
+    // Add danger style manually
+    setTimeout(() => {
+      $('[data-label="Execute%20Cleanup"]').removeClass('btn-primary').addClass('btn-danger');
+    }, 100);
+  }
+});
+
   }
 });
 
