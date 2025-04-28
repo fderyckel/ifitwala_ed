@@ -1,0 +1,67 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-28 10:20:06.297783",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_716y",
+  "managed_doctypes",
+  "dry_run",
+  "admin_notes",
+  "last_action_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_716y",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "managed_doctypes",
+   "fieldtype": "Table",
+   "label": "Managed DocTypes",
+   "options": "File Management Doctype"
+  },
+  {
+   "fieldname": "admin_notes",
+   "fieldtype": "Text",
+   "label": "Admin Notes"
+  },
+  {
+   "fieldname": "last_action_date",
+   "fieldtype": "Datetime",
+   "label": "Last Action Date"
+  },
+  {
+   "fieldname": "dry_run",
+   "fieldtype": "Button",
+   "label": "Dry Run File Operations",
+   "options": "run_dry_run"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-04-28 10:30:21.180044",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "File Management",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

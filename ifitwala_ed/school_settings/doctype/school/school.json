@@ -228,7 +228,6 @@
    "fieldname": "website_slug",
    "fieldtype": "Data",
    "label": "Website Slug",
-   "reqd": 1,
    "unique": 1
   },
   {
@@ -263,7 +262,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-04-24 19:29:36.071144",
+ "modified": "2025-04-25 22:25:24.523877",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
