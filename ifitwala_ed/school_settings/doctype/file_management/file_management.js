@@ -6,10 +6,6 @@
 
 frappe.ui.form.on('File Management', {
   refresh(frm) {
-// ifitwala_ed/school_settings/doctype/file_management/file_management.js
-
-frappe.ui.form.on('File Management', {
-  refresh(frm) {
     frm.add_custom_button(__('Execute Cleanup'), () => {
       frappe.confirm(
         __('⚠️ Are you sure? This will MOVE and DELETE files. Proceed?'),
@@ -33,9 +29,6 @@ frappe.ui.form.on('File Management', {
     setTimeout(() => {
       $('[data-label="Execute%20Cleanup"]').removeClass('btn-primary').addClass('btn-danger');
     }, 100);
-  }
-});
-
   }
 });
 

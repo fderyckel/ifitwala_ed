@@ -17,18 +17,15 @@ class FileManagement(Document):
     @frappe.whitelist()
     def run_execute(self):
         """Triggered by the JS button (Real Execute)."""
-        return self._file_management_executor(dry_run=False)
+        self._file_management_executor(dry_run=False)
 
-    # Private internal method
     def _file_management_executor(self, dry_run=True):
         moved_files = []
         deleted_thumbnails = []
         skipped_files = []
 
-        file_management_settings = frappe.get_single("File Management")
-
         # --- Step 1: Move misfiled attached images ---
-        for row in file_management_settings.managed_doctypes:
+        for row in self.managed_doctypes:
             if not row.active:
                 continue
 
@@ -48,9 +45,11 @@ class FileManagement(Document):
                 if not f.file_url:
                     continue
 
+                # Skip files already correctly moved
                 if f.folder and f.folder.lower() == f"home/{target_folder}":
                     continue
 
+                # Skip small_, medium_, large_ system thumbnails
                 if any(f.file_name.startswith(prefix) for prefix in ["small_", "medium_", "large_"]):
                     continue
 
@@ -67,11 +66,10 @@ class FileManagement(Document):
 
                 if not dry_run:
                     os.rename(old_full_path, new_full_path)
-                    frappe.db.set_value(
-                        "File", f.name,
-                        {"file_url": f"/" + new_relative_path, "folder": f"Home/{target_folder}"},
-                        update_modified=False
-                    )
+                    frappe.db.set_value("File", f.name, {
+                        "file_url": f"/{new_relative_path}",
+                        "folder": f"Home/{target_folder}"
+                    }, update_modified=False)
 
                 moved_files.append(f.file_name)
 
@@ -87,23 +85,28 @@ class FileManagement(Document):
                 if not dry_run:
                     try:
                         file_path.unlink()
-                        frappe.db.delete("File", {"file_url": f"/files/{file_path.name}"})
+
+                        file_doc_name = frappe.db.get_value(
+                            "File", {"file_url": f"/files/{file_path.name}"}, "name"
+                        )
+                        if file_doc_name:
+                            frappe.delete_doc("File", file_doc_name, force=1)
+
                     except Exception as e:
                         frappe.log_error(f"Error deleting thumbnail {file_path.name}: {e}", "Thumbnail Deletion Error")
 
                 deleted_thumbnails.append(file_path.name)
 
-        # --- Step 3: Save summary notes ---
-        summary = [
-            f"Moved {len(moved_files)} file(s).",
-            f"Deleted {len(deleted_thumbnails)} orphaned thumbnail(s).",
-            f"Skipped {len(skipped_files)} missing file(s)."
-        ]
+        # --- Step 3: Save admin notes (only if real execution) ---
+        summary = []
+        summary.append(f"Moved {len(moved_files)} file(s).")
+        summary.append(f"Deleted {len(deleted_thumbnails)} orphaned thumbnail(s).")
+        summary.append(f"Skipped {len(skipped_files)} missing file(s).")
 
         if not dry_run:
-            file_management_settings.admin_notes = "\n".join(summary)
-            file_management_settings.last_action_date = frappe.utils.now_datetime()
-            file_management_settings.save(ignore_permissions=True)
+            self.admin_notes = "\n".join(summary)
+            self.last_action_date = frappe.utils.now_datetime()
+            self.save(ignore_permissions=True)
 
         return {
             "moved_files": moved_files,
