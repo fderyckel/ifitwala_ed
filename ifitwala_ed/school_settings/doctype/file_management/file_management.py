@@ -22,7 +22,7 @@ class FileManagement(Document):
 
         # --- Step 1: Move misfiled attached images ---
         for row in self.managed_doctypes:
-            if not row.move_image: 
+            if not row.move_attached_images: 
                 continue
 
             if not row.active:
