@@ -9,6 +9,9 @@ from frappe import _
 from frappe.utils import get_files_path
 from pathlib import Path
 
+class FileManagement(Document):
+    pass
+
 @frappe.whitelist()
 def run_dry_run():
     """Dry run of File Management maintenance."""
