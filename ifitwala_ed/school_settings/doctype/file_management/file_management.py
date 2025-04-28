@@ -11,7 +11,9 @@ from frappe.utils import get_files_path
 from pathlib import Path
 
 class FileManagement(Document):
-    pass
+    def run_dry_run(self):
+        """Triggered when clicking the Button field in the form."""
+        return run_dry_run()  
 
 @frappe.whitelist()
 def run_dry_run():
