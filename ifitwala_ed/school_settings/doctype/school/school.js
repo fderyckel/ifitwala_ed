@@ -38,7 +38,7 @@ frappe.ui.form.on("School", {
 
       frm.add_custom_button(__('Add to Website'), () => {
         frappe.call({
-          method: 'ifitwala_ed.school.doctype.school.school.add_school_to_navbar',
+          method: 'ifitwala_ed.school_settings.doctype.school.school.add_school_to_navbar',
           args: {
               school_name: frm.doc.school_name,
               abbreviation: frm.doc.abbreviation,
