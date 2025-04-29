@@ -183,8 +183,8 @@ class Employee(NestedSet):
 							img_path = None                # prevents 500 in attach_files_to_document
 
 			if img_path:                           # only run if the path is valid
-					if not user.user_image:
-							user.user_image = img_path
+					if user.user_image != img_path: 
+						user.user_image = img_path
 
 					# 🛠  keep / update the File row attached to User.user_image
 					existing = frappe.db.exists(
