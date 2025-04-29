@@ -88,6 +88,39 @@ class FileManagement(Document):
                         "folder": expected_folder_path,
                     })
 
+                    # 🚀 NEW —— propagate the new path to every *other* File row
+                    duplicates = frappe.get_all(
+                        "File",
+                        filters={
+                            "file_url": f.file_url,           # ← OLD url (still in var f at this point)
+                            "name":     ["!=", f.name],       # skip the one we just updated
+                            "is_folder": 0
+                        },
+                        fields=["name", "attached_to_doctype",
+                                "attached_to_name", "attached_to_field"]
+                    )
+
+                    for dup in duplicates:
+                        frappe.db.set_value(
+                            "File", dup.name,
+                            {
+                                "file_url": f"/{new_relative_path}",
+                                "folder":   expected_folder_path,
+                            },
+                            update_modified=False,
+                        )
+
+                        # also update the field on the linked document so the UI shows the right url
+                        if dup.attached_to_doctype and dup.attached_to_field:
+                            frappe.db.set_value(
+                                dup.attached_to_doctype,
+                                dup.attached_to_name,
+                                dup.attached_to_field,
+                                f"/{new_relative_path}",
+                                update_modified=False,
+                            )
+
+
                     # ⚡ Update attached_to_document field if needed
                     if f.attached_to_doctype and f.attached_to_name and f.attached_to_field:
                         try:

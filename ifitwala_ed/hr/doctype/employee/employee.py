@@ -169,39 +169,43 @@ class Employee(NestedSet):
 			if self.employee_date_of_birth:
 					user.birth_date = self.employee_date_of_birth
 
-			if self.employee_image:
-					if not user.user_image:
-							user.user_image = self.employee_image
+			# ---- image sync -------------------------------------------------------
+			img_path = self.employee_image
+			if img_path:
+					abs_path = frappe.utils.get_site_path("public", img_path.lstrip("/"))
 
-					# 🛠️ New: Check if a matching File already exists
-					existing_file = frappe.db.exists(
+					# Skip (and log) if the file has been moved but the field wasn’t updated yet
+					if not os.path.exists(abs_path):
+							frappe.log_error(
+									title=_("Missing file on disk during update_user"),
+									message=f"{abs_path} does not exist for Employee {self.name}"
+							)
+							img_path = None                # prevents 500 in attach_files_to_document
+
+			if img_path:                           # only run if the path is valid
+					if not user.user_image:
+							user.user_image = img_path
+
+					# 🛠  keep / update the File row attached to User.user_image
+					existing = frappe.db.exists(
 							"File",
 							{
-									"file_url": self.employee_image,
+									"file_url": img_path,
 									"attached_to_doctype": "User",
-									"attached_to_name": self.user_id,
-									"attached_to_field": "user_image",
+									"attached_to_name":   self.user_id,
+									"attached_to_field":  "user_image",
 							}
 					)
 
-					if not existing_file:
-						file_path = frappe.utils.get_site_path("public", self.employee_image.lstrip("/"))
-						if os.path.exists(file_path):
-							try:
-								frappe.get_doc({
+					if not existing:
+							frappe.get_doc({
 									"doctype": "File",
-									"file_url": self.employee_image,
-									"attached_to_doctype": "User",
-									"attached_to_name": self.user_id,
-									"attached_to_field": "user_image",
-								}).insert(ignore_permissions=True)
-							except frappe.DuplicateEntryError:
-								pass
-						else:
-							frappe.log_error(
-								title=_("Missing File on Disk"),
-								message=_("File not found at path: {0} while trying to attach to User {1}").format(file_path, self.user_id)
-							)
+									"file_url":           img_path,
+									"attached_to_doctype":"User",
+									"attached_to_name":   self.user_id,
+									"attached_to_field":  "user_image",
+							}).insert(ignore_permissions=True, ignore_if_duplicate=True)
+
 
 			user.save()
 
