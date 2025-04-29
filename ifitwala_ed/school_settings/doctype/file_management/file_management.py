@@ -28,7 +28,7 @@ class FileManagement(Document):
             target_folder = row.doctype_link.lower()
             expected_folder = f"Home/{target_folder}"
 
-            # Ensure File folder exists (in DocType)
+            # Ensure File folder exists (as File Doctype folder)
             if not frappe.db.exists("File", {"file_name": target_folder, "folder": "Home"}):
                 frappe.get_doc({
                     "doctype": "File",
@@ -39,10 +39,7 @@ class FileManagement(Document):
 
             files = frappe.get_all(
                 "File",
-                fields=[
-                    "name", "file_url", "attached_to_doctype", "attached_to_name",
-                    "attached_to_field", "folder", "file_name"
-                ],
+                fields=["name"],
                 filters={
                     "attached_to_doctype": row.doctype_link,
                     "is_folder": 0,
@@ -50,48 +47,48 @@ class FileManagement(Document):
                 }
             )
 
-            for f in files:
-                current_folder = (f.folder or "").lower()
+            for file_meta in files:
+                file_doc = frappe.get_doc("File", file_meta.name)
+                current_folder = (file_doc.folder or "").lower()
                 if current_folder == expected_folder.lower():
                     continue
-                if not f.file_url:
+                if not file_doc.file_url:
                     continue
-                if any(f.file_name.startswith(prefix) for prefix in ["small_", "medium_", "large_"]):
+                if any(file_doc.file_name.startswith(prefix) for prefix in ["small_", "medium_", "large_"]):
                     continue
 
-                old_full_path = frappe.utils.get_site_path("public", f.file_url.lstrip("/"))
+                old_full_path = os.path.join(get_files_path(), os.path.basename(file_doc.file_url))
                 if not os.path.exists(old_full_path):
-                    skipped_files.append(f"Missing on disk: {f.file_url}")
+                    skipped_files.append(f"Missing on disk: {file_doc.file_url}")
                     continue
 
                 # Destination
-                folder_path = frappe.utils.get_site_path("public", "files", target_folder)
+                folder_path = os.path.join(get_files_path(), target_folder)
                 os.makedirs(folder_path, exist_ok=True)
 
-                new_relative_path = f"files/{target_folder}/{f.file_name}"
-                new_full_path = frappe.utils.get_site_path("public", new_relative_path)
+                new_file_path = os.path.join(folder_path, file_doc.file_name)
+                new_relative_path = f"files/{target_folder}/{file_doc.file_name}"
 
-                moved_files.append(f.file_name)
+                moved_files.append(file_doc.file_name)
 
                 if not dry_run:
-                    os.rename(old_full_path, new_full_path)
+                    os.rename(old_full_path, new_file_path)
+                    file_doc.file_url = f"/{new_relative_path}"
+                    file_doc.folder = expected_folder
+                    file_doc.is_private = 0
+                    file_doc.save(ignore_permissions=True)
 
-                    frappe.db.set_value("File", f.name, {
-                        "file_url": f"/{new_relative_path}",
-                        "folder": expected_folder
-                    })
-
-                    if f.attached_to_doctype and f.attached_to_name and f.attached_to_field:
+                    if file_doc.attached_to_doctype and file_doc.attached_to_name and file_doc.attached_to_field:
                         try:
                             frappe.db.set_value(
-                                f.attached_to_doctype,
-                                f.attached_to_name,
-                                f.attached_to_field,
+                                file_doc.attached_to_doctype,
+                                file_doc.attached_to_name,
+                                file_doc.attached_to_field,
                                 f"/{new_relative_path}"
                             )
                         except Exception as e:
                             frappe.log_error(
-                                f"Error updating {f.attached_to_doctype} {f.attached_to_name}: {e}",
+                                f"Error updating {file_doc.attached_to_doctype} {file_doc.attached_to_name}: {e}",
                                 "Linked Doc Update Error"
                             )
 
@@ -150,7 +147,6 @@ class FileManagement(Document):
             "dry_run": dry_run,
             "summary": summary,
         }
-
 
     @frappe.whitelist() 
     def clear_notes_and_date(self):
