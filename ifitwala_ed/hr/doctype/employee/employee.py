@@ -184,18 +184,23 @@ class Employee(NestedSet):
 					)
 
 					if not existing_file:
+						file_path = frappe.utils.get_site_path("public", self.employee_image.lstrip("/"))
+						if os.path.exists(file_path):
 							try:
-									frappe.get_doc(
-											{
-													"doctype": "File",
-													"file_url": self.employee_image,
-													"attached_to_doctype": "User",
-													"attached_to_name": self.user_id,
-													"attached_to_field": "user_image",
-											}
-									).insert(ignore_permissions=True)
+								frappe.get_doc({
+									"doctype": "File",
+									"file_url": self.employee_image,
+									"attached_to_doctype": "User",
+									"attached_to_name": self.user_id,
+									"attached_to_field": "user_image",
+								}).insert(ignore_permissions=True)
 							except frappe.DuplicateEntryError:
-									pass
+								pass
+						else:
+							frappe.log_error(
+								title=_("Missing File on Disk"),
+								message=_("File not found at path: {0} while trying to attach to User {1}").format(file_path, self.user_id)
+							)
 
 			user.save()
 
