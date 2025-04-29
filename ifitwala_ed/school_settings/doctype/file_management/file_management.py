@@ -40,10 +40,11 @@ class FileManagement(Document):
                 }
             )
 
+            expected_folder = f"Home/{target_folder}" 
+            
             for f in files:
                 if not f.file_url:
                     continue
-                expected_folder = f"Home/{target_folder}" 
                 if f.folder == expected_folder:
                     continue
                 if any(f.file_name.startswith(prefix) for prefix in ["small_", "medium_", "large_"]):
