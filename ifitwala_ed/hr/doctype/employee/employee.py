@@ -186,11 +186,10 @@ class Employee(NestedSet):
 					if user.user_image != img_path: 
 						user.user_image = img_path
 
-					# 🛠  keep / update the File row attached to User.user_image
+					# keep / update the File row attached to User.user_image
 					existing = frappe.db.exists(
 							"File",
 							{
-									"file_url": img_path,
 									"attached_to_doctype": "User",
 									"attached_to_name":   self.user_id,
 									"attached_to_field":  "user_image",
@@ -205,6 +204,10 @@ class Employee(NestedSet):
 									"attached_to_name":   self.user_id,
 									"attached_to_field":  "user_image",
 							}).insert(ignore_permissions=True, ignore_if_duplicate=True)
+					else:                               
+						frappe.db.set_value(
+								"File", existing, "file_url", img_path, update_modified=False
+						)
 
 
 			user.save()

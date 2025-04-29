@@ -80,7 +80,9 @@ class FileManagement(Document):
                 if not dry_run:
                     # ⚡ Move physical file
                     os.makedirs(os.path.dirname(new_full_path), exist_ok=True)
-                    os.rename(old_full_path, new_full_path)
+                    os.rename(old_full_path, new_full_path) 
+
+                    old_url = f.file_url  
 
                     # ⚡ Update File Doc
                     frappe.db.set_value("File", f.name, {
@@ -92,7 +94,7 @@ class FileManagement(Document):
                     duplicates = frappe.get_all(
                         "File",
                         filters={
-                            "file_url": f.file_url,           # ← OLD url (still in var f at this point)
+                            "file_url": old_url,           
                             "name":     ["!=", f.name],       # skip the one we just updated
                             "is_folder": 0
                         },
@@ -101,16 +103,16 @@ class FileManagement(Document):
                     )
 
                     for dup in duplicates:
+                        # ‼️ Only fix the URL; keep whatever folder the dup already has
                         frappe.db.set_value(
-                            "File", dup.name,
-                            {
-                                "file_url": f"/{new_relative_path}",
-                                "folder":   expected_folder_path,
-                            },
+                            "File",
+                            dup.name,
+                            "file_url",
+                            f"/{new_relative_path}",
                             update_modified=False,
                         )
 
-                        # also update the field on the linked document so the UI shows the right url
+                        # Also patch the field on the linked doc so its UI shows the new URL
                         if dup.attached_to_doctype and dup.attached_to_field:
                             frappe.db.set_value(
                                 dup.attached_to_doctype,
@@ -119,6 +121,7 @@ class FileManagement(Document):
                                 f"/{new_relative_path}",
                                 update_modified=False,
                             )
+
 
 
                     # ⚡ Update attached_to_document field if needed
