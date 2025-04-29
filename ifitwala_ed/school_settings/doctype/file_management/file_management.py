@@ -22,17 +22,27 @@ class FileManagement(Document):
 
         # --- Step 1: Move misfiled attached images ---
         for row in self.managed_doctypes:
-            if not row.move_attached_images: 
-                continue
-
-            if not row.active:
+            if not row.active or not row.move_attached_images:
                 continue
 
             target_folder = row.doctype_link.lower()
+            expected_folder = f"Home/{target_folder}"
+
+            # Ensure File folder exists (in DocType)
+            if not frappe.db.exists("File", {"file_name": target_folder, "folder": "Home"}):
+                frappe.get_doc({
+                    "doctype": "File",
+                    "file_name": target_folder,
+                    "is_folder": 1,
+                    "folder": "Home"
+                }).insert(ignore_permissions=True)
 
             files = frappe.get_all(
-                "File", 
-                fields=["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field", "folder", "file_name"],
+                "File",
+                fields=[
+                    "name", "file_url", "attached_to_doctype", "attached_to_name",
+                    "attached_to_field", "folder", "file_name"
+                ],
                 filters={
                     "attached_to_doctype": row.doctype_link,
                     "is_folder": 0,
@@ -40,12 +50,11 @@ class FileManagement(Document):
                 }
             )
 
-            expected_folder = f"Home/{target_folder}" 
-            
             for f in files:
-                if not f.file_url:
+                current_folder = (f.folder or "").lower()
+                if current_folder == expected_folder.lower():
                     continue
-                if f.folder == expected_folder:
+                if not f.file_url:
                     continue
                 if any(f.file_name.startswith(prefix) for prefix in ["small_", "medium_", "large_"]):
                     continue
@@ -55,21 +64,21 @@ class FileManagement(Document):
                     skipped_files.append(f"Missing on disk: {f.file_url}")
                     continue
 
+                # Destination
                 folder_path = frappe.utils.get_site_path("public", "files", target_folder)
                 os.makedirs(folder_path, exist_ok=True)
 
                 new_relative_path = f"files/{target_folder}/{f.file_name}"
                 new_full_path = frappe.utils.get_site_path("public", new_relative_path)
 
-                # ⚡ Correct sequence: first "register" intention
                 moved_files.append(f.file_name)
 
-                # ⚡ Only real move if dry_run is False
                 if not dry_run:
                     os.rename(old_full_path, new_full_path)
+
                     frappe.db.set_value("File", f.name, {
                         "file_url": f"/{new_relative_path}",
-                        "folder": f"Home/{target_folder}"
+                        "folder": expected_folder
                     })
 
                     if f.attached_to_doctype and f.attached_to_name and f.attached_to_field:
@@ -82,7 +91,7 @@ class FileManagement(Document):
                             )
                         except Exception as e:
                             frappe.log_error(
-                                f"Error updating linked document {f.attached_to_doctype} {f.attached_to_name}: {e}",
+                                f"Error updating {f.attached_to_doctype} {f.attached_to_name}: {e}",
                                 "Linked Doc Update Error"
                             )
 
@@ -108,7 +117,7 @@ class FileManagement(Document):
 
                 deleted_thumbnails.append(file_path.name)
 
-        # --- Step 3: Save admin notes (ALWAYS now) ---
+        # --- Step 3: Save admin notes ---
         summary = []
 
         if dry_run:
@@ -132,7 +141,6 @@ class FileManagement(Document):
 
         self.admin_notes = "\n".join(summary)
         self.last_action_date = frappe.utils.now_datetime()
-
         self.save(ignore_permissions=True)
 
         return {
@@ -142,6 +150,15 @@ class FileManagement(Document):
             "dry_run": dry_run,
             "summary": summary,
         }
+
+
+    @frappe.whitelist() 
+    def clear_notes_and_date(self):
+        """Clear admin_notes and last_action_date."""
+        self.admin_notes = ""
+        self.last_action_date = None
+        self.save(ignore_permissions=True)
+
 
 @frappe.whitelist()
 def run_execute():
