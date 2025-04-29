@@ -1,6 +1,7 @@
 # Copyright (c) 2024, fdR and contributors
 # For license information, please see license.txt
 
+import os
 import frappe
 from frappe.utils.nestedset import NestedSet
 from frappe.utils import getdate
