@@ -31,8 +31,8 @@ class FileManagement(Document):
             target_folder = row.doctype_link.lower()
 
             files = frappe.get_all(
-                "File",
-                fields=["name", "file_url", "attached_to_doctype", "attached_to_name", "folder", "file_name"],
+                "File", 
+                fields=["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field", "folder", "file_name"],
                 filters={
                     "attached_to_doctype": row.doctype_link,
                     "is_folder": 0,
@@ -43,7 +43,8 @@ class FileManagement(Document):
             for f in files:
                 if not f.file_url:
                     continue
-                if f.folder and f.folder.lower() == f"home/{target_folder}":
+                expected_folder = f"Home/{target_folder}" 
+                if f.folder == expected_folder:
                     continue
                 if any(f.file_name.startswith(prefix) for prefix in ["small_", "medium_", "large_"]):
                     continue
@@ -110,15 +111,15 @@ class FileManagement(Document):
         summary = []
 
         if dry_run:
-            summary.append(f"We found {len(moved_files)} file(s) to be moved:")
+            summary.append(f" 🗂  We found {len(moved_files)} file(s) to be moved:")
             for f in moved_files:
                 summary.append(f"  - {f}")
 
-            summary.append(f"\nWe found {len(deleted_thumbnails)} orphaned thumbnail(s) to be deleted:")
+            summary.append(f"\n 🖼️  We found {len(deleted_thumbnails)} optimized copies to be deleted:")
             for f in deleted_thumbnails:
                 summary.append(f"  - {f}")
 
-            summary.append(f"\nWe found {len(skipped_files)} missing file(s) on disk:")
+            summary.append(f"\n ⚠️  We found {len(skipped_files)} missing file(s) on disk:")
             for f in skipped_files:
                 summary.append(f"  - {f}")
         else:
