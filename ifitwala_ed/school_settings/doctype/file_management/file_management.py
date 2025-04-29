@@ -25,72 +25,83 @@ class FileManagement(Document):
             if not row.active or not row.move_attached_images:
                 continue
 
-            target_folder = row.doctype_link.lower()
-            expected_folder = f"Home/{target_folder}"
+            target_folder_name = row.doctype_link.lower()
+            expected_folder_path = f"Home/{target_folder_name}"
 
-            # Ensure File folder exists (as File Doctype folder)
-            if not frappe.db.exists("File", {"file_name": target_folder, "folder": "Home"}):
+            # ⚡ Step 1.1: Ensure target folder exists as a File Doc
+            folder_doc = frappe.db.exists("File", {"file_name": target_folder_name, "is_folder": 1, "folder": "Home"})
+            if not folder_doc:
                 frappe.get_doc({
                     "doctype": "File",
-                    "file_name": target_folder,
+                    "file_name": target_folder_name,
                     "is_folder": 1,
                     "folder": "Home"
                 }).insert(ignore_permissions=True)
 
+            # ⚡ Step 1.2: Now fetch all File docs that should be in this folder
             files = frappe.get_all(
                 "File",
-                fields=["name"],
+                fields=["name", "file_url", "file_name", "folder", "attached_to_doctype", "attached_to_name", "attached_to_field"],
                 filters={
                     "attached_to_doctype": row.doctype_link,
                     "is_folder": 0,
-                    "is_private": 0
+                    "is_private": 0,
                 }
             )
 
-            for file_meta in files:
-                file_doc = frappe.get_doc("File", file_meta.name)
-                current_folder = (file_doc.folder or "").lower()
-                if current_folder == expected_folder.lower():
-                    continue
-                if not file_doc.file_url:
-                    continue
-                if any(file_doc.file_name.startswith(prefix) for prefix in ["small_", "medium_", "large_"]):
+            for f in files:
+                if not f.file_url:
                     continue
 
-                old_full_path = os.path.join(get_files_path(), os.path.basename(file_doc.file_url))
+                # ⚡ Ignore system thumbnails (small_, medium_, large_)
+                if any(f.file_name.startswith(prefix) for prefix in ["small_", "medium_", "large_"]):
+                    continue
+
+                old_full_path = frappe.utils.get_site_path("public", f.file_url.lstrip("/"))
                 if not os.path.exists(old_full_path):
-                    skipped_files.append(f"Missing on disk: {file_doc.file_url}")
+                    skipped_files.append(f"Missing on disk: {f.file_url}")
                     continue
 
-                # Destination
-                folder_path = os.path.join(get_files_path(), target_folder)
-                os.makedirs(folder_path, exist_ok=True)
+                # ⚡ Check if already inside the correct folder
+                file_folder_doc = frappe.db.get_value("File", f.folder, ["file_name", "folder"], as_dict=True) if f.folder else None
 
-                new_file_path = os.path.join(folder_path, file_doc.file_name)
-                new_relative_path = f"files/{target_folder}/{file_doc.file_name}"
+                if file_folder_doc:
+                    if file_folder_doc.get("file_name", "").lower() == target_folder_name and file_folder_doc.get("folder", "") == "Home":
+                        continue  # Already in correct folder!
 
-                moved_files.append(file_doc.file_name)
+                # ⚡ Step 1.3: Prepare move
+                new_relative_path = f"files/{target_folder_name}/{f.file_name}"
+                new_full_path = frappe.utils.get_site_path("public", new_relative_path)
+
+                # ✏️ Track file for admin notes
+                moved_files.append(f.file_name)
 
                 if not dry_run:
-                    os.rename(old_full_path, new_file_path)
-                    file_doc.file_url = f"/{new_relative_path}"
-                    file_doc.folder = expected_folder
-                    file_doc.is_private = 0
-                    file_doc.save(ignore_permissions=True)
+                    # ⚡ Move physical file
+                    os.makedirs(os.path.dirname(new_full_path), exist_ok=True)
+                    os.rename(old_full_path, new_full_path)
 
-                    if file_doc.attached_to_doctype and file_doc.attached_to_name and file_doc.attached_to_field:
+                    # ⚡ Update File Doc
+                    frappe.db.set_value("File", f.name, {
+                        "file_url": f"/{new_relative_path}",
+                        "folder": expected_folder_path,
+                    })
+
+                    # ⚡ Update attached_to_document field if needed
+                    if f.attached_to_doctype and f.attached_to_name and f.attached_to_field:
                         try:
                             frappe.db.set_value(
-                                file_doc.attached_to_doctype,
-                                file_doc.attached_to_name,
-                                file_doc.attached_to_field,
+                                f.attached_to_doctype,
+                                f.attached_to_name,
+                                f.attached_to_field,
                                 f"/{new_relative_path}"
                             )
                         except Exception as e:
                             frappe.log_error(
-                                f"Error updating {file_doc.attached_to_doctype} {file_doc.attached_to_name}: {e}",
+                                f"Error updating linked {f.attached_to_doctype} {f.attached_to_name}: {e}",
                                 "Linked Doc Update Error"
                             )
+
 
         # --- Step 2: Clean orphaned thumbnails ---
         public_files_path = Path(get_files_path())
