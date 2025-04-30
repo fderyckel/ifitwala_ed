@@ -123,13 +123,13 @@ frappe.ui.form.on("Student Log", {
             ? frappe.model.get_value("Program", frm.doc.program, "school")
             : null;
   
-          frm.set_query("follow_up_person", () => ({
-            query: "ifitwala_ed.api.get_employees_with_role",
-            filters: {
-              role: r.message,
-              school: school || ""
-            }
-          }));
+            frm.set_query("follow_up_person", () => ({
+              query: "frappe.desk.search.search_link",
+              filters: {
+                doctype: "User",
+                role: r.message
+              }
+            }));
         }
       }
     });

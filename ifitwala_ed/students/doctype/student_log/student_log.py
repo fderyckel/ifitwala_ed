@@ -25,7 +25,7 @@ class StudentLog(Document):
 
 
 	def create_follow_up_todo(self):
-		user = frappe.db.get_value("Employee", self.follow_up_person, "user_id")
+		user = self.follow_up_person
 		if user:
 			todo = frappe.new_doc("ToDo")
 			todo.update({
