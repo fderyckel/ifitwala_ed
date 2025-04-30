@@ -124,10 +124,9 @@ frappe.ui.form.on("Student Log", {
             : null;
   
             frm.set_query("follow_up_person", () => ({
-              query: "frappe.desk.search.search_link",
+              query: "ifitwala_ed.api.get_users_with_role",
               filters: {
-                doctype: "User",
-                role: r.message
+                role: frm.doc.follow_up_role
               }
             }));
         }

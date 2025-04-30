@@ -81,25 +81,28 @@ def send_workspace_notification(user, workspace):
     }).insert(ignore_permissions=True)
 
 @frappe.whitelist()
-def get_employees_with_role(role, school=None):
-	role_employees = frappe.db.sql("""
-		SELECT e.name, e.employee_full_name, e.school
-		FROM `tabEmployee` e
-		JOIN `tabUser` u ON u.name = e.user_id
-		JOIN `tabHas Role` r ON r.parent = u.name
-		WHERE r.role = %s AND e.status = 'Active'
-	""", (role,), as_dict=True)
+def get_users_with_role(doctype, txt, searchfield, start, page_len, filters):
+	role = filters.get("role")
+	if not role:
+		return []
 
-	if not school:
-		return role_employees  # if no school filter given, return all matches
+	query = """
+		SELECT u.name, u.full_name
+		FROM `tabUser` u
+		JOIN `tabHas Role` r ON u.name = r.parent
+		WHERE r.role = %(role)s
+			AND u.enabled = 1
+			AND (u.name LIKE %(txt)s OR u.full_name LIKE %(txt)s)
+		ORDER BY u.name
+		LIMIT %(start)s, %(page_len)s
+	"""
 
-	# Resolve child hierarchy
-	descendants = frappe.get_descendants("School", school) + [school]
+	return frappe.db.sql(query, {
+		"role": role,
+		"txt": f"%{txt}%",
+		"start": start,
+		"page_len": page_len
+	})
 
-	eligible = [
-		e for e in role_employees
-		if not e.school or e.school in descendants
-	]
 
-	return eligible
 
