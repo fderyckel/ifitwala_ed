@@ -42,6 +42,21 @@ frappe.ui.form.on("Student Log", {
         frm.save();
       }, __("Actions"));
     }
+
+    frm.add_custom_button(__("New Follow-Up"), () => {
+      frappe.call({
+        method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
+        callback(r) {
+          frappe.new_doc("Student Log Follow Up", {
+            student_log: frm.doc.name,
+            //student: frm.doc.student,
+            //student_name: frm.doc.student_name,
+            author: r.message?.name || "",
+            date: frappe.datetime.get_today()
+          });
+        }
+      });
+    });
   }, 
 
   student(frm) {
@@ -99,28 +114,26 @@ frappe.ui.form.on("Student Log", {
   
     frappe.call({
       method: "ifitwala_ed.students.doctype.student_log.student_log.get_follow_up_role_from_next_step",
-      args: {
-        next_step: frm.doc.next_step
-      },
+      args: { next_step: frm.doc.next_step },
       callback(r) {
         if (r.message) {
-          frm.set_value("follow_up_role", r.message);  // user sees the routing logic
+          frm.set_value("follow_up_role", r.message);
   
-          frm.set_query("follow_up_person", () => {
-            return {
-              query: "ifitwala_ed.api.get_employees_with_role",
-              filters: {
-                role: r.message,
-                school: frm.doc.school || ""
-              }
-            };
-          });
+          const school = frm.doc.program
+            ? frappe.model.get_value("Program", frm.doc.program, "school")
+            : null;
+  
+          frm.set_query("follow_up_person", () => ({
+            query: "ifitwala_ed.api.get_employees_with_role",
+            filters: {
+              role: r.message,
+              school: school || ""
+            }
+          }));
         }
       }
     });
   }, 
-   
-  
 
   requires_follow_up(frm) {
     const show = frm.doc.requires_follow_up === 1;

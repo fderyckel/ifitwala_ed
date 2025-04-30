@@ -29,13 +29,15 @@ class StudentLog(Document):
 		if user:
 			todo = frappe.new_doc("ToDo")
 			todo.update({
-				"owner": user,
-				"assigned_by": frappe.session.user,
-				"reference_type": self.doctype,
-				"reference_name": self.name,
-				"description": f"Follow up on Student Log for {self.student_name}",
-				"date": frappe.utils.add_days(frappe.utils.today(), 2),
-				"priority": "Medium"
+					"owner": user,
+					"allocated_to": user,
+					"assigned_by": frappe.session.user,
+					"reference_type": self.doctype,
+					"reference_name": self.name,
+					"description": f"Follow up on Student Log for {self.student_name}",
+					"date": frappe.utils.add_days(frappe.utils.today(), 2),
+					"priority": "Medium",
+					"color": "#ffcd59"  # soft orange-yellow for friendly alert
 			})
 			todo.insert(ignore_permissions=True)
 
