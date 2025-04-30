@@ -7,7 +7,10 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_fypd",
-  "next_step"
+  "next_step",
+  "associated_role",
+  "school",
+  "auto_close_after_days"
  ],
  "fields": [
   {
@@ -19,11 +22,29 @@
    "fieldtype": "Data",
    "label": "Next Step",
    "unique": 1
+  },
+  {
+   "fieldname": "associated_role",
+   "fieldtype": "Link",
+   "label": "Associated Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "default": "7",
+   "fieldname": "auto_close_after_days",
+   "fieldtype": "Int",
+   "label": "Auto-Close After (Days)"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-12 12:22:57.310755",
+ "modified": "2025-04-30 10:28:03.568618",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Next Step",
@@ -67,6 +88,7 @@
    "role": "Counselor"
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "next_step",
  "sort_field": "modified",
  "sort_order": "DESC",

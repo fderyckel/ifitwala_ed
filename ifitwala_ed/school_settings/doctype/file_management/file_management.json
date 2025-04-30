@@ -7,7 +7,11 @@
  "field_order": [
   "section_break_716y",
   "managed_doctypes",
+  "section_break_1hym",
   "dry_run",
+  "column_break_bfkx",
+  "clear_notes",
+  "section_break_w6re",
   "admin_notes",
   "last_action_date"
  ],
@@ -37,13 +41,31 @@
    "fieldtype": "Button",
    "label": "Dry Run File Operations",
    "options": "run_dry_run"
+  },
+  {
+   "fieldname": "clear_notes",
+   "fieldtype": "Button",
+   "label": "Clear Notes",
+   "options": "clear_notes_and_date"
+  },
+  {
+   "fieldname": "section_break_1hym",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_bfkx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_w6re",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-04-28 10:30:21.180044",
+ "modified": "2025-04-29 08:13:08.951790",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "File Management",
