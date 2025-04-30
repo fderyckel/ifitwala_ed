@@ -104,21 +104,23 @@ frappe.ui.form.on("Student Log", {
       },
       callback(r) {
         if (r.message) {
-          frm.set_value("follow_up_role", r.message);
+          frm.set_value("follow_up_role", r.message);  // user sees the routing logic
   
           frm.set_query("follow_up_person", () => {
             return {
               query: "ifitwala_ed.api.get_employees_with_role",
               filters: {
                 role: r.message,
-                school: frm.doc.school || frm.doc.program && get_school_from_program(frm.doc.program)
+                school: frm.doc.school || ""
               }
             };
           });
         }
       }
     });
-  },
+  }, 
+   
+  
 
   requires_follow_up(frm) {
     const show = frm.doc.requires_follow_up === 1;
