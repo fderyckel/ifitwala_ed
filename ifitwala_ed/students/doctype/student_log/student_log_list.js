@@ -1,6 +1,6 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
-w
+
 frappe.listview_settings['Student Log'] = {
   get_indicator(doc) {
     if (doc.follow_up_status === "Closed") {
