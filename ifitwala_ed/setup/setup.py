@@ -89,8 +89,6 @@ def create_location_type():
 
 def add_other_records(country=None):
 	records = [
-		# item group
-		#{'doctype': 'Item Group', 'item_group_name': _('All Item Groups'), 'is_group': 1, 'parent_item_group': ''},
 
 		# Employment Type
 		{'doctype': 'Employment Type', 'employment_type_name': _('Full-time')},
@@ -99,6 +97,15 @@ def add_other_records(country=None):
 		{'doctype': 'Employment Type', 'employment_type_name': _('Contract')},
 		{'doctype': 'Employment Type', 'employment_type_name': _('Intern')},
 		{'doctype': 'Employment Type', 'employment_type_name': _('Apprentice')},
+        
+        # Student Log Next Steps
+        {'doctype': 'Student Log Next Step', 'next_step': 'Refer to Curriculum Coordinator'},
+		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to Grade Level Leader'},
+		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to counseling'},
+		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to academic admin'},
+		{'doctype': 'Student Log Next Step', 'next_step': 'Parents meeting needed'},
+		{'doctype': 'Student Log Next Step', 'next_step': 'For information only'},
+		{'doctype': 'Student Log Next Step', 'next_step': 'No Action Required at this time'},
 	]
 	insert_record(records)	
       

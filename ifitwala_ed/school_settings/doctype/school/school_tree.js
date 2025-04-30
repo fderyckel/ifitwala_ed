@@ -12,7 +12,7 @@ frappe.treeview_settings["School"] = {
 				return {
 					filters: [["School", 'is_group', '=', 1]]
 				};
-			}
+			}, 
 		},
 	],
 	breadcrumb: "School Settings",

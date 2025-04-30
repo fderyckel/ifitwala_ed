@@ -68,8 +68,6 @@ def set_default_workspace_based_on_roles(doc, method):
         # Workspace already matches the role → silent
         pass
 
-
-
 def send_workspace_notification(user, workspace):
     if not frappe.db.exists("User", user):
         return
@@ -81,3 +79,21 @@ def send_workspace_notification(user, workspace):
         "type": "Alert",
         "email_content": f"Your default workspace has been updated to <b>{workspace}</b>. Please log out and log in again to see the change.",
     }).insert(ignore_permissions=True)
+
+@frappe.whitelist()
+def get_employees_with_role(role, school=None):
+	query = """
+		SELECT e.name, e.employee_full_name
+		FROM `tabEmployee` e
+		JOIN `tabUser` u ON u.name = e.user_id
+		JOIN `tabHas Role` r ON r.parent = u.name
+		WHERE r.role = %s AND e.status = 'Active'
+	"""
+	args = [role]
+
+	if school:
+		query += " AND e.school = %s"
+		args.append(school)
+
+	query += " ORDER BY e.employee_full_name"
+	return frappe.db.sql(query, args, as_dict=True)
