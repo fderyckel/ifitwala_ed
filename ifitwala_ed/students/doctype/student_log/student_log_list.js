@@ -3,13 +3,13 @@
 
 frappe.listview_settings['Student Log'] = {
   get_indicator(doc) {
-    const status = (doc.follow_up_status || "").trim().toLowerCase();
+    const sstatus = (doc.follow_up_status || "").trim().toLowerCase();
 
-    if (status === "closed") {
+    if (sstatus === "closed") {
       return [__("Closed"), "green", "follow_up_status,=,Closed"];
-    } else if (status === "completed") {
+    } else if (sstatus === "completed") {
       return [__("Completed"), "blue", "follow_up_status,=,Completed"];
-    } else if (status === "open") {
+    } else if (sstatus === "open") {
       return [__("Open"), "red", "follow_up_status,=,Open"];
     } else {
       return [__("In Progress"), "orange", "follow_up_status,=,In Progress"];
