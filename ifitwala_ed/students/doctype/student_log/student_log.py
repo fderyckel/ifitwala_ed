@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import get_datetime, date_diff
 
 
 class StudentLog(Document):
@@ -100,7 +101,7 @@ def auto_close_completed_logs():
 	for log in logs:
 		last_updated = get_datetime(log.modified)
 		if date_diff(today, last_updated.date()) >= log.auto_close_after_days:
-			frappe.db.set_value("Student Log", log.name, "follow_up_status", "Closed")
+			frappe.get_doc("Student Log", log.name).db_set("follow_up_status", "Closed")
 			frappe.get_doc({
 				"doctype": "Comment",
 				"comment_type": "Info",
