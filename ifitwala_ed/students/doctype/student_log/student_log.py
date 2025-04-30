@@ -76,7 +76,7 @@ def get_active_program_enrollment(student):
 			`tabAcademic Year` ay ON pe.academic_year = ay.name
 		WHERE
 			pe.student = %s
-			AND %s BETWEEN pe.enrollment_date AND ay.end_date
+			AND %s BETWEEN pe.enrollment_date AND ay.year_end_date
 		ORDER BY pe.modified DESC
 		LIMIT 1
 	""", (student, today), as_dict=True)
@@ -87,4 +87,24 @@ def get_active_program_enrollment(student):
 def get_follow_up_role_from_next_step(next_step):
 	return frappe.get_value("Student Log Next Step", next_step, "frappe_role")
 
+# for scheduler events. 
+def auto_close_completed_logs():
+	today = frappe.utils.today()
 
+	# Find completed logs with auto-close setting
+	logs = frappe.get_all("Student Log", filters={
+		"follow_up_status": "Completed",
+		"auto_close_after_days": [">", 0],
+	}, fields=["name", "modified", "auto_close_after_days"])
+
+	for log in logs:
+		last_updated = get_datetime(log.modified)
+		if date_diff(today, last_updated.date()) >= log.auto_close_after_days:
+			frappe.db.set_value("Student Log", log.name, "follow_up_status", "Closed")
+			frappe.get_doc({
+				"doctype": "Comment",
+				"comment_type": "Info",
+				"reference_doctype": "Student Log",
+				"reference_name": log.name,
+				"content": f"Auto-closed after {log.auto_close_after_days} days of inactivity."
+			}).insert(ignore_permissions=True)

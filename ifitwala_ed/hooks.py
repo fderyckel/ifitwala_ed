@@ -195,6 +195,13 @@ doc_events = {
 # 	],
 # }
 
+scheduler_events = {
+  "daily": [
+    "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs"
+  ]
+}
+
+
 # Testing
 # -------
 

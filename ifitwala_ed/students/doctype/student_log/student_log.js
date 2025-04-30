@@ -45,31 +45,32 @@ frappe.ui.form.on("Student Log", {
   }, 
 
   student(frm) {
-    if (frm.doc.student) {
-      frappe.call({
-        method: "ifitwala_ed.students.doctype.student_log.student_log.get_active_program_enrollment",
-        args: {
-          student: frm.doc.student
-        },
-        callback: function(r) {
-          if (r.message) {
-            frm.set_value("program", r.message.program || "");
-            frm.set_value("academic_year", r.message.academic_year || "");
-          } else {
-            frm.set_value("program", "");
-            frm.set_value("academic_year", "");
-            frappe.show_alert({
-              message: __("No active Program Enrollment found for this student."), 
-              indicator: "orange"
-            });
-          }
-        }
-      });
-    } else {
+    if (!frm.doc.student) {
       frm.set_value("program", "");
       frm.set_value("academic_year", "");
+      return;
     }
-  },
+  
+    frappe.call({
+      method: "ifitwala_ed.students.doctype.student_log.student_log.get_active_program_enrollment",
+      args: { student: frm.doc.student },
+      callback: function (r) {
+        if (r.message) {
+          frm.set_value("program", r.message.program || "");
+          frm.set_value("academic_year", r.message.academic_year || "");
+        } else {
+          frm.set_value("program", "");
+          frm.set_value("academic_year", "");
+          frappe.msgprint({
+            message: __("No active Program Enrollment found for this student. Program and Academic Year were not set."),
+            indicator: "orange",
+            title: __("Missing Enrollment")
+          });
+        }
+      }
+    });
+  }, 
+  
   
   author(frm) {
     // Whenever 'author' changes, fetch corresponding full name
