@@ -82,18 +82,24 @@ def send_workspace_notification(user, workspace):
 
 @frappe.whitelist()
 def get_employees_with_role(role, school=None):
-	query = """
-		SELECT e.name, e.employee_full_name
+	role_employees = frappe.db.sql("""
+		SELECT e.name, e.employee_full_name, e.school
 		FROM `tabEmployee` e
 		JOIN `tabUser` u ON u.name = e.user_id
 		JOIN `tabHas Role` r ON r.parent = u.name
 		WHERE r.role = %s AND e.status = 'Active'
-	"""
-	args = [role]
+	""", (role,), as_dict=True)
 
-	if school:
-		query += " AND e.school = %s"
-		args.append(school)
+	if not school:
+		return role_employees  # if no school filter given, return all matches
 
-	query += " ORDER BY e.employee_full_name"
-	return frappe.db.sql(query, args, as_dict=True)
+	# Resolve child hierarchy
+	descendants = frappe.get_descendants("School", school) + [school]
+
+	eligible = [
+		e for e in role_employees
+		if not e.school or e.school in descendants
+	]
+
+	return eligible
+
