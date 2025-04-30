@@ -14,5 +14,8 @@ frappe.listview_settings['Student Log'] = {
     } else {
       return [__("In Progress"), "orange", "follow_up_status,=,In Progress"];
     }
-  }
+  }, 
+  
+  // Remove "ID" (i.e., name) column
+  hide_name_column: true
 };

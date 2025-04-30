@@ -116,20 +116,18 @@ frappe.ui.form.on("Student Log", {
       method: "ifitwala_ed.students.doctype.student_log.student_log.get_follow_up_role_from_next_step",
       args: { next_step: frm.doc.next_step },
       callback(r) {
-        if (r.message) {
-          frm.set_value("follow_up_role", r.message);
+        const role = r.message || "Academic Staff";  // fallback role
+        frm.set_value("follow_up_role", role);        // show in UI
   
-          const school = frm.doc.program
-            ? frappe.model.get_value("Program", frm.doc.program, "school")
-            : null;
-  
-            frm.set_query("follow_up_person", () => ({
-              query: "ifitwala_ed.api.get_users_with_role",
-              filters: {
-                role: frm.doc.follow_up_role
-              }
-            }));
-        }
+        frm.set_query("follow_up_person", () => ({
+          query: "ifitwala_ed.api.get_users_with_role",
+          filters: {
+            role,
+            school: frm.doc.program
+              ? frappe.model.get_value("Program", frm.doc.program, "school")
+              : null
+          }
+        }));
       }
     });
   }, 
