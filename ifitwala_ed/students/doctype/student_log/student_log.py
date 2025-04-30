@@ -6,7 +6,37 @@ from frappe.model.document import Document
 
 
 class StudentLog(Document):
-	pass
+	def on_submit(self):
+		if self.requires_follow_up and self.follow_up_person:
+			self.create_follow_up_todo()
+	
+	def after_submit(self):
+		if self.requires_follow_up and self.follow_up_status == "Open" and self.follow_up_person:
+			user = frappe.db.get_value("Employee", self.follow_up_person, "user_id")
+			if user:
+				frappe.get_doc({
+					"doctype": "Comment",
+					"comment_type": "Info",
+					"reference_doctype": self.doctype,
+					"reference_name": self.name,
+					"content": f"ToDo assigned to {user} for follow-up.",
+				}).insert(ignore_permissions=True)
+
+
+	def create_follow_up_todo(self):
+		user = frappe.db.get_value("Employee", self.follow_up_person, "user_id")
+		if user:
+			todo = frappe.new_doc("ToDo")
+			todo.update({
+				"owner": user,
+				"assigned_by": frappe.session.user,
+				"reference_type": self.doctype,
+				"reference_name": self.name,
+				"description": f"Follow up on Student Log for {self.student_name}",
+				"date": frappe.utils.add_days(frappe.utils.today(), 2),
+				"priority": "Medium"
+			})
+			todo.insert(ignore_permissions=True)
 
 @frappe.whitelist()
 def get_employee_data(employee_name=None):

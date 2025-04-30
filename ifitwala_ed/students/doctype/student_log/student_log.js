@@ -35,6 +35,15 @@ frappe.ui.form.on("Student Log", {
     } 
   },
 
+  refresh(frm) {
+    if (frm.doc.follow_up_status === "Completed" && frappe.user.has_role("Academic Admin")) {
+      frm.add_custom_button(__("Close Log"), function () {
+        frm.set_value("follow_up_status", "Closed");
+        frm.save();
+      }, __("Actions"));
+    }
+  }, 
+
   student(frm) {
     if (frm.doc.student) {
       frappe.call({
@@ -108,6 +117,17 @@ frappe.ui.form.on("Student Log", {
         }
       }
     });
+  },
+
+  requires_follow_up(frm) {
+    const show = frm.doc.requires_follow_up === 1;
+    frm.toggle_display(['next_step', 'follow_up_role', 'follow_up_person', 'follow_up_status'], show);
+
+    if (!show) {
+      frm.set_value('follow_up_status', 'Closed');
+    } else if (!frm.doc.follow_up_status || frm.doc.follow_up_status === 'Closed') {
+      frm.set_value('follow_up_status', 'Open');
+    }
   },
 
 });
