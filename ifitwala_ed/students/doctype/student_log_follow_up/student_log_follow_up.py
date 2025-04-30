@@ -1,15 +1,28 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
 from frappe.model.document import Document
 
 
 class StudentLogFollowUp(Document):
 	def after_save(self):
 		log = frappe.get_doc("Student Log", self.student_log)
+
 		if log.follow_up_status == "Open":
 			log.db_set("follow_up_status", "In Progress")
+
+			# Notify original author via Frappe realtime
+			author_user = frappe.db.get_value("Employee", log.author, "user_id")
+			if author_user and author_user != frappe.session.user:
+				frappe.publish_realtime(
+					event="follow_up_started",
+					message={
+						"log_name": log.name,
+						"student_name": log.student_name
+					},
+					user=author_user
+				)
 
 	def after_submit(self):
 		log = frappe.get_doc("Student Log", self.student_log)

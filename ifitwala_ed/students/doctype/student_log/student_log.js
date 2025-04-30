@@ -147,3 +147,10 @@ frappe.ui.form.on("Student Log", {
   },
 
 });
+
+frappe.realtime.on("follow_up_started", function (data) {
+  frappe.show_alert({
+    message: __("Follow-up started for {0}", [data.student_name || data.log_name]),
+    indicator: "orange"
+  });
+});
