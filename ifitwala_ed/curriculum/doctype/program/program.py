@@ -16,7 +16,6 @@ class Program(WebsiteGenerator, NestedSet):
     template = "templates/generators/program.html",
     condition_field = "is_published",
     page_title_field = "program_name",
-		route="program"  
   )	
 
 	def validate(self):
