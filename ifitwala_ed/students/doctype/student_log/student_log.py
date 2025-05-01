@@ -79,12 +79,13 @@ def get_active_program_enrollment(student):
 			`tabAcademic Year` ay ON pe.academic_year = ay.name
 		WHERE
 			pe.student = %s
-			AND %s BETWEEN pe.enrollment_date AND ay.year_end_date
-		ORDER BY pe.modified DESC
+			AND %s BETWEEN ay.year_start_date AND ay.year_end_date
+		ORDER BY ay.year_start_date DESC
 		LIMIT 1
 	""", (student, today), as_dict=True)
 
 	return pe[0] if pe else {}
+
 
 @frappe.whitelist()
 def get_follow_up_role_from_next_step(next_step):

@@ -70,21 +70,23 @@ frappe.ui.form.on("Student Log", {
       method: "ifitwala_ed.students.doctype.student_log.student_log.get_active_program_enrollment",
       args: { student: frm.doc.student },
       callback: function (r) {
-        if (r.message) {
+        if (r && r.message) {
           frm.set_value("program", r.message.program || "");
           frm.set_value("academic_year", r.message.academic_year || "");
         } else {
-          frm.set_value("program", "");
-          frm.set_value("academic_year", "");
+          console.warn("No active enrollment returned", r);
           frappe.msgprint({
-            message: __("No active Program Enrollment found for this student. Program and Academic Year were not set."),
-            indicator: "orange",
-            title: __("Missing Enrollment")
+            message: __("No active Program Enrollment found for this student."),
+            indicator: "orange"
           });
         }
+      },
+      error: function(err) {
+        console.error("Error in get_active_program_enrollment", err);
       }
     });
   }, 
+   
   
   
   author(frm) {
