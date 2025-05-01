@@ -1,0 +1,257 @@
+/* ================================
+   HERO IMAGE + CAPTION STYLING
+   ================================ */
+   .hero-img-wrapper {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    overflow: hidden;
+  }
+  .hero-img-wrapper img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+  @media (max-width: 992px) { .hero-img-wrapper { height: 400px; } }
+  @media (max-width: 768px) { .hero-img-wrapper { height: 300px; } }
+  @media (max-width: 576px) { .hero-img-wrapper { height: 250px; } }
+  
+  .hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+  
+  .school-caption {
+    position: absolute;
+    bottom: 2rem;
+    left: 2rem;
+    color: white;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    max-width: 60%;
+    text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.7);
+    text-align: left;
+  }
+  @media (max-width: 768px) {
+    .school-caption {
+      font-size: 1.1rem;
+      max-width: 80%;
+      bottom: 1rem;
+      left: 1rem;
+      padding: 0.4rem 0.8rem;
+    }
+  }
+  @media (max-width: 480px) {
+    .school-caption {
+      font-size: 1rem;
+      max-width: 90%;
+      bottom: 0.75rem;
+      left: 0.75rem;
+      padding: 0.3rem 0.6rem;
+    }
+  }
+  
+  /* ================================
+     PHILOSOPHY SECTION
+     ================================ */
+  .philosophy-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    height: auto;
+    min-height: 300px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: fadeInUp 0.5s ease;
+  }
+  @media (min-width: 1024px) {
+    .philosophy-card { min-height: 350px; }
+  }
+  .philosophy-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  }
+  .icon {
+    color: #3498db;
+    font-size: 2rem;
+  }
+  .decor-bar {
+    height: 4px;
+    width: 40px;
+    background-color: #3498db;
+    border-radius: 2px;
+  }
+  @keyframes fadeInUp {
+    0%   { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* ================================
+     PROGRAMS SECTION
+     ================================ */
+  .card:hover {
+    transform: translateY(-4px);
+    transition: 0.25s;
+  }
+  
+  /* ================================
+     LEADERSHIP TEAM STYLING
+     ================================ */
+  .lead-circle {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 5px solid white;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
+  }
+  .leader-block {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background-color: #f9fafb;
+    border-radius: 1rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: transform 0.3s;
+  }
+  .leader-block:hover {
+    transform: translateY(-4px);
+  }
+  .leader-block:hover .lead-circle {
+    animation: pulse 1.5s infinite;
+  }
+  .leader-name {
+    font-weight: bold;
+    font-size: 1.25rem;
+    margin-top: 0.5rem;
+  }
+  .leader-role {
+    font-size: 1rem;
+    color: #777;
+  }
+  @keyframes pulse {
+    0%   { transform: scale(1);   box-shadow: 0 0 0 rgba(0, 0, 0, 0.4); }
+    50%  { transform: scale(1.05); box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); }
+    100% { transform: scale(1);   box-shadow: 0 0 0 rgba(0, 0, 0, 0.4); }
+  }
+  
+  /* ================================
+     TOOLTIP STYLING
+     ================================ */
+  .tooltip-inner {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+    font-size: 0.875rem;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    max-width: 250px;
+    text-align: left;
+  }
+  .tooltip.bs-tooltip-top .tooltip-arrow::before,
+  .tooltip.bs-tooltip-bottom .tooltip-arrow::before,
+  .tooltip.bs-tooltip-start .tooltip-arrow::before,
+  .tooltip.bs-tooltip-end .tooltip-arrow::before {
+    border-top-color: #f8f9fa !important;
+  }
+  
+  /* ================================
+     TEAM CAROUSEL STYLING
+     ================================ */
+  #teamCarousel .carousel-indicators {
+    bottom: -40px;
+  }
+  #teamCarousel .carousel-indicators [data-bs-target] {
+    width: 10px;
+    height: 10px;
+    margin: 0 5px;
+    background-color: #999;
+    border-radius: 50%;
+    border: none;
+    opacity: 0.4;
+    transition: all 0.2s ease-in-out;
+  }
+  #teamCarousel .carousel-indicators .active {
+    background-color: #333;
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  #teamCarousel .carousel-inner {
+    padding-bottom: 2rem;
+  }
+  #teamCarousel .team-card {
+    height: 220px;
+    display: flex;
+    background-color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+  #teamCarousel .team-card .image-block {
+    width: 30%;
+    background-color: #f8f9fa;
+    padding: 12px;
+  }
+  #teamCarousel .team-card .image-block img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0.5rem;
+  }
+  #teamCarousel .team-card .text-block {
+    width: 70%;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  #teamCarousel .team-card .text-block p {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #6c757d;
+  }
+  #teamCarousel .team-card .text-block strong {
+    font-weight: 700;
+    color: #212529;
+  }
+  #teamCarousel .team-card .text-block span {
+    font-weight: 400;
+    color: #6c757d;
+    margin-left: 0.5rem;
+  }
+  .carousel-item.active .team-card {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUpCard 0.8s ease forwards;
+    animation-delay: 0.3s;
+  }
+  @keyframes fadeInUpCard {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* ================================
+     UTILITY STYLES
+     ================================ */
+  img[loading="lazy"] {
+    opacity: 0;
+    transition: opacity 0.6s ease-in-out;
+  }
+  img[loading="lazy"].loaded {
+    opacity: 1;
+  }
+  .section-divider {
+    height: 1px;
+    width: 120px;
+    background: #e5e5e5;
+    margin: 1.5rem auto 2rem;
+  }
+  
