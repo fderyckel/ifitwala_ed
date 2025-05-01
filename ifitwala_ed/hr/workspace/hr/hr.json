@@ -63,7 +63,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-01 09:48:30.375049",
+ "modified": "2025-05-01 10:58:33.538761",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",
@@ -98,7 +98,7 @@
   },
   {
    "color": "Green",
-   "doc_view": "List",
+   "doc_view": "Tree",
    "label": "Employee",
    "link_to": "Employee",
    "stats_filter": "[[\"Employee\",\"status\",\"=\",\"Active\",false]]",

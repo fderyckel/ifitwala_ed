@@ -509,7 +509,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-04-25 22:45:55.654412",
+ "modified": "2025-05-01 11:02:17.153312",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
@@ -568,7 +568,7 @@
   }
  ],
  "row_format": "Dynamic",
- "search_fields": "employee_full_name",
+ "search_fields": "employee_full_name, designation",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

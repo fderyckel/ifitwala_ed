@@ -33,12 +33,12 @@
   "column_break_yils",
   "follow_up_role",
   "follow_up_person",
-  "amended_from",
   "student_photo",
   "references_section",
   "reference_type",
   "column_break_rsj6",
-  "reference_name"
+  "reference_name",
+  "amended_from"
  ],
  "fields": [
   {
@@ -240,7 +240,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-01 08:36:48.855795",
+ "modified": "2025-05-01 10:50:17.053508",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",

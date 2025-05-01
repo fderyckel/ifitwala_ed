@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Academic Staff</span>\",\"col\":12}},{\"id\":\"hCZSsIlsLW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Todo\",\"col\":3}},{\"id\":\"u6qsZQ5_9G\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Group\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}}]",
+ "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Academic Staff</span>\",\"col\":12}},{\"id\":\"u6qsZQ5_9G\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Group\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}}]",
  "creation": "2025-05-01 09:35:08.920114",
  "custom_blocks": [],
  "docstatus": 0,
@@ -72,7 +72,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-01 10:03:00.252795",
+ "modified": "2025-05-01 10:58:05.937367",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Staff",
@@ -88,14 +88,6 @@
  ],
  "sequence_id": 1.0,
  "shortcuts": [
-  {
-    "color": "Blue",
-    "label": "My ToDos",
-    "link_to": "ToDo",
-    "doc_view": "List",
-    "stats_filter": "[[\"ToDo\",\"allocated_to\",\"=\",\"{{ frappe.session.user }}\"]]",
-    "type": "DocType"
-  },
   {
    "color": "Grey",
    "doc_view": "List",
