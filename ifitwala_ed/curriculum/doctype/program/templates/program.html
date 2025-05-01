@@ -1,0 +1,119 @@
+{% extends "templates/web.html" %}
+
+{% block content %}
+<article class="program-page container">
+
+  <!-- Header -->
+  <header class="program-header my-4 text-center">
+    <h1>{{ doc.program_name }}</h1>
+    {% if doc.program_abbreviation %}
+      <span class="badge bg-secondary">{{ doc.program_abbreviation }}</span>
+    {% endif %}
+    {% if doc.program_image %}
+      <div class="my-3">
+        <img src="{{ doc.program_image }}" alt="{{ doc.program_name }}" class="img-fluid rounded">
+      </div>
+    {% endif %}
+  </header>
+
+  {% if doc.is_group %}
+    <!-- Group page: show overview + children -->
+    {% if doc.program_overview %}
+    <section class="program-overview mb-5">
+      {{ doc.program_overview | safe }}
+    </section>
+    {% endif %}
+
+    <section class="program-groups row gx-4 gy-4">
+      {% for child in doc.get_children() %}
+        {% set child_doc = frappe.get_doc("Program", child.name) %}
+        <div class="col-md-4">
+          <a href="/program/{{ child_doc.program_slug or child_doc.name }}" class="card h-100 text-decoration-none">
+            {% if child_doc.program_image %}
+              <img src="{{ child_doc.program_image }}" class="card-img-top" alt="{{ child_doc.program_name }}">
+            {% endif %}
+            <div class="card-body">
+              <h5 class="card-title">{{ child_doc.program_name }}</h5>
+              {% if child_doc.description %}
+                <p class="card-text">{{ child_doc.description }}</p>
+              {% endif %}
+            </div>
+          </a>
+        </div>
+      {% endfor %}
+    </section>
+
+  {% else %}
+    <!-- Leaf page: show details, courses & gallery -->
+
+    {% if doc.intro_video %}
+    <section class="program-video mb-5 text-center">
+      <iframe
+        src="{{ doc.intro_video }}"
+        frameborder="0"
+        allowfullscreen
+        style="width:100%;max-width:800px;height:450px;">
+      </iframe>
+    </section>
+    {% endif %}
+
+    <section class="program-details mb-5">
+      {% if doc.program_overview %}
+        <div class="mb-4">{{ doc.program_overview | safe }}</div>
+      {% endif %}
+      {% if doc.program_aims %}
+        <h2>Program Aims</h2>
+        <div class="mb-4">{{ doc.program_aims | safe }}</div>
+      {% endif %}
+      {% if doc.description %}
+        <h2>Overview & Aims</h2>
+        <p>{{ doc.description }}</p>
+      {% endif %}
+    </section>
+
+    {% if doc.courses %}
+    <section class="program-courses mb-5">
+      <h2>Courses</h2>
+      <ul class="list-group">
+        {% for row in doc.courses %}
+          {% set course = frappe.get_doc("Course", row.course) %}
+          <li class="list-group-item">
+            <a href="/course/{{ course.slug or course.name }}">
+              {{ course.course_name or course.name }}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    {% if doc.program_gallery_image %}
+    <section class="program-gallery mb-5">
+      <h2>Gallery</h2>
+      <div class="row gx-3 gy-3">
+        {% for img in doc.program_gallery_image %}
+          <div class="col-6 col-md-3">
+            <img
+              src="{{ img.resized_image or img.image }}"
+              alt=""
+              class="img-fluid rounded">
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Back link -->
+    {% if doc.parent_program %}
+      {% set parent = frappe.get_doc("Program", doc.parent_program) %}
+      <p class="mt-5">
+        <a href="/program/{{ parent.program_slug or parent.name }}">
+          ← Back to {{ parent.program_name }}
+        </a>
+      </p>
+    {% endif %}
+
+  {% endif %}
+
+</article>
+{% endblock %}
