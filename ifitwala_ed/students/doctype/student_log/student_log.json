@@ -147,7 +147,7 @@
    "fieldname": "follow_up_person",
    "fieldtype": "Link",
    "label": "Follow up Person",
-   "options": "Employee"
+   "options": "User"
   },
   {
    "fieldname": "log_type",
@@ -246,7 +246,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-30 09:30:59.327213",
+ "modified": "2025-05-01 08:20:46.926917",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",

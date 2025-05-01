@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:SLFU-{YY}-{MM}-{####}",
  "creation": "2025-01-12 11:31:27.923201",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -76,10 +77,11 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-12 11:40:35.152703",
+ "modified": "2025-05-01 08:16:47.937725",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Follow Up",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -108,6 +110,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
