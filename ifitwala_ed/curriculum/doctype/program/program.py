@@ -1,4 +1,5 @@
-# Copyright (c) 2024, François de Ryckel  and contributors
+# -*- coding: utf-8 -*-
+# Copyright (c) 2024, Francois de Ryckel  and contributors
 # For license information, please see license.txt
 
 import frappe
