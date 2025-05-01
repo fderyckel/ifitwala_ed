@@ -82,7 +82,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-01 09:48:37.158675",
+ "modified": "2025-05-01 10:01:42.759002",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",
@@ -91,7 +91,14 @@
  "parent_page": "Settings",
  "public": 1,
  "quick_lists": [],
- "roles": [],
+ "roles": [
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Curriculum Coordinator"
+  }
+ ],
  "sequence_id": 4.0,
  "shortcuts": [],
  "title": "Curriculum"
