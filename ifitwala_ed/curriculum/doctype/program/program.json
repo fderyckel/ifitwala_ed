@@ -13,18 +13,30 @@
   "school",
   "column_break_zxmc",
   "program_abbreviation",
+  "is_group",
+  "parent_program",
   "course_section_section",
   "courses",
-  "description_section",
+  "program_coordinators_section",
+  "coordinators",
+  "lft",
+  "rgt",
+  "old_parent",
+  "dashboard_tab",
+  "website_tab",
   "is_published",
   "allow_self_enroll",
   "is_featured",
   "program_image",
+  "program_slug",
   "column_break_lkjg",
-  "description",
   "intro_video",
-  "program_coordinators_section",
-  "coordinators"
+  "description",
+  "description_section",
+  "program_overview",
+  "program_aims",
+  "visuals_section",
+  "program_gallery_image"
  ],
  "fields": [
   {
@@ -58,11 +70,13 @@
    "label": "Program Abbreviation"
   },
   {
+   "depends_on": "eval: !doc.is_group",
    "fieldname": "course_section_section",
    "fieldtype": "Section Break",
    "label": "Course Section"
   },
   {
+   "depends_on": "eval:!doc.is_group",
    "fieldname": "courses",
    "fieldtype": "Table",
    "label": "Courses",
@@ -107,7 +121,7 @@
    "depends_on": "is_published",
    "fieldname": "description",
    "fieldtype": "Small Text",
-   "label": "Description"
+   "label": "Programs Overview & Aims"
   },
   {
    "depends_on": "is_published",
@@ -126,17 +140,90 @@
    "fieldtype": "Table",
    "label": "Coordinators",
    "options": "Program Coordinator"
+  },
+  {
+   "fieldname": "lft",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Left",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "rgt",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Right",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_group",
+   "fieldtype": "Check",
+   "label": "Is Group"
+  },
+  {
+   "fieldname": "old_parent",
+   "fieldtype": "Link",
+   "label": "Old Parent",
+   "options": "Program"
+  },
+  {
+   "fieldname": "parent_program",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Parent Program",
+   "options": "Program"
+  },
+  {
+   "fieldname": "website_tab",
+   "fieldtype": "Tab Break",
+   "label": "Website"
+  },
+  {
+   "fieldname": "program_overview",
+   "fieldtype": "Text Editor",
+   "label": "Program Overview"
+  },
+  {
+   "fieldname": "program_aims",
+   "fieldtype": "Text Editor",
+   "label": "Program Aims"
+  },
+  {
+   "fieldname": "visuals_section",
+   "fieldtype": "Section Break",
+   "label": "Visuals"
+  },
+  {
+   "fieldname": "program_gallery_image",
+   "fieldtype": "Table",
+   "label": "Program Gallery Image",
+   "options": "Gallery Image"
+  },
+  {
+   "fieldname": "dashboard_tab",
+   "fieldtype": "Tab Break",
+   "label": "Dashboard"
+  },
+  {
+   "fieldname": "program_slug",
+   "fieldtype": "Data",
+   "label": "URL Slug"
   }
  ],
  "grid_page_length": 50,
  "image_field": "program_image",
  "index_web_pages_for_search": 1,
+ "is_tree": 1,
  "links": [],
- "modified": "2025-04-21 14:45:16.423513",
+ "modified": "2025-05-01 18:35:36.405116",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",
  "naming_rule": "By fieldname",
+ "nsm_parent_field": "parent_program",
  "owner": "Administrator",
  "permissions": [
   {
@@ -200,5 +287,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "program_name"
 }
