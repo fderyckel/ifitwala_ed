@@ -6,6 +6,7 @@ import frappe
 from frappe import _
 from frappe.website.website_generator import WebsiteGenerator
 from frappe.utils.nestedset import NestedSet
+from frappe._dict import _dict
 
 class Program(WebsiteGenerator, NestedSet):
 
