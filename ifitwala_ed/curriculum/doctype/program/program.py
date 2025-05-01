@@ -4,8 +4,8 @@
 
 import frappe
 from frappe import _
-from frappe.utils.nestedset import NestedSet
 from frappe.website.website_generator import WebsiteGenerator
+from frappe.utils.nestedset import NestedSet
 
 class Program(WebsiteGenerator, NestedSet):
 
