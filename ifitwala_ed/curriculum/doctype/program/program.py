@@ -25,3 +25,34 @@ class Program(WebsiteGenerator, NestedSet):
 				frappe.throw(_("Course {0} is entered twice. Please remove one of them.").format(course.course))
 			else:
 				found.append(course.course)
+
+	def get_context(self, context):
+    # disable caching so editors see changes immediately
+		context.no_cache = True
+
+		# basics
+		context.title = self.program_name
+		context.program = self  # so your template can do {{ program.program_overview }}
+
+		# breadcrumbs
+		crumbs = []
+		# top‐level “Programs” landing page
+		crumbs.append({"name": "/programs", "title": "Programs"})
+
+		# any parent programs
+		parent = self.parent_program
+		while parent:
+			p = frappe.get_doc("Program", parent)
+			crumbs.append({"name": f"/program/{p.program_slug}", "title": p.program_name})
+			parent = p.parent_program
+
+		context.parents = crumbs
+
+		# if this is a group, list its children
+		context.children = []
+		if self.is_group:
+			for child in self.get_children():
+				doc = frappe.get_doc("Program", child.name)
+				context.children.append(doc)
+
+		return context
