@@ -18,7 +18,7 @@
  "is_hidden": 0,
  "label": "Health",
  "links": [],
- "modified": "2025-01-19 09:36:34.645703",
+ "modified": "2025-05-01 09:48:30.431767",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Health",
@@ -27,8 +27,18 @@
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
- "roles": [],
- "sequence_id": 3.0,
+ "roles": [
+  {
+   "role": "Nurse"
+  },
+  {
+   "role": "Administrator"
+  },
+  {
+   "role": "Admission Officer"
+  }
+ ],
+ "sequence_id": 6.0,
  "shortcuts": [
   {
    "color": "Blue",

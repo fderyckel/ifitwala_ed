@@ -8,60 +8,11 @@
  "for_user": "",
  "hide_custom": 0,
  "icon": "setting-gear",
- "idx": 14,
+ "idx": 30,
  "indicator_color": "green",
  "is_hidden": 0,
  "label": "Settings",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Schools & calendars",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Academic Year",
-   "link_count": 0,
-   "link_to": "Academic Year",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Term",
-   "link_count": 0,
-   "link_to": "Term",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "School Calendar",
-   "link_count": 0,
-   "link_to": "School Calendar",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "School Event",
-   "link_count": 0,
-   "link_to": "School Event",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -295,9 +246,68 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Schools & calendars",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Academic Year",
+   "link_count": 0,
+   "link_to": "Academic Year",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Term",
+   "link_count": 0,
+   "link_to": "Term",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School Calendar",
+   "link_count": 0,
+   "link_to": "School Calendar",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School Schedule",
+   "link_count": 0,
+   "link_to": "School Schedule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School Event",
+   "link_count": 0,
+   "link_to": "School Event",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-04-29 09:39:12.790445",
+ "modified": "2025-05-01 09:48:30.204015",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Settings",
@@ -314,7 +324,7 @@
    "role": "Administrator"
   }
  ],
- "sequence_id": 3.0,
+ "sequence_id": 2.0,
  "shortcuts": [
   {
    "color": "Grey",

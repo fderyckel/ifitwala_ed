@@ -63,7 +63,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-04-22 08:49:48.645478",
+ "modified": "2025-05-01 09:48:30.375049",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",
@@ -86,7 +86,7 @@
    "role": "Administrator"
   }
  ],
- "sequence_id": 4.0,
+ "sequence_id": 5.0,
  "shortcuts": [
   {
    "color": "Grey",

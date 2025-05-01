@@ -18,8 +18,8 @@
   "student_name",
   "time",
   "program",
-  "term",
   "author_name",
+  "follow_up_status",
   "section_break_7miy",
   "visible_to_student",
   "column_break_llsc",
@@ -37,7 +37,6 @@
   "student_photo",
   "references_section",
   "reference_type",
-  "follow_up_status",
   "column_break_rsj6",
   "reference_name"
  ],
@@ -99,11 +98,6 @@
    "fieldtype": "Link",
    "label": "Academic Year",
    "options": "Academic Year"
-  },
-  {
-   "fieldname": "term",
-   "fieldtype": "Data",
-   "label": "Term"
   },
   {
    "fieldname": "program",
@@ -246,7 +240,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-01 08:33:04.951363",
+ "modified": "2025-05-01 08:36:48.855795",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",
@@ -266,26 +260,47 @@
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
-   "export": 1,
-   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Academic Admin",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Instructor",
-   "share": 1
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
   }
  ],
  "quick_entry": 1,
