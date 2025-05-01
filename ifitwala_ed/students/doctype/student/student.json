@@ -4,6 +4,7 @@
  "allow_rename": 1,
  "autoname": "format:STU-{YYYY}-{#####}",
  "creation": "2024-12-06 14:26:44.955491",
+ "default_view": "List",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -82,6 +83,7 @@
    "fieldname": "student_preferred_name",
    "fieldtype": "Data",
    "in_filter": 1,
+   "in_global_search": 1,
    "in_list_view": 1,
    "in_preview": 1,
    "label": "Preferred Name"
@@ -281,7 +283,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-21 22:11:48.568828",
+ "modified": "2025-05-01 15:13:01.889199",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
