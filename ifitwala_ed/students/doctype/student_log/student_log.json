@@ -37,7 +37,7 @@
   "student_photo",
   "references_section",
   "reference_type",
-  "status",
+  "follow_up_status",
   "column_break_rsj6",
   "reference_name"
  ],
@@ -146,7 +146,7 @@
   {
    "fieldname": "follow_up_person",
    "fieldtype": "Link",
-   "label": "Follow up Person",
+   "label": "Follow up User",
    "options": "User"
   },
   {
@@ -224,9 +224,9 @@
    "options": "reference_type"
   },
   {
-   "fieldname": "status",
+   "fieldname": "follow_up_status",
    "fieldtype": "Select",
-   "label": "Status",
+   "label": "Follow-up Status",
    "options": "Open\nIn Progress\nCompleted\nClosed"
   },
   {
@@ -246,7 +246,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-01 08:26:34.951363",
+ "modified": "2025-05-01 08:33:04.951363",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",
