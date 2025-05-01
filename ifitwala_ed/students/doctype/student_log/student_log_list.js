@@ -2,6 +2,7 @@
 // For license information, please see license.txt
 
 frappe.listview_settings['Student Log'] = {
+  add_fields: ["follow_up_status"],
   get_indicator(doc) {
     const sstatus = (doc.follow_up_status || "").trim().toLowerCase();
 
