@@ -28,7 +28,7 @@
   "log",
   "follow_up_section",
   "column_break_fhgg",
-  "requries_follow_up",
+  "requires_follow_up",
   "next_step",
   "column_break_yils",
   "follow_up_role",
@@ -236,7 +236,7 @@
   },
   {
    "default": "0",
-   "fieldname": "requries_follow_up",
+   "fieldname": "requires_follow_up",
    "fieldtype": "Check",
    "label": "Requires Follow Up"
   }
@@ -246,7 +246,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-01 08:20:46.926917",
+ "modified": "2025-05-01 08:26:34.951363",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",
