@@ -8,7 +8,7 @@ from frappe.website.website_generator import WebsiteGenerator
 from frappe.utils.nestedset import NestedSet
 from frappe import _dict
 
-class Program(WebsiteGenerator, NestedSet):
+class Program(WebsiteGenerator):
 
 	website_generator = "program_slug" 
 	
