@@ -5,7 +5,10 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-class Program(Document):
+class Program(NestedSet):
+	
+	website_generator = "program_slug"
+
 	def validate(self):
 		self.validate_duplicate_course()
 
