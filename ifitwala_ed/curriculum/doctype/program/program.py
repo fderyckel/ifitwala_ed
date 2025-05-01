@@ -9,7 +9,13 @@ from frappe.utils.nestedset import NestedSet
 
 class Program(WebsiteGenerator, NestedSet):
 
-	website_generator = "program_slug"
+	website_generator = "program_slug" 
+	
+	website = _dict(
+    template = "templates/generators/program.html",
+    condition_field = "is_published",
+    page_title_field = "program_name",
+  )	
 
 	def validate(self):
 		self.validate_duplicate_course()
