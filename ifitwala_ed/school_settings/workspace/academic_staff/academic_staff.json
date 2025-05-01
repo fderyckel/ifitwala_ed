@@ -72,7 +72,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-01 10:02:00.252795",
+ "modified": "2025-05-01 10:03:00.252795",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Staff",
@@ -89,12 +89,12 @@
  "sequence_id": 1.0,
  "shortcuts": [
   {
-   "color": "Blue",
-   "doc_view": "List",
-   "label": "Todo",
-   "link_to": "ToDo",
-   "stats_filter": "[[\"ToDo\",\"allocated_to\",\"=\",\"{{ frappe.session.user }}\",false]]",
-   "type": "DocType"
+    "color": "Blue",
+    "label": "My ToDos",
+    "link_to": "ToDo",
+    "doc_view": "List",
+    "stats_filter": "[[\"ToDo\",\"allocated_to\",\"=\",\"{{ frappe.session.user }}\"]]",
+    "type": "DocType"
   },
   {
    "color": "Grey",
