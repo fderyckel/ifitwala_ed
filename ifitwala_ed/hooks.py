@@ -70,9 +70,7 @@ after_login = "ifitwala_ed.api.redirect_student_to_portal"
 # ----------
 
 # automatically create page for each record of this doctype
-website_generators = [
-    "Program",
-]
+website_generators = ["Program"]
 
 # Jinja
 # ----------
@@ -90,8 +88,7 @@ website_generators = [
 after_install = "ifitwala_ed.setup.setup.setup_education"
 
 fixtures = [
-    {"doctype": "Web Page","filters": {"name": ["in", ["school"]]}}, 
-    {"doctype": "Website Settings"}
+    {"doctype": "Web Page","filters": [["name", "=", "school"]]}, 
 ]
 
 # Uninstallation
