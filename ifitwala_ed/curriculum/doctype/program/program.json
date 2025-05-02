@@ -36,7 +36,8 @@
   "program_overview",
   "program_aims",
   "visuals_section",
-  "program_gallery_image"
+  "program_gallery_image",
+  "route"
  ],
  "fields": [
   {
@@ -205,12 +206,20 @@
   {
    "fieldname": "dashboard_tab",
    "fieldtype": "Tab Break",
-   "label": "Dashboard"
+   "label": "Dashboard",
+   "show_dashboard": 1
   },
   {
    "fieldname": "program_slug",
    "fieldtype": "Data",
    "label": "URL Slug"
+  },
+  {
+   "fieldname": "route",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Route",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -218,7 +227,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-01 18:35:36.405116",
+ "modified": "2025-05-02 08:07:55.892309",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",
