@@ -13,12 +13,22 @@ def is_setup_done():
     )
 
 @frappe.whitelist()
-def complete_initial_setup(org_name, org_abbr, school_name, school_abbr):
-    """Create root Organization & School exactly once."""
+def complete_initial_setup(
+    org_name, org_abbr, school_name, school_abbr,
+    app_logo=None, brand_image=None
+):
+    """Create root Organization & School and optionally set
+    the login-logo and navbar-brand in Website Settings."""
     if is_setup_done():
         frappe.throw(_("Initial setup already completed."))
 
-    # ---- ROOT ORGANIZATION ---------------------------------------------------
+    # Validate image inputs
+    if app_logo and not frappe.db.exists("File", app_logo):
+        frappe.throw(_("App Logo file not found: {0}").format(app_logo))
+    if brand_image and not frappe.db.exists("File", brand_image):
+        frappe.throw(_("Navbar Brand Image file not found: {0}").format(brand_image))
+
+    # ─── create org & school ─────────────────────────────────────────────────
     org = frappe.get_doc({
         "doctype": "Organization",
         "organization_name": org_name.strip(),
@@ -26,7 +36,6 @@ def complete_initial_setup(org_name, org_abbr, school_name, school_abbr):
         "is_group": 1,
     }).insert(ignore_permissions=True)
 
-    # ---- ROOT SCHOOL ---------------------------------------------------------
     school = frappe.get_doc({
         "doctype": "School",
         "school_name": school_name.strip(),
@@ -35,12 +44,24 @@ def complete_initial_setup(org_name, org_abbr, school_name, school_abbr):
         "organization": org.name,
     }).insert(ignore_permissions=True)
 
-    # ---- Mark wizard as done -------------------------------------------------
-    frappe.db.set_value("System Settings", None, "ifitwala_initial_setup", 1)
+    # ─── update Website Settings ─────────────────────────────────────────────
+    ws = frappe.get_single("Website Settings")
+    if app_logo:
+        ws.app_logo = app_logo
+    if brand_image:
+        ws.brand_image = brand_image
+    if any([app_logo, brand_image]):
+        ws.save(ignore_permissions=True)
 
+    # ─── mark setup done (only after all saves succeeded) ────────────────────
+    frappe.db.set_value("System Settings", None, "ifitwala_initial_setup", 1)
     frappe.db.commit()
+
+    # Return created docs and URLs for immediate UI use
     return {
         "organization": org.name,
         "school": school.name,
-        "message": _("Organization and School created successfully."),
+        "app_logo": ws.app_logo,
+        "brand_image": ws.brand_image,
+        "message": _("Organization, School and branding created successfully."),
     }

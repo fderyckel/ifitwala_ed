@@ -15,6 +15,8 @@ def setup_education():
   add_other_records() 
   create_student_file_folder()
   setup_website_top_bar()
+  setup_web_pages()
+
 
 def create_roles_with_homepage():
     """Create or update roles with home_page and desk_access."""
@@ -122,6 +124,7 @@ def create_student_file_folder():
 	os.makedirs(os.path.join(get_files_path(), "student"), exist_ok=True)
      
 def setup_website_top_bar():
+    
     top_bar_items = [
         # Primary items
         {"label": "Home"},
@@ -157,3 +160,56 @@ def setup_website_top_bar():
 
     ws.save(ignore_permissions=True)
 	
+METADATA_FIELDS = {
+    "doctype", "docstatus", "modified", "modified_by",
+    "owner", "creation", "idx", "_user_tags"
+}
+
+def setup_web_pages():
+    """
+    Load all Web Page entries from fixtures/web_page.json
+    and insert them if they do not already exist.
+    Errors are logged without stopping the install process.
+    """
+    fixture_path = frappe.get_app_path(
+        "ifitwala_ed", "fixtures", "web_page.json"
+    )
+
+    # Ensure fixture file presence; log an informational message if missing
+    if not os.path.exists(fixture_path):
+        # Informational log for expected missing fixtures
+        frappe.logger().info(f"No Web Page fixtures found at {fixture_path}")
+        return
+
+    # Attempt to load JSON; log any parse errors
+    try:
+        with open(fixture_path, encoding="utf-8") as f:
+            records = json.load(f)
+    except Exception as e:
+        frappe.log_error(
+            f"Failed to load Web Page fixtures: {e}",
+            title="setup_web_pages"
+        )
+        return
+
+    # Iterate and insert missing Web Page records
+    for record in records:
+        if record.get("doctype") != "Web Page":
+            continue
+
+        name = record.get("name")
+        # Skip if already present
+        if frappe.db.exists("Web Page", name):
+            continue
+
+        # Strip metadata fields from fixture record
+        filtered = {k: v for k, v in record.items() if k not in METADATA_FIELDS}
+
+        try:
+            # Use helper to insert directly from filtered JSON
+            insert_record(filtered)
+        except Exception as e:
+            frappe.log_error(
+                f"Failed to insert Web Page '{name}': {e}",
+                title="setup_web_pages"
+            )
