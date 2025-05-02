@@ -34,7 +34,7 @@ class Program(WebsiteGenerator):
 		else:
 			# insert a fresh Website Route
 			frappe.get_doc({
-				"doctype":      "Website Route",
+				"doctype":      "Website Route Meta",
 				"route":        self.route,
 				"ref_doctype":  self.doctype,
 				"docname":      self.name,
