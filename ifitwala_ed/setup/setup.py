@@ -124,13 +124,13 @@ def create_student_file_folder():
 def setup_website_top_bar():
     top_bar_items = [
         # Primary items
-        {"label": "Home", "url": "/"},
-        {"label": "About Us", "url": "/about"},
-        {"label": "Academics", "url": "/academics"},
-        {"label": "Admission", "url": "/admission"},
-        {"label": "News & Events", "url": "/news-events"},
-        {"label": "Community", "url": "/community"},
-        {"label": "Contact Us", "url": "/contact"},
+        {"label": "Home"},
+        {"label": "About Us"},
+        {"label": "Academics"},
+        {"label": "Admission"},
+        {"label": "News & Events"},
+        {"label": "Community"},
+        {"label": "Contact Us"},
 
         # About Us Submenu
         {"label": "Mission & Values", "url": "/mission-values", "parent_label": "About Us"},
