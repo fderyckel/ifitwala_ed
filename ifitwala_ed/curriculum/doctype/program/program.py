@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.website.website_generator import WebsiteGenerator
+from frappe.model.document import Document
 from frappe.utils.nestedset import NestedSet
 from frappe import _dict
 
