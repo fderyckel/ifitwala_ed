@@ -8,38 +8,11 @@ from frappe.website.website_generator import WebsiteGenerator
 from frappe import _dict
 
 class Program(WebsiteGenerator):
-	# we’ll hard-code the route ourselves,
-	# so WebsiteGenerator won’t try to be clever.
-	condition_field = "is_published"       # honour the publish flag
-
-	# ------------------------------------------------------------------
-	def before_save(self):
-		"""Always set route = 'program/<slug>' (or name fallback)."""
-		self.route = f"program/{self.program_slug or self.name}"
-
-	def after_save(self):
-		"""Ensure a Website Route row exists for this document."""
-		if not self.is_published:
-			return  # don’t publish if flag is off
-
-		route_name = frappe.db.get_value(
-			"Website Route",
-			{"ref_doctype": self.doctype, "docname": self.name},
-			"name",
-		)
-
-		if route_name:
-			# update existing row if route changed
-			frappe.db.set_value("Website Route", route_name, "route", self.route)
-		else:
-			# insert a fresh Website Route
-			frappe.get_doc({
-				"doctype":      "Website Route Meta",
-				"route":        self.route,
-				"ref_doctype":  self.doctype,
-				"docname":      self.name,
-				"page_title":   self.program_name,
-			}).insert(ignore_permissions=True)
+	website = frappe._dict(
+		template = "templates/generators/program.html",
+		condition_field = "is_published",
+		page_title_field = "program_name"
+	)
 
 	def get_context(self, context):
 		# nothing fancy—just prove it renders

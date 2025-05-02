@@ -1,9 +1,13 @@
-{% extends "templates/base.html" %}
+<!doctype html>
+<html>
+<head>
+  <title>{{ doc.program_name }}</title>
+  <meta charset="utf-8">
+</head>
+<body style="font-family:sans-serif;text-align:center;margin-top:4rem;">
+  <h1>{{ doc.program_name }}</h1>
+  <p>{{ context.greeting }}</p>
+  <p><em>Route:</em> {{ doc.route }}</p>
+</body>
+</html>
 
-{% block content %}
-	<section class="container text-center my-5">
-		<h1>{{ doc.program_name }}</h1>
-		<p class="lead">{{ context.message }}</p>
-		<p><em>Route:</em> {{ doc.route }}</p>
-	</section>
-{% endblock %}
