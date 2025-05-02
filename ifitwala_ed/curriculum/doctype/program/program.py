@@ -4,8 +4,7 @@
 import frappe
 from frappe import _
 from frappe.website.website_generator import WebsiteGenerator
-from frappe.model.document import Document
-from frappe.utils.nestedset import NestedSet
+#from frappe.utils.nestedset import NestedSet
 from frappe import _dict
 
 class Program(WebsiteGenerator):
@@ -14,13 +13,13 @@ class Program(WebsiteGenerator):
 
     # generator settings: route prefix, template, publish flag, title field
     website = _dict(
-        route="program",
         template="templates/generators/program.html",
         condition_field="is_published",
         page_title_field="program_name",
     )
 
     def validate(self):
+        super().validate()
         # your duplicate‐course guard
         self.validate_duplicate_course()
         # ensure route is recalculated on every save
