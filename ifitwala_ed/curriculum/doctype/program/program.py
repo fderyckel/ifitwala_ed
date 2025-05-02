@@ -32,3 +32,4 @@ class Program(WebsiteGenerator):
 	def get_context(self, context):
 		context.no_cache = True
 		context.message  = "Hello World from Program!"			
+		return context
