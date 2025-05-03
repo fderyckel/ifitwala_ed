@@ -1,8 +1,11 @@
+// Copyright (c) 2025, François de Ryckel and contributors
+// For license information, please see license.txt
+
 document.addEventListener("DOMContentLoaded", function () {
   const bootstrapLoaded = typeof bootstrap !== "undefined";
 
   function initSchoolUI() {
-    // === Bootstrap Carousels ===
+    // === Carousels ===
     const schoolCarousel = document.querySelector('#schoolCarousel');
     const teamCarousel = document.querySelector('#teamCarousel');
 
@@ -21,12 +24,13 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
-    // === Bootstrap Tooltips ===
-    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    tooltips.forEach(el => new bootstrap.Tooltip(el));
+    // === Tooltips for Leadership bios ===
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+      new bootstrap.Tooltip(el);
+    });
 
-    // === Fade-in effect for hero carousel images (class: fade-in-real-image) ===
-    document.querySelectorAll('.fade-in-real-image').forEach(img => {
+    // === Visual polish ===
+    document.querySelectorAll('img.fade-in-real-image').forEach(img => {
       img.style.opacity = 0;
       img.addEventListener('load', () => {
         img.style.transition = 'opacity 0.8s ease-in-out';
@@ -34,7 +38,7 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
 
-    // === Lazy load: Apply `.loaded` class when image finishes loading
+    // === Lazy load: apply `.loaded` class ===
     document.querySelectorAll('img[loading="lazy"]').forEach(img => {
       img.addEventListener('load', () => {
         img.classList.add('loaded');
@@ -42,7 +46,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // === Bootstrap loader fallback ===
   if (!bootstrapLoaded) {
     const script = document.createElement("script");
     script.src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js";

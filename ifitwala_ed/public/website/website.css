@@ -1,0 +1,103 @@
+/* =========================================
+   WEBSITE.CSS - SHARED SITE-WIDE STYLING
+   ========================================= */
+
+/* === Hero Image Carousel Wrapper === */
+.hero-img-wrapper {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  overflow: hidden;
+}
+@media (max-width: 992px) { .hero-img-wrapper { height: 400px; } }
+@media (max-width: 768px) { .hero-img-wrapper { height: 300px; } }
+@media (max-width: 576px) { .hero-img-wrapper { height: 250px; } }
+
+.hero-img-wrapper img,
+.hero-img {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* === School Caption (optional background overlay) === */
+.school-caption {
+  position: absolute;
+  bottom: 2rem;
+  left: 2rem;
+  color: white;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  max-width: 60%;
+  text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.7);
+  text-align: left;
+}
+@media (max-width: 768px) {
+  .school-caption {
+    font-size: 1.1rem;
+    max-width: 80%;
+    bottom: 1rem;
+    left: 1rem;
+  }
+}
+@media (max-width: 480px) {
+  .school-caption {
+    font-size: 1rem;
+    max-width: 90%;
+    bottom: 0.75rem;
+    left: 0.75rem;
+  }
+}
+
+/* === Carousel Controls - Unified === */
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
+}
+
+/* === Section Divider === */
+.section-divider {
+  height: 1px;
+  width: 120px;
+  background: #e5e5e5;
+  margin: 1.5rem auto 2rem;
+}
+
+/* === Fade-in Lazy Load Utility === */
+img[loading="lazy"] {
+  opacity: 0;
+  transition: opacity 0.6s ease-in-out;
+}
+img[loading="lazy"].loaded {
+  opacity: 1;
+}
+
+/* === Tooltip Enhancements === */
+.tooltip-inner {
+  background-color: #f8f9fa !important;
+  color: #212529 !important;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  max-width: 250px;
+  text-align: left;
+}
+.tooltip.bs-tooltip-top .tooltip-arrow::before,
+.tooltip.bs-tooltip-bottom .tooltip-arrow::before,
+.tooltip.bs-tooltip-start .tooltip-arrow::before,
+.tooltip.bs-tooltip-end .tooltip-arrow::before {
+  border-top-color: #f8f9fa !important;
+}
+
+/* === Basic Card Hover === */
+.card:hover {
+  transform: translateY(-4px);
+  transition: 0.25s;
+}
