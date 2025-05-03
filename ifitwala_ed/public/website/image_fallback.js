@@ -4,9 +4,14 @@ document.addEventListener("DOMContentLoaded", function () {
   const images = document.querySelectorAll(".hero-img-full");
 
   images.forEach(img => {
-    const srcLarge = img.getAttribute("src");
-    const srcMedium = img.dataset.srcMedium;
-    const srcOriginal = img.dataset.srcOriginal;
+    // Resolve relative → absolute URL
+    const srcLarge = new URL(img.getAttribute("src"), window.location.origin).href;
+    const srcMedium = img.dataset.srcMedium
+      ? new URL(img.dataset.srcMedium, window.location.origin).href
+      : null;
+    const srcOriginal = img.dataset.srcOriginal
+      ? new URL(img.dataset.srcOriginal, window.location.origin).href
+      : null;
 
     console.debug("[Image Load] Trying:", srcLarge);
 
@@ -28,3 +33,4 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
+
