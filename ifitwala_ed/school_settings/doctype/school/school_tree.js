@@ -29,5 +29,6 @@ frappe.treeview_settings["School"] = {
 	],
 	onload: function(treeview) {
 		treeview.make_tree();
+		treeview.expand_all();
 	}
 };

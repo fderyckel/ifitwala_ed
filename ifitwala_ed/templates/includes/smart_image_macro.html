@@ -1,0 +1,25 @@
+{# 
+  Macro: smart_image
+  Description:
+    Displays an image with graceful fallback:
+    - Tries 'large' version first
+    - Falls back to 'medium'
+    - Falls back to original
+    - Requires fallback logic via JS
+
+  Parameters:
+    - primary: URL to large resized image
+    - medium: URL to medium resized image
+    - fallback: URL to original image
+    - alt_text (optional): Image alt attribute
+    - css_class (optional): CSS classes to apply
+#}
+
+{% macro smart_image(primary, medium, fallback, alt_text="", css_class="") %}
+  <img src="{{ primary }}"
+       data-src-medium="{{ medium }}"
+       data-src-original="{{ fallback }}"
+       alt="{{ alt_text }}"
+       class="{{ css_class }}"
+       loading="lazy">
+{% endmacro %}
