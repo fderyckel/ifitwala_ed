@@ -9,14 +9,28 @@
   height: 500px;
   overflow: hidden;
 }
-@media (max-width: 992px) { .hero-img-wrapper { height: 400px; } }
-@media (max-width: 768px) { .hero-img-wrapper { height: 300px; } }
-@media (max-width: 576px) { .hero-img-wrapper { height: 250px; } }
+@media (max-width: 992px) {
+  .hero-img-wrapper {
+    height: 400px;
+  }
+}
+@media (max-width: 768px) {
+  .hero-img-wrapper {
+    height: 300px;
+  }
+}
+@media (max-width: 576px) {
+  .hero-img-wrapper {
+    height: 250px;
+  }
+}
 
+/* Ensure hero images fill their container, preserving aspect ratio */
 .hero-img-wrapper img,
 .hero-img {
   position: absolute;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -28,7 +42,7 @@
   position: absolute;
   bottom: 2rem;
   left: 2rem;
-  color: white;
+  color: #fff;
   background: rgba(0, 0, 0, 0.4);
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
@@ -55,7 +69,7 @@
   }
 }
 
-/* === Carousel Controls - Unified === */
+/* === Carousel Controls Styling === */
 .carousel-control-prev-icon,
 .carousel-control-next-icon {
   filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
@@ -69,7 +83,8 @@
   margin: 1.5rem auto 2rem;
 }
 
-/* === Fade-in Lazy Load Utility === */
+/* === Fade-in Lazy-Loaded Images === */
+/* Images with loading="lazy" start at 0 opacity and fade in when .loaded is added */
 img[loading="lazy"] {
   opacity: 0;
   transition: opacity 0.6s ease-in-out;
@@ -85,7 +100,7 @@ img[loading="lazy"].loaded {
   font-size: 0.875rem;
   border-radius: 0.5rem;
   padding: 0.75rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   max-width: 250px;
   text-align: left;
 }
@@ -96,18 +111,26 @@ img[loading="lazy"].loaded {
   border-top-color: #f8f9fa !important;
 }
 
-/* === Basic Card Hover === */
+/* === Basic Card Hover Effect === */
 .card:hover {
   transform: translateY(-4px);
-  transition: 0.25s;
+  transition: transform 0.25s;
 }
 
 /* === Responsive Utility Text Sizes === */
-.text-md { font-size: 1.1rem; }
-.text-sm { font-size: 0.95rem; }
+.text-md {
+  font-size: 1.1rem;
+}
+.text-sm {
+  font-size: 0.95rem;
+}
 @media (max-width: 768px) {
-  .text-md { font-size: 1rem; }
-  .text-sm { font-size: 0.875rem; }
+  .text-md {
+    font-size: 1rem;
+  }
+  .text-sm {
+    font-size: 0.875rem;
+  }
 }
 
 /* === Responsive Container Padding === */
@@ -120,4 +143,28 @@ img[loading="lazy"].loaded {
     padding-left: 1rem;
     padding-right: 1rem;
   }
+}
+
+/* =========================================
+   CAROUSEL–FADE & HERO-IMAGE CROSSFADE
+   These rules enhance Bootstrap’s fade carousel
+   and ensure hero images fade in smoothly
+   ========================================= */
+
+/* Cross-fade between slides in a .carousel-fade carousel */
+.carousel-fade .carousel-item {
+  opacity: 0;
+  transition: opacity 0.6s ease-in-out;
+}
+.carousel-fade .carousel-item.active {
+  opacity: 1;
+}
+
+/* Reinforce fade-in for hero images when .loaded is added */
+.hero-img-full {
+  opacity: 0;
+  transition: opacity 0.6s ease-in-out;
+}
+.hero-img-full.loaded {
+  opacity: 1;
 }
