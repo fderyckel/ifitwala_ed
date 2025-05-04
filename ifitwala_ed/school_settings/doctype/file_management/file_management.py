@@ -55,7 +55,7 @@ class FileManagement(Document):
                     continue
 
                 # ⚡ Ignore system thumbnails (small_, medium_, large_)
-                if any(f.file_name.startswith(prefix) for prefix in ["small_", "medium_", "large_"]):
+                if any(f.file_name.startswith(prefix) for prefix in ["hero_", "medium_", "card_", "thumb_"]):
                     continue
 
                 old_full_path = frappe.utils.get_site_path("public", f.file_url.lstrip("/"))
@@ -144,7 +144,7 @@ class FileManagement(Document):
         public_files_path = Path(get_files_path())
 
         for file_path in public_files_path.glob("*_*.*"):
-            if file_path.name.startswith(("small_", "medium_", "large_")):
+            if file_path.name.startswith(("hero_", "medium_", "card_", "thumb_")):
                 gallery_match = public_files_path / "gallery_resized" / file_path.name
                 if gallery_match.exists():
                     continue
