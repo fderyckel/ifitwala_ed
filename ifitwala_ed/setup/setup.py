@@ -172,7 +172,7 @@ def setup_web_pages():
     Errors are logged without stopping the install process.
     """
     fixture_path = frappe.get_app_path(
-        "ifitwala_ed", "fixtures", "web_page.json"
+        "ifitwala_ed", "setup", "data", "web_page.json"
     )
 
     # Ensure fixture file presence; log an informational message if missing
