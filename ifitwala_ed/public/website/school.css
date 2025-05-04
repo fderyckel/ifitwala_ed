@@ -135,3 +135,21 @@
   opacity: 1;
   transform: scale(1.2);
 }
+
+/* === Responsive Enhancements === */
+@media (max-width: 768px) {
+  .leader-name { font-size: 1.1rem; }
+  .leader-role { font-size: 0.9rem; }
+  .lead-circle {
+    width: 100px;
+    height: 100px;
+  }
+  #teamCarousel .team-card {
+    flex-direction: column;
+    height: auto;
+  }
+  #teamCarousel .team-card .image-block,
+  #teamCarousel .team-card .text-block {
+    width: 100%;
+  }
+}
