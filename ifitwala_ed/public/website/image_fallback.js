@@ -15,35 +15,40 @@ document.addEventListener("DOMContentLoaded", function () {
   const images = document.querySelectorAll("img[fallback]");
 
   images.forEach((img) => {
-    const strategy = img.getAttribute("fallback");
-    const src = img.getAttribute("src");
+    const strategy    = img.getAttribute("fallback");
 
-    const srcSmall = img.dataset.srcSmall || null;
-    const srcMedium = img.dataset.srcMedium || null;
+    const initialSrc  = img.getAttribute("src"); // <-- CHANGED
+
+    const srcMedium   = img.dataset.srcMedium   || null;
     const srcOriginal = img.dataset.srcOriginal || null;
 
-    // Debug info
-    console.debug(`[Fallback] Strategy: ${strategy} | Initial: ${src}`);
+    console.debug(`[Fallback] Strategy: ${strategy} | Starting src: ${initialSrc}`);
 
     img.addEventListener("load", () => {
       img.classList.add("loaded");
     });
 
     img.addEventListener("error", () => {
+      const current = img.getAttribute("src"); // <-- CHANGED
+
       if (strategy === "carousel") {
-        if (img.src.endsWith(src) && srcMedium) {
+        if (current === initialSrc && srcMedium) {
           console.warn("[Fallback] Large failed. Trying medium:", srcMedium);
-          img.src = srcMedium;
-        } else if (img.src === srcMedium && srcOriginal) {
+          img.setAttribute("src", srcMedium); // <-- CHANGED
+
+        } else if (current === srcMedium && srcOriginal) {
           console.warn("[Fallback] Medium failed. Trying original:", srcOriginal);
-          img.src = srcOriginal;
+          img.setAttribute("src", srcOriginal); // <-- CHANGED
+
         } else {
           console.error("[Fallback] All carousel sources failed:", img.alt || img);
         }
+
       } else if (strategy === "card") {
-        if (img.src.endsWith(src) && srcOriginal) {
+        if (current === initialSrc && srcOriginal) {
           console.warn("[Fallback] Small failed. Trying original:", srcOriginal);
-          img.src = srcOriginal;
+          img.setAttribute("src", srcOriginal); // <-- CHANGED
+
         } else {
           console.error("[Fallback] All card sources failed:", img.alt || img);
         }
@@ -51,5 +56,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
+
 
 
