@@ -2,6 +2,7 @@
 // For license information, please see license.txt
 
 // Shared JS for all Ifitwala Ed public website pages
+import "bootstrap";
 
 document.addEventListener("DOMContentLoaded", function () {
   // === Lazy-loaded image polish ===
@@ -22,12 +23,4 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
     new bootstrap.Tooltip(el);
   });
-
-  // === Bootstrap fallback loader ===
-  if (typeof bootstrap === "undefined") {
-    const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js";
-    script.crossOrigin = "anonymous";
-    document.head.appendChild(script);
-  }
 });
