@@ -184,3 +184,32 @@ def rebuild_resized_images(doctype):
 
     frappe.msgprint(_(f"Processed {count} file(s) attached to {doctype}."))
 
+
+def convert_gallery_to_webp(delete_jpgs=False):
+    base_folder = frappe.utils.get_site_path("public", "files", "gallery_resized")
+    count_converted = 0
+    count_skipped = 0
+
+    for root, dirs, files in os.walk(base_folder):
+        for fname in files:
+            if not fname.lower().endswith(".jpg"):
+                continue
+
+            jpg_path = os.path.join(root, fname)
+            webp_path = os.path.splitext(jpg_path)[0] + ".webp"
+
+            if os.path.exists(webp_path):
+                count_skipped += 1
+                continue
+
+            try:
+                with Image.open(jpg_path) as img:
+                    img.save(webp_path, format="WEBP", optimize=True, quality=75)
+                count_converted += 1
+
+                if delete_jpgs:
+                    os.remove(jpg_path)
+            except Exception as e:
+                frappe.log_error(f"Failed to convert {jpg_path}: {e}", "Gallery WebP Migration")
+
+    frappe.msgprint(f"✅ Converted {count_converted} JPG files to WebP. Skipped {count_skipped} existing.")
