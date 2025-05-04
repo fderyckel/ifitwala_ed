@@ -36,4 +36,13 @@ frappe.treeview_settings["Employee"] = {
 			condition: 'frappe.boot.user.can_create.indexOf("Employee") !== -1',
 		},
 	],
+
+	onload(tree) {
+		// Build the tree
+		tree.make_tree();
+
+		// Expand all nodes once rendered
+		tree.expand_all();
+	}
+
 };

@@ -87,7 +87,7 @@ website_generators = ["Program"]
 # before_install = "ifitwala.install.before_install"
 after_install = "ifitwala_ed.setup.setup.setup_education"
 
-#fixtures = [{"doctype": "Web Page","filters": [["name", "=", "school"]]}, ]
+fixtures = [{"doctype": "Web Page","filters": [["name", "=", "school"]]}, ]
 
 # Uninstallation
 # ------------
