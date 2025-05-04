@@ -4,6 +4,7 @@
  "allow_rename": 1,
  "autoname": "field:school_name",
  "creation": "2024-12-01 11:28:37.353618",
+ "default_view": "Tree",
  "description": "Schools are for education purpose only (Program, courses, assessments, students, etc.)  Use organization for labor, assets, accounting, etc. \nSchools can be nested in a tree structure. ",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -38,11 +39,14 @@
   "old_parent",
   "dashboard_tab",
   "website_tab",
-  "gallery_image",
   "website_slug",
-  "hero_image",
+  "column_break_ztd5",
+  "school_tagline",
+  "section_break_l0vk",
+  "gallery_image",
+  "web_page_content_section",
   "about_snippet",
-  "brand_palette"
+  "more_info"
  ],
  "fields": [
   {
@@ -232,19 +236,10 @@
    "unique": 1
   },
   {
-   "fieldname": "hero_image",
-   "fieldtype": "Attach Image",
-   "label": "hero_image"
-  },
-  {
+   "description": "Primary info to share about your school",
    "fieldname": "about_snippet",
    "fieldtype": "Text Editor",
-   "label": "About Snippet (Primary Language)"
-  },
-  {
-   "fieldname": "brand_palette",
-   "fieldtype": "Code",
-   "label": "Brand Palette"
+   "label": "About Snippet"
   },
   {
    "fieldname": "website_tab",
@@ -256,6 +251,30 @@
    "fieldtype": "Table",
    "label": "Gallery Image",
    "options": "Gallery Image"
+  },
+  {
+   "description": "Secondary info to share about your school",
+   "fieldname": "more_info",
+   "fieldtype": "Text Editor",
+   "label": "More info"
+  },
+  {
+   "fieldname": "column_break_ztd5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "school_tagline",
+   "fieldtype": "Data",
+   "label": "School Tagline"
+  },
+  {
+   "fieldname": "section_break_l0vk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "web_page_content_section",
+   "fieldtype": "Section Break",
+   "label": "Web Page Content"
   }
  ],
  "grid_page_length": 50,
@@ -263,7 +282,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-02 12:50:25.151735",
+ "modified": "2025-05-03 12:36:47.250057",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
@@ -355,5 +374,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "school_name"
 }

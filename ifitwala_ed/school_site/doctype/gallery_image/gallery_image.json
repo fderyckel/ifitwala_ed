@@ -8,8 +8,7 @@
  "field_order": [
   "section_break_dr9z",
   "school_image",
-  "caption",
-  "link_url"
+  "caption"
  ],
  "fields": [
   {
@@ -17,31 +16,26 @@
    "fieldtype": "Section Break"
   },
   {
+   "columns": 4,
    "fieldname": "school_image",
    "fieldtype": "Attach",
    "in_list_view": 1,
    "label": "School Image"
   },
   {
+   "columns": 6,
    "default": "0",
    "fieldname": "caption",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Caption"
-  },
-  {
-   "default": "0",
-   "fieldname": "link_url",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Link URL"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-24 19:11:04.780429",
+ "modified": "2025-05-03 12:37:27.451363",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "Gallery Image",
