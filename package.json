@@ -11,6 +11,9 @@
   "bugs": {
     "url": "https://github.com/fderyckel/ifitwala_ed/issues"
   },
+  "scripts": {
+    "build": "rollup -c"
+  },
   "devDependencies": {},
   "dependencies": {
     "html2canvas": "^1.4.1",
