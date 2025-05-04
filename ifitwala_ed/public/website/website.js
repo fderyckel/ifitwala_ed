@@ -2,7 +2,8 @@
 // For license information, please see license.txt
 
 // Shared JS for all Ifitwala Ed public website pages
-import "bootstrap";
+import * as bootstrap from 'bootstrap';
+window.bootstrap = bootstrap;
 
 document.addEventListener("DOMContentLoaded", function () {
   // === Lazy-loaded image polish ===
