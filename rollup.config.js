@@ -4,21 +4,18 @@ import { terser } from 'rollup-plugin-terser';
 
 export default {
   input: {
-    website: 'public/website/website.js',
-    home: 'public/website/home.js'
+    website: 'ifitwala_ed/public/website/website.js',
+    school: 'ifitwala_ed/public/website/school.js',
   },
   output: {
-    dir: 'public/dist',
+    dir: 'ifitwala_ed/public/dist',
     format: 'iife',
     entryFileNames: '[name].bundle.js',
-    sourcemap: true
+    sourcemap: true,
   },
   plugins: [
     resolve(),
     commonjs(),
-    terser()
+    terser(),
   ],
-  external: [
-    'bootstrap' // Let it load via CDN or external script fallback
-  ]
 };
