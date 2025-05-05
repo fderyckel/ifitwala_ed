@@ -288,24 +288,49 @@ ifitwala_ed.HierarchyChartMobile = class {
 	}
 
 	add_connector(parent_id, child_id) {
-		const parent_node = document.getElementById(`${parent_id}`);
-		const child_node = document.getElementById(`${child_id}`);
+    // 1) Find the two node elements
+    const parent_node = document.getElementById(parent_id);
+    const child_node  = document.getElementById(child_id);
 
-		const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    // 2) If either isn't in the DOM yet, bail out
+    if (!parent_node || !child_node) {
+        return;
+    }
 
-		let connector = null;
+    // 3) Get the <g id="connectors"> container and its SVG
+    const connectors = document.getElementById("connectors");
+    const svg        = connectors.ownerSVGElement;
+    const svgRect    = svg.getBoundingClientRect();
 
-		if ($(`[id="${parent_id}"]`).hasClass("active")) {
-			connector = this.get_connector_for_active_node(parent_node, child_node);
-		} else if ($(`[id="${parent_id}"]`).hasClass("active-path")) {
-			connector = this.get_connector_for_collapsed_node(parent_node, child_node);
-		}
+    // 4) Compute points relative to the SVG canvas
+    const pRect = parent_node.getBoundingClientRect();
+    const cRect = child_node.getBoundingClientRect();
 
-		path.setAttribute("d", connector);
-		this.set_path_attributes(path, parent_id, child_id);
+    const pos_parent_right = {
+      x: pRect.right  - svgRect.left,
+      y: pRect.top    + pRect.height/2 - svgRect.top
+    };
+    const pos_child_left  = {
+      x: cRect.left   - 5           - svgRect.left,
+      y: cRect.top    + cRect.height/2 - svgRect.top
+    };
 
-		document.getElementById("connectors").appendChild(path);
+    // 5) Create the path
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const d = this.get_connector(pos_parent_right, pos_child_left);
+    path.setAttribute("d", d);
+
+    // 6) Apply the same attributes HRMS uses
+    this.set_path_attributes(path, parent_id, child_id);
+
+    // 7) Ensure no fill, thin stroke
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke-width", 1);
+
+    // 8) Append to the connectors <g>
+    connectors.appendChild(path);
 	}
+
 
 	get_connector_for_active_node(parent_node, child_node) {
 		// we need to connect the bottom left of the parent to the left side of the child node
