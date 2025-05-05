@@ -34,7 +34,7 @@ def get_children(parent=None, organization=None, exclude_node=None):
 		order_by="name",
 	)
 
-	card_dir = frappe.get_site_path("public", "files", "resized_gallery", "employee")
+	card_dir = frappe.get_site_path("public", "files", "gallery_resized", "employee")
 
 	for emp in employees:
 		orig_url = emp.image or ""
@@ -51,7 +51,7 @@ def get_children(parent=None, organization=None, exclude_node=None):
 			disk_path = os.path.join(card_dir, card_filename)
 
 			if os.path.exists(disk_path):
-				card_url = f"/files/resized_gallery/employee/{card_filename}"
+				card_url = f"/files/gallery_resized/employee/{card_filename}"
 
 		# pick the card if it exists, else the original
 		emp.image = card_url or orig_url
