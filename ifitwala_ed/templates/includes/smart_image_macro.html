@@ -18,6 +18,6 @@
     {% if fallback in ['carousel', 'card'] and original %} data-src-original="{{ original }}"{% endif %}
     alt="{{ alt }}"
     class="{{ class }}"
-    loading="{{ 'eager' if fallback == 'carousel' else 'lazy' }}"
+    loading="{{ 'lazy' if fallback == 'carousel' else 'lazy' }}"
     fallback="{{ fallback }}">
 {% endmacro %}
