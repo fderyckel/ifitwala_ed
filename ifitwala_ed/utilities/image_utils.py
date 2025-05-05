@@ -142,31 +142,39 @@ def rebuild_resized_images(doctype):
 
 
 ######## Just a utils ... not used in the app
-def convert_gallery_to_webp(delete_jpgs=False):
-    base_folder = frappe.utils.get_site_path("public", "files", "gallery_resized")
-    count_converted = 0
-    count_skipped = 0
+import os, re, frappe
 
-    for root, dirs, files in os.walk(base_folder):
-        for fname in files:
-            if not fname.lower().endswith(".jpg"):
+def slugify(name):
+    """Lower-case, replace non-alphanumerics with underscore, trim."""
+    return re.sub(r'[^a-z0-9]+', '_', name.lower()).strip('_')
+
+def rename_gallery_resized():
+    base = frappe.get_site_path('public', 'files', 'gallery_resized')
+    for doctype_folder in os.listdir(base):
+        folder_path = os.path.join(base, doctype_folder)
+        if not os.path.isdir(folder_path):
+            continue
+
+        for fname in os.listdir(folder_path):
+            old_path = os.path.join(folder_path, fname)
+            name, ext = os.path.splitext(fname)
+            if ext.lower() not in ('.jpg', '.jpeg', '.png', '.webp'):
                 continue
 
-            jpg_path = os.path.join(root, fname)
-            webp_path = os.path.splitext(jpg_path)[0] + ".webp"
+            parts = name.split('_', 1)
+            if len(parts) == 2:
+                size_label, base_name = parts
+            else:
+                size_label, base_name = '', parts[0]
 
-            if os.path.exists(webp_path):
-                count_skipped += 1
+            new_slug = slugify(base_name)
+            new_name = f"{size_label}_{new_slug}{ext}"
+            new_path = os.path.join(folder_path, new_name)
+
+            if old_path == new_path or os.path.exists(new_path):
                 continue
 
-            try:
-                with Image.open(jpg_path) as img:
-                    img.save(webp_path, format="WEBP", optimize=True, quality=75)
-                count_converted += 1
+            os.rename(old_path, new_path)
+            print(f"RENAMED: {fname} → {new_name}")
 
-                if delete_jpgs:
-                    os.remove(jpg_path)
-            except Exception as e:
-                frappe.log_error(f"Failed to convert {jpg_path}: {e}", "Gallery WebP Migration")
-
-    frappe.msgprint(f"✅ Converted {count_converted} JPG files to WebP. Skipped {count_skipped} existing.")
+    print("✅ Done renaming gallery_resized files.")
