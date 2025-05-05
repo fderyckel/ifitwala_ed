@@ -1,23 +1,18 @@
 {% macro smart_image(hero=None, medium=None, card=None, thumb=None, original=None, alt='', class='', fallback='card') %}
-  {# pick initial src depending on strategy #}
-  {% if fallback == 'carousel' %}
-    {% set src = hero or medium or card or thumb or original %}
-  {% else %}
-    {# 'card' strategy: show card → thumb → original #}
-    {% set src = card or thumb or original %}
-  {% endif %}
+  {# initial paint: card or (if no card) original #}
+  {% set src = card or original %}
 
   <img
     src="{{ src }}"
     alt="{{ alt }}"
     class="{{ class }}"
-    loading="{{ 'eager' if fallback == 'carousel' else 'lazy' }}"
+    loading="{{ 'eager' if fallback=='carousel' else 'lazy' }}"
     fallback="{{ fallback }}"
-    {# expose every variant #}
-    {% if hero     %} data-src-hero="{{ hero }}"{% endif %}
-    {% if medium   %} data-src-medium="{{ medium }}"{% endif %}
+    {# expose just the variants we need for JS #}
     {% if card     %} data-src-card="{{ card }}"{% endif %}
-    {% if thumb    %} data-src-thumb="{{ thumb }}"{% endif %}
+    {% if medium   %} data-src-medium="{{ medium }}"{% endif %}
+    {% if hero     %} data-src-hero="{{ hero }}"{% endif %}
     {% if original %} data-src-original="{{ original }}"{% endif %}
   >
 {% endmacro %}
+
