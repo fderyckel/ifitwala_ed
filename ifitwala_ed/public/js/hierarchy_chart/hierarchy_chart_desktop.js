@@ -88,10 +88,11 @@ ifitwala_ed.HierarchyChart = class {
 			only_select: true,
 			reqd: 1,
 			change: () => {
+				// blank means “All Organizations”
 				me.organization = organization.get_value() || null;
+			
+				// always build/rebuild chart
 				$("#hierarchy-chart-wrapper").remove();
-
-				// svg for connectors
 				me.make_svg_markers();
 				me.setup_hierarchy();
 				me.render_root_nodes();

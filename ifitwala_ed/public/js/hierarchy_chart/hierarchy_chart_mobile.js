@@ -79,23 +79,15 @@ ifitwala_ed.HierarchyChartMobile = class {
 			only_select: true,
 			reqd: 1,
 			change: () => {
-				me.organization = "";
-
-				if (organization.get_value() && me.organization != organization.get_value()) {
-					me.organization = organization.get_value();
-
-					// svg for connectors
-					me.make_svg_markers();
-
-					if (me.$sibling_group) me.$sibling_group.remove();
-
-					// setup sibling group wrapper
-					me.$sibling_group = $(`<div class="sibling-group mt-4 mb-4"></div>`);
-					me.page.main.append(me.$sibling_group);
-
-					me.setup_hierarchy();
-					me.render_root_nodes();
-				}
+				// blank means “All Organizations”
+				me.organization = organization.get_value() || null;
+			
+				// always build/rebuild chart
+				$("#hierarchy-chart-wrapper").remove();
+				me.make_svg_markers();
+				me.setup_hierarchy();
+				me.render_root_nodes();
+				me.all_nodes_expanded = false;
 			},
 		});
 
