@@ -151,13 +151,25 @@ img[loading="lazy"].loaded {
    and ensure hero images fade in smoothly
    ========================================= */
 
-/* Cross-fade between slides in a .carousel-fade carousel */
+/* Base state: items start transparent */
 .carousel-fade .carousel-item {
-  opacity: 0.3;
-  transition: opacity 1s ease-in-out !important;
+  opacity: 0;
+  transition-property: opacity;
+  transition-duration: 1.5s !important;        /* make this as long as you like */
+  transition-timing-function: ease-in-out;    /* smooth easing */
 }
-.carousel-fade .carousel-item.active {
+
+/* When an item becomes active (or is sliding in), it fades to fully opaque */
+.carousel-fade .carousel-item.active,
+.carousel-fade .carousel-item-next.carousel-item-left,
+.carousel-fade .carousel-item-prev.carousel-item-right {
   opacity: 1;
+}
+
+/* And ensure the outgoing item fades out */
+.carousel-fade .active.carousel-item-left,
+.carousel-fade .active.carousel-item-right {
+  opacity: 0;
 }
 
 /* Reinforce fade-in for hero images when .loaded is added */
