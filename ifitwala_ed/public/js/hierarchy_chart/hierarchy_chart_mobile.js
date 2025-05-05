@@ -75,7 +75,7 @@ ifitwala_ed.HierarchyChartMobile = class {
 			options: "Organization",
 			fieldname: "organization",
 			placeholder: __("Select Organization"),
-			default: frappe.defaults.get_default("organization"),
+			default: "All Organizations",
 			only_select: true,
 			reqd: 1,
 			change: () => {
