@@ -19,6 +19,8 @@ frappe.pages["organizational-chart"].on_page_load = function (wrapper) {
 			}
 
 			frappe.breadcrumbs.add("HR");
+			console.log("Chart data:", r.message); 
+			r.message.forEach(node => console.log(node.id, node.image));
 			organizational_chart.show();
 		});
 	});
