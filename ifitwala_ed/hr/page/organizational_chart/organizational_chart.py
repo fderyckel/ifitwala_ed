@@ -1,16 +1,12 @@
-# Copyright (c) 2024, fdR and contributors
-# For license information, please see license.txt
-
 import frappe
 from frappe.query_builder.functions import Count
 
 
 @frappe.whitelist()
-def get_children(parent=None, organization="All Organizations", exclude_node=None): 
-	if not organization:
-		frappe.throw(_("Please select an organisation first."))
-
+def get_children(parent=None, organization=None, exclude_node=None):
+	"""Fetch direct reports for the given Organization (or all, if none specified)"""
 	filters = [["status", "=", "Active"]]
+	# Only filter by organization when one is provided
 	if organization and organization != "All Organizations":
 		filters.append(["organization", "=", organization])
 
@@ -30,7 +26,7 @@ def get_children(parent=None, organization="All Organizations", exclude_node=Non
 			"lft",
 			"rgt",
 			"reports_to",
-			"employee_image",
+			"employee_image as image",
 			"designation as title",
 		],
 		filters=filters,

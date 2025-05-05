@@ -1,4 +1,3 @@
-
 ifitwala_ed.HierarchyChartMobile = class {
 	/* Options:
 		- doctype
@@ -71,7 +70,7 @@ ifitwala_ed.HierarchyChartMobile = class {
 		if (this.page.main.find('[data-fieldname="organization"]').length) return;
 		let me = this;
 
-		let organisation = this.page.add_field({
+		let organization = this.page.add_field({
 			fieldtype: "Link",
 			options: "Organization",
 			fieldname: "organization",
@@ -80,10 +79,10 @@ ifitwala_ed.HierarchyChartMobile = class {
 			only_select: true,
 			reqd: 1,
 			change: () => {
-				me.organisation = "";
+				me.organization = "";
 
-				if (organisation.get_value() && me.organisation != organisation.get_value()) {
-					me.organisation = organisation.get_value();
+				if (organization.get_value() && me.organization != organization.get_value()) {
+					me.organization = organization.get_value();
 
 					// svg for connectors
 					me.make_svg_markers();
@@ -100,7 +99,7 @@ ifitwala_ed.HierarchyChartMobile = class {
 			},
 		});
 
-		organisation.refresh();
+		organization.refresh();
 		$(`[data-fieldname="organization"]`).trigger("change");
 	}
 
@@ -151,7 +150,7 @@ ifitwala_ed.HierarchyChartMobile = class {
 			.call({
 				method: me.method,
 				args: {
-					organisation: me.organisation,
+					organization: me.organization,
 				},
 			})
 			.then((r) => {
@@ -230,7 +229,7 @@ ifitwala_ed.HierarchyChartMobile = class {
 	}
 
 	load_children(node) {
-		if (!this.organisation) {
+		if (!this.organization) {
 			frappe.throw(__("Please select a organization first"));
 		}
 
@@ -248,7 +247,7 @@ ifitwala_ed.HierarchyChartMobile = class {
 					method: me.method,
 					args: {
 						parent: node_id,
-						organisation: me.organisation,
+						organization: me.organization,
 						exclude_node: exclude_node,
 					},
 				})

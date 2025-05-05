@@ -1,6 +1,4 @@
-
 import html2canvas from "html2canvas";
-
 ifitwala_ed.HierarchyChart = class {
 	/* Options:
 		- doctype
@@ -24,7 +22,7 @@ ifitwala_ed.HierarchyChart = class {
 	setup_page_style() {
 		this.page.main.css({
 			"min-height": "300px",
-			"max-height": "600px",
+			"max-height": "700px",
 			overflow: "auto",
 			position: "relative",
 		});
@@ -85,7 +83,7 @@ ifitwala_ed.HierarchyChart = class {
 			fieldtype: "Link",
 			options: "Organization",
 			fieldname: "organization",
-			placeholder: __("Select organization"),
+			placeholder: __("Select Organization"),
 			default: frappe.defaults.get_default("organization"),
 			only_select: true,
 			reqd: 1,
@@ -102,7 +100,7 @@ ifitwala_ed.HierarchyChart = class {
 					me.render_root_nodes();
 					me.all_nodes_expanded = false;
 				} else {
-					frappe.throw(__("Please select an organisation first."));
+					frappe.throw(__("Please select a organization first."));
 				}
 			},
 		});
