@@ -28,7 +28,7 @@ app_license = "MIT"
 
 app_include_js = "ifitwala_ed.bundle.js"
 
-app_include_scss = "ifitwala_ed.bundle.scss"
+app_include_scss = "ifitwala_ed.bundle.css"
 
 
 # include js, css files in header of web template
