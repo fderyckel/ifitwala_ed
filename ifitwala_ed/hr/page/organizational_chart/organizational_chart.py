@@ -7,50 +7,60 @@ from frappe.query_builder.functions import Count
 
 @frappe.whitelist()
 def get_children(parent=None, organization=None, exclude_node=None):
-    # … your existing filter setup …
+	filters = [["status", "=", "Active"]]
+	if organization and organization != "All Organizations":
+		filters.append(["organization", "=", organization])
 
-    employees = frappe.get_all(
-        "Employee",
-        fields=[
-            "employee_full_name as name",
-            "name as id",
-            "lft",
-            "rgt",
-            "reports_to",
-            "employee_image as image",  # e.g. "/files/employee/person1.png"
-            "designation as title",
-        ],
-        filters=filters,
-        order_by="name",
-    )
+	if parent and organization and parent != organization:
+		filters.append(["reports_to", "=", parent])
+	else:
+		filters.append(["reports_to", "=", ""])
 
-    card_dir = frappe.get_site_path("public", "files", "resized_gallery", "employee")
+	if exclude_node:
+		filters.append(["name", "!=", exclude_node])
 
-    for emp in employees:
-        orig_url = emp.image or ""
-        card_url = None
+	employees = frappe.get_all(
+		"Employee",
+		fields=[
+			"employee_full_name as name",
+			"name as id",
+			"lft",
+			"rgt",
+			"reports_to",
+			"employee_image as image",  # e.g. "/files/employee/person1.png"
+			"designation as title",
+		],
+		filters=filters,
+		order_by="name",
+	)
 
-        # only if the original comes from /files/employee/
-        if orig_url.startswith("/files/employee/") and os.path.isdir(card_dir):
-            # strip path, get "person1.png" or "person1.jpg"
-            filename = orig_url.rsplit("/", 1)[-1]
-            name, _ext = os.path.splitext(filename)
+	card_dir = frappe.get_site_path("public", "files", "resized_gallery", "employee")
 
-            # build the .webp card filename
-            card_filename = f"card_{name}.webp"
-            disk_path = os.path.join(card_dir, card_filename)
+	for emp in employees:
+		orig_url = emp.image or ""
+		card_url = None
 
-            if os.path.exists(disk_path):
-                card_url = f"/files/resized_gallery/employee/{card_filename}"
+		# only if the original comes from /files/employee/
+		if orig_url.startswith("/files/employee/") and os.path.isdir(card_dir):
+			# strip path, get "person1.png" or "person1.jpg"
+			filename = orig_url.rsplit("/", 1)[-1]
+			name, _ext = os.path.splitext(filename)
 
-        # pick the card if it exists, else the original
-        emp.image = card_url or orig_url
+			# build the .webp card filename
+			card_filename = f"card_{name}.webp"
+			disk_path = os.path.join(card_dir, card_filename)
 
-        # compute connections as before
-        emp.connections = get_connections(emp.id, emp.lft, emp.rgt)
-        emp.expandable = bool(emp.connections)
+			if os.path.exists(disk_path):
+				card_url = f"/files/resized_gallery/employee/{card_filename}"
 
-    return employees
+		# pick the card if it exists, else the original
+		emp.image = card_url or orig_url
+
+		# compute connections as before
+		emp.connections = get_connections(emp.id, emp.lft, emp.rgt)
+		emp.expandable = bool(emp.connections)
+
+	return employees
 
 
 def get_connections(employee: str, lft: int, rgt: int) -> int:
