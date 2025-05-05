@@ -155,20 +155,18 @@ img[loading="lazy"].loaded {
 .carousel-fade .carousel-item {
   opacity: 0;
   transition-property: opacity;
-  transition-duration: 1.5s !important;        /* make this as long as you like */
-  transition-timing-function: ease-in-out;    /* smooth easing */
+  transition-duration: 1.5s !important;       /* your desired duration */
+  transition-timing-function: ease-in-out;   /* smooth easing */
 }
 
-/* When an item becomes active (or is sliding in), it fades to fully opaque */
 .carousel-fade .carousel-item.active,
-.carousel-fade .carousel-item-next.carousel-item-left,
-.carousel-fade .carousel-item-prev.carousel-item-right {
+.carousel-fade .carousel-item-next.carousel-item-start,
+.carousel-fade .carousel-item-prev.carousel-item-end {
   opacity: 1;
 }
 
-/* And ensure the outgoing item fades out */
-.carousel-fade .active.carousel-item-left,
-.carousel-fade .active.carousel-item-right {
+.carousel-fade .active.carousel-item-start,
+.carousel-fade .active.carousel-item-end {
   opacity: 0;
 }
 
@@ -179,4 +177,7 @@ img[loading="lazy"].loaded {
 }
 .hero-img-full.loaded {
   opacity: 1;
+}
+.object-fit-cover {
+  object-fit: cover;
 }
