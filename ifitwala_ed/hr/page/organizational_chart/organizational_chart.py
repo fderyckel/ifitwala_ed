@@ -5,71 +5,64 @@ import os
 import frappe
 from frappe.query_builder.functions import Count
 
-
 @frappe.whitelist()
 def get_children(parent=None, organization=None, exclude_node=None):
-	"""Fetch direct reports for the given Organization (or all, if none specified)"""
-	filters = [["status", "=", "Active"]]
-	# Only filter by organization when one is provided
-	if organization and organization != "All Organizations":
-		filters.append(["organization", "=", organization])
+    # … your existing filter setup …
 
-	if parent and organization and parent != organization:
-		filters.append(["reports_to", "=", parent])
-	else:
-		filters.append(["reports_to", "=", ""])
+    employees = frappe.get_all(
+        "Employee",
+        fields=[
+            "employee_full_name as name",
+            "name as id",
+            "lft",
+            "rgt",
+            "reports_to",
+            "employee_image as image",  # e.g. "/files/employee/person1.png"
+            "designation as title",
+        ],
+        filters=filters,
+        order_by="name",
+    )
 
-	if exclude_node:
-		filters.append(["name", "!=", exclude_node]) 
-		
-	employees = frappe.get_all(
-    "Employee",     
-		fields=[
-      "employee_full_name as name",
-      "name as id",
-      "lft", "rgt",
-      "reports_to",
-      "employee_image as image",
-      "designation as title",
-    ],
-    filters=filters,
-    order_by="name",
-  )
-	
-	for employee in employees:
-    # ==== pick card_… if it actually exists on disk ====
-		orig = employee.image or "" 
-		card_url = None 
-		
-		if orig.startswith("/files/"):
-			# extract filename, e.g. "foo.jpg" 
-			fname = orig.split("/")[-1]
-			card_fname = f"card_{fname}" 
-			# build full disk path to public/files/resized_gallery/employee/card_<fname> 
-			site = frappe.get_site_path() 
-			disk_path = os.path.join(
-        site, "public", "files", "resized_gallery", "employee", card_fname
-      )
-			if os.path.exists(disk_path): 
-				# if the file exists, web‐accessible URL is:
-				card_url = f"/files/resized_gallery/employee/{card_fname}"
+    card_dir = frappe.get_site_path("public", "files", "resized_gallery", "employee")
 
-    # fall back to original if card version missin
-		employee.image = card_url or orig
+    for emp in employees:
+        orig_url = emp.image or ""
+        card_url = None
 
-    # === rest unchanged ===
-		employee.connections = get_connections(employee.id, employee.lft, employee.rgt) 
-		employee.expandable = bool(employee.connections) \
-				
-	return employees	
+        # only if the original comes from /files/employee/
+        if orig_url.startswith("/files/employee/") and os.path.isdir(card_dir):
+            # strip path, get "person1.png" or "person1.jpg"
+            filename = orig_url.rsplit("/", 1)[-1]
+            name, _ext = os.path.splitext(filename)
+
+            # build the .webp card filename
+            card_filename = f"card_{name}.webp"
+            disk_path = os.path.join(card_dir, card_filename)
+
+            if os.path.exists(disk_path):
+                card_url = f"/files/resized_gallery/employee/{card_filename}"
+
+        # pick the card if it exists, else the original
+        emp.image = card_url or orig_url
+
+        # compute connections as before
+        emp.connections = get_connections(emp.id, emp.lft, emp.rgt)
+        emp.expandable = bool(emp.connections)
+
+    return employees
 
 
 def get_connections(employee: str, lft: int, rgt: int) -> int:
-	Employee = frappe.qb.DocType("Employee")
-	query = (
-		frappe.qb.from_(Employee)
-		.select(Count(Employee.name))
-		.where((Employee.lft > lft) & (Employee.rgt < rgt) & (Employee.status == "Active"))
-	).run()
+    Employee = frappe.qb.DocType("Employee")
+    query = (
+        frappe.qb.from_(Employee)
+        .select(Count(Employee.name))
+        .where(
+            (Employee.lft > lft)
+            & (Employee.rgt < rgt)
+            & (Employee.status == "Active")
+        )
+    ).run()
+    return query[0][0]
 
-	return query[0][0]
