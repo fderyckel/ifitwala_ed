@@ -437,29 +437,35 @@ ifitwala_ed.HierarchyChart = class {
 	}
 
 	add_connector(parent_id, child_id) {
-		// using pure javascript for better performance
-		const parent_node = document.getElementById(`${parent_id}`);
-		const child_node = document.getElementById(`${child_id}`);
+    const parent_node = document.getElementById(parent_id);
+    const child_node  = document.getElementById(child_id);
 
-		let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    // guard against missing nodes
+    if (!parent_node || !child_node) {
+        return;
+    }
 
-		// we need to connect right side of the parent to the left side of the child node
-		const pos_parent_right = {
-			x: parent_node.offsetLeft + parent_node.offsetWidth,
-			y: parent_node.offsetTop + parent_node.offsetHeight / 2,
-		};
-		const pos_child_left = {
-			x: child_node.offsetLeft - 5,
-			y: child_node.offsetTop + child_node.offsetHeight / 2,
-		};
+    const svg = document.getElementById("connectors").ownerSVGElement;
+    const svgRect = svg.getBoundingClientRect();
+    const pRect  = parent_node.getBoundingClientRect();
+    const cRect  = child_node.getBoundingClientRect();
 
-		const connector = this.get_connector(pos_parent_right, pos_child_left);
+    // compute points relative to the SVG's top-left
+    const pos_parent_right = {
+      x: pRect.right  - svgRect.left,
+      y: pRect.top    + pRect.height / 2 - svgRect.top
+    };
+    const pos_child_left = {
+      x: cRect.left   - 5           - svgRect.left,
+      y: cRect.top    + cRect.height/2 - svgRect.top
+    };
 
-		path.setAttribute("d", connector);
-		this.set_path_attributes(path, parent_id, child_id);
-
-		document.getElementById("connectors").appendChild(path);
-	}
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const d = this.get_connector(pos_parent_right, pos_child_left);
+    path.setAttribute("d", d);
+    this.set_path_attributes(path, parent_id, child_id);
+    svg.appendChild(path);
+}
 
 	get_connector(pos_parent_right, pos_child_left) {
 		if (pos_parent_right.y === pos_child_left.y) {
