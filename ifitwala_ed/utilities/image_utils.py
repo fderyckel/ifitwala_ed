@@ -2,15 +2,22 @@
 # For license information, please see license.txt
 
 import os
+import re
 import frappe
 from frappe import _  
 from PIL import Image
+
+def slugify(text): 
+    """lowercase, replace non-alphanums with '_', strip extra.""" 
+    return re.sub(r'[^a-z0-9]+', '_', text.lower()).strip('_')
 
 def resize_and_save(doc, original_path, base_filename, doctype_folder, size_label, width, quality=75):
     """
     Resize and save an image version as WebP only.
     """
-    resized_filename = f"{size_label}_{base_filename}.webp"
+    slug_base = slugify(base_filename) 
+    folder_slug = slugify(doctype_folder) 
+    resized_filename = f"{size_label}_{slug_base}.webp"
     resized_relative_path = f"files/gallery_resized/{doctype_folder}/{resized_filename}"
     resized_path = frappe.utils.get_site_path("public", resized_relative_path)
     resized_url = f"/{resized_relative_path}"
@@ -84,9 +91,11 @@ def handle_file_after_insert(doc, method=None):
 
     original_path = frappe.utils.get_site_path("public", doc.file_url.lstrip("/"))
     base_filename = os.path.splitext(os.path.basename(doc.file_url))[0]
-    doctype_folder = doc.attached_to_doctype.lower()
+    doctype_folder = slugify(doc.attached_to_doctype)
 
-    os.makedirs(frappe.utils.get_site_path("public", "files", "gallery_resized", doctype_folder), exist_ok=True)
+    os.makedirs(frappe.utils.get_site_path("public", "files", "gallery_resized", doctype_folder),
+         exist_ok=True
+    )
 
     for size_label, width in target_widths.items():
         resize_and_save(doc, original_path, base_filename, doctype_folder, size_label, width)
@@ -139,42 +148,3 @@ def rebuild_resized_images(doctype):
             frappe.log_error(f"Error on rebuild {file.name}: {e}", "Admin Resize Error")
 
     frappe.msgprint(_(f"Processed {count} file(s) attached to {doctype}."))
-
-
-######## Just a utils ... not used in the app
-import os, re, frappe
-
-def slugify(name):
-    """Lower-case, replace non-alphanumerics with underscore, trim."""
-    return re.sub(r'[^a-z0-9]+', '_', name.lower()).strip('_')
-
-def rename_gallery_resized():
-    base = frappe.get_site_path('public', 'files', 'gallery_resized')
-    for doctype_folder in os.listdir(base):
-        folder_path = os.path.join(base, doctype_folder)
-        if not os.path.isdir(folder_path):
-            continue
-
-        for fname in os.listdir(folder_path):
-            old_path = os.path.join(folder_path, fname)
-            name, ext = os.path.splitext(fname)
-            if ext.lower() not in ('.jpg', '.jpeg', '.png', '.webp'):
-                continue
-
-            parts = name.split('_', 1)
-            if len(parts) == 2:
-                size_label, base_name = parts
-            else:
-                size_label, base_name = '', parts[0]
-
-            new_slug = slugify(base_name)
-            new_name = f"{size_label}_{new_slug}{ext}"
-            new_path = os.path.join(folder_path, new_name)
-
-            if old_path == new_path or os.path.exists(new_path):
-                continue
-
-            os.rename(old_path, new_path)
-            print(f"RENAMED: {fname} → {new_name}")
-
-    print("✅ Done renaming gallery_resized files.")

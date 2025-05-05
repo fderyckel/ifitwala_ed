@@ -1,23 +1,23 @@
-{#
-  smart_image macro
-  Outputs <img> tag with fallback sources for JS-based progressive image loading
-  Arguments:
-    - large: optional large src (for carousel)
-    - medium: optional medium src
-    - original: always required fallback original src
-    - alt: alt text
-    - class: CSS classes
-    - fallback: 'carousel' (default) or 'card' → determines which fallback chain to include
-#}
+{% macro smart_image(hero=None, medium=None, card=None, thumb=None, original=None, alt='', class='', fallback='card') %}
+  {# pick initial src depending on strategy #}
+  {% if fallback == 'carousel' %}
+    {% set src = hero or medium or card or thumb or original %}
+  {% else %}
+    {# 'card' strategy: show card → thumb → original #}
+    {% set src = card or thumb or original %}
+  {% endif %}
 
-{% macro smart_image(large=None, medium=None, original=None, alt='', class='', fallback='card') %}
-  {% set src = large if fallback == 'carousel' else medium if fallback == 'card' else original %}
   <img
-    src="{{ src or original }}"
-    {% if fallback == 'carousel' and medium %} data-src-medium="{{ medium }}"{% endif %}
-    {% if fallback in ['carousel', 'card'] and original %} data-src-original="{{ original }}"{% endif %}
+    src="{{ src }}"
     alt="{{ alt }}"
     class="{{ class }}"
     loading="{{ 'eager' if fallback == 'carousel' else 'lazy' }}"
-    fallback="{{ fallback }}">
+    fallback="{{ fallback }}"
+    {# expose every variant #}
+    {% if hero     %} data-src-hero="{{ hero }}"{% endif %}
+    {% if medium   %} data-src-medium="{{ medium }}"{% endif %}
+    {% if card     %} data-src-card="{{ card }}"{% endif %}
+    {% if thumb    %} data-src-thumb="{{ thumb }}"{% endif %}
+    {% if original %} data-src-original="{{ original }}"{% endif %}
+  >
 {% endmacro %}
