@@ -153,8 +153,8 @@ img[loading="lazy"].loaded {
 
 /* Cross-fade between slides in a .carousel-fade carousel */
 .carousel-fade .carousel-item {
-  opacity: 0;
-  transition: opacity 0.6s ease-in-out;
+  opacity: 0.3;
+  transition: opacity 1s ease-in-out !important;
 }
 .carousel-fade .carousel-item.active {
   opacity: 1;
