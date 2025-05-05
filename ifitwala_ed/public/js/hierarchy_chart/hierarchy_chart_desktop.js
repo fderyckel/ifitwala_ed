@@ -88,20 +88,14 @@ ifitwala_ed.HierarchyChart = class {
 			only_select: true,
 			reqd: 1,
 			change: () => {
-				me.organization = "";
+				me.organization = organization.get_value() || null;
 				$("#hierarchy-chart-wrapper").remove();
 
-				if (organization.get_value()) {
-					me.organization = organization.get_value();
-
-					// svg for connectors
-					me.make_svg_markers();
-					me.setup_hierarchy();
-					me.render_root_nodes();
-					me.all_nodes_expanded = false;
-				} else {
-					frappe.throw(__("Please select a organization first."));
-				}
+				// svg for connectors
+				me.make_svg_markers();
+				me.setup_hierarchy();
+				me.render_root_nodes();
+				me.all_nodes_expanded = false;
 			},
 		});
 
