@@ -7,7 +7,7 @@ frappe.treeview_settings["Employee"] = {
 		{
 			fieldname: "organization",
 			fieldtype: "Link",
-			options: ["All Organizations"].concat(ifitwala_ed.utils.get_tree_options("organization")),
+			options: "Organization",
 			label: __("Organization"),
 			//default: ifitwala_ed.utils.get_tree_default("organization"),
 		},
