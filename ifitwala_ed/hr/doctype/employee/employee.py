@@ -287,27 +287,23 @@ def create_user(employee, user = None, email=None):
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, organization=None, is_root=False, is_tree=False):
+	filters = [["status", "=", "Active"]]
+	if organization and organization != "All Organizations":
+		filters.append(["organization", "=", organization])
 
-	filters = [['status', '!=', 'Left']]
-	if organization and organization != 'All Organizations':
-		filters.append(['organization', '=', organization])
-
-	fields = ['name as value', 'employee_full_name as title']
+	fields = ["name as value", "employee_name as title"]
 
 	if is_root:
-		parent = ''
-	if parent and organization and parent!=organization:
-		filters.append(['reports_to', '=', parent])
+		parent = ""
+	if parent and organization and parent != organization:
+		filters.append(["reports_to", "=", parent])
 	else:
-		filters.append(['reports_to', '=', ''])
+		filters.append(["reports_to", "=", ""])
 
-	employees = frappe.get_list(doctype, fields=fields,
-		filters=filters, order_by='name')
+	employees = frappe.get_list(doctype, fields=fields, filters=filters, order_by="name")
 
 	for employee in employees:
-		is_expandable = frappe.get_all(doctype, filters=[
-			['reports_to', '=', employee.get('value')]
-		])
+		is_expandable = frappe.get_all(doctype, filters=[["reports_to", "=", employee.get("value")]])
 		employee.expandable = 1 if is_expandable else 0
 
 	return employees

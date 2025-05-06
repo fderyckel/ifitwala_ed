@@ -2,14 +2,14 @@
 // For license information, please see license.txt
 
 frappe.treeview_settings["Employee"] = {
-	get_tree_nodes: "ifitwala_ed.hr.page.organizational_chart.organizational_chart.get_children",
+	get_tree_nodes: "ifitwala_ed.hr.doctype.employee.employee.get_children",
 	filters: [
 		{
 			fieldname: "organization",
-			fieldtype: "Select",
+			fieldtype: "Link",
 			options: ["All Organizations"].concat(ifitwala_ed.utils.get_tree_options("organization")),
 			label: __("Organization"),
-			default: "All Organizations" //ifitwala_ed.utils.get_tree_default("organization"),
+			//default: ifitwala_ed.utils.get_tree_default("organization"),
 		},
 	],
 	breadcrumb: "HR",
@@ -37,15 +37,15 @@ frappe.treeview_settings["Employee"] = {
 		},
 	],
 
-	onload(treeview) {
-		// Build the tree structure
-		treeview.make_tree();
-},
+	// onload(treeview) {
+	// 	// Build the tree structure
+	// 	treeview.make_tree();
+	// },
 
-	post_render(treeview) {
-			// Once rendered, expand all nodes in the actual Tree instance
-			if (treeview.tree && typeof treeview.tree.open_all === "function") {
-					treeview.tree.open_all();
-			}
-	}
+	// post_render(treeview) {
+	// 		// Once rendered, expand all nodes in the actual Tree instance
+	// 		if (treeview.tree && typeof treeview.tree.open_all === "function") {
+	// 				treeview.tree.open_all();
+	// 		}
+	// }
 };
