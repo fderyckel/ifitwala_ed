@@ -291,7 +291,7 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
 	if organization and organization != "All Organizations":
 		filters.append(["organization", "=", organization])
 
-	fields = ["name as value", "employee_name as title"]
+	fields = ["name as value", "employee_full_name as title"]
 
 	if is_root:
 		parent = ""
