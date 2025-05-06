@@ -51,18 +51,16 @@ class StudentLogFollowUp(Document):
 				)
 			# Add comment to Student Log when follow-up is first saved (i.e. started)
 		if self.docstatus == 0:
-			frappe.get_doc({
-				"doctype": "Comment",
-				"comment_type": "Info",
-				"reference_doctype": "Student Log",
-				"reference_name": self.student_log,
-				"content": _(
+			log = frappe.get_doc("Student Log", self.student_log)
+			log.add_comment(
+				comment_type="Comment",
+				text=_(
 					"A follow-up was started by {author} — see {link}"
 				).format(
 					author=self.author_name,
 					link=frappe.utils.get_link_to_form("Student Log Follow Up", self.name)
 				)
-			}).insert(ignore_permissions=True)	
+			)	
 
 
 	def after_submit(self):
@@ -78,17 +76,15 @@ class StudentLogFollowUp(Document):
 				log.db_set("auto_close_after_days", auto_close_days)
 
 		# Add comment when the follow-up is formally submitted (possibly closed)
-		frappe.get_doc({
-			"doctype": "Comment",
-			"comment_type": "Info",
-			"reference_doctype": "Student Log",
-			"reference_name": self.student_log,
-			"content": _(
+		log = frappe.get_doc("Student Log", self.student_log)
+		log.add_comment(
+			comment_type="Comment",
+			text=_(
 				"The follow-up by {author} was submitted — see {link}"
 			).format(
 				author=self.author_name,
 				link=frappe.utils.get_link_to_form("Student Log Follow Up", self.name)
 			)
-		}).insert(ignore_permissions=True)
+		)
 
 

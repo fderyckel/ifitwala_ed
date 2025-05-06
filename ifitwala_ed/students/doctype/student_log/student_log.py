@@ -66,13 +66,10 @@ class StudentLog(Document):
 		todo.insert(ignore_permissions=True)
 
 		# Log comment for traceability
-		frappe.get_doc({
-			"doctype": "Comment",
-			"comment_type": "Info",
-			"reference_doctype": self.doctype,
-			"reference_name": self.name,
-			"content": f"ToDo assigned to <b>{user}</b> for follow-up.",
-		}).insert(ignore_permissions=True)
+		self.add_comment(
+			comment_type="Comment",
+			text=_("ToDo assigned to {user} for follow-up.").format(user=user)
+		)
 
 
 @frappe.whitelist()

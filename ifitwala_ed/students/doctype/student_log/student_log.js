@@ -20,13 +20,12 @@ frappe.ui.form.on("Student Log", {
         frm.set_value("time", frappe.datetime.now_time());
       }
 
-      // Set author if not yet set
-      if (!frm.doc.author) {
+      // Set author_name if not yet set
+      if (!frm.doc.author_name) {
         frappe.call({
           method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
-          callback: function(r) {
-            if (r && r.message && r.message.name) {
-              frm.set_value("author", r.message.name);
+          callback: function (r) {
+            if (r && r.message && r.message.employee_full_name) {
               frm.set_value("author_name", r.message.employee_full_name);
             }
           }
