@@ -24,4 +24,13 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
     new bootstrap.Tooltip(el);
   });
+
+  document.querySelectorAll(".view-more-link").forEach(link => {
+    link.addEventListener("click", e => {
+      e.preventDefault();
+      const target = document.getElementById(link.dataset.target);
+      const expanded = target.classList.toggle("expanded");
+      link.textContent = expanded ? "View less" : "View more";
+    });
+  });
 });

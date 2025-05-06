@@ -153,9 +153,3 @@
     width: 100%;
   }
 }
-.philosophy-card .card-text {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 5; /* show only 3 lines */
-  overflow: hidden;
-}
