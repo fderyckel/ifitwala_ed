@@ -2,7 +2,7 @@
 // For license information, please see license.txt
 
 frappe.treeview_settings["Employee"] = {
-	get_tree_nodes: "ifitwala_ed.hr.doctype.employee.employee.get_children",
+	get_tree_nodes: "ifitwala_ed.hr.page.organizational_chart.organizational_chart.get_children",
 	filters: [
 		{
 			fieldname: "organization",
