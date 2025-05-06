@@ -3,6 +3,12 @@
 
 import frappe
 from frappe import _
+from frappe.utils.nestedset import NestedSet
+
+
+class Organization(NestedSet):
+	pass
+
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, filters=None):
