@@ -20,6 +20,8 @@
   "parent_school",
   "change_abbr",
   "contact_html",
+  "school_settings_section",
+  "default_follow_up_due_in_days",
   "current_calendar_events_section",
   "current_academic_year",
   "current_term",
@@ -275,6 +277,18 @@
    "fieldname": "web_page_content_section",
    "fieldtype": "Section Break",
    "label": "Web Page Content"
+  },
+  {
+   "fieldname": "school_settings_section",
+   "fieldtype": "Section Break",
+   "label": "School Settings"
+  },
+  {
+   "default": "5",
+   "description": "Defines the number of days within which a follow-up action is expected to occur after a Student Log is submitted. This value sets the default due date for the assigned ToDo.",
+   "fieldname": "default_follow_up_due_in_days",
+   "fieldtype": "Int",
+   "label": "Follow-Up Due In (Days)"
   }
  ],
  "grid_page_length": 50,
@@ -282,7 +296,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-03 12:36:47.250057",
+ "modified": "2025-05-06 20:12:48.611606",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",

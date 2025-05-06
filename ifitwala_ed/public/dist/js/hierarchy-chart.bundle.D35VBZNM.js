@@ -7487,7 +7487,7 @@
     setup_page_style() {
       this.page.main.css({
         "min-height": "300px",
-        "max-height": "600px",
+        "max-height": "700px",
         overflow: "auto",
         position: "relative"
       });
@@ -7539,22 +7539,17 @@
         fieldtype: "Link",
         options: "Organization",
         fieldname: "organization",
-        placeholder: __("Select organization"),
-        default: frappe.defaults.get_default("organization"),
+        placeholder: __("Select Organization"),
+        default: "All Organizations",
         only_select: true,
         reqd: 1,
         change: () => {
-          me.organization = "";
+          me.organization = organization.get_value() || null;
           $("#hierarchy-chart-wrapper").remove();
-          if (organization.get_value()) {
-            me.organization = organization.get_value();
-            me.make_svg_markers();
-            me.setup_hierarchy();
-            me.render_root_nodes();
-            me.all_nodes_expanded = false;
-          } else {
-            frappe.throw(__("Please select an organisation first."));
-          }
+          me.make_svg_markers();
+          me.setup_hierarchy();
+          me.render_root_nodes();
+          me.all_nodes_expanded = false;
         }
       });
       organization.refresh();
@@ -8017,29 +8012,24 @@
       if (this.page.main.find('[data-fieldname="organization"]').length)
         return;
       let me = this;
-      let organisation = this.page.add_field({
+      let organization = this.page.add_field({
         fieldtype: "Link",
         options: "Organization",
         fieldname: "organization",
         placeholder: __("Select Organization"),
-        default: frappe.defaults.get_default("organization"),
+        default: "All Organizations",
         only_select: true,
         reqd: 1,
         change: () => {
-          me.organisation = "";
-          if (organisation.get_value() && me.organisation != organisation.get_value()) {
-            me.organisation = organisation.get_value();
-            me.make_svg_markers();
-            if (me.$sibling_group)
-              me.$sibling_group.remove();
-            me.$sibling_group = $(`<div class="sibling-group mt-4 mb-4"></div>`);
-            me.page.main.append(me.$sibling_group);
-            me.setup_hierarchy();
-            me.render_root_nodes();
-          }
+          me.organization = organization.get_value() || null;
+          $("#hierarchy-chart-wrapper").remove();
+          me.make_svg_markers();
+          me.setup_hierarchy();
+          me.render_root_nodes();
+          me.all_nodes_expanded = false;
         }
       });
-      organisation.refresh();
+      organization.refresh();
       $(`[data-fieldname="organization"]`).trigger("change");
     }
     make_svg_markers() {
@@ -8083,7 +8073,7 @@
       frappe.call({
         method: me.method,
         args: {
-          organisation: me.organisation
+          organization: me.organization
         }
       }).then((r) => {
         if (r.message.length) {
@@ -8143,7 +8133,7 @@
       $(`[id="${node.parent_id}"]`).addClass("active-path");
     }
     load_children(node) {
-      if (!this.organisation) {
+      if (!this.organization) {
         frappe.throw(__("Please select a organization first"));
       }
       frappe.run_serially([
@@ -8158,7 +8148,7 @@
           method: me.method,
           args: {
             parent: node_id,
-            organisation: me.organisation,
+            organization: me.organization,
             exclude_node
           }
         }).then((r) => resolve(r.message));
@@ -8393,8 +8383,7 @@
   };
 
   // frappe-html:/home/flipo-frappe/frappe-bench/apps/ifitwala_ed/ifitwala_ed/public/js/templates/node_card.html
-  frappe.templates["node_card"] = `
-<div class="node-card card cursor-pointer" id="{%= id %}" data-parent="{%= parent %}">
+  frappe.templates["node_card"] = `<div class="node-card card cursor-pointer" id="{%= id %}" data-parent="{%= parent %}">
 	<div class="node-meta d-flex flex-row">
 		<div class="mr-3">
 			<span class="avatar node-image" title="{{ name }}">
@@ -8453,4 +8442,4 @@
     OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
     PERFORMANCE OF THIS SOFTWARE.
     ***************************************************************************** */
-//# sourceMappingURL=hierarchy-chart.bundle.MLMN4ZBU.js.map
+//# sourceMappingURL=hierarchy-chart.bundle.D35VBZNM.js.map

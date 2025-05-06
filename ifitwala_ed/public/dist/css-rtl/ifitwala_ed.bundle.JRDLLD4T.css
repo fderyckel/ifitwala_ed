@@ -1,11 +1,11 @@
 @import "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap";
 
-/* ../../../../../tmp/tmp-237432-8cY83SRfkqsD/ifitwala_ed/ifitwala_ed/public/scss/ifitwala_ed.bundle.css */
+/* ../../../../../tmp/tmp-322867-myBMUIOtKYle/ifitwala_ed/ifitwala_ed/public/scss/ifitwala_ed.bundle.css */
 .node-card {
   background: white;
   border-radius: 0.5rem;
   padding: 0.75rem;
-  margin-left: 3rem;
+  margin-right: 3rem;
   width: 18rem;
   overflow: hidden;
 }
@@ -165,7 +165,7 @@
 }
 .hierarchy .level,
 .hierarchy-mobile .level {
-  margin-right: 8px;
+  margin-left: 8px;
   align-items: flex-start;
   flex-direction: column;
 }
@@ -184,7 +184,7 @@
   flex-direction: column;
   align-items: center;
   padding-top: 10px;
-  padding-left: 0px;
+  padding-right: 0px;
 }
 .hierarchy-mobile li {
   list-style-type: none;
@@ -193,7 +193,7 @@
   align-items: flex-end;
 }
 .mobile-node {
-  margin-left: 0;
+  margin-right: 0;
 }
 .mobile-node.active-path {
   width: 12.25rem;
@@ -226,7 +226,7 @@
   align-items: center;
 }
 .node-group .avatar-group {
-  margin-left: 0px;
+  margin-right: 0px;
 }
 .node-group .avatar-extra-count {
   background-color: var(--gray-100);
@@ -238,12 +238,22 @@
 }
 .node-group.collapsed {
   width: 5rem;
-  margin-left: 12px;
+  margin-right: 12px;
 }
 .sibling-group {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+[data-theme=dark] .node-card {
+  background-color: var(--gray-800);
+  color: var(--text-on-gray);
+}
+[data-theme=dark] .node-card .avatar-frame {
+  background-color: var(--gray-700);
+}
+[data-theme=dark] .node-card .node-edit-icon > .icon {
+  fill: var(--gray-700);
 }
 :root {
   --primary-color: #2C5282;
@@ -381,12 +391,12 @@ body {
 }
 .student-details {
   margin-top: 2rem;
-  text-align: left;
+  text-align: right;
   font-size: 1rem;
   width: 100%;
 }
 .student-details th {
-  text-align: left;
+  text-align: right;
   padding: 0.5rem 1rem;
   vertical-align: top;
   color: #666;
@@ -461,8 +471,8 @@ body {
   height: 180px;
   -o-object-fit: cover;
   object-fit: cover;
-  border-top-left-radius: var(--border-radius);
   border-top-right-radius: var(--border-radius);
+  border-top-left-radius: var(--border-radius);
 }
 .course-info {
   padding: 15px;
@@ -535,13 +545,13 @@ body {
   cursor: pointer;
   font-size: 18px;
   font-weight: bold;
-  margin-left: 6px;
+  margin-right: 6px;
   vertical-align: middle;
   display: inline-block;
 }
 .birthday-icon {
   font-size: 18px;
-  margin-left: 6px;
+  margin-right: 6px;
   vertical-align: middle;
   cursor: default;
 }
@@ -549,8 +559,8 @@ body {
   content: attr(data-tooltip);
   position: absolute;
   bottom: 120%;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 50%;
+  transform: translateX(50%);
   background-color: #333;
   color: #fff;
   padding: 5px 8px;
@@ -618,4 +628,4 @@ body {
   margin-top: 4px;
   font-weight: 400;
 }
-/*# sourceMappingURL=ifitwala_ed.bundle.YRTP2XM6.css.map */
+/*# sourceMappingURL=ifitwala_ed.bundle.JRDLLD4T.css.map */

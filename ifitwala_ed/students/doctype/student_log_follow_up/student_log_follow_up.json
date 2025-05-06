@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "format:SLFU-{YY}-{MM}-{####}",
  "creation": "2025-01-12 11:31:27.923201",
@@ -8,12 +9,14 @@
  "field_order": [
   "section_break_ko22",
   "student_log",
-  "date",
+  "log_date",
+  "log_author",
   "column_break_gbux",
   "student",
+  "date",
   "student_name",
   "follow_up",
-  "author",
+  "follow_up_author",
   "amended_from"
  ],
  "fields": [
@@ -51,14 +54,18 @@
    "fetch_from": "student_log.student",
    "fieldname": "student",
    "fieldtype": "Link",
+   "is_virtual": 1,
    "label": "Student",
    "options": "Student",
    "read_only": 1
   },
   {
    "fetch_from": "student_log.student_name",
+   "fetch_if_empty": 1,
    "fieldname": "student_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Student Name",
    "read_only": 1
   },
@@ -68,16 +75,33 @@
    "label": "Follow up"
   },
   {
-   "fieldname": "author",
+   "fetch_from": "student_log.date",
+   "fieldname": "log_date",
+   "fieldtype": "Data",
+   "is_virtual": 1,
+   "label": "Log Date",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "student_log.author_name",
+   "fetch_if_empty": 1,
+   "fieldname": "log_author",
+   "fieldtype": "Data",
+   "is_virtual": 1,
+   "label": "Log Author",
+   "read_only": 1
+  },
+  {
+   "fieldname": "follow_up_author",
    "fieldtype": "Link",
-   "label": "author",
+   "label": "Author",
    "options": "Employee"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-01 08:16:47.937725",
+ "modified": "2025-05-06 21:01:26.812202",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Follow Up",
@@ -98,15 +122,35 @@
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Academic Staff",
+   "select": 1,
    "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],
