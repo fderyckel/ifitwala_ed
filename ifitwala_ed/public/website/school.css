@@ -2,47 +2,57 @@
    SCHOOL.CSS - CAMPUS-SPECIFIC CUSTOM STYLES
    ========================================= */
 
-/* === Leadership Card Blocks === */
+/* === Leadership “cards” grid === */
+.leader-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;           /* space between items */
+  justify-items: center; /* center each card in its cell */
+  padding: 2rem 0;       /* vertical spacing above and below */
+}
+
+/* === Leadership Card Block === */
 .leader-block {
-  text-align: center;
-  margin-bottom: 2rem;
-  padding: 1rem;
   background-color: #f9fafb;
   border-radius: 1rem;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  transition: transform 0.3s;
+  padding: 1rem;
   width: 100%;
-  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.3s;
 }
-
 .leader-block:hover {
   transform: translateY(-4px);
 }
-
+/* optional pulse on hover */
 .leader-block:hover .lead-circle {
   animation: pulse 1.5s infinite;
 }
 
+/* === Leader Image (circle) === */
 .lead-circle {
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
+  width: 150px;
+  height: 150px;
   object-fit: cover;
-  border: 5px solid white;
+  border-radius: 50%;
+  border: 5px solid #fff;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
 }
 
+/* === Leader Name & Role === */
 .leader-name {
+  margin-top: 0.5rem;
   font-weight: bold;
   font-size: 1.25rem;
-  margin-top: 0.5rem;
 }
-
 .leader-role {
   font-size: 1rem;
   color: #777;
 }
 
+/* === Pulse Keyframes === */
 @keyframes pulse {
   0%   { transform: scale(1);   box-shadow: 0 0 0 rgba(0, 0, 0, 0.4); }
   50%  { transform: scale(1.05); box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); }
