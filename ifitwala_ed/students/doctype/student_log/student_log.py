@@ -7,39 +7,73 @@ from frappe.utils import get_datetime, date_diff
 
 
 class StudentLog(Document):
-	def on_submit(self):
-		if self.requires_follow_up and self.follow_up_person:
-			self.create_follow_up_todo()
+	def validate(self):
+		if self.requires_follow_up:
+			if not self.follow_up_person:
+				frappe.throw("Please select a follow-up person.")
+			if not self.next_step:
+				frappe.throw("Please select a next step.")
+			if not self.follow_up_status:
+				self.follow_up_status = "Open"
+		else:
+			# No follow-up required: status must be blank
+			if self.follow_up_status:
+				frappe.throw("Follow-up status must be blank if no follow-up is required.")
+			self.follow_up_person = None
+			self.next_step = None
+
+
+		expected_role = frappe.get_value("Student Log Next Step", self.next_step, "associated_role")
+		if expected_role:
+			has_role = frappe.db.exists("Has Role", {
+				"parent": self.follow_up_person, 
+				"role": expected_role
+			})  
+			
+		if not has_role: 
+			frappe.throw(_( 
+				f"Follow-up person '{self.follow_up_person}' does not have the role '{expected_role}' required for this step."
+			))
+
 	
 	def after_submit(self):
-		if self.requires_follow_up and self.follow_up_status == "Open" and self.follow_up_person:
-			user = frappe.db.get_value("Employee", self.follow_up_person, "user_id")
-			if user:
-				frappe.get_doc({
-					"doctype": "Comment",
-					"comment_type": "Info",
-					"reference_doctype": self.doctype,
-					"reference_name": self.name,
-					"content": f"ToDo assigned to {user} for follow-up.",
-				}).insert(ignore_permissions=True)
-
+		if self.requires_follow_up and self.follow_up_person:
+			if not self.follow_up_status:
+				self.follow_up_status = "Open"
+			self.create_follow_up_todo()
 
 	def create_follow_up_todo(self):
-		user = self.follow_up_person
-		if user:
-			todo = frappe.new_doc("ToDo")
-			todo.update({
-					"owner": user,
-					"allocated_to": user,
-					"assigned_by": frappe.session.user,
-					"reference_type": self.doctype,
-					"reference_name": self.name,
-					"description": f"Follow up on Student Log for {self.student_name}",
-					"date": frappe.utils.add_days(frappe.utils.today(), 2),
-					"priority": "Medium",
-					"color": "#ffcd59"  # soft orange-yellow for friendly alert
-			})
-			todo.insert(ignore_permissions=True)
+		user = self.follow_up_person  # Already a Link to User
+
+		if not user:
+			return  # Safety guard
+
+		# Create ToDo
+		school = frappe.get_value("Program", self.program, "school")
+		due_days = frappe.get_value("School", school, "default_follow_up_due_in_days") or 5
+		todo = frappe.new_doc("ToDo")
+		todo.update({
+			"owner": user,
+			"allocated_to": user,
+			"assigned_by": frappe.session.user,
+			"reference_type": self.doctype,
+			"reference_name": self.name,
+			"description": f"Follow up on Student Log for {self.student_name}",
+			"date": frappe.utils.add_days(frappe.utils.today(), due_days), 
+			"priority": "Medium",
+			"color": "#ffcd59",  # friendly yellow
+		})
+		todo.insert(ignore_permissions=True)
+
+		# Log comment for traceability
+		frappe.get_doc({
+			"doctype": "Comment",
+			"comment_type": "Info",
+			"reference_doctype": self.doctype,
+			"reference_name": self.name,
+			"content": f"ToDo assigned to <b>{user}</b> for follow-up.",
+		}).insert(ignore_permissions=True)
+
 
 @frappe.whitelist()
 def get_employee_data(employee_name=None):

@@ -124,10 +124,7 @@ frappe.ui.form.on("Student Log", {
         frm.set_query("follow_up_person", () => ({
           query: "ifitwala_ed.api.get_users_with_role",
           filters: {
-            role,
-            school: frm.doc.program
-              ? frappe.model.get_value("Program", frm.doc.program, "school")
-              : null
+            role: frm.doc.follow_up_role || "Academic Staff"
           }
         }));
       }
@@ -147,9 +144,9 @@ frappe.ui.form.on("Student Log", {
 
 });
 
-frappe.realtime.on("follow_up_started", function (data) {
+frappe.realtime.on("follow_up_ready_to_review", function (data) {
   frappe.show_alert({
-    message: __("Follow-up started for {0}", [data.student_name || data.log_name]),
-    indicator: "orange"
+    message: __("A follow-up for {0} is now ready for your review.", [data.student_name || data.log_name]),
+    indicator: "green"
   });
 });

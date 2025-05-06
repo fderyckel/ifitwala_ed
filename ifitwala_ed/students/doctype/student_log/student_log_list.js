@@ -7,9 +7,9 @@ frappe.listview_settings['Student Log'] = {
     const sstatus = (doc.follow_up_status || "").trim().toLowerCase();
 
     if (sstatus === "closed") {
-      return [__("Closed"), "green", "follow_up_status,=,Closed"];
+      return [__("Closed"), "gray", "follow_up_status,=,Closed"];
     } else if (sstatus === "completed") {
-      return [__("Completed"), "blue", "follow_up_status,=,Completed"];
+      return [__("Completed"), "green", "follow_up_status,=,Completed"];
     } else if (sstatus === "open") {
       return [__("Open"), "red", "follow_up_status,=,Open"];
     } else {
