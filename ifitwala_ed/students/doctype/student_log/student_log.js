@@ -35,8 +35,18 @@ frappe.ui.form.on("Student Log", {
   },
 
   refresh(frm) {
+    const is_author = frappe.session.user_fullname === frm.doc.author_name;
+    const status = (frm.doc.follow_up_status || "").toLowerCase();
+
+    if (status === "closed" && is_author) {
+      frm.add_custom_button(__("Mark as Completed"), function () {
+        frm.set_value("follow_up_status", "Completed");
+        frm.save();
+      }, __("Actions"));
+    }
+
     if (frm.doc.follow_up_status === "Completed" && frappe.user.has_role("Academic Admin")) {
-      frm.add_custom_button(__("Close Log"), function () {
+      frm.add_custom_button(__("Finalize: Close Log"), function () {
         frm.set_value("follow_up_status", "Closed");
         frm.save();
       }, __("Actions"));
@@ -48,8 +58,6 @@ frappe.ui.form.on("Student Log", {
         callback(r) {
           frappe.new_doc("Student Log Follow Up", {
             student_log: frm.doc.name,
-            //student: frm.doc.student,
-            //student_name: frm.doc.student_name,
             author: r.message?.name || "",
             date: frappe.datetime.get_today()
           });
