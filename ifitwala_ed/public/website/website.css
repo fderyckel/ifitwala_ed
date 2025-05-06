@@ -1,8 +1,12 @@
 /* =========================================
-   WEBSITE.CSS - SHARED SITE-WIDE STYLING
+   WEBSITE.CSS — SHARED SITE-WIDE STYLING
+   (Bootstrap 5 compliant)
    ========================================= */
 
-/* === Hero Image Carousel Wrapper === */
+/* -----------------------------------------
+   1. HERO IMAGE CAROUSEL
+   ----------------------------------------- */
+/* Wrapper sizes at breakpoints */
 .hero-img-wrapper {
   position: relative;
   width: 100%;
@@ -10,72 +14,71 @@
   overflow: hidden;
 }
 @media (max-width: 992px) {
-  .hero-img-wrapper {
-    height: 400px;
-  }
+  .hero-img-wrapper { height: 400px; }
 }
 @media (max-width: 768px) {
-  .hero-img-wrapper {
-    height: 300px;
-  }
+  .hero-img-wrapper { height: 300px; }
 }
 @media (max-width: 576px) {
-  .hero-img-wrapper {
-    height: 250px;
-  }
+  .hero-img-wrapper { height: 250px; }
 }
 
-/* Ensure hero images fill their container, preserving aspect ratio */
+/* Ensure hero images fill container */
 .hero-img-wrapper img,
 .hero-img {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   object-fit: cover;
   object-position: center;
 }
 
-/* === School Caption (optional background overlay) === */
-.school-caption {
-  position: absolute;
-  bottom: 2rem;
-  left: 2rem;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 1.5rem;
-  font-weight: 700;
-  max-width: 60%;
-  text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.7);
-  text-align: left;
+/* Fade-in once loaded */
+.hero-img-full {
+  opacity: 0;
+  transition: opacity 0.6s ease-in-out;
 }
-@media (max-width: 768px) {
-  .school-caption {
-    font-size: 1.1rem;
-    max-width: 80%;
-    bottom: 1rem;
-    left: 1rem;
-  }
-}
-@media (max-width: 480px) {
-  .school-caption {
-    font-size: 1rem;
-    max-width: 90%;
-    bottom: 0.75rem;
-    left: 0.75rem;
-  }
+.hero-img-full.loaded {
+  opacity: 1;
 }
 
-/* === Carousel Controls Styling === */
+/* -----------------------------------------
+   2. CAROUSEL FADE OVERRIDES (BS5)
+   ----------------------------------------- */
+/* Slow, smooth fade between slides */
+.carousel-fade .carousel-item {
+  opacity: 0;
+  transition: opacity 1.5s ease-in-out !important;
+}
+.carousel-fade .carousel-item.active,
+.carousel-fade .carousel-item-next.carousel-item-start,
+.carousel-fade .carousel-item-prev.carousel-item-end {
+  opacity: 1;
+}
+.carousel-fade .active.carousel-item-start,
+.carousel-fade .active.carousel-item-end {
+  opacity: 0;
+}
+
+/* Drop-shadow on next/prev icons */
 .carousel-control-prev-icon,
 .carousel-control-next-icon {
   filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
 }
 
-/* === Section Divider === */
+/* -----------------------------------------
+   3. CAROUSEL INDICATORS (STAFF CAROUSEL)
+   ----------------------------------------- */
+/* Make indicators static below slides */
+#teamCarousel .carousel-indicators {
+  position: static !important;
+  bottom: auto !important;
+  margin-top: 1rem;
+}
+
+/* -----------------------------------------
+   4. SECTION DIVIDER
+   ----------------------------------------- */
 .section-divider {
   height: 1px;
   width: 120px;
@@ -83,8 +86,9 @@
   margin: 1.5rem auto 2rem;
 }
 
-/* === Fade-in Lazy-Loaded Images === */
-/* Images with loading="lazy" start at 0 opacity and fade in when .loaded is added */
+/* -----------------------------------------
+   5. LAZY-LOADED IMAGE FADE-IN
+   ----------------------------------------- */
 img[loading="lazy"] {
   opacity: 0;
   transition: opacity 0.6s ease-in-out;
@@ -93,7 +97,9 @@ img[loading="lazy"].loaded {
   opacity: 1;
 }
 
-/* === Tooltip Enhancements === */
+/* -----------------------------------------
+   6. TOOLTIP ENHANCEMENTS (BS5)
+   ----------------------------------------- */
 .tooltip-inner {
   background-color: #f8f9fa !important;
   color: #212529 !important;
@@ -111,85 +117,33 @@ img[loading="lazy"].loaded {
   border-top-color: #f8f9fa !important;
 }
 
-/* === Basic Card Hover Effect === */
+/* -----------------------------------------
+   7. CARD HOVER EFFECT
+   ----------------------------------------- */
 .card:hover {
   transform: translateY(-4px);
   transition: transform 0.25s;
 }
 
-/* === Responsive Utility Text Sizes === */
-.text-md {
-  font-size: 1.1rem;
-}
-.text-sm {
-  font-size: 0.95rem;
-}
-@media (max-width: 768px) {
-  .text-md {
-    font-size: 1rem;
-  }
-  .text-sm {
-    font-size: 0.875rem;
-  }
-}
-
-/* === Responsive Container Padding === */
-.container-responsive {
-  padding-left: 2rem;
-  padding-right: 2rem;
-}
-@media (max-width: 768px) {
-  .container-responsive {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-}
-
-/* =========================================
-   CAROUSEL–FADE & HERO-IMAGE CROSSFADE
-   These rules enhance Bootstrap’s fade carousel
-   and ensure hero images fade in smoothly
-   ========================================= */
-
-/* Base state: items start transparent */
-.carousel-fade .carousel-item {
-  opacity: 0;
-  transition-property: opacity;
-  transition-duration: 1.5s !important;       /* your desired duration */
-  transition-timing-function: ease-in-out;   /* smooth easing */
-}
-
-.carousel-fade .carousel-item.active,
-.carousel-fade .carousel-item-next.carousel-item-start,
-.carousel-fade .carousel-item-prev.carousel-item-end {
-  opacity: 1;
-}
-
-.carousel-fade .active.carousel-item-start,
-.carousel-fade .active.carousel-item-end {
-  opacity: 0;
-}
-
-/* Reinforce fade-in for hero images when .loaded is added */
-.hero-img-full {
-  opacity: 0;
-  transition: opacity 0.6s ease-in-out;
-}
-.hero-img-full.loaded {
-  opacity: 1;
-}
+/* -----------------------------------------
+   8. OBJECT-FIT UTILITY
+   ----------------------------------------- */
+/* Use this class on <img> where needed */
 .object-fit-cover {
   object-fit: cover;
 }
 
-/* clamp to 5 lines, then allow expansion */
+/* -----------------------------------------
+   9. LINE-CLAMP FOR TEXT PREVIEWS
+   ----------------------------------------- */
+/* Clamp to 5 lines with ellipsis */
 .clamped-text {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
   overflow: hidden;
 }
-
+/* Remove clamp when expanded */
 .clamped-text.expanded {
   -webkit-line-clamp: unset;
 }
