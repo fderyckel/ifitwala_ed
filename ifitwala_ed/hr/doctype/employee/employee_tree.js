@@ -3,51 +3,43 @@
 
 frappe.treeview_settings["Employee"] = {
 	get_tree_nodes: "ifitwala_ed.hr.doctype.employee.employee.get_children",
-	filters: [
-		{
-				fieldname: "organization",
-				fieldtype: "Select",
-				options: [
-						"All Organizations"
-				].concat(ifitwala_ed.utils.get_tree_options("organization")),
-				label: __("Organization"),
-				default: ifitwala_ed.utils.get_tree_default("organization")
-		}
-	],
-	breadcrumb: "HR",
-	disable_add_node: true,
 	get_tree_root: false,
+	breadcrumb: "Hr",
+	disable_add_node: true,
+
 	toolbar: [
 			{ toggle_btn: true },
 			{
 					label: __("Edit"),
-					condition: function (node) {
-							return !node.is_root;
-					},
-					click: function (node) {
-							frappe.set_route("Form", "Employee", node.data.value);
-					},
-			},
+					condition: node => !node.is_root,
+					click: node => frappe.set_route("Form", "Employee", node.data.value)
+			}
 	],
+
 	menu_items: [
 			{
 					label: __("New Employee"),
-					action: function () {
-							frappe.new_doc("Employee", true);
-					},
-					condition:
-							'frappe.boot.user.can_create.indexOf("Employee") !== -1',
-			},
+					action: () => frappe.new_doc("Employee", true),
+					condition: 'frappe.boot.user.can_create.indexOf("Employee") !== -1'
+			}
 	],
 
 	onload(treeview) {
-			// Build the tree structure
+			frappe.call({
+					method: "ifitwala_ed.hr.doctype.employee.employee.get_all_organizations",
+					callback: function (r) {
+							const orgs = r.message || [];
+							const filter_field = treeview.page.fields_dict.organization;
+							filter_field.df.options = ["All Organizations"].concat(orgs);
+							filter_field.refresh();
+					}
+			});
+
 			treeview.make_tree();
 	},
 
 	post_render(treeview) {
-			// Once rendered, expand all nodes in the actual Tree instance
-			if (treeview.tree && typeof treeview.tree.open_all === "function") {
+			if (treeview.tree?.open_all) {
 					treeview.tree.open_all();
 			}
 	}

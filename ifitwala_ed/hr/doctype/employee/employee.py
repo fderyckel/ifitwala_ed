@@ -6,6 +6,7 @@ import frappe
 from frappe.utils.nestedset import NestedSet
 from frappe.utils import getdate
 from frappe import _, scrub
+from frappe import parse_json
 from frappe.utils import getdate, validate_email_address, today, add_years, cstr
 from frappe.permissions import add_user_permission, remove_user_permission, has_permission, get_doc_permissions
 from frappe.contacts.address_and_contact import load_address_and_contact
@@ -286,32 +287,35 @@ def create_user(employee, user = None, email=None):
 	return user.name
 
 @frappe.whitelist()
-def get_children(doctype, parent=None, organization=None, is_root=False, is_tree=False):
+def get_children(doctype, parent=None, is_root=False):
+    # Pull the filters safely
+    filters = frappe.form_dict.get('filters')
+    filters = parse_json(filters) if filters else {}
 
-	filters = [['status', '!=', 'Left']]
-	if organization and organization != 'All Organizations':
-		filters.append(['organization', '=', organization])
+    org = filters.get('organization')
 
-	fields = ['name as value', 'employee_full_name as title']
+    conditions = [['status', '!=', 'Left']]
+    if org and org != 'All Organizations':
+        conditions.append(['organization', '=', org])
 
-	if is_root:
-		parent = ''
-	if parent and organization and parent!=organization:
-		filters.append(['reports_to', '=', parent])
-	else:
-		filters.append(['reports_to', '=', ''])
+    if is_root:
+        parent = ''
+    if parent and (not org or parent != org):
+        conditions.append(['reports_to', '=', parent])
+    else:
+        conditions.append(['reports_to', '=', ''])
 
-	employees = frappe.get_list(doctype, fields=fields,
-		filters=filters, order_by='name')
+    employees = frappe.get_list(doctype,
+        fields=['name as value', 'employee_full_name as title'],
+        filters=conditions,
+        order_by='name'
+    )
 
-	for employee in employees:
-		is_expandable = frappe.get_all(doctype, filters=[
-			['reports_to', '=', employee.get('value')]
-		])
-		employee.expandable = 1 if is_expandable else 0
+    for emp in employees:
+        has_children = frappe.db.exists(doctype, {'reports_to': emp.value})
+        emp.expandable = 1 if has_children else 0
 
-	return employees
-
+    return employees
 
 def on_doctype_update():
 	frappe.db.add_index("Employee", ["lft", "rgt"])
@@ -356,3 +360,10 @@ def has_upload_permission(doc, ptype='read', user=None):
 	if get_doc_permissions(doc, user=user, ptype=ptype).get(ptype):
 		return True
 	return doc.user_id == user
+
+
+
+@frappe.whitelist()
+def get_all_organizations():
+    """Return a list of all organization names for tree filter."""
+    return [d.name for d in frappe.get_all("Organization", pluck="name")]
