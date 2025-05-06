@@ -37,11 +37,15 @@ frappe.treeview_settings["Employee"] = {
 		},
 	],
 
-	onload(tree) {
-		// Build the tree
-		tree.make_tree();
+	onload(treeview) {
+		// Build the tree structure
+		treeview.make_tree();
+},
 
-		// Expand all nodes once rendered
-		tree.expand_all();
+	post_render(treeview) {
+			// Once rendered, expand all nodes in the actual Tree instance
+			if (treeview.tree && typeof treeview.tree.open_all === "function") {
+					treeview.tree.open_all();
+			}
 	}
 };
