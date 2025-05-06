@@ -10,10 +10,11 @@
 /* Grid container for leader cards: auto-fit cells, equal width */
 .leader-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  justify-items: center;
-  padding: 2rem 0;
+  /* each cell at least 200px, max 300px, then center the grid */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 300px));
+  justify-content: center;
+  gap: 1.5rem;           /* space between items */
+  padding: 2rem 0;       /* vertical spacing above and below */
 }
 
 /* Individual leader card: uniform size, hover lift, pulse effect */
