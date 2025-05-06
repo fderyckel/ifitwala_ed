@@ -3,6 +3,22 @@
    (Bootstrap 5 compliant)
    ========================================= */
 
+
+/* === Academic Programs Grid === */
+.program-grid {
+  display: grid;
+  /* each card min 240px, max 1fr; grid centers itself */
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  justify-content: center;
+  gap: 1.5rem;         /* space between cards */
+  padding: 2rem 0;     /* vertical breathing room */
+}
+
+/* constrain each card to fill its cell but not exceed 280px */
+.program-block {
+  width: 100%;
+  max-width: 280px;
+} 
 /* -----------------------------------------
    1. LEADERSHIP GRID & CARD STYLING
    ----------------------------------------- */
