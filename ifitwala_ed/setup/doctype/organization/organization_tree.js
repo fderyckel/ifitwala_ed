@@ -2,7 +2,7 @@
 // For license information, please see license.txt
 
 frappe.treeview_settings["Organization"] = {
-    get_tree_nodes: "ifitwala_ed.module_setup.doctype.organization.organization.get_children",
+    get_tree_nodes: "ifitwala_ed.setup.doctype.organization.organization.get_children",
     get_tree_root: false,
     breadcrumb: "Settings",
     disable_add_node: false,
