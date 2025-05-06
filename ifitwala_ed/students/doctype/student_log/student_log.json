@@ -13,7 +13,6 @@
   "date",
   "log_type",
   "academic_year",
-  "author",
   "column_break_qdix",
   "student_name",
   "time",
@@ -48,7 +47,6 @@
   {
    "fieldname": "student",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Student",
    "options": "Student",
@@ -70,15 +68,6 @@
    "in_standard_filter": 1,
    "label": "Date",
    "reqd": 1
-  },
-  {
-   "fieldname": "author",
-   "fieldtype": "Link",
-   "in_filter": 1,
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Author",
-   "options": "Employee"
   },
   {
    "fetch_from": "author.employee_full_name",
@@ -220,6 +209,8 @@
   {
    "fieldname": "follow_up_status",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Follow-up Status",
    "options": "Open\nIn Progress\nCompleted\nClosed"
   },
@@ -240,7 +231,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-01 10:50:17.053508",
+ "modified": "2025-05-06 21:04:02.323773",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",
@@ -303,7 +294,6 @@
    "write": 1
   }
  ],
- "quick_entry": 1,
  "row_format": "Dynamic",
  "search_fields": "student_name",
  "sort_field": "date",
