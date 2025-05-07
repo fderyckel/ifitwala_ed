@@ -142,7 +142,7 @@ def get_distinct_students(filters=None, search_text: str = ""):   # ★ CHANGED
 
         # partial text filter ---------------------------------------------  ★ CHANGED
         if txt:
-            conditions.append("(pe.student LIKE %(txt)s OR s.student_name LIKE %(txt)s)")
+            conditions.append("(pe.student LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)")
             params["txt"] = f"%{txt}%"
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
