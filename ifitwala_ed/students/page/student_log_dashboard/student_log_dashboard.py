@@ -149,7 +149,7 @@ def get_distinct_students(filters=None, search_text: str = ""):   # ★ CHANGED
 
         # query ------------------------------------------------------------
         students = frappe.db.sql(f"""
-            SELECT DISTINCT pe.student, s.student_name
+            SELECT DISTINCT pe.student, s.student_full_name AS student_full_name
             FROM `tabProgram Enrollment` pe
             INNER JOIN `tabStudent` s ON pe.student = s.name
             WHERE {where_clause}
