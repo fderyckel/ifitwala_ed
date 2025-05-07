@@ -4,12 +4,12 @@
  "docstatus": 0,
  "doctype": "Page",
  "idx": 0,
- "modified": "2025-05-07 13:12:50.362641",
+ "modified": "2025-05-07 13:27:50.362641",
  "modified_by": "Administrator",
  "module": "Students",
- "name": "student-log-dashboar",
+ "name": "student-log-dashboard",
  "owner": "Administrator",
- "page_name": "student-log-dashboar",
+ "page_name": "student-log-dashboard",
  "roles": [
   {
    "role": "Academic Admin"
