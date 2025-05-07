@@ -105,6 +105,10 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 			max-width: 1200px;  
 			max-height: 800px; 
 		}
+		.dashboard-card.zoomed .frappe-chart {
+			width: 100% !important;
+			height: 100% !important;
+		}	
 		.dashboard-card.zoomed .card-body {
 			width: 100%;
 			height: 100%;
@@ -276,7 +280,7 @@ function update_charts(data) {
 
   $("#open-follow-ups").html(`
 		<div class="card full-size">
-			<div class="card-body text-center" style="width: 100%; height: 100%;">
+			<div class="card-body text-center">
 				<h2>${data.openFollowUps}</h2>
 				<p class="text-muted">Open Follow‑Ups</p>
 			</div>
