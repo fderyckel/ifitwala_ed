@@ -3,8 +3,8 @@
 
 frappe.ui.form.on("Student Log Follow Up", {
   onload(frm) {
-      // Set author_name if not already set
-      if (!frm.doc.author_name) {
+      // Set follow_up_author if not already set
+      if (!frm.doc.follow_up_author) {
           frappe.call({
               method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
               callback: function (r) {
@@ -14,11 +14,16 @@ frappe.ui.form.on("Student Log Follow Up", {
               }
           });
       }
+
+    // Set current date if not already set
+    if (!frm.doc.date) {
+        frm.set_value("date", frappe.datetime.get_today());
+    }
   },
 
   refresh(frm) {
-      // Ensure author_name is always populated on refresh
-      if (!frm.doc.author_name) {
+      // Ensure follow_up_author is always populated on refresh
+      if (!frm.doc.follow_up_author) {
           frappe.call({
               method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
               callback: function (r) {
@@ -28,5 +33,10 @@ frappe.ui.form.on("Student Log Follow Up", {
               }
           });
       }
+
+    // Ensure date is always set on refresh
+    if (!frm.doc.date) {
+        frm.set_value("date", frappe.datetime.get_today());
+    }
   }
 });
