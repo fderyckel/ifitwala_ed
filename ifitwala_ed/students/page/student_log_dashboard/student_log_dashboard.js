@@ -116,17 +116,6 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
   `;
   document.head.appendChild(style);	
 
-	// Add event listeners to cards
-	document.querySelectorAll('.dashboard-card').forEach(card => {
-		card.addEventListener('click', () => toggleZoom(card));
-	});
-
-	// Close zoom when overlay is clicked
-	document.getElementById('dashboard-overlay').addEventListener('click', () => {
-		document.querySelectorAll('.dashboard-card.zoomed').forEach(c => c.classList.remove('zoomed'));
-		document.getElementById('dashboard-overlay').classList.remove('active');
-	});	
-
   /* ─── Main content containers ───────────────────────────────── */
   $(wrapper).append(`
 		<div class="dashboard-overlay" id="dashboard-overlay"></div>
@@ -140,6 +129,17 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 			<div class="dashboard-card" id="open-follow-ups"></div>
 		</div>
 	`);
+
+	// Add event listeners to cards
+	document.querySelectorAll('.dashboard-card').forEach(card => {
+		card.addEventListener('click', () => toggleZoom(card));
+	});
+
+	// Close zoom when overlay is clicked
+	document.getElementById('dashboard-overlay').addEventListener('click', () => {
+		document.querySelectorAll('.dashboard-card.zoomed').forEach(c => c.classList.remove('zoomed'));
+		document.getElementById('dashboard-overlay').classList.remove('active');
+	});		
 
   // initial load
   fetch_dashboard_data(page);
