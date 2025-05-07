@@ -47,7 +47,7 @@ frappe.pages['student-log-dashboard'].on_page_load = function(wrapper) {
 
 	// Fetch filter data on page load
 	frappe.call({
-			method: 'ifitwala_ed.ifitwala_ed.pages.student_log_dashboard.get_filter_data',
+			method: 'ifitwala_ed.students.page.student_log_dashboard.get_filter_data',
 			callback: function(response) {
 					const { schools, academic_years, programs, students, authors } = response.message;
 					populateFilter('filter-school', schools);
