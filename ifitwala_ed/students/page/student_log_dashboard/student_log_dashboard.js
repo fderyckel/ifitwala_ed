@@ -1,8 +1,10 @@
-/*************************************************************************
- *  Student Log Dashboard – Ifitwala_Ed
- *  Version: 2025‑05‑07
- ************************************************************************/
+/*
+ * Student Log Dashboard – Ifitwala_Ed
+ * Updated: 2025‑05‑07
+ * Frappe v15 compatible
+ */
 
+// ───────────────────────────────────────────────────────────────
 frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
   const page = frappe.ui.make_app_page({
     parent: wrapper,
@@ -10,13 +12,33 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
     single_column: true,
   });
 
-  /* ─── Filter fields ───────────────────────────────────────────── */
+  /* ─── Filter fields (cascading logic) ───────────────────────── */
   const school_field = page.add_field({
     fieldname: "school",
     label: __("School"),
     fieldtype: "Link",
     options: "School",
-    change: () => fetch_dashboard_data(page),
+    change: () => {
+      program_field.set_value("");
+      student_field.set_value("");
+      fetch_dashboard_data(page);
+    },
+  });
+
+  const program_field = page.add_field({
+    fieldname: "program",
+    label: __("Program"),
+    fieldtype: "Link",
+    options: "Program",
+    get_query: () => ({
+      filters: {
+        ...(school_field.get_value() && { school: school_field.get_value() }),
+      },
+    }),
+    change: () => {
+      student_field.set_value("");
+      fetch_dashboard_data(page);
+    },
   });
 
   const academic_year_field = page.add_field({
@@ -27,14 +49,6 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
     change: () => fetch_dashboard_data(page),
   });
 
-  const program_field = page.add_field({
-    fieldname: "program",
-    label: __("Program"),
-    fieldtype: "Link",
-    options: "Program",
-    change: () => fetch_dashboard_data(page),
-  });
-
   const student_field = page.add_field({
     fieldname: "student",
     label: __("Student"),
@@ -42,12 +56,11 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
     options: "Student",
     get_query: () => ({
       filters: {
-        ...(academic_year_field.get_value() && {
-          academic_year: academic_year_field.get_value(),
-        }),
-        ...(program_field.get_value() && {
-          program: program_field.get_value(),
-        }),
+        ...(program_field.get_value()
+          ? { program: program_field.get_value() }
+          : school_field.get_value()
+          ? { school: school_field.get_value() }
+          : {}),
       },
     }),
     change: () => fetch_dashboard_data(page),
@@ -61,7 +74,7 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
     change: () => fetch_dashboard_data(page),
   });
 
-  /* ─── Main containers ────────────────────────────────────────── */
+  /* ─── Main content containers ───────────────────────────────── */
   $(wrapper).append(`
     <div class="dashboard-content container">
       <div id="log-type-count"      class="chart-container"></div>
@@ -74,13 +87,15 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
     </div>
   `);
 
-  fetch_dashboard_data(page); // initial load
+  // initial load
+  fetch_dashboard_data(page);
 };
 
-/* ─── Utility (must come *before* update_charts) ────────────────── */
+// ───────────────────────────────────────────────────────────────
+// helpers
 const safe = (arr) => (Array.isArray(arr) ? arr : []);
 
-/* ─── Fetch + render ────────────────────────────────────────────── */
+// ───────────────────────────────────────────────────────────────
 function fetch_dashboard_data(page) {
   const filters = {
     school: page.fields_dict.school.get_value(),
@@ -103,6 +118,7 @@ function fetch_dashboard_data(page) {
   });
 }
 
+// ───────────────────────────────────────────────────────────────
 function update_charts(data) {
   new frappe.Chart("#log-type-count", {
     data: {

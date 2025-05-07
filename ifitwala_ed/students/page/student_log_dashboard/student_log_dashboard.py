@@ -1,36 +1,53 @@
 # ifitwala_ed/students/page/student_log_dashboard/student_log_dashboard.py
-import frappe
-import json
-from frappe import _
+"""Server‑side aggregation for the Student Log Dashboard (Frappe v15)."""
 
-# ────────────────────────────────────────────────────────────────
+import frappe
+
+
 @frappe.whitelist()
 def get_dashboard_data(filters=None):
-    """
-    Aggregated stats for the Student Log Dashboard.
-    `filters` arrives as a JSON string → convert to dict first.
+    """Return aggregated data for the Student Log Dashboard.
+
+    Args:
+        filters (dict | str | None): JSON string or dict containing optional keys:
+            school, academic_year, program, student, author
+    Returns:
+        dict: Aggregated datasets or {"error": str}
     """
     try:
-        # CHANGED ⮕ make sure filters is a dict
+        # Ensure `filters` is a dict (may arrive as JSON‑encoded str)
         filters = frappe.parse_json(filters) or {}
 
-        # Build WHERE clause & param map
-        conditions = []
-        params = {}
-        for field in ("school", "academic_year", "program", "student", "author"):
-            if filters.get(field):
-                db_field = "author_name" if field == "author" else field
-                placeholder = f"field_{field}"
-                conditions.append(f"{db_field} = %({placeholder})s")
-                params[placeholder] = filters[field]
+        conditions: list[str] = []
+        params: dict[str, str] = {}
+
+        # ── School filter (via Program) ────────────────────────────────
+        if filters.get("school"):
+            conditions.append(
+                "program IN (SELECT name FROM `tabProgram` WHERE school = %(field_school)s)"
+            )
+            params["field_school"] = filters["school"]
+
+        # ── Direct column filters ─────────────────────────────────────
+        direct_map = {
+            "academic_year": "academic_year",
+            "program": "program",
+            "student": "student",
+            "author": "author_name",
+        }
+        for key, column in direct_map.items():
+            if filters.get(key):
+                ph = f"field_{key}"
+                conditions.append(f"{column} = %({ph})s")
+                params[ph] = filters[key]
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-        # Helper to run parameterised queries safely
-        def q(sql):
+        def q(sql: str):
+            """Execute a parameterised SQL with the shared WHERE clause."""
             return frappe.db.sql(sql.format(where=where_clause), params, as_dict=True)
 
-        # ─── Aggregates ───────────────────────────────────────────
+        # ── Aggregations ─────────────────────────────────────────────
         log_type_count = q(
             "SELECT log_type AS label, COUNT(*) AS value "
             "FROM `tabStudent Log` WHERE {where} GROUP BY log_type ORDER BY value DESC"
@@ -61,14 +78,13 @@ def get_dashboard_data(filters=None):
         )
 
         incidents_over_time = q(
-            "SELECT DATE_FORMAT(date,'%Y-%m-%d') AS label, COUNT(*) AS value "
+            "SELECT DATE_FORMAT(date,'%%Y-%%m-%%d') AS label, COUNT(*) AS value "
             "FROM `tabStudent Log` WHERE {where} GROUP BY label ORDER BY label ASC"
         )
 
-        # CHANGED ⮕ same filters for open follow‑ups
         open_follow_ups = frappe.db.sql(
             f"SELECT COUNT(*) FROM `tabStudent Log` "
-            f"WHERE {where_clause} AND follow_up_status='Open'",
+            f"WHERE {where_clause} AND follow_up_status = 'Open'",
             params,
         )[0][0]
 
