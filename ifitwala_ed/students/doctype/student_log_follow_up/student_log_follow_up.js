@@ -9,7 +9,7 @@ frappe.ui.form.on("Student Log Follow Up", {
               method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
               callback: function (r) {
                   if (r && r.message && r.message.employee_full_name) {
-                      frm.set_value("author_name", r.message.employee_full_name);
+                      frm.set_value("follow_up_author", r.message.employee_full_name);
                   }
               }
           });
@@ -23,7 +23,7 @@ frappe.ui.form.on("Student Log Follow Up", {
               method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
               callback: function (r) {
                   if (r && r.message && r.message.employee_full_name) {
-                      frm.set_value("author_name", r.message.employee_full_name);
+                      frm.set_value("follow_up_author", r.message.employee_full_name);
                   }
               }
           });
