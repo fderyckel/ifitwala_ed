@@ -74,18 +74,72 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
     change: () => fetch_dashboard_data(page),
   });
 
+  // Inject custom CSS
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .dashboard-card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin: 10px;
+      padding: 20px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+    }
+    .dashboard-card:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    .dashboard-card.zoomed {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(1.2);
+      z-index: 1000;
+      width: 80%;
+      height: 80%;
+      overflow: auto;
+    }
+    .dashboard-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+      display: none;
+    }
+    .dashboard-overlay.active {
+      display: block;
+    }
+  `;
+  document.head.appendChild(style);	
+
+	// Add event listeners to cards
+	document.querySelectorAll('.dashboard-card').forEach(card => {
+		card.addEventListener('click', () => toggleZoom(card));
+	});
+
+	// Close zoom when overlay is clicked
+	document.getElementById('dashboard-overlay').addEventListener('click', () => {
+		document.querySelectorAll('.dashboard-card.zoomed').forEach(c => c.classList.remove('zoomed'));
+		document.getElementById('dashboard-overlay').classList.remove('active');
+	});	
+
   /* ─── Main content containers ───────────────────────────────── */
   $(wrapper).append(`
-    <div class="dashboard-content container">
-      <div id="log-type-count"      class="chart-container"></div>
-      <div id="logs-by-cohort"      class="chart-container"></div>
-      <div id="logs-by-program"     class="chart-container"></div>
-      <div id="logs-by-author"      class="chart-container"></div>
-      <div id="next-step-types"     class="chart-container"></div>
-      <div id="incidents-over-time" class="chart-container"></div>
-      <div id="open-follow-ups"     class="open-follow-ups-card"></div>
-    </div>
-  `);
+		<div class="dashboard-overlay" id="dashboard-overlay"></div>
+		<div class="dashboard-content container">
+			<div class="dashboard-card" id="log-type-count"></div>
+			<div class="dashboard-card" id="logs-by-cohort"></div>
+			<div class="dashboard-card" id="logs-by-program"></div>
+			<div class="dashboard-card" id="logs-by-author"></div>
+			<div class="dashboard-card" id="next-step-types"></div>
+			<div class="dashboard-card" id="incidents-over-time"></div>
+			<div class="dashboard-card" id="open-follow-ups"></div>
+		</div>
+	`);
 
   // initial load
   fetch_dashboard_data(page);
@@ -197,3 +251,16 @@ function update_charts(data) {
     </div>
   `);
 }
+
+function toggleZoom(card) {
+	const overlay = document.getElementById('dashboard-overlay');
+	if (card.classList.contains('zoomed')) {
+		card.classList.remove('zoomed');
+		overlay.classList.remove('active');
+	} else {
+		// Remove zoom from any other card
+		document.querySelectorAll('.dashboard-card.zoomed').forEach(c => c.classList.remove('zoomed'));
+		card.classList.add('zoomed');
+		overlay.classList.add('active');
+	}
+};
