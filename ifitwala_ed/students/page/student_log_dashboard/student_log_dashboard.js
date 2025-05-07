@@ -231,45 +231,57 @@ function fetch_dashboard_data(page) {
 const safe = (arr) => (Array.isArray(arr) ? arr : []);
 
 function update_charts(data) {
+	if (data.error) {        // already in your code
+			console.error("Dashboard error:", data.error);
+			frappe.msgprint({ title: __("Dashboard Error"), message: data.error, indicator: "red" });
+			return;
+	}
+
 	const chartConfigs = [
-		{ id: "log-type-count", dataKey: "logTypeCount", color: "#007bff" },
-		{ id: "logs-by-cohort", dataKey: "logsByCohort", color: "#17a2b8" },
-		{ id: "logs-by-program", dataKey: "logsByProgram", color: "#28a745" },
-		{ id: "logs-by-author", dataKey: "logsByAuthor", color: "#ffc107" },
-		{ id: "next-step-types", dataKey: "nextStepTypes", color: "#fd7e14" },
-		{ id: "incidents-over-time", dataKey: "incidentsOverTime", color: "#dc3545", type: "line" },
+			{ id: "log-type-count",       dataKey: "logTypeCount",       color: "#007bff" },
+			{ id: "logs-by-cohort",       dataKey: "logsByCohort",       color: "#17a2b8" },
+			{ id: "logs-by-program",      dataKey: "logsByProgram",      color: "#28a745" },
+			{ id: "logs-by-author",       dataKey: "logsByAuthor",       color: "#ffc107" },
+			{ id: "next-step-types",      dataKey: "nextStepTypes",      color: "#fd7e14" },
+			{ id: "incidents-over-time",  dataKey: "incidentsOverTime",  color: "#dc3545", type: "line" },
 	];
 
 	chartConfigs.forEach(cfg => {
-		new frappe.Chart(`#chart-${cfg.id}`, {
-			data: {
-				labels:  safe(data[cfg.dataKey]).map(i => i.label),
-				datasets:[{ values: safe(data[cfg.dataKey]).map(i => i.value) }],
-			},
-			type:   cfg.type || "bar",
-			height: 300,
-			colors: [cfg.color],
-		});
+			const rows = (data[cfg.dataKey] || []).filter(r => r && r.value != null);   // ★ NEW
+			if (!rows.length) {
+					$(`#chart-${cfg.id}`).empty();      // clear previous chart, if any ★ NEW
+					return;                             // skip this chart
+			}
+
+			new frappe.Chart(`#chart-${cfg.id}`, {
+					data: {
+							labels:  rows.map(r => r.label),
+							datasets:[{ values: rows.map(r => r.value) }],
+					},
+					type:   cfg.type || "bar",
+					height: 300,
+					colors: [cfg.color],
+			});
 	});
 
-	// open follow‑ups tile
+	// Open follow‑ups tile
 	$("#chart-open-follow-ups").html(`
-		<div class="card full-size">
-			<div class="card-body text-center">
-				<h2>${data.openFollowUps}</h2>
-				<p class="text-muted">Open Follow-Ups</p>
-			</div>
-		</div>`);
+			<div class="card full-size">
+					<div class="card-body text-center">
+							<h2>${data.openFollowUps}</h2>
+							<p class="text-muted">Open Follow-Ups</p>
+					</div>
+			</div>`);
 
-	// ★ CHANGED – render Student‑Log rows without extra RPC
+	// Student‑Log detail rows (already working)
 	if (Array.isArray(data.studentLogs)) {
-		const rows = data.studentLogs.map(l => `
-			<tr>
-				<td>${l.date}</td>
-				<td>${l.log_type}</td>
-				<td>${l.content}</td>
-				<td>${l.author}</td>
-			</tr>`).join("");
-		document.getElementById("student-log-table-body").innerHTML = rows;
+			const rows = data.studentLogs.map(l => `
+					<tr>
+							<td>${l.date}</td>
+							<td>${l.log_type}</td>
+							<td>${l.content}</td>
+							<td>${l.author}</td>
+					</tr>`).join("");
+			document.getElementById("student-log-table-body").innerHTML = rows;
 	}
 }
