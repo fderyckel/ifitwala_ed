@@ -75,6 +75,7 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
   });
 
   /* ─── CSS STYLES ───────────────────────────────── */
+	// Inject custom CSS
 	const style = document.createElement('style');
 	style.innerHTML = `
 		.dashboard-card {
@@ -85,8 +86,8 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 			padding: 20px;
 			transition: transform 0.3s ease, box-shadow 0.3s ease;
 			cursor: pointer;
-			flex: 1 1 calc(50% - 20px);
-			max-width: calc(50% - 20px);
+			flex: 1 1 48%;
+			max-width: 48%;
 		}
 		.dashboard-card:hover {
 			transform: scale(1.02);
@@ -122,7 +123,11 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 			flex-wrap: wrap;
 			gap: 20px;
 		}
-	
+		.full-size {
+			width: 100%;
+			height: 100%;
+		}
+
 		@media (max-width: 768px) {
 			.dashboard-card {
 				flex: 1 1 100%;
@@ -130,7 +135,7 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 			}
 		}
 	`;
-	document.head.appendChild(style);
+document.head.appendChild(style);
 
   /* ─── Main content containers ───────────────────────────────── */
   $(wrapper).append(`
@@ -152,9 +157,11 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 	});
 
 	// Close zoom when overlay is clicked
-	document.getElementById('dashboard-overlay').addEventListener('click', () => {
+	// Close zoom when overlay is clicked
+	const overlay = document.getElementById('dashboard-overlay');
+	overlay.addEventListener('click', () => {
 		document.querySelectorAll('.dashboard-card.zoomed').forEach(c => c.classList.remove('zoomed'));
-		document.getElementById('dashboard-overlay').classList.remove('active');
+		overlay.classList.remove('active');
 	});		
 
   // initial load
@@ -259,13 +266,13 @@ function update_charts(data) {
   });
 
   $("#open-follow-ups").html(`
-    <div class="card">
-      <div class="card-body text-center">
-        <h2>${data.openFollowUps}</h2>
-        <p class="text-muted">Open Follow‑Ups</p>
-      </div>
-    </div>
-  `);
+		<div class="card full-size">
+			<div class="card-body text-center">
+				<h2>${data.openFollowUps}</h2>
+				<p class="text-muted">Open Follow‑Ups</p>
+			</div>
+		</div>
+	`);
 }
 
 function toggleZoom(card) {
