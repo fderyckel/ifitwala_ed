@@ -153,7 +153,7 @@ def get_distinct_students(filters=None, search_text: str = ""):   # ★ CHANGED
             FROM `tabProgram Enrollment` pe
             INNER JOIN `tabStudent` s ON pe.student = s.name
             WHERE {where_clause}
-            ORDER BY s.student_name
+            ORDER BY s.student_full_name
             LIMIT 100
         """, params, as_dict=True)
 
