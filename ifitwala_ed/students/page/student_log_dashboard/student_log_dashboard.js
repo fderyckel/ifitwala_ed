@@ -74,47 +74,63 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
     change: () => fetch_dashboard_data(page),
   });
 
-  // Inject custom CSS
-  const style = document.createElement('style');
-  style.innerHTML = `
-    .dashboard-card {
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin: 10px;
-      padding: 20px;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      cursor: pointer;
-    }
-    .dashboard-card:hover {
-      transform: scale(1.02);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    }
-    .dashboard-card.zoomed {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(1.2);
-      z-index: 1000;
-      width: 80%;
-      height: 80%;
-      overflow: auto;
-    }
-    .dashboard-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 999;
-      display: none;
-    }
-    .dashboard-overlay.active {
-      display: block;
-    }
-  `;
-  document.head.appendChild(style);	
+  /* ─── CSS STYLES ───────────────────────────────── */
+	const style = document.createElement('style');
+	style.innerHTML = `
+		.dashboard-card {
+			background: #fff;
+			border-radius: 8px;
+			box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+			margin: 10px;
+			padding: 20px;
+			transition: transform 0.3s ease, box-shadow 0.3s ease;
+			cursor: pointer;
+			flex: 1 1 calc(50% - 20px);
+			max-width: calc(50% - 20px);
+		}
+		.dashboard-card:hover {
+			transform: scale(1.02);
+			box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+		}
+		.dashboard-card.zoomed {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			z-index: 1000;
+			width: 90vw;
+			height: 90vh;
+			overflow: auto;
+			max-width: 1200px;  /* Limit maximum size */
+			max-height: 800px;  /* Limit maximum size */
+		}
+		.dashboard-overlay {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0,0,0,0.5);
+			z-index: 999;
+			display: none;
+		}
+		.dashboard-overlay.active {
+			display: block;
+		}
+		.dashboard-content.container {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 20px;
+		}
+	
+		@media (max-width: 768px) {
+			.dashboard-card {
+				flex: 1 1 100%;
+				max-width: 100%;
+			}
+		}
+	`;
+	document.head.appendChild(style);
 
   /* ─── Main content containers ───────────────────────────────── */
   $(wrapper).append(`
