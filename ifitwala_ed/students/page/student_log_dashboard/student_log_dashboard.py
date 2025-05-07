@@ -30,7 +30,7 @@ def get_dashboard_data(filters=None):
         direct_map = {
             "academic_year": "sl.academic_year",
             "program": "sl.program",
-            #"student": "sl.student",
+            "student": "sl.student",
             "author": "sl.author_name",
         }
         for key, col in direct_map.items():
@@ -118,14 +118,16 @@ def get_dashboard_data(filters=None):
         return {"error": str(e)}
 
 @frappe.whitelist()
-def get_distinct_students(filters=None):
-    """Fetch unique students based on selected school, program, and academic year."""
+def get_distinct_students(filters=None, search_text: str = ""):   # ★ CHANGED
+    """Return up to 100 unique students matching the current filters
+       *and* the user’s partial search string (ID or name)."""
     try:
         filters = frappe.parse_json(filters) or {}
-        conditions = []
-        params = {}
+        txt = (search_text or "").strip()
 
-        # Apply filters based on available context
+        conditions, params = [], {}
+
+        # context filters --------------------------------------------------
         if filters.get("school"):
             conditions.append("pe.school = %(school)s")
             params["school"] = filters["school"]
@@ -138,16 +140,21 @@ def get_distinct_students(filters=None):
             conditions.append("pe.academic_year = %(academic_year)s")
             params["academic_year"] = filters["academic_year"]
 
+        # partial text filter ---------------------------------------------  ★ CHANGED
+        if txt:
+            conditions.append("(pe.student LIKE %(txt)s OR s.student_name LIKE %(txt)s)")
+            params["txt"] = f"%{txt}%"
+
         where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-        # Fetch unique students
+        # query ------------------------------------------------------------
         students = frappe.db.sql(f"""
-            SELECT DISTINCT pe.student, s.student_name 
+            SELECT DISTINCT pe.student, s.student_name
             FROM `tabProgram Enrollment` pe
             INNER JOIN `tabStudent` s ON pe.student = s.name
             WHERE {where_clause}
             ORDER BY s.student_name
-            LIMIT 1000
+            LIMIT 100
         """, params, as_dict=True)
 
         return students
