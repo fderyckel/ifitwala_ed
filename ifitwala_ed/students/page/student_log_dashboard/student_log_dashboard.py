@@ -92,7 +92,7 @@ def get_dashboard_data(filters=None):
                 SELECT
                     sl.date,
                     sl.log_type,
-                    sl.content,
+                    sl.log AS content,
                     sl.author_name AS author
                 FROM `tabStudent Log` sl
                 WHERE sl.student = %(field_student)s
