@@ -1,10 +1,3 @@
-/*
- * Student Log Dashboard – Ifitwala_Ed
- * Updated: 2025‑05‑07
- * Frappe v15 compatible
- */
-
-// ───────────────────────────────────────────────────────────────
 frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
   const page = frappe.ui.make_app_page({
     parent: wrapper,
@@ -57,16 +50,29 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
     change: () => fetch_dashboard_data(page),
   });
 
-
-  /* ─── Main content containers ───────────────────────────────── */
-  $(wrapper).append(`
+	/* ─── Main content containers ───────────────────────────────── */
+	$(wrapper).append(`
 		<div class="dashboard-overlay" id="dashboard-overlay"></div>
 		<div class="dashboard-content container">
-				<div class="dashboard-card" id="student-log-detail">
+				${createDashboardCard("student-log-detail", "Student Log Detail")}
+				${createDashboardCard("log-type-count", "Log Type Count")}
+				${createDashboardCard("logs-by-cohort", "Logs by Cohort")}
+				${createDashboardCard("logs-by-program", "Logs by Program")}
+				${createDashboardCard("logs-by-author", "Logs by Author")}
+				${createDashboardCard("next-step-types", "Next Step Types")}
+				${createDashboardCard("incidents-over-time", "Incidents Over Time")}
+				${createDashboardCard("open-follow-ups", "Open Follow-Ups")}
+		</div>
+	`);
+
+	/* ─── Card Creation Helper ───────────────────────────────── */
+	function createDashboardCard(id, title) {
+		return `
+						<div class="dashboard-card" id="student-log-detail">
+						<div class="card-title">Student Log Detail</div>
 						<div class="student-log-filter">
-							<label for="student-select">Student</label>
-							<input type="text" id="student-select" placeholder="Select Student" autocomplete="off">
-							<div id="student-dropdown" class="student-dropdown"></div>
+								<label for="student-select">Student</label>
+								<input type="text" id="student-select" placeholder="Select Student" autocomplete="off">
 						</div>
 						<div class="student-log-table-wrapper">
 								<table class="student-log-table">
@@ -82,15 +88,13 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 								</table>
 						</div>
 				</div>
-				<div class="dashboard-card" id="log-type-count"></div>
-				<div class="dashboard-card" id="logs-by-cohort"></div>
-				<div class="dashboard-card" id="logs-by-program"></div>
-				<div class="dashboard-card" id="logs-by-author"></div>
-				<div class="dashboard-card" id="next-step-types"></div>
-				<div class="dashboard-card" id="incidents-over-time"></div>
-				<div class="dashboard-card" id="open-follow-ups"></div>
-		</div>
-	`);
+				<div class="dashboard-card" id="${id}">
+						<div class="card-title">${title}</div>
+						<div id="chart-${id}"></div>
+				</div>
+		`;
+	}
+
 
 	// Student filter logic
 	const studentInput = document.getElementById("student-select");
@@ -234,82 +238,37 @@ function fetch_dashboard_data(page) {
 }
 
 // ───────────────────────────────────────────────────────────────
+// ─── Chart Initialization ─────────────────────────────────
 function update_charts(data) {
-  new frappe.Chart("#log-type-count", {
-    data: {
-      labels: safe(data.logTypeCount).map((i) => i.label),
-      datasets: [{ values: safe(data.logTypeCount).map((i) => i.value) }],
-    },
-    type: "bar",
-    height: 300,
-    colors: ["#007bff"],
-    title: "Log Type Count",
-  });
+	const chartConfigs = [
+			{ id: "log-type-count", dataKey: "logTypeCount", color: "#007bff" },
+			{ id: "logs-by-cohort", dataKey: "logsByCohort", color: "#17a2b8" },
+			{ id: "logs-by-program", dataKey: "logsByProgram", color: "#28a745" },
+			{ id: "logs-by-author", dataKey: "logsByAuthor", color: "#ffc107" },
+			{ id: "next-step-types", dataKey: "nextStepTypes", color: "#fd7e14" },
+			{ id: "incidents-over-time", dataKey: "incidentsOverTime", color: "#dc3545", type: "line" },
+	];
 
-  new frappe.Chart("#logs-by-cohort", {
-    data: {
-      labels: safe(data.logsByCohort).map((i) => i.label),
-      datasets: [{ values: safe(data.logsByCohort).map((i) => i.value) }],
-    },
-    type: "bar",
-    height: 300,
-    colors: ["#17a2b8"],
-    title: "Logs by Cohort",
-  });
+	chartConfigs.forEach(config => {
+			new frappe.Chart(`#chart-${config.id}`, {
+					data: {
+							labels: safe(data[config.dataKey]).map((i) => i.label),
+							datasets: [{ values: safe(data[config.dataKey]).map((i) => i.value) }],
+					},
+					type: config.type || "bar",
+					height: 300,
+					colors: [config.color],
+					title: "",  // Now handled by card title
+			});
+	});
 
-  new frappe.Chart("#logs-by-program", {
-    data: {
-      labels: safe(data.logsByProgram).map((i) => i.label),
-      datasets: [{ values: safe(data.logsByProgram).map((i) => i.value) }],
-    },
-    type: "bar",
-    height: 300,
-    colors: ["#28a745"],
-    title: "Logs by Program",
-  });
-
-  new frappe.Chart("#logs-by-author", {
-    data: {
-      labels: safe(data.logsByAuthor).map((i) => i.label),
-      datasets: [{ values: safe(data.logsByAuthor).map((i) => i.value) }],
-    },
-    type: "bar",
-    height: 300,
-    colors: ["#ffc107"],
-    title: "Logs by Author",
-  });
-
-  new frappe.Chart("#next-step-types", {
-    data: {
-      labels: safe(data.nextStepTypes).map((i) => i.label),
-      datasets: [{ values: safe(data.nextStepTypes).map((i) => i.value) }],
-    },
-    type: "bar",
-    height: 300,
-    colors: ["#fd7e14"],
-    title: "Next Step Types",
-  });
-
-  new frappe.Chart("#incidents-over-time", {
-    data: {
-      labels: safe(data.incidentsOverTime).map((i) => i.label),
-      datasets: [
-        { values: safe(data.incidentsOverTime).map((i) => i.value) },
-      ],
-    },
-    type: "line",
-    height: 300,
-    colors: ["#dc3545"],
-    title: "Incidents Over Time",
-  });
-
-  $("#open-follow-ups").html(`
-		<div class="card full-size">
-			<div class="card-body text-center">
-				<h2>${data.openFollowUps}</h2>
-				<p class="text-muted">Open Follow‑Ups</p>
+	// Handle the open follow-ups separately
+	$("#chart-open-follow-ups").html(`
+			<div class="card full-size">
+					<div class="card-body text-center">
+							<h2>${data.openFollowUps}</h2>
+							<p class="text-muted">Open Follow-Ups</p>
+					</div>
 			</div>
-		</div>
 	`);
 }
-
