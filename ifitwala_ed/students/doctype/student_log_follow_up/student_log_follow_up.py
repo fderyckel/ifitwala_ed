@@ -30,7 +30,7 @@ class StudentLogFollowUp(Document):
 						link=link
 					))
 
-	def after_save(self):
+	def on_update(self):
 		log = frappe.get_doc("Student Log", self.student_log)
 
 		# Set the linked student log follow up status to "In Progress" if still Open
@@ -47,7 +47,7 @@ class StudentLogFollowUp(Document):
 			)	
 
 
-	def after_submit(self):
+	def on_submit(self):
 		log = frappe.get_doc("Student Log", self.student_log)
 
 		log.db_set("follow_up_status", "Closed")
