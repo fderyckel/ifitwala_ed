@@ -149,13 +149,16 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 	// Enter ↵ chooses first suggestion (if any) ------------------------------
 	studentInput.addEventListener("keydown", (e) => {
 		if (e.key === "Enter") {
+			e.preventDefault();          // stop default form submit
+      e.stopPropagation();         // cancel bubbling to card
 			const first = dropdownEl.querySelector(".student-suggestion");
 			if (first) first.click();     // mimic click handler
 		}
 	});
 
 	// click on a suggestion ---------------------------------------------------
-	dropdownEl.addEventListener("click", (e) => {
+	dropdownEl.addEventListener("click", (e) => { 
+		e.stopPropagation();    		 // cancel bubbling to card
 		const target = e.target.closest(".student-suggestion");
 		if (!target) return;
 		selected_student   = target.dataset.id;           // store ID
