@@ -36,7 +36,6 @@ class StudentLog(Document):
 				))
 
 
-	
 	def after_submit(self):
 		if self.requires_follow_up and self.follow_up_person:
 			if not self.follow_up_status:
