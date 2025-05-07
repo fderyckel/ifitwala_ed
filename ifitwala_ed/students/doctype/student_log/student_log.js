@@ -38,6 +38,22 @@ frappe.ui.form.on("Student Log", {
     const is_author = frappe.session.user_fullname === frm.doc.author_name;
     const status = (frm.doc.follow_up_status || "").toLowerCase();
 
+    // Show "New Follow-Up" button only if status is not "Completed"
+    if (status !== "completed") {
+        frm.add_custom_button(__("New Follow-Up"), () => {
+            frappe.call({
+                method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
+                callback(r) {
+                    frappe.new_doc("Student Log Follow Up", {
+                        student_log: frm.doc.name,
+                        follow_up_author: r.message?.employee_full_name || "",
+                        date: frappe.datetime.get_today()
+                    });
+                }
+            });
+        });
+    }
+
     if (status === "closed" && is_author) {
       frm.add_custom_button(__("Mark as Completed"), function () {
         frm.call({
@@ -79,19 +95,6 @@ frappe.ui.form.on("Student Log", {
         });
       }, __("Actions"));
     }
-
-    frm.add_custom_button(__("New Follow-Up"), () => {
-      frappe.call({
-        method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
-        callback(r) {
-          frappe.new_doc("Student Log Follow Up", {
-            student_log: frm.doc.name,
-            author: r.message?.name || "",
-            date: frappe.datetime.get_today()
-          });
-        }
-      });
-    });
   }, 
 
   student(frm) {

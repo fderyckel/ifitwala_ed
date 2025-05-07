@@ -30,6 +30,10 @@ class StudentLogFollowUp(Document):
 						user=frappe.utils.get_fullname(assigned_to),
 						link=link
 					))
+		
+		log = frappe.get_doc("Student Log", self.student_log) 
+		if log.follow_up_status == "Completed": 
+			frappe.throw(_("Cannot add follow-up: the Student Log is already marked as Completed."))
 
 	def on_update(self):
 		log = frappe.get_doc("Student Log", self.student_log)
@@ -37,15 +41,6 @@ class StudentLogFollowUp(Document):
 		# Set the linked student log follow up status to "In Progress" if still Open
 		if log.follow_up_status == "Open":
 			log.db_set("follow_up_status", "In Progress")
-			log.add_comment(
-				comment_type="Comment",
-				text=_(
-					"A follow-up was started by {author} — see {link}"
-				).format(
-					author=self.follow_up_author,
-					link=frappe.utils.get_link_to_form("Student Log Follow Up", self.name)
-				)
-			)	
 
 
 	def on_submit(self):
@@ -53,7 +48,7 @@ class StudentLogFollowUp(Document):
 
 		log.db_set("follow_up_status", "Closed")
 
-		author_user = frappe.db.get_value("Employee", log.author, "user_id")
+		author_user = author_user = frappe.db.get_value("Employee", {"employee_full_name": log.author_name}, "user_id")
 		if author_user and author_user != frappe.session.user:
 			frappe.publish_realtime(
 				event="follow_up_ready_to_review",
