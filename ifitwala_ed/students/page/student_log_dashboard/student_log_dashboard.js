@@ -109,6 +109,9 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 			width: 100%;
 			height: 100%;
 			padding: 0;
+			display: flex;
+			justify-content: center;
+			align-items: center;			
 		}
 		.dashboard-overlay {
 			position: fixed;
@@ -273,7 +276,7 @@ function update_charts(data) {
 
   $("#open-follow-ups").html(`
 		<div class="card full-size">
-			<div class="card-body text-center">
+			<div class="card-body text-center" style="width: 100%; height: 100%;">
 				<h2>${data.openFollowUps}</h2>
 				<p class="text-muted">Open Follow‑Ups</p>
 			</div>
