@@ -42,7 +42,7 @@ class StudentLogFollowUp(Document):
 				text=_(
 					"A follow-up was started by {author} — see {link}"
 				).format(
-					author=self.authfollow_up_authoror_name,
+					author=self.follow_up_author,
 					link=frappe.utils.get_link_to_form("Student Log Follow Up", self.name)
 				)
 			)	
