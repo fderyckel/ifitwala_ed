@@ -1,75 +1,175 @@
 frappe.pages['student-log-dashboard'].on_page_load = function(wrapper) {
-	var page = frappe.ui.make_app_page({
+	let page = frappe.ui.make_app_page({
 			parent: wrapper,
 			title: 'Student Log Dashboard',
 			single_column: true
 	});
 
-	// Create a container for the dashboard content
-	let $container = $(wrapper).find('.layout-main-section');
-	$container.empty();
+	// Add Filters
+	let school_field = page.add_field({
+			fieldname: "school",
+			label: __("School"),
+			fieldtype: "Link",
+			options: "School",
+			change: () => fetch_dashboard_data(page)
+	});
 
-	// Add filter section
-	$container.append(`
-			<div class="filters mb-4">
-					<select id="filter-school" class="form-control mb-2"></select>
-					<select id="filter-academic-year" class="form-control mb-2"></select>
-					<select id="filter-program" class="form-control mb-2"></select>
-					<select id="filter-student" class="form-control mb-2"></select>
-					<select id="filter-author" class="form-control mb-2"></select>
-					<button id="apply-filters" class="btn btn-primary">Apply Filters</button>
+	let academic_year_field = page.add_field({
+			fieldname: "academic_year",
+			label: __("Academic Year"),
+			fieldtype: "Link",
+			options: "Academic Year",
+			change: () => fetch_dashboard_data(page)
+	});
+
+	let program_field = page.add_field({
+			fieldname: "program",
+			label: __("Program"),
+			fieldtype: "Link",
+			options: "Program",
+			change: () => fetch_dashboard_data(page)
+	});
+
+	let student_field = page.add_field({
+			fieldname: "student",
+			label: __("Student"),
+			fieldtype: "Link",
+			options: "Student",
+			get_query: () => ({
+					filters: {
+							...(academic_year_field.get_value() && { academic_year: academic_year_field.get_value() }),
+							...(program_field.get_value() && { program: program_field.get_value() })
+					}
+			}),
+			change: () => fetch_dashboard_data(page)
+	});
+
+	let author_field = page.add_field({
+			fieldname: "author",
+			label: __("Author"),
+			fieldtype: "Link",
+			options: "Employee",
+			change: () => fetch_dashboard_data(page)
+	});
+
+	// Main Content Area
+	$(wrapper).append(`
+			<div class="dashboard-content container">
+					<div id="log-type-count" class="chart-container"></div>
+					<div id="logs-by-cohort" class="chart-container"></div>
+					<div id="logs-by-program" class="chart-container"></div>
+					<div id="logs-by-author" class="chart-container"></div>
+					<div id="next-step-types" class="chart-container"></div>
+					<div id="incidents-over-time" class="chart-container"></div>
+					<div id="open-follow-ups" class="open-follow-ups-card"></div>
 			</div>
 	`);
 
-	// Add charts section
-	$container.append(`
-			<div class="charts row">
-					<div class="col-md-6"><div id="logTypeCountChart" class="mb-4"></div></div>
-					<div class="col-md-6"><div id="logsByCohortChart" class="mb-4"></div></div>
-					<div class="col-md-6"><div id="logsByProgramChart" class="mb-4"></div></div>
-					<div class="col-md-6"><div id="logsByAuthorChart" class="mb-4"></div></div>
-					<div class="col-md-6"><div id="nextStepTypesChart" class="mb-4"></div></div>
-					<div class="col-md-6"><div id="incidentsOverTimeChart" class="mb-4"></div></div>
-			</div>
-	`);
+	// Initial Data Load
+	fetch_dashboard_data(page);
+};
 
-	// Add open follow-ups card
-	$container.append(`
-			<div class="mt-4">
-					<div class="card">
-							<div class="card-body">
-									<h5 class="card-title">Open Follow-Ups</h5>
-									<p id="open-follow-ups" class="card-text">Loading...</p>
-							</div>
+function fetch_dashboard_data(page) {
+	let filters = {
+			school: page.fields_dict.school.get_value(),
+			academic_year: page.fields_dict.academic_year.get_value(),
+			program: page.fields_dict.program.get_value(),
+			student: page.fields_dict.student.get_value(),
+			author: page.fields_dict.author.get_value()
+	};
+
+	frappe.call({
+			method: "ifitwala_ed.students.page.student_log_dashboard.student_log_dashboard.get_dashboard_data",
+			args: { filters },
+			callback: function(response) {
+					if (response.message) {
+							console.log("Dashboard data loaded:", response.message);
+							update_charts(response.message);
+					}
+			}
+	});
+}
+
+function update_charts(data) {
+	// Log Type Count
+	new frappe.Chart("#log-type-count", {
+			data: {
+					labels: data.logTypeCount.map(item => item.log_type),
+					datasets: [{ values: data.logTypeCount.map(item => item.count) }]
+			},
+			type: 'bar',
+			height: 300,
+			colors: ['#007bff'],
+			title: 'Log Type Count'
+	});
+
+	// Logs by Cohort
+	new frappe.Chart("#logs-by-cohort", {
+			data: {
+					labels: data.logsByCohort.map(item => item.cohort),
+					datasets: [{ values: data.logsByCohort.map(item => item.count) }]
+			},
+			type: 'bar',
+			height: 300,
+			colors: ['#17a2b8'],
+			title: 'Logs by Cohort'
+	});
+
+	// Logs by Program
+	new frappe.Chart("#logs-by-program", {
+			data: {
+					labels: data.logsByProgram.map(item => item.program),
+					datasets: [{ values: data.logsByProgram.map(item => item.count) }]
+			},
+			type: 'bar',
+			height: 300,
+			colors: ['#28a745'],
+			title: 'Logs by Program'
+	});
+
+	// Logs by Author
+	new frappe.Chart("#logs-by-author", {
+			data: {
+					labels: data.logsByAuthor.map(item => item.author_name),
+					datasets: [{ values: data.logsByAuthor.map(item => item.count) }]
+			},
+			type: 'bar',
+			height: 300,
+			colors: ['#ffc107'],
+			title: 'Logs by Author'
+	});
+
+	// Next Step Types
+	new frappe.Chart("#next-step-types", {
+			data: {
+					labels: data.nextStepTypes.map(item => item.next_step),
+					datasets: [{ values: data.nextStepTypes.map(item => item.count) }]
+			},
+			type: 'bar',
+			height: 300,
+			colors: ['#fd7e14'],
+			title: 'Next Step Types'
+	});
+
+	// Incidents Over Time
+	new frappe.Chart("#incidents-over-time", {
+			data: {
+					labels: data.incidentsOverTime.map(item => item.day),
+					datasets: [{ values: data.incidentsOverTime.map(item => item.count) }]
+			},
+			type: 'line',
+			height: 300,
+			colors: ['#dc3545'],
+			title: 'Incidents Over Time'
+	});
+
+	// Open Follow-Ups
+	$("#open-follow-ups").html(`
+			<div class="card">
+					<div class="card-body">
+							<h2>${data.openFollowUps}</h2>
+							<p>Open Follow-Ups</p>
 					</div>
 			</div>
 	`);
-
-	// Fetch filter data on page load
-	frappe.call({
-			method: 'ifitwala_ed.students.page.student_log_dashboard.student_log_dashboard.get_filter_data',
-			callback: function(response) {
-					const { schools, academic_years, programs, students, authors } = response.message;
-					populateFilter('filter-school', schools);
-					populateFilter('filter-academic-year', academic_years);
-					populateFilter('filter-program', programs);
-					populateFilter('filter-student', students);
-					populateFilter('filter-author', authors);
-			}
-	});
-
-	// Populate filter dropdowns
-	function populateFilter(elementId, data) {
-			const select = document.getElementById(elementId);
-			select.innerHTML = `<option value="">Select ${elementId.replace('filter-', '').replace('-', ' ').toUpperCase()}</option>`;
-			data.forEach(item => {
-					select.innerHTML += `<option value="${item.name}">${item.name}</option>`;
-			});
-	}
-
-	// Apply filters button click
-	document.getElementById('apply-filters').addEventListener('click', () => {
-			// TODO: Fetch and render charts
-			console.log('Filters applied');
-	});
-};
+}

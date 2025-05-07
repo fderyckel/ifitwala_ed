@@ -1,106 +1,131 @@
 import frappe
 from frappe import _
 
+
 @frappe.whitelist()
 def get_filter_data():
     try:
-        # Fetching schools
+        # Fetching Schools
         schools = frappe.get_all("School", fields=["name"])
 
-        # Fetching academic years
+        # Fetching Academic Years
         academic_years = frappe.get_all("Academic Year", fields=["name"])
 
-        # Fetching programs
+        # Fetching Programs
         programs = frappe.get_all("Program", fields=["name"])
 
-        # Fetching authors (academic roles)
+        # Fetching Authors (Academic Staff)
         authors = frappe.get_all(
             "Employee",
             filters={"role": ["in", ["Academic Staff", "Teacher"]]},
             fields=["name", "employee_full_name"]
         )
 
-        # Fetching students (linked to active enrollments)
-        students = frappe.get_all("Student", fields=["name", "student_full_name"])
+        # Fetching Students (active enrollments)
+        students = frappe.get_all(
+            "Student",
+            fields=["name", "student_full_name"]
+        )
 
         return {
-            "schools": schools,
-            "academic_years": academic_years,
-            "programs": programs,
-            "authors": authors,
-            "students": students,
+            "schools": [{"label": s.name, "value": s.name} for s in schools],
+            "academic_years": [{"label": ay.name, "value": ay.name} for ay in academic_years],
+            "programs": [{"label": p.name, "value": p.name} for p in programs],
+            "authors": [{"label": a.employee_full_name, "value": a.name} for a in authors],
+            "students": [{"label": s.student_full_name, "value": s.name} for s in students]
         }
+
     except Exception as e:
-        frappe.log_error(message=str(e), title="Error in Student Log Dashboard Filters")
+        frappe.log_error(message=str(e), title="Student Log Dashboard Filter Data Error")
         return {"error": str(e)}
+
+import frappe
+from frappe import _
 
 @frappe.whitelist()
 def get_dashboard_data(filters):
     try:
+        # Building the WHERE clause based on filters
         conditions = []
 
-        # Applying filters based on the input
         if filters.get("school"):
             conditions.append(f"school = '{filters.get('school')}'")
+
         if filters.get("academic_year"):
             conditions.append(f"academic_year = '{filters.get('academic_year')}'")
+
         if filters.get("program"):
             conditions.append(f"program = '{filters.get('program')}'")
+
         if filters.get("student"):
             conditions.append(f"student = '{filters.get('student')}'")
+
         if filters.get("author"):
             conditions.append(f"author_name = '{filters.get('author')}'")
 
-        # Build the WHERE clause
+        # Combine conditions into a single WHERE clause
         where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-        # Aggregating data for charts
+        # Fetching Log Type Count
         log_type_count = frappe.db.sql(f"""
-            SELECT log_type, COUNT(*) AS count
+            SELECT log_type AS label, COUNT(*) AS value
             FROM `tabStudent Log`
             WHERE {where_clause}
             GROUP BY log_type
+            ORDER BY value DESC
         """, as_dict=True)
 
+        # Fetching Logs by Cohort (needs join with Program Enrollment)
         logs_by_cohort = frappe.db.sql(f"""
-            SELECT cohort, COUNT(*) AS count
-            FROM `tabProgram Enrollment`
+            SELECT pe.cohort AS label, COUNT(sl.name) AS value
+            FROM `tabStudent Log` sl
+            LEFT JOIN `tabProgram Enrollment` pe ON sl.student = pe.student
             WHERE {where_clause}
-            GROUP BY cohort
+            GROUP BY pe.cohort
+            ORDER BY value DESC
         """, as_dict=True)
 
+        # Fetching Logs by Program (needs join with Program Enrollment)
         logs_by_program = frappe.db.sql(f"""
-            SELECT program, COUNT(*) AS count
-            FROM `tabProgram Enrollment`
+            SELECT pe.program AS label, COUNT(sl.name) AS value
+            FROM `tabStudent Log` sl
+            LEFT JOIN `tabProgram Enrollment` pe ON sl.student = pe.student
             WHERE {where_clause}
-            GROUP BY program
+            GROUP BY pe.program
+            ORDER BY value DESC
         """, as_dict=True)
 
+        # Fetching Logs by Author
         logs_by_author = frappe.db.sql(f"""
-            SELECT author_name, COUNT(*) AS count
+            SELECT author_name AS label, COUNT(*) AS value
             FROM `tabStudent Log`
             WHERE {where_clause}
             GROUP BY author_name
+            ORDER BY value DESC
         """, as_dict=True)
 
+        # Fetching Next Step Types
         next_step_types = frappe.db.sql(f"""
-            SELECT next_step, COUNT(*) AS count
+            SELECT next_step AS label, COUNT(*) AS value
             FROM `tabStudent Log`
             WHERE {where_clause}
             GROUP BY next_step
+            ORDER BY value DESC
         """, as_dict=True)
 
+        # Fetching Incidents Over Time
         incidents_over_time = frappe.db.sql(f"""
-            SELECT DATE_FORMAT(date, '%Y-%m-%d') AS day, COUNT(*) AS count
+            SELECT DATE_FORMAT(date, '%Y-%m-%d') AS label, COUNT(*) AS value
             FROM `tabStudent Log`
             WHERE {where_clause}
-            GROUP BY day
-            ORDER BY day ASC
+            GROUP BY label
+            ORDER BY label ASC
         """, as_dict=True)
 
-        # Counting open follow-ups
+        # Counting Open Follow-Ups
         open_follow_ups = frappe.db.count("Student Log", {"follow_up_status": "Open"})
 
+        # Return the combined data
         return {
             "logTypeCount": log_type_count,
             "logsByCohort": logs_by_cohort,
@@ -110,6 +135,8 @@ def get_dashboard_data(filters):
             "incidentsOverTime": incidents_over_time,
             "openFollowUps": open_follow_ups
         }
+
     except Exception as e:
-        frappe.log_error(message=str(e), title="Error in Student Log Dashboard Data")
+        frappe.log_error(message=str(e), title="Student Log Dashboard Data Error")
         return {"error": str(e)}
+
