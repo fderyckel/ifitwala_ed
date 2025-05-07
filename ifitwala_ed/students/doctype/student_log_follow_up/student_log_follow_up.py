@@ -48,15 +48,15 @@ class StudentLogFollowUp(Document):
 
 		log.db_set("follow_up_status", "Closed")
 
-		author_user = author_user = frappe.db.get_value("Employee", {"employee_full_name": log.author_name}, "user_id")
-		if author_user and author_user != frappe.session.user:
+		log_author_user_id = frappe.db.get_value("Employee", {"employee_full_name": log.author_name}, "user_id")
+		if log_author_user_id and log_author_user_id != frappe.session.user:
 			frappe.publish_realtime(
 				event="follow_up_ready_to_review",
 				message={
 					"log_name": log.name,
 					"student_name": log.student_name
 				},
-				user=author_user
+				user=log_author_user_id
 			)
 
 		# Add comment when the follow-up is formally submitted (possibly closed)
@@ -69,5 +69,24 @@ class StudentLogFollowUp(Document):
 				link=frappe.utils.get_link_to_form("Student Log Follow Up", self.name)
 			)
 		)
+
+		# Check if the current user is the assigned follow-up person
+		if log.follow_up_person == frappe.session.user:
+			# Find the linked ToDo for this Student Log
+			todo_name = frappe.db.get_value(
+				"ToDo", 
+				{
+					"reference_type": "Student Log",
+					"reference_name": log.name,
+					"status": ["!=", "Closed"]
+				}, 
+				"name"
+			)
+
+			if todo_name:
+				# Close the ToDo
+				todo = frappe.get_doc("ToDo", todo_name)
+				todo.status = "Closed"
+				todo.save(ignore_permissions=True)
 
 

@@ -43,6 +43,10 @@ class Employee(NestedSet):
 				user.save(ignore_permissions=True)
 				remove_user_permission("Employee", self.name, existing_user_id)
 
+	# Enforce unique employee_full_name
+	if frappe.db.exists("Employee", {"employee_full_name": self.employee_full_name, "name": ["!=", self.name]}): 
+		frappe.throw(_("Employee Full Name '{0}' must be unique. Another one already exist.").format(self.employee_full_name))
+
 	def after_rename(self, old, new, merge):
 		self.db_set("employee", new)
 

@@ -33,6 +33,11 @@ class Student(Document):
 		if self.student_joining_date and self.student_exit_date and getdate(self.student_joining_date) > getdate(self.student_exit_date):
 			frappe.throw(_("Check again the exit date. The joining date has to be earlier than the exit date."))
 
+		# Enforce unique student_full_name 
+		if frappe.db.exists("Student", {"student_full_name": self.student_full_name, "name": ["!=", self.name]}): 
+			frappe.throw(_("Student Full Name '{0}' must be unique. Please choose a different name.").format(self.student_full_name))
+
+
 
 	def validate_email(self):
 		if self.student_email:
