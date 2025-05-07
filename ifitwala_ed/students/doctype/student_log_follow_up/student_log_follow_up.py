@@ -33,25 +33,9 @@ class StudentLogFollowUp(Document):
 	def after_save(self):
 		log = frappe.get_doc("Student Log", self.student_log)
 
-		# Set the parent log to "In Progress" if still Open
+		# Set the linked student log follow up status to "In Progress" if still Open
 		if log.follow_up_status == "Open":
 			log.db_set("follow_up_status", "In Progress")
-
-		# Notify original author only when this follow-up is Closed
-		if self.status == "Closed":
-			author_user = frappe.db.get_value("Employee", log.author, "user_id")
-			if author_user and author_user != frappe.session.user:
-				frappe.publish_realtime(
-					event="follow_up_ready_to_review",
-					message={
-						"log_name": log.name,
-						"student_name": log.student_name
-					},
-					user=author_user
-				)
-			# Add comment to Student Log when follow-up is first saved (i.e. started)
-		if self.docstatus == 0:
-			log = frappe.get_doc("Student Log", self.student_log)
 			log.add_comment(
 				comment_type="Comment",
 				text=_(
@@ -66,17 +50,20 @@ class StudentLogFollowUp(Document):
 	def after_submit(self):
 		log = frappe.get_doc("Student Log", self.student_log)
 
-		if log.follow_up_status not in ("Closed",):
-			log.db_set("follow_up_status", "Completed")
+		log.db_set("follow_up_status", "Closed")
 
-		# Get auto-close config from Next Step
-		if log.next_step:
-			auto_close_days = frappe.db.get_value("Student Log Next Step", log.next_step, "auto_close_after_days")
-			if auto_close_days:
-				log.db_set("auto_close_after_days", auto_close_days)
+		author_user = frappe.db.get_value("Employee", log.author, "user_id")
+		if author_user and author_user != frappe.session.user:
+			frappe.publish_realtime(
+				event="follow_up_ready_to_review",
+				message={
+					"log_name": log.name,
+					"student_name": log.student_name
+				},
+				user=author_user
+			)
 
 		# Add comment when the follow-up is formally submitted (possibly closed)
-		log = frappe.get_doc("Student Log", self.student_log)
 		log.add_comment(
 			comment_type="Comment",
 			text=_(
