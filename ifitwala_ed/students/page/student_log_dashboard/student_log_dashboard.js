@@ -11,8 +11,51 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 		single_column: true,
 	});
 
-	/*── 2. FILTER FIELDS (unchanged logic) ────────────────────────────────*/
-	// ... identical to previous version, except we no longer touch open‑follow‑ups.
+	/*── 2. FILTER FIELDS ───────────────────────────────────────────*/
+	const school_field = page.add_field({
+		fieldname: "school",
+		label: __("School"),
+		fieldtype: "Link",
+		options: "School",
+		change: () => {
+				program_field.set_value("");
+				selected_student = null;
+				studentInput.value = "";
+				fetch_dashboard_data(page);
+		},
+	});
+
+	const program_field = page.add_field({
+		fieldname: "program",
+		label: __("Program"),
+		fieldtype: "Link",
+		options: "Program",
+		get_query: () => ({
+				filters: { ...(school_field.get_value() && { school: school_field.get_value() }) },
+		}),
+		change: () => {
+				selected_student = null;
+				studentInput.value = "";
+				fetch_dashboard_data(page);
+		},
+	});
+
+	const academic_year_field = page.add_field({
+		fieldname: "academic_year",
+		label: __("Academic Year"),
+		fieldtype: "Link",
+		options: "Academic Year",
+		change: () => fetch_dashboard_data(page),
+	});
+
+	const author_field = page.add_field({
+		fieldname: "author",
+		label: __("Author"),
+		fieldtype: "Link",
+		options: "Employee",
+		change: () => fetch_dashboard_data(page),
+	});
+
 
 	/*── 3. MAIN CONTENT HTML  ──────────────────────────────────────────────*/
 	$(wrapper).append(`
@@ -171,13 +214,21 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 
 /*── 8. FETCH DASHBOARD DATA ───────────────────────────────────────────────*/
 function fetch_dashboard_data(page) {
-	const filters = {
-		school: page.fields_dict.school.get_value(),
-		academic_year: page.fields_dict.academic_year.get_value(),
-		program: page.fields_dict.program.get_value(),
-		student: selected_student,
-		author: page.fields_dict.author.get_value(),
-	};
+	const fd = page.fields_dict;   // shorthand
+
+	// helper: return field value if the widget exists, else null
+	const safe = (name) =>
+			fd && fd[name] && typeof fd[name].get_value === "function"
+					? fd[name].get_value()
+					: null;
+					
+  const filters = {
+    school:        safe("school"),
+    academic_year: safe("academic_year"),
+    program:       safe("program"),
+    student:       selected_student,
+    author:        safe("author"),
+  };	
 
 	frappe.call({
 		method: "ifitwala_ed.students.page.student_log_dashboard.student_log_dashboard.get_dashboard_data",
