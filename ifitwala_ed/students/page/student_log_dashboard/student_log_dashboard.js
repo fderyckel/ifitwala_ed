@@ -29,7 +29,6 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
       },
     }),
     change: () => {
-      student_field.set_value("");
       fetch_dashboard_data(page);
     },
   });
@@ -54,7 +53,8 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 	$(wrapper).append(`
 		<div class="dashboard-overlay" id="dashboard-overlay"></div>
 		<div class="dashboard-content container">
-				${createDashboardCard("student-log-detail", "Student Log Detail")}
+				${studentLogDetailCard()}
+
 				${createDashboardCard("log-type-count", "Log Type Count")}
 				${createDashboardCard("logs-by-cohort", "Logs by Cohort")}
 				${createDashboardCard("logs-by-program", "Logs by Program")}
@@ -68,31 +68,38 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 	/* ─── Card Creation Helper ───────────────────────────────── */
 	function createDashboardCard(id, title) {
 		return `
-						<div class="dashboard-card" id="student-log-detail">
-						<div class="card-title">Student Log Detail</div>
-						<div class="student-log-filter">
-								<label for="student-select">Student</label>
-								<input type="text" id="student-select" placeholder="Select Student" autocomplete="off">
-						</div>
-						<div class="student-log-table-wrapper">
-								<table class="student-log-table">
-										<thead>
-												<tr>
-														<th>Date</th>
-														<th>Log Type</th>
-														<th>Log Content</th>
-														<th>Author</th>
-												</tr>
-										</thead>
-										<tbody id="student-log-table-body"></tbody>
-								</table>
-						</div>
-				</div>
 				<div class="dashboard-card" id="${id}">
 						<div class="card-title">${title}</div>
 						<div id="chart-${id}"></div>
 				</div>
 		`;
+	}
+
+	// NEW helper: single detail card, includes missing dropdown div
+	function studentLogDetailCard() {
+		return `
+				<div class="dashboard-card" id="student-log-detail">
+						<div class="card-title">Student Log Detail</div>
+
+						<div class="student-log-filter mb-2">
+								<label class="form-label" for="student-select">Student</label>
+								<input class="form-control" type="text" id="student-select"
+											placeholder="Start typing…" autocomplete="off">
+								<div id="student-dropdown" class="student-dropdown"></div>
+						</div>
+
+						<div class="student-log-table-wrapper">
+								<table class="table table-bordered table-hover student-log-table">
+										<thead class="table-light">
+												<tr>
+														<th>Date</th><th>Log Type</th>
+														<th>Log Content</th><th>Author</th>
+												</tr>
+										</thead>
+										<tbody id="student-log-table-body"></tbody>
+								</table>
+						</div>
+				</div>`;
 	}
 
 
@@ -150,10 +157,10 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 
 	// Close dropdown on outside click
 	document.addEventListener("click", (e) => {
-			const dropdown = document.getElementById("student-dropdown");
-			if (e.target !== studentInput && !dropdown.contains(e.target)) {
-					hideStudentSuggestions();
-			}
+    const dropdown = document.getElementById("student-dropdown");
+    if (dropdown && e.target !== studentInput && !dropdown.contains(e.target)) {
+        hideStudentSuggestions();
+    }
 	});
 
 
