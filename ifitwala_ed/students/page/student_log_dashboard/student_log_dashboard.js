@@ -149,6 +149,7 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 				overflow-y: auto;
 				z-index: 1000;
 				margin-top: 5px;
+				display: none;
 		}
 		.student-suggestion {
 				padding: 8px 12px;
@@ -178,8 +179,9 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 		<div class="dashboard-content container">
 				<div class="dashboard-card" id="student-log-detail">
 						<div class="student-log-filter">
-								<label for="student-select">Student</label>
-								<input type="text" id="student-select" placeholder="Select Student" autocomplete="off">
+							<label for="student-select">Student</label>
+							<input type="text" id="student-select" placeholder="Select Student" autocomplete="off">
+							<div id="student-dropdown" class="student-dropdown"></div>
 						</div>
 						<div class="student-log-table-wrapper">
 								<table class="student-log-table">
@@ -209,18 +211,18 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 	const studentInput = document.getElementById("student-select");
 	studentInput.addEventListener("input", () => {
 			const query = studentInput.value.trim();
-			if (query.length > 2) {
+			if (query.length > 0) {
 					frappe.call({
 							method: "frappe.desk.search.search_link",
 							args: {
 									doctype: "Student",
 									txt: query,
 									filters: {
-											school: page.fields_dict.school.get_value(),
 											program: page.fields_dict.program.get_value(),
 											academic_year: page.fields_dict.academic_year.get_value(),
 									},
 									limit: 10,
+									limit_start: 0,  // Important for initial search
 							},
 							callback: (r) => {
 									if (r.message) {
@@ -233,14 +235,15 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 									}
 							},
 					});
+			} else {
+					hideStudentSuggestions();  // Clear suggestions when input is empty
 			}
 	});
 
 	function showStudentSuggestions(suggestions) {
-			const dropdown = document.createElement("div");
-			dropdown.classList.add("student-dropdown");
+			const dropdown = document.getElementById("student-dropdown");
 			dropdown.innerHTML = suggestions;
-			document.getElementById("student-log-detail").appendChild(dropdown);
+			dropdown.style.display = "block";
 
 			// Handle suggestion click
 			dropdown.addEventListener("click", (e) => {
@@ -248,17 +251,25 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 					if (selectedStudent) {
 							studentInput.value = selectedStudent;
 							fetch_student_logs(selectedStudent);
-							dropdown.remove();
+							hideStudentSuggestions();
 					}
 			});
-
-			// Close on outside click
-			document.addEventListener("click", (e) => {
-				if (!dropdown.contains(e.target) && e.target !== studentInput) {
-					dropdown.remove();
-				}
-			}, { once: true });
 	}
+
+	function hideStudentSuggestions() {
+			const dropdown = document.getElementById("student-dropdown");
+			dropdown.innerHTML = "";
+			dropdown.style.display = "none";
+	}
+
+	// Close dropdown on outside click
+	document.addEventListener("click", (e) => {
+			const dropdown = document.getElementById("student-dropdown");
+			if (e.target !== studentInput && !dropdown.contains(e.target)) {
+					hideStudentSuggestions();
+			}
+	});
+
 
 	function fetch_student_logs(student_id) {
     frappe.call({
