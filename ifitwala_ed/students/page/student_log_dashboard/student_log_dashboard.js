@@ -132,12 +132,13 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 				search_text: query
 			},
 			callback: (r) => {
+				console.log("Student suggestions:", r.message); 
 				if (r.message && !r.message.error) {
 					const suggestions = r.message.map(s => `
 						<div class="student-suggestion"
 							 data-id="${s.student}"
 							 data-name="${s.student_full_name}">          
-							${s.student_full_name} (${s.student})
+							${s.student_full_name} (${s.student})
 						</div>`).join("");
 					showStudentSuggestions(suggestions);
 				}
@@ -198,7 +199,16 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 
 	// click to zoom/un‑zoom
 	document.querySelectorAll(".dashboard-card").forEach(card => {
-		card.addEventListener("click", () => toggleZoom(card));
+		card.addEventListener("click", (e) => {
+      
+			// ★ don’t zoom if the click came from the filter area
+      if (card.id === "student-log-detail" &&
+				e.target.closest(".student-log-filter, .student-dropdown")) {
+				e.stopPropagation();          // cancel bubbling
+				return;                       // skip zoom entirely
+			}
+			toggleZoom(card);			
+		}); 
 	});
 
 	// click the dimmed background to close
