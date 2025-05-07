@@ -3,15 +3,15 @@
  *  Version: 2025‑05‑07  (fully patched)                                *
  ************************************************************************/
 
+let selected_student = null;   
+
 frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 	/*───────────────────────────── 1. PAGE & GLOBAL VARS ───────────────────────────*/
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: "Student Log Dashboard",
 		single_column: true,
-	});
-
-	let selected_student = null;      
+	});     
 
 	/*───────────────────────────── 2. FILTER FIELDS ───────────────────────────────*/
 	const school_field = page.add_field({
