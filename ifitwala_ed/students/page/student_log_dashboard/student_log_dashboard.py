@@ -122,8 +122,11 @@ def get_dashboard_data(filters):
             ORDER BY label ASC
         """, as_dict=True)
 
-        # Counting Open Follow-Ups
-        open_follow_ups = frappe.db.count("Student Log", {"follow_up_status": "Open"})
+        # Counting Open Follow‑Ups with the same filters
+        open_follow_ups = frappe.db.sql(f"""
+            SELECT COUNT(*) FROM `tabStudent Log` 
+            WHERE {where_clause} AND follow_up_status = 'Open' 
+            """)[0][0]
 
         # Return the combined data
         return {

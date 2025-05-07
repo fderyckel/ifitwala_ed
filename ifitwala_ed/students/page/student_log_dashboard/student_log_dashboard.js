@@ -93,21 +93,21 @@ function fetch_dashboard_data(page) {
 function update_charts(data) {
 	// Log Type Count
 	new frappe.Chart("#log-type-count", {
-			data: {
-					labels: data.logTypeCount.map(item => item.log_type),
-					datasets: [{ values: data.logTypeCount.map(item => item.count) }]
-			},
-			type: 'bar',
-			height: 300,
-			colors: ['#007bff'],
-			title: 'Log Type Count'
-	});
+		data: {
+			labels: safe(data.logTypeCount).map(item => item.label),
+			datasets: [{ values: safe(data.logTypeCount).map(item => item.value) }]
+		},
+		type: 'bar',
+    height: 300, 
+		colors: ['#007bff'],
+    title: 'Log Type Count'
+  });
 
 	// Logs by Cohort
 	new frappe.Chart("#logs-by-cohort", {
 			data: {
-					labels: data.logsByCohort.map(item => item.cohort),
-					datasets: [{ values: data.logsByCohort.map(item => item.count) }]
+				labels: safe(data.logsByCohort).map(item => item.label),
+				datasets: [{ values: safe(data.logsByCohort).map(item => item.value) }]
 			},
 			type: 'bar',
 			height: 300,
