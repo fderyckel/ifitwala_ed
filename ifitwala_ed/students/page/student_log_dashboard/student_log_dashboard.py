@@ -116,3 +116,42 @@ def get_dashboard_data(filters=None):
     except Exception as e:
         frappe.log_error(str(e), "Student Log Dashboard Data Error")
         return {"error": str(e)}
+
+@frappe.whitelist()
+def get_distinct_students(filters=None):
+    """Fetch unique students based on selected school, program, and academic year."""
+    try:
+        filters = frappe.parse_json(filters) or {}
+        conditions = []
+        params = {}
+
+        # Apply filters based on available context
+        if filters.get("school"):
+            conditions.append("pe.school = %(school)s")
+            params["school"] = filters["school"]
+
+        if filters.get("program"):
+            conditions.append("pe.program = %(program)s")
+            params["program"] = filters["program"]
+
+        if filters.get("academic_year"):
+            conditions.append("pe.academic_year = %(academic_year)s")
+            params["academic_year"] = filters["academic_year"]
+
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+
+        # Fetch unique students
+        students = frappe.db.sql(f"""
+            SELECT DISTINCT pe.student, s.student_name 
+            FROM `tabProgram Enrollment` pe
+            INNER JOIN `tabStudent` s ON pe.student = s.name
+            WHERE {where_clause}
+            ORDER BY s.student_name
+            LIMIT 1000
+        """, params, as_dict=True)
+
+        return students
+
+    except Exception as e:
+        frappe.log_error(message=str(e), title="Student Lookup Error")
+        return {"error": str(e)}

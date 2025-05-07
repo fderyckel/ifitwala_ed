@@ -57,121 +57,6 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
     change: () => fetch_dashboard_data(page),
   });
 
-  /* ─── CSS STYLES ───────────────────────────────── */
-	// Inject custom CSS
-	const style = document.createElement('style');
-	style.innerHTML = `
-		.dashboard-card {
-			background: #fff;
-			border-radius: 8px;
-			box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-			margin: 10px;
-			padding: 20px;
-			transition: transform 0.3s ease, box-shadow 0.3s ease;
-			cursor: pointer;
-			flex: 1 1 calc(50% - 40px); 
-			max-width: calc(50% - 40px); 
-		}
-		.dashboard-card:hover {
-			transform: scale(1.02);
-			box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-		}
-		.dashboard-card.zoomed {
-			position: fixed;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			z-index: 1000;
-			width: 90vw;
-			height: 90vh;
-			overflow: auto;
-			max-width: 1200px;  
-			max-height: 800px; 
-		}
-		.dashboard-card.zoomed .frappe-chart {
-			width: 100% !important;
-			height: 100% !important;
-		}	
-		.dashboard-card.zoomed .card-body {
-			width: 100%;
-			height: 100%;
-			padding: 0;
-			display: flex;
-			justify-content: center;
-			align-items: center;			
-		}
-		.dashboard-overlay {
-			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
-			background: rgba(0,0,0,0.5);
-			z-index: 999;
-			display: none;
-		}
-		.dashboard-overlay.active {
-			display: block;
-		}
-		.dashboard-content.container {
-			display: flex;
-			flex-wrap: wrap;
-			gap: 20px;
-			justify-content: space-between;
-			margin-bottom: 20px;
-		}
-		.student-log-filter {
-				margin-bottom: 10px;
-		}
-		.student-log-table-wrapper {
-				max-height: 400px;
-				overflow-y: auto;
-				border: 1px solid #ddd;
-				border-radius: 8px;
-		}
-		.student-log-table th, .student-log-table td {
-				padding: 8px 12px;
-				border-bottom: 1px solid #f0f0f0;
-		}
-		.student-log-table th {
-				background-color: #f7f7f7;
-				position: sticky;
-				top: 0;
-				z-index: 1;
-		}
-		.student-dropdown {
-				position: absolute;
-				background: #fff;
-				border: 1px solid #ddd;
-				border-radius: 4px;
-				width: 100%;
-				max-height: 200px;
-				overflow-y: auto;
-				z-index: 1000;
-				margin-top: 5px;
-				display: none;
-		}
-		.student-suggestion {
-				padding: 8px 12px;
-				cursor: pointer;
-		}
-		.student-suggestion:hover {
-				background-color: #f0f0f0;
-		}
-
-		.full-size {
-			width: 100%;
-			height: 100%;
-		}
-
-		@media (max-width: 768px) {
-			.dashboard-card {
-				flex: 1 1 100%;
-				max-width: 100%;
-			}
-		}
-	`;
-	document.head.appendChild(style);
 
   /* ─── Main content containers ───────────────────────────────── */
   $(wrapper).append(`
@@ -212,23 +97,20 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 	studentInput.addEventListener("input", () => {
 			const query = studentInput.value.trim();
 			if (query.length > 0) {
+					const filters = {
+							school: page.fields_dict.school.get_value(),
+							program: page.fields_dict.program.get_value(),
+							academic_year: page.fields_dict.academic_year.get_value(),
+					};
+
 					frappe.call({
-							method: "frappe.desk.search.search_link",
-							args: {
-									doctype: "Student",
-									txt: query,
-									filters: {
-											program: page.fields_dict.program.get_value(),
-											academic_year: page.fields_dict.academic_year.get_value(),
-									},
-									limit: 10,
-									limit_start: 0,  // Important for initial search
-							},
+							method: "ifitwala_ed.students.page.student_log_dashboard.student_log_dashboard.get_distinct_students",
+							args: { filters: JSON.stringify(filters) },
 							callback: (r) => {
-									if (r.message) {
+									if (r.message && !r.message.error) {
 											const suggestions = r.message.map(s => `
-													<div class="student-suggestion" data-name="${s.value}">
-															${s.value} - ${s.description}
+													<div class="student-suggestion" data-name="${s.student}">
+															${s.student} - ${s.student_name}
 													</div>
 											`).join("");
 											showStudentSuggestions(suggestions);
@@ -269,6 +151,7 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 					hideStudentSuggestions();
 			}
 	});
+
 
 
 	function fetch_student_logs(student_id) {
