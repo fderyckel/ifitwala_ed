@@ -1,90 +1,86 @@
 # ifitwala_ed/students/page/student_log_dashboard/student_log_dashboard.py
-"""Server‑side aggregation for the Student Log Dashboard (Frappe v15)."""
+"""Server‑side aggregation for the Student Log Dashboard (Frappe v15).
+   Uses consistent alias `sl` for tabStudent Log in every query to
+   avoid ambiguous column references when filters include `program`.
+"""
 
 import frappe
 
 
 @frappe.whitelist()
 def get_dashboard_data(filters=None):
-    """Return aggregated data for the Student Log Dashboard.
+    """Aggregate stats with optional filters.
 
-    Args:
-        filters (dict | str | None): JSON string or dict containing optional keys:
-            school, academic_year, program, student, author
-    Returns:
-        dict: Aggregated datasets or {"error": str}
+    Filters arrive JSON‑encoded; keys: school, academic_year, program,
+    student, author.
     """
     try:
-        # Ensure `filters` is a dict (may arrive as JSON‑encoded str)
         filters = frappe.parse_json(filters) or {}
 
-        conditions: list[str] = []
-        params: dict[str, str] = {}
+        conditions, params = [], {}
 
-        # ── School filter (via Program) ────────────────────────────────
+        # ── School filter (via Program) ────────────────────────────
         if filters.get("school"):
             conditions.append(
-                "program IN (SELECT name FROM `tabProgram` WHERE school = %(field_school)s)"
+                "sl.program IN (SELECT name FROM `tabProgram` WHERE school = %(field_school)s)"
             )
             params["field_school"] = filters["school"]
 
-        # ── Direct column filters ─────────────────────────────────────
+        # ── Direct columns in Student Log (alias sl) ──────────────
         direct_map = {
-            "academic_year": "academic_year",
-            "program": "program",
-            "student": "student",
-            "author": "author_name",
+            "academic_year": "sl.academic_year",
+            "program": "sl.program",
+            "student": "sl.student",
+            "author": "sl.author_name",
         }
-        for key, column in direct_map.items():
+        for key, col in direct_map.items():
             if filters.get(key):
                 ph = f"field_{key}"
-                conditions.append(f"{column} = %({ph})s")
+                conditions.append(f"{col} = %({ph})s")
                 params[ph] = filters[key]
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-        def q(sql: str):
-            """Execute a parameterised SQL with the shared WHERE clause."""
-            return frappe.db.sql(sql.format(where=where_clause), params, as_dict=True)
+        def q(sql):
+            return frappe.db.sql(sql.format(w=where_clause), params, as_dict=True)
 
-        # ── Aggregations ─────────────────────────────────────────────
+        # ── Aggregates ────────────────────────────────────────────
         log_type_count = q(
-            "SELECT log_type AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` WHERE {where} GROUP BY log_type ORDER BY value DESC"
+            "SELECT sl.log_type AS label, COUNT(*) AS value "
+            "FROM `tabStudent Log` sl WHERE {w} "
+            "GROUP BY sl.log_type ORDER BY value DESC"
         )
 
         logs_by_cohort = q(
             "SELECT pe.cohort AS label, COUNT(sl.name) AS value "
             "FROM `tabStudent Log` sl "
             "LEFT JOIN `tabProgram Enrollment` pe ON sl.student = pe.student "
-            "WHERE {where} GROUP BY pe.cohort ORDER BY value DESC"
+            "WHERE {w} GROUP BY pe.cohort ORDER BY value DESC"
         )
 
         logs_by_program = q(
-            "SELECT pe.program AS label, COUNT(sl.name) AS value "
-            "FROM `tabStudent Log` sl "
-            "LEFT JOIN `tabProgram Enrollment` pe ON sl.student = pe.student "
-            "WHERE {where} GROUP BY pe.program ORDER BY value DESC"
+            "SELECT sl.program AS label, COUNT(sl.name) AS value "
+            "FROM `tabStudent Log` sl WHERE {w} GROUP BY sl.program ORDER BY value DESC"
         )
 
         logs_by_author = q(
-            "SELECT author_name AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` WHERE {where} GROUP BY author_name ORDER BY value DESC"
+            "SELECT sl.author_name AS label, COUNT(*) AS value "
+            "FROM `tabStudent Log` sl WHERE {w} GROUP BY sl.author_name ORDER BY value DESC"
         )
 
         next_step_types = q(
-            "SELECT next_step AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` WHERE {where} GROUP BY next_step ORDER BY value DESC"
+            "SELECT sl.next_step AS label, COUNT(*) AS value "
+            "FROM `tabStudent Log` sl WHERE {w} GROUP BY sl.next_step ORDER BY value DESC"
         )
 
         incidents_over_time = q(
-            "SELECT DATE_FORMAT(date,'%%Y-%%m-%%d') AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` WHERE {where} GROUP BY label ORDER BY label ASC"
+            "SELECT DATE_FORMAT(sl.date,'%%Y-%%m-%%d') AS label, COUNT(*) AS value "
+            "FROM `tabStudent Log` sl WHERE {w} GROUP BY label ORDER BY label ASC"
         )
 
         open_follow_ups = frappe.db.sql(
-            f"SELECT COUNT(*) FROM `tabStudent Log` "
-            f"WHERE {where_clause} AND follow_up_status = 'Open'",
+            f"SELECT COUNT(*) FROM `tabStudent Log` sl WHERE {where_clause} "
+            "AND sl.follow_up_status = 'Open'",
             params,
         )[0][0]
 
