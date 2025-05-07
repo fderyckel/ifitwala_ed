@@ -86,8 +86,8 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 			padding: 20px;
 			transition: transform 0.3s ease, box-shadow 0.3s ease;
 			cursor: pointer;
-			flex: 1 1 48%;
-			max-width: 48%;
+			flex: 1 1 calc(50% - 40px); 
+			max-width: calc(50% - 40px); 
 		}
 		.dashboard-card:hover {
 			transform: scale(1.02);
@@ -102,8 +102,13 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 			width: 90vw;
 			height: 90vh;
 			overflow: auto;
-			max-width: 1200px;  /* Limit maximum size */
-			max-height: 800px;  /* Limit maximum size */
+			max-width: 1200px;  
+			max-height: 800px; 
+		}
+		.dashboard-card.zoomed .card-body {
+			width: 100%;
+			height: 100%;
+			padding: 0;
 		}
 		.dashboard-overlay {
 			position: fixed;
@@ -122,6 +127,7 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 			display: flex;
 			flex-wrap: wrap;
 			gap: 20px;
+    	justify-content: space-between;
 		}
 		.full-size {
 			width: 100%;
