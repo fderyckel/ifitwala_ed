@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, date_diff
 
@@ -10,15 +11,15 @@ class StudentLog(Document):
 	def validate(self):
 		if self.requires_follow_up:
 			if not self.follow_up_person:
-				frappe.throw("Please select a follow-up person.")
+				frappe.throw(_("Please select a follow-up person."))
 			if not self.next_step:
-				frappe.throw("Please select a next step.")
+				frappe.throw(_("Please select a next step."))
 			if not self.follow_up_status:
 				self.follow_up_status = "Open"
 		else:
 			# No follow-up required: status must be blank
 			if self.follow_up_status:
-				frappe.throw("Follow-up status must be blank if no follow-up is required.")
+				frappe.throw(_("Follow-up status must be blank if no follow-up is required."))
 			self.follow_up_person = None
 			self.next_step = None
 
