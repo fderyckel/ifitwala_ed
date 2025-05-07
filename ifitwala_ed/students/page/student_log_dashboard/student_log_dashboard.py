@@ -30,7 +30,7 @@ def get_dashboard_data(filters=None):
         direct_map = {
             "academic_year": "sl.academic_year",
             "program": "sl.program",
-            "student": "sl.student",
+            #"student": "sl.student",
             "author": "sl.author_name",
         }
         for key, col in direct_map.items():
@@ -84,6 +84,24 @@ def get_dashboard_data(filters=None):
             params,
         )[0][0]
 
+        # ── Student Logs (if student filter is set) ─────────────────
+        student_logs = []
+        if filters.get("student"):
+            student_logs = frappe.db.sql(
+                """
+                SELECT
+                    sl.date,
+                    sl.log_type,
+                    sl.content,
+                    sl.author_name AS author
+                FROM `tabStudent Log` sl
+                WHERE sl.student = %(field_student)s
+                ORDER BY sl.date DESC
+                """,
+                {"field_student": filters["student"]},
+                as_dict=True
+            )
+
         return {
             "logTypeCount": log_type_count,
             "logsByCohort": logs_by_cohort,
@@ -92,6 +110,7 @@ def get_dashboard_data(filters=None):
             "nextStepTypes": next_step_types,
             "incidentsOverTime": incidents_over_time,
             "openFollowUps": open_follow_ups,
+            "studentLogs": student_logs,
         }
 
     except Exception as e:
