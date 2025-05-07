@@ -40,15 +40,43 @@ frappe.ui.form.on("Student Log", {
 
     if (status === "closed" && is_author) {
       frm.add_custom_button(__("Mark as Completed"), function () {
-        frm.set_value("follow_up_status", "Completed");
-        frm.save();
+        frm.call({
+          method: "frappe.client.set_value",
+          args: {
+            doctype: "Student Log",
+            name: frm.doc.name,
+            fieldname: "follow_up_status",
+            value: "Completed"
+          },
+          callback: function() {
+            frappe.show_alert({
+              message: __("Marked as Completed"),
+              indicator: "green"
+            });
+            frm.reload_doc();  // Update the form to reflect the new status
+          }
+        });
       }, __("Actions"));
     }
 
     if (frm.doc.follow_up_status === "Completed" && frappe.user.has_role("Academic Admin")) {
       frm.add_custom_button(__("Finalize: Close Log"), function () {
-        frm.set_value("follow_up_status", "Closed");
-        frm.save();
+        frappe.call({
+          method: "frappe.client.set_value",
+          args: {
+            doctype: "Student Log",
+            name: frm.doc.name,
+            fieldname: "follow_up_status",
+            value: "Closed"
+          },
+          callback: function() {
+            frappe.show_alert({
+              message: __("Log finalized and closed"),
+              indicator: "red"
+            });
+            frm.reload_doc();  // Ensure UI is consistent
+          }
+        });
       }, __("Actions"));
     }
 

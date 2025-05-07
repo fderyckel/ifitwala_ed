@@ -22,18 +22,19 @@ class StudentLog(Document):
 			self.follow_up_person = None
 			self.next_step = None
 
-
+		# Validate that the follow-up person has the role required for the next step
 		expected_role = frappe.get_value("Student Log Next Step", self.next_step, "associated_role")
+		has_role = False
 		if expected_role:
-			has_role = frappe.db.exists("Has Role", {
-				"parent": self.follow_up_person, 
-				"role": expected_role
-			})  
-			
-		if not has_role: 
-			frappe.throw(_( 
-				f"Follow-up person '{self.follow_up_person}' does not have the role '{expected_role}' required for this step."
-			))
+				has_role = frappe.db.exists("Has Role", {
+						"parent": self.follow_up_person, 
+						"role": expected_role
+				})
+		if expected_role and not has_role:
+				frappe.throw(_( 
+						f"Follow-up person '{self.follow_up_person}' does not have the role '{expected_role}' required for this step."
+				))
+
 
 	
 	def after_submit(self):
