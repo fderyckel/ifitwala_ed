@@ -54,7 +54,6 @@
    "fetch_from": "student_log.student",
    "fieldname": "student",
    "fieldtype": "Link",
-   "is_virtual": 1,
    "label": "Student",
    "options": "Student",
    "read_only": 1
@@ -93,15 +92,16 @@
   },
   {
    "fieldname": "follow_up_author",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Author",
-   "options": "Employee"
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-06 21:01:26.812202",
+ "modified": "2025-05-07 09:06:36.975890",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Follow Up",

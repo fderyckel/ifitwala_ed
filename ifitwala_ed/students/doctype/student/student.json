@@ -61,7 +61,6 @@
    "fieldname": "student_first_name",
    "fieldtype": "Data",
    "in_filter": 1,
-   "in_list_view": 1,
    "label": "First Name",
    "reqd": 1
   },
@@ -75,7 +74,6 @@
    "fieldtype": "Data",
    "in_filter": 1,
    "in_global_search": 1,
-   "in_list_view": 1,
    "label": "Last Name",
    "reqd": 1
   },
@@ -174,7 +172,6 @@
    "fieldname": "cohort",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "in_filter": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Cohort",
@@ -190,7 +187,10 @@
    "fieldtype": "Data",
    "hidden": 1,
    "in_global_search": 1,
-   "label": "Title"
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Title",
+   "read_only": 1
   },
   {
    "depends_on": "eval: !doc.__islocal",
@@ -283,7 +283,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-02 15:04:36.704151",
+ "modified": "2025-05-07 07:59:25.169402",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
@@ -348,7 +348,7 @@
   }
  ],
  "row_format": "Dynamic",
- "search_fields": "student_full_name, student_preferred_name, student_first_name, student_last_name",
+ "search_fields": "student_full_name, student_preferred_name, cohort",
  "show_name_in_global_search": 1,
  "show_title_field_in_link": 1,
  "sort_field": "modified",
