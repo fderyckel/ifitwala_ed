@@ -2,6 +2,143 @@
 // For license information, please see license.txt
 
 let selected_student = null;          // global
+let recent_start = 0;         			 // pagination offset
+const recent_page_len = 25;   			 // rows per fetch
+
+/*── 	8.  recent log data table ──────────────────────────────*/
+function fetch_recent_logs(page, append = false) {
+	const fd = page.fields_dict;
+	const safe = name =>
+			fd && fd[name] && typeof fd[name].get_value === "function"
+					? fd[name].get_value() : null;
+
+	frappe.call({
+			method: "ifitwala_ed.students.page.student_log_dashboard.student_log_dashboard.get_recent_logs",
+			args: {
+					filters: JSON.stringify({
+							school:        safe("school"),
+							academic_year: safe("academic_year"),
+							program:       safe("program"),
+							author:        safe("author"),
+					}),
+					start: recent_start,
+					page_length: recent_page_len,
+			},
+			callback: (r) => {
+					if (!r.message || r.message.error) return;
+
+					const rows = r.message.map(d => `
+							<tr>
+								<td>${d.date}</td>
+								<td>${d.student}</td>
+								<td>${d.log_type}</td>
+								<td>${d.content}</td>
+								<td>${d.author}</td>
+								<td class="text-center">${d.requires_follow_up ? "✓" : "✗"}</td>
+							</tr>`).join("");
+
+					const body = document.getElementById("recent-log-table-body");
+					if (!append) body.innerHTML = "";     // fresh load
+					body.insertAdjacentHTML("beforeend", rows);
+
+					// hide button if fewer than a full page returned
+					if (r.message.length < recent_page_len) {
+							document.getElementById("recent-log-load-more").style.display = "none";
+					} else {
+							document.getElementById("recent-log-load-more").style.display = "block";
+					}
+
+					recent_start += r.message.length;     // advance pointer
+			}
+	});
+}
+
+/*── 8. FETCH DASHBOARD DATA ───────────────────────────────────────────────*/
+function fetch_dashboard_data(page) {
+	const fd = page.fields_dict;   // shorthand
+
+	// helper: return field value if the widget exists, else null
+	const safe = (name) =>
+			fd && fd[name] && typeof fd[name].get_value === "function"
+					? fd[name].get_value()
+					: null;
+					
+  const filters = {
+    school:        safe("school"),
+    academic_year: safe("academic_year"),
+    program:       safe("program"),
+    student:       selected_student,
+    author:        safe("author"),
+  };	
+
+	frappe.call({
+		method: "ifitwala_ed.students.page.student_log_dashboard.student_log_dashboard.get_dashboard_data",
+		args: { filters },
+		callback: (r) => {
+			if (r.message) {
+				//console.log("Dashboard data loaded:", r.message);
+				update_charts(r.message);
+			}
+		},
+	});
+}
+
+/*── 9. CHART & TABLE RENDER ───────────────────────────────────────────────*/
+function update_charts(data) {
+	if (data.error) {
+		console.error("Dashboard error:", data.error);
+		frappe.msgprint({
+			title: __("Dashboard Error"),
+			message: data.error,
+			indicator: "red"
+		});
+		return;
+	}
+
+	const chartConfigs = [
+		{ id: "log-type-count",       dataKey: "logTypeCount",       color: "#007bff" },
+		{ id: "logs-by-cohort",       dataKey: "logsByCohort",       color: "#17a2b8" },
+		{ id: "logs-by-program",      dataKey: "logsByProgram",      color: "#28a745" },
+		{ id: "logs-by-author",       dataKey: "logsByAuthor",       color: "#ffc107" },
+		{ id: "next-step-types",      dataKey: "nextStepTypes",      color: "#fd7e14" },
+		{ id: "incidents-over-time",  dataKey: "incidentsOverTime",  color: "#dc3545", type: "line" },
+	];
+
+	chartConfigs.forEach(cfg => {
+		// sanitize rows; value must be numeric
+		const rows = (data[cfg.dataKey] || []).filter(r =>
+			r && r.value != null && !isNaN(Number(r.value))
+		);
+
+		if (!rows.length) {
+			$(`#chart-${cfg.id}`).empty();                // ★ CHANGED – clear / skip
+			return;
+		}
+
+		new frappe.Chart(`#chart-${cfg.id}`, {
+			data: {
+				labels:  rows.map(r => r.label),
+				datasets:[{ values: rows.map(r => Number(r.value)) }],
+			},
+			type:   cfg.type || "bar",
+			height: 300,
+			colors: [cfg.color],
+		});
+	});
+
+	// Student‑Log detail rows
+	if (Array.isArray(data.studentLogs)) {
+		const rows = data.studentLogs.map(l => `
+			<tr>
+				<td>${l.date}</td>
+				<td>${l.log_type}</td>
+				<td>${l.content}</td>
+				<td>${l.author}</td>
+			</tr>`).join("");
+		document.getElementById("student-log-table-body").innerHTML = rows;
+	}
+}
+
 
 frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 	/*── 1. PAGE  ───────────────────────────────────────────────────────────*/
@@ -22,6 +159,8 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 				selected_student = null;
 				studentInput.value = "";
 				fetch_dashboard_data(page);
+				recent_start = 0;               // reset pagination
+				fetch_recent_logs(page);        // fresh load for new context
 		},
 	});
 
@@ -37,6 +176,8 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 				selected_student = null;
 				studentInput.value = "";
 				fetch_dashboard_data(page);
+				recent_start = 0;               
+				fetch_recent_logs(page);        
 		},
 	});
 
@@ -45,7 +186,11 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 		label: __("Academic Year"),
 		fieldtype: "Link",
 		options: "Academic Year",
-		change: () => fetch_dashboard_data(page),
+		change: () => {
+			fetch_dashboard_data(page),
+			recent_start = 0;              
+			fetch_recent_logs(page);        
+		}
 	});
 
 	const author_field = page.add_field({
@@ -64,6 +209,7 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 		<div class="dashboard-content container">
 
 			${createDashboardCard("incidents-over-time", "Incidents Over Time")} 
+			${recentLogsCard()}      
 			${createDashboardCard("log-type-count",  "Log Type Count")}
 			${createDashboardCard("logs-by-cohort",  "Logs by Cohort")}
 			${createDashboardCard("logs-by-program", "Logs by Program")}
@@ -82,6 +228,29 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 				<div class="card-title">${title}</div>
 				<div id="chart-${id}"></div>
 			</div>`;
+	}
+
+	function recentLogsCard() {
+    return `
+      <div class="dashboard-card" id="recent-log-card">
+        <div class="card-title">Recent Student Logs</div>
+
+        <div class="student-log-table-wrapper">
+          <table class="table table-bordered table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Date</th><th>Student</th><th>Log Type</th>
+                <th>Log</th><th>Author</th><th>⧈</th>
+              </tr>
+            </thead>
+            <tbody id="recent-log-table-body"></tbody>
+          </table>
+        </div>
+
+        <button class="btn btn-link w-100" id="recent-log-load-more">
+          Load more…
+        </button>
+      </div>`;
 	}
 
 	function studentLogDetailCard() {
@@ -110,6 +279,10 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 			</div>`;
 	}
 
+	document.getElementById("recent-log-load-more")
+        .addEventListener("click", () => fetch_recent_logs(page, true));
+
+
 	/*── 5. STUDENT FILTER LOGIC ───────────────────────────────────────────*/
 	const studentInput = document.getElementById("student-select");
 	const dropdownEl   = document.getElementById("student-dropdown");
@@ -132,7 +305,7 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 				search_text: query
 			},
 			callback: (r) => {
-				console.log("Student suggestions:", r.message); 
+				//console.log("Student suggestions:", r.message); 
 				if (r.message && !r.message.error) {
 					const suggestions = r.message.map(s => `
 						<div class="student-suggestion"
@@ -222,91 +395,7 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 
 
 	/*── 7. INITIAL LOAD ───────────────────────────────────────────────────*/
+	fetch_recent_logs(page);   
 	fetch_dashboard_data(page);
 };
 
-/*── 8. FETCH DASHBOARD DATA ───────────────────────────────────────────────*/
-function fetch_dashboard_data(page) {
-	const fd = page.fields_dict;   // shorthand
-
-	// helper: return field value if the widget exists, else null
-	const safe = (name) =>
-			fd && fd[name] && typeof fd[name].get_value === "function"
-					? fd[name].get_value()
-					: null;
-					
-  const filters = {
-    school:        safe("school"),
-    academic_year: safe("academic_year"),
-    program:       safe("program"),
-    student:       selected_student,
-    author:        safe("author"),
-  };	
-
-	frappe.call({
-		method: "ifitwala_ed.students.page.student_log_dashboard.student_log_dashboard.get_dashboard_data",
-		args: { filters },
-		callback: (r) => {
-			if (r.message) {
-				console.log("Dashboard data loaded:", r.message);
-				update_charts(r.message);
-			}
-		},
-	});
-}
-
-/*── 9. CHART & TABLE RENDER ───────────────────────────────────────────────*/
-function update_charts(data) {
-	if (data.error) {
-		console.error("Dashboard error:", data.error);
-		frappe.msgprint({
-			title: __("Dashboard Error"),
-			message: data.error,
-			indicator: "red"
-		});
-		return;
-	}
-
-	const chartConfigs = [
-		{ id: "log-type-count",       dataKey: "logTypeCount",       color: "#007bff" },
-		{ id: "logs-by-cohort",       dataKey: "logsByCohort",       color: "#17a2b8" },
-		{ id: "logs-by-program",      dataKey: "logsByProgram",      color: "#28a745" },
-		{ id: "logs-by-author",       dataKey: "logsByAuthor",       color: "#ffc107" },
-		{ id: "next-step-types",      dataKey: "nextStepTypes",      color: "#fd7e14" },
-		{ id: "incidents-over-time",  dataKey: "incidentsOverTime",  color: "#dc3545", type: "line" },
-	];
-
-	chartConfigs.forEach(cfg => {
-		// sanitize rows; value must be numeric
-		const rows = (data[cfg.dataKey] || []).filter(r =>
-			r && r.value != null && !isNaN(Number(r.value))
-		);
-
-		if (!rows.length) {
-			$(`#chart-${cfg.id}`).empty();                // ★ CHANGED – clear / skip
-			return;
-		}
-
-		new frappe.Chart(`#chart-${cfg.id}`, {
-			data: {
-				labels:  rows.map(r => r.label),
-				datasets:[{ values: rows.map(r => Number(r.value)) }],
-			},
-			type:   cfg.type || "bar",
-			height: 300,
-			colors: [cfg.color],
-		});
-	});
-
-	// Student‑Log detail rows
-	if (Array.isArray(data.studentLogs)) {
-		const rows = data.studentLogs.map(l => `
-			<tr>
-				<td>${l.date}</td>
-				<td>${l.log_type}</td>
-				<td>${l.content}</td>
-				<td>${l.author}</td>
-			</tr>`).join("");
-		document.getElementById("student-log-table-body").innerHTML = rows;
-	}
-}

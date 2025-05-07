@@ -30,7 +30,7 @@ def get_dashboard_data(filters=None):
         direct_map = {
             "academic_year": "sl.academic_year",
             "program": "sl.program",
-            "student": "sl.student",
+            #"student": "sl.student",
             "author": "sl.author_name",
         }
         for key, col in direct_map.items():
@@ -162,3 +162,50 @@ def get_distinct_students(filters=None, search_text: str = ""):   # ★ CHANGED
     except Exception as e:
         frappe.log_error(message=str(e), title="Student Lookup Error")
         return {"error": str(e)}
+
+@frappe.whitelist()
+def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
+    """Return the most recent Student Log rows that match the page filters
+       (school, program, academic_year, author). Excludes the student filter."""
+    filters = frappe.parse_json(filters) or {}
+    conditions, params = [], {}
+
+    # reuse global filters except 'student'
+    if filters.get("school"):
+        conditions.append(
+            "sl.program IN (SELECT name FROM `tabProgram` WHERE school = %(school)s)"
+        )
+        params["school"] = filters["school"]
+
+    direct_map = {
+        "academic_year": "sl.academic_year",
+        "program":       "sl.program",
+        "author":        "sl.author_name",
+    }
+    for key, col in direct_map.items():
+        if filters.get(key):
+            ph = key
+            conditions.append(f"{col} = %({ph})s")
+            params[ph] = filters[key]
+
+    where_clause = " AND ".join(conditions) if conditions else "1=1"
+
+    logs = frappe.db.sql(
+        f"""
+        SELECT
+            sl.date,
+            s.student_full_name AS student,
+            sl.log_type,
+            sl.log              AS content,
+            sl.author_name      AS author,
+            sl.requires_follow_up
+        FROM `tabStudent Log` sl
+        LEFT JOIN `tabStudent` s ON s.name = sl.student
+        WHERE {where_clause}
+        ORDER BY sl.date DESC
+        LIMIT %(start)s, %(page_len)s
+        """,
+        {**params, "start": start, "page_len": page_length},
+        as_dict=True,
+    )
+    return logs
