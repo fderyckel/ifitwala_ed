@@ -32,6 +32,7 @@ class Employee(NestedSet):
 		self.validate_status()
 		self.validate_reports_to()
 		self.validate_preferred_email()
+		self.update_user_default_school()
 
 		if self.user_id:
 			self.validate_user_details()
@@ -119,6 +120,34 @@ class Employee(NestedSet):
 				frappe.msgprint(_("Please enter {0}").format(self.preferred_contact_email))
 			elif self.preferred_contact_email and not self.get("employee_" + scrub(self.preferred_contact_email)):
 				frappe.msgprint(_("Please enter {0}").format(self.preferred_contact_email))	
+				
+	def update_user_default_school(self):
+		"""Set or update the default school for the user linked to this employee."""
+		if not self.user_id: 
+			return  # No linked user to update
+
+		# Get the current default school for this user
+		current_default = frappe.defaults.get_user_default("school", self.user_id)
+
+		# Set the default if missing and a school is already filled
+		if not current_default and self.school: 
+			frappe.defaults.set_user_default("school", self.school, self.user_id) 
+			frappe.clear_user_cache(self.user_id) 
+			frappe.msgprint(_("Default school set to {0} for user {1} (first-time setup).").format(self.school, self.user_id)) 
+			return
+
+		# Handle clearing the default if the field is empty
+		if not self.school:
+			frappe.defaults.clear_default("school", self.user_id)
+			frappe.clear_user_cache(self.user_id)
+			frappe.msgprint(_("Default school cleared for user {0}.").format(self.user_id))
+			return
+
+		# Update default school only if it has changed
+		if self.school != current_default:
+			frappe.defaults.set_user_default("school", self.school, self.user_id)
+			frappe.clear_user_cache(self.user_id)
+			frappe.msgprint(_("Default school set to {0} for user {1}.").format(self.school, self.user_id))
 
 	# call on validate.  Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):

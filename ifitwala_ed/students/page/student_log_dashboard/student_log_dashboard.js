@@ -5,7 +5,7 @@ let selected_student = null;          // global
 let recent_start = 0;         			 // pagination offset
 const recent_page_len = 25;   			 // rows per fetch
 
-/*── 	8.  recent log data table ──────────────────────────────*/
+/*── 	0.1  recent log data table ──────────────────────────────*/
 function fetch_recent_logs(page, append = false) {
 	const fd = page.fields_dict;
 	const safe = name =>
@@ -53,7 +53,7 @@ function fetch_recent_logs(page, append = false) {
 	});
 }
 
-/*── 8. FETCH DASHBOARD DATA ───────────────────────────────────────────────*/
+/*── 0.2 FETCH DASHBOARD DATA ───────────────────────────────────────────────*/
 function fetch_dashboard_data(page) {
 	const fd = page.fields_dict;   // shorthand
 
@@ -83,7 +83,7 @@ function fetch_dashboard_data(page) {
 	});
 }
 
-/*── 9. CHART & TABLE RENDER ───────────────────────────────────────────────*/
+/*── 0.3 CHART & TABLE RENDER ───────────────────────────────────────────────*/
 function update_charts(data) {
 	if (data.error) {
 		console.error("Dashboard error:", data.error);
@@ -141,6 +141,9 @@ function update_charts(data) {
 
 
 frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
+
+	frappe.require("/assets/ifitwala_ed/css/student_log_dashboard.css");
+	
 	/*── 1. PAGE  ───────────────────────────────────────────────────────────*/
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,

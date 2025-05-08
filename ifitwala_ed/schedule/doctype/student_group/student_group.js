@@ -1,9 +1,6 @@
 // Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
-// Copyright (c) 2024, François de Ryckel and contributors
-// For license information, please see license.txt
-
 frappe.ui.form.on("Student Group", {
   onload: function (frm) {
     frm.add_fetch("student", "student_full_name", "student_name");

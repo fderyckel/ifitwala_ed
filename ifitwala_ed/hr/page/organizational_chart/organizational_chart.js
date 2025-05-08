@@ -1,4 +1,7 @@
-frappe.pages["organizational-chart"].on_page_load = function (wrapper) {
+frappe.pages["organizational-chart"].on_page_load = function (wrapper) { 
+
+	frappe.require("/assets/ifitwala_ed/css/hierarchy_chat.css");
+
 	frappe.ui.make_app_page({
 		parent: wrapper,
 		title: __("Organizational Chart"),
