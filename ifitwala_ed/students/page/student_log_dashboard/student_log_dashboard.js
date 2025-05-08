@@ -142,7 +142,7 @@ function update_charts(data) {
 
 frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 
-	frappe.require("/assets/ifitwala_ed/css/student_log_dashboard.css");
+	frappe.require("/assets/ifitwala_ed/css/dashboard_cards.css");
 	
 	/*── 1. PAGE  ───────────────────────────────────────────────────────────*/
 	const page = frappe.ui.make_app_page({
