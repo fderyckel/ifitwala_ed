@@ -14,8 +14,6 @@
   "scripts": {
     "build": "rollup -c", 
     "build-css": "npx sass ifitwala_ed/public/scss/hierarchy_chart.scss:sites/assets/ifitwala_ed/css/hierarchy_chart.css --style=compressed",
-    "watch-css": "npx sass --watch ifitwala_ed/public/scss/hierarchy_chart.scss:sites/assets/ifitwala_ed/css/hierarchy_chart.css",
-    "postcss": "npx postcss sites/assets/ifitwala_ed/css/hierarchy_chart.css --dir sites/assets/ifitwala_ed/css/",
     "build-all": "npm run build-css && npm run postcss",
     "bench-build": "npm run build-all && bench build"
   },
