@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"SmAh1J3Oa3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Dashboard\",\"col\":3}},{\"id\":\"OvNhvhv77w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Admin Dashboard\",\"col\":3}},{\"id\":\"tu9mEuIi00\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Group\",\"col\":3}},{\"id\":\"ZGOFPWekLC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fzg1kF2Gr1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students, Schedule &amp; Enrollments</span>\",\"col\":12}},{\"id\":\"T0f0dXZid9\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"7sRer6iX3b\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"XFxZlnRb64\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"VM1mCwF6pW\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"xKozqy_a84\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"lXOrx_IXWL\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Settings</b></span>\",\"col\":12}},{\"id\":\"l0x8umx3AZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Org and School\",\"col\":4}},{\"id\":\"-wlMmbli5N\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & calendars\",\"col\":4}},{\"id\":\"a30-qjywzw\",\"type\":\"card\",\"data\":{\"card_name\":\"Admin tools\",\"col\":4}}]",
+ "content": "[{\"id\":\"SmAh1J3Oa3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Dashboard\",\"col\":3}},{\"id\":\"OvNhvhv77w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Admin Dashboard\",\"col\":3}},{\"id\":\"VB0uC-4x_2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log Dashboard\",\"col\":3}},{\"id\":\"ZGOFPWekLC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fzg1kF2Gr1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students, Schedule &amp; Enrollments</span>\",\"col\":12}},{\"id\":\"VM1mCwF6pW\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"T0f0dXZid9\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"7sRer6iX3b\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"XFxZlnRb64\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"xKozqy_a84\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"lXOrx_IXWL\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>General Settings</b></span>\",\"col\":12}},{\"id\":\"ESp5IOBb57\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"-wlMmbli5N\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & calendars\",\"col\":4}},{\"id\":\"a30-qjywzw\",\"type\":\"card\",\"data\":{\"card_name\":\"Admin tools\",\"col\":4}}]",
  "creation": "2025-04-02 12:29:42.749017",
  "custom_blocks": [],
  "docstatus": 0,
@@ -8,118 +8,11 @@
  "for_user": "",
  "hide_custom": 0,
  "icon": "setting-gear",
- "idx": 30,
+ "idx": 33,
  "indicator_color": "green",
  "is_hidden": 0,
  "label": "Settings",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Students",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student",
-   "link_count": 0,
-   "link_to": "Student",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Guardian",
-   "link_count": 0,
-   "link_to": "Guardian",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Log",
-   "link_count": 0,
-   "link_to": "Student Log",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Cohort",
-   "link_count": 0,
-   "link_to": "Student Cohort",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Schedule",
-   "link_count": 5,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program Enrollment",
-   "link_count": 0,
-   "link_to": "Program Enrollment",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Group",
-   "link_count": 0,
-   "link_to": "Student Group",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "School Schedule",
-   "link_count": 0,
-   "link_to": "School Schedule",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Instructor",
-   "link_count": 0,
-   "link_to": "Instructor",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Org and School",
-   "link_count": 3,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -250,8 +143,145 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Schedule",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Enrollment",
+   "link_count": 0,
+   "link_to": "Program Enrollment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Group",
+   "link_count": 0,
+   "link_to": "Student Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Instructor",
+   "link_count": 0,
+   "link_to": "Instructor",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Group's pictures",
+   "link_count": 0,
+   "link_to": "student_group_cards",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Students",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student",
+   "link_count": 0,
+   "link_to": "Student",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Guardian",
+   "link_count": 0,
+   "link_to": "Guardian",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Log",
+   "link_count": 0,
+   "link_to": "Student Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Cohort",
+   "link_count": 0,
+   "link_to": "Student Cohort",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Organization",
+   "link_count": 0,
+   "link_to": "Organization",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School",
+   "link_count": 0,
+   "link_to": "School",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Location",
+   "link_count": 0,
+   "link_to": "Location",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Schools & calendars",
-   "link_count": 5,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -295,19 +325,9 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "School Event",
-   "link_count": 0,
-   "link_to": "School Event",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
   }
  ],
- "modified": "2025-05-01 09:48:30.204015",
+ "modified": "2025-05-08 09:38:02.731281",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Settings",
@@ -329,8 +349,8 @@
   {
    "color": "Grey",
    "doc_view": "List",
-   "label": "Student Group",
-   "link_to": "student_group_cards",
+   "label": "Student Log Dashboard",
+   "link_to": "student-log-dashboard",
    "type": "Page"
   },
   {

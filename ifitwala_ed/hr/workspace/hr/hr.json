@@ -74,7 +74,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "organizational-chart",
+   "label": "Organizational Chart",
    "link_count": 0,
    "link_to": "organizational-chart",
    "link_type": "Page",
@@ -82,7 +82,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-05 20:29:15.146303",
+ "modified": "2025-05-08 09:31:43.338891",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",

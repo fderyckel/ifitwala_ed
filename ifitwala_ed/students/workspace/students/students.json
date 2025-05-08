@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"cC3uR-LMl7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students</span>\",\"col\":12}},{\"id\":\"3yLEn1ktSt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Students\",\"col\":3}},{\"id\":\"VXnehq0TQa\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Demographics\",\"col\":3}},{\"id\":\"7IQuivH16s\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Events\",\"col\":3}},{\"id\":\"7TNlZk2eVz\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"klHzqEQXNG\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs & Attendance\",\"col\":4}}]",
+ "content": "[{\"id\":\"cC3uR-LMl7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students</span>\",\"col\":12}},{\"id\":\"3yLEn1ktSt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Students\",\"col\":3}},{\"id\":\"VXnehq0TQa\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Demographics\",\"col\":3}},{\"id\":\"Ncmcm0iH4W\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Student Log Open\",\"col\":4}},{\"id\":\"7TNlZk2eVz\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"klHzqEQXNG\",\"type\":\"card\",\"data\":{\"card_name\":\"Student Logs\",\"col\":4}}]",
  "creation": "2025-01-12 12:30:32.526105",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,35 +13,6 @@
  "is_hidden": 0,
  "label": "Students",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Logs & Attendance",
-   "link_count": 2,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Log",
-   "link_count": 0,
-   "link_to": "Student Log",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Log Follow up ",
-   "link_count": 0,
-   "link_to": "Student Log Follow Up",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -80,13 +51,77 @@
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Logs",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Log Type",
+   "link_count": 0,
+   "link_to": "Student Log Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Log Next Step",
+   "link_count": 0,
+   "link_to": "Student Log Next Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Log Follow up ",
+   "link_count": 0,
+   "link_to": "Student Log Follow Up",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Log",
+   "link_count": 0,
+   "link_to": "Student Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Log Dashboard",
+   "link_count": 0,
+   "link_to": "student-log-dashboard",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-05-01 09:48:30.274800",
+ "modified": "2025-05-08 09:47:01.519339",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Students",
- "number_cards": [],
+ "number_cards": [
+  {
+   "label": "Student Log Open",
+   "number_card_name": "Open Student Log"
+  }
+ ],
  "owner": "Administrator",
  "parent_page": "Settings",
  "public": 1,
@@ -100,14 +135,6 @@
    "label": "Student Demographics",
    "link_to": "Student Dashboard",
    "type": "Dashboard"
-  },
-  {
-   "color": "Pink",
-   "doc_view": "Calendar",
-   "label": "School Events",
-   "link_to": "School Event",
-   "stats_filter": "[]",
-   "type": "DocType"
   },
   {
    "color": "Grey",
