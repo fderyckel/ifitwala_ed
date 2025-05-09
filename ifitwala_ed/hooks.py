@@ -70,7 +70,6 @@ after_login = "ifitwala_ed.api.redirect_student_to_portal"
 # ----------
 
 # automatically create page for each record of this doctype
-website_generators = ["Program"]
 
 # Jinja
 # ----------
