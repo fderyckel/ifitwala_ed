@@ -12,12 +12,10 @@
     "url": "https://github.com/fderyckel/ifitwala_ed/issues"
   },
   "scripts": {
-    "build": "rollup -c", 
-    "build-css": "sass ifitwala_ed/public/scss/hierarchy_chart.scss:../../sites/assets/ifitwala_ed/css/hierarchy_chart.css --style=compressed",
-    "watch-css": "sass --watch ifitwala_ed/public/scss/hierarchy_chart.scss:../../sites/assets/ifitwala_ed/css/hierarchy_chart.css",
-    "postcss": "postcss ../../sites/assets/ifitwala_ed/css/hierarchy_chart.css --dir ../../sites/assets/ifitwala_ed/css/",
-    "build-all": "npm run build-css && npm run postcss",
-    "bench-build": "npm run build-all && bench build"
+    "preinstall": "npm list -g sass || npm install -g sass",
+    "build": "rollup -c",
+    "hierarchy": "rollup -c --watch --configPlugin rollup-plugin-postcss --environment WATCH_HIERARCHY",
+    "bench-build": "npm run build && bench build"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.3",
