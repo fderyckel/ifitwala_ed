@@ -47,7 +47,7 @@ def get_children(parent=None, organization=None, exclude_node=None):
 			name, _ext = os.path.splitext(filename)
 
 			# build the .webp card filename
-			card_filename = f"card_{name}.webp"
+			card_filename = f"thumb_{name}.webp"
 			disk_path = os.path.join(card_dir, card_filename)
 
 			if os.path.exists(disk_path):

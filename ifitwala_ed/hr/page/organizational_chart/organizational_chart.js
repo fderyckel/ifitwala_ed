@@ -1,3 +1,12 @@
+// Add this near the top of your organization chart JS file, before the chart is initialized
+function logImageSource(employee) {
+	console.log(
+			`Employee: ${employee.name}, Image URL: ${employee.image}, ` +
+			(employee.image.includes("thumb_") ? "✅ Using thumbnail" : "⚠️ Using original")
+	);
+}
+
+
 frappe.pages["organizational-chart"].on_page_load = function (wrapper) { 
 
 	frappe.require('/assets/ifitwala_ed/dist/hierarchy_chart.min.css');
@@ -11,7 +20,7 @@ frappe.pages["organizational-chart"].on_page_load = function (wrapper) {
 	$(wrapper).bind("show", () => {
 		frappe.require("hierarchy-chart.bundle.js", () => {
 			let organizational_chart;
-			// CHANGED: use get_children from ifitwala_ed instead of hrms
+			// CHANGED: use get_children from ifitwala_ed 
 			let method = "ifitwala_ed.hr.page.organizational_chart.organizational_chart.get_children";
 
 			if (frappe.is_mobile()) {
