@@ -31,8 +31,13 @@ frappe.pages["organizational-chart"].on_page_load = function (wrapper) {
 			}
 
 			frappe.breadcrumbs.add("HR");
-			//console.log("Chart data:", r.message); 
-			//r.message.forEach(node => console.log(node.id, node.image));
+			console.log("Chart data:", r.message); 
+			r.message.forEach(node => console.log(node.id, node.image));
+			// Inject the logging here
+			organizational_chart.show().then(() => {
+				const allNodes = organizational_chart.nodes || [];
+				allNodes.forEach(logImageSource);
+		});
 			organizational_chart.show();
 		});
 	});
