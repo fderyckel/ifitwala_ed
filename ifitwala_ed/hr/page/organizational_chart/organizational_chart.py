@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import os
+import re
 import frappe
 from frappe.query_builder.functions import Count
 
