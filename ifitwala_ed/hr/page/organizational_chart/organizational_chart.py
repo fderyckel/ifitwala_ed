@@ -38,7 +38,7 @@ def get_children(parent=None, organization=None, exclude_node=None):
 
 	for emp in employees:
 		orig_url = emp.image or ""
-		thumb_dir = None
+		thumb_url = None
 
 		# only if the original comes from /files/employee/
 		if orig_url.startswith("/files/employee/") and os.path.isdir(thumb_dir):
