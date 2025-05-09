@@ -3,7 +3,8 @@
 
 frappe.require("/assets/ifitwala_ed/css/student_group.css");
 
-frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
+frappe.pages['student_group_cards'].on_page_load = function(wrapper) { 
+  frappe.breadcrumbs.add("academics");
   let page = frappe.ui.make_app_page({
     parent: wrapper,
     title: 'Student Group Cards',
