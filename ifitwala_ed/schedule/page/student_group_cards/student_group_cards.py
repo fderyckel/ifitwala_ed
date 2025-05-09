@@ -4,6 +4,7 @@
 import frappe
 import re
 import os
+from ifitwala_ed.utilities.image_utils import slugify
 
 def get_student_group_students(student_group, start=0, page_length=25):
     student_data = frappe.get_all(
@@ -49,9 +50,9 @@ def get_student_group_students(student_group, start=0, page_length=25):
             filename = orig_url.rsplit("/", 1)[-1]
             name, ext = os.path.splitext(filename)
             # Normalize filename (lowercase, replace spaces and dashes)
-            name = re.sub(r"[-\s]+", "_", name).lower()
-
+            name = slugify(filename)                               # ← unchanged below
             thumb_filename = f"thumb_{name}.webp"
+
             thumb_path = os.path.join(thumb_dir, thumb_filename)
 
             # Use the thumbnail if it exists, otherwise fall back to the original

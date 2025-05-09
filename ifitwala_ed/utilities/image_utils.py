@@ -15,6 +15,8 @@ def slugify(text):
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
+
+
 def resize_and_save(
     doc,
     original_path,
