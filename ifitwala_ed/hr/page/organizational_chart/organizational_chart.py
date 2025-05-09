@@ -34,27 +34,30 @@ def get_children(parent=None, organization=None, exclude_node=None):
 		order_by="name",
 	)
 
-	card_dir = frappe.get_site_path("public", "files", "gallery_resized", "employee")
+	thumb_dir = frappe.get_site_path("public", "files", "gallery_resized", "employee")
 
 	for emp in employees:
 		orig_url = emp.image or ""
-		card_url = None
+		thumb_dir = None
 
 		# only if the original comes from /files/employee/
-		if orig_url.startswith("/files/employee/") and os.path.isdir(card_dir):
+		if orig_url.startswith("/files/employee/") and os.path.isdir(thumb_dir):
 			# strip path, get "person1.png" or "person1.jpg"
-			filename = orig_url.rsplit("/", 1)[-1]
-			name, _ext = os.path.splitext(filename)
+			filename = orig_url.rsplit("/", 1)[-1] 
+			
+			# Normalize the filename 
+			name, ext = os.path.splitext(filename) 
+			name = re.sub(r"[-\s]+", "_", name).lower()
 
 			# build the .webp card filename
-			card_filename = f"thumb_{name}.webp"
-			disk_path = os.path.join(card_dir, card_filename)
+			thumb_filename = f"thumb_{name}.webp"
+			thumb_path = os.path.join(thumb_dir, thumb_filename)
 
-			if os.path.exists(disk_path):
-				card_url = f"/files/gallery_resized/employee/{card_filename}"
+			if os.path.exists(thumb_path):
+				thumb_url = f"/files/gallery_resized/employee/{thumb_filename}"
 
 		# pick the card if it exists, else the original
-		emp.image = card_url or orig_url
+		emp.image = thumb_url or orig_url
 
 		# compute connections as before
 		emp.connections = get_connections(emp.id, emp.lft, emp.rgt)
