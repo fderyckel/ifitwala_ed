@@ -4,7 +4,15 @@
 frappe.require("/assets/ifitwala_ed/css/student_group.css");
 
 frappe.pages['student_group_cards'].on_page_load = function(wrapper) { 
-  frappe.breadcrumbs.add("academics");
+
+  // Get the workspace name from the query params (if available)
+  const urlParams = new URLSearchParams(window.location.search);
+  const workspace = urlParams.get("workspace") || "Academics"  
+  frappe.breadcrumbs.add({
+    label: workspace,
+    route: `/app/${workspace.replace(/\s+/g, "-").toLowerCase()}`
+  });
+
   let page = frappe.ui.make_app_page({
     parent: wrapper,
     title: 'Student Group Cards',

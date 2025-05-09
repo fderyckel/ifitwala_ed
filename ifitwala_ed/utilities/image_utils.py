@@ -70,7 +70,7 @@ def handle_file_after_insert(doc, method=None):
     if not (doc.file_url and doc.attached_to_doctype):
         return
 
-    allowed_doctypes = ["Employee", "School", "Course", "Program", "Blog Post"]
+    allowed_doctypes = ["Employee", "Student", "School", "Course", "Program", "Blog Post"]
     image_extensions = [".jpg", ".jpeg", ".png"]
     target_widths = {
         "hero": 1800,
