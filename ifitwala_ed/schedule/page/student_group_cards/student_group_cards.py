@@ -38,32 +38,31 @@ def get_student_group_students(student_group, start=0, page_length=25):
     # Directory for thumbnails
     thumb_dir = frappe.get_site_path("public", "files", "gallery_resized", "student")
 
+    # Prepare final student list
     students = []
     for student_id, student_name in student_data:
         student_info = student_dict.get(student_id, {})
-
         orig_url = student_info.get("student_image", "")
-        # Check for a thumbnail
-        thumb_url = None
-        if orig_url.startswith("/files/student/") and os.path.isdir(thumb_dir):
+
+        # Ensure orig_url is not None or empty
+        if orig_url and orig_url.startswith("/files/student/") and os.path.isdir(thumb_dir):
             filename = orig_url.rsplit("/", 1)[-1]
             name, ext = os.path.splitext(filename)
+            # Normalize filename (lowercase, replace spaces and dashes)
             name = re.sub(r"[-\s]+", "_", name).lower()
 
             thumb_filename = f"thumb_{name}.webp"
             thumb_path = os.path.join(thumb_dir, thumb_filename)
 
+            # Use the thumbnail if it exists, otherwise fall back to the original
             if os.path.exists(thumb_path):
-                thumb_url = f"/files/gallery_resized/student/{thumb_filename}"
-
-        # Use the thumbnail if it exists, otherwise the original
-        student_image = thumb_url or orig_url
+                orig_url = f"/files/gallery_resized/student/{thumb_filename}"
 
         students.append({
             "student": student_id,
             "student_name": student_info.get("student_full_name", student_name),
             "preferred_name": student_info.get("student_preferred_name", ""),
-            "student_image": student_image, 
+            "student_image": orig_url or "/assets/ifitwala_ed/images/default_student_image.png", 
             "medical_info": student_info.get("medical_info", ""), 
             "birth_date": student_info.get("student_date_of_birth")
         })
