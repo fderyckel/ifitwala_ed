@@ -213,6 +213,9 @@ class Student(Document):
 			
 			self.save()
 			
+			from ifitwala_ed.utilities.image_utils import process_single_file 
+			process_single_file(file_doc)
+	
 			frappe.msgprint(_("Image renamed to {0} and moved to /files/student/").format(expected_file_name))
 			
 		except Exception as e:

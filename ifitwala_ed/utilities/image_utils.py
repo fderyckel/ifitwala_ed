@@ -67,6 +67,8 @@ def resize_and_save(doc, original_path, base_filename, doctype_folder, size_labe
 
 
 def handle_file_after_insert(doc, method=None):
+    if _skip_insert_for_student(doc): 
+        return 
     if not (doc.file_url and doc.attached_to_doctype):
         return
 
@@ -100,10 +102,15 @@ def handle_file_after_insert(doc, method=None):
     for size_label, width in target_widths.items():
         resize_and_save(doc, original_path, base_filename, doctype_folder, size_label, width)
 
+    process_single_file(doc)
 
-def handle_file_on_update(doc, method=None):
+
+
+def handle_file_on_update(doc, method=None): 
     """Triggered when File is updated — same logic as after_insert."""
     handle_file_after_insert(doc, method)
+
+    process_single_file(doc)
 
 
 @frappe.whitelist()
@@ -148,3 +155,47 @@ def rebuild_resized_images(doctype):
             frappe.log_error(f"Error on rebuild {file.name}: {e}", "Admin Resize Error")
 
     frappe.msgprint(_(f"Processed {count} file(s) attached to {doctype}."))
+
+# --- NEW helper: central entry point you can call from anywhere -------------
+def process_single_file(file_doc):
+    """Create hero_/medium_/card_/thumb_ variants for one File doc."""
+    target_widths = {"hero": 1800, "medium": 960, "card": 400, "thumb": 160}
+    if not file_doc.file_url:
+        return
+
+    # Skip if already a generated variant
+    filename = os.path.basename(file_doc.file_url)
+    if filename.startswith(("hero_", "medium_", "card_", "thumb_")):
+        return
+
+    # Accept only real images the optimiser handles
+    if not any(file_doc.file_url.lower().endswith(ext)
+               for ext in (".jpg", ".jpeg", ".png")):
+        return
+
+    original_path = frappe.utils.get_site_path("public",
+                                               file_doc.file_url.lstrip("/"))
+    base = os.path.splitext(filename)[0]
+    doctype_folder = slugify(file_doc.attached_to_doctype)
+
+    # Ensure target dir exists
+    os.makedirs(
+        frappe.utils.get_site_path("public", "files",
+                                   "gallery_resized", doctype_folder),
+        exist_ok=True,
+    )
+
+    for size, width in target_widths.items():
+        resize_and_save(file_doc, original_path, base, doctype_folder,
+                        size, width)
+
+
+# --- NEW helper: skip premature resizing for Student inserts ---------------
+def _skip_insert_for_student(file_doc):
+    """
+    True  -> early‑insert resizing should be skipped (Student image will
+             still be renamed later).
+    False -> safe to proceed.
+    """
+    return (file_doc.attached_to_doctype == "Student"
+            and not file_doc.file_url.startswith("/files/student/"))
