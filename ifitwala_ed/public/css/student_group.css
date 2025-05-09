@@ -80,7 +80,11 @@
   font-size: 18px;
   margin-left: 6px;
   vertical-align: middle;
-  cursor: default;
+  cursor: pointer;
+  color: #f39c12;
+}
+.birthday-icon:hover {
+  color: #d35400;
 }
 
 /* Tooltip bubble */
