@@ -98,20 +98,28 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
 
     // 📸 Helper function to get optimized student image
     function get_student_image(image_url) {
-        if (!image_url || !image_url.startsWith("/files/student/")) {
-            return "/assets/ifitwala_ed/images/default_student_image.png";
-        }
+      // Fallback to default if no image is provided
+      if (!image_url || !image_url.startsWith("/files/student/")) {
+          return "/assets/ifitwala_ed/images/default_student_image.png";
+      }
 
-        // Attempt to use the thumb_ version
-        const filename = image_url.split("/").pop().replace(/\s+/g, "_").replace(/[-]/g, "_").toLowerCase();
-        const thumb_url = `/files/gallery_resized/student/thumb_${filename}.webp`;
+      // Attempt to use the thumb_ version
+      const filename = image_url.split("/").pop().replace(/\s+/g, "_").replace(/[-]/g, "_").toLowerCase();
+      const thumb_url = `/files/gallery_resized/student/thumb_${filename}.webp`;
 
-        // Use the thumbnail if it exists, otherwise the original
-        const img = new Image();
-        img.src = thumb_url;
-        img.onerror = () => { img.src = image_url; };  // Fallback to original if thumb is missing
-        return thumb_url;
+      // Create a temporary image element to test if the thumb exists
+      const test_img = new Image();
+      test_img.src = thumb_url;
+
+      // Return the original if the thumb is missing
+      test_img.onerror = () => {
+          test_img.src = image_url;
+      };
+
+      // Use the thumb if it exists, otherwise the original
+      return thumb_url;
     }
+
 
     // 📝 Render a single student card
     function renderStudentCard(student) {
