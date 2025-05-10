@@ -5,7 +5,8 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, get_link_to_form
-from ifitwala_ed.schedule.utils import validate_duplicate_student
+from ifitwala_ed.schedule.schedule_utils import validate_duplicate_student
+from ifitwala_ed.schedule.schedule_utils import (check_slot_conflicts, get_conflict_rule)
 
 class StudentGroup(Document):
 	def autoname(self):
@@ -29,6 +30,7 @@ class StudentGroup(Document):
 		self.validate_students()
 		self.validate_and_set_child_table_fields()
 		validate_duplicate_student(self.students)
+
 		if self.group_based_on in ["Course", "Activity"]:
 			if self.term: 
 				self.title = self.student_group_abbreviation + "/" + self.term
@@ -38,6 +40,17 @@ class StudentGroup(Document):
 			self.title = self.student_group_abbreviation + "/" + self.cohort
 		else:
 			self.title = self.student_group_abbreviation
+
+  	# ── Overlap detection ───────────────────────────────────────────────
+		if not getattr(self, "_conflict_checked", False): 
+			conflicts = check_slot_conflicts(self) 
+			if conflicts: 
+				msg = _("Scheduling conflicts detected:\n") + frappe.as_json(conflicts, indent=2) 
+				if get_conflict_rule() == "Hard": 
+					frappe.throw(msg) 
+				else: 
+					frappe.msgprint(msg, alert=True) 
+			self._conflict_checked = True  # cache within this request					
 
 	def validate_term(self) -> None:
 		term_year = frappe.get_doc("Term", self.term)
@@ -200,7 +213,6 @@ class StudentGroup(Document):
 						get_link_to_form("Term", self.term)
 					))
 
-
 	# to input the roll number field in child table
 	def validate_and_set_child_table_fields(self):
 		roll_numbers = [d.group_roll_number for d in self.students if d.group_roll_number]
@@ -215,7 +227,7 @@ class StudentGroup(Document):
 			if d.group_roll_number in roll_no_list:
 				frappe.throw(_("Duplicate roll number for student {0}").format(d.student_name))
 			else:
-				roll_no_list.append(d.group_roll_number)
+				roll_no_list.append(d.group_roll_number)		
 
 def get_permission_query_conditions(user):
 	if not user:
@@ -388,6 +400,10 @@ def build_in_clause_placeholders(values: list) -> str:
 	"""Returns a string like '%s, %s, %s' based on list length"""
 	return ', '.join(['%s'] * len(values))
 
+
+########################## Permissions ##########################
+##### Used for scheduling. 
+#################################################################
 
 
 

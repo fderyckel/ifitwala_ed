@@ -81,6 +81,24 @@ frappe.ui.form.on("Student Group", {
     }
   },
 
+  validate(frm) {
+    if (frm.doc.__unsaved && frm.doc.schedule?.length) {
+        frappe.call({
+            method: "ifitwala_ed.schedule.schedule_utils.check_slot_conflicts",
+            args: { group_doc: frm.doc },
+            callback(r) {
+                if (Object.keys(r.message || {}).length) {
+                    frappe.msgprint({
+                        title: __("Potential Conflicts"),
+                        message: `<pre>${JSON.stringify(r.message, null, 2)}</pre>`,
+                        indicator: "orange",
+                    });
+                }
+            },
+        });
+    }
+  },  
+
   program: function (frm) {
     if (frm.doc.program) {
       frm.set_query("course", function () {

@@ -32,7 +32,6 @@ def get_school_term_bounds(school, academic_year):
 		"term_end": term_end["name"]
 	}
 
-
 ## used in schedule.py (our virtual doctype for showing the schedules)
 def current_academic_year():
     today_date = today()
@@ -89,3 +88,100 @@ def get_rotation_dates(school_schedule_name, academic_year, include_holidays=Fal
         current_date += timedelta(days=1)
 
     return rotation_dates
+
+
+def validate_duplicate_student(students):
+	unique_students = []
+	for stud in students:
+		if stud.student in unique_students:
+			frappe.throw(_("Student {0} - {1} appears Multiple times in row {2} & {3}")
+				.format(stud.student, stud.student_name, unique_students.index(stud.student)+1, stud.idx))
+		else:
+			unique_students.append(stud.student)
+
+	return None
+
+"""Fast overlap detection for Student Group scheduling (v2025‑05‑09)."""
+from collections import defaultdict
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Utility
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Custom error for hard‑rule conflicts ────────────────────────────────────
+class OverlapError(frappe.ValidationError):
+    """Raised when a scheduling conflict violates the hard rule."""
+    pass
+
+def get_conflict_rule():
+    """Return 'Hard' or 'Soft' based on School Settings (defaults to Hard)."""
+    try:
+        return frappe.db.get_single_value("School", "schedule_conflict_rule") or "Hard"
+    except Exception:
+        # If School Settings not installed yet (e.g. tests)
+        return "Hard"
+
+
+def check_slot_conflicts(group_doc):
+    """Scan existing Student Group schedules for clashes.
+
+    Returns a dict keyed by category (room / instructor / student) with a list of
+    tuples (entity, rotation_day, block_number).
+    """
+    conflicts = defaultdict(list)
+
+    # Pre‑collect instructors & students once (avoid per‑slot sub‑queries)
+    instructor_ids = tuple(i.instructor for i in group_doc.get("instructors") or [])
+    student_ids = tuple(s.student for s in group_doc.get("students") or [])
+
+    for slot in group_doc.get("schedule") or []:
+        rot, block = slot.rotation_day, slot.block_number
+
+        # ── Room clash ───────────────────────────────────────────────────────
+        if slot.room and frappe.db.exists(
+            "Student Group Schedule",
+            {
+                "rotation_day": rot,
+                "block_number": block,
+                "room": slot.room,
+                "parent": ("!=", group_doc.name),
+                "docstatus": ("<", 2),
+            },
+        ):
+            conflicts["room"].append((slot.room, rot, block))
+
+        # ── Instructor clash ────────────────────────────────────────────────
+        if instructor_ids:
+            sql = """
+                SELECT 1 FROM `tabStudent Group Instructor` gi
+                JOIN `tabStudent Group Schedule` gs ON gs.parent = gi.parent
+                WHERE gi.instructor IN %(instructors)s
+                  AND gs.rotation_day = %(rot)s
+                  AND gs.block_number = %(block)s
+                  AND gs.parent != %(group)s
+                  AND gs.docstatus < 2
+                LIMIT 1
+            """
+            if frappe.db.sql(sql, {
+                "instructors": instructor_ids, "rot": rot, "block": block, "group": group_doc.name
+            }):
+                conflicts["instructor"].append((instructor_ids, rot, block))
+
+        # ── Student clash ───────────────────────────────────────────────────
+        if student_ids:
+            sql = """
+                SELECT 1 FROM `tabStudent Group Student` st
+                JOIN `tabStudent Group Schedule` gs ON gs.parent = st.parent
+                WHERE st.student IN %(students)s
+                  AND gs.rotation_day = %(rot)s
+                  AND gs.block_number = %(block)s
+                  AND gs.parent != %(group)s
+                  AND gs.docstatus < 2
+                LIMIT 1
+            """
+            if frappe.db.sql(sql, {
+                "students": student_ids, "rot": rot, "block": block, "group": group_doc.name
+            }):
+                conflicts["student"].append((student_ids, rot, block))
+
+    return dict(conflicts)
