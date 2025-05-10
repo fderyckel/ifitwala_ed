@@ -1,0 +1,109 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-10 17:51:34.458905",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_l1oe",
+  "lft",
+  "rgt",
+  "is_group",
+  "old_parent",
+  "parent_pgp_goals",
+  "description",
+  "start_date",
+  "due_date",
+  "applicable_designations"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_l1oe",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "lft",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Left",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "rgt",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Right",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_group",
+   "fieldtype": "Check",
+   "label": "Is Group"
+  },
+  {
+   "fieldname": "old_parent",
+   "fieldtype": "Link",
+   "label": "Old Parent",
+   "options": "PGP Goals"
+  },
+  {
+   "fieldname": "parent_pgp_goals",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Parent PGP Goals",
+   "options": "PGP Goals"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "applicable_designations",
+   "fieldtype": "Table",
+   "label": "Applicable Designations",
+   "options": "PGP Goals Designation"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_tree": 1,
+ "links": [],
+ "modified": "2025-05-10 23:28:10.930430",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "PGP Goals",
+ "nsm_parent_field": "parent_pgp_goals",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

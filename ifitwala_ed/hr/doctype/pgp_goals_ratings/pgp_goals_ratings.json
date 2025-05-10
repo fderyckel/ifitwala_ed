@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-10 18:00:51.869461",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_utct",
+  "pgp_rating_scale",
+  "rating_label",
+  "rated_by",
+  "rated_date",
+  "comment"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_utct",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "rating_label",
+   "fieldtype": "Table",
+   "label": "PGP Rating Scale Option",
+   "options": "PGP Rating Scale Option"
+  },
+  {
+   "fieldname": "rated_by",
+   "fieldtype": "Link",
+   "label": "Rated By",
+   "options": "User"
+  },
+  {
+   "fieldname": "rated_date",
+   "fieldtype": "Datetime",
+   "label": "Rated Date"
+  },
+  {
+   "fieldname": "pgp_rating_scale",
+   "fieldtype": "Link",
+   "label": "PGP Rating Scale",
+   "options": "PGP Rating Scale"
+  },
+  {
+   "fieldname": "comment",
+   "fieldtype": "Text Editor",
+   "label": "Comment"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-05-10 23:53:23.486040",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "PGP Goals Ratings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

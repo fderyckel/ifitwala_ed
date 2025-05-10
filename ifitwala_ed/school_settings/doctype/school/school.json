@@ -22,6 +22,8 @@
   "contact_html",
   "school_settings_section",
   "default_follow_up_due_in_days",
+  "column_break_xryt",
+  "schedule_conflict_rule",
   "current_calendar_events_section",
   "current_academic_year",
   "current_term",
@@ -289,6 +291,17 @@
    "fieldname": "default_follow_up_due_in_days",
    "fieldtype": "Int",
    "label": "Follow-Up Due In (Days)"
+  },
+  {
+   "fieldname": "column_break_xryt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Hard",
+   "fieldname": "schedule_conflict_rule",
+   "fieldtype": "Select",
+   "label": "Schedule Conflict Rule",
+   "options": "Hard\nSoft"
   }
  ],
  "grid_page_length": 50,
@@ -296,7 +309,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-06 20:12:48.611606",
+ "modified": "2025-05-09 16:51:52.096119",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
@@ -381,8 +394,7 @@
    "read": 1,
    "report": 1,
    "role": "Admission Officer",
-   "share": 1,
-   "write": 1
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

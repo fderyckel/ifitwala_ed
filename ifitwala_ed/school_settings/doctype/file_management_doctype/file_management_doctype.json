@@ -7,8 +7,9 @@
  "engine": "InnoDB",
  "field_order": [
   "doctype_link",
+  "active",
   "move_attached_images",
-  "active"
+  "clean_orphan_thumbnails"
  ],
  "fields": [
   {
@@ -31,13 +32,20 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Active"
+  },
+  {
+   "default": "0",
+   "fieldname": "clean_orphan_thumbnails",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Delete Thumbnail"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-28 10:24:32.998319",
+ "modified": "2025-05-09 15:53:29.505818",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "File Management Doctype",

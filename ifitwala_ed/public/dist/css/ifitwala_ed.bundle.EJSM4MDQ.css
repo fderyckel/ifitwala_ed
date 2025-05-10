@@ -1,0 +1,138 @@
+/* ../../../../../tmp/tmp-390667-TQ0fwew2q19s/ifitwala_ed/ifitwala_ed/public/scss/ifitwala_ed.bundle.css */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.filters select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+.student-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  justify-content: center;
+}
+.student-card {
+  background: white;
+  border-radius: 10px;
+  padding: 15px;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+.student-card:hover {
+  transform: translateY(-5px);
+}
+.student-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  -o-object-fit: cover;
+  object-fit: cover;
+  background-color: #f3f3f3;
+  display: inline-block;
+}
+.student-name {
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+.student-preferred-name {
+  font-size: 14px;
+  color: #777;
+  margin-top: 5px;
+}
+.medical-alert {
+  position: relative;
+  color: red;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  margin-left: 6px;
+  vertical-align: middle;
+  display: inline-block;
+}
+.birthday-icon {
+  font-size: 18px;
+  margin-left: 6px;
+  vertical-align: middle;
+  cursor: default;
+}
+.medical-alert::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: #fff;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+  z-index: 10;
+}
+.medical-alert:hover::after {
+  opacity: 1;
+}
+#load-more {
+  display: block;
+  margin: 20px auto;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  background: #007bff;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+#load-more:hover {
+  background: #0056b3;
+}
+@media (max-width: 768px) {
+  .student-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .filters {
+    flex-direction: column;
+  }
+  .student-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.filters-and-title {
+  position: sticky;
+  top: 65px;
+  background: #fff;
+  z-index: 10;
+  padding: 10px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+#student-group-title {
+  text-align: center;
+  margin: 0;
+}
+#student-group-title h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  padding: 5px 10px;
+  color: #333;
+}
+#student-group-title .subtitle {
+  font-size: 15px;
+  color: #666;
+  margin-top: 4px;
+  font-weight: 400;
+}
+/*# sourceMappingURL=ifitwala_ed.bundle.EJSM4MDQ.css.map */

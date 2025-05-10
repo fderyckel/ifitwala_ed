@@ -1,0 +1,151 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-10 07:24:29.124999",
+ "description": "The template to host your Professional Growth Plan",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_xusr",
+  "pgp_name",
+  "school",
+  "description",
+  "goal_label",
+  "subgoal_label",
+  "milestone_label",
+  "review_frequency",
+  "use_custom_label",
+  "use_evidence",
+  "workflow_state",
+  "academic_year"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_xusr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "pgp_name",
+   "fieldtype": "Data",
+   "label": "PGP Name"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "fieldname": "goal_label",
+   "fieldtype": "Data",
+   "label": "Goal Label"
+  },
+  {
+   "fieldname": "subgoal_label",
+   "fieldtype": "Data",
+   "label": "Subgoal Label"
+  },
+  {
+   "fieldname": "milestone_label",
+   "fieldtype": "Data",
+   "label": "Milestone Label"
+  },
+  {
+   "description": "How often the plan is reviewed (e.g.,1 times =  \"Annually\", 2 times = \"Bi-Annually\", 3-4 times = \"Quarterly\").  ",
+   "fieldname": "review_frequency",
+   "fieldtype": "Int",
+   "label": "Review Frequency"
+  },
+  {
+   "default": "0",
+   "fieldname": "use_custom_label",
+   "fieldtype": "Check",
+   "label": "Use Custom Label"
+  },
+  {
+   "default": "0",
+   "fieldname": "use_evidence",
+   "fieldtype": "Check",
+   "label": "Use Evidence"
+  },
+  {
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "label": "Workflow State",
+   "options": "Draft\nIn Progress\nCompleted"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-05-10 18:14:32.529806",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "PGP Template",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
