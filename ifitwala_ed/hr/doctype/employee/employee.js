@@ -32,7 +32,7 @@ frappe.ui.form.on("Employee", {
       fieldname: "name",
       doctype: "Employee",
     };
-    
+
     if (!frm.is_new()) {
       frappe.contacts.render_address_and_contact(frm);
     } else {
@@ -40,11 +40,12 @@ frappe.ui.form.on("Employee", {
     }
 
     (frm.doc.employee_history || []).forEach(row => {
-			if (row.is_current) {
-				const grid_row = frm.get_field('employee_history').grid.grid_rows_by_docname[row.name];
-				grid_row.wrapper.find('.data-row').prepend(`
-					<span class="badge bg-success me-2">Current</span>
-				`);
+			const grid_row = frm.get_field('employee_history').grid.grid_rows_by_docname[row.name];
+			if (row.designation) {
+				grid_row.wrapper.css({
+					"background-color": "#e0ffe0", // Light green for current roles
+					"border-left": "4px solid #00c853" // Bold green border for emphasis
+				});
 			}
 		});
   },
