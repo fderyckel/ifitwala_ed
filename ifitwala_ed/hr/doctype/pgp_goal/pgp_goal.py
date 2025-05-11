@@ -17,22 +17,22 @@ class PGPGoal(NestedSet):
 
 	def generate_title(self):
 		# Top-Level Goal (No Parent)
-		if not self.parent_goal:
+		if not self.parent_pgp_goal:
 			# Count top-level goals for this PGP Template context
 			goal_count = frappe.db.count("PGP Goal", filters={"parent_goal": ""})
 			return f"Goal-{goal_count + 1} - {self.goal_name}"
 
 		# Sub-Goal or Milestone (Has a Parent)
-		parent_goal = frappe.get_doc("PGP Goal", self.parent_goal)
+		parent_goal = frappe.get_doc("PGP Goal", self.parent_pgp_goal)
 
 		# Determine the label based on the parent's title
 		if "/" in parent_goal.title:
 			# This is a milestone (grandchild)
-			child_count = frappe.db.count("PGP Goal", filters={"parent_goal": self.parent_goal})
+			child_count = frappe.db.count("PGP Goal", filters={"parent_goal": self.parent_pgp_goal})
 			return f"{parent_goal.title}/Milestone-{child_count + 1} - {self.goal_name}"
 		else:
 			# This is a sub-goal (child)
-			child_count = frappe.db.count("PGP Goal", filters={"parent_goal": self.parent_goal})
+			child_count = frappe.db.count("PGP Goal", filters={"parent_goal": self.parent_pgp_goal})
 			return f"{parent_goal.title}/Sub-Goal-{child_count + 1} - {self.goal_name}"
 
 	def validate(self):
