@@ -133,21 +133,21 @@ class Employee(NestedSet):
 		# Set the default if missing and a school is already filled
 		if not current_default and self.school: 
 			frappe.defaults.set_user_default("school", self.school, self.user_id) 
-			frappe.clear_user_cache(self.user_id) 
+			frappe.cache().hdel("user:" + self.user_id, "defaults") 
 			frappe.msgprint(_("Default school set to {0} for user {1} (first-time setup).").format(self.school, self.user_id)) 
 			return
 
 		# Handle clearing the default if the field is empty
 		if not self.school:
 			frappe.defaults.clear_default("school", self.user_id)
-			frappe.clear_user_cache(self.user_id)
+			frappe.cache().hdel("user:" + self.user_id, "defaults")
 			frappe.msgprint(_("Default school cleared for user {0}.").format(self.user_id))
 			return
 
 		# Update default school only if it has changed
 		if self.school != current_default:
 			frappe.defaults.set_user_default("school", self.school, self.user_id)
-			frappe.clear_user_cache(self.user_id)
+			frappe.cache().hdel("user:" + self.user_id, "defaults")
 			frappe.msgprint(_("Default school set to {0} for user {1}.").format(self.school, self.user_id))
 
 	def validate_employee_history(self):
@@ -173,7 +173,7 @@ class Employee(NestedSet):
 				row.is_current = 0
 			else:
 				row.is_current = 1
-				
+
 	# call on validate.  Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):
 		if self.user_id: 
