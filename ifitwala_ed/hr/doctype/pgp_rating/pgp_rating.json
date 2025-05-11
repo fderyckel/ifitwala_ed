@@ -7,11 +7,13 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_utct",
-  "pgp_rating_scale",
+  "pgp_plan",
+  "pgp_goal",
+  "review_cycle",
+  "stakeholder",
   "rating_label",
-  "rated_by",
-  "rated_date",
-  "comment"
+  "comments",
+  "rated_date"
  ],
  "fields": [
   {
@@ -22,13 +24,8 @@
    "fieldname": "rating_label",
    "fieldtype": "Table",
    "label": "PGP Rating Scale Option",
-   "options": "PGP Rating Scale Option"
-  },
-  {
-   "fieldname": "rated_by",
-   "fieldtype": "Link",
-   "label": "Rated By",
-   "options": "User"
+   "options": "PGP Rating Scale Option",
+   "reqd": 1
   },
   {
    "fieldname": "rated_date",
@@ -36,24 +33,47 @@
    "label": "Rated Date"
   },
   {
-   "fieldname": "pgp_rating_scale",
+   "fieldname": "pgp_plan",
    "fieldtype": "Link",
-   "label": "PGP Rating Scale",
-   "options": "PGP Rating Scale"
+   "in_list_view": 1,
+   "label": "PGP Plan",
+   "options": "PGP Plan",
+   "reqd": 1
   },
   {
-   "fieldname": "comment",
+   "fieldname": "pgp_goal",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "PGP Goal",
+   "options": "PGP Goal",
+   "reqd": 1
+  },
+  {
+   "fieldname": "review_cycle",
+   "fieldtype": "Data",
+   "label": "Review Cycle"
+  },
+  {
+   "fieldname": "stakeholder",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Stakeholder",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "comments",
    "fieldtype": "Text Editor",
-   "label": "Comment"
+   "label": "Comments"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-10 23:53:23.486040",
+ "modified": "2025-05-11 11:22:16.669791",
  "modified_by": "Administrator",
  "module": "HR",
- "name": "PGP Goals Ratings",
+ "name": "PGP Rating",
  "owner": "Administrator",
  "permissions": [
   {

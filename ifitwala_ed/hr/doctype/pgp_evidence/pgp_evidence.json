@@ -10,7 +10,9 @@
   "evidence_type",
   "description",
   "attachment",
-  "submission_date"
+  "submission_date",
+  "link_doctype",
+  "linked_to"
  ],
  "fields": [
   {
@@ -38,16 +40,30 @@
    "fieldname": "submission_date",
    "fieldtype": "Datetime",
    "label": "Submission Date"
+  },
+  {
+   "description": "Type of document this evidence is linked to",
+   "fieldname": "link_doctype",
+   "fieldtype": "Select",
+   "label": "Linked Doctype",
+   "options": "PGP Plan\nPGP Plan Goal"
+  },
+  {
+   "description": "Link to a PGP Plan Goal or PGP Plan",
+   "fieldname": "linked_to",
+   "fieldtype": "Dynamic Link",
+   "label": "Linked To",
+   "options": "link_doctype"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-10 23:32:01.957493",
+ "modified": "2025-05-11 09:37:40.815796",
  "modified_by": "Administrator",
  "module": "HR",
- "name": "PGP Goals Evidence",
+ "name": "PGP Evidence",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",

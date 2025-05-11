@@ -9,6 +9,7 @@
   "section_break_xusr",
   "pgp_name",
   "school",
+  "academic_year",
   "description",
   "goal_label",
   "subgoal_label",
@@ -16,8 +17,7 @@
   "review_frequency",
   "use_custom_label",
   "use_evidence",
-  "workflow_state",
-  "academic_year"
+  "rating_scale"
  ],
  "fields": [
   {
@@ -27,7 +27,7 @@
   {
    "fieldname": "pgp_name",
    "fieldtype": "Data",
-   "label": "PGP Name"
+   "label": "Plan Name"
   },
   {
    "fieldname": "school",
@@ -74,22 +74,22 @@
    "label": "Use Evidence"
   },
   {
-   "fieldname": "workflow_state",
-   "fieldtype": "Select",
-   "label": "Workflow State",
-   "options": "Draft\nIn Progress\nCompleted"
-  },
-  {
    "fieldname": "academic_year",
    "fieldtype": "Link",
    "label": "Academic Year",
    "options": "Academic Year"
+  },
+  {
+   "fieldname": "rating_scale",
+   "fieldtype": "Link",
+   "label": "Rating Scale",
+   "options": "PGP Rating Scale"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-10 18:14:32.529806",
+ "modified": "2025-05-11 00:45:25.101790",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "PGP Template",

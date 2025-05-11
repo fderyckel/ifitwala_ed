@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestPGPGoals(FrappeTestCase):
+class TestPGPPlan(FrappeTestCase):
 	pass

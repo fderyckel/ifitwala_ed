@@ -1,0 +1,86 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-11 00:16:46.785660",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_4vcf",
+  "stakeholder_role",
+  "eligible_designation",
+  "eligible_department",
+  "rating_required",
+  "primary_stakeholder",
+  "feedback_required",
+  "comment_required"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_4vcf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "stakeholder_role",
+   "fieldtype": "Select",
+   "label": "Stakeholder Role",
+   "options": "Supervisor\nMentor\nPeer-review"
+  },
+  {
+   "description": "Specifies which designations can be assigned to this role",
+   "fieldname": "eligible_designation",
+   "fieldtype": "Link",
+   "label": "Eligible Designation",
+   "options": "Designation"
+  },
+  {
+   "fieldname": "eligible_department",
+   "fieldtype": "Link",
+   "label": "Eligible Department",
+   "options": "Department"
+  },
+  {
+   "default": "0",
+   "description": "Indicates if this is the primary stakeholder for the plan",
+   "fieldname": "primary_stakeholder",
+   "fieldtype": "Check",
+   "label": "Primary Stakeholder"
+  },
+  {
+   "default": "0",
+   "description": "Indicates if this stakeholder is required to provide structured feedback (inferred from PGP Template)",
+   "fieldname": "feedback_required",
+   "fieldtype": "Check",
+   "label": "Feedback Required\""
+  },
+  {
+   "default": "0",
+   "description": "Indicates if this stakeholder is required to provide a numerical rating (inferred from PGP Template)",
+   "fieldname": "rating_required",
+   "fieldtype": "Check",
+   "label": "Rating Required",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "Indicates if this stakeholder is required to provide open-ended comments (inferred from PGP Template)",
+   "fieldname": "comment_required",
+   "fieldtype": "Check",
+   "label": "Comment Required"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-05-11 12:03:19.266211",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "PGP Template Stakeholder",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

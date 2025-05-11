@@ -11,10 +11,12 @@
   "is_group",
   "old_parent",
   "parent_pgp_goals",
+  "goal_name",
   "description",
-  "start_date",
-  "due_date",
-  "applicable_designations"
+  "require_rating",
+  "auto_calculate_rating",
+  "applicable_designations",
+  "rating_formula"
  ],
  "fields": [
   {
@@ -59,33 +61,54 @@
   {
    "fieldname": "description",
    "fieldtype": "Text Editor",
-   "label": "Description"
-  },
-  {
-   "fieldname": "start_date",
-   "fieldtype": "Date",
-   "label": "Start Date"
-  },
-  {
-   "fieldname": "due_date",
-   "fieldtype": "Date",
-   "label": "Due Date"
+   "in_list_view": 1,
+   "label": "Description",
+   "reqd": 1
   },
   {
    "fieldname": "applicable_designations",
    "fieldtype": "Table",
    "label": "Applicable Designations",
    "options": "PGP Goals Designation"
+  },
+  {
+   "fieldname": "goal_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Goal Name",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "description": "Check this box if this goal should be rated",
+   "fieldname": "require_rating",
+   "fieldtype": "Check",
+   "label": "Require Rating"
+  },
+  {
+   "default": "0",
+   "description": "Defines whether this goal is rated manually or calculated automatically based on sub-goal ratings",
+   "fieldname": "auto_calculate_rating",
+   "fieldtype": "Check",
+   "label": "Auto Calculate Rating"
+  },
+  {
+   "depends_on": "eval:doc.auto_calculate_rating == 1",
+   "description": "Formula to calculate the overall rating based on sub-goal and milestone ratings",
+   "fieldname": "rating_formula",
+   "fieldtype": "Data",
+   "label": "Rating Formula",
+   "mandatory_depends_on": "eval:doc.auto_calculate_rating == 1"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-10 23:28:10.930430",
+ "modified": "2025-05-11 09:09:15.480613",
  "modified_by": "Administrator",
  "module": "HR",
- "name": "PGP Goals",
+ "name": "PGP Goal",
  "nsm_parent_field": "parent_pgp_goals",
  "owner": "Administrator",
  "permissions": [

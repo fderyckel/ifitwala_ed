@@ -9,7 +9,8 @@
   "scaling_name",
   "description",
   "default",
-  "active"
+  "active",
+  "pgp_rating_option"
  ],
  "fields": [
   {
@@ -37,12 +38,19 @@
    "fieldname": "active",
    "fieldtype": "Check",
    "label": "Active"
+  },
+  {
+   "description": "Individual levels within this rating scale",
+   "fieldname": "pgp_rating_option",
+   "fieldtype": "Table",
+   "label": "PGP Rating Option",
+   "options": "PGP Rating Scale Option"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-10 23:46:01.202602",
+ "modified": "2025-05-11 11:17:20.587371",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "PGP Rating Scale",

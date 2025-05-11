@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestPGPGoalsRatings(FrappeTestCase):
+class TestPGPRating(FrappeTestCase):
 	pass
