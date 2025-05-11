@@ -1,22 +1,28 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:title",
  "creation": "2025-05-10 17:51:34.458905",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_l1oe",
-  "lft",
-  "rgt",
-  "is_group",
-  "old_parent",
-  "parent_pgp_goals",
   "goal_name",
-  "description",
+  "goal_order",
   "require_rating",
   "auto_calculate_rating",
+  "column_break_if9h",
+  "is_group",
+  "parent_pgp_goals",
+  "rating_formula",
+  "section_break_z7kb",
+  "description",
+  "section_break_qx9i",
   "applicable_designations",
-  "rating_formula"
+  "lft",
+  "rgt",
+  "old_parent",
+  "title"
  ],
  "fields": [
   {
@@ -49,14 +55,14 @@
    "fieldname": "old_parent",
    "fieldtype": "Link",
    "label": "Old Parent",
-   "options": "PGP Goals"
+   "options": "PGP Goal"
   },
   {
    "fieldname": "parent_pgp_goals",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
    "label": "Parent PGP Goals",
-   "options": "PGP Goals"
+   "options": "PGP Goal"
   },
   {
    "fieldname": "description",
@@ -99,16 +105,42 @@
    "fieldtype": "Data",
    "label": "Rating Formula",
    "mandatory_depends_on": "eval:doc.auto_calculate_rating == 1"
+  },
+  {
+   "fieldname": "goal_order",
+   "fieldtype": "Int",
+   "label": "Goal Order"
+  },
+  {
+   "fieldname": "column_break_if9h",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_z7kb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_qx9i",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Title",
+   "read_only": 1,
+   "unique": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-11 09:09:15.480613",
+ "modified": "2025-05-11 14:40:08.075697",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "PGP Goal",
+ "naming_rule": "By fieldname",
  "nsm_parent_field": "parent_pgp_goals",
  "owner": "Administrator",
  "permissions": [
@@ -123,6 +155,51 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

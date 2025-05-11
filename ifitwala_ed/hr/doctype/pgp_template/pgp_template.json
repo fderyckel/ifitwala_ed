@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:pgp_name",
  "creation": "2025-05-10 07:24:29.124999",
  "description": "The template to host your Professional Growth Plan",
  "doctype": "DocType",
@@ -8,16 +9,23 @@
  "field_order": [
   "section_break_xusr",
   "pgp_name",
+  "review_frequency",
+  "use_evidence",
+  "column_break_pqo7",
   "school",
   "academic_year",
+  "rating_scale",
+  "section_break_3jx9",
   "description",
+  "section_break_hr6j",
   "goal_label",
-  "subgoal_label",
-  "milestone_label",
-  "review_frequency",
   "use_custom_label",
-  "use_evidence",
-  "rating_scale"
+  "column_break_oqot",
+  "subgoal_label",
+  "column_break_ykfw",
+  "milestone_label",
+  "section_break_itrz",
+  "pgp_stakeholders"
  ],
  "fields": [
   {
@@ -27,7 +35,10 @@
   {
    "fieldname": "pgp_name",
    "fieldtype": "Data",
-   "label": "Plan Name"
+   "in_list_view": 1,
+   "label": "Plan Name",
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "school",
@@ -84,15 +95,46 @@
    "fieldtype": "Link",
    "label": "Rating Scale",
    "options": "PGP Rating Scale"
+  },
+  {
+   "fieldname": "pgp_stakeholders",
+   "fieldtype": "Table",
+   "label": "PGP Stakeholders",
+   "options": "PGP Template Stakeholder"
+  },
+  {
+   "fieldname": "column_break_pqo7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_3jx9",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_hr6j",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_itrz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_oqot",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ykfw",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-11 00:45:25.101790",
+ "modified": "2025-05-11 12:49:28.827476",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "PGP Template",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

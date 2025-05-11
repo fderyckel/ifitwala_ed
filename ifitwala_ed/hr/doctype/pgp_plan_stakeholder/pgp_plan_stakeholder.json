@@ -15,7 +15,7 @@
   "feedback_required",
   "comments_required",
   "rating_required",
-  "template_stakeholder_reference"
+  "pgp_template_stakeholder"
  ],
  "fields": [
   {
@@ -61,13 +61,6 @@
    "read_only": 1
   },
   {
-   "description": "The PGP Template Stakeholder this entry is based on",
-   "fieldname": "template_stakeholder_reference",
-   "fieldtype": "Link",
-   "label": "Template Stakeholder Reference",
-   "options": "PGP Template Stakeholder"
-  },
-  {
    "default": "0",
    "description": "Indicates if this stakeholder is required to provide structured feedback (inferred from PGP Template)",
    "fieldname": "feedback_required",
@@ -87,13 +80,20 @@
    "fieldname": "rating_required",
    "fieldtype": "Check",
    "label": "Rating Required"
+  },
+  {
+   "description": "The PGP Template Stakeholder this entry is based on",
+   "fieldname": "pgp_template_stakeholder",
+   "fieldtype": "Link",
+   "label": "Template Stakeholder Reference",
+   "options": "PGP Template Stakeholder"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-11 12:02:11.592761",
+ "modified": "2025-05-11 12:24:21.377791",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "PGP Plan Stakeholder",
