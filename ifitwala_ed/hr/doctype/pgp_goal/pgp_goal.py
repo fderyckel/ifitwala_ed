@@ -19,7 +19,7 @@ class PGPGoal(NestedSet):
 		# Top-Level Goal (No Parent)
 		if not self.parent_pgp_goal:
 			# Count top-level goals for this PGP Template context
-			goal_count = frappe.db.count("PGP Goal", filters={"parent_goal": ""})
+			goal_count = frappe.db.count("PGP Goal", filters={"parent_pgp_goal": ""})
 			return f"Goal-{goal_count + 1} - {self.goal_name}"
 
 		# Sub-Goal or Milestone (Has a Parent)
