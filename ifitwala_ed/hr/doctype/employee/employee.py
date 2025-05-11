@@ -43,7 +43,11 @@ class Employee(NestedSet):
 				user = frappe.get_doc("User", existing_user_id)
 				validate_employee_role(user, ignore_emp_check = True)
 				user.save(ignore_permissions=True)
-				remove_user_permission("Employee", self.name, existing_user_id)
+				remove_user_permission("Employee", self.name, existing_user_id) 
+				
+		# Ensure the employee history is sorted before saving 
+		if self.employee_history: 
+			self.employee_history.sort(key=lambda row: row.to_date or "9999-12-31", reverse=True)
 
 	def after_rename(self, old, new, merge):
 		self.db_set("employee", new)
