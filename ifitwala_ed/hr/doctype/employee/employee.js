@@ -32,11 +32,21 @@ frappe.ui.form.on("Employee", {
       fieldname: "name",
       doctype: "Employee",
     };
+    
     if (!frm.is_new()) {
       frappe.contacts.render_address_and_contact(frm);
     } else {
       frappe.contacts.clear_address_and_contact(frm);
     }
+
+    (frm.doc.employee_history || []).forEach(row => {
+			if (row.is_current) {
+				const grid_row = frm.get_field('employee_history').grid.grid_rows_by_docname[row.name];
+				grid_row.wrapper.find('.data-row').prepend(`
+					<span class="badge bg-success me-2">Current</span>
+				`);
+			}
+		});
   },
 
   create_user: function (frm) {

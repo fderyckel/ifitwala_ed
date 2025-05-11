@@ -4,9 +4,9 @@
 import os
 import frappe
 from frappe.utils.nestedset import NestedSet
-from frappe.utils import getdate
+from frappe.utils import getdate, nowdate, today
 from frappe import _, scrub
-from frappe.utils import getdate, validate_email_address, today, add_years, cstr
+from frappe.utils import validate_email_address, add_years, cstr
 from frappe.permissions import add_user_permission, remove_user_permission, has_permission, get_doc_permissions
 from frappe.contacts.address_and_contact import load_address_and_contact
 
@@ -33,6 +33,7 @@ class Employee(NestedSet):
 		self.validate_reports_to()
 		self.validate_preferred_email()
 		self.update_user_default_school()
+		self.validate_employee_history()
 
 		if self.user_id:
 			self.validate_user_details()
@@ -149,6 +150,30 @@ class Employee(NestedSet):
 			frappe.clear_user_cache(self.user_id)
 			frappe.msgprint(_("Default school set to {0} for user {1}.").format(self.school, self.user_id))
 
+	def validate_employee_history(self):
+		"""Ensure no overlapping roles and valid date ranges."""
+		history = self.get("employee_history", [])
+		for i, row in enumerate(history):
+			# Ensure from_date is not empty
+			if not row.from_date:
+				frappe.throw(_("Please set the 'From Date' for the row #{0} in Employee History.").format(i + 1))
+
+			# Ensure to_date is not before from_date
+			if row.to_date and row.to_date < row.from_date:
+				frappe.throw(_("The 'To Date' cannot be before the 'From Date' in row #{0}.").format(i + 1))
+
+			# Check for overlapping roles
+			for j, other_row in enumerate(history):
+				if i != j and row.designation == other_row.designation:
+					if other_row.from_date <= row.to_date and row.from_date <= other_row.to_date:
+						frappe.throw(_("The role '{0}' in row #{1} overlaps with row #{2}.").format(row.designation, i + 1, j + 1))
+
+			# Auto-set the current status based on date
+			if row.to_date and row.to_date < nowdate():
+				row.is_current = 0
+			else:
+				row.is_current = 1
+				
 	# call on validate.  Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):
 		if self.user_id: 
