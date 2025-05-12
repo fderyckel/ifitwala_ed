@@ -19,6 +19,43 @@ def setup_education():
   setup_web_pages()
 
 
+def ensure_root_organization():
+	"""
+	Create “All Organizations” as the single NestedSet root if it does not
+	already exist. If more than one blank parent record exists, raise an error.
+	"""
+
+	# Sanity‑check: zero or one root only
+	roots = frappe.get_all("Organization",
+		fields=["name"],
+		filters={"parent_organization": ""}
+	)
+
+	if len(roots) > 1:
+		frappe.throw(
+			_("Multiple root Organization records found: {0}")
+			.format(", ".join(d.name for d in roots)),
+			title=_("Initial Setup Aborted")
+		)
+
+	if not roots:
+		try:
+			frappe.get_doc({
+				"doctype":            "Organization",
+				"organization_name":  "All Organizations",
+				"abbr":               "ALL",
+				"is_group":           1,
+				"parent_organization": ""
+			}).insert(ignore_permissions=True)
+		except Exception as e:
+			# Bubble up any DB/validation issue
+			frappe.throw(
+				_("Unable to create root Organization: {0}").format(str(e)),
+				title=_("Initial Setup Aborted")
+			)
+
+
+
 def create_roles_with_homepage():
     """Create or update roles with home_page and desk_access."""
     roles = [
@@ -166,55 +203,53 @@ METADATA_FIELDS = {
     "owner", "creation", "idx", "_user_tags"
 }
 def setup_web_pages():
-    """
-    Load all Web Page entries from fixtures/web_page.json
-    and insert them if they do not already exist.
-    Errors are logged without stopping the install process.
-    """
-    fixture_path = frappe.get_app_path("ifitwala_ed", "setup", "data", "web_page.json")
+	"""
+	Insert Web Page records from fixtures/web_page.json.
+	Any error aborts execution via frappe.throw().
+	"""
+	fixture_path = frappe.get_app_path("ifitwala_ed", "setup", "data", "web_page.json")
 
-    # Check for fixture presence
-    if not os.path.exists(fixture_path):
-        frappe.logger().info(f"No Web Page fixtures found at {fixture_path}")
-        return
+	# 1️⃣  Ensure the fixture file exists
+	if not os.path.exists(fixture_path):
+		frappe.throw(
+			_("Web Page fixture not found at {0}").format(fixture_path),
+			title=_("Initial Setup Aborted")
+		)
 
-    # Load the JSON fixture
-    try:
-        with open(fixture_path, encoding="utf-8") as f:
-            records = json.load(f)
-    except Exception as e:
-        frappe.log_error(message=f"Failed to load Web Page fixtures: {str(e)}", title="setup_web_pages")
-        return
+	# 2️⃣  Load JSON
+	try:
+		with open(fixture_path, encoding="utf-8") as f:
+			records = json.load(f)
+	except Exception as e:
+		frappe.throw(
+			_("Failed to load Web Page fixtures: {0}").format(str(e)),
+			title=_("Initial Setup Aborted")
+		)
 
-    # Process each record
-    success_count = 0
-    error_count = 0
+	# 3️⃣  Insert each record
+	for record in records:
+		if record.get("doctype") != "Web Page":
+			continue
 
-    for record in records:
-        if record.get("doctype") != "Web Page":
-            continue
+		identifier = record.get("name") or record.get("route") or record.get("title")
+		if not identifier:
+			frappe.throw(
+				_("Web Page record missing a unique identifier (name/route/title)."),
+				title=_("Initial Setup Aborted")
+			)
 
-        name = record.get("name")
-        if not name:
-            frappe.log_error(message="Web Page record missing 'name' field.", title="setup_web_pages")
-            error_count += 1
-            continue
+		# Skip if already present – not an error
+		if frappe.db.exists("Web Page", identifier):
+			continue
 
-        # Skip existing pages
-        if frappe.db.exists("Web Page", name):
-            frappe.logger().info(f"Web Page '{name}' already exists. Skipping.")
-            continue
+		filtered = {k: v for k, v in record.items() if k not in METADATA_FIELDS}
+		if "name" not in filtered:
+			filtered["name"] = identifier
 
-        # Remove metadata fields
-        filtered = {k: v for k, v in record.items() if k not in METADATA_FIELDS}
-
-        # Attempt to insert
-        try:
-            frappe.get_doc(filtered).insert(ignore_permissions=True)
-            frappe.logger().info(f"Successfully inserted Web Page '{name}'.")
-            success_count += 1
-        except Exception as e:
-            frappe.log_error(message=f"Failed to insert Web Page '{name}': {str(e)}", title="setup_web_pages")
-            error_count += 1
-
-    frappe.logger().info(f"Inserted {success_count} Web Pages with {error_count} errors.")
+		try:
+			frappe.get_doc(filtered).insert(ignore_permissions=True)
+		except Exception as e:
+			frappe.throw(
+				_("Failed to insert Web Page '{0}': {1}").format(identifier, str(e)),
+				title=_("Initial Setup Aborted")
+			)

@@ -37,8 +37,6 @@ def complete_initial_setup(
             "abbr": "ALL",
             "is_group": 1,
             "parent_organization": "",
-            "lft": 1,
-            "rgt": 2,
             "archived": 0
         }).insert(ignore_permissions=True)
 
