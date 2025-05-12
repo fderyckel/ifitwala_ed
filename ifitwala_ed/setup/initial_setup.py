@@ -75,7 +75,7 @@ def complete_initial_setup(
         ws.save(ignore_permissions=True)
 
     # ─── mark setup done (only after all saves succeeded) ────────────────────
-    frappe.db.set_value("System Settings", None, "ifitwala_initial_setup", 1)
+    frappe.db.set_single_value("System Settings", None, "ifitwala_initial_setup", 1)
     frappe.db.commit()
 
     # Return created docs and URLs for immediate UI use
