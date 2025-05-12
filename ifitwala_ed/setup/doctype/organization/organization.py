@@ -16,17 +16,21 @@ def get_children(doctype, parent=None, organization=None, is_root=False):
 		parent = ""
 
 	return frappe.db.sql(
-		f"""
-		select
-			name as value,
-			is_group as expandable
-		from
-			`tabOrganization` org
-		where
-			ifnull(parent_organization, "")={frappe.db.escape(parent)}
-		""",
-		as_dict=1,
-	)
+        """
+        SELECT
+            name as value,
+            organization_name as title,
+            is_group as expandable
+        FROM
+            `tabOrganization`
+        WHERE
+            ifnull(parent_organization, '') = %s
+        ORDER BY
+            name
+        """,
+        (parent,),
+        as_dict=True
+    )
    
 
 

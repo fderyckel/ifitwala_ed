@@ -14,7 +14,7 @@ def is_setup_done():
 
 @frappe.whitelist()
 def complete_initial_setup(
-    org_name, org_abbr, school_name, school_abbr,
+    org_name=None, org_abbr=None, school_name=None, school_abbr=None,
     app_logo=None, brand_image=None
 ):
     """Create root Organization & School and optionally set
@@ -28,21 +28,42 @@ def complete_initial_setup(
     if brand_image and not frappe.db.exists("File", brand_image):
         frappe.throw(_("Navbar Brand Image file not found: {0}").format(brand_image))
 
-    # ─── create org & school ─────────────────────────────────────────────────
-    org = frappe.get_doc({
-        "doctype": "Organization",
-        "organization_name": org_name.strip(),
-        "abbr": org_abbr.strip().upper(),
-        "is_group": 1,
-    }).insert(ignore_permissions=True)
+    # Ensure root organization "All Organizations" exists
+    root_org = frappe.db.exists("Organization", "All Organizations")
+    if not root_org:
+        root_org = frappe.get_doc({
+            "doctype": "Organization",
+            "organization_name": "All Organizations",
+            "abbr": "ALL",
+            "is_group": 1,
+            "parent_organization": "",
+            "lft": 1,
+            "rgt": 2,
+            "archived": 0
+        }).insert(ignore_permissions=True)
 
-    school = frappe.get_doc({
-        "doctype": "School",
-        "school_name": school_name.strip(),
-        "abbr": school_abbr.strip().upper(),
-        "is_group": 1,
-        "organization": org.name,
-    }).insert(ignore_permissions=True)
+    # ─── Create initial organization and school if provided ─────────────────
+    if org_name and org_abbr:
+        org = frappe.get_doc({
+            "doctype": "Organization",
+            "organization_name": org_name.strip(),
+            "abbr": org_abbr.strip().upper(),
+            "is_group": 1,
+            "parent_organization": "All Organizations",
+        }).insert(ignore_permissions=True)
+    else:
+        org = None
+
+    if school_name and school_abbr:
+        school = frappe.get_doc({
+            "doctype": "School",
+            "school_name": school_name.strip(),
+            "abbr": school_abbr.strip().upper(),
+            "is_group": 1,
+            "organization": org.name if org else root_org.name,
+        }).insert(ignore_permissions=True)
+    else:
+        school = None
 
     # ─── update Website Settings ─────────────────────────────────────────────
     ws = frappe.get_single("Website Settings")
@@ -59,8 +80,8 @@ def complete_initial_setup(
 
     # Return created docs and URLs for immediate UI use
     return {
-        "organization": org.name,
-        "school": school.name,
+        "organization": org.name if org else root_org.name,
+        "school": school.name if school else None,
         "app_logo": ws.app_logo,
         "brand_image": ws.brand_image,
         "message": _("Organization, School and branding created successfully."),

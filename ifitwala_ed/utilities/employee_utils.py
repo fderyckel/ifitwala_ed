@@ -5,10 +5,10 @@ import frappe
 
 def get_all_employee_emails(organization):
     """
-    Returns a list of employee emails, prioritizing company_email, then user_id, then personal_email.
+    Returns a list of employee emails, prioritizing organization_email, then user_id, then personal_email.
 
     Args:
-        company (str): The name of the company.
+        organization (str): The name of the organization.
 
     Returns:
         list: A list of email addresses.
@@ -29,7 +29,7 @@ def get_all_employee_emails(organization):
                 employee_emails.append(email)
 
     except Exception as e:
-        frappe.log_error(f"Error getting employee emails for company {organization}: {e}")
+        frappe.log_error(f"Error getting employee emails for organization {organization}: {e}")
 
     return employee_emails
 
