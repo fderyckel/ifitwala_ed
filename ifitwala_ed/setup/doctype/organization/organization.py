@@ -12,9 +12,13 @@ class Organization(NestedSet):
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, organization=None, is_root=False):
-	if parent is None or parent == "All Organizations":
-		parent = ""
+	# Use the explicit root label to avoid recursion
+	if is_root or parent == "All Organizations" or not parent:
+		parent_filter = ""
+	else:
+		parent_filter = parent
 
+	# Fetch child organizations
 	return frappe.db.sql(
         """
         SELECT
@@ -28,7 +32,7 @@ def get_children(doctype, parent=None, organization=None, is_root=False):
         ORDER BY
             name
         """,
-        (parent,),
+        (parent_filter,),
         as_dict=True
     )
    
