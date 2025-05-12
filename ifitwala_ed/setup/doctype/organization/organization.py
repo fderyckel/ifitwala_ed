@@ -48,8 +48,6 @@ def get_parents(doc, name):
     return parents
 
 
-
-
 @frappe.whitelist()
 def add_node():
     from frappe.desk.treeview import make_tree_args
