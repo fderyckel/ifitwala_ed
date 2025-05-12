@@ -2,11 +2,13 @@
 // For license information, please see license.txt
 
 frappe.treeview_settings["Organization"] = {
-    get_tree_nodes: "ifitwala_ed.setup.doctype.organization.organization.get_children",
-    add_tree_node: "ifitwala_ed.setup.doctype.organization.organization.add_node",
+    root_label: "All Organizations", 
+    get_tree_nodes: "frappe.desk.treeview.get_children",
+    add_tree_node:  "frappe.desk.treeview.add_node",
     get_tree_root: false,
     breadcrumb: "School Settings",
     disable_add_node: false,
+    show_expand_all: true,
 
     toolbar: [
         { toggle_btn: true },
@@ -43,12 +45,5 @@ frappe.treeview_settings["Organization"] = {
     onload(treeview) {
         treeview.make_tree();
     },
-
-
-    post_render(treeview) {
-        if (treeview.tree?.open_all) {
-            treeview.tree.open_all();
-        }
-    }
 
 };
