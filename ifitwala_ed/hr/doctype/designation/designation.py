@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_descendants_of, get_ancestors_of
+from frappe.utils import get_link_to_form
 
 class Designation(Document):
 	def validate(self):
@@ -31,16 +32,41 @@ class Designation(Document):
 		if not self.reports_to:
 			return
 		
-		# Ensure the 'reports_to' designation is not a descendant of the current designation
-		current_designation_ancestors = get_ancestors_of("Designation", self.name) or []
-		if self.reports_to in current_designation_ancestors:
+		# Prevent self-reporting
+		if self.reports_to == self.name:
 			frappe.throw(
-				_(f"The selected 'Reports to' designation '{self.reports_to}' creates a hierarchy loop.")
+				_(f"A designation cannot report to itself: {get_link_to_form('Designation', self.name)}.")
 			)
-
-		# Check if the reports_to designation is in the same organization tree
-		reports_to_org = frappe.get_value("Designation", self.reports_to, "organization")
-		if reports_to_org != self.organization:
+		
+		# Batch fetch organization, reports_to, and archived status in one call
+		reports_to_data = frappe.db.get_value(
+			"Designation",
+			self.reports_to,
+			["organization", "reports_to", "archived"],
+			as_dict=True
+		)
+		
+		# Prevent direct loops (A reports to B, B reports to A)
+		if reports_to_data.get("reports_to") == self.name:
 			frappe.throw(
-				_(f"The selected 'Reports to' designation '{self.reports_to}' belongs to a different organization '{reports_to_org}' than the current designation '{self.organization}'.")
+				_(f"The selected 'Reports to' designation {get_link_to_form('Designation', self.reports_to)} cannot report back to {get_link_to_form('Designation', self.name)}, creating a direct loop.")
+			)
+		
+		# Check if the 'reports_to' is in the same organization or a parent organization
+		current_org = self.organization
+		reports_to_org = reports_to_data.get("organization")
+		
+		# Fetch all parent organizations once
+		parent_orgs = get_ancestors_of("Organization", current_org) or []
+		parent_orgs.append(current_org)  # Include the current organization itself
+		
+		if reports_to_org not in parent_orgs:
+			frappe.throw(
+				_(f"The selected 'Reports to' designation {get_link_to_form('Designation', self.reports_to)} belongs to a different organization '{reports_to_org}' that is not a parent or sibling of the current designation's organization '{current_org}' ({get_link_to_form('Organization', current_org)}).")
+			)
+		
+		# Prevent reporting to an archived designation
+		if reports_to_data.get("archived"):
+			frappe.throw(
+				_(f"The selected 'Reports to' designation {get_link_to_form('Designation', self.reports_to)} is archived and cannot be assigned as a supervisor.")
 			)

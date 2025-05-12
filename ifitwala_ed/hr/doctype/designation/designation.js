@@ -3,31 +3,49 @@
 
 frappe.ui.form.on("Designation", {
   organization: function(frm) {
-      if (frm.doc.organization && frm.doc.organization !== "All Organizations") {
-          // Apply the dynamic filter for the selected organization
-          frm.fields_dict["school"].get_query = function() {
-              return {
-                  filters: {
-                      organization: frm.doc.organization
-                  }
-              };
-          };
-      } else {
-          // Clear the school if the organization is empty or set to "All Organizations"
-          frm.set_value("school", "");
-      }
+    if (frm.doc.organization && frm.doc.organization !== "All Organizations") {
+      // Apply the dynamic filter for the selected organization
+      frm.fields_dict["school"].get_query = function() {
+        return {
+          filters: {
+            organization: frm.doc.organization
+          }
+        };
+      };
+    } else {
+      // Clear the school if the organization is empty or set to "All Organizations"
+      frm.set_value("school", "");
+    }
+
+    // Reapply the filter when organization changes
+    frm.fields_dict["reports_to"].get_query = function() {
+      return {
+          filters: {
+              archived: 0
+          }
+      };
+    };    
   },
   
   refresh: function(frm) {
-      // Apply the filter on form load as well
-      if (frm.doc.organization && frm.doc.organization !== "All Organizations") {
-          frm.fields_dict["school"].get_query = function() {
-              return {
-                  filters: {
-                      organization: frm.doc.organization
-                  }
-              };
-          };
-      }
+    // Apply the filter on form load as well
+    if (frm.doc.organization && frm.doc.organization !== "All Organizations") {
+      frm.fields_dict["school"].get_query = function() {
+        return {
+          filters: {
+            organization: frm.doc.organization
+          }
+        };
+      };
+    }
+
+    // Set the filter for the reports_to field
+    frm.fields_dict["reports_to"].get_query = function() {
+      return {
+        filters: {
+          archived: 0
+       }
+      };
+    };      
   }
 });
