@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import os
+import json
 import frappe
 from frappe import _
 from ifitwala_ed.setup.utils import insert_record
@@ -164,52 +165,56 @@ METADATA_FIELDS = {
     "doctype", "docstatus", "modified", "modified_by",
     "owner", "creation", "idx", "_user_tags"
 }
-
 def setup_web_pages():
     """
     Load all Web Page entries from fixtures/web_page.json
     and insert them if they do not already exist.
     Errors are logged without stopping the install process.
     """
-    fixture_path = frappe.get_app_path(
-        "ifitwala_ed", "setup", "data", "web_page.json"
-    )
+    fixture_path = frappe.get_app_path("ifitwala_ed", "setup", "data", "web_page.json")
 
-    # Ensure fixture file presence; log an informational message if missing
+    # Check for fixture presence
     if not os.path.exists(fixture_path):
-        # Informational log for expected missing fixtures
         frappe.logger().info(f"No Web Page fixtures found at {fixture_path}")
         return
 
-    # Attempt to load JSON; log any parse errors
+    # Load the JSON fixture
     try:
         with open(fixture_path, encoding="utf-8") as f:
             records = json.load(f)
     except Exception as e:
-        frappe.log_error(
-            f"Failed to load Web Page fixtures: {e}",
-            title="setup_web_pages"
-        )
+        frappe.log_error(message=f"Failed to load Web Page fixtures: {str(e)}", title="setup_web_pages")
         return
 
-    # Iterate and insert missing Web Page records
+    # Process each record
+    success_count = 0
+    error_count = 0
+
     for record in records:
         if record.get("doctype") != "Web Page":
             continue
 
         name = record.get("name")
-        # Skip if already present
-        if frappe.db.exists("Web Page", name):
+        if not name:
+            frappe.log_error(message="Web Page record missing 'name' field.", title="setup_web_pages")
+            error_count += 1
             continue
 
-        # Strip metadata fields from fixture record
+        # Skip existing pages
+        if frappe.db.exists("Web Page", name):
+            frappe.logger().info(f"Web Page '{name}' already exists. Skipping.")
+            continue
+
+        # Remove metadata fields
         filtered = {k: v for k, v in record.items() if k not in METADATA_FIELDS}
 
+        # Attempt to insert
         try:
-            # Use helper to insert directly from filtered JSON
-            insert_record(filtered)
+            frappe.get_doc(filtered).insert(ignore_permissions=True)
+            frappe.logger().info(f"Successfully inserted Web Page '{name}'.")
+            success_count += 1
         except Exception as e:
-            frappe.log_error(
-                f"Failed to insert Web Page '{name}': {e}",
-                title="setup_web_pages"
-            )
+            frappe.log_error(message=f"Failed to insert Web Page '{name}': {str(e)}", title="setup_web_pages")
+            error_count += 1
+
+    frappe.logger().info(f"Inserted {success_count} Web Pages with {error_count} errors.")
