@@ -12,31 +12,62 @@ class Organization(NestedSet):
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, filters=None):
-    """Return tree nodes: children of `parent`, or top-level groups if no parent."""
-    filters = filters or {}
-    # if no parent passed, show only groups (to build roots)
+    """
+    Return tree nodes: children of `parent`, or top-level groups if no parent.
+    """
+    filters = frappe.parse_json(filters) or {}
+
+    # Determine if we are at the root level
     if not parent:
-        filters.update({"is_group": 1})
+        filters.update({"parent_organization": ""})
     else:
         filters.update({"parent_organization": parent})
-
-    return frappe.get_all(
+    
+    # Add is_group filter for top-level nodes
+    if not parent and "is_group" not in filters:
+        filters["is_group"] = 1
+    
+    # Exclude archived nodes if the field exists
+    if frappe.db.has_column("Organization", "archived"):
+        filters["archived"] = 0
+    
+    # Fetch child nodes
+    nodes = frappe.get_all(
         "Organization",
         fields=[
             "name as value",
             "organization_name as title",
-            "is_group as expandable"
+            "is_group as expandable",
+            "archived"
         ],
         filters=filters,
         order_by="name"
     )
+    
+    # Format response for consistency
+    for node in nodes:
+        node["expandable"] = 1 if node.get("is_group") else 0
+        if "archived" in node:
+            node["title"] += " (Archived)" if node["archived"] else ""
+    
+    return nodes
 
 @frappe.whitelist()
 def get_parents(doctype, name):
-    """Return list of parent names up to the root for breadcrumbs."""
+    """
+    Return a list of parent names up to the root for breadcrumbs.
+    Optimized for single-query traversal, matching ERPNext structure.
+    """
     parents = []
-    doc = frappe.get_doc("Organization", name)
-    while doc.parent_organization:
-        parents.append(doc.parent_organization)
-        doc = frappe.get_doc("Organization", doc.parent_organization)
-    return parents
+    current = name
+    
+    while current:
+        parent = frappe.db.get_value("Organization", current, "parent_organization")
+        if parent:
+            parents.append(parent)
+            current = parent
+        else:
+            break
+    
+    # Return in root-to-leaf order for breadcrumbs
+    return parents[::-1]
