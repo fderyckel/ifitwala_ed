@@ -2,35 +2,38 @@
 // For license information, please see license.txt
 
 frappe.treeview_settings["Organization"] = {
+    ignore_fields: ["parent_organization"],
     get_tree_nodes: "ifitwala_ed.setup.doctype.organization.organization.get_children",
+    add_tree_node: "ifitwala_ed.setup.doctype.organization.organization.add_node",
+    root_label: "All Organizations",
     get_tree_root: false,
     breadcrumb: "School Settings",
-    disable_add_node: false,
-
-    toolbar: [
-        { toggle_btn: true },
+    
+    filters: [
         {
-            label: __("Edit"),
-            condition: node => !node.is_root,
-            click: node => frappe.set_route("Form", "Organization", node.data.value)
-        }
+            fieldname: "organization",
+            fieldtype: "Link",
+            options: "Organization",
+            label: __("Organization"),
+            get_query: function () {
+                return {
+                    filters: [["Organization", "is_group", "=", 1]],
+                };
+            },
+        },
     ],
 
     menu_items: [
         {
             label: __("New Organization"),
-            action: () => frappe.new_doc("Organization", true),
-            condition: 'frappe.boot.user.can_create.indexOf("Organization") !== -1'
-        }
+            action: function () {
+                frappe.new_doc("Organization", true);
+            },
+            condition: 'frappe.boot.user.can_create.indexOf("Organization") !== -1',
+        },
     ],
 
-    onload(treeview) {
+    onload: function (treeview) {
         treeview.make_tree();
     },
-
-    post_render(treeview) {
-        if (treeview.tree?.open_all) {
-            treeview.tree.open_all();
-        }
-    }
 };

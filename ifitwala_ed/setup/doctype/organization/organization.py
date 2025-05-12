@@ -7,67 +7,38 @@ from frappe.utils.nestedset import NestedSet
 
 
 class Organization(NestedSet):
-	pass
+    pass
 
 
 @frappe.whitelist()
-def get_children(doctype, parent=None, filters=None):
-    """
-    Return tree nodes: children of `parent`, or top-level groups if no parent.
-    """
-    filters = frappe.parse_json(filters) or {}
+def get_children(doctype, parent=None, organization=None, is_root=False):
+	if parent is None or parent == "All Organizations":
+		parent = ""
 
-    # Determine if we are at the root level
-    if not parent:
-        filters.update({"parent_organization": ""})
-    else:
-        filters.update({"parent_organization": parent})
-    
-    # Add is_group filter for top-level nodes
-    if not parent and "is_group" not in filters:
-        filters["is_group"] = 1
-    
-    # Exclude archived nodes if the field exists
-    if frappe.db.has_column("Organization", "archived"):
-        filters["archived"] = 0
-    
-    # Fetch child nodes
-    nodes = frappe.get_all(
-        "Organization",
-        fields=[
-            "name as value",
-            "organization_name as title",
-            "is_group as expandable",
-            "archived"
-        ],
-        filters=filters,
-        order_by="name"
-    )
-    
-    # Format response for consistency
-    for node in nodes:
-        node["expandable"] = 1 if node.get("is_group") else 0
-        if "archived" in node:
-            node["title"] += " (Archived)" if node["archived"] else ""
-    
-    return nodes
+	return frappe.db.sql(
+		f"""
+		select
+			name as value,
+			is_group as expandable
+		from
+			`tabOrganization` org
+		where
+			ifnull(parent_organization, "")={frappe.db.escape(parent)}
+		""",
+		as_dict=1,
+	)
+   
+
+
 
 @frappe.whitelist()
-def get_parents(doctype, name):
-    """
-    Return a list of parent names up to the root for breadcrumbs.
-    Optimized for single-query traversal, matching ERPNext structure.
-    """
-    parents = []
-    current = name
+def add_node():
+    from frappe.desk.treeview import make_tree_args
     
-    while current:
-        parent = frappe.db.get_value("Organization", current, "parent_organization")
-        if parent:
-            parents.append(parent)
-            current = parent
-        else:
-            break
+    args = frappe.form_dict 
+    args = make_tree_args(**args) 
     
-    # Return in root-to-leaf order for breadcrumbs
-    return parents[::-1]
+    if args.parent_organization == "All Organizations":
+        args.parent_organization = None 
+        
+    frappe.get_doc(args).insert()   
