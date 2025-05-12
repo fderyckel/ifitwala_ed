@@ -201,11 +201,7 @@ scheduler_events = {
 
 
 
-fixtures = [
-    {
-        "doctype": "Web Page"
-    }
-]
+#fixtures = [{"doctype": "Web Page"}]
 
 # Testing
 # -------
