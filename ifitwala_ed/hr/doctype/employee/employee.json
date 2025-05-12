@@ -59,7 +59,7 @@
   "column_break_mba6",
   "leave_approver",
   "work_history_section",
-  "internal_work_history",
+  "employee_history",
   "attendance_and_leaves_details",
   "current_holiday_lis",
   "hiring_and_onboarding",
@@ -400,12 +400,6 @@
    "label": "Work History"
   },
   {
-   "fieldname": "internal_work_history",
-   "fieldtype": "Table",
-   "label": "Internal Work History",
-   "options": "Employee Internal Work History"
-  },
-  {
    "fieldname": "hiring_and_onboarding",
    "fieldtype": "Tab Break",
    "label": "Hiring & Onboarding"
@@ -504,13 +498,19 @@
    "fieldname": "small_bio",
    "fieldtype": "Small Text",
    "label": "Web Bio"
+  },
+  {
+   "fieldname": "employee_history",
+   "fieldtype": "Table",
+   "label": "Internal Work History",
+   "options": "Employee History"
   }
  ],
  "image_field": "employee_image",
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-07 11:34:06.219466",
+ "modified": "2025-05-11 15:41:47.432270",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",

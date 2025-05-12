@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class EmployeeInternalWorkHistory(Document):
+class EmployeeHistory(Document):
 	pass

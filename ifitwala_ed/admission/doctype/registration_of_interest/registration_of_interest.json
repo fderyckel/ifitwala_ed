@@ -1,18 +1,23 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:ROI-{YY}-{MM}-{###}",
  "creation": "2025-04-23 19:14:26.588396",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_prmb",
   "guardian_first_name",
-  "guardian_last_name",
-  "relationship_to_student",
   "mobile_phone",
-  "email",
-  "city",
   "country",
+  "column_break_unhd",
+  "guardian_last_name",
+  "email",
+  "hearing_from_us",
+  "column_break_j9ax",
+  "relationship_to_student",
+  "city",
+  "preferred_mode_of_contact",
   "student_information_section",
   "student_first_name",
   "student_last_name",
@@ -21,8 +26,7 @@
   "preferred_school",
   "proposed_academic_year",
   "proposed_term",
-  "proposed_grade_level",
-  "hearing_from_us",
+  "proposed_program",
   "blank_field"
  ],
  "fields": [
@@ -33,7 +37,7 @@
   },
   {
    "fieldname": "relationship_to_student",
-   "fieldtype": "Data",
+   "fieldtype": "Select",
    "label": "Relationship to Student",
    "options": "Parent\nGrand-Parent\nSiblings\nAunt/Uncle\nOther Family Member\nLegual Guardian"
   },
@@ -105,12 +109,6 @@
    "options": "Term"
   },
   {
-   "fieldname": "proposed_grade_level",
-   "fieldtype": "Link",
-   "label": "Proposed Grade Level",
-   "options": "Program"
-  },
-  {
    "fieldname": "academic_section_section",
    "fieldtype": "Section Break",
    "label": "Academic Section"
@@ -130,15 +128,37 @@
    "fieldname": "blank_field",
    "fieldtype": "Data",
    "label": "Blank Field"
+  },
+  {
+   "fieldname": "proposed_program",
+   "fieldtype": "Link",
+   "label": "Proposed Program",
+   "options": "Program"
+  },
+  {
+   "default": "Phone Call",
+   "fieldname": "preferred_mode_of_contact",
+   "fieldtype": "Select",
+   "label": "Preferred Mode of contact",
+   "options": "Email\nPhone Call\nSMS\nVideo Call\nWhatsapp\nLine\nweChat\nFB Messenger"
+  },
+  {
+   "fieldname": "column_break_unhd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_j9ax",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-24 07:20:23.703321",
+ "modified": "2025-05-12 09:36:07.575677",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Registration of Interest",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

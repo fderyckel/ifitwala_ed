@@ -10,14 +10,16 @@
   "section_break_qf67",
   "organization",
   "school",
+  "archived",
   "column_break_frxq",
   "designation_name",
   "reports_to",
+  "collaborates_with",
   "description_section",
   "position_summary",
   "job_description",
-  "desired_competencies",
-  "qualifications"
+  "required_qualifications",
+  "desired_competencies"
  ],
  "fields": [
   {
@@ -27,12 +29,17 @@
   {
    "fieldname": "organization",
    "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
    "label": "Organization",
    "options": "Organization"
   },
   {
+   "depends_on": "eval:doc.organization != 'All Organizations';",
    "fieldname": "school",
    "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
    "label": "School",
    "options": "School"
   },
@@ -63,7 +70,7 @@
   },
   {
    "fieldname": "position_summary",
-   "fieldtype": "Text",
+   "fieldtype": "Text Editor",
    "label": "Position Summary"
   },
   {
@@ -77,14 +84,28 @@
    "label": "Desired Competencies"
   },
   {
-   "fieldname": "qualifications",
+   "fieldname": "required_qualifications",
    "fieldtype": "Text Editor",
-   "label": "Qualifications"
+   "label": "Required Qualifications"
+  },
+  {
+   "fieldname": "collaborates_with",
+   "fieldtype": "Table MultiSelect",
+   "in_filter": 1,
+   "label": "Collaborates With",
+   "options": "Designation Collaborate"
+  },
+  {
+   "default": "0",
+   "description": "Checked if that designation is not existing anymore. ",
+   "fieldname": "archived",
+   "fieldtype": "Check",
+   "label": "Archived"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-17 13:38:44.210662",
+ "modified": "2025-05-12 11:45:17.732216",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Designation",
@@ -157,7 +178,10 @@
    "share": 1
   }
  ],
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": []
+ "row_format": "Dynamic",
+ "show_title_field_in_link": 1,
+ "sort_field": "designation_name",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "designation_name"
 }

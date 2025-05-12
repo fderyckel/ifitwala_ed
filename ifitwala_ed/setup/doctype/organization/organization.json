@@ -22,7 +22,8 @@
   "section_break_bvun",
   "lft",
   "rgt",
-  "old_parent"
+  "old_parent",
+  "archived"
  ],
  "fields": [
   {
@@ -123,12 +124,18 @@
    "fieldtype": "Link",
    "label": "Default Staff Calendar",
    "options": "Staff Calendar"
+  },
+  {
+   "default": "0",
+   "fieldname": "archived",
+   "fieldtype": "Check",
+   "label": "Archived"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-02-04 10:00:53.050362",
+ "modified": "2025-05-12 12:53:54.303187",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Organization",
@@ -158,24 +165,16 @@
    "share": 1
   },
   {
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Organization IT",
-   "share": 1,
-   "write": 1
-  },
-  {
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Employee"
   }
  ],
+ "row_format": "Dynamic",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "organization_name"
 }

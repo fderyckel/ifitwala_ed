@@ -13,7 +13,7 @@
   "auto_calculate_rating",
   "column_break_if9h",
   "is_group",
-  "parent_pgp_goals",
+  "parent_pgp_goal",
   "rating_formula",
   "section_break_z7kb",
   "description",
@@ -55,13 +55,6 @@
    "fieldname": "old_parent",
    "fieldtype": "Link",
    "label": "Old Parent",
-   "options": "PGP Goal"
-  },
-  {
-   "fieldname": "parent_pgp_goals",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Parent PGP Goals",
    "options": "PGP Goal"
   },
   {
@@ -130,18 +123,25 @@
    "label": "Title",
    "read_only": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "parent_pgp_goal",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Parent PGP Goal",
+   "options": "PGP Goal"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-11 14:40:08.075697",
+ "modified": "2025-05-11 14:48:33.841698",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "PGP Goal",
  "naming_rule": "By fieldname",
- "nsm_parent_field": "parent_pgp_goals",
+ "nsm_parent_field": "parent_pgp_goal",
  "owner": "Administrator",
  "permissions": [
   {

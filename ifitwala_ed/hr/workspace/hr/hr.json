@@ -82,7 +82,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-08 09:31:43.338891",
+ "modified": "2025-05-12 09:22:40.173142",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",
@@ -93,13 +93,13 @@
  "quick_lists": [],
  "roles": [
   {
-   "role": "Academic Admin"
-  },
-  {
    "role": "HR Manager"
   },
   {
    "role": "HR User"
+  },
+  {
+   "role": "Academic Admin"
   },
   {
    "role": "Administrator"
