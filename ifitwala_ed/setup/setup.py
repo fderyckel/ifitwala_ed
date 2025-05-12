@@ -158,7 +158,7 @@ def create_student_file_folder():
 	}]
 	insert_record(records)
   
-	# 🔐 Ensure the physical folder also exists
+	# Ensure the physical folder also exists
 	os.makedirs(os.path.join(get_files_path(), "student"), exist_ok=True)
      
 def setup_website_top_bar():
@@ -209,14 +209,14 @@ def setup_web_pages():
 	"""
 	fixture_path = frappe.get_app_path("ifitwala_ed", "setup", "data", "web_page.json")
 
-	# 1️⃣  Ensure the fixture file exists
+	#  Ensure the fixture file exists
 	if not os.path.exists(fixture_path):
 		frappe.throw(
 			_("Web Page fixture not found at {0}").format(fixture_path),
 			title=_("Initial Setup Aborted")
 		)
 
-	# 2️⃣  Load JSON
+	# Load JSON
 	try:
 		with open(fixture_path, encoding="utf-8") as f:
 			records = json.load(f)
@@ -226,7 +226,7 @@ def setup_web_pages():
 			title=_("Initial Setup Aborted")
 		)
 
-	# 3️⃣  Insert each record
+	#  Insert each record
 	for record in records:
 		if record.get("doctype") != "Web Page":
 			continue
