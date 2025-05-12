@@ -203,8 +203,7 @@ scheduler_events = {
 
 fixtures = [
     {
-        "doctype": "Web Page",
-        "filters": [["module", "=", "Ifitwala Ed"]],
+        "doctype": "Web Page"
     }
 ]
 
