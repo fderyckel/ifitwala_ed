@@ -156,24 +156,39 @@ class Employee(NestedSet):
 
 	def validate_employee_history(self):
 		"""Ensure no overlapping roles and valid date ranges."""
+		if not self.date_of_joining:
+			frappe.throw(_("Please set the Employee's Date of Joining before adding Employee History."))
+
+		employee_join_date = getdate(self.date_of_joining)
 		history = self.get("employee_history", [])
+		
 		for i, row in enumerate(history):
 			# Ensure from_date is not empty
 			if not row.from_date:
 				frappe.throw(_("Please set the 'From Date' for the row #{0} in Employee History.").format(i + 1))
 
+			# Validate that from_date is not before the employee's date_of_joining
+			if getdate(row.from_date) < employee_join_date:
+				frappe.throw(_("The 'From Date' in row #{0} cannot be before the employee's Date of Joining ({1}).").format(i + 1, self.date_of_joining))
+
 			# Ensure to_date is not before from_date
-			if row.to_date and row.to_date < row.from_date:
+			if row.to_date and getdate(row.to_date) < getdate(row.from_date):
 				frappe.throw(_("The 'To Date' cannot be before the 'From Date' in row #{0}.").format(i + 1))
 
 			# Check for overlapping roles
 			for j, other_row in enumerate(history):
 				if i != j and row.designation == other_row.designation:
-					if other_row.from_date <= row.to_date and row.from_date <= other_row.to_date:
+					# Make sure both dates are set before comparing
+					row_from_date = getdate(row.from_date or "0001-01-01")
+					row_to_date = getdate(row.to_date or "9999-12-31")
+					other_from_date = getdate(other_row.from_date or "0001-01-01")
+					other_to_date = getdate(other_row.to_date or "9999-12-31")
+
+					if other_from_date <= row_to_date and row_from_date <= other_to_date:
 						frappe.throw(_("The role '{0}' in row #{1} overlaps with row #{2}.").format(row.designation, i + 1, j + 1))
 
 			# Auto-set the current status based on date
-			if row.to_date and row.to_date < nowdate():
+			if row.to_date and getdate(row.to_date) < nowdate():
 				row.is_current = 0
 			else:
 				row.is_current = 1
