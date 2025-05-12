@@ -34,7 +34,7 @@ frappe.after_ajax(() => {
             }
           });
         },
-        __("Ifitwala Ed – initial setup"),
+        __("Ifitwala Ed initial setup"),
         __('Create')
       );
     });
