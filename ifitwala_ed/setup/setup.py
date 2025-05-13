@@ -198,10 +198,11 @@ def setup_website_top_bar():
 
     ws.save(ignore_permissions=True)
 	
-METADATA_FIELDS = {
-    "doctype", "docstatus", "modified", "modified_by",
-    "owner", "creation", "idx", "_user_tags"
+METADATA_FIELDS = { 
+	"docstatus", "modified", "modified_by",
+  "owner", "creation", "idx", "_user_tags"
 }
+
 def setup_web_pages():
 	"""
 	Insert Web Page records from fixtures/web_page.json.
@@ -243,6 +244,9 @@ def setup_web_pages():
 			continue
 
 		filtered = {k: v for k, v in record.items() if k not in METADATA_FIELDS}
+		# Ensure required keys
+		filtered.setdefault("doctype", "Web Page")
+		filtered.setdefault("name", identifier)
 		if "name" not in filtered:
 			filtered["name"] = identifier
 
