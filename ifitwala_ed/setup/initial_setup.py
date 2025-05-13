@@ -7,8 +7,16 @@ from frappe import _
 
 @frappe.whitelist()
 def is_setup_done():
-	"""Return True bool if at least one Organization exists OR the flag is set."""
-	return bool(frappe.db.exists("Organization"))
+	"""Check for setup completion via the Org Setting single doctype."""
+	try:
+		# Read the flag (0 or 1) from the Org Setting doctype
+		flag = frappe.db.get_single_value("Org Setting", "ifitwala_initial_setup")
+	except frappe.DoesNotExistError:
+		# Safety fallback if the field is missing (shouldn't happen after first run)
+		flag = 0
+
+	# If either an Organization exists OR the flag is set, return True
+	return bool(frappe.db.exists("Organization")) or flag
 
 @frappe.whitelist()
 def complete_initial_setup(
@@ -71,8 +79,9 @@ def complete_initial_setup(
 		ws.save(ignore_permissions=True)
 
 	# ─── mark setup done (only after all saves succeeded) ────────────────────
-	frappe.db.set_single_value("System Settings", None, "ifitwala_initial_setup", 1)
-	frappe.db.commit()
+	doc = frappe.get_single("Org Setting")
+	doc.ifitwala_initial_setup = 1
+	doc.save(ignore_permissions=True)
 
 	# Return created docs and URLs for immediate UI use
 	return {

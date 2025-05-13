@@ -9,6 +9,7 @@ from ifitwala_ed.setup.utils import insert_record
 from frappe.utils import get_files_path
 
 def setup_education():
+	ensure_initial_setup_flag()  
 	ensure_root_organization()
 	create_roles_with_homepage()
 	create_designations()
@@ -18,6 +19,15 @@ def setup_education():
 	create_student_file_folder()
 	setup_website_top_bar()
 	setup_web_pages()
+
+
+def ensure_initial_setup_flag():
+	"""Ensure the Ifitwala Initial Setup flag exists on Org Setting."""
+	doc = frappe.get_single("Org Setting")
+	# safer check – explicit field lookup
+	if doc.get("ifitwala_initial_setup") is None:
+		doc.ifitwala_initial_setup = 0
+		doc.save(ignore_permissions=True)
 
 def ensure_root_organization():
 	"""
