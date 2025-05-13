@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class PrivacySettings(Document):
+class OrgSettings(Document):
 	pass

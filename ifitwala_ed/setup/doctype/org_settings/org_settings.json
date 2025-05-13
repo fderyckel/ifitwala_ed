@@ -8,7 +8,9 @@
   "section_break_sr3p",
   "dob_to_user",
   "column_break_ng7f",
-  "mobile_to_user"
+  "mobile_to_user",
+  "column_break_wioa",
+  "ifitwala_initial_setup"
  ],
  "fields": [
   {
@@ -32,15 +34,26 @@
    "fieldname": "mobile_to_user",
    "fieldtype": "Check",
    "label": "Mobile to User"
+  },
+  {
+   "fieldname": "column_break_wioa",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "ifitwala_initial_setup",
+   "fieldtype": "Check",
+   "label": "Ifitwala Initial Setup",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-05-13 08:59:24.243264",
+ "modified": "2025-05-13 09:04:14.614879",
  "modified_by": "Administrator",
  "module": "Setup",
- "name": "Privacy Settings",
+ "name": "Org Settings",
  "owner": "Administrator",
  "permissions": [
   {
@@ -54,10 +67,8 @@
    "write": 1
   },
   {
-   "create": 1,
    "read": 1,
-   "role": "HR Manager",
-   "write": 1
+   "role": "HR Manager"
   },
   {
    "read": 1,

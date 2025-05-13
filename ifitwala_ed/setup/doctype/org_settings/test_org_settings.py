@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestPrivacySettings(FrappeTestCase):
+class TestOrgSettings(FrappeTestCase):
 	pass
