@@ -1,4 +1,4 @@
-/* ../../../../../tmp/tmp-390667-TQ0fwew2q19s/ifitwala_ed/ifitwala_ed/public/scss/ifitwala_ed.bundle.css */
+/* ../../../../../tmp/tmp-466547-gUrSDE6f1dbo/ifitwala_ed/ifitwala_ed/public/scss/ifitwala_ed.bundle.css */
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -60,7 +60,11 @@
   font-size: 18px;
   margin-left: 6px;
   vertical-align: middle;
-  cursor: default;
+  cursor: pointer;
+  color: #f39c12;
+}
+.birthday-icon:hover {
+  color: #d35400;
 }
 .medical-alert::after {
   content: attr(data-tooltip);
@@ -135,4 +139,4 @@
   margin-top: 4px;
   font-weight: 400;
 }
-/*# sourceMappingURL=ifitwala_ed.bundle.EJSM4MDQ.css.map */
+/*# sourceMappingURL=ifitwala_ed.bundle.UISUBIB3.css.map */

@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-28 07:05:16.314195",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_sr3p",
+  "dob_to_user",
+  "column_break_ng7f",
+  "mobile_to_user"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_sr3p",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "description": "Copy Date of Birth from Employee or Student to User Doctype",
+   "fieldname": "dob_to_user",
+   "fieldtype": "Check",
+   "label": "DoB to User"
+  },
+  {
+   "fieldname": "column_break_ng7f",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Copy mobile number from Employee or Student to User DocType",
+   "fieldname": "mobile_to_user",
+   "fieldtype": "Check",
+   "label": "Mobile to User"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-05-13 08:59:24.243264",
+ "modified_by": "Administrator",
+ "module": "Setup",
+ "name": "Privacy Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "HR Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Academic Admin"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

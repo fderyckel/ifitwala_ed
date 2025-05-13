@@ -19,11 +19,11 @@
   "address__html",
   "parent_organization",
   "organization_logo",
+  "archived",
   "section_break_bvun",
   "lft",
   "rgt",
-  "old_parent",
-  "archived"
+  "old_parent"
  ],
  "fields": [
   {
@@ -135,7 +135,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-12 12:53:54.303187",
+ "modified": "2025-05-12 23:08:51.134170",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Organization",
@@ -172,9 +172,7 @@
   }
  ],
  "row_format": "Dynamic",
- "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
- "title_field": "organization_name"
+ "states": []
 }
