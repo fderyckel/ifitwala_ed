@@ -69,9 +69,11 @@ def complete_initial_setup(
 
 	# ─── update Website Settings ─────────────────────────────────────────────
 	ws = frappe.get_single("Website Settings")
-	if app_logo:
-		ws.app_logo = app_logo
-		ws.save(ignore_permissions=True)
+	if app_logo: 
+		file_doc = frappe.get_doc("File", {"file_url": app_logo}) 
+		if file_doc: 
+			ws.app_logo = file_doc.file_url 
+			ws.save(ignore_permissions=True)
 
 	# ─── mark setup done (only after all saves succeeded) ────────────────────
 	doc = frappe.get_single("Org Settings")
