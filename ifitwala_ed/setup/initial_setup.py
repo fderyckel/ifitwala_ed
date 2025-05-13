@@ -28,10 +28,6 @@ def complete_initial_setup(
 	if is_setup_done():
 		frappe.throw(_("Initial setup already completed."))
 
-	# Validate image inputs
-	if app_logo and not frappe.db.exists("File", app_logo):
-		frappe.throw(_("App Logo file not found: {0}").format(app_logo))
-
 	# Ensure root organization "All Organizations" exists
 	root_org = frappe.db.exists("Organization", "All Organizations")
 	if not root_org:
@@ -69,11 +65,22 @@ def complete_initial_setup(
 
 	# ─── update Website Settings ─────────────────────────────────────────────
 	ws = frappe.get_single("Website Settings")
-	if app_logo: 
-		file_doc = frappe.get_doc("File", {"file_url": app_logo}) 
-		if file_doc: 
-			ws.app_logo = file_doc.file_url 
-			ws.save(ignore_permissions=True)
+
+	file_url = None
+	if app_logo:
+		if app_logo.startswith("/files/"):
+			file_url = app_logo
+		else:
+			docname = frappe.db.exists("File", app_logo)
+			file_url = frappe.db.get_value("File", docname, "file_url") if docname else None
+
+		if not file_url:
+			frappe.log_error(_("App logo file not found: {0}. Proceeding without it.").format(app_logo))
+
+	# apply & save once
+	if file_url:
+		ws.app_logo = file_url
+	ws.save(ignore_permissions=True)
 
 	# ─── mark setup done (only after all saves succeeded) ────────────────────
 	doc = frappe.get_single("Org Settings")
