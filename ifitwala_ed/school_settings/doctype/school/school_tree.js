@@ -2,6 +2,8 @@ frappe.treeview_settings["School"] = {
 	ignore_fields:["parent_school"],
 	get_tree_nodes: 'ifitwala_ed.school_settings.doctype.school.school.get_children',
 	add_tree_node: 'ifitwala_ed.school_settings.doctype.school.school.add_node',
+	show_expand_all: true,
+	
 	filters: [
 		{
 			fieldname: "school",
@@ -29,6 +31,5 @@ frappe.treeview_settings["School"] = {
 	],
 	onload: function(treeview) {
 		treeview.make_tree();
-		treeview.expand_all();
 	}
 };

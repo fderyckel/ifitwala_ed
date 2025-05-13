@@ -42,7 +42,7 @@ frappe.treeview_settings["Organization"] = {
         }
     ],
 
-    onload(treeview) {
+    onload: function(treeview) {
         treeview.make_tree();
     },
 

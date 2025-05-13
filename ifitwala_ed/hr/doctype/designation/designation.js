@@ -2,50 +2,70 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Designation", {
-  organization: function(frm) {
-    if (frm.doc.organization && frm.doc.organization !== "All Organizations") {
-      // Apply the dynamic filter for the selected organization
-      frm.fields_dict["school"].get_query = function() {
-        return {
-          filters: {
-            organization: frm.doc.organization
-          }
-        };
-      };
-    } else {
-      // Clear the school if the organization is empty or set to "All Organizations"
-      frm.set_value("school", "");
-    }
+    organization: function(frm) {
+        set_school_filter(frm);
+        set_reports_to_filter(frm);
+    },
 
-    // Reapply the filter when organization changes
-    frm.fields_dict["reports_to"].get_query = function() {
-      return {
-          filters: {
-              archived: 0
-          }
-      };
-    };    
-  },
-  
-  refresh: function(frm) {
-    // Apply the filter on form load as well
-    if (frm.doc.organization && frm.doc.organization !== "All Organizations") {
-      frm.fields_dict["school"].get_query = function() {
-        return {
-          filters: {
-            organization: frm.doc.organization
-          }
-        };
-      };
-    }
+    refresh: function(frm) {
+        set_school_filter(frm);
+        set_reports_to_filter(frm);
+    },
 
-    // Set the filter for the reports_to field
-    frm.fields_dict["reports_to"].get_query = function() {
-      return {
-        filters: {
-          archived: 0
-       }
-      };
-    };      
-  }
+    archived: function(frm) {
+        set_reports_to_filter(frm);
+    }
 });
+
+function set_school_filter(frm) {
+    if (frm.doc.organization && frm.doc.organization !== "All Organizations") {
+        frm.fields_dict["school"].get_query = function() {
+            return {
+                filters: {
+                    organization: frm.doc.organization
+                }
+            };
+        };
+    } else {
+        frm.set_value("school", "");
+    }
+}
+
+function set_reports_to_filter(frm) {
+    if (!frm.doc.organization || frm.doc.organization === "All Organizations") {
+        frm.fields_dict["reports_to"].get_query = function() {
+            return {
+                filters: {
+                    name: ["!=", frm.doc.name],
+                    archived: 0
+                }
+            };
+        };
+        return;
+    }
+
+    // Fetch valid parent organizations for lineage check
+    frappe.call({
+        method: "frappe.utils.nestedset.get_ancestors_of",
+        args: {
+            doctype: "Organization",
+            name: frm.doc.organization
+        },
+        callback: function(r) {
+            if (r.message) {
+                const valid_orgs = r.message;
+                valid_orgs.push(frm.doc.organization);  // Include the current organization
+
+                frm.fields_dict["reports_to"].get_query = function() {
+                    return {
+                        filters: {
+                            organization: ["in", valid_orgs],
+                            name: ["!=", frm.doc.name],
+                            archived: 0
+                        }
+                    };
+                };
+            }
+        }
+    });
+}
