@@ -7,10 +7,10 @@ from frappe.utils.nestedset import NestedSet
 
 
 class Organization(NestedSet):
-    pass
-
-
-
+	def validate(self): 
+		# Prevent changing parent of root node
+		if self.name == "All Organizations" and self.parent_organization:
+			frappe.throw(_("The root organization 'All Organizations' cannot have a parent."))
 
 
 @frappe.whitelist()
