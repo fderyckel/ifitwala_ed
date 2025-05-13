@@ -9,15 +9,15 @@ from ifitwala_ed.setup.utils import insert_record
 from frappe.utils import get_files_path
 
 def setup_education():
-  create_roles_with_homepage()
-  create_designations()
-  create_log_type()
-  create_location_type()
-  add_other_records() 
-  create_student_file_folder()
-  setup_website_top_bar()
-  setup_web_pages()
-
+	ensure_root_organization()
+	create_roles_with_homepage()
+	create_designations()
+	create_log_type()
+	create_location_type()
+	add_other_records()
+	create_student_file_folder()
+	setup_website_top_bar()
+	setup_web_pages()
 
 def ensure_root_organization():
 	"""
