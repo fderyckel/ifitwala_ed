@@ -10,7 +10,7 @@ from frappe.utils.nestedset import get_ancestors_of
 class Designation(Document):
 	def validate(self):
 		self.validate_reports_to_hierarchy()
-
+		
 	def validate_reports_to_hierarchy(self):
 		if not self.reports_to:
 			return
@@ -60,7 +60,7 @@ class Designation(Document):
 				_(f"The selected 'Reports to' designation {get_link_to_form('Designation', self.reports_to)} would create a circular reporting loop with {get_link_to_form('Designation', self.name)}.")
 			)
 
-	def check_indirect_loop(start_designation, target_designation):
+	def check_indirect_loop(self, start_designation, target_designation):
 		"""
 		Recursively check if assigning the target_designation as a supervisor
 		would create a multi-level loop.	
