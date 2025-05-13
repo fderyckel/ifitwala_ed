@@ -1,1 +1,0 @@
-{"version":3,"file":"student_portal.3b9e5ab1.bundle.js","sources":["../js/student_portal/index.js"],"sourcesContent":["\nimport '../../css/student_portal/student_course.css';\nimport '../../css/student_portal/student_portal.css';\n\n\nconsole.log(\"Student Portal JS and CSS Loaded\");"],"names":["console","log"],"mappings":"yBAKAA,QAAQC,IAAI"}

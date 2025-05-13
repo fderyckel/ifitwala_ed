@@ -21,18 +21,16 @@ def is_setup_done():
 @frappe.whitelist()
 def complete_initial_setup(
 	org_name=None, org_abbr=None, school_name=None, school_abbr=None,
-	app_logo=None, brand_image=None
+	app_logo=None
 ):
 	"""Create root Organization & School and optionally set
-	the login-logo and navbar-brand in Website Settings."""
+	the login-logo in Website Settings."""
 	if is_setup_done():
 		frappe.throw(_("Initial setup already completed."))
 
 	# Validate image inputs
 	if app_logo and not frappe.db.exists("File", app_logo):
 		frappe.throw(_("App Logo file not found: {0}").format(app_logo))
-	if brand_image and not frappe.db.exists("File", brand_image):
-		frappe.throw(_("Navbar Brand Image file not found: {0}").format(brand_image))
 
 	# Ensure root organization "All Organizations" exists
 	root_org = frappe.db.exists("Organization", "All Organizations")
@@ -73,9 +71,6 @@ def complete_initial_setup(
 	ws = frappe.get_single("Website Settings")
 	if app_logo:
 		ws.app_logo = app_logo
-	if brand_image:
-		ws.banner_image = banner_image
-	if any([app_logo, banner_image]):
 		ws.save(ignore_permissions=True)
 
 	# ─── mark setup done (only after all saves succeeded) ────────────────────
@@ -88,6 +83,5 @@ def complete_initial_setup(
 		"organization": org.name if org else root_org.name,
 		"school": school.name if school else None,
 		"app_logo": ws.app_logo,
-		"brand_image": ws.banner_image,
-		"message": _("Organization, School and branding created successfully."),
+		"message": _("Organization, School and logo created successfully."),
 	}
