@@ -18,7 +18,7 @@ frappe.after_ajax(() => {
 
         // ─── new branding fields ───────────────────────────────────────────
         {fieldtype:'Attach Image', label:'Login Page Logo (app_logo)',      fieldname:'app_logo'},
-        {fieldtype:'Attach Image', label:'Navbar Brand Image (brand_image)', fieldname:'brand_image'},
+        {fieldtype:'Attach Image', label:'Navbar Brand Image (brand_image)', fieldname:'banner_image'},
         // ───────────────────────────────────────────────────────────────────
       ];
 

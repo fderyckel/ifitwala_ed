@@ -74,8 +74,8 @@ def complete_initial_setup(
 	if app_logo:
 		ws.app_logo = app_logo
 	if brand_image:
-		ws.brand_image = brand_image
-	if any([app_logo, brand_image]):
+		ws.banner_image = banner_image
+	if any([app_logo, banner_image]):
 		ws.save(ignore_permissions=True)
 
 	# ─── mark setup done (only after all saves succeeded) ────────────────────
@@ -88,6 +88,6 @@ def complete_initial_setup(
 		"organization": org.name if org else root_org.name,
 		"school": school.name if school else None,
 		"app_logo": ws.app_logo,
-		"brand_image": ws.brand_image,
+		"brand_image": ws.banner_image,
 		"message": _("Organization, School and branding created successfully."),
 	}
