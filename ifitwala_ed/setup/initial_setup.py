@@ -77,6 +77,8 @@ def complete_initial_setup(
 	doc = frappe.get_single("Org Settings")
 	doc.ifitwala_initial_setup = 1
 	doc.save(ignore_permissions=True)
+	# Force commit to ensure the change is persisted
+	frappe.db.commit()
 
 	# Return created docs and URLs for immediate UI use
 	return {
