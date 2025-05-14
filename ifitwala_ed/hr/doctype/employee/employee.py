@@ -299,9 +299,10 @@ class Employee(NestedSet):
 
 		# Combine sorted current and past roles
 		sorted_history = current_roles + past_roles
+		self.history = sorted_history
 
 		# Reassign the sorted list to the child table
-		for idx, row in enumerate(sorted_history, start=1):
+		for idx, row in enumerate(self.history, start=1):
 			row.idx = idx
 
 	# call on validate.  Check that if there is already a user, a few more checks to do.
