@@ -190,7 +190,7 @@ class Employee(NestedSet):
 						frappe.throw(_("The role '{0}' in row #{1} overlaps with row #{2}.").format(row.designation, i + 1, j + 1))
 
 			# Auto-set the current status based on date
-			if row.to_date and getdate(row.to_date) < today():
+			if row.to_date and getdate(row.to_date) < getdate(today()):
 				row.is_current = 0
 			else:
 				row.is_current = 1
@@ -216,7 +216,7 @@ class Employee(NestedSet):
 				"from_date": self.date_of_joining,
 				"organization": self.organization,
 				"school": self.school,
-				"is_current": 1 if getdate(self.date_of_joining) <= today() else 0,
+				"is_current": 1 if getdate(self.date_of_joining) <= getdate(today()) else 0,
 			})
 			frappe.msgprint(
 				_("An initial Employee History row has been created for {0} with joining date {1} and designation {2}.").format(
@@ -235,7 +235,7 @@ class Employee(NestedSet):
 		is_current = last_entry.is_current
 
 		# Check if the current role is different and the employee has already joined
-		if getdate(self.date_of_joining) <= today():
+		if getdate(self.date_of_joining) <= getdate(today()):
 			designation_changed = self.designation != last_designation
 			organization_changed = self.organization != last_organization
 			school_changed = self.school != last_school
