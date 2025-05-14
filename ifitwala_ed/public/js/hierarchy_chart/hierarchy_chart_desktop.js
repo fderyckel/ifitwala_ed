@@ -38,6 +38,7 @@ ifitwala_ed.HierarchyChart = class {
 				image,
 				name,
 				title,
+				organization,
 				expandable,
 				connections,
 				is_root, // eslint-disable-line
@@ -239,6 +240,7 @@ ifitwala_ed.HierarchyChart = class {
 							image: data.image,
 							name: data.name,
 							title: data.title,
+							organization: data.organization,
 							expandable: true,
 							connections: data.connections,
 							is_root: true,
