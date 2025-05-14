@@ -34,6 +34,7 @@ class Employee(NestedSet):
 		self.validate_preferred_email()
 		self.update_user_default_school()
 		self.validate_employee_history()
+		self.sync_employee_history()
 
 		if self.user_id:
 			self.validate_user_details()
