@@ -103,10 +103,60 @@ class Employee(NestedSet):
 			if not self.relieving_date:
 				frappe.throw(_("Please enter relieving date."))
 
-	# call on validate.  You cannot report to yourself.
+	# You cannot report to yourself or cross organizations (only parents)
 	def validate_reports_to(self):
+		# Prevent self-reporting
 		if self.reports_to == self.name:
-			frappe.throw(_("Employee cannot report to her/himself."))
+			frappe.throw(_("An Employee cannot report to themselves."))
+
+		# If no reports_to is set, skip validation
+		if not self.reports_to or not self.organization:
+			return
+
+		# Get the organization of the supervisor (reports_to)
+		supervisor_org = frappe.db.get_value("Employee", self.reports_to, "organization")
+		if not supervisor_org:
+			return  # Skip if the supervisor has no organization (edge case)
+
+		# Allow reporting within the same organization
+		if self.organization == supervisor_org:
+			return
+
+		# Validate upward hierarchy
+		is_parent_org = frappe.db.sql("""
+			SELECT 1
+			FROM `tabOrganization`
+			WHERE name = %s
+			AND lft <= (SELECT lft FROM `tabOrganization` WHERE name = %s)
+			AND rgt >= (SELECT rgt FROM `tabOrganization` WHERE name = %s)
+		""", (supervisor_org, self.organization, self.organization))
+
+		if not is_parent_org:
+			frappe.throw(_("Employee cannot report to a supervisor from a different organization unless it is a parent organization."))
+
+		# Validate downward consistency (no cross-lineage connections)
+		# Fetch all direct reports of the current employee
+		direct_reports = frappe.db.get_values( 
+			"Employee", filters={"reports_to": self.name}, fieldname=["name", "organization"], 
+			as_dict=True
+		)
+
+		# Get the organization lineage of the current employee
+		lineage = frappe.db.sql("""
+			SELECT name
+			FROM `tabOrganization`
+			WHERE lft <= (SELECT lft FROM `tabOrganization` WHERE name = %s)
+			AND rgt >= (SELECT rgt FROM `tabOrganization` WHERE name = %s)
+		""", (self.organization, self.organization))
+
+		valid_orgs = {org[0] for org in lineage}
+
+		# Check each direct report for cross-lineage violations
+		for report in direct_reports:
+			if report["organization"] not in valid_orgs:
+				frappe.throw(_(
+					"Direct report '{0}' (Organization: {1}) cannot belong to an organization outside the hierarchy of '{2}' (Organization: {3})."
+				).format(report["name"], report["organization"], self.name, self.organization))
 
 	# call on validate. Check that there is at least one email to use.
 	def validate_preferred_email(self):
