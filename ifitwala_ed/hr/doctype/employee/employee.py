@@ -284,6 +284,22 @@ class Employee(NestedSet):
 				),
 				alert=True
 			)
+		
+		# Sort employee history in descending order
+		self._sort_employee_history()
+
+	def _sort_employee_history(self):
+		# Extract the history rows
+		history = self.get("employee_history", [])
+
+		# Sort with current role (no to_date) first, then by descending to_date
+		history.sort(key=lambda row: (
+			row.get("to_date") is not None,  # Current (no to_date) first
+			row.get("to_date") or "9999-12-31"  # Sort by descending to_date
+		), reverse=True)
+
+		# Reassign the sorted list to the child table
+		self.set("employee_history", history)		
 
 	# call on validate.  Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):
