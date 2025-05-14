@@ -32,40 +32,38 @@ function set_school_filter(frm) {
 }
 
 function set_reports_to_filter(frm) {
-    if (!frm.doc.organization || frm.doc.organization === "All Organizations") {
-        frm.fields_dict["reports_to"].get_query = function() {
-            return {
-                filters: {
-                    name: ["!=", frm.doc.name],
-                    archived: 0
-                }
-            };
-        };
-        return;
-    }
-
-    // Fetch valid parent organizations for lineage check
-    frappe.call({
-        method: "frappe.utils.nestedset.get_ancestors_of",
-        args: {
-            doctype: "Organization",
-            name: frm.doc.organization
-        },
-        callback: function(r) {
-            if (r.message) {
-                const valid_orgs = r.message;
-                valid_orgs.push(frm.doc.organization);  // Include the current organization
-
-                frm.fields_dict["reports_to"].get_query = function() {
-                    return {
-                        filters: {
-                            organization: ["in", valid_orgs],
-                            name: ["!=", frm.doc.name],
-                            archived: 0
-                        }
-                    };
-                };
-            }
+  if (!frm.doc.organization || frm.doc.organization === "All Organizations") {
+    frm.fields_dict["reports_to"].get_query = function() {
+      return {
+        filters: {
+          name: ["!=", frm.doc.name],
+          archived: 0
         }
-    });
+      };
+    };
+    return;
+  }
+
+  // Fetch valid parent organizations
+  frappe.call({
+    method: "ifitwala_ed.hr.doctype.designation.designation.get_valid_parent_organizations",
+    args: {
+      organization: frm.doc.organization
+    },
+    callback: function(r) {
+      if (r.message) {
+        const valid_orgs = r.message;
+
+        frm.fields_dict["reports_to"].get_query = function() {
+          return {
+            filters: {
+              organization: ["in", valid_orgs],
+              name: ["!=", frm.doc.name],
+              archived: 0
+            }
+          };
+        };
+      }
+    }
+  });
 }

@@ -10,7 +10,7 @@ from frappe.utils.nestedset import get_ancestors_of
 class Designation(Document):
 	def validate(self):
 		self.validate_reports_to_hierarchy()
-		
+
 	def validate_reports_to_hierarchy(self):
 		if not self.reports_to:
 			return
@@ -45,7 +45,7 @@ class Designation(Document):
 			
 		if reports_to_org not in valid_orgs:
 			frappe.throw(
-				_(f"The selected 'Reports to' designation {get_link_to_form('Designation', self.reports_to)} belongs to a different organizational lineage than the current designation's organization '{current_org}' ({get_link_to_form('Organization', current_org)}).")
+				_(f"This designation {get_link_to_form('Designation', self.reports_to)} is reporting to a designation that belongs to a different organizational lineage than the current designation's organization '{current_org}' ({get_link_to_form('Organization', current_org)}).")
 			)
 			
 		# Step 4: Prevent reporting to an archived designation
@@ -79,3 +79,19 @@ class Designation(Document):
 			current = next_supervisor
 			
 		return False
+
+
+@frappe.whitelist()
+def get_valid_parent_organizations(organization):
+    """
+    Return the full parent hierarchy for a given organization,
+    including the organization itself.
+    """
+    if not organization:
+        frappe.throw(_("Organization is required"))
+
+    # Fetch all parent organizations
+    valid_orgs = get_ancestors_of("Organization", organization) or []
+    valid_orgs.append(organization)  # Include the current organization itself
+
+    return valid_orgs
