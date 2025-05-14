@@ -31,7 +31,7 @@ function fetch_recent_logs(page, append = false) {
 							<tr>
 								<td>${d.date}</td>
 								<td>${d.student}</td>
-								<td>${d.program || "N/A"}</td>
+								<td>${d.program}</td>
 								<td>${d.log_type}</td>
 								<td>${d.content}</td>
 								<td>${d.author}</td>
@@ -160,7 +160,7 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 		label: __("School"),
 		fieldtype: "Link",
 		options: "School",
-		deafult: user_default_school,
+		default: user_default_school,
 		change: () => {
 				program_field.set_value("");
 				selected_student = null;
@@ -170,6 +170,9 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 				fetch_recent_logs(page);        // fresh load for new context
 		},
 	});
+
+	// Set the initial value programmatically to enforce the default
+	school_field.set_value(user_default_school);
 
 	const program_field = page.add_field({
 		fieldname: "program",
