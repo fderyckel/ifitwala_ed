@@ -224,7 +224,6 @@ class Employee(NestedSet):
 				),
 				alert=True
 			)
-			self.save(ignore_permissions=True)
 			return
 
 		# Get the most recent history row
