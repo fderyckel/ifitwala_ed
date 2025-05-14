@@ -31,6 +31,7 @@ function fetch_recent_logs(page, append = false) {
 							<tr>
 								<td>${d.date}</td>
 								<td>${d.student}</td>
+								<td>${d.program || "N/A"}</td>
 								<td>${d.log_type}</td>
 								<td>${d.content}</td>
 								<td>${d.author}</td>
@@ -151,12 +152,15 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 		single_column: true,
 	});
 
+	const user_default_school = frappe.defaults.get_user_default("school");
+
 	/*── 2. FILTER FIELDS ───────────────────────────────────────────*/
 	const school_field = page.add_field({
 		fieldname: "school",
 		label: __("School"),
 		fieldtype: "Link",
 		options: "School",
+		deafult: user_default_school,
 		change: () => {
 				program_field.set_value("");
 				selected_student = null;
@@ -242,7 +246,7 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
           <table class="table table-bordered table-hover">
             <thead class="table-light">
               <tr>
-                <th>Date</th><th>Student</th><th>Log Type</th>
+                <th>Date</th><th>Student</th><th>Program</th><th>Log Type</th>
                 <th>Log</th><th>Author</th><th>⧈</th>
               </tr>
             </thead>
@@ -250,9 +254,11 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
           </table>
         </div>
 
-        <button class="btn btn-link w-100" id="recent-log-load-more">
-          Load more…
-        </button>
+				<div class="load-more-wrapper">
+					<button class="btn btn-link w-100" id="recent-log-load-more">
+						Load more…
+					</button>
+				</div>
       </div>`;
 	}
 

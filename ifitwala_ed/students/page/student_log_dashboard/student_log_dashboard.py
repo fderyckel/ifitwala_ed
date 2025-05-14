@@ -16,6 +16,12 @@ def get_dashboard_data(filters=None):
     """
     try:
         filters = frappe.parse_json(filters) or {}
+        
+        # Use the authorized school list for this user
+        authorized_schools = get_authorized_schools(frappe.session.user)
+
+        if not authorized_schools:
+            return {"error": "No authorized schools found."}
 
         conditions, params = [], {}
 
@@ -124,6 +130,12 @@ def get_distinct_students(filters=None, search_text: str = ""):   # ★ CHANGED
     try:
         filters = frappe.parse_json(filters) or {}
         txt = (search_text or "").strip()
+        
+				# Use the authorized school list for this user
+        authorized_schools = get_authorized_schools(frappe.session.user)
+
+        if not authorized_schools:
+            return {"error": "No authorized schools found."}
 
         conditions, params = [], {}
 
@@ -195,6 +207,7 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
         SELECT
             sl.date,
             s.student_full_name AS student,
+            sl.program, 
             sl.log_type,
             sl.log              AS content,
             sl.author_name      AS author,
@@ -209,3 +222,24 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
         as_dict=True,
     )
     return logs
+
+
+def get_authorized_schools(user):
+    """Return the list of schools the user is authorized to view based on their default school."""
+    user_school = frappe.defaults.get_user_default("school")
+
+    if not user_school:
+        return []
+
+    # Check if this is a parent school
+    child_schools = frappe.db.sql(
+        """
+        SELECT name FROM `tabSchool`
+        WHERE name = %s OR parent_school = %s
+        """,
+        (user_school, user_school),
+        as_list=True
+    )
+
+    # Flatten the list and return unique schools
+    return [s[0] for s in child_schools] if child_schools else [user_school]

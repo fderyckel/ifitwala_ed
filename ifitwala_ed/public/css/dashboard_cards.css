@@ -10,6 +10,7 @@
   cursor: pointer;
   flex: 1 1 calc(50% - 40px); 
   max-width: calc(50% - 40px); 
+	overflow: visible !important;
 }
 
 .dashboard-card:hover {
@@ -78,6 +79,7 @@
   overflow-y: auto;
   border: 1px solid #ddd;
   border-radius: 8px;
+	overflow-y: auto;
 }
 
 .student-log-table th, .student-log-table td {
@@ -90,6 +92,11 @@
   position: sticky;
   top: 0;
   z-index: 1;
+}
+
+/* Add padding for better spacing */
+.load-more-wrapper {
+	padding: 10px 0;
 }
 
 /* ─── Dropdown Styles ───────────────────────────────────────────── */
