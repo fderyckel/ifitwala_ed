@@ -292,10 +292,10 @@ class Employee(NestedSet):
 		past_roles = [row for row in history if row.to_date]
 
 		# Sort current roles by descending from_date
-		current_roles.sort(key=lambda row: row.from_date, reverse=True)
+		current_roles.sort(key=lambda row: getdate(row.from_date), reverse=True)
 
 		# Sort past roles by descending to_date
-		past_roles.sort(key=lambda row: row.to_date, reverse=True)
+		past_roles.sort(key=lambda row: getdate(row.to_date), reverse=True)
 
 		# Combine sorted current and past roles
 		sorted_history = current_roles + past_roles
