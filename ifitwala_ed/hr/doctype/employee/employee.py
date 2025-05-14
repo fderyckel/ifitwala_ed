@@ -267,7 +267,6 @@ class Employee(NestedSet):
 					"school": self.school,
 					"is_current": 1,
 				})
-				self.save()
 				frappe.msgprint(
 					_("A new Employee History row has been created for {0} with designation {1}, organization {2}, and school {3} as of today ({4}).").format(
 						self.employee_full_name, self.designation, self.organization, self.school, today_str
