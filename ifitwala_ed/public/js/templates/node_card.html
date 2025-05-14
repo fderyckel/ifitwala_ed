@@ -18,15 +18,10 @@
 				</div>
 			</div>
 			<div class="node-info d-flex flex-row mb-1">
-				<div class="node-info d-flex flex-column mb-1"></div>
-					{% if title %}
-						<div class="node-title text-muted ellipsis">{{ title }}&nbsp;&middot;&nbsp;</div>
-					{% endif %}
+				{% if title %}
+					<div class="node-title text-muted ellipsis">{{ title }}&nbsp;&middot;&nbsp;</div>
+				{% endif %}
 					
-					{% if organization %}
-						<div class="node-organization text-muted ellipsis">{{ organization }}</div>
-					{% endif %}
-				</div>
 				{% if is_mobile %}
 					<div class="node-connections text-muted ellipsis">
 						&nbsp;{{ connections }} <span class="fa fa-level-down"></span>
@@ -39,6 +34,9 @@
 					{% endif %}
 				{% endif %}
 			</div>
+			{% if organization %}
+				<div class="node-organization text-muted ellipsis">{{ organization }}</div>
+			{% endif %}
 		</div>
 	</div>
 </div>
