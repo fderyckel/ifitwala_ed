@@ -55,12 +55,12 @@ class Designation(Document):
 			)
 			
 		# Step 5: Indirect Loop Prevention (Multi-Level)
-		if check_indirect_loop(self.name, self.reports_to):
+		if self._check_indirect_loop(self.name, self.reports_to):
 			frappe.throw(
 				_(f"The selected 'Reports to' designation {get_link_to_form('Designation', self.reports_to)} would create a circular reporting loop with {get_link_to_form('Designation', self.name)}.")
 			)
 
-	def check_indirect_loop(self, start_designation, target_designation):
+	def _check_indirect_loop(self, start_designation, target_designation):
 		"""
 		Recursively check if assigning the target_designation as a supervisor
 		would create a multi-level loop.	
