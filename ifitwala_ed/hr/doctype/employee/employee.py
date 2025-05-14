@@ -301,7 +301,8 @@ class Employee(NestedSet):
 		sorted_history = current_roles + past_roles
 
 		# Reassign the sorted list to the child table
-		self.set("employee_history", sorted_history)	
+		for idx, row in enumerate(sorted_history, start=1):
+			row.idx = idx
 
 	# call on validate.  Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):
