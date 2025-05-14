@@ -4,7 +4,7 @@
 import os
 import frappe
 from frappe.utils.nestedset import NestedSet
-from frappe.utils import getdate, nowdate, today
+from frappe.utils import getdate, today
 from frappe import _, scrub
 from frappe.utils import validate_email_address, add_years, cstr
 from frappe.permissions import add_user_permission, remove_user_permission, has_permission, get_doc_permissions
@@ -188,10 +188,100 @@ class Employee(NestedSet):
 						frappe.throw(_("The role '{0}' in row #{1} overlaps with row #{2}.").format(row.designation, i + 1, j + 1))
 
 			# Auto-set the current status based on date
-			if row.to_date and getdate(row.to_date) < nowdate():
+			if row.to_date and getdate(row.to_date) < today():
 				row.is_current = 0
 			else:
 				row.is_current = 1
+
+	def sync_employee_history(self):
+		"""
+		Synchronize the Employee History for initial creation or designation, organization, or school changes.
+		- Adds a new history row if the designation, organization, or school changes.
+		- Updates the current history row if the employee has not yet joined.
+		- Prevents duplicate entries with the same from_date.
+		"""
+		# Ensure required fields are present
+		if not self.date_of_joining or not self.designation:
+			return  # No joining date or designation, nothing to add
+
+		# Get the existing history
+		history = self.get("employee_history", [])
+
+		# Check if this is a fresh employee with no history
+		if not history:
+			self.append("employee_history", {
+				"designation": self.designation,
+				"from_date": self.date_of_joining,
+				"organization": self.organization,
+				"school": self.school,
+				"is_current": 1 if getdate(self.date_of_joining) <= today() else 0,
+			})
+			frappe.msgprint(
+				_("An initial Employee History row has been created for {0} with joining date {1} and designation {2}.").format(
+					self.employee_full_name, self.date_of_joining, self.designation
+				),
+				alert=True
+			)
+			return
+
+		# Get the most recent history row
+		last_entry = history[-1]
+		last_designation = last_entry.designation
+		last_organization = last_entry.organization
+		last_school = last_entry.school
+		last_from_date = last_entry.from_date
+		is_current = last_entry.is_current
+
+		# Check if the current role is different and the employee has already joined
+		if getdate(self.date_of_joining) <= today():
+			designation_changed = self.designation != last_designation
+			organization_changed = self.organization != last_organization
+			school_changed = self.school != last_school
+
+			if designation_changed or organization_changed or school_changed:
+				# Close the previous row if it is still marked as current
+				if is_current:
+					last_entry.is_current = 0
+
+				# Check for duplicates on the same from_date
+				today_str = today()
+				for row in history:
+					if (row.designation == self.designation and
+							row.organization == self.organization and
+							row.school == self.school and
+							row.from_date == today_str):
+						# Duplicate found, no need to add a new row
+						frappe.msgprint(
+							_("No new history row added. A row with the same designation, organization, school, and from_date ({0}) already exists.").format(today_str),
+							alert=True
+						)
+						return
+
+				# Add a new history row
+				self.append("employee_history", {
+					"designation": self.designation,
+					"from_date": today_str,
+					"organization": self.organization,
+					"school": self.school,
+					"is_current": 1,
+				})
+				frappe.msgprint(
+					_("A new Employee History row has been created for {0} with designation {1}, organization {2}, and school {3} as of today ({4}).").format(
+						self.employee_full_name, self.designation, self.organization, self.school, today_str
+					),
+					alert=True
+				)
+		else:
+			# If the employee has not yet joined, just update the existing row
+			last_entry.designation = self.designation
+			last_entry.organization = self.organization
+			last_entry.school = self.school
+			frappe.msgprint(
+				_("The Employee History row for {0} has been updated to reflect the new designation, organization, and school.").format(
+					self.employee_full_name
+				),
+				alert=True
+			)
 
 	# call on validate.  Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):
