@@ -252,11 +252,6 @@ class Employee(NestedSet):
 							row.organization == self.organization and
 							row.school == self.school and
 							row.from_date == today_str):
-						# Duplicate found, no need to add a new row
-						frappe.msgprint(
-							_("No new history row added. A row with the same designation, organization, school, and from_date ({0}) already exists.").format(today_str),
-							alert=True
-						)
 						return
 
 				# Add a new history row
@@ -292,14 +287,21 @@ class Employee(NestedSet):
 		# Extract the history rows
 		history = self.get("employee_history", [])
 
-		# Sort with current role (no to_date) first, then by descending to_date
-		history.sort(key=lambda row: (
-			row.get("to_date") is not None,  # Current (no to_date) first
-			row.get("to_date") or "9999-12-31"  # Sort by descending to_date
-		), reverse=True)
+		# Separate current (no to_date) and past (with to_date) roles
+		current_roles = [row for row in history if not row.to_date]
+		past_roles = [row for row in history if row.to_date]
+
+		# Sort current roles by descending from_date
+		current_roles.sort(key=lambda row: row.from_date, reverse=True)
+
+		# Sort past roles by descending to_date
+		past_roles.sort(key=lambda row: row.to_date, reverse=True)
+
+		# Combine sorted current and past roles
+		sorted_history = current_roles + past_roles
 
 		# Reassign the sorted list to the child table
-		self.set("employee_history", history)		
+		self.set("employee_history", sorted_history)	
 
 	# call on validate.  Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):
