@@ -29,11 +29,14 @@
   overflow: auto;
   max-width: 1200px;  
   max-height: 800px; 
+	display: flex;
+  flex-direction: column;
 }
 
 .dashboard-card.zoomed .frappe-chart {
   width: 100% !important;
   height: 100% !important;
+	min-height: 500px;
 }
 
 .dashboard-card.zoomed .card-body {
@@ -134,11 +137,25 @@
   border-radius: 8px 8px 0 0;
 }
 
+.dashboard-card.zoomed .card-title {
+  flex-shrink: 0;
+  padding: 15px;
+  text-align: center;
+  font-weight: bold;
+  background-color: #f7f7f7;
+  border-bottom: 1px solid #f0f0f0;
+  border-radius: 8px 8px 0 0;
+}
+
 /* ─── Responsive Styles ───────────────────────────────────────────── */
 @media (max-width: 768px) {
   .dashboard-card {
       flex: 1 1 100%;
       max-width: 100%;
+  }
+
+	.dashboard-card .frappe-chart {
+    min-height: 200px;  /* Slightly smaller on mobile */
   }
 }
 
