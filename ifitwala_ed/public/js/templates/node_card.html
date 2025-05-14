@@ -21,6 +21,10 @@
 				{% if title %}
 					<div class="node-title text-muted ellipsis">{{ title }}&nbsp;&middot;&nbsp;</div>
 				{% endif %}
+				
+				{% if organization %}
+					<div class="node-organization text-muted ellipsis">{{ organization }}</div>
+				{% endif %}
 
 				{% if is_mobile %}
 					<div class="node-connections text-muted ellipsis">

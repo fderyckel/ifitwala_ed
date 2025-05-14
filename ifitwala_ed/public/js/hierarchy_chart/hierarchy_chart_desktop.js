@@ -63,7 +63,8 @@ ifitwala_ed.HierarchyChart = class {
 		let node_card = frappe.render_template("node_card", {
 			id: node.id,
 			name: node.name,
-			title: node.title,
+			title: node.title, 
+			organization: node.organization,
 			image: node.image,
 			parent: node.parent_id,
 			connections: node.connections,
@@ -431,6 +432,7 @@ ifitwala_ed.HierarchyChart = class {
 			image: data.image,
 			name: data.name,
 			title: data.title,
+			organization: data.organization,
 			expandable: data.expandable,
 			connections: data.connections,
 			children: null,

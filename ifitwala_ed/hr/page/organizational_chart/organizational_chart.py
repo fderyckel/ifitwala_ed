@@ -29,7 +29,8 @@ def get_children(parent=None, organization=None, exclude_node=None):
 			"rgt",
 			"reports_to",
 			"employee_image as image",  # e.g. "/files/employee/person1.png"
-			"designation as title",
+			"designation as title", 
+			"organization"
 		],
 		filters=filters,
 		order_by="name",

@@ -39,6 +39,14 @@
 	line-height: 1.35;
 }
 
+.node-organization {
+	font-size: 0.75rem;
+	line-height: 1.35;
+	color: var(--text-color);
+	font-weight: 500;
+	opacity: 0.8;
+}
+
 .node-info {
 	width: 12.7rem;
 }
@@ -116,6 +124,12 @@
 		display: none;
 	}
 
+	.node-organization {
+		color: var(--text-color);
+		opacity: 1; /* Fully visible when active */
+		font-weight: 600;
+	}	
+
 	.node-connections {
 		display: none;
 	}
@@ -162,6 +176,10 @@
 		display: none;
 	}
 
+	.node-organization {
+		display: none;
+	}
+		
 	.node-connections {
 		display: none;
 	}
