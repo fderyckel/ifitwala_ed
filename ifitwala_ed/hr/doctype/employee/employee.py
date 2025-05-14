@@ -143,10 +143,11 @@ class Employee(NestedSet):
 
 		# Handle clearing the default if the field is empty
 		if not self.school:
-			frappe.defaults.clear_default("school", self.user_id)
-			frappe.cache().hdel("user:" + self.user_id, "defaults")
-			frappe.msgprint(_("Default school cleared for user {0}.").format(self.user_id))
-			return
+			if current_default:
+				frappe.defaults.clear_default("school", self.user_id)
+				frappe.cache().hdel("user:" + self.user_id, "defaults")
+				frappe.msgprint(_("Default school cleared for user {0}.").format(self.user_id))
+				return
 
 		# Update default school only if it has changed
 		if self.school != current_default:
