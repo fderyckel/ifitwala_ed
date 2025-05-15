@@ -105,7 +105,7 @@
   },
   {
    "default": "0",
-   "description": "Box should be check if this is a currently active Program Enrollment. Box should be unchecked once the Academic Year is over (and the program enrollment). ",
+   "description": "Box should be checked once the Academic Year is over (and the program enrollment is not current anymore). ",
    "fieldname": "archived",
    "fieldtype": "Check",
    "label": "Archived"
@@ -114,7 +114,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-15 19:05:25.246296",
+ "modified": "2025-05-15 20:31:28.023368",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment",
