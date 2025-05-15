@@ -6,10 +6,13 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, get_link_to_form
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
+from ifitwala_ed.utilities.school_tree import get_effective_record, ParentRuleViolation
+from frappe.utils.nestedset import get_ancestors_of
 
 class ProgramEnrollment(Document):
 
 	def validate(self):
+		self._resolve_academic_year()
 		self.validate_duplicate_course()
 		self.validate_duplication()
 		if not self.student_name:
@@ -41,6 +44,31 @@ class ProgramEnrollment(Document):
 	def on_submit(self):
 		self.update_student_joining_date()
 
+
+	def _resolve_academic_year(self):
+		allowed_schools = [self.school] + get_ancestors_of("School", self.school)
+
+		# 1 ▸ AUTOFILL when field left blank
+		if not self.academic_year:
+			ay = get_effective_record(
+				"Academic Year",
+				self.school,
+				extra_filters={"status": 1},
+			)
+			if not ay:
+				raise ParentRuleViolation(
+					_("No Academic Year found for {0} or its ancestors.").format(self.school)
+				)
+			self.academic_year = ay
+			return
+
+		# 2 ▸ VALIDATE a manually-picked AY
+		ay_school = frappe.db.get_value("Academic Year", self.academic_year, "school")
+		if ay_school not in allowed_schools:
+			raise ParentRuleViolation(
+				_("Academic Year {0} belongs to {1}, which is outside the allowed hierarchy.")
+				.format(self.academic_year, ay_school)
+			)
 
 	def validate_duplicate_course(self):
 		seen_courses = []
