@@ -216,22 +216,15 @@ def get_courses_for_program(doctype, txt, searchfield, start, page_len, filters=
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
-def get_academic_years_from_program(doctype, txt, searchfield, start, page_len, filters=None):
+def list_academic_years_desc(doctype, txt, searchfield, start, page_len, filters=None):
     filters = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
 
-    program = filters.get("program")
-    if not program:
-        return []
-
-    school = frappe.db.get_value("Program", program, "school")
-    if not school:
-        return []
-
-    return frappe.get_all(
+    # Use db.get_values for efficient lookup
+    return frappe.db.get_values(
         "Academic Year",
-        fields=["name"],
-        filters={"school": school},
-        order_by="year_start_date DESC",
+        filters={},
+        fieldname="name",
+        order_by="year_end_date DESC",
         limit_start=start,
         limit_page_length=page_len,
         as_list=True

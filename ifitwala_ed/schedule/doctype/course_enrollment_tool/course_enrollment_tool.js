@@ -6,13 +6,10 @@ frappe.ui.form.on("Course Enrollment Tool", {
     // Hide term field by default
     frm.set_df_property("term", "hidden", 1);
     
-    // Set academic_year filter based on selected program
+    // Set the query for academic year
     frm.set_query("academic_year", function () {
       return {
-        query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.get_academic_years_from_program",
-        filters: {
-          program: frm.doc.program
-        }
+        query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.list_academic_years_desc"
       };
     });
   },
