@@ -493,7 +493,7 @@ class Employee(NestedSet):
 @frappe.whitelist()
 def create_user(employee, user = None, email=None):
 	emp = frappe.get_doc("Employee", employee)
-	privacy = frappe.get_single("Privacy Settings")
+	privacy = frappe.get_single("Org Settings")
 	birth_date = None
 	phone = None
 	if emp.employee_date_of_birth and privacy.dob_to_user==1:
