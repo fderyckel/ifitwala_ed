@@ -215,7 +215,7 @@ def get_courses_for_program(doctype, txt, searchfield, start, page_len, filters=
     return final
 
 @frappe.whitelist()
-def list_academic_years_desc(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
+def list_academic_years_desc(doctype, txt, searchfield, start, page_len, filters):
     # Use pluck for efficient flat list retrieval
     names = frappe.db.get_values(
         "Academic Year",
