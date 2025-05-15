@@ -14,7 +14,7 @@
   "school",
   "term_type",
   "term_end_date",
-  "status",
+  "archived",
   "school_event_section_section",
   "at_start",
   "column_break_hxxn",
@@ -43,13 +43,13 @@
    "reqd": 1
   },
   {
+   "description": "Optional. Leave empty if this term applies to all schools.",
    "fieldname": "school",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "School",
-   "options": "School",
-   "description": "Optional. Leave empty if this term applies to all schools."
+   "options": "School"
   },
   {
    "fieldname": "column_break_yx8a",
@@ -116,17 +116,17 @@
   {
    "default": "1",
    "description": "Box should be check if this is the currently active Term. Box should be unchecked once the Term is over. ",
-   "fieldname": "status",
+   "fieldname": "archived",
    "fieldtype": "Check",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Status"
+   "label": "Archived"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-20 09:12:43.711924",
+ "modified": "2025-05-15 17:54:36.629287",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Term",

@@ -11,7 +11,8 @@
   "section_break_llx0",
   "academic_year_name",
   "column_break_iudv",
-  "status",
+  "school",
+  "archived",
   "section_break_eha5",
   "year_start_date",
   "column_break_w4nd",
@@ -34,7 +35,6 @@
    "fieldname": "academic_year_name",
    "fieldtype": "Data",
    "in_global_search": 1,
-   "in_list_view": 1,
    "label": "Academic Year Name",
    "reqd": 1
   },
@@ -100,25 +100,35 @@
    "read_only": 1
   },
   {
-   "default": "1",
-   "description": "Box should be check if this is the currently active Academic Year. Box should be unchecked once the Academic Year is over. ",
-   "fieldname": "status",
-   "fieldtype": "Check",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Status"
-  },
-  {
    "fieldname": "dashboard_tab",
    "fieldtype": "Tab Break",
    "label": "Dashboard"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "default": "1",
+   "description": "Box should be checked once the Academic Year is over and the academic year should be archived. . ",
+   "fieldname": "archived",
+   "fieldtype": "Check",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Archived"
   }
  ],
  "grid_page_length": 50,
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-20 05:20:20.600273",
+ "modified": "2025-05-15 19:05:46.115913",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",
@@ -130,7 +140,8 @@
    "delete": 1,
    "email": 1,
    "export": 1,
-   "print": 1,   "read": 1,
+   "print": 1,
+   "read": 1,
    "report": 1,
    "role": "System Manager",
    "share": 1,
@@ -192,5 +203,6 @@
  "row_format": "Dynamic",
  "sort_field": "year_start_date",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "title"
 }

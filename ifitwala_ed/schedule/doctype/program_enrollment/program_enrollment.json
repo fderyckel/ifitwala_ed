@@ -16,7 +16,7 @@
   "academic_year",
   "student_name",
   "cohort",
-  "status",
+  "archived",
   "enrolled_courses_section",
   "courses"
  ],
@@ -104,17 +104,17 @@
    "read_only": 1
   },
   {
-   "default": "1",
+   "default": "0",
    "description": "Box should be check if this is a currently active Program Enrollment. Box should be unchecked once the Academic Year is over (and the program enrollment). ",
-   "fieldname": "status",
+   "fieldname": "archived",
    "fieldtype": "Check",
-   "label": "Status"
+   "label": "Archived"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-07 22:08:00.768502",
+ "modified": "2025-05-15 19:05:25.246296",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment",
