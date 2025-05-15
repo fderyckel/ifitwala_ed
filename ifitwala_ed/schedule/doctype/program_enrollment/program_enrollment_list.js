@@ -3,11 +3,12 @@
 
 frappe.listview_settings["Program Enrollment"] = {
   hide_name_column: true,
+	add_fields: ["student", "archived", "student_cohort", "program", "term"], 
   colwidths: {
-    student: 6,
-    status: 3,
-    student_cohort: 6,
-    Program: 5,
-    term: 6,
+    student: 4,
+    archived: 1,
+    student_cohort: 2,
+    program: 2,
+    term: 1,
   },
 };

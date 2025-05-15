@@ -74,19 +74,18 @@ class ProgramEnrollment(Document):
 			
 	def validate_only_one_active_enrollment(self): 
 		"""
-    Checks if there's another active (status=1) Program Enrollment for the same student.
+    Checks if there's another active (archived=0) Program Enrollment for the same student.
     Raises an error if another active enrollment is found.
     """ 
-		if not self.status: 
-			return # if status is not checked. 
+		if self.archived: 
+			return # if archived is not checked. 
 		
 		existing_enrollment = frappe.db.get_value( 
 			"Program Enrollment", 
 			{ 
 				"student": self.student, 
-				"status": 1,  # Check for active enrollments 
-				"name": ("!=", self.name),  # Exclude the current document 
-				"docstatus": ("<", 2) # not cancelled or draft 
+				"archived": 0,  # Check for active enrollments 
+				"name": ("!=", self.name)  # Exclude the current document 
 			}, 
 			["name", "program", "academic_year"],  # Retrieve name, program and year for the error message 
 			as_dict=True

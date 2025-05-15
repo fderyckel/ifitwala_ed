@@ -95,21 +95,21 @@ class AcademicYear(Document):
         # 1. Retire all active Terms linked to this Academic Year
         frappe.db.sql("""
             UPDATE `tabTerm`
-            SET archived = 0
+            SET archived = 1
             WHERE academic_year = %s
-            AND archived = 1
+            AND archived = 0
         """, (self.name,))
 
         # 2. Retire all active Program Enrollments for this Academic Year
         frappe.db.sql("""
             UPDATE `tabProgram Enrollment`
-            SET archived = 0
+            SET archived = 1
             WHERE academic_year = %s
-            AND archived = 1
+            AND archived = 0
         """, (self.name,))
         
         # Update the Academic Year's own status to indicate it is retired
-        self.db_set("archived", 0)
+        self.db_set("archived", 1)
         frappe.db.commit()
         frappe.msgprint(_("Academic Year retired successfully. Set status to 0 for linked program enrollments and terms"))
         return "Academic Year archived successfully."   
