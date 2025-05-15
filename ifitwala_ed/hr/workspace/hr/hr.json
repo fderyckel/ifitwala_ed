@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"2ZEKCIFXhC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Staff Calendar\",\"col\":3}},{\"id\":\"jWVGn2pXes\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Employee\",\"col\":3}},{\"id\":\"N5HOjIizuz\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">HR</span>\",\"col\":12}},{\"id\":\"cQh43EktlU\",\"type\":\"card\",\"data\":{\"card_name\":\"HR Settings\",\"col\":4}},{\"id\":\"c0fYrEvaWa\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
+ "content": "[{\"id\":\"2ZEKCIFXhC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Staff Calendar\",\"col\":3}},{\"id\":\"jWVGn2pXes\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Employee\",\"col\":3}},{\"id\":\"N5HOjIizuz\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">HR</span>\",\"col\":12}},{\"id\":\"2RtsIQZnHc\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}},{\"id\":\"TWmZIg6AHQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Growth Plan\",\"col\":4}},{\"id\":\"c0fYrEvaWa\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"cQh43EktlU\",\"type\":\"card\",\"data\":{\"card_name\":\"HR Settings\",\"col\":4}}]",
  "creation": "2025-04-22 08:21:35.205048",
  "custom_blocks": [],
  "docstatus": 0,
@@ -80,9 +80,87 @@
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "HR",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employee",
+   "link_count": 0,
+   "link_to": "Employee",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Staff Calendar",
+   "link_count": 0,
+   "link_to": "Staff Calendar",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Professional Growth Plan",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "PGP Template",
+   "link_count": 0,
+   "link_to": "PGP Template",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "PGP Plan",
+   "link_count": 0,
+   "link_to": "PGP Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "PGP Goal",
+   "link_count": 0,
+   "link_to": "PGP Goal",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "PGP Rating",
+   "link_count": 0,
+   "link_to": "PGP Rating",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-05-12 09:22:40.173142",
+ "modified": "2025-05-14 08:32:35.676463",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",

@@ -64,6 +64,26 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Student Log",
+   "link_count": 0,
+   "link_to": "Student Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Log Follow up ",
+   "link_count": 0,
+   "link_to": "Student Log Follow Up",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Student Log Type",
    "link_count": 0,
    "link_to": "Student Log Type",
@@ -84,26 +104,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Log Follow up ",
-   "link_count": 0,
-   "link_to": "Student Log Follow Up",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Log",
-   "link_count": 0,
-   "link_to": "Student Log",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Student Log Dashboard",
    "link_count": 0,
    "link_to": "student-log-dashboard",
@@ -112,7 +112,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-12 09:22:21.646533",
+ "modified": "2025-05-15 00:31:16.344601",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Students",
@@ -134,7 +134,7 @@
    "role": "Admission Officer"
   }
  ],
- "sequence_id": 3.0,
+ "sequence_id": 2.0,
  "shortcuts": [
   {
    "color": "Grey",

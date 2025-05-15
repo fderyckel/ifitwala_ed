@@ -27,6 +27,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "default": "All Organizations",
    "fieldname": "organization",
    "fieldtype": "Link",
    "in_filter": 1,
@@ -105,7 +106,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-12 11:45:17.732216",
+ "modified": "2025-05-14 08:46:39.433003",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Designation",

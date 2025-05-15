@@ -37,13 +37,13 @@
   {
    "fieldname": "organization",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Organization",
    "options": "Organization"
   },
   {
    "fieldname": "school",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "School",
    "options": "School"
   },
@@ -58,7 +58,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-11 16:18:16.909030",
+ "modified": "2025-05-14 19:01:20.789384",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee History",

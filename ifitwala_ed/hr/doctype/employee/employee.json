@@ -298,6 +298,7 @@
    "reqd": 1
   },
   {
+   "depends_on": "eval:doc.organization",
    "fieldname": "school",
    "fieldtype": "Link",
    "in_filter": 1,
@@ -510,7 +511,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-11 15:41:47.432270",
+ "modified": "2025-05-14 19:46:49.678528",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",

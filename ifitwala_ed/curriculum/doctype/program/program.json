@@ -13,9 +13,11 @@
   "program_name",
   "school",
   "column_break_zxmc",
-  "program_abbreviation",
-  "is_group",
   "parent_program",
+  "program_abbreviation",
+  "column_break_yenw",
+  "is_group",
+  "archive",
   "course_section_section",
   "courses",
   "program_coordinators_section",
@@ -168,6 +170,7 @@
   {
    "fieldname": "old_parent",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Old Parent",
    "options": "Program"
   },
@@ -221,6 +224,16 @@
    "hidden": 1,
    "label": "Route",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_yenw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "archive",
+   "fieldtype": "Check",
+   "label": "Archive"
   }
  ],
  "grid_page_length": 50,
@@ -228,7 +241,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-03 15:14:45.804605",
+ "modified": "2025-05-14 22:48:25.115036",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",

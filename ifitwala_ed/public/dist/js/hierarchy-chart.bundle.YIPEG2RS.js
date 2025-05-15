@@ -7502,6 +7502,7 @@
           image,
           name,
           title,
+          organization,
           expandable,
           connections,
           is_root
@@ -7522,6 +7523,7 @@
         id: node.id,
         name: node.name,
         title: node.title,
+        organization: node.organization,
         image: node.image,
         parent: node.parent_id,
         connections: node.connections,
@@ -7665,6 +7667,7 @@
               image: data.image,
               name: data.name,
               title: data.title,
+              organization: data.organization,
               expandable: true,
               connections: data.connections,
               is_root: true
@@ -7822,6 +7825,7 @@
         image: data.image,
         name: data.name,
         title: data.title,
+        organization: data.organization,
         expandable: data.expandable,
         connections: data.connections,
         children: null
@@ -7981,6 +7985,7 @@
           image,
           name,
           title,
+          organization,
           expandable,
           connections,
           is_root
@@ -7999,6 +8004,7 @@
         id: node.id,
         name: node.name,
         title: node.title,
+        organization: node.organization,
         image: node.image,
         parent: node.parent_id,
         connections: node.connections,
@@ -8087,6 +8093,7 @@
               image: data.image,
               name: data.name,
               title: data.title,
+              organization: data.organization,
               expandable: true,
               connections: data.connections,
               is_root: true
@@ -8180,6 +8187,7 @@
         image: data.image,
         name: data.name,
         title: data.title,
+        organization: data.organization,
         expandable: data.expandable,
         connections: data.connections,
         children: null
@@ -8406,7 +8414,7 @@
 				{% if title %}
 					<div class="node-title text-muted ellipsis">{{ title }}&nbsp;&middot;&nbsp;</div>
 				{% endif %}
-
+					
 				{% if is_mobile %}
 					<div class="node-connections text-muted ellipsis">
 						&nbsp;{{ connections }} <span class="fa fa-level-down"></span>
@@ -8419,6 +8427,9 @@
 					{% endif %}
 				{% endif %}
 			</div>
+			{% if organization %}
+				<div class="node-organization text-muted ellipsis">{{ organization }}</div>
+			{% endif %}
 		</div>
 	</div>
 </div>`;
@@ -8442,4 +8453,4 @@
     OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
     PERFORMANCE OF THIS SOFTWARE.
     ***************************************************************************** */
-//# sourceMappingURL=hierarchy-chart.bundle.D35VBZNM.js.map
+//# sourceMappingURL=hierarchy-chart.bundle.YIPEG2RS.js.map
