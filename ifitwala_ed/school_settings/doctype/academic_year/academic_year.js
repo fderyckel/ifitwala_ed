@@ -4,10 +4,10 @@
 frappe.ui.form.on("Academic Year", {
   refresh: function (frm) {
     // Add "Retire Academic Year" button if the document is not new and is active
-    if (!frm.is_new() && frm.doc.status == 1) {
+    if (!frm.is_new() && frm.doc.archived == 1) {
       frm.add_custom_button(__("Retire Academic Year"), function() {
         frappe.confirm(
-          __("This will set the status of Program enrollment to 0 (aka retired). Are you sure you want to continue?"),
+          __("This will set the status of Program enrollment to 0 (aka archived). Are you sure you want to continue?"),
           function() {
             // On confirm, call the server-side method to retire the academic year
             frappe.call({
@@ -18,8 +18,8 @@ frappe.ui.form.on("Academic Year", {
               callback: function(r) {
                 if (r.message) {
                   frappe.msgprint(r.message);
-                  // Optionally update the form field to reflect the retired status
-                  // Reload the doc from the server so status and timestamp are synced
+                  // Optionally update the form field to reflect the archived status
+                  // Reload the doc from the server so archived and timestamp are synced
                   frm.reload_doc();
                 }
               }
