@@ -53,7 +53,7 @@ class ProgramEnrollment(Document):
 			ay = get_effective_record(
 				"Academic Year",
 				self.school,
-				extra_filters={"status": 1},
+				extra_filters={"archived": 0},
 			)
 			if not ay:
 				raise ParentRuleViolation(
