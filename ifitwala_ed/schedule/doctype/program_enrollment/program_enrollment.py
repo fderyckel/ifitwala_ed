@@ -1,7 +1,7 @@
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
-import frappe
+import frappe 
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, get_link_to_form
@@ -48,21 +48,21 @@ class ProgramEnrollment(Document):
 	def _resolve_academic_year(self):
 		allowed_schools = [self.school] + get_ancestors_of("School", self.school)
 
-		# 1 ▸ AUTOFILL when field left blank
+		# 1 ▸ autofill if left blank
 		if not self.academic_year:
-			ay = get_effective_record(
+			self.academic_year = get_effective_record(
 				"Academic Year",
 				self.school,
-				extra_filters={"archived": 0},
+				extra_filters={"archived": 0},	
 			)
-			if not ay:
+			if not self.academic_year:
 				raise ParentRuleViolation(
-					_("No Academic Year found for {0} or its ancestors.").format(self.school)
+					_("No active Academic Year found for {0} or its ancestors.")
+					.format(self.school)
 				)
-			self.academic_year = ay
 			return
 
-		# 2 ▸ VALIDATE a manually-picked AY
+		# 2 ▸ validate manual pick
 		ay_school = frappe.db.get_value("Academic Year", self.academic_year, "school")
 		if ay_school not in allowed_schools:
 			raise ParentRuleViolation(
@@ -106,7 +106,7 @@ class ProgramEnrollment(Document):
     Raises an error if another active enrollment is found.
     """ 
 		if self.archived: 
-			return # if archived is not checked. 
+			return # if archived is checked. 
 		
 		existing_enrollment = frappe.db.get_value( 
 			"Program Enrollment", 

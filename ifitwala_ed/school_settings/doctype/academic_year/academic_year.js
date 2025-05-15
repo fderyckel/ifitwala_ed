@@ -7,7 +7,7 @@ frappe.ui.form.on("Academic Year", {
     if (!frm.is_new() && frm.doc.archived == 1) {
       frm.add_custom_button(__("Retire Academic Year"), function() {
         frappe.confirm(
-          __("This will set the status of Program enrollment to 0 (aka archived). Are you sure you want to continue?"),
+          __("This will set the archived status of Program enrollment to 1 (aka archived). Are you sure you want to continue?"),
           function() {
             // On confirm, call the server-side method to retire the academic year
             frappe.call({

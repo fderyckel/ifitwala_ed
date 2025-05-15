@@ -41,7 +41,7 @@ def get_overlap_for(doc, doctype, fieldname, value=None):
 
 	return existing[0] if existing else None
 
-
+# This utility function is used to fetch the current courses for a student on the portal.
 def get_current_courses():
     """
     Optimized version: Fetch enrolled courses for the logged-in student

@@ -9,20 +9,12 @@ from frappe.model.document import Document
 class AcademicYear(Document):
 
 	def autoname(self):
-		if self.school:
-			abbr = frappe.db.get_value("School", self.school, "abbr") or self.school 
-			self.name = f"{abbr} {self.academic_year_name}" 
-		else: 
-			self.name = self.academic_year_name 
-		self.title = self.name 
-
-	def autoname(self):
 		abbr = frappe.db.get_value("School", self.school, "abbr") or self.school
 		self.name = f"{abbr} {self.academic_year_name}"
-		self.title = self.name			# keep title in sync
 
 	# ──────────────────────────────────────────────────────────────────
 	def validate(self):
+		self.title = self.name
 		self._validate_duplicate()
 		self._validate_dates()
 
@@ -130,7 +122,7 @@ class AcademicYear(Document):
 		# Update the Academic Year's own status to indicate it is retired
 		self.db_set("archived", 1)
 		frappe.db.commit()
-		frappe.msgprint(_("Academic Year retired successfully. Set status to 0 for linked program enrollments and terms"))
+		frappe.msgprint(_("Academic Year retired successfully. Archived status set to 1 for linked program enrollments and terms"))
 		return "Academic Year archived successfully."   
 
 @frappe.whitelist()

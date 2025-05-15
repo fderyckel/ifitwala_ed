@@ -128,9 +128,10 @@ frappe.ui.form.on("Program Enrollment Course", {
     }
 
     // 2. Get Course doc to check if it's year-long
-    if (row.course && frm.doc.school) {
+    if (row.course && frm.doc.school && frm.doc.academic_year) {
       const course = await frappe.db.get_doc("Course", row.course);
 
+      // Only proceed if this is not a term-based course
       if (!course.term_long) {
         // Init cache container if not already done
         frm.term_bounds_cache = frm.term_bounds_cache || {};
@@ -149,13 +150,27 @@ frappe.ui.form.on("Program Enrollment Course", {
         }
 
         const bounds = frm.term_bounds_cache[frm.doc.school];
-        if (bounds.term_start) {
+        if (bounds.term_start && bounds.term_end) {
           frappe.model.set_value(cdt, cdn, "term_start", bounds.term_start);
-        }
-        if (bounds.term_end) {
           frappe.model.set_value(cdt, cdn, "term_end", bounds.term_end);
+        } else {
+          // Fallback to first and last term if bounds are missing
+          const terms = await frappe.db.get_list("Term", {
+            filters: {
+              school: frm.doc.school,
+              academic_year: frm.doc.academic_year
+            },
+            fields: ["name", "term_start_date", "term_end_date"],
+            order_by: "term_start_date asc"
+          });
+
+          if (terms.length > 0) {
+            frappe.model.set_value(cdt, cdn, "term_start", terms[0].name);
+            frappe.model.set_value(cdt, cdn, "term_end", terms[terms.length - 1].name);
+          }
         }
       }
     }
   }
 });
+

@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import add_days, get_datetime, get_time, getdate
+from frappe.utils import getdate
 from datetime import timedelta
 from frappe.utils import today
 from frappe import _
@@ -17,6 +17,7 @@ def get_school_term_bounds(school, academic_year):
 	terms = frappe.db.sql("""
 		SELECT name, term_start_date, term_end_date
 		FROM `tabTerm`
+    WHERE term_type = `Academic` AND
 		WHERE school = %s AND academic_year = %s
 	    """, (school,academic_year), as_dict=True)
 
