@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.utils.nestedset import get_ancestors_of
+from frappe.utils.nestedset import get_descendants_of
 
 CACHE_TTL = 300  # seconds
 
@@ -64,3 +65,20 @@ def get_effective_record(
 
     cache.set_value(key, "__none__", expires_in=CACHE_TTL)
     return None
+
+
+@frappe.whitelist()
+def get_school_descendants(doctype, txt, searchfield, start, page_len, filters):
+	root = filters.get("root")
+	if not root:
+		return []
+	chain = [root] + get_descendants_of("School", root)
+
+	rows = frappe.db.get_list(
+		"School",
+		fields=["name", "school_name"],
+		filters={"name": ["in", chain]},
+		order_by="school_name",
+		pluck="name"	
+	)
+	return rows

@@ -55,9 +55,10 @@ class Term(Document):
 		# 2 ▸ If set, it MUST be AY.school itself OR one of its descendants
 		ancestors = [self.school] + get_ancestors_of("School", self.school)
 		if ay_school not in ancestors:
-			raise ParentRuleViolation(
+			frappe.throw(
 				_("School {0} is not within the Academic Year’s hierarchy ({1}).")
-				.format(self.school, ay_school)
+				.format(self.school, ay_school),
+				exc=ParentRuleViolation
 			)
 
 	def validate_duplicate(self):

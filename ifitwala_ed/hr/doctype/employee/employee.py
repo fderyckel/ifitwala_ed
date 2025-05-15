@@ -488,6 +488,9 @@ class Employee(NestedSet):
 			user.flags.ignore_permissions = True
 			user.add_roles("Expense Approver")
 
+	def on_doctype_update():
+		frappe.db.add_index("Employee", ["lft", "rgt"])
+
 
 
 @frappe.whitelist()
