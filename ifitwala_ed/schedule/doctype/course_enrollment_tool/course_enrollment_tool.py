@@ -217,12 +217,12 @@ def get_courses_for_program(doctype, txt, searchfield, start, page_len, filters=
 @frappe.whitelist()
 def list_academic_years_desc(doctype, txt, searchfield, start, page_len, filters):
     # Use pluck for efficient flat list retrieval
-    names = frappe.db.get_values(
-        "Academic Year",
-        fieldname="name",
-        order_by="year_end_date DESC",
-        pluck=True
-    )
+    results = frappe.db.sql("""
+        SELECT name 
+        FROM `tabAcademic Year`
+        WHERE year_end_date IS NOT NULL
+        ORDER BY year_end_date DESC
+    """, as_list=True)
 
-    # Wrap each name in a list
-    return [[name] for name in names]
+    # Return the results directly, already in the correct format
+    return results
