@@ -3,6 +3,20 @@
 
 frappe.ui.form.on("School Calendar", { 
 
+	onload: function(frm) {
+		frm.fields_dict["terms"].grid.on("grid-row-render", function(grid_row) {
+			// Apply styling to the 'number_of_instructional_days' cell
+			const cell = grid_row.grid_form.fields_dict["number_of_instructional_days"]?.wrapper;
+			if (cell) {
+				cell.css({
+					"background-color": "#FFF4E5",
+					"color": "#333",
+					"font-weight": "bold"
+				});
+			}
+		});
+	},	
+
 	refresh: function (frm) {
 
 		frm.set_df_property("terms", "read_only", 1);
@@ -77,7 +91,11 @@ frappe.ui.form.on("School Calendar", {
 				);
 			});
 		}
-	},    
+	},   
+	
+	after_save: function(frm) {
+        frm.fields_dict["terms"].grid.refresh();
+  }, 
 	
 	academic_year: async function(frm) {
 		// reset on change
@@ -146,18 +164,3 @@ frappe.ui.form.on("School Calendar Holidays", {
 	}
 });
 
-frappe.ui.form.on("School Calendar Term", {
-    form_render: function(frm, cdt, cdn) {
-        // Apply the custom cell styling for instructional days
-        frm.fields_dict["terms"].grid.wrapper.find(".grid-row").each(function() {
-            const instructionalDaysCell = $(this).find("[data-fieldname='number_of_instructional_days']");
-            if (instructionalDaysCell.length) {
-                instructionalDaysCell.css({
-                    "background-color": "#FFE5B4",
-                    "color": "#333",
-                    "font-weight": "bold"
-                });
-            }
-        });
-    }
-});
