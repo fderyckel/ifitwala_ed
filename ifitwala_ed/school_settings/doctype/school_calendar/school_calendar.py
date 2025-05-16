@@ -106,8 +106,7 @@ class SchoolCalendar(Document):
 				"school": ("in", chain),	# matches AY.school or child overrides
 			},
 			fields=["name", "term_name", "term_start_date", "term_end_date"],
-			order_by="term_start_date",
-			as_dict=1,
+			order_by="term_start_date"
 		)
 
 		for t in terms:
