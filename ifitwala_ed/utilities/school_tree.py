@@ -79,6 +79,6 @@ def get_school_descendants(doctype, txt, searchfield, start, page_len, filters):
 		fields=["name", "school_name"],
 		filters={"name": ["in", chain]},
 		order_by="school_name",
-		pluck="name"	
+		as_list=1
 	)
 	return rows
