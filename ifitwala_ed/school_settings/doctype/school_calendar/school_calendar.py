@@ -39,8 +39,8 @@ class SchoolCalendar(Document):
 
 		ay = frappe.get_doc("Academic Year", self.academic_year)
 		self.total_holiday_days = len(self.holidays)
-		self.total_number_day = date_diff(getdate(ay.year_end_date), getdate(ay.year_start_date))
-		self.total_instruction_days = date_diff(getdate(ay.year_end_date), getdate(ay.year_start_date)) - self.total_holiday_days
+		self.total_number_day = date_diff(getdate(ay.year_end_date), getdate(ay.year_start_date)) + 1
+		self.total_instruction_days = self.total_number_day - self.total_holiday_days - 1
 
 	# ----------------------------------------------------------------
 	def _sync_school_with_ay(self):
@@ -50,13 +50,13 @@ class SchoolCalendar(Document):
 		2. If filled → must be AY.school or one of its descendants.
 		3. AY must be active (archived = 0).
 		"""
-		# ensure AY is active
-		if frappe.db.get_value("Academic Year", self.academic_year, "archived"):
-			frappe.throw(
-				_("Academic Year {0} is archived. Choose an active AY.")
-				.format(self.academic_year),
-				title=_("Inactive AY")
-			)
+		# ensure AY is active - I think it's ok to build the calendar even if the AY is archived
+		#if frappe.db.get_value("Academic Year", self.academic_year, "archived"):
+		#	frappe.throw(
+		#		_("Academic Year {0} is archived. Choose an active AY.")
+		#		.format(self.academic_year),
+		#		title=_("Inactive AY")
+		#	)
 
 		ay_school = frappe.db.get_value("Academic Year", self.academic_year, "school")
 
