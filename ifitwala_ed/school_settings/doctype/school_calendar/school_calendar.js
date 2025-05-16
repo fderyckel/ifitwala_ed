@@ -145,3 +145,19 @@ frappe.ui.form.on("School Calendar Holidays", {
 		frm.save();
 	}
 });
+
+frappe.ui.form.on("School Calendar Term", {
+    form_render: function(frm, cdt, cdn) {
+        // Apply the custom cell styling for instructional days
+        frm.fields_dict["terms"].grid.wrapper.find(".grid-row").each(function() {
+            const instructionalDaysCell = $(this).find("[data-fieldname='number_of_instructional_days']");
+            if (instructionalDaysCell.length) {
+                instructionalDaysCell.css({
+                    "background-color": "#FFE5B4",
+                    "color": "#333",
+                    "font-weight": "bold"
+                });
+            }
+        });
+    }
+});

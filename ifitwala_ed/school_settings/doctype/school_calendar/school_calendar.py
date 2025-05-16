@@ -92,28 +92,48 @@ class SchoolCalendar(Document):
 
 	# ----------------------------------------------------------------
 	def _populate_term_table(self):
-		"""
-		Re-build the readonly term child table from Term records
-		linked to the chosen AY + this calendar's school hierarchy.
-		"""
-		self.set("terms", [])		# reset
-		chain = [self.school] + get_ancestors_of("School", self.school)
-
+		# Fetch all terms linked to this academic year and school
 		terms = frappe.db.get_all(
 			"Term",
+			fields=["name", "term_start_date", "term_end_date"],
 			filters={
 				"academic_year": self.academic_year,
-				"school": ("in", chain),	# matches AY.school or child overrides
+				"school": self.school
 			},
-			fields=["name", "term_name", "term_start_date", "term_end_date"],
 			order_by="term_start_date"
 		)
 
-		for t in terms:
+		# Clear any existing terms in the child table
+		self.terms = []
+
+		# Fetch all holidays (including weekends) for this school calendar
+		holidays = frappe.db.get_all(
+			"School Calendar Holidays",
+			fields=["holiday_date"],
+			filters={"parent": self.name, "parenttype": "School Calendar"}
+		)
+		holiday_dates = {h["holiday_date"] for h in holidays}
+
+		# Populate the child table
+		for term in terms:
+			# Calculate total days (inclusive)
+			total_days = date_diff(term["term_end_date"], term["term_start_date"]) + 1
+			
+			# Count non-instructional days (holidays + weekends)
+			non_instructional_days = len([
+				h for h in holiday_dates 
+				if term["term_start_date"] <= h <= term["term_end_date"]
+			])
+
+			# Calculate instructional days
+			instructional_days = total_days - non_instructional_days
+
+			# Append the term
 			self.append("terms", {
-				"term": t.name,
-				"start": t.term_start_date,
-				"end": t.term_end_date,
+				"term_name": term["name"],
+				"term_start_date": term["term_start_date"],
+				"term_end_date": term["term_end_date"],
+				"number_of_instructional_days": instructional_days
 			})
 
 	# Check for duplicate holidays in the list
