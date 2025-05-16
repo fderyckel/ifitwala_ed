@@ -7,7 +7,7 @@ from frappe import _
 from frappe.utils import get_link_to_form, getdate, formatdate, date_diff, cint
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_ancestors_of
-from ifitwala_ed.utilities.school_tree import (get_effective_record, ParentRuleViolation)
+from ifitwala_ed.utilities.school_tree import ParentRuleViolation
 
 
 class SchoolCalendar(Document):
@@ -69,7 +69,7 @@ class SchoolCalendar(Document):
 		allowed = [self.school] + get_ancestors_of("School", self.school)
 		if ay_school not in allowed:
 			raise ParentRuleViolation(
-				_("School {0} is not within the Academic Year’s hierarchy ({1}).")
+				_("School {0} is not within the Academic Year's hierarchy ({1}).")
 				.format(self.school, ay_school)
 			)
 
@@ -94,7 +94,7 @@ class SchoolCalendar(Document):
 	def _populate_term_table(self):
 		"""
 		Re-build the readonly term child table from Term records
-		linked to the chosen AY + this calendar’s school hierarchy.
+		linked to the chosen AY + this calendar's school hierarchy.
 		"""
 		self.set("terms", [])		# reset
 		chain = [self.school] + get_ancestors_of("School", self.school)
