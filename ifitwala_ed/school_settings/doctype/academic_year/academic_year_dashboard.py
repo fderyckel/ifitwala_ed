@@ -9,7 +9,7 @@ def get_data():
     "transactions": [
       {
         "label": _("Academic"),
-        "items": ["Academic Year", "Term", "School Calendar", "Student Log"]
+        "items": ["Term", "School Calendar", "Student Log"]
       }, 
       {
         "label": _("Schedule"),
