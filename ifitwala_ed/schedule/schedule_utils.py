@@ -186,3 +186,31 @@ def check_slot_conflicts(group_doc):
                 conflicts["student"].append((student_ids, rot, block))
 
     return dict(conflicts)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Utility called by Timetable builder (elsewhere in your app)
+# ─────────────────────────────────────────────────────────────────────
+def get_effective_schedule(school_calendar: str, school: str) -> str | None:
+	"""
+	Return closest School Schedule for <school> within the Calendar tree.
+	Used by timetable generation code.  Cached in Redis for 5 min.
+	"""
+	cache_key = f"effective_schedule::{school_calendar}::{school}"
+	sched = frappe.cache().get_value(cache_key)
+	if sched:
+		return None if sched == "__none__" else sched
+
+	chain = [school] + get_ancestors_of("School", school)
+	for sch in chain:
+		sched = frappe.db.get_value(
+			"School Schedule",
+			{"school_calendar": school_calendar, "school": sch},
+			"name",
+		)
+		if sched:
+			frappe.cache().set_value(cache_key, sched, expires_in=300)
+			return sched
+
+	frappe.cache().set_value(cache_key, "__none__", expires_in=300)
+	return None
