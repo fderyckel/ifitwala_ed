@@ -126,7 +126,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-15 17:54:36.629287",
+ "modified": "2025-05-16 09:07:33.643508",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Term",
@@ -204,5 +204,5 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "term_name"
+ "title_field": "title"
 }
