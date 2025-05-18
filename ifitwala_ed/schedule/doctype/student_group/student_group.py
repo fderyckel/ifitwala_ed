@@ -5,8 +5,10 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, get_link_to_form
-from ifitwala_ed.schedule.schedule_utils import validate_duplicate_student
+from ifitwala_ed.schedule.schedule_utils import validate_duplicate_student, build_rotation_map
 from ifitwala_ed.schedule.schedule_utils import (check_slot_conflicts, get_conflict_rule)
+from ifitwala_ed.schedule.schedule_utils import get_effective_schedule
+from frappe.utils.nestedset import get_ancestors_of
 
 class StudentGroup(Document):
 	def autoname(self):
@@ -30,6 +32,7 @@ class StudentGroup(Document):
 		self.validate_students()
 		self.validate_and_set_child_table_fields()
 		validate_duplicate_student(self.students)
+		self.validate_rotation_clashes()
 
 		if self.group_based_on in ["Course", "Activity"]:
 			if self.term: 
@@ -228,6 +231,42 @@ class StudentGroup(Document):
 				frappe.throw(_("Duplicate roll number for student {0}").format(d.student_name))
 			else:
 				roll_no_list.append(d.group_roll_number)		
+
+	def validate_rotation_clashes(self):
+		"""
+		Check duplicates across student, instructor, location
+		within the same School Calendar & School hierarchy.
+		"""
+		key_sets = {
+			"student": set(),
+			"instructor": set(),
+			"location": set()
+		}
+
+		for row in self.schedule:
+			hash_base = f"{row.rotation_day}:{row.block_number}"
+			# students
+			for s in self.students:
+				key = f"{hash_base}:{s.student}"
+				if key in key_sets["student"]:
+					frappe.throw(_("Student clash on rotation {0} block {1} ({2})")
+								.format(row.rotation_day, row.block_number, s.student))
+				key_sets["student"].add(key)
+
+			# instructors (child table student_group_instructor)
+			for instr in self.instructors:
+				key = f"{hash_base}:{instr.instructor}"
+				if key in key_sets["instructor"]:
+					frappe.throw(_("Instructor clash on rotation {0} block {1} ({2})")
+								.format(row.rotation_day, row.block_number, instr.instructor))
+				key_sets["instructor"].add(key)
+
+			# location
+			key = f"{hash_base}:{row.location}"
+			if key in key_sets["location"]:
+				frappe.throw(_("Location clash on rotation {0} block {1} ({2})")
+							.format(row.rotation_day, row.block_number, row.location))
+			key_sets["location"].add(key)
 
 def get_permission_query_conditions(user):
 	if not user:

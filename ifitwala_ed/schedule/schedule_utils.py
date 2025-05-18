@@ -2,10 +2,9 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import getdate
-from datetime import timedelta
-from frappe.utils import today
+from frappe.utils import getdate, add_days, today
 from frappe import _
+from datetime import timedelta, date
 
 ## function to get the start and end dates of the current academic year
 ## used in program enrollment, course enrollment too. 
@@ -86,7 +85,7 @@ def get_rotation_dates(school_schedule_name, academic_year, include_holidays=Fal
             rotation_index = (rotation_index % rotation_days) + 1
         # Else, skip holidays without incrementing rotation
 
-        current_date += timedelta(days=1)
+        current_date += add_days(current_date, 1)
 
     return rotation_dates
 
@@ -214,3 +213,136 @@ def get_effective_schedule(school_calendar: str, school: str) -> str | None:
 
 	frappe.cache().set_value(cache_key, "__none__", expires_in=300)
 	return None
+
+
+
+ROT_CACHE_TTL = 24 * 60 * 60		# one day
+
+def build_rotation_map(calendar_name: str) -> dict[int, list[tuple]]:
+	"""
+	Returns a dict keyed by rotation_day (1-N) → list of dates.
+	Respects:
+	  • calendar.include_holidays_in_rotation
+	  • holiday.is_weekend  (weekly-off days pause rotation)
+	"""
+	key = f"rotmap::{calendar_name}"
+	if cached := frappe.cache().get_value(key):
+		return cached
+
+	cal = frappe.get_doc("School Calendar", calendar_name)
+	rot_count = cal.rotation_days
+	include_holidays = cal.include_holidays_in_rotation
+
+	holiday_flag = {
+		getdate(h.holiday_date): h.is_weekend for h in cal.holidays
+	}
+	out = {i: [] for i in range(1, rot_count + 1)}
+	instr_index = 0
+
+	for term in cal.terms:
+		cur = getdate(term.start)
+		while cur <= getdate(term.end):
+			is_holiday = cur in holiday_flag
+			is_weekend = holiday_flag.get(cur, 0)
+
+			if is_holiday and not include_holidays:
+				# skip rotation increment
+				cur = add_days(cur, 1)
+				continue
+
+			rotation = 1 + (instr_index % rot_count)
+			out[rotation].append(cur)
+			instr_index += 1
+
+			if is_weekend and not include_holidays:
+				# weekend doesn’t advance rotation_index
+				instr_index -= 1
+
+			cur = add_days(cur, 1)
+
+	frappe.cache().set_value(key, out, expires_in=ROT_CACHE_TTL)
+	return out
+
+CACHE_TTL = 6 * 60 * 60		# 6 hours
+
+def build_user_calendar(user: str, start_date: date, days: int = 7) -> list[dict]:
+	"""
+	Returns a list of event dicts for <user> in [start_date, +days).
+	Caches each day separately: key  calendar::<user>::YYYY-MM-DD
+	"""
+	out = []
+	for i in range(days):
+		d = start_date + timedelta(days=i)
+		key = f"calendar::{user}::{d.isoformat()}"
+
+		if cached := frappe.cache().get_value(key):
+			out.extend(json.loads(cached))
+			continue
+
+		# build for that single day
+		event_list = _build_events_for_day(user, d)
+		frappe.cache().set_value(key, json.dumps(event_list), expires_in=CACHE_TTL)
+		out.extend(event_list)
+	return out
+
+# ----------------------------------------------------------------
+def _build_events_for_day(user, cur_date):
+	"""
+	Compute events for a user on a single date.
+	Students → match student_groups
+	Instructors → match instructor links
+	"""
+	events = []
+	sg_filters = {
+		"academic_year": ["!=", ""],		# only active groups
+		"docstatus": 1
+	}
+	sgs = frappe.db.get_list("Student Group", filters=sg_filters, fields=["name", "school_calendar", "school"])
+
+	for sg in sgs:
+		rot_map = build_rotation_map(sg.school_calendar)
+		# find rotation of cur_date (may be holiday)
+		for rd, date_list in rot_map.items():
+			if cur_date in date_list:
+				events.extend(_expand_sg_rotation(sg.name, rd, cur_date))
+				break
+
+	return events
+
+def _expand_sg_rotation(sg_name, rotation_day, cur_date):
+	"""
+	Read SG-Schedule rows for that rotation_day, fetch block times,
+	return concrete events list
+	"""
+	rows = frappe.db.get_all(
+		"Student Group Schedule",
+		filters={"parent": sg_name, "rotation_day": rotation_day},
+		fields=["block_number", "location", "instructor"]
+	)
+	if not rows:
+		return []
+
+	# get effective schedule
+	sg = frappe.get_doc("Student Group", sg_name)
+	sched = get_effective_schedule(sg.school_calendar, sg.school)
+	block_times = frappe.db.get_all(
+		"School Schedule Block",
+		filters={"parent": sched},
+		fields=["block_number", "from_time", "to_time"]
+	)
+
+	bt_map = {b.block_number: (b.from_time, b.to_time) for b in block_times}
+	out = []
+	for r in rows:
+		if r.block_number not in bt_map:
+			continue
+		start, end = bt_map[r.block_number]
+		out.append({
+			"title": sg_name,
+			"start": f"{cur_date} {start}",
+			"end":   f"{cur_date} {end}",
+			"location": r.location,
+			"instructor": r.instructor,
+			"student_group": sg_name
+		})
+	return out

@@ -158,21 +158,27 @@ default_roles = [
 # }
 
 doc_events = { 
-    "Contact": {
-      "on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"
+  "Contact": {
+    "on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"
+  }, 
+  "User":{
+    "after_insert": "frappe.contacts.doctype.contact.contact.update_contact",
+    "validate": [ 
+      "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role", 
+      "ifitwala_ed.api.set_default_workspace_based_on_roles"
+    ], 
+    "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions"
+  }, 
+  "File": {
+    "after_insert": "ifitwala_ed.utilities.image_utils.handle_file_after_insert", 
+    "on_update": "ifitwala_ed.utilities.image_utils.handle_file_on_update"
     }, 
-    "User":{
-      "after_insert": "frappe.contacts.doctype.contact.contact.update_contact",
-      "validate": [ 
-        "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role", 
-        "ifitwala_ed.api.set_default_workspace_based_on_roles"
-      ], 
-      "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions"
-    }, 
-    "File": {
-        "after_insert": "ifitwala_ed.utilities.image_utils.handle_file_after_insert", 
-        "on_update": "ifitwala_ed.utilities.image_utils.handle_file_on_update"
-    }    
+	"Student Group": {
+		"on_update": "ifitwala_ed.schedule.calendar_cache.invalidate_for_student_group"
+	},
+	"School Calendar Holiday": {
+		"after_insert": "ifitwala_ed.schedule.calendar_cache.invalidate_all_for_calendar"
+	}
 }
 
 # Scheduled Tasks

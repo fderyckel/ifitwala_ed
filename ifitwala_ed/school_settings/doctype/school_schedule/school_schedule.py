@@ -7,7 +7,8 @@ from frappe.utils import get_link_to_form
 from frappe import _
 from datetime import timedelta
 from frappe.utils.nestedset import get_ancestors_of
-from ifitwala_ed.utilities.school_tree import (get_effective_record, ParentRuleViolation)
+from ifitwala_ed.utilities.school_tree import (ParentRuleViolation)
+
 class SchoolSchedule(Document): 
 	"""Handles school schedule configurations."""
 
@@ -184,7 +185,6 @@ def on_doctype_update():
 	frappe.db.add_index(
 		"School Schedule",
 		fields=["school_calendar", "school"],
-		index_name="idx_schedule_cal_school",
-		ignore_existing=True,
+		index_name="idx_schedule_cal_school"
 	)
 	
