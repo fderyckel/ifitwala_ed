@@ -7,6 +7,7 @@
  "field_order": [
   "section_break_igix",
   "term",
+  "number_of_instructional_days",
   "start",
   "end"
  ],
@@ -35,13 +36,19 @@
    "in_list_view": 1,
    "label": "End",
    "read_only": 1
+  },
+  {
+   "fieldname": "number_of_instructional_days",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Number of Instructional Days"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-14 21:49:22.210273",
+ "modified": "2025-05-16 09:54:54.248523",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Calendar Term",

@@ -33,6 +33,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval:doc.school_calendar",
    "fieldname": "school",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -121,7 +122,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-20 12:22:55.715410",
+ "modified": "2025-05-17 19:34:38.443448",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Schedule",
