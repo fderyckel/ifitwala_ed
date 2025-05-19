@@ -105,7 +105,7 @@ class SchoolSchedule(Document):
 		pass
 
 
-	def validate_block_time_overlaps(self):
+	def _validate_block_time_overlaps(self):
 		day_blocks = {}
 		for row in self.course_schedule_block:
 			if not row.from_time or not row.to_time:
