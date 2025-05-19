@@ -6,7 +6,6 @@ from frappe.model.document import Document
 from frappe.utils import get_link_to_form
 from frappe import _
 from frappe.utils import getdate
-from datetime import timedelta
 from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import (ParentRuleViolation)
 
@@ -23,6 +22,7 @@ class SchoolSchedule(Document):
 		self._sync_school_with_calendar()
 		self._enforce_single_schedule()
 		self._resolve_fallbacks()
+		self._validate_block_time_overlaps()
 
 		# Get in-memory school_schedule_day
 		schedule_days = self.get("school_schedule_day")
@@ -104,6 +104,39 @@ class SchoolSchedule(Document):
 		"""
 		pass
 
+
+	def _validate_block_time_overlaps(self):
+		# Organize blocks by rotation_day
+		day_blocks = {}
+		for row in self.course_schedule_block:
+			if not row.from_time or not row.to_time:
+				continue  # Ignore incomplete entries
+			day_blocks.setdefault(row.rotation_day, []).append(row)
+
+		# For each day, check all block pairs for overlaps
+		for rotation_day, blocks in day_blocks.items():
+			# Sort by from_time for easier checking
+			sorted_blocks = sorted(blocks, key=lambda b: b.from_time)
+			for i, block1 in enumerate(sorted_blocks):
+				for block2 in sorted_blocks[i+1:]:
+					# Only check blocks that overlap in time
+					# If block1 starts after block2 ends, they're fine (because list is sorted)
+					if block1.to_time <= block2.from_time:
+						break
+					# If block2 starts before block1 ends, that's an overlap
+					if block2.from_time < block1.to_time:
+						# Optional: show both block numbers and times in the message
+						raise frappe.ValidationError(_(
+							"Block {block1} ({start1}–{end1}) and Block {block2} ({start2}–{end2}) on Rotation Day {day} have overlapping times."
+						).format(
+							block1=block1.block_number,
+							start1=block1.from_time,
+							end1=block1.to_time,
+							block2=block2.block_number,
+							start2=block2.from_time,
+							end2=block2.to_time,
+							day=rotation_day
+						))
 
 	@frappe.whitelist()
 	def generate_rotation_days(self):
