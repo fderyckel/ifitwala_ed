@@ -105,28 +105,34 @@ class SchoolSchedule(Document):
 		pass
 
 
-	def _validate_block_time_overlaps(self):
-		# Organize blocks by rotation_day
+	def validate_block_time_overlaps(self):
 		day_blocks = {}
 		for row in self.course_schedule_block:
 			if not row.from_time or not row.to_time:
 				continue  # Ignore incomplete entries
+
+			# Check that start time is before end time
+			if row.from_time >= row.to_time:
+				frappe.throw(_(
+					"For Block {block} on Rotation Day {day}, the start time ({start}) must be before the end time ({end})."
+				).format(
+					block=row.block_number,
+					day=row.rotation_day,
+					start=row.from_time,
+					end=row.to_time,
+				))
+
 			day_blocks.setdefault(row.rotation_day, []).append(row)
 
-		# For each day, check all block pairs for overlaps
+		# Check all block pairs for overlaps per rotation day
 		for rotation_day, blocks in day_blocks.items():
-			# Sort by from_time for easier checking
 			sorted_blocks = sorted(blocks, key=lambda b: b.from_time)
 			for i, block1 in enumerate(sorted_blocks):
 				for block2 in sorted_blocks[i+1:]:
-					# Only check blocks that overlap in time
-					# If block1 starts after block2 ends, they're fine (because list is sorted)
 					if block1.to_time <= block2.from_time:
 						break
-					# If block2 starts before block1 ends, that's an overlap
 					if block2.from_time < block1.to_time:
-						# Optional: show both block numbers and times in the message
-						raise frappe.ValidationError(_(
+						frappe.throw(_(
 							"Block {block1} ({start1}–{end1}) and Block {block2} ({start2}–{end2}) on Rotation Day {day} have overlapping times."
 						).format(
 							block1=block1.block_number,
@@ -137,6 +143,7 @@ class SchoolSchedule(Document):
 							end2=block2.to_time,
 							day=rotation_day
 						))
+
 
 	@frappe.whitelist()
 	def generate_rotation_days(self):

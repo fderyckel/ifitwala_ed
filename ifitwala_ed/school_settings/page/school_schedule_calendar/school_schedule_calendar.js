@@ -87,7 +87,7 @@ function load_calendar_events(calendarEl, school = "") {
   console.log(`[School Schedule Calendar] Loading events for school: ${school || "All"}`);
 
   frappe.call({
-    method: "ifitwala_ed.schedule.page.school_schedule_calendar.school_schedule_calendar.get_schedule_events",
+    method: "ifitwala_ed.school_settings.page.school_schedule_calendar.school_schedule_calendar.get_schedule_events",
     args: { school },
     callback: function (r) {
       if (!r.message) return;
