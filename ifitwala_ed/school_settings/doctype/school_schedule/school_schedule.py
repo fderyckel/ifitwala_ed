@@ -5,6 +5,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import get_link_to_form
 from frappe import _
+from frappe.utils import getdate
 from datetime import timedelta
 from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import (ParentRuleViolation)
@@ -33,17 +34,17 @@ class SchoolSchedule(Document):
 		rotation_day_count = len(schedule_days)
 
 		if rotation_day_count > self.rotation_days:
-			frappe.throw(
+			frappe.throw(_(
 				f"You have defined {rotation_day_count} rotation days, "
 				f"but the schedule allows only {self.rotation_days}. "
-				"Please remove the excess rotation days."
+				"Please remove the excess rotation days.")
 			)
 
 		if rotation_day_count < self.rotation_days:
-			frappe.throw(
+			frappe.throw(_(
 				f"You have defined only {rotation_day_count} rotation days, "
 				f"but the schedule requires {self.rotation_days}. "
-				"Please add the missing rotation days."
+				"Please add the missing rotation days.")
 			)  
 
 		if self.first_day_rotation_day: 
@@ -72,10 +73,10 @@ class SchoolSchedule(Document):
 
 		allowed = [self.school] + get_ancestors_of("School", self.school)
 		if calendar_school not in allowed:
-			raise ParentRuleViolation(
-				_("School {0} is not within the hierarchy of the Calendar's school ({1}).")
-				.format(self.school, calendar_school)
-			)
+			raise ParentRuleViolation(_(
+				"School {0} is not within the hierarchy of the Calendar's school ({1}).")
+				.format(get_link_to_form(self.school), calendar_school
+			))
 
 	# ----------------------------------------------------------------
 	def _enforce_single_schedule(self):
@@ -89,9 +90,9 @@ class SchoolSchedule(Document):
 				"docstatus": ("<", 2),
 			}
 		):
-			frappe.throw(
-				_("A Schedule already exists for {0} under Calendar {1}.")
-				.format(self.school, self.school_calendar), title=_("Duplicate"),
+			frappe.throw(_(
+				"A Schedule already exists for {0} under Calendar {1}.")
+				.format(get_link_to_form(self.school), get_link_to_form(self.school_calendar)), title=_("Duplicate"),
 			)
 
 	# ----------------------------------------------------------------
@@ -109,13 +110,11 @@ class SchoolSchedule(Document):
 		"""Generate rotation days based on rotation_days count."""
 		
 		if not self.rotation_days or self.rotation_days <= 0:
-			frappe.throw("Please set a valid number of rotation days before generating.")
+			frappe.throw(_("Please set a valid number of rotation days before generating."))
 
 		# Check existing rotation days
 		if self.get("school_schedule_day"):
-			frappe.throw(
-				"Rotation days already exist. If you want to regenerate them, please clear them first "
-			)
+			frappe.throw(_("Rotation days already exist. If you want to regenerate them, please clear them first "))
 
 		# Generate new rotation days and append them to the child table
 		for day in range(1, self.rotation_days + 1):
@@ -189,10 +188,26 @@ def on_doctype_update():
 	)
 
 @frappe.whitelist()
-def get_first_day_of_academic_year(school_calendar):
+def get_first_academic_term_start(school_calendar):
+  # Fetch the academic_year from the selected School Calendar
   academic_year = frappe.db.get_value("School Calendar", school_calendar, "academic_year")
   if not academic_year:
     return None
-  year_start_date = frappe.db.get_value("Academic Year", academic_year, "year_start_date")
-  return year_start_date
+
+  # Fetch all Terms for this academic_year, filter to Academic terms only
+  terms = frappe.get_all(
+    "Term",
+    filters={
+      "academic_year": academic_year,
+      "term_type": "Academic"
+    },
+    fields=["term_start_date"]
+  )
+
+  # Extract start dates and find the earliest
+  dates = [getdate(t["term_start_date"]) for t in terms if t["term_start_date"]]
+  if not dates:
+    return None
+
+  return min(dates)
 	

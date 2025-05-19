@@ -41,7 +41,7 @@ frappe.ui.form.on('School Schedule', {
 		});
 
 		frappe.call({
-			method: "ifitwala_ed.school_settings.doctype.school_schedule.school_schedule.get_first_day_of_academic_year",
+			method: "ifitwala_ed.school_settings.doctype.school_schedule.school_schedule.get_first_academic_term_start",
 			args: { school_calendar: frm.doc.school_calendar },
 			callback: function(r) {
 				if (r.message) {
