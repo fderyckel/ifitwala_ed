@@ -30,33 +30,33 @@ function render_school_schedule_page(wrapper) {
 
   // Add legend for event colors
   const legend = $(`
-    <div class="flex flex-wrap gap-4 items-center mb-4">
-      <div class="flex items-center gap-2">
-        <div style="width:16px; height:16px; background-color: #CAE9FF; border:1px solid #ccc;"></div>
-        <span>Weekend</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div style="width:16px; height:16px; background-color: #87BCDE; border:1px solid #ccc;"></div>
-        <span>Holiday</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div style="width:16px; height:16px; background-color: #4caf50;"></div>
-        <span>Course</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div style="width:16px; height:16px; background-color: #2196f3;"></div>
-        <span>Activity</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div style="width:16px; height:16px; background-color: #ff9800;"></div>
-        <span>Recess</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div style="width:16px; height:16px; background-color: #9c27b0;"></div>
-        <span>Assembly</span>
-      </div>
-    </div>
-  `).appendTo(page.body);
+		<div class="d-flex flex-wrap align-items-center mb-4" style="gap: 1.5rem;">
+			<div class="d-flex align-items-center me-4 mb-2">
+				<div style="width:16px; height:16px; background-color: #CAE9FF; border:1px solid #ccc; margin-right:6px;"></div>
+				<span>Weekend</span>
+			</div>
+			<div class="d-flex align-items-center me-4 mb-2">
+				<div style="width:16px; height:16px; background-color: #87BCDE; border:1px solid #ccc; margin-right:6px;"></div>
+				<span>Holiday</span>
+			</div>
+			<div class="d-flex align-items-center me-4 mb-2">
+				<div style="width:16px; height:16px; background-color: #4caf50; border:1px solid #ccc; margin-right:6px;"></div>
+				<span>Course</span>
+			</div>
+			<div class="d-flex align-items-center me-4 mb-2">
+				<div style="width:16px; height:16px; background-color: #2196f3; border:1px solid #ccc; margin-right:6px;"></div>
+				<span>Activity</span>
+			</div>
+			<div class="d-flex align-items-center me-4 mb-2">
+				<div style="width:16px; height:16px; background-color: #ff9800; border:1px solid #ccc; margin-right:6px;"></div>
+				<span>Recess</span>
+			</div>
+			<div class="d-flex align-items-center mb-2">
+				<div style="width:16px; height:16px; background-color: #9c27b0; border:1px solid #ccc; margin-right:6px;"></div>
+				<span>Assembly</span>
+			</div>
+		</div>
+	`).appendTo(page.body);
   
 
   // Fetch schools and populate dropdown
