@@ -174,10 +174,10 @@ doc_events = {
     "on_update": "ifitwala_ed.utilities.image_utils.handle_file_on_update"
     }, 
 	"Student Group": {
-		"on_update": "ifitwala_ed.schedule.calendar_cache.invalidate_for_student_group"
+		"on_update": "ifitwala_ed.schedule.schedule_utils.invalidate_for_student_group"
 	},
 	"School Calendar Holiday": {
-		"after_insert": "ifitwala_ed.schedule.calendar_cache.invalidate_all_for_calendar"
+		"after_insert": "ifitwala_ed.schedule.schedule_utils.invalidate_all_for_calendar"
 	}
 }
 

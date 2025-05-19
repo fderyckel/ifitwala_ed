@@ -39,6 +39,18 @@ frappe.ui.form.on('School Schedule', {
 			query: "ifitwala_ed.utilities.school_tree.get_school_descendants",
 			filters: { root: root }
 		});
+
+		frappe.call({
+			method: "ifitwala_ed.school_settings.doctype.school_schedule.school_schedule.get_first_day_of_academic_year",
+			args: { school_calendar: frm.doc.school_calendar },
+			callback: function(r) {
+				if (r.message) {
+					frm.set_value("first_day_of_academic_year", r.message);
+				} else {
+					frm.set_value("first_day_of_academic_year", "");
+				}
+			}
+		});
 	},
 
 });

@@ -5,10 +5,8 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, get_link_to_form
-from ifitwala_ed.schedule.schedule_utils import validate_duplicate_student, build_rotation_map
+from ifitwala_ed.schedule.schedule_utils import validate_duplicate_student
 from ifitwala_ed.schedule.schedule_utils import (check_slot_conflicts, get_conflict_rule)
-from ifitwala_ed.schedule.schedule_utils import get_effective_schedule
-from frappe.utils.nestedset import get_ancestors_of
 
 class StudentGroup(Document):
 	def autoname(self):

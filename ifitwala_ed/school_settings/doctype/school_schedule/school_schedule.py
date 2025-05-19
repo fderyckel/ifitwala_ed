@@ -187,4 +187,12 @@ def on_doctype_update():
 		fields=["school_calendar", "school"],
 		index_name="idx_schedule_cal_school"
 	)
+
+@frappe.whitelist()
+def get_first_day_of_academic_year(school_calendar):
+  academic_year = frappe.db.get_value("School Calendar", school_calendar, "academic_year")
+  if not academic_year:
+    return None
+  year_start_date = frappe.db.get_value("Academic Year", academic_year, "year_start_date")
+  return year_start_date
 	

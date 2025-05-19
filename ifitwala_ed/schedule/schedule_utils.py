@@ -346,3 +346,21 @@ def _expand_sg_rotation(sg_name, rotation_day, cur_date):
 			"student_group": sg_name
 		})
 	return out
+
+
+def invalidate_for_student_group(doc, _):
+	for s in doc.students:
+		prefix = f"calendar::{s.student}::"
+		_delete_keys(prefix)
+	for instr in doc.instructors:
+		prefix = f"calendar::{instr.instructor}::"
+		_delete_keys(prefix)
+
+def invalidate_all_for_calendar(doc, _):
+	prefix = "calendar::"
+	_delete_keys(prefix)		# brute-force; run during low load
+
+def _delete_keys(prefix):
+	rc = frappe.cache()
+	for k in rc.get_keys(f"{prefix}*"):
+		rc.delete_value(k)
