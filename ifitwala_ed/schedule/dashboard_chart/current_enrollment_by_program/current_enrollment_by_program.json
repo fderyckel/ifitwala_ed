@@ -6,7 +6,7 @@
  "docstatus": 0,
  "doctype": "Dashboard Chart",
  "document_type": "Program Enrollment",
- "dynamic_filters_json": "[[\"Program Enrollment\",\"status\",\"=\",\"frappe.defaults.get_user_default(\\\"school\\\")\"]]",
+ "dynamic_filters_json": "[[\"Program Enrollment\",\"school\",\"=\",\"frappe.defaults.get_user_default(\\\"school\\\")\"]]",
  "filters_json": "[]",
  "group_by_based_on": "program",
  "group_by_type": "Count",

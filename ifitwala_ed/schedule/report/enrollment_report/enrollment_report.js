@@ -14,7 +14,14 @@ frappe.query_reports["Enrollment Report"] = {
 			"fieldname": "school",
 			"label": "School",
 			"fieldtype": "Link",
-			"options": "School"
+			"options": "School", 
+			get_query: function() {
+				return {
+					filters: {
+						name: ["in", window.allowed_schools || []]
+					}
+				};
+			}
 		},
 		{
 			"fieldname": "program",
@@ -56,6 +63,30 @@ frappe.query_reports["Enrollment Report"] = {
 			}
 		}
 	],
+
+	onload: function(report) {
+		frappe.breadcrumbs.add("School Settings", "Settings", "/app/settings");
+		frappe.call({
+			method: "ifitwala_ed.school_settings.school_settings_utils.get_user_allowed_schools",
+			callback: function(r) {
+				const allowed_schools = r.message || [];
+				window.allowed_schools = allowed_schools;
+				if (!allowed_schools.length) {
+					frappe.msgprint(__("You do not have a default school assigned. Please contact your administrator."));
+					return;
+				}
+				const school_filter = report.get_filter("school");
+				const default_school = allowed_schools[0];
+				school_filter.set_value(default_school);
+				if (allowed_schools.length === 1) {
+					school_filter.set_read_only(1);
+				} else {
+					school_filter.set_read_only(0);
+				}
+			}
+		});
+	},	
+
 	"chart_type": "bar",
 	"default_columns": 2,
 	
