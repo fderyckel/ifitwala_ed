@@ -3,6 +3,7 @@
 
 from collections import defaultdict
 import frappe
+from ifitwala_ed.school_settings.school_settings_utils import get_allowed_schools
 
 def execute(filters=None):
 	if not filters:
