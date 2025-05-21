@@ -16,7 +16,7 @@ def get_school_term_bounds(school, academic_year):
 	terms = frappe.db.sql("""
 		SELECT name, term_start_date, term_end_date
 		FROM `tabTerm`
-    WHERE term_type = `Academic` 
+    WHERE term_type = 'Academic' 
 			AND school = %s 
 			AND academic_year = %s
 	  """, (school,academic_year), as_dict=True)
