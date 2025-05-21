@@ -268,18 +268,33 @@ def get_program_courses_for_enrollment(program):
 	return [c[0] for c in courses if c[0]]
 
 
-def program_enrollment_get_permission_query_conditions(user):
-    # Allow Administrator full access
+def get_permission_query_conditions(user):
+    # Allow full access to Administrator or System Manager
     if user == "Administrator" or "System Manager" in frappe.get_roles(user):
         return None
+
     user_school = frappe.defaults.get_user_default("school", user)
     if not user_school:
-        return ""  # Or None
-    descendant_schools = get_descendant_schools(user_school)
-    if descendant_schools:
-        schools_list = ", ".join([f"'{s}'" for s in descendant_schools])
-        return f"`tabProgram Enrollment`.`school` IN ({schools_list})"
-    return ""
+        return "1=0"  # No access if no default school
 
-def get_permission_query_conditions(user):
-    return program_enrollment_get_permission_query_conditions(user)
+    descendant_schools = get_descendant_schools(user_school)
+    if not descendant_schools:
+        return "1=0"
+    schools_list = "', '".join(descendant_schools)
+    return f"`tabProgram Enrollment`.`school` IN ('{schools_list}')"
+
+def has_permission(doc, user=None):
+    if not user:
+        user = frappe.session.user
+
+    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+        return True
+
+    user_school = frappe.defaults.get_user_default("school", user)
+    if not user_school:
+        return False
+
+    descendant_schools = get_descendant_schools(user_school)
+    return doc.school in descendant_schools
+
+
