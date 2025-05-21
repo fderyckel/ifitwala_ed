@@ -319,4 +319,9 @@ def has_permission(doc, user=None):
     descendant_schools = get_descendant_schools(user_school)
     return doc.school in descendant_schools
 
-
+@frappe.whitelist()
+def get_allowed_term_schools(school):
+	from ifitwala_ed.utilities.school_tree import is_leaf_school, get_ancestor_schools, get_descendant_schools
+	if is_leaf_school(school):
+		return get_ancestor_schools(school)
+	return get_descendant_schools(school)

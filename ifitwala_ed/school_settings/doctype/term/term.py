@@ -7,7 +7,7 @@ from frappe.utils import getdate, cstr, get_link_to_form
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import ParentRuleViolation
-from ifitwala_ed.utilities.school_tree import get_descendant_schools
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 
 class Term(Document):
@@ -155,37 +155,40 @@ class Term(Document):
 
 
 def get_permission_query_conditions(user):
-    # Allow full access to Administrator or System Manager
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
-        return None
+	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+		return None
 
-    user_school = frappe.defaults.get_user_default("school", user)
-    if not user_school:
-        return "1=0"  # No access if no default school
+	user_school = frappe.defaults.get_user_default("school", user)
+	if not user_school:
+		return "1=0"
 
-    descendant_schools = get_descendant_schools(user_school)
-    if not descendant_schools:
-        return "1=0"
+	if is_leaf_school(user_school):
+		schools = get_ancestor_schools(user_school)
+	else:
+		schools = get_descendant_schools(user_school)
 
-    # Compose for SQL
-    schools_list = "', '".join(descendant_schools)
-    # `tabTerm`.`school` is explicit and robust
-    # Also allow terms where school IS NULL (for system-wide terms)
-    return f"`tabTerm`.`school` IN ('{schools_list}') OR `tabTerm`.`school` IS NULL"
+	if not schools:
+		return "1=0"
+
+	schools_list = "', '".join(schools)
+	return f"`tabTerm`.`school` IN ('{schools_list}') OR `tabTerm`.`school` IS NULL"
 
 def has_permission(doc, ptype=None, user=None):
-    if not user:
-        user = frappe.session.user
+	if not user:
+		user = frappe.session.user
 
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
-        return True
+	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+		return True
 
-    user_school = frappe.defaults.get_user_default("school", user)
-    if not user_school:
-        return False
+	user_school = frappe.defaults.get_user_default("school", user)
+	if not user_school:
+		return False
 
-    descendant_schools = get_descendant_schools(user_school)
-    # If school is blank, allow read (for global terms, unlikely, but safe)
-    if not doc.school:
-        return True
-    return doc.school in descendant_schools
+	if is_leaf_school(user_school):
+		schools = get_ancestor_schools(user_school)
+	else:
+		schools = get_descendant_schools(user_school)
+
+	if not doc.school:
+		return True
+	return doc.school in schools

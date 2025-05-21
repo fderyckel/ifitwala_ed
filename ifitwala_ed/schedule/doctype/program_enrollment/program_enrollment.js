@@ -25,13 +25,21 @@ frappe.ui.form.on("Program Enrollment", {
   onload_post_render: function (frm) {
     // Filter term fields in child table
     ["term_start", "term_end"].forEach((field) => {
-      frm.set_query(field, "courses", function () {
-        const filters = {};
-        if (frm.doc.academic_year) filters.academic_year = frm.doc.academic_year;
-        if (frm.doc.school) filters.school = frm.doc.school;
-        return { filters };
-      });
-    });
+			frm.set_query(field, "courses", async function () {
+				let allowed_schools = [];
+				if (frm.doc.school) {
+					const res = await frappe.call({
+						method: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_allowed_term_schools",
+						args: { school: frm.doc.school }
+					});
+					allowed_schools = res.message || [];
+				}
+				const filters = {};
+				if (frm.doc.academic_year) filters.academic_year = frm.doc.academic_year;
+				if (allowed_schools.length) filters.school = ["in", allowed_schools];
+				return { filters };
+			});
+		});
   
     frm.get_field("courses").grid.set_multiple_add("course");
   

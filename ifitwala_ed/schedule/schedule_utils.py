@@ -13,25 +13,44 @@ def get_school_term_bounds(school, academic_year):
 	if not school or not academic_year:
 		return {}
 
-	terms = frappe.db.sql("""
-		SELECT name, term_start_date, term_end_date
-		FROM `tabTerm`
-    WHERE term_type = 'Academic' 
-			AND school = %s 
-			AND academic_year = %s
-	  """, (school,academic_year), as_dict=True)
+	checked_schools = set()
+	current_school = school
 
-	if not terms:
-		return {}
+	while current_school and current_school not in checked_schools:
+		# Get terms for this school & academic year
+		terms = frappe.db.sql("""
+			SELECT name, term_start_date, term_end_date
+			FROM `tabTerm`
+			WHERE term_type = 'Academic'
+				AND school = %s
+				AND academic_year = %s
+		""", (current_school, academic_year), as_dict=True)
 
-	# Sort in memory
-	term_start = min(terms, key=lambda t: t["term_start_date"])
-	term_end = max(terms, key=lambda t: t["term_end_date"])
+		if terms:
+			term_start = min(terms, key=lambda t: t["term_start_date"])
+			term_end = max(terms, key=lambda t: t["term_end_date"])
+			return {
+				"term_start": term_start["name"],
+				"term_end": term_end["name"]
+			}
 
-	return {
-		"term_start": term_start["name"],
-		"term_end": term_end["name"]
-	}
+		checked_schools.add(current_school)
+
+		# Get parent school using NestedSet
+		school_doc = frappe.get_doc("School", current_school)
+		ancestors = frappe.get_all(
+			"School",
+			filters={"lft": ["<", school_doc.lft], "rgt": [">", school_doc.rgt]},
+			fields=["name", "lft"],
+			order_by="lft desc"
+		)
+		if ancestors:
+			current_school = ancestors[0]["name"]
+		else:
+			current_school = None
+
+	return {}
+
 
 ## used in schedule.py (our virtual doctype for showing the schedules)
 def current_academic_year():
