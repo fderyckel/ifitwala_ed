@@ -8,8 +8,18 @@ frappe.ui.form.on("Program Enrollment", {
     frm.set_query("academic_year", function () {
       return {
         query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_academic_years",
-      };
+				filters: { school: frm.doc.school || null },
+			};
     });
+
+		// to filter the program from that school  
+		frm.set_query("program", function () {
+			return {
+				filters: {
+					school: frm.doc.school || null
+				}
+			};
+		});
   },
 
   onload_post_render: function (frm) {
@@ -61,6 +71,7 @@ frappe.ui.form.on("Program Enrollment", {
       frm.set_query("academic_year", function () {
         return {
           query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_academic_years",
+					filters: { school: frm.doc.school || null },
         };
       });
     }

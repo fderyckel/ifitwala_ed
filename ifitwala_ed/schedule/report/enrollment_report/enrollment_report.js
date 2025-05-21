@@ -53,7 +53,7 @@ frappe.query_reports["Enrollment Report"] = {
 			"fieldtype": "Link",
 			"options": "Academic Year",
 			"get_query": function (doc) {
-				let school = doc.school || frm.doc.school; // or however you reference school in your form context
+				let school = frappe.query_report.get_filter_value("school");
 				if (school) {
 					return {
 						query: "ifitwala_ed.schedule.report.enrollment_report.enrollment_report.get_academic_years_for_school",
