@@ -3,13 +3,15 @@
  "allow_rename": 1,
  "autoname": "format: Schedule-{school_calendar}",
  "creation": "2025-03-07 19:19:11.963992",
+ "description": "Doctype to create the schedule template for a given school",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_pgsr",
   "column_break_ciij",
-  "school",
+  "schedule_name",
   "school_calendar",
+  "school",
   "first_day_rotation_day",
   "column_break_fra2",
   "first_day_of_academic_year",
@@ -65,8 +67,7 @@
    "fieldname": "first_day_of_academic_year",
    "fieldtype": "Date",
    "label": "First Day of Academic Year",
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "rotation_days",
@@ -118,11 +119,17 @@
    "fieldtype": "Table",
    "label": "Course Schedule Block",
    "options": "School Schedule Block"
+  },
+  {
+   "fieldname": "schedule_name",
+   "fieldtype": "Data",
+   "label": "Schedule Name",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-17 19:34:38.443448",
+ "modified": "2025-05-20 00:08:35.823665",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Schedule",
@@ -164,6 +171,15 @@
    "role": "Academic Admin",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",
