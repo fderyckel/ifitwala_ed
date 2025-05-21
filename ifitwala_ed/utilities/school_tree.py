@@ -67,6 +67,8 @@ def get_effective_record(
     return None
 
 
+# an autocomplete/search function used in for js ui autocomplete
+# in the school_calendar.js and in the school_schedule.js
 @frappe.whitelist()
 def get_school_descendants(doctype, txt, searchfield, start, page_len, filters):
 	root = filters.get("root")

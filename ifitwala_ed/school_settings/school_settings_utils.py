@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
-from ifitwala_ed.utils.school_tree import get_descendants
+from frappe.utils.nestedset import get_descendants_of
 
 
 def get_allowed_schools(user=None, selected_school=None):
@@ -16,7 +16,7 @@ def get_allowed_schools(user=None, selected_school=None):
 		return []  # No access to any data
 
 	# User's full allowed set (default + descendants)
-	all_schools = [default_school] + get_descendants(default_school)
+	all_schools = [default_school] + get_descendants_of("School", default_school)
 	all_schools = list(set(all_schools))  # Ensure uniqueness
 
 	if not selected_school or selected_school == default_school:
@@ -32,7 +32,6 @@ def get_user_allowed_schools():
 	default_school = frappe.defaults.get_user_default("school", user)
 	if not default_school:
 		return []
-	from ifitwala_ed.utils.school_tree import get_descendants
-	descendants = get_descendants(default_school)
+	descendants = get_descendants_of("School", default_school)
 	return [default_school] + descendants
 
