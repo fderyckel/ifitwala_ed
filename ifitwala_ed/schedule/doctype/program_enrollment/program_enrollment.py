@@ -8,6 +8,7 @@ from frappe.utils import getdate, get_link_to_form
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 from ifitwala_ed.utilities.school_tree import get_effective_record, ParentRuleViolation
 from frappe.utils.nestedset import get_ancestors_of
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 class ProgramEnrollment(Document):
 
@@ -266,3 +267,19 @@ def get_program_courses_for_enrollment(program):
 	# Flatten to list of course names
 	return [c[0] for c in courses if c[0]]
 
+
+def program_enrollment_get_permission_query_conditions(user):
+    # Allow Administrator full access
+    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+        return None
+    user_school = frappe.defaults.get_user_default("school", user)
+    if not user_school:
+        return ""  # Or None
+    descendant_schools = get_descendant_schools(user_school)
+    if descendant_schools:
+        schools_list = ", ".join([f"'{s}'" for s in descendant_schools])
+        return f"`tabProgram Enrollment`.`school` IN ({schools_list})"
+    return ""
+
+def get_permission_query_conditions(user):
+    return program_enrollment_get_permission_query_conditions(user)

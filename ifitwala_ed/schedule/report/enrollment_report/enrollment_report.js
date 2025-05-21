@@ -79,9 +79,11 @@ frappe.query_reports["Enrollment Report"] = {
 				const default_school = allowed_schools[0];
 				school_filter.set_value(default_school);
 				if (allowed_schools.length === 1) {
-					school_filter.set_read_only(1);
+					school_filter.df.read_only = 1;
+					school_filter.refresh();
 				} else {
-					school_filter.set_read_only(0);
+					school_filter.df.read_only = 0;
+					school_filter.refresh();
 				}
 			}
 		});

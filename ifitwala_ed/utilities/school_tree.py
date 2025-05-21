@@ -84,3 +84,21 @@ def get_school_descendants(doctype, txt, searchfield, start, page_len, filters):
 		as_list=1
 	)
 	return rows
+
+
+# USed to get a list of schools that are descendants of a given school
+# Used in program enrollment. 
+def get_descendant_schools(user_school):
+    # Defensive: Return [] if no school set
+    if not user_school:
+        return []
+    # Use the NestedSet lft/rgt logic
+    school_doc = frappe.get_doc("School", user_school)
+    return [
+        s.name
+        for s in frappe.get_all(
+            "School",
+            filters={"lft": (">=", school_doc.lft), "rgt": ("<=", school_doc.rgt)},
+            fields=["name"]
+        )
+    ]
