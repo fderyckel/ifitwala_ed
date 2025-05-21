@@ -378,25 +378,31 @@ def get_course_chart_data(data):
 def get_academic_years_for_school(doctype, txt, searchfield, start, page_len, filters):
 	import json
 
-	# Safely handle filters passed as str or dict
 	if isinstance(filters, str):
 		filters = json.loads(filters)
-	elif filters is None:
-		filters = {}
-
 	school = filters.get("school")
+	if not school:
+		return []
 
-	conditions = ""
-	if school:
-		conditions = "WHERE school = %(school)s"
+	# Get all ancestors (including self) for the selected school
+	school_names = [school]
+	from frappe.utils.nestedset import get_ancestors_of
+	ancestors = get_ancestors_of("School", school)
+	if ancestors:
+		school_names.extend([row['name'] for row in ancestors])
 
-	return frappe.db.sql(f"""
-		SELECT name FROM `tabAcademic Year`
-		{conditions}
-		ORDER BY year_start_date DESC
+	# Fetch all Academic Years referenced in Program Enrollment by these schools
+	academic_years = frappe.db.sql(f"""
+		SELECT DISTINCT pe.academic_year
+		FROM `tabProgram Enrollment` pe
+		WHERE pe.school IN %(school_names)s
+		AND pe.academic_year IS NOT NULL
+		ORDER BY pe.academic_year DESC
 		LIMIT %(page_len)s OFFSET %(start)s
 	""", {
-		"school": school,
+		"school_names": school_names,
+		"page_len": page_len,
 		"start": start,
-		"page_len": page_len
 	})
+
+	return [ (row[0],) for row in academic_years if row[0] ]

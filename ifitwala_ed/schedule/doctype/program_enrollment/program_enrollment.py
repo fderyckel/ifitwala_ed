@@ -232,28 +232,50 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_academic_years(doctype, txt, searchfield, start, page_len, filters):
-    filters = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
+	filters = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
 
-    conditions = []
-    values = {}
+	school = filters.get("school")
+	if not school:
+		return []
 
-    if txt:
-        conditions.append("name LIKE %(txt)s")
-        values["txt"] = f"%{txt}%"
+	def find_school_with_ay(school):
+		# Search for AYs for this school, else walk up to parent
+		while school:
+			ay_exists = frappe.db.exists("Academic Year", {"school": school})
+			if ay_exists:
+				return school
+			# Standard NestedSet parent
+			parent = frappe.db.get_value("School", school, "parent_school")
+			if not parent or parent == school:
+				break
+			school = parent
+		return None
 
-    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+	target_school = find_school_with_ay(school)
+	if not target_school:
+		return []
 
-    return frappe.db.sql(f"""
-        SELECT name
-        FROM `tabAcademic Year`
-        {where_clause}
-        ORDER BY year_start_date DESC
-        LIMIT %(start)s, %(page_len)s
-    """, {
-        **values,
-        "start": start,
-        "page_len": page_len
-    })
+	conditions = ["school = %(school)s"]
+	values = {"school": target_school}
+
+	if txt:
+		conditions.append("name LIKE %(txt)s")
+		values["txt"] = f"%{txt}%"
+
+	where_clause = "WHERE " + " AND ".join(conditions)
+
+	return frappe.db.sql(f"""
+		SELECT name
+		FROM `tabAcademic Year`
+		{where_clause}
+		ORDER BY year_start_date DESC
+		LIMIT %(start)s, %(page_len)s
+	""", {
+		**values,
+		"start": start,
+		"page_len": page_len
+	})
+
 
 @frappe.whitelist()
 def get_program_courses_for_enrollment(program):
