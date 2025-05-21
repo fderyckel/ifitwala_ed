@@ -8,7 +8,7 @@
  "for_user": "",
  "hide_custom": 0,
  "icon": "setting-gear",
- "idx": 42,
+ "idx": 43,
  "indicator_color": "green",
  "is_hidden": 0,
  "label": "Settings",
@@ -339,7 +339,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "school_schedule_calendar",
+   "label": "School Schedule Calendar",
    "link_count": 0,
    "link_to": "school_schedule_calendar",
    "link_type": "Page",
@@ -347,7 +347,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-20 00:09:20.048040",
+ "modified": "2025-05-21 11:37:53.110046",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Settings",
@@ -358,10 +358,16 @@
  "quick_lists": [],
  "roles": [
   {
+   "role": "Administrator"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
    "role": "Academic Admin"
   },
   {
-   "role": "Administrator"
+   "role": "Curriculum Coordinator"
   }
  ],
  "sequence_id": 4.0,

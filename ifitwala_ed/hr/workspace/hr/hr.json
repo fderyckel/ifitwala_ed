@@ -160,7 +160,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-14 08:32:35.676463",
+ "modified": "2025-05-21 11:38:10.408819",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",
@@ -171,6 +171,9 @@
  "quick_lists": [],
  "roles": [
   {
+   "role": "Administrator"
+  },
+  {
    "role": "HR Manager"
   },
   {
@@ -178,9 +181,6 @@
   },
   {
    "role": "Academic Admin"
-  },
-  {
-   "role": "Administrator"
   }
  ],
  "sequence_id": 5.0,
