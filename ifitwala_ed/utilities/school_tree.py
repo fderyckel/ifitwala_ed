@@ -88,6 +88,7 @@ def get_school_descendants(doctype, txt, searchfield, start, page_len, filters):
 
 # Used to get a list of schools that are descendants of a given school
 # Used in program enrollment. 
+@frappe.whitelist()
 def get_descendant_schools(user_school):
     # Defensive: Return [] if no school set
     if not user_school:
