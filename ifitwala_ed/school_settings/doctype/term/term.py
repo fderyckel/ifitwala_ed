@@ -7,7 +7,7 @@ from frappe.utils import getdate, cstr, get_link_to_form
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import ParentRuleViolation
-from ifitwala_ed.utilities.school_tree import get_first_ancestor_with_doc, get_descendant_schools, is_leaf_school
+from ifitwala_ed.utilities.school_tree import get_descendant_schools, is_leaf_school
 
 
 class Term(Document):
@@ -154,6 +154,28 @@ class Term(Document):
 			frappe.msgprint(_("Date for the end of the term {0} has been created on the School Event Calendar {1}").format(self.term_end_date, get_link_to_form("School Event", end_term.name)))
 
 
+def get_schools_per_academic_year_for_terms(user_school):
+	"""
+	For each academic year, find the first ancestor (including self) that has terms for that AY.
+	Return a list of (school, academic_year) tuples.
+	"""
+	if not user_school:
+		return []
+
+	# Get all academic years referenced in the Term table
+	academic_years = [row[0] for row in frappe.db.get_values("Term", {}, "academic_year", distinct=True)]
+	pairs = set()
+	chain = [user_school] + get_ancestors_of("School", user_school)
+
+	for ay in academic_years:
+		for sch in chain:
+			if frappe.db.exists("Term", {"school": sch, "academic_year": ay}):
+				pairs.add((sch, ay))
+				break  # Stop at the first ancestor with a term for this AY
+
+	return list(pairs)
+
+
 def get_permission_query_conditions(user):
 	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
 		return None
@@ -163,14 +185,22 @@ def get_permission_query_conditions(user):
 		return "1=0"
 
 	if is_leaf_school(user_school):
-		schools = get_first_ancestor_with_doc("Term", user_school)
+		pairs = get_schools_per_academic_year_for_terms(user_school)
+		if not pairs:
+			return "1=0"
+		# Build SQL for pairs
+		conditions = [
+			"(`tabTerm`.`school` = '{0}' AND `tabTerm`.`academic_year` = '{1}')".format(sch, ay)
+			for sch, ay in pairs
+		]
+		return " OR ".join(conditions)
 	else:
 		schools = get_descendant_schools(user_school)
+		if not schools:
+			return "1=0"
+		schools_list = "', '".join(schools)
+		return f"`tabTerm`.`school` IN ('{schools_list}')"
 
-	if not schools:
-		return "1=0"
-	schools_list = "', '".join(schools)
-	return f"`tabTerm`.`school` IN ('{schools_list}')"
 
 def has_permission(doc, ptype=None, user=None):
 	if not user:
@@ -184,8 +214,8 @@ def has_permission(doc, ptype=None, user=None):
 		return False
 
 	if is_leaf_school(user_school):
-		schools = get_first_ancestor_with_doc("Term", user_school)
+		pairs = get_schools_per_academic_year_for_terms(user_school)
+		return (doc.school, doc.academic_year) in pairs
 	else:
 		schools = get_descendant_schools(user_school)
-
-	return doc.school in schools
+		return doc.school in schools
