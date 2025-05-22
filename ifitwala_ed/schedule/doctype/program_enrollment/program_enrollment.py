@@ -34,7 +34,7 @@ class ProgramEnrollment(Document):
 						get_link_to_form("Academic Year", self.academic_year), 
 						year_dates.year_end_date
 					))
-		self._self.validate_course_terms()
+		self._validate_course_terms()
 
 		# Ensure the academic year and program belong to the same school
 		if self.program and not self.school: 
