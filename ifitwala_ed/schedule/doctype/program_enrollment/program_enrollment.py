@@ -34,6 +34,7 @@ class ProgramEnrollment(Document):
 						get_link_to_form("Academic Year", self.academic_year), 
 						year_dates.year_end_date
 					))
+		self._self.validate_course_terms()
 
 		# Ensure the academic year and program belong to the same school
 		if self.program and not self.school: 
@@ -163,7 +164,56 @@ class ProgramEnrollment(Document):
 		if date and date[0] and date[0][0]:
 			frappe.db.set_value("Student", self.student, "student_joining_date", date[0][0])
 
+	def get_terms_for_ay_with_fallback(school, academic_year):
+			"""Returns (terms, source_school) for the best available school: leaf, else nearest ancestor with terms for AY."""
+			if not (school and academic_year):
+					return [], None
+			# 1. Try direct school first
+			terms = frappe.db.get_values(
+					"Term",
+					{"school": school, "academic_year": academic_year},
+					"name",
+					as_list=True
+			)
+			if terms:
+					return [t[0] for t in terms], school
+			# 2. Fallback to ancestors in order
+			current_school = frappe.get_doc("School", school)
+			ancestors = frappe.get_all("School", filters={
+					"lft": ["<", current_school.lft],
+					"rgt": [">", current_school.rgt]
+			}, fields=["name"], order_by="lft desc")
+			for ancestor in ancestors:
+					ancestor_terms = frappe.db.get_values(
+							"Term",
+							{"school": ancestor.name, "academic_year": academic_year},
+							"name",
+							as_list=True
+					)
+					if ancestor_terms:
+							return [t[0] for t in ancestor_terms], ancestor.name
+			return [], None
 
+	def _validate_course_terms(self):
+			"""Ensure all courses use terms from one valid source: either the school or the fallback ancestor."""
+			valid_terms, source_school = get_terms_for_ay_with_fallback(self.school, self.academic_year)
+			if not valid_terms:
+					return  # No terms anywhere—let other validations handle this situation
+			for row in self.courses:
+					if row.term_start and row.term_start not in valid_terms:
+							frappe.throw(
+									_("Term Start '{0}' must be from {1} for Academic Year '{2}'.").format(
+											row.term_start, source_school, self.academic_year
+									),
+									title=_("Invalid Term Start")
+							)
+					if row.term_end and row.term_end not in valid_terms:
+							frappe.throw(
+									_("Term End '{0}' must be from {1} for Academic Year '{2}'.").format(
+											row.term_end, source_school, self.academic_year
+									),
+									title=_("Invalid Term End")
+							)
 		
 # from JS. to filter out course that are only present in the program list of courses.
 @frappe.whitelist()
