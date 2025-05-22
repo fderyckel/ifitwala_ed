@@ -8,6 +8,8 @@ from frappe.utils import get_link_to_form, getdate, formatdate, date_diff, cint
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import ParentRuleViolation
+from ifitwala_ed.utilities.school_tree import get_descendant_schools, is_leaf_school, get_first_ancestor_with_doc
+
 
 
 class SchoolCalendar(Document):
@@ -130,9 +132,9 @@ class SchoolCalendar(Document):
 
 			# Append the term
 			self.append("terms", {
-				"term_name": term["name"],
-				"term_start_date": term["term_start_date"],
-				"term_end_date": term["term_end_date"],
+				"term": term["name"],
+				"start": term["term_start_date"],
+				"end": term["term_end_date"],
 				"number_of_instructional_days": instructional_days
 			})
 
@@ -276,3 +278,39 @@ def clone_calendar(source_calendar, academic_year, schools):
 
 	return ", ".join(created) if created else "No new calendars created (already exist)."
 
+
+
+def get_permission_query_conditions(user):
+	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+		return None
+
+	user_school = frappe.defaults.get_user_default("school", user)
+	if not user_school:
+		return "1=0"
+
+	if is_leaf_school(user_school):
+		schools = get_first_ancestor_with_doc("School Calendar", user_school)
+	else:
+		schools = get_descendant_schools(user_school)
+
+	if not schools:
+		return "1=0"
+	schools_list = "', '".join(schools)
+	return f"`tabSchool Calendar`.`school` IN ('{schools_list}')"
+
+def has_permission(doc, ptype=None, user=None):
+	if not user:
+		user = frappe.session.user
+	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+		return True
+
+	user_school = frappe.defaults.get_user_default("school", user)
+	if not user_school:
+		return False
+
+	if is_leaf_school(user_school):
+		schools = get_first_ancestor_with_doc("School Calendar", user_school)
+	else:
+		schools = get_descendant_schools(user_school)
+
+	return doc.school in schools

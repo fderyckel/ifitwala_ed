@@ -120,6 +120,20 @@ def get_ancestor_schools(user_school):
 		)
 	]
 
+def get_first_ancestor_with_doc(doctype, school, filters=None):
+    """
+    Returns the first ancestor (including self) up the school tree that has a matching doctype.
+    """
+    if not school:
+        return []
+    chain = [school] + get_ancestors_of("School", school)
+    for sch in chain:
+        flt = dict(filters) if filters else {}
+        flt["school"] = sch
+        if frappe.db.exists(doctype, flt):
+            return [sch]
+    return []
+
 
 # Usage Scenarios:
 #   - Used in permission logic (e.g., Term, Program Enrollment) to determine

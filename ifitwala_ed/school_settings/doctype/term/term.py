@@ -7,7 +7,7 @@ from frappe.utils import getdate, cstr, get_link_to_form
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import ParentRuleViolation
-from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
+from ifitwala_ed.utilities.school_tree import get_first_ancestor_with_doc, get_descendant_schools, is_leaf_school
 
 
 class Term(Document):
@@ -163,15 +163,14 @@ def get_permission_query_conditions(user):
 		return "1=0"
 
 	if is_leaf_school(user_school):
-		schools = get_ancestor_schools(user_school)
+		schools = get_first_ancestor_with_doc("Term", user_school)
 	else:
 		schools = get_descendant_schools(user_school)
 
 	if not schools:
 		return "1=0"
-
 	schools_list = "', '".join(schools)
-	return f"`tabTerm`.`school` IN ('{schools_list}') OR `tabTerm`.`school` IS NULL"
+	return f"`tabTerm`.`school` IN ('{schools_list}')"
 
 def has_permission(doc, ptype=None, user=None):
 	if not user:
@@ -185,10 +184,8 @@ def has_permission(doc, ptype=None, user=None):
 		return False
 
 	if is_leaf_school(user_school):
-		schools = get_ancestor_schools(user_school)
+		schools = get_first_ancestor_with_doc("Term", user_school)
 	else:
 		schools = get_descendant_schools(user_school)
 
-	if not doc.school:
-		return True
 	return doc.school in schools

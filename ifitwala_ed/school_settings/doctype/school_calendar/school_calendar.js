@@ -4,17 +4,21 @@
 frappe.ui.form.on("School Calendar", { 
 
 	onload: function(frm) {
-		frm.fields_dict["terms"].grid.on("grid-row-render", function(grid_row) {
-			// Apply styling to the 'number_of_instructional_days' cell
-			const cell = grid_row.grid_form.fields_dict["number_of_instructional_days"]?.wrapper;
-			if (cell) {
-				cell.css({
-					"background-color": "#FFF4E5",
-					"color": "#333",
-					"font-weight": "bold"
-				});
-			}
-		});
+		// Use the grid's refresh event
+    frm.fields_dict.terms.grid.on("refresh", function(grid) {
+      grid.grid_rows.forEach(function(row) {
+        // 'number_of_instructional_days' field in the child table
+        let field = row.grid_form && row.grid_form.fields_dict["number_of_instructional_days"];
+        if (field && field.wrapper) {
+          // Use jQuery for cross-version compatibility, or plain JS if you prefer
+          $(field.wrapper).css({
+            "background-color": "#FFF4E5",
+            "color": "#333",
+            "font-weight": "bold"
+          });
+        }
+      });
+    });
 	},	
 
 	refresh: function (frm) {

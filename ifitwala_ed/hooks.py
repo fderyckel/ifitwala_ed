@@ -127,14 +127,17 @@ permission_query_conditions = {
  	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.get_permission_query_conditions", 
   "Contact": "ifitwala_ed.utilities.contact_utils.contact_permission_query_conditions",
 	"Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_permission_query_conditions", 
-	"Term": "ifitwala_ed.school_settings.doctype.term.term.get_permission_query_conditions"
+	"Term": "ifitwala_ed.school_settings.doctype.term.term.get_permission_query_conditions", 
+	"Term": "ifitwala_ed.school_settings.doctype.term.term.get_permission_query_conditions", 
+	"Academic Year": "ifitwala_ed.school_settings.doctype.academic_year.academic_year.get_permission_query_conditions"
 }
 #
 has_permission = {
 	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.event_has_permission",
   "Contact": "ifitwala_ed.utilities.contact_utils.contact_has_permission", 
 	"Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.has_permission", 
-	"Term": "ifitwala_ed.school_settings.doctype.term.term.has_permission"
+	"Term": "ifitwala_ed.school_settings.doctype.term.term.has_permission", 
+	"Academic Year": "ifitwala_ed.school_settings.doctype.academic_year.academic_year.has_permission",
 }
 
 default_roles = [

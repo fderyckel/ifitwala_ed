@@ -5,7 +5,8 @@ import frappe
 from frappe.utils import getdate, get_link_to_form, cstr
 from frappe import _
 from frappe.model.document import Document
-from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools, is_leaf_school
+from ifitwala_ed.utilities.school_tree import get_descendant_schools, is_leaf_school, get_first_ancestor_with_doc
+
 
 class AcademicYear(Document):
 
@@ -133,6 +134,7 @@ def retire_academic_year(academic_year):
 	return doc.retire_ay() 
 
 
+
 def get_permission_query_conditions(user):
 	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
 		return None
@@ -142,13 +144,12 @@ def get_permission_query_conditions(user):
 		return "1=0"
 
 	if is_leaf_school(user_school):
-		schools = get_ancestor_schools(user_school)
+		schools = get_first_ancestor_with_doc("Academic Year", user_school)
 	else:
 		schools = get_descendant_schools(user_school)
 
 	if not schools:
 		return "1=0"
-
 	schools_list = "', '".join(schools)
 	return f"`tabAcademic Year`.`school` IN ('{schools_list}')"
 
@@ -164,7 +165,7 @@ def has_permission(doc, ptype=None, user=None):
 		return False
 
 	if is_leaf_school(user_school):
-		schools = get_ancestor_schools(user_school)
+		schools = get_first_ancestor_with_doc("Academic Year", user_school)
 	else:
 		schools = get_descendant_schools(user_school)
 
