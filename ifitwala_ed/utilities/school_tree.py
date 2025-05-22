@@ -119,3 +119,15 @@ def get_ancestor_schools(user_school):
 			fields=["name"]
 		)
 	]
+
+
+# Usage Scenarios:
+#   - Used in permission logic (e.g., Term, Program Enrollment) to determine
+#     whether a user should see ancestor schools' data (for leaf schools) or all descendant data (for parent schools).
+#   - Helps to differentiate between access rules for child campuses and main/parent campuses.
+def is_leaf_school(school):
+	"""Return True if the school has no children (descendants), else False."""
+	if not school:
+		return False
+	descendants = get_descendant_schools(school)
+	return len(descendants) == 1  # Only itself in the list
