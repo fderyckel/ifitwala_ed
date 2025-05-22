@@ -3,32 +3,45 @@
 
 import frappe
 from frappe import _
-from frappe.website.website_generator import WebsiteGenerator
-#from frappe.utils.nestedset import NestedSet
-from frappe import _dict
+from frappe.utils.nestedset import NestedSet
+from frappe.utils.nestedset import get_descendants_of
 
-class Program(WebsiteGenerator):
-	website = frappe._dict(
-		template = "templates/generators/program.html",
-		condition_field = "is_published",
-		page_title_field = "program_name"
-	)
-
-	def get_context(self, context):
-		# nothing fancy—just prove it renders
-		context.no_cache = True
-		context.greeting = "Hello World! Routing works 🎉"
+class Program(NestedSet):
 
 	def validate(self):
-		super().validate()
-		# your duplicate‐course guard
-		self.validate_duplicate_course()
-		# ensure route is recalculated on every save
-		self.set_route()
+		self._validate_duplicate_course()
 
-	def validate_duplicate_course(self):
+	def _validate_duplicate_course(self):
 		seen = set()
 		for row in self.courses:
 			if row.course in seen:
 				frappe.throw(_("Course {0} entered twice").format(row.course))
 			seen.add(row.course)
+
+
+
+def get_permission_query_conditions(user):
+    # Full access for System Manager and Administrator
+    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+        return None
+
+    user_school = frappe.defaults.get_user_default("school", user)
+    if not user_school:
+        return "1=0"  # No access if no school assigned
+
+    # Get self + descendants
+    schools = [user_school] + get_descendants_of("School", user_school)
+
+    schools_escaped = ', '.join([frappe.db.escape(s) for s in schools])
+    return f"`tabProgram`.`school` in ({schools_escaped})"
+
+def has_permission(doc, ptype, user):
+    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+        return True
+
+    user_school = frappe.defaults.get_user_default("school", user)
+    if not user_school:
+        return False
+
+    schools = [user_school] + get_descendants_of("School", user_school)
+    return doc.school in schools

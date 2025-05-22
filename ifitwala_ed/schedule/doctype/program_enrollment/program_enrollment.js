@@ -42,13 +42,20 @@ frappe.ui.form.on("Program Enrollment", {
     });
 
 		// to filter the program from that school  
-		frm.set_query("program", function () {
-			return {
-				filters: {
-					school: frm.doc.school || null
-				}
-			};
-		});
+    frappe.call({
+      method: "ifitwala_ed.utilities.school_tree.get_descendant_schools",
+      args: { school: frappe.defaults.get_user_default("school") },
+      callback: function(r) {
+        let allowed_schools = r.message || [];
+        frm.set_query("program", function() {
+          return {
+            filters: {
+              school: ["in", allowed_schools]
+            }
+          }
+        });
+      }
+    });
   },
 
   onload_post_render: function (frm) {

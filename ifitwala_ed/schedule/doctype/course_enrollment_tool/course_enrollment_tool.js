@@ -12,6 +12,22 @@ frappe.ui.form.on("Course Enrollment Tool", {
         query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.list_academic_years_desc"
       };
     });
+
+		frappe.call({
+      method: "ifitwala_ed.utilities.school_tree.get_descendant_schools",
+      args: { school: frappe.defaults.get_user_default("school") },
+      callback: function(r) {
+        window.allowed_schools = r.message || [frappe.defaults.get_user_default("school")];
+
+        frm.set_query("program", function() {
+          return {
+            filters: {
+              school: ["in", window.allowed_schools]
+            }
+          }
+        });
+      }
+    });
   },
 
   program: function(frm) {
