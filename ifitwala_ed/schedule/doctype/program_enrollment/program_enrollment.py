@@ -318,8 +318,7 @@ def get_terms_for_ay_with_fallback(school, academic_year):
     terms = frappe.db.get_values(
         "Term",
         {"school": school, "academic_year": academic_year},
-        "name",
-        as_list=True
+        "name"
     )
     if terms:
         return [t[0] for t in terms], school
@@ -333,8 +332,7 @@ def get_terms_for_ay_with_fallback(school, academic_year):
         ancestor_terms = frappe.db.get_values(
             "Term",
             {"school": ancestor.name, "academic_year": academic_year},
-            "name",
-            as_list=True
+            "name"
         )
         if ancestor_terms:
             return [t[0] for t in ancestor_terms], ancestor.name
