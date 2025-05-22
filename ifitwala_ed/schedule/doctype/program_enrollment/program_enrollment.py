@@ -164,36 +164,6 @@ class ProgramEnrollment(Document):
 		if date and date[0] and date[0][0]:
 			frappe.db.set_value("Student", self.student, "student_joining_date", date[0][0])
 
-	def get_terms_for_ay_with_fallback(school, academic_year):
-			"""Returns (terms, source_school) for the best available school: leaf, else nearest ancestor with terms for AY."""
-			if not (school and academic_year):
-					return [], None
-			# 1. Try direct school first
-			terms = frappe.db.get_values(
-					"Term",
-					{"school": school, "academic_year": academic_year},
-					"name",
-					as_list=True
-			)
-			if terms:
-					return [t[0] for t in terms], school
-			# 2. Fallback to ancestors in order
-			current_school = frappe.get_doc("School", school)
-			ancestors = frappe.get_all("School", filters={
-					"lft": ["<", current_school.lft],
-					"rgt": [">", current_school.rgt]
-			}, fields=["name"], order_by="lft desc")
-			for ancestor in ancestors:
-					ancestor_terms = frappe.db.get_values(
-							"Term",
-							{"school": ancestor.name, "academic_year": academic_year},
-							"name",
-							as_list=True
-					)
-					if ancestor_terms:
-							return [t[0] for t in ancestor_terms], ancestor.name
-			return [], None
-
 	def _validate_course_terms(self):
 			"""Ensure all courses use terms from one valid source: either the school or the fallback ancestor."""
 			valid_terms, source_school = get_terms_for_ay_with_fallback(self.school, self.academic_year)
@@ -340,6 +310,45 @@ def get_program_courses_for_enrollment(program):
 	return [c[0] for c in courses if c[0]]
 
 
+def get_terms_for_ay_with_fallback(school, academic_year):
+    """Returns (terms, source_school) for the best available school: leaf, else nearest ancestor with terms for AY."""
+    if not (school and academic_year):
+        return [], None
+    # 1. Try direct school first
+    terms = frappe.db.get_values(
+        "Term",
+        {"school": school, "academic_year": academic_year},
+        "name",
+        as_list=True
+    )
+    if terms:
+        return [t[0] for t in terms], school
+    # 2. Fallback to ancestors in order
+    current_school = frappe.get_doc("School", school)
+    ancestors = frappe.get_all("School", filters={
+        "lft": ["<", current_school.lft],
+        "rgt": [">", current_school.rgt]
+    }, fields=["name"], order_by="lft desc")
+    for ancestor in ancestors:
+        ancestor_terms = frappe.db.get_values(
+            "Term",
+            {"school": ancestor.name, "academic_year": academic_year},
+            "name",
+            as_list=True
+        )
+        if ancestor_terms:
+            return [t[0] for t in ancestor_terms], ancestor.name
+    return [], None
+
+@frappe.whitelist()
+def get_valid_terms_with_fallback(school, academic_year):
+    terms, source_school = get_terms_for_ay_with_fallback(school, academic_year)
+    return {
+        "valid_terms": terms,
+        "source_school": source_school
+    }
+
+
 def get_permission_query_conditions(user):
     # Allow full access to Administrator or System Manager
     if user == "Administrator" or "System Manager" in frappe.get_roles(user):
@@ -369,9 +378,3 @@ def has_permission(doc, user=None):
     descendant_schools = get_descendant_schools(user_school)
     return doc.school in descendant_schools
 
-@frappe.whitelist()
-def get_allowed_term_schools(school):
-	from ifitwala_ed.utilities.school_tree import is_leaf_school, get_ancestor_schools, get_descendant_schools
-	if is_leaf_school(school):
-		return get_ancestor_schools(school)
-	return get_descendant_schools(school)

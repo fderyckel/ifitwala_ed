@@ -1,6 +1,35 @@
 // Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
+
+// Filter term fields in child table
+// In onload_post_render, academic_year, and school change handlers:
+function set_term_field_queries(frm) {
+	["term_start", "term_end"].forEach((field) => {
+		frm.set_query(field, "courses", async function(doc, cdt, cdn) {
+			if (frm.doc.school && frm.doc.academic_year) {
+				const res = await frappe.call({
+					method: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_valid_terms_with_fallback",
+					args: {
+						school: frm.doc.school,
+						academic_year: frm.doc.academic_year
+					}
+				});
+				const data = res.message || {};
+				if (data.valid_terms) {
+					return {
+						filters: [
+							["Term", "name", "in", data.valid_terms]
+						]
+					};
+				}
+			}
+			return { filters: [["Term", "name", "=", "___NONE___"]] };
+		});
+	});
+}
+
+
 frappe.ui.form.on("Program Enrollment", {
   onload: function (frm) {
 
@@ -23,23 +52,7 @@ frappe.ui.form.on("Program Enrollment", {
   },
 
   onload_post_render: function (frm) {
-    // Filter term fields in child table
-    ["term_start", "term_end"].forEach((field) => {
-			frm.set_query(field, "courses", async function () {
-				let allowed_schools = [];
-				if (frm.doc.school) {
-					const res = await frappe.call({
-						method: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_allowed_term_schools",
-						args: { school: frm.doc.school }
-					});
-					allowed_schools = res.message || [];
-				}
-				const filters = {};
-				if (frm.doc.academic_year) filters.academic_year = frm.doc.academic_year;
-				if (allowed_schools.length) filters.school = ["in", allowed_schools];
-				return { filters };
-			});
-		});
+		set_term_field_queries(frm);
   
     frm.get_field("courses").grid.set_multiple_add("course");
   
@@ -111,6 +124,7 @@ frappe.ui.form.on("Program Enrollment", {
   academic_year: function (frm) {
     // Just set the student query based on academic_year
     frm.set_value("student", null);
+		set_term_field_queries(frm);
 
     frm.set_query("student", function () {
       return {
