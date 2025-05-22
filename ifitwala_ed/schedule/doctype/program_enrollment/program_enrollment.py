@@ -164,26 +164,45 @@ class ProgramEnrollment(Document):
 		if date and date[0] and date[0][0]:
 			frappe.db.set_value("Student", self.student, "student_joining_date", date[0][0])
 
+	# Ensure all courses use terms from one valid source: either the school or the fallback ancestor, and term_start <= term_end.
 	def _validate_course_terms(self):
-			"""Ensure all courses use terms from one valid source: either the school or the fallback ancestor."""
-			valid_terms, source_school = get_terms_for_ay_with_fallback(self.school, self.academic_year)
-			if not valid_terms:
-					return  # No terms anywhere—let other validations handle this situation
-			for row in self.courses:
-					if row.term_start and row.term_start not in valid_terms:
-							frappe.throw(
-									_("Term Start '{0}' must be from {1} for Academic Year '{2}'.").format(
-											row.term_start, source_school, self.academic_year
-									),
-									title=_("Invalid Term Start")
-							)
-					if row.term_end and row.term_end not in valid_terms:
-							frappe.throw(
-									_("Term End '{0}' must be from {1} for Academic Year '{2}'.").format(
-											row.term_end, source_school, self.academic_year
-									),
-									title=_("Invalid Term End")
-							)
+		valid_terms, source_school = get_terms_for_ay_with_fallback(self.school, self.academic_year)
+		if not valid_terms:
+			return  # No terms anywhere—let other validations handle this situation
+
+		for row in self.courses:
+			# Check valid terms
+			if row.term_start and row.term_start not in valid_terms:
+				frappe.throw(
+					_("Term Start '{0}' must be from {1} for Academic Year '{2}'.").format(
+						row.term_start, source_school, self.academic_year
+					),
+					title=_("Invalid Term Start")
+				)
+			if row.term_end and row.term_end not in valid_terms:
+				frappe.throw(
+					_("Term End '{0}' must be from {1} for Academic Year '{2}'.").format(
+						row.term_end, source_school, self.academic_year
+					),
+					title=_("Invalid Term End")
+				)
+
+			# Check order: term_start <= term_end
+			if row.term_start and row.term_end:
+				if row.term_start == row.term_end:
+					continue  # ok if same
+				term_start_doc = frappe.get_doc("Term", row.term_start)
+				term_end_doc = frappe.get_doc("Term", row.term_end)
+				if getdate(term_start_doc.term_start_date) > getdate(term_end_doc.term_start_date):
+					frappe.throw(
+						_("For course <b>{0}</b>: The start term <b>{1}</b> ({2}) must not be after the end term <b>{3}</b> ({4}).")
+						.format(
+							row.course or "",
+							row.term_start, term_start_doc.term_start_date,
+							row.term_end, term_end_doc.term_start_date
+						),
+						title=_("Invalid Term Sequence")
+					)
 		
 # from JS. to filter out course that are only present in the program list of courses.
 @frappe.whitelist()
