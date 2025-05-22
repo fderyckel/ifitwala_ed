@@ -44,7 +44,7 @@ frappe.ui.form.on("Program Enrollment", {
 		// to filter the program from that school  
     frappe.call({
       method: "ifitwala_ed.utilities.school_tree.get_descendant_schools",
-      args: { school: frappe.defaults.get_user_default("school") },
+      args: { user_school: frappe.defaults.get_user_default("school") },
       callback: function(r) {
         let allowed_schools = r.message || [];
         frm.set_query("program", function() {

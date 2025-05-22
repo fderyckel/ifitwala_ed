@@ -15,7 +15,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
 
 		frappe.call({
       method: "ifitwala_ed.utilities.school_tree.get_descendant_schools",
-      args: { school: frappe.defaults.get_user_default("school") },
+      args: { user_school: frappe.defaults.get_user_default("school") },
       callback: function(r) {
         window.allowed_schools = r.message || [frappe.defaults.get_user_default("school")];
 
