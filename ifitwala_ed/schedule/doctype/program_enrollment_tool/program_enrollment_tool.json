@@ -17,7 +17,7 @@
   "new_enrollment_details_section",
   "new_program",
   "new_student_cohort",
-  "mark_status_as_checked",  
+  "mark_status_as_checked",
   "enroll_students",
   "column_break_ekje",
   "new_academic_year",
@@ -116,12 +116,12 @@
    "fieldname": "new_enrollment_date",
    "fieldtype": "Date",
    "label": "New enrollment Date"
-  }, 
+  },
   {
-    "fieldname": "mark_status_as_checked",
-    "fieldtype": "Check",
-    "label": "Mark new enrollments as Active",
-    "default": "1"
+   "default": "1",
+   "fieldname": "mark_status_as_checked",
+   "fieldtype": "Check",
+   "label": "Mark new enrollments as Active"
   }
  ],
  "grid_page_length": 50,
@@ -129,7 +129,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-04-20 01:43:18.376700",
+ "modified": "2025-05-22 18:48:48.817035",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Tool",
@@ -172,6 +172,16 @@
    "print": 1,
    "read": 1,
    "role": "Counselor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Curriculum Coordinator",
    "share": 1,
    "write": 1
   }
