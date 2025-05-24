@@ -5,6 +5,7 @@ import frappe
 import json
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils.nestedset import get_descendants_of
 
 class Course(Document):
 	def validate(self):
@@ -60,3 +61,29 @@ def get_programs_without_course(course):
 		if not courses or course not in courses:
 			data.append(program.name)
 	return data
+
+def get_permission_query_conditions(user):
+    # Full access for System Manager and Administrator
+    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+        return None
+
+    user_school = frappe.defaults.get_user_default("school", user)
+    if not user_school:
+        return "1=0"  # No access if no school assigned
+
+    # Get self + descendants
+    schools = [user_school] + get_descendants_of("School", user_school)
+
+    schools_escaped = ', '.join([frappe.db.escape(s) for s in schools])
+    return f"`tabCourse`.`school` in ({schools_escaped})"
+
+def has_permission(doc, ptype, user):
+    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+        return True
+
+    user_school = frappe.defaults.get_user_default("school", user)
+    if not user_school:
+        return False
+
+    schools = [user_school] + get_descendants_of("School", user_school)
+    return doc.school in schools
