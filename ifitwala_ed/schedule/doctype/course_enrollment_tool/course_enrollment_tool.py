@@ -108,7 +108,7 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
 		values += [f"%{txt}%", f"%{txt}%"]
 
 	query = f"""
-		SELECT DISTINCT s.name, s.student_full_name
+		SELECT DISTINCT s.name, s.student_full_name, pe.name AS program_enrollment
 		FROM `tabProgram Enrollment` pe
 		JOIN `tabStudent` s ON s.name = pe.student
 		WHERE pe.program = %s
@@ -128,7 +128,7 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
 	results = frappe.db.sql(query, values, as_dict=True)
 
 	return [
-		[row["name"], f"{row['name']} - {row['student_full_name']}".strip(" -")]
+		[row["name"], f"{row['name']} - {row['student_full_name']}".strip(" -"), row["program_enrollment"]]
 		for row in results
 	]
 

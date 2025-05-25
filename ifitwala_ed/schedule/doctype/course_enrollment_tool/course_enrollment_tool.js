@@ -97,9 +97,10 @@ frappe.ui.form.on("Course Enrollment Tool", {
 						return;
 					}
 
-					eligible.forEach(([student_id]) => {
+					eligible.forEach(([student_id, label, pe_name]) => {
 						const row = frm.add_child("students");
 						row.student = student_id;
+						row.program_enrollment = pe_name;
 					});
 					frm.refresh_field("students");
 				}
