@@ -19,14 +19,15 @@ class Instructor(Document):
 
 	def validate(self):
 		self.validate_duplicate_employee()
-		employee = frappe.db.get_value("Employee", self.employee, ["user_id", "employee_gender", "employee_full_name"], as_dict=True)
+		employee = frappe.db.get_value("Employee", self.employee, ["user_id", "employee_gender", "employee_full_name", "employee_image"], as_dict=True)
 		
 		if not employee or not employee.user_id:
 			frappe.throw(_("Linked Employee must have a User ID."))
 
 		self.user_id = employee.user_id
 		self.gender = employee.employee_gender
-		self.instructor_name = employee.employee_full_name
+		self.instructor_name = employee.employee_full_name 
+		self.instructor_image = employee.employee_image		
 
 	def after_insert(self):
 		add_role(self.user_id, "Instructor")
