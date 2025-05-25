@@ -39,7 +39,9 @@ class Instructor(Document):
 		# Remove roles only if the user currently has them
 		if self.status == "Inactive":
 			if frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
-				frappe.get_doc("User", self.user_id).remove_roles("Instructor")
+				user = frappe.get_doc("User", self.user_id)
+				user.flags.ignore_permissions = True
+				user.remove_roles("Instructor")
 
 		elif self.status == "Active":
 			if not frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
