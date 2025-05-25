@@ -19,22 +19,29 @@ class Instructor(Document):
 
 	def validate(self):
 		self.validate_duplicate_employee()
-		user_id = frappe.db.get_value("Employee", self.employee, "user_id")
+		employee = frappe.db.get_value("Employee", self.employee, ["user_id", "employee_gender", "employee_full_name"], as_dict=True)
 		if not user_id:
 			frappe.throw(_("Linked Employee must have a User ID."))
 
-		self.user_id = user_id
+		self.user_id = employee.user_id
+		self.gender = employee.employee_gender
+		self.instructor_name = employee.employee_full_name
 
 	def after_insert(self):
 		add_role(self.user_id, "Instructor")
 
 	def on_update(self):
+		if not self.user_id:
+			return  # safety check in case of corrupt data
+
+		# Remove roles only if the user currently has them
 		if self.status == "Inactive":
-			user = frappe.get_doc("User", self.user_id)
-			user.remove_roles("Instructor")
-		if self.status == "Active":
-			user = frappe.get_doc("User", self.user_id)
-			add_role(self.user_id, "Instructor")
+			if frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
+				frappe.get_doc("User", self.user_id).remove_roles("Instructor")
+
+		elif self.status == "Active":
+			if not frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
+				add_role(self.user_id, "Instructor")
 
 	def validate_duplicate_employee(self):
 		if self.employee and frappe.db.get_value("Instructor", {'employee': self.employee, 'name': ['!=', self.name]}, 'name'):
