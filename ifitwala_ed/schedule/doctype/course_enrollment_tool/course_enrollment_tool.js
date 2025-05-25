@@ -57,6 +57,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
 			};
 		});
 
+		// 3) Prevent selecting the same student twice
 		frm.fields_dict["students"].grid.get_field("student").get_query = function(doc) {
 			const selected_students = (doc.students || []).map(row => row.student).filter(Boolean);
 			return {
@@ -66,7 +67,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
 			};
 		};
 
-		// 3) Set a custom query on the "course" field so that once Program is chosen,
+		// 4) Set a custom query on the "course" field so that once Program is chosen,
 		//    only courses from that Program appear in the dropdown.
 		frm.set_query("course", function() {
 			if (!frm.doc.program) {
@@ -78,38 +79,6 @@ frappe.ui.form.on("Course Enrollment Tool", {
 					program: frm.doc.program
 				}
 			};
-		});
-
-		// 4) Auto-fetch Program Enrollment immediately when a new student row is added
-		frm.get_field("students").grid.on("row-add", function(grid_row) {
-			const row = grid_row.doc;
-
-			if (!frm.doc.program || !frm.doc.academic_year) {
-				frappe.msgprint(__("Please select Program and Academic Year before adding students."));
-				return;
-			}
-
-			if (row.student) {
-				frappe.call({
-					method: "frappe.client.get_value",
-					args: {
-						doctype: "Program Enrollment",
-						fieldname: "name",
-						filters: {
-							student: row.student,
-							program: frm.doc.program,
-							academic_year: frm.doc.academic_year
-						}
-					},
-					callback: function(r) {
-						if (r.message && r.message.name) {
-							frappe.model.set_value(row.doctype, row.name, "program_enrollment", r.message.name);
-						} else {
-							frappe.model.set_value(row.doctype, row.name, "program_enrollment", null);
-						}
-					}
-				});
-			}
 		});
 	}, 
 
@@ -159,13 +128,11 @@ frappe.ui.form.on("Course Enrollment Tool Student", {
 	student: function(frm, cdt, cdn) {
 		const row = frappe.get_doc(cdt, cdn);
 
-		// Only run if Program, Academic Year are set in the parent
 		if (!frm.doc.program || !frm.doc.academic_year) {
 			frappe.msgprint(__("Please select Program and Academic Year first"));
 			return;
 		}
 
-		// Attempt to find an existing Program Enrollment for the Student, Program, Year, Term
 		frappe.call({
 			method: "frappe.client.get_value",
 			args: {
@@ -179,10 +146,8 @@ frappe.ui.form.on("Course Enrollment Tool Student", {
 			},
 			callback: function(r) {
 				if (r.message && r.message.name) {
-					// Found a matching Program Enrollment
 					frappe.model.set_value(cdt, cdn, "program_enrollment", r.message.name);
 				} else {
-					// No Program Enrollment found => either leave it blank or handle differently
 					frappe.model.set_value(cdt, cdn, "program_enrollment", null);
 				}
 			}
