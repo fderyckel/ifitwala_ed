@@ -17,10 +17,10 @@ frappe.listview_settings["Student Group"] = {
 	formatters: {
 		group_based_on(value) {
 			const color_map = {
-				Cohort: "primary",
-				Course: "purple",
-				Activity: "orange",
-				Other: "secondary",
+				Cohort: "primary",   // blue
+				Course: "info",      // teal
+				Activity: "warning", // orange/yellow
+				Other: "secondary",  // gray
 			};
 			const color = color_map[value] || "dark";
 			return `<span class="badge bg-${color} text-white">${__(value)}</span>`;
