@@ -241,7 +241,7 @@ class StudentGroup(Document):
 			"location": set()
 		}
 
-		for row in self.schedule:
+		for row in self.student_group_schedule:
 			hash_base = f"{row.rotation_day}:{row.block_number}"
 			# students
 			for s in self.students:
