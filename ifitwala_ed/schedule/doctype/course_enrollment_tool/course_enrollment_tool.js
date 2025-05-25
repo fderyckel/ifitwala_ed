@@ -5,10 +5,10 @@ frappe.ui.form.on("Course Enrollment Tool", {
 	onload: function(frm) { 
 
 		// Clear all fields on fresh open
-		frm.clear_table("students");
-		frm.set_value("course", null);
-		frm.set_value("term", null);
-		frm.refresh_fields();
+		//frm.clear_table("students");
+		//frm.set_value("course", null);
+		//frm.set_value("term", null);
+		//frm.refresh_fields();
 
 		
 		// Set the query for academic year
@@ -64,25 +64,54 @@ frappe.ui.form.on("Course Enrollment Tool", {
 					["Student", "name", "not in", selected_students]
 				]
 			};
-		};		
+		};
 
 		// 3) Set a custom query on the "course" field so that once Program is chosen,
 		//    only courses from that Program appear in the dropdown.
 		frm.set_query("course", function() {
-			// If Program is not chosen, you can either return all courses or show an empty list.
 			if (!frm.doc.program) {
-				// Return an empty filter (aka show all courses)
 				return {};
 			}
-			// Otherwise, call a custom server-side query that filters by Program
 			return {
 				query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.get_courses_for_program",
 				filters: {
 					program: frm.doc.program
 				}
 			};
-		}); 
-	},
+		});
+
+		// 4) Auto-fetch Program Enrollment immediately when a new student row is added
+		frm.get_field("students").grid.on("row-add", function(grid_row) {
+			const row = grid_row.doc;
+
+			if (!frm.doc.program || !frm.doc.academic_year) {
+				frappe.msgprint(__("Please select Program and Academic Year before adding students."));
+				return;
+			}
+
+			if (row.student) {
+				frappe.call({
+					method: "frappe.client.get_value",
+					args: {
+						doctype: "Program Enrollment",
+						fieldname: "name",
+						filters: {
+							student: row.student,
+							program: frm.doc.program,
+							academic_year: frm.doc.academic_year
+						}
+					},
+					callback: function(r) {
+						if (r.message && r.message.name) {
+							frappe.model.set_value(row.doctype, row.name, "program_enrollment", r.message.name);
+						} else {
+							frappe.model.set_value(row.doctype, row.name, "program_enrollment", null);
+						}
+					}
+				});
+			}
+		});
+	}, 
 
 	course: async function(frm) {
 		if (!frm.doc.course) {

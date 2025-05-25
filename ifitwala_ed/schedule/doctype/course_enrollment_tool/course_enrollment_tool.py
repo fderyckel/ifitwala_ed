@@ -145,13 +145,26 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
 
 	# 5) Transform results into the format [[value, label], ...]
 	results = frappe.db.sql(f"""
-		SELECT DISTINCT s.name, s.student_full_name
+		SELECT s.name, s.student_full_name
 		FROM `tabStudent` s
-		JOIN `tabProgram Enrollment` pe ON pe.student = s.name
-		WHERE {where_clause}
+		WHERE s.name IN (
+			SELECT pe.student
+			FROM `tabProgram Enrollment` pe
+			WHERE pe.program = %s AND pe.academic_year = %s AND pe.docstatus = 0
+		)
+		AND s.enabled = 1
+		AND s.name NOT IN (
+			SELECT pec.student
+			FROM `tabProgram Enrollment Course` pec
+			WHERE pec.course = %s
+		)
+		{f"AND (s.name LIKE %s OR s.student_full_name LIKE %s)" if txt else ""}
 		ORDER BY s.name
 		LIMIT {start}, {page_len}
-		""", values, as_dict=True)
+	""", (
+		[program, academic_year, course] +
+		([f"%{txt}%", f"%{txt}%"] if txt else [])
+	), as_dict=True)
 
 	return [
 		[row["name"], f"{row['name']} - {row['student_full_name']}".strip(" -")]
