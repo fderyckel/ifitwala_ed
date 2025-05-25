@@ -5,14 +5,11 @@ frappe.ui.form.on("Course Enrollment Tool", {
 	onload: function(frm) { 
 
 		// Clear all fields on fresh open
-		if (frm.is_new()) {
-			frm.clear_table("students");
-			frm.set_value("course", null);
-			frm.set_value("term", null);
-			frm.refresh_fields();
-		}		
-		// Hide term field by default
-		frm.set_df_property("term", "hidden", 1);
+		frm.clear_table("students");
+		frm.set_value("course", null);
+		frm.set_value("term", null);
+		frm.refresh_fields();
+
 		
 		// Set the query for academic year
 		frm.set_query("academic_year", function () {
