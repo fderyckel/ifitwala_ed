@@ -20,7 +20,8 @@ class Instructor(Document):
 	def validate(self):
 		self.validate_duplicate_employee()
 		employee = frappe.db.get_value("Employee", self.employee, ["user_id", "employee_gender", "employee_full_name"], as_dict=True)
-		if not user_id:
+		
+		if not employee or not employee.user_id:
 			frappe.throw(_("Linked Employee must have a User ID."))
 
 		self.user_id = employee.user_id
