@@ -1,16 +1,9 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("Course Enrollment Tool", { 
-	onload: function(frm) { 
 
-		// Clear all fields on fresh open
-		//frm.clear_table("students");
-		//frm.set_value("course", null);
-		//frm.set_value("term", null);
-		//frm.refresh_fields();
-
-		
+frappe.ui.form.on("Course Enrollment Tool", {
+	onload: function(frm) {
 		// Set the query for academic year
 		frm.set_query("academic_year", function () {
 			return {
@@ -18,6 +11,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
 			};
 		});
 
+		// Filter programs based on user's school
 		frappe.call({
 			method: "ifitwala_ed.utilities.school_tree.get_descendant_schools",
 			args: { user_school: frappe.defaults.get_user_default("school") },
@@ -29,7 +23,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
 						filters: {
 							school: ["in", window.allowed_schools]
 						}
-					}
+					};
 				});
 			}
 		});
@@ -37,27 +31,23 @@ frappe.ui.form.on("Course Enrollment Tool", {
 
 	program: function(frm) {
 		frm.set_value("academic_year", null);
-	}, 
+	},
 
 	onload_post_render: function(frm) {
-		// 1) Enable multiple add on the child table "students", for link field "student"
-		frm.get_field("students").grid.set_multiple_add("student");
-
-		// 2) Set a custom query so that when the user tries to pick a "Student" in the child table,
-		//    Frappe calls our Python method "fetch_eligible_students" to filter the results.
+		// 1) Server-side query to fetch eligible students for each row
 		frm.set_query("student", "students", function(doc, cdt, cdn) {
 			return {
 				query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.fetch_eligible_students",
 				filters: {
 					academic_year: frm.doc.academic_year,
 					program: frm.doc.program,
-					term: frm.doc.term,
-					course: frm.doc.course
+					course: frm.doc.course,
+					term: frm.doc.term
 				}
 			};
 		});
 
-		// 3) Prevent selecting the same student twice
+		// 2) Client-side filter to prevent duplicate student entries
 		frm.fields_dict["students"].grid.get_field("student").get_query = function(doc) {
 			const selected_students = (doc.students || []).map(row => row.student).filter(Boolean);
 			return {
@@ -67,12 +57,9 @@ frappe.ui.form.on("Course Enrollment Tool", {
 			};
 		};
 
-		// 4) Set a custom query on the "course" field so that once Program is chosen,
-		//    only courses from that Program appear in the dropdown.
+		// 3) Custom query for Course field to show only courses from selected Program
 		frm.set_query("course", function() {
-			if (!frm.doc.program) {
-				return {};
-			}
+			if (!frm.doc.program) return {};
 			return {
 				query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.get_courses_for_program",
 				filters: {
@@ -80,36 +67,70 @@ frappe.ui.form.on("Course Enrollment Tool", {
 				}
 			};
 		});
-	}, 
+
+		// 4) Custom button to add eligible students
+		frm.add_custom_button(__("Add Eligible Students"), async function () {
+			if (!frm.doc.program || !frm.doc.academic_year || !frm.doc.course) {
+				frappe.msgprint(__("Please select Program, Academic Year, and Course first."));
+				return;
+			}
+
+			frappe.call({
+				method: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.fetch_eligible_students",
+				args: {
+					doctype: "Student",
+					txt: "",
+					searchfield: "name",
+					start: 0,
+					page_len: 50,
+					filters: {
+						program: frm.doc.program,
+						academic_year: frm.doc.academic_year,
+						course: frm.doc.course,
+						term: frm.doc.term
+					}
+				},
+				callback: function(r) {
+					const eligible = r.message || [];
+					if (eligible.length === 0) {
+						frappe.msgprint(__("No eligible students found."));
+						return;
+					}
+
+					eligible.forEach(([student_id]) => {
+						const row = frm.add_child("students");
+						row.student = student_id;
+					});
+					frm.refresh_field("students");
+				}
+			});
+		});
+	},
 
 	course: async function(frm) {
 		if (!frm.doc.course) {
 			frm.set_df_property("term", "hidden", 1);
 			return;
 		}
-	
-		// Fetch Course to check if it's term-long
+
 		const course = await frappe.db.get_doc("Course", frm.doc.course);
 		const is_term_long = !!course.term_long;
-	
-		// Show or hide 'term' field
+
 		frm.set_df_property("term", "hidden", !is_term_long);
-	
+
 		if (!is_term_long) {
 			frm.set_value("term", null);
 		}
 
-		// Only show terms from selected academic year
 		frm.set_query("term", function() {
 			return {
 				filters: {
-					academic_year: frm.doc.academic_year || ""  // Defensive fallback
+					academic_year: frm.doc.academic_year || ""
 				}
 			};
 		});
 	},
-	
-	// 4) Single button "Add Course" that calls add_course_to_program_enrollment() on the server
+
 	add_course: function(frm) {
 		frappe.call({
 			doc: frm.doc,
@@ -123,7 +144,6 @@ frappe.ui.form.on("Course Enrollment Tool", {
 	}
 });
 
-
 frappe.ui.form.on("Course Enrollment Tool Student", {
 	student: function(frm, cdt, cdn) {
 		const row = frappe.get_doc(cdt, cdn);
@@ -136,8 +156,8 @@ frappe.ui.form.on("Course Enrollment Tool Student", {
 		frappe.call({
 			method: "frappe.client.get_value",
 			args: {
-				doctype: "Program Enrollment", 
-				fieldname: "name", 
+				doctype: "Program Enrollment",
+				fieldname: "name",
 				filters: {
 					student: row.student,
 					program: frm.doc.program,
