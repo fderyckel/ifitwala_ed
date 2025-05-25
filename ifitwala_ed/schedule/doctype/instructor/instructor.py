@@ -37,15 +37,15 @@ class Instructor(Document):
 			return  # safety check in case of corrupt data
 
 		# Remove roles only if the user currently has them
-		if self.status == "Inactive":
-			if frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
-				user = frappe.get_doc("User", self.user_id)
-				user.flags.ignore_permissions = True
-				user.remove_roles("Instructor")
+		#if self.status == "Inactive":
+		#	if frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
+		#		user = frappe.get_doc("User", self.user_id)
+		#		user.flags.ignore_permissions = True
+		#		user.remove_roles("Instructor")
 
-		elif self.status == "Active":
-			if not frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
-				add_role(self.user_id, "Instructor")
+		#elif self.status == "Active":
+		#	if not frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
+		#		add_role(self.user_id, "Instructor")
 
 	def validate_duplicate_employee(self):
 		if self.employee and frappe.db.get_value("Instructor", {'employee': self.employee, 'name': ['!=', self.name]}, 'name'):
