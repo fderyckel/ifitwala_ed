@@ -100,6 +100,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
 					eligible.forEach(([student_id, label, pe_name]) => {
 						const row = frm.add_child("students");
 						row.student = student_id;
+						row.student_name = label;
 						row.program_enrollment = pe_name;
 					});
 					frm.refresh_field("students");
