@@ -20,11 +20,10 @@ class Instructor(Document):
 	def validate(self):
 		frappe.errprint("START VALIDATE")
 		self.validate_duplicate_employee()
-		employee = frappe.get_value("Employee", 
+		employee = frappe.db.get_value("Employee", 
 			self.employee, 
 			["user_id", "employee_gender", "employee_full_name", "employee_image"], 
-			as_dict=True, 
-			ignore_permissions=True
+			as_dict=True
 		)
 
 		frappe.errprint(f"Employee fetch: {employee}")
