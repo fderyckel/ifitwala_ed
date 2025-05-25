@@ -115,10 +115,10 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
 			AND pe.academic_year = %s
 			AND pe.docstatus = 0
 			AND s.enabled = 1
-			AND s.name NOT IN (
-				SELECT pec.student
-				FROM `tabProgram Enrollment Course` pec
-				WHERE pec.course = %s
+			AND pe.name NOT IN (
+				SELECT parent
+				FROM `tabProgram Enrollment Course`
+				WHERE course = %s
 			)
 			{txt_filter}
 		ORDER BY s.name
