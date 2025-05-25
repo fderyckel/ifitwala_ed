@@ -2,7 +2,6 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "INS-.YYYY.-.###",
  "creation": "2024-12-06 16:30:46.353302",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -38,14 +37,13 @@
   {
    "fieldname": "user_id",
    "fieldtype": "Data",
+   "ignore_user_permissions": 1,
    "label": "User ID",
    "read_only": 1
   },
   {
-   "fetch_from": "employee.employee_gender",
    "fieldname": "gender",
    "fieldtype": "Select",
-   "ignore_user_permissions": 1,
    "label": "Gender",
    "read_only": 1
   },
@@ -54,17 +52,14 @@
    "fieldtype": "Column Break"
   },
   {
-   "fetch_from": "employee.employee_full_name",
    "fieldname": "instructor_name",
    "fieldtype": "Data",
-   "ignore_user_permissions": 1,
    "in_global_search": 1,
    "in_list_view": 1,
    "label": "Instructor Name",
    "read_only": 1
   },
   {
-   "fetch_if_empty": 1,
    "fieldname": "school",
    "fieldtype": "Link",
    "label": "School",
@@ -99,11 +94,10 @@
  "image_field": "instructor_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-25 15:46:49.677736",
+ "modified": "2025-05-25 16:36:29.613406",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Instructor",
- "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
