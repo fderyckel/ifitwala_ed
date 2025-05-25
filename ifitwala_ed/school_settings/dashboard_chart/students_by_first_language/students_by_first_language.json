@@ -11,8 +11,8 @@
  "idx": 0,
  "is_public": 1,
  "is_standard": 1,
- "last_synced_on": "2025-02-10 14:57:41.933135",
- "modified": "2025-02-10 15:03:59.428679",
+ "last_synced_on": "2025-05-22 22:34:24.680628",
+ "modified": "2025-05-23 22:53:33.377313",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Students by First Language",
@@ -21,6 +21,12 @@
  "roles": [
   {
    "role": "Academic Admin"
+  },
+  {
+   "role": "Curriculum Coordinator"
+  },
+  {
+   "role": "Counselor"
   }
  ],
  "time_interval": "Monthly",

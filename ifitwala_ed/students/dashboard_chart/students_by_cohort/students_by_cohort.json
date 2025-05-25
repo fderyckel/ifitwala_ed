@@ -1,23 +1,27 @@
 {
- "chart_name": "Students by Gender",
+ "based_on": "",
+ "chart_name": "Students by Cohort",
  "chart_type": "Group By",
- "creation": "2025-01-09 21:57:52.192740",
+ "creation": "2025-04-17 23:32:52.027388",
+ "currency": "",
  "docstatus": 0,
  "doctype": "Dashboard Chart",
  "document_type": "Student",
- "filters_json": "[[\"Student\",\"enabled\",\"=\",1,false]]",
- "group_by_based_on": "student_gender",
+ "dynamic_filters_json": "[]",
+ "filters_json": "[]",
+ "group_by_based_on": "cohort",
  "group_by_type": "Count",
  "idx": 0,
- "is_public": 0,
+ "is_public": 1,
  "is_standard": 1,
- "last_synced_on": "2025-05-23 08:02:11.288728",
- "modified": "2025-05-23 22:56:30.864620",
+ "last_synced_on": "2025-05-23 08:02:11.303684",
+ "modified": "2025-05-23 22:55:54.480783",
  "modified_by": "Administrator",
  "module": "Students",
- "name": "Students by Gender",
+ "name": "Students by Cohort",
  "number_of_groups": 0,
  "owner": "Administrator",
+ "parent_document_type": "",
  "roles": [
   {
    "role": "Academic Admin"
@@ -29,10 +33,12 @@
    "role": "Counselor"
   }
  ],
- "time_interval": "Monthly",
+ "source": "",
+ "time_interval": "Yearly",
  "timeseries": 0,
  "timespan": "Last Year",
- "type": "Pie",
+ "type": "Bar",
  "use_report_chart": 0,
+ "value_based_on": "",
  "y_axis": []
 }

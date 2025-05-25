@@ -36,7 +36,6 @@
    "unique": 1
   },
   {
-   "fetch_from": "employee.user_id",
    "fieldname": "user_id",
    "fieldtype": "Data",
    "label": "User ID",
@@ -46,6 +45,7 @@
    "fetch_from": "employee.employee_gender",
    "fieldname": "gender",
    "fieldtype": "Select",
+   "ignore_user_permissions": 1,
    "label": "Gender",
    "read_only": 1
   },
@@ -99,7 +99,7 @@
  "image_field": "instructor_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-24 11:38:41.400873",
+ "modified": "2025-05-25 15:46:49.677736",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Instructor",
@@ -165,6 +165,7 @@
    "role": "Student"
   }
  ],
+ "row_format": "Dynamic",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
