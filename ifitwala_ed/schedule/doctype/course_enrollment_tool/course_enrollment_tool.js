@@ -3,6 +3,14 @@
 
 frappe.ui.form.on("Course Enrollment Tool", { 
 	onload: function(frm) { 
+
+		// Clear all fields on fresh open
+		if (frm.is_new()) {
+			frm.clear_table("students");
+			frm.set_value("course", null);
+			frm.set_value("term", null);
+			frm.refresh_fields();
+		}		
 		// Hide term field by default
 		frm.set_df_property("term", "hidden", 1);
 		
@@ -76,22 +84,6 @@ frappe.ui.form.on("Course Enrollment Tool", {
 				}
 			};
 		}); 
-
-		// ***DISABLE SAVE INITIALLY***
-		frm.toggle_save(false);
-
-		// ***ENABLE SAVE WHEN AT LEAST ONE STUDENT IS PRESENT***
-		frm.fields_dict["students"].grid.on("after_add_row", function() {
-			if (frm.doc.students && frm.doc.students.length > 0) {
-				frm.toggle_save(true);
-			}
-		});
-
-		frm.fields_dict["students"].grid.on("after_delete_row", function() {
-			if (!frm.doc.students || frm.doc.students.length === 0) {
-				frm.toggle_save(false);
-			}
-		});		
 	},
 
 	course: async function(frm) {
