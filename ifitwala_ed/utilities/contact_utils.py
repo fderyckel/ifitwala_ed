@@ -29,7 +29,7 @@ from frappe.contacts.address_and_contact import has_permission as _core_has_perm
 #  Doc‑level gate
 # ------------------------------------------------------------------ #
 def contact_has_permission(doc, ptype, user):
-    """Allow Academic Admin to read any Contact that links to a Student he/she can read."""
+    """Allow Academic Admin to read any Contact that links to a Student he/she can read."""
     # Non‑read checks → fall back
     if ptype != "read":
         return _core_has_permission(doc, ptype, user)
@@ -54,7 +54,7 @@ def contact_has_permission(doc, ptype, user):
 #  List / report filter
 # ------------------------------------------------------------------ #
 def contact_permission_query_conditions(user):
-    """Academic Admin sees only contacts that reference a Student."""
+    """Academic Admin sees only contacts that reference a Student."""
     if "Academic Admin" not in frappe.get_roles(user):
         return ""   # everyone else — no extra condition
 

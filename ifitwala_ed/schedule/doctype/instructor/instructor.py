@@ -18,16 +18,28 @@ class Instructor(Document):
 		self.load_groups()
 
 	def validate(self):
+		frappe.errprint("START VALIDATE")
 		self.validate_duplicate_employee()
-		employee = frappe.db.get_value("Employee", self.employee, ["user_id", "employee_gender", "employee_full_name", "employee_image"], as_dict=True)
+		employee = frappe.db.get_value("Employee", 
+			self.employee, 
+			["user_id", "employee_gender", "employee_full_name", "employee_image"], 
+			as_dict=True, 
+			ignore_permissions=True
+		)
+
+		frappe.errprint(f"Employee fetch: {employee}")
 		
 		if not employee or not employee.user_id:
 			frappe.throw(_("Linked Employee must have a User ID."))
+
+		frappe.errprint("Passed user_id check")
 
 		self.user_id = employee.user_id
 		self.gender = employee.employee_gender
 		self.instructor_name = employee.employee_full_name 
 		self.instructor_image = employee.employee_image		
+
+		frappe.errprint("END VALIDATE")
 
 	def after_insert(self):
 		add_role(self.user_id, "Instructor")
@@ -36,16 +48,19 @@ class Instructor(Document):
 		if not self.user_id:
 			return  # safety check in case of corrupt data
 
+		frappe.errprint("STRT with user ")
 		# Remove roles only if the user currently has them
-		#if self.status == "Inactive":
-		#	if frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
-		#		user = frappe.get_doc("User", self.user_id)
-		#		user.flags.ignore_permissions = True
-		#		user.remove_roles("Instructor")
+		if self.status == "Inactive":
+			if frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
+				user = frappe.get_doc("User", self.user_id)
+				user.flags.ignore_permissions = True
+				user.remove_roles("Instructor")
 
-		#elif self.status == "Active":
-		#	if not frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
-		#		add_role(self.user_id, "Instructor")
+		elif self.status == "Active":
+			if not frappe.db.exists("Has Role", {"parent": self.user_id, "role": "Instructor"}):
+				add_role(self.user_id, "Instructor")
+
+		frappe.errprint("End of user")
 
 	def validate_duplicate_employee(self):
 		if self.employee and frappe.db.get_value("Instructor", {'employee': self.employee, 'name': ['!=', self.name]}, 'name'):

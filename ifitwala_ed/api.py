@@ -50,7 +50,7 @@ def set_default_workspace_based_on_roles(doc, method):
         # No default_workspace set → we set it
         doc.default_workspace = new_workspace
         frappe.msgprint(
-            f"This user’s default workspace has been set to <b>{new_workspace}</b> based on their role.",
+            f"This user's default workspace has been set to <b>{new_workspace}</b> based on their role.",
             title="Default Workspace Updated",
             indicator="blue"
         )
