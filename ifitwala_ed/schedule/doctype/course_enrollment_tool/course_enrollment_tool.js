@@ -55,6 +55,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
 					academic_year: frm.doc.academic_year,
 					program: frm.doc.program,
 					term: frm.doc.term,
+					course: frm.doc.course
 				}
 			};
 		});
