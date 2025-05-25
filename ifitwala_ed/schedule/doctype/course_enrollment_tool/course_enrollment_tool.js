@@ -2,6 +2,17 @@
 // For license information, please see license.txt
 
 
+function show_add_students_button(frm) {
+	if (frm.doc.program && frm.doc.academic_year && frm.doc.course) {
+		if (!frm.custom_buttons_added) {
+			frm.add_custom_button(__("Add Eligible Students"), async function () {
+				// (keep your existing button code here...)
+			});
+			frm.custom_buttons_added = true;
+		}
+	}
+}; 
+
 frappe.ui.form.on("Course Enrollment Tool", {
 	onload: function(frm) {
 		// Set the query for academic year
@@ -31,7 +42,12 @@ frappe.ui.form.on("Course Enrollment Tool", {
 
 	program: function(frm) {
 		frm.set_value("academic_year", null);
+		show_add_students_button(frm);
 	},
+
+	academic_year: function(frm) {
+		show_add_students_button(frm);
+	},	
 
 	onload_post_render: function(frm) {
 		// 1) Server-side query to fetch eligible students for each row
@@ -110,6 +126,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
 	},
 
 	course: async function(frm) {
+		show_add_students_button(frm);
 		if (!frm.doc.course) {
 			frm.set_df_property("term", "hidden", 1);
 			return;
