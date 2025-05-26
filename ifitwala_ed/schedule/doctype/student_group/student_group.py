@@ -298,11 +298,7 @@ class StudentGroup(Document):
 		"""
 		if self.program:
 			school = frappe.db.get_value("Program", self.program, "school")
-			sched_name = get_first_ancestor_with_doc(     # ← HERE
-				"School Schedule",
-				school,
-				filters={"academic_year": self.academic_year}  # add if you version by AY
-			)
+			sched_name = get_first_ancestor_with_doc("School Schedule", school)
 			if not sched_name:
 				frappe.throw(_("No School Schedule found for school {0}.").format(school))
 			return frappe.get_cached_doc("School Schedule", sched_name[0])
