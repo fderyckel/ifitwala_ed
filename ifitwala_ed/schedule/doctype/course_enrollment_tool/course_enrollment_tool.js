@@ -40,6 +40,16 @@ frappe.ui.form.on("Course Enrollment Tool", {
 		});
 	},
 
+	refresh: function(frm) {
+		// Immediate red button to clear all fields
+		frm.add_custom_button(__("Clear All Fields"), function () {
+			const fields_to_clear = ["program", "academic_year", "term", "course"];
+			fields_to_clear.forEach(field => frm.set_value(field, null));
+			frm.clear_table("students");
+			frm.refresh_fields();
+		}).addClass("btn-danger");
+	}, 
+
 	program: function(frm) {
 		frm.set_value("academic_year", null);
 		show_add_students_button(frm);
