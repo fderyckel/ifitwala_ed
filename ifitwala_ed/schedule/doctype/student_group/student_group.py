@@ -6,7 +6,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, get_link_to_form
 from ifitwala_ed.schedule.schedule_utils import validate_duplicate_student
-from ifitwala_ed.schedule.schedule_utils import (check_slot_conflicts, get_conflict_rule)
+from ifitwala_ed.schedule.schedule_utils import check_slot_conflicts, get_conflict_rule
+from ifitwala_ed.utilities.school_tree import (
+    get_ancestor_schools,          # for the picker
+    get_first_ancestor_with_doc    # for automatic lookup
+)
 
 class StudentGroup(Document):
 	def autoname(self):
@@ -31,6 +35,7 @@ class StudentGroup(Document):
 		self.validate_and_set_child_table_fields()
 		validate_duplicate_student(self.students)
 		self.validate_rotation_clashes()
+		self._validate_schedule_rows()
 
 		if self.group_based_on in ["Course", "Activity"]:
 			if self.term: 
@@ -184,24 +189,28 @@ class StudentGroup(Document):
 						get_link_to_form("Term", self.term)
 					))
 
-				# ✅ Enrollment integrity check: Student must have a Program Enrollment Course entry
-				valid_enrollment = frappe.db.sql("""
-					SELECT pe.name
+				# Enrollment integrity check: Student must have a Program Enrollment Course entry
+				program_clause = "AND pe.program = %(program)s" if self.program else ""
+				params = {
+					"student": student.student,
+					"academic_year": self.academic_year,
+					"course": self.course,
+					"term": self.term,
+				}
+				if self.program:
+					params["program"] = self.program
+
+				valid_enrollment = frappe.db.sql(f"""
+					SELECT 1
 					FROM `tabProgram Enrollment` pe
 					INNER JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
 					WHERE pe.student = %(student)s
 						AND pe.academic_year = %(academic_year)s
-						AND pe.program = %(program)s
+						{program_clause}
 						AND pec.course = %(course)s
 						AND pec.term_start = %(term)s
 					LIMIT 1
-				""", {
-					"student": student.student,
-					"academic_year": self.academic_year,
-					"program": self.program,
-					"course": self.course,
-					"term": self.term
-				}, as_dict=True)
+				""", params)
 
 				if not valid_enrollment:
 					frappe.throw(_(
@@ -266,25 +275,71 @@ class StudentGroup(Document):
 							.format(row.rotation_day, row.block_number, row.location))
 			key_sets["location"].add(key)
 
-def get_permission_query_conditions(user):
-	if not user:
-		user = frappe.session.user
-	current_user = frappe.get_doc("User", frappe.session.user)
-	roles = [role.role for role in current_user.roles]
+	def _get_school_schedule(self):
+		"""
+		Returns the School Schedule to validate against.
 
-	if "Student" in roles:
-		return """(name in (select parent from `tabStudent Group Student` where user_id=%(user)s))""" % {
-			"user": frappe.db.escape(user),
-			}
+		• If Program is set  → walk the school tree (self + parents)
+			until we find the first School Schedule owned by that school.
+		• If Program is blank → rely on the explicit school_schedule field.
+		"""
+		if self.program:
+			school = frappe.db.get_value("Program", self.program, "school")
+			sched_name = get_first_ancestor_with_doc(     # ← HERE
+				"School Schedule",
+				school,
+				filters={"academic_year": self.academic_year}  # add if you version by AY
+			)
+			if not sched_name:
+				frappe.throw(_("No School Schedule found for school {0}.").format(school))
+			return frappe.get_cached_doc("School Schedule", sched_name[0])
 
-	if "Instructor" in roles:
-		return """(name in (select parent from `tabStudent Group Instructor` where user_id=%(user)s))""" % {
-				"user": frappe.db.escape(user),
-				}
-	super_viewer = ["Administrator", "System Manager", "Academic Admin", "Schedule Maker"]
-	for role in roles:
-		if role in super_viewer:
-			return ""
+		# fall-back when no program
+		if not self.school_schedule:
+			frappe.throw(_("Please choose a School Schedule or set a Program."))
+		return frappe.get_cached_doc("School Schedule", self.school_schedule)		
+	
+	def _validate_schedule_rows(self):
+		"""
+		• Ensures rotation_day / block_number exist in the resolved School Schedule
+		• Auto-fills read-only from_time / to_time based on that block
+		• Ensures instructor on each row belongs to the SG-instructor table
+		"""
+		if not self.student_group_schedule:
+			return
+
+		sched = self._get_school_schedule()   # single source of truth
+
+		# Build: {rotation_day: {block_number: (from_time, to_time)} }
+		block_map: dict[int, dict[int, tuple[str, str]]] = {}
+		for b in sched.schoole_schedule_block:        # child table in School Schedule
+			block_map.setdefault(b.rotation_day, {})[b.block_number] = (b.from_time, b.to_time)
+
+		valid_instructors = {i.instructor for i in self.instructors}
+
+		for row in self.student_group_schedule:
+
+			# 1️⃣ Rotation-day within range
+			if row.rotation_day < 1 or row.rotation_day > sched.rotation_days:
+				frappe.throw(_(
+					"Rotation Day {0} is outside the 1 – {1} range defined in {2}."
+				).format(row.rotation_day, sched.rotation_days, sched.name))
+
+			# 2️⃣ Block exists on that day
+			if row.block_number not in block_map.get(row.rotation_day, {}):
+				frappe.throw(_(
+					"Block {0} is not defined on Rotation Day {1} in School Schedule {2}."
+				).format(row.block_number, row.rotation_day, sched.name))
+
+			# 3️⃣ Instructor consistency
+			if row.instructor and row.instructor not in valid_instructors:
+				frappe.throw(_(
+					"Row {0}: Instructor {1} is not listed in the Student Group Instructor table."
+				).format(row.idx, row.instructor))
+
+			# 4️⃣ Auto-fill times (use read-only fields)
+			from_t, to_t = block_map[row.rotation_day][row.block_number]
+			row.from_time, row.to_time = from_t, to_t
 
 @frappe.whitelist()
 def get_students(academic_year, group_based_on, term=None, program=None, cohort=None, course=None):
@@ -379,6 +434,37 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 	return frappe.db.sql(query, args)
 
 
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def schedule_picker_query(doctype, txt, searchfield, start, page_len, filters):
+	ay = filters.get("academic_year")
+	if not ay:
+		return []
+
+	# school attached to the Academic Year
+	school = frappe.db.get_value("Academic Year", ay, "school")
+	if not school:
+		return []
+
+	allowed = get_ancestor_schools(school)     # ← here!
+	like_clause = f"%{txt}%"
+
+	return frappe.db.sql("""
+		SELECT name, rotation_days
+		FROM `tabSchool Schedule`
+		WHERE school IN %(allowed)s
+		  AND academic_year = %(ay)s
+		  AND (name LIKE %(like)s)
+		ORDER BY idx, name
+		LIMIT %(start)s, %(len)s
+	""", dict(
+		allowed=tuple(allowed),
+		ay=ay,
+		like=like_clause,
+		start=start,
+		len=page_len
+	))
+
 def get_program_enrollment(academic_year, term=None, program=None, cohort=None, course=None, exclude_in_group=None):
 	conditions = ["pe.academic_year = %(academic_year)s"]
 	params = {"academic_year": academic_year}
@@ -448,18 +534,23 @@ def build_in_clause_placeholders(values: list) -> str:
 ##### Used in other parts
 #################################################################
 
-def group_has_permission(user, doc):
-	current_user = frappe.get_doc("User", user)
+def get_permission_query_conditions(user):
+	if not user:
+		user = frappe.session.user
+	current_user = frappe.get_doc("User", frappe.session.user)
 	roles = [role.role for role in current_user.roles]
-	super_viewer = ["Administrator", "System Manager", "Academic Admin", "Schedule Maker", "Admission Officer"]
+
+	if "Student" in roles:
+		return """(name in (select parent from `tabStudent Group Student` where user_id=%(user)s))""" % {
+			"user": frappe.db.escape(user),
+			}
+
+	if "Instructor" in roles:
+		return """(name in (select parent from `tabStudent Group Instructor` where user_id=%(user)s))""" % {
+				"user": frappe.db.escape(user),
+				}
+	super_viewer = ["Administrator", "System Manager", "Academic Admin", "Schedule Maker"]
 	for role in roles:
 		if role in super_viewer:
-			return True
-
-	if current_user.name in [i.user_id.lower() for i in doc.instructors]:
-		return True
-
-	if current_user.name in [i.user_id.lower() for i in doc.students]:
-		return True
-
-	return False
+			return ""
+		
