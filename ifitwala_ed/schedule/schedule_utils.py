@@ -143,73 +143,96 @@ def get_conflict_rule():
         # If School Settings not installed yet (e.g. tests)
         return "Hard"
 
+def _extract(obj, attr):
+	"""Return obj[attr] or obj.attr, whichever exists (None if missing)."""
+	if isinstance(obj, dict):
+		return obj.get(attr)
+	return getattr(obj, attr, None)
+
 @frappe.whitelist()
 def check_slot_conflicts(group_doc):
-    """Scan existing Student Group schedules for clashes.
+		"""Scan existing Student Group schedules for clashes.
 
-    Returns a dict keyed by category (room / instructor / student) with a list of
-    tuples (entity, rotation_day, block_number).
-    """
-    if isinstance(group_doc, str):
-      group_doc = frappe._dict(json.loads(group_doc))
+		Returns a dict keyed by category (room / instructor / student) with a list of
+		tuples (entity, rotation_day, block_number).
+		"""
+		if isinstance(group_doc, str):
+			group_doc = frappe._dict(json.loads(group_doc))
 
-    conflicts = defaultdict(list)
+		conflicts = defaultdict(list)
 
-    # Pre‑collect instructors & students once (avoid per‑slot sub‑queries)
-    instructor_ids = tuple(i.instructor for i in group_doc.get("instructors") or [])
-    student_ids = tuple(s.student for s in group_doc.get("students") or [])
+		# Pre‑collect instructors & students once (avoid per‑slot sub‑queries)
+		instructors = group_doc.get("instructors") or []
+		students    = group_doc.get("students") or []
+		# accept both "student_group_schedule" (doctype) and older "schedule"
+		slots       = group_doc.get("student_group_schedule") or []
 
-    for slot in group_doc.get("schedule") or []:
-        rot, block = slot.rotation_day, slot.block_number
+		instructor_ids = tuple(
+			_extract(i, "instructor") for i in instructors if _extract(i, "instructor")
+		)
+		student_ids = tuple(
+			_extract(s, "student") for s in students if _extract(s, "student")
+		)
 
-        # ── Room clash ───────────────────────────────────────────────────────
-        if slot.room and frappe.db.exists(
-            "Student Group Schedule",
-            {
-                "rotation_day": rot,
-                "block_number": block,
-                "room": slot.room,
-                "parent": ("!=", group_doc.name),
-                "docstatus": ("<", 2),
-            },
-        ):
-            conflicts["room"].append((slot.room, rot, block))
+		# ── ③ Iterate slots (dict or DocType row)
+		for slot in slots:
+			rot   = _extract(slot, "rotation_day")
+			block = _extract(slot, "block_number")
+			room  = _extract(slot, "location")
 
-        # ── Instructor clash ────────────────────────────────────────────────
-        if instructor_ids:
-            sql = """
-                SELECT 1 FROM `tabStudent Group Instructor` gi
-                JOIN `tabStudent Group Schedule` gs ON gs.parent = gi.parent
-                WHERE gi.instructor IN %(instructors)s
-                  AND gs.rotation_day = %(rot)s
-                  AND gs.block_number = %(block)s
-                  AND gs.parent != %(group)s
-                  AND gs.docstatus < 2
-                LIMIT 1
-            """
-            if frappe.db.sql(sql, {
-                "instructors": instructor_ids, "rot": rot, "block": block, "group": group_doc.name
-            }):
-                conflicts["instructor"].append((instructor_ids, rot, block))
+			if not rot or not block:
+				continue
 
-        # ── Student clash ───────────────────────────────────────────────────
-        if student_ids:
-            sql = """
-                SELECT 1 FROM `tabStudent Group Student` st
-                JOIN `tabStudent Group Schedule` gs ON gs.parent = st.parent
-                WHERE st.student IN %(students)s
-                  AND gs.rotation_day = %(rot)s
-                  AND gs.block_number = %(block)s
-                  AND gs.parent != %(group)s
-                  AND gs.docstatus < 2
-                LIMIT 1
-            """
-            if frappe.db.sql(sql, {
-                "students": student_ids, "rot": rot, "block": block, "group": group_doc.name
-            }):
-                conflicts["student"].append((student_ids, rot, block))
+			# ----- room clash (unchanged) -------------------------------------
+			if room and frappe.db.exists(
+				"Student Group Schedule",
+				{
+					"rotation_day": rot,
+					"block_number": block,
+					"location": room,
+					"parent": ("!=", group_doc.name),
+					"docstatus": ("<", 2),
+				},
+			):
+				conflicts["location"].append((room, rot, block))
 
-    return dict(conflicts)
+			# ----- instructor clash -------------------------------------------
+			if instructor_ids:
+				clash = frappe.db.sql(
+					"""
+					SELECT 1 FROM `tabStudent Group Instructor` gi
+					JOIN   `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
+					WHERE gi.instructor IN %(ins)s
+						AND gs.rotation_day = %(rot)s
+						AND gs.block_number = %(blk)s
+						AND gs.parent != %(grp)s
+						AND gs.docstatus < 2
+					LIMIT 1
+					""",
+					dict(ins=instructor_ids, rot=rot, blk=block, grp=group_doc.name),
+				)
+				if clash:
+					conflicts["instructor"].append((instructor_ids, rot, block))
+
+			# ----- student clash ----------------------------------------------
+			if student_ids:
+				clash = frappe.db.sql(
+					"""
+					SELECT 1 FROM `tabStudent Group Student` st
+					JOIN   `tabStudent Group Schedule` gs ON gs.parent = st.parent
+					WHERE st.student IN %(sts)s
+						AND gs.rotation_day = %(rot)s
+						AND gs.block_number = %(blk)s
+						AND gs.parent != %(grp)s
+						AND gs.docstatus < 2
+					LIMIT 1
+					""",
+					dict(sts=student_ids, rot=rot, blk=block, grp=group_doc.name),
+				)
+				if clash:
+					conflicts["student"].append((student_ids, rot, block))
+
+		return dict(conflicts)
 
 
 # ─────────────────────────────────────────────────────────────────────
