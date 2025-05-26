@@ -453,7 +453,7 @@ def schedule_picker_query(doctype, txt, searchfield, start, page_len, filters):
 		SELECT name, rotation_days
 		FROM `tabSchool Schedule`
 		WHERE school IN %(allowed)s
-		  AND academic_year = %(ay)s
+		  AND school_calendar = %(ay)s
 		  AND (name LIKE %(like)s)
 		ORDER BY idx, name
 		LIMIT %(start)s, %(len)s
