@@ -9,7 +9,7 @@ function toggle_school_schedule_field(frm) {
 }
 
 // run whenever these change
-["program", "group_based_on"].forEach(f =>
+["academic_year", "program", "group_based_on"].forEach(f =>
 	frappe.ui.form.on("Student Group", f, frm => toggle_school_schedule_field(frm))
 );
 
@@ -46,6 +46,10 @@ frappe.ui.form.on("Student Group", {
 			};
 		});	
 	},
+
+	onload: function (frm) { 
+		toggle_school_schedule_field(frm);
+	}, 
 
 	refresh: function (frm) {
 		// Add buttons

@@ -141,7 +141,7 @@ def get_conflict_rule():
         # If School Settings not installed yet (e.g. tests)
         return "Hard"
 
-
+@frappe.whitelist()
 def check_slot_conflicts(group_doc):
     """Scan existing Student Group schedules for clashes.
 
