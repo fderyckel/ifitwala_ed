@@ -8,7 +8,7 @@
  "field_order": [
   "section_break_qqao",
   "employee",
-  "user_id",
+  "linked_user_id",
   "gender",
   "column_break_pffu",
   "instructor_name",
@@ -33,13 +33,6 @@
    "options": "Employee",
    "reqd": 1,
    "unique": 1
-  },
-  {
-   "fieldname": "user_id",
-   "fieldtype": "Data",
-   "ignore_user_permissions": 1,
-   "label": "User ID",
-   "read_only": 1
   },
   {
    "fieldname": "gender",
@@ -89,12 +82,19 @@
    "hidden": 1,
    "label": "Instructor Image",
    "read_only": 1
+  },
+  {
+   "fieldname": "linked_user_id",
+   "fieldtype": "Data",
+   "ignore_user_permissions": 1,
+   "label": "User ID",
+   "read_only": 1
   }
  ],
  "image_field": "instructor_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-25 16:36:29.613406",
+ "modified": "2025-05-25 17:11:45.720175",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Instructor",
