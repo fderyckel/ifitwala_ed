@@ -107,7 +107,7 @@ class SchoolSchedule(Document):
 
 	def _validate_block_time_overlaps(self):
 		day_blocks = {}
-		for row in self.course_schedule_block:
+		for row in self.school_schedule_block:
 			if not row.from_time or not row.to_time:
 				continue  # Ignore incomplete entries
 
@@ -188,7 +188,7 @@ class SchoolSchedule(Document):
 		frappe.msgprint("School Schedule Days and Blocks have been cleared.")
 		# Also clear in-memory tables
 		self.set("school_schedule_day", [])
-		self.set("course_schedule_block", [])
+		self.set("school_schedule_block", [])
 
 	@frappe.whitelist()
 	def generate_blocks(self):
@@ -198,7 +198,7 @@ class SchoolSchedule(Document):
 			frappe.throw("No School Schedule Days found. Please generate rotation days first.")
 
 		# Check if blocks already exist in the child table
-		if self.get("course_schedule_block"):
+		if self.get("school_schedule_block"):
 			frappe.throw(
 				"Blocks already exist. If you want to regenerate them, please clear them first "
 				"or use the overwrite option."
@@ -213,7 +213,7 @@ class SchoolSchedule(Document):
 				)
 
 			for block_number in range(1, day.number_of_blocks + 1):
-				block = self.append("course_schedule_block", {})
+				block = self.append("school_schedule_block", {})
 				block.rotation_day = day.rotation_day
 				block.block_number = block_number
 
