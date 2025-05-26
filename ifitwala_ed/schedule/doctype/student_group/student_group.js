@@ -1,20 +1,25 @@
 // Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
+// make the field appear whenever *no* program is chosen
 function toggle_school_schedule_field(frm) {
-	const need_sched = !frm.doc.program && frm.doc.group_based_on === "Course";
-	frm.set_df_property("school_schedule", "hidden", !need_sched);
-	frm.set_df_property("school_schedule", "reqd", need_sched);
-	if (!need_sched) frm.set_value("school_schedule", null);
+    const need_sched = !frm.doc.program;   // ← removed extra test
+    frm.set_df_property("school_schedule", "hidden", !need_sched);
+    frm.set_df_property("school_schedule", "reqd",  need_sched);
+    if (!need_sched) frm.set_value("school_schedule", null);
 }
+
 
 // run whenever these change
 ["academic_year", "program", "group_based_on"].forEach(f =>
-	frappe.ui.form.on("Student Group", f, frm => toggle_school_schedule_field(frm))
+    frappe.ui.form.on("Student Group", f, frm => toggle_school_schedule_field(frm))
 );
 
 frappe.ui.form.on("Student Group", {
 	onload: function (frm) {
+		//run the toggle once the form is rendered, and when fields change
+		toggle_school_schedule_field(frm);
+
 		frm.add_fetch("student", "student_full_name", "student_name");
 
 		frm.set_query("term", function () {
@@ -46,10 +51,6 @@ frappe.ui.form.on("Student Group", {
 			};
 		});	
 	},
-
-	onload: function (frm) { 
-		toggle_school_schedule_field(frm);
-	}, 
 
 	refresh: function (frm) {
 		// Add buttons
