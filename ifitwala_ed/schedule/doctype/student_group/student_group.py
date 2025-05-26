@@ -437,33 +437,48 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def schedule_picker_query(doctype, txt, searchfield, start, page_len, filters):
+	"""
+	Return School Schedules whose School Calendar belongs to the selected Academic Year
+	and whose School is in the user-school’s ancestor chain.
+	"""
 	ay = filters.get("academic_year")
 	if not ay:
 		return []
 
-	# school attached to the Academic Year
+	# 1️⃣ current school on the Academic Year doc
 	school = frappe.db.get_value("Academic Year", ay, "school")
 	if not school:
 		return []
 
-	allowed = get_ancestor_schools(school)     # ← here!
-	like_clause = f"%{txt}%"
+	allowed_schools = get_ancestor_schools(school)  # self + parents
 
-	return frappe.db.sql("""
-		SELECT name, rotation_days
+	# 2️⃣ school-calendar ids that match AY + allowed schools
+	cal_ids = frappe.db.get_all(
+		"School Calendar",
+		filters={
+			"academic_year": ay,
+			"school": ["in", allowed_schools],
+		},
+		pluck="name",
+	)
+	if not cal_ids:
+		return []
+
+	like = f"%{txt}%"
+	rows = frappe.db.sql(
+		"""
+		SELECT
+			name,
+			rotation_days
 		FROM `tabSchool Schedule`
-		WHERE school IN %(allowed)s
-		  AND school_calendar = %(ay)s
-		  AND (name LIKE %(like)s)
+		WHERE school_calendar IN %(cals)s
+			AND (name LIKE %(like)s OR schedule_name LIKE %(like)s)
 		ORDER BY idx, name
 		LIMIT %(start)s, %(len)s
-	""", dict(
-		allowed=tuple(allowed),
-		ay=ay,
-		like=like_clause,
-		start=start,
-		len=page_len
-	))
+		""",
+		dict(cals=tuple(cal_ids), like=like, start=start, len=page_len),
+	)
+	return rows
 
 def get_program_enrollment(academic_year, term=None, program=None, cohort=None, course=None, exclude_in_group=None):
 	conditions = ["pe.academic_year = %(academic_year)s"]
