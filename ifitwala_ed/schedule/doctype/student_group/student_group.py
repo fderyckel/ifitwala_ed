@@ -312,7 +312,7 @@ class StudentGroup(Document):
 
 		# Build: {rotation_day: {block_number: (from_time, to_time)} }
 		block_map: dict[int, dict[int, tuple[str, str]]] = {}
-		for b in sched.schoole_schedule_block:        # child table in School Schedule
+		for b in sched.school_schedule_block:        # child table in School Schedule
 			block_map.setdefault(b.rotation_day, {})[b.block_number] = (b.from_time, b.to_time)
 
 		valid_instructors = {i.instructor for i in self.instructors}
