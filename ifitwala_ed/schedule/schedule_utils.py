@@ -1,9 +1,11 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+import json
 import frappe
-from frappe.utils import getdate, add_days, today
 from frappe import _
+from frappe.utils import getdate, add_days, today
+from collections import defaultdict
 from datetime import timedelta, date
 
 ## function to get the start and end dates of the current academic year
@@ -148,6 +150,9 @@ def check_slot_conflicts(group_doc):
     Returns a dict keyed by category (room / instructor / student) with a list of
     tuples (entity, rotation_day, block_number).
     """
+    if isinstance(group_doc, str):
+      group_doc = frappe._dict(json.loads(group_doc))
+
     conflicts = defaultdict(list)
 
     # Pre‑collect instructors & students once (avoid per‑slot sub‑queries)
