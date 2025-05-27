@@ -235,15 +235,21 @@ def check_slot_conflicts(group_doc):
 		return dict(conflicts)
 
 @frappe.whitelist()
-def fetch_block_grid(schedule_name: str) -> dict:
-	"""Return rotation-day metadata to build the quick-add matrix."""
+def fetch_block_grid(schedule_name: str | None = None, sg: str | None = None) -> dict:
+	"""Return rotation-day metadata to build the quick-add matrix.
+		Args:
+			schedule_name: explicit School Schedule name (may be None)
+			sg: Student Group name – used to infer schedule & instructors
+	"""
 
+	# Resolve schedule when not supplied
 	if not schedule_name:
+		sg = sg or frappe.form_dict.get("sg")         # fallback for older calls
 		if not sg:
 			frappe.throw(_("Either schedule_name or sg is required."))
 		sg_doc = frappe.get_doc("Student Group", sg)
 		schedule_name = sg_doc._get_school_schedule().name
-	
+		
 	doc = frappe.get_cached_doc("School Schedule", schedule_name)
 	grid = {}
 	for blk in doc.school_schedule_block:		# variable blocks per day
