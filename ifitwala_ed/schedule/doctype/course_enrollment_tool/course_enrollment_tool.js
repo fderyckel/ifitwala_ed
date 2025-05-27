@@ -5,8 +5,101 @@
 function show_add_students_button(frm) {
 	if (frm.doc.program && frm.doc.academic_year && frm.doc.course) {
 		if (!frm.custom_buttons_added) {
-			frm.add_custom_button(__("Add Eligible Students"), async function () {
-				// (keep your existing button code here...)
+			frm.add_custom_button(__("Add Eligible Students"), function () {
+				// guard clauses
+				if (!frm.doc.program || !frm.doc.academic_year || !frm.doc.course) {
+					frappe.msgprint(__("Please select Program, Academic Year, and Course first."));
+					return;
+				}
+
+				frappe.call({
+					method: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.fetch_eligible_students",
+					args: {
+						doctype: "Student",
+						txt: "",
+						searchfield: "name",
+						start: 0,
+						page_len: 50,                               // keep response lean; adjust if needed
+						filters: {
+							program: frm.doc.program,
+							academic_year: frm.doc.academic_year,
+							course: frm.doc.course,
+							term: frm.doc.term
+						}
+					},
+					callback: function (r) {
+						let eligible = r.message || [];
+
+						// Hide students already in the grid
+						const existing = (frm.doc.students || []).map(row => row.student);
+						eligible = eligible.filter(([id]) => !existing.includes(id));
+
+						if (!eligible.length) {
+							frappe.msgprint(__("All eligible students are already listed."));
+							return;
+						}
+
+						// Build HTML table string
+						let html = `
+							<div class="table-responsive">
+								<table class="table table-bordered table-hover mb-0">
+									<thead class="table-light">
+										<tr>
+											<th>${__("Full Name")}</th>
+											<th style="width:90px;text-align:center;">
+												<input type="checkbox" id="select-all">
+												<span class="ms-1">${__("All")}</span>
+											</th>
+										</tr>
+									</thead>
+									<tbody>`;
+						eligible.forEach(([id, label, pe]) => {
+							html += `
+								<tr>
+									<td>${frappe.utils.escape_html(label)}</td>
+									<td class="text-center">
+										<input type="checkbox" class="student-check"
+											data-student="${frappe.utils.escape_html(id)}"
+											data-label="${frappe.utils.escape_html(label)}"
+											data-pe="${frappe.utils.escape_html(pe || "")}">
+									</td>
+								</tr>`;
+						});
+						html += `</tbody></table></div>`;
+
+						// Create dialog
+						const d = new frappe.ui.Dialog({
+							title: __("Select Eligible Students"),
+							fields: [
+								{ fieldtype: "HTML", fieldname: "matrix" }
+							],
+							primary_action_label: __("Add Selected"),
+							primary_action() {
+								const selected = d.$wrapper.find(".student-check:checked");
+								selected.each(function () {
+									const $el = $(this);
+									const row = frm.add_child("students");
+									row.student = $el.data("student");
+									row.student_name = $el.data("label");
+									row.program_enrollment = $el.data("pe");
+								});
+								frm.refresh_field("students");
+								d.hide();
+							}
+						});
+
+						// Inject table HTML
+						d.get_field("matrix").$wrapper.html(html);
+
+						// Hook up Select-All toggle
+						d.$wrapper.find("#select-all").on("change", function () {
+							const checked = $(this).is(":checked");
+							d.$wrapper.find(".student-check").prop("checked", checked);
+						});
+
+						d.show();
+					}
+				});
 			});
 			frm.custom_buttons_added = true;
 		}
@@ -47,6 +140,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
 			fields_to_clear.forEach(field => frm.set_value(field, null));
 			frm.clear_table("students");
 			frm.refresh_fields();
+			frm.custom_buttons_added = false; 
 		}).addClass("btn-danger");
 	}, 
 
@@ -92,46 +186,6 @@ frappe.ui.form.on("Course Enrollment Tool", {
 					program: frm.doc.program
 				}
 			};
-		});
-
-		// 4) Custom button to add eligible students
-		frm.add_custom_button(__("Add Eligible Students"), async function () {
-			if (!frm.doc.program || !frm.doc.academic_year || !frm.doc.course) {
-				frappe.msgprint(__("Please select Program, Academic Year, and Course first."));
-				return;
-			}
-
-			frappe.call({
-				method: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.fetch_eligible_students",
-				args: {
-					doctype: "Student",
-					txt: "",
-					searchfield: "name",
-					start: 0,
-					page_len: 50,
-					filters: {
-						program: frm.doc.program,
-						academic_year: frm.doc.academic_year,
-						course: frm.doc.course,
-						term: frm.doc.term
-					}
-				},
-				callback: function(r) {
-					const eligible = r.message || [];
-					if (eligible.length === 0) {
-						frappe.msgprint(__("No eligible students found."));
-						return;
-					}
-
-					eligible.forEach(([student_id, label, pe_name]) => {
-						const row = frm.add_child("students");
-						row.student = student_id;
-						row.student_name = label;
-						row.program_enrollment = pe_name;
-					});
-					frm.refresh_field("students");
-				}
-			});
 		});
 	},
 
