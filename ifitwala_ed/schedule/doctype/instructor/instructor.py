@@ -80,7 +80,7 @@ class Instructor(Document):
 		group_records = frappe.db.get_values(
 			"Student Group",
 			filters={"name": ["in", student_group_names]},
-			fieldname=["name", "academic_year", "academic", "course"],
+			fieldname=["name", "academic_year", "course"],
 			as_dict=True
 		)
 
@@ -92,7 +92,6 @@ class Instructor(Document):
 			if group_doc:
 				self.append("instructor_log", {
 					"academic_year": group_doc["academic_year"],
-					"academic": group_doc["academic"],
 					"designation": link["designation"],
 					"student_group": group_doc["name"],
 					"course": group_doc["course"]
