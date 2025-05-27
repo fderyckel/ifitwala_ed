@@ -9,11 +9,25 @@ function toggle_school_schedule_field(frm) {
     if (!need_sched) frm.set_value("school_schedule", null);
 }
 
+// Helper function to build student filter payload
+function get_student_filters(frm) {
+	return {
+		academic_year: frm.doc.academic_year,
+		group_based_on: frm.doc.group_based_on,
+		term: frm.doc.term,
+		program: frm.doc.program,
+		cohort: frm.doc.cohort,
+		course: frm.doc.course,
+		student_group: frm.doc.name,
+	};
+}
 
 // run whenever these change
 ["academic_year", "program", "group_based_on"].forEach(f =>
     frappe.ui.form.on("Student Group", f, frm => toggle_school_schedule_field(frm))
 );
+
+// ── Form events ──────────────────────────────────────────────────────────────
 
 frappe.ui.form.on("Student Group", {
 	onload: function (frm) {
@@ -194,21 +208,25 @@ frappe.ui.form.on("Student Group", {
 		} else {
 			frappe.msgprint(__("Please select an Academic Year before fetching students."));
 		}
+	}, 
+
+	add_blocks(frm) {			
+		if (!frm.doc.school_schedule) {
+			frappe.msgprint(__('Select a School Schedule first.'));
+			return;
+		}
+		frappe.call({
+			method: 'ifitwala_ed.schedule.schedule_utils.fetch_block_grid',
+			args: {
+				schedule_name: frm.doc.school_schedule,
+				sg: frm.doc.name
+			},
+			callback(r) {
+				build_matrix_dialog(frm, r.message);
+			}
+		});
 	}
 });
-
-// Helper function to build student filter payload
-function get_student_filters(frm) {
-	return {
-		academic_year: frm.doc.academic_year,
-		group_based_on: frm.doc.group_based_on,
-		term: frm.doc.term,
-		program: frm.doc.program,
-		cohort: frm.doc.cohort,
-		course: frm.doc.course,
-		student_group: frm.doc.name,
-	};
-}
 
 frappe.ui.form.on("Student Group Instructor", {
 	instructors_add: function (frm) {
@@ -222,3 +240,69 @@ frappe.ui.form.on("Student Group Instructor", {
 			};
 	},
 });
+
+// ── Dialog builder (unchanged except parseInt) ──────────────────────
+function build_matrix_dialog(frm, data) {
+	const d = new frappe.ui.Dialog({
+		title: __('Quick Add Schedule Blocks'),
+		size: 'large',
+		primary_action_label: __('Add Selected'),
+		primary_action() {
+			apply_matrix_selection(frm, d);
+			d.hide();
+		}
+	});
+
+	let html = '<table class="table table-bordered"><thead><tr><th></th>';
+	data.days.forEach(day => html += `<th class="text-center">Day ${day}</th>`);
+	html += '</tr></thead><tbody>';
+
+	const maxBlocks = Math.max(...data.days.map(d => data.grid[d].length));
+
+	for (let row = 0; row < maxBlocks; row++) {
+		html += `<tr><th class="text-center">Block ${row + 1}</th>`;
+		data.days.forEach(day => {
+			const blk = data.grid[day][row];
+			if (blk) {
+				const id = `d${day}b${blk.block}`;
+				html += `
+					<td>
+						<div class="form-check">
+							<input type="checkbox" id="${id}" class="form-check-input"/>
+						</div>
+						<input class="form-control form-control-xs mt-1 room" placeholder="Room"/>
+						<select class="form-control form-control-xs mt-1 instructor">
+							<option value=""></option>
+							${data.instructors.map(i=>`<option value="${i.value}">${i.label}</option>`).join('')}
+						</select>
+					</td>`;
+			} else {
+				html += '<td class="bg-light"></td>';
+			}
+		});
+		html += '</tr>';
+	}
+	html += '</tbody></table>';
+
+	d.$body.html(html);
+	d.show();
+}
+
+function apply_matrix_selection(frm, dialog) {
+	const cells = dialog.$wrapper.find('input[type=checkbox]:checked').closest('td');
+	cells.each(function() {
+		const cell = $(this);
+		const ids = cell.find('input[type=checkbox]').attr('id').match(/d(\d+)b(\d+)/);
+		const rotation_day = parseInt(ids[1]);
+		const block_number = parseInt(ids[2]);
+
+		frm.add_child('student_group_schedule', {
+			rotation_day,
+			block_number,
+			location: cell.find('input.room').val(),
+			instructor: cell.find('select.instructor').val()
+		});
+	});
+	frm.refresh_field('student_group_schedule');
+	frm.dirty();
+}

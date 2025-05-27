@@ -234,6 +234,29 @@ def check_slot_conflicts(group_doc):
 
 		return dict(conflicts)
 
+@frappe.whitelist()
+def fetch_block_grid(schedule_name: str) -> dict:
+	"""Return rotation-day metadata to build the quick-add matrix."""
+	doc = frappe.get_cached_doc("School Schedule", schedule_name)
+	grid = {}
+	for blk in doc.school_schedule_block:		# variable blocks per day
+		grid.setdefault(blk.rotation_day, []).append({
+			"block": blk.block_number,
+			"label": f"B{blk.block_number}",
+			"from":  blk.from_time,
+			"to":    blk.to_time
+		})
+	# sort blocks inside each day
+	for day in grid:
+		grid[day].sort(key=lambda b: b["block"])
+	return {
+		"days": sorted(grid.keys()),
+		"grid": grid,				# {day: [blocks…]}
+		"instructors": [
+			{"value": i.instructor, "label": i.instructor_name or i.instructor}
+			for i in frappe.get_doc("Student Group", frappe.form_dict.sg).instructors
+		]
+	}
 
 # ─────────────────────────────────────────────────────────────────────
 # Utility called by Timetable builder (elsewhere in your app)
