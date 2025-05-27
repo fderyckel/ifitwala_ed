@@ -48,7 +48,7 @@ class Employee(NestedSet):
 				
 		# Ensure the employee history is sorted before saving 
 		if self.employee_history: 
-			self.employee_history.sort(key=lambda row: getdate(row.to_date) or getdate("9999-12-31"), reverse=True)
+			self.employee_history.sort(key=lambda row: getdate(row.to_date) if row.to_date else getdate("9999-12-31"), reverse=True)
 
 	def after_rename(self, old, new, merge):
 		self.db_set("employee", new)
