@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils.user import add_role
+from ifitwala_ed.utilities.school_tree import get_descendant_schools, is_leaf_school
 
 class Instructor(Document):
 
@@ -96,3 +97,38 @@ class Instructor(Document):
 					"student_group": group_doc["name"],
 					"course": group_doc["course"]
 				})
+
+
+@frappe.whitelist()
+def get_permission_query_conditions(user):
+	if user == "Administrator":
+		return ""
+
+	user_school = frappe.defaults.get_user_default("school")
+	if not user_school:
+		return "1=0"
+
+	# If the school is a leaf, show only its own instructors
+	if is_leaf_school(user_school):
+		return f"`tabInstructor`.school = '{user_school}'"
+
+	# If the school is a parent, include all descendants (including self)
+	schools = get_descendant_schools(user_school)
+	school_list = "', '".join(schools)
+	return f"`tabInstructor`.school IN ('{school_list}')"
+
+
+def has_permission(doc, ptype, user):
+	if user == "Administrator":
+		return True
+
+	user_school = frappe.defaults.get_user_default("school")
+	if not user_school or not doc.school:
+		return False
+
+	# Same logic as query
+	if is_leaf_school(user_school):
+		return doc.school == user_school
+
+	schools = get_descendant_schools(user_school)
+	return doc.school in schools
