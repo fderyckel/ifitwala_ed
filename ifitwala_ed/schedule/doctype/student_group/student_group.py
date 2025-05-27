@@ -297,11 +297,22 @@ class StudentGroup(Document):
 		• If Program is blank → rely on the explicit school_schedule field.
 		"""
 		if self.program:
-			school = frappe.db.get_value("Program", self.program, "school")
-			sched_name = get_first_ancestor_with_doc("School Schedule", school)
-			if not sched_name:
-				frappe.throw(_("No School Schedule found for school {0}.").format(school))
-			return frappe.get_cached_doc("School Schedule", sched_name[0])
+			base_school = frappe.db.get_value("Program", self.program, "school")
+			allowed = get_ancestor_schools(base_school)    # self + parents
+
+			res = frappe.db.sql("""
+				SELECT ss.name
+				FROM `tabSchool Schedule` ss
+				JOIN `tabSchool Calendar` sc ON sc.name = ss.school_calendar
+				WHERE ss.school IN %(schools)s
+				AND sc.academic_year = %(ay)s
+				LIMIT 1
+			""", dict(schools=tuple(allowed), ay=self.academic_year))
+
+			if not res:
+				frappe.throw(_("No School Schedule found for school {0} in academic year {1}.")
+					.format(base_school, self.academic_year))
+			return frappe.get_cached_doc("School Schedule", res[0][0])
 
 		# fall-back when no program
 		if not self.school_schedule:

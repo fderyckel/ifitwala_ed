@@ -211,19 +211,19 @@ frappe.ui.form.on("Student Group", {
 	}, 
 
 	add_blocks(frm) {			
-		if (!frm.doc.school_schedule) {
-			frappe.msgprint(__('Select a School Schedule first.'));
-			return;
-		}
 		frappe.call({
 			method: 'ifitwala_ed.schedule.schedule_utils.fetch_block_grid',
 			args: {
-				schedule_name: frm.doc.school_schedule,
+				schedule_name: frm.doc.school_schedule || null,
 				sg: frm.doc.name
 			},
 			callback(r) {
-				build_matrix_dialog(frm, r.message);
-			}
+        // Optionally write back the inferred schedule
+        if (!frm.doc.school_schedule && r.message?.schedule_name) {
+          frm.set_value("school_schedule", r.message.schedule_name);
+        }
+        build_matrix_dialog(frm, r.message);
+      }
 		});
 	}
 });
