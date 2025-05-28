@@ -1,6 +1,7 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+import json
 import frappe
 from frappe.model.document import Document
 from frappe.query_builder import DocType
@@ -44,8 +45,30 @@ class Schedule(Document):
 	def get_stats(args):
 		pass 
   
+
+def _coerce_filters(filters):
+	"""Turn the incoming JS string/list/dict into a simple {field: val} dict."""
+	if not filters:
+		return {}
+	if isinstance(filters, str):
+		try:
+			filters = json.loads(filters)
+		except Exception:
+			return {}
+	if isinstance(filters, list):
+		return {
+			f["fieldname"]: f.get("value") or f.get("default")
+			for f in filters if (f.get("value") or f.get("default"))
+		}
+	if isinstance(filters, dict):
+		return filters
+	return {}
+
 @frappe.whitelist() 
-def get_events(start, end, filters=None):
+def get_events(start, end, filters=None): 
+
+	filters = _coerce_filters(filters)
+
 	user = frappe.session.user
 	roles = frappe.get_roles(user)
 	academic_year = filters.get("academic_year") if filters else current_academic_year()
