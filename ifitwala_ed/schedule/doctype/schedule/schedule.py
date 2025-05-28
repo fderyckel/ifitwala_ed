@@ -45,7 +45,7 @@ class Schedule(Document):
 		pass 
   
 @frappe.whitelist() 
-def get_events(self, start, end, filters=None):
+def get_events(start, end, filters=None):
 	user = frappe.session.user
 	roles = frappe.get_roles(user)
 	academic_year = filters.get("academic_year") if filters else current_academic_year()
