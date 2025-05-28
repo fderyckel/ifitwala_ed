@@ -123,7 +123,7 @@ def validate_duplicate_student(students):
 
 	return None
 
-"""Fast overlap detection for Student Group scheduling (v2025‑05‑09)."""
+"""Fast overlap detection for Student Group scheduling"""
 from collections import defaultdict
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -449,3 +449,17 @@ def _delete_keys(prefix):
 	rc = frappe.cache()
 	for k in rc.get_keys(f"{prefix}*"):
 		rc.delete_value(k)
+
+
+# ─── Block-type → colour (fallback hex) ────────────────────────────────
+BLOCK_COLOURS = {
+	"Course":   "#6074ff",
+	"Activity": "#ff9f40",
+	"Recess":   "#2ecc71",
+	"Assembly": "#b455f5",
+	"Other":    "#95a5a6",
+}
+
+def get_block_colour(block_type: str | None) -> str:
+	"""Return hex colour for a block type, with safe fallback."""
+	return BLOCK_COLOURS.get((block_type or "").title(), "#74b9ff")
