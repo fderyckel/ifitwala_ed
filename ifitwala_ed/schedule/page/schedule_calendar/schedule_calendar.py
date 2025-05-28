@@ -38,6 +38,20 @@ def _get_default_instructor(user):
 def get_default_instructor():
 	return _get_default_instructor(frappe.session.user)
 
+@frappe.whitelist()
+def get_default_academic_year():
+	"""Return School.current_academic_year for the user’s default school."""
+	user = frappe.session.user
+	# Employee → School
+	school = frappe.db.get_value("Employee", {"user_id": user}, "school")
+	if not school:
+		# fall back to Instructor.school
+		school = frappe.db.get_value("Instructor", {"linked_user_id": user}, "school")
+	if not school:
+		return current_academic_year()
+	return frappe.db.get_value("School", school, "current_academic_year") or current_academic_year()
+
+
 # ─────────────────────────────────────────────────────────────────────
 @frappe.whitelist()
 def fetch_instructor_options(
@@ -84,6 +98,9 @@ def get_instructor_events(start, end, filters=None):
 	start_date    = getdate(start)
 	end_date      = getdate(end)
 	academic_year = filters.get("academic_year") or current_academic_year()
+	events               = []
+	processed_calendars  = set()
+	banner_dates         = set()
 
 	# ---------- resolve instructor -----------------------------------
 	if "Academic Admin" in roles:
@@ -117,9 +134,6 @@ def get_instructor_events(start, end, filters=None):
 		)
 	).run(as_dict=True)
 
-	events               = []
-	processed_calendars  = set()
-	banner_dates         = set()
 
 	for grp in groups:
 		# ----- school resolution --------------------------------------

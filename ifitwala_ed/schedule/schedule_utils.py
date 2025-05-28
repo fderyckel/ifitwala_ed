@@ -68,48 +68,51 @@ def current_academic_year():
 
     return academic_year
 
-def get_rotation_dates(school_schedule_name, academic_year, include_holidays=False):
-    # Fetch necessary documents
-    school_schedule = frappe.get_cached_doc("School Schedule", school_schedule_name)
-    academic_year_doc = frappe.get_cached_doc("Academic Year", academic_year)
-    school_calendar = frappe.get_cached_doc("School Calendar", school_schedule.school_calendar)
+@frappe.whitelist()
+def get_rotation_dates(school_schedule_name, academic_year, include_holidays=None):
+	sched = frappe.get_cached_doc("School Schedule", school_schedule_name)
+	calendar = frappe.get_cached_doc("School Calendar", sched.school_calendar)
+	acad_year = frappe.get_cached_doc("Academic Year", academic_year)
 
-    start_date = academic_year_doc.year_start_date
-    end_date = academic_year_doc.year_end_date
-    rotation_days = school_schedule.rotation_days
+	# explicit arg overrides checkbox (used by old callers)
+	if include_holidays is None:
+		include_holidays = bool(sched.include_holidays_in_rotation)
 
-    # Collect holidays if not included in rotations
-    holidays = set()
-    if not include_holidays:
-        holidays = {
-            getdate(h.holiday_date)
-            for h in school_calendar.holidays
-        }
+	# ──── first instructional day = Schedule.first_day_of_academic_year ────
+	start_date = sched.first_day_of_academic_year or acad_year.year_start_date
+	end_date   = acad_year.year_end_date
+	rot_days   = sched.rotation_days
+	next_rot   = sched.first_day_rotation_day or 1
 
-    rotation_dates = []
-    current_date = getdate(start_date)
-    rotation_index = 1
+	# pre-collect holiday + weekend flags
+	holiday_flag = {
+		getdate(h.holiday_date): bool(h.weekly_off)     # True  → weekend
+		for h in calendar.holidays
+	}
 
-    while current_date <= getdate(end_date):
-        if current_date not in holidays:
-            rotation_dates.append({
-                "date": current_date,
-                "rotation_day": rotation_index
-            })
-            # Increment and reset rotation index as needed
-            rotation_index = (rotation_index % rotation_days) + 1
-        elif include_holidays:
-            # Holidays included in rotation increment rotation day
-            rotation_dates.append({
-                "date": current_date,
-                "rotation_day": rotation_index
-            })
-            rotation_index = (rotation_index % rotation_days) + 1
-        # Else, skip holidays without incrementing rotation
+	out = []
+	cur = getdate(start_date)
 
-        current_date = add_days(current_date, 1)
+	while cur <= getdate(end_date):
+		is_weekend = holiday_flag.get(cur, False)
+		is_holiday = cur in holiday_flag and not is_weekend
 
-    return rotation_dates
+		# weekends never advance rotation & never yield events
+		if is_weekend:
+			cur = add_days(cur, 1)
+			continue
+
+		# break / holiday handling
+		if is_holiday and not include_holidays:
+			# skip rotation increment
+			cur = add_days(cur, 1)
+			continue
+
+		out.append({"date": cur, "rotation_day": next_rot})
+		next_rot = 1 + (next_rot % rot_days)
+		cur = add_days(cur, 1)
+
+	return out
 
 
 def validate_duplicate_student(students):

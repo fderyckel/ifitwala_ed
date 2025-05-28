@@ -38,7 +38,19 @@ function render_schedule_calendar_page(wrapper) {
 	frappe.call("ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_instructor")
 		.then(r => build_filters(r.message));
 
-	function build_filters(default_instr) {
+	frappe.call("ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_instructor")
+		.then(r => {
+			const default_instructor = r.message;
+			return frappe.call(
+				"ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_academic_year"
+			).then(yr => {
+				const default_year = yr.message;
+				build_filters(default_instructor, default_year);
+			});
+		});
+
+
+	function build_filters(default_instr, default_year) {
 		// Instructor selector
 		fld_instructor = page.add_field({
 			fieldname: "instructor",
@@ -59,6 +71,7 @@ function render_schedule_calendar_page(wrapper) {
 			label: __("Academic Year"),
 			fieldtype: "Link",
 			options: "Academic Year",
+			default: default_year,
 			change() { if (cal) cal.refetchEvents(); }
 		});
 
@@ -117,7 +130,10 @@ function render_schedule_calendar_page(wrapper) {
 			callback(r) {
 				success(r.message || []);
 			},
-			error: () => failure()
+			error: () => {
+				console.error(__("Failed to load calendar data"));
+				failure();
+			}
 		});
 	}
 }
