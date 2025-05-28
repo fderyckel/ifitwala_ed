@@ -1,6 +1,7 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+
 import json
 import frappe
 from frappe import _
@@ -160,13 +161,16 @@ def get_instructor_events(start, end, filters=None):
 				if key in banner_dates:
 					continue
 				banner_dates.add(key)
+
+				is_weekend = bool(hol.weekly_off)        # ← NEW
+
 				events.append({
 					"id":    f"hol-{key}",
-					"title": hol.description or ("Weekend" if hol.is_weekend else "Holiday"),
+					"title": hol.description or ("Weekend" if is_weekend else "Holiday"),
 					"start": h_date,
 					"end":   h_date,
 					"allDay": True,
-					"color": wen_col if hol.is_weekend else hol_col
+					"color": wen_col if is_weekend else hol_col
 				})
 
 		# ----- SG-Schedule rows ---------------------------------------
