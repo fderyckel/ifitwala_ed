@@ -23,9 +23,9 @@ frappe.views.calendar["School Event"] = {
     },
     {
       fieldtype: "Link",
-      fieldname: "room",
-      options: "Room",
-      label: __("Room"),
+      fieldname: "location",
+      options: "Location",
+      label: __("Location"),
     },
   ],
 };

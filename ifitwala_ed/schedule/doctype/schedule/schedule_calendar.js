@@ -22,8 +22,7 @@ frappe.views.calendar["Schedule"] = {
           fieldtype: "Link",
           fieldname: "instructor",
           options: "Instructor",
-          label: __("Instructor"),
-          depends_on: 'eval: frappe.user.has_role("Academic Admin")'
+          label: __("Instructor")
       }
   ]
 };

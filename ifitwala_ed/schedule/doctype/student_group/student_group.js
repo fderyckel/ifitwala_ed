@@ -270,7 +270,7 @@ function build_matrix_dialog(frm, data) {
 						<div class="form-check">
 							<input type="checkbox" id="${id}" class="form-check-input"/>
 						</div>
-						<input class="form-control form-control-xs mt-1 room" placeholder="Room"/>
+						<input class="form-control form-control-xs mt-1 location" placeholder="Room"/>
 						<select class="form-control form-control-xs mt-1 instructor">
 							<option value=""></option>
 							${data.instructors.map(i=>`<option value="${i.value}">${i.label}</option>`).join('')}
@@ -299,7 +299,7 @@ function apply_matrix_selection(frm, dialog) {
 		frm.add_child('student_group_schedule', {
 			rotation_day,
 			block_number,
-			location: cell.find('input.room').val(),
+			location: cell.find('input.location').val(),
 			instructor: cell.find('select.instructor').val()
 		});
 	});

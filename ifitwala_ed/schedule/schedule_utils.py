@@ -153,7 +153,7 @@ def _extract(obj, attr):
 def check_slot_conflicts(group_doc):
 		"""Scan existing Student Group schedules for clashes.
 
-		Returns a dict keyed by category (room / instructor / student) with a list of
+		Returns a dict keyed by category (location / instructor / student) with a list of
 		tuples (entity, rotation_day, block_number).
 		"""
 		if isinstance(group_doc, str):
@@ -178,23 +178,23 @@ def check_slot_conflicts(group_doc):
 		for slot in slots:
 			rot   = _extract(slot, "rotation_day")
 			block = _extract(slot, "block_number")
-			room  = _extract(slot, "location")
+			location  = _extract(slot, "location")
 
 			if not rot or not block:
 				continue
 
-			# ----- room clash (unchanged) -------------------------------------
-			if room and frappe.db.exists(
+			# ----- location clash (unchanged) -------------------------------------
+			if location and frappe.db.exists(
 				"Student Group Schedule",
 				{
 					"rotation_day": rot,
 					"block_number": block,
-					"location": room,
+					"location": location,
 					"parent": ("!=", group_doc.name),
 					"docstatus": ("<", 2),
 				},
 			):
-				conflicts["location"].append((room, rot, block))
+				conflicts["location"].append((location, rot, block))
 
 			# ----- instructor clash -------------------------------------------
 			if instructor_ids:

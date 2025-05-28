@@ -13,7 +13,7 @@
   "block_number",
   "from_time",
   "to_time",
-  "room",
+  "location",
   "start_datetime",
   "end_datetime"
  ],
@@ -63,7 +63,7 @@
    "label": "To Time"
   },
   {
-   "fieldname": "room",
+   "fieldname": "location",
    "fieldtype": "Link",
    "label": "Room",
    "options": "Location"
@@ -83,7 +83,7 @@
  "is_calendar_and_gantt": 1,
  "is_virtual": 1,
  "links": [],
- "modified": "2025-03-23 10:04:35.950593",
+ "modified": "2025-03-25 10:04:35.950593",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Schedule",

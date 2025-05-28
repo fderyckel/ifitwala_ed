@@ -18,7 +18,7 @@
   "school",
   "starts_on",
   "ends_on",
-  "room",
+  "location",
   "reference_section_section",
   "description",
   "participants_section",
@@ -105,7 +105,7 @@
    "label": "Ends On"
   },
   {
-   "fieldname": "room",
+   "fieldname": "location",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
@@ -227,7 +227,7 @@
    "share": 1
   }
  ],
- "search_fields": "subject, event_category, room",
+ "search_fields": "subject, event_category, location",
  "sort_field": "starts_on",
  "sort_order": "DESC",
  "states": [],
