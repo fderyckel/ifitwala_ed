@@ -2,12 +2,14 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
+ "autoname": "field:location_name",
  "creation": "2024-12-02 20:50:27.272427",
  "description": "Locations are the physical spaces within the organization.  They can be classroom, meetings rooms, offices, etc.  They are used for scheduling and assets monitoring.",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_anhn",
+  "location_name",
   "lft",
   "rgt",
   "is_group",
@@ -80,16 +82,25 @@
    "fieldtype": "Link",
    "label": "Location Type",
    "options": "Location Type"
+  },
+  {
+   "fieldname": "location_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Location Name",
+   "reqd": 1,
+   "unique": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-02-04 10:03:44.820022",
+ "modified": "2025-05-26 19:06:23.299314",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Location",
+ "naming_rule": "By fieldname",
  "nsm_parent_field": "parent_location",
  "owner": "Administrator",
  "permissions": [
@@ -140,6 +151,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

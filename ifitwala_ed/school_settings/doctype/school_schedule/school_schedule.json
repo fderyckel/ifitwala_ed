@@ -23,7 +23,7 @@
   "clear_schedule_btn",
   "section_break_llpo",
   "generate_blocks_btn",
-  "course_schedule_block"
+  "school_schedule_block"
  ],
  "fields": [
   {
@@ -115,21 +115,21 @@
    "options": "generate_blocks"
   },
   {
-   "fieldname": "course_schedule_block",
-   "fieldtype": "Table",
-   "label": "Course Schedule Block",
-   "options": "School Schedule Block"
-  },
-  {
    "fieldname": "schedule_name",
    "fieldtype": "Data",
    "label": "Schedule Name",
    "reqd": 1
+  },
+  {
+   "fieldname": "school_schedule_block",
+   "fieldtype": "Table",
+   "label": "School Schedule Block",
+   "options": "School Schedule Block"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-20 00:08:35.823665",
+ "modified": "2025-05-26 21:50:45.782110",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Schedule",

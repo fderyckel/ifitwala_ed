@@ -19,12 +19,14 @@
   "program",
   "cohort",
   "course",
+  "school_schedule",
   "students_section",
   "get_students",
   "students",
   "instructors_section",
   "instructors",
   "schedule_section",
+  "add_blocks",
   "student_group_schedule"
  ],
  "fields": [
@@ -158,11 +160,23 @@
    "fieldtype": "Table",
    "label": "Student Group Schedule",
    "options": "Student Group Schedule"
+  },
+  {
+   "depends_on": "eval: !doc.program",
+   "fieldname": "school_schedule",
+   "fieldtype": "Link",
+   "label": "School Schedule",
+   "options": "School Schedule"
+  },
+  {
+   "fieldname": "add_blocks",
+   "fieldtype": "Button",
+   "label": "Add blocks"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-25 14:33:44.871444",
+ "modified": "2025-05-27 06:44:58.138264",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",

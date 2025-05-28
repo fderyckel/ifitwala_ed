@@ -8,7 +8,7 @@
  "for_user": "",
  "hide_custom": 0,
  "icon": "setting-gear",
- "idx": 43,
+ "idx": 44,
  "indicator_color": "green",
  "is_hidden": 0,
  "label": "Settings",
@@ -39,45 +39,6 @@
    "label": "Location",
    "link_count": 0,
    "link_to": "Location",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Tools",
-   "link_count": 3,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program Enrollment Tool",
-   "link_count": 0,
-   "link_to": "Program Enrollment Tool",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Course Enrollment Tool",
-   "link_count": 0,
-   "link_to": "Course Enrollment Tool",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Group Creation Tool",
-   "link_count": 0,
-   "link_to": "Student Group Creation Tool",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -345,9 +306,58 @@
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Tools",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Enrollment Tool",
+   "link_count": 0,
+   "link_to": "Program Enrollment Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course Enrollment Tool",
+   "link_count": 0,
+   "link_to": "Course Enrollment Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Group Creation Tool",
+   "link_count": 0,
+   "link_to": "Student Group Creation Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "End of Year Checklist",
+   "link_count": 0,
+   "link_to": "End of Year Checklist",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-05-21 11:37:53.110046",
+ "modified": "2025-05-26 22:50:44.467685",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Settings",
@@ -383,14 +393,14 @@
    "color": "Grey",
    "doc_view": "List",
    "label": "Student Dashboard",
-   "link_to": "Student Dashboard",
+   "link_to": "Student Demographics Dashboard",
    "type": "Dashboard"
   },
   {
    "color": "Grey",
    "doc_view": "List",
    "label": "Admin Dashboard",
-   "link_to": "Admin Enrollment Dashboard",
+   "link_to": "Current Enrollment Dashboard",
    "type": "Dashboard"
   }
  ],

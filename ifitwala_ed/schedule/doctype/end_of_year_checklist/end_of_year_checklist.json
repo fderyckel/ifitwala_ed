@@ -1,0 +1,83 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-26 22:47:46.697342",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_gksp",
+  "archive_program_enrollment",
+  "archive_terms",
+  "archive_academic_year"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_gksp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "archive_program_enrollment",
+   "fieldtype": "Button",
+   "label": "Archive Program Enrollment"
+  },
+  {
+   "fieldname": "archive_terms",
+   "fieldtype": "Button",
+   "label": "Archive Terms"
+  },
+  {
+   "fieldname": "archive_academic_year",
+   "fieldtype": "Button",
+   "label": "Archive Academic Year"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-05-26 22:50:10.959502",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "End of Year Checklist",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "read": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "read": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "read": 1,
+   "role": "Counselor",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
