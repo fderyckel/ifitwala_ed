@@ -107,7 +107,7 @@ def get_rotation_dates(school_schedule_name, academic_year, include_holidays=Fal
             rotation_index = (rotation_index % rotation_days) + 1
         # Else, skip holidays without incrementing rotation
 
-        current_date += add_days(current_date, 1)
+        current_date = add_days(current_date, 1)
 
     return rotation_dates
 
