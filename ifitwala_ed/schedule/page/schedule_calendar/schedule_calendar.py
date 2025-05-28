@@ -37,10 +37,10 @@ def get_default_instructor():
 
 # -------------------------------------------------------------------------
 @frappe.whitelist()
-def fetch_instructor_options(txt="", page_len=20, start=0, filters=None):
+def fetch_instructor_options(doctype=None, txt="", searchfield=None, start=0, page_len=20, filters=None):
 	"""
 	Return list of {value,label} for the instructor filter, limited to the
-	user’s default/descendant schools (Academic Admin) or their own record.
+	users default/descendant schools (Academic Admin) or their own record.
 	Used by JS to populate the dropdown.
 	"""
 	user = frappe.session.user
