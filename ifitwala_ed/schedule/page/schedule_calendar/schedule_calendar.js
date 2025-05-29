@@ -126,7 +126,7 @@ function render_schedule_calendar_page(wrapper) {
 				center: "title",
 				right:  "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
 			},
-			slotMinTime: "07:00:00",
+			slotMinTime: "06:00:00",
 			slotMaxTime: "20:00:00",
 			editable: false,
 			height: "auto",
