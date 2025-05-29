@@ -84,7 +84,7 @@ function render_schedule_calendar_page(wrapper) {
 			options: "Academic Year",
 			default: defaultYear,
 			change() { if (cal) cal.refetchEvents(); }
-		});
+		});	
 
 		// School Calendar – only when provided & year is blank
 		let fld_calendar = null;
@@ -157,8 +157,8 @@ function render_schedule_calendar_page(wrapper) {
 				end:   fetchInfo.endStr,
 				filters
 			},
-			callback(res) {
-				success(Array.isArray(res.message) ? res.message : []);
+			callback(r) {
+				success(Array.isArray(r.message) ? r.message : []);
 			},
 			error: () => {
 				console.warn("Calendar data load failed");

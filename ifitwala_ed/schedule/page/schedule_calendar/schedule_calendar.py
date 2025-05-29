@@ -40,16 +40,28 @@ def get_default_instructor():
 
 @frappe.whitelist()
 def get_default_academic_year():
-	"""Return School.current_academic_year for the user’s default school."""
 	user = frappe.session.user
-	# Employee → School
-	school = frappe.db.get_value("Employee", {"user_id": user}, "school")
-	if not school:
-		# fall back to Instructor.school
-		school = frappe.db.get_value("Instructor", {"linked_user_id": user}, "school")
-	if not school:
-		return current_academic_year()
-	return frappe.db.get_value("School", school, "current_academic_year") or current_academic_year()
+
+	# ── try the user’s school (Employee → School) ──────────────────────────
+	school = frappe.db.get_value("Employee",  {"user_id": user}, "school") \
+	      or frappe.db.get_value("Instructor", {"linked_user_id": user}, "school")
+
+	if school:
+		year = frappe.db.get_value("School", school, "current_academic_year")
+		if year:
+			return year
+
+	# ── lastly: first “Active” academic year that includes today ───────────
+	year = frappe.db.get_value(
+		"Academic Year",
+		{
+			"status": "Active",
+			"year_start_date": ["<=", frappe.utils.today()],
+			"year_end_date":   [">=", frappe.utils.today()],
+		},
+		"name",
+	)
+	return year or ""	
 
 
 # ─────────────────────────────────────────────────────────────────────
