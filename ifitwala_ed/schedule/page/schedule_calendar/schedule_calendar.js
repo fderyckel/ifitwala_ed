@@ -4,69 +4,76 @@
  *********************************************************************/
 
 frappe.pages["schedule_calendar"].on_page_load = function (wrapper) {
-	// ---- FullCalendar CSS --------------------------------------------------
-	const fc_css = document.createElement("link");
-	fc_css.rel  = "stylesheet";
-	fc_css.href = "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css";
-	document.head.appendChild(fc_css);
+	// ---- FullCalendar CSS + JS (CDN) -------------------------------------
+	const css = document.createElement("link");
+	css.rel  = "stylesheet";
+	css.href = "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css";
+	document.head.appendChild(css);
 
-	// ---- FullCalendar JS ---------------------------------------------------
-	const script = document.createElement("script");
-	script.src   = "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js";
-	script.onload = () => render_schedule_calendar_page(wrapper);
-	document.head.appendChild(script);
+	const js  = document.createElement("script");
+	js.src   = "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js";
+	js.onload = () => render_schedule_calendar_page(wrapper);
+	document.head.appendChild(js);
 };
 
-// ────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
 function render_schedule_calendar_page(wrapper) {
-	// -----------------------------------------------------------------------
+
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: __("Instructor Schedule Calendar"),
 		single_column: true
 	});
-	
+
+	/* ------------------------------------------------------------------ *
+	 * Declared FIRST, so it’s initialised (undefined) before any handler *
+	 * ------------------------------------------------------------------ */
+	let cal            = null;
+	let fld_instructor = null;
+	let fld_year       = null;
+	let fld_calendar   = null;
+
 	page.set_primary_action(__("Refresh"), () => {
 		if (cal) cal.refetchEvents();
 	}, "refresh");
 
-
 	const roles          = frappe.user_roles || [];
 	const is_acad_admin  = roles.includes("Academic Admin");
 	const is_plain_instr = roles.includes("Instructor") && !is_acad_admin;
+	const is_sysmgr      = roles.includes("System Manager");
 
-	// -----------------------------------------------------------------------
-	// build filters
-	let fld_instructor, fld_year, cal;
+	// ---------------------------------------------------------------------
+	// Fetch defaults, then build the filter bar
+	// ---------------------------------------------------------------------
+	frappe.call("ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_instructor")
+		.then(instrResp => {
+			const default_instr = instrResp.message;
 
-	frappe.call("ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_instructor").then(instrResp => {
-		const defaultInstructor = instrResp.message;
+			return frappe.call(
+				"ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_academic_year"
+			).then(yrResp => {
+				const default_year = yrResp.message || "";
 
-		frappe.call("ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_academic_year").then(yrResp => {
-			const default_year = yrResp.message || "";
+				/* If System Manager has no default year, offer Calendar list
+				   otherwise we don’t need the extra dropdown                */
+				if (is_sysmgr && !default_year) {
+					return frappe.call({
+						method: "frappe.client.get_list",
+						args:  { doctype: "School Calendar", fields: ["name"], limit_page_length: 0 }
+					}).then(calResp => {
+						const calendars = calResp.message.map(r => r.name);
+						build_filters(default_instr, default_year, calendars);
+					});
+				}
 
-			// if no default year, also fetch calendars for the calendar filter
-			if (!default_year) {
-				frappe.call({
-					method: "frappe.client.get_list",
-					args: {
-						doctype: "School Calendar",
-						fields: ["name"],
-						limit_page_length: 0
-					}
-				}).then(calResp => {
-					const calendarList = calResp.message.map(r => r.name);
-					build_filters(defaultInstructor, default_year, calendarList);
-				});
-			} else {
-				build_filters(defaultInstructor, default_year, []);
-			}
+				build_filters(default_instr, default_year, []);
+			});
 		});
-	});
 
-
+	// ---------------------------------------------------------------------
 	function build_filters(default_instr, default_year, calendars) {
-		// Instructor selector
+
+		// — Instructor —
 		fld_instructor = page.add_field({
 			fieldname: "instructor",
 			label: __("Instructor"),
@@ -80,19 +87,18 @@ function render_schedule_calendar_page(wrapper) {
 			change() { if (cal) cal.refetchEvents(); }
 		});
 
-		// Academic Year
+		// — Academic Year —
 		fld_year = page.add_field({
 			fieldname: "academic_year",
 			label: __("Academic Year"),
 			fieldtype: "Link",
 			options: "Academic Year",
-			default: default_year,
+			default: default_year,      // may be ""
 			change() { if (cal) cal.refetchEvents(); }
-		});	
+		});
 
-		// School Calendar – only when provided & year is blank
-		let fld_instructor, fld_year, fld_calendar = null, cal;
-		if (!default_year && calendars.length) {
+		// — School Calendar (SysMgr, only if calendars supplied) —
+		if (calendars.length) {
 			fld_calendar = page.add_field({
 				fieldname: "school_calendar",
 				label: __("School Calendar"),
@@ -100,24 +106,20 @@ function render_schedule_calendar_page(wrapper) {
 				options: "School Calendar",
 				change() { if (cal) cal.refetchEvents(); }
 			});
-			// preload options
-			fld_calendar.df.get_query = () => {
-				return {
-					filters: { "name": ["in", calendars] }
-				};
-			};
+			// limit dropdown choices
+			fld_calendar.df.get_query = () => ({ filters: { name: ["in", calendars] } });
 		}
 
 		if (is_plain_instr) fld_instructor.$wrapper.hide();
 
-		build_calendar();
-		}
+		build_calendar();   // create & render FullCalendar
+	}
 
-	// -----------------------------------------------------------------------
+	// ---------------------------------------------------------------------
 	function build_calendar() {
-		const $container = $('<div id="instructor-cal">').appendTo(page.body);
+		const $div = $('<div id="instructor-cal">').appendTo(page.body);
 
-		cal = new FullCalendar.Calendar($container[0], {
+		cal = new FullCalendar.Calendar($div[0], {
 			initialView: "timeGridWeek",
 			headerToolbar: {
 				left:   "prev,next today",
@@ -128,9 +130,7 @@ function render_schedule_calendar_page(wrapper) {
 			slotMaxTime: "20:00:00",
 			editable: false,
 			height: "auto",
-			eventSources: [{
-				events: fetch_events
-			}],
+			eventSources: [{ events: fetch_events }],
 			eventDidMount(info) {
 				const p = info.event.extendedProps || {};
 				if (p.block_type || p.location) {
@@ -146,28 +146,20 @@ function render_schedule_calendar_page(wrapper) {
 		cal.render();
 	}
 
-	// -----------------------------------------------------------------------
+	// ---------------------------------------------------------------------
 	function fetch_events(fetchInfo, success, failure) {
+
 		const filters = {
-			instructor: fld_instructor ? fld_instructor.get_value() : null,
-			academic_year: fld_year ? fld_year.get_value() : null,
-			school_calendar: fld_calendar ? fld_calendar.get_value() : null
+			instructor:      fld_instructor ? fld_instructor.get_value() : null,
+			academic_year:   fld_year       ? fld_year.get_value()       : null,
+			school_calendar: fld_calendar   ? fld_calendar.get_value()   : null
 		};
 
 		frappe.call({
 			method: "ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_instructor_events",
-			args: {
-				start: fetchInfo.startStr,
-				end:   fetchInfo.endStr,
-				filters
-			},
-			callback(r) {
-				success(Array.isArray(r.message) ? r.message : []);
-			},
-			error: () => {
-				console.warn("Calendar data load failed");
-				failure();
-			}
+			args:   { start: fetchInfo.startStr, end: fetchInfo.endStr, filters },
+			callback(r) { success(Array.isArray(r.message) ? r.message : []); },
+			error()  { console.warn("Calendar data load failed"); failure(); }
 		});
 	}
 }
