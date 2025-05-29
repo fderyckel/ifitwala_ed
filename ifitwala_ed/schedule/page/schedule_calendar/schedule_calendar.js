@@ -36,9 +36,6 @@ function render_schedule_calendar_page(wrapper) {
 	let fld_instructor, fld_year, cal;
 
 	frappe.call("ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_instructor")
-		.then(r => build_filters(r.message));
-
-	frappe.call("ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_instructor")
 		.then(r => {
 			const default_instructor = r.message;
 			return frappe.call(
