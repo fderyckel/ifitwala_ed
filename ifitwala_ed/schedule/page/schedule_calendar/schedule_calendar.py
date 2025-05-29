@@ -106,7 +106,7 @@ def get_instructor_events(start, end, filters=None):
 	if "Academic Admin" in roles:
 		instructor = filters.get("instructor")
 		if not instructor:
-			frappe.throw(_("Please pick an Instructor."), title=_("Missing Filter"))
+			return []
 	else:
 		instructor = _get_default_instructor(user)
 		if not instructor:
@@ -115,12 +115,11 @@ def get_instructor_events(start, end, filters=None):
 
 	# ---------- SG query ---------------------------------------------
 	SG       = DocType("Student Group")
-	SGInstr  = DocType("Student Group Instructor")
 	SGSchedule = DocType("Student Group Schedule")
 
 	groups = (
 		frappe.qb.from_(SG)
-		.inner_join(SGInstr).on(SGInstr.parent == SG.name)
+		.inner_join(SGSchedule).on(SGSchedule.parent == SG.name)
 		.select(
 			SG.name,
 			SG.student_group_name,
@@ -128,10 +127,11 @@ def get_instructor_events(start, end, filters=None):
 			SG.program
 		)
 		.where(
-			(SGInstr.instructor == instructor) &
+			(SGSchedule.instructor == instructor) &
 			(SG.academic_year == academic_year) &
 			(SG.status == "Active")
 		)
+		.groupby(SG.name)     # distinct groups
 	).run(as_dict=True)
 
 

@@ -88,7 +88,7 @@ function render_schedule_calendar_page(wrapper) {
 				center: "title",
 				right:  "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
 			},
-			slotMinTime: "06:00:00",
+			slotMinTime: "07:00:00",
 			slotMaxTime: "20:00:00",
 			editable: false,
 			height: "auto",
@@ -125,10 +125,10 @@ function render_schedule_calendar_page(wrapper) {
 				filters
 			},
 			callback(r) {
-				success(r.message || []);
+				success(Array.isArray(res.message) ? res.message : []);
 			},
 			error: () => {
-				console.error(__("Failed to load calendar data"));
+				console.warn("Calendar data load failed");
 				failure();
 			}
 		});
