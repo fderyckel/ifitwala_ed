@@ -25,7 +25,11 @@ function render_schedule_calendar_page(wrapper) {
 		title: __("Instructor Schedule Calendar"),
 		single_column: true
 	});
-	page.set_primary_action(__("Refresh"), () => cal.refetchEvents(), "refresh");
+	
+	page.set_primary_action(__("Refresh"), () => {
+		if (cal) cal.refetchEvents();
+	}, "refresh");
+
 
 	const roles          = frappe.user_roles || [];
 	const is_acad_admin  = roles.includes("Academic Admin");
@@ -39,10 +43,10 @@ function render_schedule_calendar_page(wrapper) {
 		const defaultInstructor = instrResp.message;
 
 		frappe.call("ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_academic_year").then(yrResp => {
-			const defaultYear = yrResp.message || "";
+			const default_year = yrResp.message || "";
 
 			// if no default year, also fetch calendars for the calendar filter
-			if (!defaultYear) {
+			if (!default_year) {
 				frappe.call({
 					method: "frappe.client.get_list",
 					args: {
@@ -52,16 +56,16 @@ function render_schedule_calendar_page(wrapper) {
 					}
 				}).then(calResp => {
 					const calendarList = calResp.message.map(r => r.name);
-					build_filters(defaultInstructor, defaultYear, calendarList);
+					build_filters(defaultInstructor, default_year, calendarList);
 				});
 			} else {
-				build_filters(defaultInstructor, defaultYear, []);
+				build_filters(defaultInstructor, default_year, []);
 			}
 		});
 	});
 
 
-	function build_filters(default_instr, default_year) {
+	function build_filters(default_instr, default_year, calendars) {
 		// Instructor selector
 		fld_instructor = page.add_field({
 			fieldname: "instructor",
@@ -82,13 +86,13 @@ function render_schedule_calendar_page(wrapper) {
 			label: __("Academic Year"),
 			fieldtype: "Link",
 			options: "Academic Year",
-			default: defaultYear,
+			default: default_year,
 			change() { if (cal) cal.refetchEvents(); }
 		});	
 
 		// School Calendar – only when provided & year is blank
-		let fld_calendar = null;
-		if (!defaultYear && calendars.length) {
+		let fld_instructor, fld_year, fld_calendar = null, cal;
+		if (!default_year && calendars.length) {
 			fld_calendar = page.add_field({
 				fieldname: "school_calendar",
 				label: __("School Calendar"),
