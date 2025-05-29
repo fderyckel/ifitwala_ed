@@ -250,8 +250,8 @@ def get_instructor_events(start, end, filters=None):
 				events.append({
 					"id": f"{grp.name}-{sl.rotation_day}-{sl.block_number}-{dt}",
 					"title": f"{grp.course} ({grp.student_group_name})",
-					"start": f"{dt} {block_meta.from_time}",
-					"end":   f"{dt} {block_meta.to_time}",
+					"start": f"{dt}T{block_meta.from_time}",
+					"end":   f"{dt}T{block_meta.to_time}",
 					"allDay": False,
 					"color": colour,
 					"extendedProps": {
