@@ -35,16 +35,30 @@ function render_schedule_calendar_page(wrapper) {
 	// build filters
 	let fld_instructor, fld_year, cal;
 
-	frappe.call("ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_instructor")
-		.then(r => {
-			const default_instructor = r.message;
-			return frappe.call(
-				"ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_academic_year"
-			).then(yr => {
-				const default_year = yr.message;
-				build_filters(default_instructor, default_year);
-			});
+	frappe.call("ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_instructor").then(instrResp => {
+		const defaultInstructor = instrResp.message;
+
+		frappe.call("ifitwala_ed.schedule.page.schedule_calendar.schedule_calendar.get_default_academic_year").then(yrResp => {
+			const defaultYear = yrResp.message || "";
+
+			// if no default year, also fetch calendars for the calendar filter
+			if (!defaultYear) {
+				frappe.call({
+					method: "frappe.client.get_list",
+					args: {
+						doctype: "School Calendar",
+						fields: ["name"],
+						limit_page_length: 0
+					}
+				}).then(calResp => {
+					const calendarList = calResp.message.map(r => r.name);
+					build_filters(defaultInstructor, defaultYear, calendarList);
+				});
+			} else {
+				build_filters(defaultInstructor, defaultYear, []);
+			}
 		});
+	});
 
 
 	function build_filters(default_instr, default_year) {
@@ -62,20 +76,38 @@ function render_schedule_calendar_page(wrapper) {
 			change() { if (cal) cal.refetchEvents(); }
 		});
 
-		// Academic Year selector
+		// Academic Year
 		fld_year = page.add_field({
 			fieldname: "academic_year",
 			label: __("Academic Year"),
 			fieldtype: "Link",
 			options: "Academic Year",
-			default: default_year,
+			default: defaultYear,
 			change() { if (cal) cal.refetchEvents(); }
 		});
 
-		if (is_plain_instr) fld_instructor.$wrapper.hide();   // keep value, just hide
+		// School Calendar – only when provided & year is blank
+		let fld_calendar = null;
+		if (!defaultYear && calendars.length) {
+			fld_calendar = page.add_field({
+				fieldname: "school_calendar",
+				label: __("School Calendar"),
+				fieldtype: "Link",
+				options: "School Calendar",
+				change() { if (cal) cal.refetchEvents(); }
+			});
+			// preload options
+			fld_calendar.df.get_query = () => {
+				return {
+					filters: { "name": ["in", calendars] }
+				};
+			};
+		}
+
+		if (is_plain_instr) fld_instructor.$wrapper.hide();
 
 		build_calendar();
-	}
+		}
 
 	// -----------------------------------------------------------------------
 	function build_calendar() {
@@ -114,7 +146,8 @@ function render_schedule_calendar_page(wrapper) {
 	function fetch_events(fetchInfo, success, failure) {
 		const filters = {
 			instructor: fld_instructor ? fld_instructor.get_value() : null,
-			academic_year: fld_year ? fld_year.get_value() : null
+			academic_year: fld_year ? fld_year.get_value() : null,
+			school_calendar: fld_calendar ? fld_calendar.get_value() : null
 		};
 
 		frappe.call({

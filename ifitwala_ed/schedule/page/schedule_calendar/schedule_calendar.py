@@ -92,6 +92,7 @@ def fetch_instructor_options(
 # ─────────────────────────────────────────────────────────────────────
 @frappe.whitelist()
 def get_instructor_events(start, end, filters=None):
+	school_calendar = filters.get("school_calendar")
 	filters       = _coerce_filters(filters)
 	user          = frappe.session.user
 	roles         = set(frappe.get_roles(user))
@@ -128,8 +129,12 @@ def get_instructor_events(start, end, filters=None):
 		)
 		.where(
 			(SGSchedule.instructor == instructor) &
-			(SG.academic_year == academic_year) &
-			(SG.status == "Active")
+			(SG.status == "Active") &
+			(
+				(SG.academic_year == academic_year)
+				if academic_year else
+				frappe.qb.true()        # no filter when year blank
+			)
 		)
 		.groupby(SG.name)     # distinct groups
 	).run(as_dict=True)
@@ -156,8 +161,13 @@ def get_instructor_events(start, end, filters=None):
 
 		sched_doc      = frappe.get_cached_doc("School Schedule", sched_name)
 		rotation_dates = get_rotation_dates(
-			sched_name, academic_year, sched_doc.include_holidays_in_rotation
+			sched_name, 
+			academic_year or sched_doc.academic_year, 
+			sched_doc.include_holidays_in_rotation
 		)
+
+		if not academic_year:
+			academic_year = sched_doc.academic_year
 
 		# ----- holiday / weekend banners (once per calendar) ----------
 		cal_name = sched_doc.school_calendar
@@ -198,6 +208,11 @@ def get_instructor_events(start, end, filters=None):
 			)
 			.where(SGSchedule.parent == grp.name)
 		).run(as_dict=True)
+
+		for s in slots:
+			if not s.instructor:
+				frappe.logger().warning(f"SG {grp.name} row {s.rotation_day}/{s.block_number} has no instructor")
+
 
 		rot_map = {}
 		for rd in rotation_dates:
