@@ -6,7 +6,9 @@ function toggle_school_schedule_field(frm) {
     const need_sched = !frm.doc.program;   // ← removed extra test
     frm.set_df_property("school_schedule", "hidden", !need_sched);
     frm.set_df_property("school_schedule", "reqd",  need_sched);
-    if (!need_sched) frm.set_value("school_schedule", null);
+		if (!need_sched && frm.doc.school_schedule) {
+			frm.set_value("school_schedule", null);
+		}
 }
 
 // Helper function to build student filter payload
@@ -64,6 +66,15 @@ frappe.ui.form.on("Student Group", {
 				}
 			};
 		});	
+
+		frm.fields_dict["student_group_schedule"].grid.get_field("instructor").get_query = function () {
+			const valid_instructors = (frm.doc.instructors || []).map(row => row.instructor);
+			return {
+				filters: {
+					name: ["in", valid_instructors]
+				}
+			};
+		};		
 	},
 
 	refresh: function (frm) {
