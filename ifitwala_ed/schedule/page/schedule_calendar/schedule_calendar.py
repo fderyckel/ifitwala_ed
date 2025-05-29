@@ -104,13 +104,13 @@ def fetch_instructor_options(
 # ─────────────────────────────────────────────────────────────────────
 @frappe.whitelist()
 def get_instructor_events(start, end, filters=None):
-	school_calendar = filters.get("school_calendar")
 	filters       = _coerce_filters(filters)
+	school_calendar = filters.get("school_calendar")
+	academic_year = filters.get("academic_year") or current_academic_year()
 	user          = frappe.session.user
 	roles         = set(frappe.get_roles(user))
 	start_date    = getdate(start)
 	end_date      = getdate(end)
-	academic_year = filters.get("academic_year") or current_academic_year()
 	events               = []
 	processed_calendars  = set()
 	banner_dates         = set()
