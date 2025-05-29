@@ -124,7 +124,7 @@ function render_schedule_calendar_page(wrapper) {
 				end:   fetchInfo.endStr,
 				filters
 			},
-			callback(r) {
+			callback(res) {
 				success(Array.isArray(res.message) ? res.message : []);
 			},
 			error: () => {
