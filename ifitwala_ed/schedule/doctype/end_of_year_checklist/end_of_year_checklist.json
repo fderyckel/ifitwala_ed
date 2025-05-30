@@ -7,6 +7,7 @@
  "field_order": [
   "section_break_gksp",
   "archive_program_enrollment",
+  "archive_student_groups",
   "archive_terms",
   "archive_academic_year"
  ],
@@ -29,13 +30,18 @@
    "fieldname": "archive_academic_year",
    "fieldtype": "Button",
    "label": "Archive Academic Year"
+  },
+  {
+   "fieldname": "archive_student_groups",
+   "fieldtype": "Button",
+   "label": "Archive Student Groups"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-05-26 22:50:10.959502",
+ "modified": "2025-05-29 08:33:24.785017",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "End of Year Checklist",
