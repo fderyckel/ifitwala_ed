@@ -20,6 +20,9 @@ import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import sass from 'sass';
+import alias from '@rollup/plugin-alias';
+
+const projectRootDir = path.resolve(__dirname);
 
 /* ─── Paths ────────────────────────────────────────────────────────── */
 const dist       = 'ifitwala_ed/public/dist';
@@ -36,7 +39,15 @@ function contentHash(file) {
 const portalHash = contentHash(path.join(portalSrc, 'index.js'));
 
 /* ─── Common plugins ───────────────────────────────────────────────── */
-const basePlugins = [resolve(), commonjs()];
+const basePlugins = [ 
+	resolve(),
+	commonjs(),
+	alias({
+		entries: [
+			{ find: '@fullcalendar-css', replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar') }
+		]
+	})
+];
 
 /* ─── Build matrix ─────────────────────────────────────────────────── */
 export default [
