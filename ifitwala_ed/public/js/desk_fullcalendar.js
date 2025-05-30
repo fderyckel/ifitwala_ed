@@ -2,8 +2,8 @@
  * (one tiny bundle, shared by every desk page that needs it)
  */
 
-import "@fullcalendar-css/core/main.min.css";
-import "@fullcalendar-css/daygrid/main.min.css";
+import "@fullcalendar-css/core/index.global.css";
+import "@fullcalendar-css/daygrid/index.global.css";
 import "@fullcalendar-css/timegrid/index.global.css";
 import "@fullcalendar-css/list/index.global.css";
 
