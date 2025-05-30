@@ -4,8 +4,8 @@
 
 import "@fullcalendar-css/core/main.min.css";
 import "@fullcalendar-css/daygrid/main.min.css";
-import "@fullcalendar-css/timegrid/main.min.css";
-import "@fullcalendar-css/list/main.min.css";
+import "@fullcalendar-css/timegrid/index.global.css";
+import "@fullcalendar-css/list/index.global.css";
 
 import { Calendar }      from "@fullcalendar/core";
 import dayGridPlugin     from "@fullcalendar/daygrid";
