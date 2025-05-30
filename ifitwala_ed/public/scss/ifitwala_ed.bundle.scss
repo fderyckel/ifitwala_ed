@@ -1,2 +1,8 @@
 @import "../css/student_group";
 @import "../css/other_desk_pages";
+
+/* FullCalendar styles */
+@import "../../node_modules/@fullcalendar/core/index.css";
+@import "../../node_modules/@fullcalendar/daygrid/index.css";
+@import "../../node_modules/@fullcalendar/timegrid/index.css";
+@import "../../node_modules/@fullcalendar/list/index.css";
