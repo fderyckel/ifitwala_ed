@@ -2,10 +2,10 @@
  * (one tiny bundle, shared by every desk page that needs it)
  */
 
-import "@fullcalendar-css/core/index.css";
-import "@fullcalendar-css/daygrid/index.css";
-import "@fullcalendar-css/timegrid/index.css";
-import "@fullcalendar-css/list/index.css";
+import "@fullcalendar-css/core/main.min.css";
+import "@fullcalendar-css/daygrid/main.min.css";
+import "@fullcalendar-css/timegrid/main.min.css";
+import "@fullcalendar-css/list/main.min.css";
 
 import { Calendar }      from "@fullcalendar/core";
 import dayGridPlugin     from "@fullcalendar/daygrid";
