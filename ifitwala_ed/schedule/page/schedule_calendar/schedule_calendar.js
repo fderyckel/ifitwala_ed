@@ -1,19 +1,10 @@
 /**********************************************************************
- * Instructor Schedule Calendar – simple CDN loader version
- * (use v6.1.8 “index.global” build just like your school calendar)
+ * Instructor Schedule Calendar 
+ * *
  *********************************************************************/
 
-frappe.pages["schedule_calendar"].on_page_load = function (wrapper) {
-	// ---- FullCalendar CSS + JS (CDN) -------------------------------------
-	const css = document.createElement("link");
-	css.rel  = "stylesheet";
-	css.href = "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css";
-	document.head.appendChild(css);
-
-	const js  = document.createElement("script");
-	js.src   = "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js";
-	js.onload = () => render_schedule_calendar_page(wrapper);
-	document.head.appendChild(js);
+frappe.pages["schedule_calendar"].on_page_load = function (wrapper) { 
+	render_schedule_calendar_page(wrapper);   // FullCalendar already loaded
 };
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -120,6 +111,11 @@ function render_schedule_calendar_page(wrapper) {
 		const $div = $('<div id="instructor-cal">').appendTo(page.body);
 
 		cal = new FullCalendar.Calendar($div[0], {
+			plugins: [ 
+				FullCalendar.timeGridPlugin, 
+				FullCalendar.dayGridPlugin, 
+				FullCalendar.listPlugin 
+			],
 			initialView: "timeGridWeek",
 			headerToolbar: {
 				left:   "prev,next today",
@@ -140,9 +136,22 @@ function render_schedule_calendar_page(wrapper) {
 					].filter(Boolean).join("<br>");
 					$(info.el).tooltip({ title: tip, html: true, container: "body" });
 				}
-			}
-		});
+			}, 
 
+			eventClick(info) {
+				info.jsEvent.preventDefault();   // stop native link behaviour
+
+				// 1️⃣ Quick route to Student Group (keeps teachers productive)
+				if (info.event.extendedProps.student_group) {
+					frappe.set_route(
+						"Form",
+						"Student Group",
+						info.event.extendedProps.student_group
+					);
+					return;
+				}
+			}, 
+		});
 		cal.render();
 	}
 

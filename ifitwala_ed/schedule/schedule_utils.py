@@ -466,3 +466,12 @@ BLOCK_COLOURS = {
 def get_block_colour(block_type: str | None) -> str:
 	"""Return hex colour for a block type, with safe fallback."""
 	return BLOCK_COLOURS.get((block_type or "").title(), "#74b9ff")
+
+def get_course_block_colour(school: str | None) -> str:
+	"""Return the course color set at the school level, or fallback to default course color."""
+	if not school:
+		return get_block_colour("Course")
+	return (
+		frappe.db.get_value("School", school, "course_color")
+		or get_block_colour("Course")
+	)

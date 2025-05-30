@@ -10,7 +10,7 @@ from frappe.query_builder import DocType
 from ifitwala_ed.schedule.schedule_utils import (
 	get_rotation_dates,
 	current_academic_year,
-	get_block_colour,
+	get_block_colour, get_course_block_colour
 )
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -251,7 +251,7 @@ def get_instructor_events(start, end, filters=None):
 			if not block_meta:
 				continue
 
-			colour = get_block_colour(block_meta.block_type)
+			color = (get_course_block_colour(school) if block_meta.block_type == "Course" else get_block_colour(block_meta.block_type))
 
 			for dt in rot_map.get(sl.rotation_day, []):
 				events.append({
@@ -260,7 +260,7 @@ def get_instructor_events(start, end, filters=None):
 					"start": f"{dt}T{_fmt(block_meta.from_time)}",
 					"end":   f"{dt}T{_fmt(block_meta.to_time)}",
 					"allDay": False,
-					"color": colour,
+					"color": color,
 					"extendedProps": {
 						"location":   sl.location,
 						"block_type": block_meta.block_type,

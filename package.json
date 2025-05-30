@@ -26,7 +26,11 @@
     "rollup-plugin-postcss": "4.0.2",
     "autoprefixer": "^10.4.14",
     "cssnano": "^6.0.1", 
-    "postcss": "^8.4.31"
+    "postcss": "^8.4.31", 
+		"@fullcalendar/core": "6.1.8",
+    "@fullcalendar/daygrid": "6.1.8",
+    "@fullcalendar/timegrid": "6.1.8",
+    "@fullcalendar/list": "6.1.8"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",
