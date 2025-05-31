@@ -58,20 +58,23 @@ export default [
 			file: `${dist}/ifitwala_ed.bundle.js`,                // built file
 			format: "iife",
 			sourcemap: true
-		},
+		}
+	},
+	/* ── Student-group styles (CSS only, no JS) ───────────────────────── */
+	{
+		input: "ifitwala_ed/public/css/student_group.css",
+		output: { dir: "." },
 		plugins: [
-			...basePlugins,
 			postcss({
-				extract: `${dist}/ifitwala_ed.bundle.css`,
+				extract: `${dist}/student_group.min.css`,   // ← file that will be written
 				minimize: true,
 				plugins: [
 					require("autoprefixer"),
 					require("cssnano")({ preset: "default" })
 				]
-			}), 
-			terser(),
+			})
 		]
-	},
+	},	
 	/* ── Other desk pages (CSS only, no JS) ─────────────────────────── */
 	{
 		input: "ifitwala_ed/public/css/other_desk_pages.css",
