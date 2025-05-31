@@ -61,7 +61,6 @@ export default [
 		},
 		plugins: [
 			...basePlugins,
-			terser(),
 			postcss({
 				extract: `${dist}/ifitwala_ed.bundle.css`,
 				minimize: true,
@@ -69,7 +68,8 @@ export default [
 					require("autoprefixer"),
 					require("cssnano")({ preset: "default" })
 				]
-			})
+			}), 
+			terser(),
 		]
 	},
 	/* ── Other desk pages (CSS only, no JS) ─────────────────────────── */
