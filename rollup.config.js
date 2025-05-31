@@ -68,14 +68,7 @@ export default [
 				plugins: [
 					require("autoprefixer"),
 					require("cssnano")({ preset: "default" })
-				], 
-			  preprocessor: (content, id) => {
-					if (id.endsWith(".scss")) {
-						const { css } = sass.renderSync({ file: id, data: content });
-						return Promise.resolve({ code: css.toString() });
-					}
-					return Promise.resolve({ code: content });
-				}	
+				]
 			})
 		]
 	},

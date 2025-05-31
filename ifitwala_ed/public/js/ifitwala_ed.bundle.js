@@ -1,4 +1,4 @@
-import "../scss/ifitwala_ed.bundle.scss";
+import "../css/student_group.css";
 
 import "./utils";
 import "./queries";
