@@ -1,4 +1,4 @@
-import "../css/student_portal.css";
+import "../css/student_group.css";
 
 import "./utils";
 import "./queries";
