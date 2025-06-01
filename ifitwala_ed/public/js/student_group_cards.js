@@ -82,7 +82,7 @@ export function renderStudentCard(student, options = {}) {
   return `
     <div class="bg-white rounded-xl p-4 text-center shadow hover:-translate-y-1 transition duration-200">
       <a href="/app/student/${student_id}" target="_blank" rel="noopener">
-        <img src="${thumb_src}" onerror="this.onerror=null;this.src='${fallbackSrc}';"
+        <img src="${thumb_src}" onerror="this.onerror=null;this.src='${fallback_src}';"
              class="w-[${thumbSize}px] h-[${thumbSize}px] rounded-full object-cover mx-auto bg-neutral-100"
              loading="lazy" data-thumbsize="${thumbSize}">
       </a>
