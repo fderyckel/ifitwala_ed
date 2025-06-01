@@ -172,9 +172,10 @@ export default [
 					require('autoprefixer'),
 					require('cssnano')({ preset: 'default' })
 				],
-				preprocessor: (content, id) => {
-					const { css } = sass.renderSync({ file: id, data: content });
-					return Promise.resolve({ code: css.toString() });
+				preprocessor: async (content, id) => {
+					const sass = await import('sass');
+					const result = await sass.compileAsync(id);
+					return { code: result.css };
 				}
 			})
 		]

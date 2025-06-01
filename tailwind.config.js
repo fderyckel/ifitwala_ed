@@ -2,10 +2,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    './ifitwala_ed/public/**/*.{js,html}',
-    './ifitwala_ed/templates/**/*.html',
-    './ifitwala_ed/**/*.py',
-    './frappe/**/*.{html,js}', // in case you use custom Frappe templates
+		"./ifitwala_ed/public/js/**/*.js",               // only JS where Tailwind classes are likely used
+		"./ifitwala_ed/public/css/**/*.css",             // any raw CSS using @apply or custom Tailwind
+		"./ifitwala_ed/templates/**/*.html",             // standard Jinja templates
+		"./ifitwala_ed/www/**/*.html",                   // custom public pages
+		"./ifitwala_ed/**/*.{html,js}",   
   ],
   theme: {
     extend: {
