@@ -25,7 +25,7 @@ import { createHash } from 'crypto';
 const projectRootDir = path.resolve(__dirname);
 
 /* ─── Paths ────────────────────────────────────────────────────────── */
-const dist       = 'ifitwala_ed/public/dist/js';
+const dist       = 'ifitwala_ed/public/dist';
 const websiteSrc = 'ifitwala_ed/public/website';
 const portalSrc  = 'ifitwala_ed/public/js/student_portal';
 

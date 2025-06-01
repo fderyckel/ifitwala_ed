@@ -32,7 +32,7 @@ app_include_js = [
 ]
 
 app_include_css = [  
-	"/assets/ifitwala_ed/dist/ifitwala_ed.bundle.css" 
+	"/assets/ifitwala_ed/dist/js/ifitwala_ed.bundle.css" 
 ]
 
 # include js, css files in header of web template
