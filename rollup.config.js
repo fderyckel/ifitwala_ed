@@ -98,7 +98,8 @@ export default [
 			postcss({
 				extract: `${websiteSrc}/website.min.css`,
 				minimize: true,
-				plugins: [require('autoprefixer'), require('cssnano')({ preset: 'default' })]
+				plugins: [require('autoprefixer'), 
+				]
 			})
 		]
 	},
@@ -122,7 +123,8 @@ export default [
 			postcss({
 				extract: `${websiteSrc}/school.min.css`,
 				minimize: true,
-				plugins: [require('autoprefixer'), require('cssnano')({ preset: 'default' })]
+				plugins: [require('autoprefixer'), 
+				]
 			})
 		]
 	},
@@ -141,7 +143,9 @@ export default [
 			postcss({
 				extract: `${dist}/student_portal.${portalHash}.bundle.css`,
 				minimize: true,
-				plugins: [require('autoprefixer'), require('cssnano')({ preset: 'default' })]
+				plugins: [
+					require('autoprefixer'), 
+				]
 			})
 		]
 	},
@@ -155,7 +159,6 @@ export default [
 				minimize: true,
 				plugins: [
 					require('autoprefixer'),
-					require('cssnano')({ preset: 'default' })
 				],
 				preprocessor: async (content, id) => {
 					const sass = await import('sass');
