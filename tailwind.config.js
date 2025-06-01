@@ -6,11 +6,8 @@ module.exports = {
 		"./ifitwala_ed/www/**/*.html",                   // custom public pages
 		'./ifitwala_ed/schedule/page/**/*.{js,html}'
 	],
-	safelist: [
-		{ pattern: /^w-\[.*px]$/ },
-	  { pattern: /^h-\[.*px]$/ },
-	  { pattern: /^grid-cols-\d$/ },
-	  { pattern: /^(gap|px|mt)-/ }
+	safelist: [ 
+		{ pattern: /.*/ } 
   ],
 	plugins: [
 		require('@tailwindcss/forms'),     // handles filters/searches better
