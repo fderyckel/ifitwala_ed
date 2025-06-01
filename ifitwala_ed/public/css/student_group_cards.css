@@ -10,20 +10,3 @@
 /* Optional: You can define component-level classes here if needed later */
 /* Example reusable card layout – though Tailwind utilities often suffice */
 
-@layer components {
-  .student-card-grid {
-    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 px-4 mt-4;
-  }
-
-  .student-grid-title {
-    @apply text-2xl font-semibold text-center text-gray-800;
-  }
-
-  .student-grid-subtitle {
-    @apply text-sm text-gray-500 text-center mt-1;
-  }
-
-  .load-more-button {
-    @apply bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition;
-  }
-}
