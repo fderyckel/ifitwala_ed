@@ -81,13 +81,13 @@ export function renderStudentCard(student, options = {}) {
 	/* ── Final markup ───────────────────────────────────────────── */
   return `
     <div class="bg-white rounded-xl p-4 text-center shadow hover:-translate-y-1 transition duration-200">
-      <a href="/app/student/${studentId}" target="_blank" rel="noopener">
+      <a href="/app/student/${student_id}" target="_blank" rel="noopener">
         <img src="${thumbSrc}" onerror="this.onerror=null;this.src='${fallbackSrc}';"
              class="w-[${thumbSize}px] h-[${thumbSize}px] rounded-full object-cover mx-auto bg-neutral-100"
              loading="lazy" data-thumbsize="${thumbSize}">
       </a>
       <div class="mt-3 text-lg font-semibold">
-        <a href="/app/student/${studentId}" target="_blank" rel="noopener">${name}</a>
+        <a href="/app/student/${student_id}" target="_blank" rel="noopener">${name}</a>
         ${health}${birthday}
       </div>
       ${preferredName ? `<div class="text-sm text-gray-500 mt-1">${preferredName}</div>` : ""}
