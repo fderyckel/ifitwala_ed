@@ -1,6 +1,11 @@
 /* Tailwind CSS Entry for Student Group Page */
 /* Base Tailwind layers */
-@import "tailwindcss";
+
+/* Tailwind v4 entry --------------------------------------------- */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 
 @theme {
   --color-primary: #1D4ED8;

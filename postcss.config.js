@@ -1,8 +1,10 @@
 // postcss.config.js  (v4-compatible)
 module.exports = {
-  plugins: {
-    tailwindcss: {},   // core plugin
-    autoprefixer: {},
-    cssnano: { preset: "default" }
-  }
+  plugins: [
+    require('@tailwindcss/postcss')({        // <-- v4 PostCSS plugin
+      config: './tailwind.config.js'         // picks up your colours etc.
+    }),
+    require('autoprefixer'),
+    require('cssnano')({ preset: 'default' })
+  ]
 };
