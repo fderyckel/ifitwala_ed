@@ -7,11 +7,6 @@
 @tailwind utilities;
 
 
-@theme {
-  --color-primary: #1D4ED8;
-  --font-display: "Inter", sans-serif;
-}
-
 /* Custom styles */
 .student-card-grid {
   display: grid;

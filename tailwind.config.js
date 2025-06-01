@@ -1,4 +1,3 @@
-/** @type {import('tailwindcss').Config} */
 module.exports = {
 	content: [
 		"./ifitwala_ed/public/js/**/*.js",               // only JS where Tailwind classes are likely used
@@ -8,20 +7,13 @@ module.exports = {
 		'./ifitwala_ed/schedule/page/**/*.{js,html}'
 	],
 	safelist: [
-		{ pattern: /.*/ }
+		{ pattern: /^w-\[.*px]$/ },
+	  { pattern: /^h-\[.*px]$/ },
+	  { pattern: /^grid-cols-\d$/ },
+	  { pattern: /^(gap|px|mt)-/ }
   ],
 	plugins: [
 		require('@tailwindcss/forms'),     // handles filters/searches better
 		require('@tailwindcss/typography') // optional for better content rendering
 	],
-	theme: {
-		extend: {
-			colors: {
-				ifitwala: {
-					green: '#2e7d32',
-					light: '#a5d6a7',
-				},
-			},
-		},
-	},
 };
