@@ -5,6 +5,5 @@ module.exports = {
       config: './tailwind.config.js'         // picks up your colours etc.
     }),
     require('autoprefixer'),
-    require('cssnano')({ preset: 'default' })
   ]
 };
