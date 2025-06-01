@@ -67,7 +67,7 @@ export default [
 				plugins: [
 					require('@tailwindcss/postcss')(),
 					require("autoprefixer"),
-					require("cssnano")({ preset: "default" })
+					require("cssnano")({ preset: ["default",  {calc: false,}],})
 				], 
 			}),
 			terser()

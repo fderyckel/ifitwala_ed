@@ -1,12 +1,6 @@
-
-
 /* Tailwind CSS Entry for Student Group Page */
-
 /* Base Tailwind layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Optional: You can define component-level classes here if needed later */
-/* Example reusable card layout – though Tailwind utilities often suffice */
 
