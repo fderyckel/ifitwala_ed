@@ -2,7 +2,10 @@
 // Tailwind-compliant version – no external CSS required
 
 frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
-	const { renderStudentCard } = frappe.ifitwala_ed.helpers;
+
+	frappe.require('/assets/ifitwala_ed/dist/ifitwala_ed.bundle.js', () => {
+		const { renderStudentCard } = frappe.ifitwala_ed.helpers;
+
 	/* ── Breadcrumb ────────────────────────────────────────────────── */
 	const urlParams = new URLSearchParams(window.location.search);
 	const workspace = urlParams.get('workspace') || 'Academics';
@@ -137,4 +140,6 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 
 	/* ── “Load More” handler ──────────────────────────────────────── */
 	$('#load-more').on('click', () => fetch_students());
+
+	});
 };
