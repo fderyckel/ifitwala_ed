@@ -1,47 +1,42 @@
-// Copyright (c) 2025, François de Ryckel and contributors
-// For license information, please see license.txt
+// Copyright (c) 2025, François de Ryckel
+// Tailwind-compliant version – no external CSS required
 
 frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
 
-  /* ── helpers (top of page scope) ───────────────────────────── */
+  /* ── Fallback Helpers ───────────────────────────── */
   function slugify(filename) {
     return filename
-      .replace(/\.[^.]+$/, "")        // strip extension
+      .replace(/\.[^.]+$/, "")
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")    // match Python: any non‑alphanum → "_"
-      .replace(/^_+|_+$/g, "");       // trim leading/trailing "_"
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
   }
-  
 
   function get_student_image(original_url) {
     const fallback = "/assets/ifitwala_ed/images/default_student_image.png";
     if (!original_url) return fallback;
-    if (original_url.startsWith("/files/gallery_resized/student/")) {
-      return original_url;            // already a thumb path
-    }
-    if (!original_url.startsWith("/files/student/")) {
-      return fallback;                // not a student image
-    }
+    if (original_url.startsWith("/files/gallery_resized/student/")) return original_url;
+    if (!original_url.startsWith("/files/student/")) return fallback;
     const base = slugify(original_url.split("/").pop());
     return `/files/gallery_resized/student/thumb_${base}.webp`;
   }
 
-  // 🔗 Set up breadcrumb based on workspace
+  // 🔗 Breadcrumb
   const urlParams = new URLSearchParams(window.location.search);
-  const workspace = urlParams.get("workspace") || "Academics";  
+  const workspace = urlParams.get("workspace") || "Academics";
   frappe.breadcrumbs.add({
     label: workspace,
     route: `/app/${workspace.replace(/\s+/g, "-").toLowerCase()}`
   });
 
-  // 🗂️ Create the main page structure
+  // 📄 Page
   let page = frappe.ui.make_app_page({
     parent: wrapper,
     title: 'Student Group Cards',
     single_column: true
   });
 
-  // 📋 Add filters for Program, Course, Cohort, and Student Group
+  // 🔍 Filters
   const program_field = page.add_field({
     fieldname: "program",
     label: __("Program"),
@@ -81,53 +76,51 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
     change: () => fetch_students(true)
   });
 
-  // 📝 Create main content area
+  // 🧱 Layout container
   $(wrapper).append(`
-    <div class="filters-and-title">
-      <div id="student-group-title" class="student-group-title"></div>
+    <div class="sticky top-[65px] bg-white py-3 shadow-sm z-0">
+      <div id="student-group-title" class="text-center"></div>
     </div>
-    <div id="student-cards" class="student-grid container"></div>
-    <button id="load-more" class="btn btn-primary">Load More</button>
+    <div id="student-cards" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-4 px-4"></div>
+    <div class="flex justify-center mt-6">
+      <button id="load-more" class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition">
+        Load More
+      </button>
+    </div>
   `);
 
-  // 📊 Pagination State
+  // 📊 Pagination
   let start = 0;
   const page_length = 25;
   let total_students = 0;
   let group_info = {};
 
-  // 📅 Update the title based on group info
+  // 🏷️ Title updater
   function update_title() {
     const group = group_info.name;
     const program = group_info.program;
     const course = group_info.course;
     const cohort = group_info.cohort;
 
-    if (!group) {
-      $('#student-group-title').html('');
-      return;
-    }
+    if (!group) return $('#student-group-title').empty();
 
-    let title_html = `<h2>${group}</h2>`;
-    let subtitle_parts = [];
+    const subtitle_parts = [program, course, cohort].filter(Boolean).join(' – ');
 
-    if (program) subtitle_parts.push(program);
-    if (course) subtitle_parts.push(course);
-    if (cohort) subtitle_parts.push(cohort);
-
-    let subtitle_html = subtitle_parts.length ? `<div class="subtitle">${subtitle_parts.join(' – ')}</div>` : '';
-    $('#student-group-title').html(`${title_html}${subtitle_html}`);
+    $('#student-group-title').html(`
+      <h2 class="text-2xl font-semibold text-gray-800">${group}</h2>
+      ${subtitle_parts ? `<div class="text-sm text-gray-500 mt-1">${subtitle_parts}</div>` : ''}
+    `);
   }
 
-
-  // 📝 Render a single student card
+  // 🧍 Render Student Card
   function renderStudentCard(student) {
     const student_name = frappe.utils.escape_html(student.student_name);
     const preferred_name = frappe.utils.escape_html(student.preferred_name || "");
     const student_id = frappe.utils.escape_html(student.student);
-    const img_src = get_student_image(student.student_image);
+    const thumb_src = get_student_image(student.student_image);
+    const original_src = student.student_image || "/assets/ifitwala_ed/images/default_student_image.png";
 
-    // 🎂 Birthday Icon Logic
+    // 🎂 Birthday logic
     let birthday_icon = '';
     if (student.birth_date) {
       try {
@@ -135,23 +128,20 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
         const today = frappe.datetime.str_to_obj(frappe.datetime.now_date());
         const birth_this_year = new Date(today.getFullYear(), birth_date.getMonth(), birth_date.getDate());
         const diff_days = Math.floor((birth_this_year - today) / (1000 * 60 * 60 * 24));
-
         if (Math.abs(diff_days) <= 5) {
-          const formatted_date = moment(birth_date).format("dddd, MMMM Do");
-          birthday_icon = `
-            <span class="birthday-icon" title="${__("Birthday on {0}", [formatted_date])}">🎂</span>
-          `;
+          const formatted = moment(birth_date).format("dddd, MMMM Do");
+          birthday_icon = `<span class="ml-2 text-yellow-500" title="${__("Birthday on {0}", [formatted])}">🎂</span>`;
         }
       } catch (e) {
-        console.warn("Invalid birth_date for student", student.student, e);
+        console.warn("Invalid birth_date", student.student, e);
       }
     }
 
-    // 🚨 Medical Alert Logic
+    // 🚨 Health icon
     let health_icon = '';
     if (student.medical_info) {
       health_icon = `
-        <span class="medical-alert" title="${__("Medical Note Available")}" 
+        <span class="ml-2 text-red-500 font-bold cursor-pointer" title="${__("Medical Note Available")}"
           onclick='frappe.msgprint({
             title: "Health Note for ${student_name}",
             message: \`${student.medical_info}\`,
@@ -162,30 +152,22 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
       `;
     }
 
-    const thumb_src     = get_student_image(student.student_image);
-    const original_src  = student.student_image || "/assets/ifitwala_ed/images/default_student_image.png";
-
-    // 📦 Return the full card HTML
     return `
-        <div class="student-card">
-          <a href="/app/student/${student_id}" target="_blank" rel="noopener">
-            <img src="${thumb_src}"
-              onerror="this.onerror=null;this.src='${original_src}';"
-              class="student-image" loading="lazy">
-          </a>
-        <div class="student-name">
-          <a href="/app/student/${student_id}" target="_blank" rel="noopener">
-            ${student_name}
-          </a>
-          ${health_icon}
-          ${birthday_icon}
+      <div class="bg-white rounded-xl p-4 text-center shadow hover:-translate-y-1 transition-transform duration-200">
+        <a href="/app/student/${student_id}" target="_blank" rel="noopener">
+          <img src="${thumb_src}" onerror="this.onerror=null;this.src='${original_src}';"
+            class="w-20 h-20 rounded-full object-cover mx-auto bg-gray-100" loading="lazy">
+        </a>
+        <div class="mt-3 text-lg font-semibold">
+          <a href="/app/student/${student_id}" target="_blank" rel="noopener">${student_name}</a>
+          ${health_icon}${birthday_icon}
         </div>
-        ${preferred_name ? `<div class="student-preferred-name">${preferred_name}</div>` : ""}
+        ${preferred_name ? `<div class="text-sm text-gray-500 mt-1">${preferred_name}</div>` : ""}
       </div>
     `;
   }
 
-  // 🗂️ Fetch and render student cards
+  // 📦 Fetch students
   function fetch_students(reset = false) {
     const student_group = student_group_field.get_value();
     if (!student_group) return;
@@ -195,13 +177,12 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
       method: 'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students',
       args: { student_group, start, page_length },
       callback: function(data) {
-        if (reset) $('#student-cards').html('');
+        if (reset) $('#student-cards').empty();
         start = data.message.start;
         total_students = data.message.total;
         group_info = data.message.group_info || {};
         data.message.students.forEach(student => {
-          const card_html = renderStudentCard(student);
-          $('#student-cards').append(card_html);
+          $('#student-cards').append(renderStudentCard(student));
         });
         $('#load-more').toggle(start < total_students);
         update_title();
@@ -209,6 +190,6 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
     });
   }
 
-  // 🖱️ Load more button
+  // ➕ Load more handler
   $('#load-more').click(() => fetch_students());
 };

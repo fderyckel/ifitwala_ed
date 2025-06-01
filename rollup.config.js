@@ -69,6 +69,7 @@ export default [
 				extract: `${dist}/student_group.min.css`,   // ← file that will be written
 				minimize: true,
 				plugins: [
+					require("tailwindcss"), 
 					require("autoprefixer"),
 					require("cssnano")({ preset: "default" })
 				]
