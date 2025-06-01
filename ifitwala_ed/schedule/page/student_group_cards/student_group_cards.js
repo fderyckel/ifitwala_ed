@@ -81,7 +81,7 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
     <div class="sticky top-[65px] bg-white py-3 shadow-sm z-0">
       <div id="student-group-title" class="text-center"></div>
     </div>
-    <div id="student-cards" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-4 px-4"></div>
+		<div id="student-cards" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-6 mt-4 px-4"></div>
     <div class="flex justify-center mt-6">
       <button id="load-more" class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition">
         Load More
@@ -137,20 +137,24 @@ frappe.pages['student_group_cards'].on_page_load = function(wrapper) {
       }
     }
 
-    // 🚨 Health icon
-    let health_icon = '';
-    if (student.medical_info) {
-      health_icon = `
-        <span class="ml-2 text-red-500 font-bold cursor-pointer" title="${__("Medical Note Available")}"
-          onclick='frappe.msgprint({
-            title: "Health Note for ${student_name}",
-            message: \`${student.medical_info}\`,
-            indicator: "red"
-          })'>
-          &#x2716;
-        </span>
-      `;
-    }
+		// 🚨 Health icon
+		let health_icon = '';
+		if (student.medical_info) {
+			const escaped_note = frappe.utils.escape_html(student.medical_info);
+			health_icon = `
+				<span class="ml-2 text-red-500 font-bold group relative cursor-pointer"
+							onclick='frappe.msgprint({
+								title: "Health Note for ${student_name}",
+								message: \`${escaped_note}\`,
+								indicator: "red"
+							})'>
+					&#x2716;
+					<span class="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs text-white bg-red-600 rounded opacity-0 group-hover:opacity-100 transition z-10 whitespace-nowrap">
+						${__("Health Note Available")}
+					</span>
+				</span>
+			`;
+		}
 
     return `
       <div class="bg-white rounded-xl p-4 text-center shadow hover:-translate-y-1 transition-transform duration-200">
