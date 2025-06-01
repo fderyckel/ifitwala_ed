@@ -19,7 +19,6 @@ import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import postcss from 'rollup-plugin-postcss';
 import { terser } from 'rollup-plugin-terser';
-import sass from 'sass'; // only needed if compiling .scss
 import { createHash } from 'crypto';
 
 
