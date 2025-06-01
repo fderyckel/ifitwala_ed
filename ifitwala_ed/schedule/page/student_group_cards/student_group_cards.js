@@ -69,19 +69,23 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 	}
 
 	/* ── Layout container ─────────────────────────────────────────── */
-	$(wrapper).append(`
-		<div class="sticky top-[65px] bg-white py-3 shadow-sm z-10">
-			<div id="student-group-title" class="text-center"></div>
-		</div>
+  $(wrapper).append(`
+    <div class="sticky top-[65px] bg-white py-3 shadow-sm z-10">
+      <div id="student-group-title" class="text-center"></div>
+    </div>
 
-		<div id="student-cards" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-6 mt-4 px-4"></div>
+    <!-- Tailwind utilities inline - no @apply needed -->
+    <div id="student-cards"
+          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-6 mt-4 px-4">
+    </div>
+    <div class="flex justify-center mt-6">
+      <button id="load-more"
+              class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition">
+        ${__("Load More")}
+      </button>
+    </div>
+  `);
 
-		<div class="flex justify-center mt-6">
-			<button id="load-more" class="bg-blue-600 text-white px-5 py-2 rounded transition">
-				${__('Load More')}
-			</button>
-		</div>
-	`);
 
 	/* ── Pagination state ─────────────────────────────────────────── */
 	let start = 0;
@@ -95,10 +99,10 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 		if (!name) return $('#student-group-title').empty();
 
 		const subtitle = [program, course, cohort].filter(Boolean).join(' – ');
-		$('#student-group-title').html(`
-			<h2 class="text-2xl font-semibold text-gray-800">${frappe.utils.escape_html(name)}</h2>
-			${subtitle ? `<div class="text-sm text-gray-500 mt-1">${frappe.utils.escape_html(subtitle)}</div>` : ''}
-		`);
+    $("#student-group-title").html(`
+      <h2 class="text-2xl font-semibold text-gray-800">${frappe.utils.escape_html(name)}</h2>
+      ${subtitle ? `<div class="text-sm text-gray-500 mt-1">${frappe.utils.escape_html(subtitle)}</div>` : ""}
+    `);
 	}
 
 	/* ── Fetch + render ───────────────────────────────────────────── */

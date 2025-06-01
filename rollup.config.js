@@ -64,9 +64,6 @@ export default [
 			postcss({
 				extract: `${dist}/ifitwala_ed.bundle.css`,   
 				minimize: true,
-				plugins: [
-					require('@tailwindcss/postcss')(), 
-				], 
 			}),
 			terser()
 		]

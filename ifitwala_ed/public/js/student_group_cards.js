@@ -79,17 +79,18 @@ export function renderStudentCard(student, options = {}) {
 	}
 
 	/* ── Final markup ───────────────────────────────────────────── */
-	return `
-		<div class="bg-white rounded-xl p-4 text-center shadow hover:-translate-y-1 transition-transform duration-200">
-			<a href="/app/student/${student_id}" target="_blank" rel="noopener">
-				<img src="${thumb_src}" onerror="this.onerror=null;this.src='${original_src}';"
-					 class="w-[${thumbSize}px] h-[${thumbSize}px] rounded-full object-cover mx-auto bg-gray-100" loading="lazy">
-			</a>
-			<div class="mt-3 text-lg font-semibold">
-				<a href="/app/student/${student_id}" target="_blank" rel="noopener">${student_name}</a>
-				${health_icon}${birthday_icon}
-			</div>
-			${preferred_name ? `<div class="text-sm text-gray-500 mt-1">${preferred_name}</div>` : ''}
-		</div>`;
+  return `
+    <div class="bg-white rounded-xl p-4 text-center shadow hover:-translate-y-1 transition duration-200">
+      <a href="/app/student/${studentId}" target="_blank" rel="noopener">
+        <img src="${thumbSrc}" onerror="this.onerror=null;this.src='${fallbackSrc}';"
+             class="w-[${thumbSize}px] h-[${thumbSize}px] rounded-full object-cover mx-auto bg-neutral-100"
+             loading="lazy" data-thumbsize="${thumbSize}">
+      </a>
+      <div class="mt-3 text-lg font-semibold">
+        <a href="/app/student/${studentId}" target="_blank" rel="noopener">${name}</a>
+        ${health}${birthday}
+      </div>
+      ${preferredName ? `<div class="text-sm text-gray-500 mt-1">${preferredName}</div>` : ""}
+    </div>`;
 }
 
