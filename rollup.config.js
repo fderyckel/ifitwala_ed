@@ -76,10 +76,6 @@ export default [
 			postcss({
 				extract: `${dist}/other_desk_pages.min.css`,
 				minimize: true,
-				plugins: [
-					require("autoprefixer"),
-					require("cssnano")({ preset: "default" })
-				]
 			})
 		]
 	},	
