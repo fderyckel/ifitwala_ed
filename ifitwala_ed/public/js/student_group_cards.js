@@ -93,4 +93,3 @@ export function renderStudentCard(student, options = {}) {
 		</div>`;
 }
 
-frappe.renderStudentCard = renderStudentCard;

@@ -2,5 +2,7 @@
 import "./utils";
 import "./queries";
 import "./desk_fullcalendar"
-import "./student_group_cards";
+import { renderStudentCard } from "./student_group_cards.js";   
 import "../css/student_group_cards.css";
+
+frappe.renderStudentCard = renderStudentCard;
