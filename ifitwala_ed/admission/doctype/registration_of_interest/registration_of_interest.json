@@ -154,7 +154,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-12 09:36:07.575677",
+ "modified": "2025-06-01 22:08:16.835959",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Registration of Interest",
@@ -182,6 +182,18 @@
    "read": 1,
    "report": 1,
    "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Marketing User",
    "share": 1,
    "write": 1
   }
