@@ -59,7 +59,8 @@ export default [
 			file: `${dist}/ifitwala_ed.bundle.js`,                // built file
 			format: "iife",
 			sourcemap: true
-		}
+		}, 
+		plugins: [...basePlugins, terser()]
 	},
 	/* ── Student-group styles (CSS only, no JS) ───────────────────────── */
 	{
