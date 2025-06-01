@@ -62,23 +62,6 @@ export default [
 		}, 
 		plugins: [...basePlugins, terser()]
 	},
-	/* ── Student-group styles (CSS only, no JS) ───────────────────────── */
-	{
-		input: "ifitwala_ed/public/css/student_group_cards.css",
-		output: { dir: "." },
-		plugins: [
-			postcss({
-				extract: `${dist}/student_group_cards.min.css`,
-				minimize: true,
-				plugins: [
-					require("tailwindcss"),
-					require("autoprefixer"),
-					require("cssnano")({ preset: "default" })
-				]
-			}),
-			terser()
-		]
-	},	
 	/* ── Other desk pages (CSS only, no JS) ─────────────────────────── */
 	{
 		input: "ifitwala_ed/public/css/other_desk_pages.css",
