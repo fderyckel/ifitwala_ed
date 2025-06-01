@@ -1,40 +1,43 @@
 {
-  "name": "ifitwala_ed",
-  "description": "An Open Source School and Education ERP System powered by the Frappe Framework",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/fderyckel/ifitwala_ed.git"
-  },
-  "homepage": "https://ifitwala.com",
-  "author": "François de Ryckel",
-  "license": "GPL-3.0",
-  "bugs": {
-    "url": "https://github.com/fderyckel/ifitwala_ed/issues"
-  },
-  "scripts": {
-    "preinstall": "npm list -g sass || npm install -g sass",
-    "build": "rollup -c",
-    "hierarchy": "rollup -c --watch --configPlugin rollup-plugin-postcss --environment WATCH_HIERARCHY",
-    "bench-build": "npm run build && bench build"
-  },
-  "devDependencies": {
-    "@rollup/plugin-commonjs": "^28.0.3",
-    "@rollup/plugin-node-resolve": "^16.0.1",
+	"name": "ifitwala_ed",
+	"description": "An Open Source School and Education ERP System powered by the Frappe Framework",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fderyckel/ifitwala_ed.git"
+	},
+	"homepage": "https://ifitwala.com",
+	"author": "François de Ryckel",
+	"license": "GPL-3.0",
+	"bugs": {
+		"url": "https://github.com/fderyckel/ifitwala_ed/issues"
+	},
+	"scripts": {
+		"preinstall": "npm list -g sass || npm install -g sass",
+		"build": "rollup -c",
+		"hierarchy": "rollup -c --watch --configPlugin rollup-plugin-postcss --environment WATCH_HIERARCHY",
+		"bench-build": "npm run build && bench build"
+	},
+	"devDependencies": {
+		"@rollup/plugin-commonjs": "^28.0.3",
+		"@rollup/plugin-node-resolve": "^16.0.1",
 		"@rollup/plugin-alias": "^4.0.0",
-    "rollup": "^2.79.2",
-    "rollup-plugin-terser": "^7.0.2", 
-    "sass": "^1.65.0",
-    "rollup-plugin-postcss": "4.0.2",
-    "autoprefixer": "^10.4.14",
-    "cssnano": "^6.0.1", 
-    "postcss": "^8.4.31", 
+		"rollup": "^2.79.2",
+		"rollup-plugin-terser": "^7.0.2",
+		"sass": "^1.65.0",
+		"rollup-plugin-postcss": "4.0.2",
+		"autoprefixer": "^10.4.14",
+		"cssnano": "^6.0.1",
+		"postcss": "^8.4.31",
 		"@fullcalendar/core": "6.1.8",
-    "@fullcalendar/daygrid": "6.1.8",
-    "@fullcalendar/timegrid": "6.1.8",
-    "@fullcalendar/list": "6.1.8"
-  },
-  "dependencies": {
-    "html2canvas": "^1.4.1",
-    "onscan.js": "^1.5.2"
-  }
+		"@fullcalendar/daygrid": "6.1.8",
+		"@fullcalendar/timegrid": "6.1.8",
+		"@fullcalendar/list": "6.1.8",
+		"tailwindcss": "^3.4.1",
+		"@tailwindcss/forms": "^0.5.7",
+		"@tailwindcss/typography": "^0.5.9"
+	},
+	"dependencies": {
+		"html2canvas": "^1.4.1",
+		"onscan.js": "^1.5.2"
+	}
 }

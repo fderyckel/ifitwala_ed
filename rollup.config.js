@@ -12,15 +12,16 @@
  * hierarchy_chart.scss       → public/dist/hierarchy_chart.<hash>.css
  */
 
-import resolve  from '@rollup/plugin-node-resolve';
-import commonjs from '@rollup/plugin-commonjs';
-import terser from '@rollup/plugin-terser';
-import postcss   from 'rollup-plugin-postcss';
-import { createHash } from 'crypto';
-import fs from 'fs';
 import path from 'path';
-import sass from 'sass';
+import fs from 'fs';
 import alias from '@rollup/plugin-alias';
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
+import postcss from 'rollup-plugin-postcss';
+import { terser } from 'rollup-plugin-terser';
+import sass from 'sass'; // only needed if compiling .scss
+import { createHash } from 'crypto';
+
 
 const projectRootDir = path.resolve(__dirname);
 
@@ -66,14 +67,15 @@ export default [
 		output: { dir: "." },
 		plugins: [
 			postcss({
-				extract: `${dist}/student_group.min.css`,   // ← file that will be written
+				extract: `${dist}/student_group.min.css`,
 				minimize: true,
 				plugins: [
-					require("tailwindcss"), 
+					require("tailwindcss"),
 					require("autoprefixer"),
 					require("cssnano")({ preset: "default" })
 				]
-			})
+			}),
+			terser()
 		]
 	},	
 	/* ── Other desk pages (CSS only, no JS) ─────────────────────────── */
