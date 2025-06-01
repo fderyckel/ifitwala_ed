@@ -1,9 +1,8 @@
 // Copyright (c) 2025, François de Ryckel
 // Tailwind-compliant version – no external CSS required
 
-const { renderStudentCard } = frappe.ifitwala_ed.helpers;
-
 frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
+	const { renderStudentCard } = frappe.ifitwala_ed.helpers;
 	/* ── Breadcrumb ────────────────────────────────────────────────── */
 	const urlParams = new URLSearchParams(window.location.search);
 	const workspace = urlParams.get('workspace') || 'Academics';
