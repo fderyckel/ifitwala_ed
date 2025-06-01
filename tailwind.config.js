@@ -6,6 +6,7 @@ module.exports = {
 		"./ifitwala_ed/public/css/**/*.css",             // any raw CSS using @apply or custom Tailwind
 		"./ifitwala_ed/templates/**/*.html",             // standard Jinja templates
 		"./ifitwala_ed/www/**/*.html",                   // custom public pages
+		'./ifitwala_ed/schedule/page/**/*.{js,html}'
   ],
   theme: {
     extend: {
