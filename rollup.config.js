@@ -60,7 +60,19 @@ export default [
 			format: "iife",
 			sourcemap: true
 		}, 
-		plugins: [...basePlugins, terser()]
+		plugins: [
+			...basePlugins,
+			postcss({
+				extract: `${dist}/ifitwala_ed.bundle.css`,   // new combined Desk CSS
+				minimize: true,
+				plugins: [
+					require("tailwindcss"),
+					require("autoprefixer"),
+					require("cssnano")({ preset: "default" })
+				]
+			}),
+			terser()
+		]
 	},
 	/* ── Other desk pages (CSS only, no JS) ─────────────────────────── */
 	{
