@@ -1,6 +1,8 @@
 // Copyright (c) 2025, François de Ryckel
 // Tailwind-compliant version – no external CSS required
 
+const { renderStudentCard } = frappe.ifitwala_ed.helpers;
+
 frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 	/* ── Breadcrumb ────────────────────────────────────────────────── */
 	const urlParams = new URLSearchParams(window.location.search);
@@ -119,7 +121,7 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 				group_info = message.group_info || {};
 
 				message.students.forEach(student => {
-					$('#student-cards').append(frappe.renderStudentCard(student));
+					$('#student-cards').append(renderStudentCard(student));
 				});
 
 				update_title();
