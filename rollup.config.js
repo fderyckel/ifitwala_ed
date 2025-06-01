@@ -65,9 +65,7 @@ export default [
 				extract: `${dist}/ifitwala_ed.bundle.css`,   
 				minimize: true,
 				plugins: [
-					require('@tailwindcss/postcss')(),
-					require("autoprefixer"),
-					require("cssnano")({ preset: ["default",  {calc: false,}],})
+					require('@tailwindcss/postcss')(), 
 				], 
 			}),
 			terser()
