@@ -64,11 +64,11 @@ export default [
 	},
 	/* ── Student-group styles (CSS only, no JS) ───────────────────────── */
 	{
-		input: "ifitwala_ed/public/css/student_group.css",
+		input: "ifitwala_ed/public/css/student_group_cards.css",
 		output: { dir: "." },
 		plugins: [
 			postcss({
-				extract: `${dist}/student_group.min.css`,
+				extract: `${dist}/student_group_cards.min.css`,
 				minimize: true,
 				plugins: [
 					require("tailwindcss"),

@@ -32,7 +32,7 @@ app_include_js = [
 ]
 
 app_include_css = [    
-	"/assets/ifitwala_ed/dist/student_group.min.css",
+	"/assets/ifitwala_ed/dist/student_group_cards.min.css",
   "/assets/ifitwala_ed/dist/other_desk_pages.min.css"
 ]
 
