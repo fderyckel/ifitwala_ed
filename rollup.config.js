@@ -55,20 +55,20 @@ export default [
 	{
 		input: "ifitwala_ed/public/js/ifitwala_ed.bundle.js",   // source
 		output: {
-			file: `${dist}/ifitwala_ed.bundle.js`,                // built file
+			file: `${dist}/ifitwala_ed.bundle.js`,                
 			format: "iife",
 			sourcemap: true
 		}, 
 		plugins: [
 			...basePlugins,
 			postcss({
-				extract: `${dist}/ifitwala_ed.bundle.css`,   // new combined Desk CSS
+				extract: `${dist}/ifitwala_ed.bundle.css`,   
 				minimize: true,
 				plugins: [
-					require("tailwindcss"),
+					require('@tailwindcss/postcss')(),
 					require("autoprefixer"),
 					require("cssnano")({ preset: "default" })
-				]
+				], 
 			}),
 			terser()
 		]
