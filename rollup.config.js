@@ -19,7 +19,7 @@ const alias     = require('@rollup/plugin-alias');
 const resolve   = require('@rollup/plugin-node-resolve');
 const commonjs  = require('@rollup/plugin-commonjs');
 const postcss   = require('rollup-plugin-postcss');
-const terser    = require('@rollup/plugin-terser').terser;   // 👈 CJS access
+const { terser } = require('@rollup/plugin-terser')
 const { createHash } = require('crypto');
 
 const projectRootDir = __dirname;
@@ -34,9 +34,24 @@ function contentHash(file) {
 const portalHash = contentHash(path.join(portalSrc, 'index.js'));
 
 const basePlugins = [
+  postcss({
+    extract: true,
+    plugins: [
+      require('@tailwindcss/postcss')({ config: './tailwind.config.js' }),
+      require('autoprefixer'),
+    ],
+    minimize: true,
+  }),
   resolve(),
   commonjs(),
-  alias({ entries: [{ find: '@fullcalendar-css', replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar') }] })
+  alias({
+    entries: [
+      {
+        find: '@fullcalendar-css',
+        replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar'),
+      },
+    ],
+  }),
 ];
 
 /* ─── Build matrix ─────────────────────────────────────────────────── */
@@ -47,14 +62,9 @@ module.exports = [
     output: { file: `${dist}/ifitwala_ed.bundle.js`, format: 'iife', sourcemap: true },
     plugins: [
       ...basePlugins,
-      postcss({
-        extract : `${dist}/ifitwala_ed.bundle.css`,
-        plugins : [
-          require('@tailwindcss/postcss')({ config: './tailwind.config.js' }),
-          require('autoprefixer')
-        ],
-        minimize: true
-      }),
+			postcss({
+				extract: `${dist}/ifitwala_ed.bundle.css`,
+			}),
       terser()
     ]
   },
@@ -88,8 +98,7 @@ module.exports = [
 			postcss({
 				extract: `${websiteSrc}/website.min.css`,
 				minimize: true,
-				plugins: [require('autoprefixer'), 
-				]
+				plugins: [require('autoprefixer')]
 			})
 		]
 	},
