@@ -19,7 +19,7 @@ const alias     = require('@rollup/plugin-alias');
 const resolve   = require('@rollup/plugin-node-resolve');
 const commonjs  = require('@rollup/plugin-commonjs');
 const postcss   = require('rollup-plugin-postcss');
-const { terser } = require('@rollup/plugin-terser')
+const terser    = require('@rollup/plugin-terser')
 const { createHash } = require('crypto');
 
 const projectRootDir = __dirname;
