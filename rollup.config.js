@@ -55,7 +55,7 @@ module.exports = [
 		plugins: [
 			postcss({
 				include: '**/*.css', 
-				extract: `${dist}/ifitwala_ed.bundle.css`,
+				extract: path.resolve(dist, 'ifitwala_ed.bundle.css'), 
 				minimize: true,
    	 	}),
 			...basePlugins,
@@ -132,7 +132,7 @@ module.exports = [
 		},
 		plugins: [
 			postcss({
-				extract: `${dist}/student_portal.${portalHash}.bundle.css`,
+				extract: path.resolve(dist, `student_portal.${portalHash}.bundle.css`),
 				minimize: true,
 			}),
 			...basePlugins,
