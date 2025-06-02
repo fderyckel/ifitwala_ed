@@ -13,4 +13,7 @@ module.exports = {
 		require('@tailwindcss/forms'),     // handles filters/searches better
 		require('@tailwindcss/typography') // optional for better content rendering
 	],
+	theme: {
+    extend: {},
+  },
 };

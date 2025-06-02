@@ -2,9 +2,7 @@
 /* Base Tailwind layers */
 
 /* Tailwind v4 entry --------------------------------------------- */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 
 /* Custom styles */
