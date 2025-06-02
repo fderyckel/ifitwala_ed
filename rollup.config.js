@@ -34,14 +34,6 @@ function contentHash(file) {
 const portalHash = contentHash(path.join(portalSrc, 'index.js'));
 
 const basePlugins = [
-  postcss({
-    extract: true,
-    plugins: [
-      require('@tailwindcss/postcss')({ config: './tailwind.config.js' }),
-      require('autoprefixer'),
-    ],
-    minimize: true,
-  }),
   resolve(),
   commonjs(),
   alias({
@@ -62,10 +54,10 @@ module.exports = [
     output: { file: `${dist}/ifitwala_ed.bundle.js`, format: 'iife', sourcemap: true },
 		plugins: [
 			postcss({
-				include: '**/*.css',   // 🛡️ protects from accidental .js
+				include: '**/*.css', 
 				extract: `${dist}/ifitwala_ed.bundle.css`,
 				minimize: true,
-			}),
+   	 	}),
 			...basePlugins,
 			terser(),
 		],
@@ -139,15 +131,12 @@ module.exports = [
 			sourcemap: true
 		},
 		plugins: [
-			...basePlugins,
-			terser(),
 			postcss({
 				extract: `${dist}/student_portal.${portalHash}.bundle.css`,
 				minimize: true,
-				plugins: [
-					require('autoprefixer'), 
-				]
-			})
+			}),
+			...basePlugins,
+			terser(),
 		]
 	},
 	/* ── Hierarchy chart (SCSS → minified CSS, stable filename) ── */
