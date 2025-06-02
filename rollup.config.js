@@ -12,66 +12,52 @@
  * hierarchy_chart.scss       → public/dist/hierarchy_chart.<hash>.css
  */
 
-import path from 'path';
-import fs from 'fs';
-import alias from '@rollup/plugin-alias';
-import resolve from '@rollup/plugin-node-resolve';
-import commonjs from '@rollup/plugin-commonjs';
-import postcss from 'rollup-plugin-postcss';
-import { terser } from '@rollup/plugin-terser';
-import { createHash } from 'crypto';
 
+const path      = require('path');
+const fs        = require('fs');
+const alias     = require('@rollup/plugin-alias');
+const resolve   = require('@rollup/plugin-node-resolve');
+const commonjs  = require('@rollup/plugin-commonjs');
+const postcss   = require('rollup-plugin-postcss');
+const terser    = require('@rollup/plugin-terser').terser;   // 👈 CJS access
+const { createHash } = require('crypto');
 
-const projectRootDir = path.resolve(__dirname);
-
-/* ─── Paths ────────────────────────────────────────────────────────── */
+const projectRootDir = __dirname;
 const dist       = 'ifitwala_ed/public/dist';
 const websiteSrc = 'ifitwala_ed/public/website';
 const portalSrc  = 'ifitwala_ed/public/js/student_portal';
 
-/* ─── Helper – content hash for long‑lived bundles ─────────────────── */
+
 function contentHash(file) {
-	return createHash('sha256')
-		.update(fs.readFileSync(file))
-		.digest('hex')
-		.slice(0, 8);
+  return createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 8);
 }
 const portalHash = contentHash(path.join(portalSrc, 'index.js'));
 
-/* ─── Common plugins ───────────────────────────────────────────────── */
-const basePlugins = [ 
-	resolve(),
-	commonjs(),
-	alias({
-		entries: [
-			{ find: '@fullcalendar-css', replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar') }
-		]
-	})
+const basePlugins = [
+  resolve(),
+  commonjs(),
+  alias({ entries: [{ find: '@fullcalendar-css', replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar') }] })
 ];
 
 /* ─── Build matrix ─────────────────────────────────────────────────── */
-export default [
-	/* ── Desk bundle (shared by all staff-facing pages) ─────────────── */
-	{
-		input: "ifitwala_ed/public/js/ifitwala_ed.bundle.js",   // source
-		output: {
-			file: `${dist}/ifitwala_ed.bundle.js`,                
-			format: "iife",
-			sourcemap: true
-		}, 
-		plugins: [
-			...basePlugins,
-			postcss({
-				extract: `${dist}/ifitwala_ed.bundle.css`,   
-				minimize: true,
-				plugins : [
-					require('@tailwindcss/postcss')({config: './tailwind.config.js'}), 
-					require('autoprefixer') 
-				]
-			}),
-			terser()
-		]
-	},
+module.exports = [
+  /* Desk bundle ---------------------------------------------------- */
+  {
+    input: 'ifitwala_ed/public/js/ifitwala_ed.bundle.js',
+    output: { file: `${dist}/ifitwala_ed.bundle.js`, format: 'iife', sourcemap: true },
+    plugins: [
+      ...basePlugins,
+      postcss({
+        extract : `${dist}/ifitwala_ed.bundle.css`,
+        plugins : [
+          require('@tailwindcss/postcss')({ config: './tailwind.config.js' }),
+          require('autoprefixer')
+        ],
+        minimize: true
+      }),
+      terser()
+    ]
+  },
 	/* ── Other desk pages (CSS only, no JS) ─────────────────────────── */
 	{
 		input: "ifitwala_ed/public/css/other_desk_pages.css",
