@@ -65,7 +65,7 @@ module.exports = [
 				include: '**/*.css',   // 🛡️ protects from accidental .js
 				extract: `${dist}/ifitwala_ed.bundle.css`,
 				plugins: [
-					require('tailwindcss')('./tailwind.config.js'),
+					require('@tailwindcss/postcss')({ config: './tailwind.config.js' }),
 					require('autoprefixer'),
 				],
 				minimize: true,
