@@ -60,13 +60,19 @@ module.exports = [
   {
     input: 'ifitwala_ed/public/js/ifitwala_ed.bundle.js',
     output: { file: `${dist}/ifitwala_ed.bundle.js`, format: 'iife', sourcemap: true },
-    plugins: [
-      ...basePlugins,
+		plugins: [
 			postcss({
+				include: '**/*.css',   // 🛡️ protects from accidental .js
 				extract: `${dist}/ifitwala_ed.bundle.css`,
+				plugins: [
+					require('tailwindcss')('./tailwind.config.js'),
+					require('autoprefixer'),
+				],
+				minimize: true,
 			}),
-      terser()
-    ]
+			...basePlugins,
+			terser(),
+		],
   },
 	/* ── Other desk pages (CSS only, no JS) ─────────────────────────── */
 	{
