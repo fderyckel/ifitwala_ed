@@ -43,6 +43,13 @@
   background-color: #2563EB;
 }
 
+.student-card {
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
+}
+
 .student-card-img {
   width: 80px;
   height: 80px;
