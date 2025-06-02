@@ -71,7 +71,7 @@ export function renderStudentCard(student, { thumbSize = 80 } = {}) {
       <a href="/app/student/${student_id}" target="_blank" rel="noopener">
         <img src="${thumb_src}"
              onerror="this.onerror=null;this.src='${fallback_src}';"
-             class="w-[${thumbSize}px] h-[${thumbSize}px] rounded-full object-cover mx-auto bg-neutral-100"
+             class="student-card-img"
              loading="lazy">
       </a>
       <div class="mt-3 text-lg font-semibold">

@@ -74,9 +74,8 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
       <div id="student-group-title" class="text-center"></div>
     </div>
 
-    <!-- Tailwind utilities inline - no @apply needed -->
-    <div id="student-cards"
-          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-6 mt-4 px-4">
+    <!-- Tailwind utilities inline -->
+    <div id="student-cards"  class="student-card-grid">
     </div>
     <div class="flex justify-center mt-6">
       <button id="load-more"
