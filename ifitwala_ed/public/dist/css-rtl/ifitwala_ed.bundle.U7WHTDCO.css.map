@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../../../../../../../tmp/tmp-766758-ANfNnJQZoXA0/ifitwala_ed/ifitwala_ed/public/scss/ifitwala_ed.bundle.css"],
-  "sourcesContent": ["@charset \"UTF-8\";\n/* Tailwind CSS Entry for Student Group Page */\n/* Base Tailwind layers */\n@tailwind base;\n@tailwind components;\n@tailwind utilities;\n/* Optional: You can define component-level classes here if needed later */\n/* Example reusable card layout \u2013 though Tailwind utilities often suffice */\n@layer components {\n  .student-card-grid {\n    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 px-4 mt-4;\n  }\n  .student-grid-title {\n    @apply text-2xl font-semibold text-center text-gray-800;\n  }\n  .student-grid-subtitle {\n    @apply text-sm text-gray-500 text-center mt-1;\n  }\n  .load-more-button {\n    @apply bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition;\n  }\n}"],
-  "mappings": ";;;AAGA;AACA;AACA;AAGA;AACE;AACE;AAAA;AAEF;AACE;AAAA;AAEF;AACE;AAAA;AAEF;AACE;AAAA;AAAA;",
-  "names": []
-}
