@@ -1,4 +1,5 @@
 module.exports = {
+	important: '.desk-tw', 
 	content: [
 		"./ifitwala_ed/public/js/**/*.js",               // only JS where Tailwind classes are likely used
 		"./ifitwala_ed/public/css/**/*.css",             // any raw CSS using @apply or custom Tailwind
