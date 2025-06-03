@@ -69,21 +69,22 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 	}
 
 	/* ── Layout container ─────────────────────────────────────────── */
-  $(wrapper).append(`
-    <div class="sticky top-[65px] bg-white py-3 shadow-sm z-[5]">
-      <div id="student-group-title" class="text-center"></div>
-    </div>
+	$(wrapper).append(`
+		<div class="desk-tw">
+			<div class="sticky top-[65px] bg-white py-3 shadow-sm z-[2]">
+				<div id="student-group-title" class="text-center"></div>
+			</div>
 
-    <!-- Tailwind utilities inline -->
-    <div id="student-cards"  class="student-card-grid">
-    </div>
-    <div class="flex justify-center mt-6">
-      <button id="load-more"
-              class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition">
-        ${__("Load More")}
-      </button>
-    </div>
-  `);
+			<div id="student-cards" class="student-card-grid"></div>
+
+			<div class="flex justify-center mt-6">
+				<button id="load-more"
+								class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition">
+					${__("Load More")}
+				</button>
+			</div>
+		</div>
+	`);
 
 
 	/* ── Pagination state ─────────────────────────────────────────── */

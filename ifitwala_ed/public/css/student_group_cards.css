@@ -1,11 +1,12 @@
 /* Student Group Cards CSS */
 
 /* Import Tailwind CSS */
-/*@import "tailwindcss";  */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+.desk-tw {
+  @tailwind base;
+  @tailwind components;
+  @tailwind utilities;
+}
 
 
 /* Custom styles */
