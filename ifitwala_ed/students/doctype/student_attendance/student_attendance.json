@@ -5,9 +5,9 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "section_break_rcnc",
   "student",
   "student_name",
-  "attendance_type",
   "attendance_date",
   "attendance_time",
   "period",
@@ -130,16 +130,14 @@
    "label": "Meta Locked"
   },
   {
-   "fieldname": "attendance_type",
-   "fieldtype": "Select",
-   "label": "Attendance Type",
-   "options": "Daily\nPeriod-wise"
+   "fieldname": "section_break_rcnc",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-03 07:12:10.462385",
+ "modified": "2025-06-03 20:15:06.390756",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Attendance",
