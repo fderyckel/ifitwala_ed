@@ -7,3 +7,9 @@ node_modules
 dist
 __pycache__
 package-lock.json
+
+# Yarn
+.yarn/*
+!.yarn/releases
+!.yarnrc.yml
+yarn.lock

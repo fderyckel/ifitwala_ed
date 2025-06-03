@@ -71,7 +71,7 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 	/* ── Layout container ─────────────────────────────────────────── */
 	$(wrapper).append(`
 		<div class="desk-tw">
-			<div class="sticky top-[65px] bg-white py-3 shadow-sm z-[2]">
+			<div class="sticky top-[65px] bg-white py-3 shadow-sm">
 				<div id="student-group-title" class="text-center"></div>
 			</div>
 
