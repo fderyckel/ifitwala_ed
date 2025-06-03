@@ -48,7 +48,7 @@ safelist: [
   'shadow',
   'duration-200',
   'hover:-translate-y-1'
-]
+], 
 	plugins: [
 		require('@tailwindcss/forms'),     // handles filters/searches better
 		require('@tailwindcss/typography') // optional for better content rendering
