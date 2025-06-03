@@ -20,6 +20,10 @@ body .navbar {
 	color: inherit !important;
 }
 
+/* －－ page-head (filters + breadcrumbs) should win all z-index fights */
+.page-head            { z-index: 70 !important; }   /* > .sticky-title (40) */
+.page-head .awesomplete  { z-index: 1001 !important; } /* just in case */
+
 /* 3  Grid & card layout
    ----------------------------------------------------------------- */
 .desk-tw .student-card-grid {
@@ -50,7 +54,7 @@ body .navbar {
    ----------------------------------------------------------------- */
 .desk-tw .sticky-title {
   position: sticky;
-  top: calc(var(--navbar-height) + 4px);   /* just under the navbar   */
+  top: calc(var(--navbar-height) + 64px);   /* just under the navbar   */
   z-index: 40;                             /* below dropdowns (1001) */
   background: #fff;
   padding: 0.75rem 1rem;                   /* py-3 */
