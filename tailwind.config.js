@@ -1,6 +1,9 @@
 
 module.exports = {
 	important: '.desk-tw', 
+	corePlugins: {
+  	preflight: false,      // ⬅️  totally removes @tailwind base
+	},
 	content: [
 		"./ifitwala_ed/public/js/**/*.js",               // only JS where Tailwind classes are likely used
 		"./ifitwala_ed/public/css/**/*.css",             // any raw CSS using @apply or custom Tailwind
