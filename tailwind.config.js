@@ -27,9 +27,28 @@ module.exports = {
 		"./ifitwala_ed/www/**/*.html",                   // custom public pages
 		'./ifitwala_ed/schedule/page/**/*.{js,html}'
 	],
-	safelist: [ 
-		{ pattern: /.*/ } 
-  ],
+safelist: [
+  'bg-blue-600',
+  'text-white',
+  'px-5',
+  'py-2',
+  'rounded',
+  'hover:bg-blue-700',
+  'transition',
+  'mt-6',
+  'flex',
+  'justify-center',
+  'text-center',
+  'text-2xl',
+  'font-semibold',
+  'text-gray-800',
+  'text-sm',
+  'text-gray-500',
+  'rounded-xl',
+  'shadow',
+  'duration-200',
+  'hover:-translate-y-1'
+]
 	plugins: [
 		require('@tailwindcss/forms'),     // handles filters/searches better
 		require('@tailwindcss/typography') // optional for better content rendering
