@@ -59,3 +59,13 @@
   margin-right: auto;
   background-color: #f5f5f5; /* neutral-100 */
 }
+
+.desk-tw .sticky-title {
+  position: sticky;
+  top: var(--navbar-height);
+  z-index: 200;   /* below the navbar (which is 1000+) */
+}
+
+/* --- Bootstrap vs Tailwind button fix ----------------------------- */
+.desk-tw button.bg-blue-600:not(.btn)     { background-color:#2563EB!important; }
+.desk-tw button.hover\:bg-blue-700:hover  { background-color:#1E40AF!important; }
