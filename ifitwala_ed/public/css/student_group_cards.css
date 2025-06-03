@@ -18,6 +18,7 @@ body .navbar {
   /* Bootstrap already sets 1030; we raise it a notch so it stays
      above our sticky elements but below modals (1050).             */
   z-index: 1100 !important;
+	color: inherit !important;
 }
 
 /* 3  Grid & card layout
