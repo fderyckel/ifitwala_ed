@@ -88,6 +88,57 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 		`);
 
 
+		/* ── Debug Utility: Detect overridden Tailwind classes ───────────── */
+		function debug_tailwind_conflicts() {
+			const testEl = document.createElement('div');
+			testEl.className = 'desk-tw';
+			testEl.style.display = 'none';
+
+			testEl.innerHTML = `
+				<div id="tw-test"
+					class="bg-blue-600 text-white rounded"
+					style="padding: 1rem;">
+					Test
+				</div>
+			`;
+			document.body.appendChild(testEl);
+
+			const el = testEl.querySelector('#tw-test');
+			const bg = getComputedStyle(el).backgroundColor;
+			const color = getComputedStyle(el).color;
+			const borderRadius = getComputedStyle(el).borderRadius;
+
+			const expected = {
+				'background-color': 'rgb(37, 99, 235)',   // Tailwind blue-600
+				'color': 'rgb(255, 255, 255)',            // text-white
+				'border-radius': '6px'                    // rounded (0.375rem)
+			};
+
+			const mismatch = [];
+
+			if (bg !== expected['background-color']) mismatch.push(`Background color mismatch: ${bg}`);
+			if (color !== expected['color']) mismatch.push(`Text color mismatch: ${color}`);
+			if (borderRadius !== expected['border-radius']) mismatch.push(`Border radius mismatch: ${borderRadius}`);
+
+			if (mismatch.length) {
+				console.warn('[Tailwind Diagnostic] Some Tailwind styles were overridden by other CSS:');
+				mismatch.forEach(msg => console.warn('  →', msg));
+				frappe.msgprint({
+					title: __('Tailwind Conflict Detected'),
+					message: __('Some Tailwind styles (e.g. button colors) are being overridden by other CSS on this page. Check dev console for details.'),
+					indicator: 'orange'
+				});
+			} else {
+				console.log('%cTailwind styles applied successfully (scoped inside .desk-tw)', 'color: green; font-weight: bold;');
+			}
+
+			document.body.removeChild(testEl);
+		}
+
+		debug_tailwind_conflicts();
+
+
+
 		/* ── Pagination state ─────────────────────────────────────────── */
 		let start = 0;
 		const page_length = 25;
