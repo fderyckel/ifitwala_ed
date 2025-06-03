@@ -85,25 +85,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Admin tools",
-   "link_count": 1,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "File Management",
-   "link_count": 0,
-   "link_to": "File Management",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Schedule",
    "link_count": 4,
    "link_type": "DocType",
@@ -394,9 +375,38 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Admin tools",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "File Management",
+   "link_count": 0,
+   "link_to": "File Management",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Page",
+   "link_count": 0,
+   "link_to": "Page",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-06-03 07:16:02.299670",
+ "modified": "2025-06-03 20:08:30.973392",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Settings",

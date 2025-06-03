@@ -3,17 +3,24 @@
  "creation": "2025-03-03 19:13:38.693686",
  "docstatus": 0,
  "doctype": "Page",
- "idx": 0,
- "modified": "2025-03-04 10:15:16.573398",
+ "idx": 46,
+ "modified": "2025-06-03 11:43:21.476614",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "student_group_cards",
  "owner": "Administrator",
  "page_name": "student_group_cards",
- "roles": [],
+ "roles": [
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Academic Staff"
+  }
+ ],
  "script": null,
  "standard": "Yes",
  "style": null,
  "system_page": 1,
- "title": "Student Group Image"
+ "title": "Student Group Cards"
 }
