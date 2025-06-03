@@ -22,6 +22,8 @@ const postcss   = require('rollup-plugin-postcss');
 const terser    = require('@rollup/plugin-terser')
 const { createHash } = require('crypto');
 
+const postcssPrefix = require('postcss-class-prefix');
+
 const projectRootDir = __dirname;
 const dist       = 'ifitwala_ed/public/dist';
 const websiteSrc = 'ifitwala_ed/public/website';
@@ -46,6 +48,19 @@ const basePlugins = [
   }),
 ];
 
+/* Convenience — PostCSS config reused in several jobs */
+function pc(cssFile) {
+  return postcss({
+    include: '**/*.css',
+    extract: cssFile,
+    minimize: true,
+    plugins: [
+      postcssPrefix('tw-'),           // ← HERE
+      require('autoprefixer'),
+    ],
+  });
+}
+
 /* ─── Build matrix ─────────────────────────────────────────────────── */
 module.exports = [
   /* Desk bundle ---------------------------------------------------- */
@@ -53,11 +68,7 @@ module.exports = [
     input: 'ifitwala_ed/public/js/ifitwala_ed.bundle.js',
     output: { file: `${dist}/ifitwala_ed.bundle.js`, format: 'iife', sourcemap: true },
 		plugins: [
-			postcss({
-				include: '**/*.css', 
-				extract: path.resolve(dist, 'ifitwala_ed.bundle.css'), 
-				minimize: true,
-   	 	}),
+			pc(path.resolve(dist, 'ifitwala_ed.bundle.css')),
 			...basePlugins,
 			terser(),
 		],

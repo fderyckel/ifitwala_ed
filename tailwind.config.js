@@ -3,26 +3,24 @@
 const forms = require('@tailwindcss/forms');
 
 module.exports = {
-  /* ①  Namespace every utility */
-  important: '.desk-tw',          // ⇒ .desk-tw .flex { … }
 
-  /* ②  Remove Preflight – no global resets */
+  /* Remove Preflight – no global resets */
   corePlugins: { preflight: false },
 
-  /* ③  Plugins that *only* generate class-based utilities */
+  /* Plugins that *only* generate class-based utilities */
   plugins: [
     forms({ strategy: 'class' }), // ⇒ .desk-tw .form-input { … }
     require('@tailwindcss/typography')({ className: 'tw-prose' })
   ],
 
-  /* ④  Purge only files that belong to the Desk-TW namespace */
+  /*  Purge only files that belong to the Desk-TW namespace */
   content: [
     './ifitwala_ed/schedule/page/student_group_cards/**/*.{js,html}',
     './ifitwala_ed/public/js/student_group_cards.js',
     './ifitwala_ed/public/css/student_group_cards.css'
   ],
 
-  /* ⑤  Safelist any dynamic utilities you build in JS */
+  /* Safelist any dynamic utilities you build in JS */
   safelist: [
     'bg-blue-600','hover:bg-blue-700','text-white',
     'flex','justify-center','mt-6',
