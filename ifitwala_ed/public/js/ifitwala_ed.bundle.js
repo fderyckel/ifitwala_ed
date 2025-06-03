@@ -1,7 +1,9 @@
+import "../css/student_group_cards.css";  // import the CSS for student group cards
+
 import "./utils";
 import "./queries";
 import "./desk_fullcalendar" 
-import "../css/student_group_cards.css";  
+
 
 import { renderStudentCard } from "./student_group_cards.js";
 
