@@ -1,44 +1,44 @@
 {
-	"name": "ifitwala_ed",
-	"description": "An Open Source School and Education ERP System powered by the Frappe Framework",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/fderyckel/ifitwala_ed.git"
-	},
-	"homepage": "https://ifitwala.com",
-	"author": "François de Ryckel",
-	"license": "GPL-3.0",
-	"bugs": {
-		"url": "https://github.com/fderyckel/ifitwala_ed/issues"
-	},
-	"scripts": {
-		"preinstall": "npm list -g sass || npm install -g sass",
-		"build": "rollup -c",
-		"hierarchy": "rollup -c --watch --configPlugin rollup-plugin-postcss --environment WATCH_HIERARCHY",
-		"bench-build": "npm run build && bench build"
-	},
-	"devDependencies": {
-		"@fullcalendar/core": "^6.1.17",
-		"@fullcalendar/daygrid": "^6.1.17",
-		"@fullcalendar/list": "^6.1.17",
-		"@fullcalendar/timegrid": "^6.1.17",
-		"@rollup/plugin-alias": "^5.1.1",
-		"@rollup/plugin-commonjs": "^28.0.3",
-		"@rollup/plugin-node-resolve": "^16.0.1",
-		"@rollup/plugin-terser": "^0.4.4",
-		"@tailwindcss/cli": "^4.1.8",
-		"@tailwindcss/forms": "^0.5.10",
-		"@tailwindcss/postcss": "^4.1.8",
-		"@tailwindcss/typography": "^0.5.16",
-		"autoprefixer": "^10.4.21",
-		"postcss": "^8.5.4",
-		"rollup": "^4.41.1",
-		"rollup-plugin-postcss": "^4.0.2",
-		"sass": "^1.89.1",
-		"tailwindcss": "^4.1.8"
-	},
-	"dependencies": {
-		"html2canvas": "^1.4.1",
-		"onscan.js": "^1.5.2"
-	}
+  "name": "ifitwala_ed",
+  "description": "An Open Source School and Education ERP System powered by the Frappe Framework",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fderyckel/ifitwala_ed.git"
+  },
+  "homepage": "https://ifitwala.com",
+  "author": "François de Ryckel",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/fderyckel/ifitwala_ed/issues"
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "bench-build": "yarn build && bench build",
+    "hierarchy": "rollup -c --watch --configPlugin rollup-plugin-postcss --environment WATCH_HIERARCHY"
+  },
+  "devDependencies": {
+    "@fullcalendar/core": "^6.1.17",
+    "@fullcalendar/daygrid": "^6.1.17",
+    "@fullcalendar/list": "^6.1.17",
+    "@fullcalendar/timegrid": "^6.1.17",
+    "@rollup/plugin-alias": "^5.1.1",
+    "@rollup/plugin-commonjs": "^28.0.3",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@tailwindcss/cli": "^4.1.8",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/postcss": "^4.1.8",
+    "@tailwindcss/typography": "^0.5.16",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.4",
+    "rollup": "^4.41.1",
+    "rollup-plugin-postcss": "^4.0.2",
+    "sass": "^1.89.1",
+    "tailwindcss": "^4.1.8"
+  },
+  "dependencies": {
+    "html2canvas": "^1.4.1",
+    "onscan.js": "^1.5.2"
+  }
 }
+
