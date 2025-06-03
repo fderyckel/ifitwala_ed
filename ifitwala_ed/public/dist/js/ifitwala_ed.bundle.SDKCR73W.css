@@ -1,0 +1,52 @@
+/* ../ifitwala_ed/ifitwala_ed/public/css/student_group_cards.css */
+.desk-tw {
+  @tailwind base;
+  @tailwind components;
+  @tailwind utilities;
+}
+.student-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+.student-grid-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--color-primary);
+}
+.student-grid-subtitle {
+  font-size: 0.875rem;
+  color: #6B7280;
+  text-align: center;
+  margin-top: 0.25rem;
+}
+.load-more-button {
+  background-color: var(--color-primary);
+  color: #FFFFFF;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.3s;
+}
+.load-more-button:hover {
+  background-color: #2563EB;
+}
+.student-card {
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
+}
+.student-card-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 9999px;
+  object-fit: cover;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  background-color: #f5f5f5;
+}
+/*# sourceMappingURL=ifitwala_ed.bundle.SDKCR73W.css.map */
