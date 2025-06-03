@@ -99,3 +99,23 @@ body .navbar {
   text-align: center;
   margin-top: 0.25rem;    /* mt-1       */
 }
+
+
+/* ---------------------------------------------------------------
+   Desk-TW page-specific stacking
+   --------------------------------------------------------------- */
+
+/* 1. Filters + Awesomplete dropdown must float *above* the title */
+.page-head                 { z-index: 80 !important; }
+.page-head .awesomplete     { z-index: 1001 !important; }
+
+/* 2. Push sticky title down, clear of the filter bar */
+.desk-tw .sticky-title {
+  position: sticky;
+  top: calc(var(--navbar-height) + 56px); /* 56 px ≈ filter row height */
+  z-index: 40;                            /* below dropdown-lists      */
+}
+
+/* 3. Make sure nothing clips the dropdown list */
+.page-head,
+.page-body { overflow: visible !important; }
