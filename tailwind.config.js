@@ -6,7 +6,7 @@ module.exports = {
 		"./ifitwala_ed/public/css/**/*.css",             // any raw CSS using @apply or custom Tailwind
 		"./ifitwala_ed/templates/**/*.html",             // standard Jinja templates
 		"./ifitwala_ed/www/**/*.html",                   // custom public pages
-		'./ifitwala_ed/schedule/page/**/*.{js,html}'
+		'./ifitwala_ed/schedule/page/student_group_cards/**/*.{js,html}'
 	],
 	safelist: [
 		'bg-blue-600',
