@@ -1,35 +1,32 @@
 /* ─────────────────────────────────────────────────────────────
 	Student Group Cards – Tailwind-in-Desk styles
-	Tailwind classes prefixed with `tw-` to avoid conflict
+
 	───────────────────────────────────────────────────────────── */
 
 
 @tailwind components;
 @tailwind utilities;
 
-@tailwind components;
-@tailwind utilities;
-
 .desk-tw .student-card-grid {
-	@apply tw-grid tw-grid-cols-[repeat(auto-fill,minmax(200px,1fr))] tw-gap-6 tw-p-4 tw-mt-4;
+	@apply grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6 p-4 mt-4;
 }
 
 .desk-tw .student-card {
-	@apply tw-min-h-[250px] tw-flex tw-flex-col tw-justify-start;
+	@apply min-h-[250px] flex flex-col justify-start;
 }
 
 .desk-tw .student-card-img {
-	@apply tw-w-20 tw-h-20 tw-rounded-full tw-object-cover tw-mx-auto tw-bg-gray-100;
+	@apply w-20 h-20 rounded-full object-cover mx-auto bg-gray-100;
 }
 
 .desk-tw .student-grid-title {
-	@apply tw-text-2xl tw-font-semibold tw-text-center tw-text-primary;
+	@apply text-2xl font-semibold text-center text-primary;
 }
 
 .desk-tw .student-grid-subtitle {
-	@apply tw-text-sm tw-text-gray-500 tw-text-center tw-mt-1;
+	@apply text-sm text-gray-500 text-center mt-1;
 }
 
 .desk-tw #load-more {
-	@apply tw-bg-blue-600 tw-text-white tw-px-5 tw-py-2 tw-rounded hover:tw-bg-blue-700 tw-transition;
+	@apply bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition;
 }
