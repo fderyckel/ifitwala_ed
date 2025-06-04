@@ -1,6 +1,8 @@
 // ifitwala_ed/tailwind.config.js
 module.exports = {
-	important: '.desk-tw',  // ✅ forces all classes to be .desk-tw-prefixed
+	prefix: 'tw-',
+  important: '.desk-tw',
+  corePlugins: { preflight: false },
 	content: [
 		"./ifitwala_ed/public/js/**/*.js",
 		"./ifitwala_ed/public/css/**/*.css",

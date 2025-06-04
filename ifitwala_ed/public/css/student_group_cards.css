@@ -1,90 +1,43 @@
-/* Student Group Cards CSS */
-
-/* -------------------------------------------------------------------
-   Student Group Cards  –  Desk-page Tailwind overrides
-   Everything is namespaced under `.desk-tw` so that Bootstrap 4
-   continues to style the rest of the Frappe Desk untouched.
-   ------------------------------------------------------------------- */
-
 /* ─────────────────────────────────────────────────────────────
-   Student Group Cards – Tailwind-in-Desk styles
-   Scoped under `.desk-tw` to avoid affecting Frappe Desk
-   ───────────────────────────────────────────────────────────── */
+	Student Group Cards – Tailwind-in-Desk styles
+	Tailwind classes prefixed with `tw-` to avoid conflict
+	───────────────────────────────────────────────────────────── */
 
-.desk-tw {
-	/* Tailwind components and utilities */
-	@tailwind components;
-	@tailwind utilities;
 
-	/* Grid layout for student cards */
-	.student-card-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-		gap: 1.5rem;
-		padding: 1rem;
-		margin-top: 1rem;
-	}
+/* Tailwind utilities only — no global reset */
+@tailwind components;
+@tailwind utilities;
 
-	/* Individual student card */
-	.student-card {
-		min-height: 250px;
-		display: flex;
-		flex-direction: column;
-		justify-content: flex-start;
-	}
+/* Layout grid */
+.student-card-grid {
+	@apply tw-grid tw-grid-cols-[repeat(auto-fill,minmax(200px,1fr))] tw-gap-6 tw-p-4 tw-mt-4;
+}
 
-	.student-card-img {
-		width: 80px;
-		height: 80px;
-		border-radius: 9999px;  /* fully rounded */
-		object-fit: cover;
-		margin: auto;
-		background: #f5f5f5;    /* fallback for no image */
-	}
+/* Individual card */
+.student-card {
+	@apply tw-min-h-[250px] tw-flex tw-flex-col tw-justify-start;
+}
 
-	/* Sticky header title */
-	.sticky-title {
-		position: sticky;
-		top: calc(var(--navbar-height) + 64px);  /* stay below navbar */
-		z-index: 40;
-		background: #fff;
-		padding: 0.75rem 1rem;
-		box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
-	}
+.student-card-img {
+	@apply tw-w-20 tw-h-20 tw-rounded-full tw-object-cover tw-mx-auto tw-bg-gray-100;
+}
 
-	/* Button style override using ID */
-	#load-more {
-		background: #2563EB !important;       /* Tailwind bg-blue-600 */
-		color: #fff !important;
-		padding: 0.5rem 1.25rem !important;   /* Tailwind py-2 px-5 */
-		border-radius: 0.375rem !important;   /* Tailwind rounded */
-		border: none !important;
-		cursor: pointer;
-		transition: background-color 0.15s linear;
-	}
-	#load-more:hover {
-		background: #1E40AF !important;       /* Tailwind bg-blue-700 */
-	}
+/* Title and subtitle */
+.student-grid-title {
+	@apply tw-text-2xl tw-font-semibold tw-text-center tw-text-primary;
+}
 
-	/* Optional class-based button overrides */
-	button.bg-blue-600:not(.btn) {
-		background: #2563EB !important;
-	}
-	button.hover\:bg-blue-700:hover {
-		background: #1E40AF !important;
-	}
+.student-grid-subtitle {
+	@apply tw-text-sm tw-text-gray-500 tw-text-center tw-mt-1;
+}
 
-	/* Typography */
-	.student-grid-title {
-		font-size: 1.5rem;           /* Tailwind text-2xl */
-		font-weight: 600;
-		text-align: center;
-		color: var(--color-primary);
-	}
-	.student-grid-subtitle {
-		font-size: 0.875rem;         /* Tailwind text-sm */
-		color: #6B7280;              /* Tailwind gray-500 */
-		text-align: center;
-		margin-top: 0.25rem;
-	}
+/* Button override */
+#load-more {
+	@apply tw-bg-blue-600 tw-text-white tw-px-5 tw-py-2 tw-rounded hover:tw-bg-blue-700 tw-transition;
+}
+
+/* Additional override to fix z-index bug on page head */
+body[data-page="student_group_cards"] .page-head {
+	z-index: 80 !important;
+	overflow: visible !important;
 }
