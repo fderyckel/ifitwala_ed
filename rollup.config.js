@@ -21,7 +21,6 @@ const commonjs = require('@rollup/plugin-commonjs');
 const postcss = require('rollup-plugin-postcss');
 const terser = require('@rollup/plugin-terser');
 const { createHash } = require('crypto');
-const postcssPrefix = require('postcss-class-prefix');
 
 const projectRootDir = __dirname;
 const dist = 'ifitwala_ed/public/dist';
@@ -56,13 +55,12 @@ module.exports = [
 	// ── Tailwind bundle for student group/attendance pages ──
 	{
 		input: 'ifitwala_ed/public/css/student_group_cards.css',
-		output: { dir: '.' }, // no JS output
+		output: { dir: '.' }, 
 		plugins: [
 			postcss({
 				extract: `${dist}/student_group_cards.min.css`,
 				minimize: true,
 				plugins: [
-					postcssPrefix('tw-'),
 					require('autoprefixer'),
 				],
 			}),

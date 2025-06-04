@@ -4,40 +4,24 @@
 	───────────────────────────────────────────────────────────── */
 
 
-/* Tailwind utilities only — no global reset */
 @tailwind components;
 @tailwind utilities;
 
-/* Layout grid */
-.student-card-grid {
-	@apply tw-grid tw-grid-cols-[repeat(auto-fill,minmax(200px,1fr))] tw-gap-6 tw-p-4 tw-mt-4;
+.desk-tw .student-card-grid {
+	@apply grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6 p-4 mt-4;
 }
-
-/* Individual card */
-.student-card {
-	@apply tw-min-h-[250px] tw-flex tw-flex-col tw-justify-start;
+.desk-tw .student-card {
+	@apply min-h-[250px] flex flex-col justify-start;
 }
-
-.student-card-img {
-	@apply tw-w-20 tw-h-20 tw-rounded-full tw-object-cover tw-mx-auto tw-bg-gray-100;
+.desk-tw .student-card-img {
+	@apply w-20 h-20 rounded-full object-cover mx-auto bg-gray-100;
 }
-
-/* Title and subtitle */
-.student-grid-title {
-	@apply tw-text-2xl tw-font-semibold tw-text-center tw-text-primary;
+.desk-tw .student-grid-title {
+	@apply text-2xl font-semibold text-center text-primary;
 }
-
-.student-grid-subtitle {
-	@apply tw-text-sm tw-text-gray-500 tw-text-center tw-mt-1;
+.desk-tw .student-grid-subtitle {
+	@apply text-sm text-gray-500 text-center mt-1;
 }
-
-/* Button override */
-#load-more {
-	@apply tw-bg-blue-600 tw-text-white tw-px-5 tw-py-2 tw-rounded hover:tw-bg-blue-700 tw-transition;
-}
-
-/* Additional override to fix z-index bug on page head */
-body[data-page="student_group_cards"] .page-head {
-	z-index: 80 !important;
-	overflow: visible !important;
+.desk-tw #load-more {
+	@apply bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition;
 }
