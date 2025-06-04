@@ -3,7 +3,8 @@
 /* ─────────────────────────────────────────────────────── */
 
 /* ── Bootstrap 5 core ─────────────────────────────── */
-@use "bootstrap/scss/bootstrap";
+@import "~bootstrap/scss/bootstrap";
+
 
 /* Section Title */
 .student-group-title {
