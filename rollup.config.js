@@ -54,15 +54,21 @@ const basePlugins = [
 module.exports = [
 	// ── Bootstrap 5: Student Group + Attendance styles ──
 	{
-		input: 'ifitwala_ed/public/css/student_group_cards.css',
-		output: { dir: '.' },
+		input: "ifitwala_ed/public/scss/student_group_cards.scss",
+		output: {
+			file: "ifitwala_ed/public/dist/student_group_cards.bundle.css",
+			format: "es"
+		},
 		plugins: [
 			postcss({
-				extract: `${dist}/student_group_cards.min.css`,
+				extract: true,
 				minimize: true,
-				plugins: [require('autoprefixer')],
-			}),
-		],
+				plugins: [
+					require("autoprefixer"),
+					require("cssnano")({ preset: "default" })
+				]
+			})
+		]
 	},
 
 	// ── Other desk pages CSS ──

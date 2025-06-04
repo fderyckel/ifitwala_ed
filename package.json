@@ -25,19 +25,14 @@
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-terser": "^0.4.4",
-    "@tailwindcss/cli": "^4.1.8",
-    "@tailwindcss/forms": "^0.5.10",
-    "@tailwindcss/postcss": "^4.1.8",
-    "@tailwindcss/typography": "^0.5.16",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.4",
-    "postcss-class-prefix": "^0.3.0",
     "rollup": "^4.41.1",
     "rollup-plugin-postcss": "^4.0.2",
-    "sass": "^1.89.1",
-    "tailwindcss": "^4.1.8"
+    "sass": "^1.89.1"
   },
   "dependencies": {
+		"bootstrap": "^5.3.3",
     "html2canvas": "^1.4.1",
     "onscan.js": "^1.5.2"
   }
