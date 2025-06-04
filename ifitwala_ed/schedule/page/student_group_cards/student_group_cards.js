@@ -1,8 +1,6 @@
 // Copyright (c) 2025, François de Ryckel
-// Tailwind-compliant Desk Page (scoped, no global leakage)
 
-// Load Tailwind-scoped styles
-frappe.require("/assets/ifitwala_ed/dist/student_group_cards.min.css");
+frappe.require("/assets/ifitwala_ed/dist/student_group_cards.bundle.css");
 
 /* ── Helpers (now embedded directly) ───────────────────────────── */
 
