@@ -1,6 +1,5 @@
 // ifitwala_ed/tailwind.config.js
 module.exports = {
-	prefix: 'tw-',
   important: '.desk-tw',
   corePlugins: { preflight: false },
 	content: [
@@ -11,13 +10,13 @@ module.exports = {
 		"./ifitwala_ed/schedule/page/**/*.{js,html}"
 	],
 	safelist: [
-		'bg-blue-600',
-		'text-white',
-		'px-5',
-		'py-2',
-		'rounded',
-		'hover:bg-blue-700',
-		'transition'
+		'tw-bg-blue-600',
+		'tw-text-white',
+		'tw-px-5',
+		'tw-py-2',
+		'tw-rounded',
+		'tw-hover:bg-blue-700',
+		'tw-transition'
 	],
 	theme: { extend: {} },
 	plugins: [

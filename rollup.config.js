@@ -61,6 +61,7 @@ module.exports = [
 				extract: `${dist}/student_group_cards.min.css`,
 				minimize: true,
 				plugins: [
+					require('tailwindcss'),
 					require('autoprefixer'),
 				],
 			}),
