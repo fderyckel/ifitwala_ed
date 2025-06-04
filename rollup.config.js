@@ -66,7 +66,12 @@ module.exports = [
 				plugins: [
 					require("autoprefixer"),
 					require("cssnano")({ preset: "default" })
-				]
+				], 
+				preprocessor: async (content, id) => {
+					const sass = await import('sass');
+					const result = await sass.compileAsync(id);
+					return { code: result.css };
+				}
 			})
 		]
 	},
