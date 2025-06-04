@@ -6,7 +6,6 @@ frappe.require("/assets/ifitwala_ed/dist/student_group_cards.min.css");
 import { renderStudentCard } from "../../public/js/student_group_cards.js";
 
 frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
-	frappe.require('/assets/ifitwala_ed/dist/student_group_cards.min.css', () => {
 
 		/* ── Page skeleton ─────────────────────────────────────────────── */
 		const page = frappe.ui.make_app_page({
@@ -133,6 +132,4 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 
 		/* ── “Load More” handler ──────────────────────────────────────── */
 		$('#load-more').on('click', () => fetch_students());
-
-	});
 };
