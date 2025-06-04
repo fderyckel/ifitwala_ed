@@ -52,18 +52,15 @@ const basePlugins = [
 
 /* ─── Build matrix ─────────────────────────────────────────────────── */
 module.exports = [
-	// ── Tailwind bundle for student group/attendance pages ──
+	// ── Bootstrap 5: Student Group + Attendance styles ──
 	{
 		input: 'ifitwala_ed/public/css/student_group_cards.css',
-		output: { dir: '.' }, 
+		output: { dir: '.' },
 		plugins: [
 			postcss({
 				extract: `${dist}/student_group_cards.min.css`,
 				minimize: true,
-				plugins: [
-					require('@tailwindcss/postcss')({ config: './tailwind.config.js' }),
-					require('autoprefixer'),
-				],
+				plugins: [require('autoprefixer')],
 			}),
 		],
 	},

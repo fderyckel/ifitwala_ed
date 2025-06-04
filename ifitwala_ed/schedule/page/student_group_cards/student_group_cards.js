@@ -25,16 +25,15 @@ function get_student_image(original_url) {
 	return `/files/gallery_resized/student/thumb_${base}.webp`;
 }
 
-function renderStudentCard(student, { thumbSize = 80 } = {}) {
+function renderStudentCard(student) {
 	const student_name   = frappe.utils.escape_html(student.student_name);
 	const preferred_name = frappe.utils.escape_html(student.preferred_name || '');
 	const student_id     = frappe.utils.escape_html(student.student);
+	const thumb_src      = get_student_image(student.student_image);
+	const fallback_src   = student.student_image || '/assets/ifitwala_ed/images/default_student_image.png';
 
-	const thumb_src    = get_student_image(student.student_image);
-	const fallback_src = student.student_image || '/assets/ifitwala_ed/images/default_student_image.png';
+	let birthday_icon = '', health_icon = '';
 
-	// 🎂 Birthday icon
-	let birthday_icon = '';
 	if (student.birth_date) {
 		try {
 			const bdate    = frappe.datetime.str_to_obj(student.birth_date);
@@ -45,39 +44,39 @@ function renderStudentCard(student, { thumbSize = 80 } = {}) {
 			if (Math.abs(diffDays) <= 5) {
 				const formatted = moment(bdate).format('dddd, MMMM D');
 				birthday_icon = `
-					<span class="ml-2 text-yellow-500 cursor-pointer"
-						  onclick="frappe.msgprint('${__('Birthday:')} ${formatted}')"
-						  title="${__('Birthday on {0}', [formatted])}">🎂</span>`;
+					<span class="ms-2 text-warning" role="button"
+						onclick="frappe.msgprint('${__('Birthday:')} ${formatted}')"
+						title="${__('Birthday on {0}', [formatted])}">🎂</span>`;
 			}
-		} catch {
-			// Ignore date parse errors
-		}
+		} catch {}
 	}
 
-	// 🚑 Health icon
-	let health_icon = '';
 	if (student.medical_info) {
 		const note = frappe.utils.escape_html(student.medical_info);
 		health_icon = `
-			<span class="ml-2 text-red-500 font-bold cursor-pointer"
-				  onclick='frappe.msgprint({title:"${__('Health Note for {0}', [student_name])}",
-										   message:\`${note}\`,indicator:"red"})'
-				  title="${__('Health Note Available')}">&#x2716;</span>`;
+			<span class="ms-2 text-danger fw-bold" role="button"
+				onclick='frappe.msgprint({title:"${__('Health Note for {0}', [student_name])}",
+										 message:\`${note}\`,indicator:"red"})'
+				title="${__('Health Note Available')}">&#x2716;</span>`;
 	}
 
 	return `
-		<div class="student-card bg-white rounded-xl p-4 text-center shadow hover:-translate-y-1 transition duration-200">
-			<a href="/app/student/${student_id}" target="_blank" rel="noopener">
-				<img src="${thumb_src}"
-					 onerror="this.onerror=null;this.src='${fallback_src}';"
-					 class="student-card-img"
-					 loading="lazy">
-			</a>
-			<div class="mt-3 text-lg font-semibold">
-				<a href="/app/student/${student_id}" target="_blank" rel="noopener">${student_name}</a>
-				${health_icon}${birthday_icon}
+		<div class="col-md-3 col-sm-6">
+			<div class="student-card card h-100">
+				<a href="/app/student/${student_id}" target="_blank" rel="noopener">
+					<img src="${thumb_src}"
+						onerror="this.onerror=null;this.src='${fallback_src}'"
+						class="student-card-img"
+						loading="lazy">
+				</a>
+				<div class="student-card-body">
+					<a href="/app/student/${student_id}" target="_blank" rel="noopener">
+						${student_name}
+					</a>
+					${health_icon}${birthday_icon}
+					${preferred_name ? `<div class="student-card-subtitle">${preferred_name}</div>` : ''}
+				</div>
 			</div>
-			${preferred_name ? `<div class="text-sm text-gray-500 mt-1">${preferred_name}</div>` : ''}
 		</div>`;
 }
 
@@ -139,13 +138,11 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 
 		/* ── Layout container ─────────────────────────────────────────── */
 		$(wrapper).append(`
-			<div class="desk-tw">
-				<div class="tw-sticky-title">
-					<div id="student-group-title" class="tw-text-center"></div>
-				</div>
-				<div id="student-cards" class="student-card-grid"></div>
-				<div class="tw-flex tw-justify-center tw-mt-6">
-					<button id="load-more" class="tw-load-more">
+			<div class="student-group-wrapper container mt-3">
+				<div id="student-group-title" class="student-group-title"></div>
+				<div id="student-cards" class="row card-grid"></div>
+				<div class="load-more-wrapper">
+					<button id="load-more" class="btn btn-primary">
 						${__("Load More")}
 					</button>
 				</div>
@@ -165,8 +162,8 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 
 			const subtitle = [program, course, cohort].filter(Boolean).join(' – ');
 			$("#student-group-title").html(`
-				<h2 class="tw-text-2xl tw-font-semibold tw-text-gray-800">${frappe.utils.escape_html(name)}</h2>
-				${subtitle ? `<div class="tw-text-sm tw-text-gray-500 tw-mt-1">${frappe.utils.escape_html(subtitle)}</div>` : ""}
+				<h2 class="fs-4 fw-semibold text-dark">${frappe.utils.escape_html(name)}</h2>
+				${subtitle ? `<div class="small text-muted mt-1">${frappe.utils.escape_html(subtitle)}</div>` : ""}
 			`);
 		}
 

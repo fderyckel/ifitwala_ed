@@ -1,63 +1,50 @@
-/* ─────────────────────────────────────────────────────────────
-	Student Group Cards – Tailwind-in-Desk styles
+/* ─────────────────────────────────────────────────────── */
+/* Student Group Cards – Bootstrap 5 Layout & Styling      */
+/* ─────────────────────────────────────────────────────── */
 
-	───────────────────────────────────────────────────────────── */
-
-/* ── Tailwind directives (still required) ─────────────────────────── */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* ── Student-group cards — Desk view only ─────────────────────────── */
-.desk-tw .student-card-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-	gap: 1.5rem;             /* gap-6 */
-	padding: 1rem;           /* p-4 */
-	margin-top: 1rem;        /* mt-4 */
+/* Title Area */
+.student-group-title {
+  text-align: center;
+  margin-bottom: 1rem;
 }
 
-.desk-tw .student-card {
-	min-height: 250px;
-	display: flex;
-	flex-direction: column;
-	justify-content: flex-start;
+/* Load More Button Wrapper */
+.load-more-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
 }
 
-.desk-tw .student-card-img {
-	width: 5rem;             /* w-20 */
-	height: 5rem;            /* h-20 */
-	border-radius: 9999px;   /* rounded-full */
-	object-fit: cover;
-	margin-left: auto;
-	margin-right: auto;
-	background-color: #f3f4f6;  /* Tailwind gray-100 */
+/* Grid Layout Container */
+.card-grid {
+  row-gap: 1rem; /* vertical gutter for Bootstrap row */
 }
 
-.desk-tw .student-grid-title {
-	font-size: 1.5rem;           /* text-2xl */
-	line-height: 2rem;
-	font-weight: 600;            /* font-semibold */
-	text-align: center;
-	color: #0d6efd;              /* Bootstrap 5 primary (fallback for Tailwind blue-600) */
+#student-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;     /* horizontal and vertical spacing between cards */
+  margin-top: 1rem;
 }
 
-.desk-tw .student-grid-subtitle {
-	font-size: 0.875rem;         /* text-sm */
-	line-height: 1.25rem;
-	color: #6b7280;              /* Tailwind gray-500 */
-	text-align: center;
-	margin-top: 0.25rem;         /* mt-1 */
+/* Individual Card Column Constraints */
+#student-cards > .col-md-3 {
+  min-height: 280px;
 }
 
-.desk-tw #load-more {
-	background-color: #2563eb;   /* Tailwind blue-600 */
-	color: #ffffff;
-	padding: 0.5rem 1.25rem;     /* py-2 px-5 */
-	border-radius: 0.25rem;      /* rounded */
-	transition: background-color 150ms ease-in-out;
+/* Student Image */
+.student-card-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
 }
 
-.desk-tw #load-more:hover {
-	background-color: #1d4ed8;   /* Tailwind blue-700 */
+/* Link styling */
+.student-card a {
+  text-decoration: none;
+}
+
+/* Optional Subtitle / Preferred Name */
+.student-card .text-muted {
+  font-size: 0.9rem;
 }
