@@ -61,13 +61,13 @@ function renderStudentCard(student) {
 	}
 
 	return `
-		<div class="col-md-3 col-sm-6">
-			<div class="card shadow-sm h-100 text-center p-3 student-card">
+		<div class="col-xl-3 col-md-4 col-sm-6 col-12">
+			<div class="card shadow-sm student-card">
 				<a href="/app/student/${student_id}" target="_blank" rel="noopener">
 					<img src="${thumb_src}"
-							onerror="this.onerror=null;this.src='${fallback_src}'"
-							class="student-card-img"
-							loading="lazy">
+						onerror="this.onerror=null;this.src='${fallback_src}'"
+						class="student-card-img"
+						loading="lazy">
 				</a>
 				<div class="student-name">
 					<a href="/app/student/${student_id}" target="_blank" rel="noopener">
@@ -141,7 +141,7 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 		$(wrapper).append(`
 			<div class="student-group-wrapper container mt-3">
 				<div id="student-group-title" class="student-group-title"></div>
-				<div id="student-cards" class="row card-grid"></div>
+				<div id="student-cards" class="card-grid"></div>
 				<div class="load-more-wrapper">
 					<button id="load-more" class="btn btn-primary">
 						${__("Load More")}
