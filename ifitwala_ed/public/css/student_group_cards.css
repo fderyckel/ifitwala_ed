@@ -3,30 +3,61 @@
 
 	───────────────────────────────────────────────────────────── */
 
+/* ── Tailwind directives (still required) ─────────────────────────── */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ── Student-group cards — Desk view only ─────────────────────────── */
 .desk-tw .student-card-grid {
-	@apply grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6 p-4 mt-4;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 1.5rem;             /* gap-6 */
+	padding: 1rem;           /* p-4 */
+	margin-top: 1rem;        /* mt-4 */
 }
 
 .desk-tw .student-card {
-	@apply min-h-[250px] flex flex-col justify-start;
+	min-height: 250px;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
 }
 
 .desk-tw .student-card-img {
-	@apply w-20 h-20 rounded-full object-cover mx-auto bg-gray-100;
+	width: 5rem;             /* w-20 */
+	height: 5rem;            /* h-20 */
+	border-radius: 9999px;   /* rounded-full */
+	object-fit: cover;
+	margin-left: auto;
+	margin-right: auto;
+	background-color: #f3f4f6;  /* Tailwind gray-100 */
 }
 
 .desk-tw .student-grid-title {
-	@apply text-2xl font-semibold text-center text-primary;
+	font-size: 1.5rem;           /* text-2xl */
+	line-height: 2rem;
+	font-weight: 600;            /* font-semibold */
+	text-align: center;
+	color: #0d6efd;              /* Bootstrap 5 primary (fallback for Tailwind blue-600) */
 }
 
 .desk-tw .student-grid-subtitle {
-	@apply text-sm text-gray-500 text-center mt-1;
+	font-size: 0.875rem;         /* text-sm */
+	line-height: 1.25rem;
+	color: #6b7280;              /* Tailwind gray-500 */
+	text-align: center;
+	margin-top: 0.25rem;         /* mt-1 */
 }
 
 .desk-tw #load-more {
-	@apply bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition;
+	background-color: #2563eb;   /* Tailwind blue-600 */
+	color: #ffffff;
+	padding: 0.5rem 1.25rem;     /* py-2 px-5 */
+	border-radius: 0.25rem;      /* rounded */
+	transition: background-color 150ms ease-in-out;
+}
+
+.desk-tw #load-more:hover {
+	background-color: #1d4ed8;   /* Tailwind blue-700 */
 }
