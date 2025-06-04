@@ -2,7 +2,7 @@
 /* Student Group Cards – Bootstrap 5 Layout & Styling      */
 /* ─────────────────────────────────────────────────────── */
 
-/* Section title */
+/* Section Title */
 .student-group-title {
   text-align: center;
   margin-bottom: 1.5rem;
@@ -10,14 +10,14 @@
   color: #444;
 }
 
-/* Load More button wrapper */
+/* Load More Button Wrapper */
 .load-more-wrapper {
   display: flex;
   justify-content: center;
   margin-top: 2.5rem;
 }
 
-/* Bootstrap card grid tweaks */
+/* Bootstrap Card Grid Tweaks */
 .card-grid {
   row-gap: 1rem;
 }
@@ -31,15 +31,15 @@
 }
 
 #student-cards > .col-md-3 {
-  min-height: 280px;
+  min-height: 200px; 
 }
 
-/* Card image */
+/* Card Image */
 .student-card-img {
-  width: 100px;
-  height: 100px;
+  width: 120px;              
+  height: 120px;
   object-fit: cover;
-  border-radius: 0.5rem; /* rounded corners, but not circle */
+  border-radius: 0.5rem;     /* rounded corners, not circular */
   margin: 0 auto;
   display: block;
 }
@@ -59,13 +59,13 @@
   margin-top: 0.25rem;
 }
 
-/* Remove underline from names */
+/* Remove underline from student names */
 .student-card a {
   text-decoration: none;
   color: inherit;
 }
 
-/* Button */
+/* Load More Button Style */
 #load-more {
   background-color: #0d6efd;
   border-color: #0d6efd;
