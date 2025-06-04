@@ -2,49 +2,80 @@
 /* Student Group Cards – Bootstrap 5 Layout & Styling      */
 /* ─────────────────────────────────────────────────────── */
 
-/* Title Area */
+/* Section title */
 .student-group-title {
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  color: #444;
 }
 
-/* Load More Button Wrapper */
+/* Load More button wrapper */
 .load-more-wrapper {
   display: flex;
   justify-content: center;
-  margin-top: 2rem;
+  margin-top: 2.5rem;
 }
 
-/* Grid Layout Container */
+/* Bootstrap card grid tweaks */
 .card-grid {
-  row-gap: 1rem; /* vertical gutter for Bootstrap row */
+  row-gap: 1rem;
 }
 
 #student-cards {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;     /* horizontal and vertical spacing between cards */
+  gap: 1.5rem;
   margin-top: 1rem;
+  justify-content: center;
 }
 
-/* Individual Card Column Constraints */
 #student-cards > .col-md-3 {
   min-height: 280px;
 }
 
-/* Student Image */
+/* Card image */
 .student-card-img {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   object-fit: cover;
+  border-radius: 0.5rem; /* rounded corners, but not circle */
+  margin: 0 auto;
+  display: block;
 }
 
-/* Link styling */
+/* Name and Preferred Name */
+.student-card .student-name {
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+  margin-top: 0.75rem;
+}
+
+.student-card .preferred-name {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #777;
+  margin-top: 0.25rem;
+}
+
+/* Remove underline from names */
 .student-card a {
   text-decoration: none;
+  color: inherit;
 }
 
-/* Optional Subtitle / Preferred Name */
-.student-card .text-muted {
-  font-size: 0.9rem;
+/* Button */
+#load-more {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  color: white;
+  padding: 0.5rem 1.25rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease-in-out;
+}
+
+#load-more:hover {
+  background-color: #0b5ed7;
+  border-color: #0a58ca;
 }

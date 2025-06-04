@@ -62,22 +62,23 @@ function renderStudentCard(student) {
 
 	return `
 		<div class="col-md-3 col-sm-6">
-			<div class="student-card card h-100">
+			<div class="card shadow-sm h-100 text-center p-3 student-card">
 				<a href="/app/student/${student_id}" target="_blank" rel="noopener">
 					<img src="${thumb_src}"
-						onerror="this.onerror=null;this.src='${fallback_src}'"
-						class="student-card-img"
-						loading="lazy">
+							onerror="this.onerror=null;this.src='${fallback_src}'"
+							class="student-card-img"
+							loading="lazy">
 				</a>
-				<div class="student-card-body">
+				<div class="student-name">
 					<a href="/app/student/${student_id}" target="_blank" rel="noopener">
 						${student_name}
 					</a>
 					${health_icon}${birthday_icon}
-					${preferred_name ? `<div class="student-card-subtitle">${preferred_name}</div>` : ''}
 				</div>
+				${preferred_name ? `<div class="preferred-name">${preferred_name}</div>` : ''}
 			</div>
 		</div>`;
+
 }
 
 frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
