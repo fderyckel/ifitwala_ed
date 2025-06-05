@@ -81,29 +81,34 @@ async function renderAttendanceCard(student, selected_code) {
 		`<option value="${c.attendance_code}" ${c.attendance_code === selected_code ? 'selected' : ''}>${c.attendance_code}</option>`
 	).join('');
 
-	return `
-		<div class="col-6 col-sm-4 col-md-3 col-lg-2">
-			<div class="student-card bg-white shadow-sm p-3 text-center h-100 w-100 d-flex flex-column"
-			     data-student="${student_id}">
-				<a href="/app/student/${student_id}" target="_blank" rel="noopener">
-					<img src="${thumb_src}"
-					     onerror="this.onerror=null;this.src='${fallback_src}'"
-					     class="student-card-img img-fluid"
-					     alt="Photo of ${student_name}" loading="lazy">
-				</a>
-				<div class="student-name mt-2">
+	async function renderAttendanceCard(student, selected_code) {
+		const codes = await get_attendance_codes();
+		/* … all existing code to build `options_html`, icons, etc. … */
+
+		const html = `
+			<div class="col-6 col-sm-4 col-md-3 col-lg-2">
+				<div class="student-card bg-white shadow-sm p-3 text-center h-100 w-100 d-flex flex-column"
+						data-student="${student_id}">
 					<a href="/app/student/${student_id}" target="_blank" rel="noopener">
-						${student_name}
+						<img src="${thumb_src}"
+								onerror="this.onerror=null;this.src='${fallback_src}'"
+								class="student-card-img img-fluid"
+								alt="Photo of ${student_name}" loading="lazy">
 					</a>
-					${health_icon}${birthday_icon}
+					<div class="student-name mt-2">
+						<a href="/app/student/${student_id}" target="_blank" rel="noopener">
+							${student_name}
+						</a>
+						${health_icon}${birthday_icon}
+					</div>
+					${preferred_name ? `<div class="preferred-name mb-1">${preferred_name}</div>` : ''}
+					<select class="form-select mt-auto w-100" data-field="code" aria-label="Attendance code">
+						${options_html}
+					</select>
 				</div>
-				${preferred_name ? `<div class="preferred-name mb-1">${preferred_name}</div>` : ''}
-				<select class="form-select mt-auto w-100" data-field="code">
-					${options_html}
-				</select>
-			</div>
-		</div>
-	`;
+			</div>`;
+		return $(html);		// ← jQuery element, not plain string
+	}
 }
 
 /* 4 Desk-page controller ------------------------------------- */
@@ -200,7 +205,7 @@ frappe.pages['student_attendance_tool'].on_page_load = async function (wrapper) 
 		toggle_bulk(false);
 
 		const [{ message: roster }, { message: prev }] = await Promise.all([
-			frappe.call('ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students', {
+			frappe.call('ifitwala_ed.schedule.attendance_utils.fetch_students', {
 				student_group: group, start: 0, page_length: 500
 			}),
 			frappe.call('ifitwala_ed.schedule.attendance_utils.previous_status_map', {
