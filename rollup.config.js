@@ -27,7 +27,6 @@ const dist = 'ifitwala_ed/public/dist';
 const websiteSrc = 'ifitwala_ed/public/website';
 const portalSrc = 'ifitwala_ed/public/js/student_portal';
 
-
 function contentHash(file) {
 	return createHash('sha256')
 		.update(fs.readFileSync(file))
@@ -38,16 +37,16 @@ function contentHash(file) {
 const portalHash = contentHash(path.join(portalSrc, 'index.js'));
 
 const basePlugins = [
-        alias({
-                entries: [
-                        {
-                                find: '@fullcalendar-css',
-                                replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar'),
-                        },
-                ],
-        }),
-        resolve(),
-        commonjs(),
+	alias({
+		entries: [
+			{
+				find: '@fullcalendar-css',
+				replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar'),
+			},
+		],
+	}),
+	resolve(),
+	commonjs(),
 ];
 
 /* ─── Build matrix ─────────────────────────────────────────────────── */
@@ -76,32 +75,32 @@ module.exports = [
 		]
 	},
 
-        // ── Other desk pages CSS ──
-        {
-                input: 'ifitwala_ed/public/css/other_desk_pages.css',
-                output: { dir: '.' },
-                plugins: [
-                        postcss({
-                                extract: `${dist}/other_desk_pages.min.css`,
-                                minimize: true,
-                                plugins: [require('autoprefixer')],
-                        }),
-                ],
-        },
+	// ── Other desk pages CSS ──
+	{
+		input: 'ifitwala_ed/public/css/other_desk_pages.css',
+		output: { dir: '.' },
+		plugins: [
+			postcss({
+				extract: `${dist}/other_desk_pages.min.css`,
+				minimize: true,
+				plugins: [require('autoprefixer')],
+			}),
+		],
+	},
 
-        // ── Desk FullCalendar CSS ──
-        {
-                input: 'ifitwala_ed/public/css/fullcalendar.css',
-                output: { dir: '.' },
-                plugins: [
-                        postcss({
-                                extract: `${dist}/ifitwala_ed.bundle.css`,
-                                minimize: true,
-                                plugins: [require('autoprefixer')],
-                        }),
-                ],
-        },
-
+	// ── Desk FullCalendar CSS ──
+	{
+		input: 'ifitwala_ed/public/css/fullcalendar.css',
+		output: { dir: '.' },
+		plugins: [
+			postcss({
+				extract: `${dist}/ifitwala_ed.bundle.css`,
+				minimize: true,
+				plugins: [require('autoprefixer')],
+			}),
+		],
+	},
+	
 	// ── Website JS ──
 	{
 		input: `${websiteSrc}/website.js`,
