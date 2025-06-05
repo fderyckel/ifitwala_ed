@@ -32,7 +32,8 @@
     "sass": "^1.89.1"
   },
   "dependencies": {
-		"bootstrap": "^5.3.3",
+    "@popperjs/core": "^2.11.8",
+    "bootstrap": "^5.3.3",
     "html2canvas": "^1.4.1",
     "onscan.js": "^1.5.2"
   }
