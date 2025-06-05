@@ -20,6 +20,31 @@ LIMIT_DEFAULT    = 30          # how many meeting dates to return
 # ---------------------------------------------------------------------
 
 @frappe.whitelist()
+def fetch_students(student_group: str, start: int = 0, page_length: int = 500):
+	"""
+	Return roster data used by the Desk attendance tool.
+	Structure mirrors the original student_group_cards helper.
+	"""
+	from ifitwala_ed.schedule.student_group_helpers import get_student_group_students  # reuse
+
+	students = get_student_group_students(student_group, start, page_length)
+	total    = frappe.db.count("Student Group Student", {"parent": student_group})
+	sg_doc   = frappe.get_doc("Student Group", student_group)
+
+	return {
+		"students": students,
+		"start":    start + page_length,
+		"total":    total,
+		"group_info": {
+			"name":     sg_doc.student_group_name or sg_doc.name,
+			"program":  sg_doc.program,
+			"course":   sg_doc.course,
+			"cohort":   sg_doc.cohort
+		}
+	}
+
+
+@frappe.whitelist()
 def get_meeting_dates(student_group: str, limit: int | None = None) -> list[str]:
 	"""Return recent scheduled dates for a student-group (holiday-filtered)."""
 	limit = int(limit or LIMIT_DEFAULT)
