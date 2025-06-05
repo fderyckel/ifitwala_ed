@@ -38,16 +38,16 @@ function contentHash(file) {
 const portalHash = contentHash(path.join(portalSrc, 'index.js'));
 
 const basePlugins = [
-	resolve(),
-	commonjs(),
-	alias({
-		entries: [
-			{
-				find: '@fullcalendar-css',
-				replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar'),
-			},
-		],
-	}),
+        alias({
+                entries: [
+                        {
+                                find: '@fullcalendar-css',
+                                replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar'),
+                        },
+                ],
+        }),
+        resolve(),
+        commonjs(),
 ];
 
 /* ─── Build matrix ─────────────────────────────────────────────────── */
@@ -76,18 +76,31 @@ module.exports = [
 		]
 	},
 
-	// ── Other desk pages CSS ──
-	{
-		input: 'ifitwala_ed/public/css/other_desk_pages.css',
-		output: { dir: '.' },
-		plugins: [
-			postcss({
-				extract: `${dist}/other_desk_pages.min.css`,
-				minimize: true,
-				plugins: [require('autoprefixer')],
-			}),
-		],
-	},
+        // ── Other desk pages CSS ──
+        {
+                input: 'ifitwala_ed/public/css/other_desk_pages.css',
+                output: { dir: '.' },
+                plugins: [
+                        postcss({
+                                extract: `${dist}/other_desk_pages.min.css`,
+                                minimize: true,
+                                plugins: [require('autoprefixer')],
+                        }),
+                ],
+        },
+
+        // ── Desk FullCalendar CSS ──
+        {
+                input: 'ifitwala_ed/public/css/fullcalendar.css',
+                output: { dir: '.' },
+                plugins: [
+                        postcss({
+                                extract: `${dist}/ifitwala_ed.bundle.css`,
+                                minimize: true,
+                                plugins: [require('autoprefixer')],
+                        }),
+                ],
+        },
 
 	// ── Website JS ──
 	{
