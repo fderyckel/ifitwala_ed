@@ -10,18 +10,15 @@ $border-radius: 0.5rem;
 $btn-padding-y: 0.4rem;
 $btn-padding-x: 1rem;
 
-/* Core Bootstrap requirements */
-@import "~bootstrap/scss/functions";
-@import "~bootstrap/scss/variables";
-@import "~bootstrap/scss/mixins";
+/* ── Bootstrap 5 Tree-shaken Imports ───────────────────── */
+@import "node_modules/bootstrap/scss/functions";       // required for color utils
+@import "node_modules/bootstrap/scss/variables";       // defines $theme-colors and others
+@import "node_modules/bootstrap/scss/maps";            // defines $theme-colors-rgb
+@import "node_modules/bootstrap/scss/mixins";          // needed by layout/grid
+@import "node_modules/bootstrap/scss/utilities";       // spacing, display, etc.
+@import "node_modules/bootstrap/scss/grid";            // if you need .row/.col behavior
+@import "node_modules/bootstrap/scss/helpers";         // for spacing helpers like .mt-3
 
-/* Include only what we need */
-@import "~bootstrap/scss/root";
-@import "~bootstrap/scss/reboot";
-@import "~bootstrap/scss/grid";
-@import "~bootstrap/scss/utilities";
-@import "~bootstrap/scss/containers";
-@import "~bootstrap/scss/buttons";
 
 /* (Optional) Only if used in your layout */
 @import "~bootstrap/scss/images";
