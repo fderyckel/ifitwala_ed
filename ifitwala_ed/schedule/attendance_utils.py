@@ -25,9 +25,18 @@ def fetch_students(student_group: str, start: int = 0, page_length: int = 500):
 	Return roster data used by the Desk attendance tool.
 	Structure mirrors the original student_group_cards helper.
 	"""
-	from ifitwala_ed.schedule.student_group_helpers import get_student_group_students  # reuse
 
-	students = get_student_group_students(student_group, start, page_length)
+	students = frappe.db.get_all(
+    "Student Group Student",
+    filters={"parent": student_group},
+    fields=[
+        "student", "student_name", "preferred_name",
+        "student_image", "birth_date", "medical_info"
+    ],
+    start=start,
+    page_length=page_length,
+    order_by="student_name asc"
+	)	
 	total    = frappe.db.count("Student Group Student", {"parent": student_group})
 	sg_doc   = frappe.get_doc("Student Group", student_group)
 
