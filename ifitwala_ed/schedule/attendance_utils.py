@@ -20,30 +20,60 @@ LIMIT_DEFAULT    = 30          # how many meeting dates to return
 # ---------------------------------------------------------------------
 
 @frappe.whitelist()
-def get_meeting_dates(student_group: str, limit: int | None = None) -> List[str]:
-	"""
-	Return the last <limit> dates (ISO strings) on which <student_group> meets.
-	Holidays / weekends are excluded according to the School Schedule flags.
-	"""
+def get_meeting_dates(student_group: str, limit: int | None = None) -> list[str]:
+	"""Return recent scheduled dates for a student-group (holiday-filtered)."""
 	limit = int(limit or LIMIT_DEFAULT)
 	sg    = frappe.get_cached_doc(SG_DOCTYPE, student_group)
 
-	# ❶ Resolve effective School Schedule for this SG
-	sched_name = get_effective_schedule(sg.school_calendar, sg.school)
+	# ── Resolve the School Schedule name ─────────────────────────
+	sched_name   = None
+	calendar_name = None
+	school_name   = None
+
+	# A. direct link (preferred)
+	if getattr(sg, "school_schedule", None):
+		sched_name   = sg.school_schedule
+		sched_doc    = frappe.get_cached_doc("School Schedule", sched_name)
+		calendar_name = sched_doc.school_calendar
+		school_name   = sched_doc.school
+
+	# B. infer via Program ➜ School ➜ get_effective_schedule()
+	else:
+		if sg.program:
+			school_name = frappe.db.get_value("Program", sg.program, "school")
+		if not school_name:
+			# last-ditch: pick “Default School” (if you have one)
+			school_name = frappe.defaults.get_global_default("school")
+
+		# try first calendar for that school & SG academic year
+		if school_name:
+			calendar_name = frappe.db.get_value(
+				"School Calendar",
+				{
+					"school": school_name,
+					"academic_year": sg.academic_year
+				},
+				"name"
+			)
+
+		if calendar_name:
+			sched_name = get_effective_schedule(calendar_name, school_name)
+
+	# Bail out gracefully when still nothing
 	if not sched_name:
 		return []
 
-	# ❷ Build map rotation_day → list[date]  (utility already respects holidays)
+	# ── Build rotation‐date list (unchanged) ─────────────────────
 	rot_dates = get_rotation_dates(
 		sched_name,
 		sg.academic_year,
-		include_holidays=False       # holidays never need an attendance row
+		include_holidays=False
 	)
 	rot_map = {}
 	for rd in rot_dates:
 		rot_map.setdefault(rd["rotation_day"], []).append(rd["date"])
 
-	# ❸ Fetch the rotation-days the SG is actually scheduled
+	# rotation-days actually used by the SG
 	rows = frappe.db.get_all(
 		SG_SCHEDULE_DT,
 		filters={"parent": student_group},
@@ -56,7 +86,7 @@ def get_meeting_dates(student_group: str, limit: int | None = None) -> List[str]
 		{d for rd, lst in rot_map.items() if rd in valid_days for d in lst},
 		reverse=True
 	)
-	return [d.isoformat() for d in islice(meetings, limit)]
+	return [d.isoformat() for d in meetings[:limit]]
 
 
 @frappe.whitelist()
