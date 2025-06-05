@@ -5,12 +5,12 @@
  "doctype": "Page",
  "icon": "",
  "idx": 0,
- "modified": "2025-06-05 10:11:26.572122",
+ "modified": "2025-06-05 10:10:07.009040",
  "modified_by": "Administrator",
  "module": "Schedule",
- "name": "student-attendance_tool",
+ "name": "student-attendance-e",
  "owner": "Administrator",
- "page_name": "student-attendance_tool",
+ "page_name": "student-attendance-e",
  "roles": [
   {
    "role": "Academic Admin"
@@ -22,6 +22,6 @@
  "script": null,
  "standard": "Yes",
  "style": null,
- "system_page": 1,
+ "system_page": 0,
  "title": "Student Attendance Tool"
 }
