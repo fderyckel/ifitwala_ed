@@ -40,9 +40,15 @@ $btn-padding-x: 1rem;
   margin-top: 2.5rem;
 }
 
-#student-cards {
-  margin-top: 1rem;
-  padding: 0.5rem;
+.student-card {
+  width: 130px;  // ↓ from ~200–220px
+  height: 200px;
+  margin: 0.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 0 0.25rem rgba(0, 0, 0, 0.05);
+  padding: 1rem 0.5rem;
+  text-align: center;
+  transition: transform 0.2s;
 }
 
 .student-card-img {
