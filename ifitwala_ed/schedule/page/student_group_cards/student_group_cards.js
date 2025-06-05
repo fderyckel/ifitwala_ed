@@ -59,8 +59,8 @@ function renderStudentCard(student) {
 	}
 
 	return `
-		<div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex">
-			<div class="student-card bg-white rounded shadow-sm p-3 text-center w-100 h-100 d-flex flex-column">
+		<div class="col-6 col-sm-4 col-md-3 col-lg-2 student-card">
+			<div class="student-card bg-white rounded shadow-sm p-3 text-center d-flex flex-column">
 				<a href="/app/student/${student_id}" target="_blank" rel="noopener">
 					<img src="${thumb_src}"
 							onerror="this.onerror=null;this.src='${fallback_src}'"
