@@ -58,25 +58,26 @@ function renderStudentCard(student) {
 				title="${__('Health Note Available')}">&#x2716;</span>`;
 	}
 
-	return `
-		<div class="col-6 col-sm-4 col-md-3 col-lg-2 student-card">
-			<div class="student-card bg-white rounded shadow-sm p-3 text-center d-flex flex-column">
+return `
+	<div class="col-6 col-sm-4 col-md-3 col-lg-2">
+		<div class="student-card bg-white shadow-sm p-3 text-center h-100 w-100 d-flex flex-column">
+			<a href="/app/student/${student_id}" target="_blank" rel="noopener">
+				<img src="${thumb_src}"
+					 onerror="this.onerror=null;this.src='${fallback_src}'"
+					 class="student-card-img img-fluid"
+					 alt="Photo of ${student_name}"
+					 loading="lazy">
+			</a>
+			<div class="student-name mt-3">
 				<a href="/app/student/${student_id}" target="_blank" rel="noopener">
-					<img src="${thumb_src}"
-							onerror="this.onerror=null;this.src='${fallback_src}'"
-							class="student-card-img img-fluid"
-							loading="lazy">
+					${student_name}
 				</a>
-				<div class="student-name mt-3">
-					<a href="/app/student/${student_id}" target="_blank" rel="noopener">
-						${student_name}
-					</a>
-					${health_icon}${birthday_icon}
-				</div>
-				${preferred_name ? `<div class="preferred-name">${preferred_name}</div>` : ''}
+				${health_icon}${birthday_icon}
 			</div>
+			${preferred_name ? `<div class="preferred-name">${preferred_name}</div>` : ''}
 		</div>
-	`;
+	</div>
+`;
 }
 
 frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
