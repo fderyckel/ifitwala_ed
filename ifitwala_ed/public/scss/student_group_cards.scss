@@ -1,12 +1,35 @@
-/* ─────────────────────────────────────────────────────── */
-/* Student Group Cards – Bootstrap 5 Layout & Styling      */
-/* ─────────────────────────────────────────────────────── */
-
 /* ── Bootstrap 5 core ─────────────────────────────── */
-@import "~bootstrap/scss/bootstrap";
+/* ───────────────────────────────────────────────────── */
+/* Bootstrap 5 – Tree-shaken for Ifitwala Desk Pages     */
+/* ───────────────────────────────────────────────────── */
 
+/* Optional: override Bootstrap defaults before importing */
+$font-size-base: 0.95rem;
+$primary: #0d6efd;
+$border-radius: 0.5rem;
+$btn-padding-y: 0.4rem;
+$btn-padding-x: 1rem;
 
-/* Section Title */
+/* Core Bootstrap requirements */
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+
+/* Include only what we need */
+@import "~bootstrap/scss/root";
+@import "~bootstrap/scss/reboot";
+@import "~bootstrap/scss/grid";
+@import "~bootstrap/scss/utilities";
+@import "~bootstrap/scss/containers";
+@import "~bootstrap/scss/buttons";
+
+/* (Optional) Only if used in your layout */
+@import "~bootstrap/scss/images";
+
+/* ───────────────────────────────────────────────────── */
+/* Custom Styles – Student Group Cards Layout            */
+/* ───────────────────────────────────────────────────── */
+
 .student-group-title {
   text-align: center;
   margin-bottom: 1.5rem;
@@ -14,36 +37,29 @@
   color: #444;
 }
 
-/* Load More Button Wrapper */
 .load-more-wrapper {
   display: flex;
   justify-content: center;
   margin-top: 2.5rem;
 }
 
-/* Responsive Grid using Bootstrap Row */
 #student-cards {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;        
-  gap: 1rem;
   margin-top: 1rem;
-  padding: 0.75rem;
+  padding: 0.5rem;
 }
 
-/* Card Image */
 .student-card-img {
-  width: 130px;
-  height: 130px;
+  width: 100px;
+  height: 100px;
   object-fit: cover;
   border-radius: 0.5rem;
   margin: 0 auto;
 }
 
-/* Name and Preferred Name */
 .student-name {
   font-weight: 600;
   color: #333;
+  margin-top: 0.5rem;
 }
 
 .student-name a {
@@ -52,28 +68,25 @@
 }
 
 .preferred-name {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #777;
-  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
 }
 
-/* Remove underline from links inside cards */
 .student-card a {
   text-decoration: none;
   color: inherit;
 }
 
-/* Load More Button */
 #load-more {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
+  background-color: $primary;
+  border-color: $primary;
   color: white;
-  padding: 0.5rem 1.25rem;
   font-weight: 500;
   transition: background-color 0.2s ease-in-out;
 }
 
 #load-more:hover {
-  background-color: #0b5ed7;
-  border-color: #0a58ca;
+  background-color: darken($primary, 8%);
+  border-color: darken($primary, 10%);
 }
