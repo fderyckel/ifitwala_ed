@@ -19,37 +19,57 @@ LIMIT_DEFAULT    = 30          # how many meeting dates to return
 # Helpers exposed to the JS page
 # ---------------------------------------------------------------------
 
+def get_student_group_students(student_group: str,
+                               start: int = 0,
+                               page_length: int = 25) -> list[dict]:
+	"""
+	Return a slice of students in <student_group> with all fields
+	required by card grids (name, preferred name, image, birthday,
+	medical note).
+	"""
+	rows = frappe.db.sql(
+		"""
+		SELECT
+			s.name                       AS student,
+			s.student_name,
+			s.preferred_name,
+			COALESCE(s.student_image, s.image) AS student_image,
+			s.birth_date,
+			sp.medical_info
+		FROM `tabStudent Group Student` g
+		INNER JOIN `tabStudent` s  ON s.name = g.student
+		LEFT  JOIN `tabStudent Patient` sp ON sp.student = s.name
+		WHERE g.parent = %(sg)s
+		ORDER BY s.student_name
+		LIMIT %(limit)s
+		OFFSET %(offset)s
+	""",
+		{"sg": student_group, "limit": page_length, "offset": start},
+		as_dict=True,
+	)
+	return rows
+
 @frappe.whitelist()
 def fetch_students(student_group: str, start: int = 0, page_length: int = 500):
-	"""
-	Return roster data used by the Desk attendance tool.
-	Structure mirrors the original student_group_cards helper.
-	"""
+	students = get_student_group_students(student_group, start, page_length)
 
-	students = frappe.db.get_all(
-    "Student Group Student",
-    filters={"parent": student_group},
-    fields=[
-        "student", "student_name", "preferred_name",
-        "student_image", "birth_date", "medical_info"
-    ],
-    start=start,
-    page_length=page_length,
-    order_by="student_name asc"
-	)	
-	total    = frappe.db.count("Student Group Student", {"parent": student_group})
-	sg_doc   = frappe.get_doc("Student Group", student_group)
+	total_students = frappe.db.count(
+		"Student Group Student", {"parent": student_group}
+	)
+
+	sg = frappe.get_doc("Student Group", student_group)
+	group_info = {
+		"name":    sg.student_group_name or sg.name,
+		"program": sg.program,
+		"course":  sg.course,
+		"cohort":  sg.cohort,
+	}
 
 	return {
 		"students": students,
 		"start":    start + page_length,
-		"total":    total,
-		"group_info": {
-			"name":     sg_doc.student_group_name or sg_doc.name,
-			"program":  sg_doc.program,
-			"course":   sg_doc.course,
-			"cohort":   sg_doc.cohort
-		}
+		"total":    total_students,
+		"group_info": group_info,
 	}
 
 
