@@ -106,7 +106,7 @@ async function renderAttendanceCard(student, selected_code) {
 }
 
 /* 4 ▪ Desk-page controller --------------------------------------- */
-frappe.pages['student_attendance'].on_page_load = async function (wrapper) {
+frappe.pages['student_attendance_tool'].on_page_load = async function (wrapper) {
 
 	/* Page shell */
 	const page = frappe.ui.make_app_page({
