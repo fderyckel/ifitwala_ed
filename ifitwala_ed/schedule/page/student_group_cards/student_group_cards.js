@@ -139,7 +139,7 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 		$(wrapper).append(`
 			<div class="student-group-wrapper container mt-3">
 				<div id="student-group-title" class="student-group-title"></div>
-				<div id="student-cards" class="card-grid"></div>
+				<div id="student-cards" class="row gx-2 gy-3"></div>
 				<div class="load-more-wrapper">
 					<button id="load-more" class="btn btn-primary">
 						${__("Load More")}

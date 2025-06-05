@@ -46,6 +46,11 @@
   color: #333;
 }
 
+.student-name a {
+  text-decoration: underline;
+  color: inherit;
+}
+
 .preferred-name {
   font-size: 0.9rem;
   color: #777;
