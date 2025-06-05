@@ -4,10 +4,10 @@
 /* Student Attendance – Desk Page (Bootstrap 5) */
 /* globals frappe */
 
-/* 1 ▪ Shared CSS bundle */
+/* 1 Shared CSS bundle */
 frappe.require('/assets/ifitwala_ed/dist/student_group_cards.bundle.css');
 
-/* 2 ▪ Helper functions ------------------------------------------- */
+/* 2 Helper functions ------------------------------------------- */
 function slugify(filename) {
 	return filename
 		.replace(/\.[^.]+$/, '')
@@ -30,12 +30,13 @@ function get_student_image(original_url) {
 /* One-time cache of attendance codes shown in the tool */
 let ATT_CODES = null;
 async function get_attendance_codes() {
-	if (ATT_CODES) return ATT_CODES;
-	ATT_CODES = await frappe.db.get_list('Student Attendance Code', {
-		filters: { show_in_attendance_tool: 1 },
-		fields: ['code'],
-		order_by: 'display_order asc'
-	});
+	if (!ATT_CODES) {
+		ATT_CODES = await frappe.db.get_list('Student Attendance Code', {
+			filters: { show_in_attendance_tool: 1 },
+			fields: ['attendance_code'],
+			order_by: 'display_order asc'
+		});
+	}
 	return ATT_CODES;
 }
 
@@ -77,7 +78,7 @@ async function renderAttendanceCard(student, selected_code) {
 	}
 
 	const options_html = codes.map(c =>
-		`<option value="${c.code}" ${c.code === selected_code ? 'selected' : ''}>${c.code}</option>`
+		`<option value="${c.attendance_code}" ${c.attendance_code === selected_code ? 'selected' : ''}>${c.attendance_code}</option>`
 	).join('');
 
 	return `
@@ -105,7 +106,7 @@ async function renderAttendanceCard(student, selected_code) {
 	`;
 }
 
-/* 4 ▪ Desk-page controller --------------------------------------- */
+/* 4 Desk-page controller ------------------------------------- */
 frappe.pages['student_attendance_tool'].on_page_load = async function (wrapper) {
 
 	/* Page shell */
@@ -114,6 +115,17 @@ frappe.pages['student_attendance_tool'].on_page_load = async function (wrapper) 
 		title: __('Student Attendance'),
 		single_column: true
 	});
+
+	/* Grid reference cached once */
+	const $row = $('<div class="container-fluid mt-3">' +
+	               '<div id="card-row" class="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3"></div>' +
+	               '</div>').appendTo(wrapper).find('#card-row');
+
+	/* ── Bulk-toggle helper ─────────────────────────────────── */
+	function toggle_bulk(enabled) {
+		page.actions_menu.find('a:contains("Mark All")')
+			.toggleClass('disabled', !enabled);
+	}
 
 	/* Filters */
 	const sg_field = page.add_field({
@@ -139,22 +151,20 @@ frappe.pages['student_attendance_tool'].on_page_load = async function (wrapper) 
 		fieldtype: 'Link',
 		options: 'Student Attendance Code',
 		default: 'Present',
-		change: () => $('#card-row select').val(default_field.get_value())
+		change: () => $row.find('select[data-field="code"]').val(default_field.get_value())
 	});
 
-	/* Bulk helpers */
-	page.add_action_item(__('Mark All Present'), () => $('#card-row select').val('Present'));
-	page.add_action_item(__('Mark All Absent'),  () => $('#card-row select').val('Absent'));
-	page.set_primary_action(__('Submit'), submit_roster, 'save');
+	/* Bulk buttons */
+	page.add_action_item(__('Mark All Present'), () => $row.find('select[data-field="code"]').val('Present'));
+	page.add_action_item(__('Mark All Absent'),  () => $row.find('select[data-field="code"]').val('Absent'));
+	page.set_primary_action(__('Submit'), async () => {
+		page.toggle_primary_action(false);
+		await submit_roster();
+		page.toggle_primary_action(true);
+	}, 'save');
+	toggle_bulk(false);					// disabled until roster exists
 
-	/* Grid container */
-	$(wrapper).append(`
-		<div class="container-fluid mt-3">
-			<div id="card-row" class="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3"></div>
-		</div>
-	`);
-
-	/* State */
+	/* ── Date refresh ───────────────────────────────────────── */
 	async function refresh_dates() {
 		const group = sg_field.get_value();
 		if (!group) return;
@@ -164,19 +174,31 @@ frappe.pages['student_attendance_tool'].on_page_load = async function (wrapper) 
 			{ student_group: group }
 		);
 
+		if (!dates.length) {
+			frappe.msgprint(__('No scheduled dates found for this group.'));
+			date_field.df.options = [];
+			date_field.refresh();
+			$row.empty();
+			toggle_bulk(false);
+			return;
+		}
+
 		date_field.df.options = dates.map(d =>
 			({ label: d === frappe.datetime.get_today() ? __('Today') : d, value: d }));
 		date_field.refresh();
-		date_field.set_value(dates[0] || '');
+		date_field.set_value(dates[0]);
 		build_roster();
 	}
 
+	/* ── Roster build ───────────────────────────────────────── */
 	async function build_roster() {
 		const group = sg_field.get_value();
 		const date  = date_field.get_value();
 		if (!group || !date) return;
 
-		$('#card-row').empty();
+		$row.empty();
+		toggle_bulk(false);
+
 		const [{ message: roster }, { message: prev }] = await Promise.all([
 			frappe.call('ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students', {
 				student_group: group, start: 0, page_length: 500
@@ -186,26 +208,30 @@ frappe.pages['student_attendance_tool'].on_page_load = async function (wrapper) 
 			})
 		]);
 
+		if (!roster.students.length) return;
+
 		const default_code = default_field.get_value() || 'Present';
 		for (const student of roster.students) {
-			$('#card-row').append(await renderAttendanceCard(
+			$row.append(await renderAttendanceCard(
 				student,
 				prev[student.student] || default_code
 			));
 		}
+		toggle_bulk(true);
 	}
 
+	/* ── Submit handler ─────────────────────────────────────── */
 	async function submit_roster() {
 		const group = sg_field.get_value();
 		const date  = date_field.get_value();
 		const payload = [];
 
-		$('#card-row .student-card').each(function () {
+		$row.find('.student-card').each(function () {
 			payload.push({
-				student:       $(this).data('student'),
-				student_group: group,
-				attendance_date: date,
-				code:          $(this).find('select').val()
+				student:          $(this).data('student'),
+				student_group:    group,
+				attendance_date:  date,
+				attendance_code:  $(this).find('select').val()
 			});
 		});
 
@@ -219,7 +245,7 @@ frappe.pages['student_attendance_tool'].on_page_load = async function (wrapper) 
 		);
 	}
 
-	/* Auto-prefill default group (optional) */
+	/* Auto-prefill default group */
 	if (frappe.defaults.get_default('student_group')) {
 		sg_field.set_value(frappe.defaults.get_default('student_group'));
 	}
