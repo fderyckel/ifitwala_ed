@@ -1,4 +1,47 @@
-@import "@fullcalendar/core/index.global.css";
-@import "@fullcalendar/daygrid/index.global.css";
-@import "@fullcalendar/timegrid/index.global.css";
-@import "@fullcalendar/list/index.global.css";
+:root {
+  --fc-timegrid-slot-width: 100px; /* Adjust the value as needed */
+}
+
+.fc-toolbar-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #343a40;
+}
+
+.fc-button {
+  background-color: #f8f9fa;
+  border: 1px solid #ced4da;
+  color: #495057;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.fc-button:hover {
+  background-color: #e2e6ea;
+  border-color: #dae0e5;
+}
+
+.fc-event {
+  background-color: #e9ecef;
+  border: 1px solid #ced4da;
+  color: #212529;
+  padding: 2px 4px;
+  border-radius: 0.2rem;
+  font-size: 0.85rem;
+}
+
+.fc-col-header-cell-cushion {
+  padding: 0.5rem;
+  font-weight: 500;
+  color: #495057;
+}
+
+.fc-scrollgrid {
+  border-color: #dee2e6;
+}
+
+.fc-scrollgrid td, .fc-scrollgrid th {
+  border-color: #dee2e6;
+}
+
