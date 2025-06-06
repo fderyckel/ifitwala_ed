@@ -33,7 +33,7 @@ def get_student_group_students(student_group: str,
 			s.name                       AS student,
 			s.student_full_name,
 			s.student_preferred_name,
-			COALESCE(s.student_image, s.image) AS student_image,
+			s.student_image AS student_image,
 			s.birth_date,
 			sp.medical_info
 		FROM `tabStudent Group Student` g
