@@ -32,7 +32,7 @@ def get_student_group_students(student_group: str,
 		SELECT
 			s.name                       AS student,
 			s.student_full_name,
-			s.student_preferred_name,
+			s.student_preferred_name     AS preferred_name,
 			s.student_image AS student_image,
 			s.birth_date,
 			sp.medical_info
