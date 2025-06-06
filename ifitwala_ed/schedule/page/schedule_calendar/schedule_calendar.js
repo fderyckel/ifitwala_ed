@@ -3,6 +3,18 @@
  * *
  *********************************************************************/
 
+function loadFullCalendarCSS() {
+	const href = "/assets/ifitwala_ed/dist/fullcalendar.bundle.css";
+	if (!document.querySelector(`link[href="${href}"]`)) {
+		const link = document.createElement("link");
+		link.rel = "stylesheet";
+		link.href = href;
+		document.head.appendChild(link);
+	}
+}
+
+loadFullCalendarCSS();
+
 
 frappe.pages["schedule_calendar"].on_page_load = function (wrapper) { 
 	render_schedule_calendar_page(wrapper);   

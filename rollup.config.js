@@ -43,31 +43,36 @@ const basePlugins = [
 
 /* ─── Build matrix ─────────────────────────────────────────────────── */
 module.exports = [
+		// ── js for full calendar and other utils ──	
 	{
 		input: "ifitwala_ed/public/js/ifitwala_ed.bundle.js",
 		output: {
 			file: `${dist}/ifitwala_ed.bundle.js`,
 			format: "iife",
 			sourcemap: true,
-		},
+		}, 
 		plugins: [
 			...basePlugins,
-			alias({
-				entries: [
-					{ find: '@fullcalendar-css', replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar') }
-				]
-			}),
-			postcss({
-				extract: `${dist}/ifitwala_ed.bundle.css`,  
-				minimize: true,
-				plugins: [
-					require('autoprefixer'), 
-					require("cssnano")({ preset: "default" })
-				],
-			}),
 			terser(),
 		],
 	},
+	// ── css for full calendar ──	
+	{
+		input: "ifitwala_ed/public/scss/fullcalendar.scss",
+		output: { dir: '.' },
+		plugins: [
+			postcss({
+				extract: `${dist}/fullcalendar.bundle.css`,
+				minimize: true,
+				plugins: [require("autoprefixer")],
+				preprocessor: async (content, id) => {
+					const sass = await import('sass');
+					const result = await sass.compileAsync(id);
+					return { code: result.css };
+				},
+			}),
+		],
+	},	
 	// ── Bootstrap 5: Student Group + Attendance styles ──
 	{
 		input: "ifitwala_ed/public/scss/student_group_cards.scss",
