@@ -22,7 +22,7 @@ const postcss = require('rollup-plugin-postcss');
 const terser = require('@rollup/plugin-terser');
 const { createHash } = require('crypto');
 
-const projectRootDir = __dirname;
+const projectRootDir = path.resolve(__dirname);
 const dist = 'ifitwala_ed/public/dist';
 const websiteSrc = 'ifitwala_ed/public/website';
 const portalSrc = 'ifitwala_ed/public/js/student_portal';
@@ -51,12 +51,20 @@ module.exports = [
 			sourcemap: true,
 		},
 		plugins: [
+			...basePlugins,
+			alias({
+				entries: [
+					{ find: '@fullcalendar-css', replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar') }
+				]
+			}),
 			postcss({
 				extract: `${dist}/ifitwala_ed.bundle.css`,  
 				minimize: true,
-				plugins: [require('autoprefixer')],
+				plugins: [
+					require('autoprefixer'), 
+					require("cssnano")({ preset: "default" })
+				],
 			}),
-			...basePlugins,
 			terser(),
 		],
 	},
