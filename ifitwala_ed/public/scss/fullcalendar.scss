@@ -1,16 +1,7 @@
 :root {
-  --fc-timegrid-slot-width: 120px;
+  --fc-timegrid-slot-width: 200px;
 }
 
-body::before {
-  content: "✅ FullCalendar CSS Loaded" !important;
-  display: block !important;
-  background: yellow !important;
-  color: black !important;
-  padding: 4px !important;
-  text-align: center !important;
-  font-weight: bold !important;
-}
 
 .fc-toolbar-title {
   font-size: 1.25rem !important;
