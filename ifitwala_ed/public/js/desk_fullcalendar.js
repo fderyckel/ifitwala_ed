@@ -3,10 +3,11 @@
  */
 
 
-import "@fullcalendar/core/index.global.css";
-import "@fullcalendar/daygrid/index.global.css";
-import "@fullcalendar/timegrid/index.global.css";
-import "@fullcalendar/list/index.global.css";
+import "../../../node_modules/@fullcalendar/core/index.global.css";
+import "../../../node_modules/@fullcalendar/daygrid/index.global.css";
+import "../../../node_modules/@fullcalendar/timegrid/index.global.css";
+import "../../../node_modules/@fullcalendar/list/index.global.css";
+
 
 import { Calendar } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
