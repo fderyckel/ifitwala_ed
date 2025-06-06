@@ -3,7 +3,6 @@
  * *
  *********************************************************************/
 
-frappe.require('/assets/ifitwala_ed/dist/ifitwala_ed.bundle.css');
 
 frappe.pages["schedule_calendar"].on_page_load = function (wrapper) { 
 	render_schedule_calendar_page(wrapper);   

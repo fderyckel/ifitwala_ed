@@ -37,20 +37,29 @@ function contentHash(file) {
 const portalHash = contentHash(path.join(portalSrc, 'index.js'));
 
 const basePlugins = [
-	alias({
-		entries: [
-			{
-				find: '@fullcalendar-css',
-				replacement: path.resolve(projectRootDir, 'node_modules/@fullcalendar'),
-			},
-		],
-	}),
 	resolve(),
 	commonjs(),
 ];
 
 /* ─── Build matrix ─────────────────────────────────────────────────── */
 module.exports = [
+	{
+		input: "ifitwala_ed/public/js/ifitwala_ed.bundle.js",
+		output: {
+			file: `${dist}/ifitwala_ed.bundle.js`,
+			format: "iife",
+			sourcemap: true,
+		},
+		plugins: [
+			postcss({
+				extract: `${dist}/ifitwala_ed.bundle.css`,  
+				minimize: true,
+				plugins: [require('autoprefixer')],
+			}),
+			...basePlugins,
+			terser(),
+		],
+	},
 	// ── Bootstrap 5: Student Group + Attendance styles ──
 	{
 		input: "ifitwala_ed/public/scss/student_group_cards.scss",
@@ -87,20 +96,6 @@ module.exports = [
 			}),
 		],
 	},
-
-	// ── Desk FullCalendar CSS ──
-	{
-		input: 'ifitwala_ed/public/css/fullcalendar.css',
-		output: { dir: '.' },
-		plugins: [
-			postcss({
-				extract: `${dist}/ifitwala_ed.bundle.css`,
-				minimize: true,
-				plugins: [require('autoprefixer')],
-			}),
-		],
-	},
-	
 	// ── Website JS ──
 	{
 		input: `${websiteSrc}/website.js`,
