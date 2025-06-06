@@ -1,8 +1,5 @@
 // Copyright (c) 2025, François de Ryckel
-// Student Attendance – Desk Page (Bootstrap 5 cards)
-
-// Copyright (c) 2025, François de Ryckel
-// Student Attendance – Desk Page (Bootstrap 5 cards)
+// Student Attendance – Desk Page (Bootstrap 6 cards)
 
 /* ------------------------------------------------------------------ */
 /* Shared CSS bundle                                                  */
@@ -153,12 +150,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	});
 
 	/* 3 ▸ bulk actions */
-	page.add_action_item(__("Mark All Present"), () =>
-		$("#attendance-cards select[data-field='code']").val("Present")
-	);
-	page.add_action_item(__("Mark All Absent"), () =>
-		$("#attendance-cards select[data-field='code']").val("Absent")
-	);
 	page.set_primary_action(
 		__("Submit"),
 		async () => {

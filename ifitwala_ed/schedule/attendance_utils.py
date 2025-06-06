@@ -31,7 +31,7 @@ def get_student_group_students(student_group: str,
 		"""
 		SELECT
 			s.name                       AS student,
-			s.student_name,
+			s.student_full_name,
 			s.preferred_name,
 			COALESCE(s.student_image, s.image) AS student_image,
 			s.birth_date,
