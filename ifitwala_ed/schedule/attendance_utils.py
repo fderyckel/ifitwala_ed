@@ -19,35 +19,45 @@ LIMIT_DEFAULT    = 30          # how many meeting dates to return
 # Helpers exposed to the JS page
 # ---------------------------------------------------------------------
 
-def get_student_group_students(student_group: str,
-                               start: int = 0,
-                               page_length: int = 25) -> list[dict]:
-	"""
-	Return a slice of students in <student_group> with all fields
-	required by card grids (name, preferred name, image, birthday,
-	medical note).
-	"""
-	rows = frappe.db.sql(
-		"""
-		SELECT
-			s.name                       AS student,
-			s.student_full_name,
-			s.student_preferred_name     AS preferred_name,
-			s.student_image AS student_image,
-			s.birth_date,
-			sp.medical_info
-		FROM `tabStudent Group Student` g
-		INNER JOIN `tabStudent` s  ON s.name = g.student
-		LEFT  JOIN `tabStudent Patient` sp ON sp.student = s.name
-		WHERE g.parent = %(sg)s
-		ORDER BY s.student_name
-		LIMIT %(limit)s
-		OFFSET %(offset)s
-	""",
-		{"sg": student_group, "limit": page_length, "offset": start},
-		as_dict=True,
-	)
-	return rows
+DEFAULT_PAGE_LEN = 25
+
+def get_student_group_students(
+        student_group: str,
+        start: int = 0,
+        page_length: int = DEFAULT_PAGE_LEN,
+        with_medical: bool = False
+) -> List[dict]:
+    """
+    Return a paginated list of students in <student_group>.
+
+    * Always includes  full name, preferred name, image, DOB.
+    * When with_medical=True it also fetches `medical_info`
+      from Student Patient (collapsed with MAX() so duplicates disappear).
+    """
+    extra_select = ", MAX(sp.medical_info) AS medical_info" if with_medical else ""
+    extra_join   = "LEFT JOIN `tabStudent Patient` sp ON sp.student = s.name" if with_medical else ""
+
+    return frappe.db.sql(
+        f"""
+        SELECT
+            s.name                              AS student,
+            s.student_full_name                 AS student_name,      -- alias stays 'student_name' for JS
+            s.student_preferred_name            AS preferred_name,
+            s.student_image                     AS student_image,
+            s.student_date_of_birth             AS birth_date
+            {extra_select}
+        FROM `tabStudent Group Student` g
+        INNER JOIN `tabStudent` s ON s.name = g.student
+        {extra_join}
+        WHERE g.parent = %(sg)s
+        GROUP BY s.name                         -- collapses duplicates from Patient JOIN
+        ORDER BY s.student_full_name
+        LIMIT %(limit)s OFFSET %(offset)s
+        """,
+        {"sg": student_group, "limit": page_length, "offset": start},
+        as_dict=True,
+    )
+
 
 @frappe.whitelist()
 def fetch_students(student_group: str, start: int = 0, page_length: int = 500):
