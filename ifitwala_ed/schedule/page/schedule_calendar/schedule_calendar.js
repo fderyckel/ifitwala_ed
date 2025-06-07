@@ -135,8 +135,10 @@ function render_schedule_calendar_page(wrapper) {
 				center: "title",
 				right:  "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
 			},
-			slotMinHeight: 150, 
-			eventMinHeight: 80,
+			//slotMinHeight: 150, 
+			eventMinHeight: 50,
+			slotDuration: '00:15:00',
+  		slotLabelInterval: '01:00:00',
 			slotMinTime: "06:00:00",
 			slotMaxTime: "20:00:00",
 			editable: false,

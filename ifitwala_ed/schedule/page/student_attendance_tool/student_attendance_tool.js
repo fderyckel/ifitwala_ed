@@ -32,7 +32,7 @@ async function get_attendance_codes() {
 	if (!ATT_CODES) {
 		ATT_CODES = await frappe.db.get_list("Student Attendance Code", {
 			filters: { show_in_attendance_tool: 1 },
-			fields: ["attendance_code"],
+			fields: ["name", "attendance_code_name"],
 			order_by: "display_order asc",
 		});
 	}
@@ -78,14 +78,11 @@ async function renderAttendanceCard(student, selected_code) {
 	}
 
 	/* attendance-code <select> -------------------------------------- */
-	const options = codes
-		.map(
-			(c) =>
-				`<option value="${c.attendance_code}" ${
-					c.attendance_code === selected_code ? "selected" : ""
-				}>${c.attendance_code}</option>`
-		)
-		.join("");
+	const options = codes.map(c =>
+		`<option value="${c.name}" ${
+			c.name === selected_code ? "selected" : "" 
+		}>${frappe.utils.escape_html(c.attendance_code_name)}</option>`
+	).join('');
 
 	return `
 		<div class="col-6 col-sm-4 col-md-3 col-lg-2" data-student="${student_id}">
@@ -168,7 +165,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			<div class="load-more-wrapper">
 				<button id="mark-all-present" class="btn btn-outline-success me-2 d-none">${__("Mark All Present")}</button>
 				<button id="mark-all-absent"  class="btn btn-outline-danger  me-2 d-none">${__("Mark All Absent")}</button>
-				<button id="submit-roster"    class="btn btn-primary d-none">${__("Submit")}</button>
 			</div>
 		</div>
 	`);
@@ -178,13 +174,11 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	const $title = $("#attendance-title");
 	const $btnPresent = $("#mark-all-present");
 	const $btnAbsent  = $("#mark-all-absent");
-	const $btnSubmit  = $("#submit-roster");
 
 	/* 5 ▸ helper toggles */
 	function toggle_bulk(enabled) {
 		$btnPresent.toggleClass("d-none", !enabled);
 		$btnAbsent .toggleClass("d-none", !enabled);
-		$btnSubmit .toggleClass("d-none", !enabled);
 	}
 
 	/* 6 ▸ data flows ------------------------------------------------- */
@@ -275,7 +269,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	/* 7 ▸ wire buttons ---------------------------------------------- */
 	$btnPresent.on("click", () => $cards.find("select[data-field='code']").val("Present"));
 	$btnAbsent .on("click", () => $cards.find("select[data-field='code']").val("Absent"));
-	$btnSubmit .on("click", submit_roster);
 
 	/* 8 ▸ auto-prefill default group (optional) ---------------------- */
 	const default_group = frappe.defaults.get_default("student_group");
