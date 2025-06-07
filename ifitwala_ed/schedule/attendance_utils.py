@@ -210,15 +210,16 @@ def bulk_upsert_attendance(payload=None):
 
 	# ── gather composite keys & existing rows ───────────────────────
 	keys = {(r["student"], r["attendance_date"], r["student_group"]) for r in payload}
-	existing = frappe.db.get_all(
-		"Student Attendance",
-		filters={
-			"student":        ["in", {k[0] for k in keys}],
-			"attendance_date":["in", {k[1] for k in keys}],
-			"student_group":  ["in", {k[2] for k in keys}],
-		},
-		fields=["name", "student", "attendance_date", "student_group"],
-	)
+        # frappe.db.get_all() expects sequences (e.g. lists) for "in" filters
+        existing = frappe.db.get_all(
+                "Student Attendance",
+                filters={
+                        "student":        ["in", list({k[0] for k in keys})],
+                        "attendance_date":["in", list({k[1] for k in keys})],
+                        "student_group":  ["in", list({k[2] for k in keys})],
+                },
+                fields=["name", "student", "attendance_date", "student_group"],
+        )
 	existing_map = {
 		(e.student, e.attendance_date, e.student_group): e.name for e in existing
 	}
