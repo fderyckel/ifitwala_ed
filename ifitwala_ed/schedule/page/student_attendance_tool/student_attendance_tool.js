@@ -229,7 +229,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 
 		/* update title */
 		const { name, program, course, cohort } = roster.group_info || {};
-		const subtitle = [program, course, cohort].filter(Boolean).join(" – ");
+		const subtitle = [program, course, cohort].filter(Boolean).join(" - ");
 		$title.html(`
 			<h2 class="fs-4 fw-semibold text-dark">${frappe.utils.escape_html(name || group)}</h2>
 			${subtitle ? `<div class="small text-muted mt-1">${frappe.utils.escape_html(subtitle)}</div>` : ""}
@@ -258,12 +258,20 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			});
 		});
 
-		const r = await frappe.call(
-			"ifitwala_ed.schedule.attendance_utils.bulk_upsert_attendance",
-			{ payload }
-		);
-
-		frappe.msgprint(__("{0} created | {1} updated", [r.message.created, r.message.updated]));
+		try {
+			const r = await frappe.call(
+				"ifitwala_ed.schedule.attendance_utils.bulk_upsert_attendance",
+				{ payload }
+			);
+			frappe.msgprint(__("{0} created | {1} updated", [r.message.created, r.message.updated]));
+		} catch (e) {
+			console.error(e);
+			frappe.msgprint({
+				title: __("Error Submitting Attendance"),
+				message: e.message || e,
+				indicator: "red",
+			});
+		}
 	}
 
 	/* 7 ▸ wire buttons ---------------------------------------------- */
