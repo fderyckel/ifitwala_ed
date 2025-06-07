@@ -281,10 +281,10 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		console.log("🟢 Payload going to server:", payload);
 
 		try {
-			const r = await frappe.call(
-				"ifitwala_ed.schedule.attendance_utils.bulk_upsert_attendance",
-				{ payload }
-			);
+			const r = await frappe.call({
+				method: "ifitwala_ed.schedule.attendance_utils.bulk_upsert_attendance",
+				args: { payload: payload },
+		});
 			frappe.msgprint(__("{0} created | {1} updated", [r.message.created, r.message.updated]));
 		} catch (e) {
 			console.error(e);
