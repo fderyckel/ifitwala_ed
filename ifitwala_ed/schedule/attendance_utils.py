@@ -182,6 +182,7 @@ def bulk_upsert_attendance(payload=None):
 	Insert or update many Student Attendance rows in one go.
 	Accepts a JSON-stringified list[dict] or a true list.
 	"""
+	frappe.msgprint(f"Received {len(payload)} attendance entries")
 	# ✅ Coerce payload safely
 	if isinstance(payload, str):
 		try:

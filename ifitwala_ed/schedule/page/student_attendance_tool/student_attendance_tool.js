@@ -6,7 +6,7 @@
 /* ------------------------------------------------------------------ */
 
 frappe.require("/assets/ifitwala_ed/dist/student_group_cards.bundle.css");
-console.log("🟡 JS Loaded: student_attendance_tool.js");
+
 /* ------------------------------------------------------------------ */
 /* Helper utilities (unchanged)                                       */
 /* ------------------------------------------------------------------ */
@@ -157,17 +157,14 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		</div>
 	`);
 
-	page.inner_toolbar.find(".page-form").append($toolbarRight);	
+	page.wrapper.find(".page-form").append($toolbarRight);
 
 	/* 3 ▸ bulk actions */
-		console.log("🔹 Page loaded – setting up page");
 
 		setTimeout(() => {
-			console.log("🔹 Setting primary action");
 			page.set_primary_action(
 				__("Submit"),
 				async () => {
-					console.log("🔹 Submit clicked");
 					page.toggle_primary_action(false);
 					await submit_roster();
 					page.toggle_primary_action(true);
@@ -177,7 +174,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		}, 150);
 
 		page.add_action_item("🚀 Quick Submit", async () => {
-			console.log("✔ Quick Submit clicked");
 			await submit_roster();
 		});
 
@@ -263,6 +259,9 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		}
 		toggle_bulk(true);
 	}
+
+	$("#mark-all-present").removeClass("d-none");
+	$("#mark-all-absent").removeClass("d-none");
 
 	async function submit_roster() {
 		const group = student_group_field.get_value();
