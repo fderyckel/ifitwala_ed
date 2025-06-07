@@ -146,26 +146,46 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		change: () => $("#attendance-cards select[data-field='code']").val(default_field.get_value()),
 	});
 
+	const $toolbarRight = $(`
+		<div class="d-flex align-items-center ms-auto" id="bulk-action-buttons">
+			<button id="mark-all-present" class="btn btn-outline-success me-2 d-none">
+				${__("Mark All Present")}
+			</button>
+			<button id="mark-all-absent" class="btn btn-outline-danger d-none">
+				${__("Mark All Absent")}
+			</button>
+		</div>
+	`);
+
+	page.inner_toolbar.find(".page-form").append($toolbarRight);	
+
 	/* 3 ▸ bulk actions */
-	page.set_primary_action(
-		__("Submit"),
-		async () => {
-			page.toggle_primary_action(false);
+		console.log("🔹 Page loaded – setting up page");
+
+		setTimeout(() => {
+			console.log("🔹 Setting primary action");
+			page.set_primary_action(
+				__("Submit"),
+				async () => {
+					console.log("🔹 Submit clicked");
+					page.toggle_primary_action(false);
+					await submit_roster();
+					page.toggle_primary_action(true);
+				},
+				"save"
+			);
+		}, 150);
+
+		page.add_action_item("🚀 Quick Submit", async () => {
+			console.log("✔ Quick Submit clicked");
 			await submit_roster();
-			page.toggle_primary_action(true);
-		},
-		"save"
-	);
+		});
 
 	/* 4 ▸ layout wrapper (same pattern as student_group_cards) */
 	$(wrapper).append(`
 		<div class="student-group-wrapper container mt-3">
 			<div id="attendance-title"   class="student-group-title"></div>
 			<div id="attendance-cards"  class="row gx-2 gy-3"></div>
-			<div class="load-more-wrapper">
-				<button id="mark-all-present" class="btn btn-outline-success me-2 d-none">${__("Mark All Present")}</button>
-				<button id="mark-all-absent"  class="btn btn-outline-danger  me-2 d-none">${__("Mark All Absent")}</button>
-			</div>
 		</div>
 	`);
 
