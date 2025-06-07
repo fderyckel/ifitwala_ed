@@ -9,6 +9,7 @@
  "field_order": [
   "section_break_efuq",
   "attendance_code_name",
+  "display_order",
   "count_as_present",
   "column_break_zfmr",
   "attendance_code",
@@ -69,11 +70,18 @@
   {
    "fieldname": "section_break_ur4x",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "display_order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Display Order",
+   "no_copy": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-03 13:33:29.547675",
+ "modified": "2025-06-06 21:24:00.488005",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Student Attendance Code",

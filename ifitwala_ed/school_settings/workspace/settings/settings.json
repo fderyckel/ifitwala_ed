@@ -340,8 +340,37 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Admin tools",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "File Management",
+   "link_count": 0,
+   "link_to": "File Management",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Page",
+   "link_count": 0,
+   "link_to": "Page",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Attendance",
-   "link_count": 3,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -379,34 +408,15 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Admin tools",
-   "link_count": 2,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "File Management",
+   "label": "Student Attendance Tool",
    "link_count": 0,
-   "link_to": "File Management",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Page",
-   "link_count": 0,
-   "link_to": "Page",
-   "link_type": "DocType",
+   "link_to": "student_attendance_tool",
+   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2025-06-03 20:08:30.973392",
+ "modified": "2025-06-06 09:48:04.765352",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Settings",
