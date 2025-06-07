@@ -177,15 +177,20 @@ def previous_status_map(student_group: str, attendance_date: str) -> Dict[str, s
 
 
 @frappe.whitelist()
-def bulk_upsert_attendance(payload: list[dict]) -> dict:
+def bulk_upsert_attendance(payload=None):
 	"""
 	Insert or update many Student Attendance rows in one go.
-	`payload` must contain:
-	  student, student_group, attendance_date, attendance_code
-	Returns {"created": n, "updated": m}
+	Accepts a JSON-stringified list[dict] or a true list.
 	"""
+	# ✅ Coerce payload safely
 	if isinstance(payload, str):
-		payload = frappe.parse_json(payload)
+		try:
+			payload = frappe.parse_json(payload)
+		except Exception as e:
+			frappe.throw(f"Invalid payload JSON: {e}")
+
+	if not isinstance(payload, list):
+		frappe.throw("Payload must be a list of records.")
 
 	if not payload:
 		return {"created": 0, "updated": 0}

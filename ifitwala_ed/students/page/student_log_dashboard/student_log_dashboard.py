@@ -128,7 +128,7 @@ def get_dashboard_data(filters=None):
 @frappe.whitelist()
 def get_distinct_students(filters=None, search_text: str = ""):   # ★ CHANGED
     """Return up to 100 unique students matching the current filters
-       *and* the user’s partial search string (ID or name)."""
+       *and* the user's partial search string (ID or name)."""
     try:
         filters = frappe.parse_json(filters) or {}
         txt = (search_text or "").strip()
