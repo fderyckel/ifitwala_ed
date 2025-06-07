@@ -6,7 +6,7 @@
 /* ------------------------------------------------------------------ */
 
 frappe.require("/assets/ifitwala_ed/dist/student_group_cards.bundle.css");
-
+console.log("🟡 JS Loaded: student_attendance_tool.js");
 /* ------------------------------------------------------------------ */
 /* Helper utilities (unchanged)                                       */
 /* ------------------------------------------------------------------ */
@@ -277,6 +277,8 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 				attendance_code: $(this).find("select").val(),
 			});
 		});
+
+		console.log("🟢 Payload going to server:", payload);
 
 		try {
 			const r = await frappe.call(
