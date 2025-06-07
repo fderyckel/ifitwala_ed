@@ -22,41 +22,41 @@ LIMIT_DEFAULT    = 30          # how many meeting dates to return
 DEFAULT_PAGE_LEN = 25
 
 def get_student_group_students(
-		student_group: str,
-		start: int = 0,
-		page_length: int = DEFAULT_PAGE_LEN,
-		with_medical: bool = False
+        student_group: str,
+        start: int = 0,
+        page_length: int = DEFAULT_PAGE_LEN,
+        with_medical: bool = False
 ) -> List[dict]:
-	"""
-	Return a paginated list of students in <student_group>.
+    """
+    Return a paginated list of students in <student_group>.
 
-	* Always includes  full name, preferred name, image, DOB.
-	* When with_medical=True it also fetches `medical_info`
-		from Student Patient (collapsed with MAX() so duplicates disappear).
-	"""
-	extra_select = ", MAX(sp.medical_info) AS medical_info" if with_medical else ""
-	extra_join   = "LEFT JOIN `tabStudent Patient` sp ON sp.student = s.name" if with_medical else ""
+    * Always includes  full name, preferred name, image, DOB.
+    * When with_medical=True it also fetches `medical_info`
+      from Student Patient (collapsed with MAX() so duplicates disappear).
+    """
+    extra_select = ", MAX(sp.medical_info) AS medical_info" if with_medical else ""
+    extra_join   = "LEFT JOIN `tabStudent Patient` sp ON sp.student = s.name" if with_medical else ""
 
-	return frappe.db.sql(
-		f"""
-		SELECT
-			s.name                              AS student,
-			s.student_full_name                 AS student_name,      -- alias stays 'student_name' for JS
-			s.student_preferred_name            AS preferred_name,
-			s.student_image                     AS student_image,
-			s.student_date_of_birth             AS birth_date
-			{extra_select}
-		FROM `tabStudent Group Student` g
-		INNER JOIN `tabStudent` s ON s.name = g.student
-		{extra_join}
-		WHERE g.parent = %(sg)s
-		GROUP BY s.name                         -- collapses duplicates from Patient JOIN
-		ORDER BY s.student_full_name
-		LIMIT %(limit)s OFFSET %(offset)s
-		""",
-		{"sg": student_group, "limit": page_length, "offset": start},
-		as_dict=True,
-	)
+    return frappe.db.sql(
+        f"""
+        SELECT
+            s.name                              AS student,
+            s.student_full_name                 AS student_name,      -- alias stays 'student_name' for JS
+            s.student_preferred_name            AS preferred_name,
+            s.student_image                     AS student_image,
+            s.student_date_of_birth             AS birth_date
+            {extra_select}
+        FROM `tabStudent Group Student` g
+        INNER JOIN `tabStudent` s ON s.name = g.student
+        {extra_join}
+        WHERE g.parent = %(sg)s
+        GROUP BY s.name                         -- collapses duplicates from Patient JOIN
+        ORDER BY s.student_full_name
+        LIMIT %(limit)s OFFSET %(offset)s
+        """,
+        {"sg": student_group, "limit": page_length, "offset": start},
+        as_dict=True,
+    )
 
 
 @frappe.whitelist()
@@ -166,12 +166,12 @@ def previous_status_map(student_group: str, attendance_date: str) -> Dict[str, s
 		return {}
 
 	rows = frappe.db.get_all(
-		ATT_DOCTYPE,
-		filters={
-			"student_group": student_group,
-			"attendance_date": prev_date,
-		},
-		fields=["student", ATT_CODE_FIELD]
+    ATT_DOCTYPE,
+    filters={
+        "student_group": student_group,
+        "attendance_date": prev_date,
+    },
+    fields=["student", ATT_CODE_FIELD]
 	)
 	return {r.student: getattr(r, ATT_CODE_FIELD) for r in rows}
 
@@ -210,16 +210,16 @@ def bulk_upsert_attendance(payload=None):
 
 	# ── gather composite keys & existing rows ───────────────────────
 	keys = {(r["student"], r["attendance_date"], r["student_group"]) for r in payload}
-	# frappe.db.get_all() expects sequences (e.g. lists) for "in" filters
-	existing = frappe.db.get_all(
-		"Student Attendance",
-		filters={
-			"student":        ["in", list({k[0] for k in keys})],
-			"attendance_date":["in", list({k[1] for k in keys})],
-			"student_group":  ["in", list({k[2] for k in keys})],
-		},
-		fields=["name", "student", "attendance_date", "student_group"],
-	)
+        # frappe.db.get_all() expects sequences (e.g. lists) for "in" filters
+        existing = frappe.db.get_all(
+                "Student Attendance",
+                filters={
+                        "student":        ["in", list({k[0] for k in keys})],
+                        "attendance_date":["in", list({k[1] for k in keys})],
+                        "student_group":  ["in", list({k[2] for k in keys})],
+                },
+                fields=["name", "student", "attendance_date", "student_group"],
+        )
 	existing_map = {
 		(e.student, e.attendance_date, e.student_group): e.name for e in existing
 	}
@@ -252,10 +252,15 @@ def bulk_upsert_attendance(payload=None):
 
 	# ── bulk insert (new rows) ──────────────────────────────────────
 	if to_insert:
+		fields = ["student", "student_group", "attendance_date", "attendance_code"]
+		values = [tuple(r[f] for f in fields) for r in to_insert]
+
+		frappe.msgprint(f"About to insert: {len(values)} rows")
+		
 		frappe.db.bulk_insert(
 			"Student Attendance",
-			fields=list(to_insert[0].keys()),		# includes attendance_code
-			values=[tuple(r.values()) for r in to_insert],
+			fields=fields,
+			values=values,
 			ignore_duplicates=True
 		)
 		frappe.db.commit()
