@@ -252,13 +252,21 @@ def bulk_upsert_attendance(payload=None):
 
 	# ── bulk insert (new rows) ──────────────────────────────────────
 	if to_insert:
-		fields = ["student", "student_group", "attendance_date", "attendance_code"]
-		values = [tuple(r[f] for f in fields) for r in to_insert]
-
 		frappe.msgprint(f"About to insert: {len(values)} rows")
+		fields = ["name", "student", "student_group", "attendance_date", "attendance_code"]
+		values = [
+			(
+				frappe.generate_hash(12),  # ← ✅ generate a unique name
+				r["student"],
+				r["student_group"],
+				r["attendance_date"],
+				r["attendance_code"]
+			)
+			for r in to_insert
+		]
 
 		frappe.db.bulk_insert(
-			"Student Attendance",
+			doctype="Student Attendance",
 			fields=fields,
 			values=values,
 			ignore_duplicates=True
