@@ -178,12 +178,7 @@ def previous_status_map(student_group: str, attendance_date: str) -> Dict[str, s
 
 @frappe.whitelist()
 def bulk_upsert_attendance(payload=None):
-	"""
-	Insert or update many Student Attendance rows in one go.
-	Accepts a JSON-stringified list[dict] or a true list.
-	"""
-	frappe.msgprint(f"Received {len(payload)} attendance entries")
-	# ✅ Coerce payload safely
+	"""Insert or update many Student Attendance rows in one go."""
 	if isinstance(payload, str):
 		try:
 			payload = frappe.parse_json(payload)
@@ -192,25 +187,22 @@ def bulk_upsert_attendance(payload=None):
 
 	if not isinstance(payload, list):
 		frappe.throw("Payload must be a list of records.")
-
 	if not payload:
 		return {"created": 0, "updated": 0}
 
-	user = frappe.session.user
-	roles = set(frappe.get_roles(user))
-	is_admin = "Academic Admin" in roles
 	fieldkey = "attendance_code"
-
-	# ── validate required keys quickly ──────────────────────────────
 	required = {"student", "student_group", "attendance_date", fieldkey}
+
 	for row in payload:
 		missing = required - row.keys()
 		if missing:
 			frappe.throw(f"Missing keys {missing} in payload row.")
 
-	# ── gather composite keys & existing rows ───────────────────────
+	user = frappe.session.user
+	roles = set(frappe.get_roles(user))
+	is_admin = "Academic Admin" in roles
+
 	keys = {(r["student"], r["attendance_date"], r["student_group"]) for r in payload}
-	# frappe.db.get_all() expects sequences (e.g. lists) for "in" filters
 	existing = frappe.db.get_all(
 		"Student Attendance",
 		filters={
@@ -225,66 +217,59 @@ def bulk_upsert_attendance(payload=None):
 	}
 
 	to_insert, to_update = [], []
-
 	for row in payload:
 		key = (row["student"], row["attendance_date"], row["student_group"])
 
-		# permission ────────────────
 		if not is_admin:
 			ok = frappe.db.exists(
 				"Student Group Instructor",
-				{"parent": row["student_group"],
-				 "instructor": ["in", _get_instructor_ids(user)]}
+				{"parent": row["student_group"], "instructor": ["in", _get_instructor_ids(user)]}
 			)
 			if not ok:
 				frappe.throw("You don’t have rights to record attendance for this group.")
 
-		# meeting-day check ─────────
 		if row["attendance_date"] not in get_meeting_dates(row["student_group"]):
 			frappe.throw(f"{row['attendance_date']} is not a meeting day for the group.")
 
-		# route ─────────────────────
 		if key in existing_map:
 			row["name"] = existing_map[key]
 			to_update.append(row)
 		else:
 			to_insert.append(row)
 
-	# ── bulk insert (new rows) ──────────────────────────────────────
-	if to_insert:
-		frappe.msgprint(f"About to insert: {len(values)} rows")
-		fields = ["name", "student", "student_group", "attendance_date", "attendance_code"]
-		values = [
-			(
-				frappe.generate_hash(12),  # ← ✅ generate a unique name
-				r["student"],
-				r["student_group"],
-				r["attendance_date"],
-				r["attendance_code"]
-			)
-			for r in to_insert
-		]
+	# Only now: construct values after `to_insert` exists
+	values = [
+		(
+			frappe.generate_hash(12),
+			r["student"],
+			r["student_group"],
+			r["attendance_date"],
+			r["attendance_code"]
+		)
+		for r in to_insert
+	]
 
+	if values:
 		frappe.db.bulk_insert(
 			doctype="Student Attendance",
-			fields=fields,
+			fields=["name", "student", "student_group", "attendance_date", "attendance_code"],
 			values=values,
 			ignore_duplicates=True
 		)
 		frappe.db.commit()
 
-	# ── bulk update (existing) ──────────────────────────────────────
 	for chunk in _grouper(to_update, 200):
 		for r in chunk:
 			frappe.db.set_value(
 				"Student Attendance",
 				r["name"],
 				{fieldkey: r[fieldkey]},
-				update_modified=False
+				update_modified=True
 			)
 		frappe.db.commit()
 
 	return {"created": len(to_insert), "updated": len(to_update)}
+
 
 # ---------------------------------------------------------------------
 # Utility internals
