@@ -7,6 +7,7 @@ from frappe import _
 from frappe.utils import getdate, add_days, today
 from collections import defaultdict
 from datetime import timedelta, date
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 ## function to get the start and end dates of the current academic year
 ## used in program enrollment, course enrollment tool. 
@@ -288,7 +289,7 @@ def get_effective_schedule(school_calendar: str, school: str) -> str | None:
 	if sched:
 		return None if sched == "__none__" else sched
 
-	chain = [school] + get_ancestors_of("School", school)
+	chain = get_ancestor_schools(school)
 	for sch in chain:
 		sched = frappe.db.get_value(
 			"School Schedule",

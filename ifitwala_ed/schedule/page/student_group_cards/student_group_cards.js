@@ -131,6 +131,21 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 			change() { fetch_students(true); }
 		});
 
+		if (frappe.route_options?.student_group) {
+			const group = frappe.route_options.student_group;
+			delete frappe.route_options.student_group; 
+			
+			// Clear other filters so we don't restrict the query
+			program_field.set_value(''); 
+			course_field.set_value(''); 
+			cohort_field.set_value(''); 
+			
+			// Ensure the Link field is filled, then trigger fetch 
+			student_group_field.set_value(group).then(() => { 
+				fetch_students(true); 
+			});
+		}		
+
 		function clear_and_refresh_group() {
 			student_group_field.set_value('');
 			student_group_field.refresh();
