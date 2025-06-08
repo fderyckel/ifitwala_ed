@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import getdate, today
+from frappe.utils import now_datetime
 from typing import List, Dict
 from itertools import islice
 from ifitwala_ed.schedule.schedule_utils import get_rotation_dates, get_effective_schedule 
@@ -94,36 +94,7 @@ def get_meeting_dates(student_group: str, limit: int | None = None) -> list[str]
 	calendar_name = None
 	school_name   = None
 
-	# A. direct link (preferred)
-	if getattr(sg, "school_schedule", None):
-		sched_name   = sg.school_schedule
-		sched_doc    = frappe.get_cached_doc("School Schedule", sched_name)
-		calendar_name = sched_doc.school_calendar
-		school_name   = sched_doc.school
-
-	# B. infer via Program ➜ School ➜ get_effective_schedule()
-	else:
-		if sg.program:
-			school_name = frappe.db.get_value("Program", sg.program, "school")
-		if not school_name:
-			# last-ditch: pick “Default School” (if you have one)
-			school_name = frappe.defaults.get_global_default("school")
-
-		# try first calendar for that school & SG academic year
-		if school_name:
-			calendar_name = frappe.db.get_value(
-				"School Calendar",
-				{
-					"school": school_name,
-					"academic_year": sg.academic_year
-				},
-				"name"
-			)
-
-		if calendar_name:
-			sched_name = get_effective_schedule(calendar_name, school_name)
-
-	# Bail out gracefully when still nothing
+	sched_name = sg.school_schedule
 	if not sched_name:
 		return []
 
@@ -202,6 +173,29 @@ def bulk_upsert_attendance(payload=None):
 	roles = set(frappe.get_roles(user))
 	is_admin = "Academic Admin" in roles
 
+	# Preload Student Group metadata
+	sample_group = payload[0]["student_group"]
+	sg = frappe.get_cached_doc("Student Group", sample_group)
+	program_school = (
+		frappe.db.get_value("Program", sg.program, "school")
+		if sg.program else None
+	)
+
+	# Preload Student Group Schedule map: (rotation_day, block_number) → row
+	schedule_rows = frappe.get_all(
+		"Student Group Schedule", 
+		filters={"parent": sample_group}, 
+		fields=["rotation_day", "block_number", "instructor", "location"]
+		)
+	sched_map = {
+		(row.rotation_day, row.block_number): row for row in schedule_rows
+	}
+
+	# Build date → rotation_day map
+	from ifitwala_ed.schedule.schedule_utils import get_rotation_dates
+	rot_dates = get_rotation_dates(sg.school_schedule, sg.academic_year, include_holidays=False)
+	rotation_map = {rd["date"].isoformat(): rd["rotation_day"] for rd in rot_dates}
+
 	keys = {(r["student"], r["attendance_date"], r["student_group"]) for r in payload}
 	existing = frappe.db.get_all(
 		"Student Attendance",
@@ -231,16 +225,42 @@ def bulk_upsert_attendance(payload=None):
 		if row["attendance_date"] not in get_meeting_dates(row["student_group"]):
 			frappe.throw(f"{row['attendance_date']} is not a meeting day for the group.")
 
-		if key in existing_map:
-			row["name"] = existing_map[key]
-			to_update.append(row)
-		else:
-			to_insert.append(row)
+		rotation_day = rotation_map.get(row["attendance_date"])
+		block_row = next(
+			(r for (rot, blk), r in sched_map.items() if rot == rotation_day),
+			None
+		) 
+		
+		enriched = {
+			"name": f"ATT-{row['student']}-{row['attendance_date']}T{now_datetime().strftime('%H:%M')}",
+			"student": row["student"],
+			"student_group": row["student_group"],
+			"attendance_date": row["attendance_date"],
+			"attendance_code": row["attendance_code"],
+			"attendance_time": now_datetime().time(),
+			"attendance_method": "Manual",
+			"academic_year": sg.academic_year,
+			"term": sg.term,
+			"program": sg.program,
+			"course": sg.course,
+			"school": program_school,
+			"rotation_day": rotation_day,
+			"block_number": block_row.block_number if block_row else None,
+			"instructor": block_row.instructor if block_row else None,
+			"location": block_row.location if block_row else None
+		}
+		
+		
+		if key in existing_map: 
+			row["name"] = existing_map[key] 
+			to_update.append((row["name"], enriched)) 
+		else: 
+			to_insert.append(enriched)
 
 	# Only now: construct values after `to_insert` exists
 	values = [
 		(
-			frappe.generate_hash(12),
+			f"ATT-{r['student']}-{r['attendance_date']}T{frappe.utils.now_datetime().strftime('%H:%M')}",
 			r["student"],
 			r["student_group"],
 			r["attendance_date"],
@@ -249,12 +269,12 @@ def bulk_upsert_attendance(payload=None):
 		for r in to_insert
 	]
 
-	if values:
-		frappe.db.bulk_insert(
+	if to_insert: 
+		frappe.db.bulk_insert( 
 			doctype="Student Attendance",
-			fields=["name", "student", "student_group", "attendance_date", "attendance_code"],
-			values=values,
-			ignore_duplicates=True
+			fields=list(to_insert[0].keys()), 
+			values=[list(r.values()) for r in to_insert], 
+			ignore_duplicates=True 
 		)
 		frappe.db.commit()
 

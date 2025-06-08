@@ -35,6 +35,12 @@ class StudentGroup(Document):
 		self.validate_and_set_child_table_fields()
 		validate_duplicate_student(self.students)
 		self.validate_rotation_clashes()
+		########
+		# Auto-fill school_schedule if missing and based on course
+		if self.group_based_on == "Course" and not self.school_schedule:
+			from ifitwala_ed.schedule.schedule_utils import get_effective_schedule
+			self.school_schedule = get_effective_schedule(self.academic_year, self.program)
+		############	
 		self._validate_schedule_rows()
 
 		if self.group_based_on in ["Course", "Activity"]:

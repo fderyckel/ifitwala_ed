@@ -208,7 +208,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		);
 
 		if (!dates.length) {
-			frappe.msgprint(__("No scheduled dates found for this group."));
+			frappe.msgprint(__("This student group has no scheduled dates. Please ensure a School Schedule is set and blocks are assigned."));
 			date_field.df.options = [];
 			date_field.refresh();
 			$cards.empty();
@@ -216,12 +216,58 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			return;
 		}
 
-		date_field.df.options = dates.map((d) =>
-			({ label: d === frappe.datetime.get_today() ? __("Today") : d, value: d })
+		const today = frappe.datetime.get_today();
+		const todayIndex = dates.indexOf(today);
+
+		// Split dates
+		let before = [], after = [], selected = today;
+		if (todayIndex !== -1) {
+			before = dates.slice(Math.max(0, todayIndex - 5), todayIndex);
+			after = dates.slice(todayIndex + 1, todayIndex + 6);
+		} else {
+			// fallback: use latest 10
+			before = dates.slice(0, 10);
+			selected = before[0] || null;
+		}
+
+		const visibleDates = [...before, todayIndex !== -1 ? today : null, ...after].filter(Boolean);
+
+		// Set into field
+		date_field.df.options = visibleDates.map((d) =>
+			({ label: d === today ? __("Today") : d, value: d })
 		);
 		date_field.refresh();
-		date_field.set_value(dates[0]);
+		date_field.set_value(selected);
+
+		add_toggle_link(dates, today, selected);
+
 		await build_roster();
+	}
+
+	function add_toggle_link(all_dates, today, selected) {
+		// Prevent duplication
+		if ($("#toggle-all-dates").length) return;
+
+		const $toggle = $(`
+			<div id="toggle-all-dates" class="mt-2 ms-1 small text-primary" role="button" style="cursor: pointer;">
+				${__("Show all dates ⬇")}
+			</div>
+		`);
+		$toggle.on("click", () => {
+			date_field.df.options = all_dates.map(d => ({
+				label: d === today ? __("Today") : d,
+				value: d
+			}));
+			date_field.refresh();
+			date_field.set_value(selected);
+			$toggle.remove();
+		});
+
+		// Insert below the field (same flex container as filters)
+		const $formRow = $(".page-form .frappe-control[data-fieldname='attendance_date']");
+		if ($formRow.length) {
+			$formRow.append($toggle);
+		}
 	}
 
 	async function build_roster() {
