@@ -47,7 +47,7 @@ def get_effective_record(
             filters[link_field] = sch
         record = frappe.db.get_value(doctype, filters, "name")
         if record:
-            cache.set_value(key, record, expires_in=CACHE_TTL)
+            cache.set_value(key, record, expires_in_sec=CACHE_TTL)
             return record
 
     # 2 ▪ optional organisation fallback
@@ -60,10 +60,10 @@ def get_effective_record(
                 filters["organization"] = org_node
                 record = frappe.db.get_value(doctype, filters, "name")
                 if record:
-                    cache.set_value(key, record, expires_in=CACHE_TTL)
+                    cache.set_value(key, record, expires_in_sec=CACHE_TTL)
                     return record
 
-    cache.set_value(key, "__none__", expires_in=CACHE_TTL)
+    cache.set_value(key, "__none__", expires_in_sec=CACHE_TTL)
     return None
 
 

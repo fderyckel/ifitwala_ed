@@ -297,10 +297,10 @@ def get_effective_schedule(school_calendar: str, school: str) -> str | None:
 			"name",
 		)
 		if sched:
-			frappe.cache().set_value(cache_key, sched, expires_in=300)
+			frappe.cache().set_value(cache_key, sched, expires_in_sec=300)
 			return sched
 
-	frappe.cache().set_value(cache_key, "__none__", expires_in=300)
+	frappe.cache().set_value(cache_key, "__none__", expires_in_sec=300)
 	return None
 
 
@@ -349,7 +349,7 @@ def build_rotation_map(calendar_name: str) -> dict[int, list[tuple]]:
 
 			cur = add_days(cur, 1)
 
-	frappe.cache().set_value(key, out, expires_in=ROT_CACHE_TTL)
+	frappe.cache().set_value(key, out, expires_in_sec=ROT_CACHE_TTL)
 	return out
 
 CACHE_TTL = 6 * 60 * 60		# 6 hours
@@ -370,7 +370,7 @@ def build_user_calendar(user: str, start_date: date, days: int = 7) -> list[dict
 
 		# build for that single day
 		event_list = _build_events_for_day(user, d)
-		frappe.cache().set_value(key, json.dumps(event_list), expires_in=CACHE_TTL)
+		frappe.cache().set_value(key, json.dumps(event_list), expires_in_sec=CACHE_TTL)
 		out.extend(event_list)
 	return out
 
