@@ -220,7 +220,7 @@ def bulk_upsert_attendance(payload=None):
 				{"parent": row["student_group"], "instructor": ["in", _get_instructor_ids(user)]}
 			)
 			if not ok:
-				frappe.throw("You don’t have rights to record attendance for this group.")
+				frappe.throw("You don't have rights to record attendance for this group.")
 
 		if row["attendance_date"] not in get_meeting_dates(row["student_group"]):
 			frappe.throw(f"{row['attendance_date']} is not a meeting day for the group.")

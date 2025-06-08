@@ -7,6 +7,7 @@ from frappe.model.document import Document
 from frappe.utils import cint, get_link_to_form
 from ifitwala_ed.schedule.schedule_utils import validate_duplicate_student
 from ifitwala_ed.schedule.schedule_utils import check_slot_conflicts, get_conflict_rule
+from ifitwala_ed.schedule.schedule_utils import get_effective_schedule
 from ifitwala_ed.utilities.school_tree import (
     get_ancestor_schools,          # for the picker
     get_first_ancestor_with_doc    # for automatic lookup
@@ -38,8 +39,13 @@ class StudentGroup(Document):
 		########
 		# Auto-fill school_schedule if missing and based on course
 		if self.group_based_on == "Course" and not self.school_schedule:
-			from ifitwala_ed.schedule.schedule_utils import get_effective_schedule
-			self.school_schedule = get_effective_schedule(self.academic_year, self.program)
+			school = frappe.db.get_value("Program", self.program, "school")
+			if not school:
+				frappe.throw(_("{0} has no linked school. Please update the Program.").format(
+					get_link_to_form("Program", self.program)
+				))
+			
+			self.school_schedule = get_effective_schedule(self.academic_year, school)
 		############	
 		self._validate_schedule_rows()
 
@@ -348,7 +354,7 @@ class StudentGroup(Document):
 			# 1️⃣ Rotation-day within range
 			if row.rotation_day < 1 or row.rotation_day > sched.rotation_days:
 				frappe.throw(_(
-					"Rotation Day {0} is outside the 1 – {1} range defined in {2}."
+					"Rotation Day {0} is outside the 1 - {1} range defined in {2}."
 				).format(row.rotation_day, sched.rotation_days, sched.name))
 
 			# 2️⃣ Block exists on that day
@@ -465,20 +471,20 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 def schedule_picker_query(doctype, txt, searchfield, start, page_len, filters):
 	"""
 	Return School Schedules whose School Calendar belongs to the selected Academic Year
-	and whose School is in the user-school’s ancestor chain.
+	and whose School is in the user-school's ancestor chain.
 	"""
 	ay = filters.get("academic_year")
 	if not ay:
 		return []
 
-	# 1️⃣ current school on the Academic Year doc
+	# current school on the Academic Year doc
 	school = frappe.db.get_value("Academic Year", ay, "school")
 	if not school:
 		return []
 
 	allowed_schools = get_ancestor_schools(school)  # self + parents
 
-	# 2️⃣ school-calendar ids that match AY + allowed schools
+	# school-calendar ids that match AY + allowed schools
 	cal_ids = frappe.db.get_all(
 		"School Calendar",
 		filters={
