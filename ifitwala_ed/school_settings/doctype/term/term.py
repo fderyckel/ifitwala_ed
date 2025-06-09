@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, cstr, get_link_to_form
+from frappe.utils import getdate, nowdate, cstr, get_link_to_form
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import ParentRuleViolation
