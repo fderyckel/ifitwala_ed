@@ -2,10 +2,11 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import now_datetime
+from frappe.utils import now_datetime, getdate, nowdate
 from typing import List, Dict
 from itertools import islice
-from ifitwala_ed.schedule.schedule_utils import get_rotation_dates, get_effective_schedule 
+from ifitwala_ed.schedule.schedule_utils import get_rotation_dates
+from ifitwala_ed.school_settings.doctype.term.term import get_current_term
 
 ATT_CODE_FIELD 	 = "attendance_code" 
 ATT_CODE_DOCTYPE = "Student Attendance Code"
@@ -123,12 +124,25 @@ def get_meeting_dates(student_group: str, limit: int | None = None) -> list[str]
 	)
 	return [d.isoformat() for d in meetings[:limit]]
 
+@frappe.whitelist()
+def fetch_existing_attendance(student_group: str, attendance_date: str) -> Dict[str, str]:
+	"""Return {student: attendance_code} for already-recorded entries for the group/date."""
+	rows = frappe.db.get_all(
+		"Student Attendance",
+		filters={
+			"student_group": student_group,
+			"attendance_date": attendance_date,
+		},
+		fields=["student", "attendance_code"]
+	)
+	return {r.student: r.attendance_code for r in rows}
+
 
 @frappe.whitelist()
 def previous_status_map(student_group: str, attendance_date: str) -> Dict[str, str]:
 	"""
 	For UI hints: returns {student: last_code} for the meeting just *before*
-	<attendance_date> in that group’s calendar.  Empty dict when none found.
+	<attendance_date> in that group's calendar.  Empty dict when none found.
 	"""
 	meetings = get_meeting_dates(student_group, limit=LIMIT_DEFAULT + 1)
 	try:
@@ -180,6 +194,17 @@ def bulk_upsert_attendance(payload=None):
 		frappe.db.get_value("Program", sg.program, "school")
 		if sg.program else None
 	)
+
+	today = getdate()
+
+	current_term = get_current_term(sg.academic_year)
+	if current_term:
+		if today < getdate(current_term.term_start_date) or today > getdate(current_term.term_end_date):
+			frappe.throw(_("You cannot edit attendance outside the current term."))
+	else:
+		# fallback: no term defined
+		if row["attendance_date"] < nowdate():
+			frappe.throw(_("You cannot modify attendance for past academic years."))	
 
 	# Preload Student Group Schedule map: (rotation_day, block_number) → row
 	schedule_rows = frappe.get_all(
@@ -250,24 +275,11 @@ def bulk_upsert_attendance(payload=None):
 			"location": block_row.location if block_row else None
 		}
 		
-		
 		if key in existing_map: 
 			row["name"] = existing_map[key] 
 			to_update.append((row["name"], enriched)) 
 		else: 
 			to_insert.append(enriched)
-
-	# Only now: construct values after `to_insert` exists
-	values = [
-		(
-			f"ATT-{r['student']}-{r['attendance_date']}T{frappe.utils.now_datetime().strftime('%H:%M')}",
-			r["student"],
-			r["student_group"],
-			r["attendance_date"],
-			r["attendance_code"]
-		)
-		for r in to_insert
-	]
 
 	if to_insert: 
 		frappe.db.bulk_insert( 

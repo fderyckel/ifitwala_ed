@@ -161,19 +161,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 
 	/* 3 ▸ bulk actions */
 
-		setTimeout(() => {
-			page.set_primary_action(
-				__("Submit"),
-				async () => {
-					page.toggle_primary_action(false);
-					await submit_roster();
-					page.toggle_primary_action(true);
-				},
-				"save"
-			);
-		}, 150);
-
-		page.add_action_item("🚀 Quick Submit", async () => {
+		page.add_action_item("Submit", async () => {
 			await submit_roster();
 		});
 
@@ -278,14 +266,21 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		$cards.empty();
 		toggle_bulk(false);
 
-		const [{ message: roster }, { message: prev }] = await Promise.all([
+		const [{ message: roster }, { message: prev }, { message: existing }] = await Promise.all([
 			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_students", {
 				student_group: group, start: 0, page_length: 500,
 			}),
 			frappe.call("ifitwala_ed.schedule.attendance_utils.previous_status_map", {
 				student_group: group, attendance_date: date,
 			}),
+			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_existing_attendance", {
+				student_group: group, attendance_date: date,
+			}),
 		]);
+
+		// 🔁 Change button text based on whether attendance already exists
+		const has_existing = Object.keys(existing || {}).length > 0;
+		$quickSubmitBtn.text(has_existing ? __("Update Attendance") : __("Submit"));
 
 		if (!roster.students.length) return;
 
@@ -300,7 +295,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		const default_code = default_field.get_value() || "Present";
 		for (const stu of roster.students) {
 			$cards.append(
-				await renderAttendanceCard(stu, prev[stu.student] || default_code)
+				await renderAttendanceCard(stu, existing[stu.student] || prev[stu.student] || default_code)
 			);
 		}
 		toggle_bulk(true);

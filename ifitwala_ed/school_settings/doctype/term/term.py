@@ -175,6 +175,26 @@ def get_schools_per_academic_year_for_terms(user_school):
 
 	return list(pairs)
 
+def get_current_term(academic_year: str) -> frappe._dict | None:
+	"""
+	Returns the current active Term for the given academic_year
+	(based on today's date falling between term_start_date and term_end_date).
+	Returns a frappe._dict with term fields or None if no match.
+	"""
+	today = getdate(nowdate())
+
+	term = frappe.db.get_value(
+		"Term",
+		{
+			"academic_year": academic_year,
+			"term_start_date": ["<=", today],
+			"term_end_date": [">=", today],
+		},
+		["name", "term_start_date", "term_end_date"],
+		as_dict=True,
+	)
+
+	return term
 
 def get_permission_query_conditions(user):
 	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
