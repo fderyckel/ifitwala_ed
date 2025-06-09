@@ -176,7 +176,7 @@ def bulk_upsert_attendance(payload=None):
 		return {"created": 0, "updated": 0}
 
 	fieldkey = "attendance_code"
-	required = {"student", "student_group", "attendance_date", fieldkey}
+	required = {"student", "student_group", "attendance_date", fieldkey, "block_number"}
 
 	for row in payload:
 		missing = required - row.keys()
@@ -221,23 +221,25 @@ def bulk_upsert_attendance(payload=None):
 	rot_dates = get_rotation_dates(sg.school_schedule, sg.academic_year, include_holidays=False)
 	rotation_map = {rd["date"].isoformat(): rd["rotation_day"] for rd in rot_dates}
 
-	keys = {(r["student"], r["attendance_date"], r["student_group"]) for r in payload}
+	keys = {(r["student"], r["attendance_date"], r["student_group"], r["block_number"]) for r in payload}
 	existing = frappe.db.get_all(
-		"Student Attendance",
+		"Student Attendance", 
 		filters={
-			"student": ["in", list({k[0] for k in keys})],
-			"attendance_date": ["in", list({k[1] for k in keys})],
-			"student_group": ["in", list({k[2] for k in keys})],
+			"student": ["in", list({k[0] for k in keys})], 
+			"attendance_date": ["in", list({k[1] for k in keys})], 
+			"student_group": ["in", list({k[2] for k in keys})], 
+			"block_number": ["in", list({k[3] for k in keys})],
 		},
-		fields=["name", "student", "attendance_date", "student_group"],
+		fields=["name", "student", "attendance_date", "student_group", "block_number", "attendance_code"] 
 	)
-	existing_map = {
-		(e.student, e.attendance_date, e.student_group): e.name for e in existing
+	existing_map = { 
+		(e.student, e.attendance_date, e.student_group, e.block_number): (e.name, e.attendance_code) 
+		for e in existing
 	}
 
 	to_insert, to_update = [], []
 	for row in payload:
-		key = (row["student"], row["attendance_date"], row["student_group"])
+		key = (row["student"], row["attendance_date"], row["student_group"], row["block_number"])
 
 		if not is_admin:
 			ok = frappe.db.exists(
@@ -276,10 +278,11 @@ def bulk_upsert_attendance(payload=None):
 		}
 		
 		if key in existing_map: 
-			row["name"] = existing_map[key] 
-			to_update.append((row["name"], enriched)) 
-		else: 
-			to_insert.append(enriched)
+			existing_name, existing_code = existing_map[key] 
+			if row["attendance_code"] != existing_code: 
+				to_update.append((existing_name, row["attendance_code"])) 
+			else: 
+				to_insert.append(enriched)
 
 	if to_insert: 
 		frappe.db.bulk_insert( 
@@ -290,15 +293,11 @@ def bulk_upsert_attendance(payload=None):
 		)
 		frappe.db.commit()
 
-	for chunk in _grouper(to_update, 200):
-		for r in chunk:
-			frappe.db.set_value(
-				"Student Attendance",
-				r["name"],
-				{fieldkey: r[fieldkey]},
-				update_modified=True
-			)
-		frappe.db.commit()
+	for name, new_code in to_update: 
+		frappe.db.set_value( 
+			"Student Attendance", name, {fieldkey: new_code}, update_modified=True)
+	
+	frappe.db.commit()
 
 	return {"created": len(to_insert), "updated": len(to_update)}
 

@@ -42,7 +42,7 @@ async function get_attendance_codes() {
 /* ------------------------------------------------------------------ */
 /* Card renderer                                                      */
 /* ------------------------------------------------------------------ */
-async function renderAttendanceCard(student, selected_code) {
+async function renderAttendanceCard(student, existing_codes = {}) {
 	const codes = await get_attendance_codes();
 
 	const student_name   = frappe.utils.escape_html(student.student_name);
@@ -78,11 +78,26 @@ async function renderAttendanceCard(student, selected_code) {
 	}
 
 	/* attendance-code <select> -------------------------------------- */
-	const options = codes.map(c =>
-		`<option value="${c.name}" ${
-			c.name === selected_code ? "selected" : "" 
-		}>${frappe.utils.escape_html(c.attendance_code_name)}</option>`
-	).join('');
+	function buildOptions(selected) {
+		return codes.map(c => 
+			`<option value="${c.name}" ${c.name === selected ? "selected" : ""}>${frappe.utils.escape_html(c.attendance_code_name)}</option>`
+		).join('');
+	}
+
+	const selectsHTML = (student.blocks || [null]).map(block => { 
+		const label = block !== null ? `Block ${block}:` : ""; 
+		const value = existing_codes[block] || ""; 
+		return ` 
+			<div class="text-start small mb-1"> 
+				${label} 
+				<select class="form-select mt-1 w-100" 
+					data-field="code" 
+					data-block="${block || ''}" 
+					aria-label="Attendance code"> 
+					${buildOptions(value)} 
+				</select> 
+			</div>`; 
+	}).join("\n");
 
 	return `
 		<div class="col-6 col-sm-4 col-md-3 col-lg-2" data-student="${student_id}">
@@ -103,9 +118,9 @@ async function renderAttendanceCard(student, selected_code) {
 
 				${preferred_name ? `<div class="preferred-name mb-1">${preferred_name}</div>` : ""}
 
-				<select class="form-select mt-auto w-100" data-field="code" aria-label="Attendance code">
-					${options}
-				</select>
+				<div class="mt-auto w-100"> 
+					${selectsHTML} 
+				</div>
 			</div>
 		</div>`;
 }
@@ -309,12 +324,18 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		const date  = date_field.get_value();
 		const payload = [];
 
-		$cards.find("> div[data-student]").each(function () {
-			payload.push({
-				student:         $(this).data("student"),
-				student_group:   group,
-				attendance_date: date,
-				attendance_code: $(this).find("select").val(),
+		$cards.find("div[data-student]").each(function () { 
+			const student = $(this).data("student"); 
+			$(this).find("select[data-field='code']").each(function () { 
+				const block = parseInt($(this).data("block")) || null; 
+				const code  = $(this).val(); 
+				payload.push({ 
+					student:         student, 
+					student_group:   group, 
+					attendance_date: date, 
+					block_number:    block, 
+					attendance_code: code, 
+				}); 
 			});
 		});
 
