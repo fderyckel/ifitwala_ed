@@ -161,9 +161,9 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 
 	/* 3 ▸ bulk actions */
 
-		page.add_action_item("Submit", async () => {
-			await submit_roster();
-		});
+	let $quickSubmitBtn = page.add_action_item(__("🚀 Quick Submit"), async () => {
+		await submit_roster();
+	});
 
 	/* 4 ▸ layout wrapper (same pattern as student_group_cards) */
 	$(wrapper).append(`
