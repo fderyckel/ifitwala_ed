@@ -244,7 +244,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 
 		add_toggle_link(dates, today, selected);
 
-		await build_roster();
 	}
 
 	function add_toggle_link(all_dates, today, selected) {
@@ -312,7 +311,9 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 
 		const default_code = default_field.get_value() || "Present";
 		for (const stu of roster.students) {
-			const blocks_for_day = blocks[stu.student] || [null]; 
+			const blocks_for_day = Array.isArray(blocks) && blocks.length 
+				? blocks        // same list for every student on that day
+				: [null];
 			const existing_codes = (existing?.[stu.student] || {});
 			const prev_codes     = prev?.[stu.student] || {};
 			const code_map = {};
