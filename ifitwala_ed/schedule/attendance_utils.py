@@ -135,12 +135,10 @@ def fetch_existing_attendance(student_group: str, attendance_date: str) -> Dict[
 		},
 		fields=["student", "block_number", "attendance_code"]
 	)
-	result = {}
-	for r in rows:
-		if r.student not in result:
-			result[r.student] = {}
-		result[r.student][r.block_number] = r.attendance_code
-	return result
+	data = {} 
+	for r in rows: 
+		data.setdefault(r.student, {})[r.block_number] = r.attendance_code 
+	return data
 
 
 @frappe.whitelist()

@@ -371,8 +371,4 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	$btnPresent.on("click", () => $cards.find("select[data-field='code']").val("Present"));
 	$btnAbsent .on("click", () => $cards.find("select[data-field='code']").val("Absent"));
 
-	/* 8 ▸ auto-prefill default group (optional) ---------------------- */
-	const default_group = frappe.defaults.get_default("student_group");
-	if (default_group) student_group_field.set_value(default_group);
-	if (student_group_field.get_value()) await refresh_dates();
 };
