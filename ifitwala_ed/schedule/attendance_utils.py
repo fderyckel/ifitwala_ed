@@ -263,7 +263,7 @@ def bulk_upsert_attendance(payload=None):
 	query = f"""
 		SELECT name, student, attendance_date, student_group, COALESCE(block_number, {SENTINEL}) AS block_number, attendance_code
 		FROM `tabStudent Attendance`
-		WHERE (student, attendance_date, student_group, block_number) IN ({placeholders})
+		WHERE (student, attendance_date, student_group, COALESCE(block_number, {SENTINEL})) IN ({placeholders})
 	"""
 	rows = frappe.db.sql(query, list(keys), as_dict=True)
 
@@ -278,7 +278,7 @@ def bulk_upsert_attendance(payload=None):
 			row["student"], 
 			row["attendance_date"], 
 			row["student_group"], 
-			row.get("block_number") or None 
+			norm(row.get("block_number")) 
 		)
 
 		if not is_admin:
