@@ -318,9 +318,16 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			const code_map = {};
 
 			for (const block of blocks_for_day) { 
-				code_map[block] = (existing_codes?.[block] ?? prev_codes?.[block]) ?? default_code; 
-			}
-			stu.blocks = blocks_for_day;
+				// use existing first, fallback to previous, else default 
+				if (existing_codes?.[block]) { 
+					code_map[block] = existing_codes[block]; 
+				} else if (prev_codes?.[block]) { 
+					code_map[block] = prev_codes[block]; 
+				} else { 
+					code_map[block] = default_code; 
+				} 
+			} 
+			stu.blocks = blocks_for_day; 
 			$cards.append(await renderAttendanceCard(stu, code_map));
 		}
 		toggle_bulk(true);
