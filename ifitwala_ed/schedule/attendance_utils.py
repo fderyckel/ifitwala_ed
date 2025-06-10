@@ -309,8 +309,8 @@ def bulk_upsert_attendance(payload=None):
 			existing_name, existing_code = existing_map[key] 
 			if row["attendance_code"] != existing_code: 
 				to_update.append((existing_name, row["attendance_code"])) 
-			else: 
-				to_insert.append(enriched)
+		else: 
+			to_insert.append(enriched)
 
 	if to_insert: 
 		frappe.db.bulk_insert( 
