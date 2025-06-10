@@ -251,11 +251,17 @@ def bulk_upsert_attendance(payload=None):
 	rot_dates = get_rotation_dates(sg.school_schedule, sg.academic_year, include_holidays=False)
 	rotation_map = {rd["date"].isoformat(): rd["rotation_day"] for rd in rot_dates}
 
-	keys = {(r["student"], r["attendance_date"], r["student_group"], r.get("block_number") or None) for r in payload}
+	# NULL never = NULL in SQL → map it to sentinel -1
+	SENTINEL = -1
+	def norm(b):          # local helper
+		return b if b is not None else SENTINEL 
+	# use the normalised value when we build the search keys
+	keys = {(r["student"], r["attendance_date"], r["student_group"], norm(r.get("block_number"))) for r in payload}
+	
 	# Build exact match composite key map
 	placeholders = ','.join(['%s'] * len(keys))
 	query = f"""
-		SELECT name, student, attendance_date, student_group, block_number, attendance_code
+		SELECT name, student, attendance_date, student_group, COALESCE(block_number, {SENTINEL}) AS block_number, attendance_code
 		FROM `tabStudent Attendance`
 		WHERE (student, attendance_date, student_group, block_number) IN ({placeholders})
 	"""
@@ -306,7 +312,7 @@ def bulk_upsert_attendance(payload=None):
 			"course": sg.course,
 			"school": program_school,
 			"rotation_day": rotation_day,
-			"block_number": block_row.block_number if block_row else None,
+			"block_number": norm(block_row.block_number if block_row else None),
 			"instructor": block_row.instructor if block_row else None,
 			"location": block_row.location if block_row else None
 		}

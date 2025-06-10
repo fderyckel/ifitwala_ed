@@ -344,7 +344,8 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		$cards.find("div[data-student]").each(function () { 
 			const student = $(this).data("student"); 
 			$(this).find("select[data-field='code']").each(function () { 
-				const block = parseInt($(this).data("block")) || null; 
+				const raw   = $(this).data("block"); 
+				const block = raw === "" ? -1 : parseInt(raw, 10);  // match the Python sentinel
 				const code  = $(this).val(); 
 				payload.push({ 
 					student:         student, 
