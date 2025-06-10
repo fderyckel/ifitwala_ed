@@ -160,6 +160,34 @@ def previous_status_map(student_group: str, attendance_date: str) -> Dict[str, s
 	)
 	return {r.student: getattr(r, ATT_CODE_FIELD) for r in rows}
 
+@frappe.whitelist()
+def fetch_blocks_for_day(student_group: str, attendance_date: str) -> List[int]:
+    """
+    Given a student group and a specific attendance date,
+    return the list of block numbers scheduled for that group on that day.
+    """
+    sg = frappe.get_cached_doc("Student Group", student_group)
+    if not sg.school_schedule:
+        return []
+
+    from ifitwala_ed.schedule.schedule_utils import get_rotation_dates
+
+    # 1. Find the rotation_day for that date
+    rot_dates = get_rotation_dates(sg.school_schedule, sg.academic_year, include_holidays=False)
+    rotation_map = {rd["date"].isoformat(): rd["rotation_day"] for rd in rot_dates}
+    rotation_day = rotation_map.get(attendance_date)
+    if not rotation_day:
+        return []
+
+    # 2. Return all blocks for that rotation_day in the Student Group Schedule
+    rows = frappe.get_all(
+        "Student Group Schedule",
+        filters={"parent": student_group, "rotation_day": rotation_day},
+        fields=["block_number"],
+        order_by="block_number ASC"
+    )
+    return [r.block_number for r in rows if r.block_number is not None]
+
 
 @frappe.whitelist()
 def bulk_upsert_attendance(payload=None):

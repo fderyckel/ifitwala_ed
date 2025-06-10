@@ -281,16 +281,19 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		$cards.empty();
 		toggle_bulk(false);
 
-		const [{ message: roster }, { message: prev }, { message: existing }] = await Promise.all([
+		const [{ message: roster }, { message: prev }, { message: existing }, { message: blocks }] = await Promise.all([ 
 			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_students", {
 				student_group: group, start: 0, page_length: 500,
-			}),
-			frappe.call("ifitwala_ed.schedule.attendance_utils.previous_status_map", {
-				student_group: group, attendance_date: date,
-			}),
-			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_existing_attendance", {
-				student_group: group, attendance_date: date,
-			}),
+			}), 
+			frappe.call("ifitwala_ed.schedule.attendance_utils.previous_status_map", { 
+				student_group: group, attendance_date: date, 
+			}), 
+			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_existing_attendance", { 
+				student_group: group, attendance_date: date, 
+			}), 
+			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_blocks_for_day", { 
+				student_group: group, attendance_date: date, 
+			}), 
 		]);
 
 		// 🔁 Change button text based on whether attendance already exists
@@ -309,9 +312,14 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 
 		const default_code = default_field.get_value() || "Present";
 		for (const stu of roster.students) {
-			$cards.append(
-				await renderAttendanceCard(stu, existing[stu.student] || prev[stu.student] || default_code)
-			);
+			const blocks_for_day = blocks[stu.student] || [null]; 
+			const existing_codes = {}; 
+			for (const block of blocks_for_day) { 
+				const key = `${stu.student}|${block}`; 
+				existing_codes[block] = existing[key] || prev[key] || default_code; 
+			} 
+			stu.blocks = blocks_for_day; 
+			$cards.append(await renderAttendanceCard(stu, existing_codes));
 		}
 		toggle_bulk(true);
 	}
