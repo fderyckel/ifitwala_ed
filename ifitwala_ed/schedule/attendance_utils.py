@@ -248,11 +248,10 @@ def bulk_upsert_attendance(payload=None):
 	}
 
 	# Build date → rotation_day map
-	from ifitwala_ed.schedule.schedule_utils import get_rotation_dates
 	rot_dates = get_rotation_dates(sg.school_schedule, sg.academic_year, include_holidays=False)
 	rotation_map = {rd["date"].isoformat(): rd["rotation_day"] for rd in rot_dates}
 
-	keys = {(r["student"], r["attendance_date"], r["student_group"], r["block_number"]) for r in payload}
+	keys = {(r["student"], r["attendance_date"], r["student_group"], r.get("block_number") or None) for r in payload}
 	existing = frappe.db.get_all(
 		"Student Attendance", 
 		filters={
@@ -264,13 +263,18 @@ def bulk_upsert_attendance(payload=None):
 		fields=["name", "student", "attendance_date", "student_group", "block_number", "attendance_code"] 
 	)
 	existing_map = { 
-		(e.student, e.attendance_date, e.student_group, e.block_number): (e.name, e.attendance_code) 
-		for e in existing
+		(e.student, e.attendance_date, e.student_group, e.block_number or None): (e.name, e.attendance_code) 
+		for e in existing 
 	}
 
 	to_insert, to_update = [], []
 	for row in payload:
-		key = (row["student"], row["attendance_date"], row["student_group"], row["block_number"])
+		key = ( 
+			row["student"], 
+			row["attendance_date"], 
+			row["student_group"], 
+			row.get("block_number") or None 
+		)
 
 		if not is_admin:
 			ok = frappe.db.exists(
