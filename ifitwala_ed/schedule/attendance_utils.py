@@ -271,7 +271,7 @@ def bulk_upsert_attendance(payload=None):
 	rows = frappe.db.sql(query, params, as_dict=True)
 
 	existing_map = {
-		(row.student, row.attendance_date, row.student_group, int(row.block_number)): (row.name, row.attendance_code)
+		(row.student, row.attendance_date.isoformat(), row.student_group, int(row.block_number)): (row.name, row.attendance_code)
 		for row in rows
 	}
 
