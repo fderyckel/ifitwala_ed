@@ -252,19 +252,18 @@ def bulk_upsert_attendance(payload=None):
 	rotation_map = {rd["date"].isoformat(): rd["rotation_day"] for rd in rot_dates}
 
 	keys = {(r["student"], r["attendance_date"], r["student_group"], r.get("block_number") or None) for r in payload}
-	existing = frappe.db.get_all(
-		"Student Attendance", 
-		filters={
-			"student": ["in", list({k[0] for k in keys})], 
-			"attendance_date": ["in", list({k[1] for k in keys})], 
-			"student_group": ["in", list({k[2] for k in keys})], 
-			"block_number": ["in", list({k[3] for k in keys})],
-		},
-		fields=["name", "student", "attendance_date", "student_group", "block_number", "attendance_code"] 
-	)
-	existing_map = { 
-		(e.student, e.attendance_date, e.student_group, e.block_number or None): (e.name, e.attendance_code) 
-		for e in existing 
+	# Build exact match composite key map
+	placeholders = ','.join(['%s'] * len(keys))
+	query = f"""
+		SELECT name, student, attendance_date, student_group, block_number, attendance_code
+		FROM `tabStudent Attendance`
+		WHERE (student, attendance_date, student_group, block_number) IN ({placeholders})
+	"""
+	rows = frappe.db.sql(query, list(keys), as_dict=True)
+
+	existing_map = {
+		(row.student, row.attendance_date, row.student_group, row.block_number): (row.name, row.attendance_code)
+		for row in rows
 	}
 
 	to_insert, to_update = [], []
