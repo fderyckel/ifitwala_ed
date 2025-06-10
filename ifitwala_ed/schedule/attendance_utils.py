@@ -257,15 +257,18 @@ def bulk_upsert_attendance(payload=None):
 		return b if b is not None else SENTINEL 
 	# use the normalised value when we build the search keys
 	keys = {(r["student"], r["attendance_date"], r["student_group"], norm(r.get("block_number"))) for r in payload}
+	keys = list(keys)  # convert to list for SQL placeholders
+	# flatten the list of tuples into params  [stu, date, group, block, stu, …] 
+	params = [v for tup in keys for v in tup]
 	
 	# Build exact match composite key map
-	placeholders = ','.join(['%s'] * len(keys))
+	placeholders = ','.join(['(%s,%s,%s,%s)'] * len(keys))
 	query = f"""
 		SELECT name, student, attendance_date, student_group, COALESCE(block_number, {SENTINEL}) AS block_number, attendance_code
 		FROM `tabStudent Attendance`
 		WHERE (student, attendance_date, student_group, COALESCE(block_number, {SENTINEL})) IN ({placeholders})
 	"""
-	rows = frappe.db.sql(query, list(keys), as_dict=True)
+	rows = frappe.db.sql(query, params, as_dict=True)
 
 	existing_map = {
 		(row.student, row.attendance_date, row.student_group, row.block_number): (row.name, row.attendance_code)
