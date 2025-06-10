@@ -271,7 +271,7 @@ def bulk_upsert_attendance(payload=None):
 	rows = frappe.db.sql(query, params, as_dict=True)
 
 	existing_map = {
-		(row.student, row.attendance_date, row.student_group, row.block_number): (row.name, row.attendance_code)
+		(row.student, row.attendance_date, row.student_group, int(row.block_number)): (row.name, row.attendance_code)
 		for row in rows
 	}
 
@@ -281,7 +281,7 @@ def bulk_upsert_attendance(payload=None):
 			row["student"], 
 			row["attendance_date"], 
 			row["student_group"], 
-			norm(row.get("block_number")) 
+			int(row.get("block_number")) 
 		)
 
 		if not is_admin:
@@ -315,7 +315,7 @@ def bulk_upsert_attendance(payload=None):
 			"course": sg.course,
 			"school": program_school,
 			"rotation_day": rotation_day,
-			"block_number": norm(block_row.block_number if block_row else None),
+			"block_number": int(block_row.block_number if block_row else SENTINEL),
 			"instructor": block_row.instructor if block_row else None,
 			"location": block_row.location if block_row else None
 		}
