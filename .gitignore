@@ -13,3 +13,9 @@ package-lock.json
 !.yarn/releases
 !.yarnrc.yml
 yarn.lock
+
+# Codex + local dev environment
+.codex
+.codex-env/
+codex_setup.sh
+codex.log
