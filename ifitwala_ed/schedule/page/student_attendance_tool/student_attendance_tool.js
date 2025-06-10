@@ -313,7 +313,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		const default_code = default_field.get_value() || "Present";
 		for (const stu of roster.students) {
 			const blocks_for_day = blocks[stu.student] || [null]; 
-			const existing_codes = existing?.[stu.student] || {}; 
+			const existing_codes = (existing?.[stu.student] || {});
 			const prev_codes     = prev?.[stu.student] || {};
 			const code_map = {};
 
