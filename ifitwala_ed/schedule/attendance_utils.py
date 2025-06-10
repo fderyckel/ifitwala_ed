@@ -125,17 +125,22 @@ def get_meeting_dates(student_group: str, limit: int | None = None) -> list[str]
 	return [d.isoformat() for d in meetings[:limit]]
 
 @frappe.whitelist()
-def fetch_existing_attendance(student_group: str, attendance_date: str) -> Dict[str, str]:
-	"""Return {student: attendance_code} for already-recorded entries for the group/date."""
+def fetch_existing_attendance(student_group: str, attendance_date: str) -> Dict[str, Dict[int, str]]:
+	"""Return {student: {block: attendance_code}} for existing entries."""
 	rows = frappe.db.get_all(
 		"Student Attendance",
 		filters={
 			"student_group": student_group,
 			"attendance_date": attendance_date,
 		},
-		fields=["student", "attendance_code"]
+		fields=["student", "block_number", "attendance_code"]
 	)
-	return {r.student: r.attendance_code for r in rows}
+	result = {}
+	for r in rows:
+		if r.student not in result:
+			result[r.student] = {}
+		result[r.student][r.block_number] = r.attendance_code
+	return result
 
 
 @frappe.whitelist()

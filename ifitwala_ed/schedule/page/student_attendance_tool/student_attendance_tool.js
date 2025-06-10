@@ -313,13 +313,15 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		const default_code = default_field.get_value() || "Present";
 		for (const stu of roster.students) {
 			const blocks_for_day = blocks[stu.student] || [null]; 
-			const existing_codes = {}; 
-			for (const block of blocks_for_day) { 
-				const key = `${stu.student}|${block}`; 
-				existing_codes[block] = existing[key] || prev[key] || default_code; 
-			} 
-			stu.blocks = blocks_for_day; 
-			$cards.append(await renderAttendanceCard(stu, existing_codes));
+			const existing_codes = existing[stu.student] || {};
+			const prev_codes     = prev[stu.student] || {};
+			const code_map = {};
+
+			for (const block of blocks_for_day) {
+				code_map[block] = existing_codes[block] || prev_codes[block] || default_code;
+			}
+			stu.blocks = blocks_for_day;
+			$cards.append(await renderAttendanceCard(stu, code_map));
 		}
 		toggle_bulk(true);
 	}
