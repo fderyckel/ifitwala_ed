@@ -161,18 +161,14 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		change: () => $("#attendance-cards select[data-field='code']").val(default_field.get_value()),
 	});
 
-	const $toolbarRight = $(`
-		<div class="d-flex align-items-center ms-auto" id="bulk-action-buttons">
-			<button id="mark-all-present" class="btn btn-outline-success me-2 d-none">
-				${__("Mark All Present")}
-			</button>
-			<button id="mark-all-absent" class="btn btn-outline-danger d-none">
-				${__("Mark All Absent")}
-			</button>
-		</div>
-	`);
-
-	page.wrapper.find(".page-form").append($toolbarRight);
+	const $defaultWrapper = $(".page-form .frappe-control[data-fieldname='default_code']");
+	if ($defaultWrapper.length) {
+		$defaultWrapper.append(`
+			<div class="form-text small text-muted mt-1">
+				${__("Click to apply this code to all students.")}
+			</div>
+		`);
+	}
 
 	/* 3 bulk actions */
 	const $submitBtn = $(` 
@@ -193,14 +189,9 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	`);
 
 	/* cached DOM refs */
-	const $cards = $("#attendance-cards");
-	const $title = $("#attendance-title");
+	const $cards      = $("#attendance-cards"); 
+	const $title      = $("#attendance-title"); 
 
-	/* 5 ▸ helper toggles */
-	function toggle_bulk(enabled) {
-		$btnPresent.toggleClass("d-none", !enabled);
-		$btnAbsent .toggleClass("d-none", !enabled);
-	}
 
 	/* 6 ▸ data flows ------------------------------------------------- */
 	async function refresh_dates() {
@@ -217,7 +208,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			date_field.df.options = [];
 			date_field.refresh();
 			$cards.empty();
-			toggle_bulk(false);
 			return;
 		}
 
@@ -335,9 +325,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		}
 		toggle_bulk(true);
 	}
-
-	$("#mark-all-present").removeClass("d-none");
-	$("#mark-all-absent").removeClass("d-none");
 
 	async function submit_roster() {
 		const group = student_group_field.get_value();
