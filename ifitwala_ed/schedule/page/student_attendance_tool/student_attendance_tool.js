@@ -176,14 +176,13 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 
 	/* 3 bulk actions */
 	const $submitBtn = $(` 
-		<button class="btn btn-primary"> 
+		<button id="submit-attendance" class="btn btn-primary">
 			${__("Submit Attendance")} 
 		</button> 
 	`).on("click", submit_roster); 
 	
-	page.wrapper.find(".page-form").append( 
-		$('<div class="ms-auto"></div>').append($submitBtn) 
-	);          /* now the button sits right-aligned in the filter row */
+	const $submitWrapper = $('<div class="ms-auto"></div>').append($submitBtn); 
+	page.wrapper.find(".page-form").append($submitWrapper);
 
 	/* 4 ▸ layout wrapper (same pattern as student_group_cards) */
 	$(wrapper).append(`
@@ -196,8 +195,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	/* cached DOM refs */
 	const $cards = $("#attendance-cards");
 	const $title = $("#attendance-title");
-	const $btnPresent = $("#mark-all-present");
-	const $btnAbsent  = $("#mark-all-absent");
 
 	/* 5 ▸ helper toggles */
 	function toggle_bulk(enabled) {
@@ -302,7 +299,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 
 		// 🔁 Change button text based on whether attendance already exists
 		const has_existing = Object.keys(existing || {}).length > 0;
-		$quickSubmitBtn.text(has_existing ? __("Update Attendance") : __("Submit"));
+		$submitBtn.text(has_existing ? __("Update Attendance") : __("Submit Attendance"));
 
 		if (!roster.students.length) return;
 
