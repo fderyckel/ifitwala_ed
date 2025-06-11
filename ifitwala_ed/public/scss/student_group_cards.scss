@@ -68,8 +68,19 @@ $btn-padding-x: 1rem;
 }
 
 .student-card select {
-	max-width: 8rem;
-	margin-top: .5rem;
+  text-align: center;                 // horizontally center the text
+  text-align-last: center;            // Firefox, Edge
+  max-width: 9rem;                    // slightly wider for clarity
+  padding: 0.35rem 0.75rem;           // nicer vertical rhythm
+  border: 1px solid #ced4da;
+  border-radius: $border-radius;
+  background-color: #fff;
+  box-shadow: 0 0 0.125rem rgba(0,0,0,.15) inset;
+  transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+.student-card select:focus {
+  border-color: rgba($primary, .5);
+  box-shadow: 0 0 0 .15rem rgba($primary, .25);
 }
 
 .student-name {
