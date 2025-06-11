@@ -253,8 +253,12 @@ def bulk_upsert_attendance(payload=None):
 
 	# NULL never = NULL in SQL → map it to sentinel -1
 	SENTINEL = -1
-	def norm(b):          # local helper
-		return b if b is not None else SENTINEL 
+
+	def norm(b):
+		if b in (None, "", "null"):
+			return -1
+		return int(b)
+	
 	# use the normalised value when we build the search keys
 	keys = {(r["student"], r["attendance_date"], r["student_group"], norm(r.get("block_number"))) for r in payload}
 	keys = list(keys)  # convert to list for SQL placeholders
@@ -296,13 +300,10 @@ def bulk_upsert_attendance(payload=None):
 			frappe.throw(f"{row['attendance_date']} is not a meeting day for the group.")
 
 		rotation_day = rotation_map.get(row["attendance_date"])
-		block_row = next(
-			(r for (rot, blk), r in sched_map.items() if rot == rotation_day),
-			None
-		) 
+		block_row = sched_map.get((rotation_day, row["block_number"])) 
 		
 		enriched = {
-			"name": f"ATT-{row['student']}-{row['attendance_date']}T{now_datetime().strftime('%H:%M')}",
+			"name": f"ATT-{row['student']}-{row['attendance_date']}-B{row['block_number']}-T{now_datetime().strftime('%H:%M')}",
 			"student": row["student"],
 			"student_group": row["student_group"],
 			"attendance_date": row["attendance_date"],
@@ -315,7 +316,7 @@ def bulk_upsert_attendance(payload=None):
 			"course": sg.course,
 			"school": program_school,
 			"rotation_day": rotation_day,
-			"block_number": int(block_row.block_number if block_row else SENTINEL),
+			"block_number": block_row.block_number if block_row else SENTINEL,
 			"instructor": block_row.instructor if block_row else None,
 			"location": block_row.location if block_row else None
 		}
