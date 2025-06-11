@@ -270,7 +270,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		if (!group || !date) return;
 
 		$cards.empty();
-		toggle_bulk(false);
 
 		const [{ message: roster }, { message: prev }, { message: existing }, { message: blocks }] = await Promise.all([ 
 			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_students", {
@@ -323,7 +322,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			stu.blocks = blocks_for_day; 
 			$cards.append(await renderAttendanceCard(stu, code_map));
 		}
-		toggle_bulk(true);
 	}
 
 	async function submit_roster() {
