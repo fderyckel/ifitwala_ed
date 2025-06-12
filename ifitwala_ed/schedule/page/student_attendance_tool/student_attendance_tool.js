@@ -293,7 +293,9 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		}
 	}
 
+	let BUILD_TOKEN = 0;
 	async function build_roster() {
+		const token = ++BUILD_TOKEN;     
 		const group = student_group_field.get_value();
 		const date  = date_field.get_value();
 		if (!group || !date) return;
@@ -314,6 +316,9 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 				student_group: group, attendance_date: date, 
 			}), 
 		]);
+
+		// if a newer build started, abandon this one 
+		if (token !== BUILD_TOKEN) return;
 
 		// Change button text based on whether attendance already exists
 		const has_existing = Object.keys(existing || {}).length > 0;
