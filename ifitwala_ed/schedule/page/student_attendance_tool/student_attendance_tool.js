@@ -71,15 +71,21 @@ async function renderAttendanceCard(student, existing_codes = {}) {
 			}
 		} catch {}
 	}
-
+	
 	if (student.medical_info) {
-		const note = frappe.utils.escape_html(student.medical_info);
-		health_icon = `
-			<span class="ms-1 text-danger fw-bold" role="button"
-				onclick='frappe.msgprint({title:"${__("Health Note for {0}", [student_name])}",
-				                         message:\`${note}\`,indicator:"red"})'
-				title="${__("Health Note Available")}">&#x2716;</span>`;
-	}
+	const note = frappe.utils.escape_html(student.medical_info);
+	health_icon = `
+		<span class="ms-1 text-danger" role="button"
+		      data-bs-toggle="tooltip"
+		      data-bs-title="${__("Health Note for {0}", [student_name])}"
+		      onclick='frappe.msgprint({
+		          title: "${__("Health Note for {0}", [student_name])}",
+		          message: \`${note}\`,
+		          indicator: "red"
+		      })'>
+		  <i class="bi bi-bandaid-fill"></i>
+		</span>`;
+}
 
 	/* helper: build the bubble icon */ 
 	function commentIcon(block) { 
@@ -103,20 +109,20 @@ async function renderAttendanceCard(student, existing_codes = {}) {
 
 	const selectsHTML = (student.blocks || [null]).map(block => { 
 		const label 		= block !== null ? `Block ${block}:` : ""; 
-		const value 		= existing_codes[block] || ""; 
-		const blockKey  = (block ?? -1); 
-		return ` 
-			<div class="text-start small mb-1 d-flex align-items-center"> 
-			${label} 
-			<select class="form-select mt-1 w-100" 
-				data-field="code" 
-				data-block="${block ?? ''}"
-				data-block="${blockKey}"   
-				aria-label="Attendance code">
-				${buildOptions(value)}
-			</select>
-			${commentIcon(block ?? -1)} 
-			${commentIcon(blockKey)}
+		const blockKey = block ?? -1;
+		const value    = existing_codes[block] || "";
+		return `
+			<div class="text-start small mb-1">
+				<div class="fw-semibold">${block !== null ? __("Block {0}", [block]) : ""}</div>
+				<div class="d-flex align-items-center mt-1">
+					<select class="form-select w-100"
+									data-field="code"
+									data-block="${blockKey}"
+									aria-label="Attendance code">
+							${buildOptions(value)}
+					</select>
+					${commentIcon(student.student, blockKey)}
+				</div>
 			</div>`;
 	}).join("\n");
 
@@ -192,14 +198,11 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	}
 
 	/* 3 bulk actions */
-	const $submitBtn = $(` 
-		<button id="submit-attendance" class="btn btn-primary">
-			${__("Submit Attendance")} 
-		</button> 
-	`).on("click", submit_roster); 
-	
-	const $submitWrapper = $('<div class="ms-auto"></div>').append($submitBtn); 
-	page.wrapper.find(".page-form").append($submitWrapper);
+	const $submitBtn = page.add_inner_button( 
+		__("Submit Attendance"), 
+		submit_roster, 
+		"primary"   // gives the standard blue btn-primary styling 
+	);
 
 	/* 4 ▸ layout wrapper (same pattern as student_group_cards) */
 	$(wrapper).append(`
