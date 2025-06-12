@@ -122,7 +122,7 @@ async function renderAttendanceCard(student, existing_codes = {}) {
 									aria-label="Attendance code">
 							${buildOptions(value)}
 					</select>
-					${commentIcon(student.student, blockKey)}
+					${commentIcon(blockKey)}
 				</div>
 			</div>`;
 	}).join("\n");
