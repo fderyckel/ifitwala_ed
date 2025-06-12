@@ -101,6 +101,22 @@ $btn-padding-x: 1rem;
   margin-bottom: 0.25rem;
 }
 
+.medical-cross-icon {
+  color: red;
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-left: 0.25rem;
+  cursor: pointer;
+  display: inline-block;
+  line-height: 1;
+  transition: transform 0.1s ease-in-out;
+
+  &:hover {
+    transform: scale(1.2);
+  }
+}
+
+
 .student-card a {
   text-decoration: none;
   color: inherit;

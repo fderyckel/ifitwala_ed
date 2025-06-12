@@ -62,7 +62,7 @@ def get_student_group_students(
 
 @frappe.whitelist()
 def fetch_students(student_group: str, start: int = 0, page_length: int = 500):
-	students = get_student_group_students(student_group, start, page_length)
+	students = get_student_group_students(student_group, start, page_length, with_medical=True)
 
 	total_students = frappe.db.count(
 		"Student Group Student", {"parent": student_group}
@@ -372,7 +372,3 @@ def _get_instructor_ids(user) -> List[str]:
 		filters={"linked_user_id": user},
 		pluck="name"
 	)
-
-def _grouper(seq, size):
-	for i in range(0, len(seq), size):
-		yield seq[i:i + size]

@@ -73,19 +73,18 @@ async function renderAttendanceCard(student, existing_codes = {}) {
 	}
 	
 	if (student.medical_info) {
-	const note = frappe.utils.escape_html(student.medical_info);
-	health_icon = `
-		<span class="ms-1 text-danger" role="button"
-		      data-bs-toggle="tooltip"
-		      data-bs-title="${__("Health Note for {0}", [student_name])}"
-		      onclick='frappe.msgprint({
-		          title: "${__("Health Note for {0}", [student_name])}",
-		          message: \`${note}\`,
-		          indicator: "red"
-		      })'>
-		  <i class="bi bi-bandaid-fill"></i>
-		</span>`;
-}
+		const note = frappe.utils.escape_html(student.medical_info);
+		health_icon = `
+			<span class="medical-cross-icon"
+						role="button"
+						data-bs-toggle="tooltip"
+						data-bs-title="${__("Health Note for {0}", [student_name])}"
+						onclick='frappe.msgprint({
+								title: "${__("Health Note for {0}", [student_name])}",
+								message: \`${note}\`,
+								indicator: "red"
+						})'>✚</span>`;
+	}
 
 	/* helper: build the bubble icon */ 
 	function commentIcon(block) { 
@@ -352,6 +351,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 				REMARKS[stu.student] = { ...remark_map }; 
 			}
 			$cards.append(await renderAttendanceCard(stu, code_map));
+			frappe.utils.bind_tooltips();
 		}
 	}
 
