@@ -133,11 +133,14 @@ def fetch_existing_attendance(student_group: str, attendance_date: str) -> Dict[
 			"student_group": student_group,
 			"attendance_date": attendance_date,
 		},
-		fields=["student", "block_number", "attendance_code"]
+		fields=["student", "block_number", "attendance_code", "remark"]
 	)
-	data = {} 
-	for r in rows: 
-		data.setdefault(r.student, {})[r.block_number] = r.attendance_code 
+	data = {}
+	for r in rows:
+			data.setdefault(r.student, {})[r.block_number] = {
+					"code":   r.attendance_code,
+					"remark": r.remark or ""
+			}
 	return data
 
 
@@ -207,7 +210,7 @@ def bulk_upsert_attendance(payload=None):
 		return {"created": 0, "updated": 0}
 
 	fieldkey = "attendance_code"
-	required = {"student", "student_group", "attendance_date", fieldkey, "block_number"}
+	required = {"student", "student_group", "attendance_date", fieldkey, "block_number", "remark"}
 
 	for row in payload:
 		missing = required - row.keys()
@@ -243,8 +246,9 @@ def bulk_upsert_attendance(payload=None):
 		filters={"parent": sample_group}, 
 		fields=["rotation_day", "block_number", "instructor", "location"]
 		)
+	
 	sched_map = {
-		(row.rotation_day, row.block_number): row for row in schedule_rows
+		(row.rotation_day, int(row.block_number)): row for row in schedule_rows 
 	}
 
 	# Build date → rotation_day map
@@ -255,9 +259,7 @@ def bulk_upsert_attendance(payload=None):
 	SENTINEL = -1
 
 	def norm(b):
-		if b in (None, "", "null"):
-			return -1
-		return int(b)
+		return SENTINEL if b in (None, "", "null") else int(b)
 	
 	# use the normalised value when we build the search keys
 	keys = {(r["student"], r["attendance_date"], r["student_group"], norm(r.get("block_number"))) for r in payload}
@@ -268,24 +270,32 @@ def bulk_upsert_attendance(payload=None):
 	# Build exact match composite key map
 	placeholders = ','.join(['(%s,%s,%s,%s)'] * len(keys))
 	query = f"""
-		SELECT name, student, attendance_date, student_group, COALESCE(block_number, {SENTINEL}) AS block_number, attendance_code
+		SELECT name, student, attendance_date, student_group, COALESCE(block_number, {SENTINEL}) AS block_number, attendance_code, remark 
 		FROM `tabStudent Attendance`
 		WHERE (student, attendance_date, student_group, COALESCE(block_number, {SENTINEL})) IN ({placeholders})
 	"""
 	rows = frappe.db.sql(query, params, as_dict=True)
 
 	existing_map = {
-		(row.student, row.attendance_date.isoformat(), row.student_group, int(row.block_number)): (row.name, row.attendance_code)
+		(
+			row.student, row.attendance_date.isoformat(), 
+			row.student_group, int(row.block_number)): 
+			(row.name, row.attendance_code, (row.remark or ""))
 		for row in rows
 	}
 
+	remark_txt = (row.get("remark") or "").strip()[:255]
+
 	to_insert, to_update = [], []
 	for row in payload:
+
+		remark_txt = (row.get("remark") or "").strip()[:255]
+
 		key = ( 
 			row["student"], 
 			row["attendance_date"], 
 			row["student_group"], 
-			int(row.get("block_number")) 
+			int(row.get("block_number")), 
 		)
 
 		if not is_admin:
@@ -300,7 +310,7 @@ def bulk_upsert_attendance(payload=None):
 			frappe.throw(f"{row['attendance_date']} is not a meeting day for the group.")
 
 		rotation_day = rotation_map.get(row["attendance_date"])
-		block_row = sched_map.get((rotation_day, row["block_number"])) 
+		block_row = sched_map.get((rotation_day, norm(row["block_number"])))
 		
 		enriched = {
 			"name": f"ATT-{row['student']}-{row['attendance_date']}-B{row['block_number']}-T{now_datetime().strftime('%H:%M')}",
@@ -318,13 +328,18 @@ def bulk_upsert_attendance(payload=None):
 			"rotation_day": rotation_day,
 			"block_number": block_row.block_number if block_row else SENTINEL,
 			"instructor": block_row.instructor if block_row else None,
-			"location": block_row.location if block_row else None
+			"location": block_row.location if block_row else None, 
+			"remark": remark_txt,
 		}
 		
 		if key in existing_map: 
-			existing_name, existing_code = existing_map[key] 
-			if row["attendance_code"] != existing_code: 
-				to_update.append((existing_name, row["attendance_code"])) 
+			existing_name, existing_code, existing_note = existing_map[key] 
+			if row["attendance_code"] != existing_code or remark_txt != (existing_note or ""): 
+				to_update.append({
+					"name": existing_name, 
+					"code": row["attendance_code"], 
+					"remark": remark_txt
+				}) 
 		else: 
 			to_insert.append(enriched)
 
@@ -337,9 +352,10 @@ def bulk_upsert_attendance(payload=None):
 		)
 		frappe.db.commit()
 
-	for name, new_code in to_update: 
+	for upd in to_update: 
 		frappe.db.set_value( 
-			"Student Attendance", name, {fieldkey: new_code}, update_modified=True)
+			"Student Attendance", upd["name"], 
+			{"attendance_code": upd["code"], "remark": upd["remark"]}, update_modified=True)
 	
 	frappe.db.commit()
 
