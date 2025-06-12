@@ -165,6 +165,9 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		single_column: true,
 	});
 
+	page.clear_primary_action();   // hides the big black bar
+	page.clear_actions(); 
+
 	/* 2 ▸ filters */
 	const student_group_field = page.add_field({
 		fieldname: "student_group",
@@ -200,10 +203,9 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	}
 
 	/* 3 bulk actions */
-	const $submitBtn = $('<button class="btn btn-primary btn-sm ms-2">')
+	const $submitBtn = $('<button type="button" class="btn btn-primary btn-sm ms-auto w-auto">')
 		.text(__("Submit Attendance"))
 		.on("click", submit_roster)
-		.addClass('ms-auto')
 		.appendTo($('.page-form'));
 
 
@@ -438,10 +440,10 @@ function openRemarkModal(student_id, block) {
             <small class="text-muted">255 ${__("characters max")}</small>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" data-bs-dismiss="modal">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
               ${__("Cancel")}
             </button>
-            <button class="btn btn-primary save-remark">
+            <button type="button" class="btn btn-primary save-remark">
               ${__("Save")}
             </button>
           </div>

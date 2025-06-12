@@ -131,5 +131,11 @@ $btn-padding-x: 1rem;
   border-color: darken($primary, 10%);
 }
 
+.page-form {
+  @extend .d-flex;
+  flex-wrap: wrap;
+  align-items: end;
+}
+
 $bootstrap-icons-font-dir: "/assets/ifitwala_ed/dist/fonts";
 @import "node_modules/bootstrap-icons/font/bootstrap-icons.scss";
