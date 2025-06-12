@@ -100,6 +100,9 @@ module.exports = [
 					{
 						src: 'node_modules/bootstrap-icons/font/fonts/*',
 						dest: 'ifitwala_ed/public/dist/fonts'
+					}, 
+					{ src: 'node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
+      			dest: 'ifitwala_ed/public/dist' 
 					}
 				],
 				verbose: true,

@@ -6,7 +6,7 @@
 /* ------------------------------------------------------------------ */
 
 frappe.require("/assets/ifitwala_ed/dist/student_group_cards.bundle.css");
-
+const BOOTSTRAP_READY = frappe.require("/assets/ifitwala_ed/dist/bootstrap.bundle.min.js");
 
 
 /* ------------------------------------------------------------------ */
@@ -43,6 +43,7 @@ async function get_attendance_codes() {
 
 /* ── in-memory remark map: { student → { block: text } } ───── */
 const REMARKS = {};
+let   CURRENT_STUDENTS = [];
 
 /* ------------------------------------------------------------------ */
 /* Card renderer                                                      */
@@ -312,11 +313,12 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			}), 
 		]);
 
-		// 🔁 Change button text based on whether attendance already exists
+		// Change button text based on whether attendance already exists
 		const has_existing = Object.keys(existing || {}).length > 0;
 		$submitBtn.text(has_existing ? __("Update Attendance") : __("Submit Attendance"));
 
-		if (!roster.students.length) return;
+		CURRENT_STUDENTS = roster.students;     // ← cache for modal
+		if (!CURRENT_STUDENTS.length) return;
 
 		/* update title */
 		const { name, program, course, cohort } = roster.group_info || {};
@@ -350,18 +352,18 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			} 
 			stu.blocks = blocks_for_day; 
 			stu.remark_map = remark_map;
-			/* 🔄 pre-populate global cache so unchanged remarks survive update */ 
+			/* pre-populate global cache so unchanged remarks survive update */ 
 			if (Object.keys(remark_map).length) { 
 				REMARKS[stu.student] = { ...remark_map }; 
 			}
 			$cards.append(await renderAttendanceCard(stu, code_map));
 		}
 
-		document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
-			new bootstrap.Tooltip(el);
-		});
+		await BOOTSTRAP_READY;   // guarantee global bootstrap
+		document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => 
+			new bootstrap.Tooltip(el) 
+		);
 	}
-
 
 	async function submit_roster() {
 		const group = student_group_field.get_value();
@@ -416,11 +418,11 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 /* ───────────────────────────────────────────────────────────── *
  * Bootstrap modal for entering / editing a remark              *
  * ───────────────────────────────────────────────────────────── */
-function openRemarkModal(student, block) {
-	const stu = roster.students.find(s => s.student === student_id);
-	const display_name = frappe.utils.escape_html(stu?.preferred_name || stu?.student_name || student_id);
+function openRemarkModal(student_id, block) {
+	const stu = CURRENT_STUDENTS.find(s => s.student === student_id) || {};
+	const display_name = frappe.utils.escape_html(stu.preferred_name || stu.student_name || student_id);
 	const block_text = block === -1 ? "-" : block;
-  const current = REMARKS[student]?.[block] || "";
+  const current = REMARKS[student_id]?.[block] || "";
   const $modal  = $(`
     <div class="modal fade" tabindex="-1">
       <div class="modal-dialog">
