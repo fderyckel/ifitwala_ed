@@ -39,6 +39,9 @@ async function get_attendance_codes() {
 	return ATT_CODES;
 }
 
+/* ── in-memory remark map: { student → { block: text } } ───── */
+const REMARKS = {};
+
 /* ------------------------------------------------------------------ */
 /* Card renderer                                                      */
 /* ------------------------------------------------------------------ */
@@ -68,6 +71,7 @@ async function renderAttendanceCard(student, existing_codes = {}) {
 			}
 		} catch {}
 	}
+
 	if (student.medical_info) {
 		const note = frappe.utils.escape_html(student.medical_info);
 		health_icon = `
@@ -75,6 +79,19 @@ async function renderAttendanceCard(student, existing_codes = {}) {
 				onclick='frappe.msgprint({title:"${__("Health Note for {0}", [student_name])}",
 				                         message:\`${note}\`,indicator:"red"})'
 				title="${__("Health Note Available")}">&#x2716;</span>`;
+	}
+
+	/* helper: build the bubble icon */ 
+	function commentIcon(block) { 
+		const hasNote  = student.remark_map?.[block]; 
+		const colorCls = hasNote ? "text-primary" : "text-muted"; 
+		return ` 
+			<i class="bi bi-chat-square-dots ${colorCls}" 
+				data-role="remark-icon" 
+				data-stu="${student.student}" 
+				data-block="${block}" 
+				title="${hasNote ? __("Edit remark") : __("Add remark")}" 
+				style="cursor:pointer;font-size:1rem;margin-left:.25rem;"></i>`; 
 	}
 
 	/* attendance-code <select> -------------------------------------- */
@@ -85,18 +102,22 @@ async function renderAttendanceCard(student, existing_codes = {}) {
 	}
 
 	const selectsHTML = (student.blocks || [null]).map(block => { 
-		const label = block !== null ? `Block ${block}:` : ""; 
-		const value = existing_codes[block] || ""; 
+		const label 		= block !== null ? `Block ${block}:` : ""; 
+		const value 		= existing_codes[block] || ""; 
+		const blockKey  = (block ?? -1); 
 		return ` 
-			<div class="text-start small mb-1"> 
-				${label} 
-				<select class="form-select mt-1 w-100" 
-					data-field="code" 
-					data-block="${block || ''}" 
-					aria-label="Attendance code"> 
-					${buildOptions(value)} 
-				</select> 
-			</div>`; 
+			<div class="text-start small mb-1 d-flex align-items-center"> 
+			${label} 
+			<select class="form-select mt-1 w-100" 
+				data-field="code" 
+				data-block="${block ?? ''}"
+				data-block="${blockKey}"   
+				aria-label="Attendance code">
+				${buildOptions(value)}
+			</select>
+			${commentIcon(block ?? -1)} 
+			${commentIcon(blockKey)}
+			</div>`;
 	}).join("\n");
 
 	return `
@@ -306,13 +327,15 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 				? blocks        // same list for every student on that day
 				: [null];
 			const existing_codes = (existing?.[stu.student] || {});
+			const remark_map      = {};
 			const prev_codes     = prev?.[stu.student] || {};
 			const code_map = {};
 
 			for (const block of blocks_for_day) { 
 				// use existing first, fallback to previous, else default 
 				if (existing_codes?.[block]) { 
-					code_map[block] = existing_codes[block]; 
+					code_map[block]   = existing_codes[block].code; 
+					remark_map[block] = existing_codes[block].remark;
 				} else if (prev_codes?.[block]) { 
 					code_map[block] = prev_codes[block]; 
 				} else { 
@@ -320,6 +343,11 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 				} 
 			} 
 			stu.blocks = blocks_for_day; 
+			stu.remark_map = remark_map;
+			/* 🔄 pre-populate global cache so unchanged remarks survive update */ 
+			if (Object.keys(remark_map).length) { 
+				REMARKS[stu.student] = { ...remark_map }; 
+			}
 			$cards.append(await renderAttendanceCard(stu, code_map));
 		}
 	}
@@ -341,6 +369,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 					attendance_date: date, 
 					block_number:    block, 
 					attendance_code: code, 
+					remark:          (REMARKS[student]?.[block] || "")
 				}); 
 			});
 		});
@@ -363,4 +392,60 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		}
 	}
 
+	/* 8 ▸ single delegated handler for remark icon clicks */ 
+	$cards.on("click", "i[data-role='remark-icon']", function () { 
+		const stu   = $(this).data("stu"); 
+		const block = $(this).data("block"); 
+		openRemarkModal(stu, block); 
+	});
+
 };
+
+/* ───────────────────────────────────────────────────────────── *
+ * Bootstrap modal for entering / editing a remark              *
+ * ───────────────────────────────────────────────────────────── */
+function openRemarkModal(student, block) {
+  const current = REMARKS[student]?.[block] || "";
+  const $modal  = $(`
+    <div class="modal fade" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              ${__("Remark for {0} (Block {1})",
+                  [student, block === -1 ? "-" : block])}
+            </h5>
+          </div>
+          <div class="modal-body">
+            <textarea class="form-control" rows="4"
+                      maxlength="255">${frappe.utils.escape_html(current)}</textarea>
+            <small class="text-muted">255 ${__("characters max")}</small>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">
+              ${__("Cancel")}
+            </button>
+            <button class="btn btn-primary save-remark">
+              ${__("Save")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>`).appendTo("body");
+
+  $modal.find(".save-remark").on("click", () => {
+    const txt = $modal.find("textarea").val().trim().slice(0, 255);
+    REMARKS[student] = REMARKS[student] || {};
+    REMARKS[student][block] = txt;
+
+    // recolour icon instantaneously
+    const sel = `i[data-role='remark-icon'][data-stu='${student}'][data-block='${block}']`;
+    $(sel).toggleClass("text-primary", !!txt)
+          .toggleClass("text-muted",  !txt);
+
+    $modal.modal("hide").remove();
+  });
+
+  $modal.on("hidden.bs.modal", () => $modal.remove()); // cleanup fallback
+  $modal.modal("show");
+}
