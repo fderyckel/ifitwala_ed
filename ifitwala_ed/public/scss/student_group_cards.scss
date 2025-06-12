@@ -18,7 +18,6 @@ $btn-padding-x: 1rem;
 @import "node_modules/bootstrap/scss/utilities";       // spacing, display, etc.
 @import "node_modules/bootstrap/scss/grid";            // if you need .row/.col behavior
 @import "node_modules/bootstrap/scss/helpers";         // for spacing helpers like .mt-3
-@import "node_modules/bootstrap-icons/font/bootstrap-icons";
 
 /* ───────────────────────────────────────────────────── */
 /* Custom Styles – Student Group Cards Layout            */
@@ -132,3 +131,5 @@ $btn-padding-x: 1rem;
   border-color: darken($primary, 10%);
 }
 
+$bootstrap-icons-font-path: "/assets/ifitwala_ed/fonts";
+@import "../../node_modules/bootstrap-icons/font/bootstrap-icons.scss";

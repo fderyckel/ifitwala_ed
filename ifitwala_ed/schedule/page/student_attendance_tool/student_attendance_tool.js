@@ -7,6 +7,8 @@
 
 frappe.require("/assets/ifitwala_ed/dist/student_group_cards.bundle.css");
 
+
+
 /* ------------------------------------------------------------------ */
 /* Helper utilities (unchanged)                                       */
 /* ------------------------------------------------------------------ */
@@ -409,10 +411,18 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 
 };
 
+setTimeout(() => {
+	$(".page-head .btn-primary").appendTo(".page-form");
+}, 0);
+
+
 /* ───────────────────────────────────────────────────────────── *
  * Bootstrap modal for entering / editing a remark              *
  * ───────────────────────────────────────────────────────────── */
 function openRemarkModal(student, block) {
+	const stu = roster.students.find(s => s.student === student_id);
+	const display_name = frappe.utils.escape_html(stu?.preferred_name || stu?.student_name || student_id);
+	const block_text = block === -1 ? "-" : block;
   const current = REMARKS[student]?.[block] || "";
   const $modal  = $(`
     <div class="modal fade" tabindex="-1">
@@ -420,9 +430,8 @@ function openRemarkModal(student, block) {
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">
-              ${__("Remark for {0} (Block {1})",
-                  [student, block === -1 ? "-" : block])}
-            </h5>
+							${__("Remark for {0} (Block {1})", [display_name, block_text])}
+						</h5>
           </div>
           <div class="modal-body">
             <textarea class="form-control" rows="4"

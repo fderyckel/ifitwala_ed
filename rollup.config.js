@@ -21,6 +21,7 @@ const commonjs = require('@rollup/plugin-commonjs');
 const postcss = require('rollup-plugin-postcss');
 const terser = require('@rollup/plugin-terser');
 const { createHash } = require('crypto');
+const copy = require('rollup-plugin-copy');
 
 const projectRootDir = path.resolve(__dirname);
 const dist = 'ifitwala_ed/public/dist';
@@ -92,7 +93,17 @@ module.exports = [
 					const sass = await import('sass');
 					const result = await sass.compileAsync(id);
 					return { code: result.css };
-				}
+				}, 
+			}), 
+			copy({
+				targets: [
+					{
+						src: 'node_modules/bootstrap-icons/font/fonts/*',
+						dest: 'ifitwala_ed/public/fonts'
+					}
+				],
+				verbose: true,
+				hook: 'buildEnd'
 			})
 		]
 	},
