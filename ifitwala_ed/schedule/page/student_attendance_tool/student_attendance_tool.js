@@ -455,7 +455,7 @@ function openRemarkModal(student_id, block) {
 		REMARKS[student_id][block] = txt;
 
     // recolour icon instantaneously
-    const sel = `i[data-role='remark-icon'][data-stu='${student}'][data-block='${block}']`;
+    const sel = `i[data-role='remark-icon'][data-stu='${student_id}'][data-block='${block}']`;
     $(sel).toggleClass("text-primary", !!txt)
           .toggleClass("text-muted",  !txt);
 
