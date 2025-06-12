@@ -199,11 +199,11 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	}
 
 	/* 3 bulk actions */
-	const $submitBtn = page.add_inner_button( 
-		__("Submit Attendance"), 
-		submit_roster, 
-		"primary"   // gives the standard blue btn-primary styling 
-	);
+	const $submitBtn = $('<button class="btn btn-primary btn-sm ms-2">')
+		.text(__("Submit Attendance"))
+		.on("click", submit_roster)
+		.appendTo($('.page-form'));
+
 
 	/* 4 ▸ layout wrapper (same pattern as student_group_cards) */
 	$(wrapper).append(`
