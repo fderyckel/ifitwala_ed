@@ -323,6 +323,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			${subtitle ? `<div class="small text-muted mt-1">${frappe.utils.escape_html(subtitle)}</div>` : ""}
 		`);
 
+		document.querySelectorAll('.tooltip').forEach(t => t.remove());
 		const default_code = default_field.get_value() || "Present";
 		for (const stu of roster.students) {
 			const blocks_for_day = Array.isArray(blocks) && blocks.length 
@@ -351,9 +352,13 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 				REMARKS[stu.student] = { ...remark_map }; 
 			}
 			$cards.append(await renderAttendanceCard(stu, code_map));
-			frappe.utils.bind_tooltips();
 		}
+
+		document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+			new bootstrap.Tooltip(el);
+		});
 	}
+
 
 	async function submit_roster() {
 		const group = student_group_field.get_value();
