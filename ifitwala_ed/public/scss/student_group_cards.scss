@@ -139,5 +139,16 @@ $btn-padding-x: 1rem;
 	gap: .5rem; 
 }
 
+/* force our primary colour for this page’s action button */
+.page-form .btn-primary{
+  background-color: $primary !important;
+  border-color:    $primary !important;
+}
+.page-form .btn-primary:hover,
+.page-form .btn-primary:focus{
+  background-color: darken($primary,8%) !important;
+  border-color:    darken($primary,10%) !important;
+}
+
 $bootstrap-icons-font-dir: "/assets/ifitwala_ed/dist/fonts";
 @import "node_modules/bootstrap-icons/font/bootstrap-icons.scss";
