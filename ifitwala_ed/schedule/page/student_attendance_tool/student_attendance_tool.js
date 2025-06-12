@@ -451,8 +451,8 @@ function openRemarkModal(student_id, block) {
 
   $modal.find(".save-remark").on("click", () => {
     const txt = $modal.find("textarea").val().trim().slice(0, 255);
-    REMARKS[student] = REMARKS[student] || {};
-    REMARKS[student][block] = txt;
+    REMARKS[student_id] = REMARKS[student_id] || {}; 
+		REMARKS[student_id][block] = txt;
 
     // recolour icon instantaneously
     const sel = `i[data-role='remark-icon'][data-stu='${student}'][data-block='${block}']`;
