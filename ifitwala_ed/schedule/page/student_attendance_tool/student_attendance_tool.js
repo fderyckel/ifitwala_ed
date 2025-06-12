@@ -202,6 +202,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	const $submitBtn = $('<button class="btn btn-primary btn-sm ms-2">')
 		.text(__("Submit Attendance"))
 		.on("click", submit_roster)
+		.addClass('ms-auto')
 		.appendTo($('.page-form'));
 
 
@@ -410,10 +411,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	});
 
 };
-
-setTimeout(() => {
-	$(".page-head .btn-primary").appendTo(".page-form");
-}, 0);
 
 
 /* ───────────────────────────────────────────────────────────── *

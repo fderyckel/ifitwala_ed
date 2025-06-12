@@ -99,7 +99,7 @@ module.exports = [
 				targets: [
 					{
 						src: 'node_modules/bootstrap-icons/font/fonts/*',
-						dest: 'ifitwala_ed/public/fonts'
+						dest: 'ifitwala_ed/public/dist/fonts'
 					}
 				],
 				verbose: true,
