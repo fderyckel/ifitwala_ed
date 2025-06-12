@@ -132,7 +132,7 @@ $btn-padding-x: 1rem;
 }
 
 .page-form {
-  @extend .d-flex;
+  display: flex; 
   flex-wrap: wrap;
   align-items: end;
 }
