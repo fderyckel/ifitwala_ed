@@ -44,6 +44,9 @@ async function get_attendance_codes() {
 /* ── in-memory remark map: { student → { block: text } } ───── */
 const REMARKS = {};
 let   CURRENT_STUDENTS = [];
+let RENDERED_GROUP   = null;         // student_group name currently on screen
+let RENDERED_BLOCKS  = [];           // block array for that date (e.g. [1,3] or [-1])
+let INITIAL_RENDERED = false;        // flag: have we painted cards at least once?
 
 /* ------------------------------------------------------------------ */
 /* Card renderer                                                      */
@@ -300,7 +303,22 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		const date  = date_field.get_value();
 		if (!group || !date) return;
 
-		$cards.empty();
+		// ── decide whether we must re-create cards ──────────────────────────
+		const need_full_rebuild =
+						!INITIAL_RENDERED ||
+						group !== RENDERED_GROUP ||
+						JSON.stringify(blocks) !== JSON.stringify(RENDERED_BLOCKS);
+
+		if (need_full_rebuild) {
+				$cards.empty();                              // full rebuild
+		} else {
+				// we'll only update selects & icons later
+		}
+
+// remember what we just asked for
+RENDERED_GROUP  = group;
+RENDERED_BLOCKS = blocks;
+INITIAL_RENDERED = true;
 
 		const [{ message: roster }, { message: prev }, { message: existing }, { message: blocks }] = await Promise.all([ 
 			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_students", {
@@ -362,6 +380,23 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			/* pre-populate global cache so unchanged remarks survive update */ 
 			if (Object.keys(remark_map).length) { 
 				REMARKS[stu.student] = { ...remark_map }; 
+			}
+
+			if (!need_full_rebuild) {
+				// ── just update existing card ──────────────────────────────
+				const $card = $cards.find(`div[data-student='${stu.student}']`);
+				blocks_for_day.forEach(block => {
+					const blkKey = block ?? -1;
+					// update select
+					$card.find(`select[data-block='${blkKey}']`)
+						.val(code_map[blkKey]);
+					// update icon colour
+					const $icon = $card.find(`i[data-role='remark-icon'][data-block='${blkKey}']`);
+					const hasTxt = !!REMARKS[stu.student]?.[blkKey];
+					$icon.toggleClass("text-primary", hasTxt)
+						.toggleClass("text-muted",  !hasTxt);
+				});
+				continue;      // skip card re-render
 			}
 			$cards.append(await renderAttendanceCard(stu, code_map));
 		}
