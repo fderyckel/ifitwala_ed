@@ -151,6 +151,14 @@
    "label": "Block number"
   }
  ],
+ "indexes": [
+  {
+    "fields": ["student", "attendance_date"]
+  },
+  {
+    "fields": ["attendance_date", "school"]
+  }
+ ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
