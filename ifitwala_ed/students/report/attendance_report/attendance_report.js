@@ -2,6 +2,75 @@
 // For license information, please see license.txt
 
 frappe.query_reports["Attendance Report"] = {
+	
+	// ------------------------------------------------------------------ //
+	// 1. Filters (single source of truth)                                //
+	// ------------------------------------------------------------------ //
+	filters: [
+		{
+			fieldname: "school",
+			label: __("School"),
+			fieldtype: "Link",
+			options: "School",
+			reqd: 1
+		},
+		{
+			fieldname: "academic_year",
+			label: __("Academic Year"),
+			fieldtype: "Link",
+			options: "Academic Year",
+			reqd: 1
+		},
+		{
+			fieldname: "term",
+			label: __("Term"),
+			fieldtype: "Link",
+			options: "Term"
+		},
+		{
+			fieldname: "program",
+			label: __("Program"),
+			fieldtype: "Link",
+			options: "Program"
+		},
+		{
+			fieldname: "course",
+			label: __("Course"),
+			fieldtype: "Link",
+			options: "Course"
+		},
+		{
+			fieldname: "from_date",
+			label: __("From Date"),
+			fieldtype: "Date",
+			default: frappe.datetime.get_today(),
+			reqd: 1
+		},
+		{
+			fieldname: "to_date",
+			label: __("To Date"),
+			fieldtype: "Date",
+			default: frappe.datetime.get_today(),
+			reqd: 1
+		},
+		{
+			fieldname: "instructor",
+			label: __("Instructor"),
+			fieldtype: "Link",
+			options: "Instructor"
+		},
+		{
+			fieldname: "student",
+			label: __("Student"),
+			fieldtype: "Link",
+			options: "Student"
+		},
+		{
+			fieldname: "whole_day",
+			label: __("Whole Day"),
+			fieldtype: "Check"
+		}
+	],
 
 	// ------------------------------------------------------------------ //
 	// 2. Page setup                                                       //
