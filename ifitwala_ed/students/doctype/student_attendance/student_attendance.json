@@ -25,7 +25,8 @@
   "attendance_method",
   "location",
   "remark",
-  "meta_locked"
+  "meta_locked",
+  "whole_day"
  ],
  "fields": [
   {
@@ -149,6 +150,13 @@
    "fieldname": "block_number",
    "fieldtype": "Int",
    "label": "Block number"
+  },
+  {
+   "default": "0",
+   "description": "Checked if this is a whole day attendance (as oppose to block attendance)",
+   "fieldname": "whole_day",
+   "fieldtype": "Check",
+   "label": "Whole Day"
   }
  ],
  "indexes": [
@@ -162,7 +170,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-09 06:36:36.766652",
+ "modified": "2025-06-13 12:23:40.308742",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Attendance",
