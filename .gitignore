@@ -19,3 +19,6 @@ yarn.lock
 .codex-env/
 codex_setup.sh
 codex.log
+
+# Others
+config/*
