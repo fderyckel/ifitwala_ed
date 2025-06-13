@@ -10,7 +10,8 @@
   "student_name",
   "attendance_date",
   "attendance_time",
-  "period",
+  "rotation_day",
+  "block_number",
   "attendance_code",
   "check_in_time",
   "check_out_time",
@@ -30,8 +31,11 @@
   {
    "fieldname": "student",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Student",
-   "options": "Student"
+   "options": "Student",
+   "reqd": 1
   },
   {
    "fieldname": "student_name",
@@ -41,7 +45,8 @@
   {
    "fieldname": "attendance_date",
    "fieldtype": "Date",
-   "label": "Attendance Date"
+   "label": "Attendance Date",
+   "reqd": 1
   },
   {
    "fieldname": "attendance_time",
@@ -49,15 +54,14 @@
    "label": "attendance Time"
   },
   {
-   "fieldname": "period",
-   "fieldtype": "Int",
-   "label": "Period"
-  },
-  {
    "fieldname": "attendance_code",
    "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Attendance Code",
-   "options": "Student Attendance Code"
+   "options": "Student Attendance Code",
+   "reqd": 1
   },
   {
    "fieldname": "check_in_time",
@@ -82,8 +86,9 @@
   },
   {
    "fieldname": "academic_year",
-   "fieldtype": "Data",
-   "label": "Academic Year"
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
   },
   {
    "fieldname": "term",
@@ -92,13 +97,15 @@
   },
   {
    "fieldname": "program",
-   "fieldtype": "Data",
-   "label": "Program"
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
   },
   {
    "fieldname": "school",
-   "fieldtype": "Data",
-   "label": "School"
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
   },
   {
    "fieldname": "instructor",
@@ -132,12 +139,22 @@
   {
    "fieldname": "section_break_rcnc",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "rotation_day",
+   "fieldtype": "Int",
+   "label": "Rotation day"
+  },
+  {
+   "fieldname": "block_number",
+   "fieldtype": "Int",
+   "label": "Block number"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-07 14:57:48.296794",
+ "modified": "2025-06-09 06:36:36.766652",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Attendance",

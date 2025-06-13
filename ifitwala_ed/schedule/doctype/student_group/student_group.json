@@ -162,11 +162,11 @@
    "options": "Student Group Schedule"
   },
   {
-   "depends_on": "eval: !doc.program",
    "fieldname": "school_schedule",
    "fieldtype": "Link",
    "label": "School Schedule",
-   "options": "School Schedule"
+   "options": "School Schedule",
+   "reqd": 1
   },
   {
    "fieldname": "add_blocks",
@@ -176,7 +176,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-27 06:44:58.138264",
+ "modified": "2025-06-08 17:09:32.025637",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",
