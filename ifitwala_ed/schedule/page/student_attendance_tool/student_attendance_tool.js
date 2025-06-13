@@ -303,23 +303,6 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		const date  = date_field.get_value();
 		if (!group || !date) return;
 
-		// ── decide whether we must re-create cards ──────────────────────────
-		const need_full_rebuild =
-						!INITIAL_RENDERED ||
-						group !== RENDERED_GROUP ||
-						JSON.stringify(blocks) !== JSON.stringify(RENDERED_BLOCKS);
-
-		if (need_full_rebuild) {
-				$cards.empty();                              // full rebuild
-		} else {
-				// we'll only update selects & icons later
-		}
-
-// remember what we just asked for
-RENDERED_GROUP  = group;
-RENDERED_BLOCKS = blocks;
-INITIAL_RENDERED = true;
-
 		const [{ message: roster }, { message: prev }, { message: existing }, { message: blocks }] = await Promise.all([ 
 			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_students", {
 				student_group: group, start: 0, page_length: 500,
@@ -334,6 +317,21 @@ INITIAL_RENDERED = true;
 				student_group: group, attendance_date: date, 
 			}), 
 		]);
+
+		// ── decide whether we must re-create cards (blocks is now defined) ──
+		const need_full_rebuild = 
+			!INITIAL_RENDERED || 
+			group !== RENDERED_GROUP || 
+			JSON.stringify(blocks) !== JSON.stringify(RENDERED_BLOCKS); 
+			
+		if (need_full_rebuild) { 
+			$cards.empty();               // full rebuild
+		} 
+		
+		// remember what we just rendered / will render 
+		RENDERED_GROUP   = group; 
+		RENDERED_BLOCKS  = blocks; 
+		INITIAL_RENDERED = true;
 
 		// if a newer build started, abandon this one 
 		if (token !== BUILD_TOKEN) return;
