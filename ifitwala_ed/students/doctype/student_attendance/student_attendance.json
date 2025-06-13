@@ -165,6 +165,9 @@
   },
   {
     "fields": ["attendance_date", "school"]
+  }, 
+	  {
+    "fields": ["course", "attendance_date"]
   }
  ],
  "grid_page_length": 50,
