@@ -78,10 +78,20 @@ frappe.query_reports["Attendance Report"] = {
 	onload(report) {
 		report.page.set_title(__("Attendance Report"));
 
-		report.filter_area.get_input("whole_day").on("change", () => {
-			const isWhole = report.get_values().whole_day;
-			report.toggle_filter_display("course", !isWhole);
-			if (isWhole) report.set_filter_value("course", "");
+			// hide Course when Whole Day is ticked (safe after filters render)
+		frappe.after_ajax(() => {
+			const wholeDayFilter = report.get_filter("whole_day");
+			const courseFilter   = report.get_filter("course");
+
+			function toggle_course() {
+				const isWhole = wholeDayFilter.get_value() === 1;
+				report.toggle_filter_display("course", !isWhole);
+				if (isWhole) courseFilter.set_value("");
+			}
+			if (wholeDayFilter) {
+				wholeDayFilter.$input.on("change", toggle_course);
+				toggle_course(); // initial state
+			}
 		});
 	},
 
@@ -91,15 +101,15 @@ frappe.query_reports["Attendance Report"] = {
 	formatter(value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
 
-		if (column.fieldname === "percentage_present" && value) {
-			const pct = parseFloat(value);
+		if (column.fieldname === "percentage_present" && value !== undefined && value !== null) {
+			const pct = parseFloat(value) || 0;
 			let color = "orange";
 			if (pct >= 95)  color = "green";
 			else if (pct < 90) color = "red";
 			return `<span class="indicator-pill ${color}">${pct}%</span>`;
 		}
 
-		if (column.fieldtype === "Int") {
+		if (column.fieldtype === "Int" && value !== undefined) {
 			return `<div class="text-end">${value}</div>`;
 		}
 		return value;
