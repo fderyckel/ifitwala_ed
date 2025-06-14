@@ -78,7 +78,7 @@ def execute(filters=None):
 	query = f"""
 		SELECT
 			sa.student                                          AS student,
-			CONCAT(st.student_full_name, IF(st.preferred_name!='', CONCAT(' (',st.student_preferred_name,')'), '')) AS student_label,
+			CONCAT(st.student_full_name, IF(st.student_preferred_name!='', CONCAT(' (',st.student_preferred_name,')'), '')) AS student_label,
 			IF(sa.course IS NULL,'Whole Day','Course')          AS attendance_type,
 			{code_columns_sql},
 			{pct_sql}                                        AS percentage_present
@@ -86,7 +86,7 @@ def execute(filters=None):
 		JOIN `tabStudent Attendance Code`   sac  ON sac.name  = sa.attendance_code
 		JOIN `tabStudent`                   st   ON st.name   = sa.student
 		WHERE {condition_sql}
-		GROUP BY sa.student, attendance_type
+		GROUP BY sa.student, student_label, attendance_type
 		ORDER BY sa.student;
 	"""
 	data = frappe.db.sql(query, params, as_dict=True)
