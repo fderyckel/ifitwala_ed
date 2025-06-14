@@ -50,41 +50,43 @@ def execute(filters=None):
 	# 2.  Get the attendance-code catalogue shown in reports              #
 	# ------------------------------------------------------------------ #
 	codes = frappe.get_all(
-		"Student Attendance Code",
-		filters={"show_in_reports": 1},
-		fields=["attendance_code", "count_as_present", "display_order"],
-		order_by="display_order asc",
+			"Student Attendance Code",
+			filters={"show_in_reports": 1},
+			fields=["name", "attendance_code", "count_as_present", "display_order"],
+			order_by="display_order asc",
 	)
 	if not codes:
-		frappe.throw("No Attendance Codes are flagged with ‘Show in Reports’.")
+			frappe.throw("No Attendance Codes are flagged with ‘Show in Reports’.")
 
-	code_list        = [c.attendance_code for c in codes]
-	present_codes    = [c.attendance_code for c in codes if c.count_as_present]
+	code_map       = {c.attendance_code: c.name for c in codes}
+	code_list      = [c.attendance_code for c in codes]
+	present_codes  = [c.attendance_code for c in codes if c.count_as_present]
 
-	# build SQL pieces
+	# ------------------------------------------------------------------ #
+	# 3. Build SQL (JOIN + conditional aggregates)                       #
+	# ------------------------------------------------------------------ #
 	code_columns_sql = ",\n".join(
-		[f"SUM(sa.attendance_code={frappe.db.escape(code)}) AS `{code}`"
-		 for code in code_list]
+			[f"SUM(sac.attendance_code = {frappe.db.escape(code)}) AS `{code}`"
+			for code in code_list]
 	)
-	present_sum_sql  = " + ".join(
-		[f"SUM(sa.attendance_code={frappe.db.escape(code)})"
-		 for code in present_codes]
+	present_sum_sql = " + ".join(
+			[f"SUM(sac.attendance_code = {frappe.db.escape(code)})"
+			for code in present_codes]
 	) or "0"
-	pct_sql          = f"ROUND(({present_sum_sql})/NULLIF(COUNT(sa.name),0)*100,2)"
+	pct_sql = f"ROUND(({present_sum_sql}) / NULLIF(COUNT(sa.name), 0) * 100, 2)"
 
-	# ------------------------------------------------------------------ #
-	# 3. Run one fast aggregate query                                     #
-	# ------------------------------------------------------------------ #
 	query = f"""
-		SELECT
-			sa.student                                          AS student,
-			IF(sa.course IS NULL,'Whole Day','Course')          AS attendance_type,
-			{code_columns_sql},
-			{pct_sql}                                           AS percentage_present
-		FROM `tabStudent Attendance` sa
-		WHERE {condition_sql}
-		GROUP BY sa.student, attendance_type
-		ORDER BY sa.student;
+			SELECT
+					sa.student                                       AS student,
+					IF(sa.course IS NULL, 'Whole Day', 'Course')     AS attendance_type,
+					{code_columns_sql},
+					{pct_sql}                                        AS percentage_present
+			FROM `tabStudent Attendance`        sa
+			JOIN `tabStudent Attendance Code`   sac
+					ON sac.name = sa.attendance_code   -- docname ↔ link
+			WHERE {condition_sql}
+			GROUP BY sa.student, attendance_type
+			ORDER BY sa.student;
 	"""
 	data = frappe.db.sql(query, params, as_dict=True)
 

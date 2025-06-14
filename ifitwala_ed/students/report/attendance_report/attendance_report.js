@@ -2,7 +2,7 @@
 // For license information, please see license.txt
 
 frappe.query_reports["Attendance Report"] = {
-	
+
 	// ------------------------------------------------------------------ //
 	// 1. Filters (single source of truth)                                //
 	// ------------------------------------------------------------------ //
@@ -77,6 +77,12 @@ frappe.query_reports["Attendance Report"] = {
 	// ------------------------------------------------------------------ //
 	onload(report) {
 		report.page.set_title(__("Attendance Report"));
+
+		report.filter_area.get_input("whole_day").on("change", () => {
+			const isWhole = report.get_values().whole_day;
+			report.toggle_filter_display("course", !isWhole);
+			if (isWhole) report.set_filter_value("course", "");
+		});
 	},
 
 	// ------------------------------------------------------------------ //
