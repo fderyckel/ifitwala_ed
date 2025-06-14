@@ -56,7 +56,7 @@ def execute(filters=None):
 		order_by="display_order asc",
 	)
 	if not codes:
-		frappe.throw("No Attendance Codes are flagged with ‘Show in Reports’.")
+		frappe.throw("No Attendance Codes are flagged with 'Show in Reports'.")
 
 	code_map = {c.attendance_code: c.name for c in codes}
 	code_list = [c.attendance_code for c in codes]
@@ -78,7 +78,7 @@ def execute(filters=None):
 	query = f"""
 		SELECT
 			sa.student                                          AS student,
-			CONCAT(st.student_name,' (',IFNULL(st.preferred_name,''),')') AS student_label,
+			CONCAT(st.student_full_name, IF(st.preferred_name!='', CONCAT(' (',st.student_preferred_name,')'), '')) AS student_label,
 			IF(sa.course IS NULL,'Whole Day','Course')          AS attendance_type,
 			{code_columns_sql},
 			{pct_sql}                                        AS percentage_present
