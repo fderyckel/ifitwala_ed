@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.utils import now_datetime, getdate, nowdate
+from frappe import _
 from typing import List, Dict
 from itertools import islice
 from ifitwala_ed.schedule.schedule_utils import get_rotation_dates
