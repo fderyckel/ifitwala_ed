@@ -1,5 +1,5 @@
 {
- "add_total_row": 1,
+ "add_total_row": 0,
  "add_translate_data": 0,
  "columns": [],
  "creation": "2025-06-13 09:38:23.393412",
@@ -7,11 +7,10 @@
  "docstatus": 0,
  "doctype": "Report",
  "filters": [],
- "require_filters": 1, 
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2025-06-13 12:19:28.625559",
+ "modified": "2025-06-14 23:32:29.008973",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Attendance Report",
@@ -19,7 +18,7 @@
  "prepared_report": 0,
  "ref_doctype": "Student Attendance",
  "report_name": "Attendance Report",
- "report_type": "Script Report", 
+ "report_type": "Script Report",
  "roles": [
   {
    "role": "System Manager"

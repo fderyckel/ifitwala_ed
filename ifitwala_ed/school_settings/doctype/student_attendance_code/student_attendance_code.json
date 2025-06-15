@@ -11,10 +11,11 @@
   "attendance_code_name",
   "display_order",
   "count_as_present",
+  "is_default",
   "column_break_zfmr",
   "attendance_code",
   "show_in_attendance_tool",
-  "is_default",
+  "show_in_reports",
   "section_break_ur4x",
   "code_description"
  ],
@@ -77,11 +78,17 @@
    "in_list_view": 1,
    "label": "Display Order",
    "no_copy": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "show_in_reports",
+   "fieldtype": "Check",
+   "label": "Show in Reports"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-06 21:24:00.488005",
+ "modified": "2025-06-13 22:15:01.522006",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Student Attendance Code",
