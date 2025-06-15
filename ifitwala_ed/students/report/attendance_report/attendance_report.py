@@ -59,21 +59,23 @@ def execute(filters=None):
 	if not codes:
 		frappe.throw(_("No Attendance Codes are flagged with 'Show in Reports'."))
 
-	code_list = [c.attendance_code for c in codes]
-	present_codes = [c.attendance_code for c in codes if c.count_as_present]
+	code_list = [c.name for c in codes]
+	present_codes = [c.name for c in codes if c.count_as_present]
 
 	# ------------------------------------------------------------------ #
 	# 3. Build SQL (JOIN + conditional aggregates)                       #
 	# ------------------------------------------------------------------ #
 	code_columns_sql = ",\n".join(
-		[f"SUM(CASE WHEN sac.attendance_code = {frappe.db.escape(code)} THEN 1 ELSE 0 END) AS `{code}`" 
-	 	for code in code_list] 
-	) 
-	present_sum_sql = " + ".join( 
-		[f"SUM(CASE WHEN sac.attendance_code = {frappe.db.escape(code)} THEN 1 ELSE 0 END)" 
-		for code in present_codes] 
+		[f"SUM(CASE WHEN sac.name = {frappe.db.escape(code)} THEN 1 ELSE 0 END) AS `{code}`"
+		for code in code_list]
+	)
+
+	present_sum_sql = " + ".join(
+		[f"SUM(CASE WHEN sac.name = {frappe.db.escape(code)} THEN 1 ELSE 0 END)"
+		for code in present_codes]
 	) or "0"
-	pct_sql = f"COALESCE(ROUND(({present_sum_sql}) / NULLIF(COUNT(sa.name),0) * 100, 2), 0)"
+
+	pct_sql = f"COALESCE(ROUND(({present_sum_sql}) / NULLIF(COUNT(sa.name), 0) * 100, 2), 0)"
 
 	query = f"""
 		SELECT
