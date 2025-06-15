@@ -40,6 +40,12 @@ frappe.query_reports["Attendance Report"] = {
 			options: "Course"
 		},
 		{
+			fieldname: "student_group",
+			label: __("Student Group"),
+			fieldtype: "Link",
+			options: "Student Group"
+ 		},
+		{
 			fieldname: "from_date",
 			label: __("From Date"),
 			fieldtype: "Date",
@@ -82,11 +88,16 @@ frappe.query_reports["Attendance Report"] = {
 		frappe.after_ajax(() => {
 			const wholeDayFilter = report.get_filter("whole_day");
 			const courseFilter   = report.get_filter("course");
+			const groupFilter    = report.get_filter("student_group");
 
 			function toggle_course() {
 				const isWhole = wholeDayFilter.get_value() === 1;
 				report.toggle_filter_display("course", !isWhole);
-				if (isWhole) courseFilter.set_value("");
+				report.toggle_filter_display("student_group", !isWhole);
+				if (isWhole) {
+					courseFilter.set_value("");
+					groupFilter.set_value("");
+				}
 			}
 			if (wholeDayFilter) {
 				wholeDayFilter.$input.on("change", toggle_course);
@@ -121,6 +132,7 @@ frappe.query_reports["Attendance Report"] = {
 	get_datatable_options(options) {
 		return Object.assign(options, {
 			checkboxColumn: false,
+			freezeColumn: 2,     // Student + Type stay visible
 			noDataMessage: __("No attendance records match these filters.")
 		});
 	}

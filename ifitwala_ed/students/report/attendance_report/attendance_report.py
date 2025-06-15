@@ -34,6 +34,7 @@ def execute(filters=None):
 	add("sa.academic_year = %(academic_year)s", "academic_year")
 	add("sa.term = %(term)s", "term")
 	add("sa.program = %(program)s", "program")
+	add("sa.student_group = %(student_group)s", "student_group")
 	if filters.get("whole_day"):
 		where.append("sa.course IS NULL")
 	else:
@@ -58,7 +59,6 @@ def execute(filters=None):
 	if not codes:
 		frappe.throw("No Attendance Codes are flagged with 'Show in Reports'.")
 
-	code_map = {c.attendance_code: c.name for c in codes}
 	code_list = [c.attendance_code for c in codes]
 	present_codes = [c.attendance_code for c in codes if c.count_as_present]
 
@@ -80,14 +80,16 @@ def execute(filters=None):
 			sa.student                                          AS student,
 			CONCAT(st.student_full_name, IF(st.student_preferred_name!='', CONCAT(' (',st.student_preferred_name,')'), '')) AS student_label,
 			IF(sa.course IS NULL,'Whole Day','Course')          AS attendance_type,
+			sa.course                                           AS course,
+			sa.student_group                                    AS student_group,
 			{code_columns_sql},
 			{pct_sql}                                        AS percentage_present
 		FROM `tabStudent Attendance`        sa
 		JOIN `tabStudent Attendance Code`   sac  ON sac.name  = sa.attendance_code
 		JOIN `tabStudent`                   st   ON st.name   = sa.student
 		WHERE {condition_sql}
-		GROUP BY sa.student, student_label, attendance_type
-		ORDER BY sa.student;
+		GROUP BY sa.student, student_label, attendance_type, sa.course, sa.student_group
+		ORDER BY student_label, sa.course;
 	"""
 	data = frappe.db.sql(query, params, as_dict=True)
 
@@ -95,8 +97,10 @@ def execute(filters=None):
 	# 4.  Column definitions (dynamic)                                    #
 	# ------------------------------------------------------------------ #
 	columns = [
-		{"fieldname": "student_label", "label": "Student (Preferred)", "fieldtype": "Data", "width": 200},
-		{"fieldname": "attendance_type", "label": "Type", "fieldtype": "Data", "width": 90},
+		{"fieldname": "student_label", 	"label": "Student (Preferred)", "fieldtype": "Data", "width": 200},
+		{"fieldname": "attendance_type","label": "Type", 				"fieldtype": "Data", "width": 70},
+		{"fieldname": "course",         "label": "Course",       "fieldtype": "Link",   "options": "Course", "width": 120},
+		{"fieldname": "student_group",  "label": "Student Group","fieldtype": "Link",   "options": "Student Group", "width": 140},
 	] + [
 		{"fieldname": code, "label": code, "fieldtype": "Int", "width": 80}
 		for code in code_list
