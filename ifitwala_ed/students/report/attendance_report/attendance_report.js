@@ -112,6 +112,12 @@ frappe.query_reports["Attendance Report"] = {
 	formatter(value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
 
+		// clickable name
+    if (column.fieldname === "student_label" && data && data.student) {
+        const url = `#Form/Student/${data.student}`;
+        return `<a href="${url}" target="_blank">${value}</a>`;
+    }
+
 		if (column.fieldname === "percentage_present" && value !== undefined && value !== null) {
 			const pct = parseFloat(value) || 0;
 			let color = "orange";

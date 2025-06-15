@@ -43,8 +43,7 @@ def execute(filters=None):
 		where.append("sa.course IS NOT NULL")
 	add("sa.instructor = %(instructor)s", "instructor")
 	add("sa.student = %(student)s", "student")
-	add("sa.attendance_date BETWEEN %(from_date)s AND %(to_date)s")
-	params.update({"from_date": filters.from_date, "to_date": filters.to_date})
+	add("sa.attendance_date BETWEEN %(from_date)s AND %(to_date)s") 
 
 	condition_sql = " AND ".join(where)
 
