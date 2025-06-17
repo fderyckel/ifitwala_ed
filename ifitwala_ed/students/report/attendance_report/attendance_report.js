@@ -114,7 +114,7 @@ frappe.query_reports["Attendance Report"] = {
 
 		// clickable name
     if (column.fieldname === "student_label" && data && data.student) {
-        const url = `app/student/${data.student}`;
+        const url = `/app/student/${data.student}`;
         return `<a href="${url}" target="_blank" rel="noopener noreferrer">${value}</a>`;
     }
 

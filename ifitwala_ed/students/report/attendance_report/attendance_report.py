@@ -59,19 +59,19 @@ def execute(filters=None):
 	if not codes:
 		frappe.throw(_("No Attendance Codes are flagged with 'Show in Reports'."))
 
-	code_list = [c.name for c in codes]
-	present_codes = [c.name for c in codes if c.count_as_present]
+	code_list = [c.attendance_code for c in codes]
+	present_codes = [c.attendance_code for c in codes if c.count_as_present]
 
 	# ------------------------------------------------------------------ #
 	# 3. Build SQL (JOIN + conditional aggregates)                       #
 	# ------------------------------------------------------------------ #
 	code_columns_sql = ",\n".join(
-		[f"SUM(CASE WHEN sac.name = {frappe.db.escape(code)} THEN 1 ELSE 0 END) AS `{code}`"
+		[f"SUM(CASE WHEN sac.attendance_code = {frappe.db.escape(code)} THEN 1 ELSE 0 END) AS `{code}`"
 		for code in code_list]
 	)
 
 	present_sum_sql = " + ".join(
-		[f"SUM(CASE WHEN sac.name = {frappe.db.escape(code)} THEN 1 ELSE 0 END)"
+		[f"SUM(CASE WHEN sac.attendance_code = {frappe.db.escape(code)} THEN 1 ELSE 0 END)"
 		for code in present_codes]
 	) or "0"
 
@@ -87,7 +87,7 @@ def execute(filters=None):
 			{code_columns_sql},
 			{pct_sql}                                        AS percentage_present
 		FROM `tabStudent Attendance`        sa
-		JOIN `tabStudent Attendance Code`   sac  ON sac.name  = sa.attendance_code
+		JOIN `tabStudent Attendance Code`   sac  ON sac.attendance_code  = sa.attendance_code
 		JOIN `tabStudent`                   st   ON st.name   = sa.student
 		WHERE {condition_sql}
 		GROUP BY sa.student, student_label, attendance_type, sa.course, sa.student_group
