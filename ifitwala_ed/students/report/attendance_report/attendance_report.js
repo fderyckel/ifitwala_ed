@@ -123,7 +123,7 @@ frappe.query_reports["Attendance Report"] = {
 			const pct = parseFloat(data.percentage_present) || 0;
 			let color = "orange";
 			if (pct >= 95) color = "green";
-			else if (pct < 90) color = "red";
+			else if (pct < 75) color = "red";
 			return `<span class="indicator-pill ${color}">${pct}%</span>`;
 		}
 
