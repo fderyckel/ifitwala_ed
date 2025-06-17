@@ -118,10 +118,9 @@ frappe.query_reports["Attendance Report"] = {
         return `<a href="${url}" target="_blank" rel="noopener noreferrer">${value}</a>`;
     }
 
-		// fix % Present rendering
-		if (column.fieldname === "percentage_present" && value !== undefined && value !== null) {
-			const numeric = typeof value === "string" ? parseFloat(value.replace("%", "")) : value;
-			const pct = isNaN(numeric) ? 0 : numeric;
+		// % Present with raw value
+		if (column.fieldname === "percentage_present" && data && data.percentage_present !== undefined) {
+			const pct = parseFloat(data.percentage_present) || 0;
 			let color = "orange";
 			if (pct >= 95) color = "green";
 			else if (pct < 90) color = "red";

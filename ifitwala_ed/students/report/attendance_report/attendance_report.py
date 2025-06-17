@@ -114,8 +114,8 @@ def execute(filters=None):
 		{"fieldname": code, "label": code, "fieldtype": "Int", "width": 80}
 		for code in code_list
 	] + [
-		{"fieldname": "present_count_debug", "label": "Present Debug", "fieldtype": "Int", "width": 80},
-		{"fieldname": "total_count_debug", "label": "Total Debug", "fieldtype": "Int", "width": 80},
+		{"fieldname": "present_count_debug", "label": "Total Present", "fieldtype": "Int", "width": 100},
+		{"fieldname": "total_count_debug", "label": "Total Att.", "fieldtype": "Int", "width": 100},
 		{"fieldname": "percentage_present", "label": "% Present", "fieldtype": "Percent", "width": 80}
 	]
 
