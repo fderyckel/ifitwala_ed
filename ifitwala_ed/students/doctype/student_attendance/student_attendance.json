@@ -160,11 +160,14 @@
   }
  ],
  "indexes": [
+	{
+    "fields": ["attendance_code"]
+  },
   {
     "fields": ["student", "attendance_date"]
   },
   {
-    "fields": ["attendance_date", "school"]
+    "fields": ["attendance_date", "academic_year", "school"]
   }, 
 	  {
     "fields": ["course", "attendance_date"]
