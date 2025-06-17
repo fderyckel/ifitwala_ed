@@ -87,7 +87,7 @@ def execute(filters=None):
 			{code_columns_sql},
 			{pct_sql}                                        AS percentage_present
 		FROM `tabStudent Attendance`        sa
-		JOIN `tabStudent Attendance Code`   sac  ON sac.attendance_code  = sa.attendance_code
+		JOIN `tabStudent Attendance Code`   sac  ON sac.name  = sa.attendance_code
 		JOIN `tabStudent`                   st   ON st.name   = sa.student
 		WHERE {condition_sql}
 		GROUP BY sa.student, student_label, attendance_type, sa.course, sa.student_group
