@@ -75,7 +75,12 @@ def execute(filters=None):
 		for code in present_codes]
 	) or "0"
 
-	pct_sql = f"COALESCE(ROUND(({present_sum_sql}) / NULLIF(COUNT(sa.name), 0) * 100, 2), 0)"
+	total_sum_sql = " + ".join(
+		[f"SUM(CASE WHEN sac.attendance_code = {frappe.db.escape(code)} THEN 1 ELSE 0 END)"
+		for code in code_list]
+	) or "1"
+
+	pct_sql = f"COALESCE(ROUND(({present_sum_sql}) / NULLIF(({total_sum_sql}), 0) * 100, 2), 0)"
 
 	query = f"""
 		SELECT
@@ -85,7 +90,9 @@ def execute(filters=None):
 			sa.course                                           AS course,
 			sa.student_group                                    AS student_group,
 			{code_columns_sql},
-			{pct_sql}                                        AS percentage_present
+			{present_sum_sql} AS present_count_debug,
+			{total_sum_sql} AS total_count_debug,
+			{pct_sql} AS percentage_present          
 		FROM `tabStudent Attendance`        sa
 		JOIN `tabStudent Attendance Code`   sac  ON sac.name  = sa.attendance_code
 		JOIN `tabStudent`                   st   ON st.name   = sa.student
@@ -107,8 +114,9 @@ def execute(filters=None):
 		{"fieldname": code, "label": code, "fieldtype": "Int", "width": 80}
 		for code in code_list
 	] + [
-		{"fieldname": "percentage_present", "label": "% Present",
-		 "fieldtype": "Percent", "width": 90}
+		{"fieldname": "present_count_debug", "label": "Present Debug", "fieldtype": "Int", "width": 80},
+		{"fieldname": "total_count_debug", "label": "Total Debug", "fieldtype": "Int", "width": 80},
+		{"fieldname": "percentage_present", "label": "% Present", "fieldtype": "Percent", "width": 80}
 	]
 
 	return columns, data
