@@ -82,7 +82,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-14 08:32:35.547421",
+ "modified": "2025-06-23 20:23:53.253403",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",
@@ -99,7 +99,7 @@
    "role": "Curriculum Coordinator"
   }
  ],
- "sequence_id": 3.0,
+ "sequence_id": 2.0,
  "shortcuts": [],
  "title": "Curriculum"
 }

@@ -416,7 +416,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-06-06 09:48:04.765352",
+ "modified": "2025-06-23 20:23:53.432818",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Settings",
@@ -439,7 +439,7 @@
    "role": "Curriculum Coordinator"
   }
  ],
- "sequence_id": 4.0,
+ "sequence_id": 5.0,
  "shortcuts": [
   {
    "color": "Grey",

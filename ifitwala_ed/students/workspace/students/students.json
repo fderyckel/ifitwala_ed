@@ -112,7 +112,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-15 00:31:16.344601",
+ "modified": "2025-06-23 20:23:53.314482",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Students",
@@ -134,13 +134,13 @@
    "role": "Admission Officer"
   }
  ],
- "sequence_id": 2.0,
+ "sequence_id": 3.0,
  "shortcuts": [
   {
    "color": "Grey",
    "doc_view": "List",
    "label": "Student Demographics",
-   "link_to": "Student Dashboard",
+   "link_to": "Student Demographics Dashboard",
    "type": "Dashboard"
   },
   {

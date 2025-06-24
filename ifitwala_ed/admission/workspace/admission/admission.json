@@ -1,17 +1,17 @@
 {
  "charts": [],
- "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Academics</span>\",\"col\":12}},{\"id\":\"u6qsZQ5_9G\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Group\",\"col\":3}},{\"id\":\"Vc7yxTmAVu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Calendar\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}}]",
- "creation": "2025-05-01 09:35:08.920114",
+ "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Admission</span>\",\"col\":12}},{\"id\":\"HF-thlk3eW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inquiry\",\"col\":3}},{\"id\":\"0jhR9rjZ_2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Registration Of Interest\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}}]",
+ "creation": "2025-06-23 20:21:38.876334",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
  "hide_custom": 0,
- "icon": "heart-active",
+ "icon": "filter",
  "idx": 0,
- "indicator_color": "",
+ "indicator_color": "green",
  "is_hidden": 0,
- "label": "Academics",
+ "label": "Admission",
  "links": [
   {
    "hidden": 0,
@@ -72,10 +72,10 @@
    "type": "Link"
   }
  ],
- "modified": "2025-06-23 20:23:53.186244",
+ "modified": "2025-06-23 21:01:49.180373",
  "modified_by": "Administrator",
- "module": "School Settings",
- "name": "Academics",
+ "module": "Admission",
+ "name": "Admission",
  "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
@@ -83,25 +83,27 @@
  "quick_lists": [],
  "roles": [
   {
-   "role": "Academic Staff"
+   "role": "Admission Officer"
   }
  ],
- "sequence_id": 1.0,
+ "sequence_id": 4.0,
  "shortcuts": [
   {
    "color": "Grey",
    "doc_view": "List",
-   "label": "Calendar",
-   "link_to": "schedule_calendar",
-   "type": "Page"
+   "label": "Inquiry",
+   "link_to": "Inquiry",
+   "stats_filter": "[]",
+   "type": "DocType"
   },
   {
    "color": "Grey",
    "doc_view": "List",
-   "label": "Student Group",
-   "link_to": "student_group_cards",
-   "type": "Page"
+   "label": "Registration Of Interest",
+   "link_to": "Registration of Interest",
+   "stats_filter": "[]",
+   "type": "DocType"
   }
  ],
- "title": "Academics"
+ "title": "Admission"
 }
