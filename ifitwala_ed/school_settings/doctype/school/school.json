@@ -46,6 +46,8 @@
   "website_slug",
   "column_break_ztd5",
   "school_tagline",
+  "label_cta_inquiry",
+  "label_cta_roi",
   "section_break_l0vk",
   "gallery_image",
   "web_page_content_section",
@@ -302,6 +304,20 @@
    "fieldtype": "Select",
    "label": "Schedule Conflict Rule",
    "options": "Hard\nSoft"
+  },
+  {
+   "default": "Get more info",
+   "description": "Lable of the CTA for the inquiry button",
+   "fieldname": "label_cta_inquiry",
+   "fieldtype": "Data",
+   "label": "Label CTA inquiry"
+  },
+  {
+   "default": "Book a School Visit",
+   "description": "Lable of the CTA for Registration of interest",
+   "fieldname": "label_cta_roi",
+   "fieldtype": "Data",
+   "label": "Label CTA ROI"
   }
  ],
  "grid_page_length": 50,
@@ -309,7 +325,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-09 16:51:52.096119",
+ "modified": "2025-06-25 21:00:22.746007",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",

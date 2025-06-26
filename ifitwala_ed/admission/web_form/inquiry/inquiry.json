@@ -7,7 +7,7 @@
  "allow_print": 0,
  "anonymous": 0,
  "apply_document_permissions": 0,
- "button_label": "Save",
+ "button_label": "Create",
  "condition_json": "[]",
  "creation": "2025-06-23 21:03:57.279011",
  "doc_type": "Inquiry",
@@ -19,7 +19,7 @@
  "list_columns": [],
  "login_required": 0,
  "max_attachment_size": 0,
- "modified": "2025-06-23 21:04:53.202858",
+ "modified": "2025-06-25 20:42:52.868779",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "inquiry",
@@ -31,18 +31,6 @@
  "show_sidebar": 0,
  "title": "Inquiry",
  "web_form_fields": [
-  {
-   "allow_read_on_all_link_options": 0,
-   "fieldname": "section_break_9dhi",
-   "fieldtype": "Section Break",
-   "hidden": 0,
-   "max_length": 0,
-   "max_value": 0,
-   "precision": "",
-   "read_only": 0,
-   "reqd": 0,
-   "show_in_filter": 0
-  },
   {
    "allow_read_on_all_link_options": 0,
    "fieldname": "first_name",
@@ -107,20 +95,6 @@
    "precision": "",
    "read_only": 0,
    "reqd": 1,
-   "show_in_filter": 0
-  },
-  {
-   "allow_read_on_all_link_options": 0,
-   "default": "Now",
-   "fieldname": "submitted_at",
-   "fieldtype": "Datetime",
-   "hidden": 1,
-   "label": "submitted_at",
-   "max_length": 0,
-   "max_value": 0,
-   "precision": "",
-   "read_only": 1,
-   "reqd": 0,
    "show_in_filter": 0
   }
  ]
