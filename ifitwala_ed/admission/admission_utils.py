@@ -4,6 +4,7 @@
 
 import frappe
 from frappe.utils import add_days, nowdate, now
+from frappe.utils import now_datetime, get_datetime
 
 def notify_admission_manager(doc):
   # Ensure this only triggers on new webform submission
@@ -72,3 +73,57 @@ def assign_inquiry(doctype, docname, assigned_to):
 		)
 
 	return {"assigned_to": assigned_to, "todo": todo.name}
+
+def check_sla_breaches():
+	doc_types = ["Inquiry", "Registration of Interest"]
+	now = now_datetime()
+
+	for doctype in doc_types:
+		entries = frappe.get_all(doctype,
+			filters={
+				"workflow_state": "Assigned",
+				"docstatus": 0,
+				"first_contact_deadline": ["<=", now]
+			},
+			fields=["name", "assigned_to", "first_contact_deadline"]
+		)
+
+		for entry in entries:
+			if not entry.assigned_to:
+				continue
+
+			doc = frappe.get_doc(doctype, entry.name)
+			due = get_datetime(entry.first_contact_deadline)
+			days_overdue = (get_datetime(now) - due).days
+
+			if days_overdue == 0:
+				message = "⚠️ First Contact deadline reached today."
+			else:
+				message = f"🔴 First Contact overdue by {days_overdue} day(s)."
+
+			# Notify assigned user
+			notify_user(entry.assigned_to, message, doc)
+
+			# Notify all admission managers
+			manager_users = frappe.get_all("Has Role",
+				filters={"role": "Admission Manager"},
+				pluck="parent")
+			for user in manager_users:
+				notify_user(user, message, doc)
+
+			# Timeline log
+			doc.add_comment("Comment", text=message)
+			doc.save(ignore_permissions=True)
+
+def notify_user(user, message, doc):
+	frappe.publish_realtime(
+		event='inbox_notification',
+		message={
+			'type': 'Alert',
+			'subject': f"SLA Alert: {doc.name}",
+			'message': message,
+			'reference_doctype': doc.doctype,
+			'reference_name': doc.name
+		},
+		user=user
+	)

@@ -214,6 +214,11 @@ doc_events = {
 # }
 
 scheduler_events = {
+	"cron": {
+		"0 * * * *": [
+			"ifitwala_ed.admission.admission_utils.check_sla_breaches"
+		]
+	}, 
   "daily": [
     "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs"
   ]
