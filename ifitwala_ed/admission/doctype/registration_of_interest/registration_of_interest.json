@@ -27,7 +27,8 @@
   "proposed_academic_year",
   "proposed_term",
   "proposed_program",
-  "blank_field"
+  "blank_field",
+  "submitted_at"
  ],
  "fields": [
   {
@@ -150,12 +151,17 @@
   {
    "fieldname": "column_break_j9ax",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "submitted_at",
+   "fieldtype": "Datetime",
+   "label": "Submitted at"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-24 18:18:42.799725",
+ "modified": "2025-06-26 12:55:01.248467",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Registration of Interest",

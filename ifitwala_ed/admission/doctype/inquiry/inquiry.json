@@ -11,7 +11,8 @@
   "email",
   "type_of_inquiry",
   "message",
-  "submitted_at"
+  "submitted_at",
+  "workflow_state"
  ],
  "fields": [
   {
@@ -50,12 +51,18 @@
    "fieldtype": "Datetime",
    "label": "submitted_at",
    "read_only": 1
+  },
+  {
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "label": "Workflow State",
+   "options": "New Inquiry\nAssigned\nContacted\nQualified\nNurturing\nAccepted\nUnqualified"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-23 20:59:49.349780",
+ "modified": "2025-06-26 12:45:54.236755",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",
