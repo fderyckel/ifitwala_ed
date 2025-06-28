@@ -7,23 +7,45 @@ from frappe.utils import add_days, nowdate, now
 from frappe.utils import now_datetime, get_datetime, getdate
 
 def notify_admission_manager(doc):
-  # Ensure this only triggers on new webform submission
-  if frappe.flags.in_web_form and doc.workflow_state == "New Inquiry":
-    users = frappe.get_all("User", filters={
-      "roles.role": "Admission Manager",
-      "enabled": 1
-    }, distinct=True, pluck="name")
+	# Ensure this only triggers on new webform submission
+	if frappe.flags.in_web_form and doc.workflow_state == "New Inquiry":
+		user_ids = frappe.db.get_values(
+			"Has Role",
+			filters={"role": "Admission Manager"},
+			fieldname="parent",
+			as_dict=False
+		)
 
-    for user in users:
-      frappe.publish_realtime(
-        event='eval_js',
-        message={"code": f'frappe.show_alert({{"message": "New Inquiry Submitted: {doc.name}", "indicator": "blue"}});'},
-        user=user
-      )
+		enabled_users = frappe.db.get_values(
+			"User",
+			filters={"name": ["in", [u[0] for u in user_ids]], "enabled": 1},
+			fieldname="name",
+			as_dict=False
+		)
+
+		if not enabled_users:
+			return
+
+		for user in enabled_users:
+			frappe.publish_realtime(
+				event='eval_js',
+				message={"code": f'frappe.show_alert({{"message": "New Inquiry Submitted: {doc.name}", "indicator": "blue"}});'},
+				user=user[0]
+			)
+
 
 def check_sla_breaches():
 	doc_types = ["Inquiry", "Registration of Interest"]
 	now = now_datetime()
+	today = get_datetime(now).date()
+
+	# Get all admission managers only once
+	admission_managers = frappe.db.get_values(
+		"Has Role",
+		{"role": "Admission Manager"},
+		"parent"
+	)
+	manager_usernames = [u[0] for u in admission_managers]
 
 	for doctype in doc_types:
 		entries = frappe.get_all(doctype,
@@ -36,12 +58,12 @@ def check_sla_breaches():
 		)
 
 		for entry in entries:
-			if not entry.assigned_to:
+			assignee = entry.assigned_to
+			if not assignee:
 				continue
 
-			doc = frappe.get_doc(doctype, entry.name)
-			due = get_datetime(entry.first_contact_deadline)
-			days_overdue = (get_datetime(now) - due).days
+			due = get_datetime(entry.first_contact_deadline).date()
+			days_overdue = (today - due).days
 
 			if days_overdue == 0:
 				message = "⚠️ First Contact deadline reached today."
@@ -49,16 +71,20 @@ def check_sla_breaches():
 				message = f"🔴 First Contact overdue by {days_overdue} day(s)."
 
 			# Notify assigned user
-			notify_user(entry.assigned_to, message, doc)
+			notify_user(assignee, message, frappe._dict({
+				"name": entry.name,
+				"doctype": doctype
+			}))
 
-			# Notify all admission managers
-			manager_users = frappe.get_all("Has Role",
-				filters={"role": "Admission Manager"},
-				pluck="parent")
-			for user in manager_users:
-				notify_user(user, message, doc)
+			# Notify admission managers
+			for user in manager_usernames:
+				notify_user(user, message, frappe._dict({
+					"name": entry.name,
+					"doctype": doctype
+				}))
 
-			# Timeline log
+			# Add timeline comment (1 call to get_doc)
+			doc = frappe.get_doc(doctype, entry.name)
 			doc.add_comment("Comment", text=message)
 			doc.save(ignore_permissions=True)
 
@@ -92,19 +118,18 @@ def set_inquiry_deadlines(doc):
 			doc.first_contact_deadline = add_days(now, first_contact_days)
 
 def update_sla_status(doc):
-
-	today = getdate(nowdate())
-	fc = doc.first_contact_deadline
-	fu = doc.follow_up_deadline
-
-	if fc and getdate(fc) <= today:
-		doc.sla_status = "🔴 Overdue"
-	elif fc and getdate(fc) == today:
-		doc.sla_status = "🟡 Due Today"
-	elif fc and getdate(fc) > today:
-		doc.sla_status = "⚪ Upcoming"
-	else:
+	today = getdate()
+	if not doc.first_contact_deadline:
 		doc.sla_status = "✅ On Track"
+		return
+
+	fc_date = getdate(doc.first_contact_deadline)
+	if fc_date < today:
+		doc.sla_status = "🔴 Overdue"
+	elif fc_date == today:
+		doc.sla_status = "🟡 Due Today"
+	else:
+		doc.sla_status = "⚪ Upcoming"
 
 @frappe.whitelist()
 def assign_inquiry(doctype, docname, assigned_to):
