@@ -12,7 +12,10 @@
   "type_of_inquiry",
   "message",
   "submitted_at",
-  "workflow_state"
+  "workflow_state",
+  "first_contact_deadline",
+  "follow_up_deadline",
+  "sla_status"
  ],
  "fields": [
   {
@@ -57,12 +60,30 @@
    "fieldtype": "Select",
    "label": "Workflow State",
    "options": "New Inquiry\nAssigned\nContacted\nQualified\nNurturing\nAccepted\nUnqualified"
+  },
+  {
+   "fieldname": "first_contact_deadline",
+   "fieldtype": "Date",
+   "label": "First Contact Deadline",
+   "read_only": 1
+  },
+  {
+   "fieldname": "follow_up_deadline",
+   "fieldtype": "Date",
+   "label": "Follow-up Deadline",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sla_status",
+   "fieldtype": "Select",
+   "label": "SLA Status",
+   "options": "\ud83d\udd34 Overdue\n\ud83d\udfe1 Due Today\n\u26aa Upcoming\n\u2705 On Track"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-26 12:45:54.236755",
+ "modified": "2025-06-28 15:12:58.220800",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",

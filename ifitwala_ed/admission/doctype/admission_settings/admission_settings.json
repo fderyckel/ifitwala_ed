@@ -7,7 +7,9 @@
  "field_order": [
   "section_break_fk4b",
   "default_follow_up_days",
-  "default_first_follow_up_days"
+  "default_first_follow_up_days",
+  "sla_enabled",
+  "sla_check_interval_hours"
  ],
  "fields": [
   {
@@ -27,13 +29,26 @@
    "fieldname": "default_first_follow_up_days",
    "fieldtype": "Int",
    "label": "Default First Follow-up Days"
+  },
+  {
+   "default": "0",
+   "description": "Activate SLA timers.",
+   "fieldname": "sla_enabled",
+   "fieldtype": "Check",
+   "label": "SLA Enabled"
+  },
+  {
+   "description": "Frequency for background job notification.",
+   "fieldname": "sla_check_interval_hours",
+   "fieldtype": "Int",
+   "label": "SLA Check Interval Hours"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-06-24 18:57:29.083593",
+ "modified": "2025-06-28 14:32:30.169992",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission Settings",
