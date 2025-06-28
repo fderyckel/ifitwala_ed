@@ -4,7 +4,7 @@
 
 import frappe
 from frappe.utils import add_days, nowdate, now
-from frappe.utils import now_datetime, get_datetime
+from frappe.utils import now_datetime, get_datetime, getdate
 
 def notify_admission_manager(doc):
   # Ensure this only triggers on new webform submission

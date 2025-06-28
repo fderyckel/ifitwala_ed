@@ -18,5 +18,5 @@ class Inquiry(Document):
 		notify_admission_manager(self)
 
 	def before_save(self):
-			set_inquiry_deadlines(self)		
-			update_sla_status(self)
+		set_inquiry_deadlines(self)		
+		update_sla_status(self)
