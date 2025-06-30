@@ -181,3 +181,17 @@ def assign_inquiry(doctype, docname, assigned_to):
 		)
 
 	return {"assigned_to": assigned_to, "todo": todo.name}
+
+
+@frappe.whitelist()
+def get_admission_officers(doctype, txt, searchfield, start, page_len, filters):
+	return frappe.db.sql("""
+		SELECT u.name
+		FROM `tabUser` u
+		JOIN `tabHas Role` r ON r.parent = u.name
+		WHERE r.role = 'Admission Officer'
+			AND u.enabled = 1
+			AND u.name LIKE %s
+		ORDER BY u.name ASC
+		LIMIT %s OFFSET %s
+	""", (f"%{txt}%", page_len, start))

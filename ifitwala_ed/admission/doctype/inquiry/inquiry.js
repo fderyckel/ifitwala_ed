@@ -40,16 +40,13 @@ frappe.ui.form.on("Inquiry", {
 					options: 'User',
 					reqd: 1,
 					get_query: () => ({
-						filters: {
-							enabled: 1,
-							'roles.role': 'Admission Officer'
-						}
+						query: "ifitwala_ed.admission.admission_utils.get_admission_officers"
 					})
 				}
 			],
 			(values) => {
 				frappe.call({
-					method: 'ifitwala_ed.admission.utils.assign_inquiry',
+					method: 'ifitwala_ed.admission.admission_utils.assign_inquiry',
 					args: {
 						doctype: frm.doctype,
 						docname: frm.docname,
