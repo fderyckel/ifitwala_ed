@@ -26,12 +26,17 @@ def notify_admission_manager(doc):
 		if not enabled_users:
 			return
 
-		for user in enabled_users:
-			frappe.publish_realtime(
-				event='eval_js',
-				message={"code": f'frappe.show_alert({{"message": "New Inquiry Submitted: {doc.name}", "indicator": "blue"}});'},
-				user=user[0]
-			)
+		frappe.publish_realtime(
+			event='inbox_notification',
+			message={
+				'type': 'Alert',
+				'subject': f"New Inquiry Submitted",
+				'message': f"Inquiry {doc.name} has been submitted.",
+				'reference_doctype': doc.doctype,
+				'reference_name': doc.name
+			},
+			user=user[0]
+		)
 
 
 def check_sla_breaches():
@@ -136,8 +141,7 @@ def assign_inquiry(doctype, docname, assigned_to):
 	doc = frappe.get_doc(doctype, docname)
 
 	# Validate user with role 'Admission Officer'
-	admission_officers = frappe.get_users_with_role("Admission Officer")
-	if assigned_to not in admission_officers:
+	if not frappe.db.exists("Has Role", {"parent": assigned_to, "role": "Admission Officer"}): 
 		frappe.throw(f"{assigned_to} must be an active user with the 'Admission Officer' role.")
 
 	# Load Admission Settings
