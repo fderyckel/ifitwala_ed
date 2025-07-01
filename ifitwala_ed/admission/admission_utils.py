@@ -7,36 +7,35 @@ from frappe.utils import add_days, nowdate, now
 from frappe.utils import now_datetime, get_datetime, getdate
 
 def notify_admission_manager(doc):
-	# Ensure this only triggers on new webform submission
-	if frappe.flags.in_web_form and doc.workflow_state == "New Inquiry":
-		user_ids = frappe.db.get_values(
-			"Has Role",
-			filters={"role": "Admission Manager"},
-			fieldname="parent",
-			as_dict=False
-		)
+    if frappe.flags.in_web_form and doc.workflow_state == "New Inquiry":
+        user_ids = frappe.db.get_values(
+            "Has Role",
+            filters={"role": "Admission Manager"},
+            fieldname="parent",
+            as_dict=False
+        )
+        enabled_users = frappe.db.get_values(
+            "User",
+            filters={"name": ["in", [u[0] for u in user_ids]], "enabled": 1},
+            fieldname="name",
+            as_dict=False
+        )
+        if not enabled_users:
+            return
 
-		enabled_users = frappe.db.get_values(
-			"User",
-			filters={"name": ["in", [u[0] for u in user_ids]], "enabled": 1},
-			fieldname="name",
-			as_dict=False
-		)
-
-		if not enabled_users:
-			return
-
-		frappe.publish_realtime(
-			event='inbox_notification',
-			message={
-				'type': 'Alert',
-				'subject': f"New Inquiry Submitted",
-				'message': f"Inquiry {doc.name} has been submitted.",
-				'reference_doctype': doc.doctype,
-				'reference_name': doc.name
-			},
-			user=user[0]
-		)
+        for user_tuple in enabled_users:
+            user = user_tuple[0]
+            frappe.publish_realtime(
+                event='inbox_notification',
+                message={
+                    'type': 'Alert',
+                    'subject': f"New Inquiry Submitted",
+                    'message': f"Inquiry {doc.name} has been submitted.",
+                    'reference_doctype': doc.doctype,
+                    'reference_name': doc.name
+                },
+                user=user
+            )
 
 
 def check_sla_breaches():
