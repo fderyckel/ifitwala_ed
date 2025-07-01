@@ -15,7 +15,8 @@
   "workflow_state",
   "first_contact_deadline",
   "follow_up_deadline",
-  "sla_status"
+  "sla_status",
+  "assigned_to"
  ],
  "fields": [
   {
@@ -35,7 +36,8 @@
   {
    "fieldname": "email",
    "fieldtype": "Data",
-   "label": "Email"
+   "label": "Email",
+   "options": "Email"
   },
   {
    "fieldname": "type_of_inquiry",
@@ -58,8 +60,11 @@
   {
    "fieldname": "workflow_state",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Workflow State",
-   "options": "New Inquiry\nAssigned\nContacted\nQualified\nNurturing\nAccepted\nUnqualified"
+   "options": "New Inquiry\nAssigned\nContacted\nQualified\nNurturing\nAccepted\nUnqualified",
+   "read_only": 1
   },
   {
    "fieldname": "first_contact_deadline",
@@ -76,14 +81,23 @@
   {
    "fieldname": "sla_status",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "SLA Status",
-   "options": "\ud83d\udd34 Overdue\n\ud83d\udfe1 Due Today\n\u26aa Upcoming\n\u2705 On Track"
+   "options": "\ud83d\udd34 Overdue\n\ud83d\udfe1 Due Today\n\u26aa Upcoming\n\u2705 On Track",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "label": "Assigned To",
+   "options": "User"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-28 15:12:58.220800",
+ "modified": "2025-07-01 12:24:44.905739",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",
