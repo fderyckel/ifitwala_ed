@@ -158,7 +158,7 @@ def assign_inquiry(doctype, docname, assigned_to):
 	todo.reference_name = docname
 	todo.owner = assigned_to
 	todo.description = f"Follow up inquiry {docname}"
-	todo.date = add_days(nowdate(), settings.assignment_todo_due_days or 1)
+	todo.date = add_days(nowdate(), settings.default_follow_up_days or 1)
 	todo.assigned_by = frappe.session.user
 	todo.insert(ignore_permissions=True)
 
