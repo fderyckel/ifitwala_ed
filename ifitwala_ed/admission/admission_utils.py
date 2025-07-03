@@ -168,21 +168,6 @@ def assign_inquiry(doctype, docname, assigned_to):
 		text=f"Assigned to <b>{assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}"
 	)
 
-	# In-app notifications
-	if settings.notify_assignee_on_assignment:
-		frappe.publish_realtime(
-			event="eval_js",
-			message={"code": f'frappe.show_alert({{"message": "New inquiry assigned to you: {docname}", "indicator": "green"}});'},
-			user=assigned_to
-		)
-
-	if settings.notify_manager_on_assignment:
-		frappe.publish_realtime(
-			event="eval_js",
-			message={"code": f'frappe.show_alert({{"message": "Inquiry {docname} assigned to {assigned_to}", "indicator": "blue"}});'},
-			user=frappe.session.user
-		)
-
 	return {"assigned_to": assigned_to, "todo": todo.name}
 
 
