@@ -102,7 +102,7 @@ frappe.ui.form.on("Inquiry", {
 			__('Reassign Inquiry'),
 			__('Reassign')
 		);
-	}
+	}, 
 
 	mark_contacted(frm) {
 		frm.set_value('workflow_state', 'Contacted');
