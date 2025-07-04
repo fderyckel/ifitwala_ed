@@ -12,6 +12,10 @@ frappe.ui.form.on("Inquiry", {
 		if (s === 'New Inquiry' && is_manager) {
 			frm.add_custom_button('Assign', () => frm.trigger('assign'));
 		}
+		// Allow reassign if already assigned
+		if (s === 'Assigned' && is_manager) {
+			frm.add_custom_button('Reassign', () => frm.trigger('reassign'));
+		}
 		if (s === 'Assigned' && is_officer) {
 			frm.add_custom_button('Mark Contacted', () => frm.trigger('mark_contacted'));
 		}
@@ -64,6 +68,41 @@ frappe.ui.form.on("Inquiry", {
 			__('Assign')
 		);
 	},
+
+	reassign(frm) {
+		frappe.prompt( 
+			[
+				{
+					label: 'Reassign To (Admission Officer)',
+					fieldname: 'new_assigned_to',
+					fieldtype: 'Link',
+					options: 'User',
+					reqd: 1,
+					get_query: () => ({
+						query: 'ifitwala_ed.admission.admission_utils.get_admission_officers'
+					})
+				}
+			],
+			(values) => {
+				frappe.call({
+					method: 'ifitwala_ed.admission.admission_utils.reassign_inquiry',
+					args: {
+						doctype: frm.doctype,
+						docname: frm.docname,
+						new_assigned_to: values.new_assigned_to
+					},
+					callback: (r) => {
+						if (!r.exc) {
+							frappe.msgprint(__('Inquiry reassigned to {0}', [values.new_assigned_to]));
+							frm.reload_doc();
+						}
+					}
+				});
+			},
+			__('Reassign Inquiry'),
+			__('Reassign')
+		);
+	}
 
 	mark_contacted(frm) {
 		frm.set_value('workflow_state', 'Contacted');
