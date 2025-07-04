@@ -19,6 +19,7 @@ def setup_education():
 	create_student_file_folder()
 	setup_website_top_bar()
 	setup_web_pages()
+	grant_core_crm_permissions()
 
 
 def ensure_initial_setup_flag():
@@ -269,3 +270,37 @@ def setup_web_pages():
 				_("Failed to insert Web Page '{0}': {1}").format(identifier, str(e)),
 				title=_("Initial Setup Aborted")
 			)
+
+def grant_core_crm_permissions():
+	"""Ensure critical roles have access to Contact and Address Doctypes."""
+
+	crm_doctypes = ["Contact", "Address"]
+
+	# Define permissions by role
+	role_permissions = {
+		"Admission Officer": ["read", "email", "comment", "assign"],
+		"Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
+		"Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
+	}
+
+	for doctype in crm_doctypes:
+		for role, perms in role_permissions.items():
+			existing = frappe.get_all(
+				"Custom DocPerm",
+				filters={"parent": doctype, "role": role, "permlevel": 0}
+			)
+			if existing:
+				# Always overwrite — setup is idempotent
+				for docname in [d.name for d in existing]:
+					frappe.delete_doc("Custom DocPerm", docname, force=True)
+
+			docperm = frappe.new_doc("Custom DocPerm")
+			docperm.parent = doctype
+			docperm.parenttype = "DocType"
+			docperm.role = role
+			docperm.permlevel = 0
+
+			for perm in ["read", "write", "create", "delete", "email", "comment", "assign"]:
+				docperm.set(perm, 1 if perm in perms else 0)
+
+			docperm.insert(ignore_permissions=True)
