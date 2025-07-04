@@ -106,7 +106,17 @@ frappe.ui.form.on("Inquiry", {
 
 	mark_contacted(frm) {
 		frm.set_value('workflow_state', 'Contacted');
-		frm.save();
+		frm.save().then(() => {
+			frappe.call('frappe.client.insert', {
+				doc: {
+					doctype: 'Comment',
+					comment_type: 'Comment',
+					reference_doctype: frm.doctype,
+					reference_name: frm.docname,
+					content: `Inquiry marked as <b>Contacted</b> by <b>${frappe.session.user}</b> on ${frappe.datetime.str_to_user(frappe.datetime.now_datetime())}.`
+				}
+			});
+		});
 	},
 
 	qualify(frm) {

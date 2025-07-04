@@ -182,27 +182,22 @@ def assign_inquiry(doctype, docname, assigned_to):
 	return {"assigned_to": assigned_to, "todo": todo.name}
 
 @frappe.whitelist()
+@frappe.whitelist()
 def reassign_inquiry(doctype, docname, new_assigned_to):
 	doc = frappe.get_doc(doctype, docname)
 
-	# Check if the inquiry is currently assigned
+	# Check if inquiry is currently assigned
 	if not doc.assigned_to:
 		frappe.throw("This inquiry is not currently assigned. Please use the Assign button instead.")
 
 	if doc.assigned_to == new_assigned_to:
 		frappe.throw("This inquiry is already assigned to this user.")
 
-	# Validate new user has 'Admission Officer' role
+	# Validate new user
 	if not frappe.db.exists("Has Role", {"parent": new_assigned_to, "role": "Admission Officer"}): 
 		frappe.throw(f"{new_assigned_to} must be an active user with the 'Admission Officer' role.")
 
-	# Update Inquiry
-	doc.db_set("assigned_to", new_assigned_to)
-	doc.db_set("workflow_state", "Assigned")
-	doc.db_set("first_contact_deadline", add_days(nowdate(), frappe.get_cached_value("Admission Settings", None, "default_follow_up_days") or 1))
-	doc.db_set("follow_up_deadline", add_days(nowdate(), frappe.get_cached_value("Admission Settings", None, "default_first_follow_up_days") or 7))
-
-	# Update the previous ToDo (if any)
+	# Complete previous ToDo (if any)
 	todo = frappe.get_all("ToDo", filters={
 		"reference_type": doctype,
 		"reference_name": docname,
@@ -211,29 +206,39 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 
 	if todo:
 		todo_doc = frappe.get_doc("ToDo", todo[0].name)
-		todo_doc.owner = new_assigned_to
-		todo_doc.description = f"Follow up inquiry {docname} (reassigned)"
-		todo_doc.date = add_days(nowdate(), frappe.get_cached_value("Admission Settings", None, "default_follow_up_days") or 1)
-		todo_doc.assigned_by = frappe.session.user
+		todo_doc.status = "Completed"
 		todo_doc.save(ignore_permissions=True)
-	else:
-		# Fallback: create new ToDo if none found
-		todo_doc = frappe.new_doc("ToDo")
-		todo_doc.reference_type = doctype
-		todo_doc.reference_name = docname
-		todo_doc.owner = new_assigned_to
-		todo_doc.description = f"Follow up inquiry {docname}"
-		todo_doc.date = add_days(nowdate(), frappe.get_cached_value("Admission Settings", None, "default_follow_up_days") or 1)
-		todo_doc.assigned_by = frappe.session.user
-		todo_doc.insert(ignore_permissions=True)
 
-	# Add timeline comment
+		doc.add_comment("Comment", text=frappe._(
+			f"Previous ToDo <b>{todo_doc.name}</b> marked as completed during reassignment to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b>."
+		))
+
+	# Create new ToDo
+	todo_doc = frappe.new_doc("ToDo")
+	todo_doc.reference_type = doctype
+	todo_doc.reference_name = docname
+	todo_doc.allocated_to = new_assigned_to
+	todo_doc.description = f"Follow up inquiry {docname} (reassigned)"
+	todo_doc.date = add_days(nowdate(), frappe.get_cached_value("Admission Settings", None, "default_follow_up_days") or 1)
+	todo_doc.assigned_by = frappe.session.user
+	todo_doc.insert(ignore_permissions=True)
+
+	# Update Inquiry assignment and deadlines
+	doc.db_set("assigned_to", new_assigned_to)
+	doc.db_set("workflow_state", "Assigned")
+	doc.db_set("first_contact_deadline", add_days(nowdate(), frappe.get_cached_value("Admission Settings", None, "default_follow_up_days") or 1))
+	doc.db_set("follow_up_deadline", add_days(nowdate(), frappe.get_cached_value("Admission Settings", None, "default_first_follow_up_days") or 7))
+
+	# Add system comment
 	doc.add_comment(
 		"Comment",
-		text=f"Reassigned to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}"
+		text=frappe._(
+			f"Reassigned to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
+		)
 	)
 
 	return {"reassigned_to": new_assigned_to, "todo": todo_doc.name}
+
 
 
 @frappe.whitelist()
