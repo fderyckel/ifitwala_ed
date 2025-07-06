@@ -37,7 +37,6 @@ class Inquiry(Document):
 				contact.insert(ignore_permissions=True)
 
 				self.db_set("contact", contact.name)
-				self.db_set("contact_name", contact.get_title())
 				contact.add_comment("Comment", text=f"Linked to Inquiry <b>{self.name}</b> on {frappe.utils.nowdate()}.")
 			else:
 				# Link to existing contact
