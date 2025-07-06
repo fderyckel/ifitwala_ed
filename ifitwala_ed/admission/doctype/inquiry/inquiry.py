@@ -30,14 +30,10 @@ class Inquiry(Document):
 				contact = frappe.new_doc("Contact")
 				contact.first_name = self.first_name
 				contact.last_name = self.last_name
-				contact.append("email_ids", {
-					"email_id": self.email,
-					"is_primary": 1
-				})
-				contact.append("links", {
-					"link_doctype": "Inquiry",
-					"link_name": self.name
-				})
+				contact.append("email_ids", {"email_id": self.email, "is_primary": 1})
+				if self.phone_number:
+					contact.append("phone_nos", {"phone": self.phone_number,"is_primary_mobile_no": 1})
+				contact.append("links", {"link_doctype": "Inquiry", "link_name": self.name})
 				contact.insert(ignore_permissions=True)
 
 				self.db_set("contact", contact.name)
