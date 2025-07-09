@@ -180,6 +180,10 @@ def assign_inquiry(doctype, docname, assigned_to):
 		text=f"Assigned to <b>{assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}"
 	)
 
+	# Notify assigned user
+	notify_user(assigned_to, "🆕 You have been assigned a new inquiry.", doc)
+
+
 	return {"assigned_to": assigned_to, "todo": todo.name}
 
 @frappe.whitelist()
@@ -214,6 +218,9 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 			f"Previous ToDo <b>{todo_doc.name}</b> marked as completed during reassignment to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b>."
 		))
 
+		# Notify previous assignee
+	notify_user(doc.assigned_to, "🔁 Inquiry reassigned. You are no longer responsible.", doc)
+
 	# Create new ToDo
 	todo_doc = frappe.new_doc("ToDo")
 	todo_doc.reference_type = doctype
@@ -238,6 +245,8 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 			f"Reassigned to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
 		)
 	)
+	# Notify new assignee
+	notify_user(new_assigned_to, "🆕 You have been assigned a new inquiry (reassignment).", doc)
 
 	return {"reassigned_to": new_assigned_to, "todo": todo_doc.name}
 

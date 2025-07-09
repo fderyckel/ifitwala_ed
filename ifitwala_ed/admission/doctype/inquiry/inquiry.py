@@ -42,7 +42,7 @@ class Inquiry(Document):
 				# Link to existing contact
 				self.db_set("contact", contact_name)
 				contact = frappe.get_doc("Contact", contact_name)
-				self.db_set("contact_name", contact.get_title())
+				self.db_set("contact_name", contact.name)
 
 				if not any(link.link_doctype == "Inquiry" and link.link_name == self.name for link in contact.links):
 					contact.append("links", {
