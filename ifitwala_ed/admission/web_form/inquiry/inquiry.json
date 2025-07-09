@@ -19,7 +19,7 @@
  "list_columns": [],
  "login_required": 0,
  "max_attachment_size": 0,
- "modified": "2025-06-25 20:42:52.868779",
+ "modified": "2025-07-06 15:20:02.899964",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "inquiry",
@@ -68,6 +68,20 @@
    "precision": "",
    "read_only": 0,
    "reqd": 1,
+   "show_in_filter": 0
+  },
+  {
+   "allow_read_on_all_link_options": 0,
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "hidden": 0,
+   "label": "Phone Number",
+   "max_length": 0,
+   "max_value": 0,
+   "options": "Phone",
+   "precision": "",
+   "read_only": 0,
+   "reqd": 0,
    "show_in_filter": 0
   },
   {
