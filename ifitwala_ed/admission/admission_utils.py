@@ -168,6 +168,7 @@ def assign_inquiry(doctype, docname, assigned_to):
 	todo.reference_type = doctype
 	todo.reference_name = docname
 	todo.allocated_to = assigned_to
+	todo.color = settings.todo_color or "blue"
 	todo.description = f"Follow up inquiry {docname}"
 	todo.date = add_days(nowdate(), settings.default_follow_up_days or 1)
 	todo.assigned_by = frappe.session.user
@@ -218,6 +219,7 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 	todo_doc.reference_type = doctype
 	todo_doc.reference_name = docname
 	todo_doc.allocated_to = new_assigned_to
+	todo.color = settings.todo_color or "blue"
 	todo_doc.description = f"Follow up inquiry {docname} (reassigned)"
 	todo_doc.date = add_days(nowdate(), frappe.get_cached_value("Admission Settings", None, "default_follow_up_days") or 1)
 	todo_doc.assigned_by = frappe.session.user
