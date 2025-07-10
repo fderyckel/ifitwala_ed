@@ -32,6 +32,23 @@ frappe.ui.form.on("Inquiry", {
 			frm.add_custom_button('Accept', () => frm.trigger('accept'));
 			frm.add_custom_button('Disqualify', () => frm.trigger('disqualify'));
 		}
+		if (!frm.doc.contact && frm.doc.docstatus === 0) {
+			frm.add_custom_button(__('Create Contact'), () => {
+				frappe.call({
+					doc: frm.doc,
+					method: 'create_contact',
+					callback: (r) => {
+						if (!r.exc) {
+							frappe.show_alert({
+								message: __('Contact Created: {0}', [r.message]),
+								indicator: 'green'
+							});
+							frm.reload_doc();
+						}
+					}
+				});
+			});
+		}
 	},
 
 	assign(frm) {
