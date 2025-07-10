@@ -297,6 +297,7 @@ def grant_core_crm_permissions():
 			docperm = frappe.new_doc("Custom DocPerm")
 			docperm.parent = doctype
 			docperm.parenttype = "DocType"
+			docperm.parentfield = "permissions"  # ✅ Required field for correct behavior
 			docperm.role = role
 			docperm.permlevel = 0
 
@@ -304,3 +305,4 @@ def grant_core_crm_permissions():
 				docperm.set(perm, 1 if perm in perms else 0)
 
 			docperm.insert(ignore_permissions=True)
+	frappe.clear_cache(doctype=doctype)  # ✅ Clear cache after permission update
