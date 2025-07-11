@@ -23,59 +23,57 @@ class Inquiry(Document):
 		update_sla_status(self)
 
 	@frappe.whitelist()
-	def create_contact(self):
+	def create_contact_from_inquiry(self):
 		if self.contact:
-			frappe.throw(_("A contact is already linked to this inquiry."))
+			frappe.msgprint(_("This Inquiry is already linked to Contact: {0}").format(self.contact))
+			return
 
-		# Check if email already exists
+		# Check for existing email or phone match
+		existing_contact = None
 		if self.email:
-			existing_email = frappe.db.get_value("Contact Email", {
+			existing_contact = frappe.db.get_value("Contact Email", {
 				"email_id": self.email,
 				"is_primary": 1
 			}, "parent")
-			if existing_email:
-				frappe.throw(_("A Contact with email <b>{0}</b> already exists: <a href='/app/contact/{1}'>{1}</a>").format(
-					self.email, existing_email
-				), title=_("Duplicate Email"))
 
-		# Check if phone number already exists
-		if self.phone_number:
-			existing_phone = frappe.db.get_value("Contact Phone", {
+		if not existing_contact and self.phone_number:
+			existing_contact = frappe.db.get_value("Contact Phone", {
 				"phone": self.phone_number,
 				"is_primary_mobile_no": 1
 			}, "parent")
-			if existing_phone:
-				frappe.throw(_("A Contact with phone number <b>{0}</b> already exists: <a href='/app/contact/{1}'>{1}</a>").format(
-					self.phone_number, existing_phone
-				), title=_("Duplicate Phone"))
 
-		# Create new contact
-		contact = frappe.new_doc("Contact")
-		contact.first_name = self.first_name
-		contact.last_name = self.last_name
-
-		if self.email:
-			contact.append("email_ids", {
-				"email_id": self.email,
-				"is_primary": 1
+		if existing_contact:
+			self.contact = existing_contact
+			self.db_set("contact", existing_contact)
+		else:
+			contact = frappe.new_doc("Contact")
+			contact.first_name = self.first_name
+			if self.last_name:
+				contact.last_name = self.last_name
+			if self.email:
+				contact.append("email_ids", {
+					"email_id": self.email,
+					"is_primary": 1
+				})
+			if self.phone_number:
+				contact.append("phone_nos", {
+					"phone": self.phone_number,
+					"is_primary_mobile_no": 1
+				})
+			contact.append("links", {
+				"link_doctype": "Inquiry",
+				"link_name": self.name
 			})
+			contact.insert(ignore_permissions=True)
+			self.contact = contact.name
+			self.db_set("contact", contact.name)
 
-		if self.phone_number:
-			contact.append("phone_nos", {
-				"phone": self.phone_number,
-				"is_primary_mobile_no": 1
-			})
+		# ✅ Add comment to Inquiry, not Contact
+		self.add_comment("Comment", text=_("Linked to Contact <b>{0}</b> on {1}.").format(
+			frappe.bold(self.contact),
+			frappe.utils.nowdate()
+		))
 
-		contact.append("links", {
-			"link_doctype": "Inquiry",
-			"link_name": self.name
-		})
-		contact.insert()
-
-		self.db_set("contact", contact.name)
-
-		contact.add_comment("Comment", text=f"Created from Inquiry <b>{self.name}</b>.")
-		return contact.name
 
 	
 
