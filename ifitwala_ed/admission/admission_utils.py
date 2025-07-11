@@ -185,6 +185,7 @@ def assign_inquiry(doctype, docname, assigned_to):
 	)
 
 	# Notify assigned user
+	doc = frappe.get_doc(doctype, docname)
 	notify_user(assigned_to, "🆕 You have been assigned a new inquiry.", doc)
 
 
