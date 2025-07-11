@@ -36,7 +36,7 @@ frappe.ui.form.on("Inquiry", {
 			frm.add_custom_button(__('Create Contact'), () => {
 				frappe.call({
 					doc: frm.doc,
-					method: 'create_contact',
+					method: 'create_contact_from_inquiry',
 					callback: (r) => {
 						if (!r.exc) {
 							frappe.show_alert({
