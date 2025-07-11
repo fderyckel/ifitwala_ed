@@ -97,7 +97,7 @@ def notify_user(user, message, doc):
 		event='inbox_notification',
 		message={
 			'type': 'Alert',
-			'subject': f"SLA Alert: {doc.name}",
+			'subject': f"Inquiry: {doc.name}",
 			'message': message,
 			'reference_doctype': doc.doctype,
 			'reference_name': doc.name
@@ -174,10 +174,14 @@ def assign_inquiry(doctype, docname, assigned_to):
 	todo.assigned_by = frappe.session.user
 	todo.insert(ignore_permissions=True)
 
-	# Add timeline comment
+	# Add timeline comment with ToDo link
+	todo_link = frappe.utils.get_link_to_form("ToDo", todo.name)
 	doc.add_comment(
 		"Comment",
-		text=f"Assigned to <b>{assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}"
+		text=frappe._(
+			f"Assigned to <b>{assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}. "
+			f"See follow-up task: {todo_link}"
+		)
 	)
 
 	# Notify assigned user
@@ -238,13 +242,16 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 	doc.db_set("first_contact_deadline", add_days(nowdate(), frappe.get_cached_value("Admission Settings", None, "default_follow_up_days") or 1))
 	doc.db_set("follow_up_deadline", add_days(nowdate(), frappe.get_cached_value("Admission Settings", None, "default_first_follow_up_days") or 7))
 
-	# Add system comment
+	# Add system comment with ToDo link
+	todo_link = frappe.utils.get_link_to_form("ToDo", todo_doc.name)
 	doc.add_comment(
 		"Comment",
 		text=frappe._(
-			f"Reassigned to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
+			f"Reassigned to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}. "
+			f"New follow-up task: {todo_link}"
 		)
 	)
+
 	# Notify new assignee
 	notify_user(new_assigned_to, "🆕 You have been assigned a new inquiry (reassignment).", doc)
 
