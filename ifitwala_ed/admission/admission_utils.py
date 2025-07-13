@@ -91,6 +91,8 @@ def check_sla_breaches():
 			# Add timeline comment (1 call to get_doc)
 			doc = frappe.get_doc(doctype, entry.name)
 			doc.add_comment("Comment", text=message)
+			# Update SLA status and save
+			update_sla_status(doc)
 			doc.save(ignore_permissions=True)
 
 def notify_user(user, message, doc):
