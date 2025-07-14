@@ -122,13 +122,36 @@ frappe.ui.form.on("Inquiry", {
 	}, 
 
 	mark_contacted(frm) {
-		frm.set_value('workflow_state', 'Contacted');
-		frm.save().then(() => {
-			frappe.call('frappe.desk.form.utils.add_comment', {
-				reference_doctype: frm.doctype,
-				reference_name: frm.docname,
-				content: `Inquiry marked as <b>Contacted</b> by <b>${frappe.session.user}</b> on ${frappe.datetime.str_to_user(frappe.datetime.now_datetime())}.`,
-				comment_type: 'Comment'
+		frappe.confirm("Do you also want to mark the related task as completed?", () => {
+			frm.set_value('workflow_state', 'Contacted');
+			frm.save().then(() => {
+				frappe.call({
+					doc: frm.doc,
+					method: 'mark_contacted',
+					args: {
+						complete_todo: true
+					},
+					callback: () => {
+						frappe.show_alert(__('Marked as contacted. ToDo closed.'));
+						frm.reload_doc();
+					}
+				});
+			});
+		},
+		() => {
+			frm.set_value('workflow_state', 'Contacted');
+			frm.save().then(() => {
+				frappe.call({
+					doc: frm.doc,
+					method: 'mark_contacted',
+					args: { 
+						complete_todo: false
+					},
+					callback: () => {
+						frappe.show_alert(__('Marked as contacted.'));
+						frm.reload_doc();
+					}
+				});
 			});
 		});
 	},

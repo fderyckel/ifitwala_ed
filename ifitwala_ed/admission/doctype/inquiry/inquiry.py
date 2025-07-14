@@ -75,7 +75,21 @@ class Inquiry(Document):
 			frappe.utils.nowdate()
 		))
 
+	@frappe.whitelist()
+	def mark_contacted(self, complete_todo=False):
+		message = _("Inquiry marked as <b>Contacted</b> by {0} on {1}.").format(
+			frappe.bold(frappe.session.user),
+			frappe.utils.format_datetime(now_datetime())
+		)
+		self.add_comment("Comment", text=message)
 
-	
-
-
+		if frappe.parse_bool(complete_todo):
+			todos = frappe.get_all("ToDo", filters={
+				"reference_type": self.doctype,
+				"reference_name": self.name,
+				"status": "Open",
+			})
+			for todo in todos:
+				todo_doc = frappe.get_doc("ToDo", todo.name)
+				todo_doc.status = "Closed"
+				todo_doc.save(ignore_permissions=True)
