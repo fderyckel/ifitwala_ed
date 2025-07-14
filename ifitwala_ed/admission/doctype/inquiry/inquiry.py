@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import now_datetime
 from ifitwala_ed.admission.admission_utils import notify_admission_manager, set_inquiry_deadlines, update_sla_status
 
 
@@ -78,9 +79,7 @@ class Inquiry(Document):
 	@frappe.whitelist()
 	def mark_contacted(self, complete_todo=False):
 		message = _("Inquiry marked as <b>Contacted</b> by {0} on {1}.").format(
-			frappe.bold(frappe.session.user),
-			frappe.utils.format_datetime(now_datetime())
-		)
+			frappe.bold(frappe.session.user), now_datetime())
 		self.add_comment("Comment", text=message)
 
 		if frappe.parse_bool(complete_todo):
