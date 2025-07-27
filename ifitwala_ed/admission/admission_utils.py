@@ -5,7 +5,7 @@
 import frappe
 from frappe import _
 from frappe.utils import add_days, nowdate, now
-from frappe.utils import now_datetime, get_datetime, getdate
+from frappe.utils import now_datetime, getdate
 
 def notify_admission_manager(doc):
     if frappe.flags.in_web_form and doc.workflow_state == "New Inquiry":
@@ -41,59 +41,47 @@ def notify_admission_manager(doc):
 
 def check_sla_breaches():
 	doc_types = ["Inquiry", "Registration of Interest"]
-	now = now_datetime()
-	today = get_datetime(now).date()
-
-	# Get all admission managers only once
-	admission_managers = frappe.db.get_values(
-		"Has Role",
-		{"role": "Admission Manager"},
-		"parent"
-	)
-	manager_usernames = [u[0] for u in admission_managers]
+	today = getdate()
 
 	for doctype in doc_types:
-		entries = frappe.get_all(doctype,
-			filters={
-				"workflow_state": "Assigned",
-				"docstatus": 0,
-				"first_contact_deadline": ["<=", now]
-			},
-			fields=["name", "assigned_to", "first_contact_deadline"]
+		entries = frappe.db.get_values(
+			doctype,
+			filters={"docstatus": 0},
+			fieldname=["name", "assigned_to", "first_contact_deadline", "sla_status"],
+			as_dict=True
 		)
 
 		for entry in entries:
-			assignee = entry.assigned_to
-			if not assignee:
-				continue
+			name = entry["name"]
+			assigned_to = entry.get("assigned_to")
+			first_deadline = entry.get("first_contact_deadline")
+			current_status = entry.get("sla_status")
 
-			due = get_datetime(entry.first_contact_deadline).date()
-			days_overdue = (today - due).days
-
-			if days_overdue == 0:
-				message = "⚠️ First Contact deadline reached today."
+			# Determine new SLA status
+			if not first_deadline:
+				new_status = "✅ On Track"
 			else:
-				message = f"🔴 First Contact overdue by {days_overdue} day(s)."
+				fc_date = getdate(first_deadline)
+				if fc_date < today:
+					new_status = "🔴 Overdue"
+				elif fc_date == today:
+					new_status = "🟡 Due Today"
+				else:
+					new_status = "⚪ Upcoming"
 
-			# Notify assigned user
-			notify_user(assignee, message, frappe._dict({
-				"name": entry.name,
-				"doctype": doctype
-			}))
+			# Only update if the status changed
+			if new_status != current_status:
+				frappe.db.set_value(doctype, name, "sla_status", new_status)
 
-			# Notify admission managers
-			for user in manager_usernames:
-				notify_user(user, message, frappe._dict({
-					"name": entry.name,
-					"doctype": doctype
-				}))
+				if new_status == "🔴 Overdue" and assigned_to:
+					# Use light dict instead of full Document
+					doc_ref = frappe._dict({"doctype": doctype, "name": name})
+					notify_user(assigned_to, "🔴 SLA is overdue for this inquiry.", doc_ref)
 
-			# Add timeline comment (1 call to get_doc)
-			doc = frappe.get_doc(doctype, entry.name)
-			doc.add_comment("Comment", text=message)
-			# Update SLA status and save
-			update_sla_status(doc)
-			doc.save(ignore_permissions=True)
+					# Notify Admission Managers
+					managers = frappe.db.get_values("Has Role", {"role": "Admission Manager"}, "parent")
+					for manager in managers:
+						notify_user(manager[0], "🔴 SLA is overdue for this inquiry.", doc_ref)
 
 def notify_user(user, message, doc):
 	frappe.publish_realtime(
@@ -194,7 +182,6 @@ def assign_inquiry(doctype, docname, assigned_to):
 
 	return {"assigned_to": assigned_to, "todo": todo.name}
 
-@frappe.whitelist()
 @frappe.whitelist()
 def reassign_inquiry(doctype, docname, new_assigned_to):
 	doc = frappe.get_doc(doctype, docname)
