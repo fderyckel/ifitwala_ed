@@ -123,7 +123,6 @@ frappe.ui.form.on("Inquiry", {
 
 	mark_contacted(frm) {
 		frappe.confirm("Do you also want to mark the related task as completed?", () => {
-			frm.set_value('workflow_state', 'Contacted');
 			frm.save().then(() => {
 				frappe.call({
 					doc: frm.doc,
@@ -139,7 +138,6 @@ frappe.ui.form.on("Inquiry", {
 			});
 		},
 		() => {
-			frm.set_value('workflow_state', 'Contacted');
 			frm.save().then(() => {
 				frappe.call({
 					doc: frm.doc,

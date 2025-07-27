@@ -92,3 +92,13 @@ class Inquiry(Document):
 				todo_doc = frappe.get_doc("ToDo", todo.name)
 				todo_doc.status = "Closed"
 				todo_doc.save(ignore_permissions=True)
+
+		# Set workflow_state to Contacted if not already set
+		if self.workflow_state != "Contacted": 
+			self.workflow_state = "Contacted" 
+			
+		# If assigned user is marking as contacted, set SLA as completed 
+		if frappe.session.user == self.assigned_to: 
+			self.sla_status = "✅ Completed" 
+
+		self.save(ignore_permissions=True)
