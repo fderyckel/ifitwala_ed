@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"rLRFqJdXf-\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Inquiry\",\"col\":4}},{\"id\":\"_GG8AT_V09\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Overdue Inquiry\",\"col\":4}},{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Admission</span>\",\"col\":12}},{\"id\":\"HF-thlk3eW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inquiry\",\"col\":3}},{\"id\":\"0jhR9rjZ_2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Registration Of Interest\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}}]",
+ "content": "[{\"id\":\"rLRFqJdXf-\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Inquiry\",\"col\":4}},{\"id\":\"_GG8AT_V09\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Overdue Inquiry\",\"col\":4}},{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Admission</span>\",\"col\":12}},{\"id\":\"HF-thlk3eW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inquiry\",\"col\":3}},{\"id\":\"0jhR9rjZ_2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Registration Of Interest\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Workflow\",\"col\":4}}]",
  "creation": "2025-06-23 20:21:38.876334",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,25 +13,6 @@
  "is_hidden": 0,
  "label": "Admission",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Curriculum",
-   "link_count": 1,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Course",
-   "link_count": 0,
-   "link_to": "Course",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -60,9 +41,28 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Workflow",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "ToDo",
+   "link_count": 0,
+   "link_to": "ToDo",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-07-06 15:33:41.278710",
+ "modified": "2025-07-15 12:43:48.732041",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission",
