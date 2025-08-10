@@ -6,8 +6,8 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_fk4b",
-  "default_follow_up_days",
-  "default_first_follow_up_days",
+  "first_contact_sla_days",
+  "followup_sla_days",
   "sla_enabled",
   "sla_check_interval_hours",
   "todo_color"
@@ -16,20 +16,6 @@
   {
    "fieldname": "section_break_fk4b",
    "fieldtype": "Section Break"
-  },
-  {
-   "default": "1",
-   "description": "Days after assignment to set follow-up deadline (e.g. 1 day).",
-   "fieldname": "default_follow_up_days",
-   "fieldtype": "Int",
-   "label": "Default Follow-up Days"
-  },
-  {
-   "default": "7",
-   "description": "Days until second follow-up (e.g. 7 days).",
-   "fieldname": "default_first_follow_up_days",
-   "fieldtype": "Int",
-   "label": "Default First Follow-up Days"
   },
   {
    "default": "0",
@@ -48,13 +34,27 @@
    "fieldname": "todo_color",
    "fieldtype": "Color",
    "label": "Todo Color"
+  },
+  {
+   "default": "1",
+   "description": "Days from submitted_at \u2192 first contact must happen within this window",
+   "fieldname": "first_contact_sla_days",
+   "fieldtype": "Int",
+   "label": "First Contact SLA days"
+  },
+  {
+   "default": "7",
+   "description": "Days from assignment \u2192 a follow\u2011up attempt must happen (only while not yet contacted).",
+   "fieldname": "followup_sla_days",
+   "fieldtype": "Int",
+   "label": "Follow up SLA Days"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-07-09 12:02:48.810690",
+ "modified": "2025-08-10 13:28:20.498559",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission Settings",

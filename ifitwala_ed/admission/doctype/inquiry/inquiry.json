@@ -23,8 +23,8 @@
   "contact",
   "column_break_w8a0",
   "submitted_at",
-  "first_contact_deadline",
-  "follow_up_deadline"
+  "first_contact_due_on",
+  "followup_due_on"
  ],
  "fields": [
   {
@@ -75,18 +75,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "first_contact_deadline",
-   "fieldtype": "Date",
-   "label": "First Contact Deadline",
-   "read_only": 1
-  },
-  {
-   "fieldname": "follow_up_deadline",
-   "fieldtype": "Date",
-   "label": "Follow-up Deadline",
-   "read_only": 1
-  },
-  {
    "fieldname": "sla_status",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -132,12 +120,24 @@
   {
    "fieldname": "section_break_dnwn",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "first_contact_due_on",
+   "fieldtype": "Date",
+   "label": "First Contact Deadline",
+   "read_only": 1
+  },
+  {
+   "fieldname": "followup_due_on",
+   "fieldtype": "Date",
+   "label": "Follow-up Deadline",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-13 15:14:28.373411",
+ "modified": "2025-08-10 13:29:53.660674",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",
