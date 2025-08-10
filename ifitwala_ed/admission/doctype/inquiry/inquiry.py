@@ -21,6 +21,7 @@ class Inquiry(Document):
 
 
 	def before_save(self):
+		# Only sets first_contact_due_on if missing; followup_due_on is set on (re)assignment.
 		set_inquiry_deadlines(self)		
 		update_sla_status(self)
 
@@ -97,8 +98,15 @@ class Inquiry(Document):
 		if self.workflow_state != "Contacted": 
 			self.workflow_state = "Contacted" 
 			
-		# If assigned user is marking as contacted, set SLA as completed 
-		if frappe.session.user == self.assigned_to: 
-			self.sla_status = "✅ Completed" 
+		# If assigned user is marking as contacted, set SLA as on track
+		if frappe.session.user == self.assigned_to:
+			self.sla_status = "✅ On Track"
+
+		# Clear pre-contact follow-up clock once contacted
+		if getattr(self, "followup_due_on", None): 
+			self.followup_due_on = None 
+		
+		# Recompute SLA (no active pre-contact clocks once contacted) 
+		update_sla_status(self)	
 
 		self.save(ignore_permissions=True)

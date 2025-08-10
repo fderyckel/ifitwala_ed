@@ -170,12 +170,12 @@ frappe.ui.form.on("Inquiry", {
 	},
 
 	accept(frm) {
-		frm.set_value('workflow_state', 'Accepted / Enrolled');
+		frm.set_value('workflow_state', 'Accepted');
 		frm.save();
 	},
 
 	disqualify(frm) {
-		frm.set_value('workflow_state', 'Unqualified / Lost');
+		frm.set_value('workflow_state', 'Unqualified');
 		frm.save();
 	}
 });
