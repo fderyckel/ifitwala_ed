@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import now_datetime
+from frappe.utils import now_datetime, cint
 from ifitwala_ed.admission.admission_utils import notify_admission_manager, set_inquiry_deadlines, update_sla_status
 from frappe.desk.form.assign_to import remove as remove_assignment
 
@@ -95,7 +95,7 @@ class Inquiry(Document):
 		if self.workflow_state != "Contacted":
 			self.workflow_state = "Contacted"
 		self.followup_due_on = None
-		if frappe.parse_bool(complete_todo):
+		if frappe.cint(complete_todo):
 			self.assigned_to = None
 
 		# Recompute SLA and save ONCE
@@ -103,7 +103,7 @@ class Inquiry(Document):
 		self.save(ignore_permissions=True)
 
 		# After saving, close native assignment/ToDo (mutates _assign/ToDo; no extra save)
-		if frappe.parse_bool(complete_todo) and prev_assignee:
+		if frappe.cint(complete_todo) and prev_assignee:
 			try:
 				remove_assignment(doctype=self.doctype, name=self.name, assign_to=prev_assignee)
 			except Exception:
