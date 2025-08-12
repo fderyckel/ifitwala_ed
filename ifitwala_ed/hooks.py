@@ -172,6 +172,9 @@ doc_events = {
   "Contact": {
     "on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"
   }, 
+	"ToDo": {
+		"on_update": "ifitwala_ed.admission.admission_utils.on_todo_update_close_marks_contacted"
+	}, 
   "User":{
     "after_insert": "frappe.contacts.doctype.contact.contact.update_contact",
     "validate": [ 

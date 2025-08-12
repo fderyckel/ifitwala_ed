@@ -319,8 +319,6 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 
 	return {"reassigned_to": new_assigned_to, "todo": new_todo}
 
-
-
 @frappe.whitelist()
 def get_admission_officers(doctype, txt, searchfield, start, page_len, filters):
 	return frappe.db.sql("""
@@ -333,3 +331,32 @@ def get_admission_officers(doctype, txt, searchfield, start, page_len, filters):
 		ORDER BY u.name ASC
 		LIMIT %s OFFSET %s
 	""", (f"%{txt}%", page_len, start))
+
+def on_todo_update_close_marks_contacted(doc, method=None):
+	# Only when ToDo is Closed
+	if doc.status != "Closed":
+		return
+	# Only for our doctypes
+	if doc.reference_type not in ("Inquiry", "Registration of Interest"):
+		return
+	if not doc.reference_name:
+		return
+
+	try:
+		ref = frappe.get_doc(doc.reference_type, doc.reference_name)
+	except frappe.DoesNotExistError:
+		return
+
+	state = (ref.workflow_state or "New Inquiry").strip()
+	# Only flip from pre-contact states
+	if state not in ("New Inquiry", "Assigned"):
+		return
+
+	# Only if the closing user is the current assignee on the document
+	if not getattr(ref, "assigned_to", None):
+		return
+	if ref.assigned_to != doc.allocated_to:
+		return
+
+	# Reuse the doc's method; don't try to close ToDo again (avoid loops)
+	ref.mark_contacted(complete_todo=False)
