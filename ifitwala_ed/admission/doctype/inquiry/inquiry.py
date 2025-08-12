@@ -77,62 +77,62 @@ class Inquiry(Document):
 			frappe.utils.nowdate()
 		))
 
-@frappe.whitelist()
-def mark_contacted(self, complete_todo=False):
-	prev_assignee = self.assigned_to
+	@frappe.whitelist()
+	def mark_contacted(self, complete_todo=False):
+		prev_assignee = self.assigned_to
 
-	self.add_comment(
-		"Comment",
-		text=_("Inquiry marked as <b>Contacted</b> by {0} on {1}.").format(
-			frappe.bold(frappe.session.user), now_datetime()
-		),
-	)
+		self.add_comment(
+			"Comment",
+			text=_("Inquiry marked as <b>Contacted</b> by {0} on {1}.").format(
+				frappe.bold(frappe.session.user), now_datetime()
+			),
+		)
 
-	# Update fields
-	if self.workflow_state != "Contacted":
-		self.db_set("workflow_state", "Contacted", update_modified=False)
-	if self.get("followup_due_on"):
-		self.db_set("followup_due_on", None, update_modified=False)
+		# Update fields
+		if self.workflow_state != "Contacted":
+			self.db_set("workflow_state", "Contacted", update_modified=False)
+		if self.get("followup_due_on"):
+			self.db_set("followup_due_on", None, update_modified=False)
 
-	# Optionally clear assignment on the doc
-	if cint(complete_todo) and prev_assignee:
-		self.db_set("assigned_to", None, update_modified=False)
+		# Optionally clear assignment on the doc
+		if cint(complete_todo) and prev_assignee:
+			self.db_set("assigned_to", None, update_modified=False)
 
-	# Recompute SLA and persist
-	update_sla_status(self)
-	self.db_set("sla_status", self.sla_status, update_modified=False)
+		# Recompute SLA and persist
+		update_sla_status(self)
+		self.db_set("sla_status", self.sla_status, update_modified=False)
 
-	# Close only the correct ToDo
-	if cint(complete_todo) and prev_assignee:
-		try:
-			# 1) Remove native assignment (typically sets ToDo -> Cancelled)
-			remove_assignment(doctype=self.doctype, name=self.name, assign_to=prev_assignee)
-			# 2) Normalize only the cancelled assignment ToDo(s) to Closed
-			frappe.db.sql(
-				"""
-				UPDATE `tabToDo`
-				   SET status = 'Closed'
-				 WHERE reference_type = %s
-				   AND reference_name = %s
-				   AND allocated_to = %s
-				   AND status = 'Cancelled'
-				""",
-				(self.doctype, self.name, prev_assignee),
-			)
-		except Exception:
-			# Fallback: close only the most recent open ToDo for this assignee+doc
-			todo_name = frappe.db.get_value(
-				"ToDo",
-				{
-					"reference_type": self.doctype,
-					"reference_name": self.name,
-					"allocated_to": prev_assignee,
-					"status": "Open",
-				},
-				"name",
-				order_by="creation desc",
-			)
-			if todo_name:
-				frappe.db.set_value("ToDo", todo_name, "status", "Closed", update_modified=False)
+		# Close only the correct ToDo
+		if cint(complete_todo) and prev_assignee:
+			try:
+				# 1) Remove native assignment (typically sets ToDo -> Cancelled)
+				remove_assignment(doctype=self.doctype, name=self.name, assign_to=prev_assignee)
+				# 2) Normalize only the cancelled assignment ToDo(s) to Closed
+				frappe.db.sql(
+					"""
+					UPDATE `tabToDo`
+						SET status = 'Closed'
+					WHERE reference_type = %s
+						AND reference_name = %s
+						AND allocated_to = %s
+						AND status = 'Cancelled'
+					""",
+					(self.doctype, self.name, prev_assignee),
+				)
+			except Exception:
+				# Fallback: close only the most recent open ToDo for this assignee+doc
+				todo_name = frappe.db.get_value(
+					"ToDo",
+					{
+						"reference_type": self.doctype,
+						"reference_name": self.name,
+						"allocated_to": prev_assignee,
+						"status": "Open",
+					},
+					"name",
+					order_by="creation desc",
+				)
+				if todo_name:
+					frappe.db.set_value("ToDo", todo_name, "status", "Closed", update_modified=False)
 
-	return {"ok": True}
+		return {"ok": True}
