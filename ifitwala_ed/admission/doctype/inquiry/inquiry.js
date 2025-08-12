@@ -121,37 +121,42 @@ frappe.ui.form.on("Inquiry", {
 		);
 	}, 
 
+	
 	mark_contacted(frm) {
-		frappe.confirm("Do you also want to mark the related task as completed?", () => {
-			frm.save().then(() => {
-				frappe.call({
-					doc: frm.doc,
-					method: 'mark_contacted',
-					args: {
-						complete_todo: true
-					},
-					callback: () => {
-						frappe.show_alert(__('Marked as contacted. ToDo closed.'));
-						frm.reload_doc();
-					}
+		frappe.confirm(
+			__("Do you also want to mark the related task as completed?"),
+			() => {
+				// Save any unsaved changes first
+				frm.save().then(() => {
+					frappe.call({
+						method: "ifitwala_ed.admission.doctype.inquiry.inquiry.mark_contacted",
+						args: {
+							docname: frm.docname,
+							complete_todo: true
+						},
+						callback: () => {
+							frappe.show_alert(__("Marked as contacted. Follow-up closed."));
+							frm.reload_doc();
+						}
+					});
 				});
-			});
-		},
-		() => {
-			frm.save().then(() => {
-				frappe.call({
-					doc: frm.doc,
-					method: 'mark_contacted',
-					args: { 
-						complete_todo: false
-					},
-					callback: () => {
-						frappe.show_alert(__('Marked as contacted.'));
-						frm.reload_doc();
-					}
+			},
+			() => {
+				frm.save().then(() => {
+					frappe.call({
+						method: "mark_contacted",
+						args: {
+							docname: frm.docname,
+							complete_todo: false
+						},
+						callback: () => {
+							frappe.show_alert(__("Marked as contacted."));
+							frm.reload_doc();
+						}
+					});
 				});
-			});
-		});
+			}
+		);
 	},
 
 	qualify(frm) {
