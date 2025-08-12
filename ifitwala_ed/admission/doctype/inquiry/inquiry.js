@@ -122,38 +122,41 @@ frappe.ui.form.on("Inquiry", {
 	}, 
 
 	
+
 	mark_contacted(frm) {
 		frappe.confirm(
 			__("Do you also want to mark the related task as completed?"),
 			() => {
-				// Save any unsaved changes first
-				frm.save().then(() => {
-					frappe.call({
-						method: "ifitwala_ed.admission.doctype.inquiry.inquiry.mark_contacted",
-						args: {
-							docname: frm.docname,
-							complete_todo: true
-						},
-						callback: () => {
-							frappe.show_alert(__("Marked as contacted. Follow-up closed."));
-							frm.reload_doc();
-						}
-					});
+				// Call the DOCUMENT-BOUND method; do NOT pre-save
+				frappe.call({
+					doc: frm.doc,
+					method: "mark_contacted",
+					args: { complete_todo: 1 },
+					freeze: true,
+					callback: function () {
+						frappe.show_alert(__("Marked as contacted. Follow-up closed."));
+						frm.reload_doc();
+					},
+					error: function (err) {
+						console.error(err);
+						frappe.msgprint(__('Failed to mark contacted: {0}', [err.message || err]));
+					}
 				});
 			},
 			() => {
-				frm.save().then(() => {
-					frappe.call({
-						method: "mark_contacted",
-						args: {
-							docname: frm.docname,
-							complete_todo: false
-						},
-						callback: () => {
-							frappe.show_alert(__("Marked as contacted."));
-							frm.reload_doc();
-						}
-					});
+				frappe.call({
+					doc: frm.doc,
+					method: "mark_contacted",
+					args: { complete_todo: 0 },
+					freeze: true,
+					callback: function () {
+						frappe.show_alert(__("Marked as contacted."));
+						frm.reload_doc();
+					},
+					error: function (err) {
+						console.error(err);
+						frappe.msgprint(__('Failed to mark contacted: {0}', [err.message || err]));
+					}
 				});
 			}
 		);

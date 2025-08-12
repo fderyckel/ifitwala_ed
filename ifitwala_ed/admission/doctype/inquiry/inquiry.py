@@ -77,29 +77,49 @@ class Inquiry(Document):
 			frappe.utils.nowdate()
 		))
 
-@frappe.whitelist()
-def mark_contacted(self, complete_todo: bool = False) -> str:
-    # add a timeline comment
-    message = _("Inquiry marked as Contacted by {0} on {1}.").format(
-        frappe.bold(frappe.session.user), now_datetime())
-    self.add_comment("Comment", text=message)
+	@frappe.whitelist()
+	def mark_contacted(self, complete_todo: bool = False):
+		"""Mark as Contacted, clear pre-contact follow-up, recompute SLA, and optionally
+		close the native assignment/ToDo. Saves exactly once to avoid timestamp races."""
+		prev_assignee = self.assigned_to
 
-    # close the native assignment and ToDo if requested
-    if frappe.parse_bool(complete_todo) and self.assigned_to:
-        # remove_assignment handles both the assignment and its linked ToDo
-        remove_assignment(doctype=self.doctype, name=self.name, assign_to=self.assigned_to)
-        # clear assigned_to so the record is no longer shown as assigned
-        self.db_set("assigned_to", None, update_modified=False)
+		# Timeline comment
+		self.add_comment(
+			"Comment",
+			text=_("Inquiry marked as <b>Contacted</b> by {0} on {1}.").format(
+				frappe.bold(frappe.session.user), now_datetime()
+			),
+		)
 
-    # update workflow_state and clear follow‑up clock via db_set (these fields are read‑only)
-    if self.workflow_state != "Contacted":
-        self.db_set("workflow_state", "Contacted", update_modified=False)
-    if self.get("followup_due_on"):
-        self.db_set("followup_due_on", None, update_modified=False)
+		# Update fields in-memory (no db_set here)
+		if self.workflow_state != "Contacted":
+			self.workflow_state = "Contacted"
+		self.followup_due_on = None
+		if frappe.parse_bool(complete_todo):
+			self.assigned_to = None
 
-    # recompute SLA status and persist it via db_set
-    update_sla_status(self)
-    self.db_set("sla_status", self.sla_status, update_modified=False)
+		# Recompute SLA and save ONCE
+		update_sla_status(self)
+		self.save(ignore_permissions=True)
 
-    # no need to call self.save()—db_set writes directly to DB
-    return _("Marked as contacted. Follow‑up closed.")
+		# After saving, close native assignment/ToDo (mutates _assign/ToDo; no extra save)
+		if frappe.parse_bool(complete_todo) and prev_assignee:
+			try:
+				remove_assignment(doctype=self.doctype, name=self.name, assign_to=prev_assignee)
+			except Exception:
+				# Fallback: close any open ToDos
+				open_todos = frappe.get_all(
+					"ToDo",
+					filters={
+						"reference_type": self.doctype,
+						"reference_name": self.name,
+						"status": "Open",
+					},
+					pluck="name",
+				)
+				for tn in open_todos:
+					td = frappe.get_doc("ToDo", tn)
+					td.status = "Closed"
+					td.save(ignore_permissions=True)
+
+		return {"ok": True}
