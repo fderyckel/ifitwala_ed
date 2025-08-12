@@ -1,24 +1,54 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-frappe.listview_settings['Inquiry'] = {
-	get_indicator(doc) {
-		if (doc.workflow_state === 'Assigned' && doc.first_contact_deadline) {
-			const today = frappe.datetime.nowdate();  // JS-friendly string date (e.g., '2025-07-04')
-			const days_diff = frappe.datetime.get_diff(doc.first_contact_deadline, today);
+// Copyright (c) 2025, François de Ryckel and contributors
+// For license information, please see license.txt
 
-			if (days_diff < 0) {
-				// Overdue
-				return [__('🔴 Overdue'), 'red', 'workflow_state,=,Assigned'];
-			}
-			if (days_diff === 0) {
-				// Due today
-				return [__('🟡 Due Today'), 'orange', 'workflow_state,=,Assigned'];
-			}
-			// Optional: Upcoming indicator
-			if (days_diff > 0) {
-				return [__('⚪ Upcoming'), 'blue', 'workflow_state,=,Assigned'];
-			}
+frappe.listview_settings['Inquiry'] = {
+	// ensure these fields are loaded into the list view
+	add_fields: ["sla_status", "workflow_state", "first_contact_due_on", "followup_due_on"],
+
+	// primary row indicator: use the stored sla_status value
+	get_indicator: function (doc) {
+		// Map SLA status to colours
+		const slaColourMap = {
+			'🔴 Overdue': 'red',
+			'🟡 Due Today': 'orange',
+			'⚪ Upcoming': 'blue',
+			'✅ On Track': 'green'
+		};
+		const label = doc.sla_status || __('⚪ Upcoming');
+		const colour = slaColourMap[doc.sla_status] || 'blue';
+		return [label, colour, null];
+	},
+
+	// formatters allow us to colour individual columns
+	formatters: {
+		// colour the SLA status column
+		sla_status: function (value) {
+			const colourMap = {
+				'🔴 Overdue': 'red',
+				'🟡 Due Today': 'orange',
+				'⚪ Upcoming': 'blue',
+				'✅ On Track': 'green'
+			};
+			const colour = colourMap[value] || 'gray';
+			return `<span class="indicator-pill ${colour}">${value}</span>`;
+		},
+
+		// colour the workflow_state column
+		workflow_state: function (value) {
+			const colourMap = {
+				'New Inquiry': 'gray',
+				'Assigned': 'blue',
+				'Contacted': 'green',
+				'Qualified': 'purple',
+				'Nurturing': 'orange',
+				'Accepted': 'green',
+				'Unqualified': 'red'
+			};
+			const colour = colourMap[value] || 'gray';
+			return `<span class="indicator-pill ${colour}">${__(value)}</span>`;
 		}
 	}
 };
