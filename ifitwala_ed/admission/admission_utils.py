@@ -208,16 +208,17 @@ def assign_inquiry(doctype, docname, assigned_to):
 		base = getdate(doc.submitted_at) if getattr(doc, "submitted_at", None) else getdate(nowdate())
 		doc.first_contact_due_on = add_days(base, settings.first_contact_sla_days or 7)
 
-	# Compute follow-up due and update Inquiry
+	# Compute follow-up due and update Inquiry (in-memory only)
 	followup_due = add_days(nowdate(), settings.followup_sla_days or 1)
-	doc.db_set("assigned_to", assigned_to)
-	doc.db_set("workflow_state", "Assigned")
-	doc.db_set("followup_due_on", followup_due)
 	doc.assigned_to = assigned_to
 	doc.workflow_state = "Assigned"
 	doc.followup_due_on = followup_due
 
-	# Create native assignment (also creates the ToDo)
+	# SLA + single save (avoid db_set before this)
+	update_sla_status(doc)
+	doc.save(ignore_permissions=True)
+
+	# Native assignment (creates ToDo, may add comment/modify doc server-side)
 	todo_name = _create_native_assignment(
 		doctype=doctype,
 		name=docname,
@@ -227,11 +228,7 @@ def assign_inquiry(doctype, docname, assigned_to):
 		color=(settings.todo_color or "blue"),
 	)
 
-	# SLA + save
-	update_sla_status(doc)
-	doc.save(ignore_permissions=True)
-
-	# Timeline + realtime
+	# Timeline + realtime (no further save)
 	if todo_name:
 		todo_link = frappe.utils.get_link_to_form("ToDo", todo_name)
 		doc.add_comment(
@@ -241,6 +238,7 @@ def assign_inquiry(doctype, docname, assigned_to):
 				f"See follow-up task: {todo_link}"
 			),
 		)
+
 	notify_user(assigned_to, "🆕 You have been assigned a new inquiry.", doc)
 
 	return {"assigned_to": assigned_to, "todo": todo_name}
@@ -261,12 +259,28 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 		frappe.throw(f"{new_assigned_to} must be an active user with the 'Admission Officer' role.")
 
 	settings = frappe.get_cached_doc("Admission Settings")
+	prev_assigned = doc.assigned_to
 
-	# Remove previous assignment (closes its ToDo)
+	# Ensure first_contact_due_on exists for legacy rows
+	if not getattr(doc, "first_contact_due_on", None):
+		base = getdate(doc.submitted_at) if getattr(doc, "submitted_at", None) else getdate(nowdate())
+		doc.first_contact_due_on = add_days(base, settings.first_contact_sla_days or 7)
+
+	# Compute new follow-up due and update Inquiry (in-memory only)
+	followup_due = add_days(nowdate(), settings.followup_sla_days or 1)
+	doc.assigned_to = new_assigned_to
+	doc.workflow_state = "Assigned"
+	doc.followup_due_on = followup_due
+
+	# SLA + single save BEFORE messing with native assignments/comments
+	update_sla_status(doc)
+	doc.save(ignore_permissions=True)
+
+	# Remove previous native assignment (closes its ToDo)
 	try:
-		remove_assignment(doctype=doctype, name=docname, assign_to=doc.assigned_to)
+		remove_assignment(doctype=doctype, name=docname, assign_to=prev_assigned)
 	except Exception:
-		# fallback: close any leftover ToDo rows defensively
+		# Fallback: close any leftover ToDo rows defensively
 		open_todos = frappe.get_all(
 			"ToDo",
 			filters={"reference_type": doctype, "reference_name": docname, "status": "Open"},
@@ -278,23 +292,7 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 			td.save(ignore_permissions=True)
 
 	# Notify previous assignee
-	notify_user(doc.assigned_to, "🔁 Inquiry reassigned. You are no longer responsible.", doc)
-
-	# Ensure first_contact_due_on exists for legacy rows
-	if not getattr(doc, "first_contact_due_on", None):
-		base = getdate(doc.submitted_at) if getattr(doc, "submitted_at", None) else getdate(nowdate())
-		doc.first_contact_due_on = add_days(base, settings.first_contact_sla_days or 7)
-
-	# Compute new follow-up due
-	followup_due = add_days(nowdate(), settings.followup_sla_days or 1)
-
-	# Update Inquiry
-	doc.db_set("assigned_to", new_assigned_to)
-	doc.db_set("workflow_state", "Assigned")
-	doc.db_set("followup_due_on", followup_due)
-	doc.assigned_to = new_assigned_to
-	doc.workflow_state = "Assigned"
-	doc.followup_due_on = followup_due
+	notify_user(prev_assigned, "🔁 Inquiry reassigned. You are no longer responsible.", doc)
 
 	# Create native assignment for the new assignee
 	new_todo = _create_native_assignment(
@@ -306,11 +304,7 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 		color=(settings.todo_color or "blue"),
 	)
 
-	# SLA + save
-	update_sla_status(doc)
-	doc.save(ignore_permissions=True)
-
-	# Timeline + realtime
+	# Timeline + realtime (no additional save)
 	if new_todo:
 		todo_link = frappe.utils.get_link_to_form("ToDo", new_todo)
 		doc.add_comment(
@@ -320,6 +314,7 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 				f"New follow-up task: {todo_link}"
 			),
 		)
+
 	notify_user(new_assigned_to, "🆕 You have been assigned a new inquiry (reassignment).", doc)
 
 	return {"reassigned_to": new_assigned_to, "todo": new_todo}
