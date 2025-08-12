@@ -6,7 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 from ifitwala_ed.admission.admission_utils import notify_admission_manager, set_inquiry_deadlines, update_sla_status
-
+from frappe.desk.form.assign_to import remove as remove_assignment
 
 class Inquiry(Document):
 	def before_insert(self):
@@ -79,34 +79,19 @@ class Inquiry(Document):
 
 	@frappe.whitelist()
 	def mark_contacted(self, complete_todo=False):
-		message = _("Inquiry marked as <b>Contacted</b> by {0} on {1}.").format(
-			frappe.bold(frappe.session.user), now_datetime())
-		self.add_comment("Comment", text=message)
+			message = _("Inquiry marked as Contacted by {0} on {1}.").format(
+					frappe.bold(frappe.session.user), now_datetime())
+			self.add_comment("Comment", text=message)
 
-		if frappe.parse_bool(complete_todo):
-			todos = frappe.get_all("ToDo", filters={
-				"reference_type": self.doctype,
-				"reference_name": self.name,
-				"status": "Open",
-			})
-			for todo in todos:
-				todo_doc = frappe.get_doc("ToDo", todo.name)
-				todo_doc.status = "Closed"
-				todo_doc.save(ignore_permissions=True)
+			# If asked, remove native assignment (closes ToDo)
+			if complete_todo and self.assigned_to:
+					# remove_assignment closes both the assignment and its ToDo
+					remove_assignment(doctype=self.doctype, name=self.name, assign_to=self.assigned_to)
+					self.assigned_to = None
 
-		# Set workflow_state to Contacted if not already set
-		if self.workflow_state != "Contacted": 
-			self.workflow_state = "Contacted" 
-			
-		# If assigned user is marking as contacted, set SLA as on track
-		if frappe.session.user == self.assigned_to:
-			self.sla_status = "✅ On Track"
-
-		# Clear pre-contact follow-up clock once contacted
-		if getattr(self, "followup_due_on", None): 
-			self.followup_due_on = None 
-		
-		# Recompute SLA (no active pre-contact clocks once contacted) 
-		update_sla_status(self)	
-
-		self.save(ignore_permissions=True)
+			# Update workflow and SLA
+			self.workflow_state = "Contacted"
+			self.followup_due_on = None
+			update_sla_status(self)  # recompute SLA; should now be "✅ On Track"
+			self.save(ignore_permissions=True)
+			return _("Marked as contacted. Assignment closed.")
