@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"rLRFqJdXf-\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Inquiry\",\"col\":4}},{\"id\":\"_GG8AT_V09\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Overdue Inquiry\",\"col\":4}},{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Admission</span>\",\"col\":12}},{\"id\":\"HF-thlk3eW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inquiry\",\"col\":3}},{\"id\":\"0jhR9rjZ_2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Registration Of Interest\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Workflow\",\"col\":4}}]",
+ "content": "[{\"id\":\"rLRFqJdXf-\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Inquiry\",\"col\":4}},{\"id\":\"_GG8AT_V09\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Overdue Inquiry\",\"col\":4}},{\"id\":\"ojvcsZgbFi\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Dashboard Inquiry\",\"col\":3}},{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Admission</span>\",\"col\":12}},{\"id\":\"HF-thlk3eW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inquiry\",\"col\":3}},{\"id\":\"0jhR9rjZ_2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Registration Of Interest\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Workflow\",\"col\":4}}]",
  "creation": "2025-06-23 20:21:38.876334",
  "custom_blocks": [],
  "docstatus": 0,
@@ -62,7 +62,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-07-15 12:43:48.732041",
+ "modified": "2025-08-14 18:13:53.151219",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission",
@@ -94,6 +94,13 @@
    "link_to": "Inquiry",
    "stats_filter": "[]",
    "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Dashboard Inquiry",
+   "link_to": "Inquiry dashboard",
+   "type": "Dashboard"
   },
   {
    "color": "Grey",

@@ -24,7 +24,11 @@
   "column_break_w8a0",
   "submitted_at",
   "first_contact_due_on",
-  "followup_due_on"
+  "followup_due_on",
+  "first_contacted_at",
+  "assigned_at",
+  "response_hours_first_contact",
+  "response_hours_from_assign"
  ],
  "fields": [
   {
@@ -132,12 +136,38 @@
    "fieldtype": "Date",
    "label": "Follow-up Deadline",
    "read_only": 1
+  },
+  {
+   "fieldname": "first_contacted_at",
+   "fieldtype": "Datetime",
+   "label": "First Contacted At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assigned_at",
+   "fieldtype": "Datetime",
+   "label": "Assigned At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "response_hours_first_contact",
+   "fieldtype": "Float",
+   "label": "Time after first contact",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "response_hours_from_assign",
+   "fieldtype": "Float",
+   "label": "time after assigned",
+   "precision": "2",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-10 13:29:53.660674",
+ "modified": "2025-08-14 16:47:24.606404",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",
