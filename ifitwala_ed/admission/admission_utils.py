@@ -214,6 +214,12 @@ def assign_inquiry(doctype, docname, assigned_to):
 	doc.workflow_state = "Assigned"
 	doc.followup_due_on = followup_due
 
+	# stamp FIRST assignment time (never overwrite)
+	if not doc.assigned_at: 
+		ts = frappe.utils.now_datetime() 
+		doc.assigned_at = ts
+		doc.db_set("assigned_at", ts, update_modified=False)
+
 	# SLA + single save (avoid db_set before this)
 	update_sla_status(doc)
 	doc.save(ignore_permissions=True)
