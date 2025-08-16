@@ -8,6 +8,7 @@ frappe.ui.form.on("Inquiry", {
 		const s = frm.doc.workflow_state;
 		const is_manager = frappe.user.has_role('Admission Manager');
 		const is_officer = frappe.user.has_role('Admission Officer');
+		const kind = frm.doc.type_of_inquiry; // 'Admission' | 'General Inquiry'
 
 		if (s === 'New Inquiry' && is_manager) {
 			frm.add_custom_button('Assign', () => frm.trigger('assign'));
@@ -22,13 +23,14 @@ frappe.ui.form.on("Inquiry", {
 		if (s === 'Contacted' && is_officer) {
 			frm.add_custom_button('Qualify', () => frm.trigger('qualify'));
 		}
-		if (frm.doctype === 'General Inquiry' && s === 'Qualified') {
+		if (kind === 'General Inquiry' && s === 'Qualified') {
 			frm.add_custom_button('Start Nurturing', () => frm.trigger('start_nurturing'));
 		}
 		if (frm.doctype === 'Registration of Interest' && s === 'Qualified') {
 			frm.add_custom_button('Submit Application', () => frm.trigger('submit_application'));
 		}
-		if (['Nurturing', 'Application Submitted'].includes(s) && is_manager) {
+		// Acceptance/Disqualify after nurturing (and optionally from Qualified if you wish) 
+		if (['Nurturing'].includes(s) && is_manager) {
 			frm.add_custom_button('Accept', () => frm.trigger('accept'));
 			frm.add_custom_button('Disqualify', () => frm.trigger('disqualify'));
 		}
@@ -169,11 +171,6 @@ frappe.ui.form.on("Inquiry", {
 
 	start_nurturing(frm) {
 		frm.set_value('workflow_state', 'Nurturing');
-		frm.save();
-	},
-
-	submit_application(frm) {
-		frm.set_value('workflow_state', 'Application Submitted');
 		frm.save();
 	},
 

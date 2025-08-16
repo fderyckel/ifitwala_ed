@@ -19,7 +19,7 @@ frappe.listview_settings['Inquiry'] = {
 		};
 		const label = doc.sla_status || __('⚪ Upcoming');
 		const colour = slaColourMap[doc.sla_status] || 'blue';
-		return [label, colour, null];
+		return [label, colour, ['sla_status','= ', label]];
 	},
 
 	// formatters allow us to colour individual columns
