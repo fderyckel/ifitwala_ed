@@ -5,7 +5,7 @@
 import frappe
 from frappe import _
 from frappe.utils import add_days, nowdate, now
-from frappe.utils import now_datetime, getdate
+from frappe.utils import now_datetime, getdate, get_datetime
 from frappe.desk.form.assign_to import add as add_assignment, remove as remove_assignment
 
 def notify_admission_manager(doc):
@@ -55,6 +55,10 @@ def check_sla_breaches():
 	contacted_states = {"Contacted", "Qualified", "Nurturing", "Accepted", "Unqualified"}
 
 	for doctype in doc_types:
+		# Skip doctypes that may not exist on this site 
+		if not frappe.db.table_exists(doctype): 
+			continue
+
 		entries = frappe.db.get_values(
 			doctype,
 			filters={"docstatus": 0},

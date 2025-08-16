@@ -47,7 +47,8 @@ class Inquiry(Document):
 
 		# 2) Hours from inquiry creation -> first contact (once)
 		if not self.response_hours_first_contact:
-			h1 = self._hours_between(self.creation, self.first_contacted_at) 
+			base = self.submitted_at or self.creation
+			h1 = self._hours_between(base, self.first_contacted_at) 
 			self.response_hours_first_contact = h1 
 			self.db_set("response_hours_first_contact", h1, update_modified=False)
 
@@ -126,6 +127,8 @@ class Inquiry(Document):
 		# Update fields
 		if self.workflow_state != "Contacted":
 			self.db_set("workflow_state", "Contacted", update_modified=False)
+			self.workflow_state = "Contacted"  # keep in-memory doc in sync
+			
 		if self.get("followup_due_on"):
 			self.db_set("followup_due_on", None, update_modified=False)
 
