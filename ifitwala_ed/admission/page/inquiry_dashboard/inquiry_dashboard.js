@@ -4,13 +4,26 @@
 frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 	// load shared card styles
 	frappe.require("/assets/ifitwala_ed/css/dashboard_cards.css");
-	frappe.require("/assets/ifitwala_ed/css/inquiry_numbers.css");
 
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: __("Inquiry Dashboard"),
 		single_column: true
 	});
+
+	// NEW: chart handles to prevent overlay & ReferenceError
+	let chartMonthly, chartAssignees, chartTypes;
+
+	// NEW: ensure flt exists locally (fallback to Number)
+	const flt = (v) => {
+		try {
+			if (frappe.utils && typeof frappe.utils.flt === "function") {
+				return frappe.utils.flt(v);
+			}
+		} catch (e) {}
+		const n = parseFloat(v);
+		return isNaN(n) ? 0 : n;
+	};
 
 	/*──────────── 1) FILTERS ─────────────────────────────────────────────*/
 	const fd = {};
@@ -41,7 +54,7 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 		fieldname: "type_of_inquiry",
 		label: __("Type"),
 		fieldtype: "Select",
-		options: ["", "General", "Admissions", "Financial Aid", "Other"].join("\n"),
+		options: "", // will be populated dynamically
 		change: () => refresh_all()
 	});
 
@@ -52,6 +65,15 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 		options: "User",
 		change: () => refresh_all()
 	});
+
+	// Attach server-side link queries (AFTER add_field calls)
+	fd.academic_year.get_query = () => ({
+		query: "ifitwala_ed.admission.page.inquiry_dashboard.inquiry_dashboard.academic_year_link_query"
+	});
+
+	fd.assigned_to.get_query = () => ({
+		query: "ifitwala_ed.admission.page.inquiry_dashboard.inquiry_dashboard.admission_user_link_query"
+	});	
 
 	function sync_dates_from_ay() {
 		const ay = fd.academic_year.get_value();
@@ -66,6 +88,19 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 				refresh_all();
 			});
 	}
+
+	// Populate Type options dynamically from server
+	(function populate_types() {
+		frappe.call({
+			method: "ifitwala_ed.admission.page.inquiry_dashboard.inquiry_dashboard.get_inquiry_types",
+			callback: (r) => {
+				const types = r.message || [];
+				const opts = ["", ...types]; // keep blank as "All"
+				fd.type_of_inquiry.df.options = opts.join("\n");
+				fd.type_of_inquiry.refresh();
+			}
+		});
+	})();	
 
 	/*──────────── 2) PAGE BODY ───────────────────────────────────────────*/
 	$(wrapper).append(`
@@ -110,6 +145,63 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 		</div>
 	`);
 
+	// ── Drilldown helpers
+	function list_base_filters() {
+		const from_date = fd.from_date.get_value();
+		const to_date = fd.to_date.get_value();
+		const filters = {
+			"submitted_at": ["between", [
+				`${from_date} 00:00:00`,
+				`${to_date} 23:59:59`
+			]]
+		};
+		const type = fd.type_of_inquiry.get_value();
+		if (type) filters["type_of_inquiry"] = type;
+
+		const assignee = fd.assigned_to.get_value();
+		if (assignee) filters["assigned_to"] = assignee;
+
+		return filters;
+	}
+
+	function open_inquiry_list(extra = {}) {
+		const filters = Object.assign({}, list_base_filters(), extra);
+		frappe.route_options = filters;
+		frappe.set_route("List", "Inquiry", "List");
+	}
+
+	// Make KPI cards clickable
+	$(".kpi-number-card").css("cursor", "pointer");
+
+	// Total (all in window)
+	$("#kpi-total").closest(".kpi-number-card").on("click", () => {
+		open_inquiry_list({});
+	});
+
+	// Avg hrs to 1st contact → contacted
+	$("#kpi-avg-first-30").closest(".kpi-number-card").on("click", () => {
+		open_inquiry_list({
+			"first_contacted_at": ["is", "set"]
+		});
+	});
+
+	// Avg hrs from assign → assigned & contacted
+	$("#kpi-avg-assign-30").closest(".kpi-number-card").on("click", () => {
+		open_inquiry_list({
+			"assigned_to": ["is", "set"],
+			"first_contacted_at": ["is", "set"]
+		});
+	});
+
+	// Overdue (1st contact) → due date passed & not contacted
+	$("#kpi-overdue").closest(".kpi-number-card").on("click", () => {
+		open_inquiry_list({
+			"first_contacted_at": ["is", "not set"],
+			"first_contact_due_on": ["<", frappe.datetime.get_today()]
+		});
+	});
+
+
 	/*──────────── 3) LOAD DATA ───────────────────────────────────────────*/
 	function current_filters() {
 		return {
@@ -140,55 +232,70 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 		$("#kpi-avg-assign-30").text(flt(data.averages.last30d.from_assign_hours).toFixed(1));
 		$("#kpi-avg-assign-all").text(flt(data.averages.overall.from_assign_hours).toFixed(1));
 
-		// monthly dual-series line
 		const labels = data.monthly_avg_series.labels || [];
 		const firstVals = data.monthly_avg_series.first_contact || [];
 		const assignVals = data.monthly_avg_series.from_assign || [];
 
 		if (labels.length) {
-			new frappe.Chart("#chart-monthly", {
-				type: "line",
-				data: {
-					labels,
-					datasets: [
-						{ name: __("First Contact"), values: firstVals },
-						{ name: __("From Assign"), values: assignVals }
-					]
-				},
-				height: 320
-			});
+			const monthlyData = {
+				labels,
+				datasets: [
+					{ name: __("First Contact"), values: firstVals },
+					{ name: __("From Assign"), values: assignVals }
+				]
+			};
+			if (chartMonthly) {
+				chartMonthly.update(monthlyData);
+			} else {
+				chartMonthly = new frappe.Chart("#chart-monthly", {
+					type: "line",
+					data: monthlyData,
+					height: 320
+				});
+			}
 		} else {
 			$("#chart-monthly").empty();
+			chartMonthly = null;
 		}
 
-		// bar: assignees
 		const assignees = data.assignee_distribution || [];
 		if (assignees.length) {
-			new frappe.Chart("#chart-assignees", {
-				type: "bar",
-				data: {
-					labels: assignees.map(r => r.label),
-					datasets: [{ values: assignees.map(r => r.value) }]
-				},
-				height: 300
-			});
+			const adata = {
+				labels: assignees.map(r => r.label),
+				datasets: [{ values: assignees.map(r => r.value) }]
+			};
+			if (chartAssignees) {
+				chartAssignees.update(adata);
+			} else {
+				chartAssignees = new frappe.Chart("#chart-assignees", {
+					type: "bar",
+					data: adata,
+					height: 300
+				});
+			}
 		} else {
 			$("#chart-assignees").empty();
+			chartAssignees = null;
 		}
 
-		// pie: types
 		const types = data.type_distribution || [];
 		if (types.length) {
-			new frappe.Chart("#chart-types", {
-				type: "percentage",
-				data: {
-					labels: types.map(r => r.label),
-					datasets: [{ values: types.map(r => r.value) }]
-				},
-				height: 280
-			});
+			const tdata = {
+				labels: types.map(r => r.label),
+				datasets: [{ values: types.map(r => r.value) }]
+			};
+			if (chartTypes) {
+				chartTypes.update(tdata);
+			} else {
+				chartTypes = new frappe.Chart("#chart-types", {
+					type: "percentage",
+					data: tdata,
+					height: 280
+				});
+			}
 		} else {
 			$("#chart-types").empty();
+			chartTypes = null;
 		}
 	}
 
