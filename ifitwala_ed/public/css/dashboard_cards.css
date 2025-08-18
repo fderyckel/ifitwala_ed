@@ -159,3 +159,16 @@
   }
 }
 
+
+/* ─── Number cards for KPI dashboard ───────────────────────────────────────────── */
+.kpi-number-card{
+	background:#fff;
+	border-radius:8px;
+	box-shadow:0 2px 5px rgba(0,0,0,0.08);
+	padding:16px 18px;
+	min-width:220px;
+	flex: 1 1 240px;
+}
+.kpi-label{font-size:.9rem;color:#6c757d;margin-bottom:4px;}
+.kpi-value{font-size:2rem;font-weight:700;line-height:1.1;}
+.kpi-sub{font-size:.85rem;color:#6c757d;}
