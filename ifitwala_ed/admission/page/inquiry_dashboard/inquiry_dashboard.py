@@ -52,12 +52,13 @@ def _apply_common_conditions(filters: dict):
 	return " AND ".join(conds), params
 
 @frappe.whitelist()
-def get_dashboard_data(filters: dict | None = None):
+def get_dashboard_data(filters: None):
 	"""
 	Returns summary + datasets for charts & cards.
 	All queries parameterized (safe) and scoped by date window/filters.
 	"""
 	filters = frappe.parse_json(filters) or {}
+
 	where, params = _apply_common_conditions(filters)
 
 	# ── counts
@@ -197,52 +198,38 @@ def get_dashboard_data(filters: dict | None = None):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
-	# newest first
 	return frappe.db.sql(
 		"""
 		SELECT name
 		FROM `tabAcademic Year`
-		WHERE {cond}
+		WHERE name LIKE %(txt)s
 		ORDER BY year_start_date DESC, name DESC
-		LIMIT %s, %s
-		""".format(
-			cond="name LIKE %(txt)s"
-		),
-		{
-			"txt": f"%{txt}%",
-			"start": start,
-			"page_len": page_len,
-		}
+		LIMIT %(start)s, %(page_len)s
+		""",
+		{"txt": f"%{txt}%", "start": start, "page_len": page_len}
 	)
+
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def admission_user_link_query(doctype, txt, searchfield, start, page_len, filters):
-	# Only enabled users who are Admission Officer or Admission Manager
+	sf = frappe.db.escape(searchfield)
 	return frappe.db.sql(
-		"""
+		f"""
 		SELECT u.name, u.full_name
 		FROM `tabUser` u
 		WHERE u.enabled = 1
-		  AND (
-		    u.name IN (
-		      SELECT parent FROM `tabHas Role`
-		      WHERE role IN ('Admission Officer','Admission Manager')
-		    )
+		  AND u.name IN (
+		    SELECT parent FROM `tabHas Role`
+		    WHERE role IN ('Admission Officer','Admission Manager')
 		  )
-		  AND (
-		    u.{sf} LIKE %(txt)s
-		    OR u.full_name LIKE %(txt)s
-		  )
+		  AND (u.{sf} LIKE %(txt)s OR u.full_name LIKE %(txt)s)
 		ORDER BY u.full_name DESC, u.creation DESC
-		LIMIT %s, %s
-		""".format(sf=frappe.db.escape(searchfield)),
-		{
-			"txt": f"%{txt}%",
-			"start": start,
-			"page_len": page_len,
-		}
+		LIMIT %(start)s, %(page_len)s
+		""",
+		{"txt": f"%{txt}%", "start": start, "page_len": page_len}
 	)
+
 
 @frappe.whitelist()
 def get_inquiry_types():
