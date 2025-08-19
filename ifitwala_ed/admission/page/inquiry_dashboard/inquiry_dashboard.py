@@ -51,25 +51,13 @@ def _apply_common_conditions(filters: dict):
 
 	return " AND ".join(conds), params
 
-def _coerce_filters(filters):
-	# Accept dict or JSON string; always return dict
-	if not filters:
-		return {}
-	if isinstance(filters, dict):
-		return filters
-	# try Frappe helper first, then json.loads
-	try:
-		return frappe.parse_json(filters) or {}
-	except Exception:
-		return json.loads(filters)
-
 @frappe.whitelist()
 def get_dashboard_data(filters: dict | None = None):
 	"""
 	Returns summary + datasets for charts & cards.
 	All queries parameterized (safe) and scoped by date window/filters.
 	"""
-	filters = _coerce_filters(filters)
+	filters = frappe.parse_json(filters) or {}
 	where, params = _apply_common_conditions(filters)
 
 	# ── counts
@@ -82,12 +70,13 @@ def get_dashboard_data(filters: dict | None = None):
 		params, as_dict=False
 	)[0][0]
 
+	# 👇 FIX: use IS NULL (COALESCE ... IS NULL can never be true)
 	overdue_first = frappe.db.sql(
 		f"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE {where}
-		  AND COALESCE(i.first_contacted_at, '2099-12-31') IS NULL
+		  AND i.first_contacted_at IS NULL
 		  AND i.first_contact_due_on IS NOT NULL
 		  AND i.first_contact_due_on < CURDATE()
 		""",

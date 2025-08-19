@@ -1,6 +1,7 @@
-# ifitwala_ed/students/page/student_log_dashboard/student_log_dashboard.py
-"""Server‑side aggregation for the Student Log Dashboard (Frappe v15).
-   Uses consistent alias `sl` for tabStudent Log in every query to
+# Copyright (c) 2025, Francois de Ryckel and contributors
+# For license information, please see license.txt
+
+"""Uses consistent alias `sl` for tabStudent Log in every query to
    avoid ambiguous column references when filters include `program`.
 """
 
@@ -11,7 +12,7 @@ import frappe
 def get_dashboard_data(filters=None):
 	"""Aggregate stats with optional filters.
 
-	Filters arrive JSON‑encoded; keys: school, academic_year, program,
+	Filters arrive JSON-encoded; keys: school, academic_year, program,
 	student, author.
 	"""
 	try:
