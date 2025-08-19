@@ -12,7 +12,9 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 	});
 
 	// NEW: chart handles to prevent overlay & ReferenceError
-	let chartMonthly, chartAssignees, chartTypes;
+	let chartMonthly, chartAssignees, chartTypes, chartPipeline, chartWeekly;
+	let weeklyRanges = [];
+
 
 	// NEW: ensure flt exists locally (fallback to Number)
 	const flt = (v) => {
@@ -106,26 +108,59 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 	$(wrapper).append(`
 		<div class="dashboard-content container">
 			<div class="d-flex flex-wrap gap-3 w-100">
+
 				<div class="kpi-number-card">
 					<div class="kpi-label">${__("Total Inquiries")}</div>
 					<div class="kpi-value" id="kpi-total">–</div>
 					<div class="kpi-sub" id="kpi-contacted">– ${__("contacted")}</div>
 				</div>
+
 				<div class="kpi-number-card">
 					<div class="kpi-label">${__("Avg hrs to 1st contact")}</div>
 					<div class="kpi-value" id="kpi-avg-first-30">–</div>
 					<div class="kpi-sub">${__("Last 30 days")} • <span id="kpi-avg-first-all">–</span> ${__("overall")}</div>
 				</div>
+
 				<div class="kpi-number-card">
 					<div class="kpi-label">${__("Avg hrs from assign")}</div>
 					<div class="kpi-value" id="kpi-avg-assign-30">–</div>
 					<div class="kpi-sub">${__("Last 30 days")} • <span id="kpi-avg-assign-all">–</span> ${__("overall")}</div>
 				</div>
+
 				<div class="kpi-number-card">
 					<div class="kpi-label">${__("Overdue (1st contact)")}</div>
 					<div class="kpi-value text-danger" id="kpi-overdue">–</div>
 					<div class="kpi-sub">${__("Needs attention")}</div>
 				</div>
+
+				<div class="kpi-number-card">
+					<div class="kpi-label">${__("Due Today")}</div>
+					<div class="kpi-value text-warning" id="kpi-due-today">–</div>
+					<div class="kpi-sub">${__("First contact due today")}</div>
+				</div>
+
+				<div class="kpi-number-card">
+					<div class="kpi-label">${__("Upcoming")}</div>
+					<div class="kpi-value" id="kpi-upcoming">–</div>
+					<div class="kpi-sub"><span id="kpi-upcoming-horizon">–</span></div>
+				</div>
+
+				<div class="kpi-number-card">
+					<div class="kpi-label">${__("SLA % (30d)")}</div>
+					<div class="kpi-value" id="kpi-sla-30">–</div>
+					<div class="kpi-sub">${__("Contacted within deadline")}</div>
+				</div>
+
+			</div>
+
+			<div class="dashboard-card" id="card-pipeline">
+				<div class="card-title">${__("Pipeline by Workflow State")}</div>
+				<div id="chart-pipeline"></div>
+			</div>
+
+			<div class="dashboard-card" id="card-weekly">
+				<div class="card-title">${__("Weekly Inquiry Volume")}</div>
+				<div id="chart-weekly"></div>
 			</div>
 
 			<div class="dashboard-card" id="card-monthly">
@@ -144,6 +179,7 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 			</div>
 		</div>
 	`);
+
 
 	// ── Drilldown helpers
 	function list_base_filters() {
@@ -201,6 +237,29 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 		});
 	});
 
+	// Due Today → due today & not contacted
+	$("#kpi-due-today").closest(".kpi-number-card").on("click", () => {
+		open_inquiry_list({
+			"first_contacted_at": ["is", "not set"],
+			"first_contact_due_on": ["between", [
+				frappe.datetime.get_today(), frappe.datetime.get_today()
+			]]
+		});
+	});
+
+	// Upcoming → due within horizon & not contacted
+	$("#kpi-upcoming").closest(".kpi-number-card").on("click", () => {
+		const horizonText = $("#kpi-upcoming-horizon").data("horizonTo");
+		const to = (horizonText || frappe.datetime.get_today());
+		open_inquiry_list({
+			"first_contacted_at": ["is", "not set"],
+			"first_contact_due_on": ["between", [
+				frappe.datetime.add_days(frappe.datetime.get_today(), 1), to
+			]]
+		});
+	});
+
+
 
 	/*──────────── 3) LOAD DATA ───────────────────────────────────────────*/
 	function current_filters() {
@@ -232,9 +291,19 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 		$("#kpi-avg-assign-30").text(flt(data.averages.last30d.from_assign_hours).toFixed(1));
 		$("#kpi-avg-assign-all").text(flt(data.averages.overall.from_assign_hours).toFixed(1));
 
+		$("#kpi-due-today").text(flt(data.counts.due_today).toLocaleString());
+		$("#kpi-upcoming").text(flt(data.counts.upcoming).toLocaleString());
+		$("#kpi-sla-30").text(`${flt(data.sla.pct_30d).toFixed(1)}%`);
+
 		const labels = data.monthly_avg_series.labels || [];
 		const firstVals = data.monthly_avg_series.first_contact || [];
 		const assignVals = data.monthly_avg_series.from_assign || [];
+		const h = data.config?.upcoming_horizon_days || 7;
+		const horizonTo = frappe.datetime.add_days(frappe.datetime.get_today(), h);
+
+		$("#kpi-upcoming-horizon")
+			.text(__("Next {0} days (until {1})", [h, horizonTo]))
+			.data("horizonTo", horizonTo);
 
 		if (labels.length) {
 			const monthlyData = {
@@ -297,6 +366,61 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 			$("#chart-types").empty();
 			chartTypes = null;
 		}
+
+		// Pipeline chart
+		const pipeline = data.pipeline_by_state || [];
+		if (pipeline.length) {
+			const pdata = {
+				labels: pipeline.map(r => r.label),
+				datasets: [{ values: pipeline.map(r => r.value) }]
+			};
+			if (chartPipeline) {
+				chartPipeline.update(pdata);
+			} else {
+				chartPipeline = new frappe.Chart("#chart-pipeline", {
+					type: "bar",
+					data: pdata,
+					height: 300
+				});
+				chartPipeline.parent.addEventListener("data-select", (e) => {
+					const lbl = e?.detail?.label;
+					if (lbl) open_inquiry_list({ "workflow_state": lbl });
+				});
+			}
+		} else {
+			$("#chart-pipeline").empty();
+			chartPipeline = null;
+		}
+
+		// Weekly volume
+		const weekly = data.weekly_volume_series || {};
+		const wlabels = weekly.labels || [];
+		const wvalues = weekly.values || [];
+		weeklyRanges = weekly.ranges || [];
+		if (wlabels.length) {
+			const wdata = { labels: wlabels, datasets: [{ values: wvalues }] };
+			if (chartWeekly) {
+				chartWeekly.update(wdata);
+			} else {
+				chartWeekly = new frappe.Chart("#chart-weekly", {
+					type: "line",
+					data: wdata,
+					height: 300
+				});
+				chartWeekly.parent.addEventListener("data-select", (e) => {
+					const i = e?.detail?.index ?? -1;
+					const r = weeklyRanges[i];
+					if (r?.from && r?.to) {
+						open_inquiry_list({
+							"submitted_at": ["between", [r.from, r.to]]
+						});
+					}
+				});
+			}
+		} else {
+			$("#chart-weekly").empty();
+			chartWeekly = null;
+		}		
 	}
 
 	// initial defaults: last 90d until AY picked

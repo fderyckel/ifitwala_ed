@@ -51,6 +51,20 @@ def _apply_common_conditions(filters: dict):
 
 	return " AND ".join(conds), params
 
+def _rest_conditions(filters: dict):
+	conds, params = [], {}
+	if filters.get("type_of_inquiry"):
+		conds.append("i.type_of_inquiry = %(type)s")
+		params["type"] = filters["type_of_inquiry"]
+	if filters.get("assigned_to"):
+		conds.append("i.assigned_to = %(assignee)s")
+		params["assignee"] = filters["assigned_to"]
+	if filters.get("sla_status"):
+		conds.append("i.sla_status = %(sla)s")
+		params["sla"] = filters["sla_status"]
+	return " AND ".join(conds) or "1=1", params
+
+
 @frappe.whitelist()
 def get_dashboard_data(filters=None):
 	"""
@@ -60,6 +74,14 @@ def get_dashboard_data(filters=None):
 	filters = frappe.parse_json(filters) or {}
 
 	where, params = _apply_common_conditions(filters)
+	rest_where, rest_params = _rest_conditions(filters)	
+
+	# --- Admission Settings: upcoming horizon (days) ---
+	upcoming_horizon_days = frappe.db.get_single_value("Admission Settings", "followup_sla_days") or 7
+	try:
+		upcoming_horizon_days = int(upcoming_horizon_days)
+	except Exception:
+		upcoming_horizon_days = 7	
 
 	# ── counts
 	total = frappe.db.sql(
@@ -173,11 +195,117 @@ def get_dashboard_data(filters=None):
 		params, as_dict=True
 	)
 
+	# ── SLA Breach Monitor: Due Today & Upcoming (first contact)
+	due_today = frappe.db.sql(
+		f"""
+		SELECT COUNT(*)
+		FROM `tabInquiry` i
+		WHERE {where}
+		  AND i.first_contacted_at IS NULL
+		  AND i.first_contact_due_on = CURDATE()
+		""",
+		params, as_dict=False
+	)[0][0]
+
+	upcoming = frappe.db.sql(
+		f"""
+		SELECT COUNT(*)
+		FROM `tabInquiry` i
+		WHERE {where}
+		  AND i.first_contacted_at IS NULL
+		  AND i.first_contact_due_on > CURDATE()
+		  AND i.first_contact_due_on <= DATE_ADD(CURDATE(), INTERVAL %(h)d DAY)
+		""",
+		{**params, "h": upcoming_horizon_days}, as_dict=False
+	)[0][0]
+
+	# ── Pipeline by workflow_state
+	pipeline = frappe.db.sql(
+		f"""
+		SELECT COALESCE(i.workflow_state, '—') AS label, COUNT(*) AS value
+		FROM `tabInquiry` i
+		WHERE {where}
+		GROUP BY i.workflow_state
+		ORDER BY value DESC
+		""",
+		params, as_dict=True
+	)
+
+	# ── Weekly Inquiry Volume (week starts Monday)
+	weekly = frappe.db.sql(
+		f"""
+		SELECT
+			DATE_FORMAT(DATE_SUB(DATE(i.submitted_at), INTERVAL WEEKDAY(i.submitted_at) DAY), '%%Y-%%m-%%d') AS week_start,
+			COUNT(*) AS value
+		FROM `tabInquiry` i
+		WHERE {where}
+		GROUP BY week_start
+		ORDER BY week_start
+		""",
+		params, as_dict=True
+	)
+	weekly_series = {
+		"labels": [r["week_start"] for r in weekly],
+		"values": [int(r["value"] or 0) for r in weekly],
+		"ranges": [
+			{
+				"from": r["week_start"] + " 00:00:00",
+				"to":   frappe.utils.formatdate(
+					frappe.utils.add_days(r["week_start"], 6), "yyyy-mm-dd"
+				) + " 23:59:59"
+			}
+			for r in weekly
+		],
+	}
+
+	# ── SLA % (last 30d), measure by due_date falling in last30d, using non-date filters
+	fd, td = _resolve_window(filters)
+	params30 = {**rest_params}
+	params30["due_from30"] = f"{max(add_days(td, -30), fd)}"
+	params30["due_to30"] = f"{td}"
+
+	sla_den = frappe.db.sql(
+		f"""
+		SELECT COUNT(*)
+		FROM `tabInquiry` i
+		WHERE i.first_contact_due_on IS NOT NULL
+		  AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
+		  AND ({rest_where})
+		""",
+		params30, as_dict=False
+	)[0][0]
+
+	sla_num = frappe.db.sql(
+		f"""
+		SELECT COUNT(*)
+		FROM `tabInquiry` i
+		WHERE i.first_contact_due_on IS NOT NULL
+		  AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
+		  AND i.first_contacted_at IS NOT NULL
+		  AND DATE(i.first_contacted_at) <= i.first_contact_due_on
+		  AND ({rest_where})
+		""",
+		params30, as_dict=False
+	)[0][0]
+
+	sla_pct_30 = round((float(sla_num) / sla_den * 100.0), 1) if sla_den else 0.0
+
+
 	return {
 		"counts": {
 			"total": total,
 			"contacted": contacted,
-			"overdue_first_contact": overdue_first
+			"overdue_first_contact": overdue_first,
+			"due_today": due_today,
+			"upcoming": upcoming
+		},
+		"pipeline_by_state": pipeline,
+		"weekly_volume_series": weekly_series,
+		"sla": {
+			"pct_30d": sla_pct_30
+		},
+		"config": {
+			"upcoming_horizon_days": upcoming_horizon_days
 		},
 		"averages": {
 			"overall": {
