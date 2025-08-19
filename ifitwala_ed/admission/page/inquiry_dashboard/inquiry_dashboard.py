@@ -52,7 +52,7 @@ def _apply_common_conditions(filters: dict):
 	return " AND ".join(conds), params
 
 @frappe.whitelist()
-def get_dashboard_data(filters: None):
+def get_dashboard_data(filters=None):
 	"""
 	Returns summary + datasets for charts & cards.
 	All queries parameterized (safe) and scoped by date window/filters.
@@ -213,9 +213,9 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def admission_user_link_query(doctype, txt, searchfield, start, page_len, filters):
-	sf = frappe.db.escape(searchfield)
+	"""Enabled users with Admission Officer/Manager role; match name/full_name/email."""
 	return frappe.db.sql(
-		f"""
+		"""
 		SELECT u.name, u.full_name
 		FROM `tabUser` u
 		WHERE u.enabled = 1
@@ -223,12 +223,17 @@ def admission_user_link_query(doctype, txt, searchfield, start, page_len, filter
 		    SELECT parent FROM `tabHas Role`
 		    WHERE role IN ('Admission Officer','Admission Manager')
 		  )
-		  AND (u.{sf} LIKE %(txt)s OR u.full_name LIKE %(txt)s)
-		ORDER BY u.full_name DESC, u.creation DESC
+		  AND (
+		    u.name LIKE %(txt)s
+		    OR u.full_name LIKE %(txt)s
+		    OR u.email LIKE %(txt)s
+		  )
+		ORDER BY u.full_name ASC, u.creation DESC
 		LIMIT %(start)s, %(page_len)s
 		""",
-		{"txt": f"%{txt}%", "start": start, "page_len": page_len}
+		{"txt": f"%{txt or ''}%", "start": start, "page_len": page_len}
 	)
+
 
 
 @frappe.whitelist()
