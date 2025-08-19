@@ -196,15 +196,21 @@ def get_dashboard_data(filters=None):
 	)
 
 	# ── SLA Breach Monitor: Due Today & Upcoming (first contact)
+	# compute horizon dates in Python to avoid `%d` casting issues
+	today = nowdate()
+	up_from = add_days(today, 1)  # tomorrow
+	up_to = add_days(today, upcoming_horizon_days)
+
 	due_today = frappe.db.sql(
 		f"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE {where}
 		  AND i.first_contacted_at IS NULL
-		  AND i.first_contact_due_on = CURDATE()
+		  AND DATE(i.first_contact_due_on) = %(today)s
 		""",
-		params, as_dict=False
+		{**params, "today": today},
+		as_dict=False
 	)[0][0]
 
 	upcoming = frappe.db.sql(
@@ -213,11 +219,13 @@ def get_dashboard_data(filters=None):
 		FROM `tabInquiry` i
 		WHERE {where}
 		  AND i.first_contacted_at IS NULL
-		  AND i.first_contact_due_on > CURDATE()
-		  AND i.first_contact_due_on <= DATE_ADD(CURDATE(), INTERVAL %(h)d DAY)
+		  AND DATE(i.first_contact_due_on) > %(up_from)s
+		  AND DATE(i.first_contact_due_on) <= %(up_to)s
 		""",
-		{**params, "h": upcoming_horizon_days}, as_dict=False
+		{**params, "up_from": up_from, "up_to": up_to},
+		as_dict=False
 	)[0][0]
+
 
 	# ── Pipeline by workflow_state
 	pipeline = frappe.db.sql(
