@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"rLRFqJdXf-\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Inquiry\",\"col\":4}},{\"id\":\"_GG8AT_V09\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Overdue Inquiry\",\"col\":4}},{\"id\":\"ojvcsZgbFi\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Dashboard Inquiry\",\"col\":3}},{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Admission</span>\",\"col\":12}},{\"id\":\"HF-thlk3eW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inquiry\",\"col\":3}},{\"id\":\"0jhR9rjZ_2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Registration Of Interest\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Workflow\",\"col\":4}}]",
+ "content": "[{\"id\":\"rLRFqJdXf-\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Inquiry\",\"col\":4}},{\"id\":\"_GG8AT_V09\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Overdue Inquiry\",\"col\":4}},{\"id\":\"ojvcsZgbFi\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Dashboard Inquiry\",\"col\":3}},{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Admission</span>\",\"col\":12}},{\"id\":\"HF-thlk3eW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inquiry\",\"col\":3}},{\"id\":\"0jhR9rjZ_2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Registration Of Interest\",\"col\":3}},{\"id\":\"sJoRpq9beJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Applicant\",\"col\":3}},{\"id\":\"rHu3eSedx5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inquiry Dashboard\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Workflow\",\"col\":4}}]",
  "creation": "2025-06-23 20:21:38.876334",
  "custom_blocks": [],
  "docstatus": 0,
@@ -62,7 +62,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-08-14 18:13:53.151219",
+ "modified": "2025-08-20 10:40:04.467467",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission",
@@ -90,6 +90,13 @@
   {
    "color": "Grey",
    "doc_view": "List",
+   "label": "Inquiry Dashboard",
+   "link_to": "inquiry-dashboard",
+   "type": "Page"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
    "label": "Inquiry",
    "link_to": "Inquiry",
    "stats_filter": "[]",
@@ -101,6 +108,14 @@
    "label": "Dashboard Inquiry",
    "link_to": "Inquiry dashboard",
    "type": "Dashboard"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Student Applicant",
+   "link_to": "Student Applicant",
+   "stats_filter": "[]",
+   "type": "DocType"
   },
   {
    "color": "Grey",

@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_events_in_timeline": 1,
  "allow_rename": 1,
  "autoname": "format:SRF-{YYYY}-{####}",
  "creation": "2025-08-14 10:24:56.908365",
@@ -9,10 +10,28 @@
   "section_break_upvw",
   "student",
   "date",
+  "column_break_xmuo",
   "student_name",
+  "academic_year",
+  "column_break_tuxd",
   "program_enrollment",
   "program",
-  "academic_year"
+  "school",
+  "section_break_aksz",
+  "referral_source",
+  "referral_category",
+  "confidentiality_level",
+  "column_break_ffg0",
+  "referrer",
+  "severity",
+  "requires_immediate_action",
+  "mandated_reporting_triggered",
+  "section_break_abal",
+  "referral_description",
+  "section_break_pl1t",
+  "referral_status",
+  "first_review",
+  "sla_due"
  ],
  "fields": [
   {
@@ -65,12 +84,108 @@
    "label": "Academic Year",
    "options": "Academic Year",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_xmuo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_tuxd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Data",
+   "label": "School"
+  },
+  {
+   "fieldname": "section_break_aksz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "referral_source",
+   "fieldtype": "Select",
+   "label": "Referral Source",
+   "options": "Staff\nStudent (Self)\nGuardian\nSystem"
+  },
+  {
+   "fieldname": "referrer",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_standard_filter": 1,
+   "label": "Referrer",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "referral_category",
+   "fieldtype": "Select",
+   "label": "Referral Category",
+   "options": "Social\nEmotional\nPastoral\nAcademic\nBehavior\nAttendance"
+  },
+  {
+   "fieldname": "referral_description",
+   "fieldtype": "Text Editor",
+   "label": "Referral Description"
+  },
+  {
+   "fieldname": "confidentiality_level",
+   "fieldtype": "Select",
+   "label": "Confidentiality Level",
+   "options": "Standard\nSensitive\nRestricted"
+  },
+  {
+   "fieldname": "column_break_ffg0",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "severity",
+   "fieldtype": "Select",
+   "label": "Severity",
+   "options": "Low\nModerate\nHigh\nCritical"
+  },
+  {
+   "default": "0",
+   "fieldname": "requires_immediate_action",
+   "fieldtype": "Check",
+   "label": "Requires Immediate Action"
+  },
+  {
+   "default": "0",
+   "fieldname": "mandated_reporting_triggered",
+   "fieldtype": "Check",
+   "label": "Mandated Reporting Triggered"
+  },
+  {
+   "fieldname": "section_break_abal",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "referral_status",
+   "fieldtype": "Select",
+   "label": "Referral Status",
+   "options": "New\nTriaged\nIn Progress\nOn Hold\nEscalated\nClosed"
+  },
+  {
+   "fieldname": "section_break_pl1t",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "first_review",
+   "fieldtype": "Date",
+   "label": "First Review"
+  },
+  {
+   "fieldname": "sla_due",
+   "fieldtype": "Datetime",
+   "label": "SLA Due",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-14 11:03:14.216266",
+ "modified": "2025-08-20 14:33:04.048143",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Referral",
@@ -141,5 +256,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }
