@@ -106,6 +106,8 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 
 	/*──────────── 2) PAGE BODY ───────────────────────────────────────────*/
 	$(wrapper).append(`
+		<div class="dashboard-overlay" id="dashboard-overlay"></div>
+
 		<div class="dashboard-content container">
 			<div class="d-flex flex-wrap gap-3 w-100">
 
@@ -179,6 +181,40 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 			</div>
 		</div>
 	`);
+
+/*──────────── ZOOM UX (reused from Student Log) ─────────────────────────*/
+	function toggleZoom(card) {
+		const overlay = document.getElementById("dashboard-overlay");
+		if (card.classList.contains("zoomed")) {
+			card.classList.remove("zoomed");
+			overlay.classList.remove("active");
+		} else {
+			document.querySelectorAll(".dashboard-card.zoomed").forEach(c => {
+				if (c !== card) c.classList.remove("zoomed");
+			});
+			card.classList.add("zoomed");
+			overlay.classList.add("active");
+		}
+	}
+
+	// enable zoom on all chart cards (not on KPI number cards)
+	document.querySelectorAll(".dashboard-card").forEach(card => {
+		card.addEventListener("click", (e) => {
+			// ignore clicks on interactive elements inside the card
+			if (e.target.closest("a,button,input,select,textarea,.btn,.frappe-control")) {
+				e.stopPropagation();
+				return;
+			}
+			toggleZoom(card);
+		});
+	});
+
+	// clicking the dim background closes any zoomed card
+	document.getElementById("dashboard-overlay").addEventListener("click", () => {
+		document.querySelectorAll(".dashboard-card.zoomed").forEach(c => c.classList.remove("zoomed"));
+		document.getElementById("dashboard-overlay").classList.remove("active");
+	});
+
 
 
 	// ── Drilldown helpers
