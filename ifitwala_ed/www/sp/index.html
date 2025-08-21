@@ -3,7 +3,10 @@
 {% block title %}Student Portal{% endblock %}
 
 {% block head_include %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    {{ super() }}
+    {# Only add truly extra assets here, e.g. Bootstrap icons #}
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 {% endblock %}
 
 {% block content %}
