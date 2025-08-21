@@ -395,3 +395,8 @@ def has_permission(doc, user=None):
     descendant_schools = get_descendant_schools(user_school)
     return doc.school in descendant_schools
 
+def on_doctype_update():
+	# idempotent: adds only if missing
+	frappe.db.add_index("Program Enrollment", ["student"])
+	# useful for AY-scoped lookups
+	frappe.db.add_index("Program Enrollment", ["student", "academic_year"])

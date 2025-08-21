@@ -1,72 +1,35 @@
 {% extends "templates/student_portal_base.html" %}
-
 {% block title %}About Me{% endblock %}
 
-{% block head_include %}
-  <link rel="stylesheet" href="/assets/ifitwala_ed/css/student_portal.css">
-  <link rel="stylesheet" href="/assets/frappe/css/fonts/fontawesome/font-awesome.min.css">
-  <style>
-    /* Center the student-details table and update header color */
-    .about-me-container .student-details {
-      margin: 0 auto;
-    }
-    .about-me-container .student-details th {
-      color: var(--primary-color);
-    }
-  </style>
-{% endblock %}
-
 {% block content %}
-  <!-- Header using student-info styles -->
-  <div class="student-info" style="justify-content: center; margin-top: 2rem;">
-    <img src="{{ student_image }}" alt="Student Image">
-    <h1>{{ student_first_name }} {{ student_last_name }}</h1>
-  </div>
-
-  <!-- About Me Details -->
-  <div class="about-me-container" style="margin-top: 2rem;">
-    <table class="student-details">
-      <tbody>
-        <tr>
-          <th>First Name:</th>
-          <td>{{ student_first_name }}</td>
-        </tr>
-        <tr>
-          <th>Middle Name:</th>
-          <td>{{ student_middle_name or 'N/A' }}</td>
-        </tr>
-        <tr>
-          <th>Last Name:</th>
-          <td>{{ student_last_name }}</td>
-        </tr>
-        <tr>
-          <th>Email:</th>
-          <td>{{ student_email }}</td>
-        </tr>
-        <tr>
-          <th>Mobile Phone:</th>
-          <td>{{ student_mobile_number or 'N/A' }}</td>
-        </tr>
-        <tr>
-          <th>Date of Birth:</th>
-          <td>{{ student_dob }}</td>
-        </tr>
-        <tr>
-          <th>Gender:</th>
-          <td>{{ student_gender }}</td>
-        </tr>
-        <tr>
-          <th>First Language:</th>
-          <td>{{ student_first_language }}</td>
-        </tr>
-        {% if student_second_language %}
-        <tr>
-          <th>Second Language:</th>
-          <td>{{ student_second_language }}</td>
-        </tr>
+<div class="container py-4">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="text-center">
+        {% if student_image %}
+          <img src="{{ student_image }}" class="rounded-circle img-thumbnail mb-3" alt="">
         {% endif %}
-      </tbody>
-    </table>
-    <a href="/sp" class="back-to-menu">Return to Portal</a>
+        <h2 class="text-primary">{{ student_first_name }} {{ student_last_name }}</h2>
+      </div>
+      <table class="table table-borderless mt-4">
+        <tbody>
+          <tr><th scope="row">First Name</th><td>{{ student_first_name }}</td></tr>
+          <tr><th scope="row">Middle Name</th><td>{{ student_middle_name or 'N/A' }}</td></tr>
+          <tr><th scope="row">Last Name</th><td>{{ student_last_name }}</td></tr>
+          <tr><th scope="row">Email</th><td>{{ student_email }}</td></tr>
+          <tr><th scope="row">Mobile Phone</th><td>{{ student_mobile_number or 'N/A' }}</td></tr>
+          <tr><th scope="row">Date of Birth</th><td>{{ student_dob }}</td></tr>
+          <tr><th scope="row">Gender</th><td>{{ student_gender }}</td></tr>
+          <tr><th scope="row">First Language</th><td>{{ student_first_language }}</td></tr>
+          {% if student_second_language %}
+          <tr><th scope="row">Second Language</th><td>{{ student_second_language }}</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <div class="text-center">
+        <a href="/sp" class="btn btn-primary">Return to Portal</a>
+      </div>
+    </div>
   </div>
+</div>
 {% endblock %}
