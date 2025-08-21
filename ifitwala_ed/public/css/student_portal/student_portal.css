@@ -133,3 +133,40 @@ body {
 		text-align: center;
 	}
 }
+
+
+/* ----- Student Portal Layout (Bootstrap 5 friendly) ----- */
+.portal-layout {
+	display: flex;
+	gap: 1rem;
+	/* if your navbar is fixed-top, keep content visible below it */
+	padding-top: 0.5rem;
+	min-height: calc(100vh - 64px);
+}
+
+.portal-sidebar-col {
+	flex: 0 0 260px; /* sidebar width */
+	max-width: 260px;
+}
+
+.portal-main-col {
+	flex: 1 1 auto;
+	min-width: 0; /* prevents overflow with long content */
+}
+
+/* Optional: keep the sidebar visible while scrolling */
+.portal-sidebar-col.sticky-top {
+	top: 64px; /* adjust for your navbar height */
+}
+
+/* Stack nicely on mobile */
+@media (max-width: 991.98px) {
+	.portal-layout {
+		flex-direction: column;
+	}
+	.portal-sidebar-col,
+	.portal-main-col {
+		max-width: 100%;
+		flex: 1 1 auto;
+	}
+}
