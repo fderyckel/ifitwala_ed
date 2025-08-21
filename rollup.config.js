@@ -187,6 +187,22 @@ module.exports = [
 			}),
 			...basePlugins,
 			terser(),
+			{
+				// write stable (non-hashed) aliases so templates don't need to chase hashes
+				name: 'alias-stable-output',
+				writeBundle() { 
+					const fs = require('fs'); 
+					const p = 'ifitwala_ed/public/dist'; 
+					fs.copyFileSync( 
+						`${p}/student_portal.${portalHash}.bundle.css`, 
+						`${p}/student_portal.bundle.css` 
+					); 
+					fs.copyFileSync( 
+						`${p}/student_portal.${portalHash}.bundle.js`, 
+						`${p}/student_portal.bundle.js` 
+					); 
+				} 
+			}
 		],
 	},
 
