@@ -29,9 +29,8 @@
   "section_break_abal",
   "referral_description",
   "section_break_pl1t",
-  "referral_status",
-  "first_review",
-  "sla_due"
+  "sla_due",
+  "amended_from"
  ],
  "fields": [
   {
@@ -95,8 +94,10 @@
   },
   {
    "fieldname": "school",
-   "fieldtype": "Data",
-   "label": "School"
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_aksz",
@@ -161,31 +162,31 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "referral_status",
-   "fieldtype": "Select",
-   "label": "Referral Status",
-   "options": "New\nTriaged\nIn Progress\nOn Hold\nEscalated\nClosed"
-  },
-  {
    "fieldname": "section_break_pl1t",
    "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "first_review",
-   "fieldtype": "Date",
-   "label": "First Review"
   },
   {
    "fieldname": "sla_due",
    "fieldtype": "Datetime",
    "label": "SLA Due",
    "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Student Referral",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2025-08-20 14:33:04.048143",
+ "modified": "2025-08-20 23:27:06.813964",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Referral",
