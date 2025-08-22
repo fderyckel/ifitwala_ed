@@ -1,4 +1,3 @@
-
 import '../../css/student_portal/student_course.css';
 import '../../css/student_portal/student_portal.css';
 

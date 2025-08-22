@@ -26,12 +26,6 @@
     <script defer src="/assets/ifitwala_ed/dist/student_portal.bundle.js?v={{ build_version }}"></script>
 	{%- endblock -%}
 
-	{%- block style %}
-		{% if colocated_css -%}
-			<style>{{ colocated_css }}</style>
-		{%- endif %}
-	{%- endblock -%}
-
 	<script>
 		window.frappe = {};
 		window._version_number = "{{ build_version }}";
@@ -110,11 +104,6 @@
 		{{ include_script(link) }}
 	{%- endfor -%}
 
-	{%- block script %}
-		{% if colocated_js -%}
-			<script>{{ colocated_js }}</script>
-		{%- endif %}
-	{%- endblock %}
 	<!-- csrf_token -->
 	{%- block body_include %}{{ body_include or "" }}{% endblock -%}
 </body>
