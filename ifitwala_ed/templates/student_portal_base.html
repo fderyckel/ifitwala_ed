@@ -18,11 +18,9 @@
 
 	{%- block head -%}
 		{% include "templates/includes/head.html" %}
-	{%- endblock -%}
-
-	{%- block head_include -%}
-		{{ super() }}
 		{{ include_style('student_portal.bundle.css') }}
+		{# optional: a custom hookable block for per-page extras #}
+		{% block portal_head_extra %}{% endblock %}
 	{%- endblock -%}
 </head>
 
@@ -81,11 +79,6 @@
 
 	{%- block base_scripts -%}
 		<!-- js should be loaded in body! -->
-		<script>
-			frappe.boot = {{ boot | json }};
-			// for backward compatibility of some libs
-			frappe.sys_defaults = frappe.boot.sysdefaults;
-		</script>
 		{{ include_script('frappe-web.bundle.js') }}
 		{{ include_script('student_portal.bundle.js') }}
 	{%- endblock -%}
