@@ -184,6 +184,21 @@ module.exports = [
 				extract: path.resolve(dist, `student_portal.${portalHash}.bundle.css`),
 				minimize: true,
 				plugins: [require('autoprefixer')],
+				preprocessor: async (content, id) => {
+					const sass = await import('sass');
+					const result = await sass.compileAsync(id);
+					return { code: result.css };
+				},
+			}), 
+			copy({
+				targets: [
+					{
+						src: 'node_modules/bootstrap-icons/font/fonts/*',
+						dest: 'ifitwala_ed/public/dist/fonts'
+					}
+				],
+				verbose: true,
+				hook: 'writeBundle'
 			}),
 			...basePlugins,
 			terser(),

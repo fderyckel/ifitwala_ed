@@ -1,0 +1,31 @@
+{# 
+Breadcrumbs
+Usage:
+- By default, shows: Home > {{ page_title }}
+- Optionally pass a `breadcrumbs` list of { label, href } dicts from the page context:
+  breadcrumbs = [
+    {"label": _("Courses"), "href": "/portal/courses"},
+    {"label": _("Course ABC")}  # no href => plain crumb
+  ]
+#}
+<nav aria-label="breadcrumb">
+	<ol class="breadcrumb mb-0">
+		<li class="breadcrumb-item">
+			<a href="/portal">{{ _("Home") }}</a>
+		</li>
+		{% if breadcrumbs %}
+			{% for c in breadcrumbs %}
+				{% if c.href %}
+					<li class="breadcrumb-item">
+						<a href="{{ c.href }}">{{ c.label }}</a>
+					</li>
+				{% else %}
+					<li class="breadcrumb-item">{{ c.label }}</li>
+				{% endif %}
+			{% endfor %}
+		{% endif %}
+		<li class="breadcrumb-item active" aria-current="page">
+			{{ page_title }}
+		</li>
+	</ol>
+</nav>

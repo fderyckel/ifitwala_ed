@@ -1,0 +1,47 @@
+/* ---- Classy fonts via Google Fonts -------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Merriweather:wght@400;700&display=swap');
+
+/* ---- Bootstrap core ------------------------------------------------ */
+@import "../../../node_modules/bootstrap/scss/bootstrap";
+
+/* ---- Bootstrap Icons (CSS; fonts copied by Rollup below) ----------- */
+@import "../../../node_modules/bootstrap-icons/font/bootstrap-icons.css";
+
+/* ---- Theme tokens -------------------------------------------------- */
+:root {
+	--ifw-body-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+	--ifw-head-font: "Merriweather", Georgia, "Times New Roman", Times, serif;
+	--ifw-bg: #f8f9fa;
+	--ifw-card-radius: 0.75rem;
+}
+
+/* ---- Base ---------------------------------------------------------- */
+html, body { height: 100%; }
+body {
+	font-family: var(--ifw-body-font);
+	background: var(--ifw-bg);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings use serif for an academic tone */
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+	font-family: var(--ifw-head-font);
+	letter-spacing: .1px;
+}
+
+/* Cards: subtle elevation & rounded corners */
+.card {
+	border: 1px solid rgba(0,0,0,.06);
+	border-radius: var(--ifw-card-radius);
+}
+.card.shadow-sm { box-shadow: 0 .125rem .5rem rgba(0,0,0,.06); }
+
+/* Sidebar tweaks */
+#portalSidebar { padding: .75rem .75rem 1rem; }
+#portalSidebar .nav-link { border-radius: .5rem; }
+#portalSidebar .nav-link.active,
+#portalSidebar .nav-link:hover { background-color: rgba(13,110,253,.08); }
+
+/* Utilities */
+.min-vh-25 { min-height: 25vh; }
