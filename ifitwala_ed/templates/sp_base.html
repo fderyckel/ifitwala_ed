@@ -17,20 +17,20 @@
 </head>
 <body class="bg-light">
 	<header>
-		{% include "ifitwala_ed/templates/includes/portal/navbar.html" %}
+		{% include "ifitwala_ed/templates/sp_navbar.html" %}
 	</header>
 
 	<div class="container-fluid">
 		<div class="row">
 			{# Collapsible left sidebar (offcanvas on mobile, static on lg+) #}
 			<nav id="portalSidebar" class="col-lg-3 col-xl-2 d-lg-block bg-white border-end min-vh-100 collapse show">
-				{% include "ifitwala_ed/templates/includes/portal/sidebar.html" %}
+				{% include "ifitwala_ed/templates/sp_sidebar.html" %}
 			</nav>
 
 			<main class="col-lg-9 col-xl-10 ms-auto px-3 px-md-4 py-3">
                 {# Breadcrumbs #}
 				<section class="mb-3">
-					{% include "ifitwala_ed/templates/includes/portal/breadcrumbs.html" %}
+					{% include "ifitwala_ed/templates/sp_breadcrumbs.html" %}
 				</section>
 
 				{# Optional page header (title + actions) #}
@@ -137,7 +137,7 @@
 				{% endblock %}
 
 				<footer class="border-top mt-4 pt-3">
-					{% include "ifitwala_ed/templates/includes/portal/footer.html" %}
+					{% include "ifitwala_ed/templates/sp_footer.html" %}
 				</footer>
 			</main>
 		</div>
