@@ -5,7 +5,7 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import '../../scss/student_portal.scss';
 
 // Feature modules (auto-registered on the global namespace)
-import './student_logs';
+import './student_log.js';
 
 // Collapse sidebar on mobile after clicking a link inside it
 document.addEventListener('click', (e) => {
