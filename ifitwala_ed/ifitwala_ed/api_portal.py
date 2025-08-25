@@ -64,3 +64,11 @@ def get_log_detail_and_mark_read(name: str):
 		"reference_type": doc.reference_type, "reference_name": doc.reference_name,
 		"log_html": doc.log or ""
 	}
+
+@frappe.whitelist()
+def student_logs_get(start=0, page_length=PAGE_LENGTH_DEFAULT):
+    return get_student_logs(start=start, page_length=page_length)
+
+@frappe.whitelist()
+def student_log_detail_mark_read(name):
+    return get_log_detail_and_mark_read(name=name)
