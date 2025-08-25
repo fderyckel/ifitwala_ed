@@ -34,3 +34,4 @@ def get_context(context):
 	context.student_preferred_name = preferred
 	context.student_image = student.get("student_image")
 	context.welcome_message = _("Welcome back, {0}!").format(preferred)
+	context._ = frappe._
