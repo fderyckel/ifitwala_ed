@@ -89,15 +89,18 @@ frappe.ui.form.on("Student Log", {
 			}, __("Actions"));
 		}
 
-		// Finalize: Close (admin-only). Calls a server method so timeline is logged via _apply_status.
-		if (frm.doc.follow_up_status === "Completed" && frappe.user.has_role("Academic Admin")) {
-			frm.add_custom_button(__("Finalize: Close Log"), () => {
-				frappe.call({
-					method: "ifitwala_ed.students.doctype.student_log.student_log.finalize_close",
-					args: { log_name: frm.doc.name },
-					callback: () => frm.reload_doc()
-				});
-			}, __("Actions"));
+		// Finalize: Close (admin OR owner). Calls server so timeline is logged.
+		if (frm.doc.follow_up_status === "Completed" && !frm.is_new()) {
+			const isOwner = (frappe.session.user === frm.doc.owner);
+			if (frappe.user.has_role("Academic Admin") || isOwner) {
+				frm.add_custom_button(__("Finalize: Close Log"), () => {
+					frappe.call({
+						method: "ifitwala_ed.students.doctype.student_log.student_log.finalize_close",
+						args: { log_name: frm.doc.name },
+						callback: () => frm.reload_doc()
+					});
+				}, __("Actions"));
+			}
 		}
 	},
 

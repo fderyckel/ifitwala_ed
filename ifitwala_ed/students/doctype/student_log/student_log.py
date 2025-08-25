@@ -323,10 +323,25 @@ def assign_follow_up(log_name: str, user: str):
 @frappe.whitelist()
 def finalize_close(log_name: str):
 	log = frappe.get_doc("Student Log", log_name)
-	if "Academic Admin" not in set(frappe.get_roles()):
-		frappe.throw(_("Only Academic Admin can finalize a log."))
+
+	roles = set(frappe.get_roles())  # current session user
+	is_admin = "Academic Admin" in roles
+	is_owner = (frappe.session.user == log.owner)
+
+	if not (is_admin or is_owner):
+		frappe.throw(_("Only Academic Admin or the author of the note can finalize (close) this log."))
+
+	# Must be in Completed before closing (keeps the flow clean)
+	if (log.follow_up_status or "").lower() != "completed":
+		frappe.throw(_("Log must be in 'Completed' status before it can be finalized (Closed)."))
+
+	# If it's already Closed, no-op (idempotent)
+	if (log.follow_up_status or "").lower() == "closed":
+		return {"ok": True, "status": "Closed"}
+
+	# Apply status via helper so the timeline gets a proper entry
 	log._apply_status("Closed", reason="manual finalize")
-	return {"ok": True}
+	return {"ok": True, "status": "Closed"}
 
 # ---------- FIX: scheduler: Completed → Closed ----------
 def auto_close_completed_logs():
