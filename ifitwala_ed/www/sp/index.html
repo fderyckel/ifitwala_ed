@@ -84,18 +84,6 @@
 </section>
 
 
-			{% endfor %}
-		{% else %}
-			<div class="col-12">
-				<div class="alert alert-light border small mb-0">
-					{{ courses_empty_reason or "No courses found." }}
-				</div>
-			</div>
-		{% endif %}
-	</div>
-</section>
-
-
 
 <section aria-labelledby="moreLabel" class="mb-4">
 	<h2 id="moreLabel" class="h5 mb-2">{{ _("More") }}</h2>
@@ -108,7 +96,7 @@
 						<i class="bi bi-clipboard-check"></i>
 					</div>
 					<p class="text-muted small flex-grow-1 mb-2">{{ _("View your socio-emotional notes and follow-ups.") }}</p>
-					<div><a class="btn btn-sm btn-primary" href="{{ portal_root }}/student-log">{{ _("Open") }}</a></div>
+					<div><a class="btn btn-sm btn-primary" href="{{ portal_root }}/student_logs">{{ _("Open") }}</a></div>
 				</div>
 			</div>
 		</div>
