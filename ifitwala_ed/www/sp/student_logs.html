@@ -1,6 +1,7 @@
 <!-- base_template: ifitwala_ed/templates/sp_base.html -->
 
-<div class="container my-4" id="student-logs-root">
+{% block page_content %}
+<div class="container my-4" id="student-logs-root" data-page-length="{{ page_length or 20 }}">
 	<div class="d-flex align-items-center justify-content-between mb-3">
 		<h3 class="mb-0">{{ _("My Student Logs") }}</h3>
 		<div class="text-muted small">{{ _("Student") }}: {{ student_name }}</div>
@@ -65,3 +66,4 @@
 		</div>
 	</div>
 </div>
+{% endblock %}

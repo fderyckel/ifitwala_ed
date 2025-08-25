@@ -1,0 +1,53 @@
+// ifitwala_ed/public/scss/student_portal_student_logs.scss
+
+#student-logs-root {
+	.list-group {
+		border-radius: 1rem;
+		overflow: hidden;
+	}
+
+	.list-group-item {
+		border: 0;
+		border-bottom: 1px solid var(--bs-border-color);
+		transition: background-color .12s ease-in-out;
+
+		&:last-child {
+			border-bottom: 0;
+		}
+
+		&:hover,
+		&:focus {
+			background-color: var(--bs-light);
+		}
+	}
+
+	.badge.text-bg-secondary {
+		font-weight: 500;
+	}
+
+	// “NEW” pill – keep it subtle but noticeable
+	[data-new-pill] {
+		font-weight: 600;
+		letter-spacing: .02em;
+	}
+
+	// Modal content
+	.student-log-html {
+		line-height: 1.6;
+
+		img {
+			max-width: 100%;
+			height: auto;
+		}
+
+		p {
+			margin-bottom: .75rem;
+		}
+	}
+}
+
+/* Small accessibility touch: keyboard focus */
+.student-log-row:focus {
+	outline: 0;
+	box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .25);
+}
