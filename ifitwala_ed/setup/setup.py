@@ -68,36 +68,36 @@ def ensure_root_organization():
 
 
 def create_roles_with_homepage():
-    """Create or update roles with home_page and desk_access."""
-    roles = [
-        {"role_name": "Student", "desk_access": 0, "home_page": "/sp"},
-        {"role_name": "Guardian", "desk_access": 0, "home_page": "/sp"},
-        {"role_name": "Nurse", "desk_access": 1, "home_page": "/app/health"},
-        {"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/settings"},
+	"""Create or update roles with home_page and desk_access."""
+	roles = [
+		{"role_name": "Student", "desk_access": 0, "home_page": "/sp"},
+		{"role_name": "Guardian", "desk_access": 0, "home_page": "/sp"},
+		{"role_name": "Nurse", "desk_access": 1, "home_page": "/app/health"},
+		{"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/settings"},
 		{"role_name": "Admission Officer", "desk_access": 1, "home_page": "/app/admission"},
 		{"role_name": "Admission Manager", "desk_access": 1, "home_page": "/app/admission"},
-    ]
+	]
 
-    for role in roles:
-        existing = frappe.db.exists("Role", role["role_name"])
-        if existing:
-            doc = frappe.get_doc("Role", role["role_name"])
-            updated = False
+	for role in roles:
+		existing = frappe.db.exists("Role", role["role_name"])
+		if existing:
+			doc = frappe.get_doc("Role", role["role_name"])
+			updated = False
 
-            if doc.home_page != role["home_page"]:
-                doc.home_page = role["home_page"]
-                updated = True
-            if doc.desk_access != role["desk_access"]:
-                doc.desk_access = role["desk_access"]
-                updated = True
+			if doc.home_page != role["home_page"]:
+				doc.home_page = role["home_page"]
+				updated = True
+			if doc.desk_access != role["desk_access"]:
+				doc.desk_access = role["desk_access"]
+				updated = True
 
-            if updated:
-                doc.save(ignore_permissions=True)
-        else:
-            frappe.get_doc({
-                "doctype": "Role",
-                **role
-            }).insert(ignore_permissions=True)
+			if updated:
+				doc.save(ignore_permissions=True)
+		else:
+			frappe.get_doc({
+				"doctype": "Role",
+				**role
+			}).insert(ignore_permissions=True)
 
 
 def create_designations():
