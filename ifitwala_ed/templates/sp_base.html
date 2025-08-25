@@ -1,5 +1,5 @@
 {% set app_name = "Ifitwala" %}
-{% set page_title = (title or _("Student Portal")) %}
+{% set page_title = (title or 'Student Portal') %}
 <!DOCTYPE html>
 <html lang="{{ frappe.local.lang or 'en' }}">
 <head>
@@ -8,10 +8,8 @@
 	<meta name="csrf-token" content="{{ csrf_token }}">
 	<title>{% block page_title %}{{ page_title }}{% endblock %}</title>
 
-	{# Primary bundled CSS for portal (Bootstrap 5 + theme + icons in bundle) #}
 	{{ include_style('/assets/ifitwala_ed/dist/student_portal.bundle.css') }}
 
-	{# Page-level extra styles #}
 	{% block styles %}{% endblock %}
 	{% block meta %}{% endblock %}
 </head>
@@ -22,18 +20,15 @@
 
 	<div class="container-fluid">
 		<div class="row">
-			{# Collapsible left sidebar (offcanvas on mobile, static on lg+) #}
 			<nav id="portalSidebar" class="col-lg-3 col-xl-2 d-lg-block bg-white border-end min-vh-100 collapse show">
 				{% include "ifitwala_ed/templates/includes/sp_sidebar.html" %}
 			</nav>
 
 			<main class="col-lg-9 col-xl-10 ms-auto px-3 px-md-4 py-3">
-                {# Breadcrumbs #}
 				<section class="mb-3">
 					{% include "ifitwala_ed/templates/includes/sp_breadcrumbs.html" %}
 				</section>
 
-				{# Optional page header (title + actions) #}
 				{% block page_header %}
 				<div class="d-flex align-items-center justify-content-between mb-3">
 					<h1 class="h4 mb-0">{{ page_title }}</h1>
@@ -41,14 +36,13 @@
 				</div>
 				{% endblock %}
 
-				{# Default dashboard content — index pages can use this directly #}
 				{% block content %}
 				<section aria-labelledby="tasksLabel" class="mb-4">
 					<div class="card shadow-sm">
 						<div class="card-body">
 							<div class="d-flex align-items-center justify-content-between mb-3">
-								<h2 id="tasksLabel" class="h5 mb-0">{{ _("My Tasks Calendar") }}</h2>
-								<span class="text-muted small">{{ _("Coming soon") }}</span>
+								<h2 id="tasksLabel" class="h5 mb-0">My Tasks Calendar</h2>
+								<span class="text-muted small">Coming soon</span>
 							</div>
 							<div id="task-calendar" class="min-vh-25"></div>
 						</div>
@@ -59,8 +53,8 @@
 					<div class="card shadow-sm">
 						<div class="card-body">
 							<div class="d-flex align-items-center justify-content-between mb-3">
-								<h2 id="scheduleLabel" class="h5 mb-0">{{ _("Schedule Calendar") }}</h2>
-								<span class="text-muted small">{{ _("FullCalendar integration later") }}</span>
+								<h2 id="scheduleLabel" class="h5 mb-0">Schedule Calendar</h2>
+								<span class="text-muted small">FullCalendar integration later</span>
 							</div>
 							<div id="schedule-calendar" class="min-vh-25"></div>
 						</div>
@@ -69,7 +63,7 @@
 
 				<section aria-labelledby="coursesLabel" class="mb-4">
 					<div class="d-flex align-items-center justify-content-between mb-2">
-						<h2 id="coursesLabel" class="h5 mb-0">{{ _("My Courses") }}</h2>
+						<h2 id="coursesLabel" class="h5 mb-0">My Courses</h2>
 					</div>
 					<div id="course-cards" class="row g-3">
 						{# Example card (remove in production)
@@ -92,19 +86,17 @@
 				</section>
 
 				<section aria-labelledby="moreLabel" class="mb-4">
-					<h2 id="moreLabel" class="h5 mb-2">{{ _("More") }}</h2>
+					<h2 id="moreLabel" class="h5 mb-2">More</h2>
 					<div id="extra-cards" class="row g-3">
-						{# Student Log, Wellbeing, Demographics, etc. #}
-						{# Example placeholders #}
 						<div class="col-12 col-md-6 col-xl-4">
 							<div class="card h-100 shadow-sm">
 								<div class="card-body d-flex flex-column">
 									<div class="d-flex align-items-start justify-content-between mb-2">
-										<h3 class="h6 mb-0">{{ _("Student Log") }}</h3>
+										<h3 class="h6 mb-0">Student Log</h3>
 										<i class="bi bi-clipboard-check"></i>
 									</div>
-									<p class="text-muted small flex-grow-1 mb-2">{{ _("View your socio-emotional notes and follow-ups.") }}</p>
-									<div><a class="btn btn-sm btn-primary" href="#">{{ _("Open") }}</a></div>
+									<p class="text-muted small flex-grow-1 mb-2">View your socio-emotional notes and follow-ups.</p>
+									<div><a class="btn btn-sm btn-primary" href="#">Open</a></div>
 								</div>
 							</div>
 						</div>
@@ -112,11 +104,11 @@
 							<div class="card h-100 shadow-sm">
 								<div class="card-body d-flex flex-column">
 									<div class="d-flex align-items-start justify-content-between mb-2">
-										<h3 class="h6 mb-0">{{ _("Wellbeing") }}</h3>
+										<h3 class="h6 mb-0">Wellbeing</h3>
 										<i class="bi bi-heart-pulse"></i>
 									</div>
-									<p class="text-muted small flex-grow-1 mb-2">{{ _("Resources and check-ins.") }}</p>
-									<div><a class="btn btn-sm btn-outline-primary" href="#">{{ _("Open") }}</a></div>
+									<p class="text-muted small flex-grow-1 mb-2">Resources and check-ins.</p>
+									<div><a class="btn btn-sm btn-outline-primary" href="#">Open</a></div>
 								</div>
 							</div>
 						</div>
@@ -124,11 +116,11 @@
 							<div class="card h-100 shadow-sm">
 								<div class="card-body d-flex flex-column">
 									<div class="d-flex align-items-start justify-content-between mb-2">
-										<h3 class="h6 mb-0">{{ _("Demographics") }}</h3>
+										<h3 class="h6 mb-0">Demographics</h3>
 										<i class="bi bi-person-vcard"></i>
 									</div>
-									<p class="text-muted small flex-grow-1 mb-2">{{ _("Your profile and contact details.") }}</p>
-									<div><a class="btn btn-sm btn-outline-secondary" href="#">{{ _("Manage") }}</a></div>
+									<p class="text-muted small flex-grow-1 mb-2">Your profile and contact details.</p>
+									<div><a class="btn btn-sm btn-outline-secondary" href="#">Manage</a></div>
 								</div>
 							</div>
 						</div>
@@ -143,10 +135,9 @@
 		</div>
 	</div>
 
-	{# Bundled JS (Bootstrap 5 and your portal JS inside) #}
 	{{ include_script('/assets/ifitwala_ed/dist/student_portal.bundle.js') }}
 
-	{# Page-level extra scripts #}
 	{% block scripts %}{% endblock %}
 </body>
 </html>
+
