@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils import now_datetime
 
 def get_context(context):
 	# Guests should not access the portal: redirect to site's main page
@@ -34,4 +35,4 @@ def get_context(context):
 	context.student_preferred_name = preferred
 	context.student_image = student.get("student_image")
 	context.welcome_message = _("Welcome back, {0}!").format(preferred)
-	context._ = frappe._
+	context.current_year = now_datetime().year
