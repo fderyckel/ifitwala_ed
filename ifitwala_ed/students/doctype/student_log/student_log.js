@@ -3,16 +3,18 @@
 
 frappe.ui.form.on("Student Log", {
 	onload(frm) {
-		// keep original student filter
+		// 1) Only enabled students selectable
 		frm.set_query("student", () => ({ filters: { enabled: 1 } }));
 
-		// mirror field should be read-only in UI (assignments drive it)
-		frm.set_df_property("follow_up_person", "read_only", 1); // NEW
+		// 2) follow_up_person is mirrored from ToDo assignee; never edited directly
+		frm.set_df_property("follow_up_person", "read_only", 1);
 
+		// 3) Soft defaults on new docs
 		if (frm.is_new()) {
 			if (!frm.doc.date) frm.set_value("date", frappe.datetime.get_today());
 			if (!frm.doc.time) frm.set_value("time", frappe.datetime.now_time());
 
+			// Author label (UI convenience; server treats owner as canonical)
 			if (!frm.doc.author_name) {
 				frappe.call({
 					method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
@@ -27,11 +29,14 @@ frappe.ui.form.on("Student Log", {
 	},
 
 	refresh(frm) {
-		const is_author = frappe.session.user_fullname === frm.doc.author_name;
 		const status = (frm.doc.follow_up_status || "").toLowerCase();
+		const requiresFU = !!frm.doc.requires_follow_up;
 
-		// Assign / Reassign follow-up (native assignment) — only when follow-up is required
-		if (frm.doc.requires_follow_up) { // NEW
+		// Show/hide the follow-up block consistently
+		toggle_follow_up_fields(frm, requiresFU);
+
+		// Assign / Reassign: only when follow-up is required AND doc is saved
+		if (requiresFU && !frm.is_new()) {
 			frm.add_custom_button(__("Assign Follow-Up"), () => {
 				if (frm.is_dirty()) {
 					frappe.msgprint(__("Please save the document before assigning."));
@@ -48,6 +53,7 @@ frappe.ui.form.on("Student Log", {
 							options: "User",
 							reqd: 1,
 							get_query: () => ({
+								// Role-filtered picker (server filters users by role)
 								query: "ifitwala_ed.api.get_users_with_role",
 								filters: { role }
 							})
@@ -67,8 +73,8 @@ frappe.ui.form.on("Student Log", {
 			}, __("Actions"));
 		}
 
-		// New Follow-Up (unchanged)
-		if (status !== "completed") {
+		// New Follow-Up: allowed unless already Closed (status is derived server-side)
+		if (status !== "closed" && !frm.is_new()) {
 			frm.add_custom_button(__("New Follow-Up"), () => {
 				frappe.call({
 					method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
@@ -80,55 +86,28 @@ frappe.ui.form.on("Student Log", {
 						});
 					}
 				});
-			});
-		}
-
-		// Mark as Completed (unchanged)
-		if (status === "closed" && is_author) {
-			frm.add_custom_button(__("Mark as Completed"), () => {
-				frm.call({
-					method: "frappe.client.set_value",
-					args: {
-						doctype: "Student Log",
-						name: frm.doc.name,
-						fieldname: "follow_up_status",
-						value: "Completed"
-					},
-					callback() {
-						frappe.show_alert({ message: __("Marked as Completed"), indicator: "green" });
-						frm.reload_doc();
-					}
-				});
 			}, __("Actions"));
 		}
 
-		// Finalize: Close (unchanged)
+		// Finalize: Close (admin-only). Calls a server method so timeline is logged via _apply_status.
 		if (frm.doc.follow_up_status === "Completed" && frappe.user.has_role("Academic Admin")) {
 			frm.add_custom_button(__("Finalize: Close Log"), () => {
 				frappe.call({
-					method: "frappe.client.set_value",
-					args: {
-						doctype: "Student Log",
-						name: frm.doc.name,
-						fieldname: "follow_up_status",
-						value: "Closed"
-					},
-					callback() {
-						frappe.show_alert({ message: __("Log finalized and closed"), indicator: "red" });
-						frm.reload_doc();
-					}
+					method: "ifitwala_ed.students.doctype.student_log.student_log.finalize_close",
+					args: { log_name: frm.doc.name },
+					callback: () => frm.reload_doc()
 				});
 			}, __("Actions"));
 		}
 	},
 
 	student(frm) {
+		// Auto-fill program + academic year from active enrollment
 		if (!frm.doc.student) {
 			frm.set_value("program", "");
 			frm.set_value("academic_year", "");
 			return;
 		}
-
 		frappe.call({
 			method: "ifitwala_ed.students.doctype.student_log.student_log.get_active_program_enrollment",
 			args: { student: frm.doc.student },
@@ -146,7 +125,7 @@ frappe.ui.form.on("Student Log", {
 	},
 
 	author(frm) {
-		// Keep original behavior
+		// Optional helper to display the author's full name on the form
 		if (frm.doc.author) {
 			frappe.call({
 				method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
@@ -165,33 +144,40 @@ frappe.ui.form.on("Student Log", {
 	},
 
 	next_step(frm) {
+		// Drive the role filter from the chosen Next Step (server returns frappe_role)
 		if (!frm.doc.next_step) return;
-
 		frappe.call({
 			method: "ifitwala_ed.students.doctype.student_log.student_log.get_follow_up_role_from_next_step",
 			args: { next_step: frm.doc.next_step },
 			callback(r) {
 				const role = r.message || "Academic Staff";
 				frm.set_value("follow_up_role", role);
-				// NOTE: follow_up_person remains read-only; role filters the Assign dialog instead.
+				// follow_up_person stays read-only; Assign dialog is role-filtered
 			}
 		});
 	},
 
 	requires_follow_up(frm) {
-		const show = frm.doc.requires_follow_up === 1;
-		frm.toggle_display(["next_step", "follow_up_role", "follow_up_person", "follow_up_status"], show);
+		const show = !!frm.doc.requires_follow_up;
+		toggle_follow_up_fields(frm, show);
 
-		// Mapping: when turned off, status must be blank (server enforces)
+		// IMPORTANT:
+		// - Do NOT set follow_up_status on client. Server derives + logs timeline.
+		// - When switching OFF, clear fields locally for instant UX.
 		if (!show) {
-			frm.set_value("follow_up_status", null); // CHANGED (was "Closed")
-		} else if (!frm.doc.follow_up_status || frm.doc.follow_up_status === "Closed") {
-			frm.set_value("follow_up_status", "Open");
+			frm.set_value("next_step", null);
+			frm.set_value("follow_up_person", null);
+			frm.set_value("follow_up_status", null);
 		}
 	}
 });
 
-// Realtime toast for the author when a follow-up is submitted (kept)
+// Small helper to keep field toggling consistent
+function toggle_follow_up_fields(frm, show) {
+	frm.toggle_display(["next_step", "follow_up_role", "follow_up_person", "follow_up_status"], show);
+}
+
+// Realtime toast for the author when a follow-up is created/submitted (server emits)
 frappe.realtime.on("follow_up_ready_to_review", function (data) {
 	frappe.show_alert({
 		message: __("A follow-up for {0} is now ready for your review.", [data.student_name || data.log_name]),

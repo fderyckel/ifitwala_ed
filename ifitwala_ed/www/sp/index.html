@@ -67,14 +67,22 @@
 							>
 						</div>
 						<div class="card-body py-2">
-							<div class="course-meta small text-muted">
-								{{ c.course_group or '—' }}
-							</div>
+							<div class="course-meta small text-muted">{{ c.course_group or '—' }}</div>
 						</div>
 						<a class="stretched-link" href="{{ c.href }}" aria-label="Open {{ c.course_name }}"></a>
 					</div>
 				</div>
-</div>
+			{% endfor %}
+		{% else %}
+			<div class="col-12">
+				<div class="alert alert-light border small mb-0">
+					{{ courses_empty_reason or "No courses found." }}
+				</div>
+			</div>
+		{% endif %}
+	</div>
+</section>
+
 
 			{% endfor %}
 		{% else %}

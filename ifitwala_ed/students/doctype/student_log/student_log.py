@@ -1,10 +1,10 @@
-# Copyright (c) 2024, François de Ryckel and contributors
+# Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import get_datetime, date_diff
+from frappe.utils import get_datetime, date_diff, cint
 
 # NEW: try native assign/remove (fallback to ToDo-close if unavailable)
 try:
@@ -15,55 +15,121 @@ except Exception:
 
 
 class StudentLog(Document):
+	# ---------------------------------------------------------------------
+	# Timeline / status helpers
+	# ---------------------------------------------------------------------
+	def _log_status_change(self, old, new, reason=None):
+		if old == new:
+			return
+		msg = f"Follow-up status: {old or '—'} → {new or '—'}"
+		if reason:
+			msg += f" ({reason})"
+		self.add_comment("Info", _(msg))
+
+	def _apply_status(self, new_status, reason=None):
+		"""Set cached status + write a timeline entry if it changed."""
+		prev = (
+			frappe.db.get_value(self.doctype, self.name, "follow_up_status")
+			if self.name and not self.is_new()
+			else self.follow_up_status
+		)
+		if self.is_new():
+			self.follow_up_status = new_status
+		else:
+			self.db_set("follow_up_status", new_status)
+		self._log_status_change(prev, new_status, reason)
+
+	def _compute_follow_up_status(self):
+		"""
+		Derive status from DB state (single source of truth):
+		  - None when follow-up not required
+		  - 'Completed' if any submitted Follow Up exists
+		  - 'In Progress' if any Follow Up (draft/saved) exists
+		  - 'Open' if exactly one open ToDo exists
+		  - None otherwise
+		"""
+		if not cint(self.requires_follow_up) or not self.name:
+			return None
+
+		# 1) Any submitted follow-up? → Completed
+		if frappe.db.exists("Student Log Follow Up", {"student_log": self.name, "docstatus": 1}):
+			return "Completed"
+
+		# 2) Any follow-up saved/draft? → In Progress
+		if frappe.db.exists("Student Log Follow Up", {"student_log": self.name}):
+			return "In Progress"
+
+		# 3) Check assignment: single open assignee → Open
+		open_assignees = frappe.get_all(
+			"ToDo",
+			filters={"reference_type": "Student Log", "reference_name": self.name, "status": "Open"},
+			limit=2
+		)
+		return "Open" if len(open_assignees) == 1 else None
+
+	# ---------------------------------------------------------------------
+	# Lifecycle
+	# ---------------------------------------------------------------------
 	def validate(self):
-		# KEPT: your original gate, but mirror assignment → follow_up_person and status
-		if self.requires_follow_up:
+		"""
+		State machine:
+		- requires_follow_up = 0 ⇒ status NULL, clear assignees, clear follow_up_person/next_step
+		- requires_follow_up = 1 ⇒ next_step required; single open assignee expected by submit
+		"""
+		if cint(self.requires_follow_up):
 			if not self.next_step:
 				frappe.throw(_("Please select a next step."))
-			if not self.follow_up_status or self.follow_up_status == "Closed":
-				self.follow_up_status = "Open"
 
-			# Validate role from Next Step (uses 'associated_role' per your earlier code)
+			# Enforce 'frappe_role' from Next Step (if set) on chosen follow_up_person
 			expected_role = None
 			if self.next_step:
-				expected_role = frappe.get_value("Student Log Next Step", self.next_step, "associated_role")
+				expected_role = frappe.get_value("Student Log Next Step", self.next_step, "frappe_role")
 
-			# Mirror current assignee to follow_up_person (read-only in UI/list filters)
+			# If a person is chosen pre-submit, ensure ToDo reflects that (single open)
+			if self.follow_up_person:
+				opens = self._open_assignees()
+				if not opens:
+					self._assign_to(self.follow_up_person)
+				elif opens != [self.follow_up_person]:
+					self._unassign()
+					self._assign_to(self.follow_up_person)
+
+			# Mirror current open assignee → follow_up_person
 			current = self._current_assignee()
 			self.follow_up_person = current or self.follow_up_person
 
 			if expected_role and self.follow_up_person:
 				has_role = frappe.db.exists("Has Role", {"parent": self.follow_up_person, "role": expected_role})
 				if not has_role:
-					frappe.throw(_(
-						f"Follow-up person '{self.follow_up_person}' does not have required role '{expected_role}'."
-					))
+					frappe.throw(_(f"Follow-up person '{self.follow_up_person}' does not have required role '{expected_role}'."))
+
 		else:
-			# No follow-up required → clear fields and leave status blank
-			if self.follow_up_status:
-				frappe.throw(_("Follow-up status must be blank if no follow-up is required."))
+			# Follow-up not required → clear + close assignments; log transition if needed
+			had_status = self.follow_up_status
+			self._unassign()
 			self.follow_up_person = None
 			self.next_step = None
+			if had_status:
+				self._apply_status(None, reason="follow-up disabled")
+			else:
+				self.follow_up_status = None
+
+		# Derive & cache status (prevents client from fighting it)
+		derived = self._compute_follow_up_status()
+		self._apply_status(derived, reason="recomputed on validate")
 
 	def on_submit(self):
-		# NEW: enforce exactly-one native assignment when follow-up is required
-		if self.requires_follow_up:
-			open_assignees = self._open_assignees()
-			if len(open_assignees) == 0:
-				# create from chosen follow_up_person, if any; otherwise block
-				if not self.follow_up_person:
-					frappe.throw(_("Please assign a follow-up (use Assign Follow-Up) before submitting."))
-				self._assign_to(self.follow_up_person)
-				self.add_comment("Comment", _("Assigned to {0} for follow-up.").format(self._fullname(self.follow_up_person)))
-				self.follow_up_status = "Open"
-			elif len(open_assignees) > 1:
-				frappe.throw(_("Exactly one assignee is allowed. Please resolve multiple assignments."))
-			else:
-				# keep mirror
-				self.follow_up_person = open_assignees[0]
-				self.follow_up_status = "Open"
+		# Guard: exactly one assignee when follow-up is required
+		if cint(self.requires_follow_up):
+			opens = self._open_assignees()
+			if len(opens) != 1:
+				frappe.throw(_("Exactly one assignee is required before submit."))
+			self.follow_up_person = opens[0]
+			self._apply_status(self._compute_follow_up_status(), reason="on submit")
 
-	# ---------- helpers (NEW) ----------
+	# ---------------------------------------------------------------------
+	# Assignment helpers
+	# ---------------------------------------------------------------------
 	def _assign_to(self, user):
 		if not user:
 			return
@@ -84,7 +150,6 @@ class StudentLog(Document):
 				"due_date": due_date
 			})
 		else:
-			# fallback to native ToDo doc (same underlying model)
 			todo = frappe.new_doc("ToDo")
 			todo.update({
 				"owner": user,
@@ -178,13 +243,17 @@ def get_follow_up_role_from_next_step(next_step):
 	return frappe.get_value("Student Log Next Step", next_step, "frappe_role")
 
 
-# ---------- NEW: assign/reassign endpoint (policy: author OR Academic Admin OR current assignee) ----------
+# ---------- NEW: assign/reassign endpoint (policy: owner OR Academic Admin OR current assignee) ----------
 @frappe.whitelist()
 def assign_follow_up(log_name: str, user: str):
 	log = frappe.get_doc("Student Log", log_name)
 
-	is_admin = frappe.has_role("Academic Admin")
-	is_author = (frappe.session.user_fullname == (log.author_name or ""))
+	roles = set(frappe.get_roles())  # current session user
+	is_admin = "Academic Admin" in roles
+
+	# Server-side: treat the document owner as the canonical "author"
+	is_author = (frappe.session.user == log.owner)
+
 	current = frappe.db.get_value(
 		"ToDo",
 		{"reference_type": "Student Log", "reference_name": log.name, "status": "Open"},
@@ -246,34 +315,42 @@ def assign_follow_up(log_name: str, user: str):
 
 	# mirror + status + timeline
 	log.db_set("follow_up_person", user)
-	if log.requires_follow_up and (not log.follow_up_status or log.follow_up_status == "Closed"):
-		log.db_set("follow_up_status", "Open")
+	log._apply_status(log._compute_follow_up_status(), reason="(re)assignment")
 	log.add_comment("Comment", _("(Re)assigned to {0}").format(frappe.utils.get_fullname(user) or user))
 	return {"ok": True, "assigned_to": user}
 
 
-# ---------- FIX: restore your scheduler job ----------
+@frappe.whitelist()
+def finalize_close(log_name: str):
+	log = frappe.get_doc("Student Log", log_name)
+	if "Academic Admin" not in set(frappe.get_roles()):
+		frappe.throw(_("Only Academic Admin can finalize a log."))
+	log._apply_status("Closed", reason="manual finalize")
+	return {"ok": True}
+
+# ---------- FIX: scheduler: Completed → Closed ----------
 def auto_close_completed_logs():
 	"""
 	Daily job: move 'Completed' → 'Closed' after N days (N pulled from each log's auto_close_after_days).
-	NOTE: This matches your previous implementation so existing hooks keep working.
 	"""
 	today = frappe.utils.today()
 
-	# Find completed logs with auto-close setting
-	logs = frappe.get_all("Student Log", filters={
-		"follow_up_status": "Completed",
-		"auto_close_after_days": [">", 0],
-	}, fields=["name", "modified", "auto_close_after_days"])
+	logs = frappe.get_all(
+		"Student Log",
+		filters={"follow_up_status": "Completed", "auto_close_after_days": [">", 0]},
+		fields=["name", "modified", "auto_close_after_days"]
+	)
 
-	for log in logs:
-		last_updated = get_datetime(log.modified)
-		if date_diff(today, last_updated.date()) >= log.auto_close_after_days:
-			frappe.get_doc("Student Log", log.name).db_set("follow_up_status", "Closed")
+	for row in logs:
+		last_updated = get_datetime(row.modified)
+		if date_diff(today, last_updated.date()) >= row.auto_close_after_days:
+			doc = frappe.get_doc("Student Log", row.name)
+			doc._apply_status("Closed", reason=f"auto-closed after {row.auto_close_after_days} days of inactivity")
+			# Optional: keep your explicit info comment (nice audit trail)
 			frappe.get_doc({
 				"doctype": "Comment",
 				"comment_type": "Info",
 				"reference_doctype": "Student Log",
-				"reference_name": log.name,
-				"content": f"Auto-closed after {log.auto_close_after_days} days of inactivity."
+				"reference_name": row.name,
+				"content": f"Auto-closed after {row.auto_close_after_days} days of inactivity."
 			}).insert(ignore_permissions=True)
