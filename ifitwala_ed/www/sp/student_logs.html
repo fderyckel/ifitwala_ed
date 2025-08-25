@@ -1,5 +1,4 @@
 <!-- base_template: ifitwala_ed/templates/sp_base.html -->
-{% extends "ifitwala_ed/templates/sp_base.html" %}
 
 {% block page_content %}
 <div class="container my-4" id="student-logs-root" data-page-length="{{ page_length or 20 }}">
@@ -67,5 +66,13 @@
 		</div>
 	</div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+	if (window.ifitwala?.portal?.studentLogs?.init) {
+		window.ifitwala.portal.studentLogs.init();
+	}
+});
+</script> 
 {% endblock %}
 
