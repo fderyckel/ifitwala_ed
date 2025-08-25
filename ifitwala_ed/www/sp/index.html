@@ -40,7 +40,6 @@
 	<div class="d-flex align-items-center justify-content-between mb-2">
 		<h2 id="coursesLabel" class="h5 mb-0">My Courses</h2>
 
-		{# Academic Year filter #}
 		{% if academic_years and academic_years|length %}
 			<form method="get" class="d-inline-block">
 				<label for="year" class="visually-hidden">Academic Year</label>
@@ -57,15 +56,17 @@
 		{% if courses and courses|length %}
 			{% for c in courses %}
 				<div class="col-12 col-sm-6 col-lg-4">
-					<div class="card h-100 shadow-sm">
-						<div class="card-body d-flex align-items-start justify-content-between">
-							<div>
-								<h3 class="h6 mb-1">{{ c.course_name }}</h3>
-								<div class="text-muted small">{{ c.course }}</div>
-							</div>
-							<i class="bi bi-journal-text fs-4"></i>
+					<div class="card h-100 shadow-sm course-card">
+						<div class="ratio ratio-16x9">
+							<img src="{{ c.course_image }}" alt="{{ c.course_name }}" class="course-card-img" loading="lazy">
 						</div>
-						<a class="stretched-link" href="{{ c.href }}"></a>
+						<div class="card-body py-2">
+							<div class="d-flex align-items-center justify-content-between">
+								<div class="small text-muted">{{ c.course_group or 'Course Group' }}</div>
+								<div class="small font-monospace">{{ c.course }}</div>
+							</div>
+						</div>
+						<a class="stretched-link" href="{{ c.href }}" aria-label="Open {{ c.course_name }}"></a>
 					</div>
 				</div>
 			{% endfor %}
@@ -78,6 +79,7 @@
 		{% endif %}
 	</div>
 </section>
+
 
 
 <section aria-labelledby="moreLabel" class="mb-4">

@@ -45,3 +45,80 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
 
 /* Utilities */
 .min-vh-25 { min-height: 25vh; }
+
+/* ---- Dashboard: Courses -------------------------------------------- */
+/* Year dropdown sizing on the right */
+section[aria-labelledby="coursesLabel"] .form-select.form-select-sm {
+	min-width: 10rem;
+}
+
+/* Base card styling (position for stretched-link, soft border/radius) */
+#course-cards .card {
+	position: relative; /* ensures .stretched-link covers the card */
+	border: 1px solid rgba(0,0,0,.06);
+	border-radius: var(--ifw-card-radius, .75rem);
+	transition: transform .15s ease, box-shadow .15s ease, border-color .2s ease;
+}
+
+/* Scoped hover/focus effects to course cards */
+#course-cards .course-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 .35rem 1rem rgba(0,0,0,.08);
+	border-color: rgba(13,110,253,.25); /* hint of primary */
+}
+
+#course-cards .course-card:focus-within {
+	outline: 2px solid rgba(var(--bs-primary-rgb), .35);
+	outline-offset: 2px;
+}
+
+/* Media wrapper + image fit */
+#course-cards .ratio {
+	background: #f2f3f5;
+}
+
+#course-cards .course-card-img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover; /* neat crop without distortion */
+}
+
+/* Tight, elegant content spacing */
+#course-cards .card .card-body {
+	padding: .875rem .875rem;
+}
+
+/* Legacy heading polish (kept for other grids using <h3 class="h6">) */
+#course-cards h3.h6 {
+	font-family: var(--ifw-head-font);
+	font-weight: 600;
+	letter-spacing: .1px;
+	margin-bottom: .125rem;
+}
+
+/* Subtle text sizing for meta lines */
+#course-cards .text-muted.small {
+	font-size: .8rem;
+}
+
+/* Icon tone */
+#course-cards .bi {
+	opacity: .6;
+	transition: opacity .15s ease;
+}
+#course-cards .course-card:hover .bi {
+	opacity: .9;
+}
+
+/* Empty state look */
+#course-cards .alert {
+	border-radius: var(--ifw-card-radius, .75rem);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+	#course-cards .course-card,
+	#course-cards .bi {
+		transition: none;
+	}
+}

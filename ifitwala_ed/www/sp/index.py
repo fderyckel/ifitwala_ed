@@ -23,13 +23,18 @@ def _get_academic_years(student_name: str) -> list[str]:
 def _get_courses_for_year(student_name: str, academic_year: str) -> list[dict]:
 	"""
 	Courses for the student's Program Enrollment in a given academic year.
-	Skips rows explicitly marked Dropped.
+	Skips rows explicitly marked Dropped. Includes course image and group.
 	"""
 	rows = frappe.db.sql(
 		"""
-		select pec.course, pec.course_name
+		select
+			pec.course,
+			coalesce(pec.course_name, c.course_name) as course_name,
+			c.course_group,
+			c.course_image
 		from `tabProgram Enrollment Course` pec
 		join `tabProgram Enrollment` pe on pec.parent = pe.name
+		left join `tabCourse` c on c.name = pec.course
 		where pe.student = %s
 		  and pe.academic_year = %s
 		  and coalesce(pec.status, 'Enrolled') <> 'Dropped'
@@ -38,16 +43,20 @@ def _get_courses_for_year(student_name: str, academic_year: str) -> list[dict]:
 		(student_name, academic_year),
 		as_dict=True,
 	)
-	# Shape for cards
+
+	placeholder = "/assets/ifitwala_ed/images/course_placeholder.png"
 	return [
 		{
 			"course": r.get("course"),
 			"course_name": r.get("course_name") or r.get("course"),
+			"course_group": r.get("course_group"),
+			"course_image": r.get("course_image") or placeholder,
 			"href": f"/sp/course/{r.get('course')}",
 		}
 		for r in rows
 		if r.get("course")
 	]
+
 
 def get_context(context):
 	# Guests → main website
