@@ -88,6 +88,13 @@ section[aria-labelledby="coursesLabel"] .form-select.form-select-sm {
 	padding: .875rem .875rem;
 }
 
+/* Course card meta line (group only) */
+#course-cards .course-meta {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 /* Legacy heading polish (kept for other grids using <h3 class="h6">) */
 #course-cards h3.h6 {
 	font-family: var(--ifw-head-font);

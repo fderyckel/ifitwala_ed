@@ -58,17 +58,24 @@
 				<div class="col-12 col-sm-6 col-lg-4">
 					<div class="card h-100 shadow-sm course-card">
 						<div class="ratio ratio-16x9">
-							<img src="{{ c.course_image }}" alt="{{ c.course_name }}" class="course-card-img" loading="lazy">
+							<img
+								src="{{ c.course_image }}"
+								alt="{{ c.course_name }}"
+								class="course-card-img"
+								loading="lazy"
+								onerror="this.onerror=null; this.src='/assets/ifitwala_ed/images/course_placeholder.png';"
+							>
 						</div>
 						<div class="card-body py-2">
-							<div class="d-flex align-items-center justify-content-between">
-								<div class="small text-muted">{{ c.course_group or 'Course Group' }}</div>
-								<div class="small font-monospace">{{ c.course }}</div>
+							<div class="course-meta small text-muted">
+								{{ c.course_group or '—' }}
 							</div>
 						</div>
 						<a class="stretched-link" href="{{ c.href }}" aria-label="Open {{ c.course_name }}"></a>
 					</div>
 				</div>
+</div>
+
 			{% endfor %}
 		{% else %}
 			<div class="col-12">
