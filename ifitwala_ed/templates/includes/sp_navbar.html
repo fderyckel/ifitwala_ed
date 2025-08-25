@@ -30,8 +30,7 @@
 					<a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
 						<i class="bi bi-person-circle me-1"></i>
 						<span class="small">
-							{{ frappe.utils.get_fullname(frappe.session.user)
-								if frappe.session and frappe.session.user else "Guest" }}
+							{{ frappe.session.user if frappe.session and frappe.session.user else "Guest" }}
 						</span>
 					</a>
 					<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
