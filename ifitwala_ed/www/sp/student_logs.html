@@ -1,36 +1,33 @@
-{% extends "ifitwala_ed/templates/student_portal_base.html" %}
+<!-- base_template: ifitwala_ed/templates/sp_base.html -->
 
-{% block title %}{{ _(page_title or "My Student Logs") }}{% endblock %}
-
-{% block page_content %}
 <div class="container my-4" id="student-logs-root">
 	<div class="d-flex align-items-center justify-content-between mb-3">
 		<h3 class="mb-0">{{ _("My Student Logs") }}</h3>
 		<div class="text-muted small">{{ _("Student") }}: {{ student_name }}</div>
 	</div>
 
-	<!-- List -->
-	<div id="log-list" class="list-group">
+	<div id="log-list" class="list-group shadow-sm rounded-3">
 		{% if initial_logs and initial_logs|length %}
 			{% for row in initial_logs %}
 				<a href="javascript:void(0)"
-				   class="list-group-item list-group-item-action student-log-row"
+				   class="list-group-item list-group-item-action d-flex flex-column gap-1 student-log-row"
 				   data-log-name="{{ row.name }}"
 				   aria-label="{{ row.log_type }} {{ row.date }}">
-					<div class="d-flex w-100 justify-content-between">
-						<h6 class="mb-1">
-							<span class="me-2 text-secondary">{{ row.date }}</span>
-							{% if row.time %}<span class="me-2 text-secondary">{{ row.time }}</span>{% endif %}
-							<span class="fw-semibold">{{ row.log_type }}</span>
-						</h6>
+					<div class="d-flex w-100 align-items-center">
+						<span class="me-2 text-secondary small">{{ row.date }}</span>
+						{% if row.time %}<span class="me-2 text-secondary small">{{ row.time }}</span>{% endif %}
+						<strong class="me-2">{{ row.log_type }}</strong>
 						{% if row.follow_up_status %}
-							<span class="badge bg-secondary">{{ row.follow_up_status }}</span>
+							<span class="badge text-bg-secondary ms-auto">{{ row.follow_up_status }}</span>
 						{% endif %}
 					</div>
-					<div class="small text-muted">
-						{{ _("Author") }}: {{ row.author_name or "-" }}
-						{% if row.program %} • {{ _("Program") }}: {{ row.program }}{% endif %}
-						{% if row.academic_year %} • {{ _("Year") }}: {{ row.academic_year }}{% endif %}
+					<div class="d-flex w-100 align-items-center text-muted small">
+						<span class="me-2">{{ _("Author") }}: {{ row.author_name or "-" }}</span>
+						{% if row.program %}<span class="me-2">• {{ _("Program") }}: {{ row.program }}</span>{% endif %}
+						{% if row.academic_year %}<span class="me-2">• {{ _("Year") }}: {{ row.academic_year }}</span>{% endif %}
+						{% if row.name in unread_names %}
+							<span class="badge rounded-pill text-bg-primary ms-auto" data-new-pill>{{ _("NEW") }}</span>
+						{% endif %}
 					</div>
 				</a>
 			{% endfor %}
@@ -39,11 +36,8 @@
 		{% endif %}
 	</div>
 
-	<!-- Load more -->
 	<div class="text-center my-3">
-		<button id="load-more" class="btn btn-outline-primary">
-			{{ _("Load more") }}
-		</button>
+		<button id="load-more" class="btn btn-outline-primary">{{ _("Load more") }}</button>
 		<div id="load-spinner" class="spinner-border ms-2 d-none" role="status" aria-hidden="true"></div>
 	</div>
 </div>
@@ -71,148 +65,3 @@
 		</div>
 	</div>
 </div>
-
-<script>
-(() => {
-	// Config (avoid raw Jinja injection in JS expressions)
-	const PAGE_LEN = Number("{{ page_length or 20 }}") || 20;
-	let offset = document.querySelectorAll('.student-log-row').length;
-	let loading = false;
-
-	const listEl = document.getElementById('log-list');
-	const loadBtn = document.getElementById('load-more');
-	const spinner = document.getElementById('load-spinner');
-
-	// Bootstrap modal
-	const modalEl = document.getElementById('logModal');
-	let modal;
-	function ensureModal() {
-		if (!modal) {
-			modal = new bootstrap.Modal(modalEl);
-		}
-		return modal;
-	}
-
-	function setLoading(state) {
-		loading = state;
-		loadBtn.disabled = state;
-		spinner.classList.toggle('d-none', !state);
-	}
-
-	async function fetchMore() {
-		if (loading) return;
-		setLoading(true);
-		try {
-			const r = await frappe.call({
-				method: "ifitwala_ed.www.sp.student_logs.get_student_logs",
-				args: { start: offset, page_length: PAGE_LEN }
-			});
-			const rows = (r && r.message) ? r.message : [];
-			if (!rows.length) {
-				loadBtn.classList.add('d-none');
-				return;
-			}
-			offset += rows.length;
-			rows.forEach(addRow);
-		} catch (e) {
-			console.error(e);
-			frappe.msgprint({ title: __("Error"), message: __("Could not load more logs."), indicator: "red" });
-		} finally {
-			setLoading(false);
-		}
-	}
-
-	function addRow(row) {
-		const a = document.createElement('a');
-		a.href = "javascript:void(0)";
-		a.className = "list-group-item list-group-item-action student-log-row";
-		a.dataset.logName = row.name;
-
-		const statusBadge = row.follow_up_status
-			? '<span class="badge bg-secondary">' + frappe.utils.escape_html(row.follow_up_status) + '</span>'
-			: '';
-
-		a.innerHTML =
-			'<div class="d-flex w-100 justify-content-between">' +
-				'<h6 class="mb-1">' +
-					'<span class="me-2 text-secondary">' + frappe.datetime.str_to_user(row.date) + '</span>' +
-					(row.time ? '<span class="me-2 text-secondary">' + row.time + '</span>' : '') +
-					'<span class="fw-semibold">' + frappe.utils.escape_html(row.log_type || "") + '</span>' +
-				'</h6>' +
-				statusBadge +
-			'</div>' +
-			'<div class="small text-muted">' +
-				__( "Author" ) + ': ' + frappe.utils.escape_html(row.author_name || "-") +
-				(row.program ? ' • ' + __( "Program" ) + ': ' + frappe.utils.escape_html(row.program) : '') +
-				(row.academic_year ? ' • ' + __( "Year" ) + ': ' + frappe.utils.escape_html(row.academic_year) : '') +
-			'</div>';
-
-		a.addEventListener('click', () => openDetail(row.name));
-		listEl.appendChild(a);
-	}
-
-	async function openDetail(name) {
-		try {
-			const r = await frappe.call({
-				method: "ifitwala_ed.www.sp.student_logs.get_log_detail",
-				args: { name }
-			});
-			const d = r.message || {};
-
-			const parts = [];
-			if (d.date) parts.push(__( "Date" ) + ": " + frappe.datetime.str_to_user(d.date));
-			if (d.time) parts.push(__( "Time" ) + ": " + d.time);
-			if (d.author_name) parts.push(__( "Author" ) + ": " + d.author_name);
-			if (d.log_type) parts.push(__( "Type" ) + ": " + d.log_type);
-			if (d.program) parts.push(__( "Program" ) + ": " + d.program);
-			if (d.academic_year) parts.push(__( "Year" ) + ": " + d.academic_year);
-			document.getElementById('modal-meta').textContent = parts.join(" • ");
-
-			const badges = document.getElementById('modal-badges');
-			badges.innerHTML = "";
-			if (d.follow_up_status) {
-				const span = document.createElement('span');
-				span.className = "badge bg-secondary";
-				span.textContent = d.follow_up_status;
-				badges.appendChild(span);
-			}
-
-			document.getElementById('modal-log-html').innerHTML = d.log_html || "";
-
-			const refEl = document.getElementById('modal-reference');
-			if (d.reference_type && d.reference_name) {
-				refEl.classList.remove('d-none');
-				refEl.innerHTML =
-					__( "Reference" ) + ': ' +
-					'<span class="text-body">' + frappe.utils.escape_html(d.reference_type) + '</span>' +
-					'<span class="mx-1">/</span>' +
-					'<span class="text-body">' + frappe.utils.escape_html(d.reference_name) + '</span>';
-			} else {
-				refEl.classList.add('d-none');
-				refEl.innerHTML = "";
-			}
-
-			ensureModal().show();
-		} catch (e) {
-			console.error(e);
-			frappe.msgprint({ title: __("Error"), message: __("Could not load the log details."), indicator: "red" });
-		}
-	}
-
-	// Wire initial rows to click handlers
-	document.querySelectorAll('.student-log-row').forEach(el => {
-		el.addEventListener('click', () => openDetail(el.dataset.logName));
-	});
-
-	// Load more
-	loadBtn.addEventListener('click', fetchMore);
-
-	// Hide "Load more" if initial set is already smaller than PAGE_LEN
-	const INITIAL_COUNT = document.querySelectorAll('.student-log-row').length;
-	if (INITIAL_COUNT < PAGE_LEN) {
-		loadBtn.classList.add('d-none');
-	}
-})();
-</script>
-
-{% endblock %}
