@@ -74,24 +74,26 @@ def _list_fields():
 	]
 
 def _compute_unread_names(initial_names):
-	"""
-	Return list of names that are UNREAD for the current user using the generic
-	Portal Read Receipt table.
-	"""
 	if not initial_names:
 		return []
 
-	seen = frappe.db.get_values(
-		"Portal Read Receipt",
-		{
-			"user": frappe.session.user,
-			"reference_doctype": DT,
-			"reference_name": ["in", initial_names],
-		},
-		["reference_name"],
-		as_dict=True,
-	)
-	seen_set = {r["reference_name"] for r in seen}
+	chunk_size = 500
+	seen_set = set()
+
+	for i in range(0, len(initial_names), chunk_size):
+		chunk = initial_names[i:i + chunk_size]
+		placeholders = ", ".join(["%s"] * len(chunk))
+		sql = f"""
+			select reference_name
+			from `tabPortal Read Receipt`
+			where user=%s
+			  and reference_doctype=%s
+			  and reference_name in ({placeholders})
+		"""
+		params = [frappe.session.user, DT, *chunk]
+		rows = frappe.db.sql(sql, params, as_dict=False)
+		seen_set.update(x[0] for x in rows)
+
 	return [n for n in initial_names if n not in seen_set]
 
 def get_context(context):

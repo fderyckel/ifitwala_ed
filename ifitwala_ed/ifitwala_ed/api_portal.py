@@ -69,21 +69,16 @@ def get_log_detail_and_mark_read(name: str):
 
 @frappe.whitelist()
 def student_logs_get(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
-	fields = [
-		"name", "date", "time", "log_type", "follow_up_status",
-		"author_name", "program", "academic_year",
-	]
-	rows = frappe.db.get_values(
+	student = _resolve_current_student()
+	rows = frappe.get_list(
 		DT,
-		filters={"student": _resolve_current_student_name()},
-		fieldname=fields,
+		filters={"student": student.name, "visible_to_student": 1},
+		fields=_list_fields(),
 		order_by="date desc, time desc, creation desc",
-		as_dict=True,
-		limit_start=start,
-		limit_page_length=page_length,
+		start=int(start or 0),
+		page_length=int(page_length or PAGE_LENGTH_DEFAULT),
 	)
 	return {"rows": rows}
-a
 
 @frappe.whitelist()
 def student_log_detail_mark_read(name):
