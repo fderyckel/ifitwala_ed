@@ -9,7 +9,6 @@ PAGE_LENGTH_DEFAULT = 20
 DT = "Student Log"  # if you already have this constant, keep using it
 
 def _initial_page(student_name: str, start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
-	# fields your template/JS expects
 	fields = [
 		"name",
 		"date",
@@ -19,16 +18,18 @@ def _initial_page(student_name: str, start: int = 0, page_length: int = PAGE_LEN
 		"author_name",
 		"program",
 		"academic_year",
+		"reference_type",
+		"reference_name",
 	]
-	return frappe.db.get_values(
+	return frappe.get_list(
 		DT,
-		filters={"student": student_name},
-		fieldname=fields,
+		filters={"student": student_name, "visible_to_student": 1},
+		fields=fields,
 		order_by="date desc, time desc, creation desc",
-		as_dict=True,
-		limit_start=start,                 # <-- fix: NOT 'start'
-		limit_page_length=page_length,     # <-- fix: NOT 'page_length'
+		start=int(start or 0),
+		page_length=int(page_length or PAGE_LENGTH_DEFAULT),
 	)
+
 
 
 def _resolve_current_student():

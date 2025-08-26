@@ -35,14 +35,13 @@ def _filters(student_name: str, extra: Dict|None=None) -> Dict:
 @frappe.whitelist()
 def get_student_logs(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
 	student = _resolve_current_student()
-	rows = frappe.db.get_values(
+	rows = frappe.get_list(
 		DT,
-		_filters(student.name),
-		fieldname=_list_fields(),
-		as_dict=True,
+		filters={"student": student.name, "visible_to_student": 1},
+		fields=_list_fields(),
 		order_by="date desc, time desc, creation desc",
-		limit_start=int(start or 0),
-		limit_page_length=int(page_length or PAGE_LENGTH_DEFAULT),
+		start=int(start or 0),
+		page_length=int(page_length or PAGE_LENGTH_DEFAULT),
 	)
 	names = [r["name"] for r in rows]
 	unread = unread_names_for(frappe.session.user, DT, names)
