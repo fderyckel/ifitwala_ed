@@ -36,10 +36,13 @@ def _filters(student_name: str, extra: Dict|None=None) -> Dict:
 def get_student_logs(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
 	student = _resolve_current_student()
 	rows = frappe.db.get_values(
-		DT, _filters(student.name),
-		fieldname=_list_fields(), as_dict=True,
-		order_by="date DESC, time DESC, name DESC",
-		start=int(start or 0), page_length=int(page_length or PAGE_LENGTH_DEFAULT)
+		DT,
+		_filters(student.name),
+		fieldname=_list_fields(),
+		as_dict=True,
+		order_by="date desc, time desc, creation desc",
+		limit_start=int(start or 0),
+		limit_page_length=int(page_length or PAGE_LENGTH_DEFAULT),
 	)
 	names = [r["name"] for r in rows]
 	unread = unread_names_for(frappe.session.user, DT, names)
@@ -66,8 +69,22 @@ def get_log_detail_and_mark_read(name: str):
 	}
 
 @frappe.whitelist()
-def student_logs_get(start=0, page_length=PAGE_LENGTH_DEFAULT):
-    return get_student_logs(start=start, page_length=page_length)
+def student_logs_get(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
+	fields = [
+		"name", "date", "time", "log_type", "follow_up_status",
+		"author_name", "program", "academic_year",
+	]
+	rows = frappe.db.get_values(
+		DT,
+		filters={"student": _resolve_current_student_name()},
+		fieldname=fields,
+		order_by="date desc, time desc, creation desc",
+		as_dict=True,
+		limit_start=start,
+		limit_page_length=page_length,
+	)
+	return {"rows": rows}
+a
 
 @frappe.whitelist()
 def student_log_detail_mark_read(name):

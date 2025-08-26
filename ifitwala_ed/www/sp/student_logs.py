@@ -4,8 +4,32 @@
 import frappe
 from frappe import _
 
-DT = "Student Log"
+# constants / imports assumed above
 PAGE_LENGTH_DEFAULT = 20
+DT = "Student Log"  # if you already have this constant, keep using it
+
+def _initial_page(student_name: str, start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
+	# fields your template/JS expects
+	fields = [
+		"name",
+		"date",
+		"time",
+		"log_type",
+		"follow_up_status",
+		"author_name",
+		"program",
+		"academic_year",
+	]
+	return frappe.db.get_values(
+		DT,
+		filters={"student": student_name},
+		fieldname=fields,
+		order_by="date desc, time desc, creation desc",
+		as_dict=True,
+		limit_start=start,                 # <-- fix: NOT 'start'
+		limit_page_length=page_length,     # <-- fix: NOT 'page_length'
+	)
+
 
 def _resolve_current_student():
 	"""
@@ -47,17 +71,6 @@ def _list_fields():
 		"reference_type",
 		"reference_name",
 	]
-
-def _initial_page(student_name):
-	return frappe.db.get_values(
-		DT,
-		filters=_filters(student_name),
-		fieldname=_list_fields(),
-		as_dict=True,
-		order_by="date DESC, time DESC, name DESC",
-		start=0,
-		page_length=PAGE_LENGTH_DEFAULT,
-	)
 
 def _compute_unread_names(initial_names):
 	"""
