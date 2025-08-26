@@ -1,5 +1,6 @@
 <!-- base_template: ifitwala_ed/templates/sp_base.html -->
-{% block page_title %}My Student Logs{% endblock %}
+
+{% set page_title = _("My Student Logs") %}
 
 {% block content %}
 	<div class="container my-4" id="student-logs-root" data-page-length="{{ page_length or 20 }}">
