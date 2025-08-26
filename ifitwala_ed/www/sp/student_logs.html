@@ -69,3 +69,13 @@
 		</div>
 	</div>
 {% endblock %}
+
+{% block scripts %}
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+			if (window.ifitwala?.portal?.studentLogs?.init) {
+				window.ifitwala.portal.studentLogs.init();
+			}
+		});
+	</script>
+{% endblock %}
