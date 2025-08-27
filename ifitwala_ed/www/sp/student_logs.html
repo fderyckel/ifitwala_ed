@@ -1,6 +1,6 @@
 <!-- base_template: ifitwala_ed/templates/sp_base.html -->
 
-{% set page_title = _("My Student Logs") %}
+{% set page_title = "My Student Logs" %}
 
 {% block content %}
 	<div class="container my-4" id="student-logs-root" data-page-length="{{ page_length or 20 }}">
@@ -73,9 +73,18 @@
 {% block scripts %}
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
-			if (window.ifitwala?.portal?.studentLogs?.init) {
-				window.ifitwala.portal.studentLogs.init();
-			}
+			// Allow bundles to attach first; then init page module
+			setTimeout(function () {
+				try {
+					if (window.ifitwala?.portal?.studentLogs?.init) {
+						window.ifitwala.portal.studentLogs.init();
+					} else {
+						console.warn('studentLogs.init not found');
+					}
+				} catch (e) {
+					console.error('student logs init failed', e);
+				}
+			}, 0);
 		});
 	</script>
 {% endblock %}
