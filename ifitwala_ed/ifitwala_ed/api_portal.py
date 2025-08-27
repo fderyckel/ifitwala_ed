@@ -9,47 +9,22 @@ from ifitwala_ed.portal.utils.portal_receipts import mark_read, unread_names_for
 DT = "Student Log"
 PAGE_LENGTH_DEFAULT = 20
 
-def _resolve_current_student() -> Dict:
-    """
-    Resolve the currently logged-in user to a Student record.
-
-    This helper first matches on the user's primary email (via ``User.email``) against
-    ``Student.student_email``.  It then falls back to matching the User ID across
-    several other common fields to support various mapping conventions.
-
-    :returns: A ``frappe._dict`` with keys ``name`` and ``student_full_name``.
-    :raises frappe.PermissionError: if no matching Student is found or the user is not logged in.
-    """
-    user_id = frappe.session.user
-    # Block guests and administrators
-    if not user_id or user_id in ("Guest", "Administrator"):
+def _resolve_current_student():
+    user = frappe.session.user
+    if not user or user in ("Guest", "Administrator"):
         frappe.throw(_("You must be logged in as a student to view this page."), frappe.PermissionError)
 
-    # Determine user's primary email; fallback to user_id if missing
-    user_email = frappe.db.get_value("User", user_id, "email") or user_id
-
-    # Preferred mapping: Student.student_email = user's email
-    row = frappe.db.get_value(
+    # Student.student_email is the login; match on that
+    student = frappe.db.get_value(
         "Student",
-        {"student_email": user_email},
+        {"student_email": user},
         ["name", "student_full_name"],
         as_dict=True,
     )
-    if row:
-        return row
+    if not student:
+        frappe.throw(_("No Student record found for your account."), frappe.PermissionError)
 
-    # Fallback mapping using user_id across other possible fields
-    for cond in (
-        {"student_email": user_id},
-        {"email": user_id},
-        {"student_email_id": user_id},
-        {"user": user_id},
-    ):
-        row = frappe.db.get_value("Student", cond, ["name", "student_full_name"], as_dict=True)
-        if row:
-            return row
-
-    frappe.throw(_("No Student record found for your account."), frappe.PermissionError)
+    return student
 
 def _list_fields() -> List[str]:
 	return ["name","date","time","log_type","author_name","follow_up_status",

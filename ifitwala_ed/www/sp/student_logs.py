@@ -74,24 +74,22 @@ def _list_fields():
 	]
 
 def _initial_page(student_name: str, start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
-    """
-    Fetch the initial page of student logs for the given student name.
-
-    Uses `frappe.get_list` so pagination works on all Frappe versions.
-    """
-    fields = [
+    # List the fields the portal expects
+    fieldnames = [
         "name", "date", "time", "log_type", "follow_up_status",
         "author_name", "program", "academic_year",
         "reference_type", "reference_name",
     ]
-    return frappe.get_list(
-        DT,
-        filters=_filters(student_name),
-        fields=fields,
-        order_by="date DESC, time DESC, name DESC",
-        start=int(start or 0),
-        page_length=int(page_length or PAGE_LENGTH_DEFAULT),
-    )
+    cols = ", ".join(f"`{fn}`" for fn in fieldnames)
+    sql = f"""
+        SELECT {cols}
+        FROM `tabStudent Log`
+        WHERE student = %(student)s AND visible_to_student = 1
+        ORDER BY date DESC, time DESC, name DESC
+        LIMIT %(limit)s OFFSET %(offset)s
+    """
+    params = {"student": student_name, "limit": page_length, "offset": start}
+    return frappe.db.sql(sql, params, as_dict=True)
 
 
 def _compute_unread_names(initial_names):
