@@ -8,6 +8,7 @@
 	<meta name="csrf-token" content="{{ csrf_token }}">
 	<title>{% block page_title %}{{ page_title }}{% endblock %}</title>
 
+	<link rel="icon" href="/assets/ifitwala_ed/favicon.ico">
 	{{ include_style('/assets/ifitwala_ed/dist/student_portal.bundle.css') }}
 
 	{% block styles %}{% endblock %}
@@ -135,6 +136,10 @@
 		</div>
 	</div>
 
+	{# Load Frappe website globals before our portal bundle, so window.frappe is ready #}
+	{{ include_script('/assets/frappe/js/frappe-web.bundle.js') }}
+
+	{# Student portal bundle (includes Bootstrap JS + page modules) #}
 	{{ include_script('/assets/ifitwala_ed/dist/student_portal.bundle.js') }}
 
 	{% block scripts %}{% endblock %}
