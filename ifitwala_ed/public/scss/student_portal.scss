@@ -4,10 +4,12 @@
 /* ---- Bootstrap core ------------------------------------------------ */
 @import "../../../node_modules/bootstrap/scss/bootstrap";
 
-/* ---- Bootstrap Icons (CSS; fonts copied by Rollup below) ----------- */
-@import "../../../node_modules/bootstrap-icons/font/bootstrap-icons.css";
+/* ---- Bootstrap Icons (SCSS, with absolute font path) --------------- */
+/* Fonts are copied to ifitwala_ed/public/fonts → /assets/ifitwala_ed/fonts/ */
+$bootstrap-icons-font-dir: "/assets/ifitwala_ed/fonts/";
+@import "../../../node_modules/bootstrap-icons/bootstrap-icons";
 
-
+/* ---- Feature styles ------------------------------------------------ */
 @import "./student_portal_student_logs.scss";
 
 /* ---- Theme tokens -------------------------------------------------- */
@@ -132,4 +134,8 @@ section[aria-labelledby="coursesLabel"] .form-select.form-select-sm {
 		transition: none;
 	}
 }
+
+/* ---- Logs page specifics (from partial) ---------------------------- */
+/* see: _student_portal_student_logs.scss */
+
 

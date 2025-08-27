@@ -2,6 +2,63 @@
 // Copyright (c) 2025
 // Purpose: Student Logs portal page logic (list, load more, modal, mark-as-read)
 
+// ---- SHIM: make this file work even if Frappe globals aren't ready yet ----
+(function () {
+	if (window.frappe && typeof window.__ === 'function') return;
+
+	function getCSRF() {
+		const m = document.cookie.match(/csrftoken=([^;]+)/);
+		return m ? m[1] : '';
+	}
+
+	async function http(method, args = {}, verb = 'GET') {
+		const base = '/api/method/' + method;
+		if ((verb || 'GET').toUpperCase() === 'GET') {
+			const qs = new URLSearchParams(args).toString();
+			const r = await fetch(qs ? `${base}?${qs}` : base, { method: 'GET' });
+			const d = await r.json();
+			if (!r.ok || d.exc) throw new Error(d._server_messages || d.exc || 'Request failed');
+			return { message: d.message ?? d };
+		} else {
+			const r = await fetch(base, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-Frappe-CSRF-Token': getCSRF()
+				},
+				body: JSON.stringify(args)
+			});
+			const d = await r.json();
+			if (!r.ok || d.exc) throw new Error(d._server_messages || d.exc || 'Request failed');
+			return { message: d.message ?? d };
+		}
+	}
+
+	window.frappe = window.frappe || {
+		call: ({ method, args, type }) => http(method, args, type),
+		utils: {
+			escape_html: s =>
+				String(s ?? '').replace(/[&<>"']/g, c =>
+					({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+		},
+		datetime: {
+			// simple passthrough; server returns ISO/date strings already formatted enough for portal
+			str_to_user: s => s
+		},
+		msgprint: ({ title, message, indicator }) => {
+			console[(indicator === 'red' ? 'error' : 'warn')](title || 'Notice', message || '');
+		}
+	};
+
+	// translation no-op if Frappe isn't loaded yet
+	if (typeof window.__ !== 'function') {
+		window.__ = s => s;
+	}
+})();
+
+// ----------------------------------------------------------------------------
+// Student Logs portal page logic (list, load more, modal, mark-as-read)
+// ----------------------------------------------------------------------------
 (function () {
 	'use strict';
 
@@ -58,7 +115,11 @@
 	// -------------------------------
 	function ensureModal() {
 		if (!modal) {
-			// Bootstrap 5 modal
+			// Guard: Bootstrap bundle might not be present on some routes
+			if (!window.bootstrap?.Modal) {
+				console.warn('Bootstrap JS not available; modal will not open.');
+				return null;
+			}
 			modal = new bootstrap.Modal(modalEl);
 		}
 		return modal;
@@ -193,7 +254,8 @@
 			const pill = rowEl?.querySelector('[data-new-pill]');
 			if (pill) pill.remove();
 
-			ensureModal().show();
+			const m = ensureModal();
+			if (m) m.show();
 		} catch (e) {
 			console.error(e);
 			frappe.msgprint({
