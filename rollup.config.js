@@ -1,17 +1,16 @@
 /**
- * Rollup build – Ifitwala Ed
+ * Rollup build – Ifitwala Ed
  *
- * ── Public‑facing assets (heavy traffic) ──────────────────────────────
- * website.js  + website.css  → public/website/website.min.{js|css}
- * school.js   + school.css   → public/website/school.min.{js|css}
+ * ── Public-facing assets (heavy traffic) ──────────────────────────────
+ * website.js  + website.css  → public/website/website.min.{js|css}
+ * school.js   + school.css   → public/website/school.min.{js|css}
  *
- * ── Student‑portal bundle  (authenticated traffic, cache‑busted) ─────
- * index.js (+ imports)       → public/dist/student_portal.<hash>.{js|css}
+ * ── Student-portal bundle  (authenticated traffic, cache-busted) ─────
+ * index.js (+ imports)       → public/dist/student_portal.<hash>.{js|css}
  *
- * ── Desk‑only hierarchy chart (rarely used, lazy‑loaded) ─────────────
- * hierarchy_chart.scss       → public/dist/hierarchy_chart.<hash>.css
+ * ── Desk-only hierarchy chart (rarely used, lazy-loaded) ─────────────
+ * hierarchy_chart.scss       → public/dist/hierarchy_chart.<hash>.css
  */
-
 
 const path = require('path');
 const fs = require('fs');
@@ -22,6 +21,9 @@ const postcss = require('rollup-plugin-postcss');
 const terser = require('@rollup/plugin-terser');
 const { createHash } = require('crypto');
 const copy = require('rollup-plugin-copy');
+
+/* NEW: inline CSS @import (needed for bootstrap-icons.css) */
+const postcssImport = require('postcss-import');
 
 const projectRootDir = path.resolve(__dirname);
 const dist = 'ifitwala_ed/public/dist';
@@ -44,20 +46,21 @@ const basePlugins = [
 
 /* ─── Build matrix ─────────────────────────────────────────────────── */
 module.exports = [
-		// ── js for full calendar and other utils ──	
+	// ── js for full calendar and other utils ──
 	{
 		input: "ifitwala_ed/public/js/ifitwala_ed.bundle.js",
 		output: {
 			file: `${dist}/ifitwala_ed.bundle.js`,
 			format: "iife",
 			sourcemap: true,
-		}, 
+		},
 		plugins: [
 			...basePlugins,
 			terser(),
 		],
 	},
-	// ── css for full calendar ──	
+
+	// ── css for full calendar ──
 	{
 		input: "ifitwala_ed/public/scss/fullcalendar.scss",
 		output: { dir: '.' },
@@ -73,7 +76,8 @@ module.exports = [
 				},
 			}),
 		],
-	},	
+	},
+
 	// ── Bootstrap 5: Student Group + Attendance styles ──
 	{
 		input: "ifitwala_ed/public/scss/student_group_cards.scss",
@@ -87,22 +91,24 @@ module.exports = [
 				minimize: true,
 				plugins: [
 					require("autoprefixer"),
-					require("cssnano")({preset: ["default", { normalizeUnicode: false }]}),
-				], 
+					require("cssnano")({ preset: ["default", { normalizeUnicode: false }] }),
+				],
 				preprocessor: async (content, id) => {
 					const sass = await import('sass');
 					const result = await sass.compileAsync(id);
 					return { code: result.css };
-				}, 
-			}), 
+				},
+			}),
 			copy({
 				targets: [
 					{
 						src: 'node_modules/bootstrap-icons/font/fonts/*',
-						dest: 'ifitwala_ed/public/dist/fonts'
-					}, 
-					{ src: 'node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
-      			dest: 'ifitwala_ed/public/dist' 
+						/* CHANGED: put fonts in public/fonts so ../fonts resolves from dist/*.css */
+						dest: 'ifitwala_ed/public/fonts'
+					},
+					{
+						src: 'node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
+						dest: 'ifitwala_ed/public/dist'
 					}
 				],
 				verbose: true,
@@ -123,6 +129,7 @@ module.exports = [
 			}),
 		],
 	},
+
 	// ── Website JS ──
 	{
 		input: `${websiteSrc}/website.js`,
@@ -171,7 +178,7 @@ module.exports = [
 		],
 	},
 
-	// ── Student‑portal bundle (hashed) ──
+	// ── Student-portal bundle (hashed) ──
 	{
 		input: `${portalSrc}/index.js`,
 		output: {
@@ -183,18 +190,23 @@ module.exports = [
 			postcss({
 				extract: path.resolve(dist, `student_portal.${portalHash}.bundle.css`),
 				minimize: true,
-				plugins: [require('autoprefixer')],
+				plugins: [
+					/* NEW: inline @import (bootstrap-icons.css) into the output */
+					postcssImport,
+					require('autoprefixer')
+				],
 				preprocessor: async (content, id) => {
 					const sass = await import('sass');
 					const result = await sass.compileAsync(id);
 					return { code: result.css };
 				},
-			}), 
+			}),
 			copy({
 				targets: [
 					{
 						src: 'node_modules/bootstrap-icons/font/fonts/*',
-						dest: 'ifitwala_ed/public/dist/fonts'
+						/* CHANGED: match ../fonts from dist CSS */
+						dest: 'ifitwala_ed/public/fonts'
 					}
 				],
 				verbose: true,
@@ -205,18 +217,18 @@ module.exports = [
 			{
 				// write stable (non-hashed) aliases so templates don't need to chase hashes
 				name: 'alias-stable-output',
-				writeBundle() { 
-					const fs = require('fs'); 
-					const p = 'ifitwala_ed/public/dist'; 
-					fs.copyFileSync( 
-						`${p}/student_portal.${portalHash}.bundle.css`, 
-						`${p}/student_portal.bundle.css` 
-					); 
-					fs.copyFileSync( 
-						`${p}/student_portal.${portalHash}.bundle.js`, 
-						`${p}/student_portal.bundle.js` 
-					); 
-				} 
+				writeBundle() {
+					const fs = require('fs');
+					const p = 'ifitwala_ed/public/dist';
+					fs.copyFileSync(
+						`${p}/student_portal.${portalHash}.bundle.css`,
+						`${p}/student_portal.bundle.css`
+					);
+					fs.copyFileSync(
+						`${p}/student_portal.${portalHash}.bundle.js`,
+						`${p}/student_portal.bundle.js`
+					);
+				}
 			}
 		],
 	},
