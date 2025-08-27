@@ -66,29 +66,16 @@ def _filters(student_name: str, extra: Dict|None=None) -> Dict:
 
 @frappe.whitelist()
 def get_student_logs(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
-    """
-    Retrieve a paginated list of student logs for the current portal user.
-
-    This helper resolves the currently logged-in student (via their email) and then
-    fetches log records using ``frappe.get_list`` for efficient pagination.  It
-    also returns a list of unread log names by consulting the Portal Read Receipt table.
-
-    :param start: Index of the first record to return (0-based)
-    :param page_length: Maximum number of records to return
-    :returns: A dict with keys `rows` and `unread`
-    """
     student = _resolve_current_student()
-    # Use get_list for paginated queries (supports start / page_length)
     rows = frappe.get_list(
         DT,
         filters={"student": student.name, "visible_to_student": 1},
         fields=_list_fields(),
-        order_by="date desc, time desc, creation desc",
+        order_by="date DESC, time DESC, name DESC",
         start=int(start or 0),
         page_length=int(page_length or PAGE_LENGTH_DEFAULT),
     )
-    # Determine which of these logs are unread for the current user
-    names = [r.get("name") for r in rows]
+    names = [r["name"] for r in rows]
     unread = unread_names_for(frappe.session.user, DT, names)
     return {"rows": rows, "unread": unread}
 
@@ -113,8 +100,17 @@ def get_log_detail_and_mark_read(name: str):
 	}
 
 @frappe.whitelist()
-def student_logs_get(start=0, page_length=PAGE_LENGTH_DEFAULT):
-    return get_student_logs(start=start, page_length=page_length)
+def student_logs_get(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
+    student = _resolve_current_student()
+    rows = frappe.get_list(
+        DT,
+        filters={"student": student.name, "visible_to_student": 1},
+        fields=_list_fields(),
+        order_by="date DESC, time DESC, name DESC",
+        start=int(start or 0),
+        page_length=int(page_length or PAGE_LENGTH_DEFAULT),
+    )
+    return {"rows": rows}
 
 @frappe.whitelist()
 def student_log_detail_mark_read(name):

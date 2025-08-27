@@ -77,24 +77,22 @@ def _initial_page(student_name: str, start: int = 0, page_length: int = PAGE_LEN
     """
     Fetch the initial page of student logs for the given student name.
 
-    This helper uses `limit_start` and `limit_page_length` instead of the old
-    `start`/`page_length` parameters when calling `frappe.db.get_values`. It
-    ensures that results are returned as dictionaries for easier templating.
-
-    :param student_name: Name of the student whose logs should be fetched
-    :param start: Starting index (0-based) for pagination
-    :param page_length: Maximum number of records to return
-    :returns: A list of dictionaries representing log records
+    Uses `frappe.get_list` so pagination works on all Frappe versions.
     """
-    return frappe.db.get_values(
+    fields = [
+        "name", "date", "time", "log_type", "follow_up_status",
+        "author_name", "program", "academic_year",
+        "reference_type", "reference_name",
+    ]
+    return frappe.get_list(
         DT,
         filters=_filters(student_name),
-        fieldname=_list_fields(),
-        as_dict=True,
+        fields=fields,
         order_by="date DESC, time DESC, name DESC",
-        limit_start=start,
-        limit_page_length=page_length,
+        start=int(start or 0),
+        page_length=int(page_length or PAGE_LENGTH_DEFAULT),
     )
+
 
 def _compute_unread_names(initial_names):
 	"""
