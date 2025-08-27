@@ -7,7 +7,7 @@
 /* ---- Bootstrap Icons (SCSS, with absolute font path) --------------- */
 /* Fonts are copied to ifitwala_ed/public/fonts → /assets/ifitwala_ed/fonts/ */
 $bootstrap-icons-font-dir: "/assets/ifitwala_ed/fonts/";
-@import "../../../node_modules/bootstrap-icons/bootstrap-icons";
+@import "../../../node_modules/bootstrap-icons/font/bootstrap-icons";
 
 /* ---- Feature styles ------------------------------------------------ */
 @import "./student_portal_student_logs.scss";
@@ -137,5 +137,3 @@ section[aria-labelledby="coursesLabel"] .form-select.form-select-sm {
 
 /* ---- Logs page specifics (from partial) ---------------------------- */
 /* see: _student_portal_student_logs.scss */
-
-
