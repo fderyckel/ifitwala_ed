@@ -128,6 +128,7 @@ def get_context(context):
 	first_page = _initial_page(student.name)
 	context.initial_logs = first_page
 	context.initial_count = len(first_page)
+	context.current_year = now_datetime().year
 
 	initial_names = [r["name"] for r in first_page]
 	context.unread_names = _compute_unread_names(initial_names)

@@ -6,7 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, date_diff, cint
 
-# NEW: try native assign/remove (fallback to ToDo-close if unavailable)
+# Try native assign/remove; fall back to direct ToDo updates if unavailable
 try:
 	from frappe.desk.form.assign_to import add as assign_add, remove as assign_remove
 except Exception:
@@ -16,28 +16,64 @@ except Exception:
 
 class StudentLog(Document):
 	# ---------------------------------------------------------------------
-	# Timeline / status helpers
+	# Status & timeline helpers
 	# ---------------------------------------------------------------------
-	def _log_status_change(self, old, new, reason=None):
+	def _compose_status_change(self, old, new, reason=None):
 		if old == new:
-			return
+			return None
 		msg = f"Follow-up status: {old or '—'} → {new or '—'}"
 		if reason:
 			msg += f" ({reason})"
-		self.add_comment("Info", _(msg))
+		return msg
 
-	def _apply_status(self, new_status, reason=None):
-		"""Set cached status + write a timeline entry if it changed."""
+	def _cache_status_comment(self, msg):
+		"""Cache one status-change message during validate; flush after save."""
+		if msg:
+			self.flags._status_change_msg = msg
+
+	def _write_cached_status_comment_if_any(self):
+		"""Flush the cached message now that the doc exists in DB."""
+		msg = getattr(self.flags, "_status_change_msg", None)
+		if not msg:
+			return
+		try:
+			self.add_comment("Info", _(msg))
+		finally:
+			self.flags._status_change_msg = None  # prevent duplicates
+
+	def _apply_status(self, new_status, reason=None, write_immediately=False):
+		"""
+		Set the status immediately (in-memory for new docs, DB for existing).
+		- During normal form saves (validate/submit), pass write_immediately=False
+		  so the comment is cached and emitted in after_save (safe for new docs).
+		- From whitelisted endpoints (assign/reassign/finalize/scheduler), pass
+		  write_immediately=True to emit the timeline comment immediately (the
+		  doc already exists; no race).
+		"""
 		prev = (
 			frappe.db.get_value(self.doctype, self.name, "follow_up_status")
 			if self.name and not self.is_new()
 			else self.follow_up_status
 		)
+
 		if self.is_new():
 			self.follow_up_status = new_status
 		else:
 			self.db_set("follow_up_status", new_status)
-		self._log_status_change(prev, new_status, reason)
+
+		msg = self._compose_status_change(prev, new_status, reason)
+		if not msg:
+			return
+
+		if write_immediately and not self.is_new():
+			# Safe path for calls outside the save lifecycle (doc already exists)
+			try:
+				self.add_comment("Info", _(msg))
+			except Exception:
+				pass
+		else:
+			# We're in validate/save flow → defer until after_insert/after_save
+			self._cache_status_comment(msg)
 
 	def _compute_follow_up_status(self):
 		"""
@@ -110,13 +146,13 @@ class StudentLog(Document):
 			self.follow_up_person = None
 			self.next_step = None
 			if had_status:
-				self._apply_status(None, reason="follow-up disabled")
+				self._apply_status(None, reason="follow-up disabled", write_immediately=False)
 			else:
 				self.follow_up_status = None
 
 		# Derive & cache status (prevents client from fighting it)
 		derived = self._compute_follow_up_status()
-		self._apply_status(derived, reason="recomputed on validate")
+		self._apply_status(derived, reason="recomputed on validate", write_immediately=False)
 
 	def on_submit(self):
 		# Guard: exactly one assignee when follow-up is required
@@ -125,7 +161,15 @@ class StudentLog(Document):
 			if len(opens) != 1:
 				frappe.throw(_("Exactly one assignee is required before submit."))
 			self.follow_up_person = opens[0]
-			self._apply_status(self._compute_follow_up_status(), reason="on submit")
+			self._apply_status(self._compute_follow_up_status(), reason="on submit", write_immediately=False)
+
+	def after_insert(self):
+		# First save of a new doc: safe to write the deferred comment now
+		self._write_cached_status_comment_if_any()
+
+	def after_save(self):
+		# Handle updates as well (idempotent via clearing the flag)
+		self._write_cached_status_comment_if_any()
 
 	# ---------------------------------------------------------------------
 	# Assignment helpers
@@ -243,15 +287,13 @@ def get_follow_up_role_from_next_step(next_step):
 	return frappe.get_value("Student Log Next Step", next_step, "frappe_role")
 
 
-# ---------- NEW: assign/reassign endpoint (policy: owner OR Academic Admin OR current assignee) ----------
+# ---------- assign/reassign endpoint (owner OR Academic Admin OR current assignee) ----------
 @frappe.whitelist()
 def assign_follow_up(log_name: str, user: str):
 	log = frappe.get_doc("Student Log", log_name)
 
 	roles = set(frappe.get_roles())  # current session user
 	is_admin = "Academic Admin" in roles
-
-	# Server-side: treat the document owner as the canonical "author"
 	is_author = (frappe.session.user == log.owner)
 
 	current = frappe.db.get_value(
@@ -313,9 +355,9 @@ def assign_follow_up(log_name: str, user: str):
 		})
 		todo.insert(ignore_permissions=True)
 
-	# mirror + status + timeline
+	# mirror + status + timeline (write immediately; doc exists)
 	log.db_set("follow_up_person", user)
-	log._apply_status(log._compute_follow_up_status(), reason="(re)assignment")
+	log._apply_status(log._compute_follow_up_status(), reason="(re)assignment", write_immediately=True)
 	log.add_comment("Comment", _("(Re)assigned to {0}").format(frappe.utils.get_fullname(user) or user))
 	return {"ok": True, "assigned_to": user}
 
@@ -324,7 +366,7 @@ def assign_follow_up(log_name: str, user: str):
 def finalize_close(log_name: str):
 	log = frappe.get_doc("Student Log", log_name)
 
-	roles = set(frappe.get_roles())  # current session user
+	roles = set(frappe.get_roles())
 	is_admin = "Academic Admin" in roles
 	is_owner = (frappe.session.user == log.owner)
 
@@ -339,11 +381,12 @@ def finalize_close(log_name: str):
 	if (log.follow_up_status or "").lower() == "closed":
 		return {"ok": True, "status": "Closed"}
 
-	# Apply status via helper so the timeline gets a proper entry
-	log._apply_status("Closed", reason="manual finalize")
+	# Apply status + timeline immediately (outside save lifecycle)
+	log._apply_status("Closed", reason="manual finalize", write_immediately=True)
 	return {"ok": True, "status": "Closed"}
 
-# ---------- FIX: scheduler: Completed → Closed ----------
+
+# ---------- scheduler: Completed → Closed ----------
 def auto_close_completed_logs():
 	"""
 	Daily job: move 'Completed' → 'Closed' after N days (N pulled from each log's auto_close_after_days).
@@ -360,12 +403,15 @@ def auto_close_completed_logs():
 		last_updated = get_datetime(row.modified)
 		if date_diff(today, last_updated.date()) >= row.auto_close_after_days:
 			doc = frappe.get_doc("Student Log", row.name)
-			doc._apply_status("Closed", reason=f"auto-closed after {row.auto_close_after_days} days of inactivity")
-			# Optional: keep your explicit info comment (nice audit trail)
-			frappe.get_doc({
-				"doctype": "Comment",
-				"comment_type": "Info",
-				"reference_doctype": "Student Log",
-				"reference_name": row.name,
-				"content": f"Auto-closed after {row.auto_close_after_days} days of inactivity."
-			}).insert(ignore_permissions=True)
+			doc._apply_status("Closed", reason=f"auto-closed after {row.auto_close_after_days} days of inactivity", write_immediately=True)
+			# Optional extra audit note
+			try:
+				frappe.get_doc({
+					"doctype": "Comment",
+					"comment_type": "Info",
+					"reference_doctype": "Student Log",
+					"reference_name": row.name,
+					"content": f"Auto-closed after {row.auto_close_after_days} days of inactivity."
+				}).insert(ignore_permissions=True)
+			except Exception:
+				pass
