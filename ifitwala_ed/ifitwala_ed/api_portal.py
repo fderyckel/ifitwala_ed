@@ -4,7 +4,7 @@
 from typing import Dict, List
 import frappe
 from frappe import _
-from ifitwala_ed.portal.utils.portal_receipts import mark_read, unread_names_for
+from ifitwala_ed.utilities.portal_utils import mark_read, unread_names_for
 
 DT = "Student Log"
 PAGE_LENGTH_DEFAULT = 20
