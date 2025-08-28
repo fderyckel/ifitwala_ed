@@ -122,7 +122,7 @@
 		setLoading(true);
 		try {
 			const r = await frappe.call({
-				method: 'ifitwala_ed.api_portal.student_logs_get',
+				method: 'ifitwala_ed.ifitwala_ed.api_portal.student_logs_get',
 				args: { start: offset, page_length: pageLen },
 				type: 'POST'
 			});
@@ -189,7 +189,7 @@
 		if (!name) return;
 		try {
 			const r = await frappe.call({
-				method: 'ifitwala_ed.api_portal.student_log_detail_mark_read',
+				method: 'ifitwala_ed.ifitwala_ed.api_portal.student_log_detail_mark_read',
 				args: { name },
 				type: 'POST'
 			});
