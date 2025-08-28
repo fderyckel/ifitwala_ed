@@ -2,6 +2,9 @@
 // Copyright (c) 2025
 // Purpose: Student Logs portal page logic (list, load more, modal, mark-as-read)
 
+import { Modal } from 'bootstrap';
+
+
 // ---- SHIM: make this file work even if Frappe globals aren't ready yet ----
 (function () {
 	if (window.frappe && typeof window.__ === 'function') return;
@@ -101,14 +104,10 @@
 	}
 
 	function ensureModal() {
-		if (!modal) {
-			if (!window.bootstrap?.Modal) {
-				console.warn('Bootstrap JS not available; modal will not open.');
-				return null;
+			if (!modal) {
+					modal = new Modal(modalEl);
 			}
-			modal = new bootstrap.Modal(modalEl);
-		}
-		return modal;
+			return modal;
 	}
 
 	function setLoading(state) {
