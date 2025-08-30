@@ -61,11 +61,14 @@ def get_dashboard_data(filters=None):
 		)
 
 		logs_by_cohort = q(
-			"SELECT pe.cohort AS label, COUNT(sl.name) AS value "
-			"FROM `tabStudent Log` sl "
-			"LEFT JOIN `tabProgram Enrollment` pe ON sl.student = pe.student "
-			"WHERE {w} GROUP BY pe.cohort ORDER BY value DESC"
+				"SELECT pe.cohort AS label, COUNT(sl.name) AS value "
+				"FROM `tabStudent Log` sl "
+				"LEFT JOIN `tabProgram Enrollment` pe "
+				"  ON pe.student = sl.student "
+				" AND pe.academic_year = sl.academic_year "
+				"WHERE {w} GROUP BY pe.cohort ORDER BY value DESC"
 		)
+
 
 		logs_by_program = q(
 			"SELECT sl.program AS label, COUNT(sl.name) AS value "
