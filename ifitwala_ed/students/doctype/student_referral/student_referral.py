@@ -5,19 +5,38 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, nowdate, now_datetime, add_to_date, cint
-from frappe.desk.form.assign_to import add as assign_add, remove as assign_remove
+from frappe.desk.form.assign_to import add as assign_add  # native ToDo created automatically
 
-CASE_MANAGER_TAG = "[CASE_MANAGER]"   # prefix in ToDo.description to distinguish
-CASE_TASK_TAG = "[CASE_TASK]"
+# ─────────────────────────────────────────────────────────────────────────────
+# Constants
+CASE_MANAGER_TAG = "[CASE_MANAGER]"   # prefix in ToDo.description for manager ToDo
+CASE_TASK_TAG = "[CASE_TASK]"         # reserved for task-style ToDos (Step 2)
+SETTINGS_DTYPE = "Referral Settings"
 ALLOWED_SUBMIT_ROLES_FOR_MANDATED = {"Counselor", "Academic Admin", "System Manager"}
+# ─────────────────────────────────────────────────────────────────────────────
+
 
 class StudentReferral(Document):
+	# ── Lifecycle ────────────────────────────────────────────────────────────
+	def after_insert(self):
+		# Default referrer for staff-origin referrals
+		if self.referral_source == "Staff" and not self.referrer:
+			self.db_set("referrer", frappe.session.user, update_modified=False)
 
 	def validate(self):
-		# Soft consistency checks allowed in draft
-		if cint(self.requires_immediate_action):
-			if self.severity not in ("High", "Critical"):
-				frappe.throw(_("When 'Requires Immediate Action' is checked, severity must be High or Critical."))
+		# Gate who may submit certain referral sources (light server check)
+		# (UI/Portal should also gate; this is a last-line guard)
+		source = (self.referral_source or "").strip()
+		if source == "Student (Self)":
+			if not _get_setting_int("allow_student_self_referral", 1):
+				frappe.throw(_("Student self-referrals are disabled by settings."))
+		if source == "Guardian":
+			if not _get_setting_int("allow_guardian_referral", 1):
+				frappe.throw(_("Guardian referrals are disabled by settings."))
+
+		# Consistency for immediate action / mandated reporting
+		if cint(self.requires_immediate_action) and self.severity not in ("High", "Critical"):
+			frappe.throw(_("When 'Requires Immediate Action' is checked, severity must be High or Critical."))
 
 		if cint(self.mandated_reporting_triggered):
 			if self.confidentiality_level not in ("Sensitive", "Restricted"):
@@ -26,17 +45,10 @@ class StudentReferral(Document):
 				frappe.throw(_("Mandated reporting cannot be used with Low severity."))
 
 	def before_save(self):
-		# Compute SLA due if empty. Use settings; fall back to 24h.
+		# Compute initial triage SLA if empty (from settings; default 24h)
 		if not self.sla_due:
-			sla_hours = _get_setting_int("sla_hours_new_to_triaged", default=24)
-			# Use current server datetime as anchor (more accurate than Date-only field)
-			base_dt = now_datetime()
-			self.sla_due = add_to_date(base_dt, hours=sla_hours)
-
-	def after_insert(self):
-		# convenience: referrer defaults to session user for Staff source
-		if self.referral_source == "Staff" and not self.referrer:
-			self.db_set("referrer", frappe.session.user, update_modified=False)
+			sla_hours = _get_setting_int("sla_hours_new_to_triaged", 24)
+			self.sla_due = add_to_date(now_datetime(), hours=sla_hours)
 
 	def before_submit(self):
 		# 1) Ensure snapshot context is complete
@@ -49,51 +61,63 @@ class StudentReferral(Document):
 		if cint(self.mandated_reporting_triggered) and not _user_has_any_role(ALLOWED_SUBMIT_ROLES_FOR_MANDATED):
 			frappe.throw(_("Only Counselor or Academic Admin can submit a referral with Mandated Reporting."))
 
-		# 4) SLA tightening for critical/immediate (override)
-		if self.severity == "Critical" or cint(self.requires_immediate_action):
-			override_hours = _get_setting_int("sla_hours_critical_override", default=None)
-			if override_hours:
-				self.sla_due = add_to_date(now_datetime(), hours=override_hours)
+		# 4) Optional SLA tightening for critical/immediate (use Triaged→First Action as override if present)
+		override_hours = _get_setting_int("sla_hours_triaged_to_first_action", None)
+		if (self.severity == "Critical" or cint(self.requires_immediate_action)) and override_hours:
+			self.sla_due = add_to_date(now_datetime(), hours=override_hours)
 
-		# 5) If mandated/critical/immediate, make sure a Case exists
+		# 5) Ensure a Case exists for high-risk items regardless of settings
 		needs_case = cint(self.mandated_reporting_triggered) or cint(self.requires_immediate_action) or self.severity in ("High", "Critical")
 		if needs_case:
 			self._ensure_case_exists()
 
 	def on_submit(self):
-		"""Ensure a Case exists, then route via native assign_to."""
-		# 1) Ensure case
+		"""Create/ensure Case and route via native assign_to, respecting settings."""
+		# Should we auto-create a case for low/moderate? (settings-driven)
+		auto_create_case = bool(_get_setting_int("auto_create_case", 0))
+
 		case_name = frappe.db.get_value("Referral Case", {"referral": self.name}, "name")
-		if not case_name:
+
+		high_risk = self.severity in ("High", "Critical") or cint(self.requires_immediate_action) or cint(self.mandated_reporting_triggered)
+		if not case_name and (high_risk or auto_create_case):
 			case_name = self.open_case()
 
-		# 2) Priority for ToDo based on severity/immediacy/mandated
-		high = self.severity in ("High", "Critical") or cint(self.requires_immediate_action) or cint(self.mandated_reporting_triggered)
-		priority = "High" if high else "Medium"
+		# If still no case (low/moderate and auto-create disabled), nothing to assign
+		if not case_name:
+			return
 
-		# 3) Route to counselor (self-assign if author is counselor; else least-load pool)
+		# Priority for ToDo based on severity/immediacy/mandated
+		priority = "High" if high_risk else "Medium"
+
+		# Intake owner role is settings-driven (default Counselor)
+		intake_role = (_get_setting_str("default_intake_owner_role") or "Counselor").strip() or "Counselor"
+
+		# Route to counselor (self-assign if author has the intake role; else least-load pool)
 		author = frappe.session.user
 		roles = set(frappe.get_roles(author))
-		if "Counselor" in roles:
+		notify = bool(_get_setting_int("notify_on_assignment", 1))
+
+		if intake_role in roles:
 			manager = author
-			assign_case_manager(case_name, manager, description="Self-assigned (counselor author)", priority=priority)
+			assign_case_manager(case_name, manager, description="Self-assigned (intake role author)", priority=priority, notify=notify)
 		else:
-			manager = pick_user_from_role_pool("Counselor")
-			assign_case_manager(case_name, manager, description="Auto-routed from referral", priority=priority)
+			manager = pick_user_from_role_pool(intake_role)
+			assign_case_manager(case_name, manager, description="Auto-routed from referral", priority=priority, notify=notify)
 
-		# 4) Optional UX sugar (only if you added these fields on the Referral doctype)
-		try:
-			self.db_set("referral_case", case_name, update_modified=False)
-			self.db_set("assigned_case_manager", manager, update_modified=False)
-		except Exception:
-			pass			
+		# Optional UX sugar (only if these fields exist on the Referral doctype)
+		for fname, val in (("referral_case", case_name), ("assigned_case_manager", manager)):
+			try:
+				self.db_set(fname, val, update_modified=False)
+			except Exception:
+				pass
 
+	# ── Internals ────────────────────────────────────────────────────────────
 	def _ensure_context_snapshot(self):
-		"""Guarantee Program, Academic Year, and School are set consistently at submit time."""
+		"""Guarantee Program, Academic Year, and School are set at submit time."""
 		if not self.student:
 			frappe.throw(_("Student is required."))
 
-		# 1) If Program Enrollment selected, validate & fill
+		# 1) Prefer selected Program Enrollment
 		if self.program_enrollment:
 			pe = frappe.db.get_value(
 				"Program Enrollment",
@@ -191,16 +215,18 @@ class StudentReferral(Document):
 		if not frappe.db.exists("Referral Case", {"referral": self.name}):
 			self.open_case()
 
+
 def on_doctype_update():
 	# Helpful indexes
 	frappe.db.add_index("Student Referral", ["student"])
 	frappe.db.add_index("Student Referral", ["program_enrollment"])
 	frappe.db.add_index("Student Referral", ["school"])
-	# (child/other indexes added later if profiling requires)
+	# (add more if profiling requires)
 
-# ---------------------
-# Helpers
-# ---------------------
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers (pure functions)
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _required_on_submit(doc: Document, fields: tuple[str, ...]):
 	for f in fields:
@@ -213,44 +239,43 @@ def _user_has_any_role(roles: set[str]) -> bool:
 
 def _get_setting_int(fieldname: str, default: int | None = None) -> int | None:
 	try:
-		val = frappe.db.get_single_value("Referral Settings", fieldname)
+		val = frappe.db.get_single_value(SETTINGS_DTYPE, fieldname)
 		if val is None:
 			return default
 		return cint(val)
 	except Exception:
 		return default
 
+def _get_setting_str(fieldname: str) -> str | None:
+	try:
+		val = frappe.db.get_single_value(SETTINGS_DTYPE, fieldname)
+		return (val or "").strip() or None
+	except Exception:
+		return None
 
-def assign_case_manager(case_name: str, user: str, description: str = "Primary owner", priority: str = "Medium"):
+# ── Native assignment glue (manager + pool) ──────────────────────────────────
+
+def assign_case_manager(case_name: str, user: str, description: str = "Primary owner", priority: str = "Medium", notify: bool = True):
 	"""Create/replace the special manager assignment for a case, and mirror to case_manager."""
-	_remove_manager_assignments(case_name)
-	# Add new manager assignment (native)
-	if assign_add:
-		assign_add({
-			"doctype": "Referral Case",
-			"name": case_name,
-			"assign_to": [user],
-			"priority": priority,
-			"description": f"{CASE_MANAGER_TAG} {description}",
-		})
-	# Mirror to link field for fast filters (no modified bump)
-	frappe.db.set_value("Referral Case", case_name, "case_manager", user, update_modified=False)
-
-def add_case_task_assignment(case_name: str, user: str, note: str, priority: str = "Medium", due_date: str | None = None):
-	"""Assign a specific task on the case (not the child row), tagged distinctly."""
+	_close_manager_todos_only(case_name)  # do not touch task ToDos
 	payload = {
 		"doctype": "Referral Case",
 		"name": case_name,
 		"assign_to": [user],
 		"priority": priority,
-		"description": f"{CASE_TASK_TAG} {note}",
+		"description": f"{CASE_MANAGER_TAG} {description}",
 	}
-	if due_date:
-		payload["date"] = due_date
-	if assign_add:
-		assign_add(payload)
+	# Frappe assign_to supports notify flag in v15+; ignore gracefully if not accepted
+	try:
+		if notify:
+			payload["notify"] = 1
+	except Exception:
+		pass
+	assign_add(payload)  # creates ToDo natively
+	frappe.db.set_value("Referral Case", case_name, "case_manager", user, update_modified=False)
 
 def pick_user_from_role_pool(role: str) -> str:
+	"""Return enabled user with this role using least open-case-load strategy; safe fallbacks."""
 	cands = frappe.get_all("Has Role", filters={"role": role}, fields=["parent"]) or []
 	if not cands:
 		cands = frappe.get_all("Has Role", filters={"role": "Academic Admin"}, fields=["parent"]) or []
@@ -276,17 +301,15 @@ def pick_user_from_role_pool(role: str) -> str:
 				load[row.allocated_to] = cint(row.n)
 		return sorted(load.items(), key=lambda kv: (kv[1], kv[0]))[0][0]
 
-	# Final fallback: pick any enabled System Manager (if present), else Administrator
+	# Final fallback: pick an enabled System Manager, else Administrator
 	sys_mgrs = set(frappe.get_all("Has Role", filters={"role": "System Manager"}, pluck="parent"))
 	sys_mgrs_enabled = frappe.get_all("User", filters={"name": ["in", list(sys_mgrs)], "enabled": 1}, pluck="name")
 	if sys_mgrs_enabled:
 		return sorted(sys_mgrs_enabled)[0]
-
 	return "Administrator"
 
-
-def _remove_manager_assignments(case_name: str):
-	"""Close only ToDos tagged as CASE_MANAGER for this case (leave task ToDos intact)."""
+def _close_manager_todos_only(case_name: str):
+	"""Close only manager-tagged ToDos for this case (leave task ToDos intact)."""
 	rows = frappe.get_all(
 		"ToDo",
 		filters={"reference_type": "Referral Case", "reference_name": case_name, "status": "Open"},
@@ -295,6 +318,6 @@ def _remove_manager_assignments(case_name: str):
 	for r in rows:
 		desc = (r.description or "").strip()
 		if desc.startswith(CASE_MANAGER_TAG):
-			# Close only this specific row to avoid nuking task ToDos
 			frappe.db.set_value("ToDo", r.name, "status", "Closed", update_modified=False)
+
 

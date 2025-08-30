@@ -38,12 +38,15 @@ frappe.ui.form.on("Student Log", {
 		const status = (frm.doc.follow_up_status || "").toLowerCase();
 		const requiresFU = !!frm.doc.requires_follow_up;
 
+		// prevent duplicates across refreshes
+		frm.clear_custom_buttons();		
+
 		// Show/hide the follow-up block consistently
 		toggle_follow_up_fields(frm, requiresFU);
 
 		// Assign / Reassign: only when follow-up is required AND doc is saved
 		if (requiresFU && !frm.is_new()) {
-			frm.add_custom_button(__("Assign Follow-Up"), () => {
+			const assignBtn = frm.add_custom_button(__("Assign / Re-assign"), () => {
 				if (frm.is_dirty()) {
 					frappe.msgprint(__("Please save the document before assigning."));
 					return;
@@ -76,12 +79,13 @@ frappe.ui.form.on("Student Log", {
 					}
 				});
 				d.show();
-			}, __("Actions"));
+			});
+			assignBtn.addClass("btn-info");
 		}
 
 		// New Follow-Up: allowed unless already Closed (status is derived server-side)
 		if (status !== "closed" && !frm.is_new()) {
-			frm.add_custom_button(__("New Follow-Up"), () => {
+			const followBtn = frm.add_custom_button(__("Follow Up"), () => {
 				frappe.call({
 					method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
 					callback(r) {
@@ -92,20 +96,22 @@ frappe.ui.form.on("Student Log", {
 						});
 					}
 				});
-			}, __("Actions"));
+			});
+			followBtn.addClass("btn-warning");
 		}
 
 		// Finalize: Close (admin OR owner). Calls server so timeline is logged.
 		if (frm.doc.follow_up_status === "Completed" && !frm.is_new()) {
 			const isOwner = (frappe.session.user === frm.doc.owner);
 			if (frappe.user.has_role("Academic Admin") || isOwner) {
-				frm.add_custom_button(__("Finalize: Close Log"), () => {
+				const closeBtn = frm.add_custom_button(__("Close Student Log"), () => {
 					frappe.call({
 						method: "ifitwala_ed.students.doctype.student_log.student_log.finalize_close",
 						args: { log_name: frm.doc.name },
 						callback: () => frm.reload_doc()
 					});
-				}, __("Actions"));
+				});
+				closeBtn.addClass("btn-success");
 			}
 		}
 
