@@ -213,7 +213,7 @@ def _user_has_any_role(roles: set[str]) -> bool:
 
 def _get_setting_int(fieldname: str, default: int | None = None) -> int | None:
 	try:
-		val = frappe.db.get_single_value("Referral Setting", fieldname)
+		val = frappe.db.get_single_value("Referral Settings", fieldname)
 		if val is None:
 			return default
 		return cint(val)
