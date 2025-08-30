@@ -118,12 +118,18 @@ function update_charts(data) {
 			return;
 		}
 
+		const values = rows.map(r => Number(r.value));
+		const total  = values.reduce((a, b) => a + b, 0);
+		const labels = rows.map((r, i) => {
+			// keep dates clean for the line chart
+			if ((cfg.type || "bar") === "line") return r.label;
+			const pct = total ? Math.round((values[i] / total) * 1000) / 10 : 0; // 1 decimal
+			return `${r.label} (${pct}%)`;
+		});
+
 		new frappe.Chart(`#chart-${cfg.id}`, {
-			data: {
-				labels:  rows.map(r => r.label),
-				datasets:[{ values: rows.map(r => Number(r.value)) }],
-			},
-			type:   cfg.type || "bar",
+			data: { labels, datasets: [{ values }] },
+			type:  cfg.type || "bar",
 			height: 300,
 			colors: [cfg.color],
 		});
