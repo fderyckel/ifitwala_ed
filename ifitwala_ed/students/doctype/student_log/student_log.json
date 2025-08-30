@@ -13,6 +13,7 @@
   "date",
   "log_type",
   "academic_year",
+  "school",
   "column_break_qdix",
   "student_name",
   "time",
@@ -33,10 +34,6 @@
   "follow_up_role",
   "follow_up_person",
   "student_photo",
-  "references_section",
-  "reference_type",
-  "column_break_rsj6",
-  "reference_name",
   "amended_from"
  ],
  "fields": [
@@ -186,27 +183,6 @@
    "label": "Follow up Role"
   },
   {
-   "fieldname": "references_section",
-   "fieldtype": "Section Break",
-   "label": "References"
-  },
-  {
-   "fieldname": "reference_type",
-   "fieldtype": "Link",
-   "label": "Reference Type",
-   "options": "DocType"
-  },
-  {
-   "fieldname": "column_break_rsj6",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "reference_name",
-   "fieldtype": "Dynamic Link",
-   "label": "Reference Name",
-   "options": "reference_type"
-  },
-  {
    "allow_on_submit": 1,
    "fieldname": "follow_up_status",
    "fieldtype": "Select",
@@ -226,6 +202,14 @@
    "fieldname": "requires_follow_up",
    "fieldtype": "Check",
    "label": "Requires Follow Up"
+  },
+  {
+   "fetch_from": "program.school",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -233,7 +217,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-07 10:33:20.733476",
+ "modified": "2025-08-30 12:45:29.984535",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",
@@ -270,12 +254,10 @@
    "amend": 1,
    "cancel": 1,
    "create": 1,
-   "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Instructor",
+   "role": "Academic Staff",
    "select": 1,
    "share": 1,
    "submit": 1,
@@ -285,12 +267,11 @@
    "amend": 1,
    "cancel": 1,
    "create": 1,
-   "email": 1,
+   "delete": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Academic Staff",
-   "select": 1,
+   "role": "Counselor",
    "share": 1,
    "submit": 1,
    "write": 1

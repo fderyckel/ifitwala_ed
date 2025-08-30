@@ -16,6 +16,25 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Curriculum",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course",
+   "link_count": 0,
+   "link_to": "Course",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Students",
    "link_count": 3,
    "link_type": "DocType",
@@ -45,34 +64,15 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Student Group",
+   "label": "Student Referral",
    "link_count": 0,
-   "link_to": "Student Group",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Curriculum",
-   "link_count": 1,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Course",
-   "link_count": 0,
-   "link_to": "Course",
+   "link_to": "Student Referral",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2025-06-23 20:23:53.186244",
+ "modified": "2025-08-30 08:25:04.202399",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academics",
