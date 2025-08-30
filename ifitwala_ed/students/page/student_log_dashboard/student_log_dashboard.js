@@ -4,6 +4,8 @@
 let selected_student = null;          // global
 let recent_start = 0;         			 // pagination offset
 const recent_page_len = 25;   			 // rows per fetch
+let branchSchools = [];
+
 
 /*── 	0.1  recent log data table ──────────────────────────────*/
 function fetch_recent_logs(page, append = false) {
@@ -161,35 +163,68 @@ frappe.pages["student-log-dashboard"].on_page_load = function (wrapper) {
 		fieldtype: "Link",
 		options: "School",
 		default: user_default_school,
-		change: () => {
-				program_field.set_value("");
-				selected_student = null;
-				studentInput.value = "";
-				fetch_dashboard_data(page);
-				recent_start = 0;               // reset pagination
-				fetch_recent_logs(page);        // fresh load for new context
+		change: async () => {
+			loadBranchSchools();      
+			program_field.set_value("");
+			selected_student = null;
+			studentInput.value = "";
+			fetch_dashboard_data(page);
+			recent_start = 0;
+			fetch_recent_logs(page);
 		},
 	});
 
 	// Set the initial value programmatically to enforce the default
 	school_field.set_value(user_default_school);
 
+	// define helper here (after school_field, before program_field)
+	async function loadBranchSchools() {
+		const root = school_field.get_value();
+		if (!root) { branchSchools = []; return; }
+
+		// seed with self (fallback while async runs)
+		branchSchools = [root];
+
+		try {
+			const { message: lr } = await frappe.db.get_value('School', root, ['lft','rgt']);
+			if (!lr) return;
+
+			const rows = await frappe.db.get_list('School', {
+				fields: ['name'],
+				filters: [['lft','>=', lr.lft], ['rgt','<=', lr.rgt]],
+				limit: 1000,
+			});
+			branchSchools = rows.map(r => r.name);
+		} catch (e) {
+			console.error('Failed to load branch schools', e);
+		}
+	}
+
+	loadBranchSchools(); // <— call once on page load, before program_field
+
 	const program_field = page.add_field({
 		fieldname: "program",
 		label: __("Program"),
 		fieldtype: "Link",
 		options: "Program",
-		get_query: () => ({
-				filters: { ...(school_field.get_value() && { school: school_field.get_value() }) },
-		}),
+		get_query: () => {
+			const sch = school_field.get_value();
+			if (sch && branchSchools.length) {
+				return { filters: { school: ["in", branchSchools] } };
+			}
+			if (sch) return { filters: { school: sch } }; // fallback
+			return {};
+		},
 		change: () => {
-				selected_student = null;
-				studentInput.value = "";
-				fetch_dashboard_data(page);
-				recent_start = 0;               
-				fetch_recent_logs(page);        
+			selected_student = null;
+			studentInput.value = "";
+			fetch_dashboard_data(page);
+			recent_start = 0;
+			fetch_recent_logs(page);
 		},
 	});
+
+
 
 	const academic_year_field = page.add_field({
 		fieldname: "academic_year",

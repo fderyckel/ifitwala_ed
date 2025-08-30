@@ -22,10 +22,19 @@ def get_dashboard_data(filters=None):
 		conditions.append("sl.school IN %(authorized_schools)s")
 		params["authorized_schools"] = tuple(authorized_schools)
 
-		# ── School filter (now direct on Student Log) ─────────────
+		# ── School filter (now includes descendants) ─────────────
 		if filters.get("school"):
-			conditions.append("sl.school = %(field_school)s")
+			conditions.append("""
+				sl.school IN (
+					SELECT s2.name
+					FROM `tabSchool` s1
+					JOIN `tabSchool` s2
+						ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
+					WHERE s1.name = %(field_school)s
+				)
+			""")
 			params["field_school"] = filters["school"]
+
 
 		# ── Direct columns in Student Log (alias sl) ──────────────
 		direct_map = {
@@ -91,9 +100,17 @@ def get_dashboard_data(filters=None):
 				conds = ["sl.school IN %(authorized_schools)s", "sl.student = %(field_student)s"]
 				p = {**params, "field_student": filters["student"]}
 
-				# if the page has a School filter set, honor it too (cheap on sl.school)
+				# if the page has a School filter set, include descendants
 				if filters.get("school"):
-						conds.append("sl.school = %(field_school)s")
+						conds.append("""
+								sl.school IN (
+										SELECT s2.name
+										FROM `tabSchool` s1
+										JOIN `tabSchool` s2
+											ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
+										WHERE s1.name = %(field_school)s
+								)
+						""")
 						p["field_school"] = filters["school"]
 
 				where_detail = " AND ".join(conds)
@@ -112,7 +129,7 @@ def get_dashboard_data(filters=None):
 						p,
 						as_dict=True
 				)
-
+				
 		return {
 			"logTypeCount": log_type_count,
 			"logsByCohort": logs_by_cohort,
@@ -145,8 +162,18 @@ def get_distinct_students(filters=None, search_text: str = ""):
 
 		# Context filters
 		if filters.get("school"):
-			conditions.append("pe.school = %(school)s")
-			params["school"] = filters["school"]
+				conditions.append("""
+						pe.school IN (
+								SELECT s2.name
+								FROM `tabSchool` s1
+								JOIN `tabSchool` s2
+									ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
+								WHERE s1.name = %(field_school)s
+						)
+				""")
+				params["field_school"] = filters["school"]
+
+
 		if filters.get("program"):
 			conditions.append("pe.program = %(program)s")
 			params["program"] = filters["program"]
@@ -192,10 +219,19 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 	conditions.append("sl.school IN %(authorized_schools)s")
 	params["authorized_schools"] = tuple(authorized_schools)
 
-	# page filters (same as before), but school now direct on Student Log
+	# page filters (same as before), but school now includes descendants
 	if filters.get("school"):
-		conditions.append("sl.school = %(school)s")
+		conditions.append("""
+			sl.school IN (
+				SELECT s2.name
+				FROM `tabSchool` s1
+				JOIN `tabSchool` s2
+					ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
+				WHERE s1.name = %(school)s
+			)
+		""")
 		params["school"] = filters["school"]
+
 
 	direct_map = {
 		"academic_year": "sl.academic_year",
