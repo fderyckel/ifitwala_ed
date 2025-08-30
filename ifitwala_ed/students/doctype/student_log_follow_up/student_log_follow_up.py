@@ -41,17 +41,6 @@ class StudentLogFollowUp(Document):
 		if not self.follow_up_author:
 			self.follow_up_author = frappe.utils.get_fullname(frappe.session.user)
 
-	def after_insert(self):
-		# Timeline: record that a follow-up was started
-		log = frappe.get_doc("Student Log", self.student_log)
-		log.add_comment(
-			comment_type="Comment",
-			text=_("Follow-up created by {author} — see {link}").format(
-				author=self.follow_up_author or frappe.utils.get_fullname(frappe.session.user),
-				link=frappe.utils.get_link_to_form(self.doctype, self.name),
-			),
-		)
-
 	def on_update(self):
 		# Mapping: parent status Open → In Progress when any follow-up is edited
 		log = frappe.get_doc("Student Log", self.student_log)
@@ -61,28 +50,20 @@ class StudentLogFollowUp(Document):
 	def on_submit(self):
 		log = frappe.get_doc("Student Log", self.student_log)
 
-		# 1) Close any open native assignments on the parent (single-assignee policy)
-		open_assignees = frappe.get_all(
+		# 1) Close any OPEN ToDos on the parent (explicitly set to 'Closed', not 'Cancelled')
+		open_todos = frappe.get_all(
 			"ToDo",
 			filters={"reference_type": "Student Log", "reference_name": log.name, "status": "Open"},
-			fields=["allocated_to"]
+			fields=["name", "allocated_to"]
 		)
-		for row in open_assignees:
-			u = row.allocated_to
+		for td in open_todos:
 			try:
-				if assign_remove:
-					assign_remove("Student Log", log.name, u)
-				else:
-					frappe.db.set_value(
-						"ToDo",
-						{"reference_type": "Student Log", "reference_name": log.name, "allocated_to": u, "status": "Open"},
-						"status",
-						"Closed"
-					)
+				frappe.db.set_value("ToDo", td.name, "status", "Closed")
 			except Exception:
+				# last resort: try filter-based update on this row
 				frappe.db.set_value(
 					"ToDo",
-					{"reference_type": "Student Log", "reference_name": log.name, "allocated_to": u, "status": "Open"},
+					{"name": td.name, "reference_type": "Student Log", "reference_name": log.name},
 					"status",
 					"Closed"
 				)
@@ -119,7 +100,7 @@ class StudentLogFollowUp(Document):
 					"document_name": log.name,
 				}).insert(ignore_permissions=True)
 			except Exception:
-				# Fallback: push a realtime inbox-style event if Notification Log fails
+				# Fallback: realtime inbox-style event
 				try:
 					frappe.publish_realtime(
 						event="inbox_notification",

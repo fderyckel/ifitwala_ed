@@ -28,7 +28,7 @@ const postcssImport = require('postcss-import');
 const projectRootDir = path.resolve(__dirname);
 const dist = 'ifitwala_ed/public/dist';
 const websiteSrc = 'ifitwala_ed/public/website';
-const portalSrc = 'ifitwala_ed/public/js/student_portal';
+const portalSrc = 'ifitwala_ed/public/js/student_portal'; 
 
 function contentHash(file) {
 	return createHash('sha256')
@@ -38,6 +38,10 @@ function contentHash(file) {
 }
 
 const portalHash = contentHash(path.join(portalSrc, 'index.js'));
+const websiteJsHash = contentHash(path.join(websiteSrc, 'website.js'));
+const websiteCssHash = contentHash(path.join(websiteSrc, 'website.css'));
+const schoolJsHash  = contentHash(path.join(websiteSrc, 'school.js'));
+const schoolCssHash = contentHash(path.join(websiteSrc, 'school.css'));
 
 const basePlugins = [
 	resolve(),
@@ -134,7 +138,7 @@ module.exports = [
 	{
 		input: `${websiteSrc}/website.js`,
 		output: {
-			file: `${dist}/website.min.js`,
+			file: `${dist}/website.${websiteJsHash}.bundle.js`,
 			format: 'iife',
 			sourcemap: true,
 		},
@@ -145,7 +149,7 @@ module.exports = [
 				name: 'alias-stable-website-js',
 				writeBundle() {
 					const p = 'ifitwala_ed/public/dist';
-					try { fs.copyFileSync(`${p}/website.min.js`, `${p}/website.bundle.js`); } catch {}
+					try { fs.copyFileSync(`${p}/website.${websiteJsHash}.bundle.js`, `${p}/website.bundle.js`); } catch {}
 				}
 			}
 		],
@@ -157,7 +161,7 @@ module.exports = [
 		output: { dir: '.' },
 		plugins: [
 			postcss({
-				extract: `${dist}/website.min.css`,
+				extract: `${dist}/website.${websiteCssHash}.bundle.css`,
 				minimize: true,
 				plugins: [require('autoprefixer')],
 			}),
@@ -165,7 +169,7 @@ module.exports = [
 				name: 'alias-stable-website-css',
 				writeBundle() {
 					const p = 'ifitwala_ed/public/dist';
-					try { fs.copyFileSync(`${p}/website.min.css`, `${p}/website.bundle.css`); } catch {}
+					try { fs.copyFileSync(`${p}/website.${websiteCssHash}.bundle.css`, `${p}/website.bundle.css`); } catch {}
 				}
 			}
 		],
@@ -175,7 +179,7 @@ module.exports = [
 	{
 		input: `${websiteSrc}/school.js`,
 		output: {
-			file: `${dist}/school.min.js`,
+			file: `${dist}/school.${schoolJsHash}.bundle.js`,
 			format: 'iife',
 			sourcemap: true,
 		},
@@ -186,7 +190,7 @@ module.exports = [
 				name: 'alias-stable-school-js',
 				writeBundle() {
 					const p = 'ifitwala_ed/public/dist';
-					try { fs.copyFileSync(`${p}/school.min.js`, `${p}/school.bundle.js`); } catch {}
+					try { fs.copyFileSync(`${p}/school.${schoolJsHash}.bundle.js`, `${p}/school.bundle.js`); } catch {}
 				}
 			}
 		],
@@ -198,7 +202,7 @@ module.exports = [
 		output: { dir: '.' },
 		plugins: [
 			postcss({
-				extract: `${dist}/school.min.css`,
+				extract: `${dist}/school.${schoolCssHash}.bundle.css`,
 				minimize: true,
 				plugins: [require('autoprefixer')],
 			}),
@@ -206,7 +210,7 @@ module.exports = [
 				name: 'alias-stable-school-css',
 				writeBundle() {
 					const p = 'ifitwala_ed/public/dist';
-					try { fs.copyFileSync(`${p}/school.min.css`, `${p}/school.bundle.css`); } catch {}
+					try { fs.copyFileSync(`${p}/school.${schoolCssHash}.bundle.css`, `${p}/school.bundle.css`); } catch {}
 				}
 			}
 		],
