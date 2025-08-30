@@ -99,25 +99,42 @@ class StudentLogFollowUp(Document):
 				except Exception:
 					pass
 
-		# 4) Notify the parent author (persistent bell + optional toast) and add one concise timeline entry
-		# Prefer the actual owner; fall back to resolving via Employee name if needed
-		author_user = log.owner
+		# 4) Notify the parent author (bell + toast) and add one concise timeline entry
+		author_user = log.owner or None
 		if not author_user and log.author_name:
 			author_user = frappe.db.get_value("Employee", {"employee_full_name": log.author_name}, "user_id")
 
-		# 4a) Persistent in-app bell (Notification dropdown)
 		if author_user and author_user != frappe.session.user:
-			frappe.publish_realtime(
-				event="inbox_notification",
-				message={
-					"type": "Alert",
+			# 4a) Persistent bell notification via Notification Log
+			try:
+				frappe.get_doc({
+					"doctype": "Notification Log",
 					"subject": _("Follow-up ready to review"),
-					"message": _("Follow-up for {0} has been submitted. Click to review.").format(log.student_name or log.name),
-					"reference_doctype": "Student Log",
-					"reference_name": log.name
-				},
-				user=author_user
-			)
+					"email_content": _("Follow-up for {0} has been submitted. Click to review.")
+						.format(log.student_name or log.name),
+					"type": "Alert",
+					"for_user": author_user,
+					"from_user": frappe.session.user,
+					"document_type": "Student Log",
+					"document_name": log.name,
+				}).insert(ignore_permissions=True)
+			except Exception:
+				# Fallback: push a realtime inbox-style event if Notification Log fails
+				try:
+					frappe.publish_realtime(
+						event="inbox_notification",
+						message={
+							"type": "Alert",
+							"subject": _("Follow-up ready to review"),
+							"message": _("Follow-up for {0} has been submitted. Click to review.")
+								.format(log.student_name or log.name),
+							"reference_doctype": "Student Log",
+							"reference_name": log.name
+						},
+						user=author_user
+					)
+				except Exception:
+					pass
 
 			# 4b) (Optional) lightweight toast in active sessions
 			frappe.publish_realtime(
@@ -126,7 +143,7 @@ class StudentLogFollowUp(Document):
 				user=author_user
 			)
 
-		# 4c) Single concise timeline entry
+		# 4c) Single concise timeline entry on the parent
 		log.add_comment(
 			comment_type="Info",
 			text=_("Follow-up submitted by {author} — see {link}").format(
