@@ -5,8 +5,9 @@
 
 frappe.ui.form.on("Referral Case", {
 	refresh(frm) {
-		// Primary: Add Entry
-		frm.add_custom_button(__("Add Entry"), () => open_entry_dialog(frm), __("Actions"));
+		const btn = frm.add_custom_button(__("Add Entry"), () => open_entry_dialog(frm)); // no group ⇒ not nested
+		btn.removeClass("btn-default").addClass("btn-success"); // color
+		btn.find("span").prepend(frappe.utils.icon("add", "sm")); // icon
 
 		// Case status quick-actions
 		const st = (frm.doc.case_status || "Open").trim();
@@ -35,8 +36,10 @@ frappe.ui.form.on("Referral Case", {
 function quick_status(frm, new_status) {
 	frappe.call({
 		method: "ifitwala_ed.students.doctype.referral_case.referral_case.quick_update_status",
-		args: { name: frm.doc.name, new_status },
-		callback: () => frm.reload_doc()
+		args: { name: frm.doc.name, new_status }
+	}).then(() => {
+		frappe.show_alert({ message: __("Status updated"), indicator: "green" });
+		return frm.reload_doc();
 	});
 }
 
@@ -44,15 +47,27 @@ function assign_manager_dialog(frm) {
 	const d = new frappe.ui.Dialog({
 		title: __("Assign Case Manager"),
 		fields: [
-			{ fieldname: "user", fieldtype: "Link", label: __("User"), options: "User", reqd: 1 }
+			{
+				fieldname: "user",
+				fieldtype: "Link",
+				label: __("User"),
+				options: "User",
+				reqd: 1,
+				get_query: () => ({
+					query: "ifitwala_ed.students.doctype.referral_case.referral_case.users_with_role",
+					filters: { role: "Counselor" }
+				})
+			}
 		],
 		primary_action_label: __("Assign"),
 		primary_action: (v) => {
 			d.hide();
 			frappe.call({
 				method: "ifitwala_ed.students.doctype.referral_case.referral_case.set_manager",
-				args: { name: frm.doc.name, user: v.user },
-				callback: () => frm.reload_doc()
+				args: { name: frm.doc.name, user: v.user }
+				}).then(() => {
+				frappe.show_alert({ message: __("Case manager assigned"), indicator: "green" });
+				return frm.reload_doc();
 			});
 		}
 	});
@@ -87,10 +102,14 @@ function open_entry_dialog(frm) {
 					create_todo: v.create_todo ? 1 : 0,
 					due_date: v.due_date || null
 				},
-				callback: () => frm.reload_doc()
+				}).then(() => {
+				frappe.show_alert({ message: __("Entry added"), indicator: "green" });
+				return frm.reload_doc();
 			});
 		}
 	});
 	d.show();
 }
+
+
 

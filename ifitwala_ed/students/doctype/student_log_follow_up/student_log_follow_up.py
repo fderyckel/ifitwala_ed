@@ -18,6 +18,13 @@ class StudentLogFollowUp(Document):
 		if not self.student_log:
 			frappe.throw(_("Please link a Student Log."))
 
+		status = (frappe.db.get_value("Student Log", self.student_log, "follow_up_status") or "").lower()
+		if status == "closed":
+			frappe.throw(
+				_("Parent Student Log is already <b>Closed</b>; follow-ups cannot be added or edited."),
+				title=_("Parent Closed")
+			)			
+
 		# Soft warning if someone else is the current assignee on the parent log
 		assignee = frappe.db.get_value(
 			"ToDo",

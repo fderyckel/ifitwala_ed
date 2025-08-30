@@ -98,7 +98,7 @@ class StudentLog(Document):
 
 	# ---------------------------------------------------------------------
 	# Lifecycle
-		# ---------------------------------------------------------------------
+	# ---------------------------------------------------------------------
 	def validate(self):
 		"""
 		Pre-submit assignment support:
@@ -154,6 +154,8 @@ class StudentLog(Document):
 		if not self.school and self.program:
 			self.school = frappe.db.get_value("Program", self.program, "school")
 
+		self._assert_followup_transition_and_immutability()
+
 	def on_submit(self):
 		"""
 		Submission invariants for the Student Log itself:
@@ -176,6 +178,58 @@ class StudentLog(Document):
 
 		self.follow_up_person = opens[0]
 		self._apply_status(self._compute_follow_up_status(), reason="on submit", write_immediately=False)
+
+	# ---------------------------------------------------------------------
+	# Validation helpers
+	# ---------------------------------------------------------------------
+	def _assert_followup_transition_and_immutability(self):
+			"""Enforce legal status transitions and lock core fields once Closed."""
+			old = self.get_doc_before_save() or frappe._dict()
+
+			old_status = (old.get("follow_up_status") or "").lower()
+			new_status = (self.follow_up_status or "").lower()
+
+			# Allowed transitions (None means previously empty)
+			allowed = {
+					None: {"", "open"},
+					"": {"open"},
+					"open": {"open", "in progress", "completed"},
+					"in progress": {"in progress", "completed"},
+					"completed": {"completed", "closed"},
+					"closed": {"closed"},  # no further changes
+			}
+
+			# Normalize None/empty
+			old_key = old_status if old_status else ("")
+			if old_key == "":
+					old_key = None
+
+			if old_key not in allowed or new_status not in allowed[old_key]:
+					# Permit no-change (e.g., saving without touching status)
+					if new_status != old_status:
+							frappe.throw(
+									_("Illegal follow-up status change: {0} → {1}")
+									.format(old_status or "None", new_status or "None"),
+									title=_("Invalid Transition")
+							)
+
+			# Once Closed, lock core follow-up fields
+			if (old_status == "closed") or (new_status == "closed" and old_status != "closed"):
+					# If already closed before this save OR moving to closed now, ensure no core fields change afterward
+					locked_fields = {
+							"requires_follow_up",
+							"next_step",
+							"follow_up_role",
+							"follow_up_person",
+							"program",          # optional: protect context
+							"academic_year",    # optional: protect context
+					}
+					for f in locked_fields:
+							if old.get(f) != self.get(f):
+									frappe.throw(
+											_("Field {0} cannot be changed after the log is Closed.").format(f),
+											title=_("Locked After Close")
+									)
 
 	# ---------------------------------------------------------------------
 	# Assignment helpers
@@ -303,6 +357,15 @@ def get_follow_up_role_from_next_step(next_step):
 # ---------- assign/reassign endpoint (owner OR Academic Admin OR current assignee) ----------
 @frappe.whitelist()
 def assign_follow_up(log_name: str, user: str):
+	sl = frappe.get_doc("Student Log", log_name)
+
+	# 🚫 block assignment on closed logs
+	if (sl.follow_up_status or "").lower() == "closed":
+		frappe.throw(
+			_("This Student Log is already closed and cannot be (re)assigned."),
+			title=_("Follow-Up Closed")
+		)
+
 	log = frappe.get_doc("Student Log", log_name)
 
 	# Permission: author, Academic Admin, or current assignee may (re)assign
