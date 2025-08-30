@@ -38,15 +38,15 @@ frappe.ui.form.on("Student Log", {
 		const status = (frm.doc.follow_up_status || "").toLowerCase();
 		const requiresFU = !!frm.doc.requires_follow_up;
 
-		// prevent duplicates across refreshes
-		frm.clear_custom_buttons();		
+		// avoid duplicate buttons on refresh
+		frm.clear_custom_buttons();
 
-		// Show/hide the follow-up block consistently
+		// keep follow-up fields visibility in sync
 		toggle_follow_up_fields(frm, requiresFU);
 
-		// Assign / Reassign: only when follow-up is required AND doc is saved
+		// ── 👤 Assign / Re-assign (when follow-up is required & doc is saved) ──
 		if (requiresFU && !frm.is_new()) {
-			const assignBtn = frm.add_custom_button(__("Assign / Re-assign"), () => {
+			const assignBtn = frm.add_custom_button(__("👤 Assign / Re-assign"), () => {
 				if (frm.is_dirty()) {
 					frappe.msgprint(__("Please save the document before assigning."));
 					return;
@@ -62,7 +62,7 @@ frappe.ui.form.on("Student Log", {
 							options: "User",
 							reqd: 1,
 							get_query: () => ({
-								// Role-filtered picker (server filters users by role)
+								// server filters users by role
 								query: "ifitwala_ed.api.get_users_with_role",
 								filters: { role }
 							})
@@ -83,9 +83,9 @@ frappe.ui.form.on("Student Log", {
 			assignBtn.addClass("btn-info");
 		}
 
-		// New Follow-Up: allowed unless already Closed (status is derived server-side)
+		// ── ✍️ Follow Up (start a new follow-up unless already Closed) ──
 		if (status !== "closed" && !frm.is_new()) {
-			const followBtn = frm.add_custom_button(__("Follow Up"), () => {
+			const followBtn = frm.add_custom_button(__("✍️ Follow Up"), () => {
 				frappe.call({
 					method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
 					callback(r) {
@@ -100,11 +100,16 @@ frappe.ui.form.on("Student Log", {
 			followBtn.addClass("btn-warning");
 		}
 
-		// Finalize: Close (admin OR owner). Calls server so timeline is logged.
-		if (frm.doc.follow_up_status === "Completed" && !frm.is_new()) {
+		// ── ✅ Close Follow-Up (visible if follow-up exists; enabled only at "Completed") ──
+		if (requiresFU && !frm.is_new()) {
 			const isOwner = (frappe.session.user === frm.doc.owner);
-			if (frappe.user.has_role("Academic Admin") || isOwner) {
-				const closeBtn = frm.add_custom_button(__("Close Student Log"), () => {
+			const canSeeClose = frappe.user.has_role("Academic Admin") || isOwner;
+			if (canSeeClose) {
+				const closeBtn = frm.add_custom_button(__("✅ Close Follow-Up"), () => {
+					if (status !== "completed") {
+						frappe.msgprint(__("Set Follow-up Status to <b>Completed</b> before closing."));
+						return;
+					}
 					frappe.call({
 						method: "ifitwala_ed.students.doctype.student_log.student_log.finalize_close",
 						args: { log_name: frm.doc.name },
@@ -112,11 +117,16 @@ frappe.ui.form.on("Student Log", {
 					});
 				});
 				closeBtn.addClass("btn-success");
+				if (status !== "completed") {
+					closeBtn.prop("disabled", true).attr("title", __("Requires status: Completed"));
+				}
 			}
 		}
 
-		configure_follow_up_person_field(frm);	
+		// keep field behavior consistent
+		configure_follow_up_person_field(frm);
 	},
+
 
 	student(frm) {
 		// Auto-fill program + academic year from active enrollment
