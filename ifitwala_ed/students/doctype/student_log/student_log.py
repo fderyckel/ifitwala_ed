@@ -151,6 +151,9 @@ class StudentLog(Document):
 		derived = self._compute_follow_up_status()
 		self._apply_status(derived, reason="recomputed on validate", write_immediately=False)
 
+		if not self.school and self.program:
+			self.school = frappe.db.get_value("Program", self.program, "school")
+
 	def on_submit(self):
 		"""
 		Submission invariants for the Student Log itself:
@@ -239,6 +242,8 @@ class StudentLog(Document):
 	def _fullname(self, user):
 		return frappe.utils.get_fullname(user) or user
 
+	def on_doctype_update():
+			frappe.db.add_index("Student Log", ["school"])
 
 # ---------- WHITELISTED HELPERS (KEPT) ----------
 @frappe.whitelist()
@@ -389,7 +394,6 @@ def assign_follow_up(log_name: str, user: str):
 		log.add_comment("Info", msg)
 
 	return {"ok": True, "assigned_to": user}
-
 
 
 @frappe.whitelist()

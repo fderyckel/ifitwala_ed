@@ -10,37 +10,28 @@ import frappe
 
 @frappe.whitelist()
 def get_dashboard_data(filters=None):
-	"""Aggregate stats with optional filters.
-
-	Filters arrive JSON-encoded; keys: school, academic_year, program,
-	student, author.
-	"""
 	try:
 		filters = frappe.parse_json(filters) or {}
-		
-		# Use the authorized school list for this user
+
 		authorized_schools = get_authorized_schools(frappe.session.user)
 		if not authorized_schools:
 			return {"error": "No authorized schools found."}
 
-		# Enforce the authorized schools filter
 		conditions, params = [], {}
-		conditions.append("sl.program IN (SELECT name FROM `tabProgram` WHERE school IN %(authorized_schools)s)")
+		# ▶ enforce access by school (uses your new index on sl.school)
+		conditions.append("sl.school IN %(authorized_schools)s")
 		params["authorized_schools"] = tuple(authorized_schools)
 
-		# ── School filter (via Program) ────────────────────────────
+		# ── School filter (now direct on Student Log) ─────────────
 		if filters.get("school"):
-			conditions.append(
-				"sl.program IN (SELECT name FROM `tabProgram` WHERE school = %(field_school)s)"
-			)
+			conditions.append("sl.school = %(field_school)s")
 			params["field_school"] = filters["school"]
 
 		# ── Direct columns in Student Log (alias sl) ──────────────
 		direct_map = {
 			"academic_year": "sl.academic_year",
-			"program": "sl.program",
-			#"student": "sl.student",
-			"author": "sl.author_name",
+			"program":       "sl.program",
+			"author":        "sl.author_name",
 		}
 		for key, col in direct_map.items():
 			if filters.get(key):
@@ -53,7 +44,7 @@ def get_dashboard_data(filters=None):
 		def q(sql):
 			return frappe.db.sql(sql.format(w=where_clause), params, as_dict=True)
 
-		# ── Aggregates ────────────────────────────────────────────
+		# (no query bodies change below — they already read from sl.*)
 		log_type_count = q(
 			"SELECT sl.log_type AS label, COUNT(*) AS value "
 			"FROM `tabStudent Log` sl WHERE {w} "
@@ -93,16 +84,11 @@ def get_dashboard_data(filters=None):
 			params,
 		)[0][0]
 
-		# ── Student Logs (if student filter is set) ─────────────────
 		student_logs = []
 		if filters.get("student"):
 			student_logs = frappe.db.sql(
 				"""
-				SELECT
-					sl.date,
-					sl.log_type,
-					sl.log AS content,
-					sl.author_name AS author
+				SELECT sl.date, sl.log_type, sl.log AS content, sl.author_name AS author
 				FROM `tabStudent Log` sl
 				WHERE sl.student = %(field_student)s
 				ORDER BY sl.date DESC
@@ -126,62 +112,61 @@ def get_dashboard_data(filters=None):
 		frappe.log_error(str(e), "Student Log Dashboard Data Error")
 		return {"error": str(e)}
 
+
 @frappe.whitelist()
-def get_distinct_students(filters=None, search_text: str = ""):   # ★ CHANGED
-    """Return up to 100 unique students matching the current filters
-       *and* the user's partial search string (ID or name)."""
-    try:
-        filters = frappe.parse_json(filters) or {}
-        txt = (search_text or "").strip()
-        
-				# Use the authorized school list for this user
-        authorized_schools = get_authorized_schools(frappe.session.user)
+def get_distinct_students(filters=None, search_text: str = ""):	# ★ CHANGED
+	"""Return up to 100 unique students matching the current filters
+		 *and* the user's partial search string (ID or name)."""
+	try:
+		filters = frappe.parse_json(filters) or {}
+		txt = (search_text or "").strip()
+		
+		# Use the authorized school list for this user
+		authorized_schools = get_authorized_schools(frappe.session.user)
 
-        if not authorized_schools:
-            return {"error": "No authorized schools found."}
+		if not authorized_schools:
+			return {"error": "No authorized schools found."}
 
-        conditions, params = [], {}
+		conditions, params = [], {}
 
-        # context filters --------------------------------------------------
-        if filters.get("school"):
-            conditions.append("pe.school = %(school)s")
-            params["school"] = filters["school"]
+		# context filters --------------------------------------------------
+		if filters.get("school"):
+			conditions.append("pe.school = %(school)s")
+			params["school"] = filters["school"]
 
-        if filters.get("program"):
-            conditions.append("pe.program = %(program)s")
-            params["program"] = filters["program"]
+		if filters.get("program"):
+			conditions.append("pe.program = %(program)s")
+			params["program"] = filters["program"]
 
-        if filters.get("academic_year"):
-            conditions.append("pe.academic_year = %(academic_year)s")
-            params["academic_year"] = filters["academic_year"]
+		if filters.get("academic_year"):
+			conditions.append("pe.academic_year = %(academic_year)s")
+			params["academic_year"] = filters["academic_year"]
 
-        # partial text filter ---------------------------------------------  ★ CHANGED
-        if txt:
-            conditions.append("(pe.student LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)")
-            params["txt"] = f"%{txt}%"
+		# partial text filter ---------------------------------------------  ★ CHANGED
+		if txt:
+			conditions.append("(pe.student LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)")
+			params["txt"] = f"%{txt}%"
 
-        where_clause = " AND ".join(conditions) if conditions else "1=1"
+		where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-        # query ------------------------------------------------------------
-        students = frappe.db.sql(f"""
-            SELECT DISTINCT pe.student, s.student_full_name AS student_full_name
-            FROM `tabProgram Enrollment` pe
-            INNER JOIN `tabStudent` s ON pe.student = s.name
-            WHERE {where_clause}
-            ORDER BY s.student_full_name
-            LIMIT 100
-        """, params, as_dict=True)
+		# query ------------------------------------------------------------
+		students = frappe.db.sql(f"""
+			SELECT DISTINCT pe.student, s.student_full_name AS student_full_name
+			FROM `tabProgram Enrollment` pe
+			INNER JOIN `tabStudent` s ON pe.student = s.name
+			WHERE {where_clause}
+			ORDER BY s.student_full_name
+			LIMIT 100
+		""", params, as_dict=True)
 
-        return students
+		return students
 
-    except Exception as e:
-        frappe.log_error(message=str(e), title="Student Lookup Error")
-        return {"error": str(e)}
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Student Lookup Error")
+		return {"error": str(e)}
 
 @frappe.whitelist()
 def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
-	"""Return the most recent Student Log rows that match the page filters
-		 (school, program, academic_year, author). Excludes the student filter."""
 	filters = frappe.parse_json(filters) or {}
 
 	authorized_schools = get_authorized_schools(frappe.session.user)
@@ -190,16 +175,13 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 
 	conditions, params = [], {}
 
-	conditions.append(
-		"sl.program IN (SELECT name FROM `tabProgram` WHERE school IN %(authorized_schools)s)"
-	)
+	# 🔒 scope by school branch (self + descendants)
+	conditions.append("sl.school IN %(authorized_schools)s")
 	params["authorized_schools"] = tuple(authorized_schools)
 
-	# reuse global filters except 'student'
+	# page filters (same as before), but school now direct on Student Log
 	if filters.get("school"):
-		conditions.append(
-			"sl.program IN (SELECT name FROM `tabProgram` WHERE school = %(school)s)"
-		)
+		conditions.append("sl.school = %(school)s")
 		params["school"] = filters["school"]
 
 	direct_map = {
@@ -209,9 +191,8 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 	}
 	for key, col in direct_map.items():
 		if filters.get(key):
-			ph = key
-			conditions.append(f"{col} = %({ph})s")
-			params[ph] = filters[key]
+			conditions.append(f"{col} = %({key})s")
+			params[key] = filters[key]
 
 	where_clause = " AND ".join(conditions) if conditions else "1=1"
 
@@ -220,7 +201,7 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 		SELECT
 			sl.date,
 			s.student_full_name AS student,
-			sl.program, 
+			sl.program,
 			sl.log_type,
 			sl.log              AS content,
 			sl.author_name      AS author,
@@ -237,29 +218,26 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 	return logs
 
 
+
 def get_authorized_schools(user):
-    """Return the list of schools the user is authorized to view."""
-    # Get the user's default school
-    default_school = frappe.defaults.get_user_default("school")
-    
-    if not default_school:
-        return []
+	"""Return user's school + all descendants using one SQL join on lft/rgt."""
+	# Resolve the anchor school: user default first, else Employee.school
+	default_school = frappe.defaults.get_user_default("school", user)
+	if not default_school:
+		default_school = frappe.db.get_value("Employee", {"user_id": user}, "school")
+	if not default_school:
+		return []
 
-    # Fetch all child schools if this is a parent school
-    all_schools = frappe.db.sql("""
-        WITH RECURSIVE school_tree AS (
-            SELECT name
-            FROM `tabSchool`
-            WHERE name = %s
+	rows = frappe.db.sql(
+		"""
+		SELECT s2.name
+		FROM `tabSchool` s1
+		JOIN `tabSchool` s2
+			ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
+		WHERE s1.name = %s
+		""",
+		(default_school,),
+		as_list=True,
+	)
+	return [r[0] for r in rows] or [default_school]
 
-            UNION ALL
-
-            SELECT s.name
-            FROM `tabSchool` s
-            INNER JOIN school_tree st ON s.parent_school = st.name
-        )
-        SELECT name FROM school_tree
-    """, (default_school,), as_list=True)
-
-    # Flatten the list and remove duplicates
-    return [s[0] for s in all_schools] if all_schools else [default_school]
