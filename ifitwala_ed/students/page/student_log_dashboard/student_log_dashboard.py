@@ -84,18 +84,34 @@ def get_dashboard_data(filters=None):
 			params,
 		)[0][0]
 
+		# ── Student Logs (if student filter is set) ─────────────────
 		student_logs = []
 		if filters.get("student"):
-			student_logs = frappe.db.sql(
-				"""
-				SELECT sl.date, sl.log_type, sl.log AS content, sl.author_name AS author
-				FROM `tabStudent Log` sl
-				WHERE sl.student = %(field_student)s
-				ORDER BY sl.date DESC
-				""",
-				{"field_student": filters["student"]},
-				as_dict=True
-			)
+				# reuse the same params + conditions used above
+				conds = ["sl.school IN %(authorized_schools)s", "sl.student = %(field_student)s"]
+				p = {**params, "field_student": filters["student"]}
+
+				# if the page has a School filter set, honor it too (cheap on sl.school)
+				if filters.get("school"):
+						conds.append("sl.school = %(field_school)s")
+						p["field_school"] = filters["school"]
+
+				where_detail = " AND ".join(conds)
+
+				student_logs = frappe.db.sql(
+						f"""
+						SELECT
+								sl.date,
+								sl.log_type,
+								sl.log AS content,
+								sl.author_name AS author
+						FROM `tabStudent Log` sl
+						WHERE {where_detail}
+						ORDER BY sl.date DESC
+						""",
+						p,
+						as_dict=True
+				)
 
 		return {
 			"logTypeCount": log_type_count,
@@ -114,43 +130,41 @@ def get_dashboard_data(filters=None):
 
 
 @frappe.whitelist()
-def get_distinct_students(filters=None, search_text: str = ""):	# ★ CHANGED
-	"""Return up to 100 unique students matching the current filters
-		 *and* the user's partial search string (ID or name)."""
+def get_distinct_students(filters=None, search_text: str = ""):
 	try:
 		filters = frappe.parse_json(filters) or {}
 		txt = (search_text or "").strip()
-		
-		# Use the authorized school list for this user
-		authorized_schools = get_authorized_schools(frappe.session.user)
 
+		# Authorize by user's school branch (self + descendants)
+		authorized_schools = get_authorized_schools(frappe.session.user)
 		if not authorized_schools:
 			return {"error": "No authorized schools found."}
 
 		conditions, params = [], {}
+		params["authorized_schools"] = tuple(authorized_schools)
 
-		# context filters --------------------------------------------------
+		# Context filters
 		if filters.get("school"):
 			conditions.append("pe.school = %(school)s")
 			params["school"] = filters["school"]
-
 		if filters.get("program"):
 			conditions.append("pe.program = %(program)s")
 			params["program"] = filters["program"]
-
 		if filters.get("academic_year"):
 			conditions.append("pe.academic_year = %(academic_year)s")
 			params["academic_year"] = filters["academic_year"]
 
-		# partial text filter ---------------------------------------------  ★ CHANGED
+		# Partial text match (id or full name)
 		if txt:
 			conditions.append("(pe.student LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)")
 			params["txt"] = f"%{txt}%"
 
+		# 🔒 Always constrain to authorized schools (no siblings)
+		conditions.append("pe.school IN %(authorized_schools)s")
+
 		where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-		# query ------------------------------------------------------------
-		students = frappe.db.sql(f"""
+		return frappe.db.sql(f"""
 			SELECT DISTINCT pe.student, s.student_full_name AS student_full_name
 			FROM `tabProgram Enrollment` pe
 			INNER JOIN `tabStudent` s ON pe.student = s.name
@@ -159,11 +173,10 @@ def get_distinct_students(filters=None, search_text: str = ""):	# ★ CHANGED
 			LIMIT 100
 		""", params, as_dict=True)
 
-		return students
-
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Student Lookup Error")
 		return {"error": str(e)}
+
 
 @frappe.whitelist()
 def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
@@ -216,7 +229,6 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 		as_dict=True,
 	)
 	return logs
-
 
 
 def get_authorized_schools(user):
