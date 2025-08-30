@@ -26,6 +26,8 @@ frappe.ui.form.on("Student Log", {
 				});
 			}
 		}
+
+		configure_follow_up_person_field(frm);	
 	},
 
 	refresh(frm) {
@@ -102,6 +104,8 @@ frappe.ui.form.on("Student Log", {
 				}, __("Actions"));
 			}
 		}
+
+		configure_follow_up_person_field(frm);	
 	},
 
 	student(frm) {
@@ -147,18 +151,27 @@ frappe.ui.form.on("Student Log", {
 	},
 
 	next_step(frm) {
-		// Drive the role filter from the chosen Next Step (server returns frappe_role)
-		if (!frm.doc.next_step) return;
+		// Update role based on Next Step, then refresh the role-filtered picker
+		if (!frm.doc.next_step) {
+			frm.set_value("follow_up_role", "Academic Staff");
+			configure_follow_up_person_field(frm);
+			return;
+		}
+
 		frappe.call({
 			method: "ifitwala_ed.students.doctype.student_log.student_log.get_follow_up_role_from_next_step",
 			args: { next_step: frm.doc.next_step },
 			callback(r) {
 				const role = r.message || "Academic Staff";
 				frm.set_value("follow_up_role", role);
-				// follow_up_person stays read-only; Assign dialog is role-filtered
+
+				// Re-apply pre-submit editability + role-filtered query for follow_up_person
+				// (helper must be defined at file scope)
+				configure_follow_up_person_field(frm);
 			}
 		});
 	},
+
 
 	requires_follow_up(frm) {
 		const show = !!frm.doc.requires_follow_up;
@@ -172,13 +185,29 @@ frappe.ui.form.on("Student Log", {
 			frm.set_value("follow_up_person", null);
 			frm.set_value("follow_up_status", null);
 		}
-	}
+	},	
 });
 
 // Small helper to keep field toggling consistent
 function toggle_follow_up_fields(frm, show) {
 	frm.toggle_display(["next_step", "follow_up_role", "follow_up_person", "follow_up_status"], show);
 }
+
+function configure_follow_up_person_field(frm) {
+	const requiresFU = !!frm.doc.requires_follow_up;
+
+	// Editable only pre-submit when follow-up is required
+	const editable_pre_submit = requiresFU && frm.is_new();
+	frm.set_df_property("follow_up_person", "read_only", editable_pre_submit ? 0 : 1);
+
+	// Role-filtered picker based on Next Step → associated_role (fallback: Academic Staff)
+	const role = frm.doc.follow_up_role || "Academic Staff";
+	frm.set_query("follow_up_person", () => ({
+		query: "ifitwala_ed.api.get_users_with_role",
+		filters: { role }
+	}));
+}
+
 
 // Realtime toast for the author when a follow-up is created/submitted (server emits)
 frappe.realtime.on("follow_up_ready_to_review", function (data) {

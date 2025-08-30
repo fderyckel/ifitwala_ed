@@ -43,37 +43,47 @@ class StudentLog(Document):
 
 	def _apply_status(self, new_status, reason=None, write_immediately=False):
 		"""
-		Set the status immediately (in-memory for new docs, DB for existing).
-		- During normal form saves (validate/submit), pass write_immediately=False
-		  so the comment is cached and emitted in after_save (safe for new docs).
-		- From whitelisted endpoints (assign/reassign/finalize/scheduler), pass
-		  write_immediately=True to emit the timeline comment immediately (the
-		  doc already exists; no race).
+		Update status and (optionally) log a concise timeline comment.
 		"""
+		# Read previous safely (DB for existing, in-memory for new)
 		prev = (
 			frappe.db.get_value(self.doctype, self.name, "follow_up_status")
 			if self.name and not self.is_new()
 			else self.follow_up_status
 		)
 
+		# No-op if nothing changes
+		if prev == new_status:
+			# still normalize in-memory for new docs
+			if self.is_new():
+				self.follow_up_status = new_status
+			return
+
+		# Apply the new status
 		if self.is_new():
 			self.follow_up_status = new_status
 		else:
 			self.db_set("follow_up_status", new_status)
 
-		msg = self._compose_status_change(prev, new_status, reason)
-		if not msg:
-			return
+		# Decide whether to emit a comment
+		reason_key = (reason or "").strip().lower()
+		suppress_reasons = {"recomputed on validate", "(re)assignment"}
+		if reason_key in suppress_reasons:
+			return  # quiet update; no timeline comment
+
+		# Compose and emit (deferred or immediate)
+		msg = f"Follow-up status: {prev or '—'} → {new_status or '—'}"
+		if reason:
+			msg += f" ({reason})"
 
 		if write_immediately and not self.is_new():
-			# Safe path for calls outside the save lifecycle (doc already exists)
 			try:
 				self.add_comment("Info", _(msg))
 			except Exception:
 				pass
 		else:
-			# We're in validate/save flow → defer until after_insert/after_save
 			self._cache_status_comment(msg)
+
 
 	def _compute_follow_up_status(self):
 		"""
@@ -105,21 +115,24 @@ class StudentLog(Document):
 
 	# ---------------------------------------------------------------------
 	# Lifecycle
-	# ---------------------------------------------------------------------
+		# ---------------------------------------------------------------------
 	def validate(self):
 		"""
-		State machine:
-		- requires_follow_up = 0 ⇒ status NULL, clear assignees, clear follow_up_person/next_step
-		- requires_follow_up = 1 ⇒ next_step required; single open assignee expected by submit
+		Pre-submit assignment support:
+		- If requires_follow_up = 1 and follow_up_person is set before submit,
+			ensure exactly one open ToDo exists for that user (single-assignee policy).
+		- Enforce role from Next Step → associated_role (if provided).
+		- Mirror current open assignee back to follow_up_person.
+		- Derive and cache status (timeline cleanup is deferred to Change #2).
 		"""
 		if cint(self.requires_follow_up):
 			if not self.next_step:
 				frappe.throw(_("Please select a next step."))
 
-			# Enforce 'frappe_role' from Next Step (if set) on chosen follow_up_person
+			# Use 'associated_role' (per your Next Step JSON)
 			expected_role = None
 			if self.next_step:
-				expected_role = frappe.get_value("Student Log Next Step", self.next_step, "frappe_role")
+				expected_role = frappe.get_value("Student Log Next Step", self.next_step, "associated_role")
 
 			# If a person is chosen pre-submit, ensure ToDo reflects that (single open)
 			if self.follow_up_person:
@@ -134,13 +147,14 @@ class StudentLog(Document):
 			current = self._current_assignee()
 			self.follow_up_person = current or self.follow_up_person
 
+			# Role guard if both next_step role and person exist
 			if expected_role and self.follow_up_person:
 				has_role = frappe.db.exists("Has Role", {"parent": self.follow_up_person, "role": expected_role})
 				if not has_role:
 					frappe.throw(_(f"Follow-up person '{self.follow_up_person}' does not have required role '{expected_role}'."))
 
 		else:
-			# Follow-up not required → clear + close assignments; log transition if needed
+			# Follow-up not required → clear & close
 			had_status = self.follow_up_status
 			self._unassign()
 			self.follow_up_person = None
@@ -154,18 +168,31 @@ class StudentLog(Document):
 		derived = self._compute_follow_up_status()
 		self._apply_status(derived, reason="recomputed on validate", write_immediately=False)
 
-	def on_submit(self):
-		# Guard: exactly one assignee when follow-up is required
-		if cint(self.requires_follow_up):
-			opens = self._open_assignees()
-			if len(opens) != 1:
-				frappe.throw(_("Exactly one assignee is required before submit."))
-			self.follow_up_person = opens[0]
-			self._apply_status(self._compute_follow_up_status(), reason="on submit", write_immediately=False)
 
-	def after_insert(self):
-		# First save of a new doc: safe to write the deferred comment now
-		self._write_cached_status_comment_if_any()
+	def on_submit(self):
+		"""
+		Submission invariants for the Student Log itself:
+		- If requires_follow_up = 1, exactly one open assignment must exist.
+		- Mirror that assignee into follow_up_person.
+		- Recompute status; timeline comment is suppressed via _apply_status() reason.
+		"""
+		if not cint(self.requires_follow_up):
+			return
+
+		opens = self._open_assignees()
+
+		# Edge case: creator picked follow_up_person pre-submit but no assignment exists yet
+		if not opens and self.follow_up_person:
+			self._assign_to(self.follow_up_person)
+			opens = self._open_assignees()
+
+		if len(opens) != 1:
+			frappe.throw(_("Exactly one assignee is required before submit."))
+
+		self.follow_up_person = opens[0]
+		self._apply_status(self._compute_follow_up_status(), reason="on submit", write_immediately=False)
+
+
 
 	def after_save(self):
 		# Handle updates as well (idempotent via clearing the flag)
@@ -284,7 +311,12 @@ def get_active_program_enrollment(student):
 
 @frappe.whitelist()
 def get_follow_up_role_from_next_step(next_step):
-	return frappe.get_value("Student Log Next Step", next_step, "frappe_role")
+	"""
+	Return the role associated with the selected Next Step.
+	Used to role-filter the follow_up_person picker (pre-submit assignment).
+	"""
+	return frappe.get_value("Student Log Next Step", next_step, "associated_role")
+
 
 
 # ---------- assign/reassign endpoint (owner OR Academic Admin OR current assignee) ----------
@@ -292,10 +324,10 @@ def get_follow_up_role_from_next_step(next_step):
 def assign_follow_up(log_name: str, user: str):
 	log = frappe.get_doc("Student Log", log_name)
 
-	roles = set(frappe.get_roles())  # current session user
+	# Permission: author, Academic Admin, or current assignee may (re)assign
+	roles = set(frappe.get_roles())
 	is_admin = "Academic Admin" in roles
 	is_author = (frappe.session.user == log.owner)
-
 	current = frappe.db.get_value(
 		"ToDo",
 		{"reference_type": "Student Log", "reference_name": log.name, "status": "Open"},
@@ -305,13 +337,16 @@ def assign_follow_up(log_name: str, user: str):
 	if not allowed:
 		frappe.throw(_("Not permitted to (re)assign this Student Log."))
 
-	# clear existing opens (single policy)
-	rows = frappe.get_all(
+	# Previous single open assignee (for clear "Old → New" message)
+	prev_rows = frappe.get_all(
 		"ToDo",
 		filters={"reference_type": log.doctype, "reference_name": log.name, "status": "Open"},
 		fields=["allocated_to"]
 	)
-	for r in rows:
+	prev_user = prev_rows[0].allocated_to if len(prev_rows) == 1 else None
+
+	# Clear existing opens (single-assignee policy)
+	for r in prev_rows:
 		try:
 			if assign_remove:
 				assign_remove(log.doctype, log.name, r.allocated_to)
@@ -325,7 +360,7 @@ def assign_follow_up(log_name: str, user: str):
 		except Exception:
 			pass
 
-	# add new assignment
+	# Create new assignment (native API preferred)
 	due_days = 5
 	if log.program:
 		school = frappe.get_value("Program", log.program, "school")
@@ -355,11 +390,30 @@ def assign_follow_up(log_name: str, user: str):
 		})
 		todo.insert(ignore_permissions=True)
 
-	# mirror + status + timeline (write immediately; doc exists)
+	# Mirror and recompute status (comment suppressed by reason="(re)assignment")
 	log.db_set("follow_up_person", user)
 	log._apply_status(log._compute_follow_up_status(), reason="(re)assignment", write_immediately=True)
-	log.add_comment("Comment", _("(Re)assigned to {0}").format(frappe.utils.get_fullname(user) or user))
+
+	# Timeline policy:
+	# - With native assign_add: rely on Frappe's "Assigned to ..." for initial assign;
+	#   only add a comment when it's a true reassignment Old → New.
+	# - Without assign_add (fallback): emit a single concise comment ourselves.
+	if assign_add:
+		if prev_user and prev_user != user:
+			log.add_comment(
+				"Info",
+				_("Reassigned: {0} → {1}").format(log._fullname(prev_user), log._fullname(user))
+			)
+	else:
+		# Fallback environment: add exactly one comment
+		if prev_user and prev_user != user:
+			msg = _("Reassigned: {0} → {1}").format(log._fullname(prev_user), log._fullname(user))
+		else:
+			msg = _("Assigned to {0}").format(log._fullname(user))
+		log.add_comment("Info", msg)
+
 	return {"ok": True, "assigned_to": user}
+
 
 
 @frappe.whitelist()

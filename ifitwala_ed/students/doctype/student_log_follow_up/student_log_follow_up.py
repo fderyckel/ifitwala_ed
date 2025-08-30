@@ -61,7 +61,7 @@ class StudentLogFollowUp(Document):
 	def on_submit(self):
 		log = frappe.get_doc("Student Log", self.student_log)
 
-		# 1) Close native assignment on the parent log (single-assignee policy)
+		# 1) Close any open native assignments on the parent (single-assignee policy)
 		open_assignees = frappe.get_all(
 			"ToDo",
 			filters={"reference_type": "Student Log", "reference_name": log.name, "status": "Open"},
@@ -73,7 +73,6 @@ class StudentLogFollowUp(Document):
 				if assign_remove:
 					assign_remove("Student Log", log.name, u)
 				else:
-					# fallback: close ToDo directly
 					frappe.db.set_value(
 						"ToDo",
 						{"reference_type": "Student Log", "reference_name": log.name, "allocated_to": u, "status": "Open"},
@@ -81,7 +80,6 @@ class StudentLogFollowUp(Document):
 						"Closed"
 					)
 			except Exception:
-				# last resort: close any matching open ToDos
 				frappe.db.set_value(
 					"ToDo",
 					{"reference_type": "Student Log", "reference_name": log.name, "allocated_to": u, "status": "Open"},
@@ -89,20 +87,48 @@ class StudentLogFollowUp(Document):
 					"Closed"
 				)
 
-		# 2) Update mapping: Follow-Up submit → parent 'Closed' (author may later set 'Completed')
-		log.db_set("follow_up_status", "Closed")
+		# 2) Mark parent as Completed (align with finalize flow)
+		log.db_set("follow_up_status", "Completed")
 
-		# 3) Notify parent author (toast) and timeline comment
-		log_author_user_id = frappe.db.get_value("Employee", {"employee_full_name": log.author_name}, "user_id")
-		if log_author_user_id and log_author_user_id != frappe.session.user:
+		# 3) Optionally sync auto-close policy from Next Step onto the parent log
+		if log.next_step:
+			days = frappe.get_value("Student Log Next Step", log.next_step, "auto_close_after_days")
+			if days is not None:
+				try:
+					log.db_set("auto_close_after_days", int(days))
+				except Exception:
+					pass
+
+		# 4) Notify the parent author (persistent bell + optional toast) and add one concise timeline entry
+		# Prefer the actual owner; fall back to resolving via Employee name if needed
+		author_user = log.owner
+		if not author_user and log.author_name:
+			author_user = frappe.db.get_value("Employee", {"employee_full_name": log.author_name}, "user_id")
+
+		# 4a) Persistent in-app bell (Notification dropdown)
+		if author_user and author_user != frappe.session.user:
+			frappe.publish_realtime(
+				event="inbox_notification",
+				message={
+					"type": "Alert",
+					"subject": _("Follow-up ready to review"),
+					"message": _("Follow-up for {0} has been submitted. Click to review.").format(log.student_name or log.name),
+					"reference_doctype": "Student Log",
+					"reference_name": log.name
+				},
+				user=author_user
+			)
+
+			# 4b) (Optional) lightweight toast in active sessions
 			frappe.publish_realtime(
 				event="follow_up_ready_to_review",
 				message={"log_name": log.name, "student_name": log.student_name},
-				user=log_author_user_id
+				user=author_user
 			)
 
+		# 4c) Single concise timeline entry
 		log.add_comment(
-			comment_type="Comment",
+			comment_type="Info",
 			text=_("Follow-up submitted by {author} — see {link}").format(
 				author=self.follow_up_author or frappe.utils.get_fullname(frappe.session.user),
 				link=frappe.utils.get_link_to_form(self.doctype, self.name),

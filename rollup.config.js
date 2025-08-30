@@ -134,7 +134,7 @@ module.exports = [
 	{
 		input: `${websiteSrc}/website.js`,
 		output: {
-			file: `${websiteSrc}/website.min.js`,
+			file: `${dist}/website.min.js`,
 			format: 'iife',
 			sourcemap: true,
 		},
@@ -147,7 +147,7 @@ module.exports = [
 		output: { dir: '.' },
 		plugins: [
 			postcss({
-				extract: `${websiteSrc}/website.min.css`,
+				extract: `${dist}/website.min.css`,
 				minimize: true,
 				plugins: [require('autoprefixer')],
 			}),
@@ -158,7 +158,7 @@ module.exports = [
 	{
 		input: `${websiteSrc}/school.js`,
 		output: {
-			file: `${websiteSrc}/school.min.js`,
+			file: `${dist}/school.min.js`,
 			format: 'iife',
 			sourcemap: true,
 		},
@@ -171,7 +171,7 @@ module.exports = [
 		output: { dir: '.' },
 		plugins: [
 			postcss({
-				extract: `${websiteSrc}/school.min.css`,
+				extract: `${dist}/school.min.css`,
 				minimize: true,
 				plugins: [require('autoprefixer')],
 			}),
