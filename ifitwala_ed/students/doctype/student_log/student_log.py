@@ -18,32 +18,17 @@ class StudentLog(Document):
 	# ---------------------------------------------------------------------
 	# Status & timeline helpers
 	# ---------------------------------------------------------------------
-	def _compose_status_change(self, old, new, reason=None):
-		if old == new:
-			return None
-		msg = f"Follow-up status: {old or '—'} → {new or '—'}"
-		if reason:
-			msg += f" ({reason})"
-		return msg
 
-	def _cache_status_comment(self, msg):
-		"""Cache one status-change message during validate; flush after save."""
-		if msg:
-			self.flags._status_change_msg = msg
-
-	def _write_cached_status_comment_if_any(self):
-		"""Flush the cached message now that the doc exists in DB."""
-		msg = getattr(self.flags, "_status_change_msg", None)
-		if not msg:
-			return
-		try:
-			self.add_comment("Info", _(msg))
-		finally:
-			self.flags._status_change_msg = None  # prevent duplicates
 
 	def _apply_status(self, new_status, reason=None, write_immediately=False):
 		"""
 		Update status and (optionally) log a concise timeline comment.
+
+		No caching: comments are added immediately when the doc exists; skipped on new docs.
+		Suppresses comment spam for:
+		- 'recomputed on validate'
+		- '(re)assignment'
+		- 'on submit'
 		"""
 		# Read previous safely (DB for existing, in-memory for new)
 		prev = (
@@ -67,23 +52,21 @@ class StudentLog(Document):
 
 		# Decide whether to emit a comment
 		reason_key = (reason or "").strip().lower()
-		suppress_reasons = {"recomputed on validate", "(re)assignment"}
-		if reason_key in suppress_reasons:
+		if reason_key in {"recomputed on validate", "(re)assignment", "on submit"}:
 			return  # quiet update; no timeline comment
 
-		# Compose and emit (deferred or immediate)
+		# If the doc doesn't exist yet, skip timeline (no cache)
+		if self.is_new():
+			return
+
+		# Compose and emit immediately
 		msg = f"Follow-up status: {prev or '—'} → {new_status or '—'}"
 		if reason:
 			msg += f" ({reason})"
-
-		if write_immediately and not self.is_new():
-			try:
-				self.add_comment("Info", _(msg))
-			except Exception:
-				pass
-		else:
-			self._cache_status_comment(msg)
-
+		try:
+			self.add_comment("Info", _(msg))
+		except Exception:
+			pass
 
 	def _compute_follow_up_status(self):
 		"""
@@ -123,7 +106,7 @@ class StudentLog(Document):
 			ensure exactly one open ToDo exists for that user (single-assignee policy).
 		- Enforce role from Next Step → associated_role (if provided).
 		- Mirror current open assignee back to follow_up_person.
-		- Derive and cache status (timeline cleanup is deferred to Change #2).
+		- Derive status timeline comments suppressed for auto reasons).
 		"""
 		if cint(self.requires_follow_up):
 			if not self.next_step:
@@ -135,7 +118,7 @@ class StudentLog(Document):
 				expected_role = frappe.get_value("Student Log Next Step", self.next_step, "associated_role")
 
 			# If a person is chosen pre-submit, ensure ToDo reflects that (single open)
-			if self.follow_up_person:
+			if self.follow_up_person and not self.is_new():
 				opens = self._open_assignees()
 				if not opens:
 					self._assign_to(self.follow_up_person)
@@ -168,7 +151,6 @@ class StudentLog(Document):
 		derived = self._compute_follow_up_status()
 		self._apply_status(derived, reason="recomputed on validate", write_immediately=False)
 
-
 	def on_submit(self):
 		"""
 		Submission invariants for the Student Log itself:
@@ -191,12 +173,6 @@ class StudentLog(Document):
 
 		self.follow_up_person = opens[0]
 		self._apply_status(self._compute_follow_up_status(), reason="on submit", write_immediately=False)
-
-
-
-	def after_save(self):
-		# Handle updates as well (idempotent via clearing the flag)
-		self._write_cached_status_comment_if_any()
 
 	# ---------------------------------------------------------------------
 	# Assignment helpers

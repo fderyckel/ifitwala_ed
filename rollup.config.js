@@ -138,7 +138,17 @@ module.exports = [
 			format: 'iife',
 			sourcemap: true,
 		},
-		plugins: [...basePlugins, terser()],
+		plugins: [
+			...basePlugins, 
+			terser(), 
+			{
+				name: 'alias-stable-website-js',
+				writeBundle() {
+					const p = 'ifitwala_ed/public/dist';
+					try { fs.copyFileSync(`${p}/website.min.js`, `${p}/website.bundle.js`); } catch {}
+				}
+			}
+		],
 	},
 
 	// ── Website CSS ──
@@ -151,6 +161,13 @@ module.exports = [
 				minimize: true,
 				plugins: [require('autoprefixer')],
 			}),
+			{
+				name: 'alias-stable-website-css',
+				writeBundle() {
+					const p = 'ifitwala_ed/public/dist';
+					try { fs.copyFileSync(`${p}/website.min.css`, `${p}/website.bundle.css`); } catch {}
+				}
+			}
 		],
 	},
 
@@ -162,7 +179,17 @@ module.exports = [
 			format: 'iife',
 			sourcemap: true,
 		},
-		plugins: [...basePlugins, terser()],
+		plugins: [
+			...basePlugins, 
+			terser(), 
+			{ 
+				name: 'alias-stable-school-js',
+				writeBundle() {
+					const p = 'ifitwala_ed/public/dist';
+					try { fs.copyFileSync(`${p}/school.min.js`, `${p}/school.bundle.js`); } catch {}
+				}
+			}
+		],
 	},
 
 	// ── School CSS ──
@@ -175,6 +202,13 @@ module.exports = [
 				minimize: true,
 				plugins: [require('autoprefixer')],
 			}),
+			{
+				name: 'alias-stable-school-css',
+				writeBundle() {
+					const p = 'ifitwala_ed/public/dist';
+					try { fs.copyFileSync(`${p}/school.min.css`, `${p}/school.bundle.css`); } catch {}
+				}
+			}
 		],
 	},
 
