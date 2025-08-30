@@ -6,10 +6,7 @@ frappe.ui.form.on("Student Log", {
 		// 1) Only enabled students selectable
 		frm.set_query("student", () => ({ filters: { enabled: 1 } }));
 
-		// 2) follow_up_person is mirrored from ToDo assignee; never edited directly
-		frm.set_df_property("follow_up_person", "read_only", 1);
-
-		// 3) Soft defaults on new docs
+		// 2) Soft defaults on new docs
 		if (frm.is_new()) {
 			if (!frm.doc.date) frm.set_value("date", frappe.datetime.get_today());
 			if (!frm.doc.time) frm.set_value("time", frappe.datetime.now_time());
@@ -27,8 +24,15 @@ frappe.ui.form.on("Student Log", {
 			}
 		}
 
-		configure_follow_up_person_field(frm);	
-	},
+		// 3) Show/hide the follow-up block right away (not only on refresh)
+		toggle_follow_up_fields(frm, !!frm.doc.requires_follow_up);
+
+		// 4) Enable pre-submit assignment via the field (role-filtered)
+		//    NOTE: we intentionally removed the old hard lock:
+		//    // frm.set_df_property("follow_up_person", "read_only", 1);
+		configure_follow_up_person_field(frm);
+	}, 
+
 
 	refresh(frm) {
 		const status = (frm.doc.follow_up_status || "").toLowerCase();
