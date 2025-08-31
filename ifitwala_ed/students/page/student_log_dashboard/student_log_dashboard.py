@@ -8,6 +8,94 @@
 import frappe
 
 
+def _resolve_date_window(filters):
+	"""
+	Return (date_from, date_to) applying these rules:
+	- If no Academic Year: use from_date/to_date as provided (open-ended ok).
+	- If Academic Year set:
+		• If no from/to provided -> AY range.
+		• If provided range(s) fully within AY -> keep provided (narrower).
+		• If provided range(s) fall outside AY or are missing -> AY takes precedence.
+	"""
+	fd = (filters.get("from_date") or "").strip() or None
+	td = (filters.get("to_date") or "").strip() or None
+
+	ay = (filters.get("academic_year") or "").strip()
+	ay_start, ay_end = (None, None)
+	if ay:
+		ay_start, ay_end = frappe.db.get_value(
+			"Academic Year", ay, ["year_start_date", "year_end_date"]
+		) or (None, None)
+
+	# No AY → pass through
+	if not (ay_start and ay_end):
+		return fd, td
+
+	# AY present; precedence logic
+	if not fd and not td:
+		return ay_start, ay_end
+
+	if fd and td and (fd >= str(ay_start) and td <= str(ay_end)):
+		return fd, td
+
+	if fd and not td and (str(ay_start) <= fd <= str(ay_end)):
+		return fd, ay_end
+
+	if td and not fd and (str(ay_start) <= td <= str(ay_end)):
+		return ay_start, td
+
+	# Not matching → AY wins
+	return ay_start, ay_end
+
+
+def _apply_common_filters(filters, authorized_schools):
+	"""
+	Build WHERE conditions/params shared by queries, including date window.
+	"""
+	conditions, params = [], {}
+
+	# enforce access by school (uses your index on sl.school)
+	conditions.append("sl.school IN %(authorized_schools)s")
+	params["authorized_schools"] = tuple(authorized_schools)
+
+	# School filter (include descendants)
+	if filters.get("school"):
+		conditions.append("""
+			sl.school IN (
+				SELECT s2.name
+				FROM `tabSchool` s1
+				JOIN `tabSchool` s2
+					ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
+				WHERE s1.name = %(field_school)s
+			)
+		""")
+		params["field_school"] = filters["school"]
+
+	# Direct columns in Student Log (alias sl)
+	direct_map = {
+		"academic_year": "sl.academic_year",
+		"program": "sl.program",
+		"author": "sl.author_name",
+	}
+	for key, col in direct_map.items():
+		if filters.get(key):
+			ph = f"field_{key}"
+			conditions.append(f"{col} = %({ph})s")
+			params[ph] = filters[key]
+
+	# Date window (From/To with AY precedence)
+	date_from, date_to = _resolve_date_window(filters)
+	if date_from:
+		conditions.append("sl.date >= %(date_from)s")
+		params["date_from"] = date_from
+	if date_to:
+		conditions.append("sl.date <= %(date_to)s")
+		params["date_to"] = date_to
+
+	where_clause = " AND ".join(conditions) if conditions else "1=1"
+	return where_clause, params
+
+
 @frappe.whitelist()
 def get_dashboard_data(filters=None):
 	try:
@@ -17,43 +105,11 @@ def get_dashboard_data(filters=None):
 		if not authorized_schools:
 			return {"error": "No authorized schools found."}
 
-		conditions, params = [], {}
-		# ▶ enforce access by school (uses your new index on sl.school)
-		conditions.append("sl.school IN %(authorized_schools)s")
-		params["authorized_schools"] = tuple(authorized_schools)
-
-		# ── School filter (now includes descendants) ─────────────
-		if filters.get("school"):
-			conditions.append("""
-				sl.school IN (
-					SELECT s2.name
-					FROM `tabSchool` s1
-					JOIN `tabSchool` s2
-						ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
-					WHERE s1.name = %(field_school)s
-				)
-			""")
-			params["field_school"] = filters["school"]
-
-
-		# ── Direct columns in Student Log (alias sl) ──────────────
-		direct_map = {
-			"academic_year": "sl.academic_year",
-			"program":       "sl.program",
-			"author":        "sl.author_name",
-		}
-		for key, col in direct_map.items():
-			if filters.get(key):
-				ph = f"field_{key}"
-				conditions.append(f"{col} = %({ph})s")
-				params[ph] = filters[key]
-
-		where_clause = " AND ".join(conditions) if conditions else "1=1"
+		where_clause, params = _apply_common_filters(filters, authorized_schools)
 
 		def q(sql):
 			return frappe.db.sql(sql.format(w=where_clause), params, as_dict=True)
 
-		# (no query bodies change below — they already read from sl.*)
 		log_type_count = q(
 			"SELECT sl.log_type AS label, COUNT(*) AS value "
 			"FROM `tabStudent Log` sl WHERE {w} "
@@ -61,14 +117,13 @@ def get_dashboard_data(filters=None):
 		)
 
 		logs_by_cohort = q(
-				"SELECT pe.cohort AS label, COUNT(sl.name) AS value "
-				"FROM `tabStudent Log` sl "
-				"LEFT JOIN `tabProgram Enrollment` pe "
-				"  ON pe.student = sl.student "
-				" AND pe.academic_year = sl.academic_year "
-				"WHERE {w} GROUP BY pe.cohort ORDER BY value DESC"
+			"SELECT pe.cohort AS label, COUNT(sl.name) AS value "
+			"FROM `tabStudent Log` sl "
+			"LEFT JOIN `tabProgram Enrollment` pe "
+			"  ON pe.student = sl.student "
+			" AND pe.academic_year = sl.academic_year "
+			"WHERE {w} GROUP BY pe.cohort ORDER BY value DESC"
 		)
-
 
 		logs_by_program = q(
 			"SELECT sl.program AS label, COUNT(sl.name) AS value "
@@ -96,43 +151,41 @@ def get_dashboard_data(filters=None):
 			params,
 		)[0][0]
 
-		# ── Student Logs (if student filter is set) ─────────────────
+		# ── Student Logs (detail for a specific student) ─────────────
 		student_logs = []
 		if filters.get("student"):
-				# reuse the same params + conditions used above
-				conds = ["sl.school IN %(authorized_schools)s", "sl.student = %(field_student)s"]
-				p = {**params, "field_student": filters["student"]}
+			conds = ["sl.school IN %(authorized_schools)s", "sl.student = %(field_student)s"]
+			p = {**params, "field_student": filters["student"]}
 
-				# if the page has a School filter set, include descendants
-				if filters.get("school"):
-						conds.append("""
-								sl.school IN (
-										SELECT s2.name
-										FROM `tabSchool` s1
-										JOIN `tabSchool` s2
-											ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
-										WHERE s1.name = %(field_school)s
-								)
-						""")
-						p["field_school"] = filters["school"]
+			if filters.get("school"):
+				conds.append("""
+					sl.school IN (
+						SELECT s2.name
+						FROM `tabSchool` s1
+						JOIN `tabSchool` s2
+							ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
+						WHERE s1.name = %(field_school)s
+					)
+				""")
+				p["field_school"] = filters["school"]
 
-				where_detail = " AND ".join(conds)
+			where_detail = " AND ".join(conds)
 
-				student_logs = frappe.db.sql(
-						f"""
-						SELECT
-								sl.date,
-								sl.log_type,
-								sl.log AS content,
-								sl.author_name AS author
-						FROM `tabStudent Log` sl
-						WHERE {where_detail}
-						ORDER BY sl.date DESC
-						""",
-						p,
-						as_dict=True
-				)
-				
+			student_logs = frappe.db.sql(
+				f"""
+				SELECT
+					sl.date,
+					sl.log_type,
+					sl.log AS content,
+					sl.author_name AS author
+				FROM `tabStudent Log` sl
+				WHERE {where_detail}
+				ORDER BY sl.date DESC
+				""",
+				p,
+				as_dict=True
+			)
+
 		return {
 			"logTypeCount": log_type_count,
 			"logsByCohort": logs_by_cohort,
@@ -155,7 +208,6 @@ def get_distinct_students(filters=None, search_text: str = ""):
 		filters = frappe.parse_json(filters) or {}
 		txt = (search_text or "").strip()
 
-		# Authorize by user's school branch (self + descendants)
 		authorized_schools = get_authorized_schools(frappe.session.user)
 		if not authorized_schools:
 			return {"error": "No authorized schools found."}
@@ -163,19 +215,17 @@ def get_distinct_students(filters=None, search_text: str = ""):
 		conditions, params = [], {}
 		params["authorized_schools"] = tuple(authorized_schools)
 
-		# Context filters
 		if filters.get("school"):
-				conditions.append("""
-						pe.school IN (
-								SELECT s2.name
-								FROM `tabSchool` s1
-								JOIN `tabSchool` s2
-									ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
-								WHERE s1.name = %(field_school)s
-						)
-				""")
-				params["field_school"] = filters["school"]
-
+			conditions.append("""
+				pe.school IN (
+					SELECT s2.name
+					FROM `tabSchool` s1
+					JOIN `tabSchool` s2
+						ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
+					WHERE s1.name = %(field_school)s
+				)
+			""")
+			params["field_school"] = filters["school"]
 
 		if filters.get("program"):
 			conditions.append("pe.program = %(program)s")
@@ -184,12 +234,10 @@ def get_distinct_students(filters=None, search_text: str = ""):
 			conditions.append("pe.academic_year = %(academic_year)s")
 			params["academic_year"] = filters["academic_year"]
 
-		# Partial text match (id or full name)
 		if txt:
 			conditions.append("(pe.student LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)")
 			params["txt"] = f"%{txt}%"
 
-		# 🔒 Always constrain to authorized schools (no siblings)
 		conditions.append("pe.school IN %(authorized_schools)s")
 
 		where_clause = " AND ".join(conditions) if conditions else "1=1"
@@ -216,37 +264,7 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 	if not authorized_schools:
 		return []
 
-	conditions, params = [], {}
-
-	# 🔒 scope by school branch (self + descendants)
-	conditions.append("sl.school IN %(authorized_schools)s")
-	params["authorized_schools"] = tuple(authorized_schools)
-
-	# page filters (same as before), but school now includes descendants
-	if filters.get("school"):
-		conditions.append("""
-			sl.school IN (
-				SELECT s2.name
-				FROM `tabSchool` s1
-				JOIN `tabSchool` s2
-					ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
-				WHERE s1.name = %(school)s
-			)
-		""")
-		params["school"] = filters["school"]
-
-
-	direct_map = {
-		"academic_year": "sl.academic_year",
-		"program":       "sl.program",
-		"author":        "sl.author_name",
-	}
-	for key, col in direct_map.items():
-		if filters.get(key):
-			conditions.append(f"{col} = %({key})s")
-			params[key] = filters[key]
-
-	where_clause = " AND ".join(conditions) if conditions else "1=1"
+	where_clause, params = _apply_common_filters(filters, authorized_schools)
 
 	logs = frappe.db.sql(
 		f"""
@@ -272,7 +290,6 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 
 def get_authorized_schools(user):
 	"""Return user's school + all descendants using one SQL join on lft/rgt."""
-	# Resolve the anchor school: user default first, else Employee.school
 	default_school = frappe.defaults.get_user_default("school", user)
 	if not default_school:
 		default_school = frappe.db.get_value("Employee", {"user_id": user}, "school")

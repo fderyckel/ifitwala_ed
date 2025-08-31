@@ -389,11 +389,21 @@ def assign_follow_up(log_name: str, user: str):
 		""",
 		(assignee_anchor, log_school),
 	)
+
+	# 🔒 enforce branch guard (required!)
 	if not ok:
 		frappe.throw(
-			_("Assignee’s school branch ({0}) does not include the log’s school ({1}).")
+			_("Assignee's school branch ({0}) does not include the log's school ({1}).")
 			.format(assignee_anchor, log_school),
 			title=_("Outside School Branch")
+		)
+
+	# ✅ role guard: assignee must have the expected role (from Next Step)
+	required_role = sl.follow_up_role or "Academic Staff"
+	if required_role and required_role not in set(frappe.get_roles(user)): 
+		frappe.throw(
+			_("Assignee must have the role: {0}.").format(required_role), 
+			title=_("Role Mismatch")
 		)
 
 	# Permission: author, Academic Admin, or current assignee may (re)assign
