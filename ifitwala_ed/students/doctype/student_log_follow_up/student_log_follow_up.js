@@ -43,7 +43,7 @@ frappe.ui.form.on("Student Log Follow Up", {
 		if (frm.doc.student_log) {
 			frm.add_custom_button(__("Open Student Log"), () => {
 				frappe.set_route("Form", "Student Log", frm.doc.student_log);
-			}, __("Actions"));
+			});
 		}
 	}
 });

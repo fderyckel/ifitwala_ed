@@ -14,7 +14,6 @@
 
 const path = require('path');
 const fs = require('fs');
-const alias = require('@rollup/plugin-alias');
 const resolve = require('@rollup/plugin-node-resolve');
 const commonjs = require('@rollup/plugin-commonjs');
 const postcss = require('rollup-plugin-postcss');
@@ -25,7 +24,6 @@ const copy = require('rollup-plugin-copy');
 /* NEW: inline CSS @import (needed for bootstrap-icons.css) */
 const postcssImport = require('postcss-import');
 
-const projectRootDir = path.resolve(__dirname);
 const dist = 'ifitwala_ed/public/dist';
 const websiteSrc = 'ifitwala_ed/public/website';
 const portalSrc = 'ifitwala_ed/public/js/student_portal'; 
