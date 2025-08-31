@@ -359,22 +359,50 @@ def get_follow_up_role_from_next_step(next_step):
 def assign_follow_up(log_name: str, user: str):
 	sl = frappe.get_doc("Student Log", log_name)
 
-	# 🚫 block assignment on closed logs
+	# 🚫 already-closed guard (you added earlier)
 	if (sl.follow_up_status or "").lower() == "closed":
 		frappe.throw(
 			_("This Student Log is already closed and cannot be (re)assigned."),
 			title=_("Follow-Up Closed")
 		)
 
-	log = frappe.get_doc("Student Log", log_name)
+	# ✅ branch guard: assignee must cover log.school (self or descendant)
+	log_school = sl.school
+	assignee_anchor = (
+		frappe.defaults.get_user_default("school", user)
+		or frappe.db.get_value("Employee", {"user_id": user}, "school")
+	)
+	if not assignee_anchor:
+		frappe.throw(
+			_("Assignee has no School set (User Default or Employee.school)."),
+			title=_("Missing School")
+		)
+
+	# single SQL: is log_school within assignee_anchor branch? (assignee_anchor ≤ log_school in lft/rgt)
+	ok = frappe.db.sql(
+		"""
+		SELECT 1
+		FROM `tabSchool` s1
+		JOIN `tabSchool` s2
+			ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
+		WHERE s1.name = %s AND s2.name = %s
+		""",
+		(assignee_anchor, log_school),
+	)
+	if not ok:
+		frappe.throw(
+			_("Assignee’s school branch ({0}) does not include the log’s school ({1}).")
+			.format(assignee_anchor, log_school),
+			title=_("Outside School Branch")
+		)
 
 	# Permission: author, Academic Admin, or current assignee may (re)assign
 	roles = set(frappe.get_roles())
 	is_admin = "Academic Admin" in roles
-	is_author = (frappe.session.user == log.owner)
+	is_author = (frappe.session.user == sl.owner)
 	current = frappe.db.get_value(
 		"ToDo",
-		{"reference_type": "Student Log", "reference_name": log.name, "status": "Open"},
+		{"reference_type": "Student Log", "reference_name": sl.name, "status": "Open"},
 		"allocated_to"
 	)
 	allowed = is_admin or is_author or (current and current == frappe.session.user)
@@ -384,7 +412,7 @@ def assign_follow_up(log_name: str, user: str):
 	# Previous single open assignee (for clear "Old → New" message)
 	prev_rows = frappe.get_all(
 		"ToDo",
-		filters={"reference_type": log.doctype, "reference_name": log.name, "status": "Open"},
+		filters={"reference_type": sl.doctype, "reference_name": sl.name, "status": "Open"},
 		fields=["allocated_to"]
 	)
 	prev_user = prev_rows[0].allocated_to if len(prev_rows) == 1 else None
@@ -393,11 +421,11 @@ def assign_follow_up(log_name: str, user: str):
 	for r in prev_rows:
 		try:
 			if assign_remove:
-				assign_remove(log.doctype, log.name, r.allocated_to)
+				assign_remove(sl.doctype, sl.name, r.allocated_to)
 			else:
 				frappe.db.set_value(
 					"ToDo",
-					{"reference_type": log.doctype, "reference_name": log.name, "allocated_to": r.allocated_to, "status": "Open"},
+					{"reference_type": sl.doctype, "reference_name": sl.name, "allocated_to": r.allocated_to, "status": "Open"},
 					"status",
 					"Closed"
 				)
@@ -405,29 +433,24 @@ def assign_follow_up(log_name: str, user: str):
 			pass
 
 	# Create new assignment (native API preferred)
-	due_days = 5
-	if log.program:
-		school = frappe.get_value("Program", log.program, "school")
-		if school:
-			due_days = frappe.get_value("School", school, "default_follow_up_due_in_days") or 5
+	due_days = frappe.db.get_value("School", sl.school, "default_follow_up_due_in_days") or 5
 	due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
 
 	if assign_add:
 		assign_add({
-			"doctype": log.doctype,
-			"name": log.name,
+			"doctype": sl.doctype,
+			"name": sl.name,
 			"assign_to": [user],
-			"description": f"Follow up on Student Log for {log.student_name}",
+			"description": f"Follow up on Student Log for {sl.student_name}",
 			"due_date": due_date
 		})
 	else:
 		todo = frappe.new_doc("ToDo")
 		todo.update({
-			"owner": user,
 			"allocated_to": user,
-			"reference_type": log.doctype,
-			"reference_name": log.name,
-			"description": f"Follow up on Student Log for {log.student_name}",
+			"reference_type": sl.doctype,
+			"reference_name": sl.name,
+			"description": f"Follow up on Student Log for {sl.student_name}",
 			"date": due_date,
 			"status": "Open",
 			"priority": "Medium",
@@ -435,8 +458,8 @@ def assign_follow_up(log_name: str, user: str):
 		todo.insert(ignore_permissions=True)
 
 	# Mirror and recompute status (comment suppressed by reason="(re)assignment")
-	log.db_set("follow_up_person", user)
-	log._apply_status(log._compute_follow_up_status(), reason="(re)assignment", write_immediately=True)
+	sl.db_set("follow_up_person", user)
+	sl._apply_status(sl._compute_follow_up_status(), reason="(re)assignment", write_immediately=True)
 
 	# Timeline policy:
 	# - With native assign_add: rely on Frappe's "Assigned to ..." for initial assign;
@@ -444,17 +467,17 @@ def assign_follow_up(log_name: str, user: str):
 	# - Without assign_add (fallback): emit a single concise comment ourselves.
 	if assign_add:
 		if prev_user and prev_user != user:
-			log.add_comment(
+			sl.add_comment(
 				"Info",
-				_("Reassigned: {0} → {1}").format(log._fullname(prev_user), log._fullname(user))
+				_("Reassigned: {0} → {1}").format(sl._fullname(prev_user), sl._fullname(user))
 			)
 	else:
 		# Fallback environment: add exactly one comment
 		if prev_user and prev_user != user:
-			msg = _("Reassigned: {0} → {1}").format(log._fullname(prev_user), log._fullname(user))
+			msg = _("Reassigned: {0} → {1}").format(sl._fullname(prev_user), sl._fullname(user))
 		else:
-			msg = _("Assigned to {0}").format(log._fullname(user))
-		log.add_comment("Info", msg)
+			msg = _("Assigned to {0}").format(sl._fullname(user))
+		sl.add_comment("Info", msg)
 
 	return {"ok": True, "assigned_to": user}
 
