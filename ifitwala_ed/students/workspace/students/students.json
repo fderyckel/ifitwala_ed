@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"cC3uR-LMl7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students</span>\",\"col\":12}},{\"id\":\"3yLEn1ktSt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Students\",\"col\":3}},{\"id\":\"VXnehq0TQa\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Demographics\",\"col\":3}},{\"id\":\"Ncmcm0iH4W\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Student Log Open\",\"col\":4}},{\"id\":\"7TNlZk2eVz\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"klHzqEQXNG\",\"type\":\"card\",\"data\":{\"card_name\":\"Student Logs\",\"col\":4}}]",
+ "content": "[{\"id\":\"cC3uR-LMl7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students</span>\",\"col\":12}},{\"id\":\"3yLEn1ktSt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Students\",\"col\":3}},{\"id\":\"VXnehq0TQa\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Demographics\",\"col\":3}},{\"id\":\"XuBP490VYP\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"7TNlZk2eVz\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"klHzqEQXNG\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs & Referrals\",\"col\":4}},{\"id\":\"zk368w4jz5\",\"type\":\"card\",\"data\":{\"card_name\":\"Counselors\",\"col\":4}}]",
  "creation": "2025-01-12 12:30:32.526105",
  "custom_blocks": [],
  "docstatus": 0,
@@ -55,8 +55,8 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Student Logs",
-   "link_count": 5,
+   "label": "Logs & Referrals",
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -84,44 +84,48 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Student Log Type",
-   "link_count": 0,
-   "link_to": "Student Log Type",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Log Next Step",
-   "link_count": 0,
-   "link_to": "Student Log Next Step",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Student Log Dashboard",
    "link_count": 0,
    "link_to": "student-log-dashboard",
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Referral",
+   "link_count": 0,
+   "link_to": "Student Referral",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Counselors",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Referral Case",
+   "link_count": 0,
+   "link_to": "Referral Case",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-06-23 20:23:53.314482",
+ "modified": "2025-08-31 12:29:01.381320",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Students",
- "number_cards": [
-  {
-   "label": "Student Log Open",
-   "number_card_name": "Open Student Log"
-  }
- ],
+ "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
