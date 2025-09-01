@@ -13,7 +13,7 @@ def get_data():
       }, 
       {
         "label": _("Communication"),
-        "items": ["Student Log", "Contact"]
+        "items": ["Student Log"]
        }, 
       {
         "label": _("Health"),
