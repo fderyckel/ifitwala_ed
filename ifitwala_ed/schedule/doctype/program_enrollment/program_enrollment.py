@@ -400,3 +400,5 @@ def on_doctype_update():
 	frappe.db.add_index("Program Enrollment", ["student"])
 	# useful for AY-scoped lookups
 	frappe.db.add_index("Program Enrollment", ["student", "academic_year"])
+	# Program Enrollment: speed up lookups from Student Referral flow
+	frappe.db.add_index("Program Enrollment", ["student", "archived"])	

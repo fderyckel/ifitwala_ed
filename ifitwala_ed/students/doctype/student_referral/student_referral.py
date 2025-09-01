@@ -150,9 +150,9 @@ class StudentReferral(Document):
 				pe.academic_year,
 				COALESCE(pe.school, p.school) AS school,
 				CASE WHEN ay.year_start_date IS NOT NULL
-				     AND ay.year_start_date <= %(on_date)s
-				     AND ay.year_end_date   >= %(on_date)s
-				     THEN 1 ELSE 0 END AS within_ay,
+						AND ay.year_start_date <= %(on_date)s
+						AND ay.year_end_date   >= %(on_date)s
+						THEN 1 ELSE 0 END AS within_ay,
 				IFNULL(pe.archived, 0) AS archived_flag,
 				ay.year_start_date,
 				pe.creation
@@ -160,7 +160,7 @@ class StudentReferral(Document):
 			LEFT JOIN `tabProgram` p ON p.name = pe.program
 			LEFT JOIN `tabAcademic Year` ay ON ay.name = pe.academic_year
 			WHERE pe.student = %(student)s
-			  AND pe.docstatus < 2
+				AND pe.docstatus < 2
 			ORDER BY
 				within_ay DESC,
 				archived_flag ASC,
@@ -171,10 +171,31 @@ class StudentReferral(Document):
 		rows = frappe.db.sql(q, {"student": student, "on_date": on_date}, as_dict=True) or []
 		if not rows:
 			return []
+
+		# Prefer unarchived within the academic-year window for on_date
+		cand_unarch_within = [r for r in rows if not r.archived_flag and r.within_ay]
+		if cand_unarch_within:
+			if len(cand_unarch_within) == 1:
+				r = cand_unarch_within[0]
+				return {"name": r.name, "program": r.program, "academic_year": r.academic_year, "school": r.school}
+			return [{"name": r.name, "program": r.program, "academic_year": r.academic_year, "school": r.school}
+							for r in cand_unarch_within]
+
+		# Next best: any unarchived PE (most recent)
+		cand_unarch_any = [r for r in rows if not r.archived_flag]
+		if cand_unarch_any:
+			if len(cand_unarch_any) == 1:
+				r = cand_unarch_any[0]
+				return {"name": r.name, "program": r.program, "academic_year": r.academic_year, "school": r.school}
+			return [{"name": r.name, "program": r.program, "academic_year": r.academic_year, "school": r.school}
+							for r in cand_unarch_any]
+
+		# Final fallback: archived (let the client show a warning or dialog if >1)
 		if len(rows) == 1:
 			r = rows[0]
 			return {"name": r.name, "program": r.program, "academic_year": r.academic_year, "school": r.school}
 		return [{"name": r.name, "program": r.program, "academic_year": r.academic_year, "school": r.school} for r in rows]
+
 
 	@frappe.whitelist()
 	def open_case(self):

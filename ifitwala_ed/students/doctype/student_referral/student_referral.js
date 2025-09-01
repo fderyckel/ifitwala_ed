@@ -6,10 +6,11 @@ frappe.ui.form.on("Student Referral", {
 		if (!frm.doc.date) {
 			frm.set_value("date", frappe.datetime.get_today());
 		}
-		frm.set_query("program_enrollment", () => {// ifitwala_ed/students/doctype/student_referral/student_referral.js
-
-// ifitwala_ed/students/doctype/student_referral/student_referral.js
-			return frm.doc.student ? { filters: { student: frm.doc.student } } : {};
+		// Only show unarchived PEs for the chosen student
+		frm.set_query("program_enrollment", () => {
+			return frm.doc.student
+				? { filters: { student: frm.doc.student, archived: 0 } }
+				: {};
 		});
 	},
 
@@ -110,6 +111,7 @@ frappe.ui.form.on("Student Referral", {
 
 	student: frappe.utils.debounce(async (frm) => {
 		if (!frm.doc.student) return;
+
 		const r = await frm.call("get_student_active_enrollment", {
 			student: frm.doc.student,
 			on_date: frm.doc.date || frappe.datetime.get_today()
