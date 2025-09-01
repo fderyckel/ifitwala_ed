@@ -105,7 +105,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Counselors",
-   "link_count": 1,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -119,9 +119,39 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Referral Intake Overview",
+   "link_count": 0,
+   "link_to": "Referral Intake Overview",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Active Case Workload",
+   "link_count": 0,
+   "link_to": "Active Case Workload",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Case Entries Activity Log",
+   "link_count": 0,
+   "link_to": "Case Entries Activity Log",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-08-31 12:29:01.381320",
+ "modified": "2025-08-31 17:27:00.843458",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Students",

@@ -1,0 +1,161 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:SSG-{YYYY}-{MM}-{#####}",
+ "creation": "2025-09-01 18:02:19.737570",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_rfaf",
+  "student",
+  "academic_year",
+  "status",
+  "column_break_insx",
+  "high_priority_count",
+  "published_items",
+  "last_published_on",
+  "guidance_items_section",
+  "items",
+  "snapshot_teacher_view_section",
+  "snapshot_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_rfaf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nPublished\nRetired"
+  },
+  {
+   "fieldname": "column_break_insx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "high_priority_count",
+   "fieldtype": "Check",
+   "label": "High Priority Items",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "published_items",
+   "fieldtype": "Check",
+   "label": "Published Items"
+  },
+  {
+   "fieldname": "last_published_on",
+   "fieldtype": "Datetime",
+   "label": "Last Published On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "guidance_items_section",
+   "fieldtype": "Section Break",
+   "label": "Guidance Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Support Guidance Item"
+  },
+  {
+   "fieldname": "snapshot_teacher_view_section",
+   "fieldtype": "Section Break",
+   "label": "Snapshot (Teacher View)"
+  },
+  {
+   "fieldname": "snapshot_html",
+   "fieldtype": "HTML",
+   "label": "Snapshot HTML"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-01 18:11:35.485872",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Student Support Guidance",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counselor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "student, academic_year",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "student"
+}

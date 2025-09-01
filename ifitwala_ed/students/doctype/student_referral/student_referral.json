@@ -30,7 +30,10 @@
   "referral_description",
   "section_break_pl1t",
   "sla_due",
-  "amended_from"
+  "amended_from",
+  "column_break_0j6a",
+  "referral_case",
+  "assigned_case_manager"
  ],
  "fields": [
   {
@@ -180,13 +183,34 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "column_break_0j6a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "referral_case",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_standard_filter": 1,
+   "label": "Referral Case",
+   "options": "Referral Case",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assigned_case_manager",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Assigned Case Manager",
+   "options": "User",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-30 15:40:42.353514",
+ "modified": "2025-08-31 16:58:14.621901",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Referral",
