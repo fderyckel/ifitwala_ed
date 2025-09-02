@@ -33,6 +33,10 @@ function get_student_filters(frm) {
 
 frappe.ui.form.on("Student Group", {
 	onload: function (frm) {
+		frm.set_query("academic_year", () => ({
+			query: "ifitwala_ed.schedule.doctype.student_group.student_group.academic_year_link_query"
+		}));
+
 		//run the toggle once the form is rendered, and when fields change
 		toggle_school_schedule_field(frm);
 

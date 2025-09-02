@@ -393,6 +393,21 @@ def get_students(academic_year, group_based_on, term=None, program=None, cohort=
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
+def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
+	return frappe.db.sql("""
+		SELECT name
+		FROM `tabAcademic Year`
+		WHERE name LIKE %(txt)s
+		ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
+		LIMIT %(start)s, %(page_len)s
+	""", {
+		"txt": f"%{txt}%",
+		"start": start,
+		"page_len": page_len
+	})
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
 def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 	group_based_on = filters.get("group_based_on")
 

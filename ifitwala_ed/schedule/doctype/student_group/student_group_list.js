@@ -2,6 +2,11 @@
 // For license information, please see license.txt
 
 frappe.listview_settings["Student Group"] = {
+	onload: function(listview) {
+		listview.page.fields_dict['academic_year'].get_query = function() {
+			return { query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.academic_year_link_query" };
+		};
+	},
 	filters: [["status", "=", "Active"]],
 
 	// Left-most indicator

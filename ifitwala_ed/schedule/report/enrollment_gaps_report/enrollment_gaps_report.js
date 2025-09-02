@@ -5,7 +5,10 @@ frappe.query_reports["Enrollment Gaps Report"] = {
       label: __("Academic Year"),
       fieldtype: "Link",
       options: "Academic Year",
-      reqd: 1
+      reqd: 1, 
+			get_query: () => ({
+				query: "ifitwala_ed.schedule.report.enrollment_gaps_report.enrollment_gaps_report.academic_year_link_query"
+			})
     }
   ], 
 
