@@ -4,13 +4,27 @@
 # ifitwala_ed/students/doctype/referral_case/referral_case.py
 
 import frappe
-from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint, strip_html, now_datetime
+from frappe.utils import cint, today, strip_html
 from frappe.desk.form.assign_to import add as assign_add
+from frappe import _
+
+# Import snapshot rebuilder from SSG controller
+from ifitwala_ed.students.doctype.student_support_guidance.student_support_guidance import (
+	_rebuild_snapshot as ssg_rebuild_snapshot
+)
 
 CASE_MANAGER_TAG = "[CASE_MANAGER]"
 CASE_TASK_TAG = "[CASE_TASK]"
+GUIDANCE_ACK_TAG = "[GUIDANCE_ACK]"
+
+# Constants reused from SSG module (keep strings here to avoid tight coupling)
+SSG_PARENT = "Student Support Guidance"
+SSG_CHILD = "Support Guidance Item"
+TEACHER_SCOPE = "Teachers-of-student"
+CASE_TEAM_SCOPE = "Case team only"
+
+ALLOWED_ITEM_TYPES = {"Accommodation", "Strategy", "Trigger", "Safety Alert", "FYI"}
 
 class ReferralCase(Document):
 	def validate(self):
@@ -21,8 +35,9 @@ class ReferralCase(Document):
 				frappe.throw(_("Cannot close case with open or in-progress entries."))
 
 		# ONLY counselors can be case managers
-		if self.case_manager and not frappe.db.exists("Has Role", {"parent": self.case_manager, "role": "Counselor"}):
-			frappe.throw(_("Case Manager must be a user with the Counselor role."))
+		if self.case_manager:
+			if not frappe.db.exists("Has Role", {"parent": self.case_manager, "role": "Counselor"}):
+				frappe.throw(_("Case Manager must be a user with the Counselor role."))
 
 		# Keep native assignment in sync if manager changed via field
 		if self.case_manager and (self.is_new() or self.case_manager != self.get_db_value("case_manager")):
@@ -44,7 +59,7 @@ def quick_update_status(name: str, new_status: str):
 
 @frappe.whitelist()
 def add_entry(name: str, entry_type: str, summary: str, assignee: str | None = None,
-	status: str = "Open", attachment: str | None = None, create_todo: int = 1, due_date: str | None = None):
+              status: str = "Open", attachment: str | None = None, create_todo: int = 1, due_date: str | None = None):
 	doc = frappe.get_doc("Referral Case", name)
 	_ensure_case_action_permitted(doc)
 
@@ -53,8 +68,12 @@ def add_entry(name: str, entry_type: str, summary: str, assignee: str | None = N
 	row.summary = summary
 	row.assignee = assignee
 	row.status = status or "Open"
-	row.entry_datetime = now_datetime()
-	row.author = frappe.session.user
+	# Optional: record author if the child has an 'author' field
+	try:
+		if hasattr(row, "author"):
+			row.author = frappe.session.user
+	except Exception:
+		pass
 	if attachment:
 		row.attachments = attachment
 	doc.save(ignore_permissions=True)
@@ -99,8 +118,6 @@ def flag_mandated_reporting(name: str, referral: str | None = None):
 	row.entry_type = "Other"
 	row.summary = "Mandated reporting completed/triggered."
 	row.status = "Done"
-	row.entry_datetime = now_datetime()
-	row.author = frappe.session.user
 	doc.save(ignore_permissions=True)
 
 	manager = doc.case_manager or _pick_manager_from_assignments(name) or _pick_any_counselor()
@@ -108,7 +125,180 @@ def flag_mandated_reporting(name: str, referral: str | None = None):
 		_assign_case_manager(name, manager, description="Mandated reporting flagged", priority="High")
 	return {"ok": True}
 
-# ── Helpers ─────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# Promote a case entry to teacher-facing guidance (with versioned ack)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist()
+def promote_entry_to_guidance(
+	case_name: str,
+	entry_rowname: str,
+	item_type: str,
+	teacher_text: str,
+	high_priority: int = 0,
+	requires_ack: int = 0,
+	effective_from: str | None = None,
+	expires_on: str | None = None,
+	confidentiality: str = TEACHER_SCOPE,
+	publish: int = 1
+):
+	"""
+	Create or update a Student Support Guidance record for the student+AY and append a Guidance Item.
+	- Enforces action permission (counselor/admin/system manager/case manager).
+	- Rebuilds snapshot after change.
+	- Issues/upserts native `assign_to` ToDos on the SSG parent, per teacher-of-record, versioned by ack_version.
+	"""
+	# Guards
+	doc = frappe.get_doc("Referral Case", case_name)
+	_ensure_case_action_permitted(doc)
+
+	if item_type not in ALLOWED_ITEM_TYPES:
+		frappe.throw(_("Invalid item type."))
+
+	if confidentiality not in (TEACHER_SCOPE, CASE_TEAM_SCOPE):
+		frappe.throw(_("Invalid confidentiality scope."))
+
+	# Resolve parent SSG doc (student + AY)
+	ssg = _get_or_create_support_guidance(doc.student, doc.academic_year, publish=cint(publish))
+
+	# Append child item
+	row = ssg.append("items", {})
+	row.item_type = item_type
+	row.teacher_text = teacher_text
+	row.confidentiality = confidentiality
+	row.high_priority = cint(high_priority)
+	row.requires_ack = cint(requires_ack)
+	if effective_from:
+		row.effective_from = effective_from
+	if expires_on:
+		row.expires_on = expires_on
+	row.source_case = case_name
+	row.source_entry = entry_rowname
+	try:
+		row.author = frappe.session.user
+	except Exception:
+		pass
+
+	# Persist parent + children
+	ssg.status = "Published" if cint(publish) else (ssg.status or "Draft")
+	ssg.save(ignore_permissions=True)
+
+	# Rebuild denormalized snapshot (fast teacher reads)
+	try:
+		ssg = frappe.get_doc(SSG_PARENT, ssg.name)  # rehydrate
+		ssg_rebuild_snapshot(ssg)
+	except Exception:
+		pass
+
+	# Create/update acknowledgment assignments (teacher-visible & currently effective items only)
+	if cint(requires_ack) and confidentiality == TEACHER_SCOPE:
+		ack_count = _count_effective_teacher_ack_items(ssg.name)
+		if ack_count > 0:
+			# bump ack_version and store counters (no modified bump)
+			curr_ver = cint(frappe.db.get_value(SSG_PARENT, ssg.name, "ack_version") or 0)
+			new_ver = curr_ver + 1
+			frappe.db.set_value(SSG_PARENT, ssg.name, {"ack_version": new_ver, "ack_required_count": ack_count})
+
+			# determine priority for assignment
+			assign_priority = "High" if (item_type == "Safety Alert" or cint(high_priority)) else "Medium"
+
+			# upsert per-teacher ToDos for this version; close older ones
+			teachers = _get_teachers_of_record(doc.student, doc.academic_year)
+			_ensure_ack_assignments(ssg.name, new_ver, ack_count, teachers, assign_priority)
+
+	return {"ok": True, "support_guidance": ssg.name, "item_rowname": row.name}
+
+# ── Helpers for promotion/ack ────────────────────────────────────────────────
+
+def _count_effective_teacher_ack_items(ssg_name: str) -> int:
+	"""Count items on the SSG that are teacher-visible, require ack, and are effective today."""
+	rows = frappe.get_all(
+		SSG_CHILD,
+		filters={"parent": ssg_name, "parenttype": SSG_PARENT, "confidentiality": TEACHER_SCOPE, "requires_ack": 1},
+		fields=["name", "effective_from", "expires_on"]
+	)
+	if not rows:
+		return 0
+	today_str = today()
+	def eff(r):
+		start_ok = not r.get("effective_from") or cstr(r["effective_from"]) <= today_str
+		end_ok = not r.get("expires_on") or cstr(r["expires_on"]) >= today_str
+		return start_ok and end_ok
+	return sum(1 for r in rows if eff(r))
+
+def _ensure_ack_assignments(ssg_name: str, ack_version: int, ack_required_count: int, teachers: list[str], priority: str = "Medium"):
+	"""
+	For the given SSG + version, ensure each teacher has exactly one OPEN ToDo like:
+	[GUIDANCE_ACK vX] N guidance item(s) to review
+	Close any older GUIDANCE_ACK ToDos on the same SSG.
+	"""
+	if not teachers:
+		return
+
+	# Fetch existing open ToDos for this SSG
+	open_todos = frappe.get_all(
+		"ToDo",
+		filters={"reference_type": SSG_PARENT, "reference_name": ssg_name, "status": "Open"},
+		fields=["name", "allocated_to", "description"]
+	) or []
+
+	current_prefix = f"{GUIDANCE_ACK_TAG} v{ack_version}"
+	current_holders = set()
+
+	for td in open_todos:
+		desc = (td.description or "").strip()
+		if desc.startswith(current_prefix):
+			if td.allocated_to:
+				current_holders.add(td.allocated_to)
+		elif desc.startswith(GUIDANCE_ACK_TAG):
+			# Close older ack cycles
+			frappe.db.set_value("ToDo", td.name, "status", "Closed", update_modified=False)
+
+	# Create missing ToDos for this version
+	label = f"{current_prefix} — {ack_required_count} guidance item(s) to review"
+	for user in teachers:
+		if user in current_holders:
+			continue
+		assign_add({
+			"doctype": SSG_PARENT,
+			"name": ssg_name,
+			"assign_to": [user],
+			"priority": priority,
+			"description": label,
+			"notify": 1
+		})
+
+def _get_or_create_support_guidance(student: str, academic_year: str, publish: int = 1):
+	name = frappe.db.get_value(SSG_PARENT, {"student": student, "academic_year": academic_year}, "name")
+	if name:
+		return frappe.get_doc(SSG_PARENT, name)
+	# Create lean parent
+	doc = frappe.new_doc(SSG_PARENT)
+	doc.student = student
+	doc.academic_year = academic_year
+	doc.status = "Published" if cint(publish) else "Draft"
+	doc.insert(ignore_permissions=True)
+	return doc
+
+def _get_teachers_of_record(student: str, ay: str) -> list[str]:
+	"""
+	Teachers are instructors of the student's groups in the AY.
+	Single SQL with JOINs; returns distinct users.
+	"""
+	users = frappe.db.sql("""
+		SELECT DISTINCT sgi.user
+		FROM `tabStudent Group Student` sgs
+		JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+		JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sg.name
+		WHERE sgs.student = %(student)s
+		  AND sg.academic_year = %(ay)s
+		  AND IFNULL(sgi.user, '') != ''
+	""", {"student": student, "ay": ay})
+	return [u[0] for u in users or []]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Existing helpers
+# ─────────────────────────────────────────────────────────────────────────────
 
 @frappe.whitelist()
 def set_manager(name: str, user: str):
@@ -143,12 +333,9 @@ def _assign_case_manager(case_name: str, user: str, description: str = "Primary 
 		"description": f"{CASE_MANAGER_TAG} {description}",
 	})
 	frappe.db.set_value("Referral Case", case_name, "case_manager", user, update_modified=False)
-
 	ref = frappe.db.get_value("Referral Case", case_name, "referral")
 	if ref:
 		frappe.db.set_value("Student Referral", ref, "assigned_case_manager", user, update_modified=False)
-		# referral_case is stamped on creation; safe to refresh if desired:
-		# frappe.db.set_value("Student Referral", ref, "referral_case", case_name, update_modified=False)
 
 def _close_manager_todos_only(case_name: str):
 	rows = frappe.get_all(
@@ -198,6 +385,3 @@ def on_doctype_update():
 	frappe.db.add_index("Referral Case", ["case_manager"])
 	frappe.db.add_index("Referral Case", ["student"])
 	frappe.db.add_index("Referral Case", ["school"])
-	# Optional: enforce one referral → one case
-	# frappe.db.add_index("Referral Case", ["referral"], index_name="uniq_referral", unique=True)
-

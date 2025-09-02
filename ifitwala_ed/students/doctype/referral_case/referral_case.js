@@ -5,9 +5,15 @@
 
 frappe.ui.form.on("Referral Case", {
 	refresh(frm) {
-		const btn = frm.add_custom_button(__("Add Entry"), () => open_entry_dialog(frm)); // no group ⇒ not nested
-		btn.removeClass("btn-default").addClass("btn-success"); // color
-		btn.find("span").prepend(frappe.utils.icon("add", "sm")); // icon
+		// Primary: Add Entry (standalone, colored, with icon)
+		const addBtn = frm.add_custom_button(__("Add Entry"), () => open_entry_dialog(frm)); // no group ⇒ not nested
+		addBtn.removeClass("btn-default").addClass("btn-success");
+		addBtn.find("span").prepend(frappe.utils.icon("add", "sm"));
+
+		// Promote to Guidance (standalone, primary color, with icon)
+		const promoBtn = frm.add_custom_button(__("Promote to Guidance"), () => open_promote_dialog(frm));
+		promoBtn.removeClass("btn-default").addClass("btn-primary");
+		promoBtn.find("span").prepend(frappe.utils.icon("send", "sm"));
 
 		// Case status quick-actions
 		const st = (frm.doc.case_status || "Open").trim();
@@ -28,7 +34,7 @@ frappe.ui.form.on("Referral Case", {
 			frm.add_custom_button(__("Reopen Case"), () => quick_status(frm, "In Progress"), __("Status"));
 		}
 
-		// Assign case manager
+		// Assign case manager (keep under group to avoid clutter)
 		frm.add_custom_button(__("Assign Case Manager"), () => assign_manager_dialog(frm), __("Actions"));
 	}
 });
@@ -65,7 +71,7 @@ function assign_manager_dialog(frm) {
 			frappe.call({
 				method: "ifitwala_ed.students.doctype.referral_case.referral_case.set_manager",
 				args: { name: frm.doc.name, user: v.user }
-				}).then(() => {
+			}).then(() => {
 				frappe.show_alert({ message: __("Case manager assigned"), indicator: "green" });
 				return frm.reload_doc();
 			});
@@ -102,7 +108,7 @@ function open_entry_dialog(frm) {
 					create_todo: v.create_todo ? 1 : 0,
 					due_date: v.due_date || null
 				},
-				}).then(() => {
+			}).then(() => {
 				frappe.show_alert({ message: __("Entry added"), indicator: "green" });
 				return frm.reload_doc();
 			});
@@ -111,5 +117,103 @@ function open_entry_dialog(frm) {
 	d.show();
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Promote-to-Guidance client dialog
+// ─────────────────────────────────────────────────────────────────────────────
 
+function open_promote_dialog(frm) {
+	// Build entry options from child table
+	const entries = (frm.doc.entries || []);
+	if (!entries.length) {
+		frappe.msgprint({ message: __("Add at least one entry before promoting guidance."), indicator: "orange" });
+		return;
+	}
 
+	// Human labels for the select; value = child rowname
+	const lines = entries.map(row => {
+		const dt = row.entry_datetime || row.creation || ""; // your child has entry_datetime (read_only default now)
+		const typ = row.entry_type || "—";
+		// strip basic HTML for preview
+		const tmp = document.createElement("div");
+		tmp.innerHTML = row.summary || "";
+		const plain = (tmp.textContent || tmp.innerText || "").trim();
+		const preview = plain.length > 80 ? (plain.slice(0, 77) + "…") : plain || "—";
+		const label = `${dt ? `${dt} • ` : ""}${typ} • ${preview}`;
+		return { label, value: row.name };
+	});
+
+	const d = new frappe.ui.Dialog({
+		title: __("Promote to Guidance"),
+		fields: [
+			{ fieldname: "entry_rowname", fieldtype: "Select", label: __("Source Entry"), options: lines.map(x => x.label).join("\n"), reqd: 1 },
+			{ fieldname: "item_type", fieldtype: "Select", label: __("Item Type"),
+				options: "Accommodation\nStrategy\nTrigger\nSafety Alert\nFYI", reqd: 1, default: "Strategy" },
+			{ fieldname: "teacher_text", fieldtype: "Text Editor", label: __("Teacher-facing Text"), reqd: 1 },
+			{ fieldname: "confidentiality", fieldtype: "Select", label: __("Visibility"),
+				options: "Teachers-of-student\nCase team only", default: "Teachers-of-student", reqd: 1 },
+			{ fieldname: "high_priority", fieldtype: "Check", label: __("High Priority") },
+			{ fieldname: "requires_ack", fieldtype: "Check", label: __("Require Teacher Acknowledgment"), default: 1 },
+			{ fieldname: "effective_from", fieldtype: "Date", label: __("Effective From") },
+			{ fieldname: "expires_on", fieldtype: "Date", label: __("Expires On") },
+			{ fieldname: "publish", fieldtype: "Check", label: __("Publish Now (update snapshot, notify)"), default: 1 },
+		],
+		primary_action_label: __("Publish"),
+		primary_action: async (v) => {
+			// Map back selected label → rowname
+			const hit = lines.find(x => x.label === v.entry_rowname);
+			if (!hit) {
+				frappe.msgprint({ message: __("Select a source entry."), indicator: "orange" });
+				return;
+			}
+			d.hide();
+			await frappe.call({
+				method: "ifitwala_ed.students.doctype.referral_case.referral_case.promote_entry_to_guidance",
+				args: {
+					case_name: frm.doc.name,
+					entry_rowname: hit.value,
+					item_type: v.item_type,
+					teacher_text: v.teacher_text,
+					high_priority: v.high_priority ? 1 : 0,
+					requires_ack: v.requires_ack ? 1 : 0,
+					effective_from: v.effective_from || null,
+					expires_on: v.expires_on || null,
+					confidentiality: v.confidentiality,
+					publish: v.publish ? 1 : 0
+				}
+			}).then(r => {
+				frappe.show_alert({ message: __("Guidance published"), indicator: "green" });
+				// Optional: quick link to open SSG
+				const ssg = r && r.message && r.message.support_guidance;
+				if (ssg) {
+					frappe.msgprint({
+						title: __("Published"),
+						message: __("View the teacher-facing record: {0}", [`<a href="#Form/Student Support Guidance/${frappe.utils.escape_html(ssg)}">${frappe.utils.escape_html(ssg)}</a>`]),
+						indicator: "green"
+					});
+				}
+			});
+		}
+	});
+
+	// Pre-fill teacher_text from the selected entry (first option by default)
+	d.set_value("entry_rowname", lines[0].label);
+	const first = entries[0];
+	const tmp = document.createElement("div");
+	tmp.innerHTML = first.summary || "";
+	const plain = (tmp.textContent || tmp.innerText || "").trim();
+	d.set_value("teacher_text", plain);
+
+	// When user changes entry, refresh the teacher_text preview
+	d.fields_dict.entry_rowname.df.onchange = () => {
+		const label = d.get_value("entry_rowname");
+		const sel = lines.find(x => x.label === label);
+		if (!sel) return;
+		const row = entries.find(r => r.name === sel.value);
+		const el = document.createElement("div");
+		el.innerHTML = (row && row.summary) || "";
+		const p = (el.textContent || el.innerText || "").trim();
+		if (p) d.set_value("teacher_text", p);
+	};
+
+	d.show();
+}
