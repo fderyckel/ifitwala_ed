@@ -176,7 +176,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-08 17:09:32.025637",
+ "modified": "2025-09-02 13:21:26.249839",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",
@@ -192,26 +192,7 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "role": "Instructor",
-   "select": 1
-  },
-  {
-   "role": "Student",
-   "select": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Academic Admin",
+   "select": 1,
    "share": 1,
    "write": 1
   },
@@ -224,8 +205,40 @@
    "read": 1,
    "report": 1,
    "role": "Schedule Maker",
+   "select": 1,
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Instructor",
+   "select": 1
   },
   {
    "email": 1,
@@ -234,6 +247,17 @@
    "read": 1,
    "report": 1,
    "role": "Admission Officer",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "select": 1,
    "share": 1
   }
  ],

@@ -14,6 +14,8 @@
   "high_priority_count",
   "published_items",
   "last_published_on",
+  "ack_version",
+  "ack_required_count",
   "guidance_items_section",
   "items",
   "snapshot_teacher_view_section",
@@ -95,12 +97,26 @@
    "fieldname": "snapshot_html",
    "fieldtype": "HTML",
    "label": "Snapshot HTML"
+  },
+  {
+   "default": "0",
+   "fieldname": "ack_version",
+   "fieldtype": "Int",
+   "label": "Ack Version",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "ack_required_count",
+   "fieldtype": "Int",
+   "label": "Items Requiring Ack",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-01 18:11:35.485872",
+ "modified": "2025-09-01 20:32:08.174772",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Support Guidance",

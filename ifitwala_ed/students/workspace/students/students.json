@@ -151,7 +151,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-08-31 17:27:00.843458",
+ "modified": "2025-09-02 10:59:17.826220",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Students",
@@ -166,6 +166,9 @@
   },
   {
    "role": "Admission Officer"
+  },
+  {
+   "role": "Counselor"
   }
  ],
  "sequence_id": 3.0,

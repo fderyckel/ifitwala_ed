@@ -3,8 +3,8 @@
  "creation": "2025-01-26 21:45:34.188927",
  "docstatus": 0,
  "doctype": "Page",
- "idx": 0,
- "modified": "2025-01-26 21:45:34.188927",
+ "idx": 6,
+ "modified": "2025-09-02 11:08:45.034908",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "organizational-chart",
@@ -16,6 +16,12 @@
   },
   {
    "role": "HR User"
+  },
+  {
+   "role": "Academic Staff"
+  },
+  {
+   "role": "Academic Admin"
   }
  ],
  "script": null,

@@ -3,14 +3,27 @@
  "creation": "2025-04-12 22:35:35.467051",
  "docstatus": 0,
  "doctype": "Page",
- "idx": 0,
- "modified": "2025-04-19 22:37:10.605941",
+ "idx": 8,
+ "modified": "2025-09-02 11:09:05.347920",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "school_schedule_calendar",
  "owner": "Administrator",
  "page_name": "school_schedule_calendar",
- "roles": [],
+ "roles": [
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Academic Staff"
+  }
+ ],
  "script": null,
  "standard": "Yes",
  "style": null,

@@ -3,8 +3,8 @@
  "creation": "2025-05-07 13:11:15.100468",
  "docstatus": 0,
  "doctype": "Page",
- "idx": 37,
- "modified": "2025-08-18 07:38:03.562971",
+ "idx": 41,
+ "modified": "2025-09-02 12:03:04.181288",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "student-log-dashboard",
@@ -16,6 +16,9 @@
   },
   {
    "role": "Grade Level Lead"
+  },
+  {
+   "role": "Counselor"
   }
  ],
  "script": null,

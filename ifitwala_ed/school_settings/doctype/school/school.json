@@ -325,7 +325,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-06-25 21:00:22.746007",
+ "modified": "2025-09-02 12:05:42.078782",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
@@ -343,6 +343,7 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "select": 1,
    "share": 1,
    "write": 1
   },
@@ -352,6 +353,7 @@
    "read": 1,
    "report": 1,
    "role": "Academic Staff",
+   "select": 1,
    "share": 1
   },
   {
@@ -360,6 +362,7 @@
    "read": 1,
    "report": 1,
    "role": "Instructor",
+   "select": 1,
    "share": 1
   },
   {
@@ -369,6 +372,7 @@
    "read": 1,
    "report": 1,
    "role": "Academic Admin",
+   "select": 1,
    "share": 1,
    "write": 1
   },
@@ -378,6 +382,7 @@
    "read": 1,
    "report": 1,
    "role": "HR Manager",
+   "select": 1,
    "share": 1
   },
   {
@@ -386,11 +391,7 @@
    "read": 1,
    "report": 1,
    "role": "HR User",
-   "share": 1
-  },
-  {
-   "read": 1,
-   "role": "Accreditation Visitor",
+   "select": 1,
    "share": 1
   },
   {
@@ -410,6 +411,20 @@
    "read": 1,
    "report": 1,
    "role": "Admission Officer",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "read": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counselor",
+   "select": 1,
    "share": 1
   }
  ],
