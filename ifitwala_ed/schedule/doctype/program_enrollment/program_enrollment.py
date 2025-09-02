@@ -365,6 +365,23 @@ def get_valid_terms_with_fallback(school, academic_year):
         "source_school": source_school
     }
 
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
+    return frappe.db.sql(
+        """
+        SELECT name
+        FROM `tabAcademic Year`
+        WHERE name LIKE %(txt)s
+        ORDER BY year_start_date DESC
+        LIMIT %(start)s, %(page_len)s
+        """,
+        {
+            "txt": f"%{txt}%",
+            "start": start,
+            "page_len": page_len
+        },
+    )
 
 def get_permission_query_conditions(user):
     # Allow full access to Administrator or System Manager
