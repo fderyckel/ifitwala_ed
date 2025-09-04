@@ -226,14 +226,6 @@ class StudentReferral(Document):
 		if not frappe.db.exists("Referral Case", {"referral": self.name}):
 			self.open_case()
 
-def on_doctype_update():
-	# Helpful indexes
-	frappe.db.add_index("Student Referral", ["student"])
-	frappe.db.add_index("Student Referral", ["program_enrollment"])
-	frappe.db.add_index("Student Referral", ["school"])
-	frappe.db.add_index("Student Referral", ["referral_case"])
-	frappe.db.add_index("Student Referral", ["assigned_case_manager"])
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers (pure functions)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -325,3 +317,13 @@ def _close_manager_todos_only(case_name: str):
 		desc = (r.description or "").strip()
 		if desc.startswith(CASE_MANAGER_TAG):
 			frappe.db.set_value("ToDo", r.name, "status", "Closed", update_modified=False)
+
+def on_doctype_update():
+	# Helpful indexes
+	frappe.db.add_index("Student Referral", ["student"])
+	frappe.db.add_index("Student Referral", ["program_enrollment"])
+	frappe.db.add_index("Student Referral", ["school"])
+	frappe.db.add_index("Student Referral", ["referral_case"])
+	frappe.db.add_index("Student Referral", ["assigned_case_manager"])
+	frappe.db.add_index("Student Referral", ["docstatus", "referral_case"])
+	frappe.db.add_index("Student Referral", ["sla_due"])

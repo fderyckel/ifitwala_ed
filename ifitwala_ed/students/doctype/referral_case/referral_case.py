@@ -34,14 +34,17 @@ class ReferralCase(Document):
 			if active:
 				frappe.throw(_("Cannot close case with open or in-progress entries."))
 
-		# ONLY counselors can be case managers
+		# Case manager must be Counselor or Academic Admin
 		if self.case_manager:
-			if not frappe.db.exists("Has Role", {"parent": self.case_manager, "role": "Counselor"}):
-				frappe.throw(_("Case Manager must be a user with the Counselor role."))
+			allowed = ("Counselor", "Academic Admin")
+			has_allowed = frappe.db.count("Has Role", {"parent": self.case_manager, "role": ["in", allowed]})
+			if not has_allowed:
+				frappe.throw(_("Case Manager must have either the Counselor or Academic Admin role."))
 
 		# Keep native assignment in sync if manager changed via field
 		if self.case_manager and (self.is_new() or self.case_manager != self.get_db_value("case_manager")):
 			_assign_case_manager(self.name, self.case_manager, description="Updated via field", priority="Medium")
+
 
 @frappe.whitelist()
 def quick_update_status(name: str, new_status: str):
@@ -304,10 +307,14 @@ def _get_teachers_of_record(student: str, ay: str) -> list[str]:
 def set_manager(name: str, user: str):
 	doc = frappe.get_doc("Referral Case", name)
 	_ensure_case_action_permitted(doc)
-	if not frappe.db.exists("Has Role", {"parent": user, "role": "Counselor"}):
-		frappe.throw(_("Selected user must have the Counselor role."))
+
+	allowed = ("Counselor", "Academic Admin")
+	if not frappe.db.count("Has Role", {"parent": user, "role": ["in", allowed]}):
+		frappe.throw(_("Selected user must have either the Counselor or Academic Admin role."))
+
 	_assign_case_manager(name, user, description="Assigned via action", priority="Medium")
 	return {"ok": True}
+
 
 def _ensure_case_action_permitted(doc: "ReferralCase"):
 	"""Counselor/Admin/System Manager or the current case_manager can act."""
@@ -322,8 +329,10 @@ def _ensure_case_action_permitted(doc: "ReferralCase"):
 	frappe.throw(_("You are not permitted to perform this action on the case."))
 
 def _assign_case_manager(case_name: str, user: str, description: str = "Primary owner", priority: str = "Medium"):
-	if not frappe.db.exists("Has Role", {"parent": user, "role": "Counselor"}):
-		frappe.throw(_("Case Manager must have the Counselor role."))
+	allowed = ("Counselor", "Academic Admin")
+	if not frappe.db.count("Has Role", {"parent": user, "role": ["in", allowed]}):
+		frappe.throw(_("Case Manager must have either the Counselor or Academic Admin role."))
+
 	_close_manager_todos_only(case_name)
 	assign_add({
 		"doctype": "Referral Case",
@@ -336,6 +345,7 @@ def _assign_case_manager(case_name: str, user: str, description: str = "Primary 
 	ref = frappe.db.get_value("Referral Case", case_name, "referral")
 	if ref:
 		frappe.db.set_value("Student Referral", ref, "assigned_case_manager", user, update_modified=False)
+
 
 def _close_manager_todos_only(case_name: str):
 	rows = frappe.get_all(
@@ -370,16 +380,25 @@ def _pick_any_counselor() -> str | None:
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def users_with_role(doctype, txt, searchfield, start, page_len, filters):
-	role = (filters or {}).get("role") or "Counselor"
+	params = filters or {}
+	roles = params.get("roles") or params.get("role") or ["Counselor"]
+	# normalize roles to a list
+	if isinstance(roles, str):
+		roles = [r.strip() for r in roles.split(",") if r.strip()] or ["Counselor"]
+
 	return frappe.db.sql("""
 		SELECT u.name, u.full_name
 		FROM `tabUser` u
 		WHERE u.enabled = 1
-		  AND u.name IN (SELECT parent FROM `tabHas Role` WHERE role=%(role)s)
+		  AND EXISTS (
+		      SELECT 1 FROM `tabHas Role` hr
+		      WHERE hr.parent = u.name AND hr.role IN %(roles)s
+		  )
 		  AND (u.name LIKE %(txt)s OR u.full_name LIKE %(txt)s)
 		ORDER BY u.full_name, u.name
 		LIMIT %(page_len)s OFFSET %(start)s
-	""", {"role": role, "txt": f"%{txt or ''}%", "page_len": page_len, "start": start})
+	""", {"roles": tuple(roles), "txt": f"%{txt or ''}%", "page_len": page_len, "start": start})
+
 
 def on_doctype_update():
 	frappe.db.add_index("Referral Case", ["case_manager"])

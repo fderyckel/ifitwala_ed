@@ -23,6 +23,28 @@ function get_student_image(original_url) {
 	return `/files/gallery_resized/student/thumb_${base}.webp`;
 }
 
+function renderSupportBadge(student) {
+	// no SSG → no badge
+	if (!student.ssg_name) return '';
+
+	const title = student.ack_pending
+		? __("Support guidance — acknowledgment required")
+		: __("Support guidance available");
+
+	// route to the doc; use slug path to avoid inline JS handlers
+	const href = `/app/student-support-guidance/${encodeURIComponent(student.ssg_name)}`;
+
+	// choose icon + class
+	const icon_cls = student.ack_pending ? "bi-exclamation-diamond-fill" : "bi-journal-text";
+	const wrap_cls = student.ack_pending ? "support-badge warn" : "support-badge info";
+
+	return `
+		<a href="${href}" class="${wrap_cls}" title="${frappe.utils.escape_html(title)}" target="_blank" rel="noopener">
+			<i class="bi ${icon_cls}"></i>
+		</a>
+	`;
+}
+
 function renderStudentCard(student) {
 	const student_name   = frappe.utils.escape_html(student.student_name);
 	const preferred_name = frappe.utils.escape_html(student.preferred_name || '');
@@ -58,27 +80,33 @@ function renderStudentCard(student) {
 				title="${__('Health Note Available')}">&#x2716;</span>`;
 	}
 
-return `
-	<div class="col-6 col-sm-4 col-md-3 col-lg-2">
-		<div class="student-card bg-white shadow-sm p-3 text-center h-100 w-100 d-flex flex-column">
-			<a href="/app/student/${student_id}" target="_blank" rel="noopener">
-				<img src="${thumb_src}"
-					 onerror="this.onerror=null;this.src='${fallback_src}'"
-					 class="student-card-img img-fluid"
-					 alt="Photo of ${student_name}"
-					 loading="lazy">
-			</a>
-			<div class="student-name mt-3">
-				<a href="/app/student/${student_id}" target="_blank" rel="noopener">
-					${student_name}
-				</a>
-				${health_icon}${birthday_icon}
+	const support_badge = renderSupportBadge(student);
+
+	return `
+		<div class="col-6 col-sm-4 col-md-3 col-lg-2">
+			<div class="student-card bg-white shadow-sm p-3 text-center h-100 w-100 d-flex flex-column">
+				<div class="img-wrap position-relative">
+					<a href="/app/student/${student_id}" target="_blank" rel="noopener">
+						<img src="${thumb_src}"
+							 onerror="this.onerror=null;this.src='${fallback_src}'"
+							 class="student-card-img img-fluid"
+							 alt="Photo of ${student_name}"
+							 loading="lazy">
+					</a>
+					${support_badge}
+				</div>
+				<div class="student-name mt-3">
+					<a href="/app/student/${student_id}" target="_blank" rel="noopener">
+						${student_name}
+					</a>
+					${health_icon}${birthday_icon}
+				</div>
+				${preferred_name ? `<div class="preferred-name">${preferred_name}</div>` : ''}
 			</div>
-			${preferred_name ? `<div class="preferred-name">${preferred_name}</div>` : ''}
 		</div>
-	</div>
-`;
+	`;
 }
+
 
 frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 

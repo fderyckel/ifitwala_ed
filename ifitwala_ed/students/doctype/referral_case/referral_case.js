@@ -5,6 +5,12 @@
 
 frappe.ui.form.on("Referral Case", {
 	refresh(frm) {
+		// Limit 'case_manager' choices to Counselor or Academic Admin
+		frm.set_query("case_manager", () => ({
+			query: "ifitwala_ed.students.doctype.referral_case.referral_case.users_with_role",
+			filters: { roles: ["Counselor", "Academic Admin"] }
+		}));
+
 		// Primary: Add Entry (standalone, colored, with icon)
 		const addBtn = frm.add_custom_button(__("Add Entry"), () => open_entry_dialog(frm)); // no group ⇒ not nested
 		addBtn.removeClass("btn-default").addClass("btn-success");
@@ -61,7 +67,7 @@ function assign_manager_dialog(frm) {
 				reqd: 1,
 				get_query: () => ({
 					query: "ifitwala_ed.students.doctype.referral_case.referral_case.users_with_role",
-					filters: { role: "Counselor" }
+					filters: { roles: ["Counselor", "Academic Admin"] }
 				})
 			}
 		],
@@ -79,6 +85,7 @@ function assign_manager_dialog(frm) {
 	});
 	d.show();
 }
+
 
 function open_entry_dialog(frm) {
 	const d = new frappe.ui.Dialog({
