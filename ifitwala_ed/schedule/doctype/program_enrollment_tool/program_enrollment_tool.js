@@ -1,11 +1,11 @@
 // Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ifitwala_ed/schedule/doctype/program_enrollment_tool/program_enrollment_tool.js
+
 // Reuse canonical AY query on Program Enrollment, scoped by Program → School.
 // We pass { school } into program_enrollment.get_academic_years which already
-// implements school + ancestor fallback. No duplication = no drift.
-// ─────────────────────────────────────────────────────────────────────────────
+// implements school + ancestor fallback (no duplication = no drift).
 
 // Helpers
 async function resolveSchoolFromProgram(program) {
@@ -27,46 +27,76 @@ function setAYQueryForField(frm, fieldname, school) {
 	});
 }
 
-frappe.ui.form.on("Program Enrollment Tool", {
-	// --------------------
+async function initAYQueries(frm) {
+	// Initialize based on any prefilled values (route defaults, etc.)
+	if (frm.doc.program) {
+		const school = await resolveSchoolFromProgram(frm.doc.program);
+		setAYQueryForField(frm, 'academic_year', school);
+	} else {
+		setAYQueryForField(frm, 'academic_year', null);
+	}
+
+	if (frm.doc.new_program) {
+		const school = await resolveSchoolFromProgram(frm.doc.new_program);
+		setAYQueryForField(frm, 'new_academic_year', school);
+	} else {
+		setAYQueryForField(frm, 'new_academic_year', null);
+	}
+}
+
+function canFetchStudents(frm) {
+	const source = frm.doc.get_students_from;
+	if (source === 'Program Enrollment') {
+		return Boolean(frm.doc.program && frm.doc.academic_year);
+	}
+	if (source === 'Cohort') {
+		return Boolean(frm.doc.student_cohort);
+	}
+	// Unsupported options are guarded server-side, but block early here too
+	return false;
+}
+
+frappe.ui.form.on('Program Enrollment Tool', {
 	refresh(frm) {
 		frm.disable_save();
 
-		// Dynamic toggle of filter fields on every refresh
+		// idempotent realtime bindings
+		if (!frm.__pe_rt_bound) {
+			frappe.realtime.on('program_enrollment_tool', data => {
+				frappe.hide_msgprint(true);
+				frappe.show_progress(__('Enrolling students'), data.progress[0], data.progress[1]);
+			});
+
+			frappe.realtime.on('program_enrollment_tool_done', summary => {
+				const msg = `Created: ${summary.created}, Skipped: ${summary.skipped}, Failed: ${summary.failed}`;
+				if (summary.fail_link) {
+					const url = summary.fail_link; // server returns full file_url
+					frappe.msgprint({
+						title: __('Batch Finished'),
+						message: `${msg}<br><a href="${url}" target="_blank">Download failures CSV</a>`,
+						indicator: 'green'
+					});
+				} else {
+					frappe.msgprint(msg);
+				}
+				frm.set_value('students', []);
+			});
+
+			frm.__pe_rt_bound = true;
+		}
+
+		// Field visibility
 		toggle_filter_fields(frm);
 
-		// Add helper buttons after render
+		// Table toolbar
 		add_table_toolbar(frm);
-
-		// Live progress updates
-		frappe.realtime.on("program_enrollment_tool", data => {
-			frappe.hide_msgprint(true);
-			frappe.show_progress(__('Enrolling students'), data.progress[0], data.progress[1]);
-		});
-
-		frappe.realtime.on("program_enrollment_tool_done", summary => {
-			const msg = `Created: ${summary.created}, Skipped: ${summary.skipped}, Failed: ${summary.failed}`;
-			if (summary.fail_link) {
-				frappe.msgprint({
-					title: __('Batch Finished'),
-					message: msg + `<br><a href="/files/${summary.fail_link}" target="_blank">Download failures CSV</a>`,
-					indicator: 'green'
-				});
-			} else {
-				frappe.msgprint(msg);
-			}
-			frm.set_value('students', []);
-		});
 	},
 
-	// --------------------
-	onload(frm) {
-		// On load we don't know the school yet; make AY fields inert until a Program is picked
-		setAYQueryForField(frm, 'academic_year', null);
-		setAYQueryForField(frm, 'new_academic_year', null);
+	async onload(frm) {
+		// Make AY fields inert until Program is known, or initialize if prefilled
+		await initAYQueries(frm);
 	},
 
-	// --------------------
 	get_students_from(frm) {
 		toggle_filter_fields(frm);
 	},
@@ -85,8 +115,13 @@ frappe.ui.form.on("Program Enrollment Tool", {
 		setAYQueryForField(frm, 'new_academic_year', school);
 	},
 
-	// --------------------
 	get_students(frm) {
+		// Guardrails per source
+		if (!canFetchStudents(frm)) {
+			frappe.msgprint(__('Please complete the required filters for the selected source first.'));
+			return;
+		}
+
 		frm.set_value('students', []);
 		frappe.call({
 			doc: frm.doc,
@@ -106,7 +141,7 @@ frappe.ui.form.on("Program Enrollment Tool", {
 			method: 'enroll_students',
 			freeze: true,
 			callback() {
-				// wait for realtime summary
+				// summary comes via realtime
 			}
 		});
 	}
