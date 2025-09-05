@@ -318,6 +318,36 @@ def _close_manager_todos_only(case_name: str):
 		if desc.startswith(CASE_MANAGER_TAG):
 			frappe.db.set_value("ToDo", r.name, "status", "Closed", update_modified=False)
 
+
+
+
+@frappe.whitelist()
+def breaching_sla_count():
+	now_str = now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+
+	overdue = frappe.db.count(
+		"Student Referral",
+		filters={
+			"docstatus": 1,
+			"referral_case": ["is", "not set"],
+			"sla_due": ["<", now_str],
+		},
+	)
+
+	return {
+		"value": overdue,
+		"fieldtype": "Int",
+		"route": ["List", "Student Referral"],
+		"route_options": {
+			"filters": [
+				["Student Referral", "docstatus", "=", 1],
+				["Student Referral", "referral_case", "is", "not set"],
+				["Student Referral", "sla_due", "<", now_str],
+			]
+		}
+	}
+
+
 def on_doctype_update():
 	# Helpful indexes
 	frappe.db.add_index("Student Referral", ["student"])
