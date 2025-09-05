@@ -4,8 +4,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, nowdate, now
-from frappe.utils import now_datetime, getdate, get_datetime
+from frappe.utils import add_days, nowdate, now, getdate
 from frappe.desk.form.assign_to import add as add_assignment, remove as remove_assignment
 
 def notify_admission_manager(doc):
@@ -41,51 +40,85 @@ def notify_admission_manager(doc):
 
 
 def check_sla_breaches():
-	"""Recompute SLA status for open admission records using the refactored fields.
-	Active clocks (pre-contact only):
-	- first_contact_due_on: active until the inquiry is contacted.
-	- followup_due_on: active only while workflow_state == 'Assigned' (pre-contact).
-	"""
-
-	doc_types = ["Inquiry", "Registration of Interest"]
+	"""Recompute SLA for open Inquiry/ROI.
+	Safe for doctypes with different schemas (e.g., ROI without assigned_to)."""
+	logger = frappe.logger("sla_breaches", allow_site=True)
 	today = getdate()
 
-	# States defined on Inquiry:
-	# New Inquiry, Assigned, Contacted, Qualified, Nurturing, Accepted, Unqualified
+	# Settings with safe defaults
+	try:
+		settings = frappe.get_cached_doc("Admission Settings")
+		first_sla_days = cint(getattr(settings, "first_contact_sla_days", 0)) or 7
+	except Exception:
+		first_sla_days = 7
+
 	contacted_states = {"Contacted", "Qualified", "Nurturing", "Accepted", "Unqualified"}
+	doc_types = ["Inquiry", "Registration of Interest"]
+
+	total_scanned = total_changed = 0
 
 	for doctype in doc_types:
-		# Skip doctypes that may not exist on this site 
-		if not frappe.db.table_exists(doctype): 
+		if not frappe.db.table_exists(doctype):
 			continue
 
-		entries = frappe.db.get_values(
-			doctype,
-			filters={"docstatus": 0},
-			fieldname=[
-				"name",
-				"assigned_to",
-				"workflow_state",
-				"first_contact_due_on",
-				"followup_due_on",
-				"sla_status",
-			],
-			as_dict=True,
-		)
+		# Build field list dynamically (avoid 1054 Unknown column)
+		def has(col: str) -> bool:
+			try:
+				return frappe.db.has_column(doctype, col)
+			except Exception:
+				# has_column is robust, but be defensive anyway
+				return False
 
-		for row in entries:
-			name = row["name"]
-			assigned_to = row.get("assigned_to")
-			state = (row.get("workflow_state") or "New Inquiry").strip()
+		fields = [
+			"name",
+			"workflow_state" if has("workflow_state") else None,
+			"submitted_at" if has("submitted_at") else None,
+			"creation",  # always present
+			"first_contact_due_on" if has("first_contact_due_on") else None,
+			"followup_due_on" if has("followup_due_on") else None,
+			"sla_status" if has("sla_status") else None,
+		]
+		# Optional (used only for notifications)
+		if has("assigned_to"):
+			fields.append("assigned_to")
 
+		# strip Nones
+		fields = [f for f in fields if f]
+
+		rows = frappe.db.get_values(doctype, {"docstatus": 0}, fields, as_dict=True)
+		if not rows:
+			continue
+
+		for r in rows:
+			total_scanned += 1
+			state = (r.get("workflow_state") or "New Inquiry").strip() if "workflow_state" in r else "New Inquiry"
+
+			# Backfill first_contact_due_on if missing and still pre-contact
+			first_due = r.get("first_contact_due_on")
+			if state not in contacted_states and first_due in (None, "", 0):
+				base_dt = r.get("submitted_at") or r.get("creation") or today
+				try:
+					base_date = getdate(base_dt)
+				except Exception:
+					base_date = today
+				first_due = add_days(base_date, first_sla_days)
+				if "first_contact_due_on" in r:
+					frappe.db.set_value(doctype, r["name"], "first_contact_due_on", first_due, update_modified=False)
+
+			# Active clocks
 			active_dates = []
-			# First-contact clock runs until contacted
-			if state not in contacted_states and row.get("first_contact_due_on"):
-				active_dates.append(getdate(row["first_contact_due_on"]))
+			if state not in contacted_states and first_due:
+				try:
+					active_dates.append(getdate(first_due))
+				except Exception:
+					pass
 
-			# Follow-up clock runs only when Assigned (pre-contact)
-			if state == "Assigned" and row.get("followup_due_on"):
-				active_dates.append(getdate(row["followup_due_on"]))
+			follow_due = r.get("followup_due_on")
+			if state == "Assigned" and follow_due:
+				try:
+					active_dates.append(getdate(follow_due))
+				except Exception:
+					pass
 
 			# Resolve SLA
 			if not active_dates:
@@ -97,16 +130,26 @@ def check_sla_breaches():
 			else:
 				new_status = "⚪ Upcoming"
 
-			if new_status != row.get("sla_status"):
-				frappe.db.set_value(doctype, name, "sla_status", new_status)
+			# Persist only if field exists AND value changed
+			if "sla_status" in r and new_status != r.get("sla_status"):
+				total_changed += 1
+				frappe.db.set_value(doctype, r["name"], "sla_status", new_status)
 
-				# Notify stakeholders when overdue
+				# Optional notifications only if 'assigned_to' exists on this doctype
+				assigned_to = r.get("assigned_to")
 				if new_status == "🔴 Overdue" and assigned_to:
-					doc_ref = frappe._dict({"doctype": doctype, "name": name})
-					notify_user(assigned_to, "🔴 SLA is overdue for this inquiry.", doc_ref)
+					doc_ref = frappe._dict({"doctype": doctype, "name": r["name"]})
+					try:
+						notify_user(assigned_to, "🔴 SLA is overdue for this inquiry.", doc_ref)
+						for (manager,) in frappe.db.get_values("Has Role", {"role": "Admission Manager"}, "parent"):
+							notify_user(manager, "🔴 SLA is overdue for this inquiry.", doc_ref)
+					except Exception:
+						# Notifications are best-effort; don't block the sweep
+						pass
 
-					for (manager,) in frappe.db.get_values("Has Role", {"role": "Admission Manager"}, "parent"):
-						notify_user(manager, "🔴 SLA is overdue for this inquiry.", doc_ref)
+	frappe.db.commit()
+	logger.info(f"SLA sweep ok: scanned={total_scanned}, changed={total_changed}, date={today}")
+
 
 def _create_native_assignment(doctype: str, name: str, user: str, description: str, due_date: str, color: str | None = None) -> str | None:
 	# Create native assignment; also sends notifications if notify=1
