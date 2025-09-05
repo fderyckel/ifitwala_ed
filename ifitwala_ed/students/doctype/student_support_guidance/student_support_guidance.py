@@ -225,6 +225,33 @@ def _render_snapshot_html(doc: "StudentSupportGuidance") -> str:
 		"</div>"
 	)
 
+def _rebuild_snapshot(doc: "StudentSupportGuidance", save: bool = True) -> "StudentSupportGuidance":
+	"""
+	Lightweight rebuild used by external callers (e.g., Referral Case) after mutating items.
+	- Recomputes counters (high_priority_count, ack_required_count)
+	- Renders and caches snapshot_html
+	- Does NOT bump ack_version
+	- Does NOT (re)sync acknowledgment ToDos
+	"""
+	# Defensive: ensure we have a full doc
+	ssg = frappe.get_doc(SSG, doc.name) if isinstance(doc, str) else doc
+
+	# Recompute cheap counters from in-memory rows
+	ssg.high_priority_count = _has_any_high_priority(ssg)
+	ssg.ack_required_count = _count_ack_required_items(ssg)
+
+	# Mark that we have published items if anything is present & published
+	items = ssg.get("items") or []
+	ssg.published_items = 1 if items else 0
+
+	# Re-render teacher-facing snapshot HTML
+	ssg.snapshot_html = _render_snapshot_html(ssg)
+
+	if save:
+		ssg.save(ignore_permissions=True)
+
+	return ssg
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Permission & audience helpers
