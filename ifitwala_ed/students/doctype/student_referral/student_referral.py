@@ -356,6 +356,44 @@ def breaching_sla_count():
 	}
 
 
+@frappe.whitelist()
+def card_srf_new_today():
+	"""Count submitted Student Referrals dated today with no linked Referral Case.
+
+	Returns a Number Card payload:
+	  {
+	    "value": <int>,
+	    "fieldtype": "Int",
+	    "route": ["List", "Student Referral"],
+	    "route_options": { "filters": [...] }
+	  }
+	"""
+	today = nowdate()
+
+	count = frappe.db.count(
+		"Student Referral",
+		filters={
+			"docstatus": 1,
+			"date": ["=", today],
+			"referral_case": ["is", "not set"],
+		},
+	)
+
+	# Click-through opens the filtered list
+	return {
+		"value": cint(count),
+		"fieldtype": "Int",
+		"route": ["List", "Student Referral"],
+		"route_options": {
+			"filters": [
+				["Student Referral", "docstatus", "=", 1],
+				["Student Referral", "date", "=", today],
+				["Student Referral", "referral_case", "is", "not set"],
+			]
+		},
+	}
+
+
 def on_doctype_update():
 	# Helpful indexes
 	frappe.db.add_index("Student Referral", ["student"])
