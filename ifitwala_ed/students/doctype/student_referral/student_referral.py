@@ -42,8 +42,8 @@ class StudentReferral(Document):
 	def before_save(self):
 		# Compute initial triage SLA if empty (from settings; default 24h)
 		if not self.sla_due:
-			sla_hours = _get_setting_int("sla_hours_new_to_triaged", 24)
-			self.sla_due = add_to_date(now_datetime(), hours=sla_hours)
+			sla_hours = _get_setting_int("sla_hours_new_to_triaged", 24, positive_only=True)
+			self.sla_due = add_to_date(now_datetime(), hours=sla_hours)	
 
 	def before_submit(self):
 		# 1) Ensure snapshot context is complete
@@ -53,14 +53,17 @@ class StudentReferral(Document):
 		# 3) Role gating for mandated reporting
 		if cint(self.mandated_reporting_triggered) and not _user_has_any_role(ALLOWED_SUBMIT_ROLES_FOR_MANDATED):
 			frappe.throw(_("Only Counselor or Academic Admin can submit a referral with Mandated Reporting."))
+
 		# 4) Optional SLA tightening for critical/immediate (Triaged→First Action window)
-		override_hours = _get_setting_int("sla_hours_triaged_to_first_action", None)
-		if (self.severity == "Critical" or cint(self.requires_immediate_action)) and override_hours:
+		override_hours = _get_setting_int("sla_hours_triaged_to_first_action", None, positive_only=True)
+		if override_hours and (self.severity == "Critical" or cint(self.requires_immediate_action)):
 			self.sla_due = add_to_date(now_datetime(), hours=override_hours)
+
 		# 5) Ensure a Case exists for high-risk items regardless of settings
 		needs_case = cint(self.mandated_reporting_triggered) or cint(self.requires_immediate_action) or self.severity in ("High", "Critical")
 		if needs_case:
 			self._ensure_case_exists()
+
 
 	def on_submit(self):
 		"""Create/ensure Case and route via native assign_to, respecting settings."""
@@ -239,14 +242,19 @@ def _user_has_any_role(roles: set[str]) -> bool:
 	user_roles = set(frappe.get_roles())
 	return bool(user_roles & roles)
 
-def _get_setting_int(fieldname: str, default: int | None = None) -> int | None:
+def _get_setting_int(fieldname: str, default: int | None = None, *, positive_only: bool = False) -> int | None:
 	try:
 		val = frappe.db.get_single_value(SETTINGS_DTYPE, fieldname)
-		if val is None:
+		# Treat None / "" as unset → use default
+		if val is None or (isinstance(val, str) and val.strip() == ""):
 			return default
-		return cint(val)
+		num = cint(val)
+		if positive_only and (num is None or num <= 0):
+			return default
+		return num
 	except Exception:
 		return default
+
 
 def _get_setting_str(fieldname: str) -> str | None:
 	try:
