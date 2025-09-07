@@ -15,25 +15,37 @@ frappe.ui.form.on("Student Referral", {
 	},
 
 	refresh(frm) {
-		// Submitted: show Case actions
-		if (frm.doc.docstatus === 1) {
-			// View/Open Case
+		// avoid duplicated buttons across refreshes
+		frm.clear_custom_buttons();
+
+		// --- submitted actions, visible only to counselor/admin/sysmgr ---
+		const canReadCase =
+			((frappe.boot.user && frappe.boot.user.can_read) || []).includes("Referral Case");
+		const canCaseUI =
+			frm.doc.docstatus === 1 &&
+			frappe.user.has_role(["Counselor","Academic Admin","System Manager"]) &&
+			canReadCase;
+
+		if (canCaseUI) {
+			// 1) Case button: green when viewing, blue when opening
 			if (frm.doc.referral_case) {
-				frm.add_custom_button(__("View Case"), () => {
+				const viewBtn = frm.add_custom_button(__("View Case"), () => {
 					frappe.set_route("Form", "Referral Case", frm.doc.referral_case);
-				}, __("Actions"));
+				});
+				viewBtn.addClass("btn-success");
 			} else {
-				frm.add_custom_button(__("Open Case"), async () => {
+				const openBtn = frm.add_custom_button(__("Open Case"), async () => {
 					const r = await frm.call("open_case");
 					if (r && r.message) {
-						frm.reload_doc(); // picks up referral_case if server stamped it
+						await frm.reload_doc();
 						frappe.set_route("Form", "Referral Case", r.message);
 					}
-				}, __("Actions"));
+				});
+				openBtn.addClass("btn-primary");
 			}
 
-			// Escalate (works on the Case; submitted Referral is immutable)
-			frm.add_custom_button(__("Escalate"), async () => {
+			// 2) Escalate (red)
+			const escBtn = frm.add_custom_button(__("Escalate"), async () => {
 				const case_name = await ensure_case(frm);
 				if (!case_name) return;
 				const d = new frappe.ui.Dialog({
@@ -54,28 +66,34 @@ frappe.ui.form.on("Student Referral", {
 					}
 				});
 				d.show();
-			}, __("Actions"));
+			});
+			escBtn.addClass("btn-danger");
 
-			// Mandated reporting marker (adds Case entry + bumps priority)
-			frm.add_custom_button(__("Mark Mandated Reporting"), async () => {
+			// 3) Mark Mandated Reporting (red)
+			const mrBtn = frm.add_custom_button(__("Mark Mandated Reporting"), async () => {
 				const case_name = await ensure_case(frm);
 				if (!case_name) return;
 				await frappe.call({
 					method: "ifitwala_ed.students.doctype.referral_case.referral_case.flag_mandated_reporting",
 					args: { name: case_name, referral: frm.doc.name }
 				});
-				frappe.msgprint({ title: __("Recorded"), message: __("Mandated reporting flagged on the case."), indicator: "red" });
-			}, __("Actions"));
+				frappe.msgprint({
+					title: __("Recorded"),
+					message: __("Mandated reporting flagged on the case."),
+					indicator: "red"
+				});
+			});
+			mrBtn.addClass("btn-danger");
 		}
 
-		// Draft conveniences
+		// Draft conveniences (kept under Actions group)
 		if (frm.doc.docstatus === 0) {
 			// Autofill referrer for Staff
 			if (frm.doc.referral_source === "Staff" && !frm.doc.referrer) {
 				frm.set_value("referrer", frappe.session.user);
 			}
 
-			// Quick Escalate in draft (edits Referral fields before submit)
+			// Escalate (Draft)
 			frm.add_custom_button(__("Escalate (Draft)"), () => {
 				const d = new frappe.ui.Dialog({
 					title: __("Escalate Referral"),
@@ -95,7 +113,7 @@ frappe.ui.form.on("Student Referral", {
 				d.show();
 			}, __("Actions"));
 
-			// Quick Mandated toggle in draft (keeps server validation happy)
+			// Mandated Reporting (Draft)
 			frm.add_custom_button(__("Mandated Reporting (Draft)"), () => {
 				frm.set_value("mandated_reporting_triggered", 1);
 				if (!frm.doc.confidentiality_level || frm.doc.confidentiality_level === "Standard") {
