@@ -27,7 +27,7 @@ frappe.listview_settings["Student Referral"] = {
 			});
 		} else {
 			// Author-focused views (teachers/instructors)
-			list.page.add_inner_button(__("My Referrals – Needs Triage"), () => {
+			list.page.add_inner_button(__("My Referrals - Needs Triage"), () => {
 				list.filter_area.clear();
 				list.filter_area.add([["Student Referral", "owner", "=", me]]);
 				list.filter_area.add([["Student Referral", "docstatus", "=", 1]]);
@@ -77,7 +77,7 @@ frappe.listview_settings["Student Referral"] = {
 		}
 
 		// Drafts
-		return [__("Draft"), "gray", "docstatus,=,0"];
+		return [__("Draft"), "blue", "docstatus,=,0"];
 	}
 };
 
