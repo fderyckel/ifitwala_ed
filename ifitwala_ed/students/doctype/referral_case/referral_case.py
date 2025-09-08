@@ -45,6 +45,16 @@ class ReferralCase(Document):
 		if self.case_manager and (self.is_new() or self.case_manager != self.get_db_value("case_manager")):
 			_assign_case_manager(self.name, self.case_manager, description="Updated via field", priority="Medium")
 
+		# Enforce: assignee must be Academic Staff (when set)
+		for r in (self.entries or []):
+			if r.assignee:
+				has_role = frappe.db.count(
+					"Has Role",
+					{"parent": r.assignee, "role": ["in", ("Academic Staff",)]}
+				)
+				if not has_role:
+					frappe.throw(_("Entry assignee must have the Academic Staff role: {0}").format(r.assignee))
+
 
 @frappe.whitelist()
 def quick_update_status(name: str, new_status: str):
@@ -71,12 +81,7 @@ def add_entry(name: str, entry_type: str, summary: str, assignee: str | None = N
 	row.summary = summary
 	row.assignee = assignee
 	row.status = status or "Open"
-	# Optional: record author if the child has an 'author' field
-	try:
-		if hasattr(row, "author"):
-			row.author = frappe.session.user
-	except Exception:
-		pass
+	row.author = frappe.session.user 
 	if attachment:
 		row.attachments = attachment
 	doc.save(ignore_permissions=True)

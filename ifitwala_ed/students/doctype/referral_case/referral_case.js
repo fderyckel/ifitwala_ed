@@ -41,7 +41,15 @@ frappe.ui.form.on("Referral Case", {
 		}
 
 		// Assign case manager (keep under group to avoid clutter)
-		frm.add_custom_button(__("Assign Case Manager"), () => assign_manager_dialog(frm), __("Actions"));
+		frm.add_custom_button(__("Assign Case Manager"), () => assign_manager_dialog(frm));
+
+		// Limit child-table assignee (grid picker) to Academic Staff
+		if (frm.fields_dict.entries && frm.fields_dict.entries.grid) {
+			frm.fields_dict.entries.grid.get_field('assignee').get_query = () => ({
+				query: "ifitwala_ed.students.doctype.referral_case.referral_case.users_with_role",
+				filters: { roles: ["Academic Staff"] }
+			});
+		}
 	}
 });
 
