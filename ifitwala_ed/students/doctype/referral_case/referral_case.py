@@ -174,6 +174,12 @@ def quick_update_status(name: str, new_status: str):
 		if active:
 			frappe.throw(_("Cannot close case with open or in-progress entries."))
 	doc.case_status = new_status
+	if new_status == "Closed":
+		doc.closed_on = today()
+	else:
+		# reopening / moving away from Closed clears closed_on
+		if doc.closed_on:
+			doc.closed_on = None
 	doc.save(ignore_permissions=True)
 	return {"ok": True}
 
@@ -210,45 +216,45 @@ def add_entry(name: str, entry_type: str, summary: str, assignee: str | None = N
 
 @frappe.whitelist()
 def escalate(name: str, severity: str, note: str = ""):
-	"""Authoritative: escalate the case severity (High/Critical) and log to both timelines."""
 	doc = frappe.get_doc("Referral Case", name)
 	_ensure_case_action_permitted(doc)
 
 	if severity not in ("High", "Critical"):
 		frappe.throw(_("Severity must be High or Critical."))
 
-	# Prevent downgrades (e.g., Critical -> High)
 	order = {"Low": 0, "Moderate": 1, "High": 2, "Critical": 3}
-	cur = doc.severity or "Low"
+	cur = (doc.severity or "Low")
 	target = severity
-	final = target if order.get(target, 0) >= order.get(cur, 0) else cur
 
-	doc.severity = final
+	# Early return if no upgrade
+	if order.get(target, 0) <= order.get(cur, 0):
+		return {"ok": True, "severity": cur}
+
+	doc.severity = target
 	if (doc.case_status or "Open") != "Closed":
 		doc.case_status = "Escalated"
 	doc.save(ignore_permissions=True)
 
-	# Timeline messages (Case + mirror on Referral)
 	actor = _actor()
 	ts = now_datetime().strftime("%Y-%m-%d %H:%M")
 	safe_note = frappe.utils.escape_html(note or "")
-	msg_case = _("Escalated to <b>{sev}</b> by {who} on {when}.").format(sev=final, who=actor, when=ts)
+	msg_case = _("Escalated to <b>{sev}</b> by {who} on {when}.").format(sev=target, who=actor, when=ts)
 	if safe_note:
 		msg_case += " " + _("Note") + f": {safe_note}"
 	_add_timeline("Referral Case", doc.name, msg_case)
 
 	if doc.get("referral"):
-		msg_ref = _("Referral has been escalated to <b>{sev}</b> by {who} on {when}.").format(sev=final, who=actor, when=ts)
+		msg_ref = _("Referral has been escalated to <b>{sev}</b> by {who} on {when}.").format(sev=target, who=actor, when=ts)
 		if safe_note:
 			msg_ref += " " + _("Note") + f": {safe_note}"
 		_add_timeline("Student Referral", doc.referral, msg_ref)
 
-	# Keep your manager assignment behavior unchanged
 	manager = doc.case_manager or _pick_manager_from_assignments(name) or _pick_any_counselor()
 	if manager:
-		_assign_case_manager(name, manager, description=f"Escalated to {final}. {note or ''}".strip(), priority="High")
+		_assign_case_manager(name, manager, description=f"Escalated to {target}. {note or ''}".strip(), priority="High")
 
-	return {"ok": True, "severity": final}
+	return {"ok": True, "severity": target}
+
 
 @frappe.whitelist()
 def flag_mandated_reporting(name: str, referral: str | None = None, note: str = ""):

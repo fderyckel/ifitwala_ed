@@ -96,7 +96,7 @@ class StudentReferral(Document):
 		self.db_set("referral_case", case_name, update_modified=False)
 		self.db_set("assigned_case_manager", manager, update_modified=False)
 
-		# 👉 NEW: bell notification to Counselors & Academic Admins (per settings)
+		# bell notification to Counselors & Academic Admins (per settings)
 		_maybe_notify_new_referral(self)
 
 	# ── Internals ────────────────────────────────────────────────────────────
@@ -328,32 +328,54 @@ def flag_possible_mandated_report(referral: str, note: str = ""):
 
 
 def _notify_roles_on_referral(ref_name: str, *, roles: set[str], title: str, subject: str, body: str):
-	"""Create Notification Log entries for enabled users who hold any of the given roles; push bell."""
-	# Resolve users by role
+	"""Insert Notification Log once per (user, doc) and push bell AFTER COMMIT (robust vs duplicate clicks)."""
 	role_holders = set(frappe.get_all("Has Role", filters={"role": ["in", list(roles)]}, pluck="parent"))
 	if not role_holders:
 		return
 
-	enabled_users = set(frappe.get_all("User", filters={"name": ["in", list(role_holders)], "enabled": 1}, pluck="name"))
-	if not enabled_users:
+	target_users = set(frappe.get_all(
+		"User",
+		filters={"name": ["in", list(role_holders)], "enabled": 1, "user_type": "System User"},
+		pluck="name",
+	))
+	if not target_users:
 		return
 
-	for user in enabled_users:
-		nlog = frappe.get_doc({
+	created_for = []
+	for user in target_users:
+		# Idempotency: skip if a recent identical log already exists for this user+doc
+		exists = frappe.db.exists(
+			"Notification Log",
+			{
+				"for_user": user,
+				"document_type": "Student Referral",
+				"document_name": ref_name,
+				"subject": subject,
+			},
+		)
+		if exists:
+			continue
+
+		frappe.get_doc({
 			"doctype": "Notification Log",
 			"subject": subject,
 			"email_content": body,
 			"for_user": user,
 			"type": "Alert",
 			"document_type": "Student Referral",
-			"document_name": ref_name
+			"document_name": ref_name,
 		}).insert(ignore_permissions=True)
+		created_for.append(user)
 
-		# Push to bell in real time
-		try:
-			frappe.publish_realtime(event="notification", user=user)
-		except Exception:
-			pass
+	if created_for:
+		def _push(users):
+			for u in users:
+				try:
+					frappe.publish_realtime(event="notification", user=u)
+				except Exception:
+					pass
+		frappe.after_commit(lambda: _push(created_for))
+
 
 # ── New referral bell notification helpers ───────────────────────────────────
 _SEV_ORDER = {"Low": 0, "Moderate": 1, "High": 2, "Critical": 3}
