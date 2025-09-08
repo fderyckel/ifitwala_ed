@@ -18,16 +18,16 @@ frappe.ui.form.on("Student Referral", {
 		// avoid duplicated buttons across refreshes
 		frm.clear_custom_buttons();
 
-		// --- submitted actions, visible only to counselor/admin/sysmgr ---
+		// Submitted actions: Counselor/Admin only; authoritative actions live on the Case
 		const canReadCase =
 			((frappe.boot.user && frappe.boot.user.can_read) || []).includes("Referral Case");
 		const canCaseUI =
 			frm.doc.docstatus === 1 &&
-			frappe.user.has_role(["Counselor","Academic Admin","System Manager"]) &&
+			frappe.user.has_role(["Counselor", "Academic Admin"]) &&
 			canReadCase;
 
 		if (canCaseUI) {
-			// 1) Case button: green when viewing, blue when opening
+			// View/Open Case only (no authoritative actions here)
 			if (frm.doc.referral_case) {
 				const viewBtn = frm.add_custom_button(__("View Case"), () => {
 					frappe.set_route("Form", "Referral Case", frm.doc.referral_case);
@@ -44,86 +44,9 @@ frappe.ui.form.on("Student Referral", {
 				openBtn.addClass("btn-primary");
 			}
 
-			// 2) Escalate (red)
-			const escBtn = frm.add_custom_button(__("Escalate"), async () => {
-				const case_name = await ensure_case(frm);
-				if (!case_name) return;
-				const d = new frappe.ui.Dialog({
-					title: __("Escalate Case"),
-					fields: [
-						{ fieldname: "severity", fieldtype: "Select", label: __("Severity"), options: "High\nCritical", reqd: 1, default: "High" },
-						{ fieldname: "note", fieldtype: "Small Text", label: __("Note (optional)") }
-					],
-					primary_action_label: __("Escalate"),
-					primary_action: async (values) => {
-						d.hide();
-						await frappe.call({
-							method: "ifitwala_ed.students.doctype.referral_case.referral_case.escalate",
-							args: { name: case_name, severity: values.severity, note: values.note || "" }
-						});
-						frappe.show_alert({ message: __("Case escalated to {0}", [values.severity]), indicator: "red" });
-						frappe.set_route("Form", "Referral Case", case_name);
-					}
-				});
-				d.show();
-			});
-			escBtn.addClass("btn-danger");
-
-			// 3) Mark Mandated Reporting (red)
-			const mrBtn = frm.add_custom_button(__("Mark Mandated Reporting"), async () => {
-				const case_name = await ensure_case(frm);
-				if (!case_name) return;
-				await frappe.call({
-					method: "ifitwala_ed.students.doctype.referral_case.referral_case.flag_mandated_reporting",
-					args: { name: case_name, referral: frm.doc.name }
-				});
-				frappe.msgprint({
-					title: __("Recorded"),
-					message: __("Mandated reporting flagged on the case."),
-					indicator: "red"
-				});
-			});
-			mrBtn.addClass("btn-danger");
-		}
-
-		// Draft conveniences (kept under Actions group)
-		if (frm.doc.docstatus === 0) {
-			// Autofill referrer for Staff
-			if (frm.doc.referral_source === "Staff" && !frm.doc.referrer) {
-				frm.set_value("referrer", frappe.session.user);
-			}
-
-			// Escalate (Draft)
-			frm.add_custom_button(__("Escalate (Draft)"), () => {
-				const d = new frappe.ui.Dialog({
-					title: __("Escalate Referral"),
-					fields: [
-						{ fieldname: "severity", fieldtype: "Select", label: __("Severity"), options: "High\nCritical", reqd: 1, default: "High" },
-						{ fieldname: "immediate", fieldtype: "Check", label: __("Requires Immediate Action"), default: 1 }
-					],
-					primary_action_label: __("Apply"),
-					primary_action: () => {
-						const v = d.get_values();
-						d.hide();
-						frm.set_value("severity", v.severity);
-						frm.set_value("requires_immediate_action", v.immediate ? 1 : 0);
-						frm.save();
-					}
-				});
-				d.show();
-			}, __("Actions"));
-
-			// Mandated Reporting (Draft)
-			frm.add_custom_button(__("Mandated Reporting (Draft)"), () => {
-				frm.set_value("mandated_reporting_triggered", 1);
-				if (!frm.doc.confidentiality_level || frm.doc.confidentiality_level === "Standard") {
-					frm.set_value("confidentiality_level", "Sensitive");
-				}
-				if (!frm.doc.severity || frm.doc.severity === "Low") {
-					frm.set_value("severity", "Moderate");
-				}
-				frm.save();
-			}, __("Actions"));
+			frm.dashboard.set_headline(__(
+				"Authoritative triage (<b>Escalate</b> & <b>Mandated Reporting</b>) is performed on the <b>Referral Case</b>."
+			));
 		}
 
 		// --- Intake-side non-authoritative actions for Academic Staff and above ---
@@ -180,7 +103,6 @@ frappe.ui.form.on("Student Referral", {
 			});
 			mrFlagBtn.addClass("btn-danger");
 		}
-
 	},
 
 	student: frappe.utils.debounce(async (frm) => {
