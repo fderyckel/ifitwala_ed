@@ -236,6 +236,13 @@ class StudentReferral(Document):
 # Helpers (pure functions)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _push_bell_notifications(users: list[str]):
+	for u in users:
+		try:
+			frappe.publish_realtime(event="notification", user=u)
+		except Exception:
+			pass
+
 def _required_on_submit(doc: Document, fields: tuple[str, ...]):
 	for f in fields:
 		if not doc.get(f):
@@ -328,11 +335,13 @@ def flag_possible_mandated_report(referral: str, note: str = ""):
 
 
 def _notify_roles_on_referral(ref_name: str, *, roles: set[str], title: str, subject: str, body: str):
-	"""Insert Notification Log once per (user, doc) and push bell AFTER COMMIT (robust vs duplicate clicks)."""
+	"""Insert Notification Log once per (user, doc) and push the bell AFTER COMMIT via enqueue_after_commit=True."""
+	# Resolve role holders
 	role_holders = set(frappe.get_all("Has Role", filters={"role": ["in", list(roles)]}, pluck="parent"))
 	if not role_holders:
 		return
 
+	# Only Desk users see the bell
 	target_users = set(frappe.get_all(
 		"User",
 		filters={"name": ["in", list(role_holders)], "enabled": 1, "user_type": "System User"},
@@ -343,17 +352,13 @@ def _notify_roles_on_referral(ref_name: str, *, roles: set[str], title: str, sub
 
 	created_for = []
 	for user in target_users:
-		# Idempotency: skip if a recent identical log already exists for this user+doc
-		exists = frappe.db.exists(
-			"Notification Log",
-			{
-				"for_user": user,
-				"document_type": "Student Referral",
-				"document_name": ref_name,
-				"subject": subject,
-			},
-		)
-		if exists:
+		# Idempotency: skip if an identical log already exists for this user & doc
+		if frappe.db.exists("Notification Log", {
+			"for_user": user,
+			"document_type": "Student Referral",
+			"document_name": ref_name,
+			"subject": subject,
+		}):
 			continue
 
 		frappe.get_doc({
@@ -367,14 +372,17 @@ def _notify_roles_on_referral(ref_name: str, *, roles: set[str], title: str, sub
 		}).insert(ignore_permissions=True)
 		created_for.append(user)
 
-	if created_for:
-		def _push(users):
-			for u in users:
-				try:
-					frappe.publish_realtime(event="notification", user=u)
-				except Exception:
-					pass
-		frappe.after_commit(lambda: _push(created_for))
+	if not created_for:
+		return
+
+	# ✅ Run the realtime push only AFTER the current DB transaction commits
+	frappe.enqueue(
+		"ifitwala_ed.students.doctype.student_referral.student_referral._push_bell_notifications",
+		queue="short",
+		users=list(created_for),
+		enqueue_after_commit=True,
+	)
+
 
 
 # ── New referral bell notification helpers ───────────────────────────────────
