@@ -125,6 +125,62 @@ frappe.ui.form.on("Student Referral", {
 				frm.save();
 			}, __("Actions"));
 		}
+
+		// --- Intake-side non-authoritative actions for Academic Staff and above ---
+		const canSignal = frappe.user.has_role(["Academic Staff", "Counselor", "Academic Admin"]);
+
+		if (canSignal) {
+			// Request Escalation
+			const reqBtn = frm.add_custom_button(__("Request Escalation"), () => {
+				const d = new frappe.ui.Dialog({
+					title: __("Request Escalation"),
+					fields: [
+						{ fieldname: "note", fieldtype: "Small Text", label: __("Add context (optional)") }
+					],
+					primary_action_label: __("Send Request"),
+					primary_action: async (values) => {
+						d.hide();
+						await frappe.call({
+							method: "ifitwala_ed.students.doctype.student_referral.student_referral.request_escalation",
+							args: { referral: frm.doc.name, note: values.note || "" }
+						}).then((r) => {
+							const banner = (r && r.message && r.message.banner) || __("Escalation request recorded.");
+							frm.dashboard.set_headline(`<span class="text-warning">${frappe.utils.escape_html(banner)}</span>`);
+							frappe.show_alert({ message: __("Triage team notified."), indicator: "orange" });
+							frm.reload_doc(); // pull timeline
+						});
+					}
+				});
+				d.show();
+			});
+			reqBtn.addClass("btn-warning");
+
+			// Mark Possible MR (non-authoritative)
+			const mrFlagBtn = frm.add_custom_button(__("Mark Possible MR"), () => {
+				const d = new frappe.ui.Dialog({
+					title: __("Flag Possible Mandated Report"),
+					fields: [
+						{ fieldname: "note", fieldtype: "Small Text", label: __("Why do you suspect this? (optional)") }
+					],
+					primary_action_label: __("Flag"),
+					primary_action: async (values) => {
+						d.hide();
+						await frappe.call({
+							method: "ifitwala_ed.students.doctype.student_referral.student_referral.flag_possible_mandated_report",
+							args: { referral: frm.doc.name, note: values.note || "" }
+						}).then((r) => {
+							const banner = (r && r.message && r.message.banner) || __("Flag recorded.");
+							frm.dashboard.set_headline(`<span class="text-danger">${frappe.utils.escape_html(banner)}</span>`);
+							frappe.show_alert({ message: __("Triage team notified."), indicator: "red" });
+							frm.reload_doc();
+						});
+					}
+				});
+				d.show();
+			});
+			mrFlagBtn.addClass("btn-danger");
+		}
+
 	},
 
 	student: frappe.utils.debounce(async (frm) => {

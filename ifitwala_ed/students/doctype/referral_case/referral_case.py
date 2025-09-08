@@ -5,7 +5,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import cint, today, strip_html
+from frappe.utils import cint, today, strip_html, cstr
 from frappe.desk.form.assign_to import add as assign_add
 from frappe import _
 
@@ -414,91 +414,3 @@ def on_doctype_update():
 	frappe.db.add_index("Referral Case", ["case_manager"])
 	frappe.db.add_index("Referral Case", ["student"])
 	frappe.db.add_index("Referral Case", ["school"])
-
-@frappe.whitelist()
-def request_escalation(referral: str, note: str = ""):
-	"""Intake-side: record an escalation **request** on the Student Referral and bell-notify Counselor + Academic Admin."""
-	_ref = frappe.get_doc("Student Referral", referral)
-
-	# Timeline entry (non-authoritative)
-	actor = frappe.utils.get_fullname(frappe.session.user) or frappe.session.user
-	ts = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M")
-	content = frappe._(f"Escalation <b>requested</b> by {actor} on {ts}.")
-	if note:
-		content += f" {frappe._('Note')}: {frappe.utils.escape_html(note)}"
-
-	# Comment (timeline)
-	frappe.get_doc({
-		"doctype": "Comment",
-		"comment_type": "Info",
-		"reference_doctype": "Student Referral",
-		"reference_name": _ref.name,
-		"content": content
-	}).insert(ignore_permissions=True)
-
-	# Bell notification to Counselor + Academic Admin (no System Manager)
-	_notify_roles_on_referral(_ref.name, roles={"Counselor", "Academic Admin"},
-		title=frappe._("Escalation requested"),
-		subject=frappe._("Escalation requested on {0}").format(_ref.name),
-		body=frappe._("Escalation was requested by {0}. Click to review.").format(actor)
-	)
-
-	# Return a short status so the client can show a banner
-	return {"ok": True, "banner": "Escalation request recorded and triage team notified."}
-
-
-@frappe.whitelist()
-def flag_possible_mandated_report(referral: str, note: str = ""):
-	"""Intake-side: flag 'possible mandated report' (non-authoritative), notify Counselor + Academic Admin."""
-	_ref = frappe.get_doc("Student Referral", referral)
-
-	actor = frappe.utils.get_fullname(frappe.session.user) or frappe.session.user
-	ts = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M")
-	content = frappe._(f"Possible mandated report <b>flagged</b> by {actor} on {ts}.")
-	if note:
-		content += f" {frappe._('Note')}: {frappe.utils.escape_html(note)}"
-
-	frappe.get_doc({
-		"doctype": "Comment",
-		"comment_type": "Info",
-		"reference_doctype": "Student Referral",
-		"reference_name": _ref.name,
-		"content": content
-	}).insert(ignore_permissions=True)
-
-	_notify_roles_on_referral(_ref.name, roles={"Counselor", "Academic Admin"},
-		title=frappe._("Possible mandated report flagged"),
-		subject=frappe._("Possible mandated report on {0}").format(_ref.name),
-		body=frappe._("Flag set by {0}. Please review promptly.").format(actor)
-	)
-
-	return {"ok": True, "banner": "Flag recorded and triage team notified."}
-
-
-def _notify_roles_on_referral(ref_name: str, *, roles: set[str], title: str, subject: str, body: str):
-	"""Create Notification Log entries for enabled users who hold any of the given roles; push bell."""
-	# Resolve users by role
-	role_holders = set(frappe.get_all("Has Role", filters={"role": ["in", list(roles)]}, pluck="parent"))
-	if not role_holders:
-		return
-
-	enabled_users = set(frappe.get_all("User", filters={"name": ["in", list(role_holders)], "enabled": 1}, pluck="name"))
-	if not enabled_users:
-		return
-
-	for user in enabled_users:
-		nlog = frappe.get_doc({
-			"doctype": "Notification Log",
-			"subject": subject,
-			"email_content": body,
-			"for_user": user,
-			"type": "Alert",
-			"document_type": "Student Referral",
-			"document_name": ref_name
-		}).insert(ignore_permissions=True)
-
-		# Push to bell in real time
-		try:
-			frappe.publish_realtime(event="notification", user=user)
-		except Exception:
-			pass
