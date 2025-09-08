@@ -49,10 +49,12 @@ frappe.ui.form.on("Student Referral", {
 			));
 		}
 
-		// --- Intake-side non-authoritative actions for Academic Staff and above ---
-		const canSignal = frappe.user.has_role(["Academic Staff", "Counselor", "Academic Admin"]);
+		// --- Intake-side non-authoritative actions ---
+		// Show ONLY to Academic Staff (not Counselors/Admins), and ONLY on Submitted referrals
+		const isAcademicStaff = frappe.user.has_role("Academic Staff");
+		const hasTriageRole = frappe.user.has_role(["Counselor", "Academic Admin"]);
 
-		if (canSignal) {
+		if (frm.doc.docstatus === 1 && isAcademicStaff && !hasTriageRole) {
 			// Request Escalation
 			const reqBtn = frm.add_custom_button(__("Request Escalation"), () => {
 				const d = new frappe.ui.Dialog({
@@ -79,7 +81,7 @@ frappe.ui.form.on("Student Referral", {
 			reqBtn.addClass("btn-warning");
 
 			// Mark Possible MR (non-authoritative)
-			const mrFlagBtn = frm.add_custom_button(__("Mark Possible MR"), () => {
+			const mrFlagBtn = frm.add_custom_button(__("Possible Mandatory Reporting"), () => {
 				const d = new frappe.ui.Dialog({
 					title: __("Flag Possible Mandated Report"),
 					fields: [
@@ -196,3 +198,4 @@ async function ensure_case(frm) {
 	const r = await frm.call("open_case");
 	return r && r.message ? r.message : null;
 }
+

@@ -96,6 +96,9 @@ class StudentReferral(Document):
 		self.db_set("referral_case", case_name, update_modified=False)
 		self.db_set("assigned_case_manager", manager, update_modified=False)
 
+		# 👉 NEW: bell notification to Counselors & Academic Admins (per settings)
+		_maybe_notify_new_referral(self)
+
 	# ── Internals ────────────────────────────────────────────────────────────
 	def _ensure_context_snapshot(self):
 		"""Guarantee Program, Academic Year, and School are set at submit time."""
@@ -351,6 +354,38 @@ def _notify_roles_on_referral(ref_name: str, *, roles: set[str], title: str, sub
 			frappe.publish_realtime(event="notification", user=user)
 		except Exception:
 			pass
+
+# ── New referral bell notification helpers ───────────────────────────────────
+_SEV_ORDER = {"Low": 0, "Moderate": 1, "High": 2, "Critical": 3}
+def _sev_rank(s: str | None) -> int:
+	s = (s or "Low").strip().title()
+	return _SEV_ORDER.get(s, 0)
+
+def _maybe_notify_new_referral(doc: "StudentReferral"):
+	"""Bell-notify Counselors & Academic Admins on new referral, per settings."""
+	enabled = _get_setting_int("notify_new_referral_bell", 1)
+	if not enabled:
+		return
+
+	threshold = (_get_setting_str("notify_new_referral_min_severity") or "Low").title()
+	if _sev_rank(doc.severity) < _sev_rank(threshold):
+		return
+
+	# Compose a concise subject/body (timeline will link to the referral)
+	subject = frappe._("New Student Referral {0} — {1}").format(doc.name, (doc.severity or "—"))
+	body = frappe._("Student: {0}<br>Category: {1}<br>Severity: {2}").format(
+		frappe.utils.escape_html(doc.student_name or doc.student or "—"),
+		frappe.utils.escape_html(doc.referral_category or "—"),
+		frappe.utils.escape_html(doc.severity or "—")
+	)
+
+	_notify_roles_on_referral(
+		doc.name,
+		roles={"Counselor", "Academic Admin"},
+		title=frappe._("New Student Referral"),
+		subject=subject,
+		body=body,
+	)
 
 
 # ── Native assignment glue (manager + pool) ──────────────────────────────────

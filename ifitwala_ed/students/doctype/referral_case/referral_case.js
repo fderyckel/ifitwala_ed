@@ -5,7 +5,7 @@
 
 frappe.ui.form.on("Referral Case", {
 	refresh(frm) {
-		// Limit 'case_manager' choices to Counselor or Academic Admin
+		// Limit 'case_manager' field choices to Counselor or Academic Admin
 		frm.set_query("case_manager", () => ({
 			query: "ifitwala_ed.students.doctype.referral_case.referral_case.users_with_role",
 			filters: { roles: ["Counselor", "Academic Admin"] }
@@ -40,15 +40,24 @@ frappe.ui.form.on("Referral Case", {
 			frm.add_custom_button(__("Reopen Case"), () => quick_status(frm, "In Progress"), __("Status"));
 		}
 
-		// Assign case manager (keep under group to avoid clutter)
-		frm.add_custom_button(__("Assign Case Manager"), () => assign_manager_dialog(frm));
+		// NOTE: No "Assign Case Manager", "Escalate", or "Mark Mandated Reporting" buttons.
+		// Triage staff edit the Case fields directly. Server will log timeline entries.
 
 		// Limit child-table assignee (grid picker) to Academic Staff
 		if (frm.fields_dict.entries && frm.fields_dict.entries.grid) {
-			frm.fields_dict.entries.grid.get_field('assignee').get_query = () => ({
+			frm.fields_dict.entries.grid.get_field("assignee").get_query = () => ({
 				query: "ifitwala_ed.students.doctype.referral_case.referral_case.users_with_role",
 				filters: { roles: ["Academic Staff"] }
 			});
+		}
+
+		// Friendly banner for triage roles
+		const canTriage = frappe.user.has_role(["Counselor", "Academic Admin"]);
+		if (canTriage && frm.doc.docstatus === 1) {
+			frm.dashboard.set_headline(__(
+				"Edit <b>Severity</b>, <b>Mandated Reporting</b>, and <b>Case Manager</b> in the form. " +
+				"Changes are logged to this case and mirrored on the originating Student Referral."
+			));
 		}
 	}
 });
@@ -63,38 +72,7 @@ function quick_status(frm, new_status) {
 	});
 }
 
-function assign_manager_dialog(frm) {
-	const d = new frappe.ui.Dialog({
-		title: __("Assign Case Manager"),
-		fields: [
-			{
-				fieldname: "user",
-				fieldtype: "Link",
-				label: __("User"),
-				options: "User",
-				reqd: 1,
-				get_query: () => ({
-					query: "ifitwala_ed.students.doctype.referral_case.referral_case.users_with_role",
-					filters: { roles: ["Counselor", "Academic Admin"] }
-				})
-			}
-		],
-		primary_action_label: __("Assign"),
-		primary_action: (v) => {
-			d.hide();
-			frappe.call({
-				method: "ifitwala_ed.students.doctype.referral_case.referral_case.set_manager",
-				args: { name: frm.doc.name, user: v.user }
-			}).then(() => {
-				frappe.show_alert({ message: __("Case manager assigned"), indicator: "green" });
-				return frm.reload_doc();
-			});
-		}
-	});
-	d.show();
-}
-
-
+// Keep: add entry dialog
 function open_entry_dialog(frm) {
 	const d = new frappe.ui.Dialog({
 		title: __("New Case Entry"),
@@ -132,23 +110,17 @@ function open_entry_dialog(frm) {
 	d.show();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Promote-to-Guidance client dialog
-// ─────────────────────────────────────────────────────────────────────────────
-
 function open_promote_dialog(frm) {
-	// Build entry options from child table
 	const entries = (frm.doc.entries || []);
 	if (!entries.length) {
 		frappe.msgprint({ message: __("Add at least one entry before promoting guidance."), indicator: "orange" });
 		return;
 	}
 
-	// Human labels for the select; value = child rowname
 	const lines = entries.map(row => {
-		const dt = row.entry_datetime || row.creation || ""; // your child has entry_datetime (read_only default now)
+		const dt = row.entry_datetime || row.creation || "";
 		const typ = row.entry_type || "—";
-		// strip basic HTML for preview
 		const tmp = document.createElement("div");
 		tmp.innerHTML = row.summary || "";
 		const plain = (tmp.textContent || tmp.innerText || "").trim();
@@ -174,7 +146,6 @@ function open_promote_dialog(frm) {
 		],
 		primary_action_label: __("Publish"),
 		primary_action: async (v) => {
-			// Map back selected label → rowname
 			const hit = lines.find(x => x.label === v.entry_rowname);
 			if (!hit) {
 				frappe.msgprint({ message: __("Select a source entry."), indicator: "orange" });
@@ -197,7 +168,6 @@ function open_promote_dialog(frm) {
 				}
 			}).then(r => {
 				frappe.show_alert({ message: __("Guidance published"), indicator: "green" });
-				// Optional: quick link to open SSG
 				const ssg = r && r.message && r.message.support_guidance;
 				if (ssg) {
 					frappe.msgprint({
@@ -210,7 +180,7 @@ function open_promote_dialog(frm) {
 		}
 	});
 
-	// Pre-fill teacher_text from the selected entry (first option by default)
+	// Pre-fill teacher_text from the first entry
 	d.set_value("entry_rowname", lines[0].label);
 	const first = entries[0];
 	const tmp = document.createElement("div");
@@ -218,7 +188,7 @@ function open_promote_dialog(frm) {
 	const plain = (tmp.textContent || tmp.innerText || "").trim();
 	d.set_value("teacher_text", plain);
 
-	// When user changes entry, refresh the teacher_text preview
+	// Sync preview when selection changes
 	d.fields_dict.entry_rowname.df.onchange = () => {
 		const label = d.get_value("entry_rowname");
 		const sel = lines.find(x => x.label === label);

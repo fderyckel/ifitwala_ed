@@ -5,7 +5,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import cint, today, strip_html, cstr
+from frappe.utils import cint, today, strip_html, cstr, now_datetime
 from frappe.desk.form.assign_to import add as assign_add
 from frappe import _
 
@@ -55,6 +55,113 @@ class ReferralCase(Document):
 				if not has_role:
 					frappe.throw(_("Entry assignee must have the Academic Staff role: {0}").format(r.assignee))
 
+	def before_save(self):
+		"""Enforce triage rules and write mirrored timeline entries on authoritative changes."""
+		# Need a previous snapshot to diff
+		old: "ReferralCase" | None = self.get_doc_before_save() if not self.is_new() else None
+		if not old:
+			return
+
+		now_str = now_datetime().strftime("%Y-%m-%d %H:%M")
+		actor = _actor()
+
+		# 1) Case Manager change: triage-only (or current manager may reassign)
+		if self.case_manager != old.case_manager:
+			roles = set(frappe.get_roles(frappe.session.user))
+			is_triager = bool({"Counselor", "Academic Admin"} & roles)
+			is_current_mgr = bool(old.case_manager and old.case_manager == frappe.session.user)
+			if not (is_triager or is_current_mgr):
+				frappe.throw(_("Only Counselor, Academic Admin, or the current Case Manager can change the Case Manager."))
+
+		# 2) Severity change: only upwards; triage-only
+		old_sev = (old.severity or "Low").strip()
+		new_sev = (self.severity or "Low").strip()
+		if new_sev != old_sev:
+			if not _user_can_triage(self):
+				frappe.throw(_("You are not permitted to change severity."))
+			if _rank(new_sev) < _rank(old_sev):
+				frappe.throw(_("Severity can only be increased (no downgrade)."))
+
+			# Auto-flag escalated status (unless already Closed)
+			if (self.case_status or "Open") != "Closed":
+				self.case_status = "Escalated"
+
+			# Timeline: Case + mirror on Student Referral
+			msg_case = _("Escalated to <b>{sev}</b> by {who} on {when}.").format(sev=new_sev, who=actor, when=now_str)
+			_add_timeline("Referral Case", self.name, msg_case)
+			if self.get("referral"):
+				msg_ref = _("Referral has been escalated to <b>{sev}</b> by {who} on {when}.").format(sev=new_sev, who=actor, when=now_str)
+				_add_timeline("Student Referral", self.referral, msg_ref)
+
+		# 3) Mandated Reporting toggle: only 0->1; triage-only; bump severity ≥ High
+		md = frappe.get_meta(self.doctype)
+		mr_field = None
+		if md.get_field("mandated_reporting"):
+			mr_field = "mandated_reporting"
+		elif md.get_field("mandated_reporting_triggered"):
+			mr_field = "mandated_reporting_triggered"
+
+		if mr_field:
+			old_mr = cint(old.get(mr_field) or 0)
+			new_mr = cint(self.get(mr_field) or 0)
+			if old_mr != new_mr:
+				if new_mr == 0 and old_mr == 1:
+					# Disallow unsetting for audit integrity
+					frappe.throw(_("Mandated reporting cannot be unset once recorded."))
+				if new_mr == 1:
+					if not _user_can_triage(self):
+						frappe.throw(_("Only Counselor, Academic Admin, or the current Case Manager can record mandated reporting."))
+
+					# Ensure severity is at least High and escalate status (unless already Closed)
+					if _rank(self.severity) < _rank("High"):
+						self.severity = "High"
+						if (self.case_status or "Open") != "Closed":
+							self.case_status = "Escalated"
+						msg_escal = _("Escalated to <b>High</b> (due to mandated reporting) by {who} on {when}.").format(
+							who=actor, when=now_str
+						)
+						_add_timeline("Referral Case", self.name, msg_escal)
+						if self.get("referral"):
+							_add_timeline("Student Referral", self.referral, msg_escal)
+
+					# MR timeline logs
+					msg_mr_case = _("Mandated reporting <b>recorded</b> by {who} on {when}.").format(who=actor, when=now_str)
+					_add_timeline("Referral Case", self.name, msg_mr_case)
+					if self.get("referral"):
+						msg_mr_ref = _("Mandated reporting was marked by {who} on {when}.").format(who=actor, when=now_str)
+						_add_timeline("Student Referral", self.referral, msg_mr_ref)
+
+
+
+# ── Helpers for triage guardrails & logging ──────────────────────────────────
+_SEV_ORDER = {"Low": 0, "Moderate": 1, "High": 2, "Critical": 3}
+def _rank(s: str | None) -> int:
+	return _SEV_ORDER.get((s or "Low").strip(), 0)
+
+def _actor() -> str:
+	fullname = frappe.utils.get_fullname(frappe.session.user)
+	return fullname or frappe.session.user
+
+def _add_timeline(doctype: str, name: str, html: str):
+	try:
+		frappe.get_doc({
+			"doctype": "Comment",
+			"comment_type": "Info",
+			"reference_doctype": doctype,
+			"reference_name": name,
+			"content": html
+		}).insert(ignore_permissions=True)
+	except Exception:
+		frappe.log_error(f"Failed to add timeline on {doctype} {name}", "Referral Case Timeline")
+
+def _user_can_triage(case_doc: "ReferralCase") -> bool:
+	roles = set(frappe.get_roles(frappe.session.user))
+	if {"Counselor", "Academic Admin"} & roles:
+		return True
+	# current case manager can act
+	return bool(case_doc.get("case_manager") and case_doc.case_manager == frappe.session.user)
+# ─────────────────────────────────────────────────────────────────────────────
+
 
 @frappe.whitelist()
 def quick_update_status(name: str, new_status: str):
@@ -103,34 +210,81 @@ def add_entry(name: str, entry_type: str, summary: str, assignee: str | None = N
 
 @frappe.whitelist()
 def escalate(name: str, severity: str, note: str = ""):
+	"""Authoritative: escalate the case severity (High/Critical) and log to both timelines."""
 	doc = frappe.get_doc("Referral Case", name)
 	_ensure_case_action_permitted(doc)
 
 	if severity not in ("High", "Critical"):
 		frappe.throw(_("Severity must be High or Critical."))
-	doc.severity = severity
-	doc.case_status = "Escalated" if (doc.case_status or "Open") != "Closed" else doc.case_status
+
+	# Prevent downgrades (e.g., Critical -> High)
+	order = {"Low": 0, "Moderate": 1, "High": 2, "Critical": 3}
+	cur = doc.severity or "Low"
+	target = severity
+	final = target if order.get(target, 0) >= order.get(cur, 0) else cur
+
+	doc.severity = final
+	if (doc.case_status or "Open") != "Closed":
+		doc.case_status = "Escalated"
 	doc.save(ignore_permissions=True)
 
+	# Timeline messages (Case + mirror on Referral)
+	actor = _actor()
+	ts = now_datetime().strftime("%Y-%m-%d %H:%M")
+	safe_note = frappe.utils.escape_html(note or "")
+	msg_case = _("Escalated to <b>{sev}</b> by {who} on {when}.").format(sev=final, who=actor, when=ts)
+	if safe_note:
+		msg_case += " " + _("Note") + f": {safe_note}"
+	_add_timeline("Referral Case", doc.name, msg_case)
+
+	if doc.get("referral"):
+		msg_ref = _("Referral has been escalated to <b>{sev}</b> by {who} on {when}.").format(sev=final, who=actor, when=ts)
+		if safe_note:
+			msg_ref += " " + _("Note") + f": {safe_note}"
+		_add_timeline("Student Referral", doc.referral, msg_ref)
+
+	# Keep your manager assignment behavior unchanged
 	manager = doc.case_manager or _pick_manager_from_assignments(name) or _pick_any_counselor()
 	if manager:
-		_assign_case_manager(name, manager, description=f"Escalated to {severity}. {note or ''}".strip(), priority="High")
-	return {"ok": True}
+		_assign_case_manager(name, manager, description=f"Escalated to {final}. {note or ''}".strip(), priority="High")
+
+	return {"ok": True, "severity": final}
 
 @frappe.whitelist()
-def flag_mandated_reporting(name: str, referral: str | None = None):
+def flag_mandated_reporting(name: str, referral: str | None = None, note: str = ""):
+	"""Authoritative: record mandated reporting on the case and log to both timelines."""
 	doc = frappe.get_doc("Referral Case", name)
 	_ensure_case_action_permitted(doc)
 
+	# Keep your existing lightweight entry (optional documentation)
 	row = doc.append("entries", {})
 	row.entry_type = "Other"
 	row.summary = "Mandated reporting completed/triggered."
 	row.status = "Done"
 	doc.save(ignore_permissions=True)
 
+	# Timeline messages (Case + mirror on Referral)
+	actor = _actor()
+	ts = now_datetime().strftime("%Y-%m-%d %H:%M")
+	safe_note = frappe.utils.escape_html(note or "")
+	msg_case = _("Mandated reporting <b>recorded</b> by {who} on {when}.").format(who=actor, when=ts)
+	if safe_note:
+		msg_case += " " + _("Note") + f": {safe_note}"
+	_add_timeline("Referral Case", doc.name, msg_case)
+
+	# Mirror to Student Referral if available (prefer arg, else from case link)
+	ref_name = referral or doc.get("referral")
+	if ref_name and frappe.db.exists("Student Referral", ref_name):
+		msg_ref = _("Mandated reporting was marked by {who} on {when}.").format(who=actor, when=ts)
+		if safe_note:
+			msg_ref += " " + _("Note") + f": {safe_note}"
+		_add_timeline("Student Referral", ref_name, msg_ref)
+
+	# Keep your manager assignment behavior unchanged
 	manager = doc.case_manager or _pick_manager_from_assignments(name) or _pick_any_counselor()
 	if manager:
 		_assign_case_manager(name, manager, description="Mandated reporting flagged", priority="High")
+
 	return {"ok": True}
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -152,7 +306,7 @@ def promote_entry_to_guidance(
 ):
 	"""
 	Create or update a Student Support Guidance record for the student+AY and append a Guidance Item.
-	- Enforces action permission (counselor/admin/system manager/case manager).
+	- Enforces action permission (Counselor / Academic Admin / Case Manager).
 	- Rebuilds snapshot after change.
 	- Issues/upserts native `assign_to` ToDos on the SSG parent, per teacher-of-record, versioned by ack_version.
 	"""
