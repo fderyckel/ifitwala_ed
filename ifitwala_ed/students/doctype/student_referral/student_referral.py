@@ -67,10 +67,19 @@ class StudentReferral(Document):
 
 	def on_submit(self):
 		"""Create/ensure Case and route via native assign_to, respecting settings."""
+
+		# 0) Always bell-notify triage on new submission (runs after commit)
+		_maybe_notify_new_referral(self)
+
 		auto_create_case = bool(_get_setting_int("auto_create_case", 0))
 		case_name = frappe.db.get_value("Referral Case", {"referral": self.name}, "name")
 
-		high_risk = self.severity in ("High", "Critical") or cint(self.requires_immediate_action) or cint(self.mandated_reporting_triggered)
+		high_risk = (
+			self.severity in ("High", "Critical")
+			or cint(self.requires_immediate_action)
+			or cint(self.mandated_reporting_triggered)
+		)
+
 		if not case_name and (high_risk or auto_create_case):
 			case_name = self.open_case()
 
@@ -87,17 +96,23 @@ class StudentReferral(Document):
 
 		if intake_role in roles:
 			manager = author
-			assign_case_manager(case_name, manager, description="Self-assigned (intake role author)", priority=priority, notify=notify)
+			assign_case_manager(
+				case_name, manager,
+				description="Self-assigned (intake role author)",
+				priority=priority, notify=notify
+			)
 		else:
 			manager = pick_user_from_role_pool(intake_role)
-			assign_case_manager(case_name, manager, description="Auto-routed from referral", priority=priority, notify=notify)
+			assign_case_manager(
+				case_name, manager,
+				description="Auto-routed from referral",
+				priority=priority, notify=notify
+			)
 
 		# Stamp mirrors (safe even if already set by open_case / manager assignment)
 		self.db_set("referral_case", case_name, update_modified=False)
 		self.db_set("assigned_case_manager", manager, update_modified=False)
 
-		# bell notification to Counselors & Academic Admins (per settings)
-		_maybe_notify_new_referral(self)
 
 	# ── Internals ────────────────────────────────────────────────────────────
 	def _ensure_context_snapshot(self):
