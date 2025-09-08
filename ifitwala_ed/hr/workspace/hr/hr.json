@@ -160,7 +160,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-06-23 20:23:53.520637",
+ "modified": "2025-09-02 14:31:51.820694",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",
@@ -183,7 +183,7 @@
    "role": "Academic Admin"
   }
  ],
- "sequence_id": 6.0,
+ "sequence_id": 7.0,
  "shortcuts": [
   {
    "color": "Grey",

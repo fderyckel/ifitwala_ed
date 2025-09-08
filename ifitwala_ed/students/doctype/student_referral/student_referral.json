@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_events_in_timeline": 1,
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "format:SRF-{YYYY}-{####}",
  "creation": "2025-08-14 10:24:56.908365",
@@ -191,18 +192,17 @@
   {
    "fieldname": "referral_case",
    "fieldtype": "Link",
-   "in_filter": 1,
-   "in_standard_filter": 1,
    "label": "Referral Case",
    "options": "Referral Case",
+   "permlevel": 1,
    "read_only": 1
   },
   {
    "fieldname": "assigned_case_manager",
    "fieldtype": "Link",
-   "in_standard_filter": 1,
    "label": "Assigned Case Manager",
    "options": "User",
+   "permlevel": 1,
    "read_only": 1
   }
  ],
@@ -210,7 +210,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-31 16:58:14.621901",
+ "modified": "2025-09-06 13:48:46.052225",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Referral",
@@ -222,6 +222,7 @@
    "cancel": 1,
    "create": 1,
    "delete": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
@@ -232,23 +233,47 @@
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
-   "create": 1,
-   "email": 1,
+   "delete": 1,
    "export": 1,
+   "permlevel": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Academic Staff",
+   "role": "System Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
    "amend": 1,
    "cancel": 1,
    "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
@@ -256,6 +281,16 @@
    "role": "Counselor",
    "share": 1,
    "submit": 1,
+   "write": 1
+  },
+  {
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counselor",
+   "share": 1,
    "write": 1
   },
   {
@@ -275,17 +310,19 @@
    "amend": 1,
    "cancel": 1,
    "create": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Academic Admin",
+   "role": "Academic Staff",
    "share": 1,
    "submit": 1,
    "write": 1
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "student_name, program, academic_year",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

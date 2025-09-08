@@ -15,13 +15,15 @@
   "school",
   "academic_year",
   "section_break_fkta",
-  "case_status",
+  "opened_on",
+  "closed_on",
   "case_manager",
+  "column_break_kwqc",
+  "case_status",
   "priority",
   "confidentiality_level",
   "severity",
-  "opened_on",
-  "closed_on",
+  "section_break_uhyw",
   "goals",
   "section_break_m8h0",
   "entries"
@@ -133,19 +135,28 @@
   },
   {
    "fieldname": "section_break_m8h0",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Case Entries"
   },
   {
    "fieldname": "entries",
    "fieldtype": "Table",
    "label": "Case Entries",
    "options": "Referral Case Entry"
+  },
+  {
+   "fieldname": "column_break_kwqc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_uhyw",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-31 17:28:20.016855",
+ "modified": "2025-09-07 15:14:35.084928",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Referral Case",
@@ -187,6 +198,10 @@
    "role": "Counselor",
    "share": 1,
    "write": 1
+  },
+  {
+   "role": "Academic Staff",
+   "select": 1
   }
  ],
  "row_format": "Dynamic",

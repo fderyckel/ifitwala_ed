@@ -50,7 +50,7 @@
    "columns": 2,
    "fieldname": "term_start",
    "fieldtype": "Link",
-   "in_standard_filter": 1,
+   "in_list_view": 1,
    "label": "Term Start",
    "options": "Term"
   },
@@ -78,7 +78,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-21 22:29:21.885847",
+ "modified": "2025-09-02 14:00:11.457224",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Course",

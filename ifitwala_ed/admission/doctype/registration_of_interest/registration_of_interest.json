@@ -28,7 +28,8 @@
   "proposed_term",
   "proposed_program",
   "blank_field",
-  "submitted_at"
+  "submitted_at",
+  "sla_status"
  ],
  "fields": [
   {
@@ -156,12 +157,18 @@
    "fieldname": "submitted_at",
    "fieldtype": "Datetime",
    "label": "Submitted at"
+  },
+  {
+   "fieldname": "sla_status",
+   "fieldtype": "Select",
+   "label": "SLA Status",
+   "options": "\ud83d\udd34 Overdue\n\ud83d\udfe1 Due Today\n\u26aa Upcoming\n\u2705 On Track"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-26 12:55:01.248467",
+ "modified": "2025-09-05 13:49:53.798859",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Registration of Interest",

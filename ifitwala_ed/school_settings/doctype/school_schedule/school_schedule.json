@@ -129,7 +129,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-26 21:50:45.782110",
+ "modified": "2025-09-02 13:34:21.127082",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Schedule",
@@ -179,6 +179,12 @@
    "read": 1,
    "report": 1,
    "role": "Curriculum Coordinator",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
    "share": 1
   }
  ],

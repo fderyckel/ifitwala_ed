@@ -52,6 +52,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "default": "24",
    "fieldname": "sla_hours_new_to_triaged",
    "fieldtype": "Int",
    "label": "SLA: New \u2192 Triaged (hours)"
@@ -85,7 +86,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-20 23:41:04.866338",
+ "modified": "2025-09-06 15:01:48.844964",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Referral Settings",
