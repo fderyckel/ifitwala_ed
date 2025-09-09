@@ -287,6 +287,10 @@ def resync_access(ssg_name: str):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _render_snapshot_html(doc: "StudentSupportGuidance") -> str:
+	"""Teacher-facing snapshot for SSG:
+	- Only include items visible to teachers-of-student
+	- Robustly extract text even if the field contains Quill HTML wrappers
+	"""
 	items = doc.get("items") or []
 	if not items:
 		return '<div class="text-muted">' + _("No guidance yet.") + "</div>"
@@ -296,22 +300,36 @@ def _render_snapshot_html(doc: "StudentSupportGuidance") -> str:
 		if not _teacher_visible(row):
 			continue
 
-		# Text
-		text = (getattr(row, "teacher_text", "") or "").strip()
-		text = frappe.utils.escape_html(strip_html_tags(text)) if text else ""
+		# 1) text extraction that never returns empty
+		raw = getattr(row, "teacher_text", "") or ""
+		plain = ""
+		try:
+			plain = (strip_html_tags(raw) or "").strip()
+		except Exception:
+			plain = ""
 
-		# Badges
+		if not plain:
+			# Fallback: keep raw, but HTML-escape to be safe
+			plain = (str(raw) or "").strip()
+
+		# Final text to display (escaped once)
+		text = frappe.utils.escape_html(plain)
+
+		# 2) badges
 		item_type = (getattr(row, "item_type", "") or "").strip()
 		type_badge = f'<span class="badge bg-secondary ms-1">{frappe.utils.escape_html(item_type)}</span>' if item_type else ""
+
 		high_badge = '<span class="badge bg-danger ms-1">High</span>' if _truthy(getattr(row, "high_priority", 0)) else ""
 
+		# 3) build line if we have anything meaningful
 		if text:
-			lines.append(f'<li class="mb-1">{frappe.utils.escape_html(text)}{type_badge}{high_badge}</li>')
+			lines.append(f'<li class="mb-1">{text}{type_badge}{high_badge}</li>')
 
 	if not lines:
 		return '<div class="text-muted">' + _("No guidance items are published.") + "</div>"
 
 	return '<div class="ssg-snapshot"><ul class="ps-3 mb-0">' + "".join(lines) + "</ul></div>"
+
 
 
 
