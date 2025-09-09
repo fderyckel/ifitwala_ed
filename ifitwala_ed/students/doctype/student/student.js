@@ -59,10 +59,14 @@ function open_support_modal(frm) {
 	const student = frm.doc.name;
 	if (!student) return;
 
-	const defaultAY =
-		(frappe.defaults?.get_user_default?.("academic_year")) ||
-		(frappe.boot?.sysdefaults?.academic_year) ||
-		"";
+	let defaultAY = "";
+	try {
+		if (frappe.defaults && typeof frappe.defaults.get_user_default === "function") {
+			defaultAY = frappe.defaults.get_user_default("academic_year") || "";
+		} else if (frappe.boot && frappe.boot.sysdefaults) {
+			defaultAY = frappe.boot.sysdefaults.academic_year || "";
+		}
+	} catch (e) { /* ignore */ }
 
 	const d = new frappe.ui.Dialog({
 		title: __("Student Support"),
@@ -78,21 +82,22 @@ function open_support_modal(frm) {
 		primary_action: () => d.hide()
 	});
 
-	// Bind safely AFTER dialog is rendered in the DOM
-	d.on("shown", () => {
+	// Bind safely AFTER the Bootstrap modal is shown (one-time)
+	d.$wrapper.one("shown.bs.modal", () => {
 		// Debounced refresh when AY changes
 		const refreshDebounced = frappe.utils.debounce(() => refresh_snapshot(d, student), 250);
 		const ayFld = d.get_field("academic_year");
-		if (ayFld?.$input) {
+
+		if (ayFld && ayFld.$input && ayFld.$input.length) {
 			ayFld.$input.on("change", refreshDebounced);
 		} else {
-			// Fallback: delegate to wrapper (rare)
+			// Fallback delegation (rare)
 			d.$wrapper.on("change", 'input[data-fieldname="academic_year"]', refreshDebounced);
 		}
 
 		// Wire Acknowledge (button exists after shown)
 		const ackFld = d.get_field("ack");
-		if (ackFld?.$input) {
+		if (ackFld && ackFld.$input && ackFld.$input.length) {
 			ackFld.$input.on("click", async () => {
 				const btn = ackFld.$input;
 				btn.prop("disabled", true);
@@ -118,7 +123,7 @@ function open_support_modal(frm) {
 
 	d.show();
 
-	// First load (safe to call now; DOM will update when RPC resolves)
+	// First load (safe to call now; DOM updates when RPC resolves)
 	refresh_snapshot(d, student).catch(e => {
 		console.error(e);
 		d.hide();
