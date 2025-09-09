@@ -42,12 +42,12 @@ frappe.ui.form.on('Student', {
 
 		if (!canSeeSupport) return;
 
-		// Add Support button as a top-level primary (blue), not under "Actions"
+		// Add Support button as a top-level (light blue)
 		// Avoid duplicates on quick refresh
 		if (!frm.custom_buttons) frm.custom_buttons = {};
 		if (!frm.custom_buttons.__support_btn) {
 			const btn = frm.add_custom_button(__("Support"), () => open_support_modal(frm));
-			btn.removeClass("btn-default btn-info").addClass("btn-primary");
+			btn.removeClass("btn-default btn-primary").addClass("btn-info");
 			btn.find("span").prepend(frappe.utils.icon("book-open", "sm"));
 			frm.custom_buttons.__support_btn = btn;
 		}

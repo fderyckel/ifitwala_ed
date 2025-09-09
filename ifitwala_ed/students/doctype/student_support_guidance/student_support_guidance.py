@@ -284,43 +284,45 @@ def resync_access(ssg_name: str):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _render_snapshot_html(doc: "StudentSupportGuidance") -> str:
-	"""Create a compact HTML snapshot suitable for teachers (no sensitive notes).
-	We try common field names; if unavailable, we fall back to plain text."""
+	"""Teacher-facing snapshot: include only items visible to teachers-of-student."""
 	items = doc.get("items") or []
 	if not items:
 		return '<div class="text-muted">' + _("No guidance yet.") + "</div>"
 
 	lines = []
 	for row in items:
-		# Publish flag (if present)
-		if _child_has(row, "publish") and not cint(getattr(row, "publish")):
+		# Visibility: default allow, but respect confidentiality if present
+		vis = ""
+		if hasattr(row, "confidentiality") and getattr(row, "confidentiality"):
+			vis = (getattr(row, "confidentiality") or "").strip()
+		teacher_visible = (vis == "" or vis.lower() == "teachers-of-student".lower())
+		if not teacher_visible:
 			continue
 
-		title = _first_present(row, ["title", "strategy", "headline", "label"]) or _("Guidance")
-		# Prefer an explicit teacher-facing summary if provided
-		raw = _first_present(row, ["teacher_summary", "summary_for_teacher", "summary", "notes"]) or ""
-		text = strip_html_tags(raw) if raw else ""
-		# Priority hint if present
-		priority = _first_present(row, ["priority", "risk_level"]) or ""
-		pr_badge = ""
-		if priority and str(priority).lower() in {"high", "critical"}:
-			pr_badge = f'<span class="badge bg-danger ms-1">{frappe.utils.escape_html(priority)}</span>'
-		elif priority:
-			pr_badge = f'<span class="badge bg-secondary ms-1">{frappe.utils.escape_html(priority)}</span>'
+		# Teacher-facing text
+		text = (getattr(row, "teacher_text", "") or "").strip()
+		text = frappe.utils.escape_html(strip_html_tags(text)) if text else ""
 
-		lines.append(
-			f'<li class="mb-1"><strong>{frappe.utils.escape_html(title)}</strong>{pr_badge}'
-			f'{(": " + frappe.utils.escape_html(text)) if text else ""}</li>'
-		)
+		# Badges: item_type and high_priority
+		item_type = (getattr(row, "item_type", "") or "").strip()
+		type_badge = f'<span class="badge bg-secondary ms-1">{frappe.utils.escape_html(item_type)}</span>' if item_type else ""
+
+		high = False
+		if hasattr(row, "high_priority"):
+			try:
+				high = bool(int(getattr(row, "high_priority") or 0))
+			except Exception:
+				high = bool(getattr(row, "high_priority"))
+		high_badge = '<span class="badge bg-danger ms-1">High</span>' if high else ""
+
+		if text:
+			lines.append(f'<li class="mb-1">{frappe.utils.escape_html(text)}{type_badge}{high_badge}</li>')
 
 	if not lines:
 		return '<div class="text-muted">' + _("No guidance items are published.") + "</div>"
 
-	return (
-		'<div class="ssg-snapshot">'
-		f'<ul class="ps-3 mb-0">{"".join(lines)}</ul>'
-		"</div>"
-	)
+	return '<div class="ssg-snapshot"><ul class="ps-3 mb-0">' + "".join(lines) + "</ul></div>"
+
 
 def _rebuild_snapshot(doc: "StudentSupportGuidance", save: bool = True) -> "StudentSupportGuidance":
 	"""
@@ -484,27 +486,39 @@ def _sync_docshares_for_teachers(ssg_name: str, teacher_users: set[str]):
 def _has_any_high_priority(doc: Document) -> int:
 	items = doc.get("items") or []
 	for row in items:
-		if _child_has(row, "publish") and not cint(getattr(row, "publish")):
+		# respect confidentiality: only count teacher-visible items
+		vis = (getattr(row, "confidentiality", "") or "").strip()
+		if vis and vis.lower() != "teachers-of-student".lower():
 			continue
-		if _child_has(row, "priority"):
-			val = (getattr(row, "priority") or "").strip().lower()
-			if val in {"high", "critical"}:
+		val = getattr(row, "high_priority", 0)
+		try:
+			if int(val):
+				return 1
+		except Exception:
+			if bool(val):
 				return 1
 	return 0
+
 
 def _count_ack_required_items(doc: Document) -> int:
 	items = doc.get("items") or []
 	count = 0
 	for row in items:
-		if _child_has(row, "publish") and not cint(getattr(row, "publish")):
+		# only items that teachers can see require teacher acknowledgements
+		vis = (getattr(row, "confidentiality", "") or "").strip()
+		if vis and vis.lower() != "teachers-of-student".lower():
 			continue
-		# If the child has an explicit require_ack flag, honor it; else default to require ack for published items
-		if _child_has(row, "require_ack"):
-			if cint(getattr(row, "require_ack")):
+
+		# Your schema uses "requires_ack" (string/Data). Treat truthy values as 1.
+		if hasattr(row, "requires_ack"):
+			val = (getattr(row, "requires_ack") or "").strip().lower()
+			if val in {"1", "yes", "true", "y", "on"}:
 				count += 1
 		else:
+			# If the flag is missing, default to requiring ack for visible items (matches prior behavior).
 			count += 1
 	return count
+
 
 def _child_has(row, fname: str) -> bool:
 	try:
