@@ -450,19 +450,39 @@ def _get_or_create_support_guidance(student: str, academic_year: str, publish: i
 
 def _get_teachers_of_record(student: str, ay: str) -> list[str]:
 	"""
-	Teachers are instructors of the student's groups in the AY.
-	Single SQL with JOINs; returns distinct users.
+	Return distinct, ENABLED user IDs for instructors teaching the student's groups in the given AY.
+	Schema (your JSON):
+	- Student Group Instructor.user_id  ← fetched from Instructor.linked_user_id (Data)
+	- Instructor.linked_user_id        ← Data
+	- Student Group.academic_year
+	- Student Group Student.active     ← Check (defaults to 1)
 	"""
-	users = frappe.db.sql("""
-		SELECT DISTINCT sgi.user
+	if not student or not ay:
+		return []
+
+	rows = frappe.db.sql(
+		"""
+		SELECT DISTINCT u.name AS user_id
 		FROM `tabStudent Group Student` sgs
-		JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-		JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sg.name
+		JOIN `tabStudent Group` sg
+		  ON sg.name = sgs.parent
+		JOIN `tabStudent Group Instructor` sgi
+		  ON sgi.parent = sg.name
+		LEFT JOIN `tabInstructor` ins
+		  ON ins.name = sgi.instructor
+		JOIN `tabUser` u
+		  ON u.name = COALESCE(NULLIF(sgi.user_id, ''), NULLIF(ins.linked_user_id, ''))
+		 AND u.enabled = 1
 		WHERE sgs.student = %(student)s
 		  AND sg.academic_year = %(ay)s
-		  AND IFNULL(sgi.user, '') != ''
-	""", {"student": student, "ay": ay})
-	return [u[0] for u in users or []]
+		  AND IFNULL(sg.status, 'Active') = 'Active'
+		  AND IFNULL(sgs.active, 1) = 1
+		""",
+		{"student": student, "ay": ay},
+	) or []
+
+	return [r[0] for r in rows]
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Existing helpers
