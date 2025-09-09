@@ -10,19 +10,27 @@ from frappe.utils import now_datetime, cint, strip_html_tags
 from frappe.desk.form.assign_to import add as assign_add
 
 SSG = "Student Support Guidance"
+SG = "Student Group"
+SGS = "Student Group Student"
+SGI = "Student Group Instructor"
+
 ACK_TAG = "[ACK] Student Support Guidance"
 
 class StudentSupportGuidance(Document):
 	"""Lightweight lifecycle: publishing + snapshot caching is handled here."""
+
 	def validate(self):
+		# Keep counters defensively up to date (cheap – uses in-memory rows)
 		self.high_priority_count = _has_any_high_priority(self)
 		self.ack_required_count = _count_ack_required_items(self)
 
-	def onload(self):
-		"""Emulate load_address_and_contact pattern: inject snapshot into __onload."""
-		self.set_onload("snapshot_html", _render_snapshot_html(self))
+		# Always rebuild teacher snapshot when items exist
+		self.snapshot_html = _render_snapshot_html(self)
 
 	def on_update(self):
+		"""If the doc transitions to Published, ensure publish bookkeeping is applied.
+		Note: counselors may also call publish(name) explicitly from the form button (recommended)."""
+		# PERF: one cheap column lookup; avoid loading previous full doc
 		prev_status = (frappe.db.get_value(SSG, self.name, "status") or "").strip() if not self.is_new() else ""
 		if (self.status or "").strip() == "Published" and prev_status != "Published":
 			_apply_publish(self, bump_version=True)
@@ -45,96 +53,123 @@ def on_doctype_update():
 
 @frappe.whitelist()
 def get_support_snapshot(student: str, academic_year: str) -> dict:
-    """Used in Student modal – always return rendered snapshot HTML."""
-    ssg = _find_current_ssg(student, academic_year)
-    if not ssg:
-        return {"snapshot_html": '<div class="text-muted">' + _("No guidance yet.") + "</div>"}
+	ssg = _find_current_ssg(student, academic_year)
+	if not ssg:
+		# No SSG yet; return empty state (UI will show "No guidance yet.")
+		return {"snapshot_html": ""}
+	_enforce_view_permission(ssg.name if isinstance(ssg, Document) else ssg)
 
-    _enforce_view_permission(ssg)
-    return {"snapshot_html": _render_snapshot_html(ssg)}
+	# PERF: if snapshot_html already present, avoid full doc load
+	if isinstance(ssg, Document):
+		html = ssg.snapshot_html or _render_snapshot_html(ssg)
+	else:
+		html = frappe.db.get_value(SSG, ssg, "snapshot_html") or _render_snapshot_html(frappe.get_doc(SSG, ssg))
+	return {"snapshot_html": html}
 
 @frappe.whitelist()
 def get_ack_status(student: str, academic_year: str) -> dict:
-    name = _find_current_ssg_name(student, academic_year)
-    if not name:
-        return {"ack_required": False, "has_open_todo": False, "ack_required_count": 0, "ack_version": 0}
+	# PERF: avoid full doc unless needed; fetch minimal fields
+	name = _find_current_ssg_name(student, academic_year)
+	if not name:
+		return {"ack_required": False, "has_open_todo": False, "ack_required_count": 0, "ack_version": 0}
 
-    _enforce_view_permission(name)
-    row = frappe.db.get_value(
-        SSG, name, ["status", "ack_required_count", "ack_version"], as_dict=True
-    ) or {}
+	_enforce_view_permission(name)
+	row = frappe.db.get_value(
+		SSG,
+		name,
+		["status", "ack_required_count", "ack_version"],
+		as_dict=True,
+	) or {}
 
-    need_ack = cint(row.get("ack_required_count") or 0) > 0 and (row.get("status") or "") == "Published"
-    if not need_ack:
-        return {
-            "ack_required": False,
-            "has_open_todo": False,
-            "ack_required_count": cint(row.get("ack_required_count") or 0),
-            "ack_version": cint(row.get("ack_version") or 0),
-        }
+	need_ack = cint(row.get("ack_required_count") or 0) > 0 and (row.get("status") or "") == "Published"
+	if not need_ack:
+		return {
+			"ack_required": False,
+			"has_open_todo": False,
+			"ack_required_count": 0,
+			"ack_version": cint(row.get("ack_version") or 0),
+		}
 
-    user = frappe.session.user
-    has_open = frappe.db.exists(
-        "ToDo",
-        {
-            "reference_type": SSG,
-            "reference_name": name,
-            "allocated_to": user,
-            "status": "Open",
-        },
-    )
-    return {
-        "ack_required": True,
-        "has_open_todo": bool(has_open),
-        "ack_required_count": cint(row.get("ack_required_count") or 0),
-        "ack_version": cint(row.get("ack_version") or 0),
-    }
+	# PERF: single EXISTS check
+	user = frappe.session.user
+	has_open = frappe.db.exists(
+		"ToDo",
+		{
+			"reference_type": SSG,
+			"reference_name": name,
+			"allocated_to": user,
+			"status": "Open",
+		},
+	)
+	return {
+		"ack_required": True,
+		"has_open_todo": bool(has_open),
+		"ack_required_count": cint(row.get("ack_required_count") or 0),
+		"ack_version": cint(row.get("ack_version") or 0),
+	}
 
 @frappe.whitelist()
 def acknowledge_current_guidance(student: str, academic_year: str) -> dict:
-    name = _find_current_ssg_name(student, academic_year)
-    if not name:
-        frappe.throw(_("No current guidance is available to acknowledge."))
-    _enforce_view_permission(name)
+	# PERF: no full doc unless required
+	name = _find_current_ssg_name(student, academic_year)
+	if not name:
+		frappe.throw(_("No current guidance is available to acknowledge."))
+	_enforce_view_permission(name)
 
-    frappe.db.sql(
-        """
-        UPDATE `tabToDo`
-        SET status = 'Closed'
-        WHERE reference_type = %s
-          AND reference_name = %s
-          AND allocated_to = %s
-          AND status = 'Open'
-        """,
-        (SSG, name, frappe.session.user),
-    )
-    return {"ok": True}
+	# PERF: bulk close in one SQL instead of get_all + looped set_value
+	frappe.db.sql(
+		"""
+		UPDATE `tabToDo`
+		SET status = 'Closed'
+		WHERE reference_type = %s
+		  AND reference_name = %s
+		  AND allocated_to = %s
+		  AND status = 'Open'
+		""",
+		(SSG, name, frappe.session.user),
+	)
+	return {"ok": True}
 
 @frappe.whitelist()
 def publish(name: str, notify: int = 1) -> dict:
-    doc = frappe.get_doc(SSG, name)
-    roles = set(frappe.get_roles())
-    if not ({"Counselor", "Academic Admin", "System Manager"} & roles):
-        frappe.throw(_("You are not permitted to publish support guidance."))
+	"""Explicit publish action counselors can call from a button on the SSG form."""
+	doc = frappe.get_doc(SSG, name)
+	# Only counselors / admins can publish
+	roles = set(frappe.get_roles())
+	if not ({"Counselor", "Academic Admin", "System Manager"} & roles):
+		frappe.throw(_("You are not permitted to publish support guidance."))
 
-    doc.status = "Published"
-    _apply_publish(doc, bump_version=True, notify=bool(cint(notify)))
-    return {"ok": True, "ack_version": cint(doc.ack_version or 0)}
+	# Set publish state and apply full publish workflow (bump version, assign acks)
+	doc.status = "Published"
+	_apply_publish(doc, bump_version=True, notify=bool(cint(notify)))
+	return {"ok": True, "ack_version": cint(doc.ack_version or 0)}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Core publish, snapshot & assignment logic
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _apply_publish(doc: "StudentSupportGuidance", bump_version=True, notify=True):
-    if bump_version:
-        doc.ack_version = cint(doc.ack_version or 0) + 1
-    doc.last_published_on = now_datetime()
-    doc.published_items = 1
-    doc.high_priority_count = _has_any_high_priority(doc)
-    doc.ack_required_count = _count_ack_required_items(doc)
-    doc.save(ignore_permissions=True)
-    _sync_ack_assignments(doc, notify=notify)
+def _apply_publish(doc: "StudentSupportGuidance", bump_version: bool = True, notify: bool = True):
+	# 1) Stamp publish metadata
+	if bump_version:
+		doc.ack_version = cint(doc.ack_version or 0) + 1
+	doc.last_published_on = now_datetime()
+	doc.published_items = 1
+	doc.high_priority_count = _has_any_high_priority(doc)
+	doc.ack_required_count = _count_ack_required_items(doc)
+
+	# 2) Render fresh snapshot into the cached HTML field
+	doc.snapshot_html = _render_snapshot_html(doc)
+
+	# 3) Save without re-triggering publish loops
+	doc.save(ignore_permissions=True)
+
+	# 4) Sync acknowledgment ToDos to current teacher-of-record recipients
+	_sync_ack_assignments(doc, notify=notify)
+
+	# 5) Ensure Desk access via DocShare for the same recipients (auto, no button needed)
+	teacher_users = _teacher_userids_for_student_year(doc.student, doc.academic_year)
+	_sync_docshares_for_teachers(doc.name, teacher_users)
 
 def _sync_ack_assignments(doc: "StudentSupportGuidance", notify: bool = True):
 	recipients = _teacher_userids_for_student_year(doc.student, doc.academic_year)
@@ -252,27 +287,78 @@ def resync_access(ssg_name: str):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _render_snapshot_html(doc: "StudentSupportGuidance") -> str:
-    items = doc.get("items") or []
-    if not items:
-        return '<div class="text-muted">' + _("No guidance yet.") + "</div>"
+	"""Teacher-facing snapshot for SSG:
+	- Only include items visible to teachers-of-student
+	- Robustly extract text even if the field contains Quill HTML wrappers
+	"""
+	items = doc.get("items") or []
+	if not items:
+		return '<div class="text-muted">' + _("No guidance yet.") + "</div>"
 
-    lines = []
-    for row in items:
-        if not _teacher_visible(row):
-            continue
-        raw = getattr(row, "teacher_text", "") or ""
-        plain = (strip_html_tags(raw) or "").strip()
-        if not plain:
-            continue
-        text = frappe.utils.escape_html(plain)
-        type_badge = f'<span class="badge bg-secondary ms-1">{frappe.utils.escape_html(row.item_type or "")}</span>' if row.item_type else ""
-        high_badge = '<span class="badge bg-danger ms-1">High</span>' if _truthy(getattr(row, "high_priority", 0)) else ""
-        lines.append(f'<li class="mb-1">{text}{type_badge}{high_badge}</li>')
+	lines = []
+	for row in items:
+		if not _teacher_visible(row):
+			continue
 
-    if not lines:
-        return '<div class="text-muted">' + _("No guidance items are published.") + "</div>"
-    return '<div class="ssg-snapshot"><ul class="ps-3 mb-0">' + "".join(lines) + "</ul></div>"
+		# 1) text extraction that never returns empty
+		raw = getattr(row, "teacher_text", "") or ""
+		plain = ""
+		try:
+			plain = (strip_html_tags(raw) or "").strip()
+		except Exception:
+			plain = ""
 
+		if not plain:
+			# Fallback: keep raw, but HTML-escape to be safe
+			plain = (str(raw) or "").strip()
+
+		# Final text to display (escaped once)
+		text = frappe.utils.escape_html(plain)
+
+		# 2) badges
+		item_type = (getattr(row, "item_type", "") or "").strip()
+		type_badge = f'<span class="badge bg-secondary ms-1">{frappe.utils.escape_html(item_type)}</span>' if item_type else ""
+
+		high_badge = '<span class="badge bg-danger ms-1">High</span>' if _truthy(getattr(row, "high_priority", 0)) else ""
+
+		# 3) build line if we have anything meaningful
+		if text:
+			lines.append(f'<li class="mb-1">{text}{type_badge}{high_badge}</li>')
+
+	if not lines:
+		return '<div class="text-muted">' + _("No guidance items are published.") + "</div>"
+
+	return '<div class="ssg-snapshot"><ul class="ps-3 mb-0">' + "".join(lines) + "</ul></div>"
+
+
+
+
+def _rebuild_snapshot(doc: "StudentSupportGuidance", save: bool = True) -> "StudentSupportGuidance":
+	"""
+	Lightweight rebuild used by external callers (e.g., Referral Case) after mutating items.
+	- Recomputes counters (high_priority_count, ack_required_count)
+	- Renders and caches snapshot_html
+	- Does NOT bump ack_version
+	- Does NOT (re)sync acknowledgment ToDos
+	"""
+	# Defensive: ensure we have a full doc
+	ssg = frappe.get_doc(SSG, doc.name) if isinstance(doc, str) else doc
+
+	# Recompute cheap counters from in-memory rows
+	ssg.high_priority_count = _has_any_high_priority(ssg)
+	ssg.ack_required_count = _count_ack_required_items(ssg)
+
+	# Mark that we have published items if anything is present & published
+	items = ssg.get("items") or []
+	ssg.published_items = 1 if items else 0
+
+	# Re-render teacher-facing snapshot HTML
+	ssg.snapshot_html = _render_snapshot_html(ssg)
+
+	if save:
+		ssg.save(ignore_permissions=True)
+
+	return ssg
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -445,6 +531,20 @@ def _count_ack_required_items(doc: Document) -> int:
 			# Default to requiring ack for teacher-visible items when flag absent
 			count += 1
 	return count
+
+
+def _child_has(row, fname: str) -> bool:
+	try:
+		return bool(getattr(row, "meta").get_field(fname))
+	except Exception:
+		# Row may not carry meta in some contexts; fallback to hasattr
+		return hasattr(row, fname)
+
+def _first_present(row, fields: list[str]) -> str | None:
+	for f in fields:
+		if hasattr(row, f) and getattr(row, f):
+			return getattr(row, f)
+	return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
