@@ -42,9 +42,15 @@ frappe.ui.form.on('Student', {
 
 		if (!canSeeSupport) return;
 
-		const btn = frm.add_custom_button(__("Support"), () => open_support_modal(frm), __("Actions"));
-		btn.removeClass("btn-default").addClass("btn-info");
-		btn.find("span").prepend(frappe.utils.icon("book-open", "sm"));
+		// Add Support button as a top-level primary (blue), not under "Actions"
+		// Avoid duplicates on quick refresh
+		if (!frm.custom_buttons) frm.custom_buttons = {};
+		if (!frm.custom_buttons.__support_btn) {
+			const btn = frm.add_custom_button(__("Support"), () => open_support_modal(frm));
+			btn.removeClass("btn-default btn-info").addClass("btn-primary");
+			btn.find("span").prepend(frappe.utils.icon("book-open", "sm"));
+			frm.custom_buttons.__support_btn = btn;
+		}
 	}
 });
 
@@ -53,10 +59,9 @@ function open_support_modal(frm) {
 	const student = frm.doc.name;
 	if (!student) return;
 
-	// Resolve a default AY quickly (no prefetch; dialog shows immediately)
 	const defaultAY =
-		(frappe.defaults && frappe.defaults.get_user_default && frappe.defaults.get_user_default("academic_year")) ||
-		(frappe.boot && frappe.boot.sysdefaults && frappe.boot.sysdefaults.academic_year) ||
+		(frappe.defaults?.get_user_default?.("academic_year")) ||
+		(frappe.boot?.sysdefaults?.academic_year) ||
 		"";
 
 	const d = new frappe.ui.Dialog({
@@ -73,40 +78,54 @@ function open_support_modal(frm) {
 		primary_action: () => d.hide()
 	});
 
-	// Debounced refresh when AY changes
-	const refreshDebounced = frappe.utils.debounce(() => refresh_snapshot(d, student), 250);
-	d.fields_dict.academic_year.$input.on("change", refreshDebounced);
+	// Bind safely AFTER dialog is rendered in the DOM
+	d.on("shown", () => {
+		// Debounced refresh when AY changes
+		const refreshDebounced = frappe.utils.debounce(() => refresh_snapshot(d, student), 250);
+		const ayFld = d.get_field("academic_year");
+		if (ayFld?.$input) {
+			ayFld.$input.on("change", refreshDebounced);
+		} else {
+			// Fallback: delegate to wrapper (rare)
+			d.$wrapper.on("change", 'input[data-fieldname="academic_year"]', refreshDebounced);
+		}
 
-	// Wire Acknowledge
-	d.get_field("ack").$input.on("click", async () => {
-		const btn = d.get_field("ack").$input;
-		btn.prop("disabled", true);
-		try {
-			const ay = d.get_value("academic_year");
-			await frappe.call({
-				method: "ifitwala_ed.students.doctype.student_support_guidance.student_support_guidance.acknowledge_current_guidance",
-				args: { student, academic_year: ay },
-				freeze: true,
-				freeze_message: __("Submitting acknowledgement…")
+		// Wire Acknowledge (button exists after shown)
+		const ackFld = d.get_field("ack");
+		if (ackFld?.$input) {
+			ackFld.$input.on("click", async () => {
+				const btn = ackFld.$input;
+				btn.prop("disabled", true);
+				try {
+					const ay = d.get_value("academic_year");
+					await frappe.call({
+						method: "ifitwala_ed.students.doctype.student_support_guidance.student_support_guidance.acknowledge_current_guidance",
+						args: { student, academic_year: ay },
+						freeze: true,
+						freeze_message: __("Submitting acknowledgement…")
+					});
+					frappe.show_alert({ message: __("Acknowledged"), indicator: "green" });
+					await refresh_snapshot(d, student);
+				} catch (e) {
+					console.error(e);
+					frappe.msgprint({ message: __("Could not acknowledge."), indicator: "red" });
+				} finally {
+					btn.prop("disabled", false);
+				}
 			});
-			frappe.show_alert({ message: __("Acknowledged"), indicator: "green" });
-			await refresh_snapshot(d, student);
-		} catch (e) {
-			console.error(e);
-			frappe.msgprint({ message: __("Could not acknowledge."), indicator: "red" });
-		} finally {
-			btn.prop("disabled", false);
 		}
 	});
 
 	d.show();
-	// First load
+
+	// First load (safe to call now; DOM will update when RPC resolves)
 	refresh_snapshot(d, student).catch(e => {
 		console.error(e);
 		d.hide();
 		frappe.msgprint({ message: __("Unable to open support snapshot."), indicator: "red" });
 	});
 }
+
 
 async function refresh_snapshot(d, student) {
 	const ay = d.get_value("academic_year");
