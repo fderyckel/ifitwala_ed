@@ -24,6 +24,9 @@ class StudentSupportGuidance(Document):
 		self.high_priority_count = _has_any_high_priority(self)
 		self.ack_required_count = _count_ack_required_items(self)
 
+		# Always rebuild teacher snapshot when items exist
+		self.snapshot_html = _render_snapshot_html(self)
+
 	def on_update(self):
 		"""If the doc transitions to Published, ensure publish bookkeeping is applied.
 		Note: counselors may also call publish(name) explicitly from the form button (recommended)."""
