@@ -284,36 +284,23 @@ def resync_access(ssg_name: str):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _render_snapshot_html(doc: "StudentSupportGuidance") -> str:
-	"""Teacher-facing snapshot: include only items visible to teachers-of-student."""
 	items = doc.get("items") or []
 	if not items:
 		return '<div class="text-muted">' + _("No guidance yet.") + "</div>"
 
 	lines = []
 	for row in items:
-		# Visibility: default allow, but respect confidentiality if present
-		vis = ""
-		if hasattr(row, "confidentiality") and getattr(row, "confidentiality"):
-			vis = (getattr(row, "confidentiality") or "").strip()
-		teacher_visible = (vis == "" or vis.lower() == "teachers-of-student".lower())
-		if not teacher_visible:
+		if not _teacher_visible(row):
 			continue
 
-		# Teacher-facing text
+		# Text
 		text = (getattr(row, "teacher_text", "") or "").strip()
 		text = frappe.utils.escape_html(strip_html_tags(text)) if text else ""
 
-		# Badges: item_type and high_priority
+		# Badges
 		item_type = (getattr(row, "item_type", "") or "").strip()
 		type_badge = f'<span class="badge bg-secondary ms-1">{frappe.utils.escape_html(item_type)}</span>' if item_type else ""
-
-		high = False
-		if hasattr(row, "high_priority"):
-			try:
-				high = bool(int(getattr(row, "high_priority") or 0))
-			except Exception:
-				high = bool(getattr(row, "high_priority"))
-		high_badge = '<span class="badge bg-danger ms-1">High</span>' if high else ""
+		high_badge = '<span class="badge bg-danger ms-1">High</span>' if _truthy(getattr(row, "high_priority", 0)) else ""
 
 		if text:
 			lines.append(f'<li class="mb-1">{frappe.utils.escape_html(text)}{type_badge}{high_badge}</li>')
@@ -322,6 +309,7 @@ def _render_snapshot_html(doc: "StudentSupportGuidance") -> str:
 		return '<div class="text-muted">' + _("No guidance items are published.") + "</div>"
 
 	return '<div class="ssg-snapshot"><ul class="ps-3 mb-0">' + "".join(lines) + "</ul></div>"
+
 
 
 def _rebuild_snapshot(doc: "StudentSupportGuidance", save: bool = True) -> "StudentSupportGuidance":
@@ -483,20 +471,28 @@ def _sync_docshares_for_teachers(ssg_name: str, teacher_users: set[str]):
 # Data helpers (safe against evolving child schema)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _truthy(val) -> bool:
+	"""Accepts 1/0, True/False, 'yes/no', 'on/off', etc."""
+	if isinstance(val, bool):
+		return val
+	if isinstance(val, (int, float)):
+		return int(val) != 0
+	s = (str(val) if val is not None else "").strip().lower()
+	return s in {"1", "true", "yes", "y", "on"}
+
+def _teacher_visible(row) -> bool:
+	"""Only show/count items meant for teachers-of-student."""
+	vis = (getattr(row, "confidentiality", "") or "").strip().lower()
+	return (vis == "" or vis == "teachers-of-student")
+
+
 def _has_any_high_priority(doc: Document) -> int:
 	items = doc.get("items") or []
 	for row in items:
-		# respect confidentiality: only count teacher-visible items
-		vis = (getattr(row, "confidentiality", "") or "").strip()
-		if vis and vis.lower() != "teachers-of-student".lower():
+		if not _teacher_visible(row):
 			continue
-		val = getattr(row, "high_priority", 0)
-		try:
-			if int(val):
-				return 1
-		except Exception:
-			if bool(val):
-				return 1
+		if _truthy(getattr(row, "high_priority", 0)):
+			return 1
 	return 0
 
 
@@ -504,18 +500,14 @@ def _count_ack_required_items(doc: Document) -> int:
 	items = doc.get("items") or []
 	count = 0
 	for row in items:
-		# only items that teachers can see require teacher acknowledgements
-		vis = (getattr(row, "confidentiality", "") or "").strip()
-		if vis and vis.lower() != "teachers-of-student".lower():
+		if not _teacher_visible(row):
 			continue
-
-		# Your schema uses "requires_ack" (string/Data). Treat truthy values as 1.
+		# Your schema uses 'requires_ack' (Data today, but RPC sends ints too)
 		if hasattr(row, "requires_ack"):
-			val = (getattr(row, "requires_ack") or "").strip().lower()
-			if val in {"1", "yes", "true", "y", "on"}:
+			if _truthy(getattr(row, "requires_ack")):
 				count += 1
 		else:
-			# If the flag is missing, default to requiring ack for visible items (matches prior behavior).
+			# Default to requiring ack for teacher-visible items when flag absent
 			count += 1
 	return count
 
