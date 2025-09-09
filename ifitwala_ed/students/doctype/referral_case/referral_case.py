@@ -547,6 +547,166 @@ def _pick_any_counselor() -> str | None:
 	enabled = frappe.get_all("User", filters={"name": ["in", users], "enabled": 1}, pluck="name")
 	return enabled[0] if enabled else None
 
+
+def _reconcile_ack_assignments_for_current_version(ssg_name: str, teacher_users: set[str]):
+	"""
+	Keep Open GUIDANCE_ACK ToDos in sync for CURRENT ack_version only.
+	- No version bump.
+	- Bulk DB reads/writes.
+	- No frappe.get_all(); uses db.get_value / db.sql.
+	"""
+	teacher_users = set(teacher_users or ())
+
+	# Fast reads (single-value)
+	curr_ver = cint(frappe.db.get_value(SSG_PARENT, ssg_name, "ack_version") or 0)
+	if curr_ver <= 0:
+		return
+
+	ack_required_count = cint(frappe.db.get_value(SSG_PARENT, ssg_name, "ack_required_count") or 0)
+	if ack_required_count <= 0 and not teacher_users:
+		# Nothing to assign or reconcile
+		return
+
+	# Pull all Open ACK todos for this SSG in one query
+	# We fetch only the columns we use and filter in SQL for ACK prefix.
+	all_ack_rows = frappe.db.sql(
+		"""
+		SELECT name, allocated_to, description
+		FROM `tabToDo`
+		WHERE reference_type = %s
+		  AND reference_name = %s
+		  AND status = 'Open'
+		  AND description LIKE %s
+		""",
+		(SSG_PARENT, ssg_name, f"{GUIDANCE_ACK_TAG}%"),
+		as_dict=True,
+	)
+
+	current_prefix = f"{GUIDANCE_ACK_TAG} v{curr_ver}"
+	current_holders: set[str] = set()
+	stale_to_close: list[str] = []
+
+	for r in all_ack_rows:
+		alloc = (r.get("allocated_to") or "").strip()
+		desc = (r.get("description") or "").strip()
+
+		# Close any ACK ToDo for users no longer in teacher_users
+		if alloc and alloc not in teacher_users:
+			stale_to_close.append(r["name"])
+			continue
+
+		# Track who already holds the current version
+		if alloc and desc.startswith(current_prefix):
+			current_holders.add(alloc)
+
+	# Bulk close stale ToDos (if any)
+	if stale_to_close:
+		frappe.db.sql(
+			"UPDATE `tabToDo` SET status='Closed' WHERE name IN %(names)s",
+			{"names": tuple(stale_to_close)},
+		)
+
+	# Create missing ToDos for teachers who don't have the current version
+	if ack_required_count > 0 and teacher_users:
+		missing = teacher_users - current_holders
+		if missing:
+			label = f"{GUIDANCE_ACK_TAG} v{curr_ver} — {ack_required_count} guidance item(s) to review"
+			for user in sorted(missing):
+				# assign_add is already lean; one insert per missing user
+				assign_add({
+					"doctype": SSG_PARENT,
+					"name": ssg_name,
+					"assign_to": [user],
+					"priority": "Medium",
+					"description": label,
+					"notify": 1,
+				})
+
+
+def _sync_ssg_shares(ssg_name: str, teacher_users: set[str]):
+	"""
+	Align SSG DocShare with teachers-of-record (read-only access).
+	- Single read of existing shares
+	- Bulk delete for stale users
+	- Insert only missing shares
+	"""
+	teacher_users = {u.strip() for u in (teacher_users or set()) if u and u.strip()}
+
+	# Pull all shares for this doc in one fast query
+	rows = frappe.db.sql(
+		"""
+		SELECT name, user, IFNULL(everyone, 0) AS everyone
+		FROM `tabDocShare`
+		WHERE share_doctype = %s
+		  AND share_name = %s
+		""",
+		(SSG_PARENT, ssg_name),
+		as_dict=True,
+	)
+
+	existing_user_shares = { (r["user"] or "").strip() for r in rows if r.get("user") }
+	# We do not touch 'everyone' shares (if any)
+	# Compute removals (stale) and additions (missing)
+	users_to_remove = existing_user_shares - teacher_users
+	users_to_add = teacher_users - existing_user_shares
+
+	# Bulk delete stale shares (user-specific only)
+	if users_to_remove:
+		frappe.db.sql(
+			"""
+			DELETE FROM `tabDocShare`
+			WHERE share_doctype = %s
+			  AND share_name = %s
+			  AND user IN %(users)s
+			""",
+			(SSG_PARENT, ssg_name, {"users": tuple(users_to_remove)}),
+		)
+
+	# Insert missing shares (small N; safe to loop)
+	for user in sorted(users_to_add):
+		frappe.get_doc({
+			"doctype": "DocShare",
+			"user": user,
+			"share_doctype": SSG_PARENT,
+			"share_name": ssg_name,
+			"read": 1, "write": 0, "share": 0, "submit": 0,
+		}).insert(ignore_permissions=True)
+
+def _sync_ssg_access_for(student: str, ay: str, reason: str | None = None):
+	"""
+	Sync SSG access when student/teacher membership changes.
+	- Finds SSG (student+ay) via single-value lookup
+	- Computes teachers-of-record (optimized JOIN in _get_teachers_of_record)
+	- Reconciles current ack ToDos (no version bump)
+	- Aligns DocShare grants (read-only)
+	"""
+	if not student or not ay:
+		return
+
+	# Fast existence/name fetch
+	ssg_name = frappe.db.get_value(SSG_PARENT, {"student": student, "academic_year": ay}, "name")
+	if not ssg_name:
+		return
+
+	# Compute current teachers (distinct user IDs)
+	teachers = set(_get_teachers_of_record(student, ay))
+
+	# Keep current ack cycle assignments in sync (no bump)
+	_reconcile_ack_assignments_for_current_version(ssg_name, teachers)
+
+	# Ensure access via DocShare (read-only)
+	_sync_ssg_shares(ssg_name, teachers)
+
+	# Non-blocking, optional log
+	if reason:
+		try:
+			frappe.logger("ifitwala_ed").info(
+				f"[SSG sync] {reason} student={student} ay={ay} ssg={ssg_name} teachers={len(teachers)}"
+			)
+		except Exception:
+			pass
+
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def users_with_role(doctype, txt, searchfield, start, page_len, filters):

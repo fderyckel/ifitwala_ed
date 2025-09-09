@@ -3,6 +3,7 @@
  
 import frappe
 from frappe import _
+from frappe.utils import now_datetime
 
 DT = "Student Log"
 PAGE_LENGTH_DEFAULT = 20

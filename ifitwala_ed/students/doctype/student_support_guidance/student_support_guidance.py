@@ -141,6 +141,10 @@ def _apply_publish(doc: "StudentSupportGuidance", bump_version: bool = True, not
 	# 4) Sync acknowledgment ToDos to current teacher-of-record recipients
 	_sync_ack_assignments(doc, notify=notify)
 
+	# 5) Ensure Desk access via DocShare for the same recipients (auto, no button needed)
+	teacher_users = _teacher_userids_for_student_year(doc.student, doc.academic_year)
+	_sync_docshares_for_teachers(doc.name, teacher_users)
+
 def _sync_ack_assignments(doc: "StudentSupportGuidance", notify: bool = True):
 	recipients = _teacher_userids_for_student_year(doc.student, doc.academic_year)
 
@@ -180,6 +184,58 @@ def _sync_ack_assignments(doc: "StudentSupportGuidance", notify: bool = True):
 	for user, todo_name in open_by_user.items():
 		if user not in recipients:
 			frappe.db.set_value("ToDo", todo_name, "status", "Closed", update_modified=False)
+
+# Manual, idempotent re-sync of SSG → teachers-of-record access + current-ack ToDos
+@frappe.whitelist()
+def resync_access(ssg_name: str):
+	"""
+	Idempotently re-sync access/acks for a Student Support Guidance:
+	- recompute teachers-of-record from student+academic_year
+	- align DocShare read grants
+	- ensure current ack-version ToDos exist for current teachers and are closed for stale ones
+
+	Permissions:
+	- allowed if caller has READ on the SSG doc
+	"""
+	if not ssg_name:
+		frappe.throw("Missing SSG name")
+
+	# cheap fields lookup; avoid full doc load unless needed
+	row = frappe.db.get_value(
+		"Student Support Guidance",
+		ssg_name,
+		["student", "academic_year", "ack_version", "ack_required_count"],
+		as_dict=True,
+	)
+	if not row:
+		frappe.throw("Student Support Guidance not found")
+
+	# basic permission gate — only proceed if user can read this SSG
+	if not frappe.has_permission(doctype="Student Support Guidance", doc=ssg_name, ptype="read"):
+		frappe.throw("Not permitted to re-sync this record")
+
+	student = (row.get("student") or "").strip()
+	ay = (row.get("academic_year") or "").strip()
+	if not student or not ay:
+		frappe.throw("SSG is missing student or academic year")
+
+	# Import here to avoid circular imports on module load
+	from ifitwala_ed.students.doctype.referral_case.referral_case import _sync_ssg_access_for, _get_teachers_of_record
+
+	# Do the sync work (ack + shares) for this SSG
+	_sync_ssg_access_for(student, ay, reason="ssg-manual-resync")
+
+	# Return a compact summary
+	teachers = _get_teachers_of_record(student, ay)
+	return {
+		"ok": True,
+		"student": student,
+		"academic_year": ay,
+		"ack_version": cint(row.get("ack_version") or 0),
+		"ack_required_count": cint(row.get("ack_required_count") or 0),
+		"current_teachers_count": len(teachers),
+	}
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -273,58 +329,83 @@ def _enforce_view_permission(doc_or_name):
 	frappe.throw(_("You are not permitted to view this support snapshot."))
 
 def _teacher_userids_for_student_year(student: str, academic_year: str) -> set[str]:
-	"""Resolve instructor.user_id linked to Student Group(s) where this student is active in the given AY."""
+	"""Return enabled User IDs of teachers-of-record for (student, AY) using a single, efficient query."""
 	if not student or not academic_year:
 		return set()
-	# Join Student Group -> SGS -> SGI, constrained by AY & active membership
+
 	rows = frappe.db.sql(
 		"""
-		SELECT DISTINCT COALESCE(sgi.user_id, iu.user_id) AS user_id
+		SELECT DISTINCT u.name AS user_id
 		FROM `tabStudent Group` sg
 		JOIN `tabStudent Group Student` sgs
-		  ON sgs.parent = sg.name AND IFNULL(sgs.active,1)=1
-		LEFT JOIN `tabStudent Group Instructor` sgi
+		  ON sgs.parent = sg.name
+		 AND IFNULL(sgs.active, 1) = 1
+		JOIN `tabStudent Group Instructor` sgi
 		  ON sgi.parent = sg.name
-		LEFT JOIN `tabInstructor` i
-		  ON i.name = sgi.instructor
-		LEFT JOIN `tabInstructor` iu
-		  ON iu.name = sgi.instructor
+		LEFT JOIN `tabInstructor` ins
+		  ON ins.name = sgi.instructor
+		JOIN `tabUser` u
+		  ON u.name = COALESCE(NULLIF(sgi.user_id, ''), NULLIF(ins.linked_user_id, ''))
+		 AND u.enabled = 1
 		WHERE sg.academic_year = %(ay)s
-		  AND sgs.student = %(student)s
 		  AND IFNULL(sg.status, 'Active') = 'Active'
+		  AND sgs.student = %(student)s
 		""",
 		{"ay": academic_year, "student": student},
 		as_dict=True,
 	) or []
-	# Prefer user_id from child; if blank, try to derive later from Instructor.linked_user_id
-	user_ids = {r.user_id for r in rows if r.user_id}
-	if not user_ids:
-		# Fallback pass: fetch instructors and then pull linked_user_id
-		instructors = frappe.db.sql(
+
+	return {r.user_id for r in rows}
+
+def _sync_docshares_for_teachers(ssg_name: str, teacher_users: set[str]):
+	"""
+	Align DocShare (read-only) for SSG with current teachers-of-record.
+	- Single read of existing shares
+	- Bulk delete stale users
+	- Insert only missing shares
+	"""
+	users = { (u or "").strip() for u in (teacher_users or set()) if u and u.strip() }
+	if not ssg_name:
+		return
+
+	# Existing user-specific shares for this SSG
+	rows = frappe.db.sql(
+		"""
+		SELECT user
+		FROM `tabDocShare`
+		WHERE share_doctype = %s
+		  AND share_name = %s
+		  AND IFNULL(user, '') != ''
+		""",
+		(SSG, ssg_name),
+		as_dict=True,
+	)
+	existing = { (r["user"] or "").strip() for r in rows if r.get("user") }
+
+	to_remove = existing - users
+	to_add = users - existing
+
+	# Bulk delete stale shares (user-specific only)
+	if to_remove:
+		frappe.db.sql(
 			"""
-			SELECT DISTINCT sgi.instructor
-			FROM `tabStudent Group` sg
-			JOIN `tabStudent Group Student` sgs
-			  ON sgs.parent = sg.name AND IFNULL(sgs.active,1)=1
-			JOIN `tabStudent Group Instructor` sgi
-			  ON sgi.parent = sg.name
-			WHERE sg.academic_year = %(ay)s
-			  AND sgs.student = %(student)s
-			  AND IFNULL(sg.status, 'Active') = 'Active'
+			DELETE FROM `tabDocShare`
+			WHERE share_doctype = %s
+			  AND share_name = %s
+			  AND user IN %(users)s
 			""",
-			{"ay": academic_year, "student": student},
-			as_dict=True,
-		) or []
-		if instructors:
-			link_map = frappe.get_all("Instructor", filters={"name": ["in", [x.instructor for x in instructors]]}, fields=["name", "linked_user_id"])
-			for r in link_map:
-				if r.linked_user_id:
-					user_ids.add(r.linked_user_id)
-	# Filter to enabled users only
-	if not user_ids:
-		return set()
-	enabled = frappe.get_all("User", filters={"name": ["in", list(user_ids)], "enabled": 1}, pluck="name")
-	return set(enabled or [])
+			(SSG, ssg_name, {"users": tuple(to_remove)}),
+		)
+
+	# Insert missing shares (small N)
+	for user in sorted(to_add):
+		frappe.get_doc({
+			"doctype": "DocShare",
+			"user": user,
+			"share_doctype": SSG,
+			"share_name": ssg_name,
+			"read": 1, "write": 0, "share": 0, "submit": 0,
+		}).insert(ignore_permissions=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -24,7 +24,6 @@ class StudentGroup(Document):
 			self.name = self.student_group_abbreviation + "/" + self.cohort
 		else:
 			self.name = self.student_group_abbreviation
-		
 
 	def validate(self):
 		if self.term: 
@@ -82,6 +81,89 @@ class StudentGroup(Document):
 					frappe.msgprint(msg, alert=True, title=title)
 
 			self._conflict_checked = True					
+
+	def before_save(self):
+		"""
+		Detect changes efficiently:
+		- active students added/removed (child: students)
+		- instructor identity changes (child: instructors) → triggers re-sync for all current active students
+		"""
+		old = self.get_doc_before_save()
+		if not old:
+			# no diff on first save
+			self.flags._sg_students_added = set()
+			self.flags._sg_students_removed = set()
+			self.flags._sg_instructors_changed = False
+			return
+
+		# ----- students (active only) -----
+		def active_students(doc):
+			return {
+				(r.student or "").strip()
+				for r in (doc.students or [])
+				if getattr(r, "student", None) and cint(getattr(r, "active", 1))
+			}
+
+		prev_active = active_students(old)
+		curr_active = active_students(self)
+
+		self.flags._sg_students_added = curr_active - prev_active
+		self.flags._sg_students_removed = prev_active - curr_active
+
+		# ----- instructors (normalize identity → prefer user_id, fallback to instructor id) -----
+		def instructor_keys(doc):
+			keys = set()
+			for r in (doc.instructors or []):
+				uid = (getattr(r, "user_id", "") or "").strip()
+				ins = (getattr(r, "instructor", "") or "").strip()
+				if uid:
+					keys.add(("uid", uid))
+				elif ins:
+					keys.add(("ins", ins))
+			return keys
+
+		prev_instr = instructor_keys(old)
+		curr_instr = instructor_keys(self)
+		self.flags._sg_instructors_changed = (prev_instr != curr_instr)
+
+	def after_save(self):
+		"""
+		Sync SSG access/acks when:
+		- students were added/removed, or
+		- instructor set changed (mid-year teacher change)
+		"""
+		added = getattr(self.flags, "_sg_students_added", set()) or set()
+		removed = getattr(self.flags, "_sg_students_removed", set()) or set()
+		instr_changed = bool(getattr(self.flags, "_sg_instructors_changed", False))
+
+		if not added and not removed and not instr_changed:
+			return
+
+		ay = (self.academic_year or "").strip()
+		if not ay:
+			return
+
+		from ifitwala_ed.students.doctype.referral_case.referral_case import _sync_ssg_access_for
+
+		# Targeted syncs for changed students
+		for stu in sorted(added):
+			_sync_ssg_access_for(stu, ay, reason="sgs-added")
+		for stu in sorted(removed):
+			_sync_ssg_access_for(stu, ay, reason="sgs-removed")
+
+		# If instructors changed, re-sync ALL current active students (cheap: in-memory rows)
+		if instr_changed:
+			for r in (self.students or []):
+				if getattr(r, "student", None) and cint(getattr(r, "active", 1)):
+					stu = (r.student or "").strip()
+					if stu:
+						_sync_ssg_access_for(stu, ay, reason="sgi-changed")
+
+		# cleanup flags
+		self.flags._sg_students_added = set()
+		self.flags._sg_students_removed = set()
+		self.flags._sg_instructors_changed = False
+
 
 	def validate_term(self) -> None:
 		term_year = frappe.get_doc("Term", self.term)
