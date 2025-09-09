@@ -377,11 +377,26 @@ def _enforce_view_permission(doc_or_name):
 		return
 	frappe.throw(_("You are not permitted to view this support snapshot."))
 
-@frappe.utils.redis_cache(ttl=300)  # PERF: cache 5 min; invalidation is naturally frequent enough
+
 def _teacher_userids_for_student_year(student: str, academic_year: str) -> set[str]:
-	"""Return enabled User IDs of teachers-of-record for (student, AY) using a single, efficient query."""
+	"""Return enabled User IDs of teachers-of-record for (student, AY) using a single, efficient query.
+	Cached for 5 minutes via frappe.cache().
+	"""
 	if not student or not academic_year:
 		return set()
+
+	cache_key = f"ssg:teacher_users:{student}:{academic_year}"
+	cache = frappe.cache()
+
+	# Fast path: return cached set if present
+	cached = cache.get_value(cache_key)
+	if cached:
+		try:
+			# Values are pickled by frappe.cache(); normalize to set[str]
+			return set(cached)
+		except Exception:
+			# Corrupt/legacy cache entry – ignore and refresh
+			pass
 
 	rows = frappe.db.sql(
 		"""
@@ -405,7 +420,11 @@ def _teacher_userids_for_student_year(student: str, academic_year: str) -> set[s
 		as_dict=True,
 	) or []
 
-	return {r.user_id for r in rows}
+	users = {r["user_id"] for r in rows if r.get("user_id")}
+	# Store as list for pickle/json safety; TTL 300s
+	cache.set_value(cache_key, list(users), expires_in_sec=300)
+	return users
+
 
 def _sync_docshares_for_teachers(ssg_name: str, teacher_users: set[str]):
 	"""
