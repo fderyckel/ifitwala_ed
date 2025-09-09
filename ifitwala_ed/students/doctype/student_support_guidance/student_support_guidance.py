@@ -27,14 +27,21 @@ class StudentSupportGuidance(Document):
 	def on_update(self):
 		"""If the doc transitions to Published, ensure publish bookkeeping is applied.
 		Note: counselors may also call publish(name) explicitly from the form button (recommended)."""
+		# PERF: one cheap column lookup; avoid loading previous full doc
 		prev_status = (frappe.db.get_value(SSG, self.name, "status") or "").strip() if not self.is_new() else ""
 		if (self.status or "").strip() == "Published" and prev_status != "Published":
 			_apply_publish(self, bump_version=True)
 
 def on_doctype_update():
+	# PERF: helpful single/compound indexes for frequent lookups
 	frappe.db.add_index(SSG, ["student"])
 	frappe.db.add_index(SSG, ["academic_year"])
+	frappe.db.add_index(SSG, ["student", "academic_year"])
+	frappe.db.add_index(SSG, ["student", "academic_year", "status"])
+	frappe.db.add_index(SSG, ["last_published_on"])
 	frappe.db.add_index("ToDo", ["reference_type", "reference_name", "allocated_to"])
+	frappe.db.add_index("ToDo", ["reference_type", "reference_name", "status"])
+	frappe.db.add_index("DocShare", ["share_doctype", "share_name", "user"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -47,27 +54,46 @@ def get_support_snapshot(student: str, academic_year: str) -> dict:
 	if not ssg:
 		# No SSG yet; return empty state (UI will show "No guidance yet.")
 		return {"snapshot_html": ""}
-	_enforce_view_permission(ssg)
-	html = ssg.snapshot_html or _render_snapshot_html(ssg)
+	_enforce_view_permission(ssg.name if isinstance(ssg, Document) else ssg)
+
+	# PERF: if snapshot_html already present, avoid full doc load
+	if isinstance(ssg, Document):
+		html = ssg.snapshot_html or _render_snapshot_html(ssg)
+	else:
+		html = frappe.db.get_value(SSG, ssg, "snapshot_html") or _render_snapshot_html(frappe.get_doc(SSG, ssg))
 	return {"snapshot_html": html}
 
 @frappe.whitelist()
 def get_ack_status(student: str, academic_year: str) -> dict:
-	ssg = _find_current_ssg(student, academic_year)
-	if not ssg:
+	# PERF: avoid full doc unless needed; fetch minimal fields
+	name = _find_current_ssg_name(student, academic_year)
+	if not name:
 		return {"ack_required": False, "has_open_todo": False, "ack_required_count": 0, "ack_version": 0}
-	_enforce_view_permission(ssg)
-	# If there are no items that require acknowledgement, no ToDo is needed.
-	need_ack = cint(ssg.ack_required_count) > 0 and (ssg.status or "") == "Published"
-	if not need_ack:
-		return {"ack_required": False, "has_open_todo": False, "ack_required_count": 0, "ack_version": cint(ssg.ack_version or 0)}
 
+	_enforce_view_permission(name)
+	row = frappe.db.get_value(
+		SSG,
+		name,
+		["status", "ack_required_count", "ack_version"],
+		as_dict=True,
+	) or {}
+
+	need_ack = cint(row.get("ack_required_count") or 0) > 0 and (row.get("status") or "") == "Published"
+	if not need_ack:
+		return {
+			"ack_required": False,
+			"has_open_todo": False,
+			"ack_required_count": 0,
+			"ack_version": cint(row.get("ack_version") or 0),
+		}
+
+	# PERF: single EXISTS check
 	user = frappe.session.user
 	has_open = frappe.db.exists(
 		"ToDo",
 		{
 			"reference_type": SSG,
-			"reference_name": ssg.name,
+			"reference_name": name,
 			"allocated_to": user,
 			"status": "Open",
 		},
@@ -75,33 +101,30 @@ def get_ack_status(student: str, academic_year: str) -> dict:
 	return {
 		"ack_required": True,
 		"has_open_todo": bool(has_open),
-		"ack_required_count": cint(ssg.ack_required_count or 0),
-		"ack_version": cint(ssg.ack_version or 0),
+		"ack_required_count": cint(row.get("ack_required_count") or 0),
+		"ack_version": cint(row.get("ack_version") or 0),
 	}
 
 @frappe.whitelist()
 def acknowledge_current_guidance(student: str, academic_year: str) -> dict:
-	ssg = _find_current_ssg(student, academic_year)
-	if not ssg:
+	# PERF: no full doc unless required
+	name = _find_current_ssg_name(student, academic_year)
+	if not name:
 		frappe.throw(_("No current guidance is available to acknowledge."))
-	_enforce_view_permission(ssg)
+	_enforce_view_permission(name)
 
-	# Close the current user's open ToDo (if any).
-	user = frappe.session.user
-	td = frappe.get_all(
-		"ToDo",
-		filters={
-			"reference_type": SSG,
-			"reference_name": ssg.name,
-			"allocated_to": user,
-			"status": "Open",
-		},
-		fields=["name"],
-		limit=5,
+	# PERF: bulk close in one SQL instead of get_all + looped set_value
+	frappe.db.sql(
+		"""
+		UPDATE `tabToDo`
+		SET status = 'Closed'
+		WHERE reference_type = %s
+		  AND reference_name = %s
+		  AND allocated_to = %s
+		  AND status = 'Open'
+		""",
+		(SSG, name, frappe.session.user),
 	)
-	for r in td:
-		frappe.db.set_value("ToDo", r.name, "status", "Closed", update_modified=False)
-
 	return {"ok": True}
 
 @frappe.whitelist()
@@ -148,20 +171,31 @@ def _apply_publish(doc: "StudentSupportGuidance", bump_version: bool = True, not
 def _sync_ack_assignments(doc: "StudentSupportGuidance", notify: bool = True):
 	recipients = _teacher_userids_for_student_year(doc.student, doc.academic_year)
 
-	# existing open ToDos for this SSG
-	open_todos = frappe.get_all(
+	# PERF: read minimal open todos in one go
+	open_rows = frappe.db.get_values(
 		"ToDo",
-		filters={"reference_type": SSG, "reference_name": doc.name, "status": "Open"},
-		fields=["name", "allocated_to"],
-		limit=10000,
+		{
+			"reference_type": SSG,
+			"reference_name": doc.name,
+			"status": "Open",
+		},
+		["name", "allocated_to"],
+		as_dict=True,
 	)
-
-	open_by_user = {r.allocated_to: r.name for r in open_todos}
+	open_by_user = {r["allocated_to"]: r["name"] for r in (open_rows or []) if r.get("allocated_to")}
 
 	# If there are no items that require acknowledgement, close any remnants.
 	if cint(doc.ack_required_count or 0) == 0 or (doc.status or "") != "Published":
-		for name in open_by_user.values():
-			frappe.db.set_value("ToDo", name, "status", "Closed", update_modified=False)
+		# PERF: bulk close any open todos for this SSG
+		if open_by_user:
+			frappe.db.sql(
+				"""
+				UPDATE `tabToDo`
+				SET status = 'Closed'
+				WHERE name IN %(names)s
+				""",
+				{"names": tuple(open_by_user.values())},
+			)
 		return
 
 	desc = f"{ACK_TAG} v{cint(doc.ack_version or 0)} – {doc.student} ({doc.academic_year})"
@@ -181,9 +215,16 @@ def _sync_ack_assignments(doc: "StudentSupportGuidance", notify: bool = True):
 			assign_add(payload)
 
 	# Close ToDos for users who are no longer recipients
-	for user, todo_name in open_by_user.items():
-		if user not in recipients:
-			frappe.db.set_value("ToDo", todo_name, "status", "Closed", update_modified=False)
+	stale = [todo_name for user, todo_name in open_by_user.items() if user not in recipients]
+	if stale:
+		frappe.db.sql(
+			"""
+			UPDATE `tabToDo`
+			SET status = 'Closed'
+			WHERE name IN %(names)s
+			""",
+			{"names": tuple(stale)},
+		)
 
 # Manual, idempotent re-sync of SSG → teachers-of-record access + current-ack ToDos
 @frappe.whitelist()
@@ -202,7 +243,7 @@ def resync_access(ssg_name: str):
 
 	# cheap fields lookup; avoid full doc load unless needed
 	row = frappe.db.get_value(
-		"Student Support Guidance",
+		SSG,
 		ssg_name,
 		["student", "academic_year", "ack_version", "ack_required_count"],
 		as_dict=True,
@@ -211,7 +252,7 @@ def resync_access(ssg_name: str):
 		frappe.throw("Student Support Guidance not found")
 
 	# basic permission gate — only proceed if user can read this SSG
-	if not frappe.has_permission(doctype="Student Support Guidance", doc=ssg_name, ptype="read"):
+	if not frappe.has_permission(doctype=SSG, doc=ssg_name, ptype="read"):
 		frappe.throw("Not permitted to re-sync this record")
 
 	student = (row.get("student") or "").strip()
@@ -314,7 +355,15 @@ def _rebuild_snapshot(doc: "StudentSupportGuidance", save: bool = True) -> "Stud
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _enforce_view_permission(doc_or_name):
-	doc = frappe.get_doc(SSG, doc_or_name) if isinstance(doc_or_name, str) else doc_or_name
+	# PERF: avoid full doc load when a name is passed; fetch minimal keys
+	if isinstance(doc_or_name, str):
+		row = frappe.db.get_value(SSG, doc_or_name, ["student", "academic_year"], as_dict=True)
+		if not row:
+			frappe.throw(_("You are not permitted to view this support snapshot."))
+		student, ay = (row.get("student") or ""), (row.get("academic_year") or "")
+	else:
+		student, ay = doc_or_name.student, doc_or_name.academic_year
+
 	user = frappe.session.user
 	if user == "Administrator":
 		return
@@ -323,11 +372,12 @@ def _enforce_view_permission(doc_or_name):
 	if {"Counselor", "Academic Admin", "System Manager"} & roles:
 		return
 	# Instructors must be teacher-of-record for this student & year
-	teacher_ids = _teacher_userids_for_student_year(doc.student, doc.academic_year)
+	teacher_ids = _teacher_userids_for_student_year(student, ay)
 	if user in teacher_ids:
 		return
 	frappe.throw(_("You are not permitted to view this support snapshot."))
 
+@frappe.utils.redis_cache(ttl=300)  # PERF: cache 5 min; invalidation is naturally frequent enough
 def _teacher_userids_for_student_year(student: str, academic_year: str) -> set[str]:
 	"""Return enabled User IDs of teachers-of-record for (student, AY) using a single, efficient query."""
 	if not student or not academic_year:
@@ -364,7 +414,7 @@ def _sync_docshares_for_teachers(ssg_name: str, teacher_users: set[str]):
 	- Bulk delete stale users
 	- Insert only missing shares
 	"""
-	users = { (u or "").strip() for u in (teacher_users or set()) if u and u.strip() }
+	users = {(u or "").strip() for u in (teacher_users or set()) if u and u.strip()}
 	if not ssg_name:
 		return
 
@@ -380,7 +430,7 @@ def _sync_docshares_for_teachers(ssg_name: str, teacher_users: set[str]):
 		(SSG, ssg_name),
 		as_dict=True,
 	)
-	existing = { (r["user"] or "").strip() for r in rows if r.get("user") }
+	existing = {(r["user"] or "").strip() for r in rows if r.get("user")}
 
 	to_remove = existing - users
 	to_add = users - existing
@@ -456,25 +506,38 @@ def _first_present(row, fields: list[str]) -> str | None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _find_current_ssg(student: str, academic_year: str) -> Document | None:
+	"""Return full doc only for the chosen candidate (1 query for name + 1 doc load)."""
+	name = _find_current_ssg_name(student, academic_year)
+	return frappe.get_doc(SSG, name) if name else None
+
+def _find_current_ssg_name(student: str, academic_year: str) -> str | None:
 	if not (student and academic_year):
 		return None
 
-	# Prefer Published, most recently published; else latest modified Draft
-	published = frappe.get_all(
-		SSG,
-		filters={"student": student, "academic_year": academic_year, "status": "Published"},
-		fields=["name"],
-		order_by="COALESCE(last_published_on, modified) DESC",
-		limit=1,
+	# PERF: one SQL with UNION to prefer latest Published; else latest any status
+	# (keeps the original semantics: prefer Published by most recent publish time;
+	# otherwise fall back to latest modified draft)
+	rows = frappe.db.sql(
+		"""
+		(
+			SELECT name, COALESCE(last_published_on, modified) AS sort_key, 1 AS pref
+			FROM `tabStudent Support Guidance`
+			WHERE student = %(stu)s AND academic_year = %(ay)s AND status = 'Published'
+			ORDER BY sort_key DESC
+			LIMIT 1
+		)
+		UNION ALL
+		(
+			SELECT name, modified AS sort_key, 2 AS pref
+			FROM `tabStudent Support Guidance`
+			WHERE student = %(stu)s AND academic_year = %(ay)s
+			ORDER BY modified DESC
+			LIMIT 1
+		)
+		ORDER BY pref ASC
+		LIMIT 1
+		""",
+		{"stu": student, "ay": academic_year},
+		as_dict=True,
 	)
-	if published:
-		return frappe.get_doc(SSG, published[0].name)
-
-	latest = frappe.get_all(
-		SSG,
-		filters={"student": student, "academic_year": academic_year},
-		fields=["name"],
-		order_by="modified DESC",
-		limit=1,
-	)
-	return frappe.get_doc(SSG, latest[0].name) if latest else None
+	return rows[0]["name"] if rows else None
