@@ -179,35 +179,22 @@ $bootstrap-icons-font-dir: "/assets/ifitwala_ed/dist/fonts";
 	Student Support Guidance badge
 ─────────────────────────────────────────────────────────── */
 
-.img-wrap {
-	position: relative; /* anchors badge inside the image container */
-}
-
-.support-badge {
+.support-badge.cross {
 	position: absolute;
-	top: .35rem;
-	right: .35rem;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 24px;
-	height: 24px;
-	border-radius: 999px;
-	text-decoration: none;
-	box-shadow: 0 0 0.25rem rgba(0, 0, 0, .15);
-
-	i {
-		font-size: 14px;
-		line-height: 1;
-	}
+	top: 6px;
+	right: 6px;
+	background: #fff;
+	border-radius: 50%;
+	padding: 2px 4px;
+	color: #0d6efd; /* Bootstrap primary blue */
+	font-size: 0.9rem;
+	line-height: 1;
+	box-shadow: 0 0 2px rgba(0,0,0,0.25);
+	cursor: default;
 }
 
-.support-badge.info {
-	background: #0dcaf0; /* bs-info */
-	color: #fff;
+.support-badge.cross i {
+	display: inline-block;
+	vertical-align: middle;
 }
 
-.support-badge.warn {
-	background: #ffc107; /* bs-warning */
-	color: #212529;
-}

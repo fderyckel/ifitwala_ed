@@ -63,40 +63,28 @@ def get_student_group_students(student_group, start=0, page_length=25):
 		if r.medical_info:
 			by_id.setdefault(r.student, {})["medical_info"] = r.medical_info
 
-	# Viewer authorization (gate SSG lookups if not authorized)
+	# Viewer authorization (gate support-guidance lookups if not authorized)
 	user = frappe.session.user
 	is_authorized = _authorized_for_group(student_group, user)
 
-	ssg_by_student = {}
-	ack_pending_set = set()
-
-	if is_authorized:
-		# Resolve AY once (user default → system default)
-		ay = frappe.defaults.get_user_default("academic_year") or frappe.db.get_default("academic_year")
-
-		if ay:
-			ssgs = frappe.get_all(
-				"Student Support Guidance",
-				filters={"student": ["in", student_ids], "academic_year": ay},
-				fields=["name", "student"],
-				limit=None,
-			)
-			ssg_by_student = {r.student: r.name for r in (ssgs or [])}
-
-			# Open acknowledgements for current user across these SSGs (batched)
-			ssg_names = [r.name for r in (ssgs or [])]
-			if ssg_names:
-				open_refs = frappe.get_all(
-					"ToDo",
-					filters={
-						"reference_type": "Student Support Guidance",
-						"reference_name": ["in", ssg_names],
-						"allocated_to": user,
-						"status": "Open",
-					},
-					pluck="reference_name",
-				)
-				ack_pending_set = set(open_refs or [])
+	# Compute has_ssg per student with ONE batched SQL (only if authorized)
+	students_with_ssg = set()
+	if is_authorized and student_ids:
+		rows = frappe.db.sql(
+			"""
+			SELECT rc.student
+			FROM `tabReferral Case` rc
+			JOIN `tabReferral Case Entry` e ON e.parent = rc.name
+			WHERE rc.student IN %(students)s
+			  AND IFNULL(rc.case_status, 'Open') != 'Closed'
+			  AND e.entry_type = 'Student Support Guidance'
+			  AND IFNULL(e.is_published, 0) = 1
+			  AND IFNULL(e.status, 'Open') IN ('Open','In Progress')
+			GROUP BY rc.student
+			""",
+			{"students": tuple(student_ids)},
+		) or []
+		students_with_ssg = {r[0] for r in rows if r and r[0]}
 
 	# Thumbnails base dir (exists check once)
 	thumb_dir = frappe.get_site_path("public", "files", "gallery_resized", "student")
@@ -116,9 +104,8 @@ def get_student_group_students(student_group, start=0, page_length=25):
 			if os.path.exists(os.path.join(thumb_dir, thumb_filename)):
 				img = f"/files/gallery_resized/student/{thumb_filename}"
 
-		# Only expose SSG link/ack flag to authorized viewers
-		ssg_name = ssg_by_student.get(sid) if is_authorized else None
-		ack_pending = bool(ssg_name and ssg_name in ack_pending_set) if is_authorized else False
+		# Support-guidance flag exposed only to authorized viewers
+		has_ssg = bool(sid in students_with_ssg) if is_authorized else False
 
 		out.append({
 			"student": sid,
@@ -127,8 +114,7 @@ def get_student_group_students(student_group, start=0, page_length=25):
 			"student_image": img or "/assets/ifitwala_ed/images/default_student_image.png",
 			"medical_info": info.get("medical_info", ""),
 			"birth_date": info.get("student_date_of_birth"),
-			"ssg_name": ssg_name,
-			"ack_pending": ack_pending,
+			"has_ssg": has_ssg,
 		})
 
 	return out

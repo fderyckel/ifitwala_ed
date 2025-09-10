@@ -130,9 +130,9 @@ async function open_support_modal(frm) {
 
 						// For triagers, optionally show a subtle inline "View Case" button (kept)
 						const viewBtn = isTriager && r.case_name
-							? `<button class="btn btn-sm btn-outline-secondary ms-2" data-case="${frappe.utils.escape_html(r.case_name)}">
+							? `<button class="btn btn-sm btn-outline-primary ms-2" data-case="${frappe.utils.escape_html(r.case_name)}">
 									${__("View Case")}
-							   </button>`
+								</button>`
 							: "";
 
 						return `

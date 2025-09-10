@@ -24,24 +24,20 @@ function get_student_image(original_url) {
 }
 
 function renderSupportBadge(student) {
-	// no SSG → no badge
-	if (!student.ssg_name) return '';
+	// Show badge only when viewer is authorized (server adds has_ssg accordingly)
+	if (!student.has_ssg) return '';
 
-	const title = student.ack_pending
-		? __("Support guidance — acknowledgment required")
-		: __("Support guidance available");
+	const title = __("Support guidance available");
 
-	// route to the doc; use slug path to avoid inline JS handlers
-	const href = `/app/student-support-guidance/${encodeURIComponent(student.ssg_name)}`;
-
-	// choose icon + class
-	const icon_cls = student.ack_pending ? "bi-exclamation-diamond-fill" : "bi-journal-text";
-	const wrap_cls = student.ack_pending ? "support-badge warn" : "support-badge info";
-
+	// Positioned/colored via CSS in Phase 1, step 3
+	// We include data-student for future (Phase 2) modal click handling.
 	return `
-		<a href="${href}" class="${wrap_cls}" title="${frappe.utils.escape_html(title)}" target="_blank" rel="noopener">
-			<i class="bi ${icon_cls}"></i>
-		</a>
+		<span class="support-badge cross"
+		      title="${frappe.utils.escape_html(title)}"
+		      aria-label="${frappe.utils.escape_html(title)}"
+		      data-student="${frappe.utils.escape_html(student.student)}">
+			<i class="bi bi-plus-lg"></i>
+		</span>
 	`;
 }
 
