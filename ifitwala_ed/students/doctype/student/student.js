@@ -68,6 +68,7 @@ frappe.ui.form.on("Student", {
 });
 
 // --- New Support modal (no AY, no acknowledgements; lean teacher view) ---
+// --- Enhanced, BS4-friendly Support modal renderer ---
 async function open_support_modal(frm) {
 	const student = frm.doc.name;
 	if (!student) return;
@@ -90,6 +91,9 @@ async function open_support_modal(frm) {
 	const $body = d.get_field("body").$wrapper;
 	$body.html(`<div class="p-3 text-muted small">${__("Loading published guidance…")}</div>`);
 
+	// BS4 colors
+	const infoBlue = "#17a2b8";
+
 	// helper: format to "09 September 2025"
 	const neatDate = (dt) => {
 		try {
@@ -102,6 +106,9 @@ async function open_support_modal(frm) {
 		}
 	};
 
+	// small inline SVG icons using frappe.utils.icon (feather)
+	const icon = (name) => frappe.utils.icon(name, "sm");
+
 	try {
 		const { message: rows } = await frappe.call({
 			method: "ifitwala_ed.students.doctype.referral_case.referral_case.get_student_support_guidance",
@@ -111,48 +118,60 @@ async function open_support_modal(frm) {
 		const items = Array.isArray(rows) ? rows : [];
 		if (!items.length) {
 			$body.html(`
-				<div class="p-3 text-muted">${__("No published, open guidance found for this student.")}</div>
+				<div class="p-3 text-muted">${__("No published, active guidance found for this student.")}</div>
 			`);
 			return;
 		}
 
-		const html = `
-			<div class="list-group" style="max-height:60vh; overflow:auto;">
-				${items
-					.map((r) => {
-						const when = r.entry_datetime ? neatDate(r.entry_datetime) : "";
-						const assignee =
-							r.assignee ? frappe.utils.escape_html(r.assignee) : __("All instructors");
-						const authorName = r.author
-							? frappe.utils.escape_html((frappe.user_info(r.author) || {}).fullname || r.author)
-							: "";
-						const summary = r.summary || "";
+		const html = items.map((r) => {
+			const when = r.entry_datetime ? neatDate(r.entry_datetime) : "";
+			const assignee = r.assignee ? frappe.utils.escape_html(r.assignee) : __("All instructors");
+			const authorName = r.author
+				? frappe.utils.escape_html((frappe.user_info(r.author) || {}).fullname || r.author)
+				: "";
+			const summary = r.summary || "";
+			const status = (r.status || "Open").trim();
 
-						// For triagers, optionally show a subtle inline "View Case" button (kept)
-						const viewBtn = isTriager && r.case_name
-							? `<button class="btn btn-sm btn-outline-primary ms-2" data-case="${frappe.utils.escape_html(r.case_name)}">
-									${__("View Case")}
-								</button>`
-							: "";
+			// status badge (only show if In Progress; keep Open implicit)
+			const statusBadge =
+				status === "In Progress"
+					? `<span class="badge badge-success ml-2">${__("In Progress")}</span>`
+					: "";
 
-						return `
-							<div class="list-group-item">
-								<div class="d-flex justify-content-between align-items-center">
-									<div class="text-muted small">${when}</div>
-									${viewBtn}
-								</div>
-								<div class="mt-1 small text-muted">
-									${__("Assignee")}: <span class="fw-semibold">${assignee}</span>
-									${authorName ? ` · ${__("Author")}: <span class="fw-semibold">${authorName}</span>` : ""}
-								</div>
-								<div class="mt-2">${summary}</div>
+			// Triager-only case link
+			const viewBtn = isTriager && r.case_name
+				? `<button class="btn btn-sm btn-outline-primary ml-2" data-case="${frappe.utils.escape_html(r.case_name)}">
+						${__("View Case")}
+				   </button>`
+				: "";
+
+			return `
+				<div class="card mb-3 shadow-sm" style="border-left: 4px solid ${infoBlue};">
+					<div class="card-body">
+						<div class="d-flex justify-content-between align-items-center">
+							<div class="small text-muted">
+								<span class="mr-1">${icon("calendar")}</span>
+								<strong>${when}</strong>
+								${statusBadge}
 							</div>
-						`;
-					})
-					.join("")}
-			</div>
-		`;
-		$body.html(html);
+							${viewBtn}
+						</div>
+
+						<div class="mt-2 small text-muted">
+							<span class="mr-1">${icon("user")}</span>${__("Assignee")}: <strong>${assignee}</strong>
+							${authorName ? ` · <span class="mr-1 ml-1">${icon("edit-3")}</span>${__("Author")}: <strong>${authorName}</strong>` : ""}
+						</div>
+
+						<div class="mt-3">
+							<span class="mr-1 text-info">${icon("book-open")}</span>
+							<span>${summary}</span>
+						</div>
+					</div>
+				</div>
+			`;
+		}).join("");
+
+		$body.html(`<div>${html}</div>`);
 
 		// Wire View Case (triage users only)
 		if (isTriager) {
