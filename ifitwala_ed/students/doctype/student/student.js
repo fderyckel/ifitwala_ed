@@ -33,27 +33,44 @@ frappe.ui.form.on("Student", {
 			frappe.contacts.clear_address_and_contact(frm);
 		}
 
-		// --- Support button (teacher-facing SSG pulled from Referral Case Entries) ---
-		if (frm.is_new()) return;
+		// --- Support button (only if there are open, published SSG entries) ---
+		if (!frm.is_new()) {
+			const canSeeSupport =
+				frappe.user.has_role("Counselor") ||
+				frappe.user.has_role("Academic Admin") ||
+				frappe.user.has_role("System Manager") ||
+				frappe.user.has_role("Instructor") ||
+				frappe.user.has_role("Academic Staff");
 
-		const canSeeSupport =
-			frappe.user.has_role("Counselor") ||
-			frappe.user.has_role("Academic Admin") ||
-			frappe.user.has_role("System Manager") ||
-			frappe.user.has_role("Instructor") ||
-			frappe.user.has_role("Academic Staff");
+			// Remove any prior button to avoid stale UI on role/date changes
+			if (!frm.custom_buttons) frm.custom_buttons = {};
+			if (frm.custom_buttons.__support_btn) {
+				try { frm.custom_buttons.__support_btn.remove(); } catch (e) {}
+				delete frm.custom_buttons.__support_btn;
+			}
 
-		if (!canSeeSupport) return;
-
-		// Avoid duplicates on soft refresh
-		if (!frm.custom_buttons) frm.custom_buttons = {};
-		if (!frm.custom_buttons.__support_btn) {
-			const btn = frm.add_custom_button(__("Support"), () => open_support_modal(frm));
-			// keep light blue styling
-			btn.removeClass("btn-default btn-primary").addClass("btn-info");
-			btn.find("span").prepend(frappe.utils.icon("book-open", "sm"));
-			frm.custom_buttons.__support_btn = btn;
+			if (canSeeSupport) {
+				frappe
+					.call({
+						method:
+							"ifitwala_ed.students.doctype.referral_case.referral_case.count_open_published_guidance",
+						args: { student: frm.doc.name }
+					})
+					.then((r) => {
+						const n = (r && r.message && cint(r.message.value)) || 0;
+						if (n > 0) {
+							const btn = frm.add_custom_button(__("Support"), () => open_support_modal(frm));
+							btn.removeClass("btn-default btn-primary").addClass("btn-info");
+							btn.find("span").prepend(frappe.utils.icon("book-open", "sm"));
+							frm.custom_buttons.__support_btn = btn;
+						}
+					})
+					.catch(() => {
+						// silently ignore (permissions or transient error)
+					});
+			}
 		}
+
 	}
 });
 
@@ -61,6 +78,11 @@ frappe.ui.form.on("Student", {
 async function open_support_modal(frm) {
 	const student = frm.doc.name;
 	if (!student) return;
+
+	const isTriager =
+		frappe.user.has_role("Counselor") ||
+		frappe.user.has_role("Academic Admin") ||
+		frappe.user.has_role("System Manager");
 
 	const d = new frappe.ui.Dialog({
 		title: __("Student Support Guidance"),
@@ -72,9 +94,20 @@ async function open_support_modal(frm) {
 
 	d.show();
 
-	// Loading state
 	const $body = d.get_field("body").$wrapper;
 	$body.html(`<div class="p-3 text-muted small">${__("Loading published guidance…")}</div>`);
+
+	// helper: format to "09 September 2025"
+	const neatDate = (dt) => {
+		try {
+			const o = frappe.datetime.str_to_obj(dt);
+			return o
+				? o.toLocaleDateString(undefined, { day: "2-digit", month: "long", year: "numeric" })
+				: "";
+		} catch {
+			return "";
+		}
+	};
 
 	try {
 		const { message: rows } = await frappe.call({
@@ -94,21 +127,30 @@ async function open_support_modal(frm) {
 			<div class="list-group" style="max-height:60vh; overflow:auto;">
 				${items
 					.map((r) => {
-						const when = r.entry_datetime ? frappe.datetime.str_to_user(r.entry_datetime) : "";
-						const caseName = r.case_name ? frappe.utils.escape_html(r.case_name) : "";
-						const assignee = r.assignee ? frappe.utils.escape_html(r.assignee) : __("Unassigned");
-						const author = r.author ? frappe.utils.escape_html(r.author) : "";
+						const when = r.entry_datetime ? neatDate(r.entry_datetime) : "";
+						const assignee =
+							r.assignee ? frappe.utils.escape_html(r.assignee) : __("All instructors");
+						const authorName = r.author
+							? frappe.utils.escape_html((frappe.user_info(r.author) || {}).fullname || r.author)
+							: "";
 						const summary = r.summary || "";
+
+						// For triagers, optionally show a subtle inline "View Case" button (kept)
+						const viewBtn = isTriager && r.case_name
+							? `<button class="btn btn-sm btn-outline-secondary ms-2" data-case="${frappe.utils.escape_html(r.case_name)}">
+									${__("View Case")}
+							   </button>`
+							: "";
+
 						return `
 							<div class="list-group-item">
 								<div class="d-flex justify-content-between align-items-center">
-									<div class="fw-semibold">${__("Student Support Guidance")}</div>
 									<div class="text-muted small">${when}</div>
+									${viewBtn}
 								</div>
 								<div class="mt-1 small text-muted">
-									${__("Case")}: <span class="fw-semibold">${caseName}</span> ·
 									${__("Assignee")}: <span class="fw-semibold">${assignee}</span>
-									${author ? ` · ${__("Author")}: <span class="fw-semibold">${author}</span>` : ""}
+									${authorName ? ` · ${__("Author")}: <span class="fw-semibold">${authorName}</span>` : ""}
 								</div>
 								<div class="mt-2">${summary}</div>
 							</div>
@@ -118,6 +160,17 @@ async function open_support_modal(frm) {
 			</div>
 		`;
 		$body.html(html);
+
+		// Wire View Case (triage users only)
+		if (isTriager) {
+			$body.on("click", "button[data-case]", (e) => {
+				const cn = e.currentTarget.getAttribute("data-case");
+				if (cn) {
+					d.hide();
+					frappe.set_route("Form", "Referral Case", cn);
+				}
+			});
+		}
 	} catch (e) {
 		$body.html(`
 			<div class="p-3 text-danger small">${__("Failed to load guidance or permission denied.")}</div>
