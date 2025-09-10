@@ -401,24 +401,16 @@ def users_with_role(doctype, txt, searchfield, start, page_len, filters):
 		LIMIT %(page_len)s OFFSET %(start)s
 	""", {"roles": tuple(roles), "txt": f"%{txt or ''}%", "page_len": page_len, "start": start})
 
-
+# A) Teacher-facing list
 @frappe.whitelist()
 def get_student_support_guidance(student: str) -> list[dict]:
-	"""
-	Return published, open Student Support Guidance entries for a student (teacher-facing).
-
-	Access control:
-	- Allowed: Counselor, Academic Admin, System Manager
-	- Also allowed: teachers-of-record for the student in ANY academic year where there is an OPEN case.
-	"""
 	if not student:
 		return []
 
-	# ---- Permission guard ----
+	# --- permission guard unchanged (keep your current version) ---
 	user = frappe.session.user
 	user_roles = set(frappe.get_roles(user))
 	if not ({"Counselor", "Academic Admin", "System Manager"} & user_roles):
-		# Collect AYs from open cases for this student
 		open_case_ays = frappe.db.sql(
 			"""
 			SELECT DISTINCT IFNULL(rc.academic_year, '')
@@ -429,19 +421,11 @@ def get_student_support_guidance(student: str) -> list[dict]:
 			{"student": student},
 		)
 		ays = [row[0] for row in (open_case_ays or []) if row and row[0]]
-
-		# Build union of teachers-of-record across those AYs
-		teachers: set[str] = set()
-		for ay in ays:
-			for u in _get_teachers_of_record(student, ay):
-				if u:
-					teachers.add(u)
-
+		teachers = {u for ay in ays for u in _get_teachers_of_record(student, ay)}
 		if user not in teachers:
-			# Not a triager and not a current teacher-of-record ⇒ deny
 			frappe.throw(_("You are not permitted to view support guidance for this student."), frappe.PermissionError)
 
-	# ---- Data fetch (open + published, guidance entries only) ----
+	# --- include both Open & In Progress ---
 	rows = frappe.db.sql(
 		"""
 		SELECT e.name, e.entry_datetime, e.summary, e.assignee, e.status, e.author, rc.name AS case_name
@@ -450,46 +434,21 @@ def get_student_support_guidance(student: str) -> list[dict]:
 		WHERE rc.student = %(student)s
 		  AND e.entry_type = 'Student Support Guidance'
 		  AND IFNULL(e.is_published, 0) = 1
-		  AND IFNULL(e.status, 'Open') = 'Open'
+		  AND IFNULL(e.status, 'Open') IN ('Open','In Progress')
 		  AND IFNULL(rc.case_status, 'Open') != 'Closed'
 		ORDER BY e.entry_datetime DESC
 		""",
 		{"student": student},
 		as_dict=True,
 	)
-
 	return rows or []
 
-
-def on_doctype_update():
-	frappe.db.add_index("Referral Case", ["case_manager"])
-	frappe.db.add_index("Referral Case", ["student"])
-	frappe.db.add_index("Referral Case", ["school"])
-	frappe.db.add_index("Referral Case Entry", ["entry_type", "is_published", "status"])
-
-
+# B) Number card / button gate
 @frappe.whitelist()
 def card_open_published_guidance(student: str | None = None) -> dict:
-	"""
-	Count *open + published* Referral Case Entries of type 'Student Support Guidance'.
-
-	Usage:
-	- As a Number Card "Function": set path to
-	  ifitwala_ed.students.doctype.referral_case.referral_case.count_open_published_guidance
-	- Optional param `student` can be provided via client code or left empty for a global view.
-
-	Access rules (mirrors teacher-facing guardrails):
-	- Counselor / Academic Admin / System Manager:
-	    • If `student` is set -> count for that student
-	    • Else -> global count across all students
-	- Others (teachers):
-	    • If `student` is set -> allowed only if teacher-of-record in any open case AY
-	    • Else -> count across students where the user is teacher-of-record in the case AYs
-	"""
 	user = frappe.session.user
 	roles = set(frappe.get_roles(user))
 	is_triager = bool({"Counselor", "Academic Admin", "System Manager"} & roles)
-
 	params = {"etype": "Student Support Guidance"}
 
 	def _sql_count(where_extra: str, qparams: dict) -> int:
@@ -500,7 +459,7 @@ def card_open_published_guidance(student: str | None = None) -> dict:
 			JOIN `tabReferral Case` rc ON rc.name = e.parent
 			WHERE e.entry_type = %(etype)s
 			  AND IFNULL(e.is_published, 0) = 1
-			  AND IFNULL(e.status, 'Open') = 'Open'
+			  AND IFNULL(e.status, 'Open') IN ('Open','In Progress')
 			  AND IFNULL(rc.case_status, 'Open') != 'Closed'
 			  {where_extra}
 			""",
@@ -508,10 +467,8 @@ def card_open_published_guidance(student: str | None = None) -> dict:
 		)
 		return int(row[0][0]) if row else 0
 
-	# If a specific student is requested, permission-check like the snapshot API
 	if student:
 		if not is_triager:
-			# collect AYs of open cases for this student
 			open_case_ays = frappe.db.sql(
 				"""
 				SELECT DISTINCT IFNULL(rc.academic_year, '')
@@ -522,47 +479,15 @@ def card_open_published_guidance(student: str | None = None) -> dict:
 				{"student": student},
 			) or []
 			ays = [r[0] for r in open_case_ays if r and r[0]]
-
-			# user must be teacher-of-record in at least one of those AYs
-			allowed = False
-			for ay in ays:
-				if user in set(_get_teachers_of_record(student, ay)):
-					allowed = True
-					break
+			allowed = any(user in set(_get_teachers_of_record(student, ay)) for ay in ays)
 			if not allowed:
 				frappe.throw(_("You are not permitted to view support guidance for this student."), frappe.PermissionError)
+		return {"value": _sql_count("AND rc.student = %(student)s", {"student": student}), "fieldtype": "Int"}
 
-		# count for this student only
-		val = _sql_count("AND rc.student = %(student)s", {"student": student})
-		return {"value": val, "fieldtype": "Int"}
-
-	# Global view
 	if is_triager:
-		val = _sql_count("", {})
-		return {"value": val, "fieldtype": "Int"}
+		return {"value": _sql_count("", {}), "fieldtype": "Int"}
 
-	# Teacher global view: only across students where user is teacher-of-record in the case AYs
-	# Build a temp set of (student, ay) pairs the user teaches (based on Student Group membership)
-	pairs = frappe.db.sql(
-		"""
-		SELECT DISTINCT sgs.student, sg.academic_year
-		FROM `tabStudent Group` sg
-		JOIN `tabStudent Group Student` sgs ON sgs.parent = sg.name AND IFNULL(sgs.active, 1) = 1
-		JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sg.name
-		LEFT JOIN `tabInstructor` ins ON ins.name = sgi.instructor
-		JOIN `tabUser` u
-		  ON u.name = COALESCE(NULLIF(sgi.user_id, ''), NULLIF(ins.linked_user_id, ''))
-		 AND u.enabled = 1
-		WHERE u.name = %(user)s
-		""",
-		{"user": user},
-	) or []
-
-	if not pairs:
-		return {"value": 0, "fieldtype": "Int"}
-
-	# Count entries whose Referral Case matches any of those (student, ay) pairs and is open
-	# Use a WHERE EXISTS to avoid huge IN lists
+	# teacher-wide view
 	val = frappe.db.sql(
 		"""
 		SELECT COUNT(1)
@@ -570,16 +495,30 @@ def card_open_published_guidance(student: str | None = None) -> dict:
 		JOIN `tabReferral Case` rc ON rc.name = e.parent
 		WHERE e.entry_type = %(etype)s
 		  AND IFNULL(e.is_published, 0) = 1
-		  AND IFNULL(e.status, 'Open') = 'Open'
+		  AND IFNULL(e.status, 'Open') IN ('Open','In Progress')
 		  AND IFNULL(rc.case_status, 'Open') != 'Closed'
 		  AND EXISTS (
 		      SELECT 1
 		      FROM `tabStudent Group` sg2
 		      JOIN `tabStudent Group Student` sgs2 ON sgs2.parent = sg2.name AND IFNULL(sgs2.active, 1) = 1
-		      WHERE sgs2.student = rc.student
+		      JOIN `tabStudent Group Instructor` sgi2 ON sgi2.parent = sg2.name
+		      LEFT JOIN `tabInstructor` ins2 ON ins2.name = sgi2.instructor
+		      JOIN `tabUser` u2
+		         ON u2.name = COALESCE(NULLIF(sgi2.user_id, ''), NULLIF(ins2.linked_user_id, ''))
+		        AND u2.enabled = 1
+		      WHERE u2.name = %(user)s
 		        AND sg2.academic_year = IFNULL(rc.academic_year, sg2.academic_year)
+		        AND sgs2.student = rc.student
 		  )
 		""",
-		{"etype": "Student Support Guidance"},
+		{"etype": "Student Support Guidance", "user": user},
 	)
 	return {"value": int(val[0][0]) if val else 0, "fieldtype": "Int"}
+
+
+def on_doctype_update():
+	frappe.db.add_index("Referral Case", ["case_manager"])
+	frappe.db.add_index("Referral Case", ["student"])
+	frappe.db.add_index("Referral Case", ["school"])
+	frappe.db.add_index("Referral Case Entry", ["entry_type", "is_published", "status"])
+
