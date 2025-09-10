@@ -37,9 +37,6 @@ frappe.ui.form.on("Referral Case", {
 			frm.add_custom_button(__("Reopen Case"), () => quick_status(frm, "In Progress"), __("Status"));
 		}
 
-		// NOTE: No "Assign Case Manager", "Escalate", or "Mark Mandated Reporting" buttons.
-		// Triage staff edit the Case fields directly. Server will log timeline entries.
-
 		// Limit child-table assignee (grid picker) to Academic Staff
 		if (frm.fields_dict.entries && frm.fields_dict.entries.grid) {
 			frm.fields_dict.entries.grid.get_field("assignee").get_query = () => ({
@@ -69,7 +66,7 @@ function quick_status(frm, new_status) {
 	});
 }
 
-// Keep: add entry dialog (now includes “Student Support Guidance”)
+// Add entry dialog (now includes “Student Support Guidance”)
 function open_entry_dialog(frm) {
 	const d = new frappe.ui.Dialog({
 		title: __("New Case Entry"),
@@ -106,5 +103,3 @@ function open_entry_dialog(frm) {
 	});
 	d.show();
 }
-
-// ⬇️ Removed the open_promote_dialog(...) function completely (SSG retired)

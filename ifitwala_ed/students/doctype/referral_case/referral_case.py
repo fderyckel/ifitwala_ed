@@ -5,26 +5,12 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import cint, today, strip_html, cstr, now_datetime
+from frappe.utils import cint, today, strip_html, now_datetime
 from frappe.desk.form.assign_to import add as assign_add
 from frappe import _
 
-# Import snapshot rebuilder from SSG controller
-from ifitwala_ed.students.doctype.student_support_guidance.student_support_guidance import (
-	_rebuild_snapshot as ssg_rebuild_snapshot
-)
-
 CASE_MANAGER_TAG = "[CASE_MANAGER]"
 CASE_TASK_TAG = "[CASE_TASK]"
-GUIDANCE_ACK_TAG = "[GUIDANCE_ACK]"
-
-# Constants reused from SSG module (keep strings here to avoid tight coupling)
-SSG_PARENT = "Student Support Guidance"
-SSG_CHILD = "Support Guidance Item"
-TEACHER_SCOPE = "Teachers-of-student"
-CASE_TEAM_SCOPE = "Case team only"
-
-ALLOWED_ITEM_TYPES = {"Accommodation", "Strategy", "Trigger", "Safety Alert", "FYI"}
 
 class ReferralCase(Document):
 	def validate(self):
@@ -57,7 +43,6 @@ class ReferralCase(Document):
 
 	def before_save(self):
 		"""Enforce triage rules and write mirrored timeline entries on authoritative changes."""
-		# Need a previous snapshot to diff
 		old: "ReferralCase" | None = self.get_doc_before_save() if not self.is_new() else None
 		if not old:
 			return
@@ -131,8 +116,6 @@ class ReferralCase(Document):
 						msg_mr_ref = _("Mandated reporting was marked by {who} on {when}.").format(who=actor, when=now_str)
 						_add_timeline("Student Referral", self.referral, msg_mr_ref)
 
-
-
 # ── Helpers for triage guardrails & logging ──────────────────────────────────
 _SEV_ORDER = {"Low": 0, "Moderate": 1, "High": 2, "Critical": 3}
 def _rank(s: str | None) -> int:
@@ -160,8 +143,10 @@ def _user_can_triage(case_doc: "ReferralCase") -> bool:
 		return True
 	# current case manager can act
 	return bool(case_doc.get("case_manager") and case_doc.case_manager == frappe.session.user)
-# ─────────────────────────────────────────────────────────────────────────────
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Public APIs used by the client
+# ─────────────────────────────────────────────────────────────────────────────
 
 @frappe.whitelist()
 def quick_update_status(name: str, new_status: str):
@@ -194,7 +179,7 @@ def add_entry(name: str, entry_type: str, summary: str, assignee: str | None = N
 	row.summary = summary
 	row.assignee = assignee
 	row.status = status or "Open"
-	row.author = frappe.session.user 
+	row.author = frappe.session.user
 	if attachment:
 		row.attachments = attachment
 	doc.save(ignore_permissions=True)
@@ -255,14 +240,13 @@ def escalate(name: str, severity: str, note: str = ""):
 
 	return {"ok": True, "severity": target}
 
-
 @frappe.whitelist()
 def flag_mandated_reporting(name: str, referral: str | None = None, note: str = ""):
 	"""Authoritative: record mandated reporting on the case and log to both timelines."""
 	doc = frappe.get_doc("Referral Case", name)
 	_ensure_case_action_permitted(doc)
 
-	# Keep your existing lightweight entry (optional documentation)
+	# Lightweight entry (optional documentation)
 	row = doc.append("entries", {})
 	row.entry_type = "Other"
 	row.summary = "Mandated reporting completed/triggered."
@@ -278,7 +262,6 @@ def flag_mandated_reporting(name: str, referral: str | None = None, note: str = 
 		msg_case += " " + _("Note") + f": {safe_note}"
 	_add_timeline("Referral Case", doc.name, msg_case)
 
-	# Mirror to Student Referral if available (prefer arg, else from case link)
 	ref_name = referral or doc.get("referral")
 	if ref_name and frappe.db.exists("Student Referral", ref_name):
 		msg_ref = _("Mandated reporting was marked by {who} on {when}.").format(who=actor, when=ts)
@@ -286,207 +269,13 @@ def flag_mandated_reporting(name: str, referral: str | None = None, note: str = 
 			msg_ref += " " + _("Note") + f": {safe_note}"
 		_add_timeline("Student Referral", ref_name, msg_ref)
 
-	# Keep your manager assignment behavior unchanged
 	manager = doc.case_manager or _pick_manager_from_assignments(name) or _pick_any_counselor()
 	if manager:
 		_assign_case_manager(name, manager, description="Mandated reporting flagged", priority="High")
 
 	return {"ok": True}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Promote a case entry to teacher-facing guidance (with versioned ack)
-# ─────────────────────────────────────────────────────────────────────────────
-
-@frappe.whitelist()
-def promote_entry_to_guidance(
-	case_name: str,
-	entry_rowname: str,
-	item_type: str,
-	teacher_text: str,
-	high_priority: int = 0,
-	requires_ack: int = 0,
-	effective_from: str | None = None,
-	expires_on: str | None = None,
-	confidentiality: str = TEACHER_SCOPE,
-	publish: int = 1
-):
-	"""
-	Create or update a Student Support Guidance record for the student+AY and append a Guidance Item.
-	- Enforces action permission (Counselor / Academic Admin / Case Manager).
-	- Rebuilds snapshot after change.
-	- Issues/upserts native `assign_to` ToDos on the SSG parent, per teacher-of-record, versioned by ack_version.
-	"""
-	# Guards
-	doc = frappe.get_doc("Referral Case", case_name)
-	_ensure_case_action_permitted(doc)
-
-	if item_type not in ALLOWED_ITEM_TYPES:
-		frappe.throw(_("Invalid item type."))
-
-	if confidentiality not in (TEACHER_SCOPE, CASE_TEAM_SCOPE):
-		frappe.throw(_("Invalid confidentiality scope."))
-
-	# Resolve parent SSG doc (student + AY)
-	ssg = _get_or_create_support_guidance(doc.student, doc.academic_year, publish=cint(publish))
-
-	# Append child item
-	row = ssg.append("items", {})
-	row.item_type = item_type
-	row.teacher_text = teacher_text
-	row.confidentiality = confidentiality
-	row.high_priority = cint(high_priority)
-	row.requires_ack = cint(requires_ack)
-	if effective_from:
-		row.effective_from = effective_from
-	if expires_on:
-		row.expires_on = expires_on
-	row.source_case = case_name
-	row.source_entry = entry_rowname
-	try:
-		row.author = frappe.session.user
-	except Exception:
-		pass
-
-	# Persist parent + children
-	ssg.status = "Published" if cint(publish) else (ssg.status or "Draft")
-	ssg.save(ignore_permissions=True)
-
-	# Rebuild denormalized snapshot (fast teacher reads)
-	try:
-		ssg = frappe.get_doc(SSG_PARENT, ssg.name)  # rehydrate
-		ssg_rebuild_snapshot(ssg)
-	except Exception:
-		pass
-
-	# Create/update acknowledgment assignments (teacher-visible & currently effective items only)
-	if cint(requires_ack) and confidentiality == TEACHER_SCOPE:
-		ack_count = _count_effective_teacher_ack_items(ssg.name)
-		if ack_count > 0:
-			# bump ack_version and store counters (no modified bump)
-			curr_ver = cint(frappe.db.get_value(SSG_PARENT, ssg.name, "ack_version") or 0)
-			new_ver = curr_ver + 1
-			frappe.db.set_value(SSG_PARENT, ssg.name, {"ack_version": new_ver, "ack_required_count": ack_count})
-
-			# determine priority for assignment
-			assign_priority = "High" if (item_type == "Safety Alert" or cint(high_priority)) else "Medium"
-
-			# upsert per-teacher ToDos for this version; close older ones
-			teachers = _get_teachers_of_record(doc.student, doc.academic_year)
-			_ensure_ack_assignments(ssg.name, new_ver, ack_count, teachers, assign_priority)
-
-	return {"ok": True, "support_guidance": ssg.name, "item_rowname": row.name}
-
-# ── Helpers for promotion/ack ────────────────────────────────────────────────
-
-def _count_effective_teacher_ack_items(ssg_name: str) -> int:
-	"""Count items on the SSG that are teacher-visible, require ack, and are effective today."""
-	rows = frappe.get_all(
-		SSG_CHILD,
-		filters={"parent": ssg_name, "parenttype": SSG_PARENT, "confidentiality": TEACHER_SCOPE, "requires_ack": 1},
-		fields=["name", "effective_from", "expires_on"]
-	)
-	if not rows:
-		return 0
-	today_str = today()
-	def eff(r):
-		start_ok = not r.get("effective_from") or cstr(r["effective_from"]) <= today_str
-		end_ok = not r.get("expires_on") or cstr(r["expires_on"]) >= today_str
-		return start_ok and end_ok
-	return sum(1 for r in rows if eff(r))
-
-def _ensure_ack_assignments(ssg_name: str, ack_version: int, ack_required_count: int, teachers: list[str], priority: str = "Medium"):
-	"""
-	For the given SSG + version, ensure each teacher has exactly one OPEN ToDo like:
-	[GUIDANCE_ACK vX] N guidance item(s) to review
-	Close any older GUIDANCE_ACK ToDos on the same SSG.
-	"""
-	if not teachers:
-		return
-
-	# Fetch existing open ToDos for this SSG
-	open_todos = frappe.get_all(
-		"ToDo",
-		filters={"reference_type": SSG_PARENT, "reference_name": ssg_name, "status": "Open"},
-		fields=["name", "allocated_to", "description"]
-	) or []
-
-	current_prefix = f"{GUIDANCE_ACK_TAG} v{ack_version}"
-	current_holders = set()
-
-	for td in open_todos:
-		desc = (td.description or "").strip()
-		if desc.startswith(current_prefix):
-			if td.allocated_to:
-				current_holders.add(td.allocated_to)
-		elif desc.startswith(GUIDANCE_ACK_TAG):
-			# Close older ack cycles
-			frappe.db.set_value("ToDo", td.name, "status", "Closed", update_modified=False)
-
-	# Create missing ToDos for this version
-	label = f"{current_prefix} — {ack_required_count} guidance item(s) to review"
-	for user in teachers:
-		if user in current_holders:
-			continue
-		assign_add({
-			"doctype": SSG_PARENT,
-			"name": ssg_name,
-			"assign_to": [user],
-			"priority": priority,
-			"description": label,
-			"notify": 1
-		})
-
-def _get_or_create_support_guidance(student: str, academic_year: str, publish: int = 1):
-	name = frappe.db.get_value(SSG_PARENT, {"student": student, "academic_year": academic_year}, "name")
-	if name:
-		return frappe.get_doc(SSG_PARENT, name)
-	# Create lean parent
-	doc = frappe.new_doc(SSG_PARENT)
-	doc.student = student
-	doc.academic_year = academic_year
-	doc.status = "Published" if cint(publish) else "Draft"
-	doc.insert(ignore_permissions=True)
-	return doc
-
-def _get_teachers_of_record(student: str, ay: str) -> list[str]:
-	"""
-	Return distinct, ENABLED user IDs for instructors teaching the student's groups in the given AY.
-	Schema (your JSON):
-	- Student Group Instructor.user_id  ← fetched from Instructor.linked_user_id (Data)
-	- Instructor.linked_user_id        ← Data
-	- Student Group.academic_year
-	- Student Group Student.active     ← Check (defaults to 1)
-	"""
-	if not student or not ay:
-		return []
-
-	rows = frappe.db.sql(
-		"""
-		SELECT DISTINCT u.name AS user_id
-		FROM `tabStudent Group Student` sgs
-		JOIN `tabStudent Group` sg
-		  ON sg.name = sgs.parent
-		JOIN `tabStudent Group Instructor` sgi
-		  ON sgi.parent = sg.name
-		LEFT JOIN `tabInstructor` ins
-		  ON ins.name = sgi.instructor
-		JOIN `tabUser` u
-		  ON u.name = COALESCE(NULLIF(sgi.user_id, ''), NULLIF(ins.linked_user_id, ''))
-		 AND u.enabled = 1
-		WHERE sgs.student = %(student)s
-		  AND sg.academic_year = %(ay)s
-		  AND IFNULL(sg.status, 'Active') = 'Active'
-		  AND IFNULL(sgs.active, 1) = 1
-		""",
-		{"student": student, "ay": ay},
-	) or []
-
-	return [r[0] for r in rows]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Existing helpers
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Permissions & assignment helpers ─────────────────────────────────────────
 
 @frappe.whitelist()
 def set_manager(name: str, user: str):
@@ -500,23 +289,17 @@ def set_manager(name: str, user: str):
 	_assign_case_manager(name, user, description="Assigned via action", priority="Medium")
 	return {"ok": True}
 
-
 def _ensure_case_action_permitted(doc: "ReferralCase"):
 	"""Only Counselor / Academic Admin OR the current case_manager may act.
 	System Manager intentionally excluded for safeguarding privacy."""
 	user = frappe.session.user
 	roles = set(frappe.get_roles(user))
 
-	# Authorised roles
 	if {"Counselor", "Academic Admin"} & roles:
 		return
-
-	# Case manager can always act on their case
 	if doc.case_manager and doc.case_manager == user:
 		return
-
 	frappe.throw(_("You are not permitted to perform this action on the case."))
-
 
 def _assign_case_manager(case_name: str, user: str, description: str = "Primary owner", priority: str = "Medium"):
 	allowed = ("Counselor", "Academic Admin")
@@ -535,7 +318,6 @@ def _assign_case_manager(case_name: str, user: str, description: str = "Primary 
 	ref = frappe.db.get_value("Referral Case", case_name, "referral")
 	if ref:
 		frappe.db.set_value("Student Referral", ref, "assigned_case_manager", user, update_modified=False)
-
 
 def _close_manager_todos_only(case_name: str):
 	rows = frappe.get_all(
@@ -567,172 +349,42 @@ def _pick_any_counselor() -> str | None:
 	enabled = frappe.get_all("User", filters={"name": ["in", users], "enabled": 1}, pluck="name")
 	return enabled[0] if enabled else None
 
-
-def _reconcile_ack_assignments_for_current_version(ssg_name: str, teacher_users: set[str]):
+# ── Useful, SSG-agnostic helper kept for later teacher scoping ──────────────
+def _get_teachers_of_record(student: str, ay: str) -> list[str]:
 	"""
-	Keep Open GUIDANCE_ACK ToDos in sync for CURRENT ack_version only.
-	- No version bump.
-	- Bulk DB reads/writes.
-	- No frappe.get_all(); uses db.get_value / db.sql.
-	"""
-	teacher_users = set(teacher_users or ())
-
-	# Fast reads (single-value)
-	curr_ver = cint(frappe.db.get_value(SSG_PARENT, ssg_name, "ack_version") or 0)
-	if curr_ver <= 0:
-		return
-
-	ack_required_count = cint(frappe.db.get_value(SSG_PARENT, ssg_name, "ack_required_count") or 0)
-	if ack_required_count <= 0 and not teacher_users:
-		# Nothing to assign or reconcile
-		return
-
-	# Pull all Open ACK todos for this SSG in one query
-	# We fetch only the columns we use and filter in SQL for ACK prefix.
-	all_ack_rows = frappe.db.sql(
-		"""
-		SELECT name, allocated_to, description
-		FROM `tabToDo`
-		WHERE reference_type = %s
-		  AND reference_name = %s
-		  AND status = 'Open'
-		  AND description LIKE %s
-		""",
-		(SSG_PARENT, ssg_name, f"{GUIDANCE_ACK_TAG}%"),
-		as_dict=True,
-	)
-
-	current_prefix = f"{GUIDANCE_ACK_TAG} v{curr_ver}"
-	current_holders: set[str] = set()
-	stale_to_close: list[str] = []
-
-	for r in all_ack_rows:
-		alloc = (r.get("allocated_to") or "").strip()
-		desc = (r.get("description") or "").strip()
-
-		# Close any ACK ToDo for users no longer in teacher_users
-		if alloc and alloc not in teacher_users:
-			stale_to_close.append(r["name"])
-			continue
-
-		# Track who already holds the current version
-		if alloc and desc.startswith(current_prefix):
-			current_holders.add(alloc)
-
-	# Bulk close stale ToDos (if any)
-	if stale_to_close:
-		frappe.db.sql(
-			"UPDATE `tabToDo` SET status='Closed' WHERE name IN %(names)s",
-			{"names": tuple(stale_to_close)},
-		)
-
-	# Create missing ToDos for teachers who don't have the current version
-	if ack_required_count > 0 and teacher_users:
-		missing = teacher_users - current_holders
-		if missing:
-			label = f"{GUIDANCE_ACK_TAG} v{curr_ver} — {ack_required_count} guidance item(s) to review"
-			for user in sorted(missing):
-				# assign_add is already lean; one insert per missing user
-				assign_add({
-					"doctype": SSG_PARENT,
-					"name": ssg_name,
-					"assign_to": [user],
-					"priority": "Medium",
-					"description": label,
-					"notify": 1,
-				})
-
-
-def _sync_ssg_shares(ssg_name: str, teacher_users: set[str]):
-	"""
-	Align SSG DocShare with teachers-of-record (read-only access).
-	- Single read of existing shares
-	- Bulk delete for stale users
-	- Insert only missing shares
-	"""
-	teacher_users = {u.strip() for u in (teacher_users or set()) if u and u.strip()}
-
-	# Pull all shares for this doc in one fast query
-	rows = frappe.db.sql(
-		"""
-		SELECT name, user, IFNULL(everyone, 0) AS everyone
-		FROM `tabDocShare`
-		WHERE share_doctype = %s
-		  AND share_name = %s
-		""",
-		(SSG_PARENT, ssg_name),
-		as_dict=True,
-	)
-
-	existing_user_shares = { (r["user"] or "").strip() for r in rows if r.get("user") }
-	# We do not touch 'everyone' shares (if any)
-	# Compute removals (stale) and additions (missing)
-	users_to_remove = existing_user_shares - teacher_users
-	users_to_add = teacher_users - existing_user_shares
-
-	# Bulk delete stale shares (user-specific only)
-	if users_to_remove:
-		frappe.db.sql(
-			"""
-			DELETE FROM `tabDocShare`
-			WHERE share_doctype = %s
-			  AND share_name = %s
-			  AND user IN %(users)s
-			""",
-			(SSG_PARENT, ssg_name, {"users": tuple(users_to_remove)}),
-		)
-
-	# Insert missing shares (small N; safe to loop)
-	for user in sorted(users_to_add):
-		frappe.get_doc({
-			"doctype": "DocShare",
-			"user": user,
-			"share_doctype": SSG_PARENT,
-			"share_name": ssg_name,
-			"read": 1, "write": 0, "share": 0, "submit": 0,
-		}).insert(ignore_permissions=True)
-
-def _sync_ssg_access_for(student: str, ay: str, reason: str | None = None):
-	"""
-	Sync SSG access when student/teacher membership changes.
-	- Finds SSG (student+ay) via single-value lookup
-	- Computes teachers-of-record (optimized JOIN in _get_teachers_of_record)
-	- Reconciles current ack ToDos (no version bump)
-	- Aligns DocShare grants (read-only)
+	Return distinct, ENABLED user IDs for instructors teaching the student's groups in the given AY.
 	"""
 	if not student or not ay:
-		return
+		return []
+	rows = frappe.db.sql(
+		"""
+		SELECT DISTINCT u.name AS user_id
+		FROM `tabStudent Group Student` sgs
+		JOIN `tabStudent Group` sg
+		  ON sg.name = sgs.parent
+		JOIN `tabStudent Group Instructor` sgi
+		  ON sgi.parent = sg.name
+		LEFT JOIN `tabInstructor` ins
+		  ON ins.name = sgi.instructor
+		JOIN `tabUser` u
+		  ON u.name = COALESCE(NULLIF(sgi.user_id, ''), NULLIF(ins.linked_user_id, ''))
+		 AND u.enabled = 1
+		WHERE sgs.student = %(student)s
+		  AND sg.academic_year = %(ay)s
+		  AND IFNULL(sg.status, 'Active') = 'Active'
+		  AND IFNULL(sgs.active, 1) = 1
+		""",
+		{"student": student, "ay": ay},
+	) or []
+	return [r[0] for r in rows]
 
-	# Fast existence/name fetch
-	ssg_name = frappe.db.get_value(SSG_PARENT, {"student": student, "academic_year": ay}, "name")
-	if not ssg_name:
-		return
-
-	# Compute current teachers (distinct user IDs)
-	teachers = set(_get_teachers_of_record(student, ay))
-
-	# Keep current ack cycle assignments in sync (no bump)
-	_reconcile_ack_assignments_for_current_version(ssg_name, teachers)
-
-	# Ensure access via DocShare (read-only)
-	_sync_ssg_shares(ssg_name, teachers)
-
-	# Non-blocking, optional log
-	if reason:
-		try:
-			frappe.logger("ifitwala_ed").info(
-				f"[SSG sync] {reason} student={student} ay={ay} ssg={ssg_name} teachers={len(teachers)}"
-			)
-		except Exception:
-			pass
-
+# ─────────────────────────────────────────────────────────────────────────────
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def users_with_role(doctype, txt, searchfield, start, page_len, filters):
 	params = filters or {}
 	roles = params.get("roles") or params.get("role") or ["Counselor"]
-	# normalize roles to a list
 	if isinstance(roles, str):
 		roles = [r.strip() for r in roles.split(",") if r.strip()] or ["Counselor"]
 
@@ -748,6 +400,31 @@ def users_with_role(doctype, txt, searchfield, start, page_len, filters):
 		ORDER BY u.full_name, u.name
 		LIMIT %(page_len)s OFFSET %(start)s
 	""", {"roles": tuple(roles), "txt": f"%{txt or ''}%", "page_len": page_len, "start": start})
+
+@frappe.whitelist()
+def get_student_support_guidance(student: str) -> list[dict]:
+	"""Return published, open Student Support Guidance entries for a student (teacher-facing)."""
+	if not student:
+		return []
+
+	rows = frappe.db.sql(
+		"""
+		SELECT e.name, e.entry_datetime, e.summary, e.assignee, e.status, e.author, rc.name AS case_name
+		FROM `tabReferral Case Entry` e
+		JOIN `tabReferral Case` rc ON rc.name = e.parent
+		WHERE rc.student = %(student)s
+		  AND e.entry_type = 'Student Support Guidance'
+		  AND e.is_published = 1
+		  AND e.status = 'Open'
+		  AND rc.case_status != 'Closed'
+		ORDER BY e.entry_datetime DESC
+		""",
+		{"student": student},
+		as_dict=True,
+	)
+
+	return rows or []
+
 
 
 def on_doctype_update():
