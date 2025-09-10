@@ -12,29 +12,34 @@ frappe.ui.form.on("Student", {
 	},
 
 	refresh(frm) {
+		// enable dynamic linking for address/contact
 		frappe.dynamic_link = { doc: frm.doc, fieldname: "name", doctype: "Student" };
 
-		// Keep: load/clear address & contact, plus Student Contact button
+		// Load or clear address & contact; add "Student Contact" button independently of Support
 		if (!frm.is_new()) {
 			frappe.contacts.render_address_and_contact(frm);
-			frappe
-				.call({
-					method: "ifitwala_ed.students.doctype.student.student.get_contact_linked_to_student",
-					args: { student_name: frm.doc.name }
-				})
-				.then((r) => {
-					if (r && r.message) {
-						frm.add_custom_button(__("Student Contact"), () => {
-							frappe.set_route("Form", "Contact", r.message);
-						});
-					}
-				});
+			frappe.call({
+				method: "ifitwala_ed.students.doctype.student.student.get_contact_linked_to_student",
+				args: { student_name: frm.doc.name }
+			}).then((r) => {
+				if (r && r.message) {
+					frm.add_custom_button(__("Student Contact"), () => {
+						frappe.set_route("Form", "Contact", r.message);
+					});
+				}
+			});
 		} else {
 			frappe.contacts.clear_address_and_contact(frm);
 		}
 
 		// --- Support button (only if there are open, published SSG entries) ---
 		if (!frm.is_new()) {
+			// keep a private handle; do NOT touch frm.custom_buttons
+			if (frm.__ifitwala_support_btn) {
+				try { frm.__ifitwala_support_btn.remove(); } catch (e) {}
+				frm.__ifitwala_support_btn = null;
+			}
+
 			const canSeeSupport =
 				frappe.user.has_role("Counselor") ||
 				frappe.user.has_role("Academic Admin") ||
@@ -42,35 +47,23 @@ frappe.ui.form.on("Student", {
 				frappe.user.has_role("Instructor") ||
 				frappe.user.has_role("Academic Staff");
 
-			// Remove any prior button to avoid stale UI on role/date changes
-			if (!frm.custom_buttons) frm.custom_buttons = {};
-			if (frm.custom_buttons.__support_btn) {
-				try { frm.custom_buttons.__support_btn.remove(); } catch (e) {}
-				delete frm.custom_buttons.__support_btn;
-			}
-
 			if (canSeeSupport) {
-				frappe
-					.call({
-						method:
-							"ifitwala_ed.students.doctype.referral_case.referral_case.card_open_published_guidance",
-						args: { student: frm.doc.name }
-					})
-					.then((r) => {
-						const n = (r && r.message && cint(r.message.value)) || 0;
-						if (n > 0) {
-							const btn = frm.add_custom_button(__("Support"), () => open_support_modal(frm));
-							btn.removeClass("btn-default btn-primary").addClass("btn-info");
-							btn.find("span").prepend(frappe.utils.icon("book-open", "sm"));
-							frm.custom_buttons.__support_btn = btn;
-						}
-					})
-					.catch(() => {
-						// silently ignore (permissions or transient error)
-					});
+				frappe.call({
+					method: "ifitwala_ed.students.doctype.referral_case.referral_case.card_open_published_guidance",
+					args: { student: frm.doc.name }
+				}).then((r) => {
+					const n = (r && r.message && cint(r.message.value)) || 0;
+					if (n > 0) {
+						const btn = frm.add_custom_button(__("Support"), () => open_support_modal(frm));
+						btn.removeClass("btn-default btn-primary").addClass("btn-info");
+						btn.find("span").prepend(frappe.utils.icon("book-open", "sm"));
+						frm.__ifitwala_support_btn = btn; // store only our own button
+					}
+				}).catch(() => {
+					/* ignore permission/transient errors; do not affect other buttons */
+				});
 			}
 		}
-
 	}
 });
 
