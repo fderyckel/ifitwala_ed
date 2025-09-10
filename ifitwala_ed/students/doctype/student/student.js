@@ -53,7 +53,7 @@ frappe.ui.form.on("Student", {
 				frappe
 					.call({
 						method:
-							"ifitwala_ed.students.doctype.referral_case.referral_case.count_open_published_guidance",
+							"ifitwala_ed.students.doctype.referral_case.referral_case.card_open_published_guidance",
 						args: { student: frm.doc.name }
 					})
 					.then((r) => {
