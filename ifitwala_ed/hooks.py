@@ -31,7 +31,7 @@ app_include_js = [
   "/assets/ifitwala_ed/js/initial_setup.js"
 ]
 
-app_include_css = "/assets/ifitwala_ed/dist/desk_overrides.bundle.css"
+#app_include_css = "/assets/ifitwala_ed/dist/desk_overrides.bundle.css"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/ifitwala/css/ifitwala.css"
@@ -143,7 +143,7 @@ has_permission = {
 	"Academic Year": "ifitwala_ed.school_settings.doctype.academic_year.academic_year.has_permission",
 	"Program": "ifitwala_ed.curriculum.doctype.program.program.has_permission", 
 	"Course": "ifitwala_ed.curriculum.doctype.course.course.has_permission", 
-		"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.has_permission", 
+	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.has_permission", 
 }
 
 default_roles = [
