@@ -1,0 +1,131 @@
+<!-- base_template: ifitwala_ed/templates/sp_base.html -->
+ 
+{% set page_title = _("Wellbeing") %}
+
+{% block page_actions %}{% endblock %}
+
+{% block content %}
+<section class="mb-3" aria-labelledby="crisisHelp">
+	<div class="alert alert-danger d-flex align-items-start gap-2 mb-0">
+		<i class="bi bi-exclamation-triangle-fill fs-5"></i>
+		<div>
+			<h2 id="crisisHelp" class="h6 mb-1">{{ _("Need immediate help?") }}</h2>
+			<p class="mb-0 small">
+				{{ _("If you or someone else is in immediate danger, contact local emergency services right now. This page is not monitored 24/7.") }}
+			</p>
+		</div>
+	</div>
+</section>
+
+<section class="mb-4" aria-labelledby="actionsLabel">
+	<h2 id="actionsLabel" class="h5 mb-2">{{ _("Talk to us") }}</h2>
+	<div class="row g-3">
+		<div class="col-12 col-lg-6">
+			<div class="card h-100 shadow-sm">
+				<div class="card-body d-flex flex-column">
+					<div class="d-flex align-items-start justify-content-between mb-2">
+						<h3 class="h6 mb-0">{{ _("Self-Referral") }}</h3>
+						<i class="bi bi-chat-dots"></i>
+					</div>
+					<p class="text-muted small flex-grow-1 mb-2">
+						{{ _("Tell the counselor team what’s going on. It’s confidential to the case team.") }}
+					</p>
+					{% if can_self_refer %}
+						<a class="btn btn-primary btn-sm align-self-start" href="{{ portal_root }}/self_referral">
+							<i class="bi bi-send me-1"></i>{{ _("Start self-referral") }}
+						</a>
+					{% else %}
+						<button class="btn btn-secondary btn-sm align-self-start" type="button" disabled>
+							<i class="bi bi-slash-circle me-1"></i>{{ _("Self-referral is currently disabled") }}
+						</button>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+
+		<div class="col-12 col-lg-6">
+			<div class="card h-100 shadow-sm">
+				<div class="card-body d-flex flex-column">
+					<div class="d-flex align-items-start justify-content-between mb-2">
+						<h3 class="h6 mb-0">{{ _("Concern for a friend") }}</h3>
+						<i class="bi bi-people"></i>
+					</div>
+					<p class="text-muted small flex-grow-1 mb-2">
+						{{ _("Worried about a friend? You can share what you’re seeing so we can help.") }}
+					</p>
+					<a class="btn btn-outline-primary btn-sm align-self-start" href="{{ portal_root }}/self_referral">
+						<i class="bi bi-arrow-right-circle me-1"></i>{{ _("Report a concern") }}
+					</a>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="mb-4" aria-labelledby="resourcesLabel">
+	<h2 id="resourcesLabel" class="h5 mb-2">{{ _("Resources") }}</h2>
+	<div class="row g-3">
+		<!-- Placeholder cards; fill later -->
+		<div class="col-12 col-md-6 col-xl-4">
+			<div class="card h-100 shadow-sm">
+				<div class="card-body d-flex flex-column">
+					<div class="d-flex align-items-start justify-content-between mb-2">
+						<h3 class="h6 mb-0">{{ _("How we help") }}</h3>
+						<i class="bi bi-shield-heart"></i>
+					</div>
+					<p class="text-muted small flex-grow-1 mb-2">
+						{{ _("What to expect after you contact us (response times, confidentiality).") }}
+					</p>
+					<a class="btn btn-sm btn-outline-secondary align-self-start" href="#">{{ _("Read more") }}</a>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-12 col-md-6 col-xl-4">
+			<div class="card h-100 shadow-sm">
+				<div class="card-body d-flex flex-column">
+					<div class="d-flex align-items-start justify-content-between mb-2">
+						<h3 class="h6 mb-0">{{ _("Tips & self-care") }}</h3>
+						<i class="bi bi-journal-medical"></i>
+					</div>
+					<p class="text-muted small flex-grow-1 mb-2">
+						{{ _("Sleep, stress, friendships, study balance—short guides to feel better.") }}
+					</p>
+					<a class="btn btn-sm btn-outline-secondary align-self-start" href="#">{{ _("Explore") }}</a>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-12 col-md-6 col-xl-4">
+			<div class="card h-100 shadow-sm">
+				<div class="card-body d-flex flex-column">
+					<div class="d-flex align-items-start justify-content-between mb-2">
+						<h3 class="h6 mb-0">{{ _("Policies & support") }}</h3>
+						<i class="bi bi-file-earmark-text"></i>
+					</div>
+					<p class="text-muted small flex-grow-1 mb-2">
+						{{ _("School policies and who to contact for specialized help.") }}
+					</p>
+					<a class="btn btn-sm btn-outline-secondary align-self-start" href="#">{{ _("View") }}</a>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="mb-4" aria-labelledby="checkinsLabel">
+	<h2 id="checkinsLabel" class="h5 mb-2">{{ _("Check-ins") }}</h2>
+	<div class="card shadow-sm">
+		<div class="card-body">
+			<p class="text-muted small mb-2">
+				{{ _("Quick wellbeing check-ins coming soon.") }}
+			</p>
+			<div class="d-flex gap-2">
+				<button class="btn btn-outline-secondary btn-sm" type="button" disabled>{{ _("I feel great") }}</button>
+				<button class="btn btn-outline-secondary btn-sm" type="button" disabled>{{ _("Not my best day") }}</button>
+				<button class="btn btn-outline-secondary btn-sm" type="button" disabled>{{ _("I’d like to talk") }}</button>
+			</div>
+		</div>
+	</div>
+</section>
+{% endblock %}
