@@ -226,13 +226,22 @@ def create_self_referral(**kwargs):
 	# Insert ignoring perms (students may not have Create on this doctype)
 	ref.insert(ignore_permissions=True)
 
+	# Submit so it lands as actionable (docstatus=1)
+	try:
+		ref.flags.ignore_permissions = True  # allow submit as portal user
+		ref.submit()
+	except Exception:
+		# If submit fails, don't silently leave a Draft around
+		frappe.log_error(frappe.get_traceback(), "Self Referral: submit failed")
+		frappe.throw(_("We couldn't finalize your referral. Please contact the counselor or try again."))
+
 	# Try to notify, but never block creation
 	try:
 		_notify_counselors(ref.name)
 	except Exception:
 		frappe.log_error(frappe.get_traceback(), "Self Referral: notify failed")
 
-		return {"name": ref.name}
+	return {"name": ref.name}
 
 def _resolve_subject_student(candidate: str | None) -> str | None:
 	if not candidate:
