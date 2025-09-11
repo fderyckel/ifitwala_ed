@@ -575,39 +575,50 @@ def on_doctype_update():
 	frappe.db.add_index("Student Referral", ["sla_due"])
 
 
-
-PRIV_ROLES = {"Counselor"} 
+# Define which roles can see all referrals
+PRIV_ROLES = {"Counselor"}
 
 def get_permission_query_conditions(user: str | None = None) -> str | None:
-	user = user or frappe.session.user
+    """
+    Return SQL fragment to restrict list queries on Student Referral.
+    - Counselors/Admins see all referrals.
+    - Others see only referrals they created and never see self-referrals.
+    """
+    user = user or frappe.session.user
+    user_roles = set(frappe.get_roles(user) or [])
 
-	# Admin special-case: treat like any other non-privileged user unless explicitly listed
-	if user == "Administrator":
-		# fall through to non-privileged rule; no blanket bypass
-		pass
+    # Privileged roles get no filter (see everything)
+    if PRIV_ROLES.intersection(user_roles):
+        return None
 
-	user_roles = set(frappe.get_roles(user))
-	if PRIV_ROLES & user_roles:
-		return None  # full visibility for privileged roles
+    # Restrict to docs created by this user and not self-referrals ("Student (Self)")
+    escaped_user = frappe.db.escape(user)
+    return (
+        f"`tabStudent Referral`.owner = {escaped_user} "
+        f"AND IFNULL(`tabStudent Referral`.`referral_source`, '') != 'Student (Self)'"
+    )
 
-	# Non-privileged users only see referrals they submitted.
-	# We allow either the doc owner or the explicit 'referrer' (belt & suspenders).
-	esc_user = frappe.db.escape(user)
-	return f"(`tabStudent Referral`.owner = {esc_user} OR `tabStudent Referral`.referrer = {esc_user})"
+def has_permission(doc, ptype: str = "read", user: str | None = None) -> bool:
+    """
+    Decide if a user may read/write this specific referral.
+    - Counselors/Admins can read/write all.
+    - Students may not read any referral.
+    - Others may read/write only if they own the document and it's not a self-referral.
+    """
+    user = user or frappe.session.user
+    user_roles = set(frappe.get_roles(user) or [])
 
+    # Privileged roles can read/write everything
+    if PRIV_ROLES.intersection(user_roles):
+        return True
 
-def has_permission(doc, ptype: str, user: str | None = None) -> bool:
-	user = user or frappe.session.user
-	user_roles = set(frappe.get_roles(user))
+    # Students (portal users) can submit but not read
+    if "Student" in user_roles:
+        return False
 
-	# Privileged: full
-	if PRIV_ROLES & user_roles:
-		return True
+    # Permit owner access only for non self-referral
+    if doc.owner == user and (doc.referral_source or "") != "Student (Self)":
+        return True
 
-	# Non-privileged: only own docs (owner or referrer)
-	if (doc.owner == user) or ((doc.get('referrer') or '') == user):
-		# Optionally prevent them from Cancel/Amend if you want:
-		# if ptype in {"cancel", "amend"}: return False
-		return True
+    return False
 
-	return False
