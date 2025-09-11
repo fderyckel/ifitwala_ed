@@ -1,35 +1,40 @@
 /* ——— Counselor workspace: Number Card accents ——— */
 
-/* --- base: hit all number cards safely --- */
-[number_card_name] > .widget.number-widget-box,
-[number_card_name] > .widget.number-widget-box .widget-body {
-  border-radius: 12px;
+/* Base: make number cards a bit rounder */
+[number_card_name] > .widget.number-widget-box {
+	border-radius: 12px;
+	overflow: hidden; /* ensures the left stripe doesn’t get clipped by inner boxes */
 }
 
 /* Untriaged Referrals (amber) */
 [number_card_name="Untriaged Referrals"] > .widget.number-widget-box,
+[number_card_name="Untriaged Referrals"] > .widget.number-widget-box .widget-head,
 [number_card_name="Untriaged Referrals"] > .widget.number-widget-box .widget-body {
-  background: #fff8eb !important;
-  border: 1px solid rgba(0,0,0,.06) !important;
-  border-left: 6px solid #f59e0b !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+	background: #fff8eb !important;
 }
 
-/* Untriaged (Breaching SLA) (red) — attribute selector avoids parentheses issues */
-[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"]
-  > .widget.number-widget-box,
-[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"]
-  > .widget.number-widget-box .widget-body {
-  background: #fdecea !important;
-  border: 1px solid rgba(0,0,0,.06) !important;
-  border-left: 6px solid #e55353 !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+[number_card_name="Untriaged Referrals"] > .widget.number-widget-box {
+	border: 1px solid rgba(0,0,0,.06) !important;
+	border-left: 6px solid #f59e0b !important;
+	box-shadow: 0 1px 2px rgba(0,0,0,.05);
 }
 
-/* value emphasis — robust to markup variations */
-[number_card_name] .stat-number,
+/* Untriaged (Breaching SLA) (red) — avoids parentheses issues */
+[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"] > .widget.number-widget-box,
+[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"] > .widget.number-widget-box .widget-head,
+[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"] > .widget.number-widget-box .widget-body {
+	background: #fdecea !important;
+}
+
+[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"] > .widget.number-widget-box {
+	border: 1px solid rgba(0,0,0,.06) !important;
+	border-left: 6px solid #e55353 !important;
+	box-shadow: 0 1px 2px rgba(0,0,0,.05);
+}
+
+/* Value emphasis */
 [number_card_name] .number,
-[number_card_name] .value,
+[number_card_name] .stat-number,
 [number_card_name] [class*="number"] [class*="value"] {
-  font-weight: 700 !important;
+	font-weight: 700 !important;
 }
