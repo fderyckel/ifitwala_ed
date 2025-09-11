@@ -108,15 +108,30 @@ def _notify_counselors(docname: str):
 	recipients = [u for u in recipients if u != submitter]
 	if not recipients:
 		return
+
 	subject = _("New self-referral submitted")
 	message = _("A new student self-referral was submitted and needs triage.")
-	enqueue_create_notification(
-		recipients=recipients,
-		subject=subject,
-		message=message,
-		reference_doctype=DOC,
-		reference_name=docname,
-	)
+
+	try:
+		# Use POSITIONAL args for broad compatibility across Frappe versions
+		# Signature: (recipients, subject, message, reference_doctype, reference_name)
+		enqueue_create_notification(recipients, subject, message, DOC, docname)
+	except TypeError:
+		# Fallback: create Notification Log rows per user
+		for u in recipients:
+			try:
+				frappe.get_doc({
+					"doctype": "Notification Log",
+					"subject": subject,
+					"email_content": message,
+					"for_user": u,
+					"type": "Alert",
+					"document_type": DOC,
+					"document_name": docname,
+				}).insert(ignore_permissions=True)
+			except Exception:
+				frappe.log_error(frappe.get_traceback(), "Self Referral: Notification Log fallback failed")
+
 
 
 @frappe.whitelist(allow_guest=False)
@@ -211,10 +226,13 @@ def create_self_referral(**kwargs):
 	# Insert ignoring perms (students may not have Create on this doctype)
 	ref.insert(ignore_permissions=True)
 
-	# Notify Counselor role only
-	_notify_counselors(ref.name)
+	# Try to notify, but never block creation
+	try:
+		_notify_counselors(ref.name)
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "Self Referral: notify failed")
 
-	return {"name": ref.name}
+		return {"name": ref.name}
 
 def _resolve_subject_student(candidate: str | None) -> str | None:
 	if not candidate:
