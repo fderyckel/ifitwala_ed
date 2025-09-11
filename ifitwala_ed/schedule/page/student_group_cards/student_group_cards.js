@@ -116,24 +116,25 @@ async function openSSGModal(studentId, studentName) {
 				: "";
 
 			return `
-				<div class="card mb-3 shadow-sm" style="border-left: 4px solid var(--bs-info);">
+				<div class="card mb-3 shadow-sm" style="border-left: .35rem solid var(--bs-info);">
 					<div class="card-body">
 						<div class="d-flex justify-content-between align-items-center">
-							<div class="small text-muted">
-								<i class="bi bi-calendar-event me-1"></i>
+							<div class="small text-muted d-inline-flex align-items-center gap-1">
+								<i class="bi bi-calendar-event"></i>
 								<strong>${when}</strong>
 								${statusBadge}
 							</div>
 							${viewBtn}
 						</div>
 
-						<div class="mt-2 small text-muted">
-							<i class="bi bi-person me-1"></i>${__("Assignee")}: <strong>${assignee}</strong>
-							${authorName ? ` · <i class="bi bi-pencil-square mx-1"></i>${__("Author")}: <strong>${authorName}</strong>` : ""}
+						<div class="mt-2 small text-muted d-inline-flex align-items-center gap-2 flex-wrap">
+							<i class="bi bi-person"></i>
+							<span>${__("Assignee")}: <strong>${assignee}</strong></span>
+							${authorName ? `<span class="d-inline-flex align-items-center gap-1"><i class="bi bi-pencil-square"></i>${__("Author")}: <strong>${authorName}</strong></span>` : ""}
 						</div>
 
-						<div class="mt-3">
-							<i class="bi bi-journal-text me-1 text-info"></i>
+						<div class="mt-3 d-inline-flex align-items-start gap-2">
+							<i class="bi bi-journal-text text-info"></i>
 							<span>${summary}</span>
 						</div>
 					</div>
