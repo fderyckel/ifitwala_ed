@@ -1,38 +1,35 @@
 /* ——— Counselor workspace: Number Card accents ——— */
 
-/* helper */
-@mixin card-accent($bg, $stripe) {
-  background: $bg !important;            /* override white widget bg */
-  border-left: 6px solid $stripe !important;
-  border-radius: .75rem;                  /* keep the soft corners */
-  box-shadow: 0 1px 2px rgba(0,0,0,.05);
-  transition: border-color .15s, box-shadow .15s;
-
-  &:hover {
-    border-left-color: darken($stripe, 6%) !important;
-    box-shadow: 0 2px 6px rgba(0,0,0,.08);
-  }
+/* --- base: hit all number cards safely --- */
+[number_card_name] > .widget.number-widget-box,
+[number_card_name] > .widget.number-widget-box .widget-body {
+  border-radius: 12px;
 }
 
 /* Untriaged Referrals (amber) */
-#number-card-Untriaged-Referrals,
-#number-card-Untriaged-Referrals .widget,
-#number-card-Untriaged-Referrals .widget-body,
-#number-card-Untriaged-Referrals .card {
-  @include card-accent(#fff8eb, #f59e0b);
+[number_card_name="Untriaged Referrals"] > .widget.number-widget-box,
+[number_card_name="Untriaged Referrals"] > .widget.number-widget-box .widget-body {
+  background: #fff8eb !important;
+  border: 1px solid rgba(0,0,0,.06) !important;
+  border-left: 6px solid #f59e0b !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
 }
 
-/* Untriaged (Breaching SLA) (red) — parentheses-safe attribute match */
-div[id^="number-card-"][id*="Untriaged"][id*="Breaching"][id*="SLA"],
-div[id^="number-card-"][id*="Untriaged"][id*="Breaching"][id*="SLA"] .widget,
-div[id^="number-card-"][id*="Untriaged"][id*="Breaching"][id*="SLA"] .widget-body,
-div[id^="number-card-"][id*="Untriaged"][id*="Breaching"][id*="SLA"] .card {
-  @include card-accent(#fdecea, #e55353);
+/* Untriaged (Breaching SLA) (red) — attribute selector avoids parentheses issues */
+[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"]
+  > .widget.number-widget-box,
+[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"]
+  > .widget.number-widget-box .widget-body {
+  background: #fdecea !important;
+  border: 1px solid rgba(0,0,0,.06) !important;
+  border-left: 6px solid #e55353 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
 }
 
-/* Optional: make the big stat number bolder regardless of structure */
-[id^="number-card-"] .stat,
-[id^="number-card-"] .number,
-[id^="number-card-"] .value {
-  font-weight: 700;
+/* value emphasis — robust to markup variations */
+[number_card_name] .stat-number,
+[number_card_name] .number,
+[number_card_name] .value,
+[number_card_name] [class*="number"] [class*="value"] {
+  font-weight: 700 !important;
 }
