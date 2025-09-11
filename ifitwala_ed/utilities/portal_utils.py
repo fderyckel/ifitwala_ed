@@ -11,6 +11,7 @@ from frappe import _
 from frappe.utils import now_datetime, add_to_date, today, strip_html
 from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
 from frappe.exceptions import UniqueValidationError  # optional clarity (see next point)
+from frappe.utils.file_manager import save_file 
 
 
 def mark_read(user: str, ref_dt: str, ref_dn: str):
@@ -246,3 +247,67 @@ def _resolve_subject_student(candidate: str | None) -> str | None:
 
 	# Ambiguous or not found → don't auto-link
 	return None
+
+
+ALLOWED_EXTS = {".png", ".jpg", ".jpeg", ".pdf"}
+MAX_MB = 10  # conservative default; can be moved to settings later
+
+def _ext_ok(filename: str) -> bool:
+	fn = (filename or "").lower().strip()
+	return any(fn.endswith(ext) for ext in ALLOWED_EXTS)
+
+@frappe.whitelist(allow_guest=False)
+def upload_self_referral_file(referral_name: str):
+	"""
+	Attach a single file to a Student Referral created via portal.
+	Expected multipart/form-data with fields:
+	- referral_name: SRF-...
+	- file: binary
+	"""
+	user = frappe.session.user
+	roles = set(frappe.get_roles(user))
+	if "Student" not in roles:
+		frappe.throw(_("Only logged-in students can upload here."), frappe.PermissionError)
+
+	if not referral_name:
+		frappe.throw(_("Missing referral name."))
+
+	try:
+		ref = frappe.get_doc("Student Referral", referral_name)
+	except Exception:
+		frappe.throw(_("Referral not found."))
+
+	# Student can only attach to their own referral
+	if ref.owner != user:
+		frappe.throw(_("You cannot attach files to this referral."), frappe.PermissionError)
+
+	# Pull file
+	file_storage = frappe.request.files.get("file")
+	if not file_storage:
+		frappe.throw(_("No file uploaded."))
+
+	filename = file_storage.filename or "upload.bin"
+	if not _ext_ok(filename):
+		frappe.throw(_("Only PNG, JPG, JPEG or PDF files are allowed."))
+
+	# Read bytes once to validate size and pass to save_file
+	content = file_storage.stream.read()
+	size_mb = len(content) / (1024 * 1024.0)
+	if size_mb > MAX_MB:
+		frappe.throw(_("File is too large. Max {0} MB.").format(MAX_MB))
+
+	# Save as PRIVATE file
+	filedoc = save_file(
+		filename=filename,
+		content=content,
+		doctype="Student Referral",
+		name=referral_name,
+		is_private=1,
+		decode=False
+	)
+
+	return {
+		"file_url": filedoc.file_url,
+		"file_name": filedoc.file_name,
+		"name": filedoc.name
+	}

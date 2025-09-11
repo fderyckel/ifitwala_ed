@@ -283,6 +283,30 @@
 				args: payload
 			});
 			const name = message?.name;
+
+			// Upload attachments (sequential, simple)
+			const input = form.querySelector("#attachments");
+			if (name && input && input.files && input.files.length) {
+				for (const file of Array.from(input.files)) {
+					const fd = new FormData();
+					fd.append("referral_name", name);
+					fd.append("file", file, file.name);
+					const resp = await fetch("/api/method/ifitwala_ed.utilities.portal_utils.upload_self_referral_file", {
+						method: "POST",
+						body: fd,
+						headers: { "X-Frappe-CSRF-Token": frappe.csrf_token }
+					});
+					if (!resp.ok) {
+						console.error("Upload failed:", file.name, await resp.text());
+						frappe.msgprint({
+							title: "{{ _('Some files failed to upload') }}",
+							message: "{{ _('You can add attachments later with a counselor.') }}",
+							indicator: "orange",
+						});
+					}
+				}
+			}
+
 			frappe.msgprint({
 				title: "{{ _('Submitted') }}",
 				message: name
@@ -290,7 +314,6 @@
 					: "{{ _('Thank you. Your message has been sent to the counsellor team.') }}",
 				indicator: "green",
 			});
-			// Optional: redirect after a pause
 			setTimeout(() => { window.location.href = "{{ portal_root or '/sp' }}/wellbeing"; }, 1200);
 		} catch (err) {
 			console.error(err);
