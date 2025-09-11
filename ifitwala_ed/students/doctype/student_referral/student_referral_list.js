@@ -8,7 +8,7 @@ frappe.listview_settings["Student Referral"] = {
 	onload(list) {
 		const me = frappe.session.user;
 		// Policy: System Manager is NOT privileged here
-		const privileged = frappe.user.has_role(["Counselor", "Academic Admin"]);
+		const privileged = frappe.user.has_role(["Counselor"]);
 
 		if (privileged) {
 			// Needs Triage (All)

@@ -311,7 +311,7 @@ def request_escalation(referral: str, note: str = ""):
 	}).insert(ignore_permissions=True)
 
 	# Bell notification to Counselor + Academic Admin (no System Manager)
-	_notify_roles_on_referral(_ref.name, roles={"Counselor", "Academic Admin"},
+	_notify_roles_on_referral(_ref.name, roles={"Counselor"},
 		title=frappe._("Escalation requested"),
 		subject=frappe._("Escalation requested on {0}").format(_ref.name),
 		body=frappe._("Escalation was requested by {0}. Click to review.").format(actor)
@@ -340,7 +340,7 @@ def flag_possible_mandated_report(referral: str, note: str = ""):
 		"content": content
 	}).insert(ignore_permissions=True)
 
-	_notify_roles_on_referral(_ref.name, roles={"Counselor", "Academic Admin"},
+	_notify_roles_on_referral(_ref.name, roles={"Counselor"},
 		title=frappe._("Possible mandated report flagged"),
 		subject=frappe._("Possible mandated report on {0}").format(_ref.name),
 		body=frappe._("Flag set by {0}. Please review promptly.").format(actor)
@@ -426,7 +426,7 @@ def _maybe_notify_new_referral(doc: "StudentReferral"):
 
 	_notify_roles_on_referral(
 		doc.name,
-		roles={"Counselor", "Academic Admin"},
+		roles={"Counselor"},
 		title=frappe._("New Student Referral"),
 		subject=subject,
 		body=body,
@@ -573,3 +573,41 @@ def on_doctype_update():
 	frappe.db.add_index("Student Referral", ["assigned_case_manager"])
 	frappe.db.add_index("Student Referral", ["docstatus", "referral_case"])
 	frappe.db.add_index("Student Referral", ["sla_due"])
+
+	import frappe
+
+PRIV_ROLES = {"Counselor"}  # drop Academic Admin if you truly want Counselor-only
+
+def get_permission_query_conditions(user: str | None = None) -> str | None:
+	user = user or frappe.session.user
+
+	# Admin special-case: treat like any other non-privileged user unless explicitly listed
+	if user == "Administrator":
+		# fall through to non-privileged rule; no blanket bypass
+		pass
+
+	user_roles = set(frappe.get_roles(user))
+	if PRIV_ROLES & user_roles:
+		return None  # full visibility for privileged roles
+
+	# Non-privileged users only see referrals they submitted.
+	# We allow either the doc owner or the explicit 'referrer' (belt & suspenders).
+	esc_user = frappe.db.escape(user)
+	return f"(`tabStudent Referral`.owner = {esc_user} OR `tabStudent Referral`.referrer = {esc_user})"
+
+
+def has_permission(doc, ptype: str, user: str | None = None) -> bool:
+	user = user or frappe.session.user
+	user_roles = set(frappe.get_roles(user))
+
+	# Privileged: full
+	if PRIV_ROLES & user_roles:
+		return True
+
+	# Non-privileged: only own docs (owner or referrer)
+	if (doc.owner == user) or ((doc.get('referrer') or '') == user):
+		# Optionally prevent them from Cancel/Amend if you want:
+		# if ptype in {"cancel", "amend"}: return False
+		return True
+
+	return False

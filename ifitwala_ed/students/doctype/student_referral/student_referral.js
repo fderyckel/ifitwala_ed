@@ -23,7 +23,7 @@ frappe.ui.form.on("Student Referral", {
 			((frappe.boot.user && frappe.boot.user.can_read) || []).includes("Referral Case");
 		const canCaseUI =
 			frm.doc.docstatus === 1 &&
-			frappe.user.has_role(["Counselor", "Academic Admin"]) &&
+			frappe.user.has_role(["Counselor"]) &&
 			canReadCase;
 
 		if (canCaseUI) {
@@ -52,7 +52,7 @@ frappe.ui.form.on("Student Referral", {
 		// --- Intake-side non-authoritative actions ---
 		// Show ONLY to Academic Staff (not Counselors/Admins), and ONLY on Submitted referrals
 		const isAcademicStaff = frappe.user.has_role("Academic Staff");
-		const hasTriageRole = frappe.user.has_role(["Counselor", "Academic Admin"]);
+		const hasTriageRole = frappe.user.has_role(["Counselor"]);
 
 		if (frm.doc.docstatus === 1 && isAcademicStaff && !hasTriageRole) {
 			// Request Escalation

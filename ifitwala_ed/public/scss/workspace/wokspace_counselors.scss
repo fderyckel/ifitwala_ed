@@ -1,0 +1,31 @@
+/* ——— Counselor workspace: Number Card accents ——— */
+
+/* Helper: consistent card look */
+@mixin card-accent($bg, $stripe) {
+	background: $bg;
+	border: 1px solid rgba(0,0,0,.06);
+	border-left: 6px solid $stripe;
+	border-radius: .75rem;
+	box-shadow: 0 1px 2px rgba(0,0,0,.05);
+	transition: border-color .15s ease, box-shadow .15s ease;
+
+	&:hover {
+		border-left-color: darken($stripe, 6%);
+		box-shadow: 0 2px 6px rgba(0,0,0,.08);
+	}
+	/* make the headline number stand out a touch */
+	.stat {
+		font-weight: 700;
+	}
+}
+
+/* Untriaged Referrals (amber) — ID is made from the card “name” */
+#number-card-Untriaged-Referrals {
+	@include card-accent(#fff8eb, #f59e0b);
+}
+
+/* Untriaged (Breaching SLA) (red) 
+   Tip: the name contains parentheses; using an attribute selector avoids escape headaches. */
+div[id^="number-card-Untriaged-"][id*="Breaching-SLA"] {
+	@include card-accent(#fdecea, #e55353);
+}
