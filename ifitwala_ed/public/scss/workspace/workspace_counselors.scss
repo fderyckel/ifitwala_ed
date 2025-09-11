@@ -1,40 +1,65 @@
 /* ——— Counselor workspace: Number Card accents ——— */
 
-/* Base: make number cards a bit rounder */
-[number_card_name] > .widget.number-widget-box {
+/* Counselor workspace — number card theming
+   Scope: Workspaces desk pages only
+   How it works:
+   - Core desk uses CSS vars: background-color: var(--card-bg), border: 1px solid var(--border-color)
+   - We set those vars on the specific card element, then add an inset stripe.
+*/
+
+/* Palette */
+$amber-bg:  #fff8eb;  $amber-stripe:  #f59e0b; /* Untriaged */
+$red-bg:    #fdecea;  $red-stripe:    #e55353; /* Breaching SLA */
+$orange-bg: #fff4e5;  $orange-stripe: #f97316; /* New Today */
+$blue-bg:   #ebf5ff;  $blue-stripe:   #3b82f6; /* Guidance items */
+
+/* Mixin to apply the theme to one card */
+@mixin card-theme($bg, $stripe) {
+	/* override core variables used by desk.bundle.css */
+	--card-bg: #{$bg};
+	--border-color: rgba(0,0,0,.06);
+
+	/* left accent stripe that survives later border rules */
+	box-shadow: inset 6px 0 0 0 #{$stripe};
+}
+
+/* Base: consistent shape and hover */
+[data-page-route="Workspaces"] [number_card_name] > .widget.number-widget-box {
 	border-radius: 12px;
-	overflow: hidden; /* ensures the left stripe doesn’t get clipped by inner boxes */
+	overflow: hidden;
+	transition: box-shadow .15s ease;
+}
+[data-page-route="Workspaces"] [number_card_name] > .widget.number-widget-box:hover {
+	box-shadow: 0 6px 18px rgba(0,0,0,.08); /* outer shadow added in addition to inset stripe (set below) */
 }
 
-/* Untriaged Referrals (amber) */
-[number_card_name="Untriaged Referrals"] > .widget.number-widget-box,
-[number_card_name="Untriaged Referrals"] > .widget.number-widget-box .widget-head,
-[number_card_name="Untriaged Referrals"] > .widget.number-widget-box .widget-body {
-	background: #fff8eb !important;
+/* === Untriaged Referrals (amber) === */
+[data-page-route="Workspaces"] [number_card_name="Untriaged Referrals"] > .widget.number-widget-box {
+	@include card-theme($amber-bg, $amber-stripe);
+}
+/* === Breaching SLA Referrals (red) === */
+[data-page-route="Workspaces"] [number_card_name="Breaching SLA Referrals"] > .widget.number-widget-box {
+	@include card-theme($red-bg, $red-stripe);
+}
+/* also catch your custom card name with parentheses */
+[data-page-route="Workspaces"] [number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"]
+	> .widget.number-widget-box {
+	@include card-theme($red-bg, $red-stripe);
 }
 
-[number_card_name="Untriaged Referrals"] > .widget.number-widget-box {
-	border: 1px solid rgba(0,0,0,.06) !important;
-	border-left: 6px solid #f59e0b !important;
-	box-shadow: 0 1px 2px rgba(0,0,0,.05);
+/* === New Today Referrals (orange) === */
+[data-page-route="Workspaces"] [number_card_name="New Today Referrals"] > .widget.number-widget-box {
+	@include card-theme($orange-bg, $orange-stripe);
 }
 
-/* Untriaged (Breaching SLA) (red) — avoids parentheses issues */
-[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"] > .widget.number-widget-box,
-[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"] > .widget.number-widget-box .widget-head,
-[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"] > .widget.number-widget-box .widget-body {
-	background: #fdecea !important;
+/* === Open Published Guidance Items (blue) === */
+[data-page-route="Workspaces"] [number_card_name="Open Published Guidance Items"] > .widget.number-widget-box {
+	@include card-theme($blue-bg, $blue-stripe);
 }
 
-[number_card_name*="Untriaged"][number_card_name*="Breaching"][number_card_name*="SLA"] > .widget.number-widget-box {
-	border: 1px solid rgba(0,0,0,.06) !important;
-	border-left: 6px solid #e55353 !important;
-	box-shadow: 0 1px 2px rgba(0,0,0,.05);
-}
-
-/* Value emphasis */
-[number_card_name] .number,
-[number_card_name] .stat-number,
-[number_card_name] [class*="number"] [class*="value"] {
-	font-weight: 700 !important;
+/* Value emphasis (robust to markup variations) */
+[data-page-route="Workspaces"] [number_card_name] .number,
+[data-page-route="Workspaces"] [number_card_name] .stat-number,
+[data-page-route="Workspaces"] [number_card_name] [class*="number"] [class*="value"] {
+	font-weight: 700;
 }

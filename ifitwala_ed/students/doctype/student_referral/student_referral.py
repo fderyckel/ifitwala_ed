@@ -574,9 +574,9 @@ def on_doctype_update():
 	frappe.db.add_index("Student Referral", ["docstatus", "referral_case"])
 	frappe.db.add_index("Student Referral", ["sla_due"])
 
-	import frappe
 
-PRIV_ROLES = {"Counselor"}  # drop Academic Admin if you truly want Counselor-only
+
+PRIV_ROLES = {"Counselor"} 
 
 def get_permission_query_conditions(user: str | None = None) -> str | None:
 	user = user or frappe.session.user
