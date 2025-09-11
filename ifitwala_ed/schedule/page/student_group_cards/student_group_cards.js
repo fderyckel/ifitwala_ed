@@ -23,6 +23,20 @@ function get_student_image(original_url) {
 	return `/files/gallery_resized/student/thumb_${base}.webp`;
 }
 
+function renderSSGInlineIcon(student) {
+	if (!student.has_ssg) return '';
+
+	const title = __("Support guidance available");
+	return `
+		<span class="ms-2 text-primary fw-bold ssg-inline"
+		      title="${frappe.utils.escape_html(title)}"
+		      aria-label="${frappe.utils.escape_html(title)}"
+		      data-student="${frappe.utils.escape_html(student.student)}">
+			<i class="bi bi-journal-medical"></i>
+		</span>
+	`;
+}
+
 function renderSupportBadge(student) {
 	// Show badge only when viewer is authorized (server adds has_ssg accordingly)
 	if (!student.has_ssg) return '';
@@ -41,6 +55,114 @@ function renderSupportBadge(student) {
 	`;
 }
 
+async function openSSGModal(studentId, studentName) {
+	const isTriager =
+		frappe.user.has_role("Counselor") ||
+		frappe.user.has_role("Academic Admin") ||
+		frappe.user.has_role("System Manager");
+
+	const d = new frappe.ui.Dialog({
+		title: __("Support Guidance for {0}", [frappe.utils.escape_html(studentName || studentId)]),
+		fields: [{ fieldname: "body", fieldtype: "HTML" }],
+		size: "large",
+		primary_action_label: __("Close"),
+		primary_action: () => d.hide()
+	});
+
+	d.show();
+
+	const $body = d.get_field("body").$wrapper;
+	$body.html(`<div class="p-3 text-muted small">${__("Loading published guidance…")}</div>`);
+
+	// helper: 09 September 2025
+	const neatDate = (dt) => {
+		try {
+			const o = frappe.datetime.str_to_obj(dt);
+			return o
+				? o.toLocaleDateString(undefined, { day: "2-digit", month: "long", year: "numeric" })
+				: "";
+		} catch { return ""; }
+	};
+
+	const icon = (name) => frappe.utils.icon(name, "sm"); // feather icons
+
+	try {
+		const { message: rows } = await frappe.call({
+			method: "ifitwala_ed.students.doctype.referral_case.referral_case.get_student_support_guidance",
+			args: { student: studentId }
+		});
+
+		const items = Array.isArray(rows) ? rows : [];
+		if (!items.length) {
+			$body.html(`<div class="p-3 text-muted">${__("No published, active guidance found.")}</div>`);
+			return;
+		}
+
+		const html = items.map((r) => {
+			const when = r.entry_datetime ? neatDate(r.entry_datetime) : "";
+			const status = (r.status || "Open").trim();
+			const statusBadge =
+				status === "In Progress"
+					? `<span class="badge bg-success ms-2">${__("In Progress")}</span>`
+					: ""; // keep Open implicit
+
+			const assignee = r.assignee ? frappe.utils.escape_html(r.assignee) : __("All instructors");
+			const ui = r.author ? (frappe.user_info(r.author) || {}) : {};
+			const authorName = r.author ? frappe.utils.escape_html(ui.fullname || r.author) : "";
+			const summary = r.summary || ""; // server supplies sanitized Text Editor HTML
+
+			const viewBtn = isTriager && r.case_name
+				? `<button class="btn btn-sm btn-outline-primary ms-2" data-case="${frappe.utils.escape_html(r.case_name)}">
+						${__("View Case")}
+				   </button>`
+				: "";
+
+			return `
+				<div class="card mb-3 shadow-sm" style="border-left: 4px solid var(--bs-info);">
+					<div class="card-body">
+						<div class="d-flex justify-content-between align-items-center">
+							<div class="small text-muted">
+								<span class="me-1">${icon("calendar")}</span>
+								<strong>${when}</strong>
+								${statusBadge}
+							</div>
+							${viewBtn}
+						</div>
+
+						<div class="mt-2 small text-muted">
+							<span class="me-1">${icon("user")}</span>${__("Assignee")}: <strong>${assignee}</strong>
+							${authorName ? ` · <span class="mx-1">${icon("edit-3")}</span>${__("Author")}: <strong>${authorName}</strong>` : ""}
+						</div>
+
+						<div class="mt-3">
+							<span class="me-1 text-info">${icon("book-open")}</span>
+							<span>${summary}</span>
+						</div>
+					</div>
+				</div>
+			`;
+		}).join("");
+
+		$body.html(`<div>${html}</div>`);
+
+		// Route to case (triage roles only)
+		if (isTriager) {
+			$body.on("click", "button[data-case]", (e) => {
+				const cn = e.currentTarget.getAttribute("data-case");
+				if (cn) {
+					d.hide();
+					frappe.set_route("Form", "Referral Case", cn);
+				}
+			});
+		}
+	} catch (err) {
+		$body.html(`<div class="p-3 text-danger small">${__("Failed to load guidance or permission denied.")}</div>`);
+		// eslint-disable-next-line no-console
+		console.error(err);
+	}
+}
+
+
 function renderStudentCard(student) {
 	const student_name   = frappe.utils.escape_html(student.student_name);
 	const preferred_name = frappe.utils.escape_html(student.preferred_name || '');
@@ -49,6 +171,8 @@ function renderStudentCard(student) {
 	const fallback_src   = student.student_image || '/assets/ifitwala_ed/images/default_student_image.png';
 
 	let birthday_icon = '', health_icon = '';
+
+	const ssg_icon = renderSSGInlineIcon(student);
 
 	if (student.birth_date) {
 		try {
@@ -76,8 +200,6 @@ function renderStudentCard(student) {
 				title="${__('Health Note Available')}">&#x2716;</span>`;
 	}
 
-	const support_badge = renderSupportBadge(student);
-
 	return `
 		<div class="col-6 col-sm-4 col-md-3 col-lg-2">
 			<div class="student-card bg-white shadow-sm p-3 text-center h-100 w-100 d-flex flex-column">
@@ -89,13 +211,12 @@ function renderStudentCard(student) {
 							 alt="Photo of ${student_name}"
 							 loading="lazy">
 					</a>
-					${support_badge}
 				</div>
 				<div class="student-name mt-3">
 					<a href="/app/student/${student_id}" target="_blank" rel="noopener">
 						${student_name}
 					</a>
-					${health_icon}${birthday_icon}
+					${ssg_icon}${health_icon}${birthday_icon}
 				</div>
 				${preferred_name ? `<div class="preferred-name">${preferred_name}</div>` : ''}
 			</div>
@@ -241,6 +362,16 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 				}
 			});
 		}
+
+		// open modal when user clicks the inline SSG icon
+		$("#student-cards").on("click", ".ssg-inline", function (e) {
+			const studentId = e.currentTarget.getAttribute("data-student");
+			// try to read the visible name text in the same card
+			const nameEl = e.currentTarget.closest(".student-card")?.querySelector(".student-name a");
+			const studentName = nameEl ? nameEl.textContent.trim() : studentId;
+			if (studentId) openSSGModal(studentId, studentName);
+		});
+
 
 		/* ── “Load More” handler ──────────────────────────────────────── */
 		$('#load-more').on('click', () => fetch_students());
