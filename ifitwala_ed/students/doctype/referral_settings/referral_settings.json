@@ -15,7 +15,9 @@
   "sla_hours_triaged_to_first_action",
   "visible_scopes",
   "notify_on_assignment",
-  "auto_create_case"
+  "auto_create_case",
+  "default_confidentiality_for_self_referral",
+  "portal_submission_channel"
  ],
  "fields": [
   {
@@ -80,13 +82,29 @@
    "fieldname": "auto_create_case",
    "fieldtype": "Check",
    "label": "Auto-create Referral Case on Submit"
+  },
+  {
+   "default": "Restricted",
+   "fieldname": "default_confidentiality_for_self_referral",
+   "fieldtype": "Select",
+   "label": "Default Confidentiality for Self-Referral",
+   "options": "Standard\nSensitive\nRestricted"
+  },
+  {
+   "description": "Set by server on creation (e.g., Portal, Public Web Form, Staff).",
+   "fieldname": "portal_submission_channel",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Submission Channel",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-09-06 15:01:48.844964",
+ "modified": "2025-09-09 20:23:54.215344",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Referral Settings",

@@ -27,6 +27,14 @@
   "severity",
   "requires_immediate_action",
   "mandated_reporting_triggered",
+  "section_break_hwzj",
+  "preferred_contact_method",
+  "okay_to_contact_guardians",
+  "reporting_for_other",
+  "subject_student_text",
+  "subject_student",
+  "column_break_jd9b",
+  "safe_times_to_contact",
   "section_break_abal",
   "referral_description",
   "section_break_pl1t",
@@ -39,7 +47,8 @@
  "fields": [
   {
    "fieldname": "section_break_upvw",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Student Info"
   },
   {
    "fieldname": "student",
@@ -105,7 +114,8 @@
   },
   {
    "fieldname": "section_break_aksz",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Referral Info"
   },
   {
    "fieldname": "referral_source",
@@ -163,11 +173,13 @@
   },
   {
    "fieldname": "section_break_abal",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Referral"
   },
   {
    "fieldname": "section_break_pl1t",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "SLA Info"
   },
   {
    "fieldname": "sla_due",
@@ -204,13 +216,63 @@
    "options": "User",
    "permlevel": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_hwzj",
+   "fieldtype": "Section Break",
+   "label": "Self-Referral Info"
+  },
+  {
+   "default": "In-app",
+   "fieldname": "preferred_contact_method",
+   "fieldtype": "Select",
+   "label": "Preferred Contact Method",
+   "options": "Email\nIn-app\nPhone"
+  },
+  {
+   "default": "1",
+   "fieldname": "okay_to_contact_guardians",
+   "fieldtype": "Check",
+   "label": "Okay to Contact Guardians"
+  },
+  {
+   "fieldname": "column_break_jd9b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "safe_times_to_contact",
+   "fieldtype": "Small Text",
+   "label": "Safe Times to Contact"
+  },
+  {
+   "default": "0",
+   "fieldname": "reporting_for_other",
+   "fieldtype": "Check",
+   "label": "I\u2019m concerned for a friend (peer referral)"
+  },
+  {
+   "depends_on": "eval:doc.reporting_for_other",
+   "description": "Original free-text from the portal. Keep for audit.",
+   "fieldname": "subject_student_text",
+   "fieldtype": "Data",
+   "label": "Subject Student",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.reporting_for_other",
+   "description": "Set by counselor during triage.",
+   "fieldname": "subject_student",
+   "fieldtype": "Link",
+   "label": "Resolved Subject Student",
+   "options": "Student",
+   "permlevel": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-06 13:48:46.052225",
+ "modified": "2025-09-11 10:15:44.495234",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Referral",
