@@ -1,9 +1,17 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/utilities/portal_utils.py
+
 from typing import List
+from datetime import datetime
+
 import frappe
-from frappe.utils import now_datetime
+from frappe import _
+from frappe.utils import now_datetime, add_to_date, today, strip_html
+from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
+from frappe.exceptions import UniqueValidationError  # optional clarity (see next point)
+
 
 def mark_read(user: str, ref_dt: str, ref_dn: str):
 	try:
@@ -14,7 +22,7 @@ def mark_read(user: str, ref_dt: str, ref_dn: str):
 			"reference_name": ref_dn,
 			"read_at": now_datetime()
 		}).insert(ignore_permissions=True)
-	except frappe.UniqueValidationError:
+	except UniqueValidationError:
 		pass
 
 def unread_names_for(user: str, ref_dt: str, names: List[str]) -> List[str]:
@@ -66,30 +74,37 @@ def _settings() -> dict:
 		"sla_hours_new_to_triaged": int(getattr(doc, "sla_hours_new_to_triaged", 24) or 24),
 	}
 
-
-def _compute_sla_due(hours: int) -> str:
+def _compute_sla_due(hours: int) -> datetime:
 	return add_to_date(now_datetime(), hours=hours)
 
 
-def _counselor_users() -> list[str]:
-	# Get enabled Users who have the Counselor role
+# --- helpers (replace COUNSELOR_ROLE + _counselor_users) ---
+
+def _intake_role() -> str:
+	try:
+		return frappe.get_cached_value("Referral Settings", None, "default_intake_owner_role") or "Counselor"
+	except Exception:
+		return "Counselor"
+
+def _users_with_role(role: str) -> list[str]:
 	user_ids = frappe.db.get_all(
 		"Has Role",
-		filters={"role": COUNSELOR_ROLE, "parenttype": "User"},
+		filters={"role": role, "parenttype": "User"},
 		pluck="parent",
 	)
 	if not user_ids:
 		return []
-	enabled = frappe.db.get_all(
+	return frappe.db.get_all(
 		"User",
 		filters={"name": ["in", user_ids], "enabled": 1},
 		pluck="name",
 	)
-	return enabled
 
 
 def _notify_counselors(docname: str):
-	recipients = _counselor_users()
+	recipients = _users_with_role(_intake_role())
+	submitter = frappe.session.user
+	recipients = [u for u in recipients if u != submitter]
 	if not recipients:
 		return
 	subject = _("New self-referral submitted")
@@ -142,7 +157,8 @@ def create_self_referral(**kwargs):
 
 	# Phase 1b placeholders (ignored if not provided)
 	reporting_for_other = 1 if str(kwargs.get("reporting_for_other", "0")) in ("1", "true", "True") else 0
-	subject_student = (kwargs.get("subject_student") or "").strip() or None
+	subject_free = (kwargs.get("subject_student") or "").strip() or None  # portal textbox
+
 
 	# Prepare insert (bypass perms after strong checks above)
 	ref = frappe.new_doc(DOC)
@@ -175,15 +191,21 @@ def create_self_referral(**kwargs):
 	if safe_times:
 		ref.safe_times_to_contact = safe_times
 
-	# Phase 1b fields (won't break if not present yet)
-	if reporting_for_other:
+	# Always preserve what the student typed (if field exists)
+	if reporting_for_other and subject_free:
 		try:
-			ref.reporting_for_other = 1
-			if subject_student:
-				ref.subject_student = subject_student
+			ref.subject_student_text = subject_free
 		except Exception:
-			# Field may not exist yet; ignore silently for MVP
-			pass
+			pass  # field not deployed yet
+
+	# Optional soft resolve (no failure if not found)
+	if reporting_for_other and subject_free:
+		target = _resolve_subject_student(subject_free)  # safe helper; may return None
+		if target and target != student:
+			try:
+				ref.subject_student = target
+			except Exception:
+				pass
 
 	# Insert ignoring perms (students may not have Create on this doctype)
 	ref.insert(ignore_permissions=True)
@@ -192,3 +214,35 @@ def create_self_referral(**kwargs):
 	_notify_counselors(ref.name)
 
 	return {"name": ref.name}
+
+def _resolve_subject_student(candidate: str | None) -> str | None:
+	if not candidate:
+		return None
+	s = candidate.strip()
+	if not s:
+		return None
+
+	# 1) Exact docname
+	if frappe.db.exists("Student", s):
+		return s
+
+	# 2) Exact student_id (if your Student has that field)
+	try:
+		name = frappe.db.get_value("Student", {"student_id": s}, "name")
+		if name:
+			return name
+	except Exception:
+		pass  # field may not exist in your schema; ignore
+
+	# 3) Exact full name, but only if unique
+	matches = frappe.db.get_all(
+		"Student",
+		filters={"student_full_name": s},
+		pluck="name",
+		limit=2,  # we only care if there's exactly one
+	)
+	if len(matches) == 1:
+		return matches[0]
+
+	# Ambiguous or not found → don't auto-link
+	return None

@@ -195,22 +195,22 @@ $bootstrap-icons-font-dir: "/assets/ifitwala_ed/fonts";
 	Student Support Guidance badge
 ─────────────────────────────────────────────────────────── */
 
-.support-badge.cross {
-	position: absolute;
-	top: 6px;
-	right: 6px;
-	background: #fff;
-	border-radius: 50%;
-	padding: 2px 4px;
-	color: #0d6efd; /* Bootstrap primary blue */
-	font-size: 0.9rem;
-	line-height: 1;
-	box-shadow: 0 0 2px rgba(0,0,0,0.25);
-	cursor: default;
-}
+/* ───────────────────────────────────────────────────────────
+   Student Support Guidance (SSG) — inline icon next to name
+   (replaces the old top-right overlay badge)
+─────────────────────────────────────────────────────────── */
 
-.support-badge.cross i {
-	display: inline-block;
+.ssg-inline {
+	font-size: 1.25rem;         /* slightly larger for visibility */
+	color: $primary;            /* use theme primary */
+	cursor: pointer;
+	line-height: 1;
 	vertical-align: middle;
+	display: inline-block;
+	margin-left: 0.25rem;
+
+	/* smooth hover emphasis */
+	transition: transform 0.12s ease-in-out;
+	&:hover { transform: scale(1.15); }
 }
 

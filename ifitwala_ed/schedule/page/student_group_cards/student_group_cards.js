@@ -28,7 +28,7 @@ function renderSSGInlineIcon(student) {
 
 	const title = __("Support guidance available");
 	return `
-		<span class="ms-2 text-primary fw-bold ssg-inline"
+		<span class="ssg-inline"
 		      title="${frappe.utils.escape_html(title)}"
 		      aria-label="${frappe.utils.escape_html(title)}"
 		      data-student="${frappe.utils.escape_html(student.student)}">
