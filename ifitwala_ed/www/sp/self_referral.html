@@ -1,4 +1,5 @@
 <!-- base_template: ifitwala_ed/templates/sp_base.html -->
+ 
 {% set page_title = _("Self-Referral") %}
 
 {% block page_actions %}{% endblock %}
@@ -189,37 +190,27 @@
 	const btnNext = form.querySelector('[data-action="next"]');
 	const btnSubmit = form.querySelector('[data-action="submit"]');
 
-	let current = 1;
-
-	function showStep(n) {
-		current = Math.max(1, Math.min(4, n));
-		steps.forEach(s => s.classList.toggle("d-none", s.dataset.step != current));
-		crumbs.forEach(c => c.classList.toggle("active", Number(c.dataset.stepIndex) === current));
-		btnPrev.disabled = current === 1;
-		btnNext.classList.toggle("d-none", current === 4);
-		btnSubmit.classList.toggle("d-none", current !== 4);
-	}
-
+	// Inputs we care about for validation
+	const consent = form.querySelector("#consent");
+	const catEl = form.querySelector("#referral_category");
+	const sevEl = form.querySelector("#severity");
+	const descEl = form.querySelector("#referral_description");
 	const peerToggle = form.querySelector("#reporting_for_other");
 	const subjectWrap = form.querySelector("#subject-student-wrap");
 	const reviewSubject = document.querySelector("#review-subject");
-	if (peerToggle) {
-		peerToggle.addEventListener("change", () => {
-			const on = peerToggle.checked;
-			subjectWrap?.classList.toggle("d-none", !on);
-			reviewSubject?.classList.toggle("d-none", !on);
-		});
+
+	let current = 1;
+
+	function isStep2Complete() {
+		const cat = catEl?.value?.trim();
+		const sev = sevEl?.value?.trim();
+		const desc = descEl?.value?.trim();
+		return Boolean(cat && sev && desc && desc.length >= 10);
 	}
 
-	function canAdvance() {
-		if (current === 1) return form.querySelector("#consent")?.checked;
-		if (current === 2) {
-			const cat = form.querySelector("#referral_category")?.value;
-			const sev = form.querySelector("#severity")?.value;
-			const desc = form.querySelector("#referral_description")?.value?.trim();
-			return Boolean(cat && sev && desc && desc.length >= 10);
-		}
-		return true;
+	function isReadyToSubmit() {
+		// we require step 2 fields to be valid by the time we reach step 4
+		return isStep2Complete();
 	}
 
 	function updateReview() {
@@ -247,9 +238,47 @@
 		}
 	}
 
+	function updateControls() {
+		const on4 = current === 4;
+		btnPrev.disabled = current === 1;
+		btnNext.classList.toggle("d-none", on4);
+		btnSubmit.classList.toggle("d-none", !on4);
+		btnSubmit.disabled = !on4 || !isReadyToSubmit();
+	}
+
+	function showStep(n) {
+		current = Math.max(1, Math.min(4, n));
+		steps.forEach(s => s.classList.toggle("d-none", s.dataset.step != current));
+		crumbs.forEach(c => c.classList.toggle("active", Number(c.dataset.stepIndex) === current));
+		if (current === 4) updateReview();
+		updateControls();
+	}
+
+	// Peer referral toggle
+	if (peerToggle) {
+		peerToggle.addEventListener("change", () => {
+			const on = peerToggle.checked;
+			subjectWrap?.classList.toggle("d-none", !on);
+			reviewSubject?.classList.toggle("d-none", !on);
+		});
+	}
+
+	// Live validation to enable submit as the student types
+	[consent, catEl, sevEl, descEl].forEach(el => {
+		el?.addEventListener("input", () => updateControls());
+		el?.addEventListener("change", () => updateControls());
+	});
+
 	btnNext?.addEventListener("click", () => {
-		if (!canAdvance()) { form.classList.add("was-validated"); return; }
-		if (current === 3) updateReview();
+		// gate by step
+		if (current === 1 && !consent?.checked) {
+			form.classList.add("was-validated");
+			return;
+		}
+		if (current === 2 && !isStep2Complete()) {
+			form.classList.add("was-validated");
+			return;
+		}
 		showStep(current + 1);
 	});
 
@@ -257,23 +286,26 @@
 
 	form.addEventListener("submit", async (e) => {
 		e.preventDefault();
+		if (!isReadyToSubmit()) {
+			form.classList.add("was-validated");
+			return;
+		}
 		btnSubmit.disabled = true;
 
 		const payload = {
-			referral_category: form.querySelector("#referral_category")?.value || "",
-			severity: form.querySelector("#severity")?.value || "",
-			referral_description: form.querySelector("#referral_description")?.value || "",
+			referral_category: catEl?.value || "",
+			severity: sevEl?.value || "",
+			referral_description: descEl?.value || "",
 			preferred_contact_method: form.querySelector("#preferred_contact_method")?.value || "",
 			ok_to_contact_guardians: form.querySelector("#ok_to_contact_guardians")?.checked ? 1 : 0,
 			safe_times_to_contact: form.querySelector("#safe_times_to_contact")?.value || ""
 		};
 
-		// Phase 1b (peer referral) - harmless if fields don't exist yet
-		const peer = form.querySelector("#reporting_for_other");
-		if (peer) {
-			payload.reporting_for_other = peer.checked ? 1 : 0;
+		// Peer referral: harmless if server ignores
+		if (peerToggle) {
+			payload.reporting_for_other = peerToggle.checked ? 1 : 0;
 			const subj = form.querySelector("#subject_student")?.value || "";
-			if (peer.checked && subj) payload.subject_student = subj;
+			if (peerToggle.checked && subj) payload.subject_student = subj;
 		}
 
 		try {
@@ -284,7 +316,7 @@
 			});
 			const name = message?.name;
 
-			// Upload attachments (sequential, simple)
+			// Upload attachments (sequential)
 			const input = form.querySelector("#attachments");
 			if (name && input && input.files && input.files.length) {
 				for (const file of Array.from(input.files)) {
@@ -327,7 +359,9 @@
 		}
 	});
 
+	// initial
 	showStep(1);
 })();
 </script>
 {% endblock %}
+
