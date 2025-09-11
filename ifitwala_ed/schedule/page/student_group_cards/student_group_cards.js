@@ -84,8 +84,6 @@ async function openSSGModal(studentId, studentName) {
 		} catch { return ""; }
 	};
 
-	const icon = (name) => frappe.utils.icon(name, "sm"); // feather icons
-
 	try {
 		const { message: rows } = await frappe.call({
 			method: "ifitwala_ed.students.doctype.referral_case.referral_case.get_student_support_guidance",
@@ -122,7 +120,7 @@ async function openSSGModal(studentId, studentName) {
 					<div class="card-body">
 						<div class="d-flex justify-content-between align-items-center">
 							<div class="small text-muted">
-								<span class="me-1">${icon("calendar")}</span>
+								<i class="bi bi-calendar-event me-1"></i>
 								<strong>${when}</strong>
 								${statusBadge}
 							</div>
@@ -130,12 +128,12 @@ async function openSSGModal(studentId, studentName) {
 						</div>
 
 						<div class="mt-2 small text-muted">
-							<span class="me-1">${icon("user")}</span>${__("Assignee")}: <strong>${assignee}</strong>
-							${authorName ? ` · <span class="mx-1">${icon("edit-3")}</span>${__("Author")}: <strong>${authorName}</strong>` : ""}
+							<i class="bi bi-person me-1"></i>${__("Assignee")}: <strong>${assignee}</strong>
+							${authorName ? ` · <i class="bi bi-pencil-square mx-1"></i>${__("Author")}: <strong>${authorName}</strong>` : ""}
 						</div>
 
 						<div class="mt-3">
-							<span class="me-1 text-info">${icon("book-open")}</span>
+							<i class="bi bi-journal-text me-1 text-info"></i>
 							<span>${summary}</span>
 						</div>
 					</div>

@@ -9,18 +9,34 @@ $border-radius: 0.5rem;
 $btn-padding-y: 0.4rem;
 $btn-padding-x: 1rem;
 
-/* 2) Minimal Bootstrap imports (keep light for Desk pages) */
+/* 2) Bootstrap core */
 @import "node_modules/bootstrap/scss/functions";
 @import "node_modules/bootstrap/scss/variables";
 @import "node_modules/bootstrap/scss/maps";
 @import "node_modules/bootstrap/scss/mixins";
-@import "node_modules/bootstrap/scss/utilities";
+
+/* Base layers (enable CSS vars + base typography + resets) */
+@import "node_modules/bootstrap/scss/root";
+@import "node_modules/bootstrap/scss/reboot";
+@import "node_modules/bootstrap/scss/type";
+
+/* Layout/util helpers you actually use */
 @import "node_modules/bootstrap/scss/grid";
 @import "node_modules/bootstrap/scss/helpers";
+
+/* Components used on this page/modal */
 @import "node_modules/bootstrap/scss/buttons";
+@import "node_modules/bootstrap/scss/badge";
+@import "node_modules/bootstrap/scss/card";
+@import "node_modules/bootstrap/scss/modal";
+@import "node_modules/bootstrap/scss/close";
+@import "node_modules/bootstrap/scss/transitions";
+
+/* Utilities should come LAST */
+@import "node_modules/bootstrap/scss/utilities";
 
 /* 3) Bootstrap Icons (path then import) */
-$bootstrap-icons-font-dir: "/assets/ifitwala_ed/dist/fonts";
+$bootstrap-icons-font-dir: "/assets/ifitwala_ed/fonts";
 @import "node_modules/bootstrap-icons/font/bootstrap-icons.scss";
 
 

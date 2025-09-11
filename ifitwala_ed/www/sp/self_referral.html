@@ -194,19 +194,15 @@
 	function showStep(n) {
 		current = Math.max(1, Math.min(4, n));
 		steps.forEach(s => s.classList.toggle("d-none", s.dataset.step != current));
-		crumbs.forEach(c => {
-			const idx = Number(c.dataset.stepIndex);
-			c.classList.toggle("active", idx === current);
-		});
+		crumbs.forEach(c => c.classList.toggle("active", Number(c.dataset.stepIndex) === current));
 		btnPrev.disabled = current === 1;
 		btnNext.classList.toggle("d-none", current === 4);
 		btnSubmit.classList.toggle("d-none", current !== 4);
 	}
 
-	// Peer referral toggle (show friend field)
 	const peerToggle = form.querySelector("#reporting_for_other");
 	const subjectWrap = form.querySelector("#subject-student-wrap");
-	const reviewSubject = form.querySelector("#review-subject");
+	const reviewSubject = document.querySelector("#review-subject");
 	if (peerToggle) {
 		peerToggle.addEventListener("change", () => {
 			const on = peerToggle.checked;
@@ -215,16 +211,13 @@
 		});
 	}
 
-	// Minimal gating: consent + requireds on step 2
 	function canAdvance() {
-		if (current === 1) {
-			return form.querySelector("#consent")?.checked;
-		}
+		if (current === 1) return form.querySelector("#consent")?.checked;
 		if (current === 2) {
-			const cat = form.querySelector("#referral_category");
-			const sev = form.querySelector("#severity");
-			const desc = form.querySelector("#referral_description");
-			return Boolean(cat?.value && sev?.value && desc?.value.trim().length >= 10);
+			const cat = form.querySelector("#referral_category")?.value;
+			const sev = form.querySelector("#severity")?.value;
+			const desc = form.querySelector("#referral_description")?.value?.trim();
+			return Boolean(cat && sev && desc && desc.length >= 10);
 		}
 		return true;
 	}
@@ -243,35 +236,74 @@
 			const el = Array.isArray(val) ? form.querySelector("#" + val[0]) : form.querySelector("#" + val);
 			const out = document.querySelector('[data-review="' + key + '"]');
 			if (!out) continue;
-			if (!el) { out.textContent = "—"; continue; }
-			let value;
-			if (el.tagName === "SELECT") value = el.value || "—";
-			else if (el.type === "checkbox") value = el.checked;
-			else value = el.value?.trim() || "—";
-			if (Array.isArray(val) && typeof val[1] === "function") value = val[1](value);
+			let value = "—";
+			if (el) {
+				if (el.tagName === "SELECT") value = el.value || "—";
+				else if (el.type === "checkbox") value = el.checked;
+				else value = (el.value || "").trim() || "—";
+				if (Array.isArray(val) && typeof val[1] === "function") value = val[1](value);
+			}
 			out.textContent = value;
 		}
 	}
 
 	btnNext?.addEventListener("click", () => {
-		if (!canAdvance()) {
-			// subtle cue without modal
-			form.classList.add("was-validated");
-			return;
-		}
+		if (!canAdvance()) { form.classList.add("was-validated"); return; }
 		if (current === 3) updateReview();
 		showStep(current + 1);
 	});
 
 	btnPrev?.addEventListener("click", () => showStep(current - 1));
 
-	form.addEventListener("submit", (e) => {
+	form.addEventListener("submit", async (e) => {
 		e.preventDefault();
-		// Backend wiring comes next step
-		alert("{{ _('Submission wiring will be enabled in the next step.') }}");
+		btnSubmit.disabled = true;
+
+		const payload = {
+			referral_category: form.querySelector("#referral_category")?.value || "",
+			severity: form.querySelector("#severity")?.value || "",
+			referral_description: form.querySelector("#referral_description")?.value || "",
+			preferred_contact_method: form.querySelector("#preferred_contact_method")?.value || "",
+			ok_to_contact_guardians: form.querySelector("#ok_to_contact_guardians")?.checked ? 1 : 0,
+			safe_times_to_contact: form.querySelector("#safe_times_to_contact")?.value || ""
+		};
+
+		// Phase 1b (peer referral) - harmless if fields don't exist yet
+		const peer = form.querySelector("#reporting_for_other");
+		if (peer) {
+			payload.reporting_for_other = peer.checked ? 1 : 0;
+			const subj = form.querySelector("#subject_student")?.value || "";
+			if (peer.checked && subj) payload.subject_student = subj;
+		}
+
+		try {
+			const { message } = await frappe.call({
+				method: "ifitwala_ed.utilities.portal_utils.create_self_referral",
+				type: "POST",
+				args: payload
+			});
+			const name = message?.name;
+			frappe.msgprint({
+				title: "{{ _('Submitted') }}",
+				message: name
+					? "{{ _('Thank you. Your message has been sent to the counsellor team.') }}<br>{{ _('Reference:') }} <b>" + name + "</b>"
+					: "{{ _('Thank you. Your message has been sent to the counsellor team.') }}",
+				indicator: "green",
+			});
+			// Optional: redirect after a pause
+			setTimeout(() => { window.location.href = "{{ portal_root or '/sp' }}/wellbeing"; }, 1200);
+		} catch (err) {
+			console.error(err);
+			frappe.msgprint({
+				title: "{{ _('Could not submit') }}",
+				message: "{{ _('Please review your entries and try again. If the problem persists, contact the school counsellor.') }}",
+				indicator: "red",
+			});
+		} finally {
+			btnSubmit.disabled = false;
+		}
 	});
 
-	// initial
 	showStep(1);
 })();
 </script>
