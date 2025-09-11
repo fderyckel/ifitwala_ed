@@ -36,55 +36,6 @@
 	</div>
 </section>
 
-<section aria-labelledby="coursesLabel" class="mb-4">
-	<div class="d-flex align-items-center justify-content-between mb-2">
-		<h2 id="coursesLabel" class="h5 mb-0">My Courses</h2>
-
-		{% if academic_years and academic_years|length %}
-			<form method="get" class="d-inline-block">
-				<label for="year" class="visually-hidden">Academic Year</label>
-				<select name="year" id="year" class="form-select form-select-sm" onchange="this.form.submit()">
-					{% for y in academic_years %}
-						<option value="{{ y }}"{% if y == selected_year %} selected{% endif %}>{{ y }}</option>
-					{% endfor %}
-				</select>
-			</form>
-		{% endif %}
-	</div>
-
-	<div id="course-cards" class="row g-3">
-		{% if courses and courses|length %}
-			{% for c in courses %}
-				<div class="col-12 col-sm-6 col-lg-4">
-					<div class="card h-100 shadow-sm course-card">
-						<div class="ratio ratio-16x9">
-							<img
-								src="{{ c.course_image }}"
-								alt="{{ c.course_name }}"
-								class="course-card-img"
-								loading="lazy"
-								onerror="this.onerror=null; this.src='/assets/ifitwala_ed/images/course_placeholder.jpg';"
-							>
-						</div>
-						<div class="card-body py-2">
-							<div class="course-meta small text-muted">{{ c.course_group or '—' }}</div>
-						</div>
-						<a class="stretched-link" href="{{ c.href }}" aria-label="Open {{ c.course_name }}"></a>
-					</div>
-				</div>
-			{% endfor %}
-		{% else %}
-			<div class="col-12">
-				<div class="alert alert-light border small mb-0">
-					{{ courses_empty_reason or "No courses found." }}
-				</div>
-			</div>
-		{% endif %}
-	</div>
-</section>
-
-
-
 <section aria-labelledby="moreLabel" class="mb-4">
 	<h2 id="moreLabel" class="h5 mb-2">{{ _("More") }}</h2>
 	<div id="extra-cards" class="row g-3">
