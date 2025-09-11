@@ -286,4 +286,30 @@ module.exports = [
 			}),
 		],
 	},
+
+	// ── Overriding number cards and desk elements ──
+	{
+		input: "ifitwala_ed/public/scss/desk_overrides.scss",
+		output: {
+			file: `${dist}/desk_overrides.bundle.css`,
+			format: "es"
+		},
+		plugins: [
+			postcss({
+				extract: true,
+				minimize: true,
+				plugins: [
+					require('autoprefixer'),
+					require('cssnano')({ preset: ["default", { normalizeUnicode: false }] })
+				],
+				preprocessor: async (content, id) => {
+					const sass = await import('sass');
+					const result = await sass.compileAsync(id);
+					return { code: result.css };
+				}
+			})
+		]
+	}
+
+
 ];
