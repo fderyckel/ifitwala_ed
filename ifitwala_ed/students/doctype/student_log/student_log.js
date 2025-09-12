@@ -33,19 +33,18 @@ frappe.ui.form.on("Student Log", {
 		configure_follow_up_person_field(frm);
 	}, 
 
-
 	refresh(frm) {
 		const status = (frm.doc.follow_up_status || "").toLowerCase();
 		const requiresFU = !!frm.doc.requires_follow_up;
 
-		// avoid duplicate buttons on refresh
+		// Avoid duplicate buttons on refresh
 		frm.clear_custom_buttons();
 
-		// keep follow-up fields visibility in sync
+		// Keep follow-up fields visibility in sync
 		toggle_follow_up_fields(frm, requiresFU);
 
-		// ── 👤 Assign / Re-assign (hide when Closed) ──
-		if (requiresFU && status !== "closed" && !frm.is_new()) {
+		// ── 👤 Assign / Re-assign (hide when Completed) ──
+		if (requiresFU && status !== "completed" && !frm.is_new()) {
 			const assignBtn = frm.add_custom_button(__("👤 Assign / Re-assign"), () => {
 				if (frm.is_dirty()) {
 					frappe.msgprint(__("Please save the document before assigning."));
@@ -82,9 +81,8 @@ frappe.ui.form.on("Student Log", {
 			assignBtn.addClass("btn-info");
 		}
 
-		// ── ✍️ Follow Up (hide once a follow-up has been SUBMITTED) ──
-		const hasSubmittedFU = (status === "completed" || status === "closed");
-		if (requiresFU && !frm.is_new() && !hasSubmittedFU) {
+		// ── ✍️ Follow Up (hide once Completed) ──
+		if (requiresFU && !frm.is_new() && status !== "completed") {
 			const followBtn = frm.add_custom_button(__("✍️ Follow Up"), () => {
 				frappe.call({
 					method: "ifitwala_ed.students.doctype.student_log.student_log.get_employee_data",
@@ -100,32 +98,22 @@ frappe.ui.form.on("Student Log", {
 			followBtn.addClass("btn-warning");
 		}
 
-		// ── ✅ Close Follow-Up (visible if you can close; enabled only at "Completed") ──
-		if (requiresFU && !frm.is_new()) {
-			const isOwner = (frappe.session.user === frm.doc.owner);
-			const canSeeClose = frappe.user.has_role("Academic Admin") || isOwner;
-			if (canSeeClose) {
-				const closeBtn = frm.add_custom_button(__("✅ Close Follow-Up"), () => {
-					if (status !== "completed") {
-						frappe.msgprint(__("Set Follow-up Status to <b>Completed</b> before closing."));
-						return;
-					}
-					frappe.call({
-						method: "ifitwala_ed.students.doctype.student_log.student_log.finalize_close",
-						args: { log_name: frm.doc.name },
-						callback: () => frm.reload_doc()
-					});
+		// ── ✅ Complete (author-only; final state) ──
+		const isAuthor = (frappe.session.user === frm.doc.owner);
+		if (requiresFU && !frm.is_new() && status !== "completed" && isAuthor) {
+			const completeBtn = frm.add_custom_button(__("✅ Complete"), () => {
+				frappe.call({
+					method: "ifitwala_ed.students.doctype.student_log.student_log.complete_log",
+					args: { log_name: frm.doc.name },
+					callback: () => frm.reload_doc()
 				});
-				closeBtn.addClass("btn-success");
-				if (status !== "completed") {
-					closeBtn.prop("disabled", true).attr("title", __("Requires status: Completed"));
-				}
-			}
+			});
+			completeBtn.addClass("btn-success");
 		}
 
-		// keep field behavior consistent
+		// Keep role-filtered picker & pre-submit editability consistent
 		configure_follow_up_person_field(frm);
-	},
+	}, 
 
 	student(frm) {
 		// Auto-fill program + academic year from active enrollment

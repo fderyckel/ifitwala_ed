@@ -4,11 +4,14 @@
 # ifitwala_ed/students/report/case_entry_activity_log/case_entry_activity_log.py
 
 import re
+from collections import defaultdict
+
 import frappe
 from frappe import _
-from frappe.utils import getdate, formatdate
+from frappe.utils import getdate, formatdate, strip_html
 
 ALLOWED = {"Counselor", "Academic Admin", "System Manager"}
+
 
 def execute(filters=None):
     filters = frappe._dict(filters or {})
@@ -20,6 +23,7 @@ def execute(filters=None):
 
     where, params = _build_where(filters, date_from, date_to)
 
+    # ── Main query (note Employee join via user_id → employee_full_name) ──
     q = f"""
         SELECT
             rce.entry_datetime,
@@ -32,7 +36,8 @@ def execute(filters=None):
             rc.program                         AS program,
             rc.academic_year                   AS academic_year,
             rc.case_manager                    AS case_manager,
-            COALESCE(e.employee_name, u.full_name) AS case_manager_name,
+            u.full_name                        AS user_full_name,
+            e.employee_full_name               AS employee_full_name,
             rc.severity                        AS case_severity,
             rc.case_status                     AS case_status,
             rce.entry_type                     AS entry_type,
@@ -53,20 +58,33 @@ def execute(filters=None):
     """
     rows = frappe.db.sql(q, params, as_dict=True)
 
-    # Presentational enrichments (no extra queries)
+    # ── Presentational enrichments (no extra queries) ───────────────────
     for r in rows:
-        r["entry_date_pretty"] = formatdate(r["entry_date"], "d MMMM yyyy")
+        # Pretty date
+        r["entry_date_pretty"] = formatdate(r["entry_date"], "d MMMM yyyy")  # e.g., 9 September 2025
+
+        # Linked student name
         full = r.get("student_full_name") or r.get("student") or ""
         sid  = r.get("student") or ""
         r["student_link"] = (
             f'<a href="/app/student/{frappe.utils.escape_html(sid)}" target="_blank" rel="noopener">'
             f'{frappe.utils.escape_html(full)}</a>'
         )
-        snippet = frappe.utils.strip_html(r.get("summary_raw") or "")
+
+        # Case manager display: Employee > User.full_name > user id
+        cm_emp = (r.get("employee_full_name") or "").strip()
+        cm_usr = (r.get("user_full_name") or "").strip()
+        r["case_manager_name"] = cm_emp or cm_usr or (r.get("case_manager") or "")
+
+        # Nicer snippet
+        snippet = strip_html(r.get("summary_raw") or "")
         snippet = re.sub(r"\s+", " ", snippet).strip()
         if len(snippet) > 220:
             snippet = snippet[:220].rsplit(" ", 1)[0] + "…"
-        r["summary_snippet"] = snippet
+        r["summary_snippet"] = (
+            f'<div class="text-muted small" style="border-left:3px solid #e2e6ea;padding-left:.5rem;">'
+            f'{frappe.utils.escape_html(snippet)}</div>'
+        )
 
     columns = [
         {"label": _("Date"),            "fieldname": "entry_date_pretty", "fieldtype": "Data", "width": 150},
@@ -82,15 +100,27 @@ def execute(filters=None):
         {"label": _("Entry Type"),      "fieldname": "entry_type",        "fieldtype": "Data", "width": 150},
         {"label": _("Assignee"),        "fieldname": "assignee",          "fieldtype": "Link", "options": "User", "width": 170},
         {"label": _("Entry Status"),    "fieldname": "entry_status",      "fieldtype": "Data", "width": 110},
-        {"label": _("Summary"),         "fieldname": "summary_snippet",   "fieldtype": "Small Text", "width": 420},
+        {"label": _("Summary"),         "fieldname": "summary_snippet",   "fieldtype": "HTML", "width": 420},
     ]
 
-    # Default chart (light): entries per week from the same dataset
-    chart = _make_entries_over_time_chart(rows, bucket="week")
-    return columns, rows, None, chart
+    # ── Charts ──────────────────────────────────────────────────────────
+    chart_over_time_week  = _chart_entries_over_time(rows, bucket="week")
+    chart_over_time_month = _chart_entries_over_time(rows, bucket="month")
+    chart_by_school       = _chart_simple_count(rows, key="school", title=_("Entries by School"))
+    chart_by_program      = _chart_simple_count(rows, key="program", title=_("Entries by Program"))
+    chart_by_manager      = _chart_simple_count(rows, key="case_manager_name", title=_("Entries per Case Manager"))
+
+    # Return one default chart; pass others via message for client JS
+    message = {
+        "chart_over_time_month": chart_over_time_month,
+        "chart_by_school": chart_by_school,
+        "chart_by_program": chart_by_program,
+        "chart_by_manager": chart_by_manager,
+    }
+    return columns, rows, message, chart_over_time_week
 
 
-# ---------- helpers ----------
+# ---------------- helpers ----------------
 def _guard_roles():
     user = frappe.session.user
     if user == "Administrator":
@@ -118,13 +148,12 @@ def _build_where(f, date_from, date_to):
     if f.get("case_status"):   where.append("rc.case_status = %(cs)s");      params["cs"] = f.case_status
     return where, params
 
-def _make_entries_over_time_chart(rows, bucket="week"):
-    # bucket ∈ {"week", "month"}
+def _chart_entries_over_time(rows, bucket="week"):
     from datetime import date, timedelta
-    counts = {}
+    counts = defaultdict(int)
 
     def week_start(d: date) -> date:
-        return d - timedelta(days=d.weekday())  # Monday start
+        return d - timedelta(days=d.weekday())  # Monday
 
     for r in rows:
         d = r.get("entry_date")
@@ -136,18 +165,23 @@ def _make_entries_over_time_chart(rows, bucket="week"):
         else:
             k = date(d.year, d.month, 1)
             label = formatdate(k, "MMM yyyy")
-        counts[label] = counts.get(label, 0) + 1
+        counts[label] += 1
 
     if not counts:
         return None
 
+    # sort by actual date value
     labels = sorted(counts.keys(), key=lambda s: frappe.utils.getdate(s))
     values = [counts[l] for l in labels]
+    return {"data": {"labels": labels, "datasets": [{"name": _("Entries"), "values": values}]}, "type": "line"}
 
-    return {
-        "data": {
-            "labels": labels,
-            "datasets": [{"name": _("Entries"), "values": values}],
-        },
-        "type": "line"
-    }
+def _chart_simple_count(rows, key, title):
+    counts = defaultdict(int)
+    for r in rows:
+        val = (r.get(key) or "").strip() or _("(Missing)")
+        counts[val] += 1
+    if not counts:
+        return None
+    labels = sorted(counts.keys(), key=lambda s: s.lower())
+    values = [counts[l] for l in labels]
+    return {"data": {"labels": labels, "datasets": [{"name": title, "values": values}]}, "type": "bar"}

@@ -545,3 +545,180 @@ def auto_close_completed_logs():
 				}).insert(ignore_permissions=True)
 			except Exception:
 				pass
+
+
+@frappe.whitelist()
+def complete_follow_up(follow_up_name: str):
+	"""
+	Mark a follow-up as completed and move the parent Student Log to 'Completed'.
+	Permissions:
+	- Follow-up author (owner), or
+	- Academic Admin
+	"""
+	if not follow_up_name:
+		frappe.throw(_("Missing follow-up name."))
+
+	# Fetch only what we need from the follow-up
+	fu_row = frappe.db.get_value(
+		"Student Log Follow Up",
+		follow_up_name,
+		["name", "owner", "student_log"],
+		as_dict=True
+	)
+	if not fu_row:
+		frappe.throw(_("Follow-up not found: {0}").format(follow_up_name))
+	if not fu_row.student_log:
+		frappe.throw(_("This follow-up is not linked to a Student Log."))
+
+	# Permission: follow-up author OR Academic Admin
+	roles = set(frappe.get_roles())
+	is_admin = "Academic Admin" in roles
+	is_author = (frappe.session.user == fu_row.owner)
+	if not (is_admin or is_author):
+		frappe.throw(_("Only the follow-up author or an Academic Admin can complete this follow-up."))
+
+	# Fetch minimal parent info
+	log_row = frappe.db.get_value(
+		"Student Log",
+		fu_row.student_log,
+		["name", "owner", "author_name", "student_name", "follow_up_status"],
+		as_dict=True
+	)
+	if not log_row:
+		frappe.throw(_("Parent Student Log not found."))
+
+	# Idempotent: already Completed
+	if (log_row.follow_up_status or "").lower() == "completed":
+		return {"ok": True, "status": "Completed", "log": log_row.name}
+
+	# 1) Set parent status → Completed (single column write)
+	frappe.db.set_value("Student Log", log_row.name, "follow_up_status", "Completed")
+
+	# 2) Close all OPEN ToDos on the parent in a single SQL
+	frappe.db.sql(
+		"""
+		UPDATE `tabToDo`
+		SET status = 'Closed'
+		WHERE reference_type = %s AND reference_name = %s AND status = 'Open'
+		""",
+		("Student Log", log_row.name),
+	)
+
+	# 3) Timeline entry (direct Comment insert; avoids loading parent doc)
+	try:
+		link = frappe.utils.get_link_to_form("Student Log Follow Up", follow_up_name)
+		frappe.get_doc({
+			"doctype": "Comment",
+			"comment_type": "Info",
+			"reference_doctype": "Student Log",
+			"reference_name": log_row.name,
+			"content": _("Follow-up completed by {user} — see {link}").format(
+				user=frappe.utils.get_fullname(frappe.session.user),
+				link=link
+			),
+		}).insert(ignore_permissions=True)
+	except Exception:
+		pass
+
+	# 4) Notify the log author (bell + realtime fallback)
+	author_user = log_row.owner or None
+	if not author_user and log_row.author_name:
+		author_user = frappe.db.get_value(
+			"Employee",
+			{"employee_full_name": log_row.author_name},
+			"user_id"
+		)
+
+	if author_user and author_user != frappe.session.user:
+		# Bell notification
+		try:
+			frappe.get_doc({
+				"doctype": "Notification Log",
+				"subject": _("Follow-up completed"),
+				"email_content": _("A follow-up for {0} has been completed. Click to review.")
+					.format(log_row.student_name or log_row.name),
+				"type": "Alert",
+				"for_user": author_user,
+				"from_user": frappe.session.user,
+				"document_type": "Student Log",
+				"document_name": log_row.name,
+			}).insert(ignore_permissions=True)
+		except Exception:
+			# Realtime fallback
+			try:
+				frappe.publish_realtime(
+					event="inbox_notification",
+					message={
+						"type": "Alert",
+						"subject": _("Follow-up completed"),
+						"message": _("A follow-up for {0} has been completed. Click to review.")
+							.format(log_row.student_name or log_row.name),
+						"reference_doctype": "Student Log",
+						"reference_name": log_row.name
+					},
+					user=author_user
+				)
+			except Exception:
+				pass
+
+	return {"ok": True, "status": "Completed", "log": log_row.name}
+
+@frappe.whitelist()
+def complete_log(log_name: str):
+	"""
+	Mark the Student Log as 'Completed'.
+	Permissions: only the log author (owner) can complete.
+	Effects:
+	- Set follow_up_status = 'Completed'
+	- Close any OPEN ToDos referencing this log
+	- Add concise timeline entry
+	"""
+	if not log_name:
+		frappe.throw(_("Missing Student Log name."))
+
+	# Fetch minimal fields
+	log_row = frappe.db.get_value(
+		"Student Log",
+		log_name,
+		["name", "owner", "student_name", "follow_up_status"],
+		as_dict=True
+	)
+	if not log_row:
+		frappe.throw(_("Student Log not found: {0}").format(log_name))
+
+	# Permission: only author
+	if frappe.session.user != log_row.owner:
+		frappe.throw(_("Only the author of this Student Log can mark it as Completed."))
+
+	# Idempotent: already Completed
+	if (log_row.follow_up_status or "").lower() == "completed":
+		return {"ok": True, "status": "Completed", "log": log_row.name}
+
+	# 1) Update status (single column write)
+	frappe.db.set_value("Student Log", log_row.name, "follow_up_status", "Completed")
+
+	# 2) Close all OPEN ToDos for this log (single SQL)
+	frappe.db.sql(
+		"""
+		UPDATE `tabToDo`
+		SET status = 'Closed'
+		WHERE reference_type = %s AND reference_name = %s AND status = 'Open'
+		""",
+		("Student Log", log_row.name),
+	)
+
+	# 3) Timeline entry (direct insert)
+	try:
+		frappe.get_doc({
+			"doctype": "Comment",
+			"comment_type": "Info",
+			"reference_doctype": "Student Log",
+			"reference_name": log_row.name,
+			"content": _("Log marked <b>Completed</b> by {user}.").format(
+				user=frappe.utils.get_fullname(frappe.session.user)
+			),
+		}).insert(ignore_permissions=True)
+	except Exception:
+		pass
+
+	return {"ok": True, "status": "Completed", "log": log_row.name}
