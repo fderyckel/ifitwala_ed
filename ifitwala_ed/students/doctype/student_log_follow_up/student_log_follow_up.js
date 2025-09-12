@@ -22,6 +22,9 @@ frappe.ui.form.on("Student Log Follow Up", {
 	},
 
 	refresh(frm) {
+		// Avoid duplicate buttons on rerender
+		frm.clear_custom_buttons();
+
 		// Safety: if author still blank (rare), fill once
 		if (!frm.doc.follow_up_author) {
 			frappe.call({
@@ -45,5 +48,27 @@ frappe.ui.form.on("Student Log Follow Up", {
 				frappe.set_route("Form", "Student Log", frm.doc.student_log);
 			});
 		}
+
+		// ✅ Complete button (visible only when submitted + (author OR Academic Admin))
+		const isOwner = frm.doc.owner === frappe.session.user;
+		const isAdmin = frappe.user.has_role("Academic Admin");
+		if (frm.doc.docstatus === 1 && (isOwner || isAdmin)) {
+			const cbtn = frm.add_custom_button(__("✅ Complete"), () => {
+				frappe.call({
+					method: "ifitwala_ed.students.doctype.student_log.student_log.complete_follow_up",
+					args: { follow_up_name: frm.doc.name },
+					callback() {
+						frappe.show_alert({ message: __("Follow-up marked completed."), indicator: "green" });
+						if (frm.doc.student_log) {
+							frappe.set_route("Form", "Student Log", frm.doc.student_log);
+						} else {
+							frm.reload_doc();
+						}
+					}
+				});
+			});
+			cbtn.addClass("btn-success");
+		}
 	}
+
 });
