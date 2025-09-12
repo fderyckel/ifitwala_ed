@@ -66,13 +66,14 @@ class StudentLogFollowUp(Document):
 				except Exception:
 					pass
 
-		# Notify the parent author (bell + toast)
+		# Resolve key users
 		author_user = log.owner or None
 		if not author_user and log.author_name:
 			author_user = frappe.db.get_value("Employee", {"employee_full_name": log.author_name}, "user_id")
+		assignee_user = log.follow_up_person or None
 
+		# Notify the parent author (bell + realtime), skip if it's me
 		if author_user and author_user != frappe.session.user:
-			# Persistent bell notification via Notification Log
 			try:
 				frappe.get_doc({
 					"doctype": "Notification Log",
@@ -86,7 +87,6 @@ class StudentLogFollowUp(Document):
 					"document_name": log.name,
 				}).insert(ignore_permissions=True)
 			except Exception:
-				# Fallback: realtime inbox-style event
 				try:
 					frappe.publish_realtime(
 						event="inbox_notification",
@@ -109,6 +109,37 @@ class StudentLogFollowUp(Document):
 				message={"log_name": log.name, "student_name": log.student_name},
 				user=author_user
 			)
+
+		# Notify current assignee (follow_up_person) too; skip if self or same as author
+		if assignee_user and assignee_user not in {frappe.session.user, author_user}:
+			try:
+				frappe.get_doc({
+					"doctype": "Notification Log",
+					"subject": _("New follow-up on assigned log"),
+					"email_content": _("A new follow-up was added for {0}. Click to review.")
+						.format(log.student_name or log.name),
+					"type": "Alert",
+					"for_user": assignee_user,
+					"from_user": frappe.session.user,
+					"document_type": "Student Log",
+					"document_name": log.name,
+				}).insert(ignore_permissions=True)
+			except Exception:
+				try:
+					frappe.publish_realtime(
+						event="inbox_notification",
+						message={
+							"type": "Alert",
+							"subject": _("New follow-up on assigned log"),
+							"message": _("A new follow-up was added for {0}. Click to review.")
+								.format(log.student_name or log.name),
+							"reference_doctype": "Student Log",
+							"reference_name": log.name
+						},
+						user=assignee_user
+					)
+				except Exception:
+					pass
 
 		# Single concise timeline entry on the parent
 		log.add_comment(

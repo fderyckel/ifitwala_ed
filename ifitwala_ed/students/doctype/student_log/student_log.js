@@ -36,6 +36,8 @@ frappe.ui.form.on("Student Log", {
 	refresh(frm) {
 		const status = (frm.doc.follow_up_status || "").toLowerCase();
 		const requiresFU = !!frm.doc.requires_follow_up;
+		const isAuthor = (frappe.session.user === frm.doc.owner);
+		const isAdmin = frappe.user.has_role("Academic Admin");
 
 		// avoid duplicate buttons on refresh
 		frm.clear_custom_buttons();
@@ -99,7 +101,6 @@ frappe.ui.form.on("Student Log", {
 		}
 
 		// ── ✅ Complete (author-only; final state) ──
-		const isAuthor = (frappe.session.user === frm.doc.owner);
 		if (requiresFU && !frm.is_new() && status !== "completed" && isAuthor) {
 			const completeBtn = frm.add_custom_button(__("✅ Complete"), () => {
 				frappe.call({
@@ -111,9 +112,22 @@ frappe.ui.form.on("Student Log", {
 			completeBtn.addClass("btn-success");
 		}
 
+		// ── 🔁 Reopen (author or Academic Admin; only when Completed) ──
+		if (!frm.is_new() && status === "completed" && (isAuthor || isAdmin)) {
+			const reopenBtn = frm.add_custom_button(__("🔁 Reopen"), () => {
+				frappe.call({
+					method: "ifitwala_ed.students.doctype.student_log.student_log.reopen_log",
+					args: { log_name: frm.doc.name },
+					callback: () => frm.reload_doc()
+				});
+			});
+			reopenBtn.addClass("btn-secondary");
+		}
+
 		// keep field behavior consistent
 		configure_follow_up_person_field(frm);
 	}, 
+
 
 	student(frm) {
 		// Auto-fill program + academic year from active enrollment

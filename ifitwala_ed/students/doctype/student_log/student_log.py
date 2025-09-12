@@ -356,17 +356,36 @@ def get_follow_up_role_from_next_step(next_step):
 # ---------- assign/reassign endpoint (owner OR Academic Admin OR current assignee) ----------
 @frappe.whitelist()
 def assign_follow_up(log_name: str, user: str):
-	sl = frappe.get_doc("Student Log", log_name)
+	"""
+	Efficient (re)assignment:
+	- Blocks when log is 'Completed'
+	- Branch guard: assignee must be within school subtree
+	- Role guard: assignee must have follow_up_role (fallback 'Academic Staff')
+	- Perms: current user is Academic Admin OR log author OR current assignee
+	- Bulk-closes existing OPEN ToDos; inserts one new ToDo
+	- Mirrors follow_up_person; recomputes status via DB (no full doc loads)
+	"""
+	if not (log_name and user):
+		frappe.throw(_("Missing parameters."))
 
-	# 🚫 Completed logs cannot be (re)assigned under new semantics
+	# Minimal parent fetch
+	sl = frappe.db.get_value(
+		"Student Log",
+		log_name,
+		["name", "owner", "school", "student_name", "follow_up_status", "follow_up_role"],
+		as_dict=True,
+	)
+	if not sl:
+		frappe.throw(_("Student Log not found: {0}").format(log_name))
+
+	# Completed logs cannot be (re)assigned
 	if (sl.follow_up_status or "").lower() == "completed":
 		frappe.throw(
 			_("This Student Log is already <b>Completed</b> and cannot be (re)assigned."),
 			title=_("Follow-Up Completed")
 		)
 
-	# ✅ branch guard: assignee must cover log.school (self or descendant)
-	log_school = sl.school
+	# Branch guard: assignee must cover log.school (user default school or Employee.school)
 	assignee_anchor = (
 		frappe.defaults.get_user_default("school", user)
 		or frappe.db.get_value("Employee", {"user_id": user}, "school")
@@ -384,18 +403,18 @@ def assign_follow_up(log_name: str, user: str):
 		JOIN `tabSchool` s2
 			ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
 		WHERE s1.name = %s AND s2.name = %s
+		LIMIT 1
 		""",
-		(assignee_anchor, log_school),
+		(assignee_anchor, sl.school),
 	)
-
 	if not ok:
 		frappe.throw(
 			_("Assignee's school branch ({0}) does not include the log's school ({1}).")
-			.format(assignee_anchor, log_school),
+			.format(assignee_anchor, sl.school),
 			title=_("Outside School Branch")
 		)
 
-	# ✅ role guard: assignee must have expected role (from Next Step; fallback Academic Staff)
+	# Role guard: assignee must have required role (fallback 'Academic Staff')
 	required_role = sl.follow_up_role or "Academic Staff"
 	if required_role and required_role not in set(frappe.get_roles(user)):
 		frappe.throw(
@@ -404,78 +423,70 @@ def assign_follow_up(log_name: str, user: str):
 		)
 
 	# Permission: author, Academic Admin, or current assignee may (re)assign
-	roles = set(frappe.get_roles())
-	is_admin = "Academic Admin" in roles
+	is_admin = "Academic Admin" in set(frappe.get_roles())
 	is_author = (frappe.session.user == sl.owner)
-	current = frappe.db.get_value(
+	current_assignee = frappe.db.get_value(
 		"ToDo",
 		{"reference_type": "Student Log", "reference_name": sl.name, "status": "Open"},
-		"allocated_to"
+		"allocated_to",
 	)
-	allowed = is_admin or is_author or (current and current == frappe.session.user)
+	allowed = is_admin or is_author or (current_assignee and current_assignee == frappe.session.user)
 	if not allowed:
 		frappe.throw(_("Not permitted to (re)assign this Student Log."))
 
-	# Previous single open assignee (for clear "Old → New" message)
-	prev_rows = frappe.get_all(
-		"ToDo",
-		filters={"reference_type": sl.doctype, "reference_name": sl.name, "status": "Open"},
-		fields=["allocated_to"]
+	# Keep previous single open assignee (for timeline message); then bulk-close all opens
+	prev_user = current_assignee
+	frappe.db.sql(
+		"""
+		UPDATE `tabToDo`
+		SET status = 'Closed'
+		WHERE reference_type = 'Student Log'
+		  AND reference_name = %s
+		  AND status = 'Open'
+		""",
+		(sl.name,),
 	)
-	prev_user = prev_rows[0].allocated_to if len(prev_rows) == 1 else None
 
-	# Clear existing opens (single-assignee policy)
-	for r in prev_rows:
-		try:
-			if assign_remove:
-				assign_remove(sl.doctype, sl.name, r.allocated_to)
-			else:
-				frappe.db.set_value(
-					"ToDo",
-					{"reference_type": sl.doctype, "reference_name": sl.name, "allocated_to": r.allocated_to, "status": "Open"},
-					"status",
-					"Closed"
-				)
-		except Exception:
-			pass
-
-	# Create new assignment (native API preferred)
+	# Create new OPEN ToDo for assignee (lean insert)
 	due_days = frappe.db.get_value("School", sl.school, "default_follow_up_due_in_days") or 5
 	due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
+	frappe.get_doc({
+		"doctype": "ToDo",
+		"allocated_to": user,
+		"reference_type": "Student Log",
+		"reference_name": sl.name,
+		"description": f"Follow up on Student Log for {sl.student_name or sl.name}",
+		"date": due_date,
+		"status": "Open",
+		"priority": "Medium",
+	}).insert(ignore_permissions=True)
 
-	if assign_add:
-		assign_add({
-			"doctype": sl.doctype,
-			"name": sl.name,
-			"assign_to": [user],
-			"description": f"Follow up on Student Log for {sl.student_name}",
-			"due_date": due_date
-		})
-	else:
-		todo = frappe.new_doc("ToDo")
-		todo.update({
-			"allocated_to": user,
-			"reference_type": sl.doctype,
-			"reference_name": sl.name,
-			"description": f"Follow up on Student Log for {sl.student_name}",
-			"date": due_date,
-			"status": "Open",
-			"priority": "Medium",
-		})
-		todo.insert(ignore_permissions=True)
+	# Mirror assignee on the parent
+	frappe.db.set_value("Student Log", sl.name, "follow_up_person", user)
 
-	# Mirror and recompute status (quiet reason)
-	sl.db_set("follow_up_person", user)
-	sl._apply_status(sl._compute_follow_up_status(), reason="(re)assignment", write_immediately=True)
+	# Recompute status cheaply:
+	# any follow-up rows → In Progress; else with open ToDo → Open
+	has_followups = bool(frappe.db.exists("Student Log Follow Up", {"student_log": sl.name}))
+	new_status = "In Progress" if has_followups else "Open"
+	if (sl.follow_up_status or "") != new_status:
+		frappe.db.set_value("Student Log", sl.name, "follow_up_status", new_status)
 
-	# Timeline note (only for true reassignment Old → New)
+	# Timeline note only for true reassignment Old → New
 	if prev_user and prev_user != user:
 		try:
-			sl.add_comment("Info", _("Reassigned: {0} → {1}").format(sl._fullname(prev_user), sl._fullname(user)))
+			prev_full = frappe.utils.get_fullname(prev_user) or prev_user
+			new_full = frappe.utils.get_fullname(user) or user
+			frappe.get_doc({
+				"doctype": "Comment",
+				"comment_type": "Info",
+				"reference_doctype": "Student Log",
+				"reference_name": sl.name,
+				"content": _("Reassigned: {0} → {1}").format(prev_full, new_full),
+			}).insert(ignore_permissions=True)
 		except Exception:
 			pass
 
-	return {"ok": True, "assigned_to": user}
+	return {"ok": True, "assigned_to": user, "status": new_status}
 
 
 # ---------- scheduler: Completed → Closed ----------
@@ -552,8 +563,6 @@ def auto_close_completed_logs():
 			pass
 
 	return len(eligible)
-
-
 
 @frappe.whitelist()
 def complete_follow_up(follow_up_name: str):
@@ -730,3 +739,111 @@ def complete_log(log_name: str):
 		pass
 
 	return {"ok": True, "status": "Completed", "log": log_row.name}
+
+@frappe.whitelist()
+def reopen_log(log_name: str):
+	"""
+	Reopen a 'Completed' Student Log → 'In Progress'.
+	Permissions: Academic Admin OR log author (owner).
+	Effects:
+	- Set follow_up_status = 'In Progress'
+	- If follow_up_person is set and no OPEN ToDo exists, create one with a sane due date
+	- Add concise timeline entry
+	- Notify follow_up_person (bell + realtime) if present
+	"""
+	if not log_name:
+		frappe.throw(_("Missing Student Log name."))
+
+	# Minimal fetch
+	row = frappe.db.get_value(
+		"Student Log",
+		log_name,
+		["name", "owner", "school", "student_name", "follow_up_status", "follow_up_person"],
+		as_dict=True
+	)
+	if not row:
+		frappe.throw(_("Student Log not found: {0}").format(log_name))
+
+	# Only from Completed
+	if (row.follow_up_status or "").lower() != "completed":
+		frappe.throw(_("Only logs in <b>Completed</b> status can be reopened."))
+
+	# Permission: author or Academic Admin
+	roles = set(frappe.get_roles())
+	is_admin = "Academic Admin" in roles
+	is_author = (frappe.session.user == row.owner)
+	if not (is_admin or is_author):
+		frappe.throw(_("Only the log author or an Academic Admin can reopen this log."))
+
+	# 1) Flip status → In Progress (single write)
+	frappe.db.set_value("Student Log", row.name, "follow_up_status", "In Progress")
+
+	# 2) Ensure an OPEN ToDo exists for current follow_up_person (if set)
+	if row.follow_up_person:
+		has_open = frappe.db.get_value(
+			"ToDo",
+			{"reference_type": "Student Log", "reference_name": row.name, "allocated_to": row.follow_up_person, "status": "Open"},
+			"name"
+		)
+		if not has_open:
+			due_days = frappe.db.get_value("School", row.school, "default_follow_up_due_in_days") or 5
+			due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
+			frappe.get_doc({
+				"doctype": "ToDo",
+				"allocated_to": row.follow_up_person,
+				"reference_type": "Student Log",
+				"reference_name": row.name,
+				"description": f"Follow up on Student Log for {row.student_name or row.name}",
+				"date": due_date,
+				"status": "Open",
+				"priority": "Medium",
+			}).insert(ignore_permissions=True)
+
+	# 3) Timeline: concise audit note
+	try:
+		frappe.get_doc({
+			"doctype": "Comment",
+			"comment_type": "Info",
+			"reference_doctype": "Student Log",
+			"reference_name": row.name,
+			"content": _("Log <b>reopened</b> by {user}.").format(
+				user=frappe.utils.get_fullname(frappe.session.user)
+			),
+		}).insert(ignore_permissions=True)
+	except Exception:
+		pass
+
+	# 4) Notify the follow_up_person (if any)
+	if row.follow_up_person and row.follow_up_person != frappe.session.user:
+		try:
+			# Bell notification
+			frappe.get_doc({
+				"doctype": "Notification Log",
+				"subject": _("Log reopened"),
+				"email_content": _("A Student Log you’re assigned to was reopened. Click to review."),
+				"type": "Alert",
+				"for_user": row.follow_up_person,
+				"from_user": frappe.session.user,
+				"document_type": "Student Log",
+				"document_name": row.name,
+			}).insert(ignore_permissions=True)
+		except Exception:
+			# Realtime fallback
+			try:
+				frappe.publish_realtime(
+					event="inbox_notification",
+					message={
+						"type": "Alert",
+						"subject": _("Log reopened"),
+						"message": _("A Student Log you’re assigned to was reopened. Click to review."),
+						"reference_doctype": "Student Log",
+						"reference_name": row.name
+					},
+					user=row.follow_up_person
+				)
+			except Exception:
+				pass
+
+	return {"ok": True, "status": "In Progress", "log": row.name}
+
+
