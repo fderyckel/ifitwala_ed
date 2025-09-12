@@ -70,31 +70,35 @@ class StudentLog(Document):
 
 	def _compute_follow_up_status(self):
 		"""
-		Derive status from DB state (single source of truth):
-		  - None when follow-up not required
-		  - 'Completed' if any submitted Follow Up exists
-		  - 'In Progress' if any Follow Up (draft/saved) exists
-		  - 'Open' if exactly one open ToDo exists
-		  - None otherwise
+		Derive status from current DB state under the new semantics:
+		- None            → follow-up not required or no clear state
+		- "Open"          → exactly one open ToDo exists and no follow-ups yet
+		- "In Progress"   → at least one follow-up exists (draft or submitted)
+		- "Completed"     → preserved only if explicitly set (author/admin action)
+		Notes:
+		- Submitting a follow-up does NOT auto-complete the log anymore.
 		"""
-		if not cint(self.requires_follow_up) or not self.name:
+		# If follow-up isn't required or the doc isn't saved yet, no derived status
+		if not frappe.utils.cint(self.requires_follow_up) or not self.name:
 			return None
 
-		# 1) Any submitted follow-up? → Completed
-		if frappe.db.exists("Student Log Follow Up", {"student_log": self.name, "docstatus": 1}):
+		# Preserve explicit terminal state
+		if (self.follow_up_status or "").lower() == "completed":
 			return "Completed"
 
-		# 2) Any follow-up saved/draft? → In Progress
+		# Any follow-up (draft or submitted) means work is/was happening → In Progress
 		if frappe.db.exists("Student Log Follow Up", {"student_log": self.name}):
 			return "In Progress"
 
-		# 3) Check assignment: single open assignee → Open
+		# Otherwise, if exactly one open ToDo exists, we're Open
 		open_assignees = frappe.get_all(
 			"ToDo",
 			filters={"reference_type": "Student Log", "reference_name": self.name, "status": "Open"},
 			limit=2
 		)
 		return "Open" if len(open_assignees) == 1 else None
+
+
 
 	# ---------------------------------------------------------------------
 	# Lifecycle
@@ -183,53 +187,48 @@ class StudentLog(Document):
 	# Validation helpers
 	# ---------------------------------------------------------------------
 	def _assert_followup_transition_and_immutability(self):
-			"""Enforce legal status transitions and lock core fields once Closed."""
-			old = self.get_doc_before_save() or frappe._dict()
+		"""Enforce legal status transitions and lock core fields once Completed."""
+		old = self.get_doc_before_save() or frappe._dict()
 
-			old_status = (old.get("follow_up_status") or "").lower()
-			new_status = (self.follow_up_status or "").lower()
+		old_status = (old.get("follow_up_status") or "").lower()
+		new_status = (self.follow_up_status or "").lower()
 
-			# Allowed transitions (None means previously empty)
-			allowed = {
-					None: {"", "open"},
-					"": {"open"},
-					"open": {"open", "in progress", "completed"},
-					"in progress": {"in progress", "completed"},
-					"completed": {"completed", "closed"},
-					"closed": {"closed"},  # no further changes
+		# Allowed transitions (Completed is terminal)
+		allowed = {
+			None: {"", "open", "in progress"},
+			"": {"open", "in progress"},
+			"open": {"open", "in progress", "completed"},
+			"in progress": {"in progress", "completed"},
+			"completed": {"completed"},
+		}
+
+		# Normalize key for None/empty
+		old_key = old_status if old_status else None
+		if old_key not in allowed or new_status not in allowed[old_key]:
+			# Permit no-change; otherwise block
+			if new_status != old_status:
+				frappe.throw(
+					_("Illegal follow-up status change: {0} → {1}")
+					.format(old_status or "None", new_status or "None"),
+					title=_("Invalid Transition")
+				)
+
+		# Once Completed, lock core follow-up fields
+		if (old_status == "completed") or (new_status == "completed" and old_status != "completed"):
+			locked_fields = {
+				"requires_follow_up",
+				"next_step",
+				"follow_up_role",
+				"follow_up_person",
+				"program",       # optional: protect context
+				"academic_year", # optional: protect context
 			}
-
-			# Normalize None/empty
-			old_key = old_status if old_status else ("")
-			if old_key == "":
-					old_key = None
-
-			if old_key not in allowed or new_status not in allowed[old_key]:
-					# Permit no-change (e.g., saving without touching status)
-					if new_status != old_status:
-							frappe.throw(
-									_("Illegal follow-up status change: {0} → {1}")
-									.format(old_status or "None", new_status or "None"),
-									title=_("Invalid Transition")
-							)
-
-			# Once Closed, lock core follow-up fields
-			if (old_status == "closed") or (new_status == "closed" and old_status != "closed"):
-					# If already closed before this save OR moving to closed now, ensure no core fields change afterward
-					locked_fields = {
-							"requires_follow_up",
-							"next_step",
-							"follow_up_role",
-							"follow_up_person",
-							"program",          # optional: protect context
-							"academic_year",    # optional: protect context
-					}
-					for f in locked_fields:
-							if old.get(f) != self.get(f):
-									frappe.throw(
-											_("Field {0} cannot be changed after the log is Closed.").format(f),
-											title=_("Locked After Close")
-									)
+			for f in locked_fields:
+				if old.get(f) != self.get(f):
+					frappe.throw(
+						_("Field {0} cannot be changed after the log is Completed.").format(f),
+						title=_("Locked After Completion")
+					)
 
 	# ---------------------------------------------------------------------
 	# Assignment helpers
@@ -490,30 +489,6 @@ def assign_follow_up(log_name: str, user: str):
 		sl.add_comment("Info", msg)
 
 	return {"ok": True, "assigned_to": user}
-
-
-@frappe.whitelist()
-def finalize_close(log_name: str):
-	log = frappe.get_doc("Student Log", log_name)
-
-	roles = set(frappe.get_roles())
-	is_admin = "Academic Admin" in roles
-	is_owner = (frappe.session.user == log.owner)
-
-	if not (is_admin or is_owner):
-		frappe.throw(_("Only Academic Admin or the author of the note can finalize (close) this log."))
-
-	# Must be in Completed before closing (keeps the flow clean)
-	if (log.follow_up_status or "").lower() != "completed":
-		frappe.throw(_("Log must be in 'Completed' status before it can be finalized (Closed)."))
-
-	# If it's already Closed, no-op (idempotent)
-	if (log.follow_up_status or "").lower() == "closed":
-		return {"ok": True, "status": "Closed"}
-
-	# Apply status + timeline immediately (outside save lifecycle)
-	log._apply_status("Closed", reason="manual finalize", write_immediately=True)
-	return {"ok": True, "status": "Closed"}
 
 
 # ---------- scheduler: Completed → Closed ----------

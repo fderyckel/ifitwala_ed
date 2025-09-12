@@ -1,7 +1,7 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# ifitwala_ed/students/report/case_entry_activity_log/case_entry_activity_log.py
+# ifitwala_ed/students/report/case_entries_activity_log/case_entries_activity_log.py
 
 import re
 from collections import defaultdict

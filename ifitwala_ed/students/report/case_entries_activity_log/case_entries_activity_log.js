@@ -1,11 +1,11 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-// ifitwala_ed/students/report/case_entry_activity_log/case_entry_activity_log.js
+// ifitwala_ed/students/report/case_entries_activity_log/case_entries_activity_log.js
 
 /* global frappe */
 
-frappe.query_reports["Case Entry Activity Log"] = {
+frappe.query_reports["Case Entries Activity Log"] = {
   // Render extra charts after the table is drawn (rows already in memory)
   after_datatable_render: function (report) {
     const data = report.data || [];
