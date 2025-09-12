@@ -37,10 +37,10 @@ frappe.ui.form.on("Student Log", {
 		const status = (frm.doc.follow_up_status || "").toLowerCase();
 		const requiresFU = !!frm.doc.requires_follow_up;
 
-		// Avoid duplicate buttons on refresh
+		// avoid duplicate buttons on refresh
 		frm.clear_custom_buttons();
 
-		// Keep follow-up fields visibility in sync
+		// keep follow-up fields visibility in sync
 		toggle_follow_up_fields(frm, requiresFU);
 
 		// ── 👤 Assign / Re-assign (hide when Completed) ──
@@ -111,7 +111,7 @@ frappe.ui.form.on("Student Log", {
 			completeBtn.addClass("btn-success");
 		}
 
-		// Keep role-filtered picker & pre-submit editability consistent
+		// keep field behavior consistent
 		configure_follow_up_person_field(frm);
 	}, 
 
