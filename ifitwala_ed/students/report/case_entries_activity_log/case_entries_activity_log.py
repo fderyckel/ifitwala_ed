@@ -106,20 +106,21 @@ def execute(filters=None):
 	]
 
 	# ── Charts (default = weekly) ───────────────────────────────────────
-	chart_week   = _chart_entries_over_time(rows, bucket="week")
-	chart_month  = _chart_entries_over_time(rows, bucket="month")
-	chart_school = _chart_simple_count(rows, key="school", title=_("Entries by School"))
-	chart_prog   = _chart_simple_count(rows, key="program", title=_("Entries by Program"))
-	chart_mgr    = _chart_simple_count(rows, key="case_manager_name", title=_("Entries per Case Manager"))
+	chart_over_time_week  = _chart_entries_over_time(rows, bucket="week")
+	chart_over_time_month = _chart_entries_over_time(rows, bucket="month")
+	chart_by_school       = _chart_simple_count(rows, key="school", title=_("Entries by School"))
+	chart_by_program      = _chart_simple_count(rows, key="program", title=_("Entries by Program"))
+	chart_by_manager      = _chart_simple_count(rows, key="case_manager_name", title=_("Entries per Case Manager"))
 
-	# Supply one default chart; send others via message (the JS renders its own UI)
 	message = {
-		"chart_over_time_month": chart_month,
-		"chart_by_school": chart_school,
-		"chart_by_program": chart_prog,
-		"chart_by_manager": chart_mgr,
+			"chart_over_time_week":  chart_over_time_week,   # ← add this
+			"chart_over_time_month": chart_over_time_month,
+			"chart_by_school":       chart_by_school,
+			"chart_by_program":      chart_by_program,
+			"chart_by_manager":      chart_by_manager,
 	}
-	return columns, rows, message, chart_week
+
+	return columns, rows, message, chart_over_time_week
 
 
 # ---------------- helpers ----------------

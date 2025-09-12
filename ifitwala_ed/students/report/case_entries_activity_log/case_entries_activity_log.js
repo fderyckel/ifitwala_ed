@@ -32,16 +32,23 @@ frappe.query_reports["Case Entries Activity Log"] = {
 
   // ---------- render extra charts with a Weekly/Monthly toggle ----------
   after_datatable_render(report) {
-    const data = report.data || [];
-    if (!data.length) return;
+    const msg = report.message || {};
 
-    // Create the extra charts container once
+    const charts = {
+      week:       msg.chart_over_time_week  || null,
+      month:      msg.chart_over_time_month || null,
+      by_school:  msg.chart_by_school       || null,
+      by_program: msg.chart_by_program      || null,
+      by_manager: msg.chart_by_manager      || null
+    };
+
+    // Create/refresh wrapper
     let $area = report.page.main.find(".cea-extra-charts");
     if (!$area.length) {
       $area = $(`
         <div class="cea-extra-charts" style="margin-top: 1rem;">
           <div class="row gy-4">
-            <!-- Time series -->
+            <!-- Time -->
             <div class="col-12 col-lg-6">
               <div class="d-flex align-items-center justify-content-between">
                 <h5 class="mb-2">${__("Entries Over Time")}</h5>
@@ -55,7 +62,7 @@ frappe.query_reports["Case Entries Activity Log"] = {
               <div class="cea-chart cea-time"></div>
             </div>
 
-            <!-- School / Program split -->
+            <!-- School / Program -->
             <div class="col-12 col-lg-6">
               <div class="d-flex align-items-center justify-content-between">
                 <h5 class="mb-2">${__("Entries by School / Program")}</h5>
@@ -69,7 +76,7 @@ frappe.query_reports["Case Entries Activity Log"] = {
               <div class="cea-chart cea-dim-chart"></div>
             </div>
 
-            <!-- Per manager -->
+            <!-- By Case Manager -->
             <div class="col-12">
               <h5 class="mb-2">${__("Entries per Case Manager")}</h5>
               <div class="cea-chart cea-manager"></div>
@@ -79,26 +86,56 @@ frappe.query_reports["Case Entries Activity Log"] = {
       `).appendTo(report.page.main);
     }
 
-    // Build datasets from the table rows (client-side aggregation; no extra queries)
-    const parsed = parse_rows(data);
+    // Helpers
+    const $timeEl   = $area.find(".cea-time")[0];
+    const $dimEl    = $area.find(".cea-dim-chart")[0];
+    const $mgrEl    = $area.find(".cea-manager")[0];
+    const $bucket   = $area.find(".cea-bucket");
+    const $dimSel   = $area.find(".cea-dim");
 
-    // Initial bucket from filter (Week/Month), default week
-    const initialBucket = (frappe.query_report.get_filter_value("time_bucket") || "Week").toLowerCase();
-    $area.find(".cea-bucket").val(initialBucket);
+    function render_chart(el, spec) {
+      el.innerHTML = "";
+      if (!spec || !spec.data || !Array.isArray(spec.data.labels) || !spec.data.labels.length) {
+        el.innerHTML = `<div class="text-muted small">${__("No data")}</div>`;
+        return;
+      }
+      // spec is already like { data:{labels, datasets}, type:'line'|'bar' }
+      new frappe.Chart(el, spec);
+    }
 
-    // Initial renders
-    render_time($area.find(".cea-time")[0], parsed, initialBucket);
-    render_dim($area.find(".cea-dim-chart")[0], parsed, "school");
-    render_manager($area.find(".cea-manager")[0], parsed);
+    function current_time_spec(bucket) {
+      const key = (bucket || "week").toLowerCase();
+      // fallbacks so the toggle always shows *something* if one side is empty
+      if (key === "month") return charts.month || charts.week;
+      return charts.week || charts.month;
+    }
+
+    function render_dim(which) {
+      if ((which || "school") === "program") {
+        render_chart($dimEl, charts.by_program);
+      } else {
+        render_chart($dimEl, charts.by_school);
+      }
+    }
+
+    // Initial selections (respect the filter if present)
+    const initBucket = (frappe.query_report.get_filter_value("time_bucket") || "Week").toLowerCase();
+    $bucket.val(initBucket);
+
+    render_chart($timeEl, current_time_spec(initBucket));
+    render_dim($dimSel.val() || "school");
+    render_chart($mgrEl, charts.by_manager);
 
     // Wire toggles
-    $area.find(".cea-bucket").off("change").on("change", function () {
-      render_time($area.find(".cea-time")[0], parsed, $(this).val());
+    $bucket.off("change").on("change", function () {
+      render_chart($timeEl, current_time_spec($(this).val()));
     });
-    $area.find(".cea-dim").off("change").on("change", function () {
-      render_dim($area.find(".cea-dim-chart")[0], parsed, $(this).val());
+
+    $dimSel.off("change").on("change", function () {
+      render_dim($(this).val());
     });
-  }
+  },
+
 };
 
 // ---------- helpers (client-side aggregates) ----------

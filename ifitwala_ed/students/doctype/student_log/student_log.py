@@ -358,11 +358,11 @@ def get_follow_up_role_from_next_step(next_step):
 def assign_follow_up(log_name: str, user: str):
 	sl = frappe.get_doc("Student Log", log_name)
 
-	# 🚫 already-closed guard (you added earlier)
-	if (sl.follow_up_status or "").lower() == "closed":
+	# 🚫 Completed logs cannot be (re)assigned under new semantics
+	if (sl.follow_up_status or "").lower() == "completed":
 		frappe.throw(
-			_("This Student Log is already closed and cannot be (re)assigned."),
-			title=_("Follow-Up Closed")
+			_("This Student Log is already <b>Completed</b> and cannot be (re)assigned."),
+			title=_("Follow-Up Completed")
 		)
 
 	# ✅ branch guard: assignee must cover log.school (self or descendant)
@@ -377,7 +377,6 @@ def assign_follow_up(log_name: str, user: str):
 			title=_("Missing School")
 		)
 
-	# single SQL: is log_school within assignee_anchor branch? (assignee_anchor ≤ log_school in lft/rgt)
 	ok = frappe.db.sql(
 		"""
 		SELECT 1
@@ -389,7 +388,6 @@ def assign_follow_up(log_name: str, user: str):
 		(assignee_anchor, log_school),
 	)
 
-	# 🔒 enforce branch guard (required!)
 	if not ok:
 		frappe.throw(
 			_("Assignee's school branch ({0}) does not include the log's school ({1}).")
@@ -397,11 +395,11 @@ def assign_follow_up(log_name: str, user: str):
 			title=_("Outside School Branch")
 		)
 
-	# ✅ role guard: assignee must have the expected role (from Next Step)
+	# ✅ role guard: assignee must have expected role (from Next Step; fallback Academic Staff)
 	required_role = sl.follow_up_role or "Academic Staff"
-	if required_role and required_role not in set(frappe.get_roles(user)): 
+	if required_role and required_role not in set(frappe.get_roles(user)):
 		frappe.throw(
-			_("Assignee must have the role: {0}.").format(required_role), 
+			_("Assignee must have the role: {0}.").format(required_role),
 			title=_("Role Mismatch")
 		)
 
@@ -466,27 +464,16 @@ def assign_follow_up(log_name: str, user: str):
 		})
 		todo.insert(ignore_permissions=True)
 
-	# Mirror and recompute status (comment suppressed by reason="(re)assignment")
+	# Mirror and recompute status (quiet reason)
 	sl.db_set("follow_up_person", user)
 	sl._apply_status(sl._compute_follow_up_status(), reason="(re)assignment", write_immediately=True)
 
-	# Timeline policy:
-	# - With native assign_add: rely on Frappe's "Assigned to ..." for initial assign;
-	#   only add a comment when it's a true reassignment Old → New.
-	# - Without assign_add (fallback): emit a single concise comment ourselves.
-	if assign_add:
-		if prev_user and prev_user != user:
-			sl.add_comment(
-				"Info",
-				_("Reassigned: {0} → {1}").format(sl._fullname(prev_user), sl._fullname(user))
-			)
-	else:
-		# Fallback environment: add exactly one comment
-		if prev_user and prev_user != user:
-			msg = _("Reassigned: {0} → {1}").format(sl._fullname(prev_user), sl._fullname(user))
-		else:
-			msg = _("Assigned to {0}").format(sl._fullname(user))
-		sl.add_comment("Info", msg)
+	# Timeline note (only for true reassignment Old → New)
+	if prev_user and prev_user != user:
+		try:
+			sl.add_comment("Info", _("Reassigned: {0} → {1}").format(sl._fullname(prev_user), sl._fullname(user)))
+		except Exception:
+			pass
 
 	return {"ok": True, "assigned_to": user}
 
@@ -494,32 +481,78 @@ def assign_follow_up(log_name: str, user: str):
 # ---------- scheduler: Completed → Closed ----------
 def auto_close_completed_logs():
 	"""
-	Daily job: move 'Completed' → 'Closed' after N days (N pulled from each log's auto_close_after_days).
+	Daily job: move 'In Progress' → 'Completed' after N days of inactivity.
+	- Only affects logs where follow_up_status = 'In Progress'
+	- Does NOT touch 'Open' logs
+	- Closes any OPEN ToDos referencing those logs
+	- Adds a concise audit comment per log
+	Returns: number of logs completed.
 	"""
 	today = frappe.utils.today()
 
-	logs = frappe.get_all(
+	rows = frappe.get_all(
 		"Student Log",
-		filters={"follow_up_status": "Completed", "auto_close_after_days": [">", 0]},
+		filters={"follow_up_status": "In Progress", "auto_close_after_days": [">", 0]},
 		fields=["name", "modified", "auto_close_after_days"]
 	)
 
-	for row in logs:
-		last_updated = get_datetime(row.modified)
-		if date_diff(today, last_updated.date()) >= row.auto_close_after_days:
-			doc = frappe.get_doc("Student Log", row.name)
-			doc._apply_status("Closed", reason=f"auto-closed after {row.auto_close_after_days} days of inactivity", write_immediately=True)
-			# Optional extra audit note
-			try:
-				frappe.get_doc({
-					"doctype": "Comment",
-					"comment_type": "Info",
-					"reference_doctype": "Student Log",
-					"reference_name": row.name,
-					"content": f"Auto-closed after {row.auto_close_after_days} days of inactivity."
-				}).insert(ignore_permissions=True)
-			except Exception:
-				pass
+	if not rows:
+		return 0
+
+	eligible = []
+	threshold_by_log = {}
+	for r in rows:
+		last_updated = get_datetime(r.modified)
+		if date_diff(today, last_updated.date()) >= r.auto_close_after_days:
+			eligible.append(r.name)
+			threshold_by_log[r.name] = r.auto_close_after_days
+
+	if not eligible:
+		return 0
+
+	# 1) Close any OPEN ToDos for these logs in a single SQL
+	frappe.db.sql(
+		f"""
+		UPDATE `tabToDo`
+		SET status = 'Closed'
+		WHERE reference_type = 'Student Log'
+		  AND status = 'Open'
+		  AND reference_name IN ({", ".join(["%s"] * len(eligible))})
+		""",
+		tuple(eligible),
+	)
+
+	# 2) Update status → Completed (use set_value per row to update 'modified' properly)
+	for name in eligible:
+		frappe.db.set_value("Student Log", name, "follow_up_status", "Completed")
+
+	# 3) Add one concise audit comment per log (idempotent)
+	for name in eligible:
+		msg = f"Auto-completed after {threshold_by_log.get(name, 0)} days of inactivity."
+		already = frappe.db.exists(
+			"Comment",
+			{
+				"reference_doctype": "Student Log",
+				"reference_name": name,
+				"comment_type": "Info",
+				"content": ("like", "Auto-completed after%"),
+			},
+		)
+		if already:
+			continue
+		try:
+			frappe.get_doc({
+				"doctype": "Comment",
+				"comment_type": "Info",
+				"reference_doctype": "Student Log",
+				"reference_name": name,
+				"content": msg,
+			}).insert(ignore_permissions=True)
+		except Exception:
+			pass
+
+	return len(eligible)
+
 
 
 @frappe.whitelist()
