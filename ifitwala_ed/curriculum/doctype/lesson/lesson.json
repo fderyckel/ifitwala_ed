@@ -6,25 +6,26 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_2pph",
+  "course",
   "learning_unit",
-  "unit_name",
+  "title",
   "duration",
   "start_date"
  ],
  "fields": [
   {
    "fieldname": "section_break_2pph",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Core"
   },
   {
    "fieldname": "learning_unit",
    "fieldtype": "Data",
-   "label": "Learning Unit"
-  },
-  {
-   "fieldname": "unit_name",
-   "fieldtype": "Data",
-   "label": "Unit Name"
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Learning Unit",
+   "reqd": 1
   },
   {
    "fieldname": "duration",
@@ -35,17 +36,32 @@
    "fieldname": "start_date",
    "fieldtype": "Data",
    "label": "Start Date"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "label": "Lesson's Name",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-06 11:31:49.346685",
+ "modified": "2025-09-11 21:23:57.405410",
  "modified_by": "Administrator",
  "module": "Curriculum",
- "name": "Course Unit",
+ "name": "Lesson",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

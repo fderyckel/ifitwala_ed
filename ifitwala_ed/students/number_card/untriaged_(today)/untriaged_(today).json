@@ -1,5 +1,6 @@
 {
- "color": "#fc9c00",
+ "background_color": "#EEF2FF",
+ "color": "#364FC7",
  "creation": "2025-09-06 15:20:07.365640",
  "currency": "",
  "docstatus": 0,
@@ -12,7 +13,7 @@
  "is_standard": 1,
  "label": "Untriaged (Today)",
  "method": "ifitwala_ed.students.doctype.student_referral.student_referral.card_srf_new_today",
- "modified": "2025-09-07 18:53:02.154541",
+ "modified": "2025-09-11 20:54:00.010251",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Untriaged (Today)",
