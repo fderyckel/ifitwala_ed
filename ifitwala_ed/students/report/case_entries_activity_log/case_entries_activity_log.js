@@ -30,30 +30,25 @@ frappe.query_reports["Case Entries Activity Log"] = {
       options: "Week\nMonth", default: "Week" }
   ],
 
-  // ---------- render extra charts with a Weekly/Monthly toggle ----------
+	// REPLACE ONLY this method in case_entries_activity_log.js
 	after_datatable_render(datatable) {
-		// In v15 the hook receives the datatable instance. Use the global query_report
-		// object to access the page + server message safely.
 		const page = (frappe.query_report && frappe.query_report.page) || null;
-		if (!page || !page.main) return; // nothing to mount yet
+		if (!page || !page.main) return;
 
 		const msg = (frappe.query_report && frappe.query_report.message) || {};
-
 		const charts = {
-			week:      msg.chart_over_time_week  || null,
-			month:     msg.chart_over_time_month || null,
-			by_school: msg.chart_by_school       || null,
-			by_program:msg.chart_by_program      || null,
-			by_manager:msg.chart_by_manager      || null
+			week: msg.chart_over_time_week || null,
+			month: msg.chart_over_time_month || null,
+			by_school: msg.chart_by_school || null,
+			by_program: msg.chart_by_program || null,
+			by_manager: msg.chart_by_manager || null
 		};
 
-		// Create/refresh wrapper (idempotent)
 		let $area = page.main.find(".cea-extra-charts");
 		if (!$area.length) {
 			$area = $(`
 				<div class="cea-extra-charts" style="margin-top: 1rem;">
 					<div class="row gy-4">
-						<!-- Time -->
 						<div class="col-12 col-lg-6">
 							<div class="d-flex align-items-center justify-content-between">
 								<h5 class="mb-2">${__("Entries Over Time")}</h5>
@@ -66,8 +61,6 @@ frappe.query_reports["Case Entries Activity Log"] = {
 							</div>
 							<div class="cea-chart cea-time"></div>
 						</div>
-
-						<!-- School / Program -->
 						<div class="col-12 col-lg-6">
 							<div class="d-flex align-items-center justify-content-between">
 								<h5 class="mb-2">${__("Entries by School / Program")}</h5>
@@ -80,8 +73,6 @@ frappe.query_reports["Case Entries Activity Log"] = {
 							</div>
 							<div class="cea-chart cea-dim-chart"></div>
 						</div>
-
-						<!-- By Case Manager -->
 						<div class="col-12">
 							<h5 class="mb-2">${__("Entries per Case Manager")}</h5>
 							<div class="cea-chart cea-manager"></div>
@@ -90,14 +81,12 @@ frappe.query_reports["Case Entries Activity Log"] = {
 				</div>
 			`).appendTo(page.main);
 		} else {
-			// clear chart containers on every re-render to avoid stacking canvases
 			$area.find(".cea-chart").empty();
 		}
 
-		// Helpers
 		const $timeEl = $area.find(".cea-time")[0];
-		const $dimEl  = $area.find(".cea-dim-chart")[0];
-		const $mgrEl  = $area.find(".cea-manager")[0];
+		const $dimEl = $area.find(".cea-dim-chart")[0];
+		const $mgrEl = $area.find(".cea-manager")[0];
 		const $bucket = $area.find(".cea-bucket");
 		const $dimSel = $area.find(".cea-dim");
 
@@ -108,39 +97,30 @@ frappe.query_reports["Case Entries Activity Log"] = {
 				el.innerHTML = `<div class="text-muted small">${__("No data")}</div>`;
 				return;
 			}
-			new frappe.Chart(el, spec); // spec: { data:{labels,datasets}, type:'line'|'bar' }
+			new frappe.Chart(el, spec);
 		}
-
 		function current_time_spec(bucket) {
 			const key = (bucket || "week").toLowerCase();
-			// fallback so toggle always shows something
-			if (key === "month") return charts.month || charts.week;
-			return charts.week || charts.month;
+			return key === "month" ? (charts.month || charts.week) : (charts.week || charts.month);
 		}
-
 		function render_dim(which) {
-			if ((which || "school") === "program") {
-				render_chart($dimEl, charts.by_program);
-			} else {
-				render_chart($dimEl, charts.by_school);
-			}
+			render_chart($dimEl, (which || "school") === "program" ? charts.by_program : charts.by_school);
 		}
 
-		// Initial selections (respect filter)
 		const initBucket = (frappe.query_report.get_filter_value("time_bucket") || "Week").toLowerCase();
 		$bucket.val(initBucket);
 		render_chart($timeEl, current_time_spec(initBucket));
 		render_dim($dimSel.val() || "school");
 		render_chart($mgrEl, charts.by_manager);
 
-		// Wire toggles (namespace handlers to avoid duplicates on re-render)
-		$bucket.off("change.cea").on("change.cea", function () {
-			render_chart($timeEl, current_time_spec($(this).val()));
+		$bucket.off("change.cea").on("change.cea", () => {
+			render_chart($timeEl, current_time_spec($bucket.val()));
 		});
-		$dimSel.off("change.cea").on("change.cea", function () {
-			render_dim($(this).val());
+		$dimSel.off("change.cea").on("change.cea", () => {
+			render_dim($dimSel.val());
 		});
 	},
+
 
 };
 

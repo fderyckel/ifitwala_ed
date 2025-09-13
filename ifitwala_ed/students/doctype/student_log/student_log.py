@@ -610,10 +610,13 @@ def auto_close_completed_logs():
 @frappe.whitelist()
 def complete_follow_up(follow_up_name: str):
 	"""
-	Mark a follow-up as completed and move the parent Student Log to 'Completed'.
+	Close the parent Student Log (set follow_up_status = 'Completed') from a follow-up.
 	Permissions:
-	- Follow-up author (owner), or
+	- Parent Student Log author (owner), OR
 	- Academic Admin
+
+	Note: any Academic Staff may create follow-ups, but only the log author or an Academic Admin
+	can close the log via this action.
 	"""
 	if not follow_up_name:
 		frappe.throw(_("Missing follow-up name."))
@@ -622,7 +625,7 @@ def complete_follow_up(follow_up_name: str):
 	fu_row = frappe.db.get_value(
 		"Student Log Follow Up",
 		follow_up_name,
-		["name", "owner", "student_log"],
+		["name", "student_log"],
 		as_dict=True
 	)
 	if not fu_row:
@@ -630,14 +633,7 @@ def complete_follow_up(follow_up_name: str):
 	if not fu_row.student_log:
 		frappe.throw(_("This follow-up is not linked to a Student Log."))
 
-	# Permission: follow-up author OR Academic Admin
-	roles = set(frappe.get_roles())
-	is_admin = "Academic Admin" in roles
-	is_author = (frappe.session.user == fu_row.owner)
-	if not (is_admin or is_author):
-		frappe.throw(_("Only the follow-up author or an Academic Admin can complete this follow-up."))
-
-	# Fetch minimal parent info
+	# Fetch minimal parent info (including owner)
 	log_row = frappe.db.get_value(
 		"Student Log",
 		fu_row.student_log,
@@ -646,6 +642,14 @@ def complete_follow_up(follow_up_name: str):
 	)
 	if not log_row:
 		frappe.throw(_("Parent Student Log not found."))
+
+	# ---- Permission check (CHANGED) ----
+	roles = set(frappe.get_roles())
+	is_admin = "Academic Admin" in roles
+	is_parent_author = (frappe.session.user == (log_row.owner or ""))
+
+	if not (is_admin or is_parent_author):
+		frappe.throw(_("Only the Student Log author or an Academic Admin can complete this log."))
 
 	# Idempotent: already Completed
 	if (log_row.follow_up_status or "").lower() == "completed":
@@ -680,17 +684,9 @@ def complete_follow_up(follow_up_name: str):
 	except Exception:
 		pass
 
-	# 4) Notify the log author (bell + realtime fallback)
+	# 4) Notify the log author (bell + realtime fallback) — only if someone else completed it
 	author_user = log_row.owner or None
-	if not author_user and log_row.author_name:
-		author_user = frappe.db.get_value(
-			"Employee",
-			{"employee_full_name": log_row.author_name},
-			"user_id"
-		)
-
 	if author_user and author_user != frappe.session.user:
-		# Bell notification
 		try:
 			frappe.get_doc({
 				"doctype": "Notification Log",
@@ -704,7 +700,6 @@ def complete_follow_up(follow_up_name: str):
 				"document_name": log_row.name,
 			}).insert(ignore_permissions=True)
 		except Exception:
-			# Realtime fallback
 			try:
 				frappe.publish_realtime(
 					event="inbox_notification",
