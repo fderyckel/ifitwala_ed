@@ -445,75 +445,80 @@ def get_student_support_guidance(student: str) -> list[dict]:
 
 # B) Number card / button gate
 @frappe.whitelist()
-def card_open_published_guidance(student: str | None = None) -> dict:
-	user = frappe.session.user
-	roles = set(frappe.get_roles(user))
-	is_triager = bool({"Counselor", "Academic Admin", "System Manager"} & roles)
-	params = {"etype": "Student Support Guidance"}
+def card_open_published_guidance(student: str | None = None, silent: int | bool = 0) -> dict:
+    user = frappe.session.user
+    roles = set(frappe.get_roles(user))
+    is_triager = bool({"Counselor", "Academic Admin", "System Manager"} & roles)
+    params = {"etype": "Student Support Guidance"}
 
-	def _sql_count(where_extra: str, qparams: dict) -> int:
-		row = frappe.db.sql(
-			f"""
-			SELECT COUNT(1)
-			FROM `tabReferral Case Entry` e
-			JOIN `tabReferral Case` rc ON rc.name = e.parent
-			WHERE e.entry_type = %(etype)s
-			  AND IFNULL(e.is_published, 0) = 1
-			  AND IFNULL(e.status, 'Open') IN ('Open','In Progress')
-			  AND IFNULL(rc.case_status, 'Open') != 'Closed'
-			  {where_extra}
-			""",
-			{**params, **qparams},
-		)
-		return int(row[0][0]) if row else 0
+    def _sql_count(where_extra: str, qparams: dict) -> int:
+        row = frappe.db.sql(
+            f"""
+            SELECT COUNT(1)
+            FROM `tabReferral Case Entry` e
+            JOIN `tabReferral Case` rc ON rc.name = e.parent
+            WHERE e.entry_type = %(etype)s
+              AND IFNULL(e.is_published, 0) = 1
+              AND IFNULL(e.status, 'Open') IN ('Open','In Progress')
+              AND IFNULL(rc.case_status, 'Open') != 'Closed'
+              {where_extra}
+            """,
+            {**params, **qparams},
+        )
+        return int(row[0][0]) if row else 0
 
-	if student:
-		if not is_triager:
-			open_case_ays = frappe.db.sql(
-				"""
-				SELECT DISTINCT IFNULL(rc.academic_year, '')
-				FROM `tabReferral Case` rc
-				WHERE rc.student = %(student)s
-				  AND IFNULL(rc.case_status, 'Open') != 'Closed'
-				""",
-				{"student": student},
-			) or []
-			ays = [r[0] for r in open_case_ays if r and r[0]]
-			allowed = any(user in set(_get_teachers_of_record(student, ay)) for ay in ays)
-			if not allowed:
-				frappe.throw(_("You are not permitted to view support guidance for this student."), frappe.PermissionError)
-		return {"value": _sql_count("AND rc.student = %(student)s", {"student": student}), "fieldtype": "Int"}
+    if student:
+        if not is_triager:
+            open_case_ays = frappe.db.sql(
+                """
+                SELECT DISTINCT IFNULL(rc.academic_year, '')
+                FROM `tabReferral Case` rc
+                WHERE rc.student = %(student)s
+                  AND IFNULL(rc.case_status, 'Open') != 'Closed'
+                """,
+                {"student": student},
+            ) or []
+            ays = [r[0] for r in open_case_ays if r and r[0]]
+            allowed = any(user in set(_get_teachers_of_record(student, ay)) for ay in ays)
+            if not allowed:
+                # 👇 NEW: silent mode for button-eligibility probe on the Student form
+                if cint(silent):
+                    return {"value": 0, "fieldtype": "Int"}
+                # Default behavior unchanged for dashboards/number cards
+                frappe.throw(_("You are not permitted to view support guidance for this student."), frappe.PermissionError)
 
-	if is_triager:
-		return {"value": _sql_count("", {}), "fieldtype": "Int"}
+        return {"value": _sql_count("AND rc.student = %(student)s", {"student": student}), "fieldtype": "Int"}
 
-	# teacher-wide view
-	val = frappe.db.sql(
-		"""
-		SELECT COUNT(1)
-		FROM `tabReferral Case Entry` e
-		JOIN `tabReferral Case` rc ON rc.name = e.parent
-		WHERE e.entry_type = %(etype)s
-		  AND IFNULL(e.is_published, 0) = 1
-		  AND IFNULL(e.status, 'Open') IN ('Open','In Progress')
-		  AND IFNULL(rc.case_status, 'Open') != 'Closed'
-		  AND EXISTS (
-		      SELECT 1
-		      FROM `tabStudent Group` sg2
-		      JOIN `tabStudent Group Student` sgs2 ON sgs2.parent = sg2.name AND IFNULL(sgs2.active, 1) = 1
-		      JOIN `tabStudent Group Instructor` sgi2 ON sgi2.parent = sg2.name
-		      LEFT JOIN `tabInstructor` ins2 ON ins2.name = sgi2.instructor
-		      JOIN `tabUser` u2
-		         ON u2.name = COALESCE(NULLIF(sgi2.user_id, ''), NULLIF(ins2.linked_user_id, ''))
-		        AND u2.enabled = 1
-		      WHERE u2.name = %(user)s
-		        AND sg2.academic_year = IFNULL(rc.academic_year, sg2.academic_year)
-		        AND sgs2.student = rc.student
-		  )
-		""",
-		{"etype": "Student Support Guidance", "user": user},
-	)
-	return {"value": int(val[0][0]) if val else 0, "fieldtype": "Int"}
+    if is_triager:
+        return {"value": _sql_count("", {}), "fieldtype": "Int"}
+
+    # teacher-wide view (unchanged)
+    val = frappe.db.sql(
+        """
+        SELECT COUNT(1)
+        FROM `tabReferral Case Entry` e
+        JOIN `tabReferral Case` rc ON rc.name = e.parent
+        WHERE e.entry_type = %(etype)s
+          AND IFNULL(e.is_published, 0) = 1
+          AND IFNULL(e.status, 'Open') IN ('Open','In Progress')
+          AND IFNULL(rc.case_status, 'Open') != 'Closed'
+          AND EXISTS (
+              SELECT 1
+              FROM `tabStudent Group` sg2
+              JOIN `tabStudent Group Student` sgs2 ON sgs2.parent = sg2.name AND IFNULL(sgs2.active, 1) = 1
+              JOIN `tabStudent Group Instructor` sgi2 ON sgi2.parent = sg2.name
+              LEFT JOIN `tabInstructor` ins2 ON ins2.name = sgi2.instructor
+              JOIN `tabUser` u2
+                 ON u2.name = COALESCE(NULLIF(sgi2.user_id, ''), NULLIF(ins2.linked_user_id, ''))
+                AND u2.enabled = 1
+              WHERE u2.name = %(user)s
+                AND sg2.academic_year = IFNULL(rc.academic_year, sg2.academic_year)
+                AND sgs2.student = rc.student
+          )
+        """,
+        {"etype": "Student Support Guidance", "user": user},
+    )
+    return {"value": int(val[0][0]) if val else 0, "fieldtype": "Int"}
 
 
 def on_doctype_update():

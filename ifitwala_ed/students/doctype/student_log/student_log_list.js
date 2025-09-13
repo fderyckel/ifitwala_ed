@@ -11,14 +11,9 @@ frappe.listview_settings['Student Log'] = {
 			return [__("Draft"), "red", "docstatus,=,0"];
 		}
 
-		// Closed → green
-		if (sstatus === "closed") {
-			return [__("Closed"), "green", "follow_up_status,=,Closed"];
-		}
-
 		// Completed → blue
 		if (sstatus === "completed") {
-			return [__("Completed"), "blue", "follow_up_status,=,Completed"];
+			return [__("Completed"), "green", "follow_up_status,=,Completed"];
 		}
 
 		// Open → red
@@ -29,7 +24,4 @@ frappe.listview_settings['Student Log'] = {
 		// Default: In Progress → orange
 		return [__("In Progress"), "orange", "follow_up_status,=,In Progress"];
 	}, 
-
-  // Remove "ID" (i.e., name) column
-  hide_name_column: true
 };

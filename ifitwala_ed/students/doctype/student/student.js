@@ -50,14 +50,14 @@ frappe.ui.form.on("Student", {
 			if (canSeeSupport) {
 				frappe.call({
 					method: "ifitwala_ed.students.doctype.referral_case.referral_case.card_open_published_guidance",
-					args: { student: frm.doc.name }
+					args: { student: frm.doc.name, silent: 1 }   // 👈 add silent flag
 				}).then((r) => {
 					const n = (r && r.message && cint(r.message.value)) || 0;
 					if (n > 0) {
 						const btn = frm.add_custom_button(__("Support"), () => open_support_modal(frm));
 						btn.removeClass("btn-default btn-primary").addClass("btn-info");
 						btn.find("span").prepend(frappe.utils.icon("book-open", "sm"));
-						frm.__ifitwala_support_btn = btn; // store only our own button
+						frm.__ifitwala_support_btn = btn;
 					}
 				}).catch(() => {
 					/* ignore permission/transient errors; do not affect other buttons */
