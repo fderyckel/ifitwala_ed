@@ -110,7 +110,8 @@ class StudentLog(Document):
 			ensure exactly one open ToDo exists for that user (single-assignee policy).
 		- Enforce role from Next Step → associated_role (if provided).
 		- Mirror current open assignee back to follow_up_person.
-		- Derive status timeline comments suppressed for auto reasons).
+		- When requires_follow_up = 0 (pre-submit), mark status Completed quietly.
+		- Derive status (timeline comments suppressed for auto reasons).
 		"""
 		if cint(self.requires_follow_up):
 			if not self.next_step:
@@ -139,22 +140,27 @@ class StudentLog(Document):
 				has_role = frappe.db.exists("Has Role", {"parent": self.follow_up_person, "role": expected_role})
 				if not has_role:
 					frappe.throw(_(f"Follow-up person '{self.follow_up_person}' does not have required role '{expected_role}'."))
+			# Derive from current DB state
+			derived = self._compute_follow_up_status()
 
 		else:
-			# Follow-up not required → clear & close
-			had_status = self.follow_up_status
+			# Follow-up not required
 			self._unassign()
 			self.follow_up_person = None
 			self.next_step = None
-			if had_status:
-				self._apply_status(None, reason="follow-up disabled", write_immediately=False)
-			else:
-				self.follow_up_status = None
 
-		# Derive & cache status (prevents client from fighting it)
-		derived = self._compute_follow_up_status()
+			# Draft-only: immediately mark Completed (quietly)
+			if self.docstatus == 0:
+				self.follow_up_status = "Completed"
+				derived = "Completed"
+			else:
+				# Submitted docs are immutable for this switch; keep current
+				derived = self.follow_up_status
+
+		# Apply derived status (suppresses timeline via reason)
 		self._apply_status(derived, reason="recomputed on validate", write_immediately=False)
 
+		# Infer school from program if missing
 		if not self.school and self.program:
 			self.school = frappe.db.get_value("Program", self.program, "school")
 
@@ -163,11 +169,15 @@ class StudentLog(Document):
 	def on_submit(self):
 		"""
 		Submission invariants for the Student Log itself:
+		- If requires_follow_up = 0, force status to 'Completed' and skip follow-up checks.
 		- If requires_follow_up = 1, exactly one open assignment must exist.
 		- Mirror that assignee into follow_up_person.
 		- Recompute status; timeline comment is suppressed via _apply_status() reason.
 		"""
 		if not cint(self.requires_follow_up):
+			# Directly mark as Completed on submit (idempotent, quiet)
+			if (self.follow_up_status or "").lower() != "completed":
+				self.db_set("follow_up_status", "Completed")
 			return
 
 		opens = self._open_assignees()
@@ -182,6 +192,7 @@ class StudentLog(Document):
 
 		self.follow_up_person = opens[0]
 		self._apply_status(self._compute_follow_up_status(), reason="on submit", write_immediately=False)
+
 
 	# ---------------------------------------------------------------------
 	# Validation helpers
