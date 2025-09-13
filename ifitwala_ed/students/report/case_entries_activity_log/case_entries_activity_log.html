@@ -1,3 +1,6 @@
+{% var rows = (data || []); %}
+{% var curr = null; %}
+
 <div class="print-heading text-center">
 	<h2>{{ __("Case Entries Activity Log") }}</h2>
 	<p class="text-muted">
@@ -8,64 +11,52 @@
 	</p>
 </div>
 
-<table class="table table-sm" style="margin-bottom:12px;">
+{% for (var i = 0; i < rows.length; i++) { var r = rows[i]; %}
+	{% if (r.referral_case !== curr) {
+		if (curr !== null) { %></tbody></table>{% }
+		curr = r.referral_case; %}
+		<!-- Case header -->
+		<h4 style="margin-top:10mm;">
+			{{ __("Case") }}: {%= curr %}
+			<small class="text-muted">
+				· {{ __("Student") }}: {%= r.student_full_name || r.student || "" %}
+				· {{ __("Program") }}: {%= r.program || "" %}
+				· {{ __("Case Manager") }}: {%= r.case_manager_name || "" %}
+			</small>
+		</h4>
+
+		<table class="table table-bordered">
+			<thead>
+				<tr>
+					<th style="width:30mm;">{{ __("Date") }}</th>
+					<th style="width:28mm;">{{ __("Type") }}</th>
+					<th style="width:35mm;">{{ __("Assignee") }}</th>
+					<th>{{ __("Summary") }}</th>
+				</tr>
+			</thead>
+			<tbody>
+	{% } %}
+
 	<tr>
-		<td><b>{{ __("Total Entries") }}</b></td>
-		<td>{%= (data && data.length) || 0 %}</td>
-		<td><b>{{ __("Generated On") }}</b></td>
-		<td>{%= frappe.datetime ? frappe.datetime.str_to_user(frappe.datetime.get_today()) : "" %}</td>
+		<td>{%= r.entry_date_pretty || "" %}</td>
+		<td>{%= r.entry_type || "" %}</td>
+		<td>{%= r.assignee || "" %}</td>
+		<td>
+			{%
+				var txt = String(r.summary_raw || "")
+					.replace(/<[^>]+>/g, "")
+					.replace(/\s+/g, " ")
+					.trim();
+				if (txt.length > 300) txt = txt.slice(0, 300).replace(/\s+\S*$/, "") + "…";
+			%}
+			{%= txt %}
+		</td>
 	</tr>
-</table>
 
-<table class="table table-bordered">
-	<thead>
-		<tr>
-			<th style="width:30mm;">{{ __("Date") }}</th>
-			<th style="width:32mm;">{{ __("Case") }}</th>
-			<th style="width:48mm;">{{ __("Student") }}</th>
-			<th style="width:28mm;">{{ __("School") }}</th>
-			<th style="width:28mm;">{{ __("Program") }}</th>
-			<th style="width:35mm;">{{ __("Case Manager") }}</th>
-			<th style="width:25mm;">{{ __("Type") }}</th>
-			<th>{{ __("Summary") }}</th>
-		</tr>
-	</thead>
-	<tbody>
-		{% var rows = data || []; %}
-		{% for (var i = 0; i < rows.length; i++) { var r = rows[i]; %}
-			<tr>
-				<td>{%= r.entry_date_pretty || "" %}</td>
-				<td>{%= r.referral_case || "" %}</td>
-				<td>{%= r.student_full_name || r.student || "" %}</td>
-				<td>{%= r.school || "" %}</td>
-				<td>{%= r.program || "" %}</td>
-				<td>{%= r.case_manager_name || "" %}</td>
-				<td>{%= r.entry_type || "" %}</td>
-				<td>
-					{% 
-						var txt = String(r.summary_raw || "")
-							.replace(/<[^>]+>/g, "")
-							.replace(/\s+/g, " ")
-							.trim();
-						if (txt.length > 300) {
-							txt = txt.slice(0, 300).replace(/\s+\S*$/, "") + "…";
-						}
-					%}
-					{%= txt %}
-				</td>
-			</tr>
-		{% } %}
-	</tbody>
-</table>
-
-<div style="margin-top:10mm;font-size:10px;color:#666;">
-	{{ __("Confidential – Student Support / Guidance") }}
-</div>
+{% } %}
+{% if (rows.length) { %}</tbody></table>{% } %}
 
 <style>
-@media print {
-	thead { display: table-header-group; } /* repeat header each page */
-	tfoot { display: table-footer-group; }
-}
-.table th, .table td { vertical-align: top; }
+@media print { thead { display: table-header-group; } tfoot { display: table-footer-group; } }
+.table th,.table td { vertical-align: top; }
 </style>

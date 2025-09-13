@@ -45,19 +45,24 @@ def execute(filters=None):
 			rce.entry_type                     AS entry_type,
 			rce.assignee                       AS assignee,
 			rce.status                         AS entry_status,
-			rce.summary                        AS summary_raw
+			rce.summary                        AS summary_raw,
+
+			/* NEW: latest activity per case within the filtered result set */
+			MAX(rce.entry_datetime) OVER (PARTITION BY rc.name) AS _case_latest
 		FROM `tabReferral Case` rc
 		JOIN `tabReferral Case Entry` rce
-		      ON rce.parent = rc.name
+					ON rce.parent = rc.name
 		LEFT JOIN `tabStudent` s
-		      ON s.name = rc.student
+					ON s.name = rc.student
 		LEFT JOIN `tabUser` u
-		      ON u.name = rc.case_manager
+					ON u.name = rc.case_manager
 		LEFT JOIN `tabEmployee` e
-		      ON e.user_id = rc.case_manager
+					ON e.user_id = rc.case_manager
 		{('WHERE ' + ' AND '.join(where)) if where else ''}
-		ORDER BY rce.entry_datetime DESC, rc.name ASC
+		/* NEW: order cases by their latest activity, then entries newest-first */
+		ORDER BY _case_latest DESC, rc.name ASC, rce.entry_datetime DESC
 	"""
+
 	rows = frappe.db.sql(q, params, as_dict=True)
 
 	# ── Presentational enrichments (no extra queries) ───────────────────
