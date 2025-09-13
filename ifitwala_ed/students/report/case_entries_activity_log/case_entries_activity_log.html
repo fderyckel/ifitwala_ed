@@ -1,71 +1,69 @@
-{% set rows = data or [] %}
-{% set cols = columns or [] %}
-
-<!-- Optional header (works well with letterhead on) -->
 <div class="print-heading text-center">
-	<h2>Case Entries Activity Log</h2>
-	{% if filters %}
-		<p class="text-muted">
-			{{ _("From") }}: {{ filters.from_date or "—" }} ·
-			{{ _("To") }}: {{ filters.to_date or "—" }} ·
-			{{ _("School") }}: {{ filters.school or "All" }}
-		</p>
-	{% endif %}
+  <h2>{{ __("Case Entries Activity Log") }}</h2>
+  <p class="text-muted">
+    {{ __("From") }}: <%= (filters && filters.from_date) || "—" %> ·
+    {{ __("To") }}: <%= (filters && filters.to_date) || "—" %> ·
+    {{ __("School") }}: <%= (filters && filters.school) || __("All") %> ·
+    {{ __("Program") }}: <%= (filters && filters.program) || __("All") %>
+  </p>
 </div>
 
-<!-- Summary pad (for educators) -->
 <table class="table table-sm" style="margin-bottom:12px;">
-	<tr>
-		<td><b>{{ _("Total Entries") }}</b></td>
-		<td>{{ rows|length }}</td>
-		<td><b>{{ _("Generated On") }}</b></td>
-		<td>{{ frappe.utils.formatdate(frappe.utils.nowdate()) }}</td>
-	</tr>
+  <tr>
+    <td><b>{{ __("Total Entries") }}</b></td>
+    <td><%= (data && data.length) || 0 %></td>
+    <td><b>{{ __("Generated On") }}</b></td>
+    <td><%= frappe.datetime ? frappe.datetime.str_to_user(frappe.datetime.get_today()) : "" %></td>
+  </tr>
 </table>
 
-<!-- Main table -->
 <table class="table table-bordered">
-	<thead>
-		<tr>
-			<th style="width:30mm;">{{ _("Date") }}</th>
-			<th style="width:32mm;">{{ _("Case") }}</th>
-			<th style="width:48mm;">{{ _("Student") }}</th>
-			<th style="width:28mm;">{{ _("School") }}</th>
-			<th style="width:28mm;">{{ _("Program") }}</th>
-			<th style="width:35mm;">{{ _("Case Manager") }}</th>
-			<th style="width:25mm;">{{ _("Type") }}</th>
-			<th>{{ _("Summary") }}</th>
-		</tr>
-	</thead>
-	<tbody>
-		{% for r in rows %}
-		<tr>
-			<td>{{ r.entry_date_pretty }}</td>
-			<td>{{ r.referral_case }}</td>
-			<td>{{ r.student_full_name or r.student }}</td>
-			<td>{{ r.school }}</td>
-			<td>{{ r.program }}</td>
-			<td>{{ r.case_manager_name }}</td>
-			<td>{{ r.entry_type }}</td>
-			<td>{{ (r.summary_raw or "") | striptags | truncate(300, True, "…") }}</td>
-		</tr>
-		{% endfor %}
-	</tbody>
+  <thead>
+    <tr>
+      <th style="width:30mm;">{{ __("Date") }}</th>
+      <th style="width:32mm;">{{ __("Case") }}</th>
+      <th style="width:48mm;">{{ __("Student") }}</th>
+      <th style="width:28mm;">{{ __("School") }}</th>
+      <th style="width:28mm;">{{ __("Program") }}</th>
+      <th style="width:35mm;">{{ __("Case Manager") }}</th>
+      <th style="width:25mm;">{{ __("Type") }}</th>
+      <th>{{ __("Summary") }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% var rows = data || []; %>
+    <% for (var i = 0; i < rows.length; i++) { var r = rows[i]; %>
+      <tr>
+        <td><%= r.entry_date_pretty || "" %></td>
+        <td><%= r.referral_case || "" %></td>
+        <td><%= r.student_full_name || r.student || "" %></td>
+        <td><%= r.school || "" %></td>
+        <td><%= r.program || "" %></td>
+        <td><%= r.case_manager_name || "" %></td>
+        <td><%= r.entry_type || "" %></td>
+        <td>
+          <% 
+            var txt = String(r.summary_raw || "")
+              .replace(/<[^>]+>/g, "")
+              .replace(/\s+/g, " ")
+              .trim();
+            if (txt.length > 300) { txt = txt.slice(0, 300).replace(/\s+\S*$/, "") + "…"; }
+          %>
+          <%= txt %>
+        </td>
+      </tr>
+    <% } %>
+  </tbody>
 </table>
 
-<!-- Confidential footer -->
-<div style="margin-top:10mm; font-size:10px; color:#666;">
-	{{ _("Confidential – Student Support / Guidance") }}
+<div style="margin-top:10mm;font-size:10px;color:#666;">
+  {{ __("Confidential – Student Support / Guidance") }}
 </div>
 
 <style>
-/* Neat PDF styling */
 @media print {
-	.table { page-break-inside:auto; }
-	tr    { page-break-inside:avoid; page-break-after:auto; }
-	thead { display:table-header-group; }  /* repeat header each page */
-	tfoot { display:table-footer-group; }
+  thead { display: table-header-group; } /* repeat header each page */
+  tfoot { display: table-footer-group; }
 }
-.print-heading h2 { margin: 0 0 4px 0; }
-.table th, .table td { vertical-align: top; }
+.table th,.table td { vertical-align: top; }
 </style>

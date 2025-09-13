@@ -141,12 +141,12 @@ class StudentLogFollowUp(Document):
 				except Exception:
 					pass
 
-		# Single concise timeline entry on the parent
+		# Single concise timeline entry on the parent (refactored wording)
+		actor = frappe.utils.get_fullname(frappe.session.user) or frappe.session.user
 		log.add_comment(
 			comment_type="Info",
-			text=_("Follow-up submitted by {author} — see {link}").format(
-				author=self.follow_up_author or frappe.utils.get_fullname(frappe.session.user),
+			text=_("{actor} submitted a follow up — see {link}").format(
+				actor=actor,
 				link=frappe.utils.get_link_to_form(self.doctype, self.name),
 			),
 		)
-

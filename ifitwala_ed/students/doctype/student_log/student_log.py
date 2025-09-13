@@ -236,6 +236,17 @@ class StudentLog(Document):
 	def _assign_to(self, user):
 		if not user:
 			return
+
+		# Was there already an OPEN assignee before we assign?
+		had_open = frappe.db.exists(
+			"ToDo",
+			{
+				"reference_type": self.doctype,
+				"reference_name": self.name,
+				"status": "Open",
+			},
+		)
+
 		# due date from School.default_follow_up_due_in_days (fallback 5)
 		due_days = 5
 		if self.program:
@@ -244,12 +255,14 @@ class StudentLog(Document):
 				due_days = frappe.get_value("School", school, "default_follow_up_due_in_days") or 5
 		due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
 
+		# Create/ensure a single OPEN ToDo for the assignee
+		desc = f"Follow up on the Student Log for {self.student_name}"
 		if assign_add:
 			assign_add({
 				"doctype": self.doctype,
 				"name": self.name,
 				"assign_to": [user],
-				"description": f"Follow up on Student Log for {self.student_name}",
+				"description": desc,
 				"due_date": due_date
 			})
 		else:
@@ -259,12 +272,31 @@ class StudentLog(Document):
 				"allocated_to": user,
 				"reference_type": self.doctype,
 				"reference_name": self.name,
-				"description": f"Follow up on Student Log for {self.student_name}",
+				"description": desc,
 				"date": due_date,
 				"status": "Open",
 				"priority": "Medium",
 			})
 			todo.insert(ignore_permissions=True)
+
+		# Emit ONE clean "initial assignment" timeline note (not on reassign)
+		if not had_open:
+			try:
+				actor  = frappe.utils.get_fullname(frappe.session.user) or frappe.session.user
+				target = frappe.utils.get_fullname(user) or user
+				content = _("{} assigned {}: Follow up on the Student Log for {}").format(
+					actor, target, self.student_name or self.name
+				)
+				frappe.get_doc({
+					"doctype": "Comment",
+					"comment_type": "Info",
+					"reference_doctype": self.doctype,
+					"reference_name": self.name,
+					"content": content,
+				}).insert(ignore_permissions=True)
+			except Exception:
+				pass
+
 
 	def _unassign(self, user=None):
 		assignees = self._open_assignees()
