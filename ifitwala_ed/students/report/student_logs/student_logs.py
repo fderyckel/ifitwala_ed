@@ -82,7 +82,7 @@ def _get_data(f):
 		"user": f["_user"],
 	}
 
-	# Aggregation subquery: count + last follow-up per log
+	# Aggregation: count + last follow-up per log (no extra filters)
 	agg_sql = """
 		select
 			student_log,
@@ -92,7 +92,7 @@ def _get_data(f):
 		group by student_log
 	"""
 
-	# Main SQL: LEFT JOIN follow-ups so logs with zero follow-ups appear
+	# Main query (select a computed latest_activity_on, then order by it DESC)
 	sql = f"""
 		select
 			sl.name as log_id,
@@ -110,8 +110,11 @@ def _get_data(f):
 			sl.visible_to_student,
 			sl.visible_to_guardians,
 			sl.log as log_html,
+
 			coalesce(agg.cnt, 0) as follow_up_count,
 			agg.last_on as last_follow_up_on,
+			GREATEST(sl.date, coalesce(agg.last_on, sl.date)) as latest_activity_on,
+
 			slfu.name as follow_up_id,
 			slfu.date as fu_date,
 			coalesce(slfu.follow_up_author, slfu.owner) as fu_author,
@@ -142,42 +145,74 @@ def _get_data(f):
 					and hr.role in ('Counselor','Academic Admin','System Manager')
 				)
 			)
-		order by sl.date desc, sl.name desc, slfu.date asc, slfu.name asc
+		order by
+			latest_activity_on desc,
+			sl.name desc,
+			slfu.date desc,
+			slfu.name desc
 	"""
 
 	rows = frappe.db.sql(sql, params, as_dict=True)
 
-	# Post-process snippets (strip HTML, trim) without extra DB hits
+	# Group + indent: one group header per log, then child rows per follow-up (newest → oldest)
+	seen = set()
 	data = []
 	for r in rows:
-		log_snip = _snippet(strip_html_tags(r.get("log_html") or ""), 220)
-		fu_snip = _snippet(strip_html_tags(r.get("follow_up_html") or ""), 200)
-		visibility = _visibility_icons(r.get("visible_to_student"), r.get("visible_to_guardians"))
+		if r["log_id"] not in seen:
+			seen.add(r["log_id"])
 
-		data.append({
-			"log_id": r["log_id"],
-			"log_date": r["log_date"],
-			"log_time": r.get("log_time"),
-			"student": r.get("student"),
-			"student_name": r.get("student_name"),
-			"program": r.get("program"),
-			"school": r.get("school"),
-			"academic_year": r.get("academic_year"),
-			"log_type": r.get("log_type"),
-			"requires_follow_up": r.get("requires_follow_up"),
-			"follow_up_status": r.get("follow_up_status"),
-			"author_name": r.get("author_name"),
-			"visibility": visibility,
-			"log_snippet": log_snip,
-			"follow_up_count": r.get("follow_up_count") or 0,
-			"last_follow_up_on": r.get("last_follow_up_on"),
-			"follow_up_id": r.get("follow_up_id"),
-			"fu_date": r.get("fu_date"),
-			"fu_author": r.get("fu_author"),
-			"follow_up_snippet": fu_snip,
-		})
+			log_snip = _snippet(strip_html_tags(r.get("log_html") or ""), 220)
+			visibility = _visibility_icons(r.get("visible_to_student"), r.get("visible_to_guardians"))
+
+			data.append({
+				# parent (group header)
+				"is_group": 1,
+				"indent": 0,
+				"log_id": r["log_id"],
+				"log_date": r["log_date"],
+				"log_time": r.get("log_time"),
+				"student": r.get("student"),
+				"student_name": r.get("student_name"),
+				"program": r.get("program"),
+				"school": r.get("school"),
+				"academic_year": r.get("academic_year"),
+				"log_type": r.get("log_type"),
+				"requires_follow_up": r.get("requires_follow_up"),
+				"follow_up_status": r.get("follow_up_status"),
+				"author_name": r.get("author_name"),
+				"visibility": visibility,
+				"log_snippet": log_snip,
+				"follow_up_count": r.get("follow_up_count") or 0,
+				"last_follow_up_on": r.get("last_follow_up_on"),
+				# child columns blank at header level
+				"follow_up_id": None,
+				"fu_date": None,
+				"fu_author": None,
+				"follow_up_snippet": None,
+			})
+
+		# child rows (only when there is a follow-up)
+		if r.get("follow_up_id"):
+			fu_snip = _snippet(strip_html_tags(r.get("follow_up_html") or ""), 200)
+			data.append({
+				"indent": 1,
+				# parent columns intentionally left empty for readability
+				"log_id": "", "log_date": None, "log_time": None,
+				"student": None, "student_name": None,
+				"program": None, "school": None, "academic_year": None,
+				"log_type": None, "requires_follow_up": None,
+				"follow_up_status": None, "author_name": None,
+				"visibility": "", "log_snippet": "", "follow_up_count": None,
+				"last_follow_up_on": None,
+				# child fields:
+				"follow_up_id": r["follow_up_id"],
+				"fu_date": r["fu_date"],
+				"fu_author": r["fu_author"],
+				"follow_up_snippet": fu_snip,
+			})
 
 	return data
+
 
 def _opt(clause, params, key):
 	# Return "and <clause>" only if params[key] has a non-null value

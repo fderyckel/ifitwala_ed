@@ -45,8 +45,8 @@ frappe.ui.form.on("Student Log", {
 		// keep follow-up fields visibility in sync
 		toggle_follow_up_fields(frm, requiresFU);
 
-		// ── 👤 Assign / Re-assign (hide when Completed) ──
-		if (requiresFU && status !== "completed" && !frm.is_new()) {
+		// ── 👤 Assign / Re-assign (owner or Academic Admin only; hide when Completed) ──
+		if (requiresFU && status !== "completed" && !frm.is_new() && (isAuthor || isAdmin)) {
 			const assignBtn = frm.add_custom_button(__("👤 Assign / Re-assign"), () => {
 				if (frm.is_dirty()) {
 					frappe.msgprint(__("Please save the document before assigning."));
