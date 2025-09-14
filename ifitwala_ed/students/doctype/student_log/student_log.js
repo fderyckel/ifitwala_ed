@@ -38,6 +38,9 @@ frappe.ui.form.on("Student Log", {
 		const requiresFU = !!frm.doc.requires_follow_up;
 		const isAuthor = (frappe.session.user === frm.doc.owner);
 		const isAdmin = frappe.user.has_role("Academic Admin");
+		const isAssignee = !!frm.doc.follow_up_person && frm.doc.follow_up_person === frappe.session.user;
+		const assocRole = frm.doc.follow_up_role || "Academic Staff";
+		const hasAssocRole = frappe.user.has_role(assocRole);
 
 		// avoid duplicate buttons on refresh
 		frm.clear_custom_buttons();
@@ -45,8 +48,8 @@ frappe.ui.form.on("Student Log", {
 		// keep follow-up fields visibility in sync
 		toggle_follow_up_fields(frm, requiresFU);
 
-		// ── 👤 Assign / Re-assign (owner or Academic Admin only; hide when Completed) ──
-		if (requiresFU && status !== "completed" && !frm.is_new() && (isAuthor || isAdmin)) {
+		// ── 👤 Assign / Re-assign (owner/admin/assignee/associated-role; hide when Completed) ──
+		if (requiresFU && status !== "completed" && !frm.is_new() && (isAuthor || isAdmin || isAssignee || hasAssocRole)) {
 			const assignBtn = frm.add_custom_button(__("👤 Assign / Re-assign"), () => {
 				if (frm.is_dirty()) {
 					frappe.msgprint(__("Please save the document before assigning."));
