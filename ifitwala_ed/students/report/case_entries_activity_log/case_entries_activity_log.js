@@ -146,29 +146,24 @@ frappe.query_reports["Case Entries Activity Log"] = {
 };
 
 
-
-// ---------- helpers (global) ----------
+// ---------- helpers (print) ----------
 function ensure_print_button(page) {
 	const BTN_KEY = "cea-print-btn";
 
-	// Avoid duplicates across refreshes/reruns
+	// Avoid duplicates
 	if (page.inner_toolbar && page.inner_toolbar.find(`button[data-key="${BTN_KEY}"]`).length) {
 		return;
 	}
 
-	const $btn = page.add_inner_button(__("Print"), () => handle_report_print(), "primary");
-	$btn.attr("data-key", BTN_KEY);
-	$btn.removeClass("btn-default").addClass("btn-primary");
+	// Add a plain blue Print button (Bootstrap 4 → btn-info)
+	const $btn = page.add_inner_button(__("Print"), () => handle_report_print(), null);
+	if ($btn) {
+		$btn.attr("data-key", BTN_KEY);
+		$btn.removeClass("btn-default").addClass("btn-info");
+	}
 }
 
 async function handle_report_print() {
-	// Prefer built-in query report print if available (keeps behavior consistent)
-	if (frappe.query_report && typeof frappe.query_report.print_report === "function") {
-		frappe.query_report.print_report();
-		return;
-	}
-
-	// Fallback: export current report + filters as PDF, then open it
 	try {
 		const report_name = "Case Entries Activity Log";
 		const filters = (frappe.query_report && frappe.query_report.get_values)
