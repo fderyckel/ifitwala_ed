@@ -146,3 +146,8 @@ def is_leaf_school(school):
 		return False
 	descendants = get_descendant_schools(school)
 	return len(descendants) == 1  # Only itself in the list
+
+@frappe.whitelist()
+def get_user_default_school():
+	row = frappe.db.get_value("Employee", {"user_id": frappe.session.user, "status": "Active"}, ["school"], as_dict=True)
+	return row.school if row and row.school else None
