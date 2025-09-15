@@ -30,8 +30,6 @@ frappe.query_reports["Case Entries Activity Log"] = {
 			options: "Week\nMonth", default: "Week" }
 	],
 
-	orientation: "Landscape",
-
 	// ---------- header Print button ----------
 	onload(report) {
 		const page = report.page;
@@ -164,15 +162,34 @@ function ensure_print_button(page) {
 	}
 }
 
-function handle_report_print() {
-	// Use Frappe’s built-in report printer.
-	// It will render your report's print.html automatically.
-	if (frappe.query_report && typeof frappe.query_report.print_report === "function") {
-		frappe.query_report.print_report();
+async function handle_report_print() {
+	const qr = frappe.query_report;
+	if (!qr || typeof qr.print_report !== "function") {
+		frappe.msgprint(__("Print is not available on this report."));
 		return;
 	}
-	frappe.msgprint(__("Print failed. Please try the ⋮ menu or check permissions."));
+
+	// Open the standard Print Settings dialog and pass the settings to print_report
+	frappe.ui.get_print_settings(
+		false, // with_letterhead dialog prompt already includes this
+		(print_settings) => {
+			try {
+				// Optional default: only set if dialog didn't supply one
+				if (!print_settings) print_settings = {};
+				if (!print_settings.orientation) {
+					print_settings.orientation = "Landscape";
+				}
+				qr.print_report(print_settings);
+			} catch (e) {
+				console.error(e);
+				frappe.msgprint(__("Print failed. Please try the ⋮ menu or check permissions."));
+			}
+		},
+		qr.report_doc && qr.report_doc.letter_head,
+		qr.get_visible_columns ? qr.get_visible_columns() : null
+	);
 }
+
 
 
 // ---------- helpers (client-side aggregates) ----------
