@@ -8,7 +8,7 @@
 
 		/* Leaf theme */
 		--ifw-primary:#2f855a;        /* emerald */
-		--ifw-primary-700:#276749;    /* deeper emerald */
+		--ifw-primary-600:#2e7d62;    /* deeper emerald */
 		--ifw-primary-100:#e6f4ec;    /* pale emerald */
 
 		--ifw-accent:#2563eb;         /* blue */
@@ -40,7 +40,7 @@
 	/* Status-aware accents (class added below) */
 	.card.status-open{ border-left-color:#cbd5e1; }
 	.card.status-inprogress{ border-left-color:var(--ifw-primary); }
-	.card.status-closed{ border-left-color:var(--ifw-primary-700); }
+	.card.status-completed{ border-left-color:var(--ifw-primary-600); }
 
 	.card.status-open .card-header{
 		background:linear-gradient(90deg,#f8f9fa, #fff);
@@ -48,8 +48,8 @@
 	.card.status-inprogress .card-header{
 		background:linear-gradient(90deg,var(--ifw-primary-100), #fff);
 	}
-	.card.status-closed .card-header{
-		background:linear-gradient(90deg,#e9f5ef, #fff);
+	.card.status-completed .card-header{
+		background:linear-gradient(90deg,#e9f5ef, #fff); 
 	}
 
 	/* Meta row */
@@ -63,7 +63,7 @@
 
 	/* Override badge palette for this print view */
 	.badge-primary{ background-color:var(--ifw-primary) !important; }
-	.badge-dark{ background-color:var(--ifw-primary-700) !important; }
+	.badge-dark{ background-color:var(--ifw-primary-600) !important; }
 	.badge-secondary{ background-color:#9aa5b1 !important; }
 	.badge-info{ background-color:var(--ifw-attention) !important; color:#fff; }
 	.badge-light{
@@ -87,7 +87,7 @@
 	}
 	.card.status-open .followup-item{ border-left-color:#cbd5e1; }
 	.card.status-inprogress .followup-item{ border-left-color:var(--ifw-primary); background:#fafdfb; }
-	.card.status-closed .followup-item{ border-left-color:var(--ifw-primary-700); }
+	.card.status-completed .followup-item{ border-left-color:var(--ifw-primary-600); }
 
 	.followup-head{ font-size:.9rem; color:#495057; display:flex; gap:10px; margin-bottom:2px; }
 	.followup-body{ font-size:.95rem; }
@@ -128,7 +128,7 @@
 			{% var st = r.follow_up_status || "";
 				var status_class = "status-open";
 				if (st === "In Progress") status_class = "status-inprogress";
-				if (st === "Closed") status_class = "status-closed";
+				if (st === "Completed") status_class = "status-completed";
 			%}
 			<div class="card {{ status_class }}">
 				<div class="card-header">
@@ -144,7 +144,7 @@
 							{% var st = r.follow_up_status || "";
 							   var badge = "badge-secondary";
 							   if (st === "In Progress") badge = "badge-primary";
-							   if (st === "Closed") badge = "badge-dark";
+							   if (st === "Completed") badge = "badge-dark";
 							%}
 							<span class="badge {{ badge }}">{{ st || "Open" }}</span>
 							<span class="badge badge-light" title="Follow-ups count">FU # {{ r.follow_up_count || 0 }}</span>

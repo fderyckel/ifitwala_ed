@@ -24,7 +24,7 @@ def _normalize_filters(f):
 	f["to_date"] = getdate(f["to_date"])
 
 	# Limit statuses to the canonical set
-	if f.get("follow_up_status") and f["follow_up_status"] not in {"Open", "In Progress", "Closed"}:
+	if f.get("follow_up_status") and f["follow_up_status"] not in {"Open", "In Progress", "Completed"}:
 		f["follow_up_status"] = None
 
 	# Optional booleans

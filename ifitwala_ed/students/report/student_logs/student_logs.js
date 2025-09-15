@@ -55,7 +55,7 @@ frappe.query_reports["Student Log + Follow-ups"] = {
 			fieldname: "follow_up_status",
 			label: __("Follow-up Status"),
 			fieldtype: "Select",
-			options: ["", "Open", "In Progress", "Closed"]
+			options: ["", "Open", "In Progress", "Completed"]
 		},
 		{
 			fieldname: "requires_follow_up",
@@ -105,7 +105,7 @@ frappe.query_reports["Student Log + Follow-ups"] = {
 		if (column.fieldname === "follow_up_status" && value) {
 			let color = "secondary";
 			if (value === "In Progress") color = "primary";
-			if (value === "Closed") color = "dark";
+			if (value === "Completed") color = "dark";
 			return `<span class="badge bg-${color}">${value}</span>`;
 		}
 
