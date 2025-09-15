@@ -30,11 +30,20 @@ frappe.query_reports["Case Entries Activity Log"] = {
 			options: "Week\nMonth", default: "Week" }
 	],
 
+
+	// ---------- header Print button ----------
+	onload(report) {
+		const page = report.page;
+		ensure_print_button(page);
+	},
+
 	// ---------- extra charts with a Weekly/Monthly toggle ----------
 	after_datatable_render(datatable) {
 		// In v15 the hook receives the datatable instance; use the global query_report object.
 		const page = (frappe.query_report && frappe.query_report.page) || null;
 		if (!page || !page.main) return;
+
+		ensure_print_button(page);
 
 		const msg = (frappe.query_report && frappe.query_report.message) || {};
 
@@ -135,6 +144,56 @@ frappe.query_reports["Case Entries Activity Log"] = {
 		});
 	},
 };
+
+
+
+// ---------- helpers (global) ----------
+function ensure_print_button(page) {
+	const BTN_KEY = "cea-print-btn";
+
+	// Avoid duplicates across refreshes/reruns
+	if (page.inner_toolbar && page.inner_toolbar.find(`button[data-key="${BTN_KEY}"]`).length) {
+		return;
+	}
+
+	const $btn = page.add_inner_button(__("Print"), () => handle_report_print(), "primary");
+	$btn.attr("data-key", BTN_KEY);
+	$btn.removeClass("btn-default").addClass("btn-primary");
+}
+
+async function handle_report_print() {
+	// Prefer built-in query report print if available (keeps behavior consistent)
+	if (frappe.query_report && typeof frappe.query_report.print_report === "function") {
+		frappe.query_report.print_report();
+		return;
+	}
+
+	// Fallback: export current report + filters as PDF, then open it
+	try {
+		const report_name = "Case Entries Activity Log";
+		const filters = (frappe.query_report && frappe.query_report.get_values)
+			? frappe.query_report.get_values()
+			: {};
+
+		const r = await frappe.call({
+			method: "frappe.desk.query_report.export_query",
+			args: {
+				report_name,
+				file_format_type: "PDF",
+				filters
+			}
+		});
+
+		const url = r && r.message && r.message.file_url;
+		if (url) {
+			window.open(url, "_blank");
+		} else {
+			frappe.msgprint(__("Could not generate the PDF file for this report."));
+		}
+	} catch (e) {
+		frappe.msgprint(__("Print failed. Please try the ⋮ menu or check permissions."));
+	}
+}
 
 // ---------- helpers (client-side aggregates) ----------
 function parse_rows(rows) {

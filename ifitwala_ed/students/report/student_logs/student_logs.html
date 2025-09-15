@@ -1,5 +1,4 @@
-
-{# Ifitwala Ed — Student Log + Follow-ups (Print Template) #}
+<!-- Ifitwala Ed — Student Log + Follow-ups (Report Print Template) -->
 
 <style>
 	/* Page + typography */
@@ -40,93 +39,88 @@
 	<div class="mb-2">
 		<div class="h-title">Student Log + Follow-ups</div>
 		<div class="h-sub">
-			{% set fd = filters.get("from_date") %}{% set td = filters.get("to_date") %}
-			{% if fd and td %}Period: {{ fd }} → {{ td }}{% endif %}
-			{% if filters.student %} &nbsp;·&nbsp; Student: {{ filters.student }}{% endif %}
-			{% if filters.program %} &nbsp;·&nbsp; Program: {{ filters.program }}{% endif %}
-			{% if filters.school %} &nbsp;·&nbsp; School: {{ filters.school }}{% endif %}
-			{% if filters.academic_year %} &nbsp;·&nbsp; AY: {{ filters.academic_year }}{% endif %}
-			{% if filters.log_type %} &nbsp;·&nbsp; Type: {{ filters.log_type }}{% endif %}
-			{% if filters.follow_up_status %} &nbsp;·&nbsp; Status: {{ filters.follow_up_status }}{% endif %}
+			{% var fd = filters.from_date, td = filters.to_date; %}
+			{% if (fd && td) { %}Period: {{ fd }} → {{ td }}{% } %}
+			{% if (filters.student) { %} &nbsp;·&nbsp; Student: {{ filters.student }}{% } %}
+			{% if (filters.program) { %} &nbsp;·&nbsp; Program: {{ filters.program }}{% } %}
+			{% if (filters.school) { %} &nbsp;·&nbsp; School: {{ filters.school }}{% } %}
+			{% if (filters.academic_year) { %} &nbsp;·&nbsp; AY: {{ filters.academic_year }}{% } %}
+			{% if (filters.log_type) { %} &nbsp;·&nbsp; Type: {{ filters.log_type }}{% } %}
+			{% if (filters.follow_up_status) { %} &nbsp;·&nbsp; Status: {{ filters.follow_up_status }}{% } %}
 		</div>
 	</div>
 
-	{# Iterate grouped data: header rows (is_group=1) open a card; child rows (indent=1) render inside it. #}
-	{% set has_open_card = False %}
-	{% set prev_follow_count = 0 %}
-
-	{% for r in data %}
-		{% if r.is_group %}
-			{# Close previous card (and its list) if any #}
-			{% if has_open_card %}
-				{% if prev_follow_count > 0 %}</ol>{% endif %}
+	{% var has_open_card = false; var prev_follow_count = 0; %}
+	{% for (var i=0; i<data.length; i++) { var r = data[i]; %}
+		{% if (r.is_group) { %}
+			{% if (has_open_card) { %}
+				{% if (prev_follow_count > 0) { %}</ol>{% } %}
 				</div></div>
-			{% endif %}
+			{% } %}
 
-			{# New log card #}
 			<div class="card">
 				<div class="card-header">
 					<div class="d-flex flex-wrap align-items-center w-100">
 						<div class="mr-2"><span class="text-mono">{{ r.log_id }}</span></div>
-						<div class="mr-2"><strong>{{ r.student_name or r.student }}</strong></div>
-						<div class="mr-2 text-dim">{{ r.log_date }}{% if r.log_time %} {{ r.log_time }}{% endif %}</div>
+						<div class="mr-2"><strong>{{ r.student_name || r.student }}</strong></div>
+						<div class="mr-2 text-dim">
+							{{ r.log_date }}{% if (r.log_time) { %} {{ r.log_time }}{% } %}
+						</div>
 						<div class="mr-2 text-dim">·</div>
 						<div class="mr-2">{{ r.log_type }}</div>
 						<div class="ml-auto">
-							{% set st = r.follow_up_status or "" %}
-							{% set badge = "badge-secondary" %}
-							{% if st == "In Progress" %}{% set badge = "badge-primary" %}{% endif %}
-							{% if st == "Closed" %}{% set badge = "badge-dark" %}{% endif %}
-							<span class="badge {{ badge }}">{{ st or "Open" }}</span>
-							<span class="badge badge-light" title="Follow-ups count">FU # {{ r.follow_up_count or 0 }}</span>
+							{% var st = r.follow_up_status || "";
+							   var badge = "badge-secondary";
+							   if (st === "In Progress") badge = "badge-primary";
+							   if (st === "Closed") badge = "badge-dark";
+							%}
+							<span class="badge {{ badge }}">{{ st || "Open" }}</span>
+							<span class="badge badge-light" title="Follow-ups count">FU # {{ r.follow_up_count || 0 }}</span>
 						</div>
 					</div>
 					<div class="meta mt-1">
-						<div>Program: <strong>{{ r.program or "-" }}</strong></div>
-						<div class="dot">School: <strong>{{ r.school or "-" }}</strong></div>
-						<div class="dot">AY: <strong>{{ r.academic_year or "-" }}</strong></div>
-						<div class="dot">Author: <strong>{{ r.author_name or "-" }}</strong></div>
-						{% if r.visibility %}
+						<div>Program: <strong>{{ r.program || "-" }}</strong></div>
+						<div class="dot">School: <strong>{{ r.school || "-" }}</strong></div>
+						<div class="dot">AY: <strong>{{ r.academic_year || "-" }}</strong></div>
+						<div class="dot">Author: <strong>{{ r.author_name || "-" }}</strong></div>
+						{% if (r.visibility) { %}
 							<div class="dot">Visibility: <span style="font-size:1.05em">{{ r.visibility }}</span></div>
-						{% endif %}
-						{% if r.requires_follow_up %}
+						{% } %}
+						{% if (r.requires_follow_up) { %}
 							<div class="dot"><span class="badge badge-info">Requires Follow-up</span></div>
-						{% endif %}
+						{% } %}
 					</div>
 				</div>
+
 				<div class="card-body">
 					<div class="snip">
 						<span class="label">Log:</span>
-						<span>{{ r.log_snippet | e }}</span>
+						<span>{{ frappe.utils.escape_html(r.log_snippet || "") }}</span>
 					</div>
 
-					{# Follow-ups list (newest → oldest). If none, show a neutral note. #}
-					{% set cnt = r.follow_up_count or 0 %}
-					{% if cnt > 0 %}
+					{% var cnt = r.follow_up_count || 0; %}
+					{% if (cnt > 0) { %}
 						<ol class="followups">
-					{% else %}
+					{% } else { %}
 						<p class="text-dim small mb-0">No follow-ups recorded.</p>
-					{% endif %}
+					{% } %}
 
-					{% set has_open_card = True %}
-					{% set prev_follow_count = cnt %}
-		{% else %}
-			{# Child follow-up row #}
+					{% has_open_card = true; prev_follow_count = cnt; %}
+		{% } else { %}
 			<li class="followup-item">
 				<div class="followup-head">
 					<div><strong>{{ r.fu_date }}</strong></div>
 					<div class="text-dim">by {{ r.fu_author }}</div>
 				</div>
 				<div class="followup-body">
-					{{ r.follow_up_snippet | e }}
+					{{ frappe.utils.escape_html(r.follow_up_snippet || "") }}
 				</div>
 			</li>
-		{% endif %}
+		{% } %}
 
-		{# Close final card at the end of the loop #}
-		{% if loop.last and has_open_card %}
-			{% if prev_follow_count > 0 %}</ol>{% endif %}
+		{% if (i === data.length - 1 && has_open_card) { %}
+			{% if (prev_follow_count > 0) { %}</ol>{% } %}
 			</div></div>
-		{% endif %}
-	{% endfor %}
+		{% } %}
+	{% } %}
 </div>
