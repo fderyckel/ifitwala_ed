@@ -162,42 +162,38 @@ frappe.query_reports["Student Logs"] = {
 
 // ---------- helpers (print) ----------
 function ensure_print_button(page) {
+	const BTN_KEY = "sl-print-btn";
 	if (!page || !page.add_inner_button) return;
 
-	var key = "sl-print-btn";
-	var exists = page.inner_toolbar && page.inner_toolbar.find('button[data-key="'+key+'"]').length;
-	if (exists) return;
+	// avoid duplicates
+	if (page.inner_toolbar && page.inner_toolbar.find('button[data-key="'+BTN_KEY+'"]').length) return;
 
-	var $btn = page.add_inner_button(__("Print"), function () {
-		handle_report_print();
-	}, null);
+	const $btn = page.add_inner_button(__("Print"), () => handle_report_print(), null);
 	if ($btn) {
-		$btn.attr("data-key", key);
-		$btn.removeClass("btn-default").addClass("btn-primary btn-sm"); // solid blue, BS4
+		$btn.attr("data-key", BTN_KEY);
+		// Bootstrap 4 blue
+		$btn.removeClass("btn-default btn-primary").addClass("btn-info btn-sm");
 	}
 }
 
 function handle_report_print() {
-	var qr = frappe.query_report;
+	const qr = frappe.query_report;
 	if (!qr || typeof qr.print_report !== "function") {
 		frappe.msgprint(__("Print is not available on this report."));
 		return;
 	}
-	// Open the standard Print Settings dialog, then print with chosen options
-	frappe.ui.get_print_settings(false, function (print_settings) {
-		try {
+	frappe.ui.get_print_settings(
+		false,
+		(print_settings) => {
 			print_settings = print_settings || {};
-			// sensible default; change to "Portrait" if you prefer
 			if (!print_settings.orientation) print_settings.orientation = "Landscape";
 			qr.print_report(print_settings);
-		} catch (e) {
-			console.error(e);
-			frappe.msgprint(__("Print failed. Please try the ⋮ menu or check permissions."));
-		}
-	},
-	qr.report_doc && qr.report_doc.letter_head,
-	qr.get_visible_columns ? qr.get_visible_columns() : null);
+		},
+		qr.report_doc && qr.report_doc.letter_head,
+		qr.get_visible_columns ? qr.get_visible_columns() : null
+	);
 }
+
 
 // ---- helpers (client-only) ----
 
