@@ -403,8 +403,8 @@ def assign_follow_up(log_name: str, user: str):
 	Efficient (re)assignment:
 	- Blocks when log is 'Completed'
 	- Branch guard: assignee must be within school subtree
-	- Role guard: assignee must have follow_up_role (fallback 'Academic Staff')
-	- Perms: current user is Academic Admin OR log author OR current assignee
+	- Role guard (target): assignee must have follow_up_role (fallback 'Academic Staff')
+	- Perms (actor): Academic Admin OR log author OR current assignee OR user with follow_up_role
 	- Bulk-closes existing OPEN ToDos; inserts one new ToDo
 	- Mirrors follow_up_person; recomputes status via DB (no full doc loads)
 	"""
@@ -457,7 +457,7 @@ def assign_follow_up(log_name: str, user: str):
 			title=_("Outside School Branch")
 		)
 
-	# Role guard: assignee must have required role (fallback 'Academic Staff')
+	# Role guard (target): assignee must have required role (fallback 'Academic Staff')
 	required_role = sl.follow_up_role or "Academic Staff"
 	if required_role and required_role not in set(frappe.get_roles(user)):
 		frappe.throw(
@@ -465,15 +465,19 @@ def assign_follow_up(log_name: str, user: str):
 			title=_("Role Mismatch")
 		)
 
-	# Permission: author, Academic Admin, or current assignee may (re)assign
-	is_admin = "Academic Admin" in set(frappe.get_roles())
+	# Permission (actor): author OR Academic Admin OR current assignee OR user with the associated role
+	roles_current = set(frappe.get_roles())
+	is_admin = "Academic Admin" in roles_current
 	is_author = (frappe.session.user == sl.owner)
 	current_assignee = frappe.db.get_value(
 		"ToDo",
 		{"reference_type": "Student Log", "reference_name": sl.name, "status": "Open"},
 		"allocated_to",
 	)
-	allowed = is_admin or is_author or (current_assignee and current_assignee == frappe.session.user)
+	is_current_assignee = bool(current_assignee and current_assignee == frappe.session.user)
+	has_associated_role = required_role in roles_current
+
+	allowed = is_admin or is_author or is_current_assignee or has_associated_role
 	if not allowed:
 		frappe.throw(_("Not permitted to (re)assign this Student Log."))
 

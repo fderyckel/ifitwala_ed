@@ -1,4 +1,4 @@
-{% var rows = (data || []); %}
+{% var rows = data || []; %}
 {% var curr = null; %}
 
 <div class="print-heading text-center">
@@ -12,9 +12,11 @@
 </div>
 
 {% for (var i = 0; i < rows.length; i++) { var r = rows[i]; %}
-	{% if (r.referral_case !== curr) {
-		if (curr !== null) { %></tbody></table>{% }
-		curr = r.referral_case; %}
+	{% if (r.referral_case !== curr) { %}
+		{% if (curr !== null) { %}
+			</tbody></table>
+		{% } %}
+		{% curr = r.referral_case; %}
 		<!-- Case header -->
 		<h4 style="margin-top:10mm;">
 			{{ __("Case") }}: {%= curr %}
@@ -47,16 +49,18 @@
 					.replace(/<[^>]+>/g, "")
 					.replace(/\s+/g, " ")
 					.trim();
-				if (txt.length > 300) txt = txt.slice(0, 300).replace(/\s+\S*$/, "") + "…";
+				if (txt.length > 300) {
+					txt = txt.slice(0, 300).replace(/\s+\S*$/, "") + "…";
+				}
 			%}
 			{%= txt %}
 		</td>
 	</tr>
-
 {% } %}
+
 {% if (rows.length) { %}</tbody></table>{% } %}
 
 <style>
-@media print { thead { display: table-header-group; } tfoot { display: table-footer-group; } }
-.table th,.table td { vertical-align: top; }
+@media print { thead{display:table-header-group;} tfoot{display:table-footer-group;} }
+.table th,.table td{vertical-align:top;}
 </style>
