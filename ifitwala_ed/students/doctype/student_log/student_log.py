@@ -149,12 +149,11 @@ class StudentLog(Document):
 			self.follow_up_person = None
 			self.next_step = None
 
-			# Draft-only: immediately mark Completed (quietly)
+			# Do NOT force status during draft; let on_submit() finalize to 'Completed'
 			if self.docstatus == 0:
-				self.follow_up_status = "Completed"
-				derived = "Completed"
+				derived = None  # keep unset in draft to avoid illegal transition
 			else:
-				# Submitted docs are immutable for this switch; keep current
+				# For submitted edits (rare), leave status untouched here.
 				derived = self.follow_up_status
 
 		# Apply derived status (suppresses timeline via reason)
