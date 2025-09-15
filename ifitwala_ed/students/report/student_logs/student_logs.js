@@ -104,7 +104,7 @@ frappe.query_reports["Student Logs"] = {
 
 				// Only show descendants of the user's default school in the picker
 				school_filter.get_query = () => ({
-					query: "ifitwala_ed.utillities.school_tree.get_school_descendants",
+					query: "ifitwala_ed.utilities.school_tree.get_school_descendants",
 					filters: { root: user_school }
 				});
 
