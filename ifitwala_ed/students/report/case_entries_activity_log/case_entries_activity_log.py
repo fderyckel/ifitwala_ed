@@ -118,14 +118,18 @@ def execute(filters=None):
 	chart_by_manager      = _chart_simple_count(rows, key="case_manager_name", title=_("Entries per Case Manager"))
 
 	message = {
-			"chart_over_time_week":  chart_over_time_week,   # ← add this
-			"chart_over_time_month": chart_over_time_month,
-			"chart_by_school":       chart_by_school,
-			"chart_by_program":      chart_by_program,
-			"chart_by_manager":      chart_by_manager,
+		"chart_over_time_week":  chart_over_time_week,
+		"chart_over_time_month": chart_over_time_month,
+		"chart_by_school":       chart_by_school,
+		"chart_by_program":      chart_by_program,
+		"chart_by_manager":      chart_by_manager,
 	}
 
-	return columns, rows, message, chart_over_time_week
+	# NEW: pick which chart to show based on the toggle
+	selected_bucket = (filters.get("time_bucket") or "Week").strip().lower()
+	selected_chart = chart_over_time_month if selected_bucket.startswith("m") else chart_over_time_week
+
+	return columns, rows, message, selected_chart
 
 
 # ---------------- helpers ----------------

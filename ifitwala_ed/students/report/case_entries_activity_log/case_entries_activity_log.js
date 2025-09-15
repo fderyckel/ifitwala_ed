@@ -27,7 +27,9 @@ frappe.query_reports["Case Entries Activity Log"] = {
 			options: "\nOpen\nIn Progress\nOn Hold\nEscalated\nClosed" },
 		// The only toggle we keep
 		{ fieldname: "time_bucket",   label: __("Time Bucket"),   fieldtype: "Select",
-			options: "Week\nMonth", default: "Week" }
+			options: "Week\nMonth", default: "Week",
+			on_change: () => frappe.query_report.refresh()
+		}
 	],
 
 	// ---------- header Print button ----------

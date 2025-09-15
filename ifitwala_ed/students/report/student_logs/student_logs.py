@@ -45,7 +45,7 @@ def _get_columns():
 	return [
 		{"label": "Log ID", "fieldname": "log_id", "fieldtype": "Link", "options": "Student Log", "width": 140},
 		{"label": "Log Date", "fieldname": "log_date", "fieldtype": "Date", "width": 100},
-		{"label": "Time", "fieldname": "log_time", "fieldtype": "Time", "width": 90},
+		{"label": "Time", "fieldname": "log_time", "fieldtype": "Data", "width": 90},
 		{"label": "Student", "fieldname": "student", "fieldtype": "Link", "options": "Student", "width": 120},
 		{"label": "Student Name", "fieldname": "student_name", "fieldtype": "Data", "width": 180},
 		{"label": "Program", "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 140},
@@ -97,7 +97,7 @@ def _get_data(f):
 		select
 			sl.name as log_id,
 			sl.date as log_date,
-			sl.time as log_time,
+			TIME_FORMAT(sl.time, '%%H:%%i') as log_time,
 			sl.student,
 			sl.student_name,
 			sl.program,
@@ -153,6 +153,12 @@ def _get_data(f):
 	"""
 
 	rows = frappe.db.sql(sql, params, as_dict=True)
+
+	# Normalize to HH:MM defensively
+	for r in rows:
+			t = r.get("log_time")
+			if t:
+					r["log_time"] = str(t)[:5]
 
 	# Group + indent: one group header per log, then child rows per follow-up (newest → oldest)
 	seen = set()
