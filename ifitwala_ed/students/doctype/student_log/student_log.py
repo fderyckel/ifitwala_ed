@@ -617,15 +617,12 @@ def complete_follow_up(follow_up_name: str):
 	Close the parent Student Log (set follow_up_status = 'Completed') from a follow-up.
 	Permissions:
 	- Parent Student Log author (owner), OR
-	- Academic Admin
-
-	Note: any Academic Staff may create follow-ups, but only the log author or an Academic Admin
-	can close the log via this action.
+	- Academic Admin, OR
+	- Current OPEN ToDo assignee on the parent Student Log
 	"""
 	if not follow_up_name:
 		frappe.throw(_("Missing follow-up name."))
 
-	# Fetch only what we need from the follow-up
 	fu_row = frappe.db.get_value(
 		"Student Log Follow Up",
 		follow_up_name,
@@ -637,7 +634,6 @@ def complete_follow_up(follow_up_name: str):
 	if not fu_row.student_log:
 		frappe.throw(_("This follow-up is not linked to a Student Log."))
 
-	# Fetch minimal parent info (including owner)
 	log_row = frappe.db.get_value(
 		"Student Log",
 		fu_row.student_log,
@@ -647,22 +643,29 @@ def complete_follow_up(follow_up_name: str):
 	if not log_row:
 		frappe.throw(_("Parent Student Log not found."))
 
-	# ---- Permission check (CHANGED) ----
+	# ---- Permission check (EXPANDED) ----
 	roles = set(frappe.get_roles())
 	is_admin = "Academic Admin" in roles
 	is_parent_author = (frappe.session.user == (log_row.owner or ""))
 
-	if not (is_admin or is_parent_author):
-		frappe.throw(_("Only the Student Log author or an Academic Admin can complete this log."))
+	current_open_assignee = frappe.db.get_value(
+		"ToDo",
+		{"reference_type": "Student Log", "reference_name": log_row.name, "status": "Open"},
+		"allocated_to"
+	)
+	is_current_assignee = bool(current_open_assignee and current_open_assignee == frappe.session.user)
 
-	# Idempotent: already Completed
+	if not (is_admin or is_parent_author or is_current_assignee):
+		frappe.throw(_("Only the Student Log author, an Academic Admin, or the current assignee can complete this log."))
+
+	# Idempotent
 	if (log_row.follow_up_status or "").lower() == "completed":
 		return {"ok": True, "status": "Completed", "log": log_row.name}
 
-	# 1) Set parent status → Completed (single column write)
+	# 1) Set parent status → Completed
 	frappe.db.set_value("Student Log", log_row.name, "follow_up_status", "Completed")
 
-	# 2) Close all OPEN ToDos on the parent in a single SQL
+	# 2) Close all OPEN ToDos on the parent
 	frappe.db.sql(
 		"""
 		UPDATE `tabToDo`
@@ -672,7 +675,7 @@ def complete_follow_up(follow_up_name: str):
 		("Student Log", log_row.name),
 	)
 
-	# 3) Timeline entry (direct Comment insert; avoids loading parent doc)
+	# 3) Timeline entry
 	try:
 		link = frappe.utils.get_link_to_form("Student Log Follow Up", follow_up_name)
 		frappe.get_doc({
@@ -688,7 +691,7 @@ def complete_follow_up(follow_up_name: str):
 	except Exception:
 		pass
 
-	# 4) Notify the log author (bell + realtime fallback) — only if someone else completed it
+	# 4) Notify the author if someone else completed
 	author_user = log_row.owner or None
 	if author_user and author_user != frappe.session.user:
 		try:
@@ -726,7 +729,7 @@ def complete_follow_up(follow_up_name: str):
 def complete_log(log_name: str):
 	"""
 	Mark the Student Log as 'Completed'.
-	Permissions: only the log author (owner) can complete.
+	Permissions: log author (owner) OR Academic Admin OR current OPEN ToDo assignee.
 	Effects:
 	- Set follow_up_status = 'Completed'
 	- Close any OPEN ToDos referencing this log
@@ -735,7 +738,6 @@ def complete_log(log_name: str):
 	if not log_name:
 		frappe.throw(_("Missing Student Log name."))
 
-	# Fetch minimal fields
 	log_row = frappe.db.get_value(
 		"Student Log",
 		log_name,
@@ -745,18 +747,28 @@ def complete_log(log_name: str):
 	if not log_row:
 		frappe.throw(_("Student Log not found: {0}").format(log_name))
 
-	# Permission: only author
-	if frappe.session.user != log_row.owner:
-		frappe.throw(_("Only the author of this Student Log can mark it as Completed."))
+	roles = set(frappe.get_roles())
+	is_admin = "Academic Admin" in roles
+	is_author = (frappe.session.user == log_row.owner)
 
-	# Idempotent: already Completed
+	current_open_assignee = frappe.db.get_value(
+		"ToDo",
+		{"reference_type": "Student Log", "reference_name": log_row.name, "status": "Open"},
+		"allocated_to"
+	)
+	is_current_assignee = bool(current_open_assignee and current_open_assignee == frappe.session.user)
+
+	if not (is_admin or is_author or is_current_assignee):
+		frappe.throw(_("Only the author, an Academic Admin, or the current assignee can mark this log as Completed."))
+
+	# Idempotent
 	if (log_row.follow_up_status or "").lower() == "completed":
 		return {"ok": True, "status": "Completed", "log": log_row.name}
 
-	# 1) Update status (single column write)
+	# 1) Update status
 	frappe.db.set_value("Student Log", log_row.name, "follow_up_status", "Completed")
 
-	# 2) Close all OPEN ToDos for this log (single SQL)
+	# 2) Close all OPEN ToDos
 	frappe.db.sql(
 		"""
 		UPDATE `tabToDo`
@@ -766,7 +778,7 @@ def complete_log(log_name: str):
 		("Student Log", log_row.name),
 	)
 
-	# 3) Timeline entry (direct insert)
+	# 3) Timeline entry
 	try:
 		frappe.get_doc({
 			"doctype": "Comment",

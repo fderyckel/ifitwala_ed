@@ -49,7 +49,8 @@ frappe.ui.form.on("Student Log", {
 		toggle_follow_up_fields(frm, requiresFU);
 
 		// ── 👤 Assign / Re-assign (owner/admin/assignee/associated-role; hide when Completed) ──
-		if (requiresFU && status !== "completed" && !frm.is_new() && (isAuthor || isAdmin || isAssignee || hasAssocRole)) {
+		if (requiresFU && !frm.is_new() && status !== "completed" && (isAuthor || isAdmin || isAssignee || hasAssocRole)) {
+	
 			const assignBtn = frm.add_custom_button(__("👤 Assign / Re-assign"), () => {
 				if (frm.is_dirty()) {
 					frappe.msgprint(__("Please save the document before assigning."));

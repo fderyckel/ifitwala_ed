@@ -1,0 +1,132 @@
+
+{# Ifitwala Ed — Student Log + Follow-ups (Print Template) #}
+
+<style>
+	/* Page + typography */
+	.print-container{ margin:8px 6px; }
+	.h-title{ font-size:1.15rem; font-weight:600; margin:0; }
+	.h-sub{ font-size:.9rem; color:#6c757d; margin-top:2px; }
+
+	/* Cards */
+	.card{ border:1px solid #e5e5e5; border-radius:.5rem; margin:10px 0; page-break-inside:avoid; }
+	.card-header{ background:#f8f9fa; border-bottom:1px solid #e5e5e5; padding:.5rem .75rem; }
+	.card-body{ padding:.75rem; }
+
+	/* Meta row */
+	.meta{ font-size:.85rem; color:#6c757d; display:flex; flex-wrap:wrap; gap:12px; }
+	.meta .dot::before{ content:"•"; margin:0 8px; color:#adb5bd; }
+	.badge{ vertical-align:middle; }
+
+	/* Snippets */
+	.snip{ margin:.35rem 0 .25rem 0; line-height:1.25; }
+	.snip .label{ font-weight:600; margin-right:.25rem; color:#495057; }
+
+	/* Follow-ups */
+	.followups{ margin:.35rem 0 0 0; padding:0; }
+	.followup-item{ list-style:none; border-left:3px solid #dee2e6; margin:.4rem 0; padding:.25rem .5rem .25rem .75rem; }
+	.followup-head{ font-size:.9rem; color:#495057; display:flex; gap:10px; margin-bottom:2px; }
+	.followup-body{ font-size:.95rem; }
+
+	/* Utility */
+	.text-mono{ font-family:SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; }
+	.mb-2{ margin-bottom:.5rem; }
+	.mb-0{ margin-bottom:0; }
+	.small{ font-size:.875rem; }
+	.text-dim{ color:#6c757d; }
+	.w-100{ width:100%; }
+</style>
+
+<div class="print-container">
+	<div class="mb-2">
+		<div class="h-title">Student Log + Follow-ups</div>
+		<div class="h-sub">
+			{% set fd = filters.get("from_date") %}{% set td = filters.get("to_date") %}
+			{% if fd and td %}Period: {{ fd }} → {{ td }}{% endif %}
+			{% if filters.student %} &nbsp;·&nbsp; Student: {{ filters.student }}{% endif %}
+			{% if filters.program %} &nbsp;·&nbsp; Program: {{ filters.program }}{% endif %}
+			{% if filters.school %} &nbsp;·&nbsp; School: {{ filters.school }}{% endif %}
+			{% if filters.academic_year %} &nbsp;·&nbsp; AY: {{ filters.academic_year }}{% endif %}
+			{% if filters.log_type %} &nbsp;·&nbsp; Type: {{ filters.log_type }}{% endif %}
+			{% if filters.follow_up_status %} &nbsp;·&nbsp; Status: {{ filters.follow_up_status }}{% endif %}
+		</div>
+	</div>
+
+	{# Iterate grouped data: header rows (is_group=1) open a card; child rows (indent=1) render inside it. #}
+	{% set has_open_card = False %}
+	{% set prev_follow_count = 0 %}
+
+	{% for r in data %}
+		{% if r.is_group %}
+			{# Close previous card (and its list) if any #}
+			{% if has_open_card %}
+				{% if prev_follow_count > 0 %}</ol>{% endif %}
+				</div></div>
+			{% endif %}
+
+			{# New log card #}
+			<div class="card">
+				<div class="card-header">
+					<div class="d-flex flex-wrap align-items-center w-100">
+						<div class="mr-2"><span class="text-mono">{{ r.log_id }}</span></div>
+						<div class="mr-2"><strong>{{ r.student_name or r.student }}</strong></div>
+						<div class="mr-2 text-dim">{{ r.log_date }}{% if r.log_time %} {{ r.log_time }}{% endif %}</div>
+						<div class="mr-2 text-dim">·</div>
+						<div class="mr-2">{{ r.log_type }}</div>
+						<div class="ml-auto">
+							{% set st = r.follow_up_status or "" %}
+							{% set badge = "badge-secondary" %}
+							{% if st == "In Progress" %}{% set badge = "badge-primary" %}{% endif %}
+							{% if st == "Closed" %}{% set badge = "badge-dark" %}{% endif %}
+							<span class="badge {{ badge }}">{{ st or "Open" }}</span>
+							<span class="badge badge-light" title="Follow-ups count">FU # {{ r.follow_up_count or 0 }}</span>
+						</div>
+					</div>
+					<div class="meta mt-1">
+						<div>Program: <strong>{{ r.program or "-" }}</strong></div>
+						<div class="dot">School: <strong>{{ r.school or "-" }}</strong></div>
+						<div class="dot">AY: <strong>{{ r.academic_year or "-" }}</strong></div>
+						<div class="dot">Author: <strong>{{ r.author_name or "-" }}</strong></div>
+						{% if r.visibility %}
+							<div class="dot">Visibility: <span style="font-size:1.05em">{{ r.visibility }}</span></div>
+						{% endif %}
+						{% if r.requires_follow_up %}
+							<div class="dot"><span class="badge badge-info">Requires Follow-up</span></div>
+						{% endif %}
+					</div>
+				</div>
+				<div class="card-body">
+					<div class="snip">
+						<span class="label">Log:</span>
+						<span>{{ r.log_snippet | e }}</span>
+					</div>
+
+					{# Follow-ups list (newest → oldest). If none, show a neutral note. #}
+					{% set cnt = r.follow_up_count or 0 %}
+					{% if cnt > 0 %}
+						<ol class="followups">
+					{% else %}
+						<p class="text-dim small mb-0">No follow-ups recorded.</p>
+					{% endif %}
+
+					{% set has_open_card = True %}
+					{% set prev_follow_count = cnt %}
+		{% else %}
+			{# Child follow-up row #}
+			<li class="followup-item">
+				<div class="followup-head">
+					<div><strong>{{ r.fu_date }}</strong></div>
+					<div class="text-dim">by {{ r.fu_author }}</div>
+				</div>
+				<div class="followup-body">
+					{{ r.follow_up_snippet | e }}
+				</div>
+			</li>
+		{% endif %}
+
+		{# Close final card at the end of the loop #}
+		{% if loop.last and has_open_card %}
+			{% if prev_follow_count > 0 %}</ol>{% endif %}
+			</div></div>
+		{% endif %}
+	{% endfor %}
+</div>
