@@ -2,14 +2,22 @@
 {% var curr = null; %}
 
 <meta name="pdfkit-orientation" content="Landscape" />
+
 <div class="print-heading text-center">
-	<h2>{{ __("Case Entries Activity Log") }}</h2>
-	<p class="text-muted">
+	<h2 style="margin-bottom:4mm;">{{ __("Case Entries Activity Log") }}</h2>
+	<p class="text-muted" style="margin:0 0 2mm 0;">
 		{{ __("From") }}: {%= (filters && filters.from_date) || "—" %} ·
 		{{ __("To") }}: {%= (filters && filters.to_date) || "—" %} ·
 		{{ __("School") }}: {%= (filters && filters.school) || __("All") %} ·
 		{{ __("Program") }}: {%= (filters && filters.program) || __("All") %}
 	</p>
+
+	<!-- Small legend (prints nicely) -->
+	<div class="legend" style="margin-top:2mm;">
+		<span class="chip chip-ok"><span class="dot dot-ok"></span> {{ __("Closed") }}</span>
+		<span class="chip chip-warn"><span class="dot dot-warn"></span> {{ __("Open / In Progress / On Hold") }}</span>
+		<span class="chip chip-alert"><span class="dot dot-alert"></span> {{ __("Escalated") }}</span>
+	</div>
 </div>
 
 {% for (var i = 0; i < rows.length; i++) { var r = rows[i]; %}
@@ -18,17 +26,34 @@
 			</tbody></table>
 		{% } %}
 		{% curr = r.referral_case; %}
-		<!-- Case header -->
-		<h4 style="margin-top:10mm;">
-			{{ __("Case") }}: {%= curr %}
-			<small class="text-muted">
-				· {{ __("Student") }}: {%= r.student_full_name || r.student || "" %}
-				· {{ __("Program") }}: {%= r.program || "" %}
-				· {{ __("Case Manager") }}: {%= r.case_manager_name || "" %}
-			</small>
-		</h4>
 
-		<table class="table table-bordered">
+		{%
+			var status = String(r.case_status || "").toLowerCase();
+			var status_class = "status-warn"; // default bucket
+			if (status === "closed") status_class = "status-ok";
+			if (status === "escalated") status_class = "status-alert";
+
+			var sev = String(r.case_severity || "").trim(); // Low/Moderate/High/Critical
+			var sev_class = (!sev || sev === "-") ? "" :
+				(sev.toLowerCase() === "low" ? "pill-ok" :
+				(sev.toLowerCase() === "moderate" ? "pill-warn" : "pill-alert"));
+		%}
+
+		<!-- Case header with colored left rail and pill -->
+		<div class="case-header {%= status_class %}">
+			<div class="case-title">
+				<strong>{{ __("Case") }}:</strong> {%= curr %}
+				<span class="pill {%= status_class.replace('status','pill') %}">{%= r.case_status || "" %}</span>
+				{% if (sev) { %}<span class="pill {%= sev_class %}" style="margin-left:4px;">{%= sev %}</span>{% } %}
+			</div>
+			<div class="case-meta text-muted">
+				{{ __("Student") }}: {%= r.student_full_name || r.student || "" %} ·
+				{{ __("Program") }}: {%= r.program || "" %} ·
+				{{ __("Case Manager") }}: {%= r.case_manager_name || "" %}
+			</div>
+		</div>
+
+		<table class="table table-bordered table-compact">
 			<thead>
 				<tr>
 					<th style="width:30mm;">{{ __("Date") }}</th>
@@ -62,6 +87,81 @@
 {% if (rows.length) { %}</tbody></table>{% } %}
 
 <style>
-@media print { thead{display:table-header-group;} tfoot{display:table-footer-group;} }
-.table th,.table td{vertical-align:top;}
+/* ---- Palette (print-friendly) ---- */
+:root {
+	/* Accent (text/border) colors */
+	--ok: #2e7d32;        /* deep green */
+	--ok-bg: #e8f5e9;     /* light green tint */
+	--warn: #9c6615;      /* warm amber/brown for good contrast */
+	--warn-bg: #fff4e6;   /* light amber tint */
+	--alert: #b3261e;     /* deep red */
+	--alert-bg: #fdecea;  /* light red tint */
+	--muted: #6c757d;
+	--border: #e5e5e5;
+}
+
+/* ---- Heading + legend ---- */
+.print-heading h2 { margin: 0; }
+.legend { font-size: 0.9rem; color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 6px; margin: 0 6px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.dot-ok { background: var(--ok); }
+.dot-warn { background: var(--warn); }
+.dot-alert { background: var(--alert); }
+
+/* ---- Case header band ---- */
+.case-header {
+	border: 1px solid var(--border);
+	border-left-width: 4px;
+	border-radius: 6px;
+	padding: 6px 8px;
+	margin: 10mm 0 3mm 0;
+	page-break-inside: avoid;
+}
+.case-header.status-ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.case-header.status-warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.case-header.status-alert { border-left-color: var(--alert); background: var(--alert-bg); }
+
+.case-title { font-size: 1rem; }
+.case-meta { font-size: .9rem; }
+
+/* ---- Pills ---- */
+.pill {
+	display: inline-block;
+	font-size: 0.8rem;
+	line-height: 1;
+	padding: 4px 8px;
+	border-radius: 999px;
+	border: 1px solid transparent;
+	vertical-align: middle;
+}
+.pill-ok    { color: var(--ok); border-color: var(--ok); background: #ffffff; }
+.pill-warn  { color: var(--warn); border-color: var(--warn); background: #ffffff; }
+.pill-alert { color: var(--alert); border-color: var(--alert); background: #ffffff; }
+
+/* Map status pills via class swap */
+.pill-ok.status, .pill-warn.status, .pill-alert.status { /* reserved if needed */ }
+
+/* ---- Table tweaks ---- */
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td {
+	padding: 6px 8px;
+	border: 1px solid var(--border);
+	vertical-align: top;
+}
+.table thead th {
+	background: #f8f9fa;
+	font-weight: 600;
+}
+.table-compact th, .table-compact td { padding: 5px 7px; }
+
+/* Zebra rows for readability in print */
+.table tbody tr:nth-child(odd) { background: #fbfbfb; }
+
+/* Print pagination hints */
+@media print {
+	thead { display: table-header-group; }
+	tfoot { display: table-footer-group; }
+	.case-header { page-break-inside: avoid; }
+}
 </style>
