@@ -5,7 +5,7 @@
 
 /* global frappe */
 
-frappe.query_reports["Student Log + Follow-ups"] = {
+frappe.query_reports["Student Logs"] = {
 	filters: [
 		{
 			fieldname: "from_date",
@@ -86,13 +86,22 @@ frappe.query_reports["Student Log + Follow-ups"] = {
 
 	onload(report) {
 		inject_compact_css_once();
-		// re-render when switching view mode
-		report.page.wrapper.on("change", 'select[data-fieldname="view_mode"]', () => {
-			frappe.query_report.refresh();
-		});
+
+		// render when switching view mode
+		var $wrap = report.page && report.page.wrapper;
+		if ($wrap && $wrap.on) {
+			$wrap.on("change", 'select[data-fieldname="view_mode"]', function () {
+				frappe.query_report.refresh();
+			});
+		}
+
+		ensure_print_button(report.page); // add our blue button
 	},
 
-	after_datatable_render(report) {
+	after_datatable_render(datatable_or_report) {
+		var report = (frappe.query_report || {});
+		if (report.page) ensure_print_button(report.page);
+
 		apply_view_mode_class(report);
 		shorten_header_labels(report);
 	},
@@ -149,6 +158,46 @@ frappe.query_reports["Student Log + Follow-ups"] = {
 		return val;
 	}, 
 };
+
+
+// ---------- helpers (print) ----------
+function ensure_print_button(page) {
+	if (!page || !page.add_inner_button) return;
+
+	var key = "sl-print-btn";
+	var exists = page.inner_toolbar && page.inner_toolbar.find('button[data-key="'+key+'"]').length;
+	if (exists) return;
+
+	var $btn = page.add_inner_button(__("Print"), function () {
+		handle_report_print();
+	}, null);
+	if ($btn) {
+		$btn.attr("data-key", key);
+		$btn.removeClass("btn-default").addClass("btn-primary btn-sm"); // solid blue, BS4
+	}
+}
+
+function handle_report_print() {
+	var qr = frappe.query_report;
+	if (!qr || typeof qr.print_report !== "function") {
+		frappe.msgprint(__("Print is not available on this report."));
+		return;
+	}
+	// Open the standard Print Settings dialog, then print with chosen options
+	frappe.ui.get_print_settings(false, function (print_settings) {
+		try {
+			print_settings = print_settings || {};
+			// sensible default; change to "Portrait" if you prefer
+			if (!print_settings.orientation) print_settings.orientation = "Landscape";
+			qr.print_report(print_settings);
+		} catch (e) {
+			console.error(e);
+			frappe.msgprint(__("Print failed. Please try the ⋮ menu or check permissions."));
+		}
+	},
+	qr.report_doc && qr.report_doc.letter_head,
+	qr.get_visible_columns ? qr.get_visible_columns() : null);
+}
 
 // ---- helpers (client-only) ----
 
