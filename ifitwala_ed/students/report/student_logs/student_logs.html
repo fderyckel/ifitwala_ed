@@ -1,20 +1,76 @@
 <!-- Ifitwala Ed — Student Log + Follow-ups (Report Print Template) -->
 
 <style>
+	:root{
+		--ifw-ink:#243b53;
+		--ifw-muted:#6b7280;
+		--ifw-border:#e6e8eb;
+
+		/* Leaf theme */
+		--ifw-primary:#2f855a;        /* emerald */
+		--ifw-primary-700:#276749;    /* deeper emerald */
+		--ifw-primary-100:#e6f4ec;    /* pale emerald */
+
+		--ifw-accent:#2563eb;         /* blue */
+		--ifw-accent-100:#e8f0fe;     /* pale blue */
+
+		--ifw-attention:#b7791f;      /* amber */
+		--ifw-attention-100:#fff6e5;  /* pale amber */
+	}
+
 	/* Page + typography */
 	.print-container{ margin:8px 6px; }
-	.h-title{ font-size:1.15rem; font-weight:600; margin:0; }
-	.h-sub{ font-size:.9rem; color:#6c757d; margin-top:2px; }
+	.h-title{ font-size:1.15rem; font-weight:600; margin:0; color:var(--ifw-ink); letter-spacing:.2px; }
+	.h-sub{ font-size:.9rem; color:var(--ifw-muted); margin-top:2px; }
 
 	/* Cards */
-	.card{ border:1px solid #e5e5e5; border-radius:.5rem; margin:10px 0; page-break-inside:avoid; }
-	.card-header{ background:#f8f9fa; border-bottom:1px solid #e5e5e5; padding:.5rem .75rem; }
-	.card-body{ padding:.75rem; }
+	.card{
+		border:1px solid var(--ifw-border);
+		border-radius:.5rem;
+		margin:10px 0;
+		page-break-inside:avoid;
+		border-left-width:6px; /* status accent */
+	}
+	.card-header{
+		background:#f8f9fa;
+		border-bottom:1px solid var(--ifw-border);
+		padding:.5rem .75rem;
+	}
+
+	/* Status-aware accents (class added below) */
+	.card.status-open{ border-left-color:#cbd5e1; }
+	.card.status-inprogress{ border-left-color:var(--ifw-primary); }
+	.card.status-closed{ border-left-color:var(--ifw-primary-700); }
+
+	.card.status-open .card-header{
+		background:linear-gradient(90deg,#f8f9fa, #fff);
+	}
+	.card.status-inprogress .card-header{
+		background:linear-gradient(90deg,var(--ifw-primary-100), #fff);
+	}
+	.card.status-closed .card-header{
+		background:linear-gradient(90deg,#e9f5ef, #fff);
+	}
 
 	/* Meta row */
-	.meta{ font-size:.85rem; color:#6c757d; display:flex; flex-wrap:wrap; gap:12px; }
+	.meta{
+		font-size:.85rem;
+		color:var(--ifw-muted);
+		display:flex; flex-wrap:wrap; gap:12px;
+	}
 	.meta .dot::before{ content:"•"; margin:0 8px; color:#adb5bd; }
 	.badge{ vertical-align:middle; }
+
+	/* Override badge palette for this print view */
+	.badge-primary{ background-color:var(--ifw-primary) !important; }
+	.badge-dark{ background-color:var(--ifw-primary-700) !important; }
+	.badge-secondary{ background-color:#9aa5b1 !important; }
+	.badge-info{ background-color:var(--ifw-attention) !important; color:#fff; }
+	.badge-light{
+		background-color:var(--ifw-accent-100);
+		color:var(--ifw-accent);
+		border:1px solid var(--ifw-accent);
+	}
 
 	/* Snippets */
 	.snip{ margin:.35rem 0 .25rem 0; line-height:1.25; }
@@ -22,7 +78,17 @@
 
 	/* Follow-ups */
 	.followups{ margin:.35rem 0 0 0; padding:0; }
-	.followup-item{ list-style:none; border-left:3px solid #dee2e6; margin:.4rem 0; padding:.25rem .5rem .25rem .75rem; }
+	.followup-item{
+		list-style:none;
+		border-left:3px solid #dee2e6;
+		margin:.4rem 0;
+		padding:.25rem .5rem .25rem .75rem;
+		background:#fff;
+	}
+	.card.status-open .followup-item{ border-left-color:#cbd5e1; }
+	.card.status-inprogress .followup-item{ border-left-color:var(--ifw-primary); background:#fafdfb; }
+	.card.status-closed .followup-item{ border-left-color:var(--ifw-primary-700); }
+
 	.followup-head{ font-size:.9rem; color:#495057; display:flex; gap:10px; margin-bottom:2px; }
 	.followup-body{ font-size:.95rem; }
 
@@ -31,9 +97,10 @@
 	.mb-2{ margin-bottom:.5rem; }
 	.mb-0{ margin-bottom:0; }
 	.small{ font-size:.875rem; }
-	.text-dim{ color:#6c757d; }
+	.text-dim{ color:var(--ifw-muted); }
 	.w-100{ width:100%; }
 </style>
+
 
 <div class="print-container">
 	<div class="mb-2">
@@ -58,7 +125,12 @@
 				</div></div>
 			{% } %}
 
-			<div class="card">
+			{% var st = r.follow_up_status || "";
+				var status_class = "status-open";
+				if (st === "In Progress") status_class = "status-inprogress";
+				if (st === "Closed") status_class = "status-closed";
+			%}
+			<div class="card {{ status_class }}">
 				<div class="card-header">
 					<div class="d-flex flex-wrap align-items-center w-100">
 						<div class="mr-2"><span class="text-mono">{{ r.log_id }}</span></div>
