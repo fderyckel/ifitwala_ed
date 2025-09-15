@@ -170,25 +170,48 @@ async function handle_report_print() {
 			? frappe.query_report.get_values()
 			: {};
 
-		const r = await frappe.call({
+		// 1) Preferred: server PDF generator (avoids visible_idx issues)
+		const r1 = await frappe.call({
+			method: "frappe.desk.query_report.get_report_pdf",
+			args: {
+				report_name,
+				filters,
+				orientation: "Landscape" // or "Portrait" if you prefer
+			}
+		});
+
+		// get_report_pdf returns a file URL in r1.message
+		const url1 = r1 && r1.message;
+		if (url1) {
+			window.open(url1, "_blank");
+			return;
+		}
+
+		// 2) Fallback: export_query with safe args
+		const r2 = await frappe.call({
 			method: "frappe.desk.query_report.export_query",
 			args: {
 				report_name,
 				file_format_type: "PDF",
-				filters
+				filters,
+				visible_idx: [],           // ✅ prevent NoneType crash
+				include_indentation: 0,    // safe default
+				include_filters: 1         // include current filters on header
 			}
 		});
 
-		const url = r && r.message && r.message.file_url;
-		if (url) {
-			window.open(url, "_blank");
+		const url2 = r2 && r2.message && r2.message.file_url;
+		if (url2) {
+			window.open(url2, "_blank");
 		} else {
 			frappe.msgprint(__("Could not generate the PDF file for this report."));
 		}
 	} catch (e) {
+		console.error(e);
 		frappe.msgprint(__("Print failed. Please try the ⋮ menu or check permissions."));
 	}
 }
+
 
 // ---------- helpers (client-side aggregates) ----------
 function parse_rows(rows) {
