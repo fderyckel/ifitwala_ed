@@ -95,7 +95,28 @@ frappe.query_reports["Student Logs"] = {
 			});
 		}
 
+		frappe.call({
+			method: "ifitwala_ed.utillities.school_tree.get_user_default_school",
+			callback: (r) => {
+				const user_school = (r && r.message) || "";
+				const school_filter = frappe.query_report.get_filter("school");
+				if (!school_filter) return;
+
+				// Only show descendants of the user's default school in the picker
+				school_filter.get_query = () => ({
+					query: "ifitwala_ed.utillities.school_tree.get_school_descendants",
+					filters: { root: user_school }
+				});
+
+				// prefill user's school on first load
+				if (!frappe.query_report.get_filter_value("school") && user_school) {
+					frappe.query_report.set_filter_value("school", user_school);
+				}
+			}
+		});
+
 		ensure_print_button(report.page); // add our blue button
+
 	},
 
 	after_datatable_render(datatable_or_report) {
