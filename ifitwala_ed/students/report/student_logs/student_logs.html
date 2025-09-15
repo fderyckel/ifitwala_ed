@@ -6,16 +6,25 @@
 		--ifw-muted:#6b7280;
 		--ifw-border:#e6e8eb;
 
-		/* Leaf theme */
-		--ifw-primary:#2f855a;        /* emerald */
-		--ifw-primary-600:#3a9d75;    /* deeper emerald */
-		--ifw-primary-100:#e6f4ec;    /* pale emerald */
+		/* Leaf theme — state colors */
+		/* Completed (green) */
+		--ifw-complete:#3a9d75;         /* badge/bar */
+		--ifw-complete-100:#e9f5ef;     /* header wash */
+		--ifw-complete-200:#d9efe7;     /* separators */
 
-		--ifw-accent:#2563eb;         /* blue */
-		--ifw-accent-100:#e8f0fe;     /* pale blue */
+		/* In Progress (orange) */
+		--ifw-progress:#d97706;
+		--ifw-progress-100:#fff4e6;
+		--ifw-progress-200:#f7d7a6;
 
-		--ifw-attention:#b7791f;      /* amber */
-		--ifw-attention-100:#fff6e5;  /* pale amber */
+		/* Open (red) */
+		--ifw-open:#d64545;
+		--ifw-open-100:#fdecec;
+		--ifw-open-200:#f6cfcf;
+
+		/* (kept for other accents you already use) */
+		--ifw-accent:#2563eb;
+		--ifw-accent-100:#e8f0fe;
 	}
 
 	/* Page + typography */
@@ -37,19 +46,19 @@
 		padding:.5rem .75rem;
 	}
 
-	/* Status-aware accents (class added below) */
-	.card.status-open{ border-left-color:#cbd5e1; }
-	.card.status-inprogress{ border-left-color:var(--ifw-primary); }
-	.card.status-completed{ border-left-color:var(--ifw-primary-600); }
+	/* Status-aware accents */
+	.card.status-open{       border-left-color:var(--ifw-open); }
+	.card.status-inprogress{ border-left-color:var(--ifw-progress); }
+	.card.status-completed{  border-left-color:var(--ifw-complete); }
 
 	.card.status-open .card-header{
-		background:linear-gradient(90deg,#f8f9fa, #fff);
+		background:linear-gradient(90deg,var(--ifw-open-100), #fff);
 	}
 	.card.status-inprogress .card-header{
-		background:linear-gradient(90deg,var(--ifw-primary-100), #fff);
+		background:linear-gradient(90deg,var(--ifw-progress-100), #fff);
 	}
 	.card.status-completed .card-header{
-		background:linear-gradient(90deg,#e9f5ef, #fff); 
+		background:linear-gradient(90deg,var(--ifw-complete-100), #fff);
 	}
 
 	/* Meta row */
@@ -61,11 +70,12 @@
 	.meta .dot::before{ content:"•"; margin:0 8px; color:#adb5bd; }
 	.badge{ vertical-align:middle; }
 
-	/* Override badge palette for this print view */
-	.badge-primary{ background-color:var(--ifw-primary) !important; }
-	.badge-dark{ background-color:var(--ifw-primary-600) !important; }
-	.badge-secondary{ background-color:#9aa5b1 !important; }
-	.badge-info{ background-color:var(--ifw-attention) !important; color:#fff; }
+	/* Badge palette for print view */
+	.badge-success{ background-color:var(--ifw-complete) !important; color:#fff; }
+	.badge-warning{ background-color:var(--ifw-progress) !important; color:#fff; }
+	.badge-danger{  background-color:var(--ifw-open) !important; color:#fff; }
+	.badge-secondary{ background-color:#9aa5b1 !important; color:#fff; }
+	.badge-info{ background-color:#b7791f !important; color:#fff; } /* “Requires Follow-up” */
 	.badge-light{
 		background-color:var(--ifw-accent-100);
 		color:var(--ifw-accent);
@@ -76,21 +86,22 @@
 	.snip{ margin:.35rem 0 .25rem 0; line-height:1.25; }
 	.snip .label{ font-weight:600; margin-right:.25rem; color:#495057; }
 
-	/* Follow-ups */
+	/* Follow-ups — no inner vertical bar; use subtle top separator */
 	.followups{ margin:.35rem 0 0 0; padding:0; }
-	.followup-item{ 
+	.followup-item{
 		list-style:none;
 		margin:.4rem 0;
 		padding:.4rem .5rem .3rem .5rem;
 		background:#fff;
-		border-left:0;                    /* no inner vertical bar */
+		border-left:0;
 		border-top:1px dashed var(--ifw-border);
 	}
 	.followups .followup-item:first-child{ border-top:0; }
-	
-	.card.status-open .followup-item{ border-left-color:#cbd5e1; }
-	.card.status-inprogress .followup-item{ background:#fafdfb; border-top-color:#d7efe5; }
-	.card.status-completed  .followup-item{ border-top-color:#d9efe7; }
+
+	/* Tinted separators by status */
+	.card.status-open       .followup-item{ border-top-color:var(--ifw-open-200); }
+	.card.status-inprogress .followup-item{ border-top-color:var(--ifw-progress-200); background:#fffaf0; }
+	.card.status-completed  .followup-item{ border-top-color:var(--ifw-complete-200); }
 
 	.followup-head{ font-size:.9rem; color:#495057; display:flex; gap:10px; margin-bottom:2px; }
 	.followup-body{ font-size:.95rem; }
@@ -103,6 +114,7 @@
 	.text-dim{ color:var(--ifw-muted); }
 	.w-100{ width:100%; }
 </style>
+
 
 
 <div class="print-container">
@@ -144,13 +156,17 @@
 						<div class="mr-2 text-dim">·</div>
 						<div class="mr-2">{{ r.log_type }}</div>
 						<div class="ml-auto">
-							{% var st = r.follow_up_status || "";
-							   var badge = "badge-secondary";
-							   if (st === "In Progress") badge = "badge-primary";
-							   if (st === "Completed") badge = "badge-dark";
+							{%
+								var st   = (r.follow_up_status || "").trim();
+								var norm = st.toLowerCase();
+								var badge = "badge-secondary";      // fallback
+								if (norm === "open")        badge = "badge-danger";   // red
+								if (norm === "in progress") badge = "badge-warning";  // orange
+								if (norm === "completed")   badge = "badge-success";  // green
 							%}
-							<span class="badge {{ badge }}">{{ st || "Open" }}</span>
-							<span class="badge badge-light" title="Follow-ups count">FU # {{ r.follow_up_count || 0 }}</span>
+						<span class="badge {{ badge }}">{{ st || "Open" }}</span>
+						<span class="badge badge-light" title="Follow-ups count">FU # {{ r.follow_up_count || 0 }}</span>
+
 						</div>
 					</div>
 					<div class="meta mt-1">

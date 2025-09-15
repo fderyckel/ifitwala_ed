@@ -101,11 +101,14 @@ frappe.query_reports["Student Log + Follow-ups"] = {
 		let val = default_formatter(value, row, column, data);
 		const mode = (frappe.query_report.get_filter_value("view_mode") || "Compact").trim();
 
-		// status badge
+		// Status badge (screen)
 		if (column.fieldname === "follow_up_status" && value) {
-			let color = "secondary";
-			if (value === "In Progress") color = "primary";
-			if (value === "Completed") color = "dark";
+			const norm = String(value || "").trim().toLowerCase();
+			let color = "secondary";        // fallback
+			if (norm === "open")        color = "danger";   // red
+			if (norm === "in progress") color = "warning";  // orange
+			if (norm === "completed")   color = "success";  // green
+
 			return `<span class="badge bg-${color}">${value}</span>`;
 		}
 
