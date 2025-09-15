@@ -17,7 +17,7 @@
  "owner": "Administrator",
  "prepared_report": 0,
  "ref_doctype": "Student Log",
- "report_name": "Student Logs",
+ "report_name": "Student Log & Follow-up",
  "report_type": "Script Report",
  "roles": [
   {

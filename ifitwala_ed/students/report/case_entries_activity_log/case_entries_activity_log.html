@@ -4,16 +4,16 @@
 <meta name="pdfkit-orientation" content="Landscape" />
 
 <div class="print-heading text-center">
-	<h2 style="margin-bottom:4mm;">{{ __("Case Entries Activity Log") }}</h2>
-	<p class="text-muted" style="margin:0 0 2mm 0;">
+	<h2>{{ __("Case Entries Activity Log") }}</h2>
+	<p class="text-muted">
 		{{ __("From") }}: {%= (filters && filters.from_date) || "—" %} ·
 		{{ __("To") }}: {%= (filters && filters.to_date) || "—" %} ·
 		{{ __("School") }}: {%= (filters && filters.school) || __("All") %} ·
 		{{ __("Program") }}: {%= (filters && filters.program) || __("All") %}
 	</p>
 
-	<!-- Small legend (prints nicely) -->
-	<div class="legend" style="margin-top:2mm;">
+	<!-- small legend -->
+	<div class="legend">
 		<span class="chip chip-ok"><span class="dot dot-ok"></span> {{ __("Closed") }}</span>
 		<span class="chip chip-warn"><span class="dot dot-warn"></span> {{ __("Open / In Progress / On Hold") }}</span>
 		<span class="chip chip-alert"><span class="dot dot-alert"></span> {{ __("Escalated") }}</span>
@@ -29,22 +29,25 @@
 
 		{%
 			var status = String(r.case_status || "").toLowerCase();
-			var status_class = "status-warn"; // default bucket
-			if (status === "closed") status_class = "status-ok";
-			if (status === "escalated") status_class = "status-alert";
-
-			var sev = String(r.case_severity || "").trim(); // Low/Moderate/High/Critical
-			var sev_class = (!sev || sev === "-") ? "" :
-				(sev.toLowerCase() === "low" ? "pill-ok" :
-				(sev.toLowerCase() === "moderate" ? "pill-warn" : "pill-alert"));
+			var status_class = (status === "closed") ? "status-ok"
+				: (status === "escalated") ? "status-alert"
+				: "status-warn"; // open/in progress/on hold → amber
 		%}
 
-		<!-- Case header with colored left rail and pill -->
+		<!-- Case header band -->
 		<div class="case-header {%= status_class %}">
 			<div class="case-title">
 				<strong>{{ __("Case") }}:</strong> {%= curr %}
 				<span class="pill {%= status_class.replace('status','pill') %}">{%= r.case_status || "" %}</span>
-				{% if (sev) { %}<span class="pill {%= sev_class %}" style="margin-left:4px;">{%= sev %}</span>{% } %}
+
+				{% if (r.case_severity) { %}
+					<span class="pill {%= (function(v){
+						v = String(v||'').toLowerCase();
+						return v==='low' ? 'pill-ok' : (v==='moderate' ? 'pill-warn' : 'pill-alert');
+					})(r.case_severity) %}" style="margin-left:4px;">
+						{%= r.case_severity %}
+					</span>
+				{% } %}
 			</div>
 			<div class="case-meta text-muted">
 				{{ __("Student") }}: {%= r.student_full_name || r.student || "" %} ·
@@ -87,12 +90,11 @@
 {% if (rows.length) { %}</tbody></table>{% } %}
 
 <style>
-/* ---- Palette (print-friendly) ---- */
 :root {
-	/* Accent (text/border) colors */
+	/* palette (print-friendly) */
 	--ok: #2e7d32;        /* deep green */
 	--ok-bg: #e8f5e9;     /* light green tint */
-	--warn: #9c6615;      /* warm amber/brown for good contrast */
+	--warn: #9c6615;      /* warm amber/brown for contrast */
 	--warn-bg: #fff4e6;   /* light amber tint */
 	--alert: #b3261e;     /* deep red */
 	--alert-bg: #fdecea;  /* light red tint */
@@ -134,10 +136,11 @@
 	border-radius: 999px;
 	border: 1px solid transparent;
 	vertical-align: middle;
+	background: #ffffff;
 }
-.pill-ok    { color: var(--ok); border-color: var(--ok); background: #ffffff; }
-.pill-warn  { color: var(--warn); border-color: var(--warn); background: #ffffff; }
-.pill-alert { color: var(--alert); border-color: var(--alert); background: #ffffff; }
+.pill-ok    { color: var(--ok); border-color: var(--ok); }
+.pill-warn  { color: var(--warn); border-color: var(--warn); }
+.pill-alert { color: var(--alert); border-color: var(--alert); }
 
 /* Map status pills via class swap */
 .pill-ok.status, .pill-warn.status, .pill-alert.status { /* reserved if needed */ }

@@ -58,11 +58,6 @@ frappe.query_reports["Student Logs"] = {
 			options: ["", "Open", "In Progress", "Completed"]
 		},
 		{
-			fieldname: "requires_follow_up",
-			label: __("Requires Follow-up"),
-			fieldtype: "Check"
-		},
-		{
 			fieldname: "author",
 			label: __("Author (Log)"),
 			fieldtype: "Link",
@@ -81,7 +76,12 @@ frappe.query_reports["Student Logs"] = {
 			fieldtype: "Select",
 			options: ["Compact", "Full"],
 			default: "Compact"
-		}
+		}, 
+		{
+			fieldname: "requires_follow_up",
+			label: __("Requires Follow-up"),
+			fieldtype: "Check"
+		},
 	],
 
 	onload(report) {
