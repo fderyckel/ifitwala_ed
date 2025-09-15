@@ -96,7 +96,7 @@ frappe.query_reports["Student Logs"] = {
 		}
 
 		frappe.call({
-			method: "ifitwala_ed.utillities.school_tree.get_user_default_school",
+			method: "ifitwala_ed.utilities.school_tree.get_user_default_school",
 			callback: (r) => {
 				const user_school = (r && r.message) || "";
 				const school_filter = frappe.query_report.get_filter("school");
