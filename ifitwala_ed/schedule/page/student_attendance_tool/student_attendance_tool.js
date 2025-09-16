@@ -227,48 +227,65 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 
 	/* 6 ▸ data flows ------------------------------------------------- */
 	async function refresh_dates() {
-		const group = student_group_field.get_value();
-		if (!group) return;
+			const group = student_group_field.get_value();
+			if (!group) return;
 
-		const { message: dates } = await frappe.call(
-			"ifitwala_ed.schedule.attendance_utils.get_meeting_dates",
-			{ student_group: group }
-		);
+			// Retrieve all meeting dates for the student group
+			const { message: dates } = await frappe.call(
+					"ifitwala_ed.schedule.attendance_utils.get_meeting_dates",
+					{ student_group: group }
+			);
 
-		if (!dates.length) {
-			frappe.msgprint(__("This student group has no scheduled dates. Please ensure a School Schedule is set and blocks are assigned."));
-			date_field.df.options = [];
+			if (!dates.length) {
+					frappe.msgprint(__("This student group has no scheduled dates. Please ensure a School Schedule is set and blocks are assigned."));
+					date_field.df.options = [];
+					date_field.refresh();
+					$cards.empty();
+					return;
+			}
+
+			// Determine the date in `dates` closest to today (past or future)
+			const today = frappe.datetime.get_today();
+			const todayDateObj = frappe.datetime.str_to_obj(today);
+			let selected = null;
+			let nearestDiff = Infinity;
+			dates.forEach(d => {
+					try {
+							const dObj = frappe.datetime.str_to_obj(d);
+							const diff = Math.abs(dObj - todayDateObj);
+							if (diff < nearestDiff) {
+									nearestDiff = diff;
+									selected = d;
+							}
+					} catch {
+							/* ignore parse errors */
+					}
+			});
+			selected = selected || dates[0];  // fallback
+
+			// Select dates within ±60 days (~2 months) of the selected date
+			const daysWindow = 60;
+			const selectedDateObj = frappe.datetime.str_to_obj(selected);
+			const visibleDates = dates.filter(d => {
+					try {
+							const dObj = frappe.datetime.str_to_obj(d);
+							const diffDays = Math.abs((dObj - selectedDateObj) / 86400000);
+							return diffDays <= daysWindow;
+					} catch {
+							return false;
+					}
+			}).sort((a, b) => new Date(a) - new Date(b));
+
+			// Populate the select box and mark today if present
+			date_field.df.options = visibleDates.map(d => ({
+					label: d === today ? __("Today") : d,
+					value: d,
+			}));
 			date_field.refresh();
-			$cards.empty();
-			return;
-		}
-
-		const today = frappe.datetime.get_today();
-		const todayIndex = dates.indexOf(today);
-
-		// Split dates
-		let before = [], after = [], selected = today;
-		if (todayIndex !== -1) {
-			before = dates.slice(Math.max(0, todayIndex - 5), todayIndex);
-			after = dates.slice(todayIndex + 1, todayIndex + 6);
-		} else {
-			// fallback: use latest 10
-			before = dates.slice(0, 10);
-			selected = before[0] || null;
-		}
-
-		const visibleDates = [...before, todayIndex !== -1 ? today : null, ...after].filter(Boolean);
-
-		// Set into field
-		date_field.df.options = visibleDates.map((d) =>
-			({ label: d === today ? __("Today") : d, value: d })
-		);
-		date_field.refresh();
-		date_field.set_value(selected);
-
-		add_toggle_link(dates, today, selected);
-
+			date_field.set_value(selected);
+			add_toggle_link(dates, today, selected);
 	}
+
 
 	function add_toggle_link(all_dates, today, selected) {
 		// Prevent duplication
