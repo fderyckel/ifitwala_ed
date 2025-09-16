@@ -5,6 +5,8 @@
 
 import frappe
 from frappe.utils import getdate, add_days, strip_html_tags
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
 
 def execute(filters=None):
 	filters = _normalize_filters(filters or {})
@@ -82,6 +84,19 @@ def _get_data(f):
 		"user": f["_user"],
 	}
 
+	school_name = params.get("school")
+	if school_name:
+			try:
+					desc = get_descendant_schools(school_name)
+					schools = desc or [school_name]
+			except Exception:
+					schools = [school_name]
+			# convert to tuple for SQL
+			params["school_list"] = tuple(schools)
+	else:
+			params["school_list"] = None
+
+
 	# Aggregation: count + last follow-up per log (no extra filters)
 	agg_sql = """
 		select
@@ -127,7 +142,7 @@ def _get_data(f):
 			and sl.date between %(from_date)s and %(to_date)s
 			{_opt("sl.student = %(student)s", params, "student")}
 			{_opt("sl.program = %(program)s", params, "program")}
-			{_opt("sl.school = %(school)s", params, "school")}
+			{_opt("sl.school in %(school_list)s", params, "school_list")}
 			{_opt("sl.academic_year = %(academic_year)s", params, "academic_year")}
 			{_opt("sl.log_type = %(log_type)s", params, "log_type")}
 			{_opt("sl.follow_up_status = %(follow_up_status)s", params, "follow_up_status")}
