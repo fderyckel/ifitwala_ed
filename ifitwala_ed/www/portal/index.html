@@ -1,9 +1,25 @@
 {% extends "templates/web.html" %}
 
-{% block page_content %}
-<div id="app"></div>
+{# Optional: set a title #}
+{% block title %}{{ _("Portal") }}{% endblock %}
 
-{# Simple direct include for first build; we'll switch to manifest-aware tags later if needed #}
-<link rel="modulepreload" href="/assets/ifitwala_ed/dist/main.js">
-<script type="module" src="/assets/ifitwala_ed/dist/main.js"></script>
+{# Put CSS & preloads in <head>. Many Frappe pages use 'head_include' for extra tags. #}
+{% block head_include %}
+	{{ super() }}
+	{% if vite_css %}
+		{% for href in vite_css %}
+			<link rel="stylesheet" href="{{ href }}">
+		{% endfor %}
+	{% endif %}
+	{% if vite_preload %}
+		{% for href in vite_preload %}
+			<link rel="modulepreload" href="{{ href }}">
+		{% endfor %}
+	{% endif %}
+{% endblock %}
+
+{% block page_content %}
+	<div id="app"></div>
+	{# Main entry JS from manifest (ESM) #}
+	<script type="module" src="{{ vite_js }}"></script>
 {% endblock %}
