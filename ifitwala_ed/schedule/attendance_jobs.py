@@ -5,29 +5,11 @@
 
 import frappe
 from frappe.utils import now_datetime, nowdate, get_datetime, add_to_date, time_diff_in_seconds
-from typing import Dict, Set, List, Tuple
-from ifitwala_ed.schedule.schedule_utils import current_academic_year, build_rotation_map
+from typing import Dict, Set, List
+from ifitwala_ed.schedule.schedule_utils import current_academic_year, get_rotation_dates
 from ifitwala_ed.schedule.attendance_utils import get_meeting_dates, LIMIT_DEFAULT, SG_SCHEDULE_DT
 
 
-def _groups_with_schedule_in_ay(ay: str) -> List[dict]:
-	"""
-	Return SGs in the active AY that have a school_calendar and at least one schedule row.
-	Fields kept minimal to reduce transfer.
-	"""
-	return frappe.db.sql(
-		"""
-		SELECT sg.name, sg.school_calendar
-		FROM `tabStudent Group` sg
-		WHERE sg.academic_year = %(ay)s
-		  AND sg.school_calendar IS NOT NULL
-		  AND EXISTS (
-				SELECT 1 FROM `tabStudent Group Schedule` sgs WHERE sgs.parent = sg.name
-		  )
-		""",
-		{"ay": ay},
-		as_dict=True,
-	)
 
 def _rotation_days_by_group(names: List[str]) -> Dict[str, Set[int]]:
 	"""Map each SG → {rotation_day,...} from Student Group Schedule rows."""
@@ -44,27 +26,35 @@ def _rotation_days_by_group(names: List[str]) -> Dict[str, Set[int]]:
 			out.setdefault(r.parent, set()).add(int(r.rotation_day))
 	return out
 
-def _today_rotation_for_calendars(calendars: Set[str], today_iso: str) -> Dict[str, int | None]:
+def _groups_with_schedule_in_ay(ay: str) -> List[dict]:
+	return frappe.db.sql(
+		"""
+		SELECT sg.name, sg.school_schedule, sg.academic_year
+		FROM `tabStudent Group` sg
+		WHERE sg.academic_year = %(ay)s
+		  AND sg.school_schedule IS NOT NULL
+		  AND EXISTS (
+				SELECT 1 FROM `tabStudent Group Schedule` sgs WHERE sgs.parent = sg.name
+		  )
+		""",
+		{"ay": ay},
+		as_dict=True,
+	)
+
+def _today_rotation_by_sched_ay(groups: List[dict], today_iso: str) -> Dict[tuple, int | None]:
 	"""
-	Use build_rotation_map(calendar) ONCE per calendar (already Redis-cached).
-	Return calendar_name → today's rotation_day (or None if holiday/no slot).
+	Map each (school_schedule, academic_year) → today's rotation_day (or None).
+	Uses get_rotation_dates() so schedule-specific offsets are honored.
 	"""
-	out: Dict[str, int | None] = {}
-	for cal in calendars:
-		rotmap = build_rotation_map(cal)  # {day:int -> [date,...]} (cached for a day)
-		# invert once for today's lookup
-		date_to_rot: Dict[str, int] = {}
-		for rd, dates in rotmap.items():
-			for d in dates:
-				date_to_rot[d.isoformat()] = rd
-		out[cal] = date_to_rot.get(today_iso)
+	pairs = {(g["school_schedule"], g["academic_year"]) for g in groups}
+	out: Dict[tuple, int | None] = {}
+	for sched, ay in pairs:
+		rot_dates = get_rotation_dates(sched, ay, include_holidays=False)
+		rot_map = {rd["date"].isoformat(): int(rd["rotation_day"]) for rd in rot_dates}
+		out[(sched, ay)] = rot_map.get(today_iso)
 	return out
 
 def prewarm_meeting_dates(limit: int | None = None) -> dict:
-	"""
-	Pre-warm cache entries for Student Groups that actually meet today.
-	Run this shortly before the attendance window.
-	"""
 	today_iso = nowdate()
 	ay = current_academic_year()
 
@@ -72,34 +62,36 @@ def prewarm_meeting_dates(limit: int | None = None) -> dict:
 	if not groups:
 		return {"warmed": 0, "candidates": 0}
 
-	# compute today's rotation per calendar (reused across many SGs)
-	cal_set = {g["school_calendar"] for g in groups}
-	today_rot_by_cal = _today_rotation_for_calendars(cal_set, today_iso)
+	# schedule-aware rotation for today
+	rot_by_pair = _today_rotation_by_sched_ay(groups, today_iso)
 
-	# only groups whose calendar has a rotation today
-	names = [g["name"] for g in groups if today_rot_by_cal.get(g["school_calendar"])]
+	# only groups whose schedule has a rotation today
+	names = [
+		g["name"]
+		for g in groups
+		if rot_by_pair.get((g["school_schedule"], g["academic_year"]))
+	]
 	if not names:
 		return {"warmed": 0, "candidates": 0}
 
-	# keep groups that actually have a row on that rotation day
 	rd_by_group = _rotation_days_by_group(names)
 	candidates = [
 		g["name"] for g in groups
-		if (r := today_rot_by_cal.get(g["school_calendar"])) and r in rd_by_group.get(g["name"], set())
+		if (r := rot_by_pair.get((g["school_schedule"], g["academic_year"])))
+		and r in rd_by_group.get(g["name"], set())
 	]
 
 	warmed = 0
 	target_limit = int(limit or LIMIT_DEFAULT)
 	for sg_name in candidates:
 		try:
-			# warm EXACTLY the same key the UI uses (include limit)
-			get_meeting_dates(sg_name, limit=target_limit)
+			get_meeting_dates(sg_name, limit=target_limit)  # warms exact key
 			warmed += 1
 		except Exception:
-			# best-effort; don't fail the job
 			pass
 
 	return {"warmed": warmed, "candidates": len(candidates)}
+
 
 
 def _seconds_until(hour: int, minute: int = 0) -> int:
@@ -131,7 +123,6 @@ def prewarm_meeting_dates_hourly_guard():
 	if _already_warmed_today():
 		return {"skipped": "already warmed today"}
 
-	# set flag first; warm is idempotent anyway
-	_mark_warmed_until(9, 0)
-	from ifitwala_ed.schedule.attendance_jobs import prewarm_meeting_dates, LIMIT_DEFAULT
+	_mark_warmed_until(9, 0)  # set flag first
 	return prewarm_meeting_dates(LIMIT_DEFAULT)
+
