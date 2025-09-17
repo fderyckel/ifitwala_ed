@@ -1,8 +1,11 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/schedule/attendace_utils.py
+
 import frappe
 from frappe.utils import now_datetime, getdate, nowdate
+from frappe.utils.caching import redis_cache
 from frappe import _
 from typing import List, Dict
 from itertools import islice
@@ -86,21 +89,23 @@ def fetch_students(student_group: str, start: int = 0, page_length: int = 500):
 
 
 @frappe.whitelist()
+@redis_cache(
+	ttl=86400,
+	make_key=lambda *a, **kw: _meeting_dates_cache_key(
+		kw.get("student_group") or (a[0] if a else ""),
+		kw.get("limit") if "limit" in kw else (a[1] if len(a) > 1 else None)
+	)
+)
+
 def get_meeting_dates(student_group: str, limit: int | None = None) -> list[str]:
 	"""Return recent scheduled dates for a student-group (holiday-filtered)."""
 	limit = int(limit or LIMIT_DEFAULT)
 	sg    = frappe.get_cached_doc(SG_DOCTYPE, student_group)
 
-	# ── Resolve the School Schedule name ─────────────────────────
-	sched_name   = None
-	calendar_name = None
-	school_name   = None
-
 	sched_name = sg.school_schedule
 	if not sched_name:
 		return []
 
-	# ── Build rotation‐date list (unchanged) ─────────────────────
 	rot_dates = get_rotation_dates(
 		sched_name,
 		sg.academic_year,
@@ -110,7 +115,6 @@ def get_meeting_dates(student_group: str, limit: int | None = None) -> list[str]
 	for rd in rot_dates:
 		rot_map.setdefault(rd["rotation_day"], []).append(rd["date"])
 
-	# rotation-days actually used by the SG
 	rows = frappe.db.get_all(
 		SG_SCHEDULE_DT,
 		filters={"parent": student_group},
@@ -119,11 +123,9 @@ def get_meeting_dates(student_group: str, limit: int | None = None) -> list[str]
 	)
 	valid_days = {r.rotation_day for r in rows}
 
-	meetings = sorted(
-		{d for rd, lst in rot_map.items() if rd in valid_days for d in lst},
-		reverse=True
-	)
-	return [d.isoformat() for d in meetings[:limit]]
+	meetings = {d for rd, lst in rot_map.items() if rd in valid_days for d in lst}
+	return [d.isoformat() for d in sorted(meetings, reverse=True)[:limit]]
+
 
 @frappe.whitelist()
 def fetch_existing_attendance(student_group: str, attendance_date: str) -> Dict[str, Dict[int, str]]:
@@ -362,6 +364,19 @@ def bulk_upsert_attendance(payload=None):
 
 	return {"created": len(to_insert), "updated": len(to_update)}
 
+
+# --- Caching helpers for meeting dates --------------------------------
+
+_CACHE_PREFIX = "att_meeting_dates"
+
+def _meeting_dates_cache_key(student_group: str, limit: int | None) -> str:
+	# include limit so different page sizes don’t fight over the same cache entry
+	lim = int(limit) if limit is not None else LIMIT_DEFAULT
+	return f"{_CACHE_PREFIX}:{student_group}:L{lim}"
+
+def invalidate_meeting_dates(student_group: str) -> None:
+	if student_group:
+		frappe.cache().delete_value(_meeting_dates_cache_key(student_group, None))
 
 # ---------------------------------------------------------------------
 # Utility internals

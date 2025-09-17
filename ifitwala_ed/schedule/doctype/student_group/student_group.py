@@ -12,6 +12,7 @@ from ifitwala_ed.utilities.school_tree import (
     get_ancestor_schools,          # for the picker
     get_first_ancestor_with_doc    # for automatic lookup
 )
+from ifitwala_ed.schedule.attendance_utils import invalidate_meeting_dates
 
 class StudentGroup(Document):
 	def autoname(self):
@@ -94,6 +95,8 @@ class StudentGroup(Document):
 			self.flags._sg_students_added = set()
 			self.flags._sg_students_removed = set()
 			self.flags._sg_instructors_changed = False
+			# meeting dates: nothing cached yet on first save
+			self.flags._sg_meeting_dates_changed = False
 			return
 
 		# ----- students (active only) -----
@@ -126,6 +129,23 @@ class StudentGroup(Document):
 		curr_instr = instructor_keys(self)
 		self.flags._sg_instructors_changed = (prev_instr != curr_instr)
 
+		# ----- MEETING-DATES impact detection (NEW) -----
+		def rotation_days_set(doc):
+			return {
+				int(r.rotation_day)
+				for r in (doc.student_group_schedule or [])
+				if getattr(r, "rotation_day", None)
+			}
+
+		sched_changed = (old.school_schedule or "") != (self.school_schedule or "")
+		ay_changed = (old.academic_year or "") != (self.academic_year or "")
+		prev_days = rotation_days_set(old)
+		curr_days = rotation_days_set(self)
+
+		self.flags._sg_meeting_dates_changed = bool(
+			sched_changed or ay_changed or (prev_days != curr_days)
+		)
+
 	def after_save(self):
 		"""
 		Sync SSG access/acks when:
@@ -137,27 +157,24 @@ class StudentGroup(Document):
 		instr_changed = bool(getattr(self.flags, "_sg_instructors_changed", False))
 
 		if not added and not removed and not instr_changed:
-			return
+			pass
+		else:
+			ay = (self.academic_year or "").strip()
+			if ay:
+				from ifitwala_ed.students.doctype.referral_case.referral_case import _sync_ssg_access_for
+				for stu in sorted(added):
+					_sync_ssg_access_for(stu, ay, reason="sgs-added")
+				for stu in sorted(removed):
+					_sync_ssg_access_for(stu, ay, reason="sgs-removed")
+				if instr_changed:
+					for r in (self.students or []):
+						if getattr(r, "student", None) and cint(getattr(r, "active", 1)):
+							_sync_ssg_access_for((r.student or "").strip(), ay, reason="sgi-changed")
 
-		ay = (self.academic_year or "").strip()
-		if not ay:
-			return
-
-		from ifitwala_ed.students.doctype.referral_case.referral_case import _sync_ssg_access_for
-
-		# Targeted syncs for changed students
-		for stu in sorted(added):
-			_sync_ssg_access_for(stu, ay, reason="sgs-added")
-		for stu in sorted(removed):
-			_sync_ssg_access_for(stu, ay, reason="sgs-removed")
-
-		# If instructors changed, re-sync ALL current active students (cheap: in-memory rows)
-		if instr_changed:
-			for r in (self.students or []):
-				if getattr(r, "student", None) and cint(getattr(r, "active", 1)):
-					stu = (r.student or "").strip()
-					if stu:
-						_sync_ssg_access_for(stu, ay, reason="sgi-changed")
+		# ----- MEETING-DATES invalidation (NEW) -----
+		if bool(getattr(self.flags, "_sg_meeting_dates_changed", False)):
+			invalidate_meeting_dates(self.name)
+			self.flags._sg_meeting_dates_changed = False
 
 		# cleanup flags
 		self.flags._sg_students_added = set()
