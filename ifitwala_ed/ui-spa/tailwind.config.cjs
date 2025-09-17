@@ -1,10 +1,8 @@
+const frappeUiPreset = require('frappe-ui/src/utils/tailwind.config');
+
 module.exports = {
-	content: [
-		'./index.html',
-		'./src/**/*.{vue,js,ts}'
-	],
-	theme: {
-		extend: {}
-	},
-	plugins: []
-}
+  presets: [frappeUiPreset],
+  content: ['./index.html', './src/**/*.{vue,js,ts}'],
+  theme: { extend: {} },
+  plugins: []
+};
