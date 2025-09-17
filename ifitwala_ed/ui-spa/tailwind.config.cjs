@@ -1,5 +1,5 @@
 module.exports = {
-	presets: [require('rappe-ui/tailwind/preset.js')],
+	presets: [require('frappe-ui/tailwind/preset.js')],
 	content: [
 		'./index.html',
 		'./src/**/*.{vue,js,ts}'
