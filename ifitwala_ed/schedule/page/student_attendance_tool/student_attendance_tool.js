@@ -303,7 +303,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			}));
 			date_field.refresh();
 			date_field.set_value(selected);
-			$toggle.remove();
+			$toggle.remove();w
 		});
 
 		// Insert below the field (same flex container as filters)

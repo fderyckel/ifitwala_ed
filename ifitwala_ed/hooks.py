@@ -220,7 +220,8 @@ doc_events = {
 
 scheduler_events = {
 	"hourly": [
-			"ifitwala_ed.admission.admission_utils.check_sla_breaches"
+			"ifitwala_ed.admission.admission_utils.check_sla_breaches", 
+			"ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard"
 		], 
   "daily": [
     "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs"
