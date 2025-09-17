@@ -89,28 +89,22 @@ def fetch_students(student_group: str, start: int = 0, page_length: int = 500):
 
 
 @frappe.whitelist()
-@redis_cache(
-	ttl=86400,
-	make_key=lambda *a, **kw: _meeting_dates_cache_key(
-		kw.get("student_group") or (a[0] if a else ""),
-		kw.get("limit") if "limit" in kw else (a[1] if len(a) > 1 else None)
-	)
-)
-
 def get_meeting_dates(student_group: str, limit: int | None = None) -> list[str]:
 	"""Return recent scheduled dates for a student-group (holiday-filtered)."""
 	limit = int(limit or LIMIT_DEFAULT)
-	sg    = frappe.get_cached_doc(SG_DOCTYPE, student_group)
 
+	# cache read
+	rc  = frappe.cache()
+	key = _meeting_dates_cache_key(student_group, limit)
+	if (cached := rc.get_value(key)) is not None:
+		return cached
+
+	sg = frappe.get_cached_doc(SG_DOCTYPE, student_group)
 	sched_name = sg.school_schedule
 	if not sched_name:
 		return []
 
-	rot_dates = get_rotation_dates(
-		sched_name,
-		sg.academic_year,
-		include_holidays=False
-	)
+	rot_dates = get_rotation_dates(sched_name, sg.academic_year, include_holidays=False)
 	rot_map = {}
 	for rd in rot_dates:
 		rot_map.setdefault(rd["rotation_day"], []).append(rd["date"])
@@ -124,7 +118,11 @@ def get_meeting_dates(student_group: str, limit: int | None = None) -> list[str]
 	valid_days = {r.rotation_day for r in rows}
 
 	meetings = {d for rd, lst in rot_map.items() if rd in valid_days for d in lst}
-	return [d.isoformat() for d in sorted(meetings, reverse=True)[:limit]]
+	result = [d.isoformat() for d in sorted(meetings, reverse=True)[:limit]]
+
+	# cache write
+	rc.set_value(key, result, expires_in_sec=_CACHE_TTL)
+	return result
 
 
 @frappe.whitelist()
@@ -367,16 +365,23 @@ def bulk_upsert_attendance(payload=None):
 
 # --- Caching helpers for meeting dates --------------------------------
 
+# --- Caching helpers for meeting dates --------------------------------
+
 _CACHE_PREFIX = "att_meeting_dates"
+_CACHE_TTL    = 86400  # 24h
 
 def _meeting_dates_cache_key(student_group: str, limit: int | None) -> str:
-	# include limit so different page sizes don’t fight over the same cache entry
 	lim = int(limit) if limit is not None else LIMIT_DEFAULT
 	return f"{_CACHE_PREFIX}:{student_group}:L{lim}"
 
 def invalidate_meeting_dates(student_group: str) -> None:
-	if student_group:
-		frappe.cache().delete_value(_meeting_dates_cache_key(student_group, None))
+	if not student_group:
+		return
+	rc = frappe.cache()
+	# nuke all size variants for this group
+	for k in rc.get_keys(f"{_CACHE_PREFIX}:{student_group}:L*"):
+		rc.delete_value(k)
+
 
 # ---------------------------------------------------------------------
 # Utility internals
