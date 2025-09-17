@@ -1,0 +1,9 @@
+{% extends "templates/web.html" %}
+
+{% block page_content %}
+<div id="app"></div>
+
+{# Simple direct include for first build; we'll switch to manifest-aware tags later if needed #}
+<link rel="modulepreload" href="/assets/ifitwala_ed/dist/main.js">
+<script type="module" src="/assets/ifitwala_ed/dist/main.js"></script>
+{% endblock %}
