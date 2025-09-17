@@ -6,7 +6,6 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "section_break_dcwn",
   "rotation_day",
   "block_number",
   "instructor",
@@ -16,10 +15,7 @@
  ],
  "fields": [
   {
-   "fieldname": "section_break_dcwn",
-   "fieldtype": "Section Break"
-  },
-  {
+   "columns": 1,
    "fieldname": "rotation_day",
    "fieldtype": "Int",
    "in_list_view": 1,
@@ -27,6 +23,7 @@
    "reqd": 1
   },
   {
+   "columns": 1,
    "fieldname": "block_number",
    "fieldtype": "Int",
    "in_list_view": 1,
@@ -34,6 +31,7 @@
    "reqd": 1
   },
   {
+   "columns": 2,
    "fieldname": "location",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -41,6 +39,7 @@
    "options": "Location"
   },
   {
+   "columns": 4,
    "fieldname": "instructor",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -48,14 +47,18 @@
    "options": "Instructor"
   },
   {
+   "columns": 1,
    "fieldname": "from_time",
    "fieldtype": "Time",
+   "in_list_view": 1,
    "label": "From Time",
    "read_only": 1
   },
   {
+   "columns": 1,
    "fieldname": "to_time",
    "fieldtype": "Time",
+   "in_list_view": 1,
    "label": "To Time",
    "read_only": 1
   }
@@ -63,7 +66,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-26 07:05:28.454454",
+ "modified": "2025-09-16 07:17:06.663758",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group Schedule",
