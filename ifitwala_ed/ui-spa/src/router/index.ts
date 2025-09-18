@@ -10,6 +10,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/student', name: 'student-home', component: () => import('@/pages/student/StudentHome.vue') },
   { path: '/student/logs', name: 'student-logs', component: () => import('@/pages/student/StudentLogs.vue') },
   { path: '/student/profile', name: 'student-profile', component: () => import('@/pages/student/Profile.vue') },
+  { path: '/student/courses', name: 'student-courses', component: () => import('@/pages/student/Courses.vue') },
 
   // Guardian
   { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue') },
