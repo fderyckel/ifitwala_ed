@@ -40,7 +40,14 @@
                 />
                 {{ log.log_type }}
               </span>
-              • {{ formatDate(log.date) }} {{ formatTime(log.time) }}
+              <span class="mx-2 text-gray-300">•</span>
+              <span>{{ formatDate(log.date) }}</span>
+              <span
+                v-if="formatTime(log.time)"
+                class="ml-2 align-[0.5px] text-gray-600 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 tabular-nums"
+              >
+                {{ formatTime(log.time) }}
+              </span>
             </p>
             <p class="text-sm text-gray-500">By {{ log.author_name }}</p>
 
@@ -174,17 +181,17 @@ function unwrap(resp) {
 
 // --- Color helpers (elegant, pastel-leaning) ---------------------------------
 const PALETTE = [
-  '#2563eb', // blue-600
   '#0ea5e9', // sky-500
+  '#0891b2', // cyan-600
+  '#0d9488', // teal-600
   '#10b981', // emerald-500
-  '#a78bfa', // violet-400
-  '#f59e0b', // amber-500
-  '#ef4444', // red-500
-  '#14b8a6', // teal-500
-  '#8b5cf6', // violet-500
-  '#f97316', // orange-500
-  '#22c55e', // green-500
+  '#2563eb', // blue-600
+  '#374151', // gray-700 (neutral accent for some types)
+  '#1e40af', // blue-800
+  '#155e75', // cyan-800
+  '#065f46', // emerald-800
 ]
+
 function hashStr(s) {
   let h = 5381
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i)
