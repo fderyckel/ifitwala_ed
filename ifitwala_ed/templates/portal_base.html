@@ -1,7 +1,5 @@
 {% raw %}{% set app_name = "Ifitwala" %}
-
 {% set page_title = (title or 'Student Portal') %}
-
 <!DOCTYPE html>
 <html lang="{{ frappe.local.lang or 'en' }}">
 <head>
@@ -10,10 +8,27 @@
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{{ page_title }}</title>
     <link rel="icon" href="/assets/ifitwala_ed/favicon.ico">
-    {{ frappe.load_client_script() }}
+
+    {# Preload the JavaScript modules your index.py found #}
+    {% if vite_preload %}
+      {% for href in vite_preload %}
+        <link rel="modulepreload" href="{{ href }}">
+      {% endfor %}
+    {% endif %}
+
+    {# Link the CSS files your index.py found #}
+    {% if vite_css %}
+      {% for href in vite_css %}
+        <link rel="stylesheet" href="{{ href }}">
+      {% endfor %}
+    {% endif %}
+
 </head>
 <body class="bg-gray-100 font-sans">
     <div id="app">
         </div>
+
+    {# Load the main JavaScript entry point your index.py found #}
+    <script type="module" src="{{ vite_js }}"></script>
 </body>
 </html>{% endraw %}
