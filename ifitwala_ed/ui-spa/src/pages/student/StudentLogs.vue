@@ -39,84 +39,75 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { call } from 'frappe-ui';
-import {
-  Dialog,
-  DialogPanel,
-  DialogTitle,
-  TransitionChild,
-  TransitionRoot,
-} from '@headlessui/vue';
+import { ref, onMounted } from 'vue'
+import { call } from 'frappe-ui'
 
-const PAGE_LENGTH = 20;
+const PAGE_LENGTH = 20
 
-const logs = ref([]);
-const selectedLog = ref(null);
-const isModalOpen = ref(false);
-const hasMore = ref(true);
-const start = ref(0);
+const logs = ref([])
+const selectedLog = ref(null)
+const isModalOpen = ref(false)
+const hasMore = ref(true)
+const start = ref(0)
 
-const initialLoading = ref(true);
-const moreLoading = ref(false);
-const modalLoading = ref(false);
+const initialLoading = ref(true)
+const moreLoading = ref(false)
+const modalLoading = ref(false)
 
-const fetchLogs = async () => {
+function unwrap(resp) {
+  // Support both {message: ...} and payload-direct shapes
+  return (resp && typeof resp === 'object' && 'message' in resp) ? resp.message : resp
+}
+
+async function fetchLogs() {
   try {
-    const newLogs = await call({
-      method: 'ifitwala_ed.api.student_log.get_student_logs',
-      args: {
-        start: start.value,
-        page_length: PAGE_LENGTH,
-      },
-    });
+    const resp = await call('ifitwala_ed.api.student_log.get_student_logs', {
+      start: start.value,
+      page_length: PAGE_LENGTH
+    })
+    const rows = unwrap(resp) || []
+    if (!Array.isArray(rows)) throw new Error('Unexpected logs response')
 
-    if (newLogs.message.length < PAGE_LENGTH) {
-      hasMore.value = false;
-    }
-
-    logs.value.push(...newLogs.message);
-    start.value += PAGE_LENGTH;
-  } catch (error) {
-    console.error("Failed to fetch student logs:", error);
+    logs.value.push(...rows)
+    if (rows.length < PAGE_LENGTH) hasMore.value = false
+    start.value += PAGE_LENGTH
+  } catch (err) {
+    console.error('Failed to fetch student logs:', err)
+    hasMore.value = false
   }
-};
+}
 
-const openLogDetail = async (log) => {
-  selectedLog.value = log; // Set preliminary data
-  isModalOpen.value = true;
-  modalLoading.value = true;
-
+async function openLogDetail(log) {
+  selectedLog.value = log
+  isModalOpen.value = true
+  modalLoading.value = true
   try {
-    const response = await call({
-      method: 'ifitwala_ed.api.student_log.get_student_log_detail',
-      args: { log_name: log.name },
-    });
-    selectedLog.value = response.message; // Overwrite with full data
-    
-    // Update the list item to remove the 'New' badge reactively
-    const logInList = logs.value.find(l => l.name === log.name);
-    if (logInList) {
-      logInList.is_unread = false;
+    const resp = await call('ifitwala_ed.api.student_log.get_student_log_detail', {
+      log_name: log.name
+    })
+    const full = unwrap(resp)
+    if (full && typeof full === 'object') {
+      selectedLog.value = full
+      // mark as read in list
+      const row = logs.value.find(l => l.name === log.name)
+      if (row) row.is_unread = false
     }
-
-  } catch (error) {
-    console.error("Failed to fetch log detail:", error);
-    // Optionally close modal and show an error message
-    isModalOpen.value = false;
+  } catch (err) {
+    console.error('Failed to fetch log detail:', err)
+    isModalOpen.value = false
   } finally {
-    modalLoading.value = false;
+    modalLoading.value = false
   }
-};
+}
 
-const loadMoreLogs = async () => {
-  moreLoading.value = true;
-  await fetchLogs();
-  moreLoading.value = false;
-};
+async function loadMoreLogs() {
+  moreLoading.value = true
+  await fetchLogs()
+  moreLoading.value = false
+}
 
 onMounted(async () => {
-  await fetchLogs();
-  initialLoading.value = false;
-});
+  await fetchLogs()
+  initialLoading.value = false
+})
 </script>

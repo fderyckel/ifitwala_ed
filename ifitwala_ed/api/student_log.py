@@ -61,36 +61,41 @@ def get_student_logs(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
 
 @frappe.whitelist()
 def get_student_log_detail(log_name: str):
-    """Fetch the full detail of a single student log and mark it as read."""
-    student_name = _resolve_current_student()
-    
-    # Fetch the log
-    log = frappe.get_doc(LOG_DOCTYPE, log_name)
-    
-    # Security check: ensure the student owns this log and it's visible
-    if log.student != student_name or not log.visible_to_student:
-        frappe.throw(_("You do not have permission to view this log."), frappe.PermissionError)
+	"""Fetch a single student log (minimal fields) and mark it as read."""
+	# Resolve the current student (raises if not a logged-in student)
+	student_name = _resolve_current_student()
 
-    # Mark the log as read by creating a Portal Read Receipt
-    # Use frappe.db.exists to avoid potential duplicate key errors
-    if not frappe.db.exists(
-        "Portal Read Receipt",
-        {
-            "user": frappe.session.user,
-            "reference_doctype": LOG_DOCTYPE,
-            "reference_name": log_name,
-        },
-    ):
-        try:
-            frappe.get_doc({
-                "doctype": "Portal Read Receipt",
-                "user": frappe.session.user,
-                "reference_doctype": LOG_DOCTYPE,
-                "reference_name": log_name,
-            }).insert(ignore_permissions=True)
-            frappe.db.commit()
-        except Exception as e:
-            frappe.log_error(f"Failed to create read receipt for {log_name}: {e}", "Student Log API Error")
+	# Fetch only what the portal needs (faster than get_doc)
+	fields = [
+		"name",
+		"student",
+		"visible_to_student",
+		"date",
+		"time",
+		"log_type",
+		"author_name",
+		"log",  # the rich text / HTML body
+	]
+	log = frappe.db.get_value("Student Log", log_name, fields, as_dict=True)
+	if not log:
+		frappe.throw(_("Log not found."), frappe.DoesNotExistError)
 
+	# Security: student must own the log and it must be visible on portal
+	if log.student != student_name or not log.visible_to_student:
+		frappe.throw(_("You do not have permission to view this log."), frappe.PermissionError)
 
-    return log
+	# Mark as read with a lightweight existence check
+	rr_filters = {
+		"user": frappe.session.user,
+		"reference_doctype": "Student Log",
+		"reference_name": log_name,
+	}
+	if not frappe.db.exists("Portal Read Receipt", rr_filters):
+		try:
+			frappe.get_doc({"doctype": "Portal Read Receipt", **rr_filters}).insert(ignore_permissions=True)
+			# No manual commit: Frappe handles request transactions
+		except Exception as e:
+			# Harmless if a parallel request inserted first; log and continue
+			frappe.log_error(f"Read receipt create failed for {log_name}: {e}", "Student Log API")
+
+	return log
