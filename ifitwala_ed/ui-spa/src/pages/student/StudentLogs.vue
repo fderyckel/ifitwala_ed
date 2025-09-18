@@ -138,8 +138,15 @@ function unwrap(resp) {
 function formatDate(d) {
 	try { return new Date(d).toDateString() } catch { return d }
 }
+
 function formatTime(t) {
-	return t || ''
+	// Accepts 'HH:MM:SS' or 'HH:MM' (and returns 'HH:MM')
+	if (!t) return ''
+	const [hh = '', mm = ''] = String(t).split(':')
+	// zero-pad to be safe
+	const H = hh.toString().padStart(2, '0')
+	const M = mm.toString().padStart(2, '0')
+	return `${H}:${M}`
 }
 
 async function fetchLogs() {

@@ -1,19 +1,21 @@
+<!-- ifitwala_ed/ifitwala_ed/ui-spa/src/layouts/PortalLayout.vue -->
+
 <template>
-  <div class="min-h-screen flex flex-col bg-gray-50">
-    <PortalNavbar @toggle-sidebar="toggleSidebar" />
+	<div class="min-h-screen flex flex-col bg-gray-50">
+		<PortalNavbar @toggle-sidebar="toggleSidebar" />
 
-    <div class="flex flex-1">
-      <PortalSidebar :is-open="isSidebarOpen" @close="isSidebarOpen = false" />
+		<div class="flex flex-1">
+			<PortalSidebar :is-open="isSidebarOpen" @close="isSidebarOpen = false" />
 
-      <div class="flex-1 flex flex-col">
-        <main class="flex-1 p-4 sm:p-6 lg:p-8">
-          <slot />
-        </main>
+			<div class="flex-1 flex flex-col">	
+				<main class="flex-1 p-4 sm:p-6 lg:p-8 pb-[var(--footer-h)]">
+					<slot />
+				</main>
 
-        <PortalFooter />
-      </div>
-    </div>
-  </div>
+				<PortalFooter />
+			</div>
+		</div>
+	</div>
 </template>
 
 <script setup>

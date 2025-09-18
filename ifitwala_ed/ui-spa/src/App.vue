@@ -1,7 +1,9 @@
+<!-- ifitwala_ed/ifitwala_ed/ui-spa/src/App.vue -->
+
 <template>
-  <PortalLayout>
-    <RouterView />
-  </PortalLayout>
+	<PortalLayout>
+		<RouterView />
+	</PortalLayout>
 </template>
 
 <script setup>
