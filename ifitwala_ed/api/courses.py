@@ -24,40 +24,46 @@ def _get_academic_years(student_name: str) -> list[str]:
   return [r[0] for r in rows if r and r[0]]
 
 def _get_courses_for_year(student_name: str, academic_year: str) -> list[dict]:
-  """Lean join across PE/PEC/Course; avoid heavy get_doc calls"""
-  rows = frappe.db.sql(
-    """
-    SELECT
-      pec.course,
-      COALESCE(pec.course_name, c.course_name) AS course_name,
-      c.course_group,
-      c.course_image
-    FROM `tabProgram Enrollment Course` pec
-    JOIN `tabProgram Enrollment` pe ON pec.parent = pe.name
-    LEFT JOIN `tabCourse` c ON c.name = pec.course
-    WHERE pe.student = %s
-      AND pe.academic_year = %s
-      AND COALESCE(pec.status, 'Enrolled') <> 'Dropped'
-    ORDER BY COALESCE(pec.course_name, pec.course)
-    """,
-    (student_name, academic_year),
-    as_dict=True,
-  )
+	rows = frappe.db.sql(
+		"""
+		SELECT
+			pec.course,
+			COALESCE(pec.course_name, c.course_name) AS course_name,
+			c.course_group,
+			c.course_image
+		FROM `tabProgram Enrollment Course` pec
+		JOIN `tabProgram Enrollment` pe ON pec.parent = pe.name
+		LEFT JOIN `tabCourse` c ON c.name = pec.course
+		WHERE pe.student = %s
+		  AND pe.academic_year = %s
+		  AND COALESCE(pec.status, 'Enrolled') <> 'Dropped'
+		ORDER BY COALESCE(pec.course_name, pec.course)
+		""",
+		(student_name, academic_year),
+		as_dict=True,
+	)
+	# Ensure we have a valid image URL; otherwise fall back to placeholder
+	placeholder = "/assets/ifitwala_ed/images/course_placeholder.jpg"
 
-  placeholder = "/assets/ifitwala_ed/images/course_placeholder.png"
-  courses = []
-  for r in rows:
-    course = r.get("course")
-    if not course:
-      continue
-    courses.append({
-      "course": course,
-      "course_name": r.get("course_name") or course,
-      "course_group": r.get("course_group"),
-      "course_image": r.get("course_image") or placeholder,
-      "href": { "name": "student-course-detail", "params": { "course_id": course } },
-    })
-  return courses
+	def _safe_url(url: str | None) -> str:
+		# Accept absolute /files/* or /assets/* URLs; otherwise fall back
+		if url and isinstance(url, str) and (url.startswith("/files/") or url.startswith("/assets/")):
+			return url
+		return placeholder
+
+	courses = []
+	for r in rows:
+		course = r.get("course")
+		if not course:
+			continue
+		courses.append({
+			"course": course,
+			"course_name": r.get("course_name") or course,
+			"course_group": r.get("course_group"),
+			"course_image": _safe_url(r.get("course_image")),
+			"href": {"name": "student-course-detail", "params": {"course_id": course}},
+		})
+	return courses
 
 @frappe.whitelist()
 def get_courses_data(academic_year: str | None = None) -> dict:
