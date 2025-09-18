@@ -37,14 +37,6 @@ def unread_names_for(user: str, ref_dt: str, names: List[str]) -> List[str]:
 	seen_set = {r["reference_name"] for r in seen}
 	return [n for n in names if n not in seen_set]
 
-# ifitwala_ed/students/api/portal_referral.py
-
-import frappe
-from frappe import _
-from frappe.utils import now_datetime, add_to_date, today
-
-# v15 helper to create Notification Log entries (bell)
-from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
 
 COUNSELOR_ROLE = "Counselor"
 DOC = "Student Referral"

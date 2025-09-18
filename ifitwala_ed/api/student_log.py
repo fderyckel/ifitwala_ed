@@ -5,6 +5,7 @@
 
 import frappe
 from frappe import _
+from frappe.utils import strip_html
 
 LOG_DOCTYPE = "Student Log"
 PAGE_LENGTH_DEFAULT = 20
@@ -39,12 +40,16 @@ def get_student_logs(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
 			l.log_type,
 			l.author_name,
 			l.follow_up_status,
+			l.log,
 			CASE WHEN rr.reference_name IS NULL THEN 1 ELSE 0 END AS is_unread
 		FROM `tabStudent Log` l
-		LEFT JOIN `tabPortal Read Receipt` rr
-		  ON rr.user = %(user)s
-		 AND rr.reference_doctype = %(ref_dt)s
-		 AND rr.reference_name = l.name
+		LEFT JOIN (
+			SELECT DISTINCT reference_name
+			FROM `tabPortal Read Receipt`
+			WHERE user = %(user)s
+			  AND reference_doctype = %(ref_dt)s
+		) rr
+		ON rr.reference_name = l.name
 		WHERE l.student = %(student)s
 		  AND l.visible_to_student = 1
 		ORDER BY l.date DESC, l.time DESC, l.name DESC
@@ -61,6 +66,12 @@ def get_student_logs(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
 	)
 
 	# rows already shaped for the UI
+	# Build a lightweight, HTML-free preview and drop the full body from list payload
+	PREVIEW_LEN = 200
+	for r in rows:
+		body_html = r.pop("log", "") or ""
+		body_text = strip_html(body_html).strip()
+		r["preview"] = (body_text[:PREVIEW_LEN] + "…") if len(body_text) > PREVIEW_LEN else body_text
 	return rows
 
 

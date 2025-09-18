@@ -31,6 +31,11 @@
 							• {{ formatDate(log.date) }} {{ formatTime(log.time) }}
 						</p>
 						<p class="text-sm text-gray-500">By {{ log.author_name }}</p>
+						<!-- Preview text (already truncated on the server) -->
+            <p
+              v-if="log.preview"
+              class="mt-2 text-sm text-gray-700 break-words"
+            >{{ log.preview }}</p>
 					</div>
 					<div class="ml-3">
 						<span
