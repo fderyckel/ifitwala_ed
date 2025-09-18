@@ -10,4 +10,3 @@ createApp(App)
 	.use(FrappeUI)
 	.use(router)
 	.mount('#app')
-

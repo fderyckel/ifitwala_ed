@@ -1,28 +1,25 @@
-import { createRouter, createWebHistory } from 'vue-router'
+// apps/ifitwala_ed/ifitwala_ed/ui-spa/src/router/index.ts
 
-const routes = [
-	{ path: '/', redirect: '/portal' },
-	{ path: '/portal', component: () => import('../pages/StudentHome.vue') },
-	{ path: '/portal/student', component: () => import('../pages/StudentHome.vue') },
-	{ path: '/portal/student/logs', component: () => import('../pages/StudentLogs.vue') },
-	{ path: '/portal/guardian', component: () => import('../pages/GuardianHome.vue') },
-	{ path: '/portal/guardian/students/:student_id', component: () => import('../pages/GuardianStudentShell.vue') },
-	{ path: '/portal/student/profile', component: () => import('../pages/Profile.vue') }
+import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+
+const routes: RouteRecordRaw[] = [
+	// everything below is relative to the base '/portal'
+	{ path: '/', redirect: { name: 'student-home' } },
+
+	{ path: '/student', name: 'student-home', component: () => import('@/pages/student/StudentHome.vue') },
+	{ path: '/student/logs', name: 'student-logs', component: () => import('@/pages/student/StudentLogs.vue') },
+	{ path: '/student/profile', name: 'student-profile', component: () => import('@/pages/common/Profile.vue') },
+
+	{ path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue') },
+	{ path: '/guardian/students/:student_id', name: 'guardian-student', component: () => import('@/pages/guardian/GuardianStudentShell.vue') },
+
+	// optional: 404 inside the SPA base
+	{ path: '/:pathMatch(.*)*', redirect: { name: 'student-home' } }
 ]
 
-const router = createRouter({
+export default createRouter({
+	// IMPORTANT: history base is '/portal' because your Jinja route is /portal
 	history: createWebHistory('/portal'),
-	routes
+	routes,
+	scrollBehavior() { return { top: 0 } }
 })
-
-router.beforeEach(async (to, from, next) => {
-	// minimal auth hook; we’ll wire a real ping later
-	const isLoggedIn = true
-	if (!isLoggedIn && to.path !== '/login') {
-		window.location.href = `/login?redirect-to=${encodeURIComponent(to.fullPath)}`
-		return
-	}
-	next()
-})
-
-export default router
