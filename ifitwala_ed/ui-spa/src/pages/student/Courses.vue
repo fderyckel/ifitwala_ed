@@ -84,8 +84,8 @@ async function fetchData() {
 	error.value = null
 	try {
 		const response = await call({
-			method: 'ifitwala_ed.api.courses.get_courses_data',
-			args: { academic_year: selectedYear.value }
+			'ifitwala_ed.api.courses.get_courses_data',
+			{ academic_year: selectedYear.value }
 		})
 
 		const msg = response?.message || {}
