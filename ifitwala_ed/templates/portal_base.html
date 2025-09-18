@@ -8,29 +8,25 @@
     <title>{{ page_title }}</title>
     <link rel="icon" href="/assets/ifitwala_ed/favicon.ico">
 
-    {# Preload the JavaScript modules your index.py found #}
+    {# Preload JavaScript modules found by index.py #}
     {% if vite_preload %}
       {% for href in vite_preload %}
         <link rel="modulepreload" href="{{ href }}">
       {% endfor %}
     {% endif %}
 
-    {# Link the CSS files your index.py found #}
+    {# Link CSS files found by index.py #}
     {% if vite_css %}
       {% for href in vite_css %}
         <link rel="stylesheet" href="{{ href }}">
       {% endfor %}
     {% endif %}
-
-    {# This injects the Frappe boot information, including the user session. #}
-    {{ frappe.boot.get_web_headers() }}
+    {% include "templates/includes/website_script.html" %}
 
 </head>
 <body class="bg-gray-100 font-sans">
+    {# Your Vue app will mount here #}
     <div id="app"></div>
-
-    {# Load frappe-web.bundle.js as a module to fix script errors #}
-    <script type="module" src="/assets/frappe/js/frappe-web.bundle.js"></script>
 
     {# Load your app's main JavaScript entry point #}
     <script type="module" src="{{ vite_js }}"></script>
