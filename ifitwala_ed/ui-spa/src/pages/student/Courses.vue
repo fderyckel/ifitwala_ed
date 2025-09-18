@@ -88,19 +88,24 @@ async function fetchData() {
 			{ academic_year: selectedYear.value }
 		)
 
-		const msg = response?.message || {}
-		if (msg.error) {
+		// Support both shapes: {message: {...}} or payload directly
+		const msg = (response && typeof response === 'object' && 'message' in response)
+			? response.message
+			: response
+
+		if (msg?.error) {
 			error.value = msg.error
-			courses.value = []
-			academicYears.value = msg.academic_years || []
-			// keep selectedYear as-is so the user can change it
-		} else {
-			academicYears.value = Array.isArray(msg.academic_years) ? msg.academic_years : []
-			courses.value = Array.isArray(msg.courses) ? msg.courses : []
-			// Only set on first load or when backend adjusts an invalid year
-			if (selectedYear.value === null || (msg.selected_year && msg.selected_year !== selectedYear.value)) {
-				selectedYear.value = msg.selected_year || null
-			}
+			courses.value = Array.isArray(msg?.courses) ? msg.courses : []
+			academicYears.value = Array.isArray(msg?.academic_years) ? msg.academic_years : []
+			return
+		}
+
+		academicYears.value = Array.isArray(msg?.academic_years) ? msg.academic_years : []
+		courses.value = Array.isArray(msg?.courses) ? msg.courses : []
+
+		// Initialize or correct the selected year from backend
+		if (selectedYear.value === null || (msg?.selected_year && msg.selected_year !== selectedYear.value)) {
+			selectedYear.value = msg?.selected_year ?? null
 		}
 	} catch (e) {
 		console.error(e)
@@ -112,3 +117,4 @@ async function fetchData() {
 
 onMounted(fetchData)
 </script>
+
