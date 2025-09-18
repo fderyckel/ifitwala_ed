@@ -4,5 +4,8 @@ module.exports = {
   presets: [frappeUiPreset],
   content: ['./index.html', './src/**/*.{vue,js,ts}'],
   theme: { extend: {} },
-  plugins: []
+  plugins: {
+    '@tailwindcss/postcss': {},
+    'autoprefixer': {},
+  },
 };
