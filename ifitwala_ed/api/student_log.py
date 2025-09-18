@@ -25,39 +25,44 @@ def _resolve_current_student():
 
 @frappe.whitelist()
 def get_student_logs(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
-    """Fetch a paginated list of student logs visible to the student."""
-    student_name = _resolve_current_student()
-    
-    logs = frappe.get_list(
-        LOG_DOCTYPE,
-        filters={"student": student_name, "visible_to_student": 1},
-        fields=["name", "date", "time", "log_type", "author_name", "follow_up_status"],
-        order_by="date desc, time desc, name desc",
-        limit_start=start,
-        limit_page_length=page_length,
-    )
+	"""Fetch a paginated list of student logs visible to the current student (lean SQL)."""
+	student_name = _resolve_current_student()
 
-    if not logs:
-        return []
+	# NOTE: Using raw SQL here for performance and to bypass DocType perms;
+	# we enforce strict filters (student + visible_to_student) and only return minimal columns.
+	rows = frappe.db.sql(
+		"""
+		SELECT
+			l.name,
+			l.date,
+			l.time,
+			l.log_type,
+			l.author_name,
+			l.follow_up_status,
+			CASE WHEN rr.reference_name IS NULL THEN 1 ELSE 0 END AS is_unread
+		FROM `tabStudent Log` l
+		LEFT JOIN `tabPortal Read Receipt` rr
+		  ON rr.user = %(user)s
+		 AND rr.reference_doctype = %(ref_dt)s
+		 AND rr.reference_name = l.name
+		WHERE l.student = %(student)s
+		  AND l.visible_to_student = 1
+		ORDER BY l.date DESC, l.time DESC, l.name DESC
+		LIMIT %(limit)s OFFSET %(offset)s
+		""",
+		{
+			"user": frappe.session.user,
+			"ref_dt": LOG_DOCTYPE,
+			"student": student_name,
+			"limit": int(page_length),
+			"offset": int(start),
+		},
+		as_dict=True,
+	)
 
-    # Efficiently check for unread logs in a single query
-    log_names = [log.name for log in logs]
-    seen_logs = frappe.get_all(
-        "Portal Read Receipt",
-        filters={
-            "user": frappe.session.user,
-            "reference_doctype": LOG_DOCTYPE,
-            "reference_name": ["in", log_names],
-        },
-        pluck="reference_name",
-    )
-    seen_set = set(seen_logs)
+	# rows already shaped for the UI
+	return rows
 
-    # Add the is_unread flag to each log
-    for log in logs:
-        log["is_unread"] = log.name not in seen_set
-    
-    return logs
 
 @frappe.whitelist()
 def get_student_log_detail(log_name: str):
