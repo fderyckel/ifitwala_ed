@@ -1,25 +1,4 @@
-{% extends "templates/web.html" %}
+{% raw %}{% extends "ifitwala_ed/templates/portal_base.html" %}
 
-{# Optional: set a title #}
-{% block title %}{{ _("Portal") }}{% endblock %}
-
-{# Put CSS & preloads in <head>. Many Frappe pages use 'head_include' for extra tags. #}
-{% block head_include %}
-	{{ super() }}
-	{% if vite_css %}
-		{% for href in vite_css %}
-			<link rel="stylesheet" href="{{ href }}">
-		{% endfor %}
-	{% endif %}
-	{% if vite_preload %}
-		{% for href in vite_preload %}
-			<link rel="modulepreload" href="{{ href }}">
-		{% endfor %}
-	{% endif %}
-{% endblock %}
-
-{% block page_content %}
-	<div id="app"></div>
-	{# Main entry JS from manifest (ESM) #}
-	<script type="module" src="{{ vite_js }}"></script>
-{% endblock %}
+{# This file now simply inherits the base template. #}
+{# The #app div and all assets are loaded by portal_base.html #}{% endraw %}

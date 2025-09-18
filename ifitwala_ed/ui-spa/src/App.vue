@@ -1,11 +1,10 @@
 <template>
-	<router-view />
+  <PortalLayout>
+    <RouterView />
+  </PortalLayout>
 </template>
 
-<script setup lang="ts">
-// minimal shell; real layout comes later
+<script setup>
+import { RouterView } from 'vue-router';
+import PortalLayout from './layouts/PortalLayout.vue';
 </script>
-
-<style scoped>
-/* keep empty for now; rely on Tailwind + Frappe UI */
-</style>
