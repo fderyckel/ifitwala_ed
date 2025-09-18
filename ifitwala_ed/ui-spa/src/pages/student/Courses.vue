@@ -83,10 +83,10 @@ async function fetchData() {
 	loading.value = true
 	error.value = null
 	try {
-		const response = await call({
+		const response = await call(
 			'ifitwala_ed.api.courses.get_courses_data',
 			{ academic_year: selectedYear.value }
-		})
+		)
 
 		const msg = response?.message || {}
 		if (msg.error) {
