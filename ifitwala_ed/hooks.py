@@ -52,6 +52,14 @@ doctype_js = {"Contact": "public/js/contact.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
+# ifitwala_ed/hooks.py
+
+website_route_rules = [
+    {"from_route": "/portal", "to_route": "portal"},
+    {"from_route": "/portal/<path:subpath>", "to_route": "portal"},
+]
+
+
 # Svg Icons
 # ------------------
 # include app icons in desk
