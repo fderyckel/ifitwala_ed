@@ -11,8 +11,9 @@ const routes: RouteRecordRaw[] = [
   { path: '/student/logs', name: 'student-logs', component: () => import('@/pages/student/StudentLogs.vue') },
   { path: '/student/profile', name: 'student-profile', component: () => import('@/pages/student/Profile.vue') },
   { path: '/student/courses', name: 'student-courses', component: () => import('@/pages/student/Courses.vue') },
-
-  // Guardian
+	{ path: '/student/courses/:course_id', name: 'student-course-detail', component: () => import('@/pages/student/CourseDetail.vue'), props: route => ({ course_id: String(route.params.course_id || '') })},
+  
+	// Guardian
   { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue') },
   { path: '/guardian/students/:student_id', name: 'guardian-student', component: () => import('@/pages/guardian/GuardianStudentShell.vue') },
 ]
