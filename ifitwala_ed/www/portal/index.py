@@ -6,6 +6,7 @@
 import os
 import json
 import frappe
+from frappe import _
 
 APP = "ifitwala_ed"
 DIST_DIR = os.path.join(frappe.get_app_path(APP), "public", "dist")
@@ -68,6 +69,11 @@ def get_context(context):
 	# Auth gate: only logged-in users
 	user = frappe.session.user
 	if not user or user == "Guest":
+		frappe.local.flags.redirect_location = "/login?redirect-to=/portal"
+		raise frappe.Redirect
+
+	# Role gate: only users with 'Student' role
+	if "Student" not in frappe.get_roles():
 		frappe.local.flags.redirect_location = "/login?redirect-to=/portal"
 		raise frappe.Redirect
 

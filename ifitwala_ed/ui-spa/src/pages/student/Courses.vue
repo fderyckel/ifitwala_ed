@@ -37,12 +37,13 @@
     </div>
 
     <div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      <RouterLink
-        v-for="course in courses"
-        :key="course.course"
-        :to="course.href"
-        class="group block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
-      >
+			<div
+				v-for="course in courses"
+				:key="course.course"
+				class="group block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+			>
+			</div>
+				</div>
         <div class="relative">
           <div class="aspect-w-16 aspect-h-9">
             <img :src="course.course_image" :alt="course.course_name" class="object-cover w-full h-full" />
