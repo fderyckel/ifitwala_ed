@@ -25,9 +25,8 @@
 
 </head>
 <body class="bg-gray-100 font-sans">
-    <div id="app">
-        </div>
-
+    <div id="app"></div>
+		{{ include_script('/assets/frappe/js/frappe-web.bundle.js') }}
     {# Load the main JavaScript entry point your index.py found #}
     <script type="module" src="{{ vite_js }}"></script>
 </body>

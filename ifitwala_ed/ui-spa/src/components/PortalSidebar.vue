@@ -73,8 +73,8 @@ defineProps({
 defineEmits(['close']);
 
 const menuItems = [
-  { label: 'Dashboard', icon: 'home', to: '/portal' },
-  { label: 'Courses', icon: 'book', to: '/portal/courses' },
+	{ label: 'Dashboard', icon: 'home', to: '/student' }, 
+  { label: 'Courses', icon: 'book', to: '/student/courses' }, 
   { label: 'Assignments', icon: 'check-square', to: '/portal/assignments' },
   { label: 'Grades', icon: 'bar-chart-2', to: '/portal/grades' },
   { label: 'Attendance', icon: 'calendar', to: '/portal/attendance' },
