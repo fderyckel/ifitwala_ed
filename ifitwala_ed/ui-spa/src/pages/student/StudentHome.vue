@@ -10,7 +10,7 @@
         <section aria-labelledby="courses-heading">
           <div class="flex items-center justify-between mb-4">
             <h2 id="courses-heading" class="text-xl font-semibold text-gray-700">My Courses</h2>
-            <RouterLink to="/portal/courses" class="text-sm font-medium text-blue-600 hover:underline">
+						<RouterLink :to="{ name: 'student-courses' }" class="text-sm font-medium text-blue-600 hover:underline"></RouterLink>	
               View All
             </RouterLink>
           </div>
@@ -90,7 +90,7 @@ const moreLinks = [
     title: 'Student Log',
     description: 'View socio-emotional notes.',
     icon: 'file-text',
-    to: '/portal/student/logs' 
+		to: { name: 'student-logs' }
   },
   { 
     title: 'Wellbeing',
