@@ -1,34 +1,42 @@
-{% set app_name = "Ifitwala" %}
 {% set page_title = (title or 'Student Portal') %}
 <!DOCTYPE html>
 <html lang="{{ frappe.local.lang or 'en' }}">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ page_title }}</title>
-    <link rel="icon" href="/assets/ifitwala_ed/favicon.ico">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>{{ page_title }}</title>
+	<link rel="icon" href="/assets/ifitwala_ed/favicon.ico" />
 
-    {# Preload JavaScript modules found by index.py #}
-    {% if vite_preload %}
-      {% for href in vite_preload %}
-        <link rel="modulepreload" href="{{ href }}">
-      {% endfor %}
-    {% endif %}
+	{# Optional head hook if you ever extend this template #}
+	{% block head_extra %}{% endblock %}
 
-    {# Link CSS files found by index.py #}
-    {% if vite_css %}
-      {% for href in vite_css %}
-        <link rel="stylesheet" href="{{ href }}">
-      {% endfor %}
-    {% endif %}
-    {% include "templates/includes/website_script.html" %}
+	{# Preload JS chunks discovered by index.py (safe if empty) #}
+	{% if vite_preload %}
+		{% for href in vite_preload %}
+			<link rel="modulepreload" href="{{ href }}" />
+		{% endfor %}
+	{% endif %}
 
+	{# Link CSS discovered by index.py (safe if empty) #}
+	{% if vite_css %}
+		{% for href in vite_css %}
+			<link rel="stylesheet" href="{{ href }}" />
+		{% endfor %}
+	{% endif %}
 </head>
 <body class="bg-gray-100 font-sans">
-    {# Your Vue app will mount here #}
-    <div id="app"></div>
+	<noscript>
+		<div style="padding:1rem;background:#fee2e2;color:#7f1d1d">
+			JavaScript is required to use the Student Portal.
+		</div>
+	</noscript>
 
-    {# Load your app's main JavaScript entry point #}
-    <script type="module" src="{{ vite_js }}"></script>
+	<div id="app"></div>
+
+	{% if vite_js %}
+		<script type="module" src="{{ vite_js }}"></script>
+	{% endif %}
+
+	{% block body_end %}{% endblock %}
 </body>
 </html>
