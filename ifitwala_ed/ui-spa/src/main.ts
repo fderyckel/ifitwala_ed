@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { FrappeUI } from 'frappe-ui'
+import './lib/socket.ts'
 
 // Tailwind entry (keep this file with @tailwind directives)
 import './style.css'
