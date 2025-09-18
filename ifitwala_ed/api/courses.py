@@ -55,7 +55,7 @@ def _get_courses_for_year(student_name: str, academic_year: str) -> list[dict]:
       "course_name": r.get("course_name") or course,
       "course_group": r.get("course_group"),
       "course_image": r.get("course_image") or placeholder,
-      "href": f"/portal/courses/{course}",
+      "href": f"/student/courses/{course}",
     })
   return courses
 
