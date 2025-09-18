@@ -3,23 +3,22 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
-	// everything below is relative to the base '/portal'
-	{ path: '/', redirect: { name: 'student-home' } },
+  // redirect to a *named route* inside the /portal base, not to '/portal'
+  { path: '/', redirect: { name: 'student-home' } },
 
-	{ path: '/student', name: 'student-home', component: () => import('@/pages/student/StudentHome.vue') },
-	{ path: '/student/logs', name: 'student-logs', component: () => import('@/pages/student/StudentLogs.vue') },
-	{ path: '/student/profile', name: 'student-profile', component: () => import('@/pages/common/Profile.vue') },
+  // Student
+  { path: '/student', name: 'student-home', component: () => import('@/pages/student/StudentHome.vue') },
+  { path: '/student/logs', name: 'student-logs', component: () => import('@/pages/student/StudentLogs.vue') },
+  { path: '/student/profile', name: 'student-profile', component: () => import('@/pages/Profile.vue') },
 
-	{ path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue') },
-	{ path: '/guardian/students/:student_id', name: 'guardian-student', component: () => import('@/pages/guardian/GuardianStudentShell.vue') },
-
-	// optional: 404 inside the SPA base
-	{ path: '/:pathMatch(.*)*', redirect: { name: 'student-home' } }
+  // Guardian
+  { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue') },
+  { path: '/guardian/students/:student_id', name: 'guardian-student', component: () => import('@/pages/guardian/GuardianStudentShell.vue') },
 ]
 
 export default createRouter({
-	// IMPORTANT: history base is '/portal' because your Jinja route is /portal
-	history: createWebHistory('/portal'),
-	routes,
-	scrollBehavior() { return { top: 0 } }
+  // important: keep base history at /portal (no trailing slash)
+  history: createWebHistory('/portal'),
+  routes,
 })
+
