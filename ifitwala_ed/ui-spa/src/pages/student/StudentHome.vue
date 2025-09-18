@@ -10,9 +10,7 @@
         <section aria-labelledby="courses-heading">
           <div class="flex items-center justify-between mb-4">
             <h2 id="courses-heading" class="text-xl font-semibold text-gray-700">My Courses</h2>
-						<RouterLink :to="{ name: 'student-courses' }" class="text-sm font-medium text-blue-600 hover:underline"></RouterLink>	
-              View All
-            </RouterLink>
+						<RouterLink :to="{ name: 'student-courses' }" class="text-sm font-medium text-blue-600 hover:underline">View All</RouterLink>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div v-for="course in courses" :key="course.title" class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
