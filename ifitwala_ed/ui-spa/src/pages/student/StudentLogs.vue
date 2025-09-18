@@ -40,7 +40,6 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { call } from 'frappe-ui'
 
 const PAGE_LENGTH = 20
 
@@ -55,59 +54,67 @@ const moreLoading = ref(false)
 const modalLoading = ref(false)
 
 function unwrap(resp) {
-  // Support both {message: ...} and payload-direct shapes
-  return (resp && typeof resp === 'object' && 'message' in resp) ? resp.message : resp
+	// Frappe usually wraps as { message: ... }
+	return (resp && typeof resp === 'object' && 'message' in resp) ? resp.message : resp
 }
 
 async function fetchLogs() {
-  try {
-    const resp = await call('ifitwala_ed.api.student_log.get_student_logs', {
-      start: start.value,
-      page_length: PAGE_LENGTH
-    })
-    const rows = unwrap(resp) || []
-    if (!Array.isArray(rows)) throw new Error('Unexpected logs response')
+	try {
+		const qs = new URLSearchParams({
+			start: String(start.value),
+			page_length: String(PAGE_LENGTH),
+		}).toString()
 
-    logs.value.push(...rows)
-    if (rows.length < PAGE_LENGTH) hasMore.value = false
-    start.value += PAGE_LENGTH
-  } catch (err) {
-    console.error('Failed to fetch student logs:', err)
-    hasMore.value = false
-  }
+		const r = await fetch(`/api/method/ifitwala_ed.api.student_log.get_student_logs?${qs}`, {
+			credentials: 'include',
+		})
+		if (!r.ok) throw new Error(`HTTP ${r.status}`)
+		const json = await r.json()
+		const rows = unwrap(json) || []
+		if (!Array.isArray(rows)) throw new Error('Unexpected logs response')
+
+		logs.value.push(...rows)
+		if (rows.length < PAGE_LENGTH) hasMore.value = false
+		start.value += PAGE_LENGTH
+	} catch (err) {
+		console.error('Failed to fetch student logs:', err)
+		hasMore.value = false
+	}
 }
 
 async function openLogDetail(log) {
-  selectedLog.value = log
-  isModalOpen.value = true
-  modalLoading.value = true
-  try {
-    const resp = await call('ifitwala_ed.api.student_log.get_student_log_detail', {
-      log_name: log.name
-    })
-    const full = unwrap(resp)
-    if (full && typeof full === 'object') {
-      selectedLog.value = full
-      // mark as read in list
-      const row = logs.value.find(l => l.name === log.name)
-      if (row) row.is_unread = false
-    }
-  } catch (err) {
-    console.error('Failed to fetch log detail:', err)
-    isModalOpen.value = false
-  } finally {
-    modalLoading.value = false
-  }
+	selectedLog.value = log
+	isModalOpen.value = true
+	modalLoading.value = true
+	try {
+		const q = new URLSearchParams({ log_name: log.name }).toString()
+		const r = await fetch(`/api/method/ifitwala_ed.api.student_log.get_student_log_detail?${q}`, {
+			credentials: 'include',
+		})
+		if (!r.ok) throw new Error(`HTTP ${r.status}`)
+		const json = await r.json()
+		const full = unwrap(json)
+		if (full && typeof full === 'object') {
+			selectedLog.value = full
+			const row = logs.value.find(l => l.name === log.name)
+			if (row) row.is_unread = false
+		}
+	} catch (err) {
+		console.error('Failed to fetch log detail:', err)
+		isModalOpen.value = false
+	} finally {
+		modalLoading.value = false
+	}
 }
 
 async function loadMoreLogs() {
-  moreLoading.value = true
-  await fetchLogs()
-  moreLoading.value = false
+	moreLoading.value = true
+	await fetchLogs()
+	moreLoading.value = false
 }
 
 onMounted(async () => {
-  await fetchLogs()
-  initialLoading.value = false
+	await fetchLogs()
+	initialLoading.value = false
 })
 </script>
