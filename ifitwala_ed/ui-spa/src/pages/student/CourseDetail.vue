@@ -17,7 +17,6 @@
 			Course ID: <span class="font-mono">{{ course_id }}</span>
 		</p>
 
-		<!-- TODO: Replace this with real course detail fetch/render -->
 		<div class="rounded-lg border border-dashed border-gray-300 p-6 bg-white">
 			<p class="text-gray-500">
 				Coming soon: syllabus, assignments, resources, attendance, grades…
@@ -26,11 +25,11 @@
 	</div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { RouterLink } from 'vue-router'
 
-// props from the route (registered via router props function)
-defineProps<{
+// typed props via generic (requires lang="ts")
+const { course_id } = defineProps<{
 	course_id: string
 }>()
 </script>
