@@ -48,10 +48,11 @@
 				<div class="relative">
 					<div class="aspect-video">
 						<img
-							:src="course.course_image"
+							:src="course.course_image || PLACEHOLDER"
 							:alt="course.course_name"
 							class="object-cover w-full h-full"
 							loading="lazy"
+							@error="imgFallback"
 						/>
 					</div>
 				</div>
@@ -78,6 +79,20 @@ const error = ref(null)
 const courses = ref([])
 const academicYears = ref([])
 const selectedYear = ref(null)
+
+// Absolute path for the public placeholder served by Frappe
+const PLACEHOLDER = '/assets/ifitwala_ed/images/course_placeholder.jpg'
+
+// If an image fails to load (404, etc.), swap to placeholder once
+function imgFallback(e) {
+	const el = e?.target
+	// Ensure it's an <img>, and avoid infinite loop by checking current src
+	if (!el || el.tagName !== 'IMG') return
+	// If already the placeholder, do nothing
+	const current = el.getAttribute('src') || ''
+	if (current === PLACEHOLDER) return
+	el.src = PLACEHOLDER
+}
 
 async function fetchData() {
 	loading.value = true
