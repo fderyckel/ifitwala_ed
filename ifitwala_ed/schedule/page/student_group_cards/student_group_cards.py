@@ -9,23 +9,37 @@ from ifitwala_ed.utilities.image_utils import slugify
 
 
 def _authorized_for_group(student_group: str, user: str) -> bool:
-	"""User can see SSG badge on this page if:
-	- Counselor / Academic Admin / System Manager, OR
-	- user is an instructor (user_id) on the given Student Group.
+	"""Allow:
+	- Counselor / Counsellor / Counselors / Academic Admin / System Manager / Administrator
+	- OR user is an instructor on the SG via either child.user_id or linked Instructor record
+	- OR (optional) employee mapping if your child table stores employee
 	"""
+	if not user:
+		return False
 	if user == "Administrator":
 		return True
 
 	roles = set(frappe.get_roles(user))
-	if {"Counselor", "Academic Admin", "System Manager"} & roles:
+	triage_roles = {"Counselor", "Academic Admin"}
+	if roles & triage_roles:
 		return True
 
-	instructor_users = set(frappe.get_all(
-		"Student Group Instructor",
-		filters={"parent": student_group},
-		pluck="user_id"
-	))
-	return user in instructor_users
+	# direct user_id on child
+	if frappe.db.exists("Student Group Instructor", {"parent": student_group, "user_id": user}):
+		return True
+
+	# via linked Instructor(s)
+	ins_ids = frappe.get_all("Instructor", filters={"linked_user_id": user}, pluck="name")
+	if ins_ids and frappe.db.exists("Student Group Instructor", {"parent": student_group, "instructor": ["in", ins_ids]}):
+		return True
+
+	# optional: via Employee mapping if you store it on child
+	emp_id = frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, "name")
+	if emp_id and frappe.db.exists("Student Group Instructor", {"parent": student_group, "employee": emp_id}):
+		return True
+
+	return False
+
 
 
 def get_student_group_students(student_group, start=0, page_length=25):
