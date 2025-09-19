@@ -20,6 +20,7 @@
   "cohort",
   "course",
   "school_schedule",
+  "school",
   "students_section",
   "get_students",
   "students",
@@ -172,11 +173,20 @@
    "fieldname": "add_blocks",
    "fieldtype": "Button",
    "label": "Add blocks"
+  },
+  {
+   "fetch_from": "academic_year.school",
+   "fetch_if_empty": 1,
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-02 13:21:26.249839",
+ "modified": "2025-09-19 21:48:33.399149",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",
