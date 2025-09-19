@@ -16,6 +16,9 @@ const routes: RouteRecordRaw[] = [
 	// Guardian
   { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue') },
   { path: '/guardian/students/:student_id', name: 'guardian-student', component: () => import('@/pages/guardian/GuardianStudentShell.vue') },
+
+	// Staff
+  { path: '/staff/student-groups', name: 'staff-student-groups', component: () => import('@/pages/staff/student-groups/StudentGroups.vue') },
 ]
 
 export default createRouter({
