@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-20 05:55:11.963579",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "course",
+  "course_name",
+  "required",
+  "elective_group",
+  "column_break_j520",
+  "term_start",
+  "term_end"
+ ],
+ "fields": [
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fetch_from": "course.course_name",
+   "fieldname": "course_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Course Name",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "required",
+   "fieldtype": "Check",
+   "label": "Required",
+   "reqd": 1
+  },
+  {
+   "fieldname": "elective_group",
+   "fieldtype": "Data",
+   "label": "Elective Group"
+  },
+  {
+   "fieldname": "column_break_j520",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "term_start",
+   "fieldtype": "Link",
+   "label": "Term Start",
+   "options": "Term"
+  },
+  {
+   "fieldname": "term_end",
+   "fieldtype": "Link",
+   "label": "Term End",
+   "options": "Term"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-20 05:58:12.673297",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "Program OFfering Course",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
