@@ -306,6 +306,46 @@ def get_effective_schedule(school_calendar: str, school: str) -> str | None:
 	return None
 
 
+def get_effective_schedule_for_ay(academic_year: str, school: str | None) -> str | None:
+	"""
+	Find the nearest School Schedule (walking up the school tree) whose
+	School Calendar belongs to <academic_year>. Cache for 5 minutes.
+	"""
+	if not (academic_year and school):
+		return None
+
+	rc = frappe.cache()
+	key = f"ifw:eff_sched_ay:{academic_year}:{school}"
+
+	if (cached := rc.get_value(key)) is not None:
+		return None if cached == "__none__" else cached
+
+	allowed = tuple(get_ancestor_schools(school))
+	if not allowed:
+		rc.set_value(key, "__none__", expires_in_sec=300)
+		return None
+
+	# calendars for AY within allowed schools
+	cals = frappe.db.get_all(
+		"School Calendar",
+		filters={"academic_year": academic_year, "school": ["in", allowed]},
+		pluck="name",
+	)
+
+	if cals:
+		for sch in allowed:  # prefer closest
+			sched = frappe.db.get_value(
+				"School Schedule",
+				{"school_calendar": ["in", cals], "school": sch},
+				"name",
+			)
+			if sched:
+				rc.set_value(key, sched, expires_in_sec=300)
+				return sched
+
+	rc.set_value(key, "__none__", expires_in_sec=300)
+	return None
+
 
 ROT_CACHE_TTL = 24 * 60 * 60		# one day
 
@@ -399,6 +439,7 @@ def _build_events_for_day(user, cur_date):
 				break
 
 	return events
+
 
 def _expand_sg_rotation(sg_name, rotation_day, cur_date):
 	"""
