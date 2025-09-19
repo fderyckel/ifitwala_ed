@@ -172,7 +172,6 @@ function renderStudentCard(student) {
 	let birthday_icon = '', health_icon = '';
 
 	const ssg_icon = renderSSGInlineIcon(student);
-	const ssg_badge  = renderSupportBadge(student);
 
 	if (student.birth_date) {
 		try {
@@ -211,7 +210,6 @@ function renderStudentCard(student) {
 							 alt="Photo of ${student_name}"
 							 loading="lazy">
 					</a>
-					${ssg_badge} <!-- ← badge overlay in the corner -->
 				</div>
 				<div class="student-name mt-3">
 					<a href="/app/student/${student_id}" target="_blank" rel="noopener">
@@ -365,7 +363,7 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 		}
 
 		// open modal when user clicks the inline SSG icon
-		$("#student-cards").on("click", ".ssg-inline, .support-badge", function (e) {
+		$("#student-cards").on("click", ".ssg-inline", function (e) {
 			const studentId = e.currentTarget.getAttribute("data-student");
 			const nameEl = e.currentTarget.closest(".student-card")?.querySelector(".student-name a");
 			const studentName = nameEl ? nameEl.textContent.trim() : studentId;
