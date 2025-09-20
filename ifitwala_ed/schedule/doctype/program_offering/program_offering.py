@@ -278,14 +278,6 @@ class ProgramOffering(Document):
 # one whitelisted helper used by the client
 # -------------------------
 
-def _coerce_list(x) -> list[str]:
-	if isinstance(x, str):
-		try:
-			return frappe.parse_json(x) or []
-		except Exception:
-			return []
-	return list(x or [])
-
 @frappe.whitelist()
 def compute_program_offering_defaults(program: str, school: str, ay_names=None):
 	"""
