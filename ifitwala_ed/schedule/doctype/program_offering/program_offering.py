@@ -346,37 +346,61 @@ def compute_program_offering_defaults(program: str, school: str, ay_names=None):
 	return {"start_date": min_start, "end_date": max_end, "offering_title": title}
 
 
+from typing import Optional, Union, Sequence
+
 @frappe.whitelist()
-def program_course_options(program: str, search: str | None = None, exclude_courses: list[str] | None = None):
-	"""
-	Return Program Course rows for a Program, excluding courses already on the Offering.
+def program_course_options(
+    program: str,
+    search: str = "",
+    exclude_courses: Optional[Union[str, Sequence[str]]] = None,
+):
+    """
+    Return catalog rows for a Program (Program Course child table),
+    excluding any already-present course names and matching an optional search term.
+    Each row -> { "course", "course_name", "required" }
+    """
 
-	Args:
-		program: Program name
-		search: optional "like" filter applied to course / course_name
-		exclude_courses: list of Course names to skip
-	"""
-	exclude_courses = frappe.parse_json(exclude_courses) if isinstance(exclude_courses, str) else (exclude_courses or [])
-	filters = {"program": program, "disabled": 0}
-	if exclude_courses:
-		filters["course"] = ["not in", exclude_courses]
+    # Coerce exclude_courses to a python list[str]
+    if isinstance(exclude_courses, str):
+        try:
+            exclude = frappe.parse_json(exclude_courses) or []
+        except Exception:
+            exclude = []
+    elif exclude_courses:
+        exclude = list(exclude_courses)
+    else:
+        exclude = []
 
-	conds = []
-	if search:
-		like = f"%{search}%"
-		conds.append(["course", "like", like])
-		conds.append(["course_name", "like", like])
+    filters = {"parent": program}
+    if exclude:
+        filters["course"] = ["not in", exclude]
 
-	rows = frappe.get_all(
-		"Program Course",
-		filters=filters,
-		fields=["name", "course", "course_name", "required"],
-		or_filters=conds,
-		limit=2000,
-		order_by="course_name asc, course asc",
-	)
-	return rows
+    or_filters = []
+    if search:
+        like = f"%{search}%"
+        or_filters = [{"course": ["like", like]}, {"course_name": ["like", like]}]
 
+    pc_rows = frappe.get_all(
+        "Program Course",
+        filters=filters,
+        or_filters=or_filters,
+        fields=["course", "course_name", "required"],
+        order_by="idx asc",
+        limit=2000,
+    )
+
+    # normalize booleans/ints to 0/1 for the client
+    out = []
+    for r in pc_rows:
+        out.append(
+            {
+                "course": r.get("course"),
+                "course_name": r.get("course_name") or r.get("course"),
+                "required": 1 if r.get("required") else 0,
+            }
+        )
+
+    return out
 
 
 @frappe.whitelist()
