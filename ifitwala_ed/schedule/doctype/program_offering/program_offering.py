@@ -6,7 +6,7 @@ import frappe
 from frappe import _
 from frappe.utils import getdate
 from frappe.model.document import Document
-from frappe.utils.get_link_to_form import get_link_to_form
+from frappe.utils import get_link_to_form
 from ifitwala_ed.utilities.school_tree import (get_ancestor_schools, is_leaf_school)
 
 # -------------------------
