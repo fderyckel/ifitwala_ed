@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class ProgramOFferingCourse(Document):
+class ProgramOfferingCourse(Document):
 	pass
