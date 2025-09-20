@@ -64,6 +64,8 @@ class ProgramOffering(Document):
 		# 4) Status sanity
 		if self.status not in ("Planned", "Active", "Archived"):
 			frappe.throw(_("Invalid Status: {0}").format(self.status))
+		
+		self._validate_catalog_membership()
 
 	# -------------------------
 	# helpers
@@ -235,6 +237,43 @@ class ProgramOffering(Document):
 				_assert(getdate(row.to_date) <= end_term_dt,
 				        _("Row {0}: To Date is later than End Term window.").format(idx))
 
+	def _validate_catalog_membership(self):
+		"""If a course isn't in the Program's catalog, require non_catalog + reason."""
+		if not getattr(self, "offering_courses", None):
+			return
+
+		# Gather catalog set quickly
+		catalog_courses = set()
+		if frappe.db.table_exists("Program Course"):
+			for r in frappe.get_all(
+				"Program Course",
+				filters={"parent": self.program},
+				fields=["course"],
+				limit=2000,
+			):
+				if r.get("course"):
+					catalog_courses.add(r["course"])
+
+		for idx, row in enumerate(self.offering_courses, start=1):
+			course = row.course
+			if not course:
+				continue
+
+			is_in_catalog = course in catalog_courses
+			is_exception = int(row.get("non_catalog") or 0) == 1
+
+			if not is_in_catalog and not is_exception:
+				frappe.throw(_("Row {0}: Course {1} is not in the Program catalog. "
+				               "Either add it to Program Course, or mark this row as Non-catalog and provide a justification.")
+				             .format(idx, frappe.utils.get_link_to_form("Course", course)))
+
+			if is_exception:
+				# Optional: require a reason if field exists
+				if "exception_reason" in row.as_dict() and not (row.get("exception_reason") or "").strip():
+					frappe.throw(_("Row {0}: Please provide an Exception Justification for the non-catalog course {1}.")
+					             .format(idx, frappe.utils.get_link_to_form("Course", course)))
+
+
 # -------------------------
 # one whitelisted helper used by the client
 # -------------------------
@@ -299,3 +338,126 @@ def compute_program_offering_defaults(program: str, school: str, ay_names=None):
 	title = f"{org_abbr} {prog_abbr} Cohort of {cohort_year}" if (org_abbr and prog_abbr and cohort_year) else None
 
 	return {"start_date": min_start, "end_date": max_end, "offering_title": title}
+
+
+@frappe.whitelist()
+def program_course_options(program: str) -> list:
+	"""
+	Return a list of {course, course_name, required_by_default, subject_group}
+	from Program -> Program Course. If Program Course is absent/empty, fallback to
+	all Course docs (as a minimal list).
+	"""
+	if not program:
+		return []
+
+	results = []
+
+	if frappe.db.table_exists("Program Course"):
+		pc_rows = frappe.get_all(
+			"Program Course",
+			filters={"parent": program},
+			fields=["course", "required_by_default", "subject_group"],
+			limit=2000,
+		)
+		courses = [r["course"] for r in pc_rows if r.get("course")]
+		if courses:
+			names = {r["name"]: r.get("course_name") for r in frappe.get_all(
+				"Course", filters={"name": ["in", courses]}, fields=["name", "course_name"], limit=len(courses)
+			)}
+			for r in pc_rows:
+				c = r.get("course")
+				if not c:
+					continue
+				results.append({
+					"course": c,
+					"course_name": names.get(c) or c,
+					"required_by_default": 1 if (r.get("required_by_default") or 0) else 0,
+					"subject_group": r.get("subject_group") or "",
+				})
+			return results
+
+	# Fallback: entire Course list (trimmed)
+	for r in frappe.get_all("Course", fields=["name", "course_name"], limit=1000):
+		results.append({
+			"course": r["name"],
+			"course_name": r.get("course_name") or r["name"],
+			"required_by_default": 0,
+			"subject_group": "",
+		})
+	return results
+
+
+@frappe.whitelist()
+def hydrate_catalog_rows(program: str, course_names: str) -> list:
+	"""
+	Given a JSON list of Course names, return ready-to-insert Program Offering Course rows based on Program Course defaults.
+	Maps:
+	- required_by_default -> required
+	- subject_group -> elective_group (adjust if you keep distinct fields)
+	Sets catalog_ref for traceability (e.g., "<Program>::<Course>").
+	"""
+	try:
+		names = frappe.parse_json(course_names) or []
+	except Exception:
+		names = []
+	if not names:
+		return []
+
+	# Base info from Course
+	course_info = {r["name"]: r.get("course_name") for r in frappe.get_all(
+		"Course", filters={"name": ["in", names]}, fields=["name", "course_name"], limit=len(names)
+	)}
+
+	# Defaults from Program Course
+	pc_map = {}
+	if frappe.db.table_exists("Program Course"):
+		for r in frappe.get_all(
+			"Program Course",
+			filters={"parent": program, "course": ["in", names]},
+			fields=["course", "required_by_default", "subject_group"],
+			limit=len(names),
+		):
+			pc_map[r["course"]] = {
+				"required": 1 if (r.get("required_by_default") or 0) else 0,
+				"elective_group": r.get("subject_group") or ""
+			}
+
+	rows = []
+	for nm in names:
+		base = pc_map.get(nm, {"required": 0, "elective_group": ""})
+		rows.append({
+			"course": nm,
+			"course_name": course_info.get(nm) or nm,
+			"required": base["required"],
+			"elective_group": base["elective_group"],
+			"non_catalog": 0,
+			"catalog_ref": f"{program}::{nm}",
+		})
+	return rows
+
+
+@frappe.whitelist()
+def hydrate_non_catalog_rows(course_names: str, exception_reason: str = "") -> list:
+	"""
+	Given a JSON list of Course names, return minimal rows flagged as non-catalog.
+	"""
+	try:
+		names = frappe.parse_json(course_names) or []
+	except Exception:
+		names = []
+	if not names:
+		return []
+
+	course_info = {r["name"]: r.get("course_name") for r in frappe.get_all(
+		"Course", filters={"name": ["in", names]}, fields=["name", "course_name"], limit=len(names)
+	)}
+
+	return [{
+		"course": nm,
+		"course_name": course_info.get(nm) or nm,
+		"required": 0,
+		"elective_group": "",
+		"non_catalog": 1,
+		"exception_reason": exception_reason or "",
+		"catalog_ref": "",
+	} for nm in names]
