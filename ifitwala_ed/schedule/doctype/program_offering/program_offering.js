@@ -77,95 +77,81 @@ function insert_offering_course_rows(frm, rows) {
 
 /* ---------------- Catalog Picker ---------------- */
 
-function open_catalog_picker(frm) {
-	if (!frm.doc.program) {
-		frappe.msgprint({ message: __("Pick a Program first."), indicator: "orange" });
-		return;
-	}
+function current_offering_course_names(frm) {
+	return (frm.doc.offering_courses || [])
+		.map(r => r.course)
+		.filter(Boolean);
+}
 
-	const dlg = new frappe.ui.Dialog({
+function fetch_catalog_rows(frm, search, on_done) {
+	const exclude = current_offering_course_names(frm);
+
+	frappe.call({
+		method: "ifitwala_ed.schedule.doctype.program_offering.program_offering.program_course_options",
+		args: {
+			program: frm.doc.program,
+			search: search || "",
+			exclude_courses: exclude,   // << new
+		}
+	}).then(r => on_done(r.message || []));
+}
+
+function open_catalog_picker(frm) {
+	const span = require_ay_span(frm);
+	if (!span) return;
+
+	const d = new frappe.ui.Dialog({
 		title: __("Add Courses from Catalog"),
-		size: "large",
+		size: "extra-large",
 		primary_action_label: __("Add Selected"),
 		primary_action: () => {
-			const chosen = get_checked_rows();
-			add_catalog_rows(frm, chosen);
-			dlg.hide();
+			const chosen = get_checked_rows($list);
+			if (!chosen.length) return d.hide();
+
+			let added = 0;
+			for (const r of chosen) {
+				const ok = add_offering_course_if_new(frm, {
+					course: r.course,
+					course_name: r.course_name || r.course,
+					required: !!r.required,
+					non_catalog: 0,
+					catalog_ref: `${frm.doc.program}::${r.course}`,
+					start_academic_year: span.startAY,
+					end_academic_year:   span.endAY,
+				});
+				if (ok) added++;
+			}
+			if (added) {
+				frm.refresh_field("offering_courses");
+
+				// after adding, refresh the dialog list so those disappear
+				const term = (d.get_value("search") || "").trim();
+				fetch_catalog_rows(frm, term, rows => render_catalog_list($list, rows));
+			}
 		},
-		secondary_action_label: __("Close"),
-		secondary_action: () => dlg.hide()
+		fields: [
+			{
+				fieldname: "search",
+				fieldtype: "Data",
+				label: __("Search courses..."),
+				change: () => {
+					const term = (d.get_value("search") || "").trim();
+					fetch_catalog_rows(frm, term, rows => render_catalog_list($list, rows));
+				}
+			},
+			{ fieldname: "list_html", fieldtype: "HTML" }
+		]
 	});
 
-	dlg.$body.append(`
-		<div class="mb-3">
-			<input type="text" class="form-control po-catalog-search" placeholder="${__("Search courses…")}">
-		</div>
-		<div class="po-catalog-list list-group" style="max-height: 420px; overflow: auto;"></div>
-	`);
+	const $list = $('<div class="list-group" style="max-height:50vh;overflow:auto;"></div>');
+	d.get_field("list_html").$wrapper.empty().append($list);
 
-	const $search = dlg.$body.find(".po-catalog-search");
-	const $list   = dlg.$body.find(".po-catalog-list");
+	// initial fetch (excludes already-added)
+	fetch_catalog_rows(frm, "", rows => render_catalog_list($list, rows));
 
-	let lastQuery = "";
-	let inflight  = 0;
-
-	const fetch_and_render = (q="") => {
-		inflight++;
-		frappe.call({
-			method: "ifitwala_ed.schedule.doctype.program_offering.program_offering.program_course_options",
-			args: { program: frm.doc.program, search: q, start: 0, limit: 400 },
-		}).then(r => {
-			inflight--;
-			const rows = r.message || [];
-			render_catalog_list($list, rows);
-		}).catch(() => { inflight--; });
-	};
-
-	const debounced = frappe.utils.debounce(() => {
-		const q = ($search.val() || "").trim();
-		if (q === lastQuery && !inflight) return;
-		lastQuery = q;
-		fetch_and_render(q);
-	}, 250);
-
-	$search.on("input", debounced);
-
-	// initial load
-	fetch_and_render("");
-
-	dlg.show();
-
-	function render_catalog_list($container, rows) {
-		$container.empty();
-		if (!rows.length) {
-			$container.append(`<div class="text-muted p-3">${__("No results")}.</div>`);
-			return;
-		}
-		for (const r of rows) {
-			const id = frappe.utils.get_random(8);
-			const reqBadge = r.required ? `<span class="badge bg-primary ms-2">${__("Required")}</span>` : "";
-			$container.append(`
-				<label class="list-group-item d-flex align-items-center gap-3">
-					<input class="form-check-input po-pick" type="checkbox" data-row='${frappe.utils.escape_html(JSON.stringify(r))}'>
-					<div>
-						<div class="fw-semibold">${frappe.utils.escape_html(r.course_name || r.course || "")}${reqBadge}</div>
-						<div class="text-muted small">${frappe.utils.escape_html(r.course || "")}</div>
-					</div>
-				</label>
-			`);
-		}
-	}
-
-	function get_checked_rows() {
-		const out = [];
-		$list.find(".po-pick:checked").each((_, el) => {
-			try {
-				out.push(JSON.parse($(el).attr("data-row")));
-			} catch (e) { /* ignore */ }
-		});
-		return out;
-	}
+	d.show();
 }
+
 
 function add_catalog_rows(frm, picked) {
 	if (!picked || !picked.length) return;
@@ -197,6 +183,7 @@ function add_catalog_rows(frm, picked) {
 }
 
 /* ---------------- Non-catalog Picker ---------------- */
+
 
 function open_non_catalog_picker(frm) {
 	const { startAY, endAY } = get_ay_bounds(frm);
@@ -235,21 +222,23 @@ function open_non_catalog_picker(frm) {
 
 frappe.ui.form.on("Program Offering", {
 	refresh(frm) {
-		// clear any previously added custom buttons to avoid duplicates on refresh
+		// remove any leftover custom buttons to avoid duplicates
 		if (frm.clear_custom_buttons) frm.clear_custom_buttons();
 
-		// PRIMARY (blue): Add from Catalog
-		frm.page.set_primary_action(__("Add from Catalog"), () => open_catalog_picker(frm));
-
-		// SECOND button (separate, not nested)
-		const nonCatBtn = frm.add_custom_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm));
-		// make it visibly blue-ish even on themes that override defaults
-		if (nonCatBtn) {
-			nonCatBtn.removeClass("btn-default");
-			nonCatBtn.addClass("btn-outline-primary");
-			nonCatBtn.addClass("ms-2"); // small spacing
+		// Add from Catalog (blue, standalone on the left)
+		const addFrom = frm.add_custom_button(__("Add from Catalog"), () => open_catalog_picker(frm));
+		if (addFrom) {
+			addFrom.removeClass("btn-default btn-secondary").addClass("btn-primary");
 		}
 
+		// Add Non-catalog (outlined blue, standalone on the left)
+		const addNonCat = frm.add_custom_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm));
+		if (addNonCat) {
+			addNonCat.removeClass("btn-default btn-secondary").addClass("btn-outline-primary");
+			addNonCat.addClass("ms-2"); // small spacing
+		}
+
+		// DO NOT call set_primary_action here; it forces a right-side black button
 		apply_server_defaults_if_empty(frm);
 	},
 

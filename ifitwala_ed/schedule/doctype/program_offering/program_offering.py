@@ -347,60 +347,36 @@ def compute_program_offering_defaults(program: str, school: str, ay_names=None):
 
 
 @frappe.whitelist()
-def program_course_options(program: str, search: str | None = None, start: int = 0, limit: int = 200):
+def program_course_options(program: str, search: str | None = None, exclude_courses: list[str] | None = None):
 	"""
-	Return Program Course rows for the given Program to seed an Offering.
+	Return Program Course rows for a Program, excluding courses already on the Offering.
 
-	Response (list of dicts):
-	[
-		{
-			"name": "<Program Course row name>",
-			"course": "<Course name>",
-			"course_name": "<Course title>",
-			"required": 0/1
-		},
-		...
-	]
+	Args:
+		program: Program name
+		search: optional "like" filter applied to course / course_name
+		exclude_courses: list of Course names to skip
 	"""
-	_assert(program, _("Program is required."))
+	exclude_courses = frappe.parse_json(exclude_courses) if isinstance(exclude_courses, str) else (exclude_courses or [])
+	filters = {"program": program, "disabled": 0}
+	if exclude_courses:
+		filters["course"] = ["not in", exclude_courses]
 
-	# Protect against overly large pulls, but allow generous batch loads.
-	if limit is None or int(limit) > 500:
-		limit = 500
-
-	filters = {"parent": program, "parenttype": "Program", "docstatus": ["!=", 2]}
-	fields = ["name", "course", "course_name", "required"]
-
-	# Optional client-side search across course id or title
+	conds = []
 	if search:
-		# Use DatabaseQuery.match to keep it indexed-friendly (LIKE on both fields)
-		pc_rows = frappe.get_all(
-			"Program Course",
-			filters=filters,
-			fields=fields,
-			start=int(start or 0),
-			limit=int(limit),
-			order_by="course_name asc",
-			or_filters=[
-				["course", "like", f"%{search}%"],
-				["course_name", "like", f"%{search}%"],
-			],
-		)
-	else:
-		pc_rows = frappe.get_all(
-			"Program Course",
-			filters=filters,
-			fields=fields,
-			start=int(start or 0),
-			limit=int(limit),
-			order_by="course_name asc",
-		)
+		like = f"%{search}%"
+		conds.append(["course", "like", like])
+		conds.append(["course_name", "like", like])
 
-	# Normalize booleans -> ints for consistent client handling
-	for r in pc_rows:
-		r["required"] = 1 if r.get("required") else 0
+	rows = frappe.get_all(
+		"Program Course",
+		filters=filters,
+		fields=["name", "course", "course_name", "required"],
+		or_filters=conds,
+		limit=2000,
+		order_by="course_name asc, course asc",
+	)
+	return rows
 
-	return pc_rows
 
 
 @frappe.whitelist()
