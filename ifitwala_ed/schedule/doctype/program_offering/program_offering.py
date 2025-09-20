@@ -144,98 +144,112 @@ class ProgramOffering(Document):
 			                frappe.format(max_ay, {"fieldtype": "Date"})))
 
 	def _validate_offering_courses(self, ay_rows: list[dict], allowed_schools: set[str]):
+		"""
+		For each Program Offering Course row, validate:
+			- start/end AY exist in the AY spine and are ordered (start ≤ end by time)
+			- if terms are given: term.school ∈ allowed, term.ay matches the row AY, and dates ordered
+			- compute an effective [row_start,row_end] using (from/to) or terms or AY bounds
+			- ensure effective window is inside head [start_date,end_date] if head dates are set
+			- ensure effective window sits within the spanned AY envelope
+		"""
 		if not getattr(self, "offering_courses", None):
 			return
 
+		# quick lookups
 		ay_index = {r["name"]: r for r in ay_rows}
 		min_ay = min(r["start"] for r in ay_rows)
-		max_ay = max(r["end"] for r in ay_rows)
+		max_ay = max(r["end"]   for r in ay_rows)
 
 		head_start = getdate(self.start_date) if self.start_date else None
-		head_end = getdate(self.end_date) if self.end_date else None
+		head_end   = getdate(self.end_date) if self.end_date else None
 
 		for idx, row in enumerate(self.offering_courses, start=1):
 			_assert(row.course, _("Row {0}: Course is required.").format(idx))
 			_assert(row.start_academic_year, _("Row {0}: Start Academic Year is required.").format(idx))
-			_assert(row.end_academic_year, _("Row {0}: End Academic Year is required.").format(idx))
+			_assert(row.end_academic_year,   _("Row {0}: End Academic Year is required.").format(idx))
 
 			start_ay = ay_index.get(row.start_academic_year)
-			end_ay = ay_index.get(row.end_academic_year)
+			end_ay   = ay_index.get(row.end_academic_year)
 			_assert(start_ay, _("Row {0}: Start AY {1} must be listed in Offering Academic Years.")
-			        .format(idx, get_link_to_form("Academic Year", row.start_academic_year)))
-			_assert(end_ay, _("Row {0}: End AY {1} must be listed in Offering Academic Years.")
-			        .format(idx, get_link_to_form("Academic Year", row.end_academic_year)))
+							.format(idx, get_link_to_form("Academic Year", row.start_academic_year)))
+			_assert(end_ay,   _("Row {0}: End AY {1} must be listed in Offering Academic Years.")
+							.format(idx, get_link_to_form("Academic Year", row.end_academic_year)))
 
+			# AY ordering by dates
 			_assert(start_ay["start"] <= end_ay["end"],
-			        _("Row {0}: Start AY must not be after End AY.").format(idx))
+							_("Row {0}: Start AY must not be after End AY.").format(idx))
 
+			# Use actual child fieldnames
+			start_term_name = getattr(row, "start_academic_term", None)
+			end_term_name   = getattr(row, "end_academic_term", None)
+
+			# defaults to AY envelope
 			start_term_dt = start_ay["start"]
-			end_term_dt = end_ay["end"]
+			end_term_dt   = end_ay["end"]
 
-			if row.start_term:
-				ts_school, ts_ay, ts_start, ts_end = _term_fields(row.start_term)
+			# Start term (optional)
+			if start_term_name:
+				ts_school, ts_ay, ts_start, ts_end = _term_fields(start_term_name)
 				_assert(ts_ay == row.start_academic_year,
-				        _("Row {0}: Start Term {1} must belong to Start AY {2}.")
-				        .format(idx, get_link_to_form("Term", row.start_term),
-				                get_link_to_form("Academic Year", row.start_academic_year)))
+								_("Row {0}: Start Term {1} must belong to Start AY {2}.")
+								.format(idx, get_link_to_form("Term", start_term_name),
+												get_link_to_form("Academic Year", row.start_academic_year)))
 				_assert(ts_school in allowed_schools,
-				        _("Row {0}: Start Term {1} belongs to {2}, outside the offering school's ancestry.")
-				        .format(idx, get_link_to_form("Term", row.start_term),
-				                get_link_to_form("School", ts_school)))
+								_("Row {0}: Start Term {1} belongs to {2}, outside the offering school's tree.")
+								.format(idx, get_link_to_form("Term", start_term_name),
+												get_link_to_form("School", ts_school)))
 				_assert(ts_start, _("Row {0}: Start Term {1} is missing term_start_date.")
-				        .format(idx, get_link_to_form("Term", row.start_term)))
+								.format(idx, get_link_to_form("Term", start_term_name)))
 				start_term_dt = getdate(ts_start)
 
-			if row.end_term:
-				te_school, te_ay, te_start, te_end = _term_fields(row.end_term)
+			# End term (optional)
+			if end_term_name:
+				te_school, te_ay, te_start, te_end = _term_fields(end_term_name)
 				_assert(te_ay == row.end_academic_year,
-				        _("Row {0}: End Term {1} must belong to End AY {2}.")
-				        .format(idx, get_link_to_form("Term", row.end_term),
-				                get_link_to_form("Academic Year", row.end_academic_year)))
+								_("Row {0}: End Term {1} must belong to End AY {2}.")
+								.format(idx, get_link_to_form("Term", end_term_name),
+												get_link_to_form("Academic Year", row.end_academic_year)))
 				_assert(te_school in allowed_schools,
-				        _("Row {0}: End Term {1} belongs to {2}, outside the offering school's tree.")
-				        .format(idx, get_link_to_form("Term", row.end_term),
-				                get_link_to_form("School", te_school)))
-				_assert(te_start or te_end, _("Row {0}: End Term {1} is missing dates.")
-				        .format(idx, get_link_to_form("Term", row.end_term)))
+								_("Row {0}: End Term {1} belongs to {2}, outside the offering school's tree.")
+								.format(idx, get_link_to_form("Term", end_term_name),
+												get_link_to_form("School", te_school)))
+				_assert(te_start or te_end,
+								_("Row {0}: End Term {1} is missing dates.")
+								.format(idx, get_link_to_form("Term", end_term_name)))
 				end_term_dt = getdate(te_end) if te_end else getdate(te_start)
 
-			if row.start_term and row.end_term:
+			# If both terms given, enforce term ordering
+			if start_term_name and end_term_name:
 				_assert(start_term_dt <= end_term_dt,
-				        _("Row {0}: Start Term must not be after End Term.").format(idx))
+								_("Row {0}: Start Term must not be after End Term.").format(idx))
 
+			# Effective row span
 			row_start = getdate(row.from_date) if row.from_date else start_term_dt
-			row_end = getdate(row.to_date) if row.to_date else end_term_dt
+			row_end   = getdate(row.to_date)   if row.to_date   else end_term_dt
 			_assert(row_start <= row_end, _("Row {0}: From Date cannot be after To Date.").format(idx))
 
+			# Inside AY envelope
 			_assert(min_ay <= row_start <= max_ay,
-			        _("Row {0}: Start {1} must lie within offering Academic Years ({2} → {3}).").format(
-			            idx, frappe.format(row_start, {"fieldtype": "Date"}),
-			            frappe.format(min_ay, {"fieldtype": "Date"}),
-			            frappe.format(max_ay, {"fieldtype": "Date"})))
+							_("Row {0}: From Date out of Academic Year span.").format(idx))
 			_assert(min_ay <= row_end <= max_ay,
-			        _("Row {0}: End {1} must lie within offering Academic Years ({2} → {3}).").format(
-			            idx, frappe.format(row_end, {"fieldtype": "Date"}),
-			            frappe.format(min_ay, {"fieldtype": "Date"}),
-			            frappe.format(max_ay, {"fieldtype": "Date"})))
+							_("Row {0}: To Date out of Academic Year span.").format(idx))
 
+			# Inside head window if set
 			if head_start:
 				_assert(head_start <= row_start,
-				        _("Row {0}: Start {1} is before Offering Start Date {2}.").format(
-				            idx, frappe.format(row_start, {"fieldtype": "Date"}),
-				            frappe.format(head_start, {"fieldtype": "Date"})))
+								_("Row {0}: From Date is before Offering Start Date.").format(idx))
 			if head_end:
 				_assert(row_end <= head_end,
-				        _("Row {0}: End {1} is after Offering End Date {2}.").format(
-				            idx, frappe.format(row_end, {"fieldtype": "Date"}),
-				            frappe.format(head_end, {"fieldtype": "Date"})))
+								_("Row {0}: To Date is after Offering End Date.").format(idx))
 
-			if row.start_term and row.from_date:
+			# If terms + explicit dates both exist, keep explicit inside term windows
+			if start_term_name and row.from_date:
 				_assert(start_term_dt <= getdate(row.from_date),
-				        _("Row {0}: From Date is earlier than Start Term window.").format(idx))
-			if row.end_term and row.to_date:
+								_("Row {0}: From Date is earlier than Start Term window.").format(idx))
+			if end_term_name and row.to_date:
 				_assert(getdate(row.to_date) <= end_term_dt,
-				        _("Row {0}: To Date is later than End Term window.").format(idx))
+								_("Row {0}: To Date is later than End Term window.").format(idx))
+
 
 	def _validate_catalog_membership(self):
 		"""If a course isn't in the Program's catalog, require non_catalog + reason."""
@@ -333,71 +347,60 @@ def compute_program_offering_defaults(program: str, school: str, ay_names=None):
 
 
 @frappe.whitelist()
-def program_course_options(program: str) -> list:
+def program_course_options(program: str, search: str | None = None, start: int = 0, limit: int = 200):
 	"""
-	Return catalog items for a Program from Program Course, tolerant of schema:
-	- required flag may be named 'required' or 'is_required'
-	- 'subject_group' may not exist
-	Output:
-	[{"course":..., "course_name":..., "required_by_default":0/1, "subject_group":""}, ...]
+	Return Program Course rows for the given Program to seed an Offering.
+
+	Response (list of dicts):
+	[
+		{
+			"name": "<Program Course row name>",
+			"course": "<Course name>",
+			"course_name": "<Course title>",
+			"required": 0/1
+		},
+		...
+	]
 	"""
-	if not program:
-		return []
+	_assert(program, _("Program is required."))
 
-	results: list[dict] = []
+	# Protect against overly large pulls, but allow generous batch loads.
+	if limit is None or int(limit) > 500:
+		limit = 500
 
-	if frappe.db.table_exists("Program Course"):
-		meta = frappe.get_meta("Program Course")
-		fields = ["course"]
-		# detect required field name
-		req_field = "required" if meta.has_field("required") else ("is_required" if meta.has_field("is_required") else None)
-		if req_field:
-			fields.append(req_field)
-		has_group = meta.has_field("subject_group")
-		if has_group:
-			fields.append("subject_group")
-		# include optional course_name on Program Course if you have it (not required)
-		if meta.has_field("course_name"):
-			fields.append("course_name")
+	filters = {"parent": program, "parenttype": "Program", "docstatus": ["!=", 2]}
+	fields = ["name", "course", "course_name", "required"]
 
+	# Optional client-side search across course id or title
+	if search:
+		# Use DatabaseQuery.match to keep it indexed-friendly (LIKE on both fields)
 		pc_rows = frappe.get_all(
 			"Program Course",
-			filters={"parent": program},
+			filters=filters,
 			fields=fields,
-			limit=2000,
+			start=int(start or 0),
+			limit=int(limit),
+			order_by="course_name asc",
+			or_filters=[
+				["course", "like", f"%{search}%"],
+				["course_name", "like", f"%{search}%"],
+			],
+		)
+	else:
+		pc_rows = frappe.get_all(
+			"Program Course",
+			filters=filters,
+			fields=fields,
+			start=int(start or 0),
+			limit=int(limit),
+			order_by="course_name asc",
 		)
 
-		courses = [r["course"] for r in pc_rows if r.get("course")]
-		if courses:
-			# Pull Course names (fallback label)
-			course_names = {r["name"]: (r.get("course_name") or r["name"]) for r in frappe.get_all(
-				"Course", filters={"name": ["in", courses]}, fields=["name", "course_name"], limit=len(courses)
-			)}
-			for r in pc_rows:
-				c = r.get("course")
-				if not c:
-					continue
-				required_flag = 0
-				if req_field:
-					required_flag = 1 if (r.get(req_field) or 0) else 0
-				results.append({
-					"course": c,
-					"course_name": (r.get("course_name") or course_names.get(c) or c),
-					"required_by_default": required_flag,
-					"subject_group": (r.get("subject_group") or "") if has_group else "",
-				})
-			if results:
-				return results
+	# Normalize booleans -> ints for consistent client handling
+	for r in pc_rows:
+		r["required"] = 1 if r.get("required") else 0
 
-	# Fallback: all Course (trim)
-	for r in frappe.get_all("Course", fields=["name", "course_name"], limit=1000):
-		results.append({
-			"course": r["name"],
-			"course_name": r.get("course_name") or r["name"],
-			"required_by_default": 0,
-			"subject_group": "",
-		})
-	return results
+	return pc_rows
 
 
 @frappe.whitelist()
