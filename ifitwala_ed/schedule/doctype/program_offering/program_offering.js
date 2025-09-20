@@ -26,21 +26,6 @@ function apply_server_defaults_if_empty(frm) {
 	});
 }
 
-/* ---------------- Header Buttons (blue, not nested) ---------------- */
-
-function ensure_header_buttons(frm) {
-	if (frm._po_buttons_done) return;
-
-	// Add From Catalog
-	const b1 = frm.page.add_inner_button(__("Add From Catalog"), () => open_catalog_picker(frm));
-	b1.addClass("btn-primary"); // blue
-
-	// Add Non-catalog
-	const b2 = frm.page.add_inner_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm));
-	b2.addClass("btn-primary"); // blue
-
-	frm._po_buttons_done = true;
-}
 
 /* ---------------- Helpers: AY defaults for new rows ---------------- */
 
@@ -50,30 +35,6 @@ function get_ay_bounds(frm) {
 	return { startAY: ays[0], endAY: ays[ays.length - 1] }; // assume user ordered; server also enforces overlap/order
 }
 
-/* ---------------- Helpers for default span ---------------- */
-function first_and_last_ay(frm) {
-	const ays = (frm.doc.offering_academic_years || []).map(r => r.academic_year).filter(Boolean);
-	return { first: ays.length ? ays[0] : null, last: ays.length ? ays[ays.length - 1] : null };
-}
-
-function insert_offering_course_rows(frm, rows) {
-	const span = first_and_last_ay(frm);
-	(rows || []).forEach(r => {
-		const child = frm.add_child("offering_courses");
-		child.course = r.course;
-		child.course_name = r.course_name || r.course;
-		child.required = r.required ? 1 : 0;
-		child.elective_group = r.elective_group || "";
-		if ("non_catalog" in r) child.non_catalog = r.non_catalog ? 1 : 0;
-		if ("exception_reason" in r) child.exception_reason = r.exception_reason || "";
-		if ("catalog_ref" in r) child.catalog_ref = r.catalog_ref || "";
-
-		// Default full span to offering AY envelope
-		if (span.first) child.start_academic_year = span.first;
-		if (span.last)  child.end_academic_year = span.last;
-	});
-	frm.refresh_field("offering_courses");
-}
 
 /* ---------- Catalog dialog rendering + helpers ---------- */
 
@@ -194,8 +155,15 @@ function fetch_catalog_rows(frm, search, on_done) {
 }
 
 function open_catalog_picker(frm) {
-	const span = require_ay_span(frm);
-	if (!span) return;
+	// 1) validate
+	if (!require_ay_span(frm)) return;
+
+	// 2) read the envelope safely
+	const { startAY, endAY } = get_ay_bounds(frm);
+	if (!startAY || !endAY) {
+		frappe.msgprint({ message: __("Add at least one Academic Year to the Offering first."), indicator: "orange" });
+		return;
+	}
 
 	const d = new frappe.ui.Dialog({
 		title: __("Add Courses from Catalog"),
@@ -213,15 +181,13 @@ function open_catalog_picker(frm) {
 					required: !!r.required,
 					non_catalog: 0,
 					catalog_ref: `${frm.doc.program}::${r.course}`,
-					start_academic_year: span.startAY,
-					end_academic_year:   span.endAY,
+					start_academic_year: startAY,
+					end_academic_year:   endAY,
 				});
 				if (ok) added++;
 			}
 			if (added) {
 				frm.refresh_field("offering_courses");
-
-				// after adding, refresh the dialog list so those disappear
 				const term = (d.get_value("search") || "").trim();
 				fetch_catalog_rows(frm, term, rows => render_catalog_list($list, rows));
 			}
@@ -243,40 +209,10 @@ function open_catalog_picker(frm) {
 	const $list = $('<div class="list-group" style="max-height:50vh;overflow:auto;"></div>');
 	d.get_field("list_html").$wrapper.empty().append($list);
 
-	// initial fetch (excludes already-added)
+	// initial load (already excludes added)
 	fetch_catalog_rows(frm, "", rows => render_catalog_list($list, rows));
 
 	d.show();
-}
-
-
-function add_catalog_rows(frm, picked) {
-	if (!picked || !picked.length) return;
-
-	const { startAY, endAY } = get_ay_bounds(frm);
-	if (!startAY || !endAY) {
-		frappe.msgprint({ message: __("Add at least one Academic Year to the Offering first."), indicator: "orange" });
-		return;
-	}
-
-	const seen = new Set((frm.doc.offering_courses || []).map(r => r.course).filter(Boolean));
-
-	for (const r of picked) {
-		// Avoid duplicates by Course on the offering
-		if (r.course && seen.has(r.course)) continue;
-		const row = frm.add_child("offering_courses");
-		row.course = r.course || null;
-		row.course_name = r.course_name || r.course || null;
-		row.required = r.required ? 1 : 0;
-		row.non_catalog = 0;
-		row.catalog_ref = `${frm.doc.program}::${r.course || r.course_name || ""}`;
-		row.start_academic_year = startAY;
-		row.end_academic_year = endAY;
-		seen.add(r.course);
-	}
-
-	frm.refresh_field("offering_courses");
-	frappe.show_alert({ message: __("Added {0} course(s) from catalog.", [picked.length]), indicator: "green" });
 }
 
 /* ---------------- Non-catalog Picker ---------------- */
@@ -293,13 +229,24 @@ function open_non_catalog_picker(frm) {
 		doctype: "Course",
 		size: "large",
 		pagelength: 20,
-		// optional: filter to active courses
+
+		// Prevent Object.keys(null) inside MultiSelectDialog.get_primary_filters:
+		primary_filters: {},
+		add_filters_group: 1,
+
+		// keep it lean: only active courses
 		get_query: () => ({ filters: { disabled: 0 } }),
 		primary_action_label: __("Add Selected"),
 		action(selections) {
+			const picked = Array.isArray(selections) ? selections : [];
 			const seen = new Set((frm.doc.offering_courses || []).map(r => r.course).filter(Boolean));
-			for (const name of selections) {
-				if (seen.has(name)) continue;
+			let added = 0;
+
+			for (const name of picked) {
+				if (seen.has(name)) {
+					frappe.show_alert({ message: __("Skipped duplicate: {0}", [name]), indicator: "orange" });
+					continue;
+				}
 				const row = frm.add_child("offering_courses");
 				row.course = name;
 				row.course_name = name;
@@ -309,13 +256,16 @@ function open_non_catalog_picker(frm) {
 				row.start_academic_year = startAY;
 				row.end_academic_year = endAY;
 				seen.add(name);
+				added++;
 			}
-			frm.refresh_field("offering_courses");
+
+			if (added) frm.refresh_field("offering_courses");
 			this.dialog.hide();
-			frappe.show_alert({ message: __("Added {0} non-catalog course(s).", [selections.length]), indicator: "green" });
+			frappe.show_alert({ message: __("Added {0} non-catalog course(s).", [added]), indicator: "green" });
 		},
 	});
 }
+
 
 frappe.ui.form.on("Program Offering", {
 	refresh(frm) {
@@ -352,4 +302,16 @@ frappe.ui.form.on("Program Offering Academic Year", {
 	academic_year(frm) {
 		apply_server_defaults_if_empty(frm);
 	}
+});
+
+frappe.ui.form.on("Program Offering Course", {
+	course(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		if (row) {
+			const { startAY, endAY } = get_ay_bounds(frm);
+			if (startAY && !row.start_academic_year) row.start_academic_year = startAY;
+			if (endAY && !row.end_academic_year)     row.end_academic_year   = endAY;
+			frm.refresh_field("offering_courses");
+		}
+	},
 });

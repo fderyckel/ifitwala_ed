@@ -65,7 +65,8 @@ class ProgramOffering(Document):
 		if self.status not in ("Planned", "Active", "Archived"):
 			frappe.throw(_("Invalid Status: {0}").format(self.status))
 		
-		self._validate_catalog_membership()
+		self._validate_catalog_membership() 
+		self._apply_default_span_to_rows()
 
 	# -------------------------
 	# helpers
@@ -288,6 +289,30 @@ class ProgramOffering(Document):
 					             .format(idx, frappe.utils.get_link_to_form("Course", course)))
 
 
+	def _get_ay_envelope(self) -> tuple[str | None, str | None]:
+		"""Return (start_ay, end_ay) from the ordered Table MultiSelect rows."""
+		ay_names = [r.academic_year for r in (self.offering_academic_years or []) if r.academic_year]
+		if not ay_names:
+			return (None, None)
+		return (ay_names[0], ay_names[-1])
+
+	def _apply_default_span_to_rows(self) -> None:
+		"""Copy the parent AY envelope into child rows if missing."""
+		start_ay, end_ay = self._get_ay_envelope()
+		if not start_ay or not end_ay:
+			return
+
+		changed = False
+		for row in (self.offering_courses or []):
+			# Set defaults only if empty—admins can still override per row later
+			if not getattr(row, "start_academic_year", None):
+				row.start_academic_year = start_ay
+				changed = True
+			if not getattr(row, "end_academic_year", None):
+				row.end_academic_year = end_ay
+				changed = True
+
+				
 # -------------------------
 # one whitelisted helper used by the client
 # -------------------------
