@@ -75,6 +75,84 @@ function insert_offering_course_rows(frm, rows) {
 	frm.refresh_field("offering_courses");
 }
 
+/* ---------- Catalog dialog rendering + helpers ---------- */
+
+// Build the list UI inside the dialog
+function render_catalog_list($list, rows) {
+  $list.empty();
+
+  const items = Array.isArray(rows) ? rows : [];
+  if (!items.length) {
+    $list.append(
+      `<div class="text-muted p-3">${__("No matching courses in catalog.")}</div>`
+    );
+    return;
+  }
+
+  for (const r of items) {
+    const course = frappe.utils.escape_html(r.course || "");
+    const cname  = frappe.utils.escape_html(r.course_name || r.course || "");
+    const req    = r.required ? 1 : 0;
+
+    const $row = $(`
+      <div class="list-group-item">
+        <div class="d-flex align-items-start gap-2">
+          <input type="checkbox" class="form-check-input mt-1 pc-pick"
+                 data-course="${course}"
+                 data-course_name="${cname}"
+                 data-required="${req}">
+          <div class="flex-grow-1">
+            <div class="fw-semibold">${cname}</div>
+            <div class="text-muted small">${course}</div>
+          </div>
+          ${req ? `<span class="badge bg-secondary">${__("Required")}</span>` : ""}
+        </div>
+      </div>
+    `);
+    $list.append($row);
+  }
+}
+
+// Read checked rows from the dialog list
+function get_checked_rows($list) {
+  const picked = [];
+  $list.find('input.pc-pick:checked').each(function () {
+    const $cb = $(this);
+    picked.push({
+      course: $cb.data("course"),
+      course_name: $cb.data("course_name"),
+      required: $cb.data("required") ? 1 : 0,
+    });
+  });
+  return picked;
+}
+
+// Safe add (skip if already present). Returns true if added.
+function add_offering_course_if_new(frm, payload) {
+  const existing = new Set((frm.doc.offering_courses || [])
+    .map(r => r.course)
+    .filter(Boolean));
+
+  if (payload.course && existing.has(payload.course)) {
+    return false; // already in child table
+  }
+
+  const row = frm.add_child("offering_courses");
+  row.course = payload.course || null;
+  row.course_name = payload.course_name || payload.course || null;
+  row.required = payload.required ? 1 : 0;
+  row.elective_group = payload.elective_group || "";
+  row.non_catalog = payload.non_catalog ? 1 : 0;
+  row.catalog_ref = payload.catalog_ref || null;
+
+  // If caller provided AY span, keep it; else leave empty
+  if (payload.start_academic_year) row.start_academic_year = payload.start_academic_year;
+  if (payload.end_academic_year)   row.end_academic_year   = payload.end_academic_year;
+
+  return true;
+}
+
+
 /* ---------------- Catalog Picker ---------------- */
 
 function get_selected_ay_names(frm) {
