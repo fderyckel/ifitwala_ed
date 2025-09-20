@@ -77,6 +77,25 @@ function insert_offering_course_rows(frm, rows) {
 
 /* ---------------- Catalog Picker ---------------- */
 
+function get_selected_ay_names(frm) {
+	return (frm.doc.offering_academic_years || [])
+		.map(r => r.academic_year)
+		.filter(Boolean);
+}
+
+function require_ay_span(frm) {
+	if (!frm.doc.program) {
+		frappe.msgprint({ message: __("Please select a Program first."), indicator: "orange" });
+		return false;
+	}
+	const ays = get_selected_ay_names(frm);
+	if (!ays.length) {
+		frappe.msgprint({ message: __("Please add at least one Academic Year before adding courses."), indicator: "orange" });
+		return false;
+	}
+	return true;
+}
+
 function current_offering_course_names(frm) {
 	return (frm.doc.offering_courses || [])
 		.map(r => r.course)
