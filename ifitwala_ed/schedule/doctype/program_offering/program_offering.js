@@ -218,52 +218,54 @@ function open_catalog_picker(frm) {
 /* ---------------- Non-catalog Picker ---------------- */
 
 function open_non_catalog_picker(frm) {
-  const { startAY, endAY } = get_ay_bounds(frm);
-  if (!startAY || !endAY) {
-    frappe.msgprint({ message: __("Add at least one Academic Year to the Offering first."), indicator: "orange" });
-    return;
-  }
+	const { startAY, endAY } = get_ay_bounds(frm);
+	if (!startAY || !endAY) {
+		frappe.msgprint({ message: __("Add at least one Academic Year to the Offering first."), indicator: "orange" });
+		return;
+	}
 
-  new frappe.ui.form.MultiSelectDialog({
-    doctype: "Course",
-    size: "large",
-    pagelength: 20,
+	new frappe.ui.form.MultiSelectDialog({
+		doctype: "Course",
+		size: "large",
+		pagelength: 20,
 
-    // critical line to avoid Object.keys(null) inside MultiSelectDialog:
-    primary_filters: {},
-    add_filters_group: 1,
+		// Belt-and-suspenders: both a safe object and a method override.
+		primary_filters: {},
+		get_primary_filters: () => [],
 
-    get_query: () => ({ filters: { disabled: 0 } }),
-    primary_action_label: __("Add Selected"),
-    action(selections) {
-      const picked = Array.isArray(selections) ? selections : [];
-      const seen = new Set((frm.doc.offering_courses || []).map(r => r.course).filter(Boolean));
-      let added = 0;
+		add_filters_group: 1,
+		setters: {},
 
-      for (const name of picked) {
-        if (seen.has(name)) {
-          frappe.show_alert({ message: __("Skipped duplicate: {0}", [name]), indicator: "orange" });
-          continue;
-        }
-        const row = frm.add_child("offering_courses");
-        row.course = name;
-        row.course_name = name;
-        row.required = 0;
-        row.non_catalog = 1;
-        row.catalog_ref = null;
-        row.start_academic_year = startAY;
-        row.end_academic_year = endAY;
-        seen.add(name);
-        added++;
-      }
+		get_query: () => ({ filters: { disabled: 0 } }),
+		primary_action_label: __("Add Selected"),
+		action(selections) {
+			const picked = Array.isArray(selections) ? selections : [];
+			const seen = new Set((frm.doc.offering_courses || []).map(r => r.course).filter(Boolean));
+			let added = 0;
 
-      if (added) frm.refresh_field("offering_courses");
-      this.dialog.hide();
-      frappe.show_alert({ message: __("Added {0} non-catalog course(s).", [added]), indicator: "green" });
-    },
-  });
+			for (const name of picked) {
+				if (seen.has(name)) {
+					frappe.show_alert({ message: __("Skipped duplicate: {0}", [name]), indicator: "orange" });
+					continue;
+				}
+				const row = frm.add_child("offering_courses");
+				row.course = name;
+				row.course_name = name;
+				row.required = 0;
+				row.non_catalog = 1;
+				row.catalog_ref = null;
+				row.start_academic_year = startAY;
+				row.end_academic_year = endAY;
+				seen.add(name);
+				added++;
+			}
+
+			if (added) frm.refresh_field("offering_courses");
+			this.dialog.hide();
+			frappe.show_alert({ message: __("Added {0} non-catalog course(s).", [added]), indicator: "green" });
+		},
+	});
 }
-
 
 
 frappe.ui.form.on("Program Offering", {
