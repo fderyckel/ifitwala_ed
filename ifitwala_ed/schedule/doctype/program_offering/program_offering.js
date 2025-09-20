@@ -144,8 +144,11 @@ function open_non_catalog_picker(frm) {
 frappe.ui.form.on("Program Offering", {
 	refresh(frm) {
 		// Place buttons under a "Courses" group
-		frm.add_custom_button(__("Add from Catalog"), () => open_catalog_picker(frm), __("Courses"));
-		frm.add_custom_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm), __("Courses"));
+		const btnCatalog = frm.add_custom_button(__("Add from Catalog"), () => open_catalog_picker(frm));
+		if (btnCatalog) btnCatalog.addClass("btn-primary"); // blue
+
+		const btnNonCat = frm.add_custom_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm));
+		if (btnNonCat) btnNonCat.addClass("btn-secondary");
 
 		apply_server_defaults_if_empty(frm);
 	},
