@@ -74,6 +74,8 @@ function open_catalog_picker(frm) {
 				doctype: "Course",
 				target: frm,
 				size: "large",
+				primary_filters: {},   
+				setters: {}, 
 				// Filter dialog list to the catalog courses
 				get_query: () => ({ filters: { name: ["in", allowed] } }),
 				primary_action_label: __("Add from Catalog"),
@@ -119,6 +121,8 @@ function open_non_catalog_picker(frm) {
 				doctype: "Course",
 				target: frm,
 				size: "large",
+				primary_filters: {},   
+				setters: {}, 
 				primary_action_label: __("Add Non-catalog"),
 				action: (selections) => {
 					if (!selections || !selections.length) return;
@@ -143,12 +147,20 @@ function open_non_catalog_picker(frm) {
 
 frappe.ui.form.on("Program Offering", {
 	refresh(frm) {
-		// Place buttons under a "Courses" group
-		const btnCatalog = frm.add_custom_button(__("Add from Catalog"), () => open_catalog_picker(frm));
-		if (btnCatalog) btnCatalog.addClass("btn-primary"); // blue
+		// clear any previously added custom buttons to avoid duplicates on refresh
+		if (frm.clear_custom_buttons) frm.clear_custom_buttons();
 
-		const btnNonCat = frm.add_custom_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm));
-		if (btnNonCat) btnNonCat.addClass("btn-secondary");
+		// PRIMARY (blue): Add from Catalog
+		frm.page.set_primary_action(__("Add from Catalog"), () => open_catalog_picker(frm));
+
+		// SECOND button (separate, not nested)
+		const nonCatBtn = frm.add_custom_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm));
+		// make it visibly blue-ish even on themes that override defaults
+		if (nonCatBtn) {
+			nonCatBtn.removeClass("btn-default");
+			nonCatBtn.addClass("btn-outline-primary");
+			nonCatBtn.addClass("ms-2"); // small spacing
+		}
 
 		apply_server_defaults_if_empty(frm);
 	},
