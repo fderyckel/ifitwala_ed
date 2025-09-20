@@ -11,6 +11,7 @@ frappe.ui.form.on("Program Offering", {
 		setup_child_queries(frm);
 		suggest_offering_title(frm);
 		show_ay_span_badge(frm);
+		set_head_dates_if_empty(frm);
 		warn_if_dates_outside_ay(frm);
 	},
 
@@ -84,6 +85,48 @@ async function suggest_offering_title(frm) {
   const ayPretty = ays.length === 1 ? ays[0] : `${ays[0]}–${ays[ays.length - 1]}`;
   frm.set_value("offering_title", `${message.prog_label} ${ayPretty} (${message.school_label})`);
 }
+
+function get_ay_envelope(frm) {
+	// Read min start / max end / cohort year from offering_academic_years
+	const rows = (frm.doc.offering_academic_years || [])
+		.filter(r => r.year_start_date || r.year_end_date);
+
+	if (!rows.length) return { minStart: null, maxEnd: null, cohortYear: null };
+
+	const toDate = (d) => d ? frappe.datetime.str_to_obj(d) : null;
+
+	const starts = rows.map(r => toDate(r.year_start_date)).filter(Boolean);
+	const ends   = rows.map(r => toDate(r.year_end_date)).filter(Boolean);
+
+	const minStart = starts.length ? starts.reduce((a, b) => a < b ? a : b) : null;
+	const maxEnd   = ends.length   ? ends.reduce((a, b) => a > b ? a : b) : null;
+
+	// Cohort year = YYYY from latest AY year_end_date; fallback to year_start_date if needed
+	let cohortDate = null;
+	if (ends.length) {
+		cohortDate = maxEnd;
+	} else if (starts.length) {
+		cohortDate = starts.reduce((a, b) => a > b ? a : b);
+	}
+
+	const cohortYear = cohortDate ? cohortDate.getFullYear() : null;
+
+	return { minStart, maxEnd, cohortYear };
+}
+
+function set_head_dates_if_empty(frm) {
+	const { minStart, maxEnd } = get_ay_envelope(frm);
+	if (!minStart && !maxEnd) return;
+
+	// Only set when empty; user overrides are respected
+	if (!frm.doc.start_date && minStart) {
+		frm.set_value("start_date", frappe.datetime.obj_to_str(minStart));
+	}
+	if (!frm.doc.end_date && maxEnd) {
+		frm.set_value("end_date", frappe.datetime.obj_to_str(maxEnd));
+	}
+}
+
 
 function show_ay_span_badge(frm) {
 	// Show a small indicator of AY span in the form header
