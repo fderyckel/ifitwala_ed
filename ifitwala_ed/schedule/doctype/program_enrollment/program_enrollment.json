@@ -9,6 +9,7 @@
  "field_order": [
   "section_break_kcvg",
   "program",
+  "program_offering",
   "student",
   "enrollment_date",
   "school",
@@ -44,7 +45,6 @@
   },
   {
    "allow_on_submit": 1,
-   "fetch_from": "student.cohort",
    "fieldname": "cohort",
    "fieldtype": "Link",
    "in_global_search": 1,
@@ -95,7 +95,6 @@
    "options": "Program Enrollment Course"
   },
   {
-   "fetch_from": "program.school",
    "fetch_if_empty": 1,
    "fieldname": "school",
    "fieldtype": "Link",
@@ -109,12 +108,22 @@
    "fieldname": "archived",
    "fieldtype": "Check",
    "label": "Archived"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Program Offering",
+   "options": "Program Offering",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-02 14:03:51.348352",
+ "modified": "2025-09-20 07:51:18.645857",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment",

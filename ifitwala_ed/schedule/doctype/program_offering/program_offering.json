@@ -8,19 +8,19 @@
   "section_break_l7zl",
   "program",
   "school",
-  "academic_year",
+  "offering_academic_years",
   "column_break_y4ol",
   "offering_title",
   "status",
-  "intake_code",
+  "student_cohort",
   "section_break_ircj",
   "start_date",
   "end_date",
-  "offering_academic_years",
   "column_break_dcmw",
   "capacity",
   "allow_self_enroll",
-  "courses_section"
+  "courses_section",
+  "offering_courses"
  ],
  "fields": [
   {
@@ -47,23 +47,15 @@
    "reqd": 1
   },
   {
-   "fieldname": "academic_year",
-   "fieldtype": "Link",
-   "in_filter": 1,
-   "in_list_view": 1,
-   "label": "Academic Year",
-   "options": "Academic Year",
-   "reqd": 1
-  },
-  {
    "fieldname": "column_break_y4ol",
    "fieldtype": "Column Break"
   },
   {
-   "description": "Optional label e.g. IB DP G12 (Campus A, 2025\u201326)",
+   "description": "Optional label e.g. IB DP class of 2029 A Campus",
    "fieldname": "offering_title",
    "fieldtype": "Data",
-   "label": "Offering Title"
+   "label": "Offering Title",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_ircj",
@@ -103,13 +95,6 @@
    "options": "Planned\nActive\nArchived"
   },
   {
-   "fieldname": "intake_code",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Intake Code",
-   "options": "Student Cohort"
-  },
-  {
    "fieldname": "offering_academic_years",
    "fieldtype": "Table MultiSelect",
    "label": "Offering Academic Years",
@@ -118,12 +103,25 @@
   {
    "fieldname": "column_break_dcmw",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "student_cohort",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cohort",
+   "options": "Student Cohort"
+  },
+  {
+   "fieldname": "offering_courses",
+   "fieldtype": "Table",
+   "label": "Offering Courses",
+   "options": "Program Offering Course"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-20 06:46:09.595571",
+ "modified": "2025-09-20 08:59:04.834662",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering",
@@ -196,5 +194,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "offering_title"
 }

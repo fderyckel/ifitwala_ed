@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-09-20 05:55:11.963579",
+ "creation": "2025-09-20 08:57:44.161976",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -10,36 +10,32 @@
   "course_name",
   "required",
   "elective_group",
-  "column_break_j520",
-  "term_start",
-  "term_end",
+  "column_break_50gf",
   "start_academic_year",
-  "end_academic_year",
+  "start_academic_term",
   "from_date",
+  "column_break_fh9b",
+  "end_academic_year",
+  "end_academic_term",
   "to_date"
  ],
  "fields": [
   {
    "fieldname": "course",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "Course",
    "options": "Course"
   },
   {
-   "fetch_from": "course.course_name",
    "fieldname": "course_name",
    "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Course Name",
-   "read_only": 1
+   "label": "Course Name"
   },
   {
    "default": "0",
    "fieldname": "required",
    "fieldtype": "Check",
-   "label": "Required",
-   "reqd": 1
+   "label": "Required"
   },
   {
    "fieldname": "elective_group",
@@ -47,34 +43,20 @@
    "label": "Elective Group"
   },
   {
-   "fieldname": "column_break_j520",
+   "fieldname": "column_break_50gf",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "term_start",
-   "fieldtype": "Link",
-   "label": "Term Start",
-   "options": "Term"
-  },
-  {
-   "fieldname": "term_end",
-   "fieldtype": "Link",
-   "label": "Term End",
-   "options": "Term"
   },
   {
    "fieldname": "start_academic_year",
    "fieldtype": "Link",
    "label": "Start Academic Year",
-   "options": "Academic Year",
-   "reqd": 1
+   "options": "Academic Year"
   },
   {
-   "fieldname": "end_academic_year",
+   "fieldname": "start_academic_term",
    "fieldtype": "Link",
-   "label": "End Academic Year",
-   "options": "Academic Year",
-   "reqd": 1
+   "label": "Start Academic Term",
+   "options": "Term"
   },
   {
    "fieldname": "from_date",
@@ -82,16 +64,32 @@
    "label": "From Date"
   },
   {
+   "fieldname": "column_break_fh9b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "end_academic_year",
+   "fieldtype": "Link",
+   "label": "End Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "end_academic_term",
+   "fieldtype": "Link",
+   "label": "End Academic Term",
+   "options": "Term"
+  },
+  {
    "fieldname": "to_date",
    "fieldtype": "Date",
-   "label": "To Date"
+   "label": "To date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-20 07:52:36.875074",
+ "modified": "2025-09-20 09:02:06.008340",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering Course",
