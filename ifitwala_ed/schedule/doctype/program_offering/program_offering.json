@@ -11,10 +11,13 @@
   "academic_year",
   "column_break_y4ol",
   "offering_title",
-  "is_active",
+  "status",
+  "intake_code",
   "section_break_ircj",
   "start_date",
   "end_date",
+  "offering_academic_years",
+  "column_break_dcmw",
   "capacity",
   "allow_self_enroll",
   "courses_section"
@@ -63,12 +66,6 @@
    "label": "Offering Title"
   },
   {
-   "default": "1",
-   "fieldname": "is_active",
-   "fieldtype": "Check",
-   "label": "Is Active"
-  },
-  {
    "fieldname": "section_break_ircj",
    "fieldtype": "Section Break"
   },
@@ -97,12 +94,36 @@
    "fieldname": "courses_section",
    "fieldtype": "Section Break",
    "label": "Courses"
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Planned\nActive\nArchived"
+  },
+  {
+   "fieldname": "intake_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Intake Code",
+   "options": "Student Cohort"
+  },
+  {
+   "fieldname": "offering_academic_years",
+   "fieldtype": "Table MultiSelect",
+   "label": "Offering Academic Years",
+   "options": "Program Offering Academic Year"
+  },
+  {
+   "fieldname": "column_break_dcmw",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-20 05:54:29.170159",
+ "modified": "2025-09-20 06:46:09.595571",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering",

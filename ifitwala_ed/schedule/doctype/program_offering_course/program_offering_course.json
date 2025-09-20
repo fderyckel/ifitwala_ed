@@ -12,7 +12,11 @@
   "elective_group",
   "column_break_j520",
   "term_start",
-  "term_end"
+  "term_end",
+  "start_academic_year",
+  "end_academic_year",
+  "from_date",
+  "to_date"
  ],
  "fields": [
   {
@@ -57,13 +61,37 @@
    "fieldtype": "Link",
    "label": "Term End",
    "options": "Term"
+  },
+  {
+   "fieldname": "start_academic_year",
+   "fieldtype": "Link",
+   "label": "Start Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_academic_year",
+   "fieldtype": "Link",
+   "label": "End Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-20 05:58:12.673297",
+ "modified": "2025-09-20 06:51:36.875074",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program OFfering Course",
