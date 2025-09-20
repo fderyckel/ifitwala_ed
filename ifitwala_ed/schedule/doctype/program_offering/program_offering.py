@@ -343,40 +343,61 @@ def compute_program_offering_defaults(program: str, school: str, ay_names=None):
 @frappe.whitelist()
 def program_course_options(program: str) -> list:
 	"""
-	Return a list of {course, course_name, required_by_default, subject_group}
-	from Program -> Program Course. If Program Course is absent/empty, fallback to
-	all Course docs (as a minimal list).
+	Return catalog items for a Program from Program Course, tolerant of schema:
+	- required flag may be named 'required' or 'is_required'
+	- 'subject_group' may not exist
+	Output:
+	[{"course":..., "course_name":..., "required_by_default":0/1, "subject_group":""}, ...]
 	"""
 	if not program:
 		return []
 
-	results = []
+	results: list[dict] = []
 
 	if frappe.db.table_exists("Program Course"):
+		meta = frappe.get_meta("Program Course")
+		fields = ["course"]
+		# detect required field name
+		req_field = "required" if meta.has_field("required") else ("is_required" if meta.has_field("is_required") else None)
+		if req_field:
+			fields.append(req_field)
+		has_group = meta.has_field("subject_group")
+		if has_group:
+			fields.append("subject_group")
+		# include optional course_name on Program Course if you have it (not required)
+		if meta.has_field("course_name"):
+			fields.append("course_name")
+
 		pc_rows = frappe.get_all(
 			"Program Course",
 			filters={"parent": program},
-			fields=["course", "required_by_default", "subject_group"],
+			fields=fields,
 			limit=2000,
 		)
+
 		courses = [r["course"] for r in pc_rows if r.get("course")]
 		if courses:
-			names = {r["name"]: r.get("course_name") for r in frappe.get_all(
+			# Pull Course names (fallback label)
+			course_names = {r["name"]: (r.get("course_name") or r["name"]) for r in frappe.get_all(
 				"Course", filters={"name": ["in", courses]}, fields=["name", "course_name"], limit=len(courses)
 			)}
 			for r in pc_rows:
 				c = r.get("course")
 				if not c:
 					continue
+				required_flag = 0
+				if req_field:
+					required_flag = 1 if (r.get(req_field) or 0) else 0
 				results.append({
 					"course": c,
-					"course_name": names.get(c) or c,
-					"required_by_default": 1 if (r.get("required_by_default") or 0) else 0,
-					"subject_group": r.get("subject_group") or "",
+					"course_name": (r.get("course_name") or course_names.get(c) or c),
+					"required_by_default": required_flag,
+					"subject_group": (r.get("subject_group") or "") if has_group else "",
 				})
-			return results
+			if results:
+				return results
 
-	# Fallback: entire Course list (trimmed)
+	# Fallback: all Course (trim)
 	for r in frappe.get_all("Course", fields=["name", "course_name"], limit=1000):
 		results.append({
 			"course": r["name"],
@@ -390,11 +411,8 @@ def program_course_options(program: str) -> list:
 @frappe.whitelist()
 def hydrate_catalog_rows(program: str, course_names: str) -> list:
 	"""
-	Given a JSON list of Course names, return ready-to-insert Program Offering Course rows based on Program Course defaults.
-	Maps:
-	- required_by_default -> required
-	- subject_group -> elective_group (adjust if you keep distinct fields)
-	Sets catalog_ref for traceability (e.g., "<Program>::<Course>").
+	Given a JSON list of Course names, return ready Program Offering Course rows,
+	mapping Program Course defaults (supports 'required' or 'is_required').
 	"""
 	try:
 		names = frappe.parse_json(course_names) or []
@@ -404,22 +422,30 @@ def hydrate_catalog_rows(program: str, course_names: str) -> list:
 		return []
 
 	# Base info from Course
-	course_info = {r["name"]: r.get("course_name") for r in frappe.get_all(
+	course_info = {r["name"]: (r.get("course_name") or r["name"]) for r in frappe.get_all(
 		"Course", filters={"name": ["in", names]}, fields=["name", "course_name"], limit=len(names)
 	)}
 
-	# Defaults from Program Course
 	pc_map = {}
 	if frappe.db.table_exists("Program Course"):
+		meta = frappe.get_meta("Program Course")
+		fields = ["course"]
+		req_field = "required" if meta.has_field("required") else ("is_required" if meta.has_field("is_required") else None)
+		if req_field:
+			fields.append(req_field)
+		has_group = meta.has_field("subject_group")
+		if has_group:
+			fields.append("subject_group")
+
 		for r in frappe.get_all(
 			"Program Course",
 			filters={"parent": program, "course": ["in", names]},
-			fields=["course", "required_by_default", "subject_group"],
+			fields=fields,
 			limit=len(names),
 		):
 			pc_map[r["course"]] = {
-				"required": 1 if (r.get("required_by_default") or 0) else 0,
-				"elective_group": r.get("subject_group") or ""
+				"required": 1 if (r.get(req_field) or 0) else 0 if req_field else 0,
+				"elective_group": (r.get("subject_group") or "") if has_group else "",
 			}
 
 	rows = []
