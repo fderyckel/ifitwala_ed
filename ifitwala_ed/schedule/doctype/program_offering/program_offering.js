@@ -9,48 +9,72 @@ function has_child_table(frm, fieldname) {
 }
 
 function getCache(frm) {
-	frm._po_cache = frm._po_cache || { progAbbr: null, orgAbbr: null };
+	frm._po_cache = frm._po_cache || { progAbbr: null, orgAbbr: null, ayDates: new Map() };
 	return frm._po_cache;
 }
 
 /* ---------------- Envelope from Table MultiSelect ---------------- */
+/* ----------------------------------------------------------------- */
 
-function get_ay_envelope(frm) {
+async function fetchAcademicYearDatesBulk(frm, ayNames) {
+	const cache = getCache(frm);
+	const toFetch = ayNames.filter(n => n && !cache.ayDates.has(n));
+	if (!toFetch.length) return;
+	for (const name of toFetch) {
+		try {
+			const r = await frappe.db.get_value("Academic Year", name, ["year_start_date", "year_end_date"]);
+			const m = r?.message || {};
+			cache.ayDates.set(name, { start: m.year_start_date || null, end: m.year_end_date || null });
+		} catch {
+			cache.ayDates.set(name, { start: null, end: null });
+		}
+	}
+}
+
+async function get_ay_envelope(frm) {
 	const rows = (frm.doc.offering_academic_years || []);
 	if (!rows.length) return { minStart: null, maxEnd: null, cohortYear: null };
 
-	const toObj = d => (d ? frappe.datetime.str_to_obj(d) : null);
+	// ensure we have dates: prefer row values; else fetch from Academic Year
+	const ayLinks = rows.map(r => r.section_break_idsl).filter(Boolean);
+	await fetchAcademicYearDatesBulk(frm, ayLinks);
 
-	const starts = rows.map(r => toObj(r.year_start_date)).filter(Boolean);
-	const ends   = rows.map(r => toObj(r.year_end_date)).filter(Boolean);
+	const toObj = d => (d ? frappe.datetime.str_to_obj(d) : null);
+	const starts = [];
+	const ends = [];
+
+	for (const r of rows) {
+		let s = r.year_start_date;
+		let e = r.year_end_date;
+		if (!s || !e) {
+			const cached = getCache(frm).ayDates.get(r.section_break_idsl);
+			if (cached) {
+				s = s || cached.start;
+				e = e || cached.end;
+			}
+		}
+		if (s) starts.push(toObj(s));
+		if (e) ends.push(toObj(e));
+	}
+
+	if (!starts.length && !ends.length) return { minStart: null, maxEnd: null, cohortYear: null };
 
 	const minStart = starts.length ? starts.reduce((a, b) => (a < b ? a : b)) : null;
 	const maxEnd   = ends.length   ? ends.reduce((a, b) => (a > b ? a : b)) : null;
 
-	let cohortDate = null;
-	if (maxEnd) cohortDate = maxEnd;
-	else if (starts.length) cohortDate = starts.reduce((a, b) => (a > b ? a : b));
-
-	return {
-		minStart,
-		maxEnd,
-		cohortYear: cohortDate ? cohortDate.getFullYear() : null
-	};
+	let cohortDate = maxEnd || (starts.length ? starts.reduce((a, b) => (a > b ? a : b)) : null);
+	return { minStart, maxEnd, cohortYear: cohortDate ? cohortDate.getFullYear() : null };
 }
 
-function set_head_dates_if_empty(frm) {
-	const { minStart, maxEnd } = get_ay_envelope(frm);
+async function set_head_dates_if_empty(frm) {
+	const { minStart, maxEnd } = await get_ay_envelope(frm);
 	if (!minStart && !maxEnd) return;
-
-	if (!frm.doc.start_date && minStart) {
-		frm.set_value("start_date", frappe.datetime.obj_to_str(minStart));
-	}
-	if (!frm.doc.end_date && maxEnd) {
-		frm.set_value("end_date", frappe.datetime.obj_to_str(maxEnd));
-	}
+	if (!frm.doc.start_date && minStart) await frm.set_value("start_date", frappe.datetime.obj_to_str(minStart));
+	if (!frm.doc.end_date && maxEnd)     await frm.set_value("end_date",   frappe.datetime.obj_to_str(maxEnd));
 }
 
 /* ---------------- Title generation per spec ---------------- */
+/* ----------------------------------------------------------------- */
 
 async function getProgramAbbr(frm) {
 	const cache = getCache(frm);
@@ -83,12 +107,10 @@ async function getOrganizationAbbrFromSchool(frm) {
 	}
 }
 
+
 let _titleTimer = null;
 async function suggest_offering_title(frm) {
-	// Only suggest if empty; user can override
 	if (frm.doc.offering_title) return;
-
-	// Need program, school, and at least one AY row
 	const rows = (frm.doc.offering_academic_years || []);
 	if (!frm.doc.program || !frm.doc.school || !rows.length) return;
 
@@ -97,17 +119,16 @@ async function suggest_offering_title(frm) {
 		getProgramAbbr(frm),
 		getOrganizationAbbrFromSchool(frm)
 	]);
-
 	if (!cohortYear || !progAbbr || !orgAbbr) return;
 
 	clearTimeout(_titleTimer);
 	_titleTimer = setTimeout(() => {
-		const title = `${orgAbbr} ${progAbbr} Cohort of ${cohortYear}`;
-		frm.set_value("offering_title", title);
+		frm.set_value("offering_title", `${orgAbbr} ${progAbbr} Cohort of ${cohortYear}`);
 	}, 150);
 }
 
 /* ---------------- AY span badge + warnings ---------------- */
+/* ---------------------------------------------------------- */
 
 function show_ay_span_badge(frm) {
 	const rows = (frm.doc.offering_academic_years || []);
@@ -249,49 +270,34 @@ function guard_row_spans_inside_head(frm) {
 /* ---------------- Form bindings ---------------- */
 
 frappe.ui.form.on("Program Offering", {
-	onload(frm) {
+	async refresh(frm) {
 		setup_child_queries(frm);
-	},
-	refresh(frm) {
-		setup_child_queries(frm);
-		suggest_offering_title(frm);
+		await set_head_dates_if_empty(frm);
+		await suggest_offering_title(frm);
 		show_ay_span_badge(frm);
-		set_head_dates_if_empty(frm);
 		warn_if_dates_outside_ay(frm);
 	},
-	program(frm) {
-		suggest_offering_title(frm);
+	async program(frm) {
+		await suggest_offering_title(frm);
 	},
-	school(frm) {
+	async school(frm) {
 		setup_child_queries(frm);
-		suggest_offering_title(frm);
-	},
-	start_date(frm) {
-		warn_if_dates_outside_ay(frm);
-	},
-	end_date(frm) {
-		warn_if_dates_outside_ay(frm);
-	},
-	validate(frm) {
-		guard_unique_ays(frm);
-		guard_ay_order_no_overlap(frm);
-		guard_row_spans_inside_head(frm);
+		await suggest_offering_title(frm);
 	}
 });
 
-// Table MultiSelect rows
 frappe.ui.form.on("Program Offering Academic Year", {
-	section_break_idsl(frm) {
-		set_head_dates_if_empty(frm);
-		suggest_offering_title(frm);
+	async section_break_idsl(frm) {
+		await set_head_dates_if_empty(frm);
+		await suggest_offering_title(frm);
 		warn_if_dates_outside_ay(frm);
 	},
-	year_start_date(frm) {
-		set_head_dates_if_empty(frm);
+	async year_start_date(frm) {
+		await set_head_dates_if_empty(frm);
 		warn_if_dates_outside_ay(frm);
 	},
-	year_end_date(frm) {
-		set_head_dates_if_empty(frm);
+	async year_end_date(frm) {
+		await set_head_dates_if_empty(frm);
 		warn_if_dates_outside_ay(frm);
 	}
 });
