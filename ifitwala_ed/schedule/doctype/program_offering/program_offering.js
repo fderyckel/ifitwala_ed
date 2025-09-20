@@ -3,9 +3,17 @@
 
 /* ---------------- tiny cache ---------------- */
 function getCache(frm) {
-	frm._po_cache = frm._po_cache || { progAbbr: null, orgAbbr: null, ayDates: new Map() };
+	// progAbbr/orgAbbr start as undefined (not fetched yet)
+	frm._po_cache = frm._po_cache || { progAbbr: undefined, orgAbbr: undefined, ayDates: new Map() };
 	return frm._po_cache;
 }
+
+function resetTitleBitsCache(frm) {
+	const cache = getCache(frm);
+	cache.progAbbr = undefined;
+	cache.orgAbbr = undefined;
+}
+
 function has_child_table(frm, fieldname) {
 	return !!(frm.fields_dict[fieldname] && frm.fields_dict[fieldname].grid);
 }
@@ -70,34 +78,43 @@ async function set_head_dates_if_empty(frm) {
 /* ---------------- title generation ---------------- */
 async function getProgramAbbr(frm) {
 	const cache = getCache(frm);
-	if (cache.progAbbr) return cache.progAbbr;
+	if (cache.progAbbr !== undefined) return cache.progAbbr;
 	if (!frm.doc.program) return null;
 
 	try {
 		const r = await frappe.db.get_value("Program", frm.doc.program, ["program_abbreviation"]);
-		cache.progAbbr = r?.message?.program_abbreviation || null;
+		cache.progAbbr = r?.message?.program_abbreviation ?? null; // null = fetched but empty
 		return cache.progAbbr;
-	} catch { return null; }
+	} catch {
+		cache.progAbbr = null;
+		return null;
+	}
 }
 
 async function getOrganizationAbbrFromSchool(frm) {
 	const cache = getCache(frm);
-	if (cache.orgAbbr) return cache.orgAbbr;
+	if (cache.orgAbbr !== undefined) return cache.orgAbbr;
 	if (!frm.doc.school) return null;
 
 	try {
 		const s = await frappe.db.get_value("School", frm.doc.school, ["organization"]);
 		const org = s?.message?.organization;
-		if (!org) return null;
+		if (!org) {
+			cache.orgAbbr = null;
+			return null;
+		}
 		const o = await frappe.db.get_value("Organization", org, ["abbr"]);
-		cache.orgAbbr = o?.message?.abbr || null;
+		cache.orgAbbr = o?.message?.abbr ?? null; // null = fetched but empty
 		return cache.orgAbbr;
-	} catch { return null; }
+	} catch {
+		cache.orgAbbr = null;
+		return null;
+	}
 }
 
 let _titleTimer = null;
 async function suggest_offering_title(frm) {
-	if (frm.doc.offering_title) return; // respect user override
+	if (frm.doc.offering_title) return;                 // user override respected
 	const rows = (frm.doc.offering_academic_years || []);
 	if (!frm.doc.program || !frm.doc.school || !rows.length) return;
 
@@ -107,7 +124,15 @@ async function suggest_offering_title(frm) {
 		getOrganizationAbbrFromSchool(frm)
 	]);
 
-	if (!cohortYear || !progAbbr || !orgAbbr) return;
+	if (!cohortYear || !progAbbr || !orgAbbr) {
+		// optional nudge so you know which bit is missing during setup
+		// remove if you prefer no alerts
+		if (!progAbbr) frappe.utils.debounce(() =>
+			frappe.show_alert({ message: __("Program abbreviation is empty."), indicator: "orange" }), 300)();
+		if (!orgAbbr) frappe.utils.debounce(() =>
+			frappe.show_alert({ message: __("Organization abbreviation is empty (via School)."), indicator: "orange" }), 300)();
+		return;
+	}
 
 	clearTimeout(_titleTimer);
 	_titleTimer = setTimeout(() => {
