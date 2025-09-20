@@ -253,8 +253,18 @@ frappe.ui.form.on("Program Offering", {
 		show_ay_span_badge(frm);
 		warn_if_dates_outside_ay(frm);
 	},
-	async program(frm) { await suggest_offering_title(frm); },
-	async school(frm)  { setup_child_queries(frm); await suggest_offering_title(frm); },
+
+	async program(frm) {
+		resetTitleBitsCache(frm);
+		await suggest_offering_title(frm);
+	},
+
+	async school(frm) {
+		resetTitleBitsCache(frm);
+		setup_child_queries(frm);
+		await suggest_offering_title(frm);
+	}, 
+	
 	validate(frm) {
 		guard_unique_ays(frm);
 		guard_ay_order_no_overlap(frm);
