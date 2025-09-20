@@ -287,16 +287,18 @@ class ProgramEnrollment(Document):
 # Program Offering helpers
 # -------------------------
 
+
 def _offering_core(offering_name: str) -> dict | None:
-	"""Return head fields of Program Offering."""
+	"""Return head fields of Program Offering (strict field names)."""
 	if not offering_name:
 		return None
 	return frappe.db.get_value(
 		"Program Offering",
 		offering_name,
-		["program", "school", "cohort", "start_date", "end_date"],
-		as_dict=True
+		["program", "school", "student_cohort", "start_date", "end_date"],
+		as_dict=True,
 	)
+
 
 def _offering_ay_spine(offering_name: str) -> list[dict]:
 	"""Ordered AY rows: [{'academic_year':..., 'start': date, 'end': date}] from the offering child table."""
