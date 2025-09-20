@@ -17,9 +17,8 @@ function apply_server_defaults_if_empty(frm) {
 			school: frm.doc.school,
 			ay_names: JSON.stringify(ayNames)
 		},
-		freeze: false,
 		callback: (r) => {
-			const out = r && r.message ? r.message : {};
+			const out = (r && r.message) || {};
 			if (!frm.doc.start_date && out.start_date) frm.set_value("start_date", out.start_date);
 			if (!frm.doc.end_date && out.end_date) frm.set_value("end_date", out.end_date);
 			if (!frm.doc.offering_title && out.offering_title) frm.set_value("offering_title", out.offering_title);

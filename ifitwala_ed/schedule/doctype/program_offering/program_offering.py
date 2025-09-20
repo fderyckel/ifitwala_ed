@@ -252,31 +252,47 @@ def compute_program_offering_defaults(program: str, school: str, ay_names=None):
 	"""
 	Return {"start_date": date|None, "end_date": date|None, "offering_title": str|None}
 	- start_date = earliest AY start
-- end_date   = latest AY end
-	- offering_title = "<ORG_ABBR> <PROG_ABBR> Cohort of YYYY" (YYYY from end of latest AY, else from start)
+	- end_date   = latest AY end
+	- offering_title = "<ORG_ABBR> <PROG_ABBR> Cohort of YYYY"
+	  (YYYY from latest AY end; if no ends, from latest start)
 	"""
-	ays = _coerce_list(ay_names)
+	def _list(x):
+		if isinstance(x, str):
+			try:
+				return frappe.parse_json(x) or []
+			except Exception:
+				return []
+		return list(x or [])
 
+	ays = _list(ay_names)
+
+	# Abbreviations (server-side; bypass UI perms)
 	prog_abbr = frappe.db.get_value("Program", program, "program_abbreviation")
+
 	org_name = frappe.db.get_value("School", school, "organization")
-	org_abbr = frappe.db.get_value("Organization", org_name, "abbr") if org_name else None
+	org_abbr = None
+	if org_name:
+		row = frappe.db.sql(
+			"select abbr from `tabOrganization` where name = %s",
+			(org_name,),
+			as_dict=False,
+		)
+		if row and row[0] and row[0][0]:
+			org_abbr = row[0][0]
 
-	min_start = None
-	max_end = None
-
+	# AY envelope
+	min_start, max_end = None, None
 	if ays:
 		for r in frappe.get_all(
 			"Academic Year",
 			filters={"name": ["in", ays]},
-			fields=["year_start_date", "year_end_date"]
+			fields=["year_start_date", "year_end_date"],
 		):
-			s = r.get("year_start_date")
-			e = r.get("year_end_date")
-			if s:
-				sd = getdate(s)
+			if r.get("year_start_date"):
+				sd = getdate(r["year_start_date"])
 				min_start = sd if not min_start or sd < min_start else min_start
-			if e:
-				ed = getdate(e)
+			if r.get("year_end_date"):
+				ed = getdate(r["year_end_date"])
 				max_end = ed if not max_end or ed > max_end else max_end
 
 	cohort_year = max_end.year if max_end else (min_start.year if min_start else None)
