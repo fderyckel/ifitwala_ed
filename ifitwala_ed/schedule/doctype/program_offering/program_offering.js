@@ -241,6 +241,8 @@ function open_catalog_picker(frm) {
 		]
 	});
 
+	d.$wrapper.addClass("po-catalog-dialog");
+
 	const $list = $('<div class="list-group" style="max-height:50vh;overflow:auto;"></div>');
 	d.get_field("list_html").$wrapper.empty().append($list);
 
@@ -349,6 +351,8 @@ function open_non_catalog_picker(frm) {
 			{ fieldname: "list_html", fieldtype: "HTML" },
 		],
 	});
+
+	d.$wrapper.addClass("po-catalog-dialog");
 
 	// 3) mount list + initial fetch (excludes already-added)
 	const $list = $('<div class="list-group" style="max-height:50vh;overflow:auto;"></div>');
