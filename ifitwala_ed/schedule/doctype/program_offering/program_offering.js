@@ -69,44 +69,44 @@ function set_offering_ay_grid_query(frm) {
 
 // Build the list UI inside the dialog
 function render_catalog_list($list, rows) {
-	// 1) inject style once
-	if (!document.getElementById("po-required-pill-style")) {
-		const css = `
-			.po-required-pill{
-				display:inline-block;
-				padding: 0.30rem 0.70rem;       /* a bit bigger */
-				border-radius: 9999px;          /* fully rounded */
-				background: #FDE68A;            /* pale orange */
-				color: #92400E;                 /* readable orange-brown text */
-				font-weight: 600;
-				font-size: 0.95rem;             /* larger text */
-				line-height: 1;
-				vertical-align: middle;
-			}`;
-		const style = document.createElement("style");
-		style.id = "po-required-pill-style";
-		style.textContent = css;
-		document.head.appendChild(style);
-	}
+  // Inject a scoped style once (beats Bootstrap 4/5; no global leak)
+  if (!document.getElementById("po-required-pill-style")) {
+    const style = document.createElement("style");
+    style.id = "po-required-pill-style";
+    style.textContent = `
+      .po-catalog-dialog .po-required-badge{
+        background: #FDE68A !important;  /* pale orange */
+        color: #92400E !important;        /* readable on pale orange */
+        font-weight: 600;
+        font-size: 0.95rem;               /* larger text */
+        padding: 0.30rem 0.70rem;         /* bigger pill */
+        border-radius: 9999px;            /* fully rounded */
+        line-height: 1;
+        vertical-align: middle;
+      }
+    `;
+    document.head.appendChild(style);
+  }
 
-	$list.empty();
+  $list.empty();
 
-	(rows || []).forEach(r => {
-		const $row = $(`
-			<label class="list-group-item d-flex align-items-start gap-2">
-				<input type="checkbox" class="form-check-input mt-1" data-course="${frappe.utils.escape_html(r.course)}">
-				<div class="flex-grow-1">
-					<div class="fw-semibold">${frappe.utils.escape_html(r.course_name || r.course)}</div>
-					<div class="text-muted small">${frappe.utils.escape_html(r.course)}</div>
-				</div>
-				<div class="ms-auto">
-					${r.required ? `<span class="po-required-pill">Required</span>` : ""}
-				</div>
-			</label>
-		`);
-		$list.append($row);
-	});
+  (rows || []).forEach((r) => {
+    const $row = $(`
+      <label class="list-group-item d-flex align-items-start gap-2">
+        <input type="checkbox" class="form-check-input mt-1" data-course="${frappe.utils.escape_html(r.course)}">
+        <div class="flex-grow-1">
+          <div class="fw-semibold">${frappe.utils.escape_html(r.course_name || r.course)}</div>
+          <div class="text-muted small">${frappe.utils.escape_html(r.course)}</div>
+        </div>
+        <div class="ms-auto">
+          ${r.required ? `<span class="badge badge-pill po-required-badge">Required</span>` : ""}
+        </div>
+      </label>
+    `);
+    $list.append($row);
+  });
 }
+
 
 
 // Read checked rows from the dialog list
