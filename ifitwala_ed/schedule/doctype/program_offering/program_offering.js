@@ -35,16 +35,35 @@ function get_ay_bounds(frm) {
 	return { startAY: ays[0], endAY: ays[ays.length - 1] }; // assume user ordered; server also enforces overlap/order
 }
 
+
 function set_offering_ay_grid_query(frm) {
-	// Child table: Program Offering Academic Year → Academic Year (Link)
-	// Order options by AY start date DESC so newest years appear first
-	frm.set_query("academic_year", "offering_academic_years", () => {
-		return {
-			filters: frm.doc.school ? { school: frm.doc.school } : {},
-			order_by: "year_start_date desc"
+	const CHILD_TABLE = "offering_academic_years";   // TMS field on parent
+	const LINK_IN_CHILD = "academic_year";           // link inside child rows
+
+	const ctrl = frm.fields_dict[CHILD_TABLE];
+
+	// preferred path: only if the grid exposes the link field
+	if (ctrl && ctrl.grid && typeof ctrl.grid.get_field === "function" && ctrl.grid.get_field(LINK_IN_CHILD)) {
+		frm.set_query(LINK_IN_CHILD, CHILD_TABLE, () => {
+			return {
+				filters: frm.doc.school ? { school: frm.doc.school } : {},
+				order_by: "year_start_date desc",
+			};
+		});
+		return;
+	}
+
+	// fallback: attach a get_query to the control itself (works for some TMS builds)
+	if (ctrl && typeof ctrl.get_query === "function") {
+		ctrl.get_query = () => {
+			return {
+				filters: frm.doc.school ? { school: frm.doc.school } : {},
+				order_by: "year_start_date desc",
+			};
 		};
-	});
+	}
 }
+
 
 /* ---------- Catalog dialog rendering + helpers ---------- */
 
