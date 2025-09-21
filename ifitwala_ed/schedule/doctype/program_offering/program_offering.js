@@ -38,7 +38,7 @@ function get_ay_bounds(frm) {
 function set_offering_ay_grid_query(frm) {
 	// Child table: Program Offering Academic Year → Academic Year (Link)
 	// Order options by AY start date DESC so newest years appear first
-	frm.set_query("section_break_idsl", "offering_academic_years", () => {
+	frm.set_query("academic_year", "offering_academic_years", () => {
 		return {
 			filters: frm.doc.school ? { school: frm.doc.school } : {},
 			order_by: "year_start_date desc"
@@ -327,7 +327,7 @@ function open_non_catalog_picker(frm) {
 
 
 frappe.ui.form.on("Program Offering", {
-	
+
 	onload(frm) {
 		set_offering_ay_grid_query(frm);
 	},
