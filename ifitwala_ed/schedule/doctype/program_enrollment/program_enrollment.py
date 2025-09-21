@@ -32,8 +32,8 @@ class ProgramEnrollment(Document):
 
 		# School/cohort always mirror offering (program no longer carries school)
 		self.school = off.school
-		if off.cohort:
-			self.cohort = off.cohort
+		if off.student_cohort:
+			self.cohort = off.student_cohort
 
 		# 2) Academic Year must come from offering AY spine
 		ay_spine = _offering_ay_spine(self.program_offering)
@@ -295,20 +295,21 @@ def _offering_core(offering_name: str) -> dict | None:
 	return frappe.db.get_value(
 		"Program Offering",
 		offering_name,
-		fields=["course","start_academic_year","end_academic_year","term_start","term_end","from_date","to_date","required","idx"], 
+		["program", "school", "student_cohort", "start_date", "end_date"],
 		as_dict=True,
 	)
 
 
+
 def _offering_ay_spine(offering_name: str) -> list[dict]:
-	"""Ordered AY rows: [{'academic_year':..., 'start': date, 'end': date}] from the offering child table."""
 	rows = frappe.get_all(
 		"Program Offering Academic Year",
 		filters={"parent": offering_name, "parenttype": "Program Offering"},
 		fields=["academic_year", "year_start_date as start", "year_end_date as end"],
-		order_by="start asc"
+		order_by="year_start_date asc"
 	)
 	return [{"academic_year": r["academic_year"], "start": getdate(r["start"]), "end": getdate(r["end"])} for r in rows]
+
 
 def _ay_bounds_for(offering_name: str, ay_name: str) -> tuple[object, object]:
 	"""(start,end) of an AY from the offering spine; avoids fetching the AY doc."""

@@ -107,14 +107,14 @@ frappe.ui.form.on("Program Enrollment", {
 		if (!frm.doc.program_offering) return;
 
 		frappe.db.get_value("Program Offering", frm.doc.program_offering,
-			["program", "school", "cohort"])
+			["program", "school", "student_cohort"])
 			.then(({ message }) => {
 				if (!message) return;
 				// Program is still present on Enrollment for now; set if empty
 				if (!frm.doc.program && message.program) frm.set_value("program", message.program);
 				// Always mirror school/cohort from offering
 				if (message.school) frm.set_value("school", message.school);
-				if (message.cohort) frm.set_value("cohort", message.cohort);
+				if (message.student_cohort) frm.set_value("cohort", message.student_cohort);
 			})
 			.then(() => load_offering_ay_spine(frm))
 			.then(() => {
