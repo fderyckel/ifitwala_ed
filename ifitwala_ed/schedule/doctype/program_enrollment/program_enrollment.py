@@ -510,6 +510,19 @@ def get_program_courses_for_enrollment(program_offering):
 	)
 	return [c for c in courses if c]
 
+@frappe.whitelist()
+def get_offering_ay_spine(offering: str):
+	if not offering:
+		return []
+	rows = frappe.get_all(
+		"Program Offering Academic Year",
+		filters={"parent": offering, "parenttype": "Program Offering"},
+		fields=["academic_year", "year_start_date", "year_end_date"],
+		order_by="year_start_date asc",
+		ignore_permissions=True,  # child table; safe + required for client use
+	)
+	return rows
+
 
 def get_terms_for_ay_with_fallback(school, academic_year):
     """Returns (terms, source_school) for the best available school: leaf, else nearest ancestor with terms for AY."""

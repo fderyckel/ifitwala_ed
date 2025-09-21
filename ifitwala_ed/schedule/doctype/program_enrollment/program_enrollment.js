@@ -64,17 +64,18 @@ function load_offering_ay_spine(frm) {
 		frm._off_ay_bounds = null;
 		return Promise.resolve();
 	}
-	return frappe.db.get_list("Program Offering Academic Year", {
-		filters: { parent: frm.doc.program_offering, parenttype: "Program Offering" },
-		fields: ["academic_year", "year_start_date", "year_end_date"],
-		order_by: "year_start_date asc"
-	}).then(rows => {
-		frm._off_ay_names = (rows || []).map(r => r.academic_year);
-		frm._off_ay_bounds = rows && rows.length
+	return frappe.call({
+		method: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_offering_ay_spine",
+		args: { offering: frm.doc.program_offering }
+	}).then(r => {
+		const rows = r.message || [];
+		frm._off_ay_names = rows.map(x => x.academic_year);
+		frm._off_ay_bounds = rows.length
 			? { start: rows[0].year_start_date, end: rows[rows.length - 1].year_end_date }
 			: null;
 	});
 }
+
 
 function show_offering_span_indicator(frm) {
 	if (!frm._off_ay_bounds) return;
