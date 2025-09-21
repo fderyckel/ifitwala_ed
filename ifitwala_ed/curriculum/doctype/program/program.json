@@ -73,13 +73,11 @@
    "label": "Program Abbreviation"
   },
   {
-   "depends_on": "eval: !doc.is_group",
    "fieldname": "course_section_section",
    "fieldtype": "Section Break",
    "label": "Course Section"
   },
   {
-   "depends_on": "eval:!doc.is_group",
    "fieldname": "courses",
    "fieldtype": "Table",
    "label": "Courses",
@@ -240,7 +238,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-20 22:48:25.115036",
+ "modified": "2025-09-20 12:49:29.375074",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",

@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"ORoV-qyamd\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Curriculum</span>\",\"col\":12}},{\"id\":\"o7SexzSw2d\",\"type\":\"card\",\"data\":{\"card_name\":\"Program\",\"col\":4}},{\"id\":\"BTNJXW4o4g\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum Settings\",\"col\":4}},{\"id\":\"-l6YhDaF-f\",\"type\":\"card\",\"data\":{\"card_name\":\"Enrollments\",\"col\":4}}]",
+ "content": "[{\"id\":\"ORoV-qyamd\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Curriculum</span>\",\"col\":12}},{\"id\":\"o7SexzSw2d\",\"type\":\"card\",\"data\":{\"card_name\":\"Program\",\"col\":4}},{\"id\":\"BTNJXW4o4g\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum Settings\",\"col\":4}},{\"id\":\"-l6YhDaF-f\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Tools\",\"col\":4}},{\"id\":\"H5GTRTzzKa\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}}]",
  "creation": "2024-12-08 11:58:32.394967",
  "custom_blocks": [],
  "docstatus": 0,
@@ -84,21 +84,11 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Enrollments",
-   "link_count": 5,
+   "label": "Reports & Tools",
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program Enrollment",
-   "link_count": 0,
-   "link_to": "Program Enrollment",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
   },
   {
    "hidden": 0,
@@ -135,13 +125,52 @@
    "is_query_report": 0,
    "label": "Student Group",
    "link_count": 0,
+   "link_to": "student_group_cards",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Schedule",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Offering",
+   "link_count": 0,
+   "link_to": "Program Offering",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Enrollment",
+   "link_count": 0,
+   "link_to": "Program Enrollment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Group",
+   "link_count": 0,
    "link_to": "Student Group",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2025-09-02 14:31:51.515706",
+ "modified": "2025-09-20 10:31:21.810399",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",

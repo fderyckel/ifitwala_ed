@@ -54,8 +54,7 @@
    "description": "Optional label e.g. IB DP class of 2029 A Campus",
    "fieldname": "offering_title",
    "fieldtype": "Data",
-   "label": "Offering Title",
-   "reqd": 1
+   "label": "Offering Title"
   },
   {
    "fieldname": "section_break_ircj",
@@ -121,7 +120,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-20 08:59:04.834662",
+ "modified": "2025-09-21 11:18:35.609911",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering",
@@ -192,6 +191,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "offering_title",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
