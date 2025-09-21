@@ -270,13 +270,16 @@ class ProgramEnrollment(Document):
 	def _validate_school_and_cohort_lock(self):
 		if not self.program_offering:
 			return
-		off = _offering_master(self.program_offering)
+		off = _offering_core(self.program_offering)
+		if not off:
+			# earlier validate() already checks, but keep this idempotent
+			return
 		if off.get("school") and self.school and self.school != off["school"]:
 			frappe.throw(_("School must match Program Offering ({0}).").format(off["school"]))
-		# adjust fieldname if your parent uses 'cohort' instead of 'student_cohort'
 		target_cohort = off.get("student_cohort")
 		if target_cohort and self.cohort and self.cohort != target_cohort:
 			frappe.throw(_("Cohort must match Program Offering ({0}).").format(target_cohort))
+
 
 
 	def _validate_dropped_requires_date(self):
