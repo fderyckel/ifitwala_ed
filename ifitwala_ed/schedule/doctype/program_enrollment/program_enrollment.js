@@ -29,6 +29,7 @@ function set_term_field_queries(frm) {
 	});
 }
 
+
 function set_queries(frm) {
 	// Optional convenience: filter Program Offering by Program (if user preselects a program)
 	frm.set_query("program_offering", () => {
@@ -58,6 +59,7 @@ function set_queries(frm) {
 	// Term fields: rely on the richer fallback helper (set via set_term_field_queries)
 	// (No extra term query here to avoid duplication/conflicts.)
 }
+
 
 function load_offering_ay_spine(frm) {
 	if (!frm.doc.program_offering) {
@@ -89,6 +91,154 @@ function show_offering_span_indicator(frm) {
 	]));
 }
 
+
+// --- Duplicate guard: helpers ----------------------------------------------
+
+function build_course_index(frm) {
+	// Returns a map: { course_name: [row_idx, ...] }
+	const idx = {};
+	(frm.doc.courses || []).forEach((r, i) => {
+		if (!r.course) return;
+		if (!idx[r.course]) idx[r.course] = [];
+		idx[r.course].push(i + 1); // 1-based row index for user messages
+	});
+	return idx;
+}
+
+function get_duplicate_courses(frm) {
+	const idx = build_course_index(frm);
+	const dups = Object.entries(idx).filter(([, rows]) => rows.length > 1);
+	return dups.map(([course, rows]) => ({ course, rows }));
+}
+
+function clear_if_duplicate(frm, cdt, cdn) {
+	const row = frappe.get_doc(cdt, cdn);
+	if (!row.course) return;
+
+	const dups = get_duplicate_courses(frm);
+	const hit = dups.find(d => d.course === row.course);
+	if (!hit) return;
+
+	// If duplicate: clear the NEW assignment (assume the latest change is the new one)
+	frappe.show_alert({ message: __("Course already added (row(s): {0}).", [hit.rows.join(", ")]), indicator: "orange" });
+	frappe.model.set_value(cdt, cdn, "course", "");
+}
+
+
+// --- New helpers: inline row validation ------------------------------------
+
+async function get_term_meta_cached(frm, term_name) {
+	frm._term_meta_cache = frm._term_meta_cache || {};
+	if (frm._term_meta_cache[term_name]) return frm._term_meta_cache[term_name];
+
+	// Fetch minimal fields we need; cache the result
+	const meta = await frappe.db.get_value(
+		"Term",
+		term_name,
+		["academic_year", "term_start_date", "term_end_date"]
+	);
+	const m = (meta && meta.message) || {};
+	frm._term_meta_cache[term_name] = {
+		academic_year: m.academic_year || null,
+		start: m.term_start_date || null,
+		end: m.term_end_date || null
+	};
+	return frm._term_meta_cache[term_name];
+}
+
+function set_parent_warning_banner(frm) {
+	const has_warn = (frm._row_warnings || 0) > 0;
+	frm.dashboard.clear_comment();
+	if (has_warn) {
+		frm.dashboard.set_comment(
+			__("Some course rows need attention (term order / AY mismatch). Review before saving."),
+			"yellow"
+		);
+	}
+}
+
+async function validate_row_terms(frm, row) {
+	// Reset form-level counter on first call of a validation burst
+	if (!frm._validating_rows) {
+		frm._validating_rows = true;
+		frm._row_warnings = 0;
+	}
+
+	let warned = false;
+
+	// Quick skip: nothing to validate if neither term set
+	if (!row.term_start && !row.term_end) return;
+
+	// Load term metas (cached)
+	const tStart = row.term_start ? await get_term_meta_cached(frm, row.term_start) : null;
+	const tEnd   = row.term_end   ? await get_term_meta_cached(frm, row.term_end)   : null;
+
+	// 1) Term order: end >= start (only when both present and both have dates)
+	if (tStart && tEnd && tStart.start && tEnd.end) {
+		// Compare by string dates is safe in ISO format; if unsure, use moment
+		if (tEnd.end < tStart.start) {
+			frappe.show_alert({ message: __("Row: Term End is before Term Start."), indicator: "orange" });
+			warned = true;
+		}
+	}
+
+	// 2) Term within selected AY (if AY chosen on parent)
+	if (frm.doc.academic_year) {
+		if (tStart && tStart.academic_year && tStart.academic_year !== frm.doc.academic_year) {
+			frappe.show_alert({ message: __("Row: Term Start is not in selected Academic Year."), indicator: "orange" });
+			warned = true;
+		}
+		if (tEnd && tEnd.academic_year && tEnd.academic_year !== frm.doc.academic_year) {
+			frappe.show_alert({ message: __("Row: Term End is not in selected Academic Year."), indicator: "orange" });
+			warned = true;
+		}
+	}
+
+	// 3) Term within Offering AY spine (always check if we have it)
+	// frm._off_ay_names is populated by load_offering_ay_spine()
+	if (Array.isArray(frm._off_ay_names) && frm._off_ay_names.length) {
+		if (tStart && tStart.academic_year && !frm._off_ay_names.includes(tStart.academic_year)) {
+			frappe.show_alert({ message: __("Row: Term Start AY is not part of the Program Offering span."), indicator: "orange" });
+			warned = true;
+		}
+		if (tEnd && tEnd.academic_year && !frm._off_ay_names.includes(tEnd.academic_year)) {
+			frappe.show_alert({ message: __("Row: Term End AY is not part of the Program Offering span."), indicator: "orange" });
+			warned = true;
+		}
+	}
+
+	if (warned) frm._row_warnings++;
+
+	// After a short debounce window, update the parent banner and clear the burst flag
+	clearTimeout(frm._validating_rows_timer);
+	frm._validating_rows_timer = setTimeout(() => {
+		set_parent_warning_banner(frm);
+		frm._validating_rows = false;
+	}, 150);
+}
+
+function warn_if_enrollment_date_outside_offering(frm) {
+	if (!frm._off_ay_bounds || !frm.doc.enrollment_date) return;
+	const s = frm._off_ay_bounds.start, e = frm._off_ay_bounds.end;
+	if (!s || !e) return;
+	const d = frm.doc.enrollment_date;
+	if (d < s || d > e) {
+		frappe.show_alert({
+			message: __("Enrollment Date is outside the Program Offering window."),
+			indicator: "orange"
+		});
+	}
+}
+
+function enforce_dropped_requires_date(frm, row) {
+	if (row.status === "Dropped" && !row.dropped_date) {
+		frappe.show_alert({
+			message: __("Please set a Dropped Date for dropped courses."),
+			indicator: "orange"
+		});
+	}
+}
+
 // --- Main form events ------------------------------------------------------
 
 frappe.ui.form.on("Program Enrollment", {
@@ -103,6 +253,45 @@ frappe.ui.form.on("Program Enrollment", {
 		set_queries(frm);
 		show_offering_span_indicator(frm);
 	},
+
+	before_save(frm) {
+		// Consolidate warnings discovered during row-level checks (Change 1).
+		if (frm._row_warnings && frm._row_warnings > 0) {
+			frappe.msgprint({
+				title: __("Review course rows"),
+				message: __(
+					"{0} potential issue(s) were detected (e.g., term order or AY mismatch). You can still save, but please review.",
+					[frm._row_warnings]
+				),
+				indicator: "yellow"
+			});
+		}
+
+		const missing = (frm.doc.courses || []).filter(r => r.status === "Dropped" && !r.dropped_date);
+		if (missing.length) {
+			frappe.msgprint({
+				title: __("Dropped courses missing dates"),
+				message: __("{0} row(s) marked Dropped have no Dropped Date. Please add dates.", [missing.length]),
+				indicator: "yellow"
+			});
+		}
+	}, 
+
+	enrollment_date(frm) {
+		warn_if_enrollment_date_outside_offering(frm);
+	},
+
+	program(frm) {
+		if (Array.isArray(frm.doc.courses) && frm.doc.courses.length > 0) {
+			const old_len = frm.doc.courses.length;
+			frm.clear_table("courses");
+			frm.refresh_field("courses");
+			frappe.show_alert({
+				message: __("{0} course row(s) cleared because Program changed.", [old_len]),
+				indicator: "orange"
+			});
+		}
+	}, 
 
 	// Offering is the source of truth for school/cohort and AY spine.
 	program_offering: frappe.utils.debounce(function (frm) {
@@ -161,6 +350,8 @@ frappe.ui.form.on("Program Enrollment Course", {
 	async course(frm, cdt, cdn) {
 		const row = frappe.get_doc(cdt, cdn);
 
+		clear_if_duplicate(frm, cdt, cdn);
+
 		// 1) Default status
 		if (!row.status) frappe.model.set_value(cdt, cdn, "status", "Enrolled");
 
@@ -196,5 +387,28 @@ frappe.ui.form.on("Program Enrollment Course", {
 				}
 			}
 		}
+		
+		await validate_row_terms(frm, row);
+
+	}, 
+
+ 	status(frm, cdt, cdn) {
+		const row = frappe.get_doc(cdt, cdn);
+		enforce_dropped_requires_date(frm, row);
+	},
+
+	dropped_date(frm, cdt, cdn) {
+		const row = frappe.get_doc(cdt, cdn);
+		enforce_dropped_requires_date(frm, row);
+	}, 
+
+	async term_start(frm, cdt, cdn) {
+		const row = frappe.get_doc(cdt, cdn);
+		await validate_row_terms(frm, row);
+	},
+
+	async term_end(frm, cdt, cdn) {
+		const row = frappe.get_doc(cdt, cdn);
+		await validate_row_terms(frm, row);
 	}
 });
