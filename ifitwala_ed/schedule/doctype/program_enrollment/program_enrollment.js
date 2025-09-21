@@ -39,10 +39,11 @@ function set_queries(frm) {
 
 	// Academic Year: restrict to the offering’s AY spine (client-side)
 	frm.set_query("academic_year", () => {
+		const q = { filters: {}, order_by: "year_start_date desc" };
 		if (Array.isArray(frm._off_ay_names) && frm._off_ay_names.length) {
-			return { filters: { name: ["in", frm._off_ay_names] } };
+			q.filters.name = ["in", frm._off_ay_names];
 		}
-		return {};
+		return q;
 	});
 
 	// Courses grid: only courses defined on the selected Program Offering
