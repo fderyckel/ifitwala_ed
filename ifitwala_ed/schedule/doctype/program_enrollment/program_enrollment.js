@@ -252,6 +252,7 @@ frappe.ui.form.on("Program Enrollment", {
 	refresh(frm) {
 		set_queries(frm);
 		show_offering_span_indicator(frm);
+		warn_if_enrollment_date_outside_offering(frm); 
 	},
 
 	before_save(frm) {
@@ -273,6 +274,24 @@ frappe.ui.form.on("Program Enrollment", {
 				title: __("Dropped courses missing dates"),
 				message: __("{0} row(s) marked Dropped have no Dropped Date. Please add dates.", [missing.length]),
 				indicator: "yellow"
+			});
+		}
+
+		const idx = {};
+		(frm.doc.courses || []).forEach((r, i) => {
+			if (!r.course) return;
+			(idx[r.course] ||= []).push(i + 1);
+		});
+		const dupLines = Object.entries(idx)
+			.filter(([, rows]) => rows.length > 1)
+			.map(([course, rows]) => `• ${course} — rows ${rows.join(", ")}`);
+		if (dupLines.length) {
+			frappe.throw({
+				title: __("Duplicate Courses in Enrollment"),
+				message: __(
+					"Each course can only appear once. Please resolve:<br><br>{0}",
+					[`<div style='margin-left:.5rem'>${dupLines.join("<br>")}</div>`]
+				)
 			});
 		}
 	}, 
@@ -325,11 +344,13 @@ frappe.ui.form.on("Program Enrollment", {
 					});
 				}
 				show_offering_span_indicator(frm);
+				warn_if_enrollment_date_outside_offering(frm); 
 			});
 	}, 200),
 
 	academic_year(frm) {
 		show_offering_span_indicator(frm);
+		warn_if_enrollment_date_outside_offering(frm); 
 	},
 
 	// Keep this—now calls the server method that seeds from Program Offering Course
@@ -351,6 +372,7 @@ frappe.ui.form.on("Program Enrollment Course", {
 		const row = frappe.get_doc(cdt, cdn);
 
 		clear_if_duplicate(frm, cdt, cdn);
+		if (!row.course) return;
 
 		// 1) Default status
 		if (!row.status) frappe.model.set_value(cdt, cdn, "status", "Enrolled");
