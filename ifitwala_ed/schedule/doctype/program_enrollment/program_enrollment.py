@@ -300,7 +300,6 @@ def _offering_core(offering_name: str) -> dict | None:
 	)
 
 
-
 def _offering_ay_spine(offering_name: str) -> list[dict]:
 	rows = frappe.get_all(
 		"Program Offering Academic Year",
@@ -318,11 +317,13 @@ def _ay_bounds_for(offering_name: str, ay_name: str) -> tuple[object, object]:
 			return r["start"], r["end"]
 	return (None, None)
 
+
 def _term_meta(term: str) -> tuple[str | None, str | None, object | None, object | None]:
 	"""(school, academic_year, term_start_date, term_end_date) for Term."""
 	return frappe.db.get_value(
 		"Term", term, ["school", "academic_year", "term_start_date", "term_end_date"], as_dict=False
 	) or (None, None, None, None)
+
 
 def _compute_effective_course_span(offering_name: str, roc: dict) -> tuple[object, object]:
 	"""
@@ -340,11 +341,11 @@ def _compute_effective_course_span(offering_name: str, roc: dict) -> tuple[objec
 	end_dt = e_ay_end
 
 	if roc.get("term_start"):
-		_, _, t_start, _ = _term_meta(roc["term_start"])
+		ts_school, ts_ay, t_start, t_end_ignored = _term_meta(roc["term_start"])
 		if t_start:
 			start_dt = max(start_dt, getdate(t_start))
 	if roc.get("term_end"):
-		_, _, t_start, t_end = _term_meta(roc["term_end"])
+		te_school, te_ay, t2_start, t2_end = _term_meta(roc["term_end"])
 		if t_end or t_start:
 			end_dt = min(end_dt, getdate(t_end) if t_end else getdate(t_start))
 
@@ -354,6 +355,7 @@ def _compute_effective_course_span(offering_name: str, roc: dict) -> tuple[objec
 		end_dt = min(end_dt, getdate(roc["to_date"]))
 
 	return (start_dt, end_dt)
+
 
 def _offering_courses_index(offering_name: str) -> dict[str, list[dict]]:
 	"""
