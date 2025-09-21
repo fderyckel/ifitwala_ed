@@ -246,39 +246,48 @@ function open_catalog_picker(frm) {
 
 /* ---------------- Non-catalog Picker ---------------- */
 
-// Fetch active Course records that are NOT already in this offering
+// Fetch Course docs not already in this offering, only "Active" status
 function fetch_non_catalog_rows(frm, search, on_done) {
 	const exclude = current_offering_course_names(frm); // already-added on this offering
+	const term = (search || "").trim();
+
 	const args = {
 		doctype: "Course",
-		fields: ["name", "course_name"],
+		fields: ["name", "course_name", "status"],
 		limit_page_length: 50,
 		order_by: "modified desc",
-		// base filter: only active courses
-		filters: [["Course", "disabled", "=", 0]],
+		// Only active courses (per your Course schema: Status = Active/Discontinued)
+		filters: [["Course", "status", "=", "Active"]],
 	};
 
-	// exclude already-added
+	// Exclude already-added courses on this offering
 	if (exclude && exclude.length) {
 		args.filters.push(["Course", "name", "not in", exclude]);
 	}
-	// optional search
-	const term = (search || "").trim();
+
+	// Optional search across name + course_name
 	if (term) {
-		args.filters.push(["Course", "name", "like", `%${term}%`]);
+		args.or_filters = [
+			["Course", "name", "like", `%${term}%`],
+			["Course", "course_name", "like", `%${term}%`],
+		];
 	}
 
-	frappe.call({ method: "frappe.client.get_list", args }).then((r) => {
-		const raw = r.message || [];
-		// normalize to the same shape used by the catalog renderer
-		const rows = raw.map((x) => ({
-			course: x.name,
-			course_name: x.course_name || x.name,
-			required: 0,
-			non_catalog: 1,
-		}));
-		on_done(rows);
-	});
+	frappe.call({ method: "frappe.client.get_list", args })
+		.then((r) => {
+			const raw = r.message || [];
+			const rows = raw.map((x) => ({
+				course: x.name,
+				course_name: x.course_name || x.name,
+				required: 0,
+				non_catalog: 1,
+			}));
+			on_done(rows);
+		})
+		.catch(() => {
+			on_done([]);
+			frappe.show_alert({ message: __("Could not load non-catalog courses."), indicator: "orange" });
+		});
 }
 
 // Custom dialog modeled exactly after the Catalog picker
