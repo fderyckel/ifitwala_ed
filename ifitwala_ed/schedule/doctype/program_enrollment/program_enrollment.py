@@ -156,11 +156,11 @@ class ProgramEnrollment(Document):
 			enr_ay_start, enr_ay_end = _ay_bounds_for(self.program_offering, self.academic_year)
 			enr_start, enr_end = enr_ay_start, enr_ay_end
 			if row.term_start:
-				_, _, ts_start, _ = _term_meta(row.term_start)
+				_school_1, _ay_1, ts_start, _term_end_ignored = _term_meta(row.term_start)
 				if ts_start:
 					enr_start = max(enr_start, getdate(ts_start))
 			if row.term_end:
-				_, _, te_start, te_end = _term_meta(row.term_end)
+				_school_2, _ay_2, te_start, te_end = _term_meta(row.term_end)
 				if te_end or te_start:
 					enr_end = min(enr_end, getdate(te_end) if te_end else getdate(te_start))
 

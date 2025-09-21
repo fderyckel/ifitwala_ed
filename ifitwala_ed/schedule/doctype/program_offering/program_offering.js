@@ -217,55 +217,103 @@ function open_catalog_picker(frm) {
 
 /* ---------------- Non-catalog Picker ---------------- */
 
+// Fetch active Course records that are NOT already in this offering
+function fetch_non_catalog_rows(frm, search, on_done) {
+	const exclude = current_offering_course_names(frm); // already-added on this offering
+	const args = {
+		doctype: "Course",
+		fields: ["name", "course_name"],
+		limit_page_length: 50,
+		order_by: "modified desc",
+		// base filter: only active courses
+		filters: [["Course", "disabled", "=", 0]],
+	};
+
+	// exclude already-added
+	if (exclude && exclude.length) {
+		args.filters.push(["Course", "name", "not in", exclude]);
+	}
+	// optional search
+	const term = (search || "").trim();
+	if (term) {
+		args.filters.push(["Course", "name", "like", `%${term}%`]);
+	}
+
+	frappe.call({ method: "frappe.client.get_list", args }).then((r) => {
+		const raw = r.message || [];
+		// normalize to the same shape used by the catalog renderer
+		const rows = raw.map((x) => ({
+			course: x.name,
+			course_name: x.course_name || x.name,
+			required: 0,
+			non_catalog: 1,
+		}));
+		on_done(rows);
+	});
+}
+
+// Custom dialog modeled exactly after the Catalog picker
 function open_non_catalog_picker(frm) {
+	// 1) validate AY envelope and grab start/end
+	if (!require_ay_span(frm)) return;
 	const { startAY, endAY } = get_ay_bounds(frm);
 	if (!startAY || !endAY) {
 		frappe.msgprint({ message: __("Add at least one Academic Year to the Offering first."), indicator: "orange" });
 		return;
 	}
 
-	new frappe.ui.form.MultiSelectDialog({
-		doctype: "Course",
-		size: "large",
-		pagelength: 20,
-
-		// Belt-and-suspenders: both a safe object and a method override.
-		primary_filters: {},
-		get_primary_filters: () => [],
-
-		add_filters_group: 1,
-		setters: {},
-
-		get_query: () => ({ filters: { disabled: 0 } }),
+	// 2) build dialog
+	const d = new frappe.ui.Dialog({
+		title: __("Add Non-catalog Courses"),
+		size: "extra-large",
 		primary_action_label: __("Add Selected"),
-		action(selections) {
-			const picked = Array.isArray(selections) ? selections : [];
-			const seen = new Set((frm.doc.offering_courses || []).map(r => r.course).filter(Boolean));
+		primary_action: () => {
+			const chosen = get_checked_rows($list);
+			if (!chosen.length) return d.hide();
+
 			let added = 0;
-
-			for (const name of picked) {
-				if (seen.has(name)) {
-					frappe.show_alert({ message: __("Skipped duplicate: {0}", [name]), indicator: "orange" });
-					continue;
-				}
-				const row = frm.add_child("offering_courses");
-				row.course = name;
-				row.course_name = name;
-				row.required = 0;
-				row.non_catalog = 1;
-				row.catalog_ref = null;
-				row.start_academic_year = startAY;
-				row.end_academic_year = endAY;
-				seen.add(name);
-				added++;
+			for (const r of chosen) {
+				// mark non-catalog and set AY span
+				const ok = add_offering_course_if_new(frm, {
+					course: r.course,
+					course_name: r.course_name || r.course,
+					required: 0,
+					non_catalog: 1,
+					catalog_ref: null,
+					start_academic_year: startAY,
+					end_academic_year: endAY,
+				});
+				if (ok) added++;
 			}
-
-			if (added) frm.refresh_field("offering_courses");
-			this.dialog.hide();
-			frappe.show_alert({ message: __("Added {0} non-catalog course(s).", [added]), indicator: "green" });
+			if (added) {
+				frm.refresh_field("offering_courses");
+				const term = (d.get_value("search") || "").trim();
+				// refresh list to hide just-added
+				fetch_non_catalog_rows(frm, term, (rows) => render_catalog_list($list, rows));
+			}
 		},
+		fields: [
+			{
+				fieldname: "search",
+				fieldtype: "Data",
+				label: __("Search courses..."),
+				change: () => {
+					const term = (d.get_value("search") || "").trim();
+					fetch_non_catalog_rows(frm, term, (rows) => render_catalog_list($list, rows));
+				},
+			},
+			{ fieldname: "list_html", fieldtype: "HTML" },
+		],
 	});
+
+	// 3) mount list + initial fetch (excludes already-added)
+	const $list = $('<div class="list-group" style="max-height:50vh;overflow:auto;"></div>');
+	d.get_field("list_html").$wrapper.empty().append($list);
+	fetch_non_catalog_rows(frm, "", (rows) => render_catalog_list($list, rows));
+
+	d.show();
 }
+
 
 
 frappe.ui.form.on("Program Offering", {
