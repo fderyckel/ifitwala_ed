@@ -295,7 +295,7 @@ def _offering_core(offering_name: str) -> dict | None:
 	return frappe.db.get_value(
 		"Program Offering",
 		offering_name,
-		["program", "school", "student_cohort", "start_date", "end_date"],
+		fields=["course","start_academic_year","end_academic_year","term_start","term_end","from_date","to_date","required","idx"], 
 		as_dict=True,
 	)
 
@@ -326,7 +326,7 @@ def _term_meta(term: str) -> tuple[str | None, str | None, object | None, object
 def _compute_effective_course_span(offering_name: str, roc: dict) -> tuple[object, object]:
 	"""
 	From a Program Offering Course row dict (keys: start_academic_year, end_academic_year,
-	start_term, end_term, from_date, to_date), compute effective (start_dt, end_dt).
+	term_start, term_end, from_date, to_date), compute effective (start_dt, end_dt).
 	"""
 	say, eay = roc.get("start_academic_year"), roc.get("end_academic_year")
 	s_ay_start, _s_ay_end = _ay_bounds_for(offering_name, say)
@@ -338,12 +338,12 @@ def _compute_effective_course_span(offering_name: str, roc: dict) -> tuple[objec
 	start_dt = s_ay_start
 	end_dt = e_ay_end
 
-	if roc.get("start_term"):
-		_, _, t_start, _ = _term_meta(roc["start_term"])
+	if roc.get("term_start"):
+		_, _, t_start, _ = _term_meta(roc["term_start"])
 		if t_start:
 			start_dt = max(start_dt, getdate(t_start))
-	if roc.get("end_term"):
-		_, _, t_start, t_end = _term_meta(roc["end_term"])
+	if roc.get("term_end"):
+		_, _, t_start, t_end = _term_meta(roc["term_end"])
 		if t_end or t_start:
 			end_dt = min(end_dt, getdate(t_end) if t_end else getdate(t_start))
 
@@ -357,12 +357,12 @@ def _compute_effective_course_span(offering_name: str, roc: dict) -> tuple[objec
 def _offering_courses_index(offering_name: str) -> dict[str, list[dict]]:
 	"""
 	Index: course -> list of effective spans.
-	Each span: {'start': d, 'end': d, 'start_ay':..., 'end_ay':..., 'start_term':..., 'end_term':..., 'required': 0/1}
+	Each span: {'start': d, 'end': d, 'start_ay':..., 'end_ay':..., 'term_start':..., 'term_end':..., 'required': 0/1}
 	"""
 	rows = frappe.get_all(
 		"Program Offering Course",
 		filters={"parent": offering_name, "parenttype": "Program Offering"},
-		fields=["course","start_academic_year","end_academic_year","start_term","end_term","from_date","to_date","required","idx"],
+		fields=["course","start_academic_year","end_academic_year","term_start","term_end","from_date","to_date","required","idx"],
 		order_by="idx asc"
 	)
 	idx: dict[str, list[dict]] = {}
@@ -371,7 +371,7 @@ def _offering_courses_index(offering_name: str) -> dict[str, list[dict]]:
 		item = {
 			"start": s, "end": e,
 			"start_ay": r.get("start_academic_year"), "end_ay": r.get("end_academic_year"),
-			"start_term": r.get("start_term"), "end_term": r.get("end_term"),
+			"term_start": r.get("term_start"), "term_end": r.get("term_end"),
 			"required": r.get("required") or 0
 		}
 		idx.setdefault(r["course"], []).append(item)
