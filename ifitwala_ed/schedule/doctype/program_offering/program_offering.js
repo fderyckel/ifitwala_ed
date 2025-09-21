@@ -69,39 +69,45 @@ function set_offering_ay_grid_query(frm) {
 
 // Build the list UI inside the dialog
 function render_catalog_list($list, rows) {
-  $list.empty();
+	// 1) inject style once
+	if (!document.getElementById("po-required-pill-style")) {
+		const css = `
+			.po-required-pill{
+				display:inline-block;
+				padding: 0.30rem 0.70rem;       /* a bit bigger */
+				border-radius: 9999px;          /* fully rounded */
+				background: #FDE68A;            /* pale orange */
+				color: #92400E;                 /* readable orange-brown text */
+				font-weight: 600;
+				font-size: 0.95rem;             /* larger text */
+				line-height: 1;
+				vertical-align: middle;
+			}`;
+		const style = document.createElement("style");
+		style.id = "po-required-pill-style";
+		style.textContent = css;
+		document.head.appendChild(style);
+	}
 
-  const items = Array.isArray(rows) ? rows : [];
-  if (!items.length) {
-    $list.append(
-      `<div class="text-muted p-3">${__("No matching courses in catalog.")}</div>`
-    );
-    return;
-  }
+	$list.empty();
 
-  for (const r of items) {
-    const course = frappe.utils.escape_html(r.course || "");
-    const cname  = frappe.utils.escape_html(r.course_name || r.course || "");
-    const req    = r.required ? 1 : 0;
-
-    const $row = $(`
-      <div class="list-group-item">
-        <div class="d-flex align-items-start gap-2">
-          <input type="checkbox" class="form-check-input mt-1 pc-pick"
-                 data-course="${course}"
-                 data-course_name="${cname}"
-                 data-required="${req}">
-          <div class="flex-grow-1">
-            <div class="fw-semibold">${cname}</div>
-            <div class="text-muted small">${course}</div>
-          </div>
-          ${req ? `<span class="badge bg-secondary">${__("Required")}</span>` : ""}
-        </div>
-      </div>
-    `);
-    $list.append($row);
-  }
+	(rows || []).forEach(r => {
+		const $row = $(`
+			<label class="list-group-item d-flex align-items-start gap-2">
+				<input type="checkbox" class="form-check-input mt-1" data-course="${frappe.utils.escape_html(r.course)}">
+				<div class="flex-grow-1">
+					<div class="fw-semibold">${frappe.utils.escape_html(r.course_name || r.course)}</div>
+					<div class="text-muted small">${frappe.utils.escape_html(r.course)}</div>
+				</div>
+				<div class="ms-auto">
+					${r.required ? `<span class="po-required-pill">Required</span>` : ""}
+				</div>
+			</label>
+		`);
+		$list.append($row);
+	});
 }
+
 
 // Read checked rows from the dialog list
 function get_checked_rows($list) {
