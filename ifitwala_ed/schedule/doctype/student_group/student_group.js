@@ -18,7 +18,6 @@ function get_student_filters(frm) {
 		academic_year: frm.doc.academic_year,
 		group_based_on: frm.doc.group_based_on,
 		term: frm.doc.term,
-		program: frm.doc.program,                      // kept for back-compat on server side if used
 		cohort: frm.doc.cohort,
 		course: frm.doc.course,
 		student_group: frm.doc.name,
@@ -189,42 +188,52 @@ frappe.ui.form.on("Student Group", {
 	},
 
 
-	get_students(frm) {
-		if (["Other", "Activity"].includes(frm.doc.group_based_on)) {
-			frappe.msgprint(__("Select students manually for Activity or Other based groups."));
-			return;
-		}
+	get_students: function (frm) {
+	// Activity / Other groups are manual selection only
+	if (["Other", "Activity"].includes(frm.doc.group_based_on)) {
+		frappe.msgprint(__("Select students manually for Activity or Other based groups."));
+		return;
+	}
 
-		if (!frm.doc.academic_year) {
-			frappe.msgprint(__("Please select an Academic Year before fetching students."));
-			return;
-		}
+	// We require an Academic Year (scoped to Program Offering's spine)
+	if (!frm.doc.academic_year) {
+		frappe.msgprint(__("Please select an Academic Year before fetching students."));
+		return;
+	}
 
-		const existing = frm.doc.students.map(r => r.student);
-		let max_roll = Math.max(0, ...frm.doc.students.map(r => r.group_roll_number || 0));
+	// Build existing map to avoid duplicates and track next roll number
+	const existing = Array.isArray(frm.doc.students) ? frm.doc.students.map(r => r.student) : [];
+	let max_roll_no = Array.isArray(frm.doc.students)
+		? Math.max(0, ...frm.doc.students.map(r => r.group_roll_number || 0))
+		: 0;
 
-		frappe.call({
-			method: "ifitwala_ed.schedule.doctype.student_group.student_group.get_students",
-			args: get_student_filters(frm),
-			callback(r) {
-				if (!r.message) {
-					frappe.msgprint(__("No new students found or Student Group already updated."));
-					return;
-				}
-				r.message.forEach(d => {
-					if (!existing.includes(d.student)) {
-						const row = frm.add_child("students");
-						row.student = d.student;
-						row.student_name = d.student_name;
-						row.active = d.active || 0;
-						row.group_roll_number = ++max_roll;
-					}
-				});
-				frm.refresh_field("students");
-				frm.save();
+	// Server call (offering-first). Args come from the helper in this file.
+	frappe.call({
+		method: "ifitwala_ed.schedule.doctype.student_group.student_group.get_students",
+		args: get_student_filters(frm),
+		callback: function (r) {
+			const rows = Array.isArray(r.message) ? r.message : [];
+			if (!rows.length) {
+				frappe.msgprint(__("No new students found or Student Group already updated."));
+				return;
 			}
-		});
-	},
+
+			rows.forEach(d => {
+				if (d.student && !existing.includes(d.student)) {
+					const row = frm.add_child("students");
+					row.student = d.student;
+					row.student_name = d.student_name || "";
+					row.active = d.active ? 1 : 0;
+					row.group_roll_number = ++max_roll_no;
+				}
+			});
+
+			frm.refresh_field("students");
+			frm.save();
+		}
+	});
+},
+
 
 	add_blocks(frm) {
 		frappe.call({

@@ -8,10 +8,7 @@ from frappe.utils import cint, get_link_to_form
 from ifitwala_ed.schedule.schedule_utils import validate_duplicate_student
 from ifitwala_ed.schedule.schedule_utils import check_slot_conflicts, get_conflict_rule
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule
-from ifitwala_ed.utilities.school_tree import (
-    get_ancestor_schools,          # for the picker
-    get_first_ancestor_with_doc    # for automatic lookup
-)
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools 
 from ifitwala_ed.schedule.attendance_utils import invalidate_meeting_dates
 
 class StudentGroup(Document):
@@ -250,28 +247,28 @@ class StudentGroup(Document):
 					student.group_roll_number, student.student_name
 				))
 
-			# Check program enrollment (optional)
-			if self.program:
+			# Enrollment integrity by Program Offering (optional, only if offering is set)
+			if self.program_offering:
 				if not frappe.db.exists("Program Enrollment", {
 					"student": student.student,
-					"program": self.program,
+					"program_offering": self.program_offering,
 					"academic_year": self.academic_year
 				}):
-					frappe.throw(_("Student {0} ({1}) is not enrolled in the program {2} for academic year {3}.").format(
+					frappe.throw(_("Student {0} ({1}) is not enrolled in the selected Program Offering for academic year {2}.").format(
 						student.student_name,
 						student.student,
-						get_link_to_form("Program", self.program),
 						self.academic_year
 					))
 
-			# Check cohort (optional)
+			# Cohort check (optional) — still anchored on the same offering+AY
 			if self.cohort:
 				if not frappe.db.exists("Program Enrollment", {
 					"student": student.student,
-					"cohort": self.cohort,
-					"academic_year": self.academic_year
+					"program_offering": self.program_offering,
+					"academic_year": self.academic_year,
+					"cohort": self.cohort
 				}):
-					frappe.throw(_("Student {0} ({1}) is not part of the cohort {2}.").format(
+					frappe.throw(_("Student {0} ({1}) is not part of the cohort {2} for this Program Offering and Academic Year.").format(
 						student.student_name,
 						student.student,
 						get_link_to_form("Student Cohort", self.cohort)
@@ -402,35 +399,72 @@ class StudentGroup(Document):
 
 	def _get_school_schedule(self):
 		"""
-		Returns the School Schedule to validate against.
+		Resolve the School Schedule used to validate schedule rows.
 
-		• If Program is set  → walk the school tree (self + parents)
-			until we find the first School Schedule owned by that school.
-		• If Program is blank → rely on the explicit school_schedule field.
+		Priority:
+		1) If an explicit `school_schedule` is set, validate it (AY + school chain) and return it.
+		2) Otherwise, auto-pick the first schedule for:
+			- Program Offering's school (if present), else
+			- Student Group's school (if set), else
+			- Academic Year's school
+			... including ancestors (via nested set), for the selected Academic Year.
 		"""
-		if self.program:
-			base_school = frappe.db.get_value("Program", self.program, "school")
-			allowed = get_ancestor_schools(base_school)    # self + parents
+		if not self.academic_year:
+			frappe.throw(_("Please select an Academic Year first."))
 
-			res = frappe.db.sql("""
-				SELECT ss.name
-				FROM `tabSchool Schedule` ss
-				JOIN `tabSchool Calendar` sc ON sc.name = ss.school_calendar
-				WHERE ss.school IN %(schools)s
+		# 1) If user explicitly chose a schedule, validate and return it
+		if self.school_schedule:
+			ss = frappe.get_cached_doc("School Schedule", self.school_schedule)
+
+			# Validate AY via its calendar
+			cal_ay = frappe.db.get_value("School Calendar", ss.school_calendar, "academic_year")
+			if cal_ay != self.academic_year:
+				frappe.throw(_("Selected School Schedule {0} belongs to Academic Year {1}, not {2}.")
+					.format(ss.name, cal_ay or "?", self.academic_year))
+
+			# Validate school chain (schedule's school must be an ancestor (or same) of the base)
+			base_school = (
+				frappe.db.get_value("Program Offering", self.program_offering, "school") if self.program_offering
+				else (self.school or frappe.db.get_value("Academic Year", self.academic_year, "school"))
+			)
+			if not base_school:
+				frappe.throw(_("Cannot resolve a base School from Program Offering / Student Group / Academic Year."))
+
+			allowed = set(get_ancestor_schools(base_school))  # self + parents
+			if ss.school not in allowed:
+				frappe.throw(_("School Schedule {0} is owned by {1}, which is not in the ancestor chain of {2}.")
+					.format(ss.name, ss.school, base_school))
+
+			return ss
+
+		# 2) Auto-pick from the allowed chain for the selected AY
+		base_school = (
+			frappe.db.get_value("Program Offering", self.program_offering, "school") if self.program_offering
+			else (self.school or frappe.db.get_value("Academic Year", self.academic_year, "school"))
+		)
+		if not base_school:
+			frappe.throw(_("Cannot resolve a base School from Program Offering / Student Group / Academic Year."))
+
+		allowed = tuple(get_ancestor_schools(base_school))  # self + parents
+
+		row = frappe.db.sql("""
+			SELECT ss.name
+			FROM `tabSchool Schedule` ss
+			INNER JOIN `tabSchool Calendar` sc ON sc.name = ss.school_calendar
+			WHERE ss.school IN %(schools)s
 				AND sc.academic_year = %(ay)s
-				LIMIT 1
-			""", dict(schools=tuple(allowed), ay=self.academic_year))
+			ORDER BY ss.idx, ss.name
+			LIMIT 1
+		""", {"schools": allowed, "ay": self.academic_year})
 
-			if not res:
-				frappe.throw(_("No School Schedule found for school {0} in academic year {1}.")
-					.format(base_school, self.academic_year))
-			return frappe.get_cached_doc("School Schedule", res[0][0])
+		if not row:
+			frappe.throw(_("No School Schedule found for school {0} (or its ancestors) in academic year {1}.")
+				.format(base_school, self.academic_year))
 
-		# fall-back when no program
-		if not self.school_schedule:
-			frappe.throw(_("Please choose a School Schedule or set a Program."))
-		return frappe.get_cached_doc("School Schedule", self.school_schedule)		
+		return frappe.get_cached_doc("School Schedule", row[0][0])
+
 	
+
 	def _validate_schedule_rows(self):
 		"""
 		• Ensures rotation_day / block_number exist in the resolved School Schedule
@@ -496,12 +530,6 @@ class StudentGroup(Document):
 		)
 		if not exists:
 			frappe.throw(_("Academic Year must be one of the Program Offering's academic years."))
-
-
-
-	def _derive_program(self):
-		if not self.program and self.program_offering:
-			self.program = frappe.db.get_value("Program Offering", self.program_offering, "program")
 
 	##################### HELPERS #########################
 	
@@ -611,97 +639,277 @@ class StudentGroup(Document):
 			if not self._course_in_offering_for_ay():
 				frappe.throw(_("Selected Course is not offered for this Program Offering in the chosen Academic Year."))
 
-@frappe.whitelist()
-def get_students(academic_year, group_based_on, term=None, program=None, cohort=None, course=None):
-	enrolled_students = get_program_enrollment(academic_year, term, program, cohort, course)
 
-	if enrolled_students:
-		student_list = []
-		for s in enrolled_students:
-			if frappe.db.get_value("Student", s.student, "enabled"):
-				s.update({"active": 1})
-			else:
-				s.update({"active": 0})
-			student_list.append(s)
-		return student_list
-	else:
-		frappe.msgprint(_("No students found"))
+@frappe.whitelist()
+def get_students(program_offering: str = None,
+                 academic_year: str = None,
+                 group_based_on: str = None,
+                 course: str = None,
+                 cohort: str = None,
+                 term: str = None,
+                 student_group: str = None,
+                 limit: int = 500,
+                 start: int = 0):
+	"""
+	Return students eligible for this Student Group, aligned to Program Offering + AY.
+
+	- Course-based group → students with a Program Enrollment in (offering, AY)
+	  AND at least one Program Enrollment Course row matching the selected course,
+	  and not dropped (dropped_date is NULL). We also try to skip obvious 'Dropped' statuses.
+	- Cohort-based group → students with Program Enrollment in (offering, AY) and matching cohort.
+	- Other/Activity → manual selection → return [].
+
+	Args come directly from the client (see get_student_filters in student_group.js).
+	"""
+
+	# Guardrails
+	if not (program_offering and academic_year):
 		return []
+
+	group_based_on = (group_based_on or "").strip()
+
+	# Activity / Other → manual selection only
+	if group_based_on in {"Activity", "Other"}:
+		return []
+
+	# Base WHERE (Program Enrollment anchored to Offering + AY)
+	where = [
+		"pe.program_offering = %(program_offering)s",
+		"pe.academic_year = %(academic_year)s",
+	]
+	params = {
+		"program_offering": program_offering,
+		"academic_year": academic_year,
+		"limit": int(limit or 500),
+		"start": int(start or 0),
+	}
+
+	# Optional: skip archived enrollments if present
+	where.append("(pe.archived IS NULL OR pe.archived = 0)")
+
+	join = ""
+	post_where = ""
+
+	# Course-based
+	if group_based_on == "Course":
+		if not course:
+			return []  # no course selected → nothing to fetch yet
+
+		join = """
+			INNER JOIN `tabProgram Enrollment Course` pec
+				ON pec.parenttype = 'Program Enrollment'
+				AND pec.parent = pe.name
+				AND pec.course = %(course)s
+				AND (pec.dropped_date IS NULL)
+		"""
+		params["course"] = course
+
+		# If 'status' exists and you use a 'Dropped' value, exclude it defensively
+		post_where = """
+			AND (pec.status IS NULL OR pec.status NOT IN ('Dropped'))
+		"""
+
+	# Cohort-based
+	elif group_based_on == "Cohort":
+		if not cohort:
+			return []  # no cohort selected
+		where.append("pe.cohort = %(cohort)s")
+		params["cohort"] = cohort
+
+	# Else (unexpected types) → fall back to offering+AY only, which is generally safe
+	# but since you explicitly gate types, leaving as-is is fine.
+
+	sql = f"""
+		SELECT
+			pe.student        AS student,
+			COALESCE(pe.student_name, st.student_name) AS student_name,
+			1 AS active
+		FROM `tabProgram Enrollment` pe
+		LEFT JOIN `tabStudent` st ON st.name = pe.student
+		{join}
+		WHERE {" AND ".join(where)}
+		{post_where}
+		ORDER BY COALESCE(st.student_name, pe.student_name) ASC, pe.student ASC
+		LIMIT %(limit)s OFFSET %(start)s
+	"""
+
+	rows = frappe.db.sql(sql, params=params, as_dict=True)
+
+	# Defensive: remove null/empty student ids
+	rows = [r for r in rows if r.get("student")]
+
+	return rows
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def allowed_school_query(doctype, txt, searchfield, start, page_len, filters):
+	"""
+	List schools allowed for this SG:
+	- If program_offering present: intersection(descendants(AY.school), descendants(PO.school))
+	- Else: descendants(AY.school)
+	"""
+	ay = (filters or {}).get("academic_year")
+	po = (filters or {}).get("program_offering")
+	if not ay:
+		return []
+
+	ay_school = frappe.db.get_value("Academic Year", ay, "school")
+	if not ay_school:
+		return []
+
+	ay_branch = descendants_inclusive(ay_school)
+	allowed = ay_branch
+
+	if po:
+		po_school = frappe.db.get_value("Program Offering", po, "school")
+		if po_school:
+			po_branch = descendants_inclusive(po_school)
+			allowed = ay_branch.intersection(po_branch)
+			if not allowed:
+				return []
+
+	# Build a single nested-set envelope to keep the query fast
+	min_lft = max_rgt = None
+	for s in allowed:
+		lft, rgt = get_school_lftrgt(s)
+		if lft is None:
+			continue
+		min_lft = lft if min_lft is None else min(min_lft, lft)
+		max_rgt = rgt if max_rgt is None else max(max_rgt, rgt)
+
+	if min_lft is None:
+		return []
+
+	return frappe.db.sql(
+		"""
+		SELECT sc.name
+		FROM `tabSchool` sc
+		WHERE sc.lft >= %s AND sc.rgt <= %s
+		  AND sc.name LIKE %s
+		ORDER BY sc.lft ASC
+		LIMIT %s OFFSET %s
+		""",
+		(min_lft, max_rgt, f"%{txt}%", page_len, start),
+	)
 
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def fetch_students(doctype, txt, searchfield, start, page_len, filters):
-	group_based_on = filters.get("group_based_on")
+	gb = (filters or {}).get("group_based_on")
+	po = (filters or {}).get("program_offering")
+	ay = (filters or {}).get("academic_year")
+	term = (filters or {}).get("term")
+	cohort = (filters or {}).get("cohort")
+	course = (filters or {}).get("course")
+	sg = (filters or {}).get("student_group")
 
-	if group_based_on == "Other":
-		# Students with no enrollment requirement
-		return frappe.db.sql(f"""
-			SELECT name, student_full_name 
+	like_txt = (f"%{txt}%" if txt else "%")
+
+	# Activity/Other → free search among enabled students
+	if gb in {"Other", "Activity"}:
+		return frappe.db.sql(
+			f"""
+			SELECT name, student_full_name
 			FROM `tabStudent`
 			WHERE enabled = 1
-				AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
+			  AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
 			ORDER BY idx DESC, name
 			LIMIT %s, %s
-		""", (f"%{txt}%", f"%{txt}%", start, page_len))
-
-	elif group_based_on == "Activity":
-		# May become specific in future (e.g., filter by activity type or tag)
-		return frappe.db.sql(f"""
-			SELECT name, student_full_name 
-			FROM `tabStudent`
-			WHERE enabled = 1
-				AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
-			ORDER BY idx DESC, name
-			LIMIT %s, %s
-		""", (f"%{txt}%", f"%{txt}%", start, page_len))
-
-	elif group_based_on == "Course":
-		enrolled_students = get_program_enrollment(
-			academic_year=filters.get('academic_year'),
-			term=filters.get('term'),
-			program=filters.get('program'),
-			cohort=filters.get('cohort'),
-			course=filters.get('course'), 
-			exclude_in_group=filters.get('student_group') 
+			""",
+			(like_txt, like_txt, start, page_len)
 		)
 
-	elif group_based_on == "Cohort":
-		enrolled_students = get_program_enrollment(
-			academic_year=filters.get('academic_year'),
-			term=filters.get('term'),
-			program=filters.get('program'),
-			cohort=filters.get('cohort'),
-			course=None
-		)
-
-	else:
+	# Offering+AY required for Course/Cohort flows
+	if not (po and ay):
 		return []
 
-	# Shared logic for course or cohort results
-	existing_students = get_existing_students(filters.get('student_group'))
+	# Get enrolled students (offering-first)
+	enrolled = get_program_enrollment_offering_first(
+		program_offering=po,
+		academic_year=ay,
+		term=term,
+		cohort=cohort if gb == "Cohort" else None,
+		course=course if gb == "Course" else None,
+		exclude_in_group=sg if (gb == "Course" and course and term) else None,
+	)
 
-	student_ids = [
-		d.student for d in enrolled_students 
-		if d.student not in existing_students
-	] if enrolled_students else []
-
-	if not student_ids:
+	existing = set(get_existing_students(sg)) if sg else set()
+	candidates = [d.student for d in (enrolled or []) if d.student not in existing]
+	if not candidates:
 		return []
 
-	placeholders = build_in_clause_placeholders(student_ids)
-	args = tuple(student_ids + [f"%{txt}%", f"%{txt}%", start, page_len])
+	placeholders = build_in_clause_placeholders(candidates)
+	args = tuple(candidates + [like_txt, like_txt, start, page_len])
 
-	query = f"""
+	return frappe.db.sql(
+		f"""
 		SELECT name, student_full_name 
 		FROM `tabStudent`
 		WHERE name IN ({placeholders})
-			AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
+		  AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
 		ORDER BY idx DESC, name
 		LIMIT %s, %s
-	"""
+		""",
+		args,
+	)
 
-	return frappe.db.sql(query, args)
+
+def get_program_enrollment_offering_first(program_offering: str,
+                                          academic_year: str,
+                                          term: str | None = None,
+                                          cohort: str | None = None,
+                                          course: str | None = None,
+                                          exclude_in_group: str | None = None):
+	conditions = [
+		"pe.program_offering = %(po)s",
+		"pe.academic_year = %(ay)s",
+		"(pe.archived IS NULL OR pe.archived = 0)"
+	]
+	params = {"po": program_offering, "ay": academic_year}
+
+	joins = ""
+	if course or term:
+		joins = "INNER JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name AND pec.parenttype='Program Enrollment'"
+
+	if term:
+		conditions.append("pec.term_start = %(term)s")
+		params["term"] = term
+	if cohort:
+		conditions.append("pe.cohort = %(cohort)s")
+		params["cohort"] = cohort
+	if course:
+		conditions.append("pec.course = %(course)s")
+		params["course"] = course
+
+	if exclude_in_group and course and term:
+		conditions.append("""
+			pe.student NOT IN (
+				SELECT sgs.student
+				FROM `tabStudent Group` sg
+				INNER JOIN `tabStudent Group Student` sgs ON sgs.parent = sg.name
+				WHERE sg.name != %(exclude_group)s
+				  AND sg.group_based_on = 'Course'
+				  AND sg.course = %(course)s
+				  AND sg.academic_year = %(ay)s
+				  AND sg.term = %(term)s
+			)
+		""")
+		params["exclude_group"] = exclude_in_group
+
+	return frappe.db.sql(
+		f"""
+		SELECT pe.student, COALESCE(pe.student_name, st.student_name) AS student_name
+		FROM `tabProgram Enrollment` pe
+		LEFT JOIN `tabStudent` st ON st.name = pe.student
+		{joins}
+		WHERE {" AND ".join(conditions)}
+		ORDER BY COALESCE(st.student_name, pe.student_name) ASC, pe.student ASC
+		""",
+		params,
+		as_dict=1
+	)
 
 
 @frappe.whitelist()
