@@ -719,14 +719,14 @@ def get_students(program_offering: str = None,
 	sql = f"""
 		SELECT
 			pe.student        AS student,
-			COALESCE(pe.student_name, st.student_name) AS student_name,
+			COALESCE(pe.student_name, st.student_full_name) AS student_name,
 			1 AS active
 		FROM `tabProgram Enrollment` pe
 		LEFT JOIN `tabStudent` st ON st.name = pe.student
 		{join}
 		WHERE {" AND ".join(where)}
 		{post_where}
-		ORDER BY COALESCE(st.student_name, pe.student_name) ASC, pe.student ASC
+		ORDER BY COALESCE(st.student_full_name, pe.student_name) ASC, pe.student ASC
 		LIMIT %(limit)s OFFSET %(start)s
 	"""
 
@@ -897,12 +897,12 @@ def get_program_enrollment_offering_first(program_offering: str,
 
 	return frappe.db.sql(
 		f"""
-		SELECT pe.student, COALESCE(pe.student_name, st.student_name) AS student_name
+		SELECT pe.student, COALESCE(pe.student_name, st.student_full_name) AS student_name
 		FROM `tabProgram Enrollment` pe
 		LEFT JOIN `tabStudent` st ON st.name = pe.student
 		{joins}
 		WHERE {" AND ".join(conditions)}
-		ORDER BY COALESCE(st.student_name, pe.student_name) ASC, pe.student ASC
+		ORDER BY COALESCE(st.student_full_name, pe.student_name) ASC, pe.student ASC
 		""",
 		params,
 		as_dict=1
