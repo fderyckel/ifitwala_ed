@@ -350,8 +350,6 @@ frappe.ui.form.on("Program Enrollment", {
 	onload(frm) {
 		set_queries(frm);
 		set_term_field_queries(frm);
-		// Grid UX
-		frm.get_field("courses").grid.set_multiple_add("course");
 	},
 
 	refresh(frm) {
