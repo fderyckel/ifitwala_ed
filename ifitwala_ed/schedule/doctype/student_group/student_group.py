@@ -39,9 +39,6 @@ class StudentGroup(Document):
 		validate_duplicate_student(self.students)
 		self.validate_rotation_clashes()
 
-		self._derive_program()
-
-
 
 		########
 		# Auto-fill school_schedule if missing and based on course
