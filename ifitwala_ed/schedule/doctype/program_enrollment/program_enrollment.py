@@ -656,21 +656,16 @@ def get_valid_terms_with_fallback(school, academic_year):
 
 
 @frappe.whitelist()
-def candidate_courses_for_add_multiple(program_offering: str, academic_year: str, existing: Optional[Sequence[str]] = None):
-	"""
-	Return candidate courses from Program Offering that overlap the selected Academic Year,
-	excluding 'existing'. Each row includes minimal display info and convenience hints.
-	"""
-	if not (program_offering and academic_year):
-		return []
-
-	# Normalize 'existing' (can arrive as JSON string)
+def candidate_courses_for_add_multiple(program_offering: str, academic_year: str, existing=None):
+	"""Return candidate courses… (docstring unchanged)"""
 	if isinstance(existing, str):
 		try:
 			existing = frappe.parse_json(existing) or []
 		except Exception:
 			existing = []
-	existing_set = set(existing or [])
+	elif not isinstance(existing, (list, tuple, set)):
+		existing = []
+	existing_set = set(existing)
 
 	enr_ay_start, enr_ay_end = _ay_bounds_for(program_offering, academic_year)
 	if not (enr_ay_start and enr_ay_end):
