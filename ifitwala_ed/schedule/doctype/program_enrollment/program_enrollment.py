@@ -506,7 +506,15 @@ def _offering_courses_index(offering_name: str) -> dict[str, list[dict]]:
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_program_courses(doctype, txt, searchfield, start, page_len, filters):
-	program_offering = (filters or {}).get("program_offering")
+	if isinstance(filters, str):
+		try:
+			filters = frappe.parse_json(filters) or {}
+		except Exception:
+			filters = {}
+	else:
+		filters = filters or {}
+
+	program_offering = filters.get("program_offering")
 	if not program_offering:
 		return []
 
@@ -516,7 +524,7 @@ def get_program_courses(doctype, txt, searchfield, start, page_len, filters):
 		FROM `tabProgram Offering Course` poc
 		JOIN `tabCourse` c ON c.name = poc.course
 		WHERE poc.parent = %(off)s
-		  AND (poc.course LIKE %(txt)s OR c.course_name LIKE %(txt)s)
+			AND (poc.course LIKE %(txt)s OR c.course_name LIKE %(txt)s)
 		GROUP BY poc.course, c.course_name
 		ORDER BY
 			IF(LOCATE(%(_txt)s, poc.course), LOCATE(%(_txt)s, poc.course), 99999),

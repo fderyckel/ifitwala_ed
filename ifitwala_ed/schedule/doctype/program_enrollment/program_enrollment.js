@@ -1,10 +1,6 @@
 // Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
-
-// Copyright (c) 2024, François de Ryckel and contributors
-// For license information, please see license.txt
-
 // --- Helpers ---------------------------------------------------------------
 
 function set_term_field_queries(frm) {
