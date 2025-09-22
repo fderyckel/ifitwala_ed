@@ -9,7 +9,7 @@ from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 from ifitwala_ed.utilities.school_tree import get_effective_record, ParentRuleViolation
 from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
-
+from typing import Optional, Sequence
 
 class ProgramEnrollment(Document):
 
@@ -502,43 +502,6 @@ def _offering_courses_index(offering_name: str) -> dict[str, list[dict]]:
 	return idx
 
 
-# from JS: limit Course picker to what this Program Offering actually delivers (any span)
-@frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def get_program_courses(doctype, txt, searchfield, start, page_len, filters):
-	if isinstance(filters, str):
-		try:
-			filters = frappe.parse_json(filters) or {}
-		except Exception:
-			filters = {}
-	else:
-		filters = filters or {}
-
-	program_offering = filters.get("program_offering")
-	if not program_offering:
-		return []
-
-	txt = txt or ""
-	return frappe.db.sql(f"""
-		SELECT poc.course, c.course_name
-		FROM `tabProgram Offering Course` poc
-		JOIN `tabCourse` c ON c.name = poc.course
-		WHERE poc.parent = %(off)s
-			AND (poc.course LIKE %(txt)s OR c.course_name LIKE %(txt)s)
-		GROUP BY poc.course, c.course_name
-		ORDER BY
-			IF(LOCATE(%(_txt)s, poc.course), LOCATE(%(_txt)s, poc.course), 99999),
-			poc.idx ASC,
-			poc.course ASC
-		LIMIT {start}, {page_len}
-	""", {
-		"off": program_offering,
-		"txt": f"%{txt}%",
-		"_txt": txt.replace("%", "")
-	})
-
-
-
 # from JS to filter out students that have already been enrolled for a given year and/or term
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
@@ -690,6 +653,69 @@ def get_valid_terms_with_fallback(school, academic_year):
         "valid_terms": terms,
         "source_school": source_school
     }
+
+
+@frappe.whitelist()
+def candidate_courses_for_add_multiple(program_offering: str, academic_year: str, existing: Optional[Sequence[str]] = None):
+	"""
+	Return candidate courses from Program Offering that overlap the selected Academic Year,
+	excluding 'existing'. Each row includes minimal display info and convenience hints.
+	"""
+	if not (program_offering and academic_year):
+		return []
+
+	# Normalize 'existing' (can arrive as JSON string)
+	if isinstance(existing, str):
+		try:
+			existing = frappe.parse_json(existing) or []
+		except Exception:
+			existing = []
+	existing_set = set(existing or [])
+
+	enr_ay_start, enr_ay_end = _ay_bounds_for(program_offering, academic_year)
+	if not (enr_ay_start and enr_ay_end):
+		return []
+
+	off_idx = _offering_courses_index(program_offering)
+	off = _offering_core(program_offering)
+	school = off.get("school") if off else None
+
+	out = []
+	for course, spans in off_idx.items():
+		if course in existing_set:
+			continue
+		# Overlap with selected AY slice?
+		if not any((enr_ay_start <= s["end"]) and (s["start"] <= enr_ay_end) for s in spans):
+			continue
+
+		row = {
+			"course": course,
+			"course_name": frappe.db.get_value("Course", course, "course_name"),
+			"required": 1 if any(s.get("required") for s in spans) else 0,
+		}
+
+		# Suggest term bounds for non-term-long courses
+		if school:
+			term_long = frappe.db.get_value("Course", course, "term_long")
+			if not term_long:
+				bounds = get_school_term_bounds(school, academic_year)
+				if bounds:
+					row["suggested_term_start"] = bounds.get("term_start")
+					row["suggested_term_end"] = bounds.get("term_end")
+
+		out.append(row)
+
+	# Sort: required first, then by earliest span start, then by name
+	def _first_start(cname: str):
+		try:
+			return min(s["start"] for s in off_idx.get(cname, []))
+		except ValueError:
+			return enr_ay_start
+
+	out.sort(key=lambda r: (-(r["required"]), _first_start(r["course"]), (r["course_name"] or r["course"])))
+	return out
+
+
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs

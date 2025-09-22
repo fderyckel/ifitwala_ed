@@ -42,18 +42,6 @@ function set_queries(frm) {
 		}
 		return q;
 	});
-
-	// Courses grid: only courses defined on the selected Program Offering
-	frm.fields_dict.courses.grid.get_field("course").get_query = function () {
-		if (!frm.doc.program_offering) return {};
-		return {
-			query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_program_courses",
-			filters: { program_offering: frm.doc.program_offering }
-		};
-	};
-
-	// Term fields: rely on the richer fallback helper (set via set_term_field_queries)
-	// (No extra term query here to avoid duplication/conflicts.)
 }
 
 
@@ -226,6 +214,8 @@ function warn_if_enrollment_date_outside_offering(frm) {
 	}
 }
 
+
+
 function enforce_dropped_requires_date(frm, row) {
 	if (row.status === "Dropped" && !row.dropped_date) {
 		frappe.show_alert({
@@ -234,6 +224,125 @@ function enforce_dropped_requires_date(frm, row) {
 		});
 	}
 }
+
+
+function open_add_from_offering_dialog(frm) {
+	if (!frm.doc.program_offering || !frm.doc.academic_year) {
+		frappe.msgprint({
+			title: __("Select Offering & Academic Year"),
+			message: __("Please choose a Program Offering and an Academic Year first."),
+			indicator: "orange"
+		});
+		return;
+	}
+
+	const existing = (frm.doc.courses || []).map(r => r.course).filter(Boolean);
+
+	frappe.call({
+		method: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.candidate_courses_for_add_multiple",
+		args: {
+			program_offering: frm.doc.program_offering,
+			academic_year: frm.doc.academic_year,
+			existing: existing
+		}
+	}).then(r => {
+		const rows = r.message || [];
+		if (!rows.length) {
+			frappe.msgprint({
+				title: __("No Candidates"),
+				message: __("All offering courses overlapping this Academic Year are already added."),
+				indicator: "green"
+			});
+			return;
+		}
+
+		const d = new frappe.ui.Dialog({
+			title: __("Add Courses from Offering"),
+			size: "large",
+			fields: [
+				{
+					fieldname: "filter",
+					fieldtype: "Data",
+					label: __("Filter"),
+					description: __("Type to filter the list below"),
+					change: () => {
+						const q = (d.get_value("filter") || "").toLowerCase();
+						d.get_field("picker_html").$wrapper.find(".pe-pick-row").each(function () {
+							const txt = (this.getAttribute("data-text") || "").toLowerCase();
+							this.style.display = txt.includes(q) ? "" : "none";
+						});
+					}
+				},
+				{ fieldname: "picker_html", fieldtype: "HTML" }
+			],
+			primary_action_label: __("Add Selected"),
+			primary_action: () => {
+				const selected = [];
+				d.get_field("picker_html").$wrapper.find("input[type=checkbox].pe-pick").each(function () {
+					if (this.checked) selected.push(this.value);
+				});
+				if (!selected.length) {
+					frappe.show_alert({ message: __("Nothing selected."), indicator: "orange" });
+					return;
+				}
+
+				const existingSet = new Set((frm.doc.courses || []).map(r => r.course).filter(Boolean));
+				let added = 0;
+
+				selected.forEach(name => {
+					if (existingSet.has(name)) return;
+					const info = rows.find(r => r.course === name);
+					const child = frm.add_child("courses", {
+						course: name,
+						status: "Enrolled"
+					});
+					if (info && info.suggested_term_start) child.term_start = info.suggested_term_start;
+					if (info && info.suggested_term_end) child.term_end = info.suggested_term_end;
+					added++;
+				});
+
+				frm.refresh_field("courses");
+				d.hide();
+				frappe.show_alert({ message: __("Added {0} course(s).", [added]), indicator: "green" });
+			}
+		});
+
+		const html = `
+			<div class="pe-pick-list" style="max-height: 50vh; overflow:auto; border:1px solid var(--border-color); border-radius: .5rem;">
+				${rows.map(r => {
+					const label = frappe.utils.escape_html(r.course_name || r.course);
+					const small = r.required ? `<span class="badge bg-warning text-dark" style="margin-left:.5rem;">${__("Required")}</span>` : "";
+					const helper = (r.suggested_term_start || r.suggested_term_end)
+						? `<div class="text-muted small">${__("Suggested terms")}: ${(r.suggested_term_start || "—")} → ${(r.suggested_term_end || "—")}</div>`
+						: "";
+					return `
+						<label class="pe-pick-row list-group-item d-flex align-items-start gap-2"
+						       data-text="${frappe.utils.escape_html((r.course || "") + " " + (r.course_name || ""))}">
+							<input type="checkbox" class="form-check-input pe-pick" value="${frappe.utils.escape_html(r.course)}" />
+							<div>
+								<div><strong>${label}</strong>${small}</div>
+								${helper}
+							</div>
+						</label>
+					`;
+				}).join("")}
+			</div>
+		`;
+		d.get_field("picker_html").$wrapper.html(html);
+		d.show();
+	});
+}
+
+function add_grid_actions(frm) {
+	const grid = frm.fields_dict.courses?.grid;
+	if (!grid) return;
+	if (grid._add_from_offering_btn) return; // idempotent
+	grid._add_from_offering_btn = true;
+
+	grid.add_custom_button(__("Add from Offering…"), () => open_add_from_offering_dialog(frm));
+}
+
+
 
 // --- Main form events ------------------------------------------------------
 
@@ -249,6 +358,7 @@ frappe.ui.form.on("Program Enrollment", {
 		set_queries(frm);
 		show_offering_span_indicator(frm);
 		warn_if_enrollment_date_outside_offering(frm); 
+		add_grid_actions(frm);
 	},
 
 	before_save(frm) {
@@ -364,6 +474,7 @@ frappe.ui.form.on("Program Enrollment", {
 
 // Child table event: when picking a course, set defaults for non-term-long courses
 frappe.ui.form.on("Program Enrollment Course", {
+
 	async course(frm, cdt, cdn) {
 		const row = frappe.get_doc(cdt, cdn);
 
