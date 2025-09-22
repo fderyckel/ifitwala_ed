@@ -29,13 +29,23 @@ class StudentGroup(Document):
 	def validate(self):
 		if self.term: 
 			self.validate_term()
-		self.validate_program_and_course()
+
+		self._derive_program_from_offering()
+		self._validate_ay_in_offering_spine()
+		self._enforce_school_rules()
+		self._validate_course_scoping()
+
 		self.validate_mandatory_fields()
 		self.validate_size()
 		self.validate_students()
 		self.validate_and_set_child_table_fields()
 		validate_duplicate_student(self.students)
 		self.validate_rotation_clashes()
+
+		self._derive_program()
+
+
+
 		########
 		# Auto-fill school_schedule if missing and based on course
 		if self.group_based_on == "Course" and not self.school_schedule:
@@ -46,6 +56,8 @@ class StudentGroup(Document):
 				))
 			
 			self.school_schedule = get_effective_schedule(self.academic_year, school)
+
+
 		############	
 		self._validate_schedule_rows()
 
@@ -181,24 +193,13 @@ class StudentGroup(Document):
 		self.flags._sg_students_removed = set()
 		self.flags._sg_instructors_changed = False
 
+	##################### VALIDATONS #########################
 
 	def validate_term(self) -> None:
 		term_year = frappe.get_doc("Term", self.term)
 		if self.academic_year != term_year.academic_year:
 			frappe.throw(_("The term {0} does not belong to the academic year {1}.").format(self.term, self.academic_year))
 
-	def validate_program_and_course(self) -> None:
-		"""Validates the course against the program if group_based_on is 'Course'."""
-		# Added: Condition to check group_based_on and program before validating.
-		if self.group_based_on == "Course" and self.program:
-			if not self.course:
-				frappe.throw(_("Course is required when Group Based On is Course and a Program is selected."))
-
-			# Changed: Use frappe.db.exists for efficient existence check.
-			if not frappe.db.exists("Program Course", {"parent": self.program, "course": self.course}):
-				frappe.throw(_("{0} is not a valid course for the {1} program. Please select a different course or the appropriate program."
-							).format(get_link_to_form("Course", self.course), get_link_to_form("Program", self.program))
-				)
 
 	def validate_mandatory_fields(self) -> None:
 		if self.group_based_on == "Course" and not self.course:
@@ -472,6 +473,144 @@ class StudentGroup(Document):
 			from_t, to_t = block_map[row.rotation_day][row.block_number]
 			row.from_time, row.to_time = from_t, to_t
 
+
+	def _derive_program_from_offering(self):
+		"""Quality-of-life: show Program in the form, but do not treat as source of truth."""
+		if not self.program and self.program_offering:
+			self.program = frappe.db.get_value("Program Offering", self.program_offering, "program")
+
+
+	# ---------- AY spine ----------
+
+	def _validate_ay_in_offering_spine(self):
+		"""Single AY field must be a member of the Program Offering's spine."""
+		if not (self.program_offering and self.academic_year):
+			return
+		exists = frappe.db.exists(
+			"Program Offering Academic Year",
+			{
+				"parenttype": "Program Offering",
+				"parent": self.program_offering,
+				"academic_year": self.academic_year,
+			},
+		)
+		if not exists:
+			frappe.throw(_("Academic Year must be one of the Program Offering's academic years."))
+
+
+
+	def _derive_program(self):
+		if not self.program and self.program_offering:
+			self.program = frappe.db.get_value("Program Offering", self.program_offering, "program")
+
+	##################### HELPERS #########################
+	
+	def _enforce_school_rules(self):
+		"""Enforce:
+		- SG.school must be same as or descendant of AY.school
+		- If Program Offering present: branches must intersect; SG.school must be in intersection
+		- Post-creation AY change: new AY.school must be same as or ancestor of existing SG.school
+		- Activity/Other without Program Offering: default SG.school to AY.school on first save if empty
+		"""
+		ay_school = frappe.db.get_value("Academic Year", self.academic_year, "school") if self.academic_year else None
+		po_school = frappe.db.get_value("Program Offering", self.program_offering, "school") if self.program_offering else None
+
+		# Guard: AY must have a school for rules to make sense
+		if not ay_school:
+			frappe.throw(_("Selected Academic Year has no linked School."))
+
+		# Build allowed set
+		ay_branch = descendants_inclusive(ay_school)
+		allowed = set(ay_branch)
+
+		if po_school:
+			po_branch = descendants_inclusive(po_school)
+			intersection = ay_branch.intersection(po_branch)
+			if not intersection:
+				# Different branches (no shared ancestor/desc relationship under either root) → hard error
+				frappe.throw(_("Program Offering's school and Academic Year's school are in different branches."))
+			allowed = intersection
+
+		# Defaulting for Activity/Other (no Program driver)
+		if (self.group_based_on in {"Activity", "Other"}) and not self.program_offering:
+			if not self.school:
+				# First-save default: set to AY.school
+				self.school = ay_school
+
+		# Validate SG.school is in allowed set (if user or code has set it)
+		if self.school:
+			if self.school not in allowed:
+				frappe.throw(
+					_("Student Group School must be {0} or a descendant within the allowed branch.").format(ay_school)
+				)
+		else:
+			# No SG.school provided: if Program Offering exists, prefer PO.school when valid; otherwise require explicit choice
+			if po_school and (po_school in allowed):
+				self.school = po_school
+			else:
+				# Remain unset to force explicit user choice within allowed set
+				pass
+
+		# Post-creation AY change constraint:
+		if not self.is_new():
+			prior_ay = frappe.db.get_value(self.doctype, self.name, "academic_year")
+			if prior_ay and self.academic_year and prior_ay != self.academic_year:
+				# new AY.school must be same or ANCESTOR of the (already chosen) SG.school
+				if not is_same_or_descendant(ay_school, self.school):
+					frappe.throw(
+						_("New Academic Year's school must be the same as or a parent of the Student Group's school.")
+					)
+
+	##################### COURSE SCOPING #########################
+	# --- Course scoping (Program Offering Course) ---
+
+	def _course_in_offering_for_ay(self) -> bool:
+		"""Return True if self.course is present in Program Offering Course and valid for self.academic_year."""
+		if not (self.program_offering and self.course and self.academic_year):
+			return False
+
+		# We compare the Academic Year's start_date against start/end AYs and date ranges
+		# Join to Academic Year to use year_start_date for stable comparisons when AY names don't sort naturally.
+		row = frappe.db.sql(
+			"""
+			SELECT 1
+			FROM `tabProgram Offering Course` poc
+			LEFT JOIN `tabAcademic Year` ay_sel  ON ay_sel.name = %(selected_ay)s
+			LEFT JOIN `tabAcademic Year` ay_start ON ay_start.name = poc.start_academic_year
+			LEFT JOIN `tabAcademic Year` ay_end   ON ay_end.name   = poc.end_academic_year
+			WHERE poc.parenttype = 'Program Offering'
+				AND poc.parent = %(offering)s
+				AND poc.course = %(course)s
+				AND (
+					-- AY window satisfied (if provided)
+					(ay_start.year_start_date IS NULL OR ay_sel.year_start_date >= ay_start.year_start_date)
+				AND (ay_end.year_start_date   IS NULL OR ay_sel.year_start_date <= ay_end.year_start_date)
+				)
+				AND (
+					-- Date window satisfied (if provided)
+					(poc.from_date IS NULL OR ay_sel.year_start_date >= poc.from_date)
+				AND (poc.to_date   IS NULL OR ay_sel.year_start_date <= poc.to_date)
+				)
+			LIMIT 1
+			""",
+			{
+				"offering": self.program_offering,
+				"course": self.course,
+				"selected_ay": self.academic_year,
+			},
+		)
+		return bool(row)
+
+	def _validate_course_scoping(self):
+		"""Hard guard for Course groups: the chosen Course must be part of the Program Offering and valid for the AY."""
+		if self.group_based_on == "Course":
+			if not self.program_offering:
+				frappe.throw(_("Please select a Program Offering for a Course-based group."))
+			if not self.course:
+				frappe.throw(_("Please select a Course."))
+			if not self._course_in_offering_for_ay():
+				frappe.throw(_("Selected Course is not offered for this Program Offering in the chosen Academic Year."))
+
 @frappe.whitelist()
 def get_students(academic_year, group_based_on, term=None, program=None, cohort=None, course=None):
 	enrolled_students = get_program_enrollment(academic_year, term, program, cohort, course)
@@ -489,21 +628,6 @@ def get_students(academic_year, group_based_on, term=None, program=None, cohort=
 		frappe.msgprint(_("No students found"))
 		return []
 
-
-@frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
-	return frappe.db.sql("""
-		SELECT name
-		FROM `tabAcademic Year`
-		WHERE name LIKE %(txt)s
-		ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
-		LIMIT %(start)s, %(page_len)s
-	""", {
-		"txt": f"%{txt}%",
-		"start": start,
-		"page_len": page_len
-	})
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
@@ -626,6 +750,7 @@ def schedule_picker_query(doctype, txt, searchfield, start, page_len, filters):
 	)
 	return rows
 
+
 def get_program_enrollment(academic_year, term=None, program=None, cohort=None, course=None, exclude_in_group=None):
 	conditions = ["pe.academic_year = %(academic_year)s"]
 	params = {"academic_year": academic_year}
@@ -673,6 +798,7 @@ def get_program_enrollment(academic_year, term=None, program=None, cohort=None, 
 
 	return frappe.db.sql(query, params, as_dict=1)
 
+
 def get_existing_students(student_group: str) -> list[str]:
 	"""Returns a list of student IDs already in the student group"""
 	return frappe.db.sql_list('''
@@ -686,9 +812,120 @@ def build_in_clause_placeholders(values: list) -> str:
 
 
 ########################## Permissions ##########################
-##### Used for scheduling. 
+##### Used for school descendants . 
 #################################################################
 
+# --- small, local helpers (no extra round-trips where possible) ---
+
+def get_school_lftrgt(school: str) -> tuple[int, int] | tuple[None, None]:
+	if not school:
+		return (None, None)
+	return frappe.db.get_value("School", school, ["lft", "rgt"], as_dict=False) or (None, None)
+
+def is_same_or_descendant(maybe_ancestor: str, node: str) -> bool:
+	"""True if node is the same as maybe_ancestor or a descendant in the School nested set."""
+	if not (maybe_ancestor and node):
+		return False
+	al, ar = get_school_lftrgt(maybe_ancestor)
+	nl, nr = get_school_lftrgt(node)
+	return (al is not None and nl is not None) and (al <= nl <= nr <= ar)
+
+def descendants_inclusive(school: str) -> set[str]:
+	"""Return school ∪ all descendants (names) as a set. Efficient single query on lft/rgt."""
+	if not school:
+		return set()
+	lft, rgt = get_school_lftrgt(school)
+	if lft is None:
+		return set()
+	rows = frappe.db.sql(
+		"""
+		SELECT name
+		FROM `tabSchool`
+		WHERE lft >= %s AND rgt <= %s
+		""",
+		(lft, rgt),
+		as_dict=True,
+	)
+	return {r["name"] for r in rows}
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def offering_ay_query(doctype, txt, searchfield, start, page_len, filters):
+	"""Return AYs that belong to filters.program_offering (desc by name)."""
+	offering = (filters or {}).get("program_offering")
+	if not offering:
+		return []
+	return frappe.db.sql(
+		"""
+		SELECT ay.name
+		FROM `tabProgram Offering Academic Year` poay
+		INNER JOIN `tabAcademic Year` ay ON ay.name = poay.academic_year
+		WHERE poay.parenttype='Program Offering' AND poay.parent=%s
+		  AND ay.name LIKE %s
+		ORDER BY ay.name DESC
+		LIMIT %s OFFSET %s
+		""",
+		(offering, f"%{txt}%", page_len, start),
+	)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def offering_course_query(doctype, txt, searchfield, start, page_len, filters):
+	"""
+	List Courses from Program Offering Course, valid for the selected Academic Year (and optional Term filter).
+	"""
+	offering = (filters or {}).get("program_offering")
+	selected_ay = (filters or {}).get("academic_year")
+	selected_term = (filters or {}).get("term")  # optional
+
+	if not (offering and selected_ay):
+		return []
+
+	# Base filter: in this offering and name LIKE
+	params = {
+		"offering": offering,
+		"txt": f"%{txt}%",
+		"selected_ay": selected_ay,
+		"start": start,
+		"page_len": page_len,
+	}
+
+	# Optional term overlap filter (inclusive boundary check if both ends exist)
+	term_clause = ""
+	if selected_term:
+		term_clause = """
+			AND (
+				(poc.start_academic_term IS NULL OR poc.start_academic_term <= %(term)s)
+			AND (poc.end_academic_term   IS NULL OR poc.end_academic_term   >= %(term)s)
+			)
+		"""
+		params["term"] = selected_term
+
+	return frappe.db.sql(
+		f"""
+		SELECT poc.course
+		FROM `tabProgram Offering Course` poc
+		LEFT JOIN `tabAcademic Year` ay_sel  ON ay_sel.name = %(selected_ay)s
+		LEFT JOIN `tabAcademic Year` ay_start ON ay_start.name = poc.start_academic_year
+		LEFT JOIN `tabAcademic Year` ay_end   ON ay_end.name   = poc.end_academic_year
+		WHERE poc.parenttype='Program Offering'
+		  AND poc.parent = %(offering)s
+		  AND poc.course LIKE %(txt)s
+		  AND (
+				(ay_start.year_start_date IS NULL OR ay_sel.year_start_date >= ay_start.year_start_date)
+			AND (ay_end.year_start_date   IS NULL OR ay_sel.year_start_date <= ay_end.year_start_date)
+		  )
+		  AND (
+				(poc.from_date IS NULL OR ay_sel.year_start_date >= poc.from_date)
+			AND (poc.to_date   IS NULL OR ay_sel.year_start_date <= poc.to_date)
+		  )
+		  {term_clause}
+		ORDER BY poc.course ASC
+		LIMIT %(page_len)s OFFSET %(start)s
+		""",
+		params,
+	)
 
 
 ########################## Permissions ##########################
@@ -715,3 +952,6 @@ def get_permission_query_conditions(user):
 		if role in super_viewer:
 			return ""
 		
+
+def on_doctype_update():
+	frappe.db.add_index("Student Group", ["program_offering", "academic_year"])
