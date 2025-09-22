@@ -730,7 +730,7 @@ def get_students(program_offering: str = None,
 		LIMIT %(limit)s OFFSET %(start)s
 	"""
 
-	rows = frappe.db.sql(sql, params=params, as_dict=True)
+	rows = frappe.db.sql(sql, params, as_dict=True)
 
 	# Defensive: remove null/empty student ids
 	rows = [r for r in rows if r.get("student")]
