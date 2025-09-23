@@ -10,6 +10,7 @@ from frappe.utils import getdate, add_days, today
 from collections import defaultdict
 from datetime import timedelta, date
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
+from typing import Optional
 
 ## function to get the start and end dates of the current academic year
 ## used in program enrollment, course enrollment tool. 
@@ -70,6 +71,7 @@ def current_academic_year():
         frappe.throw(_("No active academic year found for today's date."))
 
     return academic_year
+
 
 @frappe.whitelist()
 def get_rotation_dates(school_schedule_name, academic_year, include_holidays=None):
@@ -140,6 +142,31 @@ from collections import defaultdict
 class OverlapError(frappe.ValidationError):
     """Raised when a scheduling conflict violates the hard rule."""
     pass
+
+def get_school_for_student_group(sg_doc_or_name) -> Optional[str]:
+	"""
+	Return the best school for a Student Group in priority order:
+	1) Student Group.school (if present)
+	2) Program Offering.school (if SG has program_offering)
+	3) Program.school (legacy fallback)
+	"""
+	sg = frappe.get_doc("Student Group", sg_doc_or_name) if isinstance(sg_doc_or_name, str) else sg_doc_or_name
+
+	# 1) SG-level school wins
+	if getattr(sg, "school", None):
+		return sg.school
+
+	# 2) Then the Program Offering's school (if linked)
+	if getattr(sg, "program_offering", None):
+		sch = frappe.db.get_value("Program Offering", sg.program_offering, "school")
+		if sch:
+			return sch
+
+	# 3) Legacy fallback: Program's school
+	if getattr(sg, "program", None):
+		return frappe.db.get_value("Program", sg.program, "school")
+
+	return None
 
 def get_conflict_rule():
     """Return 'Hard' or 'Soft' based on School Settings (defaults to Hard)."""

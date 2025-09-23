@@ -5,12 +5,14 @@
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime, getdate, nowdate, add_days
-from typing import List, Dict, Any
-from itertools import islice
-
-from ifitwala_ed.schedule.schedule_utils import get_rotation_dates
+from frappe.utils import now_datetime, getdate, nowdate
+from typing import List, Dict
+from ifitwala_ed.schedule.schedule_utils import (
+	get_rotation_dates,
+	get_school_for_student_group,
+)
 from ifitwala_ed.school_settings.doctype.term.term import get_current_term
+
 
 ATT_CODE_FIELD   = "attendance_code"
 ATT_CODE_DOCTYPE = "Student Attendance Code"
@@ -198,7 +200,7 @@ def bulk_upsert_attendance(payload=None):
 	group_ctx = {}
 	for g in group_names:
 		sg = frappe.get_cached_doc("Student Group", g)
-		program_school = frappe.db.get_value("Program", sg.program, "school") if sg.program else None
+		group_school = get_school_for_student_group(sg)
 
 		# Term window (today must be within current term if one exists)
 		today = getdate()
@@ -232,7 +234,7 @@ def bulk_upsert_attendance(payload=None):
 
 		group_ctx[g] = dict(
 			sg=sg,
-			program_school=program_school,
+			program_school=group_school,
 			term_guard=term_guard,
 			rotation_map=rotation_map,
 			sched_map=sched_map,
@@ -331,8 +333,8 @@ def bulk_upsert_attendance(payload=None):
 				})
 		else:
 			# Insert row (provide full analytics enrichment; keep block_number NULL if unknown)
-			sg = ctx["sg"]
-			program_school = ctx["program_school"]
+			sg = ctx["sg"] 
+			group_school = ctx["program_school"]
 			block_number_value = None if block_norm == SENTINEL else int(block_norm)
 
 			# generate a mostly-unique name (bulk_insert bypasses doc events)
@@ -351,7 +353,7 @@ def bulk_upsert_attendance(payload=None):
 				"term": sg.term,
 				"program": sg.program,
 				"course": sg.course,
-				"school": program_school,
+				"school": group_school,
 				"rotation_day": rotation_day,
 				"block_number": block_number_value,
 				"instructor": (block_row.instructor if block_row else None),
@@ -403,8 +405,9 @@ def get_meeting_dates(student_group: str, *, limit: int | None = None) -> List[s
 	# Resolve schedule name
 	schedule_name = sg.school_schedule
 	if not schedule_name:
+		# prefer SG.school → Program Offering.school → Program.school
 		from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay
-		base_school = frappe.db.get_value("Program", sg.program, "school") if sg.program else None
+		base_school = get_school_for_student_group(sg)
 		schedule_name = get_effective_schedule_for_ay(sg.academic_year, base_school)
 
 	if not schedule_name:
@@ -417,6 +420,9 @@ def get_meeting_dates(student_group: str, *, limit: int | None = None) -> List[s
 
 	rc.set_value(key, out, expires_in_sec=MEETING_DATES_TTL)
 	return out if limit is None else out[:limit]
+
+
+
 
 def invalidate_meeting_dates(student_group: str | None = None) -> None:
 	rc = frappe.cache()

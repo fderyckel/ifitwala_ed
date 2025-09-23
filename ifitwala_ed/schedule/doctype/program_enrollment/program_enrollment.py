@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, get_link_to_form, nowdate
+from frappe.utils.user import get_fullname
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 from ifitwala_ed.utilities.school_tree import get_effective_record, ParentRuleViolation
 from frappe.utils.nestedset import get_ancestors_of
@@ -504,7 +505,7 @@ class ProgramEnrollment(Document):
 
 		existing_now = self._current_course_set()
 		added = 0
-		user_full = frappe.get_fullname(frappe.session.user)
+		user_full = get_fullname(frappe.session.user)
 		user_id = frappe.session.user
 		today = nowdate()
 
