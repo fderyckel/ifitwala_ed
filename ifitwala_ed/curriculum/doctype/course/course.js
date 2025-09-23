@@ -111,6 +111,11 @@ frappe.ui.form.on("Course Assessment Criteria", {
   },
 });
 
+
+
+
+// ---- server calls ----
+
 let get_programs_without_course = function (course) {
   return frappe.call({
     type: "GET",
@@ -120,17 +125,16 @@ let get_programs_without_course = function (course) {
   });
 };
 
-
+// ---- helpers ----
 
 async function fetch_units(course_name) {
-	// Lean server fetch; sort by unit_order then name. Falls back gracefully if unit_order is null.
+	// Lean client fetch: order by unit_order then unit_name.
 	const rows = await frappe.db.get_list("Learning Unit", {
 		fields: ["name", "unit_name", "unit_order", "unit_status"],
 		filters: { course: course_name },
 		order_by: "unit_order asc, unit_name asc",
-		limit: 500
+		limit: 1000
 	});
-	// Normalize nulls so UI behaves consistently
 	return (rows || []).map(r => ({
 		name: r.name,
 		unit_name: r.unit_name || "(Untitled)",
@@ -168,7 +172,6 @@ function show_units_dialog(rows) {
 }
 
 function show_reorder_dialog(frm, initialRows) {
-	// Work on a copy so we can mutate safely
 	let rows = [...(initialRows || [])];
 
 	const d = new frappe.ui.Dialog({
@@ -176,10 +179,19 @@ function show_reorder_dialog(frm, initialRows) {
 		size: "large",
 		primary_action_label: __("Save Order"),
 		primary_action: async () => {
-			await save_unit_order(rows);
-			d.hide();
-			frappe.show_alert({ message: __("Order updated"), indicator: "green" });
-			frm.reload_doc();
+			try {
+				await save_unit_order_server(frm.doc.name, rows);
+				d.hide();
+				frappe.show_alert({ message: __("Order updated"), indicator: "green" });
+				frm.reload_doc();
+			} catch (err) {
+				console.error(err);
+				frappe.msgprint({
+					title: __("Reorder failed"),
+					message: __(err && err.message ? err.message : "An error occurred."),
+					indicator: "red"
+				});
+			}
 		}
 	});
 
@@ -207,7 +219,6 @@ function show_reorder_dialog(frm, initialRows) {
 			</ul>
 		`);
 
-		// Wire buttons
 		const $list = d.$wrapper.find("#reorder-list");
 		$list.off("click");
 		$list.on("click", ".btn-up, .btn-down", function () {
@@ -227,18 +238,13 @@ function show_reorder_dialog(frm, initialRows) {
 	d.show();
 }
 
-async function save_unit_order(rows) {
-	// Assign new spaced order values (10,20,30…)
-	const updates = rows.map((r, i) => ({
-		name: r.name,
-		unit_order: (i + 1) * 10
-	}));
-
-	// For small lists this is fine. If you need to optimize later,
-	// we can replace this with a single whitelisted bulk-update.
-	for (const u of updates) {
-		// eslint-disable-next-line no-await-in-loop
-		await frappe.db.set_value("Learning Unit", u.name, "unit_order", u.unit_order);
-	}
+async function save_unit_order_server(course_name, rows) {
+	const unit_names = rows.map(r => r.name);
+	const res = await frappe.call({
+		method: "ifitwala_ed.curriculum.doctype.learning_unit.learning_unit.reorder_learning_units",
+		args: { course: course_name, unit_names },
+		freeze: true,
+		freeze_message: __("Updating order…")
+	});
+	return res && res.message;
 }
-
