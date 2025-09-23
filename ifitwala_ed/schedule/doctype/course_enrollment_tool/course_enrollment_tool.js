@@ -131,6 +131,12 @@ frappe.ui.form.on("Course Enrollment Tool", {
 			frm.custom_buttons_added = false;
 			frm.set_df_property("program", "read_only", 0);
 		}).addClass("btn-danger");
+
+		// 👇 Style the DocField Button: add_course
+		const $btn = frm.fields_dict.add_course?.$wrapper?.find("button");
+		if ($btn && $btn.length) {
+			$btn.removeClass("btn-default btn-secondary").addClass("btn-primary");
+		}
 	},
 
 	// New: when Program Offering changes → derive & lock program, clear dependent fields
