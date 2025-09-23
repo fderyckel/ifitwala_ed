@@ -2,20 +2,18 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "LU-.YYYY.-.####",
+ "autoname": "format:LU -{course}-{##}",
  "creation": "2024-12-06 08:09:37.068943",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_gcbg",
   "program",
-  "academic_year",
-  "start_date",
   "unit_status",
   "column_break_bw7c",
   "course",
-  "term",
   "duration",
+  "unit_order",
   "section_break_2dqf",
   "unit_name"
  ],
@@ -29,18 +27,6 @@
    "fieldtype": "Link",
    "label": "Program",
    "options": "Program"
-  },
-  {
-   "fieldname": "academic_year",
-   "fieldtype": "Link",
-   "label": "Academic Year",
-   "options": "Academic Year"
-  },
-  {
-   "fieldname": "start_date",
-   "fieldtype": "Data",
-   "label": "Start Date",
-   "reqd": 1
   },
   {
    "default": "Active",
@@ -60,7 +46,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Course",
-   "options": "Course"
+   "options": "Course",
+   "reqd": 1
   },
   {
    "fieldname": "duration",
@@ -80,20 +67,20 @@
    "unique": 1
   },
   {
-   "fieldname": "term",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Term",
-   "options": "Term"
+   "description": "\"Position of this unit within its course (ascending).\"",
+   "fieldname": "unit_order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Unit Order"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-21 14:52:00.137331",
+ "modified": "2025-09-22 15:20:16.012603",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Learning Unit",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -169,7 +156,9 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "unit_name",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "unit_name"
 }

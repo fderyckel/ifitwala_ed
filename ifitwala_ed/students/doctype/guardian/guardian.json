@@ -169,7 +169,7 @@
  "image_field": "guardian_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-12 09:03:42.739107",
+ "modified": "2025-09-23 10:52:53.113102",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Guardian",
@@ -197,6 +197,29 @@
    "read": 1,
    "report": 1,
    "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
    "share": 1,
    "write": 1
   },
@@ -235,20 +258,9 @@
    "report": 1,
    "role": "Counselor",
    "share": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Admission Officer",
-   "share": 1,
-   "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "guardian_first_name, guardian_last_name, guardian_email, guardian_mobile_phone",
  "sort_field": "modified",
  "sort_order": "DESC",

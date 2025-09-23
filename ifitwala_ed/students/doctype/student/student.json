@@ -283,7 +283,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-07 07:59:25.169402",
+ "modified": "2025-09-23 10:46:56.811687",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
@@ -315,12 +315,16 @@
    "write": 1
   },
   {
+   "create": 1,
    "delete": 1,
    "email": 1,
+   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Instructor"
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
   },
   {
    "create": 1,
@@ -333,6 +337,13 @@
    "role": "Admission Officer",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor"
   },
   {
    "email": 1,

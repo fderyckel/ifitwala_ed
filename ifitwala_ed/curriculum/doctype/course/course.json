@@ -14,7 +14,6 @@
   "team",
   "course_group",
   "curriculum_section",
-  "units",
   "default_grade_scale",
   "assessment_criteria",
   "additional_information_section",
@@ -70,13 +69,7 @@
   {
    "fieldname": "curriculum_section",
    "fieldtype": "Section Break",
-   "label": "Curriculum"
-  },
-  {
-   "fieldname": "units",
-   "fieldtype": "Table",
-   "label": "Units",
-   "options": "Lesson"
+   "label": "Assessment"
   },
   {
    "fieldname": "default_grade_scale",
@@ -166,7 +159,7 @@
  "image_field": "course_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-11 21:21:40.847295",
+ "modified": "2025-09-22 14:57:55.884404",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Course",

@@ -123,7 +123,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-20 07:51:18.645857",
+ "modified": "2025-09-23 10:47:53.456139",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment",
@@ -175,7 +175,20 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "role": "Academic Assistant",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
    "role": "Curriculum Coordinator",
+   "select": 1,
    "share": 1,
    "write": 1
   },
@@ -187,6 +200,7 @@
    "read": 1,
    "report": 1,
    "role": "Admission Officer",
+   "select": 1,
    "share": 1,
    "write": 1
   },

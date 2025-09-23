@@ -17,10 +17,8 @@
   "column_break_yenw",
   "is_group",
   "archive",
-  "course_section_section",
-  "courses",
-  "program_coordinators_section",
-  "coordinators",
+  "assessments_section",
+  "default_grade_scale",
   "lft",
   "rgt",
   "old_parent",
@@ -39,7 +37,12 @@
   "program_aims",
   "visuals_section",
   "program_gallery_image",
-  "route"
+  "route",
+  "courses_and_prerequisites",
+  "course_section_section",
+  "courses",
+  "course_prerequisites_section",
+  "prerequisites"
  ],
  "fields": [
   {
@@ -131,18 +134,6 @@
    "label": "Intro Video"
   },
   {
-   "description": "Program Coordinator can see all the courses in the program in the student portal.",
-   "fieldname": "program_coordinators_section",
-   "fieldtype": "Section Break",
-   "label": "Program Coordinators"
-  },
-  {
-   "fieldname": "coordinators",
-   "fieldtype": "Table",
-   "label": "Coordinators",
-   "options": "Program Coordinator"
-  },
-  {
    "fieldname": "lft",
    "fieldtype": "Int",
    "hidden": 1,
@@ -231,6 +222,34 @@
    "fieldname": "archive",
    "fieldtype": "Check",
    "label": "Archive"
+  },
+  {
+   "description": "Program Coordinator can see all the courses in the program in the student portal.",
+   "fieldname": "assessments_section",
+   "fieldtype": "Section Break",
+   "label": "Assessments"
+  },
+  {
+   "fieldname": "default_grade_scale",
+   "fieldtype": "Link",
+   "label": "Default Grade Scale",
+   "options": "Grade Scale"
+  },
+  {
+   "fieldname": "courses_and_prerequisites",
+   "fieldtype": "Tab Break",
+   "label": "Courses & Prerequisites"
+  },
+  {
+   "fieldname": "course_prerequisites_section",
+   "fieldtype": "Section Break",
+   "label": "Course Prerequisites"
+  },
+  {
+   "fieldname": "prerequisites",
+   "fieldtype": "Table",
+   "label": "Prerequisites",
+   "options": "Program Course Prerequisite"
   }
  ],
  "grid_page_length": 50,
@@ -238,7 +257,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-09-20 12:49:29.375074",
+ "modified": "2025-09-23 10:48:52.177684",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",
@@ -272,8 +291,17 @@
    "write": 1
   },
   {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
    "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,

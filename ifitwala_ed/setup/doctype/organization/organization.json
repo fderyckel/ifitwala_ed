@@ -135,7 +135,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-12 23:08:51.134170",
+ "modified": "2025-09-23 10:51:47.781836",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Organization",
@@ -156,19 +156,57 @@
    "write": 1
   },
   {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Academic Admin",
-   "share": 1
+   "select": 1,
+   "share": 1,
+   "write": 1
   },
   {
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Employee"
+   "role": "Employee",
+   "select": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "select": 1,
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

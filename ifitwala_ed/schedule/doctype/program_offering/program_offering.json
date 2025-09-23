@@ -120,7 +120,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-21 11:18:35.609911",
+ "modified": "2025-09-23 10:48:11.471427",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering",
@@ -163,6 +163,17 @@
    "write": 1
   },
   {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
    "email": 1,
    "export": 1,
    "print": 1,
@@ -192,6 +203,7 @@
  ],
  "row_format": "Dynamic",
  "search_fields": "offering_title",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
