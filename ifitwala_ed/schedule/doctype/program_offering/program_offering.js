@@ -91,21 +91,32 @@ function render_catalog_list($list, rows) {
   $list.empty();
 
   (rows || []).forEach((r) => {
+    const course = frappe.utils.escape_html(r.course);
+    const cname  = frappe.utils.escape_html(r.course_name || r.course);
+    const req    = r.required ? 1 : 0;
+
     const $row = $(`
       <label class="list-group-item d-flex align-items-start gap-2">
-        <input type="checkbox" class="form-check-input mt-1" data-course="${frappe.utils.escape_html(r.course)}">
+        <input
+          type="checkbox"
+          class="pc-pick form-check-input mt-1"
+          data-course="${course}"
+          data-course_name="${cname}"
+          data-required="${req}"
+        >
         <div class="flex-grow-1">
-          <div class="fw-semibold">${frappe.utils.escape_html(r.course_name || r.course)}</div>
-          <div class="text-muted small">${frappe.utils.escape_html(r.course)}</div>
+          <div class="fw-semibold">${cname}</div>
+          <div class="text-muted small">${course}</div>
         </div>
         <div class="ms-auto">
-          ${r.required ? `<span class="badge badge-pill po-required-badge">Required</span>` : ""}
+          ${req ? `<span class="badge badge-pill po-required-badge">Required</span>` : ""}
         </div>
       </label>
     `);
     $list.append($row);
   });
 }
+
 
 
 

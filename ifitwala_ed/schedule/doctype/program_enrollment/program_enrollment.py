@@ -4,7 +4,7 @@
 import frappe 
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import getdate, get_link_to_form
+from frappe.utils import getdate, get_link_to_form, nowdate
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 from ifitwala_ed.utilities.school_tree import get_effective_record, ParentRuleViolation
 from frappe.utils.nestedset import get_ancestors_of
@@ -12,6 +12,52 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools
 from typing import Optional, Sequence
 
 class ProgramEnrollment(Document):
+
+	def before_insert(self):
+		# 0) Require + load offering
+		if not getattr(self, "program_offering", None):
+			frappe.throw(_("Program Offering is required."))
+		off = _offering_core(self.program_offering)
+		if not off:
+			frappe.throw(_("Invalid Program Offering {0}.").format(
+				get_link_to_form("Program Offering", self.program_offering)))
+
+		# 1) Mirror authoritative values
+		if not self.program:
+			self.program = off.program
+		elif self.program != off.program:
+			frappe.throw(_("Enrollment Program {0} does not match Program Offering's Program {1}.")
+				.format(get_link_to_form("Program", self.program), get_link_to_form("Program", off.program)))
+
+		self.school = off.school
+		if off.student_cohort:
+			self.cohort = off.student_cohort
+
+		# 2) AY from offering spine (autofill when unique)
+		ay_names = _offering_ay_names(self.program_offering)
+		if self.academic_year:
+			if self.academic_year not in ay_names:
+				frappe.throw(_("Academic Year {0} is not part of Program Offering {1}.")
+					.format(get_link_to_form("Academic Year", self.academic_year),
+									get_link_to_form("Program Offering", self.program_offering)))
+		else:
+			if len(ay_names) == 1:
+				self.academic_year = ay_names[0]
+			else:
+				frappe.throw(_("Please choose an Academic Year from this Program Offering: {0}.")
+					.format(", ".join(ay_names)))
+
+		# 3) Resolve AY via school tree guard (your helper)
+		self._resolve_academic_year()
+
+		# 4) Seed required courses if empty (same behavior you had)
+		if not self.courses:
+			self.extend("courses", self.get_courses())
+
+		# 5) Student name
+		if not self.student_name and self.student:
+			self.student_name = frappe.db.get_value("Student", self.student, "student_full_name")
+
 
 	def validate(self):
 
@@ -76,10 +122,23 @@ class ProgramEnrollment(Document):
 					))
 		self._validate_course_terms()		
 
-	def before_submit(self):
+
+	def before_save(self):
+		# A) Only one active enrollment per student (if not archived)
 		self.validate_only_one_active_enrollment()
 
-	def on_submit(self):
+		# B) Traceability: convert deletions to Dropped (Option B)
+		if not self.is_new():
+			prior = self._db_course_rows()
+			now_set = self._current_course_set()
+			removed = [prior[c] for c in (set(prior.keys()) - now_set)]
+			self._soft_convert_deletions_to_dropped(removed)
+
+	def on_update(self):
+		self.update_student_joining_date()
+
+	def on_trash(self):
+		# when deleting an enrollment, recompute from remaining rows
 		self.update_student_joining_date()
 
 
@@ -281,12 +340,17 @@ class ProgramEnrollment(Document):
 			frappe.throw(_("Cohort must match Program Offering ({0}).").format(target_cohort))
 
 
-
 	def _validate_dropped_requires_date(self):
 		missing = [r.course for r in (self.courses or []) if r.status == "Dropped" and not r.dropped_date]
 		if missing:
 			lines = "<br>".join(f"• {frappe.bold(c or '')}" for c in missing)
 			frappe.throw(_("Dropped courses require a Dropped Date:<br>{0}").format(lines))
+
+		# require reason
+		missing_reason = [r.course for r in (self.courses or []) if r.status == "Dropped" and not (r.dropped_reason or "").strip()]
+		if missing_reason:
+			lines = "<br>".join(f"• {frappe.bold(c or '')}" for c in missing_reason)
+			frappe.msgprint(_("Think about adding a Dropped Reason:<br>{0}").format(lines))	
 
 	# If a student is in a program offering and that offering has required courses,
 	# load those that overlap the chosen Academic Year (AY).
@@ -380,6 +444,98 @@ class ProgramEnrollment(Document):
 					)
 		
 
+	# --- Traceability helpers (soft-convert deletions to Dropped) ----------------
+
+	def _db_course_rows(self) -> dict[str, dict]:
+		"""Snapshot of existing child rows in DB keyed by course (fast, cached)."""
+		# Request-scope memoization to avoid repeated DB calls in the same save cycle
+		cache_attr = "_cached_db_course_rows"
+		if hasattr(self, cache_attr):
+			return getattr(self, cache_attr)
+
+		if not self.name:
+			setattr(self, cache_attr, {})
+			return {}
+
+		# Single, tight SQL — faster than get_all for this hot path
+		rows = frappe.db.sql(
+			"""
+			SELECT
+				course,
+				status,
+				term_start,
+				term_end,
+				dropped_date,
+				dropped_reason,
+				idx
+			FROM `tabProgram Enrollment Course`
+			WHERE parent = %s
+				AND parenttype = 'Program Enrollment'
+				AND IFNULL(course, '') != ''
+			""",
+			(self.name,),
+			as_dict=True,
+		)
+
+		# Key by course; if duplicates exist, keep the one with the highest idx (latest)
+		result: dict[str, dict] = {}
+		for r in rows:
+			c = r.get("course")
+			if not c:
+				continue
+			if (c not in result) or (int(r.get("idx") or 0) > int(result[c].get("idx") or 0)):
+				result[c] = r
+
+		# We don’t need idx outside; drop to keep payload small/clean
+		for v in result.values():
+			v.pop("idx", None)
+
+		setattr(self, cache_attr, result)
+		return result
+
+	
+
+	def _current_course_set(self) -> set[str]:
+		return {r.course for r in (self.courses or []) if getattr(r, "course", None)}
+
+	def _soft_convert_deletions_to_dropped(self, removed: list[dict]):
+		if not removed:
+			return
+
+		existing_now = self._current_course_set()
+		added = 0
+		user_full = frappe.get_fullname(frappe.session.user)
+		user_id = frappe.session.user
+		today = nowdate()
+
+		for r in removed:
+			course = r.get("course")
+			if not course or course in existing_now:
+				continue
+
+			row = self.append("courses", {})
+			row.course = course
+			row.status = "Dropped"
+			row.dropped_date = r.get("dropped_date") or today
+			row.term_start = r.get("term_start")
+			row.term_end = r.get("term_end")
+
+			# NEW: preserve existing reason if any; else write an auto-reason
+			prev_reason = (r.get("dropped_reason") or "").strip() if isinstance(r, dict) else ""
+			row.dropped_reason = prev_reason or (
+				f"Auto-dropped on {today} by {user_full} ({user_id}) — row deleted from grid"
+			)
+			added += 1
+
+		if added:
+			frappe.msgprint(
+				_("Direct deletions were converted to 'Dropped' with a Dropped Date and Reason to preserve history."),
+				indicator="blue",
+				title=_("Enrollment Traceability"),
+			)
+
+
+
 
 # -------------------------
 # Program Offering helpers
@@ -459,21 +615,21 @@ def _compute_effective_course_span(offering_name: str, roc: dict) -> tuple[objec
 		return (getdate("1900-01-01"), getdate("1899-12-31"))
 
 	start_dt = s_ay_start
-	end_dt = e_ay_end
+	end_dt   = e_ay_end
 
+	# Narrow by the chosen start term (use its start date)
 	if roc.get("term_start"):
-		ts_school, ts_ay, t_start, t_end_ignored = _term_meta(roc["term_start"])
-		if t_start:
-			start_dt = max(start_dt, getdate(t_start))
-	if roc.get("term_end"):
-		te_school, te_ay, t2_start, t2_end = _term_meta(roc["term_end"])
-		if t_end or t_start:
-			end_dt = min(end_dt, getdate(t_end) if t_end else getdate(t_start))
+		_ts_school, _ts_ay, ts_start_date, _ts_end_date = _term_meta(roc["term_start"])
+		if ts_start_date:
+			start_dt = max(start_dt, getdate(ts_start_date))
 
-	if roc.get("from_date"):
-		start_dt = max(start_dt, getdate(roc["from_date"]))
-	if roc.get("to_date"):
-		end_dt = min(end_dt, getdate(roc["to_date"]))
+	# Narrow by the chosen end term
+	# Prefer the term's end date; if it's missing, fall back to its start date
+	if roc.get("term_end"):
+		_te_school, _te_ay, te_start_date, te_end_date = _term_meta(roc["term_end"])
+		if te_end_date or te_start_date:
+			end_dt = min(end_dt, getdate(te_end_date) if te_end_date else getdate(te_start_date))
+
 
 	return (start_dt, end_dt)
 
@@ -770,3 +926,5 @@ def on_doctype_update():
 	frappe.db.add_index("Program Enrollment", ["program_offering"])
 	frappe.db.add_index("Program Enrollment", ["student", "program_offering"])
 	frappe.db.add_index("Program Enrollment", ["student", "program_offering", "academic_year"])
+	# not duplicaiton of enrollmnent for same offering+year
+	frappe.db.add_unique("Program Enrollment", ["student", "program_offering", "academic_year"])

@@ -226,6 +226,37 @@ function enforce_dropped_requires_date(frm, row) {
 }
 
 
+function nudge_before_delete(frm) {
+	const grid = frm.fields_dict.courses?.grid;
+	if (!grid || grid._delete_nudge_bound) return;
+	grid._delete_nudge_bound = true;
+
+	// Intercept row delete clicks in this grid
+	grid.wrapper.on("click", ".grid-row .grid-delete-row", function (e) {
+		e.preventDefault();
+		e.stopImmediatePropagation();
+
+		const $row = $(this).closest(".grid-row");
+		const docname = $row.attr("data-name");
+		const row = frappe.get_doc("Program Enrollment Course", docname);
+
+		frappe.confirm(
+			__(
+				"Remove course <b>{0}</b> from this enrollment?<br><br>" +
+				"<span class='text-muted'>For traceability, prefer setting <b>Status = Dropped</b> and a <b>Dropped Date</b>.</span>",
+				[(row.course_name || row.course || "—")]
+			),
+			() => {
+				// proceed with delete
+				grid.remove(docname);
+				frm.refresh_field("courses");
+			},
+			() => {/* cancelled */}
+		);
+	});
+}
+
+
 function open_add_from_offering_dialog(frm) {
 	if (!frm.doc.program_offering || !frm.doc.academic_year) {
 		frappe.msgprint({
@@ -357,6 +388,7 @@ frappe.ui.form.on("Program Enrollment", {
 		show_offering_span_indicator(frm);
 		warn_if_enrollment_date_outside_offering(frm); 
 		add_grid_actions(frm);
+		nudge_before_delete(frm);
 	},
 
 	before_save(frm) {
