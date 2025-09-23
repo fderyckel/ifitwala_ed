@@ -268,14 +268,22 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
 @frappe.whitelist()
 def get_courses_for_offering(doctype, txt, searchfield, start, page_len, filters=None):
 	"""
-	Return [value, label] for Course link but scoped to Program Offering Courses,
-	and (optionally) constrained by the selected Academic Year window.
+	Return [value, label] for the Course Link field, scoped to Program Offering Courses.
+	Optionally constrain by the selected Academic Year (rows whose AY window covers it,
+	or rows with no AY bounds). Uses positional %s placeholders consistently.
 	"""
 	start = cint(start)
 	page_len = cint(page_len)
 
+	# filters may arrive as a JSON string from the Link field
+	if isinstance(filters, str):
+		try:
+			filters = json.loads(filters) if filters else {}
+		except Exception:
+			filters = {}
 	if not filters:
 		filters = {}
+
 	program_offering = filters.get("program_offering")
 	academic_year = filters.get("academic_year")
 
@@ -285,23 +293,26 @@ def get_courses_for_offering(doctype, txt, searchfield, start, page_len, filters
 	conds = ["poc.parent = %s"]
 	values = [program_offering]
 
-	# If AY is chosen, only include rows whose AY range covers it (or the row has no AY bounds)
+	# If AY is chosen, include rows whose AY range covers it (or has no bounds)
 	if academic_year:
-		conds.append("""(
-			(poc.start_academic_year IS NULL AND poc.end_academic_year IS NULL)
-			OR (poc.start_academic_year IS NULL AND poc.end_academic_year = %(ay)s)
-			OR (poc.end_academic_year IS NULL AND poc.start_academic_year = %(ay)s)
-			OR (%(ay)s BETWEEN IFNULL(poc.start_academic_year, %(ay)s) AND IFNULL(poc.end_academic_year, %(ay)s))
-		)""")
-		values.append(academic_year)
-		# Named parameter used twice; append once more for safety if your DB adapter needs it:
-		# (MariaDB via frappe.db.sql will substitute by name; this line is okay as is.)
+		conds.append("""
+			(
+				(poc.start_academic_year IS NULL AND poc.end_academic_year IS NULL)
+				OR (
+					%s BETWEEN IFNULL(poc.start_academic_year, %s)
+					AND IFNULL(poc.end_academic_year, %s)
+				)
+			)
+		""")
+		values.extend([academic_year, academic_year, academic_year])
 
+	# Text filter (id or title)
 	if txt:
 		conds.append("(c.name LIKE %s OR c.course_name LIKE %s)")
 		values.extend([f"%{txt}%", f"%{txt}%"])
 
 	where_clause = " AND ".join(conds)
+
 	rows = frappe.db.sql(f"""
 		SELECT c.name, c.course_name, poc.required
 		FROM `tabProgram Offering Course` poc
