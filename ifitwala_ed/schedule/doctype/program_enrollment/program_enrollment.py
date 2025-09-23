@@ -5,7 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, get_link_to_form, nowdate
-from frappe.utils.user import get_fullname
+from frappe.utils import get_fullname
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 from ifitwala_ed.utilities.school_tree import get_effective_record, ParentRuleViolation
 from frappe.utils.nestedset import get_ancestors_of
