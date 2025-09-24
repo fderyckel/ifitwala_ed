@@ -5,24 +5,17 @@
 
 import frappe
 from frappe import _
-from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_ancestor_schools
-
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
-	"""
-	List AYs whose `school` is either:
-	- the selected school,
-	- any of its descendants, OR
-	- any of its ancestors.
-
-	This covers cases where a child campus uses a parent school's AY (shared calendar),
-	and cases where a parent admin scopes to child-campus AYs.
-	"""
+	"""Return AYs where ay.school == selected school (no parents/siblings/children)."""
 	school = (filters or {}).get("school")
 	params = {"txt": f"%{txt}%", "start": start, "page_len": page_len}
 
+	# If school not chosen yet, keep it permissive so the control can mount;
+	# once School is set, the get_query above will rescope.
 	if not school:
 		return frappe.db.sql(
 			"""
@@ -35,21 +28,16 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 			params,
 		)
 
-	# Union of ancestors + descendants + self
-	descendants = set(get_descendant_schools(school) or [])
-	ancestors   = set(get_ancestor_schools(school) or [])
-	scope_schools = tuple(sorted(descendants.union(ancestors) or {school}))
-
 	return frappe.db.sql(
 		"""
 		SELECT name
 		FROM `tabAcademic Year`
-		WHERE school IN %(schools)s
+		WHERE school = %(school)s
 		  AND name LIKE %(txt)s
 		ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
 		LIMIT %(start)s, %(page_len)s
 		""",
-		{**params, "schools": scope_schools},
+		{**params, "school": school},
 	)
 
 
