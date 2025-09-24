@@ -410,18 +410,21 @@ def get_active_program_enrollment(student):
 	today = frappe.utils.today()
 	pe = frappe.db.sql("""
 		SELECT
-			pe.name, pe.program, pe.academic_year
-		FROM
-			`tabProgram Enrollment` pe
-		JOIN
-			`tabAcademic Year` ay ON pe.academic_year = ay.name
-		WHERE
-			pe.student = %s
-			AND %s BETWEEN ay.year_start_date AND ay.year_end_date
+			pe.name,
+			pe.program,
+			pe.academic_year,
+			pe.program_offering,     -- NEW
+			pe.school                -- NEW (authoritative delivery school)
+		FROM `tabProgram Enrollment` pe
+		JOIN `tabAcademic Year` ay ON pe.academic_year = ay.name
+		WHERE pe.student = %s
+		  AND %s BETWEEN ay.year_start_date AND ay.year_end_date
+		  AND (pe.archived = 0 OR pe.archived IS NULL)
 		ORDER BY ay.year_start_date DESC
 		LIMIT 1
 	""", (student, today), as_dict=True)
 	return pe[0] if pe else {}
+
 
 
 @frappe.whitelist()
