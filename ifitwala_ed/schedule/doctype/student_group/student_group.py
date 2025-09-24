@@ -7,7 +7,6 @@ from frappe.model.document import Document
 from frappe.utils import cint, get_link_to_form
 from ifitwala_ed.schedule.schedule_utils import validate_duplicate_student
 from ifitwala_ed.schedule.schedule_utils import check_slot_conflicts, get_conflict_rule
-from ifitwala_ed.schedule.schedule_utils import get_effective_schedule
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools 
 from ifitwala_ed.schedule.attendance_utils import invalidate_meeting_dates
 
@@ -42,14 +41,10 @@ class StudentGroup(Document):
 
 		########
 		# Auto-fill school_schedule if missing and based on course
-		if self.group_based_on == "Course" and not self.school_schedule:
-			school = frappe.db.get_value("Program", self.program, "school")
-			if not school:
-				frappe.throw(_("{0} has no linked school. Please update the Program.").format(
-					get_link_to_form("Program", self.program)
-				))
-			
-			self.school_schedule = get_effective_schedule(self.academic_year, school)
+		if self.group_based_on in {"Course", "Activity"} and not self.school_schedule:
+			# Uses offering/school/AY resolution + ancestor checks
+			ss = self._get_school_schedule()
+			self.school_schedule = ss.name
 
 
 		############	
