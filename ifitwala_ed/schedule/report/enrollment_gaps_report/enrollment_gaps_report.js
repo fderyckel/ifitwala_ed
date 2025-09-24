@@ -1,6 +1,5 @@
 // ifitwala_ed/schedule/report/enrollment_gaps_report/enrollment_gaps_report.js
 
-
 frappe.query_reports["Enrollment Gaps Report"] = {
 	filters: [
 		{
@@ -9,22 +8,25 @@ frappe.query_reports["Enrollment Gaps Report"] = {
 			fieldtype: "Link",
 			options: "School",
 			reqd: 1,
-			// We scope the school choices to the user's default school subtree.
 			get_query: () => {
+				// Limit choices to user's default school subtree once we know the root
 				const root = frappe.query_report.__root_school || null;
 				return root
 					? {
 							query: "ifitwala_ed.utilities.school_tree.get_school_descendants",
 							filters: { root }
 						}
-					: {}; // empty until we fetch default
+					: {}; // before root is known, fall back to default query
 			},
 			on_change: () => {
-				// When school changes, clear AY and re-run with a fresh AY query
+				// Clear AY when school changes (if AY filter is mounted)
 				const ay_filter = frappe.query_report.get_filter("academic_year");
-				ay_filter.set_value("");
-				ay_filter.refresh();
-				frappe.query_report.refresh(); // optional; keeps UI in sync
+				if (ay_filter) {
+					ay_filter.set_value("");
+					ay_filter.refresh();
+				}
+				// optional: trigger a refresh if both filters are set
+				frappe.query_report.refresh();
 			}
 		},
 		{
@@ -39,32 +41,37 @@ frappe.query_reports["Enrollment Gaps Report"] = {
 					query: "ifitwala_ed.schedule.report.enrollment_gaps_report.enrollment_gaps_report.academic_year_link_query",
 					filters: { school }
 				};
-			},
-			depends_on: "eval:!!doc.school"
+			}
+			// IMPORTANT: no depends_on here; keep the filter mounted always
 		}
 	],
 
 	onload() {
-		// 1) Fetch and set default school
+		// Ensure filters exist before manipulating them
+		const school_filter = frappe.query_report.get_filter("school");
+		const ay_filter = frappe.query_report.get_filter("academic_year");
+
+		// Fetch default school, then set it if empty
 		frappe.call({
 			method: "ifitwala_ed.utilities.school_tree.get_user_default_school"
 		}).then(r => {
 			const user_default = r && r.message ? r.message : null;
 			if (!user_default) return;
+
+			// cache root for schooling subtree queries
 			frappe.query_report.__root_school = user_default;
 
-			// Set default school if empty
-			const school_filter = frappe.query_report.get_filter("school");
-			if (!school_filter.get_value()) {
+			// Set default school only if user hasn't chosen one yet
+			if (school_filter && !school_filter.get_value()) {
 				school_filter.set_value(user_default);
+				// refresh school filter so its get_query picks up the new root
+				school_filter.refresh();
 			}
 
-			// Force the School filter to use the descendant-scoped query now that we know the root
-			school_filter.refresh();
-
-			// Also refresh AY’s query (it depends on School)
-			const ay_filter = frappe.query_report.get_filter("academic_year");
-			ay_filter.refresh();
+			// Now that school is known, refresh AY filter’s query safely
+			if (ay_filter) {
+				ay_filter.refresh();
+			}
 		});
 	},
 

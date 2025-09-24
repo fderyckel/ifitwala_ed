@@ -3,18 +3,26 @@
 
 # ifitwala_ed/schedule/report/enrollment_gaps_report/enrollment_gaps_report.py
 
-# ifitwala_ed/schedule/report/enrollment_gaps_report/enrollment_gaps_report.py
-
 import frappe
 from frappe import _
-from ifitwala_ed.utilities.school_tree import get_descendant_schools
+from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_ancestor_schools
 
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
-	"""List AYs that belong to the selected school or its descendants."""
+	"""
+	List AYs whose `school` is either:
+	- the selected school,
+	- any of its descendants, OR
+	- any of its ancestors.
+
+	This covers cases where a child campus uses a parent school's AY (shared calendar),
+	and cases where a parent admin scopes to child-campus AYs.
+	"""
 	school = (filters or {}).get("school")
+	params = {"txt": f"%{txt}%", "start": start, "page_len": page_len}
+
 	if not school:
 		return frappe.db.sql(
 			"""
@@ -24,10 +32,14 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 			ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
 			LIMIT %(start)s, %(page_len)s
 			""",
-			{"txt": f"%{txt}%", "start": start, "page_len": page_len},
+			params,
 		)
 
-	descendants = get_descendant_schools(school) or [school]
+	# Union of ancestors + descendants + self
+	descendants = set(get_descendant_schools(school) or [])
+	ancestors   = set(get_ancestor_schools(school) or [])
+	scope_schools = tuple(sorted(descendants.union(ancestors) or {school}))
+
 	return frappe.db.sql(
 		"""
 		SELECT name
@@ -37,7 +49,7 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 		ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
 		LIMIT %(start)s, %(page_len)s
 		""",
-		{"schools": tuple(descendants), "txt": f"%{txt}%", "start": start, "page_len": page_len},
+		{**params, "schools": scope_schools},
 	)
 
 
