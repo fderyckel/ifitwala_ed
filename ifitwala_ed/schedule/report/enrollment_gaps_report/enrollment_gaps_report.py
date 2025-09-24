@@ -5,18 +5,21 @@
 
 import frappe
 from frappe import _
-from ifitwala_ed.utilities.school_tree import get_descendant_schools
+from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_ancestor_schools
+
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
-	"""Return AYs where ay.school == selected school (no parents/siblings/children)."""
+	"""
+	Allow picking Academic Years whose `school` is the selected school
+	or any of its **ancestors** (covers IIS parent AY when ISS is selected).
+	"""
 	school = (filters or {}).get("school")
 	params = {"txt": f"%{txt}%", "start": start, "page_len": page_len}
 
-	# If school not chosen yet, keep it permissive so the control can mount;
-	# once School is set, the get_query above will rescope.
 	if not school:
+		# permissive before School is chosen
 		return frappe.db.sql(
 			"""
 			SELECT name
@@ -28,16 +31,19 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 			params,
 		)
 
+	# Ancestors list already includes self per your util
+	scope_schools = tuple(get_ancestor_schools(school) or [school])
+
 	return frappe.db.sql(
 		"""
 		SELECT name
 		FROM `tabAcademic Year`
-		WHERE school = %(school)s
+		WHERE school IN %(schools)s
 		  AND name LIKE %(txt)s
 		ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
 		LIMIT %(start)s, %(page_len)s
 		""",
-		{**params, "school": school},
+		{**params, "schools": scope_schools},
 	)
 
 
