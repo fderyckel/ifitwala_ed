@@ -147,6 +147,15 @@ frappe.ui.form.on("Student Log", {
 				if (r && r.message) {
 					frm.set_value("program", r.message.program || "");
 					frm.set_value("academic_year", r.message.academic_year || "");
+
+					// ▼ NEW: keep delivery context in sync (no Program.school usage)
+					if (r.message.program_offering) {
+						frm.set_value("program_offering", r.message.program_offering);
+					}
+					if (r.message.school) {
+						frm.set_value("school", r.message.school);
+					}
+					// ▲ END NEW
 				} else {
 					console.warn("No active enrollment returned", r);
 					frappe.msgprint({ message: __("No active Program Enrollment found for this student."), indicator: "orange" });
@@ -155,6 +164,7 @@ frappe.ui.form.on("Student Log", {
 			error(err) { console.error("Error in get_active_program_enrollment", err); }
 		});
 	},
+
 
 	author(frm) {
 		// Optional helper to display the author's full name on the form
