@@ -8,10 +8,14 @@
   "section_break_2pph",
   "course",
   "learning_unit",
+  "column_break_pb8x",
   "title",
-  "duration",
+  "lesson_order",
+  "column_break_sd7w",
   "start_date",
-  "lesson_order"
+  "duration",
+  "section_break_rqla",
+  "activities"
  ],
  "fields": [
   {
@@ -57,11 +61,29 @@
    "fieldname": "lesson_order",
    "fieldtype": "Int",
    "label": "Lesson Order"
+  },
+  {
+   "fieldname": "column_break_pb8x",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_sd7w",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_rqla",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "activities",
+   "fieldtype": "Table",
+   "label": "Activities",
+   "options": "Lesson Activity"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-23 11:13:52.377864",
+ "modified": "2025-09-24 16:12:03.298853",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Lesson",

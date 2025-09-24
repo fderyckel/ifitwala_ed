@@ -1,27 +1,24 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-09-15 10:27:17.301668",
+ "creation": "2025-09-24 16:04:17.734376",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "activity_type",
   "title",
+  "activity_type",
   "order",
-  "column_break_bu2o",
-  "video_url",
+  "column_break_ag59",
   "external_link",
-  "notes",
-  "reading_section",
-  "body_html",
-  "completion_section",
-  "completion_rule",
-  "estimated_minutes",
-  "is_required"
+  "video_url",
+  "section_break_gorl",
+  "reading_content",
+  "notes"
  ],
  "fields": [
   {
+   "columns": 2,
    "fieldname": "activity_type",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -30,78 +27,58 @@
    "reqd": 1
   },
   {
+   "columns": 3,
    "fieldname": "title",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Title"
+   "label": "Title",
+   "reqd": 1
   },
   {
+   "columns": 1,
+   "description": "Position within the lesson (ascending).",
    "fieldname": "order",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Order"
   },
   {
-   "fieldname": "column_break_bu2o",
-   "fieldtype": "Column Break"
-  },
-  {
-   "depends_on": "eval:doc.activity_type===\\\"Reading\\\"",
-   "fieldname": "body_html",
-   "fieldtype": "HTML",
+   "depends_on": "eval:doc.activity_type==='Reading'",
+   "fieldname": "reading_content",
+   "fieldtype": "Text Editor",
    "label": "Reading Content"
   },
   {
-   "depends_on": "eval:doc.activity_type===\"Video\"",
-   "description": "YouTube/Vimeo/MP4",
+   "depends_on": "eval:doc.activity_type==='Video'",
    "fieldname": "video_url",
    "fieldtype": "Data",
    "label": "Video URL"
   },
   {
-   "depends_on": "eval:doc.activity_type===\"Link\" || doc.activity_type===\"Assignment\" || doc.activity_type===\"Discussion\"",
+   "fieldname": "column_break_ag59",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "external_link",
    "fieldtype": "Data",
    "label": "External Link"
   },
   {
+   "fieldname": "section_break_gorl",
+   "fieldtype": "Section Break",
+   "label": "Content"
+  },
+  {
    "fieldname": "notes",
    "fieldtype": "Small Text",
    "label": "Notes / Instructions"
-  },
-  {
-   "fieldname": "reading_section",
-   "fieldtype": "Section Break",
-   "label": "Reading"
-  },
-  {
-   "fieldname": "completion_section",
-   "fieldtype": "Section Break",
-   "label": "Completion"
-  },
-  {
-   "default": "Viewed/Opened",
-   "fieldname": "completion_rule",
-   "fieldtype": "Select",
-   "label": "Completion Rule",
-   "options": "Viewed/Opened\nManual mark complete\nSubmitted Task\nPassed Quiz"
-  },
-  {
-   "fieldname": "estimated_minutes",
-   "fieldtype": "Int",
-   "label": "Estimated Minutes"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_required",
-   "fieldtype": "Check",
-   "label": "Required"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-15 10:41:33.144759",
+ "modified": "2025-09-24 16:11:24.863282",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Lesson Activity",
