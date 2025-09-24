@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"ORoV-qyamd\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Curriculum</span>\",\"col\":12}},{\"id\":\"o7SexzSw2d\",\"type\":\"card\",\"data\":{\"card_name\":\"Program\",\"col\":4}},{\"id\":\"BTNJXW4o4g\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum Settings\",\"col\":4}},{\"id\":\"-l6YhDaF-f\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Tools\",\"col\":4}},{\"id\":\"H5GTRTzzKa\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"yWxdh7-iFL\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}}]",
+ "content": "[{\"id\":\"ORoV-qyamd\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Curriculum</span>\",\"col\":12}},{\"id\":\"o7SexzSw2d\",\"type\":\"card\",\"data\":{\"card_name\":\"Program\",\"col\":4}},{\"id\":\"yWxdh7-iFL\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"H5GTRTzzKa\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"oKL0uhbVgR\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Enrollment</b></span>\",\"col\":12}},{\"id\":\"-l6YhDaF-f\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Tools\",\"col\":4}},{\"id\":\"BTNJXW4o4g\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum Settings\",\"col\":4}}]",
  "creation": "2024-12-08 11:58:32.394967",
  "custom_blocks": [],
  "docstatus": 0,
@@ -84,55 +84,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Reports & Tools",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program Enrollment Tool",
-   "link_count": 0,
-   "link_to": "Program Enrollment Tool",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Course Enrollment Tool",
-   "link_count": 0,
-   "link_to": "Course Enrollment Tool",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Report Enrollment Gap",
-   "link_count": 0,
-   "link_to": "Enrollment Gaps Report",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Group",
-   "link_count": 0,
-   "link_to": "student_group_cards",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Schedule",
    "link_count": 3,
    "link_type": "DocType",
@@ -187,9 +138,58 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports & Tools",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Enrollment Tool",
+   "link_count": 0,
+   "link_to": "Program Enrollment Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course Enrollment Tool",
+   "link_count": 0,
+   "link_to": "Course Enrollment Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Report Enrollment Gap",
+   "link_count": 0,
+   "link_to": "Enrollment Gaps Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Group Cards",
+   "link_count": 0,
+   "link_to": "student_group_cards",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-09-23 08:01:29.557022",
+ "modified": "2025-09-24 09:56:53.204206",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",

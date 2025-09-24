@@ -6,11 +6,13 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_ac5f",
+  "program_offering",
   "program",
   "course",
   "column_break_ehuh",
   "academic_year",
   "term",
+  "school",
   "section_break_z4cm",
   "students",
   "section_break_mane",
@@ -73,12 +75,25 @@
    "fieldtype": "Table",
    "label": "Students",
    "options": "Course Enrollment Tool Student"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "label": "Program Offering",
+   "options": "Program Offering",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-05-22 18:48:06.770603",
+ "modified": "2025-09-23 20:05:21.887153",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Course Enrollment Tool",
