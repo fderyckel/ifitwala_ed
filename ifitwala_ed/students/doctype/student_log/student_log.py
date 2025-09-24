@@ -160,8 +160,8 @@ class StudentLog(Document):
 		self._apply_status(derived, reason="recomputed on validate", write_immediately=False)
 
 		# Infer school from program if missing
-		if not self.school and self.program:
-			self.school = frappe.db.get_value("Program", self.program, "school")
+		if not self.school:
+			self.school = self._resolve_school()
 
 		self._assert_followup_transition_and_immutability()
 
@@ -240,6 +240,42 @@ class StudentLog(Document):
 						title=_("Locked After Completion")
 					)
 
+
+	def _resolve_school(self) -> str | None:
+		"""Prefer Program Offering.school, else Program Enrollment.school (same AY), else AY.school."""
+		# A) Program Offering → school (authoritative)
+		if getattr(self, "program_offering", None):
+			s = frappe.db.get_value("Program Offering", self.program_offering, "school")
+			if s:
+				return s  # Program Offering has required School field.  :contentReference[oaicite:0]{index=0}
+
+		# B) Program Enrollment → school (same AY; optionally same offering)
+		if self.student and self.academic_year:
+			filters = {
+				"student": self.student,
+				"academic_year": self.academic_year,
+				"archived": ["in", (0, None)],
+			}
+			# if the log points to a specific offering, keep it tight
+			if getattr(self, "program_offering", None):
+				filters["program_offering"] = self.program_offering
+
+			pe = frappe.get_all(
+				"Program Enrollment",
+				filters=filters,
+				fields=["school"],
+				limit=1,
+				order_by="modified desc",
+			)
+			if pe and pe[0].get("school"):
+				return pe[0]["school"]  # Program Enrollment carries School.  :contentReference[oaicite:1]{index=1}
+
+		# C) Academic Year → school (last fallback)
+		if self.academic_year:
+			return frappe.db.get_value("Academic Year", self.academic_year, "school")
+
+		return None
+
 	# ---------------------------------------------------------------------
 	# Assignment helpers
 	# ---------------------------------------------------------------------
@@ -260,10 +296,11 @@ class StudentLog(Document):
 		# due date from School.default_follow_up_due_in_days (fallback 5)
 		due_days = 5
 		if self.program:
-			school = frappe.get_value("Program", self.program, "school")
-			if school:
-				due_days = frappe.get_value("School", school, "default_follow_up_due_in_days") or 5
-		due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
+			# due date from School.default_follow_up_due_in_days (fallback 5)
+			school = self.school or self._resolve_school()
+			due_days = frappe.get_value("School", school, "default_follow_up_due_in_days") or 5
+			due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
+
 
 		# Create/ensure a single OPEN ToDo for the assignee
 		desc = f"Follow up on the Student Log for {self.student_name}"
@@ -337,7 +374,9 @@ class StudentLog(Document):
 	def _fullname(self, user):
 		return frappe.utils.get_fullname(user) or user
 
-	def on_doctype_update():
+
+
+def on_doctype_update():
 			frappe.db.add_index("Student Log", ["school"])
 
 # ---------- WHITELISTED HELPERS (KEPT) ----------

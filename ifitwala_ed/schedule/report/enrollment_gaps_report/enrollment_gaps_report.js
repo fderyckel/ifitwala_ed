@@ -77,11 +77,12 @@ frappe.query_reports["Enrollment Gaps Report"] = {
 				value = `<span style="color: rgba(255, 140, 0, 0.65); font-weight: bold;">${value}</span>`;
 			}
 		}
-		const centerAligned = ["term", "program", "missing"];
+		const centerAligned = ["term", "program_offering", "missing"];
+
 		if (centerAligned.includes(column.fieldname)) {
 			value = `<div style="text-align: center;">${value}</div>`;
 		}
-		const leftAligned = ["type", "student", "student_name", "course"];
+		const leftAligned   = ["type", "student", "student_name", "course"];
 		if (leftAligned.includes(column.fieldname)) {
 			value = `<div style="text-align: left;">${value}</div>`;
 		}
