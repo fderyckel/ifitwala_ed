@@ -51,38 +51,31 @@ def execute(filters=None):
 	filters = filters or {}
 	ay = (filters.get("academic_year") or "").strip()
 	school = (filters.get("school") or "").strip()
-
 	if not school:
 		frappe.throw(_("Please select a School."))
 	if not ay:
 		frappe.throw(_("Please select an Academic Year."))
 
-	# compute school subtree once
 	schools = get_descendant_schools(school) or [school]
 
 	columns = [
 		{"label": _("Type"), "fieldname": "type", "fieldtype": "Data", "width": 190},
 		{"label": _("Student"), "fieldname": "student", "fieldtype": "Link", "options": "Student", "width": 140},
 		{"label": _("Student Name"), "fieldname": "student_name", "fieldtype": "Data", "width": 220},
-		{"label": _("Program"), "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 140},
+		{"label": _("Program Offering"), "fieldname": "program_offering", "fieldtype": "Link", "options": "Program Offering", "width": 180},
 		{"label": _("Course"), "fieldname": "course", "fieldtype": "Link", "options": "Course", "width": 200},
 		{"label": _("Term"), "fieldname": "term", "fieldtype": "Data", "width": 110},
 		{"label": _("Missing"), "fieldname": "missing", "fieldtype": "Data", "width": 260},
 	]
 
-	# Single SQL, scoped by (AY, school subtree)
-	# Assumptions:
-	# - Student has a `school` link (your app does use school on Student).
-	# - Student Group has a `school` link (you added this recently).
 	data = frappe.db.sql(
 		"""
-		-- 1) Missing Program: active students belonging to the selected school subtree
-		--    who have NO Program Enrollment for the selected AY.
+		-- 1) Missing Program (Offering): active students under subtree with NO Program Enrollment in AY
 		SELECT
 			'Missing Program' AS type,
 			s.name AS student,
 			s.student_name AS student_name,
-			NULL AS program,
+			NULL AS program_offering,
 			NULL AS course,
 			NULL AS term,
 			'No Program Enrollment in selected AY' AS missing
@@ -98,17 +91,16 @@ def execute(filters=None):
 
 		UNION ALL
 
-		-- 2) Missing Student Group: students with PEC rows in the selected AY,
-		--    but without any SG (same AY) within the school subtree matching:
-		--    (a) course-matched SG, or (b) program-matched SG where sg.course IS NULL.
+		-- 2) Missing Student Group: has PEC rows in AY but no SG (same AY + subtree)
+		--    Match either by course, or by program_offering when SG has no course.
 		SELECT
 			'Missing Student Group' AS type,
 			pe.student AS student,
 			st.student_name AS student_name,
-			pe.program AS program,
+			pe.program_offering AS program_offering,
 			pec.course AS course,
 			NULL AS term,
-			'No Student Group in selected AY for this Course/Program' AS missing
+			'No Student Group in selected AY for this Course/Offering' AS missing
 		FROM `tabProgram Enrollment` pe
 		INNER JOIN `tabProgram Enrollment Course` pec
 			ON pec.parent = pe.name AND pec.parenttype = 'Program Enrollment'
@@ -126,7 +118,7 @@ def execute(filters=None):
 				  AND sg.school IN %(schools)s
 				  AND (
 						(sg.course IS NOT NULL AND sg.course = pec.course)
-						OR (sg.course IS NULL AND sg.program = pe.program)
+						OR (sg.course IS NULL AND sg.program_offering = pe.program_offering)
 				  )
 		  )
 		ORDER BY type, student
