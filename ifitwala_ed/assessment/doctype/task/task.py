@@ -113,3 +113,17 @@ class Task(Document):
 		if end and now > end:
 			return "Closed"
 		return "Open"
+
+
+def on_doctype_update():
+	# Course task lists: common instructor view
+	frappe.db.add_index("Task", ["course", "is_published", "due_date"])
+
+	# Group task lists: student/section views
+	frappe.db.add_index("Task", ["student_group", "is_published", "due_date"])
+
+	# School/AY analytics: number cards and reports
+	frappe.db.add_index("Task", ["school", "academic_year", "is_graded"])
+
+	# Fast status + overdue filtering
+	frappe.db.add_index("Task", ["status", "due_date"])
