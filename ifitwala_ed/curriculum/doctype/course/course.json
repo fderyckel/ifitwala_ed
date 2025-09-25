@@ -15,6 +15,13 @@
   "course_group",
   "curriculum_section",
   "default_grade_scale",
+  "column_break_egte",
+  "observations",
+  "binary",
+  "points",
+  "criteria",
+  "section_break_wnvl",
+  "assessment_categories",
   "assessment_criteria",
   "additional_information_section",
   "exclude_from_report",
@@ -81,7 +88,7 @@
    "fieldname": "assessment_criteria",
    "fieldtype": "Table",
    "label": "Assessment Criteria",
-   "options": "Course Assessment Criteria"
+   "options": "Assessment Criteria Childtable"
   },
   {
    "fieldname": "additional_information_section",
@@ -154,12 +161,50 @@
    "fieldname": "description",
    "fieldtype": "Text",
    "label": "Description"
+  },
+  {
+   "fieldname": "section_break_wnvl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "assessment_categories",
+   "fieldtype": "Table",
+   "label": "Assessment Categories",
+   "options": "Assessment Category"
+  },
+  {
+   "fieldname": "column_break_egte",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "binary",
+   "fieldtype": "Check",
+   "label": "Binary (Complete/Incomplete)"
+  },
+  {
+   "default": "0",
+   "fieldname": "observations",
+   "fieldtype": "Check",
+   "label": "Observations (Comments only)"
+  },
+  {
+   "default": "0",
+   "fieldname": "criteria",
+   "fieldtype": "Check",
+   "label": "Criteria"
+  },
+  {
+   "default": "0",
+   "fieldname": "points",
+   "fieldtype": "Check",
+   "label": "Points"
   }
  ],
  "image_field": "course_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-22 14:57:55.884404",
+ "modified": "2025-09-25 11:19:32.860434",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Course",

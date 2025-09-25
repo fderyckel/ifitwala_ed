@@ -17,10 +17,13 @@
   "is_group",
   "archive",
   "assessments_section",
-  "default_grade_scale",
-  "lft",
-  "rgt",
-  "old_parent",
+  "points",
+  "binary",
+  "column_break_yt79",
+  "observations",
+  "criteria",
+  "section_break_1rlr",
+  "assessment_categories",
   "dashboard_tab",
   "website_tab",
   "is_published",
@@ -41,7 +44,10 @@
   "course_section_section",
   "courses",
   "course_prerequisites_section",
-  "prerequisites"
+  "prerequisites",
+  "old_parent",
+  "rgt",
+  "lft"
  ],
  "fields": [
   {
@@ -215,16 +221,9 @@
    "label": "Archive"
   },
   {
-   "description": "Program Coordinator can see all the courses in the program in the student portal.",
    "fieldname": "assessments_section",
    "fieldtype": "Section Break",
    "label": "Assessments"
-  },
-  {
-   "fieldname": "default_grade_scale",
-   "fieldtype": "Link",
-   "label": "Default Grade Scale",
-   "options": "Grade Scale"
   },
   {
    "fieldname": "courses_and_prerequisites",
@@ -241,6 +240,43 @@
    "fieldtype": "Table",
    "label": "Prerequisites",
    "options": "Program Course Prerequisite"
+  },
+  {
+   "fieldname": "assessment_categories",
+   "fieldtype": "Table",
+   "label": "Assessment Categories",
+   "options": "Assessment Category"
+  },
+  {
+   "default": "0",
+   "fieldname": "points",
+   "fieldtype": "Check",
+   "label": "Points"
+  },
+  {
+   "fieldname": "column_break_yt79",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "observations",
+   "fieldtype": "Data",
+   "label": "Observations (Comments only)"
+  },
+  {
+   "default": "0",
+   "fieldname": "criteria",
+   "fieldtype": "Check",
+   "label": "Criteria"
+  },
+  {
+   "fieldname": "section_break_1rlr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "binary",
+   "fieldtype": "Check",
+   "label": "Binary (Complete/Incomplete)"
   }
  ],
  "grid_page_length": 50,
@@ -248,7 +284,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-09-24 14:11:21.115350",
+ "modified": "2025-09-25 09:40:26.894414",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",

@@ -1,75 +1,52 @@
 {
  "actions": [],
- "allow_import": 1,
  "allow_rename": 1,
- "autoname": "field:assessment_category",
+ "autoname": "hash",
  "creation": "2024-12-31 09:26:50.128790",
  "doctype": "DocType",
+ "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "section_break_thgx",
-  "assessment_category"
+  "assessment_category",
+  "asessment_category_color",
+  "default_weight"
  ],
  "fields": [
   {
-   "fieldname": "section_break_thgx",
-   "fieldtype": "Section Break"
-  },
-  {
+   "columns": 4,
    "fieldname": "assessment_category",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Assessment Category",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "asessment_category_color",
+   "fieldtype": "Color",
+   "in_list_view": 1,
+   "label": "Asessment Category Color"
+  },
+  {
+   "columns": 4,
+   "fieldname": "default_weight",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Default Weight"
   }
  ],
  "index_web_pages_for_search": 1,
+ "istable": 1,
  "links": [],
- "modified": "2024-12-31 10:03:01.139133",
+ "modified": "2025-09-25 07:46:46.241214",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Assessment Category",
- "naming_rule": "By fieldname",
+ "naming_rule": "Random",
  "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Instructor",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Academic Admin",
-   "share": 1,
-   "write": 1
-  }
- ],
+ "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -34,13 +34,15 @@
    "reqd": 1
   },
   {
+   "default": "1",
+   "description": "How long do you estimate this lesson to take?",
    "fieldname": "duration",
-   "fieldtype": "Data",
-   "label": "Duration"
+   "fieldtype": "Int",
+   "label": "Est. Duration (in Teaching Periods)"
   },
   {
    "fieldname": "start_date",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "Start Date"
   },
   {
@@ -83,7 +85,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-24 16:12:03.298853",
+ "modified": "2025-09-25 14:08:56.821804",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Lesson",

@@ -25,8 +25,9 @@
   "essential_understanding",
   "missconceptions",
   "standards_alignment_section",
-  "conent",
   "standards",
+  "content_skills_concepts",
+  "content",
   "skills",
   "concepts",
   "section_break_gjxa",
@@ -146,12 +147,6 @@
    "label": "Missconceptions"
   },
   {
-   "description": "Students will know this content.",
-   "fieldname": "conent",
-   "fieldtype": "Text Editor",
-   "label": "Conent"
-  },
-  {
    "description": "Students will develop these skills.",
    "fieldname": "skills",
    "fieldtype": "Text Editor",
@@ -174,11 +169,22 @@
    "fieldtype": "Table",
    "label": "Reflections",
    "options": "Curriculum Planning Reflection"
+  },
+  {
+   "fieldname": "content_skills_concepts",
+   "fieldtype": "Section Break",
+   "label": "Content, Skills & Concepts"
+  },
+  {
+   "description": "Students will know this content.",
+   "fieldname": "content",
+   "fieldtype": "Text Editor",
+   "label": "Content"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-24 19:45:09.215808",
+ "modified": "2025-09-24 20:35:19.742662",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Learning Unit",

@@ -16,8 +16,10 @@
  ],
  "fields": [
   {
+   "columns": 1,
    "fieldname": "academic_year",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Academic Year",
    "options": "Academic Year"
   },
@@ -28,15 +30,19 @@
    "options": "School"
   },
   {
+   "columns": 3,
    "description": "Describe the planning process and impact of inquiry prior to the unit",
    "fieldname": "prior_to_the_unit",
    "fieldtype": "Text Editor",
+   "in_list_view": 1,
    "label": "Prior To The Unit"
   },
   {
+   "columns": 3,
    "description": "Was the disciplinary knowledge/skills challenged in any way?\nWhat inquiries arose during the learning? ",
    "fieldname": "during_the_unit",
    "fieldtype": "Text Editor",
+   "in_list_view": 1,
    "label": "During the unit"
   },
   {
@@ -50,8 +56,10 @@
    "label": "What didn't Work well"
   },
   {
+   "columns": 3,
    "fieldname": "changes_suggestions",
    "fieldtype": "Text Editor",
+   "in_list_view": 1,
    "label": "Change & Suggestions"
   }
  ],
@@ -59,7 +67,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-24 19:43:27.646035",
+ "modified": "2025-09-24 21:38:54.575392",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum Planning Reflection",

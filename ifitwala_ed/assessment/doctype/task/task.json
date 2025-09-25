@@ -17,6 +17,23 @@
   "school",
   "program",
   "academic_year",
+  "grading_section",
+  "column_break_wmhk",
+  "is_graded",
+  "submission_required",
+  "prevent_late_submission",
+  "column_break_gdxa",
+  "observations",
+  "binary",
+  "points",
+  "criteria",
+  "column_break_gi2s",
+  "submission_type",
+  "max_points",
+  "grade_scale",
+  "attempt_limit",
+  "section_break_vjkt",
+  "assessment_criteria",
   "section_break_muj0",
   "due_date",
   "posted_date",
@@ -27,17 +44,6 @@
   "status",
   "is_published",
   "show_in_todo",
-  "grading_section",
-  "column_break_wmhk",
-  "is_graded",
-  "submission_required",
-  "prevent_late_submission",
-  "column_break_gdxa",
-  "submission_type",
-  "max_points",
-  "column_break_gi2s",
-  "grade_scale",
-  "attempt_limit",
   "section_break_haua",
   "instructions",
   "attachments",
@@ -74,6 +80,7 @@
    "in_filter": 1,
    "label": "Course",
    "options": "Course",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -265,13 +272,47 @@
    "fieldtype": "Link",
    "label": "Student Group",
    "options": "Student Group"
+  },
+  {
+   "default": "0",
+   "fieldname": "observations",
+   "fieldtype": "Check",
+   "label": "Observations"
+  },
+  {
+   "default": "0",
+   "fieldname": "binary",
+   "fieldtype": "Check",
+   "label": "Binary"
+  },
+  {
+   "default": "0",
+   "fieldname": "points",
+   "fieldtype": "Check",
+   "label": "Points"
+  },
+  {
+   "default": "0",
+   "fieldname": "criteria",
+   "fieldtype": "Check",
+   "label": "Criteria"
+  },
+  {
+   "fieldname": "section_break_vjkt",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "assessment_criteria",
+   "fieldtype": "Table",
+   "label": "Assessment Criteria",
+   "options": "Assessment Criteria Childtable"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-24 15:52:15.972850",
+ "modified": "2025-09-25 11:20:30.379931",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",

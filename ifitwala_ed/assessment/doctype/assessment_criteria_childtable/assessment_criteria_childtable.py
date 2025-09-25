@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class CourseAssessmentCriteria(Document):
+class AssessmentCriteriaChildtable(Document):
 	pass
