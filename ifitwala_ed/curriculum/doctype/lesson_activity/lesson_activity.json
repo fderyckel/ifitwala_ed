@@ -1,46 +1,36 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-09-24 16:04:17.734376",
+ "creation": "2025-09-26 11:01:28.494652",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "title",
   "activity_type",
-  "order",
-  "column_break_ag59",
-  "external_link",
-  "video_url",
-  "section_break_gorl",
   "reading_content",
-  "notes"
+  "video_url",
+  "order",
+  "external_link",
+  "student_instructions",
+  "teacher_guidance",
+  "estimated_time_minutes",
+  "completion_rule",
+  "udl_notes"
  ],
  "fields": [
   {
-   "columns": 2,
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title"
+  },
+  {
    "fieldname": "activity_type",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Activity Type",
-   "options": "Reading\nVideo\nLink\nDiscussion\nAssignment",
-   "reqd": 1
-  },
-  {
-   "columns": 3,
-   "fieldname": "title",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Title",
-   "reqd": 1
-  },
-  {
-   "columns": 1,
-   "description": "Position within the lesson (ascending).",
-   "fieldname": "order",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Order"
+   "options": "Reading\nVideo\nLink\nDiscussion\nAssignment"
   },
   {
    "depends_on": "eval:doc.activity_type==='Reading'",
@@ -49,36 +39,57 @@
    "label": "Reading Content"
   },
   {
-   "depends_on": "eval:doc.activity_type==='Video'",
-   "fieldname": "video_url",
-   "fieldtype": "Data",
-   "label": "Video URL"
-  },
-  {
-   "fieldname": "column_break_ag59",
-   "fieldtype": "Column Break"
+   "description": "Position within the lesson (ascending).",
+   "fieldname": "order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Order"
   },
   {
    "fieldname": "external_link",
    "fieldtype": "Data",
-   "label": "External Link"
+   "label": "External Link",
+   "options": "URL"
   },
   {
-   "fieldname": "section_break_gorl",
-   "fieldtype": "Section Break",
-   "label": "Content"
+   "depends_on": "eval:doc.activity_type==='Video'",
+   "fieldname": "video_url",
+   "fieldtype": "Data",
+   "label": "Video URL",
+   "options": "URL"
   },
   {
-   "fieldname": "notes",
+   "fieldname": "teacher_guidance",
    "fieldtype": "Small Text",
-   "label": "Notes / Instructions"
+   "label": "Teacher Guidance"
+  },
+  {
+   "fieldname": "student_instructions",
+   "fieldtype": "Small Text",
+   "label": "Student Instructions"
+  },
+  {
+   "fieldname": "estimated_time_minutes",
+   "fieldtype": "Int",
+   "label": "Estimate Time (in minutes)"
+  },
+  {
+   "fieldname": "completion_rule",
+   "fieldtype": "Select",
+   "label": "Completion Rule",
+   "options": "View\nSubmit via Task\nMark Done"
+  },
+  {
+   "fieldname": "udl_notes",
+   "fieldtype": "Small Text",
+   "label": "UDL Notes"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-24 16:11:24.863282",
+ "modified": "2025-09-26 11:28:19.532035",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Lesson Activity",

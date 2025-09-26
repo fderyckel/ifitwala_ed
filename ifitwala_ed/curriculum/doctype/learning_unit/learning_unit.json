@@ -144,7 +144,7 @@
    "description": "Likely misunderstandings students may have during the unit with relation to skills, content and concepts.",
    "fieldname": "missconceptions",
    "fieldtype": "Text Editor",
-   "label": "Missconceptions"
+   "label": "Misconceptions"
   },
   {
    "description": "Students will develop these skills.",
@@ -184,7 +184,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-24 20:35:19.742662",
+ "modified": "2025-09-26 11:07:30.694828",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Learning Unit",

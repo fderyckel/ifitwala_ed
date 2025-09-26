@@ -8,9 +8,11 @@
   "section_break_2pph",
   "course",
   "learning_unit",
+  "lesson_type",
   "column_break_pb8x",
   "title",
   "lesson_order",
+  "is_published",
   "column_break_sd7w",
   "start_date",
   "duration",
@@ -81,11 +83,23 @@
    "fieldtype": "Table",
    "label": "Activities",
    "options": "Lesson Activity"
+  },
+  {
+   "fieldname": "lesson_type",
+   "fieldtype": "Select",
+   "label": "Lesson Type",
+   "options": "Instruction\nPractice\nAssessment\nProject\nReview\nOther"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "label": "Is Published"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-25 14:08:56.821804",
+ "modified": "2025-09-26 11:30:30.482093",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Lesson",

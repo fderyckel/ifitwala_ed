@@ -8,6 +8,7 @@
   "section_break_xmdr",
   "title",
   "task_type",
+  "delivery_type",
   "student_group",
   "column_break_annk",
   "course",
@@ -306,13 +307,20 @@
    "fieldtype": "Table",
    "label": "Assessment Criteria",
    "options": "Assessment Criteria Childtable"
+  },
+  {
+   "fieldname": "delivery_type",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "label": "Delivery Type",
+   "options": "Assignment\nQuiz\nDiscussion\nCheckpoint\nExternal Tool\nOther"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-25 11:20:30.379931",
+ "modified": "2025-09-25 14:45:49.015497",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",
