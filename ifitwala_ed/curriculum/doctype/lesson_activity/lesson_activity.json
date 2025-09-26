@@ -1,21 +1,22 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-09-26 11:01:28.494652",
+ "creation": "2025-09-26 14:06:32.247455",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "title",
   "activity_type",
+  "lesson_activity_order",
   "reading_content",
   "video_url",
-  "order",
   "external_link",
+  "prompt",
   "student_instructions",
-  "teacher_guidance",
-  "estimated_time_minutes",
-  "completion_rule",
+  "instructor_guidance",
+  "is_required",
+  "estimated_time",
   "udl_notes"
  ],
  "fields": [
@@ -23,33 +24,27 @@
    "fieldname": "title",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Title"
+   "label": "Title",
+   "reqd": 1
   },
   {
    "fieldname": "activity_type",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Activity Type",
-   "options": "Reading\nVideo\nLink\nDiscussion\nAssignment"
+   "options": "Reading\nVideo\nLink\nDiscussion\nInteractive"
+  },
+  {
+   "fieldname": "lesson_activity_order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Lesson Activity Order"
   },
   {
    "depends_on": "eval:doc.activity_type==='Reading'",
    "fieldname": "reading_content",
    "fieldtype": "Text Editor",
    "label": "Reading Content"
-  },
-  {
-   "description": "Position within the lesson (ascending).",
-   "fieldname": "lesson_activity_order",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Activity Order"
-  },
-  {
-   "fieldname": "external_link",
-   "fieldtype": "Data",
-   "label": "External Link",
-   "options": "URL"
   },
   {
    "depends_on": "eval:doc.activity_type==='Video'",
@@ -59,9 +54,16 @@
    "options": "URL"
   },
   {
-   "fieldname": "teacher_guidance",
+   "fieldname": "external_link",
+   "fieldtype": "Data",
+   "label": "External Link",
+   "options": "URL"
+  },
+  {
+   "depends_on": "eval:doc.activity_type==='Discussion'",
+   "fieldname": "prompt",
    "fieldtype": "Small Text",
-   "label": "Teacher Guidance"
+   "label": "Prompt"
   },
   {
    "fieldname": "student_instructions",
@@ -69,15 +71,20 @@
    "label": "Student Instructions"
   },
   {
-   "fieldname": "estimated_time_minutes",
-   "fieldtype": "Int",
-   "label": "Estimate Time (in minutes)"
+   "fieldname": "instructor_guidance",
+   "fieldtype": "Small Text",
+   "label": "Instructor Guidance"
   },
   {
-   "fieldname": "completion_rule",
-   "fieldtype": "Select",
-   "label": "Completion Rule",
-   "options": "View\nSubmit via Task\nMark Done"
+   "default": "0",
+   "fieldname": "is_required",
+   "fieldtype": "Check",
+   "label": "Is required"
+  },
+  {
+   "fieldname": "estimated_time",
+   "fieldtype": "Int",
+   "label": "Estimated Time (In min)"
   },
   {
    "fieldname": "udl_notes",
@@ -89,7 +96,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-26 11:32:19.55",
+ "modified": "2025-09-26 14:13:09.060552",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Lesson Activity",

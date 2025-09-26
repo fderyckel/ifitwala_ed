@@ -69,7 +69,7 @@
   {
    "fieldname": "duration",
    "fieldtype": "Data",
-   "label": "Duration"
+   "label": "Duration (in weeks)"
   },
   {
    "fieldname": "unit_name",
@@ -184,7 +184,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-26 11:07:30.694828",
+ "modified": "2025-09-26 11:34:59.584781",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Learning Unit",
