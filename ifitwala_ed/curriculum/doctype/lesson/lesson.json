@@ -79,12 +79,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "activities",
-   "fieldtype": "Table",
-   "label": "Activities",
-   "options": "Lesson Activity"
-  },
-  {
    "fieldname": "lesson_type",
    "fieldtype": "Select",
    "label": "Lesson Type",
