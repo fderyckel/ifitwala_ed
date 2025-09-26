@@ -100,26 +100,25 @@ class Lesson(Document):
 		task.insert(ignore_permissions=False)
 		return {"name": task.name}
 
-
 	def _normalize_activity_orders(self) -> None:
-		"""Ensure unique ascending `order` values (10,20,30,...) on activities."""
+		"""Ensure unique ascending `lesson_activity_order` values (10,20,30,...) on activities."""
 		rows = self.get("activities") or []
 		if not rows:
 			return
 
-		# Sort by current order, then by idx for stability
-		sorted_rows = sorted(rows, key=lambda r: (int(r.order or 0), r.idx or 0))
+		# Sort by current lesson_activity_order, then by idx for stability
+		sorted_rows = sorted(rows, key=lambda r: (int(r.lesson_activity_order or 0), r.idx or 0))
 		next_val = _ACTIVITY_STEP
 		seen = set()
 
 		for r in sorted_rows:
-			curr = int(r.order or 0)
+			curr = int(r.lesson_activity_order or 0)
 			if curr <= 0 or curr in seen:
-				r.order = next_val
+				r.lesson_activity_order = next_val
 			else:
-				r.order = curr
-			seen.add(int(r.order))
-			next_val = max(next_val + _ACTIVITY_STEP, int(r.order) + _ACTIVITY_STEP)
+				r.lesson_activity_order = curr
+			seen.add(int(r.lesson_activity_order))
+			next_val = max(next_val + _ACTIVITY_STEP, int(r.lesson_activity_order) + _ACTIVITY_STEP)
 
 
 # ----------------------------
@@ -137,7 +136,7 @@ def _next_lesson_order(learning_unit: str) -> int:
 
 def _next_activity_order(lesson_name: str) -> int:
 	max_order = frappe.db.sql(
-		"select coalesce(max(`order`), 0) from `tabLesson Activity` where parent=%s",
+		"select coalesce(max(`lesson_activity_order`), 0) from `tabLesson Activity` where parent=%s",
 		(lesson_name,),
 		as_list=True,
 	)[0][0]
@@ -307,15 +306,16 @@ def duplicate_activity(lesson: str, activity_child_name: str) -> dict:
 	for f in ("activity_type", "title", "reading_content", "video_url", "external_link", "notes"):
 		new_row.set(f, row.get(f))
 
-	new_row.order = _next_activity_order(lesson)
+	new_row.lesson_activity_order = _next_activity_order(lesson)
 
 	doc.save()
 	return {"name": new_row.name}
 
 
+
 @frappe.whitelist()
 def reorder_lesson_activities(lesson: str, activity_names):
-	"""Set `order` for child rows to 10,20,30... in the provided order."""
+	"""Set `lesson_activity_order` for child rows to 10,20,30... in the provided order."""
 	if isinstance(activity_names, str):
 		activity_names = frappe.parse_json(activity_names)
 	if not isinstance(activity_names, (list, tuple)) or not activity_names:
@@ -332,21 +332,35 @@ def reorder_lesson_activities(lesson: str, activity_names):
 		frappe.throw(_("Some activities do not belong to this lesson: {0}").format(missing))
 
 	for idx, name in enumerate(activity_names):
-		frappe.db.set_value("Lesson Activity", name, "order", (idx + 1) * _ACTIVITY_STEP, update_modified=False)
+		frappe.db.set_value(
+			"Lesson Activity",
+			name,
+			"lesson_activity_order",
+			(idx + 1) * _ACTIVITY_STEP,
+			update_modified=False,
+		)
 
 	frappe.db.commit()
 	return {"updated": len(activity_names), "order_step": _ACTIVITY_STEP}
+
 
 @redis_cache(ttl=86400)
 def get_ordered_activities(lesson: str) -> list[dict]:
 	return frappe.get_all(
 		"Lesson Activity",
 		filters={"parent": lesson, "parenttype": "Lesson", "parentfield": "activities"},
-		fields=["name", "activity_type", "title", "`order`", "video_url", "external_link"],
-		order_by="`order` asc, idx asc",
+		fields=[
+			"name",
+			"activity_type",
+			"title",
+			"lesson_activity_order",
+			"video_url",
+			"external_link",
+		],
+		order_by="lesson_activity_order asc, idx asc",
 	)
 
 
 def on_doctype_update():
 	frappe.db.add_index("Lesson", ["learning_unit", "lesson_order"])
-	frappe.db.add_index("Lesson Activity", ["parent", "order"])
+	frappe.db.add_index("Lesson Activity", ["parent", "lesson_activity_order"])
