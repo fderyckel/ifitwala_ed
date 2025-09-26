@@ -8,8 +8,7 @@ frappe.ui.form.on("Learning Unit", {
 	refresh(frm) {
 		if (frm.is_new() || !frm.doc.name) return;
 
-		// Keep your existing custom buttons here, if any.
-
+		// --- Lessons menu ---
 		frm.add_custom_button(__("View Lessons (ordered)"), async () => {
 			const rows = await fetch_lessons(frm.doc.name);
 			show_lessons_dialog(rows);
@@ -19,6 +18,24 @@ frappe.ui.form.on("Learning Unit", {
 			const rows = await fetch_lessons(frm.doc.name);
 			show_reorder_dialog(frm, rows);
 		}, __("Lessons"));
+
+		// NEW: Add a lesson (opens new tab with fields prefilled)
+		frm.add_custom_button(__("Add a lesson"), () => {
+			if (!frm.doc.course) {
+				frappe.msgprint(__("Please set a Course on this Learning Unit first."));
+				return;
+			}
+			// Prefill via route options (works across tabs)
+			frappe.utils.set_route_options({
+				course: frm.doc.course,
+				learning_unit: frm.doc.name,
+			});
+			// open the "New Lesson" form in a new tab
+			window.open("/app/lesson/new-lesson", "_blank");
+		}, __("Lessons"));
+
+		// Make the Lessons group button blue (primary)
+		frm.page.set_inner_btn_group_as_primary(__("Lessons"));
 	}
 });
 
