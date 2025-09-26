@@ -41,10 +41,12 @@ async function fetch_lessons(unit_name) {
 	}));
 }
 
+
 function show_lessons_dialog(rows) {
 	const d = new frappe.ui.Dialog({
 		title: __("Lessons (ordered)"),
-		size: "large"
+		size: "large",
+		fields: [{ fieldtype: "HTML", fieldname: "body" }]
 	});
 
 	const list = (rows || []).map(r => {
@@ -55,19 +57,22 @@ function show_lessons_dialog(rows) {
 		const pubDot = r.is_published
 			? `<span class="indicator-pill green ms-2">${__("Published")}</span>`
 			: `<span class="indicator-pill orange ms-2">${__("Draft")}</span>`;
-		const link = `<a href="/app/lesson/${encodeURIComponent(r.name)}" target="_blank">${frappe.utils.escape_html(r.title)}</a>`;
+		const link = `<a href="/app/lesson/${encodeURIComponent(r.name)}" target="_blank">${frappe.utils.escape_html(r.title || "(Untitled)")}</a>`;
 		return `<li class="list-group-item d-flex align-items-center justify-content-between">
 			<div>${orderBadge}${link}${typeBadge}${pubDot}</div>
 		</li>`;
 	}).join("");
 
-	d.set_message(`
+	const html = `
 		<div class="mb-2 text-muted small">
 			${__("Sorted by")} <code>lesson_order</code> ${__("then")} <code>title</code>.
 		</div>
-		<ul class="list-group">${list || `<li class="list-group-item">${__("No lessons yet.")}</li>`}</ul>
-	`);
+		<ul class="list-group">
+			${list || `<li class="list-group-item">${__("No lessons yet.")}</li>`}
+		</ul>
+	`;
 
+	d.get_field("body").$wrapper.html(html);
 	d.set_primary_action(__("Close"), () => d.hide());
 	d.show();
 }
@@ -79,6 +84,7 @@ function show_reorder_dialog(frm, initialRows) {
 		title: __("Reorder Lessons"),
 		size: "large",
 		primary_action_label: __("Save Order"),
+		fields: [{ fieldtype: "HTML", fieldname: "body" }],
 		primary_action: async () => {
 			try {
 				await save_lesson_order_server(frm.doc.name, rows);
@@ -97,40 +103,37 @@ function show_reorder_dialog(frm, initialRows) {
 	});
 
 	function render_list() {
-		const items = rows.map((r, idx) => {
-			return `
+		const items = rows.map((r, idx) => `
 			<li class="list-group-item d-flex align-items-center justify-content-between" data-idx="${idx}">
 				<div class="d-flex align-items-center">
 					<span class="text-muted me-2">${(idx + 1) * 10}</span>
-					<strong>${frappe.utils.escape_html(r.title)}</strong>
+					<strong>${frappe.utils.escape_html(r.title || "(Untitled)")}</strong>
 				</div>
 				<div class="btn-group btn-group-sm" role="group">
 					<button type="button" class="btn btn-outline-secondary btn-up" ${idx === 0 ? "disabled" : ""}>↑</button>
 					<button type="button" class="btn btn-outline-secondary btn-down" ${idx === rows.length - 1 ? "disabled" : ""}>↓</button>
 				</div>
-			</li>`;
-		}).join("");
+			</li>
+		`).join("");
 
-		d.set_message(`
+		const html = `
 			<div class="mb-2 text-muted small">
 				${__("Use the arrows to move items. New")} <code>lesson_order</code> ${__("will be set to 10,20,30…")}
 			</div>
 			<ul class="list-group" id="reorder-lessons">
 				${items || `<li class="list-group-item">${__("No lessons to reorder.")}</li>`}
 			</ul>
-		`);
+		`;
+
+		d.get_field("body").$wrapper.html(html);
 
 		const $list = d.$wrapper.find("#reorder-lessons");
 		$list.off("click");
 		$list.on("click", ".btn-up, .btn-down", function () {
 			const $li = $(this).closest("li");
 			const idx = parseInt($li.attr("data-idx"), 10);
-			if ($(this).hasClass("btn-up") && idx > 0) {
-				[rows[idx - 1], rows[idx]] = [rows[idx], rows[idx - 1]];
-			}
-			if ($(this).hasClass("btn-down") && idx < rows.length - 1) {
-				[rows[idx + 1], rows[idx]] = [rows[idx], rows[idx + 1]];
-			}
+			if ($(this).hasClass("btn-up") && idx > 0) [rows[idx - 1], rows[idx]] = [rows[idx], rows[idx - 1]];
+			if ($(this).hasClass("btn-down") && idx < rows.length - 1) [rows[idx + 1], rows[idx]] = [rows[idx], rows[idx + 1]];
 			render_list();
 		});
 	}
@@ -138,6 +141,7 @@ function show_reorder_dialog(frm, initialRows) {
 	render_list();
 	d.show();
 }
+
 
 async function save_lesson_order_server(learning_unit_name, rows) {
 	const lesson_names = rows.map(r => r.name);
