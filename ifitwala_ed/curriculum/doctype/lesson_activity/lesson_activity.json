@@ -40,10 +40,10 @@
   },
   {
    "description": "Position within the lesson (ascending).",
-   "fieldname": "order",
+   "fieldname": "lesson_activity_order",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Order"
+   "label": "Activity Order"
   },
   {
    "fieldname": "external_link",
@@ -89,7 +89,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-26 11:28:19.532035",
+ "modified": "2025-09-26 11:32:19.532035",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Lesson Activity",
