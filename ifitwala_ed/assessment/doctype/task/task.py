@@ -1,6 +1,9 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# Copyright (c) 2025, François de Ryckel and contributors
+# License: MIT
+
 import frappe
 from frappe.model.document import Document
 from frappe.utils import now_datetime
@@ -13,6 +16,7 @@ try:
 except Exception:
 	def is_descendant(*args, **kwargs):
 		return True  # soft fallback if util not available in early migrations
+
 
 class Task(Document):
 	def before_insert(self):
@@ -70,10 +74,14 @@ class Task(Document):
 		if self.attempt_limit and self.attempt_limit < 0:
 			frappe.throw(_("Attempt Limit cannot be negative."))
 
+		# --- Duplicate guard (same group + lesson + title + due_date) ---
+		# Only run when we have enough context; also allow edits that don't change keys
+		if self.student_group and self.title:
+			self.validate_no_identical_clone()
+
 	def before_save(self):
 		# Keep denorm fresh if group changed or cleared
 		self._denorm_from_group()
-
 		# Compute status (Draft/Published/Open/Closed) from publish flag + window
 		self.status = self._compute_status()
 
@@ -114,6 +122,103 @@ class Task(Document):
 			return "Closed"
 		return "Open"
 
+	def validate_no_identical_clone(self) -> None:
+		"""Disallow an identical Task for the same student_group + lesson + title + due_date.
+		Excludes self when updating an existing Task.
+		"""
+		# Build filters
+		filters = [
+			["Task", "student_group", "=", self.student_group],
+			["Task", "title", "=", self.title],
+		]
+		# lesson may be optional; include when present
+		if self.lesson:
+			filters.append(["Task", "lesson", "=", self.lesson])
+
+		# due_date match: either exact datetime or both unset/null
+		if self.due_date:
+			filters.append(["Task", "due_date", "=", self.due_date])
+		else:
+			filters.append(["Task", "due_date", "is", "not set"])
+
+		# Exclude current document if it exists (updates)
+		if self.name:
+			filters.append(["Task", "name", "!=", self.name])
+
+		exists = frappe.get_all("Task", filters=filters, fields=["name"], limit=1)
+		if exists:
+			frappe.throw(_("A similar Task already exists for this group with the same due date: {0}")
+				.format(exists[0]["name"]))
+
+
+@frappe.whitelist()
+def duplicate_for_group(
+	source_task: str,
+	new_student_group: str,
+	available_from: Optional[str] = None,
+	due_date: Optional[str] = None,
+	available_until: Optional[str] = None,
+	is_published: Optional[int] = None
+) -> dict:
+	"""Clone a Task to a new student_group with optional new dates.
+	Returns {"name": <new_task_name>}.
+	"""
+	if not source_task or not new_student_group:
+		frappe.throw(_("source_task and new_student_group are required"))
+
+	src = frappe.get_doc("Task", source_task)
+
+	# Fetch school/program/ay from Student Group to keep context correct
+	sg_school, sg_program, sg_ay = frappe.db.get_value(
+		"Student Group",
+		new_student_group,
+		["school", "program", "academic_year"],
+		as_dict=False
+	) or (None, None, None)
+
+	# Prepare new doc as shallow clone; avoid copying system fields
+	data = src.as_dict()
+	for k in ("name", "amended_from", "owner", "creation", "modified", "modified_by", "docstatus"):
+		data.pop(k, None)
+
+	# Overwrite audience-specific bits
+	data["student_group"] = new_student_group
+	data["school"] = sg_school
+	data["program"] = sg_program
+	data["academic_year"] = sg_ay
+
+	# Dates: use provided overrides, else copy from source
+	data["available_from"] = available_from or src.get("available_from")
+	data["due_date"] = due_date or src.get("due_date")
+	data["available_until"] = available_until or src.get("available_until")
+
+	# is_published override if provided (0/1), else keep source
+	if is_published is not None:
+		data["is_published"] = int(is_published)
+
+	# Preserve everything else (title, course, learning_unit, lesson, task_type, delivery_type, grading fields, instructions, attachments, etc.)
+	new_doc = frappe.get_doc({"doctype": "Task", **data})
+
+	# Run duplicate check against current key for the target group BEFORE insert
+	# (mirrors validate_no_identical_clone but we can short-circuit nicer error messages here if needed)
+	dup_filters = [
+		["Task", "student_group", "=", data.get("student_group")],
+		["Task", "title", "=", data.get("title")],
+	]
+	if data.get("lesson"):
+		dup_filters.append(["Task", "lesson", "=", data.get("lesson")])
+	if data.get("due_date"):
+		dup_filters.append(["Task", "due_date", "=", data.get("due_date")])
+	else:
+		dup_filters.append(["Task", "due_date", "is", "not set"])
+	if frappe.get_all("Task", filters=dup_filters, limit=1):
+		frappe.throw(_("A similar Task already exists for this group with the same due date."))
+
+	new_doc.insert(ignore_permissions=False)  # normal perms
+	# do not submit automatically; let author review if Task is submittable in your flow
+
+	return {"name": new_doc.name}
+
 
 def on_doctype_update():
 	# Course task lists: common instructor view
@@ -127,3 +232,9 @@ def on_doctype_update():
 
 	# Fast status + overdue filtering
 	frappe.db.add_index("Task", ["status", "due_date"])
+
+	# Faster lesson->tasks and checklist rendering
+	frappe.db.add_index("Task", ["lesson", "delivery_type"])
+
+	# Useful for course dashboards and date queries
+	frappe.db.add_index("Task", ["course", "due_date"])

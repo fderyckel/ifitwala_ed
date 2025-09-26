@@ -30,6 +30,98 @@ frappe.ui.form.on("Lesson", {
 			const rows = await fetch_activities(frm.doc.name);
 			show_reorder_dialog(frm, rows);
 		}, __("Activities"));
+
+		if (!frm.is_new() && frm.fields_dict.activities) {
+			add_promote_button(frm);
+		}
+
+		frm.add_custom_button(__("Promote selected to Tasks"), async () => {
+			const grid = frm.fields_dict.activities?.grid;
+			const selected = grid?.get_selected_children() || [];
+			if (!selected.length) {
+				frappe.msgprint({ message: __("Select at least one activity row."), indicator: "orange" });
+				return;
+			}
+			const dlg = new frappe.ui.Dialog({
+				title: __("Promote selected activities"),
+				fields: [
+					{ fieldname: "delivery_type", fieldtype: "Select", label: __("Delivery Type (optional override)"),
+						options: ["", "Assignment","Quiz","Discussion","Checkpoint","External Tool","Other"].join("\n") },
+					{ fieldname: "student_group", fieldtype: "Link", label: __("Student Group"), options: "Student Group" },
+					{ fieldname: "section_dates", fieldtype: "Section Break", label: __("Dates (optional)") },
+					{ fieldname: "available_from", fieldtype: "Datetime", label: __("Available From") },
+					{ fieldname: "due_date", fieldtype: "Datetime", label: __("Due Date") },
+					{ fieldname: "available_until", fieldtype: "Datetime", label: __("Available Until") },
+					{ fieldname: "col1", fieldtype: "Column Break" },
+					{ fieldname: "is_published", fieldtype: "Check", label: __("Publish immediately?") },
+				],
+				primary_action_label: __("Create Tasks"),
+				primary_action: async (v) => {
+					try {
+						const child_names = selected.map(r => r.name);
+						const res = await frappe.call({
+							method: "ifitwala_ed.curriculum.doctype.lesson.lesson.bulk_promote_activities_to_tasks",
+							args: {
+								lesson: frm.doc.name,
+								activity_child_names: child_names,
+								delivery_type: v.delivery_type || null,
+								student_group: v.student_group || null,
+								available_from: v.available_from || null,
+								due_date: v.due_date || null,
+								available_until: v.available_until || null,
+								is_published: v.is_published ? 1 : 0,
+							},
+							freeze: true,
+							freeze_message: __("Creating tasks...")
+						});
+						dlg.hide();
+						const msg = res?.message || {};
+						const created = (msg.created || []).length;
+						const failed = (msg.failed || []).length;
+						frappe.msgprint({
+							title: __("Bulk Promote Result"),
+							indicator: failed ? "orange" : "green",
+							message: __(`
+								<div><strong>${created}</strong> ${__("task(s) created.")}</div>
+								<div><strong>${failed}</strong> ${__("failed.")}</div>
+							`)
+						});
+						if (created === 1 && msg.created[0]) {
+							frappe.set_route("Form", "Task", msg.created[0]);
+						}
+					} catch (e) {
+						console.error(e);
+						frappe.msgprint({ message: __("Failed to create tasks"), indicator: "red" });
+					}
+				}
+			});
+			dlg.show();
+		}, __("Activities"));
+
+		frm.add_custom_button(__("Duplicate selected activity"), async () => {
+			const grid = frm.fields_dict.activities?.grid;
+			const selected = grid?.get_selected_children() || [];
+			if (!selected.length) {
+				frappe.msgprint({ message: __("Select an activity row to duplicate."), indicator: "orange" });
+				return;
+			}
+			const row = selected[0];
+			try {
+				await frappe.call({
+					method: "ifitwala_ed.curriculum.doctype.lesson.lesson.duplicate_activity",
+					args: { lesson: frm.doc.name, activity_child_name: row.name },
+					freeze: true,
+					freeze_message: __("Duplicating…")
+				});
+				frappe.show_alert({ message: __("Duplicated"), indicator: "green" });
+				frm.reload_doc();
+			} catch (e) {
+				console.error(e);
+				frappe.msgprint({ message: __("Failed to duplicate"), indicator: "red" });
+			}
+		}, __("Activities"));
+
+
 	}
 });
 
@@ -150,10 +242,89 @@ function show_reorder_dialog(frm, initialRows) {
 async function save_activity_order_server(lesson_name, rows) {
 	const activity_names = rows.map(r => r.name);
 	const res = await frappe.call({
-		method: "ifitwala_ed.curriculum.doctype.lesson_activity.lesson_activity.reorder_lesson_activities",
+		method: "ifitwala_ed.curriculum.doctype.lesson.lesson.reorder_lesson_activities",
 		args: { lesson: lesson_name, activity_names },
 		freeze: true,
 		freeze_message: __("Updating order…")
 	});
 	return res && res.message;
+}
+
+
+function add_promote_button(frm) {
+	if (frm._promote_btn_added) return;
+	frm._promote_btn_added = true;
+
+	frm.add_custom_button(__("Promote to Task (selected activity)"), async () => {
+		const grid = frm.fields_dict.activities.grid;
+		const selected = grid.get_selected_children();
+		if (!selected || !selected.length) {
+			frappe.msgprint({ message: __("Select an activity row first."), indicator: "orange" });
+			return;
+		}
+		const row = selected[0]; // single-row promote for v1
+
+		// Suggest delivery_type from activity_type
+		const suggested = suggest_delivery_type(row.activity_type);
+
+		const dlg = new frappe.ui.Dialog({
+			title: __("Promote Activity to Task"),
+			fields: [
+				{ fieldname: "delivery_type", fieldtype: "Select", label: __("Delivery Type"),
+					options: ["Assignment","Quiz","Discussion","Checkpoint","External Tool","Other"].join("\n"),
+					default: suggested },
+				{ fieldname: "student_group", fieldtype: "Link", label: __("Student Group"), options: "Student Group" },
+				{ fieldname: "section_dates", fieldtype: "Section Break", label: __("Dates (optional)") },
+				{ fieldname: "available_from", fieldtype: "Datetime", label: __("Available From") },
+				{ fieldname: "due_date", fieldtype: "Datetime", label: __("Due Date") },
+				{ fieldname: "available_until", fieldtype: "Datetime", label: __("Available Until") },
+				{ fieldname: "col1", fieldtype: "Column Break" },
+				{ fieldname: "is_published", fieldtype: "Check", label: __("Publish immediately?") },
+			],
+			primary_action_label: __("Create Task"),
+			primary_action: async (values) => {
+				try {
+					const res = await frappe.call({
+						method: "ifitwala_ed.curriculum.doctype.lesson.lesson.promote_activity_to_task",
+						args: {
+							lesson: frm.doc.name,
+							activity_child_name: row.name,
+							delivery_type: values.delivery_type || null,
+							student_group: values.student_group || null,
+							available_from: values.available_from || null,
+							due_date: values.due_date || null,
+							available_until: values.available_until || null,
+							is_published: values.is_published ? 1 : 0,
+						},
+						freeze: true,
+						freeze_message: __("Creating task..."),
+					});
+					dlg.hide();
+					if (res && res.message && res.message.name) {
+						frappe.show_alert({ message: __("Task created: {0}", [res.message.name]), indicator: "green" });
+						frappe.set_route("Form", "Task", res.message.name);
+					} else {
+						frappe.msgprint({ message: __("Unexpected response"), indicator: "orange" });
+					}
+				} catch (e) {
+					console.error(e);
+					frappe.msgprint({ message: __("Failed to create Task"), indicator: "red" });
+				}
+			}
+		});
+		dlg.show();
+	});
+}
+
+function suggest_delivery_type(activity_type) {
+	switch ((activity_type || "").trim()) {
+		case "Discussion": return "Discussion";
+		case "Assignment": return "Assignment";
+		case "Reading":
+		case "Video":
+		case "Link":
+			return "Checkpoint";
+		default:
+			return "Checkpoint";
+	}
 }
