@@ -128,18 +128,18 @@ frappe.ui.form.on("Lesson", {
 // ---- helpers ----
 
 async function fetch_activities(lesson_name) {
-	// Lean client fetch; sorted by `order` then idx/title as tie-breakers.
+	// Lean client fetch; sorted by `lesson_activity_order` then idx/title as tie-breakers.
 	const rows = await frappe.db.get_list("Lesson Activity", {
-		fields: ["name", "activity_type", "title", "order"],
+		fields: ["name", "activity_type", "title", "lesson_activity_order"],
 		filters: { parent: lesson_name, parenttype: "Lesson", parentfield: "activities" },
-		order_by: "`order` asc, idx asc",
+		order_by: "lesson_activity_order asc, idx asc",
 		limit: 1000
 	});
 	return (rows || []).map(r => ({
 		name: r.name,
 		title: r.title || "(Untitled)",
 		activity_type: r.activity_type || "",
-		order: Number.isFinite(+r.order) ? +r.order : 0
+		lesson_activity_order: Number.isFinite(+r.lesson_activity_order) ? +r.lesson_activity_order : 0,
 	}));
 }
 
@@ -150,7 +150,7 @@ function show_activities_dialog(rows) {
 	});
 
 	const list = (rows || []).map(r => {
-		const orderBadge = `<span class="badge bg-secondary me-2">${r.order || "-"}</span>`;
+		const orderBadge = `<span class="badge bg-secondary me-2">${r.lesson_activity_order || "-"}</span>`;
 		const typeBadge = r.activity_type
 			? `<span class="badge bg-light text-muted ms-2">${frappe.utils.escape_html(r.activity_type)}</span>`
 			: "";
@@ -162,7 +162,7 @@ function show_activities_dialog(rows) {
 
 	d.set_message(`
 		<div class="mb-2 text-muted small">
-			${__("Sorted by")} <code>order</code>.
+			${__("Sorted by")} <code>lesson_activity_order</code>.
 		</div>
 		<ul class="list-group">${list || `<li class="list-group-item">${__("No activities yet.")}</li>`}</ul>
 	`);
@@ -213,7 +213,7 @@ function show_reorder_dialog(frm, initialRows) {
 
 		d.set_message(`
 			<div class="mb-2 text-muted small">
-				${__("Use the arrows to move items. New")} <code>order</code> ${__("will be set to 10,20,30…")}
+				${__("Use the arrows to move items. New")} <code>lesson_activity_order</code> ${__("will be set to 10,20,30…")}
 			</div>
 			<ul class="list-group" id="reorder-activities">
 				${items || `<li class="list-group-item">${__("No activities to reorder.")}</li>`}
@@ -238,6 +238,7 @@ function show_reorder_dialog(frm, initialRows) {
 	render_list();
 	d.show();
 }
+
 
 async function save_activity_order_server(lesson_name, rows) {
 	const activity_names = rows.map(r => r.name);
