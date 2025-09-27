@@ -455,8 +455,10 @@ class Employee(NestedSet):
 	def update_user_permissions(self):
 		if not self.create_user_permission:
 			return
-		if not has_permission('User Permission', ptype='write', raise_exception=False):
+		# use frappe.has_permission signature (no raise_exception kwarg)
+		if not frappe.has_permission('User Permission', ptype='write', user=frappe.session.user):
 			return
+
 
 		employee_user_permission_exists = frappe.db.exists(
 			"User Permission",
