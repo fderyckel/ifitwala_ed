@@ -132,6 +132,7 @@ permission_query_conditions = {
 	"Program": "ifitwala_ed.curriculum.doctype.program.program.get_permission_query_conditions", 
 	"Course": "ifitwala_ed.curriculum.doctype.course.course.get_permission_query_conditions", 
 	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.get_permission_query_conditions", 
+	"Employee": "ifitwala_ed.hr.doctype.employee.employee.get_permission_query_conditions",
 }
 
 has_permission = {
@@ -144,6 +145,7 @@ has_permission = {
 	"Program": "ifitwala_ed.curriculum.doctype.program.program.has_permission", 
 	"Course": "ifitwala_ed.curriculum.doctype.course.course.has_permission", 
 	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.has_permission", 
+	"Employee": "ifitwala_ed.hr.doctype.employee.employee.employee_has_permission",
 }
 
 default_roles = [
