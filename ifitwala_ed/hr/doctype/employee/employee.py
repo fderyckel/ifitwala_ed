@@ -507,19 +507,59 @@ class Employee(NestedSet):
 
 
 @frappe.whitelist()
-def create_user(employee, user = None, email=None):
-	emp = frappe.get_doc("Employee", employee)
-	privacy = frappe.get_single("Org Settings")
-	birth_date = None
-	phone = None
-	if emp.employee_date_of_birth and privacy.dob_to_user==1:
-		birth_date = emp.employee_date_of_birth
-	if emp.employee_mobile_phone and privacy.mobile_to_user==1:
-		phone = emp.employee_mobile_phone
+def create_user(employee, user=None, email=None):
+	# 0) Basic guards
+	if not employee:
+		frappe.throw(_("Missing Employee"), frappe.ValidationError)
 
-	user = frappe.new_doc("User")
-	user.update({
-		"name": emp.employee_full_name,
+	# 1) Authorize caller
+	caller = frappe.session.user
+	caller_roles = set(frappe.get_roles(caller))
+
+	# Allow System Manager unconditionally
+	is_sysman = "System Manager" in caller_roles
+
+	# Allow HR Manager/HR User only within their org subtree
+	if not is_sysman:
+		is_hr = bool(caller_roles & {"HR Manager", "HR User"})
+		if not is_hr:
+			frappe.throw(_("Only HR can create users from Employee."), frappe.PermissionError)
+
+		# Resolve caller's base org
+		from ifitwala_ed.utilities.employee_utils import get_user_base_org, get_descendant_organizations
+		base_org = get_user_base_org(caller)
+		if not base_org:
+			frappe.throw(_("Your account is not linked to an Active Employee or has no Organization."), frappe.PermissionError)
+
+		# Target employee must be in caller's org subtree
+		target_org = frappe.db.get_value("Employee", employee, "organization")
+		allowed_orgs = set(get_descendant_organizations(base_org) or [])
+		if target_org not in allowed_orgs:
+			frappe.throw(_("You can only create users for Employees in your Organization subtree."), frappe.PermissionError)
+
+	# 2) Load employee (you already enforce form access via PQC/has_permission)
+	emp = frappe.get_doc("Employee", employee)
+
+	# 3) Prevent duplicates
+	if emp.user_id:
+		frappe.throw(_("This Employee already has a User: {0}").format(frappe.bold(emp.user_id)))
+
+	if not emp.employee_professional_email:
+		frappe.throw(_("Please set a Professional Email on the Employee before creating a User."))
+
+	existing = frappe.db.exists("User", {"name": emp.employee_professional_email})
+	if existing:
+		frappe.throw(_("A User with email {0} already exists.").format(frappe.bold(emp.employee_professional_email)))
+
+	# 4) Build the User document (keep your privacy handling)
+	privacy = frappe.get_single("Org Settings")
+	birth_date = emp.employee_date_of_birth if getattr(privacy, "dob_to_user", 0) == 1 else None
+	phone = emp.employee_mobile_phone if getattr(privacy, "mobile_to_user", 0) == 1 else None
+
+	user_doc = frappe.new_doc("User")
+	user_doc.flags.ignore_permissions = True  # ← key line
+	user_doc.update({
+		# NOTE: do NOT force 'name' here; let Frappe name it as the email
 		"email": emp.employee_professional_email,
 		"enabled": 1,
 		"first_name": emp.employee_first_name,
@@ -530,11 +570,15 @@ def create_user(employee, user = None, email=None):
 		"mobile_no": phone
 	})
 
-	user.insert() 
-	emp.user_id = user.name 
+	# 5) Insert the User bypassing DocType perms (authorized above)
+	user_doc.insert(ignore_permissions=True)
+
+	# 6) Link back to Employee and save (you already ignore perms in update_user etc.)
+	emp.user_id = user_doc.name
 	emp.save(ignore_permissions=True)
-	
-	return user.name
+
+	return user_doc.name
+
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, organization=None, is_root=False, is_tree=False):
