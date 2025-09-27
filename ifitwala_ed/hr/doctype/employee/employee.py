@@ -10,6 +10,10 @@ from frappe.utils import validate_email_address, add_years, cstr
 from frappe.permissions import add_user_permission, remove_user_permission, has_permission, get_doc_permissions
 from frappe.contacts.address_and_contact import load_address_and_contact
 
+from ifitwala_ed.utilities.employee_utils import get_user_base_org,	get_user_base_school,	get_descendant_organizations
+
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
 from ifitwala_ed.utilities.transaction_base import delete_events
 
 class EmployeeUserDisabledError(frappe.ValidationError): pass
@@ -449,25 +453,22 @@ class Employee(NestedSet):
 
 
 	def update_user_permissions(self):
-		if not self.create_user_permission: 
+		if not self.create_user_permission:
 			return
-		if not has_permission('User Permission', ptype='write', raise_exception=False): 
+		if not has_permission('User Permission', ptype='write', raise_exception=False):
 			return
 
 		employee_user_permission_exists = frappe.db.exists(
-			"User Permission", 
+			"User Permission",
 			{
 				"allow": 'Employee',
 				"for_value": self.name,
 				"user": self.user_id
 			}
 		)
+		if not employee_user_permission_exists:
+			add_user_permission("Employee", self.name, self.user_id)
 
-		if employee_user_permission_exists: 
-			return
-
-		add_user_permission("Employee", self.name, self.user_id)
-		add_user_permission("Organization", self.organization, self.user_id)
 
 	def reset_employee_emails_cache(self):
 		prev_doc = self.get_doc_before_save() or {}
@@ -573,6 +574,7 @@ def update_user_permissions(doc, method):
 		employee = frappe.get_doc("Employee", {"user_id": doc.name})
 		employee.update_user_permissions()
 
+
 def has_user_permission_for_employee(user_name, employee_name):
 	return frappe.db.exists(
 		{
@@ -590,3 +592,63 @@ def has_upload_permission(doc, ptype='read', user=None):
 	if get_doc_permissions(doc, user=user, ptype=ptype).get(ptype):
 		return True
 	return doc.user_id == user
+
+def get_permission_query_conditions(user=None):
+	user = user or frappe.session.user
+	if not user or user == "Guest":
+		return None
+
+	roles = set(frappe.get_roles(user))
+
+	# HR: scope by Organization subtree
+	if roles & {"HR Manager", "HR User"}:
+		base_org = get_user_base_org(user)
+		if not base_org:
+			return None
+		orgs = get_descendant_organizations(base_org) or []
+		if not orgs:
+			return "1=0"
+		vals = ", ".join(frappe.db.escape(o) for o in orgs)
+		return f"`tabEmployee`.`organization` IN ({vals})"
+
+	# Academic Admin: scope by School subtree
+	if "Academic Admin" in roles:
+		base_school = get_user_base_school(user)
+		if not base_school:
+			return None
+		schools = get_descendant_schools(base_school) or []
+		if not schools:
+			return "1=0"
+		vals = ", ".join(frappe.db.escape(s) for s in schools)
+		return f"`tabEmployee`.`school` IN ({vals})"
+
+	return None
+
+
+def has_permission(doc, ptype, user):
+	# System Manager follows doctype perms (already full CRUD in your perms)
+	if "System Manager" in frappe.get_roles(user):
+		return True
+
+	roles = set(frappe.get_roles(user))
+
+	# Read-like checks (list/report/export/print/open)
+	if ptype in {"read", "report", "export", "print"}:
+		# HR → org subtree
+		if roles & {"HR Manager", "HR User"}:
+			base_org = get_user_base_org(user)
+			if not base_org:
+				return None
+			desc = set(get_descendant_organizations(base_org) or [])
+			return doc.organization in desc
+
+		# Academic Admin → school subtree
+		if "Academic Admin" in roles:
+			base_school = get_user_base_school(user)
+			if not base_school:
+				return None
+			desc = set(get_descendant_schools(base_school) or [])
+			return doc.school in desc
+
+	# Others fall back to standard role table / user-permissions
+	return None
