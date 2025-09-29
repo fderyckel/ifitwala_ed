@@ -62,11 +62,11 @@ class Student(Document):
 	def after_insert(self):
 		self.create_student_user()
 		self.create_student_patient()
-		self.ensure_contact_links_to_student()
+		self.ensure_contact_and_link()
 
 	def on_update(self): 
 		self.rename_student_image()
-		self.ensure_contact_links_to_student()
+		self.ensure_contact_and_link()
 		self.update_student_enabled_status()
 		self.sync_student_contact_image()
 		self.sync_reciprocal_siblings()
@@ -115,30 +115,6 @@ class Student(Document):
 			frappe.db.set_value("Student Patient", patient, "status", "Disabled") 
 		else: 
 			frappe.db.set_value("Student Patient", patient, "status", "Active") 
-		
-	def ensure_contact_links_to_student(self):
-		if not self.student_email: 
-			return
-
-    # Check if User exists
-		if not frappe.db.exists("User", self.student_email): 
-			return 
-		
-		contact_name = frappe.db.get_value("Contact", {"user": self.student_email}, "name") 
-		if not contact_name: 
-			return 
-		
-		contact = frappe.get_doc("Contact", contact_name) 
-		# Check if the Student is already linked in the Contact's dynamic links 
-		existing_links = [link.link_name for link in contact.links] 
-		
-		if self.name not in existing_links: 
-			contact.append("links", {
-        "link_doctype": "Student",
-        "link_name": self.name
-      }) 
-			contact.save(ignore_permissions=True) 
-			frappe.msgprint(f"Linked Contact <b>{contact.name}</b> to Student <b>{self.name}</b>.")
 
 	def rename_student_image(self): 
 		# Only proceed if there's a student_image
@@ -345,18 +321,20 @@ class Student(Document):
 			},
 		)
 
-	def ensure_contact_links_to_student(self):
+	def ensure_contact_and_link(self):
+		"""Idempotently ensure a Contact exists for this student's User and is linked back to the Student.
+		No msgprint, safe to call from after_insert and on_update."""
 		if not self.student_email:
 			return
 
-		# Require a User first (created in after_insert)
+		# Require a User (created in after_insert)
 		if not frappe.db.exists("User", self.student_email):
 			return
 
-		# Find or create a Contact bound to this user
+		# 1) Find or create Contact bound to this user
 		contact_name = frappe.db.get_value("Contact", {"user": self.student_email}, "name")
 		if not contact_name:
-			# Create a minimal Contact (safe across app versions)
+			# Create a minimal Contact
 			contact = frappe.get_doc({
 				"doctype": "Contact",
 				"user": self.student_email,
@@ -365,15 +343,13 @@ class Student(Document):
 				"image": self.student_image or None
 			})
 			contact.flags.ignore_permissions = True
-
-			# Set primary email when the field exists on this site
 			if hasattr(contact, "email_id") and self.student_email:
 				contact.email_id = self.student_email
-
 			try:
 				contact.insert()
+				contact_name = contact.name
 			except Exception:
-				# If a concurrent writer created it, just load it
+				# If another request created it concurrently, load it
 				contact_name = frappe.db.get_value("Contact", {"user": self.student_email}, "name")
 				if not contact_name:
 					raise
@@ -381,40 +357,28 @@ class Student(Document):
 		else:
 			contact = frappe.get_doc("Contact", contact_name)
 
-		# Ensure Dynamic Link → Student (idempotent)
-		existing_links = [lnk.link_name for lnk in contact.links if lnk.link_doctype == "Student"]
-		if self.name not in existing_links:
-			contact.append("links", {
+		# 2) Ensure Dynamic Link → Student (idempotent)
+		link_exists = frappe.db.exists(
+			"Dynamic Link",
+			{
+				"parenttype": "Contact",
+				"parentfield": "links",
+				"parent": contact.name,
 				"link_doctype": "Student",
-				"link_name": self.name
-			})
-			contact.save(ignore_permissions=True)
-			frappe.msgprint(f"Linked Contact <b>{contact.name}</b> to Student <b>{self.name}</b>.")
+				"link_name": self.name,
+			},
+		)
+		if link_exists:
+			return
 
-
-
+		contact.append("links", {"link_doctype": "Student", "link_name": self.name})
+		contact.save(ignore_permissions=True)
 
 
 
 @frappe.whitelist()
 def get_contact_linked_to_student(student_name):
-	# Try existing dynamic link first
-	contact = frappe.db.get_value(
-		"Dynamic Link",
-		{
-			"link_doctype": "Student",
-			"link_name": student_name,
-			"parenttype": "Contact"
-		},
-		"parent"
-	)
-	if contact:
-		return contact
-
-	# Backfill once: ensure contact + dynamic link exist, then re-fetch
-	doc = frappe.get_doc("Student", student_name)
-	doc.ensure_contact_links_to_student()
-
+	"""Pure read: return Contact name linked to this Student, or None."""
 	return frappe.db.get_value(
 		"Dynamic Link",
 		{
