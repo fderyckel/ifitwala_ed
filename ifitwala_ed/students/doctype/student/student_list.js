@@ -6,19 +6,19 @@
 frappe.listview_settings["Student"] = {
 	hide_name_column: true,
 
-	// make sure these come in the initial fetch
-	add_fields: ["enabled", "student_gender", "cohort", "student_first_language"],
+	// Ensure data is fetched for visible columns
+	add_fields: ["enabled", "student_preferred_name", "student_gender"],
 
-	// Row-level status light (left side)
+	// Left-side status light
 	get_indicator(doc) {
 		return doc.enabled
 			? [__("Active"), "green", "enabled,=,1"]
 			: [__("Inactive"), "red", "enabled,=,0"];
 	},
 
-	// Per-column formatters
+	// Column formatters
 	formatters: {
-		// Colored pill in the Student Gender column
+		// Gender = colored pill
 		student_gender(value) {
 			const label = value || __("—");
 			const color =
@@ -27,5 +27,11 @@ frappe.listview_settings["Student"] = {
 				"gray";
 			return `<span class="indicator-pill ${color}">${frappe.utils.escape_html(label)}</span>`;
 		},
+
+		// Status column uses the 'enabled' field (text only, row indicator already shows light)
+		enabled(value) {
+			return value ? __("Active") : __("Inactive");
+		},
 	},
 };
+
