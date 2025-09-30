@@ -31,6 +31,16 @@ class Guardian(Document):
 	def after_insert(self):
 		self.update_links()
 
+	def on_update(self):
+		# Ensure a contact exists and is linked, then optionally sync core fields
+		contact = self.get_or_create_contact()
+		self.update_links()
+		# example light sync
+		if getattr(contact, "mobile_no", None) != self.guardian_mobile_phone:
+			contact.mobile_no = self.guardian_mobile_phone
+			contact.save(ignore_permissions=True)
+
+
 	# ------------------------------------------------------------------
 	# Quick view: load linked students efficiently
 	# ------------------------------------------------------------------
@@ -160,4 +170,4 @@ def invite_guardian(guardian):
 	return user.name
 
 def on_doctype_update():
-	frappe.db.add_index("Guardian", "guardian_email")
+	frappe.db.add_index("Guardian", ["guardian_email"])
