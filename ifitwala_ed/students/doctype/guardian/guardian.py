@@ -117,7 +117,6 @@ class Guardian(Document):
 
 
 # ---------------- public API ----------------
-
 @frappe.whitelist()
 def invite_guardian(guardian: str):
 	guardian_doc = frappe.get_doc("Guardian", guardian)
@@ -125,23 +124,30 @@ def invite_guardian(guardian: str):
 	if not guardian_doc.guardian_email:
 		frappe.throw(_("Please add an email address and try again."))
 
+	# If a user already exists, link it and return
 	existing = frappe.db.get_value("User", {"email": guardian_doc.guardian_email}, "name")
 	if existing:
-		frappe.msgprint(_("The user {0} already exists.").format(getlink("User", existing)))
+		frappe.db.set_value("Guardian", guardian, "user", existing, update_modified=False)  # <-- no doc.save()
+		frappe.msgprint(_("The user {0} already exists and has been linked to this guardian.")
+			.format(get_link_to_form("User", existing)))
 		return existing
 
+	# Create a new Website User (mobile is optional for User)
 	user = frappe.get_doc({
 		"doctype": "User",
 		"first_name": guardian_doc.guardian_first_name,
 		"last_name": guardian_doc.guardian_last_name,
 		"email": guardian_doc.guardian_email,
-		"mobile_no": guardian_doc.guardian_mobile_phone,
+		"mobile_no": guardian_doc.guardian_mobile_phone or "",
 		"user_type": "Website User",
 		"send_welcome_email": 1,
 	})
 	user.flags.ignore_permissions = True
 	user.insert()
 	user.add_roles("Guardian")
+
+	# Persist the link without saving the Guardian doc (avoids mandatory checks firing)
+	frappe.db.set_value("Guardian", guardian, "user", user.name, update_modified=False)
 
 	frappe.msgprint(_("User {0} created and welcomed with an email").format(getlink("User", user.name)))
 	return user.name

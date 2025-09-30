@@ -16,9 +16,9 @@ frappe.ui.form.on("Guardian", {
 			frm.add_custom_button(__("Create and Invite as User"), () => {
 				frappe.call({
 					method: "ifitwala_ed.students.doctype.guardian.guardian.invite_guardian",
-					args: { guardian: frm.doc.name },
-				}).then((r) => {
-					if (r && r.message) frm.set_value("user", r.message);
+					args: { guardian: frm.doc.name }
+				}).then(() => {
+					frm.reload_doc(); // pulls the server-updated "user" value without saving the form
 				});
 			});
 		}
