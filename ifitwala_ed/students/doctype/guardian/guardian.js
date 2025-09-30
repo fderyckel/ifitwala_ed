@@ -1,7 +1,9 @@
 // Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Guardian', {
+// ifitwala_ed/students/doctype/guardian/guardian.js
+
+frappe.ui.form.on("Guardian", {
 	refresh(frm) {
 		frappe.dynamic_link = { doc: frm.doc, fieldname: "name", doctype: "Guardian" };
 		if (!frm.is_new()) {
@@ -29,10 +31,9 @@ frappe.ui.form.on('Guardian', {
 			"Ms": "Female",
 			"Mrs": "Female",
 			"Miss": "Female",
-			"Mx": "Prefer Not To Say"
+			"Mx": "Prefer Not To Say",
 		};
-		const val = map[frm.doc.salutation];
-		if (val) frm.set_value("guardian_gender", val);
+		const v = map[frm.doc.salutation];
+		if (v) frm.set_value("guardian_gender", v);
 	},
-
 });
