@@ -1,6 +1,8 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # License: MIT. See license.txt
 
+# ifitwala_ed/utilities/link_queries.py
+
 import frappe
 from frappe import _
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
