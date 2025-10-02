@@ -1,4 +1,4 @@
-// Copyright (c) 2025, François de Ryckel 
+// Copyright (c) 2025, François de Ryckel
 // For license information, please see license.txt
 
 // ifitwala_ed/students/doctype/student/student_list.js
@@ -7,7 +7,7 @@ frappe.listview_settings["Student"] = {
 	hide_name_column: true,
 
 	// Ensure data is fetched for visible columns
-	add_fields: ["enabled", "student_preferred_name", "student_gender"],
+	add_fields: ["enabled", "student_preferred_name", "student_gender", "cohort"],
 
 	// Left-side status light
 	get_indicator(doc) {
