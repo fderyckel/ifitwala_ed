@@ -1,6 +1,6 @@
 {
   "name": "ifitwala_ed",
-  "description": "An Open Source School and Education ERP System powered by the Frappe Framework",
+  "description": "An Open Source Education ERP System powered by the Frappe Framework",
   "repository": {
     "type": "git",
     "url": "https://github.com/fderyckel/ifitwala_ed.git"
