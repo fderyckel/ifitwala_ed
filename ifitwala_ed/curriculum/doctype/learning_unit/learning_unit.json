@@ -23,7 +23,7 @@
   "pedagogy_section",
   "unit_overview",
   "essential_understanding",
-  "missconceptions",
+  "misconceptions",
   "standards_alignment_section",
   "standards",
   "content_skills_concepts",
@@ -141,12 +141,6 @@
    "label": "Essential Understanding"
   },
   {
-   "description": "Likely misunderstandings students may have during the unit with relation to skills, content and concepts.",
-   "fieldname": "missconceptions",
-   "fieldtype": "Text Editor",
-   "label": "Misconceptions"
-  },
-  {
    "description": "Students will develop these skills.",
    "fieldname": "skills",
    "fieldtype": "Text Editor",
@@ -180,11 +174,17 @@
    "fieldname": "content",
    "fieldtype": "Text Editor",
    "label": "Content"
+  },
+  {
+   "description": "Likely misunderstandings students may have during the unit with relation to skills, content and concepts.",
+   "fieldname": "misconceptions",
+   "fieldtype": "Text Editor",
+   "label": "Misconceptions"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-26 11:34:59.584781",
+ "modified": "2025-09-26 22:44:38.855197",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Learning Unit",

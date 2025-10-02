@@ -17,7 +17,7 @@
   "start_date",
   "duration",
   "section_break_rqla",
-  "activities"
+  "lesson_activities"
  ],
  "fields": [
   {
@@ -76,7 +76,8 @@
   },
   {
    "fieldname": "section_break_rqla",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Activities"
   },
   {
    "fieldname": "lesson_type",
@@ -89,11 +90,17 @@
    "fieldname": "is_published",
    "fieldtype": "Check",
    "label": "Is Published"
+  },
+  {
+   "fieldname": "lesson_activities",
+   "fieldtype": "Table",
+   "label": "Lesson Activities",
+   "options": "Lesson Activity"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-26 11:30:30.482093",
+ "modified": "2025-09-26 22:50:57.735190",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Lesson",

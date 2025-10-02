@@ -416,7 +416,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-09-02 14:31:51.736705",
+ "modified": "2025-10-01 16:15:58.404806",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Settings",
@@ -437,6 +437,9 @@
   },
   {
    "role": "Curriculum Coordinator"
+  },
+  {
+   "role": "Academic Assistant"
   }
  ],
  "sequence_id": 6.0,
@@ -447,13 +450,6 @@
    "label": "Student Log Dashboard",
    "link_to": "student-log-dashboard",
    "type": "Page"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Student Dashboard",
-   "link_to": "Student Demographics Dashboard",
-   "type": "Dashboard"
   },
   {
    "color": "Grey",

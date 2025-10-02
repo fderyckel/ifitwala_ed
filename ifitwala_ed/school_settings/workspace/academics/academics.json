@@ -220,7 +220,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-09-24 07:15:21.814076",
+ "modified": "2025-09-27 11:59:41.146755",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academics",
@@ -232,6 +232,9 @@
  "roles": [
   {
    "role": "Academic Staff"
+  },
+  {
+   "role": "Academic Assistant"
   }
  ],
  "sequence_id": 1.0,

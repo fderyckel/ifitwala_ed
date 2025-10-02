@@ -98,6 +98,7 @@
   {
    "fieldname": "student_first_language",
    "fieldtype": "Link",
+   "in_filter": 1,
    "label": "First Language",
    "options": "Language Xtra"
   },
@@ -127,7 +128,6 @@
    "fieldname": "student_date_of_birth",
    "fieldtype": "Date",
    "in_filter": 1,
-   "in_list_view": 1,
    "in_preview": 1,
    "label": "Date of Birth"
   },
@@ -144,7 +144,6 @@
   {
    "fieldname": "student_mobile_number",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Mobile Number",
    "options": "Phone"
   },
@@ -152,7 +151,6 @@
    "fieldname": "student_joining_date",
    "fieldtype": "Date",
    "in_filter": 1,
-   "in_list_view": 1,
    "in_preview": 1,
    "label": "Joining Date"
   },
@@ -172,6 +170,7 @@
    "fieldname": "cohort",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
+   "in_filter": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Cohort",
@@ -283,7 +282,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-23 10:46:56.811687",
+ "modified": "2025-09-29 14:29:44.792932",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
