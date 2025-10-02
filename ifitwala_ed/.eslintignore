@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+*.min.js
+*.bundle.js
+*.map
+public/js/lib/
+**/patches/**
+assets/
+sites/assets/
+
+# doctype JSON & auto-generated files
+**/doctype/**/**.json
+**/public/**.js.map
+
