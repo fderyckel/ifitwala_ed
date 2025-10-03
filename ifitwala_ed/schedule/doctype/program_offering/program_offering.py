@@ -513,8 +513,9 @@ def hydrate_non_catalog_rows(course_names: str, exception_reason: str = "") -> l
 def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
 	txt = (txt or "").strip()
 	school = (filters or {}).get("school")
-	conds, params = [], []
 
+	conds = []
+	params = []
 	if school:
 		conds.append("ay.school = %s")
 		params.append(school)
@@ -523,19 +524,22 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 
 	where_sql = "WHERE " + " AND ".join(conds) if conds else ""
 	sql = f"""
-		SELECT ay.name AS value, ay.academic_year_name AS description
+		SELECT
+			ay.name AS value,
+			ay.academic_year_name AS description
 		FROM `tabAcademic Year` ay
 		{where_sql}
 		ORDER BY ay.year_start_date DESC, ay.name DESC
 		LIMIT %(page_len)s OFFSET %(start)s
 	"""
+
 	return [
 		[r.get("value"), r.get("description") or r.get("value")]
 		for r in frappe.db.sql(
 			sql,
 			tuple(params),
 			as_dict=True,
-			values={"txt": f"%{txt}%", "page_len": int(page_len or 20), "start": int(start or 0)},
+			values={"txt": f"%{txt}%", "page_len": int(page_len or 20), "start": int(start or 0)}
 		)
 	]
 

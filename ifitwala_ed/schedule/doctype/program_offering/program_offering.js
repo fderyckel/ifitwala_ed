@@ -38,31 +38,27 @@ function get_ay_bounds(frm) {
 	return { startAY: ays[0], endAY: ays[ays.length - 1] }; // assume user ordered; server also enforces overlap/order
 }
 
-// Robustly wire AY picker (descending) for the TMS child table
-function set_offering_ay_grid_query(frm) {
-	const table = frm.fields_dict && frm.fields_dict.offering_academic_years;
-	const grid  = table && table.grid;
-
-	// If grid isn't ready yet, try again right after rows render
-	if (!grid) {
-		// will fire once the field control has been mounted
-		frappe.after_ajax(() => set_offering_ay_grid_query(frm));
+function bind_offering_year_query(frm) {
+	// Fields dict for the multi-select table
+	const table_field = frm.fields_dict.offering_academic_years;
+	if (!table_field || !table_field.grid) {
+		// grid not ready yet, try again shortly
+		setTimeout(() => bind_offering_year_query(frm), 200);
 		return;
 	}
 
-	// 1) Bind to the child column itself (works reliably with Table MultiSelect)
-	const col = typeof grid.get_field === "function" && grid.get_field("academic_year");
+	const grid = table_field.grid;
+	const col = grid.get_field("academic_year");
 	if (col) {
 		col.get_query = () => ({
 			query: "ifitwala_ed.schedule.doctype.program_offering.program_offering.academic_year_link_query",
-			filters: { school: frm.doc.school || null } // remove if AYs are global
+			filters: { school: frm.doc.school || null }
 		});
 	}
 
-	// 2) Also re-bind whenever rows re-render (e.g., add/remove AY rows)
-	if (typeof grid.on === "function" && !grid.__ay_query_bound) {
+	if (!grid.__ay_bound) {
 		grid.on("grid-rows-rendered", () => {
-			const c = grid.get_field && grid.get_field("academic_year");
+			const c = grid.get_field("academic_year");
 			if (c) {
 				c.get_query = () => ({
 					query: "ifitwala_ed.schedule.doctype.program_offering.program_offering.academic_year_link_query",
@@ -70,10 +66,9 @@ function set_offering_ay_grid_query(frm) {
 				});
 			}
 		});
-		grid.__ay_query_bound = true;
+		grid.__ay_bound = true;
 	}
 }
-
 
 
 /* ---------- Catalog dialog rendering + helpers ---------- */
@@ -387,7 +382,7 @@ function open_non_catalog_picker(frm) {
 frappe.ui.form.on("Program Offering", {
 
 	onload(frm) {
-		set_offering_ay_grid_query(frm);
+		bind_offering_year_query(frm);
 		frm.set_query('school', () => {
 			return {
 				query: 'ifitwala_ed.utilities.school_tree.get_descendant_schools',
@@ -400,7 +395,7 @@ frappe.ui.form.on("Program Offering", {
 		// remove any leftover custom buttons to avoid duplicates
 		if (frm.clear_custom_buttons) frm.clear_custom_buttons();
 
-		set_offering_ay_grid_query(frm);
+		bind_offering_year_query(frm);
 
 		// Add from Catalog (blue, standalone on the left)
 		const addFrom = frm.add_custom_button(__("Add from Catalog"), () => open_catalog_picker(frm));
