@@ -45,8 +45,9 @@
   },
   {
    "fieldname": "elective_group",
-   "fieldtype": "Data",
-   "label": "Elective Group"
+   "fieldtype": "Link",
+   "label": "Elective Group",
+   "options": "Course Group"
   },
   {
    "fieldname": "column_break_50gf",
@@ -110,7 +111,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-20 13:55:24.966336",
+ "modified": "2025-10-03 14:40:08.673503",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering Course",

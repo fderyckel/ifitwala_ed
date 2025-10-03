@@ -7,20 +7,20 @@
  "field_order": [
   "section_break_hyyt",
   "get_students_from",
-  "academic_year",
+  "target_academic_year",
   "column_break_7ta8",
-  "program",
+  "program_offering",
   "student_cohort",
   "section_break_pyyy",
   "get_students",
   "students",
   "new_enrollment_details_section",
-  "new_program",
+  "new_program_offering",
   "new_student_cohort",
   "mark_status_as_checked",
   "enroll_students",
   "column_break_ekje",
-  "new_academic_year",
+  "new_target_academic_year",
   "new_enrollment_date"
  ],
  "fields": [
@@ -37,14 +37,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "program",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Program",
-   "mandatory_depends_on": "eval: doc.get_students_from == \"Program Enrollment\"",
-   "options": "Program"
-  },
-  {
    "fieldname": "student_cohort",
    "fieldtype": "Link",
    "label": "Student Cohort",
@@ -53,13 +45,6 @@
   {
    "fieldname": "column_break_7ta8",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "academic_year",
-   "fieldtype": "Link",
-   "label": "Academic Year",
-   "options": "Academic Year",
-   "reqd": 1
   },
   {
    "fieldname": "section_break_pyyy",
@@ -83,12 +68,6 @@
    "label": "New Enrollment Details"
   },
   {
-   "fieldname": "new_program",
-   "fieldtype": "Link",
-   "label": "New Program",
-   "options": "Program"
-  },
-  {
    "description": "Only if this has not been set already.",
    "fieldname": "new_student_cohort",
    "fieldtype": "Link",
@@ -106,12 +85,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "new_academic_year",
-   "fieldtype": "Link",
-   "label": "New Academic Year",
-   "options": "Academic Year"
-  },
-  {
    "description": "Indicate the date of the first day for this new enrollment. If left blank, by default, it will be the first day of the indicated academic year or academic term if indicated. ",
    "fieldname": "new_enrollment_date",
    "fieldtype": "Date",
@@ -122,6 +95,33 @@
    "fieldname": "mark_status_as_checked",
    "fieldtype": "Check",
    "label": "Mark new enrollments as Active"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Program Offering",
+   "mandatory_depends_on": "eval: doc.get_students_from == \"Program Enrollment\"",
+   "options": "Program Offering"
+  },
+  {
+   "fieldname": "new_target_academic_year",
+   "fieldtype": "Link",
+   "label": "New Target Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "target_academic_year",
+   "fieldtype": "Link",
+   "label": "Target Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "new_program_offering",
+   "fieldtype": "Link",
+   "label": "New Program Offering",
+   "options": "Program Offering"
   }
  ],
  "grid_page_length": 50,
@@ -129,7 +129,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-05-22 18:48:48.817035",
+ "modified": "2025-10-03 17:05:53.912045",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Tool",
@@ -182,6 +182,16 @@
    "print": 1,
    "read": 1,
    "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Academic Assistant",
    "share": 1,
    "write": 1
   }
