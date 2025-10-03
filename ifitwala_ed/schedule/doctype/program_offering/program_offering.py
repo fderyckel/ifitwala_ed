@@ -147,6 +147,7 @@ class ProgramOffering(Document):
 			                frappe.format(min_ay, {"fieldtype": "Date"}),
 			                frappe.format(max_ay, {"fieldtype": "Date"})))
 
+
 	def _validate_offering_courses(self, ay_rows: list[dict], allowed_schools: set[str]):
 		"""
 		For each Program Offering Course row, validate:
@@ -175,84 +176,92 @@ class ProgramOffering(Document):
 			start_ay = ay_index.get(row.start_academic_year)
 			end_ay   = ay_index.get(row.end_academic_year)
 			_assert(start_ay, _("Row {0}: Start AY {1} must be listed in Offering Academic Years.")
-							.format(idx, get_link_to_form("Academic Year", row.start_academic_year)))
+					.format(idx, get_link_to_form("Academic Year", row.start_academic_year)))
 			_assert(end_ay,   _("Row {0}: End AY {1} must be listed in Offering Academic Years.")
-							.format(idx, get_link_to_form("Academic Year", row.end_academic_year)))
+					.format(idx, get_link_to_form("Academic Year", row.end_academic_year)))
 
 			# AY ordering by dates
 			_assert(start_ay["start"] <= end_ay["end"],
-							_("Row {0}: Start AY must not be after End AY.").format(idx))
+					_("Row {0}: Start AY must not be after End AY.").format(idx))
 
-			# Use actual child fieldnames
+			# Terms (optional)
 			start_term_name = getattr(row, "start_academic_term", None)
 			end_term_name   = getattr(row, "end_academic_term", None)
 
-			# defaults to AY envelope
 			start_term_dt = start_ay["start"]
 			end_term_dt   = end_ay["end"]
 
-			# Start term (optional)
 			if start_term_name:
 				ts_school, ts_ay, ts_start, ts_end = _term_fields(start_term_name)
 				_assert(ts_ay == row.start_academic_year,
-								_("Row {0}: Start Term {1} must belong to Start AY {2}.")
-								.format(idx, get_link_to_form("Term", start_term_name),
-												get_link_to_form("Academic Year", row.start_academic_year)))
+						_("Row {0}: Start Term {1} must belong to Start AY {2}.")
+						.format(idx, get_link_to_form("Term", start_term_name),
+								get_link_to_form("Academic Year", row.start_academic_year)))
 				_assert(ts_school in allowed_schools,
-								_("Row {0}: Start Term {1} belongs to {2}, outside the offering school's tree.")
-								.format(idx, get_link_to_form("Term", start_term_name),
-												get_link_to_form("School", ts_school)))
+						_("Row {0}: Start Term {1} belongs to {2}, outside the offering school's tree.")
+						.format(idx, get_link_to_form("Term", start_term_name),
+								get_link_to_form("School", ts_school)))
 				_assert(ts_start, _("Row {0}: Start Term {1} is missing term_start_date.")
-								.format(idx, get_link_to_form("Term", start_term_name)))
+						.format(idx, get_link_to_form("Term", start_term_name)))
 				start_term_dt = getdate(ts_start)
 
-			# End term (optional)
 			if end_term_name:
 				te_school, te_ay, te_start, te_end = _term_fields(end_term_name)
 				_assert(te_ay == row.end_academic_year,
-								_("Row {0}: End Term {1} must belong to End AY {2}.")
-								.format(idx, get_link_to_form("Term", end_term_name),
-												get_link_to_form("Academic Year", row.end_academic_year)))
+						_("Row {0}: End Term {1} must belong to End AY {2}.")
+						.format(idx, get_link_to_form("Term", end_term_name),
+								get_link_to_form("Academic Year", row.end_academic_year)))
 				_assert(te_school in allowed_schools,
-								_("Row {0}: End Term {1} belongs to {2}, outside the offering school's tree.")
-								.format(idx, get_link_to_form("Term", end_term_name),
-												get_link_to_form("School", te_school)))
+						_("Row {0}: End Term {1} belongs to {2}, outside the offering school's tree.")
+						.format(idx, get_link_to_form("Term", end_term_name),
+								get_link_to_form("School", te_school)))
 				_assert(te_start or te_end,
-								_("Row {0}: End Term {1} is missing dates.")
-								.format(idx, get_link_to_form("Term", end_term_name)))
+						_("Row {0}: End Term {1} is missing dates.")
+						.format(idx, get_link_to_form("Term", end_term_name)))
+				# use te_end if available else te_start
 				end_term_dt = getdate(te_end) if te_end else getdate(te_start)
 
-			# If both terms given, enforce term ordering
 			if start_term_name and end_term_name:
 				_assert(start_term_dt <= end_term_dt,
-								_("Row {0}: Start Term must not be after End Term.").format(idx))
+						_("Row {0}: Start Term must not be after End Term.").format(idx))
 
 			# Effective row span
-			row_start = getdate(row.from_date) if row.from_date else start_term_dt
-			row_end   = getdate(row.to_date)   if row.to_date   else end_term_dt
-			_assert(row_start <= row_end, _("Row {0}: From Date cannot be after To Date.").format(idx))
+			# Use provided from_date or fallback to start_term_dt
+			row_start = getdate(row.from_date) if getattr(row, "from_date", None) else start_term_dt
+
+			# Only compute row_end if to_date is provided, else fallback to end_term_dt (but track that to_date is None)
+			if getattr(row, "to_date", None):
+				row_end = getdate(row.to_date)
+			else:
+				# If to_date is not provided, use end_term_dt as envelope (but mark this is a fallback)
+				row_end = end_term_dt
+
+			# Check basic ordering (only if both dates exist or fallback)
+			_assert(row_start <= row_end,
+					_("Row {0}: From Date cannot be after To Date.").format(idx))
 
 			# Inside AY envelope
 			_assert(min_ay <= row_start <= max_ay,
-							_("Row {0}: From Date out of Academic Year span.").format(idx))
+					_("Row {0}: From Date out of Academic Year span.").format(idx))
 			_assert(min_ay <= row_end <= max_ay,
-							_("Row {0}: To Date out of Academic Year span.").format(idx))
+					_("Row {0}: To Date out of Academic Year span.").format(idx))
 
-			# Inside head window if set
+			# Inside head window if head_end is set
 			if head_start:
 				_assert(head_start <= row_start,
-								_("Row {0}: From Date is before Offering Start Date.").format(idx))
-			if head_end:
+						_("Row {0}: From Date is before Offering Start Date.").format(idx))
+			if head_end and getattr(row, "to_date", None):
+				# only enforce this strict "to_date ≤ head_end" if user explicitly set to_date
 				_assert(row_end <= head_end,
-								_("Row {0}: To Date is after Offering End Date.").format(idx))
+						_("Row {0}: To Date is after Offering End Date.").format(idx))
 
-			# If terms + explicit dates both exist, keep explicit inside term windows
-			if start_term_name and row.from_date:
+			# If terms + explicit dates both exist, ensure explicit dates lie within term windows
+			if start_term_name and getattr(row, "from_date", None):
 				_assert(start_term_dt <= getdate(row.from_date),
-								_("Row {0}: From Date is earlier than Start Term window.").format(idx))
-			if end_term_name and row.to_date:
+						_("Row {0}: From Date is earlier than Start Term window.").format(idx))
+			if end_term_name and getattr(row, "to_date", None):
 				_assert(getdate(row.to_date) <= end_term_dt,
-								_("Row {0}: To Date is later than End Term window.").format(idx))
+						_("Row {0}: To Date is later than End Term window.").format(idx))
 
 
 	def _validate_catalog_membership(self):
