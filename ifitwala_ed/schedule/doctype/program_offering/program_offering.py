@@ -6,7 +6,8 @@ from frappe import _
 from frappe.utils import getdate
 from frappe.model.document import Document
 from frappe.utils import get_link_to_form
-from ifitwala_ed.utilities.school_tree import get_ancestor_schools, is_leaf_school
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools, is_leaf_school, get_descendant_schools
+from typing import Optional, Union, Sequence
 
 # -------------------------
 # small DB helpers (used by validate)
@@ -64,8 +65,8 @@ class ProgramOffering(Document):
 		# 4) Status sanity
 		if self.status not in ("Planned", "Active", "Archived"):
 			frappe.throw(_("Invalid Status: {0}").format(self.status))
-		
-		self._validate_catalog_membership() 
+
+		self._validate_catalog_membership()
 		self._apply_default_span_to_rows()
 
 	# -------------------------
@@ -312,7 +313,7 @@ class ProgramOffering(Document):
 				row.end_academic_year = end_ay
 				changed = True
 
-				
+
 # -------------------------
 # one whitelisted helper used by the client
 # -------------------------
@@ -369,9 +370,6 @@ def compute_program_offering_defaults(program: str, school: str, ay_names=None):
 	title = f"{org_abbr} {prog_abbr} Cohort of {cohort_year}" if (org_abbr and prog_abbr and cohort_year) else None
 
 	return {"start_date": min_start, "end_date": max_end, "offering_title": title}
-
-
-from typing import Optional, Union, Sequence
 
 @frappe.whitelist()
 def program_course_options(
@@ -507,3 +505,63 @@ def hydrate_non_catalog_rows(course_names: str, exception_reason: str = "") -> l
 		"exception_reason": exception_reason or "",
 		"catalog_ref": "",
 	} for nm in names]
+
+
+def _user_school_chain(user: str) -> list[str]:
+	"""
+	Return the list of schools the user can act on:
+	- Leaf school users: [self]
+	- Parent school users: [self + descendants]
+	"""
+	user_school = frappe.defaults.get_user_default("school", user)
+	if not user_school:
+		return []
+
+	# get_descendant_schools(user_school) in your utilities already includes self.
+	# If the school is a leaf, that call returns [self] anyway — but we keep the branch explicit for clarity.
+	if is_leaf_school(user_school):
+		return [user_school]
+
+	return get_descendant_schools(user_school)
+
+
+def get_permission_query_conditions(user: str):
+	"""
+	Limit list views to Program Offerings in the user's school tree.
+	Admins/System Managers see everything.
+	"""
+	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+		return None
+
+	schools = _user_school_chain(user)
+	if not schools:
+		return "1=0"
+
+	in_list = ", ".join(frappe.db.escape(s) for s in schools)
+	return f"`tabProgram Offering`.`school` in ({in_list})"
+
+
+def has_permission(doc, ptype: str, user: str) -> bool:
+	"""
+	Doc-level enforcement:
+	- Read/Write/Delete allowed iff doc.school is in user's school tree
+	- Admin/System Manager bypass
+	- For Create (doc is usually None), defer to Role Permission Manager; restrict via link field filters in the UI.
+	"""
+	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+		return True
+
+	# For create, Frappe calls this with doc=None; leave it to RPR + link-field filters.
+	if not doc:
+		return True
+
+	schools = _user_school_chain(user)
+	if not schools:
+		return False
+
+	return doc.school in schools
+
+
+def on_doctype_update():
+	frappe.db.add_index("Program Offering", ["program", "school"])
+
