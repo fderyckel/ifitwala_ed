@@ -240,73 +240,95 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 def _get_offering_window(program_offering: str):
 	"""
 	Return (start_date, end_date) as date objects for a Program Offering.
-	We try a few common field names in ONE DB call and pick the first non-null
-	values found for start and end, respectively.
 
-	If neither start nor end is present, returns (None, None).
+	Preferred source: Program Offering Academic Year child rows (min/max of their AY dates).
+	Fallback: Program Offering.start_date / .end_date on the parent.
 	"""
 	if not program_offering:
 		return None, None
 
-	fields = [
-		"start_date", "from_date", "offering_start_date", "head_start_date",
-		"end_date", "to_date", "offering_end_date", "head_end_date",
-	]
-	row = frappe.db.get_value("Program Offering", program_offering, fields, as_dict=True)
-	if not row:
-		return None, None
+	# 1) Try child table window
+	min_max = frappe.db.sql(
+		"""
+		SELECT MIN(year_start_date), MAX(year_end_date)
+		FROM `tabProgram Offering Academic Year`
+		WHERE parent = %(po)s AND parenttype = 'Program Offering'
+		""",
+		{"po": program_offering},
+		as_dict=False,
+	)
+	child_start, child_end = (min_max[0] if min_max else (None, None))
 
-	start_candidates = ("start_date", "from_date", "offering_start_date", "head_start_date")
-	end_candidates   = ("end_date",   "to_date",   "offering_end_date",   "head_end_date")
+	if child_start or child_end:
+		return (getdate(child_start) if child_start else None,
+		        getdate(child_end)   if child_end   else None)
 
-	start_val = next((row[f] for f in start_candidates if row.get(f)), None)
-	end_val   = next((row[f] for f in end_candidates   if row.get(f)), None)
-
-	start = getdate(start_val) if start_val else None
-	end   = getdate(end_val)   if end_val   else None
+	# 2) Fallback to parent fields
+	row = frappe.db.get_value(
+		"Program Offering",
+		program_offering,
+		["start_date", "end_date"],
+		as_dict=True
+	) or {}
+	start = getdate(row.get("start_date")) if row.get("start_date") else None
+	end   = getdate(row.get("end_date"))   if row.get("end_date")   else None
 	return start, end
+
 
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def program_offering_target_ay_query(doctype, txt, searchfield, start, page_len, filters):
 	"""
-	List Academic Years that overlap the given Program Offering's window.
-	Ordering: most recent first (year_start_date DESC, then name DESC).
-
-	Overlap logic (robust to partial info):
-	- If both off_start & off_end: AY.start <= off_end AND AY.end >= off_start
-	- If only off_start:            AY.end   >= off_start
-	- If only off_end:              AY.start <= off_end
-	- If neither is known:          return [] (no false positives)
+	Return Academic Years explicitly linked to the Program Offering (child rows),
+	ordered by AY start date desc. If no child rows exist, fall back to AYs that
+	overlap the offering's (start_date, end_date) window.
 	"""
 	po = (filters or {}).get("program_offering")
 	if not po:
 		return []
 
-	off_start, off_end = _get_offering_window(po)
-
 	params = {
+		"po": po,
 		"txt": f"%{txt}%",
 		"start": start,
 		"page_len": page_len,
 	}
-	clauses = ["name LIKE %(txt)s"]
 
-	# Build overlap predicate depending on what we know
+	# Primary path: use the curated child rows
+	rows = frappe.db.sql(
+		"""
+		SELECT poay.academic_year
+		FROM `tabProgram Offering Academic Year` poay
+		WHERE poay.parent = %(po)s
+		  AND poay.parenttype = 'Program Offering'
+		  AND (poay.academic_year LIKE %(txt)s OR IFNULL(poay.ay_name, '') LIKE %(txt)s)
+		ORDER BY COALESCE(poay.year_start_date, '0001-01-01') DESC, poay.academic_year DESC
+		LIMIT %(start)s, %(page_len)s
+		""",
+		params,
+	)
+	if rows:
+		return rows
+
+	# Fallback: overlap with the offering window
+	off_start, off_end = _get_offering_window(po)
+	if not (off_start or off_end):
+		return []
+
+	clauses = ["name LIKE %(txt)s"]
 	if off_start and off_end:
-		clauses.append("COALESCE(year_start_date, '0001-01-01') <= %(off_end)s")
-		clauses.append("COALESCE(year_end_date,   '9999-12-31') >= %(off_start)s")
+		clauses += [
+			"COALESCE(year_start_date, '0001-01-01') <= %(off_end)s",
+			"COALESCE(year_end_date,   '9999-12-31') >= %(off_start)s",
+		]
 		params.update({"off_start": off_start, "off_end": off_end})
-	elif off_start and not off_end:
+	elif off_start:
 		clauses.append("COALESCE(year_end_date, '9999-12-31') >= %(off_start)s")
 		params.update({"off_start": off_start})
-	elif off_end and not off_start:
+	elif off_end:
 		clauses.append("COALESCE(year_start_date, '0001-01-01') <= %(off_end)s")
 		params.update({"off_end": off_end})
-	else:
-		# No usable offering dates → no candidates (keeps UX honest)
-		return []
 
 	sql = f"""
 		SELECT name
@@ -316,4 +338,3 @@ def program_offering_target_ay_query(doctype, txt, searchfield, start, page_len,
 		LIMIT %(start)s, %(page_len)s
 	"""
 	return frappe.db.sql(sql, params)
-
