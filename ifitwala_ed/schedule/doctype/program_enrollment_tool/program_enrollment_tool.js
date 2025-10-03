@@ -8,7 +8,7 @@
 function canFetchStudents(frm) {
 	const source = frm.doc.get_students_from;
 	if (source === 'Program Enrollment') {
-		return Boolean(frm.doc.program && frm.doc.academic_year);
+		return Boolean(frm.doc.program_offering && frm.doc.target_academic_year);
 	}
 	if (source === 'Cohort') {
 		return Boolean(frm.doc.student_cohort);
@@ -19,9 +19,6 @@ function canFetchStudents(frm) {
 frappe.ui.form.on('Program Enrollment Tool', {
 	refresh(frm) {
 		frm.disable_save();
-
-		frm.set_query('academic_year', () => ({ query: 'ifitwala_ed.schedule.doctype.program_enrollment_tool.program_enrollment_tool.academic_year_link_query' }));
-		frm.set_query('new_academic_year', () => ({ query: 'ifitwala_ed.schedule.doctype.program_enrollment_tool.program_enrollment_tool.academic_year_link_query' }));
 
 		// idempotent realtime bindings
 		if (!frm.__pe_rt_bound) {
@@ -48,7 +45,16 @@ frappe.ui.form.on('Program Enrollment Tool', {
 			frm.__pe_rt_bound = true;
 		}
 
+		// Constrain AY pickers to the chosen Program Offering's date window
+		frm.set_query('target_academic_year', () => ({
+			query: 'ifitwala_ed.schedule.doctype.program_enrollment_tool.program_enrollment_tool.program_offering_target_ay_query',
+			filters: { program_offering: frm.doc.program_offering }
+		}));
 
+		frm.set_query('new_target_academic_year', () => ({
+			query: 'ifitwala_ed.schedule.doctype.program_enrollment_tool.program_enrollment_tool.program_offering_target_ay_query',
+			filters: { program_offering: frm.doc.new_program_offering }
+		}));
 
 		// Field visibility
 		toggle_filter_fields(frm);
@@ -59,6 +65,16 @@ frappe.ui.form.on('Program Enrollment Tool', {
 
 	get_students_from(frm) {
 		toggle_filter_fields(frm);
+	},
+
+	// When Program Offering changes, reset & tighten AY list to overlap
+	program_offering(frm) {
+		frm.set_value('target_academic_year', null);
+	},
+
+	// New Program Offering → reset target AY
+	new_program_offering(frm) {
+		frm.set_value('new_target_academic_year', null);
 	},
 
 	get_students(frm) {
@@ -139,13 +155,13 @@ function highlight_duplicates(frm) {
 function toggle_filter_fields(frm) {
 	const source = frm.doc.get_students_from;
 
-	frm.toggle_display('program', false);
-	frm.toggle_display('academic_year', false);
+	frm.toggle_display('program_offering', false);
+	frm.toggle_display('target_academic_year', false);
 	frm.toggle_display('student_cohort', false);
 
 	if (source === 'Program Enrollment') {
-		frm.toggle_display('program', true);
-		frm.toggle_display('academic_year', true);
+		frm.toggle_display('program_offering', true);
+		frm.toggle_display('target_academic_year', true);
 		frm.toggle_display('student_cohort', true); // optional cohort filter
 	} else if (source === 'Cohort') {
 		frm.toggle_display('student_cohort', true);

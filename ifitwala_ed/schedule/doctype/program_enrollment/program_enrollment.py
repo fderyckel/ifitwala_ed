@@ -1,7 +1,7 @@
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
-import frappe 
+import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, get_link_to_form, nowdate
@@ -106,22 +106,22 @@ class ProgramEnrollment(Document):
 		if not self.student_name:
 			self.student_name = frappe.db.get_value("Student", self.student, "student_full_name")
 		if not self.courses:
-			self.extend("courses", self.get_courses()) 
+			self.extend("courses", self.get_courses())
 
-		if self.academic_year: 
+		if self.academic_year:
 			year_dates = frappe.get_doc("Academic Year", self.academic_year)
-			if self.enrollment_date: 
-				if getdate(self.enrollment_date) < getdate(year_dates.year_start_date): 
+			if self.enrollment_date:
+				if getdate(self.enrollment_date) < getdate(year_dates.year_start_date):
 					frappe.throw(_("The enrollment date for this program is before the start of the academic year {0}. The academic year starts on {1}.  Please revise the date.").format(
-						get_link_to_form("Academic Year", self.academic_year), 
+						get_link_to_form("Academic Year", self.academic_year),
 						year_dates.year_start_date
 					))
-				if getdate(self.enrollment_date) > getdate(year_dates.year_end_date): 
+				if getdate(self.enrollment_date) > getdate(year_dates.year_end_date):
 					frappe.throw(_("The enrollment date for this program is after the start of the academic year {0}. The academic year ends on {1}.  Please revise the date.").format(
-						get_link_to_form("Academic Year", self.academic_year), 
+						get_link_to_form("Academic Year", self.academic_year),
 						year_dates.year_end_date
 					))
-		self._validate_course_terms()		
+		self._validate_course_terms()
 
 
 	def before_save(self):
@@ -151,7 +151,7 @@ class ProgramEnrollment(Document):
 			self.academic_year = get_effective_record(
 				"Academic Year",
 				self.school,
-				extra_filters={"archived": 0},	
+				extra_filters={"archived": 0},
 			)
 			if not self.academic_year:
 				raise ParentRuleViolation(
@@ -167,34 +167,34 @@ class ProgramEnrollment(Document):
 				_("Academic Year {0} belongs to {1}, which is outside the allowed hierarchy.")
 				.format(self.academic_year, ay_school)
 			)
-		
 
-	def validate_only_one_active_enrollment(self): 
+
+	def validate_only_one_active_enrollment(self):
 		"""
     Checks if there's another active (archived=0) Program Enrollment for the same student.
     Raises an error if another active enrollment is found.
-    """ 
-		if self.archived: 
-			return # if archived is checked. 
-		
-		existing_enrollment = frappe.db.get_value( 
-			"Program Enrollment", 
-			{ 
-				"student": self.student, 
-				"archived": 0,  # Check for active enrollments 
-				"name": ("!=", self.name)  # Exclude the current document 
-			}, 
-			["name", "program", "academic_year"],  # Retrieve name, program and year for the error message 
+    """
+		if self.archived:
+			return # if archived is checked.
+
+		existing_enrollment = frappe.db.get_value(
+			"Program Enrollment",
+			{
+				"student": self.student,
+				"archived": 0,  # Check for active enrollments
+				"name": ("!=", self.name)  # Exclude the current document
+			},
+			["name", "program", "academic_year"],  # Retrieve name, program and year for the error message
 			as_dict=True
-		) 
-		
-		if existing_enrollment: 
-			frappe.throw(_( 
+		)
+
+		if existing_enrollment:
+			frappe.throw(_(
 				"Student {0} already has an active Program Enrollment for program {1} in academic year {2}.  See {3}."
-			).format( 
-					self.student_name, 
-					get_link_to_form("Program", existing_enrollment.program), 
-					existing_enrollment.academic_year, 
+			).format(
+					self.student_name,
+					get_link_to_form("Program", existing_enrollment.program),
+					existing_enrollment.academic_year,
 					get_link_to_form("Program Enrollment", existing_enrollment.name)
 					),title=_("Active Enrollment Exists") # added for better UI message.
       )
@@ -243,17 +243,17 @@ class ProgramEnrollment(Document):
 					.format(get_link_to_form("Course", row.course)))
 
 	# you cannot enroll twice for the same offering and year
-	def validate_duplication(self): 
-		existing_enrollment_name = frappe.db.exists("Program Enrollment", { 
-			"student": self.student, 
-			"program_offering": self.program_offering, 
-			"academic_year": self.academic_year, 
+	def validate_duplication(self):
+		existing_enrollment_name = frappe.db.exists("Program Enrollment", {
+			"student": self.student,
+			"program_offering": self.program_offering,
+			"academic_year": self.academic_year,
 			"name": ("!=", self.name)
 		})
-		if existing_enrollment_name: 
+		if existing_enrollment_name:
 			student_name = self.student_name or frappe.db.get_value("student", self.student, "student_name")
 			link_to_existing_enrollment = get_link_to_form("Program Enrollment", existing_enrollment_name)
-			frappe.throw(_("Student {0} is already enrolled in this Program Offering for this academic year. See {1}").format(student_name, link_to_existing_enrollment)) 
+			frappe.throw(_("Student {0} is already enrolled in this Program Offering for this academic year. See {1}").format(student_name, link_to_existing_enrollment))
 
 
 	def _validate_offering_ay_membership(self):
@@ -351,7 +351,7 @@ class ProgramEnrollment(Document):
 		missing_reason = [r.course for r in (self.courses or []) if r.status == "Dropped" and not (r.dropped_reason or "").strip()]
 		if missing_reason:
 			lines = "<br>".join(f"• {frappe.bold(c or '')}" for c in missing_reason)
-			frappe.msgprint(_("Think about adding a Dropped Reason:<br>{0}").format(lines))	
+			frappe.msgprint(_("Think about adding a Dropped Reason:<br>{0}").format(lines))
 
 	# If a student is in a program offering and that offering has required courses,
 	# load those that overlap the chosen Academic Year (AY).
@@ -443,7 +443,7 @@ class ProgramEnrollment(Document):
 						),
 						title=_("Invalid Term Sequence")
 					)
-		
+
 
 	# --- Traceability helpers (soft-convert deletions to Dropped) ----------------
 
@@ -494,7 +494,7 @@ class ProgramEnrollment(Document):
 		setattr(self, cache_attr, result)
 		return result
 
-	
+
 
 	def _current_course_set(self) -> set[str]:
 		return {r.course for r in (self.courses or []) if getattr(r, "course", None)}
@@ -681,9 +681,9 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 
 	# Build SQL
 	sql = f"""
-		SELECT name, student_full_name 
+		SELECT name, student_full_name
 		FROM tabStudent
-		WHERE 
+		WHERE
 			enabled = 1
 			AND name NOT IN ({', '.join(['%s'] * len(excluded_students))})
 			AND (
@@ -700,7 +700,7 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 
 	return frappe.db.sql(sql, params)
 
-# from JS to display AY in descending order 
+# from JS to display AY in descending order
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_academic_years(doctype, txt, searchfield, start, page_len, filters):
@@ -917,15 +917,8 @@ def has_permission(doc, user=None):
     return doc.school in descendant_schools
 
 def on_doctype_update():
-	# idempotent: adds only if missing
-	frappe.db.add_index("Program Enrollment", ["student"])
 	# useful for AY-scoped lookups
 	frappe.db.add_index("Program Enrollment", ["student", "academic_year"])
-	# Program Enrollment: speed up lookups from Student Referral flow
-	frappe.db.add_index("Program Enrollment", ["student", "archived"])	
-	# NEW for Program Offering linkage / reporting
-	frappe.db.add_index("Program Enrollment", ["program_offering"])
-	frappe.db.add_index("Program Enrollment", ["student", "program_offering"])
-	frappe.db.add_index("Program Enrollment", ["student", "program_offering", "academic_year"])
+	frappe.db.add_index("Program Enrollment", ["program_offering", "academic_year"])
 	# not duplicaiton of enrollmnent for same offering+year
 	frappe.db.add_unique("Program Enrollment", ["student", "program_offering", "academic_year"])
