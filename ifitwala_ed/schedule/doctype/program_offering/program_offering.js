@@ -38,15 +38,42 @@ function get_ay_bounds(frm) {
 	return { startAY: ays[0], endAY: ays[ays.length - 1] }; // assume user ordered; server also enforces overlap/order
 }
 
+// Robustly wire AY picker (descending) for the TMS child table
 function set_offering_ay_grid_query(frm) {
-	// Force descending order via custom link query
-	frm.set_query("academic_year", "offering_academic_years", () => {
-		return {
+	const table = frm.fields_dict && frm.fields_dict.offering_academic_years;
+	const grid  = table && table.grid;
+
+	// If grid isn't ready yet, try again right after rows render
+	if (!grid) {
+		// will fire once the field control has been mounted
+		frappe.after_ajax(() => set_offering_ay_grid_query(frm));
+		return;
+	}
+
+	// 1) Bind to the child column itself (works reliably with Table MultiSelect)
+	const col = typeof grid.get_field === "function" && grid.get_field("academic_year");
+	if (col) {
+		col.get_query = () => ({
 			query: "ifitwala_ed.schedule.doctype.program_offering.program_offering.academic_year_link_query",
-			filters: { school: frm.doc.school || null } // drop if AYs are global
-		};
-	});
+			filters: { school: frm.doc.school || null } // remove if AYs are global
+		});
+	}
+
+	// 2) Also re-bind whenever rows re-render (e.g., add/remove AY rows)
+	if (typeof grid.on === "function" && !grid.__ay_query_bound) {
+		grid.on("grid-rows-rendered", () => {
+			const c = grid.get_field && grid.get_field("academic_year");
+			if (c) {
+				c.get_query = () => ({
+					query: "ifitwala_ed.schedule.doctype.program_offering.program_offering.academic_year_link_query",
+					filters: { school: frm.doc.school || null }
+				});
+			}
+		});
+		grid.__ay_query_bound = true;
+	}
 }
+
 
 
 /* ---------- Catalog dialog rendering + helpers ---------- */

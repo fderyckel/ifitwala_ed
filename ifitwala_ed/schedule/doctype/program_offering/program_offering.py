@@ -511,55 +511,33 @@ def hydrate_non_catalog_rows(course_names: str, exception_reason: str = "") -> l
 
 @frappe.whitelist()
 def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
-	"""
-	Custom link search for Academic Year, sorted by most recent first.
-	Respects optional filters.school.
-	Returns rows shaped for a Link dialog.
-	"""
 	txt = (txt or "").strip()
 	school = (filters or {}).get("school")
-
-	conds = []
-	params = []
+	conds, params = [], []
 
 	if school:
 		conds.append("ay.school = %s")
 		params.append(school)
-
-	# Standard link search across name + title-like fields
 	if txt:
 		conds.append("(ay.name LIKE %(txt)s OR ay.academic_year_name LIKE %(txt)s)")
-		params.append  # just to keep lints happy
-		# Use named param for LIKE to avoid % confusion
-		where_txt = {"txt": f"%{txt}%"}
-	else:
-		where_txt = {}
 
-	where_sql = " AND ".join(conds)
-	if where_sql:
-		where_sql = "WHERE " + where_sql
-
-	# Order newest first by start date; tie-break by name descending
+	where_sql = "WHERE " + " AND ".join(conds) if conds else ""
 	sql = f"""
-		SELECT
-			ay.name AS value,
-			ay.academic_year_name AS description
+		SELECT ay.name AS value, ay.academic_year_name AS description
 		FROM `tabAcademic Year` ay
 		{where_sql}
 		ORDER BY ay.year_start_date DESC, ay.name DESC
 		LIMIT %(page_len)s OFFSET %(start)s
 	"""
-
-	params_map = {
-		"page_len": int(page_len or 20),
-		"start": int(start or 0),
-	}
-	# merge positional params (if any) with named ones
-	# convert positional list to tuple so PyMySQL is happy
-	res = frappe.db.sql(sql, tuple(params), as_dict=True, values={**where_txt, **params_map})
-
-	# Frappe link query expects a list of [value, description] pairs
-	return [[r.get("value"), r.get("description") or r.get("value")] for r in res]
+	return [
+		[r.get("value"), r.get("description") or r.get("value")]
+		for r in frappe.db.sql(
+			sql,
+			tuple(params),
+			as_dict=True,
+			values={"txt": f"%{txt}%", "page_len": int(page_len or 20), "start": int(start or 0)},
+		)
+	]
 
 
 def _user_school_chain(user: str) -> list[str]:
