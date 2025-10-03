@@ -145,7 +145,7 @@ has_permission = {
 	"Course": "ifitwala_ed.curriculum.doctype.course.course.has_permission",
 	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.has_permission",
 	"Employee": "ifitwala_ed.hr.doctype.employee.employee.employee_has_permission",
-	"Program Offering": "ifitwala_ed.schedule.doctype/program_offering/program_offering.has_permission",
+	"Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.has_permission",
 }
 
 default_roles = [
