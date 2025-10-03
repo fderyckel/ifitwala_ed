@@ -543,17 +543,15 @@ class ProgramEnrollment(Document):
 # -------------------------
 
 def _offering_ay_names(offering: str) -> list[str]:
-	"""Return the ordered list of Academic Year names in the Program Offering."""
+	"""Ordered AY names from the offering child table (grid order)."""
 	if not offering:
 		return []
-	rows = frappe.get_all(
+	return frappe.get_all(
 		"Program Offering Academic Year",
-		filters={"parent": offering},
-		fields=["academic_year"],
-		order_by="year_start_date asc",
+		filters={"parent": offering, "parenttype": "Program Offering"},
 		pluck="academic_year",
-	)
-	return rows or []
+		order_by="idx asc",
+	) or []
 
 def _offering_core(offering_name: str) -> dict | None:
 	"""Return head fields of Program Offering (strict field names)."""
@@ -568,14 +566,47 @@ def _offering_core(offering_name: str) -> dict | None:
 
 
 def _offering_ay_spine(offering_name: str) -> list[dict]:
+	"""
+	Return [{'academic_year', 'start', 'end'}...] using *real* bounds
+	from the Academic Year doctype. Child rows only provide ordering (idx).
+	"""
 	rows = frappe.get_all(
 		"Program Offering Academic Year",
 		filters={"parent": offering_name, "parenttype": "Program Offering"},
-		fields=["academic_year", "year_start_date as start", "year_end_date as end"],
-		order_by="year_start_date asc"
+		fields=["academic_year", "idx"],
+		order_by="idx asc",
 	)
-	return [{"academic_year": r["academic_year"], "start": getdate(r["start"]), "end": getdate(r["end"])} for r in rows]
+	if not rows:
+		return []
 
+	ay_names = [r["academic_year"] for r in rows if r.get("academic_year")]
+	if not ay_names:
+		return []
+
+	# Batch fetch true AY bounds
+	ay_meta = {
+		r.name: r for r in frappe.get_all(
+			"Academic Year",
+			filters={"name": ("in", ay_names)},
+			fields=["name", "year_start_date", "year_end_date"],
+		)
+	}
+
+	out = []
+	for r in rows:
+		name = r.get("academic_year")
+		if not name:
+			continue
+		meta = ay_meta.get(name)
+		# Skip malformed AYs (don’t fabricate "today")
+		if not meta or not (meta.year_start_date and meta.year_end_date):
+			continue
+		out.append({
+			"academic_year": name,
+			"start": getdate(meta.year_start_date),
+			"end": getdate(meta.year_end_date),
+		})
+	return out
 
 def _ay_bounds_for(offering_name: str, ay_name: str) -> tuple[object, object]:
 	"""(start,end) of an AY from the offering spine; avoids fetching the AY doc."""
@@ -777,14 +808,16 @@ def get_program_courses_for_enrollment(program_offering):
 def get_offering_ay_spine(offering: str):
 	if not offering:
 		return []
-	rows = frappe.get_all(
-		"Program Offering Academic Year",
-		filters={"parent": offering, "parenttype": "Program Offering"},
-		fields=["academic_year", "year_start_date", "year_end_date"],
-		order_by="year_start_date asc",
-		ignore_permissions=True,  # child table; safe + required for client use
-	)
-	return rows
+	spine = _offering_ay_spine(offering)
+	# shape it like the client expects
+	return [
+		{
+			"academic_year": r["academic_year"],
+			"year_start_date": r["start"],
+			"year_end_date": r["end"],
+		}
+		for r in spine
+	]
 
 
 def get_terms_for_ay_with_fallback(school, academic_year):
