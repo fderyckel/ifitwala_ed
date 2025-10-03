@@ -605,57 +605,69 @@ def _term_meta_many(term_names: set[str]) -> dict[str, dict]:
 
 def _compute_effective_course_span(offering_name: str, roc: dict) -> tuple[object, object]:
 	"""
-	From a Program Offering Course row dict (keys: start_academic_year, end_academic_year,
-	term_start, term_end, from_date, to_date), compute effective (start_dt, end_dt).
+	Compute effective (start_dt, end_dt) for a Program Offering Course row.
+	Child fields: start_academic_year/end_academic_year, start_academic_term/end_academic_term.
 	"""
-	say, eay = roc.get("start_academic_year"), roc.get("end_academic_year")
-	s_ay_start, _s_ay_end = _ay_bounds_for(offering_name, say)
-	_e_ay_start, e_ay_end = _ay_bounds_for(offering_name, eay)
+	say = roc.get("start_academic_year")
+	eay = roc.get("end_academic_year")
+
+	s_ay_start, s_ay_end_unused = _ay_bounds_for(offering_name, say)
+	e_ay_start_unused, e_ay_end = _ay_bounds_for(offering_name, eay)
 	if not (s_ay_start and e_ay_end):
-		# sentinel impossible span if spine missing
 		return (getdate("1900-01-01"), getdate("1899-12-31"))
 
 	start_dt = s_ay_start
-	end_dt   = e_ay_end
+	end_dt = e_ay_end
 
-	# Narrow by the chosen start term (use its start date)
-	if roc.get("term_start"):
-		_ts_school, _ts_ay, ts_start_date, _ts_end_date = _term_meta(roc["term_start"])
-		if ts_start_date:
-			start_dt = max(start_dt, getdate(ts_start_date))
+	# Narrow by terms (use start date of start term; end date of end term if available)
+	ts_name = roc.get("start_academic_term")
+	if ts_name:
+		ts_school_ignore, ts_ay_ignore, ts_start, ts_end_ignore = _term_meta(ts_name)
+		if ts_start:
+			start_dt = max(start_dt, getdate(ts_start))
 
-	# Narrow by the chosen end term
-	# Prefer the term's end date; if it's missing, fall back to its start date
-	if roc.get("term_end"):
-		_te_school, _te_ay, te_start_date, te_end_date = _term_meta(roc["term_end"])
-		if te_end_date or te_start_date:
-			end_dt = min(end_dt, getdate(te_end_date) if te_end_date else getdate(te_start_date))
-
+	te_name = roc.get("end_academic_term")
+	if te_name:
+		te_school_ignore, te_ay_ignore, te_start, te_end = _term_meta(te_name)
+		if te_end or te_start:
+			end_dt = min(end_dt, getdate(te_end) if te_end else getdate(te_start))
 
 	return (start_dt, end_dt)
 
 
 def _offering_courses_index(offering_name: str) -> dict[str, list[dict]]:
 	"""
-	Index: course -> list of effective spans.
-	Each span: {'start': d, 'end': d, 'start_ay':..., 'end_ay':..., 'term_start':..., 'term_end':..., 'required': 0/1}
+	Build index from Program Offering Course. Normalize term keys to term_start/term_end
+	so the rest of the enrollment logic can keep using those names.
 	"""
 	rows = frappe.get_all(
 		"Program Offering Course",
 		filters={"parent": offering_name, "parenttype": "Program Offering"},
-		fields=["course","start_academic_year","end_academic_year","term_start","term_end","from_date","to_date","required","idx"],
-		order_by="idx asc"
+		fields=[
+			"course",
+			"start_academic_year", "end_academic_year",
+			"start_academic_term", "end_academic_term",
+			"from_date", "to_date",
+			"required", "idx",
+		],
+		order_by="idx asc",
 	)
+
 	idx: dict[str, list[dict]] = {}
 	for r in rows:
 		s, e = _compute_effective_course_span(offering_name, r)
 		item = {
-			"start": s, "end": e,
-			"start_ay": r.get("start_academic_year"), "end_ay": r.get("end_academic_year"),
-			"term_start": r.get("term_start"), "term_end": r.get("term_end"),
-			"required": r.get("required") or 0
+			"start": s,
+			"end": e,
+			"start_ay": r.get("start_academic_year"),
+			"end_ay": r.get("end_academic_year"),
+			# normalized keys expected elsewhere
+			"term_start": r.get("start_academic_term"),
+			"term_end": r.get("end_academic_term"),
+			"required": r.get("required") or 0,
 		}
 		idx.setdefault(r["course"], []).append(item)
+
 	return idx
 
 
