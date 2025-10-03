@@ -6,8 +6,8 @@
 frappe.treeview_settings["Program"] = {
 	breadcrumb: "Curriculum",
 	title: __("Program Tree"),
-	root_label: "All Programs",
-	get_tree_root: false, // NestedSet + parent_program drive the tree
+	root_label: __("All Programs"),
+	get_tree_root: true, // NestedSet + parent_program drive the tree
 	get_tree_nodes: "frappe.desk.treeview.get_children",
 	add_tree_node: "frappe.desk.treeview.add_node",
 

@@ -7,6 +7,7 @@ from frappe.utils.nestedset import NestedSet
 from frappe.utils.nestedset import get_descendants_of
 
 class Program(NestedSet):
+	nsm_parent_field = "parent_program"
 
 	def validate(self):
 		self._validate_duplicate_course()
