@@ -1,6 +1,9 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
+// ifitwala_ed/schedule/doctype/program_offering/program_offering.js
+
+
 function apply_server_defaults_if_empty(frm) {
 	if (!frm.doc.program || !frm.doc.school) return;
 
@@ -35,33 +38,14 @@ function get_ay_bounds(frm) {
 	return { startAY: ays[0], endAY: ays[ays.length - 1] }; // assume user ordered; server also enforces overlap/order
 }
 
-
 function set_offering_ay_grid_query(frm) {
-	const CHILD_TABLE = "offering_academic_years";   // TMS field on parent
-	const LINK_IN_CHILD = "academic_year";           // link inside child rows
-
-	const ctrl = frm.fields_dict[CHILD_TABLE];
-
-	// preferred path: only if the grid exposes the link field
-	if (ctrl && ctrl.grid && typeof ctrl.grid.get_field === "function" && ctrl.grid.get_field(LINK_IN_CHILD)) {
-		frm.set_query(LINK_IN_CHILD, CHILD_TABLE, () => {
-			return {
-				filters: frm.doc.school ? { school: frm.doc.school } : {},
-				order_by: "year_start_date desc",
-			};
-		});
-		return;
-	}
-
-	// fallback: attach a get_query to the control itself (works for some TMS builds)
-	if (ctrl && typeof ctrl.get_query === "function") {
-		ctrl.get_query = () => {
-			return {
-				filters: frm.doc.school ? { school: frm.doc.school } : {},
-				order_by: "year_start_date desc",
-			};
+	// Force descending order via custom link query
+	frm.set_query("academic_year", "offering_academic_years", () => {
+		return {
+			query: "ifitwala_ed.schedule.doctype.program_offering.program_offering.academic_year_link_query",
+			filters: { school: frm.doc.school || null } // drop if AYs are global
 		};
-	}
+	});
 }
 
 
@@ -116,8 +100,6 @@ function render_catalog_list($list, rows) {
     $list.append($row);
   });
 }
-
-
 
 
 // Read checked rows from the dialog list

@@ -1,6 +1,8 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/schedule/doctype/program_offering/program_offering.py
+
 import frappe
 from frappe import _
 from frappe.utils import getdate
@@ -505,6 +507,59 @@ def hydrate_non_catalog_rows(course_names: str, exception_reason: str = "") -> l
 		"exception_reason": exception_reason or "",
 		"catalog_ref": "",
 	} for nm in names]
+
+
+@frappe.whitelist()
+def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
+	"""
+	Custom link search for Academic Year, sorted by most recent first.
+	Respects optional filters.school.
+	Returns rows shaped for a Link dialog.
+	"""
+	txt = (txt or "").strip()
+	school = (filters or {}).get("school")
+
+	conds = []
+	params = []
+
+	if school:
+		conds.append("ay.school = %s")
+		params.append(school)
+
+	# Standard link search across name + title-like fields
+	if txt:
+		conds.append("(ay.name LIKE %(txt)s OR ay.academic_year_name LIKE %(txt)s)")
+		params.append  # just to keep lints happy
+		# Use named param for LIKE to avoid % confusion
+		where_txt = {"txt": f"%{txt}%"}
+	else:
+		where_txt = {}
+
+	where_sql = " AND ".join(conds)
+	if where_sql:
+		where_sql = "WHERE " + where_sql
+
+	# Order newest first by start date; tie-break by name descending
+	sql = f"""
+		SELECT
+			ay.name AS value,
+			ay.academic_year_name AS description
+		FROM `tabAcademic Year` ay
+		{where_sql}
+		ORDER BY ay.year_start_date DESC, ay.name DESC
+		LIMIT %(page_len)s OFFSET %(start)s
+	"""
+
+	params_map = {
+		"page_len": int(page_len or 20),
+		"start": int(start or 0),
+	}
+	# merge positional params (if any) with named ones
+	# convert positional list to tuple so PyMySQL is happy
+	res = frappe.db.sql(sql, tuple(params), as_dict=True, values={**where_txt, **params_map})
+
+	# Frappe link query expects a list of [value, description] pairs
+	return [[r.get("value"), r.get("description") or r.get("value")] for r in res]
 
 
 def _user_school_chain(user: str) -> list[str]:
