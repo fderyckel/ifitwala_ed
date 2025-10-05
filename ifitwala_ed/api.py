@@ -39,7 +39,7 @@ def set_default_workspace_based_on_roles(doc, method):
     if "Nurse" in roles:
         new_workspace = "Health"
     elif "Academic Admin" in roles:
-        new_workspace = "Settings"
+        new_workspace = "Admin"
 
     if not new_workspace:
         # No relevant role → no need to adjust workspace
