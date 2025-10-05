@@ -178,8 +178,7 @@ frappe.ui.form.on("Course Enrollment Tool", {
 
 	// Keep old handlers but now they rely on offering as the key
 	program(frm) {
-		// program is derived; don’t clear AY here anymore
-		show_add_students_button(frm);
+		bind_student_link_query(frm);
 	},
 
 	academic_year(frm) {
