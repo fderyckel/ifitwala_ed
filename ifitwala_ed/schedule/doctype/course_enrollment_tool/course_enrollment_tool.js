@@ -1,15 +1,71 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-function show_add_students_button(frm) {
-	// Require offering + AY + course
-	if (frm.doc.program_offering && frm.doc.academic_year && frm.doc.course) {
-		if (!frm.custom_buttons_added) {
-			frm.add_custom_button(__("Add Eligible Students"), function () {
-				if (!frm.doc.program_offering || !frm.doc.academic_year || !frm.doc.course) {
-					frappe.msgprint(__("Please select Program Offering, Academic Year, and Course first."));
-					return;
+function student_link_query(frm) {
+	return {
+		query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.fetch_eligible_students",
+		filters: {
+			program_offering: frm.doc.program_offering || "",
+			academic_year: frm.doc.academic_year || "",
+			course: frm.doc.course || "",
+			term: frm.doc.term || ""
+		}
+	};
+}
+
+function bind_student_link_query(frm) {
+	// Always bind via set_query so the grid uses the server query
+	frm.set_query("student", "students", () => student_link_query(frm));
+}
+
+
+
+frappe.ui.form.on("Course Enrollment Tool", {
+	onload(frm) {
+		// Academic Year query — scoped to offering (DESC)
+		frm.set_query("academic_year", function () {
+			return {
+				query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.list_offering_academic_years_desc",
+				filters: { program_offering: frm.doc.program_offering || "" }
+			};
+		});
+
+		// Program is derived from Program Offering → make it read-only once set
+		if (frm.doc.program_offering && frm.doc.program) {
+			frm.set_df_property("program", "read_only", 1);
+		}
+
+		// Course query — from Program Offering Courses
+		frm.set_query("course", function () {
+			if (!frm.doc.program_offering) return {};
+			return {
+				query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.get_courses_for_offering",
+				filters: {
+					program_offering: frm.doc.program_offering,
+					academic_year: frm.doc.academic_year || ""
 				}
+			};
+		});
+	},
+
+	refresh(frm) {
+		// 1) Student link ALWAYS uses the server query
+		bind_student_link_query(frm);
+
+		// 2) Rebuild action buttons deterministically
+		frm.clear_custom_buttons();
+
+		frm.add_custom_button(__("Clear All Fields"), function () {
+			const fields_to_clear = ["program_offering", "program", "academic_year", "term", "course"];
+			fields_to_clear.forEach(f => frm.set_value(f, null));
+			frm.clear_table("students");
+			frm.refresh_fields();
+			frm.set_df_property("program", "read_only", 0);
+		}).addClass("btn-danger");
+
+		// Add Eligible Students only when scoped enough
+		if (frm.doc.program_offering && frm.doc.academic_year && frm.doc.course) {
+			frm.add_custom_button(__("Add Eligible Students"), function () {
 				frappe.call({
 					method: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.fetch_eligible_students",
 					args: {
@@ -88,51 +144,9 @@ function show_add_students_button(frm) {
 					}
 				});
 			});
-			frm.custom_buttons_added = true;
-		}
-	}
-}
-
-frappe.ui.form.on("Course Enrollment Tool", {
-	onload(frm) {
-		// Academic Year query — scoped to offering (DESC)
-		frm.set_query("academic_year", function () {
-			return {
-				query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.list_offering_academic_years_desc",
-				filters: { program_offering: frm.doc.program_offering || "" }
-			};
-		});
-
-		// Program is derived from Program Offering → make it read-only once set
-		if (frm.doc.program_offering && frm.doc.program) {
-			frm.set_df_property("program", "read_only", 1);
 		}
 
-		// Course query — from Program Offering Courses
-		frm.set_query("course", function () {
-			if (!frm.doc.program_offering) return {};
-			return {
-				query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.get_courses_for_offering",
-				filters: {
-					program_offering: frm.doc.program_offering,
-					academic_year: frm.doc.academic_year || ""
-				}
-			};
-		});
-	},
-
-	refresh(frm) {
-		// Clear All
-		frm.add_custom_button(__("Clear All Fields"), function () {
-			const fields_to_clear = ["program_offering", "program", "academic_year", "term", "course"];
-			fields_to_clear.forEach(f => frm.set_value(f, null));
-			frm.clear_table("students");
-			frm.refresh_fields();
-			frm.custom_buttons_added = false;
-			frm.set_df_property("program", "read_only", 0);
-		}).addClass("btn-danger");
-
-		// 👇 Style the DocField Button: add_course
+		// Style the DocField Button: add_course
 		const $btn = frm.fields_dict.add_course?.$wrapper?.find("button");
 		if ($btn && $btn.length) {
 			$btn.removeClass("btn-default btn-secondary").addClass("btn-primary");
@@ -157,7 +171,9 @@ frappe.ui.form.on("Course Enrollment Tool", {
 		frm.clear_table("students");
 		frm.refresh_fields();
 
-		show_add_students_button(frm);
+		bind_student_link_query(frm);
+		frm.refresh();
+
 	},
 
 	// Keep old handlers but now they rely on offering as the key
@@ -167,44 +183,14 @@ frappe.ui.form.on("Course Enrollment Tool", {
 	},
 
 	academic_year(frm) {
-		show_add_students_button(frm);
-	},
-
-	onload_post_render(frm) {
-		// Server-side query for Student link in grid — now uses offering
-		frm.set_query("student", "students", function (doc) {
-			return {
-				query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.fetch_eligible_students",
-				filters: {
-					program_offering: frm.doc.program_offering,
-					academic_year: frm.doc.academic_year,
-					course: frm.doc.course,
-					term: frm.doc.term
-				}
-			};
-		});
-
-		// Client-side duplicate guard
-		frm.fields_dict["students"].grid.get_field("student").get_query = function (doc) {
-			const selected = (doc.students || []).map(r => r.student).filter(Boolean);
-			return { filters: [["Student", "name", "not in", selected]] };
-		};
-
-		// Course query (again) in case onload_post_render runs before onload
-		frm.set_query("course", function () {
-			if (!frm.doc.program_offering) return {};
-			return {
-				query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.get_courses_for_offering",
-				filters: {
-					program_offering: frm.doc.program_offering,
-					academic_year: frm.doc.academic_year || ""
-				}
-			};
-		});
+		bind_student_link_query(frm);
+		frm.refresh();
 	},
 
 	async course(frm) {
-		show_add_students_button(frm);
+
+		bind_student_link_query(frm);
+
 		if (!frm.doc.course) {
 			frm.set_df_property("term", "hidden", 1);
 			return;
