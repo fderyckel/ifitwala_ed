@@ -282,7 +282,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-29 14:29:44.792932",
+ "modified": "2025-10-04 20:38:48.807788",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
@@ -306,6 +306,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -318,6 +319,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -353,6 +355,7 @@
   },
   {
    "read": 1,
+   "report": 1,
    "role": "Accreditation Visitor",
    "share": 1
   }

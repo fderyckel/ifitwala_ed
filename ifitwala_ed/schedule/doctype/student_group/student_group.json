@@ -195,7 +195,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-23 10:46:15.441234",
+ "modified": "2025-10-04 20:40:26.937630",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",
@@ -290,6 +290,12 @@
    "report": 1,
    "role": "Academic Staff",
    "select": 1,
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
    "share": 1
   }
  ],

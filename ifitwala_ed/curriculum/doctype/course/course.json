@@ -204,7 +204,7 @@
  "image_field": "course_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-25 11:19:32.860434",
+ "modified": "2025-10-04 20:27:21.146125",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Course",
@@ -237,6 +237,30 @@
    "write": 1
   },
   {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
    "read": 1,
    "role": "Academic Staff"
   },
@@ -251,18 +275,6 @@
   {
    "read": 1,
    "role": "Admission Officer"
-  },
-  {
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "import": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Curriculum Coordinator",
-   "share": 1,
-   "write": 1
   },
   {
    "read": 1,

@@ -168,7 +168,7 @@
  "image_field": "guardian_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-30 17:41:51.356453",
+ "modified": "2025-10-04 20:39:36.162292",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Guardian",
@@ -256,6 +256,12 @@
    "read": 1,
    "report": 1,
    "role": "Counselor",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
    "share": 1
   }
  ],

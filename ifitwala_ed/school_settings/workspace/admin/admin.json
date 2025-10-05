@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"SmAh1J3Oa3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Dashboard\",\"col\":3}},{\"id\":\"OvNhvhv77w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Admin Dashboard\",\"col\":3}},{\"id\":\"VB0uC-4x_2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log Dashboard\",\"col\":3}},{\"id\":\"ZGOFPWekLC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fzg1kF2Gr1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students, Schedule &amp; Enrollments</span>\",\"col\":12}},{\"id\":\"VM1mCwF6pW\",\"type\":\"card\",\"data\":{\"card_name\":\"Students, Logs & Referrals\",\"col\":4}},{\"id\":\"T0f0dXZid9\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"7sRer6iX3b\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"XFxZlnRb64\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"IyyVAgBXo1\",\"type\":\"card\",\"data\":{\"card_name\":\"Attendance\",\"col\":4}},{\"id\":\"xKozqy_a84\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"lXOrx_IXWL\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>General Settings</b></span>\",\"col\":12}},{\"id\":\"ESp5IOBb57\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"-wlMmbli5N\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & calendars\",\"col\":4}},{\"id\":\"a30-qjywzw\",\"type\":\"card\",\"data\":{\"card_name\":\"Admin tools\",\"col\":4}}]",
+ "content": "[{\"id\":\"OvNhvhv77w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Admin Dashboard\",\"col\":3}},{\"id\":\"VB0uC-4x_2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log Dashboard\",\"col\":3}},{\"id\":\"ZGOFPWekLC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fzg1kF2Gr1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students, Schedule &amp; Enrollments</span>\",\"col\":12}},{\"id\":\"tTrzuyqMTY\",\"type\":\"card\",\"data\":{\"card_name\":\"Students \",\"col\":4}},{\"id\":\"VM1mCwF6pW\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs & Referrals Settings\",\"col\":4}},{\"id\":\"T0f0dXZid9\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"7sRer6iX3b\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"XFxZlnRb64\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"IyyVAgBXo1\",\"type\":\"card\",\"data\":{\"card_name\":\"Attendance\",\"col\":4}},{\"id\":\"xKozqy_a84\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"lXOrx_IXWL\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>General Settings</b></span>\",\"col\":12}},{\"id\":\"ESp5IOBb57\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"-wlMmbli5N\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & calendars\",\"col\":4}},{\"id\":\"a30-qjywzw\",\"type\":\"card\",\"data\":{\"card_name\":\"Admin tools\",\"col\":4}}]",
  "creation": "2025-04-02 12:29:42.749017",
  "custom_blocks": [],
  "docstatus": 0,
@@ -9,9 +9,9 @@
  "hide_custom": 0,
  "icon": "setting-gear",
  "idx": 44,
- "indicator_color": "green",
+ "indicator_color": "",
  "is_hidden": 0,
- "label": "Settings",
+ "label": "Admin",
  "links": [
   {
    "hidden": 0,
@@ -79,55 +79,6 @@
    "link_count": 0,
    "link_to": "Enrollment Trend Report",
    "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Schedule",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program Enrollment",
-   "link_count": 0,
-   "link_to": "Program Enrollment",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Group",
-   "link_count": 0,
-   "link_to": "Student Group",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Instructor",
-   "link_count": 0,
-   "link_to": "Instructor",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Group's pictures",
-   "link_count": 0,
-   "link_to": "student_group_cards",
-   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
@@ -369,11 +320,31 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Students, Logs & Referrals",
-   "link_count": 4,
+   "label": "Students ",
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student",
+   "link_count": 0,
+   "link_to": "Student",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Guardian",
+   "link_count": 0,
+   "link_to": "Guardian",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   },
   {
    "hidden": 0,
@@ -384,6 +355,35 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Log",
+   "link_count": 0,
+   "link_to": "Student Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Referral",
+   "link_count": 0,
+   "link_to": "Student Referral",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Logs & Referrals Settings",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
   },
   {
    "hidden": 0,
@@ -414,12 +414,71 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Schedule",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Offering",
+   "link_count": 0,
+   "link_to": "Program Offering",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Enrollment",
+   "link_count": 0,
+   "link_to": "Program Enrollment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Group",
+   "link_count": 0,
+   "link_to": "Student Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Instructor",
+   "link_count": 0,
+   "link_to": "Instructor",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Group's pictures",
+   "link_count": 0,
+   "link_to": "student_group_cards",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-10-01 16:15:58.404806",
+ "modified": "2025-10-03 20:18:09.035801",
  "modified_by": "Administrator",
  "module": "School Settings",
- "name": "Settings",
+ "name": "Admin",
  "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
@@ -459,5 +518,5 @@
    "type": "Dashboard"
   }
  ],
- "title": "Settings"
+ "title": "Admin"
 }

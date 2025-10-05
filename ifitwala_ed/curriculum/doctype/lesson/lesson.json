@@ -100,7 +100,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-26 22:50:57.735190",
+ "modified": "2025-10-04 20:38:24.590983",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Lesson",
@@ -161,6 +161,12 @@
    "read": 1,
    "report": 1,
    "role": "Academic Assistant",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
    "share": 1
   }
  ],
