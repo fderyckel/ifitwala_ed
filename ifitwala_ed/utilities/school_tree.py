@@ -11,6 +11,21 @@ class ParentRuleViolation(frappe.ValidationError):
     """Raised when a child record violates parent↔child inheritance rules."""
 
 
+def get_root_school() -> str | None:
+	"""Return the root School (lft == 1) if present, cached for reuse."""
+	cache = frappe.cache()
+	key = "ifitwala_ed:school_tree:root_school"
+	cached = cache.get_value(key)
+	if cached:
+		return cached if cached != "__none__" else None
+
+	root = frappe.db.get_value("School", {"lft": 1}, "name")
+	if not root:
+		root = frappe.db.get_value("School", {"parent_school": ["in", [None, ""]]}, "name")
+	cache.set_value(key, root or "__none__", expires_in_sec=CACHE_TTL)
+	return root
+
+
 def _cache_key(doctype, school, extra):
     # Make a short, deterministic cache key
     return f"{doctype}:{school}:" + ":".join(f"{k}={v}" for k, v in sorted(extra.items()))

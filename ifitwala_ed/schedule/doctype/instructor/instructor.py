@@ -194,8 +194,8 @@ def get_permission_query_conditions(user):
 
 	# For non-academic controllers we still restrict to their school + descendants
 	# (keeps behavior consistent and simple)
-	escaped = "', '".join(frappe.db.escape(s, percent=False) for s in schools)
-	return f"`tabInstructor`.school IN ('{escaped}')"
+	escaped_values = ", ".join(frappe.db.escape(s, percent=False) for s in schools)
+	return f"`tabInstructor`.school IN ({escaped_values})"
 
 
 def has_permission(doc, ptype, user):
