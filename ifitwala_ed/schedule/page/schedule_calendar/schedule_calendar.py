@@ -41,27 +41,47 @@ def get_default_instructor():
 @frappe.whitelist()
 def get_default_academic_year():
 	user = frappe.session.user
+	today = frappe.utils.today()
 
-	# ── try the user’s school (Employee → School) ──────────────────────────
-	school = frappe.db.get_value("Employee",  {"user_id": user}, "school") \
-	      or frappe.db.get_value("Instructor", {"linked_user_id": user}, "school")
+	# 1) Resolve user's school (Employee → School; else Instructor → School)
+	school = (
+		frappe.db.get_value("Employee",  {"user_id": user}, "school")
+		or frappe.db.get_value("Instructor", {"linked_user_id": user}, "school")
+	)
 
+	# 2) School-configured current AY wins
 	if school:
-		year = frappe.db.get_value("School", school, "current_academic_year")
+		cfg_year = frappe.db.get_value("School", school, "current_academic_year")
+		if cfg_year:
+			return cfg_year
+
+	# 3) Otherwise, pick a non-archived AY containing today, scoped to the school
+	if school:
+		year = frappe.db.get_value(
+			"Academic Year",
+			{
+				"school": school,
+				"archived": 0,
+				"year_start_date": ["<=", today],
+				"year_end_date":   [">=", today],
+			},
+			"name",
+		)
 		if year:
 			return year
 
-	# ── lastly: first “Active” academic year that includes today ───────────
+	# 4) Last fallback: any non-archived AY that contains today (helps initial setup)
 	year = frappe.db.get_value(
 		"Academic Year",
 		{
-			"status": "Active",
-			"year_start_date": ["<=", frappe.utils.today()],
-			"year_end_date":   [">=", frappe.utils.today()],
+			"archived": 0,
+			"year_start_date": ["<=", today],
+			"year_end_date":   [">=", today],
 		},
 		"name",
 	)
-	return year or ""	
+
+	return year or ""
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -180,8 +200,8 @@ def get_instructor_events(start, end, filters=None):
 
 		sched_doc      = frappe.get_cached_doc("School Schedule", sched_name)
 		rotation_dates = get_rotation_dates(
-			sched_name, 
-			academic_year or sched_doc.academic_year, 
+			sched_name,
+			academic_year or sched_doc.academic_year,
 			sched_doc.include_holidays_in_rotation
 		)
 
