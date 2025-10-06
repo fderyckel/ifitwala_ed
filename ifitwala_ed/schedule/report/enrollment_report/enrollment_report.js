@@ -14,7 +14,7 @@ frappe.query_reports["Enrollment Report"] = {
 			"fieldname": "school",
 			"label": "School",
 			"fieldtype": "Link",
-			"options": "School", 
+			"options": "School",
 			get_query: function() {
 				return {
 					filters: {
@@ -27,7 +27,7 @@ frappe.query_reports["Enrollment Report"] = {
 			"fieldname": "program",
 			"label": "Program",
 			"fieldtype": "Link",
-			"options": "Program", 
+			"options": "Program",
 			"depends_on": "eval:doc.school",
 			"get_query": function () {
 				let school = frappe.query_report.get_filter_value("school");
@@ -46,7 +46,7 @@ frappe.query_reports["Enrollment Report"] = {
 			"fieldtype": "Link",
 			"options": "Student Cohort",
 			"depends_on": "eval:doc.report_type=='Cohort'"
-		},			
+		},
 		{
 			"fieldname": "academic_year",
 			"label": "Academic Year",
@@ -65,7 +65,7 @@ frappe.query_reports["Enrollment Report"] = {
 	],
 
 	onload: function(report) {
-		frappe.breadcrumbs.add("School Settings", "Settings", "/app/settings");
+		frappe.breadcrumbs.add("School Settings", "Settings", "/app/admin");
 		frappe.call({
 			method: "ifitwala_ed.school_settings.school_settings_utils.get_user_allowed_schools",
 			callback: function(r) {
@@ -87,9 +87,9 @@ frappe.query_reports["Enrollment Report"] = {
 				}
 			}
 		});
-	},	
+	},
 
 	"chart_type": "bar",
 	"default_columns": 2,
-	
+
 };

@@ -73,7 +73,7 @@ def create_roles_with_homepage():
 		{"role_name": "Student", "desk_access": 0, "home_page": "/sp"},
 		{"role_name": "Guardian", "desk_access": 0, "home_page": "/sp"},
 		{"role_name": "Nurse", "desk_access": 1, "home_page": "/app/health"},
-		{"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/settings"},
+		{"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/admin"},
 		{"role_name": "Admission Officer", "desk_access": 1, "home_page": "/app/admission"},
 		{"role_name": "Admission Manager", "desk_access": 1, "home_page": "/app/admission"},
 	]
