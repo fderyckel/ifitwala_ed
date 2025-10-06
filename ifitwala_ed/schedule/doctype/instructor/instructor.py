@@ -95,8 +95,6 @@ class Instructor(Document):
 				"academic_year",
 				"term",
 				"course",
-				"from_date",
-				"to_date",
 			]
 		)
 		group_lookup = {g["student_group"]: g for g in groups}
@@ -106,17 +104,15 @@ class Instructor(Document):
 			if not g:
 				continue
 
+			other_details = _format_instructor_log_details(g)
 			self.append("instructor_log", {
-				"school": g.get("school"),
-				"program_offering": g.get("program_offering"),
 				"program": g.get("program"),
 				"academic_year": g.get("academic_year"),
 				"term": g.get("term"),
 				"student_group": g.get("student_group"),
 				"course": g.get("course"),
 				"designation": link.get("designation"),
-				"from_date": g.get("from_date"),
-				"to_date": g.get("to_date"),
+				"other_details": other_details,
 			})
 
 
@@ -136,6 +132,18 @@ def _ensure_instructor_role(user_id: str):
 		user = frappe.get_doc("User", user_id)
 		user.flags.ignore_permissions = True
 		user.add_roles("Instructor")
+
+
+def _format_instructor_log_details(group: dict) -> str | None:
+	"""Return a compact text summary for the Instructor Log optional details column."""
+	parts = []
+	school = group.get("school")
+	if school:
+		parts.append(f"School: {school}")
+	offering = group.get("program_offering")
+	if offering:
+		parts.append(f"Program Offering: {offering}")
+	return "\n".join(parts) if parts else None
 
 
 def _remove_instructor_role(user_id: str):
