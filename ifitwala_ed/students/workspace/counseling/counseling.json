@@ -9,9 +9,9 @@
  "hide_custom": 0,
  "icon": "color-review-points",
  "idx": 0,
- "indicator_color": "cyan",
+ "indicator_color": "",
  "is_hidden": 0,
- "label": "Counselors",
+ "label": "Counseling",
  "links": [
   {
    "hidden": 0,
@@ -180,10 +180,10 @@
    "type": "Link"
   }
  ],
- "modified": "2025-09-10 20:21:42.594018",
+ "modified": "2025-10-06 17:56:37.635918",
  "modified_by": "Administrator",
  "module": "Students",
- "name": "Counselors",
+ "name": "Counseling",
  "number_cards": [
   {
    "label": "Untriaged Referrals",
@@ -216,5 +216,5 @@
  ],
  "sequence_id": 4.0,
  "shortcuts": [],
- "title": "Counselors"
+ "title": "Counseling"
 }

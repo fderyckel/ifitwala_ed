@@ -96,7 +96,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-26 19:06:23.299314",
+ "modified": "2025-10-06 19:57:58.040955",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Location",
@@ -149,6 +149,17 @@
    "report": 1,
    "role": "Academic Staff",
    "share": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",

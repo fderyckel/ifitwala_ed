@@ -7,13 +7,19 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_tqih",
+  "school",
+  "program_offering",
+  "program",
+  "column_break_trxc",
   "academic_year",
   "term",
+  "student_group",
+  "section_break_np2k",
   "course",
   "designation",
-  "student_group",
-  "program",
-  "other_details"
+  "other_details",
+  "from_date",
+  "to_date"
  ],
  "fields": [
   {
@@ -35,7 +41,7 @@
   },
   {
    "fieldname": "other_details",
-   "fieldtype": "Text",
+   "fieldtype": "Small Text",
    "label": "Other Details"
   },
   {
@@ -66,12 +72,42 @@
    "fieldtype": "Link",
    "label": "Term",
    "options": "Term"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "label": "Program Offering",
+   "options": "Program Offering"
+  },
+  {
+   "fieldname": "column_break_trxc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_np2k",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-29 10:35:52.121212",
+ "modified": "2025-10-05 09:09:23.428254",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Instructor Log",

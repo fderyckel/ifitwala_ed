@@ -282,7 +282,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-04 20:38:48.807788",
+ "modified": "2025-10-06 21:27:15.769050",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
@@ -344,6 +344,14 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
    "role": "Instructor"
   },
   {
@@ -351,7 +359,8 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Counselor"
+   "role": "Counselor",
+   "share": 1
   },
   {
    "read": 1,
