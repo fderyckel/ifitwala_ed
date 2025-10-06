@@ -19,10 +19,7 @@ def redirect_student_to_portal():
 
 
 def set_default_workspace_based_on_roles(doc, method):
-    if doc.user_type != "System User":
-        return
-
-    # We care both about role changes and about stale workspace references
+    # Observe role changes plus any lingering workspace that no longer exists
     current_roles = {r.role for r in doc.roles}
     previous_doc = doc.get_doc_before_save()
     roles_changed = True
@@ -34,22 +31,23 @@ def set_default_workspace_based_on_roles(doc, method):
         ("Nurse", "Health"),
         ("Academic Admin", "Admin"),
         ("Curriculum Coordinator", "Curriculum"),
-        ("Counselor", "Counsel"),
+        ("Counselor", "Counselors"),
         ("Instructor", "Academics"),
     )
 
-    suggested_workspace = None
-    for role, workspace in role_workspace_priority:
-        if role in current_roles and frappe.db.exists("Workspace", workspace):
-            suggested_workspace = workspace
-            break
+    def suggest_workspace() -> str | None:
+        for role, workspace in role_workspace_priority:
+            if role in current_roles and frappe.db.exists("Workspace", workspace):
+                return workspace
+        return None
 
-    current_workspace_exists = True
+    suggested_workspace = suggest_workspace()
+    workspace_is_valid = True
     if doc.default_workspace:
-        current_workspace_exists = frappe.db.exists("Workspace", doc.default_workspace)
+        workspace_is_valid = frappe.db.exists("Workspace", doc.default_workspace)
 
-    if doc.default_workspace and not current_workspace_exists:
-        if suggested_workspace and doc.default_workspace != suggested_workspace:
+    if doc.default_workspace and not workspace_is_valid:
+        if doc.user_type == "System User" and suggested_workspace and doc.default_workspace != suggested_workspace:
             doc.default_workspace = suggested_workspace
             frappe.msgprint(
                 f"This user's default workspace referenced a missing workspace and has been changed to <b>{suggested_workspace}</b> based on their role.",
@@ -66,7 +64,9 @@ def set_default_workspace_based_on_roles(doc, method):
             )
         return
 
-    # No relevant role or no changes → nothing further to do
+    if doc.user_type != "System User":
+        return
+
     if not suggested_workspace or not roles_changed:
         return
 
@@ -122,5 +122,3 @@ def get_users_with_role(doctype, txt, searchfield, start, page_len, filters):
 		"start": start,
 		"page_len": page_len
 	})
-
-
