@@ -167,20 +167,25 @@ def get_instructor_events(start, end, filters=None):
 	if academic_year:
 		conds.append(SG.academic_year == academic_year)
 
+	# Build the combined condition
+	cond_expr = conds[0]
+	for c in conds[1:]:
+			cond_expr = cond_expr & c
+
 	groups = (
-		frappe.qb.from_(SG)
-		.inner_join(SGSchedule).on(SGSchedule.parent == SG.name)
-		.select(
-			SG.name,
-			SG.student_group_name,
-			SG.course,
-			SG.program,
-			SG.school,
-			SG.program_offering,
-			SG.school_schedule,
-		)
-		.where(frappe.qb.and_(*conds))
-		.distinct()   # <— instead of GROUP BY
+			frappe.qb.from_(SG)
+			.inner_join(SGSchedule).on(SGSchedule.parent == SG.name)
+			.select(
+					SG.name,
+					SG.student_group_name,
+					SG.course,
+					SG.program,
+					SG.school,
+					SG.program_offering,
+					SG.school_schedule,
+			)
+			.where(cond_expr)
+			.distinct()
 	).run(as_dict=True)
 
 	for grp in groups:
