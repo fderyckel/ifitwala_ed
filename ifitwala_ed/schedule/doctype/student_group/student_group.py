@@ -7,15 +7,15 @@ from frappe.model.document import Document
 from frappe.utils import cint, get_link_to_form
 from ifitwala_ed.schedule.schedule_utils import validate_duplicate_student
 from ifitwala_ed.schedule.schedule_utils import check_slot_conflicts, get_conflict_rule
-from ifitwala_ed.utilities.school_tree import get_ancestor_schools 
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 from ifitwala_ed.schedule.attendance_utils import invalidate_meeting_dates
 
 class StudentGroup(Document):
 	def autoname(self):
-		if self.group_based_on == "Course" or self.group_based_on == "Activity": 
-			if self.term: 
+		if self.group_based_on == "Course" or self.group_based_on == "Activity":
+			if self.term:
 				self.name = self.student_group_abbreviation + "/" + self.term
-			else: 
+			else:
 				self.name = self.student_group_abbreviation + "/" + self.academic_year
 		elif self.group_based_on == "Cohort":
 			self.name = self.student_group_abbreviation + "/" + self.cohort
@@ -23,7 +23,7 @@ class StudentGroup(Document):
 			self.name = self.student_group_abbreviation
 
 	def validate(self):
-		if self.term: 
+		if self.term:
 			self.validate_term()
 
 		self._derive_program_from_offering()
@@ -47,13 +47,13 @@ class StudentGroup(Document):
 			self.school_schedule = ss.name
 
 
-		############	
+		############
 		self._validate_schedule_rows()
 
 		if self.group_based_on in ["Course", "Activity"]:
-			if self.term: 
+			if self.term:
 				self.title = self.student_group_abbreviation + "/" + self.term
-			else: 
+			else:
 				self.title = self.student_group_abbreviation + "/" + self.academic_year
 		elif self.group_based_on == "Cohort":
 			self.title = self.student_group_abbreviation + "/" + self.cohort
@@ -82,7 +82,7 @@ class StudentGroup(Document):
 				else:
 					frappe.msgprint(msg, alert=True, title=title)
 
-			self._conflict_checked = True					
+			self._conflict_checked = True
 
 	def before_save(self):
 		"""
@@ -351,7 +351,7 @@ class StudentGroup(Document):
 			if d.group_roll_number in roll_no_list:
 				frappe.throw(_("Duplicate roll number for student {0}").format(d.student_name))
 			else:
-				roll_no_list.append(d.group_roll_number)		
+				roll_no_list.append(d.group_roll_number)
 
 	def validate_rotation_clashes(self):
 		"""
@@ -455,7 +455,7 @@ class StudentGroup(Document):
 
 		return frappe.get_cached_doc("School Schedule", row[0][0])
 
-	
+
 
 	def _validate_schedule_rows(self):
 		"""
@@ -524,7 +524,7 @@ class StudentGroup(Document):
 			frappe.throw(_("Academic Year must be one of the Program Offering's academic years."))
 
 	##################### HELPERS #########################
-	
+
 	def _enforce_school_rules(self):
 		"""Enforce:
 		- SG.school must be same as or descendant of AY.school
@@ -837,7 +837,7 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 
 	return frappe.db.sql(
 		f"""
-		SELECT name, student_full_name 
+		SELECT name, student_full_name
 		FROM `tabStudent`
 		WHERE name IN ({placeholders})
 		  AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
@@ -1012,7 +1012,7 @@ def build_in_clause_placeholders(values: list) -> str:
 
 
 ########################## Permissions ##########################
-##### Used for school descendants . 
+##### Used for school descendants .
 #################################################################
 
 # --- small, local helpers (no extra round-trips where possible) ---
@@ -1147,11 +1147,11 @@ def get_permission_query_conditions(user):
 		return """(name in (select parent from `tabStudent Group Instructor` where user_id=%(user)s))""" % {
 				"user": frappe.db.escape(user),
 				}
-	super_viewer = ["Administrator", "System Manager", "Academic Admin", "Schedule Maker"]
+	super_viewer = ["Administrator", "System Manager", "Academic Assistant", "Academic Admin", "Schedule Maker"]
 	for role in roles:
 		if role in super_viewer:
 			return ""
-		
+
 
 def on_doctype_update():
 	frappe.db.add_index("Student Group", ["program_offering", "academic_year"])
