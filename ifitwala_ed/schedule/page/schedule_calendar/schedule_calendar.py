@@ -6,7 +6,7 @@ import json
 import frappe
 from frappe import _
 from frappe.utils import getdate
-from frappe.model.utils import get_cached_value
+from frappe import get_cached_value
 from frappe.query_builder import DocType
 from ifitwala_ed.schedule.schedule_utils import (
 	get_rotation_dates,
