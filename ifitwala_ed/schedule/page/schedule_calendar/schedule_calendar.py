@@ -149,15 +149,18 @@ def get_instructor_events(start, end, filters=None):
 			return s.zfill(8) if len(s) == 7 else s           # '9:10:00' → '09:10:00'
 
 	# ---------- resolve instructor -----------------------------------
-	if "Academic Admin" in roles:
-		instructor = filters.get("instructor")
-		if not instructor:
-			return []
+	if "Academic Admin" in roles or "Academic Assistant" in roles:
+			# Admin & Assistant can pass instructor filter
+			instructor = filters.get("instructor")
+			if not instructor:
+					# maybe return empty or pick default? return empty is safer
+					return []
 	else:
-		instructor = _get_default_instructor(user)
-		if not instructor:
-			frappe.throw(_("Your User is not linked to an Instructor record."))
-		filters["instructor"] = instructor		# tamper-proof
+			# strictly Instructor-only path
+			instructor = _get_default_instructor(user)
+			if not instructor:
+					return []   # do not throw
+			filters["instructor"] = instructor
 
 	# ---------- SG query ---------------------------------------------
 	SG       = DocType("Student Group")
