@@ -6,6 +6,7 @@ import json
 import frappe
 from frappe import _
 from frappe.utils import getdate
+from frappe.model.utils import get_cached_value
 from frappe.query_builder import DocType
 from ifitwala_ed.schedule.schedule_utils import (
 	get_rotation_dates,
@@ -29,6 +30,9 @@ def _coerce_filters(raw):
 	if isinstance(raw, dict):
 		return raw
 	return {}
+
+def _norm(v):
+	return v.strip() if isinstance(v, str) else v
 
 # ─────────────────────────────────────────────────────────────────────
 def _get_default_instructor(user):
@@ -157,6 +161,10 @@ def get_instructor_events(start, end, filters=None):
 	SG       = DocType("Student Group")
 	SGSchedule = DocType("Student Group Schedule")
 
+	conds = [(SGSchedule.instructor == instructor), (SG.status == "Active")]
+	if academic_year:
+		conds.append(SG.academic_year == academic_year)
+
 	groups = (
 		frappe.qb.from_(SG)
 		.inner_join(SGSchedule).on(SGSchedule.parent == SG.name)
@@ -164,38 +172,46 @@ def get_instructor_events(start, end, filters=None):
 			SG.name,
 			SG.student_group_name,
 			SG.course,
-			SG.program
+			SG.program,
+			SG.school,
+			SG.program_offering,
+			SG.school_schedule,
 		)
-		.where(
-			(SGSchedule.instructor == instructor) &
-			(SG.status == "Active") &
-			(
-				(SG.academic_year == academic_year)
-				if academic_year else
-				frappe.qb.true()        # no filter when year blank
-			)
-		)
-		.groupby(SG.name)     # distinct groups
+		.where(frappe.qb.and_(*conds))
+		.distinct()   # <— instead of GROUP BY
 	).run(as_dict=True)
 
-
 	for grp in groups:
-		# ----- school resolution --------------------------------------
-		school  = None
-		sched_name = None
+		# ----- school + schedule resolution (no Program.school) ------------
+		# NOTE: grp is a dict
+		# ----- school + schedule resolution (no Program.school) ------------
+		school     = _norm(grp.get("school")) or None
+		sched_name = _norm(grp.get("school_schedule")) or None
 
-		if grp.program:
-			school = frappe.db.get_value("Program", grp.program, "school")
+		# If SG doesn’t carry school but has a Program Offering, use that
+		if not school and grp.get("program_offering"):
+			school = get_cached_value("Program Offering", grp["program_offering"], "school")
 
-		if school:
+		# If schedule is set, ensure we also know the school
+		if sched_name:
+			if not school:
+				school = get_cached_value("School Schedule", sched_name, "school")
+		elif school:
+			# pick the schedule for the school (your v1 rule)
 			sched_name = frappe.db.get_value("School Schedule", {"school": school}, "name")
 		else:
-			# fallback: first schedule that starts with SG-name (activities)
-			sched_name = frappe.db.get_value("School Schedule", {"name": ["like", f"{grp.name}%"]}, "name")
+			# fallback: activity-like groups with schedule named after SG
+			sched_name = frappe.db.get_value("School Schedule", {"name": ["like", f"{grp['name']}%"]}, "name")
 			if sched_name:
-				school = frappe.db.get_value("School Schedule", sched_name, "school")
+				school = get_cached_value("School Schedule", sched_name, "school")
 
 		if not sched_name or not school:
+			# cannot place events without both
+			continue
+
+
+		if not sched_name or not school:
+			# cannot place events without both
 			continue
 
 		sched_doc      = frappe.get_cached_doc("School Schedule", sched_name)
