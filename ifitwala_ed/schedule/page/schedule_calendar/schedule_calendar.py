@@ -13,6 +13,7 @@ from ifitwala_ed.schedule.schedule_utils import (
 	current_academic_year,
 	get_block_colour, get_course_block_colour
 )
+from ifitwala_ed.school_settings.doctype.school_calendar import school_calendar
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 # ─────────────────────────────────────────────────────────────────────
@@ -138,6 +139,7 @@ def get_instructor_events(start, end, filters=None):
 	events               = []
 	processed_calendars  = set()
 	banner_dates         = set()
+	block_cache = {}
 
 	def _fmt(t):
 			"""Return HH:MM:SS with zero-padded hour."""
@@ -183,8 +185,6 @@ def get_instructor_events(start, end, filters=None):
 
 	for grp in groups:
 		# ----- school + schedule resolution (no Program.school) ------------
-		# NOTE: grp is a dict
-		# ----- school + schedule resolution (no Program.school) ------------
 		school     = _norm(grp.get("school")) or None
 		sched_name = _norm(grp.get("school_schedule")) or None
 
@@ -206,18 +206,15 @@ def get_instructor_events(start, end, filters=None):
 				school = get_cached_value("School Schedule", sched_name, "school")
 
 		if not sched_name or not school:
-			# cannot place events without both
 			continue
 
+		# compute rotation dates using an effective year (don’t mutate outer var)
+		sched_doc = frappe.get_cached_doc("School Schedule", sched_name)
+		eff_year  = academic_year or sched_doc.academic_year
 
-		if not sched_name or not school:
-			# cannot place events without both
-			continue
-
-		sched_doc      = frappe.get_cached_doc("School Schedule", sched_name)
 		rotation_dates = get_rotation_dates(
 			sched_name,
-			academic_year or sched_doc.academic_year,
+			eff_year,
 			sched_doc.include_holidays_in_rotation
 		)
 
@@ -226,7 +223,11 @@ def get_instructor_events(start, end, filters=None):
 
 		# ----- holiday / weekend banners (once per calendar) ----------
 		cal_name = sched_doc.school_calendar
-		if cal_name not in processed_calendars:
+		# If a specific school_calendar filter is set, skip banners from others
+		if school_calendar and cal_name != school_calendar:
+			# still render class events (time slots), but skip banners for this schedule
+			pass
+		elif cal_name not in processed_calendars:
 			processed_calendars.add(cal_name)
 			cal_doc  = frappe.get_cached_doc("School Calendar", cal_name)
 			hol_col  = cal_doc.break_color   or "#e74c3c"
@@ -274,18 +275,24 @@ def get_instructor_events(start, end, filters=None):
 			rot_map.setdefault(rd["rotation_day"], []).append(rd["date"])
 
 		for sl in slots:
-			block_meta = frappe.db.get_value(
-				"School Schedule Block",
-				{
-					"parent": sched_name,
-					"rotation_day": sl.rotation_day,
-					"block_number": sl.block_number
-				},
-				["block_type", "from_time", "to_time"],
-				as_dict=True
-			)
+			key = (sched_name, sl.rotation_day, sl.block_number)
+			block_meta = block_cache.get(key)
+			if block_meta is None:
+				block_meta = frappe.db.get_value(
+					"School Schedule Block",
+					{
+						"parent": sched_name,
+						"rotation_day": sl.rotation_day,
+						"block_number": sl.block_number
+					},
+					["block_type", "from_time", "to_time"],
+					as_dict=True
+				)
+				block_cache[key] = block_meta
+
 			if not block_meta:
 				continue
+
 
 			color = (get_course_block_colour(school) if block_meta.block_type == "Course" else get_block_colour(block_meta.block_type))
 
