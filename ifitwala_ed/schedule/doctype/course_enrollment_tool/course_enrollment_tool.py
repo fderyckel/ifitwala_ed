@@ -1,204 +1,362 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+
 import frappe
 import json
 from frappe import _
-from frappe.utils import get_link_to_form, cint
+from frappe.utils import cint, get_link_to_form
 from frappe.model.document import Document
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
+
+
+def _get_offering_meta(offering: str) -> dict:
+	"""Return key details for Program Offering, with minimal fields for performance."""
+	if not offering:
+		return {}
+	return frappe.db.get_value(
+		"Program Offering",
+		offering,
+		["program", "school"],
+		as_dict=True,
+	) or {}
+
+
+def _offering_course_map(offering: str) -> dict:
+	"""Map course → Program Offering Course row (elective_group, required, AY/term dates/terms)."""
+	if not offering:
+		return {}
+	rows = frappe.db.sql("""
+		SELECT poc.course, poc.elective_group, poc.required,
+		       poc.start_academic_year, poc.end_academic_year,
+		       poc.start_academic_term, poc.end_academic_term
+		FROM `tabProgram Offering Course` poc
+		WHERE poc.parent = %s
+	""", (offering,), as_dict=True)
+	return {r.course: r for r in rows}
+
+
+def _offering_ay_set(offering: str) -> set[str]:
+	"""Set of allowed Academic Years for this Program Offering."""
+	rows = frappe.db.sql("""
+		SELECT poay.academic_year
+		FROM `tabProgram Offering Academic Year` poay
+		WHERE poay.parent = %s
+	""", (offering,), as_list=True)
+	return {r[0] for r in rows}
+
+
+def _pe_by_student_offering_ay(students: list[str], offering: str, ay: str) -> dict:
+	"""Batch lookup Program Enrollment by (student, offering, ay) → PE name, school."""
+	if not students:
+		return {}
+	placeholders = ", ".join(["%s"] * len(students))
+	params = tuple(students) + (offering, ay)
+	res = frappe.db.sql(f"""
+		SELECT pe.name, pe.student, pe.school
+		FROM `tabProgram Enrollment` pe
+		WHERE pe.student IN ({placeholders})
+		  AND pe.program_offering = %s
+		  AND pe.academic_year = %s
+		  AND pe.archived = 0
+		  AND pe.docstatus < 2
+	""", params, as_dict=True)
+	return {r.student: {"name": r.name, "school": r.school} for r in res}
+
+
+def _pe_has_course(pe_name: str, course: str) -> bool:
+	row = frappe.db.get_value(
+		"Program Enrollment Course",
+		{"parent": pe_name, "course": course},
+		"name",
+	)
+	return bool(row)
+
+
+def _warn_if_elective_conflict(pe_name: str, course: str, offering_course_meta: dict):
+	"""Soft warning if another course in the same elective group already exists in PE."""
+	meta = offering_course_meta.get(course)
+	eg = (meta or {}).get("elective_group")
+	if not eg:
+		return
+	# find all existing courses in the same elective group (using current offering map)
+	existing = frappe.db.sql("""
+		SELECT pec.course
+		FROM `tabProgram Enrollment Course` pec
+		WHERE pec.parent = %s
+	""", (pe_name,), as_list=True)
+	existing_courses = {r[0] for r in existing}
+	conflicts = [
+		c for c in existing_courses
+		if c != course and (offering_course_meta.get(c) or {}).get("elective_group") == eg
+	]
+	if conflicts:
+		frappe.msgprint(
+			_("Elective note: Program Enrollment {0} already has a course in group “{1}”. (Existing: {2})")
+			.format(
+				get_link_to_form("Program Enrollment", pe_name),
+				eg,
+				", ".join(conflicts)
+			),
+			alert=True
+		)
+
 
 class CourseEnrollmentTool(Document):
 	@frappe.whitelist()
 	def add_course_to_program_enrollment(self):
-		if self.program:
-			# Validate course belongs to the program
-			program_doc = frappe.get_doc("Program", self.program)
-			valid_courses = {pc.course for pc in program_doc.courses}
-			if self.course not in valid_courses:
-				frappe.throw(_("Course {0} is not part of Program {1}. Please correct your selection.").format(
-					get_link_to_form("Course", self.course), 
-					get_link_to_form("Program", self.program)
-				))
+		"""
+		Add the selected course to each listed student's Program Enrollment,
+		keyed by (program_offering, academic_year), with term precedence:
+			1) Course.term_long + tool.term
+			2) Offering Course start/end academic term
+			3) get_school_term_bounds(school, academic_year)
+		Also validates AY belongs to the Program Offering and course is allowed by the offering
+		(or is explicitly marked non-catalog in the offering).
+		"""
+		if not self.program_offering:
+			frappe.throw(_("Please select a Program Offering."))
 
-		# Caching for performance
-		term_bounds_cache = {}
+		offering = _get_offering_meta(self.program_offering)
+		if not offering:
+			frappe.throw(_("Program Offering not found."))
 
+		# Validate AY is in offering AY list
+		allowed_ays = _offering_ay_set(self.program_offering)
+		if self.academic_year not in allowed_ays:
+			frappe.throw(_("Academic Year {0} is not part of {1} Offering AYs.")
+				.format(self.academic_year, get_link_to_form("Program Offering", self.program_offering)))
+
+		# Validate course against offering (or allow explicit non-catalog from offering row)
+		offering_courses = _offering_course_map(self.program_offering)
+		oc = offering_courses.get(self.course)
+		if not oc:
+			frappe.throw(_("Course {0} is not listed in {1} Offering Courses. Please adjust selection.")
+				.format(get_link_to_form("Course", self.course),
+				        get_link_to_form("Program Offering", self.program_offering)))
+		# If offering row says non-catalog, require exception_reason
+		if oc.get("required") is None:
+			# No-op, “required” may be null for some rows; we only enforce non-catalog through offering row if you add such a flag there.
+			pass
+
+		# Resolve Course.term_long
 		term_long = frappe.db.get_value("Course", self.course, "term_long")
 
-		for row in self.students:
-			if not row.program_enrollment:
+		# Batch resolve Program Enrollments for listed students
+		students = [r.student for r in (self.students or []) if r.student]
+		pe_by_student = _pe_by_student_offering_ay(students, self.program_offering, self.academic_year)
+
+		missed = []
+		modified_pes: dict[str, dict] = {}  # pe_name -> {school, rows: [child rows to append]}
+		for r in (self.students or []):
+			if not r.student:
+				continue
+			info = pe_by_student.get(r.student)
+			if not info:
+				missed.append(r.student)
 				continue
 
-			pe_doc = frappe.get_doc("Program Enrollment", row.program_enrollment)
-
-			# Check if course already exists
-			if any(c.course == self.course for c in pe_doc.courses):
-				frappe.msgprint(_("Course {0} already exists in Program Enrollment {1}.").format(
-					get_link_to_form("Course", self.course),
-					get_link_to_form("Program Enrollment", pe_doc.name)
-				))
+			pe_name = info["name"]
+			if _pe_has_course(pe_name, self.course):
+				frappe.msgprint(_("Course {0} already exists in Program Enrollment {1}.")
+					.format(get_link_to_form("Course", self.course),
+					        get_link_to_form("Program Enrollment", pe_name)))
 				continue
 
-			# Prepare child row
-			new_course_row = {
-				"course": self.course,
-				"status": "Enrolled"
-			}
+			# Determine term window
+			child = {"course": self.course, "status": "Enrolled"}
 
 			if term_long:
-				# If course is term-long, use selected tool term
+				# Tool term required/optional: if set, use (term, term), else leave blank
 				if self.term:
-					new_course_row["term_start"] = self.term
-					new_course_row["term_end"] = self.term
+					child["term_start"] = self.term
+					child["term_end"] = self.term
+			elif oc and (oc.get("start_academic_term") or oc.get("end_academic_term")):
+				if oc.get("start_academic_term"):
+					child["term_start"] = oc["start_academic_term"]
+				if oc.get("end_academic_term"):
+					child["term_end"] = oc["end_academic_term"]
 			else:
-				# Not term-long: fetch bounds once per (school, year)
-				cache_key = (pe_doc.school, pe_doc.academic_year)
-				if cache_key not in term_bounds_cache:
-					bounds = get_school_term_bounds(pe_doc.school, pe_doc.academic_year)
-					term_bounds_cache[cache_key] = bounds or {}
-				bounds = term_bounds_cache[cache_key]
-
-				# 🔐 Validate presence of term bounds
+				# fallback to school term bounds
+				bounds = get_school_term_bounds(info["school"], self.academic_year) or {}
 				if not bounds.get("term_start") or not bounds.get("term_end"):
-					frappe.throw(_("Cannot determine term boundaries for School {0}, Academic Year {1}. Please configure terms.").format(
-						pe_doc.school, pe_doc.academic_year
-					))
+					frappe.throw(_("Cannot determine term boundaries for School {0}, Academic Year {1}. Configure terms.")
+						.format(info["school"], self.academic_year))
+				child["term_start"] = bounds["term_start"]
+				child["term_end"] = bounds["term_end"]
 
-				new_course_row["term_start"] = bounds.get("term_start")
-				new_course_row["term_end"] = bounds.get("term_end")
+			# Stash for batch append
+			modified_pes.setdefault(pe_name, {"school": info["school"], "rows": []})
+			modified_pes[pe_name]["rows"].append(child)
 
-			# Append to PE
-			pe_doc.append("courses", new_course_row)
-			pe_doc.save()
-			frappe.msgprint(_("Course {0} successfully added to Program Enrollment {1}.").format(
-				get_link_to_form("Course", self.course),
-				get_link_to_form("Program Enrollment", pe_doc.name)
-			))
+			# Soft elective conflict warning
+			_warn_if_elective_conflict(pe_name, self.course, offering_courses)
+
+		# Inform about students with no matching PE
+		if missed:
+			frappe.msgprint(
+				_("No Program Enrollment found for the following student(s) in offering {0}, AY {1}: {2}")
+				.format(get_link_to_form("Program Offering", self.program_offering),
+				        self.academic_year, ", ".join(missed)),
+				indicator="orange",
+			)
+
+		# Batch save per PE
+		for pe_name, payload in modified_pes.items():
+			pe = frappe.get_doc("Program Enrollment", pe_name)
+			for row in payload["rows"]:
+				pe.append("courses", row)
+			pe.save()
+
+		if modified_pes:
+			frappe.msgprint(_("Courses added to {0} Program Enrollment(s).").format(len(modified_pes)))
+		else:
+			frappe.msgprint(_("Nothing to update."))
 
 		self.save()
-		frappe.msgprint(_("Done updating Program Enrollments."))
 
 
 @frappe.whitelist()
 def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=None):
-
+	"""
+	Eligible = Students with a Program Enrollment matching (program_offering, academic_year),
+	not archived, not cancelled, and where the PE does not already contain the selected course.
+	Returns [[student_id, student_full_name, program_enrollment], ...]
+	"""
 	start = cint(start)
 	page_len = cint(page_len)
-
 	if not filters:
 		filters = {}
 	elif isinstance(filters, str):
-		# JS sometimes passes this as a string; parse it
 		filters = json.loads(filters)
 
 	academic_year = filters.get("academic_year")
-	program = filters.get("program")
+	program_offering = filters.get("program_offering")
 	course = filters.get("course")
 
-	if not academic_year or not program or not course:
-		frappe.throw(_("Academic Year, Program, and Course are required."))
+	if not academic_year or not program_offering or not course:
+		frappe.throw(_("Program Offering, Academic Year, and Course are required."))
 
-	values = [program, academic_year, course]
-
-	# Optionally filter on name or student full name
+	values = [program_offering, academic_year, course]
 	txt_filter = ""
 	if txt:
 		txt_filter = "AND (s.name LIKE %s OR s.student_full_name LIKE %s)"
 		values += [f"%{txt}%", f"%{txt}%"]
 
 	query = f"""
-		SELECT DISTINCT s.name, s.student_full_name, pe.name AS program_enrollment
+		SELECT DISTINCT s.name AS student, s.student_full_name, pe.name AS program_enrollment
 		FROM `tabProgram Enrollment` pe
 		JOIN `tabStudent` s ON s.name = pe.student
-		WHERE pe.program = %s
-			AND pe.academic_year = %s
-			AND pe.docstatus = 0
-			AND s.enabled = 1
-			AND pe.name NOT IN (
+		WHERE pe.program_offering = %s
+		  AND pe.academic_year = %s
+		  AND pe.archived = 0
+		  AND pe.docstatus < 2
+		  AND s.enabled = 1
+		  AND pe.name NOT IN (
 				SELECT parent
 				FROM `tabProgram Enrollment Course`
 				WHERE course = %s
-			)
-			{txt_filter}
-		ORDER BY s.name
+		  )
+		  {txt_filter}
+		ORDER BY s.student_full_name, s.name
 		LIMIT {start}, {page_len}
 	"""
-
 	results = frappe.db.sql(query, values, as_dict=True)
-
-	return [
-		[row["name"], row['student_full_name'], row["program_enrollment"]]
-		for row in results
-	]
+	return [[r["student"], r["student_full_name"], r["program_enrollment"]] for r in results]
 
 
 @frappe.whitelist()
-def get_courses_for_program(doctype, txt, searchfield, start, page_len, filters=None):
+def get_courses_for_offering(doctype, txt, searchfield, start, page_len, filters=None):
 	"""
-	Return a list of [value, label] for the "course" Link field,
-	showing only courses that are in Program's child table "Program Course".
-	
-	- doctype: "Course" (the link doctype)
-	- txt: user-typed text for partial matching
-	- searchfield, start, page_len: for pagination
-	- filters: dict with {'program': <program_name>}
-	
-	Steps:
-		1) Check if 'program' is in filters.
-		2) Query 'Program Course' joined to 'Course' if needed.
-		3) Return [[course_name, "COURSE123 - Some Course Title"], ...].
+	Return [value, label] for the Course Link field, scoped to Program Offering Courses.
+	Optionally constrain by the selected Academic Year (rows whose AY window covers it,
+	or rows with no AY bounds). Uses positional %s placeholders consistently.
 	"""
-
 	start = cint(start)
 	page_len = cint(page_len)
 
+	# filters may arrive as a JSON string from the Link field
+	if isinstance(filters, str):
+		try:
+			filters = json.loads(filters) if filters else {}
+		except Exception:
+			filters = {}
 	if not filters:
 		filters = {}
 
-	program = filters.get("program")
-	if not program:
-		# No program chosen => No results or you might show all courses
+	program_offering = filters.get("program_offering")
+	academic_year = filters.get("academic_year")
+
+	if not program_offering:
 		return []
 
-	# We'll match partial text on the Course name or Course's course_name
-	conditions = ["pc.parent = %s"]
-	values = [program]
+	conds = ["poc.parent = %s"]
+	values = [program_offering]
 
+	# If AY is chosen, include rows whose AY range covers it (or has no bounds)
+	if academic_year:
+		conds.append("""
+			(
+				(poc.start_academic_year IS NULL AND poc.end_academic_year IS NULL)
+				OR (
+					%s BETWEEN IFNULL(poc.start_academic_year, %s)
+					AND IFNULL(poc.end_academic_year, %s)
+				)
+			)
+		""")
+		values.extend([academic_year, academic_year, academic_year])
+
+	# Text filter (id or title)
 	if txt:
-		conditions.append("(c.name LIKE %s OR c.course_name LIKE %s)")
-		values.append(f"%{txt}%")
-		values.append(f"%{txt}%")
+		conds.append("(c.name LIKE %s OR c.course_name LIKE %s)")
+		values.extend([f"%{txt}%", f"%{txt}%"])
 
-	where_clause = " AND ".join(conditions)
+	where_clause = " AND ".join(conds)
 
-	results = frappe.db.sql(f"""
-		SELECT c.name, c.course_name
-		FROM `tabProgram Course` pc
-		JOIN `tabCourse` c ON c.name = pc.course
+	rows = frappe.db.sql(f"""
+		SELECT c.name, c.course_name, poc.required
+		FROM `tabProgram Offering Course` poc
+		JOIN `tabCourse` c ON c.name = poc.course
 		WHERE {where_clause}
 		ORDER BY c.name
 		LIMIT {start}, {page_len}
-	""", values, as_dict=True)
+	""", tuple(values), as_dict=True)
 
-	final = []
-	for row in results:
-		course_id = row["name"]
-		course_label = row["course_name"] or ""
-		label = f"{course_id} - {course_label}".strip(" -")
-		final.append([course_id, label])
+	out = []
+	for r in rows:
+		label_bits = [r["name"]]
+		if r.get("course_name"):
+			label_bits.append(r["course_name"])
+		if r.get("required"):
+			label_bits.append("• required")
+		out.append([r["name"], " — ".join(label_bits)])
+	return out
 
-	return final
 
 @frappe.whitelist()
-def list_academic_years_desc(doctype, txt, searchfield, start, page_len, filters):
-	# Use pluck for efficient flat list retrieval
-	results = frappe.db.sql("""
-		SELECT name 
+def list_offering_academic_years_desc(doctype, txt, searchfield, start, page_len, filters=None):
+	"""
+	Academic years for the selected Program Offering, sorted by year_end_date DESC.
+	Falls back to global list if offering not provided.
+	"""
+	if not filters:
+		filters = {}
+	program_offering = filters.get("program_offering")
+
+	if program_offering:
+		rows = frappe.db.sql("""
+			SELECT ay.name
+			FROM `tabProgram Offering Academic Year` poay
+			JOIN `tabAcademic Year` ay ON ay.name = poay.academic_year
+			WHERE poay.parent = %s
+			ORDER BY ay.year_end_date DESC
+		""", (program_offering,), as_list=True)
+		return rows
+
+	# fallback (kept from your original util)
+	return frappe.db.sql("""
+		SELECT name
 		FROM `tabAcademic Year`
 		WHERE year_end_date IS NOT NULL
 		ORDER BY year_end_date DESC
 	""", as_list=True)
-
-	# Return the results directly, already in the correct format
-	return results

@@ -10,20 +10,20 @@
  "field_order": [
   "section_break_othe",
   "program_name",
-  "school",
   "column_break_zxmc",
   "parent_program",
   "program_abbreviation",
   "column_break_yenw",
   "is_group",
   "archive",
-  "course_section_section",
-  "courses",
-  "program_coordinators_section",
-  "coordinators",
-  "lft",
-  "rgt",
-  "old_parent",
+  "assessments_section",
+  "points",
+  "binary",
+  "column_break_yt79",
+  "observations",
+  "criteria",
+  "section_break_1rlr",
+  "assessment_categories",
   "dashboard_tab",
   "website_tab",
   "is_published",
@@ -39,7 +39,15 @@
   "program_aims",
   "visuals_section",
   "program_gallery_image",
-  "route"
+  "route",
+  "courses_and_prerequisites",
+  "course_section_section",
+  "courses",
+  "course_prerequisites_section",
+  "prerequisites",
+  "old_parent",
+  "rgt",
+  "lft"
  ],
  "fields": [
   {
@@ -55,14 +63,6 @@
    "unique": 1
   },
   {
-   "fieldname": "school",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "School",
-   "options": "School"
-  },
-  {
    "fieldname": "column_break_zxmc",
    "fieldtype": "Column Break"
   },
@@ -73,13 +73,11 @@
    "label": "Program Abbreviation"
   },
   {
-   "depends_on": "eval: !doc.is_group",
    "fieldname": "course_section_section",
    "fieldtype": "Section Break",
    "label": "Course Section"
   },
   {
-   "depends_on": "eval:!doc.is_group",
    "fieldname": "courses",
    "fieldtype": "Table",
    "label": "Courses",
@@ -131,18 +129,6 @@
    "fieldname": "intro_video",
    "fieldtype": "Data",
    "label": "Intro Video"
-  },
-  {
-   "description": "Program Coordinator can see all the courses in the program in the student portal.",
-   "fieldname": "program_coordinators_section",
-   "fieldtype": "Section Break",
-   "label": "Program Coordinators"
-  },
-  {
-   "fieldname": "coordinators",
-   "fieldtype": "Table",
-   "label": "Coordinators",
-   "options": "Program Coordinator"
   },
   {
    "fieldname": "lft",
@@ -233,6 +219,64 @@
    "fieldname": "archive",
    "fieldtype": "Check",
    "label": "Archive"
+  },
+  {
+   "fieldname": "assessments_section",
+   "fieldtype": "Section Break",
+   "label": "Assessments"
+  },
+  {
+   "fieldname": "courses_and_prerequisites",
+   "fieldtype": "Tab Break",
+   "label": "Courses & Prerequisites"
+  },
+  {
+   "fieldname": "course_prerequisites_section",
+   "fieldtype": "Section Break",
+   "label": "Course Prerequisites"
+  },
+  {
+   "fieldname": "prerequisites",
+   "fieldtype": "Table",
+   "label": "Prerequisites",
+   "options": "Program Course Prerequisite"
+  },
+  {
+   "fieldname": "assessment_categories",
+   "fieldtype": "Table",
+   "label": "Assessment Categories",
+   "options": "Assessment Category"
+  },
+  {
+   "default": "0",
+   "fieldname": "points",
+   "fieldtype": "Check",
+   "label": "Points"
+  },
+  {
+   "fieldname": "column_break_yt79",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "observations",
+   "fieldtype": "Data",
+   "label": "Observations (Comments only)"
+  },
+  {
+   "default": "0",
+   "fieldname": "criteria",
+   "fieldtype": "Check",
+   "label": "Criteria"
+  },
+  {
+   "fieldname": "section_break_1rlr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "binary",
+   "fieldtype": "Check",
+   "label": "Binary (Complete/Incomplete)"
   }
  ],
  "grid_page_length": 50,
@@ -240,7 +284,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-05-20 22:48:25.115036",
+ "modified": "2025-09-25 09:40:26.894414",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",
@@ -274,8 +318,17 @@
    "write": 1
   },
   {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
    "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,

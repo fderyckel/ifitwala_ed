@@ -2,6 +2,93 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
+
+CACHE_TTL = 300  # seconds
+
+# -------------------------
+# Base org / school for user
+# -------------------------
+
+def get_user_base_org(user: str | None = None) -> str | None:
+	user = user or frappe.session.user
+	row = frappe.db.get_value(
+		"Employee",
+		{"user_id": user, "status": "Active"},
+		["organization"],
+		as_dict=True,
+	)
+	return row.organization if row and row.organization else None
+
+
+def get_user_base_school(user: str | None = None) -> str | None:
+	user = user or frappe.session.user
+	row = frappe.db.get_value(
+		"Employee",
+		{"user_id": user, "status": "Active"},
+		["school"],
+		as_dict=True,
+	)
+	return row.school if row and row.school else None
+
+
+# -------------------------
+# Organization tree helpers
+# -------------------------
+
+def _org_cache_key(kind: str, org: str) -> str:
+	return f"org:{kind}:{org}"
+
+
+def get_descendant_organizations(org: str) -> list[str]:
+	if not org:
+		return []
+	cache = frappe.cache()
+	key = _org_cache_key("desc", org)
+	cached = cache.get_value(key)
+	if cached is not None:
+		return cached
+
+	# self + descendants using lft/rgt
+	org_doc = frappe.get_doc("Organization", org)
+	rows = frappe.get_all(
+		"Organization",
+		filters={"lft": (">=", org_doc.lft), "rgt": ("<=", org_doc.rgt)},
+		pluck="name",
+	)
+	cache.set_value(key, rows, expires_in_sec=CACHE_TTL)
+	return rows
+
+
+def get_ancestor_organizations(org: str) -> list[str]:
+	if not org:
+		return []
+	cache = frappe.cache()
+	key = _org_cache_key("anc", org)
+	cached = cache.get_value(key)
+	if cached is not None:
+		return cached
+
+	org_doc = frappe.get_doc("Organization", org)
+	rows = frappe.get_all(
+		"Organization",
+		filters={"lft": ("<=", org_doc.lft), "rgt": (">=", org_doc.rgt)},
+		pluck="name",
+	)
+	cache.set_value(key, rows, expires_in_sec=CACHE_TTL)
+	return rows
+
+
+def is_leaf_organization(org: str) -> bool:
+	# leaf when only self in descendants list
+	desc = get_descendant_organizations(org)
+	return len(desc) == 1
+
+
+
+
+
+
 
 def get_all_employee_emails(organization):
     """

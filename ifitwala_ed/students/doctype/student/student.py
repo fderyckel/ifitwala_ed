@@ -20,6 +20,7 @@ class Student(Document):
 	def validate(self):
 		self.student_full_name = " ".join(filter(None, [self.student_first_name, self.student_middle_name, self.student_last_name]))
 		self.validate_email()
+		self._validate_siblings_list()  
 
 		if frappe.get_value("Student", self.name, "student_full_name") != self.student_full_name:
 			self.update_student_name_in_linked_doctype()
@@ -61,12 +62,14 @@ class Student(Document):
 	def after_insert(self):
 		self.create_student_user()
 		self.create_student_patient()
+		self.ensure_contact_and_link()
 
 	def on_update(self): 
 		self.rename_student_image()
-		self.ensure_contact_links_to_student()
+		self.ensure_contact_and_link()
 		self.update_student_enabled_status()
 		self.sync_student_contact_image()
+		self.sync_reciprocal_siblings()
 
 
 	# create student as website user
@@ -112,30 +115,6 @@ class Student(Document):
 			frappe.db.set_value("Student Patient", patient, "status", "Disabled") 
 		else: 
 			frappe.db.set_value("Student Patient", patient, "status", "Active") 
-		
-	def ensure_contact_links_to_student(self):
-		if not self.student_email: 
-			return
-
-    # Check if User exists
-		if not frappe.db.exists("User", self.student_email): 
-			return 
-		
-		contact_name = frappe.db.get_value("Contact", {"user": self.student_email}, "name") 
-		if not contact_name: 
-			return 
-		
-		contact = frappe.get_doc("Contact", contact_name) 
-		# Check if the Student is already linked in the Contact's dynamic links 
-		existing_links = [link.link_name for link in contact.links] 
-		
-		if self.name not in existing_links: 
-			contact.append("links", {
-        "link_doctype": "Student",
-        "link_name": self.name
-      }) 
-			contact.save(ignore_permissions=True) 
-			frappe.msgprint(f"Linked Contact <b>{contact.name}</b> to Student <b>{self.name}</b>.")
 
 	def rename_student_image(self): 
 		# Only proceed if there's a student_image
@@ -243,14 +222,175 @@ class Student(Document):
 				contact.image = self.student_image
 				contact.save(ignore_permissions=True)
 
+	def _validate_siblings_list(self):
+		"""Prevent self-reference and duplicates in the child table before save."""
+		seen = set()
+		pruned = []
+		for row in (self.siblings or []):
+			if not row.student:
+				continue
+			if row.student == self.name:
+				frappe.throw(_("A student cannot be a sibling of themselves."))
+			key = row.student
+			if key in seen:
+				# skip duplicate
+				continue
+			seen.add(key)
+			pruned.append(row)
+		# If we pruned anything, rebuild the child list
+		if len(pruned) != len(self.siblings or []):
+			self.set("siblings", pruned)
+
+	def sync_reciprocal_siblings(self):
+		"""
+		Make sibling links bidirectional without re-saving the other Student doc.
+		- For each S in self.siblings, ensure a mirror row (student=self.name) exists under S.
+		- For each S that *currently* points to self but is no longer in our list, remove that mirror row.
+		Uses direct child table inserts/deletes to avoid triggering on_update on the other record.
+		"""
+		# recursion guard
+		if getattr(frappe.flags, "_in_sibling_sync", False):
+			return
+		frappe.flags._in_sibling_sync = True
+		try:
+			desired = {row.student for row in (self.siblings or []) if row.student and row.student != self.name}
+			current_pointing_to_me = self._current_mirror_set(self.name)  # set of student names who have me in their siblings
+
+			# Ensure mirrors for desired
+			for sib in desired:
+				self._ensure_mirror_row(parent_student=sib, sibling=self.name)
+
+			# Remove stale mirrors
+			for sib in (current_pointing_to_me - desired):
+				self._delete_mirror_row(parent_student=sib, sibling=self.name)
+		finally:
+			frappe.flags._in_sibling_sync = False
+
+	def _current_mirror_set(self, me: str) -> set[str]:
+		"""Return set of Student names that currently have a child-row pointing to `me`."""
+		rows = frappe.get_all(
+			"Student Sibling",
+			filters={
+				"parenttype": "Student",
+				"parentfield": "siblings",
+				"student": me
+			},
+			fields=["parent"],
+			limit=None,
+		)
+		# parent is the other student who lists `me` as a sibling
+		return {r["parent"] for r in rows if r.get("parent") and r["parent"] != me}
+
+	def _ensure_mirror_row(self, parent_student: str, sibling: str):
+		"""Create a mirror row under `parent_student` (if missing) that points to `sibling`."""
+		exists = frappe.db.exists(
+			"Student Sibling",
+			{
+				"parenttype": "Student",
+				"parentfield": "siblings",
+				"parent": parent_student,
+				"student": sibling,
+			},
+		)
+		if exists:
+			return
+
+		# Insert child row directly; don't save the parent Student to avoid event loops
+		child = frappe.get_doc({
+			"doctype": "Student Sibling",
+			"parenttype": "Student",
+			"parentfield": "siblings",
+			"parent": parent_student,
+			"student": sibling,
+			# convenience fields; fetch_from keeps them fresh too
+			"sibling_name": self.student_full_name,
+			"sibling_gender": self.student_gender,
+			"sibling_date_of_birth": self.student_date_of_birth,
+		})
+		child.insert(ignore_permissions=True)
+
+	def _delete_mirror_row(self, parent_student: str, sibling: str):
+		"""Delete the mirror row under `parent_student` that points to `sibling` (if present)."""
+		frappe.db.delete(
+			"Student Sibling",
+			{
+				"parenttype": "Student",
+				"parentfield": "siblings",
+				"parent": parent_student,
+				"student": sibling,
+			},
+		)
+
+	def ensure_contact_and_link(self):
+		"""Idempotently ensure a Contact exists for this student's User and is linked back to the Student.
+		No msgprint, safe to call from after_insert and on_update."""
+		if not self.student_email:
+			return
+
+		# Require a User (created in after_insert)
+		if not frappe.db.exists("User", self.student_email):
+			return
+
+		# 1) Find or create Contact bound to this user
+		contact_name = frappe.db.get_value("Contact", {"user": self.student_email}, "name")
+		if not contact_name:
+			# Create a minimal Contact
+			contact = frappe.get_doc({
+				"doctype": "Contact",
+				"user": self.student_email,
+				"first_name": self.student_first_name or self.student_preferred_name or self.student_last_name or self.name,
+				"last_name": self.student_last_name or "",
+				"image": self.student_image or None
+			})
+			contact.flags.ignore_permissions = True
+			if hasattr(contact, "email_id") and self.student_email:
+				contact.email_id = self.student_email
+			try:
+				contact.insert()
+				contact_name = contact.name
+			except Exception:
+				# If another request created it concurrently, load it
+				contact_name = frappe.db.get_value("Contact", {"user": self.student_email}, "name")
+				if not contact_name:
+					raise
+				contact = frappe.get_doc("Contact", contact_name)
+		else:
+			contact = frappe.get_doc("Contact", contact_name)
+
+		# 2) Ensure Dynamic Link → Student (idempotent)
+		link_exists = frappe.db.exists(
+			"Dynamic Link",
+			{
+				"parenttype": "Contact",
+				"parentfield": "links",
+				"parent": contact.name,
+				"link_doctype": "Student",
+				"link_name": self.name,
+			},
+		)
+		if link_exists:
+			return
+
+		contact.append("links", {"link_doctype": "Student", "link_name": self.name})
+		contact.save(ignore_permissions=True)
+
+
+
 @frappe.whitelist()
 def get_contact_linked_to_student(student_name):
-    return frappe.db.get_value(
-        "Dynamic Link",
-        {
-            "link_doctype": "Student",
-            "link_name": student_name,
-            "parenttype": "Contact"
-        },
-        "parent"
-    )
+	"""Pure read: return Contact name linked to this Student, or None."""
+	return frappe.db.get_value(
+		"Dynamic Link",
+		{
+			"link_doctype": "Student",
+			"link_name": student_name,
+			"parenttype": "Contact"
+		},
+		"parent"
+	)
+
+
+def on_doctype_update():
+	# speed up reverse lookups and parent scans
+	frappe.db.add_index("Student Sibling", ["student"])
+	frappe.db.add_index("Student Sibling", ["parent"])

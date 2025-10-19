@@ -50,7 +50,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-05-13 09:04:14.614879",
+ "modified": "2025-09-23 10:52:14.139789",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Settings",
@@ -68,11 +68,21 @@
   },
   {
    "read": 1,
-   "role": "HR Manager"
+   "role": "HR Manager",
+   "write": 1
   },
   {
    "read": 1,
-   "role": "Academic Admin"
+   "role": "Academic Admin",
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",

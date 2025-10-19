@@ -1,19 +1,37 @@
-// Copyright (c) 2025, François de Ryckel 
+// Copyright (c) 2025, François de Ryckel
 // For license information, please see license.txt
 
-frappe.listview_settings['Student'] = {
-    hide_name_column: true, // Keep this if you want to hide the name column
+// ifitwala_ed/students/doctype/student/student_list.js
 
-    get_indicator: function(doc) {
+frappe.listview_settings["Student"] = {
+	hide_name_column: true,
 
-        const gender_colors = {
-            "Female": "pink",
-            "Male": "light-blue",
-            "Other": "green"
-        };
+	// Ensure data is fetched for visible columns
+	add_fields: ["enabled", "student_preferred_name", "student_gender", "cohort"],
 
-        let indicator_color = gender_colors[doc.student_gender] || "gray"; // Default to gray if not found
+	// Left-side status light
+	get_indicator(doc) {
+		return doc.enabled
+			? [__("Active"), "green", "enabled,=,1"]
+			: [__("Inactive"), "red", "enabled,=,0"];
+	},
 
-        return [__(doc.student_gender), indicator_color,'student_gender,=,${doc.student_gender}'];
-    }
+	// Column formatters
+	formatters: {
+		// Gender = colored pill
+		student_gender(value) {
+			const label = value || __("—");
+			const color =
+				value === "Female" ? "pink" :
+				value === "Male" ? "light-blue" :
+				"gray";
+			return `<span class="indicator-pill ${color}">${frappe.utils.escape_html(label)}</span>`;
+		},
+
+		// Status column uses the 'enabled' field (text only, row indicator already shows light)
+		enabled(value) {
+			return value ? __("Active") : __("Inactive");
+		},
+	},
 };
+

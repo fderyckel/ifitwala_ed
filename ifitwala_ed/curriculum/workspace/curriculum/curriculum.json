@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"ORoV-qyamd\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Curriculum</span>\",\"col\":12}},{\"id\":\"o7SexzSw2d\",\"type\":\"card\",\"data\":{\"card_name\":\"Program\",\"col\":4}},{\"id\":\"BTNJXW4o4g\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum Settings\",\"col\":4}},{\"id\":\"-l6YhDaF-f\",\"type\":\"card\",\"data\":{\"card_name\":\"Enrollments\",\"col\":4}}]",
+ "content": "[{\"id\":\"ORoV-qyamd\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Curriculum</span>\",\"col\":12}},{\"id\":\"o7SexzSw2d\",\"type\":\"card\",\"data\":{\"card_name\":\"Program\",\"col\":4}},{\"id\":\"yWxdh7-iFL\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"u_Dlt5hBor\",\"type\":\"card\",\"data\":{\"card_name\":\"Assessments\",\"col\":4}},{\"id\":\"oKL0uhbVgR\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Enrollment</b></span>\",\"col\":12}},{\"id\":\"H5GTRTzzKa\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"-l6YhDaF-f\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Tools\",\"col\":4}},{\"id\":\"BTNJXW4o4g\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum Settings\",\"col\":4}}]",
  "creation": "2024-12-08 11:58:32.394967",
  "custom_blocks": [],
  "docstatus": 0,
@@ -19,45 +19,6 @@
    "label": "Program",
    "link_count": 0,
    "link_to": "Program",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program",
-   "link_count": 3,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program",
-   "link_count": 0,
-   "link_to": "Program",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Course",
-   "link_count": 0,
-   "link_to": "Course",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Learning Unit",
-   "link_count": 0,
-   "link_to": "Learning Unit",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -84,21 +45,11 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Enrollments",
-   "link_count": 5,
+   "label": "Reports & Tools",
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program Enrollment",
-   "link_count": 0,
-   "link_to": "Program Enrollment",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
   },
   {
    "hidden": 0,
@@ -133,15 +84,181 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Student Group Cards",
+   "link_count": 0,
+   "link_to": "student_group_cards",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Assessments",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Assessment Criteria",
+   "link_count": 0,
+   "link_to": "Assessment Criteria",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Assessment Category",
+   "link_count": 0,
+   "link_to": "Assessment Category",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Grade Scale",
+   "link_count": 0,
+   "link_to": "Grade Scale",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program",
+   "link_count": 0,
+   "link_to": "Program",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course",
+   "link_count": 0,
+   "link_to": "Course",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Curriculum",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Learning Unit",
+   "link_count": 0,
+   "link_to": "Learning Unit",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Lesson",
+   "link_count": 0,
+   "link_to": "Lesson",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Learning Standards",
+   "link_count": 0,
+   "link_to": "Learning Standards",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Task",
+   "link_count": 0,
+   "link_to": "Task",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Schedule",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Offering",
+   "link_count": 0,
+   "link_to": "Program Offering",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Enrollment",
+   "link_count": 0,
+   "link_to": "Program Enrollment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Student Group",
    "link_count": 0,
    "link_to": "Student Group",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Instructor",
+   "link_count": 0,
+   "link_to": "Instructor",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-09-02 14:31:51.515706",
+ "modified": "2025-10-05 09:40:23.128625",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",
@@ -156,6 +273,9 @@
   },
   {
    "role": "Curriculum Coordinator"
+  },
+  {
+   "role": "Academic Assistant"
   }
  ],
  "sequence_id": 2.0,

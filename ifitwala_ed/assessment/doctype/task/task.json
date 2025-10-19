@@ -1,0 +1,391 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-23 21:31:26.785096",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_xmdr",
+  "title",
+  "task_type",
+  "delivery_type",
+  "student_group",
+  "column_break_annk",
+  "course",
+  "learning_unit",
+  "lesson",
+  "column_break_godu",
+  "school",
+  "program",
+  "academic_year",
+  "grading_section",
+  "column_break_wmhk",
+  "is_graded",
+  "submission_required",
+  "prevent_late_submission",
+  "column_break_gdxa",
+  "observations",
+  "binary",
+  "points",
+  "criteria",
+  "column_break_gi2s",
+  "submission_type",
+  "max_points",
+  "grade_scale",
+  "attempt_limit",
+  "section_break_vjkt",
+  "assessment_criteria",
+  "section_break_muj0",
+  "due_date",
+  "posted_date",
+  "column_break_qbb9",
+  "available_from",
+  "available_until",
+  "column_break_jxvp",
+  "status",
+  "is_published",
+  "show_in_todo",
+  "section_break_haua",
+  "instructions",
+  "attachments",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_xmdr",
+   "fieldtype": "Section Break",
+   "label": "Identity & Context"
+  },
+  {
+   "bold": 1,
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "task_type",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Task Type",
+   "options": "Assessment Category"
+  },
+  {
+   "fieldname": "column_break_annk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Course",
+   "options": "Course",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "learning_unit",
+   "fieldtype": "Link",
+   "label": "Learning Unit",
+   "options": "Learning Unit"
+  },
+  {
+   "fieldname": "lesson",
+   "fieldtype": "Link",
+   "label": "Lesson",
+   "options": "Lesson"
+  },
+  {
+   "fieldname": "column_break_godu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "student_group.school",
+   "fetch_if_empty": 1,
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "student_group.program",
+   "fetch_if_empty": 1,
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "student_group.academic_year",
+   "fetch_if_empty": 1,
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_muj0",
+   "fieldtype": "Section Break",
+   "label": "Visibility & Dates"
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Datetime",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Due Date"
+  },
+  {
+   "default": "Now",
+   "fieldname": "posted_date",
+   "fieldtype": "Datetime",
+   "label": "Posted Date"
+  },
+  {
+   "fieldname": "column_break_qbb9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "available_from",
+   "fieldtype": "Datetime",
+   "label": "Available From"
+  },
+  {
+   "fieldname": "available_until",
+   "fieldtype": "Datetime",
+   "label": "Available Until"
+  },
+  {
+   "fieldname": "column_break_jxvp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nPublished\nOpen\nClosed",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "label": "Is Published",
+   "options": "0"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_in_todo",
+   "fieldtype": "Check",
+   "label": "Show in Todo",
+   "options": "0"
+  },
+  {
+   "fieldname": "grading_section",
+   "fieldtype": "Section Break",
+   "label": "Grading"
+  },
+  {
+   "fieldname": "column_break_wmhk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_graded",
+   "fieldtype": "Check",
+   "label": "Is Graded"
+  },
+  {
+   "default": "0",
+   "fieldname": "submission_required",
+   "fieldtype": "Check",
+   "label": "Submission Required"
+  },
+  {
+   "default": "0",
+   "fieldname": "prevent_late_submission",
+   "fieldtype": "Check",
+   "label": "Prevent Late Submission"
+  },
+  {
+   "fieldname": "column_break_gdxa",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "submission_type",
+   "fieldtype": "Select",
+   "label": "Submission Type",
+   "options": "None\nOnline Text\nFile Upload\nExternal\nIn-class\nLTI"
+  },
+  {
+   "depends_on": "eval:doc.is_graded==1",
+   "fieldname": "max_points",
+   "fieldtype": "Float",
+   "label": "Max Points"
+  },
+  {
+   "fieldname": "column_break_gi2s",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.is_graded==1",
+   "fieldname": "grade_scale",
+   "fieldtype": "Link",
+   "label": "Grade Scale",
+   "options": "Grade Scale"
+  },
+  {
+   "fieldname": "attempt_limit",
+   "fieldtype": "Int",
+   "label": "Attempt Limit"
+  },
+  {
+   "fieldname": "section_break_haua",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "instructions",
+   "fieldtype": "Text Editor",
+   "label": "Instructions"
+  },
+  {
+   "fieldname": "attachments",
+   "fieldtype": "Table",
+   "label": "Attachments",
+   "options": "Attached Document"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Task",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "student_group",
+   "fieldtype": "Link",
+   "label": "Student Group",
+   "options": "Student Group"
+  },
+  {
+   "default": "0",
+   "fieldname": "observations",
+   "fieldtype": "Check",
+   "label": "Observations"
+  },
+  {
+   "default": "0",
+   "fieldname": "binary",
+   "fieldtype": "Check",
+   "label": "Binary"
+  },
+  {
+   "default": "0",
+   "fieldname": "points",
+   "fieldtype": "Check",
+   "label": "Points"
+  },
+  {
+   "default": "0",
+   "fieldname": "criteria",
+   "fieldtype": "Check",
+   "label": "Criteria"
+  },
+  {
+   "fieldname": "section_break_vjkt",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "assessment_criteria",
+   "fieldtype": "Table",
+   "label": "Assessment Criteria",
+   "options": "Assessment Criteria Childtable"
+  },
+  {
+   "fieldname": "delivery_type",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "label": "Delivery Type",
+   "options": "Assignment\nQuiz\nDiscussion\nCheckpoint\nExternal Tool\nOther"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-09-25 14:45:49.015497",
+ "modified_by": "Administrator",
+ "module": "Assessment",
+ "name": "Task",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

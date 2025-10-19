@@ -4,12 +4,13 @@
 import frappe
 from frappe import _
 from frappe.utils.nestedset import NestedSet
-from frappe.utils.nestedset import get_descendants_of
 
 class Program(NestedSet):
+	nsm_parent_field = "parent_program"
 
 	def validate(self):
 		self._validate_duplicate_course()
+		self._validate_active_courses()
 
 	def _validate_duplicate_course(self):
 		seen = set()
@@ -18,30 +19,23 @@ class Program(NestedSet):
 				frappe.throw(_("Course {0} entered twice").format(row.course))
 			seen.add(row.course)
 
+	def _validate_active_courses(self):
+		# Batch fetch statuses to minimize DB calls
+		names = [r.course for r in (self.courses or []) if r.course]
+		if not names:
+			return
 
+		rows = frappe.get_all("Course", filters={"name": ["in", names]}, fields=["name", "status"])
+		status_by_name = {r.name: (r.status or "") for r in rows}
 
-def get_permission_query_conditions(user):
-    # Full access for System Manager and Administrator
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
-        return None
+		inactive = []
+		for row in self.courses or []:
+			if not row.course:
+				continue
+			st = status_by_name.get(row.course, "")
+			if st != "Active":
+				inactive.append((row.idx, row.course, st or "Unknown"))
 
-    user_school = frappe.defaults.get_user_default("school", user)
-    if not user_school:
-        return "1=0"  # No access if no school assigned
-
-    # Get self + descendants
-    schools = [user_school] + get_descendants_of("School", user_school)
-
-    schools_escaped = ', '.join([frappe.db.escape(s) for s in schools])
-    return f"`tabProgram`.`school` in ({schools_escaped})"
-
-def has_permission(doc, ptype, user):
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
-        return True
-
-    user_school = frappe.defaults.get_user_default("school", user)
-    if not user_school:
-        return False
-
-    schools = [user_school] + get_descendants_of("School", user_school)
-    return doc.school in schools
+		if inactive:
+			lines = "\n".join([f"Row {idx}: {name} (status: {st})" for idx, name, st in inactive])
+			frappe.throw(_("Only Active Courses can be added:\n{0}").format(lines))

@@ -62,7 +62,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-09-02 14:31:51.674949",
+ "modified": "2025-09-27 12:00:49.398706",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission",
@@ -83,6 +83,15 @@
  "roles": [
   {
    "role": "Admission Officer"
+  },
+  {
+   "role": "Admission Manager"
+  },
+  {
+   "role": "Academic Assistant"
+  },
+  {
+   "role": "Academic Admin"
   }
  ],
  "sequence_id": 5.0,

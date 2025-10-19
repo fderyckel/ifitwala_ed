@@ -3,56 +3,16 @@
 
 // ifitwala_ed/schedule/doctype/program_enrollment_tool/program_enrollment_tool.js
 
-// Reuse canonical AY query on Program Enrollment, scoped by Program → School.
-// We pass { school } into program_enrollment.get_academic_years which already
-// implements school + ancestor fallback (no duplication = no drift).
-
 // Helpers
-async function resolveSchoolFromProgram(program) {
-	if (!program) return null;
-	const { message } = await frappe.db.get_value('Program', program, 'school');
-	return message ? message.school : null;
-}
-
-function setAYQueryForField(frm, fieldname, school) {
-	frm.set_query(fieldname, () => {
-		if (!school) {
-			// Keep empty until a Program is chosen to avoid confusing “all AYs” list.
-			return { filters: { name: '__never__' } };
-		}
-		return {
-			query: 'ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_academic_years',
-			filters: { school }
-		};
-	});
-}
-
-async function initAYQueries(frm) {
-	// Initialize based on any prefilled values (route defaults, etc.)
-	if (frm.doc.program) {
-		const school = await resolveSchoolFromProgram(frm.doc.program);
-		setAYQueryForField(frm, 'academic_year', school);
-	} else {
-		setAYQueryForField(frm, 'academic_year', null);
-	}
-
-	if (frm.doc.new_program) {
-		const school = await resolveSchoolFromProgram(frm.doc.new_program);
-		setAYQueryForField(frm, 'new_academic_year', school);
-	} else {
-		setAYQueryForField(frm, 'new_academic_year', null);
-	}
-}
 
 function canFetchStudents(frm) {
 	const source = frm.doc.get_students_from;
 	if (source === 'Program Enrollment') {
-		return Boolean(frm.doc.program && frm.doc.academic_year);
+		return Boolean(frm.doc.program_offering && frm.doc.target_academic_year);
 	}
 	if (source === 'Cohort') {
 		return Boolean(frm.doc.student_cohort);
 	}
-	// Unsupported options are guarded server-side, but block early here too
 	return false;
 }
 
@@ -85,6 +45,17 @@ frappe.ui.form.on('Program Enrollment Tool', {
 			frm.__pe_rt_bound = true;
 		}
 
+		// Constrain AY pickers to the chosen Program Offering's date window
+		frm.set_query('target_academic_year', () => ({
+			query: 'ifitwala_ed.schedule.doctype.program_enrollment_tool.program_enrollment_tool.program_offering_target_ay_query',
+			filters: { program_offering: frm.doc.program_offering }
+		}));
+
+		frm.set_query('new_target_academic_year', () => ({
+			query: 'ifitwala_ed.schedule.doctype.program_enrollment_tool.program_enrollment_tool.program_offering_target_ay_query',
+			filters: { program_offering: frm.doc.new_program_offering }
+		}));
+
 		// Field visibility
 		toggle_filter_fields(frm);
 
@@ -92,27 +63,18 @@ frappe.ui.form.on('Program Enrollment Tool', {
 		add_table_toolbar(frm);
 	},
 
-	async onload(frm) {
-		// Make AY fields inert until Program is known, or initialize if prefilled
-		await initAYQueries(frm);
-	},
-
 	get_students_from(frm) {
 		toggle_filter_fields(frm);
 	},
 
-	// When Program changes, scope Academic Year options based on Program.school
-	async program(frm) {
-		frm.set_value('academic_year', null);
-		const school = await resolveSchoolFromProgram(frm.doc.program);
-		setAYQueryForField(frm, 'academic_year', school);
+	// When Program Offering changes, reset & tighten AY list to overlap
+	program_offering(frm) {
+		frm.set_value('target_academic_year', null);
 	},
 
-	// When New Program changes, scope New Academic Year similarly
-	async new_program(frm) {
-		frm.set_value('new_academic_year', null);
-		const school = await resolveSchoolFromProgram(frm.doc.new_program);
-		setAYQueryForField(frm, 'new_academic_year', school);
+	// New Program Offering → reset target AY
+	new_program_offering(frm) {
+		frm.set_value('new_target_academic_year', null);
 	},
 
 	get_students(frm) {
@@ -193,13 +155,13 @@ function highlight_duplicates(frm) {
 function toggle_filter_fields(frm) {
 	const source = frm.doc.get_students_from;
 
-	frm.toggle_display('program', false);
-	frm.toggle_display('academic_year', false);
+	frm.toggle_display('program_offering', false);
+	frm.toggle_display('target_academic_year', false);
 	frm.toggle_display('student_cohort', false);
 
 	if (source === 'Program Enrollment') {
-		frm.toggle_display('program', true);
-		frm.toggle_display('academic_year', true);
+		frm.toggle_display('program_offering', true);
+		frm.toggle_display('target_academic_year', true);
 		frm.toggle_display('student_cohort', true); // optional cohort filter
 	} else if (source === 'Cohort') {
 		frm.toggle_display('student_cohort', true);

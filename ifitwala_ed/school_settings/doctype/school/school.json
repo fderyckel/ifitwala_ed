@@ -325,7 +325,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-09-02 12:05:42.078782",
+ "modified": "2025-09-23 10:50:04.977498",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
@@ -348,6 +348,40 @@
    "write": 1
   },
   {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Marketing User",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
    "email": 1,
    "print": 1,
    "read": 1,
@@ -364,17 +398,6 @@
    "role": "Instructor",
    "select": 1,
    "share": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Academic Admin",
-   "select": 1,
-   "share": 1,
-   "write": 1
   },
   {
    "email": 1,
@@ -400,16 +423,6 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Marketing User",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
    "role": "Admission Officer",
    "select": 1,
    "share": 1
@@ -417,6 +430,7 @@
   {
    "read": 1,
    "role": "Accreditation Visitor",
+   "select": 1,
    "share": 1
   },
   {

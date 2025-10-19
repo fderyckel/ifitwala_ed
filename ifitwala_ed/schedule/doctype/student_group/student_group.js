@@ -1,86 +1,92 @@
 // Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
-// make the field appear whenever *no* program is chosen
 function toggle_school_schedule_field(frm) {
-    const need_sched = !frm.doc.program;   // ← removed extra test
-    frm.set_df_property("school_schedule", "hidden", !need_sched);
-    frm.set_df_property("school_schedule", "reqd",  need_sched);
-		if (!need_sched && frm.doc.school_schedule) {
-			frm.set_value("school_schedule", null);
-		}
+	// Show School Schedule when there is NO Program Offering (i.e., non-offering flows like Activity/Other)
+	const need_sched = !frm.doc.program_offering;
+	frm.set_df_property("school_schedule", "hidden", !need_sched);
+	frm.set_df_property("school_schedule", "reqd",  need_sched);
+	if (!need_sched && frm.doc.school_schedule) {
+		frm.set_value("school_schedule", null);
+	}
 }
 
-// Helper function to build student filter payload
+// Build student filter payload for server calls
 function get_student_filters(frm) {
 	return {
+		program_offering: frm.doc.program_offering,   
 		academic_year: frm.doc.academic_year,
 		group_based_on: frm.doc.group_based_on,
 		term: frm.doc.term,
-		program: frm.doc.program,
 		cohort: frm.doc.cohort,
 		course: frm.doc.course,
 		student_group: frm.doc.name,
 	};
 }
 
-// run whenever these change
-["academic_year", "program", "group_based_on"].forEach(f =>
-    frappe.ui.form.on("Student Group", f, frm => toggle_school_schedule_field(frm))
+// Keep the toggle in sync
+["academic_year", "program_offering", "group_based_on"].forEach(f =>
+	frappe.ui.form.on("Student Group", f, frm => toggle_school_schedule_field(frm))
 );
 
 // ── Form events ──────────────────────────────────────────────────────────────
 
 frappe.ui.form.on("Student Group", {
-	onload: function (frm) {
+	onload(frm) {
+		// AY scoped to Program Offering spine
 		frm.set_query("academic_year", () => ({
-			query: "ifitwala_ed.schedule.doctype.student_group.student_group.academic_year_link_query"
+			query: "ifitwala_ed.schedule.doctype.student_group.student_group.offering_ay_query",
+			filters: { program_offering: frm.doc.program_offering || "" }
 		}));
 
-		//run the toggle once the form is rendered, and when fields change
-		toggle_school_schedule_field(frm);
+		// School scoped to AY branch or AY∩PO intersection
+		frm.set_query("school", () => ({
+			query: "ifitwala_ed.schedule.doctype.student_group.student_group.allowed_school_query",
+			filters: {
+				academic_year: frm.doc.academic_year || "",
+				program_offering: frm.doc.program_offering || ""
+			}
+		}));
 
-		frm.add_fetch("student", "student_full_name", "student_name");
+		// Course scoped to Program Offering (+ AY/Term windows)
+		frm.set_query("course", () => ({
+			query: "ifitwala_ed.schedule.doctype.student_group.student_group.offering_course_query",
+			filters: {
+				program_offering: frm.doc.program_offering || "",
+				academic_year: frm.doc.academic_year || "",
+				term: frm.doc.term || ""
+			}
+		}));
 
-		frm.set_query("term", function () {
-			return {
-				filters: {
-					academic_year: frm.doc.academic_year,
-				},
-			};
-		});
+		// Term filter by AY
+		frm.set_query("term", () => ({ filters: { academic_year: frm.doc.academic_year } }));
 
-		// Set student field query for single selection inside the child table
+		// Child row student query (only after save)
 		if (!frm.__islocal) {
-			frm.set_query("student", "students", function () {
-				return {
-					query: "ifitwala_ed.schedule.doctype.student_group.student_group.fetch_students",
-					filters: get_student_filters(frm),
-				};
-			});
+			frm.set_query("student", "students", () => ({
+				query: "ifitwala_ed.schedule.doctype.student_group.student_group.fetch_students",
+				filters: get_student_filters(frm),
+			}));
 		}
 
-		frm.set_query("school_schedule", () => {
-			// Show schedules linked to the selected Academic Year
-			// AND whose school is either the AY.school or an ancestor thereof
-			return {
-				query: "ifitwala_ed.schedule.doctype.student_group.student_group.schedule_picker_query",
-				filters: {
-					academic_year: frm.doc.academic_year
-				}
-			};
-		});	
+		// School Schedule picker (AY-aware)
+		frm.set_query("school_schedule", () => ({
+			query: "ifitwala_ed.schedule.doctype.student_group.student_group.schedule_picker_query",
+			filters: { academic_year: frm.doc.academic_year }
+		}));
 
+		// Instructor constraint on schedule rows
 		frm.fields_dict["student_group_schedule"].grid.get_field("instructor").get_query = function () {
-			const valid_instructors = (frm.doc.instructors || []).map(row => row.instructor);
-			return {
-				filters: {
-					name: ["in", valid_instructors]
-				}
-			};
-		};		
+			const valid = (frm.doc.instructors || []).map(r => r.instructor);
+			return { filters: { name: ["in", valid] } };
+		};
+
+		toggle_school_schedule_field(frm);
+		frm.add_fetch("student", "student_full_name", "student_name");
 	},
 
+
+	
 	refresh: function (frm) {
 		// Add buttons
 		if (!frm.doc.__islocal) {
@@ -156,20 +162,19 @@ frappe.ui.form.on("Student Group", {
 		}
 	},  
 
-	program: function (frm) {
-		if (frm.doc.program) {
-			frm.set_query("course", function () {
-				return {
-					query: "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_program_courses",
-					filters: {
-						program: frm.doc.program,
-					},
-				};
-			});
-		}
+
+	program_offering(frm) {
+		frm.set_value("academic_year", null);
+		frm.set_value("school", null);
+		frm.set_value("course", null);
 	},
 
-	group_based_on: function (frm) {
+	academic_year(frm) {
+		frm.set_value("school", null);
+		frm.set_value("course", null);
+	},
+
+	group_based_on(frm) {
 		frm.set_df_property("program", "reqd", 0);
 		frm.set_df_property("course", "reqd", 0);
 		frm.set_df_property("cohort", "reqd", 0);
@@ -182,65 +187,67 @@ frappe.ui.form.on("Student Group", {
 		}
 	},
 
+
 	get_students: function (frm) {
-		if (["Other", "Activity"].includes(frm.doc.group_based_on)) {
-			frappe.msgprint(__("Select students manually for Activity or Other based groups."));
-			return;
-		}
+	// Activity / Other groups are manual selection only
+	if (["Other", "Activity"].includes(frm.doc.group_based_on)) {
+		frappe.msgprint(__("Select students manually for Activity or Other based groups."));
+		return;
+	}
 
-		if (frm.doc.academic_year) {
-			let student_list = [];
-			let max_roll_no = 0;
+	// We require an Academic Year (scoped to Program Offering's spine)
+	if (!frm.doc.academic_year) {
+		frappe.msgprint(__("Please select an Academic Year before fetching students."));
+		return;
+	}
 
-			$.each(frm.doc.students, function (i, d) {
-				student_list.push(d.student);
-				if (d.group_roll_number > max_roll_no) {
-					max_roll_no = d.group_roll_number;
+	// Build existing map to avoid duplicates and track next roll number
+	const existing = Array.isArray(frm.doc.students) ? frm.doc.students.map(r => r.student) : [];
+	let max_roll_no = Array.isArray(frm.doc.students)
+		? Math.max(0, ...frm.doc.students.map(r => r.group_roll_number || 0))
+		: 0;
+
+	// Server call (offering-first). Args come from the helper in this file.
+	frappe.call({
+		method: "ifitwala_ed.schedule.doctype.student_group.student_group.get_students",
+		args: get_student_filters(frm),
+		callback: function (r) {
+			const rows = Array.isArray(r.message) ? r.message : [];
+			if (!rows.length) {
+				frappe.msgprint(__("No new students found or Student Group already updated."));
+				return;
+			}
+
+			rows.forEach(d => {
+				if (d.student && !existing.includes(d.student)) {
+					const row = frm.add_child("students");
+					row.student = d.student;
+					row.student_name = d.student_name || "";
+					row.active = d.active ? 1 : 0;
+					row.group_roll_number = ++max_roll_no;
 				}
 			});
 
-			frappe.call({
-				method: "ifitwala_ed.schedule.doctype.student_group.student_group.get_students",
-				args: get_student_filters(frm),
-				callback: function (r) {
-					if (r.message) {
-						$.each(r.message, function (i, d) {
-							if (!in_list(student_list, d.student)) {
-								const row = frm.add_child("students");
-								row.student = d.student;
-								row.student_name = d.student_name;
-								row.active = d.active || 0;
-								row.group_roll_number = ++max_roll_no;
-							}
-						});
-						refresh_field("students");
-						frm.save();
-					} else {
-						frappe.msgprint(__("No new students found or Student Group already updated."));
-					}
-				}
-			});
-		} else {
-			frappe.msgprint(__("Please select an Academic Year before fetching students."));
+			frm.refresh_field("students");
+			frm.save();
 		}
+	});
+},
+
+
+	add_blocks(frm) {
+		frappe.call({
+			method: "ifitwala_ed.schedule.schedule_utils.fetch_block_grid",
+			args: { schedule_name: frm.doc.school_schedule || null, sg: frm.doc.name },
+			callback(r) {
+				if (!frm.doc.school_schedule && r.message?.schedule_name) {
+					frm.set_value("school_schedule", r.message.schedule_name);
+				}
+				build_matrix_dialog(frm, r.message);
+			}
+		});
 	}, 
 
-	add_blocks(frm) {			
-		frappe.call({
-			method: 'ifitwala_ed.schedule.schedule_utils.fetch_block_grid',
-			args: {
-				schedule_name: frm.doc.school_schedule || null,
-				sg: frm.doc.name
-			},
-			callback(r) {
-        // Optionally write back the inferred schedule
-        if (!frm.doc.school_schedule && r.message?.schedule_name) {
-          frm.set_value("school_schedule", r.message.schedule_name);
-        }
-        build_matrix_dialog(frm, r.message);
-      }
-		});
-	}
 });
 
 frappe.ui.form.on("Student Group Instructor", {

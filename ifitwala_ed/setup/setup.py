@@ -9,7 +9,7 @@ from ifitwala_ed.setup.utils import insert_record
 from frappe.utils import get_files_path
 
 def setup_education():
-	ensure_initial_setup_flag()  
+	ensure_initial_setup_flag()
 	ensure_root_organization()
 	create_roles_with_homepage()
 	create_designations()
@@ -73,7 +73,7 @@ def create_roles_with_homepage():
 		{"role_name": "Student", "desk_access": 0, "home_page": "/sp"},
 		{"role_name": "Guardian", "desk_access": 0, "home_page": "/sp"},
 		{"role_name": "Nurse", "desk_access": 1, "home_page": "/app/health"},
-		{"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/settings"},
+		{"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/admin"},
 		{"role_name": "Admission Officer", "desk_access": 1, "home_page": "/app/admission"},
 		{"role_name": "Admission Manager", "desk_access": 1, "home_page": "/app/admission"},
 	]
@@ -115,12 +115,12 @@ def create_log_type():
 	data = [
 			{"doctype": "Student Log Type", "log_type": "Behaviour"},
 			{"doctype": "Student Log Type", "log_type": "Academic Concern"},
-			{"doctype": "Student Log Type", "log_type": "Medical"}, 
-			{"doctype": "Student Log Type", "log_type": "Other"}, 
-			{"doctype": "Student Log Type", "log_type": "Dress Code"}, 
-			{"doctype": "Student Log Type", "log_type": "Medical"}, 
-			{"doctype": "Student Log Type", "log_type": "Academic Honesty"}, 
-			{"doctype": "Student Log Type", "log_type": "Social-Emotional"}, 
+			{"doctype": "Student Log Type", "log_type": "Medical"},
+			{"doctype": "Student Log Type", "log_type": "Other"},
+			{"doctype": "Student Log Type", "log_type": "Dress Code"},
+			{"doctype": "Student Log Type", "log_type": "Medical"},
+			{"doctype": "Student Log Type", "log_type": "Academic Honesty"},
+			{"doctype": "Student Log Type", "log_type": "Social-Emotional"},
 			{"doctype": "Student Log Type", "log_type": "Positive Attitude Towards Learning"}
 	]
 	insert_record(data)
@@ -134,7 +134,7 @@ def create_location_type():
 		{"doctype": "Location Type", "location_type_name": "Storage"},
 		{"doctype": "Location Type", "location_type_name": "Sport Court"},
 		{"doctype": "Location Type", "location_type_name": "Theatre"},
-		{"doctype": "Location Type", "location_type_name": "Auditorium"}, 
+		{"doctype": "Location Type", "location_type_name": "Auditorium"},
 		{"doctype": "Location Type", "location_type_name": "Gym"},
 		{"doctype": "Location Type", "location_type_name": "Transit"},
 	]
@@ -150,18 +150,21 @@ def add_other_records(country=None):
 		{'doctype': 'Employment Type', 'employment_type_name': _('Contract')},
 		{'doctype': 'Employment Type', 'employment_type_name': _('Intern')},
 		{'doctype': 'Employment Type', 'employment_type_name': _('Apprentice')},
-        
-        # Student Log Next Steps
-        {'doctype': 'Student Log Next Step', 'next_step': 'Refer to Curriculum Coordinator'},
+
+    # Student Log Next Steps
+    {'doctype': 'Student Log Next Step', 'next_step': 'Refer to Curriculum Coordinator'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to Grade Level Leader'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to counseling'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to academic admin'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'Parents meeting needed'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'For information only'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'No Action Required at this time'},
+
+		# Program tree root (global)
+		{'doctype': 'Program', 'name': 'All Programs', 'program_name': 'All Programs', 'is_group': 1, 'parent_program': ''},
 	]
-	insert_record(records)	
-      
+	insert_record(records)
+
 def create_student_file_folder():
 	records = [{
 		"doctype": "File",
@@ -170,12 +173,12 @@ def create_student_file_folder():
 		"folder": "Home"
 	}]
 	insert_record(records)
-  
+
 	# Ensure the physical folder also exists
 	os.makedirs(os.path.join(get_files_path(), "student"), exist_ok=True)
-     
+
 def setup_website_top_bar():
-    
+
     top_bar_items = [
         # Primary items
         {"label": "Home"},
@@ -210,8 +213,8 @@ def setup_website_top_bar():
         ws.append("top_bar_items", item)
 
     ws.save(ignore_permissions=True)
-	
-METADATA_FIELDS = { 
+
+METADATA_FIELDS = {
 	"docstatus", "modified", "modified_by",
   "owner", "creation", "idx", "_user_tags"
 }
@@ -281,6 +284,7 @@ def grant_core_crm_permissions():
 		"Admission Officer": ["read", "email", "comment", "assign"],
 		"Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
 		"Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
+		"Academic Assistant": ["read", "write", "create", "delete", "email", "comment", "assign"],
 	}
 
 	for doctype in crm_doctypes:
@@ -297,7 +301,7 @@ def grant_core_crm_permissions():
 			docperm = frappe.new_doc("Custom DocPerm")
 			docperm.parent = doctype
 			docperm.parenttype = "DocType"
-			docperm.parentfield = "permissions"  # ✅ Required field for correct behavior
+			docperm.parentfield = "permissions"  # Required field for correct behavior
 			docperm.role = role
 			docperm.permlevel = 0
 
@@ -305,4 +309,4 @@ def grant_core_crm_permissions():
 				docperm.set(perm, 1 if perm in perms else 0)
 
 			docperm.insert(ignore_permissions=True)
-	frappe.clear_cache(doctype=doctype)  # ✅ Clear cache after permission update
+		frappe.clear_cache(doctype=doctype)  # Clear cache after permission update

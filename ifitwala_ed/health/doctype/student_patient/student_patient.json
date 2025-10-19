@@ -353,7 +353,7 @@
  "image_field": "photo",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-29 10:47:31.997939",
+ "modified": "2025-09-27 11:53:22.093506",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient",
@@ -373,15 +373,6 @@
    "write": 1
   },
   {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Academic Admin",
-   "share": 1
-  },
-  {
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -392,8 +383,51 @@
    "role": "Nurse",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "student_name, preferred_name",
  "show_name_in_global_search": 1,
  "show_title_field_in_link": 1,

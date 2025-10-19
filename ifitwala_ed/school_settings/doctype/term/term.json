@@ -3,6 +3,7 @@
  "allow_rename": 1,
  "autoname": "field:title",
  "creation": "2024-12-03 13:02:14.593981",
+ "default_view": "List",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -134,7 +135,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-16 13:46:32.166192",
+ "modified": "2025-10-01 18:18:14.683707",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Term",
@@ -174,6 +175,18 @@
    "read": 1,
    "report": 1,
    "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
    "share": 1,
    "write": 1
   },
@@ -219,7 +232,7 @@
   }
  ],
  "row_format": "Dynamic",
- "sort_field": "modified",
+ "sort_field": "term_start_date",
  "sort_order": "DESC",
  "states": [],
  "title_field": "title"

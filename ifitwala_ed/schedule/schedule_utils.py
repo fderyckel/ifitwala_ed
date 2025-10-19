@@ -10,6 +10,7 @@ from frappe.utils import getdate, add_days, today
 from collections import defaultdict
 from datetime import timedelta, date
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
+from typing import Optional
 
 ## function to get the start and end dates of the current academic year
 ## used in program enrollment, course enrollment tool. 
@@ -70,6 +71,7 @@ def current_academic_year():
         frappe.throw(_("No active academic year found for today's date."))
 
     return academic_year
+
 
 @frappe.whitelist()
 def get_rotation_dates(school_schedule_name, academic_year, include_holidays=None):
@@ -140,6 +142,31 @@ from collections import defaultdict
 class OverlapError(frappe.ValidationError):
     """Raised when a scheduling conflict violates the hard rule."""
     pass
+
+def get_school_for_student_group(sg_doc_or_name) -> Optional[str]:
+	"""
+	Return the best school for a Student Group in priority order:
+	1) Student Group.school (if present)
+	2) Program Offering.school (if SG has program_offering)
+	3) Program.school (legacy fallback)
+	"""
+	sg = frappe.get_doc("Student Group", sg_doc_or_name) if isinstance(sg_doc_or_name, str) else sg_doc_or_name
+
+	# 1) SG-level school wins
+	if getattr(sg, "school", None):
+		return sg.school
+
+	# 2) Then the Program Offering's school (if linked)
+	if getattr(sg, "program_offering", None):
+		sch = frappe.db.get_value("Program Offering", sg.program_offering, "school")
+		if sch:
+			return sch
+
+	# 3) Legacy fallback: Program's school
+	if getattr(sg, "program", None):
+		return frappe.db.get_value("Program", sg.program, "school")
+
+	return None
 
 def get_conflict_rule():
     """Return 'Hard' or 'Soft' based on School Settings (defaults to Hard)."""
@@ -306,6 +333,46 @@ def get_effective_schedule(school_calendar: str, school: str) -> str | None:
 	return None
 
 
+def get_effective_schedule_for_ay(academic_year: str, school: str | None) -> str | None:
+	"""
+	Find the nearest School Schedule (walking up the school tree) whose
+	School Calendar belongs to <academic_year>. Cache for 5 minutes.
+	"""
+	if not (academic_year and school):
+		return None
+
+	rc = frappe.cache()
+	key = f"ifw:eff_sched_ay:{academic_year}:{school}"
+
+	if (cached := rc.get_value(key)) is not None:
+		return None if cached == "__none__" else cached
+
+	allowed = tuple(get_ancestor_schools(school))
+	if not allowed:
+		rc.set_value(key, "__none__", expires_in_sec=300)
+		return None
+
+	# calendars for AY within allowed schools
+	cals = frappe.db.get_all(
+		"School Calendar",
+		filters={"academic_year": academic_year, "school": ["in", allowed]},
+		pluck="name",
+	)
+
+	if cals:
+		for sch in allowed:  # prefer closest
+			sched = frappe.db.get_value(
+				"School Schedule",
+				{"school_calendar": ["in", cals], "school": sch},
+				"name",
+			)
+			if sched:
+				rc.set_value(key, sched, expires_in_sec=300)
+				return sched
+
+	rc.set_value(key, "__none__", expires_in_sec=300)
+	return None
+
 
 ROT_CACHE_TTL = 24 * 60 * 60		# one day
 
@@ -399,6 +466,7 @@ def _build_events_for_day(user, cur_date):
 				break
 
 	return events
+
 
 def _expand_sg_rotation(sg_name, rotation_day, cur_date):
 	"""

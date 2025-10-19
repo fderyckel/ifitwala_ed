@@ -34,7 +34,7 @@
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-04 09:26:32.758752",
+ "modified": "2025-09-23 10:47:25.339592",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Type",
@@ -62,6 +62,17 @@
    "read": 1,
    "report": 1,
    "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
    "share": 1,
    "write": 1
   },

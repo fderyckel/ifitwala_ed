@@ -19,54 +19,73 @@ def redirect_student_to_portal():
 
 
 def set_default_workspace_based_on_roles(doc, method):
+    # Observe role changes plus any lingering workspace that no longer exists
+    current_roles = {r.role for r in doc.roles}
+    previous_doc = doc.get_doc_before_save()
+    roles_changed = True
+    if previous_doc:
+        previous_roles = {r.role for r in previous_doc.roles}
+        roles_changed = previous_roles != current_roles
+
+    role_workspace_priority = (
+        ("Nurse", "Health"),
+        ("Academic Admin", "Admin"),
+        ("Curriculum Coordinator", "Curriculum"),
+        ("Counselor", "Counselors"),
+        ("Instructor", "Academics"),
+    )
+
+    def suggest_workspace() -> str | None:
+        for role, workspace in role_workspace_priority:
+            if role in current_roles and frappe.db.exists("Workspace", workspace):
+                return workspace
+        return None
+
+    suggested_workspace = suggest_workspace()
+    workspace_is_valid = True
+    if doc.default_workspace:
+        workspace_is_valid = frappe.db.exists("Workspace", doc.default_workspace)
+
+    if doc.default_workspace and not workspace_is_valid:
+        if doc.user_type == "System User" and suggested_workspace and doc.default_workspace != suggested_workspace:
+            doc.default_workspace = suggested_workspace
+            frappe.msgprint(
+                f"This user's default workspace referenced a missing workspace and has been changed to <b>{suggested_workspace}</b> based on their role.",
+                title="Default Workspace Updated",
+                indicator="blue",
+            )
+            frappe.enqueue(send_workspace_notification, user=doc.name, workspace=suggested_workspace)
+        else:
+            doc.default_workspace = None
+            frappe.msgprint(
+                "This user's default workspace referenced a workspace that no longer exists and has been cleared.",
+                title="Default Workspace Cleared",
+                indicator="orange",
+            )
+        return
+
     if doc.user_type != "System User":
         return
 
-    # Check if roles have changed
-    previous_doc = doc.get_doc_before_save()
-    if previous_doc:
-        old_roles = set(r.role for r in previous_doc.roles)
-        new_roles = set(r.role for r in doc.roles)
-
-        if old_roles == new_roles:
-            # No role change → no action needed
-            return
-
-    # Determine appropriate workspace based on roles
-    roles = [r.role for r in doc.roles]
-    new_workspace = None
-
-    if "Nurse" in roles:
-        new_workspace = "Health"
-    elif "Academic Admin" in roles:
-        new_workspace = "Settings"
-
-    if not new_workspace:
-        # No relevant role → no need to adjust workspace
+    if not suggested_workspace or not roles_changed:
         return
 
-    # Now decide what to do depending on current default_workspace
     if not doc.default_workspace:
-        # No default_workspace set → we set it
-        doc.default_workspace = new_workspace
+        doc.default_workspace = suggested_workspace
         frappe.msgprint(
-            f"This user's default workspace has been set to <b>{new_workspace}</b> based on their role.",
+            f"This user's default workspace has been set to <b>{suggested_workspace}</b> based on their role.",
             title="Default Workspace Updated",
-            indicator="blue"
+            indicator="blue",
         )
-        frappe.enqueue(send_workspace_notification, user=doc.name, workspace=new_workspace)
-    elif doc.default_workspace != new_workspace:
-        # There is already a workspace set, but it does not match the role → inform
+        frappe.enqueue(send_workspace_notification, user=doc.name, workspace=suggested_workspace)
+    elif doc.default_workspace != suggested_workspace:
         frappe.msgprint(
             f"This user already has a default workspace set to <b>{doc.default_workspace}</b>, "
-            f"which is different from the suggested workspace <b>{new_workspace}</b> based on their role. "
-            f"No automatic update applied.",
+            f"which is different from the suggested workspace <b>{suggested_workspace}</b> based on their role. "
+            "No automatic update applied.",
             title="Default Workspace Preserved",
-            indicator="yellow"
+            indicator="yellow",
         )
-    else:
-        # Workspace already matches the role → silent
-        pass
 
 def send_workspace_notification(user, workspace):
     if not frappe.db.exists("User", user):
@@ -103,6 +122,3 @@ def get_users_with_role(doctype, txt, searchfield, start, page_len, filters):
 		"start": start,
 		"page_len": page_len
 	})
-
-
-

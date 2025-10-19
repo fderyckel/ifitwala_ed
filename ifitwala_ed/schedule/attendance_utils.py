@@ -4,20 +4,26 @@
 # ifitwala_ed/schedule/attendace_utils.py
 
 import frappe
-from frappe.utils import now_datetime, getdate, nowdate
-from frappe.utils.caching import redis_cache
 from frappe import _
+from frappe.utils import now_datetime, getdate, nowdate
 from typing import List, Dict
-from itertools import islice
-from ifitwala_ed.schedule.schedule_utils import get_rotation_dates
+from ifitwala_ed.schedule.schedule_utils import (
+	get_rotation_dates,
+	get_school_for_student_group,
+)
 from ifitwala_ed.school_settings.doctype.term.term import get_current_term
 
-ATT_CODE_FIELD 	 = "attendance_code" 
+
+ATT_CODE_FIELD   = "attendance_code"
 ATT_CODE_DOCTYPE = "Student Attendance Code"
 ATT_DOCTYPE      = "Student Attendance"
 SG_SCHEDULE_DT   = "Student Group Schedule"
 SG_DOCTYPE       = "Student Group"
-LIMIT_DEFAULT    = 30          # how many meeting dates to return
+LIMIT_DEFAULT    = 30           # UI paging only
+DEFAULT_PAGE_LEN = 25
+
+MEETING_DATES_TTL = 24 * 60 * 60  # 1 day
+
 
 
 # ---------------------------------------------------------------------
@@ -89,85 +95,42 @@ def fetch_students(student_group: str, start: int = 0, page_length: int = 500):
 
 
 @frappe.whitelist()
-@redis_cache(
-	ttl=86400,
-	make_key=lambda *a, **kw: _meeting_dates_cache_key(
-		kw.get("student_group") or (a[0] if a else ""),
-		kw.get("limit") if "limit" in kw else (a[1] if len(a) > 1 else None)
-	)
-)
-
-def get_meeting_dates(student_group: str, limit: int | None = None) -> list[str]:
-	"""Return recent scheduled dates for a student-group (holiday-filtered)."""
-	limit = int(limit or LIMIT_DEFAULT)
-	sg    = frappe.get_cached_doc(SG_DOCTYPE, student_group)
-
-	sched_name = sg.school_schedule
-	if not sched_name:
-		return []
-
-	rot_dates = get_rotation_dates(
-		sched_name,
-		sg.academic_year,
-		include_holidays=False
-	)
-	rot_map = {}
-	for rd in rot_dates:
-		rot_map.setdefault(rd["rotation_day"], []).append(rd["date"])
-
+def fetch_existing_attendance(student_group: str, attendance_date: str) -> Dict[str, Dict[int, Dict[str, str]]]:
 	rows = frappe.db.get_all(
-		SG_SCHEDULE_DT,
-		filters={"parent": student_group},
-		fields=["rotation_day"],
-		distinct=True
+		ATT_DOCTYPE,
+		filters={"student_group": student_group, "attendance_date": attendance_date},
+		fields=["student", "block_number", "attendance_code", "remark"],
 	)
-	valid_days = {r.rotation_day for r in rows}
-
-	meetings = {d for rd, lst in rot_map.items() if rd in valid_days for d in lst}
-	return [d.isoformat() for d in sorted(meetings, reverse=True)[:limit]]
-
-
-@frappe.whitelist()
-def fetch_existing_attendance(student_group: str, attendance_date: str) -> Dict[str, Dict[int, str]]:
-	"""Return {student: {block: attendance_code}} for existing entries."""
-	rows = frappe.db.get_all(
-		"Student Attendance",
-		filters={
-			"student_group": student_group,
-			"attendance_date": attendance_date,
-		},
-		fields=["student", "block_number", "attendance_code", "remark"]
-	)
-	data = {}
+	data: Dict[str, Dict[int, Dict[str, str]]] = {}
 	for r in rows:
-			data.setdefault(r.student, {})[r.block_number] = {
-					"code":   r.attendance_code,
-					"remark": r.remark or ""
-			}
+		data.setdefault(r.student, {})[r.block_number] = {
+			"code": r.attendance_code,
+			"remark": r.remark or "",
+		}
 	return data
 
 
 @frappe.whitelist()
 def previous_status_map(student_group: str, attendance_date: str) -> Dict[str, str]:
 	"""
-	For UI hints: returns {student: last_code} for the meeting just *before*
-	<attendance_date> in that group's calendar.  Empty dict when none found.
+	UI hint: {student -> last_code} for the meeting *before* <attendance_date>.
 	"""
-	meetings = get_meeting_dates(student_group, limit=LIMIT_DEFAULT + 1)
+	meetings = get_meeting_dates(student_group)
 	try:
-		prev_date = meetings[meetings.index(attendance_date) + 1]
-	except (ValueError, IndexError):
+		idx = meetings.index(attendance_date)
+	except ValueError:
+		return {}
+	if idx == 0:
 		return {}
 
+	prev_date = meetings[idx - 1]
 	rows = frappe.db.get_all(
-    ATT_DOCTYPE,
-    filters={
-        "student_group": student_group,
-        "attendance_date": prev_date,
-    },
-    fields=["student", ATT_CODE_FIELD]
+		ATT_DOCTYPE,
+		filters={"student_group": student_group, "attendance_date": prev_date},
+		fields=["student", ATT_CODE_FIELD],
 	)
 	return {r.student: getattr(r, ATT_CODE_FIELD) for r in rows}
+
 
 @frappe.whitelist()
 def fetch_blocks_for_day(student_group: str, attendance_date: str) -> List[int]:
@@ -200,7 +163,8 @@ def fetch_blocks_for_day(student_group: str, attendance_date: str) -> List[int]:
 
 @frappe.whitelist()
 def bulk_upsert_attendance(payload=None):
-	"""Insert or update many Student Attendance rows in one go."""
+	"""Insert or update many Student Attendance rows in one go (multi-group safe)."""
+	# ── 1) Parse & validate payload ─────────────────────────────────────
 	if isinstance(payload, str):
 		try:
 			payload = frappe.parse_json(payload)
@@ -212,11 +176,9 @@ def bulk_upsert_attendance(payload=None):
 	if not payload:
 		return {"created": 0, "updated": 0}
 
-	fieldkey = "attendance_code"
-	required = {"student", "student_group", "attendance_date", fieldkey, "block_number", "remark"}
-
+	required = {"student", "student_group", "attendance_date", "attendance_code", "block_number", "remark"}
 	for row in payload:
-		missing = required - row.keys()
+		missing = required - set(row.keys())
 		if missing:
 			frappe.throw(f"Missing keys {missing} in payload row.")
 
@@ -224,142 +186,198 @@ def bulk_upsert_attendance(payload=None):
 	roles = set(frappe.get_roles(user))
 	is_admin = "Academic Admin" in roles
 
-	# Preload Student Group metadata
-	sample_group = payload[0]["student_group"]
-	sg = frappe.get_cached_doc("Student Group", sample_group)
-	program_school = (
-		frappe.db.get_value("Program", sg.program, "school")
-		if sg.program else None
-	)
+	# ── 2) Precompute per-group context ─────────────────────────────────
+	from ifitwala_ed.schedule.attendance_utils import get_meeting_dates
+	from ifitwala_ed.schedule.attendance_utils import _get_instructor_ids
+	from ifitwala_ed.schedule.attendance_utils import MEETING_DATES_TTL  # not required, but documents intent
 
-	today = getdate()
+	def _norm_block(b):
+		return None if b in (None, "", "null") else int(b)
 
-	current_term = get_current_term(sg.academic_year)
-	if current_term:
-		if today < getdate(current_term.term_start_date) or today > getdate(current_term.term_end_date):
-			frappe.throw(_("You cannot edit attendance outside the current term."))
-	else:
-		# fallback: no term defined
-		if row["attendance_date"] < nowdate():
-			frappe.throw(_("You cannot modify attendance for past academic years."))	
+	group_names = sorted({r["student_group"] for r in payload})
+	instructor_ids = set(_get_instructor_ids(user)) if not is_admin else set()
 
-	# Preload Student Group Schedule map: (rotation_day, block_number) → row
-	schedule_rows = frappe.get_all(
-		"Student Group Schedule", 
-		filters={"parent": sample_group}, 
-		fields=["rotation_day", "block_number", "instructor", "location"]
+	group_ctx = {}
+	for g in group_names:
+		sg = frappe.get_cached_doc("Student Group", g)
+		group_school = get_school_for_student_group(sg)
+
+		# Term window (today must be within current term if one exists)
+		today = getdate()
+		current_term = get_current_term(sg.academic_year)
+		term_guard = None
+		if current_term:
+			term_guard = (getdate(current_term.term_start_date), getdate(current_term.term_end_date))
+
+		# Student Group Schedule → (rotation_day, block_number) → row
+		schedule_rows = frappe.get_all(
+			"Student Group Schedule",
+			filters={"parent": g},
+			fields=["rotation_day", "block_number", "instructor", "location"]
 		)
-	
-	sched_map = {
-		(row.rotation_day, int(row.block_number)): row for row in schedule_rows 
-	}
+		sched_map = {(int(r.rotation_day), int(r.block_number)): r for r in schedule_rows if r.block_number is not None}
 
-	# Build date → rotation_day map
-	rot_dates = get_rotation_dates(sg.school_schedule, sg.academic_year, include_holidays=False)
-	rotation_map = {rd["date"].isoformat(): rd["rotation_day"] for rd in rot_dates}
+		# Rotation map: date ISO -> rotation_day
+		rot_dates = get_rotation_dates(sg.school_schedule, sg.academic_year, include_holidays=False)
+		rotation_map = {rd["date"].isoformat(): int(rd["rotation_day"]) for rd in rot_dates}
 
-	# NULL never = NULL in SQL → map it to sentinel -1
-	SENTINEL = -1
+		# Valid meeting dates (ISO strings) from cached helper
+		valid_meetings = set(get_meeting_dates(g))
 
-	def norm(b):
-		return SENTINEL if b in (None, "", "null") else int(b)
-	
-	# use the normalised value when we build the search keys
-	keys = {(r["student"], r["attendance_date"], r["student_group"], norm(r.get("block_number"))) for r in payload}
-	keys = list(keys)  # convert to list for SQL placeholders
-	# flatten the list of tuples into params  [stu, date, group, block, stu, …] 
-	params = [v for tup in keys for v in tup]
-	
-	# Build exact match composite key map
-	placeholders = ','.join(['(%s,%s,%s,%s)'] * len(keys))
-	query = f"""
-		SELECT name, student, attendance_date, student_group, COALESCE(block_number, {SENTINEL}) AS block_number, attendance_code, remark 
-		FROM `tabStudent Attendance`
-		WHERE (student, attendance_date, student_group, COALESCE(block_number, {SENTINEL})) IN ({placeholders})
-	"""
-	rows = frappe.db.sql(query, params, as_dict=True)
-
-	existing_map = {
-		(
-			row.student, row.attendance_date.isoformat(), 
-			row.student_group, int(row.block_number)): 
-			(row.name, row.attendance_code, (row.remark or ""))
-		for row in rows
-	}
-
-	remark_txt = (row.get("remark") or "").strip()[:255]
-
-	to_insert, to_update = [], []
-	for row in payload:
-
-		remark_txt = (row.get("remark") or "").strip()[:255]
-
-		key = ( 
-			row["student"], 
-			row["attendance_date"], 
-			row["student_group"], 
-			int(row.get("block_number")), 
-		)
-
-		if not is_admin:
-			ok = frappe.db.exists(
-				"Student Group Instructor",
-				{"parent": row["student_group"], "instructor": ["in", _get_instructor_ids(user)]}
+		# Permission: instructors of this SG (once per group)
+		if is_admin:
+			allowed = True
+		else:
+			allowed = bool(instructor_ids) and bool(
+				frappe.db.exists("Student Group Instructor", {"parent": g, "instructor": ["in", list(instructor_ids)]})
 			)
-			if not ok:
-				frappe.throw("You don't have rights to record attendance for this group.")
 
-		if row["attendance_date"] not in get_meeting_dates(row["student_group"]):
-			frappe.throw(f"{row['attendance_date']} is not a meeting day for the group.")
-
-		rotation_day = rotation_map.get(row["attendance_date"])
-		block_row = sched_map.get((rotation_day, norm(row["block_number"])))
-		
-		enriched = {
-			"name": f"ATT-{row['student']}-{row['attendance_date']}-B{row['block_number']}-T{now_datetime().strftime('%H:%M')}",
-			"student": row["student"],
-			"student_group": row["student_group"],
-			"attendance_date": row["attendance_date"],
-			"attendance_code": row["attendance_code"],
-			"attendance_time": now_datetime().time(),
-			"attendance_method": "Manual",
-			"academic_year": sg.academic_year,
-			"term": sg.term,
-			"program": sg.program,
-			"course": sg.course,
-			"school": program_school,
-			"rotation_day": rotation_day,
-			"block_number": block_row.block_number if block_row else SENTINEL,
-			"instructor": block_row.instructor if block_row else None,
-			"location": block_row.location if block_row else None, 
-			"remark": remark_txt,
-		}
-		
-		if key in existing_map: 
-			existing_name, existing_code, existing_note = existing_map[key] 
-			if row["attendance_code"] != existing_code or remark_txt != (existing_note or ""): 
-				to_update.append({
-					"name": existing_name, 
-					"code": row["attendance_code"], 
-					"remark": remark_txt
-				}) 
-		else: 
-			to_insert.append(enriched)
-
-	if to_insert: 
-		frappe.db.bulk_insert( 
-			doctype="Student Attendance",
-			fields=list(to_insert[0].keys()), 
-			values=[list(r.values()) for r in to_insert], 
-			ignore_duplicates=True 
+		group_ctx[g] = dict(
+			sg=sg,
+			program_school=group_school,
+			term_guard=term_guard,
+			rotation_map=rotation_map,
+			sched_map=sched_map,
+			valid_meetings=valid_meetings,
+			allowed=allowed,
 		)
-		frappe.db.commit()
 
-	for upd in to_update: 
-		frappe.db.set_value( 
-			"Student Attendance", upd["name"], 
-			{"attendance_code": upd["code"], "remark": upd["remark"]}, update_modified=True)
-	
+	# ── 3) Load existing rows with one composite key query (chunked) ────
+	# Use COALESCE for NULL block numbers; sentinel only for lookup, never stored.
+	SENTINEL = -1
+	def _norm_for_key(b):
+		return SENTINEL if b in (None, "", "null") else int(b)
+
+	keys = list({
+		(r["student"], r["attendance_date"], r["student_group"], _norm_for_key(r.get("block_number")))
+		for r in payload
+	})
+
+	existing_map = {}  # (student, date, group, block_norm) -> (name, code, remark)
+	if keys:
+		CHUNK = 1000
+		for i in range(0, len(keys), CHUNK):
+			chunk = keys[i:i+CHUNK]
+			placeholders = ",".join(["(%s,%s,%s,%s)"] * len(chunk))
+			params = [v for tup in chunk for v in tup]
+			rows = frappe.db.sql(
+				f"""
+				SELECT
+					name,
+					student,
+					attendance_date,
+					student_group,
+					COALESCE(block_number, {SENTINEL}) AS block_number,
+					attendance_code,
+					IFNULL(remark, '') AS remark
+				FROM `tabStudent Attendance`
+				WHERE (student, attendance_date, student_group, COALESCE(block_number, {SENTINEL}))
+				      IN ({placeholders})
+				""",
+				params,
+				as_dict=True,
+			)
+			for r in rows:
+				existing_map[(r.student, r.attendance_date.isoformat(), r.student_group, int(r.block_number))] = (
+					r.name, r.attendance_code, r.remark or ""
+				)
+
+	# ── 4) Build inserts / updates (with validation) ────────────────────
+	to_insert, to_update = [], []
+
+	for row in payload:
+		stu = row["student"]
+		grp = row["student_group"]
+		att_date = row["attendance_date"]
+		code = row["attendance_code"]
+		remark_txt = (row.get("remark") or "").strip()[:255]
+		block_norm = _norm_for_key(row.get("block_number"))
+
+		# Permissions
+		ctx = group_ctx.get(grp)
+		if not ctx:
+			frappe.throw(f"Unknown student group: {grp}")
+		if not is_admin and not ctx["allowed"]:
+			frappe.throw("You don't have rights to record attendance for this group.")
+
+		# Term guard
+		if ctx["term_guard"]:
+			start_d, end_d = ctx["term_guard"]
+			if not (start_d <= getdate() <= end_d):
+				frappe.throw(_("You cannot edit attendance outside the current term."))
+		else:
+			# fallback when no term is defined
+			if att_date < nowdate():
+				frappe.throw(_("You cannot modify attendance for past academic years."))
+
+		# Meeting date validation
+		if att_date not in ctx["valid_meetings"]:
+			frappe.throw(f"{att_date} is not a meeting day for the group.")
+
+		# Rotation / schedule lookups
+		rotation_day = ctx["rotation_map"].get(att_date)
+		block_row = None
+		if rotation_day is not None and block_norm != SENTINEL:
+			block_row = ctx["sched_map"].get((rotation_day, int(block_norm)))
+
+		# Composite key for existence test
+		key = (stu, att_date, grp, block_norm)
+
+		if key in existing_map:
+			existing_name, existing_code, existing_note = existing_map[key]
+			if code != existing_code or remark_txt != (existing_note or ""):
+				to_update.append({
+					"name": existing_name,
+					"code": code,
+					"remark": remark_txt,
+				})
+		else:
+			# Insert row (provide full analytics enrichment; keep block_number NULL if unknown)
+			sg = ctx["sg"] 
+			group_school = ctx["program_school"]
+			block_number_value = None if block_norm == SENTINEL else int(block_norm)
+
+			# generate a mostly-unique name (bulk_insert bypasses doc events)
+			stamp = now_datetime().strftime('%H%M%S%f')
+			name_val = f"ATT-{stu}-{att_date}-B{block_number_value or 'NA'}-T{stamp}"
+
+			to_insert.append({
+				"name": name_val,
+				"student": stu,
+				"student_group": grp,
+				"attendance_date": att_date,
+				"attendance_code": code,
+				"attendance_time": now_datetime().time(),
+				"attendance_method": "Manual",
+				"academic_year": sg.academic_year,
+				"term": sg.term,
+				"program": sg.program,
+				"course": sg.course,
+				"school": group_school,
+				"rotation_day": rotation_day,
+				"block_number": block_number_value,
+				"instructor": (block_row.instructor if block_row else None),
+				"location": (block_row.location if block_row else None),
+				"remark": remark_txt,
+			})
+
+	# ── 5) Write changes (one commit) ───────────────────────────────────
+	if to_insert:
+		frappe.db.bulk_insert(
+			doctype="Student Attendance",
+			fields=list(to_insert[0].keys()),
+			values=[list(r.values()) for r in to_insert],
+			ignore_duplicates=True,
+		)  # bulk_insert bypasses events; fine here since we enrich fields ourselves. :contentReference[oaicite:1]{index=1}
+
+	for upd in to_update:
+		frappe.db.set_value(  # updates modified/modified_by automatically. :contentReference[oaicite:2]{index=2}
+			"Student Attendance",
+			upd["name"],
+			{"attendance_code": upd["code"], "remark": upd["remark"]},
+			update_modified=True,
+		)
+
 	frappe.db.commit()
 
 	return {"created": len(to_insert), "updated": len(to_update)}
@@ -367,16 +385,53 @@ def bulk_upsert_attendance(payload=None):
 
 # --- Caching helpers for meeting dates --------------------------------
 
-_CACHE_PREFIX = "att_meeting_dates"
+def _meeting_dates_key(student_group: str) -> str:
+	return f"ifw:meeting_dates:{student_group}"
 
-def _meeting_dates_cache_key(student_group: str, limit: int | None) -> str:
-	# include limit so different page sizes don’t fight over the same cache entry
-	lim = int(limit) if limit is not None else LIMIT_DEFAULT
-	return f"{_CACHE_PREFIX}:{student_group}:L{lim}"
+def get_meeting_dates(student_group: str, *, limit: int | None = None) -> List[str]:
+	"""
+	Return concrete meeting dates for a Student Group as ISO strings, cached.
+	- Uses rotation map with include_holidays=False (attendance days only).
+	- Cache: frappe.cache.set_value(..., expires_in_sec=MEETING_DATES_TTL)
+	"""
+	rc = frappe.cache()
+	key = _meeting_dates_key(student_group)
 
-def invalidate_meeting_dates(student_group: str) -> None:
+	if (cached := rc.get_value(key)) is not None:
+		return cached if limit is None else cached[:limit]
+
+	sg = frappe.get_doc("Student Group", student_group)
+
+	# Resolve schedule name
+	schedule_name = sg.school_schedule
+	if not schedule_name:
+		# prefer SG.school → Program Offering.school → Program.school
+		from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay
+		base_school = get_school_for_student_group(sg)
+		schedule_name = get_effective_schedule_for_ay(sg.academic_year, base_school)
+
+	if not schedule_name:
+		rc.set_value(key, [], expires_in_sec=MEETING_DATES_TTL)
+		return []
+
+	# Build rotation dates (no holidays/weekends)
+	rot = get_rotation_dates(schedule_name, sg.academic_year, include_holidays=False)
+	out = [rd["date"].isoformat() for rd in rot]
+
+	rc.set_value(key, out, expires_in_sec=MEETING_DATES_TTL)
+	return out if limit is None else out[:limit]
+
+
+
+
+def invalidate_meeting_dates(student_group: str | None = None) -> None:
+	rc = frappe.cache()
 	if student_group:
-		frappe.cache().delete_value(_meeting_dates_cache_key(student_group, None))
+		rc.delete_value(_meeting_dates_key(student_group))
+		return
+	for k in rc.get_keys("ifw:meeting_dates:*"):
+		rc.delete_value(k)
+
 
 # ---------------------------------------------------------------------
 # Utility internals

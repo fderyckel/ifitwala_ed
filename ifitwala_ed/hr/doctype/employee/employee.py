@@ -7,8 +7,12 @@ from frappe.utils.nestedset import NestedSet
 from frappe.utils import getdate, today
 from frappe import _, scrub
 from frappe.utils import validate_email_address, add_years, cstr
-from frappe.permissions import add_user_permission, remove_user_permission, has_permission, get_doc_permissions
+from frappe.permissions import add_user_permission, remove_user_permission, get_doc_permissions
 from frappe.contacts.address_and_contact import load_address_and_contact
+
+from ifitwala_ed.utilities.employee_utils import get_user_base_org,	get_user_base_school,	get_descendant_organizations
+
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 from ifitwala_ed.utilities.transaction_base import delete_events
 
@@ -449,25 +453,34 @@ class Employee(NestedSet):
 
 
 	def update_user_permissions(self):
-		if not self.create_user_permission: 
-			return
-		if not has_permission('User Permission', ptype='write', raise_exception=False): 
+		if not self.create_user_permission or not self.user_id:
 			return
 
-		employee_user_permission_exists = frappe.db.exists(
-			"User Permission", 
-			{
-				"allow": 'Employee',
-				"for_value": self.name,
-				"user": self.user_id
-			}
+		# HR / Academic Admin / System Manager: DO NOT create self-UP (it restricts lists)
+		user_roles = set(frappe.get_roles(self.user_id))
+		if user_roles & {"HR Manager", "HR User", "Academic Admin", "System Manager"}:
+			# also cleanup any stale self-UP for this user
+			existing = frappe.db.get_value(
+				"User Permission",
+				{"allow": "Employee", "for_value": self.name, "user": self.user_id},
+				"name",
+			)
+			if existing:
+				frappe.db.delete("User Permission", {"name": existing})
+			return
+
+		# For regular employees, create the self-UP if missing
+		if not frappe.has_permission("User Permission", ptype="write", user=frappe.session.user):
+			return
+
+		exists = frappe.db.exists(
+			"User Permission",
+			{"allow": "Employee", "for_value": self.name, "user": self.user_id},
 		)
+		if not exists:
+			add_user_permission("Employee", self.name, self.user_id)
 
-		if employee_user_permission_exists: 
-			return
 
-		add_user_permission("Employee", self.name, self.user_id)
-		add_user_permission("Organization", self.organization, self.user_id)
 
 	def reset_employee_emails_cache(self):
 		prev_doc = self.get_doc_before_save() or {}
@@ -494,19 +507,59 @@ class Employee(NestedSet):
 
 
 @frappe.whitelist()
-def create_user(employee, user = None, email=None):
-	emp = frappe.get_doc("Employee", employee)
-	privacy = frappe.get_single("Org Settings")
-	birth_date = None
-	phone = None
-	if emp.employee_date_of_birth and privacy.dob_to_user==1:
-		birth_date = emp.employee_date_of_birth
-	if emp.employee_mobile_phone and privacy.mobile_to_user==1:
-		phone = emp.employee_mobile_phone
+def create_user(employee, user=None, email=None):
+	# 0) Basic guards
+	if not employee:
+		frappe.throw(_("Missing Employee"), frappe.ValidationError)
 
-	user = frappe.new_doc("User")
-	user.update({
-		"name": emp.employee_full_name,
+	# 1) Authorize caller
+	caller = frappe.session.user
+	caller_roles = set(frappe.get_roles(caller))
+
+	# Allow System Manager unconditionally
+	is_sysman = "System Manager" in caller_roles
+
+	# Allow HR Manager/HR User only within their org subtree
+	if not is_sysman:
+		is_hr = bool(caller_roles & {"HR Manager", "HR User"})
+		if not is_hr:
+			frappe.throw(_("Only HR can create users from Employee."), frappe.PermissionError)
+
+		# Resolve caller's base org
+		from ifitwala_ed.utilities.employee_utils import get_user_base_org, get_descendant_organizations
+		base_org = get_user_base_org(caller)
+		if not base_org:
+			frappe.throw(_("Your account is not linked to an Active Employee or has no Organization."), frappe.PermissionError)
+
+		# Target employee must be in caller's org subtree
+		target_org = frappe.db.get_value("Employee", employee, "organization")
+		allowed_orgs = set(get_descendant_organizations(base_org) or [])
+		if target_org not in allowed_orgs:
+			frappe.throw(_("You can only create users for Employees in your Organization subtree."), frappe.PermissionError)
+
+	# 2) Load employee (you already enforce form access via PQC/has_permission)
+	emp = frappe.get_doc("Employee", employee)
+
+	# 3) Prevent duplicates
+	if emp.user_id:
+		frappe.throw(_("This Employee already has a User: {0}").format(frappe.bold(emp.user_id)))
+
+	if not emp.employee_professional_email:
+		frappe.throw(_("Please set a Professional Email on the Employee before creating a User."))
+
+	existing = frappe.db.exists("User", {"name": emp.employee_professional_email})
+	if existing:
+		frappe.throw(_("A User with email {0} already exists.").format(frappe.bold(emp.employee_professional_email)))
+
+	# 4) Build the User document (keep your privacy handling)
+	privacy = frappe.get_single("Org Settings")
+	birth_date = emp.employee_date_of_birth if getattr(privacy, "dob_to_user", 0) == 1 else None
+	phone = emp.employee_mobile_phone if getattr(privacy, "mobile_to_user", 0) == 1 else None
+
+	user_doc = frappe.new_doc("User")
+	user_doc.flags.ignore_permissions = True  # ← key line
+	user_doc.update({
+		# NOTE: do NOT force 'name' here; let Frappe name it as the email
 		"email": emp.employee_professional_email,
 		"enabled": 1,
 		"first_name": emp.employee_first_name,
@@ -517,11 +570,15 @@ def create_user(employee, user = None, email=None):
 		"mobile_no": phone
 	})
 
-	user.insert() 
-	emp.user_id = user.name 
+	# 5) Insert the User bypassing DocType perms (authorized above)
+	user_doc.insert(ignore_permissions=True)
+
+	# 6) Link back to Employee and save (you already ignore perms in update_user etc.)
+	emp.user_id = user_doc.name
 	emp.save(ignore_permissions=True)
-	
-	return user.name
+
+	return user_doc.name
+
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, organization=None, is_root=False, is_tree=False):
@@ -568,10 +625,32 @@ def validate_employee_role(doc, method=None, ignore_emp_check=False):
 
 def update_user_permissions(doc, method):
 	# called via User hook
-	if "Employee" in [d.role for d in doc.get("roles")]:
-		if not has_permission('User Permission', ptype='write', raise_exception=False): return
-		employee = frappe.get_doc("Employee", {"user_id": doc.name})
-		employee.update_user_permissions()
+	user_roles = {d.role for d in doc.get("roles")}
+	if "Employee" not in user_roles:
+		return
+
+	# HR / Academic Admin / System Manager: ensure NO self-UP remains
+	if user_roles & {"HR Manager", "HR User", "Academic Admin", "System Manager"}:
+		emp = frappe.db.get_value("Employee", {"user_id": doc.name, "status": "Active"}, "name")
+		if emp:
+			up_name = frappe.db.get_value(
+				"User Permission",
+				{"user": doc.name, "allow": "Employee", "for_value": emp},
+				"name",
+			)
+			if up_name:
+				frappe.db.delete("User Permission", {"name": up_name})
+				frappe.db.commit()
+		return
+
+	# Regular employees: create self-UP (if allowed) via Employee method
+	if not frappe.has_permission("User Permission", ptype="write", user=frappe.session.user):
+		return
+	emp = frappe.db.get_value("Employee", {"user_id": doc.name, "status": "Active"}, "name")
+	if emp:
+		frappe.get_doc("Employee", emp).update_user_permissions()
+
+
 
 def has_user_permission_for_employee(user_name, employee_name):
 	return frappe.db.exists(
@@ -590,3 +669,64 @@ def has_upload_permission(doc, ptype='read', user=None):
 	if get_doc_permissions(doc, user=user, ptype=ptype).get(ptype):
 		return True
 	return doc.user_id == user
+
+def get_permission_query_conditions(user=None):
+	user = user or frappe.session.user
+	if not user or user == "Guest":
+		return None
+
+	roles = set(frappe.get_roles(user))
+
+	# HR: scope by Organization subtree
+	if roles & {"HR Manager", "HR User"}:
+		base_org = get_user_base_org(user)
+		if not base_org:
+			return None
+		orgs = get_descendant_organizations(base_org) or []
+		if not orgs:
+			return "1=0"
+		vals = ", ".join(frappe.db.escape(o) for o in orgs)
+		return f"`tabEmployee`.`organization` IN ({vals})"
+
+	# Academic Admin: scope by School subtree
+	if "Academic Admin" in roles:
+		base_school = get_user_base_school(user)
+		if not base_school:
+			return None
+		schools = get_descendant_schools(base_school) or []
+		if not schools:
+			return "1=0"
+		vals = ", ".join(frappe.db.escape(s) for s in schools)
+		return f"`tabEmployee`.`school` IN ({vals})"
+
+	return None
+
+
+def employee_has_permission(doc, ptype, user):
+	# System Manager full access
+	if "System Manager" in frappe.get_roles(user):
+		return True
+
+	roles = set(frappe.get_roles(user))
+
+	# Read-like checks (list/report/export/print/open)
+	if ptype in {"read", "report", "export", "print"}:
+		# HR → Organization subtree
+		if roles & {"HR Manager", "HR User"}:
+			base_org = get_user_base_org(user)
+			if not base_org:
+				return None
+			desc = set(get_descendant_organizations(base_org) or [])
+			return doc.organization in desc
+
+		# Academic Admin → School subtree
+		if "Academic Admin" in roles:
+			base_school = get_user_base_school(user)
+			if not base_school:
+				return None
+			desc = set(get_descendant_schools(base_school) or [])
+			return doc.school in desc
+
+	# Others fall back to standard perms
+	return None
+
