@@ -208,7 +208,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2025-01-26 10:10:14.045954",
+ "modified": "2025-10-04 20:41:07.219484",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Staff Calendar",
@@ -257,8 +257,15 @@
    "read": 1,
    "report": 1,
    "role": "Employee"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "from_date",
  "sort_order": "DESC",
  "states": []

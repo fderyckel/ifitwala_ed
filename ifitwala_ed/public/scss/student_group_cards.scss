@@ -37,7 +37,11 @@ $btn-padding-x: 1rem;
 
 /* 3) Bootstrap Icons (path then import) */
 $bootstrap-icons-font-dir: "/assets/ifitwala_ed/fonts";
+
+
+/* purgecss start ignore */
 @import "node_modules/bootstrap-icons/font/bootstrap-icons.scss";
+/* purgecss end ignore */
 
 
 /* ───────────────────────────────────────────────────────────

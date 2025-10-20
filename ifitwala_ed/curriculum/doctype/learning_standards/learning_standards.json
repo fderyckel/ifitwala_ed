@@ -1,0 +1,160 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-24 19:21:49.618779",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "framework_name",
+  "framework_version",
+  "column_break_ikae",
+  "subject_area",
+  "program",
+  "section_break_4mkz",
+  "strand",
+  "substrand",
+  "standard_code",
+  "alignment_type",
+  "column_break_ar7o",
+  "standard_description",
+  "notes"
+ ],
+ "fields": [
+  {
+   "description": "e.g., NGSS, Common Core ELA, IB MYP, Cambridge IGCSE",
+   "fieldname": "framework_name",
+   "fieldtype": "Data",
+   "label": "Framework Name"
+  },
+  {
+   "fieldname": "framework_version",
+   "fieldtype": "Data",
+   "label": "Framework Version"
+  },
+  {
+   "fieldname": "subject_area",
+   "fieldtype": "Link",
+   "label": "Subject Area",
+   "options": "Course Group"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
+  },
+  {
+   "columns": 2,
+   "fieldname": "strand",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Strand"
+  },
+  {
+   "columns": 2,
+   "fieldname": "substrand",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Substrand"
+  },
+  {
+   "columns": 1,
+   "description": "e.g., MS-LS1-2, CCSS.ELA-Literacy.RI.7.1",
+   "fieldname": "standard_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Standard Code"
+  },
+  {
+   "columns": 5,
+   "fieldname": "standard_description",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Standard Description"
+  },
+  {
+   "fieldname": "alignment_type",
+   "fieldtype": "Select",
+   "label": "Alignment Type",
+   "options": "Knowledge\nSkill\nPractice\nProcess"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "column_break_ikae",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_4mkz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_ar7o",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-24 19:29:37.456094",
+ "modified_by": "Administrator",
+ "module": "Curriculum",
+ "name": "Learning Standards",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

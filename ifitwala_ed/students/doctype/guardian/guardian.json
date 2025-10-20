@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "GRD-.YYYY.-.#####",
+ "autoname": "format:Guardian-{YYYY}-{####}",
  "creation": "2024-12-11 15:57:16.365779",
  "description": "Doctype to collect information about student's legal guardians",
  "doctype": "DocType",
@@ -74,7 +74,6 @@
    "options": "Female\nMale\nOther\nPrefer Not To Say"
   },
   {
-   "depends_on": "eval: doc.__islocal",
    "fieldname": "guardian_mobile_phone",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -137,7 +136,7 @@
   {
    "fieldname": "work_place",
    "fieldtype": "Data",
-   "label": "work_place"
+   "label": "Work Place"
   },
   {
    "fieldname": "guardian_designation",
@@ -169,11 +168,11 @@
  "image_field": "guardian_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-12 09:03:42.739107",
+ "modified": "2025-10-04 20:39:36.162292",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Guardian",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -197,6 +196,29 @@
    "read": 1,
    "report": 1,
    "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
    "share": 1,
    "write": 1
   },
@@ -237,18 +259,13 @@
    "share": 1
   },
   {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Admission Officer",
-   "share": 1,
-   "write": 1
+   "role": "Accreditation Visitor",
+   "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "guardian_first_name, guardian_last_name, guardian_email, guardian_mobile_phone",
  "sort_field": "modified",
  "sort_order": "DESC",

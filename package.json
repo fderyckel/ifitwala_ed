@@ -1,6 +1,6 @@
 {
   "name": "ifitwala_ed",
-  "description": "An Open Source School and Education ERP System powered by the Frappe Framework",
+  "description": "An Open Source Education ERP System powered by the Frappe Framework",
   "repository": {
     "type": "git",
     "url": "https://github.com/fderyckel/ifitwala_ed.git"
@@ -27,8 +27,13 @@
     "@rollup/plugin-terser": "^0.4.4",
     "autoprefixer": "^10.4.21",
     "cssnano": "^7.0.7",
+    "eslint": "^9.36.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-vue": "^9.29.1",
     "postcss": "^8.5.4",
     "postcss-import": "^16.1.1",
+    "prettier": "^3.6.2",
     "rollup": "^4.41.1",
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-postcss": "^4.0.2",

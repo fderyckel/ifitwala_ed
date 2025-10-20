@@ -28,6 +28,7 @@
   },
   {
    "columns": 2,
+   "fetch_from": "student.student_full_name",
    "fieldname": "sibling_name",
    "fieldtype": "Data",
    "in_global_search": 1,
@@ -52,12 +53,13 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-29 23:10:53.370433",
+ "modified": "2025-09-27 13:31:49.337005",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Sibling",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

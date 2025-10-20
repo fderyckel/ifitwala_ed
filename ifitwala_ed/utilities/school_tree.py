@@ -13,9 +13,29 @@ class ParentRuleViolation(frappe.ValidationError):
     """Raised when a child record violates parent↔child inheritance rules."""
 
 
+def get_root_school() -> str | None:
+	"""Return the root School (lft == 1) if present, cached for reuse."""
+	cache = frappe.cache()
+	key = "ifitwala_ed:school_tree:root_school"
+	cached = cache.get_value(key)
+	if cached:
+		return cached if cached != "__none__" else None
+
+	root = frappe.db.get_value("School", {"lft": 1}, "name")
+	if not root:
+		root = frappe.db.get_value("School", {"parent_school": ["in", [None, ""]]}, "name")
+	cache.set_value(key, root or "__none__", expires_in_sec=CACHE_TTL)
+	return root
+
+
 def _cache_key(doctype, school, extra):
     # Make a short, deterministic cache key
     return f"{doctype}:{school}:" + ":".join(f"{k}={v}" for k, v in sorted(extra.items()))
+
+
+def _is_adminish(user: str) -> bool:
+	"""True if user is Administrator or has System Manager role."""
+	return user == "Administrator" or ("System Manager" in frappe.get_roles(user))
 
 
 def get_effective_record(
@@ -72,10 +92,17 @@ def get_effective_record(
 # an autocomplete/search function used in for js ui autocomplete
 # in the school_calendar.js and in the school_schedule.js
 @frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
 def get_school_descendants(doctype, txt, searchfield, start, page_len, filters):
+	filters = filters or {}
 	root = filters.get("root")
+
+	# If no explicit root is provided, try user default; for admin/system manager, fallback to root school
+	if not root:
+		root = frappe.defaults.get_user_default("school") or (get_root_school() if _is_adminish(frappe.session.user) else None)
 	if not root:
 		return []
+
 	chain = [root] + get_descendants_of("School", root)
 
 	rows = frappe.db.get_list(
@@ -89,22 +116,37 @@ def get_school_descendants(doctype, txt, searchfield, start, page_len, filters):
 
 
 # Used to get a list of schools that are descendants of a given school
-# Used in program enrollment. 
+# Used in program enrollment.
 @frappe.whitelist()
-def get_descendant_schools(user_school):
-    # Defensive: Return [] if no school set
-    if not user_school:
-        return []
-    # Use the NestedSet lft/rgt logic
-    school_doc = frappe.get_doc("School", user_school)
-    return [
-        s.name
-        for s in frappe.get_all(
-            "School",
-            filters={"lft": (">=", school_doc.lft), "rgt": ("<=", school_doc.rgt)},
-            fields=["name"]
-        )
-    ]
+def get_descendant_schools(user_school: str | None = None):
+	"""
+	Return user_school + all of its descendants.
+	- If user_school is None: use defaults, else for Administrator/System Manager, fall back to the root school.
+	- Returns [] if nothing resolvable.
+	"""
+	# Prefer explicit argument if provided
+	if not user_school:
+		# Try the user's default school first
+		user_school = frappe.defaults.get_user_default("school")
+
+	# Allow root fallback for admin/system manager when no default school
+	if not user_school and _is_adminish(frappe.session.user):
+		user_school = get_root_school()
+
+	# Defensive: Return [] if still nothing
+	if not user_school:
+		return []
+
+	# Use the NestedSet lft/rgt logic
+	school_doc = frappe.get_doc("School", user_school)
+	return [
+		s.name
+		for s in frappe.get_all(
+			"School",
+			filters={"lft": (">=", school_doc.lft), "rgt": ("<=", school_doc.rgt)},
+			fields=["name"]
+		)
+	]
 
 # Used to get a list of schools that are ancestors of a given school
 # Used in Term.
@@ -149,7 +191,29 @@ def is_leaf_school(school):
 	descendants = get_descendant_schools(school)
 	return len(descendants) == 1  # Only itself in the list
 
+
 @frappe.whitelist()
 def get_user_default_school():
-	row = frappe.db.get_value("Employee", {"user_id": frappe.session.user, "status": "Active"}, ["school"], as_dict=True)
-	return row.school if row and row.school else None
+	"""
+	Return the effective default school for the current user:
+	1) frappe.defaults user default
+	2) Employee.school (active), if any
+	3) For Administrator/System Manager: root school
+	"""
+	user = frappe.session.user
+
+	# 1) explicit user default
+	school = frappe.defaults.get_user_default("school", user=user)
+	if school:
+		return school
+
+	# 2) linked Employee (common for staff)
+	row = frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, ["school"], as_dict=True)
+	if row and row.school:
+		return row.school
+
+	# 3) admin/system manager fallback to root
+	if _is_adminish(user):
+		return get_root_school()
+
+	return None

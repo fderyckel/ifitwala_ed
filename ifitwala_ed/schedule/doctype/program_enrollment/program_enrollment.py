@@ -1,49 +1,145 @@
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
-import frappe 
+import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import getdate, get_link_to_form
+from frappe.utils import getdate, get_link_to_form, nowdate
+from frappe.utils import get_fullname
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 from ifitwala_ed.utilities.school_tree import get_effective_record, ParentRuleViolation
 from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
+from typing import Optional, Sequence
 
 class ProgramEnrollment(Document):
 
-	def validate(self):
+	def before_insert(self):
+		# 0) Require + load offering
+		if not getattr(self, "program_offering", None):
+			frappe.throw(_("Program Offering is required."))
+		off = _offering_core(self.program_offering)
+		if not off:
+			frappe.throw(_("Invalid Program Offering {0}.").format(
+				get_link_to_form("Program Offering", self.program_offering)))
+
+		# 1) Mirror authoritative values
+		if not self.program:
+			self.program = off.program
+		elif self.program != off.program:
+			frappe.throw(_("Enrollment Program {0} does not match Program Offering's Program {1}.")
+				.format(get_link_to_form("Program", self.program), get_link_to_form("Program", off.program)))
+
+		self.school = off.school
+		if off.student_cohort:
+			self.cohort = off.student_cohort
+
+		# 2) AY from offering spine (autofill when unique)
+		ay_names = _offering_ay_names(self.program_offering)
+		if self.academic_year:
+			if self.academic_year not in ay_names:
+				frappe.throw(_("Academic Year {0} is not part of Program Offering {1}.")
+					.format(get_link_to_form("Academic Year", self.academic_year),
+									get_link_to_form("Program Offering", self.program_offering)))
+		else:
+			if len(ay_names) == 1:
+				self.academic_year = ay_names[0]
+			else:
+				frappe.throw(_("Please choose an Academic Year from this Program Offering: {0}.")
+					.format(", ".join(ay_names)))
+
+		# 3) Resolve AY via school tree guard (your helper)
 		self._resolve_academic_year()
+
+		# 4) Seed required courses if empty (same behavior you had)
+		if not self.courses:
+			self.extend("courses", self.get_courses())
+
+		# 5) Student name
+		if not self.student_name and self.student:
+			self.student_name = frappe.db.get_value("Student", self.student, "student_full_name")
+
+
+	def validate(self):
+
+		# 0) Require program_offering, resolve it once
+		if not getattr(self, "program_offering", None):
+			frappe.throw(_("Program Offering is required."))
+
+		off = _offering_core(self.program_offering)
+		if not off:
+			frappe.throw(_("Invalid Program Offering {0}.").format(get_link_to_form("Program Offering", self.program_offering)))
+
+		# 1) Mirror authoritative values from offering
+		if not self.program:
+			self.program = off.program
+		elif self.program != off.program:
+			frappe.throw(_("Enrollment Program {0} does not match Program Offering's Program {1}.")
+				.format(get_link_to_form("Program", self.program), get_link_to_form("Program", off.program)))
+
+		# School/cohort always mirror offering (program no longer carries school)
+		self.school = off.school
+		if off.student_cohort:
+			self.cohort = off.student_cohort
+
+		# 2) Academic Year must come from offering AY spine
+		ay_spine = _offering_ay_spine(self.program_offering)
+		ay_names = [r["academic_year"] for r in ay_spine]
+		if self.academic_year:
+			if self.academic_year not in ay_names:
+				frappe.throw(_("Academic Year {0} is not part of Program Offering {1}.")
+					.format(get_link_to_form("Academic Year", self.academic_year), get_link_to_form("Program Offering", self.program_offering)))
+		else:
+			if len(ay_names) == 1:
+				self.academic_year = ay_names[0]
+			else:
+				frappe.throw(_("Please choose an Academic Year from this Program Offering: {0}.").format(", ".join(ay_names)))
+
+		self._resolve_academic_year()
+		self._validate_offering_ay_membership()
+		self._validate_school_and_cohort_lock()
+		self._validate_terms_membership_and_order()
+		self._validate_dropped_requires_date()
 		self.validate_duplicate_course()
 		self.validate_duplication()
+
 		if not self.student_name:
 			self.student_name = frappe.db.get_value("Student", self.student, "student_full_name")
 		if not self.courses:
-			self.extend("courses", self.get_courses()) 
+			self.extend("courses", self.get_courses())
 
-		if self.academic_year: 
+		if self.academic_year:
 			year_dates = frappe.get_doc("Academic Year", self.academic_year)
-			if self.enrollment_date: 
-				if getdate(self.enrollment_date) < getdate(year_dates.year_start_date): 
+			if self.enrollment_date:
+				if getdate(self.enrollment_date) < getdate(year_dates.year_start_date):
 					frappe.throw(_("The enrollment date for this program is before the start of the academic year {0}. The academic year starts on {1}.  Please revise the date.").format(
-						get_link_to_form("Academic Year", self.academic_year), 
+						get_link_to_form("Academic Year", self.academic_year),
 						year_dates.year_start_date
 					))
-				if getdate(self.enrollment_date) > getdate(year_dates.year_end_date): 
+				if getdate(self.enrollment_date) > getdate(year_dates.year_end_date):
 					frappe.throw(_("The enrollment date for this program is after the start of the academic year {0}. The academic year ends on {1}.  Please revise the date.").format(
-						get_link_to_form("Academic Year", self.academic_year), 
+						get_link_to_form("Academic Year", self.academic_year),
 						year_dates.year_end_date
 					))
 		self._validate_course_terms()
 
-		# Ensure the academic year and program belong to the same school
-		if self.program and not self.school: 
-			self.school = frappe.db.get_value("Program", self.program, "school")			
 
-	def before_submit(self):
+	def before_save(self):
+		# A) Only one active enrollment per student (if not archived)
 		self.validate_only_one_active_enrollment()
 
-	def on_submit(self):
+		# B) Traceability: convert deletions to Dropped (Option B)
+		if not self.is_new():
+			prior = self._db_course_rows()
+			now_set = self._current_course_set()
+			removed = [prior[c] for c in (set(prior.keys()) - now_set)]
+			self._soft_convert_deletions_to_dropped(removed)
+
+	def on_update(self):
+		self.update_student_joining_date()
+
+	def on_trash(self):
+		# when deleting an enrollment, recompute from remaining rows
 		self.update_student_joining_date()
 
 
@@ -55,7 +151,7 @@ class ProgramEnrollment(Document):
 			self.academic_year = get_effective_record(
 				"Academic Year",
 				self.school,
-				extra_filters={"archived": 0},	
+				extra_filters={"archived": 0},
 			)
 			if not self.academic_year:
 				raise ParentRuleViolation(
@@ -72,88 +168,231 @@ class ProgramEnrollment(Document):
 				.format(self.academic_year, ay_school)
 			)
 
-	def validate_duplicate_course(self):
-		seen_courses = []
-		program_courses = {row[0] for row in frappe.db.get_values("Program Course", filters = {"parent": self.program}, fieldname = "course")}
-		for course_entry in self.courses:
-			if course_entry.course in seen_courses:
-				frappe.throw(_("Course {0} entered twice.").format(
-					get_link_to_form("Course",course_entry.course))
-				)
-			else:
-				seen_courses.append(course_entry.course)
-			
-			if course_entry.course not in program_courses:
-				frappe.throw(_("Course {0} is not part of program {1}").format(
-					get_link_to_form("Course", course_entry.course),
-					get_link_to_form("Program", self.program))
-				)
 
-	# you cannot enrolled twice for a same program, same year, same term.
-	def validate_duplication(self): 
-		existing_enrollment_name = frappe.db.exists("Program Enrollment", { 
-			"student": self.student, 
-			"academic_year": self.academic_year, 
-			"program": self.program, 
-			"name": ("!=", self.name)
-		})
-		if existing_enrollment_name: 
-			student_name = frappe.db.get_value("student", self.student, "student_name")
-			link_to_existing_enrollment = get_link_to_form("Program Enrollment", existing_enrollment_name)
-			frappe.throw(_("Student {0} is already enrolled in this program for this term. See existing enrollment {1}").format(student_name, link_to_existing_enrollment)) 
-			
-	def validate_only_one_active_enrollment(self): 
+	def validate_only_one_active_enrollment(self):
 		"""
     Checks if there's another active (archived=0) Program Enrollment for the same student.
     Raises an error if another active enrollment is found.
-    """ 
-		if self.archived: 
-			return # if archived is checked. 
-		
-		existing_enrollment = frappe.db.get_value( 
-			"Program Enrollment", 
-			{ 
-				"student": self.student, 
-				"archived": 0,  # Check for active enrollments 
-				"name": ("!=", self.name)  # Exclude the current document 
-			}, 
-			["name", "program", "academic_year"],  # Retrieve name, program and year for the error message 
+    """
+		if self.archived:
+			return # if archived is checked.
+
+		existing_enrollment = frappe.db.get_value(
+			"Program Enrollment",
+			{
+				"student": self.student,
+				"archived": 0,  # Check for active enrollments
+				"name": ("!=", self.name)  # Exclude the current document
+			},
+			["name", "program", "academic_year"],  # Retrieve name, program and year for the error message
 			as_dict=True
-		) 
-		
-		if existing_enrollment: 
-			frappe.throw(_( 
+		)
+
+		if existing_enrollment:
+			frappe.throw(_(
 				"Student {0} already has an active Program Enrollment for program {1} in academic year {2}.  See {3}."
-			).format( 
-					self.student_name, 
-					get_link_to_form("Program", existing_enrollment.program), 
-					existing_enrollment.academic_year, 
+			).format(
+					self.student_name,
+					get_link_to_form("Program", existing_enrollment.program),
+					existing_enrollment.academic_year,
 					get_link_to_form("Program Enrollment", existing_enrollment.name)
 					),title=_("Active Enrollment Exists") # added for better UI message.
       )
 
-	# If a student is in a program and that program has required courses (non elective), then these courses are loaded automatically.
+
+	def validate_duplicate_course(self):
+		"""ensure courses belong to Program Offering Course spans; prevent duplicates."""
+		seen_courses = set()
+		off_idx = _offering_courses_index(self.program_offering)
+
+		for row in self.courses:
+			# duplicate
+			if row.course in seen_courses:
+				frappe.throw(_("Course {0} entered twice.").format(get_link_to_form("Course", row.course)))
+			seen_courses.add(row.course)
+
+			# existence in offering
+			if row.course not in off_idx:
+				frappe.throw(_("Course {0} is not part of Program Offering {1}.").format(
+					get_link_to_form("Course", row.course),
+					get_link_to_form("Program Offering", self.program_offering))
+				)
+
+			# compute enrollment window within chosen AY (narrow by terms if provided)
+			enr_ay_start, enr_ay_end = _ay_bounds_for(self.program_offering, self.academic_year)
+			enr_start, enr_end = enr_ay_start, enr_ay_end
+			if row.term_start:
+				_school_1, _ay_1, ts_start, _term_end_ignored = _term_meta(row.term_start)
+				if ts_start:
+					enr_start = max(enr_start, getdate(ts_start))
+			if row.term_end:
+				_school_2, _ay_2, te_start, te_end = _term_meta(row.term_end)
+				if te_end or te_start:
+					enr_end = min(enr_end, getdate(te_end) if te_end else getdate(te_start))
+
+			if enr_start and enr_end and enr_start > enr_end:
+				frappe.throw(
+					_("For course <b>{0}</b>: The start term window is after the end term window.")
+					.format(row.course or "")
+				)
+
+			# require overlap with at least one offering span
+			ok = any((enr_start <= span["end"]) and (span["start"] <= enr_end) for span in off_idx[row.course])
+			if not ok:
+				frappe.throw(_("Course {0} is not delivered during the selected Academic Year/Term window for this Program Offering.")
+					.format(get_link_to_form("Course", row.course)))
+
+	# you cannot enroll twice for the same offering and year
+	def validate_duplication(self):
+		existing_enrollment_name = frappe.db.exists("Program Enrollment", {
+			"student": self.student,
+			"program_offering": self.program_offering,
+			"academic_year": self.academic_year,
+			"name": ("!=", self.name)
+		})
+		if existing_enrollment_name:
+			student_name = self.student_name or frappe.db.get_value("student", self.student, "student_name")
+			link_to_existing_enrollment = get_link_to_form("Program Enrollment", existing_enrollment_name)
+			frappe.throw(_("Student {0} is already enrolled in this Program Offering for this academic year. See {1}").format(student_name, link_to_existing_enrollment))
+
+
+	def _validate_offering_ay_membership(self):
+		"""Enrollment AY must belong to the Program Offering spine."""
+		if not (self.program_offering and self.academic_year):
+			return
+		ay_names = _offering_ay_names(self.program_offering)
+		if self.academic_year not in ay_names:
+			frappe.throw(
+				_("Academic Year {0} is not part of Program Offering {1}.")
+				.format(
+					get_link_to_form("Academic Year", self.academic_year),
+					get_link_to_form("Program Offering", self.program_offering),
+				)
+			)
+
+
+	def _validate_terms_membership_and_order(self):
+		"""Hard guards on each row's term selection:
+		- Term order: end >= start (when both are set and have dates)
+		- Term membership: each term's AY must be allowed (enrollment AY and/or offering spine)
+		"""
+		if not getattr(self, "courses", None):
+			return
+
+		# Build the allowed AY set
+		allowed_ays = set()
+		if self.academic_year:
+			allowed_ays.add(self.academic_year)
+		# Include all AYs from the offering spine
+		allowed_ays.update(_offering_ay_names(self.program_offering) or [])
+
+		# Batch-fetch term metadata
+		term_names = {r.term_start for r in self.courses if r.term_start} | {r.term_end for r in self.courses if r.term_end}
+		meta = _term_meta_many(term_names)
+
+		# Collect violations for a single, crisp error
+		membership_violations = []  # [(course, fld_name, term_name, term_ay)]
+		order_violations = []       # [(course, term_start, start_date, term_end, end_date)]
+
+		for r in self.courses:
+			ts = r.term_start and meta.get(r.term_start) or None
+			te = r.term_end and meta.get(r.term_end) or None
+
+			# Membership checks
+			if ts and ts.academic_year and allowed_ays and ts.academic_year not in allowed_ays:
+				membership_violations.append((r.course, "term_start", r.term_start, ts.academic_year))
+			if te and te.academic_year and allowed_ays and te.academic_year not in allowed_ays:
+				membership_violations.append((r.course, "term_end", r.term_end, te.academic_year))
+
+			# Order check (only if both dates exist)
+			if ts and te and ts.term_start_date and te.term_end_date:
+				if te.term_end_date < ts.term_start_date:
+					order_violations.append((r.course, r.term_start, ts.term_start_date, r.term_end, te.term_end_date))
+
+		# Throw with consolidated messages (if any)
+		err_lines = []
+		if membership_violations:
+			err_lines.append("<b>Terms must belong to the selected Academic Year or the Program Offering span:</b>")
+			for course, fld, term, term_ay in membership_violations:
+				err_lines.append(f"• {frappe.bold(course or '')} — {frappe.bold(fld)} = {term} (AY {term_ay})")
+
+		if order_violations:
+			if err_lines:
+				err_lines.append("")  # blank line between sections
+			err_lines.append("<b>Term order invalid (End before Start):</b>")
+			for course, tstart, dstart, tend, dend in order_violations:
+				err_lines.append(f"• {frappe.bold(course or '')} — {tstart} ({dstart}) → {tend} ({dend})")
+
+		if err_lines:
+			frappe.throw("<br>".join(err_lines))
+
+
+	def _validate_school_and_cohort_lock(self):
+		if not self.program_offering:
+			return
+		off = _offering_core(self.program_offering)
+		if not off:
+			# earlier validate() already checks, but keep this idempotent
+			return
+		if off.get("school") and self.school and self.school != off["school"]:
+			frappe.throw(_("School must match Program Offering ({0}).").format(off["school"]))
+		target_cohort = off.get("student_cohort")
+		if target_cohort and self.cohort and self.cohort != target_cohort:
+			frappe.throw(_("Cohort must match Program Offering ({0}).").format(target_cohort))
+
+
+	def _validate_dropped_requires_date(self):
+		missing = [r.course for r in (self.courses or []) if r.status == "Dropped" and not r.dropped_date]
+		if missing:
+			lines = "<br>".join(f"• {frappe.bold(c or '')}" for c in missing)
+			frappe.throw(_("Dropped courses require a Dropped Date:<br>{0}").format(lines))
+
+		# require reason
+		missing_reason = [r.course for r in (self.courses or []) if r.status == "Dropped" and not (r.dropped_reason or "").strip()]
+		if missing_reason:
+			lines = "<br>".join(f"• {frappe.bold(c or '')}" for c in missing_reason)
+			frappe.msgprint(_("Think about adding a Dropped Reason:<br>{0}").format(lines))
+
+	# If a student is in a program offering and that offering has required courses,
+	# load those that overlap the chosen Academic Year (AY).
 	@frappe.whitelist()
 	def get_courses(self):
-		rows = frappe.db.sql("""
-			SELECT course
-			FROM `tabProgram Course`
-			WHERE parent = %s AND required = 1
-			ORDER BY idx
-			""", (self.program), as_dict=1)
-		
-		# Get bounds once per call
-		bounds = None
-		if self.school:
-			bounds = get_school_term_bounds(self.school, self.academic_year)
-			
-		for row in rows:
-			row["status"] = "Enrolled"
+		# Defensive: require offering + AY
+		if not (self.program_offering and self.academic_year):
+			return []
 
-			term_long = frappe.db.get_value("Course", row["course"], "term_long")
+		# Bounds for the selected AY slice within the offering
+		enr_ay_start, enr_ay_end = _ay_bounds_for(self.program_offering, self.academic_year)
+		if not (enr_ay_start and enr_ay_end):
+			return []
+
+		# Build an index of offering courses with effective spans
+		off_idx = _offering_courses_index(self.program_offering)
+
+		rows = []
+		# Include only REQUIRED courses that overlap the enrollment AY
+		for course, spans in off_idx.items():
+			if not any(span.get("required") for span in spans):
+				continue
+			# Does any span overlap the AY window?
+			has_overlap = any((enr_ay_start <= s["end"]) and (s["start"] <= enr_ay_end) for s in spans)
+			if not has_overlap:
+				continue
+
+			item = {"course": course, "status": "Enrolled"}
+
+			# Optional, same behavior you had: if course doesn’t declare long-term bounds,
+			# default term_start/term_end to the school’s AY term bounds for convenience.
+			bounds = None
+			if self.school:
+				bounds = get_school_term_bounds(self.school, self.academic_year)
+
+			term_long = frappe.db.get_value("Course", course, "term_long")
 			if not term_long and bounds:
-				row["term_start"] = bounds.get("term_start")
-				row["term_end"] = bounds.get("term_end")
+				item["term_start"] = bounds.get("term_start")
+				item["term_end"]   = bounds.get("term_end")
+
+			rows.append(item)
 
 		return rows
 
@@ -163,6 +402,7 @@ class ProgramEnrollment(Document):
 		date = frappe.db.sql("""select min(enrollment_date) from `tabProgram Enrollment` where student= %s""", self.student)
 		if date and date[0] and date[0][0]:
 			frappe.db.set_value("Student", self.student, "student_joining_date", date[0][0])
+
 
 	# Ensure all courses use terms from one valid source: either the school or the fallback ancestor, and term_start <= term_end.
 	def _validate_course_terms(self):
@@ -203,28 +443,264 @@ class ProgramEnrollment(Document):
 						),
 						title=_("Invalid Term Sequence")
 					)
-		
-# from JS. to filter out course that are only present in the program list of courses.
-@frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def get_program_courses(doctype, txt, searchfield, start, page_len, filters):
 
-	return frappe.db.sql(f"""select course, course_name 
-		FROM `tabProgram Course`
-		WHERE parent = %(program)s AND course LIKE %(txt)s
-		ORDER BY
-			IF(LOCATE(%(_txt)s, course), LOCATE(%(_txt)s, course), 99999),
-			idx DESC,
-			`tabProgram Course`.course ASC
-		LIMIT {start}, {page_len}""", 
-		{
-			"txt": f"%{txt}%",
-			"_txt": txt.replace('%', ''),
-			"program": filters["program"],
-			"start": start,
-			"page_len": page_len
-			}
+
+	# --- Traceability helpers (soft-convert deletions to Dropped) ----------------
+
+	def _db_course_rows(self) -> dict[str, dict]:
+		"""Snapshot of existing child rows in DB keyed by course (fast, cached)."""
+		# Request-scope memoization to avoid repeated DB calls in the same save cycle
+		cache_attr = "_cached_db_course_rows"
+		if hasattr(self, cache_attr):
+			return getattr(self, cache_attr)
+
+		if not self.name:
+			setattr(self, cache_attr, {})
+			return {}
+
+		# Single, tight SQL — faster than get_all for this hot path
+		rows = frappe.db.sql(
+			"""
+			SELECT
+				course,
+				status,
+				term_start,
+				term_end,
+				dropped_date,
+				dropped_reason,
+				idx
+			FROM `tabProgram Enrollment Course`
+			WHERE parent = %s
+				AND parenttype = 'Program Enrollment'
+				AND IFNULL(course, '') != ''
+			""",
+			(self.name,),
+			as_dict=True,
+		)
+
+		# Key by course; if duplicates exist, keep the one with the highest idx (latest)
+		result: dict[str, dict] = {}
+		for r in rows:
+			c = r.get("course")
+			if not c:
+				continue
+			if (c not in result) or (int(r.get("idx") or 0) > int(result[c].get("idx") or 0)):
+				result[c] = r
+
+		# We don’t need idx outside; drop to keep payload small/clean
+		for v in result.values():
+			v.pop("idx", None)
+
+		setattr(self, cache_attr, result)
+		return result
+
+
+
+	def _current_course_set(self) -> set[str]:
+		return {r.course for r in (self.courses or []) if getattr(r, "course", None)}
+
+	def _soft_convert_deletions_to_dropped(self, removed: list[dict]):
+		if not removed:
+			return
+
+		existing_now = self._current_course_set()
+		added = 0
+		user_full = get_fullname(frappe.session.user)
+		user_id = frappe.session.user
+		today = nowdate()
+
+		for r in removed:
+			course = r.get("course")
+			if not course or course in existing_now:
+				continue
+
+			row = self.append("courses", {})
+			row.course = course
+			row.status = "Dropped"
+			row.dropped_date = r.get("dropped_date") or today
+			row.term_start = r.get("term_start")
+			row.term_end = r.get("term_end")
+
+			# NEW: preserve existing reason if any; else write an auto-reason
+			prev_reason = (r.get("dropped_reason") or "").strip() if isinstance(r, dict) else ""
+			row.dropped_reason = prev_reason or (
+				f"Auto-dropped on {today} by {user_full} ({user_id}) — row deleted from grid"
+			)
+			added += 1
+
+		if added:
+			frappe.msgprint(
+				_("Direct deletions were converted to 'Dropped' with a Dropped Date and Reason to preserve history."),
+				indicator="blue",
+				title=_("Enrollment Traceability"),
+			)
+
+
+
+
+# -------------------------
+# Program Offering helpers
+# -------------------------
+
+def _offering_ay_names(offering: str) -> list[str]:
+	"""Ordered AY names from the offering child table (grid order)."""
+	if not offering:
+		return []
+	return frappe.get_all(
+		"Program Offering Academic Year",
+		filters={"parent": offering, "parenttype": "Program Offering"},
+		pluck="academic_year",
+		order_by="idx asc",
+	) or []
+
+def _offering_core(offering_name: str) -> dict | None:
+	"""Return head fields of Program Offering (strict field names)."""
+	if not offering_name:
+		return None
+	return frappe.db.get_value(
+		"Program Offering",
+		offering_name,
+		["program", "school", "student_cohort", "start_date", "end_date"],
+		as_dict=True,
 	)
+
+
+def _offering_ay_spine(offering_name: str) -> list[dict]:
+	"""
+	Return [{'academic_year', 'start', 'end'}...] using *real* bounds
+	from the Academic Year doctype. Child rows only provide ordering (idx).
+	"""
+	rows = frappe.get_all(
+		"Program Offering Academic Year",
+		filters={"parent": offering_name, "parenttype": "Program Offering"},
+		fields=["academic_year", "idx"],
+		order_by="idx asc",
+	)
+	if not rows:
+		return []
+
+	ay_names = [r["academic_year"] for r in rows if r.get("academic_year")]
+	if not ay_names:
+		return []
+
+	# Batch fetch true AY bounds
+	ay_meta = {
+		r.name: r for r in frappe.get_all(
+			"Academic Year",
+			filters={"name": ("in", ay_names)},
+			fields=["name", "year_start_date", "year_end_date"],
+		)
+	}
+
+	out = []
+	for r in rows:
+		name = r.get("academic_year")
+		if not name:
+			continue
+		meta = ay_meta.get(name)
+		# Skip malformed AYs (don’t fabricate "today")
+		if not meta or not (meta.year_start_date and meta.year_end_date):
+			continue
+		out.append({
+			"academic_year": name,
+			"start": getdate(meta.year_start_date),
+			"end": getdate(meta.year_end_date),
+		})
+	return out
+
+def _ay_bounds_for(offering_name: str, ay_name: str) -> tuple[object, object]:
+	"""(start,end) of an AY from the offering spine; avoids fetching the AY doc."""
+	for r in _offering_ay_spine(offering_name):
+		if r["academic_year"] == ay_name:
+			return r["start"], r["end"]
+	return (None, None)
+
+
+def _term_meta(term: str) -> tuple[str | None, str | None, object | None, object | None]:
+	"""(school, academic_year, term_start_date, term_end_date) for Term."""
+	return frappe.db.get_value(
+		"Term", term, ["school", "academic_year", "term_start_date", "term_end_date"], as_dict=False
+	) or (None, None, None, None)
+
+def _term_meta_many(term_names: set[str]) -> dict[str, dict]:
+	"""Batch fetch term metadata to minimize DB round-trips."""
+	if not term_names:
+		return {}
+	rows = frappe.get_all(
+		"Term",
+		filters={"name": ("in", list(term_names))},
+		fields=["name", "school", "academic_year", "term_start_date", "term_end_date"],
+	)
+	return {r.name: r for r in rows}
+
+
+def _compute_effective_course_span(offering_name: str, roc: dict) -> tuple[object, object]:
+	"""
+	Compute effective (start_dt, end_dt) for a Program Offering Course row.
+	Child fields: start_academic_year/end_academic_year, start_academic_term/end_academic_term.
+	"""
+	say = roc.get("start_academic_year")
+	eay = roc.get("end_academic_year")
+
+	s_ay_start, s_ay_end_unused = _ay_bounds_for(offering_name, say)
+	e_ay_start_unused, e_ay_end = _ay_bounds_for(offering_name, eay)
+	if not (s_ay_start and e_ay_end):
+		return (getdate("1900-01-01"), getdate("1899-12-31"))
+
+	start_dt = s_ay_start
+	end_dt = e_ay_end
+
+	# Narrow by terms (use start date of start term; end date of end term if available)
+	ts_name = roc.get("start_academic_term")
+	if ts_name:
+		ts_school_ignore, ts_ay_ignore, ts_start, ts_end_ignore = _term_meta(ts_name)
+		if ts_start:
+			start_dt = max(start_dt, getdate(ts_start))
+
+	te_name = roc.get("end_academic_term")
+	if te_name:
+		te_school_ignore, te_ay_ignore, te_start, te_end = _term_meta(te_name)
+		if te_end or te_start:
+			end_dt = min(end_dt, getdate(te_end) if te_end else getdate(te_start))
+
+	return (start_dt, end_dt)
+
+
+def _offering_courses_index(offering_name: str) -> dict[str, list[dict]]:
+	"""
+	Build index from Program Offering Course. Normalize term keys to term_start/term_end
+	so the rest of the enrollment logic can keep using those names.
+	"""
+	rows = frappe.get_all(
+		"Program Offering Course",
+		filters={"parent": offering_name, "parenttype": "Program Offering"},
+		fields=[
+			"course",
+			"start_academic_year", "end_academic_year",
+			"start_academic_term", "end_academic_term",
+			"from_date", "to_date",
+			"required", "idx",
+		],
+		order_by="idx asc",
+	)
+
+	idx: dict[str, list[dict]] = {}
+	for r in rows:
+		s, e = _compute_effective_course_span(offering_name, r)
+		item = {
+			"start": s,
+			"end": e,
+			"start_ay": r.get("start_academic_year"),
+			"end_ay": r.get("end_academic_year"),
+			# normalized keys expected elsewhere
+			"term_start": r.get("start_academic_term"),
+			"term_end": r.get("end_academic_term"),
+			"required": r.get("required") or 0,
+		}
+		idx.setdefault(r["course"], []).append(item)
+
+	return idx
+
 
 # from JS to filter out students that have already been enrolled for a given year and/or term
 @frappe.whitelist()
@@ -248,9 +724,9 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 
 	# Build SQL
 	sql = f"""
-		SELECT name, student_full_name 
+		SELECT name, student_full_name
 		FROM tabStudent
-		WHERE 
+		WHERE
 			enabled = 1
 			AND name NOT IN ({', '.join(['%s'] * len(excluded_students))})
 			AND (
@@ -267,7 +743,7 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 
 	return frappe.db.sql(sql, params)
 
-# from JS to display AY in descending order 
+# from JS to display AY in descending order
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_academic_years(doctype, txt, searchfield, start, page_len, filters):
@@ -317,16 +793,31 @@ def get_academic_years(doctype, txt, searchfield, start, page_len, filters):
 
 
 @frappe.whitelist()
-def get_program_courses_for_enrollment(program):
-	courses = frappe.db.get_values(
-		"Program Course",
-		{"parent": program},
-		"course",
-		order_by="idx"
+def get_program_courses_for_enrollment(program_offering):
+	if not program_offering:
+		return []
+	courses = frappe.get_all(
+		"Program Offering Course",
+		filters={"parent": program_offering, "parenttype": "Program Offering"},
+		pluck="course",
+		order_by="idx asc"
 	)
+	return [c for c in courses if c]
 
-	# Flatten to list of course names
-	return [c[0] for c in courses if c[0]]
+@frappe.whitelist()
+def get_offering_ay_spine(offering: str):
+	if not offering:
+		return []
+	spine = _offering_ay_spine(offering)
+	# shape it like the client expects
+	return [
+		{
+			"academic_year": r["academic_year"],
+			"year_start_date": r["start"],
+			"year_end_date": r["end"],
+		}
+		for r in spine
+	]
 
 
 def get_terms_for_ay_with_fallback(school, academic_year):
@@ -364,6 +855,64 @@ def get_valid_terms_with_fallback(school, academic_year):
         "valid_terms": terms,
         "source_school": source_school
     }
+
+
+@frappe.whitelist()
+def candidate_courses_for_add_multiple(program_offering: str, academic_year: str, existing=None):
+	"""Return candidate courses… (docstring unchanged)"""
+	if isinstance(existing, str):
+		try:
+			existing = frappe.parse_json(existing) or []
+		except Exception:
+			existing = []
+	elif not isinstance(existing, (list, tuple, set)):
+		existing = []
+	existing_set = set(existing)
+
+	enr_ay_start, enr_ay_end = _ay_bounds_for(program_offering, academic_year)
+	if not (enr_ay_start and enr_ay_end):
+		return []
+
+	off_idx = _offering_courses_index(program_offering)
+	off = _offering_core(program_offering)
+	school = off.get("school") if off else None
+
+	out = []
+	for course, spans in off_idx.items():
+		if course in existing_set:
+			continue
+		# Overlap with selected AY slice?
+		if not any((enr_ay_start <= s["end"]) and (s["start"] <= enr_ay_end) for s in spans):
+			continue
+
+		row = {
+			"course": course,
+			"course_name": frappe.db.get_value("Course", course, "course_name"),
+			"required": 1 if any(s.get("required") for s in spans) else 0,
+		}
+
+		# Suggest term bounds for non-term-long courses
+		if school:
+			term_long = frappe.db.get_value("Course", course, "term_long")
+			if not term_long:
+				bounds = get_school_term_bounds(school, academic_year)
+				if bounds:
+					row["suggested_term_start"] = bounds.get("term_start")
+					row["suggested_term_end"] = bounds.get("term_end")
+
+		out.append(row)
+
+	# Sort: required first, then by earliest span start, then by name
+	def _first_start(cname: str):
+		try:
+			return min(s["start"] for s in off_idx.get(cname, []))
+		except ValueError:
+			return enr_ay_start
+
+	out.sort(key=lambda r: (-(r["required"]), _first_start(r["course"]), (r["course_name"] or r["course"])))
+	return out
+
+
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
@@ -413,9 +962,8 @@ def has_permission(doc, user=None):
     return doc.school in descendant_schools
 
 def on_doctype_update():
-	# idempotent: adds only if missing
-	frappe.db.add_index("Program Enrollment", ["student"])
 	# useful for AY-scoped lookups
 	frappe.db.add_index("Program Enrollment", ["student", "academic_year"])
-	# Program Enrollment: speed up lookups from Student Referral flow
-	frappe.db.add_index("Program Enrollment", ["student", "archived"])	
+	frappe.db.add_index("Program Enrollment", ["program_offering", "academic_year"])
+	# not duplicaiton of enrollmnent for same offering+year
+	frappe.db.add_unique("Program Enrollment", ["student", "program_offering", "academic_year"])

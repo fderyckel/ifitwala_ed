@@ -3,6 +3,16 @@
 
 frappe.ui.form.on("School Calendar", { 
 
+	setup(frm) {
+		frm.set_query("academic_year", function () {
+			return {
+				query: "ifitwala_ed.utilities.link_queries.academic_year_link_query",
+				// when a school is already chosen, scope AYs; server falls back to user's default school if not provided
+				filters: { school: frm.doc.school || undefined },
+			};
+		});
+	},
+
 	onload: function(frm) {
 		// Use the grid's refresh event
     frm.fields_dict.terms.grid.on("refresh", function(grid) {
@@ -58,7 +68,9 @@ frappe.ui.form.on("School Calendar", {
 		}
 		
 		// Clone Calendar button
-		if (frappe.user_roles.includes("Schedule Maker") || frappe.user_roles.includes("Academic Admin")) {
+		if (frappe.user_roles.includes("Schedule Maker") || 
+				frappe.user_roles.includes("Academic Admin") || 
+				frappe.user_roles.includes("Academic Assistant")) {
 			frm.add_custom_button(__("Clone Calendar…"), () => {
 				frappe.prompt(
 					[
@@ -67,7 +79,11 @@ frappe.ui.form.on("School Calendar", {
 							label: "New Academic Year",
 							fieldname: "academic_year",
 							options: "Academic Year",
-							reqd: 1
+							reqd: 1, 
+							get_query: () => ({
+								query: "ifitwala_ed.utilities.link_queries.academic_year_link_query",
+								filters: { school: frm.doc.school || undefined },
+							}),
 						},
 						{
 							fieldtype: "Link",

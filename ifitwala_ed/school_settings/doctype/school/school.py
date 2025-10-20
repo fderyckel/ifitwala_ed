@@ -23,7 +23,7 @@ class School(NestedSet):
 		NestedSet.on_update(self)
 		
 	def after_save(self): 
-		if self.is_dirty("abbreviation"): 
+		if self.is_dirty("abbr"): 
 			self.update_navbar_item_for_abbreviation_change()		
 
 	def on_trash(self):
@@ -31,7 +31,10 @@ class School(NestedSet):
 		frappe.utils.nestedset.update_nsm(self)
 
 	def after_rename(self, olddn, newdn, merge=False):
-		frappe.db.set(self, "school_name", newdn)
+		# when merging, let the target keep its own title; only force-update on regular renames
+		if not merge:
+			# cheap single-field DB write; avoids extra fetch/save
+			self.db_set("school_name", newdn, update_modified=False)
 		clear_defaults_cache()
 
 	def validate_abbr(self):
@@ -47,8 +50,9 @@ class School(NestedSet):
 			frappe.throw(_("Abbreviation is mandatory")) 
 
 		### CHANGETO: use frappe.db.exist()
-		if frappe.db.sql("""SELECT abbr FROM `tabSchool` WHERE name!=%s AND abbr=%s""", (self.name, self.abbr)):
+		if frappe.db.exists("School", {"abbr": self.abbr, "name": ["!=", self.name]}):
 			frappe.throw(_("Abbreviation {0} is already used for another school.").format(self.abbr))
+	
 
 	def validate_parent_school(self):
 		if self.parent_school:
@@ -57,8 +61,8 @@ class School(NestedSet):
 				frappe.throw(_("Parent School must be a group school.")) 
 	
 	def update_navbar_item_for_abbreviation_change(self): 
-		old_abbr = self.get_doc_before_save().abbreviation
-		new_url = f"/school/{self.abbreviation}"
+		old_abbr = self.get_doc_before_save().abbr
+		new_url = f"/school/{self.abbr}"
 		old_url = f"/school/{old_abbr}"
 		
 		ws = frappe.get_single("Website Settings")

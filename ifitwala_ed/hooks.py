@@ -26,7 +26,7 @@ app_license = "MIT"
 
 # include js, css files in header of desk.html
 
-app_include_js = [ 
+app_include_js = [
   "/assets/ifitwala_ed/dist/ifitwala_ed.bundle.js",
   "/assets/ifitwala_ed/js/initial_setup.js"
 ]
@@ -131,27 +131,29 @@ calendars = ["School Event", "School Calendar"]
 # Permissions evaluated in scripted ways
 
 permission_query_conditions = {
- 	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.get_permission_query_conditions", 
+ 	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.get_permission_query_conditions",
   "Contact": "ifitwala_ed.utilities.contact_utils.contact_permission_query_conditions",
-	"Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_permission_query_conditions", 
+	"Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_permission_query_conditions",
 	"Instructor": "ifitwala_ed.schedule.doctype.instructor.instructor.get_permission_query_conditions",
-	"Term": "ifitwala_ed.school_settings.doctype.term.term.get_permission_query_conditions", 
-	"Academic Year": "ifitwala_ed.school_settings.doctype.academic_year.academic_year.get_permission_query_conditions", 
-	"Program": "ifitwala_ed.curriculum.doctype.program.program.get_permission_query_conditions", 
-	"Course": "ifitwala_ed.curriculum.doctype.course.course.get_permission_query_conditions", 
-	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.get_permission_query_conditions", 
+	"Term": "ifitwala_ed.school_settings.doctype.term.term.get_permission_query_conditions",
+	"Academic Year": "ifitwala_ed.school_settings.doctype.academic_year.academic_year.get_permission_query_conditions",
+	"Course": "ifitwala_ed.curriculum.doctype.course.course.get_permission_query_conditions",
+	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.get_permission_query_conditions",
+	"Employee": "ifitwala_ed.hr.doctype.employee.employee.get_permission_query_conditions",
+	"Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.get_permission_query_conditions",
 }
 
 has_permission = {
 	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.event_has_permission",
-  "Contact": "ifitwala_ed.utilities.contact_utils.contact_has_permission", 
-	"Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.has_permission", 
+  "Contact": "ifitwala_ed.utilities.contact_utils.contact_has_permission",
+	"Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.has_permission",
 	"Instructor": "ifitwala_ed.schedule.doctype.instructor.instructor.has_permission",
-	"Term": "ifitwala_ed.school_settings.doctype.term.term.has_permission", 
+	"Term": "ifitwala_ed.school_settings.doctype.term.term.has_permission",
 	"Academic Year": "ifitwala_ed.school_settings.doctype.academic_year.academic_year.has_permission",
-	"Program": "ifitwala_ed.curriculum.doctype.program.program.has_permission", 
-	"Course": "ifitwala_ed.curriculum.doctype.course.course.has_permission", 
-	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.has_permission", 
+	"Course": "ifitwala_ed.curriculum.doctype.course.course.has_permission",
+	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.has_permission",
+	"Employee": "ifitwala_ed.hr.doctype.employee.employee.employee_has_permission",
+	"Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.has_permission",
 }
 
 default_roles = [
@@ -178,25 +180,25 @@ default_roles = [
 # 	}
 # }
 
-doc_events = { 
+doc_events = {
   "Contact": {
     "on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"
-  }, 
+  },
 	"ToDo": {
 		"on_update": "ifitwala_ed.admission.admission_utils.on_todo_update_close_marks_contacted"
-	}, 
+	},
   "User":{
     "after_insert": "frappe.contacts.doctype.contact.contact.update_contact",
-    "validate": [ 
-      "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role", 
+    "validate": [
+      "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role",
       "ifitwala_ed.api.set_default_workspace_based_on_roles"
-    ], 
+    ],
     "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions"
-  }, 
+  },
   "File": {
-    "after_insert": "ifitwala_ed.utilities.image_utils.handle_file_after_insert", 
+    "after_insert": "ifitwala_ed.utilities.image_utils.handle_file_after_insert",
     "on_update": "ifitwala_ed.utilities.image_utils.handle_file_on_update"
-    }, 
+    },
 	"Student Group": {
 		"on_update": "ifitwala_ed.schedule.schedule_utils.invalidate_for_student_group"
 	},
@@ -228,9 +230,9 @@ doc_events = {
 
 scheduler_events = {
 	"hourly": [
-			"ifitwala_ed.admission.admission_utils.check_sla_breaches", 
+			"ifitwala_ed.admission.admission_utils.check_sla_breaches",
 			"ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard"
-		], 
+		],
   "daily": [
     "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs"
   ]

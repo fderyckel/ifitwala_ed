@@ -365,7 +365,6 @@ frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
 		// open modal when user clicks the inline SSG icon
 		$("#student-cards").on("click", ".ssg-inline", function (e) {
 			const studentId = e.currentTarget.getAttribute("data-student");
-			// try to read the visible name text in the same card
 			const nameEl = e.currentTarget.closest(".student-card")?.querySelector(".student-name a");
 			const studentName = nameEl ? nameEl.textContent.trim() : studentId;
 			if (studentId) openSSGModal(studentId, studentName);

@@ -226,8 +226,24 @@ def has_permission(doc, ptype=None, user=None):
 	if not user:
 		user = frappe.session.user
 
+	# superusers
 	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
 		return True
+
+	# --- ADDED: allow CREATE when user's school is within AY hierarchy ---
+	if ptype == "create":
+		user_school = frappe.defaults.get_user_default("school", user)
+		if not user_school or not doc.academic_year:
+			return False
+
+		ay_school = frappe.db.get_value("Academic Year", doc.academic_year, "school")
+		if not ay_school:
+			return False
+
+		# allow if AY.school is the same as user's school OR one of its ancestors
+		ancestors = [user_school] + get_ancestors_of("School", user_school)
+		return ay_school in ancestors
+	# --- END ADDED ---
 
 	user_school = frappe.defaults.get_user_default("school", user)
 	if not user_school:

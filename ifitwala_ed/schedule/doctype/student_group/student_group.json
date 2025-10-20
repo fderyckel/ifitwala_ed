@@ -8,12 +8,14 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_hbvd",
-  "academic_year",
-  "term",
+  "program_offering",
   "group_based_on",
+  "term",
   "maximum_size",
   "status",
+  "school",
   "column_break_ttdt",
+  "academic_year",
   "student_group_name",
   "student_group_abbreviation",
   "program",
@@ -80,12 +82,15 @@
    "unique": 1
   },
   {
+   "fetch_from": "program_offering.program",
+   "fetch_if_empty": 1,
    "fieldname": "program",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Program",
-   "options": "Program"
+   "options": "Program",
+   "read_only": 1
   },
   {
    "fieldname": "cohort",
@@ -165,18 +170,32 @@
    "fieldname": "school_schedule",
    "fieldtype": "Link",
    "label": "School Schedule",
-   "options": "School Schedule",
-   "reqd": 1
+   "options": "School Schedule"
   },
   {
    "fieldname": "add_blocks",
    "fieldtype": "Button",
    "label": "Add blocks"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Data",
+   "label": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Program Offering",
+   "options": "Program Offering",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-02 13:21:26.249839",
+ "modified": "2025-10-04 20:40:26.937630",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",
@@ -230,6 +249,19 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "role": "Academic Assistant",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
    "role": "Curriculum Coordinator",
    "select": 1,
    "share": 1,
@@ -258,6 +290,12 @@
    "report": 1,
    "role": "Academic Staff",
    "select": 1,
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
    "share": 1
   }
  ],

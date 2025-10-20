@@ -1,0 +1,20 @@
+# Root editor config file
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+charset = utf-8
+
+# python, js, vue, css, html — use tabs; width=4; line length=99
+[{*.py,*.js,*.vue,*.css,*.scss,*.html}]
+indent_style = tab
+indent_size = 2
+max_line_length = 99
+
+# Doctype JSON schemas: keep Frappe's tiny indent (space, width=1)
+[{*.json}]
+insert_final_newline = false
+indent_style = space
+indent_size = 1

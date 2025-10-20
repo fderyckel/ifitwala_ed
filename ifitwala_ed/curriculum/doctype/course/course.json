@@ -14,8 +14,14 @@
   "team",
   "course_group",
   "curriculum_section",
-  "units",
   "default_grade_scale",
+  "column_break_egte",
+  "observations",
+  "binary",
+  "points",
+  "criteria",
+  "section_break_wnvl",
+  "assessment_categories",
   "assessment_criteria",
   "additional_information_section",
   "exclude_from_report",
@@ -70,13 +76,7 @@
   {
    "fieldname": "curriculum_section",
    "fieldtype": "Section Break",
-   "label": "Curriculum"
-  },
-  {
-   "fieldname": "units",
-   "fieldtype": "Table",
-   "label": "Units",
-   "options": "Lesson"
+   "label": "Assessment"
   },
   {
    "fieldname": "default_grade_scale",
@@ -88,7 +88,7 @@
    "fieldname": "assessment_criteria",
    "fieldtype": "Table",
    "label": "Assessment Criteria",
-   "options": "Course Assessment Criteria"
+   "options": "Assessment Criteria Childtable"
   },
   {
    "fieldname": "additional_information_section",
@@ -161,12 +161,50 @@
    "fieldname": "description",
    "fieldtype": "Text",
    "label": "Description"
+  },
+  {
+   "fieldname": "section_break_wnvl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "assessment_categories",
+   "fieldtype": "Table",
+   "label": "Assessment Categories",
+   "options": "Assessment Category"
+  },
+  {
+   "fieldname": "column_break_egte",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "binary",
+   "fieldtype": "Check",
+   "label": "Binary (Complete/Incomplete)"
+  },
+  {
+   "default": "0",
+   "fieldname": "observations",
+   "fieldtype": "Check",
+   "label": "Observations (Comments only)"
+  },
+  {
+   "default": "0",
+   "fieldname": "criteria",
+   "fieldtype": "Check",
+   "label": "Criteria"
+  },
+  {
+   "default": "0",
+   "fieldname": "points",
+   "fieldtype": "Check",
+   "label": "Points"
   }
  ],
  "image_field": "course_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-11 21:21:40.847295",
+ "modified": "2025-10-04 20:27:21.146125",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Course",
@@ -199,6 +237,30 @@
    "write": 1
   },
   {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
    "read": 1,
    "role": "Academic Staff"
   },
@@ -213,18 +275,6 @@
   {
    "read": 1,
    "role": "Admission Officer"
-  },
-  {
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "import": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Curriculum Coordinator",
-   "share": 1,
-   "write": 1
   },
   {
    "read": 1,

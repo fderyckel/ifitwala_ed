@@ -10,6 +10,9 @@ import frappe
 def update_profile_from_contact(doc, method=None):
     """Update the main doctype if changes made on Contact DocType.
 		Called by hooks.py"""
+    
+    if frappe.flags.get("skip_contact_to_guardian_sync"):
+        return
 
     #student = next((l.link_name for l in doc.links if l.link_doctype == "Student"), None)
     guardian = next((l.link_name for l in doc.links if l.link_doctype == "Guardian"), None)
@@ -66,7 +69,3 @@ def contact_permission_query_conditions(user):
               AND dl.link_doctype = 'Student'
         )
     """
-
-import frappe
-
-

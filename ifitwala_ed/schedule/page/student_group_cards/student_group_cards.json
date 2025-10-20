@@ -4,7 +4,7 @@
  "docstatus": 0,
  "doctype": "Page",
  "idx": 46,
- "modified": "2025-06-03 11:43:21.476614",
+ "modified": "2025-10-06 19:59:47.955842",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "student_group_cards",
@@ -16,6 +16,9 @@
   },
   {
    "role": "Academic Staff"
+  },
+  {
+   "role": "Academic Assistant"
   }
  ],
  "script": null,
