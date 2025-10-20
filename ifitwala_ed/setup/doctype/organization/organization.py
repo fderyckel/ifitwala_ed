@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.utils.nestedset import NestedSet
+from frappe.utils import cint
 
 class Organization(NestedSet):
 	def validate(self):
