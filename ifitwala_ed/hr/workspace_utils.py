@@ -5,6 +5,19 @@
 
 import frappe
 
+def send_workspace_notification(user, workspace):
+    if not frappe.db.exists("User", user):
+        return
+
+    frappe.get_doc({
+        "doctype": "Notification Log",
+        "subject": f"Default Workspace Changed to {workspace}",
+        "for_user": user,
+        "type": "Alert",
+        "email_content": f"Your default workspace has been updated to <b>{workspace}</b>. Please log out and log in again to see the change.",
+    }).insert(ignore_permissions=True)
+
+
 def set_default_workspace_based_on_roles(doc, method):
     # Observe role changes plus any lingering workspace that no longer exists
     current_roles = {r.role for r in doc.roles}
