@@ -48,10 +48,10 @@ class Employee(NestedSet):
 				user = frappe.get_doc("User", existing_user_id)
 				validate_employee_role(user, ignore_emp_check = True)
 				user.save(ignore_permissions=True)
-				remove_user_permission("Employee", self.name, existing_user_id) 
-				
-		# Ensure the employee history is sorted before saving 
-		if self.employee_history: 
+				remove_user_permission("Employee", self.name, existing_user_id)
+
+		# Ensure the employee history is sorted before saving
+		if self.employee_history:
 			self.employee_history.sort(key=lambda row: getdate(row.to_date) if row.to_date else getdate("9999-12-31"), reverse=True)
 
 	def after_rename(self, old, new, merge):
@@ -75,9 +75,9 @@ class Employee(NestedSet):
 	# call on validate.  Broad check to make sure birtdhdate, joining date are making sense.
 	def validate_date(self):
 		if self.employee_date_of_birth and getdate(self.employee_date_of_birth) > getdate(today()):
-			frappe.throw(_("Date of Birth cannot be after today.")) 
+			frappe.throw(_("Date of Birth cannot be after today."))
 		if self.employee_date_of_birth and getdate(self.employee_date_of_birth) > getdate(add_years(today(), - 16)):
-			frappe.throw(_("Maybe you are too young to be an employee of this school!"))	
+			frappe.throw(_("Maybe you are too young to be an employee of this school!"))
 		if self.employee_date_of_birth and self.date_of_joining and getdate(self.employee_date_of_birth) >= getdate(self.date_of_joining):
 			frappe.throw(_("Date of Joining must be after Date of Birth"))
 		if self.notice_date and self.relieving_date and getdate(self.relieving_date) <  getdate(self.notice_date):
@@ -140,8 +140,8 @@ class Employee(NestedSet):
 
 		# Validate downward consistency (no cross-lineage connections)
 		# Fetch all direct reports of the current employee
-		direct_reports = frappe.db.get_values( 
-			"Employee", filters={"reports_to": self.name}, fieldname=["name", "organization"], 
+		direct_reports = frappe.db.get_values(
+			"Employee", filters={"reports_to": self.name}, fieldname=["name", "organization"],
 			as_dict=True
 		)
 
@@ -179,21 +179,21 @@ class Employee(NestedSet):
 			if self.preferred_contact_email == "User ID" and not self.get("user_id"):
 				frappe.msgprint(_("Please enter {0}").format(self.preferred_contact_email))
 			elif self.preferred_contact_email and not self.get("employee_" + scrub(self.preferred_contact_email)):
-				frappe.msgprint(_("Please enter {0}").format(self.preferred_contact_email))	
-				
+				frappe.msgprint(_("Please enter {0}").format(self.preferred_contact_email))
+
 	def update_user_default_school(self):
 		"""Set or update the default school for the user linked to this employee."""
-		if not self.user_id: 
+		if not self.user_id:
 			return  # No linked user to update
 
 		# Get the current default school for this user
 		current_default = frappe.defaults.get_user_default("school", self.user_id)
 
 		# Set the default if missing and a school is already filled
-		if not current_default and self.school: 
-			frappe.defaults.set_user_default("school", self.school, self.user_id) 
-			frappe.cache().hdel("user:" + self.user_id, "defaults") 
-			frappe.msgprint(_("Default school set to {0} for user {1} (first-time setup).").format(self.school, self.user_id)) 
+		if not current_default and self.school:
+			frappe.defaults.set_user_default("school", self.school, self.user_id)
+			frappe.cache().hdel("user:" + self.user_id, "defaults")
+			frappe.msgprint(_("Default school set to {0} for user {1} (first-time setup).").format(self.school, self.user_id))
 			return
 
 		# Handle clearing the default if the field is empty
@@ -211,131 +211,136 @@ class Employee(NestedSet):
 			frappe.msgprint(_("Default school set to {0} for user {1}.").format(self.school, self.user_id))
 
 	def validate_employee_history(self):
-		"""Ensure no overlapping roles and valid date ranges."""
+		"""Validate history rows:
+		- from_date required and not before date_of_joining
+		- to_date >= from_date (if set)
+		- NO overlap ONLY when (designation, organization, school) are the same
+		- is_current is derived from dates
+		"""
 		if not self.date_of_joining:
 			frappe.throw(_("Please set the Employee's Date of Joining before adding Employee History."))
 
-		employee_join_date = getdate(self.date_of_joining)
-		history = self.get("employee_history", [])
-		
+		today_d = getdate(today())
+		join_d = getdate(self.date_of_joining)
+		history = self.get("employee_history", []) or []
+
+		def key(r):
+			return (r.designation or "", r.organization or "", r.school or "")
+
+		def rng(r):
+			start = getdate(r.from_date or "0001-01-01")
+			end = getdate(r.to_date or "9999-12-31")
+			return start, end
+
 		for i, row in enumerate(history):
-			# Ensure from_date is not empty
+			# require from_date
 			if not row.from_date:
-				frappe.throw(_("Please set the 'From Date' for the row #{0} in Employee History.").format(i + 1))
+				frappe.throw(_("Please set 'From Date' for row #{0}.").format(i + 1))
 
-			# Validate that from_date is not before the employee's date_of_joining
-			if getdate(row.from_date) < employee_join_date:
-				frappe.throw(_("The 'From Date' in row #{0} cannot be before the employee's Date of Joining ({1}).").format(i + 1, self.date_of_joining))
+			# row.from_date >= joining date
+			if getdate(row.from_date) < join_d:
+				frappe.throw(_("Row #{0}: From Date cannot be before Date of Joining ({1}).")
+					.format(i + 1, self.date_of_joining))
 
-			# Ensure to_date is not before from_date
+			# to_date >= from_date (if set)
 			if row.to_date and getdate(row.to_date) < getdate(row.from_date):
-				frappe.throw(_("The 'To Date' cannot be before the 'From Date' in row #{0}.").format(i + 1))
+				frappe.throw(_("Row #{0}: 'To Date' cannot be before 'From Date'.").format(i + 1))
 
-			# Check for overlapping roles
-			for j, other_row in enumerate(history):
-				if i != j and row.designation == other_row.designation:
-					# Make sure both dates are set before comparing
-					row_from_date = getdate(row.from_date or "0001-01-01")
-					row_to_date = getdate(row.to_date or "9999-12-31")
-					other_from_date = getdate(other_row.from_date or "0001-01-01")
-					other_to_date = getdate(other_row.to_date or "9999-12-31")
+		# pairwise overlap ONLY for identical (designation, org, school)
+		for i, a in enumerate(history):
+			ka = key(a)
+			a_start, a_end = rng(a)
+			for j, b in enumerate(history):
+				if i >= j:
+					continue
+				if key(b) != ka:
+					continue
+				b_start, b_end = rng(b)
+				# intervals intersect?
+				if b_start <= a_end and a_start <= b_end:
+					frappe.throw(_("Overlap detected for '{0}' @ '{1}/{2}' between row #{3} and row #{4}.")
+						.format(a.designation or "-", a.organization or "-", a.school or "-", i + 1, j + 1))
 
-					if other_from_date <= row_to_date and row_from_date <= other_to_date:
-						frappe.throw(_("The role '{0}' in row #{1} overlaps with row #{2}.").format(row.designation, i + 1, j + 1))
-
-			# Auto-set the current status based on date
-			if row.to_date and getdate(row.to_date) < getdate(today()):
-				row.is_current = 0
-			else:
-				row.is_current = 1
+		# compute is_current from dates
+		for row in history:
+			start, end = rng(row)
+			row.is_current = 1 if (start <= today_d <= end) else 0
 
 	def sync_employee_history(self):
+		"""Auto-maintain history when primary tuple changes.
+		- Detect change via previous doc (designation/org/school).
+		- Close the latest row for the *previous* tuple to (new_from - 1).
+		- Append a new row for the *current* tuple with from_date = today (idempotent).
+		- Allow multiple 'current' rows across different tuples; overlap forbids only same tuple.
 		"""
-		Synchronize the Employee History for initial creation or designation, organization, or school changes.
-		- Adds a new history row if the designation, organization, or school changes.
-		- Updates the current history row if the employee has not yet joined.
-		- Prevents duplicate entries with the same from_date.
-		"""
-		# Ensure required fields are present
 		if not self.date_of_joining or not self.designation:
-			return  # No joining date or designation, nothing to add
+			return
 
-		# Get the existing history
-		history = self.get("employee_history", [])
+		history = self.get("employee_history", []) or []
+		prev = self.get_doc_before_save()
 
-		# Check if this is a fresh employee with no history
+		# Initial seed if no history
 		if not history:
 			self.append("employee_history", {
 				"designation": self.designation,
-				"from_date": self.date_of_joining,
 				"organization": self.organization,
 				"school": self.school,
-				"is_current": 1 if getdate(self.date_of_joining) <= getdate(today()) else 0,
+				"from_date": self.date_of_joining,
+				# is_current will be recomputed in validate()
 			})
-			frappe.msgprint(
-				_("An initial Employee History row has been created for {0} with joining date {1} and designation {2}.").format(
-					self.employee_full_name, self.date_of_joining, self.designation
-				),
-				alert=True
-			)
 			return
 
-		# Get the most recent history row
-		last_entry = history[-1]
-		last_designation = last_entry.designation
-		last_organization = last_entry.organization
-		last_school = last_entry.school
-		last_from_date = last_entry.from_date
-		is_current = last_entry.is_current
+		# Need previous values to detect a tuple change
+		if not prev:
+			return
 
-		# Check if the current role is different and the employee has already joined
-		if getdate(self.date_of_joining) <= getdate(today()):
-			designation_changed = self.designation != last_designation
-			organization_changed = self.organization != last_organization
-			school_changed = self.school != last_school
+		prev_tuple = (prev.designation, prev.organization, prev.school)
+		cur_tuple = (self.designation, self.organization, self.school)
 
-			if designation_changed or organization_changed or school_changed:
-				# Close the previous row if it is still marked as current
-				if is_current:
-					last_entry.is_current = 0
+		# no change → nothing to do
+		if prev_tuple == cur_tuple:
+			return
 
-				# Check for duplicates on the same from_date
-				today_str = today()
-				for row in history:
-					if (row.designation == self.designation and
-							row.organization == self.organization and
-							row.school == self.school and
-							row.from_date == today_str):
-						return
+		# if employee hasn't joined yet, just update the most recent matching row for prev tuple
+		if getdate(self.date_of_joining) > getdate(today()):
+			# update the last row (assume preparatory history)
+			last = history[-1]
+			last.designation = self.designation
+			last.organization = self.organization
+			last.school = self.school
+			return
 
-				# Add a new history row
-				self.append("employee_history", {
-					"designation": self.designation,
-					"from_date": today_str,
-					"organization": self.organization,
-					"school": self.school,
-					"is_current": 1,
-				})
-				frappe.msgprint(
-					_("A new Employee History row has been created for {0} with designation {1}, organization {2}, and school {3} as of today ({4}).").format(
-						self.employee_full_name, self.designation, self.organization, self.school, today_str
-					),
-					alert=True
-				)
-		else:
-			# If the employee has not yet joined, just update the existing row
-			last_entry.designation = self.designation
-			last_entry.organization = self.organization
-			last_entry.school = self.school
-			frappe.msgprint(
-				_("The Employee History row for {0} has been updated to reflect the new designation, organization, and school.").format(
-					self.employee_full_name
-				),
-				alert=True
-			)
-		
-		# Sort employee history in descending order
+		# Change happened after joining → close previous tuple's latest row and add new one
+		new_from = getdate(today())
+		close_to = add_years(new_from, 0)
+		# correct close_to to new_from - 1 day (without importing add_days separately)
+		close_to = getdate(frappe.utils.add_days(new_from, -1))
+
+		# 1) close the latest row for the previous tuple (if open or crossing new_from)
+		for row in reversed(history):
+			if (row.designation, row.organization, row.school) == prev_tuple:
+				# If it's already closed before new_from, leave it
+				if not row.to_date or getdate(row.to_date) >= close_to:
+					row.to_date = close_to
+				break
+
+		# 2) avoid duplicate (same tuple @ same from_date)
+		for r in history:
+			if (r.designation, r.organization, r.school) == cur_tuple and getdate(r.from_date or "9999-12-31") == new_from:
+				return
+
+		# 3) append new row for current tuple starting today
+		self.append("employee_history", {
+			"designation": self.designation,
+			"organization": self.organization,
+			"school": self.school,
+			"from_date": new_from,
+			# is_current computed in validate()
+		})
+
+		# keep your sorter
 		self._sort_employee_history()
+
 
 	def _sort_employee_history(self):
 		# Extract the history rows
@@ -356,12 +361,12 @@ class Employee(NestedSet):
 		self.set("employee_history", sorted_history)
 
 		# Ensure the idx is correctly updated
-		for idx, row in enumerate(self.employee_history, start=1): 
+		for idx, row in enumerate(self.employee_history, start=1):
 			row.idx = idx
 
 	# call on validate.  Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):
-		if self.user_id: 
+		if self.user_id:
 			data = frappe.db.get_value('User', self.user_id, ['enabled', 'user_image'], as_dict=1)
 
 		self.validate_for_enabled_user_id(data.get("enabled", 0))
@@ -378,13 +383,13 @@ class Employee(NestedSet):
 			frappe.throw(_("User {0} is disabled").format(self.user_id), EmployeeUserDisabledError)
 
 	# call on validate through validate_user_details().
-	def validate_duplicate_user_id(self): 
+	def validate_duplicate_user_id(self):
 		Employee = frappe.qb.DocType("Employee")
 		employee = (
 			frappe.qb.from_("Employee")
 			.select(Employee.name)
 			.where(
-				(Employee.user_id == self.user_id) 
+				(Employee.user_id == self.user_id)
 				& (Employee.status == "Active")
 				& (Employee.name != self.name)
 			)
@@ -422,7 +427,7 @@ class Employee(NestedSet):
 							img_path = None                # prevents 500 in attach_files_to_document
 
 			if img_path:                           # only run if the path is valid
-					if user.user_image != img_path: 
+					if user.user_image != img_path:
 						user.user_image = img_path
 
 					# keep / update the File row attached to User.user_image
@@ -443,7 +448,7 @@ class Employee(NestedSet):
 									"attached_to_name":   self.user_id,
 									"attached_to_field":  "user_image",
 							}).insert(ignore_permissions=True, ignore_if_duplicate=True)
-					else:                               
+					else:
 						frappe.db.set_value(
 								"File", existing, "file_url", img_path, update_modified=False
 						)
@@ -614,7 +619,7 @@ def validate_employee_role(doc, method=None, ignore_emp_check=False):
 			return
 
 	user_roles =  [d.role for d in doc.get("roles")]
-	if "Employee" in user_roles: 
+	if "Employee" in user_roles:
 		frappe.msgprint(_("User {0}: Removed Employee role as there is no mapped employee.").format(doc.name))
 		doc.get("roles").remove(doc.get("roles", {"role": "Employee"})[0])
 
