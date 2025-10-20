@@ -15,7 +15,7 @@ class Term(Document):
 	def autoname(self):
 		ay_school = frappe.db.get_value("Academic Year", self.academic_year, "school")
 		abbr = frappe.db.get_value("School", ay_school, "abbr") or ay_school
-		self.name = f"{abbr} {self.term_name} {self.academic_year}"
+		self.name = f"{self.academic_year} {self.term_name}"
 		self.title = f"{abbr} {self.term_name}"
 
 
