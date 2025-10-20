@@ -3,21 +3,21 @@
 
 from frappe import _
 
-def get_data(): 
+def get_data():
   return {
     "fieldname": "school",
     "transactions": [
       {
         "label": _("Academic"),
         "items": ["Academic Year", "Term", "School Calendar", "Program Enrollment"]
-      }, 
+      },
       {
         "label": _("Curriculum"),
-        "items": ["Program", "Course"]
-       }, 
+        "items": ["Program Offering", "Course"]
+       },
       {
         "label": _("Admin"),
         "items": ["Employee"]
-      }      
+      }
     ]
   }
