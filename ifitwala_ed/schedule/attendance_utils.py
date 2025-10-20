@@ -111,6 +111,43 @@ def fetch_existing_attendance(student_group: str, attendance_date: str) -> Dict[
 
 
 @frappe.whitelist()
+def list_attendance_codes(show_in_attendance_tool: int | None = 1) -> List[Dict[str, str]]:
+	"""
+	Return attendance codes intended for the attendance tool.
+	- When `show_in_attendance_tool` is 1 (default), restrict to codes configured for the UI.
+	- Otherwise, return all codes while preserving display order.
+	"""
+	filters = {}
+	if show_in_attendance_tool is not None:
+		filters["show_in_attendance_tool"] = int(show_in_attendance_tool)
+
+	return frappe.db.get_all(
+		ATT_CODE_DOCTYPE,
+		fields=["name", "attendance_code_name", "display_order", "color"],
+		filters=filters,
+		order_by="display_order asc, attendance_code_name asc",
+	)
+
+
+@frappe.whitelist()
+def attendance_recorded_dates(student_group: str) -> List[str]:
+	"""
+	Return distinct dates where attendance exists for the given student group.
+	Used to highlight completed days on the calendar.
+	"""
+	rows = frappe.db.sql(
+		"""
+		SELECT DISTINCT attendance_date
+		FROM `tabStudent Attendance`
+		WHERE student_group = %(student_group)s
+		ORDER BY attendance_date ASC
+		""",
+		{"student_group": student_group},
+	)
+	return [row[0].isoformat() for row in rows if row and row[0]]
+
+
+@frappe.whitelist()
 def previous_status_map(student_group: str, attendance_date: str) -> Dict[str, str]:
 	"""
 	UI hint: {student -> last_code} for the meeting *before* <attendance_date>.
@@ -388,6 +425,7 @@ def bulk_upsert_attendance(payload=None):
 def _meeting_dates_key(student_group: str) -> str:
 	return f"ifw:meeting_dates:{student_group}"
 
+@frappe.whitelist()
 def get_meeting_dates(student_group: str, *, limit: int | None = None) -> List[str]:
 	"""
 	Return concrete meeting dates for a Student Group as ISO strings, cached.

@@ -24,8 +24,25 @@ export default defineConfig({
 		manifest: true,
 		rollupOptions: {
 			input: {
-				// Define a named entry point. 'app' is a good convention.
+				// Default SPA entry
 				app: path.resolve(__dirname, 'src/main.ts'),
+				// Desk student attendance tool entry
+				attendance_tool: path.resolve(__dirname, 'src/desk/student_attendance_tool.ts'),
+			},
+			output: {
+				entryFileNames: (chunk) => {
+					if (chunk.name === 'attendance_tool') {
+						return 'student_attendance_tool.bundle.js'
+					}
+					return 'assets/[name].[hash].js'
+				},
+				chunkFileNames: 'assets/[name].[hash].js',
+				assetFileNames: (assetInfo) => {
+					if (assetInfo.name && assetInfo.name.includes('attendance_tool') && assetInfo.name.endsWith('.css')) {
+						return 'student_attendance_tool.bundle.css'
+					}
+					return 'assets/[name].[hash][extname]'
+				},
 			}
 		}
 	}
