@@ -147,15 +147,16 @@ class ProgramOffering(Document):
 			                frappe.format(min_ay, {"fieldtype": "Date"}),
 			                frappe.format(max_ay, {"fieldtype": "Date"})))
 
-
 	def _validate_offering_courses(self, ay_rows: list[dict], allowed_schools: set[str]):
 		"""
 		For each Program Offering Course row, validate:
 			- start/end AY exist in the AY spine and are ordered (start ≤ end by time)
 			- if terms are given: term.school ∈ allowed, term.ay matches the row AY, and dates ordered
 			- compute an effective [row_start,row_end] using (from/to) or terms or AY bounds
-			- ensure effective window is inside head [start_date,end_date] if head dates are set
-			- ensure effective window sits within the spanned AY envelope
+			- ensure effective window sits within the AY envelope
+			- if head dates exist:
+				• EXPLICIT dates outside head → throw
+				• IMPLICIT (blank) dates → clamp inside head
 		"""
 		if not getattr(self, "offering_courses", None):
 			return
@@ -218,48 +219,58 @@ class ProgramOffering(Document):
 				_assert(te_start or te_end,
 						_("Row {0}: End Term {1} is missing dates.")
 						.format(idx, get_link_to_form("Term", end_term_name)))
-				# use te_end if available else te_start
+				# prefer term end when available
 				end_term_dt = getdate(te_end) if te_end else getdate(te_start)
 
 			if start_term_name and end_term_name:
 				_assert(start_term_dt <= end_term_dt,
 						_("Row {0}: Start Term must not be after End Term.").format(idx))
 
-			# Effective row span
-			# Use provided from_date or fallback to start_term_dt
-			row_start = getdate(row.from_date) if getattr(row, "from_date", None) else start_term_dt
+			# Determine explicit/implicit user input
+			from_explicit = bool(getattr(row, "from_date", None))
+			to_explicit   = bool(getattr(row, "to_date", None))
 
-			# Only compute row_end if to_date is provided, else fallback to end_term_dt (but track that to_date is None)
-			if getattr(row, "to_date", None):
-				row_end = getdate(row.to_date)
-			else:
-				# If to_date is not provided, use end_term_dt as envelope (but mark this is a fallback)
-				row_end = end_term_dt
+			# Raw effective dates from either explicit fields or AY/term bounds
+			row_start = getdate(row.from_date) if from_explicit else start_term_dt
+			row_end   = getdate(row.to_date)   if to_explicit   else end_term_dt
 
-			# Check basic ordering (only if both dates exist or fallback)
+			# Head window handling:
+			# - explicit out-of-bounds → throw
+			# - implicit (blank) → clamp to head window
+			if head_start:
+				if from_explicit:
+					_assert(head_start <= row_start,
+						_("Row {0}: From Date is before Offering Start Date.").format(idx))
+				else:
+					if row_start < head_start:
+						row_start = head_start
+						# optional: persist the default so users see what will be used
+						row.from_date = row_start
+
+			if head_end:
+				if to_explicit:
+					_assert(row_end <= head_end,
+						_("Row {0}: To Date is after Offering End Date.").format(idx))
+				else:
+					if row_end > head_end:
+						row_end = head_end
+						row.to_date = row_end
+
+			# Basic ordering (after any clamping)
 			_assert(row_start <= row_end,
 					_("Row {0}: From Date cannot be after To Date.").format(idx))
 
-			# Inside AY envelope
+			# Inside AY envelope (after clamping)
 			_assert(min_ay <= row_start <= max_ay,
 					_("Row {0}: From Date out of Academic Year span.").format(idx))
 			_assert(min_ay <= row_end <= max_ay,
 					_("Row {0}: To Date out of Academic Year span.").format(idx))
 
-			# Inside head window if head_end is set
-			if head_start:
-				_assert(head_start <= row_start,
-						_("Row {0}: From Date is before Offering Start Date.").format(idx))
-			if head_end and getattr(row, "to_date", None):
-				# only enforce this strict "to_date ≤ head_end" if user explicitly set to_date
-				_assert(row_end <= head_end,
-						_("Row {0}: To Date is after Offering End Date.").format(idx))
-
 			# If terms + explicit dates both exist, ensure explicit dates lie within term windows
-			if start_term_name and getattr(row, "from_date", None):
+			if start_term_name and from_explicit:
 				_assert(start_term_dt <= getdate(row.from_date),
 						_("Row {0}: From Date is earlier than Start Term window.").format(idx))
-			if end_term_name and getattr(row, "to_date", None):
+			if end_term_name and to_explicit:
 				_assert(getdate(row.to_date) <= end_term_dt,
 						_("Row {0}: To Date is later than End Term window.").format(idx))
 

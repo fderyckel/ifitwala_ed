@@ -51,9 +51,13 @@
 			</div>
 
 			<!-- Loading skeletons -->
-			<div v-else-if="students.loading" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-				<Skeleton v-for="n in 12" :key="n" class="h-44 rounded-2xl" />
-			</div>
+      <div v-else-if="students.loading" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        <div
+          v-for="n in 12"
+          :key="n"
+          class="h-44 rounded-2xl bg-slate-100/80 shadow-inner animate-pulse"
+        />
+      </div>
 
 			<!-- Grid -->
 			<div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
@@ -110,11 +114,11 @@
 	<Dialog v-model="ssg.open" :options="{ title: ssg.title, size: '2xl' }">
 		<template #body>
 			<!-- Loading state -->
-			<div v-if="ssg.resource.loading" class="space-y-3">
-				<Skeleton class="h-6 rounded" />
-				<Skeleton class="h-20 rounded" />
-				<Skeleton class="h-20 rounded" />
-			</div>
+      <div v-if="ssg.resource.loading" class="space-y-3">
+        <div class="h-6 rounded bg-slate-200/80 animate-pulse" />
+        <div class="h-20 rounded bg-slate-200/80 animate-pulse" />
+        <div class="h-20 rounded bg-slate-200/80 animate-pulse" />
+      </div>
 
 			<!-- Empty -->
 		<div
@@ -187,10 +191,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
-	Button,
-	FormControl,
-	Skeleton,
-	Badge,
+  Button,
+  FormControl,
+  Badge,
   Dialog,
   FeatherIcon,
 	createResource,
