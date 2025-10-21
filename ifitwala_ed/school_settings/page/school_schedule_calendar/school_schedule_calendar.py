@@ -6,18 +6,18 @@ from frappe.utils import getdate, add_days, format_time
 from datetime import timedelta
 
 @frappe.whitelist()
-def get_schedule_events(school=None):
+def get_schedule_events(school=None, academic_year=None):
 	filters = {}
 	if school:
 		filters["school"] = school
 
 	schedules = frappe.get_all("School Schedule", filters=filters,
-		fields=[ 
-			"name", 
-			"rotation_days", 
-			"include_holidays_in_rotation", 
-			"school_calendar", 
-			"school", 
+		fields=[
+			"name",
+			"rotation_days",
+			"include_holidays_in_rotation",
+			"school_calendar",
+			"school",
 			"first_day_rotation_day"
 		]
 	)
@@ -27,7 +27,7 @@ def get_schedule_events(school=None):
 	for sched in schedules:
 		calendar = frappe.get_doc("School Calendar", sched.school_calendar)
 		ay = frappe.get_doc("Academic Year", calendar.academic_year)
-		holidays = {getdate(h.holiday_date) for h in calendar.holidays if not h.weekly_off} 
+		holidays = {getdate(h.holiday_date) for h in calendar.holidays if not h.weekly_off}
 		weekends = {getdate(h.holiday_date) for h in calendar.holidays if h.weekly_off}
 
 		blocks = frappe.get_all("School Schedule Block", filters={"parent": sched.name}, fields=["rotation_day", "block_number", "from_time", "to_time", "block_type"])
@@ -62,7 +62,7 @@ def get_schedule_events(school=None):
 				"allDay": True,
 				"display": "background",
 				"color": color or "#e0e0e0"  # Fallback to light gray if really nothing is set
-			})    
+			})
 
 		date_cursor = getdate(ay.year_start_date)
 		end_date = getdate(ay.year_end_date)
@@ -71,8 +71,8 @@ def get_schedule_events(school=None):
 		while date_cursor <= end_date:
 			is_holiday = getdate(date_cursor) in holidays
 			is_weekend = getdate(date_cursor) in weekends
-			
-			if is_weekend: 
+
+			if is_weekend:
 				date_cursor = add_days(date_cursor, 1)
 				continue
 

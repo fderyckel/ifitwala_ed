@@ -128,6 +128,12 @@ function build_calendar(events) {
 			initialView: "dayGridMonth",
 			height: "auto",
 			events,
+			// ✅ pass plugins supplied by your bundle
+			plugins: [
+				FullCalendar.dayGridPlugin,
+				FullCalendar.timeGridPlugin,
+				FullCalendar.listPlugin,
+			],
 			headerToolbar: {
 				left: "prev,next today",
 				center: "title",
