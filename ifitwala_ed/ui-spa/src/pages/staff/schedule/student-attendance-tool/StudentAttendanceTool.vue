@@ -68,7 +68,7 @@
 
             <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-3">
                 <div v-if="!filters.student_group" class="flex h-full flex-col items-center justify-center gap-3 text-center">
-                    <Icon name="users" class="h-12 w-12 text-slate-300" />
+                    <FeatherIcon name="users" class="h-12 w-12 text-slate-300" />
                     <p class="text-base font-medium text-slate-600">
                         {{ __('Choose a student group to get started.') }}
                     </p>
@@ -96,13 +96,13 @@
                     </div>
 
                     <div v-else-if="!meetingDates.length" class="flex flex-col items-center justify-center gap-3 py-12 text-center text-slate-500">
-                        <Icon name="calendar-x" class="h-12 w-12 text-slate-300" />
+                        <FeatherIcon name="calendar-x" class="h-12 w-12 text-slate-300" />
                         <p class="text-base font-medium">{{ __('No scheduled meetings found for this group.') }}</p>
                         <p class="max-w-sm text-sm">{{ __('Verify the School Schedule and rotation days for the student group.') }}</p>
                     </div>
 
                     <div v-else-if="!selectedDate" class="flex flex-col items-center justify-center gap-3 py-12 text-center text-slate-500">
-                        <Icon name="calendar-days" class="h-12 w-12 text-slate-300" />
+                        <FeatherIcon name="calendar" class="h-12 w-12 text-slate-300" />
                         <p class="text-base font-medium">{{ __('Select a date from the calendar.') }}</p>
                         <p class="max-w-sm text-sm">{{ __('Only scheduled meeting days are selectable.') }}</p>
                     </div>
@@ -113,7 +113,7 @@
                             <p>{{ __('Loading roster…') }}</p>
                         </div>
                         <div v-else-if="!students.length" class="flex flex-col items-center justify-center gap-3 py-12 text-slate-500">
-                            <Icon name="search" class="h-12 w-12 text-slate-300" />
+                            <FeatherIcon name="search" class="h-12 w-12 text-slate-300" />
                             <p class="text-base font-medium">{{ __('No students found in this group.') }}</p>
                         </div>
                         <div v-else class="overflow-y-auto pr-2" style="max-height: 560px;">
@@ -145,7 +145,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted } from 'vue'
-import { Button, FormControl, Badge, Icon, Spinner, createResource, call, toast } from 'frappe-ui'
+import { Button, FormControl, Badge, FeatherIcon, Spinner, createResource, call, toast } from 'frappe-ui'
 import AttendanceCalendar from './components/AttendanceCalendar.vue'
 import AttendanceGrid from './components/AttendanceGrid.vue'
 import RemarkDialog from './components/RemarkDialog.vue'

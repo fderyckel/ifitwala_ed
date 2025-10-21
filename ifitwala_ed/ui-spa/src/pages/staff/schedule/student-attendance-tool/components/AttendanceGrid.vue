@@ -31,23 +31,23 @@
 							{{ student.student }}
 						</a>
 
-						<button
-							v-if="student.medical_info"
-							type="button"
-							class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100"
-							@click="$emit('show-medical', student)"
-						>
-							<Icon name="stethoscope" class="h-3.5 w-3.5" />
-							<span>{{ __('Health note') }}</span>
-						</button>
+                        <button
+                            v-if="student.medical_info"
+                            type="button"
+                            class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100"
+                            @click="$emit('show-medical', student)"
+                        >
+                            <FeatherIcon name="stethoscope" class="h-3.5 w-3.5" />
+                            <span>{{ __('Health note') }}</span>
+                        </button>
 
-						<span
-							v-if="isBirthdaySoon(student.birth_date)"
-							class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-700"
-						>
-							<Icon name="cake" class="h-3.5 w-3.5" />
-							{{ __('Birthday soon') }}
-						</span>
+                        <span
+                            v-if="isBirthdaySoon(student.birth_date)"
+                            class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-700"
+                        >
+                            <FeatherIcon name="cake" class="h-3.5 w-3.5" />
+                            {{ __('Birthday soon') }}
+                        </span>
 					</div>
 
 					<div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -97,7 +97,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Button, FormControl, Icon } from 'frappe-ui'
+import { Button, FormControl, FeatherIcon } from 'frappe-ui'
 import type { AttendanceCode, StudentRosterEntry, BlockKey } from '../types'
 
 const DEFAULT_AVATAR = '/assets/ifitwala_ed/images/default_student_image.png'

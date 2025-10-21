@@ -9,7 +9,7 @@ frappe.pages["school_schedule_calendar"].on_page_load = function (wrapper) {
 
 function loadFullCalendarAssets(done) {
   const cssHref = "/assets/ifitwala_ed/dist/fullcalendar.bundle.css";
-  const jsHref  = "/assets/ifitwala_ed/dist/fullcalendar.bundle.js"; // <-- define this
+  const jsHref  = "/assets/ifitwala_ed/dist/ifitwala_ed.bundle.js";
 
   // Inject CSS once
   if (!document.querySelector(`link[href="${cssHref}"]`)) {
