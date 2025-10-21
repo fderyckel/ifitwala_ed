@@ -39,11 +39,16 @@
 
 		<!-- Content -->
 		<div class="mt-6">
-			<EmptyState
+			<div
 				v-if="!filters.student_group"
-				title="Select a student group to begin"
-				description="Filter by Program, Course, or Cohort, then choose a Student Group."
-			/>
+				class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-12 text-center"
+			>
+				<FeatherIcon name="users" class="h-12 w-12 text-slate-300" />
+				<p class="text-base font-semibold text-slate-700">Select a student group to begin</p>
+				<p class="max-w-sm text-sm text-slate-500">
+					Filter by Program, Course, or Cohort, then choose a Student Group.
+				</p>
+			</div>
 
 			<!-- Loading skeletons -->
 			<div v-else-if="students.loading" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
@@ -112,14 +117,19 @@
 			</div>
 
 			<!-- Empty -->
-			<EmptyState
-				v-else-if="(ssg.entries?.length || 0) === 0"
-				title="No published guidance"
-				description="There are no published, active support guidance entries for this student."
-			/>
+		<div
+			v-else-if="(ssg.entries?.length || 0) === 0"
+			class="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-6 py-12 text-center"
+		>
+			<FeatherIcon name="info" class="h-10 w-10 text-slate-300" />
+			<p class="text-base font-semibold text-slate-700">No published guidance</p>
+			<p class="max-w-sm text-sm text-slate-500">
+				There are no published, active support guidance entries for this student.
+			</p>
+		</div>
 
 			<!-- Entries -->
-			<div v-else class="space-y-3">
+  <div v-else class="space-y-3">
 				<div
 					v-for="(item, idx) in ssg.entries"
 					:key="idx"
@@ -128,14 +138,14 @@
 					<!-- Header row: date + status + (optional) view case -->
 					<div class="flex items-center justify-between gap-3">
 						<div class="text-sm text-gray-600">
-							<span class="inline-flex items-center gap-2">
-								<Icon name="calendar" class="h-4 w-4" />
+              <span class="inline-flex items-center gap-2">
+                <FeatherIcon name="calendar" class="h-4 w-4" />
 								<strong>{{ neatDate(item.entry_datetime) }}</strong>
 							</span>
 							<Badge v-if="(item.status || 'Open') === 'In Progress'" class="ml-2" variant="success">In&nbsp;Progress</Badge>
 						</div>
 
-						<Button
+            <Button
 							v-if="item.case_name"
 							size="sm"
 							appearance="minimal"
@@ -147,14 +157,14 @@
 					</div>
 
 					<!-- Meta row -->
-					<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-						<span class="inline-flex items-center gap-1">
-							<Icon name="user" class="h-4 w-4" />
+          <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+            <span class="inline-flex items-center gap-1">
+              <FeatherIcon name="user" class="h-4 w-4" />
 							Assignee:
 							<strong class="ml-1">{{ item.assignee || 'All instructors' }}</strong>
 						</span>
-						<span v-if="item.author_full_name" class="inline-flex items-center gap-1">
-							<Icon name="edit" class="h-4 w-4" />
+            <span v-if="item.author_full_name" class="inline-flex items-center gap-1">
+              <FeatherIcon name="edit" class="h-4 w-4" />
 							Author:
 							<strong class="ml-1">{{ item.author_full_name }}</strong>
 						</span>
@@ -179,11 +189,10 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
 	Button,
 	FormControl,
-	EmptyState,
 	Skeleton,
 	Badge,
-	Dialog,
-	Icon,
+  Dialog,
+  FeatherIcon,
 	createResource,
 	createListResource,
 } from 'frappe-ui'
