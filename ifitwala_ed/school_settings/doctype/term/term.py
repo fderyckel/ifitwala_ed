@@ -16,7 +16,7 @@ class Term(Document):
 		ay_school = frappe.db.get_value("Academic Year", self.academic_year, "school")
 		abbr = frappe.db.get_value("School", ay_school, "abbr") or ay_school
 		self.name = f"{self.academic_year} {self.term_name}"
-		self.title = f"{abbr} {self.term_name}"
+		self.title = f"{self.term_name}"
 
 
 	def validate(self):
