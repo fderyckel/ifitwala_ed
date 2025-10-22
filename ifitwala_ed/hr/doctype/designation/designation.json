@@ -11,10 +11,13 @@
   "organization",
   "school",
   "archived",
+  "collaborates_with",
   "column_break_frxq",
   "designation_name",
   "reports_to",
-  "collaborates_with",
+  "default_role_profile",
+  "default_workspace",
+  "workspace_priority",
   "description_section",
   "position_summary",
   "job_description",
@@ -102,11 +105,29 @@
    "fieldname": "archived",
    "fieldtype": "Check",
    "label": "Archived"
+  },
+  {
+   "fieldname": "default_workspace",
+   "fieldtype": "Link",
+   "label": "Default Workspace",
+   "options": "Workspace"
+  },
+  {
+   "description": "Higher the number, that workspace will be the default one for the users with that designation as current.",
+   "fieldname": "workspace_priority",
+   "fieldtype": "Int",
+   "label": "Workspace Priority"
+  },
+  {
+   "fieldname": "default_role_profile",
+   "fieldtype": "Link",
+   "label": "Default Role",
+   "options": "Role"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-06 19:55:49.872610",
+ "modified": "2025-10-22 09:32:11.486137",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Designation",
