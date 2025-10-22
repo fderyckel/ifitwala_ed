@@ -1,3 +1,5 @@
+//ui-spa/src/api/client.ts
+
 export async function api(method: string, payload?: any) {
 	const csrf =
 		(document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''

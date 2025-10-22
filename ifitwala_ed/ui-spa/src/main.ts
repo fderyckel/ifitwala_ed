@@ -13,7 +13,7 @@ import { setConfig } from 'frappe-ui'
 
 // tell frappe-ui where to connect for realtime
 setConfig('realtime', {
-  // use the exact origin you're loaded from: http://35.238.92.31
+  // use the exact origin you're loaded from
   url: window.location.origin,
   // nginx proxies this path to the node socketio server
   path: '/socket.io',
