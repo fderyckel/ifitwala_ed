@@ -58,14 +58,19 @@ def _redirect(to: str):
 	frappe.local.flags.redirect_location = to
 	raise frappe.Redirect
 
+ALLOWED_ROLES = {"Student", "Instructor", "Academic Admin", "System Manager", "Administrator"}
+
+
 def get_context(context):
 	user = frappe.session.user
-	if not user or user == "Guest":
-		_redirect("/login?redirect-to=/portal")
+	path = frappe.request.path if hasattr(frappe, "request") else "/portal"
 
-	# Explicit role check for this user
-	if "Student" not in set(frappe.get_roles(user)):
-		_redirect("/login?redirect-to=/portal")
+	if not user or user == "Guest":
+		_redirect(f"/login?redirect-to={path}")
+
+	user_roles = set(frappe.get_roles(user))
+	if not (user_roles & ALLOWED_ROLES):
+		_redirect(f"/login?redirect-to={path}")
 
 	manifest = _load_manifest()
 	js_entry, css_files, preload_files = _collect_assets(manifest)

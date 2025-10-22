@@ -55,12 +55,10 @@ doctype_js = {"Contact": "public/js/contact.js"}
 # ifitwala_ed/hooks.py
 
 website_route_rules = [
-    {"from_route": "/portal/staff", "to_route": "portal/staff"},
-    {"from_route": "/portal/staff/<path:subpath>", "to_route": "portal/staff"},
-    {"from_route": "/staff", "to_route": "/portal/staff"},
-    {"from_route": "/staff/<path:subpath>", "to_route": "/portal/staff"},
     {"from_route": "/portal", "to_route": "portal"},
     {"from_route": "/portal/<path:subpath>", "to_route": "portal"},
+    {"from_route": "/staff", "to_route": "/portal/staff"},
+    {"from_route": "/staff/<path:subpath>", "to_route": "/portal/staff/<path:subpath>"},
 ]
 
 

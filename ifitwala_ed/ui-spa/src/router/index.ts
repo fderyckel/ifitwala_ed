@@ -7,18 +7,18 @@ const routes: RouteRecordRaw[] = [
   { path: '/', redirect: { name: 'student-home' } },
 
   // Student
-  { path: '/student', name: 'student-home', component: () => import('@/pages/student/StudentHome.vue') },
-  { path: '/student/logs', name: 'student-logs', component: () => import('@/pages/student/StudentLogs.vue') },
-  { path: '/student/profile', name: 'student-profile', component: () => import('@/pages/student/Profile.vue') },
-  { path: '/student/courses', name: 'student-courses', component: () => import('@/pages/student/Courses.vue') },
-	{ path: '/student/courses/:course_id', name: 'student-course-detail', component: () => import('@/pages/student/CourseDetail.vue'), props: route => ({ course_id: String(route.params.course_id || '') })},
+  { path: '/student', name: 'student-home', component: () => import('@/pages/student/StudentHome.vue'), meta: { layout: 'student' } },
+  { path: '/student/logs', name: 'student-logs', component: () => import('@/pages/student/StudentLogs.vue'), meta: { layout: 'student' } },
+  { path: '/student/profile', name: 'student-profile', component: () => import('@/pages/student/Profile.vue'), meta: { layout: 'student' } },
+  { path: '/student/courses', name: 'student-courses', component: () => import('@/pages/student/Courses.vue'), meta: { layout: 'student' } },
+	{ path: '/student/courses/:course_id', name: 'student-course-detail', component: () => import('@/pages/student/CourseDetail.vue'), props: route => ({ course_id: String(route.params.course_id || '') }), meta: { layout: 'student' }},
   
 	// Guardian
-  { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue') },
-  { path: '/guardian/students/:student_id', name: 'guardian-student', component: () => import('@/pages/guardian/GuardianStudentShell.vue') },
+  { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/students/:student_id', name: 'guardian-student', component: () => import('@/pages/guardian/GuardianStudentShell.vue'), meta: { layout: 'student' } },
 
 	// Staff
-  { path: '/staff/student-groups', name: 'staff-student-groups', component: () => import('@/pages/staff/schedule/student-groups/StudentGroups.vue') },
+  { path: '/staff/student-groups', name: 'staff-student-groups', component: () => import('@/pages/staff/schedule/student-groups/StudentGroups.vue'), meta: { layout: 'staff' } },
 ]
 
 export default createRouter({
