@@ -5,7 +5,7 @@
 		<div class="flex items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold tracking-tight">Student Group Cards</h1>
 			<div class="flex items-center gap-2">
-				<Button appearance="primary" :loading="studentsResource.loading" @click="reloadStudents" :disabled="!filters.student_group">
+				<Button appearance="primary" :loading="studentsLoading" @click="reloadStudents" :disabled="!filters.student_group">
 					Reload
 				</Button>
 			</div>
@@ -21,8 +21,8 @@
 			<FormControl
 				type="select"
 				:options="groupOptions"
-				:loading="groups.loading"
-				:disabled="groups.loading || groupsEmpty"
+				:loading="groupsLoading"
+				:disabled="groupsLoading || groupsEmpty"
 				v-model="filters.student_group"
 				placeholder="Student Group"
 				@update:modelValue="onGroupPicked"
@@ -51,7 +51,7 @@
 			</div>
 
 			<!-- Loading skeletons -->
-      <div v-else-if="studentsResource.loading" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+      <div v-else-if="studentsLoading" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         <div
           v-for="n in 12"
           :key="n"
@@ -75,14 +75,31 @@
 							class="h-32 w-full rounded-xl object-cover"
 							@error="onImgError($event, stu.student_image)"
 						/>
-						<div class="mt-2 text-sm font-semibold leading-tight flex items-center gap-1">
+						<div class="mt-2 text-sm font-semibold leading-tight flex items-center gap-2">
 							<span class="truncate">{{ stu.student_name }}</span>
 
-							<!-- Clickable SSG badge -->
+							<span
+								v-if="hasUpcomingBirthday(stu.birth_date)"
+								class="text-amber-500"
+								:title="`Birthday on ${birthdayTooltip(stu.birth_date)}`"
+							>
+								🎂
+							</span>
+
+							<button
+								v-if="stu.medical_info"
+								type="button"
+								class="inline-flex items-center rounded-full border border-transparent bg-red-50 p-1 text-red-600 transition hover:border-red-200 hover:bg-red-100"
+								:title="'View health note'"
+								@click.stop="showMedical(stu)"
+							>
+								<FeatherIcon name="alert-circle" class="h-4 w-4" />
+							</button>
+
 							<button
 								v-if="stu.has_ssg"
 								type="button"
-								class="ml-1 inline-flex items-center"
+								class="inline-flex items-center"
 								:title="'Support guidance available'"
 								@click.stop="openSSG(stu)"
 							>
@@ -98,7 +115,7 @@
 
 			<!-- Load more -->
 			<div v-if="showLoadMore" class="mt-6 flex justify-center">
-				<Button appearance="primary" :loading="studentsResource.loading" @click="loadMore">
+				<Button appearance="primary" :loading="studentsLoading" @click="loadMore">
 					Load More
 				</Button>
 			</div>
@@ -114,7 +131,7 @@
 	<Dialog v-model="ssg.open" :options="{ title: ssg.title, size: '2xl' }">
 		<template #body>
 			<!-- Loading state -->
-      <div v-if="ssg.resource.loading" class="space-y-3">
+      <div v-if="ssg.loading" class="space-y-3">
         <div class="h-6 rounded bg-slate-200/80 animate-pulse" />
         <div class="h-20 rounded bg-slate-200/80 animate-pulse" />
         <div class="h-20 rounded bg-slate-200/80 animate-pulse" />
@@ -186,243 +203,288 @@
 			</div>
 		</template>
 	</Dialog>
+
+	<Dialog v-model="medicalDialog.open" :options="{ title: `Health Note — ${medicalDialog.student}`, size: 'md' }">
+		<template #body>
+			<p class="text-sm text-slate-600 whitespace-pre-line">
+				{{ medicalDialog.note }}
+			</p>
+		</template>
+		<template #footer>
+			<div class="flex w-full justify-end">
+				<Button appearance="primary" @click="medicalDialog.open = false">Close</Button>
+			</div>
+		</template>
+	</Dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import {
-  Button,
-  FormControl,
-  Badge,
-  Dialog,
-  FeatherIcon,
-	createResource,
-} from 'frappe-ui'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { Button, FormControl, Badge, Dialog, FeatherIcon, call, toast } from 'frappe-ui'
 
-/** ---------------- State ---------------- */
 type Filters = {
-	program: string | null
-	course: string | null
-	cohort: string | null
-	student_group: string | null
+  program: string | null
+  course: string | null
+  cohort: string | null
+  student_group: string | null
 }
-const filters = reactive<Filters>({
-	program: null,
-	course: null,
-	cohort: null,
-	student_group: null,
-})
 
-const PAGE_LEN = 25
-const start = ref(0)
-
-/** ---------------- Resources (reuse your existing endpoints) ---------------- */
-const groups = createResource({
-	url: 'api/method/ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups',
-	makeParams: () => ({
-		program: filters.program || undefined,
-		course: filters.course || undefined,
-		cohort: filters.cohort || undefined,
-	}),
-	auto: false,
-	transform: (r: any) => r?.message ?? [],
-})
+type StudentEntry = {
+  student: string
+  student_name: string
+  preferred_name?: string
+  student_image?: string
+  medical_info?: string | null
+  birth_date?: string | null
+  has_ssg?: boolean
+}
 
 type StudentsPayload = {
-	students: any[]
-	start: number
-	total: number
-	group_info: { name?: string; program?: string; course?: string; cohort?: string }
-}
-const emptyStudents: StudentsPayload = {
-	students: [],
-	start: 0,
-	total: 0,
-	group_info: {},
+  students?: StudentEntry[]
+  start?: number
+  total?: number
+  group_info?: { name?: string; program?: string; course?: string; cohort?: string }
 }
 
-const studentsState = reactive<StudentsPayload>({ ...emptyStudents })
-const appendMode = ref(false)
+type SsgEntry = {
+  entry_datetime?: string
+  status?: string
+  assignee?: string
+  author_full_name?: string
+  summary?: string
+  case_name?: string
+}
 
-const studentsResource = createResource<StudentsPayload>({
-	url: 'api/method/ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students',
-	makeParams: () => ({
-		student_group: filters.student_group as string,
-		start: start.value,
-		page_length: PAGE_LEN,
-	}),
-	auto: false,
-	transform: (r: any) => (r?.message as StudentsPayload) ?? { ...emptyStudents },
-	onSuccess(data: StudentsPayload) {
-		if (appendMode.value) {
-			studentsState.students.push(...(data.students || []))
-		} else {
-			studentsState.students = data.students || []
-		}
-		studentsState.start = data.start ?? 0
-		studentsState.total = data.total ?? 0
-		studentsState.group_info = data.group_info || {}
-		appendMode.value = false
-	},
+const PAGE_LEN = 25
+
+const filters = reactive<Filters>({
+  program: null,
+  course: null,
+  cohort: null,
+  student_group: null,
 })
 
-/** ---------------- Derived ---------------- */
-const groupOptions = computed(() => {
-	const rows = groups.data || []
-	return rows.map((r: any) => ({
-		label: r.student_group_name || r.name,
-		value: r.name,
-	}))
+const groups = ref<any[]>([])
+const groupsLoading = ref(false)
+
+const studentsState = reactive({
+  students: [] as StudentEntry[],
+  total: 0,
+  group_info: {} as Record<string, any>,
 })
-const groupsEmpty = computed(() => (groups.data?.length ?? 0) === 0)
+const studentsLoading = ref(false)
+const cursor = ref(0)
+
+const groupOptions = computed(() =>
+  (groups.value || []).map((row: any) => ({
+    label: row.student_group_name || row.name,
+    value: row.name,
+  }))
+)
+const groupsEmpty = computed(() => !groupsLoading.value && groups.value.length === 0)
 
 const groupInfo = computed(() => studentsState.group_info ?? {})
 const groupSubtitle = computed(() => {
-	const g = groupInfo.value
-	return [g.program, g.course, g.cohort].filter(Boolean).join(' – ')
+  const g = groupInfo.value
+  return [g.program, g.course, g.cohort].filter(Boolean).join(' – ')
 })
 
-const showLoadMore = computed(() => {
-	return studentsState.start < (studentsState.total || 0)
+const showLoadMore = computed(() => studentsState.students.length < (studentsState.total || 0))
+
+const ssg = reactive({
+  open: false,
+  loading: false,
+  title: 'Support Guidance',
+  entries: [] as SsgEntry[],
 })
 
-/** ---------------- Handlers ---------------- */
+const medicalDialog = reactive({
+  open: false,
+  student: '' as string,
+  note: '' as string,
+})
+
+function handleError(error: any, fallback: string) {
+  console.error(fallback, error)
+  const message = typeof error === 'string' ? error : error?.message || fallback
+  toast({ appearance: 'danger', message })
+}
+
+async function fetchGroups() {
+  groupsLoading.value = true
+  try {
+    const response = await call(
+      'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups',
+      {
+        program: filters.program || undefined,
+        course: filters.course || undefined,
+        cohort: filters.cohort || undefined,
+      },
+    )
+    const payload = response?.message ?? response ?? []
+    groups.value = Array.isArray(payload) ? payload : []
+  } catch (error) {
+    handleError(error, 'Unable to fetch student groups')
+  } finally {
+    groupsLoading.value = false
+  }
+}
+
+async function fetchStudents(options: { reset?: boolean; append?: boolean } = {}) {
+  if (!filters.student_group) return
+  const { reset = false, append = false } = options
+  if (reset) {
+    resetStudentsData()
+  }
+  studentsLoading.value = true
+  try {
+    const response = await call(
+      'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students',
+      {
+        student_group: filters.student_group,
+        start: cursor.value,
+        page_length: PAGE_LEN,
+      },
+    )
+    const payload: StudentsPayload = response?.message ?? response ?? {}
+    const list: StudentEntry[] = Array.isArray(payload.students) ? payload.students : []
+    if (append) {
+      studentsState.students = [...studentsState.students, ...list]
+    } else {
+      studentsState.students = list
+    }
+    studentsState.total = payload.total ?? studentsState.students.length
+    studentsState.group_info = payload.group_info ?? {}
+    const reportedStart = typeof payload.start === 'number' ? payload.start : cursor.value + list.length
+    cursor.value = reportedStart
+  } catch (error) {
+    handleError(error, 'Unable to load students')
+  } finally {
+    studentsLoading.value = false
+  }
+}
+
 function onFilterChanged() {
-	filters.student_group = null
-	resetStudentsData()
-	groups.reload()
+  filters.student_group = null
+  resetStudentsData()
+  fetchGroups()
 }
 
 function onGroupPicked() {
-	if (!filters.student_group) {
-		resetStudentsData()
-		return
-	}
-	start.value = 0
-	appendMode.value = false
-	studentsResource.fetch().finally(() => {
-		appendMode.value = false
-	})
+  if (!filters.student_group) {
+    resetStudentsData()
+    return
+  }
+  fetchStudents({ reset: true })
 }
 
 function loadMore() {
-	if (!filters.student_group) return
-	const next = studentsState.start ?? start.value + PAGE_LEN
-	start.value = next
-	appendMode.value = true
-	studentsResource.fetch().finally(() => {
-		appendMode.value = false
-	})
+  if (!filters.student_group || studentsLoading.value) return
+  fetchStudents({ append: true })
 }
 
 function reloadStudents() {
-	if (!filters.student_group) return
-	start.value = 0
-	studentsState.students = []
-	appendMode.value = false
-	studentsResource.fetch().finally(() => {
-		appendMode.value = false
-	})
+  if (!filters.student_group || studentsLoading.value) return
+  fetchStudents({ reset: true })
 }
 
 function resetStudentsData() {
-	start.value = 0
-	studentsState.students = []
-	studentsState.start = 0
-	studentsState.total = 0
-	studentsState.group_info = {}
+  cursor.value = 0
+  studentsState.students = []
+  studentsState.total = 0
+  studentsState.group_info = {}
 }
 
-/** ---------------- Image helpers (thumbnail fallback) ---------------- */
 const DEFAULT_IMG = '/assets/ifitwala_ed/images/default_student_image.png'
+
 function slugify(filename: string) {
-	return filename
-		.replace(/\.[^.]+$/, '')
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '_')
-		.replace(/^_+|_+$/g, '')
+  return filename
+    .replace(/\.[^.]+$/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
 }
+
 function thumb(original_url?: string) {
-	if (!original_url) return DEFAULT_IMG
-	if (original_url.startsWith('/files/gallery_resized/student/')) return original_url
-	if (!original_url.startsWith('/files/student/')) return DEFAULT_IMG
-	const base = slugify(original_url.split('/').pop() || '')
-	return `/files/gallery_resized/student/thumb_${base}.webp`
+  if (!original_url) return DEFAULT_IMG
+  if (original_url.startsWith('/files/gallery_resized/student/')) return original_url
+  if (!original_url.startsWith('/files/student/')) return DEFAULT_IMG
+  const base = slugify(original_url.split('/').pop() || '')
+  return `/files/gallery_resized/student/thumb_${base}.webp`
 }
+
 function onImgError(e: Event, fallback?: string) {
-	const el = e.target as HTMLImageElement
-	el.onerror = null
-	el.src = fallback || DEFAULT_IMG
+  const el = e.target as HTMLImageElement
+  el.onerror = null
+  el.src = fallback || DEFAULT_IMG
 }
 
-/** ---------------- SSG Dialog ---------------- */
-type SsgEntry = {
-	entry_datetime?: string
-	status?: string
-	assignee?: string
-	author_full_name?: string
-	summary?: string // assumed sanitized HTML from server
-	case_name?: string
+function birthdayTooltip(birthDate?: string | null) {
+  if (!birthDate) return ''
+  try {
+    const today = new Date()
+    const target = new Date(birthDate)
+    const thisYear = new Date(today.getFullYear(), target.getMonth(), target.getDate())
+    const diffDays = Math.round((thisYear.getTime() - today.getTime()) / 86400000)
+    if (Math.abs(diffDays) <= 5) {
+      return thisYear.toLocaleDateString(undefined, {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      })
+    }
+  } catch (error) {
+    console.warn('Failed to parse birth date', birthDate, error)
+  }
+  return ''
 }
-const ssg = reactive<{
-	open: boolean
-	studentId: string | null
-	studentName: string | null
-	title: string
-	resource: ReturnType<typeof createResource>
-	entries: SsgEntry[] | null
-}>({
-	open: false,
-	studentId: null,
-	studentName: null,
-	title: 'Support Guidance',
-	resource: createResource({
-		url: 'api/method/ifitwala_ed.students.doctype.referral_case.referral_case.get_student_support_guidance',
-		makeParams: () => (ssg.studentId ? { student: ssg.studentId } : {}),
-		auto: false,
-		transform: (r: any) => r?.message ?? [],
-	}),
-	entries: null,
-})
 
-function openSSG(stu: any) {
-	ssg.studentId = stu.student
-	ssg.studentName = stu.student_name
-	ssg.title = `Support Guidance — ${stu.student_name}`
-	ssg.open = true
-	// fetch
-	ssg.entries = null
-	ssg.resource.reload().then(() => {
-		ssg.entries = ssg.resource.data || []
-	})
+function hasUpcomingBirthday(birthDate?: string | null) {
+  return !!birthdayTooltip(birthDate)
+}
+
+async function openSSG(stu: StudentEntry) {
+  ssg.open = true
+  ssg.loading = true
+  ssg.title = `Support Guidance — ${stu.student_name}`
+  ssg.entries = []
+  try {
+    const response = await call(
+      'ifitwala_ed.students.doctype.referral_case.referral_case.get_student_support_guidance',
+      { student: stu.student },
+    )
+    ssg.entries = response?.message ?? []
+  } catch (error) {
+    handleError(error, 'Unable to load support guidance')
+  } finally {
+    ssg.loading = false
+  }
 }
 
 function openCase(caseName: string) {
-	// open the Desk form in a new tab
-	window.open(`/app/Referral%20Case/${encodeURIComponent(caseName)}`, '_blank', 'noopener')
+  window.open(`/app/Referral%20Case/${encodeURIComponent(caseName)}`, '_blank', 'noopener')
 }
 
 function neatDate(dt?: string) {
-	if (!dt) return ''
-	try {
-		const d = new Date(dt)
-		return d.toLocaleDateString(undefined, { day: '2-digit', month: 'long', year: 'numeric' })
-	} catch {
-		return dt
-	}
+  if (!dt) return ''
+  try {
+    const d = new Date(dt)
+    return d.toLocaleDateString(undefined, { day: '2-digit', month: 'long', year: 'numeric' })
+  } catch {
+    return dt
+  }
 }
 
-/** ---------------- Init & watchers ---------------- */
-onMounted(() => {
-	groups.reload()
-})
+function showMedical(stu: StudentEntry) {
+  if (!stu.medical_info) return
+  medicalDialog.student = stu.student_name
+  medicalDialog.note = stu.medical_info
+  medicalDialog.open = true
+}
 
-watch(
-	() => filters.student_group,
-	(val) => {
-		if (!val) resetStudentsData()
-	}
-)
+onMounted(() => {
+  fetchGroups()
+})
 </script>
 
 <style scoped>
