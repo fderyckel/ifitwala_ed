@@ -5,7 +5,7 @@
 		<div class="flex items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold tracking-tight">Student Group Cards</h1>
 			<div class="flex items-center gap-2">
-				<Button appearance="primary" :loading="students.loading" @click="reloadStudents" :disabled="!filters.student_group">
+				<Button appearance="primary" :loading="studentsResource.loading" @click="reloadStudents" :disabled="!filters.student_group">
 					Reload
 				</Button>
 			</div>
@@ -51,7 +51,7 @@
 			</div>
 
 			<!-- Loading skeletons -->
-      <div v-else-if="students.loading" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+      <div v-else-if="studentsResource.loading" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         <div
           v-for="n in 12"
           :key="n"
@@ -63,7 +63,7 @@
 			<div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
 				<!-- Minimal card; SSG badge is clickable -->
 				<div
-					v-for="stu in students.data?.students || []"
+					v-for="stu in studentsState.students"
 					:key="stu.student"
 					class="rounded-2xl bg-white p-3 shadow-sm transition hover:-translate-y-0.5"
 				>
@@ -98,14 +98,14 @@
 
 			<!-- Load more -->
 			<div v-if="showLoadMore" class="mt-6 flex justify-center">
-				<Button appearance="primary" :loading="students.loading" @click="loadMore">
+				<Button appearance="primary" :loading="studentsResource.loading" @click="loadMore">
 					Load More
 				</Button>
 			</div>
 
 			<!-- Totals -->
 			<div v-if="filters.student_group" class="mt-3 text-xs text-gray-500">
-				Showing {{ students.data?.students?.length || 0 }} of {{ students.data?.total || 0 }}
+				Showing {{ studentsState.students.length || 0 }} of {{ studentsState.total || 0 }}
 			</div>
 		</div>
 	</div>
@@ -197,7 +197,6 @@ import {
   Dialog,
   FeatherIcon,
 	createResource,
-	createListResource,
 } from 'frappe-ui'
 
 /** ---------------- State ---------------- */
@@ -235,7 +234,17 @@ type StudentsPayload = {
 	total: number
 	group_info: { name?: string; program?: string; course?: string; cohort?: string }
 }
-const students = createListResource<StudentsPayload>({
+const emptyStudents: StudentsPayload = {
+	students: [],
+	start: 0,
+	total: 0,
+	group_info: {},
+}
+
+const studentsState = reactive<StudentsPayload>({ ...emptyStudents })
+const appendMode = ref(false)
+
+const studentsResource = createResource<StudentsPayload>({
 	url: 'api/method/ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students',
 	makeParams: () => ({
 		student_group: filters.student_group as string,
@@ -243,8 +252,18 @@ const students = createListResource<StudentsPayload>({
 		page_length: PAGE_LEN,
 	}),
 	auto: false,
-	transform: (r: any) =>
-		(r?.message as StudentsPayload) ?? { students: [], start: 0, total: 0, group_info: {} },
+	transform: (r: any) => (r?.message as StudentsPayload) ?? { ...emptyStudents },
+	onSuccess(data: StudentsPayload) {
+		if (appendMode.value) {
+			studentsState.students.push(...(data.students || []))
+		} else {
+			studentsState.students = data.students || []
+		}
+		studentsState.start = data.start ?? 0
+		studentsState.total = data.total ?? 0
+		studentsState.group_info = data.group_info || {}
+		appendMode.value = false
+	},
 })
 
 /** ---------------- Derived ---------------- */
@@ -257,16 +276,14 @@ const groupOptions = computed(() => {
 })
 const groupsEmpty = computed(() => (groups.data?.length ?? 0) === 0)
 
-const groupInfo = computed(() => students.data?.group_info ?? {})
+const groupInfo = computed(() => studentsState.group_info ?? {})
 const groupSubtitle = computed(() => {
 	const g = groupInfo.value
 	return [g.program, g.course, g.cohort].filter(Boolean).join(' – ')
 })
 
 const showLoadMore = computed(() => {
-	const d = students.data
-	if (!d) return false
-	return d.start < (d.total || 0)
+	return studentsState.start < (studentsState.total || 0)
 })
 
 /** ---------------- Handlers ---------------- */
@@ -282,25 +299,38 @@ function onGroupPicked() {
 		return
 	}
 	start.value = 0
-	students.reload()
+	appendMode.value = false
+	studentsResource.fetch().finally(() => {
+		appendMode.value = false
+	})
 }
 
 function loadMore() {
 	if (!filters.student_group) return
-	const next = students.data?.start ?? start.value + PAGE_LEN
+	const next = studentsState.start ?? start.value + PAGE_LEN
 	start.value = next
-	students.reload({ append: true })
+	appendMode.value = true
+	studentsResource.fetch().finally(() => {
+		appendMode.value = false
+	})
 }
 
 function reloadStudents() {
 	if (!filters.student_group) return
 	start.value = 0
-	students.reload({ clear: true })
+	studentsState.students = []
+	appendMode.value = false
+	studentsResource.fetch().finally(() => {
+		appendMode.value = false
+	})
 }
 
 function resetStudentsData() {
 	start.value = 0
-	students.setData({ students: [], start: 0, total: 0, group_info: {} })
+	studentsState.students = []
+	studentsState.start = 0
+	studentsState.total = 0
+	studentsState.group_info = {}
 }
 
 /** ---------------- Image helpers (thumbnail fallback) ---------------- */
