@@ -1072,86 +1072,92 @@ def offering_ay_query(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def offering_course_query(doctype, txt, searchfield, start, page_len, filters):
-	"""
-	List Courses from Program Offering Course, valid for the selected Academic Year (and optional Term filter).
-	Robust to missing Academic Year.year_start_date (then we skip the AY window instead of returning 0 rows).
-	Also returns (name, label) so the Link field shows a nicer label.
-	"""
-	offering = (filters or {}).get("program_offering")
-	selected_ay = (filters or {}).get("academic_year")
-	selected_term = (filters or {}).get("term")  # optional
+    """
+    List Courses from Program Offering Course, valid for the selected Program Offering
+    and (optionally) Academic Year + Term. Uses proper *overlap* logic for date windows:
+      - if poc.from_date is set  → ay.year_end_date   >= poc.from_date
+      - if poc.to_date   is set  → ay.year_start_date <= poc.to_date
+    Returns (name, label).
+    """
+    offering = (filters or {}).get("program_offering")
+    selected_ay = (filters or {}).get("academic_year")
+    selected_term = (filters or {}).get("term")  # optional
 
-	if not (offering and selected_ay):
-		return []
+    if not offering:
+        return []
 
-	txt_like = f"%{txt}%"
-	ay_sel_start = frappe.db.get_value("Academic Year", selected_ay, "year_start_date")
+    txt_like = f"%{txt}%"
+    args = {
+        "offering": offering,
+        "txt": txt_like,
+        "start": start,
+        "page_len": page_len,
+        "ay": selected_ay,
+    }
 
-	# Build optional AY window block (only if the selected AY has a start date)
-	ay_window_clause = ""
-	if ay_sel_start:
-		ay_window_clause = """
-			AND (
-					(ay_start.year_start_date IS NULL OR %(ay_sel_start)s >= ay_start.year_start_date)
-				AND (ay_end.year_start_date   IS NULL OR %(ay_sel_start)s <= ay_end.year_start_date)
-			)
-			AND (
-					(poc.from_date IS NULL OR %(ay_sel_start)s >= poc.from_date)
-				AND (poc.to_date   IS NULL OR %(ay_sel_start)s <= poc.to_date)
-			)
-		"""
+    # Optional term window (only if columns exist and a term is selected)
+    term_clause = ""
+    try:
+        has_start_term = frappe.db.has_column("Program Offering Course", "start_academic_term")
+        has_end_term   = frappe.db.has_column("Program Offering Course", "end_academic_term")
+    except Exception:
+        has_start_term = has_end_term = False
 
-	# Optional term window — only if these columns exist on your child doctype
-	term_window_clause = ""
-	try:
-		has_start_term = frappe.db.has_column("Program Offering Course", "start_academic_term")
-		has_end_term   = frappe.db.has_column("Program Offering Course", "end_academic_term")
-	except Exception:
-		has_start_term = has_end_term = False
+    if selected_term and has_start_term and has_end_term:
+        term_clause = """
+            AND (
+                    (poc.start_academic_term IS NULL OR poc.start_academic_term <= %(term)s)
+                AND (poc.end_academic_term   IS NULL OR poc.end_academic_term   >= %(term)s)
+            )
+        """
+        args["term"] = selected_term
 
-	if selected_term and has_start_term and has_end_term:
-		term_window_clause = """
-			AND (
-					(poc.start_academic_term IS NULL OR poc.start_academic_term <= %(term)s)
-				AND (poc.end_academic_term   IS NULL OR poc.end_academic_term   >= %(term)s)
-			)
-		"""
+    # AY/date windows are applied only when an AY is selected (and we can read its dates)
+    ay_clause = ""
+    if selected_ay:
+        ay_start = frappe.db.get_value("Academic Year", selected_ay, "year_start_date")
+        ay_end   = frappe.db.get_value("Academic Year", selected_ay, "year_end_date")
+        args["ay_start_date"] = ay_start
+        args["ay_end_date"]   = ay_end
 
-	params = {
-		"offering": offering,
-		"txt": txt_like,
-		"start": start,
-		"page_len": page_len,
-		"ay_sel": selected_ay,
-		"ay_sel_start": ay_sel_start,  # may be None; ay_window_clause is empty in that case
-		"term": selected_term,
-	}
+        # AY-range window (compare against AYs referenced on POC rows by start_AY/end_AY)
+        # and DATE-range window with proper overlap checks
+        ay_clause = """
+            LEFT JOIN `tabAcademic Year` ay_start ON ay_start.name = poc.start_academic_year
+            LEFT JOIN `tabAcademic Year` ay_enday ON ay_enday.name = poc.end_academic_year
+            WHERE poc.parenttype='Program Offering'
+              AND poc.parent = %(offering)s
+              AND (poc.course LIKE %(txt)s OR c.course_name LIKE %(txt)s)
+              AND (
+                    (ay_start.year_start_date IS NULL OR %(ay_start_date)s >= ay_start.year_start_date)
+                AND (ay_enday.year_start_date  IS NULL OR %(ay_start_date)s <= ay_enday.year_start_date)
+              )
+              AND (
+                    (poc.from_date IS NULL OR %(ay_end_date)s   >= poc.from_date)
+                AND (poc.to_date   IS NULL OR %(ay_start_date)s <= poc.to_date)
+              )
+              {term_clause}
+        """.format(term_clause=term_clause)
+    else:
+        # No AY selected → just list by parent (no windows)
+        ay_clause = """
+            WHERE poc.parenttype='Program Offering'
+              AND poc.parent = %(offering)s
+              AND (poc.course LIKE %(txt)s OR c.course_name LIKE %(txt)s)
+        """
 
-	# Return (name, label). Name must be the Course name; label can be the course title if you have it.
-	# We LEFT JOIN Course to show a friendlier label while still returning the Course name as first column.
-	sql = f"""
-		SELECT
-			poc.course                                  AS name,
-			COALESCE(c.course_name, poc.course)         AS label
-		FROM `tabProgram Offering Course` poc
-		LEFT JOIN `tabCourse` c
-		       ON c.name = poc.course
-		LEFT JOIN `tabAcademic Year` ay_sel
-		       ON ay_sel.name = %(ay_sel)s
-		LEFT JOIN `tabAcademic Year` ay_start
-		       ON ay_start.name = poc.start_academic_year
-		LEFT JOIN `tabAcademic Year` ay_end
-		       ON ay_end.name   = poc.end_academic_year
-		WHERE poc.parenttype='Program Offering'
-		  AND poc.parent = %(offering)s
-		  AND (poc.course LIKE %(txt)s OR c.course_name LIKE %(txt)s)
-		  {ay_window_clause}
-		  {term_window_clause}
-		ORDER BY label ASC, name ASC
-		LIMIT %(page_len)s OFFSET %(start)s
-	"""
+    sql = f"""
+        SELECT
+            poc.course                                  AS name,
+            COALESCE(c.course_name, poc.course)         AS label
+        FROM `tabProgram Offering Course` poc
+        LEFT JOIN `tabCourse` c ON c.name = poc.course
+        {ay_clause}
+        ORDER BY label ASC, name ASC
+        LIMIT %(page_len)s OFFSET %(start)s
+    """
 
-	return frappe.db.sql(sql, params)
+    return frappe.db.sql(sql, args)
 
 
 ########################## Permissions ##########################
