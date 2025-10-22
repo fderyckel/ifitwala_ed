@@ -585,41 +585,62 @@ class StudentGroup(Document):
 	# --- Course scoping (Program Offering Course) ---
 
 	def _course_in_offering_for_ay(self) -> bool:
-		"""Return True if self.course is present in Program Offering Course and valid for self.academic_year."""
-		if not (self.program_offering and self.course and self.academic_year):
-			return False
-
-		# We compare the Academic Year's start_date against start/end AYs and date ranges
-		# Join to Academic Year to use year_start_date for stable comparisons when AY names don't sort naturally.
-		row = frappe.db.sql(
+			"""Return True if self.course is present in Program Offering Course and valid for self.academic_year.
+			Uses proper overlap logic for date windows and inclusive AY-range checks.
 			"""
-			SELECT 1
-			FROM `tabProgram Offering Course` poc
-			LEFT JOIN `tabAcademic Year` ay_sel  ON ay_sel.name = %(selected_ay)s
-			LEFT JOIN `tabAcademic Year` ay_start ON ay_start.name = poc.start_academic_year
-			LEFT JOIN `tabAcademic Year` ay_end   ON ay_end.name   = poc.end_academic_year
-			WHERE poc.parenttype = 'Program Offering'
-				AND poc.parent = %(offering)s
-				AND poc.course = %(course)s
-				AND (
-					-- AY window satisfied (if provided)
-					(ay_start.year_start_date IS NULL OR ay_sel.year_start_date >= ay_start.year_start_date)
-				AND (ay_end.year_start_date   IS NULL OR ay_sel.year_start_date <= ay_end.year_start_date)
-				)
-				AND (
-					-- Date window satisfied (if provided)
-					(poc.from_date IS NULL OR ay_sel.year_start_date >= poc.from_date)
-				AND (poc.to_date   IS NULL OR ay_sel.year_start_date <= poc.to_date)
-				)
-			LIMIT 1
-			""",
-			{
-				"offering": self.program_offering,
-				"course": self.course,
-				"selected_ay": self.academic_year,
-			},
-		)
-		return bool(row)
+			if not (self.program_offering and self.course and self.academic_year):
+					return False
+
+			# Pull the selected AY's start/end once
+			ay_row = frappe.db.get_value(
+					"Academic Year",
+					self.academic_year,
+					["year_start_date", "year_end_date"],
+					as_dict=True,
+			)
+			ay_start = ay_row.year_start_date if ay_row else None
+			ay_end   = ay_row.year_end_date   if ay_row else None
+
+			params = {
+					"offering": self.program_offering,
+					"course": self.course,
+					"sel_ay": self.academic_year,
+					"sel_ay_start": ay_start,
+					"sel_ay_end": ay_end,
+			}
+
+			# NOTE:
+			# 1) AY-range check: selected AY's start must fall within start/end AYs on the POC row (if provided)
+			# 2) DATE-range overlap: the AY window [ay_start, ay_end] must overlap with [from_date, to_date] if those are provided.
+			#    - If only from_date is set → require ay_end >= from_date
+			#    - If only to_date   is set → require ay_start <= to_date
+			#    - If both are set         → require (ay_end >= from_date) AND (ay_start <= to_date)
+			row = frappe.db.sql(
+					"""
+					SELECT 1
+					FROM `tabProgram Offering Course` poc
+					LEFT JOIN `tabAcademic Year` ay_start ON ay_start.name = poc.start_academic_year
+					LEFT JOIN `tabAcademic Year` ay_enday ON ay_enday.name = poc.end_academic_year
+					WHERE poc.parenttype = 'Program Offering'
+						AND poc.parent = %(offering)s
+						AND poc.course = %(course)s
+						AND (
+									-- AY-range satisfied (if provided)
+									(ay_start.year_start_date IS NULL OR %(sel_ay_start)s >= ay_start.year_start_date)
+							AND (ay_enday.year_start_date IS NULL OR %(sel_ay_start)s <= ay_enday.year_start_date)
+						)
+						AND (
+									-- DATE-range overlap (if provided)
+									(poc.from_date IS NULL OR %(sel_ay_end)s   >= poc.from_date)
+							AND (poc.to_date   IS NULL OR %(sel_ay_start)s <= poc.to_date)
+						)
+					LIMIT 1
+					""",
+					params,
+			)
+
+			return bool(row)
+
 
 	def _validate_course_scoping(self):
 		"""Hard guard for Course groups: the chosen Course must be part of the Program Offering and valid for the AY."""
