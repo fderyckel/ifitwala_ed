@@ -37,6 +37,7 @@ class StudentGroup(Document):
 		self.validate_and_set_child_table_fields()
 		validate_duplicate_student(self.students)
 		self.validate_rotation_clashes()
+		self.validate_location_capacity()
 
 
 		########
@@ -389,6 +390,50 @@ class StudentGroup(Document):
 							.format(row.rotation_day, row.block_number, row.location))
 			key_sets["location"].add(key)
 
+	def validate_location_capacity(self):
+		"""Ensure the chosen locations can accommodate the group's active student count.
+		- Reads unique Location rows from the schedule child table.
+		- Counts only active students in the students child table.
+		- Batches Location lookups for efficiency.
+		- Enforces capacity only when `maximum_capacity` > 0 (0/None = no limit).
+		"""
+		# collect unique, non-empty locations from schedule
+		locations = {row.location for row in (self.student_group_schedule or []) if row.location}
+		if not locations:
+			return
+
+		# count active students in group
+		active_students = sum(1 for r in (self.students or []) if cint(getattr(r, "active", 1)) == 1)
+		# if no students, nothing to validate
+		if active_students == 0:
+			return
+
+		# fetch capacities in one query
+		caps = frappe.get_all(
+			"Location",
+			filters={"name": ["in", list(locations)]},
+			fields=["name", "maximum_capacity"],
+			ignore_permissions=True,
+		)
+		cap_map = {c["name"]: cint(c.get("maximum_capacity") or 0) for c in caps}
+
+		# find any locations where capacity is set (>0) and violated
+		over = []
+		for loc in locations:
+			cap = cap_map.get(loc, 0)
+			if cap > 0 and active_students > cap:
+				over.append((loc, cap))
+
+		if over:
+			lines = "\n".join(
+				f"- {loc}: capacity {cap}, active students {active_students}"
+				for loc, cap in over
+			)
+			frappe.throw(
+				_("Room capacity exceeded for the following locations:\n{0}").format(lines),
+				title=_("Maximum Capacity Exceeded"),
+			)
+
 	def _get_school_schedule(self):
 		"""
 		Resolve the School Schedule used to validate schedule rows.
@@ -455,8 +500,6 @@ class StudentGroup(Document):
 
 		return frappe.get_cached_doc("School Schedule", row[0][0])
 
-
-
 	def _validate_schedule_rows(self):
 		"""
 		• Ensures rotation_day / block_number exist in the resolved School Schedule
@@ -498,7 +541,6 @@ class StudentGroup(Document):
 			# 4️⃣ Auto-fill times (use read-only fields)
 			from_t, to_t = block_map[row.rotation_day][row.block_number]
 			row.from_time, row.to_time = from_t, to_t
-
 
 	def _derive_program_from_offering(self):
 		"""Quality-of-life: show Program in the form, but do not treat as source of truth."""
@@ -640,7 +682,6 @@ class StudentGroup(Document):
 			)
 
 			return bool(row)
-
 
 	def _validate_course_scoping(self):
 		"""Hard guard for Course groups: the chosen Course must be part of the Program Offering and valid for the AY."""
