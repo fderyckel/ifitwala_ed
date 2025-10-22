@@ -1,6 +1,6 @@
 import frappe
 
-from .index import _load_manifest, _collect_assets
+from ..index import _load_manifest, _collect_assets
 
 ALLOWED_ROLES = {"Instructor", "Academic Admin", "System Manager", "Administrator"}
 
