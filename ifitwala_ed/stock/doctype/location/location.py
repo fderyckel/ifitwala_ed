@@ -9,8 +9,51 @@ from frappe.utils import cint
 from frappe.model.document import Document
 
 class Location(Document):
+	def before_insert(self):
+		# Auto-inherit organization from parent (insert-time)
+		self._inherit_org_from_parent()
+
 	def validate(self):
 		self.validate_capacity_against_groups()
+		self._validate_org_against_parent()
+
+	def _inherit_org_from_parent(self):
+		"""If a parent is set, adopt its organization when missing or different."""
+		if not getattr(self, "parent_location", None):
+			return
+		parent_org = frappe.db.get_value("Location", self.parent_location, "organization")
+		if not parent_org:
+			# allow save but nudge: better to fix parent first
+			frappe.msgprint(
+				_("Parent Location {0} has no Organization set; please fix the parent.")
+				.format(frappe.utils.get_link_to_form("Location", self.parent_location)),
+				title=_("Parent Missing Organization"),
+				indicator="orange",
+			)
+			return
+		if not self.organization or self.organization != parent_org:
+			self.organization = parent_org
+
+	def _validate_org_against_parent(self):
+		"""A child cannot have an Organization different from its parent."""
+		if not getattr(self, "parent_location", None):
+			return
+		parent_org = frappe.db.get_value("Location", self.parent_location, "organization")
+		if not parent_org:
+			frappe.throw(
+				_("Parent Location {0} has no Organization set. Set it on the parent first.")
+				.format(frappe.utils.get_link_to_form("Location", self.parent_location)),
+				title=_("Parent Missing Organization"),
+			)
+		if self.organization and self.organization != parent_org:
+			frappe.throw(
+				_("Child Location Organization must match its parent. "
+				  "Parent: <b>{0}</b>, Child: <b>{1}</b>.").format(parent_org, self.organization),
+				title=_("Organization Mismatch"),
+			)
+		# normalize to parent just in case
+		self.organization = parent_org
+
 
 	def validate_capacity_against_groups(self):
 		"""

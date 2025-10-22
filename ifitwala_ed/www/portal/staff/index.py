@@ -2,7 +2,7 @@ import frappe
 
 from .index import _load_manifest, _collect_assets
 
-ALLOWED_ROLES = {"Instructor", "Academic Assistant", "Academic Admin", "System Manager", "Administrator"}
+ALLOWED_ROLES = {"Instructor", "Academic Admin", "System Manager", "Administrator"}
 
 
 def _redirect(target: str) -> None:
@@ -33,4 +33,3 @@ def get_context(context):
 	context.vite_css = css_files
 	context.vite_preload = preload_files
 	return context
-
