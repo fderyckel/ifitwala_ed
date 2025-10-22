@@ -3,6 +3,7 @@ import App from './App.vue'
 import router from './router'
 import { FrappeUI } from 'frappe-ui'
 import './lib/socket.ts'
+import { setupFrappeUI } from './resources/frappe'
 
 // Tailwind entry (keep this file with @tailwind directives)
 import './style.css'
@@ -20,6 +21,8 @@ setConfig('realtime', {
   transports: ['websocket', 'polling'],
   withCredentials: true,
 })
+
+setupFrappeUI()
 
 createApp(App)
 	.use(FrappeUI)
