@@ -1,28 +1,42 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router'
-import { FrappeUI, setConfig } from 'frappe-ui'
-import './lib/socket.ts'
-import { setupFrappeUI } from './resources/frappe'
+// ifitwala_ed/ui-spa/src/main.ts
+import { createApp } from 'vue';
+import App from './App.vue';
+import router from './router';
+import { FrappeUI, setConfig } from 'frappe-ui';
+import { setupFrappeUI } from './resources/frappe';
 
-// Tailwind entry (keep this file with @tailwind directives)
-import './style.css'
+// Tailwind entry
+import './style.css';
 
-// tell frappe-ui where to connect for realtime
+// Configure real‑time to use your bench’s socket.io server.
+// Frappe’s default socket server runs on port 9000 and uses HTTP.
+const socketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const socketHost = window.location.hostname;
 setConfig('realtime', {
-  url: window.location.origin,
+  // e.g. ws://34.61.243.240:9000
+  url: `${socketProtocol}//${socketHost}:9000`,
   path: '/socket.io',
   transports: ['websocket', 'polling'],
   withCredentials: true,
-})
+});
 
 async function bootstrap() {
-  await setupFrappeUI()
+  // Set fetchOptions and CSRF token
+  await setupFrappeUI();
 
   createApp(App)
-    .use(FrappeUI)
+    .use(FrappeUI, {
+      // Tell Frappe‑UI to send the sid cookie on every call
+      useSession: true,
+      // Disable auto‑connecting the socket on the portal; the student/staff
+      // portal doesn’t need real‑time events
+      connectSocket: false,
+    })
     .use(router)
-    .mount('#app')
+    .mount('#app');
 }
 
-bootstrap()
+bootstrap().catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error('Failed to bootstrap Ifitwala portal app:', err);
+});
