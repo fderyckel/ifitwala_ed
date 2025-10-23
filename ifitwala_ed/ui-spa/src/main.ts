@@ -25,6 +25,4 @@ async function bootstrap() {
     .mount('#app')
 }
 
-bootstrap().catch((error) => {
-  console.error('Failed to bootstrap Ifitwala portal app', error)
-})
+bootstrap()
