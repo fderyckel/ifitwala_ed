@@ -159,6 +159,8 @@ class StudentLog(Document):
 		# Apply derived status (suppresses timeline via reason)
 		self._apply_status(derived, reason="recomputed on validate", write_immediately=False)
 
+		self._ensure_delivery_context()
+
 		# Infer school from program if missing
 		if not self.school:
 			self.school = self._resolve_school()
@@ -276,6 +278,45 @@ class StudentLog(Document):
 
 		return None
 
+	def _ensure_delivery_context(self):
+		"""
+		Fill Program, Academic Year, Program Offering, and School from the student's
+		active Program Enrollment when any is missing. This keeps the log anchored to
+		the real delivery context without relying on Program.school (legacy).
+		"""
+		need_program = not getattr(self, "program", None)
+		need_ay = not getattr(self, "academic_year", None)
+		need_po = not getattr(self, "program_offering", None)
+		need_school = not getattr(self, "school", None)
+
+		if not (need_program or need_ay or need_po or need_school):
+			return
+
+		if not self.student:
+			return
+
+		ctx = get_active_program_enrollment(self.student) or {}
+		# ctx may be frappe._dict or dict
+		prog = ctx.get("program")
+		ay = ctx.get("academic_year")
+		po = ctx.get("program_offering")
+		school = ctx.get("school")
+
+		updates = {}
+		if need_program and prog:
+			updates["program"] = prog
+		if need_ay and ay:
+			updates["academic_year"] = ay
+		if need_po and po:
+			updates["program_offering"] = po
+		if need_school and school:
+			updates["school"] = school
+
+		# in-memory updates; let normal save flow persist
+		if updates:
+			self.update(updates)
+
+
 	# ---------------------------------------------------------------------
 	# Assignment helpers
 	# ---------------------------------------------------------------------
@@ -374,10 +415,6 @@ class StudentLog(Document):
 	def _fullname(self, user):
 		return frappe.utils.get_fullname(user) or user
 
-
-
-def on_doctype_update():
-			frappe.db.add_index("Student Log", ["school"])
 
 # ---------- WHITELISTED HELPERS (KEPT) ----------
 @frappe.whitelist()
@@ -575,7 +612,6 @@ def assign_follow_up(log_name: str, user: str):
 			pass
 
 	return {"ok": True, "assigned_to": user, "status": new_status}
-
 
 # ---------- scheduler: Completed → Closed ----------
 def auto_close_completed_logs():
@@ -942,3 +978,5 @@ def reopen_log(log_name: str):
 	return {"ok": True, "status": "In Progress", "log": row.name}
 
 
+def on_doctype_update():
+			frappe.db.add_index("Student Log", ["school"])

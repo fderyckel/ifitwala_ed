@@ -5,7 +5,7 @@ from ifitwala_ed.schedule.page.student_group_cards.student_group_cards import (
 	get_student_group_students,
 )
 
-TRIAGE_ROLES = {"Academic Admin", "Counselor", "System Manager", "Administrator"}
+TRIAGE_ROLES = {"Academic Admin", "Academic Staff", "Instructor", "Academic Assistant", "Counselor", "System Manager", "Administrator"}
 
 
 def _user_roles(user: str) -> set[str]:
