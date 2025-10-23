@@ -1,4 +1,3 @@
-<!-- ifitwala_ed/ifitwala_ed/ui-spa/src/pages/staff/schedule/studen-groups/StudentGroups.vue -->
 <template>
 	<!-- Page wrapper -->
 	<div class="min-h-full px-4 py-4 md:px-6 lg:px-8">
@@ -489,13 +488,11 @@ function showMedical(stu: StudentEntry) {
 }
 
 onMounted(async () => {
-	console.debug('[mounted] groups:', groups.value);
-	console.debug('[mounted] groupOptions:', groupOptions.value);
-
-  await nextTick()
-  console.debug('[mounted] calling fetchGroups()...')
-  await fetchGroups()
-  console.debug('[mounted] groups fetched:', groups.value)
+  console.log('[mounted] StudentGroups mounted');
+  await nextTick();
+  console.log('[mounted] before fetchGroups');
+  await fetchGroups();
+  console.log('[mounted] after fetchGroups, groups:', groups.value);
 })
 
 </script>

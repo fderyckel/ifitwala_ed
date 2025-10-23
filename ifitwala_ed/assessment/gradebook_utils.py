@@ -6,8 +6,7 @@
 import frappe
 from frappe import _
 from typing import List, Dict
-
-from frappe.utils.caching import redis_cache  # use this decorator per docs :contentReference[oaicite:0]{index=0}
+from frappe.utils.caching import redis_cache
 
 @redis_cache(ttl=86400)
 def get_levels_for_criterion(assessment_criteria: str) -> List[Dict]:
@@ -23,7 +22,6 @@ def get_levels_for_criterion(assessment_criteria: str) -> List[Dict]:
         order_by="idx asc"
     )
     return rows
-
 
 def recompute_student_rubric_suggestion(task: str, student: str) -> float:
     """
