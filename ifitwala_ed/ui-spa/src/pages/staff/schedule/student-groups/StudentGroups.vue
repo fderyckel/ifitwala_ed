@@ -311,56 +311,56 @@ function handleError(error: any, fallback: string) {
 }
 
 async function fetchGroups() {
-  groupsLoading.value = true
+  groupsLoading.value = true;
   try {
     const { message } = await call(
-      'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups',
+      'ifitwala_ed.api.student_groups.fetch_groups',
       {
         program: filters.program || undefined,
         course: filters.course || undefined,
         cohort: filters.cohort || undefined,
       },
-    )
-    const payload = message ?? []
-    groups.value = Array.isArray(payload) ? payload : []
+    );
+    groups.value = Array.isArray(message) ? message : [];
   } catch (error) {
-    handleError(error, 'Unable to fetch student groups')
+    handleError(error, 'Unable to fetch student groups');
   } finally {
-    groupsLoading.value = false
+    groupsLoading.value = false;
   }
 }
 
 async function fetchStudents(options: { reset?: boolean; append?: boolean } = {}) {
-  if (!filters.student_group) return
-  const { reset = false, append = false } = options
+  if (!filters.student_group) return;
+  const { reset = false, append = false } = options;
   if (reset) {
-    resetStudentsData()
+    resetStudentsData();
   }
-  studentsLoading.value = true
+  studentsLoading.value = true;
   try {
-    const { message } = await call<StudentsPayload>(
-      'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students',
+    const { message } = await call(
+      'ifitwala_ed.api.student_groups.fetch_group_students',
       {
         student_group: filters.student_group,
         start: cursor.value,
         page_length: PAGE_LEN,
       },
-    )
-    const payload = message ?? {}
-    const list: StudentEntry[] = Array.isArray(payload.students) ? payload.students : []
+    );
+    const payload = message ?? {};
+    const list: StudentEntry[] = Array.isArray(payload.students) ? payload.students : [];
     if (append) {
-      studentsState.students = [...studentsState.students, ...list]
+      studentsState.students = [...studentsState.students, ...list];
     } else {
-      studentsState.students = list
+      studentsState.students = list;
     }
-    studentsState.total = payload.total ?? studentsState.students.length
-    studentsState.group_info = payload.group_info ?? {}
-    const reportedStart = typeof payload.start === 'number' ? payload.start : cursor.value + list.length
-    cursor.value = reportedStart
+    studentsState.total = payload.total ?? studentsState.students.length;
+    studentsState.group_info = payload.group_info ?? {};
+    cursor.value = typeof payload.start === 'number'
+      ? payload.start
+      : cursor.value + list.length;
   } catch (error) {
-    handleError(error, 'Unable to load students')
+    handleError(error, 'Unable to load students');
   } finally {
-    studentsLoading.value = false
+    studentsLoading.value = false;
   }
 }
 
