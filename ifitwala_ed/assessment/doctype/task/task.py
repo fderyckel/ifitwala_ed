@@ -16,6 +16,12 @@ except Exception:
 	def is_descendant(*args, **kwargs):
 		return True  # soft fallback if util not available in early migrations
 
+def _is_course_scoped_group(group_row: dict) -> bool:
+	gb = group_row.get("group_based_on") or ""
+	return gb.strip().lower() == "course"
+
+
+
 
 class Task(Document):
 	def before_insert(self):
@@ -43,20 +49,21 @@ class Task(Document):
 			g = frappe.db.get_value(
 				"Student Group",
 				self.student_group,
-				["group_type", "course", "school", "academic_year"],
+				["group_based_on", "course", "school", "academic_year"],
 				as_dict=True,
 			) or {}
 
-			# If the group is course-scoped, its course must match the task course
-			if (g.get("group_type") or "").lower() == "course":
+			# If the group is course-scoped, ensure its course matches the task course (when both present)
+			if _is_course_scoped_group(g):
 				if g.get("course") and self.course and g["course"] != self.course:
 					frappe.throw(_("Selected Student Group belongs to a different Course."))
 
-			# Optional tree guard: group school should be same or descendant of task.school (if both present)
+			# Tree guard: group school must be the same as task.school or a descendant (when both present)
 			if self.school and g.get("school") and not is_descendant(
 				ancestor=self.school, node=g["school"], include_equal=True
 			):
 				frappe.throw(_("Student Group’s school must be {0} or its descendant.").format(self.school))
+
 
 		# --- Grading requirements (when graded) ---
 		if self.is_graded:
@@ -218,22 +225,62 @@ def duplicate_for_group(
 
 	return {"name": new_doc.name}
 
+@frappe.whitelist()
+def prefill_task_students(task: str) -> Dict:
+    """
+    Insert missing Task Student rows for active students in the Task’s student_group.
+    """
+    if not task:
+        frappe.throw(_("Task is required"))
+
+    doc = frappe.get_doc("Task", task)
+    if not doc.student_group:
+        frappe.throw(_("Select a Student Group before loading students."))
+
+    s_rows = frappe.get_all(
+        "Student Group Student",
+        filters={"parent": doc.student_group, "active": 1},
+        fields=["student", "student_name"]
+    )
+    existing = {
+        r.student: r.name
+        for r in frappe.get_all(
+            "Task Student",
+            filters={"parent": doc.name, "parenttype": "Task"},
+            fields=["name", "student"]
+        )
+    }
+
+    inserted = 0
+    for r in s_rows:
+        if r["student"] in existing:
+            continue
+        ts = frappe.get_doc({
+            "doctype": "Task Student",
+            "parent": doc.name,
+            "parenttype": "Task",
+            "parentfield": "task_student",  # ensure this matches Task field name
+            "student": r["student"],
+            "student_name": r.get("student_name"),
+            "status": "Assigned",
+            "student_group": doc.student_group,
+            "course": doc.course,
+            "program": doc.program,
+            "academic_year": doc.academic_year,
+        })
+        ts.insert(ignore_permissions=False)
+        inserted += 1
+
+    return {"inserted": inserted, "total": len(s_rows)}
+
+
 
 def on_doctype_update():
-	# Course task lists: common instructor view
-	frappe.db.add_index("Task", ["course", "is_published", "due_date"])
-
 	# Group task lists: student/section views
-	frappe.db.add_index("Task", ["student_group", "is_published", "due_date"])
+	frappe.db.add_index("Task", ["student_group", "due_date"])
 
 	# School/AY analytics: number cards and reports
 	frappe.db.add_index("Task", ["school", "academic_year", "is_graded"])
-
-	# Fast status + overdue filtering
-	frappe.db.add_index("Task", ["status", "due_date"])
-
-	# Faster lesson->tasks and checklist rendering
-	frappe.db.add_index("Task", ["lesson", "delivery_type"])
 
 	# Useful for course dashboards and date queries
 	frappe.db.add_index("Task", ["course", "due_date"])
