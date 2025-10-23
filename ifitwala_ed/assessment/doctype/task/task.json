@@ -47,8 +47,7 @@
   "show_in_todo",
   "section_break_haua",
   "instructions",
-  "attachments",
-  "amended_from"
+  "attachments"
  ],
  "fields": [
   {
@@ -76,6 +75,8 @@
    "fieldtype": "Column Break"
   },
   {
+   "fetch_from": "student_group.course",
+   "fetch_if_empty": 1,
    "fieldname": "course",
    "fieldtype": "Link",
    "in_filter": 1,
@@ -259,20 +260,11 @@
    "options": "Attached Document"
   },
   {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Task",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
    "fieldname": "student_group",
    "fieldtype": "Link",
    "label": "Student Group",
-   "options": "Student Group"
+   "options": "Student Group",
+   "reqd": 1
   },
   {
    "default": "0",
@@ -318,9 +310,8 @@
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "is_submittable": 1,
  "links": [],
- "modified": "2025-09-25 14:45:49.015497",
+ "modified": "2025-10-23 16:00:48.239809",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",
