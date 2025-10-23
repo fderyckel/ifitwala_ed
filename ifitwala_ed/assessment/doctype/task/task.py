@@ -7,7 +7,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 from frappe import _
-from typing import Optional
+from typing import Optional, Dict
 
 # If you need the school tree guard (AY on parent vs group on leaf)
 try:
