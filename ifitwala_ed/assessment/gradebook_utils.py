@@ -24,10 +24,11 @@ def get_levels_for_criterion(assessment_criteria: str) -> List[Dict]:
     )
     return rows
 
+
 def recompute_student_rubric_suggestion(task: str, student: str) -> float:
     """
-    Sum level_points of Task Criterion Score for (task, student),
-    update Task Student.criteria_total_suggestion, return float.
+    Sum level_points of Task Criterion Score rows for (task, student),
+    update Task Student.total_mark, return float.
     """
     if not (task and student):
         return 0.0
@@ -42,7 +43,6 @@ def recompute_student_rubric_suggestion(task: str, student: str) -> float:
         """, (task, student)
     )[0][0] or 0.0
 
-    # update the Task Student row
     ts_name = frappe.db.get_value(
         "Task Student",
         {"parent": task, "parenttype": "Task", "student": student},
@@ -51,7 +51,7 @@ def recompute_student_rubric_suggestion(task: str, student: str) -> float:
     if ts_name:
         frappe.db.set_value(
             "Task Student", ts_name,
-            "criteria_total_suggestion", total,
+            "total_mark", total,
             update_modified=False
         )
 
@@ -61,7 +61,7 @@ def recompute_student_rubric_suggestion(task: str, student: str) -> float:
 def upsert_task_criterion_scores(task: str, student: str, rows: List[Dict]) -> Dict:
     """
     Replace all Task Criterion Score rows for (task, student) with the payload rows.
-    Payload rows: [{assessment_criteria, level, level_points, comment}, …]
+    Payload rows: [{assessment_criteria, level, level_points, feedback}, …]
     Returns {"suggestion": <float>}
     """
     frappe.only_for(("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager"))
@@ -69,28 +69,32 @@ def upsert_task_criterion_scores(task: str, student: str, rows: List[Dict]) -> D
     if not (task and student):
         frappe.throw(_("Task and Student are required."))
 
-    # Delete existing criterion-rows for this student
+    seen = set()
+    for r in rows or []:
+        crt = r.get("assessment_criteria")
+        if not crt:
+            frappe.throw(_("Assessment Criteria is required in each row."))
+        key = (student, crt)
+        if key in seen:
+            frappe.throw(_("Duplicate criterion {0} for student {1}").format(crt, student))
+        seen.add(key)
+
     frappe.db.delete(
         "Task Criterion Score",
         {"parent": task, "parenttype": "Task", "student": student}
     )
 
-    # Insert new rows
     for r in rows or []:
-        crt = r.get("assessment_criteria")
-        if not crt:
-            frappe.throw(_("Assessment Criteria is required in each row."))
-
         doc = frappe.get_doc({
             "doctype": "Task Criterion Score",
             "parent": task,
             "parenttype": "Task",
-            "parentfield": "task_criterion_score",  # ensure this matches field name in Task
+            "parentfield": "task_criterion_score",
             "student": student,
-            "assessment_criteria": crt,
+            "assessment_criteria": r.get("assessment_criteria"),
             "level": r.get("level"),
             "level_points": float(r.get("level_points") or 0),
-            "comment": r.get("comment")
+            "feedback": r.get("feedback")
         })
         doc.insert(ignore_permissions=False)
 

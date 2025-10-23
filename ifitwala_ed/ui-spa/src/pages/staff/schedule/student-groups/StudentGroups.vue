@@ -489,11 +489,15 @@ function showMedical(stu: StudentEntry) {
 }
 
 onMounted(async () => {
+	console.debug('[mounted] groups:', groups.value);
+	console.debug('[mounted] groupOptions:', groupOptions.value);
+
   await nextTick()
   console.debug('[mounted] calling fetchGroups()...')
   await fetchGroups()
   console.debug('[mounted] groups fetched:', groups.value)
 })
+
 </script>
 
 <style scoped>

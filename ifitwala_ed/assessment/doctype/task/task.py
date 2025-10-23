@@ -276,11 +276,9 @@ def prefill_task_students(task: str) -> Dict:
 
 
 def on_doctype_update():
-	# Group task lists: student/section views
-	frappe.db.add_index("Task", ["student_group", "due_date"])
+	frappe.db.add_index("Task", ["student_group", "due_date"])		# Group task lists: student/section views
+	frappe.db.add_index("Task", ["school", "academic_year", "is_graded"])	# School/AY analytics: number cards and reports
+	frappe.db.add_index("Task", ["course", "due_date"])						# Useful for course dashboards and date queries
+	frappe.db.add_index("Task Student", ["parent", "student"])
+	frappe.db.add_index("Task Criterion Score", ["parent", "student", "assessment_criteria"])
 
-	# School/AY analytics: number cards and reports
-	frappe.db.add_index("Task", ["school", "academic_year", "is_graded"])
-
-	# Useful for course dashboards and date queries
-	frappe.db.add_index("Task", ["course", "due_date"])
