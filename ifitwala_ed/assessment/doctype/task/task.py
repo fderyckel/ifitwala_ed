@@ -1,8 +1,7 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# Copyright (c) 2025, François de Ryckel and contributors
-# License: MIT
+# ifitwala_ed/assessment/doctype/task/task.py
 
 import frappe
 from frappe.model.document import Document

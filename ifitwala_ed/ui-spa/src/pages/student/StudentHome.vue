@@ -12,16 +12,67 @@
             <h2 id="courses-heading" class="text-xl font-semibold text-gray-700">My Courses</h2>
 						<RouterLink :to="{ name: 'student-courses' }" class="text-sm font-medium text-blue-600 hover:underline">View All</RouterLink>
           </div>
+          <p v-if="daySummary" class="text-sm text-gray-500 mb-4">Today: {{ daySummary }}</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div v-for="course in courses" :key="course.title" class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-              <div class="flex items-start justify-between">
-                <div>
-                  <h3 class="font-semibold text-gray-800">{{ course.title }}</h3>
-                  <p class="text-sm text-gray-500">{{ course.instructor }}</p>
-                </div>
-                <FeatherIcon :name="course.icon" class="w-6 h-6 text-gray-400" />
+            <template v-if="loadingCourses">
+              <div class="col-span-full flex items-center justify-center h-32 bg-white border border-gray-200 rounded-lg text-gray-500">
+                Loading today's courses…
               </div>
-            </div>
+            </template>
+            <template v-else-if="courseError">
+              <div class="col-span-full bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {{ courseError }}
+              </div>
+            </template>
+            <template v-else-if="!todayCourses.length">
+              <div class="col-span-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center text-gray-500">
+                No classes scheduled for today.
+              </div>
+            </template>
+            <template v-else>
+              <RouterLink
+                v-for="course in todayCourses"
+                :key="course.student_group"
+                :to="course.href ?? { name: 'student-course-detail', params: { course_id: course.course } }"
+                class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 class="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                      {{ course.course_name }}
+                    </h3>
+                    <p v-if="course.student_group_name && course.student_group_name !== course.course_name" class="text-sm text-gray-500">
+                      {{ course.student_group_name }}
+                    </p>
+                    <p v-if="course.rotation_day" class="text-xs uppercase tracking-wide text-blue-600 mt-2 font-medium">
+                      Day {{ course.rotation_day }}
+                    </p>
+                  </div>
+                  <div class="flex-shrink-0">
+                    <FeatherIcon name="book-open" class="w-6 h-6 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  </div>
+                </div>
+                <div v-if="course.instructors && course.instructors.length" class="mt-3 text-sm text-gray-600">
+                  {{ course.instructors.length > 1 ? 'Instructors' : 'Instructor' }}:
+                  {{ course.instructors.join(', ') }}
+                </div>
+                <ul class="mt-4 space-y-2">
+                  <li
+                    v-for="(slot, idx) in course.time_slots"
+                    :key="`${course.student_group}-${idx}`"
+                    class="flex items-start text-sm text-gray-600"
+                  >
+                    <FeatherIcon name="clock" class="w-4 h-4 mt-0.5 text-gray-400" />
+                    <span class="ml-2">
+                      <span v-if="slot.block_number">Block {{ slot.block_number }}</span>
+                      <span v-if="slot.block_number && (slot.time_range || slot.location)"> &bull; </span>
+                      <span v-if="slot.time_range">{{ slot.time_range }}</span>
+                      <span v-if="slot.location"> &bull; {{ slot.location }}</span>
+                    </span>
+                  </li>
+                </ul>
+              </RouterLink>
+            </template>
           </div>
         </section>
 
@@ -65,22 +116,53 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { FeatherIcon } from 'frappe-ui';
+import { call, FeatherIcon } from 'frappe-ui';
 
 // Get user info from Frappe's session object for the welcome message
 const user = computed(() => {
   return window.frappe?.session?.user_info || { fullname: 'Student' };
 });
 
-// Placeholder data for "My Courses"
-const courses = [
-  { title: 'Introduction to Physics', instructor: 'Dr. Evelyn Reed', icon: 'cpu' },
-  { title: 'History of Ancient Civilizations', instructor: 'Prof. Marcus Chen', icon: 'book-open' },
-  { title: 'Calculus I', instructor: 'Dr. Alan Grant', icon: 'percent' },
-  { title: 'Creative Writing Workshop', instructor: 'Ms. Alice Martin', icon: 'edit-3' },
-];
+const loadingCourses = ref(true);
+const courseError = ref(null);
+const todayCourses = ref([]);
+const scheduleMeta = ref({ date: null, weekday: null });
+
+const daySummary = computed(() => {
+  const { date, weekday } = scheduleMeta.value || {};
+  if (date && weekday) {
+    return `${weekday}, ${date}`;
+  }
+  return weekday || date || '';
+});
+
+async function fetchTodayCourses() {
+  loadingCourses.value = true;
+  courseError.value = null;
+  try {
+    const response = await call('ifitwala_ed.api.course_schedule.get_today_courses');
+    const payload = response && typeof response === 'object' && 'message' in response
+      ? response.message
+      : response;
+
+    todayCourses.value = Array.isArray(payload?.courses) ? payload.courses : [];
+    scheduleMeta.value = {
+      date: payload?.date ?? null,
+      weekday: payload?.weekday ?? null,
+    };
+  } catch (err) {
+    console.error(err);
+    courseError.value = "Unable to load today's courses.";
+    todayCourses.value = [];
+    scheduleMeta.value = { date: null, weekday: null };
+  } finally {
+    loadingCourses.value = false;
+  }
+}
+
+onMounted(fetchTodayCourses);
 
 // Data for the "More" section cards
 const moreLinks = [

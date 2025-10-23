@@ -221,6 +221,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { nextTick } from 'vue'
 import { Button, FormControl, Badge, Dialog, FeatherIcon, call, toast } from 'frappe-ui'
 
 type Filters = {
@@ -267,6 +268,10 @@ const filters = reactive<Filters>({
 
 const groups = ref<any[]>([])
 const groupsLoading = ref(false)
+
+watch(groups, (newVal) => {
+  console.debug('[watch] groups changed:', newVal)
+})
 
 const studentsState = reactive({
   students: [] as StudentEntry[],
@@ -483,8 +488,11 @@ function showMedical(stu: StudentEntry) {
   medicalDialog.open = true
 }
 
-onMounted(() => {
-  fetchGroups()
+onMounted(async () => {
+  await nextTick()
+  console.debug('[mounted] calling fetchGroups()...')
+  await fetchGroups()
+  console.debug('[mounted] groups fetched:', groups.value)
 })
 </script>
 
