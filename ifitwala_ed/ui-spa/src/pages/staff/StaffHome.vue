@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/ifitwala_ed/ui-spa/src/pages/staff/schedule/StaffHome.vue -->
 <template>
 	<div class="flex w-full flex-col items-center justify-center gap-6 text-center">
 		<div class="space-y-2">

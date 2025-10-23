@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/ifitwala_ed/ui-spa/src/pages/staff/schedule/studen-groups/StudentGroups.vue -->
 <template>
 	<!-- Page wrapper -->
 	<div class="min-h-full px-4 py-4 md:px-6 lg:px-8">
