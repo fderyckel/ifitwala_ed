@@ -21,9 +21,9 @@
 			<!-- Student Group select fed by groupsResource -->
 			<FormControl
 				type="select"
-				:options="groupOptions"
-				:loading="groupsLoading"
-				:disabled="groupsLoading || groupsEmpty"
+				:options="groupOptions.value"
+				option-label="label"
+				option-value="value"
 				v-model="filters.student_group"
 				placeholder="Student Group"
 				@update:modelValue="onGroupPicked"
