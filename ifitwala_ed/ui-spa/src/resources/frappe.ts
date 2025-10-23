@@ -9,26 +9,11 @@ async function resolveCsrfToken(): Promise<string> {
 	if (typeof document !== 'undefined') {
 		const meta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
 		if (meta?.content) {
+			if (typeof window !== 'undefined') {
+				(window as any).csrf_token = meta.content;
+			}
 			return meta.content;
 		}
-	}
-
-	try {
-		const response = await fetch('/api/method/frappe.client.get_csrf_token', {
-			method: 'GET',
-			credentials: 'same-origin',
-			headers: { Accept: 'application/json' },
-		});
-		if (response.ok) {
-			const payload = await response.json();
-			const token = payload?.message || '';
-			if (token && typeof window !== 'undefined') {
-				(window as any).csrf_token = token;
-			}
-			return token;
-		}
-	} catch (err) {
-		console.warn('[setupFrappeUI] Unable to fetch CSRF token', err);
 	}
 
 	return '';

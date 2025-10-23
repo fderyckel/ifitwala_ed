@@ -78,4 +78,5 @@ def get_context(context):
 	context.vite_js = js_entry
 	context.vite_css = css_files
 	context.vite_preload = preload_files
+	context.csrf_token = frappe.sessions.get_csrf_token()
 	return context
