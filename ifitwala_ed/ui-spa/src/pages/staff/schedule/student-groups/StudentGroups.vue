@@ -492,6 +492,7 @@ onMounted(async () => {
   await nextTick();
   console.log('[mounted] before fetchGroups');
   await fetchGroups();
+	console.log('groupOptions.value raw =', groupOptions.value);
   console.log('[mounted] after fetchGroups, groups:', groups.value);
 })
 
