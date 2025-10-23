@@ -314,7 +314,7 @@ async function fetchGroups() {
   groupsLoading.value = true
   try {
     const { message } = await call(
-      'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups',
+      'ifitwala_ed.api.student_groups.fetch_groups',
       {
         program: filters.program || undefined,
         course: filters.course || undefined,
@@ -339,7 +339,7 @@ async function fetchStudents(options: { reset?: boolean; append?: boolean } = {}
   studentsLoading.value = true
   try {
     const { message } = await call<StudentsPayload>(
-      'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students',
+      'ifitwala_ed.api.student_groups.fetch_group_students',
       {
         student_group: filters.student_group,
         start: cursor.value,
