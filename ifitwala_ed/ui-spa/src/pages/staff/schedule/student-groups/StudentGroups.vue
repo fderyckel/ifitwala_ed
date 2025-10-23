@@ -220,7 +220,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { Button, FormControl, Badge, Dialog, FeatherIcon, call, toast } from 'frappe-ui'
+import { Button, FormControl, Badge, Dialog, FeatherIcon, toast } from 'frappe-ui'
+import { api } from '@/api/client'
 
 type Filters = {
   program: string | null
@@ -313,7 +314,7 @@ function handleError(error: any, fallback: string) {
 async function fetchGroups() {
   groupsLoading.value = true
   try {
-    const response = await call(
+    const payload = await api(
       'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups',
       {
         program: filters.program || undefined,
@@ -321,7 +322,6 @@ async function fetchGroups() {
         cohort: filters.cohort || undefined,
       },
     )
-    const payload = response?.message ?? response ?? []
     groups.value = Array.isArray(payload) ? payload : []
   } catch (error) {
     handleError(error, 'Unable to fetch student groups')
@@ -338,7 +338,7 @@ async function fetchStudents(options: { reset?: boolean; append?: boolean } = {}
   }
   studentsLoading.value = true
   try {
-    const response = await call(
+    const payload: StudentsPayload = await api(
       'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students',
       {
         student_group: filters.student_group,
@@ -346,7 +346,6 @@ async function fetchStudents(options: { reset?: boolean; append?: boolean } = {}
         page_length: PAGE_LEN,
       },
     )
-    const payload: StudentsPayload = response?.message ?? response ?? {}
     const list: StudentEntry[] = Array.isArray(payload.students) ? payload.students : []
     if (append) {
       studentsState.students = [...studentsState.students, ...list]
@@ -449,11 +448,10 @@ async function openSSG(stu: StudentEntry) {
   ssg.title = `Support Guidance — ${stu.student_name}`
   ssg.entries = []
   try {
-    const response = await call(
+    ssg.entries = await api(
       'ifitwala_ed.students.doctype.referral_case.referral_case.get_student_support_guidance',
       { student: stu.student },
     )
-    ssg.entries = response?.message ?? []
   } catch (error) {
     handleError(error, 'Unable to load support guidance')
   } finally {
