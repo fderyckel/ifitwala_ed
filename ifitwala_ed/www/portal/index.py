@@ -58,25 +58,35 @@ def _redirect(to: str):
 	frappe.local.flags.redirect_location = to
 	raise frappe.Redirect
 
-ALLOWED_ROLES = {"Student", "Instructor", "Academic Admin", "System Manager", "Administrator"}
+ALLOWED_ROLES = {"Student", "Instructor", "Academic Staff", "Academic Assistant", "Academic Admin", "System Manager", "Administrator"}
 
 
 def get_context(context):
-	user = frappe.session.user
-	path = frappe.request.path if hasattr(frappe, "request") else "/portal"
+    user = frappe.session.user
+    path = frappe.request.path if hasattr(frappe, "request") else "/portal"
 
-	if not user or user == "Guest":
-		_redirect(f"/login?redirect-to={path}")
+    if not user or user == "Guest":
+        _redirect(f"/login?redirect-to={path}")
 
-	user_roles = set(frappe.get_roles(user))
-	if not (user_roles & ALLOWED_ROLES):
-		_redirect(f"/login?redirect-to={path}")
+    user_roles = set(frappe.get_roles(user))
+    if not (user_roles & ALLOWED_ROLES):
+        _redirect(f"/login?redirect-to={path}")
 
-	manifest = _load_manifest()
-	js_entry, css_files, preload_files = _collect_assets(manifest)
+    # Determine default portal section based on role
+    if "Student" in user_roles:
+        default_portal = "student"
+    elif "Guardian" in user_roles:
+        default_portal = "guardian"
+    else:
+        default_portal = "staff"
 
-	context.vite_js = js_entry
-	context.vite_css = css_files
-	context.vite_preload = preload_files
-	context.csrf_token = frappe.sessions.get_csrf_token()
-	return context
+    context.default_portal = default_portal
+
+    manifest = _load_manifest()
+    js_entry, css_files, preload_files = _collect_assets(manifest)
+
+    context.csrf_token = frappe.sessions.get_csrf_token()
+    context.vite_js = js_entry
+    context.vite_css = css_files
+    context.vite_preload = preload_files
+    return context

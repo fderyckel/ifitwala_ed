@@ -4,7 +4,13 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   // redirect to a *named route* inside the /portal base, not to '/portal'
-  { path: '/', redirect: { name: 'student-home' } },
+  {
+    path: '/',
+    redirect: () => {
+      const section = (window as any).defaultPortal || 'student';
+      return { name: `${section}-home` };
+    },
+  },
 
   // Student
   { path: '/student', name: 'student-home', component: () => import('@/pages/student/StudentHome.vue'), meta: { layout: 'student' } },
@@ -12,7 +18,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/student/profile', name: 'student-profile', component: () => import('@/pages/student/Profile.vue'), meta: { layout: 'student' } },
   { path: '/student/courses', name: 'student-courses', component: () => import('@/pages/student/Courses.vue'), meta: { layout: 'student' } },
 	{ path: '/student/courses/:course_id', name: 'student-course-detail', component: () => import('@/pages/student/CourseDetail.vue'), props: route => ({ course_id: String(route.params.course_id || '') }), meta: { layout: 'student' }},
-  
+
 	// Guardian
   { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue'), meta: { layout: 'student' } },
   { path: '/guardian/students/:student_id', name: 'guardian-student', component: () => import('@/pages/guardian/GuardianStudentShell.vue'), meta: { layout: 'student' } },
@@ -27,3 +33,4 @@ export default createRouter({
   history: createWebHistory('/portal'),
   routes,
 })
+
