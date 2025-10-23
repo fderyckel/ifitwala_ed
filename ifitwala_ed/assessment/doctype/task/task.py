@@ -157,6 +157,7 @@ class Task(Document):
 				.format(exists[0]["name"]))
 
 
+
 @frappe.whitelist()
 def duplicate_for_group(
 	source_task: str,
@@ -225,6 +226,7 @@ def duplicate_for_group(
 
 	return {"name": new_doc.name}
 
+
 @frappe.whitelist()
 def prefill_task_students(task: str) -> Dict:
     """
@@ -272,6 +274,65 @@ def prefill_task_students(task: str) -> Dict:
         inserted += 1
 
     return {"inserted": inserted, "total": len(s_rows)}
+
+
+@frappe.whitelist()
+def get_criterion_scores_for_student(task: str, student: str) -> Dict:
+    """
+    Returns existing Task Criterion Score rows for given (task, student)
+    so the UI can preload them in the rubric dialog.
+    Returns { "rows": [ {assessment_criteria, level, level_points, feedback}, … ] }
+    """
+    if not (task and student):
+        return {"rows": []}
+
+    rows = frappe.get_all(
+        "Task Criterion Score",
+        filters={"parent": task, "parenttype": "Task", "student": student},
+        fields=["assessment_criteria", "level", "level_points", "feedback"]
+    )
+    return {"rows": rows}
+
+
+@frappe.whitelist()
+def apply_rubric_to_awarded(task: str, students: list) -> Dict:
+    """
+    For each student in the list, sets mark_awarded = total_mark in Task Student,
+    or optionally applies grade scale if configured. Returns counts.
+    """
+    if not (task and students and isinstance(students, list)):
+        frappe.throw(_("Task and students list are required."))
+
+    # Only allow instructors or permitted roles
+    frappe.only_for(("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager"))
+
+    updated = 0
+    for student in students:
+        ts_name = frappe.db.get_value(
+            "Task Student",
+            {"parent": task, "parenttype": "Task", "student": student},
+            "name"
+        )
+        if not ts_name:
+            continue
+
+        total = frappe.db.get_value(
+            "Task Student",
+            ts_name,
+            "total_mark"
+        ) or 0.0
+
+        # You might apply grade scale logic here if needed (future)
+        frappe.db.set_value(
+            "Task Student",
+            ts_name,
+            "mark_awarded",
+            total,
+            update_modified=False
+        )
+        updated += 1
+
+    return {"updated": updated}
 
 
 
