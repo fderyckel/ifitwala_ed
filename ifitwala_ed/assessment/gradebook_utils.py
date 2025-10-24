@@ -1,5 +1,4 @@
-# Copyright (c) 2025, François de Ryckel and contributors
-# For license information, please see license.txt
+w
 
 # ifitwala_ed/assessment/gradebook_utils.py
 

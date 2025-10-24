@@ -24,6 +24,7 @@ def _is_course_scoped_group(group_row: dict) -> bool:
 
 
 class Task(Document):
+
 	def before_insert(self):
 		# Ensure Posted Date is set if schema default didn't apply (programmatic inserts)
 		if not self.posted_date:
@@ -64,6 +65,8 @@ class Task(Document):
 			):
 				frappe.throw(_("Student Group’s school must be {0} or its descendant.").format(self.school))
 
+		self._enforce_due_date_if_published()
+
 
 		# --- Grading requirements (when graded) ---
 		if self.is_graded:
@@ -90,6 +93,13 @@ class Task(Document):
 		self._denorm_from_group()
 		# Compute status (Draft/Published/Open/Closed) from publish flag + window
 		self.status = self._compute_status()
+
+	def _enforce_due_date_if_published(self):
+			# If status implies visibility, enforce due_date
+			visible_states = {'Published', 'Open'}
+			if (self.status in visible_states or self.is_published) and not self.due_date:
+				frappe.throw(_("Due Date is required when a Task is Published or Open."))
+
 
 	def _denorm_from_group(self) -> None:
 		"""Best-effort, cheap denormalization from Student Group. Fields are read-only in the schema."""
