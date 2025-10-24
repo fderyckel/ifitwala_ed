@@ -29,15 +29,18 @@ def _maybe_set_cache(key, val):
     except Exception:
         pass
 
+
 @frappe.whitelist()
 def get_task_events(start, end, filters=None):
     user = frappe.session.user
+
+    # parse filters:
     if isinstance(filters, str):
         try:
             filters = json.loads(filters)
         except ValueError:
             filters = {}
-    if filters is None:
+    if not isinstance(filters, dict):
         filters = {}
 
     key = _cache_key(start, end, filters, user)
