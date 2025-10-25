@@ -438,7 +438,7 @@ const statusOptions = [
 ]
 
 const groupsResource = createResource({
-	url: 'api/method/ifitwala_ed.api.gradebook.fetch_groups',
+	url: 'ifitwala_ed.api.gradebook.fetch_groups',
 	auto: true,
 	transform: (res: unknown) => unwrapMessage<GroupSummary[]>(res) ?? [],
 })
