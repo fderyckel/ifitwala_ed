@@ -1,5 +1,3 @@
-w
-
 # ifitwala_ed/assessment/gradebook_utils.py
 
 import frappe
