@@ -58,35 +58,49 @@ def _redirect(to: str):
 	frappe.local.flags.redirect_location = to
 	raise frappe.Redirect
 
-ALLOWED_ROLES = {"Student", "Instructor", "Academic Staff", "Academic Assistant", "Academic Admin", "System Manager", "Administrator"}
+ALLOWED_ROLES = {
+	"Student",
+	"Guardian",
+	"Instructor",
+	"Academic Staff",
+	"Academic Assistant",
+	"Academic Admin",
+	"System Manager",
+	"Administrator",
+}
 
 
 def get_context(context):
-    user = frappe.session.user
-    path = frappe.request.path if hasattr(frappe, "request") else "/portal"
+	user = frappe.session.user
+	path = frappe.request.path if hasattr(frappe, "request") else "/portal"
 
-    if not user or user == "Guest":
-        _redirect(f"/login?redirect-to={path}")
+	if not user or user == "Guest":
+		_redirect(f"/login?redirect-to={path}")
 
-    user_roles = set(frappe.get_roles(user))
-    if not (user_roles & ALLOWED_ROLES):
-        _redirect(f"/login?redirect-to={path}")
+	user_roles = set(frappe.get_roles(user))
+	if not (user_roles & ALLOWED_ROLES):
+		_redirect(f"/login?redirect-to={path}")
 
-    # Determine default portal section based on role
-    if "Student" in user_roles:
-        default_portal = "student"
-    elif "Guardian" in user_roles:
-        default_portal = "guardian"
-    else:
-        default_portal = "staff"
+	# Determine default portal section based on role priority: student > staff > guardian
+	if "Student" in user_roles:
+		default_portal = "student"
+	elif "Academic Staff" in user_roles:
+		default_portal = "staff"
+	elif "Guardian" in user_roles:
+		default_portal = "guardian"
+	else:
+		default_portal = "staff"
 
-    context.default_portal = default_portal
+	portal_roles = sorted(user_roles)
+	context.default_portal = default_portal
+	context.portal_roles = portal_roles
+	context.portal_roles_json = frappe.as_json(portal_roles)
 
-    manifest = _load_manifest()
-    js_entry, css_files, preload_files = _collect_assets(manifest)
+	manifest = _load_manifest()
+	js_entry, css_files, preload_files = _collect_assets(manifest)
 
-    context.csrf_token = frappe.sessions.get_csrf_token()
-    context.vite_js = js_entry
-    context.vite_css = css_files
-    context.vite_preload = preload_files
-    return context
+	context.csrf_token = frappe.sessions.get_csrf_token()
+	context.vite_js = js_entry
+	context.vite_css = css_files
+	context.vite_preload = preload_files
+	return context

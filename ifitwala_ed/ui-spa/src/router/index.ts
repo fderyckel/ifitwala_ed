@@ -29,8 +29,20 @@ const routes: RouteRecordRaw[] = [
   { path: '/staff/gradebook', name: 'staff-gradebook', component: () => import('@/pages/staff/gradebook/Gradebook.vue'), meta: { layout: 'staff' } },
 ]
 
-export default createRouter({
+const router = createRouter({
   // important: keep base history at /portal (no trailing slash)
   history: createWebHistory('/portal'),
   routes,
 })
+
+router.beforeEach((to) => {
+  const roles = (window as unknown as { portalRoles?: string[] }).portalRoles || []
+
+  if (roles.includes('Student') && (to.path.startsWith('/staff') || to.path.startsWith('/guardian'))) {
+    return { name: 'student-home' }
+  }
+
+  return true
+})
+
+export default router
