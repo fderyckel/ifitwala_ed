@@ -19,14 +19,18 @@
  ],
  "fields": [
   {
+   "columns": 3,
    "fieldname": "student",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Student",
    "options": "Student"
   },
   {
+   "columns": 2,
    "fieldname": "status",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Status",
    "options": "Assigned\nIn Progress\nGraded\nReturned\nMissed"
   },
@@ -41,14 +45,18 @@
    "label": "Feedback"
   },
   {
+   "columns": 1,
    "default": "0",
    "fieldname": "complete",
    "fieldtype": "Check",
+   "in_list_view": 1,
    "label": "Complete"
   },
   {
+   "columns": 1,
    "fieldname": "mark_awarded",
    "fieldtype": "Float",
+   "in_list_view": 1,
    "label": "Mark Awarded"
   },
   {
@@ -78,7 +86,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-10-23 15:10:08.168413",
+ "modified": "2025-10-26 09:37:31.325489",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Student",

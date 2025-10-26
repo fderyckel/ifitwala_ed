@@ -2,6 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "creation": "2025-09-23 21:31:26.785096",
+ "default_view": "List",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -47,7 +48,10 @@
   "show_in_todo",
   "section_break_haua",
   "instructions",
-  "attachments"
+  "attachments",
+  "section_break_zbog",
+  "task_criterion_score",
+  "task_student"
  ],
  "fields": [
   {
@@ -306,12 +310,28 @@
    "in_filter": 1,
    "label": "Delivery Type",
    "options": "Assignment\nQuiz\nDiscussion\nCheckpoint\nExternal Tool\nOther"
+  },
+  {
+   "fieldname": "section_break_zbog",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "task_criterion_score",
+   "fieldtype": "Table",
+   "label": "Task Criterion Score",
+   "options": "Task Criterion Score"
+  },
+  {
+   "fieldname": "task_student",
+   "fieldtype": "Table",
+   "label": "Task Student",
+   "options": "Task Student"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-23 16:00:48.239809",
+ "modified": "2025-10-23 21:29:33.848738",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",
@@ -376,7 +396,10 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "course, task_type",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "title"
 }

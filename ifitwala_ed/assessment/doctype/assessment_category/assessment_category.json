@@ -1,27 +1,20 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "field:category_name",
  "creation": "2024-12-31 09:26:50.128790",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "assessment_category",
+  "category_name",
   "asessment_category_color",
-  "default_weight"
+  "is_summative",
+  "include_in_final"
  ],
  "fields": [
   {
-   "columns": 4,
-   "fieldname": "assessment_category",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Assessment Category",
-   "reqd": 1,
-   "unique": 1
-  },
-  {
+   "allow_in_quick_entry": 1,
    "columns": 2,
    "fieldname": "asessment_category_color",
    "fieldtype": "Color",
@@ -30,24 +23,96 @@
   },
   {
    "columns": 4,
-   "fieldname": "default_weight",
-   "fieldtype": "Int",
+   "default": "0",
+   "fieldname": "is_summative",
+   "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Default Weight"
+   "label": "Is Summative"
+  },
+  {
+   "default": "0",
+   "fieldname": "include_in_final",
+   "fieldtype": "Check",
+   "label": "Include in Final"
+  },
+  {
+   "columns": 4,
+   "fieldname": "category_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Category Name",
+   "reqd": 1,
+   "unique": 1
   }
  ],
  "index_web_pages_for_search": 1,
- "istable": 1,
  "links": [],
- "modified": "2025-09-25 07:46:46.241214",
+ "modified": "2025-10-26 10:59:39.157235",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Assessment Category",
- "naming_rule": "Random",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
- "permissions": [],
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
+  }
+ ],
  "row_format": "Dynamic",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "category_name"
 }

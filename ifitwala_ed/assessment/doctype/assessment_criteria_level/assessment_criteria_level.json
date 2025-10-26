@@ -29,19 +29,20 @@
    "columns": 8,
    "fieldname": "level_descriptor",
    "fieldtype": "Text Editor",
-   "in_standard_filter": 1,
+   "in_list_view": 1,
    "label": "Level Descriptor"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-06 11:47:42.645468",
+ "modified": "2025-10-24 06:22:55.506524",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Assessment Criteria Level",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
