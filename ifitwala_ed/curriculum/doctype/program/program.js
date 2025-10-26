@@ -95,7 +95,7 @@ frappe.ui.form.on("Program", {
 	},
 
 	before_save(frm) {
-		// Refactored: ALLOW multiple schemes (points/binary/criteria/feedback)
+		// ALLOW multiple schemes (points/binary/criteria/feedback)
 		// Only guard weights if Points is ON.
 		_client_validate_weights_when_points(frm);
 	}
@@ -138,19 +138,24 @@ function _bind_weight_handlers(frm) {
 			// Auto-pick color from master category if color_override is blank
 			const d = frappe.get_doc(cdt, cdn);
 			const cat = (d.assessment_category || "").trim();
-			if (!cat) return;
+			if (!cat) {
+				_update_remaining_weight_badge(frm);
+				return;
+			}
 
 			// only fetch if empty (let user override)
 			if (!d.color_override) {
+				// Some Frappe builds lack Promise.finally on this call; avoid .finally().
 				frappe.db.get_value("Assessment Category", cat, "asessment_category_color")
 					.then(r => {
-						const color = r?.message?.asessment_category_color;
+						const color = r && r.message && r.message.asessment_category_color;
 						if (color) {
 							d.color_override = color;
 							refresh_field("assessment_categories");
 						}
 					})
-					.finally(() => _update_remaining_weight_badge(frm));
+					.catch(() => { /* ignore */ })
+					.then(() => _update_remaining_weight_badge(frm));
 			} else {
 				_update_remaining_weight_badge(frm);
 			}
@@ -174,15 +179,21 @@ function _update_remaining_weight_badge(frm) {
 	const $wrap = $(frm.fields_dict.assessment_categories?.wrapper || null);
 	if (!$wrap.length) return;
 
+	// Prefer the grid toolbar area to avoid layout glitches (grey bar)
+	const $toolbar = $wrap.find(".grid-toolbar");
 	let $badge = $wrap.find(".remaining-weight-badge");
+
 	if ($badge.length === 0) {
-		// Try to place it near grid header/footer
-		const $target = $wrap.find(".grid-heading-row, .grid-footer").first();
-		if ($target.length) {
+		const host = $toolbar.length ? $toolbar : $wrap.find(".grid-footer, .grid-heading-row").first();
+		if (host.length) {
 			$badge = $(
-				`<span class="badge bg-secondary remaining-weight-badge" style="margin-left:8px">${__("Active Total")} : <b>0.00</b>%</span>`
+				`<span class="badge bg-secondary remaining-weight-badge"
+					style="margin-left:auto; display:inline-block; white-space:nowrap; align-self:center;">
+					${__("Active Total")} : <b>0.00</b>%
+				</span>`
 			);
-			$target.append($badge);
+			// If toolbar is flex, append at end; else append anyway.
+			host.append($badge);
 		}
 	}
 
