@@ -7,7 +7,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 from frappe import _
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 # If you need the school tree guard (AY on parent vs group on leaf)
 try:
@@ -288,62 +288,55 @@ def prefill_task_students(task: str) -> Dict:
 
 @frappe.whitelist()
 def get_criterion_scores_for_student(task: str, student: str) -> Dict:
-    """
-    Returns existing Task Criterion Score rows for given (task, student)
-    so the UI can preload them in the rubric dialog.
-    Returns { "rows": [ {assessment_criteria, level, level_points, feedback}, … ] }
-    """
-    if not (task and student):
-        return {"rows": []}
+	"""Return existing rubric rows so the dialog can preload them."""
+	if not (task and student):
+		return {"rows": []}
 
-    rows = frappe.get_all(
-        "Task Criterion Score",
-        filters={"parent": task, "parenttype": "Task", "student": student},
-        fields=["assessment_criteria", "level", "level_points", "feedback"]
-    )
-    return {"rows": rows}
+	# Basic permission: ensure current user can read this Task
+	frappe.has_permission(doctype="Task", doc=task, ptype="read", throw=True)
+
+	rows = frappe.get_all(
+		"Task Criterion Score",
+		filters={"parent": task, "parenttype": "Task", "student": student},
+		fields=["assessment_criteria", "level", "level_points", "feedback"],
+		order_by="idx asc"
+	)
+	return {"rows": rows}
 
 
 @frappe.whitelist()
-def apply_rubric_to_awarded(task: str, students: list) -> Dict:
-    """
-    For each student in the list, sets mark_awarded = total_mark in Task Student,
-    or optionally applies grade scale if configured. Returns counts.
-    """
-    if not (task and students and isinstance(students, list)):
-        frappe.throw(_("Task and students list are required."))
+def apply_rubric_to_awarded(task: str, students: List[str]) -> Dict:
+	"""
+	Set mark_awarded = float(total_mark) for each selected student.
+	If total_mark (Data) is empty/non-numeric, use 0.0.
+	"""
+	if not (task and isinstance(students, list) and students):
+		frappe.throw(_("Task and a non-empty students list are required."))
 
-    # Only allow instructors or permitted roles
-    frappe.only_for(("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager"))
+	frappe.only_for(("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager"))
+	frappe.has_permission(doctype="Task", doc=task, ptype="write", throw=True)
 
-    updated = 0
-    for student in students:
-        ts_name = frappe.db.get_value(
-            "Task Student",
-            {"parent": task, "parenttype": "Task", "student": student},
-            "name"
-        )
-        if not ts_name:
-            continue
+	updated = 0
+	for student in students:
+		row = frappe.get_all(
+			"Task Student",
+			filters={"parent": task, "parenttype": "Task", "student": student},
+			fields=["name", "total_mark"],
+			limit=1
+		)
+		if not row:
+			continue
 
-        total = frappe.db.get_value(
-            "Task Student",
-            ts_name,
-            "total_mark"
-        ) or 0.0
+		raw = (row[0].get("total_mark") or "").strip()
+		try:
+			val = float(raw) if raw != "" else 0.0
+		except Exception:
+			val = 0.0
 
-        # You might apply grade scale logic here if needed (future)
-        frappe.db.set_value(
-            "Task Student",
-            ts_name,
-            "mark_awarded",
-            total,
-            update_modified=False
-        )
-        updated += 1
+		frappe.db.set_value("Task Student", row[0]["name"], "mark_awarded", val, update_modified=False)
+		updated += 1
 
-    return {"updated": updated}
-
+	return {"updated": updated}
 
 
 def on_doctype_update():

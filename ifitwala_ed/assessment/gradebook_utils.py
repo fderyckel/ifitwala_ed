@@ -21,36 +21,40 @@ def get_levels_for_criterion(assessment_criteria: str) -> List[Dict]:
     return rows
 
 def recompute_student_rubric_suggestion(task: str, student: str) -> float:
-    """
-    Sum level_points of Task Criterion Score rows for (task, student),
-    update Task Student.total_mark, return float.
-    """
-    if not (task and student):
-        return 0.0
+	"""
+	Sum level_points of Task Criterion Score for (task, student),
+	write the string form into Task Student.total_mark (Data),
+	return the numeric suggestion as float.
+	"""
+	if not (task and student):
+		return 0.0
 
-    total = frappe.db.sql(
-        """
-        SELECT COALESCE(SUM(level_points), 0)
-        FROM `tabTask Criterion Score`
-        WHERE parent = %s
-          AND parenttype = 'Task'
-          AND student = %s
-        """, (task, student)
-    )[0][0] or 0.0
+	total = frappe.db.sql(
+		"""
+		SELECT COALESCE(SUM(level_points), 0)
+		FROM `tabTask Criterion Score`
+		WHERE parent = %s AND parenttype = 'Task' AND student = %s
+		""",
+		(task, student)
+	)[0][0] or 0.0
 
-    ts_name = frappe.db.get_value(
-        "Task Student",
-        {"parent": task, "parenttype": "Task", "student": student},
-        "name"
-    )
-    if ts_name:
-        frappe.db.set_value(
-            "Task Student", ts_name,
-            "total_mark", total,
-            update_modified=False
-        )
+	ts_name = frappe.db.get_value(
+		"Task Student",
+		{"parent": task, "parenttype": "Task", "student": student},
+		"name"
+	)
+	if ts_name:
+		# store as plain string (Data field)
+		frappe.db.set_value(
+			"Task Student",
+			ts_name,
+			"total_mark",
+			str(total),
+			update_modified=False
+		)
 
-    return float(total)
+	return float(total)
+
 
 @frappe.whitelist()
 def upsert_task_criterion_scores(task: str, student: str, rows: List[Dict]) -> Dict:
