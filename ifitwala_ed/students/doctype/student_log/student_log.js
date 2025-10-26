@@ -31,7 +31,7 @@ frappe.ui.form.on("Student Log", {
 		//    NOTE: we intentionally removed the old hard lock:
 		//    // frm.set_df_property("follow_up_person", "read_only", 1);
 		configure_follow_up_person_field(frm);
-	}, 
+	},
 
 	refresh(frm) {
 		const status = (frm.doc.follow_up_status || "").toLowerCase();
@@ -50,7 +50,7 @@ frappe.ui.form.on("Student Log", {
 
 		// ── 👤 Assign / Re-assign (owner/admin/assignee/associated-role; hide when Completed) ──
 		if (requiresFU && !frm.is_new() && status !== "completed" && (isAuthor || isAdmin || isAssignee || hasAssocRole)) {
-	
+
 			const assignBtn = frm.add_custom_button(__("👤 Assign / Re-assign"), () => {
 				if (frm.is_dirty()) {
 					frappe.msgprint(__("Please save the document before assigning."));
@@ -130,41 +130,53 @@ frappe.ui.form.on("Student Log", {
 
 		// keep field behavior consistent
 		configure_follow_up_person_field(frm);
-	}, 
+	},
 
 
+	// ──────────────────────────────────────────────────────────────────────────────
+	// Student change → hydrate Program, AY, Program Offering, School (authoritative)
+	// ──────────────────────────────────────────────────────────────────────────────
 	student(frm) {
-		// Auto-fill program + academic year from active enrollment
+		// Clear when blank
 		if (!frm.doc.student) {
-			frm.set_value("program", "");
-			frm.set_value("academic_year", "");
+			frm.set_value({
+				program: "",
+				academic_year: "",
+				program_offering: "",
+				school: ""
+			});
 			return;
 		}
+
 		frappe.call({
 			method: "ifitwala_ed.students.doctype.student_log.student_log.get_active_program_enrollment",
 			args: { student: frm.doc.student },
 			callback(r) {
-				if (r && r.message) {
-					frm.set_value("program", r.message.program || "");
-					frm.set_value("academic_year", r.message.academic_year || "");
+				const ctx = r && r.message ? r.message : null;
+				if (!ctx) {
+					frappe.msgprint({
+						message: __("No active Program Enrollment found for this student."),
+						indicator: "orange"
+					});
+					return;
+				}
 
-					// ▼ NEW: keep delivery context in sync (no Program.school usage)
-					if (r.message.program_offering) {
-						frm.set_value("program_offering", r.message.program_offering);
-					}
-					if (r.message.school) {
-						frm.set_value("school", r.message.school);
-					}
-					// ▲ END NEW
-				} else {
-					console.warn("No active enrollment returned", r);
-					frappe.msgprint({ message: __("No active Program Enrollment found for this student."), indicator: "orange" });
+				// Only set if changed to avoid unnecessary dirty state
+				const updates = {};
+				if (ctx.program && ctx.program !== frm.doc.program) updates.program = ctx.program;
+				if (ctx.academic_year && ctx.academic_year !== frm.doc.academic_year) updates.academic_year = ctx.academic_year;
+				if (ctx.program_offering && ctx.program_offering !== frm.doc.program_offering) updates.program_offering = ctx.program_offering;
+				if (ctx.school && ctx.school !== frm.doc.school) updates.school = ctx.school;
+
+				if (Object.keys(updates).length) {
+					frm.set_value(updates);
 				}
 			},
-			error(err) { console.error("Error in get_active_program_enrollment", err); }
+			error(err) {
+				console.error("Error in get_active_program_enrollment", err);
+			}
 		});
 	},
-
 
 	author(frm) {
 		// Optional helper to display the author's full name on the form
@@ -220,7 +232,7 @@ frappe.ui.form.on("Student Log", {
 			frm.set_value("follow_up_person", null);
 			frm.set_value("follow_up_status", null);
 		}
-	},	
+	},
 });
 
 // Small helper to keep field toggling consistent

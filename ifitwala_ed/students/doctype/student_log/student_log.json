@@ -20,6 +20,7 @@
   "column_break_ryo9",
   "academic_year",
   "program",
+  "program_offering",
   "school",
   "section_break_7miy",
   "visible_to_student",
@@ -205,7 +206,6 @@
    "label": "Requires Follow Up"
   },
   {
-   "fetch_from": "program.school",
    "fieldname": "school",
    "fieldtype": "Link",
    "label": "School",
@@ -215,6 +215,12 @@
   {
    "fieldname": "column_break_ryo9",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "label": "Program Offering",
+   "options": "Program Offering"
   }
  ],
  "grid_page_length": 50,
@@ -222,7 +228,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-04 20:40:02.278584",
+ "modified": "2025-10-23 13:27:00.264261",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",
@@ -276,7 +282,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Counselor",
+   "role": "Counsellor",
    "share": 1,
    "submit": 1,
    "write": 1

@@ -14,13 +14,18 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools, is_leaf_sc
 
 class SchoolCalendar(Document):
 	def autoname(self):
-		# Ensure both academic_year and school are set
-		if not self.academic_year or not self.school:
-			frappe.throw(_("Academic Year and School are required to generate the Calendar Name."))
+			if not self.academic_year or not self.school:
+					frappe.throw(_("Academic Year and School are required to generate the Calendar Name."))
 
-		abbr = frappe.db.get_value("School", self.school, "abbr") or self.school
-		self.name = f"{abbr} {self.calendar_name}"
-		self.title = self.name
+			abbr = frappe.db.get_value("School", self.school, "abbr") or self.school
+			ay_name = frappe.db.get_value("Academic Year", self.academic_year, "academic_year_name") or self.academic_year
+
+			# ensure a usable calendar_name
+			if not self.calendar_name:
+					self.calendar_name = ay_name
+
+			self.name = f"{abbr} {self.calendar_name}"
+			self.title = self.name
 
 	def onload(self):
 		if not self.school:
@@ -35,7 +40,7 @@ class SchoolCalendar(Document):
 		self._sync_school_with_ay()
 		self._validate_uniqueness()
 		self._populate_term_table()
-		
+
 		self.validate_dates()
 		self.validate_holiday_uniqueness()
 
@@ -120,10 +125,10 @@ class SchoolCalendar(Document):
 		for term in terms:
 			# Calculate total days (inclusive)
 			total_days = date_diff(term["term_end_date"], term["term_start_date"]) + 1
-			
+
 			# Count non-instructional days (holidays + weekends)
 			non_instructional_days = len([
-				h for h in holiday_dates 
+				h for h in holiday_dates
 				if term["term_start_date"] <= h <= term["term_end_date"]
 			])
 
@@ -239,7 +244,7 @@ class SchoolCalendar(Document):
 		return date_list
 
 	def on_doctype_update():
-		frappe.db.add_index("School Calendar", ["academic_year", "school"])		
+		frappe.db.add_index("School Calendar", ["academic_year", "school"])
 
 
 @frappe.whitelist()

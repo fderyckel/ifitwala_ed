@@ -12,7 +12,12 @@
   "column_break_8tos",
   "is_current",
   "school",
-  "to_date"
+  "to_date",
+  "section_break_nwo6",
+  "access_mode",
+  "role_profile",
+  "workspace_override",
+  "priority"
  ],
  "fields": [
   {
@@ -49,7 +54,7 @@
    "options": "School"
   },
   {
-   "default": "1",
+   "default": "0",
    "fieldname": "is_current",
    "fieldtype": "Check",
    "in_list_view": 1,
@@ -58,12 +63,43 @@
   {
    "fieldname": "column_break_8tos",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_nwo6",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "Follow Designation",
+   "fieldname": "access_mode",
+   "fieldtype": "Select",
+   "label": "Access Mode",
+   "options": "Follow Designation\nSnapshot\nOverride"
+  },
+  {
+   "fieldname": "role_profile",
+   "fieldtype": "Link",
+   "label": "Role Profile",
+   "options": "Role",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "workspace_override",
+   "fieldtype": "Link",
+   "label": "Workspace Override",
+   "options": "Workspace",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Int",
+   "label": "Priority",
+   "permlevel": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-27 08:34:41.306710",
+ "modified": "2025-10-22 10:06:22.660989",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee History",

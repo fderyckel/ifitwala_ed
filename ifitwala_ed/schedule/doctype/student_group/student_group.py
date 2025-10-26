@@ -37,6 +37,7 @@ class StudentGroup(Document):
 		self.validate_and_set_child_table_fields()
 		validate_duplicate_student(self.students)
 		self.validate_rotation_clashes()
+		self.validate_location_capacity()
 
 
 		########
@@ -389,6 +390,50 @@ class StudentGroup(Document):
 							.format(row.rotation_day, row.block_number, row.location))
 			key_sets["location"].add(key)
 
+	def validate_location_capacity(self):
+		"""Ensure the chosen locations can accommodate the group's active student count.
+		- Reads unique Location rows from the schedule child table.
+		- Counts only active students in the students child table.
+		- Batches Location lookups for efficiency.
+		- Enforces capacity only when `maximum_capacity` > 0 (0/None = no limit).
+		"""
+		# collect unique, non-empty locations from schedule
+		locations = {row.location for row in (self.student_group_schedule or []) if row.location}
+		if not locations:
+			return
+
+		# count active students in group
+		active_students = sum(1 for r in (self.students or []) if cint(getattr(r, "active", 1)) == 1)
+		# if no students, nothing to validate
+		if active_students == 0:
+			return
+
+		# fetch capacities in one query
+		caps = frappe.get_all(
+			"Location",
+			filters={"name": ["in", list(locations)]},
+			fields=["name", "maximum_capacity"],
+			ignore_permissions=True,
+		)
+		cap_map = {c["name"]: cint(c.get("maximum_capacity") or 0) for c in caps}
+
+		# find any locations where capacity is set (>0) and violated
+		over = []
+		for loc in locations:
+			cap = cap_map.get(loc, 0)
+			if cap > 0 and active_students > cap:
+				over.append((loc, cap))
+
+		if over:
+			lines = "\n".join(
+				f"- {loc}: capacity {cap}, active students {active_students}"
+				for loc, cap in over
+			)
+			frappe.throw(
+				_("Room capacity exceeded for the following locations:\n{0}").format(lines),
+				title=_("Maximum Capacity Exceeded"),
+			)
+
 	def _get_school_schedule(self):
 		"""
 		Resolve the School Schedule used to validate schedule rows.
@@ -455,8 +500,6 @@ class StudentGroup(Document):
 
 		return frappe.get_cached_doc("School Schedule", row[0][0])
 
-
-
 	def _validate_schedule_rows(self):
 		"""
 		• Ensures rotation_day / block_number exist in the resolved School Schedule
@@ -498,7 +541,6 @@ class StudentGroup(Document):
 			# 4️⃣ Auto-fill times (use read-only fields)
 			from_t, to_t = block_map[row.rotation_day][row.block_number]
 			row.from_time, row.to_time = from_t, to_t
-
 
 	def _derive_program_from_offering(self):
 		"""Quality-of-life: show Program in the form, but do not treat as source of truth."""
@@ -585,41 +627,61 @@ class StudentGroup(Document):
 	# --- Course scoping (Program Offering Course) ---
 
 	def _course_in_offering_for_ay(self) -> bool:
-		"""Return True if self.course is present in Program Offering Course and valid for self.academic_year."""
-		if not (self.program_offering and self.course and self.academic_year):
-			return False
-
-		# We compare the Academic Year's start_date against start/end AYs and date ranges
-		# Join to Academic Year to use year_start_date for stable comparisons when AY names don't sort naturally.
-		row = frappe.db.sql(
+			"""Return True if self.course is present in Program Offering Course and valid for self.academic_year.
+			Uses proper overlap logic for date windows and inclusive AY-range checks.
 			"""
-			SELECT 1
-			FROM `tabProgram Offering Course` poc
-			LEFT JOIN `tabAcademic Year` ay_sel  ON ay_sel.name = %(selected_ay)s
-			LEFT JOIN `tabAcademic Year` ay_start ON ay_start.name = poc.start_academic_year
-			LEFT JOIN `tabAcademic Year` ay_end   ON ay_end.name   = poc.end_academic_year
-			WHERE poc.parenttype = 'Program Offering'
-				AND poc.parent = %(offering)s
-				AND poc.course = %(course)s
-				AND (
-					-- AY window satisfied (if provided)
-					(ay_start.year_start_date IS NULL OR ay_sel.year_start_date >= ay_start.year_start_date)
-				AND (ay_end.year_start_date   IS NULL OR ay_sel.year_start_date <= ay_end.year_start_date)
-				)
-				AND (
-					-- Date window satisfied (if provided)
-					(poc.from_date IS NULL OR ay_sel.year_start_date >= poc.from_date)
-				AND (poc.to_date   IS NULL OR ay_sel.year_start_date <= poc.to_date)
-				)
-			LIMIT 1
-			""",
-			{
-				"offering": self.program_offering,
-				"course": self.course,
-				"selected_ay": self.academic_year,
-			},
-		)
-		return bool(row)
+			if not (self.program_offering and self.course and self.academic_year):
+					return False
+
+			# Pull the selected AY's start/end once
+			ay_row = frappe.db.get_value(
+					"Academic Year",
+					self.academic_year,
+					["year_start_date", "year_end_date"],
+					as_dict=True,
+			)
+			ay_start = ay_row.year_start_date if ay_row else None
+			ay_end   = ay_row.year_end_date   if ay_row else None
+
+			params = {
+					"offering": self.program_offering,
+					"course": self.course,
+					"sel_ay": self.academic_year,
+					"sel_ay_start": ay_start,
+					"sel_ay_end": ay_end,
+			}
+
+			# NOTE:
+			# 1) AY-range check: selected AY's start must fall within start/end AYs on the POC row (if provided)
+			# 2) DATE-range overlap: the AY window [ay_start, ay_end] must overlap with [from_date, to_date] if those are provided.
+			#    - If only from_date is set → require ay_end >= from_date
+			#    - If only to_date   is set → require ay_start <= to_date
+			#    - If both are set         → require (ay_end >= from_date) AND (ay_start <= to_date)
+			row = frappe.db.sql(
+					"""
+					SELECT 1
+					FROM `tabProgram Offering Course` poc
+					LEFT JOIN `tabAcademic Year` ay_start ON ay_start.name = poc.start_academic_year
+					LEFT JOIN `tabAcademic Year` ay_enday ON ay_enday.name = poc.end_academic_year
+					WHERE poc.parenttype = 'Program Offering'
+						AND poc.parent = %(offering)s
+						AND poc.course = %(course)s
+						AND (
+									-- AY-range satisfied (if provided)
+									(ay_start.year_start_date IS NULL OR %(sel_ay_start)s >= ay_start.year_start_date)
+							AND (ay_enday.year_start_date IS NULL OR %(sel_ay_start)s <= ay_enday.year_start_date)
+						)
+						AND (
+									-- DATE-range overlap (if provided)
+									(poc.from_date IS NULL OR %(sel_ay_end)s   >= poc.from_date)
+							AND (poc.to_date   IS NULL OR %(sel_ay_start)s <= poc.to_date)
+						)
+					LIMIT 1
+					""",
+					params,
+			)
+
+			return bool(row)
 
 	def _validate_course_scoping(self):
 		"""Hard guard for Course groups: the chosen Course must be part of the Program Offering and valid for the AY."""
@@ -1072,60 +1134,92 @@ def offering_ay_query(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def offering_course_query(doctype, txt, searchfield, start, page_len, filters):
-	"""
-	List Courses from Program Offering Course, valid for the selected Academic Year (and optional Term filter).
-	"""
-	offering = (filters or {}).get("program_offering")
-	selected_ay = (filters or {}).get("academic_year")
-	selected_term = (filters or {}).get("term")  # optional
+    """
+    List Courses from Program Offering Course, valid for the selected Program Offering
+    and (optionally) Academic Year + Term. Uses proper *overlap* logic for date windows:
+      - if poc.from_date is set  → ay.year_end_date   >= poc.from_date
+      - if poc.to_date   is set  → ay.year_start_date <= poc.to_date
+    Returns (name, label).
+    """
+    offering = (filters or {}).get("program_offering")
+    selected_ay = (filters or {}).get("academic_year")
+    selected_term = (filters or {}).get("term")  # optional
 
-	if not (offering and selected_ay):
-		return []
+    if not offering:
+        return []
 
-	# Base filter: in this offering and name LIKE
-	params = {
-		"offering": offering,
-		"txt": f"%{txt}%",
-		"selected_ay": selected_ay,
-		"start": start,
-		"page_len": page_len,
-	}
+    txt_like = f"%{txt}%"
+    args = {
+        "offering": offering,
+        "txt": txt_like,
+        "start": start,
+        "page_len": page_len,
+        "ay": selected_ay,
+    }
 
-	# Optional term overlap filter (inclusive boundary check if both ends exist)
-	term_clause = ""
-	if selected_term:
-		term_clause = """
-			AND (
-				(poc.start_academic_term IS NULL OR poc.start_academic_term <= %(term)s)
-			AND (poc.end_academic_term   IS NULL OR poc.end_academic_term   >= %(term)s)
-			)
-		"""
-		params["term"] = selected_term
+    # Optional term window (only if columns exist and a term is selected)
+    term_clause = ""
+    try:
+        has_start_term = frappe.db.has_column("Program Offering Course", "start_academic_term")
+        has_end_term   = frappe.db.has_column("Program Offering Course", "end_academic_term")
+    except Exception:
+        has_start_term = has_end_term = False
 
-	return frappe.db.sql(
-		f"""
-		SELECT poc.course
-		FROM `tabProgram Offering Course` poc
-		LEFT JOIN `tabAcademic Year` ay_sel  ON ay_sel.name = %(selected_ay)s
-		LEFT JOIN `tabAcademic Year` ay_start ON ay_start.name = poc.start_academic_year
-		LEFT JOIN `tabAcademic Year` ay_end   ON ay_end.name   = poc.end_academic_year
-		WHERE poc.parenttype='Program Offering'
-		  AND poc.parent = %(offering)s
-		  AND poc.course LIKE %(txt)s
-		  AND (
-				(ay_start.year_start_date IS NULL OR ay_sel.year_start_date >= ay_start.year_start_date)
-			AND (ay_end.year_start_date   IS NULL OR ay_sel.year_start_date <= ay_end.year_start_date)
-		  )
-		  AND (
-				(poc.from_date IS NULL OR ay_sel.year_start_date >= poc.from_date)
-			AND (poc.to_date   IS NULL OR ay_sel.year_start_date <= poc.to_date)
-		  )
-		  {term_clause}
-		ORDER BY poc.course ASC
-		LIMIT %(page_len)s OFFSET %(start)s
-		""",
-		params,
-	)
+    if selected_term and has_start_term and has_end_term:
+        term_clause = """
+            AND (
+                    (poc.start_academic_term IS NULL OR poc.start_academic_term <= %(term)s)
+                AND (poc.end_academic_term   IS NULL OR poc.end_academic_term   >= %(term)s)
+            )
+        """
+        args["term"] = selected_term
+
+    # AY/date windows are applied only when an AY is selected (and we can read its dates)
+    ay_clause = ""
+    if selected_ay:
+        ay_start = frappe.db.get_value("Academic Year", selected_ay, "year_start_date")
+        ay_end   = frappe.db.get_value("Academic Year", selected_ay, "year_end_date")
+        args["ay_start_date"] = ay_start
+        args["ay_end_date"]   = ay_end
+
+        # AY-range window (compare against AYs referenced on POC rows by start_AY/end_AY)
+        # and DATE-range window with proper overlap checks
+        ay_clause = """
+            LEFT JOIN `tabAcademic Year` ay_start ON ay_start.name = poc.start_academic_year
+            LEFT JOIN `tabAcademic Year` ay_enday ON ay_enday.name = poc.end_academic_year
+            WHERE poc.parenttype='Program Offering'
+              AND poc.parent = %(offering)s
+              AND (poc.course LIKE %(txt)s OR c.course_name LIKE %(txt)s)
+              AND (
+                    (ay_start.year_start_date IS NULL OR %(ay_start_date)s >= ay_start.year_start_date)
+                AND (ay_enday.year_start_date  IS NULL OR %(ay_start_date)s <= ay_enday.year_start_date)
+              )
+              AND (
+                    (poc.from_date IS NULL OR %(ay_end_date)s   >= poc.from_date)
+                AND (poc.to_date   IS NULL OR %(ay_start_date)s <= poc.to_date)
+              )
+              {term_clause}
+        """.format(term_clause=term_clause)
+    else:
+        # No AY selected → just list by parent (no windows)
+        ay_clause = """
+            WHERE poc.parenttype='Program Offering'
+              AND poc.parent = %(offering)s
+              AND (poc.course LIKE %(txt)s OR c.course_name LIKE %(txt)s)
+        """
+
+    sql = f"""
+        SELECT
+            poc.course                                  AS name,
+            COALESCE(c.course_name, poc.course)         AS label
+        FROM `tabProgram Offering Course` poc
+        LEFT JOIN `tabCourse` c ON c.name = poc.course
+        {ay_clause}
+        ORDER BY label ASC, name ASC
+        LIMIT %(page_len)s OFFSET %(start)s
+    """
+
+    return frappe.db.sql(sql, args)
 
 
 ########################## Permissions ##########################

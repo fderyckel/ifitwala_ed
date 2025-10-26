@@ -1,0 +1,100 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-23 15:04:56.498504",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "status",
+  "grading_section",
+  "feedback",
+  "complete",
+  "mark_awarded",
+  "visible_to_student",
+  "visible_to_guardian",
+  "updated_on",
+  "total_mark"
+ ],
+ "fields": [
+  {
+   "columns": 3,
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "columns": 2,
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Assigned\nIn Progress\nGraded\nReturned\nMissed"
+  },
+  {
+   "fieldname": "grading_section",
+   "fieldtype": "Section Break",
+   "label": "Grading"
+  },
+  {
+   "fieldname": "feedback",
+   "fieldtype": "Text Editor",
+   "label": "Feedback"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "complete",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Complete"
+  },
+  {
+   "columns": 1,
+   "fieldname": "mark_awarded",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Mark Awarded"
+  },
+  {
+   "default": "0",
+   "fieldname": "visible_to_student",
+   "fieldtype": "Check",
+   "label": "Visible To Student"
+  },
+  {
+   "default": "0",
+   "fieldname": "visible_to_guardian",
+   "fieldtype": "Check",
+   "label": "Visible To Guardian"
+  },
+  {
+   "fieldname": "updated_on",
+   "fieldtype": "Data",
+   "label": "Updated On"
+  },
+  {
+   "fieldname": "total_mark",
+   "fieldtype": "Data",
+   "label": "Total Mark"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-10-26 09:37:31.325489",
+ "modified_by": "Administrator",
+ "module": "Assessment",
+ "name": "Task Student",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

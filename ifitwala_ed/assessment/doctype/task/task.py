@@ -1,14 +1,13 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# Copyright (c) 2025, François de Ryckel and contributors
-# License: MIT
+# ifitwala_ed/assessment/doctype/task/task.py
 
 import frappe
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 from frappe import _
-from typing import Optional
+from typing import Optional, Dict, List
 
 # If you need the school tree guard (AY on parent vs group on leaf)
 try:
@@ -17,8 +16,15 @@ except Exception:
 	def is_descendant(*args, **kwargs):
 		return True  # soft fallback if util not available in early migrations
 
+def _is_course_scoped_group(group_row: dict) -> bool:
+	gb = group_row.get("group_based_on") or ""
+	return gb.strip().lower() == "course"
+
+
+
 
 class Task(Document):
+
 	def before_insert(self):
 		# Ensure Posted Date is set if schema default didn't apply (programmatic inserts)
 		if not self.posted_date:
@@ -44,20 +50,23 @@ class Task(Document):
 			g = frappe.db.get_value(
 				"Student Group",
 				self.student_group,
-				["group_type", "course", "school", "academic_year"],
+				["group_based_on", "course", "school", "academic_year"],
 				as_dict=True,
 			) or {}
 
-			# If the group is course-scoped, its course must match the task course
-			if (g.get("group_type") or "").lower() == "course":
+			# If the group is course-scoped, ensure its course matches the task course (when both present)
+			if _is_course_scoped_group(g):
 				if g.get("course") and self.course and g["course"] != self.course:
 					frappe.throw(_("Selected Student Group belongs to a different Course."))
 
-			# Optional tree guard: group school should be same or descendant of task.school (if both present)
+			# Tree guard: group school must be the same as task.school or a descendant (when both present)
 			if self.school and g.get("school") and not is_descendant(
 				ancestor=self.school, node=g["school"], include_equal=True
 			):
 				frappe.throw(_("Student Group’s school must be {0} or its descendant.").format(self.school))
+
+		self._enforce_due_date_if_published()
+
 
 		# --- Grading requirements (when graded) ---
 		if self.is_graded:
@@ -84,6 +93,13 @@ class Task(Document):
 		self._denorm_from_group()
 		# Compute status (Draft/Published/Open/Closed) from publish flag + window
 		self.status = self._compute_status()
+
+	def _enforce_due_date_if_published(self):
+			# If status implies visibility, enforce due_date
+			visible_states = {'Published', 'Open'}
+			if (self.status in visible_states or self.is_published) and not self.due_date:
+				frappe.throw(_("Due Date is required when a Task is Published or Open."))
+
 
 	def _denorm_from_group(self) -> None:
 		"""Best-effort, cheap denormalization from Student Group. Fields are read-only in the schema."""
@@ -149,6 +165,7 @@ class Task(Document):
 		if exists:
 			frappe.throw(_("A similar Task already exists for this group with the same due date: {0}")
 				.format(exists[0]["name"]))
+
 
 
 @frappe.whitelist()
@@ -220,21 +237,112 @@ def duplicate_for_group(
 	return {"name": new_doc.name}
 
 
+@frappe.whitelist()
+def prefill_task_students(task: str) -> Dict:
+    """
+    Insert missing Task Student rows for active students in the Task’s student_group.
+    """
+    if not task:
+        frappe.throw(_("Task is required"))
+
+    doc = frappe.get_doc("Task", task)
+    if not doc.student_group:
+        frappe.throw(_("Select a Student Group before loading students."))
+
+    s_rows = frappe.get_all(
+        "Student Group Student",
+        filters={"parent": doc.student_group, "active": 1},
+        fields=["student", "student_name"]
+    )
+    existing = {
+        r.student: r.name
+        for r in frappe.get_all(
+            "Task Student",
+            filters={"parent": doc.name, "parenttype": "Task"},
+            fields=["name", "student"]
+        )
+    }
+
+    inserted = 0
+    for r in s_rows:
+        if r["student"] in existing:
+            continue
+        ts = frappe.get_doc({
+            "doctype": "Task Student",
+            "parent": doc.name,
+            "parenttype": "Task",
+            "parentfield": "task_student",  # ensure this matches Task field name
+            "student": r["student"],
+            "student_name": r.get("student_name"),
+            "status": "Assigned",
+            "student_group": doc.student_group,
+            "course": doc.course,
+            "program": doc.program,
+            "academic_year": doc.academic_year,
+        })
+        ts.insert(ignore_permissions=False)
+        inserted += 1
+
+    return {"inserted": inserted, "total": len(s_rows)}
+
+
+@frappe.whitelist()
+def get_criterion_scores_for_student(task: str, student: str) -> Dict:
+	"""Return existing rubric rows so the dialog can preload them."""
+	if not (task and student):
+		return {"rows": []}
+
+	# Basic permission: ensure current user can read this Task
+	frappe.has_permission(doctype="Task", doc=task, ptype="read", throw=True)
+
+	rows = frappe.get_all(
+		"Task Criterion Score",
+		filters={"parent": task, "parenttype": "Task", "student": student},
+		fields=["assessment_criteria", "level", "level_points", "feedback"],
+		order_by="idx asc"
+	)
+	return {"rows": rows}
+
+
+@frappe.whitelist()
+def apply_rubric_to_awarded(task: str, students: List[str]) -> Dict:
+	"""
+	Set mark_awarded = float(total_mark) for each selected student.
+	If total_mark (Data) is empty/non-numeric, use 0.0.
+	"""
+	if not (task and isinstance(students, list) and students):
+		frappe.throw(_("Task and a non-empty students list are required."))
+
+	frappe.only_for(("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager"))
+	frappe.has_permission(doctype="Task", doc=task, ptype="write", throw=True)
+
+	updated = 0
+	for student in students:
+		row = frappe.get_all(
+			"Task Student",
+			filters={"parent": task, "parenttype": "Task", "student": student},
+			fields=["name", "total_mark"],
+			limit=1
+		)
+		if not row:
+			continue
+
+		raw = (row[0].get("total_mark") or "").strip()
+		try:
+			val = float(raw) if raw != "" else 0.0
+		except Exception:
+			val = 0.0
+
+		frappe.db.set_value("Task Student", row[0]["name"], "mark_awarded", val, update_modified=False)
+		updated += 1
+
+	return {"updated": updated}
+
+
 def on_doctype_update():
-	# Course task lists: common instructor view
-	frappe.db.add_index("Task", ["course", "is_published", "due_date"])
+	frappe.db.add_index("Task", ["student_group", "due_date"])		# Group task lists: student/section views
+	frappe.db.add_index("Task", ["school", "academic_year", "is_graded"])	# School/AY analytics: number cards and reports
+	frappe.db.add_index("Task", ["course", "due_date"])						# Useful for course dashboards and date queries
+	frappe.db.add_index("Task Student", ["parent", "student"])
+	frappe.db.add_index("Task Criterion Score", ["parent", "student", "assessment_criteria"])
 
-	# Group task lists: student/section views
-	frappe.db.add_index("Task", ["student_group", "is_published", "due_date"])
-
-	# School/AY analytics: number cards and reports
-	frappe.db.add_index("Task", ["school", "academic_year", "is_graded"])
-
-	# Fast status + overdue filtering
-	frappe.db.add_index("Task", ["status", "due_date"])
-
-	# Faster lesson->tasks and checklist rendering
-	frappe.db.add_index("Task", ["lesson", "delivery_type"])
-
-	# Useful for course dashboards and date queries
-	frappe.db.add_index("Task", ["course", "due_date"])

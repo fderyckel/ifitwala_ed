@@ -1,5 +1,5 @@
-// Copyright (c) 2025, François de Ryckel
-// Student Attendance – Desk Page (Bootstrap 6 cards)
+// Student Attendance Tool – Vue bridge
+// Loads the compiled frappe-ui bundle and mounts the SPA component inside the desk page.
 
 /* ------------------------------------------------------------------ */
 /* Shared CSS bundle                                                  */
@@ -77,7 +77,7 @@ async function renderAttendanceCard(student, existing_codes = {}) {
 			}
 		} catch {}
 	}
-	
+
 	if (student.medical_info) {
 		const note = frappe.utils.escape_html(student.medical_info);
 		health_icon = `
@@ -92,28 +92,28 @@ async function renderAttendanceCard(student, existing_codes = {}) {
 						})'>✚</span>`;
 	}
 
-	/* helper: build the bubble icon */ 
-	function commentIcon(block) { 
-		const hasNote  = student.remark_map?.[block]; 
-		const colorCls = hasNote ? "text-primary" : "text-muted"; 
-		return ` 
-			<i class="bi bi-chat-square-dots ${colorCls}" 
-				data-role="remark-icon" 
-				data-stu="${student.student}" 
-				data-block="${block}" 
-				title="${hasNote ? __("Edit remark") : __("Add remark")}" 
-				style="cursor:pointer;font-size:1rem;margin-left:.25rem;"></i>`; 
+	/* helper: build the bubble icon */
+	function commentIcon(block) {
+		const hasNote  = student.remark_map?.[block];
+		const colorCls = hasNote ? "text-primary" : "text-muted";
+		return `
+			<i class="bi bi-chat-square-dots ${colorCls}"
+				data-role="remark-icon"
+				data-stu="${student.student}"
+				data-block="${block}"
+				title="${hasNote ? __("Edit remark") : __("Add remark")}"
+				style="cursor:pointer;font-size:1rem;margin-left:.25rem;"></i>`;
 	}
 
 	/* attendance-code <select> -------------------------------------- */
 	function buildOptions(selected) {
-		return codes.map(c => 
+		return codes.map(c =>
 			`<option value="${c.name}" ${c.name === selected ? "selected" : ""}>${frappe.utils.escape_html(c.attendance_code_name)}</option>`
 		).join('');
 	}
 
-	const selectsHTML = (student.blocks || [null]).map(block => { 
-		const label 		= block !== null ? `Block ${block}:` : ""; 
+	const selectsHTML = (student.blocks || [null]).map(block => {
+		const label 		= block !== null ? `Block ${block}:` : "";
 		const blockKey = block ?? -1;
 		const value    = existing_codes[block] || "";
 		return `
@@ -150,8 +150,8 @@ async function renderAttendanceCard(student, existing_codes = {}) {
 
 				${preferred_name ? `<div class="preferred-name mb-1">${preferred_name}</div>` : ""}
 
-				<div class="mt-auto w-100"> 
-					${selectsHTML} 
+				<div class="mt-auto w-100">
+					${selectsHTML}
 				</div>
 			</div>
 		</div>`;
@@ -169,7 +169,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	});
 
 	page.clear_primary_action();   // hides the big black bar
-	page.clear_actions(); 
+	page.clear_actions();
 
 	/* 2 ▸ filters */
 	const student_group_field = page.add_field({
@@ -221,8 +221,8 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 	`);
 
 	/* cached DOM refs */
-	const $cards      = $("#attendance-cards"); 
-	const $title      = $("#attendance-title"); 
+	const $cards      = $("#attendance-cards");
+	const $title      = $("#attendance-title");
 
 
 	/* 6 ▸ data flows ------------------------------------------------- */
@@ -315,42 +315,42 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 
 	let BUILD_TOKEN = 0;
 	async function build_roster() {
-		const token = ++BUILD_TOKEN;     
+		const token = ++BUILD_TOKEN;
 		const group = student_group_field.get_value();
 		const date  = date_field.get_value();
 		if (!group || !date) return;
 
-		const [{ message: roster }, { message: prev }, { message: existing }, { message: blocks }] = await Promise.all([ 
+		const [{ message: roster }, { message: prev }, { message: existing }, { message: blocks }] = await Promise.all([
 			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_students", {
 				student_group: group, start: 0, page_length: 500,
-			}), 
-			frappe.call("ifitwala_ed.schedule.attendance_utils.previous_status_map", { 
-				student_group: group, attendance_date: date, 
-			}), 
-			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_existing_attendance", { 
-				student_group: group, attendance_date: date, 
-			}), 
-			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_blocks_for_day", { 
-				student_group: group, attendance_date: date, 
-			}), 
+			}),
+			frappe.call("ifitwala_ed.schedule.attendance_utils.previous_status_map", {
+				student_group: group, attendance_date: date,
+			}),
+			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_existing_attendance", {
+				student_group: group, attendance_date: date,
+			}),
+			frappe.call("ifitwala_ed.schedule.attendance_utils.fetch_blocks_for_day", {
+				student_group: group, attendance_date: date,
+			}),
 		]);
 
 		// ── decide whether we must re-create cards (blocks is now defined) ──
-		const need_full_rebuild = 
-			!INITIAL_RENDERED || 
-			group !== RENDERED_GROUP || 
-			JSON.stringify(blocks) !== JSON.stringify(RENDERED_BLOCKS); 
-			
-		if (need_full_rebuild) { 
+		const need_full_rebuild =
+			!INITIAL_RENDERED ||
+			group !== RENDERED_GROUP ||
+			JSON.stringify(blocks) !== JSON.stringify(RENDERED_BLOCKS);
+
+		if (need_full_rebuild) {
 			$cards.empty();               // full rebuild
-		} 
-		
-		// remember what we just rendered / will render 
-		RENDERED_GROUP   = group; 
-		RENDERED_BLOCKS  = blocks; 
+		}
+
+		// remember what we just rendered / will render
+		RENDERED_GROUP   = group;
+		RENDERED_BLOCKS  = blocks;
 		INITIAL_RENDERED = true;
 
-		// if a newer build started, abandon this one 
+		// if a newer build started, abandon this one
 		if (token !== BUILD_TOKEN) return;
 
 		// Change button text based on whether attendance already exists
@@ -371,7 +371,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		document.querySelectorAll('.tooltip').forEach(t => t.remove());
 		const default_code = default_field.get_value() || "Present";
 		for (const stu of roster.students) {
-			const blocks_for_day = Array.isArray(blocks) && blocks.length 
+			const blocks_for_day = Array.isArray(blocks) && blocks.length
 				? blocks        // same list for every student on that day
 				: [null];
 			const existing_codes = (existing?.[stu.student] || {});
@@ -379,22 +379,22 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 			const prev_codes     = prev?.[stu.student] || {};
 			const code_map = {};
 
-			for (const block of blocks_for_day) { 
-				// use existing first, fallback to previous, else default 
-				if (existing_codes?.[block]) { 
-					code_map[block]   = existing_codes[block].code; 
+			for (const block of blocks_for_day) {
+				// use existing first, fallback to previous, else default
+				if (existing_codes?.[block]) {
+					code_map[block]   = existing_codes[block].code;
 					remark_map[block] = existing_codes[block].remark;
-				} else if (prev_codes?.[block]) { 
-					code_map[block] = prev_codes[block]; 
-				} else { 
-					code_map[block] = default_code; 
-				} 
-			} 
-			stu.blocks = blocks_for_day; 
+				} else if (prev_codes?.[block]) {
+					code_map[block] = prev_codes[block];
+				} else {
+					code_map[block] = default_code;
+				}
+			}
+			stu.blocks = blocks_for_day;
 			stu.remark_map = remark_map;
-			/* pre-populate global cache so unchanged remarks survive update */ 
-			if (Object.keys(remark_map).length) { 
-				REMARKS[stu.student] = { ...remark_map }; 
+			/* pre-populate global cache so unchanged remarks survive update */
+			if (Object.keys(remark_map).length) {
+				REMARKS[stu.student] = { ...remark_map };
 			}
 
 			if (!need_full_rebuild) {
@@ -417,8 +417,8 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		}
 
 		await BOOTSTRAP_READY;   // guarantee global bootstrap
-		document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => 
-			new bootstrap.Tooltip(el) 
+		document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el =>
+			new bootstrap.Tooltip(el)
 		);
 	}
 
@@ -427,20 +427,20 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		const date  = date_field.get_value();
 		const payload = [];
 
-		$cards.find("div[data-student]").each(function () { 
-			const student = $(this).data("student"); 
-			$(this).find("select[data-field='code']").each(function () { 
-				const raw   = $(this).data("block"); 
+		$cards.find("div[data-student]").each(function () {
+			const student = $(this).data("student");
+			$(this).find("select[data-field='code']").each(function () {
+				const raw   = $(this).data("block");
 				const block = raw === "" ? -1 : parseInt(raw, 10);  // match the Python sentinel
-				const code  = $(this).val(); 
-				payload.push({ 
-					student:         student, 
-					student_group:   group, 
-					attendance_date: date, 
-					block_number:    block, 
-					attendance_code: code, 
+				const code  = $(this).val();
+				payload.push({
+					student:         student,
+					student_group:   group,
+					attendance_date: date,
+					block_number:    block,
+					attendance_code: code,
 					remark:          (REMARKS[student]?.[block] || "")
-				}); 
+				});
 			});
 		});
 
@@ -462,11 +462,11 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 		}
 	}
 
-	/* 8 ▸ single delegated handler for remark icon clicks */ 
-	$cards.on("click", "i[data-role='remark-icon']", function () { 
-		const stu   = $(this).data("stu"); 
-		const block = $(this).data("block"); 
-		openRemarkModal(stu, block); 
+	/* 8 ▸ single delegated handler for remark icon clicks */
+	$cards.on("click", "i[data-role='remark-icon']", function () {
+		const stu   = $(this).data("stu");
+		const block = $(this).data("block");
+		openRemarkModal(stu, block);
 	});
 
 };
@@ -508,7 +508,7 @@ function openRemarkModal(student_id, block) {
 
   $modal.find(".save-remark").on("click", () => {
     const txt = $modal.find("textarea").val().trim().slice(0, 255);
-    REMARKS[student_id] = REMARKS[student_id] || {}; 
+    REMARKS[student_id] = REMARKS[student_id] || {};
 		REMARKS[student_id][block] = txt;
 
     // recolour icon instantaneously

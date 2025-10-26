@@ -1,5 +1,8 @@
 // Copyright (c) 2025, François de Ryckel
 
+//ifitwala_ed/schedule/page/student_group_cards/student_group_cards.js
+
+
 frappe.require("/assets/ifitwala_ed/dist/student_group_cards.bundle.css");
 
 /* ── Helpers (now embedded directly) ───────────────────────────── */
@@ -225,152 +228,189 @@ function renderStudentCard(student) {
 
 
 frappe.pages['student_group_cards'].on_page_load = function (wrapper) {
+	// ── Init guard: avoid double-mount if Frappe fires on_page_load twice ──
+	if (wrapper.__initialized) return;
+	wrapper.__initialized = true;
 
-		/* ── Page skeleton ─────────────────────────────────────────────── */
-		const page = frappe.ui.make_app_page({
-			parent: wrapper,
-			title: __('Student Group Cards'),
-			single_column: true
-		});
+	/* ── Page skeleton ─────────────────────────────────────────────── */
+	const page = frappe.ui.make_app_page({
+		parent: wrapper,
+		title: __('Student Group Cards'),
+		single_column: true
+	});
 
-		/* ── Filter controls ───────────────────────────────────────────── */
-		const program_field = page.add_field({
-			fieldname: 'program',
-			label: __('Program'),
-			fieldtype: 'Link',
-			options: 'Program',
-			change: clear_and_refresh_group
-		});
+	/* ── Filter controls ───────────────────────────────────────────── */
+	const program_field = page.add_field({
+		fieldname: 'program',
+		label: __('Program'),
+		fieldtype: 'Link',
+		options: 'Program',
+		change: clear_and_refresh_group
+	});
 
-		const course_field = page.add_field({
-			fieldname: 'course',
-			label: __('Course'),
-			fieldtype: 'Link',
-			options: 'Course',
-			change: clear_and_refresh_group
-		});
+	const course_field = page.add_field({
+		fieldname: 'course',
+		label: __('Course'),
+		fieldtype: 'Link',
+		options: 'Course',
+		change: clear_and_refresh_group
+	});
 
-		const cohort_field = page.add_field({
-			fieldname: 'cohort',
-			label: __('Cohort'),
-			fieldtype: 'Link',
-			options: 'Student Cohort',
-			change: clear_and_refresh_group
-		});
+	const cohort_field = page.add_field({
+		fieldname: 'cohort',
+		label: __('Cohort'),
+		fieldtype: 'Link',
+		options: 'Student Cohort',
+		change: clear_and_refresh_group
+	});
 
-		const student_group_field = page.add_field({
-			fieldname: 'student_group',
-			label: __('Student Group'),
-			fieldtype: 'Link',
-			options: 'Student Group',
-			get_query() {
-				return {
-					filters: {
-						...(program_field.get_value() && { program: program_field.get_value() }),
-						...(course_field.get_value() && { course: course_field.get_value() }),
-						...(cohort_field.get_value() && { cohort: cohort_field.get_value() })
-					}
-				};
-			},
-			change() { fetch_students(true); }
-		});
+	// ── Fetch control: prevent duplicate fetches & race conditions ──
+	let last_group = "";
+	let fetch_seq = 0;                 // increments with each request; drops stale responses
+	let booting_programmatic = false;  // suppress change() during route boot
 
-		if (frappe.route_options?.student_group) {
-			const group = frappe.route_options.student_group;
-			delete frappe.route_options.student_group; 
-			
-			// Clear other filters so we don't restrict the query
-			program_field.set_value(''); 
-			course_field.set_value(''); 
-			cohort_field.set_value(''); 
-			
-			// Ensure the Link field is filled, then trigger fetch 
-			student_group_field.set_value(group).then(() => { 
-				fetch_students(true); 
-			});
-		}		
-
-		function clear_and_refresh_group() {
-			student_group_field.set_value('');
-			student_group_field.refresh();
-		}
-
-		/* ── Layout container ─────────────────────────────────────────── */
-		$(wrapper).append(`
-			<div class="student-group-wrapper container mt-3">
-				<div id="student-group-title" class="student-group-title"></div>
-				<div id="student-cards" class="row gx-2 gy-3"></div>
-				<div class="load-more-wrapper">
-					<button id="load-more" class="btn btn-primary">
-						${__("Load More")}
-					</button>
-				</div>
-			</div>
-		`);
-
-		/* ── Pagination state ─────────────────────────────────────────── */
-		let start = 0;
-		const page_length = 25;
-		let total_students = 0;
-		let group_info = {};
-
-		/* ── Title helper ─────────────────────────────────────────────── */
-		function update_title() {
-			const { name, program, course, cohort } = group_info;
-			if (!name) return $('#student-group-title').empty();
-
-			const subtitle = [program, course, cohort].filter(Boolean).join(' – ');
-			$("#student-group-title").html(`
-				<h2 class="fs-4 fw-semibold text-dark">${frappe.utils.escape_html(name)}</h2>
-				${subtitle ? `<div class="small text-muted mt-1">${frappe.utils.escape_html(subtitle)}</div>` : ""}
-			`);
-		}
-
-		/* ── Fetch + render ───────────────────────────────────────────── */
-		function fetch_students(reset = false) {
-			const student_group = student_group_field.get_value();
-			if (!student_group) return;
-
-			if (reset) {
-				start = 0;
-				$('#student-cards').empty();
-			}
-
-			$('#load-more').prop('disabled', true).text(__('Loading …'));
-
-			frappe.call({
-				method: 'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students',
-				args: { student_group, start, page_length },
-				callback({ message }) {
-					start = message.start;
-					total_students = message.total;
-					group_info = message.group_info || {};
-
-					message.students.forEach(student => {
-						$('#student-cards').append(renderStudentCard(student));
-					});
-
-					update_title();
-				},
-				always() {
-					const show_more = start < total_students;
-					$('#load-more')
-						.toggle(show_more)
-						.prop('disabled', false)
-						.text(__('Load More'));
+	const student_group_field = page.add_field({
+		fieldname: 'student_group',
+		label: __('Student Group'),
+		fieldtype: 'Link',
+		options: 'Student Group',
+		get_query() {
+			return {
+				filters: {
+					...(program_field.get_value() && { program: program_field.get_value() }),
+					...(course_field.get_value() && { course: course_field.get_value() }),
+					...(cohort_field.get_value() && { cohort: cohort_field.get_value() })
 				}
-			});
+			};
+		},
+		// NOTE: change is fired on both user & programmatic set_value(); we gate the latter.
+		change() {
+			if (booting_programmatic) return;
+			const val = student_group_field.get_value() || "";
+			if (val && val !== last_group) {
+				last_group = val;
+				fetch_students(true);
+			}
+		}
+	});
+
+	if (frappe.route_options?.student_group) {
+		const group = frappe.route_options.student_group;
+		delete frappe.route_options.student_group;
+
+		// Clear other filters so we don't restrict the query
+		program_field.set_value('');
+		course_field.set_value('');
+		cohort_field.set_value('');
+
+		// Ensure the Link field is filled, then trigger a single fetch (no double fire)
+		booting_programmatic = true;
+		student_group_field.set_value(group).then(() => {
+			last_group = group;
+			booting_programmatic = false;
+			fetch_students(true);
+		});
+	}
+
+	function clear_and_refresh_group() {
+		student_group_field.set_value('');
+		student_group_field.refresh();
+	}
+
+	/* ── Layout container ─────────────────────────────────────────── */
+	$(wrapper).append(`
+		<div class="student-group-wrapper container mt-3">
+			<div id="student-group-title" class="student-group-title"></div>
+			<div id="student-cards" class="row gx-2 gy-3"></div>
+			<div class="load-more-wrapper">
+				<button id="load-more" class="btn btn-primary">
+					${__("Load More")}
+				</button>
+			</div>
+		</div>
+	`);
+
+	/* ── Pagination state ─────────────────────────────────────────── */
+	let start = 0;
+	const page_length = 25;
+	let total_students = 0;
+	let group_info = {};
+
+	/* ── Title helper ─────────────────────────────────────────────── */
+	function update_title() {
+		const { name, program, course, cohort } = group_info;
+		if (!name) return $('#student-group-title').empty();
+
+		const subtitle = [program, course, cohort].filter(Boolean).join(' – ');
+		$("#student-group-title").html(`
+			<h2 class="fs-4 fw-semibold text-dark">${frappe.utils.escape_html(name)}</h2>
+			${subtitle ? `<div class="small text-muted mt-1">${frappe.utils.escape_html(subtitle)}</div>` : ""}
+		`);
+	}
+
+	/* ── Fetch + render ───────────────────────────────────────────── */
+	function fetch_students(reset = false) {
+		const student_group = student_group_field.get_value();
+		if (!student_group) return;
+
+		if (reset) {
+			start = 0;
+			$('#student-cards').empty();
 		}
 
-		// open modal when user clicks the inline SSG icon
-		$("#student-cards").on("click", ".ssg-inline", function (e) {
-			const studentId = e.currentTarget.getAttribute("data-student");
-			const nameEl = e.currentTarget.closest(".student-card")?.querySelector(".student-name a");
-			const studentName = nameEl ? nameEl.textContent.trim() : studentId;
-			if (studentId) openSSGModal(studentId, studentName);
+		$('#load-more').prop('disabled', true).text(__('Loading …'));
+
+		// Sequence token: ignore any response that isn't the most recent call
+		const my_seq = ++fetch_seq;
+
+		const p = frappe.call({
+			method: 'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_students',
+			args: { student_group, start, page_length }
 		});
 
+		p.then(({ message }) => {
+			// Drop stale responses (arriving out of order)
+			if (my_seq !== fetch_seq) return;
 
-		/* ── “Load More” handler ──────────────────────────────────────── */
-		$('#load-more').on('click', () => fetch_students());
+			start = message.start;
+			total_students = message.total;
+			group_info = message.group_info || {};
+
+			// Efficient DOM insert using a fragment to avoid layout thrash
+			const frag = document.createDocumentFragment();
+			(message.students || []).forEach(student => {
+				const div = document.createElement('div');
+				div.innerHTML = renderStudentCard(student).trim();
+				frag.appendChild(div.firstElementChild);
+			});
+			document.getElementById('student-cards').appendChild(frag);
+
+			update_title();
+		}).always(() => {
+			// Only the latest fetch controls the button state
+			if (my_seq === fetch_seq) {
+				const show_more = start < total_students;
+				$('#load-more')
+					.toggle(show_more)
+					.prop('disabled', false)
+					.text(__('Load More'));
+			}
+		}).catch(() => {
+			if (my_seq === fetch_seq) {
+				$('#load-more').prop('disabled', false).text(__('Load More'));
+			}
+		});
+	}
+
+	// open modal when user clicks the inline SSG icon
+	// (namespace events defensively even though init is guarded)
+	$("#student-cards").off("click.sg", ".ssg-inline").on("click.sg", ".ssg-inline", function (e) {
+		const studentId = e.currentTarget.getAttribute("data-student");
+		const nameEl = e.currentTarget.closest(".student-card")?.querySelector(".student-name a");
+		const studentName = nameEl ? nameEl.textContent.trim() : studentId;
+		if (studentId) openSSGModal(studentId, studentName);
+	});
+
+	/* ── “Load More” handler ──────────────────────────────────────── */
+	$('#load-more').off('click.sg').on('click.sg', () => fetch_students());
 };

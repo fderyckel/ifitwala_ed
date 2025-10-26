@@ -10,15 +10,18 @@
  "field_order": [
   "section_break_anhn",
   "location_name",
-  "lft",
-  "rgt",
-  "is_group",
-  "old_parent",
-  "parent_location",
   "school",
   "organization",
+  "column_break_t7gw",
+  "parent_location",
+  "maximum_capacity",
+  "column_break_ncsx",
   "area",
-  "location_type"
+  "is_group",
+  "location_type",
+  "old_parent",
+  "lft",
+  "rgt"
  ],
  "fields": [
   {
@@ -90,13 +93,26 @@
    "label": "Location Name",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "maximum_capacity",
+   "fieldtype": "Int",
+   "label": "Maximum Capacity"
+  },
+  {
+   "fieldname": "column_break_t7gw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ncsx",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-10-06 19:57:58.040955",
+ "modified": "2025-10-22 12:19:44.311059",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Location",

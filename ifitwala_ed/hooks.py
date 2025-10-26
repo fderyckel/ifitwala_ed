@@ -52,6 +52,16 @@ doctype_js = {"Contact": "public/js/contact.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
+# ifitwala_ed/hooks.py
+
+website_route_rules = [
+    {"from_route": "/portal", "to_route": "portal"},
+    {"from_route": "/portal/<path:subpath>", "to_route": "portal"},
+    {"from_route": "/staff", "to_route": "/portal/staff"},
+    {"from_route": "/staff/<path:subpath>", "to_route": "/portal/staff/<path:subpath>"},
+]
+
+
 # Svg Icons
 # ------------------
 # include app icons in desk
@@ -183,10 +193,13 @@ doc_events = {
     "after_insert": "frappe.contacts.doctype.contact.contact.update_contact",
     "validate": [
       "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role",
-      "ifitwala_ed.api.set_default_workspace_based_on_roles"
+      "ifitwala_ed.hr.workspace_utils.set_default_workspace_based_on_roles"
     ],
     "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions"
   },
+	"Employee": {
+		"after_save": "ifitwala_ed.hr.employee_access.sync_user_access_from_employee"
+	},
   "File": {
     "after_insert": "ifitwala_ed.utilities.image_utils.handle_file_after_insert",
     "on_update": "ifitwala_ed.utilities.image_utils.handle_file_on_update"

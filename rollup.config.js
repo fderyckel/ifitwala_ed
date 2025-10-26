@@ -26,7 +26,7 @@ const postcssImport = require('postcss-import');
 
 const dist = 'ifitwala_ed/public/dist';
 const websiteSrc = 'ifitwala_ed/public/website';
-const portalSrc = 'ifitwala_ed/public/js/student_portal'; 
+const portalSrc = 'ifitwala_ed/public/js/student_portal';
 
 function contentHash(file) {
 	return createHash('sha256')
@@ -70,7 +70,10 @@ module.exports = [
 			postcss({
 				extract: `${dist}/fullcalendar.bundle.css`,
 				minimize: true,
-				plugins: [require("autoprefixer")],
+				plugins: [
+					require("postcss-import"),
+	       	require("autoprefixer")
+				],
 				preprocessor: async (content, id) => {
 					const sass = await import('sass');
 					const result = await sass.compileAsync(id);
@@ -141,8 +144,8 @@ module.exports = [
 			sourcemap: true,
 		},
 		plugins: [
-			...basePlugins, 
-			terser(), 
+			...basePlugins,
+			terser(),
 			{
 				name: 'alias-stable-website-js',
 				writeBundle() {
@@ -182,9 +185,9 @@ module.exports = [
 			sourcemap: true,
 		},
 		plugins: [
-			...basePlugins, 
-			terser(), 
-			{ 
+			...basePlugins,
+			terser(),
+			{
 				name: 'alias-stable-school-js',
 				writeBundle() {
 					const p = 'ifitwala_ed/public/dist';

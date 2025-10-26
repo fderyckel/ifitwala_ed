@@ -4,7 +4,7 @@
  "docstatus": 0,
  "doctype": "Page",
  "idx": 8,
- "modified": "2025-09-02 11:09:05.347920",
+ "modified": "2025-10-21 18:03:55.121756",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "school_schedule_calendar",
@@ -22,6 +22,9 @@
   },
   {
    "role": "Academic Staff"
+  },
+  {
+   "role": "Academic Assistant"
   }
  ],
  "script": null,

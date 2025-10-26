@@ -22,3 +22,12 @@ codex.log
 
 # Others
 config/*
+
+# --- SPA workspace (ui-spa)
+ifitwala_ed/ui-spa/node_modules/
+ifitwala_ed/ui-spa/.vite/
+ifitwala_ed/ui-spa/.DS_Store
+
+# --- Vite production output (we’ll build to public/dist)
+ifitwala_ed/public/dist/*
+!ifitwala_ed/public/dist/.gitkeep
