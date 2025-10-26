@@ -84,8 +84,10 @@ frappe.ui.form.on("Program", {
 				});
 			});
 
-			// Make it primary blue (Bootstrap primary)
-			$btn.addClass("btn-primary");
+			// Force Bootstrap blue styling on v15
+			$btn.addClass("btn btn-primary btn-sm");
+			// Some themes add a secondary class; ensure it's gone
+			$btn.removeClass("btn-default btn-secondary");
 			frm.__inherit_btn_added = true;
 		}
 
@@ -143,9 +145,8 @@ function _bind_weight_handlers(frm) {
 				return;
 			}
 
-			// only fetch if empty (let user override)
 			if (!d.color_override) {
-				// Some Frappe builds lack Promise.finally on this call; avoid .finally().
+				// Avoid .finally (not available on some builds)
 				frappe.db.get_value("Assessment Category", cat, "asessment_category_color")
 					.then(r => {
 						const color = r && r.message && r.message.asessment_category_color;
@@ -179,32 +180,42 @@ function _update_remaining_weight_badge(frm) {
 	const $wrap = $(frm.fields_dict.assessment_categories?.wrapper || null);
 	if (!$wrap.length) return;
 
-	// Prefer the grid toolbar area to avoid layout glitches (grey bar)
-	const $toolbar = $wrap.find(".grid-toolbar");
-	let $badge = $wrap.find(".remaining-weight-badge");
+	// 1) Clear any old badges we might have put in the wrong place
+	$wrap.find(".remaining-weight-badge").remove();
 
-	if ($badge.length === 0) {
-		const host = $toolbar.length ? $toolbar : $wrap.find(".grid-footer, .grid-heading-row").first();
-		if (host.length) {
-			$badge = $(
-				`<span class="badge bg-secondary remaining-weight-badge"
-					style="margin-left:auto; display:inline-block; white-space:nowrap; align-self:center;">
-					${__("Active Total")} : <b>0.00</b>%
-				</span>`
-			);
-			// If toolbar is flex, append at end; else append anyway.
-			host.append($badge);
-		}
+	// 2) Prefer the toolbar right-side if available
+	//    Frappe v15 grid structure usually has:
+	//    .grid-toolbar
+	//      ├─ .grid-buttons (left)
+	//      └─ .grid-actions  (right)
+	let host =
+		$wrap.find(".grid-toolbar .grid-actions").first();  // right side
+	if (!host.length) {
+		// Fallback: append after buttons block (left)
+		host = $wrap.find(".grid-toolbar .grid-buttons").first();
+	}
+	if (!host.length) {
+		// Last fallback: grid footer
+		host = $wrap.find(".grid-footer").first();
+	}
+	if (!host.length) {
+		// Give up quietly if structure is unexpected
+		return;
 	}
 
-	if ($badge && $badge.length) {
-		$badge.find("b").text(total.toFixed(2));
-		// Visual hint: if Points ON and total==100 → green; if >100 → red; else grey.
-		const pointsOn = cint(frm.doc.points) === 1;
-		$badge
-			.removeClass("bg-secondary bg-danger bg-success")
-			.addClass(total > 100.0001 ? "bg-danger" : (pointsOn && Math.abs(total - 100) < 0.0001 ? "bg-success" : "bg-secondary"));
-	}
+	const $badge = $(
+		`<span class="badge bg-secondary remaining-weight-badge"
+			style="margin-left:8px; display:inline-flex; align-items:center; white-space:nowrap;">
+			${__("Active Total")} : <b>${total.toFixed(2)}</b>%
+		</span>`
+	);
+	host.append($badge);
+
+	// Visual hint: if Points ON and total==100 → green; if >100 → red; else grey.
+	const pointsOn = cint(frm.doc.points) === 1;
+	$badge
+		.removeClass("bg-secondary bg-danger bg-success")
+		.addClass(total > 100.0001 ? "bg-danger" : (pointsOn && Math.abs(total - 100) < 0.0001 ? "bg-success" : "bg-secondary"));
 }
 
 // NEW: with multi-scheme, only enforce weight rules if Points is enabled.
