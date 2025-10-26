@@ -95,9 +95,9 @@ frappe.ui.form.on("Program", {
 	},
 
 	before_save(frm) {
-		// Lightweight client validation for scheme exclusivity and weight totals.
-		_client_validate_assessment_scheme(frm);
-		_client_validate_weights(frm);
+		// Refactored: ALLOW multiple schemes (points/binary/criteria/feedback)
+		// Only guard weights if Points is ON.
+		_client_validate_weights_when_points(frm);
 	}
 });
 
@@ -134,8 +134,26 @@ function _bind_weight_handlers(frm) {
 		active: function (frm) {
 			_update_remaining_weight_badge(frm);
 		},
-		assessment_category: function (frm) {
-			_update_remaining_weight_badge(frm);
+		assessment_category: function (frm, cdt, cdn) {
+			// Auto-pick color from master category if color_override is blank
+			const d = frappe.get_doc(cdt, cdn);
+			const cat = (d.assessment_category || "").trim();
+			if (!cat) return;
+
+			// only fetch if empty (let user override)
+			if (!d.color_override) {
+				frappe.db.get_value("Assessment Category", cat, "asessment_category_color")
+					.then(r => {
+						const color = r?.message?.asessment_category_color;
+						if (color) {
+							d.color_override = color;
+							refresh_field("assessment_categories");
+						}
+					})
+					.finally(() => _update_remaining_weight_badge(frm));
+			} else {
+				_update_remaining_weight_badge(frm);
+			}
 		}
 	});
 
@@ -170,48 +188,35 @@ function _update_remaining_weight_badge(frm) {
 
 	if ($badge && $badge.length) {
 		$badge.find("b").text(total.toFixed(2));
-		// quick visual hint when > 100
+		// Visual hint: if Points ON and total==100 → green; if >100 → red; else grey.
+		const pointsOn = cint(frm.doc.points) === 1;
 		$badge
 			.removeClass("bg-secondary bg-danger bg-success")
-			.addClass(total > 100.0001 ? "bg-danger" : (Math.abs(total - 100) < 0.0001 && cint(frm.doc.points) ? "bg-success" : "bg-secondary"));
+			.addClass(total > 100.0001 ? "bg-danger" : (pointsOn && Math.abs(total - 100) < 0.0001 ? "bg-success" : "bg-secondary"));
 	}
 }
 
-function _client_validate_assessment_scheme(frm) {
-	const points = cint(frm.doc.points);
-	const criteria = cint(frm.doc.criteria);
-	const binary = cint(frm.doc.binary);
+// NEW: with multi-scheme, only enforce weight rules if Points is enabled.
+function _client_validate_weights_when_points(frm) {
+	if (cint(frm.doc.points) !== 1) return; // nothing to enforce
 
-	const sum = points + criteria + binary;
-	if (sum > 1) {
-		frappe.throw(__("Select only one assessment scheme: either Points, or Criteria, or Binary."));
-	}
-	if (sum === 0) {
-		frappe.throw(__("Select one assessment scheme for this Program (Points, Criteria, or Binary)."));
-	}
-}
-
-function _client_validate_weights(frm) {
 	const rows = frm.doc.assessment_categories || [];
-	const points = cint(frm.doc.points);
-	const binary = cint(frm.doc.binary);
-
 	let activeTotal = 0.0;
 	let hasActive = false;
 	const over = [];
 	const neg = [];
-	const dupMap = new Set();
 	const dups = [];
+	const seen = new Set();
 
 	for (const r of rows) {
 		const cat = (r.assessment_category || "").trim();
 		const w = parseFloat(r.default_weight || 0);
 		const active = cint(r.active) === 1;
 
-		// Duplicate guard
+		// Duplicate guard (still makes sense globally)
 		if (cat) {
-			if (dupMap.has(cat)) dups.push(`${r.idx}: ${cat}`);
-			else dupMap.add(cat);
+			if (seen.has(cat)) dups.push(`${r.idx}: ${cat}`);
+			else seen.add(cat);
 		}
 
 		if (w < 0) neg.push(r.idx);
@@ -232,26 +237,12 @@ function _client_validate_weights(frm) {
 		frappe.throw(__("Default Weight cannot exceed 100 (rows: {0}).", [over.join(", ")]));
 	}
 
-	if (points) {
-		if (!hasActive) {
-			frappe.throw(__("With Points selected, add at least one active Program Assessment Category."));
-		}
-		if (Math.abs(activeTotal - 100.0) > 0.0001) {
-			frappe.throw(__("With Points selected, the total of active category weights must equal 100 (current total: {0}).", [activeTotal.toFixed(2)]));
-		}
-	} else {
-		if (activeTotal > 100.0001) {
-			frappe.throw(__("Total of active category weights must not exceed 100 (current total: {0}).", [activeTotal.toFixed(2)]));
-		}
+	// For Points, we require active rows and total ≤ 100 (exact 100 optional; you can harden later on publish)
+	if (!hasActive) {
+		frappe.throw(__("With Points enabled, add at least one active Assessment Category with a weight."));
 	}
-
-	if (binary) {
-		const nonZero = rows
-			.filter(r => parseFloat(r.default_weight || 0) > 0.000001)
-			.map(r => r.idx);
-		if (nonZero.length) {
-			frappe.throw(__("With Binary selected, category weights must all be 0 (rows: {0}).", [nonZero.join(", ")]));
-		}
+	if (activeTotal > 100.0001) {
+		frappe.throw(__("For Points, the total of active category weights must not exceed 100 (current total: {0}).", [activeTotal.toFixed(2)]));
 	}
 }
 
