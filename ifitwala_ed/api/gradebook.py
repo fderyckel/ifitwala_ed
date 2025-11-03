@@ -225,7 +225,7 @@ def get_task_gradebook(task: str) -> Dict[str, Any]:
 		for stu in frappe.get_all(
 			"Student",
 			filters={"name": ["in", student_ids]},
-			fields=["name", "student_full_name", "student_preferred_name", "student_id"],
+			fields=["name", "student_full_name", "student_preferred_name", "student_id", "student_image"],
 		):
 			student_meta[stu.name] = stu
 
@@ -272,6 +272,7 @@ def get_task_gradebook(task: str) -> Dict[str, Any]:
 				"student_name": meta.get("student_full_name") or meta.get("student_preferred_name") or row.student,
 				"student_preferred_name": meta.get("student_preferred_name"),
 				"student_id": meta.get("student_id"),
+				"student_image": meta.get("student_image"),
 				"status": row.status,
 				"complete": int(row.complete or 0),
 				"mark_awarded": flt(row.mark_awarded) if row.mark_awarded is not None else None,

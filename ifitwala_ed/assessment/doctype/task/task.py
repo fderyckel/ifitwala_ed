@@ -5,7 +5,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import now_datetime
+from frappe.utils import now_datetime, get_datetime
 from frappe import _
 from typing import Optional, Dict, List
 
@@ -20,7 +20,9 @@ def _is_course_scoped_group(group_row: dict) -> bool:
 	gb = group_row.get("group_based_on") or ""
 	return gb.strip().lower() == "course"
 
-
+def _as_dt(val):
+	"""None-safe coercion of Frappe Datetime field values to datetime."""
+	return get_datetime(val) if val else None
 
 
 class Task(Document):
@@ -34,7 +36,9 @@ class Task(Document):
 
 	def validate(self):
 		# --- Date sanity (parent window) ---
-		if self.available_from and self.available_until and self.available_from > self.available_until:
+		start_dt = _as_dt(self.available_from)
+		end_dt = _as_dt(self.available_until)
+		if start_dt and end_dt and start_dt > end_dt:
 			frappe.throw(_("Available From must be before Available Until."))
 
 		# Prevent-late requires a due date
@@ -129,8 +133,8 @@ class Task(Document):
 			return "Draft"
 
 		now = now_datetime()
-		start = self.available_from
-		end = self.available_until
+		start = _as_dt(self.available_from)
+		end = _as_dt(self.available_until)
 
 		if start and now < start:
 			return "Published"

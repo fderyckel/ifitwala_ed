@@ -7,113 +7,115 @@
 			</div>
 		</div>
 
-		<div class="grid gap-4 lg:grid-cols-[18rem_18rem_1fr]">
-			<!-- Student groups -->
-			<section class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-				<div class="flex items-center justify-between gap-2">
-					<h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Student Groups</h2>
-					<Button size="sm" appearance="minimal" :loading="groupsLoading" @click="reloadGroups()">
-						Refresh
-					</Button>
-				</div>
-
-				<FormControl
-					type="text"
-					placeholder="Search group"
-					:model-value="groupSearch"
-					@update:modelValue="value => (groupSearch = value)"
-				/>
-
-				<div class="flex-1 space-y-2 overflow-y-auto pr-1" style="max-height: 28rem">
-					<div v-if="groupsLoading" class="space-y-2">
-						<div v-for="n in 6" :key="`group-skeleton-${n}`" class="h-16 animate-pulse rounded-xl bg-slate-100" />
+		<div class="grid gap-4 lg:grid-cols-[minmax(18rem,1fr)_minmax(0,2fr)]">
+			<div class="flex flex-col gap-4">
+				<!-- Student groups -->
+				<section class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+					<div class="flex items-center justify-between gap-2">
+						<h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Student Groups</h2>
+						<Button size="sm" appearance="minimal" :loading="groupsLoading" @click="reloadGroups()">
+							Refresh
+						</Button>
 					</div>
-					<div v-else-if="!groups.length" class="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-						No student groups found.
-					</div>
-					<ul v-else class="space-y-2">
-						<li v-for="group in groups" :key="group.name">
-							<button
-								type="button"
-								class="w-full rounded-xl border px-3 py-3 text-left transition"
-								:class="[
-									selectedGroup?.name === group.name
-										? 'border-blue-500 bg-blue-50 text-blue-800 shadow-sm'
-										: 'border-slate-200 hover:border-blue-200 hover:bg-blue-50/50',
-								]"
-								@click="selectGroup(group)"
-							>
-								<div class="flex items-center justify-between gap-2">
-									<p class="truncate text-sm font-semibold">{{ group.label }}</p>
-									<span
-										v-if="group.program || group.course"
-										class="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
-									>
-										{{ [group.program, group.course].filter(Boolean).join(' • ') }}
-									</span>
-								</div>
-								<p v-if="group.cohort" class="mt-1 truncate text-xs text-slate-500">Cohort {{ group.cohort }}</p>
-							</button>
-						</li>
-					</ul>
-				</div>
-			</section>
 
-			<!-- Tasks -->
-			<section class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-				<div class="flex items-center justify-between gap-2">
-					<div>
-						<h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Tasks</h2>
-						<p class="text-sm text-slate-500">
-							{{ selectedGroup ? selectedGroup.label : 'Select a student group to view its tasks.' }}
-						</p>
-					</div>
-				</div>
+					<FormControl
+						type="text"
+						placeholder="Search group"
+						:model-value="groupSearch"
+						@update:modelValue="value => (groupSearch = value)"
+					/>
 
-				<div v-if="!selectedGroup" class="flex flex-1 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-6 text-center text-sm text-slate-500">
-					Choose a student group to load its tasks.
-				</div>
-
-				<div v-else class="flex-1 space-y-3 overflow-y-auto pr-1" style="max-height: 28rem">
-					<div v-if="tasksLoading" class="space-y-2">
-						<div v-for="n in 4" :key="`task-skeleton-${n}`" class="h-20 animate-pulse rounded-xl bg-slate-100" />
-					</div>
-					<div v-else-if="!taskSummaries.length" class="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-6 text-center text-sm text-slate-500">
-						This student group has no tasks yet.
-					</div>
-					<ul v-else class="space-y-2">
-						<li v-for="task in taskSummaries" :key="task.name">
-							<button
-								type="button"
-								class="w-full rounded-xl border px-4 py-3 text-left transition"
-								:class="[
-									selectedTask?.name === task.name
-										? 'border-blue-500 bg-blue-50 text-blue-800 shadow-sm'
-										: 'border-slate-200 hover:border-blue-200 hover:bg-blue-50/50',
-								]"
-								@click="selectTask(task)"
-							>
-								<div class="flex flex-col gap-1">
-									<p class="text-sm font-semibold text-slate-900">{{ task.title }}</p>
-									<div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-										<span>
-											Due {{ formatDate(task.due_date) || '—' }}
-											<span class="mx-1">•</span>
-											Status {{ task.status || '—' }}
+					<div class="flex-1 space-y-2 overflow-y-auto pr-1" style="max-height: 28rem">
+						<div v-if="groupsLoading" class="space-y-2">
+							<div v-for="n in 6" :key="`group-skeleton-${n}`" class="h-16 animate-pulse rounded-xl bg-slate-100" />
+						</div>
+						<div v-else-if="!groups.length" class="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+							No student groups found.
+						</div>
+						<ul v-else class="space-y-2">
+							<li v-for="group in groups" :key="group.name">
+								<button
+									type="button"
+									class="w-full rounded-xl border px-3 py-3 text-left transition"
+									:class="[
+										selectedGroup?.name === group.name
+											? 'border-blue-500 bg-blue-50 text-blue-800 shadow-sm'
+											: 'border-slate-200 hover:border-blue-200 hover:bg-blue-50/50',
+									]"
+									@click="selectGroup(group)"
+								>
+									<div class="flex items-center justify-between gap-2">
+										<p class="truncate text-sm font-semibold">{{ group.label }}</p>
+										<span
+											v-if="group.program || group.course"
+											class="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+										>
+											{{ [group.program, group.course].filter(Boolean).join(' • ') }}
 										</span>
-										<div class="flex flex-wrap items-center gap-2">
-											<Badge v-if="task.points" variant="subtle">Points</Badge>
-											<Badge v-if="task.binary" variant="subtle">Binary</Badge>
-											<Badge v-if="task.criteria" variant="subtle">Criteria</Badge>
-											<Badge v-if="task.observations" variant="subtle">Feedback</Badge>
+									</div>
+									<p v-if="group.cohort" class="mt-1 truncate text-xs text-slate-500">Cohort {{ group.cohort }}</p>
+								</button>
+							</li>
+						</ul>
+					</div>
+				</section>
+
+				<!-- Tasks -->
+				<section class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+					<div class="flex items-center justify-between gap-2">
+						<div>
+							<h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Tasks</h2>
+							<p class="text-sm text-slate-500">
+								{{ selectedGroup ? selectedGroup.label : 'Select a student group to view its tasks.' }}
+							</p>
+						</div>
+					</div>
+
+					<div v-if="!selectedGroup" class="flex flex-1 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-6 text-center text-sm text-slate-500">
+						Choose a student group to load its tasks.
+					</div>
+
+					<div v-else class="flex-1 space-y-3 overflow-y-auto pr-1" style="max-height: 28rem">
+						<div v-if="tasksLoading" class="space-y-2">
+							<div v-for="n in 4" :key="`task-skeleton-${n}`" class="h-20 animate-pulse rounded-xl bg-slate-100" />
+						</div>
+						<div v-else-if="!taskSummaries.length" class="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-6 text-center text-sm text-slate-500">
+							This student group has no tasks yet.
+						</div>
+						<ul v-else class="space-y-2">
+							<li v-for="task in taskSummaries" :key="task.name">
+								<button
+									type="button"
+									class="w-full rounded-xl border px-4 py-3 text-left transition"
+									:class="[
+										selectedTask?.name === task.name
+											? 'border-blue-500 bg-blue-50 text-blue-800 shadow-sm'
+											: 'border-slate-200 hover:border-blue-200 hover:bg-blue-50/50',
+									]"
+									@click="selectTask(task)"
+								>
+									<div class="flex flex-col gap-1">
+										<p class="text-sm font-semibold text-slate-900">{{ task.title }}</p>
+										<div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+											<span>
+												Due {{ formatDate(task.due_date) || '—' }}
+												<span class="mx-1">•</span>
+												Status {{ task.status || '—' }}
+											</span>
+											<div class="flex flex-wrap items-center gap-2">
+												<Badge v-if="task.points" variant="subtle">Points</Badge>
+												<Badge v-if="task.binary" variant="subtle">Binary</Badge>
+												<Badge v-if="task.criteria" variant="subtle">Criteria</Badge>
+												<Badge v-if="task.observations" variant="subtle">Feedback</Badge>
+											</div>
 										</div>
 									</div>
-								</div>
-							</button>
-						</li>
-					</ul>
-				</div>
-			</section>
+								</button>
+							</li>
+						</ul>
+					</div>
+				</section>
+			</div>
 
 			<!-- Grade entry -->
 			<section class="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -151,15 +153,24 @@
 						class="rounded-2xl border border-slate-200 p-4 shadow-sm transition hover:border-blue-200"
 					>
 						<div class="flex flex-wrap items-center justify-between gap-3">
-							<div>
-								<p class="text-sm font-semibold text-slate-900">
-									{{ student.student_name }}
-									<span v-if="student.student_id" class="ml-2 text-xs font-medium text-slate-500">ID {{ student.student_id }}</span>
-								</p>
-								<p class="text-xs text-slate-500">
-									Status:
-									<span class="font-medium text-slate-600">{{ studentStates[student.task_student]?.status || '—' }}</span>
-								</p>
+							<div class="flex items-center gap-3">
+								<img
+									:src="thumb(student.student_image)"
+									alt=""
+									class="h-12 w-12 rounded-full border border-slate-200 object-cover"
+									loading="lazy"
+									@error="onImgError"
+								/>
+								<div>
+									<p class="text-sm font-semibold text-slate-900">
+										{{ student.student_name }}
+										<span v-if="student.student_id" class="ml-2 text-xs font-medium text-slate-500">ID {{ student.student_id }}</span>
+									</p>
+									<p class="text-xs text-slate-500">
+										Status:
+										<span class="font-medium text-slate-600">{{ studentStates[student.task_student]?.status || '—' }}</span>
+									</p>
+								</div>
 							</div>
 							<div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
 								<span v-if="studentStates[student.task_student]?.complete" class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-1 font-medium text-green-600">
@@ -395,6 +406,7 @@ interface StudentRow {
 	student: string
 	student_name: string
 	student_id?: string | null
+	student_image?: string | null
 	status?: string | null
 	complete: number
 	mark_awarded: number | null
@@ -466,6 +478,30 @@ const gradebook = reactive<{
 const studentStates = reactive<Record<string, StudentState>>({})
 
 const hasCriterionFeedback = computed(() => gradebook.criteria.length > 0)
+
+const DEFAULT_STUDENT_IMAGE = '/assets/ifitwala_ed/images/default_student_image.png'
+
+function slugifyFilename(filename: string) {
+	return filename
+		.replace(/\.[^.]+$/, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '_')
+		.replace(/^_+|_+$/g, '')
+}
+
+function thumb(originalUrl?: string | null) {
+	if (!originalUrl) return DEFAULT_STUDENT_IMAGE
+	if (originalUrl.startsWith('/files/gallery_resized/student/')) return originalUrl
+	if (!originalUrl.startsWith('/files/student/')) return DEFAULT_STUDENT_IMAGE
+	const base = slugifyFilename(originalUrl.split('/').pop() || '')
+	return `/files/gallery_resized/student/thumb_${base}.webp`
+}
+
+function onImgError(event: Event, fallback?: string) {
+	const element = event.target as HTMLImageElement
+	element.onerror = null
+	element.src = fallback || DEFAULT_STUDENT_IMAGE
+}
 
 const AUTOSAVE_DELAY = 2500
 const studentSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> = {}
