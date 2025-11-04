@@ -98,9 +98,9 @@ class Task(Document):
 	def before_save(self):
 		# Keep denorm fresh if group changed or cleared
 		self._denorm_from_group()
-		# Compute status (Draft/Published/Open/Closed) from publish flag + window
-		self.status = self._compute_status()
+		self.status = self._compute_status()		# Compute status (Draft/Published/Open/Closed) for task
 		self._snapshot_task_criteria()
+		self._update_task_student_statuses()    # status engine for Task Student rows
 
 	def _enforce_due_date_if_published(self):
 			# If status implies visibility, enforce due_date
@@ -287,6 +287,48 @@ class Task(Document):
 			)
 			r.criteria_max_points = float(maxp or 0)
 
+	def _update_task_student_statuses(self) -> None:
+		"""
+		Deterministically update Task Student.status for each child row based on the Task
+		and row fields. Idempotent; safe to call on every save.
+		"""
+		# Build a quick lookup of rubric activity per student (criteria present?)
+		has_criteria = any(getattr(r, "assessment_criteria", None) for r in (self.get("assessment_criteria") or []))
+		rubric_by_student = set()
+		if has_criteria:
+			for r in (self.get("task_criterion_score") or []):
+				if getattr(r, "student", None):
+					rubric_by_student.add(r.student)
+
+		for row in (self.get("task_student") or []):
+			# Visibility -> Returned
+			if (row.get("visible_to_student") or 0) or (row.get("visible_to_guardian") or 0):
+				new_status = "Returned"
+
+			# Graded conditions
+			elif self.binary and (row.get("complete") or 0):
+				new_status = "Graded"
+			elif row.get("mark_awarded") not in (None, ""):
+				new_status = "Graded"
+			elif (row.get("feedback") or "").strip():
+				new_status = "Graded"
+
+			# In Progress conditions (work started but not finalized)
+			elif has_criteria and (row.get("student") in rubric_by_student):
+				new_status = "In Progress"
+			elif (row.get("total_mark") not in (None, "")) and (row.get("mark_awarded") in (None, "")):
+				# points-only: teacher started scoring in total_mark but hasn't finalized mark_awarded
+				new_status = "In Progress"
+
+			else:
+				new_status = "Assigned"
+
+			# Apply only if changed
+			if row.get("status") != new_status:
+				row.status = new_status
+
+
+	## In class helpers
 	def validate_no_identical_clone(self) -> None:
 		"""Disallow an identical Task for the same student_group + lesson + title + due_date.
 		Excludes self when updating an existing Task.
@@ -314,7 +356,6 @@ class Task(Document):
 		if exists:
 			frappe.throw(_("A similar Task already exists for this group with the same due date: {0}")
 				.format(exists[0]["name"]))
-
 
 
 

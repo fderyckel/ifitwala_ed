@@ -16,6 +16,15 @@ frappe.ui.form.on("Task", {
 		add_load_students_buttons(frm);     // <— consolidated
 		add_rubric_buttons(frm);
 		set_learning_unit_query(frm);
+		update_task_student_visibility(frm);
+
+		const rows = (frm.doc.task_student || []);
+		rows.forEach(r => {
+			// simulate a preview without spamming alerts
+			const cdt = "Task Student";
+			const cdn = r.name;
+			apply_status_preview(frm, cdt, cdn);
+		});
 	},
 
 
@@ -27,6 +36,29 @@ frappe.ui.form.on("Task", {
 
 	course(frm) {
 		on_course_changed(frm);
+	},
+
+	binary(frm) {
+			update_task_student_visibility(frm);
+	},
+
+	criteria(frm) {
+		if (!frm.doc.criteria) {
+			const has_rows = (frm.doc.assessment_criteria || []).length > 0;
+			if (has_rows) {
+				frappe.confirm(
+					__("Unchecking ‘Criteria’ will remove all linked Assessment Criteria rows. Continue?"),
+					() => {
+						frm.clear_table("assessment_criteria");
+						frm.refresh_field("assessment_criteria");
+					},
+					() => {
+						// user canceled → restore the check
+						frm.set_value("criteria", 1);
+					}
+				);
+			}
+		}
 	}
 
 
@@ -39,7 +71,24 @@ frappe.ui.form.on("Task Student", {
 	},
 	mark_awarded: function(frm, cdt, cdn) {
 		clamp_points_only(frm, cdt, cdn, "mark_awarded");
-	}
+	},
+
+	// ----- Bind to Task Student grid field events
+	mark_awarded(frm, cdt, cdn) {
+		apply_status_preview(frm, cdt, cdn);
+	},
+	total_mark(frm, cdt, cdn) {
+		apply_status_preview(frm, cdt, cdn);
+	},
+	feedback(frm, cdt, cdn) {
+		apply_status_preview(frm, cdt, cdn);
+	},
+	complete(frm, cdt, cdn) { // for binary
+		apply_status_preview(frm, cdt, cdn);
+	},
+	visible_to_student: visibility_toggled,
+	visible_to_guardian: visibility_toggled
+
 });
 
 
@@ -312,4 +361,59 @@ function clamp_points_only(frm, cdt, cdn, fieldname) {
 			indicator: "orange"
 		});
 	}
+}
+
+function update_task_student_visibility(frm) {
+	const grid = frm.fields_dict?.task_student?.grid;
+	if (!grid) return;
+
+	const showComplete = !!frm.doc.binary;
+	grid.set_column_disp("complete", showComplete);
+	// no other columns touched in this step
+	grid.refresh();
+}
+
+// ----- Status preview helpers (client-only hints; server remains source of truth)
+
+function task_has_criteria(frm) {
+	return Array.isArray(frm.doc.assessment_criteria)
+		&& frm.doc.assessment_criteria.some(r => r.assessment_criteria);
+}
+
+function compute_status_preview(frm, row) {
+	// Returned if any visibility flag is on
+	if (row.visible_to_student || row.visible_to_guardian) return "Returned";
+
+	// Graded if: binary complete OR a final mark exists OR feedback is non-empty
+	if (frm.doc.binary && row.complete) return "Graded";
+	if (row.mark_awarded !== null && row.mark_awarded !== undefined && row.mark_awarded !== "") return "Graded";
+	if ((row.feedback || "").trim()) return "Graded";
+
+	// In Progress:
+	// - criteria task: if there are rubric rows for this student (we can't query here cheaply),
+	//   we approximate: if total_mark present but no final grade, or if teacher opened rubric dialog
+	//   (you may add a flag later). For now, points-only case:
+	if (!task_has_criteria(frm)) {
+		if ((row.total_mark !== null && row.total_mark !== undefined && row.total_mark !== "")
+			&& (row.mark_awarded === null || row.mark_awarded === undefined || row.mark_awarded === "")) {
+			return "In Progress";
+		}
+	}
+
+	// Default
+	return "Assigned";
+}
+
+function apply_status_preview(frm, cdt, cdn) {
+	const row = frappe.get_doc(cdt, cdn);
+	const newStatus = compute_status_preview(frm, row);
+	if (row.status !== newStatus) {
+		frappe.model.set_value(cdt, cdn, "status", newStatus);
+	}
+}
+
+// When visibility toggles, we also gently ensure the preview says Returned.
+// (Server will enforce anyway.)
+function visibility_toggled(frm, cdt, cdn) {
+	apply_status_preview(frm, cdt, cdn);
 }
