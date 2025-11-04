@@ -32,6 +32,17 @@ frappe.ui.form.on("Task", {
 
 });
 
+// Child table client rules for Task Student (points-only clamp)
+frappe.ui.form.on("Task Student", {
+	total_mark: function(frm, cdt, cdn) {
+		clamp_points_only(frm, cdt, cdn, "total_mark");
+	},
+	mark_awarded: function(frm, cdt, cdn) {
+		clamp_points_only(frm, cdt, cdn, "mark_awarded");
+	}
+});
+
+
 function add_duplicate_for_group_button(frm) {
 	if (frm.__dup_btn_added) return;
 	frm.__dup_btn_added = true;
@@ -216,11 +227,40 @@ function open_rubric_dialog(frm, student, student_name) {
 		primary_action_label: __("Save"),
 		primary_action: async (values) => {
 			try {
+				// Clamp client-side: 0 ≤ level_points ≤ criterion cap
+				const caps = {};
+				(frm.doc.assessment_criteria || []).forEach(r => {
+					if (r.assessment_criteria) {
+						caps[r.assessment_criteria] = Number(r.criteria_max_points || 0);
+					}
+				});
+				let clampedCount = 0;
+				(values.criteria_rows || []).forEach(row => {
+					const cap = Number(caps[row.assessment_criteria] || 0);
+					let v = Number(row.level_points || 0);
+					if (Number.isNaN(v)) v = 0;
+					const clamped = Math.max(0, cap > 0 ? Math.min(v, cap) : Math.max(0, v));
+					if (clamped !== v) clampedCount++;
+					row.level_points = clamped;
+				});
+				if (clampedCount > 0) {
+					frappe.show_alert({
+						message: __("{0} rubric entries adjusted to stay within 0 and criterion max.", [clampedCount]),
+						indicator: "orange"
+					});
+				}
+
 				const res = await frappe.call({
 					method: "ifitwala_ed.assessment.gradebook_utils.upsert_task_criterion_scores",
 					args: { task: frm.doc.name, student, rows: values.criteria_rows },
 					freeze: true,
 					freeze_message: __("Saving rubric rows...")
+				});
+				// Recompute Task Student totals for this learner
+				await frappe.call({
+					method: "ifitwala_ed.assessment.doctype.task.task.recompute_student_totals",
+					args: { task: frm.doc.name, student },
+					freeze: false
 				});
 				dlg.hide();
 				if (res?.message?.suggestion !== undefined) {
@@ -245,3 +285,31 @@ function open_rubric_dialog(frm, student, student_name) {
 	});
 }
 
+
+// Helpers for childtable task student points.
+function has_any_criteria(frm) {
+	return Array.isArray(frm.doc.assessment_criteria) &&
+		frm.doc.assessment_criteria.some(r => r.assessment_criteria);
+}
+
+function clamp_points_only(frm, cdt, cdn, fieldname) {
+	// Only enforce in the "points-only" case: no criteria on this Task
+	if (has_any_criteria(frm)) return;
+
+	const cap = Number(frm.doc.max_points || 0);
+	const d = frappe.get_doc(cdt, cdn);
+	let v = Number(d[fieldname] || 0);
+
+	if (Number.isNaN(v)) v = 0;
+	let clamped = v;
+	if (cap > 0) clamped = Math.min(Math.max(0, v), cap);
+	else clamped = Math.max(0, v); // if cap is 0/blank, just prevent negatives
+
+	if (clamped !== v) {
+		frappe.model.set_value(cdt, cdn, fieldname, clamped);
+		frappe.show_alert({
+			message: __("{0} adjusted to stay within 0 and Task Max Points.", [frappe.meta.get_label(cdt, fieldname, cdn)]),
+			indicator: "orange"
+		});
+	}
+}
