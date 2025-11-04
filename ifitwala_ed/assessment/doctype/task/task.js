@@ -4,6 +4,10 @@
 // ifitwala_ed/assessment/doctype/task/task.js
 
 frappe.ui.form.on("Task", {
+	setup(frm) {
+		set_learning_unit_query(frm);
+	},
+
 	refresh(frm) {
 		console.debug("[Task.refresh] name:", frm.doc.name, "islocal:", frm.doc.__islocal, "student_group:", frm.doc.student_group);
 
@@ -11,7 +15,21 @@ frappe.ui.form.on("Task", {
 		add_duplicate_for_group_button(frm);
 		add_load_students_buttons(frm);     // <— consolidated
 		add_rubric_buttons(frm);
+		set_learning_unit_query(frm);
+	},
+
+
+	student_group(frm) {
+		// student_group → auto-fetch course via fetch_from
+		// Defer a tick to ensure fetch_from landed before we clear children
+		setTimeout(() => on_course_changed(frm), 0);
+	},
+
+	course(frm) {
+		on_course_changed(frm);
 	}
+
+
 });
 
 function add_duplicate_for_group_button(frm) {
@@ -65,6 +83,33 @@ function add_duplicate_for_group_button(frm) {
 		});
 		dlg.show();
 	}, __("Actions"));
+}
+
+function set_learning_unit_query(frm) {
+	frm.set_query("learning_unit", () => {
+		const course = (frm.doc.course || "").trim();
+		// If no course yet, return a false filter that yields nothing
+		if (!course) {
+			return {
+				filters: { name: ["=", "__none__"] }
+			};
+		}
+		// Minimal, index-friendly filters
+		return {
+			filters: {
+				course: course,
+				unit_status: "Active" // optional but sensible; remove if you want all
+				// is_published: 1   // uncomment if you only want published units
+			}
+		};
+	});
+}
+
+// Clear dependent fields when upstream changes (to avoid stale selections)
+function on_course_changed(frm) {
+	if (frm.doc.learning_unit) frm.set_value("learning_unit", null);
+	if (frm.doc.lesson) frm.set_value("lesson", null);
+	set_learning_unit_query(frm);
 }
 
 /**
@@ -199,3 +244,4 @@ function open_rubric_dialog(frm, student, student_name) {
 		}
 	});
 }
+

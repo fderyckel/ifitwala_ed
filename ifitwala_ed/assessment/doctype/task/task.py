@@ -35,6 +35,7 @@ class Task(Document):
 		self._denorm_from_group()
 
 	def validate(self):
+		self._validate_learning_unit_belongs_to_course()
 		# --- Date sanity (parent window) ---
 		start_dt = _as_dt(self.available_from)
 		end_dt = _as_dt(self.available_until)
@@ -70,6 +71,7 @@ class Task(Document):
 				frappe.throw(_("Student Group’s school must be {0} or its descendant.").format(self.school))
 
 		self._enforce_due_date_if_published()
+		self._validate_criteria_weighting()
 
 
 		# --- Grading requirements (when graded) ---
@@ -97,6 +99,7 @@ class Task(Document):
 		self._denorm_from_group()
 		# Compute status (Draft/Published/Open/Closed) from publish flag + window
 		self.status = self._compute_status()
+		self._snapshot_task_criteria()
 
 	def _enforce_due_date_if_published(self):
 			# If status implies visibility, enforce due_date
@@ -104,6 +107,51 @@ class Task(Document):
 			if (self.status in visible_states or self.is_published) and not self.due_date:
 				frappe.throw(_("Due Date is required when a Task is Published or Open."))
 
+# --- add inside Task class in task.py ---
+
+	def _validate_criteria_weighting(self):
+		"""Ensure Task.assessment_criteria weightings are sensible."""
+		rows = self.get("assessment_criteria") or []
+		if not rows:
+			return
+
+		weights = []
+		for r in rows:
+			# Percent fields may be None; coerce to float
+			w = float(r.get("criteria_weighting") or 0)
+			if w < 0:
+				frappe.throw(_("Criteria weighting cannot be negative."))
+			weights.append(w)
+
+		total = sum(weights)
+
+		# If any weighting is used (>0 anywhere), enforce hard ceiling 100%
+		if any(w > 0 for w in weights):
+			if total > 100.0000001:
+				frappe.throw(_("Sum of criteria weighting is {0:.2f}%, which exceeds 100%.")
+					.format(total))
+			# Soft nudge if not exactly 100%
+			if 0 < total < 99.999:
+				frappe.msgprint(
+					_("Sum of criteria weighting is {0:.2f}%. Consider making it 100% for clarity.")
+					.format(total),
+					indicator="orange"
+				)
+
+	def _validate_learning_unit_belongs_to_course(self):
+		if not self.learning_unit:
+			return
+		lu_course = frappe.db.get_value("Learning Unit", self.learning_unit, "course")
+		if not lu_course:
+			frappe.throw(f"Learning Unit <b>{self.learning_unit}</b> has no Course set.")
+		if self.course and lu_course != self.course:
+			frappe.throw(
+				f"Learning Unit <b>{self.learning_unit}</b> belongs to Course "
+				f"<b>{lu_course}</b> which does not match this Task’s Course <b>{self.course}</b>."
+			)
+		# If course is somehow still empty (e.g., manual entry), set it safely
+		if not self.course:
+			self.course = lu_course
 
 	def _denorm_from_group(self) -> None:
 		"""Best-effort, cheap denormalization from Student Group. Fields are read-only in the schema."""
@@ -141,6 +189,16 @@ class Task(Document):
 		if end and now > end:
 			return "Closed"
 		return "Open"
+
+	def _snapshot_task_criteria(self):
+		for r in (self.get("assessment_criteria") or []):
+			if not r.assessment_criteria:
+				continue
+			maxp = frappe.db.get_value(
+				"Assessment Criteria", r.assessment_criteria, "maximum_mark"
+			)
+			r.criteria_max_points = float(maxp or 0)
+
 
 	def validate_no_identical_clone(self) -> None:
 		"""Disallow an identical Task for the same student_group + lesson + title + due_date.
@@ -241,6 +299,61 @@ def duplicate_for_group(
 	return {"name": new_doc.name}
 
 
+def _prefill_task_rubrics(task_doc) -> dict:
+	"""
+	For each student already in Task Student, ensure one Task Criterion Score row exists
+	per Assessment Criteria selected on the Task. Initialize with level_points = 0.
+	No weighting math here; this step only creates missing rows.
+	"""
+	# 1) Criteria chosen on this Task (from Assessment Criteria child table)
+	crit_ids = [
+		r.assessment_criteria
+		for r in (task_doc.get("assessment_criteria") or [])
+		if r.assessment_criteria
+	]
+	if not crit_ids:
+		return {"created": 0, "students": 0, "criteria": 0}
+
+	# 2) Students already loaded on this Task
+	students = frappe.get_all(
+		"Task Student",
+		filters={"parent": task_doc.name, "parenttype": "Task"},
+		fields=["student"]
+	)
+	if not students:
+		return {"created": 0, "students": 0, "criteria": len(crit_ids)}
+
+	# 3) Existing rubric rows (to avoid duplicates)
+	existing_pairs = {
+		(r.student, r.assessment_criteria)
+		for r in frappe.get_all(
+			"Task Criterion Score",
+			filters={"parent": task_doc.name, "parenttype": "Task"},
+			fields=["student", "assessment_criteria"]
+		)
+	}
+
+	# 4) Insert missing (student × criterion) rows
+	created = 0
+	for s in students:
+		for crit in crit_ids:
+			key = (s["student"], crit)
+			if key in existing_pairs:
+				continue
+			frappe.get_doc({
+				"doctype": "Task Criterion Score",
+				"parent": task_doc.name,
+				"parenttype": "Task",
+				"parentfield": "task_criterion_score",
+				"student": s["student"],
+				"assessment_criteria": crit,
+				"level": None,
+				"level_points": 0.0
+			}).insert(ignore_permissions=False)
+			created += 1
+
+	return {"created": created, "students": len(students), "criteria": len(crit_ids)}
+
 @frappe.whitelist()
 def prefill_task_students(task: str) -> Dict:
     """
@@ -287,7 +400,14 @@ def prefill_task_students(task: str) -> Dict:
         ts.insert(ignore_permissions=False)
         inserted += 1
 
-    return {"inserted": inserted, "total": len(s_rows)}
+    result = {"inserted": inserted, "total": len(s_rows)}
+
+    # also ensure rubric rows exist for each student × criterion
+    doc.reload()  # make sure child tables are fresh
+    rub = _prefill_task_rubrics(doc)
+    result.update({"rubric_rows_created": rub.get("created", 0)})
+
+    return result
 
 
 @frappe.whitelist()
