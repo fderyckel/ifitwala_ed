@@ -17,6 +17,13 @@
 			</RouterLink>
 
 			<RouterLink
+				:to="{ name: 'staff-attendance' }"
+				class="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+			>
+				Open Attendance
+			</RouterLink>
+
+			<RouterLink
 				:to="{ name: 'staff-gradebook' }"
 				class="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
 			>

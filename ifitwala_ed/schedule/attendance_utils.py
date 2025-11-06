@@ -121,12 +121,18 @@ def list_attendance_codes(show_in_attendance_tool: int | None = 1) -> List[Dict[
 	if show_in_attendance_tool is not None:
 		filters["show_in_attendance_tool"] = int(show_in_attendance_tool)
 
-	return frappe.db.get_all(
+	records = frappe.db.get_all(
 		ATT_CODE_DOCTYPE,
-		fields=["name", "attendance_code_name", "display_order", "color"],
+		fields=["name", "attendance_code", "attendance_code_name", "display_order", "color"],
 		filters=filters,
 		order_by="display_order asc, attendance_code_name asc",
 	)
+
+	default_color = "#2563eb"
+	for row in records:
+		row["color"] = row.get("color") or default_color
+
+	return records
 
 
 @frappe.whitelist()
