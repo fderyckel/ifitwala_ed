@@ -467,9 +467,14 @@ async function loadAttendanceCodes() {
 async function loadGroups() {
 	groupsLoading.value = true
 	try {
-		const response = await call('ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups')
+		console.debug('[Attendance] Loading student groups')
+		const response = await call('ifitwala_ed.api.student_attendance.fetch_portal_student_groups')
 		const data = unwrapMessage(response)
 		groups.value = Array.isArray(data) ? data : []
+		console.debug('[Attendance] Loaded groups:', groups.value)
+		if (!(groups.value?.length)) {
+			console.debug('[Attendance] No student groups returned from server')
+		}
 	} catch (error) {
 		console.error('Failed to load student groups', error)
 		toast({
@@ -731,6 +736,14 @@ onMounted(() => {
 	loadAttendanceCodes()
 	loadGroups()
 })
+
+watch(
+	() => groups.value,
+	(newVal) => {
+		console.debug('[Attendance] groups updated:', newVal)
+	},
+	{ deep: true }
+)
 
 watch(() => filters.student_group, onGroupChange)
 watch(() => filters.default_code, onDefaultCodeChange)
