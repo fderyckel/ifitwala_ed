@@ -533,6 +533,27 @@ function onImgError(event: Event, fallback?: string) {
 	element.src = fallback || DEFAULT_STUDENT_IMAGE
 }
 
+function normalizeFeedback(value?: string | null) {
+	if (!value) return ''
+	try {
+		if (typeof DOMParser !== 'undefined') {
+			const parser = new DOMParser()
+			const doc = parser.parseFromString(value, 'text/html')
+			const text = (doc.body.innerText || doc.body.textContent || '')
+			return text.replace(/\u00a0/g, ' ').trim()
+		}
+	} catch {
+		/* fall through to regex cleanup */
+	}
+	return value
+		.replace(/<br\s*\/?>/gi, '\n')
+		.replace(/<\/p>/gi, '\n')
+		.replace(/<[^>]*>/g, '')
+		.replace(/\u00a0/g, ' ')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim()
+}
+
 const AUTOSAVE_DELAY = 2500
 const studentSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> = {}
 const criteriaSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> = {}
@@ -736,7 +757,7 @@ function initializeStudentStates() {
 			status: student.status || '',
 			mark_awarded: student.mark_awarded,
 			total_mark: student.total_mark,
-			feedback: student.feedback || '',
+			feedback: normalizeFeedback(student.feedback),
 			visible_to_student: Boolean(student.visible_to_student),
 			visible_to_guardian: Boolean(student.visible_to_guardian),
 			complete: Boolean(student.complete),
@@ -766,7 +787,17 @@ function onStatusChanged(taskStudent: string, value: string) {
 function onPointsChanged(taskStudent: string, value: string | number | null) {
 	const state = studentStates[taskStudent]
 	if (!state) return
-	const numberValue = value === '' || value === null ? null : Number(value)
+	let numberValue = value === '' || value === null ? null : Number(value)
+	if (numberValue !== null && Number.isNaN(numberValue)) {
+		numberValue = null
+	}
+	if (numberValue !== null) {
+		const maxPoints = gradebook.task?.max_points
+		if (typeof maxPoints === 'number' && maxPoints > 0) {
+			numberValue = Math.min(numberValue, maxPoints)
+		}
+		numberValue = Math.max(0, numberValue)
+	}
 	state.mark_awarded = numberValue
 	state.total_mark = numberValue
 	state.dirty = true
@@ -822,7 +853,7 @@ function setVisibilityForGroup(target: 'visible_to_student' | 'visible_to_guardi
 function onFeedbackChanged(taskStudent: string, value: string) {
 	const state = studentStates[taskStudent]
 	if (!state) return
-	state.feedback = value
+	state.feedback = normalizeFeedback(value)
 	state.dirty = true
 	scheduleStudentSave(taskStudent)
 }

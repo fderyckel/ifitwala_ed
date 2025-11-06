@@ -21,6 +21,7 @@ frappe.ui.form.on("Task", {
 		set_lesson_query(frm);
 		update_task_student_visibility(frm);
 		add_or_toggle_load_students_buttons(frm);
+		ensure_default_grade_scale(frm);
 
 		// Auto-load on first meaningful state
 		if (should_autoload_students(frm.doc) && !task_has_students(frm)) {
@@ -36,6 +37,7 @@ frappe.ui.form.on("Task", {
 		set_learning_unit_query(frm);
 		set_lesson_query(frm);
 		add_or_toggle_load_students_buttons(frm);
+		ensure_default_grade_scale(frm);
 
 		if (should_autoload_students(frm.doc) && !task_has_students(frm)) {
 			try_load_students(frm);
@@ -51,6 +53,7 @@ frappe.ui.form.on("Task", {
 			set_learning_unit_query(frm);
 			set_lesson_query(frm);
 			add_or_toggle_load_students_buttons(frm);
+			ensure_default_grade_scale(frm);
 
 			if (should_autoload_students(frm.doc) && !task_has_students(frm)) {
 				try_load_students(frm);
@@ -77,12 +80,14 @@ frappe.ui.form.on("Task", {
 
 	// === Auto-load triggers on grading flags ================================
 	is_graded(frm) {
+		ensure_default_grade_scale(frm);
 		if (should_autoload_students(frm.doc) && !task_has_students(frm)) ensure_saved_then(try_load_students, frm);
 	},
 	observations(frm) {
 		if (should_autoload_students(frm.doc) && !task_has_students(frm)) ensure_saved_then(try_load_students, frm);
 	},
 	points(frm) {
+		ensure_default_grade_scale(frm);
 		if (should_autoload_students(frm.doc) && !task_has_students(frm)) ensure_saved_then(try_load_students, frm);
 	},
 	criteria(frm) {
@@ -363,6 +368,32 @@ async function try_load_students(frm) {
 		frappe.msgprint({ message: __("Failed to load students"), indicator: "red" });
 	}
 }
+
+// Cache to avoid repeated DB hits per course
+const __gradeScaleCache = Object.create(null);
+
+async function ensure_default_grade_scale(frm) {
+	// Only when grading is relevant
+	if (!(frm.doc.is_graded || frm.doc.points)) return;
+	// Need a course selected
+	if (!frm.doc.course) return;
+	// Don’t overwrite if already set
+	if (frm.doc.grade_scale) return;
+
+	const course = frm.doc.course;
+	// Memoized lookup
+	if (!(__gradeScaleCache.hasOwnProperty(course))) {
+		const r = await frappe.db.get_value("Course", course, "default_grade_scale");
+		__gradeScaleCache[course] = r?.message?.default_grade_scale || null;
+	}
+	const gs = __gradeScaleCache[course];
+	if (gs) {
+		await frm.set_value("grade_scale", gs);
+		// Optional toast:
+		frappe.show_alert({ message: __("Loaded default grade scale from Course"), indicator: "blue" });
+	}
+}
+
 
 // --- Points & Visibility & Status Preview ----------------------------------
 
