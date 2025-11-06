@@ -18,8 +18,7 @@
 					option-label="label"
 					option-value="value"
 					v-model="filters.student_group"
-					:placeholder="__('Select group')"
-					:disabled="groupsLoading"
+					:disabled="groupsLoading && !groupOptions.length"
 				/>
 
 				<FormControl
@@ -468,27 +467,19 @@ async function loadAttendanceCodes() {
 	}
 }
 
+
 async function loadGroups() {
-	groupsLoading.value = true
-	try {
-		console.debug('[Attendance] Loading student groups')
-		const response = await call('ifitwala_ed.api.student_attendance.fetch_portal_student_groups')
-		const data = unwrapMessage(response)
-		groups.value = Array.isArray(data) ? data : []
-		console.debug('[Attendance] Loaded groups:', groups.value)
-		if (!(groups.value?.length)) {
-			console.debug('[Attendance] No student groups returned from server')
-		}
-	} catch (error) {
-		console.error('Failed to load student groups', error)
-		toast({
-			title: __('Could not load student groups'),
-			appearance: 'danger',
-		})
-		groups.value = []
-	} finally {
-		groupsLoading.value = false
-	}
+  groupsLoading.value = true
+  try {
+    const res = await call('ifitwala_ed.api.student_attendance.fetch_portal_student_groups')
+    const data = unwrapMessage(res)
+    groups.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    console.error('Failed to load student groups', e)
+    groups.value = []
+  } finally {
+    groupsLoading.value = false   // <- make sure this always runs
+  }
 }
 
 function onGroupChange() {
