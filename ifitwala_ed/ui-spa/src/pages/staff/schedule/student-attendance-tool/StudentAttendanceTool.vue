@@ -11,21 +11,25 @@
 			</div>
 
 			<div class="flex flex-wrap items-center gap-3">
-				<Select
+				<FormControl
+					type="select"
 					class="min-w-[220px]"
 					:options="groupOptions"
+					option-label="label"
+					option-value="value"
 					v-model="filters.student_group"
 					:placeholder="__('Select group')"
 					:disabled="groupsLoading"
-					:loading="groupsLoading"
 				/>
 
-				<Select
+				<FormControl
+					type="select"
 					class="min-w-[200px]"
 					:options="defaultCodeOptions"
+					option-label="label"
+					option-value="value"
 					v-model="filters.default_code"
 					:disabled="!attendanceCodes.length"
-					:placeholder="__('Default code')"
 				/>
 
 				<Button
@@ -272,7 +276,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted } from 'vue'
-import { Button, FormControl, Select, Badge, FeatherIcon, Spinner, call, toast } from 'frappe-ui'
+import { Button, FormControl, Badge, FeatherIcon, Spinner, call, toast } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import AttendanceCalendar from './components/AttendanceCalendar.vue'
 import AttendanceGrid from './components/AttendanceGrid.vue'
