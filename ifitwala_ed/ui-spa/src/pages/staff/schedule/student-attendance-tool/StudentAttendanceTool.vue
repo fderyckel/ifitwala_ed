@@ -270,12 +270,16 @@
 			:value="remarkDialog.value"
 			@save="onRemarkSaved"
 		/>
+
+		<Dialog v-model="healthDialog.open" :title="healthDialog.title" size="lg">
+			<div class="prose prose-sm max-w-none text-slate-700" v-html="healthDialog.html"></div>
+		</Dialog>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted } from 'vue'
-import { Button, FormControl, Badge, FeatherIcon, Spinner, call, toast } from 'frappe-ui'
+import { Button, FormControl, Badge, Dialog, FeatherIcon, Spinner, call, toast } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import AttendanceCalendar from './components/AttendanceCalendar.vue'
 import AttendanceGrid from './components/AttendanceGrid.vue'
@@ -311,6 +315,12 @@ const remarkDialog = reactive({
 	student: null as StudentRosterEntry | null,
 	block: null as BlockKey | null,
 	value: '',
+})
+
+const healthDialog = reactive({
+	open: false,
+	title: '',
+	html: '',
 })
 
 const groups = ref<any[]>([])
@@ -471,16 +481,33 @@ async function loadAttendanceCodes() {
 async function loadGroups() {
   groupsLoading.value = true
   try {
-    const res = await call('ifitwala_ed.api.student_attendance.fetch_portal_student_groups')
-    const data = unwrapMessage(res)
+    console.debug('[Attendance] Loading student groups')
+    const response = await call('ifitwala_ed.api.student_attendance.fetch_portal_student_groups')
+    const data = unwrapMessage(response)
     groups.value = Array.isArray(data) ? data : []
-  } catch (e) {
-    console.error('Failed to load student groups', e)
+    console.debug('[Attendance] Loaded groups:', groups.value)
+
+    if (!(groups.value?.length)) {
+      console.debug('[Attendance] No student groups returned from server')
+      toast({
+        title: __('No student groups found'),
+        message: __('You have no active student groups assigned.'),
+        appearance: 'warning',
+      })
+    }
+  } catch (error) {
+    console.error('Failed to load student groups', error)
+    toast({
+      title: __('Could not load student groups'),
+      message: __('Please refresh or contact your administrator.'),
+      appearance: 'danger',
+    })
     groups.value = []
   } finally {
-    groupsLoading.value = false   // <- make sure this always runs
+    groupsLoading.value = false
   }
 }
+
 
 function onGroupChange() {
 	selectedDate.value = null
@@ -719,12 +746,21 @@ async function submitAttendance() {
 }
 
 function showMedical(student: StudentRosterEntry) {
-	if (!student.medical_info) return
-	frappe.msgprint({
-		title: __('Health Note for {0}', [student.preferred_name || student.student_name || student.student]),
-		message: student.medical_info,
-		indicator: 'red',
-	})
+	const html = (student?.medical_info || '').trim()
+	if (!html) {
+		toast({
+			title: __('No health note'),
+			message: __('There is no medical information for this student.'),
+			appearance: 'info',
+		})
+		return
+	}
+
+	healthDialog.title = __('Health Note for {0}', [
+		student.preferred_name || student.student_name || student.student,
+	])
+	healthDialog.html = html
+	healthDialog.open = true
 }
 
 onMounted(() => {
