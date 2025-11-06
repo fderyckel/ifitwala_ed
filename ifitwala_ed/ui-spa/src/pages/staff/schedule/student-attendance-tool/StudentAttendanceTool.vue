@@ -16,8 +16,8 @@
 					:options="groupOptions"
 					v-model="filters.student_group"
 					:placeholder="__('Select group')"
-					:disabled="groups.loading"
-					:loading="groups.loading"
+					:disabled="groupsLoading"
+					:loading="groupsLoading"
 				/>
 
 				<Select
@@ -272,7 +272,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted } from 'vue'
-import { Button, FormControl, Select, Badge, FeatherIcon, Spinner, createResource, call, toast } from 'frappe-ui'
+import { Button, FormControl, Select, Badge, FeatherIcon, Spinner, call, toast } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import AttendanceCalendar from './components/AttendanceCalendar.vue'
 import AttendanceGrid from './components/AttendanceGrid.vue'
@@ -310,14 +310,11 @@ const remarkDialog = reactive({
 	value: '',
 })
 
-const groups = createResource({
-	url: 'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups',
-	auto: true,
-	transform: (res: unknown) => unwrapMessage(res) ?? [],
-})
+const groups = ref<any[]>([])
+const groupsLoading = ref(false)
 
 const groupOptions = computed(() =>
-	(groups.data || []).map((row: any) => ({
+	(groups.value || []).map((row: any) => ({
 		label: row.student_group_name || row.name,
 		value: row.name,
 	}))
@@ -464,6 +461,24 @@ async function loadAttendanceCodes() {
 			title: __('Could not load attendance codes'),
 			appearance: 'danger',
 		})
+	}
+}
+
+async function loadGroups() {
+	groupsLoading.value = true
+	try {
+		const response = await call('ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups')
+		const data = unwrapMessage(response)
+		groups.value = Array.isArray(data) ? data : []
+	} catch (error) {
+		console.error('Failed to load student groups', error)
+		toast({
+			title: __('Could not load student groups'),
+			appearance: 'danger',
+		})
+		groups.value = []
+	} finally {
+		groupsLoading.value = false
 	}
 }
 
@@ -714,19 +729,9 @@ function showMedical(student: StudentRosterEntry) {
 
 onMounted(() => {
 	loadAttendanceCodes()
+	loadGroups()
 })
 
-watch(
-	() => filters.student_group,
-	() => {
-		onGroupChange()
-	}
-)
-
-watch(
-	() => filters.default_code,
-	() => {
-		onDefaultCodeChange()
-	}
-)
+watch(() => filters.student_group, onGroupChange)
+watch(() => filters.default_code, onDefaultCodeChange)
 </script>
