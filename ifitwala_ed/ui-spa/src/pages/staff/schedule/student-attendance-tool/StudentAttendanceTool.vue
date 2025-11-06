@@ -11,24 +11,21 @@
 			</div>
 
 			<div class="flex flex-wrap items-center gap-3">
-				<FormControl
-					type="select"
+				<Select
 					class="min-w-[220px]"
-					:loading="groups.loading"
-					:disabled="groups.loading"
 					:options="groupOptions"
 					v-model="filters.student_group"
 					:placeholder="__('Select group')"
-					@update:modelValue="onGroupChange"
+					:disabled="groups.loading"
+					:loading="groups.loading"
 				/>
 
-				<FormControl
-					type="select"
+				<Select
 					class="min-w-[200px]"
 					:options="defaultCodeOptions"
 					v-model="filters.default_code"
 					:disabled="!attendanceCodes.length"
-					@update:modelValue="onDefaultCodeChange"
+					:placeholder="__('Default code')"
 				/>
 
 				<Button
@@ -275,7 +272,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted } from 'vue'
-import { Button, FormControl, Badge, FeatherIcon, Spinner, createResource, call, toast } from 'frappe-ui'
+import { Button, FormControl, Select, Badge, FeatherIcon, Spinner, createResource, call, toast } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import AttendanceCalendar from './components/AttendanceCalendar.vue'
 import AttendanceGrid from './components/AttendanceGrid.vue'
@@ -721,10 +718,15 @@ onMounted(() => {
 
 watch(
 	() => filters.student_group,
-	(value) => {
-		if (!value) {
-			selectedDate.value = null
-		}
+	() => {
+		onGroupChange()
+	}
+)
+
+watch(
+	() => filters.default_code,
+	() => {
+		onDefaultCodeChange()
 	}
 )
 </script>
