@@ -6,6 +6,7 @@
 frappe.ui.form.on("Task", {
 	setup(frm) {
 		set_learning_unit_query(frm);
+		set_lesson_query(frm);
 	},
 
 	refresh(frm) {
@@ -13,36 +14,81 @@ frappe.ui.form.on("Task", {
 
 		// Always add (or re-add) our buttons on refresh
 		add_duplicate_for_group_button(frm);
-		add_load_students_buttons(frm);     // <— consolidated
 		add_rubric_buttons(frm);
-		set_learning_unit_query(frm);
-		update_task_student_visibility(frm);
 
-		const rows = (frm.doc.task_student || []);
-		rows.forEach(r => {
-			// simulate a preview without spamming alerts
-			const cdt = "Task Student";
-			const cdn = r.name;
-			apply_status_preview(frm, cdt, cdn);
-		});
+		// Live queries + controls
+		set_learning_unit_query(frm);
+		set_lesson_query(frm);
+		update_task_student_visibility(frm);
+		add_or_toggle_load_students_buttons(frm);
+
+		// Auto-load on first meaningful state
+		if (should_autoload_students(frm.doc) && !task_has_students(frm)) {
+			try_load_students(frm);
+		}
+
+		// Client-only status preview for existing rows
+		(frm.doc.task_student || []).forEach(r => apply_status_preview(frm, "Task Student", r.name));
 	},
 
+	after_save(frm) {
+		// Keep UI responsive without a full refresh
+		set_learning_unit_query(frm);
+		set_lesson_query(frm);
+		add_or_toggle_load_students_buttons(frm);
+
+		if (should_autoload_students(frm.doc) && !task_has_students(frm)) {
+			try_load_students(frm);
+		}
+	},
 
 	student_group(frm) {
-		// student_group → auto-fetch course via fetch_from
-		// Defer a tick to ensure fetch_from landed before we clear children
-		setTimeout(() => on_course_changed(frm), 0);
+		// fetch_from fills course/school/program/ay → wait a tick then react
+		setTimeout(() => {
+			if (frm.doc.learning_unit) frm.set_value("learning_unit", null);
+			if (frm.doc.lesson) frm.set_value("lesson", null);
+
+			set_learning_unit_query(frm);
+			set_lesson_query(frm);
+			add_or_toggle_load_students_buttons(frm);
+
+			if (should_autoload_students(frm.doc) && !task_has_students(frm)) {
+				try_load_students(frm);
+			}
+		}, 0);
 	},
 
 	course(frm) {
-		on_course_changed(frm);
+		if (frm.doc.learning_unit) frm.set_value("learning_unit", null);
+		if (frm.doc.lesson) frm.set_value("lesson", null);
+		set_learning_unit_query(frm);
+		set_lesson_query(frm);
 	},
 
+	learning_unit(frm) {
+		if (frm.doc.lesson) frm.set_value("lesson", null);
+		set_lesson_query(frm);
+	},
+
+	// Toggle Task Student “complete” column visibility based on binary mode
 	binary(frm) {
-			update_task_student_visibility(frm);
+		update_task_student_visibility(frm);
 	},
 
+	// === Auto-load triggers on grading flags ================================
+	is_graded(frm) {
+		if (should_autoload_students(frm.doc) && !task_has_students(frm)) ensure_saved_then(try_load_students, frm);
+	},
+	observations(frm) {
+		if (should_autoload_students(frm.doc) && !task_has_students(frm)) ensure_saved_then(try_load_students, frm);
+	},
+	points(frm) {
+		if (should_autoload_students(frm.doc) && !task_has_students(frm)) ensure_saved_then(try_load_students, frm);
+	},
 	criteria(frm) {
+		if (should_autoload_students(frm.doc) && !task_has_students(frm)) ensure_saved_then(try_load_students, frm);
+
+		// Safety: clearing assessment_criteria when criteria unchecked
 		if (!frm.doc.criteria) {
 			const has_rows = (frm.doc.assessment_criteria || []).length > 0;
 			if (has_rows) {
@@ -52,45 +98,34 @@ frappe.ui.form.on("Task", {
 						frm.clear_table("assessment_criteria");
 						frm.refresh_field("assessment_criteria");
 					},
-					() => {
-						// user canceled → restore the check
-						frm.set_value("criteria", 1);
-					}
+					() => frm.set_value("criteria", 1)
 				);
 			}
 		}
 	}
-
-
 });
 
-// Child table client rules for Task Student (points-only clamp)
+// --- Task Student childtable ------------------------------------------------
 frappe.ui.form.on("Task Student", {
-	total_mark: function(frm, cdt, cdn) {
+	total_mark(frm, cdt, cdn) {
 		clamp_points_only(frm, cdt, cdn, "total_mark");
-	},
-	mark_awarded: function(frm, cdt, cdn) {
-		clamp_points_only(frm, cdt, cdn, "mark_awarded");
-	},
-
-	// ----- Bind to Task Student grid field events
-	mark_awarded(frm, cdt, cdn) {
 		apply_status_preview(frm, cdt, cdn);
 	},
-	total_mark(frm, cdt, cdn) {
+	mark_awarded(frm, cdt, cdn) {
+		clamp_points_only(frm, cdt, cdn, "mark_awarded");
 		apply_status_preview(frm, cdt, cdn);
 	},
 	feedback(frm, cdt, cdn) {
 		apply_status_preview(frm, cdt, cdn);
 	},
-	complete(frm, cdt, cdn) { // for binary
+	complete(frm, cdt, cdn) { // binary mode
 		apply_status_preview(frm, cdt, cdn);
 	},
 	visible_to_student: visibility_toggled,
 	visible_to_guardian: visibility_toggled
-
 });
 
+// --- Buttons ---------------------------------------------------------------
 
 function add_duplicate_for_group_button(frm) {
 	if (frm.__dup_btn_added) return;
@@ -145,58 +180,17 @@ function add_duplicate_for_group_button(frm) {
 	}, __("Actions"));
 }
 
-function set_learning_unit_query(frm) {
-	frm.set_query("learning_unit", () => {
-		const course = (frm.doc.course || "").trim();
-		// If no course yet, return a false filter that yields nothing
-		if (!course) {
-			return {
-				filters: { name: ["=", "__none__"] }
-			};
-		}
-		// Minimal, index-friendly filters
-		return {
-			filters: {
-				course: course,
-				unit_status: "Active" // optional but sensible; remove if you want all
-				// is_published: 1   // uncomment if you only want published units
-			}
-		};
-	});
-}
-
-// Clear dependent fields when upstream changes (to avoid stale selections)
-function on_course_changed(frm) {
-	if (frm.doc.learning_unit) frm.set_value("learning_unit", null);
-	if (frm.doc.lesson) frm.set_value("lesson", null);
-	set_learning_unit_query(frm);
-}
-
-/**
- * Add "Load Students" in two places:
- *  1) Form toolbar under group "Students"
- *  2) Inside the Task Student grid’s dropdown menu
- * Button is enabled only when doc is saved and student_group is set.
- */
-function add_load_students_buttons(frm) {
-	const can_show = !frm.doc.__islocal && !!frm.doc.name;
+function add_or_toggle_load_students_buttons(frm) {
+	const can_show = !!frm.doc.name;
 	const has_group = !!frm.doc.student_group;
 
-	// 1) Toolbar button (grouped under "Students")
 	if (!frm.__load_students_toolbar_btn_added) {
 		frm.__load_students_toolbar_btn_added = true;
 		frm.add_custom_button(__("Load Students"), () => try_load_students(frm), __("Students"));
+		frm.page.set_inner_btn_group_as_primary(__("Students"));
 	}
-	// Show/hide based on conditions
-	frm.page.set_inner_btn_group_as_primary(__("Students"));
-	frm.toggle_custom_button(__("Load Students"), can_show, __("Students"));
+	frm.toggle_custom_button(__("Load Students"), can_show && has_group, __("Students"));
 
-	// Provide quick hint if blocked
-	if (can_show && !has_group) {
-		frm.dashboard.set_headline_alert(__("Select a Student Group to enable <b>Load Students</b>."), "orange");
-	}
-
-	// 2) Grid menu button on Task Student child table
 	const grid = frm.fields_dict?.task_student?.grid;
 	if (grid && !grid.__load_students_grid_btn_added) {
 		grid.__load_students_grid_btn_added = true;
@@ -204,38 +198,12 @@ function add_load_students_buttons(frm) {
 	}
 }
 
-async function try_load_students(frm) {
-	if (!frm.doc.student_group) {
-		frappe.msgprint({ message: __("Please select a Student Group first."), indicator: "orange" });
-		return;
-	}
-	if (frm.doc.__islocal) {
-		frappe.msgprint({ message: __("Please save the Task before loading students."), indicator: "orange" });
-		return;
-	}
-
-	try {
-		const res = await frappe.call({
-			method: "ifitwala_ed.assessment.doctype.task.task.prefill_task_students",
-			args: { task: frm.doc.name },
-			freeze: true,
-			freeze_message: __("Loading students...")
-		});
-		if (res.message) {
-			frappe.show_alert({ message: `${res.message.inserted} ${__("students added")} (${res.message.total} ${__("eligible")})`, indicator: 'green' });
-			frm.reload_doc();
-		}
-	} catch (e) {
-		console.error(e);
-		frappe.msgprint({ message: __("Failed to load students"), indicator: "red" });
-	}
-}
+// --- Dialogs (Rubric) ------------------------------------------------------
 
 function add_rubric_buttons(frm) {
 	const grid_field = frm.fields_dict["task_student"];
 	if (!grid_field || !grid_field.grid) return;
 
-	// Add “bulk apply” to the grid menu
 	if (!grid_field.grid.__rubric_bulk_btn_added) {
 		grid_field.grid.__rubric_bulk_btn_added = true;
 		grid_field.grid.add_custom_button(__("Apply Rubric Suggestions → Mark Awarded"), async () => {
@@ -261,7 +229,6 @@ function add_rubric_buttons(frm) {
 		});
 	}
 
-	// Optional: per-row action hook (kept from your original)
 	grid_field.grid.wrapper.on('click', '.btn-rubric', function () {
 		const row = frappe.ui.get_grid_row(this);
 		const data = row.doc;
@@ -276,12 +243,10 @@ function open_rubric_dialog(frm, student, student_name) {
 		primary_action_label: __("Save"),
 		primary_action: async (values) => {
 			try {
-				// Clamp client-side: 0 ≤ level_points ≤ criterion cap
+				// Client-side clamp: 0 ≤ level_points ≤ criterion cap
 				const caps = {};
 				(frm.doc.assessment_criteria || []).forEach(r => {
-					if (r.assessment_criteria) {
-						caps[r.assessment_criteria] = Number(r.criteria_max_points || 0);
-					}
+					if (r.assessment_criteria) caps[r.assessment_criteria] = Number(r.criteria_max_points || 0);
 				});
 				let clampedCount = 0;
 				(values.criteria_rows || []).forEach(row => {
@@ -305,11 +270,9 @@ function open_rubric_dialog(frm, student, student_name) {
 					freeze: true,
 					freeze_message: __("Saving rubric rows...")
 				});
-				// Recompute Task Student totals for this learner
 				await frappe.call({
 					method: "ifitwala_ed.assessment.doctype.task.task.recompute_student_totals",
-					args: { task: frm.doc.name, student },
-					freeze: false
+					args: { task: frm.doc.name, student }
 				});
 				dlg.hide();
 				if (res?.message?.suggestion !== undefined) {
@@ -328,21 +291,88 @@ function open_rubric_dialog(frm, student, student_name) {
 		method: "ifitwala_ed.assessment.doctype.task.task.get_criterion_scores_for_student",
 		args: { task: frm.doc.name, student }
 	}).then(r => {
-		if (r.message && Array.isArray(r.message.rows)) {
-			dlg.set_value("criteria_rows", r.message.rows);
-		}
+		if (r.message && Array.isArray(r.message.rows)) dlg.set_value("criteria_rows", r.message.rows);
 	});
 }
 
+// --- Queries & Guards ------------------------------------------------------
 
-// Helpers for childtable task student points.
+function set_learning_unit_query(frm) {
+	frm.set_query("learning_unit", () => {
+		const course = (frm.doc.course || "").trim();
+		if (!course) return { filters: { name: ["=", "__none__"] } };
+		return { filters: { course, unit_status: "Active" } }; // add is_published: 1 if desired
+	});
+}
+
+function set_lesson_query(frm) {
+	frm.set_query("lesson", () => {
+		const lu = (frm.doc.learning_unit || "").trim();
+		if (!lu) return { filters: { name: ["=", "__none__"] } };
+		return { filters: { learning_unit: lu } };
+	});
+}
+
+function should_autoload_students(doc) {
+	return !!doc.student_group && (
+		!!doc.is_graded ||
+		!!doc.observations ||
+		!!doc.binary ||
+		!!doc.points ||
+		!!doc.criteria
+	);
+}
+
+function task_has_students(frm) {
+	return (frm.doc.task_student || []).length > 0;
+}
+
+async function ensure_saved_then(fn, frm) {
+	if (frm.is_dirty() || frm.is_new()) await frm.save();
+	await fn(frm);
+}
+
+async function try_load_students(frm) {
+	if (!frm.doc.student_group) {
+		frappe.msgprint({ message: __("Please select a Student Group first."), indicator: "orange" });
+		return;
+	}
+	if (!frm.doc.name) {
+		await ensure_saved_then(try_load_students, frm);
+		return;
+	}
+	if (frm.__students_autoloaded_once) return;
+
+	try {
+		const res = await frappe.call({
+			method: "ifitwala_ed.assessment.doctype.task.task.prefill_task_students",
+			args: { task: frm.doc.name },
+			freeze: true,
+			freeze_message: __("Loading students...")
+		});
+		frm.__students_autoloaded_once = true;
+		if (res.message) {
+			frappe.show_alert({
+				message: `${res.message.inserted} ${__("students added")} (${res.message.total} ${__("eligible")})`,
+				indicator: "green"
+			});
+			await frm.reload_doc();
+		}
+	} catch (e) {
+		console.error(e);
+		frappe.msgprint({ message: __("Failed to load students"), indicator: "red" });
+	}
+}
+
+// --- Points & Visibility & Status Preview ----------------------------------
+
 function has_any_criteria(frm) {
 	return Array.isArray(frm.doc.assessment_criteria) &&
 		frm.doc.assessment_criteria.some(r => r.assessment_criteria);
 }
 
 function clamp_points_only(frm, cdt, cdn, fieldname) {
-	// Only enforce in the "points-only" case: no criteria on this Task
+	// Only enforce in "points-only" mode (no criteria on this Task)
 	if (has_any_criteria(frm)) return;
 
 	const cap = Number(frm.doc.max_points || 0);
@@ -350,9 +380,7 @@ function clamp_points_only(frm, cdt, cdn, fieldname) {
 	let v = Number(d[fieldname] || 0);
 
 	if (Number.isNaN(v)) v = 0;
-	let clamped = v;
-	if (cap > 0) clamped = Math.min(Math.max(0, v), cap);
-	else clamped = Math.max(0, v); // if cap is 0/blank, just prevent negatives
+	let clamped = (cap > 0) ? Math.min(Math.max(0, v), cap) : Math.max(0, v);
 
 	if (clamped !== v) {
 		frappe.model.set_value(cdt, cdn, fieldname, clamped);
@@ -366,41 +394,28 @@ function clamp_points_only(frm, cdt, cdn, fieldname) {
 function update_task_student_visibility(frm) {
 	const grid = frm.fields_dict?.task_student?.grid;
 	if (!grid) return;
-
 	const showComplete = !!frm.doc.binary;
 	grid.set_column_disp("complete", showComplete);
-	// no other columns touched in this step
 	grid.refresh();
 }
 
-// ----- Status preview helpers (client-only hints; server remains source of truth)
-
+// Client-only status preview; server remains source of truth
 function task_has_criteria(frm) {
-	return Array.isArray(frm.doc.assessment_criteria)
-		&& frm.doc.assessment_criteria.some(r => r.assessment_criteria);
+	return Array.isArray(frm.doc.assessment_criteria) &&
+		frm.doc.assessment_criteria.some(r => r.assessment_criteria);
 }
 
 function compute_status_preview(frm, row) {
-	// Returned if any visibility flag is on
 	if (row.visible_to_student || row.visible_to_guardian) return "Returned";
-
-	// Graded if: binary complete OR a final mark exists OR feedback is non-empty
 	if (frm.doc.binary && row.complete) return "Graded";
 	if (row.mark_awarded !== null && row.mark_awarded !== undefined && row.mark_awarded !== "") return "Graded";
 	if ((row.feedback || "").trim()) return "Graded";
 
-	// In Progress:
-	// - criteria task: if there are rubric rows for this student (we can't query here cheaply),
-	//   we approximate: if total_mark present but no final grade, or if teacher opened rubric dialog
-	//   (you may add a flag later). For now, points-only case:
 	if (!task_has_criteria(frm)) {
-		if ((row.total_mark !== null && row.total_mark !== undefined && row.total_mark !== "")
-			&& (row.mark_awarded === null || row.mark_awarded === undefined || row.mark_awarded === "")) {
-			return "In Progress";
-		}
+		const hasTotal = (row.total_mark !== null && row.total_mark !== undefined && row.total_mark !== "");
+		const hasFinal = (row.mark_awarded !== null && row.mark_awarded !== undefined && row.mark_awarded !== "");
+		if (hasTotal && !hasFinal) return "In Progress";
 	}
-
-	// Default
 	return "Assigned";
 }
 
@@ -412,8 +427,6 @@ function apply_status_preview(frm, cdt, cdn) {
 	}
 }
 
-// When visibility toggles, we also gently ensure the preview says Returned.
-// (Server will enforce anyway.)
 function visibility_toggled(frm, cdt, cdn) {
 	apply_status_preview(frm, cdt, cdn);
 }

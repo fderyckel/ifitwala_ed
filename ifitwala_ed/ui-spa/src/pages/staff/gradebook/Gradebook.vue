@@ -118,21 +118,35 @@
 			</div>
 
 			<!-- Grade entry -->
-			<section class="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Grade Entry</h2>
-					<div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-						<span v-if="selectedTask">Max Points: <span class="font-semibold text-slate-700">{{ gradebook.task?.max_points || '—' }}</span></span>
-						<div v-if="gradebook.students.length" class="flex items-center gap-2">
-							<Button size="sm" appearance="minimal" @click="applyVisibilityToAll(true)">
-								Show to Everyone
-							</Button>
-							<Button size="sm" appearance="minimal" @click="applyVisibilityToAll(false)">
-								Hide from Everyone
-							</Button>
+				<section class="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+					<div class="flex flex-wrap items-center justify-between gap-3">
+						<h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Grade Entry</h2>
+						<div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+							<span v-if="selectedTask">
+								Max Points:
+								<span class="font-semibold text-slate-700">{{ gradebook.task?.max_points || '—' }}</span>
+							</span>
+							<div v-if="gradebook.students.length" class="flex flex-wrap items-center gap-2">
+								<span class="font-medium text-slate-500">Visible to all:</span>
+								<Button
+									size="sm"
+									appearance="minimal"
+									:class="allStudentsVisible ? 'bg-blue-100 text-blue-700 shadow-sm hover:bg-blue-100' : 'text-slate-600 hover:text-blue-600'"
+									@click="toggleVisibilityGroup('student')"
+								>
+									Students
+								</Button>
+								<Button
+									size="sm"
+									appearance="minimal"
+									:class="allGuardiansVisible ? 'bg-blue-100 text-blue-700 shadow-sm hover:bg-blue-100' : 'text-slate-600 hover:text-blue-600'"
+									@click="toggleVisibilityGroup('guardian')"
+								>
+									Guardians
+								</Button>
+							</div>
 						</div>
 					</div>
-				</div>
 
 				<div v-if="gradebookLoading" class="mt-6 flex flex-1 items-center justify-center">
 					<Spinner class="text-blue-600" />
@@ -233,18 +247,18 @@
 								</div>
 							</div>
 
-							<div class="flex flex-wrap items-center gap-4">
+							<div class="flex flex-wrap items-center gap-6">
 								<FormControl
 									type="checkbox"
 									:label="'Visible to Student'"
-									class="inline-flex items-center"
+									class="inline-flex items-center gap-2 !w-auto"
 									:model-value="Boolean(studentStates[student.task_student]?.visible_to_student)"
 									@update:modelValue="value => setVisibility(student.task_student, 'visible_to_student', value)"
 								/>
 								<FormControl
 									type="checkbox"
 									:label="'Visible to Guardian'"
-									class="inline-flex items-center"
+									class="inline-flex items-center gap-2 !w-auto"
 									:model-value="Boolean(studentStates[student.task_student]?.visible_to_guardian)"
 									@update:modelValue="value => setVisibility(student.task_student, 'visible_to_guardian', value)"
 								/>
@@ -478,6 +492,22 @@ const gradebook = reactive<{
 const studentStates = reactive<Record<string, StudentState>>({})
 
 const hasCriterionFeedback = computed(() => gradebook.criteria.length > 0)
+
+const allStudentsVisible = computed(() => {
+	if (!gradebook.students.length) return false
+	return gradebook.students.every((student) => {
+		const state = studentStates[student.task_student]
+		return Boolean(state?.visible_to_student)
+	})
+})
+
+const allGuardiansVisible = computed(() => {
+	if (!gradebook.students.length) return false
+	return gradebook.students.every((student) => {
+		const state = studentStates[student.task_student]
+		return Boolean(state?.visible_to_guardian)
+	})
+})
 
 const DEFAULT_STUDENT_IMAGE = '/assets/ifitwala_ed/images/default_student_image.png'
 
@@ -762,6 +792,33 @@ function setVisibility(taskStudent: string, target: 'visible_to_student' | 'visi
 	scheduleStudentSave(taskStudent)
 }
 
+function toggleVisibilityGroup(group: 'student' | 'guardian') {
+	const target = group === 'student' ? 'visible_to_student' : 'visible_to_guardian'
+	const shouldEnable = group === 'student' ? !allStudentsVisible.value : !allGuardiansVisible.value
+	const touched = setVisibilityForGroup(target, shouldEnable)
+	if (!touched) return
+
+	const audience = group === 'student' ? 'students' : 'guardians'
+	toast({
+		title: shouldEnable ? `Visible to all ${audience}` : `Hidden from all ${audience}`,
+		appearance: 'success',
+	})
+}
+
+function setVisibilityForGroup(target: 'visible_to_student' | 'visible_to_guardian', value: boolean): boolean {
+	if (!gradebook.students.length) return false
+	let touched = false
+	for (const student of gradebook.students) {
+		const state = studentStates[student.task_student]
+		if (!state || state[target] === value) continue
+		state[target] = value
+		state.dirty = true
+		scheduleStudentSave(student.task_student)
+		touched = true
+	}
+	return touched
+}
+
 function onFeedbackChanged(taskStudent: string, value: string) {
 	const state = studentStates[taskStudent]
 	if (!state) return
@@ -938,27 +995,4 @@ async function saveCriteria(taskStudent: string) {
 	}
 }
 
-function applyVisibilityToAll(value: boolean) {
-	if (!gradebook.students.length) return
-	let touched = false
-	for (const student of gradebook.students) {
-		const state = studentStates[student.task_student]
-		if (!state) continue
-		const already =
-			state.visible_to_student === value &&
-			state.visible_to_guardian === value
-		if (already) continue
-		state.visible_to_student = value
-		state.visible_to_guardian = value
-		state.dirty = true
-		scheduleStudentSave(student.task_student)
-		touched = true
-	}
-	if (touched) {
-		toast({
-			title: value ? 'Visibility enabled for everyone' : 'Visibility cleared for everyone',
-			appearance: 'success',
-		})
-	}
-}
 </script>
