@@ -76,11 +76,11 @@ class Task(Document):
 		self._enforce_criteria_bounds_and_rollup()
 
 		# --- Grading requirements (when graded) ---
-		if self.is_graded:
-			if not self.grade_scale:
-				frappe.throw(_("Grade Scale is required when the task is graded."))
-			if self.max_points in (None, 0):
-				frappe.throw(_("Max Points must be greater than 0 for graded tasks."))
+		if self.points:
+				if not self.grade_scale:
+						frappe.throw(_("Grade Scale is required when points are enabled."))
+				if not self.max_points or float(self.max_points) <= 0:
+						frappe.throw(_("Max Points must be greater than 0 when points are enabled."))
 
 		# --- Submission settings sanity ---
 		if (self.submission_required or (self.submission_type and self.submission_type != "None")) and not self.is_graded:
