@@ -130,6 +130,7 @@
 
 <script setup lang="ts">
 import { Button, FeatherIcon } from 'frappe-ui'
+import { __ } from '@/lib/i18n'
 import type { AttendanceCode, StudentRosterEntry, BlockKey } from '../types'
 
 const DEFAULT_AVATAR = '/assets/ifitwala_ed/images/default_student_image.png'

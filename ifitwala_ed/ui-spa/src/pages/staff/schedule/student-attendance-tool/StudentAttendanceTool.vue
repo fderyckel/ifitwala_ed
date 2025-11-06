@@ -276,6 +276,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted } from 'vue'
 import { Button, FormControl, Badge, FeatherIcon, Spinner, createResource, call, toast } from 'frappe-ui'
+import { __ } from '@/lib/i18n'
 import AttendanceCalendar from './components/AttendanceCalendar.vue'
 import AttendanceGrid from './components/AttendanceGrid.vue'
 import RemarkDialog from './components/RemarkDialog.vue'
@@ -313,7 +314,7 @@ const remarkDialog = reactive({
 })
 
 const groups = createResource({
-	url: 'api/method/ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups',
+	url: 'ifitwala_ed.schedule.page.student_group_cards.student_group_cards.fetch_student_groups',
 	auto: true,
 	transform: (res: unknown) => unwrapMessage(res) ?? [],
 })

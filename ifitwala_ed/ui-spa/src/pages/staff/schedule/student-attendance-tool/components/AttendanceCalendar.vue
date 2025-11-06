@@ -63,6 +63,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Button, Spinner } from 'frappe-ui'
+import { __ } from '@/lib/i18n'
 
 type CalendarDay = {
 	date: Date
