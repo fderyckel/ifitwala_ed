@@ -47,7 +47,7 @@
 							</span>
 
 							<button
-								v-if="student.medical_info"
+								v-if="hasMedicalInfo(student)"
 								type="button"
 								class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 font-medium text-red-600 hover:bg-red-100"
 								@click="$emit('show-medical', student)"
@@ -60,7 +60,7 @@
 								v-if="isBirthdaySoon(student.birth_date)"
 								class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-700"
 							>
-								<FeatherIcon name="gift" class="h-3.5 w-3.5" />
+								<span role="img" aria-hidden="true">🎂</span>
 								{{ __('Birthday soon') }}
 							</span>
 						</div>
@@ -161,6 +161,10 @@ function displayName(student: StudentRosterEntry) {
 
 function blockLabel(block: BlockKey) {
 	return block === -1 ? __('All day') : __('Block {0}', [block])
+}
+
+function hasMedicalInfo(student: StudentRosterEntry) {
+	return Boolean((student.medical_info || '').trim().length)
 }
 
 function chipClass(isSelected: boolean) {

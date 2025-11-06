@@ -749,16 +749,14 @@ function showMedical(student: StudentRosterEntry) {
 	const html = (student?.medical_info || '').trim()
 	if (!html) {
 		toast({
-			title: __('No health note'),
+			title: __('No medical info'),
 			message: __('There is no medical information for this student.'),
 			appearance: 'info',
 		})
 		return
 	}
 
-	healthDialog.title = __('Health Note for {0}', [
-		student.preferred_name || student.student_name || student.student,
-	])
+	healthDialog.title = __('Medical Info')
 	healthDialog.html = html
 	healthDialog.open = true
 }
