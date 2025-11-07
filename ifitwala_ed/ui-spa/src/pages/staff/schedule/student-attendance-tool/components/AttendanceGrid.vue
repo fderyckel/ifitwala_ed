@@ -42,9 +42,6 @@
 						</div>
 
 						<div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-							<span class="rounded-full bg-slate-100 px-2 py-1 font-medium text-slate-600">
-								{{ student.student }}
-							</span>
 
 							<button
 								v-if="hasMedicalInfo(student)"

@@ -330,7 +330,6 @@ const meetingDates = ref<string[]>([])
 const recordedDates = ref<string[]>([])
 const selectedDate = ref<string | null>(null)
 const calendarLoading = ref(false)
-// TODO: wire from School Settings (e.g., fetch via a lightweight API).
 const weekendDays = ref<number[]>([6, 0]) // default; will be replaced from server
 
 const students = ref<StudentRosterEntry[]>([])
@@ -671,7 +670,6 @@ async function loadRoster() {
 				attendance: {} as Record<BlockKey, string>,
 				remarks: {} as Record<BlockKey, string>,
 			}
-s
 			for (const block of normalizedBlocks) {
 				const existing = existingMap?.[stu.student]?.[block]
 				const previous = prevMap?.[stu.student]
