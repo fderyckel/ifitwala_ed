@@ -271,8 +271,11 @@
 			@save="onRemarkSaved"
 		/>
 
-		<Dialog v-model="healthDialog.open" :title="healthDialog.title" size="lg">
-			<div class="prose prose-sm max-w-none text-slate-700" v-html="healthDialog.html"></div>
+		<Dialog
+			v-model="healthDialog.open"
+			:options="{ title: healthDialog.title || __('Medical Info'), size: 'md' }"
+		>
+			<div class="prose prose-sm max-w-none whitespace-pre-line text-slate-700" v-html="healthDialog.html"></div>
 		</Dialog>
 	</div>
 </template>
@@ -757,8 +760,12 @@ function showMedical(student: StudentRosterEntry) {
 	}
 
 	healthDialog.title = __('Medical Info')
-	healthDialog.html = html
+	healthDialog.html = formatMedicalInfo(html)
 	healthDialog.open = true
+}
+
+function formatMedicalInfo(text: string) {
+	return text.replace(/\n/g, '<br />')
 }
 
 onMounted(() => {
