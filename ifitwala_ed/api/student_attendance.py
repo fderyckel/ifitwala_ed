@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils.caching import redis_cache
 
 from ifitwala_ed.api.student_groups import (
 	TRIAGE_ROLES,
@@ -52,9 +53,6 @@ def _query_groups(filters: dict[str, object]):
 		order_by="student_group_name asc",
 	)
 
-
-import frappe
-from frappe.utils.caching import redis_cache
 
 # MySQL DAYOFWEEK(): Sun=1 ... Sat=7  → JS getDay(): Sun=0 ... Sat=6
 MYSQL_TO_JS = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6}

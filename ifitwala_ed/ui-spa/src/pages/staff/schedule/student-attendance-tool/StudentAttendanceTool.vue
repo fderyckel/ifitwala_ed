@@ -284,27 +284,32 @@
 			@save="onRemarkSaved"
 		/>
 
-		<Dialog
-			v-model="healthDialog.open"
-			:options="{ title: healthDialog.title || __('Medical Info'), size: 'md' }"
-		>
-			<div class="prose prose-sm max-w-none text-slate-700" v-html="healthDialog.html"></div>
-		</Dialog>
+    <Dialog
+      v-model="healthDialog.open"
+      :options="{ title: healthDialog.title || __('Medical Info'), size: 'md' }"
+    >
+      <template #body>
+        <div class="prose prose-sm max-w-none text-slate-700">
+          <div v-if="healthDialog.html" v-html="healthDialog.html"></div>
+          <p v-else class="text-slate-500">{{ __('No medical information available.') }}</p>
+        </div>
+      </template>
+    </Dialog>
 
-		<Dialog
-			v-model="birthdayDialog.open"
-			:options="{ title: __('Birthday'), size: 'sm' }"
-		>
-			<div class="text-slate-700">
-				<p class="text-sm">
-					<strong>{{ birthdayDialog.name }}</strong>
-				</p>
-				<p class="mt-1 text-sm">
-					{{ birthdayDialog.dateLabel }}
-					<span v-if="birthdayDialog.age !== null"> · {{ birthdayDialog.age }} {{ __('years old') }}</span>
-				</p>
-			</div>
-		</Dialog>
+    <Dialog
+      v-model="birthdayDialog.open"
+      :options="{ title: __('Birthday'), size: 'sm' }"
+    >
+      <template #body>
+        <div class="space-y-1 text-slate-700">
+          <p class="text-sm font-semibold">{{ birthdayDialog.name }}</p>
+          <p class="text-sm">
+            {{ birthdayDialog.dateLabel }}
+            <span v-if="birthdayDialog.age !== null"> · {{ birthdayDialog.age }} {{ __('years old') }}</span>
+          </p>
+        </div>
+      </template>
+    </Dialog>
 	</div>
 </template>
 
@@ -678,7 +683,6 @@ async function loadRoster() {
 				studentEntry.attendance[block] = existing?.code || previous || fallbackCode
 				studentEntry.remarks[block] = existing?.remark || ''
 			}
-
 			return studentEntry
 		})
 
