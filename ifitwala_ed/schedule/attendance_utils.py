@@ -438,6 +438,8 @@ def get_meeting_dates(student_group: str, *, limit: int | None = None) -> List[s
     if not student_group:
         return []
 
+    key = f"ifw:meeting_dates:{student_group}"
+
     sg = frappe.get_doc("Student Group", student_group)
 
     schedule_name = sg.school_schedule
