@@ -42,9 +42,11 @@
 				>
 					<div class="flex flex-col items-center gap-1">
 						<span class="text-sm font-medium">{{ day.label }}</span>
+						<!-- Dot indicator: blue if recorded, green if meeting-only -->
 						<span
-							v-if="day.isRecorded"
-							class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"
+							v-if="day.isRecorded || day.isMeeting"
+							class="inline-flex h-1.5 w-1.5 rounded-full"
+							:class="day.isRecorded ? 'bg-blue-500' : 'bg-emerald-500'"
 						/>
 					</div>
 				</button>
@@ -167,33 +169,38 @@ function selectDay(day: CalendarDay) {
 }
 
 function dayButtonClass(day: CalendarDay) {
-	const base =
-		'group aspect-square rounded-xl border border-slate-100 bg-white px-2 py-3 text-center text-slate-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300'
+  const base =
+    'group aspect-square rounded-xl border px-2 py-3 text-center text-sm transition ' +
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ' +
+    'disabled:cursor-not-allowed disabled:opacity-40'
 
-	const classes = [base]
+  // Start neutral
+  const classes = [base, 'border-slate-100 bg-white text-slate-700']
 
-	if (!day.inCurrentMonth) {
-		classes.push('text-slate-300')
-	}
+  // Outside current month
+  if (!day.inCurrentMonth) classes.push('text-slate-300')
 
-	if (day.isMeeting) {
-		classes.push('hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600')
-	}
+  const isSelected = props.selectedDate === day.iso
 
-	if (props.selectedDate === day.iso) {
-		classes.push('border-blue-400 bg-blue-50 text-blue-700 ring-2 ring-blue-200')
-	}
+  // Priority: selected > recorded > meeting
+  if (isSelected) {
+    classes.push('bg-indigo-600 text-white font-semibold border-indigo-600')
+  } else if (day.isRecorded) {
+    classes.push('bg-blue-100 text-blue-800 border-blue-200')
+  } else if (day.isMeeting) {
+    classes.push('bg-emerald-100 text-emerald-800 border-emerald-200')
+  } else {
+    classes.push('text-slate-400')
+  }
 
-	if (!day.isMeeting) {
-		classes.push('opacity-60')
-	}
+  // Hover affordance only for selectable meeting days (not selected)
+  if (day.isMeeting && !isSelected) {
+    classes.push('hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700')
+  }
 
-	if (day.isPast && day.isMeeting && props.selectedDate !== day.iso) {
-		classes.push('border-slate-200 bg-slate-50 text-slate-500')
-	}
-
-	return classes.join(' ')
+  return classes.join(' ')
 }
+
 
 function startOfWeek(date: Date) {
 	const d = new Date(date)

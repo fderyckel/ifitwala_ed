@@ -151,7 +151,7 @@
 							<p class="text-base font-semibold">{{ __('No students found in this group.') }}</p>
 						</div>
 
-						<div v-else class="flex h-full flex-col overflow-hidden">
+						<div v-else-if="isMeetingDay" class="flex h-full flex-col overflow-hidden">
 							<div
 								v-if="!filteredStudents.length"
 								class="flex h-full flex-col items-center justify-center gap-3 px-8 py-16 text-center text-slate-500"
@@ -182,6 +182,17 @@
 									{{ __('Existing attendance found for this date.') }}
 								</span>
 							</div>
+						</div>
+
+						<div
+							v-else
+							class="flex h-full flex-col items-center justify-center gap-3 px-8 py-16 text-center text-amber-600"
+						>
+							<FeatherIcon name="alert-triangle" class="h-12 w-12 text-amber-400" />
+							<p class="text-base font-semibold">{{ __('This group is not scheduled to meet on this date.') }}</p>
+							<p class="max-w-sm text-sm text-amber-600/90">
+								{{ __('Select another meeting day from the calendar to record attendance.') }}
+							</p>
 						</div>
 					</div>
 				</div>
@@ -376,7 +387,8 @@ const availableMonths = computed(() => {
 })
 
 const submitLabel = computed(() => (hasExistingAttendance.value ? __('Update Attendance') : __('Submit Attendance')))
-const canSubmit = computed(() => !!(filters.student_group && selectedDate.value && students.value.length))
+const isMeetingDay = computed(() => selectedDate.value ? meetingDates.value.includes(selectedDate.value) : false)
+const canSubmit = computed(() => !!(filters.student_group && selectedDate.value && students.value.length && isMeetingDay.value))
 const canReload = computed(() => !!(filters.student_group && selectedDate.value && !calendarLoading.value))
 const hasExistingAttendance = computed(() => recordedDates.value.includes(selectedDate.value || ''))
 
@@ -749,7 +761,7 @@ async function submitAttendance() {
 }
 
 function showMedical(student: StudentRosterEntry) {
-	const html = (student?.medical_info || '').trim()
+	const html = formatMedicalInfo(student?.medical_info || '')
 	if (!html) {
 		toast({
 			title: __('No medical info'),
@@ -760,12 +772,22 @@ function showMedical(student: StudentRosterEntry) {
 	}
 
 	healthDialog.title = __('Medical Info')
-	healthDialog.html = formatMedicalInfo(html)
+	healthDialog.html = html
 	healthDialog.open = true
 }
 
 function formatMedicalInfo(text: string) {
-	return text.replace(/\n/g, '<br />')
+	const trimmed = text.replace(/\r\n/g, '\n').trim()
+	if (!trimmed) {
+		return ''
+	}
+	const escaped = trimmed
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;')
+	return escaped.replace(/\n/g, '<br />')
 }
 
 onMounted(() => {
