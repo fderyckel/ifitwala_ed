@@ -6,6 +6,7 @@
 import frappe
 from frappe import _
 from frappe.utils import now_datetime, getdate, nowdate
+from frappe.utils.caching import redis_cache
 from typing import List, Dict
 from ifitwala_ed.schedule.schedule_utils import (
 	get_rotation_dates,
