@@ -40,14 +40,21 @@
 					:class="dayButtonClass(day)"
 					@click="selectDay(day)"
 				>
-					<div class="flex flex-col items-center gap-1">
-						<span class="text-sm font-medium">{{ day.label }}</span>
-						<!-- Dot indicator: blue if recorded, green if meeting-only -->
+					<!-- Badge-only style: blue for today, green for meeting days -->
+					<div class="flex items-center justify-center">
 						<span
-							v-if="day.isRecorded || day.isMeeting"
-							class="inline-flex h-1.5 w-1.5 rounded-full"
-							:class="day.isRecorded ? 'bg-blue-500' : 'bg-emerald-500'"
-						/>
+							v-if="day.isToday"
+							class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-indigo-600 text-xs font-semibold text-white"
+						>
+							{{ day.label }}
+						</span>
+						<span
+							v-else-if="day.isMeeting"
+							class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-xs font-semibold text-white"
+						>
+							{{ day.label }}
+						</span>
+						<span v-else class="text-sm font-medium">{{ day.label }}</span>
 					</div>
 				</button>
 			</div>
@@ -75,6 +82,9 @@ type CalendarDay = {
 	isRecorded: boolean
 	inCurrentMonth: boolean
 	isPast: boolean
+	isToday: boolean
+	weekday: number
+	isWeekend: boolean
 }
 
 const props = defineProps<{
@@ -84,6 +94,8 @@ const props = defineProps<{
 	selectedDate: string | null
 	availableMonths: string[]
 	loading?: boolean
+	/** Weekend days as JS weekday numbers (0=Sun … 6=Sat). Default: Sat–Sun */
+	weekendDays?: number[]
 }>()
 
 const emit = defineEmits<{
@@ -96,6 +108,7 @@ const weekdayFormatter = new Intl.DateTimeFormat(undefined, { weekday: 'short' }
 const monthFormatter = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' })
 
 const weekdays = computed(() => {
+	// Always render Mon→Sun in header
 	const monday = startOfWeek(new Date())
 	return Array.from({ length: 7 }).map((_, idx) => {
 		const d = new Date(monday)
@@ -140,6 +153,9 @@ const days = computed<CalendarDay[]>(() => {
 		const date = new Date(start)
 		date.setDate(start.getDate() + idx)
 		const iso = formatISO(date)
+		const weekday = date.getDay()
+		const weekendSet = new Set(props.weekendDays ?? [6, 0]) // Sat, Sun by default
+		const todayIso = formatISO(today())
 		return {
 			date,
 			iso,
@@ -148,6 +164,9 @@ const days = computed<CalendarDay[]>(() => {
 			isRecorded: recordedDateSet.value.has(iso),
 			inCurrentMonth: date.getMonth() === props.month.getMonth(),
 			isPast: date < today(),
+			isToday: iso === todayIso,
+		weekday,
+			isWeekend: weekendSet.has(weekday),
 		}
 	})
 })
@@ -169,36 +188,30 @@ function selectDay(day: CalendarDay) {
 }
 
 function dayButtonClass(day: CalendarDay) {
-  const base =
-    'group aspect-square rounded-xl border px-2 py-3 text-center text-sm transition ' +
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ' +
-    'disabled:cursor-not-allowed disabled:opacity-40'
+	const base =
+		'group aspect-square rounded-xl border px-2 py-3 text-center text-sm transition ' +
+		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ' +
+		'disabled:cursor-not-allowed disabled:opacity-40'
 
-  // Start neutral
-  const classes = [base, 'border-slate-100 bg-white text-slate-700']
+	const classes = [base, 'border-slate-100 bg-white text-slate-700']
 
-  // Outside current month
-  if (!day.inCurrentMonth) classes.push('text-slate-300')
+	// Weekend column subtle background
+	if (day.isWeekend) classes.push('bg-slate-50')
 
-  const isSelected = props.selectedDate === day.iso
+	// Outside current month
+	if (!day.inCurrentMonth) classes.push('text-slate-300')
 
-  // Priority: selected > recorded > meeting
-  if (isSelected) {
-    classes.push('bg-indigo-600 text-white font-semibold border-indigo-600')
-  } else if (day.isRecorded) {
-    classes.push('bg-blue-100 text-blue-800 border-blue-200')
-  } else if (day.isMeeting) {
-    classes.push('bg-emerald-100 text-emerald-800 border-emerald-200')
-  } else {
-    classes.push('text-slate-400')
-  }
+	// Keep tile neutral; selection shows ring only
+	const isSelected = props.selectedDate === day.iso
+	if (isSelected) classes.push('ring-2 ring-indigo-500')
 
-  // Hover affordance only for selectable meeting days (not selected)
-  if (day.isMeeting && !isSelected) {
-    classes.push('hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700')
-  }
+	// Non-meeting days look dim
+	if (!day.isMeeting) classes.push('text-slate-400')
 
-  return classes.join(' ')
+	// Hover affordance for meeting days
+	if (day.isMeeting && !isSelected) classes.push('hover:bg-slate-100')
+
+	return classes.join(' ')
 }
 
 

@@ -173,6 +173,7 @@
 									@change-code="onCodeChanged"
 									@open-remark="openRemark"
 									@show-medical="showMedical"
+									@show-birthday="showBirthday"
 								/>
 							</div>
 
@@ -206,6 +207,7 @@
 					:available-months="availableMonths"
 					:selected-date="selectedDate"
 					:loading="calendarLoading"
+					:weekend-days="weekendDays"
 					@update:month="(month) => (calendarMonth = month)"
 					@update:selected-date="onDateSelected"
 				/>
@@ -286,7 +288,22 @@
 			v-model="healthDialog.open"
 			:options="{ title: healthDialog.title || __('Medical Info'), size: 'md' }"
 		>
-			<div class="prose prose-sm max-w-none whitespace-pre-line text-slate-700" v-html="healthDialog.html"></div>
+			<div class="prose prose-sm max-w-none text-slate-700" v-html="healthDialog.html"></div>
+		</Dialog>
+
+		<Dialog
+			v-model="birthdayDialog.open"
+			:options="{ title: __('Birthday'), size: 'sm' }"
+		>
+			<div class="text-slate-700">
+				<p class="text-sm">
+					<strong>{{ birthdayDialog.name }}</strong>
+				</p>
+				<p class="mt-1 text-sm">
+					{{ birthdayDialog.dateLabel }}
+					<span v-if="birthdayDialog.age !== null"> · {{ birthdayDialog.age }} {{ __('years old') }}</span>
+				</p>
+			</div>
 		</Dialog>
 	</div>
 </template>
@@ -313,6 +330,8 @@ const meetingDates = ref<string[]>([])
 const recordedDates = ref<string[]>([])
 const selectedDate = ref<string | null>(null)
 const calendarLoading = ref(false)
+// TODO: wire from School Settings (e.g., fetch via a lightweight API).
+const weekendDays = ref<number[]>([6, 0]) // default; will be replaced from server
 
 const students = ref<StudentRosterEntry[]>([])
 const blocks = ref<BlockKey[]>([])
@@ -335,6 +354,13 @@ const healthDialog = reactive({
 	open: false,
 	title: '',
 	html: '',
+})
+
+const birthdayDialog = reactive({
+	open: false,
+	name: '',
+	dateLabel: '',
+	age: null as number | null,
 })
 
 const groups = ref<any[]>([])
@@ -532,12 +558,28 @@ function onGroupChange() {
 	groupInfo.value = {}
 	students.value = []
 	if (filters.student_group) {
+		void loadWeekendDays()
 		void loadCalendarData({ preserveSelection: false })
 	}
 }
 
 function onDefaultCodeChange() {
 	applyDefaultCode({ silent: true })
+}
+
+async function loadWeekendDays() {
+	try {
+		const res = await call('ifitwala_ed.api.student_attendance.get_weekend_days', {
+			student_group: filters.student_group,
+		})
+		const days = unwrapMessage(res) ?? []
+		if (Array.isArray(days) && days.length) {
+			weekendDays.value = days.map((d: any) => Number(d)).filter((n: any) => Number.isInteger(n) && n >= 0 && n <= 6)
+		}
+	} catch (e) {
+		console.warn('Weekend days fallback to default [6,0]', e)
+		weekendDays.value = [6, 0]
+	}
 }
 
 async function loadCalendarData(options: { preserveSelection?: boolean } = {}) {
@@ -623,13 +665,13 @@ async function loadRoster() {
 				student_name: stu.student_name,
 				preferred_name: stu.preferred_name,
 				student_image: stu.student_image,
-				birth_date: stu.birth_date,
+				birth_date: stu.birth_date || stu.student_date_of_birth || null,
 				medical_info: stu.medical_info,
 				blocks: normalizedBlocks,
 				attendance: {} as Record<BlockKey, string>,
 				remarks: {} as Record<BlockKey, string>,
 			}
-
+s
 			for (const block of normalizedBlocks) {
 				const existing = existingMap?.[stu.student]?.[block]
 				const previous = prevMap?.[stu.student]
@@ -776,18 +818,37 @@ function showMedical(student: StudentRosterEntry) {
 	healthDialog.open = true
 }
 
-function formatMedicalInfo(text: string) {
-	const trimmed = text.replace(/\r\n/g, '\n').trim()
-	if (!trimmed) {
-		return ''
+function formatMedicalInfo(input: string) {
+	// 1) consider empty when content is just empty HTML
+	const raw = String(input || '')
+	const plain = raw.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').trim()
+	if (!plain) return ''
+	// 2) very small sanitizer: remove script/style and on* attrs
+	let safe = raw
+		.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
+		.replace(/\son\w+="[^"]*"/gi, '')
+		.replace(/\son\w+='[^']*'/gi, '')
+		.replace(/\sjavascript:/gi, '')
+	return safe
+}
+
+function showBirthday(student: StudentRosterEntry) {
+	const dob = student.birth_date
+	if (!dob) return
+	try {
+		const d = new Date(dob + 'T00:00:00')
+		const dateLabel = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(d)
+		const today = new Date()
+		let age: number | null = today.getFullYear() - d.getFullYear()
+		const m = today.getMonth() - d.getMonth()
+		if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--
+		birthdayDialog.name = student.preferred_name || student.student_name || student.student
+		birthdayDialog.dateLabel = dateLabel
+		birthdayDialog.age = Number.isFinite(age) ? age : null
+		birthdayDialog.open = true
+	} catch {
+		// ignore
 	}
-	const escaped = trimmed
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#39;')
-	return escaped.replace(/\n/g, '<br />')
 }
 
 onMounted(() => {

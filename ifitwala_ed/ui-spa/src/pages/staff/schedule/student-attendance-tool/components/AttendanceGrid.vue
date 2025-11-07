@@ -59,6 +59,8 @@
 							<span
 								v-if="isBirthdaySoon(student.birth_date)"
 								class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-700"
+								:title="formatDOB(student.birth_date)"
+								@click="$emit('show-birthday', student)"
 							>
 								<span role="img" aria-hidden="true">🎂</span>
 								{{ __('Birthday soon') }}
@@ -147,6 +149,7 @@ defineEmits<{
 	(event: 'change-code', payload: { studentId: string; block: BlockKey; code: string }): void
 	(event: 'open-remark', payload: { student: StudentRosterEntry; block: BlockKey }): void
 	(event: 'show-medical', student: StudentRosterEntry): void
+	(event: 'show-birthday', student: StudentRosterEntry): void
 }>()
 
 const fallbackColor = '#2563eb'
@@ -164,7 +167,24 @@ function blockLabel(block: BlockKey) {
 }
 
 function hasMedicalInfo(student: StudentRosterEntry) {
-	return Boolean((student.medical_info || '').trim().length)
+	const html = student.medical_info || ''
+	// treat <p><br></p>, &nbsp; etc. as empty
+	const text = stripHtml(html).replace(/&nbsp;/gi, '').trim()
+	return text.length > 0
+}
+
+function stripHtml(input: string) {
+	// cheap client-side strip; server content is trusted staff-entry
+	return String(input || '').replace(/<[^>]*>/g, ' ')
+}
+
+function formatDOB(birthDate?: string | null) {
+	if (!birthDate) return ''
+	try {
+		return new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(new Date(birthDate + 'T00:00:00'))
+	} catch {
+		return birthDate
+	}
 }
 
 function chipClass(isSelected: boolean) {
