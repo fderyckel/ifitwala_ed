@@ -556,7 +556,7 @@ async function loadGroups() {
 }
 
 
-function onGroupChange() {
+async function onGroupChange() {
 	if (saveTimer) window.clearTimeout(saveTimer)
  	if (dirty.value.size) { void persistChanges() }    // don't lose edits
 	selectedDate.value = null
@@ -758,12 +758,14 @@ function scheduleSave() {
 	}, SAVE_DEBOUNCE_MS)
 }
 
-function onDateSelected(date: string) {
-  if (saveTimer) window.clearTimeout(saveTimer)
-  if (dirty.value.size) { await persistChanges() }   // flush first
-  dirty.value.clear()
-  selectedDate.value = date
-  loadRoster()
+async function onDateSelected(date: string) {
+	if (saveTimer) window.clearTimeout(saveTimer)
+	if (dirty.value.size) {
+		await persistChanges() // flush first
+	}
+	dirty.value.clear()
+	selectedDate.value = date
+	await loadRoster()
 }
 
 function reloadRoster() {
