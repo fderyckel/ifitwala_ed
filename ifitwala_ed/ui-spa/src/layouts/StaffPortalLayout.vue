@@ -2,7 +2,14 @@
 	<div class="min-h-screen bg-slate-50 flex flex-col">
 		<header class="bg-white border-b border-slate-200">
 			<div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
-				<h1 class="text-lg font-semibold tracking-tight text-slate-900">Staff Portal</h1>
+				<h1 class="text-lg font-semibold tracking-tight text-slate-900">
+					<RouterLink
+						:to="{ name: 'staff-home' }"
+						class="text-inherit transition hover:text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+					>
+						Staff Portal
+					</RouterLink>
+				</h1>
 
 				<a
 					href="/app"
@@ -27,6 +34,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 
 const year = computed(() => new Date().getFullYear())
 </script>
