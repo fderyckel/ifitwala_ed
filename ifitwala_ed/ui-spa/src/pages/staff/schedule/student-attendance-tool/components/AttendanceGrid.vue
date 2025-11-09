@@ -132,16 +132,14 @@
 	<!-- POPOVER (anchored white card) -->
 	<div
 		v-if="popover.open"
-		:style="popoverStyle"
+		ref="popEl"
+		:style="popoverInlineStyle"
 		class="fixed z-50 max-w-[32rem] rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-xl ring-1 ring-black/5"
 		role="dialog"
 		aria-modal="true"
 	>
 		<div class="mb-2 flex items-center gap-2">
-			<span
-				class="inline-block h-2.5 w-2.5 rounded-full"
-				:class="popover.type === 'health' ? 'bg-red-500' : 'bg-amber-500'"
-			/>
+			<span class="inline-block h-2.5 w-2.5 rounded-full" :class="popover.type === 'health' ? 'bg-red-500' : 'bg-amber-500'" />
 			<h3 class="text-sm font-semibold text-slate-900">
 				{{ popoverTitle }}
 			</h3>
@@ -162,7 +160,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Button, FeatherIcon } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import type { AttendanceCode, StudentRosterEntry, BlockKey } from '../types'
@@ -183,58 +181,114 @@ defineEmits<{
 }>()
 
 /* ------------------- Popover state & behavior ------------------- */
+const popEl = ref<HTMLElement | null>(null)
+
+type PopType = 'health' | 'birthday'
 const popover = ref<{
 	open: boolean
-	type: 'health' | 'birthday' | null
+	type: PopType | null
 	student: StudentRosterEntry | null
-	x: number
-	y: number
-	anchorW: number
-}>({ open: false, type: null, student: null, x: 0, y: 0, anchorW: 0 })
+	anchorEl: HTMLElement | null
+	left: number
+	top: number
+}>({
+	open: false,
+	type: null,
+	student: null,
+	anchorEl: null,
+	left: 0,
+	top: 0,
+})
 
-function openPopover(type: 'health' | 'birthday', student: StudentRosterEntry, evt: MouseEvent) {
+async function openPopover(type: PopType, student: StudentRosterEntry, evt: MouseEvent) {
 	const target = evt.currentTarget as HTMLElement
-	const rect = target.getBoundingClientRect()
-	const gap = 8 // px
-	const x = rect.left + window.scrollX
-	const y = rect.bottom + window.scrollY + gap
-
-	popover.value = {
-		open: true,
-		type,
-		student,
-		x,
-		y,
-		anchorW: rect.width,
-	}
+	popover.value.open = true
+	popover.value.type = type
+	popover.value.student = student
+	popover.value.anchorEl = target
+	await nextTick()
+	positionPopover() // measure and place after DOM paints
 }
 
 function closePopover() {
 	popover.value.open = false
+	popover.value.anchorEl = null
 }
 
-function handleGlobalClick(e: MouseEvent) {
-	// close if clicked outside
+/* Smart positioning: center over anchor, flip above if needed, clamp to viewport */
+function positionPopover() {
+	if (!popover.value.open || !popover.value.anchorEl) return
+	const el = popEl.value
+	if (!el) return
+
+	const anchor = popover.value.anchorEl.getBoundingClientRect()
+	const tip = el.getBoundingClientRect()
+
+	const margin = 12 // min viewport margin
+	const gap = 8 // space from anchor
+
+	const vw = window.innerWidth
+	const vh = window.innerHeight
+
+	// Desired centered position (viewport coords; popover is position: fixed)
+	let left = anchor.left + anchor.width / 2 - tip.width / 2
+	left = Math.max(margin, Math.min(left, vw - tip.width - margin))
+
+	// Default below
+	let top = anchor.bottom + gap
+
+	// If bottom clips, flip above
+	if (top + tip.height > vh - margin) {
+		top = anchor.top - gap - tip.height
+	}
+
+	// If flipping still clips top, clamp
+	if (top < margin) top = margin
+
+	popover.value.left = Math.round(left)
+	popover.value.top = Math.round(top)
+}
+
+/* Keep it positioned on scroll/resize */
+function onScrollOrResize() {
 	if (!popover.value.open) return
-	const el = e.target as Node
-	const pop = document.querySelector('[role="dialog"]')
-	if (pop && !pop.contains(el)) {
+	positionPopover()
+}
+
+/* Close on outside click / Esc */
+function onDocClick(e: MouseEvent) {
+	if (!popover.value.open) return
+	const el = popEl.value
+	if (!el) return
+	if (e.target instanceof Node && !el.contains(e.target)) {
+		// allow clicking the anchor without closing before open handler
+		if (popover.value.anchorEl && popover.value.anchorEl.contains(e.target as Node)) return
 		closePopover()
 	}
 }
-function handleEsc(e: KeyboardEvent) {
+function onEsc(e: KeyboardEvent) {
 	if (e.key === 'Escape') closePopover()
 }
 
 onMounted(() => {
-	document.addEventListener('click', handleGlobalClick, true)
-	document.addEventListener('keydown', handleEsc)
+	document.addEventListener('click', onDocClick, true) // capture so initial click doesn’t close
+	document.addEventListener('keydown', onEsc)
+	window.addEventListener('scroll', onScrollOrResize, { passive: true })
+	window.addEventListener('resize', onScrollOrResize, { passive: true })
 })
 onBeforeUnmount(() => {
-	document.removeEventListener('click', handleGlobalClick, true)
-	document.removeEventListener('keydown', handleEsc)
+	document.removeEventListener('click', onDocClick, true)
+	document.removeEventListener('keydown', onEsc)
+	window.removeEventListener('scroll', onScrollOrResize)
+	window.removeEventListener('resize', onScrollOrResize)
 })
 
+const popoverInlineStyle = computed(() => ({
+	left: `${popover.value.left}px`,
+	top: `${popover.value.top}px`,
+}))
+
+/* ------------------- Titles & body ------------------- */
 const popoverTitle = computed(() => {
 	const s = popover.value.student
 	if (!s) return ''
@@ -250,26 +304,9 @@ const popoverBody = computed(() => {
 		const txt = stripHtml(s.medical_info || '').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim()
 		return txt || __('No details provided.')
 	}
-	// birthday: date + age
 	const dob = formatDOB(s.birth_date)
 	const age = s.birth_date ? ' · ' + formatAge(s.birth_date) : ''
 	return (dob || '') + age
-})
-
-const popoverStyle = computed(() => {
-	// keep within viewport
-	const margin = 16
-	const maxWidth = 512 // must match max-w-[32rem]
-	let left = popover.value.x
-	const top = popover.value.y
-	const vw = window.innerWidth
-	if (left + maxWidth + margin > vw) {
-		left = Math.max(margin, vw - maxWidth - margin)
-	}
-	return {
-		left: `${left}px`,
-		top: `${top}px`,
-	}
 })
 
 /* ------------------- Helpers ------------------- */

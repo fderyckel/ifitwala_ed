@@ -18,21 +18,5 @@ frappe.ui.form.on("Instructor", {
 		});
 	},
 
-	refresh(frm) {
-		if (!frm.is_new()) {
-			// refresh instructor log each time
-			frappe.call({
-				method: "ifitwala_ed.schedule.doctype.instructor.instructor.get_instructor_log",
-				args: { instructor: frm.doc.name },
-				callback: function (r) {
-					if (r.message) {
-						frm.clear_table("instructor_log");
-						r.message.forEach(row => frm.add_child("instructor_log", row));
-						frm.refresh_field("instructor_log");
-					}
-				}
-			});
-		}
-	}
 });
 

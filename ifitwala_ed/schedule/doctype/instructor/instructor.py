@@ -11,14 +11,18 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools
 class Instructor(Document):
 
 	def autoname(self):
-			full_name = frappe.db.get_value("Employee", self.employee, "employee_full_name")
-			if not full_name:
-					frappe.throw(_("Cannot set Instructor name without employee full name."))
-			self.name = full_name
+		full_name = frappe.db.get_value("Employee", self.employee, "employee_full_name")
+		if not full_name:
+			frappe.throw(_("Cannot set Instructor name without employee full name."))
+		self.name = full_name
 
 	def validate(self):
 		self._sync_employee_fields()
 		self._validate_duplicate_employee()
+
+	def before_save(self):
+		# Always rebuild the computed child table right before saving
+		self.rebuild_instructor_log()
 
 	def after_insert(self):
 		# Grant role only for active instructors
@@ -28,7 +32,6 @@ class Instructor(Document):
 	def on_update(self):
 		status_changed = self.has_value_changed("status")
 		user_changed = self.has_value_changed("linked_user_id")
-
 		# Previous snapshot (pre-save values)
 		before = getattr(self, "get_doc_before_save", None)
 		old_user = None
@@ -40,8 +43,6 @@ class Instructor(Document):
 		if user_changed:
 			if old_user and old_user != self.linked_user_id:
 				_remove_instructor_role(old_user)
-
-			# New user present and active status => ensure role
 			if self.linked_user_id and self.status != "Inactive":
 				_ensure_instructor_role(self.linked_user_id)
 
@@ -50,7 +51,7 @@ class Instructor(Document):
 			if self.status == "Inactive":
 				if self.linked_user_id:
 					_remove_instructor_role(self.linked_user_id)
-			else:  # Active (or any non-inactive value you allow)
+			else:
 				if self.linked_user_id:
 					_ensure_instructor_role(self.linked_user_id)
 
