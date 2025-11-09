@@ -39,16 +39,6 @@
 				>
 					{{ __('Mark everyone as default') }}
 				</Button>
-
-				<Button
-					appearance="primary"
-					class="whitespace-nowrap"
-					:loading="submitting"
-					:disabled="!canSubmit || submitting"
-					@click="submitAttendance"
-				>
-					{{ submitLabel }}
-				</Button>
 			</div>
 		</header>
 
@@ -74,6 +64,8 @@
 						<Button appearance="minimal" icon="refresh-ccw" :disabled="!canReload" @click="reloadRoster">
 							{{ __('Refresh') }}
 						</Button>
+						<span v-if="saving" class="text-xs text-slate-500">{{ __('Saving…') }}</span>
+						<span v-else-if="justSaved" class="text-xs text-emerald-600">{{ __('Saved') }}</span>
 					</div>
 				</div>
 
@@ -341,6 +333,16 @@ const students = ref<StudentRosterEntry[]>([])
 const blocks = ref<BlockKey[]>([])
 const rosterLoading = ref(false)
 const submitting = ref(false)
+const saving = ref(false)
+const justSaved = ref(false)
+let saveTimer: number | null = null
+const SAVE_DEBOUNCE_MS = 700
+
+// lastSaved[student][block] = { code, remark }
+const lastSaved = ref<Record<string, Record<BlockKey, { code: string; remark: string }>>>({})
+// set of "student|block" keys needing save
+const dirty = ref<Set<string>>(new Set())
+
 const rosterTotal = ref(0)
 
 const groupInfo = ref<{ name?: string | null; program?: string | null; course?: string | null; cohort?: string | null }>({})
@@ -555,11 +557,14 @@ async function loadGroups() {
 
 
 function onGroupChange() {
+	if (saveTimer) window.clearTimeout(saveTimer)
+ 	if (dirty.value.size) { void persistChanges() }    // don't lose edits
 	selectedDate.value = null
 	searchTerm.value = ''
 	meetingDates.value = []
 	recordedDates.value = []
 	groupInfo.value = {}
+	dirty.value.clear()
 	students.value = []
 	if (filters.student_group) {
 		void loadWeekendDays()
@@ -687,6 +692,9 @@ async function loadRoster() {
 		})
 
 		blocks.value = normalizedBlocks
+		// initialize lastSaved from existing server data; prevents spurious saves
+		lastSaved.value = snapshotFromExisting(existingMap, normalizedBlocks)
+		dirty.value.clear()
 	} catch (error) {
 		console.error('Failed to load roster', error)
 		toast({
@@ -715,9 +723,47 @@ function pickDefaultDate(dates: string[]) {
 	return closest
 }
 
+function keyOf(studentId: string, block: BlockKey) {
+	return `${studentId}|${block}`
+}
+
+function snapshotFromExisting(existingMap: any, blocksForDay: BlockKey[]) {
+	const snap: Record<string, Record<BlockKey, { code: string; remark: string }>> = {}
+	for (const student of students.value) {
+		const sId = student.student
+		snap[sId] = {} as any
+		for (const b of blocksForDay) {
+			const ex = existingMap?.[sId]?.[b]
+			snap[sId][b] = {
+				code: ex?.code || '',
+				remark: ex?.remark || '',
+			}
+		}
+	}
+	return snap
+}
+
+function markDirty(studentId: string, block: BlockKey) {
+	if (!filters.student_group || !selectedDate.value) return
+	dirty.value.add(keyOf(studentId, block))
+	scheduleSave()
+}
+
+function scheduleSave() {
+	if (saveTimer) {
+		window.clearTimeout(saveTimer)
+	}
+	saveTimer = window.setTimeout(() => {
+		void persistChanges()
+	}, SAVE_DEBOUNCE_MS)
+}
+
 function onDateSelected(date: string) {
-	selectedDate.value = date
-	loadRoster()
+  if (saveTimer) window.clearTimeout(saveTimer)
+  if (dirty.value.size) { await persistChanges() }   // flush first
+  dirty.value.clear()
+  selectedDate.value = date
+  loadRoster()
 }
 
 function reloadRoster() {
@@ -731,6 +777,7 @@ function onCodeChanged(payload: { studentId: string; block: BlockKey; code: stri
 	if (student) {
 		student.attendance[payload.block] = payload.code
 	}
+	markDirty(payload.studentId, payload.block)
 }
 
 function openRemark(payload: { student: StudentRosterEntry; block: BlockKey }) {
@@ -746,6 +793,7 @@ function onRemarkSaved(value: string) {
 	if (target) {
 		target.remarks[remarkDialog.block] = value
 	}
+	markDirty(remarkDialog.student.student, remarkDialog.block)
 }
 
 function applyDefaultCode(options: { silent?: boolean } = {}) {
@@ -753,6 +801,7 @@ function applyDefaultCode(options: { silent?: boolean } = {}) {
 	for (const student of students.value) {
 		for (const block of blocks.value) {
 			student.attendance[block] = filters.default_code
+			markDirty(student.student, block)
 		}
 	}
 	if (!options.silent) {
@@ -766,41 +815,62 @@ function applyDefaultCode(options: { silent?: boolean } = {}) {
 	}
 }
 
-async function submitAttendance() {
-	if (!canSubmit.value || submitting.value) return
-	submitting.value = true
+
+async function persistChanges() {
+	if (!filters.student_group || !selectedDate.value) return
+	if (!dirty.value.size) return
+	saving.value = true
+	justSaved.value = false
 	try {
-		const payload = []
-		for (const student of students.value) {
-			for (const block of blocks.value) {
+		const payload: any[] = []
+		for (const k of Array.from(dirty.value)) {
+			const [studentId, blockStr] = k.split('|')
+			const block = Number(blockStr) as BlockKey
+			const s = students.value.find((x) => x.student === studentId)
+			if (!s) continue
+			const nowCode = s.attendance[block] || ''
+			const nowRemark = s.remarks[block] || ''
+			const prev = lastSaved.value?.[studentId]?.[block] || { code: '', remark: '' }
+			// only send if changed
+			if (nowCode !== prev.code || nowRemark !== prev.remark) {
 				payload.push({
-					student: student.student,
+					student: studentId,
 					student_group: filters.student_group,
 					attendance_date: selectedDate.value,
 					block_number: block,
-					attendance_code: student.attendance[block],
-					remark: student.remarks[block] || '',
+					attendance_code: nowCode,
+					remark: nowRemark,
 				})
 			}
 		}
-
+		if (!payload.length) {
+			dirty.value.clear()
+			saving.value = false
+			return
+		}
 		const response = await call('ifitwala_ed.schedule.attendance_utils.bulk_upsert_attendance', { payload })
 		const result = unwrapMessage(response) || {}
-		toast({
-			title: __('Attendance saved'),
-			message: __('{0} created | {1} updated', [result.created || 0, result.updated || 0]),
-			appearance: 'success',
-		})
-		await loadCalendarData({ preserveSelection: true })
+		// update snapshot only for what we sent (success assumed per server method contract)
+		for (const row of payload) {
+			lastSaved.value[row.student] = lastSaved.value[row.student] || ({} as any)
+			lastSaved.value[row.student][row.block_number] = {
+				code: row.attendance_code || '',
+				remark: row.remark || '',
+			}
+			dirty.value.delete(keyOf(row.student, row.block_number))
+		}
+		// subtle feedback without noise
+		justSaved.value = true
+		window.setTimeout(() => (justSaved.value = false), 1200)
 	} catch (error: any) {
-		console.error('Failed to submit attendance', error)
+		console.error('Failed to autosave attendance', error)
 		toast({
-			title: __('Error submitting attendance'),
+			title: __('Autosave failed'),
 			message: error?.message || __('Please try again.'),
 			appearance: 'danger',
 		})
 	} finally {
-		submitting.value = false
+		saving.value = false
 	}
 }
 
@@ -853,9 +923,23 @@ function showBirthday(student: StudentRosterEntry) {
 	}
 }
 
+function beforeUnloadGuard(e: BeforeUnloadEvent) {
+  if (saving.value || dirty.value.size) {
+    // best effort flush; don’t block long
+    if (dirty.value.size) { void persistChanges() }
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
 onMounted(() => {
 	loadAttendanceCodes()
 	loadGroups()
+	window.addEventListener('beforeunload', beforeUnloadGuard)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', beforeUnloadGuard)
 })
 
 watch(

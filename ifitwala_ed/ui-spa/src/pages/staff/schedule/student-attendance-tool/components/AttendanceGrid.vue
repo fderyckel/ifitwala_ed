@@ -8,8 +8,13 @@
 			<span class="text-right">{{ __('Remark') }}</span>
 		</div>
 
-		<div v-for="student in students" :key="student.student" class="border-b border-slate-100 px-5 py-4 last:border-b-0">
+		<div
+			v-for="student in students"
+			:key="student.student"
+			class="border-b border-slate-100 px-5 py-4 last:border-b-0"
+		>
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+				<!-- Left: identity -->
 				<div class="flex min-w-[240px] flex-1 items-center gap-3">
 					<a
 						:href="studentLink(student.student)"
@@ -41,31 +46,32 @@
 							</span>
 						</div>
 
+						<!-- Alerts (health / birthday) -->
 						<div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-
 							<button
 								v-if="hasMedicalInfo(student)"
 								type="button"
-								class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 font-medium text-red-600 hover:bg-red-100"
-								@click="$emit('show-medical', student)"
+								class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 font-medium text-red-600 transition hover:bg-red-100"
+								@click="openAlert('health', student); $emit('show-medical', student)"
 							>
 								<FeatherIcon name="stethoscope" class="h-3.5 w-3.5" />
 								<span>{{ __('Health note') }}</span>
 							</button>
 
-							<span
+							<button
 								v-if="isBirthdaySoon(student.birth_date)"
-								class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-700"
-								:title="formatDOB(student.birth_date)"
-								@click="$emit('show-birthday', student)"
+								type="button"
+								class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-700 transition hover:bg-amber-100"
+								@click="openAlert('birthday', student); $emit('show-birthday', student)"
 							>
 								<span role="img" aria-hidden="true">🎂</span>
-								{{ __('Birthday soon') }}
-							</span>
+								{{ __('Birthday') }}
+							</button>
 						</div>
 					</div>
 				</div>
 
+				<!-- Right: attendance controls -->
 				<div class="flex flex-1 flex-col gap-4">
 					<div
 						v-for="block in blocks"
@@ -79,22 +85,24 @@
 						</div>
 
 						<div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+							<!-- Codes -->
 							<div class="flex flex-wrap items-center gap-2">
 								<button
 									v-for="code in codes"
 									:key="code.name"
 									type="button"
-									:title="code.attendance_code_name || code.name"
 									class="inline-flex items-center justify-center rounded-full border px-3 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed"
 									:class="chipClass(student.attendance[block] === code.name)"
 									:style="chipStyle(code, student.attendance[block] === code.name)"
 									:disabled="disabled"
 									@click="$emit('change-code', { studentId: student.student, block, code: code.name })"
+									:aria-pressed="student.attendance[block] === code.name"
 								>
 									{{ code.attendance_code || (code.attendance_code_name || code.name)?.charAt(0) }}
 								</button>
 							</div>
 
+							<!-- Remark -->
 							<div class="flex items-center gap-2">
 								<Button
 									appearance="minimal"
@@ -114,6 +122,7 @@
 				</div>
 			</div>
 
+			<!-- Mobile remark block -->
 			<div
 				v-if="studentHasRemark(student)"
 				class="mt-3 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 text-sm text-slate-600 lg:hidden"
@@ -125,10 +134,25 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- Shared Alert Dialog (health / birthday) -->
+	<Dialog v-model="alert.open" :title="alertTitle">
+		<div class="flex items-start gap-3">
+			<span
+				class="mt-1 inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
+				:class="alert.type === 'health' ? 'bg-red-500' : 'bg-amber-500'"
+				aria-hidden="true"
+			/>
+			<p class="leading-relaxed text-slate-700">
+				{{ alertBody }}
+			</p>
+		</div>
+	</Dialog>
 </template>
 
 <script setup lang="ts">
-import { Button, FeatherIcon } from 'frappe-ui'
+import { ref, computed } from 'vue'
+import { Button, FeatherIcon, Dialog } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import type { AttendanceCode, StudentRosterEntry, BlockKey } from '../types'
 
@@ -149,6 +173,38 @@ defineEmits<{
 	(event: 'show-birthday', student: StudentRosterEntry): void
 }>()
 
+/* ---------- Alert Dialog state ---------- */
+const alert = ref<{ open: boolean; type: 'health' | 'birthday' | null; student: StudentRosterEntry | null }>({
+	open: false,
+	type: null,
+	student: null,
+})
+
+function openAlert(type: 'health' | 'birthday', student: StudentRosterEntry) {
+	alert.value = { open: true, type, student }
+}
+
+const alertTitle = computed(() => {
+	const s = alert.value.student
+	if (!s) return ''
+	return alert.value.type === 'health'
+		? __('Health Note for {0}', [displayName(s)])
+		: __('Birthday for {0}', [displayName(s)])
+})
+
+const alertBody = computed(() => {
+	const s = alert.value.student
+	if (!s) return ''
+	if (alert.value.type === 'health') {
+		const txt = stripHtml(s.medical_info || '').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim()
+		return txt || __('No details provided.')
+	}
+	const dob = formatDOB(s.birth_date)
+	return dob || ''
+})
+
+/* ---------- Helpers (unchanged behaviors) ---------- */
+
 const fallbackColor = '#2563eb'
 
 function studentLink(studentId: string) {
@@ -165,13 +221,11 @@ function blockLabel(block: BlockKey) {
 
 function hasMedicalInfo(student: StudentRosterEntry) {
 	const html = student.medical_info || ''
-	// treat <p><br></p>, &nbsp; etc. as empty
 	const text = stripHtml(html).replace(/&nbsp;/gi, '').trim()
 	return text.length > 0
 }
 
 function stripHtml(input: string) {
-	// cheap client-side strip; server content is trusted staff-entry
 	return String(input || '').replace(/<[^>]*>/g, ' ')
 }
 
@@ -185,23 +239,15 @@ function formatDOB(birthDate?: string | null) {
 }
 
 function chipClass(isSelected: boolean) {
-	return isSelected
-		? 'text-white shadow-sm'
-		: 'bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-600'
+	return isSelected ? 'text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-600'
 }
 
 function chipStyle(code: AttendanceCode, isSelected: boolean) {
 	const color = props.codeColors?.[code.name] || code.color || fallbackColor
 	if (isSelected) {
-		return {
-			backgroundColor: color,
-			borderColor: color,
-		}
+		return { backgroundColor: color, borderColor: color }
 	}
-	return {
-		borderColor: color,
-		color,
-	}
+	return { borderColor: color, color }
 }
 
 function onImageError(event: Event) {
@@ -225,15 +271,13 @@ function isBirthdaySoon(birthDate?: string | null) {
 }
 
 function studentHasRemark(student: StudentRosterEntry) {
-	return props.blocks.some((block) => !!(student.remarks?.[block]))
+	return props.blocks.some((block) => !!student.remarks?.[block])
 }
 
 function firstRemark(student: StudentRosterEntry) {
 	for (const block of props.blocks) {
 		const text = student.remarks?.[block]
-		if (text) {
-			return text
-		}
+		if (text) return text
 	}
 	return ''
 }
