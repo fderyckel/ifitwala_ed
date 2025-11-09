@@ -13,6 +13,28 @@
 			<div class="flex flex-wrap items-center gap-3">
 				<FormControl
 					type="select"
+					class="min-w-[200px]"
+					:options="schoolOptions"
+					option-label="label"
+					option-value="value"
+					v-model="filters.school"
+					:disabled="schoolsLoading && !schools.length"
+					:placeholder="__('School')"
+				/>
+
+				<FormControl
+					type="select"
+					class="min-w-[200px]"
+					:options="programOptions"
+					option-label="label"
+					option-value="value"
+					v-model="filters.program"
+					:disabled="programsLoading && !programs.length"
+					:placeholder="__('Program')"
+				/>
+
+				<FormControl
+					type="select"
 					class="min-w-[220px]"
 					:options="groupOptions"
 					option-label="label"
@@ -317,6 +339,8 @@ import type { AttendanceCode, StudentRosterEntry, BlockKey } from './types'
 const DEFAULT_CODE_NAME = 'Present'
 
 const filters = reactive({
+	school: null as string | null,
+	program: null as string | null,
 	student_group: null as string | null,
 	default_code: DEFAULT_CODE_NAME,
 })
@@ -371,6 +395,11 @@ const birthdayDialog = reactive({
 
 const groups = ref<any[]>([])
 const groupsLoading = ref(false)
+const filtersReady = ref(false)
+const schools = ref<any[]>([])
+const programs = ref<any[]>([])
+const schoolsLoading = ref(false)
+const programsLoading = ref(false)
 
 const groupOptions = computed(() =>
 	(groups.value || []).map((row: any) => ({
@@ -378,6 +407,28 @@ const groupOptions = computed(() =>
 		value: row.name,
 	}))
 )
+
+const schoolOptions = computed(() => {
+	const base = (schools.value || []).map((row: any) => ({
+		label: row.school_name || row.name,
+		value: row.name,
+	}))
+	return [
+		{ label: __('All schools'), value: null },
+		...base,
+	]
+})
+
+const programOptions = computed(() => {
+	const base = (programs.value || []).map((row: any) => ({
+		label: row.program_name || row.name,
+		value: row.name,
+	}))
+	return [
+		{ label: __('All programs'), value: null },
+		...base,
+	]
+})
 
 const defaultCodeOptions = computed(() =>
 	attendanceCodes.value.map((code) => ({
@@ -529,7 +580,10 @@ async function loadGroups() {
   groupsLoading.value = true
   try {
     console.debug('[Attendance] Loading student groups')
-    const response = await call('ifitwala_ed.api.student_attendance.fetch_portal_student_groups')
+    const response = await call('ifitwala_ed.api.student_attendance.fetch_portal_student_groups', {
+      school: filters.school,
+      program: filters.program,
+    })
     const data = unwrapMessage(response)
     groups.value = Array.isArray(data) ? data : []
     console.debug('[Attendance] Loaded groups:', groups.value)
@@ -553,6 +607,53 @@ async function loadGroups() {
   } finally {
     groupsLoading.value = false
   }
+}
+
+async function loadSchools() {
+	schoolsLoading.value = true
+	try {
+		const response = await call('ifitwala_ed.api.student_attendance.fetch_school_filter_context')
+		const payload = unwrapMessage(response) || {}
+		schools.value = payload.schools || []
+		if (!filters.school && payload.default_school) {
+			filters.school = payload.default_school
+		}
+	} catch (error) {
+		console.error('Failed to load schools for attendance filters', error)
+		toast({
+			title: __('Could not load schools'),
+			message: __('Please refresh or choose a student group directly.'),
+			appearance: 'danger',
+		})
+	} finally {
+		schoolsLoading.value = false
+	}
+}
+
+async function loadPrograms() {
+	programsLoading.value = true
+	try {
+		const response = await call('ifitwala_ed.api.student_attendance.fetch_active_programs')
+		programs.value = unwrapMessage(response) || []
+	} catch (error) {
+		console.error('Failed to load programs for attendance filters', error)
+		toast({
+			title: __('Could not load programs'),
+			message: __('Please refresh to try again.'),
+			appearance: 'danger',
+		})
+	} finally {
+		programsLoading.value = false
+	}
+}
+
+async function bootstrapFilters() {
+	try {
+		await Promise.all([loadSchools(), loadPrograms()])
+	} finally {
+		filtersReady.value = true
+	}
+	await loadGroups()
 }
 
 
@@ -936,7 +1037,7 @@ function beforeUnloadGuard(e: BeforeUnloadEvent) {
 
 onMounted(() => {
 	loadAttendanceCodes()
-	loadGroups()
+	void bootstrapFilters()
 	window.addEventListener('beforeunload', beforeUnloadGuard)
 })
 
@@ -950,6 +1051,19 @@ watch(
 		console.debug('[Attendance] groups updated:', newVal)
 	},
 	{ deep: true }
+)
+
+watch(
+	() => [filters.school, filters.program],
+	() => {
+		if (!filtersReady.value) return
+		if (filters.student_group) {
+			filters.student_group = null
+		} else {
+			void onGroupChange()
+		}
+		void loadGroups()
+	}
 )
 
 watch(() => filters.student_group, onGroupChange)
