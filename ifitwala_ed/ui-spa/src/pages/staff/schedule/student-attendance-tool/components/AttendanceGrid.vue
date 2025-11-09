@@ -8,13 +8,9 @@
 			<span class="text-right">{{ __('Remark') }}</span>
 		</div>
 
-		<div
-			v-for="student in students"
-			:key="student.student"
-			class="border-b border-slate-100 px-5 py-4 last:border-b-0"
-		>
+		<div v-for="student in students" :key="student.student" class="border-b border-slate-100 px-5 py-4 last:border-b-0">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-				<!-- Left: identity -->
+				<!-- Identity -->
 				<div class="flex min-w-[240px] flex-1 items-center gap-3">
 					<a
 						:href="studentLink(student.student)"
@@ -46,13 +42,13 @@
 							</span>
 						</div>
 
-						<!-- Alerts (health / birthday) -->
+						<!-- Alerts -->
 						<div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
 							<button
 								v-if="hasMedicalInfo(student)"
 								type="button"
 								class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 font-medium text-red-600 transition hover:bg-red-100"
-								@click="openAlert('health', student); $emit('show-medical', student)"
+								@click="openPopover('health', student, $event)"
 							>
 								<FeatherIcon name="stethoscope" class="h-3.5 w-3.5" />
 								<span>{{ __('Health note') }}</span>
@@ -62,7 +58,7 @@
 								v-if="isBirthdaySoon(student.birth_date)"
 								type="button"
 								class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-700 transition hover:bg-amber-100"
-								@click="openAlert('birthday', student); $emit('show-birthday', student)"
+								@click="openPopover('birthday', student, $event)"
 							>
 								<span role="img" aria-hidden="true">🎂</span>
 								{{ __('Birthday') }}
@@ -71,7 +67,7 @@
 					</div>
 				</div>
 
-				<!-- Right: attendance controls -->
+				<!-- Attendance controls -->
 				<div class="flex flex-1 flex-col gap-4">
 					<div
 						v-for="block in blocks"
@@ -85,7 +81,6 @@
 						</div>
 
 						<div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-							<!-- Codes -->
 							<div class="flex flex-wrap items-center gap-2">
 								<button
 									v-for="code in codes"
@@ -102,7 +97,6 @@
 								</button>
 							</div>
 
-							<!-- Remark -->
 							<div class="flex items-center gap-2">
 								<Button
 									appearance="minimal"
@@ -135,24 +129,41 @@
 		</div>
 	</div>
 
-	<!-- Shared Alert Dialog (health / birthday) -->
-	<Dialog v-model="alert.open" :title="alertTitle">
-		<div class="flex items-start gap-3">
+	<!-- POPOVER (anchored white card) -->
+	<div
+		v-if="popover.open"
+		:style="popoverStyle"
+		class="fixed z-50 max-w-[32rem] rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-xl ring-1 ring-black/5"
+		role="dialog"
+		aria-modal="true"
+	>
+		<div class="mb-2 flex items-center gap-2">
 			<span
-				class="mt-1 inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
-				:class="alert.type === 'health' ? 'bg-red-500' : 'bg-amber-500'"
-				aria-hidden="true"
+				class="inline-block h-2.5 w-2.5 rounded-full"
+				:class="popover.type === 'health' ? 'bg-red-500' : 'bg-amber-500'"
 			/>
-			<p class="leading-relaxed text-slate-700">
-				{{ alertBody }}
-			</p>
+			<h3 class="text-sm font-semibold text-slate-900">
+				{{ popoverTitle }}
+			</h3>
+			<button
+				type="button"
+				class="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+				@click="closePopover"
+				aria-label="Close"
+			>
+				<FeatherIcon name="x" class="h-4 w-4" />
+			</button>
 		</div>
-	</Dialog>
+
+		<p class="leading-relaxed whitespace-pre-line">
+			{{ popoverBody }}
+		</p>
+	</div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Button, FeatherIcon, Dialog } from 'frappe-ui'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { Button, FeatherIcon } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import type { AttendanceCode, StudentRosterEntry, BlockKey } from '../types'
 
@@ -169,42 +180,99 @@ const props = defineProps<{
 defineEmits<{
 	(event: 'change-code', payload: { studentId: string; block: BlockKey; code: string }): void
 	(event: 'open-remark', payload: { student: StudentRosterEntry; block: BlockKey }): void
-	(event: 'show-medical', student: StudentRosterEntry): void
-	(event: 'show-birthday', student: StudentRosterEntry): void
 }>()
 
-/* ---------- Alert Dialog state ---------- */
-const alert = ref<{ open: boolean; type: 'health' | 'birthday' | null; student: StudentRosterEntry | null }>({
-	open: false,
-	type: null,
-	student: null,
-})
+/* ------------------- Popover state & behavior ------------------- */
+const popover = ref<{
+	open: boolean
+	type: 'health' | 'birthday' | null
+	student: StudentRosterEntry | null
+	x: number
+	y: number
+	anchorW: number
+}>({ open: false, type: null, student: null, x: 0, y: 0, anchorW: 0 })
 
-function openAlert(type: 'health' | 'birthday', student: StudentRosterEntry) {
-	alert.value = { open: true, type, student }
+function openPopover(type: 'health' | 'birthday', student: StudentRosterEntry, evt: MouseEvent) {
+	const target = evt.currentTarget as HTMLElement
+	const rect = target.getBoundingClientRect()
+	const gap = 8 // px
+	const x = rect.left + window.scrollX
+	const y = rect.bottom + window.scrollY + gap
+
+	popover.value = {
+		open: true,
+		type,
+		student,
+		x,
+		y,
+		anchorW: rect.width,
+	}
 }
 
-const alertTitle = computed(() => {
-	const s = alert.value.student
+function closePopover() {
+	popover.value.open = false
+}
+
+function handleGlobalClick(e: MouseEvent) {
+	// close if clicked outside
+	if (!popover.value.open) return
+	const el = e.target as Node
+	const pop = document.querySelector('[role="dialog"]')
+	if (pop && !pop.contains(el)) {
+		closePopover()
+	}
+}
+function handleEsc(e: KeyboardEvent) {
+	if (e.key === 'Escape') closePopover()
+}
+
+onMounted(() => {
+	document.addEventListener('click', handleGlobalClick, true)
+	document.addEventListener('keydown', handleEsc)
+})
+onBeforeUnmount(() => {
+	document.removeEventListener('click', handleGlobalClick, true)
+	document.removeEventListener('keydown', handleEsc)
+})
+
+const popoverTitle = computed(() => {
+	const s = popover.value.student
 	if (!s) return ''
-	return alert.value.type === 'health'
+	return popover.value.type === 'health'
 		? __('Health Note for {0}', [displayName(s)])
 		: __('Birthday for {0}', [displayName(s)])
 })
 
-const alertBody = computed(() => {
-	const s = alert.value.student
+const popoverBody = computed(() => {
+	const s = popover.value.student
 	if (!s) return ''
-	if (alert.value.type === 'health') {
+	if (popover.value.type === 'health') {
 		const txt = stripHtml(s.medical_info || '').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim()
 		return txt || __('No details provided.')
 	}
+	// birthday: date + age
 	const dob = formatDOB(s.birth_date)
-	return dob || ''
+	const age = s.birth_date ? ' · ' + formatAge(s.birth_date) : ''
+	return (dob || '') + age
 })
 
-/* ---------- Helpers (unchanged behaviors) ---------- */
+const popoverStyle = computed(() => {
+	// keep within viewport
+	const margin = 16
+	const maxWidth = 512 // must match max-w-[32rem]
+	let left = popover.value.x
+	const top = popover.value.y
+	const vw = window.innerWidth
+	if (left + maxWidth + margin > vw) {
+		left = Math.max(margin, vw - maxWidth - margin)
+	}
+	return {
+		left: `${left}px`,
+		top: `${top}px`,
+	}
+})
 
+/* ------------------- Helpers ------------------- */
 const fallbackColor = '#2563eb'
 
 function studentLink(studentId: string) {
@@ -238,6 +306,20 @@ function formatDOB(birthDate?: string | null) {
 	}
 }
 
+function formatAge(birthDate?: string | null) {
+	if (!birthDate) return ''
+	try {
+		const b = new Date(birthDate + 'T00:00:00')
+		const t = new Date()
+		let age = t.getFullYear() - b.getFullYear()
+		const m = t.getMonth() - b.getMonth()
+		if (m < 0 || (m === 0 && t.getDate() < b.getDate())) age--
+		return `${age} ${age === 1 ? 'year' : 'years'} old`
+	} catch {
+		return ''
+	}
+}
+
 function chipClass(isSelected: boolean) {
 	return isSelected ? 'text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-600'
 }
@@ -264,14 +346,14 @@ function isBirthdaySoon(birthDate?: string | null) {
 		const thisYear = new Date(today.getFullYear(), date.getMonth(), date.getDate())
 		const diff = Math.floor((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 		return Math.abs(diff) <= 5
-	} catch (error) {
-		console.warn('Failed to parse birth date', birthDate, error)
+	} catch {
+		console.warn('Failed to parse birth date', birthDate)
 		return false
 	}
 }
 
 function studentHasRemark(student: StudentRosterEntry) {
-	return props.blocks.some((block) => !!student.remarks?.[block])
+	return props.blocks.some((block) => !!(student.remarks?.[block]))
 }
 
 function firstRemark(student: StudentRosterEntry) {
