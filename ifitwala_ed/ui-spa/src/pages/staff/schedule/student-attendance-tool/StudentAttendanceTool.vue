@@ -306,7 +306,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch, onMounted } from 'vue'
+import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Button, FormControl, Badge, Dialog, FeatherIcon, Spinner, call, toast } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import AttendanceCalendar from './components/AttendanceCalendar.vue'
