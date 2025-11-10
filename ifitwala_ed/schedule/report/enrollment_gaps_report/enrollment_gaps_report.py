@@ -91,7 +91,7 @@ def execute(filters=None):
 				pe.program,
 				pe.program_offering,
 				pe.academic_year,
-				st.school,
+				pe.school,
 				pec.course,
 				pec.term_start
 			FROM `tabProgram Enrollment` pe
@@ -102,7 +102,7 @@ def execute(filters=None):
 			INNER JOIN `tabStudent` st
 				ON st.name = pe.student
 			WHERE pe.academic_year = %(ay)s
-			  AND st.school IN %(schools)s
+			  AND pe.school IN %(schools)s
 		)
 
 		-- (1) In-scope students with NO Program Enrollment in AY
@@ -117,7 +117,12 @@ def execute(filters=None):
 			'Program Enrollment'         AS missing
 		FROM `tabStudent` s
 		WHERE COALESCE(s.enabled, 1) = 1
-		  AND s.school IN %(schools)s
+		  AND EXISTS (
+				SELECT 1
+				FROM `tabProgram Enrollment` pe_scope
+				WHERE pe_scope.student = s.name
+				  AND pe_scope.school IN %(schools)s
+		  )
 		  AND NOT EXISTS (
 				SELECT 1
 				FROM `tabProgram Enrollment` pe
