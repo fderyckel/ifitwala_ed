@@ -70,7 +70,7 @@ def ensure_root_organization():
 def create_roles_with_homepage():
 	"""Create or update roles with home_page and desk_access."""
 	roles = [
-		{"role_name": "Student", "desk_access": 0, "home_page": "/sp"},
+		{"role_name": "Student", "desk_access": 0, "home_page": "/portal/student"},
 		{"role_name": "Guardian", "desk_access": 0, "home_page": "/sp"},
 		{"role_name": "Nurse", "desk_access": 1, "home_page": "/app/health"},
 		{"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/admin"},
@@ -102,12 +102,16 @@ def create_roles_with_homepage():
 
 def create_designations():
 	data = [
-		{"doctype": "Designation", "designation_name": "Director"},
-		{"doctype": "Designation", "designation_name": "Principal"},
+		{"doctype": "Designation", "designation_name": "Director", 								"default_role_profile": "Academic Admin", 				"default_workspace": "Admin"},
+		{"doctype": "Designation", "designation_name": "Principal", 							"default_role_profile": "Academic Admin", 				"default_workspace": "Admin"},
+		{"doctype": "Designation", "designation_name": "Academic Assistant", 			"default_role_profile": "Academic Assistant", 		"default_workspace": "Admin"},
 		{"doctype": "Designation", "designation_name": "Assistant Principal"},
-		{"doctype": "Designation", "designation_name": "Nurse"},
-		{"doctype": "Designation", "designation_name": "Teacher"},
-		{"doctype": "Designation", "designation_name": "Teacher Assistant"}
+		{"doctype": "Designation", "designation_name": "Nurse", 									"default_role_profile": "Nurse", 									"default_workspace": "Health"},
+		{"doctype": "Designation", "designation_name": "Teacher", 								"default_role_profile": "Academic Staff", 				"default_workspace": "Academics"},
+		{"doctype": "Designation", "designation_name": "Teacher Assistant"},
+		{"doctype": "Designation", "designation_name": "Counsellor", 							"default_role_profile": "Counsellor", 						"default_workspace": "Counseling"},
+		{"doctype": "Designation", "designation_name": "Curriculum Coordinator", 	"default_role_profile": "Curriculum Coordinator", "default_workspace": "Curriculum"},
+		{"doctype": "Designation", "designation_name": "HR Director", 						"default_role_profile": "HR Manager", 						"default_workspace": "HR"},
 	]
 	insert_record(data)
 
@@ -152,10 +156,10 @@ def add_other_records(country=None):
 		{'doctype': 'Employment Type', 'employment_type_name': _('Apprentice')},
 
     # Student Log Next Steps
-    {'doctype': 'Student Log Next Step', 'next_step': 'Refer to Curriculum Coordinator'},
+    {'doctype': 'Student Log Next Step', 'next_step': 'Refer to Curriculum Coordinator', 'associated_role': 'Curriculum Coordinator'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to Grade Level Leader'},
-		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to counseling'},
-		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to academic admin'},
+		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to counseling', 'associated_role': 'Counsellor'},
+		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to academic admin', 'associated_role': 'Academic Admin'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'Parents meeting needed'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'For information only'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'No Action Required at this time'},
