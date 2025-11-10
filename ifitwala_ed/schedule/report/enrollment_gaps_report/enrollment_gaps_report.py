@@ -75,11 +75,10 @@ def execute(filters=None):
 		{"label": _("Type"),         "fieldname": "type",         "fieldtype": "Data",   "width": 170},
 		{"label": _("Student"),      "fieldname": "student",      "fieldtype": "Link",   "options": "Student", "width": 130},
 		{"label": _("Student Name"), "fieldname": "student_name", "fieldtype": "Data",   "width": 220},
-		{"label": _("Program"),      "fieldname": "program",          "fieldtype": "Link", "options": "Program",          "width": 160},
-		{"label": _("Program Offering"), "fieldname": "program_offering", "fieldtype": "Link", "options": "Program Offering", "width": 220},
-		{"label": _("Course"),       "fieldname": "course",           "fieldtype": "Link", "options": "Course",           "width": 220},
-		{"label": _("Term Start"),   "fieldname": "term",             "fieldtype": "Link", "options": "Term",             "width": 150},
-		{"label": _("Missing"),      "fieldname": "missing",          "fieldtype": "Data",                                     "width": 180},
+		{"label": _("Program"),      "fieldname": "program",      "fieldtype": "Link",   "options": "Program", "width": 160},
+		{"label": _("Course"),       "fieldname": "course",       "fieldtype": "Link",   "options": "Course",  "width": 220},
+		{"label": _("Term Start"),   "fieldname": "term",         "fieldtype": "Link",   "options": "Term",    "width": 150},
+		{"label": _("Missing"),      "fieldname": "missing",      "fieldtype": "Data",   "width": 180},
 	]
 
 	data = frappe.db.sql(
@@ -99,10 +98,27 @@ def execute(filters=None):
 				ON pec.parent = pe.name
 			   AND pec.parenttype = 'Program Enrollment'
 			   AND COALESCE(pec.status, 'Enrolled') = 'Enrolled'
-			INNER JOIN `tabStudent` st
-				ON st.name = pe.student
+			LEFT JOIN `tabStudent` st ON st.name = pe.student
 			WHERE pe.academic_year = %(ay)s
 			  AND pe.school IN %(schools)s
+		),
+		course_groups AS (
+			SELECT DISTINCT
+				sgs.student,
+				sg.course,
+				sg.term,
+				sg.program,
+				sg.program_offering
+			FROM `tabStudent Group` sg
+			INNER JOIN `tabStudent Group Student` sgs
+				ON sgs.parent = sg.name
+			   AND sgs.parenttype = 'Student Group'
+			   AND COALESCE(sgs.active, 1) = 1
+			INNER JOIN `tabAcademic Year` sgay ON sgay.name = sg.academic_year
+			WHERE sg.status = 'Active'
+			  AND sg.group_based_on = 'Course'
+			  AND COALESCE(sgay.year_start_date, %(ay_start)s) <= %(ay_end)s
+			  AND COALESCE(sgay.year_end_date, %(ay_end)s)   >= %(ay_start)s
 		)
 
 		-- (1) In-scope students with NO Program Enrollment in AY
@@ -138,43 +154,30 @@ def execute(filters=None):
 			e.student               AS student,
 			e.student_name          AS student_name,
 			e.program               AS program,
-			e.program_offering      AS program_offering,
 			e.course                AS course,
 			e.term_start            AS term,
 			'Student Group (Course)' AS missing
 		FROM enrollments e
-		WHERE NOT EXISTS (
-			SELECT 1
-			FROM `tabStudent Group` sg
-			JOIN `tabStudent Group Student` sgs
-			  ON sgs.parent = sg.name
-			 AND sgs.parenttype = 'Student Group'
-			 AND sgs.student = e.student
-			 AND COALESCE(sgs.active, 1) = 1
-			JOIN `tabAcademic Year` sgay
-			  ON sgay.name = sg.academic_year
-			WHERE sg.status = 'Active'
-			  AND sg.group_based_on = 'Course'
-			  AND sg.course = e.course
-			  AND (
-					sg.term IS NULL
-				 OR e.term_start IS NULL
-				 OR sg.term = e.term_start
-			  )
-			  AND COALESCE(sgay.year_start_date, %(ay_start)s) <= %(ay_end)s
-			  AND COALESCE(sgay.year_end_date, %(ay_end)s)   >= %(ay_start)s
-			  AND (
-					(
-						sg.program_offering IS NOT NULL
-						AND e.program_offering IS NOT NULL
-						AND sg.program_offering = e.program_offering
-					)
-				 OR (
-						(sg.program_offering IS NULL OR e.program_offering IS NULL)
-						AND sg.program = e.program
-					)
-			  )
-		)
+		LEFT JOIN course_groups cg
+		  ON cg.student = e.student
+		 AND cg.course = e.course
+		 AND (
+				cg.term IS NULL
+			 OR e.term_start IS NULL
+			 OR cg.term = e.term_start
+		 )
+		 AND (
+				(
+					cg.program_offering IS NOT NULL
+					AND e.program_offering IS NOT NULL
+					AND cg.program_offering = e.program_offering
+				)
+			 OR (
+					(cg.program_offering IS NULL OR e.program_offering IS NULL)
+					AND cg.program = e.program
+				)
+		 )
+		WHERE cg.student IS NULL
 		ORDER BY 1, 2
 		""",
 		{

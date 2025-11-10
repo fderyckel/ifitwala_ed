@@ -29,13 +29,6 @@
    "width": 160
   },
   {
-   "fieldname": "program_offering",
-   "fieldtype": "Link",
-   "label": "Program Offering",
-   "options": "Program Offering",
-   "width": 220
-  },
-  {
    "fieldname": "course",
    "fieldtype": "Link",
    "label": "Course",
