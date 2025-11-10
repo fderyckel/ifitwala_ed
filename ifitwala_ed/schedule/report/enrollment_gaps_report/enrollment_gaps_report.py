@@ -56,15 +56,30 @@ def execute(filters=None):
 	if not ay:
 		frappe.throw(_("Please select an Academic Year."))
 
+	ay_row = frappe.db.get_value(
+		"Academic Year",
+		ay,
+		["year_start_date", "year_end_date"],
+		as_dict=True,
+	)
+	if not ay_row:
+		frappe.throw(_("Academic Year {0} was not found.").format(ay))
+	if not (ay_row.year_start_date and ay_row.year_end_date):
+		frappe.throw(
+			_("Academic Year {0} must have both a start date and an end date.").format(ay)
+		)
+
 	schools = tuple(get_descendant_schools(school) or [school])
 
 	columns = [
 		{"label": _("Type"),         "fieldname": "type",         "fieldtype": "Data",   "width": 170},
 		{"label": _("Student"),      "fieldname": "student",      "fieldtype": "Link",   "options": "Student", "width": 130},
 		{"label": _("Student Name"), "fieldname": "student_name", "fieldtype": "Data",   "width": 220},
-		{"label": _("Program"),      "fieldname": "program",      "fieldtype": "Link",   "options": "Program", "width": 180},
-		{"label": _("Course"),       "fieldname": "course",       "fieldtype": "Link",   "options": "Course",  "width": 240},
-		{"label": _("Missing"),      "fieldname": "missing",      "fieldtype": "Data",   "width": 180},
+		{"label": _("Program"),      "fieldname": "program",          "fieldtype": "Link", "options": "Program",          "width": 160},
+		{"label": _("Program Offering"), "fieldname": "program_offering", "fieldtype": "Link", "options": "Program Offering", "width": 220},
+		{"label": _("Course"),       "fieldname": "course",           "fieldtype": "Link", "options": "Course",           "width": 220},
+		{"label": _("Term Start"),   "fieldname": "term",             "fieldtype": "Link", "options": "Term",             "width": 150},
+		{"label": _("Missing"),      "fieldname": "missing",          "fieldtype": "Data",                                     "width": 180},
 	]
 
 	data = frappe.db.sql(
@@ -72,11 +87,13 @@ def execute(filters=None):
 		WITH enrollments AS (
 			SELECT
 				pe.student,
-				st.student_full_name AS student_name,
+				COALESCE(st.student_full_name, pe.student_name) AS student_name,
 				pe.program,
+				pe.program_offering,
 				pe.academic_year,
 				st.school,
-				pec.course
+				pec.course,
+				pec.term_start
 			FROM `tabProgram Enrollment` pe
 			INNER JOIN `tabProgram Enrollment Course` pec
 				ON pec.parent = pe.name
@@ -94,7 +111,9 @@ def execute(filters=None):
 			s.name                       AS student,
 			s.student_full_name          AS student_name,
 			NULL                         AS program,
+			NULL                         AS program_offering,
 			NULL                         AS course,
+			NULL                         AS term,
 			'Program Enrollment'         AS missing
 		FROM `tabStudent` s
 		WHERE COALESCE(s.enabled, 1) = 1
@@ -108,13 +127,15 @@ def execute(filters=None):
 
 		UNION ALL
 
-		-- (2) Enrolled in a course but NOT placed in a matching Course-based SG (term ignored)
+		-- (2) Enrolled in a course but NOT placed in a matching Course-based SG (term-aware)
 		SELECT
 			'Missing Student Group' AS type,
 			e.student               AS student,
 			e.student_name          AS student_name,
 			e.program               AS program,
+			e.program_offering      AS program_offering,
 			e.course                AS course,
+			e.term_start            AS term,
 			'Student Group (Course)' AS missing
 		FROM enrollments e
 		WHERE NOT EXISTS (
@@ -123,17 +144,40 @@ def execute(filters=None):
 			JOIN `tabStudent Group Student` sgs
 			  ON sgs.parent = sg.name
 			 AND sgs.parenttype = 'Student Group'
-			 And sgs.student = e.student
+			 AND sgs.student = e.student
 			 AND COALESCE(sgs.active, 1) = 1
+			JOIN `tabAcademic Year` sgay
+			  ON sgay.name = sg.academic_year
 			WHERE sg.status = 'Active'
 			  AND sg.group_based_on = 'Course'
-			  AND sg.academic_year = e.academic_year
 			  AND sg.course = e.course
-			  -- NOTE: term deliberately ignored for year-long vs multi-term cases
+			  AND (
+					sg.term IS NULL
+				 OR e.term_start IS NULL
+				 OR sg.term = e.term_start
+			  )
+			  AND COALESCE(sgay.year_start_date, %(ay_start)s) <= %(ay_end)s
+			  AND COALESCE(sgay.year_end_date, %(ay_end)s)   >= %(ay_start)s
+			  AND (
+					(
+						sg.program_offering IS NOT NULL
+						AND e.program_offering IS NOT NULL
+						AND sg.program_offering = e.program_offering
+					)
+				 OR (
+						(sg.program_offering IS NULL OR e.program_offering IS NULL)
+						AND sg.program = e.program
+					)
+			  )
 		)
 		ORDER BY 1, 2
 		""",
-		{"ay": ay, "schools": schools},
+		{
+			"ay": ay,
+			"schools": schools,
+			"ay_start": ay_row.year_start_date,
+			"ay_end": ay_row.year_end_date,
+		},
 		as_dict=True,
 	)
 
