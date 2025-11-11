@@ -19,28 +19,38 @@ class Organization(NestedSet):
 					.format(self.parent_organization))
 
 
+# ifitwala_ed/setup/doctype/organization/organization.py
+
 @frappe.whitelist()
 def get_children(doctype, parent=None, is_root=False, **kwargs):
 	"""Return tree nodes: children of `parent`, or top-level groups if root."""
 	filters = dict(kwargs.get("filters") or {})
 
-	# Treat virtual root label as no parent
+	# Never return the virtual root as a child
+	exclude_root = {"name": ["!=", "All Organizations"]}
+	filters.update(exclude_root)
+
+	# Root request -> top-level (no parent). Otherwise -> children of `parent`
 	if is_root or not parent or parent == "All Organizations":
-		filters.update({"is_group": 1, "parent_organization": ["is", "not set"]})
+		filters.update({"parent_organization": ["is", "not set"]})
 	else:
 		filters.update({"parent_organization": parent})
 
-	return frappe.get_all(
+	rows = frappe.get_all(
 		"Organization",
 		fields=[
 			"name as value",
 			"organization_name as title",
 			"is_group as expandable",
 		],
-		# show in nested-set order
 		order_by="lft asc",
 		filters=filters,
 	)
+	# (optional) normalize truthiness to 0/1 for the tree
+	for r in rows:
+		r["expandable"] = 1 if r.get("expandable") else 0
+	return rows
+
 
 
 @frappe.whitelist()

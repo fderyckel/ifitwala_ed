@@ -67,7 +67,7 @@ frappe.ui.form.on("Student Log", {
 							options: "User",
 							reqd: 1,
 							get_query: () => ({
-								query: "ifitwala_ed.api.get_users_with_role",
+								query: "ifitwala_ed.api.users.get_users_with_role",
 								filters: { role }
 							})
 						}
@@ -250,7 +250,7 @@ function configure_follow_up_person_field(frm) {
 	// Role-filtered picker based on Next Step → associated_role (fallback: Academic Staff)
 	const role = frm.doc.follow_up_role || "Academic Staff";
 	frm.set_query("follow_up_person", () => ({
-		query: "ifitwala_ed.api.get_users_with_role",
+	query: "ifitwala_ed.api.users.get_users_with_role",
 		filters: { role }
 	}));
 }
