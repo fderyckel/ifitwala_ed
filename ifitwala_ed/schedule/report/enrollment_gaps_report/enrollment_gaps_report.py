@@ -127,7 +127,6 @@ def execute(filters=None):
 			s.name                       AS student,
 			s.student_full_name          AS student_name,
 			NULL                         AS program,
-			NULL                         AS program_offering,
 			NULL                         AS course,
 			NULL                         AS term,
 			'Program Enrollment'         AS missing
