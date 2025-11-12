@@ -55,5 +55,47 @@ frappe.query_reports["Medical Info And Emergency Contact"] = {
 				}
 			}
 		});
+
+		if (report?.page) {
+			ensure_print_button(report.page);
+		}
+	},
+
+	after_datatable_render(report) {
+		if (report?.page) {
+			ensure_print_button(report.page);
+		}
 	}
 };
+
+function ensure_print_button(page) {
+	const KEY = "mi-print-btn";
+	if (!page?.add_inner_button) return;
+	if (page.inner_toolbar && page.inner_toolbar.find(`button[data-key="${KEY}"]`).length) {
+		return;
+	}
+
+	const btn = page.add_inner_button(__("Print"), () => handle_report_print(), null);
+	if (btn) {
+		btn.attr("data-key", KEY);
+		btn.removeClass("btn-default btn-primary").addClass("btn-info btn-sm");
+	}
+}
+
+function handle_report_print() {
+	const report = frappe.query_report;
+	if (!report || typeof report.print_report !== "function") {
+		frappe.msgprint(__("Print is not available on this report."));
+		return;
+	}
+
+	frappe.ui.get_print_settings(
+		false,
+		(print_settings) => {
+			print_settings = print_settings || {};
+			report.print_report(print_settings);
+		},
+		report.report_doc && report.report_doc.letter_head,
+		report.get_visible_columns ? report.get_visible_columns() : null
+	);
+}

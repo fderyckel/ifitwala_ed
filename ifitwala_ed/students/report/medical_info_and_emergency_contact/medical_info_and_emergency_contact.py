@@ -112,6 +112,7 @@ def _build_rows(filters: frappe._dict) -> list[dict]:
 			"age": _format_age(student.student_date_of_birth),
 			"medical_summary": medical_html,
 			"guardian_contacts": guardian_html,
+			"_student_image": student.student_image,
 			"_group_label": group_label,
 			"_program_label": program_label,
 			"_school_label": school_label,
@@ -130,7 +131,8 @@ def _fetch_group_students(group_name: str) -> list[frappe._dict]:
 			sgs.student,
 			coalesce(s.student_full_name, sgs.student_name) as student_name,
 			s.student_preferred_name,
-			s.student_date_of_birth
+			s.student_date_of_birth,
+			s.student_image
 		from `tabStudent Group Student` sgs
 		left join `tabStudent` s on s.name = sgs.student
 		where sgs.parent = %s and sgs.active = 1
