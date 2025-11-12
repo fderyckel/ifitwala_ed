@@ -8,7 +8,12 @@
 		"node": ">=18"
 	},
 	"dependencies": {
-		"frappe-ui": "^0.1.199",
+		"@fullcalendar/core": "6.1.17",
+		"@fullcalendar/daygrid": "6.1.17",
+		"@fullcalendar/list": "6.1.17",
+		"@fullcalendar/timegrid": "6.1.17",
+		"frappe-ui": "^0.1.213",
+		"html2canvas": "1.4.1",
 		"vue": "^3.5.21",
 		"vue-router": "^4.5.1"
 	},
