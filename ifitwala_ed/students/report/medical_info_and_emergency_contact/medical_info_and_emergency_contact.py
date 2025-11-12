@@ -77,6 +77,8 @@ def _get_columns():
 		{"label": _("Age"), "fieldname": "age", "fieldtype": "Data", "width": 80},
 		{"label": _("Medical Information"), "fieldname": "medical_summary", "fieldtype": "HTML", "width": 360},
 		{"label": _("Guardian Contacts"), "fieldname": "guardian_contacts", "fieldtype": "HTML", "width": 320},
+		{"label": _("Primary Guardian"), "fieldname": "guardian_primary_name", "fieldtype": "Data", "width": 190},
+		{"label": _("Primary Phone"), "fieldname": "guardian_primary_phone", "fieldtype": "Data", "width": 150},
 	]
 
 
@@ -98,11 +100,12 @@ def _build_rows(filters: frappe._dict) -> list[dict]:
 	for student in students:
 		student_id = student.student
 		patient = patient_map.get(student_id)
+		g_info = guardian_map.get(student_id) or {}
 		medical_html = _render_medical_summary(patient)
 		if not medical_html:
 			medical_html = f"<span class='text-muted'>{escape_html(_('No medical information provided.'))}</span>"
 
-		guardian_html = guardian_map.get(student_id, "")
+		guardian_html = g_info.get("html")
 		if not guardian_html:
 			guardian_html = f"<span class='text-muted'>{escape_html(_('No guardian contacts recorded.'))}</span>"
 
@@ -112,6 +115,8 @@ def _build_rows(filters: frappe._dict) -> list[dict]:
 			"age": _format_age(student.student_date_of_birth),
 			"medical_summary": medical_html,
 			"guardian_contacts": guardian_html,
+			"guardian_primary_name": g_info.get("primary_name"),
+			"guardian_primary_phone": g_info.get("primary_phone"),
 			"_student_image": student.student_image,
 			"_group_label": group_label,
 			"_program_label": program_label,
@@ -157,7 +162,7 @@ def _fetch_patients(student_ids: list[str]) -> dict[str, frappe._dict]:
 	return {row.student: row for row in rows}
 
 
-def _fetch_guardian_contacts(student_ids: list[str]) -> dict[str, str]:
+def _fetch_guardian_contacts(student_ids: list[str]) -> dict[str, dict]:
 	if not student_ids:
 		return {}
 
@@ -188,14 +193,30 @@ def _fetch_guardian_contacts(student_ids: list[str]) -> dict[str, str]:
 		)
 		guardian_details = {row.name: row for row in gd_rows}
 
-	contacts_by_student: dict[str, list[str]] = {}
+	contacts_by_student: dict[str, dict] = {}
 	for row in guardian_rows:
-		block = _render_guardian_block(row, guardian_details.get(row.guardian))
+		guardian_doc = guardian_details.get(row.guardian)
+		block = _render_guardian_block(row, guardian_doc)
 		if not block:
 			continue
-		contacts_by_student.setdefault(row.parent, []).append(block)
+		entry = contacts_by_student.setdefault(
+			row.parent,
+			{"blocks": [], "primary_name": None, "primary_phone": None}
+		)
+		entry["blocks"].append(block)
+		if not entry["primary_name"]:
+			entry["primary_name"] = _primary_guardian_label(row, guardian_doc)
+		if not entry["primary_phone"]:
+			entry["primary_phone"] = _pick_primary_phone(row, guardian_doc)
 
-	return {student: "<hr class='guardian-divider'>".join(blocks) for student, blocks in contacts_by_student.items()}
+	return {
+		student: {
+			"html": "<hr class='guardian-divider'>".join(info["blocks"]),
+			"primary_name": info.get("primary_name"),
+			"primary_phone": info.get("primary_phone"),
+		}
+		for student, info in contacts_by_student.items()
+	}
 
 
 def _render_guardian_block(child_row: frappe._dict, guardian_doc: frappe._dict | None) -> str:
@@ -235,6 +256,33 @@ def _render_guardian_block(child_row: frappe._dict, guardian_doc: frappe._dict |
 
 	body = "".join(details) or f"<div class='gc-line text-muted'>{escape_html(_('No contact info provided.'))}</div>"
 	return f"<div class='guardian-block'>{header}{body}</div>"
+
+
+def _primary_guardian_label(child_row: frappe._dict, guardian_doc: frappe._dict | None) -> str | None:
+	name = (
+		(guardian_doc.guardian_full_name if guardian_doc else None)
+		or child_row.guardian_name
+		or child_row.guardian
+		or ""
+	).strip()
+	if not name:
+		return None
+
+	relation = (child_row.relation or "").strip()
+	return f"{name} ({relation})" if relation else name
+
+
+def _pick_primary_phone(child_row: frappe._dict, guardian_doc: frappe._dict | None) -> str | None:
+	candidates = [
+		child_row.phone,
+		guardian_doc.guardian_mobile_phone if guardian_doc else None,
+		guardian_doc.guardian_work_phone if guardian_doc else None,
+	]
+	for raw in candidates:
+		normalized = (raw or "").strip()
+		if normalized:
+			return normalized
+	return None
 
 
 def _unique_sequence(values: list[str | None]) -> list[str]:
