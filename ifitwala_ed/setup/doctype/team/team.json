@@ -10,20 +10,30 @@
  "field_order": [
   "section_break_skvf",
   "team_name",
-  "team_lead",
+  "team_code",
   "enabled",
-  "school",
   "column_break_qbdv",
   "organization",
+  "school",
   "lead_full_name",
   "school_abbreviation",
   "organization_abbreviation",
+  "column_break_1qc0",
+  "team_type",
+  "parent_team",
+  "meeting_color",
+  "team_image",
   "team_members_section",
   "members",
   "dpt_philosophy_section",
+  "purpose",
   "philosphy",
   "settings_section",
-  "title"
+  "title",
+  "lft",
+  "rgt",
+  "is_group",
+  "old_parent"
  ],
  "fields": [
   {
@@ -37,13 +47,6 @@
    "in_list_view": 1,
    "label": "Team Name",
    "reqd": 1
-  },
-  {
-   "fieldname": "team_lead",
-   "fieldtype": "Link",
-   "label": "Team Lead",
-   "options": "User",
-   "print_hide": 1
   },
   {
    "default": "1",
@@ -122,15 +125,84 @@
    "fieldtype": "Data",
    "label": "title",
    "unique": 1
+  },
+  {
+   "fieldname": "column_break_1qc0",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "team_type",
+   "fieldtype": "Select",
+   "label": "Team Type",
+   "options": "Department\nProject\nCommittee\nWorking Group\nSupport Team\u201d"
+  },
+  {
+   "fieldname": "team_image",
+   "fieldtype": "Attach Image",
+   "label": "Team Image"
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Small Text",
+   "label": "Purpose"
+  },
+  {
+   "fieldname": "lft",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Left",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "rgt",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Right",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_group",
+   "fieldtype": "Check",
+   "label": "Is Group"
+  },
+  {
+   "fieldname": "old_parent",
+   "fieldtype": "Link",
+   "label": "Old Parent",
+   "options": "Team"
+  },
+  {
+   "fieldname": "parent_team",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Parent Team",
+   "options": "Team"
+  },
+  {
+   "fieldname": "meeting_color",
+   "fieldtype": "Color",
+   "label": "Meeting Color"
+  },
+  {
+   "fieldname": "team_code",
+   "fieldtype": "Data",
+   "label": "Team Code",
+   "print_hide": 1
   }
  ],
+ "image_field": "team_image",
  "index_web_pages_for_search": 1,
+ "is_tree": 1,
  "links": [],
- "modified": "2025-09-23 07:53:42.502164",
+ "modified": "2025-11-12 15:56:43.950070",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Team",
  "naming_rule": "By fieldname",
+ "nsm_parent_field": "parent_team",
  "owner": "Administrator",
  "permissions": [
   {
@@ -158,13 +230,16 @@
    "write": 1
   },
   {
+   "create": 1,
+   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR User",
-   "share": 1
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
   },
   {
    "create": 1,
@@ -191,6 +266,39 @@
    "write": 1
   },
   {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Grade Level Lead",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1
+  },
+  {
    "email": 1,
    "export": 1,
    "print": 1,
@@ -206,15 +314,6 @@
    "read": 1,
    "report": 1,
    "role": "Employee",
-   "share": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Curriculum Coordinator",
    "share": 1
   }
  ],

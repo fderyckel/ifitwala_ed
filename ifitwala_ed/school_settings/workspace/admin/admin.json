@@ -524,7 +524,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-10-26 12:42:43.070536",
+ "modified": "2025-11-12 14:40:16.881128",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Admin",
@@ -550,7 +550,7 @@
    "role": "Academic Assistant"
   }
  ],
- "sequence_id": 6.0,
+ "sequence_id": 7.0,
  "shortcuts": [
   {
    "color": "Grey",
