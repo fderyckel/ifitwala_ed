@@ -1,0 +1,121 @@
+<!-- Medical Info & Emergency Contact Report Print -->
+
+<style>
+	:root{
+		--ink:#1f2a37;
+		--muted:#6b7280;
+		--border:#e5e7eb;
+		--accent:#16a34a;
+	}
+
+	.print-shell{ margin:10px 12px; font-size:0.95rem; color:var(--ink); }
+	.h-title{ font-size:1.35rem; font-weight:600; margin:0; }
+	.h-sub{ font-size:0.9rem; color:var(--muted); margin-top:2px; }
+
+	.card{
+		border:1px solid var(--border);
+		border-radius:10px;
+		padding:0;
+		margin:12px 0;
+		page-break-inside:avoid;
+	}
+
+	.card-head{
+		padding:10px 14px;
+		border-bottom:1px solid var(--border);
+		display:flex;
+		flex-wrap:wrap;
+		align-items:center;
+		gap:10px;
+		background:linear-gradient(90deg,rgba(22,163,74,.08),#fff);
+	}
+	.card-head .name{ font-size:1.05rem; font-weight:600; }
+	.card-head .meta{
+		font-size:0.85rem;
+		color:var(--muted);
+		display:flex;
+		gap:12px;
+		flex-wrap:wrap;
+	}
+	.card-body{ padding:14px; display:flex; flex-direction:column; gap:12px; }
+	.section-title{
+		font-size:0.9rem;
+		font-weight:600;
+		text-transform:uppercase;
+		letter-spacing:0.04em;
+		margin-bottom:4px;
+		color:#374151;
+	}
+
+	.med-line{ margin-bottom:4px; line-height:1.35; }
+	.med-label{ font-weight:600; color:#374151; margin-right:4px; }
+
+	.guardian-block{
+		padding:8px 10px;
+		border:1px solid var(--border);
+		border-radius:8px;
+		margin-bottom:8px;
+	}
+	.gc-head{ font-weight:600; margin-bottom:4px; }
+	.gc-relation{ color:var(--muted); font-weight:400; }
+	.gc-line{ font-size:0.9rem; line-height:1.3; }
+	.gc-label{ font-weight:600; margin-right:4px; }
+	.guardian-divider{
+		border:none;
+		border-top:1px dashed var(--border);
+		margin:10px 0;
+	}
+
+	.text-muted{ color:var(--muted); }
+</style>
+
+<div class="print-shell">
+	{% var first = (data && data.length) ? data[0] : null; %}
+	{% var groupLabel = first ? (first._group_label || filters.student_group) : (filters.student_group || __("N/A")); %}
+	{% var programLabel = first ? (first._program_label || first._program) : filters.program; %}
+	{% var schoolLabel = first ? (first._school_label || first._school) : filters.school; %}
+	{% var ayLabel = first ? first._academic_year : ""; %}
+
+	<div class="h-title">{{ __("Medical Info & Emergency Contacts") }}</div>
+	<div class="h-sub">
+		{{ __("Student Group") }}: {{ frappe.utils.escape_html(groupLabel || __("N/A")) }}
+		{% if (programLabel) { %} &nbsp;·&nbsp; {{ __("Program") }}: {{ frappe.utils.escape_html(programLabel) }}{% } %}
+		{% if (schoolLabel) { %} &nbsp;·&nbsp; {{ __("School") }}: {{ frappe.utils.escape_html(schoolLabel) }}{% } %}
+		{% if (ayLabel) { %} &nbsp;·&nbsp; {{ __("AY") }}: {{ frappe.utils.escape_html(ayLabel) }}{% } %}
+		{% if (data && data.length) { %} &nbsp;·&nbsp; {{ __("Students") }}: {{ data.length }}{% } %}
+	</div>
+
+	{% if (!data || !data.length) { %}
+		<p class="text-muted" style="margin-top:16px;">{{ __("No active students found for this student group.") }}</p>
+	{% } %}
+
+	{% for (var i = 0; i < (data || []).length; i++) { var row = data[i]; %}
+		<div class="card">
+			<div class="card-head">
+				<div class="name">{{ frappe.utils.escape_html(row.student_name || row.student) }}</div>
+				<div class="meta">
+					<span>{{ __("ID") }}: {{ frappe.utils.escape_html(row.student || "—") }}</span>
+					<span>{{ __("Age") }}: {{ row.age || __("N/A") }}</span>
+				</div>
+			</div>
+			<div class="card-body">
+				<div>
+					<div class="section-title">{{ __("Medical Information") }}</div>
+					{% if (row.medical_summary) { %}
+						<div class="med-lines">{{ row.medical_summary }}</div>
+					{% } else { %}
+						<p class="text-muted">{{ __("No medical information provided.") }}</p>
+					{% } %}
+				</div>
+				<div>
+					<div class="section-title">{{ __("Guardian Contacts") }}</div>
+					{% if (row.guardian_contacts) { %}
+						<div class="guardian-lines">{{ row.guardian_contacts }}</div>
+					{% } else { %}
+						<p class="text-muted">{{ __("No guardian contacts recorded.") }}</p>
+					{% } %}
+				</div>
+			</div>
+		</div>
+	{% } %}
+</div>
