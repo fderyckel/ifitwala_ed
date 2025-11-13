@@ -8,14 +8,19 @@
   "section_break_qmya",
   "meeting_name",
   "meeting_code",
-  "date",
   "team",
+  "column_break_neve",
+  "status",
+  "date",
   "start_time",
   "end_time",
+  "column_break_c057",
   "location",
+  "virtual_meeting_link",
+  "meeting_category",
+  "section_break_8fkj",
   "agenda",
   "minutes",
-  "status",
   "attachments",
   "follow_up_due_date",
   "attendance_section",
@@ -112,12 +117,36 @@
    "fieldtype": "Table",
    "label": "Action Items",
    "options": "Meeting Action Item"
+  },
+  {
+   "fieldname": "column_break_neve",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_c057",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "virtual_meeting_link",
+   "fieldtype": "Data",
+   "label": "Virtual Meeting Link",
+   "options": "URL"
+  },
+  {
+   "fieldname": "meeting_category",
+   "fieldtype": "Select",
+   "label": "Meeting Category",
+   "options": "Department Meeting\nCurriculum Committee Meeting\nStaff Development\nLeadership Team Meeting\nWorking Group Meeting\nCommittee Meeting (non-academic)\nBoard / Governance Meeting\nStudent Services Meeting\nFaculty Review Meeting\nParent / Guardian Engagement Meeting\nAd-hoc / Special Meeting\nRetreat\nPlanning Session\nOne-to-One Review (e.g., mentor/teacher)\nStanding Team Huddle\nAction-Item Review Meeting"
+  },
+  {
+   "fieldname": "section_break_8fkj",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-12 16:16:31.903832",
+ "modified": "2025-11-13 07:56:54.057933",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Meeting",

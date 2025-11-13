@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "field:title",
+ "autoname": "hash",
  "creation": "2024-12-05 21:20:40.799247",
  "default_view": "List",
  "doctype": "DocType",
@@ -12,6 +12,7 @@
   "team_name",
   "team_code",
   "enabled",
+  "is_group",
   "column_break_qbdv",
   "organization",
   "school",
@@ -29,10 +30,8 @@
   "purpose",
   "philosphy",
   "settings_section",
-  "title",
   "lft",
   "rgt",
-  "is_group",
   "old_parent"
  ],
  "fields": [
@@ -108,7 +107,7 @@
   {
    "fieldname": "dpt_philosophy_section",
    "fieldtype": "Section Break",
-   "label": "Dpt. Philosophy"
+   "label": "Team Philosophy"
   },
   {
    "fieldname": "philosphy",
@@ -119,12 +118,6 @@
    "fieldname": "settings_section",
    "fieldtype": "Section Break",
    "label": "Settings"
-  },
-  {
-   "fieldname": "title",
-   "fieldtype": "Data",
-   "label": "title",
-   "unique": 1
   },
   {
    "fieldname": "column_break_1qc0",
@@ -197,11 +190,11 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-11-12 15:56:43.950070",
+ "modified": "2025-11-12 18:01:03.279776",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Team",
- "naming_rule": "By fieldname",
+ "naming_rule": "Random",
  "nsm_parent_field": "parent_team",
  "owner": "Administrator",
  "permissions": [
@@ -318,7 +311,9 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "team_name, team_code, school",
  "sort_field": "modified",
  "sort_order": "ASC",
- "states": []
+ "states": [],
+ "title_field": "team_name"
 }
