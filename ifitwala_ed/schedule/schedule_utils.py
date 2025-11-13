@@ -186,18 +186,19 @@ def _extract(obj, attr):
 def check_slot_conflicts(group_doc):
 		"""Scan existing Student Group schedules for clashes.
 
-		Returns a dict keyed by category (location / instructor / student) with a list of
+		Returns a dict keyed by category (instructor / student) with a list of
 		tuples (entity, rotation_day, block_number).
+
+		Room/location clashes are handled by the central location_conflicts engine.
 		"""
 		if isinstance(group_doc, str):
 			group_doc = frappe._dict(json.loads(group_doc))
 
 		conflicts = defaultdict(list)
 
-		# Pre‑collect instructors & students once (avoid per‑slot sub‑queries)
+		# Pre-collect instructors & students once (avoid per-slot sub-queries)
 		instructors = group_doc.get("instructors") or []
 		students    = group_doc.get("students") or []
-		# accept both "student_group_schedule" (doctype) and older "schedule"
 		slots       = group_doc.get("student_group_schedule") or []
 
 		instructor_ids = tuple(
@@ -207,27 +208,12 @@ def check_slot_conflicts(group_doc):
 			_extract(s, "student") for s in students if _extract(s, "student")
 		)
 
-		# ── ③ Iterate slots (dict or DocType row)
 		for slot in slots:
 			rot   = _extract(slot, "rotation_day")
 			block = _extract(slot, "block_number")
-			location  = _extract(slot, "location")
 
 			if not rot or not block:
 				continue
-
-			# ----- location clash (unchanged) -------------------------------------
-			if location and frappe.db.exists(
-				"Student Group Schedule",
-				{
-					"rotation_day": rot,
-					"block_number": block,
-					"location": location,
-					"parent": ("!=", group_doc.name),
-					"docstatus": ("<", 2),
-				},
-			):
-				conflicts["location"].append((location, rot, block))
 
 			# ----- instructor clash -------------------------------------------
 			if instructor_ids:
@@ -266,6 +252,8 @@ def check_slot_conflicts(group_doc):
 					conflicts["student"].append((student_ids, rot, block))
 
 		return dict(conflicts)
+
+
 
 @frappe.whitelist()
 def fetch_block_grid(schedule_name: str | None = None, sg: str | None = None) -> dict:
