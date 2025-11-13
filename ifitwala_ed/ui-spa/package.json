@@ -12,6 +12,7 @@
 		"@fullcalendar/daygrid": "6.1.17",
 		"@fullcalendar/list": "6.1.17",
 		"@fullcalendar/timegrid": "6.1.17",
+		"@fullcalendar/vue3": "6.1.17",
 		"frappe-ui": "^0.1.213",
 		"html2canvas": "1.4.1",
 		"vue": "^3.5.21",
