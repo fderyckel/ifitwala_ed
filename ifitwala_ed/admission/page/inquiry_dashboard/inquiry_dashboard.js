@@ -459,9 +459,10 @@ frappe.pages["inquiry-dashboard"].on_page_load = function (wrapper) {
 		}		
 	}
 
-	// initial defaults: last 90d until AY picked
-	fd.to_date.set_value(frappe.datetime.obj_to_str(new Date()));
-	fd.from_date.set_value(frappe.datetime.add_days(fd.to_date.get_value(), -90));
+	// initial defaults: last 90d until AY picked (site timezone aware)
+	const today = frappe.datetime.get_today();
+	fd.to_date.set_value(today);
+	fd.from_date.set_value(frappe.datetime.add_days(today, -90));
 
 	refresh_all();
 };

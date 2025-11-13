@@ -6,14 +6,14 @@
 import json
 import frappe
 from frappe import _
-from frappe.utils import getdate, add_days, today
+from frappe.utils import getdate, add_days, today, get_datetime
 from collections import defaultdict
 from datetime import timedelta, date
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 from typing import Optional
 
 ## function to get the start and end dates of the current academic year
-## used in program enrollment, course enrollment tool. 
+## used in program enrollment, course enrollment tool.
 @frappe.whitelist()
 def get_school_term_bounds(school, academic_year):
 	if not school or not academic_year:
@@ -282,7 +282,7 @@ def fetch_block_grid(schedule_name: str | None = None, sg: str | None = None) ->
 			frappe.throw(_("Either schedule_name or sg is required."))
 		sg_doc = frappe.get_doc("Student Group", sg)
 		schedule_name = sg_doc._get_school_schedule().name
-		
+
 	doc = frappe.get_cached_doc("School Schedule", schedule_name)
 	grid = {}
 	for blk in doc.school_schedule_block:		# variable blocks per day
@@ -505,6 +505,110 @@ def _expand_sg_rotation(sg_name, rotation_day, cur_date):
 			"student_group": sg_name
 		})
 	return out
+
+
+def iter_student_group_room_slots(
+	sg_name: str,
+	start_date: date | None = None,
+	end_date: date | None = None,
+) -> list[dict]:
+	"""
+	Expand a Student Group's schedule into concrete room slots with absolute datetimes.
+
+	Returns a list of dicts like:
+	{
+		"location":       <Location name>,
+		"start":          <datetime in site timezone>,
+		"end":            <datetime in site timezone>,
+		"rotation_day":   <int>,
+		"block_number":   <int>,
+		"student_group":  <Student Group name>,
+	}
+
+	this is the raw material for a central location-conflict checker that can
+	compare SG sessions vs Meetings vs School Events vs future Room Bookings.
+	"""
+
+	sg = frappe.get_doc("Student Group", sg_name)
+
+	# Guard rails: we need a calendar + a school to resolve real dates.
+	if not getattr(sg, "school_calendar", None) or not getattr(sg, "school", None):
+		return []
+
+	# 1) Rotation → list[dates] map for this calendar
+	rot_map = build_rotation_map(sg.school_calendar)  # {rotation_day: [date, ...]}
+
+	# 2) Effective School Schedule for this school's branch
+	sched_name = get_effective_schedule(sg.school_calendar, sg.school)
+	if not sched_name:
+		return []
+
+	# 3) Block times per (rotation_day, block_number)
+	block_rows = frappe.db.get_all(
+		"School Schedule Block",
+		filters={"parent": sched_name},
+		fields=["rotation_day", "block_number", "from_time", "to_time"],
+	)
+	if not block_rows:
+		return []
+
+	block_map: dict[tuple[int, int], tuple[str, str]] = {}
+	for b in block_rows:
+		key = (int(b["rotation_day"]), int(b["block_number"]))
+		block_map[key] = (b["from_time"], b["to_time"])
+
+	# Normalize boundaries (optional)
+	start_bound = getdate(start_date) if start_date else None
+	end_bound   = getdate(end_date)   if end_date   else None
+
+	slots: list[dict] = []
+
+	# 4) Read SG schedule rows for that group
+	sg_rows = frappe.db.get_all(
+		"Student Group Schedule",
+		filters={"parent": sg_name},
+		fields=["rotation_day", "block_number", "location"],
+	)
+
+	for row in sg_rows:
+		loc = row.get("location")
+		if not loc:
+			continue  # no room → ignore for location conflicts
+
+		rot = int(row["rotation_day"])
+		blk = int(row["block_number"])
+
+		bt = block_map.get((rot, blk))
+		if not bt:
+			# Should not happen if _validate_schedule_rows is doing its job,
+			# but fail-safe skip instead of blowing up.
+			continue
+
+		from_t, to_t = bt
+		dates_for_rotation = rot_map.get(rot, [])
+		if not dates_for_rotation:
+			continue
+
+		for d in dates_for_rotation:
+			if start_bound and d < start_bound:
+				continue
+			if end_bound and d > end_bound:
+				continue
+
+			start_dt = get_datetime(f"{d} {from_t}")
+			end_dt   = get_datetime(f"{d} {to_t}")
+
+			slots.append({
+				"location":      loc,
+				"start":         start_dt,
+				"end":           end_dt,
+				"rotation_day":  rot,
+				"block_number":  blk,
+				"student_group": sg_name,
+			})
+
+	return slots
+
 
 
 def invalidate_for_student_group(doc, _):
