@@ -73,12 +73,12 @@ def get_staff_calendar(
 	if not user or user == "Guest":
 		frappe.throw(_("Please sign in to view your calendar."), frappe.PermissionError)
 
-	employee = frappe.db.get_value(
-		"Employee",
-		{"user_id": user, "status": ["!=", "Inactive"]},
-		["name", "employee_name"],
-		as_dict=True,
-	)
+    employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": user, "status": ["!=", "Inactive"]},
+        ["name", "employee_full_name"],
+        as_dict=True,
+    )
 	if not employee:
 		frappe.throw(_("Your user is not linked to an Employee record."), frappe.PermissionError)
 
