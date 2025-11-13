@@ -1,3 +1,5 @@
+# ifitwala_ed/api/calendar.py
+
 """
 APIs feeding the portal calendars (staff / student / guardian).
 
@@ -17,10 +19,10 @@ import pytz
 import frappe
 from frappe import _
 from frappe.utils import (
-    get_datetime,
-    get_system_timezone,
-    getdate,
-    now_datetime,
+	get_datetime,
+	get_system_timezone,
+	getdate,
+	now_datetime,
 )
 
 from ifitwala_ed.schedule.schedule_utils import (
@@ -199,20 +201,20 @@ def _resolve_window(
 
 
 def _to_system_datetime(value: str | datetime, tzinfo: pytz.timezone) -> datetime:
-    """
-    Convert a DB datetime (stored as UTC) to the system timezone.
-    - If the incoming datetime is naive, assume it is UTC and convert.
-    - If it already has tzinfo, just convert to the system tz.
-    """
-    if not isinstance(value, datetime):
-        dt = get_datetime(value)
-    else:
-        dt = value
+	"""
+	Convert a DB datetime (stored as UTC) to the system timezone.
+	- If the incoming datetime is naive, assume it is UTC and convert.
+	- If it already has tzinfo, just convert to the system tz.
+	"""
+	if not isinstance(value, datetime):
+		dt = get_datetime(value)
+	else:
+		dt = value
 
-    if dt.tzinfo is None:
-        # Treat DB naive timestamps as UTC
-        dt = pytz.UTC.localize(dt)
-    return dt.astimezone(tzinfo)
+	if dt.tzinfo is None:
+		# Treat DB naive timestamps as UTC
+		dt = pytz.UTC.localize(dt)
+	return dt.astimezone(tzinfo)
 
 
 def _localize_datetime(dt: datetime, tzinfo: pytz.timezone) -> datetime:
@@ -259,142 +261,142 @@ def _attach_duration(start_dt: datetime, end_dt: Optional[datetime]) -> timedelt
 # ---------------------------------------------------------------------------
 
 def _collect_student_group_events(
-    user: str,
-    window_start: datetime,
-    window_end: datetime,
-    tzinfo: pytz.timezone,
+	user: str,
+	window_start: datetime,
+	window_end: datetime,
+	tzinfo: pytz.timezone,
 ) -> List[CalendarEvent]:
-    start_date, end_date = window_start.date(), window_end.date()
+	start_date, end_date = window_start.date(), window_end.date()
 
-    # Resolve instructor identities for this user
-    instructor_ids = set(
-        frappe.get_all(
-            "Instructor",
-            filters={"linked_user_id": user},
-            pluck="name",
-            ignore_permissions=True,
-        )
-        or []
-    )
+	# Resolve instructor identities for this user
+	instructor_ids = set(
+		frappe.get_all(
+			"Instructor",
+			filters={"linked_user_id": user},
+			pluck="name",
+			ignore_permissions=True,
+		)
+		or []
+	)
 
-    if not instructor_ids:
-        # Fallback: if user is an Employee, find Instructor linked via employee
-        emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
-        if emp:
-            extra = frappe.get_all(
-                "Instructor",
-                filters={"employee": emp},
-                pluck="name",
-                ignore_permissions=True,
-            )
-            instructor_ids.update(extra or [])
+	if not instructor_ids:
+		# Fallback: if user is an Employee, find Instructor linked via employee
+		emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
+		if emp:
+			extra = frappe.get_all(
+				"Instructor",
+				filters={"employee": emp},
+				pluck="name",
+				ignore_permissions=True,
+			)
+			instructor_ids.update(extra or [])
 
-    # If user has no instructor identity, we can't match class rows
-    if not instructor_ids:
-        return []
+	# If user has no instructor identity, we can't match class rows
+	if not instructor_ids:
+		return []
 
-    # Fetch time slots for groups where the slot instructor matches this user
-    slot_rows = frappe.get_all(
-        "Student Group Schedule",
-        filters={
-            "parenttype": "Student Group",
-            "instructor": ["in", list(instructor_ids)],
-        },
-        fields=[
-            "parent",
-            "rotation_day",
-            "block_number",
-            "location",
-            "instructor",
-            "from_time",
-            "to_time",
-        ],
-        ignore_permissions=True,
-    )
+	# Fetch time slots for groups where the slot instructor matches this user
+	slot_rows = frappe.get_all(
+		"Student Group Schedule",
+		filters={
+			"parenttype": "Student Group",
+			"instructor": ["in", list(instructor_ids)],
+		},
+		fields=[
+			"parent",
+			"rotation_day",
+			"block_number",
+			"location",
+			"instructor",
+			"from_time",
+			"to_time",
+		],
+		ignore_permissions=True,
+	)
 
-    # Also include groups where the user is listed as SG Instructor but
-    # the slot has no explicit instructor
-    sgi_groups = set(
-        frappe.get_all(
-            "Student Group Instructor",
-            filters={
-                "parenttype": "Student Group",
-                "instructor": ["in", list(instructor_ids)],
-            },
-            pluck="parent",
-            ignore_permissions=True,
-        )
-        or []
-    )
-    # If the user was linked via user_id but no Instructor match, include those too
-    sgi_groups.update(
-        frappe.get_all(
-            "Student Group Instructor",
-            filters={"parenttype": "Student Group", "user_id": user},
-            pluck="parent",
-            ignore_permissions=True,
-        )
-        or []
-    )
+	# Also include groups where the user is listed as SG Instructor but
+	# the slot has no explicit instructor
+	sgi_groups = set(
+		frappe.get_all(
+			"Student Group Instructor",
+			filters={
+				"parenttype": "Student Group",
+				"instructor": ["in", list(instructor_ids)],
+			},
+			pluck="parent",
+			ignore_permissions=True,
+		)
+		or []
+	)
+	# If the user was linked via user_id but no Instructor match, include those too
+	sgi_groups.update(
+		frappe.get_all(
+			"Student Group Instructor",
+			filters={"parenttype": "Student Group", "user_id": user},
+			pluck="parent",
+			ignore_permissions=True,
+		)
+		or []
+	)
 
-    if sgi_groups:
-        blank_rows = frappe.get_all(
-            "Student Group Schedule",
-            filters={"parent": ["in", list(sgi_groups)]},
-            fields=[
-                "parent",
-                "rotation_day",
-                "block_number",
-                "location",
-                "instructor",
-                "from_time",
-                "to_time",
-            ],
-            ignore_permissions=True,
-        )
-        for r in blank_rows:
-            if not r.instructor and r.rotation_day:
-                slot_rows.append(r)
+	if sgi_groups:
+		blank_rows = frappe.get_all(
+			"Student Group Schedule",
+			filters={"parent": ["in", list(sgi_groups)]},
+			fields=[
+				"parent",
+				"rotation_day",
+				"block_number",
+				"location",
+				"instructor",
+				"from_time",
+				"to_time",
+			],
+			ignore_permissions=True,
+		)
+		for r in blank_rows:
+			if not r.instructor and r.rotation_day:
+				slot_rows.append(r)
 
-    if not slot_rows:
-        return []
+	if not slot_rows:
+		return []
 
-    group_names = sorted({row.parent for row in slot_rows})
+	group_names = sorted({row.parent for row in slot_rows})
 
-    group_docs = frappe.get_all(
-        "Student Group",
-        filters={"name": ["in", group_names], "status": "Active"},
-        fields=[
-            "name",
-            "student_group_name",
-            "course",
-            "program",
-            "program_offering",
-            "school",
-            "school_schedule",
-            "academic_year",
-        ],
-        ignore_permissions=True,
-    )
-    if not group_docs:
-        return []
+	group_docs = frappe.get_all(
+		"Student Group",
+		filters={"name": ["in", group_names], "status": "Active"},
+		fields=[
+			"name",
+			"student_group_name",
+			"course",
+			"program",
+			"program_offering",
+			"school",
+			"school_schedule",
+			"academic_year",
+		],
+		ignore_permissions=True,
+	)
+	if not group_docs:
+		return []
 
-    course_ids = [g.course for g in group_docs if g.course]
-    course_meta = {}
-    if course_ids:
-        course_rows = frappe.get_all(
-            "Course",
-            filters={"name": ["in", course_ids]},
-            fields=["name", "course_name", "calendar_event_color"],
-            ignore_permissions=True,
-        )
-        course_meta = {row.name: row for row in course_rows}
+	course_ids = [g.course for g in group_docs if g.course]
+	course_meta = {}
+	if course_ids:
+		course_rows = frappe.get_all(
+			"Course",
+			filters={"name": ["in", course_ids]},
+			fields=["name", "course_name", "calendar_event_color"],
+			ignore_permissions=True,
+		)
+		course_meta = {row.name: row for row in course_rows}
 
-    # Group slots by SG for easier rendering
-    slots_by_group: Dict[str, List[dict]] = defaultdict(list)
-    for slot in slot_rows:
-        if slot.rotation_day:
-            slots_by_group[slot.parent].append(slot)
+	# Group slots by SG for easier rendering
+	slots_by_group: Dict[str, List[dict]] = defaultdict(list)
+	for slot in slot_rows:
+		if slot.rotation_day:
+			slots_by_group[slot.parent].append(slot)
 
 	rotation_cache: Dict[Tuple[str, str, int], Dict[int, List[date]]] = {}
 	events: List[CalendarEvent] = []
@@ -448,7 +450,10 @@ def _collect_student_group_events(
 				if session_date < start_date or session_date > end_date:
 					continue
 				start_dt = _combine(session_date, from_time, tzinfo)
-				duration = _attach_duration(start_dt, _combine(session_date, to_time, tzinfo) if to_time else None)
+				duration = _attach_duration(
+					start_dt,
+					_combine(session_date, to_time, tzinfo) if to_time else None,
+				)
 				end_dt = start_dt + duration
 
 				events.append(
@@ -685,7 +690,7 @@ def _collect_frappe_events(
 			)
 		)
 
-    return events
+	return events
 
 
 # ---------------------------------------------------------------------------
@@ -694,45 +699,45 @@ def _collect_frappe_events(
 
 @frappe.whitelist()
 def debug_staff_calendar_window(from_datetime: Optional[str] = None, to_datetime: Optional[str] = None):
-    """
-    Lightweight debug endpoint: returns detected instructor ids, matched
-    student groups, and a small sample of events for the current user.
-    Useful for quick browser testing.
-    """
-    user = frappe.session.user
-    tzinfo = _system_tzinfo()
-    start, end = _resolve_window(from_datetime, to_datetime, tzinfo)
+	"""
+	Lightweight debug endpoint: returns detected instructor ids, matched
+	student groups, and a small sample of events for the current user.
+	Useful for quick browser testing.
+	"""
+	user = frappe.session.user
+	tzinfo = _system_tzinfo()
+	start, end = _resolve_window(from_datetime, to_datetime, tzinfo)
 
-    # instructor ids
-    instr = set(
-        frappe.get_all("Instructor", filters={"linked_user_id": user}, pluck="name", ignore_permissions=True)
-        or []
-    )
-    emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
-    if emp:
-        instr.update(
-            frappe.get_all("Instructor", filters={"employee": emp}, pluck="name", ignore_permissions=True) or []
-        )
+	# instructor ids
+	instr = set(
+		frappe.get_all("Instructor", filters={"linked_user_id": user}, pluck="name", ignore_permissions=True)
+		or []
+	)
+	emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
+	if emp:
+		instr.update(
+			frappe.get_all("Instructor", filters={"employee": emp}, pluck="name", ignore_permissions=True) or []
+		)
 
-    # sg groups via SG Instructor
-    sgi = set(
-        frappe.get_all(
-            "Student Group Instructor",
-            filters={"parenttype": "Student Group", "instructor": ["in", list(instr) or [""]]},
-            pluck="parent",
-            ignore_permissions=True,
-        )
-        or []
-    )
+	# sg groups via SG Instructor
+	sgi = set(
+		frappe.get_all(
+			"Student Group Instructor",
+			filters={"parenttype": "Student Group", "instructor": ["in", list(instr) or [""]]},
+			pluck="parent",
+			ignore_permissions=True,
+		)
+		or []
+	)
 
-    # quick sample of student group events only (limit 10)
-    sample = _collect_student_group_events(user, start, end, tzinfo)[:10]
+	# quick sample of student group events only (limit 10)
+	sample = _collect_student_group_events(user, start, end, tzinfo)[:10]
 
-    return {
-        "user": user,
-        "system_tz": tzinfo.zone,
-        "window": {"from": start.isoformat(), "to": end.isoformat()},
-        "instructor_ids": sorted(instr),
-        "sg_instructor_groups": sorted(sgi),
-        "sample_events": [e.as_dict() for e in sample],
-    }
+	return {
+		"user": user,
+		"system_tz": tzinfo.zone,
+		"window": {"from": start.isoformat(), "to": end.isoformat()},
+		"instructor_ids": sorted(instr),
+		"sg_instructor_groups": sorted(sgi),
+		"sample_events": [e.as_dict() for e in sample],
+	}
