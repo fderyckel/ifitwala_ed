@@ -15,6 +15,9 @@ frappe.ui.form.on('Team', {
 				} else {
 					role_options = ['Member', 'Facilitator', 'Coordinator', 'Observer', 'Custom'];
 				}
+				const default_role =
+					(df && df.default) ||
+					(role_options.includes('Member') ? 'Member' : role_options[0]);
 
 				// Fetch eligible users by school/org hierarchy
 				frappe.call({
@@ -30,48 +33,86 @@ frappe.ui.form.on('Team', {
 						return;
 					}
 
-					const options = users.map(u => `${u.value}:${u.label}`).join('\n');
-
 					const d = new frappe.ui.Dialog({
 						title: __('Select Members'),
 						fields: [
 							{
-								fieldname: 'users',
-								fieldtype: 'MultiSelect',
-								label: __('Users'),
-								options: options
-							},
-							{
-								fieldname: 'role',
-								fieldtype: 'Select',
-								label: __('Role in Team'),
-								options: role_options.join('\n'),
-								default: role_options.includes('Member') ? 'Member' : role_options[0]
+								fieldname: 'members_html',
+								fieldtype: 'HTML'
 							}
 						],
 						primary_action_label: __('Add'),
-						primary_action: data => {
-							const user_list = (data.users || '').split('\n').filter(Boolean);
-							if (!user_list.length) {
+						primary_action: () => {
+							const selected = d.$wrapper.find('.team-member-checkbox:checked');
+							if (!selected.length) {
 								frappe.msgprint(__('Please select at least one user.'));
 								return;
 							}
-							user_list.forEach(u_val => {
-								const user = u_val.split(':')[0];
+
+							selected.each((_idx, checkbox) => {
+								const $checkbox = $(checkbox);
+								const user = $checkbox.data('user');
+								const label = $checkbox.data('label');
+								const role =
+									d.$wrapper
+										.find(`.team-member-role[data-user="${user}"]`)
+										.val() || default_role;
+
 								frm.add_child('members', {
 									member: user,
-									role_in_team: data.role,
+									member_name: label,
+									role_in_team: role,
 									active: 1
 								});
 							});
 							frm.refresh_field('members');
 							d.hide();
 							frappe.show_alert({
-								message: __('Added {0} new member(s)', [user_list.length]),
+								message: __('Added {0} new member(s)', [selected.length]),
 								indicator: 'green'
 							});
 						}
 					});
+
+					const render_member_rows = () => {
+						const rows = users.map(u => {
+							const label = frappe.utils.escape_html(u.label);
+							const value = frappe.utils.escape_html(u.value);
+							const options_html = role_options
+								.map(opt => {
+									const esc_opt = frappe.utils.escape_html(opt);
+									const selected = esc_opt === default_role ? 'selected' : '';
+									return `<option value="${esc_opt}" ${selected}>${esc_opt}</option>`;
+								})
+								.join('');
+
+							return `
+								<div class="team-member-row">
+									<label class="checkbox">
+										<input type="checkbox"
+											class="team-member-checkbox"
+											data-user="${value}"
+											data-label="${label}">
+										<span>${label}</span>
+									</label>
+									<select class="team-member-role form-control" data-user="${value}">
+										${options_html}
+									</select>
+								</div>
+							`;
+						});
+
+						return `
+							<div class="team-member-grid">
+								${rows.join('')}
+							</div>
+						`;
+					};
+
+					d.fields_dict.members_html.$wrapper
+						.addClass('team-member-dialog')
+						.html(render_member_rows());
+
 					d.show();
 				});
 			});
@@ -103,6 +144,5 @@ frappe.ui.form.on('Team Member', {
 		}
 	}
 });
-
 
 
