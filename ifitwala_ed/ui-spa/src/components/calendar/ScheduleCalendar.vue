@@ -69,6 +69,10 @@ import { DatesSetArg } from '@fullcalendar/core';
 import { FeatherIcon } from 'frappe-ui';
 
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
+import '@fullcalendar/core/index.css';
+import '@fullcalendar/daygrid/index.css';
+import '@fullcalendar/timegrid/index.css';
+import '@fullcalendar/list/index.css';
 
 const props = defineProps<{
 	role?: 'staff' | 'student' | 'guardian';
@@ -242,11 +246,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-@import '@fullcalendar/core/index.css';
-@import '@fullcalendar/daygrid/index.css';
-@import '@fullcalendar/timegrid/index.css';
-@import '@fullcalendar/list/index.css';
-
 :global(.fc) {
 	font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
