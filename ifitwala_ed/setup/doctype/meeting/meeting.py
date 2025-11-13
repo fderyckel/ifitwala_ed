@@ -8,7 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, format_datetime
 
-from ifitwala_ed.utilities.location_utils import find_location_conflicts
+from ifitwala_ed.utilities.location_conflicts import find_location_conflicts
 
 
 def _combine_date_and_time(d, t):
@@ -40,6 +40,10 @@ class Meeting(Document):
 	def on_update(self):
 		self.create_or_update_event()
 
+	# ───────────────────────────────────────────────────────────
+	# Participants / team
+	# ───────────────────────────────────────────────────────────
+
 	def ensure_team_selected(self):
 		if not self.team:
 			frappe.throw(_("Please select a Team for the meeting."))
@@ -52,82 +56,89 @@ class Meeting(Document):
 			seen.add(d.participant)
 
 	def ensure_participants_from_team(self):
-		# If participants table is empty, auto-populate with active team members
-		if not self.get("participants"):
-			team_members = frappe.db.get_all(
-				"Team Member",
-				filters={"parent": self.team, "active": 1},
-				fields=["member"],
-			)
-			for m in team_members:
-				self.append("participants", {
-					"participant": m.member,
-					"role_in_meeting": "Participant",
-					"attendance_status": "Absent",
-				})
+		"""
+		If participants table is empty, auto-populate with active team members.
+		"""
+		if self.get("participants"):
+			return
+
+		team_members = frappe.db.get_all(
+			"Team Member",
+			filters={"parent": self.team, "active": 1},
+			fields=["member"],
+		)
+		for m in team_members:
+			self.append("participants", {
+				"participant": m.member,
+				"role_in_meeting": "Participant",
+				"attendance_status": "Absent",
+			})
 
 	def ensure_at_least_one_participant(self):
 		if not self.get("participants") or len(self.get("participants")) < 1:
 			frappe.throw(_("Meeting must have at least one participant."))
 
+	# ───────────────────────────────────────────────────────────
+	# Time and location validation
+	# ───────────────────────────────────────────────────────────
+
 	def validate_time_logic(self):
 		"""
 		Basic sanity check on time fields.
 
-		We still compare Time fields for now (same-day meetings),
-		but we also guard against missing pieces.
+		Currently assumes same-day meetings.
 		"""
 		if not self.date:
-			return  # you can hard-enforce later if needed
+			# You can hard-enforce having a date later if you want.
+			return
 
 		if self.start_time and self.end_time and self.end_time <= self.start_time:
 			frappe.throw(_("End Time must be later than Start Time."))
 
 	def validate_location_free(self):
 		"""
-		Check that the meeting location is free using the central location conflict service.
-
-		Rules:
-		- If a PARENT location is booked, ALL its children are considered busy.
-		- We exclude the current Meeting doc when editing.
+		Check that the meeting location is free using the shared conflict engine.
 		"""
 		if not (self.location and self.date and self.start_time and self.end_time):
-			# incomplete info → skip; no conflict check
+			# incomplete info → skip conflict check
 			return
 
 		start_dt = _combine_date_and_time(self.date, self.start_time)
 		end_dt = _combine_date_and_time(self.date, self.end_time)
 
-		if not start_dt or not end_dt or start_dt >= end_dt:
-			# Let validate_time_logic() handle the shape of the time window
+		if not start_dt or not end_dt or end_dt <= start_dt:
+			# Let validate_time_logic handle basic shape rules
 			return
 
 		conflicts = find_location_conflicts(
 			location=self.location,
-			from_dt=start_dt,
-			to_dt=end_dt,
-			include_children=True,  # parent blocks children, per your rule
-			exclude={"doctype": "Meeting", "name": self.name} if self.name else None,
+			start=start_dt,
+			end=end_dt,
+			ignore_sources=[("Meeting", self.name)] if self.name else None,
 		)
 
 		if not conflicts:
 			return
 
-		# For now: show first conflict in a clear message.
+		# Show first conflict in a clear message.
 		c = conflicts[0]
 		frappe.throw(
-			_("Location {0} is already booked from {1} to {2} by {3} {4}.").format(
-				c["location"],
-				format_datetime(c["from"]),
-				format_datetime(c["to"]),
-				c["source_doctype"],
-				c["source_name"],
+			_("Location {0} is already booked from {1} to {2} by {3} <b>{4}</b>.").format(
+				c.location,
+				format_datetime(c.start),
+				format_datetime(c.end),
+				c.source_doctype,
+				c.source_name,
 			)
 		)
 
 	def validate_minutes_when_completed(self):
 		if self.status == "Completed" and not self.minutes:
 			frappe.throw(_("Minutes must be entered if the meeting status is 'Completed'."))
+
+	# ───────────────────────────────────────────────────────────
+	# Event sync (Frappe Event)
+	# ───────────────────────────────────────────────────────────
 
 	def create_or_update_event(self):
 		"""Create or update a Frappe Event record corresponding to this Meeting."""
@@ -143,6 +154,7 @@ class Meeting(Document):
 			end_dt = _combine_date_and_time(self.date, self.end_time)
 
 		title = f"{self.team or _('Unassigned Team')} – {self.meeting_name or _('Meeting')}"
+
 		description = ""
 		if self.agenda:
 			description += f"<b>{_('Agenda')}:</b><br>{self.agenda}<br><br>"
@@ -151,8 +163,11 @@ class Meeting(Document):
 		if self.location:
 			description += f"<b>{_('Location')}:</b> {self.location}<br>"
 
-		# find or create
-		existing = frappe.db.exists("Event", {"reference_doctype": "Meeting", "reference_name": self.name})
+		# Find or create linked Event
+		existing = frappe.db.exists(
+			"Event",
+			{"reference_doctype": "Meeting", "reference_name": self.name},
+		)
 		if existing:
 			event = frappe.get_doc("Event", existing)
 		else:
@@ -176,7 +191,6 @@ class Meeting(Document):
 
 		event.flags.ignore_mandatory = True
 		event.save(ignore_permissions=True)
-		frappe.db.commit()
 
 	def get_team_color(self):
 		if self.team:

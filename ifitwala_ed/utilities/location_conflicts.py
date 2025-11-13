@@ -5,233 +5,215 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date, datetime
-from typing import Iterable, List, Optional, Tuple
-
 import frappe
-from frappe.utils import get_datetime
+from dataclasses import dataclass
+from datetime import datetime, date
+from typing import Iterable, List, Optional, Tuple, Callable
+
+from frappe.utils import get_datetime, getdate
 
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
 
+
 # ──────────────────────────────────────────────────────────────────────────────
-# Data structure
+# Normalized structure
 # ──────────────────────────────────────────────────────────────────────────────
 
 @dataclass
 class LocationSlot:
-	"""A concrete occupied slot for a physical location."""
 	location: str
 	start: datetime
 	end: datetime
 	source_doctype: str
 	source_name: str
-	extra: dict | None = None   # e.g. {"rotation_day": 3, "block_number": 2}
+	extra: dict | None = None
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Location tree helpers (Nested Set)
+# Location expansion (SIMPLIFIED — exact match only)
 # ──────────────────────────────────────────────────────────────────────────────
-
-def _get_location_lftrgt(name: str) -> Tuple[Optional[int], Optional[int]]:
-	if not name:
-		return (None, None)
-	return (
-		frappe.db.get_value("Location", name, ["lft", "rgt"], as_dict=False)
-		or (None, None)
-	)
-
-def _ancestors_inclusive(name: str) -> set[str]:
-	"""Return {location} ∪ all its ancestors."""
-	lft, rgt = _get_location_lftrgt(name)
-	if lft is None:
-		return set()
-	rows = frappe.db.sql(
-		"""
-		SELECT name
-		FROM `tabLocation`
-		WHERE lft <= %s AND rgt >= %s
-		""",
-		(lft, rgt),
-		as_dict=True,
-	)
-	return {r["name"] for r in rows}
-
-def _descendants_inclusive(name: str) -> set[str]:
-	"""Return {location} ∪ all its descendants."""
-	lft, rgt = _get_location_lftrgt(name)
-	if lft is None:
-		return set()
-	rows = frappe.db.sql(
-		"""
-		SELECT name
-		FROM `tabLocation`
-		WHERE lft >= %s AND rgt <= %s
-		""",
-		(lft, rgt),
-		as_dict=True,
-	)
-	return {r["name"] for r in rows}
 
 def expand_location_branch(location: str) -> set[str]:
 	"""
-	For conflict purposes, a booking of <location> means:
-
-	• The location itself is busy
-	• All its descendants are busy
-	• All its ancestors are busy
-
-	So if "Floor 2" is booked → all rooms under Floor 2 are blocked,
-	and if "Room 201" is booked → "Room 201" and "Floor 2" are blocked.
+	Simplified model:
+	Only the exact location is considered busy.
+	Parent/child relationships are ignored.
 	"""
-	if not location:
-		return set()
-	anc = _ancestors_inclusive(location)
-	desc = _descendants_inclusive(location)
-	if not anc and not desc:
-		return {location}
-	return anc.union(desc)
+	return {location} if location else set()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Student Group → LocationSlot adapter
+# Normalization utilities
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _sgs_touching_branch(branch: set[str]) -> List[str]:
-	"""Return Student Groups that have at least one schedule row in the branch."""
-	if not branch:
-		return []
-	return frappe.db.get_all(
+def _normalize_dt(value) -> datetime:
+	if isinstance(value, datetime):
+		return value
+	return get_datetime(value)
+
+def _overlaps(a_start, a_end, b_start, b_end) -> bool:
+	return not (a_end <= b_start or b_end <= a_start)
+
+def _date_span(start_dt: datetime, end_dt: datetime) -> Tuple[date, date]:
+	return (start_dt.date(), end_dt.date())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Adapters — each yields LocationSlot entries
+# ──────────────────────────────────────────────────────────────────────────────
+
+def slots_from_student_groups(branch: set[str], start_date: date, end_date: date,
+		ignore: set[str]) -> Iterable[LocationSlot]:
+
+	sg_names = frappe.db.get_all(
 		"Student Group Schedule",
 		filters={"location": ["in", list(branch)]},
-		fields=["parent"],
-		distinct=True,
 		pluck="parent",
+		distinct=True
 	)
 
-def _sg_location_slots_for_range(
-	branch: set[str],
-	start_date: date,
-	end_date: date,
-	ignore_groups: Optional[set[str]] = None,
-) -> Iterable[LocationSlot]:
-	"""
-	Expand Student Group schedules into concrete LocationSlot objects
-	for the given date range, restricted to locations in <branch>.
-	"""
-	if not branch:
-		return
-
-	ignore_groups = ignore_groups or set()
-	sg_names = _sgs_touching_branch(branch)
-
-	for sg_name in sg_names:
-		if sg_name in ignore_groups:
+	for sg in sg_names:
+		if sg in ignore:
 			continue
 
-		# Reuse existing logic from schedule_utils
-		for slot in iter_student_group_room_slots(sg_name, start_date, end_date):
-			loc = slot.get("location")
+		for s in iter_student_group_room_slots(sg, start_date, end_date):
+			loc = s.get("location")
 			if not loc or loc not in branch:
-				continue
-
-			start = slot.get("start")
-			end   = slot.get("end")
-			if not (start and end):
 				continue
 
 			yield LocationSlot(
 				location=loc,
-				start=start,
-				end=end,
+				start=s["start"],
+				end=s["end"],
 				source_doctype="Student Group",
-				source_name=sg_name,
+				source_name=sg,
 				extra={
-					"rotation_day": slot.get("rotation_day"),
-					"block_number": slot.get("block_number"),
+					"rotation_day": s.get("rotation_day"),
+					"block_number": s.get("block_number"),
 				},
 			)
 
 
+def slots_from_meeting(docname: str) -> Iterable[LocationSlot]:
+	doc = frappe.get_cached_doc("Meeting", docname)
+	if not doc.location:
+		return []
+
+	if not (doc.date and doc.start_time and doc.end_time):
+		return []
+
+	start_dt = get_datetime(f"{doc.date} {doc.start_time}")
+	end_dt   = get_datetime(f"{doc.date} {doc.end_time}")
+
+	if not start_dt or not end_dt:
+		return []
+
+	return [LocationSlot(
+		location=doc.location,
+		start=start_dt,
+		end=end_dt,
+		source_doctype="Meeting",
+		source_name=docname,
+	)]
+
+
+def slots_from_school_event(docname: str) -> Iterable[LocationSlot]:
+	doc = frappe.get_cached_doc("School Event", docname)
+	if not doc.location or not doc.starts_on or not doc.ends_on:
+		return []
+
+	return [LocationSlot(
+		location=doc.location,
+		start=get_datetime(doc.starts_on),
+		end=get_datetime(doc.ends_on),
+		source_doctype="School Event",
+		source_name=docname,
+	)]
+
+
+def slots_from_frappe_event(docname: str) -> Iterable[LocationSlot]:
+	doc = frappe.get_cached_doc("Event", docname)
+	loc = getattr(doc, "location", None)
+	start = getattr(doc, "starts_on", None)
+	end   = getattr(doc, "ends_on", None)
+
+	if not loc or not start or not end:
+		return []
+
+	return [LocationSlot(
+		location=loc,
+		start=get_datetime(start),
+		end=get_datetime(end),
+		source_doctype="Event",
+		source_name=docname,
+	)]
+
+
+# Registry of sources
+SOURCE_ADAPTERS: dict[str, Callable] = {
+	"Student Group": slots_from_student_groups,  # special signature
+	"Meeting": slots_from_meeting,
+	"School Event": slots_from_school_event,
+	"Event": slots_from_frappe_event,
+}
+
+
 # ──────────────────────────────────────────────────────────────────────────────
-# Public API
+# Main conflict engine
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _normalize_dt(value) -> datetime:
-	"""
-	Accepts datetime or string and converts to a system-timezone datetime.
-	We assume all comparisons happen in the site timezone (System Settings),
-	not raw server time.
-	"""
-	if isinstance(value, datetime):
-		return value
-	# Allow "YYYY-MM-DD HH:MM" or "YYYY-MM-DD"
-	return get_datetime(value)
-
-def _date_span(start: datetime, end: datetime) -> Tuple[date, date]:
-	if end < start:
-		raise ValueError("end < start in location free/busy check.")
-	return (start.date(), end.date())
-
-def _overlaps(a_start: datetime, a_end: datetime, b_start: datetime, b_end: datetime) -> bool:
-	"""True if [a_start, a_end) and [b_start, b_end) overlap."""
-	return not (a_end <= b_start or b_end <= a_start)
-
-
-def find_location_conflicts(
-	location: str,
-	start,
-	end,
-	*,
-	ignore_sources: Optional[List[Tuple[str, str]]] = None,
-) -> List[LocationSlot]:
-	"""
-	Return all conflicting slots for <location> in [start, end).
-
-	For now this only looks at:
-		• Student Group timetables
-
-	Later we will add:
-		• Meetings
-		• School Events
-		• Room Booking / Parent-Teacher slots
-
-	ignore_sources: list of (doctype, name) pairs to ignore. Useful when
-	editing an existing Meeting / Student Group so it doesn't conflict with itself.
-	"""
+def find_location_conflicts(location: str, start, end, *, ignore_sources=None) -> List[LocationSlot]:
 	start_dt = _normalize_dt(start)
 	end_dt   = _normalize_dt(end)
-	start_date, end_date = _date_span(start_dt, end_dt)
 
-	branch = expand_location_branch(location)
+	if end_dt <= start_dt:
+		return []
+
+	branch = expand_location_branch(location)   # now exact match only
 	if not branch:
 		return []
 
 	ignore_sources = set(ignore_sources or [])
-
 	conflicts: List[LocationSlot] = []
+
+	start_date, end_date = _date_span(start_dt, end_dt)
 
 	# 1) Student Groups
 	ignore_sg = {name for (dt, name) in ignore_sources if dt == "Student Group"}
-	for slot in _sg_location_slots_for_range(branch, start_date, end_date, ignore_sg):
+	for slot in slots_from_student_groups(branch, start_date, end_date, ignore_sg):
 		if _overlaps(start_dt, end_dt, slot.start, slot.end):
 			conflicts.append(slot)
 
-	# TODO (next steps): add Meeting / School Event / Room Booking sources here.
+	# 2) Meetings
+	if "Meeting" not in {dt for (dt, _) in ignore_sources}:
+		meetings = frappe.db.get_all("Meeting", filters={"location": ["in", list(branch)]}, pluck="name")
+		for m in meetings:
+			if ("Meeting", m) in ignore_sources:
+				continue
+			for s in slots_from_meeting(m):
+				if _overlaps(start_dt, end_dt, s.start, s.end):
+					conflicts.append(s)
+
+	# 3) School Events
+	events = frappe.db.get_all("School Event", filters={"location": ["in", list(branch)]}, pluck="name")
+	for e in events:
+		if ("School Event", e) in ignore_sources:
+			continue
+		for s in slots_from_school_event(e):
+			if _overlaps(start_dt, end_dt, s.start, s.end):
+				conflicts.append(s)
+
+	# 4) Frappe Events
+	frappe_events = frappe.db.get_all("Event", filters={"location": ["in", list(branch)]}, pluck="name")
+	for e in frappe_events:
+		if ("Event", e) in ignore_sources:
+			continue
+		for s in slots_from_frappe_event(e):
+			if _overlaps(start_dt, end_dt, s.start, s.end):
+				conflicts.append(s)
 
 	return conflicts
 
 
-def is_location_free(
-	location: str,
-	start,
-	end,
-	*,
-	ignore_sources: Optional[List[Tuple[str, str]]] = None,
-) -> bool:
-	"""
-	Convenience wrapper:
-		True  → no conflicts
-		False → at least one conflict
-	"""
+def is_location_free(location: str, start, end, *, ignore_sources=None) -> bool:
 	return not find_location_conflicts(location, start, end, ignore_sources=ignore_sources)
