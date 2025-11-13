@@ -412,33 +412,33 @@ def _collect_student_group_events(
 		if not schedule_name:
 			continue
 
-        sched_doc = frappe.get_cached_doc("School Schedule", schedule_name)
-        include_holidays = int(bool(sched_doc.include_holidays_in_rotation))
-        cache_key = (schedule_name, group.academic_year, include_holidays)
+		sched_doc = frappe.get_cached_doc("School Schedule", schedule_name)
+		include_holidays = int(bool(sched_doc.include_holidays_in_rotation))
+		cache_key = (schedule_name, group.academic_year, include_holidays)
 
-        # Resolve effective AY (use schedule's AY if group lacks one)
-        effective_ay = group.academic_year or getattr(sched_doc, "academic_year", None)
-        if not effective_ay:
-            continue
+		# Resolve effective AY (use schedule's AY if group lacks one)
+		effective_ay = group.academic_year or getattr(sched_doc, "academic_year", None)
+		if not effective_ay:
+			continue
 
-        if cache_key not in rotation_cache:
-            rotation_dates = get_rotation_dates(
-                schedule_name,
-                effective_ay,
-                include_holidays=bool(include_holidays),
-            )
-            day_map: Dict[int, List[date]] = defaultdict(list)
-            for row in rotation_dates:
-                rot_day = int(row["rotation_day"])
-                day_val = getdate(row["date"])
-                day_map[rot_day].append(day_val)
-            rotation_cache[cache_key] = day_map
+		if cache_key not in rotation_cache:
+			rotation_dates = get_rotation_dates(
+				schedule_name,
+				effective_ay,
+				include_holidays=bool(include_holidays),
+			)
+			day_map: Dict[int, List[date]] = defaultdict(list)
+			for row in rotation_dates:
+				rot_day = int(row["rotation_day"])
+				day_val = getdate(row["date"])
+				day_map[rot_day].append(day_val)
+			rotation_cache[cache_key] = day_map
 
 		rot_map = rotation_cache[cache_key]
-        course = course_meta.get(group.course) if group.course else None
-        title = course.course_name if course and course.course_name else group.student_group_name or group.name
-        color = (course.calendar_event_color or "").strip() if course else ""
-        color = color or "#2563eb"
+		course = course_meta.get(group.course) if group.course else None
+		title = course.course_name if course and course.course_name else group.student_group_name or group.name
+		color = (course.calendar_event_color or "").strip() if course else ""
+		color = color or "#2563eb"
 
 		for slot in slots:
 			dates = rot_map.get(int(slot.rotation_day)) or []
@@ -685,4 +685,54 @@ def _collect_frappe_events(
 			)
 		)
 
-	return events
+    return events
+
+
+# ---------------------------------------------------------------------------
+# Debug helpers
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist()
+def debug_staff_calendar_window(from_datetime: Optional[str] = None, to_datetime: Optional[str] = None):
+    """
+    Lightweight debug endpoint: returns detected instructor ids, matched
+    student groups, and a small sample of events for the current user.
+    Useful for quick browser testing.
+    """
+    user = frappe.session.user
+    tzinfo = _system_tzinfo()
+    start, end = _resolve_window(from_datetime, to_datetime, tzinfo)
+
+    # instructor ids
+    instr = set(
+        frappe.get_all("Instructor", filters={"linked_user_id": user}, pluck="name", ignore_permissions=True)
+        or []
+    )
+    emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
+    if emp:
+        instr.update(
+            frappe.get_all("Instructor", filters={"employee": emp}, pluck="name", ignore_permissions=True) or []
+        )
+
+    # sg groups via SG Instructor
+    sgi = set(
+        frappe.get_all(
+            "Student Group Instructor",
+            filters={"parenttype": "Student Group", "instructor": ["in", list(instr) or [""]]},
+            pluck="parent",
+            ignore_permissions=True,
+        )
+        or []
+    )
+
+    # quick sample of student group events only (limit 10)
+    sample = _collect_student_group_events(user, start, end, tzinfo)[:10]
+
+    return {
+        "user": user,
+        "system_tz": tzinfo.zone,
+        "window": {"from": start.isoformat(), "to": end.isoformat()},
+        "instructor_ids": sorted(instr),
+        "sg_instructor_groups": sorted(sgi),
+        "sample_events": [e.as_dict() for e in sample],
+    }
