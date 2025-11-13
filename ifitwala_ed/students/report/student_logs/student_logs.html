@@ -43,7 +43,11 @@
 	.card-header{
 		background:#f8f9fa;
 		border-bottom:1px solid var(--ifw-border);
-		padding:.5rem .75rem;
+		padding:.65rem 1rem .65rem 1.25rem;
+	}
+	.card-body{
+		padding:.95rem 1.1rem 1.1rem 1.45rem;
+		background:#fff;
 	}
 
 	/* Status-aware accents */
@@ -82,9 +86,44 @@
 		border:1px solid var(--ifw-accent);
 	}
 
+	/* Header layout */
+	.card-headline{
+		display:flex;
+		flex-wrap:wrap;
+		align-items:center;
+		justify-content:space-between;
+		gap:.65rem;
+	}
+	.card-ident{
+		display:flex;
+		flex-wrap:wrap;
+		align-items:center;
+		gap:.65rem;
+	}
+	.card-ident .student-name{ font-size:1.05rem; }
+	.card-tags{
+		display:flex;
+		flex-wrap:wrap;
+		align-items:center;
+		gap:.4rem;
+	}
+	.log-type-pill{
+		font-weight:600;
+		color:var(--ifw-ink);
+		background:#e9eefc;
+		border-radius:999px;
+		padding:.15rem .6rem;
+		font-size:.9rem;
+	}
+
 	/* Snippets */
-	.snip{ margin:.35rem 0 .25rem 0; line-height:1.25; }
-	.snip .label{ font-weight:600; margin-right:.25rem; color:#495057; }
+	.snip{ margin:.35rem 0 .25rem 0; line-height:1.35; font-size:1rem; }
+	.snip .label{ font-weight:700; margin-right:.35rem; color:var(--ifw-ink); }
+	.snip .label-log{
+		text-transform:uppercase;
+		letter-spacing:.05em;
+		font-size:.92rem;
+	}
 
 	/* Follow-ups — no inner vertical bar; use subtle top separator */
 	.followups{ margin:.35rem 0 0 0; padding:0; }
@@ -147,15 +186,16 @@
 			%}
 			<div class="card {{ status_class }}">
 				<div class="card-header">
-					<div class="d-flex flex-wrap align-items-center w-100">
-						<div class="mr-2"><span class="text-mono">{{ r.log_id }}</span></div>
-						<div class="mr-2"><strong>{{ r.student_name || r.student }}</strong></div>
-						<div class="mr-2 text-dim">
-							{{ r.log_date }}{% if (r.log_time) { %} {{ r.log_time }}{% } %}
+					<div class="card-headline">
+						<div class="card-ident">
+							<span class="text-mono">{{ r.log_id }}</span>
+							<strong class="student-name">{{ r.student_name || r.student }}</strong>
+							<span class="text-dim">
+								{{ r.log_date }}{% if (r.log_time) { %} {{ r.log_time }}{% } %}
+							</span>
 						</div>
-						<div class="mr-2 text-dim">·</div>
-						<div class="mr-2">{{ r.log_type }}</div>
-						<div class="ml-auto">
+						<div class="card-tags">
+							<div class="log-type-pill">{{ r.log_type }}</div>
 							{%
 								var st   = (r.follow_up_status || "").trim();
 								var norm = st.toLowerCase();
@@ -164,9 +204,8 @@
 								if (norm === "in progress") badge = "badge-warning";  // orange
 								if (norm === "completed")   badge = "badge-success";  // green
 							%}
-						<span class="badge {{ badge }}">{{ st || "Open" }}</span>
-						<span class="badge badge-light" title="Follow-ups count">FU # {{ r.follow_up_count || 0 }}</span>
-
+							<span class="badge {{ badge }}">{{ st || "Open" }}</span>
+							<span class="badge badge-light" title="Follow-ups count">FU # {{ r.follow_up_count || 0 }}</span>
 						</div>
 					</div>
 					<div class="meta mt-1">
@@ -185,7 +224,7 @@
 
 				<div class="card-body">
 					<div class="snip">
-						<span class="label">Log:</span>
+						<span class="label label-log">Log:</span>
 						<span>{{ frappe.utils.escape_html(r.log_snippet || "") }}</span>
 					</div>
 
