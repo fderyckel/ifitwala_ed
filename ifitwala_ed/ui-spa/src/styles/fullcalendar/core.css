@@ -1,0 +1,12 @@
+/* Vendor placeholder for FullCalendar core styles.
+ * This minimal file unblocks Vite builds in environments where
+ * @fullcalendar/core CSS cannot be resolved at bundle time.
+ * Replace with the upstream stylesheet when convenient.
+ */
+
+/* Generic resets for event chips so layout isn't broken */
+.fc, .fc * { box-sizing: border-box; }
+.fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; }
+.fc .fc-button { font-size: .8rem; border-radius: 9999px; }
+.fc .fc-daygrid-event, .fc .fc-timegrid-event { border-radius: .85rem; padding: .2rem .4rem; }
+

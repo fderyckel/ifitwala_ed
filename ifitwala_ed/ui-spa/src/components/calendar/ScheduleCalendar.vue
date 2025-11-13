@@ -69,10 +69,11 @@ import { DatesSetArg } from '@fullcalendar/core';
 import { FeatherIcon } from 'frappe-ui';
 
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
-import '@fullcalendar/core/main.css';
-import '@fullcalendar/daygrid/main.css';
-import '@fullcalendar/timegrid/main.css';
-import '@fullcalendar/list/main.css';
+// Vendor local placeholder styles to unblock build
+import '@/styles/fullcalendar/core.css';
+import '@/styles/fullcalendar/daygrid.css';
+import '@/styles/fullcalendar/timegrid.css';
+import '@/styles/fullcalendar/list.css';
 
 const props = defineProps<{
 	role?: 'staff' | 'student' | 'guardian';

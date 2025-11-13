@@ -1,0 +1,5 @@
+/* Placeholder for FullCalendar daygrid styles */
+.fc-daygrid .fc-daygrid-day { border: 1px solid #eef2f7; }
+.fc-daygrid .fc-daygrid-day-number { padding: .25rem; font-size: .75rem; color: #64748b; }
+.fc-daygrid .fc-daygrid-event { background: rgba(15, 23, 42, 0.04); }
+

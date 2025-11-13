@@ -1,0 +1,5 @@
+/* Placeholder for FullCalendar list view styles */
+.fc-list .fc-list-day-cushion { background: #f8fafc; color: #475569; font-weight: 600; }
+.fc-list .fc-list-event { border-bottom: 1px solid #eef2f7; }
+.fc-list .fc-list-event:hover { background: rgba(59, 130, 246, 0.06); }
+

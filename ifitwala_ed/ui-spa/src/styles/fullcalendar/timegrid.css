@@ -1,0 +1,5 @@
+/* Placeholder for FullCalendar timegrid styles */
+.fc-timegrid .fc-timegrid-slot { border-bottom: 1px dashed #eef2f7; }
+.fc-timegrid .fc-timegrid-axis-cushion { font-size: .7rem; color: #94a3b8; }
+.fc-timegrid .fc-timegrid-event { background: rgba(37, 99, 235, .08); }
+

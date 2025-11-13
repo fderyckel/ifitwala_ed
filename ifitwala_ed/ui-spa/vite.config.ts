@@ -16,15 +16,7 @@ export default defineConfig({
 		}),
 		Icons({ compiler: 'vue3' })
 	],
-	resolve: {
-		alias: {
-			'@': path.resolve(__dirname, 'src'),
-			'@fullcalendar/core/main.css': path.resolve(__dirname, 'node_modules/@fullcalendar/core/main.css'),
-			'@fullcalendar/daygrid/main.css': path.resolve(__dirname, 'node_modules/@fullcalendar/daygrid/main.css'),
-			'@fullcalendar/timegrid/main.css': path.resolve(__dirname, 'node_modules/@fullcalendar/timegrid/main.css'),
-			'@fullcalendar/list/main.css': path.resolve(__dirname, 'node_modules/@fullcalendar/list/main.css'),
-		}
-	},
+	resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
 	base: '/assets/ifitwala_ed/dist/',
 	build: {
 		outDir: path.resolve(__dirname, '../public/dist'),
