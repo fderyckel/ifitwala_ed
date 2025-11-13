@@ -12,7 +12,6 @@ class Team(Document):
 	def validate(self):
 		self.ensure_minimum_members()
 		self.check_parent_team_loop()
-		self.validate_members_status()
 		self.ensure_unique_members()
 		# other validations as needed
 
