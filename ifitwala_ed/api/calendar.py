@@ -16,7 +16,12 @@ import pytz
 
 import frappe
 from frappe import _
-from frappe.utils import get_datetime, get_system_timezone, getdate, now_datetime
+from frappe.utils import (
+    get_datetime,
+    get_system_timezone,
+    getdate,
+    now_datetime,
+)
 
 from ifitwala_ed.schedule.schedule_utils import (
 	get_effective_schedule_for_ay,
@@ -194,11 +199,20 @@ def _resolve_window(
 
 
 def _to_system_datetime(value: str | datetime, tzinfo: pytz.timezone) -> datetime:
-	if isinstance(value, datetime):
-		dt = value
-	else:
-		dt = get_datetime(value)
-	return _localize_datetime(dt, tzinfo)
+    """
+    Convert a DB datetime (stored as UTC) to the system timezone.
+    - If the incoming datetime is naive, assume it is UTC and convert.
+    - If it already has tzinfo, just convert to the system tz.
+    """
+    if not isinstance(value, datetime):
+        dt = get_datetime(value)
+    else:
+        dt = value
+
+    if dt.tzinfo is None:
+        # Treat DB naive timestamps as UTC
+        dt = pytz.UTC.localize(dt)
+    return dt.astimezone(tzinfo)
 
 
 def _localize_datetime(dt: datetime, tzinfo: pytz.timezone) -> datetime:
@@ -245,96 +259,142 @@ def _attach_duration(start_dt: datetime, end_dt: Optional[datetime]) -> timedelt
 # ---------------------------------------------------------------------------
 
 def _collect_student_group_events(
-	user: str,
-	window_start: datetime,
-	window_end: datetime,
-	tzinfo: pytz.timezone,
+    user: str,
+    window_start: datetime,
+    window_end: datetime,
+    tzinfo: pytz.timezone,
 ) -> List[CalendarEvent]:
-	start_date, end_date = window_start.date(), window_end.date()
+    start_date, end_date = window_start.date(), window_end.date()
 
-	instructor_ids = frappe.get_all(
-		"Instructor",
-		filters={"linked_user_id": user},
-		pluck="name",
-		ignore_permissions=True,
-	)
+    # Resolve instructor identities for this user
+    instructor_ids = set(
+        frappe.get_all(
+            "Instructor",
+            filters={"linked_user_id": user},
+            pluck="name",
+            ignore_permissions=True,
+        )
+        or []
+    )
 
-	or_filters = [{"user_id": user}]
-	if instructor_ids:
-		or_filters.append({"instructor": ["in", instructor_ids]})
+    if not instructor_ids:
+        # Fallback: if user is an Employee, find Instructor linked via employee
+        emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
+        if emp:
+            extra = frappe.get_all(
+                "Instructor",
+                filters={"employee": emp},
+                pluck="name",
+                ignore_permissions=True,
+            )
+            instructor_ids.update(extra or [])
 
-	instructor_rows = frappe.get_all(
-		"Student Group Instructor",
-		filters={"parenttype": "Student Group"},
-		or_filters=or_filters,
-		fields=["parent", "instructor", "instructor_name", "user_id"],
-		ignore_permissions=True,
-	)
+    # If user has no instructor identity, we can't match class rows
+    if not instructor_ids:
+        return []
 
-	if not instructor_rows:
-		return []
+    # Fetch time slots for groups where the slot instructor matches this user
+    slot_rows = frappe.get_all(
+        "Student Group Schedule",
+        filters={
+            "parenttype": "Student Group",
+            "instructor": ["in", list(instructor_ids)],
+        },
+        fields=[
+            "parent",
+            "rotation_day",
+            "block_number",
+            "location",
+            "instructor",
+            "from_time",
+            "to_time",
+        ],
+        ignore_permissions=True,
+    )
 
-	group_instructors: Dict[str, set] = defaultdict(set)
-	for row in instructor_rows:
-		if row.instructor:
-			group_instructors[row.parent].add(row.instructor)
+    # Also include groups where the user is listed as SG Instructor but
+    # the slot has no explicit instructor
+    sgi_groups = set(
+        frappe.get_all(
+            "Student Group Instructor",
+            filters={
+                "parenttype": "Student Group",
+                "instructor": ["in", list(instructor_ids)],
+            },
+            pluck="parent",
+            ignore_permissions=True,
+        )
+        or []
+    )
+    # If the user was linked via user_id but no Instructor match, include those too
+    sgi_groups.update(
+        frappe.get_all(
+            "Student Group Instructor",
+            filters={"parenttype": "Student Group", "user_id": user},
+            pluck="parent",
+            ignore_permissions=True,
+        )
+        or []
+    )
 
-	group_names = list(group_instructors.keys())
-	if not group_names:
-		return []
+    if sgi_groups:
+        blank_rows = frappe.get_all(
+            "Student Group Schedule",
+            filters={"parent": ["in", list(sgi_groups)]},
+            fields=[
+                "parent",
+                "rotation_day",
+                "block_number",
+                "location",
+                "instructor",
+                "from_time",
+                "to_time",
+            ],
+            ignore_permissions=True,
+        )
+        for r in blank_rows:
+            if not r.instructor and r.rotation_day:
+                slot_rows.append(r)
 
-	group_docs = frappe.get_all(
-		"Student Group",
-		filters={"name": ["in", group_names], "status": "Active"},
-		fields=[
-			"name",
-			"student_group_name",
-			"course",
-			"program",
-			"program_offering",
-			"school",
-			"school_schedule",
-			"academic_year",
-		],
-		ignore_permissions=True,
-	)
-	if not group_docs:
-		return []
+    if not slot_rows:
+        return []
 
-	course_ids = [g.course for g in group_docs if g.course]
-	course_meta = {}
-	if course_ids:
-		course_rows = frappe.get_all(
-			"Course",
-			filters={"name": ["in", course_ids]},
-			fields=["name", "course_name", "calendar_event_color"],
-			ignore_permissions=True,
-		)
-		course_meta = {row.name: row for row in course_rows}
+    group_names = sorted({row.parent for row in slot_rows})
 
-	slot_rows = frappe.get_all(
-		"Student Group Schedule",
-		filters={"parent": ["in", [g.name for g in group_docs]]},
-		fields=[
-			"parent",
-			"rotation_day",
-			"block_number",
-			"location",
-			"instructor",
-			"from_time",
-			"to_time",
-		],
-		ignore_permissions=True,
-	)
+    group_docs = frappe.get_all(
+        "Student Group",
+        filters={"name": ["in", group_names], "status": "Active"},
+        fields=[
+            "name",
+            "student_group_name",
+            "course",
+            "program",
+            "program_offering",
+            "school",
+            "school_schedule",
+            "academic_year",
+        ],
+        ignore_permissions=True,
+    )
+    if not group_docs:
+        return []
 
-	slots_by_group: Dict[str, List[dict]] = defaultdict(list)
-	for slot in slot_rows:
-		if not slot.rotation_day:
-			continue
-		instrs = group_instructors.get(slot.parent) or set()
-		if slot.instructor and instrs and slot.instructor not in instrs:
-			continue
-		slots_by_group[slot.parent].append(slot)
+    course_ids = [g.course for g in group_docs if g.course]
+    course_meta = {}
+    if course_ids:
+        course_rows = frappe.get_all(
+            "Course",
+            filters={"name": ["in", course_ids]},
+            fields=["name", "course_name", "calendar_event_color"],
+            ignore_permissions=True,
+        )
+        course_meta = {row.name: row for row in course_rows}
+
+    # Group slots by SG for easier rendering
+    slots_by_group: Dict[str, List[dict]] = defaultdict(list)
+    for slot in slot_rows:
+        if slot.rotation_day:
+            slots_by_group[slot.parent].append(slot)
 
 	rotation_cache: Dict[Tuple[str, str, int], Dict[int, List[date]]] = {}
 	events: List[CalendarEvent] = []
@@ -352,28 +412,33 @@ def _collect_student_group_events(
 		if not schedule_name:
 			continue
 
-		sched_doc = frappe.get_cached_doc("School Schedule", schedule_name)
-		include_holidays = int(bool(sched_doc.include_holidays_in_rotation))
-		cache_key = (schedule_name, group.academic_year, include_holidays)
+        sched_doc = frappe.get_cached_doc("School Schedule", schedule_name)
+        include_holidays = int(bool(sched_doc.include_holidays_in_rotation))
+        cache_key = (schedule_name, group.academic_year, include_holidays)
 
-		if cache_key not in rotation_cache:
-			rotation_dates = get_rotation_dates(
-				schedule_name,
-				group.academic_year,
-				include_holidays=bool(include_holidays),
-			)
-			day_map: Dict[int, List[date]] = defaultdict(list)
-			for row in rotation_dates:
-				rot_day = int(row["rotation_day"])
-				day_val = getdate(row["date"])
-				day_map[rot_day].append(day_val)
-			rotation_cache[cache_key] = day_map
+        # Resolve effective AY (use schedule's AY if group lacks one)
+        effective_ay = group.academic_year or getattr(sched_doc, "academic_year", None)
+        if not effective_ay:
+            continue
+
+        if cache_key not in rotation_cache:
+            rotation_dates = get_rotation_dates(
+                schedule_name,
+                effective_ay,
+                include_holidays=bool(include_holidays),
+            )
+            day_map: Dict[int, List[date]] = defaultdict(list)
+            for row in rotation_dates:
+                rot_day = int(row["rotation_day"])
+                day_val = getdate(row["date"])
+                day_map[rot_day].append(day_val)
+            rotation_cache[cache_key] = day_map
 
 		rot_map = rotation_cache[cache_key]
-		course = course_meta.get(group.course) if group.course else None
-		title = course.course_name if course and course.course_name else group.student_group_name or group.name
-		color = (course.calendar_event_color or "").strip() if course else ""
-		color = color or "#2563eb"
+        course = course_meta.get(group.course) if group.course else None
+        title = course.course_name if course and course.course_name else group.student_group_name or group.name
+        color = (course.calendar_event_color or "").strip() if course else ""
+        color = color or "#2563eb"
 
 		for slot in slots:
 			dates = rot_map.get(int(slot.rotation_day)) or []
