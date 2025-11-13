@@ -13,6 +13,7 @@ class Team(Document):
 		self.ensure_minimum_members()
 		self.check_parent_team_loop()
 		self.validate_members_status()
+		self.ensure_unique_members()
 		# other validations as needed
 
 	def ensure_minimum_members(self):
@@ -32,10 +33,23 @@ class Team(Document):
 				seen.add(parent)
 				parent = frappe.db.get_value("Team", parent, "parent_team")
 
-	def validate_members_status(self):
+	def ensure_unique_members(self):
+		seen = set()
+		duplicates = []
 		for d in self.members or []:
-			if d.active not in (0, 1):
-				frappe.throw(_("Invalid status for member {0}.").format(d.member_name or d.member))
+			member = d.member
+			if not member:
+				continue
+			if member in seen:
+				duplicates.append(d.member_name or d.member)
+			else:
+				seen.add(member)
+
+		if duplicates:
+			names = ", ".join(frappe.bold(name) for name in duplicates)
+			frappe.throw(
+				_("The following members are already part of this team: {0}. Remove duplicates before saving.").format(names)
+			)
 
 
 @frappe.whitelist()
