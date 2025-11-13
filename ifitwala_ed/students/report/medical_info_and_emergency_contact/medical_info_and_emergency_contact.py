@@ -79,6 +79,8 @@ def _get_columns():
 		{"label": _("Guardian Contacts"), "fieldname": "guardian_contacts", "fieldtype": "HTML", "width": 320},
 		{"label": _("Primary Guardian"), "fieldname": "guardian_primary_name", "fieldtype": "Data", "width": 190},
 		{"label": _("Primary Phone"), "fieldname": "guardian_primary_phone", "fieldtype": "Data", "width": 150},
+		{"label": _("Secondary Guardian"), "fieldname": "guardian_secondary_name", "fieldtype": "Data", "width": 190},
+		{"label": _("Secondary Phone"), "fieldname": "guardian_secondary_phone", "fieldtype": "Data", "width": 150},
 	]
 
 
@@ -117,6 +119,8 @@ def _build_rows(filters: frappe._dict) -> list[dict]:
 			"guardian_contacts": guardian_html,
 			"guardian_primary_name": g_info.get("primary_name"),
 			"guardian_primary_phone": g_info.get("primary_phone"),
+			"guardian_secondary_name": g_info.get("secondary_name"),
+			"guardian_secondary_phone": g_info.get("secondary_phone"),
 			"_student_image": student.student_image,
 			"_group_label": group_label,
 			"_program_label": program_label,
@@ -201,19 +205,33 @@ def _fetch_guardian_contacts(student_ids: list[str]) -> dict[str, dict]:
 			continue
 		entry = contacts_by_student.setdefault(
 			row.parent,
-			{"blocks": [], "primary_name": None, "primary_phone": None}
+			{
+				"blocks": [],
+				"primary_name": None,
+				"primary_phone": None,
+				"secondary_name": None,
+				"secondary_phone": None,
+			}
 		)
 		entry["blocks"].append(block)
-		if not entry["primary_name"]:
-			entry["primary_name"] = _primary_guardian_label(row, guardian_doc)
-		if not entry["primary_phone"]:
-			entry["primary_phone"] = _pick_primary_phone(row, guardian_doc)
+		label = _primary_guardian_label(row, guardian_doc)
+		phone = _pick_primary_phone(row, guardian_doc)
+		if label and not entry["primary_name"]:
+			entry["primary_name"] = label
+		elif label and not entry["secondary_name"]:
+			entry["secondary_name"] = label
+		if phone and not entry["primary_phone"]:
+			entry["primary_phone"] = phone
+		elif phone and not entry["secondary_phone"]:
+			entry["secondary_phone"] = phone
 
 	return {
 		student: {
 			"html": "<hr class='guardian-divider'>".join(info["blocks"]),
 			"primary_name": info.get("primary_name"),
 			"primary_phone": info.get("primary_phone"),
+			"secondary_name": info.get("secondary_name"),
+			"secondary_phone": info.get("secondary_phone"),
 		}
 		for student, info in contacts_by_student.items()
 	}

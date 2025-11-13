@@ -1,8 +1,65 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-// frappe.ui.form.on("Meeting", {
-// 	refresh(frm) {
+// ifitwala_ed/setup/doctype/meeting/meeting.js
 
-// 	},
-// });
+frappe.ui.form.on('Meeting', {
+    refresh(frm) {
+        if (frm.doc.docstatus === 0) {
+            frm.add_custom_button(__('Schedule Next Meeting'), () => {
+                const defaultOffset = 14;
+                const defaultDate = frappe.datetime.add_days(frm.doc.date, defaultOffset);
+                const dialog = new frappe.ui.Dialog({
+                    title: __('Schedule Next Meeting'),
+                    fields: [
+                        { fieldname: 'offset_days', fieldtype: 'Int', label: __('Days until next meeting'), default: defaultOffset },
+                        { fieldname: 'new_date',   fieldtype: 'Date', label: __('New Date'), default: defaultDate },
+                        { fieldname: 'new_time',   fieldtype: 'Time', label: __('Start Time'), default: frm.doc.start_time }
+                    ],
+                    primary_action_label: __('Create'),
+                    primary_action: data => {
+                        frappe.new_doc('Meeting', {
+                            meeting_name: frm.doc.meeting_name + ' – next',
+                            meeting_code: '',
+                            team: frm.doc.team,
+                            date: data.new_date,
+                            start_time: data.new_time,
+                            location: frm.doc.location,
+                            agenda: frm.doc.agenda,
+                            participants: frm.doc.participants.map(r => ({
+                                participant: r.participant,
+                                role_in_meeting: r.role_in_meeting,
+                                attendance_status: "Absent"
+                            }))
+                        });
+                        dialog.hide();
+                    }
+                });
+                dialog.show();
+            });
+        }
+
+        const gridField = frm.fields_dict.participants?.grid.get_field('participant');
+        if (gridField) {
+            gridField.get_query = function() {
+                return {
+                    filters: {
+                        "enabled": 1
+                    }
+                };
+            };
+        }
+    }
+});
+
+frappe.ui.form.on('Meeting Participant', {
+    participant(frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+        if (row.participant) {
+            frappe.db.get_value('User', row.participant, 'full_name')
+            .then(r => {
+                frappe.model.set_value(cdt, cdn, 'participant_name', r.message.full_name);
+            });
+        }
+    }
+});
