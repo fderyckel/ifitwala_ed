@@ -38,12 +38,15 @@ frappe.ui.form.on('Team', {
 				}).then(r => {
 					const existingMembers = new Set(
 						(frm.doc.members || [])
-							.map(row => row.member)
+							.map(row => row.employee || row.member)
 							.filter(Boolean)
 					);
-					const users = (r.message || []).filter(u => u.value && !existingMembers.has(u.value));
+					const users = (r.message || []).filter(u => {
+						const key = u.employee || u.value;
+						return key && !existingMembers.has(key);
+					});
 					if (!users.length) {
-						frappe.msgprint(__('All eligible users are already part of this team.'));
+						frappe.msgprint(__('All eligible employees are already part of this team.'));
 						return;
 					}
 
@@ -65,29 +68,42 @@ frappe.ui.form.on('Team', {
 						primary_action: () => {
 							const selected = d.$wrapper.find('.team-member-checkbox:checked');
 							if (!selected.length) {
-								frappe.msgprint(__('Please select at least one user.'));
+								frappe.msgprint(__('Please select at least one employee.'));
 								return;
 							}
 
+							let addedCount = 0;
 							selected.each((_idx, checkbox) => {
 								const $checkbox = $(checkbox);
+								const employee = $checkbox.data('employee');
 								const user = $checkbox.data('user');
 								const label = $checkbox.data('label');
+								const key = $checkbox.data('key');
+								if (!employee) {
+									return;
+								}
+
 								const role =
 									d.$wrapper
-										.find(`.team-member-role[data-user="${user}"]`)
+										.find(`.team-member-role[data-key="${key}"]`)
 										.val() || default_role;
 
 								frm.add_child('members', {
-									member: user,
+									employee,
+									member: user || null,
 									member_name: label,
 									role_in_team: role,
 								});
+								addedCount++;
 							});
+							if (!addedCount) {
+								frappe.msgprint(__('No employees were added.'));
+								return;
+							}
 							frm.refresh_field('members');
 							d.hide();
 							frappe.show_alert({
-								message: __('Added {0} new member(s)', [selected.length]),
+								message: __('Added {0} new member(s)', [addedCount]),
 								indicator: 'green'
 							});
 						}
@@ -154,25 +170,35 @@ frappe.ui.form.on('Team', {
 
 					const cards = users
 						.map(u => {
-							const label = frappe.utils.escape_html(u.label);
-							const value = frappe.utils.escape_html(u.value);
-							const searchValue = `${(u.label || '').toLowerCase()} ${(u.value || '').toLowerCase()}`;
+							const employeeRaw = u.employee || '';
+							const userRaw = u.value || '';
+							const labelRaw = u.employee_name || u.label || '';
+							const searchValue = [labelRaw, employeeRaw, userRaw]
+								.map(v => (v || '').toLowerCase())
+								.join(' ');
+							const label = frappe.utils.escape_html(labelRaw);
+							const employeeId = frappe.utils.escape_html(employeeRaw);
+							const userId = frappe.utils.escape_html(userRaw);
+							const key = frappe.utils.escape_html(employeeRaw || userRaw);
 							return `
 								<div class="team-member-card d-flex flex-column flex-md-row align-items-md-center gap-3"
 									data-search="${frappe.utils.escape_html(searchValue)}">
 									<label class="d-flex align-items-start gap-3 flex-grow-1 mb-0">
 										<input type="checkbox"
 											class="team-member-checkbox mt-1"
-											data-user="${value}"
+											data-key="${key}"
+											data-employee="${employeeId}"
+											data-user="${userId}"
 											data-label="${label}">
 										<div>
 											<span class="team-member-name">${label}</span>
-											<span class="team-member-id">${value}</span>
+											${employeeId ? `<div class="team-member-id">${employeeId}</div>` : ''}
+											${userId ? `<div class="team-member-id text-muted">${userId}</div>` : ''}
 										</div>
 									</label>
 									<div class="ms-auto w-100 w-md-auto">
 										<label class="text-muted small d-block mb-1">${__('Role in Team')}</label>
-										<select class="team-member-role form-select" data-user="${value}">
+										<select class="team-member-role form-select" data-key="${key}">
 											${options_html}
 										</select>
 									</div>
@@ -246,16 +272,62 @@ frappe.ui.form.on('Team', {
 				};
 			};
 		}
+
+		const employee_field = frm.fields_dict.members?.grid.get_field('employee');
+		if (employee_field) {
+			employee_field.get_query = function () {
+				return {
+					filters: {
+						school: frm.doc.school || '',
+						organization: frm.doc.organization || ''
+					}
+				};
+			};
+		}
 	}
 });
 
 frappe.ui.form.on('Team Member', {
+	employee(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		if (!row.employee) {
+			frappe.model.set_value(cdt, cdn, 'member', null);
+			frappe.model.set_value(cdt, cdn, 'member_name', null);
+			return;
+		}
+
+		frappe.db.get_value('Employee', row.employee, ['employee_name', 'user_id'])
+			.then(res => {
+				const data = res.message || {};
+				if (data.employee_name) {
+					frappe.model.set_value(cdt, cdn, 'member_name', data.employee_name);
+				}
+				if (data.user_id) {
+					frappe.model.set_value(cdt, cdn, 'member', data.user_id);
+				}
+			});
+	},
 	member(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
-		if (row.member) {
-			frappe.db.get_value('User', row.member, 'full_name')
+		if (!row.member) {
+			return;
+		}
+
+		frappe.db.get_value('User', row.member, 'full_name')
+			.then(res => {
+				const fullName = res.message?.full_name;
+				if (fullName) {
+					frappe.model.set_value(cdt, cdn, 'member_name', fullName);
+				}
+			});
+
+		if (!row.employee) {
+			frappe.db.get_value('Employee', { user_id: row.member }, 'name')
 				.then(res => {
-					frappe.model.set_value(cdt, cdn, 'member_name', res.message.full_name);
+					const employee = res.message?.name;
+					if (employee) {
+						frappe.model.set_value(cdt, cdn, 'employee', employee);
+					}
 				});
 		}
 	}
@@ -276,11 +348,11 @@ const TEAM_MEETING_RECURRENCE_META = {
 };
 
 function open_team_schedule_dialog(frm) {
-	const activeMembers = (frm.doc.members || []).filter(m => m.member);
+	const activeMembers = (frm.doc.members || []).filter(m => m.employee);
 	if (!activeMembers.length) {
 		frappe.msgprint({
 			title: __('Add members'),
-			message: __('Please add at least one member before scheduling team meetings.'),
+			message: __('Please add at least one employee before scheduling team meetings.'),
 			indicator: 'orange'
 		});
 		return;
@@ -637,7 +709,7 @@ function render_participants_preview(members) {
 
 	const chips = members
 		.map(member => {
-			const name = frappe.utils.escape_html(member.member_name || member.member);
+			const name = frappe.utils.escape_html(member.member_name || member.employee || member.member);
 			const role = frappe.utils.escape_html(member.role_in_team || __('Member'));
 			return `
 				<li class="team-scheduler-chip">

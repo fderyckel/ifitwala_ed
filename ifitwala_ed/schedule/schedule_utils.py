@@ -299,9 +299,12 @@ def check_slot_conflicts(group_doc):
 	students    = group_doc.get("students") or []
 	slots       = group_doc.get("student_group_schedule") or []
 
-	instructor_ids = tuple(
-		_extract(i, "instructor") for i in instructors if _extract(i, "instructor")
-	)
+	instructor_entities = [
+		_extract(i, "employee") or _extract(i, "instructor")
+		for i in instructors
+		if _extract(i, "employee") or _extract(i, "instructor")
+	]
+	instructor_ids = tuple(_uniq(instructor_entities))
 	student_ids = tuple(
 		_extract(s, "student") for s in students if _extract(s, "student")
 	)
@@ -326,7 +329,30 @@ def check_slot_conflicts(group_doc):
 	if not slot_clause:
 		return {}
 
-	instructor_labels = _get_display_map("Instructor", "instructor_name", instructor_ids)
+	def _instructor_label_map(entities: tuple[str, ...]) -> dict[str, str]:
+		if not entities:
+			return {}
+		labels: dict[str, str] = {}
+		emp_rows = frappe.get_all(
+			"Employee",
+			filters={"name": ["in", list(entities)]},
+			fields=["name", "employee_name"],
+		)
+		for row in emp_rows:
+			labels[row.name] = (row.employee_name or "").strip() or row.name
+
+		missing = [entity for entity in entities if entity not in labels]
+		if missing:
+			instr_rows = frappe.get_all(
+				"Instructor",
+				filters={"name": ["in", missing]},
+				fields=["name", "instructor_name"],
+			)
+			for row in instr_rows:
+				labels[row.name] = (row.instructor_name or "").strip() or row.name
+		return labels
+
+	instructor_labels = _instructor_label_map(instructor_ids)
 	student_labels = _get_display_map("Student", "student_full_name", student_ids)
 
 	if instructor_ids:
@@ -334,13 +360,13 @@ def check_slot_conflicts(group_doc):
 		params.update(slot_params)
 		rows = frappe.db.sql(
 			f"""
-			SELECT gi.instructor AS entity,
+			SELECT coalesce(gi.employee, gi.instructor) AS entity,
 				   gs.rotation_day,
 				   gs.block_number,
 				   gs.parent AS student_group
 			FROM `tabStudent Group Instructor` gi
 			JOIN `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
-			WHERE gi.instructor IN %(ids)s
+			WHERE coalesce(gi.employee, gi.instructor) IN %(ids)s
 				AND gs.parent != %(grp)s
 				AND gs.docstatus < 2
 				AND ({slot_clause})

@@ -28,13 +28,11 @@ class Team(Document):
 
 	def ensure_minimum_members(self):
 		"""
-		Require at least 2 members with a valid 'member' link.
-		We don't use an 'active' flag for now because the child
-		doctype has no such field.
+		Require at least 2 members with a valid Employee link.
 		"""
-		members = [d for d in (self.members or []) if d.member]
+		members = [d for d in (self.members or []) if d.employee]
 		if len(members) < 2:
-			frappe.throw(_("A team must have at least 2 members."))
+			frappe.throw(_("A team must have at least 2 employees configured as members."))
 
 	def check_parent_team_loop(self):
 		if self.parent_team:
@@ -52,11 +50,11 @@ class Team(Document):
 		seen = set()
 		duplicates = []
 		for d in self.members or []:
-			member = d.member
+			member = d.employee or d.member
 			if not member:
 				continue
 			if member in seen:
-				duplicates.append(d.member_name or d.member)
+				duplicates.append(d.member_name or d.employee or d.member)
 			else:
 				seen.add(member)
 
@@ -68,18 +66,30 @@ class Team(Document):
 
 
 @frappe.whitelist()
-def get_eligible_users(school, organization):
-	"""Return enabled users whose linked Employee record belongs
-	to the given school and organization."""
-	sql = """
-		SELECT u.name as value, u.full_name as label
+def get_eligible_users(school=None, organization=None):
+	"""Return enabled users with linked Employee records scoped by school/org."""
+	conditions = ["u.enabled = 1", "ifnull(e.status, 'Active') = 'Active'"]
+	params = {}
+	if school:
+		conditions.append("e.school = %(school)s")
+		params["school"] = school
+	if organization:
+		conditions.append("e.organization = %(organization)s")
+		params["organization"] = organization
+
+	where_clause = " AND ".join(conditions) if conditions else "1=1"
+	sql = f"""
+		SELECT
+			u.name as value,
+			coalesce(e.employee_name, u.full_name, u.name) as label,
+			e.name as employee,
+			e.employee_name as employee_name
 		FROM `tabUser` u
 		JOIN `tabEmployee` e ON e.user_id = u.name
-		WHERE e.school = %(school)s
-		AND e.organization = %(organization)s
-		AND u.enabled = 1
+		WHERE {where_clause}
+		ORDER BY coalesce(e.employee_name, u.full_name, u.name)
 	"""
-	return frappe.db.sql(sql, {"school": school, "organization": organization}, as_dict=1)
+	return frappe.db.sql(sql, params, as_dict=1)
 
 
 MAX_MEETING_OCCURRENCES = 40
@@ -171,18 +181,41 @@ def schedule_recurring_meetings(
 	if time_diff_in_seconds(end_time, start_time) <= 0:
 		frappe.throw(_("End Time must be later than Start Time."))
 
-	members = [
-		row
-		for row in frappe.get_all(
-			"Team Member",
-			filters={"parent": team_doc.name},
-			fields=["member", "member_name", "role_in_team"],
-			order_by="idx asc",
-		)
-		if row.member
-	]
+	raw_members = frappe.get_all(
+		"Team Member",
+		filters={"parent": team_doc.name},
+		fields=["employee", "member", "member_name", "role_in_team"],
+		order_by="idx asc",
+	)
+
+	members = [row for row in raw_members if row.employee]
 	if not members:
-		frappe.throw(_("Add at least one member to the team before scheduling meetings."))
+		frappe.throw(_("Add at least one employee to the team before scheduling meetings."))
+
+	user_cache: dict[str, str | None] = {}
+	name_cache: dict[str, str | None] = {}
+
+	def resolve_user(employee: str | None, fallback: str | None) -> str | None:
+		if fallback:
+			return fallback
+		if not employee:
+			return None
+		if employee in user_cache:
+			return user_cache[employee]
+		user_id = frappe.db.get_value("Employee", employee, "user_id")
+		user_cache[employee] = user_id
+		return user_id
+
+	def resolve_employee_name(employee: str | None, fallback: str | None) -> str | None:
+		if fallback:
+			return fallback
+		if not employee:
+			return fallback
+		if employee in name_cache:
+			return name_cache[employee]
+		emp_name = frappe.db.get_value("Employee", employee, "employee_name")
+		name_cache[employee] = emp_name
+		return emp_name
 
 	preset = RECURRENCE_PRESETS[repeat_option]
 	occurrence_dates = _generate_occurrence_dates(start_date_value, preset, occurrences, ay_end)
@@ -234,8 +267,9 @@ def schedule_recurring_meetings(
 			meeting.append(
 				"participants",
 				{
-					"participant": member.member,
-					"participant_name": member.member_name,
+					"employee": member.employee,
+					"participant": resolve_user(member.employee, member.member),
+					"participant_name": resolve_employee_name(member.employee, member.member_name),
 					"role_in_meeting": member.role_in_team or "Participant",
 					"attendance_status": "Absent",
 				},

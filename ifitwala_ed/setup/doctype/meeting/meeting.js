@@ -62,13 +62,44 @@ frappe.ui.form.on('Meeting', {
 });
 
 frappe.ui.form.on('Meeting Participant', {
+	employee(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		if (!row.employee) {
+			frappe.model.set_value(cdt, cdn, 'participant', null);
+			frappe.model.set_value(cdt, cdn, 'participant_name', null);
+			return;
+		}
+		frappe.db.get_value('Employee', row.employee, ['employee_name', 'user_id'])
+			.then(r => {
+				const data = r.message || {};
+				if (data.employee_name) {
+					frappe.model.set_value(cdt, cdn, 'participant_name', data.employee_name);
+				}
+				if (data.user_id) {
+					frappe.model.set_value(cdt, cdn, 'participant', data.user_id);
+				}
+			});
+	},
     participant(frm, cdt, cdn) {
         const row = locals[cdt][cdn];
-        if (row.participant) {
-            frappe.db.get_value('User', row.participant, 'full_name')
+        if (!row.participant) {
+			return;
+		}
+        frappe.db.get_value('User', row.participant, 'full_name')
             .then(r => {
-                frappe.model.set_value(cdt, cdn, 'participant_name', r.message.full_name);
+				const fullName = r.message?.full_name;
+				if (fullName) {
+					frappe.model.set_value(cdt, cdn, 'participant_name', fullName);
+				}
             });
-        }
+		if (!row.employee) {
+			frappe.db.get_value('Employee', { user_id: row.participant }, 'name')
+				.then(res => {
+					const employee = res.message?.name;
+					if (employee) {
+						frappe.model.set_value(cdt, cdn, 'employee', employee);
+					}
+				});
+		}
     }
 });

@@ -113,8 +113,11 @@ class StudentGroup(Document):
 		def instructor_keys(doc):
 			keys = set()
 			for r in (doc.instructors or []):
+				emp = (getattr(r, "employee", "") or "").strip()
 				uid = (getattr(r, "user_id", "") or "").strip()
 				ins = (getattr(r, "instructor", "") or "").strip()
+				if emp:
+					keys.add(("emp", emp))
 				if uid:
 					keys.add(("uid", uid))
 				elif ins:
@@ -393,14 +396,18 @@ class StudentGroup(Document):
 
 			# instructors (child table Student Group Instructor)
 			for instr in (self.instructors or []):
-				if not getattr(instr, "instructor", None):
+				identifier = (
+					(getattr(instr, "employee", "") or "").strip()
+					or (getattr(instr, "instructor", "") or "").strip()
+				)
+				if not identifier:
 					continue
 
-				key = f"{hash_base}:{instr.instructor}"
+				key = f"{hash_base}:{identifier}"
 				if key in key_sets["instructor"]:
 					frappe.throw(
 						_("Instructor clash on rotation {0} block {1} ({2})").format(
-							row.rotation_day, row.block_number, instr.instructor
+							row.rotation_day, row.block_number, identifier
 						)
 					)
 				key_sets["instructor"].add(key)

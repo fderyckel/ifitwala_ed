@@ -62,7 +62,8 @@ def _build_schedule_index(student_group: str) -> Dict[tuple[int, int], dict]:
 			parent,
 			rotation_day,
 			block_number,
-			instructor
+			instructor,
+			employee
 		from `tabStudent Group Schedule`
 		where parent = %s
 		""",
@@ -177,11 +178,12 @@ def rebuild_employee_bookings_for_student_group(
 			continue
 
 		instructor_name = row.get("instructor")
-		if not instructor_name:
-			# No instructor assigned for this block
-			continue
-
-		employee = _resolve_employee_from_instructor(instructor_name, instructor_cache)
+		employee = row.get("employee")
+		if not employee:
+			if not instructor_name:
+				# No instructor assigned for this block
+				continue
+			employee = _resolve_employee_from_instructor(instructor_name, instructor_cache)
 		if not employee:
 			# Instructor without linked employee → skip for now
 			continue
