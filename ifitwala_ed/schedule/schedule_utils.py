@@ -260,7 +260,7 @@ def fetch_block_grid(schedule_name: str | None = None, sg: str | None = None) ->
 	"""Return rotation-day metadata to build the quick-add matrix.
 		Args:
 			schedule_name: explicit School Schedule name (may be None)
-			sg: Student Group name – used to infer schedule & instructors
+			sg: Student Group name - used to infer schedule & instructors
 	"""
 
 	# Resolve schedule when not supplied
