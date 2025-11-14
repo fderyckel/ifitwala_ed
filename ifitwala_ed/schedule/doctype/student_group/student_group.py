@@ -428,19 +428,25 @@ class StudentGroup(Document):
 		ins_conf = conflicts.get("instructor") or []
 		stu_conf = conflicts.get("student") or []
 
+		def _names(payload):
+			labels = payload.get("labels") or payload.get("ids") or []
+			return ", ".join(label for label in labels if label)
+
 		if ins_conf:
-			# ins_conf looks like [(("INS-0001", "INS-0002"), rotation_day, block_number), ...]
-			for ins_ids, rot, blk in ins_conf:
-				ins_list = ", ".join(ins_ids)
+			for payload in ins_conf:
+				ins_list = _names(payload)
+				rot = payload.get("rotation_day")
+				blk = payload.get("block_number")
 				messages.append(
 					_("Instructor(s) {ins} already booked on rotation day {rot}, block {blk} in another Student Group.")
 					.format(ins=ins_list, rot=rot, blk=blk)
 				)
 
 		if stu_conf:
-			# stu_conf looks like [(("STD-0001", "STD-0002"), rotation_day, block_number), ...]
-			for stu_ids, rot, blk in stu_conf:
-				stu_list = ", ".join(stu_ids)
+			for payload in stu_conf:
+				stu_list = _names(payload)
+				rot = payload.get("rotation_day")
+				blk = payload.get("block_number")
 				messages.append(
 					_("Student(s) {stu} already booked on rotation day {rot}, block {blk} in another Student Group.")
 					.format(stu=stu_list, rot=rot, blk=blk)
@@ -451,12 +457,11 @@ class StudentGroup(Document):
 
 		rule = get_conflict_rule()  # "Hard" or "Soft" from School settings
 
+		msg = "<br>".join(messages)
+		frappe.msgprint(msg, title=_("Scheduling Conflicts"))
+
 		if rule == "Hard":
-			# Block save
-			raise OverlapError("<br>".join(messages))
-		else:
-			# Warn but allow save
-			frappe.msgprint("<br>".join(messages), title=_("Scheduling Conflicts"))
+			raise OverlapError(msg)
 
 	def validate_location_capacity(self):
 		"""Ensure the chosen locations can accommodate the group's active student count.

@@ -189,6 +189,26 @@ def _extract(obj, attr):
 		return obj.get(attr)
 	return getattr(obj, attr, None)
 
+
+def _get_display_map(doctype: str, label_field: str, ids: tuple[str, ...]) -> dict[str, str]:
+	"""Return {id: display_label} for the given ids."""
+	if not ids:
+		return {}
+
+	unique_ids = list(dict.fromkeys([i for i in ids if i]))
+	if not unique_ids:
+		return {}
+
+	rows = frappe.db.get_all(
+		doctype,
+		filters={"name": ["in", unique_ids]},
+		fields=["name", label_field],
+	)
+	return {
+		row["name"]: row.get(label_field) or row["name"]
+		for row in rows
+	}
+
 @frappe.whitelist()
 def check_slot_conflicts(group_doc):
 	"""Scan existing Student Group schedules for clashes.
@@ -219,6 +239,9 @@ def check_slot_conflicts(group_doc):
 		_extract(s, "student") for s in students if _extract(s, "student")
 	)
 
+	instructor_labels = _get_display_map("Instructor", "instructor_name", instructor_ids)
+	student_labels = _get_display_map("Student", "student_full_name", student_ids)
+
 	for slot in slots:
 		rot   = _extract(slot, "rotation_day")
 		block = _extract(slot, "block_number")
@@ -243,7 +266,12 @@ def check_slot_conflicts(group_doc):
 				dict(ins=instructor_ids, rot=rot, blk=block, grp=group_name),
 			)
 			if clash:
-				conflicts["instructor"].append((instructor_ids, rot, block))
+				conflicts["instructor"].append({
+					"rotation_day": rot,
+					"block_number": block,
+					"ids": instructor_ids,
+					"labels": tuple(instructor_labels.get(i, i) for i in instructor_ids),
+				})
 
 		# ----- student clash ----------------------------------------------
 		if student_ids:
@@ -262,7 +290,12 @@ def check_slot_conflicts(group_doc):
 				dict(sts=student_ids, rot=rot, blk=block, grp=group_name),
 			)
 			if clash:
-				conflicts["student"].append((student_ids, rot, block))
+				conflicts["student"].append({
+					"rotation_day": rot,
+					"block_number": block,
+					"ids": student_ids,
+					"labels": tuple(student_labels.get(s, s) for s in student_ids),
+				})
 
 	return dict(conflicts)
 
