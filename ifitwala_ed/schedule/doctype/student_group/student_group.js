@@ -154,25 +154,6 @@ frappe.ui.form.on("Student Group", {
 		}
 	},
 
-	validate(frm) {
-		// Keep validation for potential conflicts
-		if (frm.doc.__unsaved && frm.doc.student_group_schedule?.length) {
-			frappe.call({
-				method: "ifitwala_ed.schedule.schedule_utils.check_slot_conflicts",
-				args: { group_doc: frm.doc },
-				callback(r) {
-					if (Object.keys(r.message || {}).length) {
-						frappe.msgprint({
-							title: __("Potential Conflicts"),
-							message: `<pre>${JSON.stringify(r.message, null, 2)}</pre>`,
-							indicator: "orange",
-						});
-					}
-				},
-			});
-		}
-	},
-
 	// FIX: clear dependent fields only when user actually changes program_offering
 	program_offering(frm) {
 		frm.set_value("academic_year", null);
