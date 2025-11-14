@@ -17,6 +17,11 @@ from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 from ifitwala_ed.schedule.attendance_utils import invalidate_meeting_dates
 from ifitwala_ed.utilities.location_conflicts import find_location_conflicts
 
+from ifitwala_ed.schedule.student_group_employee_booking import (
+	rebuild_employee_bookings_for_student_group,
+)
+
+
 class StudentGroup(Document):
 	def autoname(self):
 		if self.group_based_on == "Course" or self.group_based_on == "Activity":
@@ -158,15 +163,29 @@ class StudentGroup(Document):
 						if getattr(r, "student", None) and cint(getattr(r, "active", 1)):
 							_sync_ssg_access_for((r.student or "").strip(), ay, reason="sgi-changed")
 
-		# ----- MEETING-DATES invalidation (NEW) -----
+		# ----- MEETING-DATES invalidation -----
 		if bool(getattr(self.flags, "_sg_meeting_dates_changed", False)):
 			invalidate_meeting_dates(self.name)
-			self.flags._sg_meeting_dates_changed = False
+
+		# ----- EMPLOYEE BOOKINGS materialisation -----
+		# Rebuild bookings when timetable or instructors changed.
+		# Guard: only for submitted + Active groups to avoid trash/testing noise.
+		if (
+			self.docstatus == 1
+			and (self.status or "Active") == "Active"
+			and (
+				bool(getattr(self.flags, "_sg_meeting_dates_changed", False))
+				or bool(getattr(self.flags, "_sg_instructors_changed", False))
+			)
+		):
+			rebuild_employee_bookings_for_student_group(self.name)
 
 		# cleanup flags
 		self.flags._sg_students_added = set()
 		self.flags._sg_students_removed = set()
 		self.flags._sg_instructors_changed = False
+		self.flags._sg_meeting_dates_changed = False
+
 
 	##################### VALIDATONS #########################
 

@@ -220,11 +220,6 @@ def rebuild_employee_bookings_for_all_student_groups(
 
 	Designed to be called from bench console, e.g.:
 
-	    bench --site your.site console
-	    >>> from ifitwala_ed.schedule.student_group_employee_booking import \
-	    ...     rebuild_employee_bookings_for_all_student_groups
-	    >>> rebuild_employee_bookings_for_all_student_groups()
-
 	Args:
 	    academic_year: optional filter; if given, restrict to this AY.
 	    only_active: if True, restrict to Student Groups with status = "Active".
