@@ -57,14 +57,14 @@ class Meeting(Document):
 
 	def ensure_participants_from_team(self):
 		"""
-		If participants table is empty, auto-populate with active team members.
+		If participants table is empty, auto-populate with team members.
 		"""
 		if self.get("participants"):
 			return
 
 		team_members = frappe.db.get_all(
 			"Team Member",
-			filters={"parent": self.team, "active": 1},
+			filters={"parent": self.team},
 			fields=["member"],
 		)
 		for m in team_members:
