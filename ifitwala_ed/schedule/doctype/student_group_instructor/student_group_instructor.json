@@ -28,7 +28,6 @@
    "reqd": 1
   },
   {
-   "columns": 2,
    "fetch_from": "instructor.employee",
    "fieldname": "employee",
    "fieldtype": "Link",
