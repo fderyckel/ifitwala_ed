@@ -213,15 +213,14 @@ def _get_display_map(doctype: str, label_field: str, ids: tuple[str, ...]) -> di
 def check_slot_conflicts(group_doc):
 	"""Scan existing Student Group schedules for clashes.
 
-		Returns a dict keyed by category (instructor / student) with a list of
-		payload dicts:
-			{
-				"rotation_day": <int>,
-				"block_number": <int>,
-				"ids": (<entity ids>, ...),
-				"labels": (<readable names>, ...),
-				"groups": (<conflicting Student Group names>, ...),
-			}
+	Returns a dict keyed by category (instructor / student) with a list of
+	payload dicts:
+		{
+			"rotation_day": <int>,
+			"block_number": <int>,
+			"ids": (<entity ids>, ...),
+			"labels": (<readable names>, ...),
+		}
 
 	Room/location clashes are handled by the central location_conflicts engine.
 	"""
@@ -257,56 +256,52 @@ def check_slot_conflicts(group_doc):
 			continue
 
 		# ----- instructor clash -------------------------------------------
-			if instructor_ids:
-				clash = frappe.db.sql(
-					"""
-					SELECT DISTINCT gs.parent
-					FROM `tabStudent Group Instructor` gi
-					JOIN `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
-					WHERE gi.instructor IN %(ins)s
-						AND gs.rotation_day = %(rot)s
-						AND gs.block_number = %(blk)s
-						AND gs.parent != %(grp)s
-						AND gs.docstatus < 2
-					""",
-					dict(ins=instructor_ids, rot=rot, blk=block, grp=group_name),
-					as_dict=False,
-				)
-				if clash:
-					group_names = tuple(row[0] for row in clash if row and row[0])
-					conflicts["instructor"].append({
-						"rotation_day": rot,
-						"block_number": block,
-						"ids": instructor_ids,
-						"labels": tuple(instructor_labels.get(i, i) for i in instructor_ids),
-						"groups": group_names,
-					})
+		if instructor_ids:
+			clash = frappe.db.sql(
+				"""
+				SELECT 1
+				FROM `tabStudent Group Instructor` gi
+				JOIN `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
+				WHERE gi.instructor IN %(ins)s
+					AND gs.rotation_day = %(rot)s
+					AND gs.block_number = %(blk)s
+					AND gs.parent != %(grp)s
+					AND gs.docstatus < 2
+				LIMIT 1
+				""",
+				dict(ins=instructor_ids, rot=rot, blk=block, grp=group_name),
+			)
+			if clash:
+				conflicts["instructor"].append({
+					"rotation_day": rot,
+					"block_number": block,
+					"ids": instructor_ids,
+					"labels": tuple(instructor_labels.get(i, i) for i in instructor_ids),
+				})
 
-			# ----- student clash ----------------------------------------------
-			if student_ids:
-				clash = frappe.db.sql(
-					"""
-					SELECT DISTINCT gs.parent
-					FROM `tabStudent Group Student` st
-					JOIN `tabStudent Group Schedule` gs ON gs.parent = st.parent
-					WHERE st.student IN %(sts)s
-						AND gs.rotation_day = %(rot)s
-						AND gs.block_number = %(blk)s
-						AND gs.parent != %(grp)s
-						AND gs.docstatus < 2
-					""",
-					dict(sts=student_ids, rot=rot, blk=block, grp=group_name),
-					as_dict=False,
-				)
-				if clash:
-					group_names = tuple(row[0] for row in clash if row and row[0])
-					conflicts["student"].append({
-						"rotation_day": rot,
-						"block_number": block,
-						"ids": student_ids,
-						"labels": tuple(student_labels.get(s, s) for s in student_ids),
-						"groups": group_names,
-					})
+		# ----- student clash ----------------------------------------------
+		if student_ids:
+			clash = frappe.db.sql(
+				"""
+				SELECT 1
+				FROM `tabStudent Group Student` st
+				JOIN `tabStudent Group Schedule` gs ON gs.parent = st.parent
+				WHERE st.student IN %(sts)s
+					AND gs.rotation_day = %(rot)s
+					AND gs.block_number = %(blk)s
+					AND gs.parent != %(grp)s
+					AND gs.docstatus < 2
+				LIMIT 1
+				""",
+				dict(sts=student_ids, rot=rot, blk=block, grp=group_name),
+			)
+			if clash:
+				conflicts["student"].append({
+					"rotation_day": rot,
+					"block_number": block,
+					"ids": student_ids,
+					"labels": tuple(student_labels.get(s, s) for s in student_ids),
+				})
 
 	return dict(conflicts)
 
