@@ -10,7 +10,6 @@ from frappe.utils import cint, get_link_to_form, get_datetime, format_datetime
 
 from ifitwala_ed.schedule.schedule_utils import (
 	validate_duplicate_student,
-	check_slot_conflicts,
 	get_conflict_rule,
 	get_rotation_dates,
 )
@@ -70,30 +69,6 @@ class StudentGroup(Document):
 			self.title = self.student_group_abbreviation + "/" + self.cohort
 		else:
 			self.title = self.student_group_abbreviation
-
-  	# ── Overlap detection ───────────────────────────────────────────────
-		if not getattr(self, "_conflict_checked", False):
-			conflicts = check_slot_conflicts(self)
-			if conflicts:
-				# turn the dict into readable bullets
-				lines = []
-				for cat, items in conflicts.items():
-					for entry in items:
-						# entry = (entity, rotation, block)
-						ent, rot, blk = entry
-						if isinstance(ent, (list, tuple)):
-							ent = ", ".join(ent)
-						lines.append(f"• {cat.title()}: <b>{ent}</b> — Day {rot}, Block {blk}")
-
-				msg = "<br>".join(lines)
-				title = _("Scheduling conflicts detected")
-
-				if get_conflict_rule() == "Hard":
-					frappe.throw(msg, title=title)
-				else:
-					frappe.msgprint(msg, alert=True, title=title)
-
-			self._conflict_checked = True
 
 	def before_save(self):
 		"""
