@@ -21,6 +21,8 @@
   "location",
   "reference_section_section",
   "description",
+  "audience_section",
+  "audience",
   "participants_section",
   "participants",
   "references_section",
@@ -143,13 +145,25 @@
    "fieldname": "references_section",
    "fieldtype": "Section Break",
    "label": "References"
+  },
+  {
+   "fieldname": "audience_section",
+   "fieldtype": "Section Break",
+   "label": "Audience"
+  },
+  {
+   "fieldname": "audience",
+   "fieldtype": "Table",
+   "ignore_user_permissions": 1,
+   "label": "Audience",
+   "options": "School Event Audience"
   }
  ],
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2025-10-21 06:55:07.193663",
+ "modified": "2025-11-15 00:35:59.636658",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Event",
