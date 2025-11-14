@@ -36,9 +36,14 @@ class Meeting(Document):
 
 	def after_insert(self):
 		self.create_or_update_event()
+		self.update_series_metrics()
 
 	def on_update(self):
 		self.create_or_update_event()
+		self.update_series_metrics()
+
+	def on_trash(self):
+		self.update_series_metrics()
 
 	# ───────────────────────────────────────────────────────────
 	# Participants / team
@@ -137,64 +142,32 @@ class Meeting(Document):
 			frappe.throw(_("Minutes must be entered if the meeting status is 'Completed'."))
 
 	# ───────────────────────────────────────────────────────────
-	# Event sync (Frappe Event)
+	# Helpers
 	# ───────────────────────────────────────────────────────────
-
-	def create_or_update_event(self):
-		"""Create or update a Frappe Event record corresponding to this Meeting."""
-		if not self.date or not self.start_time:
-			return
-
-		start_dt = _combine_date_and_time(self.date, self.start_time)
-		if not start_dt:
-			return
-
-		end_dt = None
-		if self.end_time:
-			end_dt = _combine_date_and_time(self.date, self.end_time)
-
-		title = f"{self.team or _('Unassigned Team')} – {self.meeting_name or _('Meeting')}"
-
-		description = ""
-		if self.agenda:
-			description += f"<b>{_('Agenda')}:</b><br>{self.agenda}<br><br>"
-		if self.virtual_meeting_link:
-			description += f"<b>{_('Virtual Meeting Link')}:</b> {self.virtual_meeting_link}<br>"
-		if self.location:
-			description += f"<b>{_('Location')}:</b> {self.location}<br>"
-
-		# Find or create linked Event
-		existing = frappe.db.exists(
-			"Event",
-			{"reference_doctype": "Meeting", "reference_name": self.name},
-		)
-		if existing:
-			event = frappe.get_doc("Event", existing)
-		else:
-			event = frappe.new_doc("Event")
-			event.reference_doctype = "Meeting"
-			event.reference_name = self.name
-
-		event.subject = title
-		event.starts_on = start_dt
-		event.ends_on = end_dt or start_dt
-		event.description = description
-		event.status = "Open" if self.status == "Scheduled" else "Closed"
-		event.color = self.get_team_color()
-		event.event_type = "Public"
-
-		# replace attendees
-		event.attendees = []
-		for p in self.participants or []:
-			if p.participant:
-				event.append("attendees", {"person": p.participant})
-
-		event.flags.ignore_mandatory = True
-		event.save(ignore_permissions=True)
-
 	def get_team_color(self):
 		if self.team:
 			color = frappe.db.get_value("Team", self.team, "meeting_color")
 			if color:
 				return color
 		return "#364FC7"
+
+	def update_series_metrics(self):
+		if not self.meeting_series:
+			return
+
+		total = frappe.db.count("Meeting", {"meeting_series": self.meeting_series})
+		last = frappe.db.get_all(
+			"Meeting",
+			{"meeting_series": self.meeting_series},
+			["date"],
+			order_by="date desc",
+			limit=1,
+		)
+		last_date = last[0].date if last else None
+
+		values = {
+			"occurrences_created": total,
+			"last_occurrence_date": last_date,
+			"series_end_date": last_date,
+		}
+		frappe.db.set_value("Meeting Series", self.meeting_series, values)

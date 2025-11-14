@@ -9,6 +9,8 @@
   "section_break_qmya",
   "meeting_name",
   "meeting_code",
+  "meeting_series",
+  "series_occurrence_no",
   "team",
   "column_break_neve",
   "status",
@@ -43,6 +45,21 @@
    "fieldname": "meeting_code",
    "fieldtype": "Data",
    "label": "Meeting Code"
+  },
+  {
+   "fieldname": "meeting_series",
+   "fieldtype": "Link",
+   "label": "Meeting Series",
+   "no_copy": 1,
+   "options": "Meeting Series",
+   "read_only": 1
+  },
+  {
+   "fieldname": "series_occurrence_no",
+   "fieldtype": "Int",
+   "label": "Series Occurrence #",
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "fieldname": "date",
@@ -147,7 +164,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-13 14:07:41.290689",
+ "modified": "2025-11-13 14:07:55",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Meeting",

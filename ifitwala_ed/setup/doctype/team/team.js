@@ -5,6 +5,12 @@
 
 frappe.ui.form.on('Team', {
 	refresh(frm) {
+		if (!frm.is_new()) {
+			frm.add_custom_button(__('Schedule Meetings'), () => {
+				open_team_schedule_dialog(frm);
+			}, __('Plan'));
+		}
+
 		if (frm.doc.docstatus === 0) {
 			frm.add_custom_button(__('Add Members'), () => {
 				// Get dynamic roles from the child doctype
@@ -254,3 +260,673 @@ frappe.ui.form.on('Team Member', {
 		}
 	}
 });
+
+const TEAM_MEETING_MAX_OCCURRENCES = 40;
+const TEAM_MEETING_RECURRENCE_OPTIONS = [
+	{ value: 'weekly', label: __('Every week'), description: __('Great for standing huddles.') },
+	{ value: 'biweekly', label: __('Every 2 weeks'), description: __('Keeps momentum without crowding the calendar.') },
+	{ value: 'three_weeks', label: __('Every 3 weeks'), description: __('Perfect for checkpoint cadences.') },
+	{ value: 'monthly', label: __('Every month'), description: __('Use for retros or planning reviews.') }
+];
+const TEAM_MEETING_RECURRENCE_META = {
+	weekly: { unit: 'week', step: 1 },
+	biweekly: { unit: 'week', step: 2 },
+	three_weeks: { unit: 'week', step: 3 },
+	monthly: { unit: 'month', step: 1 }
+};
+
+function open_team_schedule_dialog(frm) {
+	const activeMembers = (frm.doc.members || []).filter(m => m.member);
+	if (!activeMembers.length) {
+		frappe.msgprint({
+			title: __('Add members'),
+			message: __('Please add at least one member before scheduling team meetings.'),
+			indicator: 'orange'
+		});
+		return;
+	}
+
+	frappe.model.with_doctype('Meeting', () => {
+		ensure_scheduler_styles();
+
+		const meetingMeta = frappe.get_meta('Meeting');
+		const meetingCategoryField = meetingMeta?.fields?.find(df => df.fieldname === 'meeting_category');
+		const meetingCategoryOptions = (meetingCategoryField?.options || '').split('\n').filter(Boolean);
+		const recurrenceLabels = TEAM_MEETING_RECURRENCE_OPTIONS.map(opt => opt.label);
+		const recurrenceValueByLabel = Object.fromEntries(TEAM_MEETING_RECURRENCE_OPTIONS.map(opt => [opt.label, opt.value]));
+		const recurrenceLabelByValue = Object.fromEntries(TEAM_MEETING_RECURRENCE_OPTIONS.map(opt => [opt.value, opt.label]));
+
+		const dialog = new frappe.ui.Dialog({
+			title: __('Schedule Meetings'),
+			size: 'large',
+			fields: [
+				{ fieldname: 'intro_html', fieldtype: 'HTML' },
+				{ fieldtype: 'Section Break', label: __('Academic Year') },
+				{
+					fieldname: 'academic_year',
+					fieldtype: 'Link',
+					label: __('Academic Year'),
+					options: 'Academic Year',
+					reqd: 1
+				},
+				{ fieldname: 'ay_window', fieldtype: 'HTML' },
+				{ fieldtype: 'Section Break', label: __('Meeting Blueprint') },
+				{
+					fieldname: 'meeting_title',
+					fieldtype: 'Data',
+					label: __('Meeting Title'),
+					reqd: 1
+				},
+				{
+					fieldname: 'start_date',
+					fieldtype: 'Date',
+					label: __('Start Date'),
+					reqd: 1
+				},
+				{
+					fieldname: 'start_time',
+					fieldtype: 'Time',
+					label: __('Start Time'),
+					reqd: 1
+				},
+				{
+					fieldname: 'end_time',
+					fieldtype: 'Time',
+					label: __('End Time'),
+					reqd: 1
+				},
+				{ fieldname: 'column_break_schedule', fieldtype: 'Column Break' },
+				{
+					fieldname: 'location',
+					fieldtype: 'Link',
+					label: __('Location'),
+					options: 'Location'
+				},
+				{
+					fieldname: 'virtual_meeting_link',
+					fieldtype: 'Data',
+					label: __('Virtual Meeting Link'),
+					options: 'URL'
+				},
+				{
+					fieldname: 'meeting_category',
+					fieldtype: 'Select',
+					label: __('Meeting Category')
+				},
+				{ fieldtype: 'Section Break', label: __('Recurrence') },
+				{
+					fieldname: 'repeat_option',
+					fieldtype: 'Select',
+					label: __('Repeat cadence'),
+					options: recurrenceLabels.join('\n'),
+					reqd: 1,
+					description: __('Choose how frequently this meeting repeats.')
+				},
+				{
+					fieldname: 'occurrences',
+					fieldtype: 'Int',
+					label: __('Stop after (occurrences)'),
+					reqd: 1,
+					default: 6,
+					description: __('Maximum {0} per batch.').format(TEAM_MEETING_MAX_OCCURRENCES)
+				},
+				{ fieldname: 'preview_html', fieldtype: 'HTML' },
+				{ fieldtype: 'Section Break', label: __('Participants') },
+				{ fieldname: 'participants_html', fieldtype: 'HTML' }
+			],
+			primary_action_label: __('Schedule Meetings'),
+			primary_action(values) {
+				const repeatValue = recurrenceValueByLabel[values.repeat_option];
+				if (!repeatValue) {
+					frappe.msgprint(__('Select a repeat cadence.'));
+					return;
+				}
+
+				const ayMeta = ayState[values.academic_year];
+				if (!ayMeta) {
+					frappe.msgprint(__('Please choose an Academic Year within range.'));
+					return;
+				}
+
+				const occurrences = normalize_occurrences(values.occurrences);
+				if (!values.start_time || !values.end_time) {
+					frappe.msgprint(__('Start and end times are required.'));
+					return;
+				}
+
+				dialog.disable_primary_action();
+
+				frappe.call({
+					method: 'ifitwala_ed.setup.doctype.team.team.schedule_recurring_meetings',
+					args: {
+						team: frm.doc.name,
+						academic_year: values.academic_year,
+						start_date: values.start_date,
+						start_time: values.start_time,
+						end_time: values.end_time,
+						repeat_option: repeatValue,
+						occurrences,
+						meeting_title: values.meeting_title,
+						location: values.location,
+						virtual_meeting_link: values.virtual_meeting_link,
+						meeting_category: values.meeting_category
+					},
+					freeze: true,
+					freeze_message: __('Creating meetings…')
+				})
+					.then(r => {
+						const payload = r.message || {};
+						const createdCount = (payload.created || []).length;
+						const failedCount = (payload.failed || []).length;
+						const seriesLink = payload.series
+							? `<a href="#Form/Meeting Series/${payload.series}">${frappe.utils.escape_html(payload.series_title || payload.series)}</a>`
+							: '';
+						let message = '';
+
+						if (createdCount) {
+							message += __(
+								'Created {0} meeting(s) linked to {1}.',
+								[createdCount, seriesLink || __('the meeting series')]
+							);
+						} else {
+							message += __('No meetings were created.');
+						}
+
+						if (failedCount) {
+							message += '<br>' + __('{0} occurrence(s) could not be created.', [failedCount]);
+						}
+
+						frappe.msgprint({
+							title: __('Scheduler result'),
+							message,
+							indicator: createdCount ? 'green' : 'orange'
+						});
+
+						dialog.hide();
+						frm.reload_doc();
+					})
+					.finally(() => {
+						dialog.enable_primary_action();
+					});
+			}
+		});
+
+		const ayState = {};
+		const heroHtml = render_scheduler_hero(frm);
+		dialog.fields_dict.intro_html.$wrapper.html(heroHtml);
+		dialog.fields_dict.participants_html.$wrapper.html(render_participants_preview(activeMembers));
+		dialog.$wrapper.addClass('team-meeting-scheduler');
+
+		dialog.fields_dict.academic_year.get_query = () => {
+			const filters = { year_end_date: ['>=', frappe.datetime.nowdate()] };
+			if (frm.doc.school) {
+				filters.school = frm.doc.school;
+			}
+			return { filters, order_by: 'year_start_date asc' };
+		};
+
+		dialog.fields_dict.meeting_category.df.options = ['', ...meetingCategoryOptions].join('\n');
+		dialog.refresh_field('meeting_category');
+
+		dialog.set_value('meeting_title', `${frm.doc.team_name || frm.doc.team_code || frm.doc.name} ${__('Meeting')}`);
+		dialog.set_value('repeat_option', TEAM_MEETING_RECURRENCE_OPTIONS[0].label);
+		dialog.set_value('start_date', frappe.datetime.nowdate());
+
+		const updateAcademicYearHint = () => {
+			const ayName = dialog.get_value('academic_year');
+			const ayMeta = ayState[ayName];
+			const target = dialog.fields_dict.ay_window.$wrapper;
+			if (!ayName) {
+				target.html(`<div class="team-scheduler-empty">${__('Pick an academic year to see its bounds.')}</div>`);
+				return;
+			}
+			if (!ayMeta) {
+				target.html(`<div class="team-scheduler-empty">${__('Academic year metadata is loading…')}</div>`);
+				return;
+			}
+			const start = frappe.datetime.str_to_user(ayMeta.year_start_date);
+			const end = frappe.datetime.str_to_user(ayMeta.year_end_date);
+			target.html(
+				`<div class="team-scheduler-ay-card">
+					<div>
+						<div class="team-scheduler-ay-card__title">${frappe.utils.escape_html(ayMeta.label || ayName)}</div>
+						<div class="team-scheduler-ay-card__range">${start} → ${end}</div>
+					</div>
+					<span class="badge text-bg-light">${__('Aligned to {0}', [frm.doc.school || __('school')])}</span>
+				</div>`
+			);
+		};
+
+		const updatePreview = () => {
+			const values = dialog.get_values();
+			const previewWrapper = dialog.fields_dict.preview_html.$wrapper;
+			const ayMeta = ayState[values.academic_year];
+
+			if (!values.academic_year || !ayMeta) {
+				previewWrapper.html(`<div class="team-scheduler-empty">${__('Complete the fields above to see the timeline.')}</div>`);
+				return;
+			}
+
+			const repeatValue = recurrenceValueByLabel[values.repeat_option] || TEAM_MEETING_RECURRENCE_OPTIONS[0].value;
+			const normalizedOccurrences = normalize_occurrences(values.occurrences);
+			const rawOccurrences =
+				typeof values.occurrences === 'number' ? values.occurrences : parseInt(values.occurrences, 10);
+			if (!Number.isFinite(rawOccurrences) || rawOccurrences !== normalizedOccurrences) {
+				dialog.set_value('occurrences', normalizedOccurrences);
+				return;
+			}
+
+			if (!values.start_date || !values.start_time || !values.end_time) {
+				previewWrapper.html(
+					`<div class="team-scheduler-empty">${__('Set a start date and time range to preview the series.')}</div>`
+				);
+				return;
+			}
+
+			const startDate = dayjs(values.start_date);
+			if (!startDate.isValid()) {
+				previewWrapper.html(`<div class="team-scheduler-empty">${__('Start date is invalid.')}</div>`);
+				return;
+			}
+
+			const plan = build_occurrence_plan({
+				startDate,
+				recurrence: repeatValue,
+				requested: normalizedOccurrences,
+				academicYear: ayMeta
+			});
+
+			if (!plan.dates.length) {
+				previewWrapper.html(
+					`<div class="team-scheduler-empty">${__('This cadence would extend past the academic year. Pick an earlier date or reduce the count.')}</div>`
+				);
+				return;
+			}
+
+			const recurrenceLabel = recurrenceLabelByValue[repeatValue] || values.repeat_option;
+			const summary = render_occurrence_preview(plan, {
+				recurrenceLabel,
+				startTime: values.start_time,
+				endTime: values.end_time,
+				academicYear: ayMeta
+			});
+			previewWrapper.html(summary);
+		};
+
+		['academic_year', 'start_date', 'start_time', 'end_time', 'repeat_option', 'occurrences'].forEach(fieldname => {
+			const df = dialog.fields_dict[fieldname];
+			if (!df) return;
+
+			const handler = () => {
+				if (fieldname === 'academic_year') {
+					updateAcademicYearHint();
+				}
+				updatePreview();
+			};
+
+			df.df.onchange = handler;
+			dialog.refresh_field(fieldname);
+		});
+
+		dialog.fields_dict.occurrences.$input?.attr('min', 1).attr('max', TEAM_MEETING_MAX_OCCURRENCES);
+
+		const loadAcademicYears = () => {
+			dialog.disable_primary_action();
+			frappe.call({
+				method: 'ifitwala_ed.setup.doctype.team.team.get_schedulable_academic_years',
+				args: { team: frm.doc.name }
+			})
+				.then(r => {
+					const rows = r.message || [];
+					if (!rows.length) {
+						dialog.fields_dict.ay_window.$wrapper.html(
+							`<div class="team-scheduler-empty">${__('No current or upcoming academic years were found for this team.')}</div>`
+						);
+						return;
+					}
+
+					rows.forEach(ay => {
+						ayState[ay.name] = ay;
+					});
+
+					dialog.set_value('academic_year', rows[0].name);
+					updateAcademicYearHint();
+					updatePreview();
+				})
+				.finally(() => {
+					dialog.enable_primary_action();
+				});
+		};
+
+		loadAcademicYears();
+		dialog.show();
+	});
+}
+
+function normalize_occurrences(value) {
+	const numeric = parseInt(value, 10);
+	if (!numeric || numeric < 1) {
+		return 1;
+	}
+	return Math.min(numeric, TEAM_MEETING_MAX_OCCURRENCES);
+}
+
+function render_scheduler_hero(frm) {
+	const color = frm.doc.meeting_color || '#364FC7';
+	const initials = (frm.doc.team_name || frm.doc.team_code || frm.doc.name || 'T').charAt(0).toUpperCase();
+	const title = frappe.utils.escape_html(frm.doc.team_name || frm.doc.name);
+	const meta = frappe.utils.escape_html(frm.doc.school || frm.doc.organization || __('No school set'));
+
+	return `
+		<div class="team-scheduler-hero">
+			<div class="team-scheduler-hero__avatar" style="background:${color}1A;color:${color}">
+				${initials}
+			</div>
+			<div>
+				<div class="team-scheduler-hero__title">${title}</div>
+				<div class="team-scheduler-hero__meta">${meta}</div>
+			</div>
+		</div>
+	`;
+}
+
+function render_participants_preview(members) {
+	if (!members.length) {
+		return `<div class="team-scheduler-empty">${__('No members yet. Add a few teammates first.')}</div>`;
+	}
+
+	const chips = members
+		.map(member => {
+			const name = frappe.utils.escape_html(member.member_name || member.member);
+			const role = frappe.utils.escape_html(member.role_in_team || __('Member'));
+			return `
+				<li class="team-scheduler-chip">
+					<span class="team-scheduler-chip__name">${name}</span>
+					<span class="team-scheduler-chip__role">${role}</span>
+				</li>
+			`;
+		})
+		.join('');
+
+	return `
+		<div class="team-scheduler-participants">
+			<div class="team-scheduler-participants__heading">
+				${__('Everyone gets invited ({0})', [members.length])}
+			</div>
+			<ul class="team-scheduler-chip-list">${chips}</ul>
+		</div>
+	`;
+}
+
+function build_occurrence_plan({ startDate, recurrence, requested, academicYear }) {
+	const ayStart = dayjs(academicYear.year_start_date);
+	const ayEnd = dayjs(academicYear.year_end_date);
+	const meta = TEAM_MEETING_RECURRENCE_META[recurrence] || TEAM_MEETING_RECURRENCE_META.weekly;
+	const dates = [];
+	let cursor = startDate;
+	let guard = 0;
+
+	while (!cursor.isAfter(ayEnd) && dates.length < requested && guard < TEAM_MEETING_MAX_OCCURRENCES * 2) {
+		if (cursor.isBefore(ayStart)) {
+			cursor = ayStart;
+		}
+
+		if (cursor.isAfter(ayEnd)) {
+			break;
+		}
+
+		dates.push(cursor);
+		cursor = meta.unit === 'week' ? cursor.add(meta.step, 'week') : cursor.add(meta.step, 'month');
+		guard++;
+	}
+
+	return {
+		dates,
+		truncated: dates.length < requested,
+		meta
+	};
+}
+
+function render_occurrence_preview(plan, context) {
+	const { recurrenceLabel, startTime, endTime, academicYear } = context;
+	const total = plan.dates.length;
+	const humanStart = dayjs(academicYear.year_start_date).format('MMM D, YYYY');
+	const humanEnd = dayjs(academicYear.year_end_date).format('MMM D, YYYY');
+	const prettyTime = format_time_range(startTime, endTime);
+	const duration = format_duration_minutes(startTime, endTime);
+
+	const listItems = plan.dates.slice(0, 5).map((date, idx) => {
+		const label = date.format('ddd, MMM D');
+		return `
+			<li class="team-scheduler-occurrence">
+				<span class="team-scheduler-occurrence__index">#${idx + 1}</span>
+				<div>
+					<div class="team-scheduler-occurrence__label">${label}</div>
+					<div class="team-scheduler-occurrence__time">${prettyTime}</div>
+				</div>
+			</li>
+		`;
+	});
+
+	const remainder = Math.max(plan.dates.length - 5, 0);
+	const truncated = plan.truncated
+		? `<div class="team-scheduler-note is-warning">${__('Series stops early because the academic year ends on {0}.', [
+				dayjs(academicYear.year_end_date).format('MMM D, YYYY')
+		  ])}</div>`
+		: '';
+
+	return `
+		<div class="team-scheduler-summary">
+			<div>
+				<div class="team-scheduler-summary__count">${total}</div>
+				<div class="team-scheduler-summary__label">${__('meetings will be created')}</div>
+			</div>
+			<div class="team-scheduler-summary__meta">
+				<span>${recurrenceLabel}</span>
+				<span>${prettyTime}</span>
+				${duration ? `<span>${duration}</span>` : ''}
+			</div>
+		</div>
+		<div class="team-scheduler-summary__window">
+			${humanStart} → ${humanEnd}
+		</div>
+		<ol class="team-scheduler-occurrence-list">
+			${listItems.join('')}
+		</ol>
+		${remainder ? `<div class="team-scheduler-note">${__('+{0} more occurrence(s)', [remainder])}</div>` : ''}
+		${truncated}
+	`;
+}
+
+function format_time_range(startTime, endTime) {
+	if (!startTime || !endTime) {
+		return __('Set a time range');
+	}
+	const start = frappe.datetime.get_formatted_time(startTime);
+	const end = frappe.datetime.get_formatted_time(endTime);
+	return `${start} → ${end}`;
+}
+
+function format_duration_minutes(startTime, endTime) {
+	if (!startTime || !endTime) {
+		return '';
+	}
+	const start = dayjs(`2000-01-01 ${startTime}`);
+	const end = dayjs(`2000-01-01 ${endTime}`);
+	const minutes = end.diff(start, 'minute');
+	if (minutes <= 0) {
+		return '';
+	}
+	return __('{0} min', [minutes]);
+}
+
+function ensure_scheduler_styles() {
+	if (document.getElementById('team-scheduler-style')) {
+		return;
+	}
+	const style = document.createElement('style');
+	style.id = 'team-scheduler-style';
+	style.textContent = `
+		.team-meeting-scheduler .modal-body {
+			background: #f8fafc;
+		}
+		.team-scheduler-hero {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			padding: 1rem;
+			background: #fff;
+			border: 1px solid #e2e8f0;
+			border-radius: 16px;
+			margin-bottom: 1rem;
+		}
+		.team-scheduler-hero__avatar {
+			width: 48px;
+			height: 48px;
+			border-radius: 12px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-weight: 600;
+			font-size: 1.1rem;
+		}
+		.team-scheduler-hero__title {
+			font-size: 1.05rem;
+			font-weight: 600;
+		}
+		.team-scheduler-hero__meta {
+			color: #475569;
+			font-size: 0.9rem;
+		}
+		.team-scheduler-ay-card {
+			margin-top: 0.5rem;
+			padding: 0.75rem 1rem;
+			background: #fff;
+			border-radius: 12px;
+			border: 1px solid #e2e8f0;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 1rem;
+		}
+		.team-scheduler-ay-card__title {
+			font-weight: 600;
+			margin-bottom: 0.25rem;
+		}
+		.team-scheduler-ay-card__range {
+			color: #475569;
+			font-size: 0.9rem;
+		}
+		.team-scheduler-empty {
+			padding: 0.85rem;
+			background: #fff;
+			border-radius: 12px;
+			border: 1px dashed #cbd5f5;
+			color: #64748b;
+			text-align: center;
+		}
+		.team-scheduler-participants__heading {
+			font-weight: 600;
+			margin-bottom: 0.5rem;
+		}
+		.team-scheduler-chip-list {
+			list-style: none;
+			padding: 0;
+			margin: 0;
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+			gap: 0.5rem;
+		}
+		.team-scheduler-chip {
+			padding: 0.6rem 0.75rem;
+			background: #fff;
+			border-radius: 999px;
+			border: 1px solid #e2e8f0;
+			display: flex;
+			flex-direction: column;
+		}
+		.team-scheduler-chip__name {
+			font-weight: 600;
+			font-size: 0.95rem;
+		}
+		.team-scheduler-chip__role {
+			font-size: 0.8rem;
+			color: #64748b;
+			text-transform: uppercase;
+			letter-spacing: 0.03em;
+		}
+		.team-scheduler-summary {
+			background: #fff;
+			border: 1px solid #e2e8f0;
+			border-radius: 16px;
+			padding: 1rem;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 1rem;
+			margin-bottom: 0.75rem;
+		}
+		.team-scheduler-summary__count {
+			font-size: 2.25rem;
+			font-weight: 600;
+			line-height: 1;
+		}
+		.team-scheduler-summary__label {
+			color: #475569;
+		}
+		.team-scheduler-summary__meta {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5rem;
+			color: #475569;
+		}
+		.team-scheduler-summary__window {
+			margin-bottom: 0.5rem;
+			color: #475569;
+			font-size: 0.9rem;
+		}
+		.team-scheduler-occurrence-list {
+			list-style: none;
+			padding: 0;
+			margin: 0 0 0.5rem 0;
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
+		}
+		.team-scheduler-occurrence {
+			background: #fff;
+			border: 1px solid #e2e8f0;
+			border-radius: 10px;
+			padding: 0.5rem 0.75rem;
+			display: flex;
+			gap: 0.75rem;
+			align-items: center;
+		}
+		.team-scheduler-occurrence__index {
+			font-weight: 600;
+			color: #475569;
+			width: 32px;
+		}
+		.team-scheduler-occurrence__label {
+			font-weight: 500;
+		}
+		.team-scheduler-occurrence__time {
+			color: #64748b;
+			font-size: 0.9rem;
+		}
+		.team-scheduler-note {
+			background: #fff7ed;
+			color: #c2410c;
+			padding: 0.65rem 0.75rem;
+			border-radius: 10px;
+			border: 1px solid #fed7aa;
+			font-size: 0.9rem;
+		}
+		.team-scheduler-note.is-warning {
+			background: #fff1f2;
+			border-color: #fecdd3;
+			color: #be123c;
+		}
+	`;
+	document.head.appendChild(style);
+}
