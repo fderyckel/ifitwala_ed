@@ -11,21 +11,8 @@ class EmployeeBooking(Document):
 
 
 def on_doctype_update():
-	"""
-	Ensure helpful indexes exist for fast conflict checks and source lookups.
-
-	Called automatically by Frappe when the DocType is updated.
-	"""
 	# For conflict checks: employee + time window
-	frappe.db.add_index(
-		"Employee Booking",
-		fields=["employee", "from_datetime", "to_datetime"],
-		index_name="idx_employee_booking_window",
-	)
+	frappe.db.add_index("Employee Booking", fields=["employee", "from_datetime", "to_datetime"])
 
 	# For cleanup / upsert by source document
-	frappe.db.add_index(
-		"Employee Booking",
-		fields=["source_doctype", "source_name"],
-		index_name="idx_employee_booking_source",
-	)
+	frappe.db.add_index("Employee Booking", fields=["source_doctype", "source_document"])
