@@ -190,6 +190,18 @@ def _extract(obj, attr):
 	return getattr(obj, attr, None)
 
 
+def _uniq(seq):
+	"""Return list of unique, truthy items preserving order."""
+	seen = set()
+	out = []
+	for item in seq:
+		if not item or item in seen:
+			continue
+		seen.add(item)
+		out.append(item)
+	return out
+
+
 def _get_display_map(doctype: str, label_field: str, ids: tuple[str, ...]) -> dict[str, str]:
 	"""Return {id: display_label} for the given ids."""
 	if not ids:
@@ -208,6 +220,55 @@ def _get_display_map(doctype: str, label_field: str, ids: tuple[str, ...]) -> di
 		row["name"]: row.get(label_field) or row["name"]
 		for row in rows
 	}
+
+
+def _build_slot_conditions(slots: list[tuple[int, int]]) -> tuple[str, dict]:
+	"""Return SQL snippet + params for (rotation_day, block_number) pairs."""
+	conds = []
+	params = {}
+	for idx, (rot, blk) in enumerate(slots):
+		conds.append(f"(gs.rotation_day = %(rot_{idx})s AND gs.block_number = %(blk_{idx})s)")
+		params[f"rot_{idx}"] = rot
+		params[f"blk_{idx}"] = blk
+	return " OR ".join(conds), params
+
+
+def _aggregate_conflicts(rows, label_map):
+	"""Group rows by (rotation_day, block_number) with deduped ids & groups."""
+	slots = {}
+	for row in rows:
+		rot = row.get("rotation_day")
+		blk = row.get("block_number")
+		entity = row.get("entity")
+		group = row.get("student_group")
+
+		if rot is None or blk is None or not entity:
+			continue
+		try:
+			rot = int(rot)
+			blk = int(blk)
+		except Exception:
+			continue
+
+		key = (rot, blk)
+		entry = slots.setdefault(
+			key,
+			{"rotation_day": rot, "block_number": blk, "ids": [], "groups": []},
+		)
+		entry["ids"].append(entity)
+		entry["groups"].append(group)
+
+	out = []
+	for entry in slots.values():
+		ids = tuple(_uniq(entry["ids"]))
+		out.append({
+			"rotation_day": entry["rotation_day"],
+			"block_number": entry["block_number"],
+			"ids": ids,
+			"labels": tuple(label_map.get(i, i) for i in ids),
+			"groups": tuple(_uniq(entry["groups"])),
+		})
+	return out
 
 @frappe.whitelist()
 def check_slot_conflicts(group_doc):
@@ -245,63 +306,70 @@ def check_slot_conflicts(group_doc):
 		_extract(s, "student") for s in students if _extract(s, "student")
 	)
 
+	normalized_slots: list[tuple[int, int]] = []
+	for slot in slots:
+		rot = _extract(slot, "rotation_day")
+		blk = _extract(slot, "block_number")
+		if rot is None or blk is None:
+			continue
+		try:
+			rot = int(rot)
+			blk = int(blk)
+		except Exception:
+			continue
+		normalized_slots.append((rot, blk))
+
+	if not normalized_slots:
+		return {}
+
+	slot_clause, slot_params = _build_slot_conditions(normalized_slots)
+	if not slot_clause:
+		return {}
+
 	instructor_labels = _get_display_map("Instructor", "instructor_name", instructor_ids)
 	student_labels = _get_display_map("Student", "student_full_name", student_ids)
 
-	for slot in slots:
-		rot   = _extract(slot, "rotation_day")
-		block = _extract(slot, "block_number")
+	if instructor_ids:
+		params = {"grp": group_name, "ids": instructor_ids}
+		params.update(slot_params)
+		rows = frappe.db.sql(
+			f"""
+			SELECT gi.instructor AS entity,
+				   gs.rotation_day,
+				   gs.block_number,
+				   gs.parent AS student_group
+			FROM `tabStudent Group Instructor` gi
+			JOIN `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
+			WHERE gi.instructor IN %(ids)s
+				AND gs.parent != %(grp)s
+				AND gs.docstatus < 2
+				AND ({slot_clause})
+			""",
+			params,
+			as_dict=True,
+		)
+		conflicts["instructor"] = _aggregate_conflicts(rows, instructor_labels)
 
-		if not rot or not block:
-			continue
-
-		# ----- instructor clash -------------------------------------------
-		if instructor_ids:
-			clash = frappe.db.sql(
-				"""
-				SELECT 1
-				FROM `tabStudent Group Instructor` gi
-				JOIN `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
-				WHERE gi.instructor IN %(ins)s
-					AND gs.rotation_day = %(rot)s
-					AND gs.block_number = %(blk)s
-					AND gs.parent != %(grp)s
-					AND gs.docstatus < 2
-				LIMIT 1
-				""",
-				dict(ins=instructor_ids, rot=rot, blk=block, grp=group_name),
-			)
-			if clash:
-				conflicts["instructor"].append({
-					"rotation_day": rot,
-					"block_number": block,
-					"ids": instructor_ids,
-					"labels": tuple(instructor_labels.get(i, i) for i in instructor_ids),
-				})
-
-		# ----- student clash ----------------------------------------------
-		if student_ids:
-			clash = frappe.db.sql(
-				"""
-				SELECT 1
-				FROM `tabStudent Group Student` st
-				JOIN `tabStudent Group Schedule` gs ON gs.parent = st.parent
-				WHERE st.student IN %(sts)s
-					AND gs.rotation_day = %(rot)s
-					AND gs.block_number = %(blk)s
-					AND gs.parent != %(grp)s
-					AND gs.docstatus < 2
-				LIMIT 1
-				""",
-				dict(sts=student_ids, rot=rot, blk=block, grp=group_name),
-			)
-			if clash:
-				conflicts["student"].append({
-					"rotation_day": rot,
-					"block_number": block,
-					"ids": student_ids,
-					"labels": tuple(student_labels.get(s, s) for s in student_ids),
-				})
+	if student_ids:
+		params = {"grp": group_name, "ids": student_ids}
+		params.update(slot_params)
+		rows = frappe.db.sql(
+			f"""
+			SELECT st.student AS entity,
+				   gs.rotation_day,
+				   gs.block_number,
+				   gs.parent AS student_group
+			FROM `tabStudent Group Student` st
+			JOIN `tabStudent Group Schedule` gs ON gs.parent = st.parent
+			WHERE st.student IN %(ids)s
+				AND gs.parent != %(grp)s
+				AND gs.docstatus < 2
+				AND ({slot_clause})
+			""",
+			params,
+			as_dict=True,
+		)
+		conflicts["student"] = _aggregate_conflicts(rows, student_labels)
 
 	return dict(conflicts)
 

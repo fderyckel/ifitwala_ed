@@ -432,14 +432,23 @@ class StudentGroup(Document):
 			labels = payload.get("labels") or payload.get("ids") or []
 			return ", ".join(label for label in labels if label)
 
+		def _group_links(payload):
+			sgs = payload.get("groups") or []
+			links = [
+				get_link_to_form("Student Group", sg)
+				for sg in sgs if sg
+			]
+			return ", ".join(links) if links else _("another Student Group")
+
 		if ins_conf:
 			for payload in ins_conf:
 				ins_list = _names(payload)
 				rot = payload.get("rotation_day")
 				blk = payload.get("block_number")
+				sg_links = _group_links(payload)
 				messages.append(
-					_("Instructor(s) {ins} already booked on rotation day {rot}, block {blk} in another Student Group.")
-					.format(ins=ins_list, rot=rot, blk=blk)
+					_("Instructor(s) {ins} already booked on rotation day {rot}, block {blk} in {sg}.")
+					.format(ins=ins_list, rot=rot, blk=blk, sg=sg_links)
 				)
 
 		if stu_conf:
@@ -447,9 +456,10 @@ class StudentGroup(Document):
 				stu_list = _names(payload)
 				rot = payload.get("rotation_day")
 				blk = payload.get("block_number")
+				sg_links = _group_links(payload)
 				messages.append(
-					_("Student(s) {stu} already booked on rotation day {rot}, block {blk} in another Student Group.")
-					.format(stu=stu_list, rot=rot, blk=blk)
+					_("Student(s) {stu} already booked on rotation day {rot}, block {blk} in {sg}.")
+					.format(stu=stu_list, rot=rot, blk=blk, sg=sg_links)
 				)
 
 		if not messages:
@@ -458,7 +468,7 @@ class StudentGroup(Document):
 		rule = get_conflict_rule()  # "Hard" or "Soft" from School settings
 
 		msg = "<br>".join(messages)
-		frappe.msgprint(msg, title=_("Scheduling Conflicts"))
+		frappe.msgprint(msg, title=_("Scheduling Conflicts"), indicator="red")
 
 		if rule == "Hard":
 			raise OverlapError(msg)
