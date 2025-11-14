@@ -36,34 +36,34 @@ class SchoolEvent(Document):
 #		}
 
 def get_permission_query_conditions(user):
-    if not user:
-        user = frappe.session.user
+	if not user:
+		user = frappe.session.user
 
-    participant = frappe.qb.DocType("School Event Participant")
-    event = frappe.qb.DocType("School Event")  # Correct table
+	participant = frappe.qb.DocType("School Event Participant")
+	event = frappe.qb.DocType("School Event")  # Correct table
 
-    query = (
-        frappe.qb.from_(participant)
-        .join(event).on(participant.parent == event.name)  # Correct join condition
-        .where(participant.participant == user)
-        .select(event.name)  # Select the event name
-    )
+	query = (
+		frappe.qb.from_(participant)
+		.join(event).on(participant.parent == event.name)  # Correct join condition
+		.where(participant.participant == user)
+		.select(event.name)  # Select the event name
+	)
 
-    names = [r[0] for r in query.run()]  # Get all event names
+	names = [r[0] for r in query.run()]  # Get all event names
 
-    if names:
-        name_condition = f"name IN ({', '.join([frappe.db.escape(n) for n in names])})"
-    else:
-        name_condition = "" # Handle no participants
+	if names:
+		name_condition = f"name IN ({', '.join([frappe.db.escape(n) for n in names])})"
+	else:
+		name_condition = "" # Handle no participants
 
-    owner_condition = f"owner = {frappe.db.escape(user)}"
+	owner_condition = f"owner = {frappe.db.escape(user)}"
 
-    if name_condition:
-        combined_condition = f"({name_condition} OR {owner_condition})"
-    else:
-        combined_condition = owner_condition
+	if name_condition:
+		combined_condition = f"({name_condition} OR {owner_condition})"
+	else:
+		combined_condition = owner_condition
 
-    return combined_condition
+	return combined_condition
 
 
 def event_has_permission(doc, user):
@@ -83,10 +83,10 @@ def event_has_permission(doc, user):
 
 @frappe.whitelist()
 def get_school_events(start, end, user=None, filters=None):
-    if not user:
-        user = frappe.session.user
-    # Frappe v15+: get_system_timezone returns the IANA timezone name
-    site_tz = frappe.utils.get_system_timezone() or "UTC"
+	if not user:
+		user = frappe.session.user
+	# Frappe v15+: get_system_timezone returns the IANA timezone name
+	site_tz = frappe.utils.get_system_timezone() or "UTC"
 
 	if isinstance(filters, string_types):
 		filters = json.loads(filters)
@@ -96,23 +96,23 @@ def get_school_events(start, end, user=None, filters=None):
 	tables = ["`tabSchool Event`"]
 	if "`tabSchool Event Participant`" in filters_condition:
 		tables.append("`tabSchool Event Participant`")
-		
+
 	start_local = "CONVERT_TZ(`tabSchool Event`.starts_on, 'UTC', %(site_tz)s)"
 	end_local = "CONVERT_TZ(`tabSchool Event`.ends_on, 'UTC', %(site_tz)s)"
-    events = frappe.db.sql(
-        f"""
-        SELECT `tabSchool Event`.* 
-        FROM `tabSchool Event` 
-        LEFT JOIN `tabSchool Event Participant` ON `tabSchool Event`.name = `tabSchool Event Participant`.parent
-        WHERE
-            ({start_local} BETWEEN %(start)s AND %(end)s)
-            OR ({end_local} BETWEEN %(start)s AND %(end)s)
-            {filters_condition} 
-        ORDER BY `tabSchool Event`.starts_on
-        """, 
-        {"start": start, "end": end, "site_tz": site_tz},
-        as_dict=True, 
-    )
+	events = frappe.db.sql(
+		f"""
+		SELECT `tabSchool Event`.*
+		FROM `tabSchool Event`
+		LEFT JOIN `tabSchool Event Participant` ON `tabSchool Event`.name = `tabSchool Event Participant`.parent
+		WHERE
+			({start_local} BETWEEN %(start)s AND %(end)s)
+			OR ({end_local} BETWEEN %(start)s AND %(end)s)
+			{filters_condition}
+		ORDER BY `tabSchool Event`.starts_on
+		""",
+		{"start": start, "end": end, "site_tz": site_tz},
+		as_dict=True,
+	)
 	allowed_events = []
 	for event in events:
 		if frappe.get_doc("School Event", event["name"]).has_permission(user=user):

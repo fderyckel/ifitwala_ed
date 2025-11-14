@@ -80,18 +80,18 @@ def get_dashboard_data(filters=None):
 	All queries parameterized (safe) and scoped by date window/filters.
 	"""
 	filters = frappe.parse_json(filters) or {}
-    # Use system timezone string for CONVERT_TZ
-    site_tz = frappe.utils.get_system_timezone() or "UTC"
+	# Use system timezone string for CONVERT_TZ
+	site_tz = frappe.utils.get_system_timezone() or "UTC"
 
 	where, params = _apply_common_conditions(filters, site_tz)
-	rest_where, rest_params = _rest_conditions(filters)	
+	rest_where, rest_params = _rest_conditions(filters)
 
 	# --- Admission Settings: upcoming horizon (days) ---
 	upcoming_horizon_days = frappe.db.get_single_value("Admission Settings", "followup_sla_days") or 7
 	try:
 		upcoming_horizon_days = int(upcoming_horizon_days)
 	except Exception:
-		upcoming_horizon_days = 7	
+		upcoming_horizon_days = 7
 
 	# ── counts
 	total = frappe.db.sql(
@@ -106,33 +106,33 @@ def get_dashboard_data(filters=None):
 	# 👇 FIX: use IS NULL (COALESCE ... IS NULL can never be true)
 	params_with_today = {**params, "today": nowdate()}
 	overdue_first = frappe.db.sql(
-		f"""
+		"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE {where}
-		  AND i.first_contacted_at IS NULL
-		  AND i.first_contact_due_on IS NOT NULL
-		  AND i.first_contact_due_on < %(today)s
-		""",
+			AND i.first_contacted_at IS NULL
+			AND i.first_contact_due_on IS NOT NULL
+			AND i.first_contact_due_on < %(today)s
+		""".format(where=where),
 		params_with_today, as_dict=False
 	)[0][0]
 
 	# ── averages (overall window)
 	avg_first = frappe.db.sql(
-		f"""
+		"""
 		SELECT AVG(i.response_hours_first_contact)
 		FROM `tabInquiry` i
 		WHERE {where} AND i.response_hours_first_contact IS NOT NULL
-		""",
+		""".format(where=where),
 		params, as_dict=False
 	)[0][0] or 0
 
 	avg_from_assign = frappe.db.sql(
-		f"""
+		"""
 		SELECT AVG(i.response_hours_from_assign)
 		FROM `tabInquiry` i
 		WHERE {where} AND i.response_hours_from_assign IS NOT NULL
-		""",
+		""".format(where=where),
 		params, as_dict=False
 	)[0][0] or 0
 
@@ -147,8 +147,8 @@ def get_dashboard_data(filters=None):
 		SELECT AVG(i.response_hours_first_contact)
 		FROM `tabInquiry` i
 		WHERE {SUBMITTED_LOCAL_EXPR} >= %(from30)s AND {SUBMITTED_LOCAL_EXPR} <= %(to30)s
-		  AND ({where})
-		  AND i.response_hours_first_contact IS NOT NULL
+			AND ({where})
+			AND i.response_hours_first_contact IS NOT NULL
 		""",
 		params30, as_dict=False
 	)[0][0] or 0
@@ -158,8 +158,8 @@ def get_dashboard_data(filters=None):
 		SELECT AVG(i.response_hours_from_assign)
 		FROM `tabInquiry` i
 		WHERE {SUBMITTED_LOCAL_EXPR} >= %(from30)s AND {SUBMITTED_LOCAL_EXPR} <= %(to30)s
-		  AND ({where})
-		  AND i.response_hours_from_assign IS NOT NULL
+			AND ({where})
+			AND i.response_hours_from_assign IS NOT NULL
 		""",
 		params30, as_dict=False
 	)[0][0] or 0
@@ -168,8 +168,8 @@ def get_dashboard_data(filters=None):
 	monthly = frappe.db.sql(
 		f"""
 		SELECT DATE_FORMAT({SUBMITTED_LOCAL_EXPR}, '%%Y-%%m') AS ym,
-		       AVG(i.response_hours_first_contact) AS a_first,
-		       AVG(i.response_hours_from_assign)  AS a_assign
+				 AVG(i.response_hours_first_contact) AS a_first,
+				 AVG(i.response_hours_from_assign)  AS a_assign
 		FROM `tabInquiry` i
 		WHERE {where}
 		GROUP BY DATE_FORMAT({SUBMITTED_LOCAL_EXPR}, '%%Y-%%m')
@@ -213,26 +213,26 @@ def get_dashboard_data(filters=None):
 	up_to = add_days(today, upcoming_horizon_days)
 
 	due_today = frappe.db.sql(
-		f"""
+		"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE {where}
-		  AND i.first_contacted_at IS NULL
-		  AND DATE(i.first_contact_due_on) = %(today)s
-		""",
+			AND i.first_contacted_at IS NULL
+			AND DATE(i.first_contact_due_on) = %(today)s
+		""".format(where=where),
 		{**params, "today": today},
 		as_dict=False
 	)[0][0]
 
 	upcoming = frappe.db.sql(
-		f"""
+		"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE {where}
-		  AND i.first_contacted_at IS NULL
-		  AND DATE(i.first_contact_due_on) > %(up_from)s
-		  AND DATE(i.first_contact_due_on) <= %(up_to)s
-		""",
+			AND i.first_contacted_at IS NULL
+			AND DATE(i.first_contact_due_on) > %(up_from)s
+			AND DATE(i.first_contact_due_on) <= %(up_to)s
+		""".format(where=where),
 		{**params, "up_from": up_from, "up_to": up_to},
 		as_dict=False
 	)[0][0]
@@ -287,26 +287,26 @@ def get_dashboard_data(filters=None):
 	params30["due_to30"] = f"{td}"
 
 	sla_den = frappe.db.sql(
-		f"""
+		"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE i.first_contact_due_on IS NOT NULL
-		  AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
-		  AND ({rest_where})
-		""",
+			AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
+			AND ({rest_where})
+		""".format(rest_where=rest_where),
 		params30, as_dict=False
 	)[0][0]
 
 	sla_num = frappe.db.sql(
-		f"""
+		"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE i.first_contact_due_on IS NOT NULL
-		  AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
-		  AND i.first_contacted_at IS NOT NULL
-		  AND DATE(i.first_contacted_at) <= i.first_contact_due_on
-		  AND ({rest_where})
-		""",
+			AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
+			AND i.first_contacted_at IS NOT NULL
+			AND DATE(i.first_contacted_at) <= i.first_contact_due_on
+			AND ({rest_where})
+		""".format(rest_where=rest_where),
 		params30, as_dict=False
 	)[0][0]
 
@@ -369,15 +369,15 @@ def admission_user_link_query(doctype, txt, searchfield, start, page_len, filter
 		SELECT u.name, u.full_name
 		FROM `tabUser` u
 		WHERE u.enabled = 1
-		  AND u.name IN (
-		    SELECT parent FROM `tabHas Role`
-		    WHERE role IN ('Admission Officer','Admission Manager')
-		  )
-		  AND (
-		    u.name LIKE %(txt)s
-		    OR u.full_name LIKE %(txt)s
-		    OR u.email LIKE %(txt)s
-		  )
+			AND u.name IN (
+			SELECT parent FROM `tabHas Role`
+			WHERE role IN ('Admission Officer','Admission Manager')
+			)
+			AND (
+			u.name LIKE %(txt)s
+			OR u.full_name LIKE %(txt)s
+			OR u.email LIKE %(txt)s
+			)
 		ORDER BY u.full_name ASC, u.creation DESC
 		LIMIT %(start)s, %(page_len)s
 		""",

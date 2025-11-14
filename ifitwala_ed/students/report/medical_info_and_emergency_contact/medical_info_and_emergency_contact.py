@@ -71,17 +71,17 @@ def _expand_program_scope(program: str | None) -> list[str]:
 
 
 def _get_columns():
-	return [
-		{"label": _("Student"), "fieldname": "student", "fieldtype": "Link", "options": "Student", "width": 130},
-		{"label": _("Student Name"), "fieldname": "student_name", "fieldtype": "Data", "width": 180},
-		{"label": _("Age"), "fieldname": "age", "fieldtype": "Data", "width": 80},
-		{"label": _("Medical Information"), "fieldname": "medical_summary", "fieldtype": "HTML", "width": 360},
-		{"label": _("Guardian Contacts"), "fieldname": "guardian_contacts", "fieldtype": "HTML", "width": 320},
-		{"label": _("Primary Guardian"), "fieldname": "guardian_primary_name", "fieldtype": "Data", "width": 190},
-		{"label": _("Primary Phone"), "fieldname": "guardian_primary_phone", "fieldtype": "Data", "width": 150},
-		{"label": _("Secondary Guardian"), "fieldname": "guardian_secondary_name", "fieldtype": "Data", "width": 190},
-		{"label": _("Secondary Phone"), "fieldname": "guardian_secondary_phone", "fieldtype": "Data", "width": 150},
-	]
+    return [
+        {"label": _("Student"), "fieldname": "student", "fieldtype": "Link", "options": "Student", "width": 130},
+        {"label": _("Student Name"), "fieldname": "student_name", "fieldtype": "Data", "width": 180},
+        {"label": _("Age"), "fieldname": "age", "fieldtype": "Data", "width": 80},
+        {"label": _("Guardian Contacts"), "fieldname": "guardian_contacts", "fieldtype": "HTML", "width": 320},
+        {"label": _("Primary Guardian"), "fieldname": "guardian_primary_name", "fieldtype": "Data", "width": 190},
+        {"label": _("Primary Phone"), "fieldname": "guardian_primary_phone", "fieldtype": "Data", "width": 150},
+        {"label": _("Secondary Guardian"), "fieldname": "guardian_secondary_name", "fieldtype": "Data", "width": 190},
+        {"label": _("Secondary Phone"), "fieldname": "guardian_secondary_phone", "fieldtype": "Data", "width": 150},
+        {"label": _("Medical Information"), "fieldname": "medical_summary", "fieldtype": "HTML", "width": 360},
+    ]
 
 
 def _build_rows(filters: frappe._dict) -> list[dict]:
