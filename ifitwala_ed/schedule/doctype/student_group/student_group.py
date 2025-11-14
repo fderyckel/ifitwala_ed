@@ -45,7 +45,7 @@ class StudentGroup(Document):
 		self._validate_ay_in_offering_spine()
 		self._enforce_school_rules()
 		self._validate_course_scoping()
-		self._validate_overlap_conflicts
+		self._validate_overlap_conflicts()
 
 		self.validate_mandatory_fields()
 		self.validate_size()
