@@ -12,7 +12,7 @@
   "from_datetime",
   "to_datetime",
   "source_doctype",
-  "source_document",
+  "source_name",
   "school",
   "academic_year"
  ],
