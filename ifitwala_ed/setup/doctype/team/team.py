@@ -16,9 +16,14 @@ class Team(Document):
 		# other validations as needed
 
 	def ensure_minimum_members(self):
-		members = [d for d in (self.members or []) if d.active]
+		"""
+		Require at least 2 members with a valid 'member' link.
+		We don't use an 'active' flag for now because the child
+		doctype has no such field.
+		"""
+		members = [d for d in (self.members or []) if d.member]
 		if len(members) < 2:
-			frappe.throw(_("A team must have at least 2 active members."))
+			frappe.throw(_("A team must have at least 2 members."))
 
 	def check_parent_team_loop(self):
 		if self.parent_team:

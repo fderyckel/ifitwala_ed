@@ -76,7 +76,6 @@ frappe.ui.form.on('Team', {
 									member: user,
 									member_name: label,
 									role_in_team: role,
-									active: 1
 								});
 							});
 							frm.refresh_field('members');
