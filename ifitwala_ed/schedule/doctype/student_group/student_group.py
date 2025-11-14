@@ -12,7 +12,10 @@ from ifitwala_ed.schedule.schedule_utils import (
 	validate_duplicate_student,
 	get_conflict_rule,
 	get_rotation_dates,
+	check_slot_conflicts,
+	OverlapError,
 )
+
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 from ifitwala_ed.schedule.attendance_utils import invalidate_meeting_dates
 from ifitwala_ed.utilities.location_conflicts import find_location_conflicts
@@ -42,6 +45,7 @@ class StudentGroup(Document):
 		self._validate_ay_in_offering_spine()
 		self._enforce_school_rules()
 		self._validate_course_scoping()
+		self._validate_overlap_conflicts
 
 		self.validate_mandatory_fields()
 		self.validate_size()
@@ -193,7 +197,6 @@ class StudentGroup(Document):
 		term_year = frappe.get_doc("Term", self.term)
 		if self.academic_year != term_year.academic_year:
 			frappe.throw(_("The term {0} does not belong to the academic year {1}.").format(self.term, self.academic_year))
-
 
 	def validate_mandatory_fields(self) -> None:
 		if self.group_based_on == "Course" and not self.course:
@@ -402,6 +405,58 @@ class StudentGroup(Document):
 					)
 				key_sets["instructor"].add(key)
 
+	def _validate_overlap_conflicts(self):
+		"""
+		Enforce that:
+		  - No instructor is double-booked in another Student Group
+		    at the same rotation_day + block_number.
+		  - No student is double-booked in another Student Group
+		    at the same rotation_day + block_number.
+
+		Room conflicts are handled separately by location_conflicts.
+		"""
+
+		# Use a plain dict so check_slot_conflicts can be called both from
+		# client (JSON) and server (Document).
+		conflicts = check_slot_conflicts(self.as_dict()) or {}
+
+		if not conflicts:
+			return
+
+		messages = []
+
+		ins_conf = conflicts.get("instructor") or []
+		stu_conf = conflicts.get("student") or []
+
+		if ins_conf:
+			# ins_conf looks like [(("INS-0001", "INS-0002"), rotation_day, block_number), ...]
+			for ins_ids, rot, blk in ins_conf:
+				ins_list = ", ".join(ins_ids)
+				messages.append(
+					_("Instructor(s) {ins} already booked on rotation day {rot}, block {blk} in another Student Group.")
+					.format(ins=ins_list, rot=rot, blk=blk)
+				)
+
+		if stu_conf:
+			# stu_conf looks like [(("STD-0001", "STD-0002"), rotation_day, block_number), ...]
+			for stu_ids, rot, blk in stu_conf:
+				stu_list = ", ".join(stu_ids)
+				messages.append(
+					_("Student(s) {stu} already booked on rotation day {rot}, block {blk} in another Student Group.")
+					.format(stu=stu_list, rot=rot, blk=blk)
+				)
+
+		if not messages:
+			return
+
+		rule = get_conflict_rule()  # "Hard" or "Soft" from School settings
+
+		if rule == "Hard":
+			# Block save
+			raise OverlapError("<br>".join(messages))
+		else:
+			# Warn but allow save
+			frappe.msgprint("<br>".join(messages), title=_("Scheduling Conflicts"))
 
 	def validate_location_capacity(self):
 		"""Ensure the chosen locations can accommodate the group's active student count.

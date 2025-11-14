@@ -191,74 +191,81 @@ def _extract(obj, attr):
 
 @frappe.whitelist()
 def check_slot_conflicts(group_doc):
-		"""Scan existing Student Group schedules for clashes.
+	"""Scan existing Student Group schedules for clashes.
 
-		Returns a dict keyed by category (instructor / student) with a list of
-		tuples (entity, rotation_day, block_number).
+	Returns a dict keyed by category (instructor / student) with a list of
+	tuples (entity, rotation_day, block_number).
 
-		Room/location clashes are handled by the central location_conflicts engine.
-		"""
-		if isinstance(group_doc, str):
-			group_doc = frappe._dict(json.loads(group_doc))
+	Room/location clashes are handled by the central location_conflicts engine.
+	"""
+	# Normalize input: client calls send JSON string, server calls may send a dict/doc
+	if isinstance(group_doc, str):
+		group_doc = frappe._dict(json.loads(group_doc))
 
-		conflicts = defaultdict(list)
+	# Ensure .name is never NULL for the SQL filter (gs.parent != %(grp)s)
+	group_name = group_doc.get("name") or "__new__"
 
-		# Pre-collect instructors & students once (avoid per-slot sub-queries)
-		instructors = group_doc.get("instructors") or []
-		students    = group_doc.get("students") or []
-		slots       = group_doc.get("student_group_schedule") or []
+	conflicts = defaultdict(list)
 
-		instructor_ids = tuple(
-			_extract(i, "instructor") for i in instructors if _extract(i, "instructor")
-		)
-		student_ids = tuple(
-			_extract(s, "student") for s in students if _extract(s, "student")
-		)
+	# Pre-collect instructors & students once (avoid per-slot sub-queries)
+	instructors = group_doc.get("instructors") or []
+	students    = group_doc.get("students") or []
+	slots       = group_doc.get("student_group_schedule") or []
 
-		for slot in slots:
-			rot   = _extract(slot, "rotation_day")
-			block = _extract(slot, "block_number")
+	instructor_ids = tuple(
+		_extract(i, "instructor") for i in instructors if _extract(i, "instructor")
+	)
+	student_ids = tuple(
+		_extract(s, "student") for s in students if _extract(s, "student")
+	)
 
-			if not rot or not block:
-				continue
+	for slot in slots:
+		rot   = _extract(slot, "rotation_day")
+		block = _extract(slot, "block_number")
 
-			# ----- instructor clash -------------------------------------------
-			if instructor_ids:
-				clash = frappe.db.sql(
-					"""
-					SELECT 1 FROM `tabStudent Group Instructor` gi
-					JOIN   `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
-					WHERE gi.instructor IN %(ins)s
-						AND gs.rotation_day = %(rot)s
-						AND gs.block_number = %(blk)s
-						AND gs.parent != %(grp)s
-						AND gs.docstatus < 2
-					LIMIT 1
-					""",
-					dict(ins=instructor_ids, rot=rot, blk=block, grp=group_doc.name),
-				)
-				if clash:
-					conflicts["instructor"].append((instructor_ids, rot, block))
+		if not rot or not block:
+			continue
 
-			# ----- student clash ----------------------------------------------
-			if student_ids:
-				clash = frappe.db.sql(
-					"""
-					SELECT 1 FROM `tabStudent Group Student` st
-					JOIN   `tabStudent Group Schedule` gs ON gs.parent = st.parent
-					WHERE st.student IN %(sts)s
-						AND gs.rotation_day = %(rot)s
-						AND gs.block_number = %(blk)s
-						AND gs.parent != %(grp)s
-						AND gs.docstatus < 2
-					LIMIT 1
-					""",
-					dict(sts=student_ids, rot=rot, blk=block, grp=group_doc.name),
-				)
-				if clash:
-					conflicts["student"].append((student_ids, rot, block))
+		# ----- instructor clash -------------------------------------------
+		if instructor_ids:
+			clash = frappe.db.sql(
+				"""
+				SELECT 1
+				FROM `tabStudent Group Instructor` gi
+				JOIN `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
+				WHERE gi.instructor IN %(ins)s
+					AND gs.rotation_day = %(rot)s
+					AND gs.block_number = %(blk)s
+					AND gs.parent != %(grp)s
+					AND gs.docstatus < 2
+				LIMIT 1
+				""",
+				dict(ins=instructor_ids, rot=rot, blk=block, grp=group_name),
+			)
+			if clash:
+				conflicts["instructor"].append((instructor_ids, rot, block))
 
-		return dict(conflicts)
+		# ----- student clash ----------------------------------------------
+		if student_ids:
+			clash = frappe.db.sql(
+				"""
+				SELECT 1
+				FROM `tabStudent Group Student` st
+				JOIN `tabStudent Group Schedule` gs ON gs.parent = st.parent
+				WHERE st.student IN %(sts)s
+					AND gs.rotation_day = %(rot)s
+					AND gs.block_number = %(blk)s
+					AND gs.parent != %(grp)s
+					AND gs.docstatus < 2
+				LIMIT 1
+				""",
+				dict(sts=student_ids, rot=rot, blk=block, grp=group_name),
+			)
+			if clash:
+				conflicts["student"].append((student_ids, rot, block))
+
+	return dict(conflicts)
+
 
 
 
