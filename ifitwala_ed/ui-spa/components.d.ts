@@ -16,5 +16,6 @@ declare module 'vue' {
     PortalSidebar: typeof import('./src/components/PortalSidebar.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ScheduleCalendar: typeof import('./src/components/calendar/ScheduleCalendar.vue')['default']
   }
 }

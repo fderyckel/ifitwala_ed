@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Academics</span>\",\"col\":12}},{\"id\":\"Vc7yxTmAVu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Schedule\",\"col\":3}},{\"id\":\"qzNSr6v13S\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Attendance Tool\",\"col\":3}},{\"id\":\"uR4H46u5Oe\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Task\",\"col\":3}},{\"id\":\"apaBo2gtj4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Todo\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"PAMo4OTijX\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Dashboards\",\"col\":4}},{\"id\":\"-IjqqRYUVX\",\"type\":\"card\",\"data\":{\"card_name\":\"Org, School & HR\",\"col\":4}}]",
+ "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Academics</span>\",\"col\":12}},{\"id\":\"Vc7yxTmAVu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Schedule\",\"col\":3}},{\"id\":\"qzNSr6v13S\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Events\",\"col\":3}},{\"id\":\"uR4H46u5Oe\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Task\",\"col\":3}},{\"id\":\"apaBo2gtj4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Todo\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"PAMo4OTijX\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Dashboards\",\"col\":4}},{\"id\":\"-IjqqRYUVX\",\"type\":\"card\",\"data\":{\"card_name\":\"Org, School & HR\",\"col\":4}},{\"id\":\"aKVIXzj9LG\",\"type\":\"card\",\"data\":{\"card_name\":\"Collaboration\",\"col\":4}}]",
  "creation": "2025-05-01 09:35:08.920114",
  "custom_blocks": [],
  "docstatus": 0,
@@ -228,9 +228,38 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Collaboration",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Team",
+   "link_count": 0,
+   "link_to": "Team",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Meeting",
+   "link_count": 0,
+   "link_to": "Meeting",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-11-12 14:40:16.497286",
+ "modified": "2025-11-14 10:25:52.006831",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academics",
@@ -266,11 +295,12 @@
    "type": "DocType"
   },
   {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Attendance Tool",
-   "link_to": "student_attendance_tool",
-   "type": "Page"
+   "color": "Green",
+   "doc_view": "Calendar",
+   "label": "School Events",
+   "link_to": "School Event",
+   "stats_filter": "[]",
+   "type": "DocType"
   },
   {
    "color": "Grey",

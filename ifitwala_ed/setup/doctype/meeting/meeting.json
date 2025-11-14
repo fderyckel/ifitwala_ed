@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:MTG-{YYYY}-{#####}",
  "creation": "2025-11-12 16:00:29.497186",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -45,7 +46,7 @@
   },
   {
    "fieldname": "date",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "Date"
   },
   {
@@ -146,10 +147,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-13 07:56:54.057933",
+ "modified": "2025-11-13 14:07:41.290689",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Meeting",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
