@@ -62,14 +62,21 @@ def _date_span(start_dt: datetime, end_dt: datetime) -> Tuple[date, date]:
 # Adapters — each yields LocationSlot entries
 # ──────────────────────────────────────────────────────────────────────────────
 
-def slots_from_student_groups(branch: set[str], start_date: date, end_date: date,
-		ignore: set[str]) -> Iterable[LocationSlot]:
-
+def slots_from_student_groups(
+	branch: set[str],
+	start_date: date,
+	end_date: date,
+	ignore: set[str],
+) -> Iterable[LocationSlot]:
+	"""
+	Yield slots for Student Groups that use any location in `branch`
+	between start_date and end_date (inclusive).
+	"""
 	sg_names = frappe.db.get_all(
 		"Student Group Schedule",
 		filters={"location": ["in", list(branch)]},
 		pluck="parent",
-		distinct=True
+		distinct=True,
 	)
 
 	for sg in sg_names:
@@ -103,18 +110,20 @@ def slots_from_meeting(docname: str) -> Iterable[LocationSlot]:
 		return []
 
 	start_dt = get_datetime(f"{doc.date} {doc.start_time}")
-	end_dt   = get_datetime(f"{doc.date} {doc.end_time}")
+	end_dt = get_datetime(f"{doc.date} {doc.end_time}")
 
 	if not start_dt or not end_dt:
 		return []
 
-	return [LocationSlot(
-		location=doc.location,
-		start=start_dt,
-		end=end_dt,
-		source_doctype="Meeting",
-		source_name=docname,
-	)]
+	return [
+		LocationSlot(
+			location=doc.location,
+			start=start_dt,
+			end=end_dt,
+			source_doctype="Meeting",
+			source_name=docname,
+		)
+	]
 
 
 def slots_from_school_event(docname: str) -> Iterable[LocationSlot]:
@@ -122,39 +131,22 @@ def slots_from_school_event(docname: str) -> Iterable[LocationSlot]:
 	if not doc.location or not doc.starts_on or not doc.ends_on:
 		return []
 
-	return [LocationSlot(
-		location=doc.location,
-		start=get_datetime(doc.starts_on),
-		end=get_datetime(doc.ends_on),
-		source_doctype="School Event",
-		source_name=docname,
-	)]
+	return [
+		LocationSlot(
+			location=doc.location,
+			start=get_datetime(doc.starts_on),
+			end=get_datetime(doc.ends_on),
+			source_doctype="School Event",
+			source_name=docname,
+		)
+	]
 
 
-def slots_from_frappe_event(docname: str) -> Iterable[LocationSlot]:
-	doc = frappe.get_cached_doc("Event", docname)
-	loc = getattr(doc, "location", None)
-	start = getattr(doc, "starts_on", None)
-	end   = getattr(doc, "ends_on", None)
-
-	if not loc or not start or not end:
-		return []
-
-	return [LocationSlot(
-		location=loc,
-		start=get_datetime(start),
-		end=get_datetime(end),
-		source_doctype="Event",
-		source_name=docname,
-	)]
-
-
-# Registry of sources
+# Registry of sources (kept for future extension if needed)
 SOURCE_ADAPTERS: dict[str, Callable] = {
 	"Student Group": slots_from_student_groups,  # special signature
 	"Meeting": slots_from_meeting,
 	"School Event": slots_from_school_event,
-	"Event": slots_from_frappe_event,
 }
 
 
@@ -162,14 +154,20 @@ SOURCE_ADAPTERS: dict[str, Callable] = {
 # Main conflict engine
 # ──────────────────────────────────────────────────────────────────────────────
 
-def find_location_conflicts(location: str, start, end, *, ignore_sources=None) -> List[LocationSlot]:
+def find_location_conflicts(
+	location: str,
+	start,
+	end,
+	*,
+	ignore_sources: Optional[Iterable[Tuple[str, str]]] = None,
+) -> List[LocationSlot]:
 	start_dt = _normalize_dt(start)
-	end_dt   = _normalize_dt(end)
+	end_dt = _normalize_dt(end)
 
 	if end_dt <= start_dt:
 		return []
 
-	branch = expand_location_branch(location)   # now exact match only
+	branch = expand_location_branch(location)  # now exact match only
 	if not branch:
 		return []
 
@@ -186,7 +184,11 @@ def find_location_conflicts(location: str, start, end, *, ignore_sources=None) -
 
 	# 2) Meetings
 	if "Meeting" not in {dt for (dt, _) in ignore_sources}:
-		meetings = frappe.db.get_all("Meeting", filters={"location": ["in", list(branch)]}, pluck="name")
+		meetings = frappe.db.get_all(
+			"Meeting",
+			filters={"location": ["in", list(branch)]},
+			pluck="name",
+		)
 		for m in meetings:
 			if ("Meeting", m) in ignore_sources:
 				continue
@@ -195,20 +197,15 @@ def find_location_conflicts(location: str, start, end, *, ignore_sources=None) -
 					conflicts.append(s)
 
 	# 3) School Events
-	events = frappe.db.get_all("School Event", filters={"location": ["in", list(branch)]}, pluck="name")
+	events = frappe.db.get_all(
+		"School Event",
+		filters={"location": ["in", list(branch)]},
+		pluck="name",
+	)
 	for e in events:
 		if ("School Event", e) in ignore_sources:
 			continue
 		for s in slots_from_school_event(e):
-			if _overlaps(start_dt, end_dt, s.start, s.end):
-				conflicts.append(s)
-
-	# 4) Frappe Events
-	frappe_events = frappe.db.get_all("Event", filters={"location": ["in", list(branch)]}, pluck="name")
-	for e in frappe_events:
-		if ("Event", e) in ignore_sources:
-			continue
-		for s in slots_from_frappe_event(e):
 			if _overlaps(start_dt, end_dt, s.start, s.end):
 				conflicts.append(s)
 

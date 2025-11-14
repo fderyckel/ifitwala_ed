@@ -1,7 +1,8 @@
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
+# ifitwala_ed/school_settings/doctype/school_event/school_event.py
+
 import frappe
 import json
 from six import string_types
