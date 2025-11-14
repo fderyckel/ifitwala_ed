@@ -80,7 +80,8 @@ def get_dashboard_data(filters=None):
 	All queries parameterized (safe) and scoped by date window/filters.
 	"""
 	filters = frappe.parse_json(filters) or {}
-	site_tz = frappe.utils.get_time_zone()
+    # Use system timezone string for CONVERT_TZ
+    site_tz = frappe.utils.get_system_timezone() or "UTC"
 
 	where, params = _apply_common_conditions(filters, site_tz)
 	rest_where, rest_params = _rest_conditions(filters)	

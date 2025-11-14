@@ -83,9 +83,10 @@ def event_has_permission(doc, user):
 
 @frappe.whitelist()
 def get_school_events(start, end, user=None, filters=None):
-	if not user:
-		user = frappe.session.user
-	site_tz = frappe.utils.get_time_zone()
+    if not user:
+        user = frappe.session.user
+    # Frappe v15+: get_system_timezone returns the IANA timezone name
+    site_tz = frappe.utils.get_system_timezone() or "UTC"
 
 	if isinstance(filters, string_types):
 		filters = json.loads(filters)
@@ -98,20 +99,20 @@ def get_school_events(start, end, user=None, filters=None):
 		
 	start_local = "CONVERT_TZ(`tabSchool Event`.starts_on, 'UTC', %(site_tz)s)"
 	end_local = "CONVERT_TZ(`tabSchool Event`.ends_on, 'UTC', %(site_tz)s)"
-	events = frappe.db.sql(
-		f"""
-		SELECT `tabSchool Event`.* 
-		FROM `tabSchool Event` 
-		LEFT JOIN `tabSchool Event Participant` ON `tabSchool Event`.name = `tabSchool Event Participant`.parent
-		WHERE
-			({start_local} BETWEEN %(start)s AND %(end)s)
-			OR ({end_local} BETWEEN %(start)s AND %(end)s)
-			{filters_condition} 
-		ORDER BY `tabSchool Event`.starts_on
-		""", 
-		{"start": start, "end": end, "site_tz": site_tz},
-		as_dict=True, 
-	)
+    events = frappe.db.sql(
+        f"""
+        SELECT `tabSchool Event`.* 
+        FROM `tabSchool Event` 
+        LEFT JOIN `tabSchool Event Participant` ON `tabSchool Event`.name = `tabSchool Event Participant`.parent
+        WHERE
+            ({start_local} BETWEEN %(start)s AND %(end)s)
+            OR ({end_local} BETWEEN %(start)s AND %(end)s)
+            {filters_condition} 
+        ORDER BY `tabSchool Event`.starts_on
+        """, 
+        {"start": start, "end": end, "site_tz": site_tz},
+        as_dict=True, 
+    )
 	allowed_events = []
 	for event in events:
 		if frappe.get_doc("School Event", event["name"]).has_permission(user=user):

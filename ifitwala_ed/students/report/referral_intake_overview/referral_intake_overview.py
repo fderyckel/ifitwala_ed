@@ -13,7 +13,7 @@ def execute(filters=None):
 	user = frappe.session.user
 	user_roles = set(frappe.get_roles(user))
 	can_see_restricted = bool(user_roles & ALLOWED_STRICT_ROLES)
-	site_tz = frappe.utils.get_time_zone()
+	site_tz = frappe.utils.get_system_timezone() or "UTC"
 	site_now = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
 
 	columns = [

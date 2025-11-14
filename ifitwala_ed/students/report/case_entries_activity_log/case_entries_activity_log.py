@@ -21,7 +21,7 @@ ALLOWED = {"Counselor", "Academic Admin"}
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
 	_guard_roles()
-	site_tz = frappe.utils.get_time_zone()
+	site_tz = frappe.utils.get_system_timezone() or "UTC"
 
 	# Dates (inclusive)
 	date_from = getdate(filters.get("from_date")) if filters.get("from_date") else None
