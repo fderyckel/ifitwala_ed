@@ -440,7 +440,7 @@ function open_team_schedule_dialog(frm) {
 					label: __('Stop after (occurrences)'),
 					reqd: 1,
 					default: 6,
-					description: __('Maximum {0} per batch.').format(TEAM_MEETING_MAX_OCCURRENCES)
+					description: __('Maximum {0} per batch.', [TEAM_MEETING_MAX_OCCURRENCES])
 				},
 				{ fieldname: 'preview_html', fieldtype: 'HTML' },
 				{ fieldtype: 'Section Break', label: __('Participants') },
