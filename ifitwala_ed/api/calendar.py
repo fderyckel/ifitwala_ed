@@ -26,9 +26,9 @@ from frappe.utils import (
 )
 
 from ifitwala_ed.schedule.schedule_utils import (
-	get_effective_schedule_for_ay,
-	get_rotation_dates,
-	get_school_for_student_group,
+    get_effective_schedule_for_ay,
+    get_rotation_dates,
+    get_school_for_student_group,
 )
 
 VALID_SOURCES = {
@@ -733,11 +733,96 @@ def debug_staff_calendar_window(from_datetime: Optional[str] = None, to_datetime
 	# quick sample of student group events only (limit 10)
 	sample = _collect_student_group_events(user, start, end, tzinfo)[:10]
 
-	return {
-		"user": user,
-		"system_tz": tzinfo.zone,
-		"window": {"from": start.isoformat(), "to": end.isoformat()},
-		"instructor_ids": sorted(instr),
-		"sg_instructor_groups": sorted(sgi),
-		"sample_events": [e.as_dict() for e in sample],
-	}
+    return {
+        "user": user,
+        "system_tz": tzinfo.zone,
+        "window": {"from": start.isoformat(), "to": end.isoformat()},
+        "instructor_ids": sorted(instr),
+        "sg_instructor_groups": sorted(sgi),
+        "sample_events": [e.as_dict() for e in sample],
+    }
+
+
+@frappe.whitelist()
+def get_portal_calendar_prefs(from_datetime: Optional[str] = None, to_datetime: Optional[str] = None):
+    """
+    Return portal calendar preferences for the logged-in employee:
+    - timezone (System Settings)
+    - weekendDays (FullCalendar day indices to hide when weekends are off)
+    - defaultSlotMin/Max (from School settings)
+    """
+    user = frappe.session.user
+    tzinfo = _system_tzinfo()
+
+    # Resolve user's base school via Employee, else Instructor
+    school = (
+        frappe.db.get_value("Employee", {"user_id": user}, "school")
+        or frappe.db.get_value("Instructor", {"linked_user_id": user}, "school")
+    )
+
+    # Academic Year window to scope the schedule/calendar
+    try:
+        from ifitwala_ed.schedule.schedule_utils import current_academic_year
+
+        ay = current_academic_year()
+    except Exception:
+        ay = None
+
+    # Find a School Schedule → School Calendar
+    calendar_name = None
+    if school and ay:
+        sched = get_effective_schedule_for_ay(ay, school)
+        if sched:
+            try:
+                sched_doc = frappe.get_cached_doc("School Schedule", sched)
+                calendar_name = getattr(sched_doc, "school_calendar", None)
+            except Exception:
+                calendar_name = None
+
+    # Fallback: School.current_school_calendar
+    if not calendar_name and school:
+        calendar_name = frappe.db.get_value("School", school, "current_school_calendar")
+
+    weekend_fc_days: List[int] = []
+    if calendar_name:
+        try:
+            cal = frappe.get_cached_doc("School Calendar", calendar_name)
+            # Collect weekdays for entries flagged as weekly_off
+            days = set()
+            for h in (cal.holidays or []):
+                try:
+                    if int(getattr(h, "weekly_off", 0)) == 1 and getattr(h, "holiday_date", None):
+                        d = getdate(h.holiday_date)
+                        py_weekday = d.weekday()  # Monday=0..Sunday=6
+                        fc_day = (py_weekday + 1) % 7  # Sunday=0..Saturday=6
+                        days.add(fc_day)
+                except Exception:
+                    continue
+            weekend_fc_days = sorted(days)
+        except Exception:
+            weekend_fc_days = []
+
+    if not weekend_fc_days:
+        # Default to Sat/Sun
+        weekend_fc_days = [0, 6]
+
+    # Default slot window from School
+    default_min = "07:00:00"
+    default_max = "17:00:00"
+    if school:
+        row = frappe.db.get_value(
+            "School",
+            school,
+            ["portal_calendar_start_time", "portal_calendar_end_time"],
+            as_dict=True,
+        )
+        if row:
+            default_min = (row.get("portal_calendar_start_time") or default_min)[:8]
+            default_max = (row.get("portal_calendar_end_time") or default_max)[:8]
+
+    return {
+        "timezone": tzinfo.zone,
+        "weekendDays": weekend_fc_days,
+        "defaultSlotMin": default_min,
+        "defaultSlotMax": default_max,
+    }

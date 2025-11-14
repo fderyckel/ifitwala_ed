@@ -34,10 +34,10 @@
 			<div class="absolute bottom-0 right-12 h-64 w-64 rounded-full bg-sky-500/10 blur-3xl"></div>
 		</section>
 
-		<section class="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-			<ScheduleCalendar class="lg:col-span-1" />
+		<section class="space-y-8">
+			<ScheduleCalendar />
 
-			<aside class="space-y-6">
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 				<div class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
 					<p class="text-xs uppercase tracking-[0.3em] text-slate-400">Insights</p>
 					<h3 class="mt-2 text-xl font-semibold text-slate-900">Today’s focus</h3>
@@ -98,7 +98,7 @@
 						</a>
 					</div>
 				</div>
-			</aside>
+			</div>
 		</section>
 	</div>
 </template>

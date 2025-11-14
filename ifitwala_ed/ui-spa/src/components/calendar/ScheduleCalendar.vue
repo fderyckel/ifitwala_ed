@@ -19,6 +19,25 @@
 		</header>
 
 		<div class="mt-4 flex flex-wrap items-center gap-3">
+			<!-- Weekend / Full-day toggles -->
+			<div class="mr-auto flex items-center gap-3 text-xs">
+				<button
+					class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium transition"
+					:class="showWeekends ? 'border-slate-300 text-slate-700 bg-white' : 'border-blue-200 bg-blue-50 text-blue-700'"
+					@click="showWeekends = !showWeekends"
+				>
+					<FeatherIcon name="calendar" class="h-4 w-4" />
+					{{ showWeekends ? 'Show all days' : 'Hide weekends' }}
+				</button>
+				<button
+					class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium transition"
+					:class="showFullDay ? 'border-slate-300 text-slate-700 bg-white' : 'border-emerald-200 bg-emerald-50 text-emerald-700'"
+					@click="showFullDay = !showFullDay"
+				>
+					<FeatherIcon name="clock" class="h-4 w-4" />
+					{{ showFullDay ? 'Full day on' : 'Default hours' }}
+				</button>
+			</div>
 			<button
 				v-for="chip in sourceChips"
 				:key="chip.id"
@@ -69,6 +88,7 @@ import { DatesSetArg } from '@fullcalendar/core';
 import { FeatherIcon } from 'frappe-ui';
 
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
+import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
 // Vendor local placeholder styles to unblock build
 import '@/styles/fullcalendar/core.css';
 import '@/styles/fullcalendar/daygrid.css';
@@ -96,6 +116,14 @@ const {
 	toggleSource,
 } = useCalendarEvents({ role: props.role ?? 'staff' });
 
+// Calendar preferences and toggles
+const { prefs, fetch: fetchPrefs } = useCalendarPrefs();
+const showWeekends = ref(false);
+const showFullDay = ref(false);
+const hiddenDays = ref<number[]>([0, 6]);
+const slotMin = ref<string>('07:00:00');
+const slotMax = ref<string>('17:00:00');
+
 const subtitle = computed(() => {
 	const total = events.value.length;
 	return total ? `${total} event${total === 1 ? '' : 's'} in view` : 'Nothing scheduled in this range';
@@ -117,13 +145,14 @@ const calendarOptions = ref({
 		center: 'title',
 		right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
 	},
-	slotMinTime: '07:00:00',
-	slotMaxTime: '21:00:00',
+	slotMinTime: slotMin.value,
+	slotMaxTime: slotMax.value,
 	dayMaxEvents: true,
 	navLinks: false,
 	nowIndicator: true,
 	events: events.value,
 	timeZone: timezone.value,
+	hiddenDays: hiddenDays.value,
 	datesSet: (arg: DatesSetArg) => handleDatesSet(arg),
 	eventDisplay: 'block',
 });
@@ -134,6 +163,31 @@ watch(events, (val) => {
 
 watch(timezone, (tz) => {
 	calendarOptions.value.timeZone = tz;
+});
+
+watch(showWeekends, (val) => {
+	calendarOptions.value.hiddenDays = val ? [] : hiddenDays.value;
+});
+
+watch(showFullDay, (val) => {
+	calendarOptions.value.slotMinTime = val ? '00:00:00' : slotMin.value;
+	calendarOptions.value.slotMaxTime = val ? '24:00:00' : slotMax.value;
+});
+
+onMounted(async () => {
+	const p = await fetchPrefs();
+	if (p) {
+		hiddenDays.value = p.weekendDays && p.weekendDays.length ? p.weekendDays : [0, 6];
+		slotMin.value = p.defaultSlotMin || '07:00:00';
+		slotMax.value = p.defaultSlotMax || '17:00:00';
+		if (!showWeekends.value) {
+			calendarOptions.value.hiddenDays = hiddenDays.value;
+		}
+		if (!showFullDay.value) {
+			calendarOptions.value.slotMinTime = slotMin.value;
+			calendarOptions.value.slotMaxTime = slotMax.value;
+		}
+	}
 });
 
 function handleDatesSet(arg: DatesSetArg) {
