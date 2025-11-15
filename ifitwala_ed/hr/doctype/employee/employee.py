@@ -7,7 +7,7 @@ from frappe.utils.nestedset import NestedSet
 from frappe.utils import getdate, today
 from frappe import _, scrub
 from frappe.utils import validate_email_address, add_years, cstr
-from frappe.permissions import add_user_permission, remove_user_permission, get_doc_permissions
+from frappe.permissions import get_doc_permissions
 from frappe.contacts.address_and_contact import load_address_and_contact
 
 from ifitwala_ed.utilities.employee_utils import get_user_base_org,	get_user_base_school,	get_descendant_organizations
@@ -48,7 +48,6 @@ class Employee(NestedSet):
 				user = frappe.get_doc("User", existing_user_id)
 				validate_employee_role(user, ignore_emp_check = True)
 				user.save(ignore_permissions=True)
-				remove_user_permission("Employee", self.name, existing_user_id)
 
 		# Ensure the employee history is sorted before saving
 		if self.employee_history:
@@ -476,9 +475,6 @@ class Employee(NestedSet):
 			user.flags.ignore_permissions = True
 			user.add_roles("Expense Approver")
 
-	def on_doctype_update():
-		frappe.db.add_index("Employee", ["lft", "rgt"])
-
 
 
 @frappe.whitelist()
@@ -601,6 +597,8 @@ def validate_employee_role(doc, method=None, ignore_emp_check=False):
 def update_user_permissions(doc, method):
 	"""No-op: we no longer use Employee User Permissions at all."""
 	return
+
+
 
 def has_upload_permission(doc, ptype='read', user=None):
 	if not user:

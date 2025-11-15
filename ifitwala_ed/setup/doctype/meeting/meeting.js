@@ -58,7 +58,32 @@ frappe.ui.form.on('Meeting', {
 				};
 			};
 		}
-	}
+	},
+	
+	team(frm) {
+		if (!frm.doc.team) {
+			return;
+		}
+
+		const has_participants = Array.isArray(frm.doc.participants) && frm.doc.participants.length > 0;
+
+		if (has_participants) {
+			frappe.confirm(
+				__(
+					"Do you want to replace the current participants with all members of this Team?"
+				),
+				() => {
+					load_team_participants(frm, true);
+				},
+				() => {
+					// No → keep existing participants
+				}
+			);
+		} else {
+			load_team_participants(frm, true);
+		}
+	},
+
 });
 
 frappe.ui.form.on('Meeting Participant', {

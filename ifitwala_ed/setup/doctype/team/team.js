@@ -643,13 +643,12 @@ function open_team_schedule_dialog(frm) {
 		dialog.fields_dict.participants_html.$wrapper.html(render_participants_preview(activeMembers));
 		dialog.$wrapper.addClass('team-meeting-scheduler');
 
-		dialog.fields_dict.academic_year.get_query = () => {
-			const filters = { year_end_date: ['>=', frappe.datetime.nowdate()] };
-			if (frm.doc.school) {
-				filters.school = frm.doc.school;
-			}
-			return { filters, order_by: 'year_start_date asc' };
-		};
+		dialog.fields_dict.academic_year.get_query = () => ({
+			query: 'ifitwala_ed.utilities.link_queries.academic_year_link_query',
+			filters: {
+				school: frm.doc.school,
+			},
+		});
 
 		dialog.set_df_property('meeting_category', 'options', ['', ...meetingCategoryOptions].join('\n'));
 
@@ -671,19 +670,32 @@ function open_team_schedule_dialog(frm) {
 			}
 			const start = frappe.datetime.str_to_user(ayMeta.year_start_date);
 			const end = frappe.datetime.str_to_user(ayMeta.year_end_date);
+			const providerName = ayMeta.school_name || ayMeta.school || __('Unknown School');
+			const inherited = frm.doc.school && ayMeta.source_school && frm.doc.school !== ayMeta.source_school;
+			const inheritedLabel = inherited
+				? `<div class="team-scheduler-ay-card__note">${__('Inherited from {0}', [
+						frappe.utils.escape_html(ayMeta.source_school_name || ayMeta.source_school)
+				  ])}</div>`
+				: '';
 			target.html(
 				`<div class="team-scheduler-ay-card">
 					<div>
 						<div class="team-scheduler-ay-card__title">${frappe.utils.escape_html(ayMeta.label || ayName)}</div>
 						<div class="team-scheduler-ay-card__range">${start} → ${end}</div>
+						<div class="team-scheduler-ay-card__provider">${__('Hosted by {0}', [
+							frappe.utils.escape_html(providerName)
+						])}</div>
 					</div>
-					<span class="badge text-bg-light">${__('Aligned to {0}', [frm.doc.school || __('school')])}</span>
+					<span class="badge text-bg-light">${__('Aligned to {0}', [
+						frappe.utils.escape_html(frm.doc.school || __('school'))
+					])}</span>
+					${inheritedLabel}
 				</div>`
 			);
 		};
 
 		const updatePreview = () => {
-			const values = dialog.get_values ? dialog.get_values() : null;
+			const values = collect_preview_values(dialog);
 			const previewWrapper = dialog.fields_dict.preview_html.$wrapper;
 			if (!values) {
 				previewWrapper.html(
@@ -1007,6 +1019,16 @@ function ensure_scheduler_styles() {
 			color: #475569;
 			font-size: 0.9rem;
 		}
+		.team-scheduler-ay-card__provider {
+			color: #1d4ed8;
+			font-size: 0.85rem;
+			margin-top: 0.25rem;
+		}
+		.team-scheduler-ay-card__note {
+			margin-top: 0.35rem;
+			color: #b45309;
+			font-size: 0.85rem;
+		}
 		.team-scheduler-empty {
 			padding: 0.85rem;
 			background: #fff;
@@ -1119,4 +1141,19 @@ function ensure_scheduler_styles() {
 		}
 	`;
 	document.head.appendChild(style);
+}
+
+function collect_preview_values(dialog) {
+	if (!dialog) {
+		return null;
+	}
+	const grab = fieldname => dialog.get_value ? dialog.get_value(fieldname) : null;
+	return {
+		academic_year: grab('academic_year'),
+		start_date: grab('start_date'),
+		start_time: grab('start_time'),
+		end_time: grab('end_time'),
+		repeat_option: grab('repeat_option'),
+		occurrences: grab('occurrences'),
+	};
 }

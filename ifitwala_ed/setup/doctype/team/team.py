@@ -17,6 +17,7 @@ from frappe.utils import (
 	nowdate,
 	time_diff_in_seconds,
 )
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 class Team(Document):
 
@@ -108,16 +109,44 @@ def get_schedulable_academic_years(team):
 	if not team_row:
 		frappe.throw(_("Team {0} was not found.").format(frappe.bold(team)))
 
-	filters = {"year_end_date": (">=", nowdate())}
+	candidate_schools = []
 	if team_row.school:
-		filters["school"] = team_row.school
+		candidate_schools.append(team_row.school)
+		for ancestor in get_ancestor_schools(team_row.school):
+			if ancestor not in candidate_schools:
+				candidate_schools.append(ancestor)
 
-	years = frappe.get_all(
-		"Academic Year",
-		filters=filters,
-		fields=["name", "academic_year_name", "year_start_date", "year_end_date", "school"],
-		order_by="year_start_date asc",
-	)
+	def _fetch_for_school(school_name):
+		filters = {"year_end_date": (">=", nowdate())}
+		if school_name:
+			filters["school"] = school_name
+		return frappe.get_all(
+			"Academic Year",
+			filters=filters,
+			fields=["name", "academic_year_name", "year_start_date", "year_end_date", "school"],
+			order_by="year_start_date asc",
+		)
+
+	selected_school = None
+	years = []
+	for school_name in candidate_schools or [None]:
+		years = _fetch_for_school(school_name)
+		if years:
+			selected_school = school_name
+			break
+
+	if not years:
+		return []
+
+	school_names = {row.school for row in years if row.school}
+	if selected_school:
+		school_names.add(selected_school)
+	school_labels = {}
+	if school_names:
+		for row in frappe.get_all(
+			"School", filters={"name": ["in", list(school_names)]}, fields=["name", "school_name"], as_list=False
+		):
+			school_labels[row["name"]] = row["school_name"]
 
 	return [
 		{
@@ -126,6 +155,9 @@ def get_schedulable_academic_years(team):
 			"year_start_date": ay.year_start_date,
 			"year_end_date": ay.year_end_date,
 			"school": ay.school,
+			"school_name": school_labels.get(ay.school),
+			"source_school": selected_school or ay.school,
+			"source_school_name": school_labels.get(selected_school) if selected_school else school_labels.get(ay.school),
 		}
 		for ay in years
 	]

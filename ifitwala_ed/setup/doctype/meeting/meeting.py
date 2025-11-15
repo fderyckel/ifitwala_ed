@@ -50,7 +50,6 @@ class Meeting(Document):
 
 	def validate(self):
 		# Basic structural checks
-		self.ensure_team_selected()
 		self.ensure_unique_participants()
 		self.ensure_at_least_one_participant()
 
@@ -127,18 +126,6 @@ class Meeting(Document):
 	# Validation helpers
 	# ─────────────────────────────────────────────────────────────
 
-	def ensure_team_selected(self) -> None:
-		"""
-		Guard to ensure a Meeting is attached to some team context.
-
-		Loosen this if you want truly ad-hoc meetings without a Team.
-		"""
-		if not self.team:
-			frappe.throw(
-				_("Please select a Team for this meeting."),
-				title=_("Team Required"),
-			)
-
 	def ensure_unique_participants(self) -> None:
 		"""
 		Ensure that no User appears twice in the participants table.
@@ -169,6 +156,33 @@ class Meeting(Document):
 				_("Please add at least one participant to this meeting."),
 				title=_("No Participants"),
 			)
+
+	def load_team_participants_if_empty(self) -> None:
+		"""
+		If a team is selected AND no participants are already added,
+		auto-populate participants based on Team.members (Team Member child).
+		"""
+		if not self.team:
+			return
+
+		if self.participants:
+			# Participants already defined — do not override.
+			return
+
+		from ifitwala_ed.setup.doctype.meeting.meeting import get_team_participants
+
+		data = get_team_participants(self.team) or []
+
+		for row in data:
+			user_id = row.get("user_id")
+			if not user_id:
+				continue
+
+			child = self.append("participants", {})
+			child.participant = user_id
+			if row.get("full_name"):
+				child.participant_name = row["full_name"]
+
 
 	def validate_time_logic(self) -> None:
 		"""
@@ -355,16 +369,57 @@ class Meeting(Document):
 	# (Optional) Team membership guard
 	# ─────────────────────────────────────────────────────────────
 
-	def ensure_participants_from_team(self) -> None:
-		"""
-		Placeholder for a stricter rule:
 
-		- Optionally enforce that all participants belong to the selected Team.
+@frappe.whitelist()
+def get_team_participants(team: str) -> list[dict]:
+	"""
+	Return active team members for a given Team as meeting participants.
 
-		For now this is not called from validate(), but you can enable it later:
+	The Team → Team Member → Employee/User model is:
 
-		    self.ensure_participants_from_team()
+	    Team (parent)
+	        └─ Team Member (child table "members")
+	            - employee (Link Employee)
+	            - member   (Link User)
+	            - member_name (Data)
 
-		once Team membership modelling is finalised.
-		"""
-		pass
+	We use `member` (User) as the Meeting Participant.participant.
+	"""
+	if not team:
+		return []
+
+	# Pull child rows from Team Member
+	rows = frappe.get_all(
+		"Team Member",
+		filters={
+			"parent": team,
+			"parenttype": "Team",
+			"parentfield": "members",
+		},
+		fields=["employee", "member", "member_name"],
+	)
+
+	out: list[dict] = []
+	seen_users: set[str] = set()
+
+	for r in rows:
+		user_id = r.get("member")
+		if not user_id:
+			# No linked User → can't participate as a "Meeting Participant"
+			continue
+
+		if user_id in seen_users:
+			continue
+
+		full_name = r.get("member_name") or frappe.db.get_value("User", user_id, "full_name") or user_id
+
+		out.append(
+			{
+				"user_id": user_id,
+				"full_name": full_name,
+			}
+		)
+		seen_users.add(user_id)
+
+	return out
+

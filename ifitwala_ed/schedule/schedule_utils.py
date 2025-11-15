@@ -329,28 +329,69 @@ def check_slot_conflicts(group_doc):
 	if not slot_clause:
 		return {}
 
-	def _instructor_label_map(entities: tuple[str, ...]) -> dict[str, str]:
+	def _instructor_label_map(entities) -> dict[str, str]:
+		"""
+		Map Employee IDs → human-readable labels.
+
+		We try, in order of preference:
+		- employee_full_name (your new field)
+		- employee_name      (legacy ERPNext field, if present)
+		- first_name + last_name
+		- fallback to the Employee ID itself
+		"""
 		if not entities:
 			return {}
-		labels: dict[str, str] = {}
+
+		ids = list({e for e in entities if e})
+		if not ids:
+			return {}
+
+		# Build a safe field list that matches your Employee schema
+		fields = ["name"]
+
+		# New schema (your current Employee)
+		if frappe.db.has_column("Employee", "employee_full_name"):
+			fields.append("employee_full_name")
+
+		# Legacy ERPNext-style field – keep for compatibility on other sites
+		if frappe.db.has_column("Employee", "employee_name"):
+			fields.append("employee_name")
+
+		# Extra safety: if you ever rely on first/last names
+		if frappe.db.has_column("Employee", "employee_first_name"):
+			fields.append("employee_first_name")
+		if frappe.db.has_column("Employee", "employee_last_name"):
+			fields.append("employee_last_name")
+
 		emp_rows = frappe.get_all(
 			"Employee",
-			filters={"name": ["in", list(entities)]},
-			fields=["name", "employee_full_name"],
+			filters={"name": ["in", ids]},
+			fields=fields,
+			ignore_permissions=True,
 		)
-		for row in emp_rows:
-			labels[row.name] = (row.employee_name or "").strip() or row.name
 
-		missing = [entity for entity in entities if entity not in labels]
-		if missing:
-			instr_rows = frappe.get_all(
-				"Instructor",
-				filters={"name": ["in", missing]},
-				fields=["name", "instructor_name"],
+		label_map: dict[str, str] = {}
+
+		for row in emp_rows:
+			# frappe.get_all → dict rows
+			name = row.get("name")
+
+			label = (
+				row.get("employee_full_name")
+				or row.get("employee_name")
+				or " ".join(
+					[
+						(row.get("employee_first_name") or "").strip(),
+						(row.get("employee_last_name") or "").strip(),
+					]
+				).strip()
+				or name
 			)
-			for row in instr_rows:
-				labels[row.name] = (row.instructor_name or "").strip() or row.name
-		return labels
+
+			if name:
+				label_map[name] = label
+
+		return label_map
 
 	instructor_labels = _instructor_label_map(instructor_ids)
 	student_labels = _get_display_map("Student", "student_full_name", student_ids)
