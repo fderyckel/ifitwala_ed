@@ -704,6 +704,17 @@ def get_permission_query_conditions(user=None):
 		vals = ", ".join(frappe.db.escape(s) for s in schools)
 		return f"`tabEmployee`.`school` IN ({vals})"
 
+	if "Employee" in roles:
+			base_school = get_user_base_school(user)
+			if base_school:
+					schools = get_descendant_schools(base_school) or []
+					vals = ", ".join(frappe.db.escape(s) for s in schools)
+					return f"`tabEmployee`.`school` IN ({vals})"
+			else:
+					# fallback: allow the user to see **only their own** Employee doc
+					return f"`tabEmployee`.`user_id` = {frappe.db.escape(user)}"
+
+
 	return None
 
 

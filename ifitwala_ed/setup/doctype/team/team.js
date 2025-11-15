@@ -114,6 +114,11 @@ frappe.ui.form.on('Team', {
 						const style = document.createElement('style');
 						style.id = 'team-member-dialog-style';
 						style.textContent = `
+							.team-member-grid {
+								max-height: 24rem;
+								overflow-y: auto;
+								padding-right: 0.25rem;
+							}
 							.team-member-dialog {
 								padding-bottom: 0.5rem;
 							}
@@ -129,14 +134,33 @@ frappe.ui.form.on('Team', {
 							.team-member-card {
 								border: 1px solid #e2e8f0;
 								border-radius: 12px;
-								padding: 0.85rem 1rem;
+								padding: 1rem 1.1rem;
 								margin-bottom: 0.75rem;
 								background: #fff;
 								box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+								display: flex;
+								flex-wrap: wrap;
+								gap: 1.5rem;
+								align-items: center;
 							}
 							.team-member-card:hover {
 								border-color: #cbd5f5;
 								box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+							}
+							.team-member-card:focus {
+								outline: none;
+							}
+							.team-member-card:focus-visible,
+							.team-member-card:focus-within {
+								border-color: #3b82f6;
+								box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+							}
+							.team-member-card__details {
+								flex: 1;
+								display: flex;
+								align-items: flex-start;
+								gap: 0.85rem;
+								min-width: 260px;
 							}
 							.team-member-name {
 								font-weight: 600;
@@ -151,6 +175,26 @@ frappe.ui.form.on('Team', {
 								min-width: 160px;
 								border-radius: 999px;
 								background: #f8fafc;
+								min-height: 44px;
+								padding: 0.5rem 1.1rem;
+							}
+							.team-member-card__role {
+								min-width: 230px;
+								flex: 0 0 230px;
+							}
+							@media (max-width: 576px) {
+								.team-member-card__role {
+									flex: 1 1 100%;
+								}
+							}
+							.team-member-checkbox {
+								width: 1.25rem;
+								height: 1.25rem;
+								margin-top: 0.15rem;
+							}
+							.team-member-checkbox:focus-visible {
+								outline: 2px solid #3b82f6;
+								outline-offset: 2px;
 							}
 							.team-member-empty {
 								padding: 2.5rem 0;
@@ -158,6 +202,11 @@ frappe.ui.form.on('Team', {
 							}
 						`;
 						document.head.appendChild(style);
+					};
+
+					const normalize_for_search = text => {
+						const raw = (text || '').toString().toLowerCase();
+						return raw.normalize ? raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : raw;
 					};
 
 					const options_html = role_options
@@ -173,17 +222,17 @@ frappe.ui.form.on('Team', {
 							const employeeRaw = u.employee || '';
 							const userRaw = u.value || '';
 							const labelRaw = u.employee_name || u.label || '';
-							const searchValue = [labelRaw, employeeRaw, userRaw]
-								.map(v => (v || '').toLowerCase())
-								.join(' ');
+							const searchValue = normalize_for_search(
+								[labelRaw, employeeRaw, userRaw].join(' ')
+							);
 							const label = frappe.utils.escape_html(labelRaw);
 							const employeeId = frappe.utils.escape_html(employeeRaw);
 							const userId = frappe.utils.escape_html(userRaw);
 							const key = frappe.utils.escape_html(employeeRaw || userRaw);
 							return `
-								<div class="team-member-card d-flex flex-column flex-md-row align-items-md-center gap-3"
+								<div class="team-member-card" tabindex="0"
 									data-search="${frappe.utils.escape_html(searchValue)}">
-									<label class="d-flex align-items-start gap-3 flex-grow-1 mb-0">
+									<label class="team-member-card__details d-flex align-items-start gap-3 flex-grow-1 mb-0">
 										<input type="checkbox"
 											class="team-member-checkbox mt-1"
 											data-key="${key}"
@@ -196,7 +245,7 @@ frappe.ui.form.on('Team', {
 											${userId ? `<div class="team-member-id text-muted">${userId}</div>` : ''}
 										</div>
 									</label>
-									<div class="ms-auto w-100 w-md-auto">
+									<div class="team-member-card__role ms-auto w-100 w-md-auto">
 										<label class="text-muted small d-block mb-1">${__('Role in Team')}</label>
 										<select class="team-member-role form-select" data-key="${key}">
 											${options_html}
@@ -229,11 +278,32 @@ frappe.ui.form.on('Team', {
 					const $grid = $dialogBody.find('.team-member-grid');
 					const $emptyState = $dialogBody.find('.team-member-empty');
 
+					const focus_card_at = index => {
+						const $visible = $grid.find('.team-member-card:visible');
+						if (!$visible.length) return;
+						const targetIndex = Math.max(0, Math.min(index, $visible.length - 1));
+						const $target = $visible.eq(targetIndex);
+						if ($target.length) {
+							$target.get(0).focus();
+						}
+						const container = $grid.get(0);
+						if (container && $target.length) {
+							const cardEl = $target.get(0);
+							const { top, bottom } = cardEl.getBoundingClientRect();
+							const parentRect = container.getBoundingClientRect();
+							if (top < parentRect.top) {
+								container.scrollTop -= parentRect.top - top + 8;
+							} else if (bottom > parentRect.bottom) {
+								container.scrollTop += bottom - parentRect.bottom + 8;
+							}
+						}
+					};
+
 					const apply_search = term => {
-						const normalized = (term || '').toLowerCase();
+						const normalized = normalize_for_search(term || '');
 						let visible = 0;
 						$grid.find('.team-member-card').each((_, el) => {
-							const text = (el.getAttribute('data-search') || '').toLowerCase();
+							const text = el.getAttribute('data-search') || '';
 							const show = !normalized || text.includes(normalized);
 							el.style.display = show ? '' : 'none';
 							if (show) visible++;
@@ -243,17 +313,61 @@ frappe.ui.form.on('Team', {
 						} else {
 							$emptyState.removeClass('d-none');
 						}
+						const activeEl = document.activeElement;
+						if (
+							activeEl &&
+							activeEl.classList.contains('team-member-card') &&
+							activeEl.style.display === 'none'
+						) {
+							focus_card_at(0);
+						}
 					};
 
 					apply_search('');
 
 					const search_field = d.get_field('search');
 					if (search_field && search_field.$input) {
+						search_field.$input
+							.attr('placeholder', __('Search people...'))
+							.attr('aria-label', __('Search people'));
 						search_field.$input.on('input', () => {
 							const term = search_field.$input.val();
 							apply_search(term);
 						});
+						search_field.$input.on('keydown', e => {
+							if (e.key === 'ArrowDown') {
+								e.preventDefault();
+								focus_card_at(0);
+							}
+						});
 					}
+
+					$grid.on('keydown', '.team-member-card, .team-member-card *', e => {
+						const $card = $(e.target).closest('.team-member-card');
+						if (!$card.length) return;
+						if (e.target !== $card.get(0)) {
+							return;
+						}
+						if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+							e.preventDefault();
+							const $visible = $grid.find('.team-member-card:visible');
+							const currentIndex = $visible.index($card);
+							if (currentIndex === -1) return;
+							const delta = e.key === 'ArrowDown' ? 1 : -1;
+							focus_card_at(currentIndex + delta);
+							return;
+						}
+						if (
+							(e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') &&
+							e.target === $card.get(0)
+						) {
+							e.preventDefault();
+							const $checkbox = $card.find('.team-member-checkbox').first();
+							if ($checkbox.length) {
+								$checkbox.prop('checked', !$checkbox.prop('checked'));
+							}
+						}
+					});
 
 					d.show();
 				});
@@ -296,11 +410,11 @@ frappe.ui.form.on('Team Member', {
 			return;
 		}
 
-		frappe.db.get_value('Employee', row.employee, ['employee_name', 'user_id'])
+		frappe.db.get_value('Employee', row.employee, ['employee_full_name', 'user_id'])
 			.then(res => {
 				const data = res.message || {};
-				if (data.employee_name) {
-					frappe.model.set_value(cdt, cdn, 'member_name', data.employee_name);
+				if (data.employee_full_name) {
+					frappe.model.set_value(cdt, cdn, 'member_name', data.employee_full_name);
 				}
 				if (data.user_id) {
 					frappe.model.set_value(cdt, cdn, 'member', data.user_id);
