@@ -3,6 +3,25 @@
 
 # ifitwala_ed/setup/doctype/meeting/meeting.py
 
+"""
+Meeting
+
+- Canonical source for staff meetings (agenda, minutes, action items).
+- Time window: date + start_time / end_time → from_datetime / to_datetime.
+- Conflict checks:
+    - Location (room) conflicts via location_conflicts.find_location_conflicts
+    - Employee conflicts via employee_booking.assert_employee_free
+- Booking projection:
+    - Writes to Employee Booking so that Student Group + Meeting
+      share a single "this employee is busy" layer.
+"""
+
+from __future__ import annotations
+
+from collections import defaultdict
+from datetime import datetime
+from typing import Dict, Iterable, List, Optional
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -11,12 +30,12 @@ from frappe.utils import get_datetime, format_datetime
 from ifitwala_ed.utilities.location_conflicts import find_location_conflicts
 from ifitwala_ed.utilities.employee_booking import (
 	assert_employee_free,
-	delete_employee_bookings_for_source,
 	upsert_employee_booking,
+	delete_employee_bookings_for_source,
 )
 
 
-def _combine_date_and_time(d, t):
+def _combine_date_and_time(d, t) -> Optional[datetime]:
 	"""
 	Combine separate Date + Time fields into a single datetime.
 
@@ -31,259 +50,322 @@ def _combine_date_and_time(d, t):
 class Meeting(Document):
 
 	def validate(self):
+		# Basic structural checks
 		self.ensure_team_selected()
 		self.ensure_unique_participants()
-		self.ensure_participants_from_team()
 		self.ensure_at_least_one_participant()
+
+		# Compute canonical datetime window from date + time fields
+		self.compute_datetime_window()
 		self.validate_time_logic()
+
+		# Optional: derive school/AY from team (or leave for later)
+		self.set_school_and_academic_year()
+
+		# Conflict checks
 		self.validate_location_free()
 		self.validate_employee_conflicts()
+
+		# Content-related validation
 		self.validate_minutes_when_completed()
 
 	def after_insert(self):
-		self.create_or_update_event()
-		self.update_series_metrics()
+		# Project this meeting into Employee Booking for each participant.
 		self.sync_employee_bookings()
 
 	def on_update(self):
-		self.create_or_update_event()
-		self.update_series_metrics()
+		# Keep Employee Booking rows in sync when time or participants change.
 		self.sync_employee_bookings()
 
-	def on_trash(self):
-		self.update_series_metrics()
+	def on_cancel(self):
+		# Cancelled meetings free up employee time.
 		delete_employee_bookings_for_source(self.doctype, self.name)
 
-	# ───────────────────────────────────────────────────────────
-	# Participants / team
-	# ───────────────────────────────────────────────────────────
+	def on_trash(self):
+		# Deleted meeting should not leave orphan Employee Booking rows.
+		delete_employee_bookings_for_source(self.doctype, self.name)
 
-	def ensure_team_selected(self):
-		if not self.team:
-			frappe.throw(_("Please select a Team for the meeting."))
+	# ─────────────────────────────────────────────────────────────
+	# Field helpers
+	# ─────────────────────────────────────────────────────────────
 
-	def ensure_unique_participants(self):
-		seen = set()
-		for d in self.participants or []:
-			key = (d.employee or d.participant or "").strip()
-			if not key:
-				continue
-			if key in seen:
-				label = d.participant_name or d.employee or d.participant
-				frappe.throw(_("Duplicate participant: {0}").format(label))
-			seen.add(key)
-
-	def ensure_participants_from_team(self):
+	def compute_datetime_window(self) -> None:
 		"""
-		If participants table is empty, auto-populate with team members.
+		Populate read-only Datetime fields from date + time.
+
+		Requires Datetime fields:
+		    - from_datetime
+		    - to_datetime
+		on the Meeting DocType.
 		"""
-		if self.get("participants"):
-			return
-
-		team_members = frappe.db.get_all(
-			"Team Member",
-			filters={"parent": self.team},
-			fields=["employee", "member", "member_name", "role_in_team"],
-		)
-		if not team_members:
-			return
-
-		user_cache: dict[str, str | None] = {}
-		name_cache: dict[str, str | None] = {}
-
-		def resolve_user(employee: str | None, fallback: str | None) -> str | None:
-			if fallback:
-				return fallback
-			if not employee:
-				return None
-			if employee in user_cache:
-				return user_cache[employee]
-			user_id = frappe.db.get_value("Employee", employee, "user_id")
-			user_cache[employee] = user_id
-			return user_id
-
-		def resolve_name(employee: str | None, fallback: str | None) -> str | None:
-			if fallback:
-				return fallback
-			if not employee:
-				return fallback
-			if employee in name_cache:
-				return name_cache[employee]
-			emp_name = frappe.db.get_value("Employee", employee, "employee_name")
-			name_cache[employee] = emp_name
-			return emp_name
-
-		for m in team_members:
-			if not m.employee:
-				continue
-			self.append("participants", {
-				"employee": m.employee,
-				"participant": resolve_user(m.employee, m.member),
-				"participant_name": resolve_name(m.employee, m.member_name),
-				"role_in_meeting": m.role_in_team or "Participant",
-				"attendance_status": "Absent",
-			})
-
-	def ensure_at_least_one_participant(self):
-		if not self.get("participants") or len(self.get("participants")) < 1:
-			frappe.throw(_("Meeting must have at least one participant."))
-
-	# ───────────────────────────────────────────────────────────
-	# Time and location validation
-	# ───────────────────────────────────────────────────────────
-
-	def validate_time_logic(self):
-		"""
-		Basic sanity check on time fields.
-
-		Currently assumes same-day meetings.
-		"""
-		if not self.date:
-			# You can hard-enforce having a date later if you want.
-			return
-
-		if self.start_time and self.end_time and self.end_time <= self.start_time:
-			frappe.throw(_("End Time must be later than Start Time."))
-
-	def validate_location_free(self):
-		"""
-		Check that the meeting location is free using the shared conflict engine.
-		"""
-		if not (self.location and self.date and self.start_time and self.end_time):
-			# incomplete info → skip conflict check
-			return
-
 		start_dt = _combine_date_and_time(self.date, self.start_time)
 		end_dt = _combine_date_and_time(self.date, self.end_time)
 
-		if not start_dt or not end_dt or end_dt <= start_dt:
-			# Let validate_time_logic handle basic shape rules
+		self.from_datetime = start_dt
+		self.to_datetime = end_dt
+
+	def set_school_and_academic_year(self) -> None:
+		"""
+		Lightweight helper to set school / academic_year.
+
+		Current strategy:
+		- If team is set and Meeting.school is empty, pull school from Team.
+		- academic_year left as-is for now (can be wired to School defaults later).
+		"""
+		if getattr(self, "school", None):
+			return
+
+		if self.team:
+			school = frappe.db.get_value("Team", self.team, "school")
+			if school:
+				self.school = school
+
+		# TODO (future): infer academic_year from School / Org defaults
+		# if not getattr(self, "academic_year", None) and getattr(self, "school", None):
+		#     self.academic_year = get_default_academic_year_for_school(self.school)
+
+	# ─────────────────────────────────────────────────────────────
+	# Validation helpers
+	# ─────────────────────────────────────────────────────────────
+
+	def ensure_team_selected(self) -> None:
+		"""
+		Guard to ensure a Meeting is attached to some team context.
+
+		Loosen this if you want truly ad-hoc meetings without a Team.
+		"""
+		if not self.team:
+			frappe.throw(
+				_("Please select a Team for this meeting."),
+				title=_("Team Required"),
+			)
+
+	def ensure_unique_participants(self) -> None:
+		"""
+		Ensure that no User appears twice in the participants table.
+		"""
+		seen = set()
+		dupes = set()
+
+		for row in self.participants or []:
+			if not row.participant:
+				continue
+			if row.participant in seen:
+				dupes.add(row.participant)
+			seen.add(row.participant)
+
+		if dupes:
+			user_list = ", ".join(sorted(dupes))
+			frappe.throw(
+				_("The following participants are listed more than once: {0}").format(user_list),
+				title=_("Duplicate Participants"),
+			)
+
+	def ensure_at_least_one_participant(self) -> None:
+		"""
+		Meeting without participants is usually a modelling error.
+		"""
+		if not self.participants:
+			frappe.throw(
+				_("Please add at least one participant to this meeting."),
+				title=_("No Participants"),
+			)
+
+	def validate_time_logic(self) -> None:
+		"""
+		Ensure date/time fields make sense and yield a valid window.
+		"""
+		if not self.date:
+			frappe.throw(_("Please set a Date for the meeting."), title=_("Missing Date"))
+
+		if not self.start_time or not self.end_time:
+			frappe.throw(
+				_("Please set both Start Time and End Time for the meeting."),
+				title=_("Missing Time"),
+			)
+
+		if not self.from_datetime or not self.to_datetime:
+			frappe.throw(
+				_("Could not compute meeting start/end datetime. Please check Date and Time."),
+				title=_("Invalid Date/Time"),
+			)
+
+		if self.to_datetime <= self.from_datetime:
+			frappe.throw(
+				_("End Time must be after Start Time."),
+				title=_("Invalid Time Range"),
+			)
+
+	def validate_location_free(self) -> None:
+		"""
+		Check that the selected location (room) is not double-booked.
+		"""
+		if not self.location:
+			return
+
+		if not self.from_datetime or not self.to_datetime:
+			# Time not ready; let time validation handle this.
 			return
 
 		conflicts = find_location_conflicts(
 			location=self.location,
-			start=start_dt,
-			end=end_dt,
-			ignore_sources=[("Meeting", self.name)] if self.name else None,
+			start=self.from_datetime,
+			end=self.to_datetime,
+			exclude={"doctype": self.doctype, "name": self.name},
 		)
 
 		if not conflicts:
 			return
 
-		# Show first conflict in a clear message.
-		c = conflicts[0]
-		frappe.throw(
-			_("Location {0} is already booked from {1} to {2} by {3} <b>{4}</b>.").format(
-				c.location,
-				format_datetime(c.start),
-				format_datetime(c.end),
-				c.source_doctype,
-				c.source_name,
+		lines: List[str] = []
+		for slot in conflicts:
+			lines.append(
+				_("{doctype} {name} from {start} to {end}").format(
+					doctype=slot.source_doctype,
+					name=slot.source_name,
+					start=format_datetime(slot.start),
+					end=format_datetime(slot.end),
+				)
 			)
+
+		msg = "<br>".join(lines)
+		frappe.throw(
+			_(
+				"Location {0} is already booked in this time window:<br>{1}"
+			).format(self.location, msg),
+			title=_("Location Conflict"),
 		)
 
-	def validate_minutes_when_completed(self):
-		if self.status == "Completed" and not self.minutes:
-			frappe.throw(_("Minutes must be entered if the meeting status is 'Completed'."))
+	def validate_employee_conflicts(self) -> None:
+		"""
+		Check double-booking for all employees derived from participants.
 
-	def validate_employee_conflicts(self):
-		start_dt, end_dt = self._get_time_window()
-		if not (start_dt and end_dt):
+		Uses Employee Booking as the single truth layer.
+
+		Requires:
+		- Employee.user_id == Meeting Participant.participant
+		"""
+		if not self.from_datetime or not self.to_datetime:
+			# Time logic will already throw; no point checking conflicts here.
 			return
 
-		exclude = {"doctype": self.doctype, "name": self.name} if self.name else None
+		employee_map = self._get_participant_employee_map()
+		if not employee_map:
+			# No employees resolved; nothing to check.
+			return
+
+		allow_double_booking = bool(getattr(self, "ignore_conflicts", 0))
+
 		for row in self.participants or []:
-			if not row.employee:
+			if not row.participant:
 				continue
 
+			employee = employee_map.get(row.participant)
+			if not employee:
+				continue
+
+			# If the child table has an `employee` field, keep it in sync for UI/debugging.
+			if hasattr(row, "employee"):
+				row.employee = employee
+
 			assert_employee_free(
-				employee=row.employee,
-				start=start_dt,
-				end=end_dt,
-				exclude=exclude,
+				employee=employee,
+				start=self.from_datetime,
+				end=self.to_datetime,
+				exclude={"doctype": self.doctype, "name": self.name},
+				allow_double_booking=allow_double_booking,
 			)
 
-	# ───────────────────────────────────────────────────────────
-	# Helpers
-	# ───────────────────────────────────────────────────────────
-	def get_team_color(self):
-		if self.team:
-			color = frappe.db.get_value("Team", self.team, "meeting_color")
-			if color:
-				return color
-		return "#364FC7"
+	def validate_minutes_when_completed(self) -> None:
+		"""
+		Enforce that 'Completed' meetings have some minutes recorded.
+		Loosen if needed.
+		"""
+		if self.status == "Completed" and not self.minutes:
+			frappe.throw(
+				_("Please record meeting minutes before setting the status to Completed."),
+				title=_("Minutes Required"),
+			)
 
-	def update_series_metrics(self):
-		if not self.meeting_series:
-			return
+	# ─────────────────────────────────────────────────────────────
+	# Employee booking projection
+	# ─────────────────────────────────────────────────────────────
 
-		total = frappe.db.count("Meeting", {"meeting_series": self.meeting_series})
-		last = frappe.db.get_all(
-			"Meeting",
-			{"meeting_series": self.meeting_series},
-			["date"],
-			order_by="date desc",
-			limit=1,
-		)
-		last_date = last[0].date if last else None
+	def _get_participant_employee_map(self) -> Dict[str, str]:
+		"""
+		Resolve participants (User) → Employee in a single batched query.
 
-		values = {
-			"occurrences_created": total,
-			"last_occurrence_date": last_date,
-			"series_end_date": last_date,
-		}
-		frappe.db.set_value("Meeting Series", self.meeting_series, values)
-
-	def _get_time_window(self):
-		if not (self.date and self.start_time and self.end_time):
-			return None, None
-
-		start_dt = _combine_date_and_time(self.date, self.start_time)
-		end_dt = _combine_date_and_time(self.date, self.end_time)
-		if not start_dt or not end_dt or end_dt <= start_dt:
-			return None, None
-
-		return start_dt, end_dt
-
-	def _get_team_context(self):
-		if not self.team:
+		Returns:
+		    dict: { user_id: employee_name }
+		"""
+		user_ids = {row.participant for row in (self.participants or []) if row.participant}
+		if not user_ids:
 			return {}
-		if not hasattr(self, "_team_ctx"):
-			self._team_ctx = frappe.db.get_value("Team", self.team, ["school"], as_dict=True) or {}
-		return getattr(self, "_team_ctx", {})
 
-	def sync_employee_bookings(self):
+		rows = frappe.get_all(
+			"Employee",
+			filters={"status": "Active", "user_id": ("in", list(user_ids))},
+			fields=["name", "user_id"],
+		)
+
+		return {r.user_id: r.name for r in rows}
+
+	def sync_employee_bookings(self) -> None:
 		"""
-		Materialize each employee participant into Employee Booking.
+		Ensure Employee Booking rows accurately reflect this meeting.
 
-		Called on insert/update. Automatically clears bookings on delete.
+		Strategy:
+		- Wipe existing bookings for this Meeting.
+		- Recreate bookings for current participants and current time window.
 		"""
-		if not self.name:
-			return
-
+		# Always clear existing bookings for this meeting first (simple and safe).
 		delete_employee_bookings_for_source(self.doctype, self.name)
 
-		if (self.status or "").lower() == "cancelled":
+		# If there is no valid time window, nothing to book.
+		if not self.from_datetime or not self.to_datetime:
 			return
 
-		start_dt, end_dt = self._get_time_window()
-		if not (start_dt and end_dt):
+		employee_map = self._get_participant_employee_map()
+		if not employee_map:
 			return
 
-		team_ctx = self._get_team_context()
-		school = team_ctx.get("school")
+		school = getattr(self, "school", None)
+		academic_year = getattr(self, "academic_year", None)
 
 		for row in self.participants or []:
-			if not row.employee:
+			if not row.participant:
+				continue
+
+			employee = employee_map.get(row.participant)
+			if not employee:
 				continue
 
 			upsert_employee_booking(
-				employee=row.employee,
-				start=start_dt,
-				end=end_dt,
+				employee=employee,
+				start=self.from_datetime,
+				end=self.to_datetime,
 				source_doctype=self.doctype,
 				source_name=self.name,
 				booking_type="Meeting",
 				blocks_availability=1,
 				school=school,
+				academic_year=academic_year,
 			)
+
+	# ─────────────────────────────────────────────────────────────
+	# (Optional) Team membership guard
+	# ─────────────────────────────────────────────────────────────
+
+	def ensure_participants_from_team(self) -> None:
+		"""
+		Placeholder for a stricter rule:
+
+		- Optionally enforce that all participants belong to the selected Team.
+
+		For now this is not called from validate(), but you can enable it later:
+
+		    self.ensure_participants_from_team()
+
+		once Team membership modelling is finalised.
+		"""
+		pass
