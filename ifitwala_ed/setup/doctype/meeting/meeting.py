@@ -211,43 +211,45 @@ class Meeting(Document):
 
 	def validate_location_free(self) -> None:
 		"""
-		Check that the selected location (room) is not double-booked.
+		Ensure the selected location is not double-booked.
+		Uses the location_conflicts.find_location_conflicts engine.
 		"""
 		if not self.location:
 			return
 
-		if not self.from_datetime or not self.to_datetime:
-			# Time not ready; let time validation handle this.
+		if not (self.from_datetime and self.to_datetime):
 			return
+
+		# Use the correct API
+		ignore = [(self.doctype, self.name)]
 
 		conflicts = find_location_conflicts(
 			location=self.location,
 			start=self.from_datetime,
 			end=self.to_datetime,
-			exclude={"doctype": self.doctype, "name": self.name},
+			ignore_sources=ignore,
 		)
 
 		if not conflicts:
 			return
 
-		lines: List[str] = []
-		for slot in conflicts:
+		lines = []
+		for c in conflicts:
 			lines.append(
 				_("{doctype} {name} from {start} to {end}").format(
-					doctype=slot.source_doctype,
-					name=slot.source_name,
-					start=format_datetime(slot.start),
-					end=format_datetime(slot.end),
+					doctype=c.source_doctype,
+					name=c.source_name,
+					start=frappe.format(c.start, "Datetime"),
+					end=frappe.format(c.end, "Datetime"),
 				)
 			)
 
 		msg = "<br>".join(lines)
 		frappe.throw(
-			_(
-				"Location {0} is already booked in this time window:<br>{1}"
-			).format(self.location, msg),
+			_("Location {0} is already booked:<br>{1}").format(self.location, msg),
 			title=_("Location Conflict"),
 		)
+
 
 	def validate_employee_conflicts(self) -> None:
 		"""

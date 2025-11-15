@@ -460,6 +460,10 @@ const TEAM_MEETING_RECURRENCE_META = {
 	three_weeks: { unit: 'week', step: 3 },
 	monthly: { unit: 'month', step: 1 }
 };
+const dayjs =
+	window.dayjs ||
+	(frappe.datetime && frappe.datetime.moment ? frappe.datetime.moment : null) ||
+	window.moment;
 
 function open_team_schedule_dialog(frm) {
 	const activeMembers = (frm.doc.members || []).filter(m => m.employee);
