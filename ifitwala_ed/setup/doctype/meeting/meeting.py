@@ -18,9 +18,8 @@ Meeting
 
 from __future__ import annotations
 
-from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, List, Optional
 
 import frappe
 from frappe import _

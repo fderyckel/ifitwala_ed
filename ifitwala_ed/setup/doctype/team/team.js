@@ -651,8 +651,7 @@ function open_team_schedule_dialog(frm) {
 			return { filters, order_by: 'year_start_date asc' };
 		};
 
-		dialog.fields_dict.meeting_category.df.options = ['', ...meetingCategoryOptions].join('\n');
-		dialog.refresh_field('meeting_category');
+		dialog.set_df_property('meeting_category', 'options', ['', ...meetingCategoryOptions].join('\n'));
 
 		dialog.set_value('meeting_title', `${frm.doc.team_name || frm.doc.team_code || frm.doc.name} ${__('Meeting')}`);
 		dialog.set_value('repeat_option', TEAM_MEETING_RECURRENCE_OPTIONS[0].label);
@@ -751,7 +750,6 @@ function open_team_schedule_dialog(frm) {
 			};
 
 			df.df.onchange = handler;
-			dialog.refresh_field(fieldname);
 		});
 
 		dialog.fields_dict.occurrences.$input?.attr('min', 1).attr('max', TEAM_MEETING_MAX_OCCURRENCES);
