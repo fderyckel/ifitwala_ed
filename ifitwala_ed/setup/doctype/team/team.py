@@ -81,13 +81,13 @@ def get_eligible_users(school=None, organization=None):
 	sql = f"""
 		SELECT
 			u.name as value,
-			coalesce(e.employee_name, u.full_name, u.name) as label,
+			coalesce(e.employee_full_name, u.full_name, u.name) as label,
 			e.name as employee,
-			e.employee_name as employee_name
+			e.employee_full_name as employee_name
 		FROM `tabUser` u
 		JOIN `tabEmployee` e ON e.user_id = u.name
 		WHERE {where_clause}
-		ORDER BY coalesce(e.employee_name, u.full_name, u.name)
+		ORDER BY coalesce(e.employee_full_name, u.full_name, u.name)
 	"""
 	return frappe.db.sql(sql, params, as_dict=1)
 
