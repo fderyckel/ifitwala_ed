@@ -8,7 +8,7 @@ frappe.ui.form.on('Team', {
 		if (!frm.is_new()) {
 			frm.add_custom_button(__('Schedule Meetings'), () => {
 				open_team_schedule_dialog(frm);
-			}, __('Plan'));
+			});
 		}
 
 		if (frm.doc.docstatus === 0) {
@@ -582,7 +582,7 @@ function open_team_schedule_dialog(frm) {
 
 				dialog.disable_primary_action();
 
-				frappe.call({
+				const request = frappe.call({
 					method: 'ifitwala_ed.setup.doctype.team.team.schedule_recurring_meetings',
 					args: {
 						team: frm.doc.name,
@@ -599,8 +599,8 @@ function open_team_schedule_dialog(frm) {
 					},
 					freeze: true,
 					freeze_message: __('Creating meetings…')
-				})
-					.then(r => {
+				});
+				request.then(r => {
 						const payload = r.message || {};
 						const createdCount = (payload.created || []).length;
 						const failedCount = (payload.failed || []).length;
@@ -630,10 +630,10 @@ function open_team_schedule_dialog(frm) {
 
 						dialog.hide();
 						frm.reload_doc();
-					})
-					.finally(() => {
-						dialog.enable_primary_action();
 					});
+				request.always(() => {
+					dialog.enable_primary_action();
+				});
 			}
 		});
 
@@ -683,8 +683,14 @@ function open_team_schedule_dialog(frm) {
 		};
 
 		const updatePreview = () => {
-			const values = dialog.get_values();
+			const values = dialog.get_values ? dialog.get_values() : null;
 			const previewWrapper = dialog.fields_dict.preview_html.$wrapper;
+			if (!values) {
+				previewWrapper.html(
+					`<div class="team-scheduler-empty">${__('Fill out the form to preview your schedule.')}</div>`
+				);
+				return;
+			}
 			const ayMeta = ayState[values.academic_year];
 
 			if (!values.academic_year || !ayMeta) {
@@ -756,11 +762,11 @@ function open_team_schedule_dialog(frm) {
 
 		const loadAcademicYears = () => {
 			dialog.disable_primary_action();
-			frappe.call({
+			const ayRequest = frappe.call({
 				method: 'ifitwala_ed.setup.doctype.team.team.get_schedulable_academic_years',
 				args: { team: frm.doc.name }
-			})
-				.then(r => {
+			});
+			ayRequest.then(r => {
 					const rows = r.message || [];
 					if (!rows.length) {
 						dialog.fields_dict.ay_window.$wrapper.html(
@@ -776,10 +782,10 @@ function open_team_schedule_dialog(frm) {
 					dialog.set_value('academic_year', rows[0].name);
 					updateAcademicYearHint();
 					updatePreview();
-				})
-				.finally(() => {
-					dialog.enable_primary_action();
 				});
+			ayRequest.always(() => {
+				dialog.enable_primary_action();
+			});
 		};
 
 		loadAcademicYears();

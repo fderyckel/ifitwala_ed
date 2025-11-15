@@ -602,19 +602,6 @@ def update_user_permissions(doc, method):
 	"""No-op: we no longer use Employee User Permissions at all."""
 	return
 
-
-
-def has_user_permission_for_employee(user_name, employee_name):
-	return frappe.db.exists(
-		{
-			"doctype": "User Permission",
-			"user": user_name,
-			"allow": "Employee",
-			"for_value": employee_name,
-		}
-	)
-
-
 def has_upload_permission(doc, ptype='read', user=None):
 	if not user:
 		user = frappe.session.user

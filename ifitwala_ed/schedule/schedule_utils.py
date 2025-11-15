@@ -336,7 +336,7 @@ def check_slot_conflicts(group_doc):
 		emp_rows = frappe.get_all(
 			"Employee",
 			filters={"name": ["in", list(entities)]},
-			fields=["name", "employee_name"],
+			fields=["name", "employee_full_name"],
 		)
 		for row in emp_rows:
 			labels[row.name] = (row.employee_name or "").strip() or row.name
