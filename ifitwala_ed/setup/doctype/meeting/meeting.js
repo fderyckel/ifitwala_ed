@@ -69,11 +69,11 @@ frappe.ui.form.on('Meeting Participant', {
 			frappe.model.set_value(cdt, cdn, 'participant_name', null);
 			return;
 		}
-		frappe.db.get_value('Employee', row.employee, ['employee_name', 'user_id'])
+		frappe.db.get_value('Employee', row.employee, ['employee_full_name', 'user_id'])
 			.then(r => {
 				const data = r.message || {};
-				if (data.employee_name) {
-					frappe.model.set_value(cdt, cdn, 'participant_name', data.employee_name);
+				if (data.employee_full_name) {
+					frappe.model.set_value(cdt, cdn, 'participant_name', data.employee_full_name);
 				}
 				if (data.user_id) {
 					frappe.model.set_value(cdt, cdn, 'participant', data.user_id);
