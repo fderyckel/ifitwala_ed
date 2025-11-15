@@ -52,7 +52,7 @@
    "options": "Student Cohort"
   },
   {
-   "depends_on": "eval:doc.audience_type=='Program",
+   "depends_on": "eval:doc.audience_type=='Program'",
    "fieldname": "program",
    "fieldtype": "Link",
    "label": "Program",
@@ -84,7 +84,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-15 00:34:03.731859",
+ "modified": "2025-11-15 00:45:08.981535",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Event Audience",

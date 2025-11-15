@@ -29,7 +29,13 @@
   "attendance_section",
   "participants",
   "action_items_section",
-  "action_items"
+  "action_items",
+  "section_break_9cwa",
+  "from_datetime",
+  "to_datetime",
+  "school",
+  "academic_year",
+  "ignore_conflict"
  ],
  "fields": [
   {
@@ -159,12 +165,44 @@
   {
    "fieldname": "section_break_8fkj",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_9cwa",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "from_datetime",
+   "fieldtype": "Datetime",
+   "label": "From Datetime"
+  },
+  {
+   "fieldname": "to_datetime",
+   "fieldtype": "Datetime",
+   "label": "To Datetime"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "default": "0",
+   "fieldname": "ignore_conflict",
+   "fieldtype": "Check",
+   "label": "Ignore Conflict"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-13 14:07:55",
+ "modified": "2025-11-15 12:55:07.214772",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Meeting",
