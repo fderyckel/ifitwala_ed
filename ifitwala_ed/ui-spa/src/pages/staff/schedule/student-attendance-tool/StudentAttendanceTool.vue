@@ -865,6 +865,12 @@ async function loadWeekendAndSchedule() {
 	} catch {
 		weekendDays.value = [6, 0]
 	}
+	if (filters.student_group) {
+		// Clear cached meeting dates to avoid stale empties
+		await call('ifitwala_ed.schedule.attendance_utils.invalidate_meeting_dates', {
+			student_group: filters.student_group,
+		})
+	}
 	await loadCalendarData({ preserveSelection: false })
 }
 
