@@ -385,6 +385,7 @@ const hasWarnedEmptyGroups = ref(false)
 const groupResource = createResource({
 	url: 'ifitwala_ed.api.student_attendance.fetch_portal_student_groups',
 	params: () => ({}),
+	immediate: true,
 	auto: true,
 	transform: unwrapMessage,
 	onSuccess: onGroupsLoaded,

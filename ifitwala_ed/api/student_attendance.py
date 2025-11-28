@@ -104,7 +104,7 @@ def _get_allowed_school_scope(user: str) -> list[str] | None:
 	- If Employee with school: [school, *descendants].
 	- If no school linked: [] (no access).
 	"""
-	if _is_adminish(user) or (set(frappe.get_roles(user)) & PORTAL_FULL_ACCESS_ROLES):
+	if _is_adminish(user):
 		return None
 
 	default_school = get_user_default_school()
