@@ -1,6 +1,7 @@
-// image_fallback.js
+// Copyright (c) 2025, François de Ryckel and contributors
+// For license information, please see license.txt
 
-// image_fallback.js
+// ifitwala_ed/public/website/image_fallback.js
 
 document.addEventListener("DOMContentLoaded", () => {
   for (const img of document.querySelectorAll("img[fallback='carousel']")) {

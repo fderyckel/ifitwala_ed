@@ -7,7 +7,7 @@ from frappe.utils.nestedset import NestedSet
 from frappe.utils import getdate, today
 from frappe import _, scrub
 from frappe.utils import validate_email_address, add_years, cstr
-from frappe.permissions import add_user_permission, remove_user_permission, get_doc_permissions
+from frappe.permissions import get_doc_permissions
 from frappe.contacts.address_and_contact import load_address_and_contact
 
 from ifitwala_ed.utilities.employee_utils import get_user_base_org,	get_user_base_school,	get_descendant_organizations
@@ -48,7 +48,6 @@ class Employee(NestedSet):
 				user = frappe.get_doc("User", existing_user_id)
 				validate_employee_role(user, ignore_emp_check = True)
 				user.save(ignore_permissions=True)
-				remove_user_permission("Employee", self.name, existing_user_id)
 
 		# Ensure the employee history is sorted before saving
 		if self.employee_history:
@@ -64,7 +63,6 @@ class Employee(NestedSet):
 		self.update_nsm_model()
 		if self.user_id:
 			self.update_user()
-			self.update_user_permissions()
 		self.reset_employee_emails_cache()
 		self.update_approver_role()
 
@@ -457,35 +455,6 @@ class Employee(NestedSet):
 			user.save()
 
 
-	def update_user_permissions(self):
-		if not self.create_user_permission or not self.user_id:
-			return
-
-		# HR / Academic Admin / System Manager: DO NOT create self-UP (it restricts lists)
-		user_roles = set(frappe.get_roles(self.user_id))
-		if user_roles & {"HR Manager", "HR User", "Academic Admin", "System Manager"}:
-			# also cleanup any stale self-UP for this user
-			existing = frappe.db.get_value(
-				"User Permission",
-				{"allow": "Employee", "for_value": self.name, "user": self.user_id},
-				"name",
-			)
-			if existing:
-				frappe.db.delete("User Permission", {"name": existing})
-			return
-
-		# For regular employees, create the self-UP if missing
-		if not frappe.has_permission("User Permission", ptype="write", user=frappe.session.user):
-			return
-
-		exists = frappe.db.exists(
-			"User Permission",
-			{"allow": "Employee", "for_value": self.name, "user": self.user_id},
-		)
-		if not exists:
-			add_user_permission("Employee", self.name, self.user_id)
-
-
 
 	def reset_employee_emails_cache(self):
 		prev_doc = self.get_doc_before_save() or {}
@@ -505,9 +474,6 @@ class Employee(NestedSet):
 			user = frappe.get_doc("User", self.expense_approver)
 			user.flags.ignore_permissions = True
 			user.add_roles("Expense Approver")
-
-	def on_doctype_update():
-		frappe.db.add_index("Employee", ["lft", "rgt"])
 
 
 
@@ -629,43 +595,9 @@ def validate_employee_role(doc, method=None, ignore_emp_check=False):
 
 
 def update_user_permissions(doc, method):
-	# called via User hook
-	user_roles = {d.role for d in doc.get("roles")}
-	if "Employee" not in user_roles:
-		return
+	"""No-op: we no longer use Employee User Permissions at all."""
+	return
 
-	# HR / Academic Admin / System Manager: ensure NO self-UP remains
-	if user_roles & {"HR Manager", "HR User", "Academic Admin", "System Manager"}:
-		emp = frappe.db.get_value("Employee", {"user_id": doc.name, "status": "Active"}, "name")
-		if emp:
-			up_name = frappe.db.get_value(
-				"User Permission",
-				{"user": doc.name, "allow": "Employee", "for_value": emp},
-				"name",
-			)
-			if up_name:
-				frappe.db.delete("User Permission", {"name": up_name})
-				frappe.db.commit()
-		return
-
-	# Regular employees: create self-UP (if allowed) via Employee method
-	if not frappe.has_permission("User Permission", ptype="write", user=frappe.session.user):
-		return
-	emp = frappe.db.get_value("Employee", {"user_id": doc.name, "status": "Active"}, "name")
-	if emp:
-		frappe.get_doc("Employee", emp).update_user_permissions()
-
-
-
-def has_user_permission_for_employee(user_name, employee_name):
-	return frappe.db.exists(
-		{
-			"doctype": "User Permission",
-			"user": user_name,
-			"allow": "Employee",
-			"for_value": employee_name,
-		}
-	)
 
 
 def has_upload_permission(doc, ptype='read', user=None):

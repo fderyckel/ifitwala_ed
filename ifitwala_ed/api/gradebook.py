@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 import frappe
 from frappe import _
 from frappe.utils import now_datetime
-from frappe.utils.data import flt
+from frappe.utils.data import flt, cint
 
 from ifitwala_ed.api.student_groups import (
 	TRIAGE_ROLES,
@@ -62,7 +62,7 @@ def _ensure_task_access(task_name: str) -> frappe._dict:
 
 
 @frappe.whitelist()
-def fetch_groups(search: str | None = None) -> List[Dict[str, Any]]:
+def fetch_groups(search: str | None = None, limit: int | None = 5) -> List[Dict[str, Any]]:
 	"""
 	Return the student groups visible to the current user with basic metadata.
 	Optional search applies to group name or label.
@@ -85,26 +85,41 @@ def fetch_groups(search: str | None = None) -> List[Dict[str, Any]]:
 		"academic_year",
 	]
 
+	# Default ordering is latest modified first
+	order_by = "modified desc"
+	limit_value = cint(limit) if limit else 0
+
 	if search:
-		# Apply an OR filter over name and label
-		filters["student_group_name"] = ["like", f"%{search}%"]
+		search_value = search.strip()
+		if search_value:
+			filters["student_group_name"] = ["like", f"%{search_value}%"]
+			# When searching, expand the window so admins can access more rows
+			if limit_value and limit_value < 50:
+				limit_value = 50
+	else:
+		# Without search, keep the window small for quick access
+		if not limit_value:
+			limit_value = 5
 
-	groups = frappe.get_all(
-		"Student Group",
-		filters=filters,
-		fields=fields,
-		order_by="student_group_name asc",
-	)
+	get_all_kwargs: Dict[str, Any] = {
+		"filters": filters,
+		"fields": fields,
+		"order_by": order_by,
+	}
+	if limit_value:
+		get_all_kwargs["limit_page_length"] = limit_value
 
-	# When we limited by exact names but also need to search on name, filter manually
-	if search and names is not None:
-		search_lower = search.lower()
-		groups = [
-			row
-			for row in groups
-			if search_lower in (row.student_group_name or "").lower()
-			or search_lower in (row.name or "").lower()
-		]
+	groups = frappe.get_all("Student Group", **get_all_kwargs)
+
+	if search:
+		search_lower = search.strip().lower()
+		if search_lower:
+			groups = [
+				row
+				for row in groups
+				if search_lower in (row.student_group_name or "").lower()
+				or search_lower in (row.name or "").lower()
+			]
 
 	return [
 		{
@@ -210,7 +225,7 @@ def get_task_gradebook(task: str) -> Dict[str, Any]:
 		for stu in frappe.get_all(
 			"Student",
 			filters={"name": ["in", student_ids]},
-			fields=["name", "student_full_name", "student_preferred_name", "student_id"],
+			fields=["name", "student_full_name", "student_preferred_name", "student_id", "student_image"],
 		):
 			student_meta[stu.name] = stu
 
@@ -257,6 +272,7 @@ def get_task_gradebook(task: str) -> Dict[str, Any]:
 				"student_name": meta.get("student_full_name") or meta.get("student_preferred_name") or row.student,
 				"student_preferred_name": meta.get("student_preferred_name"),
 				"student_id": meta.get("student_id"),
+				"student_image": meta.get("student_image"),
 				"status": row.status,
 				"complete": int(row.complete or 0),
 				"mark_awarded": flt(row.mark_awarded) if row.mark_awarded is not None else None,

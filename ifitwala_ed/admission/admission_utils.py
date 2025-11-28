@@ -38,6 +38,7 @@ def check_sla_breaches():
 	Applies to Inquiry + Registration of Interest.
 	"""
 	logger = frappe.logger("sla_breaches", allow_site=True)
+	today = getdate()
 
 	contacted_states = ("Contacted", "Qualified", "Nurturing", "Accepted", "Unqualified")
 	doc_types = ["Inquiry", "Registration of Interest"]
@@ -45,6 +46,8 @@ def check_sla_breaches():
 	for doctype in doc_types:
 		if not frappe.db.table_exists(doctype):
 			continue
+
+		params = {"today": today}
 
 		# 1) Mark Overdue
 		frappe.db.sql(f"""
@@ -54,14 +57,14 @@ def check_sla_breaches():
 			   AND (
 			     (workflow_state NOT IN {contacted_states}
 			      AND first_contact_due_on IS NOT NULL
-			      AND first_contact_due_on < CURDATE())
+			      AND first_contact_due_on < %(today)s)
 			     OR
 			     (workflow_state = 'Assigned'
 			      AND followup_due_on IS NOT NULL
-			      AND followup_due_on < CURDATE())
+			      AND followup_due_on < %(today)s)
 			   )
 			   AND sla_status != '🔴 Overdue'
-		""")
+		""", params)
 
 		# 2) Mark Due Today
 		frappe.db.sql(f"""
@@ -70,13 +73,13 @@ def check_sla_breaches():
 			 WHERE docstatus = 0
 			   AND (
 			     (workflow_state NOT IN {contacted_states}
-			      AND first_contact_due_on = CURDATE())
+			      AND first_contact_due_on = %(today)s)
 			     OR
 			     (workflow_state = 'Assigned'
-			      AND followup_due_on = CURDATE())
+			      AND followup_due_on = %(today)s)
 			   )
 			   AND sla_status != '🟡 Due Today'
-		""")
+		""", params)
 
 		# 3) Mark Upcoming
 		frappe.db.sql(f"""
@@ -85,13 +88,13 @@ def check_sla_breaches():
 			 WHERE docstatus = 0
 			   AND (
 			     (workflow_state NOT IN {contacted_states}
-			      AND first_contact_due_on > CURDATE())
+			      AND first_contact_due_on > %(today)s)
 			     OR
 			     (workflow_state = 'Assigned'
-			      AND followup_due_on > CURDATE())
+			      AND followup_due_on > %(today)s)
 			   )
 			   AND sla_status != '⚪ Upcoming'
-		""")
+		""", params)
 
 		# 4) Everything else = On Track
 		frappe.db.sql(f"""

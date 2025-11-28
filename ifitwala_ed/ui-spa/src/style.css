@@ -1,1 +1,57 @@
-@import "tailwindcss";
+/* ui-spa/src/style.css */
+
+/* ---------------------------------------------------
+   GLOBAL APP PALETTE
+   (Zambian canopy / bush / jacaranda / soil)
+--------------------------------------------------- */
+
+:root {
+	/* Core neutrals */
+	--ink: #071019;
+	--slate: #475569;
+
+	/* Greens = bush / canopy */
+	--canopy: #0b3d2b; /* deep forest green */
+	--leaf: #1f7a45; /* rich emerald-olive */
+	--moss: #7faa63; /* softer olive */
+
+	/* Sky / ground */
+	--sky: #edf5f7; /* cool morning haze */
+	--sand: #f4ecdd; /* warm sand */
+	--clay: #b6522b; /* red soil accent */
+
+	/* Jacaranda & flamboyant blooms */
+	--jacaranda: #7e6bd6; /* soft purple bloom */
+	--flame: #f25b32; /* flamboyant red-orange */
+
+	/* Borders / lines */
+	--border: #e2e8f0;
+
+	/* RGB tokens for Tailwind withOpacity helper */
+	--ink-rgb: 7 16 25;
+	--slate-rgb: 71 85 105;
+	--canopy-rgb: 11 61 43;
+	--leaf-rgb: 31 122 69;
+	--moss-rgb: 127 170 99;
+	--sky-rgb: 237 245 247;
+	--sand-rgb: 244 236 221;
+	--clay-rgb: 182 82 43;
+	--jacaranda-rgb: 126 107 214;
+	--flame-rgb: 242 91 50;
+	--border-rgb: 226 232 240;
+
+	/* Radii & shadows */
+	--radius-lg: 1rem;
+	--radius-xl: 1.25rem;
+	--shadow-soft: 0 6px 20px rgba(7, 16, 25, 0.05);
+	--shadow-strong: 0 12px 32px rgba(7, 16, 25, 0.12);
+	--focus: 0 0 0 3px rgba(31, 122, 69, 0.35);
+}
+
+/* ---------------------------------------------------
+   Tailwind layers
+--------------------------------------------------- */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

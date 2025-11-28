@@ -8,18 +8,23 @@
 		"node": ">=18"
 	},
 	"dependencies": {
-		"frappe-ui": "^0.1.199",
+		"@fullcalendar/core": "6.1.17",
+		"@fullcalendar/daygrid": "6.1.17",
+		"@fullcalendar/list": "6.1.17",
+		"@fullcalendar/timegrid": "6.1.17",
+		"@fullcalendar/vue3": "6.1.17",
+		"frappe-ui": "^0.1.213",
+		"html2canvas": "1.4.1",
 		"vue": "^3.5.21",
 		"vue-router": "^4.5.1"
 	},
 	"devDependencies": {
 		"@iconify-json/lucide": "^1.2.68",
-		"@tailwindcss/postcss": "^4.1.13",
 		"@types/node": "^24.5.1",
 		"@vitejs/plugin-vue": "^6.0.1",
 		"autoprefixer": "^10.4.21",
 		"postcss": "^8.4.47",
-		"tailwindcss": "^4.1.13",
+		"tailwindcss": "^3.4.14",
 		"typescript": "^5.5.0",
 		"unplugin-icons": "^22.3.0",
 		"unplugin-vue-components": "^29.0.0",

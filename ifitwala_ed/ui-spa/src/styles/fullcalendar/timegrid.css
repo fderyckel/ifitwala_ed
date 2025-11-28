@@ -1,0 +1,22 @@
+/* FullCalendar timegrid tweaks aligned to Zambian palette */
+.fc-timegrid .fc-timegrid-slot {
+	border-bottom: 1px dashed rgba(244, 236, 221, 0.8);
+	height: 56px; /* ~1.6x default for better visibility without being huge */
+}
+
+.fc-timegrid .fc-timegrid-axis-cushion {
+	font-size: 0.75rem;
+	color: var(--moss);
+}
+
+.fc-timegrid .fc-timegrid-event {
+	background: rgba(var(--leaf-rgb), 0.1);
+	border-left: 3px solid var(--leaf);
+	color: var(--canopy);
+}
+
+/* Constrain the timegrid body and allow vertical scroll while keeping toolbar static */
+.fc .fc-timegrid-body {
+	max-height: 720px;
+	overflow-y: auto;
+}

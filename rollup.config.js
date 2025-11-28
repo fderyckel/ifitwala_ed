@@ -24,9 +24,22 @@ const copy = require('rollup-plugin-copy');
 /* NEW: inline CSS @import (needed for bootstrap-icons.css) */
 const postcssImport = require('postcss-import');
 
-const dist = 'ifitwala_ed/public/dist';
-const websiteSrc = 'ifitwala_ed/public/website';
-const portalSrc = 'ifitwala_ed/public/js/student_portal';
+// Resolve the app directory regardless of whether rollup runs from bench root
+// (/apps/ifitwala_ed) or the package directory (/apps/ifitwala_ed/ifitwala_ed).
+const portalEntry = 'public/js/student_portal/index.js';
+const candidateAppDirs = [
+	__dirname,
+	path.join(__dirname, 'ifitwala_ed'),
+];
+const appDir = candidateAppDirs.find((dir) =>
+	fs.existsSync(path.join(dir, portalEntry))
+) || candidateAppDirs[0];
+
+const fromApp = (...segments) => path.join(appDir, ...segments);
+const dist = fromApp('public/dist');
+const websiteSrc = fromApp('public/website');
+const portalSrc = fromApp('public/js/student_portal');
+const fontsDir = fromApp('public/fonts');
 
 function contentHash(file) {
 	return createHash('sha256')
@@ -50,7 +63,7 @@ const basePlugins = [
 module.exports = [
 	// ── js for full calendar and other utils ──
 	{
-		input: "ifitwala_ed/public/js/ifitwala_ed.bundle.js",
+		input: fromApp("public/js/ifitwala_ed.bundle.js"),
 		output: {
 			file: `${dist}/ifitwala_ed.bundle.js`,
 			format: "iife",
@@ -64,7 +77,7 @@ module.exports = [
 
 	// ── css for full calendar ──
 	{
-		input: "ifitwala_ed/public/scss/fullcalendar.scss",
+		input: fromApp("public/scss/fullcalendar.scss"),
 		output: { dir: '.' },
 		plugins: [
 			postcss({
@@ -85,9 +98,9 @@ module.exports = [
 
 	// ── Bootstrap 5: Student Group + Attendance styles ──
 	{
-		input: "ifitwala_ed/public/scss/student_group_cards.scss",
+		input: fromApp("public/scss/student_group_cards.scss"),
 		output: {
-			file: "ifitwala_ed/public/dist/student_group_cards.bundle.css",
+			file: `${dist}/student_group_cards.bundle.css`,
 			format: "es"
 		},
 		plugins: [
@@ -109,11 +122,11 @@ module.exports = [
 					{
 						src: 'node_modules/bootstrap-icons/font/fonts/*',
 						/* CHANGED: put fonts in public/fonts so ../fonts resolves from dist/*.css */
-						dest: 'ifitwala_ed/public/fonts'
+						dest: fontsDir
 					},
 					{
 						src: 'node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
-						dest: 'ifitwala_ed/public/dist'
+						dest: dist
 					}
 				],
 				verbose: true,
@@ -124,7 +137,7 @@ module.exports = [
 
 	// ── Other desk pages CSS ──
 	{
-		input: 'ifitwala_ed/public/css/other_desk_pages.css',
+		input: fromApp('public/css/other_desk_pages.css'),
 		output: { dir: '.' },
 		plugins: [
 			postcss({
@@ -149,7 +162,7 @@ module.exports = [
 			{
 				name: 'alias-stable-website-js',
 				writeBundle() {
-					const p = 'ifitwala_ed/public/dist';
+					const p = dist;
 					try { fs.copyFileSync(`${p}/website.${websiteJsHash}.bundle.js`, `${p}/website.bundle.js`); } catch {}
 				}
 			}
@@ -169,7 +182,7 @@ module.exports = [
 			{
 				name: 'alias-stable-website-css',
 				writeBundle() {
-					const p = 'ifitwala_ed/public/dist';
+					const p = dist;
 					try { fs.copyFileSync(`${p}/website.${websiteCssHash}.bundle.css`, `${p}/website.bundle.css`); } catch {}
 				}
 			}
@@ -190,7 +203,7 @@ module.exports = [
 			{
 				name: 'alias-stable-school-js',
 				writeBundle() {
-					const p = 'ifitwala_ed/public/dist';
+					const p = dist;
 					try { fs.copyFileSync(`${p}/school.${schoolJsHash}.bundle.js`, `${p}/school.bundle.js`); } catch {}
 				}
 			}
@@ -210,7 +223,7 @@ module.exports = [
 			{
 				name: 'alias-stable-school-css',
 				writeBundle() {
-					const p = 'ifitwala_ed/public/dist';
+					const p = dist;
 					try { fs.copyFileSync(`${p}/school.${schoolCssHash}.bundle.css`, `${p}/school.bundle.css`); } catch {}
 				}
 			}
@@ -245,7 +258,7 @@ module.exports = [
 					{
 						src: 'node_modules/bootstrap-icons/font/fonts/*',
 						/* CHANGED: match ../fonts from dist CSS */
-						dest: 'ifitwala_ed/public/fonts'
+						dest: fontsDir
 					}
 				],
 				verbose: true,
@@ -258,7 +271,7 @@ module.exports = [
 				name: 'alias-stable-output',
 				writeBundle() {
 					const fs = require('fs');
-					const p = 'ifitwala_ed/public/dist';
+					const p = dist;
 					fs.copyFileSync(
 						`${p}/student_portal.${portalHash}.bundle.css`,
 						`${p}/student_portal.bundle.css`
@@ -274,7 +287,7 @@ module.exports = [
 
 	// ── Hierarchy Chart SCSS → stable min.css ──
 	{
-		input: 'ifitwala_ed/public/scss/hierarchy_chart.scss',
+		input: fromApp('public/scss/hierarchy_chart.scss'),
 		output: { dir: '.' },
 		plugins: [
 			postcss({

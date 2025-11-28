@@ -1,0 +1,15 @@
+/* FullCalendar daygrid tweaks aligned to Zambian palette */
+.fc-daygrid .fc-daygrid-day {
+	border: 1px solid rgba(244, 236, 221, 0.8);
+}
+
+.fc-daygrid .fc-daygrid-day-number {
+	padding: 0.25rem;
+	font-size: 0.75rem;
+	color: var(--canopy);
+}
+
+.fc-daygrid .fc-daygrid-event {
+	background: rgba(var(--sky-rgb), 0.35);
+	color: var(--canopy);
+}

@@ -10,7 +10,23 @@
         <section aria-labelledby="courses-heading">
           <div class="flex items-center justify-between mb-4">
             <h2 id="courses-heading" class="text-xl font-semibold text-gray-700">My Courses</h2>
-						<RouterLink :to="{ name: 'student-courses' }" class="text-sm font-medium text-blue-600 hover:underline">View All</RouterLink>
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+                @click="courseResource.reload()"
+                :disabled="loadingCourses"
+              >
+                <FeatherIcon name="refresh-cw" class="w-4 h-4" />
+                Refresh
+              </button>
+              <RouterLink
+                :to="{ name: 'student-courses' }"
+                class="text-sm font-medium text-blue-600 hover:underline"
+              >
+                View All
+              </RouterLink>
+            </div>
           </div>
           <p v-if="daySummary" class="text-sm text-gray-500 mb-4">Today: {{ daySummary }}</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -21,7 +37,15 @@
             </template>
             <template v-else-if="courseError">
               <div class="col-span-full bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {{ courseError }}
+                {{ courseErrorMessage || "Unable to load today's courses." }}
+                <button
+                  type="button"
+                  class="ml-3 text-sm font-semibold underline hover:text-red-800 disabled:opacity-60"
+                  @click="courseResource.reload()"
+                  :disabled="loadingCourses"
+                >
+                  Retry
+                </button>
               </div>
             </template>
             <template v-else-if="!todayCourses.length">
@@ -116,58 +140,61 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import { call, FeatherIcon } from 'frappe-ui';
+import { FeatherIcon, createResource } from 'frappe-ui';
 
 // Get user info from Frappe's session object for the welcome message
 const user = computed(() => {
-  return window.frappe?.session?.user_info || { fullname: 'Student' };
+	return window.frappe?.session?.user_info || { fullname: 'Student' };
 });
 
-const loadingCourses = ref(true);
-const courseError = ref(null);
-const todayCourses = ref([]);
-const scheduleMeta = ref({ date: null, weekday: null });
+// Resource-driven fetch for today's courses (Espresso way)
+const courseResource = createResource({
+	url: 'ifitwala_ed.api.course_schedule.get_today_courses',
+	method: 'POST',
+	auto: true,
+	transform: (data) => {
+		const payload =
+			data && typeof data === 'object' && 'message' in data ? data.message : data;
+
+		return {
+			courses: Array.isArray(payload?.courses) ? payload.courses : [],
+			date: payload?.date ?? null,
+			weekday: payload?.weekday ?? null,
+		};
+	},
+});
+
+const loadingCourses = computed(() => courseResource.loading);
+const courseError = computed(() => courseResource.error);
+const courseErrorMessage = computed(() => {
+	const err = courseError.value;
+	if (!err) return '';
+	if (typeof err === 'string') return err;
+	if (err instanceof Error) return err.message || "Unable to load today's courses.";
+	if (err && typeof err === 'object' && 'message' in err) {
+		const message = typeof err.message === 'string' ? err.message : '';
+		return message || "Unable to load today's courses.";
+	}
+	return "Unable to load today's courses.";
+});
+const todayCourses = computed(() => courseResource.data?.courses ?? []);
+const scheduleMeta = computed(() => ({
+	date: courseResource.data?.date ?? null,
+	weekday: courseResource.data?.weekday ?? null,
+}));
 
 const daySummary = computed(() => {
-  const { date, weekday } = scheduleMeta.value || {};
-  if (date && weekday) {
-    return `${weekday}, ${date}`;
-  }
-  return weekday || date || '';
+	const { date, weekday } = scheduleMeta.value;
+	if (date && weekday) return `${weekday}, ${date}`;
+	return weekday || date || '';
 });
-
-async function fetchTodayCourses() {
-  loadingCourses.value = true;
-  courseError.value = null;
-  try {
-    const response = await call('ifitwala_ed.api.course_schedule.get_today_courses');
-    const payload = response && typeof response === 'object' && 'message' in response
-      ? response.message
-      : response;
-
-    todayCourses.value = Array.isArray(payload?.courses) ? payload.courses : [];
-    scheduleMeta.value = {
-      date: payload?.date ?? null,
-      weekday: payload?.weekday ?? null,
-    };
-  } catch (err) {
-    console.error(err);
-    courseError.value = "Unable to load today's courses.";
-    todayCourses.value = [];
-    scheduleMeta.value = { date: null, weekday: null };
-  } finally {
-    loadingCourses.value = false;
-  }
-}
-
-onMounted(fetchTodayCourses);
 
 // Data for the "More" section cards
 const moreLinks = [
-  { 
-    title: 'Student Log',
+	{ 
+		title: 'Student Log',
     description: 'View socio-emotional notes.',
     icon: 'file-text',
 		to: { name: 'student-logs' }

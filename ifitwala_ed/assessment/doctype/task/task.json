@@ -84,6 +84,8 @@
    "fieldname": "course",
    "fieldtype": "Link",
    "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Course",
    "options": "Course",
    "read_only": 1,
@@ -119,6 +121,8 @@
    "fetch_if_empty": 1,
    "fieldname": "program",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Program",
    "options": "Program",
    "read_only": 1
@@ -128,6 +132,7 @@
    "fetch_if_empty": 1,
    "fieldname": "academic_year",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Academic Year",
    "options": "Academic Year",
    "read_only": 1
@@ -299,6 +304,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "depends_on": "eval:doc.criteria==1",
    "fieldname": "assessment_criteria",
    "fieldtype": "Table",
    "label": "Assessment Criteria",
@@ -331,7 +337,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-23 21:29:33.848738",
+ "modified": "2025-11-14 14:18:47.801264",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",

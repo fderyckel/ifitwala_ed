@@ -478,7 +478,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Assessment",
-   "link_count": 3,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -506,6 +506,16 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Assessment Category",
+   "link_count": 0,
+   "link_to": "Assessment Category",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Task",
    "link_count": 0,
    "link_to": "Task",
@@ -514,7 +524,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-10-26 10:52:57.425731",
+ "modified": "2025-11-12 14:40:16.881128",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Admin",
@@ -540,7 +550,7 @@
    "role": "Academic Assistant"
   }
  ],
- "sequence_id": 6.0,
+ "sequence_id": 7.0,
  "shortcuts": [
   {
    "color": "Grey",

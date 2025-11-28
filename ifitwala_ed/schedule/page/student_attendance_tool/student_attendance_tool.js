@@ -64,12 +64,12 @@ async function renderAttendanceCard(student, existing_codes = {}) {
 	let birthday_icon = "", health_icon = "";
 	if (student.birth_date) {
 		try {
-			const bdate    = frappe.datetime.str_to_obj(student.birth_date);
-			const today    = frappe.datetime.str_to_obj(frappe.datetime.now_date());
-			const thisYear = new Date(today.getFullYear(), bdate.getMonth(), bdate.getDate());
-			const diff     = Math.floor((thisYear - today) / 86400000);
-			if (Math.abs(diff) <= 5) {
-				const formatted = moment(bdate).format("dddd, MMMM D");
+			const todayStr = frappe.datetime.now_date();
+			const todayMoment = moment(todayStr, "YYYY-MM-DD");
+			const birthdayMoment = moment(student.birth_date, "YYYY-MM-DD").year(todayMoment.year());
+			const diff = Math.abs(birthdayMoment.diff(todayMoment, "days"));
+			if (diff <= 5) {
+				const formatted = moment(student.birth_date, "YYYY-MM-DD").format("dddd, MMMM D");
 				birthday_icon = `
 					<span class="ms-1 text-warning" role="button"
 						onclick="frappe.msgprint('${__("Birthday:")} ${formatted}')"
@@ -274,7 +274,7 @@ frappe.pages["student_attendance_tool"].on_page_load = async function (wrapper) 
 					} catch {
 							return false;
 					}
-			}).sort((a, b) => new Date(a) - new Date(b));
+		}).sort((a, b) => a.localeCompare(b));
 
 			// Populate the select box and mark today if present
 			date_field.df.options = visibleDates.map(d => ({

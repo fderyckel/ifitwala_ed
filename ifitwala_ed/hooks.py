@@ -69,7 +69,7 @@ website_route_rules = [
 
 # Home Pages
 # ----------
-after_login = "ifitwala_ed.api.redirect_student_to_portal"
+after_login = "ifitwala_ed.api.users.redirect_student_to_portal"
 # application home page (will override Website Settings)
 # home_page = "login"
 
@@ -133,7 +133,6 @@ calendars = ["School Event", "School Calendar"]
 # Permissions evaluated in scripted ways
 
 permission_query_conditions = {
- 	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.get_permission_query_conditions",
   "Contact": "ifitwala_ed.utilities.contact_utils.contact_permission_query_conditions",
 	"Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_permission_query_conditions",
 	"Instructor": "ifitwala_ed.schedule.doctype.instructor.instructor.get_permission_query_conditions",
@@ -146,7 +145,6 @@ permission_query_conditions = {
 }
 
 has_permission = {
-	"School Event": "ifitwala_ed.school_settings.doctype.school_event.school_event.event_has_permission",
   "Contact": "ifitwala_ed.utilities.contact_utils.contact_has_permission",
 	"Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.has_permission",
 	"Instructor": "ifitwala_ed.schedule.doctype.instructor.instructor.has_permission",
@@ -201,8 +199,8 @@ doc_events = {
 		"after_save": "ifitwala_ed.hr.employee_access.sync_user_access_from_employee"
 	},
   "File": {
-    "after_insert": "ifitwala_ed.utilities.image_utils.handle_file_after_insert",
-    "on_update": "ifitwala_ed.utilities.image_utils.handle_file_on_update"
+		"after_insert": "ifitwala_ed.utilities.file_dispatcher.handle_file_after_insert",
+		"on_update": "ifitwala_ed.utilities.file_dispatcher.handle_file_on_update",
     },
 	"Student Group": {
 		"on_update": "ifitwala_ed.schedule.schedule_utils.invalidate_for_student_group"

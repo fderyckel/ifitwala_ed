@@ -12,24 +12,27 @@ from frappe import _
 from frappe.utils import getdate, formatdate, strip_html
 
 
+ENTRY_LOCAL_EXPR = "CONVERT_TZ(rce.entry_datetime, 'UTC', %(site_tz)s)"
+
+
 ALLOWED = {"Counselor", "Academic Admin"}
 
 
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
 	_guard_roles()
+	site_tz = frappe.utils.get_system_timezone() or "UTC"
 
 	# Dates (inclusive)
 	date_from = getdate(filters.get("from_date")) if filters.get("from_date") else None
 	date_to   = getdate(filters.get("to_date"))   if filters.get("to_date")   else None
 
-	where, params = _build_where(filters, date_from, date_to)
+	where, params = _build_where(filters, date_from, date_to, site_tz)
 
 	# ── Main query (note Employee join by user_id → employee_full_name) ──
 	q = f"""
 		SELECT
-			rce.entry_datetime,
-			DATE(rce.entry_datetime)           AS entry_date,
+			{ENTRY_LOCAL_EXPR}                AS entry_datetime_local,
 			rc.name                            AS referral_case,
 			rc.referral                        AS referral,
 			rc.student                         AS student,
@@ -48,7 +51,7 @@ def execute(filters=None):
 			rce.summary                        AS summary_raw,
 
 			/* NEW: latest activity per case within the filtered result set */
-			MAX(rce.entry_datetime) OVER (PARTITION BY rc.name) AS _case_latest
+			MAX({ENTRY_LOCAL_EXPR}) OVER (PARTITION BY rc.name) AS _case_latest
 		FROM `tabReferral Case` rc
 		JOIN `tabReferral Case Entry` rce
 					ON rce.parent = rc.name
@@ -60,7 +63,7 @@ def execute(filters=None):
 					ON e.user_id = rc.case_manager
 		{('WHERE ' + ' AND '.join(where)) if where else ''}
 		/* NEW: order cases by their latest activity, then entries newest-first */
-		ORDER BY _case_latest DESC, rc.name ASC, rce.entry_datetime DESC
+		ORDER BY _case_latest DESC, rc.name ASC, entry_datetime_local DESC
 	"""
 
 	rows = frappe.db.sql(q, params, as_dict=True)
@@ -68,7 +71,10 @@ def execute(filters=None):
 	# ── Presentational enrichments (no extra queries) ───────────────────
 	for r in rows:
 		# Pretty date (e.g., 9 September 2025)
-		r["entry_date_pretty"] = formatdate(r["entry_date"], "d MMMM yyyy")
+		entry_dt = r.get("entry_datetime_local")
+		entry_date = getdate(entry_dt) if entry_dt else None
+		r["entry_date"] = entry_date
+		r["entry_date_pretty"] = formatdate(entry_date, "d MMMM yyyy") if entry_date else ""
 
 		# Linked student name
 		full = r.get("student_full_name") or r.get("student") or ""
@@ -142,12 +148,14 @@ def _guard_roles():
 	if not (roles & ALLOWED):
 		frappe.throw(_("You are not permitted to run this report."))
 
-def _build_where(f, date_from, date_to):
+
+def _build_where(f, date_from, date_to, site_tz):
 	where, params = [], {}
+	params["site_tz"] = site_tz
 	if date_from:
-		where.append("DATE(rce.entry_datetime) >= %(df)s"); params["df"] = date_from
+		where.append(f"{ENTRY_LOCAL_EXPR} >= %(df)s"); params["df"] = date_from
 	if date_to:
-		where.append("DATE(rce.entry_datetime) <= %(dt)s"); params["dt"] = date_to
+		where.append(f"{ENTRY_LOCAL_EXPR} <= %(dt)s"); params["dt"] = date_to
 	if f.get("student"):       where.append("rc.student = %(student)s");     params["student"] = f.student
 	if f.get("referral"):      where.append("rc.referral = %(referral)s");   params["referral"] = f.referral
 	if f.get("school"):        where.append("rc.school = %(school)s");       params["school"] = f.school

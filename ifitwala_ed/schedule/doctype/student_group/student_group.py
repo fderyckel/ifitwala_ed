@@ -1,14 +1,29 @@
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifiwala_ed/schedule/doctype/student_group/student_group.py
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint, get_link_to_form
-from ifitwala_ed.schedule.schedule_utils import validate_duplicate_student
-from ifitwala_ed.schedule.schedule_utils import check_slot_conflicts, get_conflict_rule
+from frappe.utils import cint, get_link_to_form, get_datetime, format_datetime
+
+from ifitwala_ed.schedule.schedule_utils import (
+	validate_duplicate_student,
+	get_conflict_rule,
+	get_rotation_dates,
+	check_slot_conflicts,
+	OverlapError,
+)
+
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 from ifitwala_ed.schedule.attendance_utils import invalidate_meeting_dates
+from ifitwala_ed.utilities.location_conflicts import find_location_conflicts
+
+from ifitwala_ed.schedule.student_group_employee_booking import (
+	rebuild_employee_bookings_for_student_group,
+)
+
 
 class StudentGroup(Document):
 	def autoname(self):
@@ -30,6 +45,7 @@ class StudentGroup(Document):
 		self._validate_ay_in_offering_spine()
 		self._enforce_school_rules()
 		self._validate_course_scoping()
+		self._validate_overlap_conflicts()
 
 		self.validate_mandatory_fields()
 		self.validate_size()
@@ -50,6 +66,8 @@ class StudentGroup(Document):
 
 		############
 		self._validate_schedule_rows()
+		# Cross-object room conflicts (Student Groups ↔ Meetings / Events)
+		self.validate_location_conflicts_absolute()
 
 		if self.group_based_on in ["Course", "Activity"]:
 			if self.term:
@@ -60,30 +78,6 @@ class StudentGroup(Document):
 			self.title = self.student_group_abbreviation + "/" + self.cohort
 		else:
 			self.title = self.student_group_abbreviation
-
-  	# ── Overlap detection ───────────────────────────────────────────────
-		if not getattr(self, "_conflict_checked", False):
-			conflicts = check_slot_conflicts(self)
-			if conflicts:
-				# turn the dict into readable bullets
-				lines = []
-				for cat, items in conflicts.items():
-					for entry in items:
-						# entry = (entity, rotation, block)
-						ent, rot, blk = entry
-						if isinstance(ent, (list, tuple)):
-							ent = ", ".join(ent)
-						lines.append(f"• {cat.title()}: <b>{ent}</b> — Day {rot}, Block {blk}")
-
-				msg = "<br>".join(lines)
-				title = _("Scheduling conflicts detected")
-
-				if get_conflict_rule() == "Hard":
-					frappe.throw(msg, title=title)
-				else:
-					frappe.msgprint(msg, alert=True, title=title)
-
-			self._conflict_checked = True
 
 	def before_save(self):
 		"""
@@ -119,8 +113,11 @@ class StudentGroup(Document):
 		def instructor_keys(doc):
 			keys = set()
 			for r in (doc.instructors or []):
+				emp = (getattr(r, "employee", "") or "").strip()
 				uid = (getattr(r, "user_id", "") or "").strip()
 				ins = (getattr(r, "instructor", "") or "").strip()
+				if emp:
+					keys.add(("emp", emp))
 				if uid:
 					keys.add(("uid", uid))
 				elif ins:
@@ -173,15 +170,29 @@ class StudentGroup(Document):
 						if getattr(r, "student", None) and cint(getattr(r, "active", 1)):
 							_sync_ssg_access_for((r.student or "").strip(), ay, reason="sgi-changed")
 
-		# ----- MEETING-DATES invalidation (NEW) -----
+		# ----- MEETING-DATES invalidation -----
 		if bool(getattr(self.flags, "_sg_meeting_dates_changed", False)):
 			invalidate_meeting_dates(self.name)
-			self.flags._sg_meeting_dates_changed = False
+
+		# ----- EMPLOYEE BOOKINGS materialisation -----
+		# Rebuild bookings when timetable or instructors changed.
+		# Guard: only for submitted + Active groups to avoid trash/testing noise.
+		if (
+			self.docstatus == 1
+			and (self.status or "Active") == "Active"
+			and (
+				bool(getattr(self.flags, "_sg_meeting_dates_changed", False))
+				or bool(getattr(self.flags, "_sg_instructors_changed", False))
+			)
+		):
+			rebuild_employee_bookings_for_student_group(self.name)
 
 		# cleanup flags
 		self.flags._sg_students_added = set()
 		self.flags._sg_students_removed = set()
 		self.flags._sg_instructors_changed = False
+		self.flags._sg_meeting_dates_changed = False
+
 
 	##################### VALIDATONS #########################
 
@@ -189,7 +200,6 @@ class StudentGroup(Document):
 		term_year = frappe.get_doc("Term", self.term)
 		if self.academic_year != term_year.academic_year:
 			frappe.throw(_("The term {0} does not belong to the academic year {1}.").format(self.term, self.academic_year))
-
 
 	def validate_mandatory_fields(self) -> None:
 		if self.group_based_on == "Course" and not self.course:
@@ -356,39 +366,119 @@ class StudentGroup(Document):
 
 	def validate_rotation_clashes(self):
 		"""
-		Check duplicates across student, instructor, location
-		within the same School Calendar & School hierarchy.
+		Check duplicate use of the same student or instructor within this
+		Student Group at the same rotation_day / block_number.
+
+		Room/location conflicts across Student Groups / Meetings / Events are
+		now handled by validate_location_conflicts_absolute().
 		"""
 		key_sets = {
 			"student": set(),
 			"instructor": set(),
-			"location": set()
 		}
 
-		for row in self.student_group_schedule:
+		for row in (self.student_group_schedule or []):
 			hash_base = f"{row.rotation_day}:{row.block_number}"
+
 			# students
-			for s in self.students:
+			for s in (self.students or []):
+				if not getattr(s, "student", None):
+					continue
+
 				key = f"{hash_base}:{s.student}"
 				if key in key_sets["student"]:
-					frappe.throw(_("Student clash on rotation {0} block {1} ({2})")
-								.format(row.rotation_day, row.block_number, s.student))
+					frappe.throw(
+						_("Student clash on rotation {0} block {1} ({2})").format(
+							row.rotation_day, row.block_number, s.student
+						)
+					)
 				key_sets["student"].add(key)
 
-			# instructors (child table student_group_instructor)
-			for instr in self.instructors:
-				key = f"{hash_base}:{instr.instructor}"
+			# instructors (child table Student Group Instructor)
+			for instr in (self.instructors or []):
+				identifier = (
+					(getattr(instr, "employee", "") or "").strip()
+					or (getattr(instr, "instructor", "") or "").strip()
+				)
+				if not identifier:
+					continue
+
+				key = f"{hash_base}:{identifier}"
 				if key in key_sets["instructor"]:
-					frappe.throw(_("Instructor clash on rotation {0} block {1} ({2})")
-								.format(row.rotation_day, row.block_number, instr.instructor))
+					frappe.throw(
+						_("Instructor clash on rotation {0} block {1} ({2})").format(
+							row.rotation_day, row.block_number, identifier
+						)
+					)
 				key_sets["instructor"].add(key)
 
-			# location
-			key = f"{hash_base}:{row.location}"
-			if key in key_sets["location"]:
-				frappe.throw(_("Location clash on rotation {0} block {1} ({2})")
-							.format(row.rotation_day, row.block_number, row.location))
-			key_sets["location"].add(key)
+	def _validate_overlap_conflicts(self):
+		"""
+		Enforce that:
+		  - No instructor is double-booked in another Student Group
+		    at the same rotation_day + block_number.
+		  - No student is double-booked in another Student Group
+		    at the same rotation_day + block_number.
+
+		Room conflicts are handled separately by location_conflicts.
+		"""
+
+		# Use a plain dict so check_slot_conflicts can be called both from
+		# client (JSON) and server (Document).
+		conflicts = check_slot_conflicts(self.as_dict()) or {}
+
+		if not conflicts:
+			return
+
+		messages = []
+
+		ins_conf = conflicts.get("instructor") or []
+		stu_conf = conflicts.get("student") or []
+
+		def _names(payload):
+			labels = payload.get("labels") or payload.get("ids") or []
+			return ", ".join(label for label in labels if label)
+
+		def _group_links(payload):
+			sgs = payload.get("groups") or []
+			links = [
+				get_link_to_form("Student Group", sg)
+				for sg in sgs if sg
+			]
+			return ", ".join(links) if links else _("another Student Group")
+
+		if ins_conf:
+			for payload in ins_conf:
+				ins_list = _names(payload)
+				rot = payload.get("rotation_day")
+				blk = payload.get("block_number")
+				sg_links = _group_links(payload)
+				messages.append(
+					_("Instructor(s) {ins} already booked on rotation day {rot}, block {blk} in {sg}.")
+					.format(ins=ins_list, rot=rot, blk=blk, sg=sg_links)
+				)
+
+		if stu_conf:
+			for payload in stu_conf:
+				stu_list = _names(payload)
+				rot = payload.get("rotation_day")
+				blk = payload.get("block_number")
+				sg_links = _group_links(payload)
+				messages.append(
+					_("Student(s) {stu} already booked on rotation day {rot}, block {blk} in {sg}.")
+					.format(stu=stu_list, rot=rot, blk=blk, sg=sg_links)
+				)
+
+		if not messages:
+			return
+
+		rule = get_conflict_rule()  # "Hard" or "Soft" from School settings
+
+		msg = "<br>".join(messages)
+		frappe.msgprint(msg, title=_("Scheduling Conflicts"), indicator="red")
+
+		if rule == "Hard":
+			raise OverlapError(msg)
 
 	def validate_location_capacity(self):
 		"""Ensure the chosen locations can accommodate the group's active student count.
@@ -541,6 +631,160 @@ class StudentGroup(Document):
 			# 4️⃣ Auto-fill times (use read-only fields)
 			from_t, to_t = block_map[row.rotation_day][row.block_number]
 			row.from_time, row.to_time = from_t, to_t
+
+	def validate_location_conflicts_absolute(self):
+		"""
+		Check this Student Group's room usage against other objects using the
+		central location_conflicts engine.
+
+		Compares this group's concrete sessions (absolute datetimes derived
+		from rotation days + blocks) against:
+			- other Student Groups
+			- Meetings
+			- School Events
+			- Frappe Events
+
+		Respects the School's schedule_conflict_rule (Hard / Soft).
+		"""
+		# No schedule rows → nothing to check
+		if not self.student_group_schedule:
+			return
+
+		# No rooms on any row → nothing to check
+		if not any(getattr(row, "location", None) for row in self.student_group_schedule):
+			return
+
+		# We need an Academic Year to resolve real dates
+		if not self.academic_year:
+			return
+
+		# Resolve School Schedule (same as in _validate_schedule_rows)
+		try:
+			sched = self._get_school_schedule()
+		except Exception:
+			# If schedule validation fails, that method will already raise;
+			# no need to duplicate errors here.
+			return
+
+		# Build rotation_day → [dates] map for this schedule & AY
+		rot_list = get_rotation_dates(sched.name, self.academic_year)
+		if not rot_list:
+			return
+
+		rotation_dates: dict[int, list] = {}
+		for row in rot_list:
+			try:
+				rd = int(row.get("rotation_day"))
+			except Exception:
+				continue
+			d = row.get("date")
+			if not d:
+				continue
+			rotation_dates.setdefault(rd, []).append(d)
+
+		if not rotation_dates:
+			return
+
+		# Build: {rotation_day: {block_number: (from_time, to_time)}}
+		block_map: dict[int, dict[int, tuple]] = {}
+		for b in (sched.school_schedule_block or []):
+			if b.rotation_day is None or b.block_number is None:
+				continue
+			try:
+				rd = int(b.rotation_day)
+				blk = int(b.block_number)
+			except Exception:
+				continue
+			block_map.setdefault(rd, {})[blk] = (b.from_time, b.to_time)
+
+		# Expand THIS group's proposed slots into absolute datetimes
+		slots: list[tuple[str, object, object]] = []  # (location, start_dt, end_dt)
+
+		for row in (self.student_group_schedule or []):
+			loc = getattr(row, "location", None)
+			rot = getattr(row, "rotation_day", None)
+			blk = getattr(row, "block_number", None)
+
+			if not (loc and rot and blk):
+				continue
+
+			try:
+				rot = int(rot)
+				blk = int(blk)
+			except Exception:
+				continue
+
+			if rot not in rotation_dates:
+				continue
+
+			if blk not in block_map.get(rot, {}):
+				continue
+
+			from_t, to_t = block_map[rot][blk]
+			if not (from_t and to_t):
+				continue
+
+			for d in rotation_dates[rot]:
+				start_dt = get_datetime(f"{d} {from_t}")
+				end_dt = get_datetime(f"{d} {to_t}")
+
+				if not (start_dt and end_dt) or end_dt <= start_dt:
+					continue
+
+				slots.append((loc, start_dt, end_dt))
+
+		if not slots:
+			return
+
+		ignore_sources = {("Student Group", self.name)}
+		all_conflicts = []
+		seen = set()
+
+		for loc, start_dt, end_dt in slots:
+			hits = find_location_conflicts(
+				loc,
+				start_dt,
+				end_dt,
+				ignore_sources=ignore_sources,
+			)
+			for c in hits:
+				# Extra safety: don't ever flag this group against itself
+				if c.source_doctype == "Student Group" and c.source_name == self.name:
+					continue
+
+				key = (c.source_doctype, c.source_name, c.location, c.start, c.end)
+				if key in seen:
+					continue
+				seen.add(key)
+				all_conflicts.append(c)
+
+		if not all_conflicts:
+			return
+
+		lines = []
+		for c in all_conflicts:
+			target = get_link_to_form(c.source_doctype, c.source_name)
+			start_str = format_datetime(c.start)
+			end_str = format_datetime(c.end)
+
+			lines.append(
+				_("{location} is already booked by {doctype} {target} from {start} to {end}.").format(
+					location=c.location,
+					doctype=c.source_doctype,
+					target=target,
+					start=start_str,
+					end=end_str,
+				)
+			)
+
+		msg = "<br>".join(lines)
+		title = _("Location conflicts detected")
+
+		if get_conflict_rule() == "Hard":
+			frappe.throw(msg, title=title)
+		else:
+			frappe.msgprint(msg, alert=True, title=title)
+
 
 	def _derive_program_from_offering(self):
 		"""Quality-of-life: show Program in the form, but do not treat as source of truth."""

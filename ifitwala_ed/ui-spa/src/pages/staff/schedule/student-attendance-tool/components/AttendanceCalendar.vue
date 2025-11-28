@@ -40,12 +40,10 @@
 					:class="dayButtonClass(day)"
 					@click="selectDay(day)"
 				>
-					<div class="flex flex-col items-center gap-1">
-						<span class="text-sm font-medium">{{ day.label }}</span>
-						<span
-							v-if="day.isRecorded"
-							class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"
-						/>
+					<div class="flex items-center justify-center">
+						<span :class="dayBadgeClass(day)">
+							{{ day.label }}
+						</span>
 					</div>
 				</button>
 			</div>
@@ -63,6 +61,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Button, Spinner } from 'frappe-ui'
+import { __ } from '@/lib/i18n'
 
 type CalendarDay = {
 	date: Date
@@ -72,6 +71,9 @@ type CalendarDay = {
 	isRecorded: boolean
 	inCurrentMonth: boolean
 	isPast: boolean
+	isToday: boolean
+	weekday: number
+	isWeekend: boolean
 }
 
 const props = defineProps<{
@@ -81,6 +83,8 @@ const props = defineProps<{
 	selectedDate: string | null
 	availableMonths: string[]
 	loading?: boolean
+	/** Weekend days as JS weekday numbers (0=Sun … 6=Sat). Default: Sat–Sun */
+	weekendDays?: number[]
 }>()
 
 const emit = defineEmits<{
@@ -93,6 +97,7 @@ const weekdayFormatter = new Intl.DateTimeFormat(undefined, { weekday: 'short' }
 const monthFormatter = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' })
 
 const weekdays = computed(() => {
+	// Always render Mon→Sun in header
 	const monday = startOfWeek(new Date())
 	return Array.from({ length: 7 }).map((_, idx) => {
 		const d = new Date(monday)
@@ -137,6 +142,9 @@ const days = computed<CalendarDay[]>(() => {
 		const date = new Date(start)
 		date.setDate(start.getDate() + idx)
 		const iso = formatISO(date)
+		const weekday = date.getDay()
+		const weekendSet = new Set(props.weekendDays ?? [6, 0]) // Sat, Sun by default
+		const todayIso = formatISO(today())
 		return {
 			date,
 			iso,
@@ -145,6 +153,9 @@ const days = computed<CalendarDay[]>(() => {
 			isRecorded: recordedDateSet.value.has(iso),
 			inCurrentMonth: date.getMonth() === props.month.getMonth(),
 			isPast: date < today(),
+			isToday: iso === todayIso,
+			weekday,
+			isWeekend: weekendSet.has(weekday),
 		}
 	})
 })
@@ -166,33 +177,42 @@ function selectDay(day: CalendarDay) {
 }
 
 function dayButtonClass(day: CalendarDay) {
-	const base =
-		'group aspect-square rounded-xl border border-slate-100 bg-white px-2 py-3 text-center text-slate-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300'
+	const classes = [
+		'calendar-day group aspect-square rounded-xl border px-2 py-3 text-center text-sm transition text-slate-700',
+		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(var(--jacaranda-rgb),0.52)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+		'disabled:cursor-not-allowed disabled:opacity-50',
+	]
 
-	const classes = [base]
+	if (day.isWeekend) classes.push('calendar-day--weekend')
+	if (!day.inCurrentMonth) classes.push('calendar-day--muted')
+	if (day.isMeeting) classes.push('calendar-day--meeting')
+	if (day.isRecorded) classes.push('calendar-day--recorded')
+	if (props.selectedDate === day.iso) classes.push('calendar-day--selected')
+	if (!day.isMeeting) classes.push('calendar-day--inactive')
+
+	return classes.join(' ')
+}
+
+function dayBadgeClass(day: CalendarDay) {
+	const classes = ['calendar-day__badge']
 
 	if (!day.inCurrentMonth) {
-		classes.push('text-slate-300')
+		classes.push('calendar-day__badge--muted')
 	}
 
-	if (day.isMeeting) {
-		classes.push('hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600')
-	}
-
-	if (props.selectedDate === day.iso) {
-		classes.push('border-blue-400 bg-blue-50 text-blue-700 ring-2 ring-blue-200')
-	}
-
-	if (!day.isMeeting) {
-		classes.push('opacity-60')
-	}
-
-	if (day.isPast && day.isMeeting && props.selectedDate !== day.iso) {
-		classes.push('border-slate-200 bg-slate-50 text-slate-500')
+	if (day.isToday) {
+		classes.push('calendar-day__badge--today')
+	} else if (day.isRecorded) {
+		classes.push('calendar-day__badge--recorded')
+	} else if (day.isMeeting) {
+		classes.push('calendar-day__badge--meeting')
+	} else {
+		classes.push('calendar-day__badge--idle')
 	}
 
 	return classes.join(' ')
 }
+
 
 function startOfWeek(date: Date) {
 	const d = new Date(date)
@@ -215,7 +235,11 @@ function today() {
 }
 
 function formatISO(date: Date) {
-	return date.toISOString().slice(0, 10)
+  // Local, timezone-agnostic YYYY-MM-DD (no UTC conversion)
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 function formatMonth(date: Date) {
@@ -228,3 +252,89 @@ function parseMonth(key: string) {
 }
 
 </script>
+
+<style scoped>
+.calendar-day {
+	border-color: rgba(var(--border-rgb), 0.9);
+	background: rgba(255, 255, 255, 0.96);
+	transition:
+		border-color 120ms ease,
+		box-shadow 120ms ease,
+		transform 120ms ease,
+		background-color 120ms ease;
+}
+
+.calendar-day--weekend {
+	background: linear-gradient(180deg, rgba(var(--sky-rgb), 0.4), rgba(255, 255, 255, 0.96));
+}
+
+.calendar-day--muted {
+	color: rgba(var(--slate-rgb), 0.6);
+}
+
+.calendar-day--inactive {
+	background: rgba(var(--sky-rgb), 0.35);
+}
+
+.calendar-day--meeting {
+	border-color: rgba(var(--leaf-rgb), 0.32);
+	box-shadow: 0 8px 20px rgba(var(--leaf-rgb), 0.16);
+}
+
+.calendar-day--meeting:not(.calendar-day--selected):not(:disabled):hover {
+	transform: translateY(-1px);
+}
+
+.calendar-day--selected {
+	border-color: rgba(var(--jacaranda-rgb), 0.55);
+	background: linear-gradient(180deg, rgba(var(--jacaranda-rgb), 0.08), rgba(255, 255, 255, 0.96));
+	box-shadow: 0 0 0 3px rgba(var(--jacaranda-rgb), 0.45);
+}
+
+.calendar-day__badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 2.4rem;
+	min-width: 2.4rem;
+	padding: 0.25rem 0.65rem;
+	border-radius: 0.9rem;
+	font-weight: 600;
+	font-size: 0.95rem;
+	letter-spacing: -0.01em;
+	border: 1px solid transparent;
+	transition:
+		background-color 140ms ease,
+		color 140ms ease,
+		box-shadow 140ms ease,
+		border-color 140ms ease;
+}
+
+.calendar-day__badge--today {
+	background: rgb(var(--jacaranda-rgb));
+	color: #fff;
+	box-shadow: 0 10px 24px rgba(var(--jacaranda-rgb), 0.3);
+}
+
+.calendar-day__badge--meeting {
+	background: rgba(var(--leaf-rgb), 0.18);
+	color: rgb(var(--leaf-rgb));
+	border-color: rgba(var(--leaf-rgb), 0.36);
+	box-shadow: 0 10px 22px rgba(var(--leaf-rgb), 0.2);
+}
+
+.calendar-day__badge--recorded {
+	background: rgba(var(--leaf-rgb), 0.32);
+	color: #fff;
+	border-color: rgba(var(--leaf-rgb), 0.55);
+	box-shadow: 0 12px 28px rgba(var(--leaf-rgb), 0.26);
+}
+
+.calendar-day__badge--idle {
+	color: rgba(var(--slate-rgb), 0.82);
+}
+
+.calendar-day__badge--muted {
+	color: rgba(var(--slate-rgb), 0.55);
+}
+</style>

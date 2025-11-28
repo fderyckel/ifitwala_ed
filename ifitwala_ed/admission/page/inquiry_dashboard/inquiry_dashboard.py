@@ -2,9 +2,13 @@
 # For license information, please see license.txt
 
 import json
+
 import frappe
 from frappe import _
-from frappe.utils import getdate, add_days, nowdate
+from frappe.utils import add_days, getdate, nowdate
+
+
+SUBMITTED_LOCAL_EXPR = "CONVERT_TZ(i.submitted_at, 'UTC', %(site_tz)s)"
 
 def _ay_bounds(academic_year: str):
 	if not academic_year:
@@ -30,12 +34,16 @@ def _resolve_window(filters: dict):
 		fd = fd or add_days(td, -90)
 	return getdate(fd), getdate(td)
 
-def _apply_common_conditions(filters: dict):
+def _apply_common_conditions(filters: dict, site_tz: str):
 	conds = []
 	params = {}
 	fd, td = _resolve_window(filters)
-	conds.append("i.submitted_at >= %(from)s AND i.submitted_at < %(to)s")
-	params.update({"from": f"{fd} 00:00:00", "to": f"{td} 23:59:59"})
+	conds.append(f"{SUBMITTED_LOCAL_EXPR} >= %(from)s AND {SUBMITTED_LOCAL_EXPR} < %(to)s")
+	params.update({
+		"from": f"{fd} 00:00:00",
+		"to": f"{td} 23:59:59",
+		"site_tz": site_tz,
+	})
 
 	if filters.get("type_of_inquiry"):
 		conds.append("i.type_of_inquiry = %(type)s")
@@ -72,16 +80,18 @@ def get_dashboard_data(filters=None):
 	All queries parameterized (safe) and scoped by date window/filters.
 	"""
 	filters = frappe.parse_json(filters) or {}
+	# Use system timezone string for CONVERT_TZ
+	site_tz = frappe.utils.get_system_timezone() or "UTC"
 
-	where, params = _apply_common_conditions(filters)
-	rest_where, rest_params = _rest_conditions(filters)	
+	where, params = _apply_common_conditions(filters, site_tz)
+	rest_where, rest_params = _rest_conditions(filters)
 
 	# --- Admission Settings: upcoming horizon (days) ---
 	upcoming_horizon_days = frappe.db.get_single_value("Admission Settings", "followup_sla_days") or 7
 	try:
 		upcoming_horizon_days = int(upcoming_horizon_days)
 	except Exception:
-		upcoming_horizon_days = 7	
+		upcoming_horizon_days = 7
 
 	# ── counts
 	total = frappe.db.sql(
@@ -94,34 +104,35 @@ def get_dashboard_data(filters=None):
 	)[0][0]
 
 	# 👇 FIX: use IS NULL (COALESCE ... IS NULL can never be true)
+	params_with_today = {**params, "today": nowdate()}
 	overdue_first = frappe.db.sql(
-		f"""
+		"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE {where}
-		  AND i.first_contacted_at IS NULL
-		  AND i.first_contact_due_on IS NOT NULL
-		  AND i.first_contact_due_on < CURDATE()
-		""",
-		params, as_dict=False
+			AND i.first_contacted_at IS NULL
+			AND i.first_contact_due_on IS NOT NULL
+			AND i.first_contact_due_on < %(today)s
+		""".format(where=where),
+		params_with_today, as_dict=False
 	)[0][0]
 
 	# ── averages (overall window)
 	avg_first = frappe.db.sql(
-		f"""
+		"""
 		SELECT AVG(i.response_hours_first_contact)
 		FROM `tabInquiry` i
 		WHERE {where} AND i.response_hours_first_contact IS NOT NULL
-		""",
+		""".format(where=where),
 		params, as_dict=False
 	)[0][0] or 0
 
 	avg_from_assign = frappe.db.sql(
-		f"""
+		"""
 		SELECT AVG(i.response_hours_from_assign)
 		FROM `tabInquiry` i
 		WHERE {where} AND i.response_hours_from_assign IS NOT NULL
-		""",
+		""".format(where=where),
 		params, as_dict=False
 	)[0][0] or 0
 
@@ -135,9 +146,9 @@ def get_dashboard_data(filters=None):
 		f"""
 		SELECT AVG(i.response_hours_first_contact)
 		FROM `tabInquiry` i
-		WHERE i.submitted_at >= %(from30)s AND i.submitted_at <= %(to30)s
-		  AND ({where})
-		  AND i.response_hours_first_contact IS NOT NULL
+		WHERE {SUBMITTED_LOCAL_EXPR} >= %(from30)s AND {SUBMITTED_LOCAL_EXPR} <= %(to30)s
+			AND ({where})
+			AND i.response_hours_first_contact IS NOT NULL
 		""",
 		params30, as_dict=False
 	)[0][0] or 0
@@ -146,9 +157,9 @@ def get_dashboard_data(filters=None):
 		f"""
 		SELECT AVG(i.response_hours_from_assign)
 		FROM `tabInquiry` i
-		WHERE i.submitted_at >= %(from30)s AND i.submitted_at <= %(to30)s
-		  AND ({where})
-		  AND i.response_hours_from_assign IS NOT NULL
+		WHERE {SUBMITTED_LOCAL_EXPR} >= %(from30)s AND {SUBMITTED_LOCAL_EXPR} <= %(to30)s
+			AND ({where})
+			AND i.response_hours_from_assign IS NOT NULL
 		""",
 		params30, as_dict=False
 	)[0][0] or 0
@@ -156,12 +167,12 @@ def get_dashboard_data(filters=None):
 	# ── monthly averages (YYYY-MM by submitted_at)
 	monthly = frappe.db.sql(
 		f"""
-		SELECT DATE_FORMAT(i.submitted_at, '%%Y-%%m') AS ym,
-		       AVG(i.response_hours_first_contact) AS a_first,
-		       AVG(i.response_hours_from_assign)  AS a_assign
+		SELECT DATE_FORMAT({SUBMITTED_LOCAL_EXPR}, '%%Y-%%m') AS ym,
+				 AVG(i.response_hours_first_contact) AS a_first,
+				 AVG(i.response_hours_from_assign)  AS a_assign
 		FROM `tabInquiry` i
 		WHERE {where}
-		GROUP BY DATE_FORMAT(i.submitted_at, '%%Y-%%m')
+		GROUP BY DATE_FORMAT({SUBMITTED_LOCAL_EXPR}, '%%Y-%%m')
 		ORDER BY ym
 		""",
 		params, as_dict=True
@@ -202,26 +213,26 @@ def get_dashboard_data(filters=None):
 	up_to = add_days(today, upcoming_horizon_days)
 
 	due_today = frappe.db.sql(
-		f"""
+		"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE {where}
-		  AND i.first_contacted_at IS NULL
-		  AND DATE(i.first_contact_due_on) = %(today)s
-		""",
+			AND i.first_contacted_at IS NULL
+			AND DATE(i.first_contact_due_on) = %(today)s
+		""".format(where=where),
 		{**params, "today": today},
 		as_dict=False
 	)[0][0]
 
 	upcoming = frappe.db.sql(
-		f"""
+		"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE {where}
-		  AND i.first_contacted_at IS NULL
-		  AND DATE(i.first_contact_due_on) > %(up_from)s
-		  AND DATE(i.first_contact_due_on) <= %(up_to)s
-		""",
+			AND i.first_contacted_at IS NULL
+			AND DATE(i.first_contact_due_on) > %(up_from)s
+			AND DATE(i.first_contact_due_on) <= %(up_to)s
+		""".format(where=where),
 		{**params, "up_from": up_from, "up_to": up_to},
 		as_dict=False
 	)[0][0]
@@ -243,7 +254,10 @@ def get_dashboard_data(filters=None):
 	weekly = frappe.db.sql(
 		f"""
 		SELECT
-			DATE_FORMAT(DATE_SUB(DATE(i.submitted_at), INTERVAL WEEKDAY(i.submitted_at) DAY), '%%Y-%%m-%%d') AS week_start,
+			DATE_FORMAT(
+				DATE_SUB(DATE({SUBMITTED_LOCAL_EXPR}), INTERVAL WEEKDAY({SUBMITTED_LOCAL_EXPR}) DAY),
+				'%%Y-%%m-%%d'
+			) AS week_start,
 			COUNT(*) AS value
 		FROM `tabInquiry` i
 		WHERE {where}
@@ -273,26 +287,26 @@ def get_dashboard_data(filters=None):
 	params30["due_to30"] = f"{td}"
 
 	sla_den = frappe.db.sql(
-		f"""
+		"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE i.first_contact_due_on IS NOT NULL
-		  AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
-		  AND ({rest_where})
-		""",
+			AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
+			AND ({rest_where})
+		""".format(rest_where=rest_where),
 		params30, as_dict=False
 	)[0][0]
 
 	sla_num = frappe.db.sql(
-		f"""
+		"""
 		SELECT COUNT(*)
 		FROM `tabInquiry` i
 		WHERE i.first_contact_due_on IS NOT NULL
-		  AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
-		  AND i.first_contacted_at IS NOT NULL
-		  AND DATE(i.first_contacted_at) <= i.first_contact_due_on
-		  AND ({rest_where})
-		""",
+			AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
+			AND i.first_contacted_at IS NOT NULL
+			AND DATE(i.first_contacted_at) <= i.first_contact_due_on
+			AND ({rest_where})
+		""".format(rest_where=rest_where),
 		params30, as_dict=False
 	)[0][0]
 
@@ -355,15 +369,15 @@ def admission_user_link_query(doctype, txt, searchfield, start, page_len, filter
 		SELECT u.name, u.full_name
 		FROM `tabUser` u
 		WHERE u.enabled = 1
-		  AND u.name IN (
-		    SELECT parent FROM `tabHas Role`
-		    WHERE role IN ('Admission Officer','Admission Manager')
-		  )
-		  AND (
-		    u.name LIKE %(txt)s
-		    OR u.full_name LIKE %(txt)s
-		    OR u.email LIKE %(txt)s
-		  )
+			AND u.name IN (
+			SELECT parent FROM `tabHas Role`
+			WHERE role IN ('Admission Officer','Admission Manager')
+			)
+			AND (
+			u.name LIKE %(txt)s
+			OR u.full_name LIKE %(txt)s
+			OR u.email LIKE %(txt)s
+			)
 		ORDER BY u.full_name ASC, u.creation DESC
 		LIMIT %(start)s, %(page_len)s
 		""",

@@ -1,0 +1,109 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2025-11-14 19:06:04.324183",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "booking_type",
+  "blocks_availability",
+  "from_datetime",
+  "to_datetime",
+  "source_doctype",
+  "source_name",
+  "school",
+  "academic_year"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "booking_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Booking Type",
+   "options": "Teaching\nMeeting\nDuty\nOther",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "blocks_availability",
+   "fieldtype": "Check",
+   "label": "Blocks Availability"
+  },
+  {
+   "fieldname": "from_datetime",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "From Datetime",
+   "reqd": 1
+  },
+  {
+   "fieldname": "to_datetime",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "To Datetime",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Link",
+   "label": "Source DocType",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "source_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Source Document",
+   "options": "source_doctype"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-14 19:55:55",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Employee Booking",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

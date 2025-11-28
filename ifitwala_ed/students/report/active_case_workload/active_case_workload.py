@@ -13,6 +13,7 @@ def execute(filters=None):
 	user = frappe.session.user
 	user_roles = set(frappe.get_roles(user))
 	can_see_restricted = bool(user_roles & ALLOWED_STRICT_ROLES)
+	site_tz = frappe.utils.get_system_timezone() or "UTC"
 
 	columns = [
 		{"label": _("Case"), "fieldname": "name", "fieldtype": "Link", "options": "Referral Case", "width": 140},
@@ -51,12 +52,16 @@ def execute(filters=None):
 		params["user"] = params.get("user") or user
 
 	where = " AND ".join(cond)
+	params["site_tz"] = site_tz
+	params["today"] = getdate()
+	creation_local = "DATE(CONVERT_TZ(c.creation, 'UTC', %(site_tz)s))"
+	opened_on_expr = f"COALESCE(c.opened_on, {creation_local})"
 
 	q = f"""
 		SELECT
 			c.name, c.student, c.school, c.severity, c.case_status, c.case_manager,
-			COALESCE(c.opened_on, DATE(c.creation)) AS opened_on,
-			DATEDIFF(CURDATE(), COALESCE(c.opened_on, DATE(c.creation))) AS days_open,
+			{opened_on_expr} AS opened_on,
+			DATEDIFF(%(today)s, {opened_on_expr}) AS days_open,
 			COALESCE(SUM(e.status='Open'), 0) AS open_tasks,
 			COALESCE(SUM(e.status='In Progress'), 0) AS in_progress_tasks,
 			MAX(e.modified) AS last_activity

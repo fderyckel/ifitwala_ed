@@ -63,7 +63,7 @@
    "fieldname": "total_working_day",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Total Working Day",
+   "label": "Total Staff Working Day",
    "read_only": 1
   },
   {
@@ -115,7 +115,7 @@
    "fieldname": "total_holidays",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Total Holidays",
+   "label": "Total Staff Holidays",
    "read_only": 1
   },
   {
@@ -145,7 +145,7 @@
    "fieldname": "holidays",
    "fieldtype": "Table",
    "label": "Holidays",
-   "options": "Holiday"
+   "options": "Staff Calendar Holidays"
   },
   {
    "fieldname": "clear_table",
@@ -208,7 +208,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2025-10-04 20:41:07.219484",
+ "modified": "2025-11-24 19:12:09.314317",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Staff Calendar",

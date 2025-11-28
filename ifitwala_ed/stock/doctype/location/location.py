@@ -16,6 +16,7 @@ class Location(Document):
 	def validate(self):
 		self.validate_capacity_against_groups()
 		self._validate_org_against_parent()
+		self._validate_school_organization_membership()
 
 	def _inherit_org_from_parent(self):
 		"""If a parent is set, adopt its organization when missing or different."""
@@ -53,7 +54,6 @@ class Location(Document):
 			)
 		# normalize to parent just in case
 		self.organization = parent_org
-
 
 	def validate_capacity_against_groups(self):
 		"""
@@ -108,3 +108,90 @@ class Location(Document):
 				_("Cannot set maximum capacity below active enrollment for groups using this location:\n{0}").format(lines),
 				title=_("Capacity Too Low"),
 			)
+
+	def _validate_school_organization_membership(self):
+			"""
+			If a school is set:
+			- Find the first ancestor school (including self) that has an Organization.
+			- Auto-fill Location.organization from that if blank.
+			- Else require that Location.organization is the same Org OR an ancestor
+				of that Org in the Organization NestedSet.
+			"""
+			if not self.school:
+				return
+
+			# 1) find effective school organization up the school tree
+			school_chain = get_ancestor_schools(self.school) or [self.school]
+			school_org = None
+			org_source_school = None
+
+			for sch in school_chain:
+				org = frappe.db.get_value("School", sch, "organization")
+				if org:
+					school_org = org
+					org_source_school = sch
+					break
+
+			if not school_org:
+				# This is a configuration error; we cannot safely validate membership.
+				link = frappe.utils.get_link_to_form("School", self.school)
+				frappe.throw(
+					_("School {0} and its ancestor schools have no Organization set. "
+						"Set an Organization on the School tree before assigning it to a Location.")
+					.format(link),
+					title=_("Missing School Organization"),
+				)
+
+			# 2) if Location.organization is empty → auto-fill from school_org
+			if not self.organization:
+				self.organization = school_org
+				return
+
+			# 3) if exact match, we are good
+			if self.organization == school_org:
+				return
+
+			# 4) otherwise, require Location.organization to be an ancestor of school_org
+			loc_org_row = frappe.db.get_value(
+				"Organization",
+				self.organization,
+				["lft", "rgt"],
+				as_dict=True,
+			)
+			school_org_row = frappe.db.get_value(
+				"Organization",
+				school_org,
+				["lft", "rgt"],
+				as_dict=True,
+			)
+
+			# If either org is misconfigured, fail loudly
+			if not loc_org_row or not school_org_row:
+				frappe.throw(
+					_("Cannot validate Organization membership because one of the Organizations "
+						"({0} or {1}) is missing or corrupted.").format(self.organization, school_org),
+					title=_("Organization Tree Error"),
+				)
+
+			is_ancestor = (
+				loc_org_row.lft <= school_org_row.lft
+				and loc_org_row.rgt >= school_org_row.rgt
+			)
+
+			if not is_ancestor:
+				school_link = frappe.utils.get_link_to_form("School", org_source_school or self.school)
+				org_link = frappe.utils.get_link_to_form("Organization", self.organization)
+				school_org_link = frappe.utils.get_link_to_form("Organization", school_org)
+
+				frappe.throw(
+					_(
+						"Invalid School / Organization combination for this Location.<br>"
+						"Selected School {school} belongs to Organization {school_org}, "
+						"which is not under Organization {loc_org}."
+					).format(
+						school=school_link,
+						school_org=school_org_link,
+						loc_org=org_link,
+					),
+					title=_("School Does Not Belong to Organization"),
+				)

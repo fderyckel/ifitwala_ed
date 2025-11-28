@@ -2,7 +2,6 @@
 # For license information, please see license.txt
 
 import frappe 
-import frappe.defaults
 from frappe import _
 from frappe.utils.nestedset import NestedSet
 from frappe.cache_manager import clear_defaults_cache
@@ -21,10 +20,10 @@ class School(NestedSet):
 
 	def on_update(self):
 		NestedSet.on_update(self)
-		
-	def after_save(self): 
-		if self.is_dirty("abbr"): 
-			self.update_navbar_item_for_abbreviation_change()		
+
+	def after_save(self):
+		if self.is_dirty("abbr"):
+			self.update_navbar_item_for_abbreviation_change()
 
 	def on_trash(self):
 		NestedSet.validate_if_child_exists(self)
@@ -47,32 +46,32 @@ class School(NestedSet):
 			frappe.throw(_("Abbreviation cannot have more than 5 characters"))
 
 		if not self.abbr.strip():
-			frappe.throw(_("Abbreviation is mandatory")) 
+			frappe.throw(_("Abbreviation is mandatory"))
 
 		### CHANGETO: use frappe.db.exist()
 		if frappe.db.exists("School", {"abbr": self.abbr, "name": ["!=", self.name]}):
 			frappe.throw(_("Abbreviation {0} is already used for another school.").format(self.abbr))
-	
+
 
 	def validate_parent_school(self):
 		if self.parent_school:
 			is_group = frappe.db.get_value('School', self.parent_school, 'is_group')
 			if not is_group:
-				frappe.throw(_("Parent School must be a group school.")) 
-	
-	def update_navbar_item_for_abbreviation_change(self): 
+				frappe.throw(_("Parent School must be a group school."))
+
+	def update_navbar_item_for_abbreviation_change(self):
 		old_abbr = self.get_doc_before_save().abbr
 		new_url = f"/school/{self.abbr}"
 		old_url = f"/school/{old_abbr}"
-		
+
 		ws = frappe.get_single("Website Settings")
-		
-		for item in ws.top_bar_items: 
-			if item.url == old_url: 
-				item.url = new_url 
-				item.label = self.school_name 
-				ws.save(ignore_permissions=True) 
-				frappe.msgprint(_("Navbar item updated to new abbreviation.")) 
+
+		for item in ws.top_bar_items:
+			if item.url == old_url:
+				item.url = new_url
+				item.label = self.school_name
+				ws.save(ignore_permissions=True)
+				frappe.msgprint(_("Navbar item updated to new abbreviation."))
 				break
 
 @frappe.whitelist()

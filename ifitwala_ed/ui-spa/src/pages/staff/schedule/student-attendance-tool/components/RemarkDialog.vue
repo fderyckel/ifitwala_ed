@@ -32,6 +32,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
 import { Dialog, Button } from 'frappe-ui'
+import { __ } from '@/lib/i18n'
 import type { StudentRosterEntry, BlockKey } from '../types'
 
 const props = defineProps<{

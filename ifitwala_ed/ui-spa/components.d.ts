@@ -11,10 +11,14 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ClassEventModal: typeof import('./src/components/calendar/ClassEventModal.vue')['default']
+    MeetingEventModal: typeof import('./src/components/calendar/MeetingEventModal.vue')['default']
     PortalFooter: typeof import('./src/components/PortalFooter.vue')['default']
     PortalNavbar: typeof import('./src/components/PortalNavbar.vue')['default']
     PortalSidebar: typeof import('./src/components/PortalSidebar.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ScheduleCalendar: typeof import('./src/components/calendar/ScheduleCalendar.vue')['default']
+    SchoolEventModal: typeof import('./src/components/calendar/SchoolEventModal.vue')['default']
   }
 }

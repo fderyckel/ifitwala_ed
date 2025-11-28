@@ -7,8 +7,10 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_zajx",
+  "employee",
   "member",
-  "member_name"
+  "member_name",
+  "role_in_team"
  ],
  "fields": [
   {
@@ -17,26 +19,45 @@
   },
   {
    "columns": 4,
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "columns": 4,
+   "fetch_from": "employee.user_id",
+   "fetch_if_empty": 1,
    "fieldname": "member",
    "fieldtype": "Link",
    "ignore_xss_filter": 1,
-   "in_standard_filter": 1,
    "label": "Member",
    "options": "User"
   },
   {
-   "fetch_from": "member.full_name",
+   "fetch_from": "employee.employee_full_name",
    "fieldname": "member_name",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Member Name",
    "read_only": 1
+  },
+  {
+   "default": "Member",
+   "fieldname": "role_in_team",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Role in Team",
+   "options": "Team Lead\nDeputy Lead\nMember\nObserver\nChair\nCommittee Chair\nSecretary\nRecorder\nCoordinator\nFacilitator\nAdvisor\nProject Owner\nResource Lead\nCommunications Lead\nAnalytics Lead"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-23 07:54:54.448382",
+ "modified": "2025-11-28 10:16:22.155372",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Team Member",

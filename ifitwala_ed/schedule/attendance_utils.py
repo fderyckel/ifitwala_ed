@@ -6,6 +6,7 @@
 import frappe
 from frappe import _
 from frappe.utils import now_datetime, getdate, nowdate
+from frappe.utils.caching import redis_cache
 from typing import List, Dict
 from ifitwala_ed.schedule.schedule_utils import (
 	get_rotation_dates,
@@ -121,12 +122,18 @@ def list_attendance_codes(show_in_attendance_tool: int | None = 1) -> List[Dict[
 	if show_in_attendance_tool is not None:
 		filters["show_in_attendance_tool"] = int(show_in_attendance_tool)
 
-	return frappe.db.get_all(
+	records = frappe.db.get_all(
 		ATT_CODE_DOCTYPE,
-		fields=["name", "attendance_code_name", "display_order", "color"],
+		fields=["name", "attendance_code", "attendance_code_name", "display_order", "color"],
 		filters=filters,
 		order_by="display_order asc, attendance_code_name asc",
 	)
+
+	default_color = "#2563eb"
+	for row in records:
+		row["color"] = row.get("color") or default_color
+
+	return records
 
 
 @frappe.whitelist()
@@ -370,7 +377,7 @@ def bulk_upsert_attendance(payload=None):
 				})
 		else:
 			# Insert row (provide full analytics enrichment; keep block_number NULL if unknown)
-			sg = ctx["sg"] 
+			sg = ctx["sg"]
 			group_school = ctx["program_school"]
 			block_number_value = None if block_norm == SENTINEL else int(block_norm)
 
@@ -426,39 +433,45 @@ def _meeting_dates_key(student_group: str) -> str:
 	return f"ifw:meeting_dates:{student_group}"
 
 @frappe.whitelist()
+@redis_cache(ttl=MEETING_DATES_TTL)
 def get_meeting_dates(student_group: str, *, limit: int | None = None) -> List[str]:
-	"""
-	Return concrete meeting dates for a Student Group as ISO strings, cached.
-	- Uses rotation map with include_holidays=False (attendance days only).
-	- Cache: frappe.cache.set_value(..., expires_in_sec=MEETING_DATES_TTL)
-	"""
-	rc = frappe.cache()
-	key = _meeting_dates_key(student_group)
+    if not student_group:
+        return []
 
-	if (cached := rc.get_value(key)) is not None:
-		return cached if limit is None else cached[:limit]
+    key = f"ifw:meeting_dates:{student_group}"
 
-	sg = frappe.get_doc("Student Group", student_group)
+    sg = frappe.get_doc("Student Group", student_group)
 
-	# Resolve schedule name
-	schedule_name = sg.school_schedule
-	if not schedule_name:
-		# prefer SG.school → Program Offering.school → Program.school
-		from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay
-		base_school = get_school_for_student_group(sg)
-		schedule_name = get_effective_schedule_for_ay(sg.academic_year, base_school)
+    schedule_name = sg.school_schedule
+    if not schedule_name:
+        from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_school_for_student_group
+        schedule_name = get_effective_schedule_for_ay(sg.academic_year, get_school_for_student_group(sg))
 
-	if not schedule_name:
-		rc.set_value(key, [], expires_in_sec=MEETING_DATES_TTL)
-		return []
+    if not schedule_name:
+        frappe.cache().set_value(key, [], expires_in_sec=MEETING_DATES_TTL)
+        return []
 
-	# Build rotation dates (no holidays/weekends)
-	rot = get_rotation_dates(schedule_name, sg.academic_year, include_holidays=False)
-	out = [rd["date"].isoformat() for rd in rot]
+    # Get rotation days that the group actually uses
+    used_rot_days = frappe.db.get_all(
+        "Student Group Schedule",
+        filters={"parent": student_group},
+        fields=["rotation_day"],
+        distinct=True
+    )
+    rot_days_set = {int(r["rotation_day"]) for r in used_rot_days if r.get("rotation_day") is not None}
+    if not rot_days_set:
+        frappe.cache().set_value(key, [], expires_in_sec=MEETING_DATES_TTL)
+        return []
 
-	rc.set_value(key, out, expires_in_sec=MEETING_DATES_TTL)
-	return out if limit is None else out[:limit]
+    # Build the full rotation
+    rot = get_rotation_dates(schedule_name, sg.academic_year, include_holidays=False)
+    # Filter
+    meeting = [rd["date"].isoformat() for rd in rot if rd["rotation_day"] in rot_days_set]
 
+    # Cache + return
+    frappe.cache().set_value(key, meeting, expires_in_sec=MEETING_DATES_TTL)
+
+    return meeting if limit is None else meeting[:limit]
 
 
 

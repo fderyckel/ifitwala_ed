@@ -1,12 +1,14 @@
-// ifitwala_ed/ui-spa/src/main.ts
 import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 import { FrappeUI, setConfig } from 'frappe-ui';
 import { setupFrappeUI } from './resources/frappe';
 
-// Tailwind entry
+// Tailwind entry + portal styles
 import './style.css';
+import './styles/portal-modals.css';
+import './styles/staff-portal.css';
+
 
 // Configure real‑time to use your bench’s socket.io server.
 // Frappe’s default socket server runs on port 9000 and uses HTTP.

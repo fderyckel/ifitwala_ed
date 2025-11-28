@@ -1,7 +1,7 @@
 // Copyright (c) 2024, François de Ryckel
 // For license information, please see license.txt
 
-frappe.ui.form.on("School Calendar", { 
+frappe.ui.form.on("School Calendar", {
 
 	setup(frm) {
 		frm.set_query("academic_year", function () {
@@ -13,23 +13,38 @@ frappe.ui.form.on("School Calendar", {
 		});
 	},
 
-	onload: function(frm) {
-		// Use the grid's refresh event
-    frm.fields_dict.terms.grid.on("refresh", function(grid) {
-      grid.grid_rows.forEach(function(row) {
-        // 'number_of_instructional_days' field in the child table
-        let field = row.grid_form && row.grid_form.fields_dict["number_of_instructional_days"];
-        if (field && field.wrapper) {
-          // Use jQuery for cross-version compatibility, or plain JS if you prefer
-          $(field.wrapper).css({
-            "background-color": "#FFF4E5",
-            "color": "#333",
-            "font-weight": "bold"
-          });
-        }
-      });
-    });
-	},	
+	onload(frm) {
+		// Get the Grid instance for the 'terms' child table
+		const grid = frm.get_field("terms").grid;
+		if (!grid) return;
+
+		// Keep original refresh
+		const original_refresh = grid.refresh;
+
+		// Override refresh to inject our styling after grid redraw
+		grid.refresh = function () {
+			// Call original refresh first
+			original_refresh.call(grid);
+
+			// Now grid_rows is up to date; style the target field
+			(grid.grid_rows || []).forEach(row => {
+				const field =
+					row.grid_form &&
+					row.grid_form.fields_dict &&
+					row.grid_form.fields_dict["number_of_instructional_days"];
+
+				// In newer Frappe, use $wrapper; older: wrapper
+				const $wrapper = field && (field.$wrapper || $(field.wrapper));
+				if ($wrapper) {
+					$wrapper.css({
+						"background-color": "#FFF4E5",
+						"color": "#333",
+						"font-weight": "bold",
+					});
+				}
+			});
+		};
+	},
 
 	refresh: function (frm) {
 
@@ -64,12 +79,12 @@ frappe.ui.form.on("School Calendar", {
 					school_calendar: frm.doc.name,
 				};
 				frappe.set_route("Form", "School Schedule", route_options);
-			}); 
+			});
 		}
-		
+
 		// Clone Calendar button
-		if (frappe.user_roles.includes("Schedule Maker") || 
-				frappe.user_roles.includes("Academic Admin") || 
+		if (frappe.user_roles.includes("Schedule Maker") ||
+				frappe.user_roles.includes("Academic Admin") ||
 				frappe.user_roles.includes("Academic Assistant")) {
 			frm.add_custom_button(__("Clone Calendar…"), () => {
 				frappe.prompt(
@@ -79,7 +94,7 @@ frappe.ui.form.on("School Calendar", {
 							label: "New Academic Year",
 							fieldname: "academic_year",
 							options: "Academic Year",
-							reqd: 1, 
+							reqd: 1,
 							get_query: () => ({
 								query: "ifitwala_ed.utilities.link_queries.academic_year_link_query",
 								filters: { school: frm.doc.school || undefined },
@@ -111,12 +126,12 @@ frappe.ui.form.on("School Calendar", {
 				);
 			});
 		}
-	},   
-	
+	},
+
 	after_save: function(frm) {
         frm.fields_dict["terms"].grid.refresh();
-  }, 
-	
+  },
+
 	academic_year: async function(frm) {
 		// reset on change
 		frm.set_value("school", "");
@@ -157,11 +172,11 @@ frappe.ui.form.on("School Calendar", {
 	},
 
 	get_terms: function (frm) {
-			
+
 		// Clear existing terms before re-adding
 		frm.clear_table("terms");
 		frm.refresh_field("terms");
-		
+
 		frappe.call({
 			method: "get_terms",
 			doc: frm.doc,

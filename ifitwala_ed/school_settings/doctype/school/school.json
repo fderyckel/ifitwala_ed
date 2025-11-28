@@ -214,6 +214,20 @@
    "label": "Default Break Color"
   },
   {
+   "fieldname": "portal_calendar_start_time",
+   "fieldtype": "Time",
+   "label": "Portal Calendar Start Time",
+   "default": "07:00:00",
+   "description": "Default start time for portal calendars when not showing full day."
+  },
+  {
+   "fieldname": "portal_calendar_end_time",
+   "fieldtype": "Time",
+   "label": "Portal Calendar End Time",
+   "default": "17:00:00",
+   "description": "Default end time for portal calendars when not showing full day."
+  },
+  {
    "fieldname": "column_break_1mhp",
    "fieldtype": "Column Break"
   },

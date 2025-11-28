@@ -1,0 +1,14 @@
+/* FullCalendar list view tweaks aligned to Zambian palette */
+.fc-list .fc-list-day-cushion {
+	background: rgba(var(--sand-rgb), 0.25);
+	color: var(--canopy);
+	font-weight: 700;
+}
+
+.fc-list .fc-list-event {
+	border-bottom: 1px solid rgba(244, 236, 221, 0.8);
+}
+
+.fc-list .fc-list-event:hover {
+	background: rgba(var(--sky-rgb), 0.4);
+}

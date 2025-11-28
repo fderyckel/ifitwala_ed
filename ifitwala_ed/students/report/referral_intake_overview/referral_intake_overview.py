@@ -13,6 +13,8 @@ def execute(filters=None):
 	user = frappe.session.user
 	user_roles = set(frappe.get_roles(user))
 	can_see_restricted = bool(user_roles & ALLOWED_STRICT_ROLES)
+	site_tz = frappe.utils.get_system_timezone() or "UTC"
+	site_now = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
 
 	columns = [
 		{"label": _("Referral"), "fieldname": "name", "fieldtype": "Link", "options": "Student Referral", "width": 140},
@@ -33,7 +35,7 @@ def execute(filters=None):
 
 	# Filters
 	cond = ["r.docstatus=1"]
-	params = {}
+	params = {"site_tz": site_tz, "site_now": site_now}
 
 	if f.get("from_date"):
 		cond.append("r.date >= %(from_date)s")
@@ -75,6 +77,7 @@ def execute(filters=None):
 
 	where = " AND ".join(cond)
 
+	sla_due_local = "CONVERT_TZ(r.sla_due, 'UTC', %(site_tz)s)"
 	q = f"""
 		SELECT
 			r.name, r.date, r.student, r.program, r.school,
@@ -82,7 +85,7 @@ def execute(filters=None):
 			IFNULL(r.requires_immediate_action, 0) AS requires_immediate_action,
 			IFNULL(r.mandated_reporting_triggered, 0) AS mandated_reporting_triggered,
 			r.sla_due, r.referral_case, r.assigned_case_manager,
-			CASE WHEN r.sla_due IS NOT NULL AND r.sla_due < NOW() THEN 1 ELSE 0 END AS overdue
+			CASE WHEN r.sla_due IS NOT NULL AND {sla_due_local} < %(site_now)s THEN 1 ELSE 0 END AS overdue
 		FROM `tabStudent Referral` r
 		WHERE {where}
 		ORDER BY r.date DESC, r.modified DESC
@@ -103,4 +106,3 @@ def execute(filters=None):
 	}
 
 	return columns, rows, None, chart
-

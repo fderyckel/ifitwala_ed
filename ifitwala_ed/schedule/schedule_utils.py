@@ -6,14 +6,35 @@
 import json
 import frappe
 from frappe import _
-from frappe.utils import getdate, add_days, today
+from frappe.utils import getdate, add_days, today, get_datetime
 from collections import defaultdict
 from datetime import timedelta, date
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 from typing import Optional
 
+
+def get_calendar_holiday_set(calendar_name: str) -> set:
+	"""
+	Return the set of non-weekend holiday/break dates for a School Calendar.
+
+	We deliberately mirror the semantics used in get_rotation_dates():
+	- weekly_off = 1  → weekend (handled elsewhere, never instructional)
+	- weekly_off = 0  → real holiday/break
+	"""
+	if not calendar_name:
+		return set()
+
+	rows = frappe.get_all(
+		"School Calendar Holidays",
+		filters={"parent": calendar_name, "weekly_off": 0},
+		pluck="holiday_date",
+	)
+
+	return {getdate(d) for d in rows if d}
+
+
 ## function to get the start and end dates of the current academic year
-## used in program enrollment, course enrollment tool. 
+## used in program enrollment, course enrollment tool.
 @frappe.whitelist()
 def get_school_term_bounds(school, academic_year):
 	if not school or not academic_year:
@@ -143,6 +164,11 @@ class OverlapError(frappe.ValidationError):
     """Raised when a scheduling conflict violates the hard rule."""
     pass
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Student Group helpers used by scheduling / conflict engines
+# ──────────────────────────────────────────────────────────────────────────────
+
+
 def get_school_for_student_group(sg_doc_or_name) -> Optional[str]:
 	"""
 	Return the best school for a Student Group in priority order:
@@ -168,13 +194,15 @@ def get_school_for_student_group(sg_doc_or_name) -> Optional[str]:
 
 	return None
 
+
 def get_conflict_rule():
-    """Return 'Hard' or 'Soft' based on School Settings (defaults to Hard)."""
-    try:
-        return frappe.db.get_single_value("School", "schedule_conflict_rule") or "Hard"
-    except Exception:
-        # If School Settings not installed yet (e.g. tests)
-        return "Hard"
+	"""Return 'Hard' or 'Soft' based on School Settings (defaults to Hard)."""
+	try:
+		return frappe.db.get_single_value("School", "schedule_conflict_rule") or "Hard"
+	except Exception:
+		# If School Settings not installed yet (e.g. tests)
+		return "Hard"
+
 
 def _extract(obj, attr):
 	"""Return obj[attr] or obj.attr, whichever exists (None if missing)."""
@@ -182,97 +210,266 @@ def _extract(obj, attr):
 		return obj.get(attr)
 	return getattr(obj, attr, None)
 
+
+def _uniq(seq):
+	"""Return list of unique, truthy items preserving order."""
+	seen = set()
+	out = []
+	for item in seq:
+		if not item or item in seen:
+			continue
+		seen.add(item)
+		out.append(item)
+	return out
+
+
+def _get_display_map(doctype: str, label_field: str, ids: tuple[str, ...]) -> dict[str, str]:
+	"""Return {id: display_label} for the given ids."""
+	if not ids:
+		return {}
+
+	unique_ids = list(dict.fromkeys([i for i in ids if i]))
+	if not unique_ids:
+		return {}
+
+	rows = frappe.db.get_all(
+		doctype,
+		filters={"name": ["in", unique_ids]},
+		fields=["name", label_field],
+	)
+	return {
+		row["name"]: row.get(label_field) or row["name"]
+		for row in rows
+	}
+
+
+def _build_slot_conditions(slots: list[tuple[int, int]]) -> tuple[str, dict]:
+	"""Return SQL snippet + params for (rotation_day, block_number) pairs."""
+	conds = []
+	params = {}
+	for idx, (rot, blk) in enumerate(slots):
+		conds.append(f"(gs.rotation_day = %(rot_{idx})s AND gs.block_number = %(blk_{idx})s)")
+		params[f"rot_{idx}"] = rot
+		params[f"blk_{idx}"] = blk
+	return " OR ".join(conds), params
+
+
+def _aggregate_conflicts(rows, label_map):
+	"""Group rows by (rotation_day, block_number) with deduped ids & groups."""
+	slots = {}
+	for row in rows:
+		rot = row.get("rotation_day")
+		blk = row.get("block_number")
+		entity = row.get("entity")
+		group = row.get("student_group")
+
+		if rot is None or blk is None or not entity:
+			continue
+		try:
+			rot = int(rot)
+			blk = int(blk)
+		except Exception:
+			continue
+
+		key = (rot, blk)
+		entry = slots.setdefault(
+			key,
+			{"rotation_day": rot, "block_number": blk, "ids": [], "groups": []},
+		)
+		entry["ids"].append(entity)
+		entry["groups"].append(group)
+
+	out = []
+	for entry in slots.values():
+		ids = tuple(_uniq(entry["ids"]))
+		out.append({
+			"rotation_day": entry["rotation_day"],
+			"block_number": entry["block_number"],
+			"ids": ids,
+			"labels": tuple(label_map.get(i, i) for i in ids),
+			"groups": tuple(_uniq(entry["groups"])),
+		})
+	return out
+
 @frappe.whitelist()
 def check_slot_conflicts(group_doc):
-		"""Scan existing Student Group schedules for clashes.
+	"""Scan existing Student Group schedules for clashes.
 
-		Returns a dict keyed by category (location / instructor / student) with a list of
-		tuples (entity, rotation_day, block_number).
+	Returns a dict keyed by category (instructor / student) with a list of
+	payload dicts:
+		{
+			"rotation_day": <int>,
+			"block_number": <int>,
+			"ids": (<entity ids>, ...),
+			"labels": (<readable names>, ...),
+		}
+
+	Room/location clashes are handled by the central location_conflicts engine.
+	"""
+	# Normalize input: client calls send JSON string, server calls may send a dict/doc
+	if isinstance(group_doc, str):
+		group_doc = frappe._dict(json.loads(group_doc))
+
+	# Ensure .name is never NULL for the SQL filter (gs.parent != %(grp)s)
+	group_name = group_doc.get("name") or "__new__"
+
+	conflicts = defaultdict(list)
+
+	# Pre-collect instructors & students once (avoid per-slot sub-queries)
+	instructors = group_doc.get("instructors") or []
+	students    = group_doc.get("students") or []
+	slots       = group_doc.get("student_group_schedule") or []
+
+	instructor_entities = [
+		_extract(i, "employee") or _extract(i, "instructor")
+		for i in instructors
+		if _extract(i, "employee") or _extract(i, "instructor")
+	]
+	instructor_ids = tuple(_uniq(instructor_entities))
+	student_ids = tuple(
+		_extract(s, "student") for s in students if _extract(s, "student")
+	)
+
+	normalized_slots: list[tuple[int, int]] = []
+	for slot in slots:
+		rot = _extract(slot, "rotation_day")
+		blk = _extract(slot, "block_number")
+		if rot is None or blk is None:
+			continue
+		try:
+			rot = int(rot)
+			blk = int(blk)
+		except Exception:
+			continue
+		normalized_slots.append((rot, blk))
+
+	if not normalized_slots:
+		return {}
+
+	slot_clause, slot_params = _build_slot_conditions(normalized_slots)
+	if not slot_clause:
+		return {}
+
+	def _instructor_label_map(entities) -> dict[str, str]:
 		"""
-		if isinstance(group_doc, str):
-			group_doc = frappe._dict(json.loads(group_doc))
+		Map Employee IDs → human-readable labels.
 
-		conflicts = defaultdict(list)
+		We try, in order of preference:
+		- employee_full_name (your new field)
+		- employee_name      (legacy ERPNext field, if present)
+		- first_name + last_name
+		- fallback to the Employee ID itself
+		"""
+		if not entities:
+			return {}
 
-		# Pre‑collect instructors & students once (avoid per‑slot sub‑queries)
-		instructors = group_doc.get("instructors") or []
-		students    = group_doc.get("students") or []
-		# accept both "student_group_schedule" (doctype) and older "schedule"
-		slots       = group_doc.get("student_group_schedule") or []
+		ids = list({e for e in entities if e})
+		if not ids:
+			return {}
 
-		instructor_ids = tuple(
-			_extract(i, "instructor") for i in instructors if _extract(i, "instructor")
+		# Build a safe field list that matches your Employee schema
+		fields = ["name"]
+
+		# New schema (your current Employee)
+		if frappe.db.has_column("Employee", "employee_full_name"):
+			fields.append("employee_full_name")
+
+		# Legacy ERPNext-style field – keep for compatibility on other sites
+		if frappe.db.has_column("Employee", "employee_name"):
+			fields.append("employee_name")
+
+		# Extra safety: if you ever rely on first/last names
+		if frappe.db.has_column("Employee", "employee_first_name"):
+			fields.append("employee_first_name")
+		if frappe.db.has_column("Employee", "employee_last_name"):
+			fields.append("employee_last_name")
+
+		emp_rows = frappe.get_all(
+			"Employee",
+			filters={"name": ["in", ids]},
+			fields=fields,
+			ignore_permissions=True,
 		)
-		student_ids = tuple(
-			_extract(s, "student") for s in students if _extract(s, "student")
+
+		label_map: dict[str, str] = {}
+
+		for row in emp_rows:
+			# frappe.get_all → dict rows
+			name = row.get("name")
+
+			label = (
+				row.get("employee_full_name")
+				or row.get("employee_name")
+				or " ".join(
+					[
+						(row.get("employee_first_name") or "").strip(),
+						(row.get("employee_last_name") or "").strip(),
+					]
+				).strip()
+				or name
+			)
+
+			if name:
+				label_map[name] = label
+
+		return label_map
+
+	instructor_labels = _instructor_label_map(instructor_ids)
+	student_labels = _get_display_map("Student", "student_full_name", student_ids)
+
+	if instructor_ids:
+		params = {"grp": group_name, "ids": instructor_ids}
+		params.update(slot_params)
+		rows = frappe.db.sql(
+			f"""
+			SELECT coalesce(gi.employee, gi.instructor) AS entity,
+				   gs.rotation_day,
+				   gs.block_number,
+				   gs.parent AS student_group
+			FROM `tabStudent Group Instructor` gi
+			JOIN `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
+			WHERE coalesce(gi.employee, gi.instructor) IN %(ids)s
+				AND gs.parent != %(grp)s
+				AND gs.docstatus < 2
+				AND ({slot_clause})
+			""",
+			params,
+			as_dict=True,
 		)
+		conflicts["instructor"] = _aggregate_conflicts(rows, instructor_labels)
 
-		# ── ③ Iterate slots (dict or DocType row)
-		for slot in slots:
-			rot   = _extract(slot, "rotation_day")
-			block = _extract(slot, "block_number")
-			location  = _extract(slot, "location")
+	if student_ids:
+		params = {"grp": group_name, "ids": student_ids}
+		params.update(slot_params)
+		rows = frappe.db.sql(
+			f"""
+			SELECT st.student AS entity,
+				   gs.rotation_day,
+				   gs.block_number,
+				   gs.parent AS student_group
+			FROM `tabStudent Group Student` st
+			JOIN `tabStudent Group Schedule` gs ON gs.parent = st.parent
+			WHERE st.student IN %(ids)s
+				AND gs.parent != %(grp)s
+				AND gs.docstatus < 2
+				AND ({slot_clause})
+			""",
+			params,
+			as_dict=True,
+		)
+		conflicts["student"] = _aggregate_conflicts(rows, student_labels)
 
-			if not rot or not block:
-				continue
+	return dict(conflicts)
 
-			# ----- location clash (unchanged) -------------------------------------
-			if location and frappe.db.exists(
-				"Student Group Schedule",
-				{
-					"rotation_day": rot,
-					"block_number": block,
-					"location": location,
-					"parent": ("!=", group_doc.name),
-					"docstatus": ("<", 2),
-				},
-			):
-				conflicts["location"].append((location, rot, block))
 
-			# ----- instructor clash -------------------------------------------
-			if instructor_ids:
-				clash = frappe.db.sql(
-					"""
-					SELECT 1 FROM `tabStudent Group Instructor` gi
-					JOIN   `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
-					WHERE gi.instructor IN %(ins)s
-						AND gs.rotation_day = %(rot)s
-						AND gs.block_number = %(blk)s
-						AND gs.parent != %(grp)s
-						AND gs.docstatus < 2
-					LIMIT 1
-					""",
-					dict(ins=instructor_ids, rot=rot, blk=block, grp=group_doc.name),
-				)
-				if clash:
-					conflicts["instructor"].append((instructor_ids, rot, block))
 
-			# ----- student clash ----------------------------------------------
-			if student_ids:
-				clash = frappe.db.sql(
-					"""
-					SELECT 1 FROM `tabStudent Group Student` st
-					JOIN   `tabStudent Group Schedule` gs ON gs.parent = st.parent
-					WHERE st.student IN %(sts)s
-						AND gs.rotation_day = %(rot)s
-						AND gs.block_number = %(blk)s
-						AND gs.parent != %(grp)s
-						AND gs.docstatus < 2
-					LIMIT 1
-					""",
-					dict(sts=student_ids, rot=rot, blk=block, grp=group_doc.name),
-				)
-				if clash:
-					conflicts["student"].append((student_ids, rot, block))
-
-		return dict(conflicts)
 
 @frappe.whitelist()
 def fetch_block_grid(schedule_name: str | None = None, sg: str | None = None) -> dict:
 	"""Return rotation-day metadata to build the quick-add matrix.
 		Args:
 			schedule_name: explicit School Schedule name (may be None)
-			sg: Student Group name – used to infer schedule & instructors
+			sg: Student Group name - used to infer schedule & instructors
 	"""
 
 	# Resolve schedule when not supplied
@@ -282,7 +479,7 @@ def fetch_block_grid(schedule_name: str | None = None, sg: str | None = None) ->
 			frappe.throw(_("Either schedule_name or sg is required."))
 		sg_doc = frappe.get_doc("Student Group", sg)
 		schedule_name = sg_doc._get_school_schedule().name
-		
+
 	doc = frappe.get_cached_doc("School Schedule", schedule_name)
 	grid = {}
 	for blk in doc.school_schedule_block:		# variable blocks per day
@@ -374,137 +571,176 @@ def get_effective_schedule_for_ay(academic_year: str, school: str | None) -> str
 	return None
 
 
-ROT_CACHE_TTL = 24 * 60 * 60		# one day
-
-def build_rotation_map(calendar_name: str) -> dict[int, list[tuple]]:
+def iter_student_group_room_slots(
+	sg_name: str,
+	start_date: date | None = None,
+	end_date: date | None = None,
+) -> list[dict]:
 	"""
-	Returns a dict keyed by rotation_day (1-N) → list of dates.
-	Respects:
-	  • calendar.include_holidays_in_rotation
-	  • holiday.is_weekend  (weekly-off days pause rotation)
-	"""
-	key = f"rotmap::{calendar_name}"
-	if cached := frappe.cache().get_value(key):
-		return cached
+	Expand a Student Group's schedule into concrete room slots with absolute datetimes.
 
-	cal = frappe.get_doc("School Calendar", calendar_name)
-	rot_count = cal.rotation_days
-	include_holidays = cal.include_holidays_in_rotation
-
-	holiday_flag = {
-		getdate(h.holiday_date): h.is_weekend for h in cal.holidays
+	Returns a list of dicts like:
+	{
+		"location":       <Location name>,
+		"start":          <datetime in site timezone>,
+		"end":            <datetime in site timezone>,
+		"rotation_day":   <int>,
+		"block_number":   <int>,
+		"student_group":  <Student Group name>,
 	}
-	out = {i: [] for i in range(1, rot_count + 1)}
-	instr_index = 0
 
-	for term in cal.terms:
-		cur = getdate(term.start)
-		while cur <= getdate(term.end):
-			is_holiday = cur in holiday_flag
-			is_weekend = holiday_flag.get(cur, 0)
+	This is the raw material for:
+	  • central location-conflict checker (vs Meetings / School Events / etc.)
+	  • Employee Booking materialization (teaching slots)
 
-			if is_holiday and not include_holidays:
-				# skip rotation increment
-				cur = add_days(cur, 1)
-				continue
-
-			rotation = 1 + (instr_index % rot_count)
-			out[rotation].append(cur)
-			instr_index += 1
-
-			if is_weekend and not include_holidays:
-				# weekend doesn’t advance rotation_index
-				instr_index -= 1
-
-			cur = add_days(cur, 1)
-
-	frappe.cache().set_value(key, out, expires_in_sec=ROT_CACHE_TTL)
-	return out
-
-CACHE_TTL = 6 * 60 * 60		# 6 hours
-
-def build_user_calendar(user: str, start_date: date, days: int = 7) -> list[dict]:
+	Important: teaching slots are *not* generated on School Calendar holidays/breaks
+	(non-weekend days where weekly_off = 0).
 	"""
-	Returns a list of event dicts for <user> in [start_date, +days).
-	Caches each day separately: key  calendar::<user>::YYYY-MM-DD
-	"""
-	out = []
-	for i in range(days):
-		d = start_date + timedelta(days=i)
-		key = f"calendar::{user}::{d.isoformat()}"
 
-		if cached := frappe.cache().get_value(key):
-			out.extend(json.loads(cached))
-			continue
+	sg = frappe.get_doc("Student Group", sg_name)
 
-		# build for that single day
-		event_list = _build_events_for_day(user, d)
-		frappe.cache().set_value(key, json.dumps(event_list), expires_in_sec=CACHE_TTL)
-		out.extend(event_list)
-	return out
-
-# ----------------------------------------------------------------
-def _build_events_for_day(user, cur_date):
-	"""
-	Compute events for a user on a single date.
-	Students → match student_groups
-	Instructors → match instructor links
-	"""
-	events = []
-	sg_filters = {
-		"academic_year": ["!=", ""],		# only active groups
-		"docstatus": 1
-	}
-	sgs = frappe.db.get_list("Student Group", filters=sg_filters, fields=["name", "school_calendar", "school"])
-
-	for sg in sgs:
-		rot_map = build_rotation_map(sg.school_calendar)
-		# find rotation of cur_date (may be holiday)
-		for rd, date_list in rot_map.items():
-			if cur_date in date_list:
-				events.extend(_expand_sg_rotation(sg.name, rd, cur_date))
-				break
-
-	return events
-
-
-def _expand_sg_rotation(sg_name, rotation_day, cur_date):
-	"""
-	Read SG-Schedule rows for that rotation_day, fetch block times,
-	return concrete events list
-	"""
-	rows = frappe.db.get_all(
-		"Student Group Schedule",
-		filters={"parent": sg_name, "rotation_day": rotation_day},
-		fields=["block_number", "location", "instructor"]
-	)
-	if not rows:
+	# Guard rails: we need an Academic Year.
+	if not getattr(sg, "academic_year", None):
 		return []
 
-	# get effective schedule
-	sg = frappe.get_doc("Student Group", sg_name)
-	sched = get_effective_schedule(sg.school_calendar, sg.school)
-	block_times = frappe.db.get_all(
+	# Resolve school with a safe helper.
+	school = getattr(sg, "school", None) or get_school_for_student_group(sg)
+	if not school:
+		return []
+
+	# Resolve School Schedule:
+	#   1) prefer explicit sg.school_schedule
+	#   2) fall back to effective schedule for (AY, school) spine
+	schedule_name = getattr(sg, "school_schedule", None)
+	if not schedule_name:
+		schedule_name = get_effective_schedule_for_ay(sg.academic_year, school)
+
+	if not schedule_name:
+		return []
+
+	# Derive holiday (non-weekend) dates from the linked School Calendar.
+	# We treat these as non-instructional for Employee Booking, even if the
+	# rotation logic includes them.
+	calendar_name = frappe.db.get_value("School Schedule", schedule_name, "school_calendar")
+	holiday_dates = get_calendar_holiday_set(calendar_name)
+
+	# 1) Rotation → list[dates] map for this schedule + AY
+	rot_rows = get_rotation_dates(schedule_name, sg.academic_year)
+	if not rot_rows:
+		return []
+
+	rotation_dates: dict[int, list[date]] = defaultdict(list)
+	for row in rot_rows:
+		d = getdate(row.get("date"))
+		rd = row.get("rotation_day")
+		if not d or rd is None:
+			continue
+		try:
+			rd = int(rd)
+		except Exception:
+			continue
+		rotation_dates[rd].append(d)
+
+	if not rotation_dates:
+		return []
+
+	# 2) Block times per (rotation_day, block_number) from School Schedule Block
+	block_rows = frappe.db.get_all(
 		"School Schedule Block",
-		filters={"parent": sched},
-		fields=["block_number", "from_time", "to_time"]
+		filters={"parent": schedule_name},
+		fields=["rotation_day", "block_number", "from_time", "to_time"],
+	)
+	if not block_rows:
+		return []
+
+	block_map: dict[tuple[int, int], tuple[str, str]] = {}
+	for b in block_rows:
+		if b.get("rotation_day") is None or b.get("block_number") is None:
+			continue
+		try:
+			rd = int(b["rotation_day"])
+			blk = int(b["block_number"])
+		except Exception:
+			continue
+		block_map[(rd, blk)] = (b.get("from_time"), b.get("to_time"))
+
+	if not block_map:
+		return []
+
+	# 3) SG schedule rows for that group
+	sg_rows = frappe.db.get_all(
+		"Student Group Schedule",
+		filters={"parent": sg_name},
+		fields=["rotation_day", "block_number", "location"],
 	)
 
-	bt_map = {b.block_number: (b.from_time, b.to_time) for b in block_times}
-	out = []
-	for r in rows:
-		if r.block_number not in bt_map:
+	if not sg_rows:
+		return []
+
+	# 4) Normalize boundaries
+	start_bound = getdate(start_date) if start_date else None
+	end_bound = getdate(end_date) if end_date else None
+
+	slots: list[dict] = []
+
+	for row in sg_rows:
+		loc = row.get("location")
+		if not loc:
+			# no room → irrelevant for room conflicts
 			continue
-		start, end = bt_map[r.block_number]
-		out.append({
-			"title": sg_name,
-			"start": f"{cur_date} {start}",
-			"end":   f"{cur_date} {end}",
-			"location": r.location,
-			"instructor": r.instructor,
-			"student_group": sg_name
-		})
-	return out
+
+		rd = row.get("rotation_day")
+		blk = row.get("block_number")
+		if rd is None or blk is None:
+			continue
+
+		try:
+			rd = int(rd)
+			blk = int(blk)
+		except Exception:
+			continue
+
+		bt = block_map.get((rd, blk))
+		if not bt:
+			# schedule validation should normally prevent this; fail-safe skip
+			continue
+
+		from_t, to_t = bt
+		if not (from_t and to_t):
+			continue
+
+		dates_for_rotation = rotation_dates.get(rd, [])
+		if not dates_for_rotation:
+			continue
+
+		for d in dates_for_rotation:
+			# Window bounds
+			if start_bound and d < start_bound:
+				continue
+			if end_bound and d > end_bound:
+				continue
+
+			# Never materialise teaching slots on School Calendar holidays/breaks
+			# (non-weekend days where weekly_off = 0 in School Calendar Holidays).
+			if d in holiday_dates:
+				continue
+
+			start_dt = get_datetime(f"{d} {from_t}")
+			end_dt = get_datetime(f"{d} {to_t}")
+			if not (start_dt and end_dt) or end_dt <= start_dt:
+				continue
+
+			slots.append({
+				"location":      loc,
+				"start":         start_dt,
+				"end":           end_dt,
+				"rotation_day":  rd,
+				"block_number":  blk,
+				"student_group": sg_name,
+			})
+
+	return slots
+
 
 
 def invalidate_for_student_group(doc, _):
@@ -515,14 +751,66 @@ def invalidate_for_student_group(doc, _):
 		prefix = f"calendar::{instr.instructor}::"
 		_delete_keys(prefix)
 
+	for emp in _collect_staff_calendar_employees(doc):
+		_delete_staff_calendar_cache(emp)
+
 def invalidate_all_for_calendar(doc, _):
 	prefix = "calendar::"
 	_delete_keys(prefix)		# brute-force; run during low load
+	_delete_staff_calendar_cache()
 
 def _delete_keys(prefix):
 	rc = frappe.cache()
 	for k in rc.get_keys(f"{prefix}*"):
 		rc.delete_value(k)
+
+
+def _collect_staff_calendar_employees(doc) -> set[str]:
+	employees: set[str] = set()
+
+	def _from_user(user_id: str | None) -> Optional[str]:
+		if not user_id:
+			return None
+		return frappe.db.get_value("Employee", {"user_id": user_id}, "name")
+
+	def _from_instructor(instr_name: str | None) -> Optional[str]:
+		if not instr_name:
+			return None
+		return frappe.db.get_value("Instructor", instr_name, "employee")
+
+	for row in getattr(doc, "instructors", []) or []:
+		emp = (getattr(row, "employee", None) or "").strip()
+		if emp:
+			employees.add(emp)
+			continue
+		user_emp = _from_user((getattr(row, "user_id", None) or "").strip())
+		if user_emp:
+			employees.add(user_emp)
+			continue
+		instr_emp = _from_instructor(getattr(row, "instructor", None))
+		if instr_emp:
+			employees.add(instr_emp)
+
+	for row in getattr(doc, "student_group_schedule", []) or []:
+		emp = (getattr(row, "employee", None) or "").strip()
+		if emp:
+			employees.add(emp)
+			continue
+		instr_emp = _from_instructor(getattr(row, "instructor", None))
+		if instr_emp:
+			employees.add(instr_emp)
+
+	return employees
+
+
+def _delete_staff_calendar_cache(employee: Optional[str] = None):
+	rc = frappe.cache()
+	if employee:
+		pattern = f"ifw:staff-cal:{employee}:*"
+	else:
+		pattern = "ifw:staff-cal:*"
+	for key in rc.get_keys(pattern):
+		rc.delete_value(key)
 
 
 # ─── Block-type → colour (fallback hex) ────────────────────────────────

@@ -1,7 +1,7 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-// Shared JS for all Ifitwala Ed public website pages
+// Shared JS for all Ifitwala Ed public website pages .
 import * as bootstrap from 'bootstrap';
 window.bootstrap = bootstrap;
 

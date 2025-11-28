@@ -14,6 +14,7 @@
   "is_default",
   "column_break_zfmr",
   "attendance_code",
+  "color",
   "show_in_attendance_tool",
   "show_in_reports",
   "section_break_ur4x",
@@ -73,6 +74,13 @@
    "fieldtype": "Section Break"
   },
   {
+   "default": "#2563eb",
+   "fieldname": "color",
+   "fieldtype": "Color",
+   "in_list_view": 1,
+   "label": "Chip Color"
+  },
+  {
    "fieldname": "display_order",
    "fieldtype": "Int",
    "in_list_view": 1,
@@ -88,7 +96,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-13 22:15:01.522006",
+ "modified": "2025-10-13 22:15:01.522006",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Student Attendance Code",

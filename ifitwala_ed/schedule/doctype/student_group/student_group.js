@@ -1,20 +1,22 @@
 // Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
+// ifitwala_ed.schedule.doctype.student_group.student_group.js
+
+// ── Helper functions ──────────────────────────────────────────────────────────────
+
 function toggle_school_schedule_field(frm) {
 	// Show School Schedule when there is NO Program Offering (i.e., non-offering flows like Activity/Other)
+	// FIX: do NOT clear school_schedule here (that was causing re-dirty loops)
 	const need_sched = !frm.doc.program_offering;
 	frm.set_df_property("school_schedule", "hidden", !need_sched);
 	frm.set_df_property("school_schedule", "reqd",  need_sched);
-	if (!need_sched && frm.doc.school_schedule) {
-		frm.set_value("school_schedule", null);
-	}
 }
 
 // Build student filter payload for server calls
 function get_student_filters(frm) {
 	return {
-		program_offering: frm.doc.program_offering,   
+		program_offering: frm.doc.program_offering,
 		academic_year: frm.doc.academic_year,
 		group_based_on: frm.doc.group_based_on,
 		term: frm.doc.term,
@@ -29,9 +31,11 @@ function get_student_filters(frm) {
 	frappe.ui.form.on("Student Group", f, frm => toggle_school_schedule_field(frm))
 );
 
+
 // ── Form events ──────────────────────────────────────────────────────────────
 
 frappe.ui.form.on("Student Group", {
+
 	onload(frm) {
 		// AY scoped to Program Offering spine
 		frm.set_query("academic_year", () => ({
@@ -76,17 +80,23 @@ frappe.ui.form.on("Student Group", {
 		}));
 
 		// Instructor constraint on schedule rows
-		frm.fields_dict["student_group_schedule"].grid.get_field("instructor").get_query = function () {
-			const valid = (frm.doc.instructors || []).map(r => r.instructor);
-			return { filters: { name: ["in", valid] } };
-		};
+		// FIX: add guard so we don’t reset query every refresh
+		if (frm.fields_dict["student_group_schedule"]) {
+			const grid = frm.fields_dict["student_group_schedule"].grid;
+			const f = grid.get_field("instructor");
+			if (f && !f.__set_once) {
+				f.get_query = function () {
+					const valid = (frm.doc.instructors || []).map(r => r.instructor);
+					return { filters: { name: ["in", valid] } };
+				};
+				f.__set_once = true;
+			}
+		}
 
 		toggle_school_schedule_field(frm);
 		frm.add_fetch("student", "student_full_name", "student_name");
 	},
 
-
-	
 	refresh: function (frm) {
 		// Add buttons
 		if (!frm.doc.__islocal) {
@@ -129,7 +139,7 @@ frappe.ui.form.on("Student Group", {
 					});
 
 					frm.refresh_field("students");
-					frm.save();
+					// FIX: removed frm.save(); → auto-save caused "Not Saved" loop
 				});
 
 				grid.get_field("student").get_query = function () {
@@ -144,29 +154,12 @@ frappe.ui.form.on("Student Group", {
 		}
 	},
 
-	validate(frm) {
-		if (frm.doc.__unsaved && frm.doc.student_group_schedule?.length) {
-			frappe.call({
-				method: "ifitwala_ed.schedule.schedule_utils.check_slot_conflicts",
-				args: { group_doc: frm.doc },
-				callback(r) {
-					if (Object.keys(r.message || {}).length) {
-						frappe.msgprint({
-							title: __("Potential Conflicts"),
-							message: `<pre>${JSON.stringify(r.message, null, 2)}</pre>`,
-							indicator: "orange",
-						});
-					}
-				},
-			});
-		}
-	},  
-
-
+	// FIX: clear dependent fields only when user actually changes program_offering
 	program_offering(frm) {
 		frm.set_value("academic_year", null);
 		frm.set_value("school", null);
 		frm.set_value("course", null);
+		frm.set_value("school_schedule", null); // moved here only
 	},
 
 	academic_year(frm) {
@@ -229,7 +222,7 @@ frappe.ui.form.on("Student Group", {
 			});
 
 			frm.refresh_field("students");
-			frm.save();
+			// FIX: removed frm.save(); auto-save led to re-triggered “unsaved” flicker
 		}
 	});
 },
@@ -246,7 +239,7 @@ frappe.ui.form.on("Student Group", {
 				build_matrix_dialog(frm, r.message);
 			}
 		});
-	}, 
+	},
 
 });
 
@@ -263,7 +256,9 @@ frappe.ui.form.on("Student Group Instructor", {
 	},
 });
 
-// ── Dialog builder (unchanged except parseInt) ──────────────────────
+
+// ── Dialog builder (unchanged except parseInt + no dirty) ──────────────────────
+
 function build_matrix_dialog(frm, data) {
 	const d = new frappe.ui.Dialog({
 		title: __('Quick Add Schedule Blocks'),
@@ -315,8 +310,8 @@ function apply_matrix_selection(frm, dialog) {
 	cells.each(function() {
 		const cell = $(this);
 		const ids = cell.find('input[type=checkbox]').attr('id').match(/d(\d+)b(\d+)/);
-		const rotation_day = parseInt(ids[1]);
-		const block_number = parseInt(ids[2]);
+		const rotation_day = parseInt(ids[1], 10);
+		const block_number = parseInt(ids[2], 10);
 
 		frm.add_child('student_group_schedule', {
 			rotation_day,
@@ -326,5 +321,5 @@ function apply_matrix_selection(frm, dialog) {
 		});
 	});
 	frm.refresh_field('student_group_schedule');
-	frm.dirty();
+	// FIX: removed explicit frm.dirty(); adding children already marks unsaved
 }

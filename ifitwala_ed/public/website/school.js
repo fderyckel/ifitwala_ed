@@ -1,7 +1,9 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-// Specific JS for the School Web Page only — complements website.js
+// ifitwala_ed/public/website/school.js
+
+// Specific JS for the School Web Page only — complements website.js.
 
 (function () {
   // Carousel Setup

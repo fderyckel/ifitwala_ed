@@ -17,10 +17,10 @@
     "hierarchy": "rollup -c --watch --configPlugin rollup-plugin-postcss --environment WATCH_HIERARCHY"
   },
   "devDependencies": {
-    "@fullcalendar/core": "^6.1.17",
-    "@fullcalendar/daygrid": "^6.1.17",
-    "@fullcalendar/list": "^6.1.17",
-    "@fullcalendar/timegrid": "^6.1.17",
+    "@fullcalendar/core": "6.1.17",
+    "@fullcalendar/daygrid": "6.1.17",
+    "@fullcalendar/list": "6.1.17",
+    "@fullcalendar/timegrid": "6.1.17",
     "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-node-resolve": "^16.0.1",
@@ -43,7 +43,8 @@
     "@popperjs/core": "^2.11.8",
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.13.1",
-    "html2canvas": "^1.4.1",
+    "frappe-ui": "^0.1.213",
+    "html2canvas": "1.4.1",
     "onscan.js": "^1.5.2"
   }
 }

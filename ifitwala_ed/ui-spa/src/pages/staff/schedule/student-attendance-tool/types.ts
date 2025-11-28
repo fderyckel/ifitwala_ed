@@ -2,6 +2,7 @@ export type BlockKey = number
 
 export interface AttendanceCode {
 	name: string
+	attendance_code: string
 	attendance_code_name: string
 	display_order?: number
 	color?: string | null
@@ -29,4 +30,3 @@ export interface RosterResponse {
 		cohort?: string | null
 	}
 }
-

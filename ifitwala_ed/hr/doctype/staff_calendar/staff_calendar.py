@@ -1,208 +1,184 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed.hr.doctype.staff_calendar.staff_calendar
+
 import frappe
 import json
 from datetime import date
-
 from frappe import _
 from frappe.utils import getdate, formatdate, date_diff
 from frappe.model.document import Document
 
-
 class StaffCalendar(Document):
+    def validate(self):
+        # validate the period
+        self._validate_period()
 
-  def validate(self):
-    self.validate_days()
-    self.total_holidays = len(self.holidays)
-    self.total_working_day = date_diff(self.to_date, self.from_date) - self.total_holidays + 1
-    self.validate_duplicate_date()
-    self.sort_holidays()
+        # reuse your existing logic
+        self.validate_days()
+        self.validate_duplicate_date()
+        self.sort_holidays()
 
-  def validate_days(self):
-    if getdate(self.from_date) > getdate(self.to_date):
-      frappe.throw(_("From Date cannot be after To Date. Please adjust the date."))
-    for day in self.get("holidays"):
-      if not (getdate(self.from_date) <= getdate(day.holiday_date) <= getdate(self.to_date)):
-        frappe.throw(_("The holiday on {0} should be between From Date and To Date.").format(formatdate(day.holiday_date)))
+        # compute totals
+        self.total_holidays = len(self.holidays)
+        # inclusive of both from_date and to_date
+        self.total_working_day = date_diff(self.to_date, self.from_date) + 1 - self.total_holidays
 
-  def validate_duplicate_date(self):
-    unique_dates = []
-    for day in self.holidays:
-      if day.holiday_date in unique_dates:
-        frappe.throw(_("Date {0} is duplicated. Please remove the duplicate date.").format(formatdate(day.holiday_date)))
-      unique_dates.append(day.holiday_date)
+    def _validate_period(self):
+        if getdate(self.from_date) > getdate(self.to_date):
+            frappe.throw(_("From Date cannot be after To Date. Please adjust the date."))
 
-  def sort_holidays(self):
-    self.holidays.sort(key=lambda x: getdate(x.holiday_date))
-    for i in range(len(self.holidays)):
-      self.holidays[i].idx = i + 1
+        # If you have optional academic_year or period_type
+        if hasattr(self, "period_type") and self.period_type == "Academic Year":
+            if not self.academic_year:
+                frappe.throw(_("Academic Year must be set when Period Type is Academic Year."))
 
-  #logic for the button "get_weekly_off_dates"
-  @frappe.whitelist()
-  def get_weekly_off_dates(self):
-    if not self.weekly_off:
-        frappe.throw(_("Please select first the weekly off days."))
+        # Validate employee_category exists (since new schema)
+        if not self.employee_category:
+            frappe.throw(_("Employee Category must be specified for this Staff Calendar."))
 
-    existing_holidays = self.get_holidays()
+    def validate_days(self):
+        for day in self.get("holidays"):
+            if not (getdate(self.from_date) <= getdate(day.holiday_date) <= getdate(self.to_date)):
+                frappe.throw(_("The holiday on {0} should be between From Date and To Date.").format(formatdate(day.holiday_date)))
 
-    for d in self.get_weekly_off_dates_list(self.from_date, self.to_date):
-      if d in existing_holidays:
-        continue
-      
-      self.append("holidays", {
-        "holiday_date": d,
-        "description": _("weekly off"),
-        "color": self.weekend_color,
-        "weekly_off": 1
-      })
+    def validate_duplicate_date(self):
+        unique_dates = []
+        for day in self.holidays:
+            if day.holiday_date in unique_dates:
+                frappe.throw(_("Date {0} is duplicated. Please remove the duplicate date.").format(formatdate(day.holiday_date)))
+            unique_dates.append(day.holiday_date)
 
-  # Function to generate the list of weekly off dates
-  def get_weekly_off_dates_list(self, start_date, end_date):
-    start_date, end_date = getdate(start_date), getdate(end_date)
+    def sort_holidays(self):
+        self.holidays.sort(key=lambda x: getdate(x.holiday_date))
+        for idx, row in enumerate(self.holidays, start=1):
+            row.idx = idx
 
-    from dateutil import relativedelta
-    from datetime import timedelta
-    import calendar
+    @frappe.whitelist()
+    def get_weekly_off_dates(self):
+        # If you keep this functionality
+        if not self.weekly_off:
+            frappe.throw(_("Please select first the weekly off day."))
+        existing = self.get_holidays()
+        for d in self.get_weekly_off_dates_list(self.from_date, self.to_date):
+            if d in existing:
+                continue
+            self.append("holidays", {
+                "holiday_date": d,
+                "description": _("Weekly Off"),
+                "color": self.weekend_color,
+                "weekly_off": 1
+            })
 
-    date_list = []
-    existing_date_list = []
-    weekday = getattr(calendar, (self.weekly_off).upper())
-    reference_date = start_date + relativedelta.relativedelta(weekday = weekday)
-    existing_date_list = [getdate(holiday.holiday_date) for holiday in self.get("holidays")]
+    def get_weekly_off_dates_list(self, start_date, end_date):
+        start, end = getdate(start_date), getdate(end_date)
+        from dateutil import relativedelta
+        from datetime import timedelta
+        import calendar
+        date_list = []
+        existing = [getdate(h.holiday_date) for h in self.get("holidays")]
+        weekday = getattr(calendar, (self.weekly_off).upper())
+        reference = start + relativedelta.relativedelta(weekday=weekday)
+        while reference <= end:
+            if reference not in existing:
+                date_list.append(reference)
+            reference += timedelta(days=7)
+        return date_list
 
-    while reference_date <= end_date:
-      if reference_date not in existing_date_list:
-        date_list.append(reference_date)
-      reference_date += timedelta(days = 7)
+    def get_holidays(self) -> list[date]:
+        return [getdate(h.holiday_date) for h in self.holidays]
 
-    return date_list
-  
-  def get_holidays(self) -> list[date]: 
-    return [getdate(holiday.holiday_date) for holiday in self.holidays]
+    @frappe.whitelist()
+    def get_country_holidays(self):
+        from holidays import country_holidays
+        if not self.country:
+            frappe.throw(_("Please select the country first."))
+        existing = self.get_holidays()
+        from_date = getdate(self.from_date)
+        to_date = getdate(self.to_date)
+        for holiday_date, holiday_name in country_holidays(
+                self.country,
+                subdiv=self.subdivision,
+                years=list(range(from_date.year, to_date.year + 1)),
+                language=frappe.local.lang
+        ).items():
+            if holiday_date in existing:
+                continue
+            if holiday_date < from_date or holiday_date > to_date:
+                continue
+            self.append("holidays", {
+                "holiday_date": holiday_date,
+                "description": holiday_name,
+                "weekly_off": 0,
+                "color": self.local_holiday_color
+            })
 
-  # logic for the button "get_long_break_dates"
-  @frappe.whitelist()
-  def get_country_holidays(self):
-    from holidays import country_holidays
+    @frappe.whitelist()
+    def get_supported_countries(self):
+        from holidays.utils import list_supported_countries
+        subdivisions_by_country = list_supported_countries()
+        countries = [
+            {"value": country, "label": local_country_name(country)}
+            for country in subdivisions_by_country.keys()
+        ]
+        return {
+            "countries": countries,
+            "subdivisions_by_country": subdivisions_by_country,
+        }
 
-    if not self.country:
-      frappe.throw(_("Please select the country first."))
+    @frappe.whitelist()
+    def get_break_holidays(self):
+        self.validate_break_values()
+        existing = self.get_holidays()
+        for d in self.get_long_break_dates_list(self.start_of_break, self.end_of_break):
+            if d in existing:
+                continue
+            self.append("holidays", {
+                "holiday_date": d,
+                "description": self.break_description,
+                "color": self.break_color,
+                "weekly_off": 0
+            })
 
-    existing_holidays = self.get_holidays()
-    from_date = getdate(self.from_date)
-    to_date = getdate(self.to_date)
+    def validate_break_values(self):
+        if not (self.start_of_break and self.end_of_break):
+            frappe.throw(_("Please select the start and end of the break."))
+        if getdate(self.start_of_break) > getdate(self.end_of_break):
+            frappe.throw(_("The start of the break cannot be after its end."))
+        if not (getdate(self.from_date) <= getdate(self.start_of_break) <= getdate(self.to_date)) or not (getdate(self.from_date) <= getdate(self.end_of_break) <= getdate(self.to_date)):
+            frappe.throw(_("The break period must fall within the calendar period."))
 
-    for holiday_date, holiday_name in country_holidays( 
-      self.country,
-      subdiv = self.subdivision,
-      years = list(range(from_date.year, to_date.year + 1)),
-      language = frappe.local.lang 
-    ).items():
-      if holiday_date in existing_holidays:
-        continue
+    def get_long_break_dates_list(self, start_date, end_date):
+        start, end = getdate(start_date), getdate(end_date)
+        from datetime import timedelta
+        date_list = []
+        existing = [getdate(h.holiday_date) for h in self.get("holidays")]
+        reference = start
+        while reference <= end:
+            if reference not in existing:
+                date_list.append(reference)
+            reference += timedelta(days=1)
+        return date_list
 
-      if holiday_date < from_date or holiday_date > to_date:
-        continue
+    @frappe.whitelist()
+    def clear_table(self):
+        self.set("holidays", [])
 
-      self.append("holidays", {
-        "holiday_date": holiday_date,
-        "description": holiday_name,
-        "weekly_off": 0, 
-        "color": self.local_holiday_color
-      })
+    @frappe.whitelist()
+    def copy_from_calendar(self, source_calendar):
+        if not source_calendar:
+            frappe.throw(_("Please specify a source calendar."))
+        src = frappe.get_doc("Staff Calendar", source_calendar)
+        if src.school != self.school:
+            frappe.throw(_("Source calendar must belong to the same school."))
+        for row in src.holidays:
+            if any(getdate(row.holiday_date) == getdate(h.holiday_date) for h in self.holidays):
+                continue
+            self.append("holidays", {
+                "holiday_date": row.holiday_date,
+                "description": row.description,
+                "color": row.color,
+                "weekly_off": getattr(row, "weekly_off", 0)
+            })
 
-  @frappe.whitelist()
-  def get_supported_countries(self):
-    from holidays.utils import list_supported_countries 
-    
-    subdivisions_by_country = list_supported_countries() 
-    countries = [ 
-      {"value": country, "label": local_country_name(country)} 
-      for country in subdivisions_by_country.keys() 
-      ]
-    return { 
-      "countries": countries,
-      "subdivisions_by_country": subdivisions_by_country,
-    }
-
-  @frappe.whitelist()
-  def get_break_holidays(self):
-    self.validate_break_values()
-    existing_holidays = self.get_holidays()
-
-    for d in self.get_long_break_dates_list(self.start_of_break, self.end_of_break):
-      if d in existing_holidays: 
-        continue
-
-      self.append("holidays", {
-        "holiday_date": d,
-        "description": self.break_description,
-        "color": self.break_color,
-        "weekly_off": 0
-      })
-
-
-  def validate_break_values(self):
-    if not self.start_of_break and not self.end_of_break:
-      frappe.throw(_("Please select first the start and end of your break."))
-    if getdate(self.start_of_break) > getdate(self.end_of_break):
-      frappe.throw(_("The start of the break cannot be after its end. Adjust the dates."))
-    if not (getdate(self.from_date) <= getdate(self.start_of_break) <= getdate(self.to_date)) or not (getdate(self.from_date) <= getdate(self.end_of_break) <= getdate(self.to_date)):
-      frappe.throw(_("The start and end of the break have to be within the start and end of the calendar."))
-
-  # Function to get the list of long break dates
-  def get_long_break_dates_list(self, start_date, end_date):
-    start_date, end_date = getdate(start_date), getdate(end_date)
-
-    #from dateutil import relativedelta
-    from datetime import timedelta
-    import calendar
-
-    date_list = []
-    existing_date_list = []
-    reference_date = start_date
-    existing_date_list = [getdate(holiday.holiday_date) for holiday in self.get("holidays")]
-
-    while reference_date <= end_date:
-      if reference_date not in existing_date_list:
-        date_list.append(reference_date)
-        reference_date += timedelta(days = 1)
-
-    return date_list
-
-  # logic for the button "clear_table"
-  def clear_table(self):
-    self.set("holidays", [])
-
-
-
-
-@frappe.whitelist()
-def get_events(start, end, filters=None):
-  """Returns events for Gantt/Calendar view rendering.
-	:param start: Start date-time.
-	:param end: End date-time.
-	:param filters: Filters (JSON).
-	"""
-  if filters:
-    filters = json.loads(filters)
-  else:
-    filters = []
-
-  if start:
-    filters.append(['Holiday', 'holiday_date', '>', getdate(start)])
-  if end:
-    filters.append(['Holiday', 'holiday_date', '<', getdate(end)])
-
-  return frappe.get_list('Staff Calendar',
-    fields=["name", "academic_year", "school",
-            "`tabHoliday`.holiday_date", "`tabHoliday`.description", "`tabHoliday`.color"],
-    filters=filters,
-    update={"allDay": 1})
-
-def local_country_name(country_code: str) -> str:
-	"""Return the localized country name for the given country code."""
-	from babel import Locale
-
-	return Locale.parse(frappe.local.lang, sep="-").territories.get(country_code, country_code)

@@ -4,48 +4,49 @@
  "columns": [
   {
    "fieldname": "type",
-   "fieldtype": "Select",
+   "fieldtype": "Data",
    "label": "Type",
-   "width": 200
+   "width": 170
   },
   {
    "fieldname": "student",
    "fieldtype": "Link",
    "label": "Student",
    "options": "Student",
-   "width": 150
+   "width": 130
   },
   {
    "fieldname": "student_name",
    "fieldtype": "Data",
    "label": "Student Name",
-   "width": 200
+   "width": 220
   },
   {
    "fieldname": "program",
    "fieldtype": "Link",
    "label": "Program",
    "options": "Program",
-   "width": 150
+   "width": 160
   },
   {
    "fieldname": "course",
    "fieldtype": "Link",
    "label": "Course",
    "options": "Course",
-   "width": 350
+   "width": 220
   },
   {
    "fieldname": "term",
-   "fieldtype": "Data",
-   "label": "Term",
+   "fieldtype": "Link",
+   "label": "Term Start",
+   "options": "Term",
    "width": 150
   },
   {
    "fieldname": "missing",
    "fieldtype": "Data",
    "label": "Missing",
-   "width": 150
+   "width": 180
   }
  ],
  "creation": "2025-04-23 09:52:09.483338",
@@ -53,6 +54,14 @@
  "docstatus": 0,
  "doctype": "Report",
  "filters": [
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "mandatory": 1,
+   "options": "School",
+   "wildcard_filter": 0
+  },
   {
    "fieldname": "academic_year",
    "fieldtype": "Link",
@@ -65,16 +74,16 @@
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2025-04-23 10:39:27.252526",
+ "modified": "2025-10-23 10:39:27.252526",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Enrollment Gaps Report",
  "owner": "Administrator",
  "prepared_report": 0,
- "query": "SELECT\n    \"Missing Program\" AS type,\n    s.name AS student,\n    s.student_full_name AS student_name,\n    NULL AS program,\n    NULL AS course,\n    NULL AS term,\n    \"Program\" AS missing\nFROM `tabStudent` s\nWHERE s.enabled = 1\n  AND s.name NOT IN (\n    SELECT pe.student FROM `tabProgram Enrollment` pe WHERE pe.academic_year = %(academic_year)s\n  )\n\nUNION\nSELECT\n    \"Missing Student Group\" AS type,\n    pe.student,\n    pe.student_name,\n    pe.program,\n    pec.course,\n    pec.term_start AS term,\n    \"Student Group\" AS missing\nFROM `tabProgram Enrollment` pe\nINNER JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name\nWHERE pe.academic_year = %(academic_year)s\n  AND pec.status = 'Enrolled'\n  AND NOT EXISTS (\n    SELECT 1\n    FROM `tabStudent Group` sg\n    INNER JOIN `tabStudent Group Student` sgs ON sgs.parent = sg.name\n    WHERE sg.group_based_on = 'Course'\n      AND sg.academic_year = pe.academic_year\n      AND sg.course = pec.course\n      AND sg.term = pec.term_start\n      AND sgs.student = pe.student\n  )\n",
+ "query": "",
  "ref_doctype": "Student",
  "report_name": "Enrollment Gaps Report",
- "report_type": "Query Report",
+ "report_type": "Script Report",
  "roles": [
   {
    "role": "System Manager"
