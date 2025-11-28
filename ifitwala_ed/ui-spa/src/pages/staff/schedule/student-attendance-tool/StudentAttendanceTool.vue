@@ -2,37 +2,12 @@
 	<div class="attendance-shell mx-auto flex h-full max-w-7xl flex-col gap-6 p-4 pb-10">
 		<header class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
 
+
 					<div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
-
-						<div class="w-44 shrink-0">
-							<FormControl
-								type="select"
-								:options="schoolOptions"
-								option-label="label"
-								option-value="value"
-								:model-value="filters.school"
-								@update:model-value="onSchoolChange"
-								:placeholder="__('School')"
-								:disabled="schoolsLoading && !schools.length"
-							/>
-						</div>
-
-						<div class="w-44 shrink-0">
-							<FormControl
-								type="select"
-								:options="programOptions"
-								option-label="label"
-								option-value="value"
-								:model-value="filters.program"
-								@update:model-value="onProgramChange"
-								:placeholder="__('Program')"
-								:disabled="programsLoading && !programs.length"
-							/>
-						</div>
-
 						<div class="w-64 shrink-0">
 							<FormControl
 								type="select"
+								size="md"
 								:options="groupOptions"
 								option-label="label"
 								option-value="value"
@@ -46,6 +21,7 @@
 						<div class="w-32 shrink-0">
 							<FormControl
 								type="select"
+								size="md"
 								:options="defaultCodeOptions"
 								option-label="label"
 								option-value="value"
@@ -343,13 +319,10 @@ const DEFAULT_COLOR = '#2563eb'
 const SAVE_DEBOUNCE_MS = 700
 
 const filters = reactive({
-	school: null as string | null,
-	program: null as string | null,
 	student_group: null as string | null,
 	default_code: DEFAULT_CODE_NAME,
 })
 
-const defaultSchool = ref<string | null>(null)
 const route = useRoute()
 const router = useRouter()
 
@@ -406,48 +379,12 @@ const birthdayDialog = reactive({
 })
 
 const groups = ref<any[]>([])
-const schools = ref<any[]>([])
-const programs = ref<any[]>([])
 const hasWarnedEmptyGroups = ref(false)
 
-const schoolResource = createResource({
-	url: 'ifitwala_ed.api.student_attendance.fetch_school_filter_context',
-	cache: 'school-filter-context',
-	auto: true,
-	transform: unwrapMessage,
-	onSuccess: onSchoolsLoaded,
-	onError: () => {
-		toast({
-			title: __('Could not load schools'),
-			message: __('Please refresh or choose a student group directly.'),
-			appearance: 'danger',
-		})
-	},
-})
-
-const programResource = createResource({
-	url: 'ifitwala_ed.api.student_attendance.fetch_active_programs',
-	cache: 'active-programs',
-	auto: true,
-	transform: unwrapMessage,
-	onSuccess: onProgramsLoaded,
-	onError: () => {
-		toast({
-			title: __('Could not load programs'),
-			message: __('Please refresh to try again.'),
-			appearance: 'danger',
-		})
-	},
-})
 
 const groupResource = createResource({
 	url: 'ifitwala_ed.api.student_attendance.fetch_portal_student_groups',
-	params: () => ({
-		school: filters.school,
-		program: filters.program,
-	}),
-	watch: [() => filters.school, () => filters.program],
-	immediate: true,
+	params: () => ({}),
 	auto: true,
 	transform: unwrapMessage,
 	onSuccess: onGroupsLoaded,
@@ -513,8 +450,6 @@ const recordedDatesResource = createResource({
 	transform: unwrapMessage,
 })
 
-const schoolsLoading = computed(() => schoolResource.loading)
-const programsLoading = computed(() => programResource.loading)
 const groupsLoading = computed(() => groupResource.loading)
 const codesLoading = computed(() => attendanceCodeResource.loading)
 
@@ -525,34 +460,6 @@ const groupOptions = computed(() =>
 	})),
 )
 
-const schoolOptions = computed(() => {
-	const base = (schools.value || []).map((row: any) => ({
-		label: row.school_name || row.name,
-		value: row.name,
-	}))
-
-	if (defaultSchool.value) {
-		return base
-	}
-
-	return base.length
-		? [
-				{ label: __('All schools'), value: null },
-				...base,
-			]
-		: base
-})
-
-const programOptions = computed(() => {
-	const base = (programs.value || []).map((row: any) => ({
-		label: row.program_name || row.name,
-		value: row.name,
-	}))
-	return [
-		{ label: __('All programs'), value: null },
-		...base,
-	]
-})
 
 const defaultCodeOptions = computed(() =>
 	attendanceCodes.value.map((code) => ({
@@ -684,26 +591,6 @@ function setRouteStudentGroupQuery(groupName: string | null) {
 	router.replace({ query: nextQuery }).catch(() => {})
 }
 
-function onSchoolsLoaded(payload: any) {
-	const data = payload || {}
-	const rows = Array.isArray(data.schools) ? data.schools : []
-	schools.value = rows
-	defaultSchool.value = data.default_school || null
-
-	const schoolNames = rows.map((row: any) => row.name)
-	const preferred =
-		(defaultSchool.value && schoolNames.includes(defaultSchool.value))
-			? defaultSchool.value
-			: schoolNames[0] || null
-
-	if (!filters.school || !schoolNames.includes(filters.school)) {
-		filters.school = preferred
-	}
-}
-
-function onProgramsLoaded(payload: any) {
-	programs.value = Array.isArray(payload) ? payload : []
-}
 
 function onGroupsLoaded(payload: any) {
 	const list = Array.isArray(payload) ? payload : []
@@ -775,19 +662,8 @@ function clearGroupState() {
 	weekendDays.value = [6, 0]
 }
 
-async function onSchoolSelected(value: string | null) {
-	if (filters.school === value) return
-	await selectStudentGroup(null)
-	filters.school = value
-}
 
-async function onProgramSelected(value: string | null) {
-	if (filters.program === value) return
-	await selectStudentGroup(null)
-	filters.program = value
-}
-
-async function onStudentGroupSelected(value: string | null) {
+async function onStudentGroupChange(value: string | null) {
 	await selectStudentGroup(value)
 }
 
