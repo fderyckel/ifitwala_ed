@@ -637,13 +637,34 @@ async function loadGroups() {
     groups.value = Array.isArray(data) ? data : []
     console.debug('[Attendance] Loaded groups:', groups.value)
 
-    if (!(groups.value?.length)) {
+    const names = groups.value.map((g: any) => g.name)
+    const requestedFromRoute = routeStudentGroupParam()
+
+    // 1) If URL has ?student_group=... and it’s visible, honour it and trigger load
+    if (requestedFromRoute && names.includes(requestedFromRoute)) {
+      if (filters.student_group !== requestedFromRoute) {
+        filters.student_group = requestedFromRoute
+      }
+    }
+    // 2) If nothing selected and only one group, auto-pick it (nice for instructors)
+    else if (!filters.student_group && groups.value.length === 1) {
+      filters.student_group = groups.value[0].name
+    }
+    // 3) If previously selected group is no longer in list, clear it hard
+    else if (filters.student_group && !names.includes(filters.student_group)) {
+      filters.student_group = null
+    }
+
+    if (!groups.value?.length) {
       console.debug('[Attendance] No student groups returned from server')
-      toast({
-        title: __('No student groups found'),
-        message: __('You have no active student groups assigned.'),
-        appearance: 'warning',
-      })
+      // Only toast if we’re fully bootstrapped, to avoid noise on first load
+      if (filtersReady.value) {
+        toast({
+          title: __('No student groups found'),
+          message: __('You have no active student groups assigned.'),
+          appearance: 'warning',
+        })
+      }
     }
   } catch (error) {
     console.error('Failed to load student groups', error)
@@ -657,6 +678,7 @@ async function loadGroups() {
     groupsLoading.value = false
   }
 }
+
 
 async function loadSchools() {
 	schoolsLoading.value = true
@@ -1112,17 +1134,26 @@ watch(
 )
 
 watch(
-	() => [filters.school, filters.program],
-	() => {
-		if (!filtersReady.value) return
-		if (filters.student_group) {
-			filters.student_group = null
-		} else {
-			void onGroupChange()
-		}
-		void loadGroups()
-	}
+  () => [filters.school, filters.program],
+  () => {
+    if (!filtersReady.value) return
+
+    // Clear any existing selection and related state
+    if (filters.student_group) {
+      filters.student_group = null
+    }
+
+    selectedDate.value = null
+    meetingDates.value = []
+    recordedDates.value = []
+    students.value = []
+    groupInfo.value = {}
+
+    // Then reload groups for the new filter context
+    void loadGroups()
+  }
 )
+
 
 watch(() => filters.student_group, onGroupChange)
 watch(() => filters.default_code, onDefaultCodeChange)

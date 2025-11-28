@@ -11,7 +11,6 @@ from ifitwala_ed.api.student_groups import (
 	_instructor_group_names,
 )
 from ifitwala_ed.utilities.school_tree import (
-	get_descendant_schools,
 	get_user_default_school,
 	_is_adminish,
 )
@@ -193,28 +192,42 @@ def _expand_program_scope(program: str | None) -> list[str] | None:
 # Filter metadata helpers
 # ---------------------------------------------------------------------------
 
+# ifitwala_ed/api/student_attendance.py
+
 @frappe.whitelist()
 def fetch_school_filter_context():
-	"""
-	Return the current user's default school and the schools they can filter by.
-	Default list = default school + descendants; if no default, show all schools.
-	"""
-	default_school = get_user_default_school()
-	school_names = []
+    """
+    Return the current user's default school and the schools they can filter by.
 
-	fields = ["name", "school_name"]
-	if default_school:
-		school_names = get_descendant_schools(default_school)
+    - If the user has a default school: return that school + all its descendants
+      (same nested-set subtree).
+    - If no default school: return all schools.
+    """
+    default_school = get_user_default_school()
+    fields = ["name", "school_name"]
 
-	if school_names:
-		schools = frappe.get_all("School", fields=fields, filters={"name": ["in", school_names]}, order_by="lft asc")
-	else:
-		schools = frappe.get_all("School", fields=fields, order_by="lft asc")
+    schools = []
 
-	return {
-		"default_school": default_school,
-		"schools": schools,
-	}
+    if default_school:
+        # Use nested set span of the default school to include it + all descendants
+        values = frappe.db.get_value("School", default_school, ["lft", "rgt"], as_dict=True)
+        if values:
+            schools = frappe.get_all(
+                "School",
+                fields=fields,
+                filters={"lft": (">=", values.lft), "rgt": ("<=", values.rgt)},
+                order_by="lft asc",
+            )
+
+    # Fallback: no default or no subtree → show all schools (admin, misconfigured users)
+    if not schools:
+        schools = frappe.get_all("School", fields=fields, order_by="lft asc")
+
+    return {
+        "default_school": default_school,
+        "schools": schools,
+    }
+
 
 
 @frappe.whitelist()
