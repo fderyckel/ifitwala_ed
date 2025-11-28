@@ -379,12 +379,50 @@ const birthdayDialog = reactive({
 })
 
 const groups = ref<any[]>([])
+const schools = ref<any[]>([])
+const programs = ref<any[]>([])
 const hasWarnedEmptyGroups = ref(false)
 
+const schoolResource = createResource({
+	url: 'ifitwala_ed.api.student_attendance.fetch_school_filter_context',
+	cache: 'school-filter-context',
+	method: 'POST',
+	auto: true,
+	transform: unwrapMessage,
+	onSuccess: onSchoolsLoaded,
+	onError: () => {
+		toast({
+			title: __('Could not load schools'),
+			message: __('Please refresh or choose a student group directly.'),
+			appearance: 'danger',
+		})
+	},
+})
+
+const programResource = createResource({
+	url: 'ifitwala_ed.api.student_attendance.fetch_active_programs',
+	cache: 'active-programs',
+	method: 'POST',
+	auto: true,
+	transform: unwrapMessage,
+	onSuccess: onProgramsLoaded,
+	onError: () => {
+		toast({
+			title: __('Could not load programs'),
+			message: __('Please refresh to try again.'),
+			appearance: 'danger',
+		})
+	},
+})
 
 const groupResource = createResource({
 	url: 'ifitwala_ed.api.student_attendance.fetch_portal_student_groups',
-	params: () => ({}),
+	params: () => ({
+		school: filters.school,
+		program: filters.program,
+	}),
+	method: 'POST',
+	watch: [() => filters.school, () => filters.program],
 	immediate: true,
 	auto: true,
 	transform: unwrapMessage,
@@ -401,6 +439,7 @@ const groupResource = createResource({
 
 const attendanceCodeResource = createResource({
 	url: 'ifitwala_ed.schedule.attendance_utils.list_attendance_codes',
+	method: 'POST',
 	auto: true,
 	transform: unwrapMessage,
 	onSuccess: onAttendanceCodesLoaded,
@@ -415,8 +454,9 @@ const attendanceCodeResource = createResource({
 const weekendResource = createResource({
 	url: 'ifitwala_ed.api.student_attendance.get_weekend_days',
 	params: () => ({
-		student_group: filters.student_group || '',
+		student_group: filters.student_group,
 	}),
+	method: 'POST',
 	auto: false,
 	transform: unwrapMessage,
 	onSuccess: (days) => {
@@ -436,8 +476,9 @@ const weekendResource = createResource({
 const meetingDatesResource = createResource({
 	url: 'ifitwala_ed.schedule.attendance_utils.get_meeting_dates',
 	params: () => ({
-		student_group: filters.student_group || '',
+		student_group: filters.student_group,
 	}),
+	method: 'POST',
 	auto: false,
 	transform: unwrapMessage,
 })
@@ -445,12 +486,15 @@ const meetingDatesResource = createResource({
 const recordedDatesResource = createResource({
 	url: 'ifitwala_ed.schedule.attendance_utils.attendance_recorded_dates',
 	params: () => ({
-		student_group: filters.student_group || '',
+		student_group: filters.student_group,
 	}),
+	method: 'POST',
 	auto: false,
 	transform: unwrapMessage,
 })
 
+const schoolsLoading = computed(() => schoolResource.loading)
+const programsLoading = computed(() => programResource.loading)
 const groupsLoading = computed(() => groupResource.loading)
 const codesLoading = computed(() => attendanceCodeResource.loading)
 
@@ -460,6 +504,35 @@ const groupOptions = computed(() =>
 		value: row.name,
 	})),
 )
+
+const schoolOptions = computed(() => {
+	const base = (schools.value || []).map((row: any) => ({
+		label: row.school_name || row.name,
+		value: row.name,
+	}))
+
+	if (defaultSchool.value) {
+		return base
+	}
+
+	return base.length
+		? [
+				{ label: __('All schools'), value: null },
+				...base,
+			]
+		: base
+})
+
+const programOptions = computed(() => {
+	const base = (programs.value || []).map((row: any) => ({
+		label: row.program_name || row.name,
+		value: row.name,
+	}))
+	return [
+		{ label: __('All programs'), value: null },
+		...base,
+	]
+})
 
 
 const defaultCodeOptions = computed(() =>
@@ -592,6 +665,27 @@ function setRouteStudentGroupQuery(groupName: string | null) {
 	router.replace({ query: nextQuery }).catch(() => {})
 }
 
+function onSchoolsLoaded(payload: any) {
+	const data = payload || {}
+	const rows = Array.isArray(data.schools) ? data.schools : []
+	schools.value = rows
+	defaultSchool.value = data.default_school || null
+
+	const schoolNames = rows.map((row: any) => row.name)
+	const preferred =
+		defaultSchool.value && schoolNames.includes(defaultSchool.value)
+			? defaultSchool.value
+			: schoolNames[0] || null
+
+	if (!filters.school || !schoolNames.includes(filters.school)) {
+		filters.school = preferred
+	}
+}
+
+function onProgramsLoaded(payload: any) {
+	programs.value = Array.isArray(payload) ? payload : []
+}
+
 
 function onGroupsLoaded(payload: any) {
 	const list = Array.isArray(payload) ? payload : []
@@ -661,6 +755,31 @@ function clearGroupState() {
 	saving.value = false
 	justSaved.value = false
 	weekendDays.value = [6, 0]
+}
+
+async function onSchoolSelected(value: string | null) {
+	if (filters.school === value) return
+	if (saveTimer) window.clearTimeout(saveTimer)
+	if (dirty.value.size) {
+		await persistChanges()
+	}
+	filters.school = value
+	filters.program = null
+	filters.student_group = null
+	setRouteStudentGroupQuery(null)
+	clearGroupState()
+}
+
+async function onProgramSelected(value: string | null) {
+	if (filters.program === value) return
+	if (saveTimer) window.clearTimeout(saveTimer)
+	if (dirty.value.size) {
+		await persistChanges()
+	}
+	filters.program = value
+	filters.student_group = null
+	setRouteStudentGroupQuery(null)
+	clearGroupState()
 }
 
 
