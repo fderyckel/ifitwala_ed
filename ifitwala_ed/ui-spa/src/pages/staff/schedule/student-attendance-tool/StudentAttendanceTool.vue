@@ -12,7 +12,7 @@
 								option-label="label"
 								option-value="value"
 								:model-value="filters.student_group"
-								@update:model-value="onStudentGroupChange"
+								@update:modelValue="onStudentGroupChange"
 								:disabled="groupsLoading || !groupOptions.length"
 								placeholder="Select Group"
 							/>
