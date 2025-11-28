@@ -16,6 +16,14 @@ from ifitwala_ed.utilities.school_tree import (
 	_is_adminish,
 )
 
+# Roles that can see all groups in their allowed school scope
+PORTAL_FULL_ACCESS_ROLES = {
+	"Administrator",
+	"System Manager",
+	"Academic Admin",
+	"Academic Assistant",
+}
+
 PORTAL_GROUP_FIELDS = [
 	"name",
 	"student_group_name",
@@ -32,8 +40,12 @@ PORTAL_GROUP_FIELDS = [
 def fetch_portal_student_groups(school: str | None = None, program: str | None = None):
 	"""
 	Return active student groups visible to the logged-in staff member.
-	* Academic Admin / Counselor / Instructor / Admin roles see all active groups.
-	* Other instructors only see the groups they are assigned to through Student Group Instructor.
+
+	- Portal full-access roles (Admin, System Manager, Academic Admin, Academic Assistant)
+	  see all active groups within their allowed school scope and can use filters.
+	- Everyone else (instructors, academic staff, counselors, etc.) only sees
+	  the groups they are assigned to via Student Group Instructor, still
+	  clamped to their default school + descendants.
 	"""
 	user = frappe.session.user
 	if not user or user == "Guest":
@@ -60,16 +72,15 @@ def fetch_portal_student_groups(school: str | None = None, program: str | None =
 		# If they are not linked to a school, do we show all?
 		# The requirement says: "The employee should only be able to see his/her own school... or once of its descendants."
 		if not allowed_schools:
-			# If user has no school assigned, and is not admin, they might see nothing?
-			# Let's assume if no school is assigned, they see nothing if they are not admin.
-			if not (roles & {"System Manager", "Administrator", "Academic Admin"}):
-                 return []
+			# No linked school → no access unless they are “adminish”
+			if not (roles & {"System Manager", "Administrator", "Academic Admin", "Academic Assistant"}):
+				return []
 		else:
 			filters["school"] = ["in", allowed_schools]
 
 	# 2. Instructor Group Check
-	# If they are not in a triage role, they only see their assigned groups.
-	if not (roles & TRIAGE_ROLES):
+	# If they are NOT in a full-access role, restrict to their own groups.
+	if not (roles & PORTAL_FULL_ACCESS_ROLES):
 		group_names = _instructor_group_names(user)
 		if not group_names:
 			return []

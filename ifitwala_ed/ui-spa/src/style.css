@@ -72,8 +72,12 @@
   max-width: none !important;
 }
 
-/* Force all Select inputs in the app to be 'Higher' (Taller) */
-.form-control select {
-  height: 3rem !important; /* 3rem = 48px (Matches h-12) */
-  line-height: normal; /* Centers text vertically */
+/* Force all frappe-ui FormControl inputs (select, text, multiselect) to be taller */
+.frappe-ui-form-control .form-input,
+.frappe-ui-form-control select,
+.frappe-ui-form-control .multiselect__tags {
+  height: 2.75rem !important; /* ≈ Tailwind h-11 (44px). Use 3rem for h-12 if you prefer. */
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  line-height: 1.4;
 }
