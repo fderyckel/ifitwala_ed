@@ -4,6 +4,34 @@
 
 
 					<div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+						<div class="w-44 shrink-0">
+							<FormControl
+								type="select"
+								size="md"
+								:options="schoolOptions"
+								option-label="label"
+								option-value="value"
+								:model-value="filters.school"
+								:disabled="schoolsLoading || !schoolOptions.length"
+								placeholder="School"
+								@update:modelValue="onSchoolSelected"
+							/>
+						</div>
+
+						<div class="w-44 shrink-0">
+							<FormControl
+								type="select"
+								size="md"
+								:options="programOptions"
+								option-label="label"
+								option-value="value"
+								:model-value="filters.program"
+								:disabled="programsLoading || !programOptions.length"
+								placeholder="Program"
+								@update:modelValue="onProgramSelected"
+							/>
+						</div>
+
 						<div class="w-64 shrink-0">
 							<FormControl
 								type="select"
@@ -319,9 +347,13 @@ const DEFAULT_COLOR = '#2563eb'
 const SAVE_DEBOUNCE_MS = 700
 
 const filters = reactive({
-	student_group: '' as string,
+	school: null as string | null,
+	program: null as string | null,
+	student_group: null as string | null,
 	default_code: DEFAULT_CODE_NAME,
 })
+
+const defaultSchool = ref<string | null>(null)
 
 const route = useRoute()
 const router = useRouter()
@@ -418,7 +450,7 @@ const programResource = createResource({
 const groupResource = createResource({
 	url: 'ifitwala_ed.api.student_attendance.fetch_portal_student_groups',
 	params: () => ({
-		school: filters.school,
+		school: filters.school || defaultSchool.value,
 		program: filters.program,
 	}),
 	method: 'POST',
