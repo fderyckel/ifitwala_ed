@@ -55,3 +55,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Espresso dropdown list height */
+.frappe-ui-autocomplete-options {
+	max-height: 250px !important;
+	overflow-y: auto;
+}

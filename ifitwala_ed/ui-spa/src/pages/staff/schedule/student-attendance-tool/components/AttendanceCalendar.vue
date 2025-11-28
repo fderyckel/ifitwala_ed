@@ -177,29 +177,16 @@ function selectDay(day: CalendarDay) {
 }
 
 function dayButtonClass(day: CalendarDay) {
-	const classes = [
-		'calendar-day group aspect-square rounded-xl px-2 py-3 text-center text-sm transition text-slate-700',
-		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(var(--jacaranda-rgb),0.52)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-		'disabled:cursor-not-allowed disabled:opacity-50',
-	]
-
-	if (day.isWeekend) classes.push('calendar-day--weekend')
-	if (!day.inCurrentMonth) classes.push('calendar-day--muted')
-	if (day.isMeeting) classes.push('calendar-day--meeting')
-	if (day.isRecorded) classes.push('calendar-day--recorded')
-	if (props.selectedDate === day.iso) classes.push('calendar-day--selected')
-	if (day.isPast) classes.push('calendar-day--past')
-	if (!day.isMeeting) classes.push('calendar-day--inactive')
-
-	return classes.join(' ')
+	return [
+		'calendar-day group relative w-full aspect-square p-1',
+		'focus-visible:outline-none',
+		props.selectedDate === day.iso ? 'calendar-day--selected' : '',
+		!day.isMeeting ? 'cursor-default' : 'cursor-pointer',
+	].filter(Boolean).join(' ')
 }
 
 function dayBadgeClass(day: CalendarDay) {
 	const classes = ['calendar-day__badge']
-
-	if (!day.inCurrentMonth) {
-		classes.push('calendar-day__badge--muted')
-	}
 
 	if (day.isToday) {
 		classes.push('calendar-day__badge--today')
@@ -207,12 +194,10 @@ function dayBadgeClass(day: CalendarDay) {
 		classes.push('calendar-day__badge--recorded')
 	} else if (day.isMeeting) {
 		classes.push('calendar-day__badge--meeting')
-	} else {
-		classes.push('calendar-day__badge--idle')
 	}
 
-	if (day.isPast && !day.isToday && !day.isRecorded) {
-		classes.push('calendar-day__badge--past')
+	if ((!day.inCurrentMonth || day.isPast) && !day.isRecorded && !day.isToday) {
+		classes.push('calendar-day__badge--muted')
 	}
 
 	return classes.join(' ')
@@ -259,106 +244,72 @@ function parseMonth(key: string) {
 </script>
 
 <style scoped>
+/* 1. Base Day Cell - Clean up interaction */
 .calendar-day {
 	border: 1px solid transparent;
 	background: transparent;
-	transition:
-		border-color 120ms ease,
-		box-shadow 120ms ease,
-		transform 120ms ease,
-		background-color 120ms ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: transform 120ms ease;
 }
 
-.calendar-day--weekend {
-	background: linear-gradient(180deg, rgba(var(--sky-rgb), 0.14), rgba(255, 255, 255, 0.08));
+/* 2. Handle Selection (The only "Box" that should remain) */
+.calendar-day--selected .calendar-day__badge {
+	background: rgb(var(--jacaranda-rgb));
+	color: #fff;
+	box-shadow: 0 4px 12px rgba(var(--jacaranda-rgb), 0.4);
+	transform: scale(1.1);
 }
 
-.calendar-day--muted {
-	color: rgba(var(--slate-rgb), 0.6);
-}
-
-.calendar-day--inactive {
-	background: transparent;
-}
-
-.calendar-day--meeting {
-	border-color: rgba(var(--leaf-rgb), 0.32);
-	background: rgba(var(--leaf-rgb), 0.08);
-	box-shadow: 0 8px 20px rgba(var(--leaf-rgb), 0.16);
-}
-
-.calendar-day--meeting:not(.calendar-day--selected):not(:disabled):hover {
-	transform: translateY(-1px);
-}
-
-.calendar-day--selected {
-	border-color: rgba(var(--jacaranda-rgb), 0.55);
-	background: linear-gradient(180deg, rgba(var(--jacaranda-rgb), 0.08), rgba(255, 255, 255, 0.96));
-	box-shadow: 0 0 0 3px rgba(var(--jacaranda-rgb), 0.45);
-}
-
-.calendar-day--past {
-	color: rgba(var(--slate-rgb), 0.7);
-}
-
+/* 3. The Badge (The Pill/Circle) - This becomes the primary indicator */
 .calendar-day__badge {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	height: 2.4rem;
-	min-width: 2.4rem;
-	padding: 0.25rem 0.65rem;
-	border-radius: 0.9rem;
-	font-weight: 600;
-	font-size: 0.95rem;
-	letter-spacing: -0.01em;
+	height: 2.25rem;
+	width: 2.25rem;
+	border-radius: 9999px;
+	font-weight: 500;
+	font-size: 0.9rem;
+	transition: all 150ms ease;
 	border: 1px solid transparent;
-	transition:
-		background-color 140ms ease,
-		color 140ms ease,
-		box-shadow 140ms ease,
-		border-color 140ms ease;
 }
 
+/* 4. Badge States */
+
+/* State: Today */
 .calendar-day__badge--today {
-	background: rgb(var(--jacaranda-rgb));
-	color: #fff;
-	box-shadow: 0 10px 24px rgba(var(--jacaranda-rgb), 0.3);
+	color: rgb(var(--jacaranda-rgb));
+	border-color: rgba(var(--jacaranda-rgb), 0.3);
+	font-weight: 700;
 }
 
+/* State: Meeting Day (The Green Ring) */
 .calendar-day__badge--meeting {
-	background: rgba(var(--leaf-rgb), 0.18);
+	background: #fff;
 	color: rgb(var(--leaf-rgb));
-	border-color: rgba(var(--leaf-rgb), 0.36);
-	box-shadow: 0 10px 22px rgba(var(--leaf-rgb), 0.2);
+	border-color: rgba(var(--leaf-rgb), 0.5);
+	box-shadow: 0 1px 2px rgba(var(--leaf-rgb), 0.1);
 }
 
+/* State: Meeting + Recorded (Filled Green) */
 .calendar-day__badge--recorded {
-	background: rgba(var(--leaf-rgb), 0.32);
-	color: #fff;
-	border-color: rgba(var(--leaf-rgb), 0.55);
-	box-shadow: 0 12px 28px rgba(var(--leaf-rgb), 0.26);
+	background: rgba(var(--leaf-rgb), 0.15);
+	color: rgb(var(--leaf-rgb));
+	border-color: transparent;
+	font-weight: 600;
 }
 
-.calendar-day__badge--idle {
-	color: rgba(var(--slate-rgb), 0.82);
-}
-
+/* State: Past/Muted */
 .calendar-day__badge--muted {
-	color: rgba(var(--slate-rgb), 0.55);
+	color: rgba(var(--slate-rgb), 0.3);
 }
 
-.calendar-day__badge--past {
-	background: rgba(var(--slate-rgb), 0.1);
-	color: rgba(var(--slate-rgb), 0.78);
-	border-color: rgba(var(--slate-rgb), 0.2);
-	box-shadow: none;
-}
-
-.calendar-day__badge--meeting.calendar-day__badge--past {
-	background: rgba(var(--slate-rgb), 0.14);
-	color: rgba(var(--slate-rgb), 0.82);
-	border-color: rgba(var(--slate-rgb), 0.26);
-	box-shadow: none;
+/* Hover Effects on the Badge */
+.calendar-day:hover .calendar-day__badge--meeting {
+	border-color: rgb(var(--leaf-rgb));
+	background: rgba(var(--leaf-rgb), 0.05);
+	cursor: pointer;
 }
 </style>

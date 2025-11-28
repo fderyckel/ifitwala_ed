@@ -11,26 +11,20 @@
 			</div>
 
 			<div class="flex flex-wrap items-center gap-3">
-				<FormControl
-					type="select"
-					class="min-w-[260px] sm:min-w-[300px]"
-					:options="schoolOptions"
-					option-label="label"
-					option-value="value"
+				<Autocomplete
 					v-model="filters.school"
-					:disabled="schoolsLoading && !schools.length"
+					:options="schoolOptions"
 					:placeholder="__('School')"
+					:disabled="schoolsLoading && !schools.length"
+					class="min-w-[260px] sm:min-w-[300px] h-12"
 				/>
 
-				<FormControl
-					type="select"
-					class="min-w-[260px] sm:min-w-[300px]"
-					:options="programOptions"
-					option-label="label"
-					option-value="value"
+				<Autocomplete
 					v-model="filters.program"
-					:disabled="programsLoading && !programs.length"
+					:options="programOptions"
 					:placeholder="__('Program')"
+					:disabled="programsLoading && !programs.length"
+					class="min-w-[260px] sm:min-w-[300px] h-12"
 				/>
 
 				<FormControl
@@ -330,7 +324,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, FormControl, Badge, Dialog, FeatherIcon, Spinner, call, toast } from 'frappe-ui'
+import { Autocomplete, Button, FormControl, Badge, Dialog, FeatherIcon, Spinner, call, toast } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import AttendanceCalendar from './components/AttendanceCalendar.vue'
 import AttendanceGrid from './components/AttendanceGrid.vue'
