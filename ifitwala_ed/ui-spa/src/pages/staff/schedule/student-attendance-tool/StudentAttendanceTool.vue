@@ -305,7 +305,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { computed, reactive, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, FormControl, Badge, Dialog, FeatherIcon, Spinner, call, toast, createResource } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
@@ -319,7 +319,7 @@ const DEFAULT_COLOR = '#2563eb'
 const SAVE_DEBOUNCE_MS = 700
 
 const filters = reactive({
-	student_group: null as string | null,
+	student_group: '' as string,
 	default_code: DEFAULT_CODE_NAME,
 })
 
@@ -694,7 +694,6 @@ async function selectStudentGroup(groupName: string | null, options: { updateRou
 		return
 	}
 
-	await nextTick()
 	await loadWeekendAndSchedule()
 }
 
