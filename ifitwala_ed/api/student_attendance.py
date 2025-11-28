@@ -250,8 +250,8 @@ DAY_LABEL_TO_JS = {
 
 @frappe.whitelist()
 @redis_cache(ttl=86400)
-def get_weekend_days(student_group: str) -> list[int]:
-	"""Return weekend weekday numbers (JS 0–6) for the group's calendar.
+def get_weekend_days(student_group: str | None = None) -> list[int]:
+	"""Return weekend weekday numbers (JS 0-6) for the group's calendar.
 	Tries Holidays.weekly_off=1 first; falls back to School Calendar.weekly_off.
 	Default: [6, 0] (Sat, Sun)
 	"""

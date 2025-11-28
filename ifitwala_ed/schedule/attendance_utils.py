@@ -137,11 +137,14 @@ def list_attendance_codes(show_in_attendance_tool: int | None = 1) -> List[Dict[
 
 
 @frappe.whitelist()
-def attendance_recorded_dates(student_group: str) -> List[str]:
+def attendance_recorded_dates(student_group: str | None = None) -> List[str]:
 	"""
 	Return distinct dates where attendance exists for the given student group.
 	Used to highlight completed days on the calendar.
 	"""
+	if not student_group:
+		return []
+
 	rows = frappe.db.sql(
 		"""
 		SELECT DISTINCT attendance_date
@@ -434,7 +437,7 @@ def _meeting_dates_key(student_group: str) -> str:
 
 @frappe.whitelist()
 @redis_cache(ttl=MEETING_DATES_TTL)
-def get_meeting_dates(student_group: str, *, limit: int | None = None) -> List[str]:
+def get_meeting_dates(student_group: str | None = None, *, limit: int | None = None) -> List[str]:
     if not student_group:
         return []
 
