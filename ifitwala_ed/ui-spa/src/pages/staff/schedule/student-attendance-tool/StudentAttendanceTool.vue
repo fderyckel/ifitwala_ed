@@ -11,9 +11,10 @@
 								:options="schoolOptions"
 								option-label="label"
 								option-value="value"
-								v-model="filters.school"
+								:model-value="filters.school"
 								:placeholder="__('School')"
 								:disabled="schoolsLoading && !schools.length"
+								@update:modelValue="onSchoolSelected"
 							/>
 						</div>
 
@@ -23,9 +24,10 @@
 								:options="programOptions"
 								option-label="label"
 								option-value="value"
-								v-model="filters.program"
+								:model-value="filters.program"
 								:placeholder="__('Program')"
 								:disabled="programsLoading && !programs.length"
+								@update:modelValue="onProgramSelected"
 							/>
 						</div>
 
@@ -35,9 +37,10 @@
 								:options="groupOptions"
 								option-label="label"
 								option-value="value"
-								v-model="filters.student_group"
+								:model-value="filters.student_group"
 								:disabled="groupsLoading && !groupOptions.length"
-								placeholder="Select Group"
+								:placeholder="__('Select Group')"
+								@update:modelValue="onStudentGroupSelected"
 							/>
 						</div>
 
@@ -47,8 +50,9 @@
 								:options="defaultCodeOptions"
 								option-label="label"
 								option-value="value"
-								v-model="filters.default_code"
-								:disabled="!attendanceCodes.length"
+								:model-value="filters.default_code"
+								:disabled="codesLoading || !attendanceCodes.length"
+								@update:modelValue="onDefaultCodeChange"
 							/>
 						</div>
 
@@ -326,9 +330,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, reactive, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, FormControl, Badge, Dialog, FeatherIcon, Spinner, call, toast } from 'frappe-ui'
+import { Button, FormControl, Badge, Dialog, FeatherIcon, Spinner, call, toast, createResource } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import AttendanceCalendar from './components/AttendanceCalendar.vue'
 import AttendanceGrid from './components/AttendanceGrid.vue'
@@ -336,6 +340,8 @@ import RemarkDialog from './components/RemarkDialog.vue'
 import type { AttendanceCode, StudentRosterEntry, BlockKey } from './types'
 
 const DEFAULT_CODE_NAME = 'Present'
+const DEFAULT_COLOR = '#2563eb'
+const SAVE_DEBOUNCE_MS = 700
 
 const filters = reactive({
 	school: null as string | null,
@@ -353,39 +359,7 @@ function routeStudentGroupParam(): string | null {
 	return typeof value === 'string' && value ? value : null
 }
 
-let syncingFiltersFromRoute = false
-
-watch(
-	() => route.query.student_group,
-	() => {
-		syncingFiltersFromRoute = true
-		filters.student_group = routeStudentGroupParam()
-		syncingFiltersFromRoute = false
-	},
-	{ immediate: true },
-)
-
-watch(
-	() => filters.student_group,
-	(value) => {
-		if (syncingFiltersFromRoute) return
-		setRouteStudentGroupQuery(value)
-	},
-)
-
-function setRouteStudentGroupQuery(groupName: string | null) {
-	const current = routeStudentGroupParam()
-	if (current === groupName || (!current && !groupName)) {
-		return
-	}
-	const nextQuery = { ...route.query }
-	if (groupName) {
-		nextQuery.student_group = groupName
-	} else {
-		delete nextQuery.student_group
-	}
-	router.replace({ query: nextQuery }).catch(() => {})
-}
+const initialRouteGroup = ref<string | null>(routeStudentGroupParam())
 
 const searchTerm = ref('')
 const calendarMonth = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
@@ -402,14 +376,11 @@ const submitting = ref(false)
 const saving = ref(false)
 const justSaved = ref(false)
 let saveTimer: number | null = null
-const SAVE_DEBOUNCE_MS = 700
 
 // lastSaved[student][block] = { code, remark }
 const lastSaved = ref<Record<string, Record<BlockKey, { code: string; remark: string }>>>({})
 // set of "student|block" keys needing save
 const dirty = ref<Set<string>>(new Set())
-
-const rosterTotal = ref(0)
 
 const groupInfo = ref<{ name?: string | null; program?: string | null; course?: string | null; cohort?: string | null }>({})
 
@@ -436,18 +407,123 @@ const birthdayDialog = reactive({
 })
 
 const groups = ref<any[]>([])
-const groupsLoading = ref(false)
-const filtersReady = ref(false)
 const schools = ref<any[]>([])
 const programs = ref<any[]>([])
-const schoolsLoading = ref(false)
-const programsLoading = ref(false)
+const hasWarnedEmptyGroups = ref(false)
+
+const schoolResource = createResource({
+	url: 'ifitwala_ed.api.student_attendance.fetch_school_filter_context',
+	cache: 'school-filter-context',
+	auto: true,
+	transform: unwrapMessage,
+	onSuccess: onSchoolsLoaded,
+	onError: () => {
+		toast({
+			title: __('Could not load schools'),
+			message: __('Please refresh or choose a student group directly.'),
+			appearance: 'danger',
+		})
+	},
+})
+
+const programResource = createResource({
+	url: 'ifitwala_ed.api.student_attendance.fetch_active_programs',
+	cache: 'active-programs',
+	auto: true,
+	transform: unwrapMessage,
+	onSuccess: onProgramsLoaded,
+	onError: () => {
+		toast({
+			title: __('Could not load programs'),
+			message: __('Please refresh to try again.'),
+			appearance: 'danger',
+		})
+	},
+})
+
+const groupResource = createResource({
+	url: 'ifitwala_ed.api.student_attendance.fetch_portal_student_groups',
+	params: () => ({
+		school: filters.school,
+		program: filters.program,
+	}),
+	watch: [() => filters.school, () => filters.program],
+	immediate: true,
+	auto: true,
+	transform: unwrapMessage,
+	onSuccess: onGroupsLoaded,
+	onError: () => {
+		groups.value = []
+		toast({
+			title: __('Could not load student groups'),
+			message: __('Please refresh or contact your administrator.'),
+			appearance: 'danger',
+		})
+	},
+})
+
+const attendanceCodeResource = createResource({
+	url: 'ifitwala_ed.schedule.attendance_utils.list_attendance_codes',
+	auto: true,
+	transform: unwrapMessage,
+	onSuccess: onAttendanceCodesLoaded,
+	onError: () => {
+		toast({
+			title: __('Could not load attendance codes'),
+			appearance: 'danger',
+		})
+	},
+})
+
+const weekendResource = createResource({
+	url: 'ifitwala_ed.api.student_attendance.get_weekend_days',
+	params: () => ({
+		student_group: filters.student_group,
+	}),
+	auto: false,
+	transform: unwrapMessage,
+	onSuccess: (days) => {
+		if (Array.isArray(days) && days.length) {
+			weekendDays.value = days
+				.map((d: any) => Number(d))
+				.filter((n: number) => Number.isInteger(n) && n >= 0 && n <= 6)
+		} else {
+			weekendDays.value = [6, 0]
+		}
+	},
+	onError: () => {
+		weekendDays.value = [6, 0]
+	},
+})
+
+const meetingDatesResource = createResource({
+	url: 'ifitwala_ed.schedule.attendance_utils.get_meeting_dates',
+	params: () => ({
+		student_group: filters.student_group,
+	}),
+	auto: false,
+	transform: unwrapMessage,
+})
+
+const recordedDatesResource = createResource({
+	url: 'ifitwala_ed.schedule.attendance_utils.attendance_recorded_dates',
+	params: () => ({
+		student_group: filters.student_group,
+	}),
+	auto: false,
+	transform: unwrapMessage,
+})
+
+const schoolsLoading = computed(() => schoolResource.loading)
+const programsLoading = computed(() => programResource.loading)
+const groupsLoading = computed(() => groupResource.loading)
+const codesLoading = computed(() => attendanceCodeResource.loading)
 
 const groupOptions = computed(() =>
 	(groups.value || []).map((row: any) => ({
 		label: row.student_group_name || row.name,
 		value: row.name,
-	}))
+	})),
 )
 
 const schoolOptions = computed(() => {
@@ -481,9 +557,11 @@ const programOptions = computed(() => {
 
 const defaultCodeOptions = computed(() =>
 	attendanceCodes.value.map((code) => ({
-		label: code.attendance_code ? `${code.attendance_code} · ${code.attendance_code_name || code.name}` : code.attendance_code_name || code.name,
+		label: code.attendance_code
+			? `${code.attendance_code} · ${code.attendance_code_name || code.name}`
+			: code.attendance_code_name || code.name,
 		value: code.name,
-	}))
+	})),
 )
 
 const codeColors = computed<Record<string, string>>(() => {
@@ -519,7 +597,7 @@ const availableMonths = computed(() => {
 })
 
 const submitLabel = computed(() => (hasExistingAttendance.value ? __('Update Attendance') : __('Submit Attendance')))
-const isMeetingDay = computed(() => selectedDate.value ? meetingDates.value.includes(selectedDate.value) : false)
+const isMeetingDay = computed(() => (selectedDate.value ? meetingDates.value.includes(selectedDate.value) : false))
 const canSubmit = computed(() => !!(filters.student_group && selectedDate.value && students.value.length && isMeetingDay.value))
 const canReload = computed(() => !!(filters.student_group && selectedDate.value && !calendarLoading.value))
 const hasExistingAttendance = computed(() => recordedDates.value.includes(selectedDate.value || ''))
@@ -530,11 +608,7 @@ const filteredStudents = computed(() => {
 	}
 	const q = searchTerm.value.toLowerCase().trim()
 	return students.value.filter((stu) => {
-		const haystack = [
-			stu.student,
-			stu.student_name,
-			stu.preferred_name,
-		]
+		const haystack = [stu.student, stu.student_name, stu.preferred_name]
 			.filter(Boolean)
 			.map((val) => String(val).toLowerCase())
 			.join(' ')
@@ -578,8 +652,6 @@ const dailyTotals = computed(() => {
 		.filter((entry) => entry.count > 0)
 })
 
-const DEFAULT_COLOR = '#2563eb'
-
 function withAlpha(hex: string, alpha: number) {
 	if (!hex) return `rgba(37, 99, 235, ${alpha})`
 	const value = hex.replace('#', '')
@@ -599,177 +671,163 @@ function unwrapMessage(res: any) {
 	return res
 }
 
-async function loadAttendanceCodes() {
-	try {
-		const response = await call('ifitwala_ed.schedule.attendance_utils.list_attendance_codes')
-		const items = unwrapMessage(response) ?? []
-		attendanceCodes.value = items.map((row: any) => ({
-			...row,
-			color: row.color || DEFAULT_COLOR,
-		}))
-		if (!attendanceCodes.value.length) {
-			filters.default_code = ''
-			return
-		}
-		if (!attendanceCodes.value.find((code) => code.name === filters.default_code)) {
-			const present = attendanceCodes.value.find((code) => code.name === DEFAULT_CODE_NAME)
-			filters.default_code = present?.name || attendanceCodes.value[0].name
-		}
-	} catch (error) {
-		console.error('Failed to load attendance codes', error)
-		toast({
-			title: __('Could not load attendance codes'),
-			appearance: 'danger',
-		})
+function setRouteStudentGroupQuery(groupName: string | null) {
+	const current = routeStudentGroupParam()
+	if (current === groupName || (!current && !groupName)) {
+		return
 	}
+	const nextQuery = { ...route.query }
+	if (groupName) {
+		nextQuery.student_group = groupName
+	} else {
+		delete nextQuery.student_group
+	}
+	router.replace({ query: nextQuery }).catch(() => {})
 }
 
+function onSchoolsLoaded(payload: any) {
+	const data = payload || {}
+	const rows = Array.isArray(data.schools) ? data.schools : []
+	schools.value = rows
+	defaultSchool.value = data.default_school || null
 
-async function loadGroups() {
-  groupsLoading.value = true
-  try {
-    console.debug('[Attendance] Loading student groups')
-    const response = await call('ifitwala_ed.api.student_attendance.fetch_portal_student_groups', {
-      school: filters.school || defaultSchool.value,
-      program: filters.program,
-    })
-    const data = unwrapMessage(response)
-    groups.value = Array.isArray(data) ? data : []
-    console.debug('[Attendance] Loaded groups:', groups.value)
-
-    const names = groups.value.map((g: any) => g.name)
-    const requestedFromRoute = routeStudentGroupParam()
-
-    // 1) If URL has ?student_group=... and it’s visible, honour it and trigger load
-    if (requestedFromRoute && names.includes(requestedFromRoute)) {
-      if (filters.student_group !== requestedFromRoute) {
-        filters.student_group = requestedFromRoute
-      }
-    }
-    // 2) If nothing selected and only one group, auto-pick it (nice for instructors)
-    else if (!filters.student_group && groups.value.length === 1) {
-      filters.student_group = groups.value[0].name
-    }
-    // 3) If previously selected group is no longer in list, clear it hard
-    else if (filters.student_group && !names.includes(filters.student_group)) {
-      filters.student_group = null
-    }
-
-    if (!groups.value?.length) {
-      console.debug('[Attendance] No student groups returned from server')
-      // Only toast if we’re fully bootstrapped, to avoid noise on first load
-      if (filtersReady.value) {
-        toast({
-          title: __('No student groups found'),
-          message: __('You have no active student groups assigned.'),
-          appearance: 'warning',
-        })
-      }
-    }
-  } catch (error) {
-    console.error('Failed to load student groups', error)
-    toast({
-      title: __('Could not load student groups'),
-      message: __('Please refresh or contact your administrator.'),
-      appearance: 'danger',
-    })
-    groups.value = []
-  } finally {
-    groupsLoading.value = false
-  }
-}
-
-
-async function loadSchools() {
-	schoolsLoading.value = true
-	try {
-		const response = await call('ifitwala_ed.api.student_attendance.fetch_school_filter_context')
-		const payload = unwrapMessage(response) || {}
-		schools.value = Array.isArray(payload.schools) ? payload.schools : []
-		defaultSchool.value = payload.default_school || null
-
-		const schoolNames = schools.value.map((row: any) => row.name)
-		const firstAllowed = (defaultSchool.value && schoolNames.includes(defaultSchool.value))
+	const schoolNames = rows.map((row: any) => row.name)
+	const preferred =
+		(defaultSchool.value && schoolNames.includes(defaultSchool.value))
 			? defaultSchool.value
 			: schoolNames[0] || null
 
-		// Clamp selection to allowed set and prefer the user's default
-		if (!filters.school || !schoolNames.includes(filters.school)) {
-			filters.school = firstAllowed
+	if (!filters.school || !schoolNames.includes(filters.school)) {
+		filters.school = preferred
+	}
+}
+
+function onProgramsLoaded(payload: any) {
+	programs.value = Array.isArray(payload) ? payload : []
+}
+
+function onGroupsLoaded(payload: any) {
+	const list = Array.isArray(payload) ? payload : []
+	groups.value = list
+	const names = list.map((g: any) => g.name)
+
+	if (initialRouteGroup.value) {
+		if (names.includes(initialRouteGroup.value)) {
+			void selectStudentGroup(initialRouteGroup.value, { updateRoute: false })
 		}
-	} catch (error) {
-		console.error('Failed to load schools for attendance filters', error)
+		initialRouteGroup.value = null
+	}
+
+	if (filters.student_group && names.includes(filters.student_group)) {
+		return
+	}
+
+	if (filters.student_group && !names.includes(filters.student_group)) {
+		void selectStudentGroup(null)
+		return
+	}
+
+	if (!filters.student_group && list.length === 1) {
+		void selectStudentGroup(list[0].name)
+		return
+	}
+
+	if (!list.length && hasWarnedEmptyGroups.value) {
+		return
+	}
+	if (!list.length) {
+		hasWarnedEmptyGroups.value = true
 		toast({
-			title: __('Could not load schools'),
-			message: __('Please refresh or choose a student group directly.'),
-			appearance: 'danger',
+			title: __('No student groups found'),
+			message: __('You have no active student groups assigned.'),
+			appearance: 'warning',
 		})
-	} finally {
-		schoolsLoading.value = false
 	}
 }
 
-async function loadPrograms() {
-	programsLoading.value = true
-	try {
-		const response = await call('ifitwala_ed.api.student_attendance.fetch_active_programs')
-		const data = unwrapMessage(response)
-		programs.value = Array.isArray(data) ? data : []
-	} catch (error) {
-		console.error('Failed to load programs for attendance filters', error)
-		toast({
-			title: __('Could not load programs'),
-			message: __('Please refresh to try again.'),
-			appearance: 'danger',
-		})
-	} finally {
-		programsLoading.value = false
+function onAttendanceCodesLoaded(items: any) {
+	const rows = Array.isArray(items) ? items : []
+	attendanceCodes.value = rows.map((row: any) => ({
+		...row,
+		color: row.color || DEFAULT_COLOR,
+	}))
+	if (!attendanceCodes.value.length) {
+		filters.default_code = ''
+		return
+	}
+	if (!attendanceCodes.value.find((code) => code.name === filters.default_code)) {
+		const present = attendanceCodes.value.find((code) => code.name === DEFAULT_CODE_NAME)
+		filters.default_code = present?.name || attendanceCodes.value[0].name
 	}
 }
 
-async function bootstrapFilters() {
-	try {
-		await Promise.all([loadSchools(), loadPrograms()])
-	} finally {
-		filtersReady.value = true
-	}
-	await loadGroups()
-}
-
-
-async function onGroupChange() {
-	if (saveTimer) window.clearTimeout(saveTimer)
- 	if (dirty.value.size) { void persistChanges() }    // don't lose edits
+function clearGroupState() {
 	selectedDate.value = null
 	searchTerm.value = ''
 	meetingDates.value = []
 	recordedDates.value = []
 	groupInfo.value = {}
-	dirty.value.clear()
 	students.value = []
-	if (filters.student_group) {
-		void loadWeekendDays()
-		void loadCalendarData({ preserveSelection: false })
-	}
+	blocks.value = []
+	lastSaved.value = {}
+	dirty.value.clear()
+	saving.value = false
+	justSaved.value = false
+	weekendDays.value = [6, 0]
 }
 
-function onDefaultCodeChange() {
+async function onSchoolSelected(value: string | null) {
+	if (filters.school === value) return
+	await selectStudentGroup(null)
+	filters.school = value
+}
+
+async function onProgramSelected(value: string | null) {
+	if (filters.program === value) return
+	await selectStudentGroup(null)
+	filters.program = value
+}
+
+async function onStudentGroupSelected(value: string | null) {
+	await selectStudentGroup(value)
+}
+
+function onDefaultCodeChange(value: string) {
+	if (filters.default_code === value) return
+	filters.default_code = value
 	applyDefaultCode({ silent: true })
 }
 
-async function loadWeekendDays() {
+async function selectStudentGroup(groupName: string | null, options: { updateRoute?: boolean } = {}) {
+	const current = filters.student_group
+	if (current === groupName) return
+
+	if (saveTimer) window.clearTimeout(saveTimer)
+	if (dirty.value.size) {
+		await persistChanges()
+	}
+
+	filters.student_group = groupName
+	if (options.updateRoute !== false) {
+		setRouteStudentGroupQuery(groupName)
+	}
+
+	clearGroupState()
+
+	if (!groupName) {
+		return
+	}
+
+	await loadWeekendAndSchedule()
+}
+
+async function loadWeekendAndSchedule() {
 	try {
-		const res = await call('ifitwala_ed.api.student_attendance.get_weekend_days', {
-			student_group: filters.student_group,
-		})
-		const days = unwrapMessage(res) ?? []
-		if (Array.isArray(days) && days.length) {
-			weekendDays.value = days.map((d: any) => Number(d)).filter((n: any) => Number.isInteger(n) && n >= 0 && n <= 6)
-		}
-	} catch (e) {
-		console.warn('Weekend days fallback to default [6,0]', e)
+		await weekendResource.reload()
+	} catch {
 		weekendDays.value = [6, 0]
 	}
+	await loadCalendarData({ preserveSelection: false })
 }
 
 async function loadCalendarData(options: { preserveSelection?: boolean } = {}) {
@@ -778,11 +836,11 @@ async function loadCalendarData(options: { preserveSelection?: boolean } = {}) {
 	calendarLoading.value = true
 	try {
 		const [meetingsResponse, recordedResponse] = await Promise.all([
-			call('ifitwala_ed.schedule.attendance_utils.get_meeting_dates', { student_group: filters.student_group }),
-			call('ifitwala_ed.schedule.attendance_utils.attendance_recorded_dates', { student_group: filters.student_group }),
+			meetingDatesResource.reload(),
+			recordedDatesResource.reload(),
 		])
-		meetingDates.value = unwrapMessage(meetingsResponse) ?? []
-		recordedDates.value = unwrapMessage(recordedResponse) ?? []
+		meetingDates.value = meetingsResponse ?? []
+		recordedDates.value = recordedResponse ?? []
 
 		if (!meetingDates.value.length) {
 			selectedDate.value = null
@@ -847,7 +905,6 @@ async function loadRoster() {
 		const normalizedBlocks = blocksForDay.length ? blocksForDay : [-1]
 
 		groupInfo.value = roster.group_info || {}
-		rosterTotal.value = roster.total || (roster.students ? roster.students.length : 0)
 
 		students.value = (roster.students || []).map((stu: any) => {
 			const studentEntry: StudentRosterEntry = {
@@ -998,7 +1055,6 @@ function applyDefaultCode(options: { silent?: boolean } = {}) {
 	}
 }
 
-
 async function persistChanges() {
 	if (!filters.student_group || !selectedDate.value) return
 	if (!dirty.value.size) return
@@ -1031,9 +1087,7 @@ async function persistChanges() {
 			saving.value = false
 			return
 		}
-		const response = await call('ifitwala_ed.schedule.attendance_utils.bulk_upsert_attendance', { payload })
-		const result = unwrapMessage(response) || {}
-		// update snapshot only for what we sent (success assumed per server method contract)
+		await call('ifitwala_ed.schedule.attendance_utils.bulk_upsert_attendance', { payload })
 		for (const row of payload) {
 			lastSaved.value[row.student] = lastSaved.value[row.student] || ({} as any)
 			lastSaved.value[row.student][row.block_number] = {
@@ -1042,7 +1096,6 @@ async function persistChanges() {
 			}
 			dirty.value.delete(keyOf(row.student, row.block_number))
 		}
-		// subtle feedback without noise
 		justSaved.value = true
 		window.setTimeout(() => (justSaved.value = false), 1200)
 	} catch (error: any) {
@@ -1074,11 +1127,9 @@ function showMedical(student: StudentRosterEntry) {
 }
 
 function formatMedicalInfo(input: string) {
-	// 1) consider empty when content is just empty HTML
 	const raw = String(input || '')
 	const plain = raw.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').trim()
 	if (!plain) return ''
-	// 2) very small sanitizer: remove script/style and on* attrs
 	let safe = raw
 		.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
 		.replace(/\son\w+="[^"]*"/gi, '')
@@ -1107,56 +1158,22 @@ function showBirthday(student: StudentRosterEntry) {
 }
 
 function beforeUnloadGuard(e: BeforeUnloadEvent) {
-  if (saving.value || dirty.value.size) {
-    // best effort flush; don’t block long
-    if (dirty.value.size) { void persistChanges() }
-    e.preventDefault()
-    e.returnValue = ''
-  }
+	if (saving.value || dirty.value.size) {
+		if (dirty.value.size) {
+			void persistChanges()
+		}
+		e.preventDefault()
+		e.returnValue = ''
+	}
 }
 
 onMounted(() => {
-	loadAttendanceCodes()
-	void bootstrapFilters()
 	window.addEventListener('beforeunload', beforeUnloadGuard)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('beforeunload', beforeUnloadGuard)
+	window.removeEventListener('beforeunload', beforeUnloadGuard)
 })
-
-watch(
-	() => groups.value,
-	(newVal) => {
-		console.debug('[Attendance] groups updated:', newVal)
-	},
-	{ deep: true }
-)
-
-watch(
-  () => [filters.school, filters.program],
-  () => {
-    if (!filtersReady.value) return
-
-    // Clear any existing selection and related state
-    if (filters.student_group) {
-      filters.student_group = null
-    }
-
-    selectedDate.value = null
-    meetingDates.value = []
-    recordedDates.value = []
-    students.value = []
-    groupInfo.value = {}
-
-    // Then reload groups for the new filter context
-    void loadGroups()
-  }
-)
-
-
-watch(() => filters.student_group, onGroupChange)
-watch(() => filters.default_code, onDefaultCodeChange)
 </script>
 
 <style scoped>
