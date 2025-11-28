@@ -13,6 +13,7 @@ from ifitwala_ed.api.student_groups import (
 from ifitwala_ed.utilities.school_tree import (
 	get_descendant_schools,
 	get_user_default_school,
+	_is_adminish,
 )
 
 PORTAL_GROUP_FIELDS = [
@@ -50,15 +51,30 @@ def fetch_portal_student_groups(school: str | None = None, program: str | None =
 
 	roles = _user_roles(user)
 
-	if roles & TRIAGE_ROLES:
-		return _query_groups(filters)
+	# 1. School Scope Check
+	# If the user is restricted to a school, they can only see groups in that school (or descendants)
+	allowed_schools = _get_allowed_school_scope(user)
+	if allowed_schools is not None:
+		# If allowed_schools is a list, we filter by it.
+		# If it's empty, it means they have no access to any school? Or maybe they are not linked to a school.
+		# If they are not linked to a school, do we show all?
+		# The requirement says: "The employee should only be able to see his/her own school... or once of its descendants."
+		if not allowed_schools:
+			# If user has no school assigned, and is not admin, they might see nothing?
+			# Let's assume if no school is assigned, they see nothing if they are not admin.
+			if not (roles & {"System Manager", "Administrator", "Academic Admin"}):
+                 return []
+		else:
+			filters["school"] = ["in", allowed_schools]
 
-	# Restrict to instructor-linked groups
-	group_names = _instructor_group_names(user)
-	if not group_names:
-		return []
+	# 2. Instructor Group Check
+	# If they are not in a triage role, they only see their assigned groups.
+	if not (roles & TRIAGE_ROLES):
+		group_names = _instructor_group_names(user)
+		if not group_names:
+			return []
+		filters["name"] = ["in", list(group_names)]
 
-	filters["name"] = ["in", list(group_names)]
 	return _query_groups(filters)
 
 
@@ -71,30 +87,88 @@ def _query_groups(filters: dict[str, object]):
 	)
 
 
+def _get_allowed_school_scope(user: str) -> list[str] | None:
+	"""
+	Return the list of schools the user is allowed to access.
+	- If Admin/System Manager: None (all schools).
+	- If Employee with school: [school, *descendants].
+	- If no school linked: [] (no access).
+	"""
+	if _is_adminish(user):
+		return None
+
+	default_school = get_user_default_school()
+	if default_school:
+		# Use db.get_value to avoid permission issues
+		values = frappe.db.get_value("School", default_school, ["lft", "rgt"], as_dict=True)
+		if values:
+			return [
+				s.name
+				for s in frappe.get_all(
+					"School",
+					filters={"lft": (">=", values.lft), "rgt": ("<=", values.rgt)},
+					fields=["name"]
+				)
+			]
+	return []
+
+
 def _expand_school_scope(school: str | None) -> list[str] | None:
 	"""
 	Return an allowed list of schools for filtering:
 	- Always restrict to the current user's default school + descendants.
 	- If an explicit school is requested, only allow it when it sits inside that scope.
 	"""
-	default_school = get_user_default_school()
-	allowed_scope = get_descendant_schools(default_school) if default_school else []
+	user = frappe.session.user
+	allowed_scope = _get_allowed_school_scope(user)
 
-	# No explicit selection → use allowed scope (or None to keep old behaviour)
+	# If allowed_scope is None, it means all schools are allowed (Admin)
+	if allowed_scope is None:
+		if not school:
+			return None
+		# If specific school requested, return it + descendants
+		try:
+			# Use db.get_value to avoid permission issues
+			values = frappe.db.get_value("School", school, ["lft", "rgt"], as_dict=True)
+			if values:
+				return [
+					s.name
+					for s in frappe.get_all(
+						"School",
+						filters={"lft": (">=", values.lft), "rgt": ("<=", values.rgt)},
+						fields=["name"]
+					)
+				]
+			return [school]
+		except Exception:
+			return [school]
+
+	# If allowed_scope is a list (restricted)
 	if not school:
-		return allowed_scope or None
+		return allowed_scope
 
+	# If specific school requested, check if it's in allowed_scope
+	# And return intersection of requested descendants AND allowed scope
 	try:
-		requested_scope = get_descendant_schools(school)
-	except frappe.DoesNotExistError:
+		# Use db.get_value to avoid permission issues
+		values = frappe.db.get_value("School", school, ["lft", "rgt"], as_dict=True)
+		requested_scope = []
+		if values:
+			requested_scope = [
+				s.name
+				for s in frappe.get_all(
+					"School",
+					filters={"lft": (">=", values.lft), "rgt": ("<=", values.rgt)},
+					fields=["name"]
+				)
+			]
+		else:
+			requested_scope = [school]
+	except Exception:
 		requested_scope = [school]
 
-	# If we know the allowed scope, clamp to it; otherwise return requested scope as-is
-	if allowed_scope:
-		intersection = [s for s in requested_scope if s in allowed_scope]
-		return intersection or allowed_scope
-
-	return requested_scope
+	intersection = [s for s in requested_scope if s in allowed_scope]
+	return intersection or []
 
 
 def _expand_program_scope(program: str | None) -> list[str] | None:
