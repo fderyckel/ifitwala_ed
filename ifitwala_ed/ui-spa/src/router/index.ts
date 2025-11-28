@@ -17,14 +17,16 @@ const routes: RouteRecordRaw[] = [
   { path: '/student/logs', name: 'student-logs', component: () => import('@/pages/student/StudentLogs.vue'), meta: { layout: 'student' } },
   { path: '/student/profile', name: 'student-profile', component: () => import('@/pages/student/Profile.vue'), meta: { layout: 'student' } },
   { path: '/student/courses', name: 'student-courses', component: () => import('@/pages/student/Courses.vue'), meta: { layout: 'student' } },
-	{ path: '/student/courses/:course_id', name: 'student-course-detail', component: () => import('@/pages/student/CourseDetail.vue'), props: route => ({ course_id: String(route.params.course_id || '') }), meta: { layout: 'student' }},
+  { path: '/student/courses/:course_id', name: 'student-course-detail', component: () => import('@/pages/student/CourseDetail.vue'), props: route => ({ course_id: String(route.params.course_id || '') }), meta: { layout: 'student' }},
 
-	// Guardian
+  // Guardian
   { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue'), meta: { layout: 'student' } },
   { path: '/guardian/students/:student_id', name: 'guardian-student', component: () => import('@/pages/guardian/GuardianStudentShell.vue'), meta: { layout: 'student' } },
 
  // Staff
   { path: '/staff', name: 'staff-home', component: () => import('@/pages/staff/StaffHome.vue'), meta: { layout: 'staff' } },
+
+	{path: '/staff/morning-brief', name: 'MorningBriefing', component: () => import('@/pages/staff/morning_brief/MorningBriefing.vue'), meta: { layout: 'staff' } },
   { path: '/staff/student-groups', name: 'staff-student-groups', component: () => import('@/pages/staff/schedule/student-groups/StudentGroups.vue'), meta: { layout: 'staff' } },
   { path: '/staff/attendance', name: 'staff-attendance', component: () => import('@/pages/staff/schedule/student-attendance-tool/StudentAttendanceTool.vue'), meta: { layout: 'staff' } },
   { path: '/staff/gradebook', name: 'staff-gradebook', component: () => import('@/pages/staff/gradebook/Gradebook.vue'), meta: { layout: 'staff' } },
