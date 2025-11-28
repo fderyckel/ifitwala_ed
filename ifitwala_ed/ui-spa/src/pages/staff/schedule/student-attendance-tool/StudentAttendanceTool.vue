@@ -807,6 +807,7 @@ async function onSchoolSelected(value: string | null) {
 	filters.student_group = null
 	setRouteStudentGroupQuery(null)
 	clearGroupState()
+	await groupResource.reload()
 }
 
 async function onProgramSelected(value: string | null) {
@@ -819,6 +820,7 @@ async function onProgramSelected(value: string | null) {
 	filters.student_group = null
 	setRouteStudentGroupQuery(null)
 	clearGroupState()
+	await groupResource.reload()
 }
 
 
@@ -852,6 +854,8 @@ async function selectStudentGroup(groupName: string | null, options: { updateRou
 		return
 	}
 
+	// ensure latest filters are persisted before dependent fetches
+	await groupResource.reload()
 	await loadWeekendAndSchedule()
 }
 
