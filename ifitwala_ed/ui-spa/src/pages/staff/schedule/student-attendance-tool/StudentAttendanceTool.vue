@@ -2,9 +2,8 @@
 	<div class="attendance-shell mx-auto flex h-full max-w-7xl flex-col gap-6 p-4 pb-10">
 		<header class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
 
-
 					<div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
-						
+
 						<div class="w-44 shrink-0">
 							<FormControl
 								type="select"
@@ -12,9 +11,9 @@
 								option-label="label"
 								option-value="value"
 								:model-value="filters.school"
+								@update:model-value="onSchoolChange"
 								:placeholder="__('School')"
 								:disabled="schoolsLoading && !schools.length"
-								@update:modelValue="onSchoolSelected"
 							/>
 						</div>
 
@@ -25,9 +24,9 @@
 								option-label="label"
 								option-value="value"
 								:model-value="filters.program"
+								@update:model-value="onProgramChange"
 								:placeholder="__('Program')"
 								:disabled="programsLoading && !programs.length"
-								@update:modelValue="onProgramSelected"
 							/>
 						</div>
 
@@ -38,9 +37,9 @@
 								option-label="label"
 								option-value="value"
 								:model-value="filters.student_group"
-								:disabled="groupsLoading && !groupOptions.length"
-								:placeholder="__('Select Group')"
-								@update:modelValue="onStudentGroupSelected"
+								@update:model-value="onStudentGroupChange"
+								:disabled="groupsLoading || !groupOptions.length"
+								placeholder="Select Group"
 							/>
 						</div>
 

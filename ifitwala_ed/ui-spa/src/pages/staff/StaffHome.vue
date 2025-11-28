@@ -38,7 +38,7 @@
 
         <div class="overflow-hidden rounded-2xl border border-sand-300 bg-white/95 shadow-sm">
 
-          <div class="bg-sand/20 p-8 text-center">
+          <div class="bg-sand/20 p-8 text-center hidden">
             <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-leaf/10">
               <FeatherIcon name="coffee" class="h-6 w-6 text-leaf" />
             </div>
@@ -58,15 +58,16 @@
           </div>
 
           <div
-            class="group flex cursor-pointer items-start gap-4 border-t border-sand-200 bg-white px-6 py-4 transition-colors hover:bg-sky/20"
+            class="group flex cursor-pointer items-start gap-4 border-b border-sand-200 bg-white px-6 py-4 transition-colors hover:bg-sky/20 last:border-0"
           >
             <div class="mt-1 h-5 w-5 rounded border-2 border-slate-300 transition-colors group-hover:border-jacaranda"></div>
-            <div>
+
+            <div class="flex-1">
               <p class="text-sm font-medium text-ink transition-colors group-hover:text-jacaranda">
                 Submit Semester Reports for Year 9
               </p>
               <div class="mt-1 flex items-center gap-3 text-xs text-slate-500">
-                <span class="flex items-center gap-1 text-clay">
+                <span class="flex items-center gap-1 text-clay font-medium">
                   <FeatherIcon name="alert-circle" class="h-3 w-3" /> Due Today
                 </span>
                 <span>•</span>
@@ -76,7 +77,7 @@
           </div>
 
           <div
-            class="group flex cursor-pointer items-start gap-4 border-t border-sand-200 bg-white px-6 py-4 transition-colors hover:bg-sky/20"
+            class="group flex cursor-pointer items-start gap-4 bg-white px-6 py-4 transition-colors hover:bg-sky/20"
           >
             <div class="mt-1 h-5 w-5 rounded border-2 border-slate-300 transition-colors group-hover:border-jacaranda"></div>
             <div>
@@ -90,7 +91,6 @@
               </div>
             </div>
           </div>
-
         </div>
       </div>
 
@@ -149,37 +149,52 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { FeatherIcon, createResource } from 'frappe-ui';
+import { FeatherIcon } from 'frappe-ui';
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue';
 
 // -----------------------------------------------------------------------------
-// DATA FETCHING
+// USER DATA (Restored to Original Working Logic)
 // -----------------------------------------------------------------------------
 
-const userDoc = createResource({
-  url: 'frappe.client.get',
-  makeParams(values) {
-    return { doctype: 'User', name: values.userId };
-  },
-});
+const userDoc = ref<any | null>(null);
 
-const loggedUser = createResource({
-  url: 'frappe.auth.get_logged_user',
-  auto: true,
-  onSuccess(data) {
-    if (data && data.message !== 'Guest') {
-      userDoc.fetch({ userId: data.message });
+onMounted(async () => {
+  try {
+    // 1) Who is logged in?
+    const whoRes = await fetch('/api/method/frappe.auth.get_logged_user', {
+      credentials: 'include',
+    });
+    const whoJson = await whoRes.json();
+    const userId = whoJson.message as string | undefined;
+
+    if (!userId || userId === 'Guest') {
+      return;
     }
-  },
+
+    // 2) Fetch the full User document
+    const userRes = await fetch(`/api/resource/User/${encodeURIComponent(userId)}`, {
+      credentials: 'include',
+    });
+    const userJson = await userRes.json();
+
+    userDoc.value = userJson.data || null;
+  } catch (error) {
+    console.error('[StaffHome] Failed to load user doc:', error);
+  }
 });
 
 const firstName = computed(() => {
-  if (userDoc.loading || !userDoc.data) return 'Staff';
-  const doc = userDoc.data;
-  if (doc.first_name) return doc.first_name;
-  if (doc.full_name) return doc.full_name.split(' ')[0];
+  const doc = userDoc.value;
+  if (!doc) return 'Staff';
+
+  if (doc.first_name && typeof doc.first_name === 'string') {
+    return doc.first_name;
+  }
+  if (doc.full_name && typeof doc.full_name === 'string') {
+    return doc.full_name.split(' ')[0];
+  }
   return 'Staff';
 });
 
