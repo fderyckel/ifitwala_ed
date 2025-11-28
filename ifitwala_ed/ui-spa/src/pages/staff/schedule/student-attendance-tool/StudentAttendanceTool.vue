@@ -13,7 +13,7 @@
 			<div class="flex flex-wrap items-center gap-3">
 				<FormControl
 					type="select"
-					class="min-w-[230px] sm:min-w-[250px]"
+					class="min-w-[260px] sm:min-w-[300px]"
 					:options="schoolOptions"
 					option-label="label"
 					option-value="value"
@@ -24,7 +24,7 @@
 
 				<FormControl
 					type="select"
-					class="min-w-[230px] sm:min-w-[250px]"
+					class="min-w-[260px] sm:min-w-[300px]"
 					:options="programOptions"
 					option-label="label"
 					option-value="value"
@@ -35,7 +35,7 @@
 
 				<FormControl
 					type="select"
-					class="min-w-[250px] sm:min-w-[300px]"
+					class="min-w-[320px] sm:min-w-[360px]"
 					:options="groupOptions"
 					option-label="label"
 					option-value="value"
@@ -45,7 +45,7 @@
 
 				<FormControl
 					type="select"
-					class="min-w-[220px] sm:min-w-[240px]"
+					class="min-w-[240px] sm:min-w-[280px]"
 					:options="defaultCodeOptions"
 					option-label="label"
 					option-value="value"

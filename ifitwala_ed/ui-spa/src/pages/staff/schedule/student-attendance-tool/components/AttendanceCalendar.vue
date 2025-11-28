@@ -178,7 +178,7 @@ function selectDay(day: CalendarDay) {
 
 function dayButtonClass(day: CalendarDay) {
 	const classes = [
-		'calendar-day group aspect-square rounded-xl border px-2 py-3 text-center text-sm transition text-slate-700',
+		'calendar-day group aspect-square rounded-xl px-2 py-3 text-center text-sm transition text-slate-700',
 		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(var(--jacaranda-rgb),0.52)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
 		'disabled:cursor-not-allowed disabled:opacity-50',
 	]
@@ -188,6 +188,7 @@ function dayButtonClass(day: CalendarDay) {
 	if (day.isMeeting) classes.push('calendar-day--meeting')
 	if (day.isRecorded) classes.push('calendar-day--recorded')
 	if (props.selectedDate === day.iso) classes.push('calendar-day--selected')
+	if (day.isPast) classes.push('calendar-day--past')
 	if (!day.isMeeting) classes.push('calendar-day--inactive')
 
 	return classes.join(' ')
@@ -208,6 +209,10 @@ function dayBadgeClass(day: CalendarDay) {
 		classes.push('calendar-day__badge--meeting')
 	} else {
 		classes.push('calendar-day__badge--idle')
+	}
+
+	if (day.isPast && !day.isToday && !day.isRecorded) {
+		classes.push('calendar-day__badge--past')
 	}
 
 	return classes.join(' ')
@@ -255,8 +260,8 @@ function parseMonth(key: string) {
 
 <style scoped>
 .calendar-day {
-	border-color: rgba(var(--border-rgb), 0.9);
-	background: rgba(255, 255, 255, 0.96);
+	border: 1px solid transparent;
+	background: transparent;
 	transition:
 		border-color 120ms ease,
 		box-shadow 120ms ease,
@@ -265,7 +270,7 @@ function parseMonth(key: string) {
 }
 
 .calendar-day--weekend {
-	background: linear-gradient(180deg, rgba(var(--sky-rgb), 0.4), rgba(255, 255, 255, 0.96));
+	background: linear-gradient(180deg, rgba(var(--sky-rgb), 0.14), rgba(255, 255, 255, 0.08));
 }
 
 .calendar-day--muted {
@@ -273,11 +278,12 @@ function parseMonth(key: string) {
 }
 
 .calendar-day--inactive {
-	background: rgba(var(--sky-rgb), 0.35);
+	background: transparent;
 }
 
 .calendar-day--meeting {
 	border-color: rgba(var(--leaf-rgb), 0.32);
+	background: rgba(var(--leaf-rgb), 0.08);
 	box-shadow: 0 8px 20px rgba(var(--leaf-rgb), 0.16);
 }
 
@@ -289,6 +295,10 @@ function parseMonth(key: string) {
 	border-color: rgba(var(--jacaranda-rgb), 0.55);
 	background: linear-gradient(180deg, rgba(var(--jacaranda-rgb), 0.08), rgba(255, 255, 255, 0.96));
 	box-shadow: 0 0 0 3px rgba(var(--jacaranda-rgb), 0.45);
+}
+
+.calendar-day--past {
+	color: rgba(var(--slate-rgb), 0.7);
 }
 
 .calendar-day__badge {
@@ -336,5 +346,19 @@ function parseMonth(key: string) {
 
 .calendar-day__badge--muted {
 	color: rgba(var(--slate-rgb), 0.55);
+}
+
+.calendar-day__badge--past {
+	background: rgba(var(--slate-rgb), 0.1);
+	color: rgba(var(--slate-rgb), 0.78);
+	border-color: rgba(var(--slate-rgb), 0.2);
+	box-shadow: none;
+}
+
+.calendar-day__badge--meeting.calendar-day__badge--past {
+	background: rgba(var(--slate-rgb), 0.14);
+	color: rgba(var(--slate-rgb), 0.82);
+	border-color: rgba(var(--slate-rgb), 0.26);
+	box-shadow: none;
 }
 </style>
