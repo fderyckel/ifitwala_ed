@@ -1,63 +1,68 @@
 <template>
 	<div class="attendance-shell mx-auto flex h-full max-w-7xl flex-col gap-6 p-4 pb-10">
-		<header class="flex flex-wrap items-center justify-between gap-4">
-			<div>
-				<h1 class="text-2xl font-semibold tracking-tight text-ink">
-					{{ __('Student Attendance') }}
-				</h1>
-				<p class="text-sm text-ink/70">
-					{{ __('Record daily attendance for your active student groups.') }}
-				</p>
-			</div>
+		<header class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+					<div class="min-w-0 flex-1">
+						<h1 class="text-2xl font-semibold tracking-tight text-ink">
+							{{ __('Student Attendance') }}
+						</h1>
+						<p class="text-sm text-ink/70 truncate">
+							{{ __('Record daily attendance for your active student groups.') }}
+						</p>
+					</div>
 
-			<div class="flex flex-wrap items-center gap-3">
-				<Autocomplete
-					v-model="filters.school"
-					:options="schoolOptions"
-					:placeholder="__('School')"
-					:disabled="schoolsLoading && !schools.length"
-					class="min-w-[260px] sm:min-w-[300px] h-12"
-				/>
+					<div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+						
+						<div class="w-44 shrink-0">
+							<Autocomplete
+								v-model="filters.school"
+								:options="schoolOptions"
+								:placeholder="__('School')"
+								:disabled="schoolsLoading && !schools.length"
+							/>
+						</div>
 
-				<Autocomplete
-					v-model="filters.program"
-					:options="programOptions"
-					:placeholder="__('Program')"
-					:disabled="programsLoading && !programs.length"
-					class="min-w-[260px] sm:min-w-[300px] h-12"
-				/>
+						<div class="w-44 shrink-0">
+							<Autocomplete
+								v-model="filters.program"
+								:options="programOptions"
+								:placeholder="__('Program')"
+								:disabled="programsLoading && !programs.length"
+							/>
+						</div>
 
-				<FormControl
-					type="select"
-					class="min-w-[320px] sm:min-w-[360px]"
-					:options="groupOptions"
-					option-label="label"
-					option-value="value"
-					v-model="filters.student_group"
-					:disabled="groupsLoading && !groupOptions.length"
-				/>
+						<div class="w-64 shrink-0">
+							<FormControl
+								type="select"
+								:options="groupOptions"
+								option-label="label"
+								option-value="value"
+								v-model="filters.student_group"
+								:disabled="groupsLoading && !groupOptions.length"
+								placeholder="Select Group"
+							/>
+						</div>
 
-				<FormControl
-					type="select"
-					class="min-w-[240px] sm:min-w-[280px]"
-					:options="defaultCodeOptions"
-					option-label="label"
-					option-value="value"
-					v-model="filters.default_code"
-					:disabled="!attendanceCodes.length"
-				/>
+						<div class="w-32 shrink-0">
+							<FormControl
+								type="select"
+								:options="defaultCodeOptions"
+								option-label="label"
+								option-value="value"
+								v-model="filters.default_code"
+								:disabled="!attendanceCodes.length"
+							/>
+						</div>
 
-				<Button
-					appearance="secondary"
-					class="whitespace-nowrap"
-					:disabled="!students.length || submitting"
-					@click="applyDefaultCode"
-				>
-					{{ __('Mark everyone as default') }}
-				</Button>
-			</div>
-		</header>
-
+						<Button
+							appearance="secondary"
+							class="shrink-0 whitespace-nowrap"
+							:disabled="!students.length || submitting"
+							@click="applyDefaultCode"
+						>
+							{{ __('Mark Default') }}
+						</Button>
+					</div>
+				</header>
 		<div class="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)]">
 			<section class="attendance-panel flex flex-col overflow-hidden rounded-2xl shadow-sm">
 				<div class="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-white/60 px-5 py-4">

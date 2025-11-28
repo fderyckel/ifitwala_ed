@@ -56,8 +56,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Espresso dropdown list height */
+/* ---------------------------------------------------
+   GLOBAL OVERRIDES (Espresso System)
+--------------------------------------------------- */
+
 .frappe-ui-autocomplete-options {
-	max-height: 250px !important;
-	overflow-y: auto;
+  max-height: 24rem !important; /* ~380px */
+  overflow-y: auto !important;
+}
+
+/* This ensures the dropdown matches the width of the input box exactly */
+.frappe-ui-autocomplete-options-container {
+  width: 100% !important;
+  min-width: unset !important; 
+  max-width: none !important;
 }
