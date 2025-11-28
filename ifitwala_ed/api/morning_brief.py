@@ -216,3 +216,248 @@ def get_ghosting_risks(grade_condition):
 	return frappe.db.sql(sql, (start_date), as_dict=True)
 
 
+import frappe
+from frappe.utils import today, add_days, getdate, formatdate
+
+@frappe.whitelist()
+def get_briefing_widgets():
+	"""
+	The Central Intelligence Dispatcher.
+	Returns a dictionary of widgets tailored to the logged-in user's roles.
+	"""
+	user = frappe.session.user
+	roles = frappe.get_roles(user)
+
+	widgets = {}
+
+	# ---------------------------------------
+	# 1. UNIVERSAL WIDGETS (All Staff)
+	# ---------------------------------------
+	if "Academic Staff" in roles or "Employee" in roles:
+		widgets["staff_birthdays"] = get_staff_birthdays()
+		# widgets["daily_bulletin"] = get_daily_bulletin() # Pending Schema
+
+	# ---------------------------------------
+	# 2. ACADEMIC ADMIN WIDGETS
+	# ---------------------------------------
+	if "Academic Admin" in roles or "System Manager" in roles:
+		widgets["clinic_volume"] = get_clinic_activity()
+		widgets["admissions_pulse"] = get_admissions_pulse()
+		widgets["critical_incidents"] = get_critical_incidents_count() # From Phase 1 Logic
+
+	# ---------------------------------------
+	# 3. INSTRUCTOR WIDGETS
+	# ---------------------------------------
+	if "Instructor" in roles:
+		my_groups = get_my_student_groups(user)
+		if my_groups:
+			widgets["my_student_birthdays"] = get_my_student_birthdays(my_groups)
+			widgets["medical_context"] = get_medical_context(my_groups)
+			widgets["grading_velocity"] = get_pending_grading_tasks(my_groups)
+			# widgets["attendance_alerts"] = get_attendance_alerts(my_groups) # Pending Schema
+
+	# ---------------------------------------
+	# 4. COUNSELOR WIDGETS
+	# ---------------------------------------
+	if "Counsellor" in roles or "Academic Admin" in roles:
+		# Re-using the logic from Phase 1 but wrapped as a widget
+		widgets["risk_watchlist"] = get_risk_watchlist_summary()
+
+	return widgets
+
+# ==============================================================================
+# UNIVERSAL LOGIC
+# ==============================================================================
+
+def get_staff_birthdays():
+	"""
+	Returns active employees with birthdays today or in the next 3 days.
+	Schema: Employee (employee_date_of_birth, status, employee_full_name, employee_image)
+	"""
+	# MySQL specific date formatting to match Day-Month
+	sql = """
+		SELECT
+			employee_full_name as name,
+			employee_image as image,
+			DATE_FORMAT(employee_date_of_birth, '%%d-%%b') as birthday_display,
+			employee_date_of_birth
+		FROM
+			`tabEmployee`
+		WHERE
+			status = 'Active'
+			AND employee_date_of_birth IS NOT NULL
+			AND (
+				DATE_FORMAT(employee_date_of_birth, '%%m-%%d') BETWEEN
+				DATE_FORMAT(CURDATE(), '%%m-%%d') AND
+				DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 3 DAY), '%%m-%%d')
+			)
+		ORDER BY
+			DATE_FORMAT(employee_date_of_birth, '%%m-%%d') ASC
+	"""
+	return frappe.db.sql(sql, as_dict=True)
+
+# ==============================================================================
+# ADMIN LOGIC
+# ==============================================================================
+
+def get_clinic_activity():
+	"""
+	Returns count of student visits for the last 3 days to spot spikes.
+	Schema: Student Patient Visit (date)
+	"""
+	dates = [today(), add_days(today(), -1), add_days(today(), -2)]
+	data = []
+
+	for d in dates:
+		count = frappe.db.count("Student Patient Visit", {"date": d, "docstatus": 1})
+		data.append({"date": formatdate(d, "dd-MMM"), "count": count})
+
+	return data
+
+def get_admissions_pulse():
+	"""
+	Returns count of new applications received in the last 7 days.
+	Schema: Student Applicant (creation, application_status)
+	"""
+	start_date = add_days(today(), -7)
+
+	sql = """
+		SELECT
+			COUNT(name) as count,
+			application_status
+		FROM
+			`tabStudent Applicant`
+		WHERE
+			creation >= %s
+		GROUP BY
+			application_status
+	"""
+	results = frappe.db.sql(sql, (start_date), as_dict=True)
+
+	# Format for UI: Total new + Status breakdown
+	total = sum([r['count'] for r in results])
+	return {"total_new_weekly": total, "breakdown": results}
+
+def get_critical_incidents_count():
+	"""
+	Recycled from Phase 1: High severity/Follow-up required logs.
+	"""
+	# Using the 'Other' logic + requires_follow_up as discussed
+	return frappe.db.count("Student Log", {
+		"requires_follow_up": 1,
+		"follow_up_status": "Open",
+		"docstatus": 1
+	})
+
+# ==============================================================================
+# INSTRUCTOR LOGIC
+# ==============================================================================
+
+def get_my_student_groups(user):
+	"""
+	Helper: Returns list of Student Group names where current user is an instructor.
+	Schema: Student Group (name) -> Student Group Instructor (instructor) -> User linkage
+	"""
+	# We need to map User -> Employee to find them in the Instructor child table
+	employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+	if not employee:
+		return []
+
+	sql = """
+		SELECT DISTINCT parent
+		FROM `tabStudent Group Instructor`
+		WHERE instructor = %s
+	"""
+	return [x[0] for x in frappe.db.sql(sql, (employee))]
+
+def get_my_student_birthdays(group_names):
+	"""
+	Returns students in the instructor's groups who have birthdays today.
+	Schema: Student Group Student -> Student (date_of_birth)
+	"""
+	if not group_names: return []
+
+	groups_formatted = "', '".join(group_names)
+
+	sql = f"""
+		SELECT DISTINCT
+			s.first_name,
+			s.last_name,
+			s.student_image
+		FROM
+			`tabStudent Group Student` sgs
+		INNER JOIN
+			`tabStudent` s ON sgs.student = s.name
+		WHERE
+			sgs.parent IN ('{groups_formatted}')
+			AND sgs.active = 1
+			AND DATE_FORMAT(s.date_of_birth, '%%m-%%d') = DATE_FORMAT(CURDATE(), '%%m-%%d')
+	"""
+	return frappe.db.sql(sql, as_dict=True)
+
+def get_medical_context(group_names):
+	"""
+	Returns Medical Notes for students in the instructor's groups.
+	Schema: Student Patient (student, medical_info)
+	"""
+	if not group_names: return []
+
+	groups_formatted = "', '".join(group_names)
+
+	# Fetch students with non-empty medical info
+	sql = f"""
+		SELECT DISTINCT
+			s.first_name,
+			s.last_name,
+			sp.medical_info,
+			sp.allergies,
+			sp.food_allergies
+		FROM
+			`tabStudent Group Student` sgs
+		INNER JOIN
+			`tabStudent` s ON sgs.student = s.name
+		INNER JOIN
+			`tabStudent Patient` sp ON sp.student = s.name
+		WHERE
+			sgs.parent IN ('{groups_formatted}')
+			AND sgs.active = 1
+			AND (sp.medical_info IS NOT NULL AND sp.medical_info != '')
+	"""
+	return frappe.db.sql(sql, as_dict=True)
+
+def get_pending_grading_tasks(group_names):
+	"""
+	Returns count of Tasks for these groups that are Graded, Past Due, and Published.
+	Schema: Task (is_graded, due_date, status, student_group)
+	"""
+	if not group_names: return 0
+
+	groups_formatted = "', '".join(group_names)
+
+	sql = f"""
+		SELECT COUNT(name)
+		FROM `tabTask`
+		WHERE
+			student_group IN ('{groups_formatted}')
+			AND is_graded = 1
+			AND is_published = 1
+			AND status != 'Closed'
+			AND due_date < CURDATE()
+	"""
+	count = frappe.db.sql(sql)[0][0]
+	return count
+
+# ==============================================================================
+# COUNSELOR LOGIC
+# ==============================================================================
+
+def get_risk_watchlist_summary():
+	"""
+	Simplified Phase 1 Logic for the Widget view.
+	"""
+	# Placeholder for the full logic we wrote in Phase 1
+	# In a real widget, we might just return the COUNT of high-risk students
+	return {
+		"count": 0, # Connect to Phase 1 'get_risk_watchlist' count
+		"description": "Students flagged for velocity or ghosting"
+	}

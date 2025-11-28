@@ -391,7 +391,7 @@ const schoolResource = createResource({
 	transform: unwrapMessage,
 	onSuccess: onSchoolsLoaded,
 	onError: () => {
-		toast({
+		notify({
 			title: __('Could not load schools'),
 			message: __('Please refresh or choose a student group directly.'),
 			appearance: 'danger',
@@ -407,7 +407,7 @@ const programResource = createResource({
 	transform: unwrapMessage,
 	onSuccess: onProgramsLoaded,
 	onError: () => {
-		toast({
+		notify({
 			title: __('Could not load programs'),
 			message: __('Please refresh to try again.'),
 			appearance: 'danger',
@@ -429,7 +429,7 @@ const groupResource = createResource({
 	onSuccess: onGroupsLoaded,
 	onError: () => {
 		groups.value = []
-		toast({
+		notify({
 			title: __('Could not load student groups'),
 			message: __('Please refresh or contact your administrator.'),
 			appearance: 'danger',
@@ -444,7 +444,7 @@ const attendanceCodeResource = createResource({
 	transform: unwrapMessage,
 	onSuccess: onAttendanceCodesLoaded,
 	onError: () => {
-		toast({
+		notify({
 			title: __('Could not load attendance codes'),
 			appearance: 'danger',
 		})
@@ -651,6 +651,13 @@ function unwrapMessage(res: any) {
 	return res
 }
 
+function notify(payload: any) {
+	if (typeof toast === 'function') {
+		return toast(payload)
+	}
+	console.warn('Toast unavailable', payload)
+}
+
 function setRouteStudentGroupQuery(groupName: string | null) {
 	const current = routeStudentGroupParam()
 	if (current === groupName || (!current && !groupName)) {
@@ -718,7 +725,7 @@ function onGroupsLoaded(payload: any) {
 	}
 	if (!list.length) {
 		hasWarnedEmptyGroups.value = true
-		toast({
+		notify({
 			title: __('No student groups found'),
 			message: __('You have no active student groups assigned.'),
 			appearance: 'warning',
@@ -860,7 +867,7 @@ async function loadCalendarData(options: { preserveSelection?: boolean } = {}) {
 		}
 	} catch (error) {
 		console.error('Failed to load calendar data', error)
-		toast({
+		notify({
 			title: __('Could not load meeting dates'),
 			appearance: 'danger',
 		})
@@ -930,7 +937,7 @@ async function loadRoster() {
 		dirty.value.clear()
 	} catch (error) {
 		console.error('Failed to load roster', error)
-		toast({
+		notify({
 			title: __('Could not load attendance roster'),
 			appearance: 'danger',
 		})
@@ -1042,7 +1049,7 @@ function applyDefaultCode(options: { silent?: boolean } = {}) {
 	if (!options.silent) {
 		const code = codeDictionary.value[filters.default_code]
 		const label = code?.attendance_code_name || filters.default_code
-		toast({
+		notify({
 			title: __('Default applied'),
 			message: __('Updated all students to {0}.', [label]),
 			appearance: 'info',
@@ -1095,7 +1102,7 @@ async function persistChanges() {
 		window.setTimeout(() => (justSaved.value = false), 1200)
 	} catch (error: any) {
 		console.error('Failed to autosave attendance', error)
-		toast({
+		notify({
 			title: __('Autosave failed'),
 			message: error?.message || __('Please try again.'),
 			appearance: 'danger',
@@ -1108,7 +1115,7 @@ async function persistChanges() {
 function showMedical(student: StudentRosterEntry) {
 	const html = formatMedicalInfo(student?.medical_info || '')
 	if (!html) {
-		toast({
+		notify({
 			title: __('No medical info'),
 			message: __('There is no medical information for this student.'),
 			appearance: 'info',
