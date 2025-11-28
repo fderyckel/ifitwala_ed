@@ -1,30 +1,29 @@
 <template>
 	<div class="attendance-shell mx-auto flex h-full max-w-7xl flex-col gap-6 p-4 pb-10">
 		<header class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-					<div class="min-w-0 flex-1">
-						<h1 class="text-2xl font-semibold tracking-tight text-ink">
-							{{ __('Student Attendance') }}
-						</h1>
-						<p class="text-sm text-ink/70 truncate">
-							{{ __('Record daily attendance for your active student groups.') }}
-						</p>
-					</div>
+
 
 					<div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
 						
 						<div class="w-44 shrink-0">
-							<Autocomplete
-								v-model="filters.school"
+							<FormControl
+								type="select"
 								:options="schoolOptions"
+								option-label="label"
+								option-value="value"
+								v-model="filters.school"
 								:placeholder="__('School')"
 								:disabled="schoolsLoading && !schools.length"
 							/>
 						</div>
 
 						<div class="w-44 shrink-0">
-							<Autocomplete
-								v-model="filters.program"
+							<FormControl
+								type="select"
 								:options="programOptions"
+								option-label="label"
+								option-value="value"
+								v-model="filters.program"
 								:placeholder="__('Program')"
 								:disabled="programsLoading && !programs.length"
 							/>
@@ -329,7 +328,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Autocomplete, Button, FormControl, Badge, Dialog, FeatherIcon, Spinner, call, toast } from 'frappe-ui'
+import { Button, FormControl, Badge, Dialog, FeatherIcon, Spinner, call, toast } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import AttendanceCalendar from './components/AttendanceCalendar.vue'
 import AttendanceGrid from './components/AttendanceGrid.vue'

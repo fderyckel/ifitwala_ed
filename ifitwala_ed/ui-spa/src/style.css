@@ -71,3 +71,9 @@
   min-width: unset !important; 
   max-width: none !important;
 }
+
+/* Force all Select inputs in the app to be 'Higher' (Taller) */
+.form-control select {
+  height: 3rem !important; /* 3rem = 48px (Matches h-12) */
+  line-height: normal; /* Centers text vertically */
+}
