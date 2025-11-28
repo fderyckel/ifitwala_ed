@@ -305,7 +305,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, reactive, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, FormControl, Badge, Dialog, FeatherIcon, Spinner, call, toast, createResource } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
@@ -415,7 +415,7 @@ const attendanceCodeResource = createResource({
 const weekendResource = createResource({
 	url: 'ifitwala_ed.api.student_attendance.get_weekend_days',
 	params: () => ({
-		student_group: filters.student_group,
+		student_group: filters.student_group || '',
 	}),
 	auto: false,
 	transform: unwrapMessage,
@@ -436,7 +436,7 @@ const weekendResource = createResource({
 const meetingDatesResource = createResource({
 	url: 'ifitwala_ed.schedule.attendance_utils.get_meeting_dates',
 	params: () => ({
-		student_group: filters.student_group,
+		student_group: filters.student_group || '',
 	}),
 	auto: false,
 	transform: unwrapMessage,
@@ -445,7 +445,7 @@ const meetingDatesResource = createResource({
 const recordedDatesResource = createResource({
 	url: 'ifitwala_ed.schedule.attendance_utils.attendance_recorded_dates',
 	params: () => ({
-		student_group: filters.student_group,
+		student_group: filters.student_group || '',
 	}),
 	auto: false,
 	transform: unwrapMessage,
@@ -694,6 +694,7 @@ async function selectStudentGroup(groupName: string | null, options: { updateRou
 		return
 	}
 
+	await nextTick()
 	await loadWeekendAndSchedule()
 }
 
