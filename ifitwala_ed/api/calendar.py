@@ -71,24 +71,13 @@ import pytz
 
 import frappe
 from frappe import _
-from frappe.utils import (
-	get_datetime,
-	get_system_timezone,
-	getdate,
-	now_datetime,
-	format_datetime,
-)
+from frappe.utils import get_datetime, get_system_timezone, getdate, now_datetime, format_datetime
 
-from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
-from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
+from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay
+from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar, iter_student_group_room_slots
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
-VALID_SOURCES = {
-	"student_group",
-	"meeting",
-	"school_event",
-	"frappe_event",
-}
+VALID_SOURCES = {"student_group", "meeting", "school_event", "frappe_event"}
 
 DEFAULT_WINDOW_DAYS = 30
 LOOKBACK_DAYS = 3
@@ -551,67 +540,37 @@ def _collect_student_group_events_from_schedule(
 	*,
 	employee_id: Optional[str] = None,
 ) -> List[CalendarEvent]:
+
 	start_date, end_date = window_start.date(), window_end.date()
 
 	employee_id = employee_id or frappe.db.get_value("Employee", {"user_id": user}, "name")
 	instructor_ids = _resolve_instructor_ids(user, employee_id)
 	sgi_groups, instructor_ids = _student_group_memberships(user, employee_id, instructor_ids)
 
-	slot_rows: List[dict] = []
+	# 1) Resolve all candidate groups via schedule + SG Instructor
+	group_names: set[str] = set()
+
 	if instructor_ids:
-		slot_rows.extend(
-			frappe.get_all(
-				"Student Group Schedule",
-				filters={
-					"parenttype": "Student Group",
-					"instructor": ["in", list(instructor_ids)],
-				},
-				fields=[
-					"parent",
-					"rotation_day",
-					"block_number",
-					"location",
-					"instructor",
-					"from_time",
-					"to_time",
-				],
-				ignore_permissions=True,
-			)
+		sg_from_sched = frappe.get_all(
+			"Student Group Schedule",
+			filters={
+				"parenttype": "Student Group",
+				"instructor": ["in", list(instructor_ids)],
+			},
+			pluck="parent",
+			distinct=True,
+			ignore_permissions=True,
 		)
+		group_names.update(sg_from_sched or [])
 
-	if sgi_groups:
-		slot_rows.extend(
-			frappe.get_all(
-				"Student Group Schedule",
-				filters={"parent": ["in", list(sgi_groups)]},
-				fields=[
-					"parent",
-					"rotation_day",
-					"block_number",
-					"location",
-					"instructor",
-					"from_time",
-					"to_time",
-				],
-				ignore_permissions=True,
-			)
-		)
+	group_names.update(sgi_groups)
 
-	if not slot_rows:
+	if not group_names:
 		return []
-
-	# Deduplicate slots
-	unique_slots: Dict[Tuple[str, int, int, Optional[time], Optional[time]], dict] = {}
-	for r in slot_rows:
-		key = (r.parent, r.rotation_day, r.block_number, r.from_time, r.to_time)
-		unique_slots[key] = r
-	slot_rows = list(unique_slots.values())
-
-	group_names = sorted({row.parent for row in slot_rows})
 
 	group_docs = frappe.get_all(
 		"Student Group",
-		filters={"name": ["in", group_names], "status": "Active"},
+		filters={"name": ["in", list(group_names)], "status": "Active"},
 		fields=[
 			"name",
 			"student_group_name",
@@ -624,57 +583,15 @@ def _collect_student_group_events_from_schedule(
 		],
 		ignore_permissions=True,
 	)
+
 	if not group_docs:
 		return []
 
 	course_meta = _course_meta_map(g.course for g in group_docs if g.course)
 
-	# Group slots by SG for easier rendering
-	slots_by_group: Dict[str, List[dict]] = defaultdict(list)
-	for slot in slot_rows:
-		if slot.rotation_day:
-			slots_by_group[slot.parent].append(slot)
-
-	rotation_cache: Dict[Tuple[str, str, int], Dict[int, List[date]]] = {}
 	events: List[CalendarEvent] = []
 
 	for group in group_docs:
-		slots = slots_by_group.get(group.name)
-		if not slots:
-			continue
-
-		school = group.school or get_school_for_student_group(group.name)
-		if not school:
-			continue
-
-		schedule_name = group.school_schedule or get_effective_schedule_for_ay(group.academic_year, school)
-		if not schedule_name:
-			continue
-
-		sched_doc = frappe.get_cached_doc("School Schedule", schedule_name)
-		include_holidays = int(bool(sched_doc.include_holidays_in_rotation))
-
-		# Resolve effective AY (use schedule's AY if group lacks one)
-		effective_ay = group.academic_year or getattr(sched_doc, "academic_year", None)
-		if not effective_ay:
-			continue
-
-		cache_key = (schedule_name, effective_ay, include_holidays)
-
-		if cache_key not in rotation_cache:
-			rotation_dates = get_rotation_dates(
-				schedule_name,
-				effective_ay,
-				include_holidays=bool(include_holidays),
-			)
-			day_map: Dict[int, List[date]] = defaultdict(list)
-			for row in rotation_dates:
-				rot_day = int(row["rotation_day"])
-				day_val = getdate(row["date"])
-				day_map[rot_day].append(day_val)
-			rotation_cache[cache_key] = day_map
-
-		rot_map = rotation_cache[cache_key]
 		title, color = _student_group_title_and_color(
 			group.name,
 			group.student_group_name,
@@ -682,40 +599,49 @@ def _collect_student_group_events_from_schedule(
 			course_meta,
 		)
 
-		for slot in slots:
-			dates = rot_map.get(int(slot.rotation_day)) or []
-			from_time = _coerce_time(slot.from_time)
-			to_time = _coerce_time(slot.to_time)
-			for session_date in dates:
-				if session_date < start_date or session_date > end_date:
-					continue
-				start_dt = _combine(session_date, from_time, tzinfo)
-				duration = _attach_duration(
-					start_dt,
-					_combine(session_date, to_time, tzinfo) if to_time else None,
-				)
-				end_dt = start_dt + duration
+		# 2) Use shared room-slot expander; includes rotation logic + holiday skips.
+		slots = iter_student_group_room_slots(
+			group.name,
+			start_date=start_date,
+			end_date=end_date,
+		)
+		if not slots:
+			continue
 
-				events.append(
-					CalendarEvent(
-						id=f"sg::{group.name}::{slot.rotation_day}::{slot.block_number}::{session_date.isoformat()}",
-						title=title,
-						start=start_dt,
-						end=end_dt,
-						source="student_group",
-						color=color,
-						all_day=False,
-						meta={
-							"student_group": group.name,
-							"course": group.course,
-							"rotation_day": slot.rotation_day,
-							"block_number": slot.block_number,
-							"location": slot.location,
-						},
-					)
+		for slot in slots:
+			start_raw = slot.get("start")
+			end_raw = slot.get("end")
+			if not start_raw:
+				continue
+
+			start_dt = _to_system_datetime(start_raw, tzinfo)
+			end_dt = _to_system_datetime(end_raw, tzinfo) if end_raw else None
+			duration = _attach_duration(start_dt, end_dt)
+			session_date = start_dt.date()
+			rotation_day = slot.get("rotation_day")
+			block_number = slot.get("block_number")
+
+			events.append(
+				CalendarEvent(
+					id=f"sg::{group.name}::{rotation_day}::{block_number}::{session_date.isoformat()}",
+					title=title,
+					start=start_dt,
+					end=start_dt + duration,
+					source="student_group",
+					color=color,
+					all_day=False,
+					meta={
+						"student_group": group.name,
+						"course": group.course,
+						"rotation_day": rotation_day,
+						"block_number": block_number,
+						"location": slot.get("location"),
+					},
 				)
+			)
 
 	return events
+
 
 # ---------------------------------------------------------------------------
 # Meetings
@@ -1457,28 +1383,8 @@ def get_portal_calendar_prefs(from_datetime: Optional[str] = None, to_datetime: 
 	if not calendar_name and school:
 		calendar_name = frappe.db.get_value("School", school, "current_school_calendar")
 
-	weekend_fc_days: List[int] = []
-	if calendar_name:
-		try:
-			cal = frappe.get_cached_doc("School Calendar", calendar_name)
-			# Collect weekdays for entries flagged as weekly_off
-			days = set()
-			for h in (cal.holidays or []):
-				try:
-					if int(getattr(h, "weekly_off", 0)) == 1 and getattr(h, "holiday_date", None):
-						d = getdate(h.holiday_date)
-						py_weekday = d.weekday()  # Monday=0..Sunday=6
-						fc_day = (py_weekday + 1) % 7  # Sunday=0..Saturday=6
-						days.add(fc_day)
-				except Exception:
-					continue
-			weekend_fc_days = sorted(days)
-		except Exception:
-			weekend_fc_days = []
+	weekend_fc_days: List[int] = get_weekend_days_for_calendar(calendar_name) if calendar_name else get_weekend_days_for_calendar(None)
 
-	if not weekend_fc_days:
-		# Default to Sat/Sun
-		weekend_fc_days = [0, 6]
 
 	# Default slot window from School
 	default_min = "07:00:00"

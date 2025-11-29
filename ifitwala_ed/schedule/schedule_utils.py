@@ -46,6 +46,7 @@ What is *not* here:
 import frappe
 from frappe import _
 from frappe.utils import getdate, add_days, today, get_datetime
+from frappe.utils.caching import redis_cache
 from collections import defaultdict
 from datetime import date
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
@@ -71,6 +72,64 @@ def get_calendar_holiday_set(calendar_name: str) -> set:
 	)
 
 	return {getdate(d) for d in rows if d}
+
+@redis_cache(ttl=86400)
+def get_weekend_days_for_calendar(calendar_name: str | None) -> list[int]:
+	"""
+	Return weekend weekday numbers (JS 0-6) for a School Calendar.
+
+	- Uses School Calendar Holidays.weekly_off = 1 when holidays are generated.
+	- Falls back to School Calendar.weekly_off (single-select) when no child rows.
+	- Final fallback: [6, 0] → Saturday, Sunday in JS getDay() convention.
+	"""
+	# No calendar → default Sat/Sun
+	if not calendar_name:
+		return [6, 0]
+
+	try:
+		cal = frappe.get_cached_doc("School Calendar", calendar_name)
+	except Exception:
+		return [6, 0]
+
+	days: set[int] = set()
+
+	# 1) Holidays child table with weekly_off = 1
+	for h in getattr(cal, "holidays", []) or []:
+		try:
+			if int(getattr(h, "weekly_off", 0)) != 1:
+				continue
+			if not getattr(h, "holiday_date", None):
+				continue
+
+			d = getdate(h.holiday_date)           # Python date
+			py_weekday = d.weekday()              # Monday=0 .. Sunday=6
+			fc_day = (py_weekday + 1) % 7         # FullCalendar: Sunday=0 .. Saturday=6
+			days.add(fc_day)
+		except Exception:
+			continue
+
+	# 2) Fallback: parent.weekly_off single-select
+	if not days:
+		label_map = {
+			"Sunday": 0,
+			"Monday": 1,
+			"Tuesday": 2,
+			"Wednesday": 3,
+			"Thursday": 4,
+			"Friday": 5,
+			"Saturday": 6,
+		}
+		weekday_label = getattr(cal, "weekly_off", None)
+		if weekday_label:
+			js = label_map.get(weekday_label)
+			if js is not None:
+				days.add(js)
+
+	# 3) Final fallback: Sat–Sun
+	if not days:
+		return [6, 0]
+
+	return sorted(days)
 
 
 ## function to get the start and end dates of the current academic year

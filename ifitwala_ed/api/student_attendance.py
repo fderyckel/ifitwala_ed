@@ -10,10 +10,9 @@ from ifitwala_ed.api.student_groups import (
 	_user_roles,
 	_instructor_group_names,
 )
-from ifitwala_ed.utilities.school_tree import (
-	get_user_default_school,
-	_is_adminish,
-)
+from ifitwala_ed.utilities.school_tree import get_user_default_school,_is_adminish
+from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
+
 
 # Roles that can see all groups in their allowed school scope
 PORTAL_FULL_ACCESS_ROLES = {
@@ -241,54 +240,23 @@ def fetch_active_programs():
 	)
 
 
-# MySQL DAYOFWEEK(): Sun=1 ... Sat=7  → JS getDay(): Sun=0 ... Sat=6
-MYSQL_TO_JS = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6}
-DAY_LABEL_TO_JS = {
-	"Sunday": 0, "Monday": 1, "Tuesday": 2, "Wednesday": 3,
-	"Thursday": 4, "Friday": 5, "Saturday": 6
-}
-
 @frappe.whitelist()
 @redis_cache(ttl=86400)
 def get_weekend_days(student_group: str | None = None) -> list[int]:
-	"""Return weekend weekday numbers (JS 0-6) for the group's calendar.
-	Tries Holidays.weekly_off=1 first; falls back to School Calendar.weekly_off.
-	Default: [6, 0] (Sat, Sun)
 	"""
+	Return weekend weekday numbers (JS 0–6) for the group's calendar.
+
+	This is a thin wrapper around schedule_utils.get_weekend_days_for_calendar,
+	so all School Calendar weekend logic lives in one place.
+	"""
+	# No group specified → use global calendar defaults
 	if not student_group:
-		return [6, 0]
+		return get_weekend_days_for_calendar(None)
 
-	# 1) Resolve School Schedule → School Calendar
-	school_schedule = frappe.db.get_value("Student Group", student_group, "school_schedule")
-	if not school_schedule:
-		return [6, 0]
+	# Resolve School Schedule → School Calendar
+	schedule_name = frappe.db.get_value("Student Group", student_group, "school_schedule")
+	if not schedule_name:
+		return get_weekend_days_for_calendar(None)
 
-	calendar = frappe.db.get_value("School Schedule", school_schedule, "school_calendar")
-	if not calendar:
-		return [6, 0]
-
-	# 2) Distinct weekday(s) from weekly offs recorded in Holidays child table
-	rows = frappe.db.sql(
-		"""
-		SELECT DISTINCT DAYOFWEEK(holiday_date) AS dow
-		FROM `tabSchool Calendar Holidays`
-		WHERE parent = %s AND weekly_off = 1
-		""",
-		(calendar,),
-		as_dict=True,
-	)
-	js_days = sorted({MYSQL_TO_JS.get(r["dow"]) for r in rows if MYSQL_TO_JS.get(r["dow"]) is not None})
-
-	# 3) Fallback: single-select 'weekly_off' on parent (in case holidays not generated yet)
-	if not js_days:
-		weekday_label = frappe.db.get_value("School Calendar", calendar, "weekly_off")
-		if weekday_label:
-			js = DAY_LABEL_TO_JS.get(weekday_label)
-			if js is not None:
-				js_days = [js]
-
-	# 4) Final fallback: Sat–Sun
-	if not js_days:
-		js_days = [6, 0]
-
-	return js_days
+	calendar_name = frappe.db.get_value("School Schedule", schedule_name, "school_calendar")
+	return get_weekend_days_for_calendar(calendar_name)
