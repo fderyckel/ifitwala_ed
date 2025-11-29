@@ -491,7 +491,7 @@ def get_meeting_dates(student_group: str | None = None, *, limit: int | None = N
 	return meeting if limit is None else meeting[:limit]
 
 
-
+@frappe.whitelist()
 def invalidate_meeting_dates(student_group: str | None = None) -> None:
 	rc = frappe.cache()
 	if student_group:
