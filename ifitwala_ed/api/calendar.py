@@ -26,11 +26,9 @@ from frappe.utils import (
 	format_datetime,
 )
 
-from ifitwala_ed.schedule.schedule_utils import (
-    get_effective_schedule_for_ay,
-    get_rotation_dates,
-    get_school_for_student_group,
-)
+from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
+from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
+
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 VALID_SOURCES = {

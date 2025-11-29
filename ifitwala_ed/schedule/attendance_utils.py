@@ -8,10 +8,8 @@ from frappe import _
 from frappe.utils import now_datetime, getdate, nowdate
 from frappe.utils.caching import redis_cache
 from typing import List, Dict
-from ifitwala_ed.schedule.schedule_utils import (
-	get_rotation_dates,
-	get_school_for_student_group,
-)
+from ifitwala_ed.schedule.schedule_utils import get_rotation_dates
+from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
 from ifitwala_ed.school_settings.doctype.term.term import get_current_term
 
 
@@ -438,43 +436,44 @@ def _meeting_dates_key(student_group: str) -> str:
 @frappe.whitelist()
 @redis_cache(ttl=MEETING_DATES_TTL)
 def get_meeting_dates(student_group: str | None = None, *, limit: int | None = None) -> List[str]:
-    if not student_group:
-        return []
+	if not student_group:
+		return []
 
-    key = f"ifw:meeting_dates:{student_group}"
+	key = f"ifw:meeting_dates:{student_group}"
 
-    sg = frappe.get_doc("Student Group", student_group)
+	sg = frappe.get_doc("Student Group", student_group)
 
-    schedule_name = sg.school_schedule
-    if not schedule_name:
-        from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_school_for_student_group
-        schedule_name = get_effective_schedule_for_ay(sg.academic_year, get_school_for_student_group(sg))
+	schedule_name = sg.school_schedule
+	if not schedule_name:
+		from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay
+		from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
+		schedule_name = get_effective_schedule_for_ay(sg.academic_year, get_school_for_student_group(sg))
 
-    if not schedule_name:
-        frappe.cache().set_value(key, [], expires_in_sec=MEETING_DATES_TTL)
-        return []
+	if not schedule_name:
+		frappe.cache().set_value(key, [], expires_in_sec=MEETING_DATES_TTL)
+		return []
 
-    # Get rotation days that the group actually uses
-    used_rot_days = frappe.db.get_all(
-        "Student Group Schedule",
-        filters={"parent": student_group},
-        fields=["rotation_day"],
-        distinct=True
-    )
-    rot_days_set = {int(r["rotation_day"]) for r in used_rot_days if r.get("rotation_day") is not None}
-    if not rot_days_set:
-        frappe.cache().set_value(key, [], expires_in_sec=MEETING_DATES_TTL)
-        return []
+	# Get rotation days that the group actually uses
+	used_rot_days = frappe.db.get_all(
+		"Student Group Schedule",
+		filters={"parent": student_group},
+		fields=["rotation_day"],
+		distinct=True,
+	)
+	rot_days_set = {int(r["rotation_day"]) for r in used_rot_days if r.get("rotation_day") is not None}
+	if not rot_days_set:
+		frappe.cache().set_value(key, [], expires_in_sec=MEETING_DATES_TTL)
+		return []
 
-    # Build the full rotation
-    rot = get_rotation_dates(schedule_name, sg.academic_year, include_holidays=False)
-    # Filter
-    meeting = [rd["date"].isoformat() for rd in rot if rd["rotation_day"] in rot_days_set]
+	# Build the full rotation
+	rot = get_rotation_dates(schedule_name, sg.academic_year, include_holidays=False)
+	# Filter
+	meeting = [rd["date"].isoformat() for rd in rot if rd["rotation_day"] in rot_days_set]
 
-    # Cache + return
-    frappe.cache().set_value(key, meeting, expires_in_sec=MEETING_DATES_TTL)
+	# Cache + return
+	frappe.cache().set_value(key, meeting, expires_in_sec=MEETING_DATES_TTL)
 
-    return meeting if limit is None else meeting[:limit]
+	return meeting if limit is None else meeting[:limit]
 
 
 

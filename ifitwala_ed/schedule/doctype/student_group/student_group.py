@@ -8,14 +8,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, get_link_to_form, get_datetime, format_datetime
 
-from ifitwala_ed.schedule.schedule_utils import (
-	validate_duplicate_student,
-	get_conflict_rule,
-	get_rotation_dates,
-	check_slot_conflicts,
-	OverlapError,
-)
-
+from ifitwala_ed.schedule.schedule_utils import get_conflict_rule, get_rotation_dates
+from ifitwala_ed.schedule.student_group_scheduling import check_slot_conflicts
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 from ifitwala_ed.schedule.attendance_utils import invalidate_meeting_dates
 from ifitwala_ed.utilities.location_conflicts import find_location_conflicts
@@ -23,6 +17,10 @@ from ifitwala_ed.utilities.location_conflicts import find_location_conflicts
 from ifitwala_ed.schedule.student_group_employee_booking import (
 	rebuild_employee_bookings_for_student_group,
 )
+
+class OverlapError(frappe.ValidationError):
+	"""Raised when a scheduling conflict violates the hard rule."""
+	pass
 
 
 class StudentGroup(Document):
@@ -51,7 +49,7 @@ class StudentGroup(Document):
 		self.validate_size()
 		self.validate_students()
 		self.validate_and_set_child_table_fields()
-		validate_duplicate_student(self.students)
+		self.validate_duplicate_student()
 		self.validate_rotation_clashes()
 		self.validate_location_capacity()
 
@@ -363,6 +361,27 @@ class StudentGroup(Document):
 				frappe.throw(_("Duplicate roll number for student {0}").format(d.student_name))
 			else:
 				roll_no_list.append(d.group_roll_number)
+
+	def _validate_duplicate_students(self) -> None:
+		"""
+		Ensure each student appears at most once in the Student Group Student child table.
+		Raises a validation error if the same student id is found on multiple rows.
+		"""
+		seen = {}  # student_id -> first row idx
+
+		for row in (self.students or []):
+			student_id = getattr(row, "student", None)
+			if not student_id:
+				continue
+
+			if student_id in seen:
+				first_idx = seen[student_id]
+				frappe.throw(
+					_("Student {0} - {1} appears Multiple times in row {2} & {3}")
+					.format(student_id, row.student_name, first_idx, row.idx)
+				)
+			else:
+				seen[student_id] = row.idx
 
 	def validate_rotation_clashes(self):
 		"""
