@@ -247,9 +247,6 @@ def bulk_upsert_attendance(payload=None):
 	roles = set(frappe.get_roles(user))
 	is_admin = "Academic Admin" in roles
 
-	def _norm_block(b):
-		return None if b in (None, "", "null") else int(b)
-
 	group_names = sorted({r["student_group"] for r in payload})
 	instructor_ids = set(_get_instructor_ids(user)) if not is_admin else set()
 

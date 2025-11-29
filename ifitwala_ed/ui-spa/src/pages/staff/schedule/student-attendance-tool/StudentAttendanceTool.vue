@@ -506,40 +506,45 @@ const weekendResource = createResource({
 })
 
 const meetingDatesResource = createResource({
-	url: 'ifitwala_ed.schedule.attendance_utils.get_meeting_dates',
-	params: () => ({
-		student_group: filters.student_group,
-	}),
-	method: 'POST',
-	auto: false,
-	transform: unwrapMessage,
-	onSuccess: (dates) => {
-		meetingDates.value = Array.isArray(dates) ? dates : []
-		// optional debug:
-		console.log('meeting dates loaded', filters.student_group, meetingDates.value)
-	},
-	onError: () => {
-		meetingDates.value = []
-	},
+  url: 'ifitwala_ed.schedule.attendance_utils.get_meeting_dates',
+  method: 'GET',
+  auto: false,
+  makeParams() {
+    return {
+      student_group: filters.student_group,
+    }
+  },
+  transform: unwrapMessage,
+  onSuccess(dates) {
+    const arr = Array.isArray(dates) ? dates : []
+    meetingDates.value = arr
+    console.log('meeting dates loaded', filters.student_group, arr)
+  },
+  onError() {
+    meetingDates.value = []
+  },
 })
 
 const recordedDatesResource = createResource({
-	url: 'ifitwala_ed.schedule.attendance_utils.attendance_recorded_dates',
-	params: () => ({
-		student_group: filters.student_group,
-	}),
-	method: 'POST',
-	auto: false,
-	transform: unwrapMessage,
-	onSuccess: (dates) => {
-		recordedDates.value = Array.isArray(dates) ? dates : []
-		// optional debug:
-		console.log('recorded dates loaded', filters.student_group, recordedDates.value)
-	},
-	onError: () => {
-		recordedDates.value = []
-	},
+  url: 'ifitwala_ed.schedule.attendance_utils.attendance_recorded_dates',
+  method: 'GET',
+  auto: false,
+  makeParams() {
+    return {
+      student_group: filters.student_group,
+    }
+  },
+  transform: unwrapMessage,
+  onSuccess(dates) {
+    const arr = Array.isArray(dates) ? dates : []
+    recordedDates.value = arr
+    console.log('recorded dates loaded', filters.student_group, arr)
+  },
+  onError() {
+    recordedDates.value = []
+  },
 })
+
 
 
 const schoolsLoading = computed(() => schoolResource.loading)
