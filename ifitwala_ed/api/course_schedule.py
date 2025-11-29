@@ -13,10 +13,9 @@ import frappe
 from frappe import _
 from frappe.utils import formatdate, getdate, nowdate
 
-from ifitwala_ed.schedule.schedule_utils import (
-	get_effective_schedule_for_ay,
-	get_rotation_dates,
-)
+from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
+from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
+
 
 COURSE_PLACEHOLDER = "/assets/ifitwala_ed/images/course_placeholder.jpg"
 
@@ -118,55 +117,31 @@ def _within_term(term_name: Optional[str], today: date, cache: Dict[str, dict]) 
 	return True
 
 
-def _resolve_base_school(
-	row: frappe._dict,
-	cache: Dict[Tuple[str, str], Optional[str]],
-) -> Optional[str]:
-	"""
-	Deduce the base school for a student group following the same priority as
-	get_school_for_student_group but without pulling full docs.
-	"""
-	if row.get("school"):
-		return row.school
-
-	if row.get("program_offering"):
-		key = ("Program Offering", row.program_offering)
-		if key not in cache:
-			cache[key] = frappe.db.get_value(
-				"Program Offering", row.program_offering, "school"
-			)
-		if cache[key]:
-			return cache[key]
-
-	if row.get("program"):
-		key = ("Program", row.program)
-		if key not in cache:
-			cache[key] = frappe.db.get_value("Program", row.program, "school")
-		if cache[key]:
-			return cache[key]
-
-	return None
-
-
 def _resolve_schedule_name(
 	row: frappe._dict,
-	base_school_cache: Dict[Tuple[str, str], Optional[str]],
 	schedule_cache: Dict[Tuple[str, str], Optional[str]],
 ) -> Optional[str]:
+	# 1) Explicit schedule on the group wins
 	if row.get("school_schedule"):
 		return row.school_schedule
 
-	base_school = _resolve_base_school(row, base_school_cache)
+	# 2) Use shared helper to resolve the base school
+	if not row.get("student_group") or not row.get("academic_year"):
+		return None
+
+	base_school = get_school_for_student_group(row.student_group)
 	if not base_school:
 		return None
 
 	key = (row.academic_year, base_school)
 	if key not in schedule_cache:
 		schedule_cache[key] = get_effective_schedule_for_ay(
-			row.academic_year, base_school
+			row.academic_year,
+			base_school,
 		)
 
 	return schedule_cache[key]
+
 
 
 def _rotation_day_for(
@@ -251,7 +226,6 @@ def get_today_courses() -> dict:
 			"courses": [],
 		}
 
-	base_school_cache: Dict[Tuple[str, str], Optional[str]] = {}
 	schedule_cache: Dict[Tuple[str, str], Optional[str]] = {}
 	rotation_cache: Dict[Tuple[str, str], Dict[str, int]] = {}
 	term_cache: Dict[str, dict] = {}
@@ -261,9 +235,8 @@ def get_today_courses() -> dict:
 		if not _within_term(row.get("term"), today_dt, term_cache):
 			continue
 
-		schedule_name = _resolve_schedule_name(
-			row, base_school_cache, schedule_cache
-		)
+		schedule_name = _resolve_schedule_name(row, schedule_cache)
+
 		if not schedule_name:
 			continue
 

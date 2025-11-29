@@ -5,11 +5,7 @@ from frappe import _
 from frappe.utils.caching import redis_cache
 from frappe.utils.nestedset import get_descendants_of
 
-from ifitwala_ed.api.student_groups import (
-	TRIAGE_ROLES,
-	_user_roles,
-	_instructor_group_names,
-)
+from ifitwala_ed.api.student_groups import _user_roles, _instructor_group_names
 from ifitwala_ed.utilities.school_tree import get_user_default_school,_is_adminish
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 

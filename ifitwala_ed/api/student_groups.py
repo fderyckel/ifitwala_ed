@@ -3,9 +3,8 @@
 import frappe
 from frappe import _
 
-from ifitwala_ed.schedule.page.student_group_cards.student_group_cards import (
-	get_student_group_students,
-)
+from ifitwala_ed.schedule.attendance_utils import get_student_group_students
+
 
 TRIAGE_ROLES = {"Academic Admin", "Academic Staff", "Instructor", "Academic Assistant", "Counselor", "System Manager", "Administrator"}
 
