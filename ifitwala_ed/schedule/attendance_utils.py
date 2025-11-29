@@ -3,12 +3,32 @@
 
 # ifitwala_ed/schedule/attendace_utils.py
 
+"""
+Attendance utilities for Ifitwala_Ed.
+
+Responsibilities:
+- Core helpers for Student Attendance:
+    • resolving which School Schedule / rotation dates to use
+    • expanding Student Group blocks into attendance slots
+    • inserting / updating Student Attendance rows in bulk
+    • invalidating / recalculating attendance-related caches
+- Shared helpers used by the Student Attendance Tool and API.
+
+What is NOT here:
+- Student Group validation and business rules
+    → see student_group.py
+- Student Group schedule queries and conflict logic
+    → see student_group_scheduling.py and schedule_utils.py
+- Calendar / staff calendar aggregation
+    → see api/calendar.py
+"""
+
 import frappe
 from frappe import _
 from frappe.utils import now_datetime, getdate, nowdate
 from frappe.utils.caching import redis_cache
 from typing import List, Dict
-from ifitwala_ed.schedule.schedule_utils import get_rotation_dates
+from ifitwala_ed.schedule.schedule_utils import get_rotation_dates, get_effective_schedule_for_ay
 from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
 from ifitwala_ed.school_settings.doctype.term.term import get_current_term
 
@@ -28,8 +48,6 @@ MEETING_DATES_TTL = 24 * 60 * 60  # 1 day
 # ---------------------------------------------------------------------
 # Helpers exposed to the JS page
 # ---------------------------------------------------------------------
-
-DEFAULT_PAGE_LEN = 25
 
 def get_student_group_students(
         student_group: str,
@@ -187,8 +205,6 @@ def fetch_blocks_for_day(student_group: str, attendance_date: str) -> List[int]:
     if not sg.school_schedule:
         return []
 
-    from ifitwala_ed.schedule.schedule_utils import get_rotation_dates
-
     # 1. Find the rotation_day for that date
     rot_dates = get_rotation_dates(sg.school_schedule, sg.academic_year, include_holidays=False)
     rotation_map = {rd["date"].isoformat(): rd["rotation_day"] for rd in rot_dates}
@@ -204,6 +220,7 @@ def fetch_blocks_for_day(student_group: str, attendance_date: str) -> List[int]:
         order_by="block_number ASC"
     )
     return [r.block_number for r in rows if r.block_number is not None]
+
 
 
 @frappe.whitelist()
@@ -445,8 +462,6 @@ def get_meeting_dates(student_group: str | None = None, *, limit: int | None = N
 
 	schedule_name = sg.school_schedule
 	if not schedule_name:
-		from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay
-		from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
 		schedule_name = get_effective_schedule_for_ay(sg.academic_year, get_school_for_student_group(sg))
 
 	if not schedule_name:

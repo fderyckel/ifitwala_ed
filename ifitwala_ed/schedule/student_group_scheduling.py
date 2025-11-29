@@ -327,3 +327,73 @@ def get_school_for_student_group(student_group: str) -> str | None:
 
 	return None
 
+@frappe.whitelist()
+def fetch_block_grid(schedule_name: str | None = None, sg: str | None = None) -> dict:
+	"""
+	Return rotation-day metadata to build the quick-add matrix for a Student Group.
+
+	Args:
+	    schedule_name: explicit School Schedule name (may be None)
+	    sg: Student Group name – used to infer schedule & instructors
+
+	Behaviour:
+	- If schedule_name is not supplied, resolve it from the Student Group via _get_school_schedule().
+	- Returns:
+	    {
+	      "schedule_name": <str>,
+	      "days": [1, 2, ...],
+	      "grid": {
+	        1: [{"block": 1, "label": "B1", "from": <time>, "to": <time>}, ...],
+	        ...
+	      },
+	      "instructors": [{"value": <instructor id>, "label": <name>}, ...]
+	    }
+	"""
+	# Resolve schedule when not supplied
+	if not schedule_name:
+		sg = sg or frappe.form_dict.get("sg")  # backward compatibility for old calls
+		if not sg:
+			frappe.throw(_("Either schedule_name or sg is required."))
+
+		sg_doc = frappe.get_doc("Student Group", sg)
+		schedule = sg_doc._get_school_schedule()
+		if not schedule:
+			frappe.throw(_("Could not resolve a School Schedule for this Student Group."))
+		schedule_name = schedule.name
+	else:
+		# still need sg for instructor list; fall back to form_dict
+		sg = sg or frappe.form_dict.get("sg")
+
+	doc = frappe.get_cached_doc("School Schedule", schedule_name)
+
+	grid: dict[int, list[dict]] = {}
+	for blk in doc.school_schedule_block:  # variable blocks per day
+		grid.setdefault(blk.rotation_day, []).append(
+			{
+				"block": blk.block_number,
+				"label": f"B{blk.block_number}",
+				"from": blk.from_time,
+				"to": blk.to_time,
+			}
+		)
+
+	# sort blocks inside each day
+	for day in grid:
+		grid[day].sort(key=lambda b: b["block"])
+
+	# instructor list is purely SG-based; optional if sg is missing
+	instructors = []
+	if sg:
+		sg_doc = frappe.get_doc("Student Group", sg)
+		instructors = [
+			{"value": i.instructor, "label": i.instructor_name or i.instructor}
+			for i in (sg_doc.instructors or [])
+			if i.instructor
+		]
+
+	return {
+		"schedule_name": schedule_name,
+		"days": sorted(grid.keys()),
+		"grid": grid,
+		"instructors": instructors,
+	}

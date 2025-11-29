@@ -4,22 +4,43 @@
 # ifitwala_ed/schedule/schedule_utils.py
 
 """
-Core schedule & calendar utilities.
+Core schedule utilities for Ifitwala_Ed.
 
-This module is intentionally limited to:
+Responsibilities:
+- Calendar / term helpers
+    • get_calendar_holiday_set
+    • get_school_term_bounds
+    • current_academic_year
 
-- Calendar / academic-year semantics (rotation days, holidays, current AY).
-- Resolving effective School Schedules for a given school + academic year.
-- Expanding Student Group schedules into concrete room slots (absolute datetimes).
-- Small visual helpers for schedule colouring.
+- Rotation engine
+    • get_rotation_dates: map an Academic Year + School Schedule to
+      (date, rotation_day) pairs, honoring weekends and holidays.
 
-It MUST NOT contain:
-- Student Group document business logic (validation rules, duplicate checks, etc.).
-- Attendance logic (codes, meeting dates, bulk upserts).
-- Cross-object conflict resolution with side effects (those live in dedicated modules).
+- Schedule resolution
+    • get_effective_schedule: find the closest School Schedule for a
+      given School Calendar + School (walking up the school tree).
+    • get_effective_schedule_for_ay: find the closest School Schedule
+      whose School Calendar belongs to a given Academic Year.
 
-Other modules that depend on schedule information should call these functions,
-but document-specific behaviours belong in their respective DocType controllers.
+- Student Group expansion (generic)
+    • iter_student_group_room_slots: expand a Student Group timetable
+      into absolute room slots (location + start/end datetimes) for
+      downstream systems:
+          - central location_conflicts engine
+          - employee bookings / staff calendar
+
+- Cache invalidation helpers
+    • invalidate_for_student_group
+    • invalidate_all_for_calendar
+    • _delete_staff_calendar_cache
+
+- Visual helpers
+    • get_block_colour / get_course_block_colour for timetable colours.
+
+What is *not* here:
+- Student Group validation, conflict rules, or SG-specific queries:
+  see student_group.py and student_group_scheduling.py.
+- Attendance-specific logic: see attendance_utils.py.
 """
 
 import frappe
@@ -163,14 +184,6 @@ def get_rotation_dates(school_schedule_name, academic_year, include_holidays=Non
 
 	return out
 
-
-"""Fast overlap detection for Student Group scheduling"""
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Utility
-# ──────────────────────────────────────────────────────────────────────────────
-
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Student Group helpers used by scheduling / conflict engines
 # ──────────────────────────────────────────────────────────────────────────────
@@ -182,47 +195,6 @@ def get_conflict_rule():
 	except Exception:
 		# If School Settings not installed yet (e.g. tests)
 		return "Hard"
-
-@frappe.whitelist()
-def fetch_block_grid(schedule_name: str | None = None, sg: str | None = None) -> dict:
-	"""Return rotation-day metadata to build the quick-add matrix.
-		Args:
-			schedule_name: explicit School Schedule name (may be None)
-			sg: Student Group name - used to infer schedule & instructors
-	"""
-
-	# Resolve schedule when not supplied
-	if not schedule_name:
-		sg = sg or frappe.form_dict.get("sg")  # fallback for older calls
-		if not sg:
-			frappe.throw(_("Either schedule_name or sg is required."))
-		sg_doc = frappe.get_doc("Student Group", sg)
-		schedule_name = sg_doc._get_school_schedule().name
-
-	doc = frappe.get_cached_doc("School Schedule", schedule_name)
-	grid = {}
-	for blk in doc.school_schedule_block:  # variable blocks per day
-		grid.setdefault(blk.rotation_day, []).append(
-			{
-				"block": blk.block_number,
-				"label": f"B{blk.block_number}",
-				"from": blk.from_time,
-				"to": blk.to_time,
-			}
-		)
-	# sort blocks inside each day
-	for day in grid:
-		grid[day].sort(key=lambda b: b["block"])
-	return {
-		"schedule_name": schedule_name,
-		"days": sorted(grid.keys()),
-		"grid": grid,  # {day: [blocks…]}
-		"instructors": [
-			{"value": i.instructor, "label": i.instructor_name or i.instructor}
-			for i in frappe.get_doc("Student Group", frappe.form_dict.sg).instructors
-		],
-	}
-
 
 # ─────────────────────────────────────────────────────────────────────
 # Utility called by Timetable builder (elsewhere in your app)

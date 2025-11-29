@@ -230,7 +230,7 @@ frappe.ui.form.on("Student Group", {
 
 	add_blocks(frm) {
 		frappe.call({
-			method: "ifitwala_ed.schedule.schedule_utils.fetch_block_grid",
+			method: "ifitwala_ed.schedule.student_group_scheduling.fetch_block_grid",
 			args: { schedule_name: frm.doc.school_schedule || null, sg: frm.doc.name },
 			callback(r) {
 				if (!frm.doc.school_schedule && r.message?.schedule_name) {

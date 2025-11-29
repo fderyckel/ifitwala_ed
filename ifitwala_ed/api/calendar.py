@@ -3,9 +3,62 @@
 """
 APIs feeding the portal calendars (staff / student / guardian).
 
-Current scope: staff calendar that aggregates Student Group schedules,
-Meetings, Frappe Events, and School Events the logged-in employee participates in.
+Current scope
+-------------
+- Staff portal calendar (HomeStaff.vue) that aggregates, for the logged-in user:
+    • Student Group teaching slots
+    • Meetings
+    • School Events
+    • Frappe Events
+
+- Student / guardian views that need:
+    • merged calendar feeds
+    • per-event drill-down (meeting details, class details, school event details)
+
+Responsibilities (what this module DOES)
+----------------------------------------
+- Expose whitelisted API endpoints for Vue:
+    • get_staff_calendar
+    • get_meeting_details
+    • get_school_event_details
+    • get_student_group_event_details
+    • get_portal_calendar_prefs
+    • debug_staff_calendar_window
+
+- Aggregate data from multiple sources into a unified event list:
+    • normalise to site timezone (System Settings)
+    • ensure consistent CalendarEvent payload shape for FullCalendar
+    • enforce access rules (only events the current user is allowed to see)
+
+- Provide small, calendar-specific helpers:
+    • window resolution (from/to)
+    • cache keys and TTLs
+    • basic title/colour helpers for Student Groups and Courses
+
+What this module does NOT do
+----------------------------
+- It does NOT own rotation/term logic or schedule resolution.
+    • Rotation days and academic-year spans live in:
+      ifitwala_ed.schedule.schedule_utils
+      (e.g. get_rotation_dates, get_effective_schedule_for_ay).
+
+- It does NOT enforce Student Group business rules or validation.
+    • Those live in:
+      ifitwala_ed.schedule.student_group_scheduling
+      ifitwala_ed.students.doctype.student_group.student_group
+
+- It does NOT own attendance logic.
+    • Attendance expansion / tools live in:
+      ifitwala_ed.schedule.attendance_utils
+
+Design intent
+-------------
+This file is a thin aggregation & presentation layer sitting on top of the
+core scheduling / attendance utilities. Over time, schedule expansion and
+conflict logic should be pushed down into schedule_utils / student_group_scheduling,
+with this module reusing those helpers rather than re-implementing them.
 """
+
 
 from __future__ import annotations
 
@@ -28,7 +81,6 @@ from frappe.utils import (
 
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
 from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
-
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 VALID_SOURCES = {
@@ -736,24 +788,13 @@ def _collect_meeting_events(
 
 	events: List[CalendarEvent] = []
 	for row in rows:
-		# Prefer datetime fields; fallback to date/time if missing
-		if row.from_datetime:
-			start_dt = _to_system_datetime(row.from_datetime, tzinfo)
-		elif row.date:
-			start_dt = _combine(getdate(row.date), _coerce_time(row.start_time), tzinfo)
-		else:
+		# Centralised meeting window logic
+		start_dt, end_dt = _meeting_window(row, tzinfo)
+		if not start_dt:
+			# If we can't resolve any reasonable start, skip this meeting
 			continue
 
-		if row.to_datetime:
-			end_dt = _to_system_datetime(row.to_datetime, tzinfo)
-		elif row.date and row.end_time:
-			end_dt = _combine(getdate(row.date), _coerce_time(row.end_time), tzinfo)
-		else:
-			end_dt = None
-
-		duration = _attach_duration(start_dt, end_dt)
-		color = team_colors.get(row.team, "#7c3aed")
-
+		# Team colour (if any) becomes the default event colour.
 		team_color = (team_colors.get(row.team, "") or "").strip()
 		event_color = team_color or "#7c3aed"
 
@@ -762,9 +803,10 @@ def _collect_meeting_events(
 				id=f"meeting::{row.name}",
 				title=row.meeting_name or _("Meeting"),
 				start=start_dt,
-				end=start_dt + duration,
+				end=end_dt,
 				source="meeting",
 				color=event_color,
+				all_day=False,
 				meta={
 					"location": row.location,
 					"team": row.team,
