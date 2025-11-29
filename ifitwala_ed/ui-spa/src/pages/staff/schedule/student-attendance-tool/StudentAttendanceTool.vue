@@ -513,6 +513,14 @@ const meetingDatesResource = createResource({
 	method: 'POST',
 	auto: false,
 	transform: unwrapMessage,
+	onSuccess: (dates) => {
+		meetingDates.value = Array.isArray(dates) ? dates : []
+		// optional debug:
+		console.log('meeting dates loaded', filters.student_group, meetingDates.value)
+	},
+	onError: () => {
+		meetingDates.value = []
+	},
 })
 
 const recordedDatesResource = createResource({
@@ -523,7 +531,16 @@ const recordedDatesResource = createResource({
 	method: 'POST',
 	auto: false,
 	transform: unwrapMessage,
+	onSuccess: (dates) => {
+		recordedDates.value = Array.isArray(dates) ? dates : []
+		// optional debug:
+		console.log('recorded dates loaded', filters.student_group, recordedDates.value)
+	},
+	onError: () => {
+		recordedDates.value = []
+	},
 })
+
 
 const schoolsLoading = computed(() => schoolResource.loading)
 const programsLoading = computed(() => programResource.loading)
@@ -879,12 +896,10 @@ async function loadCalendarData(options: { preserveSelection?: boolean } = {}) {
 	const preserveSelection = options.preserveSelection ?? false
 	calendarLoading.value = true
 	try {
-		const [meetingsResponse, recordedResponse] = await Promise.all([
+		await Promise.all([
 			meetingDatesResource.reload(),
 			recordedDatesResource.reload(),
 		])
-		meetingDates.value = meetingsResponse ?? []
-		recordedDates.value = recordedResponse ?? []
 
 		if (!meetingDates.value.length) {
 			selectedDate.value = null
