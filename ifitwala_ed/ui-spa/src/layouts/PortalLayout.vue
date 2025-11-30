@@ -1,5 +1,4 @@
 <!-- ifitwala_ed/ifitwala_ed/ui-spa/src/layouts/PortalLayout.vue -->
-
 <template>
 	<!-- Soft jacaranda / sky / sand gradient on the whole portal -->
 	<div
