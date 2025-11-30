@@ -5,11 +5,11 @@
 /* 1. Design tokens / CSS variables */
 @import './styles/tokens.css';
 
-/* 2. Layout shells (staff layout, header/footer, shell wrappers) */
-@import './styles/layout.css';
-
-/* 3. App-level patterns (hero, attendance shell, cards, etc.) */
+/* 2. App-level patterns (hero, attendance shell, cards, etc.) */
 @import './styles/app.css';
+
+/* 3. Layout shells (staff layout, header/footer, shell wrappers) */
+@import './styles/layout.css';
 
 /* 4. Reusable component patterns (calendar, modal, chips, etc.) */
 @import './styles/components.css';

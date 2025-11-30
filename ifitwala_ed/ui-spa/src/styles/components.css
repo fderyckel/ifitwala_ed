@@ -15,6 +15,29 @@
     @apply h-full w-full object-cover;
   }
 
+	/* ---------------------------------------------------------------
+		Staff portal "palette card" — focus / task list container
+		--------------------------------------------------------------- */
+	.palette-card {
+		@apply bg-white border border-[rgba(var(--border-rgb),0.9)]
+					rounded-2xl shadow-soft;
+	}
+
+	/* ---------------------------------------------------------------
+		Staff portal quick-action tiles
+		--------------------------------------------------------------- */
+	.action-tile {
+		@apply flex items-center gap-3 rounded-2xl border border-[rgba(var(--border-rgb),0.9)]
+					bg-white px-4 py-3 shadow-soft transition-transform
+					hover:-translate-y-0.5 hover:shadow-strong;
+	}
+
+	.action-tile__icon {
+		@apply flex h-9 w-9 items-center justify-center rounded-full
+					bg-sky/40 text-canopy text-sm font-semibold;
+	}
+
+
   /* ---------------------------------------------------------------
      2. Section Header
      --------------------------------------------------------------- */

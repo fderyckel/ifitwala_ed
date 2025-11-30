@@ -1,4 +1,5 @@
 <!-- ifitwala_ed/ui-spa/src/layouts/StaffPortalLayout.vue -->
+<!-- ifitwala_ed/ui-spa/src/layouts/StaffPortalLayout.vue -->
 <template>
   <div class="staff-layout">
     <header class="staff-layout__header">
@@ -10,7 +11,7 @@
         </h1>
 
         <a href="/app" class="staff-layout__desk-switch">
-          <svg class="staff-layout__desk-switch-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
             <path
               d="M4 4h16v10H4zm4 14h8m-4-4v4"
               fill="none"
@@ -26,16 +27,12 @@
     </header>
 
     <main class="staff-layout__main">
+      <!-- staff-shell handles width + padding; StaffHome already uses it -->
       <slot />
     </main>
-
-    <footer class="staff-layout__footer">
-      <div class="staff-layout__footer-inner">
-        © {{ year }} Staff Portal
-      </div>
-    </footer>
   </div>
 </template>
+
 
 
 <script setup lang="ts">
