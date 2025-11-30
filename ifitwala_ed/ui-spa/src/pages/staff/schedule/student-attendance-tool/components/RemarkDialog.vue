@@ -5,15 +5,16 @@
 				{{ __('Remark') }}
 			</div>
 
-			<div class="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-sky-50/60 to-white p-3">
-				<p class="text-xs text-slate-600 mb-2">
+			<div class="rounded-2xl border border-[rgba(226,232,240,0.9)] bg-gradient-to-b from-[rgba(237,245,247,0.7)] to-white p-3 shadow-sm">
+				<p class="mb-2 text-xs text-slate-600">
 					{{ helperText }}
 				</p>
 
 				<textarea
 					ref="textareaRef"
 					v-model="localValue"
-					class="remark-textarea w-full rounded-xl px-3 py-2 text-sm text-slate-900"
+					class="w-full rounded-xl border border-[rgba(226,232,240,0.95)] bg-white/95 px-3 py-2 text-sm text-[color:var(--ink)] shadow-inner
+					       focus:outline-none focus:ring-2 focus:ring-[rgba(31,122,69,0.30)] focus:border-[rgba(31,122,69,0.95)]"
 					:placeholder="__('Add a short, specific note (optional)…')"
 					rows="4"
 					maxlength="255"
@@ -72,7 +73,7 @@ watch(
 			nextTick(() => textareaRef.value?.focus())
 		}
 	},
-	{ immediate: true }
+	{ immediate: true },
 )
 
 watch(
@@ -81,7 +82,7 @@ watch(
 		if (value) {
 			nextTick(() => textareaRef.value?.focus())
 		}
-	}
+	},
 )
 
 const dialogTitle = computed(() => {
@@ -110,29 +111,3 @@ function cancel() {
 	localValue.value = props.value ?? ''
 }
 </script>
-
-<style scoped>
-.remark-textarea {
-	border: 1px solid rgba(var(--border-rgb), 0.9);
-	background: linear-gradient(180deg, rgba(var(--sand-rgb), 0.4), #ffffff);
-	box-shadow: inset 0 1px 2px rgba(var(--ink-rgb), 0.06);
-	resize: vertical;
-}
-
-/* Focus state – strong but not aggressive */
-.remark-textarea:focus {
-	outline: none;
-	border-color: rgba(var(--leaf-rgb), 0.9);
-	box-shadow:
-		0 0 0 1px rgba(var(--leaf-rgb), 0.85),
-		0 0 0 3px rgba(var(--leaf-rgb), 0.25),
-		inset 0 1px 2px rgba(var(--ink-rgb), 0.08);
-}
-
-/* Disabled (future-proof) */
-.remark-textarea:disabled {
-	background: rgba(var(--sky-rgb), 0.8);
-	color: rgba(var(--slate-rgb), 0.6);
-	cursor: not-allowed;
-}
-</style>

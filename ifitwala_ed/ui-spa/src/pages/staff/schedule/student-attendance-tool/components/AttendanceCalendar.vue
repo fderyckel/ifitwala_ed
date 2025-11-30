@@ -1,9 +1,10 @@
 <template>
-	<div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-		<!-- Header -->
-		<div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+	<div class="rounded-2xl border border-[color:var(--border)] bg-white shadow-sm">
+		<div class="flex items-center justify-between border-b border-[color:var(--border)]/60 px-4 py-3">
 			<div>
-				<h2 class="text-lg font-semibold text-slate-900">{{ currentMonthLabel }}</h2>
+				<h2 class="text-lg font-semibold text-[color:var(--canopy)]">
+					{{ currentMonthLabel }}
+				</h2>
 				<p class="text-xs text-slate-500">
 					{{ meetingSummary }}
 				</p>
@@ -25,9 +26,8 @@
 			</div>
 		</div>
 
-		<!-- Calendar grid -->
 		<div class="relative">
-			<!-- Weekday header -->
+			<!-- Weekdays -->
 			<div
 				class="grid grid-cols-7 gap-px bg-slate-100 px-2 pb-2 pt-3 text-center text-xs font-medium tracking-wider text-slate-500"
 			>
@@ -36,7 +36,7 @@
 				</div>
 			</div>
 
-			<!-- Days -->
+			<!-- Days grid -->
 			<div class="grid grid-cols-7 gap-px bg-slate-100 p-2">
 				<button
 					v-for="day in days"
@@ -64,16 +64,16 @@
 		</div>
 
 		<!-- Legend -->
-		<div class="calendar-legend flex items-center justify-between px-4 pb-3 pt-2 text-xs text-slate-500">
-			<div class="flex items-center gap-2">
+		<div class="flex items-center gap-4 border-t border-[color:var(--border)]/60 px-4 py-2.5 text-xs text-slate-600">
+			<div class="flex items-center gap-1.5">
 				<span class="legend-dot legend-dot--recorded"></span>
 				<span>{{ __('Recorded') }}</span>
 			</div>
-			<div class="flex items-center gap-2">
-				<span class="legend-dot legend-dot--meeting"></span>
+			<div class="flex items-center gap-1.5">
+				<span class="legend-dot legend-dot--scheduled"></span>
 				<span>{{ __('Scheduled') }}</span>
 			</div>
-			<div class="flex items-center gap-2">
+			<div class="flex items-center gap-1.5">
 				<span class="legend-dot legend-dot--missing"></span>
 				<span>{{ __('Missing') }}</span>
 			</div>
@@ -135,7 +135,6 @@ const recordedDateSet = computed(() => new Set(props.recordedDates))
 const availableMonthSet = computed(() => new Set(props.availableMonths))
 
 const currentMonthKey = computed(() => formatMonth(props.month))
-
 const currentMonthLabel = computed(() => monthFormatter.format(props.month))
 
 const meetingSummary = computed(() => {
@@ -162,22 +161,18 @@ const nextMonthDate = computed(() => {
 
 const days = computed<CalendarDay[]>(() => {
 	const start = startOfCalendarGrid(props.month)
-	const weekendSet = new Set(props.weekendDays ?? [6, 0]) // Sat, Sun by default
 	const todayDate = today()
 	const todayIso = formatISO(todayDate)
+	const weekendSet = new Set(props.weekendDays ?? [6, 0]) // Sat, Sun default
 
 	return Array.from({ length: 42 }).map((_, idx) => {
 		const date = new Date(start)
 		date.setDate(start.getDate() + idx)
-
 		const iso = formatISO(date)
-		const weekday = date.getDay()
-
 		const isMeeting = meetingDateSet.value.has(iso)
 		const isRecorded = recordedDateSet.value.has(iso)
 		const isPast = date < todayDate
-		const isToday = iso === todayIso
-		const isMissing = isMeeting && !isRecorded && isPast
+		const isMissing = isMeeting && isPast && !isRecorded
 
 		return {
 			date,
@@ -188,13 +183,12 @@ const days = computed<CalendarDay[]>(() => {
 			isMissing,
 			inCurrentMonth: date.getMonth() === props.month.getMonth(),
 			isPast,
-			isToday,
-			weekday,
-			isWeekend: weekendSet.has(weekday),
+			isToday: iso === todayIso,
+			weekday: date.getDay(),
+			isWeekend: weekendSet.has(date.getDay()),
 		}
 	})
 })
-
 
 function goToPrev() {
 	if (!previousMonthDate.value) return
@@ -224,9 +218,11 @@ function dayButtonClass(day: CalendarDay) {
 function dayBadgeClass(day: CalendarDay) {
 	const classes = ['calendar-day__badge']
 
-	if (day.isToday) {
+	if (day.isToday && !day.isPast) {
 		classes.push('calendar-day__badge--today')
-	} else if (day.isRecorded) {
+	}
+
+	if (day.isRecorded) {
 		classes.push('calendar-day__badge--recorded')
 	} else if (day.isMissing) {
 		classes.push('calendar-day__badge--missing')
@@ -234,14 +230,12 @@ function dayBadgeClass(day: CalendarDay) {
 		classes.push('calendar-day__badge--meeting')
 	}
 
-	if ((!day.inCurrentMonth || day.isPast) && !day.isRecorded && !day.isToday && !day.isMissing) {
+	if ((!day.inCurrentMonth || day.isPast) && !day.isRecorded && !day.isToday) {
 		classes.push('calendar-day__badge--muted')
 	}
 
 	return classes.join(' ')
 }
-
-
 
 function startOfWeek(date: Date) {
 	const d = new Date(date)
@@ -264,11 +258,10 @@ function today() {
 }
 
 function formatISO(date: Date) {
-  // Local, timezone-agnostic YYYY-MM-DD (no UTC conversion)
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+	const y = date.getFullYear()
+	const m = String(date.getMonth() + 1).padStart(2, '0')
+	const d = String(date.getDate()).padStart(2, '0')
+	return `${y}-${m}-${d}`
 }
 
 function formatMonth(date: Date) {
@@ -279,11 +272,10 @@ function parseMonth(key: string) {
 	const [year, month] = key.split('-').map((p) => parseInt(p, 10))
 	return new Date(year, month - 1, 1)
 }
-
 </script>
 
 <style scoped>
-/* 1. Base Day Cell */
+/* Base day cell */
 .calendar-day {
 	border: 1px solid transparent;
 	background: transparent;
@@ -293,7 +285,7 @@ function parseMonth(key: string) {
 	transition: transform 120ms ease;
 }
 
-/* 2. Selected day – the only “boxed” look */
+/* Selected day – filled jacaranda pill */
 .calendar-day--selected .calendar-day__badge {
 	background: rgb(var(--jacaranda-rgb));
 	color: #fff;
@@ -301,7 +293,7 @@ function parseMonth(key: string) {
 	transform: scale(1.1);
 }
 
-/* 3. Badge pill */
+/* Day badge base */
 .calendar-day__badge {
 	display: inline-flex;
 	align-items: center;
@@ -312,85 +304,75 @@ function parseMonth(key: string) {
 	font-weight: 500;
 	font-size: 0.9rem;
 	transition: all 150ms ease;
-	border: 1px solid transparent;
+	border: 2px solid transparent;
 }
 
-/* 4. Badge states */
-
-/* Today */
+/* Today (outline only, no meeting semantics) */
 .calendar-day__badge--today {
 	color: rgb(var(--jacaranda-rgb));
-	border-color: rgba(var(--jacaranda-rgb), 0.3);
+	border-color: rgba(var(--jacaranda-rgb), 0.35);
 	font-weight: 700;
 }
 
-/* Meeting day – green ring */
+/* Future / upcoming meeting – jacaranda ring */
 .calendar-day__badge--meeting {
 	background: #fff;
-	color: rgb(var(--leaf-rgb));
-	border-color: rgba(var(--leaf-rgb), 0.5);
-	box-shadow: 0 1px 2px rgba(var(--leaf-rgb), 0.1);
+	color: rgb(var(--jacaranda-rgb));
+	border-color: rgba(var(--jacaranda-rgb), 0.7);
+	box-shadow: 0 1px 2px rgba(var(--jacaranda-rgb), 0.12);
 }
 
-/* Meeting + recorded – filled green */
+/* Recorded attendance – leaf ring */
 .calendar-day__badge--recorded {
-	background: rgba(var(--leaf-rgb), 0.15);
+	background: #fff;
 	color: rgb(var(--leaf-rgb));
-	border-color: transparent;
+	border-color: rgba(var(--leaf-rgb), 0.85);
+	box-shadow: 0 1px 2px rgba(var(--leaf-rgb), 0.14);
 	font-weight: 600;
 }
 
-/* Past meeting, no attendance yet – flame warning ring */
+/* Past meeting with NO attendance yet – flame ring */
 .calendar-day__badge--missing {
-	background: rgba(var(--flame-rgb), 0.06);
+	background: #fff;
 	color: rgb(var(--flame-rgb));
 	border-color: rgba(var(--flame-rgb), 0.85);
-	box-shadow: 0 0 0 1px rgba(var(--flame-rgb), 0.35);
+	box-shadow: 0 0 0 1px rgba(var(--flame-rgb), 0.45);
 	font-weight: 600;
 }
 
-/* Background / muted days */
+/* Muted (other month / old non-meeting) */
 .calendar-day__badge--muted {
-	color: rgba(var(--slate-rgb), 0.3);
+	color: rgba(var(--slate-rgb), 0.35);
 }
 
-/* Hover on active meeting days */
-.calendar-day:hover .calendar-day__badge--meeting {
-	border-color: rgb(var(--leaf-rgb));
-	background: rgba(var(--leaf-rgb), 0.05);
-	cursor: pointer;
+/* Hover for any clickable meeting day */
+.calendar-day:hover .calendar-day__badge--meeting,
+.calendar-day:hover .calendar-day__badge--recorded,
+.calendar-day:hover .calendar-day__badge--missing {
+	background: rgba(255, 255, 255, 0.96);
+	transform: translateY(-1px);
 }
 
-/* 5. Legend */
-
-.calendar-legend {
-	border-top: 1px solid rgba(var(--border-rgb), 0.8);
-	background: linear-gradient(180deg, rgba(var(--sky-rgb), 0.65), #fff);
-}
-
+/* Legend dots */
 .legend-dot {
-	display: inline-flex;
-	height: 0.75rem;
-	width: 0.75rem;
+	height: 0.9rem;
+	width: 0.9rem;
 	border-radius: 9999px;
-	border: 1px solid transparent;
-}
-
-/* Matches recorded pill */
-.legend-dot--recorded {
-	background: rgba(var(--leaf-rgb), 0.85);
-	border-color: rgba(var(--leaf-rgb), 0.95);
-}
-
-/* Matches meeting ring */
-.legend-dot--meeting {
+	border-width: 2px;
+	border-style: solid;
 	background: #fff;
-	border-color: rgba(var(--leaf-rgb), 0.9);
 }
 
-/* Matches missing flame ring */
+.legend-dot--recorded {
+	border-color: rgba(var(--leaf-rgb), 0.85);
+}
+
+.legend-dot--scheduled {
+	border-color: rgba(var(--jacaranda-rgb), 0.7);
+}
+
 .legend-dot--missing {
-	background: rgba(var(--flame-rgb), 0.06);
-	border-color: rgba(var(--flame-rgb), 0.9);
+	border-color: rgba(var(--flame-rgb), 0.85);
 }
 </style>
+
