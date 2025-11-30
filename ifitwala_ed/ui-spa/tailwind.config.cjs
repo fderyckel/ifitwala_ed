@@ -1,22 +1,23 @@
 // ifitwala_ed/ui-spa/tailwind.config.cjs
 
-let frappeUiPreset;
-try {
-  frappeUiPreset = require('frappe-ui/tailwind/preset');
-} catch (error) {
-  frappeUiPreset = require('frappe-ui/src/utils/tailwind.config');
-}
+const frappeUiPreset = require('frappe-ui/tailwind/preset')
 
 const withOpacity = (variable) => ({ opacityValue }) => {
   if (opacityValue === undefined) {
-    return `rgb(var(${variable}) / 1)`;
+    return `rgb(var(${variable}) / 1)`
   }
-  return `rgb(var(${variable}) / ${opacityValue})`;
-};
+  return `rgb(var(${variable}) / ${opacityValue})`
+}
 
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   presets: [frappeUiPreset],
-  content: ['./index.html', './src/**/*.{vue,js,ts}'],
+
+  content: [
+    './index.html',
+    './src/**/*.{vue,js,ts}',
+    './node_modules/frappe-ui/**/*.{js,vue,ts}', // keep Tailwind aware of frappe-ui components
+  ],
 
   theme: {
     extend: {
@@ -38,4 +39,4 @@ module.exports = {
   },
 
   plugins: [],
-};
+}
