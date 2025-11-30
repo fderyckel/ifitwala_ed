@@ -142,6 +142,8 @@ permission_query_conditions = {
 	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.get_permission_query_conditions",
 	"Employee": "ifitwala_ed.hr.doctype.employee.employee.get_permission_query_conditions",
 	"Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.get_permission_query_conditions",
+	"Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.get_permission_query_conditions",
+}
 }
 
 has_permission = {
@@ -154,6 +156,7 @@ has_permission = {
 	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.has_permission",
 	"Employee": "ifitwala_ed.hr.doctype.employee.employee.employee_has_permission",
 	"Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.has_permission",
+	"Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.has_permission",
 }
 
 default_roles = [

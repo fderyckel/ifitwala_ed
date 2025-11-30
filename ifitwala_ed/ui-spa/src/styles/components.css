@@ -1,0 +1,153 @@
+/* =====================================================================
+   IFITWALA COMPONENT LIBRARY — ATOMS & MOLECULES
+   ===================================================================== */
+
+@layer components {
+  /* ---------------------------------------------------------------
+     1. Avatar (square)
+     --------------------------------------------------------------- */
+  .avatar {
+    @apply h-16 w-16 rounded-xl overflow-hidden shadow-inner bg-slate-100
+           ring-1 ring-[rgba(var(--border-rgb),0.85)];
+  }
+
+  .avatar img {
+    @apply h-full w-full object-cover;
+  }
+
+  /* ---------------------------------------------------------------
+     2. Section Header
+     --------------------------------------------------------------- */
+  .section-header {
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  /* ---------------------------------------------------------------
+     3. Inline Chip
+     --------------------------------------------------------------- */
+  .inline-chip {
+    @apply inline-flex items-center gap-1 px-2 py-1 rounded-full
+           text-xs font-medium;
+  }
+
+  .inline-chip--health {
+    @apply bg-red-50 text-red-600;
+  }
+
+  .inline-chip--birthday {
+    @apply bg-amber-50 text-amber-700;
+  }
+
+  /* ---------------------------------------------------------------
+     4. Block Card (for single attendance row)
+     --------------------------------------------------------------- */
+  .block-card {
+    @apply flex flex-col gap-3 p-3 rounded-xl border border-[rgba(var(--border-rgb),0.85)]
+           bg-slate-50/80 shadow-inner;
+  }
+
+  /* ---------------------------------------------------------------
+     5. Remark Button (blue accent)
+     --------------------------------------------------------------- */
+  .remark-btn {
+    @apply !h-9 !w-9 rounded-full border border-transparent
+           text-slate-500 transition;
+  }
+
+  .remark-btn:hover {
+    @apply border-blue-200 bg-blue-50 text-blue-600;
+  }
+
+  .remark-btn--active {
+    @apply border-blue-200 bg-blue-50 text-blue-600;
+  }
+
+  /* -------------------------------------------
+     6. Calendar Day Cell + Legend
+     ------------------------------------------- */
+  .calendar-day {
+    @apply flex items-center justify-center transition-transform ease-out duration-150
+           border border-transparent bg-transparent;
+  }
+
+  .calendar-day--selected .calendar-day__badge {
+    background: rgb(var(--jacaranda-rgb));
+    color: #fff;
+    box-shadow: 0 4px 12px rgb(var(--jacaranda-rgb) / 0.4);
+    transform: scale(1.1);
+  }
+
+  .calendar-day__badge {
+    @apply inline-flex items-center justify-center rounded-full font-medium
+           transition-all duration-150;
+    height: 2.25rem;
+    width: 2.25rem;
+    border: 2px solid transparent;
+    font-size: 0.9rem;
+  }
+
+  /* Today (outline, no fill) */
+  .calendar-day__badge--today {
+    color: rgb(var(--jacaranda-rgb));
+    border-color: rgb(var(--jacaranda-rgb) / 0.35);
+    @apply font-bold;
+  }
+
+  /* Future meeting */
+  .calendar-day__badge--meeting {
+    background: #fff;
+    color: rgb(var(--jacaranda-rgb));
+    border-color: rgb(var(--jacaranda-rgb));
+    box-shadow: 0 1px 2px rgb(var(--jacaranda-rgb) / 0.15);
+  }
+
+  /* Recorded attendance */
+  .calendar-day__badge--recorded {
+    background: rgb(var(--leaf-rgb) / 0.06);
+    color: rgb(var(--leaf-rgb));
+    border-color: rgb(var(--leaf-rgb));
+    box-shadow: 0 1px 2px rgb(var(--leaf-rgb) / 0.18);
+    @apply font-semibold;
+  }
+
+  /* Missing */
+  .calendar-day__badge--missing {
+    background: rgb(var(--flame-rgb) / 0.04);
+    color: rgb(var(--flame-rgb));
+    border-color: rgb(var(--flame-rgb));
+    box-shadow: 0 0 0 1px rgb(var(--flame-rgb) / 0.55);
+    @apply font-semibold;
+  }
+
+  /* Muted */
+  .calendar-day__badge--muted {
+    color: rgb(var(--slate-rgb) / 0.35);
+  }
+
+  /* Hover for clickable meeting days */
+  .calendar-day:hover .calendar-day__badge--meeting,
+  .calendar-day:hover .calendar-day__badge--recorded,
+  .calendar-day:hover .calendar-day__badge--missing {
+    background: rgba(255, 255, 255, 0.96);
+    transform: translateY(-1px);
+  }
+
+  /* Legend dots */
+  .legend-dot {
+    @apply rounded-full border-2 border-solid bg-white;
+    height: 0.9rem;
+    width: 0.9rem;
+  }
+
+  .legend-dot--recorded {
+    border-color: rgb(var(--leaf-rgb));
+  }
+
+  .legend-dot--scheduled {
+    border-color: rgb(var(--jacaranda-rgb));
+  }
+
+  .legend-dot--missing {
+    border-color: rgb(var(--flame-rgb));
+  }
+}

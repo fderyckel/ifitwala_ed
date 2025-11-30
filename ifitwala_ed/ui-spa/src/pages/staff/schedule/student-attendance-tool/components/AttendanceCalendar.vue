@@ -1,11 +1,12 @@
+<!-- ifitwala_ed/ui-spa/src/pages/staff/schedule/student-attendance-tool/components/AttendanceCalendar.vue -->
 <template>
-	<div class="rounded-2xl border border-[color:var(--border)] bg-white shadow-sm">
-		<div class="flex items-center justify-between border-b border-[color:var(--border)]/60 px-4 py-3">
+	<div class="attendance-card rounded-2xl border border-border/80 bg-surface shadow-sm">
+		<div class="flex items-center justify-between border-b border-border/60 px-4 py-3">
 			<div>
-				<h2 class="text-lg font-semibold text-[color:var(--canopy)]">
+				<h2 class="text-lg font-semibold text-ink">
 					{{ currentMonthLabel }}
 				</h2>
-				<p class="text-xs text-slate-500">
+				<p class="text-xs text-ink/60">
 					{{ meetingSummary }}
 				</p>
 			</div>
@@ -29,7 +30,7 @@
 		<div class="relative">
 			<!-- Weekdays -->
 			<div
-				class="grid grid-cols-7 gap-px bg-slate-100 px-2 pb-2 pt-3 text-center text-xs font-medium tracking-wider text-slate-500"
+				class="grid grid-cols-7 gap-px bg-surface-soft px-2 pb-2 pt-3 text-center text-xs font-medium tracking-wider text-ink/60"
 			>
 				<div v-for="weekday in weekdays" :key="weekday" class="uppercase">
 					{{ weekday }}
@@ -37,7 +38,7 @@
 			</div>
 
 			<!-- Days grid -->
-			<div class="grid grid-cols-7 gap-px bg-slate-100 p-2">
+			<div class="grid grid-cols-7 gap-px bg-surface-soft p-2">
 				<button
 					v-for="day in days"
 					:key="day.iso"
@@ -57,14 +58,14 @@
 			<!-- Loading overlay -->
 			<div
 				v-if="loading"
-				class="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/70 backdrop-blur-sm"
+				class="absolute inset-0 flex items-center justify-center rounded-2xl bg-surface/80 backdrop-blur-sm"
 			>
-				<Spinner class="h-6 w-6 text-slate-400" />
+				<Spinner class="h-6 w-6 text-ink/40" />
 			</div>
 		</div>
 
 		<!-- Legend -->
-		<div class="flex items-center gap-4 border-t border-[color:var(--border)]/60 px-4 py-2.5 text-xs text-slate-600">
+		<div class="flex items-center gap-4 border-t border-border/60 px-4 py-2.5 text-xs text-ink/70">
 			<div class="flex items-center gap-1.5">
 				<span class="legend-dot legend-dot--recorded"></span>
 				<span>{{ __('Recorded') }}</span>
@@ -273,106 +274,3 @@ function parseMonth(key: string) {
 	return new Date(year, month - 1, 1)
 }
 </script>
-
-<style scoped>
-/* Base day cell */
-.calendar-day {
-	border: 1px solid transparent;
-	background: transparent;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: transform 120ms ease;
-}
-
-/* Selected day – filled jacaranda pill */
-.calendar-day--selected .calendar-day__badge {
-	background: rgb(var(--jacaranda-rgb));
-	color: #fff;
-	box-shadow: 0 4px 12px rgba(var(--jacaranda-rgb), 0.4);
-	transform: scale(1.1);
-}
-
-/* Day badge base */
-.calendar-day__badge {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	height: 2.25rem;
-	width: 2.25rem;
-	border-radius: 9999px;
-	font-weight: 500;
-	font-size: 0.9rem;
-	transition: all 150ms ease;
-	border: 2px solid transparent;
-}
-
-/* Today (outline only, no meeting semantics) */
-.calendar-day__badge--today {
-	color: rgb(var(--jacaranda-rgb));
-	border-color: rgba(var(--jacaranda-rgb), 0.35);
-	font-weight: 700;
-}
-
-/* Future / upcoming meeting – jacaranda ring */
-.calendar-day__badge--meeting {
-	background: #fff;
-	color: rgb(var(--jacaranda-rgb));
-	border-color: rgba(var(--jacaranda-rgb), 0.7);
-	box-shadow: 0 1px 2px rgba(var(--jacaranda-rgb), 0.12);
-}
-
-/* Recorded attendance – leaf ring */
-.calendar-day__badge--recorded {
-	background: #fff;
-	color: rgb(var(--leaf-rgb));
-	border-color: rgba(var(--leaf-rgb), 0.85);
-	box-shadow: 0 1px 2px rgba(var(--leaf-rgb), 0.14);
-	font-weight: 600;
-}
-
-/* Past meeting with NO attendance yet – flame ring */
-.calendar-day__badge--missing {
-	background: #fff;
-	color: rgb(var(--flame-rgb));
-	border-color: rgba(var(--flame-rgb), 0.85);
-	box-shadow: 0 0 0 1px rgba(var(--flame-rgb), 0.45);
-	font-weight: 600;
-}
-
-/* Muted (other month / old non-meeting) */
-.calendar-day__badge--muted {
-	color: rgba(var(--slate-rgb), 0.35);
-}
-
-/* Hover for any clickable meeting day */
-.calendar-day:hover .calendar-day__badge--meeting,
-.calendar-day:hover .calendar-day__badge--recorded,
-.calendar-day:hover .calendar-day__badge--missing {
-	background: rgba(255, 255, 255, 0.96);
-	transform: translateY(-1px);
-}
-
-/* Legend dots */
-.legend-dot {
-	height: 0.9rem;
-	width: 0.9rem;
-	border-radius: 9999px;
-	border-width: 2px;
-	border-style: solid;
-	background: #fff;
-}
-
-.legend-dot--recorded {
-	border-color: rgba(var(--leaf-rgb), 0.85);
-}
-
-.legend-dot--scheduled {
-	border-color: rgba(var(--jacaranda-rgb), 0.7);
-}
-
-.legend-dot--missing {
-	border-color: rgba(var(--flame-rgb), 0.85);
-}
-</style>
-

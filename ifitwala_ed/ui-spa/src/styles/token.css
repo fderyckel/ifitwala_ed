@@ -1,0 +1,54 @@
+/* ---------------------------------------------------
+   DESIGN TOKENS (GLOBAL VARIABLES)
+--------------------------------------------------- */
+
+/* ---------------------------------------------------
+   GLOBAL APP PALETTE
+   (Zambian canopy / bush / jacaranda / soil)
+--------------------------------------------------- */
+
+@layer base {
+	:root {
+		/* Core neutrals */
+		--ink: #071019;
+		--slate: #475569;
+
+		/* Greens = bush / canopy */
+		--canopy: #0b3d2b;
+		--leaf: #1f7a45;
+		--moss: #7faa63;
+
+		/* Sky / ground */
+		--sky: #edf5f7;
+		--sand: #f4ecdd;
+		--clay: #b6522b;
+
+		/* Jacaranda & flamboyant blooms */
+		--jacaranda: #7e6bd6;
+		--flame: #f25b32;
+
+		/* Borders / lines */
+		--border: #e2e8f0;
+
+		/* RGB tokens */
+		--ink-rgb: 7 16 25;
+		--slate-rgb: 71 85 105;
+		--canopy-rgb: 11 61 43;
+		--leaf-rgb: 31 122 69;
+		--moss-rgb: 127 170 99;
+		--sky-rgb: 237 245 247;
+		--sand-rgb: 244 236 221;
+		--clay-rgb: 182 82 43;
+		--jacaranda-rgb: 126 107 214;
+		--flame-rgb: 242 91 50;
+		--border-rgb: 226 232 240;
+
+		/* Radii & shadows */
+		--radius-lg: 1rem;
+		--radius-xl: 1.25rem;
+		--shadow-soft: 0 6px 20px rgba(7, 16, 25, 0.05);
+		--shadow-strong: 0 12px 32px rgba(7, 16, 25, 0.12);
+		--focus: 0 0 0 3px rgba(31, 122, 69, 0.35);
+	}
+
+}

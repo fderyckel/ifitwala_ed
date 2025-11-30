@@ -1,83 +1,18 @@
 /* ui-spa/src/style.css */
 
-/* ---------------------------------------------------
-   GLOBAL APP PALETTE
-   (Zambian canopy / bush / jacaranda / soil)
---------------------------------------------------- */
+/* 1. Design tokens / CSS variables */
+@import './styles/tokens.css';
 
-:root {
-	/* Core neutrals */
-	--ink: #071019;
-	--slate: #475569;
-
-	/* Greens = bush / canopy */
-	--canopy: #0b3d2b; /* deep forest green */
-	--leaf: #1f7a45; /* rich emerald-olive */
-	--moss: #7faa63; /* softer olive */
-
-	/* Sky / ground */
-	--sky: #edf5f7; /* cool morning haze */
-	--sand: #f4ecdd; /* warm sand */
-	--clay: #b6522b; /* red soil accent */
-
-	/* Jacaranda & flamboyant blooms */
-	--jacaranda: #7e6bd6; /* soft purple bloom */
-	--flame: #f25b32; /* flamboyant red-orange */
-
-	/* Borders / lines */
-	--border: #e2e8f0;
-
-	/* RGB tokens for Tailwind withOpacity helper */
-	--ink-rgb: 7 16 25;
-	--slate-rgb: 71 85 105;
-	--canopy-rgb: 11 61 43;
-	--leaf-rgb: 31 122 69;
-	--moss-rgb: 127 170 99;
-	--sky-rgb: 237 245 247;
-	--sand-rgb: 244 236 221;
-	--clay-rgb: 182 82 43;
-	--jacaranda-rgb: 126 107 214;
-	--flame-rgb: 242 91 50;
-	--border-rgb: 226 232 240;
-
-	/* Radii & shadows */
-	--radius-lg: 1rem;
-	--radius-xl: 1.25rem;
-	--shadow-soft: 0 6px 20px rgba(7, 16, 25, 0.05);
-	--shadow-strong: 0 12px 32px rgba(7, 16, 25, 0.12);
-	--focus: 0 0 0 3px rgba(31, 122, 69, 0.35);
-}
-
-/* ---------------------------------------------------
-   Tailwind layers
---------------------------------------------------- */
-
+/* 2. Tailwind layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ---------------------------------------------------
-   GLOBAL OVERRIDES (Espresso System)
---------------------------------------------------- */
+/* 3. Layout shells (staff layout, header/footer, shell wrappers) */
+@import './styles/layout.css';
 
-.frappe-ui-autocomplete-options {
-  max-height: 24rem !important; /* ~380px */
-  overflow-y: auto !important;
-}
+/* 4. App-level patterns (hero, attendance shell, cards, etc.) */
+@import './styles/app.css';
 
-/* This ensures the dropdown matches the width of the input box exactly */
-.frappe-ui-autocomplete-options-container {
-  width: 100% !important;
-  min-width: unset !important; 
-  max-width: none !important;
-}
-
-/* Force all frappe-ui FormControl inputs (select, text, multiselect) to be taller */
-.frappe-ui-form-control .form-input,
-.frappe-ui-form-control select,
-.frappe-ui-form-control .multiselect__tags {
-  height: 3rem !important; /* ≈ Tailwind h-11 (44px). Use 3rem for h-12 if you prefer. */
-  padding-top: 0.35rem;
-  padding-bottom: 0.35rem;
-  line-height: 1.4;
-}
+/* 5. Reusable component patterns (calendar, modal, chips, etc.) */
+@import './styles/components.css';

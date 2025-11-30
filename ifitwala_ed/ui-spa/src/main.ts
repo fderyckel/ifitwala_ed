@@ -1,3 +1,5 @@
+// ui-spa/src/main.ts
+
 import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
@@ -6,8 +8,6 @@ import { setupFrappeUI } from './resources/frappe';
 
 // Tailwind entry + portal styles
 import './style.css';
-import './styles/portal-modals.css';
-import './styles/staff-portal.css';
 
 
 // Configure real‑time to use your bench’s socket.io server.

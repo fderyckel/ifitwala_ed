@@ -1,74 +1,75 @@
-<!-- ifitwala_ed/ui-spa/src/pages/staff/schedule/StaffHome.vue -->
+<!-- ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue -->
 <template>
-  <div class="staff-shell space-y-6">
+  <div class="staff-shell space-y-10">
+
+    <!-- ============================================================
+         HEADER / GREETING
+       ============================================================ -->
     <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 
       <div>
-        <h1 class="text-3xl font-bold tracking-tight text-heading sm:text-4xl">
-          {{ greeting }}, <span class="text-leaf">{{ firstName }}</span>
+        <h1 class="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+          {{ greeting }},
+          <span class="text-canopy">{{ firstName }}</span>
         </h1>
       </div>
 
-      <div>
-        <RouterLink
-          :to="{ name: 'MorningBriefing' }"
-          target="_blank"
-          class="flex items-center gap-2 rounded-lg bg-jacaranda px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-jacaranda/90 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
-        >
-          <FeatherIcon name="sun" class="h-4 w-4 text-yellow-300" />
-          <span>Morning Brief</span>
-        </RouterLink>
-      </div>
+      <RouterLink
+        :to="{ name: 'MorningBriefing' }"
+        target="_blank"
+        class="inline-flex items-center gap-2 rounded-full bg-jacaranda px-5 py-2.5 text-sm font-bold text-white shadow-soft
+               transition-transform hover:-translate-y-0.5 hover:shadow-strong"
+      >
+        <FeatherIcon name="sun" class="h-4 w-4 text-yellow-300" />
+        <span>Morning Brief</span>
+      </RouterLink>
+
     </header>
 
+
+    <!-- ============================================================
+         CALENDAR
+       ============================================================ -->
     <ScheduleCalendar />
 
-    <section class="grid grid-cols-1 gap-6 lg:grid-cols-12">
 
-      <div class="flex flex-col gap-4 lg:col-span-8">
+    <!-- ============================================================
+         TWO-COLUMN GRID
+       ============================================================ -->
+    <section class="grid grid-cols-1 gap-10 lg:grid-cols-12">
+
+      <!-- LEFT COL: TASKS / FOCUS -------------------------------->
+      <div class="lg:col-span-8 space-y-4">
+
+        <!-- Section Title -->
         <div class="flex items-center justify-between px-1">
-          <h3 class="flex items-center gap-2 text-lg font-bold text-canopy">
+          <h3 class="flex items-center gap-2 text-lg font-semibold text-canopy">
             <FeatherIcon name="list" class="h-4 w-4 opacity-70" />
             Your Focus
           </h3>
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate/70">
             Pending Tasks
           </span>
         </div>
 
-        <div class="overflow-hidden rounded-2xl border border-sand-300 bg-white/95 shadow-sm">
+        <!-- Palette card wrapper -->
+        <div class="palette-card rounded-2xl overflow-hidden">
 
-          <div class="bg-sand/20 p-8 text-center hidden">
-            <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-leaf/10">
-              <FeatherIcon name="coffee" class="h-6 w-6 text-leaf" />
-            </div>
-            <h4 class="text-base font-semibold text-canopy">
-              All caught up!
-            </h4>
-            <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">
-              Todo integration is landing soon. Tasks assigned to you (grading, approvals) will appear here.
-            </p>
-            <button
-              type="button"
-              class="mt-6 inline-flex items-center gap-2 rounded-lg border border-dashed border-leaf/40 px-4 py-2 text-sm font-medium text-leaf transition-colors hover:bg-leaf/5"
-            >
-              <FeatherIcon name="plus" class="h-4 w-4" />
-              Add Personal Note
-            </button>
-          </div>
-
+          <!-- Example tasks (replace with real later) -->
           <div
-            class="group flex cursor-pointer items-start gap-4 border-b border-sand-200 bg-white px-6 py-4 transition-colors hover:bg-sky/20 last:border-0"
+            class="group flex cursor-pointer items-start gap-4 border-b border-[rgba(var(--sand-rgb),0.4)]
+                   bg-white px-6 py-4 transition-colors hover:bg-sky/20 last:border-0"
           >
-            <div class="mt-1 h-5 w-5 rounded border-2 border-slate-300 transition-colors group-hover:border-jacaranda"></div>
+            <div class="mt-1 h-5 w-5 rounded border-2 border-slate/60 transition-colors group-hover:border-jacaranda"></div>
 
             <div class="flex-1">
               <p class="text-sm font-medium text-ink transition-colors group-hover:text-jacaranda">
                 Submit Semester Reports for Year 9
               </p>
-              <div class="mt-1 flex items-center gap-3 text-xs text-slate-500">
-                <span class="flex items-center gap-1 text-clay font-medium">
-                  <FeatherIcon name="alert-circle" class="h-3 w-3" /> Due Today
+              <div class="mt-1 flex items-center gap-3 text-xs text-slate/70">
+                <span class="flex items-center gap-1 text-flame font-medium">
+                  <FeatherIcon name="alert-circle" class="h-3 w-3" />
+                  Due Today
                 </span>
                 <span>•</span>
                 <span>Academics</span>
@@ -79,129 +80,128 @@
           <div
             class="group flex cursor-pointer items-start gap-4 bg-white px-6 py-4 transition-colors hover:bg-sky/20"
           >
-            <div class="mt-1 h-5 w-5 rounded border-2 border-slate-300 transition-colors group-hover:border-jacaranda"></div>
-            <div>
+            <div class="mt-1 h-5 w-5 rounded border-2 border-slate/60 transition-colors group-hover:border-jacaranda"></div>
+
+            <div class="flex-1">
               <p class="text-sm font-medium text-ink transition-colors group-hover:text-jacaranda">
                 Approve Field Trip: Grade 10 Science
               </p>
-              <div class="mt-1 flex items-center gap-3 text-xs text-slate-500">
+              <div class="mt-1 flex items-center gap-3 text-xs text-slate/70">
                 <span>Tomorrow</span>
                 <span>•</span>
                 <span>Approval</span>
               </div>
             </div>
           </div>
+
         </div>
       </div>
 
-      <div class="flex flex-col gap-4 lg:col-span-4">
-        <h3 class="px-1 text-lg font-bold text-canopy">
+
+      <!-- RIGHT COL: QUICK ACTIONS ------------------------------->
+      <div class="lg:col-span-4 space-y-4">
+
+        <h3 class="px-1 text-lg font-semibold text-canopy">
           Quick Actions
         </h3>
 
         <div class="grid gap-3">
+
+          <!-- Standard Quick Actions -->
           <RouterLink
             v-for="action in quickActions"
             :key="action.label"
             :to="action.to"
-            class="group relative flex items-center gap-4 rounded-xl border border-border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/30 hover:shadow-md"
+            class="action-tile group"
           >
-            <div
-              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-sky text-canopy transition-colors group-hover:bg-jacaranda group-hover:text-white"
-            >
+
+            <!-- Icon container -->
+            <div class="action-tile__icon">
               <FeatherIcon :name="action.icon" class="h-6 w-6" />
             </div>
 
-            <div class="min-w-0 flex-1">
-              <p class="font-bold text-ink transition-colors group-hover:text-jacaranda">
+            <!-- Text -->
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-ink transition-colors group-hover:text-jacaranda">
                 {{ action.label }}
               </p>
-              <p class="truncate text-xs text-slate-500">
+              <p class="truncate text-xs text-slate/70">
                 {{ action.caption }}
               </p>
             </div>
 
-            <FeatherIcon name="chevron-right" class="h-4 w-4 text-slate-300 transition-colors group-hover:text-jacaranda" />
+            <FeatherIcon
+              name="chevron-right"
+              class="h-4 w-4 text-slate/40 transition-colors group-hover:text-jacaranda"
+            />
+
           </RouterLink>
 
+          <!-- Switch to Desk -->
           <a
             href="/app"
-            class="group flex items-center gap-4 rounded-xl border border-dashed border-slate-300 p-4 transition-colors hover:bg-sand/30"
+            class="action-tile group border-dashed border-slate/40 bg-white"
           >
-            <div
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors group-hover:text-ink"
-            >
+            <div class="action-tile__icon bg-slate-100 text-slate-500 group-hover:bg-slate-200">
               <FeatherIcon name="monitor" class="h-5 w-5" />
             </div>
-            <div>
-              <p class="text-sm font-semibold text-slate-600 transition-colors group-hover:text-ink">
+
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-slate/70 transition-colors group-hover:text-ink">
                 Switch to Desk
               </p>
-              <p class="text-[10px] uppercase tracking-wider text-slate-400">
+              <p class="text-[10px] uppercase tracking-wider text-slate/50">
                 Classic ERP View
               </p>
             </div>
+
+            <FeatherIcon name="chevron-right" class="h-4 w-4 text-slate/40" />
           </a>
+
         </div>
+
       </div>
+
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { RouterLink } from 'vue-router';
-import { FeatherIcon } from 'frappe-ui';
-import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue';
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
+import { FeatherIcon } from 'frappe-ui'
+import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue'
 
-// -----------------------------------------------------------------------------
-// USER DATA (Restored to Original Working Logic)
-// -----------------------------------------------------------------------------
-
-const userDoc = ref<any | null>(null);
+/* USER --------------------------------------------------------- */
+const userDoc = ref<any | null>(null)
 
 onMounted(async () => {
   try {
-    // 1) Who is logged in?
-    const whoRes = await fetch('/api/method/frappe.auth.get_logged_user', {
-      credentials: 'include',
-    });
-    const whoJson = await whoRes.json();
-    const userId = whoJson.message as string | undefined;
+    const whoRes = await fetch('/api/method/frappe.auth.get_logged_user', { credentials: 'include' })
+    const whoJson = await whoRes.json()
+    const userId = whoJson.message
 
-    if (!userId || userId === 'Guest') {
-      return;
-    }
+    if (!userId || userId === 'Guest') return
 
-    // 2) Fetch the full User document
     const userRes = await fetch(`/api/resource/User/${encodeURIComponent(userId)}`, {
       credentials: 'include',
-    });
-    const userJson = await userRes.json();
-
-    userDoc.value = userJson.data || null;
-  } catch (error) {
-    console.error('[StaffHome] Failed to load user doc:', error);
+    })
+    const userJson = await userRes.json()
+    userDoc.value = userJson.data || null
+  } catch (err) {
+    console.error('[StaffHome] Failed to load user doc:', err)
   }
-});
+})
 
 const firstName = computed(() => {
-  const doc = userDoc.value;
-  if (!doc) return 'Staff';
+  const doc = userDoc.value
+  if (!doc) return 'Staff'
+  if (doc.first_name) return doc.first_name
+  if (doc.full_name) return doc.full_name.split(' ')[0]
+  return 'Staff'
+})
 
-  if (doc.first_name && typeof doc.first_name === 'string') {
-    return doc.first_name;
-  }
-  if (doc.full_name && typeof doc.full_name === 'string') {
-    return doc.full_name.split(' ')[0];
-  }
-  return 'Staff';
-});
-
-// -----------------------------------------------------------------------------
-// CONFIG
-// -----------------------------------------------------------------------------
-
+/* QUICK ACTIONS ------------------------------------------------ */
 const quickActions = [
   {
     label: 'Plan Student Groups',
@@ -221,13 +221,12 @@ const quickActions = [
     icon: 'edit-3',
     to: { name: 'staff-gradebook' },
   },
-];
+]
 
-const now = new Date();
+/* GREETING ----------------------------------------------------- */
+const now = new Date()
 const greeting = computed(() => {
-  const hour = now.getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-});
+  const hour = now.getHours()
+  return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+})
 </script>

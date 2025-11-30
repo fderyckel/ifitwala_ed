@@ -1,0 +1,177 @@
+/* =====================================================================
+   TAILWIND BASE LAYERS
+   ===================================================================== */
+/* ui-spa/src/styles/app.css */
+
+/* =====================================================================
+   BASE LAYER — GLOBAL RESET (no component-level styling)
+   ===================================================================== */
+@layer base {
+  html,
+  body {
+    @apply antialiased text-[color:var(--ink)] bg-transparent;
+  }
+
+  body {
+    font-feature-settings: "liga" 1, "calt" 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply text-[color:var(--canopy)] font-semibold;
+  }
+
+  strong {
+    @apply font-semibold;
+  }
+}
+
+/* =====================================================================
+   COMPONENTS LAYER — THEME + CARDS + DIALOGS + STRUCTURAL PATTERNS
+   ===================================================================== */
+@layer components {
+
+  /* ---------------------------------------------------------------
+     1. STAFF SPA THEME WRAPPER (only top-level container uses this)
+     --------------------------------------------------------------- */
+  .ifitwala-theme {
+    background:
+      radial-gradient(circle at 5% 5%, rgba(var(--leaf-rgb), 0.32), transparent 58%),
+      radial-gradient(circle at 95% 0%, rgba(var(--jacaranda-rgb), 0.26), transparent 58%),
+      radial-gradient(circle at 90% 95%, rgba(var(--moss-rgb), 0.25), transparent 60%),
+      linear-gradient(
+        180deg,
+        var(--sky) 0%,
+        #f1f6f8 45%,
+        var(--sand) 100%
+      );
+    background-attachment: fixed;
+    color: rgb(var(--ink-rgb));
+    @apply min-h-screen flex flex-col;
+  }
+
+  /* ---------------------------------------------------------------
+     2. PAPER CARD (default neutral card surface)
+     --------------------------------------------------------------- */
+  .paper-card {
+    @apply bg-white border border-[rgba(var(--border-rgb),0.9)]
+           rounded-2xl shadow-sm;
+  }
+
+  /* Frosted variant */
+  .paper-card-frosted {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(var(--sky-rgb), 0.92),
+        rgba(var(--sand-rgb), 0.9)
+      );
+    @apply border border-[rgba(var(--border-rgb),0.85)]
+           rounded-2xl shadow-sm backdrop-blur-md;
+  }
+
+  /* ---------------------------------------------------------------
+     3. FRAPPE-UI DIALOG OVERRIDES (critical)
+     --------------------------------------------------------------- */
+  .fui-dialog-backdrop {
+    @apply bg-black/40 backdrop-blur-sm;
+  }
+
+  .fui-dialog-panel {
+    @apply bg-white rounded-2xl shadow-2xl border border-[rgba(var(--border-rgb),0.85)]
+           p-4;
+    color: rgb(var(--ink-rgb));
+  }
+
+  .fui-dialog-title {
+    @apply text-base font-semibold text-slate-900 mb-2;
+  }
+
+  .fui-dialog-body {
+    @apply text-sm text-slate-700;
+  }
+
+  .fui-dialog-footer {
+    @apply mt-4 flex justify-end gap-2;
+  }
+
+  /* ---------------------------------------------------------------
+     4. BUTTON OVERRIDES (follows frappe-ui but matches palette)
+     --------------------------------------------------------------- */
+  .fui-btn-primary {
+    background: rgb(var(--leaf-rgb));
+    border-color: rgb(var(--leaf-rgb));
+    @apply text-white shadow-sm;
+  }
+  .fui-btn-primary:hover {
+    background: rgba(var(--leaf-rgb), 0.85);
+  }
+
+  .fui-btn-minimal:hover {
+    @apply bg-sky/30 text-[color:var(--canopy)];
+  }
+
+  /* ---------------------------------------------------------------
+     5. POPOVER (birthday / health notes)
+     --------------------------------------------------------------- */
+  .ifitwala-popover {
+    @apply fixed z-50 max-w-xl p-4 rounded-2xl
+           border border-[rgba(var(--border-rgb),0.85)]
+           bg-white shadow-xl text-sm text-slate-700 ring-1 ring-black/5;
+  }
+}
+
+/* =====================================================================
+   UTILITIES LAYER — REUSABLE helpers (NO component styling here)
+   ===================================================================== */
+@layer utilities {
+
+  /* TEXT HELPERS */
+  .text-ink {
+    color: rgb(var(--ink-rgb));
+  }
+
+  .text-canopy {
+    color: rgb(var(--canopy-rgb));
+  }
+
+  /* GRADIENT HELPERS */
+  .bg-sky-gradient {
+    background: linear-gradient(180deg, var(--sky), var(--sand));
+  }
+
+  /* RINGS */
+  .ring-leaf {
+    outline: 2px solid rgb(var(--leaf-rgb));
+    outline-offset: -2px;
+  }
+
+  .ring-jacaranda {
+    outline: 2px solid rgb(var(--jacaranda-rgb));
+    outline-offset: -2px;
+  }
+
+  .ring-flame {
+    outline: 2px solid rgb(var(--flame-rgb));
+    outline-offset: -2px;
+  }
+
+  /* ELEVATION */
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-strong {
+    box-shadow: var(--shadow-strong);
+  }
+
+  /* RADIUS TOKENS */
+  .rounded-xl-token {
+    border-radius: var(--radius-xl);
+  }
+  .rounded-lg-token {
+    border-radius: var(--radius-lg);
+  }
+}
