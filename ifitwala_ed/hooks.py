@@ -144,7 +144,6 @@ permission_query_conditions = {
 	"Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.get_permission_query_conditions",
 	"Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.get_permission_query_conditions",
 }
-}
 
 has_permission = {
   "Contact": "ifitwala_ed.utilities.contact_utils.contact_has_permission",
