@@ -1,28 +1,30 @@
 <!-- ifitwala_ed/ui-spa/src/components/calendar -->
 <template>
 	<div class="relative">
-		<section class="card-paper p-6">
+		<section class="paper-card schedule-card p-6">
 			<header
-				class="flex flex-col gap-4 border-b border-sand-300 pb-4 md:flex-row md:items-center md:justify-between"
+				class="flex flex-col gap-4 border-b border-[rgba(var(--border-rgb),0.9)] pb-4 md:flex-row md:items-center md:justify-between"
 			>
 				<div>
 					<p class="text-sm uppercase tracking-[0.2em] text-canopy">
 						Schedule
 					</p>
-					<h2 class="text-2xl font-semibold text-heading">
+					<h2 class="text-2xl font-semibold text-canopy">
 						Your upcoming commitments
 					</h2>
-					<p class="text-sm text-slate/70">
+					<p class="text-sm text-[rgba(var(--slate-rgb),0.75)]">
 						{{ subtitle }}
 					</p>
 				</div>
 
-				<div class="flex items-center gap-3 text-xs text-slate/60">
+				<div class="flex items-center gap-3 text-xs text-[rgba(var(--slate-rgb),0.7)]">
 					<span v-if="lastUpdatedLabel">
 						Updated {{ lastUpdatedLabel }}
 					</span>
 					<button
-						class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition hover:border-leaf hover:text-leaf"
+						class="inline-flex items-center gap-2 rounded-full border border-[rgba(var(--border-rgb),0.95)]
+						       bg-white px-3 py-1.5 text-xs font-medium text-[rgba(var(--slate-rgb),0.9)]
+						       shadow-soft transition hover:border-[rgba(var(--leaf-rgb),0.9)] hover:text-[rgb(var(--leaf-rgb))]"
 						@click="handleRefresh"
 					>
 						<FeatherIcon name="refresh-cw" class="h-4 w-4" />
@@ -39,8 +41,8 @@
 						class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium transition"
 						:class="
 							showWeekends
-								? 'border-slate-300 text-slate-700 bg-white'
-								: 'border-canopy/30 bg-leaf/10 text-canopy'
+								? 'border-[rgba(var(--border-rgb),0.9)] bg-white text-[rgba(var(--slate-rgb),0.9)]'
+								: 'border-[rgba(var(--leaf-rgb),0.9)] bg-[rgba(var(--leaf-rgb),0.08)] text-[rgb(var(--canopy-rgb))]'
 						"
 						@click="showWeekends = !showWeekends"
 					>
@@ -51,8 +53,8 @@
 						class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium transition"
 						:class="
 							showFullDay
-								? 'border-slate-300 text-slate-700 bg-white/90'
-								: 'border-emerald-200 bg-emerald-50 text-emerald-700'
+								? 'border-[rgba(var(--border-rgb),0.9)] bg-white/90 text-[rgba(var(--slate-rgb),0.9)]'
+								: 'border-[rgba(var(--leaf-rgb),0.9)] bg-[rgba(var(--leaf-rgb),0.08)] text-[rgb(var(--canopy-rgb))]'
 						"
 						@click="showFullDay = !showFullDay"
 					>
@@ -70,7 +72,7 @@
 					:class="
 						chip.active
 							? chip.activeClass
-							: 'border-slate-200 bg-white/80 text-slate-500 hover:border-slate-300'
+							: 'border-[rgba(var(--border-rgb),0.9)] bg-white/80 text-[rgba(var(--slate-rgb),0.7)] hover:border-[rgba(var(--border-rgb),1)]'
 					"
 					@click="toggleChip(chip.id)"
 				>
@@ -80,7 +82,7 @@
 					></span>
 					{{ chip.label }}
 					<span
-						class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-slate-500"
+						class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-[rgba(var(--slate-rgb),0.7)]"
 					>
 						{{ chip.count }}
 					</span>
@@ -88,7 +90,10 @@
 			</div>
 
 			<!-- Calendar shell with rounded corners + clipping and breathing room -->
-			<div class="mt-6 overflow-hidden rounded-2xl border border-sand-200 bg-[#fcfbf9] shadow-sm p-3 sm:p-4">
+			<div
+				class="mt-6 overflow-hidden rounded-2xl border border-[rgba(var(--border-rgb),0.95)]
+				       bg-white shadow-soft p-3 sm:p-4"
+			>
 				<FullCalendar
 					ref="calendarRef"
 					:options="calendarOptions"
@@ -100,7 +105,7 @@
 					v-if="loading"
 					class="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-white/70 backdrop-blur"
 				>
-					<div class="flex items-center gap-2 text-sm font-medium text-slate-500">
+					<div class="flex items-center gap-2 text-sm font-medium text-[rgba(var(--slate-rgb),0.8)]">
 						<FeatherIcon name="loader" class="h-4 w-4 animate-spin" />
 						Loading calendar…
 					</div>
@@ -110,13 +115,15 @@
 			<!-- Empty / error messages -->
 			<div
 				v-if="error"
-				class="mt-4 rounded-2xl border border-rose-100 bg-rose-50/90 px-4 py-3 text-sm text-rose-700"
+				class="mt-4 rounded-2xl border border-[rgba(var(--flame-rgb),0.25)]
+				       bg-[rgba(var(--flame-rgb),0.05)] px-4 py-3 text-sm text-[rgb(var(--flame-rgb))]"
 			>
 				{{ error }}
 			</div>
 			<div
 				v-else-if="isEmpty"
-				class="mt-4 rounded-2xl border border-dashed border-slate-200 bg-sky/40 px-4 py-6 text-center text-sm text-slate-600"
+				class="mt-4 rounded-2xl border border-dashed border-[rgba(var(--border-rgb),0.9)]
+				       bg-[rgba(var(--sky-rgb),0.45)] px-4 py-6 text-center text-sm text-[rgba(var(--slate-rgb),0.8)]"
 			>
 				Nothing scheduled for this range. Enjoy the calm or adjust the view to a different week.
 			</div>
@@ -146,6 +153,7 @@
 		/>
 	</div>
 </template>
+
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
@@ -681,74 +689,3 @@ onBeforeUnmount(() => {
 	}
 });
 </script>
-
-<style scoped>
-/* Outer schedule card gets a soft “aura” so the page isn’t pure white */
-.schedule-card {
-	position: relative;
-	border-radius: 1.5rem;
-	overflow: hidden;
-}
-
-.schedule-card::before {
-	content: '';
-	position: absolute;
-	inset: -40% -20%;
-	background:
-		radial-gradient(circle at 0 0, rgba(var(--leaf-rgb), 0.16), transparent 60%),
-		radial-gradient(circle at 100% 0, rgba(var(--jacaranda-rgb), 0.14), transparent 55%),
-		radial-gradient(circle at 50% 100%, rgba(var(--clay-rgb), 0.12), transparent 55%);
-	opacity: 0.95;
-	filter: blur(40px);
-	pointer-events: none;
-	z-index: 0;
-}
-
-/* Ensure the actual content sits above the aura */
-.schedule-card > * {
-	position: relative;
-	z-index: 1;
-}
-
-/* FullCalendar typography stays clean but inherits palette */
-:global(.fc) {
-	font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-	font-size: 0.85rem;
-}
-
-:global(.fc-toolbar-title) {
-	font-size: 1rem;
-	font-weight: 600;
-	color: rgb(var(--ink-rgb));
-}
-
-:global(.fc-button) {
-	border-radius: 9999px !important;
-	border: 1px solid rgba(var(--border-rgb), 0.95) !important;
-	background: #ffffff !important;
-	color: rgb(var(--ink-rgb)) !important;
-	padding: 0.3rem 0.75rem !important;
-	font-size: 0.8rem !important;
-	font-weight: 500 !important;
-}
-
-:global(.fc-button-active),
-:global(.fc-button-primary:not(:disabled).fc-button-active) {
-	border-color: rgba(var(--canopy-rgb), 0.9) !important;
-	background: rgb(var(--canopy-rgb)) !important;
-	color: #ffffff !important;
-}
-
-/* Day / time grid events: soft rounded pills, no harsh borders */
-:global(.fc-daygrid-event),
-:global(.fc-timegrid-event) {
-	border-radius: 0.85rem !important;
-	padding: 0.3rem 0.45rem !important;
-	border: none !important;
-}
-
-/* Remove little dot in list view to keep it clean */
-:global(.fc-list-event-dot) {
-	border-color: transparent !important;
-}
-</style>

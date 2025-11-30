@@ -28,15 +28,23 @@
     @apply transition-colors hover:text-canopy;
   }
 
+  /* Smaller, better-proportioned Desk switch */
   .staff-layout__desk-switch {
-		@apply inline-flex items-center gap-2 px-4 py-2 rounded-full
-					border border-[rgba(var(--border-rgb),0.95)]
-					bg-white/95 text-xs font-medium shadow-sm transition;
-		color: rgba(var(--slate-rgb), 0.9); /* use your token, not Tailwind slate */
-	}
+    @apply inline-flex items-center gap-1.5
+           px-3 py-1.5 rounded-full
+           border border-[rgba(var(--border-rgb),0.95)]
+           bg-white/95 text-xs font-medium
+           shadow-sm transition;
+    color: rgba(var(--slate-rgb), 0.9);
+  }
 
   .staff-layout__desk-switch:hover {
-    @apply border-leaf bg-leaf/10 text-canopy;
+    @apply border-leaf bg-leaf/10;
+    color: rgb(var(--canopy-rgb));
+  }
+
+  .staff-layout__desk-switch-icon {
+    @apply h-4 w-4;
   }
 
   .staff-layout__main {
@@ -92,4 +100,18 @@
            grid-cols-[repeat(auto-fit,minmax(14rem,1fr))];
   }
 
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+
+  .staff-layout__footer {
+    @apply w-full border-t border-[rgba(var(--border-rgb),0.85)]
+           bg-white/90;
+  }
+
+  .staff-layout__footer-inner {
+    @apply mx-auto max-w-6xl px-5 py-3 sm:px-6
+           text-[0.7rem];
+    color: rgba(var(--slate-rgb), 0.7);
+  }
 }

@@ -1,10 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/layouts/StaffPortalLayout.vue -->
-
 <template>
-  <div
-    class="staff-layout flex flex-col font-sans antialiased min-h-screen text-ink"
-    style="background: linear-gradient(180deg, var(--sky) 0%, #F1F6F8 40%, var(--sand) 100%);"
-  >
+  <div class="staff-layout">
     <header class="staff-layout__header">
       <div class="staff-layout__header-inner">
         <h1 class="staff-layout__brand">
@@ -40,6 +36,7 @@
     </footer>
   </div>
 </template>
+
 
 <script setup lang="ts">
 import { computed } from 'vue';

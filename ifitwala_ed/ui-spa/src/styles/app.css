@@ -121,6 +121,79 @@
            border border-[rgba(var(--border-rgb),0.85)]
            bg-white shadow-xl text-sm text-slate-700 ring-1 ring-black/5;
   }
+
+  /* ---------------------------------------------------------------
+     STAFF / STUDENT PORTAL — SCHEDULE CARD AURA
+     --------------------------------------------------------------- */
+  .schedule-card {
+    position: relative;
+    border-radius: 1.5rem;
+    overflow: hidden;
+  }
+
+  .schedule-card::before {
+    content: '';
+    position: absolute;
+    inset: -40% -20%;
+    background:
+      radial-gradient(circle at 0 0, rgba(var(--leaf-rgb), 0.16), transparent 60%),
+      radial-gradient(circle at 100% 0, rgba(var(--jacaranda-rgb), 0.14), transparent 55%),
+      radial-gradient(circle at 50% 100%, rgba(var(--clay-rgb), 0.12), transparent 55%);
+    opacity: 0.95;
+    filter: blur(40px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .schedule-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---------------------------------------------------------------
+     FULLCALENDAR SKIN (shared staff / student portal)
+     --------------------------------------------------------------- */
+  .calendar-shell .fc {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    font-size: 0.85rem;
+  }
+
+  .calendar-shell .fc-toolbar-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgb(var(--ink-rgb));
+  }
+
+  .calendar-shell .fc-button {
+    border-radius: 9999px !important;
+    border: 1px solid rgba(var(--border-rgb), 0.95) !important;
+    background: #ffffff !important;
+    color: rgb(var(--ink-rgb)) !important;
+    padding: 0.3rem 0.75rem !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+  }
+
+  .calendar-shell .fc-button-active,
+  .calendar-shell .fc-button-primary:not(:disabled).fc-button-active {
+    border-color: rgba(var(--canopy-rgb), 0.9) !important;
+    background: rgb(var(--canopy-rgb)) !important;
+    color: #ffffff !important;
+  }
+
+  /* Day / time grid events: soft rounded pills */
+  .calendar-shell .fc-daygrid-event,
+  .calendar-shell .fc-timegrid-event {
+    border-radius: 0.85rem !important;
+    padding: 0.3rem 0.45rem !important;
+    border: none !important;
+  }
+
+  /* Remove little dot in list view */
+  .calendar-shell .fc-list-event-dot {
+    border-color: transparent !important;
+  }
+
 }
 
 /* =====================================================================
