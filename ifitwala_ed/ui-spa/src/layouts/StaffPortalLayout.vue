@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/layouts/StaffPortalLayout.vue -->
 <!-- ifitwala_ed/ui-spa/src/layouts/StaffPortalLayout.vue -->
 <template>
-  <div class="staff-layout">
+  <div class="staff-layout ifitwala-theme">
     <header class="staff-layout__header">
       <div class="staff-layout__header-inner">
         <h1 class="staff-layout__brand">
