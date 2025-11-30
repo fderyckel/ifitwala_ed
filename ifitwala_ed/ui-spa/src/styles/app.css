@@ -11,6 +11,7 @@
 
   body {
     font-feature-settings: "liga" 1, "calt" 1;
+    background-color: transparent !important; /* Override server-side bg-gray-100 */
   }
 
   h1,
@@ -43,10 +44,29 @@
         var(--sky) 0%,
         #f1f6f8 45%,
         var(--sand) 100%
-      );
+      ) !important;
     background-attachment: fixed;
     color: rgb(var(--ink-rgb));
     @apply min-h-screen flex flex-col;
+  }
+
+  /* ---------------------------------------------------------------
+     1b. FORM CONTROL OVERRIDES (Fix missing borders)
+     --------------------------------------------------------------- */
+  input[type="text"],
+  input[type="search"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  select,
+  textarea {
+    @apply border-slate-300 !important;
+  }
+  
+  input:focus,
+  select:focus,
+  textarea:focus {
+    @apply border-slate-500 ring-1 ring-slate-200 !important;
   }
 
   /* ---------------------------------------------------------------
