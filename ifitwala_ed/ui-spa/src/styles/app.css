@@ -194,6 +194,398 @@
     border-color: transparent !important;
   }
 
+  /* ---------------------------------------------------------------
+     PORTAL MODALS — MEETING / CLASS / SCHOOL EVENT
+     --------------------------------------------------------------- */
+
+  /* Root dialog wrapper */
+  .meeting-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+  }
+
+  .meeting-modal__backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45); /* slate-ish overlay */
+    backdrop-filter: blur(6px);
+  }
+
+  .meeting-modal__wrapper {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+    pointer-events: none;
+  }
+
+  @media (min-width: 768px) {
+    .meeting-modal__wrapper {
+      align-items: center;
+      padding: 2rem;
+    }
+  }
+
+  .meeting-modal__panel {
+    pointer-events: auto;
+    width: 100%;
+    max-width: 40rem;
+    border-radius: 1.5rem;
+    background:
+      radial-gradient(circle at 0% 0%, rgba(var(--sky-rgb), 0.9), transparent 65%),
+      radial-gradient(circle at 100% 0%, rgba(var(--sand-rgb), 0.9), transparent 65%),
+      #ffffff;
+    border: 1px solid rgba(var(--border-rgb), 0.9);
+    box-shadow: 0 18px 45px rgba(7, 16, 25, 0.18);
+    padding: 1.5rem 1.5rem 1.25rem;
+    color: rgb(var(--ink-rgb));
+  }
+
+  @media (min-width: 768px) {
+    .meeting-modal__panel {
+      padding: 1.75rem 1.75rem 1.5rem;
+    }
+  }
+
+  .meeting-modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .meeting-modal__headline {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .meeting-modal__eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: rgba(var(--slate-rgb), 0.75);
+  }
+
+  .meeting-modal__time {
+    font-size: 0.8rem;
+    color: rgba(var(--slate-rgb), 0.9);
+  }
+
+  .meeting-modal__timezone {
+    margin-left: 0.25rem;
+    color: rgba(var(--slate-rgb), 0.8);
+  }
+
+  .meeting-modal__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .meeting-modal__icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2rem;
+    width: 2rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(var(--border-rgb), 0.9);
+    background: #ffffff;
+    color: rgba(var(--slate-rgb), 0.9);
+    transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+  }
+
+  .meeting-modal__icon-button:hover {
+    border-color: rgba(var(--leaf-rgb), 0.9);
+    color: rgb(var(--canopy-rgb));
+    transform: translateY(-1px);
+  }
+
+  .meeting-modal__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.15rem 0.55rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: rgba(var(--sand-rgb), 0.8);
+    color: rgb(var(--canopy-rgb));
+  }
+
+  .meeting-modal__desk-link,
+  .meeting-modal__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgb(var(--jacaranda-rgb));
+    text-decoration: none;
+  }
+
+  .meeting-modal__desk-link:hover,
+  .meeting-modal__link:hover {
+    text-decoration: underline;
+  }
+
+  .meeting-modal__body {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  .meeting-modal__meta-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .meeting-modal__meta-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .meeting-modal__label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(var(--slate-rgb), 0.7);
+    margin-bottom: 0.15rem;
+    font-weight: 600;
+  }
+
+  .meeting-modal__value {
+    font-size: 0.85rem;
+    color: rgb(var(--ink-rgb));
+  }
+
+  .meeting-modal__section-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .meeting-modal__agenda-content {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(var(--border-rgb), 0.85);
+    background: rgba(var(--sky-rgb), 0.18);
+    padding: 0.75rem 0.85rem;
+    font-size: 0.85rem;
+    color: rgba(var(--slate-rgb), 0.95);
+  }
+
+  .meeting-modal__participants {
+    margin-top: 0.25rem;
+  }
+
+  .meeting-modal__chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.45rem;
+  }
+
+  .meeting-modal__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: rgba(var(--sky-rgb), 0.8);
+    color: rgb(var(--canopy-rgb));
+  }
+
+  .meeting-modal__chip-role {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(var(--slate-rgb), 0.9);
+  }
+
+  .meeting-modal__chip--muted {
+    background: rgba(var(--sand-rgb), 0.9);
+    color: rgba(var(--slate-rgb), 0.95);
+  }
+
+  .meeting-modal__empty {
+    font-size: 0.8rem;
+    color: rgba(var(--slate-rgb), 0.85);
+  }
+
+  .meeting-modal__loading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 0.25rem;
+  }
+
+  .meeting-modal__skeleton {
+    border-radius: 9999px;
+    background: linear-gradient(
+      90deg,
+      rgba(var(--sky-rgb), 0.6),
+      rgba(var(--sand-rgb), 0.8),
+      rgba(var(--sky-rgb), 0.6)
+    );
+    background-size: 200% 100%;
+    animation: meeting-modal-skeleton-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes meeting-modal-skeleton-pulse {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  .meeting-modal__error {
+    margin-top: 0.75rem;
+    border-radius: 0.9rem;
+    border: 1px solid rgba(var(--flame-rgb), 0.35);
+    background: rgba(var(--flame-rgb), 0.05);
+    padding: 0.75rem 0.9rem;
+    font-size: 0.85rem;
+    color: rgb(var(--flame-rgb));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .meeting-modal__cta {
+    border-radius: 9999px;
+    border: 1px solid rgba(var(--flame-rgb), 0.85);
+    padding: 0.3rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: #ffffff;
+    color: rgb(var(--flame-rgb));
+  }
+
+  .meeting-modal__cta:hover {
+    background: rgba(var(--flame-rgb), 0.06);
+  }
+
+  /* Action row at the bottom of the class modal */
+  .meeting-modal__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .meeting-modal__action-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 9999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid rgba(var(--leaf-rgb), 0.9);
+    background: rgb(var(--leaf-rgb));
+    color: #ffffff;
+    box-shadow: 0 6px 18px rgba(31, 122, 69, 0.28);
+  }
+
+  .meeting-modal__action-button--secondary {
+    border-color: rgba(var(--border-rgb), 0.95);
+    background: #ffffff;
+    color: rgba(var(--slate-rgb), 0.9);
+    box-shadow: 0 3px 10px rgba(7, 16, 25, 0.06);
+  }
+
+  .meeting-modal__action-button:hover {
+    transform: translateY(-1px);
+  }
+
+  /* School event color pill */
+  .meeting-modal__color-pill {
+    height: 0.3rem;
+    width: 100%;
+    border-radius: 9999px;
+    margin-bottom: 0.9rem;
+    background: rgba(var(--jacaranda-rgb), 0.9);
+  }
+
+  /* ---- Enter / leave transitions for overlay & panel ---- */
+
+  .meeting-modal__fade-enter,
+  .meeting-modal__fade-leave {
+    transition: opacity 160ms ease-out;
+  }
+  .meeting-modal__fade-from {
+    opacity: 0;
+  }
+  .meeting-modal__fade-to {
+    opacity: 1;
+  }
+
+  .meeting-modal__panel-enter,
+  .meeting-modal__panel-leave {
+    transition: opacity 180ms ease-out, transform 180ms ease-out;
+  }
+  .meeting-modal__panel-from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  .meeting-modal__panel-to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  /* ---------------------------------------------------------------
+     TYPE VARIANTS — DIFFERENTIATE VISUALLY BY CONTEXT
+     --------------------------------------------------------------- */
+
+  /* Meetings = jacaranda accent */
+  .meeting-modal--meeting .meeting-modal__panel {
+    border-top: 4px solid rgba(var(--jacaranda-rgb), 0.9);
+  }
+  .meeting-modal--meeting .meeting-modal__eyebrow {
+    color: rgba(var(--jacaranda-rgb), 0.95);
+  }
+
+  /* Scheduled class = leaf / canopy accent */
+  .meeting-modal--class .meeting-modal__panel {
+    border-top: 4px solid rgba(var(--leaf-rgb), 0.9);
+  }
+  .meeting-modal--class .meeting-modal__eyebrow {
+    color: rgba(var(--leaf-rgb), 0.95);
+  }
+  .meeting-modal--class .meeting-modal__badge {
+    background: rgba(var(--leaf-rgb), 0.12);
+    color: rgb(var(--leaf-rgb));
+  }
+
+  /* School event = clay / flame accent */
+  .meeting-modal--school .meeting-modal__panel {
+    border-top: 4px solid rgba(var(--flame-rgb), 0.9);
+  }
+  .meeting-modal--school .meeting-modal__eyebrow {
+    color: rgba(var(--clay-rgb), 0.95);
+  }
+  .meeting-modal--school .meeting-modal__badge {
+    background: rgba(var(--flame-rgb), 0.1);
+    color: rgb(var(--flame-rgb));
+  }
+  .meeting-modal--school .meeting-modal__color-pill {
+    /* eventColor inline style still wins; this is the fallback */
+    background: rgba(var(--flame-rgb), 0.9);
+  }
+
+
 }
 
 /* =====================================================================

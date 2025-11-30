@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue -->
 <template>
 	<TransitionRoot as="template" :show="open">
-		<Dialog as="div" class="meeting-modal" @close="emitClose">
+		<Dialog as="div" class="meeting-modal meeting-modal--class" @close="emitClose"></Dialog>
 			<TransitionChild
 				as="template"
 				enter="meeting-modal__fade-enter"
