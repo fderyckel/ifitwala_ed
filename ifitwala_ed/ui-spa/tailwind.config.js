@@ -1,3 +1,5 @@
+// ifitwala_ed/ui-spa/tailwind.config.js
+
 import frappeUiPreset from 'frappe-ui/tailwind';
 
 const withOpacity = (variable) => ({ opacityValue }) => {
@@ -12,6 +14,9 @@ export default {
   content: ['./index.html', './src/**/*.{vue,js,ts}', './node_modules/frappe-ui/src/**/*.{vue,js,ts}'],
   theme: {
     extend: {
+      boxShadow: {
+        inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
+      },
       opacity: { 15: '0.15', 65: '0.65', 85: '0.85' },
       colors: {
         ink: withOpacity('--ink-rgb'),
