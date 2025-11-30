@@ -1,6 +1,6 @@
 <template>
 	<TransitionRoot as="template" :show="open">
-		<Dialog as="div" class="meeting-modal meeting-modal--meeting" @close="emitClose"></Dialog>
+		<Dialog as="div" class="meeting-modal meeting-modal--meeting" @close="emitClose">
 			<TransitionChild
 				as="template"
 				enter="meeting-modal__fade-enter"
