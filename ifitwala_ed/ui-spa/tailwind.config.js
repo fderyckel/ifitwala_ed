@@ -20,7 +20,7 @@ export default {
       opacity: { 15: '0.15', 65: '0.65', 85: '0.85' },
       colors: {
         ink: withOpacity('--ink-rgb'),
-        slate: withOpacity('--slate-rgb'),
+        'slate-token': withOpacity('--slate-rgb'),
         canopy: withOpacity('--canopy-rgb'),
         leaf: withOpacity('--leaf-rgb'),
         moss: withOpacity('--moss-rgb'),

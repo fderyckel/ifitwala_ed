@@ -47,7 +47,7 @@
             <FeatherIcon name="list" class="h-4 w-4 opacity-70" />
             Your Focus
           </h3>
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate/70">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-token/70">
             Pending Tasks
           </span>
         </div>
@@ -60,13 +60,13 @@
             class="group flex cursor-pointer items-start gap-4 border-b border-[rgba(var(--sand-rgb),0.4)]
                    bg-white px-6 py-4 transition-colors hover:bg-sky/20 last:border-0"
           >
-            <div class="mt-1 h-5 w-5 rounded border-2 border-slate/60 transition-colors group-hover:border-jacaranda"></div>
+            <div class="mt-1 h-5 w-5 rounded border-2 border-slate-token/60 transition-colors group-hover:border-jacaranda"></div>
 
             <div class="flex-1">
               <p class="text-sm font-medium text-ink transition-colors group-hover:text-jacaranda">
                 Submit Semester Reports for Year 9
               </p>
-              <div class="mt-1 flex items-center gap-3 text-xs text-slate/70">
+              <div class="mt-1 flex items-center gap-3 text-xs text-slate-token/70">
                 <span class="flex items-center gap-1 text-flame font-medium">
                   <FeatherIcon name="alert-circle" class="h-3 w-3" />
                   Due Today
@@ -80,13 +80,13 @@
           <div
             class="group flex cursor-pointer items-start gap-4 bg-white px-6 py-4 transition-colors hover:bg-sky/20"
           >
-            <div class="mt-1 h-5 w-5 rounded border-2 border-slate/60 transition-colors group-hover:border-jacaranda"></div>
+            <div class="mt-1 h-5 w-5 rounded border-2 border-slate-token/60 transition-colors group-hover:border-jacaranda"></div>
 
             <div class="flex-1">
               <p class="text-sm font-medium text-ink transition-colors group-hover:text-jacaranda">
                 Approve Field Trip: Grade 10 Science
               </p>
-              <div class="mt-1 flex items-center gap-3 text-xs text-slate/70">
+              <div class="mt-1 flex items-center gap-3 text-xs text-slate-token/70">
                 <span>Tomorrow</span>
                 <span>•</span>
                 <span>Approval</span>
@@ -125,14 +125,14 @@
               <p class="font-semibold text-ink transition-colors group-hover:text-jacaranda">
                 {{ action.label }}
               </p>
-              <p class="truncate text-xs text-slate/70">
+              <p class="truncate text-xs text-slate-token/70">
                 {{ action.caption }}
               </p>
             </div>
 
             <FeatherIcon
               name="chevron-right"
-              class="h-4 w-4 text-slate/40 transition-colors group-hover:text-jacaranda"
+              class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
             />
 
           </RouterLink>
@@ -140,22 +140,22 @@
           <!-- Switch to Desk -->
           <a
             href="/app"
-            class="action-tile group border-dashed border-slate/40 bg-white"
+            class="action-tile group border-dashed border-slate-token/40 bg-white"
           >
             <div class="action-tile__icon bg-slate-100 text-slate-500 group-hover:bg-slate-200">
               <FeatherIcon name="monitor" class="h-5 w-5" />
             </div>
 
             <div class="flex-1">
-              <p class="text-sm font-semibold text-slate/70 transition-colors group-hover:text-ink">
+              <p class="text-sm font-semibold text-slate-token/70 transition-colors group-hover:text-ink">
                 Switch to Desk
               </p>
-              <p class="text-[10px] uppercase tracking-wider text-slate/50">
+              <p class="text-[10px] uppercase tracking-wider text-slate-token/50">
                 Classic ERP View
               </p>
             </div>
 
-            <FeatherIcon name="chevron-right" class="h-4 w-4 text-slate/40" />
+            <FeatherIcon name="chevron-right" class="h-4 w-4 text-slate-token/40" />
           </a>
 
         </div>
