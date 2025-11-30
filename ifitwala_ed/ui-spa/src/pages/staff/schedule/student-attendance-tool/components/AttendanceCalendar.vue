@@ -1,5 +1,6 @@
 <template>
 	<div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+		<!-- Header -->
 		<div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
 			<div>
 				<h2 class="text-lg font-semibold text-slate-900">{{ currentMonthLabel }}</h2>
@@ -24,13 +25,18 @@
 			</div>
 		</div>
 
+		<!-- Calendar grid -->
 		<div class="relative">
-			<div class="grid grid-cols-7 gap-px bg-slate-100 px-2 pb-2 pt-3 text-center text-xs font-medium tracking-wider text-slate-500">
+			<!-- Weekday header -->
+			<div
+				class="grid grid-cols-7 gap-px bg-slate-100 px-2 pb-2 pt-3 text-center text-xs font-medium tracking-wider text-slate-500"
+			>
 				<div v-for="weekday in weekdays" :key="weekday" class="uppercase">
 					{{ weekday }}
 				</div>
 			</div>
 
+			<!-- Days -->
 			<div class="grid grid-cols-7 gap-px bg-slate-100 p-2">
 				<button
 					v-for="day in days"
@@ -48,11 +54,28 @@
 				</button>
 			</div>
 
+			<!-- Loading overlay -->
 			<div
 				v-if="loading"
 				class="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/70 backdrop-blur-sm"
 			>
 				<Spinner class="h-6 w-6 text-slate-400" />
+			</div>
+		</div>
+
+		<!-- Legend -->
+		<div class="calendar-legend flex items-center justify-between px-4 pb-3 pt-2 text-xs text-slate-500">
+			<div class="flex items-center gap-2">
+				<span class="legend-dot legend-dot--recorded"></span>
+				<span>{{ __('Recorded') }}</span>
+			</div>
+			<div class="flex items-center gap-2">
+				<span class="legend-dot legend-dot--meeting"></span>
+				<span>{{ __('Scheduled') }}</span>
+			</div>
+			<div class="flex items-center gap-2">
+				<span class="legend-dot legend-dot--missing"></span>
+				<span>{{ __('Missing') }}</span>
 			</div>
 		</div>
 	</div>
@@ -69,6 +92,7 @@ type CalendarDay = {
 	label: number
 	isMeeting: boolean
 	isRecorded: boolean
+	isMissing: boolean
 	inCurrentMonth: boolean
 	isPast: boolean
 	isToday: boolean
@@ -138,27 +162,39 @@ const nextMonthDate = computed(() => {
 
 const days = computed<CalendarDay[]>(() => {
 	const start = startOfCalendarGrid(props.month)
+	const weekendSet = new Set(props.weekendDays ?? [6, 0]) // Sat, Sun by default
+	const todayDate = today()
+	const todayIso = formatISO(todayDate)
+
 	return Array.from({ length: 42 }).map((_, idx) => {
 		const date = new Date(start)
 		date.setDate(start.getDate() + idx)
+
 		const iso = formatISO(date)
 		const weekday = date.getDay()
-		const weekendSet = new Set(props.weekendDays ?? [6, 0]) // Sat, Sun by default
-		const todayIso = formatISO(today())
+
+		const isMeeting = meetingDateSet.value.has(iso)
+		const isRecorded = recordedDateSet.value.has(iso)
+		const isPast = date < todayDate
+		const isToday = iso === todayIso
+		const isMissing = isMeeting && !isRecorded && isPast
+
 		return {
 			date,
 			iso,
 			label: date.getDate(),
-			isMeeting: meetingDateSet.value.has(iso),
-			isRecorded: recordedDateSet.value.has(iso),
+			isMeeting,
+			isRecorded,
+			isMissing,
 			inCurrentMonth: date.getMonth() === props.month.getMonth(),
-			isPast: date < today(),
-			isToday: iso === todayIso,
+			isPast,
+			isToday,
 			weekday,
 			isWeekend: weekendSet.has(weekday),
 		}
 	})
 })
+
 
 function goToPrev() {
 	if (!previousMonthDate.value) return
@@ -192,16 +228,19 @@ function dayBadgeClass(day: CalendarDay) {
 		classes.push('calendar-day__badge--today')
 	} else if (day.isRecorded) {
 		classes.push('calendar-day__badge--recorded')
+	} else if (day.isMissing) {
+		classes.push('calendar-day__badge--missing')
 	} else if (day.isMeeting) {
 		classes.push('calendar-day__badge--meeting')
 	}
 
-	if ((!day.inCurrentMonth || day.isPast) && !day.isRecorded && !day.isToday) {
+	if ((!day.inCurrentMonth || day.isPast) && !day.isRecorded && !day.isToday && !day.isMissing) {
 		classes.push('calendar-day__badge--muted')
 	}
 
 	return classes.join(' ')
 }
+
 
 
 function startOfWeek(date: Date) {
@@ -244,7 +283,7 @@ function parseMonth(key: string) {
 </script>
 
 <style scoped>
-/* 1. Base Day Cell - Clean up interaction */
+/* 1. Base Day Cell */
 .calendar-day {
 	border: 1px solid transparent;
 	background: transparent;
@@ -254,7 +293,7 @@ function parseMonth(key: string) {
 	transition: transform 120ms ease;
 }
 
-/* 2. Handle Selection (The only "Box" that should remain) */
+/* 2. Selected day – the only “boxed” look */
 .calendar-day--selected .calendar-day__badge {
 	background: rgb(var(--jacaranda-rgb));
 	color: #fff;
@@ -262,7 +301,7 @@ function parseMonth(key: string) {
 	transform: scale(1.1);
 }
 
-/* 3. The Badge (The Pill/Circle) - This becomes the primary indicator */
+/* 3. Badge pill */
 .calendar-day__badge {
 	display: inline-flex;
 	align-items: center;
@@ -276,16 +315,16 @@ function parseMonth(key: string) {
 	border: 1px solid transparent;
 }
 
-/* 4. Badge States */
+/* 4. Badge states */
 
-/* State: Today */
+/* Today */
 .calendar-day__badge--today {
 	color: rgb(var(--jacaranda-rgb));
 	border-color: rgba(var(--jacaranda-rgb), 0.3);
 	font-weight: 700;
 }
 
-/* State: Meeting Day (The Green Ring) */
+/* Meeting day – green ring */
 .calendar-day__badge--meeting {
 	background: #fff;
 	color: rgb(var(--leaf-rgb));
@@ -293,7 +332,7 @@ function parseMonth(key: string) {
 	box-shadow: 0 1px 2px rgba(var(--leaf-rgb), 0.1);
 }
 
-/* State: Meeting + Recorded (Filled Green) */
+/* Meeting + recorded – filled green */
 .calendar-day__badge--recorded {
 	background: rgba(var(--leaf-rgb), 0.15);
 	color: rgb(var(--leaf-rgb));
@@ -301,15 +340,57 @@ function parseMonth(key: string) {
 	font-weight: 600;
 }
 
-/* State: Past/Muted */
+/* Past meeting, no attendance yet – flame warning ring */
+.calendar-day__badge--missing {
+	background: rgba(var(--flame-rgb), 0.06);
+	color: rgb(var(--flame-rgb));
+	border-color: rgba(var(--flame-rgb), 0.85);
+	box-shadow: 0 0 0 1px rgba(var(--flame-rgb), 0.35);
+	font-weight: 600;
+}
+
+/* Background / muted days */
 .calendar-day__badge--muted {
 	color: rgba(var(--slate-rgb), 0.3);
 }
 
-/* Hover Effects on the Badge */
+/* Hover on active meeting days */
 .calendar-day:hover .calendar-day__badge--meeting {
 	border-color: rgb(var(--leaf-rgb));
 	background: rgba(var(--leaf-rgb), 0.05);
 	cursor: pointer;
+}
+
+/* 5. Legend */
+
+.calendar-legend {
+	border-top: 1px solid rgba(var(--border-rgb), 0.8);
+	background: linear-gradient(180deg, rgba(var(--sky-rgb), 0.65), #fff);
+}
+
+.legend-dot {
+	display: inline-flex;
+	height: 0.75rem;
+	width: 0.75rem;
+	border-radius: 9999px;
+	border: 1px solid transparent;
+}
+
+/* Matches recorded pill */
+.legend-dot--recorded {
+	background: rgba(var(--leaf-rgb), 0.85);
+	border-color: rgba(var(--leaf-rgb), 0.95);
+}
+
+/* Matches meeting ring */
+.legend-dot--meeting {
+	background: #fff;
+	border-color: rgba(var(--leaf-rgb), 0.9);
+}
+
+/* Matches missing flame ring */
+.legend-dot--missing {
+	background: rgba(var(--flame-rgb), 0.06);
+	border-color: rgba(var(--flame-rgb), 0.9);
 }
 </style>

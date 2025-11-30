@@ -887,12 +887,6 @@ async function loadWeekendAndSchedule() {
 	} catch {
 		weekendDays.value = [6, 0]
 	}
-	if (filters.student_group) {
-		// Clear cached meeting dates to avoid stale empties
-		await call('ifitwala_ed.schedule.attendance_utils.invalidate_meeting_dates', {
-			student_group: filters.student_group,
-		})
-	}
 	await loadCalendarData({ preserveSelection: false })
 }
 
@@ -1160,6 +1154,12 @@ async function persistChanges() {
 			}
 			dirty.value.delete(keyOf(row.student, row.block_number))
 		}
+
+		// Mark this date as "recorded" locally so the calendar updates immediately
+		if (selectedDate.value && !recordedDates.value.includes(selectedDate.value)) {
+			recordedDates.value = [...recordedDates.value, selectedDate.value].sort()
+		}
+
 		justSaved.value = true
 		window.setTimeout(() => (justSaved.value = false), 1200)
 	} catch (error: any) {
