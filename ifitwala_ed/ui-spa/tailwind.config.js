@@ -1,6 +1,7 @@
 // ifitwala_ed/ui-spa/tailwind.config.js
 
 import frappeUiPreset from 'frappe-ui/tailwind';
+import colors from 'tailwindcss/colors';
 
 const withOpacity = (variable) => ({ opacityValue }) => {
   if (opacityValue === undefined) {
@@ -19,6 +20,7 @@ export default {
       },
       opacity: { 15: '0.15', 65: '0.65', 85: '0.85' },
       colors: {
+        slate: colors.slate,
         ink: withOpacity('--ink-rgb'),
         'slate-token': withOpacity('--slate-rgb'),
         canopy: withOpacity('--canopy-rgb'),
