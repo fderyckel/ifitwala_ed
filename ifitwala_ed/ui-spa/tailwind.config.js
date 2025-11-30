@@ -9,7 +9,7 @@ const withOpacity = (variable) => ({ opacityValue }) => {
 
 export default {
   presets: [frappeUiPreset],
-  content: ['./index.html', './src/**/*.{vue,js,ts}'],
+  content: ['./index.html', './src/**/*.{vue,js,ts}', './node_modules/frappe-ui/src/**/*.{vue,js,ts}'],
   theme: {
     extend: {
       opacity: { 15: '0.15', 65: '0.65', 85: '0.85' },
