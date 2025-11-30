@@ -29,11 +29,11 @@
   }
 
   .staff-layout__desk-switch {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-full
-           border border-[rgba(var(--border-rgb),0.95)]
-           bg-white/95 text-slate-600 text-xs font-medium
-           shadow-sm transition;
-  }
+		@apply inline-flex items-center gap-2 px-4 py-2 rounded-full
+					border border-[rgba(var(--border-rgb),0.95)]
+					bg-white/95 text-xs font-medium shadow-sm transition;
+		color: rgba(var(--slate-rgb), 0.9); /* use your token, not Tailwind slate */
+	}
 
   .staff-layout__desk-switch:hover {
     @apply border-leaf bg-leaf/10 text-canopy;

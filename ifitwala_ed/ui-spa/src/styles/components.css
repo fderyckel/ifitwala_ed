@@ -19,8 +19,10 @@
      2. Section Header
      --------------------------------------------------------------- */
   .section-header {
-    @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
-  }
+		@apply text-xs font-semibold uppercase tracking-wide;
+		color: rgba(var(--slate-rgb), 0.75);
+	}
+
 
   /* ---------------------------------------------------------------
      3. Inline Chip
@@ -49,10 +51,11 @@
   /* ---------------------------------------------------------------
      5. Remark Button (blue accent)
      --------------------------------------------------------------- */
-  .remark-btn {
-    @apply !h-9 !w-9 rounded-full border border-transparent
-           text-slate-500 transition;
-  }
+	.remark-btn {
+		@apply !h-9 !w-9 rounded-full border border-transparent transition;
+		color: rgba(var(--slate-rgb), 0.8);
+	}
+
 
   .remark-btn:hover {
     @apply border-blue-200 bg-blue-50 text-blue-600;
