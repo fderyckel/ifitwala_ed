@@ -1,24 +1,22 @@
-@layer components {
-	/* FullCalendar timegrid tweaks (scoped to portal shell) */
-	.calendar-shell .fc-timegrid .fc-timegrid-slot {
-		border-bottom: 1px dashed rgb(var(--border-rgb) / 0.7);
-		height: 56px; /* ~1.6x default for better visibility without being huge */
-	}
+/* FullCalendar timegrid tweaks (scoped to portal shell) */
+.calendar-shell .fc-timegrid .fc-timegrid-slot {
+	border-bottom: 1px dashed rgb(var(--border-rgb) / 0.7);
+	height: 56px; /* ~1.6x default for better visibility without being huge */
+}
 
-	.calendar-shell .fc-timegrid .fc-timegrid-axis-cushion {
-		font-size: 0.75rem;
-		color: rgb(var(--slate-rgb) / 0.75);
-	}
+.calendar-shell .fc-timegrid .fc-timegrid-axis-cushion {
+	font-size: 0.75rem;
+	color: rgb(var(--slate-rgb) / 0.75);
+}
 
-	.calendar-shell .fc-timegrid .fc-timegrid-event {
-		background: rgb(var(--leaf-rgb) / 0.12);
-		border-left: 3px solid rgb(var(--leaf-rgb));
-		color: rgb(var(--canopy-rgb));
-	}
+.calendar-shell .fc-timegrid .fc-timegrid-event {
+	background: rgb(var(--leaf-rgb) / 0.12);
+	border-left: 3px solid rgb(var(--leaf-rgb));
+	color: rgb(var(--canopy-rgb));
+}
 
-	/* Constrain the timegrid body and allow vertical scroll while keeping toolbar static */
-	.calendar-shell .fc .fc-timegrid-body {
-		max-height: 720px;
-		overflow-y: auto;
-	}
+/* Constrain the timegrid body and allow vertical scroll while keeping toolbar static */
+.calendar-shell .fc .fc-timegrid-body {
+	max-height: 720px;
+	overflow-y: auto;
 }

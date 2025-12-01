@@ -7,33 +7,31 @@
  * into the portal palette without leaking globally.
  */
 
-@layer components {
-  .calendar-shell .fc .fc-toolbar-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: rgb(var(--ink-rgb));
-  }
+.calendar-shell .fc .fc-toolbar-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(var(--ink-rgb));
+}
 
-  .calendar-shell .fc .fc-button {
-    border-radius: 9999px;
-    border: 1px solid rgb(var(--border-rgb) / 0.95);
-    background: #ffffff;
-    color: rgb(var(--ink-rgb));
-    font-size: 0.8rem;
-    font-weight: 500;
-  }
+.calendar-shell .fc .fc-button {
+  border-radius: 9999px;
+  border: 1px solid rgb(var(--border-rgb) / 0.95);
+  background: #ffffff;
+  color: rgb(var(--ink-rgb));
+  font-size: 0.8rem;
+  font-weight: 500;
+}
 
-  .calendar-shell .fc .fc-button-active,
-  .calendar-shell .fc .fc-button-primary:not(:disabled).fc-button-active {
-    border-color: rgb(var(--canopy-rgb) / 0.9);
-    background: rgb(var(--canopy-rgb));
-    color: #ffffff;
-  }
+.calendar-shell .fc .fc-button-active,
+.calendar-shell .fc .fc-button-primary:not(:disabled).fc-button-active {
+  border-color: rgb(var(--canopy-rgb) / 0.9);
+  background: rgb(var(--canopy-rgb));
+  color: #ffffff;
+}
 
-  .calendar-shell .fc .fc-daygrid-event,
-  .calendar-shell .fc .fc-timegrid-event {
-    border-radius: 0.85rem;
-    padding: 0.3rem 0.45rem;
-    border: none;
-  }
+.calendar-shell .fc .fc-daygrid-event,
+.calendar-shell .fc .fc-timegrid-event {
+  border-radius: 0.85rem;
+  padding: 0.3rem 0.45rem;
+  border: none;
 }
