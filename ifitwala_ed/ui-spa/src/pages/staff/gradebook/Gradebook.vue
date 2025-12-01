@@ -1082,20 +1082,20 @@ async function saveCriteria(taskStudent: string) {
 }
 
 .gradebook-panel {
-	background: linear-gradient(180deg, rgba(var(--sand-rgb), 0.55), #fff);
-	border: 1px solid rgba(var(--border-rgb), 0.9);
+	background: linear-gradient(180deg, rgb(var(--sand-rgb) / 0.55), #fff);
+	border: 1px solid rgb(var(--border-rgb) / 0.9);
 	border-radius: 1rem;
 	box-shadow: var(--shadow-soft);
 }
 
 .gradebook-card {
-	border: 1px solid rgba(var(--border-rgb), 0.9);
+	border: 1px solid rgb(var(--border-rgb) / 0.9);
 	background: white;
 	box-shadow: var(--shadow-soft);
 }
 
 .gradebook-card:hover {
-	border-color: rgba(var(--leaf-rgb), 0.7);
+	border-color: rgb(var(--leaf-rgb) / 0.7);
 	box-shadow: var(--shadow-strong);
 }
 </style>

@@ -11,8 +11,7 @@
   }
 
   .staff-layout__header {
-    @apply w-full border-b border-[rgb(var(--border-rgb) / 0.85)]
-           bg-white/90 backdrop-blur-xl;
+    @apply w-full border-b border-border/85 bg-white/90 backdrop-blur-xl;
   }
 
   .staff-layout__header-inner {
@@ -32,15 +31,13 @@
   .staff-layout__desk-switch {
     @apply inline-flex items-center gap-1.5
            px-3 py-1.5 rounded-full
-           border border-[rgb(var(--border-rgb) / 0.95)]
-           bg-white/95 text-xs font-medium
+           border border-border/95
+           bg-white/95 text-xs font-medium text-slate-token/90
            shadow-sm transition;
-    color: rgb(var(--slate-rgb) / 0.9);
   }
 
   .staff-layout__desk-switch:hover {
-    @apply border-leaf bg-leaf/10;
-    color: rgb(var(--canopy-rgb));
+    @apply border-leaf bg-leaf/10 text-canopy;
   }
 
   .staff-layout__desk-switch-icon {
@@ -105,13 +102,11 @@
      ============================================================ */
 
   .staff-layout__footer {
-    @apply w-full border-t border-[rgb(var(--border-rgb) / 0.85)]
-           bg-white/90;
+    @apply w-full border-t border-border/85 bg-white/90;
   }
 
   .staff-layout__footer-inner {
     @apply mx-auto max-w-6xl px-5 py-3 sm:px-6
-           text-[0.7rem];
-    color: rgb(var(--slate-rgb) / 0.7);
+           text-[0.7rem] text-slate-token/70;
   }
 }

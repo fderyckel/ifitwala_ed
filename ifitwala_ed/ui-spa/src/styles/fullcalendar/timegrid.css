@@ -10,7 +10,7 @@
 }
 
 .fc-timegrid .fc-timegrid-event {
-	background: rgba(var(--leaf-rgb), 0.1);
+	background: rgb(var(--leaf-rgb) / 0.1);
 	border-left: 3px solid var(--leaf);
 	color: var(--canopy);
 }

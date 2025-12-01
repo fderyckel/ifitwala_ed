@@ -10,6 +10,6 @@
 }
 
 .fc-daygrid .fc-daygrid-event {
-	background: rgba(var(--sky-rgb), 0.35);
+	background: rgb(var(--sky-rgb) / 0.35);
 	color: var(--canopy);
 }

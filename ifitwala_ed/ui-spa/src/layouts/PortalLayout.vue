@@ -4,8 +4,8 @@
 	<div
 		class="min-h-screen flex flex-col text-ink
 		       bg-gradient-to-b from-sky/95 via-sand/95 to-white
-		       bg-[radial-gradient(circle_at_0_0,rgba(var(--jacaranda-rgb),0.18),transparent_55%)]
-		       sm:bg-[radial-gradient(circle_at_0_0,rgba(var(--jacaranda-rgb),0.18),transparent_55%),radial-gradient(circle_at_100%_0,rgba(var(--leaf-rgb),0.14),transparent_55%),linear-gradient(to_bottom,rgba(var(--sky-rgb),0.98),rgba(var(--sand-rgb),0.98))]"
+		       bg-[radial-gradient(circle_at_0_0,rgb(var(--jacaranda-rgb) / 0.18),transparent_55%)]
+		       sm:bg-[radial-gradient(circle_at_0_0,rgb(var(--jacaranda-rgb) / 0.18),transparent_55%),radial-gradient(circle_at_100%_0,rgb(var(--leaf-rgb) / 0.14),transparent_55%),linear-gradient(to_bottom,rgb(var(--sky-rgb) / 0.98),rgb(var(--sand-rgb) / 0.98))]"
 	>
 		<PortalNavbar @toggle-sidebar="toggleSidebar" />
 

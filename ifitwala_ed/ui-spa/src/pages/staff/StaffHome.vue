@@ -57,7 +57,7 @@
 
           <!-- Example tasks (replace with real later) -->
           <div
-            class="group flex cursor-pointer items-start gap-4 border-b border-[rgba(var(--sand-rgb),0.4)]
+            class="group flex cursor-pointer items-start gap-4 border-b border-[rgb(var(--sand-rgb) / 0.4)]
                    bg-white px-6 py-4 transition-colors hover:bg-sky/20 last:border-0"
           >
             <div class="mt-1 h-5 w-5 rounded border-2 border-slate-token/60 transition-colors group-hover:border-jacaranda"></div>
