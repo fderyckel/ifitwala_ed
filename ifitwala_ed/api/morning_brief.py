@@ -62,44 +62,41 @@ def get_briefing_widgets():
 
 def get_daily_bulletin(user, roles):
 	"""
-	Fetches active 'Org Communication' based on:
+	Fetches 'Org Communication' based on:
 	1. Status = Published
-	2. Portal Surface = Morning Brief or Everywhere
-	3. Date Validity (brief_start_date / brief_end_date)
-	4. Audience Matching (School, Role, Team)
+	2. Surface = Morning Brief OR Everywhere
+	3. Date = System Today falls within brief_start_date
+	4. Audience = Matches User's School, Role, or Team
 	"""
-	current_date = getdate(today())
+	# FIX: Use Frappe System Time, not SQL CURDATE()
+	system_today = getdate(today())
 
-	# Fetch potential candidates (Filter by Status and Surface)
+	# Fetch Candidates
 	comms = frappe.get_all("Org Communication",
 		filters={
 			"status": "Published",
 			"portal_surface": ["in", ["Morning Brief", "Everywhere"]],
-			"brief_start_date": ("<=", current_date)
+			"brief_start_date": ("<=", system_today)
 		},
-		fields=[
-			"name", "title", "message", "communication_type",
-			"priority", "brief_end_date", "brief_start_date"
-		],
+		fields=["name", "title", "message", "communication_type", "priority", "brief_end_date", "brief_start_date"],
 		order_by="priority desc, brief_order asc, creation desc"
 	)
 
 	# Context for Audience Matching
-	# We map 'Team' in Audience to 'Department' in Employee
-	employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "department"], as_dict=True)
+	employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "organization", "department"], as_dict=True)
 
 	visible_comms = []
 
 	for c in comms:
-		# 1. Date Expiry Check
-		if c.brief_end_date and getdate(c.brief_end_date) < current_date:
+		# FIX: Date Expiry Check using Python Date
+		if c.brief_end_date and getdate(c.brief_end_date) < system_today:
 			continue
 
-		# 2. Audience Check
+		# Audience Check
 		if check_audience_match(c.name, user, roles, employee):
 			visible_comms.append({
 				"title": c.title,
-				"content": c.message, # Keep HTML for render, but frontend handles safety
+				"content": c.message,
 				"type": c.communication_type,
 				"priority": c.priority
 			})
@@ -108,30 +105,28 @@ def get_daily_bulletin(user, roles):
 
 def check_audience_match(comm_name, user, roles, employee):
 	"""
-	Cross-references User/Employee data against the 'Org Communication Audience' child table.
+	Checks if the user belongs to any of the audiences defined in the communication.
 	"""
-	if "System Manager" in roles:
-		return True
+	if "System Manager" in roles: return True
 
 	audiences = frappe.get_all("Org Communication Audience",
 		filters={"parent": comm_name},
 		fields=["target_group", "school", "team", "program"]
 	)
 
-	if not audiences:
-		return False # Default to hidden if no audience specified
+	if not audiences: return False
 
 	for aud in audiences:
-		# A. School Scope Check
-		# If the audience row specifies a school, the user MUST be in that school
+		# 1. School Mismatch Check
 		if aud.school and employee and employee.school != aud.school:
 			continue
 
-		# B. Target Group Logic
 		match_found = False
 
+		# 2. Target Group Logic
 		if aud.target_group == "Whole Staff":
 			match_found = True
+		# FIX: Explicitly check for 'Instructor' role alongside 'Academic Staff' role
 		elif aud.target_group == "Academic Staff" and ("Academic Staff" in roles or "Instructor" in roles):
 			match_found = True
 		elif aud.target_group == "Support Staff" and "Academic Staff" not in roles:
@@ -139,7 +134,7 @@ def check_audience_match(comm_name, user, roles, employee):
 		elif aud.target_group == "Whole Community":
 			match_found = True
 
-		# C. Team/Department Logic
+		# 3. Team Logic
 		if aud.team and employee and employee.department == aud.team:
 			match_found = True
 
@@ -285,14 +280,27 @@ def get_descendants(doctype, parent_name):
 # ==============================================================================
 
 def get_staff_birthdays():
-	"""Active employees with birthdays today or next 3 days."""
-	# Uses %d-%b to let MySQL format the date (e.g., 25-Dec)
-	return frappe.db.sql("""
-		SELECT employee_full_name as name, employee_image as image,
-		DATE_FORMAT(employee_date_of_birth, '%d-%b') as birthday_display
-		FROM `tabEmployee`
-		WHERE status = 'Active' AND employee_date_of_birth IS NOT NULL
-		AND (DATE_FORMAT(employee_date_of_birth, '%m-%d') BETWEEN
-			DATE_FORMAT(CURDATE(), '%m-%d') AND DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 3 DAY), '%m-%d'))
-		ORDER BY DATE_FORMAT(employee_date_of_birth, '%m-%d') ASC
-	""", as_dict=True)
+	"""
+	Active employees with birthdays today or next 3 days.
+	FIX: Calculates MM-DD strings in Python to force System Time usage.
+	"""
+	# Get MM-DD strings from Frappe System Time
+	start_md = formatdate(today(), "MM-dd")
+	end_md = formatdate(add_days(today(), 3), "MM-dd")
+
+	# We pass these python strings to SQL to avoid DB timezone issues
+	sql = """
+		SELECT
+			employee_full_name as name,
+			employee_image as image,
+			DATE_FORMAT(employee_date_of_birth, '%%d-%%b') as birthday_display
+		FROM
+			`tabEmployee`
+		WHERE
+			status = 'Active'
+			AND employee_date_of_birth IS NOT NULL
+			AND DATE_FORMAT(employee_date_of_birth, '%%m-%%d') BETWEEN %s AND %s
+		ORDER BY
+			DATE_FORMAT(employee_date_of_birth, '%%m-%%d') ASC
+	"""
+	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)

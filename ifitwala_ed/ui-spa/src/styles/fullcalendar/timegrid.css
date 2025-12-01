@@ -1,7 +1,7 @@
 /* FullCalendar timegrid tweaks (scoped to portal shell) */
 .calendar-shell .fc-timegrid .fc-timegrid-slot {
 	border-bottom: 1px dashed rgb(var(--border-rgb) / 0.7);
-	height: 56px; /* ~1.6x default for better visibility without being huge */
+	height: 50px; /* ~1.6x default for better visibility without being huge */
 }
 
 .calendar-shell .fc-timegrid .fc-timegrid-axis-cushion {
