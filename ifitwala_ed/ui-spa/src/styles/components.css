@@ -19,9 +19,10 @@
      Staff portal "palette card" — focus / task list container
      Soft shell surface, not pure white
      --------------------------------------------------------------- */
-  .palette-card {
-    @apply bg-surface border border-border/90 rounded-2xl shadow-sm overflow-hidden;
-  }
+	.palette-card {
+		@apply border border-border/90 rounded-xl shadow-sm overflow-hidden
+					bg-[rgb(var(--surface-rgb)/0.98)];
+	}
 
   /* ---------------------------------------------------------------
      Staff portal quick-action tiles
@@ -64,9 +65,10 @@
      4. Block Card (for single attendance row)
      Slightly raised white block
      --------------------------------------------------------------- */
-  .block-card {
-    @apply flex flex-col gap-3 p-3 rounded-xl border border-border/85 bg-white shadow-sm;
-  }
+	.block-card {
+		@apply flex flex-col gap-3 p-3 rounded-xl border border-border/85 shadow-sm
+					bg-[rgb(var(--surface-rgb)/0.98)];
+	}
 
   /* ---------------------------------------------------------------
      5. Remark Button (blue accent)

@@ -58,7 +58,7 @@
 			<!-- Loading overlay -->
 			<div
 				v-if="loading"
-				class="absolute inset-0 flex items-center justify-center rounded-2xl bg-surface/80 backdrop-blur-sm"
+				class="absolute inset-0 flex items-center justify-center rounded-2xl bg-[rgb(var(--surface-rgb)/0.8)] backdrop-blur-sm"
 			>
 				<Spinner class="h-6 w-6 text-ink/40" />
 			</div>

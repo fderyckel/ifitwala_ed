@@ -3,7 +3,7 @@
   <div class="flex h-full flex-col text-ink">
     <!-- Header row (desktop) -->
     <div
-      class="hidden border-b border-border/70 bg-surface/80 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-ink/60 lg:grid lg:grid-cols-[minmax(240px,1.2fr)_minmax(0,2fr)_88px]"
+      class="hidden border-b border-border/70 bg-[rgb(var(--surface-rgb)/0.8)] px-5 py-3 text-xs font-semibold uppercase tracking-wide text-ink/60 lg:grid lg:grid-cols-[minmax(240px,1.2fr)_minmax(0,2fr)_88px]"
     >
       <span>{{ __('Student') }}</span>
       <span>{{ __('Attendance') }}</span>
@@ -79,7 +79,7 @@
           <div
             v-for="block in blocks"
             :key="`${student.student}-${block}`"
-            class="flex flex-col gap-3 rounded-xl border border-border/50 bg-surface/90 p-3 shadow-inner sm:flex-row sm:items-center sm:justify-between"
+            class="flex flex-col gap-3 rounded-xl border border-border/50 bg-[rgb(var(--surface-rgb)/0.9)] p-3 shadow-inner sm:flex-row sm:items-center sm:justify-between"
           >
             <div class="flex flex-wrap items-center gap-2">
               <span class="text-xs font-medium uppercase tracking-wide text-ink/60">

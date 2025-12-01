@@ -75,7 +75,7 @@
       <!-- MAIN ATTENDANCE PANEL -->
       <section class="card-panel flex flex-col overflow-hidden">
         <div
-          class="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-surface/80 px-5 py-4"
+          class="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-[rgb(var(--surface-rgb)/0.8)] px-5 py-4"
         >
           <div class="min-w-0">
             <h2 class="text-lg font-semibold text-ink">
@@ -110,7 +110,7 @@
         </div>
 
         <div
-          class="flex flex-wrap items-center gap-3 border-b border-border/60 bg-surface/60 px-5 py-3"
+          class="flex flex-wrap items-center gap-3 border-b border-border/60 bg-[rgb(var(--surface-rgb)/0.6)] px-5 py-3"
         >
           <FormControl
             v-model="searchTerm"
@@ -130,7 +130,7 @@
           </div>
         </div>
 
-        <div class="flex-1 overflow-hidden bg-surface/80">
+        <div class="flex-1 overflow-hidden bg-[rgb(var(--surface-rgb)/0.8)]">
           <!-- Empty / loading / state views -->
           <div
             v-if="!filters.student_group"
@@ -232,7 +232,7 @@
               </div>
 
               <div
-                class="border-t border-border/60 bg-surface/70 px-5 py-3 text-xs text-ink/70"
+                class="border-t border-border/60 bg-[rgb(var(--surface-rgb)/0.7)] px-5 py-3 text-xs text-ink/70"
               >
                 {{ __('Students loaded: {0}', [students.length]) }}
                 <span v-if="hasExistingAttendance" class="ml-2 text-canopy">
