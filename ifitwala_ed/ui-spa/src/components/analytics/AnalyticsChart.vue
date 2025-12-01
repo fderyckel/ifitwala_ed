@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/ui-spa/src/components/analytics/AnalyticsChart.vue -->
 <template>
 	<VChart
 		class="analytics-chart"

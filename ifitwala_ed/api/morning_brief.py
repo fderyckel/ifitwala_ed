@@ -184,14 +184,27 @@ def get_medical_context(group_names):
 # ==============================================================================
 
 def get_recent_student_logs(user):
+	"""
+	Fetches logs from the last 48 hours.
+	"""
+	# 1. Timebox: Yesterday + Today
 	from_date = add_days(today(), -1)
-	filters = {"date": (">=", from_date)} # docstatus removed for testing drafts
 
+	filters = {
+		"date": (">=", from_date),
+		# "docstatus": 1 # Uncomment for production
+	}
+
+	# 2. Scope by School
 	employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school"], as_dict=True)
-	if employee and employee.school:
-		schools = get_descendants("School", employee.school)
-		if schools: filters["school"] = ("in", schools)
 
+	if employee and employee.school:
+		# CALLS THE HELPER FUNCTION HERE
+		schools = get_descendants("School", employee.school)
+		if schools:
+			filters["school"] = ("in", schools)
+
+	# 3. Fetch Data
 	logs = frappe.get_all("Student Log",
 		fields=["name", "student_name", "student_photo", "log_type", "date", "requires_follow_up", "follow_up_status", "log"],
 		filters=filters,
@@ -201,12 +214,11 @@ def get_recent_student_logs(user):
 
 	formatted_logs = []
 	for l in logs:
-		# Full content for the Dialog
-		full_content = l.log or ""
-		# Snippet for the Card
-		raw_text = strip_html(full_content)
-		snippet = (raw_text[:120] + '...') if len(raw_text) > 120 else raw_text
+		# Use strip_html for the card snippet
+		raw_text = strip_html(l.log or "")
+		snippet = (raw_text[:100] + '...') if len(raw_text) > 100 else raw_text
 
+		# Status Dot Logic
 		status_color = "gray"
 		if l.requires_follow_up:
 			if l.follow_up_status == "Open": status_color = "red"
@@ -219,11 +231,12 @@ def get_recent_student_logs(user):
 			"log_type": l.log_type,
 			"date_display": formatdate(l.date, "dd-MMM"),
 			"snippet": snippet,
-			"full_content": full_content, # Sending full HTML for the modal
+			"full_content": l.log, # Pass full HTML for the dialog
 			"status_color": status_color
 		})
 
 	return formatted_logs
+
 
 # ==============================================================================
 # SECTION 4: COMMUNITY PULSE (Birthdays)
@@ -254,3 +267,30 @@ def get_staff_birthdays():
 			DATE_FORMAT(employee_date_of_birth, '%%m-%%d') ASC
 	"""
 	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+
+# ==============================================================================
+#  HELPER: RECURSIVE TREE FETCH
+# ==============================================================================
+
+def get_descendants(doctype, parent_name):
+	"""
+	Helper to get a node and all its children.
+	Supports Nested Set (lft/rgt).
+	"""
+	try:
+		meta = frappe.get_meta(doctype)
+		# Check if the doctype has Nested Set fields
+		if meta.has_field("lft") and meta.has_field("rgt"):
+			node = frappe.db.get_value(doctype, parent_name, ["lft", "rgt", "is_group"], as_dict=True)
+			if node and node.is_group:
+				# Return the parent + all children within lft/rgt bounds
+				return [x.name for x in frappe.get_all(doctype, filters={
+					"lft": (">=", node.lft),
+					"rgt": ("<=", node.rgt)
+				})]
+	except Exception:
+		pass
+
+	# Fallback: Just return the parent if not a tree or error
+	return [parent_name]
+
