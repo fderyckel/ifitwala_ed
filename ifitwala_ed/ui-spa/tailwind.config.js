@@ -13,6 +13,11 @@ const withOpacity = (variable) => ({ opacityValue }) => {
 export default {
   presets: [frappeUiPreset],
   content: ['./index.html', './src/**/*.{vue,js,ts}', './node_modules/frappe-ui/src/**/*.{vue,js,ts}'],
+  safelist: [
+    'bg-surface',
+    'bg-surface-soft',
+    'bg-surface-strong',
+  ],
   theme: {
     extend: {
       boxShadow: {

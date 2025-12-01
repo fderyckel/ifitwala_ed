@@ -653,6 +653,17 @@
     border-radius: var(--radius-lg);
   }
 
+  /* SURFACE HELPERS (explicit classes to satisfy @apply) */
+  .bg-surface {
+    background-color: rgb(var(--surface-rgb));
+  }
+  .bg-surface-soft {
+    background-color: rgb(var(--surface-rgb) / 0.92);
+  }
+  .bg-surface-strong {
+    background-color: rgb(var(--surface-strong-rgb));
+  }
+
   /* SCROLLBAR */
   .no-scrollbar::-webkit-scrollbar {
     display: none;

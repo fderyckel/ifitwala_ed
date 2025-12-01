@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/schedule/student-attendance-tool/components/AttendanceCalendar.vue -->
 <template>
-	<div class="attendance-card border border-border/80 bg-surface shadow-sm">
+	<div class="attendance-card border border-border/80 shadow-sm">
 		<div class="flex items-center justify-between border-b border-border/60 px-4 py-3">
 			<div>
 				<h2 class="text-lg font-semibold text-ink">
@@ -30,7 +30,7 @@
 		<div class="relative">
 			<!-- Weekdays -->
 			<div
-				class="grid grid-cols-7 gap-px bg-surface-soft px-2 pb-2 pt-3 text-center text-xs font-medium tracking-wider text-ink/60"
+				class="grid grid-cols-7 gap-px bg-[rgb(var(--surface-rgb)/0.92)] px-2 pb-2 pt-3 text-center text-xs font-medium tracking-wider text-ink/60"
 			>
 				<div v-for="weekday in weekdays" :key="weekday" class="uppercase">
 					{{ weekday }}
@@ -38,7 +38,7 @@
 			</div>
 
 			<!-- Days grid -->
-			<div class="grid grid-cols-7 gap-px bg-surface-soft p-2">
+			<div class="grid grid-cols-7 gap-px bg-[rgb(var(--surface-rgb)/0.9)] p-2">
 				<button
 					v-for="day in days"
 					:key="day.iso"

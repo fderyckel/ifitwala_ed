@@ -14,7 +14,7 @@
     <div
       v-for="student in students"
       :key="student.student"
-      class="border-b border-border/40 bg-surface/60 px-5 py-4 last:border-b-0"
+      class="border-b border-border/40 bg-[rgb(var(--surface-rgb)/0.6)] px-5 py-4 last:border-b-0"
     >
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
         <!-- Identity -->
@@ -141,7 +141,7 @@
     v-if="popover.open"
     ref="popEl"
     :style="popoverInlineStyle"
-    class="fixed z-50 max-w-[32rem] rounded-2xl border border-border bg-surface p-4 text-sm text-ink shadow-xl ring-1 ring-black/5"
+    class="fixed z-50 max-w-[32rem] rounded-2xl border border-border bg-[rgb(var(--surface-rgb))] p-4 text-sm text-ink shadow-xl ring-1 ring-black/5"
     role="dialog"
     aria-modal="true"
   >
@@ -155,7 +155,7 @@
       </h3>
       <button
         type="button"
-        class="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-ink/40 hover:bg-surface-strong hover:text-ink"
+        class="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-ink/40 hover:bg-[rgb(var(--surface-strong-rgb))] hover:text-ink"
         @click="closePopover"
         aria-label="Close"
       >
