@@ -742,112 +742,114 @@ const SimpleListPercent = defineComponent({
       </div>
     </FiltersBar>
 
-    <!-- Main layout: charts on the left, tables on the right -->
-    <section class="mt-4 grid gap-4 xl:grid-cols-[2fr,1.6fr]">
-      <!-- Left column: trends & breakdowns (with charts) -->
-      <div class="flex flex-col gap-4">
-        <!-- Incidents over time: line chart -->
+    <!-- =============================== -->
+    <!-- MAIN LAYOUT: 2 CARDS PER ROW   -->
+    <!-- =============================== -->
+    <section class="mt-4 space-y-4">
+      <!-- Full-width: Logs over time (no zoom) -->
+      <AnalyticsCard
+        title="Logs Over Time"
+      >
+        <template #body>
+          <AnalyticsChart
+            v-if="incidentsOverTime.length"
+            :option="incidentsOption"
+          />
+          <div
+            v-else
+            class="py-2 text-xs text-slate-400"
+          >
+            No logs for this period.
+          </div>
+        </template>
+      </AnalyticsCard>
+
+      <!-- Charts: 2 per row -->
+      <div class="grid gap-4 md:grid-cols-2">
+        <!-- Log types -->
         <AnalyticsCard
-          title="Incidents Over Time"
-          :expanded="expandedCard === 'incidents'"
-          @toggle="toggleCard('incidents')"
+          title="Log Types"
+          :expanded="expandedCard === 'log-types'"
+          @toggle="toggleCard('log-types')"
         >
           <template #body>
             <AnalyticsChart
-              v-if="incidentsOverTime.length"
-              :option="incidentsOption"
+              v-if="logTypeCount.length"
+              :option="logTypeOption"
             />
             <div
               v-else
               class="py-2 text-xs text-slate-400"
             >
-              No logs for this period.
+              No logs found.
             </div>
           </template>
         </AnalyticsCard>
 
-        <!-- Log type + next step types (bar charts) -->
-        <div class="grid gap-4 md:grid-cols-2">
-          <AnalyticsCard
-            title="Log Types"
-            :expanded="expandedCard === 'log-types'"
-            @toggle="toggleCard('log-types')"
-          >
-            <template #body>
-              <AnalyticsChart
-                v-if="logTypeCount.length"
-                :option="logTypeOption"
-              />
-              <div
-                v-else
-                class="py-2 text-xs text-slate-400"
-              >
-                No logs found.
-              </div>
-            </template>
-          </AnalyticsCard>
+        <!-- Next step types -->
+        <AnalyticsCard
+          title="Next Step Types"
+          :expanded="expandedCard === 'next-steps'"
+          @toggle="toggleCard('next-steps')"
+        >
+          <template #body>
+            <AnalyticsChart
+              v-if="nextStepTypes.length"
+              :option="nextStepTypesOption"
+            />
+            <div
+              v-else
+              class="py-2 text-xs text-slate-400"
+            >
+              No next steps recorded.
+            </div>
+          </template>
+        </AnalyticsCard>
+      </div>
 
-          <AnalyticsCard
-            title="Next Step Types"
-            :expanded="expandedCard === 'next-steps'"
-            @toggle="toggleCard('next-steps')"
-          >
-            <template #body>
-              <AnalyticsChart
-                v-if="nextStepTypes.length"
-                :option="nextStepTypesOption"
-              />
-              <div
-                v-else
-                class="py-2 text-xs text-slate-400"
-              >
-                No next steps recorded.
-              </div>
-            </template>
-          </AnalyticsCard>
-        </div>
+      <div class="grid gap-4 md:grid-cols-2">
+        <!-- Logs by cohort -->
+        <AnalyticsCard
+          title="Logs by Cohort"
+          :expanded="expandedCard === 'cohort'"
+          @toggle="toggleCard('cohort')"
+        >
+          <template #body>
+            <AnalyticsChart
+              v-if="logsByCohort.length"
+              :option="logsByCohortOption"
+            />
+            <div
+              v-else
+              class="py-2 text-xs text-slate-400"
+            >
+              No cohorts found.
+            </div>
+          </template>
+        </AnalyticsCard>
 
-        <!-- Cohort & program -->
-        <div class="grid gap-4 md:grid-cols-2">
-          <AnalyticsCard
-            title="Logs by Cohort"
-            :expanded="expandedCard === 'cohort'"
-            @toggle="toggleCard('cohort')"
-          >
-            <template #body>
-              <AnalyticsChart
-                v-if="logsByCohort.length"
-                :option="logsByCohortOption"
-              />
-              <div
-                v-else
-                class="py-2 text-xs text-slate-400"
-              >
-                No cohorts found.
-              </div>
-            </template>
-          </AnalyticsCard>
+        <!-- Logs by program -->
+        <AnalyticsCard
+          title="Logs by Program"
+          :expanded="expandedCard === 'program'"
+          @toggle="toggleCard('program')"
+        >
+          <template #body>
+            <AnalyticsChart
+              v-if="logsByProgram.length"
+              :option="logsByProgramOption"
+            />
+            <div
+              v-else
+              class="py-2 text-xs text-slate-400"
+            >
+              No programs found.
+            </div>
+          </template>
+        </AnalyticsCard>
+      </div>
 
-          <AnalyticsCard
-            title="Logs by Program"
-            :expanded="expandedCard === 'program'"
-            @toggle="toggleCard('program')"
-          >
-            <template #body>
-              <AnalyticsChart
-                v-if="logsByProgram.length"
-                :option="logsByProgramOption"
-              />
-              <div
-                v-else
-                class="py-2 text-xs text-slate-400"
-              >
-                No programs found.
-              </div>
-            </template>
-          </AnalyticsCard>
-        </div>
-
+      <div class="grid gap-4 md:grid-cols-2">
         <!-- Logs by author -->
         <AnalyticsCard
           title="Logs by Author"
@@ -867,10 +869,14 @@ const SimpleListPercent = defineComponent({
             </div>
           </template>
         </AnalyticsCard>
+
+        <!-- Empty slot for future chart / keeps 2-per-row grid -->
+        <div class="hidden md:block" />
       </div>
 
-      <!-- Right column: recent logs + per-student detail -->
-      <div class="flex flex-col gap-4">
+      <!-- Tables: 2 per row, underneath all charts -->
+      <div class="grid gap-4 md:grid-cols-2">
+        <!-- Recent logs -->
         <AnalyticsCard
           title="Recent Student Logs"
           :expanded="expandedCard === 'recent'"
@@ -949,6 +955,7 @@ const SimpleListPercent = defineComponent({
           </template>
         </AnalyticsCard>
 
+        <!-- Selected student logs -->
         <AnalyticsCard
           title="Selected Student Logs"
           :expanded="expandedCard === 'student-detail'"

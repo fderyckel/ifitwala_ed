@@ -137,27 +137,6 @@
 
           </RouterLink>
 
-          <!-- Switch to Desk -->
-          <a
-            href="/app"
-            class="action-tile group border-dashed border-slate-token/40 bg-white"
-          >
-            <div class="action-tile__icon bg-slate-100 text-slate-500 group-hover:bg-slate-200">
-              <FeatherIcon name="monitor" class="h-5 w-5" />
-            </div>
-
-            <div class="flex-1">
-              <p class="text-sm font-semibold text-slate-token/70 transition-colors group-hover:text-ink">
-                Switch to Desk
-              </p>
-              <p class="text-[10px] uppercase tracking-wider text-slate-token/50">
-                Classic ERP View
-              </p>
-            </div>
-
-            <FeatherIcon name="chevron-right" class="h-4 w-4 text-slate-token/40" />
-          </a>
-
         </div>
 
       </div>
@@ -387,8 +366,8 @@ const analyticsCategories = [
     description: 'Referrals, caseloads, incidents, and follow-ups.',
     icon: 'heart',
     links: [
+      { label: 'Student Log Analytics', to: { name: 'staff-student-log-analytics' } },
       { label: 'Counseling Caseload', to: '/analytics/wellbeing/counseling-caseload' },
-      { label: 'Incident Trends', to: '/analytics/wellbeing/incident-trends' },
       { label: 'Referral Outcomes', to: '/analytics/wellbeing/referral-outcomes' },
       { label: 'Support Plans', to: '/analytics/wellbeing/support-plans' },
     ],

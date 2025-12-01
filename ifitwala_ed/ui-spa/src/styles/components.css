@@ -229,10 +229,16 @@
     @apply text-[0.7rem] text-slate-token/75;
   }
 
-  /* Chart container – reused by all charts */
-  .analytics-chart {
-    @apply w-full min-h-[260px];
-  }
+	/* Default card chart */
+	.analytics-chart {
+		width: 100%;
+		height: 220px; /* or whatever you like for compact cards */
+	}
+
+	/* When the card is zoomed */
+	.analytics-chart--expanded {
+		height: min(440px, 70vh); /* grows but still bounded */
+	}
 
   /* Empty state inside a card */
   .analytics-empty {

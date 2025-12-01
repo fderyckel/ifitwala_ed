@@ -5,7 +5,7 @@
 
 import frappe
 from frappe.utils import today, add_days, getdate, formatdate, strip_html
-from ifitwala_ed.utilities.school_tree import get_ancestor_schools
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 @frappe.whitelist()
 def get_briefing_widgets():
@@ -67,6 +67,7 @@ def get_daily_bulletin(user, roles):
 	visible_comms = []
 
 	for c in comms:
+		# Expiry Check
 		if c.brief_end_date and getdate(c.brief_end_date) < system_today:
 			continue
 
@@ -90,18 +91,19 @@ def check_audience_match(comm_name, user, roles, employee):
 
 	if not audiences: return False
 
-	# FIX: Use 'school' directly (no fallback)
+	# 1. Determine User's "Scope of View" (Ancestors)
+	# Logic: If I am at School B, I can see comms for [School B, School A (Parent), Root]
 	user_school = None
 	valid_target_schools = []
 
 	if employee and employee.school:
 		user_school = employee.school
-		# Get list including self and all parents up to root
+		# Returns list including self and all parents up to root
 		valid_target_schools = get_ancestor_schools(user_school)
 
 	for aud in audiences:
 		# --- HIERARCHY CHECK ---
-		# Target must be an ancestor (e.g., Parent School) or Self
+		# If the audience targets a specific school, it must be in my Ancestor list.
 		if aud.school:
 			if not user_school: continue
 			if aud.school not in valid_target_schools: continue
@@ -198,20 +200,18 @@ def get_recent_student_logs(user):
 	from_date = add_days(today(), -1)
 	filters = {"date": (">=", from_date)}
 
-	# FIX: Removed 'default_school' from fetch list
+	# FIX: Only fetch 'school' (removed default_school)
 	employee = frappe.db.get_value("Employee", {"user_id": user},
 		["name", "school"],
 		as_dict=True
 	)
 
 	if employee and employee.school:
-		# FIX: Use 'school' directly to find descendants
-		target_school = employee.school
-
-		if target_school:
-			schools = get_descendant_schools(target_school)
-			if schools:
-				filters["school"] = ("in", schools)
+		# FIX: Use utility function get_descendant_schools
+		# Admin/Leads at Parent School see logs from Child Schools
+		schools = get_descendant_schools(employee.school)
+		if schools:
+			filters["school"] = ("in", schools)
 
 	logs = frappe.get_all("Student Log",
 		fields=["name", "student_name", "student_photo", "log_type", "date", "requires_follow_up", "follow_up_status", "log"],
