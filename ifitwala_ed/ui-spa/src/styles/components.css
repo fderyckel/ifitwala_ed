@@ -8,7 +8,7 @@
      --------------------------------------------------------------- */
   .avatar {
     @apply h-16 w-16 rounded-xl overflow-hidden shadow-inner bg-slate-100
-           ring-1 ring-[rgba(var(--border-rgb),0.85)];
+           ring-1 ring-[rgb(var(--border-rgb) / 0.85)];
   }
 
   .avatar img {
@@ -19,7 +19,7 @@
 		Staff portal "palette card" — focus / task list container
 		--------------------------------------------------------------- */
 	.palette-card {
-		@apply bg-white border border-[rgba(var(--border-rgb),0.9)]
+		@apply bg-white border border-[rgb(var(--border-rgb) / 0.9)]
 					rounded-2xl shadow-soft;
 	}
 
@@ -27,7 +27,7 @@
 		Staff portal quick-action tiles
 		--------------------------------------------------------------- */
 	.action-tile {
-		@apply flex items-center gap-3 rounded-2xl border border-[rgba(var(--border-rgb),0.9)]
+		@apply flex items-center gap-3 rounded-2xl border border-[rgb(var(--border-rgb) / 0.9)]
 					bg-white px-4 py-3 shadow-soft transition-transform
 					hover:-translate-y-0.5 hover:shadow-strong;
 	}
@@ -43,7 +43,7 @@
      --------------------------------------------------------------- */
   .section-header {
 		@apply text-xs font-semibold uppercase tracking-wide;
-		color: rgba(var(--slate-rgb), 0.75);
+		color: rgb(var(--slate-rgb) / 0.75);
 	}
 
 
@@ -67,7 +67,7 @@
      4. Block Card (for single attendance row)
      --------------------------------------------------------------- */
   .block-card {
-    @apply flex flex-col gap-3 p-3 rounded-xl border border-[rgba(var(--border-rgb),0.85)]
+    @apply flex flex-col gap-3 p-3 rounded-xl border border-[rgb(var(--border-rgb) / 0.85)]
            bg-slate-50/80 shadow-inner;
   }
 
@@ -76,7 +76,7 @@
      --------------------------------------------------------------- */
 	.remark-btn {
 		@apply !h-9 !w-9 rounded-full border border-transparent transition;
-		color: rgba(var(--slate-rgb), 0.8);
+		color: rgb(var(--slate-rgb) / 0.8);
 	}
 
 

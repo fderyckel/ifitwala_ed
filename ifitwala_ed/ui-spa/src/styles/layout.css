@@ -11,7 +11,7 @@
   }
 
   .staff-layout__header {
-    @apply w-full border-b border-[rgba(var(--border-rgb),0.85)]
+    @apply w-full border-b border-[rgb(var(--border-rgb) / 0.85)]
            bg-white/90 backdrop-blur-xl;
   }
 
@@ -32,10 +32,10 @@
   .staff-layout__desk-switch {
     @apply inline-flex items-center gap-1.5
            px-3 py-1.5 rounded-full
-           border border-[rgba(var(--border-rgb),0.95)]
+           border border-[rgb(var(--border-rgb) / 0.95)]
            bg-white/95 text-xs font-medium
            shadow-sm transition;
-    color: rgba(var(--slate-rgb), 0.9);
+    color: rgb(var(--slate-rgb) / 0.9);
   }
 
   .staff-layout__desk-switch:hover {
@@ -62,13 +62,13 @@
 
   .staff-hero {
     background:
-      radial-gradient(circle at 0% 0%, rgba(var(--leaf-rgb), 0.45), transparent 55%),
-      radial-gradient(circle at 100% 0%, rgba(var(--jacaranda-rgb), 0.35), transparent 55%),
+      radial-gradient(circle at 0% 0%, rgb(var(--leaf-rgb) / 0.45), transparent 55%),
+      radial-gradient(circle at 100% 0%, rgb(var(--jacaranda-rgb) / 0.35), transparent 55%),
       linear-gradient(
         120deg,
-        rgba(var(--sand-rgb), 0.96),
-        rgba(var(--leaf-rgb), 0.35),
-        rgba(var(--jacaranda-rgb), 0.32)
+        rgb(var(--sand-rgb) / 0.96),
+        rgb(var(--leaf-rgb) / 0.35),
+        rgb(var(--jacaranda-rgb) / 0.32)
       );
     @apply rounded-2xl shadow-strong relative p-6;
   }
@@ -76,9 +76,9 @@
   .staff-hero__aura {
     @apply absolute inset-0 pointer-events-none opacity-90;
     background:
-      radial-gradient(circle at 15% 25%, rgba(var(--sky-rgb),0.35), transparent 60%),
-      radial-gradient(circle at 85% 15%, rgba(var(--jacaranda-rgb),0.35), transparent 60%),
-      radial-gradient(circle at 60% 90%, rgba(var(--leaf-rgb),0.3), transparent 60%);
+      radial-gradient(circle at 15% 25%, rgb(var(--sky-rgb) / 0.35), transparent 60%),
+      radial-gradient(circle at 85% 15%, rgb(var(--jacaranda-rgb) / 0.35), transparent 60%),
+      radial-gradient(circle at 60% 90%, rgb(var(--leaf-rgb) / 0.3), transparent 60%);
     filter: blur(42px);
   }
 
@@ -105,13 +105,13 @@
      ============================================================ */
 
   .staff-layout__footer {
-    @apply w-full border-t border-[rgba(var(--border-rgb),0.85)]
+    @apply w-full border-t border-[rgb(var(--border-rgb) / 0.85)]
            bg-white/90;
   }
 
   .staff-layout__footer-inner {
     @apply mx-auto max-w-6xl px-5 py-3 sm:px-6
            text-[0.7rem];
-    color: rgba(var(--slate-rgb), 0.7);
+    color: rgb(var(--slate-rgb) / 0.7);
   }
 }
