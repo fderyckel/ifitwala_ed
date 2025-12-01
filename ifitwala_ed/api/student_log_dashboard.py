@@ -345,3 +345,47 @@ def get_authorized_schools(user):
 		as_list=True,
 	)
 	return [r[0] for r in rows] or [default_school]
+
+
+@frappe.whitelist()
+def get_filter_meta():
+    """Return schools, academic years and programs the user can filter on."""
+    user = frappe.session.user
+    authorized_schools = get_authorized_schools(user)
+
+    if not authorized_schools:
+        return {
+            "schools": [],
+            "default_school": None,
+            "academic_years": [],
+            "programs": [],
+        }
+
+    schools = frappe.get_all(
+        "School",
+        filters={"name": ["in", authorized_schools]},
+        fields=["name", "school_name as label"],
+        order_by="lft",
+    )
+
+    academic_years = frappe.get_all(
+        "Academic Year",
+        fields=["name", "year_start_date", "year_end_date"],
+        order_by="year_start_date desc",
+    )
+
+    programs = frappe.get_all(
+        "Program",
+        filters={"school": ["in", authorized_schools]},
+        fields=["name", "program_name as label", "school"],
+        order_by="program_name",
+    )
+
+    default_school = authorized_schools[0] if authorized_schools else None
+
+    return {
+        "schools": schools,
+        "default_school": default_school,
+        "academic_years": academic_years,
+        "programs": programs,
+    }
