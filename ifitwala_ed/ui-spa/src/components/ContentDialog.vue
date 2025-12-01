@@ -10,25 +10,6 @@
              </div>
           </div>
           <div>
-            <!-- Title is now in Dialog header, but we keep this for layout if needed, or remove it? 
-                 The user wants it to look like Student Log. Student Log had the title inside the body in my previous code.
-                 If I pass title to Dialog, it appears in the header.
-                 Let's keep the internal header for rich content (image + title + subtitle) and maybe hide the default header?
-                 Or just use the default header for the main title.
-                 
-                 The user said: "Make it the same as you have done for the student log."
-                 In Student Log (Image 1), there is "Untitled" (default header) AND the student name/photo inside.
-                 So the user probably wants to GET RID of "Untitled".
-                 
-                 If I pass :options="{ title: ' ' }" (empty string), it might hide it or show empty.
-                 If I pass :options="{ title: title }", it shows the title in the header.
-                 
-                 But the design in Image 1 shows the rich header inside the body.
-                 So I should probably hide the default header or set it to something generic like "Details".
-                 
-                 However, the user complained about "Untitled".
-                 So I will set the title to the Dialog.
-            -->
             <h2 class="text-xl font-bold text-ink" v-if="!titleInHeader">{{ title }}</h2>
             <div class="flex gap-2 mt-1 items-center flex-wrap">
               <span v-if="badge" class="inline-chip bg-slate-100 text-slate-600">{{ badge }}</span>

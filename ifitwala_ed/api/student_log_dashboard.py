@@ -350,16 +350,18 @@ def get_authorized_schools(user):
 
 @frappe.whitelist()
 def get_filter_meta():
-    """Return schools, academic years and programs the user can filter on.
+    """Return schools, academic years, programs and authors the user can filter on.
 
     - Schools are restricted to the user's authorized school branch.
     - Academic Years are restricted to those same schools.
     - Programs are returned unfiltered for now (we do NOT assume Program has `school`).
+    - Authors = Employees with 'Academic Staff' role in those schools.
+      We return their full name as the filter value, since `Student Log.author_name`
+      stores the employee full name.
     """
     user = frappe.session.user
     authorized_schools = get_authorized_schools(user)
 
-    # ── Schools (branch) ────────────────────────────────────────────────
     schools = []
     default_school = None
 
@@ -372,13 +374,7 @@ def get_filter_meta():
         )
         default_school = authorized_schools[0]
 
-    # ── Academic Years (scoped to authorized schools) ───────────────────
-    # Fieldnames from your Academic Year JSON:
-    # - academic_year_name
-    # - year_start_date
-    # - year_end_date
-    # - school
-    # - archived
+    # Academic Years (scoped to authorized schools, not archived)
     ay_filters = {"archived": 0}
     if authorized_schools:
         ay_filters["school"] = ["in", authorized_schools]
@@ -396,19 +392,44 @@ def get_filter_meta():
         order_by="year_start_date desc",
     )
 
-    # ── Programs (no school filter until we see Program.json) ───────────
+    # Programs (no school filter until Program schema is locked)
     programs = frappe.get_all(
         "Program",
         fields=["name", "program_name as label"],
         order_by="program_name",
     )
 
+    # Authors: active Employees with Academic Staff role in authorized schools
+    authors = []
+    if authorized_schools:
+        authors = frappe.db.sql(
+            """
+            SELECT DISTINCT
+                e.name,
+                e.employee_name AS label
+            FROM `tabEmployee` e
+            INNER JOIN `tabUser` u
+                ON u.name = e.user_id
+            INNER JOIN `tabHas Role` hr
+                ON hr.parent = u.name
+            WHERE
+                hr.role = 'Academic Staff'
+                AND e.status = 'Active'
+                AND e.school IN %(authorized_schools)s
+            ORDER BY e.employee_name
+            """,
+            {"authorized_schools": tuple(authorized_schools)},
+            as_dict=True,
+        )
+
     return {
         "schools": schools,
         "default_school": default_school,
         "academic_years": academic_years,
         "programs": programs,
+        "authors": authors,
     }
+
 
 
 

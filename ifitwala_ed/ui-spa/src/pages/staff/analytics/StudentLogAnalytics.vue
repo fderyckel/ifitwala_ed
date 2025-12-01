@@ -40,8 +40,22 @@ const filters = ref<{
    ────────────────────────────────────────────────────────────── */
 
 const expandedCard = ref<string | null>(null)
-function toggleCard(id: string) {
-  expandedCard.value = expandedCard.value === id ? null : id
+
+function toggleCard(id: string | null) {
+  if (id === null) {
+    // Clicked on the overlay → always close
+    expandedCard.value = null
+    return
+  }
+
+  // Clicked on a card body/header:
+  // - if another card is open, switch to this one
+  // - if this one is already open, do nothing
+  if (expandedCard.value === id) {
+    return
+  }
+
+  expandedCard.value = id
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -70,6 +84,9 @@ const programsForSchool = computed(() => {
   return allPrograms.value
 })
 
+const authors = computed(
+  () => (filterMetaResource.data as any)?.authors || []
+)
 
 // Set default school once data arrives
 watch(
@@ -617,13 +634,13 @@ const SimpleListPercent = defineComponent({
           <option value="">
             All
           </option>
-          <option
-            v-for="ay in academicYears"
-            :key="ay.name"
-            :value="ay.name"
-          >
-            {{ ay.name }}
-          </option>
+					<option
+						v-for="ay in academicYears"
+						:key="ay.name"
+						:value="ay.name"
+					>
+						{{ ay.label || ay.name }}
+					</option>
         </select>
       </div>
 
@@ -666,7 +683,7 @@ const SimpleListPercent = defineComponent({
             :key="a.name"
             :value="a.name"
           >
-            {{ a.label || a.name }}
+            {{ a.label }}
           </option>
         </select>
       </div>
