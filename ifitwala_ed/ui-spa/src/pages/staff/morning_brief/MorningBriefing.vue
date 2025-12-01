@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/ui-spa/src/pages/staff/MorningBriefing.vue -->
 <template>
   <div class="min-h-screen bg-transparent p-4 sm:p-6 space-y-8">
 
@@ -18,9 +19,9 @@
     </header>
 
     <div v-if="widgets.loading" class="animate-pulse space-y-6">
-      <div class="h-40 bg-slate-100 rounded-2xl w-full"></div>
-      <div class="grid grid-cols-3 gap-6">
-        <div class="col-span-2 h-64 bg-slate-100 rounded-2xl"></div>
+      <div class="h-32 bg-slate-100 rounded-2xl w-full"></div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 h-64 bg-slate-100 rounded-2xl"></div>
         <div class="h-64 bg-slate-100 rounded-2xl"></div>
       </div>
     </div>
@@ -28,7 +29,6 @@
     <div v-else class="space-y-8">
 
       <section v-if="hasData('announcements')" class="w-full grid gap-4">
-
          <div v-for="(news, idx) in widgets.data.announcements" :key="idx"
               class="relative overflow-hidden rounded-2xl p-6 shadow-sm transition-all"
               :class="getPriorityClasses(news.priority)"
@@ -39,7 +39,7 @@
             <div class="relative z-10">
               <div class="flex justify-between items-start mb-2">
                  <div class="flex gap-2">
-                    <span class="inline-flex items-center gap-1 rounded-md bg-white/20 px-2 py-1 text-xs font-medium text-white ring-1 ring-inset ring-white/30">
+                    <span class="inline-flex items-center gap-1 rounded-md bg-white/20 px-2 py-1 text-xs font-medium text-white ring-1 ring-inset ring-white/30 backdrop-blur-sm">
                        <FeatherIcon :name="getIconForType(news.type)" class="h-3 w-3" />
                        {{ news.type }}
                     </span>
@@ -172,6 +172,7 @@
                     </div>
                  </div>
               </div>
+              <div class="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
            </div>
         </div>
 
@@ -227,8 +228,7 @@ function getPriorityClasses(priority) {
   if (priority === 'Critical') {
     return 'bg-red-600 text-white ring-4 ring-red-100'
   }
-  // Default gradient handled in template
-  return ''
+  return '' // Default gradient handled in template
 }
 
 function getIconForType(type) {
@@ -244,6 +244,7 @@ function getIconForType(type) {
 </script>
 
 <style scoped>
+/* Thin, elegant scrollbar for the feed */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
