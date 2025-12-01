@@ -291,6 +291,7 @@ const calendarOptions = ref({
 	slotMinTime: slotMin.value,
 	slotMaxTime: slotMax.value,
 	dayMaxEvents: true,
+	displayEventTime: false,
 	navLinks: false,
 	nowIndicator: true,
 	events: events.value,

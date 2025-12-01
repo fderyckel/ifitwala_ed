@@ -202,6 +202,12 @@
     border: none !important;
   }
 
+  /* Hide event time labels; keep only titles in cards/list */
+  .calendar-shell .fc-event-time,
+  .calendar-shell .fc-list-event-time {
+    display: none;
+  }
+
   /* Remove little dot in list view */
   .calendar-shell .fc-list-event-dot {
     border-color: transparent !important;
