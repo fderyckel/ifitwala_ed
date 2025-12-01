@@ -1150,6 +1150,7 @@ function onRemarkSaved(value: string) {
   if (target) {
     target.remarks[remarkDialog.block] = value
   }
+  remarkDialog.value = value
   markDirty(remarkDialog.student.student, remarkDialog.block)
 }
 
@@ -1296,4 +1297,3 @@ onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', beforeUnloadGuard)
 })
 </script>
-

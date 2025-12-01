@@ -30,6 +30,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/staff/student-groups', name: 'staff-student-groups', component: () => import('@/pages/staff/schedule/student-groups/StudentGroups.vue'), meta: { layout: 'staff' } },
   { path: '/staff/attendance', name: 'staff-attendance', component: () => import('@/pages/staff/schedule/student-attendance-tool/StudentAttendanceTool.vue'), meta: { layout: 'staff' } },
   { path: '/staff/gradebook', name: 'staff-gradebook', component: () => import('@/pages/staff/gradebook/Gradebook.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/student-logs', name: 'staff-student-log-analytics', component: () => import('@/pages/staff/analytics/StudentLogAnalytics.vue'), meta: { layout: 'staff' } },
 ]
 
 const router = createRouter({

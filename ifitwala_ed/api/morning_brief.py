@@ -272,14 +272,13 @@ def get_briefing_widgets():
 def get_staff_birthdays():
 	"""
 	Returns active employees with birthdays today or in the next 3 days.
-	Schema: Employee (employee_date_of_birth, status, employee_full_name, employee_image)
 	"""
-	# MySQL specific date formatting to match Day-Month
+	# FIX: Changed %%d-%%b to %d-%b so MySQL formats the date instead of escaping it
 	sql = """
 		SELECT
 			employee_full_name as name,
 			employee_image as image,
-			DATE_FORMAT(employee_date_of_birth, '%%d-%%b') as birthday_display,
+			DATE_FORMAT(employee_date_of_birth, '%d-%b') as birthday_display,
 			employee_date_of_birth
 		FROM
 			`tabEmployee`
@@ -287,12 +286,12 @@ def get_staff_birthdays():
 			status = 'Active'
 			AND employee_date_of_birth IS NOT NULL
 			AND (
-				DATE_FORMAT(employee_date_of_birth, '%%m-%%d') BETWEEN
-				DATE_FORMAT(CURDATE(), '%%m-%%d') AND
-				DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 3 DAY), '%%m-%%d')
+				DATE_FORMAT(employee_date_of_birth, '%m-%d') BETWEEN
+				DATE_FORMAT(CURDATE(), '%m-%d') AND
+				DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 3 DAY), '%m-%d')
 			)
 		ORDER BY
-			DATE_FORMAT(employee_date_of_birth, '%%m-%%d') ASC
+			DATE_FORMAT(employee_date_of_birth, '%m-%d') ASC
 	"""
 	return frappe.db.sql(sql, as_dict=True)
 
@@ -373,12 +372,12 @@ def get_my_student_groups(user):
 def get_my_student_birthdays(group_names):
 	"""
 	Returns students in the instructor's groups who have birthdays today.
-	Schema: Student Group Student -> Student (date_of_birth)
 	"""
 	if not group_names: return []
 
 	groups_formatted = "', '".join(group_names)
 
+	# FIX: Changed %%m-%%d to %m-%d
 	sql = f"""
 		SELECT DISTINCT
 			s.first_name,
@@ -391,7 +390,7 @@ def get_my_student_birthdays(group_names):
 		WHERE
 			sgs.parent IN ('{groups_formatted}')
 			AND sgs.active = 1
-			AND DATE_FORMAT(s.date_of_birth, '%%m-%%d') = DATE_FORMAT(CURDATE(), '%%m-%%d')
+			AND DATE_FORMAT(s.date_of_birth, '%m-%d') = DATE_FORMAT(CURDATE(), '%m-%d')
 	"""
 	return frappe.db.sql(sql, as_dict=True)
 

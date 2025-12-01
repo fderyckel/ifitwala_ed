@@ -97,17 +97,25 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const localValue = ref(props.value ?? '')
 
 /**
- * Single watcher: when the dialog opens,
- * - sync from props.value
- * - focus textarea
+ * Keep local state in sync with incoming props and focus on open.
+ * - When the dialog opens, copy the latest remark and focus the textarea.
+ * - If the parent updates the remark while closed, refresh localValue so it
+ *   shows up the next time we open.
  */
 watch(
-	() => props.modelValue,
-	async (isOpen, wasOpen) => {
-		if (isOpen && !wasOpen) {
-			localValue.value = props.value ?? ''
+	() => [props.modelValue, props.value],
+	async ([isOpen, nextValue], [wasOpen, prevValue]) => {
+		const opened = isOpen && !wasOpen
+		const valueChangedWhileClosed = !isOpen && nextValue !== prevValue
+
+		if (opened || valueChangedWhileClosed) {
+			localValue.value = nextValue ?? ''
+		}
+
+		if (opened) {
 			await nextTick()
 			textareaRef.value?.focus()
+			textareaRef.value?.setSelectionRange(localValue.value.length, localValue.value.length)
 		}
 	},
 	{ immediate: true },
