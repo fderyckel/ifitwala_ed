@@ -8,7 +8,7 @@
      --------------------------------------------------------------- */
   .avatar {
     @apply h-16 w-16 rounded-xl overflow-hidden shadow-inner bg-slate-100
-           ring-1 ring-[rgb(var(--border-rgb) / 0.85)];
+           ring-1 ring-border/85;
   }
 
   .avatar img {
