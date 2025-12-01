@@ -230,6 +230,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { createResource, FeatherIcon } from 'frappe-ui'
 import ContentDialog from '@/components/ContentDialog.vue'
 
 // State for Dialog
