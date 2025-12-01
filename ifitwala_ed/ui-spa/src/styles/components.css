@@ -237,7 +237,7 @@
 
 	/* When the card is zoomed */
 	.analytics-chart--expanded {
-		height: min(440px, 70vh); /* grows but still bounded */
+		height: min(520px, 70vh); /* grows but still bounded */
 	}
 
   /* Empty state inside a card */

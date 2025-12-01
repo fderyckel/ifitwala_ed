@@ -30,13 +30,14 @@
 
       <section v-if="hasData('announcements')" class="space-y-4">
          <div v-for="(news, idx) in widgets.data.announcements" :key="idx"
-              class="relative overflow-hidden rounded-2xl p-6 shadow-sm transition-all"
+              class="relative overflow-hidden rounded-2xl p-6 shadow-sm transition-all mb-4 last:mb-0"
               :class="getPriorityClasses(news.priority)"
          >
-            <div v-if="news.priority !== 'Critical'" class="absolute inset-0 bg-gradient-to-r from-jacaranda to-purple-800 opacity-100 z-0"></div>
-            <div class="relative z-10 text-white">
+            <div v-if="news.priority !== 'Critical'" class="absolute inset-0 bg-purple-50 opacity-100 z-0"></div>
+            <div class="relative z-10" :class="news.priority === 'Critical' ? 'text-white' : 'text-ink'">
               <div class="flex gap-2 mb-2">
-                 <span class="inline-flex items-center gap-1 rounded-md bg-white/20 px-2 py-1 text-xs font-medium border border-white/30">
+                 <span class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium border"
+                       :class="news.priority === 'Critical' ? 'bg-white/20 border-white/30 text-white' : 'bg-white border-purple-100 text-purple-700'">
                     {{ news.type }}
                  </span>
                  <span v-if="news.priority === 'Critical'" class="inline-flex items-center gap-1 rounded-md bg-red-100 text-red-700 px-2 py-1 text-xs font-bold">
@@ -44,7 +45,17 @@
                  </span>
               </div>
               <h3 class="text-lg font-bold mb-2">{{ news.title }}</h3>
-              <div class="prose prose-sm prose-invert max-w-none opacity-90" v-html="news.content"></div>
+              <div class="prose prose-sm max-w-none opacity-90 line-clamp-5" 
+                   :class="news.priority === 'Critical' ? 'prose-invert' : 'text-slate-600'"
+                   v-html="news.content"></div>
+              
+              <button 
+                @click="openAnnouncement(news)"
+                class="mt-3 text-sm font-semibold flex items-center gap-1 hover:underline focus:outline-none"
+                :class="news.priority === 'Critical' ? 'text-white' : 'text-purple-700'"
+              >
+                Read full announcement <FeatherIcon name="arrow-right" class="h-4 w-4" />
+              </button>
             </div>
          </div>
       </section>
@@ -146,7 +157,7 @@
                           </p>
 
                           <button
-                            @click="openLogDialog(log)"
+                            @click="openLog(log)"
                             class="text-[11px] font-medium text-jacaranda hover:text-purple-700 flex items-center gap-1 mt-1 transition-colors"
                           >
                              Read Full Log <FeatherIcon name="maximize-2" class="h-3 w-3" />
@@ -181,46 +192,56 @@
          </div>
       </section>
 
+       <section v-if="hasData('my_student_birthdays')">
+          <div class="border-t border-border/60 pt-6">
+             <h2 class="section-header mb-4 flex items-center gap-2 text-slate-400">
+                <FeatherIcon name="gift" class="h-3 w-3" /> Student Birthdays (My Groups)
+             </h2>
+             <div class="flex flex-wrap gap-4 items-center">
+                <div v-for="stu in widgets.data.my_student_birthdays" :key="stu.first_name + stu.last_name"
+                     class="flex items-center gap-2 bg-white border border-border/80 rounded-full pr-4 p-1 shadow-sm">
+                   <div class="h-8 w-8 rounded-full bg-slate-100 overflow-hidden">
+                      <img v-if="stu.image" :src="stu.image" class="h-full w-full object-cover" />
+                      <div v-else class="h-full w-full flex items-center justify-center text-xs font-bold text-slate-400">{{ stu.first_name.substring(0,1) }}</div>
+                   </div>
+                   <div class="flex flex-col">
+                      <span class="text-xs font-bold text-ink">{{ stu.first_name }} {{ stu.last_name }}</span>
+                      <span class="text-[10px] text-amber-600 font-medium uppercase">{{ stu.birthday_display }}</span>
+                   </div>
+                </div>
+             </div>
+          </div>
+       </section>
+
     </div>
 
-    <Dialog v-model="isLogDialogOpen" :options="{ size: 'xl' }">
-      <template #body-content>
-        <div class="p-6 space-y-4" v-if="selectedLog">
-          <div class="flex items-center gap-4 border-b border-gray-100 pb-4">
-            <div class="h-16 w-16 rounded-xl bg-slate-100 overflow-hidden">
-               <img v-if="selectedLog.student_photo" :src="selectedLog.student_photo" class="h-full w-full object-cover">
-               <div v-else class="h-full w-full flex items-center justify-center text-xl font-bold text-slate-400">{{ selectedLog.student_name.substring(0,2) }}</div>
-            </div>
-            <div>
-              <h2 class="text-xl font-bold text-ink">{{ selectedLog.student_name }}</h2>
-              <div class="flex gap-2 mt-1">
-                <span class="inline-chip bg-slate-100 text-slate-600">{{ selectedLog.log_type }}</span>
-                <span class="text-sm text-slate-500">{{ selectedLog.date_display }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="prose prose-sm max-w-none text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-100">
-             <div v-html="selectedLog.full_content"></div>
-          </div>
-
-          <div class="flex justify-end pt-2">
-             <button class="fui-btn-primary px-4 py-2 rounded-lg" @click="isLogDialogOpen = false">Close</button>
-          </div>
-        </div>
-      </template>
-    </Dialog>
+    <ContentDialog
+      v-model="isContentDialogOpen"
+      :title="dialogContent.title"
+      :subtitle="dialogContent.subtitle"
+      :content="dialogContent.content"
+      :image="dialogContent.image"
+      :image-fallback="dialogContent.imageFallback"
+      :badge="dialogContent.badge"
+    />
 
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { createResource, FeatherIcon, Dialog } from 'frappe-ui'
+import ContentDialog from '@/components/ContentDialog.vue'
 
 // State for Dialog
-const isLogDialogOpen = ref(false)
-const selectedLog = ref(null)
+const isContentDialogOpen = ref(false)
+const dialogContent = ref({
+  title: '',
+  subtitle: '',
+  content: '',
+  image: '',
+  imageFallback: '',
+  badge: ''
+})
 
 const widgets = createResource({
   url: 'ifitwala_ed.api.morning_brief.get_briefing_widgets',
@@ -231,9 +252,28 @@ function hasData(key) {
   return widgets.data && widgets.data[key] && Array.isArray(widgets.data[key]) && widgets.data[key].length > 0
 }
 
-function openLogDialog(log) {
-  selectedLog.value = log
-  isLogDialogOpen.value = true
+function openLog(log) {
+  dialogContent.value = {
+    title: log.student_name,
+    subtitle: log.date_display,
+    content: log.full_content,
+    image: log.student_photo,
+    imageFallback: log.student_name.substring(0, 2),
+    badge: log.log_type
+  }
+  isContentDialogOpen.value = true
+}
+
+function openAnnouncement(news) {
+  dialogContent.value = {
+    title: news.title,
+    subtitle: formattedDate.value,
+    content: news.content,
+    image: '', // Or maybe an icon?
+    imageFallback: '',
+    badge: news.type
+  }
+  isContentDialogOpen.value = true
 }
 
 const formattedDate = computed(() => {
