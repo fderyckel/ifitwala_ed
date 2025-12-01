@@ -45,7 +45,7 @@
                  </span>
               </div>
               <h3 class="text-lg font-bold mb-2">{{ news.title }}</h3>
-              <div class="prose prose-sm max-w-none opacity-90 line-clamp-5" 
+              <div class="prose prose-sm max-w-none opacity-90 line-clamp-3" 
                    :class="news.priority === 'Critical' ? 'prose-invert' : 'text-slate-600'"
                    v-html="news.content"></div>
               
@@ -171,26 +171,31 @@
 
       </div>
 
-      <section v-if="hasData('staff_birthdays')">
-         <div class="border-t border-border/60 pt-6">
-            <h2 class="section-header mb-4 flex items-center gap-2 text-slate-400">
-               <FeatherIcon name="gift" class="h-3 w-3" /> Community Pulse
-            </h2>
-            <div class="flex flex-wrap gap-4 items-center">
-               <div v-for="emp in widgets.data.staff_birthdays" :key="emp.name"
-                    class="flex items-center gap-2 bg-white border border-border/80 rounded-full pr-4 p-1 shadow-sm">
-                  <div class="h-8 w-8 rounded-full bg-slate-100 overflow-hidden">
-                     <img v-if="emp.image" :src="emp.image" class="h-full w-full object-cover" />
-                     <div v-else class="h-full w-full flex items-center justify-center text-xs font-bold text-slate-400">{{ emp.name.substring(0,1) }}</div>
-                  </div>
-                  <div class="flex flex-col">
-                     <span class="text-xs font-bold text-ink">{{ emp.name }}</span>
-                     <span class="text-[10px] text-amber-600 font-medium uppercase">{{ emp.birthday_display }}</span>
-                  </div>
-               </div>
-            </div>
-         </div>
-      </section>
+       <section v-if="hasData('staff_birthdays')">
+          <div class="border-t border-border/60 pt-6">
+             <div class="flex items-center justify-between mb-4">
+                <h2 class="section-header flex items-center gap-2 text-slate-400">
+                   <FeatherIcon name="gift" class="h-3 w-3" /> Community Pulse
+                </h2>
+                <span class="text-xs font-medium text-purple-600 italic">
+                   Let's celebrate our amazing team! 🎂
+                </span>
+             </div>
+             <div class="flex flex-wrap gap-4 items-center">
+                <div v-for="emp in widgets.data.staff_birthdays" :key="emp.name"
+                     class="flex items-center gap-3 bg-white border border-border/80 rounded-full pr-5 pl-2 py-2 shadow-sm hover:shadow-md transition-shadow">
+                   <div class="h-10 w-10 rounded-full bg-slate-100 overflow-hidden ring-2 ring-white">
+                      <img v-if="emp.image" :src="emp.image" class="h-full w-full object-cover" />
+                      <div v-else class="h-full w-full flex items-center justify-center text-sm font-bold text-slate-400">{{ emp.name.substring(0,1) }}</div>
+                   </div>
+                   <div class="flex flex-col">
+                      <span class="text-sm font-bold text-ink">{{ emp.name }}</span>
+                      <span class="text-xs text-amber-600 font-medium uppercase">{{ formatBirthday(emp.date_of_birth) }}</span>
+                   </div>
+                </div>
+             </div>
+          </div>
+       </section>
 
        <section v-if="hasData('my_student_birthdays')">
           <div class="border-t border-border/60 pt-6">
@@ -199,14 +204,14 @@
              </h2>
              <div class="flex flex-wrap gap-4 items-center">
                 <div v-for="stu in widgets.data.my_student_birthdays" :key="stu.first_name + stu.last_name"
-                     class="flex items-center gap-2 bg-white border border-border/80 rounded-full pr-4 p-1 shadow-sm">
-                   <div class="h-8 w-8 rounded-full bg-slate-100 overflow-hidden">
+                     class="flex items-center gap-3 bg-white border border-border/80 rounded-full pr-5 pl-2 py-2 shadow-sm hover:shadow-md transition-shadow">
+                   <div class="h-10 w-10 rounded-full bg-slate-100 overflow-hidden ring-2 ring-white">
                       <img v-if="stu.image" :src="stu.image" class="h-full w-full object-cover" />
-                      <div v-else class="h-full w-full flex items-center justify-center text-xs font-bold text-slate-400">{{ stu.first_name.substring(0,1) }}</div>
+                      <div v-else class="h-full w-full flex items-center justify-center text-sm font-bold text-slate-400">{{ stu.first_name.substring(0,1) }}</div>
                    </div>
                    <div class="flex flex-col">
-                      <span class="text-xs font-bold text-ink">{{ stu.first_name }} {{ stu.last_name }}</span>
-                      <span class="text-[10px] text-amber-600 font-medium uppercase">{{ stu.birthday_display }}</span>
+                      <span class="text-sm font-bold text-ink">{{ stu.first_name }} {{ stu.last_name }}</span>
+                      <span class="text-xs text-amber-600 font-medium uppercase">{{ formatBirthday(stu.date_of_birth) }}</span>
                    </div>
                 </div>
              </div>
@@ -285,6 +290,25 @@ const formattedDate = computed(() => {
 function getPriorityClasses(priority) {
   if (priority === 'Critical') return 'bg-red-600 text-white ring-4 ring-red-100'
   return ''
+}
+
+function formatBirthday(dateStr) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const day = date.getDate()
+  const month = date.toLocaleString('default', { month: 'long' })
+  
+  const suffix = (day) => {
+    if (day > 3 && day < 21) return 'th'
+    switch (day % 10) {
+      case 1:  return "st"
+      case 2:  return "nd"
+      case 3:  return "rd"
+      default: return "th"
+    }
+  }
+
+  return `${day}${suffix(day)} ${month}`
 }
 </script>
 
