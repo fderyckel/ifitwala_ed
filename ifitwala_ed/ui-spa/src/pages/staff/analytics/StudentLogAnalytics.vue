@@ -6,6 +6,7 @@ import {
 	watch,
 	onMounted,
 	defineComponent,
+	h,
 } from 'vue'
 import { createResource } from 'frappe-ui'
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
@@ -340,110 +341,151 @@ onMounted(() => {
    ────────────────────────────────────────────────────────────── */
 
 const AnalyticsCard = defineComponent({
-	name: 'AnalyticsCard',
-	props: {
-		title: { type: String, required: true },
-	},
-	setup(props, { slots }) {
-		return () => (
-			<div class="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm">
-				<div class="mb-2 flex items-center justify-between gap-2">
-					<div>
-						<div class="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-							{props.title}
-						</div>
-						{slots.subtitle && <div class="mt-0.5">{slots.subtitle()}</div>}
-					</div>
-					{slots.badge && <div>{slots.badge()}</div>}
-				</div>
-				<div class="text-xs text-slate-700">
-					{slots.body ? slots.body() : null}
-				</div>
-			</div>
-		)
-	},
+  name: 'AnalyticsCard',
+  props: {
+    title: { type: String, required: true },
+  },
+  setup(props, { slots }) {
+    return () =>
+      h(
+        'div',
+        { class: 'rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm' },
+        [
+          h(
+            'div',
+            { class: 'mb-2 flex items-center justify-between gap-2' },
+            [
+              h('div', null, [
+                h(
+                  'div',
+                  {
+                    class:
+                      'text-[11px] font-semibold uppercase tracking-wide text-slate-600',
+                  },
+                  props.title
+                ),
+                slots.subtitle
+                  ? h('div', { class: 'mt-0.5' }, slots.subtitle())
+                  : null,
+              ]),
+              slots.badge ? h('div', null, slots.badge()) : null,
+            ]
+          ),
+          h(
+            'div',
+            { class: 'text-xs text-slate-700' },
+            slots.body ? slots.body() : null
+          ),
+        ]
+      )
+  },
 })
 
 const SimpleList = defineComponent({
-	name: 'SimpleList',
-	props: {
-		items: { type: Array as () => any[], required: true },
-		labelKey: { type: String, default: 'label' },
-		valueKey: { type: String, default: 'value' },
-		emptyLabel: { type: String, default: 'No data.' },
-	},
-	setup(props) {
-		return () => {
-			if (!props.items || !props.items.length) {
-				return (
-					<div class="py-2 text-xs text-slate-400">
-						{props.emptyLabel}
-					</div>
-				)
-			}
+  name: 'SimpleList',
+  props: {
+    items: { type: Array as () => any[], required: true },
+    labelKey: { type: String, default: 'label' },
+    valueKey: { type: String, default: 'value' },
+    emptyLabel: { type: String, default: 'No data.' },
+  },
+  setup(props) {
+    return () => {
+      const items = props.items || []
+      if (!items.length) {
+        return h(
+          'div',
+          { class: 'py-2 text-xs text-slate-400' },
+          props.emptyLabel
+        )
+      }
 
-			return (
-				<ul class="divide-y divide-slate-100">
-					{props.items.map((item: any) => (
-						<li
-							class="flex items-center justify-between py-1"
-							key={item[props.labelKey] || String(Math.random())}
-						>
-							<span class="mr-2 truncate">{item[props.labelKey]}</span>
-							<span class="ml-2 shrink-0 font-medium text-slate-800">
-								{item[props.valueKey]}
-							</span>
-						</li>
-					))}
-				</ul>
-			)
-		}
-	},
+      return h(
+        'ul',
+        { class: 'divide-y divide-slate-100' },
+        items.map((item: any) =>
+          h(
+            'li',
+            {
+              class: 'flex items-center justify-between py-1',
+              key: item[props.labelKey] || String(Math.random()),
+            },
+            [
+              h(
+                'span',
+                { class: 'mr-2 truncate' },
+                item[props.labelKey] as string
+              ),
+              h(
+                'span',
+                {
+                  class: 'ml-2 shrink-0 font-medium text-slate-800',
+                },
+                String(item[props.valueKey])
+              ),
+            ]
+          )
+        )
+      )
+    }
+  },
 })
 
 const SimpleListPercent = defineComponent({
-	name: 'SimpleListPercent',
-	props: {
-		items: { type: Array as () => any[], required: true },
-		emptyLabel: { type: String, default: 'No data.' },
-	},
-	setup(props) {
-		return () => {
-			const items = props.items || []
-			if (!items.length) {
-				return (
-					<div class="py-2 text-xs text-slate-400">
-						{props.emptyLabel}
-					</div>
-				)
-			}
+  name: 'SimpleListPercent',
+  props: {
+    items: { type: Array as () => any[], required: true },
+    emptyLabel: { type: String, default: 'No data.' },
+  },
+  setup(props) {
+    return () => {
+      const items = props.items || []
+      if (!items.length) {
+        return h(
+          'div',
+          { class: 'py-2 text-xs text-slate-400' },
+          props.emptyLabel
+        )
+      }
 
-			const values = items.map((i: any) => Number(i.value) || 0)
-			const total = values.reduce((a, b) => a + b, 0) || 1
+      const values = items.map((i: any) => Number(i.value) || 0)
+      const total = values.reduce((a, b) => a + b, 0) || 1
 
-			return (
-				<ul class="divide-y divide-slate-100">
-					{items.map((item: any, idx: number) => {
-						const v = values[idx]
-						const pct = Math.round((v / total) * 1000) / 10
-						return (
-							<li
-								class="flex items-center justify-between py-1"
-								key={item.label || String(idx)}
-							>
-								<span class="mr-2 truncate">{item.label}</span>
-								<span class="ml-2 shrink-0 text-[11px] text-slate-500">
-									<span class="font-semibold text-slate-800">{v}</span>
-									<span class="ml-1">({pct}%)</span>
-								</span>
-							</li>
-						)
-					})}
-				</ul>
-			)
-		}
-	},
+      return h(
+        'ul',
+        { class: 'divide-y divide-slate-100' },
+        items.map((item: any, idx: number) => {
+          const v = values[idx]
+          const pct = Math.round((v / total) * 1000) / 10
+
+          return h(
+            'li',
+            {
+              class: 'flex items-center justify-between py-1',
+              key: item.label || String(idx),
+            },
+            [
+              h('span', { class: 'mr-2 truncate' }, item.label as string),
+              h(
+                'span',
+                { class: 'ml-2 shrink-0 text-[11px] text-slate-500' },
+                [
+                  h(
+                    'span',
+                    { class: 'font-semibold text-slate-800' },
+                    String(v)
+                  ),
+                  h('span', { class: 'ml-1' }, `(${pct}%)`),
+                ]
+              ),
+            ]
+          )
+        })
+      )
+    }
+  },
 })
+
 </script>
 
 <template>
