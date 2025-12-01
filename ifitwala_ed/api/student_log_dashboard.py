@@ -399,14 +399,14 @@ def get_filter_meta():
         order_by="program_name",
     )
 
-    # Authors: active Employees with Academic Staff role in authorized schools
+    # ── Authors: Employees with Academic Staff role in authorized schools ─────────
     authors = []
     if authorized_schools:
         authors = frappe.db.sql(
             """
             SELECT DISTINCT
-                e.name,
-                e.employee_name AS label
+                e.employee_full_name AS label,
+                e.user_id            AS user_id
             FROM `tabEmployee` e
             INNER JOIN `tabUser` u
                 ON u.name = e.user_id
@@ -416,7 +416,7 @@ def get_filter_meta():
                 hr.role = 'Academic Staff'
                 AND e.status = 'Active'
                 AND e.school IN %(authorized_schools)s
-            ORDER BY e.employee_name
+            ORDER BY e.employee_full_name
             """,
             {"authorized_schools": tuple(authorized_schools)},
             as_dict=True,

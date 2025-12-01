@@ -680,8 +680,8 @@ const SimpleListPercent = defineComponent({
           </option>
           <option
             v-for="a in authors"
-            :key="a.name"
-            :value="a.name"
+            :key="a.user_id"
+            :value="a.label"
           >
             {{ a.label }}
           </option>
