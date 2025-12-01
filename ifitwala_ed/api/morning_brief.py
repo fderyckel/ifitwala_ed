@@ -59,12 +59,14 @@ def get_daily_bulletin(user, roles):
 		order_by="priority desc, brief_order asc, creation desc"
 	)
 
-	employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "organization", "department"], as_dict=True)
+	employee = frappe.db.get_value("Employee", {"user_id": user},
+		["name", "school", "organization", "department"],
+		as_dict=True
+	)
 
 	visible_comms = []
 
 	for c in comms:
-		# Expiry Check
 		if c.brief_end_date and getdate(c.brief_end_date) < system_today:
 			continue
 
@@ -88,23 +90,20 @@ def check_audience_match(comm_name, user, roles, employee):
 
 	if not audiences: return False
 
-	# 1. Determine User's "Scope of View" (Ancestors)
-	# Logic: If I am at Child School, I see my Parent's comms.
+	# FIX: Use 'school' directly (no fallback)
 	user_school = None
 	valid_target_schools = []
 
-	if employee:
-		user_school = employee.default_school or employee.school
-		if user_school:
-			# Returns [Self, Parent, Grandparent...]
-			valid_target_schools = get_ancestor_schools(user_school)
+	if employee and employee.school:
+		user_school = employee.school
+		# Get list including self and all parents up to root
+		valid_target_schools = get_ancestor_schools(user_school)
 
 	for aud in audiences:
 		# --- HIERARCHY CHECK ---
-		# If the audience targets a specific school, it must be one of my ancestors (or myself).
+		# Target must be an ancestor (e.g., Parent School) or Self
 		if aud.school:
 			if not user_school: continue
-			# CRITICAL: Is the target school in my upstream lineage?
 			if aud.school not in valid_target_schools: continue
 
 		# --- TARGET GROUP CHECK ---
@@ -124,7 +123,6 @@ def check_audience_match(comm_name, user, roles, employee):
 		if match_found: return True
 
 	return False
-
 
 # ==============================================================================
 # SECTION 2: ANALYTICS (Admin & Instructor)
@@ -197,23 +195,20 @@ def get_medical_context(group_names):
 # ==============================================================================
 
 def get_recent_student_logs(user):
-	"""
-	Fetches logs from the last 48 hours.
-	Filters by User's School (and all its Descendants).
-	"""
 	from_date = add_days(today(), -1)
 	filters = {"date": (">=", from_date)}
 
+	# FIX: Removed 'default_school' from fetch list
 	employee = frappe.db.get_value("Employee", {"user_id": user},
-		["name", "school", "default_school"],
+		["name", "school"],
 		as_dict=True
 	)
 
-	if employee:
-		target_school = employee.default_school or employee.school
+	if employee and employee.school:
+		# FIX: Use 'school' directly to find descendants
+		target_school = employee.school
 
 		if target_school:
-			# Use Utility: Get Self + All Children
 			schools = get_descendant_schools(target_school)
 			if schools:
 				filters["school"] = ("in", schools)
@@ -247,6 +242,7 @@ def get_recent_student_logs(user):
 		})
 
 	return formatted_logs
+
 
 # ==============================================================================
 # SECTION 4: COMMUNITY PULSE (Birthdays)

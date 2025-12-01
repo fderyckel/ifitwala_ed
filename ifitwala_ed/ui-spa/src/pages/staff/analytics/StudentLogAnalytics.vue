@@ -62,18 +62,26 @@ const allPrograms = computed(
   () => (filterMetaResource.data as any)?.programs || []
 )
 
+const filterMeta = computed(() => (filterMetaResource.data as any) || {})
+
 const programsForSchool = computed(() => {
-  const school = filters.value.school
-  if (!school) return allPrograms.value
-  return allPrograms.value.filter((p: any) => p.school === school)
+  // For now, no schema assumption – just show all programs.
+  // Once we align Program schema, we can filter by school if present.
+  return allPrograms.value
 })
 
-filterMetaResource.onSuccess((data: any) => {
-  if (!data) return
-  if (data.default_school && !filters.value.school) {
-    filters.value.school = data.default_school
-  }
-})
+
+// Set default school once data arrives
+watch(
+  filterMeta,
+  (data) => {
+    if (!data) return
+    if (data.default_school && !filters.value.school) {
+      filters.value.school = data.default_school
+    }
+  },
+  { immediate: true }
+)
 
 /* ──────────────────────────────────────────────────────────────
    Recent logs paging

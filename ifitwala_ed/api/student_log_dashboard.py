@@ -347,41 +347,61 @@ def get_authorized_schools(user):
 	return [r[0] for r in rows] or [default_school]
 
 
+
 @frappe.whitelist()
 def get_filter_meta():
-    """Return schools, academic years and programs the user can filter on."""
+    """Return schools, academic years and programs the user can filter on.
+
+    - Schools are restricted to the user's authorized school branch.
+    - Academic Years are restricted to those same schools.
+    - Programs are returned unfiltered for now (we do NOT assume Program has `school`).
+    """
     user = frappe.session.user
     authorized_schools = get_authorized_schools(user)
 
-    if not authorized_schools:
-        return {
-            "schools": [],
-            "default_school": None,
-            "academic_years": [],
-            "programs": [],
-        }
+    # ── Schools (branch) ────────────────────────────────────────────────
+    schools = []
+    default_school = None
 
-    schools = frappe.get_all(
-        "School",
-        filters={"name": ["in", authorized_schools]},
-        fields=["name", "school_name as label"],
-        order_by="lft",
-    )
+    if authorized_schools:
+        schools = frappe.get_all(
+            "School",
+            filters={"name": ["in", authorized_schools]},
+            fields=["name", "school_name as label"],
+            order_by="lft",
+        )
+        default_school = authorized_schools[0]
+
+    # ── Academic Years (scoped to authorized schools) ───────────────────
+    # Fieldnames from your Academic Year JSON:
+    # - academic_year_name
+    # - year_start_date
+    # - year_end_date
+    # - school
+    # - archived
+    ay_filters = {"archived": 0}
+    if authorized_schools:
+        ay_filters["school"] = ["in", authorized_schools]
 
     academic_years = frappe.get_all(
         "Academic Year",
-        fields=["name", "year_start_date", "year_end_date"],
+        filters=ay_filters,
+        fields=[
+            "name",
+            "academic_year_name as label",
+            "year_start_date",
+            "year_end_date",
+            "school",
+        ],
         order_by="year_start_date desc",
     )
 
+    # ── Programs (no school filter until we see Program.json) ───────────
     programs = frappe.get_all(
         "Program",
-        filters={"school": ["in", authorized_schools]},
-        fields=["name", "program_name as label", "school"],
+        fields=["name", "program_name as label"],
         order_by="program_name",
     )
-
-    default_school = authorized_schools[0] if authorized_schools else None
 
     return {
         "schools": schools,
@@ -389,3 +409,6 @@ def get_filter_meta():
         "academic_years": academic_years,
         "programs": programs,
     }
+
+
+
