@@ -30,19 +30,11 @@
 		{% endfor %}
 	{% endif %}
 </head>
-<body class="bg-gray-100 font-sans" style="--footer-h: calc(48px + env(safe-area-inset-bottom, 0px));">
-	<noscript>
-		<div style="padding:1rem;background:#fee2e2;color:#7f1d1d">
-			JavaScript is required to use the Student Portal.
-		</div>
-	</noscript>
-
-	<div id="app"></div>
-
-	{% if vite_js %}
-		<script type="module" src="{{ vite_js }}"></script>
-	{% endif %}
-
-	{% block body_end %}{% endblock %}
+<body>
+  <div id="app"></div>
+  {% if vite_js %}
+    <script type="module" src="{{ vite_js }}"></script>
+  {% endif %}
 </body>
+
 </html>
