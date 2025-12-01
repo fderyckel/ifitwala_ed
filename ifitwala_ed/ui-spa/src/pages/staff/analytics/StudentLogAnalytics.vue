@@ -553,6 +553,7 @@ const SimpleListPercent = defineComponent({
 })
 </script>
 
+
 <template>
   <div class="min-h-full px-4 py-4 md:px-6 lg:px-8">
     <!-- Overlay when a card is expanded (click outside to close) -->
@@ -648,17 +649,26 @@ const SimpleListPercent = defineComponent({
         </select>
       </div>
 
-      <!-- Author (simple text for now) -->
-      <div class="flex flex-col gap-1 w-40">
+      <!-- Author (Academic Staff list) -->
+      <div class="flex flex-col gap-1 w-48">
         <label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
           Author
         </label>
-        <input
+        <select
           v-model="filters.author"
-          type="text"
           class="h-8 rounded-md border border-slate-200 px-2 text-xs"
-          placeholder="Employee name"
-        />
+        >
+          <option value="">
+            All
+          </option>
+          <option
+            v-for="a in authors"
+            :key="a.name"
+            :value="a.name"
+          >
+            {{ a.label || a.name }}
+          </option>
+        </select>
       </div>
 
       <!-- From / To -->
@@ -683,350 +693,288 @@ const SimpleListPercent = defineComponent({
           class="h-8 rounded-md border border-slate-200 px-2 text-xs"
         />
       </div>
-
-      <!-- Student lookup -->
-      <div class="ml-auto flex flex-col gap-1 w-64 relative">
-        <label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
-          Student
-        </label>
-        <div class="relative">
-          <input
-            v-model="studentSearch"
-            type="text"
-            class="h-8 w-full rounded-md border border-slate-200 px-2 pr-6 text-xs"
-            placeholder="Type to search"
-            @input="debounce(fetchStudents, 300)"
-            @focus="studentSearch && fetchStudents()"
-          />
-          <button
-            v-if="filters.student"
-            class="absolute inset-y-0 right-0 flex items-center pr-2 text-[10px] text-slate-400 hover:text-slate-600"
-            @click="clearStudent"
-            type="button"
-          >
-            ✕
-          </button>
-        </div>
-
-        <!-- Suggestions dropdown -->
-        <div
-          v-if="studentDropdownOpen"
-          class="absolute top-full z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-slate-200 bg-white text-xs shadow-lg"
-        >
-          <div
-            v-if="studentLoading"
-            class="px-2 py-2 text-slate-400"
-          >
-            Searching…
-          </div>
-          <template v-else>
-            <button
-              v-for="s in studentSuggestions"
-              :key="s.id"
-              class="flex w-full items-center justify-between px-2 py-1.5 text-left hover:bg-slate-50"
-              type="button"
-              @click="selectStudent(s)"
-            >
-              <span class="truncate">{{ s.name }}</span>
-              <span class="ml-2 shrink-0 text-[0.65rem] text-slate-400">
-                {{ s.id }}
-              </span>
-            </button>
-            <div
-              v-if="!studentSuggestions.length"
-              class="px-2 py-2 text-slate-400"
-            >
-              No matches.
-            </div>
-          </template>
-        </div>
-      </div>
+      <!-- (Student filter removed: last card handles per-student detail) -->
     </FiltersBar>
 
-    <!-- Main layout: charts on the left, tables on the right -->
-    <section class="mt-4 grid gap-4 xl:grid-cols-[2fr,1.6fr]">
-      <!-- Left column: trends & breakdowns (with charts) -->
-      <div class="flex flex-col gap-4">
-        <!-- Logs over time: line chart (full width, not zoomable) -->
-        <AnalyticsCard title="Logs Over Time">
-          <template #body>
-            <AnalyticsChart
-              v-if="incidentsOverTime.length"
-              :option="incidentsOption"
-              :class="{ 'analytics-chart--expanded': false }"
-            />
-            <div
-              v-else
-              class="py-2 text-xs text-slate-400"
+    <!-- Main layout: always max 2 cards per row -->
+    <section class="mt-4 grid gap-4 md:grid-cols-2">
+      <!-- Logs over time: full-width (no zoom) -->
+      <AnalyticsCard
+        class="md:col-span-2"
+        title="Logs Over Time"
+      >
+        <template #body>
+          <AnalyticsChart
+            v-if="incidentsOverTime.length"
+            :option="incidentsOption"
+          />
+          <div
+            v-else
+            class="py-2 text-xs text-slate-400"
+          >
+            No logs for this period.
+          </div>
+        </template>
+      </AnalyticsCard>
+
+      <!-- Log Types -->
+      <AnalyticsCard
+        title="Log Types"
+        :expanded="expandedCard === 'log-types'"
+        @toggle="toggleCard('log-types')"
+      >
+        <template #body>
+          <AnalyticsChart
+            v-if="logTypeCount.length"
+            :option="logTypeOption"
+            :class="{ 'analytics-chart--expanded': expandedCard === 'log-types' }"
+          />
+          <div
+            v-else
+            class="py-2 text-xs text-slate-400"
+          >
+            No logs found.
+          </div>
+        </template>
+      </AnalyticsCard>
+
+      <!-- Next Step Types -->
+      <AnalyticsCard
+        title="Next Step Types"
+        :expanded="expandedCard === 'next-steps'"
+        @toggle="toggleCard('next-steps')"
+      >
+        <template #body>
+          <AnalyticsChart
+            v-if="nextStepTypes.length"
+            :option="nextStepTypesOption"
+            :class="{ 'analytics-chart--expanded': expandedCard === 'next-steps' }"
+          />
+          <div
+            v-else
+            class="py-2 text-xs text-slate-400"
+          >
+            No next steps recorded.
+          </div>
+        </template>
+      </AnalyticsCard>
+
+      <!-- Logs by Cohort -->
+      <AnalyticsCard
+        title="Logs by Cohort"
+        :expanded="expandedCard === 'cohort'"
+        @toggle="toggleCard('cohort')"
+      >
+        <template #body>
+          <AnalyticsChart
+            v-if="logsByCohort.length"
+            :option="logsByCohortOption"
+            :class="{ 'analytics-chart--expanded': expandedCard === 'cohort' }"
+          />
+          <div
+            v-else
+            class="py-2 text-xs text-slate-400"
+          >
+            No cohorts found.
+          </div>
+        </template>
+      </AnalyticsCard>
+
+      <!-- Logs by Program -->
+      <AnalyticsCard
+        title="Logs by Program"
+        :expanded="expandedCard === 'program'"
+        @toggle="toggleCard('program')"
+      >
+        <template #body>
+          <AnalyticsChart
+            v-if="logsByProgram.length"
+            :option="logsByProgramOption"
+            :class="{ 'analytics-chart--expanded': expandedCard === 'program' }"
+          />
+          <div
+            v-else
+            class="py-2 text-xs text-slate-400"
+          >
+            No programs found.
+          </div>
+        </template>
+      </AnalyticsCard>
+
+      <!-- Logs by Author -->
+      <AnalyticsCard
+        title="Logs by Author"
+        :expanded="expandedCard === 'author'"
+        @toggle="toggleCard('author')"
+      >
+        <template #body>
+          <AnalyticsChart
+            v-if="logsByAuthor.length"
+            :option="logsByAuthorOption"
+            :class="{ 'analytics-chart--expanded': expandedCard === 'author' }"
+          />
+          <div
+            v-else
+            class="py-2 text-xs text-slate-400"
+          >
+            No authors found.
+          </div>
+        </template>
+      </AnalyticsCard>
+
+      <!-- Recent Student Logs -->
+      <AnalyticsCard
+        title="Recent Student Logs"
+        :expanded="expandedCard === 'recent'"
+        @toggle="toggleCard('recent')"
+      >
+        <template #body>
+          <div class="max-h-[320px] overflow-auto">
+            <table class="min-w-full border-collapse text-[11px]">
+              <thead>
+                <tr
+                  class="border-b border-slate-200 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500"
+                >
+                  <th class="px-2 py-1 text-left">Date</th>
+                  <th class="px-2 py-1 text-left">Student</th>
+                  <th class="px-2 py-1 text-left">Program</th>
+                  <th class="px-2 py-1 text-left w-[7rem]">
+                    Type
+                  </th>
+                  <th class="px-2 py-1 text-left w-[45%]">
+                    Log
+                  </th>
+                  <th class="px-2 py-1 text-left">Author</th>
+                  <th class="px-2 py-1 text-center">FU</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in recentRows"
+                  :key="`${row.date}-${row.student}-${row.log_type}-${row.author}-${row.program}`"
+                  class="border-b border-slate-100 hover:bg-slate-50"
+                >
+                  <td class="px-2 py-1 align-top whitespace-nowrap">
+                    {{ formatDate(row.date) }}
+                  </td>
+                  <td class="px-2 py-1 align-top whitespace-nowrap">
+                    {{ row.student }}
+                  </td>
+                  <td class="px-2 py-1 align-top whitespace-nowrap">
+                    {{ row.program }}
+                  </td>
+                  <td class="px-2 py-1 align-top whitespace-nowrap">
+                    {{ row.log_type }}
+                  </td>
+                  <td
+                    class="px-2 py-1 align-top"
+                    :title="stripHtml(row.content || '')"
+                  >
+                    {{ truncate(stripHtml(row.content || '')) }}
+                  </td>
+                  <td class="px-2 py-1 align-top whitespace-nowrap">
+                    {{ row.author }}
+                  </td>
+                  <td class="px-2 py-1 align-top text-center">
+                    <span
+                      v-if="row.requires_follow_up"
+                      class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-[9px] font-bold text-amber-700"
+                    >
+                      ✓
+                    </span>
+                  </td>
+                </tr>
+                <tr v-if="!recentRows.length">
+                  <td
+                    colspan="7"
+                    class="px-2 py-3 text-center text-xs text-slate-400"
+                  >
+                    No logs in this period.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-2 flex justify-center">
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-600 hover:bg-slate-50"
+              @click.stop="loadRecent(false)"
             >
-              No logs for this period.
-            </div>
-          </template>
-        </AnalyticsCard>
+              Load more
+            </button>
+          </div>
+        </template>
+      </AnalyticsCard>
 
-        <!-- Log type + next step types (bar charts) -->
-        <div class="grid gap-4 md:grid-cols-2">
-          <AnalyticsCard
-            title="Log Types"
-            :expanded="expandedCard === 'log-types'"
-            @toggle="toggleCard('log-types')"
-          >
-            <template #body>
-              <AnalyticsChart
-                v-if="logTypeCount.length"
-                :option="logTypeOption"
-                :class="{ 'analytics-chart--expanded': expandedCard === 'log-types' }"
-              />
-              <div
-                v-else
-                class="py-2 text-xs text-slate-400"
-              >
-                No logs found.
-              </div>
-            </template>
-          </AnalyticsCard>
+      <!-- Selected Student Logs -->
+      <AnalyticsCard
+        title="Selected Student Logs"
+        :expanded="expandedCard === 'student-detail'"
+        @toggle="toggleCard('student-detail')"
+      >
+        <template #subtitle>
+          <span v-if="filters.student" class="text-xs text-slate-500">
+            {{ studentSearch || filters.student }}
+          </span>
+          <span v-else class="text-xs text-slate-400">
+            Choose a student (from the table) to see their logs.
+          </span>
+        </template>
 
-          <AnalyticsCard
-            title="Next Step Types"
-            :expanded="expandedCard === 'next-steps'"
-            @toggle="toggleCard('next-steps')"
-          >
-            <template #body>
-              <AnalyticsChart
-                v-if="nextStepTypes.length"
-                :option="nextStepTypesOption"
-                :class="{ 'analytics-chart--expanded': expandedCard === 'next-steps' }"
-              />
-              <div
-                v-else
-                class="py-2 text-xs text-slate-400"
-              >
-                No next steps recorded.
-              </div>
-            </template>
-          </AnalyticsCard>
-        </div>
-
-        <!-- Cohort & program -->
-        <div class="grid gap-4 md:grid-cols-2">
-          <AnalyticsCard
-            title="Logs by Cohort"
-            :expanded="expandedCard === 'cohort'"
-            @toggle="toggleCard('cohort')"
-          >
-            <template #body>
-              <AnalyticsChart
-                v-if="logsByCohort.length"
-                :option="logsByCohortOption"
-                :class="{ 'analytics-chart--expanded': expandedCard === 'cohort' }"
-              />
-              <div
-                v-else
-                class="py-2 text-xs text-slate-400"
-              >
-                No cohorts found.
-              </div>
-            </template>
-          </AnalyticsCard>
-
-          <AnalyticsCard
-            title="Logs by Program"
-            :expanded="expandedCard === 'program'"
-            @toggle="toggleCard('program')"
-          >
-            <template #body>
-              <AnalyticsChart
-                v-if="logsByProgram.length"
-                :option="logsByProgramOption"
-                :class="{ 'analytics-chart--expanded': expandedCard === 'program' }"
-              />
-              <div
-                v-else
-                class="py-2 text-xs text-slate-400"
-              >
-                No programs found.
-              </div>
-            </template>
-          </AnalyticsCard>
-        </div>
-
-        <!-- Logs by author -->
-        <AnalyticsCard
-          title="Logs by Author"
-          :expanded="expandedCard === 'author'"
-          @toggle="toggleCard('author')"
-        >
-          <template #body>
-            <AnalyticsChart
-              v-if="logsByAuthor.length"
-              :option="logsByAuthorOption"
-              :class="{ 'analytics-chart--expanded': expandedCard === 'author' }"
-            />
-            <div
-              v-else
-              class="py-2 text-xs text-slate-400"
-            >
-              No authors found.
-            </div>
-          </template>
-        </AnalyticsCard>
-      </div>
-
-      <!-- Right column: recent logs + per-student detail -->
-      <div class="flex flex-col gap-4">
-        <AnalyticsCard
-          title="Recent Student Logs"
-          :expanded="expandedCard === 'recent'"
-          @toggle="toggleCard('recent')"
-        >
-          <template #body>
-            <div class="max-h-[320px] overflow-auto">
-              <table class="min-w-full border-collapse text-[11px]">
-                <thead>
-                  <tr
-                    class="border-b border-slate-200 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500"
+        <template #body>
+          <div class="max-h-[260px] overflow-auto">
+            <table class="min-w-full border-collapse text-[11px]">
+              <thead>
+                <tr
+                  class="border-b border-slate-200 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500"
+                >
+                  <th class="px-2 py-1 text-left">Date</th>
+                  <th class="px-2 py-1 text-left w-[7rem]">
+                    Type
+                  </th>
+                  <th class="px-2 py-1 text-left w-[55%]">
+                    Log
+                  </th>
+                  <th class="px-2 py-1 text-left">Author</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in studentLogs"
+                  :key="`${row.date}-${row.log_type}-${row.author}`"
+                  class="border-b border-slate-100 hover:bg-slate-50"
+                >
+                  <td class="px-2 py-1 align-top whitespace-nowrap">
+                    {{ formatDate(row.date) }}
+                  </td>
+                  <td class="px-2 py-1 align-top whitespace-nowrap">
+                    {{ row.log_type }}
+                  </td>
+                  <td
+                    class="px-2 py-1 align-top"
+                    :title="stripHtml(row.content || '')"
                   >
-                    <th class="px-2 py-1 text-left">Date</th>
-                    <th class="px-2 py-1 text-left">Student</th>
-                    <th class="px-2 py-1 text-left">Program</th>
-                    <th class="px-2 py-1 text-left w-[7rem]">
-                      Type
-                    </th>
-                    <th class="px-2 py-1 text-left w-[45%]">
-                      Log
-                    </th>
-                    <th class="px-2 py-1 text-left">Author</th>
-                    <th class="px-2 py-1 text-center">FU</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="row in recentRows"
-                    :key="`${row.date}-${row.student}-${row.log_type}-${row.author}-${row.program}`"
-                    class="border-b border-slate-100 hover:bg-slate-50"
+                    {{ truncate(stripHtml(row.content || ''), 200) }}
+                  </td>
+                  <td class="px-2 py-1 align-top whitespace-nowrap">
+                    {{ row.author }}
+                  </td>
+                </tr>
+                <tr v-if="!studentLogs.length">
+                  <td
+                    colspan="4"
+                    class="px-2 py-3 text-center text-xs text-slate-400"
                   >
-                    <td class="px-2 py-1 align-top whitespace-nowrap">
-                      {{ formatDate(row.date) }}
-                    </td>
-                    <td class="px-2 py-1 align-top whitespace-nowrap">
-                      {{ row.student }}
-                    </td>
-                    <td class="px-2 py-1 align-top whitespace-nowrap">
-                      {{ row.program }}
-                    </td>
-                    <td class="px-2 py-1 align-top whitespace-nowrap">
-                      {{ row.log_type }}
-                    </td>
-                    <td
-                      class="px-2 py-1 align-top"
-                      :title="stripHtml(row.content || '')"
-                    >
-                      {{ truncate(stripHtml(row.content || '')) }}
-                    </td>
-                    <td class="px-2 py-1 align-top whitespace-nowrap">
-                      {{ row.author }}
-                    </td>
-                    <td class="px-2 py-1 align-top text-center">
-                      <span
-                        v-if="row.requires_follow_up"
-                        class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-[9px] font-bold text-amber-700"
-                      >
-                        ✓
-                      </span>
-                    </td>
-                  </tr>
-                  <tr v-if="!recentRows.length">
-                    <td
-                      colspan="7"
-                      class="px-2 py-3 text-center text-xs text-slate-400"
-                    >
-                      No logs in this period.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div class="mt-2 flex justify-center">
-              <button
-                type="button"
-                class="inline-flex items-center justify-center rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-600 hover:bg-slate-50"
-                @click.stop="loadRecent(false)"
-              >
-                Load more
-              </button>
-            </div>
-          </template>
-        </AnalyticsCard>
-
-        <AnalyticsCard
-          title="Selected Student Logs"
-          :expanded="expandedCard === 'student-detail'"
-          @toggle="toggleCard('student-detail')"
-        >
-          <template #subtitle>
-            <span v-if="filters.student" class="text-xs text-slate-500">
-              {{ studentSearch || filters.student }}
-            </span>
-            <span v-else class="text-xs text-slate-400">
-              Choose a student above to see their logs.
-            </span>
-          </template>
-
-          <template #body>
-            <div class="max-h-[260px] overflow-auto">
-              <table class="min-w-full border-collapse text-[11px]">
-                <thead>
-                  <tr
-                    class="border-b border-slate-200 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500"
-                  >
-                    <th class="px-2 py-1 text-left">Date</th>
-                    <th class="px-2 py-1 text-left w-[7rem]">
-                      Type
-                    </th>
-                    <th class="px-2 py-1 text-left w-[55%]">
-                      Log
-                    </th>
-                    <th class="px-2 py-1 text-left">Author</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="row in studentLogs"
-                    :key="`${row.date}-${row.log_type}-${row.author}`"
-                    class="border-b border-slate-100 hover:bg-slate-50"
-                  >
-                    <td class="px-2 py-1 align-top whitespace-nowrap">
-                      {{ formatDate(row.date) }}
-                    </td>
-                    <td class="px-2 py-1 align-top whitespace-nowrap">
-                      {{ row.log_type }}
-                    </td>
-                    <td
-                      class="px-2 py-1 align-top"
-                      :title="stripHtml(row.content || '')"
-                    >
-                      {{ truncate(stripHtml(row.content || ''), 200) }}
-                    </td>
-                    <td class="px-2 py-1 align-top whitespace-nowrap">
-                      {{ row.author }}
-                    </td>
-                  </tr>
-                  <tr v-if="!studentLogs.length">
-                    <td
-                      colspan="4"
-                      class="px-2 py-3 text-center text-xs text-slate-400"
-                    >
-                      No logs to show yet.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </template>
-        </AnalyticsCard>
-      </div>
+                    No logs to show yet.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+      </AnalyticsCard>
     </section>
   </div>
 </template>
-
