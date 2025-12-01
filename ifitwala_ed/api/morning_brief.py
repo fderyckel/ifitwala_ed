@@ -256,15 +256,25 @@ def get_staff_birthdays():
 	start_md = formatdate(today(), "MM-dd")
 	end_md = formatdate(add_days(today(), 3), "MM-dd")
 
-	condition = "DATE_FORMAT(employee_date_of_birth, '%m-%d') BETWEEN %s AND %s"
+	# Double escape % for pymysql (%%m) inside f-string not needed if variable interpolated?
+	# No, condition is inserted into f-string.
+	# We want final string to have %%m.
+	# condition = "DATE_FORMAT(..., '%%m-%%d')"
+	
+	condition = "DATE_FORMAT(employee_date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
 	if start_md > end_md:
-		condition = "(DATE_FORMAT(employee_date_of_birth, '%m-%d') >= %s OR DATE_FORMAT(employee_date_of_birth, '%m-%d') <= %s)"
+		condition = "(DATE_FORMAT(employee_date_of_birth, '%%m-%%d') >= %s OR DATE_FORMAT(employee_date_of_birth, '%%m-%%d') <= %s)"
 
+	# In f-string:
+	# %% -> %
+	# We want %% in final string for pymysql.
+	# So we need %%%% in f-string.
+	
 	sql = f"""
 		SELECT
 			employee_full_name as name,
 			employee_image as image,
-			DATE_FORMAT(employee_date_of_birth, '%%d-%%b') as birthday_display
+			DATE_FORMAT(employee_date_of_birth, '%%%%d-%%%%b') as birthday_display
 		FROM
 			`tabEmployee`
 		WHERE
@@ -272,7 +282,7 @@ def get_staff_birthdays():
 			AND employee_date_of_birth IS NOT NULL
 			AND {condition}
 		ORDER BY
-			DATE_FORMAT(employee_date_of_birth, '%%m-%%d') ASC
+			DATE_FORMAT(employee_date_of_birth, '%%%%m-%%%%d') ASC
 	"""
 	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
 
@@ -286,21 +296,21 @@ def get_my_student_birthdays(group_names):
 	start_md = formatdate(today(), "MM-dd")
 	end_md = formatdate(add_days(today(), 3), "MM-dd")
 
-	condition = "DATE_FORMAT(s.date_of_birth, '%m-%d') BETWEEN %s AND %s"
+	condition = "DATE_FORMAT(s.date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
 	if start_md > end_md:
-		condition = "(DATE_FORMAT(s.date_of_birth, '%m-%d') >= %s OR DATE_FORMAT(s.date_of_birth, '%m-%d') <= %s)"
+		condition = "(DATE_FORMAT(s.date_of_birth, '%%m-%%d') >= %s OR DATE_FORMAT(s.date_of_birth, '%%m-%%d') <= %s)"
 
 	sql = f"""
 		SELECT DISTINCT
 			s.first_name, s.last_name, s.student_photo as image,
-			DATE_FORMAT(s.date_of_birth, '%%d-%%b') as birthday_display
+			DATE_FORMAT(s.date_of_birth, '%%%%d-%%%%b') as birthday_display
 		FROM `tabStudent Group Student` sgs
 		INNER JOIN `tabStudent` s ON sgs.student = s.name
 		WHERE sgs.parent IN ('{groups_formatted}')
 		AND sgs.active = 1
 		AND s.date_of_birth IS NOT NULL
 		AND {condition}
-		ORDER BY DATE_FORMAT(s.date_of_birth, '%%m-%%d') ASC
+		ORDER BY DATE_FORMAT(s.date_of_birth, '%%%%m-%%%%d') ASC
 	"""
 	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
 
