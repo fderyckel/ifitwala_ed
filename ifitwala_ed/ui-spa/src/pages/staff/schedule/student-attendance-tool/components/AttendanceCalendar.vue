@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/schedule/student-attendance-tool/components/AttendanceCalendar.vue -->
 <template>
-	<div class="attendance-card rounded-2xl border border-border/80 bg-surface shadow-sm">
+	<div class="attendance-card border border-border/80 bg-surface shadow-sm">
 		<div class="flex items-center justify-between border-b border-border/60 px-4 py-3">
 			<div>
 				<h2 class="text-lg font-semibold text-ink">

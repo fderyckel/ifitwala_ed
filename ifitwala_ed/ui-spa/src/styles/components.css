@@ -19,10 +19,26 @@
      Staff portal "palette card" — focus / task list container
      Soft shell surface, not pure white
      --------------------------------------------------------------- */
-	.palette-card {
-		@apply border border-border/90 rounded-xl shadow-sm overflow-hidden
-					bg-[rgb(var(--surface-rgb)/0.98)];
-	}
+  .palette-card {
+    @apply border border-border/90 rounded-2xl shadow-sm overflow-hidden
+           bg-[rgb(var(--surface-rgb)/0.98)];
+  }
+
+  /* Card shell for dense tool panels */
+  .card-panel {
+    @apply rounded-2xl border border-border/80 bg-surface shadow-sm;
+  }
+
+  /* Toolbar strip used atop filters */
+  .surface-toolbar {
+    @apply rounded-2xl border border-border/80 bg-[rgb(var(--surface-rgb)/0.92)]
+           px-4 py-3 shadow-sm;
+  }
+
+  /* Calendar/attendance card */
+  .attendance-card {
+    @apply rounded-2xl border border-border/80 bg-surface shadow-sm;
+  }
 
   /* ---------------------------------------------------------------
      Staff portal quick-action tiles
@@ -78,11 +94,11 @@
   }
 
   .remark-btn:hover {
-    @apply border-blue-200 bg-blue-50 text-blue-600;
+    @apply border-jacaranda/30 bg-jacaranda/10 text-jacaranda;
   }
 
   .remark-btn--active {
-    @apply border-blue-200 bg-blue-50 text-blue-600;
+    @apply border-jacaranda/40 bg-jacaranda/15 text-jacaranda;
   }
 
   /* -------------------------------------------

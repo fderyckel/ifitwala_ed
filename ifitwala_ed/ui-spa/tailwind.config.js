@@ -33,8 +33,9 @@ export default {
         flame: withOpacity('--flame-rgb'),
         border: withOpacity('--border-rgb'),
 
-				surface: withOpacity('--surface-rgb'),
-				'surface-strong': withOpacity('--surface-strong-rgb'),
+        surface: withOpacity('--surface-rgb'),
+        'surface-soft': withOpacity('--surface-rgb'),
+        'surface-strong': withOpacity('--surface-strong-rgb'),
       },
     },
   },

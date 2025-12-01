@@ -179,7 +179,7 @@ import { createResource, FeatherIcon } from 'frappe-ui'
 
 // Fetch the Widget Dictionary
 const widgets = createResource({
-  url: 'ifitwala_ed.ifitwala_ed.api.morning_brief.get_briefing_widgets',
+  url: 'ifitwala_ed.api.morning_brief.get_briefing_widgets',
   auto: true
 })
 

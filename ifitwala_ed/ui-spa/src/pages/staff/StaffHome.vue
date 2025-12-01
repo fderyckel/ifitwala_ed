@@ -53,7 +53,7 @@
         </div>
 
         <!-- Palette card wrapper -->
-        <div class="palette-card rounded-2xl overflow-hidden">
+        <div class="palette-card overflow-hidden">
 
           <!-- Example tasks (replace with real later) -->
           <div

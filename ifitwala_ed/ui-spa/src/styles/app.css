@@ -60,13 +60,13 @@
   input[type="number"],
   select,
   textarea {
-    @apply border-slate-300 !important;
+    @apply !border-slate-300;
   }
   
   input:focus,
   select:focus,
   textarea:focus {
-    @apply border-slate-500 ring-1 ring-slate-200 !important;
+    @apply !border-slate-500 !ring-1 !ring-slate-200;
   }
 
   /* ---------------------------------------------------------------
@@ -651,5 +651,14 @@
   }
   .rounded-lg-token {
     border-radius: var(--radius-lg);
+  }
+
+  /* SCROLLBAR */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
