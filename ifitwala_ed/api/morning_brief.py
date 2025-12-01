@@ -3,10 +3,9 @@
 
 # ifitwala_ed/api/morning_brief.py
 
-
 import frappe
 from frappe.utils import today, add_days, getdate, formatdate, strip_html
-from ifitwala_ed.ifitwala_ed.utilities.school_tree import get_ancestor_schools
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 @frappe.whitelist()
 def get_briefing_widgets():
