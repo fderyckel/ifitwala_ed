@@ -6,6 +6,7 @@
 
 import frappe
 from frappe.utils import today, add_days, getdate, formatdate, strip_html
+from ifitwala_ed.ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 @frappe.whitelist()
 def get_briefing_widgets():
@@ -14,20 +15,21 @@ def get_briefing_widgets():
 
 	widgets = {}
 
-	# 1. TOP: ANNOUNCEMENTS
+	# 1. TOP: ORGANIZATIONAL COMMUNICATION
 	widgets["announcements"] = get_daily_bulletin(user, roles)
 
 	# 2. BOTTOM: STAFF BIRTHDAYS
+	# Visible to all staff roles
 	if any(r in roles for r in ["Academic Staff", "Employee", "System Manager", "Instructor"]):
 		widgets["staff_birthdays"] = get_staff_birthdays()
 
-	# 3. ANALYTICS (Admin)
+	# 3. ANALYTICS (Admin Only)
 	if "Academic Admin" in roles or "System Manager" in roles:
 		widgets["clinic_volume"] = get_clinic_activity()
 		widgets["admissions_pulse"] = get_admissions_pulse()
 		widgets["critical_incidents"] = get_critical_incidents_count()
 
-	# 4. INSTRUCTOR
+	# 4. INSTRUCTOR CONTEXT
 	if "Instructor" in roles:
 		my_groups = get_my_student_groups(user)
 		if my_groups:
@@ -35,12 +37,11 @@ def get_briefing_widgets():
 			widgets["grading_velocity"] = get_pending_grading_tasks(my_groups)
 			widgets["my_student_birthdays"] = get_my_student_birthdays(my_groups)
 
-	# 5. LOGS FEED
+	# 5. LOGS FEED (Admin & Leads)
 	if "Academic Admin" in roles or "System Manager" in roles or "Grade Level Lead" in roles:
 		widgets["student_logs"] = get_recent_student_logs(user)
 
 	return widgets
-
 
 # ==============================================================================
 # SECTION 1: DAILY BULLETIN (Org Communication)
@@ -88,27 +89,40 @@ def check_audience_match(comm_name, user, roles, employee):
 
 	if not audiences: return False
 
+	# 1. Determine User's "Scope of View" (Ancestors)
+	# Logic: If I am at Child School, I see my Parent's comms.
+	user_school = None
+	valid_target_schools = []
+
+	if employee:
+		user_school = employee.default_school or employee.school
+		if user_school:
+			# Returns [Self, Parent, Grandparent...]
+			valid_target_schools = get_ancestor_schools(user_school)
+
 	for aud in audiences:
-		# 1. Broad Categories (Check these first for speed)
-		if aud.target_group == "Whole Community": return True
-		if aud.target_group == "Whole Staff": return True # Authenticated user = Staff
+		# --- HIERARCHY CHECK ---
+		# If the audience targets a specific school, it must be one of my ancestors (or myself).
+		if aud.school:
+			if not user_school: continue
+			# CRITICAL: Is the target school in my upstream lineage?
+			if aud.school not in valid_target_schools: continue
 
-		# 2. Role Based
-		if aud.target_group == "Academic Staff" and ("Academic Staff" in roles or "Instructor" in roles):
-			return True
-		if aud.target_group == "Support Staff" and "Academic Staff" not in roles:
-			return True
+		# --- TARGET GROUP CHECK ---
+		match_found = False
 
-		# 3. Context Based (Requires Employee Record)
-		if not employee: continue # Cannot check school/team without employee record
+		if aud.target_group == "Whole Community": match_found = True
+		elif aud.target_group == "Whole Staff": match_found = True
 
-		# School Check: If audience has school, user must match
-		if aud.school and employee.school != aud.school:
-			continue
+		elif aud.target_group == "Academic Staff" and ("Academic Staff" in roles or "Instructor" in roles):
+			match_found = True
+		elif aud.target_group == "Support Staff" and "Academic Staff" not in roles:
+			match_found = True
 
-		# Team Check
-		if aud.team and employee.department == aud.team:
-			return True
+		elif aud.team and employee and employee.department == aud.team:
+			match_found = True
+
+		if match_found: return True
 
 	return False
 
@@ -186,25 +200,25 @@ def get_medical_context(group_names):
 def get_recent_student_logs(user):
 	"""
 	Fetches logs from the last 48 hours.
+	Filters by User's School (and all its Descendants).
 	"""
-	# 1. Timebox: Yesterday + Today
 	from_date = add_days(today(), -1)
+	filters = {"date": (">=", from_date)}
 
-	filters = {
-		"date": (">=", from_date),
-		# "docstatus": 1 # Uncomment for production
-	}
+	employee = frappe.db.get_value("Employee", {"user_id": user},
+		["name", "school", "default_school"],
+		as_dict=True
+	)
 
-	# 2. Scope by School
-	employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school"], as_dict=True)
+	if employee:
+		target_school = employee.default_school or employee.school
 
-	if employee and employee.school:
-		# CALLS THE HELPER FUNCTION HERE
-		schools = get_descendants("School", employee.school)
-		if schools:
-			filters["school"] = ("in", schools)
+		if target_school:
+			# Use Utility: Get Self + All Children
+			schools = get_descendant_schools(target_school)
+			if schools:
+				filters["school"] = ("in", schools)
 
-	# 3. Fetch Data
 	logs = frappe.get_all("Student Log",
 		fields=["name", "student_name", "student_photo", "log_type", "date", "requires_follow_up", "follow_up_status", "log"],
 		filters=filters,
@@ -214,11 +228,9 @@ def get_recent_student_logs(user):
 
 	formatted_logs = []
 	for l in logs:
-		# Use strip_html for the card snippet
 		raw_text = strip_html(l.log or "")
-		snippet = (raw_text[:100] + '...') if len(raw_text) > 100 else raw_text
+		snippet = (raw_text[:120] + '...') if len(raw_text) > 120 else raw_text
 
-		# Status Dot Logic
 		status_color = "gray"
 		if l.requires_follow_up:
 			if l.follow_up_status == "Open": status_color = "red"
@@ -231,12 +243,11 @@ def get_recent_student_logs(user):
 			"log_type": l.log_type,
 			"date_display": formatdate(l.date, "dd-MMM"),
 			"snippet": snippet,
-			"full_content": l.log, # Pass full HTML for the dialog
+			"full_content": l.log,
 			"status_color": status_color
 		})
 
 	return formatted_logs
-
 
 # ==============================================================================
 # SECTION 4: COMMUNITY PULSE (Birthdays)
@@ -267,30 +278,4 @@ def get_staff_birthdays():
 			DATE_FORMAT(employee_date_of_birth, '%%m-%%d') ASC
 	"""
 	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
-
-# ==============================================================================
-#  HELPER: RECURSIVE TREE FETCH
-# ==============================================================================
-
-def get_descendants(doctype, parent_name):
-	"""
-	Helper to get a node and all its children.
-	Supports Nested Set (lft/rgt).
-	"""
-	try:
-		meta = frappe.get_meta(doctype)
-		# Check if the doctype has Nested Set fields
-		if meta.has_field("lft") and meta.has_field("rgt"):
-			node = frappe.db.get_value(doctype, parent_name, ["lft", "rgt", "is_group"], as_dict=True)
-			if node and node.is_group:
-				# Return the parent + all children within lft/rgt bounds
-				return [x.name for x in frappe.get_all(doctype, filters={
-					"lft": (">=", node.lft),
-					"rgt": ("<=", node.rgt)
-				})]
-	except Exception:
-		pass
-
-	# Fallback: Just return the parent if not a tree or error
-	return [parent_name]
 
