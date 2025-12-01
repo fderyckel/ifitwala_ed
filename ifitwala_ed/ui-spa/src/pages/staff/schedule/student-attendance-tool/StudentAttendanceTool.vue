@@ -748,16 +748,21 @@ const dailyTotals = computed(() => {
 })
 
 function withAlpha(hex: string, alpha: number) {
-  if (!hex) return `rgba(37, 99, 235, ${alpha})`
+  if (!hex) return `rgb(37 99 235 / ${alpha})`
+
   const value = hex.replace('#', '')
   if (value.length !== 6) {
-    return `rgba(37, 99, 235, ${alpha})`
+    return `rgb(37 99 235 / ${alpha})`
   }
+
   const r = parseInt(value.substring(0, 2), 16)
   const g = parseInt(value.substring(2, 4), 16)
   const b = parseInt(value.substring(4, 6), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+
+  // Modern CSS syntax, matches what we did elsewhere
+  return `rgb(${r} ${g} ${b} / ${alpha})`
 }
+
 
 function unwrapMessage(res: any) {
   if (res && typeof res === 'object' && 'message' in res) {

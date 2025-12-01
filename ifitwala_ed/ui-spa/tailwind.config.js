@@ -32,6 +32,9 @@ export default {
         jacaranda: withOpacity('--jacaranda-rgb'),
         flame: withOpacity('--flame-rgb'),
         border: withOpacity('--border-rgb'),
+
+				surface: withOpacity('--surface-rgb'),
+				'surface-strong': withOpacity('--surface-strong-rgb'),
       },
     },
   },

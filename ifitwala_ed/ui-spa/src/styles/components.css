@@ -15,34 +15,34 @@
     @apply h-full w-full object-cover;
   }
 
-	/* ---------------------------------------------------------------
-		Staff portal "palette card" — focus / task list container
-		--------------------------------------------------------------- */
-	.palette-card {
-		@apply bg-white border border-border/90 rounded-xl shadow-sm overflow-hidden;
-	}
+  /* ---------------------------------------------------------------
+     Staff portal "palette card" — focus / task list container
+     Soft shell surface, not pure white
+     --------------------------------------------------------------- */
+  .palette-card {
+    @apply bg-surface border border-border/90 rounded-2xl shadow-sm overflow-hidden;
+  }
 
-	/* ---------------------------------------------------------------
-		Staff portal quick-action tiles
-		--------------------------------------------------------------- */
-	.action-tile {
-		@apply flex items-center gap-3 rounded-2xl border border-border/90 bg-white p-3 shadow-sm
-					transition-transform hover:-translate-y-0.5 hover:shadow-strong;
-	}
+  /* ---------------------------------------------------------------
+     Staff portal quick-action tiles
+     Stronger white card on top of the shell
+     --------------------------------------------------------------- */
+  .action-tile {
+    @apply flex items-center gap-3 rounded-2xl border border-border/90 bg-white p-3 shadow-sm
+           transition-transform hover:-translate-y-0.5 hover:shadow-strong;
+  }
 
-	.action-tile__icon {
-		@apply flex h-9 w-9 items-center justify-center rounded-full
-					bg-sky/40 text-canopy text-sm font-semibold;
-	}
-
+  .action-tile__icon {
+    @apply flex h-9 w-9 items-center justify-center rounded-full
+            bg-sky/40 text-canopy text-sm font-semibold;
+  }
 
   /* ---------------------------------------------------------------
      2. Section Header
      --------------------------------------------------------------- */
   .section-header {
-		@apply text-xs font-semibold uppercase tracking-wide text-slate-token/75;
-	}
-
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-token/75;
+  }
 
   /* ---------------------------------------------------------------
      3. Inline Chip
@@ -62,6 +62,7 @@
 
   /* ---------------------------------------------------------------
      4. Block Card (for single attendance row)
+     Slightly raised white block
      --------------------------------------------------------------- */
   .block-card {
     @apply flex flex-col gap-3 p-3 rounded-xl border border-border/85 bg-white shadow-sm;
@@ -70,10 +71,9 @@
   /* ---------------------------------------------------------------
      5. Remark Button (blue accent)
      --------------------------------------------------------------- */
-	.remark-btn {
-		@apply !h-9 !w-9 rounded-full border border-transparent transition text-slate-token/80;
-	}
-
+  .remark-btn {
+    @apply !h-9 !w-9 rounded-full border border-transparent transition text-slate-token/80;
+  }
 
   .remark-btn:hover {
     @apply border-blue-200 bg-blue-50 text-blue-600;
@@ -145,11 +145,13 @@
     color: rgb(var(--slate-rgb) / 0.35);
   }
 
-  /* Hover for clickable meeting days */
+  /* Hover for clickable meeting days
+     (was rgba(255, 255, 255, 0.96) — now rgb() with / alpha)
+  */
   .calendar-day:hover .calendar-day__badge--meeting,
   .calendar-day:hover .calendar-day__badge--recorded,
   .calendar-day:hover .calendar-day__badge--missing {
-    background: rgba(255, 255, 255, 0.96);
+    background: rgb(255 255 255 / 0.96);
     transform: translateY(-1px);
   }
 

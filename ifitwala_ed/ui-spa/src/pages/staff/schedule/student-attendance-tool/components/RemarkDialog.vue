@@ -1,28 +1,58 @@
 <template>
 	<Dialog v-model="open" :options="{ title: dialogTitle, size: 'md' }">
-		<div class="space-y-3">
-			<div class="text-xs font-medium uppercase tracking-wide text-slate-500">
-				{{ __('Remark') }}
+		<div class="space-y-4">
+			<!-- Context chips -->
+			<div v-if="props.student" class="flex flex-wrap items-center gap-2 text-xs">
+				<span
+					class="inline-flex items-center gap-1 rounded-full
+					       bg-[rgb(var(--sky-rgb)/0.9)] px-2.5 py-1
+					       font-medium text-ink/80"
+				>
+					<span class="inline-block h-1.5 w-1.5 rounded-full bg-[rgb(var(--leaf-rgb))]" />
+					{{ studentName }}
+				</span>
+				<span
+					v-if="blockLabel"
+					class="inline-flex items-center gap-1 rounded-full
+					       bg-[rgb(var(--sand-rgb)/0.9)] px-2.5 py-1
+					       font-medium text-ink/70"
+				>
+					{{ blockLabel }}
+				</span>
 			</div>
 
-			<div class="rounded-2xl border border-[rgba(226,232,240,0.9)] bg-gradient-to-b from-[rgba(237,245,247,0.7)] to-white p-3 shadow-sm">
-				<p class="mb-2 text-xs text-slate-600">
+			<!-- Card surface with textarea -->
+			<div
+				class="rounded-2xl border border-[var(--border-light)]
+				       bg-[rgb(var(--surface-rgb)/0.98)] p-3
+				       shadow-soft"
+			>
+				<p class="mb-2 text-xs text-slate-token/80">
 					{{ helperText }}
 				</p>
 
 				<textarea
 					ref="textareaRef"
 					v-model="localValue"
-					class="w-full rounded-xl border border-[rgba(226,232,240,0.95)] bg-white/95 px-3 py-2 text-sm text-[color:var(--ink)] shadow-inner
-					       focus:outline-none focus:ring-2 focus:ring-[rgba(31,122,69,0.30)] focus:border-[rgba(31,122,69,0.95)]"
-					:placeholder="__('Add a short, specific note (optional)…')"
 					rows="4"
 					maxlength="255"
+					class="w-full rounded-xl border border-[var(--border-light)]
+					       bg-[rgb(var(--surface-strong-rgb))]
+					       px-3 py-2 text-sm text-ink shadow-inner
+					       focus-visible:outline-none
+					       focus-visible:ring-2
+					       focus-visible:ring-[rgb(var(--leaf-rgb)/0.55)]"
+					:placeholder="__('Add a short, specific note (optional)…')"
 				/>
 
-				<p class="mt-1 text-right text-[0.7rem] text-slate-400">
-					{{ localValue.length }}/255
-				</p>
+				<div class="mt-1 flex items-center justify-between text-[0.7rem] text-slate-token/60">
+					<p>
+						{{ __('Keep remarks factual, short, and focused on today’s context.') }}
+					</p>
+					<p>
+						{{ localValue.length }}/255
+					</p>
+				</div>
 			</div>
 		</div>
 
@@ -57,40 +87,51 @@ const emit = defineEmits<{
 	(event: 'save', value: string): void
 }>()
 
+// v-model bridge: Frappe-UI pattern
 const open = computed({
 	get: () => props.modelValue,
 	set: (value: boolean) => emit('update:modelValue', value),
 })
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const localValue = ref(props.value)
+const localValue = ref(props.value ?? '')
 
+/**
+ * Single watcher: when the dialog opens,
+ * - sync from props.value
+ * - focus textarea
+ */
 watch(
-	() => props.value,
-	(value) => {
-		localValue.value = value ?? ''
-		if (props.modelValue) {
-			nextTick(() => textareaRef.value?.focus())
+	() => props.modelValue,
+	async (isOpen, wasOpen) => {
+		if (isOpen && !wasOpen) {
+			localValue.value = props.value ?? ''
+			await nextTick()
+			textareaRef.value?.focus()
 		}
 	},
 	{ immediate: true },
 )
 
-watch(
-	() => props.modelValue,
-	(value) => {
-		if (value) {
-			nextTick(() => textareaRef.value?.focus())
-		}
-	},
-)
+const studentName = computed(() => {
+	if (!props.student) return ''
+	return (
+		props.student.preferred_name ||
+		props.student.student_name ||
+		props.student.student
+	)
+})
 
 const dialogTitle = computed(() => {
-	if (!props.student) {
+	if (!studentName.value) {
 		return __('Remark')
 	}
-	const name = props.student.preferred_name || props.student.student_name || props.student.student
-	return __('Remark for {0}', [name])
+	return __('Remark for {0}', [studentName.value])
+})
+
+const blockLabel = computed(() => {
+	if (!props.block || props.block === -1) return ''
+	return __('Block {0}', [props.block])
 })
 
 const helperText = computed(() => {

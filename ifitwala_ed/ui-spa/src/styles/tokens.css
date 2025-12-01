@@ -1,54 +1,91 @@
-/* ---------------------------------------------------
-   DESIGN TOKENS (GLOBAL VARIABLES)
---------------------------------------------------- */
-
-/* ---------------------------------------------------
-   GLOBAL APP PALETTE
-   (Zambian canopy / bush / jacaranda / soil)
---------------------------------------------------- */
+/* =====================================================================
+   IFITWALA DESIGN TOKENS — COLORS, SURFACES, RADII, SHADOWS
+   ===================================================================== */
 
 @layer base {
-	:root {
-		/* Core neutrals */
-		--ink: #071019;
-		--slate: #475569;
+  :root {
+    /* ---------------------------------------------------------------
+       Core neutrals
+       --------------------------------------------------------------- */
+    --ink: #071019;
+    --slate: #475569;
 
-		/* Greens = bush / canopy */
-		--canopy: #0b3d2b;
-		--leaf: #1f7a45;
-		--moss: #7faa63;
+    /* Greens = bush / canopy */
+    --canopy: #0b3d2b;
+    --leaf: #1f7a45;
+    --moss: #7faa63;
 
-		/* Sky / ground */
-		--sky: #edf5f7;
-		--sand: #f4ecdd;
-		--clay: #b6522b;
+    /* Sky / ground */
+    --sky: #edf5f7;
+    --sand: #f4ecdd;
+    --clay: #b6522b;
 
-		/* Jacaranda & flamboyant blooms */
-		--jacaranda: #7e6bd6;
-		--flame: #f25b32;
+    /* Jacaranda & flamboyant blooms */
+    --jacaranda: #7e6bd6;
+    --flame: #f25b32;
 
-		/* Borders / lines */
-		--border: #e2e8f0;
+    /* Borders / lines */
+    --border: #e2e8f0;
 
-		/* RGB tokens */
-		--ink-rgb: 7 16 25;
-		--slate-rgb: 71 85 105;
-		--canopy-rgb: 11 61 43;
-		--leaf-rgb: 31 122 69;
-		--moss-rgb: 127 170 99;
-		--sky-rgb: 237 245 247;
-		--sand-rgb: 244 236 221;
-		--clay-rgb: 182 82 43;
-		--jacaranda-rgb: 126 107 214;
-		--flame-rgb: 242 91 50;
-		--border-rgb: 226 232 240;
+    /* ---------------------------------------------------------------
+       RGB tokens (for Tailwind + rgb(var(--token-rgb) / alpha))
+       --------------------------------------------------------------- */
+    --ink-rgb: 7 16 25;
+    --slate-rgb: 71 85 105;
+    --canopy-rgb: 11 61 43;
+    --leaf-rgb: 31 122 69;
+    --moss-rgb: 127 170 99;
+    --sky-rgb: 237 245 247;
+    --sand-rgb: 244 236 221;
+    --clay-rgb: 182 82 43;
+    --jacaranda-rgb: 126 107 214;
+    --flame-rgb: 242 91 50;
+    --border-rgb: 226 232 240;
 
-		/* Radii & shadows */
-		--radius-lg: 1rem;
-		--radius-xl: 1.25rem;
-		--shadow-soft: 0 6px 20px rgba(7, 16, 25, 0.05);
-		--shadow-strong: 0 12px 32px rgba(7, 16, 25, 0.12);
-		--focus: 0 0 0 3px rgba(31, 122, 69, 0.35);
-	}
+    /* ---------------------------------------------------------------
+       Surfaces — “soft shell” vs “pure white”
+       --------------------------------------------------------------- */
+    /* Soft shell surface (cards sitting on the gradient) */
+    --surface-rgb: 250 248 244; /* #faf8f4 */
 
+    /* Pure white surface (strong cards, dialogs) */
+    --surface-strong-rgb: 255 255 255; /* #ffffff */
+
+    /* Derived border strengths */
+    --border-light: rgb(var(--border-rgb) / 0.85);
+    --border-subtle: rgb(var(--border-rgb) / 0.6);
+    --border-strong: rgb(var(--border-rgb));
+
+    /* ---------------------------------------------------------------
+       Shadows & focus
+       --------------------------------------------------------------- */
+    --shadow-soft: 0 6px 20px rgb(var(--ink-rgb) / 0.05);
+    --shadow-strong: 0 10px 35px rgb(var(--ink-rgb) / 0.10);
+
+    /* Focus ring (used for inputs/buttons) */
+    --focus-ring: 0 0 0 3px rgb(var(--leaf-rgb) / 0.35);
+
+    /* ---------------------------------------------------------------
+       Gradients
+       --------------------------------------------------------------- */
+    /* Portal background gradient (staff/guardian portal shell) */
+    --portal-gradient-bg:
+      radial-gradient(circle at 5% 5%, rgb(var(--leaf-rgb) / 0.32), transparent 58%),
+      radial-gradient(circle at 95% 0%, rgb(var(--jacaranda-rgb) / 0.26), transparent 58%),
+      radial-gradient(circle at 90% 95%, rgb(var(--moss-rgb) / 0.25), transparent 60%),
+      linear-gradient(180deg, var(--sky) 0%, #f1f6f8 45%, var(--sand) 100%);
+
+    /* Modal / panel gradient (meeting/class/school-event modals) */
+    --modal-panel-gradient-bg:
+      radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / 0.9), transparent 65%),
+      radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / 0.9), transparent 65%),
+      rgb(var(--surface-strong-rgb));
+
+    /* ---------------------------------------------------------------
+       Radii
+       --------------------------------------------------------------- */
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
+  }
 }
+
