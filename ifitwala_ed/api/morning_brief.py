@@ -1,5 +1,6 @@
 import frappe
-from frappe.utils import today, add_days
+from frappe.utils import today, add_days, formatdate
+
 
 @frappe.whitelist()
 def get_morning_briefing_stats():
@@ -216,54 +217,223 @@ def get_ghosting_risks(grade_condition):
 	return frappe.db.sql(sql, (start_date), as_dict=True)
 
 
-import frappe
-from frappe.utils import today, add_days, getdate, formatdate
-
 @frappe.whitelist()
 def get_briefing_widgets():
 	"""
-	The Central Intelligence Dispatcher.
-	Returns a dictionary of widgets tailored to the logged-in user's roles.
+	Dispatcher: Returns widgets based on User Role.
 	"""
 	user = frappe.session.user
 	roles = frappe.get_roles(user)
 
 	widgets = {}
 
-	# ---------------------------------------
-	# 1. UNIVERSAL WIDGETS (All Staff)
-	# ---------------------------------------
+	# 1. TOP: ORGANIZATIONAL COMMUNICATION (Targeted Bulletin)
+	widgets["announcements"] = get_daily_bulletin(user, roles)
+
+	# 2. BOTTOM: STAFF BIRTHDAYS
 	if "Academic Staff" in roles or "Employee" in roles:
 		widgets["staff_birthdays"] = get_staff_birthdays()
-		# widgets["daily_bulletin"] = get_daily_bulletin() # Pending Schema
 
-	# ---------------------------------------
-	# 2. ACADEMIC ADMIN WIDGETS
-	# ---------------------------------------
+	# 3. ANALYTICS (Admin)
 	if "Academic Admin" in roles or "System Manager" in roles:
 		widgets["clinic_volume"] = get_clinic_activity()
 		widgets["admissions_pulse"] = get_admissions_pulse()
-		widgets["critical_incidents"] = get_critical_incidents_count() # From Phase 1 Logic
+		widgets["critical_incidents"] = get_critical_incidents_count()
 
-	# ---------------------------------------
-	# 3. INSTRUCTOR WIDGETS
-	# ---------------------------------------
+	# 4. INSTRUCTOR CONTEXT
 	if "Instructor" in roles:
 		my_groups = get_my_student_groups(user)
 		if my_groups:
-			widgets["my_student_birthdays"] = get_my_student_birthdays(my_groups)
 			widgets["medical_context"] = get_medical_context(my_groups)
 			widgets["grading_velocity"] = get_pending_grading_tasks(my_groups)
-			# widgets["attendance_alerts"] = get_attendance_alerts(my_groups) # Pending Schema
 
-	# ---------------------------------------
-	# 4. COUNSELOR WIDGETS
-	# ---------------------------------------
-	if "Counsellor" in roles or "Academic Admin" in roles:
-		# Re-using the logic from Phase 1 but wrapped as a widget
-		widgets["risk_watchlist"] = get_risk_watchlist_summary()
+	# 5. LOGS FEED
+	if "Academic Admin" in roles or "System Manager" in roles or "Grade Level Lead" in roles:
+		widgets["student_logs"] = get_recent_student_logs(user)
 
 	return widgets
+
+
+# ==============================================================================
+# 1. DAILY BULLETIN (ORG COMMUNICATION)
+# ==============================================================================
+
+def get_daily_bulletin(user, roles):
+	"""
+	Fetches 'Org Communication' based on:
+	1. Status = Published
+	2. Surface = Morning Brief OR Everywhere
+	3. Date = Today falls within brief_start_date and brief_end_date
+	4. Audience = Matches User's School, Role, or Team
+	"""
+
+	# 1. Fetch Candidates (Time & Surface)
+	current_date = today()
+
+	# We fetch the child table 'audiences' eagerly to filter in Python
+	# Note: We order by Priority (Critical first), then Brief Order
+	comms = frappe.get_all("Org Communication",
+		filters={
+			"status": "Published",
+			"portal_surface": ["in", ["Morning Brief", "Everywhere"]],
+			"brief_start_date": ("<=", current_date),
+			# OR condition for end_date is harder in get_all, so we filter end_date in python or raw sql
+			# Keeping it simple: Fetch all active started, filter expired in loop
+		},
+		fields=["name", "title", "message", "communication_type", "priority", "brief_end_date", "organization", "school"],
+		order_by="priority desc, brief_order asc, creation desc"
+	)
+
+	# 2. Get User Context for Audience Matching
+	# We need the employee record to know their School and Organization
+	employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "organization", "department"], as_dict=True)
+
+	visible_comms = []
+
+	for c in comms:
+		# Date Expiry Check
+		if c.brief_end_date and getdate(c.brief_end_date) < getdate(current_date):
+			continue
+
+		# Audience Check
+		if check_audience_match(c.name, user, roles, employee):
+			visible_comms.append({
+				"title": c.title,
+				"content": c.message, # Rich Text
+				"type": c.communication_type,
+				"priority": c.priority
+			})
+
+	return visible_comms
+
+def check_audience_match(comm_name, user, roles, employee):
+	"""
+	Checks if the user belongs to any of the audiences defined in the communication.
+	"""
+	if "System Manager" in roles: return True # Gods see all
+
+	audiences = frappe.get_all("Org Communication Audience",
+		filters={"parent": comm_name},
+		fields=["target_group", "school", "team", "program"]
+	)
+
+	# If no audience rows defined (rare case), default to hidden or visible?
+	# Usually safe to hide if not explicitly targeted.
+	if not audiences: return False
+
+	for aud in audiences:
+		# 1. School Mismatch Check (If audience row specifies a school, user must be in it)
+		if aud.school and employee and employee.school != aud.school:
+			continue # Skip this row, user is in wrong school
+
+		# 2. Target Group Logic
+		if aud.target_group == "Whole Staff":
+			return True # User is authenticated, so they are staff
+
+		if aud.target_group == "Academic Staff" and ("Academic Staff" in roles or "Instructor" in roles):
+			return True
+
+		if aud.target_group == "Support Staff" and "Academic Staff" not in roles:
+			# simplistic check, relies on your Role setup
+			return True
+
+		if aud.target_group == "Whole Community":
+			return True
+
+		# 3. Team Logic (If you have a Team/Department structure)
+		if aud.team and employee and employee.department == aud.team:
+			return True
+
+	return False
+
+
+# ==============================================================================
+# NEW: STUDENT LOGS FEED
+# ==============================================================================
+
+def get_recent_student_logs(user):
+	"""
+	Fetches logs from the last 2 days.
+	Filters by User's School (and children) + Program (and children).
+	"""
+	# 1. Timebox: Last 48 hours (Today + Yesterday)
+	from_date = add_days(today(), -1)
+
+	filters = {
+		"date": (">=", from_date),
+		"docstatus": 1 # Only submitted logs
+	}
+
+	# 2. Scoping: Get User's Employee Record for School/Program context
+	employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school"], as_dict=True)
+
+	if employee and employee.school:
+		# Recursive School Filter
+		schools = get_descendants("School", employee.school)
+		if schools:
+			filters["school"] = ("in", schools)
+
+	# 3. Fetch Data
+	logs = frappe.get_all("Student Log",
+		fields=[
+			"name", "student_name", "student_photo",
+			"log_type", "date", "time",
+			"requires_follow_up", "follow_up_status",
+			"log", "school", "program"
+		],
+		filters=filters,
+		order_by="date desc, time desc",
+		limit=50
+	)
+
+	# 4. Format for Feed
+	formatted_logs = []
+	for l in logs:
+		# Snippet generation
+		raw_text = strip_html(l.log or "")
+		snippet = (raw_text[:100] + '...') if len(raw_text) > 100 else raw_text
+
+		# Status Color Logic
+		status_color = "gray"
+		if l.requires_follow_up:
+			if l.follow_up_status == "Open": status_color = "red"
+			elif l.follow_up_status == "In Progress": status_color = "orange"
+			elif l.follow_up_status == "Completed": status_color = "green"
+
+		formatted_logs.append({
+			"name": l.name,
+			"student_name": l.student_name,
+			"student_photo": l.student_photo,
+			"log_type": l.log_type,
+			"date_display": formatdate(l.date, "dd-MMM"),
+			"snippet": snippet,
+			"status_color": status_color,
+			"school": l.school,
+			"program": l.program
+		})
+
+	return formatted_logs
+
+def get_descendants(doctype, parent_name):
+	"""
+	Helper to get a node and all its children.
+	Supports both Nested Set (lft/rgt) and simple parent/child logic.
+	"""
+	try:
+		# Check if Nested Set
+		meta = frappe.get_meta(doctype)
+		if meta.has_field("lft") and meta.has_field("rgt"):
+			node = frappe.db.get_value(doctype, parent_name, ["lft", "rgt", "is_group"], as_dict=True)
+			if node and node.is_group:
+				return [x.name for x in frappe.get_all(doctype, filters={
+					"lft": (">=", node.lft),
+					"rgt": ("<=", node.rgt)
+				})]
+	except Exception:
+		pass
+
+	# Default: Return just the parent if no tree structure found
+	return [parent_name]
 
 # ==============================================================================
 # UNIVERSAL LOGIC

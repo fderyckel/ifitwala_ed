@@ -193,4 +193,59 @@
   .legend-dot--missing {
     border-color: rgb(var(--flame-rgb));
   }
+
+
+  /* ============================================================
+     ANALYTICS SHELL & CARDS (shared across all dashboards)
+     ============================================================ */
+
+  /* Shell wrapping analytics content inside staff layout */
+  .analytics-shell {
+    @apply staff-shell gap-6;
+  }
+
+  /* Grid for cards – auto-fit, responsive */
+  .analytics-grid {
+    @apply grid gap-4 md:gap-6
+           grid-cols-1 md:grid-cols-2 xl:grid-cols-3;
+  }
+
+  /* Base analytics card surface */
+  .analytics-card {
+    @apply palette-card p-4 sm:p-5 flex flex-col gap-3;
+  }
+
+  /* Wide variant (for time-series / tables) */
+  .analytics-card--wide {
+    @apply md:col-span-2;
+  }
+
+  /* Card header */
+  .analytics-card__title {
+    @apply text-xs font-semibold uppercase tracking-wide text-canopy;
+  }
+
+  .analytics-card__meta {
+    @apply text-[0.7rem] text-slate-token/75;
+  }
+
+  /* Chart container – reused by all charts */
+  .analytics-chart {
+    @apply w-full min-h-[260px];
+  }
+
+  /* Empty state inside a card */
+  .analytics-empty {
+    @apply text-xs text-slate-token/70 mt-1;
+  }
+
+  /* Filters bar for analytics pages (reuses surface-toolbar aesthetics) */
+  .analytics-filters {
+    @apply surface-toolbar flex flex-wrap items-center gap-3 mb-4;
+  }
+
+  .analytics-filters__title {
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-token/80;
+  }
+
 }
