@@ -233,7 +233,10 @@ def get_medical_context(group_names):
 
 def get_recent_student_logs(user):
 	from_date = add_days(today(), -1)
-	filters = {"date": (">=", from_date)}
+	filters = {
+		"date": (">=", from_date),
+		"log_type": ("!=", "Medical")
+	}
 
 	# FIX: Only fetch 'school' (removed default_school)
 	employee = frappe.db.get_value("Employee", {"user_id": user},
