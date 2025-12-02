@@ -5,7 +5,11 @@
 
 from __future__ import annotations
 
+from collections import Counter, defaultdict
+from datetime import date
+
 import frappe
+from frappe.utils import getdate, nowdate
 
 ALLOWED_ANALYTICS_ROLES = {
 	"Academic Admin",
@@ -31,6 +35,149 @@ def _ensure_demographics_access(user: str | None = None) -> str:
 
 	frappe.throw("You do not have permission to access Student Demographic Analytics.", frappe.PermissionError)
 	return user
+
+
+def _safe_percent(part: float, total: float) -> float:
+	return round((part / total) * 100, 1) if total else 0
+
+
+def _get_filters(filters) -> dict:
+	if isinstance(filters, str):
+		try:
+			filters = frappe.parse_json(filters) or {}
+		except Exception:
+			filters = {}
+	else:
+		filters = filters or {}
+	return filters
+
+
+def _get_active_students(filters: dict):
+	conditions = ["enabled = 1"]
+	params = {}
+
+	if filters.get("school"):
+		conditions.append("anchor_school = %(school)s")
+		params["school"] = filters["school"]
+
+	if filters.get("cohort"):
+		conditions.append("cohort = %(cohort)s")
+		params["cohort"] = filters["cohort"]
+
+	where = " AND ".join(conditions)
+
+	return frappe.db.sql(
+		f"""
+		SELECT
+			name,
+			student_full_name,
+			anchor_school,
+			cohort,
+			student_gender,
+			student_nationality,
+			student_second_nationality,
+			student_first_language,
+			student_second_language,
+			residency_status,
+			student_date_of_birth
+		FROM `tabStudent`
+		WHERE {where}
+		""",
+		params,
+		as_dict=True,
+	)
+
+
+def _get_guardian_links(student_names: list[str]):
+	if not student_names:
+		return []
+
+	return frappe.db.sql(
+		"""
+		SELECT
+			sg.parent AS student,
+			sg.guardian,
+			sg.relation,
+			g.is_primary_guardian,
+			g.is_financial_guardian,
+			g.employment_sector
+		FROM `tabStudent Guardian` sg
+		LEFT JOIN `tabGuardian` g ON sg.guardian = g.name
+		WHERE sg.parent in %(students)s
+		""",
+		{"students": tuple(student_names)},
+		as_dict=True,
+	)
+
+
+def _calculate_age(dob: date | str | None) -> int | None:
+	if not dob:
+		return None
+	try:
+		d = getdate(dob)
+	except Exception:
+		return None
+	today = getdate(nowdate())
+	years = today.year - d.year - ((today.month, today.day) < (d.month, d.day))
+	return max(years, 0)
+
+
+def _bucket_age(age: int | None) -> str | None:
+	if age is None:
+		return None
+	buckets = [
+		(0, 5, "0-5"),
+		(6, 8, "6-8"),
+		(9, 11, "9-11"),
+		(12, 14, "12-14"),
+		(15, 17, "15-17"),
+		(18, 99, "18+"),
+	]
+	for low, high, label in buckets:
+		if low <= age <= high:
+			return label
+	return "Other"
+
+
+def _build_family_groups(guardians: list[dict], student_dobs: dict[str, date | None]):
+	"""Group students by primary guardian (fallback: first guardian)."""
+	by_student = defaultdict(list)
+	for row in guardians:
+		by_student[row["student"]].append(row)
+
+	student_family = {}
+	families = defaultdict(set)
+
+	for student, links in by_student.items():
+		primary = next((l for l in links if l.get("is_primary_guardian")), None)
+		if primary:
+			family_id = primary["guardian"]
+		elif links:
+			family_id = links[0]["guardian"]
+		else:
+			family_id = None
+
+		if family_id:
+			student_family[student] = family_id
+			families[family_id].add(student)
+
+	# Prepare sibling classification using DOB ordering inside each family
+	sibling_flags = {}
+	for family_id, members in families.items():
+		# sort by dob (oldest first); missing dob last
+		sorted_members = sorted(
+			list(members),
+			key=lambda s: student_dobs.get(s) or date(2999, 1, 1),
+		)
+		for idx, student in enumerate(sorted_members):
+			has_older = idx > 0
+			has_younger = idx < len(sorted_members) - 1
+			if has_older:
+				sibling_flags.setdefault(student, set()).add("older")
+			if has_younger:
+				sibling_flags.setdefault(student, set()).add("younger")
+
+	return families, student_family, sibling_flags
 
 
 def _empty_dashboard():
@@ -72,7 +219,6 @@ def _empty_dashboard():
 def get_filter_meta():
 	"""
 	Return filter metadata used by the demographics dashboard.
-	This is intentionally lightweight; extend with cohorts/programs if needed.
 	"""
 	_ensure_demographics_access()
 
@@ -82,10 +228,10 @@ def get_filter_meta():
 		order_by="name asc",
 	)
 	cohorts = frappe.get_all(
-		"Cohort",
+		"Student Cohort",
 		fields=["name as name", "cohort_name as label"],
 		order_by="name asc",
-	) if frappe.db.table_exists("Cohort") else []
+	) if frappe.db.table_exists("Student Cohort") else []
 
 	return {
 		"default_school": frappe.defaults.get_user_default("school"),
@@ -97,27 +243,407 @@ def get_filter_meta():
 @frappe.whitelist()
 def get_dashboard(filters=None):
 	"""
-	Placeholder implementation: returns empty aggregates so the UI can render.
-	Replace with real aggregation logic scoped to active students only.
+	Aggregate demographics analytics for active students.
 	"""
 	_ensure_demographics_access()
-	# Accept both JSON string and dict for filters
-	if isinstance(filters, str):
-		try:
-			filters = frappe.parse_json(filters) or {}
-		except Exception:
-			filters = {}
-	else:
-		filters = filters or {}
+	filters = _get_filters(filters)
 
-	return _empty_dashboard()
+	students = _get_active_students(filters)
+	if not students:
+		return _empty_dashboard()
+
+	slices = {}
+	total_students = len(students)
+	student_names = [s["name"] for s in students]
+	student_dobs = {s["name"]: s.get("student_date_of_birth") for s in students}
+
+	# Guardians
+	guardian_links = _get_guardian_links(student_names)
+
+	# Families via primary guardians
+	families, student_family, sibling_flags = _build_family_groups(guardian_links, student_dobs)
+
+	# KPI counts
+	cohorts = {s["cohort"] for s in students if s.get("cohort")}
+	nationalities = set()
+	home_languages = set()
+
+	for s in students:
+		if s.get("student_nationality"):
+			nationalities.add(s["student_nationality"])
+		if s.get("student_second_nationality"):
+			nationalities.add(s["student_second_nationality"])
+		primary_lang = s.get("student_first_language")
+		if primary_lang:
+			home_languages.add(primary_lang)
+		elif s.get("student_second_language"):
+			home_languages.add(s["student_second_language"])
+
+	residency_counts = Counter()
+	for s in students:
+		status = (s.get("residency_status") or "").strip()
+		if status == "Local Resident":
+			residency_counts["local"] += 1
+		elif status == "Expat Resident":
+			residency_counts["expat"] += 1
+		elif status == "Boarder":
+			residency_counts["boarder"] += 1
+		else:
+			residency_counts["other"] += 1
+
+	kpis = {
+		"total_students": total_students,
+		"cohorts_represented": len(cohorts),
+		"unique_nationalities": len(nationalities),
+		"unique_home_languages": len(home_languages),
+		"residency_split_pct": {
+			"local": _safe_percent(residency_counts["local"], total_students),
+			"expat": _safe_percent(residency_counts["expat"], total_students),
+			"boarder": _safe_percent(residency_counts["boarder"], total_students),
+			"other": _safe_percent(residency_counts["other"], total_students),
+		},
+		"pct_with_siblings": _safe_percent(
+			sum(1 for s in student_names if len(families.get(student_family.get(s), set())) > 1),
+			total_students,
+		),
+		"guardian_diversity_score": 0,  # Guardian nationality not captured on the doctype yet
+	}
+
+	def register_slice(key: str, entity: str, title: str):
+		if key not in slices:
+			slices[key] = {"entity": entity, "title": title}
+
+	# Nationality distribution (top 10 + Other) using both nationalities
+	nat_counter = Counter()
+	for s in students:
+		for nat_field in ("student_nationality", "student_second_nationality"):
+			nat = (s.get(nat_field) or "").strip()
+			if nat:
+				nat_counter[nat] += 1
+
+	nat_items = []
+	if nat_counter:
+		top_items = nat_counter.most_common(10)
+		other_count = sum(count for _, count in nat_counter.items()) - sum(x[1] for x in top_items)
+		for nat, count in top_items:
+			slice_key = f"student:nationality:{nat}"
+			register_slice(slice_key, "student", f"Students with nationality {nat}")
+			nat_items.append({"label": nat, "count": count, "pct": _safe_percent(count, total_students), "sliceKey": slice_key})
+		if other_count > 0:
+			nat_items.append({"label": "Other", "count": other_count, "pct": _safe_percent(other_count, total_students)})
+
+	# Nationality by cohort heatmap (primary nationality only)
+	cohort_nat = defaultdict(Counter)
+	for s in students:
+		if s.get("cohort") and s.get("student_nationality"):
+			cohort_nat[s["cohort"]][s["student_nationality"]] += 1
+
+	nat_by_cohort = []
+	for cohort, counter in cohort_nat.items():
+		buckets = []
+		for nat, count in counter.items():
+			slice_key = f"student:nationality:{nat}:cohort:{cohort}"
+			register_slice(slice_key, "student", f"{cohort} · {nat}")
+			buckets.append({"label": nat, "count": count, "sliceKey": slice_key})
+		nat_by_cohort.append({"cohort": cohort, "buckets": buckets})
+
+	# Gender split by cohort
+	gender_by_cohort = []
+	for cohort in sorted(cohorts):
+		group = [s for s in students if s.get("cohort") == cohort]
+		counts = Counter((s.get("student_gender") or "Other") for s in group)
+		row = {
+			"cohort": cohort,
+			"female": counts.get("Female", 0),
+			"male": counts.get("Male", 0),
+			"other": counts.get("Other", 0),
+			"sliceKeys": {},
+		}
+		for key, label in (("female", "Female"), ("male", "Male"), ("other", "Other")):
+			slice_key = f"student:gender:{label}:cohort:{cohort}"
+			row["sliceKeys"][key] = slice_key
+			register_slice(slice_key, "student", f"{cohort} · {label}")
+		gender_by_cohort.append(row)
+
+	# Residency status
+	residency_items = []
+	for key, label in [
+		("local", "Local Resident"),
+		("expat", "Expat Resident"),
+		("boarder", "Boarder"),
+		("other", "Other"),
+	]:
+		count = residency_counts.get(key, 0)
+		slice_key = f"student:residency:{key}"
+		register_slice(slice_key, "student", f"{label} students")
+		residency_items.append({"label": label, "count": count, "pct": _safe_percent(count, total_students), "sliceKey": slice_key})
+
+	# Age distribution
+	age_counter = Counter()
+	age_slice_keys = {}
+	for s in students:
+		age = _calculate_age(s.get("student_date_of_birth"))
+		bucket = _bucket_age(age)
+		if bucket:
+			age_counter[bucket] += 1
+
+	age_buckets = []
+	for bucket, count in age_counter.items():
+		slice_key = f"student:age_bucket:{bucket}"
+		age_slice_keys[bucket] = slice_key
+		register_slice(slice_key, "student", f"Students age {bucket}")
+		age_buckets.append({"bucket": bucket, "count": count, "sliceKey": slice_key})
+
+	# Home language distribution (primary language, fallback to second if missing)
+	lang_counter = Counter()
+	for s in students:
+		lang = (s.get("student_first_language") or s.get("student_second_language") or "").strip()
+		if lang:
+			lang_counter[lang] += 1
+
+	lang_items = []
+	if lang_counter:
+		top_langs = lang_counter.most_common(10)
+		other_count = sum(lang_counter.values()) - sum(x[1] for x in top_langs)
+		for lang, count in top_langs:
+			slice_key = f"student:home_language:{lang}"
+			register_slice(slice_key, "student", f"Home language {lang}")
+			lang_items.append({"label": lang, "count": count, "pct": _safe_percent(count, total_students), "sliceKey": slice_key})
+		if other_count > 0:
+			lang_items.append({"label": "Other", "count": other_count, "pct": _safe_percent(other_count, total_students)})
+
+	# Multilingual profile (1 / 2 / 3+ languages captured)
+	multi_counts = {"1 language": 0, "2 languages": 0, "3+ languages": 0}
+	for s in students:
+		langs = [s.get("student_first_language"), s.get("student_second_language")]
+		lang_count = len([l for l in langs if l])
+		if lang_count >= 3:
+			multi_counts["3+ languages"] += 1
+		elif lang_count == 2:
+			multi_counts["2 languages"] += 1
+		elif lang_count >= 1:
+			multi_counts["1 language"] += 1
+
+	multilingual_profile = []
+	for label in ["1 language", "2 languages", "3+ languages"]:
+		count = multi_counts[label]
+		slice_key = f"student:multilingual:{label}"
+		register_slice(slice_key, "student", f"{label} students")
+		multilingual_profile.append({"label": label, "count": count, "pct": _safe_percent(count, total_students), "sliceKey": slice_key})
+
+	# Family KPIs using primary guardians
+	family_sizes = [len(members) for members in families.values()]
+	family_count = len(family_sizes)
+	family_kpis = {
+		"family_count": family_count,
+		"avg_children_per_family": round(sum(family_sizes) / family_count, 2) if family_count else 0,
+		"pct_families_with_2_plus": _safe_percent(sum(1 for size in family_sizes if size >= 2), family_count),
+	}
+
+	# Sibling distribution per cohort (none / has older / has younger based on family dob ordering)
+	sibling_distribution = []
+	for cohort in sorted(cohorts):
+		group = [s for s in students if s.get("cohort") == cohort]
+		row = {"cohort": cohort, "none": 0, "older": 0, "younger": 0, "sliceKeys": {}}
+		for s in group:
+			flags = sibling_flags.get(s["name"], set())
+			if "older" in flags:
+				row["older"] += 1
+			elif "younger" in flags:
+				row["younger"] += 1
+			else:
+				row["none"] += 1
+		for key, label in (("none", "No siblings"), ("older", "Has older siblings"), ("younger", "Has younger siblings")):
+			slice_key = f"student:siblings:{key}:cohort:{cohort}"
+			row["sliceKeys"][key] = slice_key
+			register_slice(slice_key, "student", f"{cohort} · {label}")
+		sibling_distribution.append(row)
+
+	# Family size histogram
+	family_histogram = []
+	for bucket_label, bucket_fn in [
+		("1", lambda x: x == 1),
+		("2", lambda x: x == 2),
+		("3", lambda x: x == 3),
+		("4+", lambda x: x >= 4),
+	]:
+		count = sum(1 for size in family_sizes if bucket_fn(size))
+		slice_key = f"family:size:{bucket_label}"
+		register_slice(slice_key, "student", f"Families with {bucket_label} children")
+		family_histogram.append({"bucket": bucket_label, "count": count, "sliceKey": slice_key})
+
+	# Guardian analytics (limited to available doctype fields)
+	guardian_sector_counts = Counter()
+	financial_guardian_counts = Counter()
+
+	# Avoid double-counting same guardian across multiple students when relevant
+	for row in guardian_links:
+		if row.get("employment_sector"):
+			guardian_sector_counts[row["employment_sector"]] += 1
+		if row.get("is_financial_guardian"):
+			rel = (row.get("relation") or "Other").strip()
+			if rel == "Mother":
+				key = "Mother"
+			elif rel == "Father":
+				key = "Father"
+			else:
+				key = "Other"
+			financial_guardian_counts[key] += 1
+
+	guardian_sector = []
+	for label, count in guardian_sector_counts.most_common():
+		slice_key = f"guardian:sector:{label}"
+		register_slice(slice_key, "guardian", f"Guardians in {label}")
+		guardian_sector.append({"label": label, "count": count, "pct": _safe_percent(count, sum(guardian_sector_counts.values())), "sliceKey": slice_key})
+
+	financial_guardian = []
+	for label in ["Mother", "Father", "Other"]:
+		count = financial_guardian_counts.get(label, 0)
+		slice_key = f"guardian:financial:{label}"
+		register_slice(slice_key, "guardian", f"Financial guardians: {label}")
+		financial_guardian.append({"label": label, "count": count, "pct": _safe_percent(count, sum(financial_guardian_counts.values())), "sliceKey": slice_key})
+
+	return {
+		"kpis": kpis,
+		"nationality_distribution": nat_items,
+		"nationality_by_cohort": nat_by_cohort,
+		"gender_by_cohort": gender_by_cohort,
+		"residency_status": residency_items,
+		"age_distribution": age_buckets,
+		"home_language": lang_items,
+		"multilingual_profile": multilingual_profile,
+		"family_kpis": family_kpis,
+		"sibling_distribution": sibling_distribution,
+		"family_size_histogram": family_histogram,
+		"guardian_nationality": [],  # field not present on Guardian doctype
+		"guardian_comm_language": [],  # field not present on Guardian doctype
+		"guardian_residence_country": [],  # field not present on Guardian doctype
+		"guardian_residence_city": [],  # field not present on Guardian doctype
+		"guardian_sector": guardian_sector,
+		"financial_guardian": financial_guardian,
+		"slices": slices,
+	}
 
 
 @frappe.whitelist()
 def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 0, page_length: int = 50):
 	"""
-	Placeholder drill-down: returns an empty list.
-	Implement real lookup by slice_key (student or guardian) when data is ready.
+	Basic drill-down implementation that returns student or guardian rows for a given slice key.
 	"""
 	_ensure_demographics_access()
-	return []
+	if not slice_key:
+		return []
+
+	filters = _get_filters(filters)
+	students = _get_active_students(filters)
+	if not students:
+		return []
+
+	student_by_name = {s["name"]: s for s in students}
+	guardian_links = _get_guardian_links(list(student_by_name.keys()))
+
+	def student_row(name: str):
+		s = student_by_name[name]
+		return {
+			"id": name,
+			"name": s.get("student_full_name") or name,
+			"cohort": s.get("cohort"),
+			"nationality": s.get("student_nationality"),
+		}
+
+	results = []
+
+	parts = slice_key.split(":")
+	if len(parts) >= 2 and parts[0] == "student":
+		domain = parts[1]
+		if domain == "nationality":
+			target = parts[2] if len(parts) > 2 else ""
+			cohort = parts[4] if len(parts) > 4 and parts[3] == "cohort" else None
+			results = [
+				student_row(s["name"])
+				for s in students
+				if target in (s.get("student_nationality"), s.get("student_second_nationality"))
+				and (not cohort or s.get("cohort") == cohort)
+			]
+		elif domain == "gender":
+			target = parts[2] if len(parts) > 2 else ""
+			cohort = parts[4] if len(parts) > 4 else None
+			results = [
+				student_row(s["name"])
+				for s in students
+				if (s.get("student_gender") or "Other") == target and (not cohort or s.get("cohort") == cohort)
+			]
+		elif domain == "residency":
+			target = parts[2] if len(parts) > 2 else ""
+			label_map = {
+				"local": "Local Resident",
+				"expat": "Expat Resident",
+				"boarder": "Boarder",
+				"other": "Other",
+			}
+			target_label = label_map.get(target)
+			results = [
+				student_row(s["name"])
+				for s in students
+				if target_label
+				and ((s.get("residency_status") or "Other") == target_label or (target == "other" and (s.get("residency_status") or "") not in label_map.values()))
+			]
+		elif domain == "age_bucket":
+			target = parts[2] if len(parts) > 2 else ""
+			for s in students:
+				age = _calculate_age(s.get("student_date_of_birth"))
+				if _bucket_age(age) == target:
+					results.append(student_row(s["name"]))
+		elif domain == "home_language":
+			target = parts[2] if len(parts) > 2 else ""
+			for s in students:
+				lang = (s.get("student_first_language") or s.get("student_second_language") or "").strip()
+				if lang == target:
+					results.append(student_row(s["name"]))
+		elif domain == "multilingual":
+			target = parts[2] if len(parts) > 2 else ""
+			for s in students:
+				langs = [s.get("student_first_language"), s.get("student_second_language")]
+				cnt = len([l for l in langs if l])
+				label = "3+ languages" if cnt >= 3 else "2 languages" if cnt == 2 else "1 language" if cnt >= 1 else "0"
+				if label == target:
+					results.append(student_row(s["name"]))
+		elif domain == "siblings":
+			target = parts[2] if len(parts) > 2 else ""
+			cohort = parts[4] if len(parts) > 4 else None
+			_, _, sibling_flags = _build_family_groups(guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students})
+			for s in students:
+				if cohort and s.get("cohort") != cohort:
+					continue
+				flags = sibling_flags.get(s["name"], set())
+				if target == "none" and not flags:
+					results.append(student_row(s["name"]))
+				elif target == "older" and "older" in flags:
+					results.append(student_row(s["name"]))
+				elif target == "younger" and "younger" in flags:
+					results.append(student_row(s["name"]))
+	elif parts[0] == "guardian":
+		if parts[1] == "sector":
+			target = parts[2] if len(parts) > 2 else ""
+			results = [
+				{
+					"id": row["guardian"],
+					"name": row["guardian"],
+					"subtitle": row.get("employment_sector"),
+				}
+				for row in guardian_links
+				if row.get("employment_sector") == target
+			]
+		elif parts[1] == "financial":
+			target = parts[2] if len(parts) > 2 else ""
+			results = [
+				{
+					"id": row["guardian"],
+					"name": row["guardian"],
+					"subtitle": row.get("relation"),
+				}
+				for row in guardian_links
+				if row.get("is_financial_guardian") and ((target in ("Mother", "Father") and row.get("relation") == target) or (target == "Other" and row.get("relation") not in ("Mother", "Father")))
+			]
+
+	return results[start : start + page_length]
