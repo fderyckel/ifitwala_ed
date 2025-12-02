@@ -9,6 +9,30 @@ import frappe
 from frappe.utils import getdate
 
 
+ALLOWED_ANALYTICS_ROLES = {
+	"Academic Admin",
+	"Grade Level Lead",
+	"Counsellor",
+	"Curriculum Coordinator",
+	"System Manager",
+	"Administrator",
+}
+
+
+def _ensure_student_log_analytics_access(user: str | None = None) -> str:
+	"""Permit access only to the Student Log analytics roles."""
+	user = user or frappe.session.user
+	if not user or user == "Guest":
+		frappe.throw("You need to sign in to access Student Log Analytics.", frappe.PermissionError)
+
+	roles = set(frappe.get_roles(user))
+	if roles & ALLOWED_ANALYTICS_ROLES:
+		return user
+
+	frappe.throw("You do not have permission to access Student Log Analytics.", frappe.PermissionError)
+	return user
+
+
 def _normalize_date_filter(value):
 	"""Accepts None, string, date, datetime and returns a YYYY-MM-DD string or None."""
 	if not value:
@@ -120,6 +144,7 @@ def _apply_common_filters(filters, authorized_schools):
 
 @frappe.whitelist()
 def get_dashboard_data(filters=None):
+	user = _ensure_student_log_analytics_access()
 	try:
 		# Make it robust whether filters arrives as JSON string or dict
 		if isinstance(filters, str):
@@ -127,7 +152,7 @@ def get_dashboard_data(filters=None):
 		else:
 			filters = filters or {}
 
-		authorized_schools = get_authorized_schools(frappe.session.user)
+		authorized_schools = get_authorized_schools(user)
 		if not authorized_schools:
 			return {"error": "No authorized schools found."}
 
@@ -230,6 +255,7 @@ def get_dashboard_data(filters=None):
 
 @frappe.whitelist()
 def get_distinct_students(filters=None, search_text: str = ""):
+	user = _ensure_student_log_analytics_access()
 	try:
 		if isinstance(filters, str):
 			filters = frappe.parse_json(filters) or {}
@@ -238,7 +264,7 @@ def get_distinct_students(filters=None, search_text: str = ""):
 
 		txt = (search_text or "").strip()
 
-		authorized_schools = get_authorized_schools(frappe.session.user)
+		authorized_schools = get_authorized_schools(user)
 		if not authorized_schools:
 			return {"error": "No authorized schools found."}
 
@@ -292,12 +318,13 @@ def get_distinct_students(filters=None, search_text: str = ""):
 
 @frappe.whitelist()
 def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
+	user = _ensure_student_log_analytics_access()
 	if isinstance(filters, str):
 		filters = frappe.parse_json(filters) or {}
 	else:
 		filters = filters or {}
 
-	authorized_schools = get_authorized_schools(frappe.session.user)
+	authorized_schools = get_authorized_schools(user)
 	if not authorized_schools:
 		return []
 
@@ -350,86 +377,83 @@ def get_authorized_schools(user):
 
 @frappe.whitelist()
 def get_filter_meta():
-    """Return schools, academic years, programs and authors the user can filter on.
+	"""Return schools, academic years, programs and authors the user can filter on.
 
-    - Schools are restricted to the user's authorized school branch.
-    - Academic Years are restricted to those same schools.
-    - Programs are returned unfiltered for now (we do NOT assume Program has `school`).
-    - Authors = Employees with 'Academic Staff' role in those schools.
-      We return their full name as the filter value, since `Student Log.author_name`
-      stores the employee full name.
-    """
-    user = frappe.session.user
-    authorized_schools = get_authorized_schools(user)
+	- Schools are restricted to the user's authorized school branch.
+	- Academic Years are restricted to those same schools.
+	- Programs are returned unfiltered for now (we do NOT assume Program has `school`).
+	- Authors = Employees with 'Academic Staff' role in those schools.
+	  We return their full name as the filter value, since `Student Log.author_name`
+	  stores the employee full name.
+	"""
+	user = _ensure_student_log_analytics_access()
+	authorized_schools = get_authorized_schools(user)
 
-    schools = []
-    default_school = None
+	schools = []
+	default_school = None
 
-    if authorized_schools:
-        schools = frappe.get_all(
-            "School",
-            filters={"name": ["in", authorized_schools]},
-            fields=["name", "school_name as label"],
-            order_by="lft",
-        )
-        default_school = authorized_schools[0]
+	if authorized_schools:
+		schools = frappe.get_all(
+			"School",
+			filters={"name": ["in", authorized_schools]},
+			fields=["name", "school_name as label"],
+			order_by="lft",
+		)
+		default_school = authorized_schools[0]
 
-    # Academic Years (scoped to authorized schools, not archived)
-    ay_filters = {"archived": 0}
-    if authorized_schools:
-        ay_filters["school"] = ["in", authorized_schools]
+	# Academic Years (scoped to authorized schools, not archived)
+	ay_filters = {"archived": 0}
+	if authorized_schools:
+		ay_filters["school"] = ["in", authorized_schools]
 
-    academic_years = frappe.get_all(
-        "Academic Year",
-        filters=ay_filters,
-        fields=[
-            "name",
-            "academic_year_name as label",
-            "year_start_date",
-            "year_end_date",
-            "school",
-        ],
-        order_by="year_start_date desc",
-    )
+	academic_years = frappe.get_all(
+		"Academic Year",
+		filters=ay_filters,
+		fields=[
+			"name",
+			"academic_year_name as label",
+			"year_start_date",
+			"year_end_date",
+			"school",
+		],
+		order_by="year_start_date desc",
+	)
 
-    # Programs (no school filter until Program schema is locked)
-    programs = frappe.get_all(
-        "Program",
-        fields=["name", "program_name as label"],
-        order_by="program_name",
-    )
+	# Programs (no school filter until Program schema is locked)
+	programs = frappe.get_all(
+		"Program",
+		fields=["name", "program_name as label"],
+		order_by="program_name",
+	)
 
-    # ── Authors: Employees with Academic Staff role in authorized schools ─────────
-    authors = []
-    if authorized_schools:
-        authors = frappe.db.sql(
-            """
-            SELECT DISTINCT
-                e.employee_full_name AS label,
-                e.user_id            AS user_id
-            FROM `tabEmployee` e
-            INNER JOIN `tabUser` u
-                ON u.name = e.user_id
-            INNER JOIN `tabHas Role` hr
-                ON hr.parent = u.name
-            WHERE
-                hr.role = 'Academic Staff'
-                AND e.status = 'Active'
-                AND e.school IN %(authorized_schools)s
-            ORDER BY e.employee_full_name
-            """,
-            {"authorized_schools": tuple(authorized_schools)},
-            as_dict=True,
-        )
+	# ── Authors: Employees with Academic Staff role in authorized schools ─────────
+	authors = []
+	if authorized_schools:
+		authors = frappe.db.sql(
+			"""
+			SELECT DISTINCT
+				e.employee_full_name AS label,
+				e.user_id            AS user_id
+			FROM `tabEmployee` e
+			INNER JOIN `tabUser` u
+				ON u.name = e.user_id
+			INNER JOIN `tabHas Role` hr
+				ON hr.parent = u.name
+			WHERE
+				hr.role = 'Academic Staff'
+				AND e.status = 'Active'
+				AND e.school IN %(authorized_schools)s
+			ORDER BY e.employee_full_name
+			""",
+			{"authorized_schools": tuple(authorized_schools)},
+			as_dict=True,
+		)
 
-    return {
-        "schools": schools,
-        "default_school": default_school,
-        "academic_years": academic_years,
-        "programs": programs,
-        "authors": authors,
-    }
-
-
-
+	return {
+		"schools": schools,
+		"default_school": default_school,
+		"academic_years": academic_years,
+		"programs": programs,
+		"authors": authors,
+	}
 
