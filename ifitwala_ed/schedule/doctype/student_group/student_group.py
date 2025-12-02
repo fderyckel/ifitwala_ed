@@ -49,7 +49,7 @@ class StudentGroup(Document):
 		self.validate_size()
 		self.validate_students()
 		self.validate_and_set_child_table_fields()
-		self.validate_duplicate_student()
+		self.validate_duplicate_students()
 		self.validate_rotation_clashes()
 		self.validate_location_capacity()
 
@@ -362,7 +362,7 @@ class StudentGroup(Document):
 			else:
 				roll_no_list.append(d.group_roll_number)
 
-	def _validate_duplicate_students(self) -> None:
+	def validate_duplicate_students(self) -> None:
 		"""
 		Ensure each student appears at most once in the Student Group Student child table.
 		Raises a validation error if the same student id is found on multiple rows.
