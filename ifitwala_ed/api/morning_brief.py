@@ -466,17 +466,19 @@ def get_clinic_visits_trend(time_range="1M"):
 			start_date = f"{datetime.date.today().year}-01-01"
 
 	# Fetch data
-	visits = frappe.db.sql("""
+	school_condition = "AND school = %(school)s" if school_filter else ""
+	
+	sql = f"""
 		SELECT date, COUNT(*) as count
 		FROM `tabStudent Patient Visit`
 		WHERE docstatus = 1
-		AND date BETWEEN %s AND %s
-		%(school_condition)s
+		AND date BETWEEN %(start_date)s AND %(end_date)s
+		{school_condition}
 		GROUP BY date
 		ORDER BY date ASC
-	""" % {
-		"school_condition": "AND school = %(school)s" if school_filter else ""
-	}, {
+	"""
+
+	visits = frappe.db.sql(sql, {
 		"school": school_filter.get("school"),
 		"start_date": start_date,
 		"end_date": end_date
