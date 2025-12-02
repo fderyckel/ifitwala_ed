@@ -34,10 +34,10 @@
 
 		<!-- SKELETON STATE -->
 		<div v-if="widgets.loading" class="space-y-6 animate-pulse">
-			<div class="h-32 w-full rounded-2xl bg-slate-100"></div>
+			<div class="h-32 w-full rounded-2xl bg-surface-soft"></div>
 			<div class="grid grid-cols-2 gap-6">
-				<div class="h-64 rounded-2xl bg-slate-100"></div>
-				<div class="h-64 rounded-2xl bg-slate-100"></div>
+				<div class="h-64 rounded-2xl bg-surface-soft"></div>
+				<div class="h-64 rounded-2xl bg-surface-soft"></div>
 			</div>
 		</div>
 
@@ -53,7 +53,7 @@
 				>
 					<div
 						v-if="news.priority !== 'Critical'"
-						class="absolute inset-0 z-0 bg-purple-50 opacity-100"
+						class="absolute inset-0 z-0 bg-jacaranda/5"
 					></div>
 
 					<div
@@ -64,15 +64,15 @@
 							<span
 								class="inline-flex items-center gap-1 rounded-md border px-2 py-1 type-badge-label"
 								:class="news.priority === 'Critical'
-									? 'bg-white/20 border-white/30 text-white'
-									: 'bg-white border-purple-100 text-purple-700'"
+									? 'bg-white/15 border-white/30 text-white'
+									: 'bg-white border-jacaranda/20 text-jacaranda'"
 							>
 								{{ news.type }}
 							</span>
 
 							<span
 								v-if="news.priority === 'Critical'"
-								class="inline-flex items-center gap-1 rounded-md bg-red-100 px-2 py-1 type-badge-label text-red-700"
+								class="inline-flex items-center gap-1 rounded-md bg-flame/15 px-2 py-1 type-badge-label text-flame"
 							>
 								CRITICAL
 							</span>
@@ -84,14 +84,14 @@
 
 						<div
 							class="prose prose-sm max-w-none opacity-90 line-clamp-3"
-							:class="news.priority === 'Critical' ? 'prose-invert' : 'text-slate-600'"
+							:class="news.priority === 'Critical' ? 'prose-invert' : 'text-slate-token/85'"
 							v-html="news.content"
 						></div>
 
 						<button
 							@click="openAnnouncement(news)"
 							class="mt-3 flex items-center gap-1 type-button-label hover:underline focus:outline-none"
-							:class="news.priority === 'Critical' ? 'text-white' : 'text-purple-700'"
+							:class="news.priority === 'Critical' ? 'text-white' : 'text-jacaranda'"
 						>
 							Read full announcement
 							<FeatherIcon name="arrow-right" class="h-4 w-4" />
@@ -124,9 +124,7 @@
 							<div class="text-3xl font-bold text-ink">
 								{{ widgets.data.critical_incidents }}
 							</div>
-							<p
-								class="mt-1 flex items-center gap-1 text-xs font-medium text-flame"
-							>
+							<p class="mt-1 flex items-center gap-1 text-xs font-medium text-flame">
 								<FeatherIcon name="alert-circle" class="h-3 w-3" />
 								Open Follow-ups
 							</p>
@@ -140,8 +138,8 @@
 						>
 							<div class="mb-3 flex items-center gap-2">
 								<div
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600"
-                                >
+									class="flex h-8 w-8 items-center justify-center rounded-full bg-sky/15 text-sky"
+								>
 									<FeatherIcon name="thermometer" class="h-4 w-4" />
 								</div>
 								<h3 class="text-sm font-semibold text-canopy">
@@ -154,7 +152,7 @@
 									:key="day.date"
 									class="flex items-center justify-between text-sm"
 								>
-									<span class="text-slate-500">
+									<span class="text-slate-token/80">
 										{{ day.date }}
 									</span>
 									<span
@@ -173,7 +171,7 @@
 						<div class="mb-3 flex items-center justify-between">
 							<div class="flex items-center gap-2">
 								<div
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-purple-50 text-purple-600"
+									class="flex h-8 w-8 items-center justify-center rounded-full bg-jacaranda/10 text-jacaranda"
 								>
 									<FeatherIcon name="users" class="h-4 w-4" />
 								</div>
@@ -189,7 +187,7 @@
 							<div
 								v-for="stat in widgets.data.admissions_pulse.breakdown"
 								:key="stat.application_status"
-								class="inline-chip border border-slate-200 bg-slate-100 text-slate-600"
+								class="inline-chip border border-border/40 bg-surface-soft text-slate-token/90"
 							>
 								{{ stat.application_status }}: {{ stat.count }}
 							</div>
@@ -208,12 +206,12 @@
 							<div
 								v-for="med in widgets.data.medical_context"
 								:key="med.first_name"
-								class="rounded bg-sky/30 p-2 text-sm"
+								class="rounded bg-sky/20 p-2 text-sm"
 							>
 								<span class="font-bold text-ink">
 									{{ med.first_name }}:
 								</span>
-								<span class="ml-1 text-slate-600">
+								<span class="ml-1 text-slate-token/90">
 									{{ med.food_allergies }}
 								</span>
 							</div>
@@ -240,11 +238,11 @@
 							<div
 								v-for="(log, i) in widgets.data.student_logs"
 								:key="log.name"
-								class="group border-b border-border/50 p-5 last:border-0 transition-colors hover:bg-slate-50"
+								class="group border-b border-border/50 p-5 last:border-0 transition-colors hover:bg-surface-soft"
 							>
 								<div class="flex gap-4">
 									<div class="relative flex-shrink-0">
-										<div class="h-12 w-12 overflow-hidden rounded-xl bg-slate-200">
+										<div class="h-12 w-12 overflow-hidden rounded-xl bg-surface-soft">
 											<img
 												v-if="log.student_photo"
 												:src="log.student_photo"
@@ -252,7 +250,7 @@
 											/>
 											<div
 												v-else
-												class="flex h-full w-full items-center justify-center text-xs font-bold text-slate-500"
+												class="flex h-full w-full items-center justify-center text-xs font-bold text-slate-token/75"
 											>
 												{{ log.student_name.substring(0, 2) }}
 											</div>
@@ -268,26 +266,26 @@
 											<h4 class="text-sm font-bold text-ink">
 												{{ log.student_name }}
 											</h4>
-											<span class="text-[10px] text-slate-400">
+											<span class="text-[10px] text-slate-token/65">
 												{{ log.date_display }}
 											</span>
 										</div>
 
 										<div class="mt-1 mb-2 flex items-center gap-2">
 											<span
-												class="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-500"
+												class="rounded bg-surface-soft px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-token/80"
 											>
 												{{ log.log_type }}
 											</span>
 										</div>
 
-										<p class="mb-2 text-xs leading-relaxed text-slate-600">
+										<p class="mb-2 text-xs leading-relaxed text-slate-token/90">
 											{{ log.snippet }}
 										</p>
 
 										<button
 											@click="openLog(log)"
-											class="mt-1 flex items-center gap-1 text-[11px] font-medium text-jacaranda transition-colors hover:text-purple-700"
+											class="mt-1 flex items-center gap-1 text-[11px] font-medium text-jacaranda transition-colors hover:text-jacaranda/80"
 										>
 											Read Full Log
 											<FeatherIcon name="maximize-2" class="h-3 w-3" />
@@ -304,11 +302,11 @@
 			<section v-if="hasData('staff_birthdays')">
 				<div class="border-t border-border/60 pt-6">
 					<div class="mb-4 flex items-center justify-between">
-						<h2 class="section-header flex items-center gap-2 text-slate-400">
+						<h2 class="section-header flex items-center gap-2 text-slate-token/60">
 							<FeatherIcon name="gift" class="h-3 w-3" />
 							Community Pulse
 						</h2>
-						<span class="text-xs font-medium italic text-purple-600">
+						<span class="text-xs font-medium italic text-jacaranda">
 							Let's celebrate our amazing team! 🎂
 						</span>
 					</div>
@@ -318,7 +316,7 @@
 							:key="emp.name"
 							class="flex items-center gap-3 rounded-full border border-border/80 bg-white py-2 pl-2 pr-5 shadow-sm transition-shadow hover:shadow-md"
 						>
-							<div class="h-10 w-10 overflow-hidden rounded-full bg-slate-100 ring-2 ring-white">
+							<div class="h-10 w-10 overflow-hidden rounded-full bg-surface-soft ring-2 ring-white">
 								<img
 									v-if="emp.image"
 									:src="emp.image"
@@ -326,7 +324,7 @@
 								/>
 								<div
 									v-else
-									class="flex h-full w-full items-center justify-center text-sm font-bold text-slate-400"
+									class="flex h-full w-full items-center justify-center text-sm font-bold text-slate-token/65"
 								>
 									{{ emp.name.substring(0, 1) }}
 								</div>
@@ -335,7 +333,7 @@
 								<span class="text-sm font-bold text-ink">
 									{{ emp.name }}
 								</span>
-								<span class="text-xs font-medium uppercase text-amber-600">
+								<span class="text-xs font-medium uppercase text-flame">
 									{{ formatBirthday(emp.date_of_birth) }}
 								</span>
 							</div>
@@ -347,7 +345,7 @@
 			<!-- STUDENT BIRTHDAYS -->
 			<section v-if="hasData('my_student_birthdays')">
 				<div class="border-t border-border/60 pt-6">
-					<h2 class="mb-4 flex items-center gap-2 section-header text-slate-400">
+					<h2 class="mb-4 flex items-center gap-2 section-header text-slate-token/60">
 						<FeatherIcon name="gift" class="h-3 w-3" />
 						Student Birthdays (My Groups)
 					</h2>
@@ -357,7 +355,7 @@
 							:key="stu.first_name + stu.last_name"
 							class="flex items-center gap-3 rounded-full border border-border/80 bg-white py-2 pl-2 pr-5 shadow-sm transition-shadow hover:shadow-md"
 						>
-							<div class="h-10 w-10 overflow-hidden rounded-full bg-slate-100 ring-2 ring-white">
+							<div class="h-10 w-10 overflow-hidden rounded-full bg-surface-soft ring-2 ring-white">
 								<img
 									v-if="stu.image"
 									:src="stu.image"
@@ -365,7 +363,7 @@
 								/>
 								<div
 									v-else
-									class="flex h-full w-full items-center justify-center text-sm font-bold text-slate-400"
+									class="flex h-full w-full items-center justify-center text-sm font-bold text-slate-token/65"
 								>
 									{{ stu.first_name.substring(0, 1) }}
 								</div>
@@ -374,7 +372,7 @@
 								<span class="text-sm font-bold text-ink">
 									{{ stu.first_name }} {{ stu.last_name }}
 								</span>
-								<span class="text-xs font-medium uppercase text-amber-600">
+								<span class="text-xs font-medium uppercase text-flame">
 									{{ formatBirthday(stu.date_of_birth) }}
 								</span>
 							</div>
@@ -405,7 +403,7 @@
 		>
 			<template #item="{ item }">
 				<div class="flex gap-4 p-4">
-					<div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-100">
+					<div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-surface-soft">
 						<img
 							v-if="item.student_photo"
 							:src="item.student_photo"
@@ -413,7 +411,7 @@
 						/>
 						<div
 							v-else
-							class="flex h-full w-full items-center justify-center text-xs font-bold text-slate-400"
+							class="flex h-full w-full items-center justify-center text-xs font-bold text-slate-token/65"
 						>
 							{{ item.student_name.substring(0, 2) }}
 						</div>
@@ -423,21 +421,21 @@
 							<h4 class="text-sm font-bold text-ink">
 								{{ item.student_name }}
 							</h4>
-							<span class="text-xs text-slate-500">
+							<span class="text-xs text-slate-token/80">
 								{{ item.date_display }}
 							</span>
 						</div>
 						<span
-							class="mt-1 mb-2 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-500"
+							class="mt-1 mb-2 inline-block rounded bg-surface-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-token/80"
 						>
 							{{ item.log_type }}
 						</span>
-						<p class="line-clamp-2 text-sm text-slate-600">
+						<p class="text-sm text-slate-token/90 line-clamp-2">
 							{{ item.snippet }}
 						</p>
 						<button
 							@click="openLog(item)"
-							class="mt-2 text-xs font-medium text-jacaranda hover:underline"
+							class="mt-2 text-xs font-medium text-jacaranda hover:text-jacaranda/80"
 						>
 							View Full Log
 						</button>
