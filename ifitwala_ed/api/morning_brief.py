@@ -151,10 +151,18 @@ def check_audience_match(comm_name, user, roles, employee):
 
 def get_clinic_activity():
 	"""Count of Student Patient Visits for the last 3 days."""
+	user = frappe.session.user
+	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+	
+	filters = {"docstatus": 1}
+	if employee and employee.school:
+		filters["school"] = employee.school
+
 	dates = [today(), add_days(today(), -1), add_days(today(), -2)]
 	data = []
 	for d in dates:
-		count = frappe.db.count("Student Patient Visit", {"date": d, "docstatus": 1})
+		filters["date"] = d
+		count = frappe.db.count("Student Patient Visit", filters)
 		data.append({"date": formatdate(d, "dd-MMM"), "count": count})
 	return data
 
@@ -173,11 +181,19 @@ def get_admissions_pulse():
 
 def get_critical_incidents_count():
 	"""Count of Open logs marked as 'Requires Follow Up'."""
-	return frappe.db.count("Student Log", {
+	user = frappe.session.user
+	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+	
+	filters = {
 		"requires_follow_up": 1,
 		"follow_up_status": "Open",
 		"docstatus": 1
-	})
+	}
+	
+	if employee and employee.school:
+		filters["school"] = employee.school
+
+	return frappe.db.count("Student Log", filters)
 
 def get_my_student_groups(user):
 	"""Helper: Get Groups where current user is an instructor."""
@@ -413,12 +429,20 @@ def get_critical_incidents_details():
 	"""
 	Returns detailed list of Open logs marked as 'Requires Follow Up'.
 	"""
+	user = frappe.session.user
+	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+	
+	filters = {
+		"requires_follow_up": 1,
+		"follow_up_status": "Open",
+		"docstatus": 1
+	}
+	
+	if employee and employee.school:
+		filters["school"] = employee.school
+
 	logs = frappe.get_all("Student Log",
-		filters={
-			"requires_follow_up": 1,
-			"follow_up_status": "Open",
-			"docstatus": 1
-		},
+		filters=filters,
 		fields=["name", "student_name", "student_photo", "log_type", "date", "log"],
 		order_by="date desc, creation desc"
 	)
