@@ -275,7 +275,8 @@
 			</template>
 		</GenericListDialog>
 
-		<ClinicHistoryDialog v-model="showClinicHistory" />
+		<HistoryDialog v-model="showClinicHistory" title="Clinic Volume History" subtitle="Student patient visits over time"
+			method="ifitwala_ed.api.morning_brief.get_clinic_visits_trend" />
 
 	</div>
 </template>
@@ -285,9 +286,9 @@ import { ref, computed } from 'vue'
 import { createResource, FeatherIcon } from 'frappe-ui'
 import ContentDialog from '@/components/ContentDialog.vue'
 import GenericListDialog from '@/components/GenericListDialog.vue'
+import HistoryDialog from '@/components/HistoryDialog.vue'
 import AttendanceTrend from './components/AttendanceTrend.vue'
 import AbsentStudentList from './components/AbsentStudentList.vue'
-import ClinicHistoryDialog from './components/ClinicHistoryDialog.vue'
 
 // State for Dialog
 const isContentDialogOpen = ref(false)

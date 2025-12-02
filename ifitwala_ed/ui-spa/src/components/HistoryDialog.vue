@@ -5,8 +5,8 @@
 				<!-- Header -->
 				<div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
 					<div>
-						<h3 class="text-xl font-bold text-ink">Clinic Volume History</h3>
-						<p class="text-sm text-slate-500 mt-1">Student patient visits over time</p>
+						<h3 class="text-xl font-bold text-ink">{{ title }}</h3>
+						<p v-if="subtitle" class="text-sm text-slate-500 mt-1">{{ subtitle }}</p>
 					</div>
 					<div class="flex items-center gap-4">
 						<!-- Time Range Toggles -->
@@ -53,6 +53,11 @@ import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
 
 const props = defineProps<{
 	modelValue: boolean
+	title: string
+	subtitle?: string
+	method: string
+	color?: string
+	params?: Record<string, any>
 }>()
 
 const emit = defineEmits(['update:modelValue'])
@@ -72,38 +77,51 @@ const ranges = [
 const selectedRange = ref('1M')
 
 // Resource
-const visits = createResource({
-	url: 'ifitwala_ed.api.morning_brief.get_clinic_visits_trend',
+const resource = createResource({
+	url: props.method,
 	makeParams(values) {
 		return {
-			time_range: selectedRange.value
+			time_range: selectedRange.value,
+			...props.params
 		}
 	},
 	auto: false
 })
 
-const loading = computed(() => visits.loading)
-const schoolName = computed(() => visits.data?.school || 'Loading...')
+const loading = computed(() => resource.loading)
+const schoolName = computed(() => resource.data?.school || 'Loading...')
 
 // Watch for open to fetch
 watch(show, (isOpen) => {
 	if (isOpen) {
-		visits.fetch()
+		resource.fetch()
 	}
 })
 
 // Watch for range change to refetch
 watch(selectedRange, () => {
 	if (show.value) {
-		visits.fetch()
+		resource.fetch()
 	}
 })
 
 // Chart Option
 const chartOption = computed(() => {
-	const data = visits.data?.data || []
-	const dates = data.map(d => d.date)
-	const counts = data.map(d => d.count)
+	const data = resource.data?.data || []
+	const dates = data.map((d: any) => d.date)
+	const counts = data.map((d: any) => d.count)
+
+	// Use prop color or default to Blue-500
+	const baseColor = props.color || '#3b82f6'
+
+	// Convert hex to rgba for area style
+	// Simple hex to rgb conversion
+	let r = 0, g = 0, b = 0
+	if (baseColor.length === 7) {
+		r = parseInt(baseColor.slice(1, 3), 16)
+		g = parseInt(baseColor.slice(3, 5), 16)
+		b = parseInt(baseColor.slice(5, 7), 16)
+	}
 
 	return {
 		tooltip: {
@@ -138,14 +156,14 @@ const chartOption = computed(() => {
 				smooth: true,
 				symbol: 'circle',
 				symbolSize: 6,
-				itemStyle: { color: '#3b82f6' }, // Blue-500
+				itemStyle: { color: baseColor },
 				areaStyle: {
 					color: {
 						type: 'linear',
 						x: 0, y: 0, x2: 0, y2: 1,
 						colorStops: [
-							{ offset: 0, color: 'rgba(59, 130, 246, 0.2)' },
-							{ offset: 1, color: 'rgba(59, 130, 246, 0)' }
+							{ offset: 0, color: `rgba(${r}, ${g}, ${b}, 0.2)` },
+							{ offset: 1, color: `rgba(${r}, ${g}, ${b}, 0)` }
 						]
 					}
 				}
