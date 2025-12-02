@@ -8,5 +8,5 @@
 </template>
 
 <script setup lang="ts">
-// No logic yet – just a shared layout shell for filters.
+// No logic yet - just a shared layout shell for filters.
 </script>
