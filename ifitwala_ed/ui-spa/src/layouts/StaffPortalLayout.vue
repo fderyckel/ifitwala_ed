@@ -1,36 +1,34 @@
 <!-- ifitwala_ed/ui-spa/src/layouts/StaffPortalLayout.vue -->
 <template>
 	<!-- Single, canonical theme wrapper -->
-  <div class="ifitwala-theme">
-    <header class="staff-layout__header">
-      <div class="staff-layout__header-inner">
-        <h1 class="staff-layout__brand">
-          <RouterLink :to="{ name: 'staff-home' }" class="staff-layout__brand-link">
-            Staff Portal
-          </RouterLink>
-        </h1>
+	<div class="ifitwala-theme">
+		<header class="staff-layout__header">
+			<div class="staff-layout__header-inner">
+				<h1 class="staff-layout__brand">
+					<RouterLink :to="{ name: 'staff-home' }" class="staff-layout__brand-link">
+						Staff Portal
+					</RouterLink>
+				</h1>
 
-        <a href="/app" class="staff-layout__desk-switch">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M4 4h16v10H4zm4 14h8m-4-4v4"
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.7"
-            />
-          </svg>
-          <span>Switch to Desk</span>
-        </a>
-      </div>
-    </header>
+				<a href="/app" class="staff-layout__desk-switch">
+					<svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M4 4h16v10H4zm4 14h8m-4-4v4" fill="none" stroke="currentColor" stroke-linecap="round"
+							stroke-linejoin="round" stroke-width="1.7" />
+					</svg>
+					<span>Switch to Desk</span>
+				</a>
 
-    <main class="staff-layout__main">
-      <!-- staff-shell handles width + padding; StaffHome already uses it -->
-      <slot />
-    </main>
-  </div>
+				<a href="/?cmd=web_logout" class="staff-layout__desk-switch" title="Logout">
+					<FeatherIcon name="log-out" class="h-4 w-4" />
+				</a>
+			</div>
+		</header>
+
+		<main class="staff-layout__main">
+			<!-- staff-shell handles width + padding; StaffHome already uses it -->
+			<slot />
+		</main>
+	</div>
 </template>
 
 
