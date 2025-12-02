@@ -339,6 +339,17 @@ const analyticsQuickLinks = [
 ]
 
 const analyticsCategories = [
+	{
+    title: 'Enrollment & Census',
+    description: 'Student body profile, admissions, and retention.',
+    icon: 'id-card',
+    links: [
+      { label: 'Demographics Overview', to: { name: 'student-demographics' } },
+      { label: 'Enrollment Trends', to: '/analytics/enrollment/enrollment-trends' },
+      { label: 'Admissions Funnel', to: '/analytics/enrollment/admissions-funnel' },
+      { label: 'Student Churn/Withdrawal', to: '/analytics/enrollment/churn-rates' },
+    ],
+  },
   {
     title: 'Operations & Attendance',
     description: 'Coverage, punctuality, and daily health of the timetable.',
@@ -392,17 +403,6 @@ const analyticsCategories = [
       { label: 'Room Occupancy', to: '/analytics/scheduling/room-occupancy' },
       { label: 'Bus & Route Load', to: '/analytics/scheduling/bus-route-load' },
       { label: 'Exam Schedules', to: '/analytics/scheduling/exam-schedules' },
-    ],
-  },
-  {
-    title: 'Finance & Resources',
-    description: 'Income, spend, and inventory health.',
-    icon: 'dollar-sign',
-    links: [
-      { label: 'Budget vs Actuals', to: '/analytics/finance/budget-vs-actuals' },
-      { label: 'Fees Collection', to: '/analytics/finance/fees-collection' },
-      { label: 'Grants Tracking', to: '/analytics/finance/grants-tracking' },
-      { label: 'Inventory Usage', to: '/analytics/finance/inventory-usage' },
     ],
   },
   {
