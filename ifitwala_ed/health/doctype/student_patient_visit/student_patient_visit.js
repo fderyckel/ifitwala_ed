@@ -79,7 +79,29 @@ frappe.ui.form.on('Student Patient Visit', {
 						});
 					}
 				});
+
+				// Step 3: Fetch School based on enrollment
+				if (frm.doc.date) {
+					frappe.call({
+						method: 'ifitwala_ed.health.doctype.student_patient_visit.student_patient_visit.get_student_school',
+						args: {
+							student_patient: frm.doc.student_patient,
+							date: frm.doc.date
+						},
+						callback: function(r) {
+							if (r.message) {
+								frm.set_value('school', r.message);
+							}
+						}
+					});
+				}
 			});
+	},
+
+	date: function(frm) {
+		if (frm.doc.student_patient) {
+			frm.events.set_student_info(frm);
+		}
 	}
 });
 

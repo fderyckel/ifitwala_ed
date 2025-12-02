@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import nowtime
+from frappe.utils import nowtime, today
 
 class StudentPatientVisit(Document):
 	def validate(self):
@@ -50,5 +50,25 @@ class StudentPatientVisit(Document):
 
 		log_en.insert(ignore_permissions=True) # Use insert() instead of save() for new documents
 		log_en.submit()
+
+@frappe.whitelist()
+def get_student_school(student_patient, date=None):
+	if not date:
+		date = today()
+	
+	student = frappe.db.get_value("Student Patient", student_patient, "student")
+	if not student: return None
+
+	# Find active enrollment covering the visit date
+	enrollment = frappe.db.sql("""
+		SELECT school FROM `tabProgram Enrollment`
+		WHERE student = %s
+		AND docstatus = 1
+		AND enrollment_date <= %s
+		ORDER BY enrollment_date DESC
+		LIMIT 1
+	""", (student, date), as_dict=True)
+
+	return enrollment[0].school if enrollment else None
 
 
