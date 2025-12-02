@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ui-spa/src/components/analytics/HeatmapCohortNationality.vue -->
+<!-- ifitwala_ed/ui-spa/src/components/analytics/HeatmapChart.vue -->
 <template>
   <section class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
     <header class="mb-2 flex items-center justify-between">
@@ -20,22 +20,10 @@ import { VChart, type ComposeOption, type HeatmapSeriesOption } from '@/lib/echa
 
 type ChartOption = ComposeOption<HeatmapSeriesOption>
 
-type Bucket = {
-  label: string
-  count: number
-  sliceKey?: string
-}
+type Bucket = { label: string; count: number; sliceKey?: string }
+type HeatmapRow = { row: string; buckets: Bucket[] }
 
-type Row = {
-  cohort: string
-  buckets: Bucket[]
-}
-
-const props = defineProps<{
-  title: string
-  rows: Row[]
-  columnOrder?: string[]
-}>()
+const props = defineProps<{ title: string; rows: HeatmapRow[]; columnOrder?: string[] }>()
 
 const emit = defineEmits<{
   (e: 'select', sliceKey: string): void
@@ -62,10 +50,10 @@ const option = computed<ChartOption>(() => {
     tooltip: {
       position: 'top',
       formatter: (params: any) => {
-        const cohort = props.rows[params.value[1]]?.cohort || ''
-        const nat = columns[params.value[0]] || ''
+        const rowLabel = props.rows[params.value[1]]?.row || ''
+        const colLabel = columns[params.value[0]] || ''
         const count = params.value[2] || 0
-        return `${cohort} - ${nat}: ${count}`
+        return `${rowLabel} - ${colLabel}: ${count}`
       },
     },
     grid: { top: 10, right: 10, bottom: 40, left: 120 },
@@ -77,7 +65,7 @@ const option = computed<ChartOption>(() => {
     },
     yAxis: {
       type: 'category',
-      data: props.rows.map((r) => r.cohort),
+      data: props.rows.map((r) => r.row),
       splitArea: { show: true },
     },
     visualMap: {

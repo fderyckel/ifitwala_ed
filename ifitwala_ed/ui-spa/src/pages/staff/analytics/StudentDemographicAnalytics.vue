@@ -6,8 +6,8 @@ import { createResource } from 'frappe-ui'
 import FiltersBar from '@/components/analytics/FiltersBar.vue'
 import KpiRow from '@/components/analytics/KpiRow.vue'
 import HorizontalBarTopN from '@/components/analytics/HorizontalBarTopN.vue'
-import HeatmapCohortNationality from '@/components/analytics/HeatmapCohortNationality.vue'
-import StackedBarByCohort from '@/components/analytics/StackedBarByCohort.vue'
+import HeatmapChart from '@/components/analytics/HeatmapChart.vue'
+import StackedBarChart from '@/components/analytics/StackedBarChart.vue'
 import DonutSplit from '@/components/analytics/DonutSplit.vue'
 import HistogramBuckets from '@/components/analytics/HistogramBuckets.vue'
 import TagCloudBar from '@/components/analytics/TagCloudBar.vue'
@@ -202,7 +202,7 @@ const siblingSeries = [
 
 const genderRows = computed(() =>
   dashboard.value.gender_by_cohort.map((row) => ({
-    cohort: row.cohort,
+    category: row.cohort,
     values: { female: row.female, male: row.male, other: row.other },
     sliceKeys: row.sliceKeys,
   }))
@@ -210,9 +210,16 @@ const genderRows = computed(() =>
 
 const siblingRows = computed(() =>
   dashboard.value.sibling_distribution.map((row) => ({
-    cohort: row.cohort,
+    category: row.cohort,
     values: { none: row.none, older: row.older, younger: row.younger },
     sliceKeys: row.sliceKeys,
+  }))
+)
+
+const nationalityHeatmapRows = computed(() =>
+  dashboard.value.nationality_by_cohort.map((row) => ({
+    row: row.cohort,
+    buckets: row.buckets,
   }))
 )
 
@@ -356,12 +363,12 @@ function setPreset(preset: ViewPreset) {
           :items="dashboard.nationality_distribution"
           @select="openSliceDrawer"
         />
-        <HeatmapCohortNationality
+        <HeatmapChart
           title="Nationality by Cohort"
-          :rows="dashboard.nationality_by_cohort"
+          :rows="nationalityHeatmapRows"
           @select="openSliceDrawer"
         />
-        <StackedBarByCohort
+        <StackedBarChart
           title="Gender Split by Cohort"
           :series="stackedGenderSeries"
           :rows="genderRows"
@@ -396,7 +403,7 @@ function setPreset(preset: ViewPreset) {
         <h2 class="text-sm font-semibold text-slate-700">Family Structure & Sibling Analytics</h2>
         <KpiRow :items="familyKpis" />
         <div class="grid gap-4 lg:grid-cols-2">
-          <StackedBarByCohort
+          <StackedBarChart
             title="Sibling Distribution"
             :series="siblingSeries"
             :rows="siblingRows"
