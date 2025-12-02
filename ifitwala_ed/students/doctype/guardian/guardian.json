@@ -17,6 +17,8 @@
   "guardian_mobile_phone",
   "guardian_email",
   "column_break_pzk5",
+  "is_primary_guardian",
+  "is_financial_guardian",
   "contact_html",
   "address_html",
   "user",
@@ -24,6 +26,7 @@
   "children_section",
   "students",
   "work_details_section",
+  "employment_sector",
   "work_place",
   "guardian_designation",
   "column_break_eijl",
@@ -163,12 +166,30 @@
    "label": "Students",
    "options": "Guardian Student",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_primary_guardian",
+   "fieldtype": "Check",
+   "label": "Is Primary Guardian"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_financial_guardian",
+   "fieldtype": "Check",
+   "label": "Is Financial Guardian"
+  },
+  {
+   "fieldname": "employment_sector",
+   "fieldtype": "Select",
+   "label": "Employment Sector",
+   "options": "Corporate \u2013 Finance / Banking\nCorporate \u2013 Tech / IT\nCorporate \u2013 Manufacturing\nCorporate \u2013 Retail / FMCG\nCorporate \u2013 Hospitality / Tourism\nCorporate \u2013 Logistics / Transport\nCorporate \u2013 Construction / Engineering\nCorporate \u2013 Real Estate / Property\nHealthcare / Medical\nEducation\nGovernment\nEmbassy / Diplomatic Corps\nNGO / Non-Profit\nArmed Forces\nCreative Industries (Media / Design / Arts)\nSelf-Employed\nFreelance / Consultant\nHomemaker\nRetired\nOther"
   }
  ],
  "image_field": "guardian_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-04 20:39:36.162292",
+ "modified": "2025-12-02 18:01:52.637195",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Guardian",
@@ -255,7 +276,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Counselor",
+   "role": "Counsellor",
    "share": 1
   },
   {

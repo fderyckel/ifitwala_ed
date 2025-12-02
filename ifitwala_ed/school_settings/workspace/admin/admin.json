@@ -145,7 +145,7 @@
    "is_query_report": 0,
    "label": "File Management",
    "link_count": 0,
-   "link_to": "File Management",
+   "link_to": "Picture Management",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -157,55 +157,6 @@
    "link_count": 0,
    "link_to": "Page",
    "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Attendance",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Attendance Code",
-   "link_count": 0,
-   "link_to": "Student Attendance Code",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Attendance Summary",
-   "link_count": 0,
-   "link_to": "Student Attendance Summary",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Attendance",
-   "link_count": 0,
-   "link_to": "Student Attendance",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Attendance Tool",
-   "link_count": 0,
-   "link_to": "student_attendance_tool",
-   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
@@ -522,9 +473,48 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Attendance",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Attendance Code",
+   "link_count": 0,
+   "link_to": "Student Attendance Code",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Attendance Summary",
+   "link_count": 0,
+   "link_to": "Student Attendance Summary",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Attendance",
+   "link_count": 0,
+   "link_to": "Student Attendance",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-11-12 14:40:16.881128",
+ "modified": "2025-12-02 14:17:27.432890",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Admin",

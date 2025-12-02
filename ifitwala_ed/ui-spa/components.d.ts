@@ -11,7 +11,17 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AnalyticsChart: typeof import('./src/components/analytics/AnalyticsChart.vue')['default']
     ClassEventModal: typeof import('./src/components/calendar/ClassEventModal.vue')['default']
+    ContentDialog: typeof import('./src/components/ContentDialog.vue')['default']
+    DonutSplit: typeof import('./src/components/analytics/DonutSplit.vue')['default']
+    FiltersBar: typeof import('./src/components/analytics/FiltersBar.vue')['default']
+    GenericListDialog: typeof import('./src/components/GenericListDialog.vue')['default']
+    HeatmapChart: typeof import('./src/components/analytics/HeatmapChart.vue')['default']
+    HistogramBuckets: typeof import('./src/components/analytics/HistogramBuckets.vue')['default']
+    HistoryDialog: typeof import('./src/components/HistoryDialog.vue')['default']
+    HorizontalBarTopN: typeof import('./src/components/analytics/HorizontalBarTopN.vue')['default']
+    KpiRow: typeof import('./src/components/analytics/KpiRow.vue')['default']
     MeetingEventModal: typeof import('./src/components/calendar/MeetingEventModal.vue')['default']
     PortalFooter: typeof import('./src/components/PortalFooter.vue')['default']
     PortalNavbar: typeof import('./src/components/PortalNavbar.vue')['default']
@@ -20,5 +30,9 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     ScheduleCalendar: typeof import('./src/components/calendar/ScheduleCalendar.vue')['default']
     SchoolEventModal: typeof import('./src/components/calendar/SchoolEventModal.vue')['default']
+    SideDrawerList: typeof import('./src/components/analytics/SideDrawerList.vue')['default']
+    StackedBarChart: typeof import('./src/components/analytics/StackedBarChart.vue')['default']
+    StatsTile: typeof import('./src/components/analytics/StatsTile.vue')['default']
+    TagCloudBar: typeof import('./src/components/analytics/TagCloudBar.vue')['default']
   }
 }

@@ -26,6 +26,7 @@
   "student_joining_date",
   "student_nationality",
   "student_second_nationality",
+  "anchor_school",
   "cohort",
   "exit_section",
   "student_exit_date",
@@ -41,6 +42,7 @@
   "siblings_section",
   "siblings",
   "home_address_section",
+  "residency_status",
   "contact_html",
   "column_break_mdf1",
   "address_html"
@@ -277,12 +279,24 @@
    "fieldname": "guardians_tab",
    "fieldtype": "Tab Break",
    "label": "Family and Address"
+  },
+  {
+   "fieldname": "anchor_school",
+   "fieldtype": "Link",
+   "label": "Anchor School",
+   "options": "School"
+  },
+  {
+   "fieldname": "residency_status",
+   "fieldtype": "Select",
+   "label": "Residency Status",
+   "options": "Local Resident\nExpat Resident\nBoarder\nOther"
   }
  ],
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-06 21:27:15.769050",
+ "modified": "2025-12-02 18:00:07.266432",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
@@ -359,7 +373,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Counselor",
+   "role": "Counsellor",
    "share": 1
   },
   {

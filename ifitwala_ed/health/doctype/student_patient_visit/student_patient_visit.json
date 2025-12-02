@@ -4,7 +4,7 @@
  "allow_rename": 1,
  "autoname": "format:PAV-{YYYY}[MM}-{#####}",
  "creation": "2025-01-01 09:41:54.513356",
- "default_view": "Image",
+ "default_view": "List",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -64,6 +64,7 @@
    "options": "Student Patient"
   },
   {
+   "description": "Should be automatic",
    "fieldname": "school",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -243,7 +244,7 @@
  "image_field": "photo",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-04 14:34:15",
+ "modified": "2025-12-02 17:23:47.171367",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient Visit",

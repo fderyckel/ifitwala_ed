@@ -75,55 +75,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Reports & Dashboards",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Groups Cards",
-   "link_count": 0,
-   "link_to": "student_group_cards",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Report Attendance",
-   "link_count": 0,
-   "link_to": "Attendance Report",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Dashboard Student Log",
-   "link_count": 0,
-   "link_to": "student-log-dashboard",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Report Student Log",
-   "link_count": 0,
-   "link_to": "Student Logs",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Curriculum",
    "link_count": 4,
    "link_type": "DocType",
@@ -277,9 +228,68 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports & Dashboards",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Groups Cards",
+   "link_count": 0,
+   "link_to": "student_group_cards",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Report Attendance",
+   "link_count": 0,
+   "link_to": "Attendance Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Dashboard Student Log",
+   "link_count": 0,
+   "link_to": "student-log-dashboard",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Report Student Log",
+   "link_count": 0,
+   "link_to": "Student Logs",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Contact & Emergency Info",
+   "link_count": 0,
+   "link_to": "Medical Info And Emergency Contact",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-11-26 11:54:40.737566",
+ "modified": "2025-12-01 15:35:45.815805",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academics",
