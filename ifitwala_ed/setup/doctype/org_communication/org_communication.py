@@ -432,10 +432,15 @@ def _get_user_default_school(user: str | None = None) -> str | None:
 	if not user or user == "Guest":
 		return None
 
+	# Build field list defensively; only include default_school if column exists
+	fields = ["name", "school"]
+	if frappe.db.has_column("Employee", "default_school"):
+		fields.insert(1, "default_school")
+
 	emp = frappe.db.get_value(
 		"Employee",
 		{"user_id": user},
-		["name", "default_school", "school"],
+		fields,
 		as_dict=True,
 	)
 	if not emp:
