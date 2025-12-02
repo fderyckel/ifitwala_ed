@@ -66,17 +66,18 @@ def get_briefing_widgets():
 def get_daily_bulletin(user, roles):
 	system_today = getdate(today())
 
-	comms = frappe.get_all("Org Communication",
-		filters={
-			"status": "Published",
-			"portal_surface": ["in", ["Morning Brief", "Everywhere"]],
-			"brief_start_date": ("<=", system_today),
-			"brief_end_date": (">=", system_today)
-		},
-		fields=["name", "title", "message", "communication_type", "priority", "brief_end_date", "brief_start_date"],
-		order_by="priority desc, brief_order asc, creation desc",
-		limit=50
-	)
+	# Use SQL to handle OR condition for brief_end_date (>= today OR NULL)
+	sql = """
+		SELECT name, title, message, communication_type, priority, brief_end_date, brief_start_date
+		FROM `tabOrg Communication`
+		WHERE status = 'Published'
+		AND portal_surface IN ('Morning Brief', 'Everywhere')
+		AND brief_start_date <= %s
+		AND (brief_end_date >= %s OR brief_end_date IS NULL)
+		ORDER BY priority DESC, brief_order ASC, creation DESC
+		LIMIT 50
+	"""
+	comms = frappe.db.sql(sql, (system_today, system_today), as_dict=True)
 
 	employee = frappe.db.get_value("Employee", {"user_id": user},
 		["name", "school", "organization", "department"],
@@ -358,11 +359,25 @@ def get_attendance_trend(user):
 	
 	results = frappe.db.sql(sql, (employee.school, start_date, end_date), as_dict=True)
 	
-	# Format for chart? Or return raw data?
-	# Let's return raw data, frontend can format.
-	# But we might want to fill in missing dates with 0 if needed. 
-	# For now, let's return what we have.
-	return results
+	# Fill in missing dates with 0
+	# Create a dictionary of existing data
+	data_map = {getdate(r.date): r.count for r in results}
+	
+	final_data = []
+	current_date = getdate(start_date)
+	target_date = getdate(end_date)
+	
+	while current_date <= target_date:
+		# Format date as string for frontend? Or keep as object?
+		# Frontend expects string usually, but let's match previous format if any.
+		# The query returns date object or string depending on driver.
+		# Let's format as YYYY-MM-DD
+		d_str = formatdate(current_date, "yyyy-mm-dd")
+		count = data_map.get(current_date, 0)
+		final_data.append({"date": d_str, "count": count})
+		current_date = add_days(current_date, 1)
+		
+	return final_data
 
 def get_my_absent_students(group_names):
 	"""
