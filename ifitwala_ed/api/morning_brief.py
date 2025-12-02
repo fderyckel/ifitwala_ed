@@ -68,10 +68,12 @@ def get_daily_bulletin(user, roles):
 		filters={
 			"status": "Published",
 			"portal_surface": ["in", ["Morning Brief", "Everywhere"]],
-			"brief_start_date": ("<=", system_today)
+			"brief_start_date": ("<=", system_today),
+			"brief_end_date": (">=", system_today)
 		},
 		fields=["name", "title", "message", "communication_type", "priority", "brief_end_date", "brief_start_date"],
-		order_by="priority desc, brief_order asc, creation desc"
+		order_by="priority desc, brief_order asc, creation desc",
+		limit=50
 	)
 
 	employee = frappe.db.get_value("Employee", {"user_id": user},
@@ -82,7 +84,7 @@ def get_daily_bulletin(user, roles):
 	visible_comms = []
 
 	for c in comms:
-		# Expiry Check
+		# Expiry Check (Already filtered in query, but double check)
 		if c.brief_end_date and getdate(c.brief_end_date) < system_today:
 			continue
 

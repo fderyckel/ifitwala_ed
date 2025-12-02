@@ -33,7 +33,7 @@
 					class="relative overflow-hidden rounded-2xl p-6 shadow-sm transition-all mb-4 last:mb-0"
 					:class="getPriorityClasses(news.priority)">
 					<div v-if="news.priority !== 'Critical'" class="absolute inset-0 bg-purple-50 opacity-100 z-0"></div>
-					<div class="relative z-10" :class="news.priority === 'Critical' ? 'text-white' : 'text-ink'">
+					<div class="relative z-0" :class="news.priority === 'Critical' ? 'text-white' : 'text-ink'">
 						<div class="flex gap-2 mb-2">
 							<span class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium border"
 								:class="news.priority === 'Critical' ? 'bg-white/20 border-white/30 text-white' : 'bg-white border-purple-100 text-purple-700'">
@@ -89,7 +89,7 @@
 									class="flex justify-between items-center text-sm">
 									<span class="text-slate-500">{{ day.date }}</span>
 									<span class="font-mono font-medium" :class="day.count > 10 ? 'text-flame' : 'text-ink'">{{ day.count
-										}}</span>
+									}}</span>
 								</div>
 							</div>
 						</div>
@@ -206,7 +206,7 @@
 							<div class="flex flex-col">
 								<span class="text-sm font-bold text-ink">{{ emp.name }}</span>
 								<span class="text-xs text-amber-600 font-medium uppercase">{{ formatBirthday(emp.date_of_birth)
-									}}</span>
+								}}</span>
 							</div>
 						</div>
 					</div>
@@ -229,7 +229,7 @@
 							<div class="flex flex-col">
 								<span class="text-sm font-bold text-ink">{{ stu.first_name }} {{ stu.last_name }}</span>
 								<span class="text-xs text-amber-600 font-medium uppercase">{{ formatBirthday(stu.date_of_birth)
-									}}</span>
+								}}</span>
 							</div>
 						</div>
 					</div>
