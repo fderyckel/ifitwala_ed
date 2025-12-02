@@ -1,48 +1,61 @@
 // ifitwala_ed/ui-spa/tailwind.config.js
 
+// ifitwala_ed/ui-spa/tailwind.config.js
+
 import frappeUiPreset from 'frappe-ui/tailwind';
 import colors from 'tailwindcss/colors';
 
 const withOpacity = (variable) => ({ opacityValue }) => {
-  if (opacityValue === undefined) {
-    return `rgb(var(${variable}) / 1)`;
-  }
-  return `rgb(var(${variable}) / ${opacityValue})`;
+	if (opacityValue === undefined) {
+		return `rgb(var(${variable}) / 1)`;
+	}
+	return `rgb(var(${variable}) / ${opacityValue})`;
 };
 
 export default {
-  presets: [frappeUiPreset],
-  content: ['./index.html', './src/**/*.{vue,js,ts}', './node_modules/frappe-ui/src/**/*.{vue,js,ts}'],
-  safelist: [
-    'bg-surface',
-    'bg-surface-soft',
-    'bg-surface-strong',
-  ],
-  theme: {
-    extend: {
-      boxShadow: {
-        inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
-      },
-      opacity: { 15: '0.15', 65: '0.65', 85: '0.85' },
-      colors: {
-        slate: colors.slate,
-        ink: withOpacity('--ink-rgb'),
-        'slate-token': withOpacity('--slate-rgb'),
-        canopy: withOpacity('--canopy-rgb'),
-        leaf: withOpacity('--leaf-rgb'),
-        moss: withOpacity('--moss-rgb'),
-        sky: withOpacity('--sky-rgb'),
-        sand: withOpacity('--sand-rgb'),
-        clay: withOpacity('--clay-rgb'),
-        jacaranda: withOpacity('--jacaranda-rgb'),
-        flame: withOpacity('--flame-rgb'),
-        border: withOpacity('--border-rgb'),
+	presets: [frappeUiPreset],
+	content: [
+		'./index.html',
+		'./src/**/*.{vue,js,ts}',
+		'./node_modules/frappe-ui/src/**/*.{vue,js,ts}',
+	],
+	safelist: [
+		'bg-surface',
+		'bg-surface-soft',
+		'bg-surface-strong',
+	],
+	theme: {
+		extend: {
+			/* 1. Fonts wired to CSS vars (tokens.css) */
+			fontFamily: {
+				sans: ['var(--font-sans)'],
+				serif: ['var(--font-serif)'],
+				mono: ['var(--font-mono)'],
+			},
 
-        surface: withOpacity('--surface-rgb'),
-        'surface-soft': withOpacity('--surface-rgb'),
-        'surface-strong': withOpacity('--surface-strong-rgb'),
-      },
-    },
-  },
-  plugins: [],
+			boxShadow: {
+				inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
+			},
+			opacity: { 15: '0.15', 65: '0.65', 85: '0.85' },
+			colors: {
+				slate: colors.slate,
+				ink: withOpacity('--ink-rgb'),
+				'slate-token': withOpacity('--slate-rgb'),
+				canopy: withOpacity('--canopy-rgb'),
+				leaf: withOpacity('--leaf-rgb'),
+				moss: withOpacity('--moss-rgb'),
+				sky: withOpacity('--sky-rgb'),
+				sand: withOpacity('--sand-rgb'),
+				clay: withOpacity('--clay-rgb'),
+				jacaranda: withOpacity('--jacaranda-rgb'),
+				flame: withOpacity('--flame-rgb'),
+				border: withOpacity('--border-rgb'),
+
+				surface: withOpacity('--surface-rgb'),
+				'surface-soft': withOpacity('--surface-rgb'),
+				'surface-strong': withOpacity('--surface-strong-rgb'),
+			},
+		},
+	},
+	plugins: [],
 };

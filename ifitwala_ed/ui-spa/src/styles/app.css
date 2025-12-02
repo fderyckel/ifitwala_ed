@@ -6,12 +6,13 @@
 @layer base {
   html,
   body {
+    font-family: var(--font-sans);
     @apply antialiased text-[color:var(--ink)] bg-transparent;
   }
 
   body {
     font-feature-settings: "liga" 1, "calt" 1;
-    background-color: transparent !important; /* Override server-side bg-gray-100 */
+    background-color: transparent !important;
   }
 
   h1,
@@ -62,7 +63,7 @@
   textarea {
     @apply !border-slate-300;
   }
-  
+
   input:focus,
   select:focus,
   textarea:focus {
@@ -166,10 +167,12 @@
   /* ---------------------------------------------------------------
      FULLCALENDAR SKIN (shared staff / student portal)
      --------------------------------------------------------------- */
-  .calendar-shell .fc {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-    font-size: 0.85rem;
-  }
+	.calendar-shell .fc {
+		font-family: var(--font-sans), system-ui, -apple-system,
+			BlinkMacSystemFont, "Segoe UI", sans-serif;
+		font-size: 0.85rem;
+	}
+
 
   .calendar-shell .fc-toolbar-title {
     font-size: 1rem;
