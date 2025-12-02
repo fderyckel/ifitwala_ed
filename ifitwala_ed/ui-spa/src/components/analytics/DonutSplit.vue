@@ -52,7 +52,7 @@ const option = computed<ChartOption>(() => ({
     trigger: 'item',
     formatter: (p: any) => `${p.name}: ${p.value}${p.data?.pct != null ? ` (${p.data.pct}%)` : ''}`,
   },
-  legend: { orient: 'vertical', left: 'left' },
+  legend: { show: false },
   series: [
     {
       type: 'pie',

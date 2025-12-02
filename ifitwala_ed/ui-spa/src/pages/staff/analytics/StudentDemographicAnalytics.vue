@@ -153,12 +153,8 @@ watch(
   () => {
     debounce(() => loadDashboard())
   },
-  { deep: true }
+  { deep: true, immediate: true }
 )
-
-onMounted(() => {
-  loadDashboard()
-})
 
 const kpiItems = computed(() => [
   { id: 'total_students', label: 'Total Students (filtered)', value: dashboard.value.kpis.total_students },
@@ -314,7 +310,7 @@ function setPreset(preset: ViewPreset) {
 
       <div class="flex flex-col gap-1 w-40">
         <label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
-          Cohort / Grade
+          Cohort
         </label>
         <select
           v-model="filters.cohort"
