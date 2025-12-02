@@ -405,4 +405,100 @@ def get_my_absent_students(group_names):
 		AND sac.count_as_present = 0
 	"""
 	
+	
 	return frappe.db.sql(sql, as_dict=True)
+
+@frappe.whitelist()
+def get_critical_incidents_details():
+	"""
+	Returns detailed list of Open logs marked as 'Requires Follow Up'.
+	"""
+	logs = frappe.get_all("Student Log",
+		filters={
+			"requires_follow_up": 1,
+			"follow_up_status": "Open",
+			"docstatus": 1
+		},
+		fields=["name", "student_name", "student_photo", "log_type", "date", "log"],
+		order_by="date desc, creation desc"
+	)
+	
+	for l in logs:
+		l.date_display = formatdate(l.date, "dd-MMM")
+		raw_text = strip_html(l.log or "")
+		l.snippet = (raw_text[:100] + '...') if len(raw_text) > 100 else raw_text
+		
+	return logs
+
+@frappe.whitelist()
+def get_clinic_visits_trend(time_range="1M"):
+	"""
+	Returns daily visit counts for the specified range.
+	time_range: '1M', '3M', '6M', 'YTD'
+	"""
+	user = frappe.session.user
+	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+	
+	# Default to user's school, or global if no school assigned (unlikely for staff)
+	school_filter = {}
+	if employee and employee.school:
+		school_filter = {"school": employee.school}
+		
+	end_date = today()
+	start_date = add_days(end_date, -30) # Default 1M
+	
+	if time_range == "3M":
+		start_date = add_days(end_date, -90)
+	elif time_range == "6M":
+		start_date = add_days(end_date, -180)
+	elif time_range == "YTD":
+		# Academic year start? Or calendar year? Let's assume Academic Year starts Aug 1st? 
+		# Or just Calendar Year for now as requested "the year so far".
+		# Let's use Calendar Year Jan 1st for simplicity unless Academic Year is standard.
+		# User said "based on academic year". 
+		# Let's try to find the current Academic Year.
+		academic_year = frappe.db.get_value("Academic Year", {"current": 1}, "year_start_date")
+		if academic_year:
+			start_date = academic_year
+		else:
+			# Fallback to Jan 1st of current year
+			import datetime
+			start_date = f"{datetime.date.today().year}-01-01"
+
+	# Fetch data
+	visits = frappe.db.sql("""
+		SELECT date, COUNT(*) as count
+		FROM `tabStudent Patient Visit`
+		WHERE docstatus = 1
+		AND date BETWEEN %s AND %s
+		%(school_condition)s
+		GROUP BY date
+		ORDER BY date ASC
+	""" % {
+		"school_condition": "AND school = %(school)s" if school_filter else ""
+	}, {
+		"school": school_filter.get("school"),
+		"start_date": start_date,
+		"end_date": end_date
+	}, as_dict=True)
+	
+	# Fill gaps? Charts usually handle gaps, but filling with 0 is safer for line charts.
+	data_map = {getdate(v.date): v.count for v in visits}
+	final_data = []
+	
+	curr = getdate(start_date)
+	end = getdate(end_date)
+	
+	while curr <= end:
+		d_str = formatdate(curr, "yyyy-mm-dd")
+		final_data.append({
+			"date": d_str,
+			"count": data_map.get(curr, 0)
+		})
+		curr = add_days(curr, 1)
+		
+	return {
+		"data": final_data,
+		"school": employee.school if employee else "All Schools",
+		"range": time_range
+	}

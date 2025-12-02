@@ -69,7 +69,9 @@
 							<AttendanceTrend :data="widgets.data.attendance_trend" />
 						</div>
 
-						<div v-if="widgets.data?.critical_incidents !== undefined" class="paper-card p-5 border-l-4 border-l-flame">
+						<div v-if="widgets.data?.critical_incidents !== undefined"
+							class="paper-card p-5 border-l-4 border-l-flame cursor-pointer hover:shadow-md transition-shadow"
+							@click="openCriticalIncidents">
 							<h3 class="section-header !text-flame/80 mb-1">Critical Incidents</h3>
 							<div class="text-3xl font-bold text-ink">{{ widgets.data.critical_incidents }}</div>
 							<p class="text-xs text-flame mt-1 font-medium flex items-center gap-1">
@@ -77,7 +79,8 @@
 							</p>
 						</div>
 
-						<div v-if="hasData('clinic_volume')" class="paper-card p-5">
+						<div v-if="hasData('clinic_volume')" class="paper-card p-5 cursor-pointer hover:shadow-md transition-shadow"
+							@click="showClinicHistory = true">
 							<div class="flex items-center gap-2 mb-3">
 								<div class="h-8 w-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
 									<FeatherIcon name="thermometer" class="h-4 w-4" />
@@ -242,6 +245,38 @@
 			:content="dialogContent.content" :image="dialogContent.image" :image-fallback="dialogContent.imageFallback"
 			:badge="dialogContent.badge" />
 
+		<!-- New Dialogs -->
+		<GenericListDialog v-model="showCriticalIncidents" title="Critical Incidents"
+			subtitle="Open logs requiring follow-up" :items="criticalIncidentsList.data"
+			:loading="criticalIncidentsList.loading">
+			<template #item="{ item }">
+				<div class="p-4 flex gap-4">
+					<div class="h-10 w-10 shrink-0 rounded-full bg-slate-100 overflow-hidden">
+						<img v-if="item.student_photo" :src="item.student_photo" class="h-full w-full object-cover">
+						<div v-else class="h-full w-full flex items-center justify-center text-xs font-bold text-slate-400">
+							{{ item.student_name.substring(0, 2) }}
+						</div>
+					</div>
+					<div class="flex-1 min-w-0">
+						<div class="flex justify-between items-start">
+							<h4 class="text-sm font-bold text-ink">{{ item.student_name }}</h4>
+							<span class="text-xs text-slate-500">{{ item.date_display }}</span>
+						</div>
+						<span
+							class="inline-block mt-1 mb-2 text-[10px] font-semibold uppercase text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+							{{ item.log_type }}
+						</span>
+						<p class="text-sm text-slate-600 line-clamp-2">{{ item.snippet }}</p>
+						<button @click="openLog(item)" class="mt-2 text-xs font-medium text-jacaranda hover:underline">
+							View Full Log
+						</button>
+					</div>
+				</div>
+			</template>
+		</GenericListDialog>
+
+		<ClinicHistoryDialog v-model="showClinicHistory" />
+
 	</div>
 </template>
 
@@ -249,8 +284,10 @@
 import { ref, computed } from 'vue'
 import { createResource, FeatherIcon } from 'frappe-ui'
 import ContentDialog from '@/components/ContentDialog.vue'
+import GenericListDialog from '@/components/GenericListDialog.vue'
 import AttendanceTrend from './components/AttendanceTrend.vue'
 import AbsentStudentList from './components/AbsentStudentList.vue'
+import ClinicHistoryDialog from './components/ClinicHistoryDialog.vue'
 
 // State for Dialog
 const isContentDialogOpen = ref(false)
@@ -261,6 +298,15 @@ const dialogContent = ref({
 	image: '',
 	imageFallback: '',
 	badge: ''
+})
+
+// State for new dialogs
+const showCriticalIncidents = ref(false)
+const showClinicHistory = ref(false)
+
+const criticalIncidentsList = createResource({
+	url: 'ifitwala_ed.api.morning_brief.get_critical_incidents_details',
+	auto: false
 })
 
 const widgets = createResource({
@@ -294,6 +340,11 @@ function openAnnouncement(news) {
 		badge: news.type
 	}
 	isContentDialogOpen.value = true
+}
+
+function openCriticalIncidents() {
+	showCriticalIncidents.value = true
+	criticalIncidentsList.fetch()
 }
 
 const formattedDate = computed(() => {
