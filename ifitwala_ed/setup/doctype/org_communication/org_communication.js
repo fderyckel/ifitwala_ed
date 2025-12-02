@@ -196,7 +196,17 @@ function show_visibility_hint(frm) {
 		msg = __('No publish window set. Visibility will depend on its status and audience.');
 	}
 
-	frappe.utils.set_intro(frm, msg);
+	// set_intro was removed from frappe.utils in newer versions; prefer frm.set_intro if available
+	if (frm.set_intro) {
+		frm.set_intro(msg);
+	} else if (frm.dashboard && frm.dashboard.set_headline) {
+		// Fallback: show in the form headline
+		frm.dashboard.clear_headline && frm.dashboard.clear_headline();
+		frm.dashboard.set_headline(msg);
+	} else {
+		// Last resort: console for debugging
+		console.warn('Visibility hint:', msg);
+	}
 }
 
 // ----------------------------------------------------------

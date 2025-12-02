@@ -55,7 +55,6 @@ frappe.ui.form.on("School", {
 
     if (!frm.doc.__islocal) {
       frm.doc.abbr && frm.set_df_property("abbr", "read_only", 1);
-      frm.set_df_property("parent_school", "read_only", 1);
     }
 
     frm.toggle_display("address_html", !frm.doc.__islocal);
