@@ -42,8 +42,6 @@ def get_briefing_widgets():
 
 	# 6. ATTENDANCE PULSE
 	# Admin: 30-day trend
-	# 6. ATTENDANCE PULSE
-	# Admin: 30-day trend
 	if "Academic Admin" in roles or "System Manager" in roles or "Academic Assistant" in roles:
 		widgets["attendance_trend"] = get_attendance_trend(user)
 	
@@ -111,19 +109,20 @@ def check_audience_match(comm_name, user, roles, employee):
 
 	if not audiences: return False
 
-	# 1. Determine User's "Scope of View" (Ancestors)
-	# Logic: If I am at School B, I can see comms for [School B, School A (Parent), Root]
+	# 1. Determine User's "Scope of View" relative to the audience row
+	# We want inheritance based on the audience row's school (not the parent doc's school).
+	# If I am at School B (child), I should see comms targeted to School A (ancestor).
 	user_school = None
 	valid_target_schools = []
 
 	if employee and employee.school:
 		user_school = employee.school
-		# Returns list including self and all parents up to root
+		# Include the user's school and all its ancestors (inherit upwards)
 		valid_target_schools = get_ancestor_schools(user_school)
 
 	for aud in audiences:
 		# --- HIERARCHY CHECK ---
-		# If the audience targets a specific school, it must be in my Ancestor list.
+		# If the audience targets a specific school, it must be in my ancestor scope.
 		if aud.school:
 			if not user_school: continue
 			if aud.school not in valid_target_schools: continue
@@ -407,4 +406,3 @@ def get_my_absent_students(group_names):
 	"""
 	
 	return frappe.db.sql(sql, as_dict=True)
-

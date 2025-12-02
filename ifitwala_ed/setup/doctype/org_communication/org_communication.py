@@ -10,67 +10,47 @@ from frappe.utils import get_datetime, now_datetime
 from frappe.utils.nestedset import get_descendants_of
 
 
-ADMIN_ROLES_FULL = {"System Manager", "Academic Admin", "Admin Assistant"}
-ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Admin Assistant"}
+# --------------------------------------------------------------------
+# Role constants & basic role helper
+# --------------------------------------------------------------------
+
+# Full admin: global control + delete rights
+ADMIN_ROLES_FULL = {"System Manager", "Academic Admin"}
+
+# Elevated audience rights: can target Whole Staff / Whole Community,
+# and can choose Issuing School within their nested scope.
+ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Assistant Admin"}
 
 
 def _user_has_any_role(user: str, roles: set[str]) -> bool:
+	"""Return True if given user has any of the roles in `roles`."""
 	if not user or user == "Guest":
 		return False
 	user_roles = set(frappe.get_roles(user))
 	return bool(user_roles & roles)
 
 
-def _get_user_default_school(user: str | None = None) -> str | None:
-	"""Best-effort helper to get a user's default school.
-
-	Adjust this if your Employee schema differs.
-
-	Try in order:
-	- Employee.default_school
-	- Employee.school
-	"""
-	if not user or user == "Guest":
-		return None
-
-	emp = frappe.db.get_value(
-		"Employee",
-		{"user_id": user},
-		["name", "default_school", "school"],
-		as_dict=True,
-	)
-	if not emp:
-		return None
-
-	return emp.get("default_school") or emp.get("school")
-
-
-def _get_allowed_schools_for_user(user: str | None = None) -> list[str]:
-	"""Return the list of schools this user is allowed to target/view by default.
-
-	For non-admins: default school + its descendants (nestedset).
-	Admins: all schools (returns [] so we don't constrain them in SQL).
-	"""
-	user = user or frappe.session.user
-
-	if _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES):
-		# No school restriction for these roles at the query-condition level
-		return []
-
-	default_school = _get_user_default_school(user)
-	if not default_school:
-		# No school configured: safest is to give them nothing by default
-		return []
-
-	descendants = get_descendants_of("School", default_school, ignore_permissions=True) or []
-	# get_descendants_of returns children only; include the default_school itself
-	return list({default_school, *descendants})
+# --------------------------------------------------------------------
+# Main Document controller
+# --------------------------------------------------------------------
 
 
 class OrgCommunication(Document):
 	def validate(self):
+		"""Main validation pipeline.
+
+		Order matters:
+		1. Enforce Issuing School based on user scope (node + descendants).
+		2. Derive organization from school.
+		3. Handle date logic.
+		4. Validate audience rows.
+		5. Enforce audience role restrictions.
+		6. Enforce status + publish window rules.
+		7. Enforce portal_surface rules.
+		8. Enforce Class Announcement pattern.
+		"""
+		self._validate_and_enforce_issuing_school_scope()
 		self._set_organization_from_school()
-		self._validate_school_scope_for_creator()
 		self._normalize_and_validate_dates()
 		self._validate_audiences()
 		self._enforce_role_restrictions_on_audiences()
@@ -78,8 +58,63 @@ class OrgCommunication(Document):
 		self._enforce_portal_surface_rules()
 		self._validate_class_announcement_pattern()
 
+	# ----------------------------------------------------------------
+	# Issuing School / Organization
+	# ----------------------------------------------------------------
+
+	def _validate_and_enforce_issuing_school_scope(self):
+		"""Enforce Issuing School rules using nestedset school hierarchy.
+
+		Scope of authority = default_school node + its descendants.
+
+		- Non-privileged users (no elevated roles):
+		  * Issuing School is *forced* to their default_school.
+		  * They cannot issue for another school.
+
+		- Privileged roles (System Manager, Academic Admin, Assistant Admin):
+		  * Can choose Issuing School, but it must be within their node + descendants.
+		"""
+		user = frappe.session.user
+		default_school, tree = _get_school_scope_tree(user)
+
+		if _user_has_any_role(user, ELEVATED_WIDE_AUDIENCE_ROLES):
+			# Privileged: they can choose any school in their nested scope
+			if not tree:
+				# No configured school – require an explicit Issuing School
+				if not self.school:
+					frappe.throw(
+						_("Issuing School is required for Org Communication."),
+						title=_("Missing Issuing School"),
+					)
+				return
+
+			if not self.school:
+				# Default to their own node if nothing set
+				self.school = default_school
+
+			if self.school not in tree:
+				frappe.throw(
+					_(
+						"You can only issue communications from your school ({default_school}) "
+						"or its child schools."
+					).format(default_school=default_school),
+					title=_("Issuing School Not Allowed"),
+				)
+		else:
+			# Non-privileged: Issuing School is always their default_school
+			if not default_school:
+				frappe.throw(
+					_("You do not have a default school configured. Please contact your admin."),
+					title=_("No Default School"),
+				)
+
+			# Force, ignoring any client-side value
+			self.school = default_school
+
 	def _set_organization_from_school(self):
-		"""If school is set, organization must match the school's organization.
+		"""Derive organization from Issuing School.
+
+		If school is set, organization must match the school's organization.
 		If blank, auto-fill. If mismatched, throw.
 		"""
 		if not self.school:
@@ -99,35 +134,9 @@ class OrgCommunication(Document):
 
 		self.organization = school_org
 
-	def _validate_school_scope_for_creator(self):
-		"""Non-admin users can only use their default school or one of its descendants."""
-		user = frappe.session.user
-
-		if _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES):
-			return
-
-		if not self.school:
-			# schema already makes school reqd, but guard anyway
-			frappe.throw(
-				_("School is required for Org Communication."),
-				title=_("Missing School"),
-			)
-
-		allowed_schools = _get_allowed_schools_for_user(user)
-		if not allowed_schools:
-			frappe.throw(
-				_("You do not have any configured school to create communications for."),
-				title=_("No School Scope"),
-			)
-
-		if self.school not in allowed_schools:
-			frappe.throw(
-				_(
-					"You can only create communications for your school ({school}) "
-					"or its child schools."
-				).format(school=_get_user_default_school(user)),
-				title=_("School Not Allowed"),
-			)
+	# ----------------------------------------------------------------
+	# Date / window logic
+	# ----------------------------------------------------------------
 
 	def _normalize_and_validate_dates(self):
 		"""Handle brief_start/end normalization and publish_from/to sanity checks."""
@@ -152,13 +161,18 @@ class OrgCommunication(Document):
 					title=_("Invalid Publish Window"),
 				)
 
+	# ----------------------------------------------------------------
+	# Audience validation (structure + school alignment)
+	# ----------------------------------------------------------------
+
 	def _validate_audiences(self):
-		"""Validate the audience rows structurally (field combinations).
+		"""Validate the audience rows structurally and by school scope.
 
 		- At least one row.
 		- Per target_group, enforce required fields.
-		- School alignment: audience.school must be within allowed scope
-		  of the parent school for non-admins, or at least consistent with nested set.
+		- For non-admins: audience.school must be within allowed scope.
+		- For everyone: audience.school must be consistent with the parent
+		  Issuing School nested tree.
 		"""
 		if not self.audiences:
 			frappe.throw(
@@ -167,14 +181,14 @@ class OrgCommunication(Document):
 			)
 
 		user = frappe.session.user
-		is_admin = _user_has_any_role(
+		is_privileged = _user_has_any_role(
 			user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES
 		)
 
-		# Precompute allowed schools for non-admins
+		# Non-privileged allowed schools (node + descendants)
 		allowed_schools = _get_allowed_schools_for_user(user)
 
-		# Precompute parent school descendants for structural consistency
+		# Parent school descendants for structural consistency
 		parent_descendants = []
 		if self.school:
 			parent_descendants = get_descendants_of(
@@ -195,12 +209,12 @@ class OrgCommunication(Document):
 					)
 				row.organization = row_org or self.organization
 			else:
-				# No school set on row; default to parent school/org if present
+				# No school set on row; default to parent Issuing School / org if present
 				row.school = self.school
 				row.organization = row.organization or self.organization
 
-			# For non-admins, row.school must be in allowed_schools
-			if not is_admin and allowed_schools:
+			# For non-privileged, row.school must be in allowed_schools
+			if not is_privileged and allowed_schools:
 				if row.school and row.school not in allowed_schools:
 					frappe.throw(
 						_(
@@ -210,7 +224,7 @@ class OrgCommunication(Document):
 						title=_("Audience School Not Allowed"),
 					)
 
-			# Structural consistency with parent school tree
+			# Structural consistency with parent Issuing School tree
 			if parent_descendants and row.school and row.school not in parent_descendants:
 				frappe.throw(
 					_(
@@ -269,8 +283,15 @@ class OrgCommunication(Document):
 					title=_("Invalid Audience"),
 				)
 
+	# ----------------------------------------------------------------
+	# Role-based restrictions on audience choices
+	# ----------------------------------------------------------------
+
 	def _enforce_role_restrictions_on_audiences(self):
-		"""Restrict which target_group values non-privileged users may use."""
+		"""Restrict which target_group values non-privileged users may use.
+
+		- Only elevated roles may target Whole Staff / Whole Community.
+		"""
 		user = frappe.session.user
 		is_wide_privileged = _user_has_any_role(user, ELEVATED_WIDE_AUDIENCE_ROLES)
 
@@ -288,6 +309,10 @@ class OrgCommunication(Document):
 					).format(group=target_group),
 					title=_("Audience Not Allowed"),
 				)
+
+	# ----------------------------------------------------------------
+	# Status / publish window rules
+	# ----------------------------------------------------------------
 
 	def _enforce_status_rules(self):
 		"""Enforce basic rules around status + publish_from/publish_to."""
@@ -324,6 +349,10 @@ class OrgCommunication(Document):
 					title=_("Publish Not Allowed"),
 				)
 
+	# ----------------------------------------------------------------
+	# Portal surface rules
+	# ----------------------------------------------------------------
+
 	def _enforce_portal_surface_rules(self):
 		"""Ensure portal_surface is compatible with brief dates."""
 		portal_surface = (self.portal_surface or "").strip()
@@ -340,6 +369,10 @@ class OrgCommunication(Document):
 
 		# No further constraints for Desk / Portal Feed here;
 		# the front-end will decide which communications to pull where.
+
+	# ----------------------------------------------------------------
+	# Class Announcement pattern
+	# ----------------------------------------------------------------
 
 	def _validate_class_announcement_pattern(self):
 		"""For Class Announcement type, enforce a sane audience pattern.
@@ -365,6 +398,10 @@ class OrgCommunication(Document):
 				title=_("Invalid Class Announcement Audience"),
 			)
 
+	# ----------------------------------------------------------------
+	# Delete behaviour
+	# ----------------------------------------------------------------
+
 	def on_trash(self):
 		"""Only high-privilege roles can delete communications.
 
@@ -378,6 +415,93 @@ class OrgCommunication(Document):
 				_("You are not allowed to delete communications. Please archive instead."),
 				frappe.PermissionError,
 			)
+
+
+# --------------------------------------------------------------------
+# School scope helpers (nestedset-based)
+# --------------------------------------------------------------------
+
+
+def _get_user_default_school(user: str | None = None) -> str | None:
+	"""Best-effort helper to get a user's default school.
+
+	Try in order:
+	- Employee.default_school
+	- Employee.school
+	"""
+	if not user or user == "Guest":
+		return None
+
+	emp = frappe.db.get_value(
+		"Employee",
+		{"user_id": user},
+		["name", "default_school", "school"],
+		as_dict=True,
+	)
+	if not emp:
+		return None
+
+	return emp.get("default_school") or emp.get("school")
+
+
+def _get_school_scope_tree(user: str | None = None) -> tuple[str | None, list[str]]:
+	"""Return (default_school, allowed_schools_tree) for a user.
+
+	default_school: node where the user "sits".
+	allowed_schools_tree: default_school + all descendants (nestedset).
+	"""
+	user = user or frappe.session.user
+	default_school = _get_user_default_school(user)
+	if not default_school:
+		return None, []
+
+	descendants = get_descendants_of("School", default_school, ignore_permissions=True) or []
+	allowed = list({default_school, *descendants})
+	return default_school, allowed
+
+
+def _get_allowed_schools_for_user(user: str | None = None) -> list[str]:
+	"""Used in permission_query_conditions / has_permission.
+
+	Admins: return [] to indicate *no SQL restriction*.
+	Non-admins: default_school + descendants.
+	"""
+	user = user or frappe.session.user
+
+	if _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES):
+		# No school restriction for these roles at the query-condition level
+		return []
+
+	default_school, allowed = _get_school_scope_tree(user)
+	if not default_school:
+		return []
+
+	return allowed
+
+
+# --------------------------------------------------------------------
+# Client context API (for Desk UX)
+# --------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def get_org_communication_context() -> dict:
+	"""Context for client-side UX:
+
+	- default_school: where the user "sits" in the nestedset
+	- allowed_schools: node + descendants (even for privileged roles)
+	- is_privileged: can choose Issuing School (Academic Admin, Assistant Admin, System Manager)
+	"""
+	user = frappe.session.user
+	default_school, tree = _get_school_scope_tree(user)
+
+	is_privileged = _user_has_any_role(user, ELEVATED_WIDE_AUDIENCE_ROLES)
+
+	return {
+		"default_school": default_school,
+		"allowed_schools": tree,
+		"is_privileged": is_privileged,
+	}
 
 
 # --------------------------------------------------------------------
