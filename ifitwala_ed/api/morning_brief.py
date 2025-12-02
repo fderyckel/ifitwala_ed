@@ -40,6 +40,21 @@ def get_briefing_widgets():
 	if "Academic Admin" in roles or "System Manager" in roles or "Grade Level Lead" in roles:
 		widgets["student_logs"] = get_recent_student_logs(user)
 
+	# 6. ATTENDANCE PULSE
+	# Admin: 30-day trend
+	if "Academic Admin" in roles or "System Manager" in roles:
+		widgets["attendance_trend"] = get_attendance_trend(user)
+	
+	# Instructor: My absent students today
+	if "Instructor" in roles:
+		if my_groups: # Re-use my_groups from Section 4
+			widgets["my_absent_students"] = get_my_absent_students(my_groups)
+		else:
+			# If Section 4 didn't run (e.g. only Instructor role but logic flow), fetch groups
+			my_groups = get_my_student_groups(user)
+			if my_groups:
+				widgets["my_absent_students"] = get_my_absent_students(my_groups)
+
 	return widgets
 
 # ==============================================================================
@@ -303,4 +318,74 @@ def get_my_student_birthdays(group_names):
 		ORDER BY DATE_FORMAT(s.date_of_birth, '%%%%m-%%%%d') ASC
 	"""
 	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+
+
+# ==============================================================================
+# SECTION 5: ATTENDANCE PULSE
+# ==============================================================================
+
+def get_attendance_trend(user):
+	"""
+	Returns daily absence count for the last 30 days for the user's school.
+	"""
+	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+	if not employee or not employee.school:
+		return []
+
+	# Get last 30 days
+	end_date = today()
+	start_date = add_days(end_date, -30)
+
+	# Count absences (where count_as_present = 0)
+	# We group by date.
+	sql = """
+		SELECT 
+			sa.attendance_date as date, 
+			COUNT(*) as count
+		FROM `tabStudent Attendance` sa
+		INNER JOIN `tabStudent Attendance Code` sac ON sa.attendance_code = sac.name
+		WHERE sa.school = %s
+		AND sa.attendance_date BETWEEN %s AND %s
+		AND sa.docstatus = 1
+		AND sac.count_as_present = 0
+		GROUP BY sa.attendance_date
+		ORDER BY sa.attendance_date ASC
+	"""
+	
+	results = frappe.db.sql(sql, (employee.school, start_date, end_date), as_dict=True)
+	
+	# Format for chart? Or return raw data?
+	# Let's return raw data, frontend can format.
+	# But we might want to fill in missing dates with 0 if needed. 
+	# For now, let's return what we have.
+	return results
+
+def get_my_absent_students(group_names):
+	"""
+	Returns list of students in my groups who are absent TODAY.
+	"""
+	if not group_names: return []
+	groups_formatted = "', '".join(group_names)
+	
+	# We want students in these groups who have an attendance record TODAY
+	# with a code that counts as absent.
+	
+	sql = f"""
+		SELECT 
+			sa.student_name, 
+			sa.attendance_code, 
+			sa.student_group, 
+			sa.remark,
+			s.student_photo,
+			sac.color as status_color
+		FROM `tabStudent Attendance` sa
+		INNER JOIN `tabStudent` s ON sa.student = s.name
+		INNER JOIN `tabStudent Attendance Code` sac ON sa.attendance_code = sac.name
+		WHERE sa.attendance_date = CURDATE()
+		AND sa.student_group IN ('{groups_formatted}')
+		AND sa.docstatus = 1
+		AND sac.count_as_present = 0
+	"""
+	
+	return frappe.db.sql(sql, as_dict=True)
 
