@@ -1,5 +1,5 @@
 <template>
-	<Dialog v-model="show" :options="{ size: 'xl' }">
+	<Dialog v-model="show" :options="{ size: 'xl', title: null }">
 		<template #body-content>
 			<div class="flex flex-col h-[80vh]">
 				<!-- Header -->

@@ -1,11 +1,10 @@
 <template>
-	<Dialog v-model="show" :options="{ size: 'xl' }">
+	<Dialog v-model="show" :options="{ size: 'xl', title: null }">
 		<template #body-content>
-			<div class="flex flex-col h-[600px]">
+			<div class="flex flex-col h-[500px]">
 				<!-- Header -->
 				<div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
 					<div>
-						<h3 class="text-xl font-bold text-ink">{{ title }}</h3>
 						<p v-if="subtitle" class="text-sm text-slate-500 mt-1">{{ subtitle }}</p>
 					</div>
 					<div class="flex items-center gap-4">
@@ -53,7 +52,6 @@ import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
 
 const props = defineProps<{
 	modelValue: boolean
-	title: string
 	subtitle?: string
 	method: string
 	color?: string

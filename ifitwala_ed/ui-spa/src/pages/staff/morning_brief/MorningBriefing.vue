@@ -275,7 +275,7 @@
 			</template>
 		</GenericListDialog>
 
-		<HistoryDialog v-model="showClinicHistory" title="Clinic Volume History" subtitle="Student patient visits over time"
+		<HistoryDialog v-model="showClinicHistory" subtitle="Student patient visits over time"
 			method="ifitwala_ed.api.morning_brief.get_clinic_visits_trend" />
 
 	</div>
