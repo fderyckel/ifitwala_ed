@@ -15,7 +15,7 @@
         />
       </div>
       <ul class="md:w-1/3 space-y-1 text-sm text-slate-600">
-        <li v-for="item in items" :key="item.label" class="flex items-center justify-between">
+        <li v-for="item in coloredItems" :key="item.label" class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span
               class="h-2.5 w-2.5 rounded-full"
@@ -47,7 +47,27 @@ const emit = defineEmits<{
   (e: 'select', sliceKey: string): void
 }>()
 
+const tokenColorVars = ['--jacaranda', '--leaf', '--flame', '--moss', '--clay', '--slate', '--canopy', '--ink']
+const fallbackPalette = ['#7e6bd6', '#1f7a45', '#f25b32', '#7faa63', '#b6522b', '#475569', '#0b3d2b', '#071019']
+
+function resolveCssColor(variable: string, fallback: string) {
+  if (typeof window === 'undefined') return fallback
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variable)
+  return value?.trim() || fallback
+}
+
+const palette = computed(() => tokenColorVars.map((token, idx) => resolveCssColor(token, fallbackPalette[idx])))
+
+const coloredItems = computed<Item[]>(() => {
+  const paletteColors = palette.value
+  return props.items.map((item, index) => {
+    const paletteColor = paletteColors[index % paletteColors.length] || fallbackPalette[index % fallbackPalette.length]
+    return { ...item, color: item.color || paletteColor }
+  })
+})
+
 const option = computed<ChartOption>(() => ({
+  color: coloredItems.value.map((i) => i.color),
   tooltip: {
     trigger: 'item',
     formatter: (p: any) => `${p.name}: ${p.value}${p.data?.pct != null ? ` (${p.data.pct}%)` : ''}`,
@@ -61,7 +81,7 @@ const option = computed<ChartOption>(() => ({
       itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 1 },
       label: { show: false },
       emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
-      data: props.items.map((i) => ({
+      data: coloredItems.value.map((i) => ({
         name: i.label,
         value: i.count,
         pct: i.pct,
