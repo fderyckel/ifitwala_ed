@@ -42,7 +42,9 @@ def get_briefing_widgets():
 
 	# 6. ATTENDANCE PULSE
 	# Admin: 30-day trend
-	if "Academic Admin" in roles or "System Manager" in roles:
+	# 6. ATTENDANCE PULSE
+	# Admin: 30-day trend
+	if "Academic Admin" in roles or "System Manager" in roles or "Academic Assistant" in roles:
 		widgets["attendance_trend"] = get_attendance_trend(user)
 	
 	# Instructor: My absent students today
@@ -270,8 +272,8 @@ def get_staff_birthdays():
 	Active employees with birthdays today or next 3 days.
 	Handles year wrap-around (e.g. Dec 31 -> Jan 2).
 	"""
-	start_md = formatdate(today(), "MM-dd")
-	end_md = formatdate(add_days(today(), 3), "MM-dd")
+	start_md = formatdate(add_days(today(), -4), "MM-dd")
+	end_md = formatdate(add_days(today(), 4), "MM-dd")
 
 	condition = "DATE_FORMAT(employee_date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
 	if start_md > end_md:
@@ -300,8 +302,8 @@ def get_my_student_birthdays(group_names):
 	if not group_names: return []
 	groups_formatted = "', '".join(group_names)
 
-	start_md = formatdate(today(), "MM-dd")
-	end_md = formatdate(add_days(today(), 3), "MM-dd")
+	start_md = formatdate(add_days(today(), -4), "MM-dd")
+	end_md = formatdate(add_days(today(), 4), "MM-dd")
 
 	condition = "DATE_FORMAT(s.date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
 	if start_md > end_md:
