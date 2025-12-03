@@ -42,6 +42,21 @@ def _is_staff(user_roles: set[str]) -> bool:
 	return bool(user_roles & ALLOWED_STAFF_ROLES)
 
 
+def _get_program_subtree(program: str | None) -> list[str] | None:
+	if not program:
+		return None
+
+	lft, rgt = frappe.db.get_value("Program", program, ["lft", "rgt"])
+	if lft is None or rgt is None:
+		return [program]
+
+	return frappe.get_all(
+		"Program",
+		filters={"lft": (">=", lft), "rgt": ("<=", rgt)},
+		pluck="name",
+	)
+
+
 def _students_for_guardian(user: str) -> List[str]:
 	guardian = frappe.db.get_value("Guardian", {"user": user}, "name")
 	if not guardian:
@@ -78,37 +93,98 @@ def _normalize_params(obj):
 			return {}
 	return obj or {}
 
-
 @frappe.whitelist()
 def get_filter_meta():
 	"""
-	Schools: default + descendants for the current user.
-	Programs: filtered by those schools when Program has a `school` column, otherwise all programs.
+	Schools: default + descendants for the current user (via get_authorized_schools).
+	Programs: distinct programs that appear in ACTIVE Program Enrollments
+	          under those schools (archived = 0).
 	"""
 	user = _current_user()
-	auth_schools = get_authorized_schools(user)
+	roles = _user_roles(user)
+	student_scope = _get_student_scope(user)
 
-	schools = []
-	default_school = None
-	if auth_schools:
+	# Students / Guardians: scope is their Program Enrollments only
+	if student_scope:
+		pe_rows = frappe.get_all(
+			"Program Enrollment",
+			filters={
+				"student": ["in", student_scope],
+				"archived": 0,
+			},
+			fields=["distinct school", "program"],
+		)
+		school_names = sorted({r.school for r in pe_rows if r.school})
+		program_names = sorted({r.program for r in pe_rows if r.program})
+
 		schools = frappe.get_all(
 			"School",
-			filters={"name": ["in", auth_schools]},
+			filters={"name": ["in", school_names]} if school_names else {},
 			fields=["name", "school_name as label"],
 			order_by="lft",
 		)
-		default_school = auth_schools[0]
 
-	# Programs filtered by school if the column exists; fallback to all
-	program_filters = {}
-	program_fields = ["name", "program_name as label"]
-	program_has_school = frappe.db.has_column("Program", "school")
-	if program_has_school:
-		program_fields.append("school")
-		if auth_schools:
-			program_filters["school"] = ["in", auth_schools]
+		programs = []
+		if program_names:
+			for r in frappe.get_all(
+				"Program",
+				filters={"name": ["in", program_names]},
+				fields=["name", "program_name as label"],
+				order_by="program_name",
+			):
+				programs.append(r)
 
-	programs = frappe.get_all("Program", filters=program_filters, fields=program_fields, order_by="program_name")
+		default_school = school_names[0] if school_names else None
+
+		return {
+			"default_school": default_school,
+			"schools": schools,
+			"programs": programs,
+		}
+
+	# Staff path
+	auth_schools = get_authorized_schools(user)
+	if not auth_schools:
+		return {"default_school": None, "schools": [], "programs": []}
+
+	# Active Program Enrollments in authorized schools
+	pe_rows = frappe.db.sql(
+		"""
+		SELECT DISTINCT pe.school, pe.program, p.program_name
+		FROM `tabProgram Enrollment` pe
+		LEFT JOIN `tabProgram` p ON p.name = pe.program
+		WHERE pe.archived = 0
+		  AND pe.school IN %(schools)s
+		""",
+		{"schools": tuple(auth_schools)},
+		as_dict=True,
+	)
+
+	# School list (UI options)
+	schools = frappe.get_all(
+		"School",
+		filters={"name": ["in", auth_schools]},
+		fields=["name", "school_name as label"],
+		order_by="lft",
+	)
+
+	# Unique program options
+	seen_programs = set()
+	programs = []
+	for row in pe_rows:
+		if not row.program or row.program in seen_programs:
+			continue
+		seen_programs.add(row.program)
+		programs.append(
+			{
+				"name": row.program,
+				"label": row.program_name or row.program,
+				# optional, if you want school-aware program filter later
+				"school": row.school,
+			}
+		)
+
+	default_school = auth_schools[0]
 
 	return {
 		"default_school": default_school,
@@ -121,50 +197,99 @@ def get_filter_meta():
 def search_students(search_text: str = "", school: str | None = None, program: str | None = None):
 	"""
 	Typeahead for the Student Overview filter.
-	Respects:
-	- Staff: restricted to authorized schools (+descendants) and optional program filter.
-	- Student: only self.
-	- Guardian: only their linked students.
-	- Blank search: returns up to 20 students in scope (no name filter).
+
+	Staff:
+	  - universe is ACTIVE Program Enrollments (archived = 0)
+	  - filtered by authorized school scope (+descendants) and optional program subtree.
+	Student / Guardian:
+	  - universe is their own active Program Enrollments.
+
+	Blank search: up to 20 students in scope (no name filter).
 	"""
 	user = _current_user()
 	roles = _user_roles(user)
 	visible_students = _get_student_scope(user)
+
+	# Student / Guardian: clamp to their own students first, then Program Enrollment
+	if visible_students:
+		params: dict = {"students": tuple(visible_students)}
+		conditions = ["pe.archived = 0", "pe.student IN %(students)s"]
+
+		if school:
+			school_scope = get_descendant_schools(school)
+			if school_scope:
+				conditions.append("pe.school IN %(schools)s")
+				params["schools"] = tuple(school_scope)
+
+		if program:
+			program_scope = _get_program_subtree(program) or [program]
+			conditions.append("pe.program IN %(programs)s")
+			params["programs"] = tuple(program_scope)
+
+		search_text = (search_text or "").strip()
+		if search_text:
+			conditions.append(
+				"(s.name LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)"
+			)
+			params["txt"] = f"%{search_text}%"
+
+		sql = f"""
+			SELECT DISTINCT s.name AS student, s.student_full_name
+			FROM `tabProgram Enrollment` pe
+			JOIN `tabStudent` s ON s.name = pe.student
+			WHERE {' AND '.join(conditions)}
+			ORDER BY s.student_full_name
+			LIMIT 20
+		"""
+		rows = frappe.db.sql(sql, params, as_dict=True)
+		return [{"student": r.student, "student_full_name": r.student_full_name} for r in rows]
+
+	# Staff path
 	auth_schools = get_authorized_schools(user) if _is_staff(roles) else []
-	desc_schools = []
+	if not auth_schools:
+		return []
+
+	# 1) School scope = selected school's descendants ∩ authorized
 	if school:
-		desc_schools = get_descendant_schools(school)
-	elif auth_schools:
-		desc_schools = auth_schools
+		school_scope = get_descendant_schools(school)
+		# Intersect with auth_schools if needed
+		if auth_schools:
+			school_scope = [s for s in school_scope if s in auth_schools]
+	else:
+		school_scope = auth_schools
+
+	# 2) Program scope = selected program subtree (if any)
+	program_scope = None
+	if program:
+		program_scope = _get_program_subtree(program) or [program]
 
 	params = {}
-	conditions = ["s.enabled = 1"]
+	conditions = ["pe.archived = 0"]
 
-	if visible_students:
-		conditions.append("s.name IN %(students)s")
-		params["students"] = tuple(visible_students)
-	elif desc_schools:
-		conditions.append("s.anchor_school IN %(schools)s")
-		params["schools"] = tuple(desc_schools)
+	if school_scope:
+		conditions.append("pe.school IN %(schools)s")
+		params["schools"] = tuple(school_scope)
 
-	if program:
-		conditions.append(
-			"EXISTS (SELECT 1 FROM `tabProgram Enrollment` pe WHERE pe.student = s.name AND pe.program = %(program)s)"
-		)
-		params["program"] = program
+	if program_scope:
+		conditions.append("pe.program IN %(programs)s")
+		params["programs"] = tuple(program_scope)
 
 	search_text = (search_text or "").strip()
 	if search_text:
-		conditions.append("(s.name LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)")
+		conditions.append(
+			"(s.name LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)"
+		)
 		params["txt"] = f"%{search_text}%"
 
 	sql = f"""
-		SELECT s.name as student, s.student_full_name
-		FROM `tabStudent` s
+		SELECT DISTINCT s.name AS student, s.student_full_name
+		FROM `tabProgram Enrollment` pe
+		JOIN `tabStudent` s ON s.name = pe.student
 		WHERE {' AND '.join(conditions)}
 		ORDER BY s.student_full_name
 		LIMIT 20
 	"""
+
 	rows = frappe.db.sql(sql, params, as_dict=True)
 	return [{"student": r.student, "student_full_name": r.student_full_name} for r in rows]
 

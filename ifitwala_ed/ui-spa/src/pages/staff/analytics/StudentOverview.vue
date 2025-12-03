@@ -233,18 +233,14 @@ const filterMetaResource = createResource({
 
 const filterMeta = computed(() => (filterMetaResource.data as any) || {})
 const schools = computed(() => filterMeta.value.schools || [])
-const allPrograms = computed(() => filterMeta.value.programs || [])
+const programs = computed(() => filterMeta.value.programs || [])
 
-const programs = computed(() => {
-	if (!filters.value.school) return allPrograms.value || []
-	return (allPrograms.value || []).filter((p: any) => !p.school || p.school === filters.value.school || p.school === (filterMeta.value.default_school as string))
-})
 
 watch(
 	filterMeta,
-	(data) => {
-		if (data?.default_school && !filters.value.school) {
-			filters.value.school = data.default_school
+	(meta) => {
+		if (meta?.default_school && !filters.value.school) {
+			filters.value.school = meta.default_school
 		}
 	},
 	{ immediate: true }
@@ -252,14 +248,15 @@ watch(
 
 watch(
 	() => filters.value.school,
-	() => {
-		const hasProgram = programs.value.some((p: any) => p.name === filters.value.program)
-		if (!hasProgram) {
+	(newSchool, oldSchool) => {
+		if (newSchool !== oldSchool) {
+			// when school changes, program may no longer be valid
 			filters.value.program = null
+			clearStudent()
 		}
-		clearStudent()
 	}
 )
+
 
 const studentSearch = ref('')
 const studentSuggestions = ref<{ id: string; name: string }[]>([])
@@ -318,14 +315,9 @@ const readyForSnapshot = computed(() => Boolean(filters.value.school && filters.
 const snapshotResource = createResource({
 	url: 'ifitwala_ed.api.student_overview_dashboard.get_student_center_snapshot',
 	method: 'POST',
-	params: () => ({
-		student: filters.value.student,
-		school: filters.value.school,
-		program: filters.value.program,
-		view_mode: viewMode.value,
-	}),
 	auto: false,
 })
+
 
 const emptySnapshot: Snapshot = {
 	meta: {
@@ -433,8 +425,16 @@ function debounceSnapshot() {
 
 async function loadSnapshot() {
 	if (!readyForSnapshot.value) return
-	await snapshotResource.fetch()
+	if (snapshotResource.loading) return // small guard to avoid spam
+
+	await snapshotResource.submit({
+		student: filters.value.student,
+		school: filters.value.school,
+		program: filters.value.program,
+		view_mode: viewMode.value,
+	})
 }
+
 
 watch(
 	[filters, viewMode],
