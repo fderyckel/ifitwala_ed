@@ -956,6 +956,12 @@ class StudentGroup(Document):
 			if not self._course_in_offering_for_ay():
 				frappe.throw(_("Selected Course is not offered for this Program Offering in the chosen Academic Year."))
 
+	@property
+	def is_whole_day_group(self) -> bool:
+		"""Return True if this group is configured as a whole-day attendance group."""
+		scope = (getattr(self, "attendance_scope", None) or "").strip() or "Per Block"
+		return scope == "Whole Day"
+
 
 @frappe.whitelist()
 def get_students(program_offering: str = None,
