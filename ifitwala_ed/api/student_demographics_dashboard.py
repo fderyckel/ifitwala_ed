@@ -623,12 +623,12 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	"""
 	_ensure_demographics_access()
 	if not slice_key:
-		return []
+		return [{"id": "debug", "name": "Debug: Missing slice_key", "subtitle": "Please provide a slice_key"}]
 
 	filters = _get_filters(filters)
 	students = _get_active_students(filters)
 	if not students:
-		return []
+		return [{"id": "debug", "name": "Debug: No active students found", "subtitle": f"Filters: {filters}"}]
 
 	student_by_name = {s["name"]: s for s in students}
 	guardian_links = _get_guardian_links(list(student_by_name.keys()))
