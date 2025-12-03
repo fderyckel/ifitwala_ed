@@ -249,7 +249,12 @@ async function loadSlice(reset = false) {
     sliceRows.value = []
   }
   await sliceResource.fetch()
-  const rows = (sliceResource.data as any) || []
+  let rows = (sliceResource.data as any) || []
+  // Handle case where frappe-ui doesn't unwrap the message list automatically
+  if (rows.message && Array.isArray(rows.message)) {
+    rows = rows.message
+  }
+  
   if (Array.isArray(rows) && rows.length) {
     sliceRows.value = reset ? rows : [...sliceRows.value, ...rows]
     sliceStart.value += rows.length
