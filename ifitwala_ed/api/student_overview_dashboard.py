@@ -125,6 +125,7 @@ def search_students(search_text: str = "", school: str | None = None, program: s
 	- Staff: restricted to authorized schools (+descendants) and optional program filter.
 	- Student: only self.
 	- Guardian: only their linked students.
+	- Blank search: returns up to 20 students in scope (no name filter).
 	"""
 	user = _current_user()
 	roles = _user_roles(user)
@@ -136,7 +137,7 @@ def search_students(search_text: str = "", school: str | None = None, program: s
 	elif auth_schools:
 		desc_schools = auth_schools
 
-	params = {"txt": f"%{search_text.strip()}%"}
+	params = {}
 	conditions = ["s.enabled = 1"]
 
 	if visible_students:
@@ -152,11 +153,15 @@ def search_students(search_text: str = "", school: str | None = None, program: s
 		)
 		params["program"] = program
 
+	search_text = (search_text or "").strip()
+	if search_text:
+		conditions.append("(s.name LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)")
+		params["txt"] = f"%{search_text}%"
+
 	sql = f"""
 		SELECT s.name as student, s.student_full_name
 		FROM `tabStudent` s
 		WHERE {' AND '.join(conditions)}
-		  AND (s.name LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)
 		ORDER BY s.student_full_name
 		LIMIT 20
 	"""
