@@ -251,17 +251,23 @@ async function loadSlice(reset = false) {
 	console.log('Fetching slice:', activeSliceKey.value, 'Start:', sliceStart.value)
 	await sliceResource.fetch()
 	let rows = (sliceResource.data as any) || []
-	console.log('Raw slice response:', rows)
+	console.log('Raw slice response type:', typeof rows, 'Is Array:', Array.isArray(rows))
+	console.log('Raw slice response content:', JSON.stringify(rows))
 
 	// Handle case where frappe-ui doesn't unwrap the message list automatically
 	if (rows.message && Array.isArray(rows.message)) {
+		console.log('Unwrapping message object...')
 		rows = rows.message
 	}
 
 	if (Array.isArray(rows) && rows.length) {
+		console.log('Updating sliceRows with', rows.length, 'rows')
 		sliceRows.value = reset ? rows : [...sliceRows.value, ...rows]
 		sliceStart.value += rows.length
+	} else {
+		console.log('No rows found or rows is empty')
 	}
+	console.log('Final sliceRows length:', sliceRows.value.length)
 }
 
 function openSliceDrawer(sliceKey: string) {
@@ -330,8 +336,8 @@ function setPreset(preset: ViewPreset) {
 				</label>
 				<div class="flex items-center gap-2">
 					<button v-for="preset in viewPresets" :key="preset.id" class="rounded-md border px-2 py-1 text-xs" :class="filters.preset === preset.id
-							? 'border-sky-500 bg-sky-50 text-sky-700'
-							: 'border-slate-200 text-slate-600 hover:bg-slate-50'
+						? 'border-sky-500 bg-sky-50 text-sky-700'
+						: 'border-slate-200 text-slate-600 hover:bg-slate-50'
 						" @click="setPreset(preset.id)">
 						{{ preset.label }}
 					</button>
