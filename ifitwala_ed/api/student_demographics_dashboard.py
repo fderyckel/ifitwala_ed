@@ -671,12 +671,7 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	if results:
 		return results[start : start + page_length]
 
-	# Debug fallback if no results found
-	return [{
-		"id": "debug",
-		"name": "Debug: No results found",
-		"subtitle": f"Key: {slice_key} | Filters: {filters} | Students: {len(students)} | Hits: {len(hit_ids)}"
-	}]
+	if len(parts) >= 2 and parts[0] == "student":
 		domain = parts[1]
 		if domain == "nationality":
 			target = parts[2] if len(parts) > 2 else ""
@@ -775,4 +770,12 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 				if row.get("is_financial_guardian") and ((target in ("Mother", "Father") and row.get("relation") == target) or (target == "Other" and row.get("relation") not in ("Mother", "Father")))
 			]
 
-	return results[start : start + page_length]
+	if results:
+		return results[start : start + page_length]
+
+	# Debug fallback if no results found
+	return [{
+		"id": "debug",
+		"name": "Debug: No results found",
+		"subtitle": f"Key: {slice_key} | Filters: {filters} | Students: {len(students)} | Hits: {len(hit_ids)}"
+	}]
