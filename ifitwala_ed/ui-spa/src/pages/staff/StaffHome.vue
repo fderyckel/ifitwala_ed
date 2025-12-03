@@ -347,9 +347,9 @@ const analyticsCategories = [
 	{
     title: 'Enrollment & Census',
     description: 'Student body profile, admissions, and retention.',
-    icon: 'id-card',
+    icon: 'trending-up',
     links: [
-      { label: 'Demographics Overview', to: { name: 'staff-student-demographic-analytics' } },
+      { label: 'Demographics Overview', to: { name: 'student-demographic-analytics' } },
       { label: 'Enrollment Trends', to: '/analytics/enrollment/enrollment-trends' },
       { label: 'Admissions Funnel', to: '/analytics/enrollment/admissions-funnel' },
       { label: 'Student Churn/Withdrawal', to: '/analytics/enrollment/churn-rates' },
