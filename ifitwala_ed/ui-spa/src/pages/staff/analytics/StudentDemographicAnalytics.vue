@@ -228,12 +228,6 @@ const slicePageLength = 50
 const sliceResource = createResource({
 	url: 'ifitwala_ed.api.student_demographics_dashboard.get_slice_entities',
 	method: 'POST',
-	params: () => ({
-		slice_key: activeSliceKey.value,
-		filters: filters.value,
-		start: sliceStart.value,
-		page_length: slicePageLength,
-	}),
 	auto: false,
 })
 
@@ -242,33 +236,47 @@ const sliceMeta = computed<SliceMeta | null>(() => {
 	return dashboard.value.slices?.[activeSliceKey.value] || null
 })
 
+
 async function loadSlice(reset = false) {
 	if (!activeSliceKey.value) return
+
 	if (reset) {
 		sliceStart.value = 0
 		sliceRows.value = []
 	}
-	console.log('Fetching slice:', activeSliceKey.value, 'Start:', sliceStart.value)
-	await sliceResource.fetch()
-	let rows = (sliceResource.data as any) || []
-	console.log('Raw slice response type:', typeof rows, 'Is Array:', Array.isArray(rows))
-	console.log('Raw slice response content:', JSON.stringify(rows))
 
-	// Handle case where frappe-ui doesn't unwrap the message list automatically
-	if (rows.message && Array.isArray(rows.message)) {
-		console.log('Unwrapping message object...')
+	const payload = {
+		slice_key: activeSliceKey.value,
+		filters: filters.value,
+		start: sliceStart.value,
+		page_length: slicePageLength,
+	}
+
+	console.log('[SDD] Fetching slice payload:', payload)
+
+	await sliceResource.submit(payload)
+
+	let rows: any = sliceResource.data as any
+	console.log('[SDD] Raw slice response type:', typeof rows, 'Is Array:', Array.isArray(rows))
+	console.log('[SDD] Raw slice response content:', JSON.stringify(rows))
+
+	// In case frappe wrapped in { message: [...] }
+	if (rows && rows.message && Array.isArray(rows.message)) {
+		console.log('[SDD] Unwrapping message object...')
 		rows = rows.message
 	}
 
 	if (Array.isArray(rows) && rows.length) {
-		console.log('Updating sliceRows with', rows.length, 'rows')
+		console.log('[SDD] Updating sliceRows with', rows.length, 'rows')
 		sliceRows.value = reset ? rows : [...sliceRows.value, ...rows]
 		sliceStart.value += rows.length
 	} else {
-		console.log('No rows found or rows is empty')
+		console.log('[SDD] No rows found or rows is empty')
 	}
-	console.log('Final sliceRows length:', sliceRows.value.length)
+
+	console.log('[SDD] Final sliceRows length:', sliceRows.value.length)
 }
+
 
 function openSliceDrawer(sliceKey: string) {
 	console.log('Opening drawer for slice:', sliceKey)
