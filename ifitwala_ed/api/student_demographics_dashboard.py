@@ -638,6 +638,7 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 		return []
 
 	student_by_name = {s["name"]: s for s in students}
+	student_cohorts = {s.get("cohort") for s in students if s.get("cohort")}
 	guardian_links = _get_guardian_links(list(student_by_name.keys()))
 
 	def norm(val: str | None) -> str:
@@ -660,6 +661,20 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	_, _, sibling_flags = _build_family_groups(
 		guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students}
 	)
+	# Cohort label/name map to handle label-based slice keys
+	cohort_label_map = {}
+	if student_cohorts:
+		cohort_label_map = {
+			row.name: (row.cohort_name or row.name)
+			for row in frappe.get_all(
+				"Student Cohort",
+				fields=["name", "cohort_name"],
+				filters={"name": ("in", list(student_cohorts))},
+			)
+		}
+	# reverse lookup: label to name
+	cohort_label_to_name = {v: k for k, v in cohort_label_map.items() if v}
+
 	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
 	hit_ids = slice_hits.get(slice_key, []) or slice_hits.get(slice_key.lower(), [])
 
@@ -676,8 +691,8 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 		else:
 			results = [student_row(sid) for sid in hit_ids if sid in student_by_name]
 
-		if results:
-			return results[start : start + page_length]
+	if results:
+		return results[start : start + page_length]
 
 	if len(parts) >= 2 and parts[0] == "student":
 		domain = parts[1]
@@ -685,6 +700,9 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 			target = parts[2] if len(parts) > 2 else ""
 			target_n = norm(target)
 			cohort = parts[4] if len(parts) > 4 and parts[3] == "cohort" else None
+			# handle cohort label fallback
+			if cohort and cohort not in student_cohorts and cohort in cohort_label_to_name:
+				cohort = cohort_label_to_name[cohort]
 			results = [
 				student_row(s["name"])
 				for s in students
@@ -697,6 +715,8 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 			target = parts[2] if len(parts) > 2 else ""
 			target_n = norm(target)
 			cohort = parts[4] if len(parts) > 4 else None
+			if cohort and cohort not in student_cohorts and cohort in cohort_label_to_name:
+				cohort = cohort_label_to_name[cohort]
 			results = [
 				student_row(s["name"])
 				for s in students
@@ -743,6 +763,8 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 		elif domain == "siblings":
 			target = parts[2] if len(parts) > 2 else ""
 			cohort = parts[4] if len(parts) > 4 else None
+			if cohort and cohort not in student_cohorts and cohort in cohort_label_to_name:
+				cohort = cohort_label_to_name[cohort]
 			_, _, sibling_flags = _build_family_groups(guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students})
 			for s in students:
 				if cohort and s.get("cohort") != cohort:
