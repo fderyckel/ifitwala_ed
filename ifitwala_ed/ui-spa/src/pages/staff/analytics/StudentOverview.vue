@@ -226,7 +226,7 @@ const filters = ref<{ school: string | null; program: string | null; student: st
 const viewMode = ref<ViewMode>('staff')
 
 const filterMetaResource = createResource({
-	url: 'ifitwala_ed.api.student_center.get_filter_meta',
+	url: 'ifitwala_ed.api.student_overview_dashboard.get_filter_meta',
 	method: 'GET',
 	auto: true,
 })
@@ -283,7 +283,7 @@ async function fetchStudents() {
 	studentLoading.value = true
 	try {
 		const res = await (window as any).frappe.call({
-			method: 'ifitwala_ed.api.student_center.search_students',
+			method: 'ifitwala_ed.api.student_overview_dashboard.search_students',
 			args: {
 				search_text: query,
 				school: filters.value.school,
@@ -317,7 +317,7 @@ function clearStudent() {
 const readyForSnapshot = computed(() => Boolean(filters.value.school && filters.value.program && filters.value.student))
 
 const snapshotResource = createResource({
-	url: 'ifitwala_ed.api.student_center.get_student_center_snapshot',
+	url: 'ifitwala_ed.api.student_overview_dashboard.get_student_center_snapshot',
 	method: 'POST',
 	params: () => ({
 		student: filters.value.student,
