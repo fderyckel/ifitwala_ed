@@ -622,9 +622,16 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	Basic drill-down implementation that returns student or guardian rows for a given slice key.
 	"""
 	_ensure_demographics_access()
+
+	# Defensive: accept alternate param names from callers
+	if not slice_key:
+		fd = frappe.form_dict
+		slice_key = fd.get("slice_key") or fd.get("slice") or fd.get("key")
+
 	if not slice_key:
 		return []
 
+	slice_key = (slice_key or "").strip()
 	filters = _get_filters(filters)
 	students = _get_active_students(filters)
 	if not students:
@@ -653,6 +660,24 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	_, _, sibling_flags = _build_family_groups(
 		guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students}
 	)
+	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
+	hit_ids = slice_hits.get(slice_key, []) or slice_hits.get(slice_key.lower(), [])
+
+	if hit_ids:
+		if slice_key.startswith("guardian:"):
+			results = [
+				{
+					"id": gid,
+					"name": gid,
+					"subtitle": None,
+				}
+				for gid in hit_ids
+			]
+		else:
+			results = [student_row(sid) for sid in hit_ids if sid in student_by_name]
+
+		if results:
+			return results[start : start + page_length]
 
 	if len(parts) >= 2 and parts[0] == "student":
 		domain = parts[1]
@@ -757,4 +782,15 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 		return results[start : start + page_length]
 
 	# Debug fallback if no results found
+	frappe.logger().info(
+		{
+			"event": "demographics_slice_no_results",
+			"slice_key": slice_key,
+			"filters": filters,
+			"students": len(students),
+			"hits_for_key": slice_hits.get(slice_key),
+			"hits_for_lower": slice_hits.get(slice_key.lower()),
+			"available_keys_sample": list(slice_hits.keys())[:50],
+		}
+	)
 	return results[start : start + page_length]
