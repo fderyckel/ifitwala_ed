@@ -489,7 +489,6 @@
 		<!-- CONTENT DIALOG -->
 		<ContentDialog
 			v-model="isContentDialogOpen"
-			:title="dialogContent.title"
 			:subtitle="dialogContent.subtitle"
 			:content="dialogContent.content"
 			:image="dialogContent.image"
@@ -616,7 +615,6 @@ import AbsentStudentList from './components/AbsentStudentList.vue'
 // State for Dialog
 const isContentDialogOpen = ref(false)
 const dialogContent = ref({
-	title: '',
 	subtitle: '',
 	content: '',
 	image: '',
@@ -772,18 +770,3 @@ function formatBirthday(dateStr) {
 	return `${day}${suffix(day)} ${month}`
 }
 </script>
-
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-	width: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-	background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-	background-color: #cbd5e1;
-	border-radius: 20px;
-}
-</style>

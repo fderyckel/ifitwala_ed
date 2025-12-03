@@ -1,11 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/components/ContentDialog.vue -->
 <template>
 	<Dialog
+		class="content-dialog"
 		v-model="isOpen"
 		:options="dialogOptions"
 	>
 		<template #body-content>
-			<div class="flex flex-col gap-5 text-ink">
+			<div class="paper-card flex flex-col gap-5 bg-white p-5 text-ink">
 				<div class="flex items-start justify-between gap-4 border-b border-border/70 pb-3">
 					<div class="flex items-start gap-3">
 						<div
@@ -74,6 +75,10 @@
 import { computed } from 'vue'
 import { Dialog, Button, FeatherIcon } from 'frappe-ui'
 
+defineOptions({
+	inheritAttrs: false
+})
+
 const props = defineProps({
 	modelValue: {
 		type: Boolean,
@@ -125,14 +130,3 @@ function escapeRegExp(string) {
 	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 </script>
-
-<style scoped>
-:deep(.fui-dialog-header) {
-	display: none;
-}
-
-:deep(.fui-dialog-title),
-:deep(.fui-dialog-close) {
-	display: none;
-}
-</style>

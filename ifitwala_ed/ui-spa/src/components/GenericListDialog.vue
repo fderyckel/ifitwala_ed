@@ -60,24 +60,3 @@ const show = computed({
 	set: (val) => emit('update:modelValue', val)
 })
 </script>
-
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-	width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-	background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-	background-color: #cbd5e1;
-	border-radius: 20px;
-	border: 2px solid transparent;
-	background-clip: content-box;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-	background-color: #94a3b8;
-}
-</style>

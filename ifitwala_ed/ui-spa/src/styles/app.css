@@ -111,8 +111,37 @@
     @apply mt-4 flex justify-end gap-2;
   }
 
+  /* ContentDialog specific tweaks */
+  .content-dialog .fui-dialog-header,
+  .content-dialog .fui-dialog-title,
+  .content-dialog .fui-dialog-close {
+    display: none;
+  }
+
   /* ---------------------------------------------------------------
-     4. BUTTON OVERRIDES (follows frappe-ui but matches palette)
+     4. Utility: Custom scrollbar (global)
+     --------------------------------------------------------------- */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 20px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+  }
+
+  /* ---------------------------------------------------------------
+     5. BUTTON OVERRIDES (follows frappe-ui but matches palette)
      --------------------------------------------------------------- */
   .fui-btn-primary {
     background: rgb(var(--leaf-rgb));
