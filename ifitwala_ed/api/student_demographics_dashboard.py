@@ -828,5 +828,19 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 						}
 					)
 
-	# Pagination
+	# Pagination + debug logging
+	try:
+		raw_filters = frappe.form_dict.get("filters")
+		frappe.logger().info(
+			"SDD slice_entities | slice_key=%s | filters=%s | raw_filters=%s | total_results=%s",
+			slice_key,
+			filters,
+			raw_filters,
+			len(results),
+		)
+	except Exception:
+		pass
+
 	return results[start : start + page_length]
+
+
