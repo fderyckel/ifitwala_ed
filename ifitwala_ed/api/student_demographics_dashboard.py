@@ -6,8 +6,6 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-import hashlib
-import json
 from datetime import date
 
 import frappe
@@ -271,11 +269,6 @@ def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guard
 	return hits
 
 
-def _slice_cache_key(user: str, filters: dict) -> str:
-	filters_hash = hashlib.sha1(json.dumps(filters, sort_keys=True, default=str).encode("utf-8")).hexdigest()
-	return f"ifitwala_ed:demographics:slices:{user}:{filters_hash}"
-
-
 def _empty_dashboard():
 	return {
 		"kpis": {
@@ -359,9 +352,6 @@ def get_dashboard(filters=None):
 	# Families via primary guardians
 	families, student_family, sibling_flags = _build_family_groups(guardian_links, student_dobs)
 	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
-	cache_key = _slice_cache_key(frappe.session.user, filters)
-	# Cache slice hits for drill-down alignment (expires in 10 minutes)
-	frappe.cache().set(cache_key, slice_hits, expires=600)
 
 	# KPI counts
 	cohorts = {s["cohort"] for s in students if s.get("cohort")}
@@ -639,9 +629,6 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	if not students:
 		return []
 
-	cache_key = _slice_cache_key(frappe.session.user, filters)
-	slice_hits = frappe.cache().get(cache_key) or {}
-
 	student_by_name = {s["name"]: s for s in students}
 	guardian_links = _get_guardian_links(list(student_by_name.keys()))
 
@@ -664,8 +651,7 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	families, student_family, sibling_flags = _build_family_groups(
 		guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students}
 	)
-	if not slice_hits:
-		slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
+	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
 	hit_ids = slice_hits.get(slice_key, []) or slice_hits.get(slice_key.lower(), [])
 
 	if hit_ids:
