@@ -815,4 +815,8 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 			"available_keys_sample": list(slice_hits.keys())[:50],
 		}
 	)
-	return results[start : start + page_length]
+	return [{
+		"id": "debug",
+		"name": "Debug: No results found",
+		"subtitle": f"Key: {slice_key} | Filters: {filters} | Students: {len(students)} | Hits: {len(hit_ids)}"
+	}]
