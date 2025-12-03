@@ -252,34 +252,23 @@ async function loadSlice(reset = false) {
 		page_length: slicePageLength,
 	}
 
-	console.log('[SDD] Fetching slice payload:', payload)
-
 	await sliceResource.submit(payload)
 
 	let rows: any = sliceResource.data as any
-	console.log('[SDD] Raw slice response type:', typeof rows, 'Is Array:', Array.isArray(rows))
-	console.log('[SDD] Raw slice response content:', JSON.stringify(rows))
 
 	// In case frappe wrapped in { message: [...] }
 	if (rows && rows.message && Array.isArray(rows.message)) {
-		console.log('[SDD] Unwrapping message object...')
 		rows = rows.message
 	}
 
 	if (Array.isArray(rows) && rows.length) {
-		console.log('[SDD] Updating sliceRows with', rows.length, 'rows')
 		sliceRows.value = reset ? rows : [...sliceRows.value, ...rows]
 		sliceStart.value += rows.length
-	} else {
-		console.log('[SDD] No rows found or rows is empty')
 	}
-
-	console.log('[SDD] Final sliceRows length:', sliceRows.value.length)
 }
 
 
 function openSliceDrawer(sliceKey: string) {
-	console.log('Opening drawer for slice:', sliceKey)
 	activeSliceKey.value = sliceKey
 	sliceDrawerOpen.value = true
 	loadSlice(true)
