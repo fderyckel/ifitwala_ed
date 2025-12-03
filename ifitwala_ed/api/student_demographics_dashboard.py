@@ -66,12 +66,20 @@ def _get_filters(filters) -> dict:
 
 
 def _get_active_students(filters: dict):
+	from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
 	conditions = ["enabled = 1"]
 	params = {}
 
 	if filters.get("school"):
-		conditions.append("anchor_school = %(school)s")
-		params["school"] = filters["school"]
+		# Include selected school + descendants
+		descendants = get_descendant_schools(filters["school"])
+		if descendants:
+			conditions.append("anchor_school in %(schools)s")
+			params["schools"] = tuple(descendants)
+		else:
+			conditions.append("anchor_school = %(school)s")
+			params["school"] = filters["school"]
 
 	if filters.get("cohort"):
 		conditions.append("cohort = %(cohort)s")
@@ -842,5 +850,4 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 		pass
 
 	return results[start : start + page_length]
-
 
