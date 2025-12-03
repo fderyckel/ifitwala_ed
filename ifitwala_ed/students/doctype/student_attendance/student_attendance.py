@@ -58,3 +58,19 @@ class StudentAttendance(Document):
 					title=_("Duplicate Attendance"),
 				)
 
+def on_doctype_update():
+    frappe.db.add_index(
+        "Student Attendance",
+        ["student", "attendance_date", "whole_day"],
+        index_name="idx_student_date_whole_day",
+    )
+    frappe.db.add_index(
+        "Student Attendance",
+        ["student_group", "attendance_date", "block_number"],
+        index_name="idx_group_date_block",
+    )
+    frappe.db.add_index(
+        "Student Attendance",
+        ["attendance_date", "school", "rotation_day", "block_number"],
+        index_name="idx_date_school_block",
+    )
