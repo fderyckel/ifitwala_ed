@@ -636,40 +636,28 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	"""
 	_ensure_demographics_access()
 
-	# DEBUG: Log all incoming request data
-	import json
-	frappe.logger().info(f"get_slice_entities called")
-	frappe.logger().info(f"  - slice_key param: {slice_key}")
-	frappe.logger().info(f"  - filters param: {filters}")
-	frappe.logger().info(f"  - form_dict: {json.dumps(frappe.form_dict, default=str)}")
-	frappe.logger().info(f"  - request.method: {frappe.request.method if hasattr(frappe, 'request') else 'N/A'}")
-
-	# For POST requests, Frappe puts JSON body into form_dict but doesn't pass to function args
-	# Extract parameters explicitly from form_dict
+	# Defensive: accept several param names if slice_key wasn't bound by name
 	if not slice_key:
-		slice_key = frappe.form_dict.get("slice_key")
-	if filters is None:
-		filters = frappe.form_dict.get("filters")
-	if start == 0 and "start" in frappe.form_dict:
-		start = int(frappe.form_dict.get("start", 0))
-	if page_length == 50 and "page_length" in frappe.form_dict:
-		page_length = int(frappe.form_dict.get("page_length", 50))
-
-	frappe.logger().info(f"  - After extraction: slice_key={slice_key}, filters={filters}, start={start}, page_length={page_length}")
+		fd = frappe.form_dict
+		slice_key = (
+			fd.get("slice_key")
+			or fd.get("sliceKey")
+			or fd.get("slice")
+			or fd.get("key")
+			or slice_key
+		)
 
 	if not slice_key:
-		frappe.logger().info(f"  - RETURNING EMPTY: no slice_key found")
 		return []
 
-	slice_key = (slice_key or "").strip()
-	filters = _get_filters(filters)
+	# Normalize filters (string or object from frappe-ui)
+	filters = _get_filters(filters or frappe.form_dict.get("filters"))
+
 	students = _get_active_students(filters)
 	if not students:
-		frappe.logger().info(f"  - RETURNING EMPTY: no students found for filters {filters}")
 		return []
 
 	student_by_name = {s["name"]: s for s in students}
-	student_cohorts = {s.get("cohort") for s in students if s.get("cohort")}
 	guardian_links = _get_guardian_links(list(student_by_name.keys()))
 
 	def norm(val: str | None) -> str:
@@ -684,31 +672,19 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 			"nationality": s.get("student_nationality"),
 		}
 
-	results = []
+	results: list[dict] = []
 
 	slice_key = (slice_key or "").strip()
 	parts = slice_key.split(":")
+
 	# Build sibling flags once for sibling slices
 	_, _, sibling_flags = _build_family_groups(
 		guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students}
 	)
-	# Cohort label/name map to handle label-based slice keys
-	cohort_label_map = {}
-	if student_cohorts:
-		cohort_label_map = {
-			row.name: (row.cohort_name or row.name)
-			for row in frappe.get_all(
-				"Student Cohort",
-				fields=["name", "cohort_name"],
-				filters={"name": ("in", list(student_cohorts))},
-			)
-		}
-	# reverse lookup: label to name
-	cohort_label_to_name = {v: k for k, v in cohort_label_map.items() if v}
-
 	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
 	hit_ids = slice_hits.get(slice_key, []) or slice_hits.get(slice_key.lower(), [])
 
+	# Fast path: use precomputed hits if available
 	if hit_ids:
 		if slice_key.startswith("guardian:"):
 			results = [
@@ -722,18 +698,17 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 		else:
 			results = [student_row(sid) for sid in hit_ids if sid in student_by_name]
 
-	if results:
-		return results[start : start + page_length]
+		if results:
+			return results[start : start + page_length]
 
+	# Fallback: interpret slice_key structure
 	if len(parts) >= 2 and parts[0] == "student":
 		domain = parts[1]
+
 		if domain == "nationality":
 			target = parts[2] if len(parts) > 2 else ""
 			target_n = norm(target)
 			cohort = parts[4] if len(parts) > 4 and parts[3] == "cohort" else None
-			# handle cohort label fallback
-			if cohort and cohort not in student_cohorts and cohort in cohort_label_to_name:
-				cohort = cohort_label_to_name[cohort]
 			results = [
 				student_row(s["name"])
 				for s in students
@@ -742,17 +717,18 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 				in {norm(s.get("student_nationality")), norm(s.get("student_second_nationality"))}
 				and (not cohort or s.get("cohort") == cohort)
 			]
+
 		elif domain == "gender":
 			target = parts[2] if len(parts) > 2 else ""
 			target_n = norm(target)
 			cohort = parts[4] if len(parts) > 4 else None
-			if cohort and cohort not in student_cohorts and cohort in cohort_label_to_name:
-				cohort = cohort_label_to_name[cohort]
 			results = [
 				student_row(s["name"])
 				for s in students
-				if (norm(s.get("student_gender")) or "other") == target_n and (not cohort or s.get("cohort") == cohort)
+				if (norm(s.get("student_gender")) or "other") == target_n
+				and (not cohort or s.get("cohort") == cohort)
 			]
+
 		elif domain == "residency":
 			target = parts[2] if len(parts) > 2 else ""
 			label_map = {
@@ -768,35 +744,51 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 				if target_label
 				and (
 					norm(s.get("residency_status")) == norm(target_label)
-					or (target == "other" and norm(s.get("residency_status")) not in {norm(v) for v in label_map.values()})
+					or (
+						target == "other"
+						and norm(s.get("residency_status"))
+						not in {norm(v) for v in label_map.values()}
+					)
 				)
 			]
+
 		elif domain == "age_bucket":
 			target = parts[2] if len(parts) > 2 else ""
 			for s in students:
 				age = _calculate_age(s.get("student_date_of_birth"))
 				if _bucket_age(age) == target:
 					results.append(student_row(s["name"]))
+
 		elif domain == "home_language":
 			target = parts[2] if len(parts) > 2 else ""
 			for s in students:
 				lang = norm(s.get("student_first_language") or s.get("student_second_language"))
 				if lang == norm(target):
 					results.append(student_row(s["name"]))
+
 		elif domain == "multilingual":
 			target = parts[2] if len(parts) > 2 else ""
 			for s in students:
 				langs = [s.get("student_first_language"), s.get("student_second_language")]
 				cnt = len([l for l in langs if l])
-				label = "3+ languages" if cnt >= 3 else "2 languages" if cnt == 2 else "1 language" if cnt >= 1 else "0"
+				label = (
+					"3+ languages"
+					if cnt >= 3
+					else "2 languages"
+					if cnt == 2
+					else "1 language"
+					if cnt >= 1
+					else "0"
+				)
 				if label == target:
 					results.append(student_row(s["name"]))
+
 		elif domain == "siblings":
 			target = parts[2] if len(parts) > 2 else ""
 			cohort = parts[4] if len(parts) > 4 else None
-			if cohort and cohort not in student_cohorts and cohort in cohort_label_to_name:
-				cohort = cohort_label_to_name[cohort]
-			_, _, sibling_flags = _build_family_groups(guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students})
+			_, _, sibling_flags = _build_family_groups(
+				guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students}
+			)
 			for s in students:
 				if cohort and s.get("cohort") != cohort:
 					continue
@@ -807,8 +799,9 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 					results.append(student_row(s["name"]))
 				elif target == "younger" and "younger" in flags:
 					results.append(student_row(s["name"]))
+
 	elif parts[0] == "guardian":
-		if parts[1] == "sector":
+		if len(parts) >= 2 and parts[1] == "sector":
 			target = parts[2] if len(parts) > 2 else ""
 			results = [
 				{
@@ -819,7 +812,7 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 				for row in guardian_links
 				if row.get("employment_sector") == target
 			]
-		elif parts[1] == "financial":
+		elif len(parts) >= 2 and parts[1] == "financial":
 			target = parts[2] if len(parts) > 2 else ""
 			results = [
 				{
@@ -828,26 +821,17 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 					"subtitle": row.get("relation"),
 				}
 				for row in guardian_links
-				if row.get("is_financial_guardian") and ((target in ("Mother", "Father") and row.get("relation") == target) or (target == "Other" and row.get("relation") not in ("Mother", "Father")))
+				if row.get("is_financial_guardian")
+				and (
+					(target in ("Mother", "Father") and row.get("relation") == target)
+					or (target == "Other" and row.get("relation") not in ("Mother", "Father"))
+				)
 			]
 
+	# Pagination + final fallback
 	if results:
 		return results[start : start + page_length]
 
-	# Debug fallback if no results found
-	frappe.logger().info(
-		{
-			"event": "demographics_slice_no_results",
-			"slice_key": slice_key,
-			"filters": filters,
-			"students": len(students),
-			"hits_for_key": slice_hits.get(slice_key),
-			"hits_for_lower": slice_hits.get(slice_key.lower()),
-			"available_keys_sample": list(slice_hits.keys())[:50],
-		}
-	)
-	return [{
-		"id": "debug",
-		"name": "Debug: No results found",
-		"subtitle": f"Key: {slice_key} | Filters: {filters} | Students: {len(students)} | Hits: {len(hit_ids)}"
-	}]
+	return results[start : start + page_length]
+
+
