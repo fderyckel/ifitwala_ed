@@ -248,8 +248,8 @@ async function loadSlice(reset = false) {
     sliceStart.value = 0
     sliceRows.value = []
   }
-  const res = await sliceResource.fetch()
-  const rows = (res as any) || []
+  await sliceResource.fetch()
+  const rows = (sliceResource.data as any) || []
   if (Array.isArray(rows) && rows.length) {
     sliceRows.value = reset ? rows : [...sliceRows.value, ...rows]
     sliceStart.value += rows.length

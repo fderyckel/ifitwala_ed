@@ -19,6 +19,7 @@
         <section class="flex-1 overflow-y-auto px-4 py-3">
           <slot name="filters" />
           <div v-if="loading" class="py-6 text-center text-slate-500">Loading...</div>
+          <div v-else-if="!rows.length" class="py-6 text-center text-slate-400 text-sm">No records for this slice.</div>
           <ul v-else class="divide-y divide-slate-100">
             <li v-for="row in rows" :key="row.id || row.name" class="py-3">
               <slot name="row" :row="row">
