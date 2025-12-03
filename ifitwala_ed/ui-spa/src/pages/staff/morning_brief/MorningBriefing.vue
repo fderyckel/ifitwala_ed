@@ -44,57 +44,161 @@
 		<!-- CONTENT -->
 		<div v-else class="space-y-8">
 			<!-- ANNOUNCEMENTS -->
-			<section v-if="hasData('announcements')" class="space-y-4">
-				<div
-					v-for="(news, idx) in widgets.data.announcements"
-					:key="idx"
-					class="relative mb-4 overflow-hidden rounded-2xl p-6 shadow-sm transition-all last:mb-0"
-					:class="getPriorityClasses(news.priority)"
-				>
-					<div
-						v-if="news.priority !== 'Critical'"
-						class="absolute inset-0 z-0 bg-jacaranda/5"
-					></div>
+			<section v-if="hasData('announcements')" class="space-y-3">
+				<!-- Header strip -->
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<div class="flex items-center gap-2">
+						<h2 class="section-header text-slate-token/80">
+							Organizational Announcements
+						</h2>
+						<span class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/80">
+							{{ widgets.data.announcements.length }} today
+						</span>
+					</div>
 
-					<div
-						class="relative z-0"
-						:class="news.priority === 'Critical' ? 'text-white' : 'text-ink'"
-					>
-						<div class="mb-2 flex gap-2">
-							<span
-								class="inline-flex items-center gap-1 rounded-md border px-2 py-1 type-badge-label"
-								:class="news.priority === 'Critical'
-									? 'bg-white/15 border-white/30 text-white'
-									: 'bg-white border-jacaranda/20 text-jacaranda'"
-							>
-								{{ news.type }}
+					<div class="flex items-center gap-2">
+						<button
+							v-for="mode in viewModes"
+							:key="mode.value"
+							class="rounded-full border px-3 py-1 text-xs font-semibold transition-all"
+							:class="viewMode === mode.value
+								? 'border-jacaranda bg-jacaranda/5 text-jacaranda shadow-sm'
+								: 'border-border/60 text-slate-token/80 hover:bg-surface-soft'"
+							@click="viewMode = mode.value"
+						>
+							{{ mode.label }}
+						</button>
+
+						<div class="hidden items-center gap-2 text-[11px] text-slate-token/70 sm:flex">
+							<span class="inline-flex items-center gap-1">
+								<span class="h-2 w-2 rounded-full bg-flame"></span>
+								{{ criticalCount }} Critical
 							</span>
-
-							<span
-								v-if="news.priority === 'Critical'"
-								class="inline-flex items-center gap-1 rounded-md bg-flame/15 px-2 py-1 type-badge-label text-flame"
-							>
-								CRITICAL
+							<span class="inline-flex items-center gap-1">
+								<span class="h-2 w-2 rounded-full bg-jacaranda"></span>
+								{{ highCount }} High
 							</span>
 						</div>
+					</div>
+				</div>
 
-						<h3 class="mb-2 type-h3">
-							{{ news.title }}
-						</h3>
+				<!-- Spotlight -->
+				<div
+					v-if="spotlightAnnouncements.length"
+					class="relative overflow-hidden rounded-2xl bg-surface-soft/80 p-5 ring-1 ring-border/60"
+				>
+					<div class="flex items-start justify-between gap-4">
+						<div v-if="currentSpotlight" class="flex-1">
+							<div class="mb-2 flex flex-wrap items-center gap-2">
+								<span
+									class="inline-flex items-center gap-1 rounded-md bg-surface-soft px-2 py-1 text-[11px] font-semibold text-slate-token/80"
+								>
+									{{ currentSpotlight.type }}
+								</span>
+								<span
+									v-if="currentSpotlight.priority === 'Critical'"
+									class="inline-flex items-center gap-1 rounded-md bg-flame/10 px-2 py-1 text-[11px] font-semibold text-flame"
+								>
+									Critical
+								</span>
+								<span
+									v-else-if="currentSpotlight.priority === 'High'"
+									class="inline-flex items-center gap-1 rounded-md bg-jacaranda/10 px-2 py-1 text-[11px] font-semibold text-jacaranda"
+								>
+									High priority
+								</span>
+							</div>
+
+							<h3 class="mb-2 type-h3 text-ink">
+								{{ currentSpotlight.title }}
+							</h3>
+
+							<div
+								class="prose prose-sm max-w-none text-slate-token/85 line-clamp-3"
+								v-html="currentSpotlight.content"
+							></div>
+
+							<button
+								@click="openAnnouncement(currentSpotlight)"
+								class="mt-3 flex items-center gap-1 type-button-label text-jacaranda hover:text-jacaranda/80"
+							>
+								Read full announcement
+								<FeatherIcon name="arrow-right" class="h-4 w-4" />
+							</button>
+						</div>
 
 						<div
-							class="prose prose-sm max-w-none opacity-90 line-clamp-3"
-							:class="news.priority === 'Critical' ? 'prose-invert' : 'text-slate-token/85'"
-							v-html="news.content"
-						></div>
-
-						<button
-							@click="openAnnouncement(news)"
-							class="mt-3 flex items-center gap-1 type-button-label hover:underline focus:outline-none"
-							:class="news.priority === 'Critical' ? 'text-white' : 'text-jacaranda'"
+							v-if="spotlightAnnouncements.length > 1"
+							class="flex flex-col items-center gap-2"
 						>
-							Read full announcement
-							<FeatherIcon name="arrow-right" class="h-4 w-4" />
+							<button
+								class="rounded-full p-1 text-slate-token/60 transition-colors hover:bg-surface-soft hover:text-ink"
+								@click="prevSpotlight"
+							>
+								<FeatherIcon name="chevron-up" class="h-4 w-4" />
+							</button>
+							<div class="flex flex-col gap-1">
+								<span
+									v-for="(a, idx) in spotlightAnnouncements"
+									:key="idx"
+									class="h-1.5 w-1.5 rounded-full"
+									:class="idx === spotlightIndex
+										? 'bg-jacaranda'
+										: 'bg-border'"
+								></span>
+							</div>
+							<button
+								class="rounded-full p-1 text-slate-token/60 transition-colors hover:bg-surface-soft hover:text-ink"
+								@click="nextSpotlight"
+							>
+								<FeatherIcon name="chevron-down" class="h-4 w-4" />
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- Compact list -->
+				<div class="paper-card mt-3 max-h-64 overflow-hidden">
+					<div class="flex items-center justify-between border-b border-border/60 px-4 py-2">
+						<p class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
+							All announcements
+						</p>
+						<button
+							v-if="widgets.data.announcements.length > 5"
+							class="text-[11px] font-medium text-jacaranda hover:text-jacaranda/80"
+							@click="openAnnouncementsDialog"
+						>
+							Open announcement center
+						</button>
+					</div>
+
+					<div class="custom-scrollbar max-h-56 overflow-y-auto">
+						<button
+							v-for="(item, idx) in filteredAnnouncements"
+							:key="idx"
+							class="flex w-full items-start gap-3 border-b border-border/40 px-4 py-3 text-left last:border-0 transition-colors hover:bg-surface-soft"
+							@click="openAnnouncement(item)"
+						>
+							<div
+								class="mt-1 h-2 w-2 flex-shrink-0 rounded-full"
+								:class="item.priority === 'Critical'
+									? 'bg-flame'
+									: item.priority === 'High'
+										? 'bg-jacaranda'
+										: 'bg-border'"
+							></div>
+
+							<div class="min-w-0 flex-1">
+								<div class="flex items-center justify-between gap-2">
+									<p class="truncate text-sm font-semibold text-ink">
+										{{ item.title }}
+									</p>
+									<span class="text-[10px] uppercase text-slate-token/60">
+										{{ item.type }}
+									</span>
+								</div>
+								<p class="mt-1 text-xs text-slate-token/80 line-clamp-2" v-html="item.content"></p>
+							</div>
 						</button>
 					</div>
 				</div>
@@ -393,6 +497,52 @@
 			:badge="dialogContent.badge"
 		/>
 
+		<!-- ANNOUNCEMENT CENTER DIALOG -->
+		<GenericListDialog
+			v-model="showAnnouncementCenter"
+			title="Announcement Center"
+			subtitle="Full list of announcements"
+			:items="widgets.data?.announcements || []"
+		>
+			<template #item="{ item }">
+				<div class="flex gap-3 p-4">
+					<div
+						class="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full"
+						:class="item.priority === 'Critical'
+							? 'bg-flame ring-2 ring-flame/30'
+							: item.priority === 'High'
+								? 'bg-jacaranda ring-2 ring-jacaranda/30'
+								: 'bg-border'"
+					></div>
+					<div class="min-w-0 flex-1">
+						<div class="flex items-start justify-between gap-2">
+							<div class="flex flex-wrap items-center gap-2">
+								<p class="text-sm font-semibold text-ink">
+									{{ item.title }}
+								</p>
+								<span class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[11px] font-semibold text-slate-token/80">
+									{{ item.type }}
+								</span>
+								<span
+									class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+									:class="getPriorityClasses(item.priority)"
+								>
+									{{ item.priority || 'Info' }}
+								</span>
+							</div>
+							<button
+								class="text-[11px] font-medium text-jacaranda transition-colors hover:text-jacaranda/80"
+								@click="openAnnouncement(item)"
+							>
+								Open
+							</button>
+						</div>
+						<div class="mt-1 text-xs text-slate-token/80 line-clamp-3" v-html="item.content"></div>
+					</div>
+				</div>
+			</template>
+		</GenericListDialog>
+
 		<!-- CRITICAL INCIDENTS DIALOG -->
 		<GenericListDialog
 			v-model="showCriticalIncidents"
@@ -455,7 +605,7 @@
 
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { createResource, FeatherIcon } from 'frappe-ui'
 import ContentDialog from '@/components/ContentDialog.vue'
 import GenericListDialog from '@/components/GenericListDialog.vue'
@@ -475,6 +625,7 @@ const dialogContent = ref({
 })
 
 // State for new dialogs
+const showAnnouncementCenter = ref(false)
 const showCriticalIncidents = ref(false)
 const showClinicHistory = ref(false)
 
@@ -487,6 +638,65 @@ const widgets = createResource({
 	url: 'ifitwala_ed.api.morning_brief.get_briefing_widgets',
 	auto: true
 })
+
+const viewModes = [
+	{ value: 'focus', label: 'Focus' },
+	{ value: 'all', label: 'All' }
+]
+const viewMode = ref('focus')
+
+const spotlightIndex = ref(0)
+const spotlightAnnouncements = computed(() =>
+	(widgets.data?.announcements || []).filter((a) =>
+		['Critical', 'High'].includes(a.priority)
+	)
+)
+const currentSpotlight = computed(
+	() => spotlightAnnouncements.value[spotlightIndex.value] || null
+)
+
+watch(spotlightAnnouncements, (list) => {
+	if (!list.length) {
+		spotlightIndex.value = 0
+		return
+	}
+	if (spotlightIndex.value >= list.length) {
+		spotlightIndex.value = 0
+	}
+})
+
+const criticalCount = computed(
+	() => (widgets.data?.announcements || []).filter((a) => a.priority === 'Critical').length
+)
+const highCount = computed(
+	() => (widgets.data?.announcements || []).filter((a) => a.priority === 'High').length
+)
+
+const filteredAnnouncements = computed(() => {
+	const all = widgets.data?.announcements || []
+
+	if (viewMode.value === 'focus') {
+		return all.filter(
+			(a) =>
+				a.priority === 'Critical' ||
+				a.priority === 'High'
+		)
+	}
+
+	return all
+})
+
+function nextSpotlight() {
+	if (!spotlightAnnouncements.value.length) return
+	spotlightIndex.value = (spotlightIndex.value + 1) % spotlightAnnouncements.value.length
+}
+
+function prevSpotlight() {
+	if (!spotlightAnnouncements.value.length) return
+	spotlightIndex.value =
+		(spotlightIndex.value - 1 + spotlightAnnouncements.value.length) %
+		spotlightAnnouncements.value.length
+}
 
 function hasData(key) {
 	return widgets.data && widgets.data[key] && Array.isArray(widgets.data[key]) && widgets.data[key].length > 0
@@ -516,19 +726,31 @@ function openAnnouncement(news) {
 	isContentDialogOpen.value = true
 }
 
+function openAnnouncementsDialog() {
+	showAnnouncementCenter.value = true
+}
+
 function openCriticalIncidents() {
 	showCriticalIncidents.value = true
 	criticalIncidentsList.fetch()
 }
 
 const formattedDate = computed(() => {
-	const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-	return new Date().toLocaleDateString('en-GB', options);
+	const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+	return new Date().toLocaleDateString('en-GB', options)
 })
 
 function getPriorityClasses(priority) {
-	if (priority === 'Critical') return 'bg-red-600 text-white ring-4 ring-red-100'
-	return ''
+	switch (priority) {
+		case 'Critical':
+			return 'bg-flame text-white ring-2 ring-flame/30'
+		case 'High':
+			return 'bg-jacaranda/5 ring-1 ring-jacaranda/30'
+		case 'Low':
+			return 'bg-surface-soft text-slate-token/80'
+		default:
+			return 'bg-surface-soft text-ink'
+	}
 }
 
 function formatBirthday(dateStr) {
