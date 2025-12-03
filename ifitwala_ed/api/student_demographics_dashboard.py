@@ -180,6 +180,91 @@ def _build_family_groups(guardians: list[dict], student_dobs: dict[str, date | N
 	return families, student_family, sibling_flags
 
 
+def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guardian_links: list[dict]):
+	"""
+	Return a dict mapping slice_key -> list of ids (student or guardian) for drill-down.
+	This ensures get_dashboard and get_slice_entities stay aligned.
+	"""
+	hits = defaultdict(list)
+
+	for s in students:
+		sid = s["name"]
+		cohort = s.get("cohort")
+
+		# Nationalities (primary/secondary) + optional cohort
+		for nat in [s.get("student_nationality"), s.get("student_second_nationality")]:
+			if nat:
+				hits[f"student:nationality:{nat}"].append(sid)
+				if cohort:
+					hits[f"student:nationality:{nat}:cohort:{cohort}"].append(sid)
+
+		# Gender (with cohort)
+		g = s.get("student_gender") or "Other"
+		hits[f"student:gender:{g}"].append(sid)
+		if cohort:
+			hits[f"student:gender:{g}:cohort:{cohort}"].append(sid)
+
+		# Residency
+		res = s.get("residency_status") or "Other"
+		key = res
+		if res == "Local Resident":
+			key = "local"
+		elif res == "Expat Resident":
+			key = "expat"
+		elif res == "Boarder":
+			key = "boarder"
+		else:
+			key = "other"
+		hits[f"student:residency:{key}"].append(sid)
+
+		# Age bucket
+		age = _calculate_age(s.get("student_date_of_birth"))
+		bucket = _bucket_age(age)
+		if bucket:
+			hits[f"student:age_bucket:{bucket}"].append(sid)
+
+		# Home language
+		lang = s.get("student_first_language") or s.get("student_second_language")
+		if lang:
+			hits[f"student:home_language:{lang}"].append(sid)
+
+		# Multilingual
+		langs = [s.get("student_first_language"), s.get("student_second_language")]
+		cnt = len([l for l in langs if l])
+		label = "3+ languages" if cnt >= 3 else "2 languages" if cnt == 2 else "1 language" if cnt >= 1 else "0"
+		hits[f"student:multilingual:{label}"].append(sid)
+
+		# Siblings per cohort
+		flags = sibling_flags.get(sid, set())
+		if cohort:
+			if not flags:
+				hits[f"student:siblings:none:cohort:{cohort}"].append(sid)
+			if "older" in flags:
+				hits[f"student:siblings:older:cohort:{cohort}"].append(sid)
+			if "younger" in flags:
+				hits[f"student:siblings:younger:cohort:{cohort}"].append(sid)
+
+	# Guardian slices
+	for row in guardian_links:
+		gid = row.get("guardian")
+		if not gid:
+			continue
+		sector = row.get("employment_sector")
+		if sector:
+			hits[f"guardian:sector:{sector}"].append(gid)
+		if row.get("is_financial_guardian"):
+			rel = (row.get("relation") or "Other").strip()
+			if rel == "Mother":
+				label = "Mother"
+			elif rel == "Father":
+				label = "Father"
+			else:
+				label = "Other"
+			hits[f"guardian:financial:{label}"].append(gid)
+
+	return hits
+
+
 def _empty_dashboard():
 	return {
 		"kpis": {
@@ -262,6 +347,7 @@ def get_dashboard(filters=None):
 
 	# Families via primary guardians
 	families, student_family, sibling_flags = _build_family_groups(guardian_links, student_dobs)
+	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
 
 	# KPI counts
 	cohorts = {s["cohort"] for s in students if s.get("cohort")}
@@ -557,6 +643,27 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	results = []
 
 	parts = slice_key.split(":")
+	# Precompute slice hits to stay in sync with dashboard logic
+	families, student_family, sibling_flags = _build_family_groups(guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students})
+	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
+	hit_ids = slice_hits.get(slice_key, [])
+
+	if hit_ids:
+		if slice_key.startswith("guardian:"):
+			results = [
+				{
+					"id": gid,
+					"name": gid,
+					"subtitle": None,
+				}
+				for gid in hit_ids
+			]
+		else:
+			results = [student_row(sid) for sid in hit_ids if sid in student_by_name]
+
+	if results:
+		return results[start : start + page_length]
+
 	if len(parts) >= 2 and parts[0] == "student":
 		domain = parts[1]
 		if domain == "nationality":
