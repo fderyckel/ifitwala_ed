@@ -196,20 +196,21 @@ def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guard
 		cohort = s.get("cohort")
 
 		# Nationalities (primary/secondary) + optional cohort
-		for nat in [s.get("student_nationality"), s.get("student_second_nationality")]:
+		for nat_field in ("student_nationality", "student_second_nationality"):
+			nat = (s.get(nat_field) or "").strip()
 			if nat:
 				add(f"student:nationality:{nat}", sid)
 				if cohort:
 					add(f"student:nationality:{nat}:cohort:{cohort}", sid)
 
 		# Gender (with cohort)
-		g = s.get("student_gender") or "Other"
+		g = (s.get("student_gender") or "Other").strip()
 		add(f"student:gender:{g}", sid)
 		if cohort:
 			add(f"student:gender:{g}:cohort:{cohort}", sid)
 
 		# Residency
-		res = s.get("residency_status") or "Other"
+		res = (s.get("residency_status") or "Other").strip()
 		key = res
 		if res == "Local Resident":
 			key = "local"
@@ -228,7 +229,7 @@ def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guard
 			add(f"student:age_bucket:{bucket}", sid)
 
 		# Home language
-		lang = s.get("student_first_language") or s.get("student_second_language")
+		lang = (s.get("student_first_language") or s.get("student_second_language") or "").strip()
 		if lang:
 			add(f"student:home_language:{lang}", sid)
 
@@ -253,7 +254,7 @@ def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guard
 		gid = row.get("guardian")
 		if not gid:
 			continue
-		sector = row.get("employment_sector")
+		sector = (row.get("employment_sector") or "").strip()
 		if sector:
 			add(f"guardian:sector:{sector}", gid)
 		if row.get("is_financial_guardian"):
