@@ -647,29 +647,12 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 
 	results = []
 
+	slice_key = (slice_key or "").strip()
 	parts = slice_key.split(":")
-	# Precompute slice hits to stay in sync with dashboard logic
-	families, student_family, sibling_flags = _build_family_groups(
+	# Build sibling flags once for sibling slices
+	_, _, sibling_flags = _build_family_groups(
 		guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students}
 	)
-	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
-	hit_ids = slice_hits.get(slice_key, []) or slice_hits.get(slice_key.lower(), [])
-
-	if hit_ids:
-		if slice_key.startswith("guardian:"):
-			results = [
-				{
-					"id": gid,
-					"name": gid,
-					"subtitle": None,
-				}
-				for gid in hit_ids
-			]
-		else:
-			results = [student_row(sid) for sid in hit_ids if sid in student_by_name]
-
-	if results:
-		return results[start : start + page_length]
 
 	if len(parts) >= 2 and parts[0] == "student":
 		domain = parts[1]
@@ -774,8 +757,4 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 		return results[start : start + page_length]
 
 	# Debug fallback if no results found
-	return [{
-		"id": "debug",
-		"name": "Debug: No results found",
-		"subtitle": f"Key: {slice_key} | Filters: {filters} | Students: {len(students)} | Hits: {len(hit_ids)}"
-	}]
+	return results[start : start + page_length]
