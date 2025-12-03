@@ -623,18 +623,29 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	"""
 	_ensure_demographics_access()
 
+	# DEBUG: Log all incoming request data
+	import json
+	frappe.logger().info(f"get_slice_entities called")
+	frappe.logger().info(f"  - slice_key param: {slice_key}")
+	frappe.logger().info(f"  - filters param: {filters}")
+	frappe.logger().info(f"  - form_dict: {json.dumps(frappe.form_dict, default=str)}")
+	frappe.logger().info(f"  - request.method: {frappe.request.method if hasattr(frappe, 'request') else 'N/A'}")
+	frappe.logger().info(f"  - request.data: {frappe.request.data if hasattr(frappe, 'request') and hasattr(frappe.request, 'data') else 'N/A'}")
+
 	# Defensive: accept alternate param names from callers
 	if not slice_key:
 		fd = frappe.form_dict
 		slice_key = fd.get("slice_key") or fd.get("slice") or fd.get("key")
 
 	if not slice_key:
+		frappe.logger().info(f"  - RETURNING EMPTY: no slice_key found")
 		return []
 
 	slice_key = (slice_key or "").strip()
 	filters = _get_filters(filters)
 	students = _get_active_students(filters)
 	if not students:
+		frappe.logger().info(f"  - RETURNING EMPTY: no students found for filters {filters}")
 		return []
 
 	student_by_name = {s["name"]: s for s in students}
