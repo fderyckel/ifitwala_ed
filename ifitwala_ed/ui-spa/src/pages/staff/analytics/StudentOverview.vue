@@ -264,8 +264,15 @@ watch(
 const studentSearch = ref('')
 const studentSuggestions = ref<{ id: string; name: string }[]>([])
 const studentDropdownOpen = ref(false)
-const studentLoading = ref(false)
 let studentSearchTimer: number | undefined
+
+const studentSearchResource = createResource({
+	url: 'ifitwala_ed.api.student_overview_dashboard.search_students',
+	method: 'GET',
+	auto: false,
+})
+
+const studentLoading = computed(() => studentSearchResource.loading)
 
 function debounce(fn: () => void, delay = 350) {
 	window.clearTimeout(studentSearchTimer)
@@ -280,25 +287,17 @@ async function fetchStudents() {
 		return
 	}
 
-	studentLoading.value = true
-	try {
-		const res = await (window as any).frappe.call({
-			method: 'ifitwala_ed.api.student_overview_dashboard.search_students',
-			args: {
-				search_text: query,
-				school: filters.value.school,
-				program: filters.value.program,
-			},
-		})
-		const list = (res?.message as any[]) || []
-		studentSuggestions.value = list.map((s: any) => ({
-			id: s.student || s.name,
-			name: s.student_full_name || s.full_name || s.name,
-		}))
-		studentDropdownOpen.value = !!studentSuggestions.value.length
-	} finally {
-		studentLoading.value = false
-	}
+	const res = await studentSearchResource.fetch({
+		search_text: query,
+		school: filters.value.school,
+		program: filters.value.program,
+	})
+	const list = (res as any[]) || []
+	studentSuggestions.value = list.map((s: any) => ({
+		id: s.student || s.name,
+		name: s.student_full_name || s.full_name || s.name,
+	}))
+	studentDropdownOpen.value = !!studentSuggestions.value.length
 }
 
 function selectStudent(s: { id: string; name: string }) {
