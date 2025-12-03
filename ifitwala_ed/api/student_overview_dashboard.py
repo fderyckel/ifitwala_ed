@@ -101,15 +101,14 @@ def get_filter_meta():
 
 	# Programs filtered by school if the column exists; fallback to all
 	program_filters = {}
-	if frappe.db.has_column("Program", "school") and auth_schools:
-		program_filters["school"] = ["in", auth_schools]
+	program_fields = ["name", "program_name as label"]
+	program_has_school = frappe.db.has_column("Program", "school")
+	if program_has_school:
+		program_fields.append("school")
+		if auth_schools:
+			program_filters["school"] = ["in", auth_schools]
 
-	programs = frappe.get_all(
-		"Program",
-		filters=program_filters,
-		fields=["name", "program_name as label", "school"],
-		order_by="program_name",
-	)
+	programs = frappe.get_all("Program", filters=program_filters, fields=program_fields, order_by="program_name")
 
 	return {
 		"default_school": default_school,
