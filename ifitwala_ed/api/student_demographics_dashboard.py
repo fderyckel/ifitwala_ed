@@ -6,6 +6,8 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+import hashlib
+import json
 from datetime import date
 
 import frappe
@@ -187,6 +189,10 @@ def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guard
 	"""
 	hits = defaultdict(list)
 
+	def add(key: str, value):
+		hits[key].append(value)
+		hits[key.lower()].append(value)  # case-insensitive lookup
+
 	for s in students:
 		sid = s["name"]
 		cohort = s.get("cohort")
@@ -194,15 +200,15 @@ def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guard
 		# Nationalities (primary/secondary) + optional cohort
 		for nat in [s.get("student_nationality"), s.get("student_second_nationality")]:
 			if nat:
-				hits[f"student:nationality:{nat}"].append(sid)
+				add(f"student:nationality:{nat}", sid)
 				if cohort:
-					hits[f"student:nationality:{nat}:cohort:{cohort}"].append(sid)
+					add(f"student:nationality:{nat}:cohort:{cohort}", sid)
 
 		# Gender (with cohort)
 		g = s.get("student_gender") or "Other"
-		hits[f"student:gender:{g}"].append(sid)
+		add(f"student:gender:{g}", sid)
 		if cohort:
-			hits[f"student:gender:{g}:cohort:{cohort}"].append(sid)
+			add(f"student:gender:{g}:cohort:{cohort}", sid)
 
 		# Residency
 		res = s.get("residency_status") or "Other"
@@ -215,34 +221,34 @@ def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guard
 			key = "boarder"
 		else:
 			key = "other"
-		hits[f"student:residency:{key}"].append(sid)
+		add(f"student:residency:{key}", sid)
 
 		# Age bucket
 		age = _calculate_age(s.get("student_date_of_birth"))
 		bucket = _bucket_age(age)
 		if bucket:
-			hits[f"student:age_bucket:{bucket}"].append(sid)
+			add(f"student:age_bucket:{bucket}", sid)
 
 		# Home language
 		lang = s.get("student_first_language") or s.get("student_second_language")
 		if lang:
-			hits[f"student:home_language:{lang}"].append(sid)
+			add(f"student:home_language:{lang}", sid)
 
 		# Multilingual
 		langs = [s.get("student_first_language"), s.get("student_second_language")]
 		cnt = len([l for l in langs if l])
 		label = "3+ languages" if cnt >= 3 else "2 languages" if cnt == 2 else "1 language" if cnt >= 1 else "0"
-		hits[f"student:multilingual:{label}"].append(sid)
+		add(f"student:multilingual:{label}", sid)
 
 		# Siblings per cohort
 		flags = sibling_flags.get(sid, set())
 		if cohort:
 			if not flags:
-				hits[f"student:siblings:none:cohort:{cohort}"].append(sid)
+				add(f"student:siblings:none:cohort:{cohort}", sid)
 			if "older" in flags:
-				hits[f"student:siblings:older:cohort:{cohort}"].append(sid)
+				add(f"student:siblings:older:cohort:{cohort}", sid)
 			if "younger" in flags:
-				hits[f"student:siblings:younger:cohort:{cohort}"].append(sid)
+				add(f"student:siblings:younger:cohort:{cohort}", sid)
 
 	# Guardian slices
 	for row in guardian_links:
@@ -251,7 +257,7 @@ def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guard
 			continue
 		sector = row.get("employment_sector")
 		if sector:
-			hits[f"guardian:sector:{sector}"].append(gid)
+			add(f"guardian:sector:{sector}", gid)
 		if row.get("is_financial_guardian"):
 			rel = (row.get("relation") or "Other").strip()
 			if rel == "Mother":
@@ -260,9 +266,14 @@ def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guard
 				label = "Father"
 			else:
 				label = "Other"
-			hits[f"guardian:financial:{label}"].append(gid)
+			add(f"guardian:financial:{label}", gid)
 
 	return hits
+
+
+def _slice_cache_key(user: str, filters: dict) -> str:
+	filters_hash = hashlib.sha1(json.dumps(filters, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+	return f"ifitwala_ed:demographics:slices:{user}:{filters_hash}"
 
 
 def _empty_dashboard():
@@ -348,6 +359,9 @@ def get_dashboard(filters=None):
 	# Families via primary guardians
 	families, student_family, sibling_flags = _build_family_groups(guardian_links, student_dobs)
 	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
+	cache_key = _slice_cache_key(frappe.session.user, filters)
+	# Cache slice hits for drill-down alignment (expires in 10 minutes)
+	frappe.cache().set(cache_key, slice_hits, expires=600)
 
 	# KPI counts
 	cohorts = {s["cohort"] for s in students if s.get("cohort")}
@@ -625,6 +639,9 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	if not students:
 		return []
 
+	cache_key = _slice_cache_key(frappe.session.user, filters)
+	slice_hits = frappe.cache().get(cache_key) or {}
+
 	student_by_name = {s["name"]: s for s in students}
 	guardian_links = _get_guardian_links(list(student_by_name.keys()))
 
@@ -644,9 +661,12 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 
 	parts = slice_key.split(":")
 	# Precompute slice hits to stay in sync with dashboard logic
-	families, student_family, sibling_flags = _build_family_groups(guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students})
-	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
-	hit_ids = slice_hits.get(slice_key, [])
+	families, student_family, sibling_flags = _build_family_groups(
+		guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students}
+	)
+	if not slice_hits:
+		slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
+	hit_ids = slice_hits.get(slice_key, []) or slice_hits.get(slice_key.lower(), [])
 
 	if hit_ids:
 		if slice_key.startswith("guardian:"):
