@@ -630,12 +630,19 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	frappe.logger().info(f"  - filters param: {filters}")
 	frappe.logger().info(f"  - form_dict: {json.dumps(frappe.form_dict, default=str)}")
 	frappe.logger().info(f"  - request.method: {frappe.request.method if hasattr(frappe, 'request') else 'N/A'}")
-	frappe.logger().info(f"  - request.data: {frappe.request.data if hasattr(frappe, 'request') and hasattr(frappe.request, 'data') else 'N/A'}")
 
-	# Defensive: accept alternate param names from callers
+	# For POST requests, Frappe puts JSON body into form_dict but doesn't pass to function args
+	# Extract parameters explicitly from form_dict
 	if not slice_key:
-		fd = frappe.form_dict
-		slice_key = fd.get("slice_key") or fd.get("slice") or fd.get("key")
+		slice_key = frappe.form_dict.get("slice_key")
+	if filters is None:
+		filters = frappe.form_dict.get("filters")
+	if start == 0 and "start" in frappe.form_dict:
+		start = int(frappe.form_dict.get("start", 0))
+	if page_length == 50 and "page_length" in frappe.form_dict:
+		page_length = int(frappe.form_dict.get("page_length", 50))
+
+	frappe.logger().info(f"  - After extraction: slice_key={slice_key}, filters={filters}, start={start}, page_length={page_length}")
 
 	if not slice_key:
 		frappe.logger().info(f"  - RETURNING EMPTY: no slice_key found")
