@@ -671,7 +671,12 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	if results:
 		return results[start : start + page_length]
 
-	if len(parts) >= 2 and parts[0] == "student":
+	# Debug fallback if no results found
+	return [{
+		"id": "debug",
+		"name": "Debug: No results found",
+		"subtitle": f"Key: {slice_key} | Filters: {filters} | Students: {len(students)} | Hits: {len(hit_ids)}"
+	}]
 		domain = parts[1]
 		if domain == "nationality":
 			target = parts[2] if len(parts) > 2 else ""
