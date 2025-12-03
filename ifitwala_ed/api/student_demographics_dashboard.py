@@ -632,7 +632,8 @@ def get_dashboard(filters=None):
 @frappe.whitelist()
 def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 0, page_length: int = 50):
 	"""
-	Basic drill-down implementation that returns student or guardian rows for a given slice key.
+	Drill-down implementation that returns student or guardian rows for a given slice key.
+	We *do not* depend on the precomputed hit map here; we re-interpret the slice_key structure.
 	"""
 	_ensure_demographics_access()
 
@@ -677,59 +678,42 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	slice_key = (slice_key or "").strip()
 	parts = slice_key.split(":")
 
-	# Build sibling flags once for sibling slices
-	_, _, sibling_flags = _build_family_groups(
-		guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students}
-	)
-	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
-	hit_ids = slice_hits.get(slice_key, []) or slice_hits.get(slice_key.lower(), [])
-
-	# Fast path: use precomputed hits if available
-	if hit_ids:
-		if slice_key.startswith("guardian:"):
-			results = [
-				{
-					"id": gid,
-					"name": gid,
-					"subtitle": None,
-				}
-				for gid in hit_ids
-			]
-		else:
-			results = [student_row(sid) for sid in hit_ids if sid in student_by_name]
-
-		if results:
-			return results[start : start + page_length]
-
-	# Fallback: interpret slice_key structure
+	# --- STUDENT SLICES ---
 	if len(parts) >= 2 and parts[0] == "student":
 		domain = parts[1]
 
 		if domain == "nationality":
+			# student:nationality:<nat>[:cohort:<cohort>]
 			target = parts[2] if len(parts) > 2 else ""
 			target_n = norm(target)
 			cohort = parts[4] if len(parts) > 4 and parts[3] == "cohort" else None
-			results = [
-				student_row(s["name"])
-				for s in students
-				if target_n
-				and target_n
-				in {norm(s.get("student_nationality")), norm(s.get("student_second_nationality"))}
-				and (not cohort or s.get("cohort") == cohort)
-			]
+
+			for s in students:
+				if cohort and s.get("cohort") != cohort:
+					continue
+
+				nats = {
+					norm(s.get("student_nationality")),
+					norm(s.get("student_second_nationality")),
+				}
+				if target_n and target_n in nats:
+					results.append(student_row(s["name"]))
 
 		elif domain == "gender":
+			# student:gender:<Female|Male|Other>[:cohort:<cohort>]
 			target = parts[2] if len(parts) > 2 else ""
 			target_n = norm(target)
-			cohort = parts[4] if len(parts) > 4 else None
-			results = [
-				student_row(s["name"])
-				for s in students
-				if (norm(s.get("student_gender")) or "other") == target_n
-				and (not cohort or s.get("cohort") == cohort)
-			]
+			cohort = parts[4] if len(parts) > 4 and parts[3] == "cohort" else None
+
+			for s in students:
+				if cohort and s.get("cohort") != cohort:
+					continue
+				gender = norm(s.get("student_gender") or "Other")
+				if gender == target_n:
+					results.append(student_row(s["name"]))
 
 		elif domain == "residency":
+			# student:residency:<local|expat|boarder|other>
 			target = parts[2] if len(parts) > 2 else ""
 			label_map = {
 				"local": "Local Resident",
@@ -738,21 +722,19 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 				"other": "Other",
 			}
 			target_label = label_map.get(target)
-			results = [
-				student_row(s["name"])
-				for s in students
-				if target_label
-				and (
-					norm(s.get("residency_status")) == norm(target_label)
-					or (
-						target == "other"
-						and norm(s.get("residency_status"))
-						not in {norm(v) for v in label_map.values()}
-					)
-				)
-			]
+
+			for s in students:
+				status = (s.get("residency_status") or "").strip()
+				if not target_label:
+					continue
+
+				if target != "other" and norm(status) == norm(target_label):
+					results.append(student_row(s["name"]))
+				elif target == "other" and norm(status) not in {norm(v) for v in label_map.values()}:
+					results.append(student_row(s["name"]))
 
 		elif domain == "age_bucket":
+			# student:age_bucket:<bucket>
 			target = parts[2] if len(parts) > 2 else ""
 			for s in students:
 				age = _calculate_age(s.get("student_date_of_birth"))
@@ -760,13 +742,16 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 					results.append(student_row(s["name"]))
 
 		elif domain == "home_language":
+			# student:home_language:<lang>
 			target = parts[2] if len(parts) > 2 else ""
+			target_n = norm(target)
 			for s in students:
 				lang = norm(s.get("student_first_language") or s.get("student_second_language"))
-				if lang == norm(target):
+				if lang == target_n:
 					results.append(student_row(s["name"]))
 
 		elif domain == "multilingual":
+			# student:multilingual:<1 language|2 languages|3+ languages>
 			target = parts[2] if len(parts) > 2 else ""
 			for s in students:
 				langs = [s.get("student_first_language"), s.get("student_second_language")]
@@ -784,8 +769,15 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 					results.append(student_row(s["name"]))
 
 		elif domain == "siblings":
+			# student:siblings:<none|older|younger>:cohort:<cohort>
 			target = parts[2] if len(parts) > 2 else ""
-			cohort = parts[4] if len(parts) > 4 else None
+			cohort = parts[4] if len(parts) > 4 and parts[3] == "cohort" else None
+
+			# Build sibling flags from current dataset
+			_, _, sibling_flags = _build_family_groups(
+				guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students}
+			)
+
 			for s in students:
 				if cohort and s.get("cohort") != cohort:
 					continue
@@ -797,33 +789,44 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 				elif target == "younger" and "younger" in flags:
 					results.append(student_row(s["name"]))
 
+	# --- GUARDIAN SLICES ---
 	elif len(parts) >= 2 and parts[0] == "guardian":
 		if parts[1] == "sector":
+			# guardian:sector:<sector_label>
 			target = parts[2] if len(parts) > 2 else ""
-			results = [
-				{
-					"id": row["guardian"],
-					"name": row["guardian"],
-					"subtitle": row.get("employment_sector"),
-				}
-				for row in guardian_links
-				if row.get("employment_sector") == target
-			]
-		elif parts[1] == "financial":
-			target = parts[2] if len(parts) > 2 else ""
-			results = [
-				{
-					"id": row["guardian"],
-					"name": row["guardian"],
-					"subtitle": row.get("relation"),
-				}
-				for row in guardian_links
-				if row.get("is_financial_guardian")
-				and (
-					(target in ("Mother", "Father") and row.get("relation") == target)
-					or (target == "Other" and row.get("relation") not in ("Mother", "Father"))
-				)
-			]
+			for row in guardian_links:
+				if row.get("employment_sector") == target:
+					results.append(
+						{
+							"id": row["guardian"],
+							"name": row["guardian"],
+							"subtitle": row.get("employment_sector"),
+						}
+					)
 
-	# Pagination + final fallback
+		elif parts[1] == "financial":
+			# guardian:financial:<Mother|Father|Other>
+			target = parts[2] if len(parts) > 2 else ""
+			for row in guardian_links:
+				if not row.get("is_financial_guardian"):
+					continue
+				relation = row.get("relation") or "Other"
+				if target in ("Mother", "Father") and relation == target:
+					results.append(
+						{
+							"id": row["guardian"],
+							"name": row["guardian"],
+							"subtitle": relation,
+						}
+					)
+				elif target == "Other" and relation not in ("Mother", "Father"):
+					results.append(
+						{
+							"id": row["guardian"],
+							"name": row["guardian"],
+							"subtitle": relation,
+						}
+					)
+
+	# Pagination
 	return results[start : start + page_length]
