@@ -786,9 +786,6 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 		elif domain == "siblings":
 			target = parts[2] if len(parts) > 2 else ""
 			cohort = parts[4] if len(parts) > 4 else None
-			_, _, sibling_flags = _build_family_groups(
-				guardian_links, {s["name"]: s.get("student_date_of_birth") for s in students}
-			)
 			for s in students:
 				if cohort and s.get("cohort") != cohort:
 					continue
@@ -800,8 +797,8 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 				elif target == "younger" and "younger" in flags:
 					results.append(student_row(s["name"]))
 
-	elif parts[0] == "guardian":
-		if len(parts) >= 2 and parts[1] == "sector":
+	elif len(parts) >= 2 and parts[0] == "guardian":
+		if parts[1] == "sector":
 			target = parts[2] if len(parts) > 2 else ""
 			results = [
 				{
@@ -812,7 +809,7 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 				for row in guardian_links
 				if row.get("employment_sector") == target
 			]
-		elif len(parts) >= 2 and parts[1] == "financial":
+		elif parts[1] == "financial":
 			target = parts[2] if len(parts) > 2 else ""
 			results = [
 				{
@@ -829,9 +826,4 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 			]
 
 	# Pagination + final fallback
-	if results:
-		return results[start : start + page_length]
-
 	return results[start : start + page_length]
-
-
