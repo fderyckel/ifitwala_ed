@@ -542,6 +542,9 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	student_by_name = {s["name"]: s for s in students}
 	guardian_links = _get_guardian_links(list(student_by_name.keys()))
 
+	def norm(val: str | None) -> str:
+		return (val or "").strip().lower()
+
 	def student_row(name: str):
 		s = student_by_name[name]
 		return {
@@ -558,20 +561,24 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 		domain = parts[1]
 		if domain == "nationality":
 			target = parts[2] if len(parts) > 2 else ""
+			target_n = norm(target)
 			cohort = parts[4] if len(parts) > 4 and parts[3] == "cohort" else None
 			results = [
 				student_row(s["name"])
 				for s in students
-				if target in (s.get("student_nationality"), s.get("student_second_nationality"))
+				if target_n
+				and target_n
+				in {norm(s.get("student_nationality")), norm(s.get("student_second_nationality"))}
 				and (not cohort or s.get("cohort") == cohort)
 			]
 		elif domain == "gender":
 			target = parts[2] if len(parts) > 2 else ""
+			target_n = norm(target)
 			cohort = parts[4] if len(parts) > 4 else None
 			results = [
 				student_row(s["name"])
 				for s in students
-				if (s.get("student_gender") or "Other") == target and (not cohort or s.get("cohort") == cohort)
+				if (norm(s.get("student_gender")) or "other") == target_n and (not cohort or s.get("cohort") == cohort)
 			]
 		elif domain == "residency":
 			target = parts[2] if len(parts) > 2 else ""
@@ -586,7 +593,10 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 				student_row(s["name"])
 				for s in students
 				if target_label
-				and ((s.get("residency_status") or "Other") == target_label or (target == "other" and (s.get("residency_status") or "") not in label_map.values()))
+				and (
+					norm(s.get("residency_status")) == norm(target_label)
+					or (target == "other" and norm(s.get("residency_status")) not in {norm(v) for v in label_map.values()})
+				)
 			]
 		elif domain == "age_bucket":
 			target = parts[2] if len(parts) > 2 else ""
@@ -597,8 +607,8 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 		elif domain == "home_language":
 			target = parts[2] if len(parts) > 2 else ""
 			for s in students:
-				lang = (s.get("student_first_language") or s.get("student_second_language") or "").strip()
-				if lang == target:
+				lang = norm(s.get("student_first_language") or s.get("student_second_language"))
+				if lang == norm(target):
 					results.append(student_row(s["name"]))
 		elif domain == "multilingual":
 			target = parts[2] if len(parts) > 2 else ""
