@@ -41,6 +41,13 @@ def _safe_percent(part: float, total: float) -> float:
 	return round((part / total) * 100, 1) if total else 0
 
 
+def _normalize_filter_value(val):
+	if isinstance(val, dict):
+		# Try value/name/label in that order
+		return val.get("value") or val.get("name") or val.get("label")
+	return val
+
+
 def _get_filters(filters) -> dict:
 	if isinstance(filters, str):
 		try:
@@ -49,6 +56,12 @@ def _get_filters(filters) -> dict:
 			filters = {}
 	else:
 		filters = filters or {}
+
+	# Normalize known link filters that might be {label, value} objects
+	for key in ("school", "cohort"):
+		if key in filters:
+			filters[key] = _normalize_filter_value(filters[key])
+
 	return filters
 
 
