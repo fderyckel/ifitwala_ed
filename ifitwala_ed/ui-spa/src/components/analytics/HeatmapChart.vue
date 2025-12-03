@@ -17,7 +17,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { VChart, type ComposeOption, type HeatmapSeriesOption } from '@/lib/echarts'
-import { heatmapGradient } from './chartPalette'
 
 type ChartOption = ComposeOption<HeatmapSeriesOption>
 
@@ -76,9 +75,6 @@ const option = computed<ChartOption>(() => {
       orient: 'horizontal',
       left: 'center',
       bottom: 0,
-      inRange: {
-        color: [heatmapGradient.min, heatmapGradient.mid, heatmapGradient.max],
-      },
     },
     series: [
       {

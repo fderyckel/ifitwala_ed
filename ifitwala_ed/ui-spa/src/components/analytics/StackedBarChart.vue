@@ -17,7 +17,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { VChart, type BarSeriesOption, type ComposeOption } from '@/lib/echarts'
-import { stackedPalette } from './chartPalette'
 
 type ChartOption = ComposeOption<BarSeriesOption>
 
@@ -42,11 +41,11 @@ const option = computed<ChartOption>(() => {
     grid: { left: 80, right: 16, bottom: 40, top: 30 },
     xAxis: { type: 'category', data: categories },
     yAxis: { type: 'value' },
-    series: props.series.map((s, idx) => ({
+    series: props.series.map((s) => ({
       name: s.label,
       type: 'bar',
       stack: 'total',
-      itemStyle: { color: s.color || stackedPalette[idx % stackedPalette.length] },
+      itemStyle: s.color ? { color: s.color } : undefined,
       emphasis: { focus: 'series' },
       data: props.rows.map((row) => ({
         value: row.values[s.key] || 0,

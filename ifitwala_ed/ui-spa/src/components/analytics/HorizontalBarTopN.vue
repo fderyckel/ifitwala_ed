@@ -17,7 +17,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { VChart, type ComposeOption, type BarSeriesOption } from '@/lib/echarts'
-import { chartPalette } from './chartPalette'
 
 type ChartOption = ComposeOption<BarSeriesOption>
 
@@ -40,9 +39,9 @@ const emit = defineEmits<{
 
 const option = computed<ChartOption>(() => {
   const labels = props.items.map((i) => i.label)
-  const data = props.items.map((i, idx) => ({
+  const data = props.items.map((i) => ({
     value: i.count,
-    itemStyle: { color: i.color || chartPalette[idx % chartPalette.length] },
+    itemStyle: i.color ? { color: i.color } : undefined,
     sliceKey: i.sliceKey,
   }))
 

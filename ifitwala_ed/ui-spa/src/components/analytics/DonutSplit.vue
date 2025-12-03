@@ -33,7 +33,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { VChart, type ComposeOption, type PieSeriesOption } from '@/lib/echarts'
-import { chartPalette } from './chartPalette'
 
 type ChartOption = ComposeOption<PieSeriesOption>
 
@@ -48,9 +47,21 @@ const emit = defineEmits<{
   (e: 'select', sliceKey: string): void
 }>()
 
+const tokenColorVars = ['--jacaranda', '--leaf', '--flame', '--moss', '--clay', '--slate', '--canopy', '--ink']
+const fallbackPalette = ['#7e6bd6', '#1f7a45', '#f25b32', '#7faa63', '#b6522b', '#475569', '#0b3d2b', '#071019']
+
+function resolveCssColor(variable: string, fallback: string) {
+  if (typeof window === 'undefined') return fallback
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variable)
+  return value?.trim() || fallback
+}
+
+const palette = computed(() => tokenColorVars.map((token, idx) => resolveCssColor(token, fallbackPalette[idx])))
+
 const coloredItems = computed<Item[]>(() => {
+  const paletteColors = palette.value
   return props.items.map((item, index) => {
-    const paletteColor = chartPalette[index % chartPalette.length]
+    const paletteColor = paletteColors[index % paletteColors.length] || fallbackPalette[index % fallbackPalette.length]
     return { ...item, color: item.color || paletteColor }
   })
 })
