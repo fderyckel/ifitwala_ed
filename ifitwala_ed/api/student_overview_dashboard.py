@@ -192,7 +192,6 @@ def get_filter_meta():
 		"programs": programs,
 	}
 
-
 @frappe.whitelist()
 def search_students(search_text: str = "", school: str | None = None, program: str | None = None):
 	"""
@@ -201,6 +200,7 @@ def search_students(search_text: str = "", school: str | None = None, program: s
 	Staff:
 	  - universe is ACTIVE Program Enrollments (archived = 0)
 	  - filtered by authorized school scope (+descendants) and optional program subtree.
+
 	Student / Guardian:
 	  - universe is their own active Program Enrollments.
 
@@ -210,17 +210,32 @@ def search_students(search_text: str = "", school: str | None = None, program: s
 	roles = _user_roles(user)
 	visible_students = _get_student_scope(user)
 
-	# Student / Guardian: clamp to their own students first, then Program Enrollment
+	# ----- Helper: program subtree (NestedSet) -----
+	def _get_program_subtree(program_name: str | None) -> list[str] | None:
+		if not program_name:
+			return None
+		lft, rgt = frappe.db.get_value("Program", program_name, ["lft", "rgt"])
+		if lft is None or rgt is None:
+			return [program_name]
+		return frappe.get_all(
+			"Program",
+			filters={"lft": (">=", lft), "rgt": ("<=", rgt)},
+			pluck="name",
+		)
+
+	# ----- Student / Guardian path -----
 	if visible_students:
 		params: dict = {"students": tuple(visible_students)}
 		conditions = ["pe.archived = 0", "pe.student IN %(students)s"]
 
+		# school filter: selected school's descendants
 		if school:
 			school_scope = get_descendant_schools(school)
 			if school_scope:
 				conditions.append("pe.school IN %(schools)s")
 				params["schools"] = tuple(school_scope)
 
+		# program filter: nested subtree
 		if program:
 			program_scope = _get_program_subtree(program) or [program]
 			conditions.append("pe.program IN %(programs)s")
@@ -244,26 +259,24 @@ def search_students(search_text: str = "", school: str | None = None, program: s
 		rows = frappe.db.sql(sql, params, as_dict=True)
 		return [{"student": r.student, "student_full_name": r.student_full_name} for r in rows]
 
-	# Staff path
+	# ----- Staff path -----
 	auth_schools = get_authorized_schools(user) if _is_staff(roles) else []
 	if not auth_schools:
 		return []
 
-	# 1) School scope = selected school's descendants ∩ authorized
+	# School scope = selected school's descendants ∩ authorized
 	if school:
 		school_scope = get_descendant_schools(school)
-		# Intersect with auth_schools if needed
 		if auth_schools:
 			school_scope = [s for s in school_scope if s in auth_schools]
 	else:
 		school_scope = auth_schools
 
-	# 2) Program scope = selected program subtree (if any)
 	program_scope = None
 	if program:
 		program_scope = _get_program_subtree(program) or [program]
 
-	params = {}
+	params: dict = {}
 	conditions = ["pe.archived = 0"]
 
 	if school_scope:
