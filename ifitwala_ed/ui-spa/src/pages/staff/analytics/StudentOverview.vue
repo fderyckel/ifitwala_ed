@@ -3,8 +3,18 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { createResource } from 'frappe-ui'
 
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
+import HeatmapDialog from '@/components/HeatmapDialog.vue'
 import FiltersBar from '@/components/analytics/FiltersBar.vue'
 import StackedBarChart from '@/components/analytics/StackedBarChart.vue'
+
+type HeatmapMode = 'whole-day' | 'per-block'
+type HeatmapCodeOption = {
+	label?: string
+	value: string
+	description?: string
+	severity?: 'present' | 'unexcused' | 'excused' | 'late' | 'no_school' | 'missing' | 'neutral'
+	severityScore?: number
+}
 
 type PermissionFlags = {
 	can_view_tasks: boolean
@@ -466,6 +476,8 @@ const attendanceScope = ref<'current' | 'last' | 'all'>('current')
 const wellbeingScope = ref<'current' | 'last' | 'all'>('current')
 const wellbeingFilter = ref<'all' | 'student_log' | 'referral' | 'nurse_visit' | 'attendance_incident'>('all')
 const historyScope = ref<'current' | 'previous' | 'two_years' | 'all'>('all')
+const showHeatmapDialog = ref(false)
+const heatmapInitialMode = ref<HeatmapMode>('whole-day')
 
 watch(
 	() => snapshot.value.meta?.student,
@@ -492,6 +504,22 @@ function formatDate(value?: string | null) {
 	return value.slice(0, 10)
 }
 
+const hasAllDayHeatmap = computed(() => (snapshot.value.attendance.all_day_heatmap || []).length > 0)
+const hasByCourseHeatmap = computed(() => (snapshot.value.attendance.by_course_heatmap || []).length > 0)
+const hasAnyHeatmap = computed(() => hasAllDayHeatmap.value || hasByCourseHeatmap.value)
+
+const attendanceSourceLabel = computed(() => {
+	if (hasAllDayHeatmap.value) return 'Whole day'
+	if (hasByCourseHeatmap.value) return 'Course-based'
+	return 'No attendance data'
+})
+
+function openAttendanceHeatmap() {
+	if (!hasAnyHeatmap.value) return
+	heatmapInitialMode.value = hasAllDayHeatmap.value ? 'whole-day' : 'per-block'
+	showHeatmapDialog.value = true
+}
+
 const kpiTiles = computed(() => [
 	{
 		label: 'Attendance',
@@ -499,6 +527,9 @@ const kpiTiles = computed(() => [
 		sub: `${formatCount(snapshot.value.kpis.attendance.unexcused_absences)} unexcused · ${formatCount(
 			snapshot.value.kpis.attendance.excused_absences
 		)} excused`,
+		meta: attendanceSourceLabel.value,
+		clickable: hasAnyHeatmap.value,
+		onClick: openAttendanceHeatmap,
 	},
 	{
 		label: 'Tasks',
@@ -727,6 +758,118 @@ const breakdownRows = computed(() => {
 			},
 		}))
 })
+
+const heatmapStudentOptions = computed(() => {
+	if (!snapshot.value.meta.student) return []
+	return [
+		{
+			label: snapshot.value.identity.full_name || snapshot.value.meta.student_name || snapshot.value.meta.student,
+			value: snapshot.value.meta.student,
+		},
+	]
+})
+
+const heatmapAttendanceCodes = computed<HeatmapCodeOption[]>(() => {
+	const base: HeatmapCodeOption[] = [
+		{ label: 'Present', value: 'P', severity: 'present', severityScore: 2 },
+		{ label: 'Unexcused absence', value: 'UNX', severity: 'unexcused', severityScore: 5 },
+		{ label: 'Absent', value: 'ABS', severity: 'excused', severityScore: 4 },
+		{ label: 'Late', value: 'L', severity: 'late', severityScore: 3 },
+		{ label: 'No school', value: 'HOL', severity: 'no_school', severityScore: 0 },
+	]
+
+	const codes = new Map(base.map((c) => [c.value, c]))
+
+	;(snapshot.value.attendance.all_day_heatmap || []).forEach((row) => {
+		if (row.attendance_code) {
+			const key = row.attendance_code
+			if (!codes.has(key)) {
+				codes.set(key, {
+					label: row.attendance_code_name || key,
+					value: key,
+				})
+			}
+		}
+	})
+
+	return Array.from(codes.values())
+})
+
+const heatmapStatusLegend = computed(() => ({
+	P: { severity: 'present', label: 'Present' },
+	UNX: { severity: 'unexcused', label: 'Unexcused absence', score: 5 },
+	ABS: { severity: 'excused', label: 'Absent', score: 4 },
+	L: { severity: 'late', label: 'Late', score: 3 },
+	HOL: { severity: 'no_school', label: 'Holiday', score: 0 },
+}))
+
+const heatmapWholeDayPoints = computed(() =>
+	(snapshot.value.attendance.all_day_heatmap || []).map((row) => ({
+		date: row.date,
+		academic_year: row.academic_year,
+		status_code: row.attendance_code,
+		severity_score: deriveSeverityScore(row.attendance_code, row.count_as_present),
+		source: 'Student Attendance records',
+	}))
+)
+
+const heatmapBlockPoints = computed(() => {
+	const rows = snapshot.value.attendance.by_course_heatmap || []
+	const courseOrder = Array.from(new Set(rows.map((r) => r.course || r.course_name))).filter(Boolean)
+	return rows.map((row) => {
+		const blockNumber = Math.max(courseOrder.indexOf(row.course || row.course_name) + 1, 1)
+		const { statusCode, severityScore } = deriveCourseStatus(row)
+		return {
+			date: row.week_label || '',
+			week_index: parseWeekIndex(row.week_label),
+			weekday_index: 0,
+			block_number: blockNumber,
+			block_label: row.course_name || row.course,
+			academic_year: row.academic_year,
+			course: row.course_name || row.course,
+			status_code: statusCode,
+			severity_score: severityScore,
+			source: 'Student Attendance records',
+		}
+	})
+})
+
+const heatmapBlockLabels = computed(() => {
+	const labels: Record<number, string> = {}
+	heatmapBlockPoints.value.forEach((point) => {
+		if (point.block_number) {
+			labels[point.block_number] = point.block_label || point.course || `Block ${point.block_number}`
+		}
+	})
+	return labels
+})
+
+function deriveSeverityScore(code?: string, countAsPresent?: boolean | null) {
+	if (countAsPresent === true) return 2
+	if (countAsPresent === false) return 5
+	const normalized = (code || '').toUpperCase()
+	if (normalized === 'P') return 2
+	if (normalized === 'L') return 3
+	if (normalized === 'E' || normalized === 'EXC') return 4
+	if (normalized === 'A' || normalized === 'UNX') return 5
+	if (normalized === 'HOL' || normalized === 'NA') return 0
+	return undefined
+}
+
+function deriveCourseStatus(row: any) {
+	const unexcused = row.unexcused_sessions || 0
+	const absent = row.absent_sessions || 0
+	if (unexcused > 0) return { statusCode: 'UNX', severityScore: 5 }
+	if (absent > 0) return { statusCode: 'ABS', severityScore: 4 }
+	if ((row.late_sessions || 0) > 0) return { statusCode: 'L', severityScore: 3 }
+	return { statusCode: 'P', severityScore: 2 }
+}
+
+function parseWeekIndex(label?: string | null) {
+	if (!label) return 0
+	const match = label.match(/(\d+)/)
+	return match ? Number(match[1]) : 0
+}
 
 const wellbeingTimeline = computed(() => {
 	const events = snapshot.value.wellbeing.timeline || []
@@ -1024,10 +1167,20 @@ const reflectionFlags = computed(() => {
 									<div
 										v-for="tile in kpiTiles"
 										:key="tile.label"
-										class="flex flex-col gap-1 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2"
+										:class="[
+											'flex flex-col gap-1 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2',
+											tile.clickable ? 'cursor-pointer transition hover:border-emerald-200 hover:bg-emerald-50/70' : '',
+										]"
+										@click="tile.onClick && tile.onClick()"
 									>
 										<p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
 											{{ tile.label }}
+											<span
+												v-if="tile.meta"
+												class="ml-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600"
+											>
+												{{ tile.meta }}
+											</span>
 										</p>
 										<p class="text-sm font-semibold text-slate-900">
 											{{ tile.value }}
@@ -1449,4 +1602,19 @@ const reflectionFlags = computed(() => {
 			</div>
 		</section>
 	</div>
+
+	<HeatmapDialog
+		v-if="showHeatmapDialog"
+		v-model="showHeatmapDialog"
+		:initial-mode="heatmapInitialMode"
+		:whole-day-points="heatmapWholeDayPoints"
+		:block-points="heatmapBlockPoints"
+		:attendance-code-options="heatmapAttendanceCodes"
+		:student-options="heatmapStudentOptions"
+		:selected-student="snapshot.meta.student"
+		:selected-academic-year="snapshot.meta.current_academic_year"
+		:block-labels="heatmapBlockLabels"
+		:status-legend="heatmapStatusLegend"
+		:loading="loadingSnapshot"
+	/>
 </template>
