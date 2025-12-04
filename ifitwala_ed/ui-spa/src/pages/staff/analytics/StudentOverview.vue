@@ -16,6 +16,15 @@ type HeatmapCodeOption = {
 	severityScore?: number
 }
 
+const palette = {
+	sand: '#f4ecdd',
+	moss: '#7faa63',
+	leaf: '#1f7a45',
+	flame: '#f25b32',
+	clay: '#b6522b',
+	ink: '#071019',
+}
+
 type PermissionFlags = {
 	can_view_tasks: boolean
 	can_view_task_marks: boolean
@@ -682,8 +691,13 @@ const allDayHeatmapOption = computed(() => {
 				data: values,
 				itemStyle: {
 					borderWidth: 1,
-					borderColor: '#fff',
-					color: (params: any) => params.value?.[3]?.color || '#cbd5e1',
+					borderColor: 'rgba(7,16,25,0.08)',
+					color: (params: any) => {
+						const row = params.value?.[3] || {}
+						if (row.count_as_present) return palette.leaf
+						if (row.is_late) return '#f2a044'
+						return row.color || palette.flame
+					},
 				},
 			},
 		],
@@ -737,7 +751,7 @@ const byCourseHeatmapOption = computed(() => {
 			bottom: 10,
 			text: ['More misses', 'Fewer'],
 			inRange: {
-				color: ['#e2e8f0', '#fbbf24', '#ef4444'],
+				color: [palette.sand, palette.moss, palette.flame],
 			},
 		},
 		series: [
