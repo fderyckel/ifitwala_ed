@@ -450,16 +450,23 @@ def _attendance_block(student: str, academic_year: str | None):
 			"student_group",
 			"program",
 			"school",
+			"whole_day",
 		],
 		order_by="attendance_date asc",
 	)
 
-	total = len(rows)
-	present = sum(1 for r in rows if code_map.get(r.attendance_code, {}).get("count_as_present"))
-	late_total = sum(1 for r in rows if code_map.get(r.attendance_code, {}).get("is_late"))
+	whole_day_rows = [r for r in rows if getattr(r, "whole_day", 0)]
+	block_rows = [r for r in rows if not getattr(r, "whole_day", 0)]
+
+	# Use whole-day rows if they exist; otherwise base summary on per-course rows.
+	active_rows = whole_day_rows if whole_day_rows else block_rows
+
+	total = len(active_rows)
+	present = sum(1 for r in active_rows if code_map.get(r.attendance_code, {}).get("count_as_present"))
+	late_total = sum(1 for r in active_rows if code_map.get(r.attendance_code, {}).get("is_late"))
 
 	all_day_heatmap = []
-	for r in rows:
+	for r in whole_day_rows:
 		code = code_map.get(r.attendance_code, {})
 		all_day_heatmap.append(
 			{
@@ -475,7 +482,7 @@ def _attendance_block(student: str, academic_year: str | None):
 
 	# Course/activity heatmap uses ISO week label for grouping
 	by_course_heatmap = []
-	for r in rows:
+	for r in block_rows:
 		week_label = ""
 		if r.attendance_date:
 			try:
@@ -497,7 +504,7 @@ def _attendance_block(student: str, academic_year: str | None):
 		by_course_heatmap.append(entry)
 
 	breakdown_map: Dict[str, Dict[str, int]] = {}
-	for r in rows:
+	for r in block_rows:
 		course_key = r.course or "General"
 		entry = breakdown_map.setdefault(
 			course_key,

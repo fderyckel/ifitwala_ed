@@ -495,6 +495,17 @@ watch(
 	}
 )
 
+watch(
+	[() => hasAllDayHeatmap.value, () => hasByCourseHeatmap.value],
+	([hasAllDay, hasByCourse]) => {
+		if (hasAllDay) {
+			attendanceView.value = 'all_day'
+		} else if (hasByCourse) {
+			attendanceView.value = 'by_course'
+		}
+	}
+)
+
 const permissions = computed<PermissionFlags>(() => snapshot.value.meta.permissions)
 const displayViewMode = computed<ViewMode>(() => snapshot.value.meta.view_mode || viewMode.value)
 
