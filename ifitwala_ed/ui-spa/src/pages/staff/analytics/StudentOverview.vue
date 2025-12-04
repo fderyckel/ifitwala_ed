@@ -685,9 +685,10 @@ const allDayHeatmapOption = computed(() => {
 					borderColor: 'rgba(7,16,25,0.08)',
 					color: (params: any) => {
 						const row = params.value?.[3] || {}
-						if (row.count_as_present) return palette.leaf
-						if (row.is_late) return '#f2a044'
-						return row.color || palette.flame
+						if (row.color) return row.color
+						if (row.is_late) return `rgb(var(--jacaranda-rgb))`
+						if (row.count_as_present) return `rgb(var(--leaf-rgb))`
+						return `rgb(var(--flame-rgb))`
 					},
 				},
 			},
@@ -814,29 +815,25 @@ const heatmapStudentOptions = computed(() => {
 })
 
 const heatmapAttendanceCodes = computed<HeatmapCodeOption[]>(() => {
-	const base: HeatmapCodeOption[] = [
+	const fromServer = (snapshot.value.attendance as any)?.codes || []
+	if (fromServer.length) {
+		return fromServer.map((c: any) => ({
+			label: c.label || c.attendance_code_name || c.value,
+			value: c.value || c.attendance_code,
+			description: '',
+			severity: c.count_as_present ? 'present' : 'unexcused',
+			severityScore: c.count_as_present ? 2 : 5,
+		}))
+	}
+
+	// Fallback palette
+	return [
 		{ label: 'Present', value: 'P', severity: 'present', severityScore: 2 },
 		{ label: 'Unexcused absence', value: 'UNX', severity: 'unexcused', severityScore: 5 },
 		{ label: 'Absent', value: 'ABS', severity: 'excused', severityScore: 4 },
 		{ label: 'Late', value: 'L', severity: 'late', severityScore: 3 },
 		{ label: 'No school', value: 'HOL', severity: 'no_school', severityScore: 0 },
 	]
-
-	const codes = new Map(base.map((c) => [c.value, c]))
-
-	;(snapshot.value.attendance.all_day_heatmap || []).forEach((row) => {
-		if (row.attendance_code) {
-			const key = row.attendance_code
-			if (!codes.has(key)) {
-				codes.set(key, {
-					label: row.attendance_code_name || key,
-					value: key,
-				})
-			}
-		}
-	})
-
-	return Array.from(codes.values())
 })
 
 const heatmapStatusLegend = computed(() => ({
@@ -1057,7 +1054,7 @@ const reflectionFlags = computed(() => {
 
 <template>
 	<div
-		class="min-h-full px-4 pb-8 pt-32 md:px-6 lg:px-8"
+		class="min-h-full px-4 pb-8 pt-8 md:px-6 lg:px-8"
 		style="background: var(--portal-gradient-bg);"
 	>
 		<header class="flex flex-wrap items-center justify-between gap-3">
@@ -1088,98 +1085,97 @@ const reflectionFlags = computed(() => {
 			</div>
 		</header>
 
-		<div
-			class="fixed inset-x-0 top-0 z-30 border-b border-border/70 bg-white/80 backdrop-blur"
-			style="background: var(--portal-gradient-bg);"
-		>
-			<div class="px-4 py-2 md:px-6 lg:px-8">
-				<FiltersBar>
-					<div class="flex flex-col gap-1 w-48">
-					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">School</label>
-					<select
-						v-model="filters.school"
-						class="h-9 rounded-md border border-slate-200 px-2 text-xs"
-					>
-						<option value="">Select a school</option>
-						<option
-							v-for="s in schools"
-							:key="s.name"
-							:value="s.name"
-						>
-							{{ s.label || s.name }}
-						</option>
-					</select>
-				</div>
-
-					<div class="flex flex-col gap-1 w-48">
-					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">Program</label>
-					<select
-						v-model="filters.program"
-						class="h-9 rounded-md border border-slate-200 px-2 text-xs"
-					>
-						<option value="">Select</option>
-						<option
-							v-for="p in programs"
-							:key="p.name"
-							:value="p.name"
-						>
-							{{ p.label || p.name }}
-						</option>
-					</select>
-				</div>
-
-					<div class="relative flex w-64 flex-col gap-1">
-					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">Student</label>
-					<div class="flex h-9 items-center rounded-md border border-slate-200 bg-white px-2">
-						<span class="mr-1 text-[11px] text-slate-400">🔍</span>
-						<input
-							v-model="studentSearch"
-							class="h-full w-full text-xs focus:outline-none"
-							placeholder="Search student"
-							type="search"
-							@focus="openStudentDropdown"
-							@input="debounce(fetchStudents)"
-						/>
-						<button
-							v-if="studentSearch"
-							class="ml-1 text-[11px] text-slate-500"
-							@click="clearStudent"
-						>
-							Clear
-						</button>
-					</div>
-					<div
-						v-if="studentDropdownOpen"
-						class="absolute top-full z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg"
-					>
-						<div
-							v-if="studentLoading"
-							class="px-3 py-2 text-xs text-slate-500"
-						>
-							Searching…
+		<section class="sticky top-0 z-20 -mx-4 mb-3 pt-2">
+			<div class="px-4">
+				<div class="toolbar flex flex-wrap items-end gap-3">
+					<FiltersBar>
+						<div class="flex flex-col gap-1 w-48">
+							<label class="type-label">School</label>
+							<select
+								v-model="filters.school"
+								class="h-9 rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2 text-xs focus:outline-none"
+							>
+								<option value="">Select a school</option>
+								<option
+									v-for="s in schools"
+									:key="s.name"
+									:value="s.name"
+								>
+									{{ s.label || s.name }}
+								</option>
+							</select>
 						</div>
-						<button
-							v-for="s in studentSuggestions"
-							:key="s.id"
-							type="button"
-							class="flex w-full items-start gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50"
-							@click="selectStudent(s)"
-						>
-							<span class="font-semibold text-slate-800">{{ s.name }}</span>
-						</button>
-						<div
-							v-if="!studentLoading && !studentSuggestions.length"
-							class="px-3 py-2 text-xs text-slate-400"
-						>
-							{{ studentSearch
-								? 'No matches. Try a different name or ID.'
-								: 'Start typing to search for a student.' }}
+
+						<div class="flex flex-col gap-1 w-48">
+							<label class="type-label">Program</label>
+							<select
+								v-model="filters.program"
+								class="h-9 rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2 text-xs focus:outline-none"
+							>
+								<option value="">Select</option>
+								<option
+									v-for="p in programs"
+									:key="p.name"
+									:value="p.name"
+								>
+									{{ p.label || p.name }}
+								</option>
+							</select>
 						</div>
-					</div>
-					</div>
-				</FiltersBar>
+
+						<div class="relative flex w-64 flex-col gap-1">
+							<label class="type-label">Student</label>
+							<div class="flex h-9 items-center rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2">
+								<span class="mr-1 text-[11px] text-ink/60">🔍</span>
+								<input
+									v-model="studentSearch"
+									class="h-full w-full bg-transparent text-xs focus:outline-none"
+									placeholder="Search student"
+									type="search"
+									@focus="openStudentDropdown"
+									@input="debounce(fetchStudents)"
+								/>
+								<button
+									v-if="studentSearch"
+									class="ml-1 text-[11px] text-ink/60"
+									@click="clearStudent"
+								>
+									Clear
+								</button>
+							</div>
+							<div
+								v-if="studentDropdownOpen"
+								class="absolute top-full z-30 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-border/80 bg-[rgb(var(--surface-rgb))] shadow-soft"
+							>
+								<div
+									v-if="studentLoading"
+									class="px-3 py-2 text-xs text-ink/70"
+								>
+									Searching…
+								</div>
+								<button
+									v-for="s in studentSuggestions"
+									:key="s.id"
+									type="button"
+									class="flex w-full items-start gap-2 px-3 py-2 text-left text-xs hover:bg-[rgb(var(--surface-rgb)/0.9)]"
+									@click="selectStudent(s)"
+								>
+									<span class="font-semibold text-ink">{{ s.name }}</span>
+								</button>
+								<div
+									v-if="!studentLoading && !studentSuggestions.length"
+									class="px-3 py-2 text-xs text-ink/60"
+								>
+									{{ studentSearch
+										? 'No matches. Try a different name or ID.'
+										: 'Start typing to search for a student.' }}
+								</div>
+							</div>
+						</div>
+					</FiltersBar>
+				</div>
 			</div>
-		</div>
+		</section>
 
 		<section class="mt-4 space-y-4">
 			<div
@@ -1439,102 +1435,123 @@ const reflectionFlags = computed(() => {
 					</section>
 
 					<!-- Band 3: Attendance -->
-					<section class="space-y-3 rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
+					<section class="analytics-card palette-card mt-6 space-y-4">
 						<div class="flex flex-wrap items-center justify-center gap-2">
 							<button
 								type="button"
-								:class="[
-									'rounded-full px-4 py-1 text-xs font-semibold',
-									attendanceView === 'all_day' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600',
-								]"
-								@click="attendanceView = 'all_day'"
+								:class="['chip-toggle', attendanceView === 'all_day' ? 'chip-toggle-active' : 'chip-toggle-muted']"
+								@click="setAttendanceKpiSource('all_day')"
 							>
 								All-day view
 							</button>
 							<button
 								type="button"
-								:class="[
-									'rounded-full px-4 py-1 text-xs font-semibold',
-									attendanceView === 'by_course' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600',
-								]"
-								@click="attendanceView = 'by_course'"
+								:class="['chip-toggle', attendanceView === 'by_course' ? 'chip-toggle-active' : 'chip-toggle-muted']"
+								@click="setAttendanceKpiSource('by_course')"
 							>
-								By course/activity
+								By course / activity
 							</button>
 							<div class="ml-auto flex items-center gap-2">
 								<button
 									v-for="scope in ['current', 'last', 'all']"
 									:key="scope"
 									type="button"
-									:class="[
-										'rounded-full px-3 py-1 text-[11px] font-semibold',
-										attendanceScope === scope ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600',
-									]"
+									:class="['chip-scope', attendanceScope === scope ? 'chip-scope-active' : 'chip-scope-muted']"
 									@click="attendanceScope = scope as any"
 								>
-									{{ scope === 'current' ? 'This year' : scope === 'last' ? 'Last year' : 'All' }}
+									{{ scope === 'current' ? 'This year' : scope === 'last' ? 'Last year' : 'All years' }}
 								</button>
 							</div>
 						</div>
 
 						<div class="grid grid-cols-1 gap-4 2xl:grid-cols-2">
-							<div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-								<header class="mb-2 flex items-center justify-between">
-									<h3 class="text-sm font-semibold text-slate-800">Attendance heatmap</h3>
-									<span class="text-[11px] text-slate-500">
-										{{ attendanceView === 'all_day' ? 'Daily status' : 'Course × week' }}
+							<div class="attendance-card palette-card">
+								<header class="attendance-card-header">
+									<div>
+										<h3 class="section-header">Attendance heatmap</h3>
+										<p class="type-meta">
+											{{ attendanceView === 'all_day' ? 'Daily status by code' : 'Course × week patterns' }}
+										</p>
+									</div>
+									<span class="type-chip-muted">
+										{{ attendanceView === 'all_day' ? 'Whole-day records' : 'Session-level records' }}
 									</span>
 								</header>
-								<AnalyticsChart
-									v-if="attendanceView === 'all_day' && filteredAllDayHeatmap.length"
-									:option="allDayHeatmapOption"
-								/>
-								<AnalyticsChart
-									v-else-if="attendanceView === 'by_course' && filteredByCourseHeatmap.length"
-									:option="byCourseHeatmapOption"
-								/>
-								<p v-else class="text-xs text-slate-400">No attendance data for this scope.</p>
+
+								<div class="attendance-card-body">
+									<AnalyticsChart
+										v-if="attendanceView === 'all_day' && filteredAllDayHeatmap.length"
+										:option="allDayHeatmapOption"
+									/>
+									<AnalyticsChart
+										v-else-if="attendanceView === 'by_course' && filteredByCourseHeatmap.length"
+										:option="byCourseHeatmapOption"
+									/>
+									<p v-else class="type-empty">No attendance data for this scope.</p>
+								</div>
 							</div>
 
-							<div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-								<header class="mb-2 flex items-center justify-between">
-									<h3 class="text-sm font-semibold text-slate-800">Attendance by course</h3>
-									<span class="text-[11px] text-slate-500">
-										{{ attendanceView === 'by_course' ? 'Sessions by code' : 'Unavailable in all-day view' }}
+							<div class="attendance-card palette-card">
+								<header class="attendance-card-header">
+									<div>
+										<h3 class="section-header">Attendance by course</h3>
+										<p class="type-meta">
+											{{
+												attendanceView === 'by_course'
+													? 'Sessions by code and course'
+													: 'Switch to “By course” to see breakdown'
+											}}
+										</p>
+									</div>
+									<span class="type-chip-muted">
+										{{ attendanceSourceLabel }}
 									</span>
 								</header>
-								<StackedBarChart
-									v-if="attendanceView === 'by_course' && breakdownRows.length"
-									title=""
-									:series="[
-										{ key: 'present', label: 'Present', color: '#22c55e' },
-										{ key: 'excused', label: 'Excused', color: '#0ea5e9' },
-										{ key: 'unexcused', label: 'Unexcused', color: '#ef4444' },
-										{ key: 'late', label: 'Late', color: '#f59e0b' },
-									]"
-									:rows="breakdownRows"
-								/>
-								<p v-else class="text-xs text-slate-400">Switch to course view to see breakdown.</p>
-								<div class="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-600 sm:grid-cols-3">
-									<div class="rounded-lg bg-white px-3 py-2 shadow-sm">
-										<p class="text-[11px] uppercase tracking-wide text-slate-500">Total days absent</p>
-										<p class="text-base font-semibold text-slate-900">
-											{{ formatCount(snapshot.attendance.summary.total_days - snapshot.attendance.summary.present_days) }}
-										</p>
-									</div>
-									<div class="rounded-lg bg-white px-3 py-2 shadow-sm">
-										<p class="text-[11px] uppercase tracking-wide text-slate-500">Unexcused absences</p>
-										<p class="text-base font-semibold text-rose-700">
-											{{ formatCount(snapshot.attendance.summary.unexcused_absences) }}
-										</p>
-									</div>
-									<div class="rounded-lg bg-white px-3 py-2 shadow-sm">
-										<p class="text-[11px] uppercase tracking-wide text-slate-500">
-											{{ displayViewMode === 'student' ? 'Most fragile course' : 'Most impacted course' }}
-										</p>
-										<p class="text-sm font-semibold text-slate-900">
-											{{ snapshot.attendance.summary.most_impacted_course?.course_name || '—' }}
-										</p>
+
+								<div class="attendance-card-body space-y-3">
+									<StackedBarChart
+										v-if="attendanceView === 'by_course' && breakdownRows.length"
+										title=""
+										:series="[
+											{ key: 'present',   label: 'Present',   color: 'rgb(var(--leaf-rgb))' },
+											{ key: 'excused',   label: 'Excused',   color: 'rgb(var(--sky-rgb))' },
+											{ key: 'unexcused', label: 'Unexcused', color: 'rgb(var(--flame-rgb))' },
+											{ key: 'late',      label: 'Late',      color: 'rgb(var(--jacaranda-rgb))' },
+										]"
+										:rows="breakdownRows"
+									/>
+									<p
+										v-else
+										class="type-empty"
+									>
+										Switch to course view to see breakdown.
+									</p>
+
+									<div class="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
+										<div class="mini-kpi-card">
+											<p class="mini-kpi-label">Total days absent</p>
+											<p class="mini-kpi-value">
+												{{
+													formatCount(
+														snapshot.attendance.summary.total_days - snapshot.attendance.summary.present_days
+													)
+												}}
+											</p>
+										</div>
+										<div class="mini-kpi-card mini-kpi-card-alert">
+											<p class="mini-kpi-label">Unexcused absences</p>
+											<p class="mini-kpi-value text-[color:rgb(var(--flame-rgb))]">
+												{{ formatCount(snapshot.attendance.summary.unexcused_absences) }}
+											</p>
+										</div>
+										<div class="mini-kpi-card">
+											<p class="mini-kpi-label">
+												{{ displayViewMode === 'student' ? 'Most fragile course' : 'Most impacted course' }}
+											</p>
+											<p class="mini-kpi-value">
+												{{ snapshot.attendance.summary.most_impacted_course?.course_name || '—' }}
+											</p>
+										</div>
 									</div>
 								</div>
 							</div>

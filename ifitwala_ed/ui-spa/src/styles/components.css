@@ -56,6 +56,10 @@
     @apply text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-token/75;
   }
 
+  .type-label {
+    @apply text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-token/75;
+  }
+
   /* ---------------------------------------------------------------
      Staff portal "palette card" — focus / task list container
      Soft shell surface, not pure white
@@ -77,10 +81,87 @@
            px-4 py-3 shadow-sm;
   }
 
+  /* Toolbar wrapper for analytics filters */
+  .toolbar {
+    @apply surface-toolbar flex flex-wrap items-center gap-3 mb-2;
+  }
+
   /* Calendar/attendance card */
   .attendance-card {
     @apply rounded-2xl border border-border/80 shadow-sm;
     background-color: rgb(var(--surface-rgb));
+  }
+
+  .attendance-card-header {
+    @apply mb-2 flex items-center justify-between gap-3;
+  }
+
+  .attendance-card-body {
+    @apply rounded-xl border border-border/60 bg-[rgb(var(--surface-rgb)/0.92)] px-3 py-3 shadow-inner;
+  }
+
+  .analytics-card {
+    @apply rounded-2xl border border-border/85 bg-[rgb(var(--surface-rgb)/0.96)] px-4 py-4 shadow-sm;
+  }
+
+  .chip-toggle {
+    @apply rounded-full px-4 py-1 text-xs font-semibold transition;
+    background-color: rgb(var(--surface-rgb) / 0.85);
+    color: rgb(var(--ink-rgb) / 0.75);
+  }
+
+  .chip-toggle-active {
+    background-color: rgb(var(--canopy-rgb));
+    color: #fff;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .chip-toggle-muted {
+    background-color: rgb(var(--surface-rgb) / 0.8);
+    color: rgb(var(--ink-rgb) / 0.6);
+  }
+
+  .chip-scope {
+    @apply rounded-full px-3 py-1 text-[11px] font-semibold transition;
+  }
+
+  .chip-scope-active {
+    background-color: rgb(var(--ink-rgb));
+    color: rgb(var(--surface-rgb));
+  }
+
+  .chip-scope-muted {
+    background-color: rgb(var(--surface-rgb) / 0.85);
+    color: rgb(var(--ink-rgb) / 0.65);
+  }
+
+  .type-chip-muted {
+    @apply rounded-full px-2 py-0.5 text-[11px] font-semibold;
+    background-color: rgb(var(--surface-rgb) / 0.8);
+    color: rgb(var(--ink-rgb) / 0.6);
+  }
+
+  .type-empty {
+    @apply text-xs text-slate-400;
+  }
+
+  .mini-kpi-card {
+    @apply rounded-xl border border-border/70 px-3 py-2 shadow-sm;
+    background-color: rgb(var(--surface-rgb) / 0.9);
+  }
+
+  .mini-kpi-card-alert {
+    background-color: rgb(var(--flame-rgb) / 0.1);
+  }
+
+  .mini-kpi-label {
+    @apply text-[11px] uppercase tracking-wide;
+    color: rgb(var(--ink-rgb) / 0.6);
+  }
+
+  .mini-kpi-value {
+    @apply text-base font-semibold;
+    color: rgb(var(--ink-rgb));
   }
 
   /* ---------------------------------------------------------------

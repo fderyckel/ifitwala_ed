@@ -422,15 +422,19 @@ def _attendance_map():
 		fields=["name", "attendance_code", "attendance_code_name", "count_as_present", "color"],
 	)
 
-	code_map = {}
+	code_map: dict[str, dict] = {}
 	for r in rows:
 		# Lightweight late detection using code label/name
 		label = (r.attendance_code_name or r.attendance_code or "").lower()
 		is_late = "late" in label or r.attendance_code == "L"
-		code_map[r.name] = {
+		payload = {
 			**r,
 			"is_late": is_late,
 		}
+		# Key by both docname and code so lookups by attendance_code work reliably
+		code_map[r.name] = payload
+		if r.attendance_code:
+			code_map[r.attendance_code] = payload
 	return code_map
 
 
@@ -450,6 +454,7 @@ def _attendance_block(student: str, academic_year: str | None):
 			"student_group",
 			"program",
 			"school",
+			"academic_year",
 			"whole_day",
 		],
 		order_by="attendance_date asc",
@@ -468,15 +473,16 @@ def _attendance_block(student: str, academic_year: str | None):
 	all_day_heatmap = []
 	for r in whole_day_rows:
 		code = code_map.get(r.attendance_code, {})
+		code_value = code.get("attendance_code") or r.attendance_code
 		all_day_heatmap.append(
 			{
 				"date": r.attendance_date,
-				"attendance_code": r.attendance_code,
-				"attendance_code_name": code.get("attendance_code_name"),
+				"attendance_code": code_value,
+				"attendance_code_name": code.get("attendance_code_name") or code_value,
 				"count_as_present": code.get("count_as_present"),
 				"is_late": code.get("is_late"),
 				"color": code.get("color") or "#cbd5e1",
-				"academic_year": academic_year,
+				"academic_year": r.academic_year or academic_year,
 			}
 		)
 
@@ -491,15 +497,23 @@ def _attendance_block(student: str, academic_year: str | None):
 				week_label = ""
 		is_present = code_map.get(r.attendance_code, {}).get("count_as_present")
 		is_late = code_map.get(r.attendance_code, {}).get("is_late")
+		code_value = code_map.get(r.attendance_code, {}).get("attendance_code") or r.attendance_code
+		is_excused = False
+		meta = code_map.get(code_value, {})
+		if meta:
+			name_lower = (meta.get("attendance_code_name") or "").lower()
+			is_excused = "excuse" in name_lower
+		code_value = code_map.get(r.attendance_code, {}).get("attendance_code") or r.attendance_code
 		entry = {
 			"course": r.course or "General",
 			"course_name": frappe.db.get_value("Course", r.course, "course_name") if r.course else "General",
 			"week_label": week_label,
 			"present_sessions": 1 if is_present else 0,
-			"absent_sessions": 1 if not is_present else 0,
+			"absent_sessions": 1 if (not is_present and is_excused) else 0,
 			"late_sessions": 1 if is_late else 0,
-			"unexcused_sessions": 0,
-			"academic_year": academic_year,
+			"unexcused_sessions": 1 if (not is_present and not is_excused and not is_late) else 0,
+			"academic_year": r.academic_year or academic_year,
+			"attendance_code": code_value,
 		}
 		by_course_heatmap.append(entry)
 
@@ -515,14 +529,22 @@ def _attendance_block(student: str, academic_year: str | None):
 				"excused_absent_sessions": 0,
 				"unexcused_absent_sessions": 0,
 				"late_sessions": 0,
-				"academic_year": academic_year,
+				"academic_year": r.academic_year or academic_year,
 			},
 		)
 		is_present = code_map.get(r.attendance_code, {}).get("count_as_present")
 		is_late = code_map.get(r.attendance_code, {}).get("is_late")
+		code_value = code_map.get(r.attendance_code, {}).get("attendance_code") or r.attendance_code
+		is_excused = False
+		meta = code_map.get(code_value, {})
+		if meta:
+			name_lower = (meta.get("attendance_code_name") or "").lower()
+			is_excused = "excuse" in name_lower
 
 		if is_present:
 			entry["present_sessions"] += 1
+		elif is_excused:
+			entry["excused_absent_sessions"] += 1
 		else:
 			entry["unexcused_absent_sessions"] += 1
 		if is_late:
@@ -544,6 +566,17 @@ def _attendance_block(student: str, academic_year: str | None):
 		"all_day_heatmap": all_day_heatmap,
 		"by_course_heatmap": by_course_heatmap,
 		"by_course_breakdown": by_course_breakdown,
+		"codes": frappe.get_all(
+			"Student Attendance Code",
+			fields=[
+				"attendance_code as value",
+				"attendance_code_name as label",
+				"count_as_present",
+				"color",
+			],
+			filters={"show_in_reports": 1},
+			order_by="display_order asc, attendance_code_name asc",
+		),
 	}
 
 
