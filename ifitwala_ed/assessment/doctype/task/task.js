@@ -300,6 +300,9 @@ async function ensure_saved_then(fn, frm) {
 
 async function auto_sync_students_if_needed(frm) {
 	if (!should_sync_students(frm.doc)) return;
+	// Avoid auto-saving when Criteria is ON but no Assessment Criteria rows yet;
+	// server-side validation would fail and spam errors.
+	if (frm.doc.criteria && !has_any_criteria(frm)) return;
 
 	// Brand-new or unsaved changes → save first so we have a real DB row
 	if (frm.is_new() || frm.is_dirty()) {
