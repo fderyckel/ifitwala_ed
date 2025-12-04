@@ -815,7 +815,8 @@ def _kpi_block(student: str, academic_year: str | None):
 			),
 			# Student Referral has no status field in your schema; count all for now.
 			"active_referrals": frappe.db.count("Student Referral", {"student": student}),
-			"nurse_visits_this_term": frappe.db.count("Student Patient Visit", {"student": student}),
+			# Student Patient Visit links via student_patient, not student
+			"nurse_visits_this_term": frappe.db.count("Student Patient Visit", {"student_patient": student}),
 		},
 	}
 
