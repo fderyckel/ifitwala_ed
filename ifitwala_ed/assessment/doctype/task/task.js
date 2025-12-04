@@ -228,6 +228,11 @@ function ensure_points_field_rules(frm) {
 	frm.set_df_property("max_points", "hidden", !on);
 	frm.set_df_property("max_points", "reqd", on);
 	if (!on && frm.doc.max_points) frm.set_value("max_points", null);
+
+	// Grade Scale is only relevant in points mode (server requires it)
+	frm.set_df_property("grade_scale", "hidden", !on);
+	frm.set_df_property("grade_scale", "reqd", on);
+	if (!on && frm.doc.grade_scale) frm.set_value("grade_scale", null);
 }
 
 const __courseCriteriaCache = Object.create(null);
