@@ -3,7 +3,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { createResource } from 'frappe-ui'
 
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
-import HeatmapDialog from '@/components/HeatmapDialog.vue'
 import FiltersBar from '@/components/analytics/FiltersBar.vue'
 import StackedBarChart from '@/components/analytics/StackedBarChart.vue'
 
@@ -486,9 +485,6 @@ const wellbeingScope = ref<'current' | 'last' | 'all'>('current')
 const wellbeingFilter = ref<'all' | 'student_log' | 'referral' | 'nurse_visit' | 'attendance_incident'>('all')
 const historyScope = ref<'current' | 'previous' | 'two_years' | 'all'>('all')
 const attendanceKpiSource = ref<'all_day' | 'by_course'>('all_day')
-const showHeatmapDialog = ref(false)
-const heatmapInitialMode = ref<HeatmapMode>('whole-day')
-
 watch(
 	() => snapshot.value.meta?.student,
 	() => {
@@ -527,38 +523,6 @@ function formatDate(value?: string | null) {
 	return value.slice(0, 10)
 }
 
-const attendanceKpi = computed(() => {
-	if (attendanceKpiSource.value === 'by_course') {
-		const rows = breakdownRows.value
-		const totals = rows.reduce(
-			(acc, row) => {
-				acc.present += row.values.present || 0
-				acc.excused += row.values.excused || 0
-				acc.unexcused += row.values.unexcused || 0
-				acc.late += row.values.late || 0
-				return acc
-			},
-			{ present: 0, excused: 0, unexcused: 0, late: 0 }
-		)
-		const totalSessions = totals.present + totals.excused + totals.unexcused + totals.late
-		return {
-			present_percentage: totalSessions ? totals.present / totalSessions : 0,
-			excused: totals.excused,
-			unexcused: totals.unexcused,
-		}
-	}
-
-	// Whole-day mode from heatmap rows
-	const rows = filteredAllDayHeatmap.value
-	const present = rows.filter((r) => r.count_as_present).length
-	const total = rows.length
-	return {
-		present_percentage: total ? present / total : snapshot.value.kpis.attendance.present_percentage,
-		excused: snapshot.value.kpis.attendance.excused_absences,
-		unexcused: total ? total - present : snapshot.value.kpis.attendance.unexcused_absences,
-	}
-})
-
 const hasAllDayHeatmap = computed(() => (snapshot.value.attendance.all_day_heatmap || []).length > 0)
 const hasByCourseHeatmap = computed(() => (snapshot.value.attendance.by_course_heatmap || []).length > 0)
 const hasAnyHeatmap = computed(() => hasAllDayHeatmap.value || hasByCourseHeatmap.value)
@@ -581,6 +545,11 @@ function setAttendanceKpiSource(source: 'all_day' | 'by_course') {
 	if (source === 'all_day' && !hasAllDayHeatmap.value) return
 	if (source === 'by_course' && !hasByCourseHeatmap.value) return
 	attendanceKpiSource.value = source
+	if (source === 'all_day') {
+		attendanceView.value = 'all_day'
+	} else {
+		attendanceView.value = 'by_course'
+	}
 }
 
 const courses = computed(() => snapshot.value.learning.current_courses || [])
@@ -800,6 +769,38 @@ const breakdownRows = computed(() => {
 				late: row.late_sessions,
 			},
 		}))
+})
+
+const attendanceKpi = computed(() => {
+	if (attendanceKpiSource.value === 'by_course') {
+		const rows = breakdownRows.value
+		const totals = rows.reduce(
+			(acc, row) => {
+				acc.present += row.values.present || 0
+				acc.excused += row.values.excused || 0
+				acc.unexcused += row.values.unexcused || 0
+				acc.late += row.values.late || 0
+				return acc
+			},
+			{ present: 0, excused: 0, unexcused: 0, late: 0 }
+		)
+		const totalSessions = totals.present + totals.excused + totals.unexcused + totals.late
+		return {
+			present_percentage: totalSessions ? totals.present / totalSessions : 0,
+			excused: totals.excused,
+			unexcused: totals.unexcused,
+		}
+	}
+
+	// Whole-day mode from heatmap rows
+	const rows = filteredAllDayHeatmap.value
+	const present = rows.filter((r) => r.count_as_present).length
+	const total = rows.length
+	return {
+		present_percentage: total ? present / total : snapshot.value.kpis.attendance.present_percentage,
+		excused: snapshot.value.kpis.attendance.excused_absences,
+		unexcused: total ? total - present : snapshot.value.kpis.attendance.unexcused_absences,
+	}
 })
 
 const heatmapStudentOptions = computed(() => {
@@ -1261,19 +1262,20 @@ const reflectionFlags = computed(() => {
 											</p>
 											<div
 												v-if="tile.sourceToggle?.active"
-												class="flex items-center gap-1 rounded-full bg-white px-1 py-0.5 text-[10px] font-semibold text-slate-700 shadow-sm"
+												class="flex items-center gap-1 rounded-full bg-white px-0.5 py-[2px] text-[9px] font-semibold text-slate-700 shadow-sm"
 											>
 												<button
 													v-for="opt in tile.sourceToggle.options"
 													:key="opt.id"
 													type="button"
-													class="rounded-full px-2 py-0.5 transition"
+													class="rounded-full px-1.5 py-0.5 transition"
 													:class="[
 														opt.id === tile.sourceToggle.active
-															? 'bg-emerald-600 text-white shadow'
+															? 'text-white shadow'
 															: 'text-slate-600 hover:bg-slate-100',
 														!opt.available ? 'opacity-40 cursor-not-allowed' : '',
 													]"
+													:style="opt.id === tile.sourceToggle.active ? { backgroundColor: 'var(--leaf)' } : {}"
 													:disabled="!opt.available"
 													@click.stop="setAttendanceKpiSource(opt.id as any)"
 												>
@@ -1699,18 +1701,4 @@ const reflectionFlags = computed(() => {
 		</section>
 	</div>
 
-	<HeatmapDialog
-		v-if="showHeatmapDialog"
-		v-model="showHeatmapDialog"
-		:initial-mode="heatmapInitialMode"
-		:whole-day-points="heatmapWholeDayPoints"
-		:block-points="heatmapBlockPoints"
-		:attendance-code-options="heatmapAttendanceCodes"
-		:student-options="heatmapStudentOptions"
-		:selected-student="snapshot.meta.student"
-		:selected-academic-year="snapshot.meta.current_academic_year"
-		:block-labels="heatmapBlockLabels"
-		:status-legend="heatmapStatusLegend"
-		:loading="loadingSnapshot"
-	/>
 </template>
