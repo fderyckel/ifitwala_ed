@@ -485,6 +485,7 @@ const attendanceScope = ref<'current' | 'last' | 'all'>('current')
 const wellbeingScope = ref<'current' | 'last' | 'all'>('current')
 const wellbeingFilter = ref<'all' | 'student_log' | 'referral' | 'nurse_visit' | 'attendance_incident'>('all')
 const historyScope = ref<'current' | 'previous' | 'two_years' | 'all'>('all')
+const attendanceKpiSource = ref<'all_day' | 'by_course'>('all_day')
 const showHeatmapDialog = ref(false)
 const heatmapInitialMode = ref<HeatmapMode>('whole-day')
 
@@ -500,8 +501,10 @@ watch(
 	([hasAllDay, hasByCourse]) => {
 		if (hasAllDay) {
 			attendanceView.value = 'all_day'
+			attendanceKpiSource.value = 'all_day'
 		} else if (hasByCourse) {
 			attendanceView.value = 'by_course'
+			attendanceKpiSource.value = 'by_course'
 		}
 	}
 )
@@ -529,39 +532,39 @@ const hasByCourseHeatmap = computed(() => (snapshot.value.attendance.by_course_h
 const hasAnyHeatmap = computed(() => hasAllDayHeatmap.value || hasByCourseHeatmap.value)
 
 const attendanceSourceLabel = computed(() => {
-	if (hasAllDayHeatmap.value) return 'Whole day'
-	if (hasByCourseHeatmap.value) return 'Course-based'
+	if (attendanceKpiSource.value === 'all_day') return 'Whole day'
+	if (attendanceKpiSource.value === 'by_course') return 'Course-based'
 	return 'No attendance data'
 })
 
 const attendanceSourceToggle = computed(() => ({
-	active: hasAllDayHeatmap.value ? 'all_day' : hasByCourseHeatmap.value ? 'by_course' : null,
+	active: attendanceKpiSource.value,
 	options: [
 		{ id: 'all_day', label: 'Whole day', available: hasAllDayHeatmap.value },
 		{ id: 'by_course', label: 'Per course', available: hasByCourseHeatmap.value },
 	],
 }))
 
-function openAttendanceHeatmap() {
-	if (!hasAnyHeatmap.value) return
-	heatmapInitialMode.value = hasAllDayHeatmap.value ? 'whole-day' : 'per-block'
-	showHeatmapDialog.value = true
-}
-
-function setAttendanceSource(source: 'all_day' | 'by_course') {
-	attendanceView.value = source
+function setAttendanceKpiSource(source: 'all_day' | 'by_course') {
+	if (source === 'all_day' && !hasAllDayHeatmap.value) return
+	if (source === 'by_course' && !hasByCourseHeatmap.value) return
+	attendanceKpiSource.value = source
 }
 
 const kpiTiles = computed(() => [
 	{
 		label: 'Attendance',
-		value: `${formatPct(snapshot.value.kpis.attendance.present_percentage)} present`,
-		sub: `${formatCount(snapshot.value.kpis.attendance.unexcused_absences)} unexcused · ${formatCount(
-			snapshot.value.kpis.attendance.excused_absences
+		value: `${formatPct(attendanceKpi.value.present_percentage)} present`,
+		sub: `${formatCount(attendanceKpi.value.unexcused || 0)} unexcused · ${formatCount(
+			attendanceKpi.value.excused || 0
 		)} excused`,
 		meta: attendanceSourceLabel.value,
-		clickable: hasAnyHeatmap.value,
-		onClick: openAttendanceHeatmap,
+		clickable: hasAllDayHeatmap.value && hasByCourseHeatmap.value,
+		onClick: () => {
+			if (hasAllDayHeatmap.value && hasByCourseHeatmap.value) {
+				attendanceKpiSource.value = attendanceKpiSource.value === 'all_day' ? 'by_course' : 'all_day'
+			}
+		},
 		sourceToggle: attendanceSourceToggle.value,
 	},
 	{
@@ -916,6 +919,38 @@ function parseWeekIndex(label?: string | null) {
 	return match ? Number(match[1]) : 0
 }
 
+const attendanceKpi = computed(() => {
+	if (attendanceKpiSource.value === 'by_course') {
+		const rows = breakdownRows.value
+		const totals = rows.reduce(
+			(acc, row) => {
+				acc.present += row.values.present || 0
+				acc.excused += row.values.excused || 0
+				acc.unexcused += row.values.unexcused || 0
+				acc.late += row.values.late || 0
+				return acc
+			},
+			{ present: 0, excused: 0, unexcused: 0, late: 0 }
+		)
+		const totalSessions = totals.present + totals.excused + totals.unexcused + totals.late
+		return {
+			present_percentage: totalSessions ? totals.present / totalSessions : 0,
+			excused: totals.excused,
+			unexcused: totals.unexcused,
+		}
+	}
+
+	// Whole-day mode from heatmap rows
+	const rows = filteredAllDayHeatmap.value
+	const present = rows.filter((r) => r.count_as_present).length
+	const total = rows.length
+	return {
+		present_percentage: total ? present / total : snapshot.value.kpis.attendance.present_percentage,
+		excused: snapshot.value.kpis.attendance.excused_absences,
+		unexcused: total ? total - present : snapshot.value.kpis.attendance.unexcused_absences,
+	}
+})
+
 const wellbeingTimeline = computed(() => {
 	const events = snapshot.value.wellbeing.timeline || []
 	return events.filter((item) => {
@@ -1232,7 +1267,7 @@ const reflectionFlags = computed(() => {
 														!opt.available ? 'opacity-40 cursor-not-allowed' : '',
 													]"
 													:disabled="!opt.available"
-													@click.stop="setAttendanceSource(opt.id as any)"
+													@click.stop="setAttendanceKpiSource(opt.id as any)"
 												>
 													{{ opt.label }}
 												</button>
