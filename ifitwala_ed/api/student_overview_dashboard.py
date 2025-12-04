@@ -669,7 +669,7 @@ def _wellbeing_block(student: str, academic_year: str | None):
 		nurse = frappe.db.get_all(
 			"Student Patient Visit",
 			filters={"student_patient": student},
-			fields=["name", "date", "reason"],
+			fields=["name", "date", "note", "treatment"],
 			order_by="date desc",
 			limit=10,
 		)
@@ -709,7 +709,7 @@ def _wellbeing_block(student: str, academic_year: str | None):
 				"name": r.name,
 				"date": r.date,
 				"title": "Nurse visit",
-				"summary": r.reason,
+				"summary": (r.note or r.treatment or "")[:140],
 				"status": None,
 				"is_sensitive": True,
 			}
