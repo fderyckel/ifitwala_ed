@@ -990,7 +990,12 @@ const reflectionFlags = computed(() => {
 											class="rounded-full bg-slate-50 px-2 py-0.5 text-[11px] text-slate-700"
 										>
 											{{ group.abbreviation || group.name }}
-											<span v-if="group.is_homeroom" class="text-[10px] text-amber-600">homeroom</span>
+											<span
+												v-if="group.attendance_scope === 'Whole Day'"
+												class="text-[10px] text-amber-600"
+											>
+												whole day
+											</span>
 										</span>
 									</div>
 									<p class="text-xs text-slate-500">

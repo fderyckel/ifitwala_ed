@@ -380,8 +380,12 @@ def _identity_block(student: str, program: str | None, school: str | None):
 
 	student_groups = frappe.db.sql(
 		"""
-		SELECT sg.name, sg.student_group_name AS label, sg.abbreviation, sg.group_based_on,
-		       sg.course, sg.is_homeroom
+		SELECT sg.name,
+		       sg.student_group_name AS label,
+		       sg.student_group_abbreviation AS abbreviation,
+		       sg.group_based_on,
+		       sg.course,
+		       sg.attendance_scope
 		FROM `tabStudent Group Student` sgs
 		LEFT JOIN `tabStudent Group` sg ON sg.name = sgs.parent
 		WHERE sgs.student = %s
