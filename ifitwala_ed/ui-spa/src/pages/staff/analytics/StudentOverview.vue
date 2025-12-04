@@ -527,6 +527,38 @@ function formatDate(value?: string | null) {
 	return value.slice(0, 10)
 }
 
+const attendanceKpi = computed(() => {
+	if (attendanceKpiSource.value === 'by_course') {
+		const rows = breakdownRows.value
+		const totals = rows.reduce(
+			(acc, row) => {
+				acc.present += row.values.present || 0
+				acc.excused += row.values.excused || 0
+				acc.unexcused += row.values.unexcused || 0
+				acc.late += row.values.late || 0
+				return acc
+			},
+			{ present: 0, excused: 0, unexcused: 0, late: 0 }
+		)
+		const totalSessions = totals.present + totals.excused + totals.unexcused + totals.late
+		return {
+			present_percentage: totalSessions ? totals.present / totalSessions : 0,
+			excused: totals.excused,
+			unexcused: totals.unexcused,
+		}
+	}
+
+	// Whole-day mode from heatmap rows
+	const rows = filteredAllDayHeatmap.value
+	const present = rows.filter((r) => r.count_as_present).length
+	const total = rows.length
+	return {
+		present_percentage: total ? present / total : snapshot.value.kpis.attendance.present_percentage,
+		excused: snapshot.value.kpis.attendance.excused_absences,
+		unexcused: total ? total - present : snapshot.value.kpis.attendance.unexcused_absences,
+	}
+})
+
 const hasAllDayHeatmap = computed(() => (snapshot.value.attendance.all_day_heatmap || []).length > 0)
 const hasByCourseHeatmap = computed(() => (snapshot.value.attendance.by_course_heatmap || []).length > 0)
 const hasAnyHeatmap = computed(() => hasAllDayHeatmap.value || hasByCourseHeatmap.value)
@@ -550,43 +582,6 @@ function setAttendanceKpiSource(source: 'all_day' | 'by_course') {
 	if (source === 'by_course' && !hasByCourseHeatmap.value) return
 	attendanceKpiSource.value = source
 }
-
-const kpiTiles = computed(() => [
-	{
-		label: 'Attendance',
-		value: `${formatPct(attendanceKpi.value.present_percentage)} present`,
-		sub: `${formatCount(attendanceKpi.value.unexcused || 0)} unexcused · ${formatCount(
-			attendanceKpi.value.excused || 0
-		)} excused`,
-		meta: attendanceSourceLabel.value,
-		clickable: hasAllDayHeatmap.value && hasByCourseHeatmap.value,
-		onClick: () => {
-			if (hasAllDayHeatmap.value && hasByCourseHeatmap.value) {
-				attendanceKpiSource.value = attendanceKpiSource.value === 'all_day' ? 'by_course' : 'all_day'
-			}
-		},
-		sourceToggle: attendanceSourceToggle.value,
-	},
-	{
-		label: 'Tasks',
-		value: `${formatPct(snapshot.value.kpis.tasks.completion_rate)} tasks completed`,
-		sub: `${formatCount(snapshot.value.kpis.tasks.overdue_tasks)} overdue · ${formatCount(
-			snapshot.value.kpis.tasks.missed_tasks
-		)} missed`,
-	},
-	{
-		label: 'Academic progress',
-		value: snapshot.value.kpis.academic.latest_overall_label || '—',
-		sub: snapshot.value.kpis.academic.trend ? `Trend: ${snapshot.value.kpis.academic.trend}` : 'Latest overall grade',
-	},
-	{
-		label: 'Support signals',
-		value: `${formatCount(snapshot.value.kpis.support.student_logs_total)} logs`,
-		sub: `${formatCount(snapshot.value.kpis.support.active_referrals)} referral(s) · ${formatCount(
-			snapshot.value.kpis.support.nurse_visits_this_term
-		)} nurse visits`,
-	},
-])
 
 const courses = computed(() => snapshot.value.learning.current_courses || [])
 const selectedCourseRow = computed(() => courses.value.find((c) => c.course === selectedCourse.value) || null)
@@ -960,6 +955,43 @@ const wellbeingTimeline = computed(() => {
 	})
 })
 
+const kpiTiles = computed(() => [
+	{
+		label: 'Attendance',
+		value: `${formatPct(attendanceKpi.value.present_percentage)} present`,
+		sub: `${formatCount(attendanceKpi.value.unexcused || 0)} unexcused · ${formatCount(
+			attendanceKpi.value.excused || 0
+		)} excused`,
+		meta: attendanceSourceLabel.value,
+		clickable: hasAllDayHeatmap.value && hasByCourseHeatmap.value,
+		onClick: () => {
+			if (hasAllDayHeatmap.value && hasByCourseHeatmap.value) {
+				attendanceKpiSource.value = attendanceKpiSource.value === 'all_day' ? 'by_course' : 'all_day'
+			}
+		},
+		sourceToggle: attendanceSourceToggle.value,
+	},
+	{
+		label: 'Tasks',
+		value: `${formatPct(snapshot.value.kpis.tasks.completion_rate)} tasks completed`,
+		sub: `${formatCount(snapshot.value.kpis.tasks.overdue_tasks)} overdue · ${formatCount(
+			snapshot.value.kpis.tasks.missed_tasks
+		)} missed`,
+	},
+	{
+		label: 'Academic progress',
+		value: snapshot.value.kpis.academic.latest_overall_label || '—',
+		sub: snapshot.value.kpis.academic.trend ? `Trend: ${snapshot.value.kpis.academic.trend}` : 'Latest overall grade',
+	},
+	{
+		label: 'Support signals',
+		value: `${formatCount(snapshot.value.kpis.support.student_logs_total)} logs`,
+		sub: `${formatCount(snapshot.value.kpis.support.active_referrals)} referral(s) · ${formatCount(
+			snapshot.value.kpis.support.nurse_visits_this_term
+		)} nurse visits`,
+	},
+])
+
 const wellbeingSeriesOption = computed(() => {
 	const series = snapshot.value.wellbeing.metrics.time_series || []
 	if (!series.length) return {}
@@ -1055,7 +1087,10 @@ const reflectionFlags = computed(() => {
 </script>
 
 <template>
-	<div class="min-h-full px-4 py-4 md:px-6 lg:px-8">
+	<div
+		class="min-h-full px-4 pb-8 pt-32 md:px-6 lg:px-8"
+		style="background: var(--portal-gradient-bg);"
+	>
 		<header class="flex flex-wrap items-center justify-between gap-3">
 			<div>
 				<h1 class="text-base font-semibold tracking-tight text-slate-900">Student Overview</h1>
@@ -1084,9 +1119,13 @@ const reflectionFlags = computed(() => {
 			</div>
 		</header>
 
-		<section class="sticky top-2 z-10 mt-3">
-			<FiltersBar>
-				<div class="flex flex-col gap-1 w-48">
+		<div
+			class="fixed inset-x-0 top-0 z-30 border-b border-border/70 bg-white/80 backdrop-blur"
+			style="background: var(--portal-gradient-bg);"
+		>
+			<div class="px-4 py-2 md:px-6 lg:px-8">
+				<FiltersBar>
+					<div class="flex flex-col gap-1 w-48">
 					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">School</label>
 					<select
 						v-model="filters.school"
@@ -1103,7 +1142,7 @@ const reflectionFlags = computed(() => {
 					</select>
 				</div>
 
-				<div class="flex flex-col gap-1 w-48">
+					<div class="flex flex-col gap-1 w-48">
 					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">Program</label>
 					<select
 						v-model="filters.program"
@@ -1120,7 +1159,7 @@ const reflectionFlags = computed(() => {
 					</select>
 				</div>
 
-				<div class="relative flex w-64 flex-col gap-1">
+					<div class="relative flex w-64 flex-col gap-1">
 					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">Student</label>
 					<div class="flex h-9 items-center rounded-md border border-slate-200 bg-white px-2">
 						<span class="mr-1 text-[11px] text-slate-400">🔍</span>
@@ -1168,9 +1207,10 @@ const reflectionFlags = computed(() => {
 								: 'Start typing to search for a student.' }}
 						</div>
 					</div>
-				</div>
-			</FiltersBar>
-		</section>
+					</div>
+				</FiltersBar>
+			</div>
+		</div>
 
 		<section class="mt-4 space-y-4">
 			<div
@@ -1190,7 +1230,7 @@ const reflectionFlags = computed(() => {
 
 				<div v-else class="space-y-6">
 					<!-- Band 1: Identity & Snapshot -->
-					<section class="rounded-2xl border border-slate-200 bg-white px-4 py-5 shadow-sm">
+					<section class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-5 shadow-sm">
 						<div class="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
 							<div class="flex gap-4">
 								<div
@@ -1291,7 +1331,7 @@ const reflectionFlags = computed(() => {
 					<!-- Band 2: Learning & Tasks -->
 					<section class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(0,2fr)]">
 						<!-- Current Courses -->
-						<div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+						<div class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
 							<header class="mb-3 flex items-center justify-between">
 								<div>
 									<h3 class="text-sm font-semibold text-slate-800">Current Courses</h3>
@@ -1329,7 +1369,7 @@ const reflectionFlags = computed(() => {
 						</div>
 
 						<!-- Task progress -->
-						<div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+						<div class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
 							<header class="mb-3 flex flex-wrap items-center justify-between gap-3">
 								<div>
 									<h3 class="text-sm font-semibold text-slate-800">Task Progress</h3>
@@ -1378,7 +1418,7 @@ const reflectionFlags = computed(() => {
 						</div>
 
 						<!-- Recent tasks -->
-						<div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+						<div class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
 							<header class="mb-3 flex items-center justify-between">
 								<div>
 									<h3 class="text-sm font-semibold text-slate-800">Most recent tasks</h3>
@@ -1429,7 +1469,7 @@ const reflectionFlags = computed(() => {
 					</section>
 
 					<!-- Band 3: Attendance -->
-					<section class="space-y-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+					<section class="space-y-3 rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
 						<div class="flex flex-wrap items-center justify-center gap-2">
 							<button
 								type="button"
@@ -1533,7 +1573,7 @@ const reflectionFlags = computed(() => {
 
 					<!-- Band 4: Wellbeing & Support -->
 					<section class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-						<div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+						<div class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
 							<header class="mb-3 flex flex-wrap items-center justify-between gap-3">
 								<div>
 									<h3 class="text-sm font-semibold text-slate-800">Wellbeing timeline</h3>
@@ -1599,7 +1639,7 @@ const reflectionFlags = computed(() => {
 							</div>
 						</div>
 
-						<div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+						<div class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
 							<header class="mb-3 flex items-center justify-between">
 								<h3 class="text-sm font-semibold text-slate-800">Support metrics & patterns</h3>
 							</header>
@@ -1632,7 +1672,7 @@ const reflectionFlags = computed(() => {
 					</section>
 
 					<!-- Band 5: History & Reflection -->
-					<section class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+					<section class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
 						<header class="mb-3 flex flex-wrap items-center justify-between gap-3">
 							<div>
 								<h3 class="text-sm font-semibold text-slate-800">History & Reflection</h3>
