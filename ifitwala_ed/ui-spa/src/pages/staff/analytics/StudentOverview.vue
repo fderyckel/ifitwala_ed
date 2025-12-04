@@ -914,38 +914,6 @@ function parseWeekIndex(label?: string | null) {
 	return match ? Number(match[1]) : 0
 }
 
-const attendanceKpi = computed(() => {
-	if (attendanceKpiSource.value === 'by_course') {
-		const rows = breakdownRows.value
-		const totals = rows.reduce(
-			(acc, row) => {
-				acc.present += row.values.present || 0
-				acc.excused += row.values.excused || 0
-				acc.unexcused += row.values.unexcused || 0
-				acc.late += row.values.late || 0
-				return acc
-			},
-			{ present: 0, excused: 0, unexcused: 0, late: 0 }
-		)
-		const totalSessions = totals.present + totals.excused + totals.unexcused + totals.late
-		return {
-			present_percentage: totalSessions ? totals.present / totalSessions : 0,
-			excused: totals.excused,
-			unexcused: totals.unexcused,
-		}
-	}
-
-	// Whole-day mode from heatmap rows
-	const rows = filteredAllDayHeatmap.value
-	const present = rows.filter((r) => r.count_as_present).length
-	const total = rows.length
-	return {
-		present_percentage: total ? present / total : snapshot.value.kpis.attendance.present_percentage,
-		excused: snapshot.value.kpis.attendance.excused_absences,
-		unexcused: total ? total - present : snapshot.value.kpis.attendance.unexcused_absences,
-	}
-})
-
 const wellbeingTimeline = computed(() => {
 	const events = snapshot.value.wellbeing.timeline || []
 	return events.filter((item) => {
