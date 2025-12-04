@@ -702,7 +702,11 @@ const byCourseHeatmapOption = computed(() => {
 	const courses = Array.from(new Set(rows.map((r) => r.course_name || r.course)))
 	const weeks = Array.from(new Set(rows.map((r) => r.week_label)))
 	const data = rows.flatMap((row) => {
-		const severity = (row.unexcused_sessions || 0) * 2 + (row.absent_sessions || 0)
+		const severity =
+			(row.unexcused_sessions || 0) * 2 +
+			(row.absent_sessions || 0) +
+			(row.late_sessions || 0) +
+			1
 		return [
 			[
 				weeks.indexOf(row.week_label),
@@ -713,7 +717,7 @@ const byCourseHeatmapOption = computed(() => {
 		]
 	})
 	return {
-		grid: { left: 120, right: 10, top: 10, bottom: 50 },
+		grid: { left: 120, right: 10, top: 10, bottom: 70 },
 		xAxis: { type: 'category', data: weeks, axisLabel: { rotate: 30 } },
 		yAxis: { type: 'category', data: courses },
 		tooltip: {
@@ -722,16 +726,19 @@ const byCourseHeatmapOption = computed(() => {
 				const total = (row.present_sessions || 0) + (row.absent_sessions || 0) + (row.unexcused_sessions || 0)
 				return `${row.course_name || row.course} (${row.week_label})<br>${formatCount(
 					row.unexcused_sessions
-				)} unexcused / ${formatCount(row.absent_sessions)} absent / ${formatCount(row.present_sessions)} present`
+				)} unexcused / ${formatCount(row.absent_sessions)} absent / ${formatCount(row.late_sessions)} late / ${formatCount(row.present_sessions)} present`
 			},
 		},
 		visualMap: {
-			min: 0,
+			min: 1,
 			max: Math.max(...data.map((d) => d[2] as number), 1),
 			orient: 'horizontal',
 			left: 'center',
-			bottom: 0,
+			bottom: 10,
 			text: ['More misses', 'Fewer'],
+			inRange: {
+				color: ['#e2e8f0', '#fbbf24', '#ef4444'],
+			},
 		},
 		series: [
 			{
@@ -867,7 +874,7 @@ function deriveCourseStatus(row: any) {
 
 function parseWeekIndex(label?: string | null) {
 	if (!label) return 0
-	const match = label.match(/(\d+)/)
+	const match = label.match(/W(\d{1,2})$/i) || label.match(/-(\d{1,2})$/)
 	return match ? Number(match[1]) : 0
 }
 
@@ -1379,7 +1386,7 @@ const reflectionFlags = computed(() => {
 							</div>
 						</div>
 
-						<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+						<div class="grid grid-cols-1 gap-4 2xl:grid-cols-2">
 							<div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
 								<header class="mb-2 flex items-center justify-between">
 									<h3 class="text-sm font-semibold text-slate-800">Attendance heatmap</h3>

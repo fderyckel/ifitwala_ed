@@ -421,7 +421,17 @@ def _attendance_map():
 		"Student Attendance Code",
 		fields=["name", "attendance_code", "attendance_code_name", "count_as_present", "color"],
 	)
-	return {r.name: r for r in rows}
+
+	code_map = {}
+	for r in rows:
+		# Lightweight late detection using code label/name
+		label = (r.attendance_code_name or r.attendance_code or "").lower()
+		is_late = "late" in label or r.attendance_code == "L"
+		code_map[r.name] = {
+			**r,
+			"is_late": is_late,
+		}
+	return code_map
 
 
 def _attendance_block(student: str, academic_year: str | None):
@@ -446,6 +456,7 @@ def _attendance_block(student: str, academic_year: str | None):
 
 	total = len(rows)
 	present = sum(1 for r in rows if code_map.get(r.attendance_code, {}).get("count_as_present"))
+	late_total = sum(1 for r in rows if code_map.get(r.attendance_code, {}).get("is_late"))
 
 	all_day_heatmap = []
 	for r in rows:
@@ -456,6 +467,7 @@ def _attendance_block(student: str, academic_year: str | None):
 				"attendance_code": r.attendance_code,
 				"attendance_code_name": code.get("attendance_code_name"),
 				"count_as_present": code.get("count_as_present"),
+				"is_late": code.get("is_late"),
 				"color": code.get("color") or "#cbd5e1",
 				"academic_year": academic_year,
 			}
@@ -470,12 +482,15 @@ def _attendance_block(student: str, academic_year: str | None):
 				week_label = getdate(r.attendance_date).strftime("%G-W%V")
 			except Exception:  # noqa: E722 (guard against unexpected date formats)
 				week_label = ""
+		is_present = code_map.get(r.attendance_code, {}).get("count_as_present")
+		is_late = code_map.get(r.attendance_code, {}).get("is_late")
 		entry = {
 			"course": r.course or "General",
 			"course_name": frappe.db.get_value("Course", r.course, "course_name") if r.course else "General",
 			"week_label": week_label,
-			"present_sessions": 1 if code_map.get(r.attendance_code, {}).get("count_as_present") else 0,
-			"absent_sessions": 1 if not code_map.get(r.attendance_code, {}).get("count_as_present") else 0,
+			"present_sessions": 1 if is_present else 0,
+			"absent_sessions": 1 if not is_present else 0,
+			"late_sessions": 1 if is_late else 0,
 			"unexcused_sessions": 0,
 			"academic_year": academic_year,
 		}
@@ -496,10 +511,15 @@ def _attendance_block(student: str, academic_year: str | None):
 				"academic_year": academic_year,
 			},
 		)
-		if code_map.get(r.attendance_code, {}).get("count_as_present"):
+		is_present = code_map.get(r.attendance_code, {}).get("count_as_present")
+		is_late = code_map.get(r.attendance_code, {}).get("is_late")
+
+		if is_present:
 			entry["present_sessions"] += 1
 		else:
 			entry["unexcused_absent_sessions"] += 1
+		if is_late:
+			entry["late_sessions"] += 1
 
 	by_course_breakdown = list(breakdown_map.values())
 
@@ -510,7 +530,7 @@ def _attendance_block(student: str, academic_year: str | None):
 			"present_days": present,
 			"excused_absences": 0,
 			"unexcused_absences": total - present,
-			"late_count": 0,
+			"late_count": late_total,
 			"most_impacted_course": None,
 		},
 		"view_mode": "all_day",
