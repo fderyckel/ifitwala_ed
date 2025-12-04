@@ -14,6 +14,7 @@
   "maximum_size",
   "status",
   "school",
+  "attendance_scope",
   "column_break_ttdt",
   "academic_year",
   "student_group_name",
@@ -191,11 +192,18 @@
    "label": "Program Offering",
    "options": "Program Offering",
    "reqd": 1
+  },
+  {
+   "description": "Controls whether this group is used for block-level attendance, whole-day (homeroom) attendance, or no attendance at all.",
+   "fieldname": "attendance_scope",
+   "fieldtype": "Select",
+   "label": "Attendance Scope",
+   "options": "Per Block\nWhole Day\nNone"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-04 20:40:26.937630",
+ "modified": "2025-12-02 20:30:14.101119",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",
