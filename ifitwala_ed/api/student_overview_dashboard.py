@@ -658,7 +658,7 @@ def _wellbeing_block(student: str, academic_year: str | None):
 		referrals = frappe.db.get_all(
 			"Student Referral",
 			filters={"student": student},
-			fields=["name", "date", "referral_type", "reason"],
+			fields=["name", "date", "referral_category", "referral_source", "referral_description"],
 			order_by="date desc",
 			limit=10,
 		)
@@ -695,8 +695,8 @@ def _wellbeing_block(student: str, academic_year: str | None):
 				"doctype": "Student Referral",
 				"name": r.name,
 				"date": r.date,
-				"title": r.referral_type or "Referral",
-				"summary": (r.reason or "")[:140],
+				"title": r.referral_category or r.referral_source or "Referral",
+				"summary": (r.referral_description or "")[:140],
 				"status": None,
 				"is_sensitive": True,
 			}
