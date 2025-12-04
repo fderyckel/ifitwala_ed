@@ -705,28 +705,30 @@ const byCourseHeatmapOption = computed(() => {
 	if (!rows.length) return {}
 	const courses = Array.from(new Set(rows.map((r) => r.course_name || r.course)))
 	const weeks = Array.from(new Set(rows.map((r) => r.week_label)))
-	const data = rows.flatMap((row) => {
+	const data = rows.map((row) => {
 		const severity =
 			(row.unexcused_sessions || 0) * 2 +
 			(row.absent_sessions || 0) +
 			(row.late_sessions || 0) +
 			1
-		return [
-			[
+		return {
+			value: [
 				weeks.indexOf(row.week_label),
 				courses.indexOf(row.course_name || row.course),
 				severity,
-				row,
 			],
-		]
+			row,
+		}
 	})
+	const minSeverity = Math.min(...data.map((d) => d.value[2]))
+	const maxSeverity = Math.max(...data.map((d) => d.value[2]))
 	return {
 		grid: { left: 120, right: 10, top: 10, bottom: 70 },
 		xAxis: { type: 'category', data: weeks, axisLabel: { rotate: 30 } },
 		yAxis: { type: 'category', data: courses },
 		tooltip: {
 			formatter: (params: any) => {
-				const row = params.value?.[3] || {}
+				const row = params.data?.row || {}
 				const total = (row.present_sessions || 0) + (row.absent_sessions || 0) + (row.unexcused_sessions || 0)
 				return `${row.course_name || row.course} (${row.week_label})<br>${formatCount(
 					row.unexcused_sessions
@@ -734,8 +736,8 @@ const byCourseHeatmapOption = computed(() => {
 			},
 		},
 		visualMap: {
-			min: 1,
-			max: Math.max(...data.map((d) => d[2] as number), 1),
+			min: minSeverity,
+			max: maxSeverity,
 			orient: 'horizontal',
 			left: 'center',
 			bottom: 10,
@@ -926,7 +928,7 @@ const kpiTiles = computed(() => [
 		sub: `${formatCount(attendanceKpi.value.unexcused || 0)} unexcused · ${formatCount(
 			attendanceKpi.value.excused || 0
 		)} excused`,
-		meta: attendanceSourceLabel.value,
+		meta: '',
 		clickable: hasAllDayHeatmap.value && hasByCourseHeatmap.value,
 		onClick: () => {
 			if (hasAllDayHeatmap.value && hasByCourseHeatmap.value) {
@@ -1056,11 +1058,8 @@ const reflectionFlags = computed(() => {
 		style="background: var(--portal-gradient-bg);"
 	>
 		<header class="flex flex-wrap items-center justify-between gap-3">
-			<div>
-				<h1 class="text-base font-semibold tracking-tight text-slate-900">Student Overview</h1>
-				<p class="mt-0.5 text-xs text-slate-500">
-					One snapshot per student – identity, learning, attendance, wellbeing, and history.
-				</p>
+			<div class="flex-1 text-center">
+				<h1 class="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">Student Overview</h1>
 			</div>
 			<div class="flex items-center gap-2">
 				<select
@@ -1079,7 +1078,7 @@ const reflectionFlags = computed(() => {
 		</header>
 
 		<section class="mt-4 mb-3">
-			<div class="toolbar flex flex-wrap items-end gap-3">
+			<div class="surface-toolbar flex flex-wrap items-end gap-3">
 				<FiltersBar>
 					<div class="flex flex-col gap-1 w-48">
 						<label class="type-label">School</label>
@@ -1230,7 +1229,7 @@ const reflectionFlags = computed(() => {
 										:key="tile.label"
 										:class="[
 											'flex flex-col rounded-xl border border-border/70 bg-[rgb(var(--surface-rgb))] px-3 py-2 shadow-soft-sm overflow-hidden',
-											tile.clickable ? 'cursor-pointer hover:border-[color:rgb(var(--leaf-rgb))] hover:bg-[rgb(var(--surface-soft-rgb))]' : '',
+											tile.clickable ? 'cursor-pointer hover:border-[#1f7a45] hover:bg-[rgb(var(--surface-soft-rgb))]' : '',
 										]"
 										@click="tile.onClick && tile.onClick()"
 									>
@@ -1262,9 +1261,10 @@ const reflectionFlags = computed(() => {
 												class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold transition"
 												:class="[
 													opt.id === tile.sourceToggle.active
-														? 'bg-[rgb(var(--ink-rgb))] text-[rgb(var(--surface-rgb))] shadow-soft'
+														? 'text-white shadow-soft'
 														: 'bg-[rgb(var(--surface-soft-rgb))] text-ink/70 hover:bg-[rgb(var(--surface-rgb))]',
 												]"
+												:style="opt.id === tile.sourceToggle.active ? { backgroundColor: palette.leaf } : {}"
 												@click="setAttendanceKpiSource(opt.id as any)"
 											>
 												{{ opt.label }}
@@ -1495,9 +1495,6 @@ const reflectionFlags = computed(() => {
 											}}
 										</p>
 									</div>
-									<span class="type-chip-muted">
-										{{ attendanceSourceLabel }}
-									</span>
 								</header>
 
 								<div class="attendance-card-body space-y-3">
