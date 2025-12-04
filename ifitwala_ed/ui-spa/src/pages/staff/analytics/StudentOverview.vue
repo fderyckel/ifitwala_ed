@@ -1076,7 +1076,7 @@ const reflectionFlags = computed(() => {
 			</div>
 		</header>
 
-		<section class="mt-4 mb-3 surface-toolbar flex flex-wrap items-end gap-3">
+		<section class="mt-4 mb-3 flex flex-wrap items-end gap-3">
 			<div class="flex flex-col gap-1 w-48">
 				<label class="type-label">School</label>
 				<select
@@ -1222,22 +1222,17 @@ const reflectionFlags = computed(() => {
 									<div
 										v-for="tile in kpiTiles"
 										:key="tile.label"
-										:class="[
-											'flex flex-col rounded-xl border border-border/70 bg-[rgb(var(--surface-rgb))] px-3 py-2 shadow-soft-sm overflow-hidden',
-											tile.clickable ? 'cursor-pointer hover:border-[#1f7a45] hover:bg-[rgb(var(--surface-soft-rgb))]' : '',
-										]"
-										@click="tile.onClick && tile.onClick()"
-									>
+									:class="[
+										'flex flex-col rounded-xl border px-3 py-3 shadow-sm overflow-hidden',
+										'border-[rgb(var(--border-rgb)/0.65)] bg-[rgb(var(--surface-rgb)/0.92)]',
+										tile.clickable ? 'cursor-pointer hover:border-[#1f7a45] hover:bg-[rgb(var(--surface-rgb))]' : '',
+									]"
+									@click="tile.onClick && tile.onClick()"
+								>
 										<div class="flex items-center justify-between gap-2">
 											<p class="text-[11px] font-semibold uppercase tracking-wide text-ink/70">
 												{{ tile.label }}
 											</p>
-											<span
-												v-if="tile.meta"
-												class="inline-flex shrink-0 items-center rounded-full bg-[rgb(var(--surface-soft-rgb))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink/65"
-											>
-												{{ tile.meta }}
-											</span>
 										</div>
 
 										<p class="mt-1 text-sm font-semibold text-ink">
@@ -1256,10 +1251,9 @@ const reflectionFlags = computed(() => {
 												class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold transition"
 												:class="[
 													opt.id === tile.sourceToggle.active
-														? 'text-white shadow-soft'
-														: 'bg-[rgb(var(--surface-soft-rgb))] text-ink/70 hover:bg-[rgb(var(--surface-rgb))]',
+														? 'chip chip-active'
+														: 'chip',
 												]"
-												:style="opt.id === tile.sourceToggle.active ? { backgroundColor: palette.leaf } : {}"
 												@click="setAttendanceKpiSource(opt.id as any)"
 											>
 												{{ opt.label }}
@@ -1278,7 +1272,7 @@ const reflectionFlags = computed(() => {
 					<!-- Band 2: Learning & Tasks -->
 					<section class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(0,2fr)]">
 						<!-- Current Courses -->
-						<div class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
+						<div class="card-surface px-4 py-4">
 							<header class="mb-3 flex items-center justify-between">
 								<div>
 									<h3 class="text-sm font-semibold text-slate-800">Current Courses</h3>
@@ -1290,8 +1284,10 @@ const reflectionFlags = computed(() => {
 									v-for="course in courses"
 									:key="course.course"
 									:class="[
-										'rounded-xl border px-3 py-2 text-sm transition hover:border-slate-300 cursor-pointer',
-										selectedCourse === course.course ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-200 bg-slate-50/70',
+										'rounded-xl border px-3 py-2 text-sm transition cursor-pointer',
+										selectedCourse === course.course
+											? 'border-[#1f7a45] bg-[rgba(31,122,69,0.08)]'
+											: 'border-[rgb(var(--border-rgb)/0.65)] bg-[rgb(var(--surface-rgb)/0.88)] hover:bg-[rgb(var(--surface-rgb))]',
 									]"
 									@click="toggleCourse(course.course)"
 								>
@@ -1316,7 +1312,7 @@ const reflectionFlags = computed(() => {
 						</div>
 
 						<!-- Task progress -->
-						<div class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
+						<div class="card-surface px-4 py-4">
 							<header class="mb-3 flex flex-wrap items-center justify-between gap-3">
 								<div>
 									<h3 class="text-sm font-semibold text-slate-800">Task Progress</h3>
@@ -1365,7 +1361,7 @@ const reflectionFlags = computed(() => {
 						</div>
 
 						<!-- Recent tasks -->
-						<div class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
+						<div class="card-surface px-4 py-4">
 							<header class="mb-3 flex items-center justify-between">
 								<div>
 									<h3 class="text-sm font-semibold text-slate-800">Most recent tasks</h3>
@@ -1637,7 +1633,7 @@ const reflectionFlags = computed(() => {
 					</section>
 
 					<!-- Band 5: History & Reflection -->
-					<section class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
+					<section class="card-surface px-4 py-4">
 						<header class="mb-3 flex flex-wrap items-center justify-between gap-3">
 							<div>
 								<h3 class="text-sm font-semibold text-slate-800">History & Reflection</h3>

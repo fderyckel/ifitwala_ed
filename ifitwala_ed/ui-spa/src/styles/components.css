@@ -61,6 +61,41 @@
   }
 
   /* ---------------------------------------------------------------
+     Reusable card + chip shells for analytics surfaces
+     --------------------------------------------------------------- */
+  .card-surface {
+    @apply rounded-xl border shadow-sm;
+    border-color: rgb(var(--border-rgb) / 0.65);
+    background: rgb(var(--surface-rgb) / 0.92);
+  }
+
+  .card-surface-muted {
+    @apply rounded-xl border shadow-sm;
+    border-color: rgb(var(--border-rgb) / 0.65);
+    background: rgb(var(--surface-rgb) / 0.88);
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border;
+    border-color: rgb(var(--border-rgb) / 0.65);
+    background: rgb(var(--surface-rgb) / 0.65);
+    color: rgb(var(--ink-rgb) / 0.75);
+  }
+
+  .chip-active {
+    background: #1f7a45;
+    color: #fff;
+    border-color: transparent;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .chip-alert {
+    background: rgb(var(--flame-rgb) / 0.15);
+    color: rgb(var(--flame-rgb));
+    border-color: transparent;
+  }
+
+  /* ---------------------------------------------------------------
      Staff portal "palette card" — focus / task list container
      Soft shell surface, not pure white
      --------------------------------------------------------------- */
