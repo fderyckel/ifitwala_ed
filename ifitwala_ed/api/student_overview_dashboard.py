@@ -650,22 +650,26 @@ def _wellbeing_block(student: str, academic_year: str | None):
 	)
 
 	# Referrals
-	referrals = frappe.db.get_all(
-		"Student Referral",
-		filters={"student": student},
-		fields=["name", "referral_date as date", "referral_type", "reason"],
-		order_by="referral_date desc",
-		limit=10,
-	)
+	referrals = []
+	if frappe.db.exists("DocType", "Student Referral"):
+		referrals = frappe.db.get_all(
+			"Student Referral",
+			filters={"student": student},
+			fields=["name", "date", "referral_type", "reason"],
+			order_by="date desc",
+			limit=10,
+		)
 
 	# Nurse visits
-	nurse = frappe.db.get_all(
-		"Student Patient Visit",
-		filters={"student": student},
-		fields=["name", "date", "reason"],
-		order_by="date desc",
-		limit=10,
-	)
+	nurse = []
+	if frappe.db.exists("DocType", "Student Patient Visit"):
+		nurse = frappe.db.get_all(
+			"Student Patient Visit",
+			filters={"student_patient": student},
+			fields=["name", "date", "reason"],
+			order_by="date desc",
+			limit=10,
+		)
 
 	timeline = []
 	for r in logs:
@@ -813,10 +817,12 @@ def _kpi_block(student: str, academic_year: str | None):
 			"student_logs_open_followups": frappe.db.count(
 				"Student Log", {"student": student, "requires_follow_up": 1}
 			),
-			# Student Referral has no status field in your schema; count all for now.
-			"active_referrals": frappe.db.count("Student Referral", {"student": student}),
-			# Student Patient Visit links via student_patient, not student
-			"nurse_visits_this_term": frappe.db.count("Student Patient Visit", {"student_patient": student}),
+			"active_referrals": frappe.db.count("Student Referral", {"student": student})
+			if frappe.db.exists("DocType", "Student Referral")
+			else 0,
+			"nurse_visits_this_term": frappe.db.count("Student Patient Visit", {"student_patient": student})
+			if frappe.db.exists("DocType", "Student Patient Visit")
+			else 0,
 		},
 	}
 
