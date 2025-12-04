@@ -3,7 +3,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { createResource } from 'frappe-ui'
 
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
-import FiltersBar from '@/components/analytics/FiltersBar.vue'
 import StackedBarChart from '@/components/analytics/StackedBarChart.vue'
 
 type HeatmapMode = 'whole-day' | 'per-block'
@@ -1077,93 +1076,89 @@ const reflectionFlags = computed(() => {
 			</div>
 		</header>
 
-		<section class="mt-4 mb-3">
-			<div class="surface-toolbar flex flex-wrap items-end gap-3">
-				<FiltersBar>
-					<div class="flex flex-col gap-1 w-48">
-						<label class="type-label">School</label>
-						<select
-							v-model="filters.school"
-							class="h-9 rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2 text-xs focus:outline-none"
-						>
-							<option value="">Select a school</option>
-							<option
-								v-for="s in schools"
-								:key="s.name"
-								:value="s.name"
-							>
-								{{ s.label || s.name }}
-							</option>
-						</select>
-					</div>
+		<section class="mt-4 mb-3 surface-toolbar flex flex-wrap items-end gap-3">
+			<div class="flex flex-col gap-1 w-48">
+				<label class="type-label">School</label>
+				<select
+					v-model="filters.school"
+					class="h-9 rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2 text-xs focus:outline-none"
+				>
+					<option value="">Select a school</option>
+					<option
+						v-for="s in schools"
+						:key="s.name"
+						:value="s.name"
+					>
+						{{ s.label || s.name }}
+					</option>
+				</select>
+			</div>
 
-					<div class="flex flex-col gap-1 w-48">
-						<label class="type-label">Program</label>
-						<select
-							v-model="filters.program"
-							class="h-9 rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2 text-xs focus:outline-none"
-						>
-							<option value="">Select</option>
-							<option
-								v-for="p in programs"
-								:key="p.name"
-								:value="p.name"
-							>
-								{{ p.label || p.name }}
-							</option>
-						</select>
-					</div>
+			<div class="flex flex-col gap-1 w-48">
+				<label class="type-label">Program</label>
+				<select
+					v-model="filters.program"
+					class="h-9 rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2 text-xs focus:outline-none"
+				>
+					<option value="">Select</option>
+					<option
+						v-for="p in programs"
+						:key="p.name"
+						:value="p.name"
+					>
+						{{ p.label || p.name }}
+					</option>
+				</select>
+			</div>
 
-					<div class="relative flex w-64 flex-col gap-1">
-						<label class="type-label">Student</label>
-						<div class="flex h-9 items-center rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2">
-							<span class="mr-1 text-[11px] text-ink/60">🔍</span>
-							<input
-								v-model="studentSearch"
-								class="h-full w-full bg-transparent text-xs focus:outline-none"
-								placeholder="Search student"
-								type="search"
-								@focus="openStudentDropdown"
-								@input="debounce(fetchStudents)"
-							/>
-							<button
-								v-if="studentSearch"
-								class="ml-1 text-[11px] text-ink/60"
-								@click="clearStudent"
-							>
-								Clear
-							</button>
-						</div>
-						<div
-							v-if="studentDropdownOpen"
-							class="absolute top-full z-30 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-border/80 bg-[rgb(var(--surface-rgb))] shadow-soft"
-						>
-							<div
-								v-if="studentLoading"
-								class="px-3 py-2 text-xs text-ink/70"
-							>
-								Searching…
-							</div>
-							<button
-								v-for="s in studentSuggestions"
-								:key="s.id"
-								type="button"
-								class="flex w-full items-start gap-2 px-3 py-2 text-left text-xs hover:bg-[rgb(var(--surface-rgb)/0.9)]"
-								@click="selectStudent(s)"
-							>
-								<span class="font-semibold text-ink">{{ s.name }}</span>
-							</button>
-							<div
-								v-if="!studentLoading && !studentSuggestions.length"
-								class="px-3 py-2 text-xs text-ink/60"
-							>
-								{{ studentSearch
-									? 'No matches. Try a different name or ID.'
-									: 'Start typing to search for a student.' }}
-							</div>
-						</div>
+			<div class="relative flex w-64 flex-col gap-1">
+				<label class="type-label">Student</label>
+				<div class="flex h-9 items-center rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2">
+					<span class="mr-1 text-[11px] text-ink/60">🔍</span>
+					<input
+						v-model="studentSearch"
+						class="h-full w-full bg-transparent text-xs focus:outline-none"
+						placeholder="Search student"
+						type="search"
+						@focus="openStudentDropdown"
+						@input="debounce(fetchStudents)"
+					/>
+					<button
+						v-if="studentSearch"
+						class="ml-1 text-[11px] text-ink/60"
+						@click="clearStudent"
+					>
+						Clear
+					</button>
+				</div>
+				<div
+					v-if="studentDropdownOpen"
+					class="absolute top-full z-30 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-border/80 bg-[rgb(var(--surface-rgb))] shadow-soft"
+				>
+					<div
+						v-if="studentLoading"
+						class="px-3 py-2 text-xs text-ink/70"
+					>
+						Searching…
 					</div>
-				</FiltersBar>
+					<button
+						v-for="s in studentSuggestions"
+						:key="s.id"
+						type="button"
+						class="flex w-full items-start gap-2 px-3 py-2 text-left text-xs hover:bg-[rgb(var(--surface-rgb)/0.9)]"
+						@click="selectStudent(s)"
+					>
+						<span class="font-semibold text-ink">{{ s.name }}</span>
+					</button>
+					<div
+						v-if="!studentLoading && !studentSuggestions.length"
+						class="px-3 py-2 text-xs text-ink/60"
+					>
+						{{ studentSearch
+							? 'No matches. Try a different name or ID.'
+							: 'Start typing to search for a student.' }}
+					</div>
+				</div>
 			</div>
 		</section>
 
@@ -1222,7 +1217,7 @@ const reflectionFlags = computed(() => {
 									</p>
 								</div>
 							</div>
-									<div class="flex flex-col gap-2">
+								<div class="flex flex-col gap-2">
 								<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 									<div
 										v-for="tile in kpiTiles"
@@ -1275,12 +1270,6 @@ const reflectionFlags = computed(() => {
 											{{ tile.sub }}
 										</p>
 									</div>
-								</div>
-								<div class="flex justify-end text-[11px] text-slate-500">
-									View mode:
-									<span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-700">
-										{{ displayViewMode }}
-									</span>
 								</div>
 							</div>
 						</div>
