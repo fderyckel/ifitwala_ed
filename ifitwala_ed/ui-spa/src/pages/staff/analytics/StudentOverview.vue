@@ -686,9 +686,9 @@ const allDayHeatmapOption = computed(() => {
 					color: (params: any) => {
 						const row = params.value?.[3] || {}
 						if (row.color) return row.color
-						if (row.is_late) return `rgb(var(--jacaranda-rgb))`
-						if (row.count_as_present) return `rgb(var(--leaf-rgb))`
-						return `rgb(var(--flame-rgb))`
+						if (row.is_late) return palette.clay
+						if (row.count_as_present) return palette.leaf
+						return palette.flame
 					},
 				},
 			},
@@ -1085,8 +1085,8 @@ const reflectionFlags = computed(() => {
 			</div>
 		</header>
 
-		<section class="sticky top-0 z-20 -mx-4 mb-3 pt-2">
-			<div class="px-4">
+		<section class="mt-4 mb-3">
+			<div>
 				<div class="toolbar flex flex-wrap items-end gap-3">
 					<FiltersBar>
 						<div class="flex flex-col gap-1 w-48">
@@ -1238,48 +1238,49 @@ const reflectionFlags = computed(() => {
 										v-for="tile in kpiTiles"
 										:key="tile.label"
 										:class="[
-											'flex flex-col gap-1 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2',
-											tile.clickable ? 'cursor-pointer transition hover:border-emerald-200 hover:bg-emerald-50/70' : '',
+											'flex flex-col rounded-xl border border-border/70 bg-[rgb(var(--surface-rgb))] px-3 py-2 shadow-soft-sm overflow-hidden',
+											tile.clickable ? 'cursor-pointer hover:border-[color:rgb(var(--leaf-rgb))] hover:bg-[rgb(var(--surface-soft-rgb))]' : '',
 										]"
 										@click="tile.onClick && tile.onClick()"
 									>
-										<p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-											{{ tile.label }}
+										<div class="flex items-center justify-between gap-2">
+											<p class="text-[11px] font-semibold uppercase tracking-wide text-ink/70">
+												{{ tile.label }}
+											</p>
 											<span
 												v-if="tile.meta"
-												class="ml-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600"
+												class="inline-flex shrink-0 items-center rounded-full bg-[rgb(var(--surface-soft-rgb))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink/65"
 											>
 												{{ tile.meta }}
 											</span>
-										</p>
-										<div class="flex items-center gap-2">
-											<p class="text-sm font-semibold text-slate-900">
-												{{ tile.value }}
-											</p>
-											<div
-												v-if="tile.sourceToggle?.active"
-												class="flex items-center gap-1 rounded-full bg-white px-0.5 py-[2px] text-[9px] font-semibold text-slate-700 shadow-sm"
-											>
-												<button
-													v-for="opt in tile.sourceToggle.options"
-													:key="opt.id"
-													type="button"
-													class="rounded-full px-1.5 py-0.5 transition"
-													:class="[
-														opt.id === tile.sourceToggle.active
-															? 'text-white shadow'
-															: 'text-slate-600 hover:bg-slate-100',
-														!opt.available ? 'opacity-40 cursor-not-allowed' : '',
-													]"
-													:style="opt.id === tile.sourceToggle.active ? { backgroundColor: 'var(--leaf)' } : {}"
-													:disabled="!opt.available"
-													@click.stop="setAttendanceKpiSource(opt.id as any)"
-												>
-													{{ opt.label }}
-												</button>
-											</div>
 										</div>
-										<p class="text-[11px] text-slate-500">
+
+										<p class="mt-1 text-sm font-semibold text-ink">
+											{{ tile.value }}
+										</p>
+
+										<div
+											v-if="tile.sourceToggle?.active"
+											class="mt-1 flex flex-wrap items-center gap-1"
+											@click.stop
+										>
+											<button
+												v-for="opt in tile.sourceToggle.options"
+												:key="opt.id"
+												type="button"
+												class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold transition"
+												:class="[
+													opt.id === tile.sourceToggle.active
+														? 'bg-[rgb(var(--ink-rgb))] text-[rgb(var(--surface-rgb))] shadow-soft'
+														: 'bg-[rgb(var(--surface-soft-rgb))] text-ink/70 hover:bg-[rgb(var(--surface-rgb))]',
+												]"
+												@click="setAttendanceKpiSource(opt.id as any)"
+											>
+												{{ opt.label }}
+											</button>
+										</div>
+
+										<p class="mt-1 text-[11px] text-ink/70">
 											{{ tile.sub }}
 										</p>
 									</div>
@@ -1513,10 +1514,10 @@ const reflectionFlags = computed(() => {
 										v-if="attendanceView === 'by_course' && breakdownRows.length"
 										title=""
 										:series="[
-											{ key: 'present',   label: 'Present',   color: 'rgb(var(--leaf-rgb))' },
-											{ key: 'excused',   label: 'Excused',   color: 'rgb(var(--sky-rgb))' },
-											{ key: 'unexcused', label: 'Unexcused', color: 'rgb(var(--flame-rgb))' },
-											{ key: 'late',      label: 'Late',      color: 'rgb(var(--jacaranda-rgb))' },
+											{ key: 'present',   label: 'Present',   color: palette.leaf },
+											{ key: 'excused',   label: 'Excused',   color: palette.sand },
+											{ key: 'unexcused', label: 'Unexcused', color: palette.flame },
+											{ key: 'late',      label: 'Late',      color: palette.clay },
 										]"
 										:rows="breakdownRows"
 									/>
