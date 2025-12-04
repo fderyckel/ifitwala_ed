@@ -594,12 +594,15 @@ def _learning_block(student: str, program: str | None, academic_year: str | None
 		total = entry["total_tasks"]
 		entry["completion_rate"] = (entry["completed_tasks"] / total) if total else 0
 
-	# Recent tasks (latest 10 by due_date)
-	recent_tasks = sorted(
-		task_rows,
-		key=lambda r: r.get("due_date") or r.get("updated_on") or "",
-		reverse=True,
-	)[:10]
+	# Recent tasks (latest 10 by parsed date to avoid str/datetime mixups)
+	def _task_sort_key(r: dict):
+		val = r.get("due_date") or r.get("updated_on") or ""
+		try:
+			return getdate(val) if val else getdate("1900-01-01")
+		except Exception:
+			return getdate("1900-01-01")
+
+	recent_tasks = sorted(task_rows, key=_task_sort_key, reverse=True)[:10]
 
 	# Current courses from Program Enrollment Course
 	pec_rows = frappe.db.sql(
