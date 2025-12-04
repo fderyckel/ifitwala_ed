@@ -20,7 +20,7 @@ type StudentGroup = {
 	abbreviation?: string
 	group_based_on?: string
 	course?: string | null
-	is_homeroom?: boolean
+	attendance_scope?: string | null
 }
 
 type Snapshot = {
@@ -276,11 +276,19 @@ function debounce(fn: () => void, delay = 350) {
 	studentSearchTimer = window.setTimeout(fn, delay)
 }
 
+
+function openStudentDropdown() {
+	// show dropdown with hint when focused but empty
+	studentDropdownOpen.value = true
+}
+
 async function fetchStudents() {
 	const query = studentSearch.value.trim()
+
+	// Empty query: keep dropdown open to show the hint row
 	if (!query) {
 		studentSuggestions.value = []
-		studentDropdownOpen.value = false
+		studentDropdownOpen.value = true
 		return
 	}
 
@@ -296,6 +304,8 @@ async function fetchStudents() {
 	}))
 	studentDropdownOpen.value = !!studentSuggestions.value.length
 }
+
+
 
 function selectStudent(s: { id: string; name: string }) {
 	filters.value.student = s.id
@@ -890,16 +900,18 @@ const reflectionFlags = computed(() => {
 				<div class="relative flex w-64 flex-col gap-1">
 					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">Student</label>
 					<div class="flex h-9 items-center rounded-md border border-slate-200 bg-white px-2">
+						<span class="mr-1 text-[11px] text-slate-400">🔍</span>
 						<input
 							v-model="studentSearch"
 							class="h-full w-full text-xs focus:outline-none"
 							placeholder="Search student"
 							type="search"
+							@focus="openStudentDropdown"
 							@input="debounce(fetchStudents)"
 						/>
 						<button
 							v-if="studentSearch"
-							class="text-[11px] text-slate-500"
+							class="ml-1 text-[11px] text-slate-500"
 							@click="clearStudent"
 						>
 							Clear
@@ -928,7 +940,9 @@ const reflectionFlags = computed(() => {
 							v-if="!studentLoading && !studentSuggestions.length"
 							class="px-3 py-2 text-xs text-slate-400"
 						>
-							No matches.
+							{{ studentSearch
+								? 'No matches. Try a different name or ID.'
+								: 'Start typing to search for a student.' }}
 						</div>
 					</div>
 				</div>

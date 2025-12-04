@@ -389,7 +389,7 @@ def _identity_block(student: str, program: str | None, school: str | None):
 		FROM `tabStudent Group Student` sgs
 		LEFT JOIN `tabStudent Group` sg ON sg.name = sgs.parent
 		WHERE sgs.student = %s
-		ORDER BY sg.is_homeroom DESC, sg.student_group_name
+		ORDER BY sg.student_group_name
 		""",
 		(student,),
 		as_dict=True,
