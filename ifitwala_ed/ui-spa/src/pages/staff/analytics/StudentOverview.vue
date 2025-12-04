@@ -523,10 +523,22 @@ const attendanceSourceLabel = computed(() => {
 	return 'No attendance data'
 })
 
+const attendanceSourceToggle = computed(() => ({
+	active: hasAllDayHeatmap.value ? 'all_day' : hasByCourseHeatmap.value ? 'by_course' : null,
+	options: [
+		{ id: 'all_day', label: 'Whole day', available: hasAllDayHeatmap.value },
+		{ id: 'by_course', label: 'Per course', available: hasByCourseHeatmap.value },
+	],
+}))
+
 function openAttendanceHeatmap() {
 	if (!hasAnyHeatmap.value) return
 	heatmapInitialMode.value = hasAllDayHeatmap.value ? 'whole-day' : 'per-block'
 	showHeatmapDialog.value = true
+}
+
+function setAttendanceSource(source: 'all_day' | 'by_course') {
+	attendanceView.value = source
 }
 
 const kpiTiles = computed(() => [
@@ -539,6 +551,7 @@ const kpiTiles = computed(() => [
 		meta: attendanceSourceLabel.value,
 		clickable: hasAnyHeatmap.value,
 		onClick: openAttendanceHeatmap,
+		sourceToggle: attendanceSourceToggle.value,
 	},
 	{
 		label: 'Tasks',
@@ -1161,21 +1174,6 @@ const reflectionFlags = computed(() => {
 										{{ snapshot.identity.program_enrollment?.program || snapshot.meta.program }}
 										<span v-if="snapshot.identity.school?.label">· {{ snapshot.identity.school?.label }}</span>
 									</p>
-									<div class="flex flex-wrap gap-2">
-										<span
-											v-for="group in snapshot.identity.student_groups"
-											:key="group.name"
-											class="rounded-full bg-slate-50 px-2 py-0.5 text-[11px] text-slate-700"
-										>
-											{{ group.abbreviation || group.name }}
-											<span
-												v-if="group.attendance_scope === 'Whole Day'"
-												class="text-[10px] text-amber-600"
-											>
-												whole day
-											</span>
-										</span>
-									</div>
 									<p class="text-xs text-slate-500">
 										<span v-if="snapshot.identity.age">Age {{ snapshot.identity.age }}</span>
 										<span v-if="snapshot.identity.age && snapshot.identity.gender"> · </span>
@@ -1184,7 +1182,7 @@ const reflectionFlags = computed(() => {
 								</div>
 							</div>
 							<div class="flex flex-col gap-2">
-								<div class="grid grid-cols-2 gap-2 md:grid-cols-4">
+								<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 									<div
 										v-for="tile in kpiTiles"
 										:key="tile.label"
@@ -1203,9 +1201,32 @@ const reflectionFlags = computed(() => {
 												{{ tile.meta }}
 											</span>
 										</p>
-										<p class="text-sm font-semibold text-slate-900">
-											{{ tile.value }}
-										</p>
+										<div class="flex items-center gap-2">
+											<p class="text-sm font-semibold text-slate-900">
+												{{ tile.value }}
+											</p>
+											<div
+												v-if="tile.sourceToggle?.active"
+												class="flex items-center gap-1 rounded-full bg-white px-1 py-0.5 text-[10px] font-semibold text-slate-700 shadow-sm"
+											>
+												<button
+													v-for="opt in tile.sourceToggle.options"
+													:key="opt.id"
+													type="button"
+													class="rounded-full px-2 py-0.5 transition"
+													:class="[
+														opt.id === tile.sourceToggle.active
+															? 'bg-emerald-600 text-white shadow'
+															: 'text-slate-600 hover:bg-slate-100',
+														!opt.available ? 'opacity-40 cursor-not-allowed' : '',
+													]"
+													:disabled="!opt.available"
+													@click.stop="setAttendanceSource(opt.id as any)"
+												>
+													{{ opt.label }}
+												</button>
+											</div>
+										</div>
 										<p class="text-[11px] text-slate-500">
 											{{ tile.sub }}
 										</p>
