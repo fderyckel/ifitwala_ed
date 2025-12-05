@@ -372,18 +372,47 @@ async function ensure_default_grade_scale(frm) {
 	if (!frm.doc.course) return;
 	if (frm.doc.grade_scale) return;
 
-	const course = frm.doc.course;
-	// Safe hasOwnProperty
-	if (!Object.prototype.hasOwnProperty.call(__gradeScaleCache, course)) {
-		const r = await frappe.db.get_value("Course", course, "default_grade_scale");
-		__gradeScaleCache[course] = r?.message?.default_grade_scale || null;
+	const course = (frm.doc.course || "").trim();
+	if (!course) return;
+
+	// If we've already tried for this course (including NONE / ERROR), don't hammer the server
+	if (Object.prototype.hasOwnProperty.call(__gradeScaleCache, course)) {
+		const cached = __gradeScaleCache[course];
+
+		// Only auto-fill when we have a real grade scale name
+		if (cached && cached !== "__NONE__" && cached !== "__ERROR__") {
+			await frm.set_value("grade_scale", cached);
+			frappe.show_alert({
+				message: __("Loaded default grade scale from Course"),
+				indicator: "blue",
+			});
+		}
+		return;
 	}
-	const gs = __gradeScaleCache[course];
-	if (gs) {
-		await frm.set_value("grade_scale", gs);
-		frappe.show_alert({ message: __("Loaded default grade scale from Course"), indicator: "blue" });
+
+	try {
+		const r = await frappe.db.get_value("Course", course, "default_grade_scale");
+		const gs = r?.message?.default_grade_scale || null;
+
+		// Cache outcome so we don't keep calling
+		if (gs) {
+			__gradeScaleCache[course] = gs;
+			await frm.set_value("grade_scale", gs);
+			frappe.show_alert({
+				message: __("Loaded default grade scale from Course"),
+				indicator: "blue",
+			});
+		} else {
+			// No default on this course → remember that and stop retrying
+			__gradeScaleCache[course] = "__NONE__";
+		}
+	} catch (e) {
+		console.error("Failed to load default grade scale for course", course, e);
+		// Mark as error so we do NOT keep retrying every time UI refreshes
+		__gradeScaleCache[course] = "__ERROR__";
 	}
 }
+
 
 // ----------------- Points clamp & visibility & status preview --------------
 function has_any_criteria(frm) {
