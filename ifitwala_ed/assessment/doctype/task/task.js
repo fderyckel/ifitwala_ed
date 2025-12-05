@@ -30,8 +30,8 @@ frappe.ui.form.on("Task", {
 		derive_is_graded(frm);
 		set_learning_unit_query(frm);
 		set_lesson_query(frm);
-		auto_sync_students_if_needed(frm);
-		auto_seed_rubrics_if_needed(frm);
+		ensure_points_field_rules(frm);
+		ensure_default_grade_scale(frm);
 	},
 
 	student_group(frm) {
