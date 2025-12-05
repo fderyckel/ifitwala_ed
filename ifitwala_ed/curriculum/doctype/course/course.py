@@ -5,7 +5,6 @@ import frappe
 import json
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils.nestedset import get_descendants_of
 
 class Course(Document):
 	def validate(self):
