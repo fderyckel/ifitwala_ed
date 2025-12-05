@@ -376,26 +376,28 @@ async function ensure_default_grade_scale(frm) {
 	const course = (frm.doc.course || "").trim();
 	if (!course) return;
 
-	// If we've already tried for this course (including NONE / ERROR), don't hammer the server
+	// If a fetch is already in progress for this form, don't start another
+	if (frm.__grade_scale_fetching) {
+		return;
+	}
+
+	// If we've already resolved this course (including NONE / ERROR), don't hammer server
 	if (Object.prototype.hasOwnProperty.call(__gradeScaleCache, course)) {
 		const cached = __gradeScaleCache[course];
 
 		// Only auto-fill when we have a real grade scale name
 		if (cached && cached !== "__NONE__" && cached !== "__ERROR__") {
 			await frm.set_value("grade_scale", cached);
-			frappe.show_alert({
-				message: __("Loaded default grade scale from Course"),
-				indicator: "blue",
-			});
+			// no alert needed here; user already saw it once
 		}
 		return;
 	}
 
+	frm.__grade_scale_fetching = true;
 	try {
 		const r = await frappe.db.get_value("Course", course, "default_grade_scale");
 		const gs = r?.message?.default_grade_scale || null;
 
-		// Cache outcome so we don't keep calling
 		if (gs) {
 			__gradeScaleCache[course] = gs;
 			await frm.set_value("grade_scale", gs);
@@ -411,8 +413,11 @@ async function ensure_default_grade_scale(frm) {
 		console.error("Failed to load default grade scale for course", course, e);
 		// Mark as error so we do NOT keep retrying every time UI refreshes
 		__gradeScaleCache[course] = "__ERROR__";
+	} finally {
+		frm.__grade_scale_fetching = false;
 	}
 }
+
 
 
 // ----------------- Points clamp & visibility & status preview --------------
