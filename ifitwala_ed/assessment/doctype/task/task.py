@@ -118,10 +118,21 @@ class Task(Document):
 
 
 	def _enforce_due_date_if_published(self):
-			# If status implies visibility, enforce due_date
-			visible_states = {'Published', 'Open'}
-			if (self.status in visible_states or self.is_published) and not self.due_date:
-				frappe.throw(_("Due Date is required when a Task is Published or Open."))
+		"""
+		Enforce that any Task that is visible to students (Published/Open)
+		or explicitly marked as is_published must have a Due Date.
+
+		We intentionally compute the effective status here instead of relying
+		on self.status, because validate() can run before before_save()
+		has written the status field.
+		"""
+		visible_states = {"Published", "Open"}
+
+		# Compute effective status based on current fields
+		effective_status = self._compute_status()
+
+		if (effective_status in visible_states or self.is_published) and not self.due_date:
+			frappe.throw(_("Due Date is required when a Task is Published or Open."))
 
 	# --- add inside Task class in task.py ---
 
@@ -157,8 +168,6 @@ class Task(Document):
 				return True
 
 		return False
-
-
 
 	def _validate_criteria_weighting(self):
 		"""Ensure Task.assessment_criteria weightings are sensible."""
@@ -225,8 +234,6 @@ class Task(Document):
 				if new_val != raw:
 					setattr(row, fieldname, new_val)
 
-
-
 	def _enforce_criteria_bounds_and_rollup(self):
 		"""
 		Clamp Task Criterion Score.level_points within [0, criteria_max_points] for criteria-based tasks,
@@ -283,8 +290,6 @@ class Task(Document):
 		if impacted_students:
 			for stu in impacted_students:
 				_recompute_student_totals(self.name, stu)
-
-
 
 	def _validate_learning_unit_belongs_to_course(self):
 		if not self.learning_unit:
@@ -417,8 +422,6 @@ class Task(Document):
 			# Apply only if changed
 			if row.get("status") != new_status:
 				row.status = new_status
-
-
 
 	## In class helpers
 	def validate_no_identical_clone(self) -> None:
@@ -574,8 +577,6 @@ class Task(Document):
 					).format(stu, crit)
 				)
 			seen_pairs.add(key)
-
-
 
 	def _validate_task_students(self) -> None:
 		"""
@@ -840,61 +841,63 @@ def duplicate_for_group(
 
 	return {"name": new_doc.name}
 
-
 @frappe.whitelist()
 def prefill_task_students(task: str) -> Dict:
-    """
-    Insert missing Task Student rows for active students in the Task’s student_group.
-    """
-    if not task:
-        frappe.throw(_("Task is required"))
+	"""
+	Insert missing Task Student rows for active students in the Task’s student_group.
 
-    doc = frappe.get_doc("Task", task)
-    if not doc.student_group:
-        frappe.throw(_("Select a Student Group before loading students."))
+	We deliberately do NOT denormalize course/program/academic_year/student_group
+	onto Task Student. Those remain on the Task parent only.
+	"""
+	if not task:
+		frappe.throw(_("Task is required"))
 
-    s_rows = frappe.get_all(
-        "Student Group Student",
-        filters={"parent": doc.student_group, "active": 1},
-        fields=["student", "student_name"]
-    )
-    existing = {
-        r.student: r.name
-        for r in frappe.get_all(
-            "Task Student",
-            filters={"parent": doc.name, "parenttype": "Task"},
-            fields=["name", "student"]
-        )
-    }
+	doc = frappe.get_doc("Task", task)
+	if not doc.student_group:
+		frappe.throw(_("Select a Student Group before loading students."))
 
-    inserted = 0
-    for r in s_rows:
-        if r["student"] in existing:
-            continue
-        ts = frappe.get_doc({
-            "doctype": "Task Student",
-            "parent": doc.name,
-            "parenttype": "Task",
-            "parentfield": "task_student",  # ensure this matches Task field name
-            "student": r["student"],
-            "student_name": r.get("student_name"),
-            "status": "Assigned",
-            "student_group": doc.student_group,
-            "course": doc.course,
-            "program": doc.program,
-            "academic_year": doc.academic_year,
-        })
-        ts.insert(ignore_permissions=False)
-        inserted += 1
+	s_rows = frappe.get_all(
+		"Student Group Student",
+		filters={"parent": doc.student_group, "active": 1},
+		fields=["student", "student_name"],
+	)
+	existing = {
+		r.student: r.name
+		for r in frappe.get_all(
+			"Task Student",
+			filters={"parent": doc.name, "parenttype": "Task"},
+			fields=["name", "student"],
+		)
+	}
 
-    result = {"inserted": inserted, "total": len(s_rows)}
+	inserted = 0
+	for r in s_rows:
+		if r["student"] in existing:
+			continue
 
-    # also ensure rubric rows exist for each student × criterion
-    doc.reload()  # make sure child tables are fresh
-    rub = _prefill_task_rubrics(doc)
-    result.update({"rubric_rows_created": rub.get("created", 0)})
+		ts = frappe.get_doc(
+			{
+				"doctype": "Task Student",
+				"parent": doc.name,
+				"parenttype": "Task",
+				"parentfield": "task_student",  # ensure this matches Task field name
+				"student": r["student"],
+				"student_name": r.get("student_name"),
+				"status": "Assigned",
+				# NO course/program/academic_year/student_group denorm here by design
+			}
+		)
+		ts.insert(ignore_permissions=False)
+		inserted += 1
 
-    return result
+	result = {"inserted": inserted, "total": len(s_rows)}
+
+	# also ensure rubric rows exist for each student × criterion
+	doc.reload()  # make sure child tables are fresh
+	rub = _prefill_task_rubrics(doc)
+	result.update({"rubric_rows_created": rub.get("created", 0)})
+
+	return result
 
 
 @frappe.whitelist()
