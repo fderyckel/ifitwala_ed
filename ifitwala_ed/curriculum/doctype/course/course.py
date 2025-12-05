@@ -62,9 +62,20 @@ def get_programs_without_course(course):
 			data.append(program.name)
 	return data
 
+def _is_course_admin(user: str) -> bool:
+    """Roles that should have full, cross-school access to Course."""
+    roles = set(frappe.get_roles(user) or [])
+    return (
+        user == "Administrator"
+        or "System Manager" in roles
+        or "Academic Admin" in roles
+        or "Curriculum Coordinator" in roles
+    )
+
+
 def get_permission_query_conditions(user):
-    # Full access for System Manager and Administrator
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+    # Full access for course admins
+    if _is_course_admin(user):
         return None
 
     user_school = frappe.defaults.get_user_default("school", user)
@@ -73,12 +84,14 @@ def get_permission_query_conditions(user):
 
     # Get self + descendants
     schools = [user_school] + get_descendants_of("School", user_school)
+    schools_escaped = ", ".join(frappe.db.escape(s) for s in schools)
 
-    schools_escaped = ', '.join([frappe.db.escape(s) for s in schools])
     return f"`tabCourse`.`school` in ({schools_escaped})"
 
+
 def has_permission(doc, ptype, user):
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+    # Full access for course admins
+    if _is_course_admin(user):
         return True
 
     user_school = frappe.defaults.get_user_default("school", user)
