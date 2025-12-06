@@ -170,7 +170,7 @@
    "fieldname": "assessment_categories",
    "fieldtype": "Table",
    "label": "Assessment Categories",
-   "options": "Assessment Category"
+   "options": "Course Assessment Category"
   },
   {
    "fieldname": "column_break_egte",
@@ -204,7 +204,7 @@
  "image_field": "course_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-04 20:27:21.146125",
+ "modified": "2025-12-05 20:02:56.799959",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Course",

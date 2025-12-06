@@ -18,6 +18,7 @@ declare module 'vue' {
     FiltersBar: typeof import('./src/components/analytics/FiltersBar.vue')['default']
     GenericListDialog: typeof import('./src/components/GenericListDialog.vue')['default']
     HeatmapChart: typeof import('./src/components/analytics/HeatmapChart.vue')['default']
+    HeatmapDialog: typeof import('./src/components/HeatmapDialog.vue')['default']
     HistogramBuckets: typeof import('./src/components/analytics/HistogramBuckets.vue')['default']
     HistoryDialog: typeof import('./src/components/HistoryDialog.vue')['default']
     HorizontalBarTopN: typeof import('./src/components/analytics/HorizontalBarTopN.vue')['default']
