@@ -16,7 +16,6 @@ frappe.ui.form.on("Task", {
 		set_lesson_query(frm);
 		update_task_student_visibility(frm);
 		ensure_points_field_rules(frm);       // show/require max_points only when points==1
-		// NOTE: no ensure_default_grade_scale() here anymore
 		auto_sync_students_if_needed(frm);    // add-only; no removals
 		auto_seed_rubrics_if_needed(frm);     // if criteria==1 and students exist
 
@@ -30,7 +29,6 @@ frappe.ui.form.on("Task", {
 		set_learning_unit_query(frm);
 		set_lesson_query(frm);
 		ensure_points_field_rules(frm);
-		// no ensure_default_grade_scale(), no auto_sync, no auto_seed
 	},
 
 	student_group(frm) {
@@ -44,7 +42,7 @@ frappe.ui.form.on("Task", {
 
 			derive_is_graded(frm);
 			ensure_points_field_rules(frm);
-			ensure_default_grade_scale(frm);   // allowed here
+			//ensure_default_grade_scale(frm);   // allowed here
 			auto_sync_students_if_needed(frm);
 			auto_seed_rubrics_if_needed(frm);
 		}, 0);
@@ -57,7 +55,7 @@ frappe.ui.form.on("Task", {
 		set_lesson_query(frm);
 
 		// Course change might unlock default grade scale (points flow)
-		ensure_default_grade_scale(frm);
+		//ensure_default_grade_scale(frm);
 	},
 
 	learning_unit(frm) {
@@ -78,7 +76,7 @@ frappe.ui.form.on("Task", {
 	points(frm) {
 		derive_is_graded(frm);
 		ensure_points_field_rules(frm);
-		ensure_default_grade_scale(frm);      // keep here
+		//ensure_default_grade_scale(frm);      // keep here
 		auto_sync_students_if_needed(frm);
 	},
 	criteria(frm) {
