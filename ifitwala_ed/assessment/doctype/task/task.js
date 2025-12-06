@@ -8,7 +8,6 @@ frappe.ui.form.on("Task", {
 		set_learning_unit_query(frm);
 		set_lesson_query(frm);
 		make_is_graded_readonly(frm);
-		set_assessment_criteria_query(frm);
 	},
 
 	refresh(frm) {
@@ -20,7 +19,6 @@ frappe.ui.form.on("Task", {
 		// NOTE: no ensure_default_grade_scale() here anymore
 		auto_sync_students_if_needed(frm);    // add-only; no removals
 		auto_seed_rubrics_if_needed(frm);     // if criteria==1 and students exist
-		set_assessment_criteria_query(frm);
 
 		// Client-only status preview
 		(frm.doc.task_student || []).forEach(r => apply_status_preview(frm, "Task Student", r.name));
@@ -57,11 +55,6 @@ frappe.ui.form.on("Task", {
 		if (frm.doc.lesson) frm.set_value("lesson", null);
 		set_learning_unit_query(frm);
 		set_lesson_query(frm);
-
-		// Load + apply criteria filter for new course
-		load_course_criteria(frm).then(() => {
-			set_assessment_criteria_query(frm);
-		});
 
 		// Course change might unlock default grade scale (points flow)
 		ensure_default_grade_scale(frm);
@@ -232,55 +225,6 @@ function ensure_points_field_rules(frm) {
 	frm.set_df_property("grade_scale", "hidden", !on);
 	frm.set_df_property("grade_scale", "reqd", on);
 	if (!on && frm.doc.grade_scale) frm.set_value("grade_scale", null);
-}
-
-const __courseCriteriaCache = Object.create(null);
-
-async function load_course_criteria(frm) {
-	const course = (frm.doc.course || "").trim();
-	if (!course) return;
-
-	// Don’t refetch if already cached
-	if (Object.prototype.hasOwnProperty.call(__courseCriteriaCache, course)) {
-		return;
-	}
-
-	const res = await frappe.call({
-		method: "frappe.client.get_list",
-		args: {
-			doctype: "Course Assessment Criteria",
-			fields: ["assessment_criteria"],
-			filters: { parent: course },
-			limit_page_length: 500
-		},
-		freeze: false
-	});
-
-	__courseCriteriaCache[course] = (res.message || [])
-		.map(r => r.assessment_criteria)
-		.filter(Boolean);
-}
-
-function set_assessment_criteria_query(frm) {
-	frm.set_query("assessment_criteria", "assessment_criteria", () => {
-		const course = (frm.doc.course || "").trim();
-		const allowed = course && __courseCriteriaCache[course]
-			? __courseCriteriaCache[course]
-			: [];
-
-		// If no course or no allowed criteria, hide everything
-		if (!course || !allowed.length) {
-			return {
-				filters: { name: ["=", "__none__"] }
-			};
-		}
-
-		return {
-			filters: {
-				name: ["in", allowed]
-			}
-		};
-	});
 }
 
 
