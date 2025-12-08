@@ -27,6 +27,29 @@ def _resolve_window(filters: dict):
 		fd = fd or add_days(td, -365)
 	return getdate(fd), getdate(td)
 
+ALLOWED_ANALYTICS_ROLES = {
+	"Academic Admin",
+	"Admission Officer",
+	"Admission Manager",
+	"System Manager",
+	"Administrator",
+}
+
+def _ensure_access(user: str | None = None) -> str:
+	"""Gate analytics to authorized staff roles."""
+	user = user or frappe.session.user
+	if not user or user == "Guest":
+		frappe.throw("You need to sign in to access Inquiry Analytics.", frappe.PermissionError)
+
+	roles = set(frappe.get_roles(user))
+	if roles & ALLOWED_ANALYTICS_ROLES:
+		return user
+
+	frappe.throw("You do not have permission to access Inquiry Analytics.", frappe.PermissionError)
+	return user
+
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
 def _apply_common_conditions(filters: dict, site_tz: str):
 	conds = []
 	params = {}
@@ -37,6 +60,35 @@ def _apply_common_conditions(filters: dict, site_tz: str):
 		"to": f"{td} 23:59:59",
 		"site_tz": site_tz,
 	})
+
+	# --- NestedSet Scoping: School ---
+	# Requirement: Respect parent-child relationship.
+	# Since 'Inquiry' lacks a direct 'school' field, we limit scope by the 'assigned_to' user's school.
+	# We filter for inquiries assigned to users who belong to the selected school (or its descendants).
+	school_filter = filters.get("school")
+	if not school_filter:
+		# Default to current user's school context if not explicitly filtered?
+		# For now, we only apply if 'school' is passed (e.g. from UI context or global filter).
+		pass
+	
+	if school_filter:
+		descendants = get_descendant_schools(school_filter)
+		if descendants:
+			# Find employees in these schools
+			# We join Employee to User to find relevant assigned_to
+			# This is an approximation; ideally Inquiry should have a generic organization/school link.
+			employees = frappe.db.sql("""
+				SELECT user_id FROM `tabEmployee`
+				WHERE status='Active' AND school IN %(schools)s AND user_id IS NOT NULL
+			""", {"schools": tuple(descendants)}, as_dict=True)
+			
+			allowed_users = [e.user_id for e in employees]
+			if allowed_users:
+				conds.append("i.assigned_to IN %(allowed_users)s")
+				params["allowed_users"] = tuple(allowed_users)
+			else:
+				# Selected school has no active employees with users -> no results
+				conds.append("1=0")
 
 	if filters.get("type_of_inquiry"):
 		conds.append("i.type_of_inquiry = %(type)s")
@@ -72,6 +124,7 @@ def get_dashboard_data(filters=None):
 	Returns summary + datasets for charts & cards.
 	All queries parameterized (safe) and scoped by date window/filters.
 	"""
+	_ensure_access()
 	filters = frappe.parse_json(filters) or {}
 	# Use system timezone string for CONVERT_TZ
 	site_tz = frappe.utils.get_system_timezone() or "UTC"

@@ -1,21 +1,21 @@
 <template>
   <div class="flex flex-col gap-6 p-6">
     <header class="flex items-center justify-between">
-      <h1 class="text-3xl font-bold text-slate-900">Inquiry Analytics</h1>
+      <h1 class="type-h2 text-canopy">Inquiry Analytics</h1>
       <button 
-        class="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+        class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
         @click="refresh"
       >
         Refresh
       </button>
     </header>
 
-    <FiltersBar>
+    <FiltersBar class="analytics-filters">
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-slate-500">Academic Year</label>
+        <label class="type-label">Academic Year</label>
         <select 
           v-model="filters.academic_year" 
-          class="h-9 rounded-md border border-slate-300 bg-transparent px-2 text-sm outline-none focus:border-slate-900"
+          class="h-9 rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
         >
           <option value="">All Years</option>
           <option v-for="y in academicYears" :key="y" :value="y">{{ y }}</option>
@@ -23,27 +23,27 @@
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-slate-500">Date Range (Submitted)</label>
+        <label class="type-label">Date Range</label>
         <div class="flex items-center gap-2">
           <input 
             type="date" 
             v-model="filters.from_date"
-            class="h-9 rounded-md border border-slate-300 bg-transparent px-2 text-sm outline-none focus:border-slate-900"
+            class="h-9 rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
           />
-          <span class="text-slate-400">-</span>
+          <span class="text-slate-300">-</span>
           <input 
             type="date" 
             v-model="filters.to_date"
-            class="h-9 rounded-md border border-slate-300 bg-transparent px-2 text-sm outline-none focus:border-slate-900"
+            class="h-9 rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
           />
         </div>
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-slate-500">Assignee</label>
+        <label class="type-label">Assignee</label>
         <select 
           v-model="filters.assigned_to"
-          class="h-9 min-w-[140px] rounded-md border border-slate-300 bg-transparent px-2 text-sm outline-none focus:border-slate-900"
+          class="h-9 min-w-[140px] rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
         >
           <option value="">All Users</option>
           <option v-for="u in users" :key="u.name" :value="u.name">{{ u.full_name }}</option>
@@ -51,10 +51,10 @@
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-slate-500">Inquiry Type</label>
+        <label class="type-label">Inquiry Type</label>
         <select 
           v-model="filters.type_of_inquiry"
-          class="h-9 min-w-[140px] rounded-md border border-slate-300 bg-transparent px-2 text-sm outline-none focus:border-slate-900"
+          class="h-9 min-w-[140px] rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
         >
           <option value="">All Types</option>
           <option v-for="t in inquiryTypes" :key="t" :value="t">{{ t }}</option>
@@ -74,11 +74,12 @@
         <HorizontalBarTopN
           title="Pipeline by State"
           :items="pipelineItems"
+          class="analytics-card"
         />
 
         <!-- Weekly Volume -->
-        <section class="flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 class="mb-4 text-sm font-bold text-slate-700">Weekly Volume</h3>
+        <section class="analytics-card">
+          <h3 class="analytics-card__title">Weekly Volume</h3>
           <AnalyticsChart :option="weeklyChartOption" />
         </section>
       </div>
@@ -87,10 +88,12 @@
         <HorizontalBarTopN
           title="Assigned To"
           :items="assigneeItems"
+          class="analytics-card"
         />
         <HorizontalBarTopN
           title="Inquiry Types"
           :items="typeItems"
+          class="analytics-card"
         />
       </div>
 
@@ -98,8 +101,8 @@
       <section class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         
         <!-- SLA & Response Stats -->
-        <div class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-           <h3 class="text-sm font-bold text-slate-700">Performance Metrics</h3>
+        <div class="flex flex-col gap-4 analytics-card">
+           <h3 class="analytics-card__title">Performance Metrics</h3>
            <div class="flex flex-wrap gap-3">
              <StatsTile 
                label="SLA Compliance (30d)" 
@@ -116,22 +119,22 @@
              />
            </div>
            
-           <h4 class="mt-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Last 30 Days</h4>
+           <h4 class="mt-2 type-overline text-slate-400">Last 30 Days</h4>
            <div class="flex gap-4 text-sm">
              <div class="flex flex-col">
-               <span class="text-slate-500">First Contact</span>
-               <span class="font-medium">{{ data?.averages?.last30d?.first_contact_hours }}h</span>
+               <span class="type-caption">First Contact</span>
+               <span class="font-medium text-ink">{{ data?.averages?.last30d?.first_contact_hours }}h</span>
              </div>
              <div class="flex flex-col">
-               <span class="text-slate-500">From Assign</span>
-               <span class="font-medium">{{ data?.averages?.last30d?.from_assign_hours }}h</span>
+               <span class="type-caption">From Assign</span>
+               <span class="font-medium text-ink">{{ data?.averages?.last30d?.from_assign_hours }}h</span>
              </div>
            </div>
         </div>
 
         <!-- Monthly Trends -->
-        <div class="col-span-2 flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 class="mb-4 text-sm font-bold text-slate-700">Monthly Average Response Time (Hours)</h3>
+        <div class="col-span-2 flex flex-col analytics-card">
+          <h3 class="analytics-card__title mb-4">Monthly Average Response Time (Hours)</h3>
           <AnalyticsChart :option="monthlyChartOption" />
         </div>
       </section>
