@@ -39,8 +39,6 @@ frappe.ui.form.on("Task", {
 		auto_sync_students_if_needed(frm);    // add-only; no removals
 		auto_seed_rubrics_if_needed(frm);     // if criteria==1 and students exist
 
-		// Client-only status preview
-		(frm.doc.task_student || []).forEach(r => apply_status_preview(frm, "Task Student", r.name));
 	},
 
 	after_save(frm) {
@@ -89,16 +87,19 @@ frappe.ui.form.on("Task", {
 		update_task_student_visibility(frm);
 		auto_sync_students_if_needed(frm);
 	},
+
 	observations(frm) {
 		derive_is_graded(frm);
 		auto_sync_students_if_needed(frm);
 	},
+
 	points(frm) {
 		derive_is_graded(frm);
 		ensure_points_field_rules(frm);
 		//ensure_default_grade_scale(frm);      // keep here
 		auto_sync_students_if_needed(frm);
 	},
+
 	criteria(frm) {
 		// Always keep is_graded in sync
 		derive_is_graded(frm);
@@ -159,14 +160,12 @@ frappe.ui.form.on("Task Student", {
 	student(frm, cdt, cdn) {
 		prevent_duplicate_task_student(frm, cdt, cdn);
 	},
-	total_mark(frm, cdt, cdn) {
-		clamp_points_only(frm, cdt, cdn, "total_mark");
-		apply_status_preview(frm, cdt, cdn);
-	},
+
 	mark_awarded(frm, cdt, cdn) {
-		clamp_points_only(frm, cdt, cdn, "mark_awarded");
+		clamp_mark_awarded(frm, cdt, cdn);
 		apply_status_preview(frm, cdt, cdn);
 	},
+
 	feedback(frm, cdt, cdn) {
 		apply_status_preview(frm, cdt, cdn);
 	},
@@ -395,93 +394,143 @@ function has_any_criteria(frm) {
 		frm.doc.assessment_criteria.some(r => r.assessment_criteria);
 }
 
-function clamp_points_only(frm, cdt, cdn, fieldname) {
-	// Only in points-only (no criteria)
-	if (has_any_criteria(frm)) return;
+
+function clamp_mark_awarded(frm, cdt, cdn) {
+	if (!frm.doc.points || frm.doc.criteria) return; // only pure points mode
 
 	const cap = Number(frm.doc.max_points || 0);
 	const d = frappe.get_doc(cdt, cdn);
-	let v = Number(d[fieldname] || 0);
+
+	let v = Number(d.mark_awarded || 0);
 	if (Number.isNaN(v)) v = 0;
-	let clamped = (cap > 0) ? Math.min(Math.max(0, v), cap) : Math.max(0, v);
+
+	let clamped =
+		cap > 0 ? Math.min(Math.max(0, v), cap) : Math.max(0, v);
 
 	if (clamped !== v) {
-		frappe.model.set_value(cdt, cdn, fieldname, clamped);
-
-		let label = fieldname;
-		const df = frappe.meta.get_docfield(cdt, fieldname, frm.doc.name);
-		if (df && df.label) {
-			label = df.label;
-		}
+		frappe.model.set_value(cdt, cdn, "mark_awarded", clamped);
 
 		frappe.show_alert({
-			message: __("{0} adjusted to stay within 0 and Task Max Points.", [label]),
-			indicator: "orange"
+			message: __("Adjusted to stay within 0 and Max Points."),
+			indicator: "orange",
 		});
 	}
 }
 
+
+
+
+
 function update_task_student_visibility(frm) {
 	const grid = frm.fields_dict?.task_student?.grid;
 	if (!grid) return;
+
+	const isPoints = !!frm.doc.points;
+
+	// Points Mode → hide total_mark
+	grid.set_column_disp("total_mark", !isPoints);
+
+	// Binary mode → show complete flag
 	grid.set_column_disp("complete", !!frm.doc.binary);
+
 	grid.refresh();
-}
-function task_has_criteria(frm) {
-	return has_any_criteria(frm);
 }
 
 function compute_status_preview(frm, row) {
-	// 1) Visibility always wins → Returned
+
+	// -------------------------------------
+	// 1) Returned always overrides everything
+	// -------------------------------------
 	if (row.visible_to_student || row.visible_to_guardian) {
 		return "Returned";
 	}
 
-	// 2) Normalise marks + flags
-	const rawMark = row.mark_awarded;
-	const markNum =
-		rawMark === null || rawMark === undefined || rawMark === ""
-			? null
-			: Number(rawMark);
-	const hasMarkAwarded =
-		markNum !== null && !Number.isNaN(markNum) && markNum !== 0;
-
-	const isComplete = !!row.complete;
+	// Normalise + read common fields
 	const feedbackText = (row.feedback || "").trim();
 	const hasFeedback = feedbackText.length > 0;
+	const isComplete = !!row.complete;
 
-	// 3) Graded conditions
-	if (frm.doc.binary && isComplete) {
-		// binary task + complete flag → Graded
-		return "Graded";
-	}
-	if (hasMarkAwarded || hasFeedback) {
-		// non-zero mark_awarded OR any feedback → Graded
-		return "Graded";
-	}
-
-	// 4) In Progress (points-only mode, no criteria)
-	if (!task_has_criteria(frm)) {
-		const rawTotal = row.total_mark;
-		const totalNum =
-			rawTotal === null || rawTotal === undefined || rawTotal === ""
-				? null
-				: Number(rawTotal);
-
-		const hasTotal =
-			totalNum !== null && !Number.isNaN(totalNum) && totalNum !== 0;
-		const hasFinal =
-			rawMark !== null && rawMark !== undefined && rawMark !== "";
-
-		// Teacher has started filling total_mark but not final mark_awarded yet
-		if (hasTotal && !hasFinal) {
-			return "In Progress";
+	// -------------------------------------
+	// 2) BINARY MODE
+	// -------------------------------------
+	if (frm.doc.binary) {
+		// In binary grading, the *only score* is complete=1
+		if (isComplete || hasFeedback) {
+			return "Graded";
 		}
+		return "Assigned";
 	}
 
-	// 5) Default for fresh rows
+	// -------------------------------------
+	// 3) POINTS-ONLY MODE (NO CRITERIA)
+	// -------------------------------------
+	if (frm.doc.points && !frm.doc.criteria) {
+		let raw = row.mark_awarded;
+		let markNum =
+			raw === null || raw === undefined || raw === ""
+				? null
+				: Number(raw);
+
+		const hasMarkAwarded =
+			markNum !== null && !Number.isNaN(markNum);
+
+		// Teacher entered a mark → graded
+		if (hasMarkAwarded || hasFeedback) {
+			return "Graded";
+		}
+
+		// No inputs → still assigned
+		return "Assigned";
+	}
+
+	// -------------------------------------
+	// 4) CRITERIA / RUBRIC MODE
+	// -------------------------------------
+	if (frm.doc.criteria) {
+
+		// Checking rubric rows belonging to this student:
+		// (You may later optimise server-side, but for now client-safe.)
+		const rubricRows = (frm.doc.task_criterion_score || []).filter(
+			r => r.student === row.student
+		);
+
+		let hasRubric = false;
+
+		for (const r of rubricRows) {
+			const hasLevel = !!(r.level && String(r.level).trim());
+			const hasPoints = Number(r.level_points || 0) !== 0;
+			const hasRubricFeedback = (r.feedback || "").trim().length > 0;
+
+			if (hasLevel || hasPoints || hasRubricFeedback) {
+				hasRubric = true;
+				break;
+			}
+		}
+
+		// If any rubric work exists → graded
+		if (hasRubric || hasFeedback) {
+			return "Graded";
+		}
+
+		return "Assigned";
+	}
+
+	// -------------------------------------
+	// 5) OBSERVATION-ONLY MODE (optional)
+	// -------------------------------------
+	if (frm.doc.observations) {
+		// Observations only create status based on feedback
+		if (hasFeedback) return "Graded";
+		return "Assigned";
+	}
+
+	// -------------------------------------
+	// 6) DEFAULT FALLBACK → Assigned
+	// -------------------------------------
 	return "Assigned";
 }
+
+
 
 
 function apply_status_preview(frm, cdt, cdn) {

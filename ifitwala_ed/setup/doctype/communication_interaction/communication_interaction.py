@@ -1,7 +1,7 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# ifitwala_ed/setup/doctype/org_communication_interactions/org_communication_interactions.py
+# ifitwala_ed/setup/doctype/communication_interaction/communication_interaction.py
 
 import frappe
 from frappe import _
@@ -30,7 +30,7 @@ class CommunicationInteraction(Document):
 		# Only check when new / renamed to avoid useless queries
 		if self.is_new():
 			existing_name = frappe.db.get_value(
-				"Org Communication Interaction",
+				"Communication Interaction",
 				{
 					"org_communication": self.org_communication,
 					"user": self.user,
@@ -148,3 +148,211 @@ class CommunicationInteraction(Document):
 		if not self.student_group and parent.interaction_mode == "Student Q&A":
 			# Soft guard: you can tighten this later if needed
 			pass
+
+@frappe.whitelist()
+def get_org_comm_interaction_summary(comm_names):
+	if isinstance(comm_names, str):
+		comm_names = frappe.parse_json(comm_names) or []
+	if not comm_names:
+		return {}
+
+	user = frappe.session.user
+
+	# 1) counts per communication + intent
+	rows = frappe.db.sql(
+		"""
+		SELECT org_communication, intent_type, COUNT(*) as cnt
+		FROM `tabCommunication Interaction`
+		WHERE org_communication IN %(comms)s
+		GROUP BY org_communication, intent_type
+		""",
+		{"comms": tuple(comm_names)},
+		as_dict=True,
+	)
+
+	summary = {name: {"counts": {}, "self": None} for name in comm_names}
+	for r in rows:
+		if not r.intent_type:
+			continue
+		summary[r.org_communication]["counts"][r.intent_type] = r.cnt
+
+	# 2) current user's interaction
+	self_rows = frappe.db.sql(
+		"""
+		SELECT *
+		FROM `tabCommunication Interaction`
+		WHERE org_communication IN %(comms)s
+		  AND user = %(user)s
+		""",
+		{"comms": tuple(comm_names), "user": user},
+		as_dict=True,
+	)
+
+	for r in self_rows:
+		summary[r["org_communication"]]["self"] = r
+
+	return summary
+
+
+@frappe.whitelist()
+def get_communication_thread(org_communication: str, limit_start: int = 0, limit_page_length: int = 20):
+	"""
+	Return the visible interaction thread for a given Org Communication,
+	for use on Staff Comments and Student Q&A surfaces.
+
+	- Respects interaction_mode on Org Communication
+	- Applies visibility rules based on audience and role
+	- Orders pinned items first, then by creation time
+	"""
+	if not org_communication:
+		return []
+
+	try:
+		limit_start = int(limit_start or 0)
+		limit_page_length = int(limit_page_length or 20)
+	except ValueError:
+		limit_start = 0
+		limit_page_length = 20
+
+	user = frappe.session.user
+	parent = frappe.get_cached_doc("Org Communication", org_communication)
+	mode = (parent.interaction_mode or "None").strip() or "None"
+
+	roles = set(frappe.get_roles(user))
+	is_staff = any(r in roles for r in ("Academic Staff", "Academic Admin", "Employee", "System Manager"))
+	is_student = "Student" in roles
+	is_guardian = "Guardian" in roles
+
+	# Structured Feedback → no public thread for non-staff
+	if mode == "Structured Feedback" and not is_staff:
+		return []
+
+	# Base conditions
+	conditions = ["i.org_communication = %(comm)s"]
+	params = {"comm": org_communication, "user": user, "limit_start": limit_start, "limit_page_length": limit_page_length}
+
+	# Visibility rules by mode
+	if mode == "Staff Comments":
+		# Staff-only thread
+		if not is_staff:
+			return []
+
+		# Staff can see everything except hidden
+		conditions.append("i.visibility != 'Hidden'")
+
+	elif mode == "Student Q&A":
+		if is_staff:
+			# Teachers/staff: see everything except hidden
+			conditions.append("i.visibility != 'Hidden'")
+		else:
+			# Students: see public + their own (even if private)
+			conditions.append(
+				"(i.visibility = 'Public to audience' OR i.user = %(user)s)"
+			)
+	else:
+		# Other modes: treat as no thread
+		return []
+
+	where_clause = " AND ".join(conditions)
+
+	# Single SQL with join to get user full_name (no extra calls)
+	rows = frappe.db.sql(
+		f"""
+		SELECT
+			i.name,
+			i.user,
+			u.full_name,
+			i.audience_type,
+			i.intent_type,
+			i.reaction_code,
+			i.note,
+			i.visibility,
+			i.is_teacher_reply,
+			i.is_pinned,
+			i.is_resolved,
+			i.creation,
+			i.modified
+		FROM `tabCommunication Interaction` i
+		LEFT JOIN `tabUser` u ON u.name = i.user
+		WHERE {where_clause}
+		ORDER BY i.is_pinned DESC, i.creation ASC
+		LIMIT %(limit_start)s, %(limit_page_length)s
+		""",
+		params,
+		as_dict=True,
+	)
+
+	return rows
+
+
+@frappe.whitelist()
+def upsert_communication_interaction(
+	org_communication: str,
+	intent_type: str | None = None,
+	reaction_code: str | None = None,
+	note: str | None = None,
+	surface: str | None = None,
+	student_group: str | None = None,
+	program: str | None = None,
+	school: str | None = None,
+):
+	"""
+	Create or update the current user's interaction on a given Org Communication.
+
+	Single entry per (org_communication, user):
+	- If an interaction exists, update it.
+	- Otherwise, create a new one.
+
+	Mode rules (Staff Comments / Structured Feedback / Student Q&A)
+	are enforced in CommunicationInteraction.validate().
+	"""
+	user = frappe.session.user
+	if not org_communication:
+		frappe.throw(_("org_communication is required."))
+
+	# Try to find existing interaction for this user
+	existing_name = frappe.db.get_value(
+		"Communication Interaction",
+		{"org_communication": org_communication, "user": user},
+		"name",
+	)
+
+	if existing_name:
+		doc = frappe.get_doc("Communication Interaction", existing_name)
+	else:
+		doc = frappe.new_doc("Communication Interaction")
+		doc.org_communication = org_communication
+		doc.user = user
+
+	# Assign fields from payload (only if provided)
+	if intent_type is not None:
+		doc.intent_type = intent_type
+
+	if reaction_code is not None:
+		doc.reaction_code = reaction_code
+
+	if note is not None:
+		doc.note = note
+
+	if surface is not None:
+		doc.surface = surface
+
+	# Context fields (optional, useful for Student Q&A / analytics)
+	if student_group is not None:
+		doc.student_group = student_group
+	if program is not None:
+		doc.program = program
+	if school is not None:
+		doc.school = school
+
+	# Let the DocType controller enforce audience_type + mode constraints
+	doc.save(ignore_permissions=False)
+
+	# Return the saved interaction (for UI state)
+	return doc
+
+
+
+def on_doctype_update():
+	frappe.db.add_index("Communication Interaction", ["org_communication", "intent_type"])
+	frappe.db.add_index("Communication Interaction", ["student_group", "intent_type"])
