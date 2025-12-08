@@ -349,7 +349,7 @@ const analyticsCategories = [
     description: 'Student body profile, admissions, and retention.',
     icon: 'trending-up',
     links: [
-      { label: 'Demographics Overview', to: { name: 'student-demographic-analytics' } },
+      { label: 'Demographics Overview', to: { name: 'student-demographic-analytics' }, badge: 'Hot', },
       { label: 'Enrollment Trends', to: '/analytics/enrollment/enrollment-trends' },
       { label: 'Admissions Funnel', to: '/analytics/enrollment/admissions-funnel' },
       { label: 'Student Churn/Withdrawal', to: '/analytics/enrollment/churn-rates' },
@@ -411,11 +411,11 @@ const analyticsCategories = [
     ],
   },
   {
-    title: 'Engagement & Communication',
+    title: 'Admission & Engagement',
     description: 'Family engagement, events, and surveys.',
     icon: 'message-circle',
     links: [
-      { label: 'Portal Usage', to: '/analytics/engagement/portal-usage' },
+      { label: 'Inquiries Analytics', to: '/analytics/inquiry', badge: 'Hot', },
       { label: 'Message Open Rates', to: '/analytics/engagement/message-open-rates' },
       { label: 'Event Participation', to: '/analytics/engagement/event-participation' },
       { label: 'Survey Results', to: '/analytics/engagement/survey-results' },

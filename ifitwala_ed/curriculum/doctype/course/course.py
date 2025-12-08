@@ -8,22 +8,38 @@ from frappe.model.document import Document
 
 class Course(Document):
 	def validate(self):
-		self.validate_sum_weighting()
-		ass_criteria = []
-		for d in self.assessment_criteria:
-			if d.assessment_criteria in ass_criteria:
-				frappe.throw(_("Assessment Criteria {0} appears more than once. Please remove duplicate entries.").format(d.assessment_criteria))
-			else:
-				ass_criteria.append(d.assessment_criteria)
+		self.validate_criteria_weighting()
+		self.validate_duplicate_criteria()
 
+	def validate_duplicate_criteria(self):
+		"""Ensure no Assessment Criteria appears more than once on this course."""
+		seen = set()
+		for row in self.assessment_criteria or []:
+			if not row.assessment_criteria:
+				continue
+			if row.assessment_criteria in seen:
+				frappe.throw(
+					_("Assessment Criteria {0} appears more than once. Please remove duplicate entries.")
+					.format(row.assessment_criteria)
+				)
+			seen.add(row.assessment_criteria)
 
-	def validate_sum_weighting(self):
-		if self.assessment_criteria:
-			total_weight = 0
-			for criteria in self.assessment_criteria:
-				total_weight += criteria.criteria_weighting or 0
-			if total_weight != 100:
-				frappe.throw(_("The sum of the Criteria Weighting should be 100%.  Please adjust and try to save again."))
+	def validate_criteria_weighting(self):
+		"""Ensure that total weighting over all criteria sums to 100% (with tolerance)."""
+		if not self.assessment_criteria:
+			return
+
+		total_weight = 0.0
+		for row in self.assessment_criteria:
+			total_weight += float(row.criteria_weighting or 0)
+
+		# Tolerance to avoid float weirdness (e.g. 99.999999 vs 100)
+		if abs(total_weight - 100.0) > 0.001:
+			frappe.throw(
+				_("The sum of the Criteria Weighting is {0:.2f}%. It must be exactly 100%. Please adjust and try again.")
+				.format(total_weight)
+			)
+
 
 	def get_learning_units(self):
 		lu_data = []
@@ -52,12 +68,25 @@ def add_course_to_programs(course, programs, mandatory=False):
 		title=_('Programs updated'), indicator='green')
 
 @frappe.whitelist()
-def get_programs_without_course(course):
-	data = []
-	for entry in frappe.db.get_all('Program'):
-		program = frappe.get_doc('Program', entry.name)
-		courses = [c.course for c in program.courses]
-		if not courses or course not in courses:
-			data.append(program.name)
-	return data
+def get_programs_without_course(course: str):
+	"""Return list of Program names that do NOT already include this course."""
+	if not course:
+		return []
+
+	# All programs that already have this course via Program Course child table
+	programs_with_course = frappe.get_all(
+		"Program Course",
+		filters={"course": course},
+		pluck="parent",
+		distinct=True,
+	)
+
+	# All other programs
+	filters = {}
+	if programs_with_course:
+		filters["name"] = ["not in", programs_with_course]
+
+	programs = frappe.get_all("Program", filters=filters, pluck="name")
+
+	return programs
 

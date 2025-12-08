@@ -1,11 +1,11 @@
 import { api } from './client'
 
 export const ADMISSION_API = {
-  dashboard: 'ifitwala_ed.admission.page.inquiry_dashboard.inquiry_dashboard.get_dashboard_data',
-  inquiryTypes: 'ifitwala_ed.admission.page.inquiry_dashboard.inquiry_dashboard.get_inquiry_types',
+  dashboard: 'ifitwala_ed.api.inquiry.get_dashboard_data',
+  inquiryTypes: 'ifitwala_ed.api.inquiry.get_inquiry_types',
   // Reusing the existing link query if needed, though often we just want a simple list for dropdowns
-  academicYears: 'ifitwala_ed.admission.page.inquiry_dashboard.inquiry_dashboard.academic_year_link_query',
-  users: 'ifitwala_ed.admission.page.inquiry_dashboard.inquiry_dashboard.admission_user_link_query',
+  academicYears: 'ifitwala_ed.api.inquiry.academic_year_link_query',
+  users: 'ifitwala_ed.api.inquiry.admission_user_link_query',
 }
 
 export type DashboardFilters = {
@@ -27,6 +27,7 @@ export function getInquiryTypes() {
 
 export function searchAcademicYears(txt: string) {
   return api(ADMISSION_API.academicYears, {
+    doctype: 'Academic Year',
     txt,
     searchfield: 'name',
     start: 0,
@@ -37,6 +38,7 @@ export function searchAcademicYears(txt: string) {
 
 export function searchAdmissionUsers(txt: string) {
   return api(ADMISSION_API.users, {
+    doctype: 'User',
     txt,
     searchfield: 'full_name',
     start: 0,

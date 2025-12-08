@@ -1,12 +1,42 @@
 // Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("Course", {
-  setup: function (frm) {
-    frm.add_fetch("team", "school", "school");
-  },
+// ifitwala_ed/curriculum/doctype/course/course.js
 
-  onload: function (frm) {}, 
+frappe.ui.form.on("Course", {
+	setup(frm) {
+		frm.add_fetch("team", "school", "school");
+
+		const table = frm.fields_dict.assessment_criteria;
+		if (!table || !table.grid) {
+			// Field renamed/removed – fail quietly
+			return;
+		}
+
+		table.grid
+			.get_field("assessment_criteria")
+			.get_query = function (doc, cdt, cdn) {
+				const selected = (doc.assessment_criteria || [])
+					.map(row => row.assessment_criteria)
+					.filter(v => !!v);
+
+				const filters = [];
+
+				// Only filter by course_group if set; otherwise don't block everything.
+				if (frm.doc.course_group) {
+					filters.push(["Assessment Criteria", "course_group", "=", frm.doc.course_group]);
+				}
+
+				if (selected.length) {
+					filters.push(["Assessment Criteria", "name", "not in", selected]);
+				}
+
+				return { filters };
+			};
+	},
+
+
+  onload: function (frm) {},
 
   refresh: function (frm) {
 		if (frm.is_new() || !frm.doc.name) return;
@@ -16,7 +46,7 @@ frappe.ui.form.on("Course", {
         function () {
           frm.trigger("add_course_to_programs");
         }
-      );	
+      );
     }
 
 		frm.add_custom_button(__("View Units (ordered)"), async () => {
@@ -86,28 +116,6 @@ frappe.ui.form.on("Course", {
         );
       }
     });
-  },
-});
-
-
-// to filter out assessment criteria that have already been picked out in the course.
-// BUGS: #2 this filter is still not working properly.  It is not filtering out the already selected assessment criteria.
-frappe.ui.form.on("Course Assessment Criteria", {
-  assessment_criteria_add: function (frm) {
-    frm.fields_dict["assessment_criteria"].grid.get_field("assessment_criteria").get_query = function (doc) {
-      var criteria_list = [];
-      if (!doc.__islocal) criteria_list.push(doc.name);
-      $.each(doc.assessment_criteria, function (idx, val) {
-        if (val.assessment_criteria)
-          criteria_list.push(val.assessment_criteria);
-      });
-      return {
-        filters: [
-          ["Assessment Criteria", "course_group", "=", frm.doc.course_group], 
-          ["Assessment Criteria", "name", "not in", criteria_list]
-        ],
-      };
-    };
   },
 });
 
