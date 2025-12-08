@@ -415,7 +415,7 @@ const analyticsCategories = [
     description: 'Family engagement, events, and surveys.',
     icon: 'message-circle',
     links: [
-      { label: 'Inquiries Analytics', to: '/analytics/inquiry', badge: 'Hot', },
+      { label: 'Inquiries Analytics', to: 'staff-inquiry-analytics', badge: 'Hot', },
       { label: 'Message Open Rates', to: '/analytics/engagement/message-open-rates' },
       { label: 'Event Participation', to: '/analytics/engagement/event-participation' },
       { label: 'Survey Results', to: '/analytics/engagement/survey-results' },
