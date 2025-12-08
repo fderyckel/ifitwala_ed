@@ -5,9 +5,29 @@
 
 frappe.ui.form.on("Task", {
 	setup(frm) {
-		set_learning_unit_query(frm);
-		set_lesson_query(frm);
-		make_is_graded_readonly(frm);
+			// Existing setup logic
+			set_learning_unit_query(frm);
+			set_lesson_query(frm);
+			make_is_graded_readonly(frm);
+
+			// Prevent duplicate Assessment Criteria rows on the Task itself
+			const table = frm.fields_dict.assessment_criteria;
+			if (table && table.grid) {
+					table.grid
+							.get_field("assessment_criteria")
+							.get_query = function (doc, cdt, cdn) {
+									const selected = (doc.assessment_criteria || [])
+											.map(row => row.assessment_criteria)
+											.filter(v => !!v);
+
+									const filters = [];
+									if (selected.length) {
+											filters.push(["Assessment Criteria", "name", "not in", selected]);
+									}
+
+									return { filters };
+							};
+			}
 	},
 
 	refresh(frm) {

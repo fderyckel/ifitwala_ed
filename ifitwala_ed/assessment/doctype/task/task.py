@@ -630,82 +630,97 @@ class Task(Document):
 				)
 
 
-
-
-
 def _recompute_student_totals(task: str, student: str) -> None:
-	"""
-	Rolls up Task Criterion Score rows for (task, student) into Task Student.
-	Uses weighting if any criteria on the Task have criteria_weighting > 0;
-	otherwise uses native unweighted sum.
-	"""
-	task_doc = frappe.get_doc("Task", task)
+    """
+    Rolls up Task Criterion Score rows for (task, student) into Task Student.
+    Uses weighting if any criteria on the Task have criteria_weighting > 0;
+    otherwise uses native unweighted sum.
+    """
+    task_doc = frappe.get_doc("Task", task)
 
-	# Build a snapshot dict from Task.assessment_criteria (no extra lookups per score row)
-	crit_meta = {}
-	for r in (task_doc.get("assessment_criteria") or []):
-		if not r.assessment_criteria:
-			continue
-		crit_meta[r.assessment_criteria] = {
-			"maxp": float(r.get("criteria_max_points") or 0),
-			"w": float(r.get("criteria_weighting") or 0),
-		}
+    # Build a snapshot dict from Task.assessment_criteria (no extra lookups per score row)
+    crit_meta = {}
+    for r in (task_doc.get("assessment_criteria") or []):
+        if not r.assessment_criteria:
+            continue
+        crit_meta[r.assessment_criteria] = {
+            "maxp": float(r.get("criteria_max_points") or 0),
+            "w": float(r.get("criteria_weighting") or 0),
+        }
 
-	# Fetch this student's rubric rows
-	rows = frappe.get_all(
-		"Task Criterion Score",
-		filters={"parent": task, "parenttype": "Task", "student": student},
-		fields=["assessment_criteria", "level_points"]
-	)
+    # Fetch this student's rubric rows
+    rows = frappe.get_all(
+        "Task Criterion Score",
+        filters={"parent": task, "parenttype": "Task", "student": student},
+        fields=["assessment_criteria", "level_points"],
+    )
 
-	if not rows:
-		# Still update Task Student to a clean state if present
-		ts = frappe.get_all("Task Student",
-			filters={"parent": task, "parenttype": "Task", "student": student},
-			fields=["name"], limit=1)
-		if ts:
-			frappe.db.set_value("Task Student", ts[0]["name"], {
-				"total_mark": 0.0,
-				"out_of": 0.0,
-				"percentage": None,
-				"updated_on": frappe.utils.now_datetime()
-			}, update_modified=False)
-		return
+    if not rows:
+        # Still update Task Student to a clean state if present
+        ts = frappe.get_all(
+            "Task Student",
+            filters={"parent": task, "parenttype": "Task", "student": student},
+            fields=["name"],
+            limit=1,
+        )
+        if ts:
+            frappe.db.set_value(
+                "Task Student",
+                ts[0]["name"],
+                {
+                    "total_mark": 0.0,
+                    "out_of": 0.0,
+                    "pct": None,
+                    "updated_on": frappe.utils.now_datetime(),
+                },
+                update_modified=False,
+            )
+        return
 
-	use_weighting = any((crit_meta.get(r["assessment_criteria"], {}).get("w", 0) or 0) > 0 for r in rows)
+    use_weighting = any(
+        (crit_meta.get(r["assessment_criteria"], {}).get("w", 0) or 0) > 0 for r in rows
+    )
 
-	if use_weighting:
-		pct = 0.0
-		for r in rows:
-			meta = crit_meta.get(r["assessment_criteria"], {})
-			cmax = meta.get("maxp", 0.0) or 0.0
-			w = (meta.get("w", 0.0) or 0.0) / 100.0
-			lp = float(r.get("level_points") or 0.0)
-			if cmax > 0 and w > 0:
-				pct += (lp / cmax) * w
-		pct *= 100.0
-		out_of = float(task_doc.max_points or 0.0)
-		total = (pct * out_of / 100.0) if out_of > 0 else 0.0
-	else:
-		total = 0.0
-		out_of = 0.0
-		for r in rows:
-			meta = crit_meta.get(r["assessment_criteria"], {})
-			out_of += float(meta.get("maxp") or 0.0)
-			total += float(r.get("level_points") or 0.0)
-		pct = (total / out_of * 100.0) if out_of > 0 else None
+    if use_weighting:
+        pct = 0.0
+        for r in rows:
+            meta = crit_meta.get(r["assessment_criteria"], {})
+            cmax = meta.get("maxp", 0.0) or 0.0
+            w = (meta.get("w", 0.0) or 0.0) / 100.0
+            lp = float(r.get("level_points") or 0.0)
+            if cmax > 0 and w > 0:
+                pct += (lp / cmax) * w
 
-	ts = frappe.get_all("Task Student",
-		filters={"parent": task, "parenttype": "Task", "student": student},
-		fields=["name"], limit=1)
-	if ts:
-		frappe.db.set_value("Task Student", ts[0]["name"], {
-			"total_mark": total,
-			"out_of": out_of,
-			"percentage": pct,
-			"updated_on": frappe.utils.now_datetime()
-		}, update_modified=False)
+        pct *= 100.0
+        out_of = float(task_doc.max_points or 0.0)
+        total = (pct * out_of / 100.0) if out_of > 0 else 0.0
+    else:
+        total = 0.0
+        out_of = 0.0
+        for r in rows:
+            meta = crit_meta.get(r["assessment_criteria"], {})
+            out_of += float(meta.get("maxp") or 0.0)
+            total += float(r.get("level_points") or 0.0)
+        pct = (total / out_of * 100.0) if out_of > 0 else None
 
+    ts = frappe.get_all(
+        "Task Student",
+        filters={"parent": task, "parenttype": "Task", "student": student},
+        fields=["name"],
+        limit=1,
+    )
+    if ts:
+        frappe.db.set_value(
+            "Task Student",
+            ts[0]["name"],
+            {
+                "total_mark": total,
+                "out_of": out_of,
+                "pct": pct,
+                "updated_on": frappe.utils.now_datetime(),
+            },
+            update_modified=False,
+        )
 
 def _prefill_task_rubrics(task_doc) -> dict:
 	"""
@@ -762,7 +777,6 @@ def _prefill_task_rubrics(task_doc) -> dict:
 
 	return {"created": created, "students": len(students), "criteria": len(crit_ids)}
 
-
 @frappe.whitelist()
 def recompute_student_totals(task: str, student: str) -> Dict:
 	"""Public hook to roll up rubric rows to Task Student for one learner."""
@@ -771,7 +785,6 @@ def recompute_student_totals(task: str, student: str) -> Dict:
 	frappe.has_permission(doctype="Task", doc=task, ptype="write", throw=True)
 	_recompute_student_totals(task, student)
 	return {"ok": True}
-
 
 @frappe.whitelist()
 def duplicate_for_group(
@@ -843,62 +856,60 @@ def duplicate_for_group(
 
 @frappe.whitelist()
 def prefill_task_students(task: str) -> Dict:
-	"""
-	Insert missing Task Student rows for active students in the Task’s student_group.
+    """
+    Insert missing Task Student rows for active students in the Task’s student_group.
+    We deliberately do NOT denormalize course/program/academic_year/student_group
+    onto Task Student. Those remain on the Task parent only.
+    """
+    if not task:
+        frappe.throw(_("Task is required"))
 
-	We deliberately do NOT denormalize course/program/academic_year/student_group
-	onto Task Student. Those remain on the Task parent only.
-	"""
-	if not task:
-		frappe.throw(_("Task is required"))
+    doc = frappe.get_doc("Task", task)
+    if not doc.student_group:
+        frappe.throw(_("Select a Student Group before loading students."))
 
-	doc = frappe.get_doc("Task", task)
-	if not doc.student_group:
-		frappe.throw(_("Select a Student Group before loading students."))
+    s_rows = frappe.get_all(
+        "Student Group Student",
+        filters={"parent": doc.student_group, "active": 1},
+        fields=["student", "student_name"],
+    )
 
-	s_rows = frappe.get_all(
-		"Student Group Student",
-		filters={"parent": doc.student_group, "active": 1},
-		fields=["student", "student_name"],
-	)
-	existing = {
-		r.student: r.name
-		for r in frappe.get_all(
-			"Task Student",
-			filters={"parent": doc.name, "parenttype": "Task"},
-			fields=["name", "student"],
-		)
-	}
+    existing = {
+        r.student: r.name
+        for r in frappe.get_all(
+            "Task Student",
+            filters={"parent": doc.name, "parenttype": "Task"},
+            fields=["name", "student"],
+        )
+    }
 
-	inserted = 0
-	for r in s_rows:
-		if r["student"] in existing:
-			continue
+    inserted = 0
+    for r in s_rows:
+        if r["student"] in existing:
+            continue
 
-		ts = frappe.get_doc(
-			{
-				"doctype": "Task Student",
-				"parent": doc.name,
-				"parenttype": "Task",
-				"parentfield": "task_student",  # ensure this matches Task field name
-				"student": r["student"],
-				"student_name": r.get("student_name"),
-				"status": "Assigned",
-				# NO course/program/academic_year/student_group denorm here by design
-			}
-		)
-		ts.insert(ignore_permissions=False)
-		inserted += 1
+        ts = frappe.get_doc(
+            {
+                "doctype": "Task Student",
+                "parent": doc.name,
+                "parenttype": "Task",
+                "parentfield": "task_student",  # ensure this matches Task field name
+                "student": r["student"],
+                "status": "Assigned",
+                # NO course/program/academic_year/student_group denorm here by design
+            }
+        )
+        ts.insert(ignore_permissions=False)
+        inserted += 1
 
-	result = {"inserted": inserted, "total": len(s_rows)}
+    result = {"inserted": inserted, "total": len(s_rows)}
 
-	# also ensure rubric rows exist for each student × criterion
-	doc.reload()  # make sure child tables are fresh
-	rub = _prefill_task_rubrics(doc)
-	result.update({"rubric_rows_created": rub.get("created", 0)})
+    # also ensure rubric rows exist for each student × criterion
+    doc.reload()  # make sure child tables are fresh
+    rub = _prefill_task_rubrics(doc)
+    result.update({"rubric_rows_created": rub.get("created", 0)})
 
-	return result
-
+    return result
 
 @frappe.whitelist()
 def get_criterion_scores_for_student(task: str, student: str) -> Dict:
@@ -917,41 +928,48 @@ def get_criterion_scores_for_student(task: str, student: str) -> Dict:
 	)
 	return {"rows": rows}
 
-
 @frappe.whitelist()
 def apply_rubric_to_awarded(task: str, students: List[str]) -> Dict:
-	"""
-	Set mark_awarded = float(total_mark) for each selected student.
-	If total_mark (Data) is empty/non-numeric, use 0.0.
-	"""
-	if not (task and isinstance(students, list) and students):
-		frappe.throw(_("Task and a non-empty students list are required."))
+    """
+    Set mark_awarded = float(total_mark) for each selected student.
+    If total_mark is empty/non-numeric, use 0.0.
+    """
+    if not (task and isinstance(students, list) and students):
+        frappe.throw(_("Task and a non-empty students list are required."))
 
-	frappe.only_for(("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager"))
-	frappe.has_permission(doctype="Task", doc=task, ptype="write", throw=True)
+    frappe.only_for(
+        ("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager")
+    )
+    frappe.has_permission(doctype="Task", doc=task, ptype="write", throw=True)
 
-	updated = 0
-	for student in students:
-		row = frappe.get_all(
-			"Task Student",
-			filters={"parent": task, "parenttype": "Task", "student": student},
-			fields=["name", "total_mark"],
-			limit=1
-		)
-		if not row:
-			continue
+    updated = 0
+    for student in students:
+        row = frappe.get_all(
+            "Task Student",
+            filters={"parent": task, "parenttype": "Task", "student": student},
+            fields=["name", "total_mark"],
+            limit=1,
+        )
+        if not row:
+            continue
 
-		raw_val = row[0].get("total_mark")
-		raw = (str(raw_val) if raw_val is not None else "").strip()
-		try:
-			val = float(raw) if raw != "" else 0.0
-		except Exception:
-			val = 0.0
+        raw_val = row[0].get("total_mark")
+        try:
+            val = float(raw_val) if raw_val not in (None, "") else 0.0
+        except Exception:
+            val = 0.0
 
-		frappe.db.set_value("Task Student", row[0]["name"], "mark_awarded", val, update_modified=False)
-		updated += 1
+        frappe.db.set_value(
+            "Task Student",
+            row[0]["name"],
+            "mark_awarded",
+            val,
+            update_modified=False,
+        )
+        updated += 1
 
-	return {"updated": updated}
+    return {"updated": updated}
+
 
 @frappe.whitelist()
 def prefill_task_rubrics(task: str) -> dict:
