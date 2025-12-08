@@ -722,7 +722,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { createResource, FeatherIcon } from 'frappe-ui'
+import { createResource, FeatherIcon, call } from 'frappe-ui'
 import ContentDialog from '@/components/ContentDialog.vue'
 import GenericListDialog from '@/components/GenericListDialog.vue'
 import HistoryDialog from '@/components/HistoryDialog.vue'
@@ -893,7 +893,7 @@ function openInteractionThread(item) {
 function acknowledgeAnnouncement(item) {
 	if (!item?.name) return
 
-	frappe.call({
+	call({
 		method: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
 		args: {
 			org_communication: item.name,
@@ -914,7 +914,7 @@ function submitComment() {
 
 	const note = newComment.value.trim()
 
-	frappe.call({
+	call({
 		method: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
 		args: {
 			org_communication: activeCommunication.value.name,
