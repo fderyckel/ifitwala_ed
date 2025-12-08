@@ -174,6 +174,7 @@ const filters = ref({
   assigned_to: '',
   type_of_inquiry: '',
   sla_status: '',
+  school: '',
 })
 
 // Options
@@ -230,10 +231,10 @@ const kpiItems = computed(() => {
 })
 
 const pipelineItems = computed(() => {
-  if (!data.value?.pipeline_by_state) return []
-  return data.value.pipeline_by_state.map((d: any) => ({
-    label: d.label,
-    count: d.value,
+  return (data.value?.pipeline || []).map((d: any) => ({
+    label: d.workflow_state,
+    value: d.count,
+    total: data.value?.summary?.total_inquiries || 1,
   }))
 })
 

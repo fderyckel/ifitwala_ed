@@ -629,12 +629,18 @@ class Task(Document):
 					).format(stu, self.student_group)
 				)
 
-
 def _recompute_student_totals(task: str, student: str) -> None:
     """
     Rolls up Task Criterion Score rows for (task, student) into Task Student.
+
     Uses weighting if any criteria on the Task have criteria_weighting > 0;
     otherwise uses native unweighted sum.
+
+    Writes into:
+      - total_mark (numeric total)
+      - out_of (numeric max)
+      - pct (Percent field on Task Student)
+      - updated_on (Datetime)
     """
     task_doc = frappe.get_doc("Task", task)
 
@@ -655,8 +661,8 @@ def _recompute_student_totals(task: str, student: str) -> None:
         fields=["assessment_criteria", "level_points"],
     )
 
+    # If no rubric rows: reset totals for this student (if Task Student exists)
     if not rows:
-        # Still update Task Student to a clean state if present
         ts = frappe.get_all(
             "Task Student",
             filters={"parent": task, "parenttype": "Task", "student": student},
@@ -677,11 +683,14 @@ def _recompute_student_totals(task: str, student: str) -> None:
             )
         return
 
+    # Decide weighting mode
     use_weighting = any(
-        (crit_meta.get(r["assessment_criteria"], {}).get("w", 0) or 0) > 0 for r in rows
+        (crit_meta.get(r["assessment_criteria"], {}).get("w", 0) or 0) > 0
+        for r in rows
     )
 
     if use_weighting:
+        # Weighted mode: compute a percentage directly (0–100)
         pct = 0.0
         for r in rows:
             meta = crit_meta.get(r["assessment_criteria"], {})
@@ -695,6 +704,7 @@ def _recompute_student_totals(task: str, student: str) -> None:
         out_of = float(task_doc.max_points or 0.0)
         total = (pct * out_of / 100.0) if out_of > 0 else 0.0
     else:
+        # Unweighted: just sum points and caps
         total = 0.0
         out_of = 0.0
         for r in rows:
@@ -703,6 +713,7 @@ def _recompute_student_totals(task: str, student: str) -> None:
             total += float(r.get("level_points") or 0.0)
         pct = (total / out_of * 100.0) if out_of > 0 else None
 
+    # Persist onto Task Student row
     ts = frappe.get_all(
         "Task Student",
         filters={"parent": task, "parenttype": "Task", "student": student},
@@ -721,6 +732,8 @@ def _recompute_student_totals(task: str, student: str) -> None:
             },
             update_modified=False,
         )
+
+
 
 def _prefill_task_rubrics(task_doc) -> dict:
 	"""
