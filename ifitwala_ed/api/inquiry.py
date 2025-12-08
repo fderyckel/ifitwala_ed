@@ -1,7 +1,7 @@
 import frappe
 from frappe.utils import add_days, getdate, nowdate
 
-SUBMITTED_LOCAL_EXPR = "CONVERT_TZ(i.submitted_at, 'UTC', %(site_tz)s)"
+SUBMITTED_LOCAL_EXPR = "i.submitted_at"
 
 def _ay_bounds(academic_year: str):
 	if not academic_year:
@@ -14,7 +14,7 @@ def _ay_bounds(academic_year: str):
 	return start, end
 
 def _resolve_window(filters: dict):
-	# precedence: explicit dates > academic_year > last 90 days
+	# precedence: explicit dates > academic_year > last 365 days
 	fd = filters.get("from_date")
 	td = filters.get("to_date")
 	ay = filters.get("academic_year")
@@ -24,14 +24,14 @@ def _resolve_window(filters: dict):
 		td = td or ay_end
 	if not fd or not td:
 		td = td or nowdate()
-		fd = fd or add_days(td, -90)
+		fd = fd or add_days(td, -365)
 	return getdate(fd), getdate(td)
 
 def _apply_common_conditions(filters: dict, site_tz: str):
 	conds = []
 	params = {}
 	fd, td = _resolve_window(filters)
-	conds.append(f"{SUBMITTED_LOCAL_EXPR} >= %(from)s AND {SUBMITTED_LOCAL_EXPR} < %(to)s")
+	conds.append(f"{SUBMITTED_LOCAL_EXPR} >= %(from)s AND {SUBMITTED_LOCAL_EXPR} <= %(to)s")
 	params.update({
 		"from": f"{fd} 00:00:00",
 		"to": f"{td} 23:59:59",
