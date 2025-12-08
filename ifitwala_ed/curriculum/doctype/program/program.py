@@ -58,7 +58,7 @@ class Program(NestedSet):
 
 	def _apply_default_colors_for_assessment_categories(self):
 		"""For any row missing color_override, pull the color from the master
-		Assessment Category (field: asessment_category_color) in one batch.
+		Assessment Category (field: assessment_category_color) in one batch.
 		"""
 		rows = self.get("assessment_categories") or []
 		missing = [r.assessment_category.strip() for r in rows
@@ -71,9 +71,9 @@ class Program(NestedSet):
 		masters = frappe.get_all(
 			"Assessment Category",
 			filters={"name": ["in", list(set(missing))]},
-			fields=["name", "asessment_category_color"],
+			fields=["name", "assessment_category_color"],
 		)
-		color_map = {m.name: (m.asessment_category_color or "") for m in masters}
+		color_map = {m.name: (m.assessment_category_color or "") for m in masters}
 
 		for r in rows:
 			cat = (r.assessment_category or "").strip()

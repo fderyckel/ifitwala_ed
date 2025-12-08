@@ -8,7 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "category_name",
-  "asessment_category_color",
+  "assessment_category_color",
   "is_summative",
   "include_in_final"
  ],
@@ -16,7 +16,7 @@
   {
    "allow_in_quick_entry": 1,
    "columns": 2,
-   "fieldname": "asessment_category_color",
+   "fieldname": "assessment_category_color",
    "fieldtype": "Color",
    "in_list_view": 1,
    "label": "Asessment Category Color"
@@ -47,7 +47,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-26 10:59:39.157235",
+ "modified": "2025-11-26 10:59:39.157235",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Assessment Category",

@@ -147,9 +147,9 @@ function _bind_weight_handlers(frm) {
 
 			if (!d.color_override) {
 				// Avoid .finally (not available on some builds)
-				frappe.db.get_value("Assessment Category", cat, "asessment_category_color")
+				frappe.db.get_value("Assessment Category", cat, "assessment_category_color")
 					.then(r => {
-						const color = r && r.message && r.message.asessment_category_color;
+						const color = r && r.message && r.message.assessment_category_color;
 						if (color) {
 							d.color_override = color;
 							refresh_field("assessment_categories");
