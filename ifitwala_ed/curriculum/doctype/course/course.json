@@ -88,7 +88,7 @@
    "fieldname": "assessment_criteria",
    "fieldtype": "Table",
    "label": "Assessment Criteria",
-   "options": "Assessment Criteria Childtable"
+   "options": "Course Assessment Criteria"
   },
   {
    "fieldname": "additional_information_section",
@@ -204,7 +204,7 @@
  "image_field": "course_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-05 20:02:56.799959",
+ "modified": "2025-12-08 11:13:22.766198",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Course",

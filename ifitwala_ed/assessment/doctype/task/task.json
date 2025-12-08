@@ -308,7 +308,7 @@
    "fieldname": "assessment_criteria",
    "fieldtype": "Table",
    "label": "Assessment Criteria",
-   "options": "Assessment Criteria Childtable"
+   "options": "Task Assessment Criteria"
   },
   {
    "fieldname": "delivery_type",
@@ -337,7 +337,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-14 14:18:47.801264",
+ "modified": "2025-12-08 11:54:34.970424",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",

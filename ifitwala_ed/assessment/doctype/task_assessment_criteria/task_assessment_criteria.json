@@ -1,57 +1,62 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2024-12-06 11:53:16.666673",
+ "creation": "2025-12-08 11:43:42.285450",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "section_break_fsaz",
   "assessment_criteria",
   "criteria_name",
-  "criteria_weighting"
+  "criteria_weighting",
+  "criteria_max_points"
  ],
  "fields": [
   {
-   "fieldname": "section_break_fsaz",
-   "fieldtype": "Section Break"
-  },
-  {
+   "columns": 3,
    "fieldname": "assessment_criteria",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Assessment Criteria",
    "options": "Assessment Criteria",
    "reqd": 1
   },
   {
+   "columns": 3,
    "fetch_from": "assessment_criteria.assessment_criteria",
    "fieldname": "criteria_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Criteria Name",
    "read_only": 1
   },
   {
+   "columns": 2,
    "fieldname": "criteria_weighting",
    "fieldtype": "Percent",
    "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Criteria Weighting",
-   "precision": "2",
-   "reqd": 1
+   "label": "Criteria Weighting"
+  },
+  {
+   "columns": 2,
+   "fieldname": "criteria_max_points",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Criteria Max Points"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-12-08 11:12:48.890279",
+ "modified": "2025-12-08 11:53:45.711236",
  "modified_by": "Administrator",
- "module": "Curriculum",
- "name": "Course Assessment Criteria",
+ "module": "Assessment",
+ "name": "Task Assessment Criteria",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
