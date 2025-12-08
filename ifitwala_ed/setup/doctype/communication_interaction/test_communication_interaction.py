@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestOrgCommunicationInteractions(FrappeTestCase):
+class TestCommunicationInteraction(FrappeTestCase):
 	pass

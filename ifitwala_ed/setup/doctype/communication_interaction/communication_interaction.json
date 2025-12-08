@@ -141,10 +141,10 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-08 22:47:39",
+ "modified": "2025-12-08 22:49:39",
  "modified_by": "Administrator",
  "module": "Setup",
- "name": "Org Communication Interactions",
+ "name": "Communication Interaction",
  "owner": "Administrator",
  "permissions": [
   {

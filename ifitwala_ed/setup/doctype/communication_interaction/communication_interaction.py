@@ -9,7 +9,7 @@ from frappe.model.document import Document
 
 MAX_NOTE_LENGTH = 300
 
-class OrgCommunicationInteraction(Document):
+class CommunicationInteraction(Document):
 	def validate(self):
 		self._normalize_note()
 		self._ensure_single_row_per_user()
