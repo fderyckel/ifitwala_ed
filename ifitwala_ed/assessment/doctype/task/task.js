@@ -253,17 +253,15 @@ function should_sync_students(doc) {
 
 
 async function auto_sync_students_if_needed(frm) {
-	// Only when we actually have a group AND some grading mode turned on
+	// Only when there is a student_group AND some grading mode is enabled
 	if (!should_sync_students(frm.doc)) return;
 
-	// Never auto-save from here. If the doc is not yet saved or dirty,
-	// we just bail and let the user save manually first.
-	if (!frm.doc.name) {
-		console.debug("[Task] auto_sync_students_if_needed: no name yet, skipping auto-sync");
-		return;
-	}
+	// Never auto-save from here; require a clean, saved doc
 	if (frm.is_new() || frm.is_dirty()) {
-		console.debug("[Task] auto_sync_students_if_needed: form is dirty/new, skipping auto-sync");
+		frappe.show_alert({
+			message: __("Save the Task first, then students will be loaded from the group."),
+			indicator: "orange",
+		});
 		return;
 	}
 
