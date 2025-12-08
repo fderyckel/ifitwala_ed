@@ -226,12 +226,22 @@ function has_grading_activity(frm) {
 function make_is_graded_readonly(frm) {
 	frm.set_df_property("is_graded", "read_only", 1);
 }
+
 function derive_is_graded(frm) {
-	const val = !!(frm.doc.points || frm.doc.criteria || frm.doc.binary || frm.doc.observations);
-	if (frm.doc.is_graded !== (val ? 1 : 0)) {
-		frm.set_value("is_graded", val ? 1 : 0);
+	// Any of the grading toggles makes the Task graded
+	const enabled = !!(frm.doc.points || frm.doc.criteria || frm.doc.binary || frm.doc.observations);
+
+	// Normalise current value to strict 0/1 integer
+	const current = frm.doc.is_graded ? 1 : 0;
+	const target = enabled ? 1 : 0;
+
+	// Only touch the field when the effective value actually changes
+	if (current !== target) {
+		frm.set_value("is_graded", target);
 	}
 }
+
+
 function ensure_points_field_rules(frm) {
 	// Show + require max_points only when points==1
 	const on = !!frm.doc.points;
