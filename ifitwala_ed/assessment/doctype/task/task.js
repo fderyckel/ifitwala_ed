@@ -476,16 +476,16 @@ function update_task_student_visibility(frm) {
 	grid.refresh();
 }
 
-function compute_status_preview(frm, row) {
 
+
+function compute_status_preview(frm, row) {
 	// -------------------------------------
-	// 1) Returned always overrides everything
+	// 1) Visibility always overrides everything
 	// -------------------------------------
 	if (row.visible_to_student || row.visible_to_guardian) {
 		return "Returned";
 	}
 
-	// Normalise + read common fields
 	const feedbackText = (row.feedback || "").trim();
 	const hasFeedback = feedbackText.length > 0;
 	const isComplete = !!row.complete;
@@ -494,10 +494,8 @@ function compute_status_preview(frm, row) {
 	// 2) BINARY MODE
 	// -------------------------------------
 	if (frm.doc.binary) {
-		// In binary grading, the *only score* is complete=1
-		if (isComplete || hasFeedback) {
-			return "Graded";
-		}
+		// Only completion or feedback matters
+		if (isComplete || hasFeedback) return "Graded";
 		return "Assigned";
 	}
 
@@ -514,12 +512,7 @@ function compute_status_preview(frm, row) {
 		const hasMarkAwarded =
 			markNum !== null && !Number.isNaN(markNum);
 
-		// Teacher entered a mark → graded
-		if (hasMarkAwarded || hasFeedback) {
-			return "Graded";
-		}
-
-		// No inputs → still assigned
+		if (hasMarkAwarded || hasFeedback) return "Graded";
 		return "Assigned";
 	}
 
@@ -527,9 +520,7 @@ function compute_status_preview(frm, row) {
 	// 4) CRITERIA / RUBRIC MODE
 	// -------------------------------------
 	if (frm.doc.criteria) {
-
-		// Checking rubric rows belonging to this student:
-		// (You may later optimise server-side, but for now client-safe.)
+		// All rubric rows for this student
 		const rubricRows = (frm.doc.task_criterion_score || []).filter(
 			r => r.student === row.student
 		);
@@ -547,19 +538,14 @@ function compute_status_preview(frm, row) {
 			}
 		}
 
-		// If any rubric work exists → graded
-		if (hasRubric || hasFeedback) {
-			return "Graded";
-		}
-
+		if (hasRubric || hasFeedback) return "Graded";
 		return "Assigned";
 	}
 
 	// -------------------------------------
-	// 5) OBSERVATION-ONLY MODE (optional)
+	// 5) OBSERVATIONS-ONLY MODE
 	// -------------------------------------
 	if (frm.doc.observations) {
-		// Observations only create status based on feedback
 		if (hasFeedback) return "Graded";
 		return "Assigned";
 	}
@@ -569,6 +555,8 @@ function compute_status_preview(frm, row) {
 	// -------------------------------------
 	return "Assigned";
 }
+
+
 
 
 function enforce_total_mark_hidden(frm) {
@@ -583,6 +571,83 @@ function enforce_total_mark_hidden(frm) {
 
 	// Refresh the grid to apply column visibility
 	grid.refresh();
+}
+function compute_status_preview(frm, row) {
+	// -------------------------------------
+	// 1) Visibility always overrides everything
+	// -------------------------------------
+	if (row.visible_to_student || row.visible_to_guardian) {
+		return "Returned";
+	}
+
+	const feedbackText = (row.feedback || "").trim();
+	const hasFeedback = feedbackText.length > 0;
+	const isComplete = !!row.complete;
+
+	// -------------------------------------
+	// 2) BINARY MODE
+	// -------------------------------------
+	if (frm.doc.binary) {
+		// Only completion or feedback matters
+		if (isComplete || hasFeedback) return "Graded";
+		return "Assigned";
+	}
+
+	// -------------------------------------
+	// 3) POINTS-ONLY MODE (NO CRITERIA)
+	// -------------------------------------
+	if (frm.doc.points && !frm.doc.criteria) {
+		let raw = row.mark_awarded;
+		let markNum =
+			raw === null || raw === undefined || raw === ""
+				? null
+				: Number(raw);
+
+		const hasMarkAwarded =
+			markNum !== null && !Number.isNaN(markNum);
+
+		if (hasMarkAwarded || hasFeedback) return "Graded";
+		return "Assigned";
+	}
+
+	// -------------------------------------
+	// 4) CRITERIA / RUBRIC MODE
+	// -------------------------------------
+	if (frm.doc.criteria) {
+		// All rubric rows for this student
+		const rubricRows = (frm.doc.task_criterion_score || []).filter(
+			r => r.student === row.student
+		);
+
+		let hasRubric = false;
+
+		for (const r of rubricRows) {
+			const hasLevel = !!(r.level && String(r.level).trim());
+			const hasPoints = Number(r.level_points || 0) !== 0;
+			const hasRubricFeedback = (r.feedback || "").trim().length > 0;
+
+			if (hasLevel || hasPoints || hasRubricFeedback) {
+				hasRubric = true;
+				break;
+			}
+		}
+
+		if (hasRubric || hasFeedback) return "Graded";
+		return "Assigned";
+	}
+
+	// -------------------------------------
+	// 5) OBSERVATIONS-ONLY MODE
+	// -------------------------------------
+	if (frm.doc.observations) {
+		if (hasFeedback) return "Graded";
+		return "Assigned";
+	}
+
+	// -------------------------------------
+	// 6) DEFAULT FALLBACK → Assigned
+	// -------------------------------------
+	return "Assigned";
 }
 
 
