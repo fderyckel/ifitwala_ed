@@ -893,13 +893,10 @@ function openInteractionThread(item) {
 function acknowledgeAnnouncement(item) {
 	if (!item?.name) return
 
-	call({
-		method: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
-		args: {
-			org_communication: item.name,
-			intent_type: 'Acknowledged',
-			surface: 'Morning Brief'
-		}
+	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
+		org_communication: item.name,
+		intent_type: 'Acknowledged',
+		surface: 'Morning Brief'
 	}).then(() => {
 		const list = widgets.data?.announcements || []
 		const comm_names = list.map((a) => a.name).filter(Boolean)
@@ -914,13 +911,10 @@ function submitComment() {
 
 	const note = newComment.value.trim()
 
-	call({
-		method: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
-		args: {
-			org_communication: activeCommunication.value.name,
-			note,
-			surface: 'Morning Brief'
-		}
+	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
+		org_communication: activeCommunication.value.name,
+		note,
+		surface: 'Morning Brief'
 	}).then(() => {
 		newComment.value = ''
 		interactionThread.fetch({
