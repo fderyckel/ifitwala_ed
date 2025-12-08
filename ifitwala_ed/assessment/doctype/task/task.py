@@ -944,18 +944,23 @@ def get_criterion_scores_for_student(task: str, student: str) -> Dict:
 @frappe.whitelist()
 def apply_rubric_to_awarded(task: str, students: List[str]) -> Dict:
     """
-    Set mark_awarded = float(total_mark) for each selected student.
-    If total_mark is empty/non-numeric, use 0.0.
+    Set mark_awarded = total_mark for each selected student.
+
+    Assumes:
+      - Task Student.total_mark is a Float field (numeric).
+      - Empty / None total_mark is treated as 0.0.
+
+    This is the “commit” step after rubric totals have been rolled up into
+    Task Student.total_mark by _recompute_student_totals().
     """
     if not (task and isinstance(students, list) and students):
         frappe.throw(_("Task and a non-empty students list are required."))
 
-    frappe.only_for(
-        ("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager")
-    )
+    frappe.only_for(("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager"))
     frappe.has_permission(doctype="Task", doc=task, ptype="write", throw=True)
 
     updated = 0
+
     for student in students:
         row = frappe.get_all(
             "Task Student",
@@ -967,8 +972,10 @@ def apply_rubric_to_awarded(task: str, students: List[str]) -> Dict:
             continue
 
         raw_val = row[0].get("total_mark")
+
+        # total_mark is Float now; be defensive but simple
         try:
-            val = float(raw_val) if raw_val not in (None, "") else 0.0
+            val = float(raw_val) if raw_val is not None else 0.0
         except Exception:
             val = 0.0
 
@@ -982,6 +989,7 @@ def apply_rubric_to_awarded(task: str, students: List[str]) -> Dict:
         updated += 1
 
     return {"updated": updated}
+
 
 
 @frappe.whitelist()
