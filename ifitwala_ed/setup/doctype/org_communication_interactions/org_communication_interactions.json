@@ -13,7 +13,16 @@
   "context_section",
   "school",
   "program",
-  "student_group"
+  "student_group",
+  "interaction",
+  "reaction_code",
+  "intent_type",
+  "note",
+  "flags1_section",
+  "visibility",
+  "is_teacher_reply",
+  "is_pinned",
+  "is_resolved"
  ],
  "fields": [
   {
@@ -75,12 +84,64 @@
    "fieldtype": "Link",
    "label": "Student Group",
    "options": "Student Group"
+  },
+  {
+   "fieldname": "interaction",
+   "fieldtype": "Section Break",
+   "label": "Interaction"
+  },
+  {
+   "fieldname": "reaction_code",
+   "fieldtype": "Select",
+   "label": "Reaction Code",
+   "options": "like\ncelebrate\nthank\nquestion\nconcern\nother"
+  },
+  {
+   "fieldname": "intent_type",
+   "fieldtype": "Select",
+   "label": "Intent Type",
+   "options": "Acknowledged\nAppreciated\nQuestion\nConcern\nOther"
+  },
+  {
+   "description": "Short comment, question, or clarification. No formatting.",
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note"
+  },
+  {
+   "fieldname": "flags1_section",
+   "fieldtype": "Section Break",
+   "label": "Flags"
+  },
+  {
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "label": "Visibility",
+   "options": "Public to audience\nPrivate to school\nHidden"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_teacher_reply",
+   "fieldtype": "Check",
+   "label": "Is Teacher Reply"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_pinned",
+   "fieldtype": "Check",
+   "label": "Pinned"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_resolved",
+   "fieldtype": "Check",
+   "label": "Resolved"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-08 22:06:17.196350",
+ "modified": "2025-12-08 22:47:38.568917",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Communication Interactions",
