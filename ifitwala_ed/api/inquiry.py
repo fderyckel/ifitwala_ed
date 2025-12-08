@@ -64,12 +64,12 @@ def _apply_common_conditions(filters: dict, site_tz: str):
 	# --- NestedSet Scoping: School ---
 	# Requirement: Respect parent-child relationship.
 	# Since 'Inquiry' lacks a direct 'school' field, we limit scope by the 'assigned_to' user's school.
-	# We filter for inquiries assigned to users who belong to the selected school (or its descendants).
+	# we default to the current user's effective school context if no filter is provided.
+	
 	school_filter = filters.get("school")
 	if not school_filter:
-		# Default to current user's school context if not explicitly filtered?
-		# For now, we only apply if 'school' is passed (e.g. from UI context or global filter).
-		pass
+		from ifitwala_ed.utilities.school_tree import get_user_default_school
+		school_filter = get_user_default_school()
 	
 	if school_filter:
 		descendants = get_descendant_schools(school_filter)

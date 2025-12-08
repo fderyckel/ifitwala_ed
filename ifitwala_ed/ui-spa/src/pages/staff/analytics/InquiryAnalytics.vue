@@ -40,6 +40,17 @@
       </div>
 
       <div class="flex flex-col gap-1">
+        <label class="type-label">School</label>
+        <select 
+          v-model="filters.school"
+          class="h-9 min-w-[140px] max-w-[200px] rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
+        >
+          <option value="">All Permitted</option>
+          <option v-for="s in allowedSchools" :key="s" :value="s">{{ s }}</option>
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1">
         <label class="type-label">Assignee</label>
         <select 
           v-model="filters.assigned_to"
