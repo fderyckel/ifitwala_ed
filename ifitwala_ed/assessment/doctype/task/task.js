@@ -251,29 +251,26 @@ function should_sync_students(doc) {
 	return !!doc.student_group && !!(doc.points || doc.criteria || doc.binary || doc.observations);
 }
 
-async function ensure_saved_then(fn, frm) {
-	// Save if new or dirty, then call fn again on the fresh doc
-	if (frm.is_new() || frm.is_dirty()) {
-		await frm.save();
-	}
-	await fn(frm);
-}
 
 async function auto_sync_students_if_needed(frm) {
+	// Only when we actually have a group AND some grading mode turned on
 	if (!should_sync_students(frm.doc)) return;
-	// Avoid auto-saving when Criteria is ON but no Assessment Criteria rows yet;
-	// server-side validation would fail and spam errors.
-	if (frm.doc.criteria && !has_any_criteria(frm)) return;
 
-	// Brand-new or unsaved changes → save first so we have a real DB row
+	// Never auto-save from here. If the doc is not yet saved or dirty,
+	// we just bail and let the user save manually first.
+	if (!frm.doc.name) {
+		console.debug("[Task] auto_sync_students_if_needed: no name yet, skipping auto-sync");
+		return;
+	}
 	if (frm.is_new() || frm.is_dirty()) {
-		return ensure_saved_then(auto_sync_students_if_needed, frm);
+		console.debug("[Task] auto_sync_students_if_needed: form is dirty/new, skipping auto-sync");
+		return;
 	}
 
 	try {
 		const res = await frappe.call({
 			method: "ifitwala_ed.assessment.doctype.task.task.prefill_task_students",
-			args: { task: frm.doc.name },   // now a real Task name
+			args: { task: frm.doc.name },
 			freeze: false,
 		});
 
@@ -288,6 +285,8 @@ async function auto_sync_students_if_needed(frm) {
 		console.error(e);
 	}
 }
+
+
 async function auto_seed_rubrics_if_needed(frm) {
 	// Only relevant when:
 	// - Criteria grading is ON

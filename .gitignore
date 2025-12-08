@@ -21,7 +21,8 @@ codex_setup.sh
 codex.log
 
 # Others
-config/*
+/.pycache/
+/config/
 
 # --- SPA workspace (ui-spa)
 ifitwala_ed/ui-spa/node_modules/
