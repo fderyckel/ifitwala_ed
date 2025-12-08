@@ -339,8 +339,7 @@ def get_dashboard_data(filters=None):
 
 
 @frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
+def academic_year_link_query(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
 	return frappe.db.sql(
 		"""
 		SELECT name
@@ -349,13 +348,12 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 		ORDER BY year_start_date DESC, name DESC
 		LIMIT %(start)s, %(page_len)s
 		""",
-		{"txt": f"%{txt}%", "start": start, "page_len": page_len}
+		{"txt": f"%{txt or ''}%", "start": int(start or 0), "page_len": int(page_len or 20)}
 	)
 
 
 @frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def admission_user_link_query(doctype, txt, searchfield, start, page_len, filters):
+def admission_user_link_query(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
 	"""Enabled users with Admission Officer/Manager role; match name/full_name/email."""
 	return frappe.db.sql(
 		"""
@@ -374,7 +372,7 @@ def admission_user_link_query(doctype, txt, searchfield, start, page_len, filter
 		ORDER BY u.full_name ASC, u.creation DESC
 		LIMIT %(start)s, %(page_len)s
 		""",
-		{"txt": f"%{txt or ''}%", "start": start, "page_len": page_len}
+		{"txt": f"%{txt or ''}%", "start": int(start or 0), "page_len": int(page_len or 20)}
 	)
 
 
