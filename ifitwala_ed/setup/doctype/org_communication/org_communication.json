@@ -26,8 +26,11 @@
   "message",
   "section_break_vuxv",
   "portal_surface",
+  "internal_note",
   "column_break_3elr",
-  "internal_note"
+  "interaction_mode",
+  "allow_private_notes",
+  "allow_public_thread"
  ],
  "fields": [
   {
@@ -165,12 +168,34 @@
    "fieldname": "message",
    "fieldtype": "Text Editor",
    "label": "Message"
+  },
+  {
+   "default": "None",
+   "description": "Controls reactions/comments behaviour for this communication on portal and Morning Brief surfaces.",
+   "fieldname": "interaction_mode",
+   "fieldtype": "Select",
+   "label": "Interaction Mode",
+   "options": "None\nStaff Comments\nStructured Feedback\nStudent Q&A"
+  },
+  {
+   "default": "1",
+   "description": "If enabled, guardians/students can send private questions/concerns visible only to school staff.",
+   "fieldname": "allow_private_notes",
+   "fieldtype": "Check",
+   "label": "Allow Private Notes to School"
+  },
+  {
+   "default": "0",
+   "description": "If enabled, interactions in this communication can be visible to others in the same audience (e.g. staff or student group).",
+   "fieldname": "allow_public_thread",
+   "fieldtype": "Check",
+   "label": "Allow Public Thread"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-02 13:53:47.495633",
+ "modified": "2025-12-08 21:58:44.200581",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Communication",
