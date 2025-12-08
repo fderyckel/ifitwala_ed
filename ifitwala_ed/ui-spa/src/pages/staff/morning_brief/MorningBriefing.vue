@@ -154,7 +154,7 @@
 										<FeatherIcon name="message-circle" class="h-3 w-3" />
 										<span>Comments</span>
 										<span class="text-[10px] text-slate-token/60">
-											({{ getInteractionFor(currentSpotlight).counts?.Question || 0 }})
+											({{ getInteractionFor(currentSpotlight).counts?.Comment || 0 }})
 										</span>
 									</button>
 								</div>
@@ -262,7 +262,7 @@
 										>
 											<FeatherIcon name="message-circle" class="h-3 w-3" />
 											<span>Comments</span>
-											<span>({{ getInteractionFor(item).counts?.Question || 0 }})</span>
+											<span>({{ getInteractionFor(item).counts?.Comment || 0 }})</span>
 										</button>
 									</div>
 

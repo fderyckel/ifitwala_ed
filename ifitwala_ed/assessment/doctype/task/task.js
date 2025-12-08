@@ -269,17 +269,30 @@ function derive_is_graded(frm) {
 
 
 function ensure_points_field_rules(frm) {
-	// Show + require max_points only when points==1
-	const on = !!frm.doc.points;
-	frm.set_df_property("max_points", "hidden", !on);
-	frm.set_df_property("max_points", "reqd", on);
-	if (!on && frm.doc.max_points) frm.set_value("max_points", null);
+	const pointsOn = !!frm.doc.points;
 
-	// Grade Scale is only relevant in points mode (server requires it)
-	frm.set_df_property("grade_scale", "hidden", !on);
-	frm.set_df_property("grade_scale", "reqd", on);
-	if (!on && frm.doc.grade_scale) frm.set_value("grade_scale", null);
+	// -------------------------------
+	// 1. Show / hide max_points
+	// -------------------------------
+	frm.set_df_property("max_points", "hidden", !pointsOn);
+	frm.set_df_property("max_points", "reqd", pointsOn);
+
+	// When points mode is turned OFF → do NOT clear max_points
+	// (avoid unnecessary dirty state; server will ignore it anyway)
+
+	// -------------------------------
+	// 2. Show / hide grade_scale
+	// -------------------------------
+	frm.set_df_property("grade_scale", "hidden", !pointsOn);
+	frm.set_df_property("grade_scale", "reqd", pointsOn);
+
+	// -------------------------------
+	// 3. Refresh both fields visibly
+	// -------------------------------
+	frm.refresh_field("max_points");
+	frm.refresh_field("grade_scale");
 }
+
 
 
 // ----------------- Auto load (add-only) & rubric seeding -------------------
@@ -559,18 +572,19 @@ function compute_status_preview(frm, row) {
 
 
 function enforce_total_mark_hidden(frm) {
-	// Always hide total_mark — we are fully deprecating it.
-	frm.set_df_property("total_mark", "hidden", 1);
+	// total_mark does NOT exist on the parent Task, so never touch frm.set_df_property()
 
-	// And disable it in case older docs still show it
-	frm.set_df_property("total_mark", "read_only", 1);
-
-	// Also hide it in the child table grid
+	// Hide the total_mark column in the Task Student child table
 	const grid = frm.fields_dict?.task_student?.grid;
-	if (grid) {
-		grid.set_column_disp("total_mark", false);
-	}
+	if (!grid) return;
+
+	// Always hide total_mark regardless of grading mode
+	grid.set_column_disp("total_mark", false);
+
+	// Refresh the grid to apply column visibility
+	grid.refresh();
 }
+
 
 
 

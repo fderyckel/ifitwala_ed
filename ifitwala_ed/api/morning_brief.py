@@ -66,7 +66,17 @@ def get_daily_bulletin(user, roles):
 
 	# Use SQL to handle OR condition for brief_end_date (>= today OR NULL)
 	sql = """
-		SELECT name, title, message, communication_type, priority, brief_end_date, brief_start_date
+		SELECT
+			name,
+			title,
+			message,
+			communication_type,
+			priority,
+			brief_end_date,
+			brief_start_date,
+			interaction_mode,
+			allow_private_notes,
+			allow_public_thread
 		FROM `tabOrg Communication`
 		WHERE status = 'Published'
 		AND portal_surface IN ('Morning Brief', 'Everywhere')
@@ -91,10 +101,14 @@ def get_daily_bulletin(user, roles):
 
 		if check_audience_match(c.name, user, roles, employee):
 			visible_comms.append({
+				"name": c.name,
 				"title": c.title,
-				"content": c.message,
+				"content": strip_html(c.message or ""),
 				"type": c.communication_type,
-				"priority": c.priority
+				"priority": c.priority,
+				"interaction_mode": c.interaction_mode,
+				"allow_public_thread": c.allow_public_thread,
+				"allow_private_notes": c.allow_private_notes
 			})
 
 	return visible_comms

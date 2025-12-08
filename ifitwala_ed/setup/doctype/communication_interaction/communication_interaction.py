@@ -8,6 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 
 MAX_NOTE_LENGTH = 300
+DOCTYPE = "Communication Interaction"
 
 class CommunicationInteraction(Document):
 	def validate(self):
@@ -30,7 +31,7 @@ class CommunicationInteraction(Document):
 		# Only check when new / renamed to avoid useless queries
 		if self.is_new():
 			existing_name = frappe.db.get_value(
-				"Communication Interaction",
+				DOCTYPE,
 				{
 					"org_communication": self.org_communication,
 					"user": self.user,
@@ -161,10 +162,10 @@ def get_org_comm_interaction_summary(comm_names):
 	# 1) counts per communication + intent
 	rows = frappe.db.sql(
 		"""
-		SELECT org_communication, intent_type, COUNT(*) as cnt
+		SELECT org_communication, intent_type, note, COUNT(*) as cnt
 		FROM `tabCommunication Interaction`
 		WHERE org_communication IN %(comms)s
-		GROUP BY org_communication, intent_type
+		GROUP BY org_communication, intent_type, note
 		""",
 		{"comms": tuple(comm_names)},
 		as_dict=True,
@@ -172,9 +173,15 @@ def get_org_comm_interaction_summary(comm_names):
 
 	summary = {name: {"counts": {}, "self": None} for name in comm_names}
 	for r in rows:
-		if not r.intent_type:
+		intent = r.intent_type
+		if not intent and (r.note or "").strip():
+			intent = "Comment"
+		if not intent:
 			continue
-		summary[r.org_communication]["counts"][r.intent_type] = r.cnt
+		# Aggregate counts across intents
+		summary[r.org_communication]["counts"][intent] = (
+			summary[r.org_communication]["counts"].get(intent, 0) + r.cnt
+		)
 
 	# 2) current user's interaction
 	self_rows = frappe.db.sql(
@@ -312,17 +319,19 @@ def upsert_communication_interaction(
 
 	# Try to find existing interaction for this user
 	existing_name = frappe.db.get_value(
-		"Communication Interaction",
+		DOCTYPE,
 		{"org_communication": org_communication, "user": user},
 		"name",
 	)
 
 	if existing_name:
-		doc = frappe.get_doc("Communication Interaction", existing_name)
+		doc = frappe.get_doc(DOCTYPE, existing_name)
 	else:
-		doc = frappe.new_doc("Communication Interaction")
+		doc = frappe.new_doc(DOCTYPE)
 		doc.org_communication = org_communication
 		doc.user = user
+
+	parent = frappe.get_cached_doc("Org Communication", org_communication)
 
 	# Assign fields from payload (only if provided)
 	if intent_type is not None:
@@ -344,6 +353,10 @@ def upsert_communication_interaction(
 		doc.program = program
 	if school is not None:
 		doc.school = school
+
+	# Default intent for staff comments when user submits a note without an explicit intent
+	if (parent.interaction_mode or "None") == "Staff Comments" and note and not doc.intent_type:
+		doc.intent_type = "Comment"
 
 	# Let the DocType controller enforce audience_type + mode constraints
 	doc.save(ignore_permissions=False)
