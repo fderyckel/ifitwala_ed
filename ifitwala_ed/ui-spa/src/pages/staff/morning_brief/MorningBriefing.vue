@@ -125,6 +125,47 @@
 								Read full announcement
 								<FeatherIcon name="arrow-right" class="h-4 w-4" />
 							</button>
+
+							<!-- Interaction strip for spotlight (staff comments mode only) -->
+							<div
+								v-if="currentSpotlight && currentSpotlight.interaction_mode === 'Staff Comments'"
+								class="mt-3 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-slate-token/70"
+							>
+								<div class="flex items-center gap-3">
+									<button
+										type="button"
+										class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-2 py-1 hover:bg-surface-soft/80"
+										@click.stop="acknowledgeAnnouncement(currentSpotlight)"
+									>
+										<FeatherIcon name="thumbs-up" class="h-3 w-3 text-canopy" />
+										<span>
+											Acknowledge
+											<span class="ml-1 text-[10px] text-slate-token/60">
+												({{ getInteractionFor(currentSpotlight).counts?.Acknowledged || 0 }})
+											</span>
+										</span>
+									</button>
+
+									<button
+										type="button"
+										class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-token/70 hover:bg-surface-soft"
+										@click.stop="openInteractionThread(currentSpotlight)"
+									>
+										<FeatherIcon name="message-circle" class="h-3 w-3" />
+										<span>Comments</span>
+										<span class="text-[10px] text-slate-token/60">
+											({{ getInteractionFor(currentSpotlight).counts?.Question || 0 }})
+										</span>
+									</button>
+								</div>
+
+								<div
+									v-if="getInteractionFor(currentSpotlight).self"
+									class="hidden text-[10px] text-jacaranda md:block"
+								>
+									You responded: {{ getInteractionFor(currentSpotlight).self.intent_type || 'Commented' }}
+								</div>
+							</div>
 						</div>
 
 						<div
@@ -198,6 +239,40 @@
 									</span>
 								</div>
 								<p class="mt-1 text-xs text-slate-token/80 line-clamp-2" v-html="item.content"></p>
+
+								<!-- Interaction summary for each announcement (staff comments only) -->
+								<div
+									v-if="item.interaction_mode === 'Staff Comments'"
+									class="mt-2 flex items-center justify-between text-[10px] text-slate-token/65"
+								>
+									<div class="flex items-center gap-2">
+										<button
+											type="button"
+											class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-surface-soft"
+											@click.stop="acknowledgeAnnouncement(item)"
+										>
+											<FeatherIcon name="thumbs-up" class="h-3 w-3 text-canopy" />
+											<span>{{ getInteractionFor(item).counts?.Acknowledged || 0 }}</span>
+										</button>
+
+										<button
+											type="button"
+											class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-surface-soft"
+											@click.stop="openInteractionThread(item)"
+										>
+											<FeatherIcon name="message-circle" class="h-3 w-3" />
+											<span>Comments</span>
+											<span>({{ getInteractionFor(item).counts?.Question || 0 }})</span>
+										</button>
+									</div>
+
+									<span
+										v-if="getInteractionFor(item).self"
+										class="ml-2 text-[10px] text-jacaranda"
+									>
+										You responded
+									</span>
+								</div>
 							</div>
 						</button>
 					</div>
@@ -599,6 +674,48 @@
 			subtitle="Student patient visits over time"
 			method="ifitwala_ed.api.morning_brief.get_clinic_visits_trend"
 		/>
+
+		<SideDrawerList
+			:open="showInteractionDrawer"
+			title="Announcement Comments"
+			entity-label="Comments"
+			:rows="interactionThread.data || []"
+			:loading="interactionThread.loading"
+			@close="showInteractionDrawer = false"
+		>
+			<template #row="{ row }">
+				<div class="flex flex-col gap-0.5">
+					<div class="flex items-center justify-between">
+						<span class="text-xs font-semibold text-ink">
+							{{ row.full_name || row.user }}
+						</span>
+						<span class="text-[10px] text-slate-token/60">
+							{{ new Date(row.creation).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) }}
+						</span>
+					</div>
+					<p class="text-xs text-slate-token/90">
+						{{ row.note }}
+					</p>
+				</div>
+			</template>
+
+			<template #actions>
+				<form class="flex w-full items-center gap-2" @submit.prevent="submitComment">
+					<input
+						v-model="newComment"
+						type="text"
+						class="flex-1 rounded-full border border-border/60 bg-white px-3 py-1.5 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-jacaranda/50"
+						placeholder="Add a short comment (max 300 characters)"
+					/>
+					<button
+						type="submit"
+						class="remark-btn px-3 py-1.5 text-xs font-semibold"
+					>
+						Send
+					</button>
+				</form>
+			</template>
+		</SideDrawerList>
 	</div>
 </template>
 
@@ -609,6 +726,7 @@ import { createResource, FeatherIcon } from 'frappe-ui'
 import ContentDialog from '@/components/ContentDialog.vue'
 import GenericListDialog from '@/components/GenericListDialog.vue'
 import HistoryDialog from '@/components/HistoryDialog.vue'
+import SideDrawerList from '@/components/analytics/SideDrawerList.vue'
 import AttendanceTrend from './components/AttendanceTrend.vue'
 import AbsentStudentList from './components/AbsentStudentList.vue'
 
@@ -626,6 +744,9 @@ const dialogContent = ref({
 const showAnnouncementCenter = ref(false)
 const showCriticalIncidents = ref(false)
 const showClinicHistory = ref(false)
+const showInteractionDrawer = ref(false)
+const activeCommunication = ref(null)
+const newComment = ref('')
 
 const criticalIncidentsList = createResource({
 	url: 'ifitwala_ed.api.morning_brief.get_critical_incidents_details',
@@ -635,6 +756,16 @@ const criticalIncidentsList = createResource({
 const widgets = createResource({
 	url: 'ifitwala_ed.api.morning_brief.get_briefing_widgets',
 	auto: true
+})
+
+const interactionSummary = createResource({
+	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_org_comm_interaction_summary',
+	auto: false
+})
+
+const interactionThread = createResource({
+	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_communication_thread',
+	auto: false
 })
 
 const viewModes = [
@@ -684,6 +815,19 @@ const filteredAnnouncements = computed(() => {
 	return all
 })
 
+watch(
+	() => widgets.data?.announcements,
+	(list) => {
+		if (!list || !list.length) return
+
+		const comm_names = list.map((a) => a.name).filter(Boolean)
+		if (!comm_names.length) return
+
+		interactionSummary.submit({ comm_names })
+	},
+	{ immediate: true }
+)
+
 function nextSpotlight() {
 	if (!spotlightAnnouncements.value.length) return
 	spotlightIndex.value = (spotlightIndex.value + 1) % spotlightAnnouncements.value.length
@@ -722,6 +866,75 @@ function openAnnouncement(news) {
 		badge: news.type
 	}
 	isContentDialogOpen.value = true
+}
+
+function getInteractionFor(item) {
+	const summary = interactionSummary.data?.[item.name]
+	if (!summary) {
+		return {
+			counts: {},
+			self: null
+		}
+	}
+	return summary
+}
+
+function openInteractionThread(item) {
+	activeCommunication.value = item
+	showInteractionDrawer.value = true
+
+	interactionThread.fetch({
+		org_communication: item.name,
+		limit_start: 0,
+		limit_page_length: 30
+	})
+}
+
+function acknowledgeAnnouncement(item) {
+	if (!item?.name) return
+
+	frappe.call({
+		method: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
+		args: {
+			org_communication: item.name,
+			intent_type: 'Acknowledged',
+			surface: 'Morning Brief'
+		}
+	}).then(() => {
+		const list = widgets.data?.announcements || []
+		const comm_names = list.map((a) => a.name).filter(Boolean)
+		if (comm_names.length) {
+			interactionSummary.submit({ comm_names })
+		}
+	})
+}
+
+function submitComment() {
+	if (!activeCommunication.value || !newComment.value.trim()) return
+
+	const note = newComment.value.trim()
+
+	frappe.call({
+		method: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
+		args: {
+			org_communication: activeCommunication.value.name,
+			note,
+			surface: 'Morning Brief'
+		}
+	}).then(() => {
+		newComment.value = ''
+		interactionThread.fetch({
+			org_communication: activeCommunication.value.name,
+			limit_start: 0,
+			limit_page_length: 30
+		})
+
+		const list = widgets.data?.announcements || []
+		const comm_names = list.map((a) => a.name).filter(Boolean)
+		if (comm_names.length) {
+			interactionSummary.submit({ comm_names })
+		}
+	})
 }
 
 function openAnnouncementsDialog() {

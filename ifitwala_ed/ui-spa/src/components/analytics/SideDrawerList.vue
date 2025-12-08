@@ -54,8 +54,9 @@ type EntityType = 'student' | 'guardian'
 const props = defineProps<{
   open: boolean
   title: string
-  entity: EntityType
   rows: any[]
+  entity?: EntityType
+  entityLabel?: string
   loading?: boolean
   onLoadMore?: () => void
 }>()
@@ -64,9 +65,12 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const entityLabel = computed(() =>
-  props.entity === 'student' ? 'Students' : 'Guardians'
-)
+const entityLabel = computed(() => {
+  if (props.entityLabel) return props.entityLabel
+  if (props.entity === 'student') return 'Students'
+  if (props.entity === 'guardian') return 'Guardians'
+  return 'Items'
+})
 
 function emitClose() {
   emit('close')

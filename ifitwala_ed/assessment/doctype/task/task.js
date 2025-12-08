@@ -35,6 +35,7 @@ frappe.ui.form.on("Task", {
 		set_learning_unit_query(frm);
 		set_lesson_query(frm);
 		update_task_student_visibility(frm);
+		enforce_total_mark_hidden(frm);
 		ensure_points_field_rules(frm);       // show/require max_points only when points==1
 		auto_sync_students_if_needed(frm);    // add-only; no removals
 		auto_seed_rubrics_if_needed(frm);     // if criteria==1 and students exist
@@ -84,25 +85,28 @@ frappe.ui.form.on("Task", {
 	// --- grading toggles ----------------------------------------------------
 	binary(frm) {
 		derive_is_graded(frm);
+		enforce_total_mark_hidden(frm);
 		update_task_student_visibility(frm);
 		auto_sync_students_if_needed(frm);
 	},
 
 	observations(frm) {
 		derive_is_graded(frm);
+		enforce_total_mark_hidden(frm);
 		auto_sync_students_if_needed(frm);
 	},
 
 	points(frm) {
 		derive_is_graded(frm);
 		ensure_points_field_rules(frm);
-		//ensure_default_grade_scale(frm);      // keep here
+		enforce_total_mark_hidden(frm);
 		auto_sync_students_if_needed(frm);
 	},
 
 	criteria(frm) {
 		// Always keep is_graded in sync
 		derive_is_graded(frm);
+		enforce_total_mark_hidden(frm);
 
 		// Turning Criteria OFF
 		if (!frm.doc.criteria) {
@@ -530,6 +534,20 @@ function compute_status_preview(frm, row) {
 	return "Assigned";
 }
 
+
+function enforce_total_mark_hidden(frm) {
+	// Always hide total_mark — we are fully deprecating it.
+	frm.set_df_property("total_mark", "hidden", 1);
+
+	// And disable it in case older docs still show it
+	frm.set_df_property("total_mark", "read_only", 1);
+
+	// Also hide it in the child table grid
+	const grid = frm.fields_dict?.task_student?.grid;
+	if (grid) {
+		grid.set_column_disp("total_mark", false);
+	}
+}
 
 
 

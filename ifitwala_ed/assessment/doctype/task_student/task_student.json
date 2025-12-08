@@ -9,7 +9,6 @@
   "student",
   "status",
   "mark_awarded",
-  "total_mark",
   "column_break_2xsc",
   "out_of",
   "pct",
@@ -80,12 +79,6 @@
    "label": "Updated On"
   },
   {
-   "fieldname": "total_mark",
-   "fieldtype": "Float",
-   "label": "Total Mark",
-	 "precision": "2"
-  },
-  {
    "fieldname": "column_break_2xsc",
    "fieldtype": "Column Break"
   },
@@ -105,7 +98,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-12-07 18:41:13.441824",
+ "modified": "2025-12-07 18:41:19",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Student",
