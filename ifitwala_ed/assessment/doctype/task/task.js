@@ -198,20 +198,40 @@ function set_lesson_query(frm) {
 
 // ----------------- Derived + UI rules --------------------------------------
 function has_grading_activity(frm) {
+	// -------------------------------
 	// Check Task Student rows
+	// -------------------------------
 	for (const row of (frm.doc.task_student || [])) {
-		const has_mark_awarded = row.mark_awarded !== undefined && row.mark_awarded !== null && row.mark_awarded !== "";
-		const has_total_mark  = row.total_mark  !== undefined && row.total_mark  !== null && row.total_mark  !== "";
-		const has_feedback    = (row.feedback || "").trim().length > 0;
-		const has_flags       = !!(row.complete || row.visible_to_student || row.visible_to_guardian);
-		const status          = row.status || "";
 
-		if (has_mark_awarded || has_total_mark || has_feedback || has_flags || (status && status !== "Assigned")) {
+		const has_mark_awarded =
+			row.mark_awarded !== undefined &&
+			row.mark_awarded !== null &&
+			row.mark_awarded !== "";
+
+		// total_mark is deprecated → DO NOT USE IT ANYMORE
+
+		const has_feedback =
+			(row.feedback || "").trim().length > 0;
+
+		const has_flags =
+			!!(row.complete || row.visible_to_student || row.visible_to_guardian);
+
+		const status = row.status || "";
+
+		// If any actual grading activity is detected
+		if (
+			has_mark_awarded ||
+			has_feedback ||
+			has_flags ||
+			(status && status !== "Assigned")
+		) {
 			return true;
 		}
 	}
 
-	// Check rubric rows
+	// -------------------------------
+	// Check rubric rows (criteria mode)
+	// -------------------------------
 	for (const r of (frm.doc.task_criterion_score || [])) {
 		const hasLevel = !!(r.level && String(r.level).trim());
 		const pts = Number(r.level_points || 0);
@@ -222,6 +242,9 @@ function has_grading_activity(frm) {
 		}
 	}
 
+	// -------------------------------
+	// Otherwise → no grading started
+	// -------------------------------
 	return false;
 }
 
