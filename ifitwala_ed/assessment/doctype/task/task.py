@@ -801,7 +801,6 @@ def _recompute_student_totals(task: str, student: str) -> None:
         )
 
 
-
 @frappe.whitelist()
 def duplicate_for_group(
     source_task: str,
@@ -883,7 +882,6 @@ def duplicate_for_group(
 
     return {"name": new_doc.name}
 
-
 @frappe.whitelist()
 def prefill_task_students(task: str) -> Dict:
     """
@@ -910,15 +908,11 @@ def prefill_task_students(task: str) -> Dict:
         fields=["student"],
     )
 
-    # Already present Task Student rows for this Task
+    # EXISTING students: use the Task's own child table snapshot (idempotent)
     existing = {
-        r.student: r.name
-        for r in frappe.get_all(
-            "Task Student",
-            filters={"parent": doc.name, "parenttype": "Task"},
-            fields=["name", "student"],
-        )
-        if r.get("student")
+        getattr(r, "student", None)
+        for r in (doc.get("task_student") or [])
+        if getattr(r, "student", None)
     }
 
     inserted = 0
@@ -928,6 +922,7 @@ def prefill_task_students(task: str) -> Dict:
         if not stu:
             continue
 
+        # Skip if already present on this Task
         if stu in existing:
             continue
 
@@ -939,11 +934,11 @@ def prefill_task_students(task: str) -> Dict:
                 "parentfield": "task_student",
                 "student": stu,
                 "status": "Assigned",
-                # No `student_name` here – that field does not exist on Task Student
             }
         )
         ts.insert(ignore_permissions=False)
         inserted += 1
+        existing.add(stu)  # keep in sync within this run
 
     result = {"inserted": inserted, "total": len(s_rows)}
 
@@ -953,6 +948,7 @@ def prefill_task_students(task: str) -> Dict:
     result.update({"rubric_rows_created": rub.get("created", 0)})
 
     return result
+
 
 
 @frappe.whitelist()
