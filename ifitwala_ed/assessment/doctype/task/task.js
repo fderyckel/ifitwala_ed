@@ -422,19 +422,60 @@ function update_task_student_visibility(frm) {
 function task_has_criteria(frm) {
 	return has_any_criteria(frm);
 }
-function compute_status_preview(frm, row) {
-	if (row.visible_to_student || row.visible_to_guardian) return "Returned";
-	if (frm.doc.binary && row.complete) return "Graded";
-	if (row.mark_awarded !== null && row.mark_awarded !== undefined && row.mark_awarded !== "") return "Graded";
-	if ((row.feedback || "").trim()) return "Graded";
 
-	if (!task_has_criteria(frm)) {
-		const hasTotal = (row.total_mark !== null && row.total_mark !== undefined && row.total_mark !== "");
-		const hasFinal = (row.mark_awarded !== null && row.mark_awarded !== undefined && row.mark_awarded !== "");
-		if (hasTotal && !hasFinal) return "In Progress";
+function compute_status_preview(frm, row) {
+	// 1) Visibility always wins → Returned
+	if (row.visible_to_student || row.visible_to_guardian) {
+		return "Returned";
 	}
+
+	// 2) Normalise marks + flags
+	const rawMark = row.mark_awarded;
+	const markNum =
+		rawMark === null || rawMark === undefined || rawMark === ""
+			? null
+			: Number(rawMark);
+	const hasMarkAwarded =
+		markNum !== null && !Number.isNaN(markNum) && markNum !== 0;
+
+	const isComplete = !!row.complete;
+	const feedbackText = (row.feedback || "").trim();
+	const hasFeedback = feedbackText.length > 0;
+
+	// 3) Graded conditions
+	if (frm.doc.binary && isComplete) {
+		// binary task + complete flag → Graded
+		return "Graded";
+	}
+	if (hasMarkAwarded || hasFeedback) {
+		// non-zero mark_awarded OR any feedback → Graded
+		return "Graded";
+	}
+
+	// 4) In Progress (points-only mode, no criteria)
+	if (!task_has_criteria(frm)) {
+		const rawTotal = row.total_mark;
+		const totalNum =
+			rawTotal === null || rawTotal === undefined || rawTotal === ""
+				? null
+				: Number(rawTotal);
+
+		const hasTotal =
+			totalNum !== null && !Number.isNaN(totalNum) && totalNum !== 0;
+		const hasFinal =
+			rawMark !== null && rawMark !== undefined && rawMark !== "";
+
+		// Teacher has started filling total_mark but not final mark_awarded yet
+		if (hasTotal && !hasFinal) {
+			return "In Progress";
+		}
+	}
+
+	// 5) Default for fresh rows
 	return "Assigned";
 }
+
+
 function apply_status_preview(frm, cdt, cdn) {
 	const row = frappe.get_doc(cdt, cdn);
 	const newStatus = compute_status_preview(frm, row);
@@ -442,9 +483,11 @@ function apply_status_preview(frm, cdt, cdn) {
 		frappe.model.set_value(cdt, cdn, "status", newStatus);
 	}
 }
+
 function visibility_toggled(frm, cdt, cdn) {
 	apply_status_preview(frm, cdt, cdn);
 }
+
 function prevent_duplicate_task_student(frm, cdt, cdn) {
 	const row = locals[cdt][cdn];
 	if (!row.student) {
