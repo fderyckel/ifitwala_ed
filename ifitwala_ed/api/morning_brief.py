@@ -4,7 +4,7 @@
 # ifitwala_ed/api/morning_brief.py
 
 import frappe
-from frappe.utils import today, add_days, getdate, formatdate, strip_html
+from frappe.utils import today, add_days, getdate, formatdate, strip_html, now_datetime
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 from ifitwala_ed.api.org_comm_utils import check_audience_match
@@ -17,10 +17,11 @@ def get_briefing_widgets():
 
 	widgets = {}
 
-	# Use site timezone via frappe.utils.today() + getdate()
-	# and format in plain Gregorian calendar (English)
-	site_today = getdate(today())
-	widgets["today_label"] = site_today.strftime("%A, %d %B %Y")
+	# Use site timezone (from System Settings) and normal Gregorian date
+	site_now = now_datetime()
+	site_today = getdate(site_now)
+	widgets["today_label"] = formatdate(site_today, "dddd, dd MMMM yyyy")
+
 
 	# 1. TOP: ORGANIZATIONAL COMMUNICATION
 	widgets["announcements"] = get_daily_bulletin(user, roles)

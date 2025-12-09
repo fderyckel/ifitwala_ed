@@ -1007,9 +1007,8 @@ function openCriticalIncidents(): void {
 	criticalIncidentsList.fetch()
 }
 
-const formattedDate = computed<string>(() => {
-	return widgets.data?.today_label || ''
-})
+const formattedDate = computed<string>(() => widgets.data?.today_label ?? '')
+
 
 function getPriorityClasses(priority: OrgPriority): string {
 	switch (priority) {
