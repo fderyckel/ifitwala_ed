@@ -7,7 +7,7 @@
 				class="fixed inset-0 z-[60] flex items-center justify-center bg-[color:rgb(var(--ink)/0.45)] backdrop-blur-sm"
 				@click.self="isOpen = false"
 			>
-				<!-- THIS is the only visible box now -->
+				<!-- SINGLE visible box -->
 				<div
 					class="content-card relative flex max-h-[80vh] w-full max-w-3xl flex-col gap-4 overflow-y-auto rounded-2xl bg-gradient-to-br from-white via-surface-soft to-white p-4 text-ink shadow-xl ring-1 ring-border/60 sm:p-5"
 				>
@@ -19,6 +19,7 @@
 						<FeatherIcon name="x" class="h-4 w-4" />
 					</button>
 
+					<!-- HEADER -->
 					<div
 						v-if="hasHeaderContent"
 						class="flex items-start gap-3 border-b border-border/60 pb-3 pr-8"
@@ -54,14 +55,17 @@
 						</div>
 					</div>
 
+					<!-- BODY CONTENT: respects HTML from Org Communication.message -->
 					<div class="prose prose-sm max-w-none text-slate-token/90">
 						<div v-html="contentHtml"></div>
 					</div>
 
+					<!-- INTERACTIONS -->
 					<div
 						v-if="showInteractions"
 						class="flex flex-col gap-2 border-t border-border/60 pt-3 text-[11px] text-slate-token/70"
 					>
+						<!-- Action buttons -->
 						<div class="flex items-center gap-3">
 							<button
 								type="button"
@@ -90,12 +94,14 @@
 							</button>
 						</div>
 
+						<!-- Self status -->
 						<div v-if="interaction.self" class="hidden text-[10px] text-jacaranda md:block">
 							You responded: {{ interaction.self.intent_type || 'Commented' }}
 						</div>
 
+						<!-- Reaction summary row: emoji + count, no wording -->
 						<div class="flex flex-wrap items-center gap-2 text-[11px]">
-							<span class="text-slate-token/60">Quick reactions:</span>
+							<span class="text-slate-token/60">Reactions:</span>
 							<button
 								v-for="item in reactions"
 								:key="item.code"
@@ -104,7 +110,12 @@
 								@click="$emit('react', item.code)"
 							>
 								<span>{{ item.icon }}</span>
-								<span class="font-medium">{{ item.label }}</span>
+								<span
+									v-if="reactionCounts[item.code] > 0"
+									class="font-medium"
+								>
+									{{ reactionCounts[item.code] }}
+								</span>
 							</button>
 						</div>
 					</div>
@@ -156,8 +167,42 @@ const isOpen = computed({
 	set: (value: boolean) => emit('update:modelValue', value)
 })
 
-const interaction = computed<InteractionSummary>(() => props.interaction ?? { counts: {}, self: null })
+const interaction = computed<InteractionSummary>(
+	() => props.interaction ?? { counts: {}, self: null }
+)
+
+// HTML straight-through from Org Communication.message
 const contentHtml = computed(() => props.content || '')
+
+// Mapping intents ↔ reactions must match backend
+const intentByReaction: Record<ReactionCode, string> = {
+	like: 'Acknowledged',
+	thank: 'Appreciated',
+	heart: 'Support',
+	smile: 'Positive',
+	applause: 'Celebration',
+	question: 'Question',
+	other: 'Other'
+}
+
+// Aggregate counts per reaction code (for emoji summary)
+const reactionCounts = computed<Record<ReactionCode, number>>(() => {
+	const src = interaction.value.counts || {}
+	const result: Record<ReactionCode, number> = {
+		like: 0,
+		thank: 0,
+		heart: 0,
+		smile: 0,
+		applause: 0,
+		question: 0,
+		other: 0
+	}
+
+	for (const [code, intent] of Object.entries(intentByReaction) as [ReactionCode, string][]) {
+		result[code] = src[intent] || 0
+	}
+	return result
+})
 
 const reactions: Array<{ code: ReactionCode; label: string; icon: string }> = [
 	{ code: 'like', label: 'Like', icon: '👍' },
@@ -169,3 +214,4 @@ const reactions: Array<{ code: ReactionCode; label: string; icon: string }> = [
 	{ code: 'other', label: 'Other', icon: '💬' }
 ]
 </script>
+

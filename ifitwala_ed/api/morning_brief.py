@@ -68,7 +68,6 @@ def get_briefing_widgets():
 # SECTION 1: DAILY BULLETIN (Org Communication)
 # ==============================================================================
 
-
 def get_daily_bulletin(user, roles):
 	system_today = getdate(today())
 
@@ -114,7 +113,8 @@ def get_daily_bulletin(user, roles):
 				{
 					"name": c.name,
 					"title": c.title,
-					"content": strip_html(c.message or ""),
+					# FULL HTML – used by ContentDialog via v-html
+					"content": c.message or "",
 					"type": c.communication_type,
 					"priority": c.priority,
 					"interaction_mode": c.interaction_mode,
@@ -124,6 +124,7 @@ def get_daily_bulletin(user, roles):
 			)
 
 	return visible_comms
+
 
 
 # ==============================================================================
