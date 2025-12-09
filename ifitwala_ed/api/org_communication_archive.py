@@ -30,6 +30,12 @@ def get_archive_context():
         # Design choice: Show all schools. 
         data["schools"] = frappe.get_all("School", fields=["name", "school_name"], order_by="school_name asc")
         
+        # Get Organizations
+        try:
+            data["organizations"] = frappe.get_all("Organization", fields=["name"], order_by="name asc")
+        except:
+            data["organizations"] = []
+            
     return data
 
 @frappe.whitelist()

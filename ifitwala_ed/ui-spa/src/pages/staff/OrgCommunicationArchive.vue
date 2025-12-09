@@ -184,7 +184,30 @@
            <div class="p-6 border-b border-line-soft bg-slate-50/50">
              <div class="flex flex-col gap-4">
                  <!-- Filters Row (Mobile/Desktop) -->
-                 <div class="flex flex-wrap items-center gap-3" v-if="myTeam || studentGroupOptions.length > 1">
+                 <div class="flex flex-wrap items-center gap-3" v-if="myTeam || studentGroupOptions.length > 1 || schoolOptions.length > 1 || organizationOptions.length > 1">
+                    <!-- School Filter -->
+                    <div v-if="schoolOptions.length > 1" class="flex flex-col gap-1 sm:w-40">
+                        <label class="text-[10px] font-bold uppercase tracking-wider text-slate-token/50">School</label>
+                        <FormControl
+                            type="select"
+                            :options="schoolOptions"
+                            v-model="filters.school"
+                            size="sm"
+                        />
+                    </div>
+
+                    <!-- Organization Filter -->
+                    <div v-if="organizationOptions.length > 1" class="flex flex-col gap-1 sm:w-40">
+                        <label class="text-[10px] font-bold uppercase tracking-wider text-slate-token/50">Organization</label>
+                        <FormControl
+                            type="select"
+                            :options="organizationOptions"
+                            v-model="filters.organization"
+                            size="sm"
+                        />
+                    </div>
+
+                    <!-- Team Filter -->
                     <!-- Team Filter -->
                     <div v-if="myTeam" class="flex flex-col gap-1 sm:w-40">
                         <label class="text-[10px] font-bold uppercase tracking-wider text-slate-token/50">Team</label>
@@ -417,6 +440,7 @@ const newComment = ref('')
 const myTeam = ref<string | null>(null)
 const myStudentGroups = ref<Array<{ label: string, value: string }>>([])
 const schoolOptions = ref<Array<{ label: string, value: string }>>([])
+const organizationOptions = ref<Array<{ label: string, value: string }>>([])
 
 const teamOptions = computed(() => {
 	const opts = [{ label: 'All Teams', value: 'All' }]
@@ -443,8 +467,8 @@ const archiveContext = createResource({
             myStudentGroups.value = (data.my_groups || []).map((g: string) => ({ label: g, value: g }))
             // Schools
             schoolOptions.value = [{ label: 'All Schools', value: 'All' }, ...(data.schools || []).map((s: any) => ({ label: s.school_name, value: s.name }))]
-            // Organizations (if needed, mimicking schools structure or just list)
-            // Assuming backend returns empty list for now as per implementation, but let's handle if it did.
+            // Organizations
+            organizationOptions.value = [{ label: 'All Organizations', value: 'All' }, ...(data.organizations || []).map((o: any) => ({ label: o.name, value: o.name }))]
         }
     }
 })
