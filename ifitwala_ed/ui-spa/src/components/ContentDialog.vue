@@ -54,7 +54,7 @@
 					</div>
 
 				<div class="prose prose-sm max-w-none text-slate-token/90">
-					<div v-html="cleanedContent"></div>
+					<div v-html="contentHtml"></div>
 				</div>
 
 				<div
@@ -143,15 +143,5 @@ const dialogOptions: { size: 'xl'; title: null } = {
 	title: null
 }
 
-const cleanedContent = computed<string>(() => {
-	if (!props.content) return ''
-	if (!props.subtitle) return props.content
-
-	const pattern = new RegExp(`^\\s*${escapeRegExp(props.subtitle)}`, 'i')
-	return props.content.replace(pattern, '').trim()
-})
-
-function escapeRegExp(str: string): string {
-	return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
+const contentHtml = computed<string>(() => props.content || '')
 </script>
