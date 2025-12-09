@@ -137,6 +137,7 @@ const props = defineProps<{
 	badge?: string
 	interaction?: InteractionSummary
 	showInteractions?: boolean
+	showComments?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -168,4 +169,3 @@ const reactions: Array<{ code: ReactionCode; label: string; icon: string }> = [
 	{ code: 'other', label: 'Other', icon: '💬' }
 ]
 </script>
-

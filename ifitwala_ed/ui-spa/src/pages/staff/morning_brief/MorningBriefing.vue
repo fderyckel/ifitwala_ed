@@ -572,7 +572,8 @@
 			:image="dialogContent.image"
 			:image-fallback="dialogContent.imageFallback"
 			:badge="dialogContent.badge"
-			:show-interactions="!!activeCommunication"
+			:show-interactions="activeCommunication ? activeCommunication.interaction_mode !== 'None' : false"
+			:show-comments="activeCommunication ? canComment(activeCommunication) : false"
 			:interaction="activeCommunication ? getInteractionFor(activeCommunication) : { counts: {}, self: null }"
 			@acknowledge="activeCommunication && acknowledgeAnnouncement(activeCommunication)"
 			@open-comments="activeCommunication && openInteractionThread(activeCommunication)"
@@ -1009,6 +1010,10 @@ function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
 			interactionSummary.submit({ comm_names })
 		}
 	})
+}
+
+function canComment(item: Announcement): boolean {
+	return item.interaction_mode === 'Staff Comments' && !!item.allow_public_thread
 }
 
 function openAnnouncementsDialog(): void {

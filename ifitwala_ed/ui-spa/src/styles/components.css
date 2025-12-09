@@ -411,4 +411,16 @@
     @apply text-xs font-semibold uppercase tracking-wide text-slate-token/80;
   }
 
+	/* Content dialog fade, shared component skin */
+	.content-dialog-fade-enter-active,
+	.content-dialog-fade-leave-active {
+		transition: opacity 0.18s ease-out;
+	}
+
+	.content-dialog-fade-enter-from,
+	.content-dialog-fade-leave-to {
+		opacity: 0;
+	}
+
+
 }
