@@ -747,7 +747,8 @@ import {
 	type OrgPriority,
 	type InteractionSummary,
 	type StudentLogDetail,
-	type ReactionCode
+	type ReactionCode,
+	type InteractionIntentType
 } from '@/types/morning_brief'
 
 interface DialogContent {
@@ -813,7 +814,7 @@ const viewModes = [
 	{ value: 'all', label: 'All' }
 ] as const
 type ViewMode = (typeof viewModes)[number]['value']
-const viewMode = ref<ViewMode>('focus')
+const viewMode = ref<ViewMode>('all')
 const spotlightIndex = ref(0)
 const spotlightAnnouncements = computed<Announcement[]>(() =>
 	(widgets.data?.announcements || []).filter((a) =>
@@ -978,9 +979,27 @@ function submitComment(): void {
 function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
 	if (!item?.name) return
 
+	if (reaction === 'question') {
+		openInteractionThread(item)
+		return
+	}
+
+	const reactionIntentMap: Record<ReactionCode, InteractionIntentType> = {
+		like: 'Acknowledged',
+		thank: 'Appreciated',
+		heart: 'Support',
+		smile: 'Positive',
+		applause: 'Celebration',
+		question: 'Question',
+		other: 'Other'
+	}
+
+	const intent_type = reactionIntentMap[reaction] || 'Other'
+
 	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
 		org_communication: item.name,
 		reaction_code: reaction,
+		intent_type,
 		surface: ORG_SURFACES.MORNING_BRIEF
 	}).then(() => {
 		const list = widgets.data?.announcements || []

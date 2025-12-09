@@ -157,9 +157,10 @@ const isOpen = computed<boolean>({
 
 const interaction = computed<InteractionSummary>(() => props.interaction ?? { counts: {}, self: null })
 
-const dialogOptions: { size: 'xl'; title: null } = {
+const dialogOptions = {
 	size: 'xl',
-	title: null
+	title: null,
+	unstyled: true
 }
 
 const contentHtml = computed<string>(() => props.content || '')
