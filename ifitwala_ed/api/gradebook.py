@@ -344,7 +344,6 @@ def update_task_student(task_student: str, updates: Dict[str, Any]) -> Dict[str,
 			changed = True
 
 	# In points mode, mark_awarded is the canonical numeric grade.
-	# We no longer maintain a separate total_mark column.
 
 	doc.updated_on = now_datetime().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -354,8 +353,6 @@ def update_task_student(task_student: str, updates: Dict[str, Any]) -> Dict[str,
 	return {
 		"task_student": doc.name,
 		"mark_awarded": doc.mark_awarded,
-		# Backwards-compat for existing Vue: echo mark_awarded as total_mark
-		"total_mark": doc.mark_awarded,
 		"status": doc.status,
 		"feedback": doc.feedback,
 		"visible_to_student": doc.visible_to_student,

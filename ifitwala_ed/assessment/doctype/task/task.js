@@ -203,8 +203,6 @@ function has_grading_activity(frm) {
 			row.mark_awarded !== null &&
 			row.mark_awarded !== "";
 
-		// total_mark is deprecated → DO NOT USE IT ANYMORE
-
 		const has_feedback =
 			(row.feedback || "").trim().length > 0;
 

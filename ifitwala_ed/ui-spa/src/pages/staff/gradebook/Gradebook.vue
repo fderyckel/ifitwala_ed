@@ -197,7 +197,7 @@
 								</span>
 								<span class="inline-flex items-center gap-1 rounded-full bg-sky/70 px-2 py-1 font-medium text-canopy">
 									<FeatherIcon name="award" class="h-3.5 w-3.5" />
-									{{ formatPoints(studentStates[student.task_student]?.total_mark) }}
+									{{ formatPoints(studentStates[student.task_student]?.mark_awarded) }}
 								</span>
 							</div>
 						</div>
@@ -425,7 +425,6 @@ interface StudentRow {
 	status?: string | null
 	complete: number
 	mark_awarded: number | null
-	total_mark: number | null
 	feedback?: string | null
 	visible_to_student: number
 	visible_to_guardian: number
@@ -441,7 +440,6 @@ interface StudentRow {
 interface StudentState {
 	status: string
 	mark_awarded: number | null
-	total_mark: number | null
 	feedback: string
 	visible_to_student: boolean
 	visible_to_guardian: boolean
@@ -804,7 +802,6 @@ function initializeStudentStates() {
 		studentStates[student.task_student] = {
 			status: student.status || '',
 			mark_awarded: student.mark_awarded,
-			total_mark: student.total_mark,
 			feedback: normalizeFeedback(student.feedback),
 			visible_to_student: Boolean(student.visible_to_student),
 			visible_to_guardian: Boolean(student.visible_to_guardian),
@@ -847,7 +844,6 @@ function onPointsChanged(taskStudent: string, value: string | number | null) {
 		numberValue = Math.max(0, numberValue)
 	}
 	state.mark_awarded = numberValue
-	state.total_mark = numberValue
 	state.dirty = true
 	scheduleStudentSave(taskStudent)
 }
@@ -978,7 +974,6 @@ async function saveStudent(taskStudent: string) {
 
 		if (gradebook.task.points) {
 			payload.mark_awarded = state.mark_awarded
-			payload.total_mark = state.total_mark
 		}
 
 		if (gradebook.task.observations !== 0) {
@@ -990,12 +985,11 @@ async function saveStudent(taskStudent: string) {
 			updates: payload,
 		})
 		const result = unwrapMessage<any>(response) || {}
+
+		// Only apply server echo if nothing else changed in the meantime
 		if (!state.dirty) {
 			if (result.mark_awarded !== undefined) {
 				state.mark_awarded = result.mark_awarded
-				state.total_mark = result.total_mark ?? result.mark_awarded ?? state.total_mark
-			} else if (result.total_mark !== undefined) {
-				state.total_mark = result.total_mark
 			}
 			state.updated_on = result.updated_on ?? state.updated_on ?? new Date().toISOString()
 		}
@@ -1027,6 +1021,7 @@ async function saveCriteria(taskStudent: string) {
 		})
 		return
 	}
+
 	const pendingTimer = criteriaSaveTimers[taskStudent]
 	if (pendingTimer) {
 		clearTimeout(pendingTimer)
@@ -1036,6 +1031,7 @@ async function saveCriteria(taskStudent: string) {
 	state.savingCriteria = true
 	const previousDirty = state.dirtyCriteria
 	state.dirtyCriteria = false
+
 	try {
 		const rows = state.criteria.map((item) => ({
 			assessment_criteria: item.assessment_criteria,
@@ -1049,10 +1045,19 @@ async function saveCriteria(taskStudent: string) {
 			student: student.student,
 			rows,
 		})
-		const payload = unwrapMessage<{ suggestion: number }>(response)
-		if (!state.dirtyCriteria && payload && typeof payload.suggestion === 'number') {
-			state.total_mark = payload.suggestion
-			state.mark_awarded = payload.suggestion
+		const payload = unwrapMessage<{
+			mark_awarded: number
+			out_of?: number | null
+			pct?: number | null
+			updated_on?: string | null
+		}>(response)
+
+		// If nothing else changed while saving, trust the server rollup
+		if (!state.dirtyCriteria && payload && typeof payload.mark_awarded === 'number') {
+			state.mark_awarded = payload.mark_awarded
+			state.updated_on = payload.updated_on ?? state.updated_on ?? new Date().toISOString()
+
+			// Rubric is canonical for criteria-mode; push into Task Student via the normal save
 			state.dirty = true
 			scheduleStudentSave(taskStudent)
 		}
@@ -1065,9 +1070,6 @@ async function saveCriteria(taskStudent: string) {
 		state.dirtyCriteria = previousDirty || state.dirtyCriteria
 	} finally {
 		state.savingCriteria = false
-		if (!state.dirtyCriteria) {
-			state.updated_on = new Date().toISOString()
-		}
 		if (state.dirtyCriteria) {
 			scheduleCriteriaSave(taskStudent)
 		}

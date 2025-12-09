@@ -367,7 +367,6 @@ class Task(Document):
 		- Graded: binary+complete OR mark_awarded set OR feedback non-empty
 		- In Progress (criteria): at least one rubric row for this student with a chosen level
 		  or a non-zero level_points
-		- In Progress (points-only): total_mark entered but mark_awarded still empty
 		- Assigned: everything else
 		"""
 		# --- Criteria activity map -------------------------------------------

@@ -131,7 +131,6 @@ type Snapshot = {
 			status?: string | null
 			complete?: boolean
 			mark_awarded?: number | null
-			total_mark?: number | null
 			visible_to_student?: boolean
 			visible_to_guardian?: boolean
 			is_overdue?: boolean
