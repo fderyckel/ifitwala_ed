@@ -6,9 +6,19 @@
 		:options="dialogOptions"
 	>
 		<template #body-content>
-			<div class="paper-card flex flex-col gap-5 bg-white p-5 text-ink">
-				<div class="flex items-start justify-between gap-4 border-b border-border/70 pb-3">
-					<div class="flex items-start gap-3">
+				<div class="content-card relative flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-white via-surface-soft to-white p-4 text-ink shadow-xl ring-1 ring-border/60 sm:p-5">
+					<button
+						@click="isOpen = false"
+						class="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/80 bg-surface-soft text-slate-token/70 transition hover:border-jacaranda/40 hover:text-jacaranda focus:outline-none focus-visible:ring-2 focus-visible:ring-jacaranda/40"
+						aria-label="Close"
+					>
+						<FeatherIcon
+							name="x"
+							class="h-4 w-4"
+						/>
+					</button>
+
+					<div v-if="hasHeaderContent" class="flex items-start gap-3 border-b border-border/60 pb-3 pr-8">
 						<div
 							v-if="image || imageFallback"
 							class="flex h-12 w-12 items-center justify-center rounded-xl border border-border/70 bg-surface-soft text-sm font-semibold text-slate-token/75 shadow-inner"
@@ -28,7 +38,7 @@
 							<p v-if="title" class="type-h2 text-ink">
 								{{ title }}
 							</p>
-							<p v-if="subtitle" class="type-meta text-slate-token/80">
+							<p v-if="subtitle" class="type-meta text-jacaranda">
 								{{ subtitle }}
 							</p>
 
@@ -42,18 +52,6 @@
 							</div>
 						</div>
 					</div>
-
-					<button
-						@click="isOpen = false"
-						class="group -mr-1 rounded-full border border-border/80 bg-surface-soft p-2 text-slate-token/70 transition hover:border-jacaranda/40 hover:text-jacaranda focus:outline-none focus-visible:ring-2 focus-visible:ring-jacaranda/40"
-						aria-label="Close"
-					>
-						<FeatherIcon
-							name="x"
-							class="h-4 w-4"
-						/>
-					</button>
-				</div>
 
 				<div class="prose prose-sm max-w-none text-slate-token/90">
 					<div v-html="cleanedContent"></div>
@@ -130,6 +128,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits(['update:modelValue', 'acknowledge', 'open-comments'])
+
+const hasHeaderContent = computed<boolean>(() => !!(props.title || props.subtitle || props.image || props.imageFallback || props.badge))
 
 const isOpen = computed<boolean>({
 	get: () => props.modelValue,
