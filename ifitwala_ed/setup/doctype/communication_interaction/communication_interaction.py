@@ -241,7 +241,12 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 
 	# Base conditions
 	conditions = ["i.org_communication = %(comm)s"]
-	params = {"comm": org_communication, "user": user, "limit_start": limit_start, "limit_page_length": limit_page_length}
+	params = {
+		"comm": org_communication,
+		"user": user,
+		"limit_start": limit_start,
+		"limit_page_length": limit_page_length,
+	}
 
 	# Visibility rules by mode
 	if mode == "Staff Comments":
@@ -261,6 +266,12 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 			conditions.append(
 				"(i.visibility = 'Public to audience' OR i.user = %(user)s)"
 			)
+
+	elif mode == "Structured Feedback":
+		# At this point we already know user is staff (non-staff returned above).
+		# Staff can see everything except hidden.
+		conditions.append("i.visibility != 'Hidden'")
+
 	else:
 		# Other modes: treat as no thread
 		return []
@@ -296,6 +307,7 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 	)
 
 	return rows
+
 
 
 @frappe.whitelist()
