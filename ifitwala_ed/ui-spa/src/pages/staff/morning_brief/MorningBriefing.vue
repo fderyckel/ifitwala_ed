@@ -128,7 +128,7 @@
 
 							<!-- Interaction strip for spotlight (staff comments mode only) -->
 							<div
-								v-if="currentSpotlight && currentSpotlight.interaction_mode === 'Staff Comments'"
+								v-if="canShowInteractions(currentSpotlight)"
 								class="mt-3 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-slate-token/70"
 							>
 								<div class="flex items-center gap-3">
@@ -245,7 +245,7 @@
 
 								<!-- Interaction summary for each announcement (staff comments only) -->
 								<div
-									v-if="item.interaction_mode === 'Staff Comments'"
+									v-if="canShowInteractions(item)"
 									class="mt-2 flex items-center justify-between text-[10px] text-slate-token/65"
 								>
 									<div class="flex items-center gap-2">
@@ -548,8 +548,7 @@
 			:image="dialogContent.image"
 			:image-fallback="dialogContent.imageFallback"
 			:badge="dialogContent.badge"
-			:show-interactions="activeCommunication ? activeCommunication.interaction_mode !== 'None' : false"
-			:show-comments="activeCommunication ? canComment(activeCommunication) : false"
+			:show-interactions="showInteractionsForActive"
 			:interaction="activeCommunication ? getInteractionFor(activeCommunication) : { counts: {}, self: null }"
 			@acknowledge="activeCommunication && acknowledgeAnnouncement(activeCommunication)"
 			@open-comments="activeCommunication && openInteractionThread(activeCommunication)"
@@ -727,6 +726,8 @@ import {
 	type ReactionCode,
 	type InteractionIntentType
 } from '@/types/morning_brief'
+import { canShowPublicInteractions } from '@/utils/orgCommunication'
+import type { OrgCommunicationListItem } from '@/utils/orgCommunication'
 
 interface DialogContent {
 	title: string
@@ -763,6 +764,9 @@ const showCriticalIncidents = ref<boolean>(false)
 const showClinicHistory = ref<boolean>(false)
 const showInteractionDrawer = ref<boolean>(false)
 const activeCommunication = ref<Announcement | null>(null)
+const showInteractionsForActive = computed(() =>
+	canShowInteractions(activeCommunication.value)
+)
 const newComment = ref<string>('')
 
 const criticalIncidentsList = createResource<StudentLogDetail[]>({
@@ -834,6 +838,11 @@ const filteredAnnouncements = computed<Announcement[]>(() => {
 
 const limitedAnnouncements = computed<Announcement[]>(() => filteredAnnouncements.value)
 
+// Adapter because the shared helper is typed for org communication list items
+function canShowInteractions(item: Announcement | null | undefined): boolean {
+	return canShowPublicInteractions(item as unknown as OrgCommunicationListItem | null | undefined)
+}
+
 watch(
 	() => widgets.data?.announcements,
 	(list: Announcement[] | undefined) => {
@@ -865,6 +874,7 @@ function hasArrayData(key: ArrayWidgetKey): boolean {
 }
 
 function openLog(log: StudentLogItem): void {
+	activeCommunication.value = null
 	dialogContent.value = {
 		title: log.student_name,
 		subtitle: log.date_display,
@@ -901,7 +911,7 @@ function getInteractionFor(item: Announcement): InteractionSummary {
 }
 
 function openInteractionThread(item: Announcement): void {
-	if (!canComment(item)) {
+	if (!canShowInteractions(item)) {
 		toast({
 			appearance: 'warning',
 			message: 'Comments are disabled for this announcement.'
@@ -919,7 +929,7 @@ function openInteractionThread(item: Announcement): void {
 }
 
 function acknowledgeAnnouncement(item: Announcement): void {
-	if (!item?.name || item.interaction_mode === 'None') return
+	if (!item?.name || !canShowInteractions(item)) return
 
 	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
 		org_communication: item.name,
@@ -935,7 +945,7 @@ function acknowledgeAnnouncement(item: Announcement): void {
 }
 
 function submitComment(): void {
-	if (!activeCommunication.value || activeCommunication.value.interaction_mode === 'None') return
+	if (!activeCommunication.value || !canShowInteractions(activeCommunication.value)) return
 	if (!newComment.value.trim()) return
 
 	const note = newComment.value.trim()
@@ -961,7 +971,7 @@ function submitComment(): void {
 }
 
 function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
-	if (!item?.name || item.interaction_mode === 'None') return
+	if (!item?.name || !canShowInteractions(item)) return
 
 	if (reaction === 'question') {
 		openInteractionThread(item)
@@ -992,10 +1002,6 @@ function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
 			interactionSummary.submit({ comm_names })
 		}
 	})
-}
-
-function canComment(item: Announcement): boolean {
-	return item.interaction_mode === 'Staff Comments' && !!item.allow_public_thread
 }
 
 function openAnnouncementsDialog(): void {

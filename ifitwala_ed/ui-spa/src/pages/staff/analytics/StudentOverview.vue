@@ -1394,8 +1394,8 @@ const reflectionFlags = computed(() => {
 										{{ task.title }}
 									</div>
 									<div class="text-[11px] text-slate-500">
-										<span v-if="permissions.can_view_task_marks && task.total_mark">
-											{{ task.mark_awarded ?? '—' }} / {{ task.total_mark }}
+										<span v-if="permissions.can_view_task_marks && task.out_of">
+											{{ task.mark_awarded ?? '—' }} / {{ task.out_of }}
 										</span>
 										<span v-else-if="!permissions.can_view_task_marks">Marks hidden</span>
 										<span v-if="task.visible_to_student === false || task.visible_to_guardian === false" class="ml-2 text-amber-600">

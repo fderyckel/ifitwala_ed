@@ -596,7 +596,6 @@ def _task_rows(student: str, program: str | None):
 			ts.status,
 			ts.complete,
 			ts.mark_awarded,
-			ts.total_mark,
 			ts.visible_to_student,
 			ts.visible_to_guardian,
 			ts.updated_on
