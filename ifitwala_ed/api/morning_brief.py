@@ -13,6 +13,7 @@ def get_briefing_widgets():
 	roles = frappe.get_roles(user)
 
 	widgets = {}
+	widgets["today_label"] = formatdate(today(), "dddd, dd MMMM yyyy")
 
 	# 1. TOP: ORGANIZATIONAL COMMUNICATION
 	widgets["announcements"] = get_daily_bulletin(user, roles)

@@ -44,7 +44,7 @@
 		<!-- CONTENT -->
 		<div v-else class="space-y-8">
 			<!-- ANNOUNCEMENTS -->
-			<section v-if="hasData('announcements')" class="space-y-3">
+			<section v-if="hasArrayData('announcements')" class="space-y-3">
 				<!-- Header strip -->
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div class="flex items-center gap-2">
@@ -283,11 +283,11 @@
 				<!-- LEFT COLUMN -->
 				<div class="space-y-6">
 					<div
-						v-if="hasData('clinic_volume') || widgets.data?.critical_incidents !== undefined"
+						v-if="hasArrayData('clinic_volume') || widgets.data?.critical_incidents !== undefined"
 						class="grid grid-cols-2 gap-6"
 					>
 						<!-- Attendance Trend (Admin) -->
-						<div v-if="hasData('attendance_trend')" class="col-span-2">
+						<div v-if="hasArrayData('attendance_trend')" class="col-span-2">
 							<AttendanceTrend :data="widgets.data.attendance_trend" />
 						</div>
 
@@ -311,7 +311,7 @@
 
 						<!-- Clinic Volume -->
 						<div
-							v-if="hasData('clinic_volume')"
+						v-if="hasArrayData('clinic_volume')"
 							class="paper-card cursor-pointer p-5 transition-shadow hover:shadow-md"
 							@click="showClinicHistory = true"
 						>
@@ -375,7 +375,7 @@
 
 					<!-- Medical Alerts -->
 					<div
-						v-if="hasData('medical_context')"
+						v-if="hasArrayData('medical_context')"
 						class="paper-card border-l-4 border-l-sky p-5"
 					>
 						<h3 class="mb-3 text-sm font-semibold text-canopy">
@@ -398,13 +398,13 @@
 					</div>
 
 					<!-- Absent Student List (Instructor) -->
-					<div v-if="hasData('my_absent_students')">
+					<div v-if="hasArrayData('my_absent_students')">
 						<AbsentStudentList :students="widgets.data.my_absent_students" />
 					</div>
 				</div>
 
 				<!-- RIGHT COLUMN: RECENT LOGS -->
-				<div v-if="hasData('student_logs')">
+				<div v-if="hasArrayData('student_logs')">
 					<div class="mb-4 flex items-center justify-between">
 						<h2 class="section-header flex items-center gap-2 text-flame">
 							<FeatherIcon name="clipboard" class="h-3 w-3" />
@@ -478,7 +478,7 @@
 			</div>
 
 			<!-- STAFF BIRTHDAYS -->
-			<section v-if="hasData('staff_birthdays')">
+			<section v-if="hasArrayData('staff_birthdays')">
 				<div class="border-t border-border/60 pt-6">
 					<div class="mb-4 flex items-center justify-between">
 						<h2 class="section-header flex items-center gap-2 text-slate-token/60">
@@ -522,7 +522,7 @@
 			</section>
 
 			<!-- STUDENT BIRTHDAYS -->
-			<section v-if="hasData('my_student_birthdays')">
+			<section v-if="hasArrayData('my_student_birthdays')">
 				<div class="border-t border-border/60 pt-6">
 					<h2 class="mb-4 flex items-center gap-2 section-header text-slate-token/60">
 						<FeatherIcon name="gift" class="h-3 w-3" />
@@ -626,7 +626,7 @@
 			v-model="showCriticalIncidents"
 			title="Critical Incidents"
 			subtitle="Open logs requiring follow-up"
-			:items="criticalIncidentsList.data"
+			:items="criticalIncidentsList.data || []"
 			:loading="criticalIncidentsList.loading"
 		>
 			<template #item="{ item }">
@@ -694,7 +694,7 @@
 							{{ row.full_name || row.user }}
 						</span>
 						<span class="text-[10px] text-slate-token/60">
-							{{ new Date(row.creation).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) }}
+							{{ row.creation }}
 						</span>
 					</div>
 					<p class="text-xs text-slate-token/90">
@@ -724,8 +724,8 @@
 </template>
 
 
-<script setup>
-import { ref, computed, watch } from 'vue'
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
 import { createResource, FeatherIcon, call } from 'frappe-ui'
 import ContentDialog from '@/components/ContentDialog.vue'
 import GenericListDialog from '@/components/GenericListDialog.vue'
@@ -733,10 +733,40 @@ import HistoryDialog from '@/components/HistoryDialog.vue'
 import SideDrawerList from '@/components/analytics/SideDrawerList.vue'
 import AttendanceTrend from './components/AttendanceTrend.vue'
 import AbsentStudentList from './components/AbsentStudentList.vue'
+import {
+	ORG_SURFACES,
+	type Announcement,
+	type WidgetsPayload,
+	type InteractionSummaryMap,
+	type InteractionThreadRow,
+	type StudentLogItem,
+	type OrgPriority,
+	type InteractionSummary,
+	type StudentLogDetail
+} from '@/types/morning_brief'
+
+interface DialogContent {
+	title: string
+	subtitle: string
+	content: string
+	image: string
+	imageFallback: string
+	badge: string
+}
+
+type ArrayWidgetKey =
+	| 'announcements'
+	| 'staff_birthdays'
+	| 'clinic_volume'
+	| 'medical_context'
+	| 'my_student_birthdays'
+	| 'student_logs'
+	| 'attendance_trend'
+	| 'my_absent_students'
 
 // State for Dialog
-const isContentDialogOpen = ref(false)
-const dialogContent = ref({
+const isContentDialogOpen = ref<boolean>(false)
+const dialogContent = ref<DialogContent>({
 	title: '',
 	subtitle: '',
 	content: '',
@@ -746,29 +776,29 @@ const dialogContent = ref({
 })
 
 // State for new dialogs
-const showAnnouncementCenter = ref(false)
-const showCriticalIncidents = ref(false)
-const showClinicHistory = ref(false)
-const showInteractionDrawer = ref(false)
-const activeCommunication = ref(null)
-const newComment = ref('')
+const showAnnouncementCenter = ref<boolean>(false)
+const showCriticalIncidents = ref<boolean>(false)
+const showClinicHistory = ref<boolean>(false)
+const showInteractionDrawer = ref<boolean>(false)
+const activeCommunication = ref<Announcement | null>(null)
+const newComment = ref<string>('')
 
-const criticalIncidentsList = createResource({
+const criticalIncidentsList = createResource<StudentLogDetail[]>({
 	url: 'ifitwala_ed.api.morning_brief.get_critical_incidents_details',
 	auto: false
 })
 
-const widgets = createResource({
+const widgets = createResource<WidgetsPayload>({
 	url: 'ifitwala_ed.api.morning_brief.get_briefing_widgets',
 	auto: true
 })
 
-const interactionSummary = createResource({
+const interactionSummary = createResource<InteractionSummaryMap>({
 	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_org_comm_interaction_summary',
 	auto: false
 })
 
-const interactionThread = createResource({
+const interactionThread = createResource<InteractionThreadRow[]>({
 	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_communication_thread',
 	auto: false
 })
@@ -776,21 +806,22 @@ const interactionThread = createResource({
 const viewModes = [
 	{ value: 'focus', label: 'Focus' },
 	{ value: 'all', label: 'All' }
-]
-const viewMode = ref('focus')
+] as const
+type ViewMode = (typeof viewModes)[number]['value']
+const viewMode = ref<ViewMode>('focus')
 const MAX_INLINE_ANNOUNCEMENTS = 4
 
 const spotlightIndex = ref(0)
-const spotlightAnnouncements = computed(() =>
+const spotlightAnnouncements = computed<Announcement[]>(() =>
 	(widgets.data?.announcements || []).filter((a) =>
-		['Critical', 'High'].includes(a.priority)
+		['Critical', 'High'].includes(a.priority ?? '')
 	)
 )
-const currentSpotlight = computed(
+const currentSpotlight = computed<Announcement | null>(
 	() => spotlightAnnouncements.value[spotlightIndex.value] || null
 )
 
-watch(spotlightAnnouncements, (list) => {
+watch(spotlightAnnouncements, (list: Announcement[]) => {
 	if (!list.length) {
 		spotlightIndex.value = 0
 		return
@@ -807,7 +838,7 @@ const highCount = computed(
 	() => (widgets.data?.announcements || []).filter((a) => a.priority === 'High').length
 )
 
-const filteredAnnouncements = computed(() => {
+const filteredAnnouncements = computed<Announcement[]>(() => {
 	const all = widgets.data?.announcements || []
 
 	if (viewMode.value === 'focus') {
@@ -821,14 +852,14 @@ const filteredAnnouncements = computed(() => {
 	return all
 })
 
-const limitedAnnouncements = computed(() => {
+const limitedAnnouncements = computed<Announcement[]>(() => {
 	const all = filteredAnnouncements.value
 	return all.slice(0, MAX_INLINE_ANNOUNCEMENTS)
 })
 
 watch(
 	() => widgets.data?.announcements,
-	(list) => {
+	(list: Announcement[] | undefined) => {
 		if (!list || !list.length) return
 
 		const comm_names = list.map((a) => a.name).filter(Boolean)
@@ -839,48 +870,49 @@ watch(
 	{ immediate: true }
 )
 
-function nextSpotlight() {
+function nextSpotlight(): void {
 	if (!spotlightAnnouncements.value.length) return
 	spotlightIndex.value = (spotlightIndex.value + 1) % spotlightAnnouncements.value.length
 }
 
-function prevSpotlight() {
+function prevSpotlight(): void {
 	if (!spotlightAnnouncements.value.length) return
 	spotlightIndex.value =
 		(spotlightIndex.value - 1 + spotlightAnnouncements.value.length) %
 		spotlightAnnouncements.value.length
 }
 
-function hasData(key) {
-	return widgets.data && widgets.data[key] && Array.isArray(widgets.data[key]) && widgets.data[key].length > 0
+function hasArrayData(key: ArrayWidgetKey): boolean {
+	const list = widgets.data?.[key]
+	return Array.isArray(list) && list.length > 0
 }
 
-function openLog(log) {
+function openLog(log: StudentLogItem): void {
 	dialogContent.value = {
 		title: log.student_name,
 		subtitle: log.date_display,
 		content: log.full_content,
-		image: log.student_photo,
+		image: log.student_photo || '',
 		imageFallback: log.student_name.substring(0, 2),
 		badge: log.log_type
 	}
 	isContentDialogOpen.value = true
 }
 
-function openAnnouncement(news) {
+function openAnnouncement(news: Announcement): void {
 	activeCommunication.value = news
 	dialogContent.value = {
 		title: news.title,
 		subtitle: formattedDate.value,
 		content: news.content,
-		image: '', // Or maybe an icon?
+		image: '',
 		imageFallback: '',
 		badge: news.type
 	}
 	isContentDialogOpen.value = true
 }
 
-function getInteractionFor(item) {
+function getInteractionFor(item: Announcement): InteractionSummary {
 	const summary = interactionSummary.data?.[item.name]
 	if (!summary) {
 		return {
@@ -891,7 +923,7 @@ function getInteractionFor(item) {
 	return summary
 }
 
-function openInteractionThread(item) {
+function openInteractionThread(item: Announcement): void {
 	activeCommunication.value = item
 	showInteractionDrawer.value = true
 
@@ -902,13 +934,13 @@ function openInteractionThread(item) {
 	})
 }
 
-function acknowledgeAnnouncement(item) {
+function acknowledgeAnnouncement(item: Announcement): void {
 	if (!item?.name) return
 
 	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
 		org_communication: item.name,
 		intent_type: 'Acknowledged',
-		surface: 'Morning Brief'
+		surface: ORG_SURFACES.MORNING_BRIEF
 	}).then(() => {
 		const list = widgets.data?.announcements || []
 		const comm_names = list.map((a) => a.name).filter(Boolean)
@@ -918,7 +950,7 @@ function acknowledgeAnnouncement(item) {
 	})
 }
 
-function submitComment() {
+function submitComment(): void {
 	if (!activeCommunication.value || !newComment.value.trim()) return
 
 	const note = newComment.value.trim()
@@ -926,7 +958,7 @@ function submitComment() {
 	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
 		org_communication: activeCommunication.value.name,
 		note,
-		surface: 'Morning Brief'
+		surface: ORG_SURFACES.MORNING_BRIEF
 	}).then(() => {
 		newComment.value = ''
 		interactionThread.fetch({
@@ -943,21 +975,20 @@ function submitComment() {
 	})
 }
 
-function openAnnouncementsDialog() {
+function openAnnouncementsDialog(): void {
 	showAnnouncementCenter.value = true
 }
 
-function openCriticalIncidents() {
+function openCriticalIncidents(): void {
 	showCriticalIncidents.value = true
 	criticalIncidentsList.fetch()
 }
 
-const formattedDate = computed(() => {
-	const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
-	return new Date().toLocaleDateString('en-GB', options)
+const formattedDate = computed<string>(() => {
+	return widgets.data?.today_label || ''
 })
 
-function getPriorityClasses(priority) {
+function getPriorityClasses(priority: OrgPriority): string {
 	switch (priority) {
 		case 'Critical':
 			return 'bg-flame text-white ring-2 ring-flame/30'
@@ -970,19 +1001,19 @@ function getPriorityClasses(priority) {
 	}
 }
 
-function formatBirthday(dateStr) {
+function formatBirthday(dateStr: string | null | undefined): string {
 	if (!dateStr) return ''
 	const date = new Date(dateStr)
 	const day = date.getDate()
 	const month = date.toLocaleString('default', { month: 'long' })
 
-	const suffix = (day) => {
-		if (day > 3 && day < 21) return 'th'
-		switch (day % 10) {
-			case 1: return "st"
-			case 2: return "nd"
-			case 3: return "rd"
-			default: return "th"
+	const suffix = (value: number) => {
+		if (value > 3 && value < 21) return 'th'
+		switch (value % 10) {
+			case 1: return 'st'
+			case 2: return 'nd'
+			case 3: return 'rd'
+			default: return 'th'
 		}
 	}
 
