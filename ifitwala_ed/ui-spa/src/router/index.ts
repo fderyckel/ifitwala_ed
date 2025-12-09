@@ -39,12 +39,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/staff/OrgCommunicationArchive.vue'),
     meta: { layout: 'staff' }
   },
-  {
-    path: '/staff/analytics',
-    name: 'staff-analytics-hub',
-    component: () => import('@/pages/staff/analytics/AnalyticsHub.vue'),
-    meta: { layout: 'staff' }
-  },
+
 	{ path: '/staff/analytics/inquiry', name: 'staff-inquiry-analytics', component: () => import('@/pages/staff/analytics/InquiryAnalytics.vue'), meta: { layout: 'staff' } },
 ]
 
