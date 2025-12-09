@@ -347,7 +347,6 @@
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
 import { createResource, FeatherIcon, FormControl, Button, Badge, LoadingIndicator, Avatar } from 'frappe-ui'
-import dayjs from '@/utils/dayjs'
 import { 
   PRIORITY_OPTIONS, STATUS_OPTIONS, SURFACE_OPTIONS,
   type ArchiveFilters, type OrgCommunicationListItem, type InteractionSummary 
@@ -594,7 +593,26 @@ function submitComment() {
 // Helpers
 function formatDate(date: string | null, fmt = 'DD MMM') {
     if (!date) return ''
-    return dayjs(date).format(fmt)
+    const d = new Date(date)
+    if (isNaN(d.getTime())) return ''
+
+    // Flexible formatter based roughly on dayjs format string
+    // 'DD MMM' -> e.g. 05 Dec
+    // 'DD MMMM YYYY' -> e.g. 05 December 2025
+    // 'DD MMM HH:mm' -> e.g. 05 Dec 14:30
+    
+    if (fmt === 'DD MMM') {
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+    }
+    if (fmt === 'DD MMMM YYYY') {
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+    }
+    if (fmt === 'DD MMM HH:mm') {
+         return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })
+    }
+    
+    // Fallback
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
 }
 
 function getPriorityClass(priority: string) {
