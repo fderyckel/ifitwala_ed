@@ -73,12 +73,7 @@
 								@click="$emit('acknowledge')"
 							>
 								<FeatherIcon name="thumbs-up" class="h-3 w-3 text-canopy" />
-								<span>
-									Acknowledge
-									<span class="ml-1 text-[10px] text-slate-token/60">
-										({{ interaction.counts?.Acknowledged || 0 }})
-									</span>
-								</span>
+								<span>Acknowledge</span>
 							</button>
 
 							<button
@@ -89,7 +84,7 @@
 								<FeatherIcon name="message-circle" class="h-3 w-3" />
 								<span>Comments</span>
 								<span class="text-[10px] text-slate-token/60">
-									({{ interaction.counts?.Comment || 0 }})
+									({{ commentCount }})
 								</span>
 							</button>
 						</div>
@@ -101,7 +96,6 @@
 
 						<!-- Reaction summary row: emoji + count, no wording -->
 						<div class="flex flex-wrap items-center gap-2 text-[11px]">
-							<span class="text-slate-token/60">Reactions:</span>
 							<button
 								v-for="item in reactions"
 								:key="item.code"
@@ -110,12 +104,11 @@
 								@click="$emit('react', item.code)"
 							>
 								<span>{{ item.icon }}</span>
-								<span
-									v-if="reactionCounts[item.code] > 0"
-									class="font-medium"
-								>
-									{{ reactionCounts[item.code] }}
+								<span class="text-[10px] text-slate-token/60">
+									{{ getReactionCount(item.code) }}
 								</span>
+								<!-- optional accessibility label -->
+								<span class="sr-only">{{ item.label }}</span>
 							</button>
 						</div>
 					</div>
@@ -132,7 +125,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Button, FeatherIcon } from 'frappe-ui'
-import type { InteractionSummary, ReactionCode } from '@/types/morning_brief'
+import type { InteractionSummary, ReactionCode, InteractionIntentType } from '@/types/morning_brief'
 
 defineOptions({
 	inheritAttrs: false
@@ -167,9 +160,13 @@ const isOpen = computed({
 	set: (value: boolean) => emit('update:modelValue', value)
 })
 
-const interaction = computed<InteractionSummary>(
-	() => props.interaction ?? { counts: {}, self: null }
-)
+const interaction = computed<InteractionSummary>(() => ({
+  counts: {},
+  self: null,
+  comment_count: 0,
+  ...(props.interaction ?? {})
+}))
+
 
 // HTML straight-through from Org Communication.message
 const contentHtml = computed(() => props.content || '')
@@ -185,24 +182,25 @@ const intentByReaction: Record<ReactionCode, string> = {
 	other: 'Other'
 }
 
-// Aggregate counts per reaction code (for emoji summary)
-const reactionCounts = computed<Record<ReactionCode, number>>(() => {
-	const src = interaction.value.counts || {}
-	const result: Record<ReactionCode, number> = {
-		like: 0,
-		thank: 0,
-		heart: 0,
-		smile: 0,
-		applause: 0,
-		question: 0,
-		other: 0
-	}
+const REACTION_TO_INTENT: Record<ReactionCode, InteractionIntentType> = {
+  like: 'Acknowledged',
+  thank: 'Appreciated',
+  heart: 'Support',
+  smile: 'Positive',
+  applause: 'Celebration',
+  question: 'Question',
+  other: 'Other'
+}
 
-	for (const [code, intent] of Object.entries(intentByReaction) as [ReactionCode, string][]) {
-		result[code] = src[intent] || 0
-	}
-	return result
-})
+// Comment count = number of rows with a note (from backend)
+const commentCount = computed(() => interaction.value.comment_count ?? 0)
+
+function getReactionCount(code: ReactionCode): number {
+  const intent = REACTION_TO_INTENT[code]
+  if (!intent) return 0
+  return interaction.value.counts?.[intent] ?? 0
+}
+
 
 const reactions: Array<{ code: ReactionCode; label: string; icon: string }> = [
 	{ code: 'like', label: 'Like', icon: '👍' },

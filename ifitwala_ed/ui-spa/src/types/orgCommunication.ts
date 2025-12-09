@@ -44,6 +44,7 @@ export interface InteractionSummarySelf {
 export interface InteractionSummary {
   counts: Record<string, number>
   self: InteractionSummarySelf | null
+  comment_count?: number
 }
 
 export interface ArchiveFilters {

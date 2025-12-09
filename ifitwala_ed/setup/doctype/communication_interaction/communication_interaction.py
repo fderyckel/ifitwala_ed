@@ -162,6 +162,7 @@ class CommunicationInteraction(Document):
 			# Soft guard: you can tighten this later if needed
 			pass
 
+
 @frappe.whitelist()
 def get_org_comm_interaction_summary(comm_names):
 	if isinstance(comm_names, str):
@@ -171,7 +172,17 @@ def get_org_comm_interaction_summary(comm_names):
 
 	user = frappe.session.user
 
-	# 1) counts per communication + intent
+	# Initialise summary with a clean shape
+	summary = {
+		name: {
+			"counts": {},      # intent_type -> count (for emojis)
+			"self": None,      # current user's row
+			"comment_count": 0 # number of interactions with a non-empty note
+		}
+		for name in comm_names
+	}
+
+	# 1) counts per communication + intent (emoji / intent stats)
 	rows = frappe.db.sql(
 		"""
 		SELECT org_communication, intent_type, COUNT(*) as cnt
@@ -183,12 +194,29 @@ def get_org_comm_interaction_summary(comm_names):
 		as_dict=True,
 	)
 
-	summary = {name: {"counts": {}, "self": None} for name in comm_names}
 	for r in rows:
 		intent = r.intent_type or "Comment"
-		summary[r.org_communication]["counts"][intent] = r.cnt
+		if r.org_communication in summary:
+			summary[r.org_communication]["counts"][intent] = r.cnt
 
-	# 2) current user's interaction
+	# 2) comment_count = interactions that actually have text in `note`
+	comment_rows = frappe.db.sql(
+		"""
+		SELECT org_communication, COUNT(*) as cnt
+		FROM `tabCommunication Interaction`
+		WHERE org_communication IN %(comms)s
+		  AND COALESCE(TRIM(note), '') != ''
+		GROUP BY org_communication
+		""",
+		{"comms": tuple(comm_names)},
+		as_dict=True,
+	)
+
+	for r in comment_rows:
+		if r.org_communication in summary:
+			summary[r.org_communication]["comment_count"] = r.cnt or 0
+
+	# 3) current user's interaction (full row, unchanged)
 	self_rows = frappe.db.sql(
 		"""
 		SELECT *
@@ -201,7 +229,8 @@ def get_org_comm_interaction_summary(comm_names):
 	)
 
 	for r in self_rows:
-		summary[r["org_communication"]]["self"] = r
+		if r["org_communication"] in summary:
+			summary[r["org_communication"]]["self"] = r
 
 	return summary
 

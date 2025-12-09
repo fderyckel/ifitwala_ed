@@ -59,4 +59,17 @@ const show = computed({
 	get: () => props.modelValue,
 	set: (val) => emit('update:modelValue', val)
 })
+
+function getInteractionFor(item: Announcement): InteractionSummary {
+  const summary = interactionSummary.data?.[item.name]
+  return summary ?? { counts: {}, self: null, comment_count: 0 }
+}
+
+function getReactionCountForItem(item: Announcement, code: ReactionCode): number {
+  const summary = getInteractionFor(item)
+  const intent = REACTION_TO_INTENT[code]
+  if (!intent) return 0
+  return summary.counts?.[intent] ?? 0
+}
+
 </script>
