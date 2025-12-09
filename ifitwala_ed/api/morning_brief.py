@@ -20,7 +20,7 @@ def get_briefing_widgets():
 	# Use site timezone (from System Settings) and normal Gregorian date
 	site_now = now_datetime()
 	site_today = getdate(site_now)
-	widgets["today_label"] = formatdate(site_today, "dddd, dd MMMM yyyy")
+	widgets["today_label"] = site_now.strftime("%A, %d %B %Y")
 
 
 	# 1. TOP: ORGANIZATIONAL COMMUNICATION

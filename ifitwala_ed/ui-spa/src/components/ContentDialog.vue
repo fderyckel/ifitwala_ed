@@ -85,7 +85,7 @@
 								<FeatherIcon name="message-circle" class="h-3 w-3" />
 								<span>Comments</span>
 								<span class="text-[10px] text-slate-token/60">
-									({{ interaction.counts?.Question || 0 }})
+									({{ interaction.counts?.Comment || 0 }})
 								</span>
 							</button>
 						</div>

@@ -953,6 +953,7 @@ function submitComment(): void {
 	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
 		org_communication: activeCommunication.value.name,
 		note,
+		intent_type: 'Comment',
 		surface: ORG_SURFACES.MORNING_BRIEF
 	}).then(() => {
 		newComment.value = ''
@@ -969,6 +970,7 @@ function submitComment(): void {
 		}
 	})
 }
+
 
 function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
 	if (!item?.name || !canShowInteractions(item)) return
