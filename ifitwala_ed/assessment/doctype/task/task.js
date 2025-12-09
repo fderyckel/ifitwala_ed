@@ -297,36 +297,54 @@ function should_sync_students(doc) {
 
 
 async function auto_sync_students_if_needed(frm) {
-	// Only when there is a student_group AND some grading mode is enabled
-	if (!should_sync_students(frm.doc)) return;
+    // Only sync when student_group exists AND some grading mode is enabled
+    if (!should_sync_students(frm.doc)) return;
 
-	// Never auto-save from here; require a clean, saved doc
-	if (frm.is_new() || frm.is_dirty()) {
-		frappe.show_alert({
-			message: __("Save the Task first, then students will be loaded from the group."),
-			indicator: "orange",
-		});
-		return;
-	}
+    // Safety: Task must be saved
+    if (frm.is_new() || frm.is_dirty()) {
+        frappe.show_alert({
+            message: __("Save the Task first, then students will be loaded from the group."),
+            indicator: "orange",
+        });
+        return;
+    }
 
-	try {
-		const res = await frappe.call({
-			method: "ifitwala_ed.assessment.doctype.task.task.prefill_task_students",
-			args: { task: frm.doc.name },
-			freeze: false,
-		});
+    // Do not run multiple syncs concurrently
+    if (frm.__student_sync_in_progress) return;
+    frm.__student_sync_in_progress = true;
 
-		if (res?.message?.inserted > 0) {
-			frappe.show_alert({
-				message: __("{0} students added from group.", [res.message.inserted]),
-				indicator: "green",
-			});
-			await frm.reload_doc();
-		}
-	} catch (e) {
-		console.error(e);
-	}
+    try {
+        // Before syncing, capture current student list
+        const existingStudents = new Set(
+            (frm.doc.task_student || []).map(r => r.student)
+        );
+
+        // Ask server for missing students only
+        const res = await frappe.call({
+            method: "ifitwala_ed.assessment.doctype.task.task.prefill_task_students",
+            args: { task: frm.doc.name },
+            freeze: false,
+        });
+
+        const inserted = res?.message?.inserted || 0;
+
+        if (inserted > 0) {
+            frappe.show_alert({
+                message: __("{0} students added from group.", [inserted]),
+                indicator: "green",
+            });
+            await frm.reload_doc();
+        }
+
+    } catch (e) {
+        console.error("Student sync failed:", e);
+
+    } finally {
+        frm.__student_sync_in_progress = false;
+    }
 }
+
+
 
 
 async function auto_seed_rubrics_if_needed(frm) {

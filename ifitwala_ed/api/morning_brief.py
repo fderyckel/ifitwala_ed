@@ -271,7 +271,7 @@ def get_recent_student_logs(user):
 			filters["school"] = ("in", schools)
 
 	logs = frappe.get_all("Student Log",
-		fields=["name", "student_name", "student_photo", "log_type", "date", "requires_follow_up", "follow_up_status", "log"],
+		fields=["name", "student_name", "student_image", "log_type", "date", "requires_follow_up", "follow_up_status", "log"],
 		filters=filters,
 		order_by="date desc, time desc",
 		limit=50
@@ -290,7 +290,7 @@ def get_recent_student_logs(user):
 		formatted_logs.append({
 			"name": l.name,
 			"student_name": l.student_name,
-			"student_photo": l.student_photo,
+			"student_image": l.student_image,
 			"log_type": l.log_type,
 			"date_display": formatdate(l.date, "dd-MMM"),
 			"snippet": snippet,
@@ -443,7 +443,7 @@ def get_my_absent_students(group_names):
 			sa.attendance_code,
 			sa.student_group,
 			sa.remark,
-			s.student_photo,
+			s.student_image,
 			sac.color as status_color
 		FROM `tabStudent Attendance` sa
 		INNER JOIN `tabStudent` s ON sa.student = s.name
@@ -476,7 +476,7 @@ def get_critical_incidents_details():
 
 	logs = frappe.get_all("Student Log",
 		filters=filters,
-		fields=["name", "student_name", "student_photo", "log_type", "date", "log"],
+		fields=["name", "student_name", "student_image", "log_type", "date", "log"],
 		order_by="date desc, creation desc"
 	)
 

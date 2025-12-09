@@ -127,7 +127,7 @@ export interface StudentBirthday {
 export interface StudentLogItem {
 	name: string
 	student_name: string
-	student_photo: string | null
+	student_image: string | null
 	log_type: string
 	date_display: string
 	snippet: string
@@ -138,7 +138,7 @@ export interface StudentLogItem {
 export interface StudentLogDetail {
 	name: string
 	student_name: string
-	student_photo: string | null
+	student_image: string | null
 	log_type: string
 	date: string
 	log: string
@@ -156,7 +156,7 @@ export interface AbsentStudent {
 	attendance_code: string
 	student_group: string
 	remark: string | null
-	student_photo: string | null
+	student_image: string | null
 	status_color: string | null
 }
 

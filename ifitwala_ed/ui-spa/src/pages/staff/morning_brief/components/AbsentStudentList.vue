@@ -14,7 +14,7 @@
 				class="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors">
 
 				<div class="h-10 w-10 rounded-full bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200">
-					<img v-if="stu.student_photo" :src="stu.student_photo" class="h-full w-full object-cover">
+					<img v-if="stu.student_image" :src="stu.student_image" class="h-full w-full object-cover">
 					<div v-else class="h-full w-full flex items-center justify-center text-sm font-bold text-slate-400">
 						{{ stu.student_name.substring(0, 2) }}
 					</div>

@@ -426,8 +426,8 @@
 									<div class="relative flex-shrink-0">
 										<div class="h-12 w-12 overflow-hidden rounded-xl bg-surface-soft">
 											<img
-												v-if="log.student_photo"
-												:src="log.student_photo"
+												v-if="log.student_image"
+												:src="log.student_image"
 												class="h-full w-full object-cover"
 											/>
 											<div
@@ -638,8 +638,8 @@
 				<div class="flex gap-4 p-4">
 					<div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-surface-soft">
 						<img
-							v-if="item.student_photo"
-							:src="item.student_photo"
+							v-if="item.student_image"
+							:src="item.student_image"
 							class="h-full w-full object-cover"
 						/>
 						<div
@@ -894,7 +894,7 @@ function openLog(log: StudentLogItem): void {
 		title: log.student_name,
 		subtitle: log.date_display,
 		content: log.full_content,
-		image: log.student_photo || '',
+		image: log.student_image || '',
 		imageFallback: log.student_name.substring(0, 2),
 		badge: log.log_type
 	}

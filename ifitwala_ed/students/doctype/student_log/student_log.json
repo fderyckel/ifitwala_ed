@@ -35,7 +35,7 @@
   "column_break_yils",
   "follow_up_role",
   "follow_up_person",
-  "student_photo",
+  "student_image",
   "amended_from"
  ],
  "fields": [
@@ -169,10 +169,10 @@
   {
    "fetch_from": "student.student_image",
    "fetch_if_empty": 1,
-   "fieldname": "student_photo",
+   "fieldname": "student_image",
    "fieldtype": "Attach Image",
    "hidden": 1,
-   "label": "student_photo",
+   "label": "student_image",
    "read_only": 1
   },
   {
@@ -224,11 +224,11 @@
   }
  ],
  "grid_page_length": 50,
- "image_field": "student_photo",
+ "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-23 13:27:00.264261",
+ "modified": "2025-11-23 13:27:00",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",

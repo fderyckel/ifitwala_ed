@@ -76,13 +76,13 @@ Sources: `ifitwala_ed/api/morning_brief.py`, `ifitwala_ed/setup/doctype/communic
 ### StudentBirthday (Student in instructor groups)
 - `first_name`: string
 - `last_name`: string
-- `image`: string \| null (`student_photo`)
+- `image`: string \| null (`student_image`)
 - `date_of_birth`: string (ISO date)
 
 ### StudentLogItem (Student Log feed, last 48h)
 - `name`: string (log id)
 - `student_name`: string
-- `student_photo`: string \| null
+- `student_image`: string \| null
 - `log_type`: string (Link to `Student Log Type`)
 - `date_display`: string (formatted `dd-MMM`)
 - `snippet`: string (first ~120 chars of stripped `log`)
@@ -98,7 +98,7 @@ Sources: `ifitwala_ed/api/morning_brief.py`, `ifitwala_ed/setup/doctype/communic
 - `attendance_code`: string (Link to `Student Attendance Code`)
 - `student_group`: string
 - `remark`: string \| null
-- `student_photo`: string \| null
+- `student_image`: string \| null
 - `status_color`: string \| null (from `Student Attendance Code.color`)
 
 ## Endpoint: `ifitwala_ed.api.morning_brief.get_critical_incidents_details`
@@ -106,7 +106,7 @@ Sources: `ifitwala_ed/api/morning_brief.py`, `ifitwala_ed/setup/doctype/communic
 - Response: `StudentLogDetail[]` (open follow-up logs; filtered by user’s school when set)
   - `name`: string
   - `student_name`: string
-  - `student_photo`: string \| null
+  - `student_image`: string \| null
   - `log_type`: string
   - `date`: string (ISO date)
   - `log`: string (HTML/Text Editor)
