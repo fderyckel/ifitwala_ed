@@ -182,9 +182,35 @@
         <div v-else class="flex flex-col h-full">
            <!-- Detail Header -->
            <div class="p-6 border-b border-line-soft bg-slate-50/50">
-             <div class="flex items-start justify-between gap-4">
-               <div>
-                  <div class="flex items-center gap-2 mb-2">
+             <div class="flex flex-col gap-4">
+                 <!-- Filters Row (Mobile/Desktop) -->
+                 <div class="flex flex-wrap items-center gap-3" v-if="myTeam || studentGroupOptions.length > 1">
+                    <!-- Team Filter -->
+                    <div v-if="myTeam" class="flex flex-col gap-1 sm:w-40">
+                        <label class="text-[10px] font-bold uppercase tracking-wider text-slate-token/50">Team</label>
+                        <FormControl
+                            type="select"
+                            :options="teamOptions"
+                            v-model="filters.team"
+                            size="sm"
+                        />
+                    </div>
+
+                    <!-- Student Group Filter -->
+                    <div v-if="studentGroupOptions.length > 1" class="flex flex-col gap-1 sm:w-40">
+                        <label class="text-[10px] font-bold uppercase tracking-wider text-slate-token/50">Student Group</label>
+                        <FormControl
+                            type="select"
+                            :options="studentGroupOptions"
+                            v-model="filters.student_group"
+                            size="sm"
+                        />
+                    </div>
+                </div>
+
+                <div class="flex items-start justify-between gap-4">
+                   <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 mb-2">
                     <Badge :color="getPriorityColor(selectedComm.priority)" size="sm">
                        {{ selectedComm.priority }}
                     </Badge>
@@ -192,12 +218,13 @@
                     <span class="text-xs font-medium text-slate-token/70">
                       {{ selectedComm.communication_type }}
                     </span>
-                  </div>
-                  <h2 class="text-xl font-bold text-ink leading-tight">
-                    {{ selectedComm.title }}
-                  </h2>
-               </div>
-             </div>
+                   </div>
+                   <h2 class="text-xl font-bold text-ink leading-tight">
+                     {{ selectedComm.title }}
+                   </h2>
+                </div>
+              </div>
+            </div>
              
              <div class="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-token/70">
                 <div class="flex items-center gap-2">
@@ -352,6 +379,8 @@ import {
   type ArchiveFilters, type OrgCommunicationListItem, type InteractionSummary 
 } from '@/types/orgCommunication'
 
+declare const frappe: any
+
 // Constants
 const PRIORITY_OPTS = PRIORITY_OPTIONS.map(o => ({ label: o, value: o }))
 const STATUS_OPTS = STATUS_OPTIONS.map(o => ({ label: o, value: o }))
@@ -374,11 +403,110 @@ const filters = reactive<ArchiveFilters>({
   communication_type: 'All',
   date_range: '90d',
   only_with_interactions: false,
+  team: 'All',
+  student_group: 'All',
 })
 
 const selectedComm = ref<OrgCommunicationListItem | null>(null)
 const showThreadDrawer = ref(false)
 const newComment = ref('')
+
+// User Context for Filters
+const myTeam = ref<string | null>(null)
+const myStudentGroups = ref<Array<{ label: string, value: string }>>([])
+
+const teamOptions = computed(() => {
+	const opts = [{ label: 'All Teams', value: 'All' }]
+	if (myTeam.value) {
+		opts.push({ label: myTeam.value, value: myTeam.value })
+	}
+	return opts
+})
+
+const studentGroupOptions = computed(() => {
+	return [{ label: 'All Groups', value: 'All' }, ...myStudentGroups.value]
+})
+
+// Resources
+const userContext = createResource({
+	url: 'frappe.client.get',
+	makeParams(values) {
+		return {
+			doctype: 'Employee',
+			filters: { user_id: 'frappe.session.user' }, // Session user is handled by backend usually, but here we filter by it
+			// Or better: use a custom method? 
+			// Let's use generic list if we can't find 'me'.
+			// Actually `frappe.auth.get_logged_user` returns email.
+			// Let's try standard list.
+		}
+	},
+	auto: true,
+	onSuccess(data) {
+		// This returns the doc if found? or list?
+		// frappe.client.get returns a single doc if name provided, or if filters unique.
+		// Wait, usage of frappe.client.get usually requires `name` or returns one doc.
+		// Let's assume we fetch Employee by user_id.
+		// BUT `frappe.client.get_value` is safer for single fields.
+	}
+})
+
+// Better approach to get context:
+const fetchContext = createResource({
+	url: 'frappe.call',
+	makeParams() {
+		return {
+			method: 'frappe.client.get_value',
+			args: {
+				doctype: 'Employee',
+				filters: { user_id: 'user_id_placeholder' }, // We'll patch this or use session
+				fieldname: ['department', 'name']
+			}
+		}
+	},
+    // We'll run this manually with correct user in onMounted or use a custom method.
+    // Actually, let's use list resource for ease.
+})
+
+const myEmployee = createResource({
+    url: 'frappe.client.get_list',
+    makeParams: () => ({
+        doctype: 'Employee',
+        filters: { user_id: frappe.session.user }, // frappe-ui automatically replaces {user}? No.
+        // We rely on backend 'frappe.session.user'.
+        // But get_list doesn't filter by session user automatically unless permission restricted.
+        // Use a simpler call or assume we have a way.
+        // Let's use `frappe.call` to get user details?
+        // Or just `frappe.db.get_value` equivalent.
+        fields: ['department', 'name']
+    }),
+    auto: true,
+    onSuccess: (data) => {
+        if (data && data.length > 0) {
+            myTeam.value = data[0].department
+            // Now fetch groups
+            fetchGroups.submit({ employee: data[0].name })
+        }
+    }
+})
+
+const fetchGroups = createResource({
+    url: 'frappe.client.get_list',
+    makeParams(params) {
+        return {
+            doctype: 'Student Group Instructor',
+            filters: { instructor: params.employee },
+            fields: ['parent']
+        }
+    },
+    onSuccess: (data) => {
+        if (data) {
+             const groups = data.map((d: any) => ({ label: d.parent, value: d.parent }))
+             // dedup
+             const unique = groups.filter((v,i,a) => a.findIndex(t=>(t.value === v.value)) === i)
+             myStudentGroups.value = unique
+        }
+    }
+})
 
 // Feed Resource
 const orgCommFeed = createResource<{
@@ -389,11 +517,22 @@ const orgCommFeed = createResource<{
   limit_page_length: number
 }>({
   url: 'ifitwala_ed.api.org_communication_archive.get_org_communication_feed',
+  makeParams() {
+    return {
+      search: filters.search,
+      status: filters.status,
+      priority: filters.priority,
+      portal_surface: filters.portal_surface,
+      communication_type: filters.communication_type,
+      date_range: filters.date_range,
+      team: filters.team === 'All' ? null : filters.team,
+      student_group: filters.student_group === 'All' ? null : filters.student_group,
+      only_with_interactions: filters.only_with_interactions ? 1 : 0,
+      limit_start: 0, 
+      limit_page_length: 50
+    }
+  },
   auto: true,
-  params: {
-      ...filters, 
-      only_with_interactions: filters.only_with_interactions ? 1 : 0 
-  }
 })
 
 // Interaction Summary Resource

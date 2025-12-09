@@ -54,4 +54,6 @@ export interface ArchiveFilters {
   communication_type: string | 'All'
   date_range: '7d' | '30d' | '90d' | 'year' | 'all'
   only_with_interactions: boolean
+  team?: string | 'All'
+  student_group?: string | 'All'
 }

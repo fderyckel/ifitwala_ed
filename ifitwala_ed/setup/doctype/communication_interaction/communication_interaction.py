@@ -266,6 +266,7 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 		return []
 
 	where_clause = " AND ".join(conditions)
+	params["ts_fmt"] = "%Y-%m-%d %H:%i:%s"
 
 	# Single SQL with join to get user full_name (no extra calls)
 	rows = frappe.db.sql(
@@ -282,7 +283,7 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 			i.is_teacher_reply,
 			i.is_pinned,
 			i.is_resolved,
-			DATE_FORMAT(CONVERT_TZ(i.creation, 'UTC', @@session.time_zone), '%%Y-%%m-%%d %%H:%%i:%%s') as creation,
+			DATE_FORMAT(CONVERT_TZ(i.creation, 'UTC', @@session.time_zone), %(ts_fmt)s) as creation,
 			i.modified
 		FROM `tabCommunication Interaction` i
 		LEFT JOIN `tabUser` u ON u.name = i.user
