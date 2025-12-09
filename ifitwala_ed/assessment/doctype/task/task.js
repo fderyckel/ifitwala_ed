@@ -35,7 +35,6 @@ frappe.ui.form.on("Task", {
 		set_learning_unit_query(frm);
 		set_lesson_query(frm);
 		update_task_student_visibility(frm);
-		enforce_total_mark_hidden(frm);
 		ensure_points_field_rules(frm);       // show/require max_points only when points==1
 		auto_sync_students_if_needed(frm);    // add-only; no removals
 		auto_seed_rubrics_if_needed(frm);     // if criteria==1 and students exist
@@ -85,28 +84,24 @@ frappe.ui.form.on("Task", {
 	// --- grading toggles ----------------------------------------------------
 	binary(frm) {
 		derive_is_graded(frm);
-		enforce_total_mark_hidden(frm);
 		update_task_student_visibility(frm);
 		auto_sync_students_if_needed(frm);
 	},
 
 	observations(frm) {
 		derive_is_graded(frm);
-		enforce_total_mark_hidden(frm);
 		auto_sync_students_if_needed(frm);
 	},
 
 	points(frm) {
 		derive_is_graded(frm);
 		ensure_points_field_rules(frm);
-		enforce_total_mark_hidden(frm);
 		auto_sync_students_if_needed(frm);
 	},
 
 	criteria(frm) {
 		// Always keep is_graded in sync
 		derive_is_graded(frm);
-		enforce_total_mark_hidden(frm);
 
 		// Turning Criteria OFF
 		if (!frm.doc.criteria) {
@@ -458,23 +453,40 @@ function clamp_mark_awarded(frm, cdt, cdn) {
 }
 
 
-
-
-
 function update_task_student_visibility(frm) {
 	const grid = frm.fields_dict?.task_student?.grid;
 	if (!grid) return;
 
-	const isPoints = !!frm.doc.points;
+	const isBinary = !!frm.doc.binary;
+	const isPoints = !!frm.doc.points && !frm.doc.criteria;
+	const isCriteria = !!frm.doc.criteria;
+	const isObservations = !!frm.doc.observations;
 
-	// Points Mode → hide total_mark
-	grid.set_column_disp("total_mark", !isPoints);
+	// Default: hide all optional scoring columns
+	grid.set_column_disp("mark_awarded", false);
+	grid.set_column_disp("complete", false);
+	grid.set_column_disp("out_of", false);
+	grid.set_column_disp("pct", false);
 
-	// Binary mode → show complete flag
-	grid.set_column_disp("complete", !!frm.doc.binary);
+	// Apply mode-specific visibility
+	if (isBinary) {
+		grid.set_column_disp("complete", true);
+	}
+
+	else if (isPoints) {
+		grid.set_column_disp("mark_awarded", true);
+	}
+
+	else if (isCriteria) {
+		grid.set_column_disp("out_of", true);
+		grid.set_column_disp("pct", true);
+	}
+
+	// Observations mode → nothing extra visible
 
 	grid.refresh();
 }
+
 
 
 
@@ -559,19 +571,7 @@ function compute_status_preview(frm, row) {
 
 
 
-function enforce_total_mark_hidden(frm) {
-	// total_mark does NOT exist on the parent Task, so never touch frm.set_df_property()
 
-	// Hide the total_mark column in the Task Student child table
-	const grid = frm.fields_dict?.task_student?.grid;
-	if (!grid) return;
-
-	// Always hide total_mark regardless of grading mode
-	grid.set_column_disp("total_mark", false);
-
-	// Refresh the grid to apply column visibility
-	grid.refresh();
-}
 function compute_status_preview(frm, row) {
 	// -------------------------------------
 	// 1) Visibility always overrides everything

@@ -94,13 +94,13 @@
    "fieldname": "reaction_code",
    "fieldtype": "Select",
    "label": "Reaction Code",
-   "options": "like\ncelebrate\nthank\nquestion\nconcern\nother"
+   "options": "like\nthank\nheart\nsmile\napplause\nquestion\nother"
   },
   {
    "fieldname": "intent_type",
    "fieldtype": "Select",
    "label": "Intent Type",
-   "options": "Comment\nAcknowledged\nAppreciated\nQuestion\nConcern\nOther"
+   "options": "Comment\nAcknowledged\nAppreciated\nSupport\nPositive\nCelebration\nQuestion\nConcern\nOther"
   },
   {
    "description": "Short comment, question, or clarification. No formatting.",

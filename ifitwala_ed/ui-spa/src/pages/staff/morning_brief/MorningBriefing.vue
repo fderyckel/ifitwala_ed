@@ -199,13 +199,13 @@
 				</div>
 
 				<!-- Compact list -->
-				<div class="paper-card mt-3 max-h-64 overflow-hidden">
+				<div class="paper-card mt-3">
 					<div class="flex items-center justify-between border-b border-border/60 px-4 py-2">
 						<p class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
 							All announcements
 						</p>
 						<button
-							v-if="widgets.data.announcements.length > 5"
+							v-if="widgets.data.announcements.length > MAX_INLINE_ANNOUNCEMENTS"
 							class="text-[11px] font-medium text-jacaranda hover:text-jacaranda/80"
 							@click="openAnnouncementsDialog"
 						>
@@ -213,11 +213,11 @@
 						</button>
 					</div>
 
-					<div class="custom-scrollbar max-h-56 overflow-y-auto">
+					<div class="divide-y divide-border/40">
 						<button
-							v-for="(item, idx) in filteredAnnouncements"
+							v-for="(item, idx) in limitedAnnouncements"
 							:key="idx"
-							class="flex w-full items-start gap-3 border-b border-border/40 px-4 py-3 text-left last:border-0 transition-colors hover:bg-surface-soft"
+							class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-soft"
 							@click="openAnnouncement(item)"
 						>
 							<div
@@ -569,6 +569,10 @@
 			:image="dialogContent.image"
 			:image-fallback="dialogContent.imageFallback"
 			:badge="dialogContent.badge"
+			:show-interactions="!!activeCommunication"
+			:interaction="activeCommunication ? getInteractionFor(activeCommunication) : { counts: {}, self: null }"
+			@acknowledge="activeCommunication && acknowledgeAnnouncement(activeCommunication)"
+			@open-comments="activeCommunication && openInteractionThread(activeCommunication)"
 		/>
 
 		<!-- ANNOUNCEMENT CENTER DIALOG -->
@@ -857,6 +861,7 @@ function openLog(log) {
 }
 
 function openAnnouncement(news) {
+	activeCommunication.value = news
 	dialogContent.value = {
 		title: news.title,
 		subtitle: formattedDate.value,

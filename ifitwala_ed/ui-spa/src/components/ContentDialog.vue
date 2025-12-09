@@ -59,6 +59,43 @@
 					<div v-html="cleanedContent"></div>
 				</div>
 
+				<div
+					v-if="showInteractions"
+					class="flex items-center justify-between border-t border-border/60 pt-3 text-[11px] text-slate-token/70"
+				>
+					<div class="flex items-center gap-3">
+						<button
+							type="button"
+							class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-2 py-1 hover:bg-surface-soft/80"
+							@click="$emit('acknowledge')"
+						>
+							<FeatherIcon name="thumbs-up" class="h-3 w-3 text-canopy" />
+							<span>
+								Acknowledge
+								<span class="ml-1 text-[10px] text-slate-token/60">
+									({{ interaction.counts?.Acknowledged || 0 }})
+								</span>
+							</span>
+						</button>
+
+						<button
+							type="button"
+							class="inline-flex items-center gap-1 rounded-full px-2 py-1 hover:bg-surface-soft"
+							@click="$emit('open-comments')"
+						>
+							<FeatherIcon name="message-circle" class="h-3 w-3" />
+							<span>Comments</span>
+							<span class="text-[10px] text-slate-token/60">
+								({{ interaction.counts?.Question || 0 }})
+							</span>
+						</button>
+					</div>
+
+					<div v-if="interaction.self" class="hidden text-[10px] text-jacaranda md:block">
+						You responded: {{ interaction.self.intent_type || 'Commented' }}
+					</div>
+				</div>
+
 				<div class="flex justify-end border-t border-border/70 pt-3">
 					<Button
 						variant="solid"
@@ -103,10 +140,18 @@ const props = defineProps({
 	badge: {
 		type: String,
 		default: ''
+	},
+	interaction: {
+		type: Object,
+		default: () => ({ counts: {}, self: null })
+	},
+	showInteractions: {
+		type: Boolean,
+		default: false
 	}
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'acknowledge', 'open-comments'])
 
 const isOpen = computed({
 	get: () => props.modelValue,

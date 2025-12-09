@@ -89,7 +89,16 @@ class CommunicationInteraction(Document):
 			self.visibility = "Public to audience"
 
 	def _apply_structured_feedback_constraints(self, parent):
-		allowed = {"Acknowledged", "Appreciated", "Question", "Concern", "Other"}
+		allowed = {
+			"Acknowledged",
+			"Appreciated",
+			"Question",
+			"Concern",
+			"Other",
+			"Support",
+			"Positive",
+			"Celebration",
+		}
 		if self.intent_type not in allowed:
 			frappe.throw(_("Invalid intent type for structured feedback."))
 
@@ -116,6 +125,9 @@ class CommunicationInteraction(Document):
 				"Appreciated": "thank",
 				"Question": "question",
 				"Concern": "concern",
+				"Support": "heart",
+				"Positive": "smile",
+				"Celebration": "applause",
 			}
 			self.reaction_code = mapper.get(self.intent_type, "other")
 
@@ -162,10 +174,10 @@ def get_org_comm_interaction_summary(comm_names):
 	# 1) counts per communication + intent
 	rows = frappe.db.sql(
 		"""
-		SELECT org_communication, intent_type, note, COUNT(*) as cnt
+		SELECT org_communication, intent_type, COUNT(*) as cnt
 		FROM `tabCommunication Interaction`
 		WHERE org_communication IN %(comms)s
-		GROUP BY org_communication, intent_type, note
+		GROUP BY org_communication, intent_type
 		""",
 		{"comms": tuple(comm_names)},
 		as_dict=True,
@@ -173,15 +185,8 @@ def get_org_comm_interaction_summary(comm_names):
 
 	summary = {name: {"counts": {}, "self": None} for name in comm_names}
 	for r in rows:
-		intent = r.intent_type
-		if not intent and (r.note or "").strip():
-			intent = "Comment"
-		if not intent:
-			continue
-		# Aggregate counts across intents
-		summary[r.org_communication]["counts"][intent] = (
-			summary[r.org_communication]["counts"].get(intent, 0) + r.cnt
-		)
+		intent = r.intent_type or "Comment"
+		summary[r.org_communication]["counts"][intent] = r.cnt
 
 	# 2) current user's interaction
 	self_rows = frappe.db.sql(
@@ -333,6 +338,17 @@ def upsert_communication_interaction(
 
 	parent = frappe.get_cached_doc("Org Communication", org_communication)
 
+	# Mapping between reactions and intents for the palette
+	reaction_intent_map = {
+		"like": "Acknowledged",
+		"thank": "Appreciated",
+		"heart": "Support",
+		"smile": "Positive",
+		"applause": "Celebration",
+		"question": "Question",
+	}
+	intent_reaction_map = {v: k for k, v in reaction_intent_map.items()}
+
 	# Assign fields from payload (only if provided)
 	if intent_type is not None:
 		doc.intent_type = intent_type
@@ -354,9 +370,19 @@ def upsert_communication_interaction(
 	if school is not None:
 		doc.school = school
 
+	# Infer intent from reaction or vice-versa when one side is missing
+	if doc.reaction_code and not doc.intent_type:
+		doc.intent_type = reaction_intent_map.get(doc.reaction_code, doc.intent_type)
+	if doc.intent_type and not doc.reaction_code:
+		doc.reaction_code = intent_reaction_map.get(doc.intent_type, doc.reaction_code)
+
 	# Default intent for staff comments when user submits a note without an explicit intent
 	if (parent.interaction_mode or "None") == "Staff Comments" and note and not doc.intent_type:
-		doc.intent_type = "Comment"
+		doc.intent_type = "Question"
+
+	# Question always requires a note
+	if doc.intent_type == "Question" and not doc.note:
+		frappe.throw(_("Please add a short comment or question."))
 
 	# Let the DocType controller enforce audience_type + mode constraints
 	doc.save(ignore_permissions=False)
@@ -367,5 +393,13 @@ def upsert_communication_interaction(
 
 
 def on_doctype_update():
-	frappe.db.add_index("Communication Interaction", ["org_communication", "intent_type"])
-	frappe.db.add_index("Communication Interaction", ["student_group", "intent_type"])
+	frappe.db.add_index(
+		DOCTYPE,
+		["org_communication", "intent_type"],
+		index_name="idx_comm_intent",
+	)
+	frappe.db.add_index(
+		DOCTYPE,
+		["student_group", "intent_type"],
+		index_name="idx_group_intent",
+	)
