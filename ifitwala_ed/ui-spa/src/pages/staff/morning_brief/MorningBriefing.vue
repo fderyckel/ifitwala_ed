@@ -777,6 +777,7 @@ const viewModes = [
 	{ value: 'all', label: 'All' }
 ]
 const viewMode = ref('focus')
+const MAX_INLINE_ANNOUNCEMENTS = 4
 
 const spotlightIndex = ref(0)
 const spotlightAnnouncements = computed(() =>
@@ -817,6 +818,11 @@ const filteredAnnouncements = computed(() => {
 	}
 
 	return all
+})
+
+const limitedAnnouncements = computed(() => {
+	const all = filteredAnnouncements.value
+	return all.slice(0, MAX_INLINE_ANNOUNCEMENTS)
 })
 
 watch(
