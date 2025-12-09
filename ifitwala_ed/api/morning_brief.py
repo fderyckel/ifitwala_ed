@@ -220,17 +220,30 @@ def get_pending_grading_tasks(group_names):
 
 def get_medical_context(group_names):
 	"""Fetches medical info for students in the instructor's groups."""
-	if not group_names: return []
+	if not group_names:
+		return []
+
 	groups_formatted = "', '".join(group_names)
 
-	return frappe.db.sql(f"""
-		SELECT DISTINCT s.first_name, s.last_name, sp.medical_info, sp.allergies, sp.food_allergies
+	return frappe.db.sql(
+		f"""
+		SELECT DISTINCT
+			s.student_first_name AS first_name,
+			s.student_last_name AS last_name,
+			sp.medical_info,
+			sp.allergies,
+			sp.food_allergies
 		FROM `tabStudent Group Student` sgs
 		INNER JOIN `tabStudent` s ON sgs.student = s.name
 		INNER JOIN `tabStudent Patient` sp ON sp.student = s.name
-		WHERE sgs.parent IN ('{groups_formatted}') AND sgs.active = 1
-		AND (sp.medical_info IS NOT NULL AND sp.medical_info != '')
-	""", as_dict=True)
+		WHERE sgs.parent IN ('{groups_formatted}')
+			AND sgs.active = 1
+			AND sp.medical_info IS NOT NULL
+			AND sp.medical_info != ''
+		""",
+		as_dict=True,
+	)
+
 
 
 # ==============================================================================
@@ -321,28 +334,24 @@ def get_staff_birthdays():
 	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
 
 
-def get_my_student_birthdays(group_names: list[str]):
+def get_my_student_birthdays(group_names):
 	"""
-	Active students in my groups with birthdays within +/- 5 days of today.
-	Handles year wrap-around (e.g. Dec 30 -> Jan 4).
+	Active students in my groups with birthdays ±4 days.
 	"""
 	if not group_names:
 		return []
 
-	# +/- 5 days window
-	start_md = formatdate(add_days(today(), -5), "MM-dd")
-	end_md = formatdate(add_days(today(), 5), "MM-dd")
+	groups_formatted = "', '".join(group_names)
 
+	start_md = formatdate(add_days(today(), -4), "MM-dd")
+	end_md = formatdate(add_days(today(), 4), "MM-dd")
+
+	# Handle year wrap (Dec→Jan)
+	condition = "DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
 	if start_md > end_md:
-		# Year wrap-around (Dec → Jan)
 		condition = (
-			"(DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') >= %(start_md)s "
-			"OR DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') <= %(end_md)s)"
-		)
-	else:
-		condition = (
-			"DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') "
-			"BETWEEN %(start_md)s AND %(end_md)s"
+			"(DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') >= %s "
+			"OR DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') <= %s)"
 		)
 
 	sql = f"""
@@ -353,20 +362,14 @@ def get_my_student_birthdays(group_names: list[str]):
 			s.student_date_of_birth AS date_of_birth
 		FROM `tabStudent Group Student` sgs
 		INNER JOIN `tabStudent` s ON sgs.student = s.name
-		WHERE sgs.parent IN %(groups)s
+		WHERE sgs.parent IN ('{groups_formatted}')
 			AND sgs.active = 1
 			AND s.student_date_of_birth IS NOT NULL
 			AND {condition}
 		ORDER BY DATE_FORMAT(s.student_date_of_birth, '%%%%m-%%%%d') ASC
 	"""
 
-	params = {
-		"groups": tuple(group_names),
-		"start_md": start_md,
-		"end_md": end_md,
-	}
-
-	return frappe.db.sql(sql, params, as_dict=True)
+	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
 
 
 

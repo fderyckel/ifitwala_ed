@@ -330,42 +330,56 @@ async function auto_sync_students_if_needed(frm) {
 
 
 async function auto_seed_rubrics_if_needed(frm) {
-	// Only relevant when:
-	// - Criteria grading is ON
-	// - The Task is saved (has a name)
-	// - There are Task Student rows
-	// - There are Assessment Criteria rows
-	// - There are currently NO rubric rows (Task Criterion Score is empty)
-	if (!frm.doc.criteria) return;
-	if (!frm.doc.name) return;
+    // Criteria must be ON
+    if (!frm.doc.criteria) return;
 
-	const hasStudents = (frm.doc.task_student || []).length > 0;
-	if (!hasStudents) return;
+    // Only run when Task is saved
+    if (!frm.doc.name) return;
 
-	const hasCriteriaRows = has_any_criteria(frm);
-	if (!hasCriteriaRows) return;
+    // Require students
+    const studentRows = frm.doc.task_student || [];
+    if (studentRows.length === 0) return;
 
-	const hasRubricRows = (frm.doc.task_criterion_score || []).length > 0;
-	if (hasRubricRows) return; // already seeded once; avoid extra calls
+    // Require criteria rows
+    const criteriaRows = frm.doc.assessment_criteria || [];
+    const hasCriteria = criteriaRows.some(r => r.assessment_criteria);
+    if (!hasCriteria) return;
 
-	try {
-		const res = await frappe.call({
-			method: "ifitwala_ed.assessment.doctype.task.task.prefill_task_rubrics",
-			args: { task: frm.doc.name },
-			freeze: false,
-		});
+    // If ANY rubric row already exists → do NOT seed.
+    const rubricRows = frm.doc.task_criterion_score || [];
+    if (rubricRows.length > 0) return;
 
-		if (res?.message?.created > 0) {
-			frappe.show_alert({
-				message: __("{0} rubric cells prepared for criteria grading.", [res.message.created]),
-				indicator: "blue",
-			});
-			await frm.reload_doc();
-		}
-	} catch (e) {
-		console.error(e);
-	}
+    // Protect against rapid double-trigger from refresh/save
+    if (frm.__rubric_prefill_in_progress) return;
+
+    frm.__rubric_prefill_in_progress = true;
+
+    try {
+        const res = await frappe.call({
+            method: "ifitwala_ed.assessment.doctype.task.task.prefill_task_rubrics",
+            args: { task: frm.doc.name },
+            freeze: false,
+        });
+
+        const created = res?.message?.created || 0;
+
+        if (created > 0) {
+            frappe.show_alert({
+                message: __("{0} rubric cells prepared for criteria grading.", [created]),
+                indicator: "blue",
+            });
+            await frm.reload_doc();
+        }
+
+    } catch (e) {
+        console.error("Rubric prefill failed:", e);
+
+    } finally {
+        frm.__rubric_prefill_in_progress = false;
+    }
 }
+
+
 
 
 // ----------------- Grade scale (points-only trigger) -----------------------
