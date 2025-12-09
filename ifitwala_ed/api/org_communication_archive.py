@@ -188,7 +188,7 @@ def get_audience_label(comm_name):
     for a in audiences:
         label = a.target_group or a.team or "Everyone"
         if a.school:
-            school_name = frappe.db.get_value("School", a.school, "title") # assuming title field exists or use name
+            school_name = frappe.db.get_value("School", a.school, "school_name") # Fix: school uses school_name, not title
             label += f" · {school_name or a.school}"
         parts.append(label)
         
