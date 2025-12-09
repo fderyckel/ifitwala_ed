@@ -936,7 +936,7 @@ function openInteractionThread(item: Announcement): void {
 }
 
 function acknowledgeAnnouncement(item: Announcement): void {
-	if (!item?.name) return
+	if (!item?.name || item.interaction_mode === 'None') return
 
 	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
 		org_communication: item.name,
@@ -952,7 +952,8 @@ function acknowledgeAnnouncement(item: Announcement): void {
 }
 
 function submitComment(): void {
-	if (!activeCommunication.value || !newComment.value.trim()) return
+	if (!activeCommunication.value || activeCommunication.value.interaction_mode === 'None') return
+	if (!newComment.value.trim()) return
 
 	const note = newComment.value.trim()
 
@@ -977,7 +978,7 @@ function submitComment(): void {
 }
 
 function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
-	if (!item?.name) return
+	if (!item?.name || item.interaction_mode === 'None') return
 
 	if (reaction === 'question') {
 		openInteractionThread(item)

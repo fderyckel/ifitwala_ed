@@ -56,4 +56,6 @@ export interface ArchiveFilters {
   only_with_interactions: boolean
   team?: string | 'All'
   student_group?: string | 'All'
+  school?: string | 'All'
+  organization?: string | 'All'
 }

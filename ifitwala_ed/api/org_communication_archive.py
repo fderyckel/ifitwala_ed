@@ -6,6 +6,54 @@ from frappe.utils import today, add_days, getdate, strip_html
 from ifitwala_ed.api.org_comm_utils import check_audience_match
 
 @frappe.whitelist()
+def get_archive_context():
+    """Returns context data for the archive page filters."""
+    user = frappe.session.user
+    employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "department"], as_dict=True)
+    
+    data = {
+        "my_team": None,
+        "my_groups": [],
+        "schools": [],
+        "organizations": [] # If needed
+    }
+    
+    if employee:
+        data["my_team"] = employee.department
+        
+        # Get Instructor Groups
+        groups = frappe.get_all("Student Group Instructor", filters={"instructor": employee.name}, fields=["parent"])
+        data["my_groups"] = sorted(list(set([g.parent for g in groups])))
+        
+        # Get Schools (Current + Ancestors usually, or just All active schools?)
+        # Let's return all schools for the filter to be broad, but maybe user only cares about their scope.
+        # Design choice: Show all schools. 
+        data["schools"] = frappe.get_all("School", fields=["name", "school_name"], order_by="school_name asc")
+        
+    return data
+
+@frappe.whitelist()
+def get_org_communication_item(name):
+    """Returns the full communication details if the user is in the audience."""
+    user = frappe.session.user
+    roles = frappe.get_roles(user)
+    employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "organization", "department"], as_dict=True)
+    
+    if not check_audience_match(name, user, roles, employee):
+        frappe.throw(_("You do not have permission to view this communication."), frappe.PermissionError)
+        
+    doc = frappe.get_doc("Org Communication", name)
+    return {
+        "name": doc.name,
+        "title": doc.title,
+        "message": doc.message, # HTML Content
+        "communication_type": doc.communication_type,
+        "priority": doc.priority,
+        "publish_from": doc.publish_from,
+        "audience_label": get_audience_label(doc.name)
+    }
+
+@frappe.whitelist()
 def get_org_communication_feed(
     search_text: str | None = None,
     status: str | None = "PublishedOrArchived",
@@ -15,6 +63,8 @@ def get_org_communication_feed(
     date_range: str | None = "90d",  # '7d' | '30d' | '90d' | 'year' | 'all'
     team: str | None = None,
     student_group: str | None = None,
+    school: str | None = None,
+    organization: str | None = None,
     only_with_interactions: int | None = 0,
     limit_start: int = 0,
     limit_page_length: int = 30,
@@ -84,6 +134,16 @@ def get_org_communication_feed(
     if search_text:
         conditions.append("(title LIKE %(search)s OR message LIKE %(search)s)")
         values["search"] = f"%{search_text}%"
+
+    # School Filter (Strict match to origin school)
+    if school and school != "All":
+        conditions.append("school = %(school)s")
+        values["school"] = school
+
+    # Organization Filter
+    if organization and organization != "All":
+        conditions.append("organization = %(org)s")
+        values["org"] = organization
         
     # Only with interactions
     # optimizing this: first find comms with interactions for this user? 
