@@ -371,10 +371,10 @@ const analyticsCategories = [
     description: 'Grades, assessments, and intervention impact.',
     icon: 'book',
     links: [
+			{ label: 'Student Overview', to: { name: 'staff-student-overview' } },
       { label: 'Grade Distribution', to: '/analytics/academic/grade-distribution' },
       { label: 'Assessment Trends', to: '/analytics/academic/assessment-trends' },
       { label: 'Course Completion', to: '/analytics/academic/course-completion' },
-      { label: 'Intervention Impact', to: '/analytics/academic/intervention-impact' },
     ],
   },
   {
