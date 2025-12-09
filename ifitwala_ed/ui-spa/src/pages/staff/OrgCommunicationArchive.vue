@@ -405,6 +405,8 @@ const filters = reactive<ArchiveFilters>({
   only_with_interactions: false,
   team: 'All',
   student_group: 'All',
+  school: 'All',
+  organization: 'All',
 })
 
 const selectedComm = ref<OrgCommunicationListItem | null>(null)
@@ -414,6 +416,7 @@ const newComment = ref('')
 // User Context for Filters
 const myTeam = ref<string | null>(null)
 const myStudentGroups = ref<Array<{ label: string, value: string }>>([])
+const schoolOptions = ref<Array<{ label: string, value: string }>>([])
 
 const teamOptions = computed(() => {
 	const opts = [{ label: 'All Teams', value: 'All' }]
@@ -429,40 +432,19 @@ const studentGroupOptions = computed(() => {
 
 
 
-
-
-const myEmployee = createResource({
-    url: 'frappe.client.get_list',
-    makeParams: () => ({
-        doctype: 'Employee',
-        filters: { user_id: frappe?.session?.user },
-        fields: ['department', 'name']
-    }),
+// Resources
+const archiveContext = createResource({
+    url: 'ifitwala_ed.api.org_communication_archive.get_archive_context',
     auto: true,
-    onSuccess: (data) => {
-        if (data && data.length > 0) {
-            myTeam.value = data[0].department
-            // Now fetch groups
-            fetchGroups.submit({ employee: data[0].name })
-        }
-    }
-})
-
-const fetchGroups = createResource({
-    url: 'frappe.client.get_list',
-    makeParams(params) {
-        return {
-            doctype: 'Student Group Instructor',
-            filters: { instructor: params.employee },
-            fields: ['parent']
-        }
-    },
-    onSuccess: (data) => {
+    onSuccess(data) {
         if (data) {
-             const groups = data.map((d: any) => ({ label: d.parent, value: d.parent }))
-             // dedup
-             const unique = groups.filter((v,i,a) => a.findIndex(t=>(t.value === v.value)) === i)
-             myStudentGroups.value = unique
+            myTeam.value = data.my_team
+            // Groups come as list of strings
+            myStudentGroups.value = (data.my_groups || []).map((g: string) => ({ label: g, value: g }))
+            // Schools
+            schoolOptions.value = [{ label: 'All Schools', value: 'All' }, ...(data.schools || []).map((s: any) => ({ label: s.school_name, value: s.name }))]
+            // Organizations (if needed, mimicking schools structure or just list)
+            // Assuming backend returns empty list for now as per implementation, but let's handle if it did.
         }
     }
 })
@@ -486,6 +468,8 @@ const orgCommFeed = createResource<{
       date_range: filters.date_range,
       team: filters.team === 'All' ? null : filters.team,
       student_group: filters.student_group === 'All' ? null : filters.student_group,
+      school: filters.school === 'All' ? null : filters.school,
+      organization: filters.organization === 'All' ? null : filters.organization,
       only_with_interactions: filters.only_with_interactions ? 1 : 0,
       limit_start: 0, 
       limit_page_length: 50
@@ -502,9 +486,9 @@ const interactionSummary = createResource<Record<string, InteractionSummary>>({
 
 // Full Content Resource
 const fullContent = createResource({
-    url: 'frappe.client.get',
+    url: 'ifitwala_ed.api.org_communication_archive.get_org_communication_item',
     makeParams({ name }) {
-        return { doctype: 'Org Communication', name }
+        return { name }
     }
 })
 
