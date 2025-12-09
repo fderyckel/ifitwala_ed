@@ -376,30 +376,6 @@
 						</div>
 					</div>
 
-					<!-- Medical Alerts -->
-					<div
-						v-if="hasArrayData('medical_context')"
-						class="paper-card border-l-4 border-l-sky p-5"
-					>
-						<h3 class="mb-3 text-sm font-semibold text-canopy">
-							Medical Alerts (My Classes)
-						</h3>
-						<div class="custom-scrollbar max-h-48 space-y-2 overflow-y-auto">
-							<div
-								v-for="med in widgets.data.medical_context"
-								:key="med.first_name"
-								class="rounded bg-sky/20 p-2 text-sm"
-							>
-								<span class="font-bold text-ink">
-									{{ med.first_name }}:
-								</span>
-								<span class="ml-1 text-slate-token/90">
-									{{ med.food_allergies }}
-								</span>
-							</div>
-						</div>
-					</div>
-
 					<!-- Absent Student List (Instructor) -->
 					<div v-if="hasArrayData('my_absent_students')">
 						<AbsentStudentList :students="widgets.data.my_absent_students" />
@@ -926,6 +902,7 @@ function getInteractionFor(item: Announcement): InteractionSummary {
 }
 
 function openInteractionThread(item: Announcement): void {
+	if (!canComment(item)) return
 	activeCommunication.value = item
 	showInteractionDrawer.value = true
 

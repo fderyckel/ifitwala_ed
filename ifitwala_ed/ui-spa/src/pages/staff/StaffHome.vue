@@ -326,7 +326,7 @@ const analyticsQuickLinks = [
     label: 'Annoucement Archive',
     caption: 'Check all current and past announcements',
     icon: 'activity',
-    to: '/announcements',
+    to: '/staff/announcements',
     badge: 'Hot',
   },
   {

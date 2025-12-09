@@ -882,72 +882,72 @@ def duplicate_for_group(
 
     return {"name": new_doc.name}
 
+
 @frappe.whitelist()
-def prefill_task_students(task: str) -> Dict:
+def prefill_task_students(task: str):
     """
-    Insert missing Task Student rows for active students in the Task’s student_group.
-
-    Design:
-    - Only adds rows (no deletions).
-    - Only denormalizes `student` and sets status = "Assigned".
-    - No course/program/academic_year/student_group denorm on child by design.
-    - After inserting students, also ensures rubric rows exist for each student×criterion.
+    Add-only prefill of Task Student rows based on the Task's Student Group.
+    - Never removes existing rows.
+    - Never duplicates students.
+    - Only inserts students who are *actually* in the Task's student_group.
+    - Returns {"inserted": <count>}
     """
-    if not task:
-        frappe.throw(_("Task is required"))
 
-    doc = frappe.get_doc("Task", task)
+    task = frappe.get_doc("Task", task)
 
-    if not doc.student_group:
-        frappe.throw(_("Select a Student Group before loading students."))
+    if not task.student_group:
+        return {"inserted": 0}
 
-    # Active members of this student group
-    s_rows = frappe.get_all(
+    # ----------------------------------------------------------------------
+    # 1) Get students from the Student Group (the only source of truth)
+    # ----------------------------------------------------------------------
+    sg_students = frappe.get_all(
         "Student Group Student",
-        filters={"parent": doc.student_group, "active": 1},
+        filters={"parent": task.student_group, "active": 1},
         fields=["student"],
+        order_by="group_roll_number asc"
     )
+    sg_ids = [s.student for s in sg_students] or []
 
-    # EXISTING students: use the Task's own child table snapshot (idempotent)
-    existing = {
-        getattr(r, "student", None)
-        for r in (doc.get("task_student") or [])
-        if getattr(r, "student", None)
-    }
+    if not sg_ids:
+        return {"inserted": 0}
 
+    # ----------------------------------------------------------------------
+    # 2) Get existing Task Student students (prevent duplicates)
+    # ----------------------------------------------------------------------
+    existing_rows = frappe.get_all(
+        "Task Student",
+        filters={"parent": task.name},
+        fields=["name", "student"]
+    )
+    existing_ids = {r.student for r in existing_rows}
+
+    # Determine which SG students are missing
+    missing = [sid for sid in sg_ids if sid not in existing_ids]
+
+    if not missing:
+        return {"inserted": 0}
+
+    # ----------------------------------------------------------------------
+    # 3) Insert missing rows (add-only)
+    # ----------------------------------------------------------------------
     inserted = 0
-
-    for r in s_rows:
-        stu = r.get("student")
-        if not stu:
-            continue
-
-        # Skip if already present on this Task
-        if stu in existing:
-            continue
-
-        ts = frappe.get_doc(
-            {
-                "doctype": "Task Student",
-                "parent": doc.name,
-                "parenttype": "Task",
-                "parentfield": "task_student",
-                "student": stu,
-                "status": "Assigned",
-            }
-        )
-        ts.insert(ignore_permissions=False)
+    for student_id in missing:
+        child = task.append("task_student", {
+            "student": student_id,
+            "status": "Assigned",   # always default
+            "mark_awarded": None,   # no points set
+            "pct": None,
+            "visible_to_student": 0,
+            "visible_to_guardian": 0,
+            "complete": 0,
+        })
         inserted += 1
-        existing.add(stu)  # keep in sync within this run
 
-    result = {"inserted": inserted, "total": len(s_rows)}
+    # Save once
+    task.save(ignore_permissions=True)
 
-    # Also ensure rubric rows exist for each student × criterion
-    doc.reload()  # refresh child tables
-    rub = _prefill_task_rubrics(doc)
-    result.update({"rubric_rows_created": rub.get("created", 0)})
-
-    return result
+    return {"inserted": inserted}
 
 
 
@@ -1014,21 +1014,93 @@ def apply_rubric_to_awarded(task: str, students: List[str]) -> Dict:
 
     return {"updated": updated}
 
-
 @frappe.whitelist()
-def prefill_task_rubrics(task: str) -> dict:
-	"""
-	Whitelisted helper to (re)seed rubric rows for a Task.
+def prefill_task_rubrics(task: str):
+    """
+    Creates rubric rows (Task Criterion Score) for each (student × criterion).
+    Add-only. No removals. No duplicates.
+    Returns {"created": <count>}.
+    """
 
-	Used when Criteria is turned ON after students were already loaded, or
-	whenever you want to refresh the student×criteria grid.
-	"""
-	if not task:
-		frappe.throw(_("Task is required"))
+    task = frappe.get_doc("Task", task)
 
-	task_doc = frappe.get_doc("Task", task)
-	res = _prefill_task_rubrics(task_doc)
-	return res
+    # ----------------------------------------------------------------------
+    # 1) Preconditions
+    # ----------------------------------------------------------------------
+    if not task.criteria:
+        return {"created": 0}
+
+    if not task.student_group:
+        return {"created": 0}
+
+    # Must have students in Task Student
+    students = frappe.get_all(
+        "Task Student",
+        filters={"parent": task.name},
+        fields=["student"],
+        order_by="idx asc",
+    )
+    if not students:
+        return {"created": 0}
+
+    student_ids = [s.student for s in students]
+
+    # Must have criteria rows in Task
+    criteria_rows = frappe.get_all(
+        "Task Assessment Criteria",
+        filters={"parent": task.name},
+        fields=["name", "assessment_criteria"],
+        order_by="idx asc",
+    )
+    if not criteria_rows:
+        return {"created": 0}
+
+    criterion_ids = [c.assessment_criteria for c in criteria_rows]
+
+    # ----------------------------------------------------------------------
+    # 2) Get existing rubric rows (prevent duplicates)
+    # ----------------------------------------------------------------------
+    existing = frappe.get_all(
+        "Task Criterion Score",
+        filters={"parent": task.name},
+        fields=["student", "criterion"],
+    )
+    existing_pairs = {(r.student, r.criterion) for r in existing}
+
+    # ----------------------------------------------------------------------
+    # 3) Determine missing rubric cells to create
+    # ----------------------------------------------------------------------
+    to_create = []
+    for sid in student_ids:
+        for cid in criterion_ids:
+            if (sid, cid) not in existing_pairs:
+                to_create.append((sid, cid))
+
+    if not to_create:
+        return {"created": 0}
+
+    # ----------------------------------------------------------------------
+    # 4) Insert missing rows (add-only)
+    # ----------------------------------------------------------------------
+    created = 0
+    for sid, cid in to_create:
+        task.append("task_criterion_score", {
+            "student": sid,
+            "criterion": cid,
+            "level": None,
+            "level_points": 0,
+            "feedback": "",
+        })
+        created += 1
+
+    # ----------------------------------------------------------------------
+    # 5) Save once
+    # ----------------------------------------------------------------------
+    task.save(ignore_permissions=True)
+
+    return {"created": created}
+
+
 
 
 def on_doctype_update():

@@ -33,40 +33,39 @@
         Filters
       </div>
 
-      <!-- Search -->
+      <!-- School -->
       <FormControl
-        type="text"
-        placeholder="Search..."
-        v-model="filters.search"
-        class="w-48"
-        :debounce="300"
-      >
-        <template #prefix>
-          <FeatherIcon name="search" class="h-4 w-4 text-slate-token/50" />
-        </template>
-      </FormControl>
-
-      <!-- Status -->
-      <FormControl
+        v-if="schoolOptions.length > 1"
         type="select"
-        v-model="filters.status"
-        :options="STATUS_OPTS"
-        class="w-36"
+        :options="schoolOptions"
+        v-model="filters.school"
+        class="w-40"
       />
 
-      <!-- Priority -->
+      <!-- Organization -->
       <FormControl
+        v-if="organizationOptions.length > 1"
         type="select"
-        v-model="filters.priority"
-        :options="PRIORITY_OPTS"
-        class="w-32"
+        :options="organizationOptions"
+        v-model="filters.organization"
+        class="w-40"
       />
 
-      <!-- Portal Surface -->
+      <!-- Team -->
       <FormControl
+        v-if="myTeam"
         type="select"
-        v-model="filters.portal_surface"
-        :options="SURFACE_OPTS"
+        :options="teamOptions"
+        v-model="filters.team"
+        class="w-40"
+      />
+
+      <!-- Student Group -->
+      <FormControl
+        v-if="studentGroupOptions.length > 1"
+        type="select"
+        :options="studentGroupOptions"
+        v-model="filters.student_group"
         class="w-40"
       />
 
@@ -183,53 +182,7 @@
            <!-- Detail Header -->
            <div class="p-6 border-b border-line-soft bg-slate-50/50">
              <div class="flex flex-col gap-4">
-                 <!-- Filters Row (Mobile/Desktop) -->
-                 <div class="flex flex-wrap items-center gap-3" v-if="myTeam || studentGroupOptions.length > 1 || schoolOptions.length > 1 || organizationOptions.length > 1">
-                    <!-- School Filter -->
-                    <div v-if="schoolOptions.length > 1" class="flex flex-col gap-1 sm:w-40">
-                        <label class="text-[10px] font-bold uppercase tracking-wider text-slate-token/50">School</label>
-                        <FormControl
-                            type="select"
-                            :options="schoolOptions"
-                            v-model="filters.school"
-                            size="sm"
-                        />
-                    </div>
 
-                    <!-- Organization Filter -->
-                    <div v-if="organizationOptions.length > 1" class="flex flex-col gap-1 sm:w-40">
-                        <label class="text-[10px] font-bold uppercase tracking-wider text-slate-token/50">Organization</label>
-                        <FormControl
-                            type="select"
-                            :options="organizationOptions"
-                            v-model="filters.organization"
-                            size="sm"
-                        />
-                    </div>
-
-                    <!-- Team Filter -->
-                    <!-- Team Filter -->
-                    <div v-if="myTeam" class="flex flex-col gap-1 sm:w-40">
-                        <label class="text-[10px] font-bold uppercase tracking-wider text-slate-token/50">Team</label>
-                        <FormControl
-                            type="select"
-                            :options="teamOptions"
-                            v-model="filters.team"
-                            size="sm"
-                        />
-                    </div>
-
-                    <!-- Student Group Filter -->
-                    <div v-if="studentGroupOptions.length > 1" class="flex flex-col gap-1 sm:w-40">
-                        <label class="text-[10px] font-bold uppercase tracking-wider text-slate-token/50">Student Group</label>
-                        <FormControl
-                            type="select"
-                            :options="studentGroupOptions"
-                            v-model="filters.student_group"
-                            size="sm"
-                        />
-                    </div>
-                </div>
 
                 <div class="flex items-start justify-between gap-4">
                    <div class="flex-1 min-w-0">
