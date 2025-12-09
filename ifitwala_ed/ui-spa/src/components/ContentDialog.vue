@@ -25,17 +25,17 @@
 						</div>
 
 						<div class="flex flex-col gap-1">
-							<p
-								v-if="subtitle"
-								class="type-h2 text-ink"
-							>
+							<p v-if="title" class="type-h2 text-ink">
+								{{ title }}
+							</p>
+							<p v-if="subtitle" class="type-meta text-slate-token/80">
 								{{ subtitle }}
 							</p>
 
 							<div class="flex items-center gap-2">
 								<span
 									v-if="badge"
-									class="inline-flex items-center rounded-full border border-border/70 bg-surface-soft px-2.5 py-0.5 text-[11px] font-semibold text-slate-token/85"
+									class="chip"
 								>
 									{{ badge }}
 								</span>
@@ -120,6 +120,10 @@ const props = defineProps({
 	modelValue: {
 		type: Boolean,
 		required: true
+	},
+	title: {
+		type: String,
+		default: ''
 	},
 	subtitle: {
 		type: String,

@@ -737,6 +737,7 @@ import AbsentStudentList from './components/AbsentStudentList.vue'
 // State for Dialog
 const isContentDialogOpen = ref(false)
 const dialogContent = ref({
+	title: '',
 	subtitle: '',
 	content: '',
 	image: '',
