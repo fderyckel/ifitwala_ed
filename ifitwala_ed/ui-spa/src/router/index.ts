@@ -33,6 +33,18 @@ const routes: RouteRecordRaw[] = [
 	{ path: '/staff/analytics/student-logs', name: 'staff-student-log-analytics', component: () => import('@/pages/staff/analytics/StudentLogAnalytics.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/student-demographics', name: 'student-demographic-analytics', component: () => import('@/pages/staff/analytics/StudentDemographicAnalytics.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/student-overview', name: 'staff-student-overview', component: () => import('@/pages/staff/analytics/StudentOverview.vue'), meta: { layout: 'staff' } },
+  {
+    path: '/staff/announcements',
+    name: 'staff-announcements',
+    component: () => import('@/pages/staff/OrgCommunicationArchive.vue'),
+    meta: { layout: 'staff' }
+  },
+  {
+    path: '/staff/analytics',
+    name: 'staff-analytics-hub',
+    component: () => import('@/pages/staff/analytics/AnalyticsHub.vue'),
+    meta: { layout: 'staff' }
+  },
 	{ path: '/staff/analytics/inquiry', name: 'staff-inquiry-analytics', component: () => import('@/pages/staff/analytics/InquiryAnalytics.vue'), meta: { layout: 'staff' } },
 ]
 

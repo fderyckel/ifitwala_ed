@@ -108,66 +108,42 @@
 	</Dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { Dialog, Button, FeatherIcon } from 'frappe-ui'
+import type { InteractionSummary } from '@/types/morning_brief'
 
 defineOptions({
 	inheritAttrs: false
 })
 
-const props = defineProps({
-	modelValue: {
-		type: Boolean,
-		required: true
-	},
-	title: {
-		type: String,
-		default: ''
-	},
-	subtitle: {
-		type: String,
-		default: ''
-	},
-	content: {
-		type: String,
-		default: ''
-	},
-	image: {
-		type: String,
-		default: ''
-	},
-	imageFallback: {
-		type: String,
-		default: ''
-	},
-	badge: {
-		type: String,
-		default: ''
-	},
-	interaction: {
-		type: Object,
-		default: () => ({ counts: {}, self: null })
-	},
-	showInteractions: {
-		type: Boolean,
-		default: false
-	}
-})
+const props = defineProps<{
+	modelValue: boolean
+	title?: string
+	subtitle?: string
+	content?: string
+	image?: string
+	imageFallback?: string
+	badge?: string
+	interaction?: InteractionSummary
+	showInteractions?: boolean
+}>()
 
 const emit = defineEmits(['update:modelValue', 'acknowledge', 'open-comments'])
 
-const isOpen = computed({
+const isOpen = computed<boolean>({
 	get: () => props.modelValue,
 	set: (value) => emit('update:modelValue', value)
 })
 
-const dialogOptions = {
+const interaction = computed<InteractionSummary>(() => props.interaction ?? { counts: {}, self: null })
+
+const dialogOptions: { size: 'xl'; title: null } = {
 	size: 'xl',
 	title: null
 }
 
-const cleanedContent = computed(() => {
+const cleanedContent = computed<string>(() => {
 	if (!props.content) return ''
 	if (!props.subtitle) return props.content
 
@@ -175,7 +151,7 @@ const cleanedContent = computed(() => {
 	return props.content.replace(pattern, '').trim()
 })
 
-function escapeRegExp(string) {
-	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+function escapeRegExp(str: string): string {
+	return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 </script>
