@@ -33,21 +33,21 @@
         Filters
       </div>
 
-      <!-- School -->
-      <FormControl
-        v-if="schoolOptions.length > 1"
-        type="select"
-        :options="schoolOptions"
-        v-model="filters.school"
-        class="w-40"
-      />
-
       <!-- Organization -->
       <FormControl
         v-if="organizationOptions.length > 1"
         type="select"
         :options="organizationOptions"
         v-model="filters.organization"
+        class="w-40"
+      />
+
+      <!-- School -->
+      <FormControl
+        v-if="schoolOptions.length > 1"
+        type="select"
+        :options="schoolOptions"
+        v-model="filters.school"
         class="w-40"
       />
 
@@ -418,10 +418,30 @@ const archiveContext = createResource({
             myTeam.value = data.my_team
             // Groups come as list of strings
             myStudentGroups.value = (data.my_groups || []).map((g: string) => ({ label: g, value: g }))
-            // Schools
-            schoolOptions.value = [{ label: 'All Schools', value: 'All' }, ...(data.schools || []).map((s: any) => ({ label: s.school_name, value: s.name }))]
-            // Organizations
-            organizationOptions.value = [{ label: 'All Organizations', value: 'All' }, ...(data.organizations || []).map((o: any) => ({ label: o.name, value: o.name }))]
+            // Defaults
+            if (data.defaults) {
+                if (data.defaults.school && data.defaults.school !== 'All') filters.school = data.defaults.school
+                if (data.defaults.organization && data.defaults.organization !== 'All') filters.organization = data.defaults.organization
+                if (data.defaults.team && data.defaults.team !== 'All') filters.team = data.defaults.team
+            }
+            
+            // Allow "All" option if multiple choices available, else enforce strict single choice?
+            // "User can only select that school..." -> If list has 1 item, it's auto-selected by default logic usually?
+            // Let's ensure if current filter value is not in options (e.g. 'All'), we switch to first option IF 'All' is not valid.
+            // But we added 'All' to options manually. 
+            // "Then user can only select that school or one of its children." 
+            // This implies 'All Schools' (Global) is NOT allowed if I am restricted. 
+            // So if I have restriction, I shouldn't see 'All Schools' option unless 'All' means 'All My Allowed Schools'.
+            // In backend `get_org_communication_feed`, `school=All` means no filter? Or just strictly my allowed scope?
+            // Backend currently: `if school and school != "All": school = ...`
+            // If I send "All", backend checks permissions? 
+            // `get_org_communication_feed` relies on `check_audience_match`.
+            // `check_audience_match` checks if user is in audience. 
+            // If I filter by "All", I see everything I am audience of. 
+            // If I am strictly bound to School A, I shouldn't see School B stuff anyway.
+            // So 'All' acts as "All I can see". This is fine.
+            // BUT, user asked for "Organization filter should be default...".
+            // So we set defaults.
         }
     }
 })

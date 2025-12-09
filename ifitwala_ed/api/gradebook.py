@@ -210,7 +210,6 @@ def get_task_gradebook(task: str) -> Dict[str, Any]:
 			"status",
 			"complete",
 			"mark_awarded",
-			"total_mark",
 			"feedback",
 			"visible_to_student",
 			"visible_to_guardian",
@@ -276,7 +275,6 @@ def get_task_gradebook(task: str) -> Dict[str, Any]:
 				"status": row.status,
 				"complete": int(row.complete or 0),
 				"mark_awarded": flt(row.mark_awarded) if row.mark_awarded is not None else None,
-				"total_mark": flt(row.total_mark) if row.total_mark is not None else None,
 				"feedback": row.feedback,
 				"visible_to_student": int(row.visible_to_student or 0),
 				"visible_to_guardian": int(row.visible_to_guardian or 0),
@@ -326,7 +324,6 @@ def update_task_student(task_student: str, updates: Dict[str, Any]) -> Dict[str,
 	allowed_fields = {
 		"status",
 		"mark_awarded",
-		"total_mark",
 		"feedback",
 		"visible_to_student",
 		"visible_to_guardian",
@@ -340,14 +337,14 @@ def update_task_student(task_student: str, updates: Dict[str, Any]) -> Dict[str,
 		value = updates[field]
 		if field in {"visible_to_student", "visible_to_guardian", "complete"}:
 			value = int(value or 0)
-		if field in {"mark_awarded", "total_mark"}:
+		if field in {"mark_awarded"}:
 			value = flt(value) if value is not None else None
 		if getattr(doc, field) != value:
 			setattr(doc, field, value)
 			changed = True
 
-	if "mark_awarded" in updates and "total_mark" not in updates:
-		doc.total_mark = doc.mark_awarded
+	# In points mode, mark_awarded is the canonical numeric grade.
+	# We no longer maintain a separate total_mark column.
 
 	doc.updated_on = now_datetime().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -357,7 +354,8 @@ def update_task_student(task_student: str, updates: Dict[str, Any]) -> Dict[str,
 	return {
 		"task_student": doc.name,
 		"mark_awarded": doc.mark_awarded,
-		"total_mark": doc.total_mark,
+		# Backwards-compat for existing Vue: echo mark_awarded as total_mark
+		"total_mark": doc.mark_awarded,
 		"status": doc.status,
 		"feedback": doc.feedback,
 		"visible_to_student": doc.visible_to_student,

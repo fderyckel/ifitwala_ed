@@ -135,7 +135,6 @@ class Task(Document):
 			frappe.throw(_("Due Date is required when a Task is Published or Open."))
 
 	# --- add inside Task class in task.py ---
-
 	def _grading_has_started(self) -> bool:
 		"""
 		Return True if there is any meaningful grading activity:
@@ -145,7 +144,6 @@ class Task(Document):
 		# Check Task Student rows
 		for row in (self.get("task_student") or []):
 			if (row.get("mark_awarded") not in (None, "")) \
-				or (row.get("total_mark") not in (None, "")) \
 				or (row.get("feedback") or "").strip() \
 				or (row.get("complete") or 0) \
 				or (row.get("visible_to_student") or 0) \
@@ -168,6 +166,7 @@ class Task(Document):
 				return True
 
 		return False
+
 
 	def _validate_criteria_weighting(self):
 		"""Ensure Task.assessment_criteria weightings are sensible."""
@@ -198,10 +197,13 @@ class Task(Document):
 					indicator="orange"
 				)
 
+
 	def _enforce_points_only_bounds(self):
 		"""
-		If the Task has NO criteria, clamp each Task Student's total_mark / mark_awarded:
-			0 ≤ value ≤ max_points (if max_points > 0), otherwise prevent negatives only.
+		If the Task has NO criteria, clamp each Task Student.mark_awarded:
+
+			0 ≤ mark_awarded ≤ max_points (if max_points > 0),
+		otherwise prevent negatives only.
 
 		Important: do NOT auto-fill empty marks with 0.0 - we only clamp values the
 		teacher has actually entered.
@@ -218,21 +220,24 @@ class Task(Document):
 			except Exception:
 				return val  # if it's not numeric, leave it as-is
 			if cap > 0:
-				if v < 0: return 0.0
-				if v > cap: return cap
+				if v < 0:
+					return 0.0
+				if v > cap:
+					return cap
 				return v
 			# no cap set -> just prevent negatives
 			return 0.0 if v < 0 else v
 
 		for row in (self.get("task_student") or []):
-			for fieldname in ("total_mark", "mark_awarded"):
-				raw = row.get(fieldname)
-				# Only clamp if there is actually something entered
-				if raw in (None, ""):
-					continue
-				new_val = clamp(raw)
-				if new_val != raw:
-					setattr(row, fieldname, new_val)
+			raw = row.get("mark_awarded")
+			# Only clamp if there is actually something entered
+			if raw in (None, ""):
+				continue
+			new_val = clamp(raw)
+			if new_val != raw:
+				setattr(row, "mark_awarded", new_val)
+
+
 
 	def _enforce_criteria_bounds_and_rollup(self):
 		"""
@@ -408,12 +413,6 @@ class Task(Document):
 			# In Progress conditions (work started but not finalized)
 			elif has_criteria and (row.get("student") in rubric_by_student):
 				# Criteria-based task: rubric edits without final grade
-				new_status = "In Progress"
-			elif not has_criteria and (
-				row.get("total_mark") not in (None, "")
-				and row.get("mark_awarded") in (None, "")
-			):
-				# Points-only: teacher started scoring in total_mark but hasn't finalized mark_awarded
 				new_status = "In Progress"
 
 			else:
@@ -685,120 +684,122 @@ def _prefill_task_rubrics(task_doc) -> dict:
 
 	return {"created": created, "students": len(students), "criteria": len(crit_ids)}
 
+
 def _recompute_student_totals(task: str, student: str) -> None:
-    """Roll up Task Criterion Score rows for (task, student) into Task Student.
+	"""Roll up Task Criterion Score rows for (task, student) into Task Student.
 
-    Behaviour:
-    - If any criteria on the Task have criteria_weighting > 0 -> use weighted percentage.
-    - Otherwise, use a simple unweighted sum of level_points / criteria_max_points.
-    - Writes numeric totals into:
-        - total_mark (Float)
-        - out_of (Float)
-        - pct (Percent)
-    """
+	Behaviour (criteria mode only):
+	- If any criteria on the Task have criteria_weighting > 0 -> use weighted percentage.
+	- Otherwise, use a simple unweighted sum of level_points / criteria_max_points.
+	- Writes numeric totals into:
+	    - mark_awarded (Float)  ← canonical numeric grade
+	    - out_of (Float)
+	    - pct (Percent)
+	"""
 
-    task_doc = frappe.get_doc("Task", task)
+	task_doc = frappe.get_doc("Task", task)
 
-    # Build a snapshot dict from Task.assessment_criteria (no extra lookups per score row)
-    crit_meta = {}
-    for r in (task_doc.get("assessment_criteria") or []):
-        if not r.assessment_criteria:
-            continue
-        crit_meta[r.assessment_criteria] = {
-            "maxp": float(r.get("criteria_max_points") or 0),
-            "w": float(r.get("criteria_weighting") or 0),
-        }
+	# Build a snapshot dict from Task.assessment_criteria (no extra lookups per score row)
+	crit_meta = {}
+	for r in (task_doc.get("assessment_criteria") or []):
+		if not getattr(r, "assessment_criteria", None):
+			continue
+		crit_meta[r.assessment_criteria] = {
+			"maxp": float(getattr(r, "criteria_max_points", 0) or 0),
+			"w": float(getattr(r, "criteria_weighting", 0) or 0),
+		}
 
-    # Fetch this student's rubric rows
-    rows = frappe.get_all(
-        "Task Criterion Score",
-        filters={"parent": task, "parenttype": "Task", "student": student},
-        fields=["assessment_criteria", "level_points"],
-    )
+	# Fetch this student's rubric rows
+	rows = frappe.get_all(
+		"Task Criterion Score",
+		filters={"parent": task, "parenttype": "Task", "student": student},
+		fields=["assessment_criteria", "level_points"],
+	)
 
-    # If no rubric rows: reset totals to clean state
-    if not rows:
-        ts = frappe.get_all(
-            "Task Student",
-            filters={"parent": task, "parenttype": "Task", "student": student},
-            fields=["name"],
-            limit=1,
-        )
-        if ts:
-            frappe.db.set_value(
-                "Task Student",
-                ts[0]["name"],
-                {
-                    "total_mark": 0.0,
-                    "out_of": 0.0,
-                    "pct": None,
-                    "updated_on": now_datetime(),
-                },
-                update_modified=False,
-            )
-        return
+	# If no rubric rows: reset totals to a clean state
+	if not rows:
+		ts = frappe.get_all(
+			"Task Student",
+			filters={"parent": task, "parenttype": "Task", "student": student},
+			fields=["name"],
+			limit=1,
+		)
+		if ts:
+			frappe.db.set_value(
+				"Task Student",
+				ts[0]["name"],
+				{
+					"mark_awarded": 0.0,
+					"out_of": 0.0,
+					"pct": None,
+					"updated_on": now_datetime(),
+				},
+				update_modified=False,
+			)
+		return
 
-    # Decide whether to use weighting or not
-    use_weighting = any(
-        (crit_meta.get(r["assessment_criteria"], {}).get("w", 0) or 0) > 0
-        for r in rows
-    )
+	# Decide whether to use weighting or not
+	use_weighting = any(
+		(crit_meta.get(r["assessment_criteria"], {}).get("w", 0) or 0) > 0
+		for r in rows
+	)
 
-    if use_weighting:
-        # Weighted percentage: sum over criteria of (score/max * weight)
-        pct = 0.0
-        for r in rows:
-            meta = crit_meta.get(r["assessment_criteria"], {})
-            cmax = meta.get("maxp", 0.0) or 0.0
-            w = (meta.get("w", 0.0) or 0.0) / 100.0
+	if use_weighting:
+		# Weighted percentage: sum over criteria of (score / max * weight)
+		pct = 0.0
+		for r in rows:
+			meta = crit_meta.get(r["assessment_criteria"], {})
+			cmax = meta.get("maxp", 0.0) or 0.0
+			w = (meta.get("w", 0.0) or 0.0) / 100.0
 
-            try:
-                lp = float(r.get("level_points") or 0.0)
-            except Exception:
-                lp = 0.0
+			try:
+				lp = float(r.get("level_points") or 0.0)
+			except Exception:
+				lp = 0.0
 
-            if cmax > 0 and w > 0:
-                pct += (lp / cmax) * w
+			if cmax > 0 and w > 0:
+				pct += (lp / cmax) * w
 
-        pct *= 100.0
-        out_of = float(task_doc.max_points or 0.0)
-        total = (pct * out_of / 100.0) if out_of > 0 else 0.0
+		pct *= 100.0
+		out_of = float(task_doc.max_points or 0.0)
+		total = (pct * out_of / 100.0) if out_of > 0 else 0.0
 
-    else:
-        # Unweighted: sum the raw level_points, and sum caps for out_of
-        total = 0.0
-        out_of = 0.0
+	else:
+		# Unweighted: sum the raw level_points, and sum caps for out_of
+		total = 0.0
+		out_of = 0.0
 
-        for r in rows:
-            meta = crit_meta.get(r["assessment_criteria"], {})
-            try:
-                lp = float(r.get("level_points") or 0.0)
-            except Exception:
-                lp = 0.0
+		for r in rows:
+			meta = crit_meta.get(r["assessment_criteria"], {})
+			try:
+				lp = float(r.get("level_points") or 0.0)
+			except Exception:
+				lp = 0.0
 
-            total += lp
-            out_of += float(meta.get("maxp") or 0.0)
+			total += lp
+			out_of += float(meta.get("maxp") or 0.0)
 
-        pct = (total / out_of * 100.0) if out_of > 0 else None
+		pct = (total / out_of * 100.0) if out_of > 0 else None
 
-    ts = frappe.get_all(
-        "Task Student",
-        filters={"parent": task, "parenttype": "Task", "student": student},
-        fields=["name"],
-        limit=1,
-    )
-    if ts:
-        frappe.db.set_value(
-            "Task Student",
-            ts[0]["name"],
-            {
-                "total_mark": total,
-                "out_of": out_of,
-                "pct": pct,
-                "updated_on": now_datetime(),
-            },
-            update_modified=False,
-        )
+	ts = frappe.get_all(
+		"Task Student",
+		filters={"parent": task, "parenttype": "Task", "student": student},
+		fields=["name"],
+		limit=1,
+	)
+	if ts:
+		frappe.db.set_value(
+			"Task Student",
+			ts[0]["name"],
+			{
+				"mark_awarded": total,
+				"out_of": out_of,
+				"pct": pct,
+				"updated_on": now_datetime(),
+			},
+			update_modified=False,
+		)
+
 
 
 @frappe.whitelist()
@@ -968,51 +969,31 @@ def get_criterion_scores_for_student(task: str, student: str) -> Dict:
 	)
 	return {"rows": rows}
 
+
 @frappe.whitelist()
 def apply_rubric_to_awarded(task: str, students: List[str]) -> Dict:
-    """Set mark_awarded = total_mark for each selected student.
+	"""Recompute rubric rollup for each selected student and apply it to mark_awarded.
 
-    Behaviour:
-    - If total_mark is None/empty: use 0.0.
-    - total_mark is now a Float field on Task Student; we treat it as numeric.
-    """
+	Behaviour:
+	- For each student in the list, recompute mark_awarded / out_of / pct from rubric.
+	- Returns {"updated": <count>} – number of students processed.
+	"""
 
-    if not (task and isinstance(students, list) and students):
-        frappe.throw(_("Task and a non-empty students list are required."))
+	if not (task and isinstance(students, list) and students):
+		frappe.throw(_("Task and a non-empty students list are required."))
 
-    frappe.only_for(("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager"))
-    frappe.has_permission(doctype="Task", doc=task, ptype="write", throw=True)
+	frappe.only_for(("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager"))
+	frappe.has_permission(doctype="Task", doc=task, ptype="write", throw=True)
 
-    updated = 0
+	updated = 0
 
-    for student in students:
-        row = frappe.get_all(
-            "Task Student",
-            filters={"parent": task, "parenttype": "Task", "student": student},
-            fields=["name", "total_mark"],
-            limit=1,
-        )
-        if not row:
-            continue
+	for student in students:
+		_recompute_student_totals(task, student)
+		updated += 1
 
-        raw_val = row[0].get("total_mark")
+	return {"updated": updated}
 
-        # total_mark is Float; treat None/empty as 0.0, otherwise coerce
-        try:
-            val = float(raw_val) if raw_val not in (None, "") else 0.0
-        except Exception:
-            val = 0.0
 
-        frappe.db.set_value(
-            "Task Student",
-            row[0]["name"],
-            "mark_awarded",
-            val,
-            update_modified=False,
-        )
-        updated += 1
-
-    return {"updated": updated}
 
 @frappe.whitelist()
 def prefill_task_rubrics(task: str):

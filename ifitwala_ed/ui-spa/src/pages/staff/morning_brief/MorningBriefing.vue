@@ -1026,20 +1026,30 @@ function getPriorityClasses(priority: OrgPriority): string {
 
 function formatBirthday(dateStr: string | null | undefined): string {
 	if (!dateStr) return ''
+
+	// Parse ISO date from backend (YYYY-MM-DD)
 	const date = new Date(dateStr)
+
 	const day = date.getDate()
-	const month = date.toLocaleString('default', { month: 'long' })
+
+	// Force English month name; Gregorian calendar
+	const month = date.toLocaleString('en-US', { month: 'long' })
 
 	const suffix = (value: number) => {
 		if (value > 3 && value < 21) return 'th'
 		switch (value % 10) {
-			case 1: return 'st'
-			case 2: return 'nd'
-			case 3: return 'rd'
-			default: return 'th'
+			case 1:
+				return 'st'
+			case 2:
+				return 'nd'
+			case 3:
+				return 'rd'
+			default:
+				return 'th'
 		}
 	}
 
 	return `${day}${suffix(day)} ${month}`
 }
+
 </script>

@@ -9,33 +9,68 @@ from ifitwala_ed.api.org_comm_utils import check_audience_match
 def get_archive_context():
     """Returns context data for the archive page filters."""
     user = frappe.session.user
-    employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "department"], as_dict=True)
+    employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "organization", "department"], as_dict=True)
     
     data = {
         "my_team": None,
         "my_groups": [],
-        "schools": [],
-        "organizations": [] # If needed
+        "schools": [], # Options
+        "organizations": [], # Options
+        "defaults": { # Pre-select these
+            "school": "All",
+            "organization": "All",
+            "team": "All"
+        }
     }
     
     if employee:
         data["my_team"] = employee.department
-        
+        if employee.department:
+             data["defaults"]["team"] = employee.department
+             
+        # Defaults
+        if employee.organization:
+             data["defaults"]["organization"] = employee.organization
+        if employee.school:
+             data["defaults"]["school"] = employee.school
+
         # Get Instructor Groups
         groups = frappe.get_all("Student Group Instructor", filters={"instructor": employee.name}, fields=["parent"])
         data["my_groups"] = sorted(list(set([g.parent for g in groups])))
         
-        # Get Schools (Current + Ancestors usually, or just All active schools?)
-        # Let's return all schools for the filter to be broad, but maybe user only cares about their scope.
-        # Design choice: Show all schools. 
-        data["schools"] = frappe.get_all("School", fields=["name", "school_name"], order_by="school_name asc")
-        
-        # Get Organizations
-        try:
-            data["organizations"] = frappe.get_all("Organization", fields=["name"], order_by="name asc")
-        except:
-            data["organizations"] = []
-            
+        # Organizations: strictly limits to user's org if set? 
+        # User said: "The organization filter should be the default organization of the employee... Based on that the school filter should only be schools that depends of that organization"
+        # If user has an Org, they might only see that Org? Or strict hierarchy?
+        # Let's assume if Employee has Org, they are bound to it. If not, they see all.
+        if employee.organization:
+             data["organizations"] = [{"name": employee.organization}]
+             # Also allow fetching children orgs if Organization is a tree? 
+             # Assuming flat or simple for now unless specified.
+             # Actually, if they are at Org level they might oversee sub-orgs? 
+             # Let's check if Organization matches strictness. "The organization filter should be the defautl organization of the employee".
+             # Implies pre-selection. Does it imply restriction? "Then user can only select that school or one of its children."
+             # For now, restrict Org list to just the employee's org to be safe/strict as requested.
+        else:
+             try:
+                data["organizations"] = frappe.get_all("Organization", fields=["name"], order_by="name asc")
+             except:
+                data["organizations"] = []
+
+        # Schools: Strict hierarchy
+        # "User can only select that school or one of its children"
+        if employee.school:
+            # Use school_tree utility
+            from ifitwala_ed.utilities.school_tree import get_descendant_schools
+            allowed_schools = get_descendant_schools(employee.school)
+            # Fetch names
+            data["schools"] = frappe.get_all("School", filters={"name": ["in", allowed_schools]}, fields=["name", "school_name"], order_by="school_name asc")
+        elif employee.organization:
+             # If no school but has Org, show schools in that Org
+             data["schools"] = frappe.get_all("School", filters={"organization": employee.organization}, fields=["name", "school_name"], order_by="school_name asc")
+        else:
+             # Fallback (System Manager or unassigned)
+             data["schools"] = frappe.get_all("School", fields=["name", "school_name"], order_by="school_name asc")
+
     return data
 
 @frappe.whitelist()
