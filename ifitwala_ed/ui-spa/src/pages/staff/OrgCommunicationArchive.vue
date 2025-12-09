@@ -35,7 +35,7 @@
 
       <!-- Organization -->
       <FormControl
-        v-if="organizationOptions.length > 1"
+        v-if="organizationOptions.length > 0"
         type="select"
         :options="organizationOptions"
         v-model="filters.organization"
@@ -44,7 +44,7 @@
 
       <!-- School -->
       <FormControl
-        v-if="schoolOptions.length > 1"
+        v-if="schoolOptions.length > 0"
         type="select"
         :options="schoolOptions"
         v-model="filters.school"

@@ -1026,12 +1026,11 @@ function getPriorityClasses(priority: OrgPriority): string {
 function formatBirthday(dateStr: string | null | undefined): string {
 	if (!dateStr) return ''
 
-	// Parse ISO date from backend (YYYY-MM-DD)
+	// Parsed in local time; we only care about day + month, not year
 	const date = new Date(dateStr)
-
 	const day = date.getDate()
 
-	// Force English month name; Gregorian calendar
+	// Force Gregorian month names, ignore Thai/Buddhist locale
 	const month = date.toLocaleString('en-US', { month: 'long' })
 
 	const suffix = (value: number) => {
@@ -1050,5 +1049,6 @@ function formatBirthday(dateStr: string | null | undefined): string {
 
 	return `${day}${suffix(day)} ${month}`
 }
+
 
 </script>
