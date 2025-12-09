@@ -707,7 +707,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { createResource, FeatherIcon, call } from 'frappe-ui'
+import { createResource, FeatherIcon, call, toast } from 'frappe-ui'
 import ContentDialog from '@/components/ContentDialog.vue'
 import GenericListDialog from '@/components/GenericListDialog.vue'
 import HistoryDialog from '@/components/HistoryDialog.vue'
@@ -902,7 +902,13 @@ function getInteractionFor(item: Announcement): InteractionSummary {
 }
 
 function openInteractionThread(item: Announcement): void {
-	if (!canComment(item)) return
+	if (!canComment(item)) {
+		toast({
+			appearance: 'warning',
+			message: 'Comments are disabled for this announcement.'
+		})
+		return
+	}
 	activeCommunication.value = item
 	showInteractionDrawer.value = true
 
