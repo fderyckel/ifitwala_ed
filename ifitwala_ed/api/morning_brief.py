@@ -47,7 +47,7 @@ def get_briefing_widgets():
 	# Admin: 30-day trend
 	if "Academic Admin" in roles or "System Manager" in roles or "Academic Assistant" in roles:
 		widgets["attendance_trend"] = get_attendance_trend(user)
-	
+
 	# Instructor: My absent students today
 	if "Instructor" in roles:
 		if my_groups: # Re-use my_groups from Section 4
@@ -124,7 +124,7 @@ def get_clinic_activity():
 	"""Count of Student Patient Visits for the last 3 days."""
 	user = frappe.session.user
 	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
-	
+
 	filters = {"docstatus": 1}
 	if employee and employee.school:
 		filters["school"] = employee.school
@@ -154,13 +154,13 @@ def get_critical_incidents_count():
 	"""Count of Open logs marked as 'Requires Follow Up'."""
 	user = frappe.session.user
 	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
-	
+
 	filters = {
 		"requires_follow_up": 1,
 		"follow_up_status": "Open",
 		"docstatus": 1
 	}
-	
+
 	if employee and employee.school:
 		filters["school"] = employee.school
 
@@ -285,33 +285,46 @@ def get_staff_birthdays():
 	"""
 	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
 
+
 def get_my_student_birthdays(group_names):
 	"""
-	Active students in my groups with birthdays today or next 3 days.
+	Active students in my groups with birthdays within +/- 5 days of today.
+	Handles year wrap-around (e.g. Dec 30 -> Jan 4).
 	"""
-	if not group_names: return []
+	if not group_names:
+		return []
+
 	groups_formatted = "', '".join(group_names)
 
-	start_md = formatdate(add_days(today(), -4), "MM-dd")
-	end_md = formatdate(add_days(today(), 4), "MM-dd")
+	# +/- 5 days window
+	start_md = formatdate(add_days(today(), -5), "MM-dd")
+	end_md = formatdate(add_days(today(), 5), "MM-dd")
 
-	condition = "DATE_FORMAT(s.date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
+	condition = "DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
 	if start_md > end_md:
-		condition = "(DATE_FORMAT(s.date_of_birth, '%%m-%%d') >= %s OR DATE_FORMAT(s.date_of_birth, '%%m-%%d') <= %s)"
+		# Year wrap-around (e.g. Dec 29 → Jan 3)
+		condition = (
+			"(DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') >= %s "
+			"OR DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') <= %s)"
+		)
 
 	sql = f"""
 		SELECT DISTINCT
-			s.first_name, s.last_name, s.student_photo as image,
-			s.date_of_birth
+			s.student_first_name AS first_name,
+			s.student_last_name AS last_name,
+			s.student_image AS image,
+			s.student_date_of_birth AS date_of_birth
 		FROM `tabStudent Group Student` sgs
 		INNER JOIN `tabStudent` s ON sgs.student = s.name
 		WHERE sgs.parent IN ('{groups_formatted}')
-		AND sgs.active = 1
-		AND s.date_of_birth IS NOT NULL
-		AND {condition}
-		ORDER BY DATE_FORMAT(s.date_of_birth, '%%%%m-%%%%d') ASC
+			AND sgs.active = 1
+			AND s.student_date_of_birth IS NOT NULL
+			AND {condition}
+		ORDER BY DATE_FORMAT(s.student_date_of_birth, '%%%%m-%%%%d') ASC
 	"""
+
 	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+
 
 
 # ==============================================================================
@@ -333,8 +346,8 @@ def get_attendance_trend(user):
 	# Count absences (where count_as_present = 0)
 	# We group by date.
 	sql = """
-		SELECT 
-			sa.attendance_date as date, 
+		SELECT
+			sa.attendance_date as date,
 			COUNT(*) as count
 		FROM `tabStudent Attendance` sa
 		INNER JOIN `tabStudent Attendance Code` sac ON sa.attendance_code = sac.name
@@ -345,17 +358,17 @@ def get_attendance_trend(user):
 		GROUP BY sa.attendance_date
 		ORDER BY sa.attendance_date ASC
 	"""
-	
+
 	results = frappe.db.sql(sql, (employee.school, start_date, end_date), as_dict=True)
-	
+
 	# Fill in missing dates with 0
 	# Create a dictionary of existing data
 	data_map = {getdate(r.date): r.count for r in results}
-	
+
 	final_data = []
 	current_date = getdate(start_date)
 	target_date = getdate(end_date)
-	
+
 	while current_date <= target_date:
 		# Format date as string for frontend? Or keep as object?
 		# Frontend expects string usually, but let's match previous format if any.
@@ -365,7 +378,7 @@ def get_attendance_trend(user):
 		count = data_map.get(current_date, 0)
 		final_data.append({"date": d_str, "count": count})
 		current_date = add_days(current_date, 1)
-		
+
 	return final_data
 
 def get_my_absent_students(group_names):
@@ -374,15 +387,15 @@ def get_my_absent_students(group_names):
 	"""
 	if not group_names: return []
 	groups_formatted = "', '".join(group_names)
-	
+
 	# We want students in these groups who have an attendance record TODAY
 	# with a code that counts as absent.
-	
+
 	sql = f"""
-		SELECT 
-			sa.student_name, 
-			sa.attendance_code, 
-			sa.student_group, 
+		SELECT
+			sa.student_name,
+			sa.attendance_code,
+			sa.student_group,
 			sa.remark,
 			s.student_photo,
 			sac.color as status_color
@@ -394,8 +407,8 @@ def get_my_absent_students(group_names):
 		AND sa.docstatus = 1
 		AND sac.count_as_present = 0
 	"""
-	
-	
+
+
 	return frappe.db.sql(sql, as_dict=True)
 
 @frappe.whitelist()
@@ -405,13 +418,13 @@ def get_critical_incidents_details():
 	"""
 	user = frappe.session.user
 	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
-	
+
 	filters = {
 		"requires_follow_up": 1,
 		"follow_up_status": "Open",
 		"docstatus": 1
 	}
-	
+
 	if employee and employee.school:
 		filters["school"] = employee.school
 
@@ -420,12 +433,12 @@ def get_critical_incidents_details():
 		fields=["name", "student_name", "student_photo", "log_type", "date", "log"],
 		order_by="date desc, creation desc"
 	)
-	
+
 	for l in logs:
 		l.date_display = formatdate(l.date, "dd-MMM")
 		raw_text = strip_html(l.log or "")
 		l.snippet = (raw_text[:100] + '...') if len(raw_text) > 100 else raw_text
-		
+
 	return logs
 
 @frappe.whitelist()
@@ -436,24 +449,24 @@ def get_clinic_visits_trend(time_range="1M"):
 	"""
 	user = frappe.session.user
 	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
-	
+
 	# Default to user's school, or global if no school assigned (unlikely for staff)
 	school_filter = {}
 	if employee and employee.school:
 		school_filter = {"school": employee.school}
-		
+
 	end_date = today()
 	start_date = add_days(end_date, -30) # Default 1M
-	
+
 	if time_range == "3M":
 		start_date = add_days(end_date, -90)
 	elif time_range == "6M":
 		start_date = add_days(end_date, -180)
 	elif time_range == "YTD":
-		# Academic year start? Or calendar year? Let's assume Academic Year starts Aug 1st? 
+		# Academic year start? Or calendar year? Let's assume Academic Year starts Aug 1st?
 		# Or just Calendar Year for now as requested "the year so far".
 		# Let's use Calendar Year Jan 1st for simplicity unless Academic Year is standard.
-		# User said "based on academic year". 
+		# User said "based on academic year".
 		# Let's try to find the current Academic Year.
 		academic_year = frappe.db.get_value("Academic Year", {"current": 1}, "year_start_date")
 		if academic_year:
@@ -465,7 +478,7 @@ def get_clinic_visits_trend(time_range="1M"):
 
 	# Fetch data
 	school_condition = "AND school = %(school)s" if school_filter else ""
-	
+
 	sql = f"""
 		SELECT date, COUNT(*) as count
 		FROM `tabStudent Patient Visit`
@@ -481,14 +494,14 @@ def get_clinic_visits_trend(time_range="1M"):
 		"start_date": start_date,
 		"end_date": end_date
 	}, as_dict=True)
-	
+
 	# Fill gaps? Charts usually handle gaps, but filling with 0 is safer for line charts.
 	data_map = {getdate(v.date): v.count for v in visits}
 	final_data = []
-	
+
 	curr = getdate(start_date)
 	end = getdate(end_date)
-	
+
 	while curr <= end:
 		d_str = formatdate(curr, "yyyy-mm-dd")
 		final_data.append({
@@ -496,7 +509,7 @@ def get_clinic_visits_trend(time_range="1M"):
 			"count": data_map.get(curr, 0)
 		})
 		curr = add_days(curr, 1)
-		
+
 	return {
 		"data": final_data,
 		"school": employee.school if employee else "All Schools",
