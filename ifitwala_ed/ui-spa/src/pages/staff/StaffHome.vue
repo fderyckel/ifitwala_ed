@@ -323,10 +323,10 @@ const quickActions = [
 /* ANALYTICS ---------------------------------------------------- */
 const analyticsQuickLinks = [
   {
-    label: 'Daily Attendance Pulse',
-    caption: 'Morning attendance and late arrivals at a glance',
+    label: 'Annoucement Archive',
+    caption: 'Check all current and past announcements',
     icon: 'activity',
-    to: '/analytics/operations/daily-attendance',
+    to: '/announcements',
     badge: 'Hot',
   },
   {

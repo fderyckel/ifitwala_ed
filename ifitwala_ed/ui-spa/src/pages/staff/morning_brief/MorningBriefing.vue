@@ -238,7 +238,10 @@
 										{{ item.type }}
 									</span>
 								</div>
-								<p class="mt-1 text-xs text-slate-token/80 line-clamp-2" v-html="item.content"></p>
+								<p
+							class="mt-1 text-xs text-slate-token/80 line-clamp-4 md:line-clamp-5"
+							v-html="item.content"
+						></p>
 
 								<!-- Interaction summary for each announcement (staff comments only) -->
 								<div
@@ -811,8 +814,6 @@ const viewModes = [
 ] as const
 type ViewMode = (typeof viewModes)[number]['value']
 const viewMode = ref<ViewMode>('focus')
-const MAX_INLINE_ANNOUNCEMENTS = 4
-
 const spotlightIndex = ref(0)
 const spotlightAnnouncements = computed<Announcement[]>(() =>
 	(widgets.data?.announcements || []).filter((a) =>
@@ -854,10 +855,7 @@ const filteredAnnouncements = computed<Announcement[]>(() => {
 	return all
 })
 
-const limitedAnnouncements = computed<Announcement[]>(() => {
-	const all = filteredAnnouncements.value
-	return all.slice(0, MAX_INLINE_ANNOUNCEMENTS)
-})
+const limitedAnnouncements = computed<Announcement[]>(() => filteredAnnouncements.value)
 
 watch(
 	() => widgets.data?.announcements,

@@ -427,56 +427,15 @@ const studentGroupOptions = computed(() => {
 	return [{ label: 'All Groups', value: 'All' }, ...myStudentGroups.value]
 })
 
-// Resources
-const userContext = createResource({
-	url: 'frappe.client.get',
-	makeParams(values) {
-		return {
-			doctype: 'Employee',
-			filters: { user_id: 'frappe.session.user' }, // Session user is handled by backend usually, but here we filter by it
-			// Or better: use a custom method? 
-			// Let's use generic list if we can't find 'me'.
-			// Actually `frappe.auth.get_logged_user` returns email.
-			// Let's try standard list.
-		}
-	},
-	auto: true,
-	onSuccess(data) {
-		// This returns the doc if found? or list?
-		// frappe.client.get returns a single doc if name provided, or if filters unique.
-		// Wait, usage of frappe.client.get usually requires `name` or returns one doc.
-		// Let's assume we fetch Employee by user_id.
-		// BUT `frappe.client.get_value` is safer for single fields.
-	}
-})
 
-// Better approach to get context:
-const fetchContext = createResource({
-	url: 'frappe.call',
-	makeParams() {
-		return {
-			method: 'frappe.client.get_value',
-			args: {
-				doctype: 'Employee',
-				filters: { user_id: 'user_id_placeholder' }, // We'll patch this or use session
-				fieldname: ['department', 'name']
-			}
-		}
-	},
-    // We'll run this manually with correct user in onMounted or use a custom method.
-    // Actually, let's use list resource for ease.
-})
+
+
 
 const myEmployee = createResource({
     url: 'frappe.client.get_list',
     makeParams: () => ({
         doctype: 'Employee',
-        filters: { user_id: frappe.session.user }, // frappe-ui automatically replaces {user}? No.
-        // We rely on backend 'frappe.session.user'.
-        // But get_list doesn't filter by session user automatically unless permission restricted.
-        // Use a simpler call or assume we have a way.
-        // Let's use `frappe.call` to get user details?
-        // Or just `frappe.db.get_value` equivalent.
+        filters: { user_id: frappe?.session?.user },
         fields: ['department', 'name']
     }),
     auto: true,
