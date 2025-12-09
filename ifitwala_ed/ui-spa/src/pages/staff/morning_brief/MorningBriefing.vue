@@ -573,6 +573,7 @@
 			:interaction="activeCommunication ? getInteractionFor(activeCommunication) : { counts: {}, self: null }"
 			@acknowledge="activeCommunication && acknowledgeAnnouncement(activeCommunication)"
 			@open-comments="activeCommunication && openInteractionThread(activeCommunication)"
+			@react="activeCommunication && reactToAnnouncement(activeCommunication, $event)"
 		/>
 
 		<!-- ANNOUNCEMENT CENTER DIALOG -->
@@ -742,7 +743,8 @@ import {
 	type StudentLogItem,
 	type OrgPriority,
 	type InteractionSummary,
-	type StudentLogDetail
+	type StudentLogDetail,
+	type ReactionCode
 } from '@/types/morning_brief'
 
 interface DialogContent {
@@ -967,6 +969,22 @@ function submitComment(): void {
 			limit_page_length: 30
 		})
 
+		const list = widgets.data?.announcements || []
+		const comm_names = list.map((a) => a.name).filter(Boolean)
+		if (comm_names.length) {
+			interactionSummary.submit({ comm_names })
+		}
+	})
+}
+
+function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
+	if (!item?.name) return
+
+	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
+		org_communication: item.name,
+		reaction_code: reaction,
+		surface: ORG_SURFACES.MORNING_BRIEF
+	}).then(() => {
 		const list = widgets.data?.announcements || []
 		const comm_names = list.map((a) => a.name).filter(Boolean)
 		if (comm_names.length) {

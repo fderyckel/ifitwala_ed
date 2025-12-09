@@ -537,7 +537,7 @@ function acknowledge(item: OrgCommunicationListItem) {
     interactionAction.submit({
         org_communication: item.name,
         intent_type: 'Acknowledged',
-        surface: 'Staff Archive'
+        surface: 'Portal Feed'
     }, {
         onSuccess: () => {
             // refresh summary for this item 
@@ -570,7 +570,7 @@ function submitComment() {
         org_communication: selectedComm.value.name,
         intent_type: 'Comment', // or Question/etc depending on mode? Defaulting to Comment.
         note: newComment.value,
-        surface: 'Staff Archive'
+        surface: 'Portal Feed'
     }, {
         onSuccess: () => {
             newComment.value = ''

@@ -59,7 +59,7 @@
 
 				<div
 					v-if="showInteractions"
-					class="flex items-center justify-between border-t border-border/60 pt-3 text-[11px] text-slate-token/70"
+					class="flex flex-col gap-2 border-t border-border/60 pt-3 text-[11px] text-slate-token/70"
 				>
 					<div class="flex items-center gap-3">
 						<button
@@ -92,6 +92,20 @@
 					<div v-if="interaction.self" class="hidden text-[10px] text-jacaranda md:block">
 						You responded: {{ interaction.self.intent_type || 'Commented' }}
 					</div>
+
+					<div class="flex flex-wrap items-center gap-2 text-[11px]">
+						<span class="text-slate-token/60">Quick reactions:</span>
+						<button
+							v-for="item in reactions"
+							:key="item.code"
+							type="button"
+							class="inline-flex items-center gap-1 rounded-full border border-border/60 bg-white px-2 py-1 text-slate-token/80 transition hover:border-jacaranda/40 hover:text-jacaranda"
+							@click="$emit('react', item.code)"
+						>
+							<span>{{ item.icon }}</span>
+							<span class="font-medium">{{ item.label }}</span>
+						</button>
+					</div>
 				</div>
 
 				<div class="flex justify-end border-t border-border/70 pt-3">
@@ -109,7 +123,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Dialog, Button, FeatherIcon } from 'frappe-ui'
-import type { InteractionSummary } from '@/types/morning_brief'
+import type { InteractionSummary, ReactionCode } from '@/types/morning_brief'
 
 defineOptions({
 	inheritAttrs: false
@@ -127,7 +141,12 @@ const props = defineProps<{
 	showInteractions?: boolean
 }>()
 
-const emit = defineEmits(['update:modelValue', 'acknowledge', 'open-comments'])
+const emit = defineEmits<{
+	'update:modelValue': [boolean]
+	acknowledge: []
+	'open-comments': []
+	react: [ReactionCode]
+}>()
 
 const hasHeaderContent = computed<boolean>(() => !!(props.title || props.subtitle || props.image || props.imageFallback || props.badge))
 
@@ -144,4 +163,14 @@ const dialogOptions: { size: 'xl'; title: null } = {
 }
 
 const contentHtml = computed<string>(() => props.content || '')
+
+const reactions: Array<{ code: ReactionCode; label: string; icon: string }> = [
+	{ code: 'like', label: 'Like', icon: '👍' },
+	{ code: 'thank', label: 'Thanks', icon: '🙏' },
+	{ code: 'heart', label: 'Support', icon: '❤️' },
+	{ code: 'smile', label: 'Positive', icon: '😊' },
+	{ code: 'applause', label: 'Celebrate', icon: '👏' },
+	{ code: 'question', label: 'Question', icon: '❓' },
+	{ code: 'other', label: 'Other', icon: '💬' }
+]
 </script>
