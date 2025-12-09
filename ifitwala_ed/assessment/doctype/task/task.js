@@ -431,26 +431,27 @@ function has_any_criteria(frm) {
 
 
 function clamp_mark_awarded(frm, cdt, cdn) {
-	if (!frm.doc.points || frm.doc.criteria) return; // only pure points mode
+    // Clamp ONLY in points mode and ONLY when NOT using criteria
+    if (!frm.doc.points || frm.doc.criteria) return;
 
-	const cap = Number(frm.doc.max_points || 0);
-	const d = frappe.get_doc(cdt, cdn);
+    const cap = Number(frm.doc.max_points || 0);
+    const d = frappe.get_doc(cdt, cdn);
 
-	let v = Number(d.mark_awarded || 0);
-	if (Number.isNaN(v)) v = 0;
+    let v = Number(d.mark_awarded || 0);
+    if (Number.isNaN(v)) v = 0;
 
-	let clamped =
-		cap > 0 ? Math.min(Math.max(0, v), cap) : Math.max(0, v);
+    // Clamp between 0 and cap (cap may be 0 → allow only ≥0)
+    let clamped = cap > 0 ? Math.min(Math.max(0, v), cap) : Math.max(0, v);
 
-	if (clamped !== v) {
-		frappe.model.set_value(cdt, cdn, "mark_awarded", clamped);
-
-		frappe.show_alert({
-			message: __("Adjusted to stay within 0 and Max Points."),
-			indicator: "orange",
-		});
-	}
+    if (clamped !== v) {
+        frappe.model.set_value(cdt, cdn, "mark_awarded", clamped);
+        frappe.show_alert({
+            message: __("Adjusted to stay within 0 and Max Points."),
+            indicator: "orange"
+        });
+    }
 }
+
 
 
 function update_task_student_visibility(frm) {
@@ -488,199 +489,125 @@ function update_task_student_visibility(frm) {
 }
 
 
-
-
 function compute_status_preview(frm, row) {
-	// -------------------------------------
-	// 1) Visibility always overrides everything
-	// -------------------------------------
-	if (row.visible_to_student || row.visible_to_guardian) {
-		return "Returned";
-	}
 
-	const feedbackText = (row.feedback || "").trim();
-	const hasFeedback = feedbackText.length > 0;
-	const isComplete = !!row.complete;
+    // ------------------------------------
+    // 1. Returned always overrides everything
+    // ------------------------------------
+    if (row.visible_to_student || row.visible_to_guardian) {
+        return "Returned";
+    }
 
-	// -------------------------------------
-	// 2) BINARY MODE
-	// -------------------------------------
-	if (frm.doc.binary) {
-		// Only completion or feedback matters
-		if (isComplete || hasFeedback) return "Graded";
-		return "Assigned";
-	}
+    // Normalized common fields
+    const feedbackText = (row.feedback || "").trim();
+    const hasFeedback = feedbackText.length > 0;
+    const isComplete = !!row.complete;
 
-	// -------------------------------------
-	// 3) POINTS-ONLY MODE (NO CRITERIA)
-	// -------------------------------------
-	if (frm.doc.points && !frm.doc.criteria) {
-		let raw = row.mark_awarded;
-		let markNum =
-			raw === null || raw === undefined || raw === ""
-				? null
-				: Number(raw);
+    // ------------------------------------
+    // 2. BINARY MODE
+    // ------------------------------------
+    if (frm.doc.binary) {
+        if (isComplete || hasFeedback) return "Graded";
+        return "Assigned";
+    }
 
-		const hasMarkAwarded =
-			markNum !== null && !Number.isNaN(markNum);
+    // ------------------------------------
+    // 3. POINTS-ONLY MODE (no criteria)
+    // ------------------------------------
+    if (frm.doc.points && !frm.doc.criteria) {
+        let raw = row.mark_awarded;
+        let markNum = (raw === null || raw === "" || raw === undefined)
+            ? null
+            : Number(raw);
 
-		if (hasMarkAwarded || hasFeedback) return "Graded";
-		return "Assigned";
-	}
+        const hasMarkAwarded =
+            markNum !== null && !Number.isNaN(markNum);
 
-	// -------------------------------------
-	// 4) CRITERIA / RUBRIC MODE
-	// -------------------------------------
-	if (frm.doc.criteria) {
-		// All rubric rows for this student
-		const rubricRows = (frm.doc.task_criterion_score || []).filter(
-			r => r.student === row.student
-		);
+        if (hasMarkAwarded || hasFeedback)
+            return "Graded";
 
-		let hasRubric = false;
+        return "Assigned";
+    }
 
-		for (const r of rubricRows) {
-			const hasLevel = !!(r.level && String(r.level).trim());
-			const hasPoints = Number(r.level_points || 0) !== 0;
-			const hasRubricFeedback = (r.feedback || "").trim().length > 0;
+    // ------------------------------------
+    // 4. CRITERIA MODE (rubric-driven)
+    // ------------------------------------
+    if (frm.doc.criteria) {
+        // Collect rubric rows for this student
+        const rubricRows = (frm.doc.task_criterion_score || []).filter(
+            r => r.student === row.student
+        );
 
-			if (hasLevel || hasPoints || hasRubricFeedback) {
-				hasRubric = true;
-				break;
-			}
-		}
+        let hasRubricActivity = false;
 
-		if (hasRubric || hasFeedback) return "Graded";
-		return "Assigned";
-	}
+        for (const r of rubricRows) {
+            const hasLevel = !!(r.level && String(r.level).trim());
+            const hasPts = Number(r.level_points || 0) !== 0;
+            const hasRubricFeedback = (r.feedback || "").trim().length > 0;
 
-	// -------------------------------------
-	// 5) OBSERVATIONS-ONLY MODE
-	// -------------------------------------
-	if (frm.doc.observations) {
-		if (hasFeedback) return "Graded";
-		return "Assigned";
-	}
+            if (hasLevel || hasPts || hasRubricFeedback) {
+                hasRubricActivity = true;
+                break;
+            }
+        }
 
-	// -------------------------------------
-	// 6) DEFAULT FALLBACK → Assigned
-	// -------------------------------------
-	return "Assigned";
+        if (hasRubricActivity || hasFeedback)
+            return "Graded";
+
+        return "Assigned";
+    }
+
+    // ------------------------------------
+    // 5. OBSERVATIONS MODE
+    // ------------------------------------
+    if (frm.doc.observations) {
+        return hasFeedback ? "Graded" : "Assigned";
+    }
+
+    // ------------------------------------
+    // 6. Fallback
+    // ------------------------------------
+    return "Assigned";
 }
-
-
-
-
-
-function compute_status_preview(frm, row) {
-	// -------------------------------------
-	// 1) Visibility always overrides everything
-	// -------------------------------------
-	if (row.visible_to_student || row.visible_to_guardian) {
-		return "Returned";
-	}
-
-	const feedbackText = (row.feedback || "").trim();
-	const hasFeedback = feedbackText.length > 0;
-	const isComplete = !!row.complete;
-
-	// -------------------------------------
-	// 2) BINARY MODE
-	// -------------------------------------
-	if (frm.doc.binary) {
-		// Only completion or feedback matters
-		if (isComplete || hasFeedback) return "Graded";
-		return "Assigned";
-	}
-
-	// -------------------------------------
-	// 3) POINTS-ONLY MODE (NO CRITERIA)
-	// -------------------------------------
-	if (frm.doc.points && !frm.doc.criteria) {
-		let raw = row.mark_awarded;
-		let markNum =
-			raw === null || raw === undefined || raw === ""
-				? null
-				: Number(raw);
-
-		const hasMarkAwarded =
-			markNum !== null && !Number.isNaN(markNum);
-
-		if (hasMarkAwarded || hasFeedback) return "Graded";
-		return "Assigned";
-	}
-
-	// -------------------------------------
-	// 4) CRITERIA / RUBRIC MODE
-	// -------------------------------------
-	if (frm.doc.criteria) {
-		// All rubric rows for this student
-		const rubricRows = (frm.doc.task_criterion_score || []).filter(
-			r => r.student === row.student
-		);
-
-		let hasRubric = false;
-
-		for (const r of rubricRows) {
-			const hasLevel = !!(r.level && String(r.level).trim());
-			const hasPoints = Number(r.level_points || 0) !== 0;
-			const hasRubricFeedback = (r.feedback || "").trim().length > 0;
-
-			if (hasLevel || hasPoints || hasRubricFeedback) {
-				hasRubric = true;
-				break;
-			}
-		}
-
-		if (hasRubric || hasFeedback) return "Graded";
-		return "Assigned";
-	}
-
-	// -------------------------------------
-	// 5) OBSERVATIONS-ONLY MODE
-	// -------------------------------------
-	if (frm.doc.observations) {
-		if (hasFeedback) return "Graded";
-		return "Assigned";
-	}
-
-	// -------------------------------------
-	// 6) DEFAULT FALLBACK → Assigned
-	// -------------------------------------
-	return "Assigned";
-}
-
 
 
 
 function apply_status_preview(frm, cdt, cdn) {
-	const row = frappe.get_doc(cdt, cdn);
-	const newStatus = compute_status_preview(frm, row);
-	if (row.status !== newStatus) {
-		frappe.model.set_value(cdt, cdn, "status", newStatus);
-	}
+    const row = frappe.get_doc(cdt, cdn);
+    const newStatus = compute_status_preview(frm, row);
+
+    if (row.status !== newStatus) {
+        frappe.model.set_value(cdt, cdn, "status", newStatus);
+    }
 }
+
+
+
 
 function visibility_toggled(frm, cdt, cdn) {
-	apply_status_preview(frm, cdt, cdn);
+    apply_status_preview(frm, cdt, cdn);
 }
 
+
+
+
 function prevent_duplicate_task_student(frm, cdt, cdn) {
-	const row = locals[cdt][cdn];
-	if (!row.student) {
-		return;
-	}
+    const row = locals[cdt][cdn];
+    if (!row.student) return;
 
-	const all_rows = frm.doc.task_student || [];
-	const same_student_rows = all_rows.filter(r => r.student === row.student);
+    const all = frm.doc.task_student || [];
 
-	if (same_student_rows.length > 1) {
-		frappe.msgprint({
-			title: __('Duplicate Student'),
-			message: __('This student is already in the Task Student table. Each student can only appear once.'),
-			indicator: 'orange'
-		});
+    // Collect all rows with this student
+    const matches = all.filter(r => r.student === row.student);
 
-		frappe.model.set_value(cdt, cdn, 'student', null);
-	}
+    // If more than one, this is a duplicate → reject new entry
+    if (matches.length > 1) {
+        frappe.msgprint({
+            title: __("Duplicate Student"),
+            message: __("This student already exists in the Task Student table."),
+            indicator: "orange"
+        });
+
+        frappe.model.set_value(cdt, cdn, "student", null);
+    }
 }

@@ -195,21 +195,30 @@ def get_permission_query_conditions(user):
 	roles = set(frappe.get_roles(user))
 	is_academic_controller = bool(roles & {"Academic Admin", "Academic Assistant"})
 
-	# Build allowed schools
 	schools = _user_allowed_schools(user)
-	if not schools:
-		# No default school set → show nothing
-		return "1 = 0"
+	user_escaped = frappe.db.escape(user, percent=False)
 
-	# For non-academic controllers we still restrict to their school + descendants
-	# (keeps behavior consistent and simple)
+	if not schools:
+		# No default school → still allow their own Instructor doc
+		return f"`tabInstructor`.linked_user_id = {user_escaped}"
+
 	escaped_values = ", ".join(frappe.db.escape(s, percent=False) for s in schools)
-	return f"`tabInstructor`.school IN ({escaped_values})"
+
+	# Normal school-based filter OR their own Instructor doc
+	return (
+		f"`tabInstructor`.school IN ({escaped_values}) "
+		f"OR `tabInstructor`.linked_user_id = {user_escaped}"
+	)
+
 
 
 def has_permission(doc, ptype, user):
 	# Full access for superusers
 	if user in ("Administrator",) or "System Manager" in frappe.get_roles(user):
+		return True
+
+	# Allow an instructor to see their own Instructor doc (read-only rule)
+	if ptype == "read" and getattr(doc, "linked_user_id", None) == user:
 		return True
 
 	# Safety guards
@@ -219,3 +228,4 @@ def has_permission(doc, ptype, user):
 	# Academic Admin/Assistant (and everyone else) → within allowed schools list
 	schools = _user_allowed_schools(user)
 	return bool(schools) and doc.school in schools
+

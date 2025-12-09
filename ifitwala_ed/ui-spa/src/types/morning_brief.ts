@@ -1,13 +1,19 @@
 // Types for Morning Brief endpoints (derived from api-samples/morning_brief/schema.md)
 
+// ============================================================================
 // Domain unions and constants
+// ============================================================================
+
 export const ORG_PRIORITIES = {
 	CRITICAL: 'Critical',
 	HIGH: 'High',
 	NORMAL: 'Normal',
-	LOW: 'Low'
+	LOW: 'Low',
 } as const
-export type OrgPriority = (typeof ORG_PRIORITIES)[keyof typeof ORG_PRIORITIES] | null
+
+export type OrgPriority =
+	| (typeof ORG_PRIORITIES)[keyof typeof ORG_PRIORITIES]
+	| null
 
 export const ORG_SURFACES = {
 	DESK: 'Desk',
@@ -16,16 +22,26 @@ export const ORG_SURFACES = {
 	STUDENT_PORTAL: 'Student Portal',
 	GUARDIAN_PORTAL: 'Guardian Portal',
 	EVERYWHERE: 'Everywhere',
-	OTHER: 'Other'
+	OTHER: 'Other',
 } as const
+
 export type OrgSurface = (typeof ORG_SURFACES)[keyof typeof ORG_SURFACES]
+
+export type AudienceType = 'Staff' | 'Student' | 'Guardian' | 'Community' | null
+
+export type InteractionVisibility =
+	| 'Public to audience'
+	| 'Private to school'
+	| 'Hidden'
+	| null
+
+export type ApplicationStatus = 'Applied' | 'Approved' | 'Rejected' | 'Admitted'
 
 export type InteractionMode =
 	| 'None'
 	| 'Staff Comments'
 	| 'Structured Feedback'
 	| 'Student Q&A'
-	| string
 
 export type InteractionIntentType =
 	| 'Acknowledged'
@@ -37,7 +53,7 @@ export type InteractionIntentType =
 	| 'Question'
 	| 'Concern'
 	| 'Other'
-	| string
+
 export type ReactionCode =
 	| 'like'
 	| 'thank'
@@ -47,7 +63,10 @@ export type ReactionCode =
 	| 'question'
 	| 'other'
 
+// ============================================================================
 // Widgets: announcement + analytics payloads
+// ============================================================================
+
 export interface Announcement {
 	name: string
 	title: string
@@ -81,7 +100,7 @@ export interface ClinicVolumePoint {
 }
 
 export interface AdmissionsPulseBreakdown {
-	application_status: 'Applied' | 'Approved' | 'Rejected' | 'Admitted'
+	application_status: ApplicationStatus
 	count: number
 }
 
@@ -147,7 +166,7 @@ export interface WidgetsPayload {
 	clinic_volume?: ClinicVolumePoint[]
 	admissions_pulse?: AdmissionsPulse
 	critical_incidents?: number
-	today_label?: string
+	today_label: string
 	medical_context?: MedicalContext[]
 	grading_velocity?: number
 	my_student_birthdays?: StudentBirthday[]
@@ -156,12 +175,17 @@ export interface WidgetsPayload {
 	my_absent_students?: AbsentStudent[]
 }
 
+// ============================================================================
 // Interaction summary + thread
+// ============================================================================
+
+export type InteractionCounts = Partial<Record<InteractionIntentType, number>>
+
 export interface InteractionSelf {
 	name: string
 	org_communication: string
 	user: string
-	audience_type: 'Staff' | 'Student' | 'Guardian' | 'Community' | null
+	audience_type: AudienceType
 	surface: OrgSurface | null
 	school: string | null
 	program: string | null
@@ -169,7 +193,7 @@ export interface InteractionSelf {
 	reaction_code: ReactionCode | null
 	intent_type: InteractionIntentType | null
 	note: string | null
-	visibility: 'Public to audience' | 'Private to school' | 'Hidden' | null
+	visibility: InteractionVisibility
 	is_teacher_reply: 0 | 1
 	is_pinned: 0 | 1
 	is_resolved: 0 | 1
@@ -182,8 +206,6 @@ export interface InteractionSelf {
 	idx?: number
 }
 
-export type InteractionCounts = Record<string, number>
-
 export interface InteractionSummary {
 	counts: InteractionCounts
 	self: InteractionSelf | null
@@ -195,11 +217,11 @@ export interface InteractionThreadRow {
 	name: string
 	user: string
 	full_name: string | null
-	audience_type: 'Staff' | 'Student' | 'Guardian' | 'Community' | null
+	audience_type: AudienceType
 	intent_type: InteractionIntentType | null
 	reaction_code: ReactionCode | null
 	note: string | null
-	visibility: 'Public to audience' | 'Private to school' | 'Hidden' | null
+	visibility: InteractionVisibility
 	is_teacher_reply: 0 | 1
 	is_pinned: 0 | 1
 	is_resolved: 0 | 1
