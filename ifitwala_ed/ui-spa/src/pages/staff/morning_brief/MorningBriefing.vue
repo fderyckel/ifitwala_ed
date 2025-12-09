@@ -741,7 +741,6 @@ type ArrayWidgetKey =
 	| 'announcements'
 	| 'staff_birthdays'
 	| 'clinic_volume'
-	| 'medical_context'
 	| 'my_student_birthdays'
 	| 'student_logs'
 	| 'attendance_trend'

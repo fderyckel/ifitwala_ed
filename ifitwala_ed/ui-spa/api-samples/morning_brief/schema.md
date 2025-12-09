@@ -27,7 +27,6 @@ Sources: `ifitwala_ed/api/morning_brief.py`, `ifitwala_ed/setup/doctype/communic
 - `clinic_volume`: `ClinicVolumePoint[]` (roles: Academic Admin, System Manager)
 - `admissions_pulse`: `AdmissionsPulse` (roles: Academic Admin, System Manager)
 - `critical_incidents`: `number` (roles: Academic Admin, System Manager)
-- `medical_context`: `MedicalContext[]` (roles: Instructor with at least one student group)
 - `grading_velocity`: `number` (roles: Instructor with at least one student group)
 - `my_student_birthdays`: `StudentBirthday[]` (roles: Instructor with at least one student group)
 - `student_logs`: `StudentLogItem[]` (roles: Academic Admin, System Manager, Grade Level Lead)

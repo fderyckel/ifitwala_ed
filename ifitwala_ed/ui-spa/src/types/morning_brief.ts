@@ -109,13 +109,6 @@ export interface AdmissionsPulse {
 	breakdown: AdmissionsPulseBreakdown[]
 }
 
-export interface MedicalContext {
-	first_name: string
-	last_name: string
-	medical_info: string
-	allergies: string | null
-	food_allergies: string | null
-}
 
 export interface StudentBirthday {
 	first_name: string
@@ -167,7 +160,6 @@ export interface WidgetsPayload {
 	admissions_pulse?: AdmissionsPulse
 	critical_incidents?: number
 	today_label: string
-	medical_context?: MedicalContext[]
 	grading_velocity?: number
 	my_student_birthdays?: StudentBirthday[]
 	student_logs?: StudentLogItem[]

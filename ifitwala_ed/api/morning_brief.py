@@ -35,7 +35,6 @@ def get_briefing_widgets():
 	if "Instructor" in roles:
 		my_groups = get_my_student_groups(user)
 		if my_groups:
-			widgets["medical_context"] = get_medical_context(my_groups)
 			widgets["grading_velocity"] = get_pending_grading_tasks(my_groups)
 			widgets["my_student_birthdays"] = get_my_student_birthdays(my_groups)
 
@@ -217,34 +216,6 @@ def get_pending_grading_tasks(group_names):
 		AND is_graded = 1 AND is_published = 1
 		AND status != 'Closed' AND due_date < CURDATE()
 	""")[0][0]
-
-def get_medical_context(group_names):
-	"""Fetches medical info for students in the instructor's groups."""
-	if not group_names:
-		return []
-
-	groups_formatted = "', '".join(group_names)
-
-	return frappe.db.sql(
-		f"""
-		SELECT DISTINCT
-			s.student_first_name AS first_name,
-			s.student_last_name AS last_name,
-			sp.medical_info,
-			sp.allergies,
-			sp.food_allergies
-		FROM `tabStudent Group Student` sgs
-		INNER JOIN `tabStudent` s ON sgs.student = s.name
-		INNER JOIN `tabStudent Patient` sp ON sp.student = s.name
-		WHERE sgs.parent IN ('{groups_formatted}')
-			AND sgs.active = 1
-			AND sp.medical_info IS NOT NULL
-			AND sp.medical_info != ''
-		""",
-		as_dict=True,
-	)
-
-
 
 # ==============================================================================
 # SECTION 3: STUDENT LOGS FEED
