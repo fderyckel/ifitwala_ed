@@ -1,7 +1,7 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-// ifitwala_ed.hr.doctype.staff_calendar.staff_calendar
+// ifitwala_ed/hr/doctype/staff_calendar/staff_calendar.js
 
 frappe.ui.form.on("Staff Calendar", {
 	refresh(frm) {
@@ -45,12 +45,12 @@ frappe.ui.form.on("Staff Calendar", {
 					frappe.prompt(
 						[
 							{
-								fieldname: "source_calendar",
-								fieldtype: "Link",
-								label: __("Source Staff Calendar"),
-								options: "Staff Calendar",
-								reqd: 1,
-							},
+                                fieldname: "source_calendar",
+                                fieldtype: "Link",
+                                label: __("Source Staff Calendar"),
+                                options: "Staff Calendar",
+                                reqd: 1,
+                            },
 						],
 						(values) => {
 							if (!values.source_calendar) return;
@@ -106,5 +106,51 @@ frappe.ui.form.on("Staff Calendar", {
 			frm.fields_dict.subdivision.set_data([]);
 			frm.set_df_property("subdivision", "hidden", 1);
 		}
+	},
+
+	// --- Button handlers wired to whitelisted methods ---
+
+	get_weekly_off_dates(frm) {
+		if (!frm.doc.weekly_off) {
+			frappe.msgprint(__("Please select the weekly off day first."));
+			return;
+		}
+		frm.call("get_weekly_off_dates").then(() => {
+			frm.reload_doc();
+		});
+	},
+
+	get_country_holidays(frm) {
+		if (!frm.doc.country) {
+			frappe.msgprint(__("Please select a country first."));
+			return;
+		}
+		frm.call("get_country_holidays").then(() => {
+			frm.reload_doc();
+		});
+	},
+
+	get_break_holidays(frm) {
+		if (!frm.doc.start_of_break || !frm.doc.end_of_break) {
+			frappe.msgprint(__("Please set the start and end of the break first."));
+			return;
+		}
+		frm.call("get_break_holidays").then(() => {
+			frm.reload_doc();
+		});
+	},
+
+	clear_table(frm) {
+		if (!frm.doc.holidays || !frm.doc.holidays.length) {
+			return;
+		}
+		frappe.confirm(
+			__("This will clear all holidays from this calendar. Continue?"),
+			() => {
+				frm.call("clear_table").then(() => {
+					frm.reload_doc();
+				});
+			}
+		);
 	},
 });

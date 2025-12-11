@@ -5,6 +5,7 @@
 
 import frappe
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
+from frappe import _
 
 def check_audience_match(comm_name, user, roles, employee, filter_team=None, filter_student_group=None):
     """
