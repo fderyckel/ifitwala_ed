@@ -97,7 +97,6 @@ watch(
 const dashboardResource = createResource({
 	url: 'ifitwala_ed.api.student_demographics_dashboard.get_dashboard',
 	method: 'POST',
-	params: () => ({ filters: filters.value }),
 	auto: false,
 })
 
@@ -145,7 +144,7 @@ function debounce(fn: () => void, delay = 400) {
 }
 
 async function loadDashboard() {
-	await dashboardResource.fetch()
+	await dashboardResource.submit()
 }
 
 watch(
@@ -299,13 +298,13 @@ function setPreset(preset: ViewPreset) {
 		</header>
 
 		<FiltersBar>
-			<div class="flex flex-col gap-1 w-40">
+			<div class="flex flex-col gap-1 w-64">
 				<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
 					School
 				</label>
 				<select
 					v-model="filters.school"
-					class="h-8 rounded-md border border-slate-200 px-2 text-xs"
+					class="h-8 rounded-md border border-slate-200 px-3 text-xs"
 				>
 					<option
 						v-for="s in schools"

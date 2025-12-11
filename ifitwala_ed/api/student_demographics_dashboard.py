@@ -61,12 +61,11 @@ def _get_filters(filters) -> dict:
 	else:
 		filters = filters or {}
 
-	# Normalize known link filters that might be {label, value} objects
 	for key in ("school", "cohort"):
 		if key in filters:
 			filters[key] = _normalize_filter_value(filters[key])
 
-	# Default school = employee base school if none provided
+	# Hard default to employee base school if nothing specified
 	if not filters.get("school"):
 		try:
 			user = frappe.session.user
@@ -74,7 +73,6 @@ def _get_filters(filters) -> dict:
 			if base_school:
 				filters["school"] = base_school
 		except Exception:
-			# Soft-fail: keep filters as-is if util not available or user has no base school
 			pass
 
 	return filters
@@ -85,9 +83,10 @@ def _get_active_students(filters: dict):
 	params = {}
 
 	if filters.get("school"):
-		# Only the exact selected school
-		conditions.append("anchor_school = %(school)s")
-		params["school"] = filters["school"]
+		root = filters["school"]
+		descendants = get_descendant_schools(root) or [root]
+		conditions.append("anchor_school in %(schools)s")
+		params["schools"] = tuple(descendants)
 
 	if filters.get("cohort"):
 		conditions.append("cohort = %(cohort)s")
@@ -347,20 +346,18 @@ def get_filter_meta():
 	try:
 		base_school = get_user_base_school(user)
 	except Exception:
-		# Soft fallback: leave as None if util not available
 		pass
 
 	school_names = []
 	if base_school:
-		# Descendants usually include the parent; guard just in case
 		descendants = get_descendant_schools(base_school) or []
 		if base_school not in descendants:
 			descendants.insert(0, base_school)
 		school_names = descendants
 	else:
-		# Fallback: system default or everything (for System Manager etc.)
 		school_names = [s.name for s in frappe.get_all("School")]
 
+	schools = []
 	if school_names:
 		schools = frappe.get_all(
 			"School",
@@ -368,8 +365,6 @@ def get_filter_meta():
 			filters={"name": ["in", school_names]},
 			order_by="name asc",
 		)
-	else:
-		schools = []
 
 	cohorts = frappe.get_all(
 		"Student Cohort",
