@@ -303,11 +303,15 @@ function setPreset(preset: ViewPreset) {
 				<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
 					School
 				</label>
-				<select v-model="filters.school" class="h-8 rounded-md border border-slate-200 px-2 text-xs">
-					<option value="">
-						All
-					</option>
-					<option v-for="s in schools" :key="s.name" :value="s.name">
+				<select
+					v-model="filters.school"
+					class="h-8 rounded-md border border-slate-200 px-2 text-xs"
+				>
+					<option
+						v-for="s in schools"
+						:key="s.name"
+						:value="s.name"
+					>
 						{{ s.label || s.name }}
 					</option>
 				</select>

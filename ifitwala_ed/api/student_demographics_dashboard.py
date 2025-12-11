@@ -11,6 +11,10 @@ from datetime import date
 import frappe
 from frappe.utils import getdate, nowdate
 
+from ifitwala_ed.utilities.employee_utils import get_user_base_school
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
+
 ALLOWED_ANALYTICS_ROLES = {
 	"Academic Admin",
 	"Grade Level Lead",
@@ -62,24 +66,28 @@ def _get_filters(filters) -> dict:
 		if key in filters:
 			filters[key] = _normalize_filter_value(filters[key])
 
+	# Default school = employee base school if none provided
+	if not filters.get("school"):
+		try:
+			user = frappe.session.user
+			base_school = get_user_base_school(user)
+			if base_school:
+				filters["school"] = base_school
+		except Exception:
+			# Soft-fail: keep filters as-is if util not available or user has no base school
+			pass
+
 	return filters
 
 
 def _get_active_students(filters: dict):
-	from ifitwala_ed.utilities.school_tree import get_descendant_schools
-
 	conditions = ["enabled = 1"]
 	params = {}
 
 	if filters.get("school"):
-		# Include selected school + descendants
-		descendants = get_descendant_schools(filters["school"])
-		if descendants:
-			conditions.append("anchor_school in %(schools)s")
-			params["schools"] = tuple(descendants)
-		else:
-			conditions.append("anchor_school = %(school)s")
-			params["school"] = filters["school"]
+		# Only the exact selected school
+		conditions.append("anchor_school = %(school)s")
+		params["school"] = filters["school"]
 
 	if filters.get("cohort"):
 		conditions.append("cohort = %(cohort)s")
@@ -107,6 +115,7 @@ def _get_active_students(filters: dict):
 		params,
 		as_dict=True,
 	)
+
 
 
 def _get_guardian_links(student_names: list[str]):
@@ -330,14 +339,38 @@ def _empty_dashboard():
 def get_filter_meta():
 	"""
 	Return filter metadata used by the demographics dashboard.
+	Scoped to the employee's base school + its descendant schools.
 	"""
-	_ensure_demographics_access()
+	user = _ensure_demographics_access()
 
-	schools = frappe.get_all(
-		"School",
-		fields=["name as name", "school_name as label"],
-		order_by="name asc",
-	)
+	base_school = None
+	try:
+		base_school = get_user_base_school(user)
+	except Exception:
+		# Soft fallback: leave as None if util not available
+		pass
+
+	school_names = []
+	if base_school:
+		# Descendants usually include the parent; guard just in case
+		descendants = get_descendant_schools(base_school) or []
+		if base_school not in descendants:
+			descendants.insert(0, base_school)
+		school_names = descendants
+	else:
+		# Fallback: system default or everything (for System Manager etc.)
+		school_names = [s.name for s in frappe.get_all("School")]
+
+	if school_names:
+		schools = frappe.get_all(
+			"School",
+			fields=["name as name", "school_name as label"],
+			filters={"name": ["in", school_names]},
+			order_by="name asc",
+		)
+	else:
+		schools = []
+
 	cohorts = frappe.get_all(
 		"Student Cohort",
 		fields=["name as name", "cohort_name as label"],
@@ -345,10 +378,11 @@ def get_filter_meta():
 	) if frappe.db.table_exists("Student Cohort") else []
 
 	return {
-		"default_school": frappe.defaults.get_user_default("school"),
+		"default_school": base_school,
 		"schools": schools,
 		"cohorts": cohorts,
 	}
+
 
 
 @frappe.whitelist()
