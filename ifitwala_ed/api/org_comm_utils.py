@@ -4,93 +4,135 @@
 # ifitwala_ed.api.org_comm_utils
 
 import frappe
-from ifitwala_ed.utilities.school_tree import get_ancestor_schools
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 from frappe import _
 
-def check_audience_match(comm_name, user, roles, employee, filter_team=None, filter_student_group=None):
-    """
-    Checks if the current user (employee) matches the audience criteria
-    for a given Org Communication.
+def check_audience_match(comm_name, user, roles, employee, filter_team=None, filter_student_group=None, filter_school=None):
+	"""
+	Checks if the current user (employee) matches the audience criteria
+	for a given Org Communication.
 
-    Optional filters:
-    - filter_team: If set, only returns True if the matched audience is specifically for this team.
-    - filter_student_group: If set, only returns True if the matched audience is specifically for this group.
-    """
-    if "System Manager" in roles:
-        # If filtering, even Sys Man adheres to the filter constraint (i.e. does this comm have this specific audience?)
-        # BUT, usually Sys Man sees everything.
-        # If I am acting as Sys Man and I filter by "Group A", I expect to see msgs to "Group A".
-        # So we should probably NOT return True immediately if filters are present.
-        if not filter_team and not filter_student_group:
-            return True
+	Optional filters:
+	- filter_team: If set, only returns True if the matched audience is specifically for this team.
+	- filter_student_group: If set, only returns True if the matched audience is specifically for this group.
+	- filter_school: If set, only returns True if the audience school is in the
+	  ancestor/descendant cone of this school.
+	"""
 
-    audiences = frappe.get_all("Org Communication Audience",
-        filters={"parent": comm_name},
-        fields=["target_group", "school", "team", "program", "student_group"]
-    )
+	# System Manager baseline:
+	# - If no extra filters: see everything without checking audiences.
+	# - If filters are present, still respect them (school / team / SG).
+	if "System Manager" in roles and not filter_team and not filter_student_group and not filter_school:
+		return True
 
-    if not audiences: return False
+	audiences = frappe.get_all(
+		"Org Communication Audience",
+		filters={"parent": comm_name},
+		fields=["target_group", "school", "team", "program", "student_group"],
+	)
 
-    # 1. Determine User's "Scope of View" relative to the audience row
-    # We want inheritance based on the audience row's school (not the parent doc's school).
-    # If I am at School B (child), I should see comms targeted to School A (ancestor).
-    user_school = None
-    valid_target_schools = []
+	if not audiences:
+		return False
 
-    if employee and employee.school:
-        user_school = employee.school
-        # Include the user's school and all its ancestors (inherit upwards)
-        valid_target_schools = get_ancestor_schools(user_school)
+	# 1. Determine the user's school visibility cone:
+	#    own school + ancestors + descendants
+	user_school = None
+	valid_target_schools: set[str] = set()
 
-    for aud in audiences:
-        # --- FILTER CHECKS ---
-        if filter_team and aud.team != filter_team:
-            continue
-        if filter_student_group and aud.student_group != filter_student_group:
-            continue
+	if employee and employee.school:
+		user_school = employee.school
+		try:
+			up = get_ancestor_schools(user_school) or []
+		except Exception:
+			up = []
+		try:
+			down = get_descendant_schools(user_school) or []
+		except Exception:
+			down = []
 
-        # --- HIERARCHY CHECK ---
-        # If the audience targets a specific school, it must be in my ancestor scope.
-        if aud.school:
-            if not user_school: continue
-            if aud.school not in valid_target_schools: continue
+		valid_target_schools = set(up + down + [user_school])
 
-        # --- TARGET GROUP CHECK ---
-        match_found = False
+	# 2. Determine the active School filter cone (if any):
+	#    filter_school + its ancestors + its descendants
+	filter_school_scope: set[str] | None = None
+	if filter_school and filter_school != "All":
+		try:
+			up_f = get_ancestor_schools(filter_school) or []
+		except Exception:
+			up_f = []
+		try:
+			down_f = get_descendant_schools(filter_school) or []
+		except Exception:
+			down_f = []
 
-        if aud.target_group == "Whole Community": match_found = True
-        elif aud.target_group == "Whole Staff": match_found = True
+		filter_school_scope = set(up_f + down_f + [filter_school])
 
-        elif aud.target_group == "Academic Staff" and ("Academic Staff" in roles or "Instructor" in roles):
-            match_found = True
-        elif aud.target_group == "Support Staff" and "Academic Staff" not in roles:
-            match_found = True
+	for aud in audiences:
+		# --- FILTER CHECKS (team / student group) ---
+		if filter_team and aud.team != filter_team:
+			continue
 
-        elif aud.team and employee and employee.department == aud.team:
-            match_found = True
+		if filter_student_group and aud.student_group != filter_student_group:
+			continue
 
-        elif aud.student_group:
-            # Check if user is linked to this student group (e.g. as Instructor)
-            # This is expensive if we do a DB call per row.
-            # Ideally, we pass in the user's allowed groups.
-            # For now, let's assume if the filter passed (permission checked in API), AND the audience matches the filter, we are good.
-            # But if NO filter is set, and we encounter a student_group audience, should we match?
-            # Only if the user is an instructor for it.
-            # Let's do a quick optimized check or pass in allowed_groups.
-            # For this iteration, let's assume validation happened before calling this if filtering.
-            # If not filtering, we skip student_group rows unless we strictly check permissions.
-            # Let's rely on the caller to handle specific SG permission if filtering.
-            # If NOT filtering, "Whole Staff" shouldn't see "Student Group A" messages unless they are involved.
-            # So we need a check.
-            if is_instructor_for_group(user, aud.student_group):
-                match_found = True
+		# --- SCHOOL FILTER CHECK (archive School dropdown) ---
+		# If user chose School S in the filter, keep only audiences whose school
+		# lies in Anc(S) ∪ Desc(S) ∪ {S}. Global (no school) is still allowed.
+		if filter_school_scope is not None and aud.school:
+			if aud.school not in filter_school_scope:
+				continue
 
-        if match_found: return True
+		# --- USER VISIBILITY CHECK (permission cone) ---
+		# Audience school must lie within the user's own school cone.
+		# This is what prevents sibling leakage:
+		# - If user is at B, valid_target_schools = Anc(B) ∪ Desc(B) ∪ {B}
+		# - A sibling C is not in that set, so B never sees messages for C.
+		if aud.school:
+			if not user_school:
+				continue
+			if valid_target_schools and aud.school not in valid_target_schools:
+				continue
 
-    return False
+		# --- TARGET GROUP CHECK ---
+		match_found = False
+
+		if aud.target_group == "Whole Community":
+			match_found = True
+		elif aud.target_group == "Whole Staff":
+			match_found = True
+
+		elif aud.target_group == "Academic Staff" and ("Academic Staff" in roles or "Instructor" in roles):
+			match_found = True
+		elif aud.target_group == "Support Staff" and "Academic Staff" not in roles:
+			match_found = True
+
+		elif aud.team and employee and employee.department == aud.team:
+			match_found = True
+
+		elif aud.student_group:
+			# Only match student-group audiences if the user is actually an instructor
+			# for that group.
+			if is_instructor_for_group(user, aud.student_group):
+				match_found = True
+
+		if match_found:
+			return True
+
+	return False
+
 
 def is_instructor_for_group(user, student_group):
-    # Determine if user is an instructor for this group.
-    # Check `tabStudent Group Instructor`
-    return frappe.db.exists("Student Group Instructor", {"parent": student_group, "instructor": frappe.db.get_value("Employee", {"user_id": user}, "instructor")})
+	"""Determine if user is an instructor for this group."""
+	employee_name = frappe.db.get_value("Employee", {"user_id": user}, "name")
+	if not employee_name:
+		return False
 
+	# If you have a dedicated Instructor doctype linked from Employee, resolve it here.
+	instructor_name = frappe.db.get_value("Instructor", {"employee": employee_name}, "name")
+	if not instructor_name:
+		return False
+
+	return frappe.db.exists(
+		"Student Group Instructor",
+		{"parent": student_group, "instructor": instructor_name},
+	)
