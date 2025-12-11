@@ -95,9 +95,12 @@ watch(
 )
 
 const dashboardResource = createResource({
-	url: 'ifitwala_ed.api.student_demographics_dashboard.get_dashboard',
-	method: 'POST',
-	auto: false,
+  url: 'ifitwala_ed.api.student_demographics_dashboard.get_dashboard',
+  method: 'POST',
+  params: () => ({
+    filters: filters.value
+  }),
+  auto: false,
 })
 
 const emptyDashboard: DashboardResponse = {
@@ -144,11 +147,11 @@ function debounce(fn: () => void, delay = 400) {
 	debounceTimer = window.setTimeout(fn, delay)
 }
 
+
 async function loadDashboard() {
-	await dashboardResource.submit({
-		filters: filters.value,
-	})
+  await dashboardResource.fetch()
 }
+
 
 watch(
 	filters,
