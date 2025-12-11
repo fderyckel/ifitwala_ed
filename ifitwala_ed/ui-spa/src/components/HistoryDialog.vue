@@ -52,7 +52,7 @@
 				</header>
 
 				<!-- MAIN CONTENT -->
-				<section class="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
+				<section class="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
 					<!-- Chart panel -->
 					<div class="relative flex flex-col overflow-hidden rounded-2xl border border-border/80 bg-white/95 shadow-strong">
 						<div class="flex items-center justify-between border-b border-border/70 px-5 py-3">
@@ -93,132 +93,138 @@
 						</div>
 					</div>
 
-					<!-- Context -->
-					<div class="flex flex-col gap-3 rounded-2xl border border-border/80 bg-[rgb(var(--surface-rgb)/0.95)] px-4 py-4 shadow-soft">
-						<div class="flex items-start justify-between gap-3">
+					<!-- Right column inspired by OrgCommunicationArchive sidebar -->
+					<div class="flex h-full flex-col overflow-hidden rounded-2xl border border-border/80 bg-white shadow-soft">
+						<div class="flex items-start justify-between gap-3 border-b border-border/70 bg-slate-50/60 px-4 py-3">
 							<div class="space-y-1">
 								<p class="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-token/70">
-									Context
+									Context & comments
 								</p>
 								<p class="text-sm text-slate-token/80">
-									Soft shells, crisp ink text, and grounded metrics to match the portal.
+									Matches the archive sidebar: crisp white shell, subtle borders, sticky composer.
 								</p>
 							</div>
-							<span class="inline-flex items-center gap-1 rounded-full border border-border/70 bg-white px-3 py-1 text-[11px] font-semibold text-slate-token/80">
-								Live
-							</span>
-						</div>
-
-						<div class="grid grid-cols-2 gap-2">
-							<div class="rounded-xl border border-border/65 bg-white/85 px-3 py-2 shadow-inner">
-								<p class="text-[11px] font-semibold uppercase tracking-wide text-slate-token/70">
-									Total
-								</p>
-								<p class="mt-1 text-xl font-semibold text-canopy">
-									{{ totalCount.toLocaleString() }}
-								</p>
-								<p class="text-xs text-slate-token/70">
-									Sum across {{ selectedRangeLabel }}
-								</p>
-							</div>
-							<div class="rounded-xl border border-border/65 bg-white/85 px-3 py-2 shadow-inner">
-								<p class="text-[11px] font-semibold uppercase tracking-wide text-slate-token/70">
-									Average
-								</p>
-								<p class="mt-1 text-xl font-semibold text-jacaranda">
-									{{ averageCount }}
-								</p>
-								<p class="text-xs text-slate-token/70">
-									Per data point
-								</p>
+							<div class="flex items-center gap-2">
+								<span class="inline-flex items-center gap-1 rounded-full border border-border/70 bg-white px-3 py-1 text-[11px] font-semibold text-slate-token/80">
+									{{ selectedRangeLabel }}
+								</span>
+								<span class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-3 py-1 text-[11px] font-semibold text-slate-token/80">
+									{{ totalPoints }} pts
+								</span>
 							</div>
 						</div>
 
-						<div class="rounded-xl border border-border/70 bg-white/80 px-3 py-3 text-sm text-slate-token/80 shadow-inner">
-							Use this space to narrate what changed, pin action items, and keep the thread anchored to the selected slice.
-						</div>
-					</div>
-				</section>
+						<div class="flex-1 space-y-4 overflow-y-auto bg-white/90 p-4">
+							<div class="rounded-xl border border-border/70 bg-[rgb(var(--surface-rgb)/0.95)] px-3 py-3 text-sm text-slate-token/80 shadow-inner">
+								Use this panel to narrate what changed, pin action items, and keep the thread anchored to the selected slice.
+							</div>
 
-				<!-- COMMENTS -->
-				<section class="flex flex-col gap-3 rounded-2xl border border-border/80 bg-white/95 px-4 py-4 shadow-soft">
-					<div class="flex flex-wrap items-center justify-between gap-3">
-						<div class="space-y-1">
-							<p class="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-token/70">
-								Comments
-							</p>
-							<p class="text-sm text-slate-token/80">
-								Keep observations, handoffs, and quick follow-ups alongside the chart.
-							</p>
-						</div>
-						<span class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-3 py-1 text-[11px] font-semibold text-slate-token/80">
-							{{ commentCount }} {{ commentCount === 1 ? 'comment' : 'comments' }}
-						</span>
-					</div>
-
-					<div class="flex max-h-48 flex-col gap-3 overflow-y-auto rounded-xl border border-border/70 bg-surface-soft/60 p-3 custom-scrollbar">
-						<div v-if="commentsLoading" class="flex items-center justify-center gap-2 text-sm text-slate-token/70">
-							<FeatherIcon name="loader" class="h-4 w-4 animate-spin text-jacaranda" />
-							Loading conversation...
-						</div>
-						<div v-else-if="!hasComments" class="flex flex-col items-center justify-center gap-1 py-6 text-center text-slate-token/70">
-							<FeatherIcon name="message-circle" class="h-5 w-5 text-jacaranda" />
-							<p class="text-sm">
-								No comments yet. Start the thread with context or next steps.
-							</p>
-						</div>
-						<article
-							v-else
-							v-for="(comment, index) in displayedComments"
-							:key="comment.id || comment.name || index"
-							class="flex gap-3 rounded-lg border border-border/70 bg-white/95 px-3 py-2 shadow-inner"
-						>
-							<Avatar
-								:label="comment.full_name || comment.author || comment.user || 'User'"
-								:image="comment.avatar"
-								size="sm"
-							/>
-							<div class="flex min-w-0 flex-1 flex-col gap-1">
-								<div class="flex items-center justify-between gap-2">
-									<p class="text-sm font-semibold text-ink">
-										{{ comment.full_name || comment.author || comment.user || 'User' }}
+							<div class="grid grid-cols-2 gap-3">
+								<div class="rounded-xl border border-border/65 bg-white/90 px-3 py-2 shadow-inner">
+									<p class="text-[11px] font-semibold uppercase tracking-wide text-slate-token/70">
+										Total
 									</p>
-									<span v-if="comment.timestamp || comment.creation" class="text-[11px] text-slate-token/70">
-										{{ comment.timestamp || comment.creation }}
+									<p class="mt-1 text-xl font-semibold text-canopy">
+										{{ totalCount.toLocaleString() }}
+									</p>
+									<p class="text-xs text-slate-token/70">
+										Sum across {{ selectedRangeLabel }}
+									</p>
+								</div>
+								<div class="rounded-xl border border-border/65 bg-white/90 px-3 py-2 shadow-inner">
+									<p class="text-[11px] font-semibold uppercase tracking-wide text-slate-token/70">
+										Average
+									</p>
+									<p class="mt-1 text-xl font-semibold text-jacaranda">
+										{{ averageCount }}
+									</p>
+									<p class="text-xs text-slate-token/70">
+										Per data point
+									</p>
+								</div>
+							</div>
+
+							<div class="space-y-2">
+								<div class="flex items-center justify-between gap-2">
+									<h4 class="text-sm font-semibold text-ink">
+										Comments
+									</h4>
+									<span class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-3 py-1 text-[11px] font-semibold text-slate-token/80">
+										{{ commentCount }} {{ commentCount === 1 ? 'comment' : 'comments' }}
 									</span>
 								</div>
-								<p class="text-xs leading-relaxed text-slate-token/80">
-									{{ comment.note || comment.message || '' }}
-								</p>
-							</div>
-						</article>
-					</div>
 
-					<form class="flex flex-col gap-2 rounded-xl border border-border/70 bg-surface-soft/60 p-3 shadow-inner" @submit.prevent="submitComment">
-						<label class="text-[11px] font-semibold uppercase tracking-wide text-slate-token/70" for="history-comment">
-							Add a comment
-						</label>
-						<div class="flex flex-col gap-2 sm:flex-row sm:items-end">
-							<textarea
-								id="history-comment"
-								v-model="commentDraft"
-								rows="2"
-								class="flex-1 rounded-xl border border-border/70 bg-white/90 px-3 py-2 text-sm text-ink shadow-inner focus:border-jacaranda/60 focus:outline-none focus:ring-2 focus:ring-jacaranda/25"
-								placeholder="Summarize what changed, tag a teammate, or capture a next step."
-							/>
-							<button
-								type="submit"
-								class="inline-flex items-center justify-center gap-2 rounded-full bg-canopy px-4 py-2 text-xs font-semibold text-white shadow-soft transition hover:bg-canopy/90 focus:outline-none focus:ring-2 focus:ring-leaf/40 disabled:cursor-not-allowed disabled:bg-slate-300"
-								:disabled="!commentDraft.trim()"
-							>
-								<FeatherIcon name="send" class="h-4 w-4" />
-								Send
-							</button>
+								<div class="min-h-[180px] rounded-xl border border-border/70 bg-surface-soft/70 p-3 shadow-inner">
+									<div
+										v-if="commentsLoading"
+										class="flex h-full items-center justify-center gap-2 text-sm text-slate-token/70"
+									>
+										<FeatherIcon name="loader" class="h-4 w-4 animate-spin text-jacaranda" />
+										Loading conversation...
+									</div>
+									<div
+										v-else-if="!hasComments"
+										class="flex h-full flex-col items-center justify-center gap-1 text-center text-slate-token/70"
+									>
+										<FeatherIcon name="message-circle" class="h-5 w-5 text-jacaranda" />
+										<p class="text-sm">
+											No comments yet. Start the thread with context or next steps.
+										</p>
+									</div>
+									<div v-else class="flex max-h-64 flex-col gap-3 overflow-y-auto custom-scrollbar pr-1">
+										<article
+											v-for="(comment, index) in displayedComments"
+											:key="comment.id || comment.name || index"
+											class="flex gap-3 rounded-lg border border-border/70 bg-white/95 px-3 py-2 shadow-inner"
+										>
+											<Avatar
+												:label="comment.full_name || comment.author || comment.user || 'User'"
+												:image="comment.avatar"
+												size="sm"
+											/>
+											<div class="flex min-w-0 flex-1 flex-col gap-1">
+												<div class="flex items-center justify-between gap-2">
+													<p class="text-sm font-semibold text-ink">
+														{{ comment.full_name || comment.author || comment.user || 'User' }}
+													</p>
+													<span v-if="comment.timestamp || comment.creation" class="text-[11px] text-slate-token/70">
+														{{ comment.timestamp || comment.creation }}
+													</span>
+												</div>
+												<p class="text-xs leading-relaxed text-slate-token/80">
+													{{ comment.note || comment.message || '' }}
+												</p>
+											</div>
+										</article>
+									</div>
+								</div>
+							</div>
 						</div>
-						<p class="text-[11px] text-slate-token/70">
-							Shared with your team; keep notes concise and actionable.
-						</p>
-					</form>
+
+						<div class="sticky bottom-0 border-t border-border/70 bg-white/95 px-4 py-3 shadow-inner">
+							<form class="flex flex-col gap-2 sm:flex-row sm:items-end" @submit.prevent="submitComment">
+								<label class="sr-only" for="history-comment">Add a comment</label>
+								<textarea
+									id="history-comment"
+									v-model="commentDraft"
+									rows="2"
+									class="flex-1 rounded-xl border border-border/70 bg-white/90 px-3 py-2 text-sm text-ink shadow-inner focus:border-jacaranda/60 focus:outline-none focus:ring-2 focus:ring-jacaranda/25"
+									placeholder="Summarize what changed, tag a teammate, or capture a next step."
+								/>
+								<button
+									type="submit"
+									class="inline-flex items-center justify-center gap-2 rounded-full bg-canopy px-4 py-2 text-xs font-semibold text-white shadow-soft transition hover:bg-canopy/90 focus:outline-none focus:ring-2 focus:ring-leaf/40 disabled:cursor-not-allowed disabled:bg-slate-300"
+									:disabled="!commentDraft.trim()"
+								>
+									<FeatherIcon name="send" class="h-4 w-4" />
+									Send
+								</button>
+							</form>
+							<p class="mt-2 text-[11px] text-slate-token/70">
+								Shared with your team; keep notes concise and actionable.
+							</p>
+						</div>
+					</div>
 				</section>
 			</div>
 		</template>

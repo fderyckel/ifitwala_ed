@@ -5,19 +5,19 @@
 
 frappe.ui.form.on("Staff Calendar", {
 	refresh(frm) {
-		// --- Totals: keep in sync with Python logic ---
-		// Python: total_working_day = date_diff(to_date, from_date) + 1 - total_holidays
+		// --- Totals: match Python logic exactly ---
 		if (frm.doc.holidays) {
 			const holidays_count = frm.doc.holidays.length;
 			frm.set_value("total_holidays", holidays_count);
 
 			if (frm.doc.from_date && frm.doc.to_date) {
+				// Python: date_diff(to, from) + 1 - holidays
 				const diff = frappe.datetime.get_day_diff(frm.doc.to_date, frm.doc.from_date) + 1;
 				frm.set_value("total_working_day", diff - holidays_count);
 			}
 		}
 
-		// --- Countries & subdivisions (only fetch once per form) ---
+		// --- Countries & subdivisions: only fetch once per form ---
 		if (!frm.subdivisions_by_country) {
 			frm.call("get_supported_countries").then((r) => {
 				if (!r || !r.message) return;
@@ -34,11 +34,10 @@ frappe.ui.form.on("Staff Calendar", {
 				}
 			});
 		} else if (frm.doc.country) {
-			// already have subdivisions cached, just apply
 			frm.trigger("set_subdivisions");
 		}
 
-		// --- Copy from another Staff Calendar (helper for HR) ---
+		// --- Copy from another Staff Calendar (bootstrap helper) ---
 		if (!frm.is_new()) {
 			frm.add_custom_button(
 				__("Copy from another Staff Calendar"),
@@ -80,7 +79,7 @@ frappe.ui.form.on("Staff Calendar", {
 			frm.set_value("to_date", frappe.datetime.add_days(a_year_from_start, -1));
 		}
 
-		// Recompute totals if we have holidays and to_date
+		// Recompute totals when from_date changes and we have data
 		if (frm.doc.holidays && frm.doc.to_date) {
 			const holidays_count = frm.doc.holidays.length;
 			const diff = frappe.datetime.get_day_diff(frm.doc.to_date, frm.doc.from_date) + 1;

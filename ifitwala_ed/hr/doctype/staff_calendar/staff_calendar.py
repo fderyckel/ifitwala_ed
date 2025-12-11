@@ -12,36 +12,30 @@ from frappe.model.document import Document
 
 class StaffCalendar(Document):
 	def validate(self):
-		# validate the period
 		self._validate_period()
-
-		# reuse your existing logic
 		self.validate_days()
 		self.validate_duplicate_date()
 		self.sort_holidays()
 
-		# compute totals
-		self.total_holidays = len(self.holidays)
-		# inclusive of both from_date and to_date
-		self.total_working_day = date_diff(self.to_date, self.from_date) + 1 - self.total_holidays
+		# totals
+		self.total_holidays = len(self.holidays or [])
+		if self.from_date and self.to_date:
+			# inclusive of both from_date and to_date
+			self.total_working_day = date_diff(self.to_date, self.from_date) + 1 - self.total_holidays
+		else:
+			self.total_working_day = 0
 
 	def _validate_period(self):
+		if not self.from_date or not self.to_date:
+			frappe.throw(_("From Date and To Date are required."))
+
 		if getdate(self.from_date) > getdate(self.to_date):
 			frappe.throw(_("From Date cannot be after To Date. Please adjust the date."))
 
-		# If you have optional academic_year or period_type
-		if hasattr(self, "period_type") and self.period_type == "Academic Year":
-			if not self.academic_year:
-				frappe.throw(_("Academic Year must be set when Period Type is Academic Year."))
+		# New: enforce Employee Group (core of the design)
+		if not getattr(self, "employee_group", None):
+			frappe.throw(_("Employee Group must be specified for this Staff Calendar."))
 
-		# Validate employee_category exists (since new schema)
-		if not self.employee_category:
-			frappe.throw(_("Employee Category must be specified for this Staff Calendar."))
-
-	def validate_days(self):
-		for day in self.get("holidays"):
-			if not (getdate(self.from_date) <= getdate(day.holiday_date) <= getdate(self.to_date)):
-				frappe.throw(_("The holiday on {0} should be between From Date and To Date.").format(formatdate(day.holiday_date)))
 
 	def validate_duplicate_date(self):
 		unique_dates = []

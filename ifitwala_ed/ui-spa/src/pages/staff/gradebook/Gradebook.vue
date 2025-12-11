@@ -1045,19 +1045,19 @@ async function saveCriteria(taskStudent: string) {
 			student: student.student,
 			rows,
 		})
+
+		// Backend returns: { suggestion: <number> }
 		const payload = unwrapMessage<{
-			mark_awarded: number
-			out_of?: number | null
-			pct?: number | null
-			updated_on?: string | null
+			suggestion: number
 		}>(response)
 
 		// If nothing else changed while saving, trust the server rollup
-		if (!state.dirtyCriteria && payload && typeof payload.mark_awarded === 'number') {
-			state.mark_awarded = payload.mark_awarded
-			state.updated_on = payload.updated_on ?? state.updated_on ?? new Date().toISOString()
+		if (!state.dirtyCriteria && payload && typeof payload.suggestion === 'number') {
+			// Apply rubric suggestion as the numeric mark-awarded
+			state.mark_awarded = payload.suggestion
+			state.updated_on = state.updated_on ?? new Date().toISOString()
 
-			// Rubric is canonical for criteria-mode; push into Task Student via the normal save
+			// Now push this into Task Student via the normal save flow
 			state.dirty = true
 			scheduleStudentSave(taskStudent)
 		}
@@ -1075,6 +1075,7 @@ async function saveCriteria(taskStudent: string) {
 		}
 	}
 }
+
 
 </script>
 
