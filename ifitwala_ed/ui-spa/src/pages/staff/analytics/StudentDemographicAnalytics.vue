@@ -138,13 +138,16 @@ const dashboard = computed<DashboardResponse>(() => {
 })
 
 let debounceTimer: number | undefined
+
 function debounce(fn: () => void, delay = 400) {
 	window.clearTimeout(debounceTimer)
 	debounceTimer = window.setTimeout(fn, delay)
 }
 
 async function loadDashboard() {
-	await dashboardResource.submit()
+	await dashboardResource.submit({
+		filters: filters.value,
+	})
 }
 
 watch(

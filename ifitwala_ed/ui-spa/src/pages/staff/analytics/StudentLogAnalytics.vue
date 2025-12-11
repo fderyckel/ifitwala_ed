@@ -137,13 +137,11 @@ const dashboard = computed(() => (dashboardResource.data as any) || {})
    Recent logs resource
    ────────────────────────────────────────────────────────────── */
 
-const recentLogsResource = createResource({
-  url: 'ifitwala_ed.api.student_log_dashboard.get_recent_logs',
+const dashboardResource = createResource({
+  url: 'ifitwala_ed.api.student_demographics_dashboard.get_dashboard',
   method: 'POST',
   params: () => ({
-    filters: filters.value,
-    start: recentStart.value,
-    page_length: recentPageLength,
+    filters: filters.value
   }),
   auto: false,
 })
