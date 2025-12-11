@@ -1,3 +1,5 @@
+// ifitwala_ed/ui-spa/src/types/orgCommunication.ts
+
 export type Priority = 'Low' | 'Normal' | 'High' | 'Critical'
 export type Status = 'Draft' | 'Scheduled' | 'Published' | 'Archived'
 export type PortalSurface = 'Desk' | 'Morning Brief' | 'Portal Feed' | 'Everywhere'

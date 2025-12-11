@@ -41,6 +41,7 @@ class Employee(NestedSet):
 		self.update_user_default_school()
 		self.validate_employee_history()
 		self.sync_employee_history()
+		self._sync_staff_calendar()
 
 		if self.user_id:
 			self.validate_user_details()
@@ -397,66 +398,115 @@ class Employee(NestedSet):
 		if employee:
 			frappe.throw(_("User {0} is already assigned to Employee {1}").format(self.user_id, employee[0][0]), frappe.DuplicateEntryError)
 
-
 	# to update the user fields when employee fields are changing
 	def update_user(self):
-			user = frappe.get_doc("User", self.user_id)
-			user.flags.ignore_permissions = True
+		user = frappe.get_doc("User", self.user_id)
+		user.flags.ignore_permissions = True
 
-			if "Employee" not in user.get("roles"):
-					user.append_roles("Employee")
+		if "Employee" not in user.get("roles"):
+			user.append_roles("Employee")
 
-			user.first_name = self.employee_first_name
-			user.last_name = self.employee_last_name
-			user.full_name = self.employee_full_name
+		user.first_name = self.employee_first_name
+		user.last_name = self.employee_last_name
+		user.full_name = self.employee_full_name
 
-			if self.employee_date_of_birth:
-					user.birth_date = self.employee_date_of_birth
+		if self.employee_date_of_birth:
+			user.birth_date = self.employee_date_of_birth
 
-			# ---- image sync -------------------------------------------------------
-			img_path = self.employee_image
-			if img_path:
-					abs_path = frappe.utils.get_site_path("public", img_path.lstrip("/"))
+		# ---- image sync -------------------------------------------------------
+		img_path = self.employee_image
+		if img_path:
+			abs_path = frappe.utils.get_site_path("public", img_path.lstrip("/"))
 
-					# Skip (and log) if the file has been moved but the field wasn’t updated yet
-					if not os.path.exists(abs_path):
-							frappe.log_error(
-									title=_("Missing file on disk during update_user"),
-									message=f"{abs_path} does not exist for Employee {self.name}"
-							)
-							img_path = None                # prevents 500 in attach_files_to_document
+			# Skip (and log) if the file has been moved but the field wasn’t updated yet
+			if not os.path.exists(abs_path):
+				frappe.log_error(
+					title=_("Missing file on disk during update_user"),
+					message=f"{abs_path} does not exist for Employee {self.name}"
+				)
+				img_path = None                # prevents 500 in attach_files_to_document
 
-			if img_path:                           # only run if the path is valid
-					if user.user_image != img_path:
-						user.user_image = img_path
+		if img_path:                           # only run if the path is valid
+			if user.user_image != img_path:
+				user.user_image = img_path
 
-					# keep / update the File row attached to User.user_image
-					existing = frappe.db.exists(
-							"File",
-							{
-									"attached_to_doctype": "User",
-									"attached_to_name":   self.user_id,
-									"attached_to_field":  "user_image",
-							}
-					)
+			# keep / update the File row attached to User.user_image
+			existing = frappe.db.exists(
+				"File",
+				{
+					"attached_to_doctype": "User",
+					"attached_to_name":   self.user_id,
+					"attached_to_field":  "user_image",
+				}
+			)
 
-					if not existing:
-							frappe.get_doc({
-									"doctype": "File",
-									"file_url":           img_path,
-									"attached_to_doctype":"User",
-									"attached_to_name":   self.user_id,
-									"attached_to_field":  "user_image",
-							}).insert(ignore_permissions=True, ignore_if_duplicate=True)
-					else:
-						frappe.db.set_value(
-								"File", existing, "file_url", img_path, update_modified=False
-						)
-
-
-			user.save()
+			if not existing:
+				frappe.get_doc({
+					"doctype": "File",
+					"file_url":           img_path,
+					"attached_to_doctype":"User",
+					"attached_to_name":   self.user_id,
+					"attached_to_field":  "user_image",
+				}).insert(ignore_permissions=True, ignore_if_duplicate=True)
+			else:
+				frappe.db.set_value(
+					"File", existing, "file_url", img_path, update_modified=False
+				)
 
 
+		user.save()
+
+	def _sync_staff_calendar(self):
+		"""Attach the appropriate Staff Calendar to current_holiday_lis based on employee_group.
+
+		Strategy:
+		- If no employee_group or employee not Active → clear current_holiday_lis.
+		- Otherwise, pick the Staff Calendar whose employee_group matches,
+			and whose period (from_date/to_date) contains today.
+		- If multiple match, choose the one with the latest from_date.
+		- If none match the date, fall back to the latest by from_date.
+		"""
+		# Only for active staff
+		if self.status != "Active":
+			self.current_holiday_lis = None
+			return
+
+		if not self.employee_group:
+			# No group ⇒ no calendar mapping
+			self.current_holiday_lis = None
+			return
+
+		today_d = getdate(today())
+
+		calendars = frappe.get_all(
+			"Staff Calendar",
+			filters={
+				"employee_group": self.employee_group,
+			},
+			fields=["name", "from_date", "to_date"],
+			order_by="from_date desc",
+		)
+
+		if not calendars:
+			# Nothing configured yet for this group
+			self.current_holiday_lis = None
+			return
+
+		# 1) Prefer a calendar that actually covers "today"
+		selected = None
+		for cal in calendars:
+			from_d = getdate(cal.get("from_date")) if cal.get("from_date") else None
+			to_d = getdate(cal.get("to_date")) if cal.get("to_date") else None
+
+			if from_d and to_d and from_d <= today_d <= to_d:
+				selected = cal["name"]
+				break
+
+		# 2) Fallback: latest by from_date
+		if not selected:
+			selected = calendars[0]["name"]
+
+		self.current_holiday_lis = selected
 
 	def reset_employee_emails_cache(self):
 		prev_doc = self.get_doc_before_save() or {}

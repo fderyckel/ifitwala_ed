@@ -1,6 +1,8 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed.api.org_comm_utils
+
 import frappe
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
@@ -8,7 +10,7 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
     """
     Checks if the current user (employee) matches the audience criteria
     for a given Org Communication.
-    
+
     Optional filters:
     - filter_team: If set, only returns True if the matched audience is specifically for this team.
     - filter_student_group: If set, only returns True if the matched audience is specifically for this group.
@@ -65,7 +67,7 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 
         elif aud.team and employee and employee.department == aud.team:
             match_found = True
-            
+
         elif aud.student_group:
             # Check if user is linked to this student group (e.g. as Instructor)
             # This is expensive if we do a DB call per row.

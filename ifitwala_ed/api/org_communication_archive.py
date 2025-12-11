@@ -1,6 +1,8 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed.api.org_communication_archive
+
 import frappe
 from frappe.utils import today, add_days, getdate, strip_html
 from ifitwala_ed.api.org_comm_utils import check_audience_match
@@ -10,7 +12,7 @@ def get_archive_context():
     """Returns context data for the archive page filters."""
     user = frappe.session.user
     employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "organization", "department"], as_dict=True)
-    
+
     data = {
         "my_team": None,
         "my_groups": [],
@@ -22,12 +24,12 @@ def get_archive_context():
             "team": "All"
         }
     }
-    
+
     if employee:
         data["my_team"] = employee.department
         if employee.department:
              data["defaults"]["team"] = employee.department
-             
+
         # Defaults
         if employee.organization:
              data["defaults"]["organization"] = employee.organization
@@ -37,16 +39,16 @@ def get_archive_context():
         # Get Instructor Groups
         groups = frappe.get_all("Student Group Instructor", filters={"instructor": employee.name}, fields=["parent"])
         data["my_groups"] = sorted(list(set([g.parent for g in groups])))
-        
-        # Organizations: strictly limits to user's org if set? 
+
+        # Organizations: strictly limits to user's org if set?
         # User said: "The organization filter should be the default organization of the employee... Based on that the school filter should only be schools that depends of that organization"
         # If user has an Org, they might only see that Org? Or strict hierarchy?
         # Let's assume if Employee has Org, they are bound to it. If not, they see all.
         if employee.organization:
              data["organizations"] = [{"name": employee.organization}]
-             # Also allow fetching children orgs if Organization is a tree? 
+             # Also allow fetching children orgs if Organization is a tree?
              # Assuming flat or simple for now unless specified.
-             # Actually, if they are at Org level they might oversee sub-orgs? 
+             # Actually, if they are at Org level they might oversee sub-orgs?
              # Let's check if Organization matches strictness. "The organization filter should be the defautl organization of the employee".
              # Implies pre-selection. Does it imply restriction? "Then user can only select that school or one of its children."
              # For now, restrict Org list to just the employee's org to be safe/strict as requested.
@@ -79,10 +81,10 @@ def get_org_communication_item(name):
     user = frappe.session.user
     roles = frappe.get_roles(user)
     employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "organization", "department"], as_dict=True)
-    
+
     if not check_audience_match(name, user, roles, employee):
         frappe.throw(_("You do not have permission to view this communication."), frappe.PermissionError)
-        
+
     doc = frappe.get_doc("Org Communication", name)
     return {
         "name": doc.name,
@@ -110,18 +112,18 @@ def get_org_communication_feed(
     limit_start: int = 0,
     limit_page_length: int = 30,
 ) -> dict:
-    
+
     user = frappe.session.user
     roles = frappe.get_roles(user)
     employee = frappe.db.get_value("Employee", {"user_id": user},
         ["name", "school", "organization", "department"],
         as_dict=True
     )
-    
+
     # Base Filters
     conditions = []
     values = {}
-    
+
     # Status
     if status == "PublishedOrArchived":
         conditions.append("status IN ('Published', 'Archived')")
@@ -129,34 +131,34 @@ def get_org_communication_feed(
         conditions.append("status = 'Published'")
     elif status == "All":
         # No status filter, effectively allows Draft/Scheduled if user has permissions (though audience check handles visibility too)
-        # But usually 'All' in this context means all VISIBLE statuses. 
+        # But usually 'All' in this context means all VISIBLE statuses.
         # For simplicity and safety, let's assume 'All' still means Published/Archived/Scheduled/Draft?
         # The spec says: "All" -> no status filter.
         pass
     elif status:
         conditions.append("status = %(status)s")
         values["status"] = status
-        
+
     # Priority
     if priority and priority != "All":
         conditions.append("priority = %(priority)s")
         values["priority"] = priority
-        
+
     # Portal Surface
     if portal_surface and portal_surface != "All":
         conditions.append("portal_surface = %(portal_surface)s")
         values["portal_surface"] = portal_surface
-        
+
     # Communication Type
     if communication_type and communication_type != "All":
         conditions.append("communication_type = %(communication_type)s")
         values["communication_type"] = communication_type
-        
+
     # Date Range (publish_from)
     if date_range and date_range != "all":
         end_date = getdate(today())
         start_date = None
-        
+
         if date_range == "7d":
             start_date = add_days(end_date, -7)
         elif date_range == "30d":
@@ -166,11 +168,11 @@ def get_org_communication_feed(
         elif date_range == "year":
             # Current calendar year
             start_date = f"{end_date.year}-01-01"
-            
+
         if start_date:
             conditions.append("publish_from >= %(start_date)s")
             values["start_date"] = start_date
-            
+
     # Search Text
     if search_text:
         conditions.append("(title LIKE %(search)s OR message LIKE %(search)s)")
@@ -185,9 +187,9 @@ def get_org_communication_feed(
     if organization and organization != "All":
         conditions.append("organization = %(org)s")
         values["org"] = organization
-        
+
     # Only with interactions
-    # optimizing this: first find comms with interactions for this user? 
+    # optimizing this: first find comms with interactions for this user?
     # Spec: "at least one Communication Interaction row for this user or at all (your choice; I’d start with “any interaction at all”)"
     # Let's go with "any interaction at all" as it's broader.
     # Only with interactions
@@ -198,7 +200,7 @@ def get_org_communication_feed(
     where_clause = " AND ".join(conditions)
     if where_clause:
         where_clause = "WHERE " + where_clause
-        
+
     sql = f"""
         SELECT
             name,
@@ -221,22 +223,22 @@ def get_org_communication_feed(
         {where_clause}
         ORDER BY publish_from DESC, creation DESC
     """
-    
+
     candidates = frappe.db.sql(sql, values, as_dict=True)
-    
+
     visible_items = []
-    
+
     # Permission Checks for Filters
     filter_team_val = team
     filter_sg_val = student_group
-    
+
     if filter_team_val:
         # User must belong to this team (Department)
         # Assuming employee is linked to a Department which matches 'Team' link
         if employee.department != filter_team_val:
             # If user is not in this team, they shouldn't filter by it?
             # Or should we just return empty?
-            # Let's stricter: return empty or ignore. 
+            # Let's stricter: return empty or ignore.
             pass # We pass it to check_audience_match but audience match logic won't grant access via Team rule if department mismatches.
             # But we also want to filter by "Are there messages for this team?".
             # If I am not in Team A, and I ask "Show me messages for Team A", I should see nothing or forbidden.
@@ -267,15 +269,15 @@ def get_org_communication_feed(
                 "has_active_thread": c.allow_public_thread,
                 "audience_label": get_audience_label(c.name)
             })
-            
+
     # Apply pagination on the filtered list
     total_count = len(visible_items)
-    
+
     # Slice
     start = int(limit_start)
     length = int(limit_page_length)
     paged_items = visible_items[start : start + length]
-    
+
     return {
         "items": paged_items,
         "total_count": total_count,
@@ -290,7 +292,7 @@ def get_audience_label(comm_name):
     audiences = frappe.get_all("Org Communication Audience", filters={"parent": comm_name}, fields=["target_group", "school", "team", "program", "student_group"])
     if not audiences:
         return "Whole Organization"
-        
+
     parts = []
     for a in audiences:
         label = a.target_group or a.team or "Everyone"
@@ -298,12 +300,12 @@ def get_audience_label(comm_name):
              label = f"Student Group: {a.student_group}"
 
         if a.school:
-            # Fix 500 error: Use get_cached_value to avoid column issues if caching is smart, 
-            # OR just fetch the correct field safely. 
+            # Fix 500 error: Use get_cached_value to avoid column issues if caching is smart,
+            # OR just fetch the correct field safely.
             # Note: frappe.db.get_value can throw if column doesn't exist in cache sometimes?
             # Safest is get_cached_value which uses `name` lookup.
             school_name = frappe.get_cached_value("School", a.school, "school_name")
             label += f" · {school_name or a.school}"
         parts.append(label)
-        
+
     return ", ".join(parts)

@@ -4,7 +4,6 @@
 # ifitwala_ed.hr.doctype.staff_calendar.staff_calendar
 
 import frappe
-import json
 from datetime import date
 from frappe import _
 from frappe.utils import getdate, formatdate, date_diff
@@ -35,7 +34,6 @@ class StaffCalendar(Document):
 		# New: enforce Employee Group (core of the design)
 		if not getattr(self, "employee_group", None):
 			frappe.throw(_("Employee Group must be specified for this Staff Calendar."))
-
 
 	def validate_duplicate_date(self):
 		unique_dates = []
@@ -111,15 +109,17 @@ class StaffCalendar(Document):
 	@frappe.whitelist()
 	def get_supported_countries(self):
 		from holidays.utils import list_supported_countries
+
 		subdivisions_by_country = list_supported_countries()
 		countries = [
-			{"value": country, "label": local_country_name(country)}
-			for country in subdivisions_by_country.keys()
+			{"value": code, "label": code}
+			for code in sorted(subdivisions_by_country.keys())
 		]
 		return {
 			"countries": countries,
 			"subdivisions_by_country": subdivisions_by_country,
 		}
+
 
 	@frappe.whitelist()
 	def get_break_holidays(self):
