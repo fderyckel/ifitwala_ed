@@ -14,6 +14,7 @@
   "from_date",
   "column_break_loop",
   "school",
+  "employee_group",
   "total_holidays",
   "to_date",
   "add_weekly_holidays_section",
@@ -203,12 +204,19 @@
    "fieldname": "end_of_break",
    "fieldtype": "Date",
    "label": "End of Break"
+  },
+  {
+   "fieldname": "employee_group",
+   "fieldtype": "Link",
+   "label": "Employee Group",
+   "options": "Employee Group",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2025-11-24 19:12:09.314317",
+ "modified": "2025-12-09 22:14:07.206723",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Staff Calendar",

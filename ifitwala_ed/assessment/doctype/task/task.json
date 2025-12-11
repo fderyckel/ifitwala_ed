@@ -207,7 +207,8 @@
    "default": "0",
    "fieldname": "is_graded",
    "fieldtype": "Check",
-   "label": "Is Graded"
+   "label": "Is Graded",
+   "read_only": 1
   },
   {
    "default": "0",
@@ -337,7 +338,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-08 11:54:34.970424",
+ "modified": "2025-12-08 23:33:40.635159",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",
