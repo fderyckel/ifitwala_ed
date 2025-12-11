@@ -84,8 +84,11 @@ class Task(Document):
 		self._validate_task_criteria()
 		self._validate_task_criterion_scores()
 		self._validate_criteria_weighting()
+
+		# Points-only clamping and totals
 		self._enforce_points_only_bounds()
 		self._enforce_criteria_bounds_and_rollup()
+		self._apply_points_totals_to_task_students()
 
 		# --- Grading requirements (when graded) ---
 		if self.points:
@@ -237,6 +240,50 @@ class Task(Document):
 			if new_val != raw:
 				setattr(row, "mark_awarded", new_val)
 
+	def _apply_points_totals_to_task_students(self) -> None:
+		"""Populate out_of and pct for points-only tasks (no criteria).
+
+		- out_of comes from Task.max_points
+		- pct = mark_awarded / out_of * 100 (or None if out_of == 0 or mark empty)
+
+		Does nothing in criteria mode or when points is off.
+		Works only on in-memory child rows; no extra DB trips.
+		"""
+		# Only relevant when points mode is ON and criteria mode is OFF
+		if not self.points or self.criteria:
+			return
+
+		# max_points is the canonical denominator
+		cap = float(self.max_points or 0)
+		rows = self.get("task_student") or []
+
+		if not rows:
+			return
+
+		for row in rows:
+			raw = row.get("mark_awarded")
+
+			# Always sync out_of so analytics has a consistent shape
+			row.out_of = cap
+
+			# Empty mark → clear pct
+			if raw in (None, ""):
+				row.pct = None
+				continue
+
+			# Non-empty mark: try numeric conversion
+			try:
+				mark = float(raw)
+			except Exception:
+				# If it's not numeric, don't crash; just skip pct
+				continue
+
+			# No denominator → no percentage
+			if cap <= 0:
+				row.pct = None
+				continue
+
+			row.pct = (mark / cap) * 100.0
 
 
 	def _enforce_criteria_bounds_and_rollup(self):

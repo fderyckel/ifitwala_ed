@@ -99,6 +99,44 @@ frappe.ui.form.on("Task", {
 		auto_sync_students_if_needed(frm);
 	},
 
+	max_points(frm) {
+		// Only in points-only mode
+		if (!frm.doc.points || frm.doc.criteria) return;
+
+		const cap = Number(frm.doc.max_points || 0);
+		const rows = frm.doc.task_student || [];
+
+		for (const row of rows) {
+			const cdt = row.doctype;
+			const cdn = row.name;
+
+			// Mirror out_of
+			frappe.model.set_value(cdt, cdn, "out_of", cap || 0);
+
+			// If mark is empty or no denominator → clear pct
+			if (
+				row.mark_awarded === null ||
+				row.mark_awarded === "" ||
+				row.mark_awarded === undefined ||
+				!cap
+			) {
+				frappe.model.set_value(cdt, cdn, "pct", null);
+				continue;
+			}
+
+			const mark = Number(row.mark_awarded);
+			if (Number.isNaN(mark)) {
+				frappe.model.set_value(cdt, cdn, "pct", null);
+				continue;
+			}
+
+			frappe.model.set_value(cdt, cdn, "pct", (mark / cap) * 100);
+		}
+
+		frm.refresh_field("task_student");
+	},
+
+
 	criteria(frm) {
 		// Always keep is_graded in sync
 		derive_is_graded(frm);
@@ -162,6 +200,7 @@ frappe.ui.form.on("Task Student", {
 
 	mark_awarded(frm, cdt, cdn) {
 		clamp_mark_awarded(frm, cdt, cdn);
+		sync_points_totals_for_row(frm, cdt, cdn);
 		apply_status_preview(frm, cdt, cdn);
 	},
 
@@ -482,6 +521,36 @@ function clamp_mark_awarded(frm, cdt, cdn) {
     }
 }
 
+function sync_points_totals_for_row(frm, cdt, cdn) {
+	// Only in points-only mode (points ON, criteria OFF)
+	if (!frm.doc.points || frm.doc.criteria) return;
+
+	const cap = Number(frm.doc.max_points || 0);
+	const row = frappe.get_doc(cdt, cdn);
+
+	// Always mirror out_of to max_points (or 0 if unset)
+	frappe.model.set_value(cdt, cdn, "out_of", cap || 0);
+
+	// If no mark entered → clear pct
+	if (
+		row.mark_awarded === null ||
+		row.mark_awarded === "" ||
+		row.mark_awarded === undefined
+	) {
+		frappe.model.set_value(cdt, cdn, "pct", null);
+		return;
+	}
+
+	const mark = Number(row.mark_awarded);
+	if (Number.isNaN(mark) || !cap) {
+		// Non-numeric mark or zero denominator → no pct
+		frappe.model.set_value(cdt, cdn, "pct", null);
+		return;
+	}
+
+	const pct = (mark / cap) * 100;
+	frappe.model.set_value(cdt, cdn, "pct", pct);
+}
 
 
 function update_task_student_visibility(frm) {

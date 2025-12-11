@@ -1,45 +1,225 @@
 <template>
 	<Dialog v-model="show" :options="{ size: 'xl', title: null }">
 		<template #body-content>
-			<div class="flex flex-col h-[500px]">
-				<!-- Header -->
-				<div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
-					<div>
-						<p v-if="subtitle" class="text-sm text-slate-500 mt-1">{{ subtitle }}</p>
+			<div class="history-dialog flex h-[640px] max-h-[85vh] flex-col gap-4">
+				<!-- HEADER -->
+				<header class="relative flex items-start justify-between gap-3 overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-white via-[rgb(var(--surface-rgb)/0.96)] to-white px-5 py-4 shadow-soft">
+					<div class="absolute -left-14 -top-10 h-36 w-36 rounded-full bg-jacaranda/10 blur-3xl"></div>
+					<div class="absolute -right-8 bottom-0 h-28 w-28 rounded-full bg-leaf/10 blur-3xl"></div>
+
+					<div class="relative space-y-1">
+						<p class="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-slate-token/70">
+							Historical view
+						</p>
+						<div class="flex flex-wrap items-center gap-2">
+							<h3 class="text-xl font-semibold text-ink">
+								{{ titleText }}
+							</h3>
+							<span class="chip">
+								{{ selectedRangeLabel }}
+							</span>
+						</div>
+						<p v-if="subtitle" class="text-sm text-slate-token/80">
+							{{ subtitle }}
+						</p>
 					</div>
-					<div class="flex items-center gap-4">
-						<!-- Time Range Toggles -->
-						<div class="flex bg-slate-100 p-1 rounded-lg">
-							<button v-for="range in ranges" :key="range.value" @click="selectedRange = range.value"
-								class="px-3 py-1 text-xs font-semibold rounded-md transition-all"
-								:class="selectedRange === range.value ? 'bg-white text-ink shadow-sm' : 'text-slate-500 hover:text-slate-700'">
+
+					<div class="relative flex items-center gap-3">
+						<div class="flex items-center gap-1 rounded-full border border-border/85 bg-white/90 px-1 py-1 shadow-inner backdrop-blur">
+							<button
+								v-for="range in ranges"
+								:key="range.value"
+								type="button"
+								@click="selectedRange = range.value"
+								class="rounded-full px-3 py-1.5 text-xs font-semibold transition-all"
+								:class="selectedRange === range.value
+									? 'bg-ink text-white shadow-sm'
+									: 'text-slate-token/70 hover:text-ink hover:bg-surface-soft'"
+							>
 								{{ range.label }}
 							</button>
 						</div>
 
-						<button @click="show = false"
-							class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-ink">
-							<FeatherIcon name="x" class="h-5 w-5" />
+						<button
+							type="button"
+							@click="show = false"
+							class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/80 bg-white/90 text-slate-token/70 shadow-inner transition hover:border-jacaranda/40 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-jacaranda/30"
+							aria-label="Close history dialog"
+						>
+							<FeatherIcon name="x" class="h-4 w-4" />
 						</button>
 					</div>
-				</div>
+				</header>
 
-				<!-- Content -->
-				<div class="flex-1 p-6 flex flex-col items-center justify-center bg-white relative">
+				<!-- MAIN CONTENT -->
+				<section class="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
+					<!-- Chart panel -->
+					<div class="relative flex flex-col overflow-hidden rounded-2xl border border-border/80 bg-white/95 shadow-strong">
+						<div class="flex items-center justify-between border-b border-border/70 px-5 py-3">
+							<div class="space-y-0.5">
+								<p class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
+									Trend line
+								</p>
+								<p class="text-sm text-slate-token/80">
+									{{ hasData ? 'Smooth curve with soft fill to catch shifts quickly.' : 'Waiting for data to render.' }}
+								</p>
+							</div>
+							<span class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-3 py-1 text-[11px] font-semibold text-slate-token/80">
+								{{ totalPoints }} point<span v-if="totalPoints !== 1">s</span>
+							</span>
+						</div>
 
-					<div v-if="loading" class="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
-						<FeatherIcon name="loader" class="h-8 w-8 animate-spin text-jacaranda" />
+						<div class="relative flex-1">
+							<div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center bg-white/75 backdrop-blur-sm">
+								<FeatherIcon name="loader" class="h-7 w-7 animate-spin text-jacaranda" />
+							</div>
+
+							<AnalyticsChart :option="chartOption" class="h-full w-full" />
+						</div>
+
+						<div class="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-surface-soft/60 px-5 py-3 text-xs text-slate-token/70">
+							<div class="flex items-center gap-2">
+								<span class="h-2.5 w-2.5 rounded-full bg-canopy"></span>
+								<span>
+									Showing data for <span class="font-semibold text-ink">{{ schoolName }}</span>
+								</span>
+							</div>
+							<div class="flex items-center gap-2">
+								<span class="h-2.5 w-2.5 rounded-full bg-jacaranda"></span>
+								<span class="uppercase tracking-wide">
+									{{ selectedRangeLabel }}
+								</span>
+							</div>
+						</div>
 					</div>
 
-					<div class="w-full h-full">
-						<AnalyticsChart :option="chartOption" />
+					<!-- Context -->
+					<div class="flex flex-col gap-3 rounded-2xl border border-border/80 bg-[rgb(var(--surface-rgb)/0.95)] px-4 py-4 shadow-soft">
+						<div class="flex items-start justify-between gap-3">
+							<div class="space-y-1">
+								<p class="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-token/70">
+									Context
+								</p>
+								<p class="text-sm text-slate-token/80">
+									Soft shells, crisp ink text, and grounded metrics to match the portal.
+								</p>
+							</div>
+							<span class="inline-flex items-center gap-1 rounded-full border border-border/70 bg-white px-3 py-1 text-[11px] font-semibold text-slate-token/80">
+								Live
+							</span>
+						</div>
+
+						<div class="grid grid-cols-2 gap-2">
+							<div class="rounded-xl border border-border/65 bg-white/85 px-3 py-2 shadow-inner">
+								<p class="text-[11px] font-semibold uppercase tracking-wide text-slate-token/70">
+									Total
+								</p>
+								<p class="mt-1 text-xl font-semibold text-canopy">
+									{{ totalCount.toLocaleString() }}
+								</p>
+								<p class="text-xs text-slate-token/70">
+									Sum across {{ selectedRangeLabel }}
+								</p>
+							</div>
+							<div class="rounded-xl border border-border/65 bg-white/85 px-3 py-2 shadow-inner">
+								<p class="text-[11px] font-semibold uppercase tracking-wide text-slate-token/70">
+									Average
+								</p>
+								<p class="mt-1 text-xl font-semibold text-jacaranda">
+									{{ averageCount }}
+								</p>
+								<p class="text-xs text-slate-token/70">
+									Per data point
+								</p>
+							</div>
+						</div>
+
+						<div class="rounded-xl border border-border/70 bg-white/80 px-3 py-3 text-sm text-slate-token/80 shadow-inner">
+							Use this space to narrate what changed, pin action items, and keep the thread anchored to the selected slice.
+						</div>
+					</div>
+				</section>
+
+				<!-- COMMENTS -->
+				<section class="flex flex-col gap-3 rounded-2xl border border-border/80 bg-white/95 px-4 py-4 shadow-soft">
+					<div class="flex flex-wrap items-center justify-between gap-3">
+						<div class="space-y-1">
+							<p class="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-token/70">
+								Comments
+							</p>
+							<p class="text-sm text-slate-token/80">
+								Keep observations, handoffs, and quick follow-ups alongside the chart.
+							</p>
+						</div>
+						<span class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-3 py-1 text-[11px] font-semibold text-slate-token/80">
+							{{ commentCount }} {{ commentCount === 1 ? 'comment' : 'comments' }}
+						</span>
 					</div>
 
-					<div class="mt-4 text-xs text-slate-400 font-medium">
-						Showing data for: <span class="text-ink">{{ schoolName }}</span>
+					<div class="flex max-h-48 flex-col gap-3 overflow-y-auto rounded-xl border border-border/70 bg-surface-soft/60 p-3 custom-scrollbar">
+						<div v-if="commentsLoading" class="flex items-center justify-center gap-2 text-sm text-slate-token/70">
+							<FeatherIcon name="loader" class="h-4 w-4 animate-spin text-jacaranda" />
+							Loading conversation...
+						</div>
+						<div v-else-if="!hasComments" class="flex flex-col items-center justify-center gap-1 py-6 text-center text-slate-token/70">
+							<FeatherIcon name="message-circle" class="h-5 w-5 text-jacaranda" />
+							<p class="text-sm">
+								No comments yet. Start the thread with context or next steps.
+							</p>
+						</div>
+						<article
+							v-else
+							v-for="(comment, index) in displayedComments"
+							:key="comment.id || comment.name || index"
+							class="flex gap-3 rounded-lg border border-border/70 bg-white/95 px-3 py-2 shadow-inner"
+						>
+							<Avatar
+								:label="comment.full_name || comment.author || comment.user || 'User'"
+								:image="comment.avatar"
+								size="sm"
+							/>
+							<div class="flex min-w-0 flex-1 flex-col gap-1">
+								<div class="flex items-center justify-between gap-2">
+									<p class="text-sm font-semibold text-ink">
+										{{ comment.full_name || comment.author || comment.user || 'User' }}
+									</p>
+									<span v-if="comment.timestamp || comment.creation" class="text-[11px] text-slate-token/70">
+										{{ comment.timestamp || comment.creation }}
+									</span>
+								</div>
+								<p class="text-xs leading-relaxed text-slate-token/80">
+									{{ comment.note || comment.message || '' }}
+								</p>
+							</div>
+						</article>
 					</div>
 
-				</div>
+					<form class="flex flex-col gap-2 rounded-xl border border-border/70 bg-surface-soft/60 p-3 shadow-inner" @submit.prevent="submitComment">
+						<label class="text-[11px] font-semibold uppercase tracking-wide text-slate-token/70" for="history-comment">
+							Add a comment
+						</label>
+						<div class="flex flex-col gap-2 sm:flex-row sm:items-end">
+							<textarea
+								id="history-comment"
+								v-model="commentDraft"
+								rows="2"
+								class="flex-1 rounded-xl border border-border/70 bg-white/90 px-3 py-2 text-sm text-ink shadow-inner focus:border-jacaranda/60 focus:outline-none focus:ring-2 focus:ring-jacaranda/25"
+								placeholder="Summarize what changed, tag a teammate, or capture a next step."
+							/>
+							<button
+								type="submit"
+								class="inline-flex items-center justify-center gap-2 rounded-full bg-canopy px-4 py-2 text-xs font-semibold text-white shadow-soft transition hover:bg-canopy/90 focus:outline-none focus:ring-2 focus:ring-leaf/40 disabled:cursor-not-allowed disabled:bg-slate-300"
+								:disabled="!commentDraft.trim()"
+							>
+								<FeatherIcon name="send" class="h-4 w-4" />
+								Send
+							</button>
+						</div>
+						<p class="text-[11px] text-slate-token/70">
+							Shared with your team; keep notes concise and actionable.
+						</p>
+					</form>
+				</section>
 			</div>
 		</template>
 	</Dialog>
@@ -47,8 +227,22 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Dialog, FeatherIcon, createResource } from 'frappe-ui'
+import { Avatar, Dialog, FeatherIcon, createResource } from 'frappe-ui'
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
+
+type HistoryComment = {
+	id?: string | number
+	name?: string
+	author?: string
+	full_name?: string
+	user?: string
+	avatar?: string
+	timestamp?: string
+	creation?: string
+	note?: string
+	message?: string
+	role?: string
+}
 
 const props = defineProps<{
 	modelValue: boolean
@@ -56,16 +250,24 @@ const props = defineProps<{
 	method: string
 	color?: string
 	params?: Record<string, any>
+	title?: string
+	comments?: HistoryComment[]
+	loadingComments?: boolean
 }>()
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+	(event: 'update:modelValue', value: boolean): void
+	(event: 'submit-comment', value: string): void
+}>()
 
 const show = computed({
 	get: () => props.modelValue,
 	set: (val) => emit('update:modelValue', val)
 })
 
-const ranges = [
+const titleText = computed(() => props.title || 'History view')
+
+const ranges: Array<{ label: string; value: string }> = [
 	{ label: '1M', value: '1M' },
 	{ label: '3M', value: '3M' },
 	{ label: '6M', value: '6M' },
@@ -77,10 +279,10 @@ const selectedRange = ref('1M')
 // Resource
 const resource = createResource({
 	url: props.method,
-	makeParams(values) {
+	makeParams() {
 		return {
 			time_range: selectedRange.value,
-			...props.params
+			...(props.params || {})
 		}
 	},
 	auto: false
@@ -88,6 +290,25 @@ const resource = createResource({
 
 const loading = computed(() => resource.loading)
 const schoolName = computed(() => resource.data?.school || 'Loading...')
+const totalPoints = computed(() => resource.data?.data?.length || 0)
+const totalCount = computed(() => {
+	const data = resource.data?.data || []
+	return data.reduce((sum: number, entry: any) => sum + Number(entry.count || 0), 0)
+})
+const averageCount = computed(() => {
+	if (!totalPoints.value) return 0
+	return Number((totalCount.value / totalPoints.value).toFixed(1))
+})
+const hasData = computed(() => totalPoints.value > 0)
+const selectedRangeLabel = computed(
+	() => ranges.find((range) => range.value === selectedRange.value)?.label || selectedRange.value
+)
+
+const displayedComments = computed<HistoryComment[]>(() => props.comments || [])
+const commentCount = computed(() => displayedComments.value.length)
+const hasComments = computed(() => commentCount.value > 0)
+const commentsLoading = computed(() => props.loadingComments ?? false)
+const commentDraft = ref('')
 
 // Watch for open to fetch
 watch(show, (isOpen) => {
@@ -103,17 +324,23 @@ watch(selectedRange, () => {
 	}
 })
 
+function submitComment() {
+	const note = commentDraft.value.trim()
+	if (!note) return
+	emit('submit-comment', note)
+	commentDraft.value = ''
+}
+
 // Chart Option
 const chartOption = computed(() => {
 	const data = resource.data?.data || []
 	const dates = data.map((d: any) => d.date)
 	const counts = data.map((d: any) => d.count)
 
-	// Use prop color or default to Blue-500
-	const baseColor = props.color || '#3b82f6'
+	// Use prop color or default to Jacaranda token
+	const baseColor = props.color || '#7e6bd6'
 
 	// Convert hex to rgba for area style
-	// Simple hex to rgb conversion
 	let r = 0, g = 0, b = 0
 	if (baseColor.length === 7) {
 		r = parseInt(baseColor.slice(1, 3), 16)
@@ -138,14 +365,14 @@ const chartOption = computed(() => {
 			data: dates,
 			axisLine: { show: false },
 			axisTick: { show: false },
-			axisLabel: { color: '#64748b', fontSize: 11 }
+			axisLabel: { color: '#475569', fontSize: 11 }
 		},
 		yAxis: {
 			type: 'value',
 			splitLine: {
-				lineStyle: { type: 'dashed', color: '#e2e8f0' }
+				lineStyle: { type: 'dashed', color: 'rgba(226, 232, 240, 0.85)' }
 			},
-			axisLabel: { color: '#64748b', fontSize: 11 }
+			axisLabel: { color: '#475569', fontSize: 11 }
 		},
 		series: [
 			{
@@ -155,12 +382,13 @@ const chartOption = computed(() => {
 				symbol: 'circle',
 				symbolSize: 6,
 				itemStyle: { color: baseColor },
+				lineStyle: { width: 3, color: baseColor },
 				areaStyle: {
 					color: {
 						type: 'linear',
 						x: 0, y: 0, x2: 0, y2: 1,
 						colorStops: [
-							{ offset: 0, color: `rgba(${r}, ${g}, ${b}, 0.2)` },
+							{ offset: 0, color: `rgba(${r}, ${g}, ${b}, 0.22)` },
 							{ offset: 1, color: `rgba(${r}, ${g}, ${b}, 0)` }
 						]
 					}
