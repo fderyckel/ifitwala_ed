@@ -5,7 +5,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import now_datetime, get_datetime
+from frappe.utils import now_datetime, get_datetime, cint
 from frappe import _
 from typing import Optional, Dict, List
 
@@ -33,6 +33,9 @@ class Task(Document):
 			self.posted_date = now_datetime()
 		# Denorm from student_group (cheap, read-only fields in schema)
 		self._denorm_from_group()
+
+	def before_save(self):
+		self._apply_course_default_grade_scale()
 
 	def validate(self):
 		self._validate_learning_unit_belongs_to_course()
@@ -119,6 +122,26 @@ class Task(Document):
 		self._snapshot_task_criteria()
 		self._update_task_student_statuses()    # status engine for Task Student rows
 
+	def _apply_course_default_grade_scale(self):
+		"""
+		If points mode is enabled AND grade_scale is empty AND course has a default_grade_scale,
+		auto-fill grade_scale.
+		"""
+		# Only apply when points checkbox is ON
+		if not cint(self.points):
+			return
+
+		# Respect manually selected grade scales
+		if self.grade_scale:
+			return
+
+		# Course must exist and not be literal "NA"
+		if not self.course or self.course.strip() == "NA":
+			return
+
+		default_scale = frappe.db.get_value("Course", self.course, "default_grade_scale")
+		if default_scale:
+			self.grade_scale = default_scale
 
 	def _enforce_due_date_if_published(self):
 		"""

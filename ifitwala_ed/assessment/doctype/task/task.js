@@ -93,11 +93,41 @@ frappe.ui.form.on("Task", {
 		auto_sync_students_if_needed(frm);
 	},
 
+
 	points(frm) {
-		derive_is_graded(frm);
-		ensure_points_field_rules(frm);
-		auto_sync_students_if_needed(frm);
+		// Only apply when points becomes checked
+		if (!frm.doc.points) {
+			return;
+		}
+
+		// Don't override a manually chosen grade scale
+		if (frm.doc.grade_scale) {
+			return;
+		}
+
+		// Course must exist and not be "NA"
+		if (!frm.doc.course || frm.doc.course === "NA") {
+			return;
+		}
+
+		frappe.db.get_value("Course", frm.doc.course, "default_grade_scale")
+			.then(r => {
+				const scale = r?.message?.default_grade_scale;
+
+				// Only set it if still empty
+				if (scale && !frm.doc.grade_scale) {
+					frm.set_value("grade_scale", scale);
+					frappe.show_alert({
+						message: __("Applied default grade scale from Course"),
+						indicator: "green"
+					});
+				}
+			})
+			.catch(err => {
+				console.error("Error fetching Course.default_grade_scale", err);
+			});
 	},
+
 
 	max_points(frm) {
 		// Only in points-only mode
