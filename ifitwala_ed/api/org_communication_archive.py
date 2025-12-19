@@ -5,76 +5,156 @@
 
 import frappe
 from frappe.utils import today, add_days, getdate, strip_html
+from ifitwala_ed.utilities.employee_utils import (
+	get_descendant_organizations,
+	get_user_base_org,
+	get_user_base_school,
+)
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 from ifitwala_ed.api.org_comm_utils import check_audience_match
 from frappe import _
 
+
+def _parse_filters(raw):
+	"""Return a dict from a JSON string or mapping."""
+	if isinstance(raw, str):
+		try:
+			raw = frappe.parse_json(raw) or {}
+		except Exception:
+			raw = {}
+	return raw or {}
+
+
+def _normalize_filters(raw_filters: dict | None) -> dict:
+	"""Coerce incoming filters into a consistent contract."""
+	raw = _parse_filters(raw_filters)
+
+	def cleaned(val):
+		if val is None:
+			return None
+		if isinstance(val, str):
+			trimmed = val.strip()
+			if trimmed in {"", "All"}:
+				return None
+			return trimmed
+		return val
+
+	status_in_payload = "status" in raw
+
+	date_range_raw = raw.get("date_range")
+	date_range_clean = cleaned(date_range_raw)
+	if isinstance(date_range_raw, str) and date_range_raw.strip().lower() == "all":
+		date_range_clean = "all"
+	date_range_in_payload = "date_range" in raw
+
+	status_clean = cleaned(raw.get("status"))
+	if status_clean is None and not status_in_payload:
+		status_clean = "PublishedOrArchived"
+
+	if date_range_clean is None and not date_range_in_payload:
+		date_range_clean = "90d"
+
+	status_clean = status_clean or None
+	out = {
+		"search_text": cleaned(raw.get("search_text") or raw.get("search")),
+		"status": status_clean,
+		"priority": cleaned(raw.get("priority")),
+		"portal_surface": cleaned(raw.get("portal_surface")),
+		"communication_type": cleaned(raw.get("communication_type")),
+		"date_range": date_range_clean,
+		"team": cleaned(raw.get("team")),
+		"student_group": cleaned(raw.get("student_group")),
+		"school": cleaned(raw.get("school")),
+		"organization": cleaned(raw.get("organization")),
+		"only_with_interactions": 1 if raw.get("only_with_interactions") else 0,
+	}
+
+	return out
+
+
+def _get_scope(user: str, employee: dict | None):
+	"""Resolve the base org/school and their descendant scopes."""
+	base_org = (employee or {}).get("organization") or get_user_base_org(user)
+	base_school = (employee or {}).get("school") or get_user_base_school(user)
+
+	org_scope = []
+	if base_org:
+		org_scope = get_descendant_organizations(base_org) or [base_org]
+
+	school_scope = []
+	if base_school:
+		school_scope = get_descendant_schools(base_school) or [base_school]
+	elif org_scope:
+		school_scope = frappe.get_all(
+			"School",
+			filters={"organization": ["in", org_scope]},
+			pluck="name",
+		)
+
+	return base_org, base_school, org_scope, school_scope
+
 @frappe.whitelist()
 def get_archive_context():
-    """Returns context data for the archive page filters."""
-    user = frappe.session.user
-    employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "organization", "department"], as_dict=True)
+	"""Returns context data for the archive page filters."""
+	user = frappe.session.user
+	employee = frappe.db.get_value(
+		"Employee",
+		{"user_id": user},
+		["name", "school", "organization", "department"],
+		as_dict=True,
+	)
 
-    data = {
-        "my_team": None,
-        "my_groups": [],
-        "schools": [], # Options
-        "organizations": [], # Options
-        "defaults": { # Pre-select these
-            "school": "All",
-            "organization": "All",
-            "team": "All"
-        }
-    }
+	_base_org, _base_school, org_scope, school_scope = _get_scope(user, employee)
 
-    if employee:
-        data["my_team"] = employee.department
-        if employee.department:
-             data["defaults"]["team"] = employee.department
+	data = {
+		"my_team": (employee or {}).get("department"),
+		"my_groups": [],
+		"schools": [],
+		"organizations": [],
+		"defaults": {
+			"school": base_school,
+			"organization": base_org,
+			"team": (employee or {}).get("department"),
+		},
+		"base_org": base_org,
+		"base_school": base_school,
+	}
 
-        # Defaults
-        if employee.organization:
-             data["defaults"]["organization"] = employee.organization
-        if employee.school:
-             data["defaults"]["school"] = employee.school
+	# Student Groups for instructors
+	if employee:
+		groups = frappe.get_all(
+			"Student Group Instructor",
+			filters={"instructor": employee.name},
+			fields=["parent"],
+		)
+		data["my_groups"] = sorted(list({g.parent for g in groups}))
 
-        # Get Instructor Groups
-        groups = frappe.get_all("Student Group Instructor", filters={"instructor": employee.name}, fields=["parent"])
-        data["my_groups"] = sorted(list(set([g.parent for g in groups])))
+	# Organizations: base org + descendants; fallback to all
+	org_filters = {}
+	if org_scope:
+		org_filters["name"] = ["in", org_scope]
+	data["organizations"] = frappe.get_all(
+		"Organization",
+		filters=org_filters or None,
+		fields=["name", "organization_name"],
+		order_by="lft asc",
+	)
 
-        # Organizations: strictly limits to user's org if set?
-        # User said: "The organization filter should be the default organization of the employee... Based on that the school filter should only be schools that depends of that organization"
-        # If user has an Org, they might only see that Org? Or strict hierarchy?
-        # Let's assume if Employee has Org, they are bound to it. If not, they see all.
-        if employee.organization:
-             data["organizations"] = [{"name": employee.organization}]
-             # Also allow fetching children orgs if Organization is a tree?
-             # Assuming flat or simple for now unless specified.
-             # Actually, if they are at Org level they might oversee sub-orgs?
-             # Let's check if Organization matches strictness. "The organization filter should be the defautl organization of the employee".
-             # Implies pre-selection. Does it imply restriction? "Then user can only select that school or one of its children."
-             # For now, restrict Org list to just the employee's org to be safe/strict as requested.
-        else:
-             try:
-                data["organizations"] = frappe.get_all("Organization", fields=["name"], order_by="name asc")
-             except:
-                data["organizations"] = []
+	# Schools scoped to base school cone or allowed organizations
+	school_filters = {}
+	if school_scope:
+		school_filters["name"] = ["in", school_scope]
+	elif org_scope:
+		school_filters["organization"] = ["in", org_scope]
 
-        # Schools: Strict hierarchy
-        # "User can only select that school or one of its children"
-        if employee.school:
-            # Use school_tree utility
-            from ifitwala_ed.utilities.school_tree import get_descendant_schools
-            allowed_schools = get_descendant_schools(employee.school)
-            # Fetch names
-            data["schools"] = frappe.get_all("School", filters={"name": ["in", allowed_schools]}, fields=["name", "school_name"], order_by="school_name asc")
-        elif employee.organization:
-             # If no school but has Org, show schools in that Org
-             data["schools"] = frappe.get_all("School", filters={"organization": employee.organization}, fields=["name", "school_name"], order_by="school_name asc")
-        else:
-             # Fallback (System Manager or unassigned)
-             data["schools"] = frappe.get_all("School", fields=["name", "school_name"], order_by="school_name asc")
+	data["schools"] = frappe.get_all(
+		"School",
+		filters=school_filters or None,
+		fields=["name", "school_name", "organization"],
+		order_by="school_name asc",
+	)
 
-    return data
+	return data
 
 @frappe.whitelist()
 def get_org_communication_item(name):
@@ -101,19 +181,23 @@ def get_org_communication_item(name):
 
 @frappe.whitelist()
 def get_org_communication_feed(
+	filters: dict | None = None,
+	start: int | None = None,
+	page_length: int | None = None,
+	limit_start: int = 0,
+	limit_page_length: int = 30,
+	# Legacy params (kept to avoid breaking older callers)
 	search_text: str | None = None,
-	status: str | None = "PublishedOrArchived",
+	status: str | None = None,
 	priority: str | None = None,
 	portal_surface: str | None = None,
 	communication_type: str | None = None,
-	date_range: str | None = "90d",  # '7d' | '30d' | '90d' | 'year' | 'all'
+	date_range: str | None = None,
 	team: str | None = None,
 	student_group: str | None = None,
 	school: str | None = None,
 	organization: str | None = None,
-	only_with_interactions: int | None = 0,
-	limit_start: int = 0,
-	limit_page_length: int = 30,
+	only_with_interactions: int | None = None,
 ) -> dict:
 	user = frappe.session.user
 	roles = frappe.get_roles(user)
@@ -124,67 +208,124 @@ def get_org_communication_feed(
 		as_dict=True,
 	)
 
-	# Base Filters (SQL-level; school is *not* filtered here anymore)
+	# Merge legacy params into filters before normalization
+	raw_filters = _parse_filters(filters)
+	legacy_overrides = {
+		"search_text": search_text,
+		"status": status,
+		"priority": priority,
+		"portal_surface": portal_surface,
+		"communication_type": communication_type,
+		"date_range": date_range,
+		"team": team,
+		"student_group": student_group,
+		"school": school,
+		"organization": organization,
+		"only_with_interactions": only_with_interactions,
+	}
+	for key, value in legacy_overrides.items():
+		if value is not None and key not in raw_filters:
+			raw_filters[key] = value
+
+	filters_dict = _normalize_filters(raw_filters)
+
+	# Pagination params (start/page_length preferred over legacy limit_start/page_length)
+	offset = int(start if start is not None else limit_start or 0)
+	page_len = int(page_length if page_length is not None else limit_page_length or 30)
+
+	base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
+	org_guard: set[str] = set()
+	if org_scope and "System Manager" not in roles:
+		org_guard = set(org_scope)
+
+	if not org_guard and school_scope and "System Manager" not in roles:
+		orgs_from_schools = frappe.get_all(
+			"School",
+			filters={"name": ["in", school_scope]},
+			pluck="organization",
+		)
+		org_guard = {o for o in orgs_from_schools if o}
+
+	org_filter = filters_dict.get("organization")
+	if org_filter:
+		if org_guard and org_filter not in org_guard:
+			frappe.throw(_("You do not have access to this organization."), frappe.PermissionError)
+		org_guard = {org_filter}
+
+	# Optional school guard for user scope
+	filter_school_val = filters_dict.get("school")
+	if (
+		filter_school_val
+		and school_scope
+		and "System Manager" not in roles
+		and filter_school_val not in school_scope
+	):
+		frappe.throw(_("You do not have access to this school."), frappe.PermissionError)
+
+	# Base Filters (SQL-level; school is evaluated in audience checks)
 	conditions: list[str] = []
 	values: dict[str, object] = {}
 
-	# Status
-	if status == "PublishedOrArchived":
+	status_from_payload = "status" in raw_filters
+	status_val = filters_dict.get("status")
+	if status_val is None and not status_from_payload:
+		status_val = "PublishedOrArchived"
+
+	if status_val == "PublishedOrArchived":
 		conditions.append("status IN ('Published', 'Archived')")
-	elif status == "Published":
+	elif status_val == "Published":
 		conditions.append("status = 'Published'")
-	elif status == "All":
-		# No status filter: rely on audience + permissions
-		pass
-	elif status:
+	elif status_val:
 		conditions.append("status = %(status)s")
-		values["status"] = status
+		values["status"] = status_val
 
-	# Priority
-	if priority and priority != "All":
+	priority_val = filters_dict.get("priority")
+	if priority_val:
 		conditions.append("priority = %(priority)s")
-		values["priority"] = priority
+		values["priority"] = priority_val
 
-	# Portal Surface
-	if portal_surface and portal_surface != "All":
+	portal_surface_val = filters_dict.get("portal_surface")
+	if portal_surface_val:
 		conditions.append("portal_surface = %(portal_surface)s")
-		values["portal_surface"] = portal_surface
+		values["portal_surface"] = portal_surface_val
 
-	# Communication Type
-	if communication_type and communication_type != "All":
+	communication_type_val = filters_dict.get("communication_type")
+	if communication_type_val:
 		conditions.append("communication_type = %(communication_type)s")
-		values["communication_type"] = communication_type
+		values["communication_type"] = communication_type_val
 
-	# Date Range (publish_from)
-	if date_range and date_range != "all":
+	date_range_from_payload = "date_range" in raw_filters
+	date_range_val = filters_dict.get("date_range")
+	if date_range_val is None and not date_range_from_payload:
+		date_range_val = "90d"
+
+	if date_range_val != "all":
 		end_date = getdate(today())
 		start_date = None
 
-		if date_range == "7d":
+		if date_range_val == "7d":
 			start_date = add_days(end_date, -7)
-		elif date_range == "30d":
+		elif date_range_val == "30d":
 			start_date = add_days(end_date, -30)
-		elif date_range == "90d":
+		elif date_range_val == "90d":
 			start_date = add_days(end_date, -90)
-		elif date_range == "year":
+		elif date_range_val == "year":
 			start_date = f"{end_date.year}-01-01"
 
 		if start_date:
 			conditions.append("publish_from >= %(start_date)s")
 			values["start_date"] = start_date
 
-	# Search Text
-	if search_text:
+	search_val = filters_dict.get("search_text")
+	if search_val:
 		conditions.append("(title LIKE %(search)s OR message LIKE %(search)s)")
-		values["search"] = f"%{search_text}%"
+		values["search"] = f"%{search_val}%"
 
-	# Organization Filter (Doc-level; OK to stay here)
-	if organization and organization != "All":
-		conditions.append("organization = %(org)s")
-		values["org"] = organization
+	if org_guard:
+		conditions.append("organization IN %(org_guard)s")
+		values["org_guard"] = tuple(org_guard)
 
-	# Only with interactions
-	if only_with_interactions:
+	if filters_dict.get("only_with_interactions"):
 		conditions.append(
 			"EXISTS (SELECT name FROM `tabCommunication Interaction` "
 			"WHERE org_communication = `tabOrg Communication`.name)"
@@ -221,10 +362,8 @@ def get_org_communication_feed(
 
 	visible_items: list[dict] = []
 
-	# Permission Checks for Filters
-	filter_team_val = team
-	filter_sg_val = student_group
-	filter_school_val = school
+	filter_team_val = filters_dict.get("team")
+	filter_sg_val = filters_dict.get("student_group")
 
 	for c in candidates:
 		if check_audience_match(
@@ -265,17 +404,16 @@ def get_org_communication_feed(
 
 	# Apply pagination on the filtered list
 	total_count = len(visible_items)
-
-	start = int(limit_start)
-	length = int(limit_page_length)
-	paged_items = visible_items[start : start + length]
+	paged_items = visible_items[offset : offset + page_len]
 
 	return {
 		"items": paged_items,
 		"total_count": total_count,
-		"limit_start": start,
-		"limit_page_length": length,
-		"has_more": (start + length) < total_count,
+		"limit_start": offset,
+		"limit_page_length": page_len,
+		"start": offset,
+		"page_length": page_len,
+		"has_more": (offset + page_len) < total_count,
 	}
 
 

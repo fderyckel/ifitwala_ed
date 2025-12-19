@@ -50,17 +50,17 @@ export interface InteractionSummary {
 }
 
 export interface ArchiveFilters {
-  search: string
-  status: StatusFilter
-  priority: PriorityFilter
-  portal_surface: SurfaceFilter
-  communication_type: string | 'All'
-  date_range: '7d' | '30d' | '90d' | 'year' | 'all'
+  search: string | null
+  status: StatusFilter | null
+  priority: PriorityFilter | null
+  portal_surface: SurfaceFilter | null
+  communication_type: string | 'All' | null
+  date_range: '7d' | '30d' | '90d' | 'year' | 'all' | null
   only_with_interactions: boolean
-  team?: string | 'All'
-  student_group?: string | 'All'
-  school?: string | 'All'
-  organization?: string | 'All'
+  team?: string | 'All' | null
+  student_group?: string | 'All' | null
+  school?: string | 'All' | null
+  organization?: string | 'All' | null
 }
 
 export function canShowPublicInteractions(item: OrgCommunicationListItem | null | undefined): boolean {

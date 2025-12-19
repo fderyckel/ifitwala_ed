@@ -83,17 +83,17 @@
       <div class="flex flex-col h-full bg-white rounded-xl border border-line-soft shadow-soft overflow-hidden">
         <div class="flex-1 overflow-y-auto p-4 space-y-2">
 
-          <div v-if="orgCommFeed.loading && !orgCommFeed.data?.items?.length" class="py-12 text-center text-slate-token/60">
+          <div v-if="orgCommFeed.loading && !feedItems.length" class="py-12 text-center text-slate-token/60">
              <LoadingIndicator />
           </div>
 
-          <div v-else-if="!orgCommFeed.data?.items?.length" class="py-12 text-center">
+          <div v-else-if="!feedItems.length" class="py-12 text-center">
             <p class="type-h3 text-slate-token/40">No announcements found</p>
             <p class="text-sm text-slate-token/60 mt-1">Try adjusting your filters</p>
           </div>
 
           <div
-            v-for="item in orgCommFeed.data?.items || []"
+            v-for="item in feedItems"
             :key="item.name"
             @click="selectItem(item)"
             class="group relative flex gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all border border-transparent hover:border-line-soft hover:bg-surface-soft hover:shadow-sm"
@@ -156,7 +156,7 @@
           </div>
 
            <!-- Load More -->
-          <div v-if="orgCommFeed.data?.has_more" class="pt-2">
+          <div v-if="hasMore" class="pt-2">
             <Button
               variant="subtle"
               class="w-full text-xs"
@@ -215,25 +215,7 @@
              </div>
            </div>
 
-           <!-- Content (If we had full content in payload, render it here. For now using snippet or fetching if needed) -->
-           <!-- Assuming for Archives we might want to fetch full content if snippet is truncated, or just show snippet if backend sends full -->
-           <!-- Spec said: "we fetch full message HTML via a secondary call on click or reuse content from feed if you include it there"
-                I implemented feed returning snippet. I should probably fetch full doc or feed returns full content?
-                Let's reuse feed content for simpler V1 and assume snippet is actually full for short ones,
-                but for long ones we might need a fetch.
-                Let's assume we can fetch via `frappe.db.get_value` or similar via createResource if needed.
-                Optimisation: The user spec said "I’d start by adding content to the feed to avoid a second roundtrip".
-                So I will assume full content is available or I should have added it.
-                Let's assume for now I display what I have, and if I need more I'd add it to feed.
-                Wait, I stripped html for snippet in backend. I need the HTML.
-                I will add `message` to the return payload in backend as well, masked as `content`?
-                Let's fetch it on demand to be safe for bandwidth? No, user spec suggests strict preference.
-                "fetch full message HTML ... or reuse content from feed ... I’d start by adding content to the feed".
-                Okay, I missed adding `message` (raw) to the `visible_items` in backend.
-                For now, I'll allow a quick single-doc fetch or just rely on snippet (which is stripped).
-                Actually, stripped snippet is bad for detail view.
-                I will use a resource to fetch full doc details when selected.
-           -->
+           <!-- Content -->
            <div class="flex-1 overflow-y-auto p-6 text-sm text-ink leading-relaxed prose prose-slate max-w-none">
               <div v-if="fullContent.loading" class="py-10 text-center"><LoadingIndicator /></div>
               <div v-else v-html="fullContent.data?.message || selectedComm.snippet"></div>
@@ -348,19 +330,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed } from 'vue'
-import { createResource, FeatherIcon, FormControl, Button, Badge, LoadingIndicator, Avatar } from 'frappe-ui'
-import {
-  PRIORITY_OPTIONS, STATUS_OPTIONS, SURFACE_OPTIONS,
-  type ArchiveFilters, type OrgCommunicationListItem, type InteractionSummary
-} from '@/types/orgCommunication'
+import { computed, ref, watch } from 'vue'
+import { Avatar, Badge, Button, FeatherIcon, FormControl, LoadingIndicator, createResource } from 'frappe-ui'
+import { type ArchiveFilters, type OrgCommunicationListItem, type InteractionSummary } from '@/types/orgCommunication'
 
-declare const frappe: any
-
-// Constants
-const PRIORITY_OPTS = PRIORITY_OPTIONS.map(o => ({ label: o, value: o }))
-const STATUS_OPTS = STATUS_OPTIONS.map(o => ({ label: o, value: o }))
-const SURFACE_OPTS = SURFACE_OPTIONS.map(o => ({ label: o, value: o }))
+const PAGE_LENGTH = 30
 
 const DATE_RANGES = [
   { label: 'Last 7 Days', value: '7d' },
@@ -370,349 +344,327 @@ const DATE_RANGES = [
   { label: 'All Time', value: 'all' },
 ] as const
 
-// State
-const filters = reactive<ArchiveFilters>({
-  search: '',
-  status: 'PublishedOrArchived',
-  priority: 'All',
-  portal_surface: 'All',
-  communication_type: 'All',
-  date_range: '90d',
-  only_with_interactions: false,
-  team: 'All',
-  student_group: 'All',
-  school: 'All',
-  organization: 'All',
+const filters = ref<ArchiveFilters>({
+	search: '',
+	status: 'PublishedOrArchived',
+	priority: 'All',
+	portal_surface: 'All',
+	communication_type: 'All',
+	date_range: '90d',
+	only_with_interactions: false,
+	team: null,
+	student_group: null,
+	school: null,
+	organization: null,
 })
 
 const selectedComm = ref<OrgCommunicationListItem | null>(null)
 const showThreadDrawer = ref(false)
 const newComment = ref('')
+const initialized = ref(false)
+
+const start = ref(0)
+const feedItems = ref<OrgCommunicationListItem[]>([])
+const hasMore = ref(false)
+const interactionSummaries = ref<Record<string, InteractionSummary>>({})
 
 // User Context for Filters
 const myTeam = ref<string | null>(null)
-const myStudentGroups = ref<Array<{ label: string, value: string }>>([])
-const schoolOptions = ref<Array<{ label: string, value: string }>>([])
-const organizationOptions = ref<Array<{ label: string, value: string }>>([])
+const myStudentGroups = ref<Array<{ label: string; value: string }>>([])
+const orgChoices = ref<Array<{ label: string; value: string }>>([])
+const schoolChoices = ref<Array<{ label: string; value: string; organization?: string | null }>>([])
+
+const organizationOptions = computed(() => [
+	{ label: 'All organisations', value: null },
+	...orgChoices.value,
+])
+
+const schoolOptions = computed(() => {
+	const org = filters.value.organization
+	const scoped = org
+		? schoolChoices.value.filter((s) => s.organization === org)
+		: schoolChoices.value
+	return [{ label: 'All schools', value: null }, ...scoped]
+})
 
 const teamOptions = computed(() => {
-	const opts = [{ label: 'All Teams', value: 'All' }]
+	const opts = [{ label: 'All teams', value: null }]
 	if (myTeam.value) {
 		opts.push({ label: myTeam.value, value: myTeam.value })
 	}
 	return opts
 })
 
-const studentGroupOptions = computed(() => {
-	return [{ label: 'All Groups', value: 'All' }, ...myStudentGroups.value]
-})
+const studentGroupOptions = computed(() => [{ label: 'All groups', value: null }, ...myStudentGroups.value])
 
-
+let reloadTimer: number | undefined
+function queueReload() {
+	window.clearTimeout(reloadTimer)
+	reloadTimer = window.setTimeout(() => {
+		loadFeed(true)
+	}, 350)
+}
 
 const archiveContext = createResource({
 	url: 'ifitwala_ed.api.org_communication_archive.get_archive_context',
+	method: 'POST',
 	auto: true,
 	onSuccess(data) {
 		if (!data) return
 
-		myTeam.value = data.my_team
-
-		// Student groups
+		myTeam.value = data.my_team || null
 		myStudentGroups.value = (data.my_groups || []).map((g: string) => ({
 			label: g,
 			value: g,
 		}))
 
-		// Organization options: “All my orgs” + allowed orgs
-		organizationOptions.value = [
-			{ label: 'All organisations', value: 'All' },
-			...(data.organizations || []).map((o: any) => ({
-				label: o.name,
-				value: o.name,
-			})),
-		]
+		orgChoices.value = (data.organizations || []).map((o: any) => ({
+			label: o.organization_name || o.name,
+			value: o.name,
+		}))
 
-		// School options: “All my schools” + allowed schools (descendants only)
-		schoolOptions.value = [
-			{ label: 'All schools', value: 'All' },
-			...(data.schools || []).map((s: any) => ({
-				label: s.school_name || s.name,
-				value: s.name,
-			})),
-		]
+		schoolChoices.value = (data.schools || []).map((s: any) => ({
+			label: s.school_name || s.name,
+			value: s.name,
+			organization: s.organization || null,
+		}))
 
-		// Defaults (respecting user’s base org/school)
 		if (data.defaults) {
-			if (data.defaults.organization && data.defaults.organization !== 'All') {
-				filters.organization = data.defaults.organization
-			}
-			if (data.defaults.school && data.defaults.school !== 'All') {
-				filters.school = data.defaults.school
-			}
-			if (data.defaults.team && data.defaults.team !== 'All') {
-				filters.team = data.defaults.team
-			}
+			filters.value.organization = data.defaults.organization || null
+			filters.value.school = data.defaults.school || null
+			filters.value.team = data.defaults.team || null
 		}
-	}
+
+		initialized.value = true
+		loadFeed(true)
+	},
 })
 
-
-
-// Feed Resource
 const orgCommFeed = createResource<{
-  items: OrgCommunicationListItem[]
-  total_count: number
-  has_more: boolean
-  limit_start: number
-  limit_page_length: number
+	items: OrgCommunicationListItem[]
+	total_count: number
+	has_more: boolean
+	start: number
+	page_length: number
 }>({
-  url: 'ifitwala_ed.api.org_communication_archive.get_org_communication_feed',
-	makeParams() {
-		return {
-			search_text: filters.search || null,
-			status: filters.status,
-			priority: filters.priority,
-			portal_surface: filters.portal_surface,
-			communication_type: filters.communication_type === 'All' ? null : filters.communication_type,
-			date_range: filters.date_range,
-			team: filters.team === 'All' ? null : filters.team,
-			student_group: filters.student_group === 'All' ? null : filters.student_group,
-			school: filters.school === 'All' ? null : filters.school,
-			organization: filters.organization === 'All' ? null : filters.organization,
-			only_with_interactions: filters.only_with_interactions ? 1 : 0,
-			limit_start: 0,
-			limit_page_length: 50,
+	url: 'ifitwala_ed.api.org_communication_archive.get_org_communication_feed',
+	method: 'POST',
+	params: () => ({
+		filters: filters.value,
+		start: start.value,
+		page_length: PAGE_LENGTH,
+	}),
+	auto: false,
+})
+
+const interactionSummaryResource = createResource<Record<string, InteractionSummary>>({
+	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_org_comm_interaction_summary',
+	method: 'POST',
+	auto: false,
+	onSuccess(data) {
+		if (data) {
+			interactionSummaries.value = { ...interactionSummaries.value, ...data }
 		}
 	},
-
-  auto: true,
 })
 
-// Interaction Summary Resource
-const interactionSummary = createResource<Record<string, InteractionSummary>>({
-  url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_org_comm_interaction_summary',
-  auto: false,
-})
-
-// Full Content Resource
 const fullContent = createResource({
-    url: 'ifitwala_ed.api.org_communication_archive.get_org_communication_item',
-    makeParams({ name }) {
-        return { name }
-    }
+	url: 'ifitwala_ed.api.org_communication_archive.get_org_communication_item',
+	method: 'POST',
+	auto: false,
 })
 
-// Thread Resource
 const threadResource = createResource({
-    url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_communication_thread',
-    auto: false,
+	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_communication_thread',
+	method: 'POST',
+	auto: false,
 })
 
-// Interaction Action
 const interactionAction = createResource({
-    url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
-    auto: false
+	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
+	method: 'POST',
+	auto: false,
 })
-
 
 watch(
 	filters,
 	() => {
-		orgCommFeed.reload()
+		if (!initialized.value) return
 		selectedComm.value = null
+		queueReload()
 	},
-	{ deep: true }
+	{ deep: true },
 )
 
+watch(
+	() => filters.value.organization,
+	() => {
+		filters.value.school = null
+		filters.value.team = null
+		filters.value.student_group = null
+	},
+)
 
-watch(() => orgCommFeed.data, (data) => {
-    if (data?.items?.length) {
-        // Fetch summaries for these items
-        const names = data.items.map(i => i.name)
-        interactionSummary.submit({ comm_names: names })
+watch(
+	schoolOptions,
+	(options) => {
+		const allowed = options.map((o) => o.value)
+		if (filters.value.school && !allowed.includes(filters.value.school)) {
+			filters.value.school = null
+		}
+	},
+	{ deep: true },
+)
 
-        // Auto select first if needed
-        if (!selectedComm.value && data.items[0]) {
-            selectItem(data.items[0])
-        }
-    }
-})
-
-// Methods
 function selectItem(item: OrgCommunicationListItem) {
-    selectedComm.value = item
-    fullContent.submit({ name: item.name })
+	selectedComm.value = item
+	fullContent.submit({ name: item.name })
+}
+
+async function loadFeed(reset = false) {
+	if (!initialized.value) return
+
+	if (reset) {
+		start.value = 0
+		feedItems.value = []
+		hasMore.value = false
+		interactionSummaries.value = {}
+		selectedComm.value = null
+	}
+
+	const payload = ((await orgCommFeed.fetch()) as any) || {}
+	const items = payload.items || []
+
+	feedItems.value = reset ? items : [...feedItems.value, ...items]
+	hasMore.value = !!payload.has_more
+
+	const responseStart = typeof payload.start === 'number' ? payload.start : start.value
+	start.value = responseStart + items.length
+
+	if (items.length) {
+		interactionSummaryResource.submit({ comm_names: items.map((i: OrgCommunicationListItem) => i.name) })
+	}
+
+	if (!selectedComm.value && feedItems.value.length) {
+		selectItem(feedItems.value[0])
+	}
 }
 
 function loadMore() {
-	if (!orgCommFeed.data) return
-
-	const nextStart = orgCommFeed.data.limit_start + orgCommFeed.data.limit_page_length
-
-	frappe.call({
-		method: 'ifitwala_ed.api.org_communication_archive.get_org_communication_feed',
-		args: {
-			search_text: filters.search || null,
-			status: filters.status,
-			priority: filters.priority,
-			portal_surface: filters.portal_surface,
-			communication_type: filters.communication_type === 'All' ? null : filters.communication_type,
-			date_range: filters.date_range,
-			team: filters.team === 'All' ? null : filters.team,
-			student_group: filters.student_group === 'All' ? null : filters.student_group,
-			school: filters.school === 'All' ? null : filters.school,
-			organization: filters.organization === 'All' ? null : filters.organization,
-			only_with_interactions: filters.only_with_interactions ? 1 : 0,
-			limit_start: nextStart,
-			limit_page_length: 30,
-		},
-		callback: (res: any) => {
-			if (res.message && orgCommFeed.data) {
-				orgCommFeed.data.items.push(...res.message.items)
-				orgCommFeed.data.limit_start = nextStart
-				orgCommFeed.data.has_more = res.message.has_more
-
-				const names = res.message.items.map((i: any) => i.name)
-				if (names.length) {
-					interactionSummary.submit({ comm_names: names })
-				}
-			}
-		},
-	})
+	if (orgCommFeed.loading || !hasMore.value) return
+	loadFeed(false)
 }
 
-
-// Interactions
 function getInteractionFor(item: OrgCommunicationListItem): InteractionSummary {
-    if (!item) return { counts: {}, self: null }
-    // We need to merge newly fetched summaries if we are paginating
-    // But interactionSummary.data is replaced on submit.
-    // So for pagination we might lose previous summaries.
-    // FIX: Store summaries in a local reactive map.
-    // For V1, assuming one page, it's fine.
-    // Proper way: watcher on interactionSummary.data -> merge to `allSummaries` dict.
-    return interactionSummary.data?.[item.name] ?? { counts: {}, self: null }
+	if (!item) return { counts: {}, self: null }
+	return interactionSummaries.value[item.name] ?? { counts: {}, self: null }
 }
 
 function getInteractionStats(item: OrgCommunicationListItem) {
-    const summary = getInteractionFor(item)
-    // Sum all counts approx? Or specific keys?
-    // "ack count + comment count".
-    // Intents: Acknowledged, Comment, Appreciated, etc.
-    // Acks = Acknowledged + Like + etc?
-    // Let's assume 'Acknowledged' is strict intent.
-    const acks = summary.counts['Acknowledged'] || 0
-    // Comments = 'Comment' + 'Question' + ...?
-    // Let's sum everything else?
-    // Simplest: just grab 'Comment' and 'Acknowledged' explicitly.
-    const comments = (summary.counts['Comment'] || 0) + (summary.counts['Question'] || 0)
-    return { acks, comments }
+	const summary = getInteractionFor(item)
+	const acks = summary.counts['Acknowledged'] || 0
+	const comments = (summary.counts['Comment'] || 0) + (summary.counts['Question'] || 0)
+	return { acks, comments }
 }
 
 function canInteract(item: OrgCommunicationListItem) {
-    if (item.interaction_mode === 'None') return false
-    return true
+	return item.interaction_mode !== 'None'
+}
+
+function refreshSummary(names: string[]) {
+	if (!names.length) return
+	interactionSummaryResource.submit({ comm_names: names })
 }
 
 function acknowledge(item: OrgCommunicationListItem) {
-    interactionAction.submit({
-        org_communication: item.name,
-        intent_type: 'Acknowledged',
-        surface: 'Portal Feed'
-    }, {
-        onSuccess: () => {
-            // refresh summary for this item
-             // Ideally just re-fetch summary for THIS item to avoid full reload
-             // createResource doesn't support partial reload easily.
-             // We can manually call api and patch `interactionSummary.data`.
-             frappe.call({
-                 method: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_org_comm_interaction_summary',
-                 args: { comm_names: [item.name] },
-                 callback: (r: any) => {
-                     if (r.message && interactionSummary.data) {
-                         interactionSummary.data[item.name] = r.message[item.name]
-                     }
-                 }
-             })
-        }
-    })
+	interactionAction.submit(
+		{
+			org_communication: item.name,
+			intent_type: 'Acknowledged',
+			surface: 'Portal Feed',
+		},
+		{
+			onSuccess: () => refreshSummary([item.name]),
+		},
+	)
 }
 
 function openThread(item: OrgCommunicationListItem) {
-    selectedComm.value = item
-    showThreadDrawer.value = true
-    threadResource.submit({ org_communication: item.name })
+	selectedComm.value = item
+	showThreadDrawer.value = true
+	threadResource.submit({ org_communication: item.name })
 }
 
 function submitComment() {
-    if (!selectedComm.value || !newComment.value.trim()) return
+	if (!selectedComm.value || !newComment.value.trim()) return
 
-    interactionAction.submit({
-        org_communication: selectedComm.value.name,
-        intent_type: 'Comment', // or Question/etc depending on mode? Defaulting to Comment.
-        note: newComment.value,
-        surface: 'Portal Feed'
-    }, {
-        onSuccess: () => {
-            newComment.value = ''
-            threadResource.reload()
-            // also refresh summary
-             frappe.call({
-                 method: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_org_comm_interaction_summary',
-                 args: { comm_names: [selectedComm.value!.name] },
-                 callback: (r: any) => {
-                     if (r.message && interactionSummary.data) {
-                         interactionSummary.data[selectedComm.value!.name] = r.message[selectedComm.value!.name]
-                     }
-                 }
-             })
-        }
-    })
+	interactionAction.submit(
+		{
+			org_communication: selectedComm.value.name,
+			intent_type: 'Comment',
+			note: newComment.value,
+			surface: 'Portal Feed',
+		},
+		{
+			onSuccess: () => {
+				newComment.value = ''
+				threadResource.reload()
+				refreshSummary([selectedComm.value!.name])
+			},
+		},
+	)
 }
 
-
-// Helpers
 function formatDate(date: string | null, fmt = 'DD MMM') {
-    if (!date) return ''
-    const d = new Date(date)
-    if (isNaN(d.getTime())) return ''
+	if (!date) return ''
+	const d = new Date(date)
+	if (isNaN(d.getTime())) return ''
 
-    // Flexible formatter based roughly on dayjs format string
-    // 'DD MMM' -> e.g. 05 Dec
-    // 'DD MMMM YYYY' -> e.g. 05 December 2025
-    // 'DD MMM HH:mm' -> e.g. 05 Dec 14:30
+	if (fmt === 'DD MMM') {
+		return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+	}
+	if (fmt === 'DD MMMM YYYY') {
+		return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+	}
+	if (fmt === 'DD MMM HH:mm') {
+		return d.toLocaleDateString('en-GB', {
+			day: '2-digit',
+			month: 'short',
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+		})
+	}
 
-    if (fmt === 'DD MMM') {
-        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
-    }
-    if (fmt === 'DD MMMM YYYY') {
-        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
-    }
-    if (fmt === 'DD MMM HH:mm') {
-         return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })
-    }
-
-    // Fallback
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+	return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
 }
 
 function getPriorityClass(priority: string) {
-    switch (priority) {
-        case 'Critical': return 'bg-flame'
-        case 'High': return 'bg-jacaranda'
-        case 'Normal': return 'bg-blue-400'
-        case 'Low': return 'bg-slate-300'
-        default: return 'bg-slate-200'
-    }
+	switch (priority) {
+		case 'Critical':
+			return 'bg-flame'
+		case 'High':
+			return 'bg-jacaranda'
+		case 'Normal':
+			return 'bg-blue-400'
+		case 'Low':
+			return 'bg-slate-300'
+		default:
+			return 'bg-slate-200'
+	}
 }
 
 function getPriorityColor(priority: string) {
-    switch (priority) {
-        case 'Critical': return 'red'
-        case 'High': return 'purple'
-        case 'Normal': return 'blue'
-        default: return 'gray'
-    }
+	switch (priority) {
+		case 'Critical':
+			return 'red'
+		case 'High':
+			return 'purple'
+		case 'Normal':
+			return 'blue'
+		default:
+			return 'gray'
+	}
 }
 
 </script>
