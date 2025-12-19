@@ -12,11 +12,10 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 	Checks if the current user (employee) matches the audience criteria
 	for a given Org Communication.
 
-	Optional filters:
-	- filter_team: If set, only returns True if the matched audience is specifically for this team.
-	- filter_student_group: If set, only returns True if the matched audience is specifically for this group.
-	- filter_school: If set, only returns True if the audience school is in the
-	  ancestor/descendant cone of this school.
+	Strict school filter behaviour:
+	- If filter_school = X, show only audiences where audience.school is in {X} ∪ Anc(X).
+	- Never include descendants of X.
+	- Global (aud.school is None) is still allowed by the school filter.
 	"""
 
 	# System Manager baseline:
@@ -34,8 +33,7 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 	if not audiences:
 		return False
 
-	# 1. Determine the user's school visibility cone:
-	#    own school + ancestors + descendants
+	# 1) User visibility cone: own school + ancestors + descendants (prevents sibling leakage)
 	user_school = None
 	valid_target_schools: set[str] = set()
 
@@ -49,23 +47,16 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 			down = get_descendant_schools(user_school) or []
 		except Exception:
 			down = []
-
 		valid_target_schools = set(up + down + [user_school])
 
-	# 2. Determine the active School filter cone (if any):
-	#    filter_school + its ancestors + its descendants
+	# 2) Strict filter scope: selected school + ancestors only (NO descendants)
 	filter_school_scope: set[str] | None = None
 	if filter_school and filter_school != "All":
 		try:
 			up_f = get_ancestor_schools(filter_school) or []
 		except Exception:
 			up_f = []
-		try:
-			down_f = get_descendant_schools(filter_school) or []
-		except Exception:
-			down_f = []
-
-		filter_school_scope = set(up_f + down_f + [filter_school])
+		filter_school_scope = set(up_f + [filter_school])
 
 	for aud in audiences:
 		# --- FILTER CHECKS (team / student group) ---
@@ -75,18 +66,14 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 		if filter_student_group and aud.student_group != filter_student_group:
 			continue
 
-		# --- SCHOOL FILTER CHECK (archive School dropdown) ---
-		# If user chose School S in the filter, keep only audiences whose school
-		# lies in Anc(S) ∪ Desc(S) ∪ {S}. Global (no school) is still allowed.
+		# --- SCHOOL FILTER CHECK (strict upward only) ---
+		# If filter_school is set, keep only audience rows whose school is in {filter} ∪ Anc(filter).
+		# Global audience rows (aud.school is None) are NOT excluded by the school filter.
 		if filter_school_scope is not None and aud.school:
 			if aud.school not in filter_school_scope:
 				continue
 
 		# --- USER VISIBILITY CHECK (permission cone) ---
-		# Audience school must lie within the user's own school cone.
-		# This is what prevents sibling leakage:
-		# - If user is at B, valid_target_schools = Anc(B) ∪ Desc(B) ∪ {B}
-		# - A sibling C is not in that set, so B never sees messages for C.
 		if aud.school:
 			if not user_school:
 				continue
@@ -96,9 +83,7 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 		# --- TARGET GROUP CHECK ---
 		match_found = False
 
-		if aud.target_group == "Whole Community":
-			match_found = True
-		elif aud.target_group == "Whole Staff":
+		if aud.target_group in {"Whole Community", "Whole Staff"}:
 			match_found = True
 
 		elif aud.target_group == "Academic Staff" and ("Academic Staff" in roles or "Instructor" in roles):
@@ -110,8 +95,6 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 			match_found = True
 
 		elif aud.student_group:
-			# Only match student-group audiences if the user is actually an instructor
-			# for that group.
 			if is_instructor_for_group(user, aud.student_group):
 				match_found = True
 
@@ -119,6 +102,7 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 			return True
 
 	return False
+
 
 
 def is_instructor_for_group(user, student_group):

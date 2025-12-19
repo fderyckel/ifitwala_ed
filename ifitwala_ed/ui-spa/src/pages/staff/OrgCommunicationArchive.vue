@@ -498,12 +498,29 @@ watch(
 
 watch(
 	() => filters.value.organization,
-	() => {
-		filters.value.school = null
-		filters.value.team = null
-		filters.value.student_group = null
+	(newOrg, oldOrg) => {
+		// During initial load, archiveContext sets defaults; don't thrash filters.
+		if (!initialized.value) return
+
+		// School: only clear if current school is not valid in the newly scoped options.
+		// (We keep it if it still belongs to the selected org.)
+		const allowedSchools = schoolOptions.value.map((o) => o.value)
+		if (filters.value.school && !allowedSchools.includes(filters.value.school)) {
+			filters.value.school = null
+		}
+
+		// Team: DO NOT clear.
+		// In this UI, teamOptions is always [All teams] + [My team], so it's always valid.
+		// Clearing it here is a classic "why did my filter change?" foot-gun.
+
+		// Student group: safest to clear on org change (groups are org/school-scoped in reality).
+		// You can later refine to only clear if invalid once you return scoped groups from server.
+		if (oldOrg !== undefined && newOrg !== oldOrg) {
+			filters.value.student_group = null
+		}
 	},
 )
+
 
 watch(
 	schoolOptions,
@@ -513,7 +530,6 @@ watch(
 			filters.value.school = null
 		}
 	},
-	{ deep: true },
 )
 
 function selectItem(item: OrgCommunicationListItem) {
