@@ -12,7 +12,7 @@ from frappe.model.document import Document
 class StaffCalendar(Document):
 	def validate(self):
 		self._validate_period()
-		self.validate_days()
+		self._validate_overlaps()
 		self.validate_duplicate_date()
 		self.sort_holidays()
 
@@ -34,6 +34,55 @@ class StaffCalendar(Document):
 		# New: enforce Employee Group (core of the design)
 		if not getattr(self, "employee_group", None):
 			frappe.throw(_("Employee Group must be specified for this Staff Calendar."))
+
+	def _validate_overlaps(self):
+		"""Block overlapping staff calendars for same school + employee_group (+ AY)."""
+		if not (self.school and self.employee_group and self.from_date and self.to_date):
+			return
+
+		params = {
+			"name": self.name or "New Staff Calendar",
+			"school": self.school,
+			"employee_group": self.employee_group,
+			"from_date": self.from_date,
+			"to_date": self.to_date,
+		}
+
+		# Optional: also scope by academic_year if set
+		ay_clause = ""
+		if self.academic_year:
+			ay_clause = "and academic_year = %(academic_year)s"
+			params["academic_year"] = self.academic_year
+
+		# Overlap logic: NOT (other.to_date < this.from_date OR other.from_date > this.to_date)
+		conflicts = frappe.db.sql(
+			f"""
+			select
+				name
+			from
+				`tabStaff Calendar`
+			where
+				name != %(name)s
+				and school = %(school)s
+				and employee_group = %(employee_group)s
+				{ay_clause}
+				and not (
+					to_date < %(from_date)s
+					or from_date > %(to_date)s
+				)
+			""",
+			params,
+			as_dict=True,
+		)
+
+		if conflicts:
+			conflict_names = ", ".join(c["name"] for c in conflicts)
+			frappe.throw(
+				_(
+					"Staff Calendar overlaps with existing calendar(s): {0}. "
+					"Please adjust the dates or reuse the existing calendar."
+				).format(conflict_names)
+			)
 
 	def validate_duplicate_date(self):
 		unique_dates = []
