@@ -12,34 +12,48 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 	Checks if the current user (employee) matches the audience criteria
 	for a given Org Communication.
 
+	Strict filter behavior:
+	- If filter_student_group is set:
+		Only include communications that have an audience row with that exact student_group.
+		The match MUST happen on that student_group row (no leakage via Whole Staff / Team).
+		Eligibility:
+			- Academic Admin: allowed
+			- Others: must be instructor for that group
+	- Else if filter_team is set:
+		Only include communications that have an audience row with that exact team.
+		The match MUST happen on that team row (no leakage via Whole Staff).
+		Eligibility:
+			- Academic Admin: allowed
+			- Others: employee.department must match the team
+
 	Strict school filter behaviour:
 	- If filter_school = X, show only audiences where audience.school is in {X} ∪ Anc(X).
 	- Never include descendants of X.
 	- Global (aud.school is None) is still allowed by the school filter.
+
+	User visibility:
+	- Audience school must lie within user's cone: {user_school} ∪ Anc(user_school) ∪ Desc(user_school)
+	  (prevents sibling leakage).
 	"""
 
-	def _employee_matches_team(team_name: str) -> bool:
-		"""
-		Audience.team is a Link to Team => value must be Team.name.
-		Employee.department might not be a Team.name.
-		We only treat it as a match if Employee.department is an actual Team record.
-		"""
-		if not employee:
-			return False
+	# Normalize "All"/empty
+	if filter_team in ("All", "", None):
+		filter_team = None
+	if filter_student_group in ("All", "", None):
+		filter_student_group = None
+	if filter_school in ("All", "", None):
+		filter_school = None
 
-		dept = (employee.get("department") or "").strip()
-		if not dept:
-			return False
+	# Defensive: student_group and team filters are mutually exclusive.
+	# If both are present, student_group wins (narrower).
+	if filter_student_group:
+		filter_team = None
 
-		# If Employee.department is not a Team.name, do NOT use it.
-		if not frappe.db.exists("Team", dept):
-			return False
-
-		return dept == team_name
+	is_academic_admin = "Academic Admin" in roles
 
 	# System Manager baseline:
 	# - If no extra filters: see everything without checking audiences.
-	# - If filters are present, still respect them (school / team / SG).
+	# - If filters are present, still respect them.
 	if "System Manager" in roles and not filter_team and not filter_student_group and not filter_school:
 		return True
 
@@ -52,29 +66,25 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 	if not audiences:
 		return False
 
-	# 1) User visibility cone (permission cone):
-	#    own school + ancestors + descendants (prevents sibling leakage)
+	# 1) User visibility cone: own school + ancestors + descendants (prevents sibling leakage)
 	user_school = None
 	valid_target_schools: set[str] = set()
 
-	if employee and employee.get("school"):
-		user_school = employee.get("school")
-
+	if employee and employee.school:
+		user_school = employee.school
 		try:
 			up = get_ancestor_schools(user_school) or []
 		except Exception:
 			up = []
-
 		try:
 			down = get_descendant_schools(user_school) or []
 		except Exception:
 			down = []
-
 		valid_target_schools = set(up + down + [user_school])
 
 	# 2) Strict filter scope: selected school + ancestors only (NO descendants)
 	filter_school_scope: set[str] | None = None
-	if filter_school and filter_school != "All":
+	if filter_school:
 		try:
 			up_f = get_ancestor_schools(filter_school) or []
 		except Exception:
@@ -82,80 +92,75 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 		filter_school_scope = set(up_f + [filter_school])
 
 	for aud in audiences:
-		aud_team = aud.get("team")
-		aud_school = aud.get("school")
-		aud_student_group = aud.get("student_group")
-		aud_target_group = aud.get("target_group")
-
-		# ------------------------------------------------------------
-		# A) Explicit archive filters (team / student_group / school)
-		# ------------------------------------------------------------
-		if filter_team:
-			# If a team filter is set, audience row must be that team.
-			if aud_team != filter_team:
+		# --- SCHOOL FILTER CHECK (strict upward only) ---
+		# Global audience rows (aud.school is None) are NOT excluded by the school filter.
+		if filter_school_scope is not None and aud.school:
+			if aud.school not in filter_school_scope:
 				continue
 
-		if filter_student_group:
-			# If a student group filter is set, audience row must be that group.
-			if aud_student_group != filter_student_group:
-				continue
-
-		# School filter (strict upward only; global rows still allowed)
-		if filter_school_scope is not None and aud_school:
-			if aud_school not in filter_school_scope:
-				continue
-
-		# ------------------------------------------------------------
-		# B) Permission cone / sibling leakage prevention
-		# ------------------------------------------------------------
-		if aud_school:
-			# If audience specifies a school, user must have a resolvable school and it must be in their cone.
+		# --- USER VISIBILITY CHECK (permission cone) ---
+		# If the audience row is school-scoped, it must lie inside the user's cone.
+		if aud.school:
 			if not user_school:
 				continue
-			if valid_target_schools and aud_school not in valid_target_schools:
+			if valid_target_schools and aud.school not in valid_target_schools:
 				continue
 
-		# ------------------------------------------------------------
-		# C) Audience row constraints MUST be respected
-		#    (prevents "Whole Staff" bypassing a team-specific row)
-		# ------------------------------------------------------------
-		if aud_team:
-			if not _employee_matches_team(aud_team):
+		# ──────────────────────────────────────────────
+		# FILTER MODE 1: student_group strict
+		# ──────────────────────────────────────────────
+		if filter_student_group:
+			# Must match ONLY on an audience row that has that exact student_group
+			if aud.student_group != filter_student_group:
 				continue
 
-		if aud_student_group:
-			if not is_instructor_for_group(user, aud_student_group):
+			# Eligibility for student group row
+			if is_academic_admin:
+				return True
+
+			if is_instructor_for_group(user, aud.student_group):
+				return True
+
+			continue
+
+		# ──────────────────────────────────────────────
+		# FILTER MODE 2: team strict
+		# ──────────────────────────────────────────────
+		if filter_team:
+			# Must match ONLY on an audience row that has that exact team
+			if aud.team != filter_team:
 				continue
 
-		# ------------------------------------------------------------
-		# D) Target group rules (role-based)
-		# ------------------------------------------------------------
-		match_found = False
+			# Eligibility for team row
+			if is_academic_admin:
+				return True
 
-		# Broad groups
-		if aud_target_group in {"Whole Community", "Whole Staff"}:
-			match_found = True
+			if employee and employee.department and employee.department == aud.team:
+				return True
 
-		# Staff role grouping
-		elif aud_target_group == "Academic Staff":
-			if "Academic Staff" in roles or "Instructor" in roles:
-				match_found = True
+			continue
 
-		elif aud_target_group == "Support Staff":
-			# Keep your prior meaning: support staff = not academic staff
-			if "Academic Staff" not in roles and "Instructor" not in roles:
-				match_found = True
+		# ──────────────────────────────────────────────
+		# NO team/student_group filters:
+		# normal audience matching rules
+		# ──────────────────────────────────────────────
 
-		# Student-group rows already enforced above (C), but keep this for clarity
-		elif aud_student_group:
-			match_found = True
-
-		# If you later want Students/Guardians matching, do it explicitly here
-		# elif aud_target_group == "Students": ...
-		# elif aud_target_group == "Guardians": ...
-
-		if match_found:
+		# TARGET GROUP CHECK
+		if aud.target_group in {"Whole Community", "Whole Staff"}:
 			return True
+
+		if aud.target_group == "Academic Staff" and ("Academic Staff" in roles or "Instructor" in roles):
+			return True
+
+		if aud.target_group == "Support Staff" and "Academic Staff" not in roles:
+			return True
+
+		if aud.team and employee and employee.department == aud.team:
+			return True
+
+		if aud.student_group:
+			if is_instructor_for_group(user, aud.student_group):
+				return True
 
 	return False
 

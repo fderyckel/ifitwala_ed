@@ -93,6 +93,7 @@ def _get_scope(user: str, employee: dict | None):
 
 	return base_org, base_school, org_scope, school_scope
 
+
 @frappe.whitelist()
 def get_archive_context():
 	"""Returns context data for the archive page filters."""
@@ -232,7 +233,6 @@ def get_org_communication_item(name):
     }
 
 
-
 @frappe.whitelist()
 def get_org_communication_feed(
 	filters: dict | None = None,
@@ -288,6 +288,8 @@ def get_org_communication_feed(
 	page_len = int(page_length if page_length is not None else limit_page_length or 30)
 
 	base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
+
+	# Org guard
 	org_guard: set[str] = set()
 	if org_scope and "System Manager" not in roles:
 		org_guard = set(org_scope)
@@ -306,7 +308,7 @@ def get_org_communication_feed(
 			frappe.throw(_("You do not have access to this organization."), frappe.PermissionError)
 		org_guard = {org_filter}
 
-	# Optional school guard for user scope
+	# Optional school guard for user scope (UI filter must be within allowed scope)
 	filter_school_val = filters_dict.get("school")
 	if (
 		filter_school_val
@@ -316,7 +318,7 @@ def get_org_communication_feed(
 	):
 		frappe.throw(_("You do not have access to this school."), frappe.PermissionError)
 
-	# Base Filters (SQL-level; school is evaluated in audience checks)
+	# Base Filters (SQL-level; final school/team/student_group eligibility in check_audience_match)
 	conditions: list[str] = []
 	values: dict[str, object] = {}
 
@@ -329,22 +331,22 @@ def get_org_communication_feed(
 		conditions.append("status IN ('Published', 'Archived')")
 	elif status_val == "Published":
 		conditions.append("status = 'Published'")
-	elif status_val:
+	elif status_val and status_val != "All":
 		conditions.append("status = %(status)s")
 		values["status"] = status_val
 
 	priority_val = filters_dict.get("priority")
-	if priority_val:
+	if priority_val and priority_val != "All":
 		conditions.append("priority = %(priority)s")
 		values["priority"] = priority_val
 
 	portal_surface_val = filters_dict.get("portal_surface")
-	if portal_surface_val:
+	if portal_surface_val and portal_surface_val != "All":
 		conditions.append("portal_surface = %(portal_surface)s")
 		values["portal_surface"] = portal_surface_val
 
 	communication_type_val = filters_dict.get("communication_type")
-	if communication_type_val:
+	if communication_type_val and communication_type_val != "All":
 		conditions.append("communication_type = %(communication_type)s")
 		values["communication_type"] = communication_type_val
 
@@ -385,6 +387,36 @@ def get_org_communication_feed(
 			"WHERE org_communication = `tabOrg Communication`.name)"
 		)
 
+	# ──────────────────────────────────────────────
+	# STRICT PREFILTERS FOR TEAM / STUDENT GROUP
+	# (speed + eliminates “matched via other audience row” confusion)
+	# Student group wins if both exist (defensive).
+	# ──────────────────────────────────────────────
+	filter_team_val = filters_dict.get("team")
+	filter_sg_val = filters_dict.get("student_group")
+
+	if filter_sg_val and filter_sg_val != "All":
+		conditions.append(
+			"EXISTS ("
+			"SELECT a.name FROM `tabOrg Communication Audience` a "
+			"WHERE a.parent = `tabOrg Communication`.name "
+			"AND a.student_group = %(filter_student_group)s"
+			")"
+		)
+		values["filter_student_group"] = filter_sg_val
+		# Enforce mutual exclusivity on the server too
+		filter_team_val = None
+
+	elif filter_team_val and filter_team_val != "All":
+		conditions.append(
+			"EXISTS ("
+			"SELECT a.name FROM `tabOrg Communication Audience` a "
+			"WHERE a.parent = `tabOrg Communication`.name "
+			"AND a.team = %(filter_team)s"
+			")"
+		)
+		values["filter_team"] = filter_team_val
+
 	where_clause = " AND ".join(conditions)
 	if where_clause:
 		where_clause = "WHERE " + where_clause
@@ -415,9 +447,6 @@ def get_org_communication_feed(
 	candidates = frappe.db.sql(sql, values, as_dict=True)
 
 	visible_items: list[dict] = []
-
-	filter_team_val = filters_dict.get("team")
-	filter_sg_val = filters_dict.get("student_group")
 
 	for c in candidates:
 		if check_audience_match(
@@ -469,7 +498,6 @@ def get_org_communication_feed(
 		"page_length": page_len,
 		"has_more": (offset + page_len) < total_count,
 	}
-
 
 
 def get_audience_label(comm_name):
