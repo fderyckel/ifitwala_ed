@@ -53,7 +53,7 @@
 
       <!-- Team -->
       <FormControl
-        v-if="myTeam"
+        v-if="teamOptions.length > 1"
         type="select"
         :options="teamOptions"
         v-model="filters.team"
@@ -345,7 +345,7 @@ const DATE_RANGES = [
 ] as const
 
 const filters = ref<ArchiveFilters>({
-	search: '',
+	search_text: '',
 	status: 'PublishedOrArchived',
 	priority: 'All',
 	portal_surface: 'All',
@@ -357,6 +357,7 @@ const filters = ref<ArchiveFilters>({
 	school: null,
 	organization: null,
 })
+
 
 const selectedComm = ref<OrgCommunicationListItem | null>(null)
 const showThreadDrawer = ref(false)
@@ -412,11 +413,29 @@ const archiveContext = createResource({
 	onSuccess(data) {
 		if (!data) return
 
+		// Team (current implementation only supports 0/1 team)
 		myTeam.value = data.my_team || null
-		myStudentGroups.value = (data.my_groups || []).map((g: { label: string; value: string }) => ({
-			label: g.label,
-			value: g.value,
-		}))
+
+		// Student Groups: server may return either:
+		// A) string[] (older)
+		// B) {label, value, school?}[] (new)
+		const rawGroups = data.my_groups || []
+		myStudentGroups.value = rawGroups
+			.map((g: any) => {
+				// New shape
+				if (g && typeof g === 'object') {
+					const value = g.value || g.name
+					const label = g.label || g.student_group_abbreviation || g.student_group_name || value
+					if (!value) return null
+					return { label, value }
+				}
+				// Old shape
+				if (typeof g === 'string' && g.trim()) {
+					return { label: g, value: g }
+				}
+				return null
+			})
+			.filter(Boolean)
 
 		orgChoices.value = (data.organizations || []).map((o: any) => ({
 			label: o.organization_name || o.name,
@@ -439,6 +458,8 @@ const archiveContext = createResource({
 		loadFeed(true)
 	},
 })
+
+
 
 const orgCommFeed = createResource<{
 	items: OrgCommunicationListItem[]
