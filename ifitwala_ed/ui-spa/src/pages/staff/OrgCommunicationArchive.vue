@@ -496,32 +496,77 @@ watch(
 	{ deep: true },
 )
 
+/**
+ * MUTUAL EXCLUSION: Team ↔ Student Group
+ * - If team becomes non-null → student_group = null
+ * - If student_group becomes non-null → team = null
+ *
+ * Guard with `if (val)` so selecting "All" (null) doesn't wipe the other filter.
+ */
 watch(
-	() => filters.value.organization,
-	(newOrg, oldOrg) => {
-		// During initial load, archiveContext sets defaults; don't thrash filters.
+	() => filters.value.team,
+	(val) => {
 		if (!initialized.value) return
-
-		// School: only clear if current school is not valid in the newly scoped options.
-		// (We keep it if it still belongs to the selected org.)
-		const allowedSchools = schoolOptions.value.map((o) => o.value)
-		if (filters.value.school && !allowedSchools.includes(filters.value.school)) {
-			filters.value.school = null
-		}
-
-		// Team: DO NOT clear.
-		// In this UI, teamOptions is always [All teams] + [My team], so it's always valid.
-		// Clearing it here is a classic "why did my filter change?" foot-gun.
-
-		// Student group: safest to clear on org change (groups are org/school-scoped in reality).
-		// You can later refine to only clear if invalid once you return scoped groups from server.
-		if (oldOrg !== undefined && newOrg !== oldOrg) {
+		if (val) {
 			filters.value.student_group = null
 		}
 	},
 )
 
+watch(
+	() => filters.value.student_group,
+	(val) => {
+		if (!initialized.value) return
+		if (val) {
+			filters.value.team = null
+		}
+	},
+)
 
+/**
+ * ORGANIZATION CHANGE
+ * Rule: If organization changes → set school = null, team = null, student_group = null
+ *
+ * We do it strictly (your rule), and we do it only when org actually changes.
+ * Note: This will also trigger the school watcher, but that's fine.
+ */
+watch(
+	() => filters.value.organization,
+	(newOrg, oldOrg) => {
+		if (!initialized.value) return
+		if (newOrg === oldOrg) return
+
+		filters.value.school = null
+		filters.value.team = null
+		filters.value.student_group = null
+	},
+)
+
+/**
+ * SCHOOL CHANGE
+ * Rule: If school changes → set team = null and student_group = null (safety)
+ *
+ * Do it only when school actually changes.
+ */
+watch(
+	() => filters.value.school,
+	(newSchool, oldSchool) => {
+		if (!initialized.value) return
+		if (newSchool === oldSchool) return
+
+		filters.value.team = null
+		filters.value.student_group = null
+	},
+)
+
+/**
+ * VALIDITY GUARD (keep)
+ * If schoolOptions changes (because org scope changes, or context loaded),
+ * ensure current school is still selectable.
+ *
+ * With the strict org-change rule above, this will *usually* be redundant,
+ * but it's still a good safety net (and harmless).
+ */
 watch(
 	schoolOptions,
 	(options) => {
@@ -530,7 +575,9 @@ watch(
 			filters.value.school = null
 		}
 	},
+	{ deep: true },
 )
+
 
 function selectItem(item: OrgCommunicationListItem) {
 	selectedComm.value = item
