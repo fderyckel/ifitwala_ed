@@ -56,7 +56,7 @@ def _normalize_filters(raw_filters: dict | None) -> dict:
 
 	status_clean = status_clean or None
 	out = {
-		"search_text": cleaned(raw.get("search_text") or raw.get("search")),
+		"search_text": cleaned(raw.get("search_text")),
 		"status": status_clean,
 		"priority": cleaned(raw.get("priority")),
 		"portal_surface": cleaned(raw.get("portal_surface")),
