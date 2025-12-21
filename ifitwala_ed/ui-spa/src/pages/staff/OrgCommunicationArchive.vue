@@ -413,7 +413,7 @@ const archiveContext = createResource({
 		if (!data) return
 
 		myTeam.value = data.my_team || null
-		myStudentGroups.value = (data.my_groups || []).map((g: any) => ({
+		myStudentGroups.value = (data.my_groups || []).map((g: { label: string; value: string }) => ({
 			label: g.label,
 			value: g.value,
 		}))

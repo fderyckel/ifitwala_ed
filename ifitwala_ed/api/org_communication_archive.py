@@ -108,15 +108,24 @@ def get_archive_context():
 
 	base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
 
+	# -------------------------
+	# SAFE Team default
+	# -------------------------
+	# Org Communication Audience.team is a Link to Team (Team.name).
+	# Employee.department might not be a Team.name. If it isn't, don't default it.
+	my_team = (employee or {}).get("department")
+	if my_team and not frappe.db.exists("Team", my_team):
+		my_team = None
+
 	data = {
-		"my_team": (employee or {}).get("department"),
+		"my_team": my_team,
 		"my_groups": [],
 		"schools": [],
 		"organizations": [],
 		"defaults": {
 			"school": base_school,
 			"organization": base_org,
-			"team": (employee or {}).get("department"),
+			"team": my_team,
 		},
 		"base_org": base_org,
 		"base_school": base_school,
@@ -125,29 +134,12 @@ def get_archive_context():
 	# -------------------------
 	# Student Groups visibility
 	# -------------------------
-	# 1) Instructor: only groups they teach (via Student Group Instructor.instructor -> Instructor)
-	# 2) Academic Admin: all groups in base_school + descendant schools
+	# 1) Academic Admin: all groups in base_school + descendant schools
+	# 2) Instructor/Academic Staff: only groups they teach
 	my_group_rows = []
 
-	if employee and ("Instructor" in roles or "Academic Staff" in roles):
-		instructor_name = frappe.db.get_value("Instructor", {"employee": employee.name}, "name")
-		if instructor_name:
-			group_names = frappe.get_all(
-				"Student Group Instructor",
-				filters={"instructor": instructor_name},
-				pluck="parent",
-			) or []
-
-			if group_names:
-				my_group_rows = frappe.get_all(
-					"Student Group",
-					filters={"name": ["in", list(set(group_names))]},
-					fields=["name", "student_group_abbreviation", "student_group_name", "school"],
-					order_by="student_group_abbreviation asc, name asc",
-				)
-
-	elif "Academic Admin" in roles:
-		# base_school + its descendants (school_scope from _get_scope already does this)
+	if "Academic Admin" in roles:
+		# base_school + descendants (school_scope from _get_scope already does this)
 		if school_scope:
 			my_group_rows = frappe.get_all(
 				"Student Group",
@@ -157,7 +149,25 @@ def get_archive_context():
 				order_by="student_group_abbreviation asc, name asc",
 			)
 
-	# Return as dropdown-friendly objects (label/value)
+	elif employee and ("Instructor" in roles or "Academic Staff" in roles):
+		instructor_name = frappe.db.get_value("Instructor", {"employee": employee.name}, "name")
+		if instructor_name:
+			group_names = frappe.get_all(
+				"Student Group Instructor",
+				filters={"instructor": instructor_name},
+				pluck="parent",
+			) or []
+
+			# Deduplicate + fetch group display fields
+			if group_names:
+				my_group_rows = frappe.get_all(
+					"Student Group",
+					filters={"name": ["in", sorted(list(set(group_names)))]},
+					fields=["name", "student_group_abbreviation", "student_group_name", "school"],
+					order_by="student_group_abbreviation asc, name asc",
+				)
+
+	# Return dropdown-friendly objects (label/value)
 	data["my_groups"] = [
 		{
 			"value": g.get("name"),
@@ -198,7 +208,6 @@ def get_archive_context():
 	)
 
 	return data
-
 
 
 @frappe.whitelist()
