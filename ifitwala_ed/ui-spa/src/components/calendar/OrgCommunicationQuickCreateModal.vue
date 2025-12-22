@@ -124,6 +124,12 @@ import { computed, reactive, ref, watch } from 'vue';
 import { Button, Dialog, FormControl, toast } from 'frappe-ui';
 
 import { api } from '@/types/client';
+import type {
+	AudienceTargetGroup,
+	CommunicationType,
+	OrgCommunicationAudienceRow,
+	OrgCommunicationCreateDoc,
+} from '@/types/orgCommunication';
 import type { ClassEventDetails } from './classEventTypes';
 
 const props = defineProps<{
@@ -133,7 +139,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	(e: 'update:modelValue', value: boolean): void;
-	(e: 'created', doc: any): void;
+	(e: 'created', doc: Record<string, unknown>): void;
 }>();
 
 const isOpen = computed({
@@ -143,7 +149,16 @@ const isOpen = computed({
 
 const submitting = ref(false);
 
-const form = reactive({
+type OrgCommunicationQuickForm = {
+	title: string;
+	message: string;
+	publish_from: string;
+	publish_to: string;
+	brief_start_date: string;
+	brief_end_date: string;
+};
+
+const form = reactive<OrgCommunicationQuickForm>({
 	title: '',
 	message: '',
 	publish_from: '',
@@ -218,7 +233,7 @@ function formatDateLabel(value?: string | null) {
 	});
 }
 
-function toFrappeDatetime(value: string | null) {
+function toFrappeDatetime(value: string) {
 	if (!value) return null;
 	if (value.includes('T')) {
 		const [date, timeRaw] = value.split('T');
@@ -239,10 +254,16 @@ async function submit() {
 
 	submitting.value = true;
 
-	const payload: Record<string, any> = {
+	const audience: OrgCommunicationAudienceRow = {
+		target_group: 'Students' satisfies AudienceTargetGroup,
+		student_group: props.event.student_group,
+		school: props.event.school,
+	};
+
+	const payload: OrgCommunicationCreateDoc = {
 		doctype: 'Org Communication',
 		title: form.title.trim() || fallbackTitle.value,
-		communication_type: 'Class Announcement',
+		communication_type: 'Class Announcement' satisfies CommunicationType,
 		status: 'Published',
 		priority: 'Normal',
 		portal_surface: 'Everywhere',
@@ -252,17 +273,14 @@ async function submit() {
 		brief_end_date: form.brief_end_date || undefined,
 		message: form.message.trim(),
 		school: props.event.school,
-		audiences: [
-			{
-				target_group: 'Students',
-				student_group: props.event.student_group,
-				school: props.event.school,
-			},
-		],
+		audiences: [audience],
 	};
 
 	try {
-		const doc = await api('frappe.client.insert', { doc: payload });
+		const doc = (await api('frappe.client.insert', { doc: payload })) as Record<
+			string,
+			unknown
+		>;
 		toast({
 			appearance: 'success',
 			message: 'Announcement created.',

@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue -->
 <template>
   <div class="staff-shell space-y-6">
     <!-- Header -->
@@ -372,7 +373,7 @@ const interactionSummaries = ref<Record<string, InteractionSummary>>({})
 
 // User Context for Filters
 const hasTeamFilter = computed(() => teamOptions.value.length > 1)
-const myTeam = ref<string | null>(null)
+const myTeams = ref<Array<{ label: string; value: string }>>([])
 const myStudentGroups = ref<Array<{ label: string; value: string }>>([])
 const orgChoices = ref<Array<{ label: string; value: string }>>([])
 const schoolChoices = ref<Array<{ label: string; value: string; organization?: string | null }>>([])
@@ -390,13 +391,11 @@ const schoolOptions = computed(() => {
 	return [{ label: 'All schools', value: null }, ...scoped]
 })
 
-const teamOptions = computed(() => {
-	const opts = [{ label: 'All teams', value: null }]
-	if (myTeam.value) {
-		opts.push({ label: myTeam.value, value: myTeam.value })
-	}
-	return opts
-})
+const teamOptions = computed(() => [
+	{ label: 'All teams', value: null },
+	...myTeams.value,
+])
+
 
 const studentGroupOptions = computed(() => [{ label: 'All groups', value: null }, ...myStudentGroups.value])
 
@@ -416,7 +415,31 @@ const archiveContext = createResource({
 		if (!data) return
 
 		// Team (current implementation only supports 0/1 team)
-		myTeam.value = data.my_team || null
+		const rawTeams = data.my_teams || []
+		const normalizedTeams: Array<{ label: string; value: string }> = []
+
+		for (const t of rawTeams) {
+			if (typeof t === 'string') {
+				const v = t.trim()
+				if (v) normalizedTeams.push({ label: v, value: v })
+				continue
+			}
+			if (t && typeof t === 'object') {
+				const v = typeof t.value === 'string' ? t.value.trim() : ''
+				if (!v) continue
+				const l = typeof t.label === 'string' ? t.label.trim() : ''
+				normalizedTeams.push({ label: l || v, value: v })
+			}
+		}
+
+		// De-dupe by value
+		const seenTeams = new Set<string>()
+		myTeams.value = normalizedTeams.filter((x) => {
+			if (!x.value || seenTeams.has(x.value)) return false
+			seenTeams.add(x.value)
+			return true
+		})
+
 
 		// Student Groups:
 		// - Old shape: string[]
@@ -464,7 +487,7 @@ const archiveContext = createResource({
 		if (data.defaults) {
 			filters.value.organization = data.defaults.organization || null
 			filters.value.school = data.defaults.school || null
-			filters.value.team = data.defaults.team || null
+			filters.value.team = null
 		}
 
 		initialized.value = true
