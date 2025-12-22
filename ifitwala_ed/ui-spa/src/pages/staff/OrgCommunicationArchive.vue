@@ -372,7 +372,7 @@ const hasMore = ref(false)
 const interactionSummaries = ref<Record<string, InteractionSummary>>({})
 
 // User Context for Filters
-const hasTeamFilter = computed(() => teamOptions.value.length > 1)
+const hasTeamFilter = computed(() => myTeams.value.length > 0)
 const myTeams = ref<Array<{ label: string; value: string }>>([])
 const myStudentGroups = ref<Array<{ label: string; value: string }>>([])
 const orgChoices = ref<Array<{ label: string; value: string }>>([])
@@ -414,37 +414,7 @@ const archiveContext = createResource({
 	onSuccess(data) {
 		if (!data) return
 
-		// Team (current implementation only supports 0/1 team)
-		const rawTeams = Array.isArray(data.my_teams)
-			? data.my_teams
-			: data.my_team
-				? [data.my_team]
-				: data.defaults?.team
-					? [data.defaults.team]
-					: []
-		const normalizedTeams: Array<{ label: string; value: string }> = []
-
-		for (const t of rawTeams) {
-			if (typeof t === 'string') {
-				const v = t.trim()
-				if (v) normalizedTeams.push({ label: v, value: v })
-				continue
-			}
-			if (t && typeof t === 'object') {
-				const v = typeof t.value === 'string' ? t.value.trim() : ''
-				if (!v) continue
-				const l = typeof t.label === 'string' ? t.label.trim() : ''
-				normalizedTeams.push({ label: l || v, value: v })
-			}
-		}
-
-		// De-dupe by value
-		const seenTeams = new Set<string>()
-		myTeams.value = normalizedTeams.filter((x) => {
-			if (!x.value || seenTeams.has(x.value)) return false
-			seenTeams.add(x.value)
-			return true
-		})
+		myTeams.value = Array.isArray(data.my_teams) ? data.my_teams : []
 
 
 		// Student Groups:
@@ -493,7 +463,7 @@ const archiveContext = createResource({
 		if (data.defaults) {
 			filters.value.organization = data.defaults.organization || null
 			filters.value.school = data.defaults.school || null
-			filters.value.team = null
+			filters.value.team = data.defaults?.team || null
 		}
 
 		initialized.value = true

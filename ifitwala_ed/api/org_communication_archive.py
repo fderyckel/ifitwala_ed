@@ -109,45 +109,54 @@ def get_archive_context():
 	base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
 
 	# -------------------------
-	# Teams (CORRECT): Team -> Team Member
+	# Teams (Team -> Team Member)
 	# -------------------------
-	# Team Member:
+	# Team Member is a child table of Team:
 	# - parent = Team.name
 	# - employee (required)
 	# - member (Link to User, may be empty)
 	employee_name = employee.get("name") if employee else None
+	team_names: list[str] = []
 
-	my_team_rows = []
 	if user and user != "Guest":
 		conds = []
-		params = {"user": user}
+		params = {}
 
 		if employee_name:
 			params["employee"] = employee_name
 			conds.append("tm.employee = %(employee)s")
 
-		# member is optional in your schema, but when present it’s the cleanest match
-		conds.append("tm.member = %(user)s")
+		if user:
+			params["user"] = user
+			conds.append("tm.member = %(user)s")
 
-		my_team_rows = frappe.db.sql(
-			f"""
-			SELECT DISTINCT
-				tm.parent AS name,
-				t.team_name AS team_name
-			FROM `tabTeam Member` tm
-			INNER JOIN `tabTeam` t ON t.name = tm.parent
-			WHERE ({' OR '.join(conds)})
-			  AND IFNULL(t.enabled, 1) = 1
-			ORDER BY t.team_name ASC
-			""",
-			params,
-			as_dict=True,
+		if conds:
+			rows = frappe.db.sql(
+				f"""
+				SELECT DISTINCT tm.parent AS team
+				FROM `tabTeam Member` tm
+				WHERE {' OR '.join(conds)}
+				""",
+				params,
+				as_dict=True,
+			)
+			team_names = [r.get("team") for r in rows if r.get("team")]
+
+	team_names = sorted(set(team_names))
+
+	team_rows = []
+	if team_names:
+		team_rows = frappe.get_all(
+			"Team",
+			filters={"name": ["in", team_names], "enabled": 1},
+			fields=["name", "team_name"],
+			order_by="team_name asc, name asc",
 		)
 
 	# Dropdown friendly objects
 	my_teams = [
 		{"value": r.get("name"), "label": r.get("team_name") or r.get("name")}
-		for r in (my_team_rows or [])
+		for r in (team_rows or [])
 		if r.get("name")
 	]
 
@@ -155,9 +164,6 @@ def get_archive_context():
 	default_team = my_teams[0]["value"] if len(my_teams) == 1 else None
 
 	data = {
-		# Backward compat: keep my_team as a single string (but now correct)
-		"my_team": default_team,
-		# Proper multi-team payload for UI
 		"my_teams": my_teams,
 		"my_groups": [],
 		"schools": [],
@@ -316,7 +322,7 @@ def get_org_communication_feed(
 	employee = frappe.db.get_value(
 		"Employee",
 		{"user_id": user},
-		["name", "school", "organization", "department"],
+		["name", "school", "organization"],
 		as_dict=True,
 	)
 
