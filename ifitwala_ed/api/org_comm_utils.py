@@ -9,8 +9,7 @@ from frappe import _
 
 def check_audience_match(comm_name, user, roles, employee, filter_team=None, filter_student_group=None, filter_school=None):
 	"""
-	Checks if the current user (employee) matches the audience criteria
-	for a given Org Communication.
+	Checks if the current user matches the audience criteria for a given Org Communication.
 
 	Strict filter behavior:
 	- If filter_student_group is set:
@@ -24,7 +23,7 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 		The match MUST happen on that team row (no leakage via Whole Staff).
 		Eligibility:
 			- Academic Admin: allowed
-			- Others: employee.department must match the team
+			- Others: must be member of that Team via Team Member child table
 
 	Strict school filter behaviour:
 	- If filter_school = X, show only audiences where audience.school is in {X} ∪ Anc(X).
@@ -66,12 +65,14 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 	if not audiences:
 		return False
 
+	# ──────────────────────────────────────────────
 	# 1) User visibility cone: own school + ancestors + descendants (prevents sibling leakage)
+	# ──────────────────────────────────────────────
 	user_school = None
 	valid_target_schools: set[str] = set()
 
-	if employee and employee.school:
-		user_school = employee.school
+	if employee and employee.get("school"):
+		user_school = employee.get("school")
 		try:
 			up = get_ancestor_schools(user_school) or []
 		except Exception:
@@ -82,7 +83,9 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 			down = []
 		valid_target_schools = set(up + down + [user_school])
 
+	# ──────────────────────────────────────────────
 	# 2) Strict filter scope: selected school + ancestors only (NO descendants)
+	# ──────────────────────────────────────────────
 	filter_school_scope: set[str] | None = None
 	if filter_school:
 		try:
@@ -90,6 +93,53 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 		except Exception:
 			up_f = []
 		filter_school_scope = set(up_f + [filter_school])
+
+	# ──────────────────────────────────────────────
+	# 3) Team membership resolution (NO Employee.department usage)
+	#    Team Member is a child table of Team:
+	#      - parent = Team.name
+	#      - member = User (may be empty)
+	#      - employee = Employee (required)
+	# ──────────────────────────────────────────────
+	employee_name = employee.get("name") if employee else None
+
+	# Collect all team names we might need to evaluate (including filter_team)
+	team_names = {a.team for a in audiences if a.team}
+	if filter_team:
+		team_names.add(filter_team)
+
+	user_teams: set[str] = set()
+
+	if team_names and (user or employee_name):
+		# We treat membership as:
+		# - Team Member.member == user  OR
+		# - Team Member.employee == employee_name
+		#
+		# NOTE: Team Member is a child table, so its "parent" is the Team name.
+		conds = []
+		params = {"teams": tuple(team_names)}
+
+		if user and user != "Guest":
+			conds.append("tm.member = %(user)s")
+			params["user"] = user
+
+		if employee_name:
+			conds.append("tm.employee = %(employee)s")
+			params["employee"] = employee_name
+
+		# If we have no valid condition, skip query
+		if conds:
+			rows = frappe.db.sql(
+				f"""
+				SELECT DISTINCT tm.parent
+				FROM `tabTeam Member` tm
+				WHERE tm.parent IN %(teams)s
+				  AND ({' OR '.join(conds)})
+				""",
+				params,
+				as_dict=True,
+			)
+			user_teams = {r.get("parent") for r in rows if r.get("parent")}
 
 	for aud in audiences:
 		# --- SCHOOL FILTER CHECK (strict upward only) ---
@@ -135,7 +185,7 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 			if is_academic_admin:
 				return True
 
-			if employee and employee.department and employee.department == aud.team:
+			if aud.team and aud.team in user_teams:
 				return True
 
 			continue
@@ -155,9 +205,11 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 		if aud.target_group == "Support Staff" and "Academic Staff" not in roles:
 			return True
 
-		if aud.team and employee and employee.department == aud.team:
+		# Team audience row (membership via Team Member)
+		if aud.team and aud.team in user_teams:
 			return True
 
+		# Student group audience row (instructor membership)
 		if aud.student_group:
 			if is_instructor_for_group(user, aud.student_group):
 				return True

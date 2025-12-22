@@ -93,7 +93,6 @@ def _get_scope(user: str, employee: dict | None):
 
 	return base_org, base_school, org_scope, school_scope
 
-
 @frappe.whitelist()
 def get_archive_context():
 	"""Returns context data for the archive page filters."""
@@ -103,30 +102,70 @@ def get_archive_context():
 	employee = frappe.db.get_value(
 		"Employee",
 		{"user_id": user},
-		["name", "school", "organization", "department"],
+		["name", "school", "organization"],
 		as_dict=True,
 	)
 
 	base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
 
 	# -------------------------
-	# SAFE Team default
+	# Teams (CORRECT): Team -> Team Member
 	# -------------------------
-	# Org Communication Audience.team is a Link to Team (Team.name).
-	# Employee.department might not be a Team.name. If it isn't, don't default it.
-	my_team = (employee or {}).get("department")
-	if my_team and not frappe.db.exists("Team", my_team):
-		my_team = None
+	# Team Member:
+	# - parent = Team.name
+	# - employee (required)
+	# - member (Link to User, may be empty)
+	employee_name = employee.get("name") if employee else None
+
+	my_team_rows = []
+	if user and user != "Guest":
+		conds = []
+		params = {"user": user}
+
+		if employee_name:
+			params["employee"] = employee_name
+			conds.append("tm.employee = %(employee)s")
+
+		# member is optional in your schema, but when present it’s the cleanest match
+		conds.append("tm.member = %(user)s")
+
+		my_team_rows = frappe.db.sql(
+			f"""
+			SELECT DISTINCT
+				tm.parent AS name,
+				t.team_name AS team_name
+			FROM `tabTeam Member` tm
+			INNER JOIN `tabTeam` t ON t.name = tm.parent
+			WHERE ({' OR '.join(conds)})
+			  AND IFNULL(t.enabled, 1) = 1
+			ORDER BY t.team_name ASC
+			""",
+			params,
+			as_dict=True,
+		)
+
+	# Dropdown friendly objects
+	my_teams = [
+		{"value": r.get("name"), "label": r.get("team_name") or r.get("name")}
+		for r in (my_team_rows or [])
+		if r.get("name")
+	]
+
+	# Default team only if unambiguous
+	default_team = my_teams[0]["value"] if len(my_teams) == 1 else None
 
 	data = {
-		"my_team": my_team,
+		# Backward compat: keep my_team as a single string (but now correct)
+		"my_team": default_team,
+		# Proper multi-team payload for UI
+		"my_teams": my_teams,
 		"my_groups": [],
 		"schools": [],
 		"organizations": [],
 		"defaults": {
 			"school": base_school,
 			"organization": base_org,
-			"team": my_team,
+			"team": default_team,
 		},
 		"base_org": base_org,
 		"base_school": base_school,
@@ -135,8 +174,6 @@ def get_archive_context():
 	# -------------------------
 	# Student Groups visibility
 	# -------------------------
-	# 1) Academic Admin: all groups in base_school + descendant schools
-	# 2) Instructor/Academic Staff: only groups they teach
 	my_group_rows = []
 
 	if "Academic Admin" in roles:
@@ -159,7 +196,6 @@ def get_archive_context():
 				pluck="parent",
 			) or []
 
-			# Deduplicate + fetch group display fields
 			if group_names:
 				my_group_rows = frappe.get_all(
 					"Student Group",
@@ -168,7 +204,6 @@ def get_archive_context():
 					order_by="student_group_abbreviation asc, name asc",
 				)
 
-	# Return dropdown-friendly objects (label/value)
 	data["my_groups"] = [
 		{
 			"value": g.get("name"),
@@ -211,26 +246,49 @@ def get_archive_context():
 	return data
 
 
+
 @frappe.whitelist()
-def get_org_communication_item(name):
-    """Returns the full communication details if the user is in the audience."""
-    user = frappe.session.user
-    roles = frappe.get_roles(user)
-    employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "school", "organization", "department"], as_dict=True)
+def get_org_communication_item(name=None):
+	"""
+	Returns the full communication details if the user is in the audience.
+	Safe against missing args (returns {}).
+	IMPORTANT: Do NOT use Employee.department as Team.
+	Team membership must be resolved via Team -> Team Member.
+	"""
+	if not name:
+		return {}
 
-    if not check_audience_match(name, user, roles, employee):
-        frappe.throw(_("You do not have permission to view this communication."), frappe.PermissionError)
+	name = str(name).strip()
+	if not name:
+		return {}
 
-    doc = frappe.get_doc("Org Communication", name)
-    return {
-        "name": doc.name,
-        "title": doc.title,
-        "message": doc.message, # HTML Content
-        "communication_type": doc.communication_type,
-        "priority": doc.priority,
-        "publish_from": doc.publish_from,
-        "audience_label": get_audience_label(doc.name)
-    }
+	user = frappe.session.user
+	roles = frappe.get_roles(user)
+
+	# Only what we actually need here (no department)
+	employee = frappe.db.get_value(
+		"Employee",
+		{"user_id": user, "status": "Active"},
+		["name", "school", "organization"],
+		as_dict=True,
+	)
+
+	# NOTE: check_audience_match MUST be updated to use Team Member doctype
+	# and not Employee.department. (This is the real underlying bug.)
+	if not check_audience_match(name, user, roles, employee):
+		frappe.throw(_("You do not have permission to view this communication."), frappe.PermissionError)
+
+	doc = frappe.get_doc("Org Communication", name)
+
+	return {
+		"name": doc.name,
+		"title": doc.title,
+		"message": doc.message,  # HTML content
+		"communication_type": doc.communication_type,
+		"priority": doc.priority,
+		"publish_from": doc.publish_from,
+		"audience_label": get_audience_label(doc.name),
+	}
 
 
 @frappe.whitelist()

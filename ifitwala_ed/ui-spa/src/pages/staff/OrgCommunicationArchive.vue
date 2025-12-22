@@ -415,7 +415,13 @@ const archiveContext = createResource({
 		if (!data) return
 
 		// Team (current implementation only supports 0/1 team)
-		const rawTeams = data.my_teams || []
+		const rawTeams = Array.isArray(data.my_teams)
+			? data.my_teams
+			: data.my_team
+				? [data.my_team]
+				: data.defaults?.team
+					? [data.defaults.team]
+					: []
 		const normalizedTeams: Array<{ label: string; value: string }> = []
 
 		for (const t of rawTeams) {
@@ -649,6 +655,7 @@ function normalizeArchiveFilters(f: ArchiveFilters): ArchiveFilters {
 
 
 function selectItem(item: OrgCommunicationListItem) {
+	if (!item?.name) return
 	selectedComm.value = item
 	fullContent.submit({ name: item.name })
 }
@@ -674,7 +681,13 @@ async function loadFeed(reset = false) {
 	start.value = responseStart + items.length
 
 	if (items.length) {
-		interactionSummaryResource.submit({ comm_names: items.map((i: OrgCommunicationListItem) => i.name) })
+		const commNames = items
+			.map((i: OrgCommunicationListItem) => i?.name)
+			.filter((name): name is string => typeof name === 'string' && !!name.trim())
+
+		if (commNames.length) {
+			interactionSummaryResource.submit({ comm_names: commNames })
+		}
 	}
 
 	if (!selectedComm.value && feedItems.value.length) {
@@ -704,11 +717,13 @@ function canInteract(item: OrgCommunicationListItem) {
 }
 
 function refreshSummary(names: string[]) {
-	if (!names.length) return
-	interactionSummaryResource.submit({ comm_names: names })
+	const commNames = names.filter((name) => typeof name === 'string' && !!name.trim())
+	if (!commNames.length) return
+	interactionSummaryResource.submit({ comm_names: commNames })
 }
 
 function acknowledge(item: OrgCommunicationListItem) {
+	if (!item?.name) return
 	interactionAction.submit(
 		{
 			org_communication: item.name,
@@ -722,13 +737,14 @@ function acknowledge(item: OrgCommunicationListItem) {
 }
 
 function openThread(item: OrgCommunicationListItem) {
+	if (!item?.name) return
 	selectedComm.value = item
 	showThreadDrawer.value = true
 	threadResource.submit({ org_communication: item.name })
 }
 
 function submitComment() {
-	if (!selectedComm.value || !newComment.value.trim()) return
+	if (!selectedComm.value?.name || !newComment.value.trim()) return
 
 	interactionAction.submit(
 		{

@@ -162,12 +162,36 @@ class CommunicationInteraction(Document):
 			# Soft guard: you can tighten this later if needed
 			pass
 
-
 @frappe.whitelist()
-def get_org_comm_interaction_summary(comm_names):
+def get_org_comm_interaction_summary(comm_names=None):
+	"""
+	Return interaction summary for a list of Org Communication names.
+	Safe against missing/empty args (returns {}).
+	"""
+	# Allow comm_names passed as JSON string from the client
 	if isinstance(comm_names, str):
-		comm_names = frappe.parse_json(comm_names) or []
-	if not comm_names:
+		try:
+			comm_names = frappe.parse_json(comm_names)
+		except Exception:
+			comm_names = None
+
+	comm_names = comm_names or []
+	if not isinstance(comm_names, (list, tuple)):
+		comm_names = [comm_names]
+
+	# Trim + de-dupe
+	clean_names = []
+	seen = set()
+	for n in comm_names:
+		if not n:
+			continue
+		n = str(n).strip()
+		if not n or n in seen:
+			continue
+		seen.add(n)
+		clean_names.append(n)
+
+	if not clean_names:
 		return {}
 
 	user = frappe.session.user
@@ -175,14 +199,16 @@ def get_org_comm_interaction_summary(comm_names):
 	# Initialise summary with a clean shape
 	summary = {
 		name: {
-			"counts": {},      # intent_type -> count (for emojis)
-			"self": None,      # current user's row
-			"comment_count": 0 # number of interactions with a non-empty note
+			"counts": {},       # intent_type -> count
+			"self": None,       # current user's row
+			"comment_count": 0  # number of interactions with non-empty note
 		}
-		for name in comm_names
+		for name in clean_names
 	}
 
-	# 1) counts per communication + intent (emoji / intent stats)
+	comms_tuple = tuple(clean_names)
+
+	# 1) counts per communication + intent
 	rows = frappe.db.sql(
 		"""
 		SELECT org_communication, intent_type, COUNT(*) as cnt
@@ -190,14 +216,16 @@ def get_org_comm_interaction_summary(comm_names):
 		WHERE org_communication IN %(comms)s
 		GROUP BY org_communication, intent_type
 		""",
-		{"comms": tuple(comm_names)},
+		{"comms": comms_tuple},
 		as_dict=True,
 	)
 
 	for r in rows:
-		intent = r.intent_type or "Comment"
-		if r.org_communication in summary:
-			summary[r.org_communication]["counts"][intent] = r.cnt
+		org_comm = r.get("org_communication")
+		if org_comm not in summary:
+			continue
+		intent = (r.get("intent_type") or "Comment").strip() or "Comment"
+		summary[org_comm]["counts"][intent] = int(r.get("cnt") or 0)
 
 	# 2) comment_count = interactions that actually have text in `note`
 	comment_rows = frappe.db.sql(
@@ -208,15 +236,16 @@ def get_org_comm_interaction_summary(comm_names):
 		  AND COALESCE(TRIM(note), '') != ''
 		GROUP BY org_communication
 		""",
-		{"comms": tuple(comm_names)},
+		{"comms": comms_tuple},
 		as_dict=True,
 	)
 
 	for r in comment_rows:
-		if r.org_communication in summary:
-			summary[r.org_communication]["comment_count"] = r.cnt or 0
+		org_comm = r.get("org_communication")
+		if org_comm in summary:
+			summary[org_comm]["comment_count"] = int(r.get("cnt") or 0)
 
-	# 3) current user's interaction (full row, unchanged)
+	# 3) current user's interaction (keep full row)
 	self_rows = frappe.db.sql(
 		"""
 		SELECT *
@@ -224,13 +253,14 @@ def get_org_comm_interaction_summary(comm_names):
 		WHERE org_communication IN %(comms)s
 		  AND user = %(user)s
 		""",
-		{"comms": tuple(comm_names), "user": user},
+		{"comms": comms_tuple, "user": user},
 		as_dict=True,
 	)
 
 	for r in self_rows:
-		if r["org_communication"] in summary:
-			summary[r["org_communication"]]["self"] = r
+		org_comm = r.get("org_communication")
+		if org_comm in summary:
+			summary[org_comm]["self"] = r
 
 	return summary
 
