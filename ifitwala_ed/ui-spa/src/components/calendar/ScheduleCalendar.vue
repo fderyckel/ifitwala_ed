@@ -150,6 +150,12 @@
 			:error="classEventModal.error"
 			:event="classEventModal.data"
 			@close="closeClassEventModal"
+			@create-announcement="openOrgCommunicationModal"
+		/>
+		<OrgCommunicationQuickCreateModal
+			v-model="orgCommModal.open"
+			:event="orgCommModal.event"
+			@created="handleOrgCommCreated"
 		/>
 	</div>
 </template>
@@ -170,6 +176,7 @@ import { api } from '@/types/client';
 import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue';
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue';
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue';
+import OrgCommunicationQuickCreateModal from '@/components/calendar/OrgCommunicationQuickCreateModal.vue';
 import type { MeetingDetails } from '@/components/calendar/meetingTypes';
 import type { SchoolEventDetails } from '@/components/calendar/schoolEventTypes';
 import type { ClassEventDetails } from '@/components/calendar/classEventTypes';
@@ -578,6 +585,14 @@ const classEventModal = reactive<{
 	data: null,
 });
 
+const orgCommModal = reactive<{
+	open: boolean;
+	event: ClassEventDetails | null;
+}>({
+	open: false,
+	event: null,
+});
+
 let classEventRequestSeq = 0;
 
 function closeClassEventModal() {
@@ -585,6 +600,26 @@ function closeClassEventModal() {
 	classEventModal.data = null;
 	classEventModal.error = null;
 }
+
+function openOrgCommunicationModal() {
+	if (!classEventModal.data) return;
+	orgCommModal.event = classEventModal.data;
+	orgCommModal.open = true;
+	closeClassEventModal();
+}
+
+function handleOrgCommCreated() {
+	orgCommModal.open = false;
+}
+
+watch(
+	() => orgCommModal.open,
+	(open) => {
+		if (!open) {
+			orgCommModal.event = null;
+		}
+	},
+);
 
 async function openClassEventModal(eventId: string | null | undefined) {
 	const resolvedId = extractClassEventId(eventId);

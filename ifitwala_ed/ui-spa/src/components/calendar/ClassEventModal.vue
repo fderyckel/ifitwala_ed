@@ -123,6 +123,14 @@
 									<FeatherIcon name="book-open" class="h-4 w-4" />
 									Open Gradebook
 								</a>
+								<button
+									type="button"
+									class="meeting-modal__action-button meeting-modal__action-button--secondary"
+									@click="emit('create-announcement')"
+								>
+									<FeatherIcon name="message-square" class="h-4 w-4" />
+									Create Announcement
+								</button>
 							</div>
 						</div>
 					</DialogPanel>
@@ -154,6 +162,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	(e: 'close'): void;
+	(e: 'create-announcement'): void;
 }>();
 
 const courseLabel = computed(() => props.event?.course_name || props.event?.course || '—');

@@ -57,10 +57,12 @@ export interface ArchiveFilters {
 	communication_type: string | 'All' | null
 	date_range: '7d' | '30d' | '90d' | 'year' | 'all' | null
 	only_with_interactions: boolean
-	team?: string | 'All' | null
-	student_group?: string | 'All' | null
-	school?: string | 'All' | null
-	organization?: string | 'All' | null
+
+	// Always present; null means "All"
+	team: string | null
+	student_group: string | null
+	school: string | null
+	organization: string | null
 }
 
 

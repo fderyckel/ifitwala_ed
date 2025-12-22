@@ -52,13 +52,13 @@
       />
 
       <!-- Team -->
-      <FormControl
-        v-if="teamOptions.length > 1"
-        type="select"
-        :options="teamOptions"
-        v-model="filters.team"
-        class="w-40"
-      />
+			<FormControl
+				v-if="hasTeamFilter"
+				type="select"
+				:options="teamOptions"
+				v-model="filters.team"
+				class="w-40"
+			/>
 
       <!-- Student Group -->
       <FormControl
@@ -359,6 +359,7 @@ const filters = ref<ArchiveFilters>({
 })
 
 
+
 const selectedComm = ref<OrgCommunicationListItem | null>(null)
 const showThreadDrawer = ref(false)
 const newComment = ref('')
@@ -370,6 +371,7 @@ const hasMore = ref(false)
 const interactionSummaries = ref<Record<string, InteractionSummary>>({})
 
 // User Context for Filters
+const hasTeamFilter = computed(() => teamOptions.value.length > 1)
 const myTeam = ref<string | null>(null)
 const myStudentGroups = ref<Array<{ label: string; value: string }>>([])
 const orgChoices = ref<Array<{ label: string; value: string }>>([])
@@ -416,26 +418,37 @@ const archiveContext = createResource({
 		// Team (current implementation only supports 0/1 team)
 		myTeam.value = data.my_team || null
 
-		// Student Groups: server may return either:
-		// A) string[] (older)
-		// B) {label, value, school?}[] (new)
+		// Student Groups:
+		// - Old shape: string[]
+		// - New shape: Array<{ label: string; value: string; ... }>
 		const rawGroups = data.my_groups || []
-		myStudentGroups.value = rawGroups
-			.map((g: any) => {
-				// New shape
-				if (g && typeof g === 'object') {
-					const value = g.value || g.name
-					const label = g.label || g.student_group_abbreviation || g.student_group_name || value
-					if (!value) return null
-					return { label, value }
-				}
-				// Old shape
-				if (typeof g === 'string' && g.trim()) {
-					return { label: g, value: g }
-				}
-				return null
-			})
-			.filter(Boolean)
+		const normalizedGroups: Array<{ label: string; value: string }> = []
+
+		for (const g of rawGroups) {
+			// Old shape
+			if (typeof g === 'string') {
+				const v = g.trim()
+				if (v) normalizedGroups.push({ label: v, value: v })
+				continue
+			}
+
+			// New shape (must have a real value)
+			if (g && typeof g === 'object') {
+				const v = typeof g.value === 'string' ? g.value.trim() : ''
+				if (!v) continue
+
+				const l = typeof g.label === 'string' ? g.label.trim() : ''
+				normalizedGroups.push({ label: l || v, value: v })
+			}
+		}
+
+		// De-dupe by value (safety)
+		const seen = new Set<string>()
+		myStudentGroups.value = normalizedGroups.filter((x) => {
+			if (!x.value || seen.has(x.value)) return false
+			seen.add(x.value)
+			return true
+		})
 
 		orgChoices.value = (data.organizations || []).map((o: any) => ({
 			label: o.organization_name || o.name,
@@ -459,8 +472,6 @@ const archiveContext = createResource({
 	},
 })
 
-
-
 const orgCommFeed = createResource<{
 	items: OrgCommunicationListItem[]
 	total_count: number
@@ -471,7 +482,7 @@ const orgCommFeed = createResource<{
 	url: 'ifitwala_ed.api.org_communication_archive.get_org_communication_feed',
 	method: 'POST',
 	params: () => ({
-		filters: filters.value,
+		filters: normalizeArchiveFilters(filters.value),
 		start: start.value,
 		page_length: PAGE_LENGTH,
 	}),
@@ -598,6 +609,20 @@ watch(
 	},
 	{ deep: true },
 )
+
+function normalizeArchiveFilters(f: ArchiveFilters): ArchiveFilters {
+	const clean = (v: string | null) =>
+		typeof v === 'string' ? (v.trim() || null) : null
+
+	return {
+		...f,
+		search_text: clean(f.search_text),
+		team: clean(f.team),
+		student_group: clean(f.student_group),
+		school: clean(f.school),
+		organization: clean(f.organization),
+	}
+}
 
 
 function selectItem(item: OrgCommunicationListItem) {
