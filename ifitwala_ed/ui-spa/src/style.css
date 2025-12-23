@@ -4,6 +4,4 @@
 @import "./styles/layout.css";
 @import "./styles/components.css";
 
-@config "../tailwind.config.js";
-
 /* ui-spa/src/style.css */
