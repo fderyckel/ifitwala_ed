@@ -1,14 +1,14 @@
 /* FullCalendar list view tweaks (scoped to portal shell) */
 .calendar-shell .fc-list .fc-list-day-cushion {
-	background: rgb(var(--sand-rgb) / 0.35);
+	background: rgb(var(--sand-rgb)/0.35);
 	color: rgb(var(--canopy-rgb));
 	font-weight: 700;
 }
 
 .calendar-shell .fc-list .fc-list-event {
-	border-bottom: 1px solid rgb(var(--border-rgb) / 0.9);
+	border-bottom: 1px solid rgb(var(--border-rgb)/0.9);
 }
 
 .calendar-shell .fc-list .fc-list-event:hover {
-	background: rgb(var(--sky-rgb) / 0.45);
+	background: rgb(var(--sky-rgb)/0.45);
 }

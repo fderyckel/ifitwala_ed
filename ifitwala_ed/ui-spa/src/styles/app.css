@@ -37,9 +37,9 @@
      --------------------------------------------------------------- */
   .ifitwala-theme {
     background:
-      radial-gradient(circle at 5% 5%, rgb(var(--leaf-rgb) / 0.32), transparent 58%),
-      radial-gradient(circle at 95% 0%, rgb(var(--jacaranda-rgb) / 0.26), transparent 58%),
-      radial-gradient(circle at 90% 95%, rgb(var(--moss-rgb) / 0.25), transparent 60%),
+      radial-gradient(circle at 5% 5%, rgb(var(--leaf-rgb)/0.32), transparent 58%),
+      radial-gradient(circle at 95% 0%, rgb(var(--jacaranda-rgb)/0.26), transparent 58%),
+      radial-gradient(circle at 90% 95%, rgb(var(--moss-rgb)/0.25), transparent 60%),
       linear-gradient(
         180deg,
         var(--sky) 0%,
@@ -82,8 +82,8 @@
     background:
       linear-gradient(
         180deg,
-        rgb(var(--sky-rgb) / 0.92),
-        rgb(var(--sand-rgb) / 0.9)
+        rgb(var(--sky-rgb)/0.92),
+        rgb(var(--sand-rgb)/0.9)
       );
     @apply border border-border/85 rounded-2xl shadow-sm backdrop-blur-md;
   }
@@ -149,7 +149,7 @@
     @apply text-white shadow-sm;
   }
   .fui-btn-primary:hover {
-    background: rgb(var(--leaf-rgb) / 0.85);
+    background: rgb(var(--leaf-rgb)/0.85);
   }
 
   .fui-btn-minimal:hover {
@@ -161,7 +161,7 @@
      --------------------------------------------------------------- */
   .ifitwala-popover {
     @apply fixed z-50 max-w-xl p-4 rounded-2xl
-           border border-[rgb(var(--border-rgb) / 0.85)]
+           border border-[rgb(var(--border-rgb)/0.85)]
            bg-white shadow-xl text-sm text-slate-700 ring-1 ring-black/5;
   }
 
@@ -179,9 +179,9 @@
     position: absolute;
     inset: -40% -20%;
     background:
-      radial-gradient(circle at 0 0, rgb(var(--leaf-rgb) / 0.16), transparent 60%),
-      radial-gradient(circle at 100% 0, rgb(var(--jacaranda-rgb) / 0.14), transparent 55%),
-      radial-gradient(circle at 50% 100%, rgb(var(--clay-rgb) / 0.12), transparent 55%);
+      radial-gradient(circle at 0 0, rgb(var(--leaf-rgb)/0.16), transparent 60%),
+      radial-gradient(circle at 100% 0, rgb(var(--jacaranda-rgb)/0.14), transparent 55%),
+      radial-gradient(circle at 50% 100%, rgb(var(--clay-rgb)/0.12), transparent 55%);
     opacity: 0.95;
     filter: blur(40px);
     pointer-events: none;
@@ -211,7 +211,7 @@
 
   .calendar-shell .fc-button {
     border-radius: 9999px !important;
-    border: 1px solid rgb(var(--border-rgb) / 0.95) !important;
+    border: 1px solid rgb(var(--border-rgb)/0.95) !important;
     background: #ffffff !important;
     color: rgb(var(--ink-rgb)) !important;
     padding: 0.3rem 0.75rem !important;
@@ -221,7 +221,7 @@
 
   .calendar-shell .fc-button-active,
   .calendar-shell .fc-button-primary:not(:disabled).fc-button-active {
-    border-color: rgb(var(--canopy-rgb) / 0.9) !important;
+    border-color: rgb(var(--canopy-rgb)/0.9) !important;
     background: rgb(var(--canopy-rgb)) !important;
     color: #ffffff !important;
   }
@@ -287,10 +287,10 @@
     max-height: calc(100vh - 2.5rem);
     border-radius: 1.5rem;
     background:
-      radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / 0.9), transparent 65%),
-      radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / 0.9), transparent 65%),
+      radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb)/0.9), transparent 65%),
+      radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb)/0.9), transparent 65%),
       #ffffff;
-    border: 1px solid rgb(var(--border-rgb) / 0.9);
+    border: 1px solid rgb(var(--border-rgb)/0.9);
     box-shadow: 0 18px 45px rgba(7, 16, 25, 0.18);
     padding: 1.5rem 1.5rem 1.25rem;
     color: rgb(var(--ink-rgb));
@@ -325,17 +325,17 @@
     letter-spacing: 0.18em;
     text-transform: uppercase;
     font-weight: 600;
-    color: rgb(var(--slate-rgb) / 0.75);
+    color: rgb(var(--slate-rgb)/0.75);
   }
 
   .meeting-modal__time {
     font-size: 0.8rem;
-    color: rgb(var(--slate-rgb) / 0.9);
+    color: rgb(var(--slate-rgb)/0.9);
   }
 
   .meeting-modal__timezone {
     margin-left: 0.25rem;
-    color: rgb(var(--slate-rgb) / 0.8);
+    color: rgb(var(--slate-rgb)/0.8);
   }
 
   .meeting-modal__header-actions {
@@ -351,14 +351,14 @@
     height: 2rem;
     width: 2rem;
     border-radius: 9999px;
-    border: 1px solid rgb(var(--border-rgb) / 0.9);
+    border: 1px solid rgb(var(--border-rgb)/0.9);
     background: #ffffff;
-    color: rgb(var(--slate-rgb) / 0.9);
+    color: rgb(var(--slate-rgb)/0.9);
     transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
   }
 
   .meeting-modal__icon-button:hover {
-    border-color: rgb(var(--leaf-rgb) / 0.9);
+    border-color: rgb(var(--leaf-rgb)/0.9);
     color: rgb(var(--canopy-rgb));
     transform: translateY(-1px);
   }
@@ -371,7 +371,7 @@
     border-radius: 9999px;
     font-size: 0.7rem;
     font-weight: 600;
-    background: rgb(var(--sand-rgb) / 0.8);
+    background: rgb(var(--sand-rgb)/0.8);
     color: rgb(var(--canopy-rgb));
   }
 
@@ -417,7 +417,7 @@
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    color: rgb(var(--slate-rgb) / 0.7);
+    color: rgb(var(--slate-rgb)/0.7);
     margin-bottom: 0.15rem;
     font-weight: 600;
   }
@@ -437,11 +437,11 @@
 
   .meeting-modal__agenda-content {
     border-radius: 0.75rem;
-    border: 1px solid rgb(var(--border-rgb) / 0.85);
-    background: rgb(var(--sky-rgb) / 0.18);
+    border: 1px solid rgb(var(--border-rgb)/0.85);
+    background: rgb(var(--sky-rgb)/0.18);
     padding: 0.75rem 0.85rem;
     font-size: 0.85rem;
-    color: rgb(var(--slate-rgb) / 0.95);
+    color: rgb(var(--slate-rgb)/0.95);
   }
 
   .meeting-modal__participants {
@@ -463,7 +463,7 @@
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 500;
-    background: rgb(var(--sky-rgb) / 0.8);
+    background: rgb(var(--sky-rgb)/0.8);
     color: rgb(var(--canopy-rgb));
   }
 
@@ -471,17 +471,17 @@
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: rgb(var(--slate-rgb) / 0.9);
+    color: rgb(var(--slate-rgb)/0.9);
   }
 
   .meeting-modal__chip--muted {
-    background: rgb(var(--sand-rgb) / 0.9);
-    color: rgb(var(--slate-rgb) / 0.95);
+    background: rgb(var(--sand-rgb)/0.9);
+    color: rgb(var(--slate-rgb)/0.95);
   }
 
   .meeting-modal__empty {
     font-size: 0.8rem;
-    color: rgb(var(--slate-rgb) / 0.85);
+    color: rgb(var(--slate-rgb)/0.85);
   }
 
   .meeting-modal__loading {
@@ -495,9 +495,9 @@
     border-radius: 9999px;
     background: linear-gradient(
       90deg,
-      rgb(var(--sky-rgb) / 0.6),
-      rgb(var(--sand-rgb) / 0.8),
-      rgb(var(--sky-rgb) / 0.6)
+      rgb(var(--sky-rgb)/0.6),
+      rgb(var(--sand-rgb)/0.8),
+      rgb(var(--sky-rgb)/0.6)
     );
     background-size: 200% 100%;
     animation: meeting-modal-skeleton-pulse 1.4s ease-in-out infinite;
@@ -511,8 +511,8 @@
   .meeting-modal__error {
     margin-top: 0.75rem;
     border-radius: 0.9rem;
-    border: 1px solid rgb(var(--flame-rgb) / 0.35);
-    background: rgb(var(--flame-rgb) / 0.05);
+    border: 1px solid rgb(var(--flame-rgb)/0.35);
+    background: rgb(var(--flame-rgb)/0.05);
     padding: 0.75rem 0.9rem;
     font-size: 0.85rem;
     color: rgb(var(--flame-rgb));
@@ -524,7 +524,7 @@
 
   .meeting-modal__cta {
     border-radius: 9999px;
-    border: 1px solid rgb(var(--flame-rgb) / 0.85);
+    border: 1px solid rgb(var(--flame-rgb)/0.85);
     padding: 0.3rem 0.9rem;
     font-size: 0.8rem;
     font-weight: 500;
@@ -533,7 +533,7 @@
   }
 
   .meeting-modal__cta:hover {
-    background: rgb(var(--flame-rgb) / 0.06);
+    background: rgb(var(--flame-rgb)/0.06);
   }
 
   /* Action row at the bottom of the class modal */
@@ -553,16 +553,16 @@
     font-size: 0.8rem;
     font-weight: 500;
     text-decoration: none;
-    border: 1px solid rgb(var(--leaf-rgb) / 0.9);
+    border: 1px solid rgb(var(--leaf-rgb)/0.9);
     background: rgb(var(--leaf-rgb));
     color: #ffffff;
     box-shadow: 0 6px 18px rgba(31, 122, 69, 0.28);
   }
 
   .meeting-modal__action-button--secondary {
-    border-color: rgb(var(--border-rgb) / 0.95);
+    border-color: rgb(var(--border-rgb)/0.95);
     background: #ffffff;
-    color: rgb(var(--slate-rgb) / 0.9);
+    color: rgb(var(--slate-rgb)/0.9);
     box-shadow: 0 3px 10px rgba(7, 16, 25, 0.06);
   }
 
@@ -576,7 +576,7 @@
     width: 100%;
     border-radius: 9999px;
     margin-bottom: 0.9rem;
-    background: rgb(var(--jacaranda-rgb) / 0.9);
+    background: rgb(var(--jacaranda-rgb)/0.9);
   }
 
   /* ---- Enter / leave transitions for overlay & panel ---- */
@@ -611,38 +611,38 @@
 
   /* Meetings = jacaranda accent */
   .meeting-modal--meeting .meeting-modal__panel {
-    border-top: 4px solid rgb(var(--jacaranda-rgb) / 0.9);
+    border-top: 4px solid rgb(var(--jacaranda-rgb)/0.9);
   }
   .meeting-modal--meeting .meeting-modal__eyebrow {
-    color: rgb(var(--jacaranda-rgb) / 0.95);
+    color: rgb(var(--jacaranda-rgb)/0.95);
   }
 
   /* Scheduled class = leaf / canopy accent */
   .meeting-modal--class .meeting-modal__panel {
-    border-top: 4px solid rgb(var(--leaf-rgb) / 0.9);
+    border-top: 4px solid rgb(var(--leaf-rgb)/0.9);
   }
   .meeting-modal--class .meeting-modal__eyebrow {
-    color: rgb(var(--leaf-rgb) / 0.95);
+    color: rgb(var(--leaf-rgb)/0.95);
   }
   .meeting-modal--class .meeting-modal__badge {
-    background: rgb(var(--leaf-rgb) / 0.12);
+    background: rgb(var(--leaf-rgb)/0.12);
     color: rgb(var(--leaf-rgb));
   }
 
   /* School event = clay / flame accent */
   .meeting-modal--school .meeting-modal__panel {
-    border-top: 4px solid rgb(var(--flame-rgb) / 0.9);
+    border-top: 4px solid rgb(var(--flame-rgb)/0.9);
   }
   .meeting-modal--school .meeting-modal__eyebrow {
-    color: rgb(var(--clay-rgb) / 0.95);
+    color: rgb(var(--clay-rgb)/0.95);
   }
   .meeting-modal--school .meeting-modal__badge {
-    background: rgb(var(--flame-rgb) / 0.1);
+    background: rgb(var(--flame-rgb)/0.1);
     color: rgb(var(--flame-rgb));
   }
   .meeting-modal--school .meeting-modal__color-pill {
     /* eventColor inline style still wins; this is the fallback */
-    background: rgb(var(--flame-rgb) / 0.9);
+    background: rgb(var(--flame-rgb)/0.9);
   }
 
 
@@ -705,7 +705,7 @@
     background-color: rgb(var(--surface-rgb));
   }
   .bg-surface-soft {
-    background-color: rgb(var(--surface-rgb) / 0.92);
+    background-color: rgb(var(--surface-rgb)/0.92);
   }
   .bg-surface-strong {
     background-color: rgb(var(--surface-strong-rgb));

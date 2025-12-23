@@ -15,7 +15,7 @@
 
 .calendar-shell .fc .fc-button {
   border-radius: 9999px;
-  border: 1px solid rgb(var(--border-rgb) / 0.95);
+  border: 1px solid rgb(var(--border-rgb)/0.95);
   background: #ffffff;
   color: rgb(var(--ink-rgb));
   font-size: 0.8rem;
@@ -24,7 +24,7 @@
 
 .calendar-shell .fc .fc-button-active,
 .calendar-shell .fc .fc-button-primary:not(:disabled).fc-button-active {
-  border-color: rgb(var(--canopy-rgb) / 0.9);
+  border-color: rgb(var(--canopy-rgb)/0.9);
   background: rgb(var(--canopy-rgb));
   color: #ffffff;
 }

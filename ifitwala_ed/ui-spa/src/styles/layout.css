@@ -59,13 +59,13 @@
 
   .staff-hero {
     background:
-      radial-gradient(circle at 0% 0%, rgb(var(--leaf-rgb) / 0.45), transparent 55%),
-      radial-gradient(circle at 100% 0%, rgb(var(--jacaranda-rgb) / 0.35), transparent 55%),
+      radial-gradient(circle at 0% 0%, rgb(var(--leaf-rgb)/0.45), transparent 55%),
+      radial-gradient(circle at 100% 0%, rgb(var(--jacaranda-rgb)/0.35), transparent 55%),
       linear-gradient(
         120deg,
-        rgb(var(--sand-rgb) / 0.96),
-        rgb(var(--leaf-rgb) / 0.35),
-        rgb(var(--jacaranda-rgb) / 0.32)
+        rgb(var(--sand-rgb)/0.96),
+        rgb(var(--leaf-rgb)/0.35),
+        rgb(var(--jacaranda-rgb)/0.32)
       );
     @apply rounded-2xl shadow-strong relative p-6;
   }
@@ -73,9 +73,9 @@
   .staff-hero__aura {
     @apply absolute inset-0 pointer-events-none opacity-90;
     background:
-      radial-gradient(circle at 15% 25%, rgb(var(--sky-rgb) / 0.35), transparent 60%),
-      radial-gradient(circle at 85% 15%, rgb(var(--jacaranda-rgb) / 0.35), transparent 60%),
-      radial-gradient(circle at 60% 90%, rgb(var(--leaf-rgb) / 0.3), transparent 60%);
+      radial-gradient(circle at 15% 25%, rgb(var(--sky-rgb)/0.35), transparent 60%),
+      radial-gradient(circle at 85% 15%, rgb(var(--jacaranda-rgb)/0.35), transparent 60%),
+      radial-gradient(circle at 60% 90%, rgb(var(--leaf-rgb)/0.3), transparent 60%);
     filter: blur(42px);
   }
 

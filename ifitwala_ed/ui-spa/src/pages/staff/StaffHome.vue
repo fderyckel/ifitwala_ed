@@ -49,7 +49,7 @@
 				<div class="palette-card overflow-hidden">
 					<!-- Example tasks (replace with real later) -->
 					<div
-						class="group flex cursor-pointer items-start gap-4 border-b border-[rgb(var(--sand-rgb) / 0.4)]
+						class="group flex cursor-pointer items-start gap-4 border-b border-[rgb(var(--sand-rgb)/0.4)]
 							bg-white px-6 py-4 transition-colors hover:bg-sky/20 last:border-0"
 					>
 						<div
@@ -134,11 +134,11 @@
 		     ANALYTICS HUB
 		   ============================================================ -->
 		<section
-			class="rounded-2xl border border-[rgb(var(--sand-rgb) / 0.35)] bg-gradient-to-br from-white via-white to-slate-50 shadow-soft"
+			class="rounded-2xl border border-[rgb(var(--sand-rgb)/0.35)] bg-gradient-to-br from-white via-white to-slate-50 shadow-soft"
 		>
 			<!-- Header -->
 			<div
-				class="flex flex-col gap-4 border-b border-[rgb(var(--sand-rgb) / 0.35)] px-6 pb-6 pt-7 sm:flex-row sm:items-center sm:justify-between"
+				class="flex flex-col gap-4 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 pb-6 pt-7 sm:flex-row sm:items-center sm:justify-between"
 			>
 				<div class="space-y-2">
 					<p class="type-overline text-slate-token/70">
@@ -167,7 +167,7 @@
 
 			<!-- Quick analytics -->
 			<div
-				class="grid grid-cols-1 gap-3 border-b border-[rgb(var(--sand-rgb) / 0.35)] px-6 py-6 lg:grid-cols-3"
+				class="grid grid-cols-1 gap-3 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6 lg:grid-cols-3"
 			>
 				<RouterLink
 					v-for="link in analyticsQuickLinks"
