@@ -1,14 +1,14 @@
 /* ui-spa/src/style.css */
 
 /* 1. Base Layer */
-@import "tailwindcss/base";
+@tailwind base;
 @import "./styles/tokens.css";
 
 /* 2. Components Layer */
-@import "tailwindcss/components";
+@tailwind components;
 @import "./styles/app.css";
 @import "./styles/layout.css";
 @import "./styles/components.css";
 
 /* 3. Utilities Layer */
-@import "tailwindcss/utilities";
+@tailwind utilities;
