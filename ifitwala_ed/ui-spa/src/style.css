@@ -1,14 +1,12 @@
 /* ui-spa/src/style.css */
 
-/* 1. Base Layer */
-@tailwind base;
+/* Imports must come first (PostCSS rule) */
 @import "./styles/tokens.css";
-
-/* 2. Components Layer */
-@tailwind components;
 @import "./styles/app.css";
 @import "./styles/layout.css";
 @import "./styles/components.css";
 
-/* 3. Utilities Layer */
+/* Tailwind directives after imports */
+@tailwind base;
+@tailwind components;
 @tailwind utilities;
