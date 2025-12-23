@@ -1,12 +1,9 @@
-/* ui-spa/src/style.css */
-
-@config "../tailwind.config.js";
-
-/* Tailwind v4 MUST be referenced before any imports that use @apply */
 @import "tailwindcss";
-
-/* Your layered CSS (these contain @apply) */
 @import "./styles/tokens.css";
 @import "./styles/app.css";
 @import "./styles/layout.css";
 @import "./styles/components.css";
+
+@config "../tailwind.config.js";
+
+/* ui-spa/src/style.css */
