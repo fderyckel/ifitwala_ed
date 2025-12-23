@@ -67,21 +67,21 @@
      --------------------------------------------------------------- */
   .card-surface {
     @apply rounded-xl border shadow-sm;
-    border-color: rgb(var(--border-rgb)/0.65);
-    background: rgb(var(--surface-rgb)/0.92);
+    border-color: rgb(var(--border-rgb)/ .65);
+    background: rgb(var(--surface-rgb)/ .92);
   }
 
   .card-surface-muted {
     @apply rounded-xl border shadow-sm;
-    border-color: rgb(var(--border-rgb)/0.65);
-    background: rgb(var(--surface-rgb)/0.88);
+    border-color: rgb(var(--border-rgb)/ .65);
+    background: rgb(var(--surface-rgb)/ .88);
   }
 
   .chip {
     @apply inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border;
-    border-color: rgb(var(--border-rgb)/0.65);
-    background: rgb(var(--surface-rgb)/0.65);
-    color: rgb(var(--ink-rgb)/0.75);
+    border-color: rgb(var(--border-rgb)/ .65);
+    background: rgb(var(--surface-rgb)/ .65);
+    color: rgb(var(--ink-rgb)/ .75);
   }
 
   .chip-active {
@@ -92,7 +92,7 @@
   }
 
   .chip-alert {
-    background: rgb(var(--flame-rgb)/0.15);
+    background: rgb(var(--flame-rgb)/ .15);
     color: rgb(var(--flame-rgb));
     border-color: transparent;
   }
@@ -103,22 +103,22 @@
      --------------------------------------------------------------- */
   .palette-card {
     @apply border rounded-2xl shadow-sm overflow-hidden;
-    border-color: rgb(var(--border-rgb) / 0.90);
-    background-color: rgb(var(--surface-rgb)/0.98);
+    border-color: rgb(var(--border-rgb) / .90);
+    background-color: rgb(var(--surface-rgb)/ .98);
   }
 
   /* Card shell for dense tool panels */
   .card-panel {
     @apply rounded-2xl border shadow-sm;
-    border-color: rgb(var(--border-rgb) / 0.80);
+    border-color: rgb(var(--border-rgb) / .80);
     background-color: rgb(var(--surface-rgb));
   }
 
   /* Toolbar strip used atop filters */
   .surface-toolbar {
-    @apply rounded-2xl border bg-[rgb(var(--surface-rgb)/0.92)]
+    @apply rounded-2xl border bg-[rgb(var(--surface-rgb)/ .92)]
            px-4 py-3 shadow-sm;
-    border-color: rgb(var(--border-rgb) / 0.80);
+    border-color: rgb(var(--border-rgb) / .80);
   }
 
   /* Toolbar wrapper for analytics filters */
@@ -129,7 +129,7 @@
   /* Calendar/attendance card */
   .attendance-card {
     @apply rounded-2xl border shadow-sm;
-    border-color: rgb(var(--border-rgb) / 0.80);
+    border-color: rgb(var(--border-rgb) / .80);
     background-color: rgb(var(--surface-rgb));
   }
 
@@ -138,19 +138,19 @@
   }
 
   .attendance-card-body {
-    @apply rounded-xl border bg-[rgb(var(--surface-rgb)/0.92)] px-3 py-3 shadow-inner;
-    border-color: rgb(var(--border-rgb) / 0.60);
+    @apply rounded-xl border bg-[rgb(var(--surface-rgb)/ .92)] px-3 py-3 shadow-inner;
+    border-color: rgb(var(--border-rgb) / .60);
   }
 
   .analytics-card {
-    @apply rounded-2xl border bg-[rgb(var(--surface-rgb)/0.96)] px-4 py-4 shadow-sm;
-    border-color: rgb(var(--border-rgb) / 0.85);
+    @apply rounded-2xl border bg-[rgb(var(--surface-rgb)/ .96)] px-4 py-4 shadow-sm;
+    border-color: rgb(var(--border-rgb) / .85);
   }
 
   .chip-toggle {
     @apply rounded-full px-4 py-1 text-xs font-semibold transition;
-    background-color: rgb(var(--surface-rgb)/0.85);
-    color: rgb(var(--ink-rgb)/0.75);
+    background-color: rgb(var(--surface-rgb)/ .85);
+    color: rgb(var(--ink-rgb)/ .75);
   }
 
   .chip-toggle-active {
@@ -160,8 +160,8 @@
   }
 
   .chip-toggle-muted {
-    background-color: rgb(var(--surface-rgb)/0.8);
-    color: rgb(var(--ink-rgb)/0.6);
+    background-color: rgb(var(--surface-rgb)/ .8);
+    color: rgb(var(--ink-rgb)/ .6);
   }
 
   .chip-scope {
@@ -174,14 +174,14 @@
   }
 
   .chip-scope-muted {
-    background-color: rgb(var(--surface-rgb)/0.85);
-    color: rgb(var(--ink-rgb)/0.65);
+    background-color: rgb(var(--surface-rgb)/ .85);
+    color: rgb(var(--ink-rgb)/ .65);
   }
 
   .type-chip-muted {
     @apply rounded-full px-2 py-0.5 text-[11px] font-semibold;
-    background-color: rgb(var(--surface-rgb)/0.8);
-    color: rgb(var(--ink-rgb)/0.6);
+    background-color: rgb(var(--surface-rgb)/ .8);
+    color: rgb(var(--ink-rgb)/ .6);
   }
 
   .type-empty {
@@ -190,17 +190,17 @@
 
   .mini-kpi-card {
     @apply rounded-xl border px-3 py-2 shadow-sm;
-    border-color: rgb(var(--border-rgb) / 0.70);
-    background-color: rgb(var(--surface-rgb)/0.9);
+    border-color: rgb(var(--border-rgb) / .70);
+    background-color: rgb(var(--surface-rgb)/ .9);
   }
 
   .mini-kpi-card-alert {
-    background-color: rgb(var(--flame-rgb)/0.1);
+    background-color: rgb(var(--flame-rgb)/ .1);
   }
 
   .mini-kpi-label {
     @apply text-[11px] uppercase tracking-wide;
-    color: rgb(var(--ink-rgb)/0.6);
+    color: rgb(var(--ink-rgb)/ .6);
   }
 
   .mini-kpi-value {
@@ -215,7 +215,7 @@
   .action-tile {
     @apply flex items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm
            transition-transform hover:-translate-y-0.5 hover:shadow-strong;
-    border-color: rgb(var(--border-rgb) / 0.90);
+    border-color: rgb(var(--border-rgb) / .90);
   }
 
   .action-tile__icon {
@@ -252,8 +252,8 @@
      --------------------------------------------------------------- */
 	.block-card {
 		@apply flex flex-col gap-3 p-3 rounded-xl border shadow-sm
-					bg-[rgb(var(--surface-rgb)/0.98)];
-    border-color: rgb(var(--border-rgb) / 0.85);
+					bg-[rgb(var(--surface-rgb)/ .98)];
+    border-color: rgb(var(--border-rgb) / .85);
 	}
 
   /* ---------------------------------------------------------------
@@ -282,7 +282,7 @@
   .calendar-day--selected .calendar-day__badge {
     background: rgb(var(--jacaranda-rgb));
     color: #fff;
-    box-shadow: 0 4px 12px rgb(var(--jacaranda-rgb)/0.4);
+    box-shadow: 0 4px 12px rgb(var(--jacaranda-rgb)/ .4);
     transform: scale(1.1);
   }
 
@@ -298,7 +298,7 @@
   /* Today (outline, no fill) */
   .calendar-day__badge--today {
     color: rgb(var(--jacaranda-rgb));
-    border-color: rgb(var(--jacaranda-rgb)/0.35);
+    border-color: rgb(var(--jacaranda-rgb)/ .35);
     @apply font-bold;
   }
 
@@ -307,30 +307,30 @@
     background: #fff;
     color: rgb(var(--jacaranda-rgb));
     border-color: rgb(var(--jacaranda-rgb));
-    box-shadow: 0 1px 2px rgb(var(--jacaranda-rgb)/0.15);
+    box-shadow: 0 1px 2px rgb(var(--jacaranda-rgb)/ .15);
   }
 
   /* Recorded attendance */
   .calendar-day__badge--recorded {
-    background: rgb(var(--leaf-rgb)/0.06);
+    background: rgb(var(--leaf-rgb)/ .06);
     color: rgb(var(--leaf-rgb));
     border-color: rgb(var(--leaf-rgb));
-    box-shadow: 0 1px 2px rgb(var(--leaf-rgb)/0.18);
+    box-shadow: 0 1px 2px rgb(var(--leaf-rgb)/ .18);
     @apply font-semibold;
   }
 
   /* Missing */
   .calendar-day__badge--missing {
-    background: rgb(var(--flame-rgb)/0.04);
+    background: rgb(var(--flame-rgb)/ .04);
     color: rgb(var(--flame-rgb));
     border-color: rgb(var(--flame-rgb));
-    box-shadow: 0 0 0 1px rgb(var(--flame-rgb)/0.55);
+    box-shadow: 0 0 0 1px rgb(var(--flame-rgb)/ .55);
     @apply font-semibold;
   }
 
   /* Muted */
   .calendar-day__badge--muted {
-    color: rgb(var(--slate-rgb)/0.35);
+    color: rgb(var(--slate-rgb)/ .35);
   }
 
   /* Hover for clickable meeting days
@@ -339,7 +339,7 @@
   .calendar-day:hover .calendar-day__badge--meeting,
   .calendar-day:hover .calendar-day__badge--recorded,
   .calendar-day:hover .calendar-day__badge--missing {
-    background: rgb(255 255 255 / 0.96);
+    background: rgb(255 255 255 / .96);
     transform: translateY(-1px);
   }
 
