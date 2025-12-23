@@ -24,6 +24,7 @@ declare module 'vue' {
     HorizontalBarTopN: typeof import('./src/components/analytics/HorizontalBarTopN.vue')['default']
     KpiRow: typeof import('./src/components/analytics/KpiRow.vue')['default']
     MeetingEventModal: typeof import('./src/components/calendar/MeetingEventModal.vue')['default']
+    OrgCommunicationQuickCreateModal: typeof import('./src/components/calendar/OrgCommunicationQuickCreateModal.vue')['default']
     PortalFooter: typeof import('./src/components/PortalFooter.vue')['default']
     PortalNavbar: typeof import('./src/components/PortalNavbar.vue')['default']
     PortalSidebar: typeof import('./src/components/PortalSidebar.vue')['default']

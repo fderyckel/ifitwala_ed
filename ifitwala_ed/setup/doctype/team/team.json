@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "field:team_name",
  "creation": "2024-12-05 21:20:40.799247",
  "default_view": "List",
  "doctype": "DocType",
@@ -45,7 +45,8 @@
    "in_global_search": 1,
    "in_list_view": 1,
    "label": "Team Name",
-   "reqd": 1
+   "reqd": 1,
+   "unique": 1
   },
   {
    "default": "1",
@@ -127,7 +128,7 @@
    "fieldname": "team_type",
    "fieldtype": "Select",
    "label": "Team Type",
-   "options": "Department\nProject\nCommittee\nWorking Group\nSupport Team\u201d"
+   "options": "Department\nProject\nCommittee\nWorking Group\nSupport Team"
   },
   {
    "fieldname": "team_image",
@@ -192,11 +193,11 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-11-27 09:37:12.458813",
+ "modified": "2025-12-12 12:02:52.964748",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Team",
- "naming_rule": "Random",
+ "naming_rule": "By fieldname",
  "nsm_parent_field": "parent_team",
  "owner": "Administrator",
  "permissions": [
