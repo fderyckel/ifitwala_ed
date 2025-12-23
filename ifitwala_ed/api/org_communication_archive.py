@@ -356,6 +356,15 @@ def get_org_communication_feed(
 			raw_filters[key] = value
 
 	filters_dict = _normalize_filters(raw_filters)
+
+	filter_sg_val = filters_dict.get("student_group")
+	if isinstance(filter_sg_val, str):
+		filter_sg_val = filter_sg_val.strip() or None
+
+	filter_team_val = filters_dict.get("team")
+	if isinstance(filter_team_val, str):
+		filter_team_val = filter_team_val.strip() or None
+
 	frappe.logger("org_comm_archive").warning({
 		"raw_filters": raw_filters,
 		"filters_dict": filters_dict,
@@ -475,8 +484,6 @@ def get_org_communication_feed(
 	# (speed + eliminates “matched via other audience row” confusion)
 	# Student group wins if both exist (defensive).
 	# ──────────────────────────────────────────────
-	filter_team_val = filters_dict.get("team")
-	filter_sg_val = filters_dict.get("student_group")
 
 	if isinstance(filter_sg_val, str):
 		filter_sg_val = filter_sg_val.strip()
@@ -492,6 +499,7 @@ def get_org_communication_feed(
 			")"
 		)
 		values["filter_student_group"] = filter_sg_val
+
 		# Enforce mutual exclusivity on the server too
 		filter_team_val = None
 

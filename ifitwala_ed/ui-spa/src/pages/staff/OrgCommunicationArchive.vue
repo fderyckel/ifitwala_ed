@@ -610,18 +610,23 @@ watch(
 )
 
 function normalizeArchiveFilters(f: ArchiveFilters): ArchiveFilters {
-	const clean = (v: string | null) =>
-		typeof v === 'string' ? (v.trim() || null) : null
+	const cleanLink = (v: any) => {
+		if (!v) return null
+		if (typeof v === 'string') return v.trim() || null
+		if (typeof v === 'object' && typeof v.value === 'string') return v.value.trim() || null
+		return null
+	}
 
 	return {
 		...f,
-		search_text: clean(f.search_text),
-		team: clean(f.team),
-		student_group: clean(f.student_group),
-		school: clean(f.school),
-		organization: clean(f.organization),
+		search_text: typeof f.search_text === 'string' ? (f.search_text.trim() || null) : null,
+		team: cleanLink((f as any).team),
+		student_group: cleanLink((f as any).student_group),
+		school: cleanLink((f as any).school),
+		organization: cleanLink((f as any).organization),
 	}
 }
+
 
 
 function selectItem(item: OrgCommunicationListItem) {
