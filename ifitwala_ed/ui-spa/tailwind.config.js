@@ -5,9 +5,50 @@ import frappeUiPreset from 'frappe-ui/tailwind';
 import colors from 'tailwindcss/colors';
 
 const withAlpha = (variable) => `rgb(var(${variable}) / <alpha-value>)`;
+const wrapUtilities = (plugin) => {
+	if (typeof plugin !== 'function') {
+		return plugin;
+	}
+
+	const wrapped = (api) => {
+		const { addUtilities, addComponents } = api;
+		const safeAddUtilities = (utilities, options) => {
+			if (!utilities || typeof utilities !== 'object') {
+				return addUtilities(utilities, options);
+			}
+
+			const safe = {};
+			const unsafe = {};
+
+			for (const [selector, rules] of Object.entries(utilities)) {
+				if (selector.startsWith('.')) {
+					safe[selector] = rules;
+				} else {
+					unsafe[selector] = rules;
+				}
+			}
+
+			if (Object.keys(safe).length) {
+				addUtilities(safe, options);
+			}
+			if (Object.keys(unsafe).length) {
+				addComponents(unsafe, options);
+			}
+		};
+
+		return plugin({
+			...api,
+			addUtilities: safeAddUtilities,
+		});
+	};
+
+	Object.assign(wrapped, plugin);
+	return wrapped;
+};
+
 const frappeUiPresetSafe = {
 	...frappeUiPreset,
-	plugins: [],
+	plugins: (frappeUiPreset.plugins || []).map(wrapUtilities),
 };
 
 export default {
