@@ -29,7 +29,7 @@ def _normalize_filters(raw_filters: dict | None) -> dict:
 	"""Coerce incoming filters into a consistent contract."""
 	raw = _parse_filters(raw_filters)
 
-	def cleaned(val):
+	def clean_value(val):
 		if val is None:
 			return None
 		if isinstance(val, str):
@@ -39,15 +39,25 @@ def _normalize_filters(raw_filters: dict | None) -> dict:
 			return trimmed
 		return val
 
+	def _clean_link(val):
+		if val is None:
+			return None
+		if isinstance(val, str):
+			val = val.strip()
+			if not val or val.lower() == "all":
+				return None
+			return val
+		return val
+
 	status_in_payload = "status" in raw
 
 	date_range_raw = raw.get("date_range")
-	date_range_clean = cleaned(date_range_raw)
+	date_range_clean = clean_value(date_range_raw)
 	if isinstance(date_range_raw, str) and date_range_raw.strip().lower() == "all":
 		date_range_clean = "all"
 	date_range_in_payload = "date_range" in raw
 
-	status_clean = cleaned(raw.get("status"))
+	status_clean = clean_value(raw.get("status"))
 	if status_clean is None and not status_in_payload:
 		status_clean = "PublishedOrArchived"
 
@@ -56,16 +66,16 @@ def _normalize_filters(raw_filters: dict | None) -> dict:
 
 	status_clean = status_clean or None
 	out = {
-		"search_text": cleaned(raw.get("search_text")),
+		"search_text": clean_value(raw.get("search_text")),
 		"status": status_clean,
-		"priority": cleaned(raw.get("priority")),
-		"portal_surface": cleaned(raw.get("portal_surface")),
-		"communication_type": cleaned(raw.get("communication_type")),
+		"priority": clean_value(raw.get("priority")),
+		"portal_surface": clean_value(raw.get("portal_surface")),
+		"communication_type": clean_value(raw.get("communication_type")),
 		"date_range": date_range_clean,
-		"team": cleaned(raw.get("team")),
-		"student_group": cleaned(raw.get("student_group")),
-		"school": cleaned(raw.get("school")),
-		"organization": cleaned(raw.get("organization")),
+		"team": _clean_link(raw.get("team")),
+		"student_group": _clean_link(raw.get("student_group")),
+		"school": _clean_link(raw.get("school")),
+		"organization": _clean_link(raw.get("organization")),
 		"only_with_interactions": 1 if raw.get("only_with_interactions") else 0,
 	}
 
@@ -346,6 +356,15 @@ def get_org_communication_feed(
 			raw_filters[key] = value
 
 	filters_dict = _normalize_filters(raw_filters)
+	frappe.logger("org_comm_archive").warning({
+		"raw_filters": raw_filters,
+		"filters_dict": filters_dict,
+		"student_group_raw": raw_filters.get("student_group"),
+		"student_group_norm": filters_dict.get("student_group"),
+	})
+	frappe.logger("org_comm_archive").warning({
+		"sg_prefilter_applied": bool(filters_dict.get("student_group")),
+	})
 
 	# Pagination params (start/page_length preferred over legacy limit_start/page_length)
 	offset = int(start if start is not None else limit_start or 0)
@@ -459,11 +478,16 @@ def get_org_communication_feed(
 	filter_team_val = filters_dict.get("team")
 	filter_sg_val = filters_dict.get("student_group")
 
-	if filter_sg_val and filter_sg_val != "All":
+	if isinstance(filter_sg_val, str):
+		filter_sg_val = filter_sg_val.strip()
+
+	if filter_sg_val:
 		conditions.append(
 			"EXISTS ("
 			"SELECT a.name FROM `tabOrg Communication Audience` a "
 			"WHERE a.parent = `tabOrg Communication`.name "
+			"AND a.parenttype = 'Org Communication' "
+			"AND a.parentfield = 'audiences' "
 			"AND a.student_group = %(filter_student_group)s"
 			")"
 		)
@@ -471,11 +495,13 @@ def get_org_communication_feed(
 		# Enforce mutual exclusivity on the server too
 		filter_team_val = None
 
-	elif filter_team_val and filter_team_val != "All":
+	elif filter_team_val:
 		conditions.append(
 			"EXISTS ("
 			"SELECT a.name FROM `tabOrg Communication Audience` a "
 			"WHERE a.parent = `tabOrg Communication`.name "
+			"AND a.parenttype = 'Org Communication' "
+			"AND a.parentfield = 'audiences' "
 			"AND a.team = %(filter_team)s"
 			")"
 		)
