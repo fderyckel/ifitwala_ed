@@ -1,4 +1,4 @@
-
+@reference "tailwindcss";
 
 @layer components {
 
@@ -11,7 +11,8 @@
   }
 
   .staff-layout__header {
-    @apply w-full border-b border-border/85 bg-white/90 backdrop-blur-xl;
+    @apply w-full border-b bg-white/90 backdrop-blur-xl;
+    border-color: rgb(var(--border-rgb) / 0.85);
   }
 
   .staff-layout__header-inner {
@@ -31,9 +32,10 @@
   .staff-layout__desk-switch {
     @apply inline-flex items-center gap-1.5
            px-3 py-1.5 rounded-full
-           border border-border/95
+           border
            bg-white/95 text-xs font-medium text-slate-token/90
            shadow-sm transition;
+    border-color: rgb(var(--border-rgb) / 0.95);
   }
 
   .staff-layout__desk-switch:hover {
@@ -102,7 +104,8 @@
      ============================================================ */
 
   .staff-layout__footer {
-    @apply w-full border-t border-border/85 bg-white/90;
+    @apply w-full border-t bg-white/90;
+    border-color: rgb(var(--border-rgb) / 0.85);
   }
 
   .staff-layout__footer-inner {

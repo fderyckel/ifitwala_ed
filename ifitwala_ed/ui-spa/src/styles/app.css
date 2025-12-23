@@ -1,3 +1,5 @@
+@reference "tailwindcss";
+
 /* ui-spa/src/styles/app.css */
 
 /* =====================================================================
@@ -74,7 +76,8 @@
      2. PAPER CARD (default neutral card surface)
      --------------------------------------------------------------- */
   .paper-card {
-    @apply bg-white border border-border/90 rounded-2xl shadow-sm;
+    @apply bg-white border rounded-2xl shadow-sm;
+    border-color: rgb(var(--border-rgb) / 0.90);
   }
 
   /* Frosted variant */
@@ -85,7 +88,8 @@
         rgb(var(--sky-rgb)/0.92),
         rgb(var(--sand-rgb)/0.9)
       );
-    @apply border border-border/85 rounded-2xl shadow-sm backdrop-blur-md;
+    @apply border rounded-2xl shadow-sm backdrop-blur-md;
+    border-color: rgb(var(--border-rgb) / 0.85);
   }
 
   /* ---------------------------------------------------------------
@@ -96,7 +100,8 @@
   }
 
   .fui-dialog-panel {
-    @apply bg-white rounded-2xl shadow-2xl border border-border/85 p-4 text-ink;
+    @apply bg-white rounded-2xl shadow-2xl border p-4 text-ink;
+    border-color: rgb(var(--border-rgb) / 0.85);
   }
 
   .fui-dialog-title {
