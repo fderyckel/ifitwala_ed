@@ -2,10 +2,7 @@
 
 export default {
   plugins: {
-    'postcss-import': {},
-    '@tailwindcss/postcss': {
-      config: './tailwind.config.js',
-    },
+    '@tailwindcss/postcss': {},
     autoprefixer: {},
   },
 };
