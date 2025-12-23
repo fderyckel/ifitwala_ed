@@ -5,9 +5,13 @@ import frappeUiPreset from 'frappe-ui/tailwind';
 import colors from 'tailwindcss/colors';
 
 const withAlpha = (variable) => `rgb(var(${variable}) / <alpha-value>)`;
+const frappeUiPresetSafe = {
+	...frappeUiPreset,
+	plugins: [],
+};
 
 export default {
-	presets: [frappeUiPreset],
+	presets: [frappeUiPresetSafe],
 	content: [
 		'./index.html',
 		'./src/**/*.{vue,js,ts}',
