@@ -18,12 +18,14 @@
 						</Button>
 					</div>
 
-					<FormControl
-						type="text"
-						placeholder="Search group"
-						:model-value="groupSearch"
-						@update:modelValue="value => (groupSearch = value)"
-					/>
+					<div class="ifit-filters">
+						<FormControl
+							type="text"
+							placeholder="Search group"
+							:model-value="groupSearch"
+							@update:modelValue="value => (groupSearch = value)"
+						/>
+					</div>
 
 					<div class="flex-1 space-y-2 overflow-y-auto pr-1" style="max-height: 28rem">
 						<div v-if="groupsLoading" class="space-y-2">

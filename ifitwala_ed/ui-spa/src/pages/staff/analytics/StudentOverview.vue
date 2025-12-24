@@ -1059,10 +1059,10 @@ const reflectionFlags = computed(() => {
 			<div class="flex-1 text-center">
 				<h1 class="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">Student Overview</h1>
 			</div>
-			<div class="flex items-center gap-2">
+			<div class="ifit-filters flex items-center gap-2">
 				<select
 					v-model="viewMode"
-					class="h-8 rounded-md border border-slate-200 px-2 text-xs"
+					class="h-8 rounded-md border px-2 text-xs"
 				>
 					<option
 						v-for="m in viewModeOptions"
@@ -1075,12 +1075,12 @@ const reflectionFlags = computed(() => {
 			</div>
 		</header>
 
-		<section class="mt-4 mb-3 flex flex-wrap items-end gap-3">
+		<section class="ifit-filters mt-4 mb-3 flex flex-wrap items-end gap-3">
 			<div class="flex flex-col gap-1 w-48">
 				<label class="type-label">School</label>
 				<select
 					v-model="filters.school"
-					class="h-9 rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2 text-xs focus:outline-none"
+					class="h-9 rounded-md border px-2 text-xs"
 				>
 					<option value="">Select a school</option>
 					<option
@@ -1097,7 +1097,7 @@ const reflectionFlags = computed(() => {
 				<label class="type-label">Program</label>
 				<select
 					v-model="filters.program"
-					class="h-9 rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2 text-xs focus:outline-none"
+					class="h-9 rounded-md border px-2 text-xs"
 				>
 					<option value="">Select</option>
 					<option
@@ -1112,11 +1112,11 @@ const reflectionFlags = computed(() => {
 
 			<div class="relative flex w-64 flex-col gap-1">
 				<label class="type-label">Student</label>
-				<div class="flex h-9 items-center rounded-md border border-border/80 bg-[rgb(var(--surface-rgb)/0.9)] px-2">
+				<div class="control-input flex h-9 items-center rounded-md border px-2">
 					<span class="mr-1 text-[11px] text-ink/60">🔍</span>
 					<input
 						v-model="studentSearch"
-						class="h-full w-full bg-transparent text-xs focus:outline-none"
+						class="h-full w-full text-xs"
 						placeholder="Search student"
 						type="search"
 						@focus="openStudentDropdown"

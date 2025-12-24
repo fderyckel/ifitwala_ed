@@ -3,7 +3,7 @@
   <div class="staff-shell flex h-full flex-col gap-6">
     <header class="flex flex-col gap-4">
       <div
-        class="surface-toolbar flex items-center gap-2 overflow-x-auto no-scrollbar"
+        class="surface-toolbar ifit-filters flex items-center gap-2 overflow-x-auto no-scrollbar"
       >
         <div class="w-44 shrink-0">
           <FormControl
@@ -110,7 +110,7 @@
         </div>
 
         <div
-          class="flex flex-wrap items-center gap-3 border-b border-border/60 bg-[rgb(var(--surface-rgb)/0.6)] px-5 py-3"
+          class="ifit-filters flex flex-wrap items-center gap-3 border-b border-border/60 bg-[rgb(var(--surface-rgb)/0.6)] px-5 py-3"
         >
           <FormControl
             v-model="searchTerm"

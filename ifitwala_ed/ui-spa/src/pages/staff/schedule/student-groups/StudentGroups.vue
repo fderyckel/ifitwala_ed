@@ -12,7 +12,7 @@
 		</div>
 
 		<!-- Filters -->
-		<div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+		<div class="ifit-filters mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
 			<FormControl v-model="filters.program" type="text" placeholder="Program" @update:modelValue="onFilterChanged" />
 			<FormControl v-model="filters.course" type="text" placeholder="Course" @update:modelValue="onFilterChanged" />
 			<FormControl v-model="filters.cohort" type="text" placeholder="Cohort" @update:modelValue="onFilterChanged" />

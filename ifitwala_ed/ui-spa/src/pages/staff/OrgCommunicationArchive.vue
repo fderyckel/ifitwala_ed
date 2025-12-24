@@ -29,7 +29,7 @@
     </header>
 
     <!-- Filters Bar -->
-    <div class="analytics-filters flex flex-wrap items-center gap-3 rounded-xl border border-line-soft bg-surface-glass p-3 shadow-soft">
+    <div class="analytics-filters ifit-filters flex flex-wrap items-center gap-3 rounded-xl border border-line-soft bg-surface-glass p-3 shadow-soft">
       <div class="analytics-filters__title text-sm font-semibold text-ink mr-2">
         Filters
       </div>
@@ -72,7 +72,7 @@
 
        <!-- Interaction Toggle -->
       <label class="flex items-center gap-2 cursor-pointer text-sm text-ink select-none px-2">
-        <input type="checkbox" v-model="filters.only_with_interactions" class="rounded border-slate-300 text-jacaranda focus:ring-jacaranda" />
+        <input type="checkbox" v-model="filters.only_with_interactions" class="rounded border-slate-300 text-jacaranda" />
         <span>With interactions</span>
       </label>
     </div>

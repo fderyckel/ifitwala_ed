@@ -15,7 +15,7 @@
         <label class="type-label">Academic Year</label>
         <select 
           v-model="filters.academic_year" 
-          class="h-9 rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
+          class="h-9 rounded-md border px-2 text-sm"
         >
           <option value="">All Years</option>
           <option v-for="y in academicYears" :key="y" :value="y">{{ y }}</option>
@@ -28,13 +28,13 @@
           <input 
             type="date" 
             v-model="filters.from_date"
-            class="h-9 rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
+            class="h-9 rounded-md border px-2 text-sm"
           />
           <span class="text-slate-300">-</span>
           <input 
             type="date" 
             v-model="filters.to_date"
-            class="h-9 rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
+            class="h-9 rounded-md border px-2 text-sm"
           />
         </div>
       </div>
@@ -43,7 +43,7 @@
         <label class="type-label">School</label>
         <select 
           v-model="filters.school"
-          class="h-9 min-w-[140px] max-w-[200px] rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
+          class="h-9 min-w-[140px] max-w-[200px] rounded-md border px-2 text-sm"
         >
           <option value="">All Permitted</option>
           <option v-for="s in allowedSchools" :key="s" :value="s">{{ s }}</option>
@@ -54,7 +54,7 @@
         <label class="type-label">Assignee</label>
         <select 
           v-model="filters.assigned_to"
-          class="h-9 min-w-[140px] rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
+          class="h-9 min-w-[140px] rounded-md border px-2 text-sm"
         >
           <option value="">All Users</option>
           <option v-for="u in users" :key="u.name" :value="u.name">{{ u.full_name }}</option>
@@ -65,7 +65,7 @@
         <label class="type-label">Inquiry Type</label>
         <select 
           v-model="filters.type_of_inquiry"
-          class="h-9 min-w-[140px] rounded-md border-border bg-transparent px-2 text-sm outline-none focus:border-canopy focus:ring-1 focus:ring-canopy/20"
+          class="h-9 min-w-[140px] rounded-md border px-2 text-sm"
         >
           <option value="">All Types</option>
           <option v-for="t in inquiryTypes" :key="t" :value="t">{{ t }}</option>

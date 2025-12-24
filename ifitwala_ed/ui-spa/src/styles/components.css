@@ -449,6 +449,95 @@
     color: rgb(var(--slate-rgb) / .80);
   }
 
+  /* ============================================================
+     CANONICAL FILTER CONTROL SKIN (OPAQUE)
+     Apply by wrapping filter bars with .ifit-filters
+     ============================================================ */
+
+  .ifit-filters select,
+  .ifit-filters input[type="text"],
+  .ifit-filters input[type="search"],
+  .ifit-filters input[type="email"],
+  .ifit-filters input[type="password"],
+  .ifit-filters input[type="number"],
+  .ifit-filters input[type="date"],
+  .ifit-filters textarea {
+    background-color: rgb(var(--sand-rgb) / .98);
+    border-color: rgb(var(--border-rgb) / .90);
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  /* If frappe-ui FormControl uses internal inputs, catch common wrappers */
+  .ifit-filters .form-control,
+  .ifit-filters .control-input,
+  .ifit-filters [role="combobox"] {
+    background-color: rgb(var(--sand-rgb) / .98);
+    border-color: rgb(var(--border-rgb) / .90);
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  /* Hover */
+  .ifit-filters select:hover,
+  .ifit-filters input:hover,
+  .ifit-filters textarea:hover,
+  .ifit-filters .form-control:hover,
+  .ifit-filters .control-input:hover,
+  .ifit-filters [role="combobox"]:hover {
+    border-color: rgb(var(--jacaranda-rgb) / .25);
+  }
+
+  /* Focus (consistent with your style direction) */
+  .ifit-filters select:focus,
+  .ifit-filters input:focus,
+  .ifit-filters textarea:focus,
+  .ifit-filters .form-control:focus-within,
+  .ifit-filters [role="combobox"]:focus-visible {
+    border-color: rgb(var(--jacaranda-rgb) / .55) !important;
+    box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / .22) !important;
+    outline: none;
+  }
+
+  /* Placeholder */
+  .ifit-filters input::placeholder,
+  .ifit-filters textarea::placeholder {
+    color: rgb(var(--slate-rgb) / .65);
+  }
+
+  /* Checkbox consistency (don't force background, just align focus) */
+  .ifit-filters input[type="checkbox"]:focus-visible {
+    box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / .22) !important;
+    outline: none;
+  }
+
+  /* ============================================================
+     DROPDOWN / OPTION LIST BACKGROUNDS (opaque, minimal)
+     Needed for teleported menus (outside .ifit-filters)
+     ============================================================ */
+
+  /* Bootstrap-like dropdowns */
+  .dropdown-menu {
+    background-color: rgb(var(--sand-rgb) / .98);
+    border: 1px solid rgb(var(--border-rgb) / .90);
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  /* Accessible listbox/menu patterns */
+  [role="listbox"],
+  [role="menu"] {
+    background-color: rgb(var(--sand-rgb) / .98);
+    border: 1px solid rgb(var(--border-rgb) / .90);
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  /* Hover state */
+  .dropdown-item:hover,
+  .dropdown-item:focus-visible,
+  [role="option"]:hover,
+  [role="menuitem"]:hover {
+    background-color: rgb(var(--sky-rgb) / .28);
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
 	/* Content dialog fade, shared component skin */
 	.content-dialog-fade-enter-active,
 	.content-dialog-fade-leave-active {
