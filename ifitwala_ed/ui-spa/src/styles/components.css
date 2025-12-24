@@ -9,8 +9,8 @@
      1. Avatar (square)
      --------------------------------------------------------------- */
   .avatar {
-    @apply h-16 w-16 rounded-xl overflow-hidden shadow-inner bg-slate-100
-           ring-1 ring-border/85;
+    @apply h-16 w-16 rounded-xl overflow-hidden shadow-inner bg-slate-100 ring-1;
+    --tw-ring-color: rgb(var(--border-rgb)/ .85);
   }
 
   .avatar img {
@@ -47,19 +47,23 @@
   }
 
   .type-meta {
-    @apply text-sm text-slate-token/80;
+    @apply text-sm;
+    color: rgb(var(--slate-rgb)/ .80);
   }
 
   .type-caption {
-    @apply text-xs text-slate-token/75;
+    @apply text-xs;
+    color: rgb(var(--slate-rgb)/ .75);
   }
 
   .type-overline {
-    @apply text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-token/75;
+    @apply text-[0.7rem] font-semibold uppercase tracking-[0.16em];
+    color: rgb(var(--slate-rgb)/ .75);
   }
 
   .type-label {
-    @apply text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-token/75;
+    @apply text-[0.7rem] font-semibold uppercase tracking-[0.12em];
+    color: rgb(var(--slate-rgb)/ .75);
   }
 
   /* ---------------------------------------------------------------
@@ -219,15 +223,17 @@
   }
 
   .action-tile__icon {
-    @apply flex h-9 w-9 items-center justify-center rounded-full
-            bg-sky/40 text-canopy text-sm font-semibold;
+    @apply flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold;
+    background-color: rgb(var(--sky-rgb)/ .40);
+    color: rgb(var(--canopy-rgb));
   }
 
   /* ---------------------------------------------------------------
      2. Section Header
      --------------------------------------------------------------- */
   .section-header {
-    @apply text-xs font-semibold uppercase tracking-wide text-slate-token/75;
+    @apply text-xs font-semibold uppercase tracking-wide;
+    color: rgb(var(--slate-rgb)/ .75);
   }
 
   /* ---------------------------------------------------------------
@@ -260,15 +266,20 @@
      5. Remark Button (blue accent)
      --------------------------------------------------------------- */
   .remark-btn {
-    @apply !h-9 !w-9 rounded-full border border-transparent transition text-slate-token/80;
+    @apply !h-9 !w-9 rounded-full border border-transparent transition;
+    color: rgb(var(--slate-rgb)/ .80);
   }
 
   .remark-btn:hover {
-    @apply border-jacaranda/30 bg-jacaranda/10 text-jacaranda;
+    border-color: rgb(var(--jacaranda-rgb)/ .30);
+    background-color: rgb(var(--jacaranda-rgb)/ .10);
+    color: rgb(var(--jacaranda-rgb));
   }
 
   .remark-btn--active {
-    @apply border-jacaranda/40 bg-jacaranda/15 text-jacaranda;
+    border-color: rgb(var(--jacaranda-rgb)/ .40);
+    background-color: rgb(var(--jacaranda-rgb)/ .15);
+    color: rgb(var(--jacaranda-rgb));
   }
 
   /* -------------------------------------------
@@ -390,11 +401,13 @@
 
   /* Card header */
   .analytics-card__title {
-    @apply text-xs font-semibold uppercase tracking-wide text-canopy;
+    @apply text-xs font-semibold uppercase tracking-wide;
+    color: rgb(var(--canopy-rgb));
   }
 
   .analytics-card__meta {
-    @apply text-[0.7rem] text-slate-token/75;
+    @apply text-[0.7rem];
+    color: rgb(var(--slate-rgb)/ .75);
   }
 
 	/* Default card chart */
@@ -410,7 +423,8 @@
 
   /* Empty state inside a card */
   .analytics-empty {
-    @apply text-xs text-slate-token/70 mt-1;
+    @apply text-xs mt-1;
+    color: rgb(var(--slate-rgb)/ .70);
   }
 
   /* Filters bar for analytics pages (reuses surface-toolbar aesthetics) */
@@ -419,7 +433,8 @@
   }
 
   .analytics-filters__title {
-    @apply text-xs font-semibold uppercase tracking-wide text-slate-token/80;
+    @apply text-xs font-semibold uppercase tracking-wide;
+    color: rgb(var(--slate-rgb)/ .80);
   }
 
 	/* Content dialog fade, shared component skin */

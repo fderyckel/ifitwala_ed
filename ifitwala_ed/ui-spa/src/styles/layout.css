@@ -26,7 +26,11 @@
   }
 
   .staff-layout__brand-link {
-    @apply transition-colors hover:text-canopy;
+    @apply transition-colors;
+  }
+
+  .staff-layout__brand-link:hover {
+    color: rgb(var(--canopy-rgb));
   }
 
   /* Smaller, better-proportioned Desk switch */
@@ -34,13 +38,16 @@
     @apply inline-flex items-center gap-1.5
            px-3 py-1.5 rounded-full
            border
-           bg-white/95 text-xs font-medium text-slate-token/90
+           bg-white/95 text-xs font-medium
            shadow-sm transition;
     border-color: rgb(var(--border-rgb) / .95);
+    color: rgb(var(--slate-rgb)/ .90);
   }
 
   .staff-layout__desk-switch:hover {
-    @apply border-leaf bg-leaf/10 text-canopy;
+    border-color: rgb(var(--leaf-rgb));
+    background-color: rgb(var(--leaf-rgb)/ .10);
+    color: rgb(var(--canopy-rgb));
   }
 
   .staff-layout__desk-switch-icon {
@@ -111,6 +118,7 @@
 
   .staff-layout__footer-inner {
     @apply mx-auto max-w-6xl px-5 py-3 sm:px-6
-           text-[0.7rem] text-slate-token/70;
+           text-[0.7rem];
+    color: rgb(var(--slate-rgb)/ .70);
   }
 }

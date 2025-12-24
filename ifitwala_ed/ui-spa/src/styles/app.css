@@ -9,7 +9,8 @@
   html,
   body {
     font-family: var(--font-sans);
-    @apply antialiased text-[color:var(--ink)] bg-transparent;
+    @apply antialiased bg-transparent;
+    color: rgb(var(--ink-rgb));
   }
 
   body {
@@ -21,7 +22,8 @@
   h2,
   h3,
   h4 {
-    @apply text-[color:var(--canopy)] font-semibold;
+    @apply font-semibold;
+    color: rgb(var(--canopy-rgb));
   }
 
   strong {
@@ -159,7 +161,8 @@
   }
 
   .fui-btn-minimal:hover {
-    @apply bg-sky/30 text-[color:var(--canopy)];
+    background-color: rgb(var(--sky-rgb)/ .30);
+    color: rgb(var(--canopy-rgb));
   }
 
   /* ---------------------------------------------------------------
