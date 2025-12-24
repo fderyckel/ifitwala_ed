@@ -28,7 +28,7 @@
     --border: #e2e8f0;
 
     /* ---------------------------------------------------------------
-       RGB tokens (for Tailwind + rgb(var(--token-rgb)/alpha))
+       RGB tokens (for Tailwind + rgb(var(--token-rgb) /alpha))
        --------------------------------------------------------------- */
     --ink-rgb: 7 16 25;
     --slate-rgb: 71 85 105;
@@ -52,33 +52,33 @@
     --surface-strong-rgb: 255 255 255; /* #ffffff */
 
     /* Derived border strengths */
-    --border-light: rgb(var(--border-rgb)/ .85);
-    --border-subtle: rgb(var(--border-rgb)/ .6);
+    --border-light: rgb(var(--border-rgb) / .85);
+    --border-subtle: rgb(var(--border-rgb) / .6);
     --border-strong: rgb(var(--border-rgb));
 
     /* ---------------------------------------------------------------
        Shadows & focus
        --------------------------------------------------------------- */
-    --shadow-soft: 0 6px 20px rgb(var(--ink-rgb)/ .05);
-    --shadow-strong: 0 10px 35px rgb(var(--ink-rgb)/ .10);
+    --shadow-soft: 0 6px 20px rgb(var(--ink-rgb) / .05);
+    --shadow-strong: 0 10px 35px rgb(var(--ink-rgb) / .10);
 
     /* Focus ring (used for inputs/buttons) */
-    --focus-ring: 0 0 0 3px rgb(var(--leaf-rgb)/ .35);
+    --focus-ring: 0 0 0 3px rgb(var(--leaf-rgb) / .35);
 
     /* ---------------------------------------------------------------
        Gradients
        --------------------------------------------------------------- */
     /* Portal background gradient (staff/guardian portal shell) */
     --portal-gradient-bg:
-      radial-gradient(circle at 5% 5%, rgb(var(--leaf-rgb)/ .32), transparent 58%),
-      radial-gradient(circle at 95% 0%, rgb(var(--jacaranda-rgb)/ .26), transparent 58%),
-      radial-gradient(circle at 90% 95%, rgb(var(--moss-rgb)/ .25), transparent 60%),
+      radial-gradient(circle at 5% 5%, rgb(var(--leaf-rgb) / .32), transparent 58%),
+      radial-gradient(circle at 95% 0%, rgb(var(--jacaranda-rgb) / .26), transparent 58%),
+      radial-gradient(circle at 90% 95%, rgb(var(--moss-rgb) / .25), transparent 60%),
       linear-gradient(180deg, var(--sky) 0%, #f1f6f8 45%, var(--sand) 100%);
 
     /* Modal / panel gradient (meeting/class/school-event modals) */
     --modal-panel-gradient-bg:
-      radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb)/ .9), transparent 65%),
-      radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb)/ .9), transparent 65%),
+      radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / .9), transparent 65%),
+      radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / .9), transparent 65%),
       rgb(var(--surface-strong-rgb));
 
     /* ---------------------------------------------------------------

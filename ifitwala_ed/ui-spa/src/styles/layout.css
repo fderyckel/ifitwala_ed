@@ -41,12 +41,12 @@
            bg-white/95 text-xs font-medium
            shadow-sm transition;
     border-color: rgb(var(--border-rgb) / .95);
-    color: rgb(var(--slate-rgb)/ .90);
+    color: rgb(var(--slate-rgb) / .90);
   }
 
   .staff-layout__desk-switch:hover {
     border-color: rgb(var(--leaf-rgb));
-    background-color: rgb(var(--leaf-rgb)/ .10);
+    background-color: rgb(var(--leaf-rgb) / .10);
     color: rgb(var(--canopy-rgb));
   }
 
@@ -69,13 +69,13 @@
 
   .staff-hero {
     background:
-      radial-gradient(circle at 0% 0%, rgb(var(--leaf-rgb)/ .45), transparent 55%),
-      radial-gradient(circle at 100% 0%, rgb(var(--jacaranda-rgb)/ .35), transparent 55%),
+      radial-gradient(circle at 0% 0%, rgb(var(--leaf-rgb) / .45), transparent 55%),
+      radial-gradient(circle at 100% 0%, rgb(var(--jacaranda-rgb) / .35), transparent 55%),
       linear-gradient(
         120deg,
-        rgb(var(--sand-rgb)/ .96),
-        rgb(var(--leaf-rgb)/ .35),
-        rgb(var(--jacaranda-rgb)/ .32)
+        rgb(var(--sand-rgb) / .96),
+        rgb(var(--leaf-rgb) / .35),
+        rgb(var(--jacaranda-rgb) / .32)
       );
     @apply rounded-2xl shadow-strong relative p-6;
   }
@@ -83,9 +83,9 @@
   .staff-hero__aura {
     @apply absolute inset-0 pointer-events-none opacity-90;
     background:
-      radial-gradient(circle at 15% 25%, rgb(var(--sky-rgb)/ .35), transparent 60%),
-      radial-gradient(circle at 85% 15%, rgb(var(--jacaranda-rgb)/ .35), transparent 60%),
-      radial-gradient(circle at 60% 90%, rgb(var(--leaf-rgb)/ .3), transparent 60%);
+      radial-gradient(circle at 15% 25%, rgb(var(--sky-rgb) / .35), transparent 60%),
+      radial-gradient(circle at 85% 15%, rgb(var(--jacaranda-rgb) / .35), transparent 60%),
+      radial-gradient(circle at 60% 90%, rgb(var(--leaf-rgb) / .3), transparent 60%);
     filter: blur(42px);
   }
 
@@ -119,6 +119,6 @@
   .staff-layout__footer-inner {
     @apply mx-auto max-w-6xl px-5 py-3 sm:px-6
            text-[0.7rem];
-    color: rgb(var(--slate-rgb)/ .70);
+    color: rgb(var(--slate-rgb) / .70);
   }
 }
