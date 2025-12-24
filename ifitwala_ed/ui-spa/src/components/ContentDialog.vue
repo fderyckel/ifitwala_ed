@@ -4,7 +4,7 @@
 		<transition name="content-dialog-fade">
 			<div
 				v-if="isOpen"
-				class="fixed inset-0 z-[60] flex items-center justify-center bg-[color:rgb(var(--ink)/0.45)] backdrop-blur-sm"
+				class="fixed inset-0 z-[60] flex items-center justify-center bg-[color:rgb(var(--ink-rgb)/0.45)] backdrop-blur-sm"
 				@click.self="isOpen = false"
 			>
 				<!-- SINGLE visible box -->
@@ -212,4 +212,3 @@ const reactions: Array<{ code: ReactionCode; label: string; icon: string }> = [
 	{ code: 'other', label: 'Other', icon: '💬' }
 ]
 </script>
-
