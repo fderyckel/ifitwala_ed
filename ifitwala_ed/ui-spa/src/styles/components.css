@@ -216,6 +216,12 @@
     color: rgb(var(--ink-rgb));
   }
 
+  /* Keep staff CTA jacaranda pills solid without affecting non-CTA badges. */
+  .staff-shell a.bg-jacaranda {
+    background-color: rgb(var(--jacaranda-rgb));
+    color: #fff;
+  }
+
   /* ---------------------------------------------------------------
      Staff portal quick-action tiles
      Stronger white card on top of the shell
