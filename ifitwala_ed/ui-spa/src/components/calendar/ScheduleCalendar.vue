@@ -221,7 +221,8 @@ function nowProvider() {
 }
 
 function syncCalendarTimezone() {
-	const tz = systemTimezone.value || resolveSystemTimezone();
+	// DIAG: force local time zone (no plugin needed)
+	const tz = 'local';
 
 	calendarOptions.value.timeZone = tz;
 	calendarOptions.value.now = nowProvider;
@@ -230,6 +231,7 @@ function syncCalendarTimezone() {
 	if (api) {
 		api.setOption('timeZone', tz);
 		api.setOption('now', nowProvider);
+		api.render();
 	}
 }
 
