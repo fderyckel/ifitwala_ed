@@ -704,47 +704,18 @@
 			method="ifitwala_ed.api.morning_brief.get_clinic_visits_trend"
 		/>
 
-		<SideDrawerList
+		<CommentThreadDrawer
 			:open="showInteractionDrawer"
 			title="Announcement Comments"
-			entity-label="Comments"
 			:rows="interactionThread.data || []"
 			:loading="interactionThread.loading"
+			v-model:comment="newComment"
+			submit-label="Send"
+			placeholder="Add a short comment (max 300 characters)"
+			:format-timestamp="formatThreadTimestamp"
 			@close="showInteractionDrawer = false"
-		>
-			<template #row="{ row }">
-				<div class="flex flex-col gap-0.5">
-					<div class="flex items-center justify-between">
-						<span class="text-xs font-semibold text-ink">
-							{{ row.full_name || row.user }}
-						</span>
-						<span class="text-[10px] text-slate-token/60">
-							{{ row.creation }}
-						</span>
-					</div>
-					<p class="text-xs text-slate-token/90">
-						{{ row.note }}
-					</p>
-				</div>
-			</template>
-
-			<template #actions>
-				<form class="flex w-full items-center gap-2" @submit.prevent="submitComment">
-					<input
-						v-model="newComment"
-						type="text"
-						class="flex-1 rounded-full border border-border/60 bg-white px-3 py-1.5 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-jacaranda/50"
-						placeholder="Add a short comment (max 300 characters)"
-					/>
-					<button
-						type="submit"
-						class="remark-btn px-3 py-1.5 text-xs font-semibold"
-					>
-						Send
-					</button>
-				</form>
-			</template>
-		</SideDrawerList>
+			@submit="submitComment"
+		/>
 	</div>
 </template>
 
@@ -755,7 +726,7 @@ import { createResource, FeatherIcon, call, toast } from 'frappe-ui'
 import ContentDialog from '@/components/ContentDialog.vue'
 import GenericListDialog from '@/components/GenericListDialog.vue'
 import HistoryDialog from '@/components/HistoryDialog.vue'
-import SideDrawerList from '@/components/analytics/SideDrawerList.vue'
+import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue'
 import AttendanceTrend from './components/AttendanceTrend.vue'
 import AbsentStudentList from './components/AbsentStudentList.vue'
 import {
@@ -970,6 +941,20 @@ function openInteractionThread(item: Announcement): void {
 		org_communication: item.name,
 		limit_start: 0,
 		limit_page_length: 30
+	})
+}
+
+function formatThreadTimestamp(value?: string | null): string {
+	if (!value) return ''
+	const d = new Date(value)
+	if (isNaN(d.getTime())) return value
+
+	return d.toLocaleDateString('en-GB', {
+		day: '2-digit',
+		month: 'short',
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false,
 	})
 }
 

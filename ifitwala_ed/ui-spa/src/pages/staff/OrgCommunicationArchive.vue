@@ -272,70 +272,26 @@
 
     </div>
 
-    <!-- Thread Drawer (Reusing SideDrawerList-like or creating a simple drawer)
-         User said: "Reuse your existing SideDrawerList component exactly as in MorningBrief."
-         However, MorningBrief uses a specific drawer logic. I should check if I can just use a generic drawer for now or if I need to import that component.
-         Since I can't easily see usage of SideDrawerList (it was for logs?),
-         I will implement a sleek side drawer here for the thread.
-    -->
-    <Transition name="slide-verify">
-      <div v-if="showThreadDrawer" class="fixed inset-0 z-[100] flex justify-end bg-black/20 backdrop-blur-sm" @click.self="showThreadDrawer = false">
-        <div class="w-full max-w-md bg-white h-full shadow-strong flex flex-col">
-            <div class="p-4 border-b border-line-soft flex items-center justify-between bg-slate-50">
-               <h3 class="font-bold text-lg">Comments</h3>
-               <Button icon="x" variant="ghost" @click="showThreadDrawer = false" />
-            </div>
-
-            <div class="flex-1 overflow-y-auto p-4 space-y-4">
-               <div v-if="threadResource.loading" class="text-center py-4"><LoadingIndicator /></div>
-               <div v-else-if="!threadResource.data?.length" class="text-center py-8 text-slate-token/60">
-                 No comments yet. Start the conversation!
-               </div>
-
-               <div v-for="comment in threadResource.data || []" :key="comment.name" class="flex gap-3">
-                  <Avatar :label="comment.full_name" size="md" />
-                  <div class="flex-1 space-y-1">
-                     <div class="flex items-center justify-between">
-                        <span class="font-semibold text-sm">{{ comment.full_name }}</span>
-                        <span class="text-xs text-slate-token/50">{{ formatDate(comment.creation, 'DD MMM HH:mm') }}</span>
-                     </div>
-                     <div class="bg-surface-soft rounded-lg rounded-tl-none p-3 text-sm text-ink/90">
-                        {{ comment.note }}
-                     </div>
-                  </div>
-               </div>
-            </div>
-
-            <div class="p-4 border-t border-line-soft bg-white gap-2 flex flex-col">
-                <FormControl
-                    type="textarea"
-                    placeholder="Write a comment..."
-                    v-model="newComment"
-                    :rows="2"
-                 />
-                 <div class="flex justify-end">
-                    <Button
-                        variant="solid"
-                        color="gray"
-                        :loading="interactionAction.loading"
-                        @click="submitComment"
-                        :disabled="!newComment.trim()"
-                    >
-                        Post Comment
-                    </Button>
-                 </div>
-            </div>
-        </div>
-      </div>
-    </Transition>
+    <CommentThreadDrawer
+      :open="showThreadDrawer"
+      title="Comments"
+      :rows="threadResource.data || []"
+      :loading="threadResource.loading"
+      v-model:comment="newComment"
+      :submit-loading="interactionAction.loading"
+      :format-timestamp="(value) => formatDate(value, 'DD MMM HH:mm')"
+      @close="showThreadDrawer = false"
+      @submit="submitComment"
+    />
 
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Avatar, Badge, Button, FeatherIcon, FormControl, LoadingIndicator, createResource } from 'frappe-ui'
+import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, createResource } from 'frappe-ui'
 import { type ArchiveFilters, type OrgCommunicationListItem, type InteractionSummary } from '@/types/orgCommunication'
+import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue'
 
 const PAGE_LENGTH = 30
 
@@ -800,16 +756,3 @@ function getPriorityColor(priority: string) {
 }
 
 </script>
-
-<style scoped>
-/* Scoped styles/overrides if needed */
-.slide-verify-enter-active,
-.slide-verify-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.slide-verify-enter-from,
-.slide-verify-leave-to {
-  opacity: 0;
-}
-</style>
