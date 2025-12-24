@@ -648,7 +648,12 @@ function getInteractionFor(item: OrgCommunicationListItem): InteractionSummary {
 function getInteractionStats(item: OrgCommunicationListItem) {
 	const summary = getInteractionFor(item)
 	const acks = summary.counts['Acknowledged'] || 0
-	const comments = (summary.counts['Comment'] || 0) + (summary.counts['Question'] || 0)
+	const commentCount =
+		typeof summary.comment_count === 'number'
+			? summary.comment_count
+			: undefined
+	const fallbackCounts = (summary.counts['Comment'] || 0) + (summary.counts['Question'] || 0)
+	const comments = commentCount ?? fallbackCounts
 	return { acks, comments }
 }
 
