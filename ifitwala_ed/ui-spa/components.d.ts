@@ -27,6 +27,7 @@ declare module 'vue' {
     OrgCommunicationQuickCreateModal: typeof import('./src/components/calendar/OrgCommunicationQuickCreateModal.vue')['default']
     PortalFooter: typeof import('./src/components/PortalFooter.vue')['default']
     PortalNavbar: typeof import('./src/components/PortalNavbar.vue')['default']
+    PortalNotification: typeof import('./src/components/PortalNotification.vue')['default']
     PortalSidebar: typeof import('./src/components/PortalSidebar.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
