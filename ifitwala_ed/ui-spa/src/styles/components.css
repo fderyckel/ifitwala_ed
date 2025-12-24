@@ -222,8 +222,12 @@
      --------------------------------------------------------------- */
   .action-tile {
     @apply flex items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm
-           transition-transform hover:-translate-y-0.5 hover:shadow-strong;
+           transition-transform hover:-translate-y-0.5;
     border-color: rgb(var(--border-rgb) / .90);
+  }
+
+  .action-tile:hover {
+    box-shadow: var(--shadow-strong);
   }
 
   .action-tile__icon {

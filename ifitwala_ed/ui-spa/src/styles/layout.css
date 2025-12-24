@@ -89,7 +89,8 @@
         rgb(var(--leaf-rgb) / .35),
         rgb(var(--jacaranda-rgb) / .32)
       );
-    @apply rounded-2xl shadow-strong relative p-6;
+    @apply rounded-2xl relative p-6;
+    box-shadow: var(--shadow-strong);
   }
 
   .staff-hero__aura {
