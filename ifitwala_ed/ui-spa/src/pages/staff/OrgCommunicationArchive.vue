@@ -646,7 +646,13 @@ async function loadFeed(reset = false) {
 		selectedComm.value = null
 	}
 
-	const payload = ((await orgCommFeed.fetch()) as any) || {}
+	const payload =
+		((await orgCommFeed.submit({
+			filters: normalizeArchiveFilters(filters.value),
+			start: start.value,
+			page_length: PAGE_LENGTH,
+		})) as any) || {}
+
 	const items = payload.items || []
 
 	feedItems.value = reset ? items : [...feedItems.value, ...items]
@@ -669,6 +675,7 @@ async function loadFeed(reset = false) {
 		selectItem(feedItems.value[0])
 	}
 }
+
 
 function loadMore() {
 	if (orgCommFeed.loading || !hasMore.value) return
