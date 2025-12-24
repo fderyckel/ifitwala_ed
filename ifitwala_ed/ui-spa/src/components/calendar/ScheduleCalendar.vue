@@ -220,21 +220,6 @@ function nowProvider() {
 	return new Date();
 }
 
-async function loadSystemTimezone() {
-	try {
-		const res = await fetch('/api/resource/System Settings?fields=["time_zone"]', {
-			credentials: 'include',
-		});
-		const json = await res.json();
-		const tz = json?.data?.time_zone;
-		if (typeof tz === 'string' && tz.trim()) {
-			systemTimezone.value = tz.trim();
-		}
-	} catch (err) {
-		console.warn('[ScheduleCalendar] Failed to load system timezone, falling back:', err);
-	}
-}
-
 function syncCalendarTimezone() {
 	const tz = systemTimezone.value || resolveSystemTimezone();
 
@@ -343,7 +328,6 @@ onMounted(async () => {
 			calendarOptions.value.slotMaxTime = slotMax.value;
 		}
 	}
-	await loadSystemTimezone();
 	syncCalendarTimezone();
 	applyCalendarHeight();
 });
