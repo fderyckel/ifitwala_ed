@@ -7,7 +7,19 @@
      ============================================================ */
 
   .staff-layout {
-    @apply ifitwala-theme font-sans antialiased;
+    @apply font-sans antialiased min-h-screen flex flex-col;
+    background:
+      radial-gradient(circle at 5% 5%, rgb(var(--leaf-rgb) / .32), transparent 58%),
+      radial-gradient(circle at 95% 0%, rgb(var(--jacaranda-rgb) / .26), transparent 58%),
+      radial-gradient(circle at 90% 95%, rgb(var(--moss-rgb) / .25), transparent 60%),
+      linear-gradient(
+        180deg,
+        var(--sky) 0%,
+        #f1f6f8 45%,
+        var(--sand) 100%
+      ) !important;
+    background-attachment: fixed;
+    color: rgb(var(--ink-rgb));
   }
 
   .staff-layout__header {
