@@ -3,6 +3,8 @@
 
 import frappeUiPreset from 'frappe-ui/tailwind';
 import colors from 'tailwindcss/colors';
+import typography from '@tailwindcss/typography';
+import lineClamp from '@tailwindcss/line-clamp';
 
 const withOpacity = (variable) => ({ opacityValue }) => {
 	if (opacityValue === undefined) {
@@ -101,5 +103,5 @@ export default {
 			},
 		},
 	},
-	plugins: [],
+	plugins: [typography, lineClamp],
 };

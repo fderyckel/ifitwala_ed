@@ -262,7 +262,6 @@ def get_archive_context():
 	return data
 
 
-
 @frappe.whitelist()
 def get_org_communication_item(name=None):
 	"""

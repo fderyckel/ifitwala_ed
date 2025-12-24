@@ -181,7 +181,7 @@
 
         <div v-else class="flex flex-col h-full">
            <!-- Detail Header -->
-           <div class="p-6 border-b border-line-soft bg-slate-50/50">
+           <div class="p-6 border-b border-line-soft bg-surface-soft/70">
              <div class="flex flex-col gap-4">
 
 
@@ -225,7 +225,7 @@
            </div>
 
            <!-- Interactions Footer -->
-           <div class="p-4 border-t border-line-soft bg-white z-10 sticky bottom-0">
+           <div class="p-4 border-t border-line-soft bg-surface-soft/80 z-10 sticky bottom-0">
               <div class="flex items-center justify-between gap-4">
 
                  <div class="flex gap-2">
