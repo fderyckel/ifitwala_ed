@@ -111,6 +111,45 @@
     }
   }
 
+  /* Jacaranda pill for the Morning Brief button in the hero area */
+  .staff-hero a.morning-brief,
+  .staff-hero button.morning-brief,
+  .staff-hero a[title="Morning Brief"],
+  .staff-hero button[title="Morning Brief"] {
+    background-color: rgb(var(--jacaranda-rgb) / .15);
+    border: 1px solid rgb(var(--jacaranda-rgb) / .45);
+    color: rgb(var(--jacaranda-rgb));
+    border-radius: 999px;
+    padding: 0.4rem 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    backdrop-filter: blur(4px);
+    transition: background-color 0.18s ease,
+                border-color 0.18s ease,
+                color 0.18s ease;
+  }
+
+  .staff-hero a.morning-brief:hover,
+  .staff-hero a.morning-brief:focus-visible,
+  .staff-hero button.morning-brief:hover,
+  .staff-hero button.morning-brief:focus-visible,
+  .staff-hero a[title="Morning Brief"]:hover,
+  .staff-hero a[title="Morning Brief"]:focus-visible,
+  .staff-hero button[title="Morning Brief"]:hover,
+  .staff-hero button[title="Morning Brief"]:focus-visible {
+    background-color: rgb(var(--jacaranda-rgb) / .25);
+    border-color: rgb(var(--jacaranda-rgb) / .65);
+    color: rgb(var(--jacaranda-rgb));
+  }
+
+  /* Ensure the icon badge also takes on the Jacaranda tone */
+  .staff-hero .morning-brief .icon-wrapper,
+  .staff-hero [title="Morning Brief"] .icon-wrapper {
+    background-color: rgb(var(--jacaranda-rgb) / .25);
+    color: rgb(var(--jacaranda-rgb));
+  }
+
   /* ============================================================
      ACTION RAIL
      ============================================================ */
