@@ -9,7 +9,7 @@
 			>
 				<!-- SINGLE visible box -->
 				<div
-					class="content-card relative flex max-h-[80vh] w-full max-w-3xl flex-col gap-4 overflow-y-auto rounded-2xl bg-surface-soft/90 p-4 text-ink shadow-strong ring-1 ring-border/60 sm:p-5"
+					class="content-card relative flex max-h-[80vh] w-full max-w-3xl flex-col gap-4 overflow-y-auto rounded-2xl bg-surface-soft p-4 text-ink shadow-strong ring-1 ring-border/60 sm:p-5"
 				>
 					<button
 						@click="isOpen = false"
