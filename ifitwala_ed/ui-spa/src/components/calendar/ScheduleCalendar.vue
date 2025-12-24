@@ -214,29 +214,11 @@ const resolveSystemTimezone = () =>
 		Intl.DateTimeFormat().resolvedOptions().timeZone ||
 		'UTC') as string;
 const systemTimezone = ref<string>(resolveSystemTimezone());
-const nowInSystemTz = () => {
-	const parts = new Intl.DateTimeFormat('en-US', {
-		timeZone: systemTimezone.value,
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit',
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-		hour12: false,
-	}).formatToParts(new Date());
-	const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '0';
-	return new Date(
-		Date.UTC(
-			Number(get('year')),
-			Number(get('month')) - 1,
-			Number(get('day')),
-			Number(get('hour')),
-			Number(get('minute')),
-			Number(get('second'))
-		)
-	);
-};
+
+function nowProvider() {
+	// Always return the real current instant.
+	return new Date();
+}
 
 async function loadSystemTimezone() {
 	try {
@@ -254,16 +236,18 @@ async function loadSystemTimezone() {
 }
 
 function syncCalendarTimezone() {
-	const now = nowInSystemTz();
-	calendarOptions.value.timeZone = systemTimezone.value;
-	calendarOptions.value.now = now;
+	const tz = systemTimezone.value || resolveSystemTimezone();
+
+	calendarOptions.value.timeZone = tz;
+	calendarOptions.value.now = nowProvider;
+
 	const api = calendarRef.value?.getApi();
 	if (api) {
-		api.setOption('timeZone', systemTimezone.value);
-		api.setOption('now', now);
-		api.render();
+		api.setOption('timeZone', tz);
+		api.setOption('now', nowProvider);
 	}
 }
+
 
 // Calendar preferences and toggles
 const { prefs, fetch: fetchPrefs } = useCalendarPrefs();
@@ -303,7 +287,7 @@ const calendarOptions = ref({
 	nowIndicator: true,
 	events: events.value,
 	timeZone: systemTimezone.value,
-	now: nowInSystemTz(),
+	now: nowProvider(),
 	hiddenDays: hiddenDays.value,
 	datesSet: (arg: DatesSetArg) => handleDatesSet(arg),
 	eventDisplay: 'block',
