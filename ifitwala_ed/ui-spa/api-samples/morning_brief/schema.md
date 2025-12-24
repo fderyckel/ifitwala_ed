@@ -127,7 +127,11 @@ Sources: `ifitwala_ed/api/morning_brief.py`, `ifitwala_ed/setup/doctype/communic
 - HTTP style: POST (`createResource.submit`)
 - Request body: `{ comm_names: string[] }` (JSON array or JSON string)
 - Response: map keyed by org_communication name → `InteractionSummary`
-  - `counts`: record of `intent_type` → number (intent defaults to `Comment` when null)
+  - `counts`: record of `intent_type` → number (legacy; intent defaults to `Comment` when null)
+  - `reaction_counts`: record of `reaction_code` → number
+  - `reactions_total`: number (sum of `reaction_counts`)
+  - `comments_total`: number (`Comment` + `Question` thread entries)
+  - `comment_count`: number (legacy; interactions with non-empty note)
   - `self`: `InteractionSelf` \| null (current user’s interaction)
 
 ### InteractionSelf fields (Communication Interaction)
@@ -139,7 +143,7 @@ Sources: `ifitwala_ed/api/morning_brief.py`, `ifitwala_ed/setup/doctype/communic
 - `school`: string \| null
 - `program`: string \| null
 - `student_group`: string \| null
-- `reaction_code`: string \| null (like | thank | heart | smile | applause | question | other)
+- `reaction_code`: string \| null (like | thank | heart | smile | applause | question | concern | other)
 - `intent_type`: string \| null (Comment | Acknowledged | Appreciated | Support | Positive | Celebration | Question | Concern | Other)
 - `note`: string \| null (<= 300 chars)
 - `visibility`: string \| null (Public to audience | Private to school | Hidden)
@@ -176,7 +180,7 @@ Sources: `ifitwala_ed/api/morning_brief.py`, `ifitwala_ed/setup/doctype/communic
 - Request body:
   - `org_communication`: string (required)
   - `intent_type`: string \| null (Comment | Acknowledged | Appreciated | Support | Positive | Celebration | Question | Concern | Other)
-  - `reaction_code`: string \| null (like | thank | heart | smile | applause | question | other)
+  - `reaction_code`: string \| null (like | thank | heart | smile | applause | question | concern | other)
   - `note`: string \| null (<= 300 chars; required when `intent_type` = Question)
   - `surface`: string \| null (Desk | Morning Brief | Portal Feed | Student Portal | Guardian Portal | Other)
   - `student_group`: string \| null

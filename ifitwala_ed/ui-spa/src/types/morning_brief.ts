@@ -61,6 +61,7 @@ export type ReactionCode =
 	| 'smile'
 	| 'applause'
 	| 'question'
+	| 'concern'
 	| 'other'
 
 // ============================================================================
@@ -172,6 +173,7 @@ export interface WidgetsPayload {
 // ============================================================================
 
 export type InteractionCounts = Partial<Record<InteractionIntentType, number>>
+export type ReactionCounts = Record<string, number>
 
 export interface InteractionSelf {
 	name: string
@@ -200,6 +202,10 @@ export interface InteractionSelf {
 
 export interface InteractionSummary {
 	counts: InteractionCounts
+	reaction_counts?: ReactionCounts
+	reactions_total?: number
+	comments_total?: number
+	comment_count?: number
 	self: InteractionSelf | null
 }
 

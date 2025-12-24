@@ -147,9 +147,9 @@
                       You: {{ getInteractionFor(item).self?.intent_type || 'Responded' }}
                     </div>
                     <div class="flex items-center gap-1 text-xs text-slate-token/50 bg-slate-50 px-2 py-1 rounded">
-                       <span>👍 {{ getInteractionStats(item).acks }}</span>
+                       <span>👍 {{ getInteractionStats(item).reactions_total }}</span>
                        <span class="border-l border-slate-200 h-3 mx-1"></span>
-                       <span>💬 {{ getInteractionStats(item).comments }}</span>
+                       <span>💬 {{ getInteractionStats(item).comments_total }}</span>
                     </div>
                  </div>
                </div>
@@ -239,10 +239,10 @@
                     >
                       <FeatherIcon name="thumbs-up" class="h-4 w-4" />
                       <span>
-                        {{ getInteractionFor(selectedComm).self ? 'Acknowledged' : 'Acknowledge' }}
+                        Reactions
                       </span>
                       <Badge variant="outline" class="bg-white/50 ml-1">
-                        {{ getInteractionStats(selectedComm).acks }}
+                        {{ getInteractionStats(selectedComm).reactions_total }}
                       </Badge>
                     </Button>
 
@@ -256,7 +256,7 @@
                       <FeatherIcon name="message-square" class="h-4 w-4" />
                       Comments
                       <Badge variant="outline" class="bg-white/50 ml-1">
-                        {{ getInteractionStats(selectedComm).comments }}
+                        {{ getInteractionStats(selectedComm).comments_total }}
                       </Badge>
                     </Button>
                  </div>
@@ -292,6 +292,7 @@ import { computed, ref, watch } from 'vue'
 import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, createResource } from 'frappe-ui'
 import { type ArchiveFilters, type OrgCommunicationListItem, type InteractionSummary } from '@/types/orgCommunication'
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue'
+import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats'
 
 const PAGE_LENGTH = 30
 
@@ -646,15 +647,7 @@ function getInteractionFor(item: OrgCommunicationListItem): InteractionSummary {
 }
 
 function getInteractionStats(item: OrgCommunicationListItem) {
-	const summary = getInteractionFor(item)
-	const acks = summary.counts['Acknowledged'] || 0
-	const commentCount =
-		typeof summary.comment_count === 'number'
-			? summary.comment_count
-			: undefined
-	const fallbackCounts = (summary.counts['Comment'] || 0) + (summary.counts['Question'] || 0)
-	const comments = commentCount ?? fallbackCounts
-	return { acks, comments }
+	return buildInteractionStats(getInteractionFor(item))
 }
 
 function canInteract(item: OrgCommunicationListItem) {

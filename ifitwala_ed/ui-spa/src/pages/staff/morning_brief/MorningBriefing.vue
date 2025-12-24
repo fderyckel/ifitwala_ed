@@ -139,9 +139,9 @@
 									>
 										<FeatherIcon name="thumbs-up" class="h-3 w-3 text-canopy" />
 										<span>
-											Acknowledge
+											Reactions
 											<span class="ml-1 text-[10px] text-slate-token/60">
-												({{ getInteractionFor(currentSpotlight).counts?.Acknowledged || 0 }})
+												({{ getInteractionStatsFor(currentSpotlight).reactions_total }})
 											</span>
 										</span>
 									</button>
@@ -154,7 +154,7 @@
 										<FeatherIcon name="message-circle" class="h-3 w-3" />
 										<span>Comments</span>
 										<span class="text-[10px] text-slate-token/60">
-											({{ getInteractionFor(currentSpotlight).counts?.Comment || 0 }})
+											({{ getInteractionStatsFor(currentSpotlight).comments_total }})
 										</span>
 									</button>
 								</div>
@@ -255,7 +255,7 @@
 											@click.stop="acknowledgeAnnouncement(item)"
 										>
 											<FeatherIcon name="thumbs-up" class="h-3 w-3 text-canopy" />
-											<span>{{ getInteractionFor(item).counts?.Acknowledged || 0 }}</span>
+											<span>{{ getInteractionStatsFor(item).reactions_total }}</span>
 										</button>
 
 										<button
@@ -265,7 +265,7 @@
 										>
 											<FeatherIcon name="message-circle" class="h-3 w-3" />
 											<span>Comments</span>
-											<span>({{ getInteractionFor(item).counts?.Comment || 0 }})</span>
+											<span>({{ getInteractionStatsFor(item).comments_total }})</span>
 										</button>
 									</div>
 
@@ -744,6 +744,7 @@ import {
 } from '@/types/morning_brief'
 import { canShowPublicInteractions } from '@/utils/orgCommunication'
 import type { OrgCommunicationListItem } from '@/utils/orgCommunication'
+import { getInteractionStats } from '@/utils/interactionStats'
 
 interface DialogContent {
 	title: string
@@ -926,6 +927,10 @@ function getInteractionFor(item: Announcement): InteractionSummary {
 	return summary
 }
 
+function getInteractionStatsFor(item: Announcement) {
+	return getInteractionStats(getInteractionFor(item))
+}
+
 function openInteractionThread(item: Announcement): void {
 	if (!canShowInteractions(item)) {
 		toast({
@@ -1017,6 +1022,7 @@ function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
 		smile: 'Positive',
 		applause: 'Celebration',
 		question: 'Question',
+		concern: 'Concern',
 		other: 'Other'
 	}
 

@@ -200,6 +200,9 @@ def get_org_comm_interaction_summary(comm_names=None):
 	summary = {
 		name: {
 			"counts": {},       # intent_type -> count
+			"reaction_counts": {},  # reaction_code -> count
+			"reactions_total": 0,   # total emoji/quick reactions
+			"comments_total": 0,    # total thread entries (Comment + Question)
 			"self": None,       # current user's row
 			"comment_count": 0  # number of interactions with non-empty note
 		}
@@ -227,7 +230,52 @@ def get_org_comm_interaction_summary(comm_names=None):
 		intent = (r.get("intent_type") or "Comment").strip() or "Comment"
 		summary[org_comm]["counts"][intent] = int(r.get("cnt") or 0)
 
-	# 2) comment_count = interactions that actually have text in `note`
+	# 2) reaction_counts per communication + reaction_code
+	intent_to_reaction = {
+		"Acknowledged": "like",
+		"Appreciated": "thank",
+		"Support": "heart",
+		"Positive": "smile",
+		"Celebration": "applause",
+		"Question": "question",
+		"Concern": "concern",
+		"Other": "other",
+	}
+	known_reaction_codes = set(intent_to_reaction.values())
+
+	reaction_rows = frappe.db.sql(
+		"""
+		SELECT org_communication, reaction_code, intent_type, COUNT(*) as cnt
+		FROM `tabCommunication Interaction`
+		WHERE org_communication IN %(comms)s
+		GROUP BY org_communication, reaction_code, intent_type
+		""",
+		{"comms": comms_tuple},
+		as_dict=True,
+	)
+
+	for r in reaction_rows:
+		org_comm = r.get("org_communication")
+		if org_comm not in summary:
+			continue
+		raw_code = (r.get("reaction_code") or "").strip()
+		intent = (r.get("intent_type") or "").strip()
+		reaction_code = raw_code or intent_to_reaction.get(intent, "")
+		if not reaction_code:
+			continue
+
+		reaction_counts = summary[org_comm]["reaction_counts"]
+		reaction_counts[reaction_code] = reaction_counts.get(reaction_code, 0) + int(r.get("cnt") or 0)
+
+	# Sum reaction totals
+	for data in summary.values():
+		reaction_counts = data.get("reaction_counts") or {}
+		for code in known_reaction_codes:
+			reaction_counts.setdefault(code, 0)
+		data["reaction_counts"] = reaction_counts
+		data["reactions_total"] = sum(int(v or 0) for v in reaction_counts.values())
+
+	# 3) comment_count = interactions that actually have text in `note`
 	comment_rows = frappe.db.sql(
 		"""
 		SELECT org_communication, COUNT(*) as cnt
@@ -245,7 +293,26 @@ def get_org_comm_interaction_summary(comm_names=None):
 		if org_comm in summary:
 			summary[org_comm]["comment_count"] = int(r.get("cnt") or 0)
 
-	# 3) current user's interaction (keep full row)
+	# 4) comments_total = Comment + Question with non-empty note
+	comments_rows = frappe.db.sql(
+		"""
+		SELECT org_communication, COUNT(*) as cnt
+		FROM `tabCommunication Interaction`
+		WHERE org_communication IN %(comms)s
+		  AND intent_type IN ('Comment', 'Question')
+		  AND COALESCE(TRIM(note), '') != ''
+		GROUP BY org_communication
+		""",
+		{"comms": comms_tuple},
+		as_dict=True,
+	)
+
+	for r in comments_rows:
+		org_comm = r.get("org_communication")
+		if org_comm in summary:
+			summary[org_comm]["comments_total"] = int(r.get("cnt") or 0)
+
+	# 5) current user's interaction (keep full row)
 	self_rows = frappe.db.sql(
 		"""
 		SELECT *

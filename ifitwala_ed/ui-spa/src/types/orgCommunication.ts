@@ -71,6 +71,9 @@ export interface InteractionSummarySelf {
 
 export interface InteractionSummary {
   counts: Record<string, number>
+  reaction_counts?: Record<string, number>
+  reactions_total?: number
+  comments_total?: number
   self: InteractionSummarySelf | null
   comment_count?: number
 }

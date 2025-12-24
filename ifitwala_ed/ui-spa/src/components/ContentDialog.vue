@@ -127,7 +127,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Button, FeatherIcon } from 'frappe-ui'
-import type { InteractionSummary, ReactionCode, InteractionIntentType } from '@/types/morning_brief'
+import { getInteractionStats } from '@/utils/interactionStats'
+import type { InteractionSummary, ReactionCode } from '@/types/morning_brief'
 
 defineOptions({
 	inheritAttrs: false
@@ -165,42 +166,23 @@ const isOpen = computed({
 const interaction = computed<InteractionSummary>(() => ({
   counts: {},
   self: null,
+  reaction_counts: {},
+  reactions_total: 0,
+  comments_total: 0,
   comment_count: 0,
   ...(props.interaction ?? {})
 }))
 
+const stats = computed(() => getInteractionStats(interaction.value))
 
 // HTML straight-through from Org Communication.message
 const contentHtml = computed(() => props.content || '')
 
-// Mapping intents ↔ reactions must match backend
-const intentByReaction: Record<ReactionCode, string> = {
-	like: 'Acknowledged',
-	thank: 'Appreciated',
-	heart: 'Support',
-	smile: 'Positive',
-	applause: 'Celebration',
-	question: 'Question',
-	other: 'Other'
-}
-
-const REACTION_TO_INTENT: Record<ReactionCode, InteractionIntentType> = {
-  like: 'Acknowledged',
-  thank: 'Appreciated',
-  heart: 'Support',
-  smile: 'Positive',
-  applause: 'Celebration',
-  question: 'Question',
-  other: 'Other'
-}
-
-// Comment count = number of rows with a note (from backend)
-const commentCount = computed(() => interaction.value.comment_count ?? 0)
+// Comment count = thread entries (Comment + Question)
+const commentCount = computed(() => stats.value.comments_total ?? 0)
 
 function getReactionCount(code: ReactionCode): number {
-  const intent = REACTION_TO_INTENT[code]
-  if (!intent) return 0
-  return interaction.value.counts?.[intent] ?? 0
+  return stats.value.reaction_counts?.[code] ?? 0
 }
 
 
