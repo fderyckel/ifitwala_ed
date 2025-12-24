@@ -29,6 +29,7 @@
 		<main class="staff-layout__main">
 			<!-- staff-shell handles width + padding; StaffHome already uses it -->
 			<slot />
+			<PortalNotification />
 		</main>
 	</div>
 </template>
@@ -39,6 +40,7 @@
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { FeatherIcon } from 'frappe-ui';
+import PortalNotification from '../components/PortalNotification.vue';
 
 const year = computed(() => new Date().getFullYear());
 </script>
