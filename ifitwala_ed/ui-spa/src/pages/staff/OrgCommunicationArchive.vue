@@ -81,8 +81,8 @@
     <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6 items-start h-[calc(100vh-14rem)]">
 
       <!-- LEFT LIST -->
-      <div class="flex flex-col h-full bg-white rounded-xl border border-line-soft shadow-soft overflow-hidden">
-        <div class="flex-1 overflow-y-auto p-4 space-y-2">
+      <div class="flex flex-col h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden">
+        <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-sand/20">
 
           <div v-if="orgCommFeed.loading && !feedItems.length" class="py-12 text-center text-slate-token/60">
              <LoadingIndicator />
@@ -172,7 +172,7 @@
       </div>
 
       <!-- RIGHT DETAIL -->
-      <div class="h-full bg-white rounded-xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative">
+      <div class="h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative">
         <div v-if="!selectedComm" class="flex flex-col items-center justify-center h-full text-center p-8 text-slate-token/40">
            <FeatherIcon name="inbox" class="h-10 w-10 mb-3 opacity-50" />
            <p class="type-h3">Select an announcement</p>
@@ -217,9 +217,11 @@
            </div>
 
            <!-- Content -->
-           <div class="flex-1 overflow-y-auto p-6 text-sm text-ink leading-relaxed prose prose-slate max-w-none">
-              <div v-if="fullContent.loading" class="py-10 text-center"><LoadingIndicator /></div>
-              <div v-else v-html="fullContent.data?.message || selectedComm.snippet"></div>
+           <div class="flex-1 overflow-y-auto p-6 text-sm text-ink leading-relaxed">
+              <div class="prose prose-slate max-w-none bg-white/80 rounded-2xl border border-line-soft shadow-soft p-6">
+                <div v-if="fullContent.loading" class="py-10 text-center"><LoadingIndicator /></div>
+                <div v-else v-html="fullContent.data?.message || selectedComm.snippet"></div>
+              </div>
            </div>
 
            <!-- Interactions Footer -->
