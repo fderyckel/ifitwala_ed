@@ -78,7 +78,7 @@
     </div>
 
     <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6 items-start h-[calc(100vh-14rem)]">
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-6 items-start h-[calc(100vh-14rem)]">
 
       <!-- LEFT LIST -->
       <div class="flex flex-col h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden">

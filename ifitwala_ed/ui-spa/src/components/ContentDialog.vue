@@ -9,7 +9,7 @@
 			>
 				<!-- SINGLE visible box -->
 				<div
-					class="content-card relative flex max-h-[80vh] w-full max-w-3xl flex-col gap-4 overflow-y-auto rounded-2xl bg-gradient-to-br from-white via-surface-soft to-white p-4 text-ink shadow-xl ring-1 ring-border/60 sm:p-5"
+					class="content-card relative flex max-h-[80vh] w-full max-w-3xl flex-col gap-4 overflow-y-auto rounded-2xl bg-surface-soft/90 p-4 text-ink shadow-strong ring-1 ring-border/60 sm:p-5"
 				>
 					<button
 						@click="isOpen = false"
@@ -22,7 +22,7 @@
 					<!-- HEADER -->
 					<div
 						v-if="hasHeaderContent"
-						class="flex items-start gap-3 border-b border-border/60 pb-3 pr-8"
+						class="flex items-start gap-3 border-b border-line-soft bg-surface-soft/70 pb-3 pr-8"
 					>
 						<div
 							v-if="image || imageFallback"
@@ -56,8 +56,10 @@
 					</div>
 
 					<!-- BODY CONTENT: respects HTML from Org Communication.message -->
-					<div class="prose prose-sm max-w-none text-slate-token/90">
-						<div v-html="contentHtml"></div>
+					<div class="rounded-2xl border border-line-soft bg-white/85 p-5 shadow-soft">
+						<div class="prose prose-sm max-w-none text-slate-token/90">
+							<div v-html="contentHtml"></div>
+						</div>
 					</div>
 
 					<!-- INTERACTIONS -->
