@@ -731,6 +731,10 @@
     border-color: rgb(var(--ink-rgb) / .60);
   }
 
+  .border-line-soft {
+    border-color: var(--border-subtle);
+  }
+
   .outline-ink {
     outline-color: rgb(var(--ink-rgb) / 1);
   }
@@ -779,6 +783,11 @@
   }
   .bg-surface-soft {
     background-color: rgb(var(--surface-rgb) / .92);
+  }
+  .bg-surface-glass {
+    background-color: rgb(var(--surface-rgb) / .85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
   .bg-surface-strong {
     background-color: rgb(var(--surface-strong-rgb));
