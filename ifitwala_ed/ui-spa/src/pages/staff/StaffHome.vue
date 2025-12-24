@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue -->
 <template>
-	<div class="staff-shell space-y-10">
+	<div class="staff-shell space-y-5">
 		<!-- ============================================================
 		     HEADER / GREETING
 		   ============================================================ -->

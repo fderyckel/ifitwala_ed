@@ -6,10 +6,7 @@
 				class="flex flex-col gap-4 border-b border-[rgb(var(--border-rgb)/0.9)] pb-4 md:flex-row md:items-center md:justify-between"
 			>
 				<div>
-					<p class="text-sm uppercase tracking-[0.2em] text-canopy">
-						Schedule
-					</p>
-					<h2 class="text-2xl font-semibold text-canopy">
+					<h2 class="text-xl font-semibold text-canopy">
 						Your upcoming commitments
 					</h2>
 					<p class="text-sm text-[rgb(var(--slate-rgb)/0.75)]">
