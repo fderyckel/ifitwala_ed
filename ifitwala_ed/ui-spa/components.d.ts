@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AnalyticsChart: typeof import('./src/components/analytics/AnalyticsChart.vue')['default']
     ClassEventModal: typeof import('./src/components/calendar/ClassEventModal.vue')['default']
+    CommentThreadDrawer: typeof import('./src/components/CommentThreadDrawer.vue')['default']
     ContentDialog: typeof import('./src/components/ContentDialog.vue')['default']
     DonutSplit: typeof import('./src/components/analytics/DonutSplit.vue')['default']
     FiltersBar: typeof import('./src/components/analytics/FiltersBar.vue')['default']
