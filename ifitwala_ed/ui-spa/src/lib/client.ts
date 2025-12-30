@@ -1,4 +1,4 @@
-// ui-spa/src/types/client.ts
+// ui-spa/src/lib/client.ts
 
 type HttpMethod = 'POST' | 'GET'
 

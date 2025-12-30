@@ -743,7 +743,7 @@ import {
 	type InteractionIntentType
 } from '@/types/morning_brief'
 import { canShowPublicInteractions } from '@/utils/orgCommunication'
-import type { OrgCommunicationListItem } from '@/utils/orgCommunication'
+import type { OrgCommunicationListItem } from '@/types/orgCommunication'
 import { getInteractionStats } from '@/utils/interactionStats'
 
 interface DialogContent {
@@ -798,11 +798,13 @@ const widgets = createResource<WidgetsPayload>({
 
 const interactionSummary = createResource<InteractionSummaryMap>({
 	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_org_comm_interaction_summary',
+	method: 'POST',
 	auto: false
 })
 
 const interactionThread = createResource<InteractionThreadRow[]>({
 	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_communication_thread',
+	method: 'POST',
 	auto: false
 })
 
@@ -942,7 +944,7 @@ function openInteractionThread(item: Announcement): void {
 	activeCommunication.value = item
 	showInteractionDrawer.value = true
 
-	interactionThread.fetch({
+	interactionThread.submit({
 		org_communication: item.name,
 		limit_start: 0,
 		limit_page_length: 30
@@ -992,7 +994,7 @@ function submitComment(): void {
 		surface: ORG_SURFACES.MORNING_BRIEF
 	}).then(() => {
 		newComment.value = ''
-		interactionThread.fetch({
+		interactionThread.submit({
 			org_communication: activeCommunication.value.name,
 			limit_start: 0,
 			limit_page_length: 30

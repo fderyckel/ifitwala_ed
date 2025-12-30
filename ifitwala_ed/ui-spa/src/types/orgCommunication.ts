@@ -60,24 +60,6 @@ export interface OrgCommunicationListItem {
   has_active_thread?: boolean
 }
 
-export interface InteractionSummarySelf {
-  intent_type?: string
-  name: string
-  user: string
-  reaction_code?: string
-  note?: string
-  visibility?: string
-}
-
-export interface InteractionSummary {
-  counts: Record<string, number>
-  reaction_counts?: Record<string, number>
-  reactions_total?: number
-  comments_total?: number
-  self: InteractionSummarySelf | null
-  comment_count?: number
-}
-
 export interface ArchiveFilters {
 	search_text: string | null
 	status: StatusFilter | null
@@ -119,31 +101,4 @@ export interface OrgCommunicationCreateDoc {
 	school: string
 	organization?: string | null
 	audiences: OrgCommunicationAudienceRow[]
-}
-
-
-export function canShowPublicInteractions(item: OrgCommunicationListItem | null | undefined): boolean {
-	if (!item) return false
-
-	const mode = (item.interaction_mode || 'None').trim()
-
-	// Only these modes allow comments + emoji
-	const interactiveModes = [
-		'Staff Comments',
-		'Structured Feedback',
-		'Student Q&A'
-	]
-
-	if (!interactiveModes.includes(mode)) {
-		return false
-	}
-
-	// Frappe booleans can be 0/1, '0'/'1', true/false
-	const raw = item.allow_public_thread as unknown
-	const publicEnabled =
-		raw === 1 ||
-		raw === true ||
-		raw === '1'
-
-	return publicEnabled
 }

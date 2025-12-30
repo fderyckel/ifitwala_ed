@@ -290,7 +290,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, createResource } from 'frappe-ui'
-import { type ArchiveFilters, type OrgCommunicationListItem, type InteractionSummary } from '@/types/orgCommunication'
+import { type ArchiveFilters, type OrgCommunicationListItem } from '@/types/orgCommunication'
+import { type InteractionSummary } from '@/types/morning_brief'
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue'
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats'
 

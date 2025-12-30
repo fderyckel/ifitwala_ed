@@ -123,7 +123,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { Button, Dialog, FormControl, toast } from 'frappe-ui';
 
-import { api } from '@/types/client';
+import { api } from '@/lib/client';
 import type {
 	AudienceTargetGroup,
 	CommunicationType,

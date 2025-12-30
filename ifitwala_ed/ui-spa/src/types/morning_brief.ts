@@ -1,3 +1,4 @@
+// ifitwala_ed/ui-spa/src/types/morning_brief.ts
 // Types for Morning Brief endpoints (derived from api-samples/morning_brief/schema.md)
 
 // ============================================================================
@@ -54,15 +55,18 @@ export type InteractionIntentType =
 	| 'Concern'
 	| 'Other'
 
-export type ReactionCode =
-	| 'like'
-	| 'thank'
-	| 'heart'
-	| 'smile'
-	| 'applause'
-	| 'question'
-	| 'concern'
-	| 'other'
+export const REACTION_CODES = [
+	'like',
+	'thank',
+	'heart',
+	'smile',
+	'applause',
+	'question',
+	'concern',
+	'other',
+] as const
+
+export type ReactionCode = (typeof REACTION_CODES)[number]
 
 // ============================================================================
 // Widgets: announcement + analytics payloads

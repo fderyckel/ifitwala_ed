@@ -156,7 +156,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { getInquiryDashboardData, getInquiryTypes, searchAdmissionUsers, searchAcademicYears } from '@/types/admission'
+import { getInquiryDashboardData, getInquiryTypes, searchAdmissionUsers, searchAcademicYears } from '@/lib/admission'
 import FiltersBar from '@/components/analytics/FiltersBar.vue'
 import KpiRow from '@/components/analytics/KpiRow.vue'
 import StatsTile from '@/components/analytics/StatsTile.vue'
