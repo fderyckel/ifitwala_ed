@@ -70,7 +70,8 @@ frappe.ui.form.on('Org Communication', {
 			frappe.msgprint({
 				message: __(
 					'For Class Announcements, please add at least one Audience row targeting ' +
-					'<strong>Students</strong> with a <strong>Student Group</strong>. Guardians are optional.'
+					'<strong>Students</strong> with a <strong>Student Group</strong>. ' +
+					'Set Target Mode to <strong>Student Group</strong> and include Students in Recipients.'
 				),
 				indicator: 'blue',
 				title: __('Class Announcement Audience')
@@ -282,47 +283,52 @@ function archive_communication(frm) {
 // ----------------------------------------------------------
 
 frappe.ui.form.on('Org Communication Audience', {
-	target_group(frm, cdt, cdn) {
+	target_mode(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
 		apply_audience_row_visibility(frm, cdt, cdn, row);
 
-		// If row.school is empty, inherit parent Issuing School
-		if (!row.school && frm.doc.school) {
+		// If row.school is empty, inherit parent Issuing School for School Scope only
+		if (row.target_mode === 'School Scope' && !row.school && frm.doc.school) {
 			frappe.model.set_value(cdt, cdn, 'school', frm.doc.school);
 		}
 	},
 
+	form_render(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		apply_audience_row_visibility(frm, cdt, cdn, row);
+	},
+
 	org_communication_audience_add(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
-		if (!row.school && frm.doc.school) {
-			frappe.model.set_value(cdt, cdn, 'school', frm.doc.school);
-		}
+		apply_audience_row_visibility(frm, cdt, cdn, row);
 	}
 });
 
 function apply_audience_row_visibility(frm, cdt, cdn, row) {
-	const target_group = (row.target_group || '').trim();
+	const target_mode = (row.target_mode || '').trim();
 	const grid_row = frm.fields_dict.audiences.grid.get_row(cdn);
 	if (!grid_row || !grid_row.grid_form) return;
 
 	const gf = grid_row.grid_form;
 
-	const show_students = ['Students', 'Guardians'].includes(target_group);
-	const show_staff = ['Whole Staff', 'Academic Staff'].includes(target_group);
+	const show_school_scope = target_mode === 'School Scope';
+	const show_team = target_mode === 'Team';
+	const show_student_group = target_mode === 'Student Group';
 
-	// school: always relevant, leave visible
 	if (gf.get_field('school')) {
-		gf.get_field('school').toggle(true);
+		gf.get_field('school').toggle(show_school_scope);
 	}
-
-	if (gf.get_field('program')) {
-		gf.get_field('program').toggle(show_students);
-	}
-	if (gf.get_field('student_group')) {
-		gf.get_field('student_group').toggle(show_students);
+	if (gf.get_field('include_descendants')) {
+		gf.get_field('include_descendants').toggle(show_school_scope);
 	}
 	if (gf.get_field('team')) {
-		gf.get_field('team').toggle(show_staff);
+		gf.get_field('team').toggle(show_team);
+	}
+	if (gf.get_field('student_group')) {
+		gf.get_field('student_group').toggle(show_student_group);
+	}
+	if (gf.get_field('recipients')) {
+		gf.get_field('recipients').toggle(true);
 	}
 	if (gf.get_field('note')) {
 		gf.get_field('note').toggle(true);

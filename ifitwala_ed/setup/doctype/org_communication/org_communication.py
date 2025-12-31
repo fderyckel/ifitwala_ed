@@ -17,9 +17,17 @@ from frappe.utils.nestedset import get_descendants_of
 # Full admin: global control + delete rights
 ADMIN_ROLES_FULL = {"System Manager", "Academic Admin"}
 
-# Elevated audience rights: can target Whole Staff / Whole Community,
-# and can choose Issuing School within their nested scope.
+# Elevated audience rights: can target School Scope audiences with
+# Staff or Community recipients, and can choose Issuing School within their nested scope.
 ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Assistant Admin"}
+
+AUDIENCE_TARGET_MODES = {"School Scope", "Team", "Student Group"}
+AUDIENCE_RECIPIENT_ROLES = {"Staff", "Students", "Guardians", "Community"}
+TARGET_MODE_ALLOWED_RECIPIENTS = {
+	"School Scope": AUDIENCE_RECIPIENT_ROLES,
+	"Team": {"Staff"},
+	"Student Group": {"Staff", "Students", "Guardians"},
+}
 
 
 def _user_has_any_role(user: str, roles: set[str]) -> bool:
@@ -28,6 +36,15 @@ def _user_has_any_role(user: str, roles: set[str]) -> bool:
 		return False
 	user_roles = set(frappe.get_roles(user))
 	return bool(user_roles & roles)
+
+
+def _get_recipient_roles(row) -> list[str]:
+	roles = []
+	for recipient in row.recipients or []:
+		role = (recipient.recipient_role or "").strip()
+		if role:
+			roles.append(role)
+	return roles
 
 
 # --------------------------------------------------------------------
@@ -169,9 +186,9 @@ class OrgCommunication(Document):
 		"""Validate the audience rows structurally and by school scope.
 
 		- At least one row.
-		- Per target_group, enforce required fields.
-		- For non-admins: audience.school must be within allowed scope.
-		- For everyone: audience.school must be consistent with the parent
+		- Per target_mode, enforce required fields and recipient roles.
+		- For non-admins: School Scope rows must be within allowed scope.
+		- For everyone: School Scope rows must be consistent with the parent
 		  Issuing School nested tree.
 		"""
 		if not self.audiences:
@@ -197,101 +214,101 @@ class OrgCommunication(Document):
 			parent_descendants = {self.school, *parent_descendants}
 
 		for row in self.audiences:
-			# Align row.organization with row.school or parent organization
-			if row.school:
-				row_org = frappe.db.get_value("School", row.school, "organization")
-				if row.organization and row.organization != row_org:
-					frappe.throw(
-						_(
-							"Audience row for School {school} has mismatched Organization {org}."
-						).format(school=row.school, org=row.organization),
-						title=_("Invalid Audience Organization"),
-					)
-				row.organization = row_org or self.organization
-			else:
-				# No school set on row; default to parent Issuing School / org if present
-				row.school = self.school
-				row.organization = row.organization or self.organization
-
-			# For non-privileged, row.school must be in allowed_schools
-			if not is_privileged and allowed_schools:
-				if row.school and row.school not in allowed_schools:
-					frappe.throw(
-						_(
-							"You cannot target school {school} in this audience row. "
-							"You may only target your school or its child schools."
-						).format(school=row.school),
-						title=_("Audience School Not Allowed"),
-					)
-
-			# Structural consistency with parent Issuing School tree
-			if parent_descendants and row.school and row.school not in parent_descendants:
+			target_mode = (row.target_mode or "").strip()
+			if not target_mode:
 				frappe.throw(
-					_(
-						"Audience row school {row_school} is not within the scope of the "
-						"parent communication school {parent_school}."
-					).format(row_school=row.school, parent_school=self.school),
-					title=_("Audience School Outside Scope"),
+					_("Target Mode is required for each Audience row."),
+					title=_("Missing Target Mode"),
 				)
 
-			target_group = (row.target_group or "").strip()
-
-			# Per target_group rules
-			if target_group in {"Whole Staff", "Academic Staff"}:
-				# Staff targeting: must have school or team
-				if not (row.school or row.team):
-					frappe.throw(
-						_(
-							"Audience row for {group} must specify at least a School or a Team."
-						).format(group=target_group),
-						title=_("Incomplete Audience"),
-					)
-
-			elif target_group == "Students":
-				# Must have at least one of: student_group, program, school
-				if not (row.student_group or row.program or row.school):
-					frappe.throw(
-						_(
-							"Audience row for Students must specify at least a Student Group, "
-							"Program, or School."
-						),
-						title=_("Incomplete Audience"),
-					)
-
-			elif target_group == "Guardians":
-				# Same requirement as Students
-				if not (row.student_group or row.program or row.school):
-					frappe.throw(
-						_(
-							"Audience row for Guardians must specify at least a Student Group, "
-							"Program, or School."
-						),
-						title=_("Incomplete Audience"),
-					)
-
-			elif target_group == "Whole Community":
-				if not row.school:
-					frappe.throw(
-						_("Audience row for Whole Community must specify a School."),
-						title=_("Incomplete Audience"),
-					)
-
-			else:
-				# If someone adds a new target_group option later and forgets to handle it
+			if target_mode not in AUDIENCE_TARGET_MODES:
 				frappe.throw(
-					_("Unsupported Target Group: {group}").format(group=target_group),
+					_("Unsupported Target Mode: {mode}").format(mode=target_mode),
 					title=_("Invalid Audience"),
 				)
+
+			if target_mode == "School Scope":
+				if not row.school:
+					frappe.throw(
+						_("Audience row for School Scope must specify a School."),
+						title=_("Incomplete Audience"),
+					)
+			elif target_mode == "Team":
+				if not row.team:
+					frappe.throw(
+						_("Audience row for Team must specify a Team."),
+						title=_("Incomplete Audience"),
+					)
+			elif target_mode == "Student Group":
+				if not row.student_group:
+					frappe.throw(
+						_("Audience row for Student Group must specify a Student Group."),
+						title=_("Incomplete Audience"),
+					)
+
+			if not row.recipients:
+				frappe.throw(
+					_("Audience row must include at least one Recipient."),
+					title=_("Missing Recipients"),
+				)
+
+			seen_roles = set()
+			recipients = []
+			for recipient in row.recipients:
+				role = (recipient.recipient_role or "").strip()
+				if not role:
+					frappe.throw(
+						_("Recipient Role is required for each Audience recipient."),
+						title=_("Invalid Audience Recipient"),
+					)
+				if role not in AUDIENCE_RECIPIENT_ROLES:
+					frappe.throw(
+						_("Invalid Recipient Role: {role}").format(role=role),
+						title=_("Invalid Audience Recipient"),
+					)
+				if role in seen_roles:
+					frappe.throw(
+						_("Duplicate Recipient Role: {role}").format(role=role),
+						title=_("Duplicate Recipients"),
+					)
+				seen_roles.add(role)
+				recipients.append(role)
+
+			allowed_roles = TARGET_MODE_ALLOWED_RECIPIENTS.get(target_mode, set())
+			if any(role not in allowed_roles for role in recipients):
+				frappe.throw(
+					_(
+						"Audience row for {mode} allows only: {roles}."
+					).format(mode=target_mode, roles=", ".join(sorted(allowed_roles))),
+					title=_("Invalid Audience Recipients"),
+				)
+
+			if target_mode == "School Scope":
+				if not is_privileged and allowed_schools:
+					if row.school not in allowed_schools:
+						frappe.throw(
+							_(
+								"You cannot target school {school} in this audience row. "
+								"You may only target your school or its child schools."
+							).format(school=row.school),
+							title=_("Audience School Not Allowed"),
+						)
+
+				if parent_descendants and row.school not in parent_descendants:
+					frappe.throw(
+						_(
+							"Audience row school {row_school} is not within the scope of the "
+							"parent communication school {parent_school}."
+						).format(row_school=row.school, parent_school=self.school),
+						title=_("Audience School Outside Scope"),
+					)
 
 	# ----------------------------------------------------------------
 	# Role-based restrictions on audience choices
 	# ----------------------------------------------------------------
 
 	def _enforce_role_restrictions_on_audiences(self):
-		"""Restrict which target_group values non-privileged users may use.
-
-		- Only elevated roles may target Whole Staff / Whole Community.
-		"""
+		"""Restrict School Scope rows with Staff/Community recipients to privileged roles."""
 		user = frappe.session.user
 		is_wide_privileged = _user_has_any_role(user, ELEVATED_WIDE_AUDIENCE_ROLES)
 
@@ -299,14 +316,17 @@ class OrgCommunication(Document):
 			return
 
 		for row in self.audiences:
-			target_group = (row.target_group or "").strip()
+			target_mode = (row.target_mode or "").strip()
+			if target_mode != "School Scope":
+				continue
 
-			if target_group in {"Whole Staff", "Whole Community"} and not is_wide_privileged:
+			recipient_roles = set(_get_recipient_roles(row))
+			if recipient_roles & {"Staff", "Community"} and not is_wide_privileged:
 				frappe.throw(
 					_(
-						"You are not allowed to target '{group}'. "
+						"You are not allowed to target Staff or Community at School Scope. "
 						"Only Academic Admin, Assistant Admin, or System Manager may do this."
-					).format(group=target_group),
+					),
 					title=_("Audience Not Allowed"),
 				)
 
@@ -339,12 +359,15 @@ class OrgCommunication(Document):
 
 		# Restrict publishing of wide audiences for non-privileged users
 		if self.status == "Published" and not is_admin:
-			wide_groups = {"Whole Staff", "Whole Community"}
-			if any((r.target_group or "").strip() in wide_groups for r in self.audiences):
+			if any(
+				(r.target_mode or "").strip() == "School Scope"
+				and set(_get_recipient_roles(r)) & {"Staff", "Community"}
+				for r in self.audiences
+			):
 				frappe.throw(
 					_(
-						"You are not allowed to publish communications targeting Whole Staff "
-						"or Whole Community."
+						"You are not allowed to publish School Scope communications "
+						"that target Staff or Community."
 					),
 					title=_("Publish Not Allowed"),
 				)
@@ -377,15 +400,20 @@ class OrgCommunication(Document):
 	def _validate_class_announcement_pattern(self):
 		"""For Class Announcement type, enforce a sane audience pattern.
 
-		- Must target Students (and optionally Guardians).
-		- At least one Students audience row with a Student Group.
+		- Must target Students (and optionally Guardians/Staff).
+		- At least one Student Group audience row that includes Students.
 		"""
 		if (self.communication_type or "").strip() != "Class Announcement":
 			return
 
 		has_student_group_row = False
 		for row in self.audiences:
-			if (row.target_group or "").strip() == "Students" and row.student_group:
+			if (row.target_mode or "").strip() != "Student Group":
+				continue
+			if not row.student_group:
+				continue
+			recipient_roles = set(_get_recipient_roles(row))
+			if "Students" in recipient_roles:
 				has_student_group_row = True
 				break
 

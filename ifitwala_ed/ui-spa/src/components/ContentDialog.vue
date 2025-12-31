@@ -192,7 +192,6 @@ const reactions: Array<{ code: ReactionCode; label: string; icon: string }> = [
 	{ code: 'heart', label: 'Support', icon: '❤️' },
 	{ code: 'smile', label: 'Positive', icon: '😊' },
 	{ code: 'applause', label: 'Celebrate', icon: '👏' },
-	{ code: 'question', label: 'Question', icon: '❓' },
-	{ code: 'other', label: 'Other', icon: '💬' }
+	{ code: 'question', label: 'Question', icon: '❓' }
 ]
 </script>

@@ -23,8 +23,7 @@ const INTENT_TO_REACTION: Record<string, ReactionCode> = {
 	Positive: 'smile',
 	Celebration: 'applause',
 	Question: 'question',
-	Concern: 'concern',
-	Other: 'other'
+	Concern: 'concern'
 }
 
 function sumCounts(counts: Record<string, number>): number {

@@ -6,30 +6,23 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "target_group",
-  "organization",
+  "target_mode",
   "school",
-  "program",
-  "column_break_sppw",
-  "student_group",
+  "include_descendants",
   "team",
+  "student_group",
+  "column_break_sppw",
+  "recipients",
   "column_break_xeey",
   "note"
  ],
  "fields": [
   {
-   "fieldname": "target_group",
+   "fieldname": "target_mode",
    "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "Target Group",
-   "options": "Whole Staff\nAcademic Staff\nSupport Staff\nStudents\nGuardians\nWhole Community"
-  },
-  {
-   "fieldname": "organization",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Organization",
-   "options": "Organization"
+   "label": "Target Mode",
+   "options": "School Scope\nTeam\nStudent Group"
   },
   {
    "fieldname": "school",
@@ -39,14 +32,17 @@
    "options": "School"
   },
   {
-   "fieldname": "program",
-   "fieldtype": "Link",
-   "label": "Program",
-   "options": "Program"
+   "default": "1",
+   "fieldname": "include_descendants",
+   "fieldtype": "Check",
+   "label": "Include Descendants"
   },
   {
-   "fieldname": "column_break_sppw",
-   "fieldtype": "Column Break"
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Team",
+   "options": "Team"
   },
   {
    "fieldname": "student_group",
@@ -56,11 +52,14 @@
    "options": "Student Group"
   },
   {
-   "fieldname": "team",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Team",
-   "options": "Team"
+   "fieldname": "column_break_sppw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "recipients",
+   "fieldtype": "Table",
+   "label": "Recipients",
+   "options": "Org Communication Audience Recipient"
   },
   {
    "fieldname": "column_break_xeey",
@@ -77,7 +76,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-12-01 15:14:59.850726",
+ "modified": "2025-12-21 15:14:59",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Communication Audience",

@@ -15,6 +15,10 @@ class CommunicationInteraction(Document):
 		self._normalize_note()
 		self._ensure_single_row_per_user()
 		self._infer_audience_type_if_missing()
+
+		if self.note and not (self.intent_type or "").strip():
+			self.intent_type = "Comment"
+
 		self._apply_mode_constraints()
 
 	def _normalize_note(self):
@@ -238,8 +242,7 @@ def get_org_comm_interaction_summary(comm_names=None):
 		"Positive": "smile",
 		"Celebration": "applause",
 		"Question": "question",
-		"Concern": "concern",
-		"Other": "other",
+		"Concern": "concern"
 	}
 	known_reaction_codes = set(intent_to_reaction.values())
 
@@ -293,14 +296,14 @@ def get_org_comm_interaction_summary(comm_names=None):
 		if org_comm in summary:
 			summary[org_comm]["comment_count"] = int(r.get("cnt") or 0)
 
-	# 4) comments_total = Comment + Question with non-empty note
+	# 4) comments_total = interactions with non-empty note (thread entries)
 	comments_rows = frappe.db.sql(
 		"""
 		SELECT org_communication, COUNT(*) as cnt
 		FROM `tabCommunication Interaction`
 		WHERE org_communication IN %(comms)s
-		  AND intent_type IN ('Comment', 'Question')
-		  AND COALESCE(TRIM(note), '') != ''
+			AND COALESCE(TRIM(note), '') != ''
+			AND visibility != 'Hidden'
 		GROUP BY org_communication
 		""",
 		{"comms": comms_tuple},
@@ -311,6 +314,7 @@ def get_org_comm_interaction_summary(comm_names=None):
 		org_comm = r.get("org_communication")
 		if org_comm in summary:
 			summary[org_comm]["comments_total"] = int(r.get("cnt") or 0)
+
 
 	# 5) current user's interaction (keep full row)
 	self_rows = frappe.db.sql(
@@ -434,8 +438,6 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 
 	return rows
 
-
-
 @frappe.whitelist()
 def upsert_communication_interaction(
 	org_communication: str,
@@ -461,7 +463,6 @@ def upsert_communication_interaction(
 	if not org_communication:
 		frappe.throw(_("org_communication is required."))
 
-	# Try to find existing interaction for this user
 	existing_name = frappe.db.get_value(
 		DOCTYPE,
 		{"org_communication": org_communication, "user": user},
@@ -476,8 +477,8 @@ def upsert_communication_interaction(
 		doc.user = user
 
 	parent = frappe.get_cached_doc("Org Communication", org_communication)
+	mode = (parent.interaction_mode or "None").strip() or "None"
 
-	# Mapping between reactions and intents for the palette
 	reaction_intent_map = {
 		"like": "Acknowledged",
 		"thank": "Appreciated",
@@ -501,7 +502,6 @@ def upsert_communication_interaction(
 	if surface is not None:
 		doc.surface = surface
 
-	# Context fields (optional, useful for Student Q&A / analytics)
 	if student_group is not None:
 		doc.student_group = student_group
 	if program is not None:
@@ -510,25 +510,27 @@ def upsert_communication_interaction(
 		doc.school = school
 
 	# Infer intent from reaction or vice-versa when one side is missing
-	if doc.reaction_code and not doc.intent_type:
+	if doc.reaction_code and not (doc.intent_type or "").strip():
 		doc.intent_type = reaction_intent_map.get(doc.reaction_code, doc.intent_type)
-	if doc.intent_type and not doc.reaction_code:
+
+	if (doc.intent_type or "").strip() and not (doc.reaction_code or "").strip():
 		doc.reaction_code = intent_reaction_map.get(doc.intent_type, doc.reaction_code)
 
-	# Default intent for staff comments when user submits a note without an explicit intent
-	if (parent.interaction_mode or "None") == "Staff Comments" and note and not doc.intent_type:
-		doc.intent_type = "Question"
+	# ✅ For Staff Comments: a note is a "Comment" unless explicitly a Question
+	if mode == "Staff Comments":
+		if doc.note and not (doc.intent_type or "").strip():
+			doc.intent_type = "Comment"
+
+	# ✅ Global normalization: note-only rows must have an intent for counting/thread consistency
+	if doc.note and not (doc.intent_type or "").strip():
+		doc.intent_type = "Comment"
 
 	# Question always requires a note
 	if doc.intent_type == "Question" and not doc.note:
 		frappe.throw(_("Please add a short comment or question."))
 
-	# Let the DocType controller enforce audience_type + mode constraints
 	doc.save(ignore_permissions=False)
-
-	# Return the saved interaction (for UI state)
 	return doc
-
 
 
 def on_doctype_update():

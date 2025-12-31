@@ -53,7 +53,6 @@ export type InteractionIntentType =
 	| 'Celebration'
 	| 'Question'
 	| 'Concern'
-	| 'Other'
 
 export const REACTION_CODES = [
 	'like',
@@ -63,7 +62,6 @@ export const REACTION_CODES = [
 	'applause',
 	'question',
 	'concern',
-	'other',
 ] as const
 
 export type ReactionCode = (typeof REACTION_CODES)[number]
