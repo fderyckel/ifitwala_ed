@@ -339,7 +339,7 @@ const analyticsQuickLinks = [
     label: 'Room Utilization',
     caption: 'Which rooms are over or under-used this week',
     icon: 'clock',
-    to: '/analytics/scheduling/room-utilization',
+    to: '/staff/room-utilization',
   },
 ]
 
@@ -405,7 +405,7 @@ const analyticsCategories = [
     icon: 'calendar',
     links: [
       { label: 'Timetable Utilization', to: '/analytics/scheduling/timetable-utilization' },
-      { label: 'Room Occupancy', to: '/analytics/scheduling/room-occupancy' },
+      { label: 'Room Occupancy', to: { name: 'staff-room-utilization' } },
       { label: 'Bus & Route Load', to: '/analytics/scheduling/bus-route-load' },
       { label: 'Exam Schedules', to: '/analytics/scheduling/exam-schedules' },
     ],
@@ -415,7 +415,7 @@ const analyticsCategories = [
     description: 'Family engagement, events, and surveys.',
     icon: 'message-circle',
     links: [
-      { label: 'Inquiries Analytics', to: 'staff-inquiry-analytics' },
+      { label: 'Inquiries Analytics', to: { name: 'staff-inquiry-analytics' } },
       { label: 'Message Open Rates', to: '/analytics/engagement/message-open-rates' },
       { label: 'Event Participation', to: '/analytics/engagement/event-participation' },
       { label: 'Survey Results', to: '/analytics/engagement/survey-results' },

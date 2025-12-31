@@ -69,80 +69,90 @@
 								</section>
 
 								<aside class="space-y-4 rounded-xl border border-border/80 bg-surface-soft p-4 shadow-sm">
-									<div>
-										<p class="type-label">Audience</p>
-										<div class="mt-2 flex flex-wrap gap-2">
-											<span class="chip">Students</span>
-											<span class="chip">{{ groupLabel }}</span>
-											<span class="chip">{{ schoolLabel }}</span>
-										</div>
-									</div>
-
-									<div>
-										<p class="type-label">Delivery</p>
-										<div class="mt-2 flex flex-wrap gap-2">
-											<span class="chip">Published</span>
-											<span class="chip">Everywhere</span>
-										</div>
-									</div>
-
-									<div class="space-y-3">
-										<div class="space-y-1">
-											<label class="type-label">Publish from</label>
-											<input
-												v-model="form.publish_from"
-												type="datetime-local"
-												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-											/>
-										</div>
-
-										<div class="space-y-1">
-											<label class="type-label">Publish until</label>
-											<input
-												v-model="form.publish_to"
-												type="datetime-local"
-												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-											/>
-										</div>
-
-										<div class="space-y-1">
-											<label class="type-label">Brief start date</label>
-											<input
-												v-model="form.brief_start_date"
-												type="date"
-												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-											/>
-										</div>
-
-										<div class="space-y-1">
-											<label class="type-label">Brief end date</label>
-											<input
-												v-model="form.brief_end_date"
-												type="date"
-												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-											/>
-										</div>
-									</div>
-
-									<div class="rounded-lg border border-dashed border-border/80 bg-white/70 px-3 py-2 text-xs text-slate-token/70">
-										Course: <span class="font-semibold text-ink">{{ courseLabel }}</span>
-										<span v-if="sessionDateLabel"> · Date: {{ sessionDateLabel }}</span>
-									</div>
-								</aside>
+						<div>
+							<div class="flex items-center justify-between">
+								<p class="type-label">Audience</p>
+								<label class="flex cursor-pointer items-center gap-2 text-sm text-ink/80 hover:text-ink">
+									<input
+										v-model="form.to_guardians"
+										type="checkbox"
+										class="rounded border-gray-300 text-jacaranda focus:ring-jacaranda"
+									/>
+									Include guardians
+								</label>
+							</div>
+							<div class="mt-2 flex flex-wrap gap-2">
+								<span class="chip">Students</span>
+								<span v-if="form.to_guardians" class="chip">Guardians</span>
+								<span class="chip">{{ groupLabel }}</span>
+								<span class="chip">{{ schoolLabel }}</span>
 							</div>
 						</div>
 
-						<div class="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-border/70 pt-3">
-							<Button appearance="secondary" @click="handleClose">Cancel</Button>
-							<Button
-								appearance="primary"
-								:loading="submitting"
-								:disabled="!canSubmit"
-								@click="submit"
-							>
-								Create announcement
-							</Button>
+						<div>
+							<p class="type-label">Delivery</p>
+							<div class="mt-2 flex flex-wrap gap-2">
+								<span class="chip">Published</span>
+								<span class="chip">Everywhere</span>
+							</div>
 						</div>
+
+						<div class="space-y-3">
+							<div class="space-y-1">
+								<label class="type-label">Publish from</label>
+								<input
+									v-model="form.publish_from"
+									type="datetime-local"
+									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+								/>
+							</div>
+
+							<div class="space-y-1">
+								<label class="type-label">Publish until</label>
+								<input
+									v-model="form.publish_to"
+									type="datetime-local"
+									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+								/>
+							</div>
+
+							<div class="space-y-1">
+								<label class="type-label">Brief start date</label>
+								<input
+									v-model="form.brief_start_date"
+									type="date"
+									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+								/>
+							</div>
+
+							<div class="space-y-1">
+								<label class="type-label">Brief end date</label>
+								<input
+									v-model="form.brief_end_date"
+									type="date"
+									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+								/>
+							</div>
+						</div>
+
+						<div class="rounded-lg border border-dashed border-border/80 bg-white/70 px-3 py-2 text-xs text-slate-token/70">
+							Course: <span class="font-semibold text-ink">{{ courseLabel }}</span>
+							<span v-if="sessionDateLabel"> · Date: {{ sessionDateLabel }}</span>
+						</div>
+					</aside>
+				</div>
+
+				<footer class="flex flex-wrap items-center justify-end gap-2 border-t border-border/70 pt-3">
+					<Button appearance="secondary" @click="handleClose">Cancel</Button>
+					<Button
+						appearance="primary"
+						:loading="submitting"
+						:disabled="!canSubmit"
+						@click="submit"
+					>
+						Create announcement
+					</Button>
+				</footer>
 					</DialogPanel>
 				</TransitionChild>
 			</div>
@@ -197,6 +207,7 @@ type OrgCommunicationQuickForm = {
 	publish_to: string;
 	brief_start_date: string;
 	brief_end_date: string;
+	to_guardians: boolean;
 };
 
 const form = reactive<OrgCommunicationQuickForm>({
@@ -206,6 +217,7 @@ const form = reactive<OrgCommunicationQuickForm>({
 	publish_to: '',
 	brief_start_date: '',
 	brief_end_date: '',
+	to_guardians: false,
 });
 
 const groupLabel = computed(
@@ -243,8 +255,11 @@ function initializeForm() {
 	form.message = '';
 	form.publish_from = formatDateTimeInput(now);
 	form.publish_to = '';
-	form.brief_start_date = formatDateInput(now);
-	form.brief_end_date = '';
+	// Use the event's session date if available, otherwise default to today
+	const eventDate = props.event?.session_date || formatDateInput(now);
+	form.brief_start_date = eventDate;
+	form.brief_end_date = eventDate;
+	form.to_guardians = false;
 }
 
 function formatDateInput(date: Date) {
@@ -301,7 +316,7 @@ async function submit() {
 		school: props.event.school,
 		include_descendants: 0,
 		to_students: 1,
-		to_guardians: 1,
+		to_guardians: form.to_guardians ? 1 : 0,
 		to_staff: 0,
 		to_community: 0,
 	};

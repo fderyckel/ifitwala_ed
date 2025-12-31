@@ -35,6 +35,8 @@ const routes: RouteRecordRaw[] = [
 	{ path: '/staff/analytics/student-overview', name: 'staff-student-overview', component: () => import('@/pages/staff/analytics/StudentOverview.vue'), meta: { layout: 'staff' } },
   { path: '/staff/announcements', name: 'staff-announcements', component: () => import('@/pages/staff/OrgCommunicationArchive.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/inquiry', name: 'staff-inquiry-analytics', component: () => import('@/pages/staff/analytics/InquiryAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/room-utilization', name: 'staff-room-utilization', component: () => import('@/pages/staff/RoomUtilization.vue'), meta: { layout: 'staff' } },
+	{ path: '/analytics/scheduling/room-utilization', redirect: { name: 'staff-room-utilization' } },
 ]
 
 const router = createRouter({
