@@ -207,6 +207,7 @@ export interface InteractionSummary {
 	reaction_counts?: ReactionCounts
 	reactions_total?: number
 	comments_total?: number
+	/** @deprecated do not use; backend no longer returns it */
 	comment_count?: number
 	self: InteractionSelf | null
 }

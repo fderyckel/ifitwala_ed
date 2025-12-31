@@ -208,7 +208,6 @@ def get_org_comm_interaction_summary(comm_names=None):
 			"reactions_total": 0,   # total emoji/quick reactions
 			"comments_total": 0,    # total thread entries (Comment + Question)
 			"self": None,       # current user's row
-			"comment_count": 0  # number of interactions with non-empty note
 		}
 		for name in clean_names
 	}
@@ -278,25 +277,7 @@ def get_org_comm_interaction_summary(comm_names=None):
 		data["reaction_counts"] = reaction_counts
 		data["reactions_total"] = sum(int(v or 0) for v in reaction_counts.values())
 
-	# 3) comment_count = interactions that actually have text in `note`
-	comment_rows = frappe.db.sql(
-		"""
-		SELECT org_communication, COUNT(*) as cnt
-		FROM `tabCommunication Interaction`
-		WHERE org_communication IN %(comms)s
-		  AND COALESCE(TRIM(note), '') != ''
-		GROUP BY org_communication
-		""",
-		{"comms": comms_tuple},
-		as_dict=True,
-	)
-
-	for r in comment_rows:
-		org_comm = r.get("org_communication")
-		if org_comm in summary:
-			summary[org_comm]["comment_count"] = int(r.get("cnt") or 0)
-
-	# 4) comments_total = interactions with non-empty note (thread entries)
+	# 3) comments_total = interactions with non-empty note (thread entries)
 	comments_rows = frappe.db.sql(
 		"""
 		SELECT org_communication, COUNT(*) as cnt
@@ -316,7 +297,7 @@ def get_org_comm_interaction_summary(comm_names=None):
 			summary[org_comm]["comments_total"] = int(r.get("cnt") or 0)
 
 
-	# 5) current user's interaction (keep full row)
+	# 4) current user's interaction (keep full row)
 	self_rows = frappe.db.sql(
 		"""
 		SELECT *
@@ -371,6 +352,8 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 
 	# Base conditions
 	conditions = ["i.org_communication = %(comm)s"]
+	conditions.append("COALESCE(TRIM(i.note), '') != ''")
+	conditions.append("i.visibility != 'Hidden'")
 	params = {
 		"comm": org_communication,
 		"user": user,
@@ -384,13 +367,10 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 		if not is_staff:
 			return []
 
-		# Staff can see everything except hidden
-		conditions.append("i.visibility != 'Hidden'")
-
 	elif mode == "Student Q&A":
 		if is_staff:
 			# Teachers/staff: see everything except hidden
-			conditions.append("i.visibility != 'Hidden'")
+			pass
 		else:
 			# Students: see public + their own (even if private)
 			conditions.append(
@@ -400,7 +380,7 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 	elif mode == "Structured Feedback":
 		# At this point we already know user is staff (non-staff returned above).
 		# Staff can see everything except hidden.
-		conditions.append("i.visibility != 'Hidden'")
+		pass
 
 	else:
 		# Other modes: treat as no thread

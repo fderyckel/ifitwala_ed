@@ -51,6 +51,7 @@ function withDefaultReactionCounts(
 export function getInteractionStats(summary?: InteractionSummaryLike | null): InteractionStats {
 	const counts = summary?.counts ?? {}
 	const fallbackComments = (counts.Comment || 0) + (counts.Question || 0)
+	const hasSummary = summary != null
 
 	const fallbackReactionCounts: Record<string, number> = {}
 	for (const [intent, value] of Object.entries(counts)) {
@@ -70,7 +71,9 @@ export function getInteractionStats(summary?: InteractionSummaryLike | null): In
 	const comments_total =
 		typeof summary?.comments_total === 'number'
 			? summary.comments_total
-			: fallbackComments
+			: hasSummary
+				? 0
+				: fallbackComments
 
 	return {
 		reactions_total,

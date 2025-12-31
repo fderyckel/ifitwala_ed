@@ -169,7 +169,6 @@ const interaction = computed<InteractionSummary>(() => ({
   reaction_counts: {},
   reactions_total: 0,
   comments_total: 0,
-  comment_count: 0,
   ...(props.interaction ?? {})
 }))
 
