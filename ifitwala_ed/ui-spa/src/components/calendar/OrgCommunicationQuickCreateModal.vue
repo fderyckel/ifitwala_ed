@@ -163,7 +163,6 @@ import { Button, FeatherIcon, FormControl, toast } from 'frappe-ui';
 
 import { api } from '@/lib/client';
 import type {
-	AudienceTargetGroup,
 	CommunicationType,
 	OrgCommunicationAudienceRow,
 	OrgCommunicationCreateDoc,
@@ -297,9 +296,14 @@ async function submit() {
 	submitting.value = true;
 
 	const audience: OrgCommunicationAudienceRow = {
-		target_group: 'Students' satisfies AudienceTargetGroup,
+		target_mode: 'Student Group',
 		student_group: props.event.student_group,
 		school: props.event.school,
+		include_descendants: 0,
+		to_students: 1,
+		to_guardians: 1,
+		to_staff: 0,
+		to_community: 0,
 	};
 
 	const payload: OrgCommunicationCreateDoc = {

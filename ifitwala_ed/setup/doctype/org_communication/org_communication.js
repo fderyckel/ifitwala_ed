@@ -322,24 +322,14 @@ function apply_audience_row_visibility(frm, cdt, cdn, row) {
 	const show_team = target_mode === 'Team';
 	const show_student_group = target_mode === 'Student Group';
 
-	if (gf.get_field('school')) {
-		gf.get_field('school').toggle(show_school_scope);
-	}
-	if (gf.get_field('include_descendants')) {
-		gf.get_field('include_descendants').toggle(show_school_scope);
-	}
-	if (gf.get_field('team')) {
-		gf.get_field('team').toggle(show_team);
-	}
-	if (gf.get_field('student_group')) {
-		gf.get_field('student_group').toggle(show_student_group);
-	}
+	toggle_grid_field(get_grid_field(gf, 'school'), show_school_scope);
+	toggle_grid_field(get_grid_field(gf, 'include_descendants'), show_school_scope);
+	toggle_grid_field(get_grid_field(gf, 'team'), show_team);
+	toggle_grid_field(get_grid_field(gf, 'student_group'), show_student_group);
 
 	update_recipient_toggle_state(gf, target_mode);
 
-	if (gf.get_field('note')) {
-		gf.get_field('note').toggle(true);
-	}
+	toggle_grid_field(get_grid_field(gf, 'note'), true);
 }
 
 function update_recipient_toggle_state(gf, target_mode) {
@@ -347,13 +337,38 @@ function update_recipient_toggle_state(gf, target_mode) {
 	const toggle_fields = ['to_staff', 'to_students', 'to_guardians', 'to_community'];
 
 	toggle_fields.forEach(fieldname => {
-		const field = gf.get_field(fieldname);
+		const field = get_grid_field(gf, fieldname);
 		if (!field) return;
 
-		field.toggle(true);
+		toggle_grid_field(field, true);
 		field.df.read_only = allowed.length ? !allowed.includes(fieldname) : 0;
-		field.refresh();
+		field.refresh && field.refresh();
 	});
+}
+
+function get_grid_field(grid_form, fieldname) {
+	if (!grid_form) return null;
+	if (grid_form.get_field) {
+		return grid_form.get_field(fieldname);
+	}
+	if (grid_form.fields_dict && grid_form.fields_dict[fieldname]) {
+		return grid_form.fields_dict[fieldname];
+	}
+	return null;
+}
+
+function toggle_grid_field(field, show) {
+	if (!field) return;
+	if (field.toggle) {
+		field.toggle(show);
+	} else if (field.$wrapper || field.wrapper) {
+		const $wrapper = field.$wrapper || $(field.wrapper);
+		$wrapper && $wrapper.toggle(show);
+	}
+	if (field.df) {
+		field.df.hidden = show ? 0 : 1;
+	}
+	field.refresh && field.refresh();
 }
 
 function get_allowed_recipient_fields(target_mode) {

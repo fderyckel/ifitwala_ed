@@ -19,16 +19,13 @@ export const COMMUNICATION_TYPES = [
 
 export type CommunicationType = (typeof COMMUNICATION_TYPES)[number]
 
-export const AUDIENCE_TARGET_GROUPS = [
-	'Whole Staff',
-	'Academic Staff',
-	'Support Staff',
-	'Students',
-	'Guardians',
-	'Whole Community',
+export const AUDIENCE_TARGET_MODES = [
+	'School Scope',
+	'Team',
+	'Student Group',
 ] as const
 
-export type AudienceTargetGroup = (typeof AUDIENCE_TARGET_GROUPS)[number]
+export type AudienceTargetMode = (typeof AUDIENCE_TARGET_MODES)[number]
 
 export const PRIORITY_OPTIONS = ['All', 'Low', 'Normal', 'High', 'Critical'] as const
 export type PriorityFilter = (typeof PRIORITY_OPTIONS)[number]
@@ -77,12 +74,15 @@ export interface ArchiveFilters {
 }
 
 export interface OrgCommunicationAudienceRow {
-	target_group: AudienceTargetGroup
-	organization?: string | null
+	target_mode: AudienceTargetMode
 	school?: string | null
-	program?: string | null
-	student_group?: string | null
 	team?: string | null
+	student_group?: string | null
+	include_descendants?: 0 | 1 | boolean
+	to_staff?: 0 | 1 | boolean
+	to_students?: 0 | 1 | boolean
+	to_guardians?: 0 | 1 | boolean
+	to_community?: 0 | 1 | boolean
 	note?: string | null
 }
 
