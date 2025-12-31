@@ -8,15 +8,20 @@ import json
 import frappe
 
 APP = "ifitwala_ed"
-DIST_DIR = os.path.join(frappe.get_app_path(APP), "public", "dist")
-MANIFEST_PATH = os.path.join(DIST_DIR, ".vite", "manifest.json")
-PUBLIC_BASE = f"/assets/{APP}/dist/"
+VITE_DIR = os.path.join(frappe.get_app_path(APP), "public", "vite")
+MANIFEST_PATHS = [
+	os.path.join(VITE_DIR, "manifest.json"),
+	os.path.join(VITE_DIR, ".vite", "manifest.json"),
+]
+PUBLIC_BASE = f"/assets/{APP}/vite/"
 
 def _load_manifest() -> dict:
-	if not os.path.exists(MANIFEST_PATH):
-		return {}
-	with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
-		return json.load(f)
+	for path in MANIFEST_PATHS:
+		if not os.path.exists(path):
+			continue
+		with open(path, "r", encoding="utf-8") as f:
+			return json.load(f)
+	return {}
 
 def _collect_assets(manifest: dict) -> tuple[str, list[str], list[str]]:
 	candidates = ["index.html", "src/main.ts", "src/main.js"]

@@ -9,7 +9,7 @@
 	<title>{% block page_title %}{{ page_title }}{% endblock %}</title>
 
 	<link rel="icon" href="/assets/ifitwala_ed/favicon.ico">
-	{{ include_style('/assets/ifitwala_ed/dist/student_portal.bundle.css') }}
+	{{ include_style('/assets/ifitwala_ed/css/student_portal.bundle.css') }}
 
 	{% block styles %}{% endblock %}
 	{% block meta %}{% endblock %}
@@ -140,9 +140,8 @@
 	{{ include_script('/assets/frappe/js/frappe-web.bundle.js') }}
 
 	{# Student portal bundle (includes Bootstrap JS + page modules) #}
-	{{ include_script('/assets/ifitwala_ed/dist/student_portal.bundle.js') }}
+	{{ include_script('/assets/ifitwala_ed/js/student_portal.bundle.js') }}
 
 	{% block scripts %}{% endblock %}
 </body>
 </html>
-

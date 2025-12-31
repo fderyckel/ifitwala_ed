@@ -27,11 +27,11 @@ app_license = "MIT"
 # include js, css files in header of desk.html
 
 app_include_js = [
-  "/assets/ifitwala_ed/dist/ifitwala_ed.bundle.js",
+  "/assets/ifitwala_ed/js/ifitwala_ed.bundle.js",
   "/assets/ifitwala_ed/js/initial_setup.js"
 ]
 
-#app_include_css = "/assets/ifitwala_ed/dist/desk_overrides.bundle.css"
+#app_include_css = "/assets/ifitwala_ed/css/desk_overrides.bundle.css"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/ifitwala/css/ifitwala.css"

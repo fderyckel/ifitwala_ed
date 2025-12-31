@@ -4,7 +4,7 @@
  *********************************************************************/
 
 function loadFullCalendarCSS() {
-	const href = "/assets/ifitwala_ed/dist/fullcalendar.bundle.css";
+	const href = "/assets/ifitwala_ed/css/fullcalendar.bundle.css";
 	if (!document.querySelector(`link[href="${href}"]`)) {
 		const link = document.createElement("link");
 		link.rel = "stylesheet";

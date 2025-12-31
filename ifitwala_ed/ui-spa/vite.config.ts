@@ -17,9 +17,9 @@ export default defineConfig({
 		Icons({ compiler: 'vue3' })
 	],
 	resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
-	base: '/assets/ifitwala_ed/dist/',
+	base: '/assets/ifitwala_ed/vite/',
 	build: {
-		outDir: path.resolve(__dirname, '../public/dist'),
+		outDir: path.resolve(__dirname, '../public/vite'),
 		emptyOutDir: true,
 		manifest: true,
 		rollupOptions: {
