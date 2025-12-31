@@ -1,4 +1,4 @@
-// ui-spa/src/lib/client.ts
+// ifitwala_ed/ui-spa/src/lib/client.ts
 
 type HttpMethod = 'POST' | 'GET'
 

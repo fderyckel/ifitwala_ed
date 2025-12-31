@@ -1,3 +1,4 @@
+// ifitwala_ed/ui-spa/src/components/calendar/classEventTypes.ts
 export interface ClassEventDetails {
 	id: string;
 	student_group: string;

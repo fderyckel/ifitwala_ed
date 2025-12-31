@@ -73,8 +73,12 @@ import frappe
 from frappe import _
 from frappe.utils import get_datetime, get_system_timezone, getdate, now_datetime, format_datetime
 
-from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay
-from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar, iter_student_group_room_slots
+from ifitwala_ed.schedule.schedule_utils import (
+	get_effective_schedule_for_ay,
+	get_rotation_dates,
+	get_weekend_days_for_calendar,
+	iter_student_group_room_slots,
+)
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 VALID_SOURCES = {"student_group", "meeting", "school_event", "frappe_event"}
@@ -1171,13 +1175,86 @@ def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[st
 	start_dt = _to_system_datetime(row.from_datetime, tzinfo) if row.from_datetime else None
 	end_dt = _to_system_datetime(row.to_datetime, tzinfo) if row.to_datetime else None
 
+	rotation_day = None
+	block_number = None
+	location = None
+
+	if row.source_name and start_dt:
+		group_meta = frappe.db.get_value(
+			"Student Group",
+			row.source_name,
+			["school_schedule", "academic_year", "school", "program_offering"],
+			as_dict=True,
+		)
+		schedule_name = None
+		academic_year = None
+		school = None
+		if group_meta:
+			schedule_name = group_meta.school_schedule
+			academic_year = group_meta.academic_year
+			school = group_meta.school
+			if not school and group_meta.program_offering:
+				school = frappe.db.get_value("Program Offering", group_meta.program_offering, "school")
+			if not school and academic_year:
+				school = frappe.db.get_value("Academic Year", academic_year, "school")
+			if not schedule_name and academic_year and school:
+				schedule_name = get_effective_schedule_for_ay(academic_year, school)
+			if schedule_name and not academic_year:
+				academic_year = frappe.db.get_value("School Schedule", schedule_name, "academic_year")
+
+		if schedule_name and academic_year:
+			rot_dates = get_rotation_dates(schedule_name, academic_year, include_holidays=False)
+			rotation_map = {
+				getdate(rd.get("date")).isoformat(): rd.get("rotation_day")
+				for rd in rot_dates
+				if rd.get("date")
+			}
+			rotation_day = rotation_map.get(start_dt.date().isoformat())
+			if rotation_day is not None:
+				try:
+					rotation_day = int(rotation_day)
+				except Exception:
+					pass
+
+			if rotation_day is not None:
+				block_rows = frappe.get_all(
+					"School Schedule Block",
+					filters={"parent": schedule_name, "rotation_day": rotation_day},
+					fields=["block_number", "from_time", "to_time"],
+					ignore_permissions=True,
+				)
+				start_time = start_dt.time()
+				for block in block_rows:
+					from_time = _coerce_time(block.get("from_time"))
+					to_time = _coerce_time(block.get("to_time"))
+					if not from_time or not to_time:
+						continue
+					if from_time <= start_time < to_time:
+						block_number = block.get("block_number")
+						try:
+							block_number = int(block_number) if block_number is not None else None
+						except Exception:
+							pass
+						break
+
+				if block_number is not None:
+					location = frappe.db.get_value(
+						"Student Group Schedule",
+						{
+							"parent": row.source_name,
+							"rotation_day": rotation_day,
+							"block_number": block_number,
+						},
+						"location",
+					)
+
 	return {
 		"student_group": row.source_name,
-		"rotation_day": None,
-		"block_number": None,
-		"block_label": None,
+		"rotation_day": rotation_day,
+		"block_number": block_number,
+		"block_label": _("Block {0}").format(block_number) if block_number is not None else None,
 		"session_date": start_dt.date().isoformat() if start_dt else None,
-		"location": None,
+		"location": location,
 		"start": start_dt,
 		"end": end_dt,
 	}
