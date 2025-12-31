@@ -1186,6 +1186,18 @@ def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[st
 	block_number = None
 	location = None
 
+	def _matches_booking_window(
+		window_start: Optional[time],
+		window_end: Optional[time],
+		booking_start: Optional[time],
+		booking_end: Optional[time],
+	) -> bool:
+		if not window_start or not window_end or not booking_start:
+			return False
+		if not booking_end or booking_end <= booking_start:
+			return window_start <= booking_start < window_end
+		return booking_start < window_end and booking_end > window_start
+
 	if row.source_name and start_dt:
 		group_meta = frappe.db.get_value(
 			"Student Group",
@@ -1209,6 +1221,9 @@ def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[st
 			if schedule_name and not academic_year:
 				academic_year = frappe.db.get_value("School Schedule", schedule_name, "academic_year")
 
+		booking_start = start_dt.time()
+		booking_end = end_dt.time() if end_dt else None
+
 		if schedule_name and academic_year:
 			rot_dates = get_rotation_dates(schedule_name, academic_year, include_holidays=False)
 			rotation_map = {
@@ -1223,37 +1238,54 @@ def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[st
 				except Exception:
 					pass
 
-			if rotation_day is not None:
-				block_rows = frappe.get_all(
-					"School Schedule Block",
-					filters={"parent": schedule_name, "rotation_day": rotation_day},
-					fields=["block_number", "from_time", "to_time"],
-					ignore_permissions=True,
-				)
-				start_time = start_dt.time()
-				for block in block_rows:
-					from_time = _coerce_time(block.get("from_time"))
-					to_time = _coerce_time(block.get("to_time"))
-					if not from_time or not to_time:
-						continue
-					if from_time <= start_time < to_time:
-						block_number = block.get("block_number")
-						try:
-							block_number = int(block_number) if block_number is not None else None
-						except Exception:
-							pass
-						break
+		if rotation_day is not None:
+			sg_rows = frappe.get_all(
+				"Student Group Schedule",
+				filters={"parent": row.source_name, "rotation_day": rotation_day},
+				fields=["block_number", "location", "from_time", "to_time"],
+				ignore_permissions=True,
+			)
+			for sg_row in sg_rows:
+				from_time = _coerce_time(sg_row.get("from_time"))
+				to_time = _coerce_time(sg_row.get("to_time"))
+				if not _matches_booking_window(from_time, to_time, booking_start, booking_end):
+					continue
+				block_number = sg_row.get("block_number")
+				try:
+					block_number = int(block_number) if block_number is not None else None
+				except Exception:
+					pass
+				location = sg_row.get("location")
+				break
 
-				if block_number is not None:
-					location = frappe.db.get_value(
-						"Student Group Schedule",
-						{
-							"parent": row.source_name,
-							"rotation_day": rotation_day,
-							"block_number": block_number,
-						},
-						"location",
-					)
+		if schedule_name and academic_year and rotation_day is not None and block_number is None:
+			block_rows = frappe.get_all(
+				"School Schedule Block",
+				filters={"parent": schedule_name, "rotation_day": rotation_day},
+				fields=["block_number", "from_time", "to_time"],
+				ignore_permissions=True,
+			)
+			for block in block_rows:
+				from_time = _coerce_time(block.get("from_time"))
+				to_time = _coerce_time(block.get("to_time"))
+				if _matches_booking_window(from_time, to_time, booking_start, booking_end):
+					block_number = block.get("block_number")
+					try:
+						block_number = int(block_number) if block_number is not None else None
+					except Exception:
+						pass
+					break
+
+			if block_number is not None and not location:
+				location = frappe.db.get_value(
+					"Student Group Schedule",
+					{
+						"parent": row.source_name,
+						"rotation_day": rotation_day,
+						"block_number": block_number,
+					},
+					"location",
+				)
 
 	return {
 		"student_group": row.source_name,
