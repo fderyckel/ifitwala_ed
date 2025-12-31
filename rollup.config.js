@@ -7,7 +7,7 @@
  *
  * ── Student-portal bundle  (authenticated traffic, cache-busted) ─────
  * index.js (+ imports)       → public/js/student_portal.<hash>.bundle.js
- *                              public/css/student_portal.<hash>.bundle.css
+ * public/css/student_portal.<hash>.bundle.css
  *
  * ── Desk-only hierarchy chart (rarely used, lazy-loaded) ─────────────
  * hierarchy_chart.scss       → public/css/hierarchy_chart.min.css
@@ -123,7 +123,6 @@ module.exports = [
 				targets: [
 					{
 						src: 'node_modules/bootstrap-icons/font/fonts/*',
-						/* CHANGED: put fonts in public/fonts so ../fonts resolves from css/*.css */
 						dest: fontsDir
 					},
 					{
@@ -242,10 +241,10 @@ module.exports = [
 		},
 		plugins: [
 			postcss({
-				extract: path.resolve(cssDest, `student_portal.${portalHash}.bundle.css`),
+				// FIX: Use simple filename. Rollup outputs this to `jsDest` (alongside the JS bundle).
+				extract: `student_portal.${portalHash}.bundle.css`,
 				minimize: true,
 				plugins: [
-					/* NEW: inline @import (bootstrap-icons.css) into the output */
 					postcssImport,
 					require('autoprefixer')
 				],
@@ -259,7 +258,6 @@ module.exports = [
 				targets: [
 					{
 						src: 'node_modules/bootstrap-icons/font/fonts/*',
-						/* CHANGED: match ../fonts from css bundles */
 						dest: fontsDir
 					}
 				],
@@ -273,14 +271,36 @@ module.exports = [
 				name: 'alias-stable-output',
 				writeBundle() {
 					const fs = require('fs');
-					fs.copyFileSync(
-						`${cssDest}/student_portal.${portalHash}.bundle.css`,
-						`${cssDest}/student_portal.bundle.css`
-					);
-					fs.copyFileSync(
-						`${jsDest}/student_portal.${portalHash}.bundle.js`,
-						`${jsDest}/student_portal.bundle.js`
-					);
+					const path = require('path');
+
+					// 1. Move the CSS file from jsDest to cssDest (because Extract: 'filename' puts it next to the bundle)
+					const generatedCssPath = path.join(jsDest, `student_portal.${portalHash}.bundle.css`);
+					const targetCssPath = path.join(cssDest, `student_portal.${portalHash}.bundle.css`);
+
+					if (fs.existsSync(generatedCssPath)) {
+						try {
+							fs.renameSync(generatedCssPath, targetCssPath);
+						} catch (e) {
+							console.error("Failed to move CSS file to public/css:", e);
+						}
+					}
+
+					// 2. Create stable aliases
+					try {
+						if (fs.existsSync(targetCssPath)) {
+							fs.copyFileSync(
+								targetCssPath,
+								path.join(cssDest, 'student_portal.bundle.css')
+							);
+						}
+
+						fs.copyFileSync(
+							`${jsDest}/student_portal.${portalHash}.bundle.js`,
+							`${jsDest}/student_portal.bundle.js`
+						);
+					} catch (e) {
+						console.error("Failed to create alias files:", e);
+					}
 				}
 			}
 		],
