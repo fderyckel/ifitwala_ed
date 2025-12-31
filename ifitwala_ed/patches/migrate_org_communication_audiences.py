@@ -101,7 +101,7 @@ def execute():
 				else:
 					row_manual = True
 
-			if include_descendants_value in (None, "", 0):
+			if not target_mode_original and include_descendants_value in (None, "", 0):
 				row_updates["include_descendants"] = 1
 
 		mapped_toggle = TARGET_GROUP_TO_TOGGLE.get((row.target_group or "").strip())

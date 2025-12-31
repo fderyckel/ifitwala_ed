@@ -23,6 +23,12 @@ ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Assistant A
 
 AUDIENCE_TARGET_MODES = {"School Scope", "Team", "Student Group"}
 RECIPIENT_TOGGLE_FIELDS = ("to_staff", "to_students", "to_guardians", "to_community")
+RECIPIENT_TOGGLE_LABELS = {
+	"to_staff": "Staff",
+	"to_students": "Students",
+	"to_guardians": "Guardians",
+	"to_community": "Community",
+}
 TARGET_MODE_ALLOWED_RECIPIENTS = {
 	"School Scope": {"to_staff", "to_students", "to_guardians", "to_community"},
 	"Team": {"to_staff"},
@@ -260,12 +266,15 @@ class OrgCommunication(Document):
 			allowed_roles = TARGET_MODE_ALLOWED_RECIPIENTS.get(target_mode, set())
 			invalid_roles = enabled_recipients - allowed_roles
 			if invalid_roles:
+				allowed_labels = ", ".join(
+					sorted(RECIPIENT_TOGGLE_LABELS.get(role, role) for role in allowed_roles)
+				)
 				frappe.throw(
 					_(
 						"Audience row for {mode} allows only: {roles}."
 					).format(
 						mode=target_mode,
-						roles=", ".join(sorted(allowed_roles)),
+						roles=allowed_labels,
 					),
 					title=_("Invalid Audience Recipients"),
 				)

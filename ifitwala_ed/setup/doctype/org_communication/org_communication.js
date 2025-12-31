@@ -297,6 +297,7 @@ frappe.ui.form.on('Org Communication Audience', {
 	form_render(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
 		apply_audience_row_visibility(frm, cdt, cdn, row);
+		apply_recipient_defaults(frm, cdt, cdn, row);
 	},
 
 	org_communication_audience_add(frm, cdt, cdn) {
@@ -381,26 +382,30 @@ function apply_recipient_defaults(frm, cdt, cdn, row) {
 	const allowed = get_allowed_recipient_fields(target_mode);
 	const toggle_fields = ['to_staff', 'to_students', 'to_guardians', 'to_community'];
 
-	let any_enabled = false;
+	const values = {
+		to_staff: is_checked(row.to_staff),
+		to_students: is_checked(row.to_students),
+		to_guardians: is_checked(row.to_guardians),
+		to_community: is_checked(row.to_community)
+	};
+
 	toggle_fields.forEach(fieldname => {
-		const current = is_checked(row[fieldname]);
-		if (current) {
-			any_enabled = true;
-		}
-		if (allowed.length && !allowed.includes(fieldname) && current) {
+		if (allowed.length && !allowed.includes(fieldname) && values[fieldname]) {
+			values[fieldname] = false;
 			frappe.model.set_value(cdt, cdn, fieldname, 0);
 		}
 	});
 
 	if (target_mode === 'Team') {
-		if (!is_checked(row.to_staff)) {
+		if (!values.to_staff) {
+			values.to_staff = true;
 			frappe.model.set_value(cdt, cdn, 'to_staff', 1);
 		}
 		return;
 	}
 
 	if (target_mode === 'Student Group') {
-		const has_any = toggle_fields.some(fieldname => is_checked(row[fieldname]));
+		const has_any = toggle_fields.some(fieldname => values[fieldname]);
 		if (!has_any) {
 			frappe.model.set_value(cdt, cdn, 'to_students', 1);
 			frappe.model.set_value(cdt, cdn, 'to_guardians', 1);
@@ -410,6 +415,6 @@ function apply_recipient_defaults(frm, cdt, cdn, row) {
 	}
 
 	if (target_mode === 'School Scope') {
-		if (any_enabled) return;
+		if (toggle_fields.some(fieldname => values[fieldname])) return;
 	}
 }
