@@ -141,6 +141,7 @@
 						</div>
 					</aside>
 				</div>
+			</div>
 
 				<footer class="flex flex-wrap items-center justify-end gap-2 border-t border-border/70 pt-3">
 					<Button appearance="secondary" @click="handleClose">Cancel</Button>

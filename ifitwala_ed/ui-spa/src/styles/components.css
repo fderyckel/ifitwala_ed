@@ -66,6 +66,14 @@
     color: rgb(var(--slate-rgb) / .75);
   }
 
+  .type-button-label {
+    @apply text-xs font-semibold tracking-[0.06em];
+  }
+
+  .type-badge-label {
+    @apply text-[0.65rem] font-semibold tracking-[0.08em];
+  }
+
   /* ---------------------------------------------------------------
      Reusable card + chip shells for analytics surfaces
      --------------------------------------------------------------- */
