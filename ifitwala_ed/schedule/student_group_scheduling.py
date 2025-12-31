@@ -3,10 +3,6 @@
 
 # ifitwala_ed/schedule/student_group_scheduling.py
 
-# ifitwala_ed/schedule/student_group_scheduling.py
-
-# ifitwala_ed/schedule/student_group_scheduling.py
-
 """
 Student Group Scheduling Utilities
 
