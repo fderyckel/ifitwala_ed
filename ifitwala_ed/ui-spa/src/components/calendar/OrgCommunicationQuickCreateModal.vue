@@ -1,127 +1,165 @@
-<!-- ifitwala_ed/ui-spa/src/components/calendar/OrgCommunicationQuickCreateModal.vue -->
 <template>
-	<Dialog v-model="isOpen" :options="{ size: 'xl', title: null }">
-		<template #body-content>
-			<div class="flex h-[80vh] flex-col gap-4 text-ink">
-				<header class="flex flex-wrap items-start justify-between gap-3 border-b border-border/70 pb-3">
-					<div class="min-w-0">
-						<p class="type-overline text-slate-token/70">Class announcement</p>
-						<h2 class="type-h2 text-ink">Create announcement</h2>
-						<p class="type-meta text-slate-token/70">
-							Student group: {{ groupLabel }}
-						</p>
-					</div>
+	<TransitionRoot as="template" :show="isOpen">
+		<Dialog as="div" class="meeting-modal meeting-modal--class" @close="handleClose">
+			<TransitionChild
+				as="template"
+				enter="meeting-modal__fade-enter"
+				enter-from="meeting-modal__fade-from"
+				enter-to="meeting-modal__fade-to"
+				leave="meeting-modal__fade-leave"
+				leave-from="meeting-modal__fade-to"
+				leave-to="meeting-modal__fade-from"
+			>
+				<div class="meeting-modal__backdrop" />
+			</TransitionChild>
 
-					<Button appearance="minimal" icon="x" @click="isOpen = false" />
-				</header>
+			<div class="meeting-modal__wrapper">
+				<TransitionChild
+					as="template"
+					enter="meeting-modal__panel-enter"
+					enter-from="meeting-modal__panel-from"
+					enter-to="meeting-modal__panel-to"
+					leave="meeting-modal__panel-leave"
+					leave-from="meeting-modal__panel-to"
+					leave-to="meeting-modal__panel-from"
+				>
+					<DialogPanel class="meeting-modal__panel">
+						<div class="meeting-modal__header">
+							<div class="meeting-modal__headline">
+								<p class="meeting-modal__eyebrow">Class announcement</p>
+								<DialogTitle as="h3">Create announcement</DialogTitle>
+								<p class="meeting-modal__time">
+									Student group: {{ groupLabel }}
+								</p>
+							</div>
 
-				<div class="grid flex-1 grid-cols-1 gap-4 overflow-y-auto pr-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
-					<section class="space-y-4">
-						<div class="space-y-1">
-							<label class="type-label">Title</label>
-							<FormControl
-								v-model="form.title"
-								type="text"
-								placeholder="Student group - Date"
-							/>
-							<p class="type-caption text-slate-token/70">
-								If left blank, we will use "{{ fallbackTitle }}".
-							</p>
+							<button
+								class="meeting-modal__icon-button"
+								aria-label="Close modal"
+								@click="handleClose"
+							>
+								<FeatherIcon name="x" class="h-5 w-5" />
+							</button>
 						</div>
 
-						<div class="space-y-1">
-							<label class="type-label">Message</label>
-							<FormControl
-								v-model="form.message"
-								type="textarea"
-								:rows="8"
-								placeholder="Write the announcement for this class..."
-							/>
-						</div>
-					</section>
+						<div class="meeting-modal__body">
+							<div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
+								<section class="space-y-4">
+									<div class="space-y-1">
+										<label class="type-label">Title</label>
+										<FormControl
+											v-model="form.title"
+											type="text"
+											placeholder="Student group - Date"
+										/>
+										<p class="type-caption text-slate-token/70">
+											If left blank, we will use "{{ fallbackTitle }}".
+										</p>
+									</div>
 
-					<aside class="space-y-4 rounded-xl border border-border/80 bg-surface-soft p-4 shadow-sm">
-						<div>
-							<p class="type-label">Audience</p>
-							<div class="mt-2 flex flex-wrap gap-2">
-								<span class="chip">Students</span>
-								<span class="chip">{{ groupLabel }}</span>
-								<span class="chip">{{ schoolLabel }}</span>
+									<div class="space-y-1">
+										<label class="type-label">Message</label>
+										<FormControl
+											v-model="form.message"
+											type="textarea"
+											:rows="8"
+											placeholder="Write the announcement for this class..."
+										/>
+									</div>
+								</section>
+
+								<aside class="space-y-4 rounded-xl border border-border/80 bg-surface-soft p-4 shadow-sm">
+									<div>
+										<p class="type-label">Audience</p>
+										<div class="mt-2 flex flex-wrap gap-2">
+											<span class="chip">Students</span>
+											<span class="chip">{{ groupLabel }}</span>
+											<span class="chip">{{ schoolLabel }}</span>
+										</div>
+									</div>
+
+									<div>
+										<p class="type-label">Delivery</p>
+										<div class="mt-2 flex flex-wrap gap-2">
+											<span class="chip">Published</span>
+											<span class="chip">Everywhere</span>
+										</div>
+									</div>
+
+									<div class="space-y-3">
+										<div class="space-y-1">
+											<label class="type-label">Publish from</label>
+											<input
+												v-model="form.publish_from"
+												type="datetime-local"
+												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+											/>
+										</div>
+
+										<div class="space-y-1">
+											<label class="type-label">Publish until</label>
+											<input
+												v-model="form.publish_to"
+												type="datetime-local"
+												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+											/>
+										</div>
+
+										<div class="space-y-1">
+											<label class="type-label">Brief start date</label>
+											<input
+												v-model="form.brief_start_date"
+												type="date"
+												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+											/>
+										</div>
+
+										<div class="space-y-1">
+											<label class="type-label">Brief end date</label>
+											<input
+												v-model="form.brief_end_date"
+												type="date"
+												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+											/>
+										</div>
+									</div>
+
+									<div class="rounded-lg border border-dashed border-border/80 bg-white/70 px-3 py-2 text-xs text-slate-token/70">
+										Course: <span class="font-semibold text-ink">{{ courseLabel }}</span>
+										<span v-if="sessionDateLabel"> · Date: {{ sessionDateLabel }}</span>
+									</div>
+								</aside>
 							</div>
 						</div>
 
-						<div>
-							<p class="type-label">Delivery</p>
-							<div class="mt-2 flex flex-wrap gap-2">
-								<span class="chip">Published</span>
-								<span class="chip">Everywhere</span>
-							</div>
+						<div class="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-border/70 pt-3">
+							<Button appearance="secondary" @click="handleClose">Cancel</Button>
+							<Button
+								appearance="primary"
+								:loading="submitting"
+								:disabled="!canSubmit"
+								@click="submit"
+							>
+								Create announcement
+							</Button>
 						</div>
-
-						<div class="space-y-3">
-							<div class="space-y-1">
-								<label class="type-label">Publish from</label>
-								<input
-									v-model="form.publish_from"
-									type="datetime-local"
-									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-								/>
-							</div>
-
-							<div class="space-y-1">
-								<label class="type-label">Publish until</label>
-								<input
-									v-model="form.publish_to"
-									type="datetime-local"
-									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-								/>
-							</div>
-
-							<div class="space-y-1">
-								<label class="type-label">Brief start date</label>
-								<input
-									v-model="form.brief_start_date"
-									type="date"
-									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-								/>
-							</div>
-
-							<div class="space-y-1">
-								<label class="type-label">Brief end date</label>
-								<input
-									v-model="form.brief_end_date"
-									type="date"
-									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-								/>
-							</div>
-						</div>
-
-						<div class="rounded-lg border border-dashed border-border/80 bg-white/70 px-3 py-2 text-xs text-slate-token/70">
-							Course: <span class="font-semibold text-ink">{{ courseLabel }}</span>
-							<span v-if="sessionDateLabel"> · Date: {{ sessionDateLabel }}</span>
-						</div>
-					</aside>
-				</div>
-
-				<footer class="flex flex-wrap items-center justify-end gap-2 border-t border-border/70 pt-3">
-					<Button appearance="secondary" @click="isOpen = false">Cancel</Button>
-					<Button
-						appearance="primary"
-						:loading="submitting"
-						:disabled="!canSubmit"
-						@click="submit"
-					>
-						Create announcement
-					</Button>
-				</footer>
+					</DialogPanel>
+				</TransitionChild>
 			</div>
-		</template>
-	</Dialog>
+		</Dialog>
+	</TransitionRoot>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { Button, Dialog, FormControl, toast } from 'frappe-ui';
+import {
+	Dialog,
+	DialogPanel,
+	DialogTitle,
+	TransitionChild,
+	TransitionRoot,
+} from '@headlessui/vue';
+import { Button, FeatherIcon, FormControl, toast } from 'frappe-ui';
 
 import { api } from '@/lib/client';
 import type {
@@ -146,6 +184,10 @@ const isOpen = computed({
 	get: () => props.modelValue,
 	set: (value: boolean) => emit('update:modelValue', value),
 });
+
+function handleClose() {
+	isOpen.value = false;
+}
 
 const submitting = ref(false);
 
