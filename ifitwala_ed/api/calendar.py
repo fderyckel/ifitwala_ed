@@ -885,18 +885,25 @@ def get_school_event_details(event: str):
 
 
 @frappe.whitelist()
-def get_student_group_event_details():
+def get_student_group_event_details(
+	event_id: Optional[str] = None,
+	eventId: Optional[str] = None,
+	id: Optional[str] = None,
+):
 	"""
 	Resolve a class (Student Group) calendar entry into a richer payload for the portal modal.
 	Supports both schedule-based ids (sg::...) and Employee Booking fallbacks (sg-booking::...).
 	"""
-	event_id = (
-		frappe.form_dict.get("event_id")
+	resolved_event_id = (
+		event_id
+		or eventId
+		or id
+		or frappe.form_dict.get("event_id")
 		or frappe.form_dict.get("eventId")
 		or frappe.form_dict.get("id")
 	)
 
-	if not event_id:
+	if not resolved_event_id:
 		frappe.throw(_("Missing class event id."), frappe.ValidationError)
 
 	user = frappe.session.user
@@ -905,10 +912,10 @@ def get_student_group_event_details():
 
 	tzinfo = _system_tzinfo()
 
-	if event_id.startswith("sg::"):
-		context = _resolve_sg_schedule_context(event_id, tzinfo)
-	elif event_id.startswith("sg-booking::"):
-		context = _resolve_sg_booking_context(event_id, tzinfo)
+	if resolved_event_id.startswith("sg::"):
+		context = _resolve_sg_schedule_context(resolved_event_id, tzinfo)
+	elif resolved_event_id.startswith("sg-booking::"):
+		context = _resolve_sg_booking_context(resolved_event_id, tzinfo)
 	else:
 		frappe.throw(_("Unsupported class event format."), frappe.ValidationError)
 
@@ -947,7 +954,7 @@ def get_student_group_event_details():
 		end_dt = start_dt + CAL_MIN_DURATION
 
 	return {
-		"id": event_id,
+		"id": resolved_event_id,
 		"student_group": group_row.name,
 		"title": group_row.student_group_name or group_row.name,
 		"class_type": group_row.group_based_on,
