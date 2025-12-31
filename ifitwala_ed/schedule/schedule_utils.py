@@ -186,7 +186,7 @@ def current_academic_year():
 		{
 			"year_start_date": ["<=", today_date],
 			"year_end_date": [">=", today_date],
-			"status": "Active",
+			"archived": 0,
 		},
 		"name",
 	)

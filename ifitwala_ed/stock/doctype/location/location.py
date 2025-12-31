@@ -7,6 +7,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 from frappe.model.document import Document
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 class Location(Document):
 	def before_insert(self):
