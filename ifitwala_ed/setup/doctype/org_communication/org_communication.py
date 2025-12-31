@@ -22,11 +22,11 @@ ADMIN_ROLES_FULL = {"System Manager", "Academic Admin"}
 ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Assistant Admin"}
 
 AUDIENCE_TARGET_MODES = {"School Scope", "Team", "Student Group"}
-AUDIENCE_RECIPIENT_ROLES = {"Staff", "Students", "Guardians", "Community"}
+RECIPIENT_TOGGLE_FIELDS = ("to_staff", "to_students", "to_guardians", "to_community")
 TARGET_MODE_ALLOWED_RECIPIENTS = {
-	"School Scope": AUDIENCE_RECIPIENT_ROLES,
-	"Team": {"Staff"},
-	"Student Group": {"Staff", "Students", "Guardians"},
+	"School Scope": {"to_staff", "to_students", "to_guardians", "to_community"},
+	"Team": {"to_staff"},
+	"Student Group": {"to_staff", "to_students", "to_guardians"},
 }
 
 
@@ -38,13 +38,17 @@ def _user_has_any_role(user: str, roles: set[str]) -> bool:
 	return bool(user_roles & roles)
 
 
-def _get_recipient_roles(row) -> list[str]:
-	roles = []
-	for recipient in row.recipients or []:
-		role = (recipient.recipient_role or "").strip()
-		if role:
-			roles.append(role)
-	return roles
+def _as_bool(value) -> bool:
+	return value in (1, "1", True)
+
+
+def _get_recipient_flags(row) -> dict[str, bool]:
+	return {field: _as_bool(getattr(row, field, 0)) for field in RECIPIENT_TOGGLE_FIELDS}
+
+
+def _get_enabled_recipient_fields(row) -> set[str]:
+	flags = _get_recipient_flags(row)
+	return {field for field, enabled in flags.items() if enabled}
 
 
 # --------------------------------------------------------------------
@@ -186,7 +190,7 @@ class OrgCommunication(Document):
 		"""Validate the audience rows structurally and by school scope.
 
 		- At least one row.
-		- Per target_mode, enforce required fields and recipient roles.
+		- Per target_mode, enforce required fields and recipient toggles.
 		- For non-admins: School Scope rows must be within allowed scope.
 		- For everyone: School Scope rows must be consistent with the parent
 		  Issuing School nested tree.
@@ -246,40 +250,23 @@ class OrgCommunication(Document):
 						title=_("Incomplete Audience"),
 					)
 
-			if not row.recipients:
+			enabled_recipients = _get_enabled_recipient_fields(row)
+			if not enabled_recipients:
 				frappe.throw(
-					_("Audience row must include at least one Recipient."),
+					_("Audience row must include at least one Recipient toggle."),
 					title=_("Missing Recipients"),
 				)
 
-			seen_roles = set()
-			recipients = []
-			for recipient in row.recipients:
-				role = (recipient.recipient_role or "").strip()
-				if not role:
-					frappe.throw(
-						_("Recipient Role is required for each Audience recipient."),
-						title=_("Invalid Audience Recipient"),
-					)
-				if role not in AUDIENCE_RECIPIENT_ROLES:
-					frappe.throw(
-						_("Invalid Recipient Role: {role}").format(role=role),
-						title=_("Invalid Audience Recipient"),
-					)
-				if role in seen_roles:
-					frappe.throw(
-						_("Duplicate Recipient Role: {role}").format(role=role),
-						title=_("Duplicate Recipients"),
-					)
-				seen_roles.add(role)
-				recipients.append(role)
-
 			allowed_roles = TARGET_MODE_ALLOWED_RECIPIENTS.get(target_mode, set())
-			if any(role not in allowed_roles for role in recipients):
+			invalid_roles = enabled_recipients - allowed_roles
+			if invalid_roles:
 				frappe.throw(
 					_(
 						"Audience row for {mode} allows only: {roles}."
-					).format(mode=target_mode, roles=", ".join(sorted(allowed_roles))),
+					).format(
+						mode=target_mode,
+						roles=", ".join(sorted(allowed_roles)),
+					),
 					title=_("Invalid Audience Recipients"),
 				)
 
@@ -320,8 +307,8 @@ class OrgCommunication(Document):
 			if target_mode != "School Scope":
 				continue
 
-			recipient_roles = set(_get_recipient_roles(row))
-			if recipient_roles & {"Staff", "Community"} and not is_wide_privileged:
+			enabled_recipients = _get_enabled_recipient_fields(row)
+			if enabled_recipients & {"to_staff", "to_community"} and not is_wide_privileged:
 				frappe.throw(
 					_(
 						"You are not allowed to target Staff or Community at School Scope. "
@@ -361,7 +348,7 @@ class OrgCommunication(Document):
 		if self.status == "Published" and not is_admin:
 			if any(
 				(r.target_mode or "").strip() == "School Scope"
-				and set(_get_recipient_roles(r)) & {"Staff", "Community"}
+				and _get_enabled_recipient_fields(r) & {"to_staff", "to_community"}
 				for r in self.audiences
 			):
 				frappe.throw(
@@ -401,7 +388,7 @@ class OrgCommunication(Document):
 		"""For Class Announcement type, enforce a sane audience pattern.
 
 		- Must target Students (and optionally Guardians/Staff).
-		- At least one Student Group audience row that includes Students.
+		- At least one Student Group audience row with to_students enabled.
 		"""
 		if (self.communication_type or "").strip() != "Class Announcement":
 			return
@@ -412,8 +399,7 @@ class OrgCommunication(Document):
 				continue
 			if not row.student_group:
 				continue
-			recipient_roles = set(_get_recipient_roles(row))
-			if "Students" in recipient_roles:
+			if _as_bool(getattr(row, "to_students", 0)):
 				has_student_group_row = True
 				break
 

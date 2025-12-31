@@ -2,19 +2,23 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import now_datetime
 
 
-TARGET_GROUP_TO_ROLE = {
-	"Whole Staff": "Staff",
-	"Academic Staff": "Staff",
-	"Support Staff": "Staff",
-	"Students": "Students",
-	"Guardians": "Guardians",
-	"Whole Community": "Community",
+TARGET_GROUP_TO_TOGGLE = {
+	"Whole Staff": "to_staff",
+	"Academic Staff": "to_staff",
+	"Support Staff": "to_staff",
+	"Students": "to_students",
+	"Guardians": "to_guardians",
+	"Whole Community": "to_community",
 }
 
 TARGET_MODES = {"School Scope", "Team", "Student Group"}
+TOGGLE_FIELDS = ("to_staff", "to_students", "to_guardians", "to_community")
+
+
+def _as_bool(value) -> bool:
+	return value in (1, "1", True)
 
 
 def execute():
@@ -38,7 +42,11 @@ def execute():
 			team,
 			student_group,
 			target_mode,
-			include_descendants
+			include_descendants,
+			to_staff,
+			to_students,
+			to_guardians,
+			to_community
 		from `tabOrg Communication Audience`
 		""",
 		as_dict=True,
@@ -58,36 +66,11 @@ def execute():
 		)
 		parent_school_map = {p.name: p.school for p in parents}
 
-	audience_names = [row.name for row in audience_rows]
-	existing_roles_by_parent = {}
-	max_idx_by_parent = {}
-
-	if audience_names and frappe.db.table_exists("Org Communication Audience Recipient"):
-		existing = frappe.db.sql(
-			"""
-			select parent, recipient_role, idx
-			from `tabOrg Communication Audience Recipient`
-			where parent in %(parents)s
-			""",
-			{"parents": audience_names},
-			as_dict=True,
-		)
-		for rec in existing:
-			parent = rec.parent
-			role = (rec.recipient_role or "").strip()
-			existing_roles_by_parent.setdefault(parent, set())
-			if role:
-				existing_roles_by_parent[parent].add(role)
-			max_idx_by_parent[parent] = max(max_idx_by_parent.get(parent, 0), rec.idx or 0)
-
 	migrated = 0
 	manual = 0
-	to_insert = []
-	now_ts = now_datetime()
-	user = frappe.session.user if frappe.session and frappe.session.user else "Administrator"
 
 	for row in audience_rows:
-		row_updated = False
+		row_updates = {}
 		row_migrated = False
 		row_manual = False
 
@@ -101,7 +84,7 @@ def execute():
 				target_mode = "Student Group"
 			else:
 				target_mode = "School Scope"
-			row_updated = True
+			row_updates["target_mode"] = target_mode
 
 		if target_mode and target_mode not in TARGET_MODES:
 			row_manual = True
@@ -114,73 +97,55 @@ def execute():
 				parent_school = parent_school_map.get(row.parent)
 				if parent_school:
 					school_value = parent_school
-					row_updated = True
+					row_updates["school"] = school_value
 				else:
 					row_manual = True
 
-			if not target_mode_original and include_descendants_value in (None, "", 0):
-				include_descendants_value = 1
-				row_updated = True
+			if include_descendants_value in (None, "", 0):
+				row_updates["include_descendants"] = 1
 
-		if row_updated:
+		mapped_toggle = TARGET_GROUP_TO_TOGGLE.get((row.target_group or "").strip())
+		current_toggles = {field: _as_bool(row.get(field)) for field in TOGGLE_FIELDS}
+		has_any_toggle = any(current_toggles.values())
+
+		if mapped_toggle and not has_any_toggle:
+			row_updates[mapped_toggle] = 1
+		elif not mapped_toggle and not has_any_toggle:
+			row_manual = True
+
+		if row_updates:
 			frappe.db.sql(
 				"""
 				update `tabOrg Communication Audience`
-				set target_mode=%s, school=%s, include_descendants=%s
-				where name=%s
+				set
+					target_mode=%(target_mode)s,
+					school=%(school)s,
+					include_descendants=%(include_descendants)s,
+					to_staff=%(to_staff)s,
+					to_students=%(to_students)s,
+					to_guardians=%(to_guardians)s,
+					to_community=%(to_community)s
+				where name=%(name)s
 				""",
-				(
-					target_mode,
-					school_value,
-					1 if include_descendants_value in (1, "1", True) else 0,
-					row.name,
-				),
+				{
+					"name": row.name,
+					"target_mode": row_updates.get("target_mode", row.target_mode),
+					"school": row_updates.get("school", row.school),
+					"include_descendants": row_updates.get(
+						"include_descendants", row.include_descendants
+					),
+					"to_staff": row_updates.get("to_staff", row.to_staff),
+					"to_students": row_updates.get("to_students", row.to_students),
+					"to_guardians": row_updates.get("to_guardians", row.to_guardians),
+					"to_community": row_updates.get("to_community", row.to_community),
+				},
 			)
 			row_migrated = True
-
-		mapped_role = TARGET_GROUP_TO_ROLE.get((row.target_group or "").strip())
-		existing_roles = existing_roles_by_parent.get(row.name, set())
-		if mapped_role:
-			if mapped_role not in existing_roles:
-				idx = max_idx_by_parent.get(row.name, 0) + 1
-				max_idx_by_parent[row.name] = idx
-				to_insert.append({
-					"name": frappe.generate_hash(length=10),
-					"parent": row.name,
-					"parenttype": "Org Communication Audience",
-					"parentfield": "recipients",
-					"idx": idx,
-					"recipient_role": mapped_role,
-					"docstatus": 0,
-					"creation": now_ts,
-					"modified": now_ts,
-					"owner": user,
-					"modified_by": user,
-				})
-				existing_roles.add(mapped_role)
-				existing_roles_by_parent[row.name] = existing_roles
-				row_migrated = True
-		else:
-			if not existing_roles:
-				row_manual = True
 
 		if row_migrated:
 			migrated += 1
 		if row_manual:
 			manual += 1
-
-	if to_insert:
-		if not frappe.db.table_exists("Org Communication Audience Recipient"):
-			logger.warning(
-				"Org Communication Audience Recipient table not found; skipping recipient inserts."
-			)
-		else:
-			frappe.db.bulk_insert(
-				doctype="Org Communication Audience Recipient",
-				fields=list(to_insert[0].keys()),
-				values=[list(r.values()) for r in to_insert],
-				ignore_duplicates=True,
-			)
 
 	logger.info(
 		"Org Communication audience migration complete. Migrated rows: {migrated}. "

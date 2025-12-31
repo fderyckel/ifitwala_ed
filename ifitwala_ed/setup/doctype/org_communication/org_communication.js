@@ -71,7 +71,7 @@ frappe.ui.form.on('Org Communication', {
 				message: __(
 					'For Class Announcements, please add at least one Audience row targeting ' +
 					'<strong>Students</strong> with a <strong>Student Group</strong>. ' +
-					'Set Target Mode to <strong>Student Group</strong> and include Students in Recipients.'
+					'Set Target Mode to <strong>Student Group</strong> and enable <strong>To Students</strong>.'
 				),
 				indicator: 'blue',
 				title: __('Class Announcement Audience')
@@ -286,6 +286,7 @@ frappe.ui.form.on('Org Communication Audience', {
 	target_mode(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
 		apply_audience_row_visibility(frm, cdt, cdn, row);
+		apply_recipient_defaults(frm, cdt, cdn, row);
 
 		// If row.school is empty, inherit parent Issuing School for School Scope only
 		if (row.target_mode === 'School Scope' && !row.school && frm.doc.school) {
@@ -300,7 +301,12 @@ frappe.ui.form.on('Org Communication Audience', {
 
 	org_communication_audience_add(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
+		if (!row.target_mode) {
+			frappe.model.set_value(cdt, cdn, 'target_mode', 'School Scope');
+			return;
+		}
 		apply_audience_row_visibility(frm, cdt, cdn, row);
+		apply_recipient_defaults(frm, cdt, cdn, row);
 	}
 });
 
@@ -327,10 +333,83 @@ function apply_audience_row_visibility(frm, cdt, cdn, row) {
 	if (gf.get_field('student_group')) {
 		gf.get_field('student_group').toggle(show_student_group);
 	}
-	if (gf.get_field('recipients')) {
-		gf.get_field('recipients').toggle(true);
-	}
+
+	update_recipient_toggle_state(gf, target_mode);
+
 	if (gf.get_field('note')) {
 		gf.get_field('note').toggle(true);
+	}
+}
+
+function update_recipient_toggle_state(gf, target_mode) {
+	const allowed = get_allowed_recipient_fields(target_mode);
+	const toggle_fields = ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+
+	toggle_fields.forEach(fieldname => {
+		const field = gf.get_field(fieldname);
+		if (!field) return;
+
+		field.toggle(true);
+		field.df.read_only = allowed.length ? !allowed.includes(fieldname) : 0;
+		field.refresh();
+	});
+}
+
+function get_allowed_recipient_fields(target_mode) {
+	if (target_mode === 'Team') {
+		return ['to_staff'];
+	}
+	if (target_mode === 'Student Group') {
+		return ['to_staff', 'to_students', 'to_guardians'];
+	}
+	if (target_mode === 'School Scope') {
+		return ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+	}
+	return [];
+}
+
+function is_checked(value) {
+	return value === 1 || value === '1' || value === true;
+}
+
+function apply_recipient_defaults(frm, cdt, cdn, row) {
+	if (!row) return;
+
+	const target_mode = (row.target_mode || '').trim();
+	if (!target_mode) return;
+
+	const allowed = get_allowed_recipient_fields(target_mode);
+	const toggle_fields = ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+
+	let any_enabled = false;
+	toggle_fields.forEach(fieldname => {
+		const current = is_checked(row[fieldname]);
+		if (current) {
+			any_enabled = true;
+		}
+		if (allowed.length && !allowed.includes(fieldname) && current) {
+			frappe.model.set_value(cdt, cdn, fieldname, 0);
+		}
+	});
+
+	if (target_mode === 'Team') {
+		if (!is_checked(row.to_staff)) {
+			frappe.model.set_value(cdt, cdn, 'to_staff', 1);
+		}
+		return;
+	}
+
+	if (target_mode === 'Student Group') {
+		const has_any = toggle_fields.some(fieldname => is_checked(row[fieldname]));
+		if (!has_any) {
+			frappe.model.set_value(cdt, cdn, 'to_students', 1);
+			frappe.model.set_value(cdt, cdn, 'to_guardians', 1);
+			frappe.model.set_value(cdt, cdn, 'to_staff', 0);
+		}
+		return;
+	}
+
+	if (target_mode === 'School Scope') {
+		if (any_enabled) return;
 	}
 }

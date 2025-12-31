@@ -1,6 +1,6 @@
 <template>
 	<TransitionRoot as="template" :show="isOpen">
-		<Dialog as="div" class="meeting-modal meeting-modal--class" @close="handleClose">
+		<Dialog as="div" class="meeting-modal meeting-modal--class z-[100]" @close="handleClose">
 			<TransitionChild
 				as="template"
 				enter="meeting-modal__fade-enter"
@@ -23,7 +23,7 @@
 					leave-from="meeting-modal__panel-to"
 					leave-to="meeting-modal__panel-from"
 				>
-					<DialogPanel class="meeting-modal__panel">
+					<DialogPanel class="meeting-modal__panel bg-white">
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
 								<p class="meeting-modal__eyebrow">Class announcement</p>
