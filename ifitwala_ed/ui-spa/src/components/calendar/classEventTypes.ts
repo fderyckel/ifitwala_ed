@@ -14,9 +14,11 @@ export interface ClassEventDetails {
 	block_label?: string | null;
 	session_date?: string | null;
 	location?: string | null;
+	location_missing_reason?: string | null;
 	start?: string | null;
 	end?: string | null;
 	start_label?: string | null;
 	end_label?: string | null;
 	timezone?: string | null;
+	_debug?: Record<string, unknown> | null;
 }

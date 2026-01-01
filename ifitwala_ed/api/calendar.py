@@ -281,6 +281,12 @@ def _coerce_time(value) -> Optional[time]:
 		return value
 	if isinstance(value, datetime):
 		return value.time()
+	if isinstance(value, timedelta):
+		total = int(value.total_seconds())
+		hours = (total // 3600) % 24
+		minutes = (total % 3600) // 60
+		seconds = total % 60
+		return time(hour=hours, minute=minutes, second=seconds)
 	if isinstance(value, (bytes, bytearray)):
 		value = value.decode()
 	if isinstance(value, str):
@@ -912,10 +918,15 @@ def get_student_group_event_details(
 
 	tzinfo = _system_tzinfo()
 
+	debug_booking = bool(
+		frappe.form_dict.get("debug_booking")
+		or frappe.form_dict.get("debug")
+	)
+
 	if resolved_event_id.startswith("sg::"):
 		context = _resolve_sg_schedule_context(resolved_event_id, tzinfo)
 	elif resolved_event_id.startswith("sg-booking::"):
-		context = _resolve_sg_booking_context(resolved_event_id, tzinfo)
+		context = _resolve_sg_booking_context(resolved_event_id, tzinfo, debug=debug_booking)
 	else:
 		frappe.throw(_("Unsupported class event format."), frappe.ValidationError)
 
@@ -968,11 +979,13 @@ def get_student_group_event_details(
 		"block_label": context.get("block_label"),
 		"session_date": context.get("session_date"),
 		"location": context.get("location"),
+		"location_missing_reason": context.get("location_missing_reason"),
 		"start": start_dt.isoformat() if start_dt else None,
 		"end": end_dt.isoformat() if end_dt else None,
 		"start_label": format_datetime(start_dt) if start_dt else None,
 		"end_label": format_datetime(end_dt) if end_dt else None,
 		"timezone": tzinfo.zone,
+		"_debug": context.get("_debug") if debug_booking else None,
 	}
 
 
@@ -1168,7 +1181,12 @@ def _resolve_sg_schedule_context(event_id: str, tzinfo: pytz.timezone) -> Dict[s
 	}
 
 
-def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[str, object]:
+def _resolve_sg_booking_context(
+	event_id: str,
+	tzinfo: pytz.timezone,
+	*,
+	debug: bool = False,
+) -> Dict[str, object]:
 	booking_name = event_id.split("::", 1)[1]
 	row = frappe.db.get_value(
 		"Employee Booking",
@@ -1185,6 +1203,13 @@ def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[st
 	rotation_day = None
 	block_number = None
 	location = None
+	location_missing_reason = None
+	block_match_source = None
+
+	def _strip_tz(value: Optional[time]) -> Optional[time]:
+		if value and value.tzinfo:
+			return value.replace(tzinfo=None)
+		return value
 
 	def _matches_booking_window(
 		window_start: Optional[time],
@@ -1192,6 +1217,10 @@ def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[st
 		booking_start: Optional[time],
 		booking_end: Optional[time],
 	) -> bool:
+		window_start = _strip_tz(window_start)
+		window_end = _strip_tz(window_end)
+		booking_start = _strip_tz(booking_start)
+		booking_end = _strip_tz(booking_end)
 		if not window_start or not window_end or not booking_start:
 			return False
 		if not booking_end or booking_end <= booking_start:
@@ -1241,7 +1270,12 @@ def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[st
 		if rotation_day is not None:
 			sg_rows = frappe.get_all(
 				"Student Group Schedule",
-				filters={"parent": row.source_name, "rotation_day": rotation_day},
+				filters={
+					"parent": row.source_name,
+					"parenttype": "Student Group",
+					"parentfield": "student_group_schedule",
+					"rotation_day": rotation_day,
+				},
 				fields=["block_number", "location", "from_time", "to_time"],
 				ignore_permissions=True,
 			)
@@ -1256,6 +1290,7 @@ def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[st
 				except Exception:
 					pass
 				location = sg_row.get("location")
+				block_match_source = "student_group_schedule"
 				break
 
 		if schedule_name and academic_year and rotation_day is not None and block_number is None:
@@ -1274,6 +1309,7 @@ def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[st
 						block_number = int(block_number) if block_number is not None else None
 					except Exception:
 						pass
+					block_match_source = "school_schedule_block"
 					break
 
 			if block_number is not None and not location:
@@ -1281,11 +1317,33 @@ def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[st
 					"Student Group Schedule",
 					{
 						"parent": row.source_name,
+						"parenttype": "Student Group",
+						"parentfield": "student_group_schedule",
 						"rotation_day": rotation_day,
 						"block_number": block_number,
 					},
 					"location",
 				)
+
+	if block_number is not None and not location:
+		location_missing_reason = "No location found for matched block."
+
+	if debug:
+		debug_info = {
+			"booking_name": booking_name,
+			"student_group": row.source_name if row else None,
+			"start_dt": start_dt.isoformat() if start_dt else None,
+			"end_dt": end_dt.isoformat() if end_dt else None,
+			"booking_start": booking_start.isoformat() if "booking_start" in locals() and booking_start else None,
+			"booking_end": booking_end.isoformat() if "booking_end" in locals() and booking_end else None,
+			"schedule_name": schedule_name if "schedule_name" in locals() else None,
+			"academic_year": academic_year if "academic_year" in locals() else None,
+			"rotation_day": rotation_day,
+			"block_number": block_number,
+			"location": location,
+			"block_match_source": block_match_source,
+		}
+		frappe.logger("calendar").info(f"[calendar] booking resolution {debug_info}")
 
 	return {
 		"student_group": row.source_name,
@@ -1294,8 +1352,10 @@ def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[st
 		"block_label": _("Block {0}").format(block_number) if block_number is not None else None,
 		"session_date": start_dt.date().isoformat() if start_dt else None,
 		"location": location,
+		"location_missing_reason": location_missing_reason,
 		"start": start_dt,
 		"end": end_dt,
+		"_debug": debug_info if debug else None,
 	}
 
 
@@ -1448,6 +1508,36 @@ def debug_staff_calendar_window(from_datetime: Optional[str] = None, to_datetime
 
 	# quick sample of student group events only (limit 10)
 	sample = _collect_student_group_events(user, start, end, tzinfo)[:10]
+	booking_samples = []
+	if emp and frappe.db.table_exists("Employee Booking"):
+		booking_rows = frappe.get_all(
+			"Employee Booking",
+			filters={
+				"employee": emp,
+				"source_doctype": "Student Group",
+				"docstatus": ["<", 2],
+				"from_datetime": ["<", end],
+				"to_datetime": [">", start],
+			},
+			fields=["name", "source_name", "from_datetime", "to_datetime"],
+			order_by="from_datetime desc",
+			limit=5,
+			ignore_permissions=True,
+		)
+		for row in booking_rows:
+			context = _resolve_sg_booking_context(f"sg-booking::{row.name}", tzinfo, debug=True)
+			booking_samples.append(
+				{
+					"booking": row.name,
+					"student_group": row.source_name,
+					"from": row.from_datetime,
+					"to": row.to_datetime,
+					"rotation_day": context.get("rotation_day"),
+					"block_number": context.get("block_number"),
+					"location": context.get("location"),
+					"resolution": context.get("_debug"),
+				}
+			)
 
 	return {
 		"user": user,
@@ -1456,6 +1546,7 @@ def debug_staff_calendar_window(from_datetime: Optional[str] = None, to_datetime
 		"instructor_ids": sorted(instr),
 		"sg_instructor_groups": sorted(sgi),
 		"sample_events": [e.as_dict() for e in sample],
+		"booking_samples": booking_samples,
 	}
 
 
