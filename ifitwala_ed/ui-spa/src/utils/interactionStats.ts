@@ -1,7 +1,7 @@
 // ifitwala_ed/ui-spa/src/utils/interactionStats.ts
 // Shared helper for interaction aggregates (legacy + future summary shapes).
 
-import { REACTION_CODES, type ReactionCode } from '@/types/morning_brief'
+import { REACTION_CODES, type ReactionCode } from '@/types/interactions'
 
 export type InteractionSummaryLike = {
 	counts?: Record<string, number>

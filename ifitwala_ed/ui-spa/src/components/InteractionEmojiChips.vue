@@ -22,8 +22,8 @@
 import { computed } from 'vue'
 import type {
   InteractionSummary,
-  ReactionCode,
   InteractionIntentType,
+  ReactionCode,
 } from '@/types/morning_brief'
 import { getInteractionStats } from '@/utils/interactionStats'
 

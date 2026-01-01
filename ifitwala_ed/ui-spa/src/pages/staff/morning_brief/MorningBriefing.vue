@@ -737,10 +737,12 @@ import {
 	type InteractionThreadRow,
 	type StudentLogItem,
 	type OrgPriority,
-	type InteractionSummary,
-	type StudentLogDetail,
-	type ReactionCode,
-	type InteractionIntentType
+	type StudentLogDetail
+} from '@/types/morning_brief'
+import type {
+  InteractionSummary,
+  InteractionIntentType,
+  ReactionCode,
 } from '@/types/morning_brief'
 import { canShowPublicInteractions } from '@/utils/orgCommunication'
 import type { OrgCommunicationListItem } from '@/types/orgCommunication'

@@ -36,6 +36,8 @@ export type StatusFilter = (typeof STATUS_OPTIONS)[number]
 export const SURFACE_OPTIONS = ['All', 'Desk', 'Morning Brief', 'Portal Feed', 'Everywhere'] as const
 export type SurfaceFilter = (typeof SURFACE_OPTIONS)[number]
 
+import type { InteractionMode } from '@/types/interactions'
+
 export interface OrgCommunicationListItem {
   name: string
   title: string
@@ -49,7 +51,7 @@ export interface OrgCommunicationListItem {
   publish_to: string | null
   brief_start_date: string | null
   brief_end_date: string | null
-  interaction_mode: 'None' | 'Staff Comments' | 'Structured Feedback' | 'Student Q&A'
+  interaction_mode: InteractionMode
   allow_private_notes: 0 | 1 | boolean
   allow_public_thread: 0 | 1 | boolean
   snippet: string
