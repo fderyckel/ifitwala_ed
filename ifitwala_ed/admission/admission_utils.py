@@ -1,6 +1,8 @@
 # Copyright (c) 2025, Francois de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/admission/admission_utils.py
+
 import frappe
 from frappe import _
 from frappe.utils import add_days, nowdate, now, getdate
@@ -207,8 +209,8 @@ def assign_inquiry(doctype, docname, assigned_to):
 	doc.followup_due_on = followup_due
 
 	# stamp FIRST assignment time (never overwrite)
-	if not doc.assigned_at: 
-		ts = frappe.utils.now_datetime() 
+	if not doc.assigned_at:
+		ts = frappe.utils.now_datetime()
 		doc.assigned_at = ts
 		doc.db_set("assigned_at", ts, update_modified=False)
 

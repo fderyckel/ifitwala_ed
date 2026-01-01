@@ -1,8 +1,9 @@
+<!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue -->
 <template>
   <div class="flex flex-col gap-6 p-6">
     <header class="flex items-center justify-between">
       <h1 class="type-h2 text-canopy">Inquiry Analytics</h1>
-      <button 
+      <button
         class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
         @click="refresh"
       >
@@ -13,8 +14,8 @@
     <FiltersBar class="analytics-filters">
       <div class="flex flex-col gap-1">
         <label class="type-label">Academic Year</label>
-        <select 
-          v-model="filters.academic_year" 
+        <select
+          v-model="filters.academic_year"
           class="h-9 rounded-md border px-2 text-sm"
         >
           <option value="">All Years</option>
@@ -25,14 +26,14 @@
       <div class="flex flex-col gap-1">
         <label class="type-label">Date Range</label>
         <div class="flex items-center gap-2">
-          <input 
-            type="date" 
+          <input
+            type="date"
             v-model="filters.from_date"
             class="h-9 rounded-md border px-2 text-sm"
           />
           <span class="text-slate-300">-</span>
-          <input 
-            type="date" 
+          <input
+            type="date"
             v-model="filters.to_date"
             class="h-9 rounded-md border px-2 text-sm"
           />
@@ -41,7 +42,7 @@
 
       <div class="flex flex-col gap-1">
         <label class="type-label">School</label>
-        <select 
+        <select
           v-model="filters.school"
           class="h-9 min-w-[140px] max-w-[200px] rounded-md border px-2 text-sm"
         >
@@ -52,7 +53,7 @@
 
       <div class="flex flex-col gap-1">
         <label class="type-label">Assignee</label>
-        <select 
+        <select
           v-model="filters.assigned_to"
           class="h-9 min-w-[140px] rounded-md border px-2 text-sm"
         >
@@ -63,7 +64,7 @@
 
       <div class="flex flex-col gap-1">
         <label class="type-label">Inquiry Type</label>
-        <select 
+        <select
           v-model="filters.type_of_inquiry"
           class="h-9 min-w-[140px] rounded-md border px-2 text-sm"
         >
@@ -110,26 +111,26 @@
 
       <!-- Detailed Stats & Trends -->
       <section class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        
+
         <!-- SLA & Response Stats -->
         <div class="flex flex-col gap-4 analytics-card">
            <h3 class="analytics-card__title">Performance Metrics</h3>
            <div class="flex flex-wrap gap-3">
-             <StatsTile 
-               label="SLA Compliance (30d)" 
-               :value="data?.sla?.pct_30d + '%'" 
+             <StatsTile
+               label="SLA Compliance (30d)"
+               :value="data?.sla?.pct_30d + '%'"
                :tone="slaTone"
              />
-             <StatsTile 
-               label="First Response (Avg)" 
-               :value="data?.averages?.overall?.first_contact_hours + 'h'" 
+             <StatsTile
+               label="First Response (Avg)"
+               :value="data?.averages?.overall?.first_contact_hours + 'h'"
              />
-             <StatsTile 
-               label="From Assign (Avg)" 
-               :value="data?.averages?.overall?.from_assign_hours + 'h'" 
+             <StatsTile
+               label="From Assign (Avg)"
+               :value="data?.averages?.overall?.from_assign_hours + 'h'"
              />
            </div>
-           
+
            <h4 class="mt-2 type-overline text-slate-400">Last 30 Days</h4>
            <div class="flex gap-4 text-sm">
              <div class="flex flex-col">

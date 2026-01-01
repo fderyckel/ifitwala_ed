@@ -1,3 +1,5 @@
+// ifitwala_ed/ui-spa/src/lib/admission.ts
+
 import { api } from './client'
 
 export const ADMISSION_API = {
@@ -14,7 +16,7 @@ export type DashboardFilters = {
   academic_year?: string
   type_of_inquiry?: string
   assigned_to?: string
-  sla_status?: string // 'Overdue', 'Due Today', 'Upcoming' 
+  sla_status?: string // 'Overdue', 'Due Today', 'Upcoming'
 }
 
 export function getInquiryDashboardData(filters: DashboardFilters = {}) {
