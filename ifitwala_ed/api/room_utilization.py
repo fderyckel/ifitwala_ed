@@ -45,6 +45,70 @@ def _normalize_date(value) -> date | None:
 		return None
 
 
+def _best_effort_rotation_day(filters: dict, target_date: date) -> int | None:
+	"""Resolve rotation_day using existing schedule utilities (no custom calendar math)."""
+	school = filters.get("school") or None
+	if not school and filters.get("building"):
+		school = frappe.db.get_value("Location", filters["building"], "school")
+	if not school:
+		return None
+
+	from ifitwala_ed.setup.doctype.meeting.meeting import get_academic_year_for_date
+	from ifitwala_ed.schedule.schedule_utils import (
+		get_effective_schedule_for_ay,
+		get_rotation_dates,
+	)
+
+	academic_year = get_academic_year_for_date(school, target_date)
+	if not academic_year:
+		return None
+
+	schedule_name = get_effective_schedule_for_ay(academic_year, school)
+	if not schedule_name:
+		return None
+
+	rotation_dates = get_rotation_dates(
+		schedule_name,
+		academic_year,
+		include_holidays=False,
+	)
+	rotation_map = {
+		getdate(row.get("date")).isoformat(): int(row["rotation_day"])
+		for row in rotation_dates
+		if row.get("date") and row.get("rotation_day") is not None
+	}
+	return rotation_map.get(target_date.isoformat())
+
+
+def _resolve_rotation_day(filters: dict, target_date: date) -> int | None:
+	if filters.get("rotation_day") not in (None, ""):
+		try:
+			rotation_day = int(filters["rotation_day"])
+		except (TypeError, ValueError):
+			frappe.throw(_("rotation_day must be an integer."))
+		if rotation_day <= 0:
+			frappe.throw(_("rotation_day must be a positive integer."))
+		return rotation_day
+
+	scope = filters.get("school") or filters.get("building")
+	if not (scope and target_date):
+		return None
+
+	cache_key = f"room_utilization:rotation_day:{scope}:{target_date.isoformat()}"
+	rc = frappe.cache()
+	cached = rc.get_value(cache_key)
+	if cached is not None:
+		return None if cached == "__none__" else int(cached)
+
+	rotation_day = _best_effort_rotation_day(filters, target_date)
+	rc.set_value(
+		cache_key,
+		rotation_day if rotation_day is not None else "__none__",
+		expires_in_sec=300,
+	)
+	return rotation_day
+
+
 def _validate_date_range(from_date, to_date, *, enforce_scope: bool = True) -> tuple[date, date, int]:
 	if not from_date or not to_date:
 		frappe.throw(_("Please provide both From Date and To Date."))
@@ -140,7 +204,25 @@ def get_free_rooms(filters=None):
 	if window_end <= window_start:
 		frappe.throw(_("End Time must be after Start Time."))
 
-	# NOTE: Student Group schedules are not included in v1 availability.
+	target_date = _normalize_date(filters.get("date"))
+	rotation_day_missing = filters.get("rotation_day") in (None, "")
+	rotation_day = _resolve_rotation_day(filters, target_date) if target_date else None
+	if rotation_day is None:
+		reason = "rotation_day missing in request; resolver could not determine it."
+		frappe.throw(
+			_(
+				"Rotation day is required for availability checks. "
+				"date={0}, start_time={1}, end_time={2}, school={3}, building={4}, reason={5}"
+			).format(
+				filters.get("date"),
+				filters.get("start_time"),
+				filters.get("end_time"),
+				filters.get("school") or "—",
+				filters.get("building") or "—",
+				reason if rotation_day_missing else "rotation_day provided but invalid.",
+			)
+		)
+
 	rooms = _get_candidate_rooms(filters)
 	if not rooms:
 		return {"window": {"start": str(window_start), "end": str(window_end)}, "rooms": []}
@@ -150,6 +232,9 @@ def get_free_rooms(filters=None):
 		"rooms": tuple(room_names),
 		"window_start": window_start,
 		"window_end": window_end,
+		"start_time": filters["start_time"],
+		"end_time": filters["end_time"],
+		"rotation_day": rotation_day,
 	}
 
 	meeting_school_clause = ""
@@ -190,8 +275,22 @@ def get_free_rooms(filters=None):
 		as_dict=True,
 	)
 
+	schedule_rows = frappe.db.sql(
+		"""
+		SELECT DISTINCT location
+		FROM `tabStudent Group Schedule`
+		WHERE location IN %(rooms)s
+			AND rotation_day = %(rotation_day)s
+			AND from_time < TIME(%(end_time)s)
+			AND to_time > TIME(%(start_time)s)
+		""",
+		params,
+		as_dict=True,
+	)
+
 	busy_rooms = {r["location"] for r in meeting_rows if r.get("location")}
 	busy_rooms.update({r["location"] for r in event_rows if r.get("location")})
+	busy_rooms.update({r["location"] for r in schedule_rows if r.get("location")})
 
 	available_rooms = []
 	for room in rooms:

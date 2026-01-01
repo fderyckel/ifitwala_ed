@@ -228,42 +228,25 @@
            <div class="p-4 border-t border-line-soft bg-surface-soft/80 z-10 sticky bottom-0">
               <div class="flex items-center justify-between gap-4">
 
-                 <div class="flex gap-2">
-                    <Button
-                      :variant="getInteractionFor(selectedComm).self ? 'solid' : 'subtle'"
-                      :color="getInteractionFor(selectedComm).self ? 'gray' : 'gray'"
-                      class="gap-2"
-                      @click="acknowledge(selectedComm)"
-                      :loading="interactionAction.loading"
-                      :disabled="!canInteract(selectedComm)"
-                    >
-                      <FeatherIcon name="thumbs-up" class="h-4 w-4" />
-                      <span>
-                        Reactions
-                      </span>
-                      <Badge variant="outline" class="bg-white/50 ml-1">
-                        {{ getInteractionStats(selectedComm).reactions_total }}
-                      </Badge>
-                    </Button>
+                 <InteractionEmojiChips
+                   v-if="selectedComm"
+                   :interaction="getInteractionFor(selectedComm)"
+                   :readonly="true"
+                 />
+                 
+                 <Button
+                    variant="subtle"
+                    color="gray"
+                    class="gap-2"
+                    @click="openThread(selectedComm)"
+                    :disabled="!selectedComm.allow_public_thread"
+                 >
+                    <FeatherIcon name="message-square" class="h-4 w-4" />
+                    <span>Comments</span>
+                 </Button>
 
-                    <Button
-                      variant="subtle"
-                      color="gray"
-                      class="gap-2"
-                      @click="openThread(selectedComm)"
-                      :disabled="!selectedComm.allow_public_thread"
-                    >
-                      <FeatherIcon name="message-square" class="h-4 w-4" />
-                      Comments
-                      <Badge variant="outline" class="bg-white/50 ml-1">
-                        {{ getInteractionStats(selectedComm).comments_total }}
-                      </Badge>
-                    </Button>
-                 </div>
-
-                 <div v-if="getInteractionFor(selectedComm).self" class="text-xs text-jacaranda font-medium">
-                    You responded: {{ getInteractionFor(selectedComm).self?.intent_type }}
-                 </div>
+              </div>
+           </div>
 
               </div>
            </div>
@@ -293,6 +276,7 @@ import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, createResour
 import { type ArchiveFilters, type OrgCommunicationListItem } from '@/types/orgCommunication'
 import { type InteractionSummary } from '@/types/morning_brief'
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue'
+import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue'
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats'
 
 const PAGE_LENGTH = 30

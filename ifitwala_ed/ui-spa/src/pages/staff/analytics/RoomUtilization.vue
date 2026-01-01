@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ui-spa/src/pages/staff/RoomUtilization.vue -->
+<!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/RoomUtilization.vue -->
 <template>
   <div class="analytics-shell">
     <header class="flex flex-wrap items-center justify-between gap-3">
@@ -34,6 +34,17 @@
           type="date"
           v-model="filters.date"
           class="h-9 rounded-md border px-2 text-sm"
+        />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="type-label">Rotation Day</label>
+        <input
+          type="number"
+          min="1"
+          step="1"
+          v-model.number="filters.rotation_day"
+          class="h-9 w-28 rounded-md border px-2 text-sm"
         />
       </div>
 
@@ -288,6 +299,7 @@ const filters = ref({
   date: today,
   start_time: '09:00',
   end_time: '10:15',
+  rotation_day: null,
   from_date: today,
   to_date: today,
   day_start_time: '07:00',
@@ -414,6 +426,7 @@ async function loadFreeRooms() {
       date: filters.value.date,
       start_time: filters.value.start_time,
       end_time: filters.value.end_time,
+      rotation_day: filters.value.rotation_day ?? null,
     },
   })
 }
