@@ -16,9 +16,10 @@
   "country",
   "default_staff_calendar",
   "column_break_yqlg",
-  "address__html",
   "parent_organization",
+  "address__html",
   "organization_logo",
+  "get_inquiry",
   "archived",
   "section_break_bvun",
   "lft",
@@ -130,12 +131,19 @@
    "fieldname": "archived",
    "fieldtype": "Check",
    "label": "Archived"
+  },
+  {
+   "default": "0",
+   "description": "Can get Inquiries (on website)",
+   "fieldname": "get_inquiry",
+   "fieldtype": "Check",
+   "label": "Get Inquiry"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-09-23 10:51:47.781836",
+ "modified": "2026-01-01 11:25:05.706042",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Organization",

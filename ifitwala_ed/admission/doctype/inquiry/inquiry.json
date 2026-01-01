@@ -15,6 +15,8 @@
   "phone_number",
   "section_break_dnwn",
   "type_of_inquiry",
+  "organization",
+  "school",
   "message",
   "section_break_olba",
   "workflow_state",
@@ -33,7 +35,8 @@
  "fields": [
   {
    "fieldname": "section_break_9dhi",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Personal Information"
   },
   {
    "fieldname": "first_name",
@@ -115,7 +118,8 @@
   },
   {
    "fieldname": "section_break_olba",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Workflows Indicators"
   },
   {
    "fieldname": "column_break_w8a0",
@@ -123,7 +127,8 @@
   },
   {
    "fieldname": "section_break_dnwn",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Inquiry Info"
   },
   {
    "fieldname": "first_contact_due_on",
@@ -162,12 +167,26 @@
    "label": "time after assigned",
    "precision": "2",
    "read_only": 1
+  },
+  {
+   "description": "For which organization is the inquiry about",
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization"
+  },
+  {
+   "description": "Is this inquiry in regards to a particular school ?",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-14 16:47:24.606404",
+ "modified": "2026-01-01 11:28:45.999261",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",
