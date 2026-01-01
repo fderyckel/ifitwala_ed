@@ -1,6 +1,5 @@
 // ifitwala_ed/ui-spa/tailwind.config.js
 
-
 import frappeUiPreset from 'frappe-ui/tailwind';
 import colors from 'tailwindcss/colors';
 import typography from '@tailwindcss/typography';
@@ -85,21 +84,22 @@ export default {
 			opacity: { 15: '0.15', 65: '0.65', 85: '0.85' },
 			colors: {
 				slate: colors.slate,
-				ink: withOpacity('--ink-rgb'),
-				'slate-token': withOpacity('--slate-rgb'),
-				canopy: withOpacity('--canopy-rgb'),
-				leaf: withOpacity('--leaf-rgb'),
-				moss: withOpacity('--moss-rgb'),
-				sky: withOpacity('--sky-rgb'),
-				sand: withOpacity('--sand-rgb'),
-				clay: withOpacity('--clay-rgb'),
-				jacaranda: withOpacity('--jacaranda-rgb'),
-				flame: withOpacity('--flame-rgb'),
-				border: withOpacity('--border-rgb'),
 
-				surface: withOpacity('--surface-rgb'),
-				'surface-soft': withOpacity('--surface-rgb'),
-				'surface-strong': withOpacity('--surface-strong-rgb'),
+				ink: 'rgb(var(--ink-rgb) / <alpha-value>)',
+				'slate-token': 'rgb(var(--slate-rgb) / <alpha-value>)',
+				canopy: 'rgb(var(--canopy-rgb) / <alpha-value>)',
+				leaf: 'rgb(var(--leaf-rgb) / <alpha-value>)',
+				moss: 'rgb(var(--moss-rgb) / <alpha-value>)',
+				sky: 'rgb(var(--sky-rgb) / <alpha-value>)',
+				sand: 'rgb(var(--sand-rgb) / <alpha-value>)',
+				clay: 'rgb(var(--clay-rgb) / <alpha-value>)',
+				jacaranda: 'rgb(var(--jacaranda-rgb) / <alpha-value>)',
+				flame: 'rgb(var(--flame-rgb) / <alpha-value>)',
+				border: 'rgb(var(--border-rgb) / <alpha-value>)',
+
+				surface: 'rgb(var(--surface-rgb) / <alpha-value>)',
+				'surface-soft': 'rgb(var(--surface-rgb) / <alpha-value>)',
+				'surface-strong': 'rgb(var(--surface-strong-rgb) / <alpha-value>)',
 			},
 		},
 	},

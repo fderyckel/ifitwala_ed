@@ -41,6 +41,17 @@
       </div>
 
       <div class="flex flex-col gap-1">
+        <label class="type-label">Organization</label>
+        <select
+          v-model="filters.organization"
+          class="h-9 min-w-[160px] max-w-[220px] rounded-md border px-2 text-sm"
+        >
+          <option value="">All Organizations</option>
+          <option v-for="o in allowedOrganizations" :key="o" :value="o">{{ o }}</option>
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1">
         <label class="type-label">School</label>
         <select
           v-model="filters.school"
@@ -157,7 +168,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { getInquiryDashboardData, getInquiryTypes, searchAdmissionUsers, searchAcademicYears } from '@/lib/admission'
+import {
+  getInquiryDashboardData,
+  getInquiryOrganizations,
+  getInquirySchools,
+  getInquiryTypes,
+  searchAdmissionUsers,
+  searchAcademicYears,
+} from '@/lib/admission'
 import FiltersBar from '@/components/analytics/FiltersBar.vue'
 import KpiRow from '@/components/analytics/KpiRow.vue'
 import StatsTile from '@/components/analytics/StatsTile.vue'
@@ -175,6 +193,7 @@ const filters = ref({
   assigned_to: '',
   type_of_inquiry: '',
   sla_status: '',
+  organization: '',
   school: '',
 })
 
@@ -182,17 +201,23 @@ const filters = ref({
 const inquiryTypes = ref<string[]>([])
 const users = ref<{name: string, full_name: string}[]>([])
 const academicYears = ref<string[]>([])
+const allowedOrganizations = ref<string[]>([])
+const allowedSchools = ref<string[]>([])
 
 // -- Actions --
 async function loadOptions() {
-  const [types, userList, years] = await Promise.all([
+  const [types, userList, years, organizations, schools] = await Promise.all([
     getInquiryTypes(),
     searchAdmissionUsers(''),
-    searchAcademicYears('')
+    searchAcademicYears(''),
+    getInquiryOrganizations(),
+    getInquirySchools(),
   ])
   inquiryTypes.value = types || []
   if (userList) users.value = userList.map((u: any) => ({ name: u[0], full_name: u[1] }))
   if (years) academicYears.value = years.map((y: any) => y[0])
+  allowedOrganizations.value = organizations || []
+  allowedSchools.value = schools || []
 }
 
 async function refresh() {
@@ -232,10 +257,11 @@ const kpiItems = computed(() => {
 })
 
 const pipelineItems = computed(() => {
-  return (data.value?.pipeline || []).map((d: any) => ({
-    label: d.workflow_state,
-    value: d.count,
-    total: data.value?.summary?.total_inquiries || 1,
+  const total = data.value?.counts?.total || 0
+  return (data.value?.pipeline_by_state || []).map((d: any) => ({
+    label: d.label,
+    count: d.value,
+    pct: total ? Math.round((d.value / total) * 100) : 0,
   }))
 })
 

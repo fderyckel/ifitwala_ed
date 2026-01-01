@@ -104,6 +104,7 @@
    "fieldtype": "Link",
    "hidden": 0,
    "label": "Organization",
+   "link_query": "ifitwala_ed.api.inquiry.inquiry_organization_link_query",
    "max_length": 0,
    "max_value": 0,
    "options": "Organization",
