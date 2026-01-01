@@ -231,19 +231,34 @@
                  <InteractionEmojiChips
                    v-if="selectedComm"
                    :interaction="getInteractionFor(selectedComm)"
-                   :readonly="true"
+                   :readonly="!canInteract(selectedComm)"
+                   :onReact="(code) => reactTo(selectedComm, code)"
                  />
-                 
-                 <Button
-                    variant="subtle"
-                    color="gray"
-                    class="gap-2"
-                    @click="openThread(selectedComm)"
-                    :disabled="!selectedComm.allow_public_thread"
-                 >
-                    <FeatherIcon name="message-square" class="h-4 w-4" />
-                    <span>Comments</span>
-                 </Button>
+
+                 <div class="flex items-center gap-3 ml-auto">
+                    <div
+                      v-if="selectedStats"
+                      class="flex items-center gap-1 text-xs text-slate-token/50 bg-slate-50 px-2 py-1 rounded"
+                    >
+                      <span>👍 {{ selectedStats.reactions_total }}</span>
+                      <span class="border-l border-slate-200 h-3 mx-1"></span>
+                      <span>💬 {{ selectedStats.comments_total }}</span>
+                    </div>
+
+                    <Button
+                      variant="subtle"
+                      color="gray"
+                      class="gap-2"
+                      @click="openThread(selectedComm)"
+                      :disabled="!canInteract(selectedComm)"
+                    >
+                      <FeatherIcon name="message-square" class="h-4 w-4" />
+                      <span>Comments</span>
+                      <span v-if="selectedStats" class="ml-2 text-xs font-semibold">
+                        {{ selectedStats.comments_total }}
+                      </span>
+                    </Button>
+                 </div>
 
               </div>
            </div>
@@ -272,6 +287,7 @@ import { computed, ref, watch } from 'vue'
 import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, createResource } from 'frappe-ui'
 import { type ArchiveFilters, type OrgCommunicationListItem } from '@/types/orgCommunication'
 import { type InteractionSummary } from '@/types/morning_brief'
+import type { ReactionCode } from '@/types/interactions'
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue'
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue'
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats'
@@ -311,6 +327,10 @@ const start = ref(0)
 const feedItems = ref<OrgCommunicationListItem[]>([])
 const hasMore = ref(false)
 const interactionSummaries = ref<Record<string, InteractionSummary>>({})
+const selectedStats = computed(() => {
+	if (!selectedComm.value) return null
+	return buildInteractionStats(getInteractionFor(selectedComm.value))
+})
 
 // User Context for Filters
 const hasTeamFilter = computed(() => myTeams.value.length > 0)
@@ -642,22 +662,29 @@ function refreshSummary(names: string[]) {
 	interactionSummaryResource.submit({ comm_names: commNames })
 }
 
-function acknowledge(item: OrgCommunicationListItem) {
+function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 	if (!item?.name) return
+	if (!canInteract(item)) return
 	interactionAction.submit(
 		{
 			org_communication: item.name,
-			intent_type: 'Acknowledged',
+			reaction_code: code,
 			surface: 'Portal Feed',
 		},
 		{
-			onSuccess: () => refreshSummary([item.name]),
+			onSuccess: () => {
+				refreshSummary([item.name])
+				if (showThreadDrawer.value) {
+					threadResource.reload()
+				}
+			},
 		},
 	)
 }
 
 function openThread(item: OrgCommunicationListItem) {
 	if (!item?.name) return
+	if (!canInteract(item)) return
 	selectedComm.value = item
 	showThreadDrawer.value = true
 	threadResource.submit({ org_communication: item.name })
@@ -665,6 +692,7 @@ function openThread(item: OrgCommunicationListItem) {
 
 function submitComment() {
 	if (!selectedComm.value?.name || !newComment.value.trim()) return
+	if (!canInteract(selectedComm.value)) return
 
 	interactionAction.submit(
 		{

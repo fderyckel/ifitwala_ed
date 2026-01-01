@@ -20,11 +20,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type {
-  InteractionSummary,
-  InteractionIntentType,
-  ReactionCode,
-} from '@/types/morning_brief'
+import type { InteractionSummary } from '@/types/morning_brief'
+import type { InteractionIntentType, ReactionCode } from '@/types/interactions'
 import { getInteractionStats } from '@/utils/interactionStats'
 
 const props = withDefaults(

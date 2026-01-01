@@ -47,12 +47,14 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const roles = (window as unknown as { portalRoles?: string[] }).portalRoles || []
+  const defaultPortal = (window as unknown as { defaultPortal?: string }).defaultPortal || 'student'
 
-  if (roles.includes('Student') && (to.path.startsWith('/staff') || to.path.startsWith('/guardian'))) {
-    return { name: 'student-home' }
+  const required = (to.meta as any)?.portal as string | undefined
+  if (required && !roles.includes(required)) {
+    return { name: `${defaultPortal}-home` }
   }
-
   return true
 })
+
 
 export default router

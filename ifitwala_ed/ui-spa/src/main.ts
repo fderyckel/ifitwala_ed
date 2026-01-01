@@ -22,21 +22,22 @@ setConfig('realtime', {
   withCredentials: true,
 });
 
+
 async function bootstrap() {
-  // Set fetchOptions and CSRF token
   await setupFrappeUI();
 
-  createApp(App)
+  const app = createApp(App)
     .use(FrappeUI, {
-      // Tell Frappe‑UI to send the sid cookie on every call
       useSession: true,
-      // Disable auto‑connecting the socket on the portal; the student/staff
-      // portal doesn’t need real‑time events
       connectSocket: false,
     })
     .use(router)
-    .mount('#app');
+
+  await router.isReady()
+
+  app.mount('#app')
 }
+
 
 bootstrap().catch((err) => {
   // eslint-disable-next-line no-console

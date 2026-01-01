@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue -->
 <template>
   <div class="space-y-8">
     <header class="border-b border-gray-200 pb-4">
@@ -193,19 +194,19 @@ const daySummary = computed(() => {
 
 // Data for the "More" section cards
 const moreLinks = [
-	{ 
+	{
 		title: 'Student Log',
     description: 'View socio-emotional notes.',
     icon: 'file-text',
 		to: { name: 'student-logs' }
   },
-  { 
+  {
     title: 'Wellbeing',
     description: 'Access resources and check-ins.',
     icon: 'heart',
     to: '/portal/wellbeing'
   },
-  { 
+  {
     title: 'Demographics',
     description: 'Manage your profile and details.',
     icon: 'user',
