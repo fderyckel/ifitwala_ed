@@ -71,10 +71,14 @@
       />
 
        <!-- Interaction Toggle -->
-      <label class="flex items-center gap-2 cursor-pointer text-sm text-ink select-none px-2">
-        <input type="checkbox" v-model="filters.only_with_interactions" class="rounded border-slate-300 text-jacaranda" />
-        <span>With interactions</span>
-      </label>
+			<label class="flex items-center gap-2 cursor-pointer text-sm text-ink select-none px-2">
+				<input
+					type="checkbox"
+					v-model="filters.only_with_interactions"
+					class="rounded border-slate-300 text-jacaranda"
+				/>
+				<span>With comments</span>
+			</label>
     </div>
 
     <!-- Main Content Grid -->
@@ -236,15 +240,6 @@
                  />
 
                  <div class="flex items-center gap-3 ml-auto">
-                    <div
-                      v-if="selectedStats"
-                      class="flex items-center gap-1 text-xs text-slate-token/50 bg-slate-50 px-2 py-1 rounded"
-                    >
-                      <span>👍 {{ selectedStats.reactions_total }}</span>
-                      <span class="border-l border-slate-200 h-3 mx-1"></span>
-                      <span>💬 {{ selectedStats.comments_total }}</span>
-                    </div>
-
                     <Button
                       variant="subtle"
                       color="gray"
