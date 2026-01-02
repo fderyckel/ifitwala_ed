@@ -13,6 +13,8 @@ export const ADMISSION_API = {
 }
 
 export type DashboardFilters = {
+  date_mode?: 'preset' | 'custom' | 'academic_year'
+  date_preset?: string
   from_date?: string
   to_date?: string
   academic_year?: string

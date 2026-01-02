@@ -1,14 +1,21 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue -->
 <template>
   <div class="flex flex-col gap-6 p-6">
-    <header class="flex items-center justify-between">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <h1 class="type-h2 text-canopy">Inquiry Analytics</h1>
-      <button
-        class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
-        @click="refresh"
-      >
-        Refresh
-      </button>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+        <DateRangePills
+          v-model="filters.date_preset"
+          :items="DATE_RANGES"
+          @change="handleDatePresetChange"
+        />
+        <button
+          class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
+          @click="refresh"
+        >
+          Refresh
+        </button>
+      </div>
     </header>
 
     <FiltersBar class="analytics-filters">
@@ -17,6 +24,7 @@
         <select
           v-model="filters.academic_year"
           class="h-9 rounded-md border px-2 text-sm"
+          @change="handleAcademicYearChange"
         >
           <option value="">All Years</option>
           <option v-for="y in academicYears" :key="y" :value="y">{{ y }}</option>
@@ -30,12 +38,14 @@
             type="date"
             v-model="filters.from_date"
             class="h-9 rounded-md border px-2 text-sm"
+            @change="handleCustomDateChange"
           />
           <span class="text-slate-300">-</span>
           <input
             type="date"
             v-model="filters.to_date"
             class="h-9 rounded-md border px-2 text-sm"
+            @change="handleCustomDateChange"
           />
         </div>
       </div>
@@ -181,12 +191,23 @@ import KpiRow from '@/components/analytics/KpiRow.vue'
 import StatsTile from '@/components/analytics/StatsTile.vue'
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
 import HorizontalBarTopN from '@/components/analytics/HorizontalBarTopN.vue'
+import DateRangePills from '@/components/filters/DateRangePills.vue'
 
 // -- State --
 const loading = ref(false)
 const data = ref<any>(null)
 
+const DATE_RANGES = [
+  { label: 'Last 7 Days', value: '7d' },
+  { label: 'Last 30 Days', value: '30d' },
+  { label: 'Last 90 Days', value: '90d' },
+  { label: 'YTD', value: 'year' },
+  { label: 'All Time', value: 'all' },
+] as const
+
 const filters = ref({
+  date_mode: 'preset',
+  date_preset: '90d',
   academic_year: '',
   from_date: '',
   to_date: '',
@@ -230,6 +251,28 @@ async function refresh() {
   } finally {
     loading.value = false
   }
+}
+
+function handleDatePresetChange(value: string) {
+  if (!value) return
+  filters.value.date_mode = 'preset'
+  filters.value.date_preset = value
+  filters.value.from_date = ''
+  filters.value.to_date = ''
+  filters.value.academic_year = ''
+}
+
+function handleCustomDateChange() {
+  filters.value.date_mode = 'custom'
+  filters.value.date_preset = ''
+  filters.value.academic_year = ''
+}
+
+function handleAcademicYearChange() {
+  filters.value.date_mode = 'academic_year'
+  filters.value.date_preset = ''
+  filters.value.from_date = ''
+  filters.value.to_date = ''
 }
 
 watch(filters, () => {

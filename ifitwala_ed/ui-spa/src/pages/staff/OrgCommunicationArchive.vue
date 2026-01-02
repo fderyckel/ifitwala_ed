@@ -11,21 +11,7 @@
       </div>
 
       <!-- Date Range Toggles -->
-      <div class="flex items-center gap-1 rounded-lg bg-surface-soft p-1">
-        <button
-          v-for="range in DATE_RANGES"
-          :key="range.value"
-          @click="filters.date_range = range.value"
-          class="px-3 py-1.5 text-xs font-medium rounded-md transition-all"
-          :class="
-            filters.date_range === range.value
-              ? 'bg-white text-ink shadow-sm'
-              : 'text-slate-token/60 hover:text-ink hover:bg-white/50'
-          "
-        >
-          {{ range.label }}
-        </button>
-      </div>
+      <DateRangePills v-model="filters.date_range" :items="DATE_RANGES" />
     </header>
 
     <!-- Filters Bar -->
@@ -311,6 +297,7 @@ import { type ArchiveFilters, type OrgCommunicationListItem } from '@/types/orgC
 import { type InteractionSummary } from '@/types/morning_brief'
 import type { ReactionCode } from '@/types/interactions'
 import FiltersBar from '@/components/analytics/FiltersBar.vue'
+import DateRangePills from '@/components/filters/DateRangePills.vue'
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue'
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue'
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats'
