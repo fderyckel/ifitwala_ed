@@ -78,6 +78,7 @@ export interface OrgCommunicationListItem {
   allow_private_notes: 0 | 1 | boolean
   allow_public_thread: 0 | 1 | boolean
   snippet: string
+  audience_label?: string
   audience_summary?: AudienceSummary
   has_active_thread?: boolean
 }

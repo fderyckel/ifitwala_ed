@@ -1,7 +1,7 @@
 # Org Communication Archive dev notes
 
 ## Audience summary contract
-Story: replace `audience_label` with a structured `audience_summary` to enable compact scan-mode chips
+Story: add `audience_summary` alongside `audience_label` to enable compact scan-mode chips
 in the list view and a stable detail header, without needing another API change for an expanded view.
 
 ### Where it appears

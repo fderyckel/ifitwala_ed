@@ -119,8 +119,8 @@
           >
             <!-- Priority Indicator -->
             <div
-              class="absolute left-0 top-3 bottom-3 w-1 rounded-r-full"
-              :class="getPriorityClass(item.priority)"
+              class="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full opacity-90"
+              :class="PRIORITY_BAR_CLASS[item.priority] || 'bg-slate-200'"
             ></div>
 
              <div class="flex-1 pl-3 min-w-0">
@@ -154,29 +154,7 @@
                <div class="mt-3 flex items-center gap-4">
                  <div class="flex items-center gap-1.5 text-xs text-slate-token/60">
                     <FeatherIcon name="users" class="h-3 w-3" />
-                    <div class="flex flex-wrap items-center gap-1.5">
-                      <span
-                        v-for="(chip, idx) in (item.audience_summary?.chips || [])"
-                        :key="idx"
-                        class="rounded-full px-2 py-0.5 text-[11px] font-medium"
-                        :class="chip.type === 'scope'
-                          ? 'bg-jacaranda/10 text-jacaranda'
-                          : 'bg-slate-100 text-slate-token/70'"
-                        :title="chip.type === 'scope'
-                          ? (item.audience_summary?.primary?.scope_label || '')
-                          : ''"
-                      >
-                        {{ chip.label }}
-                      </span>
-
-                      <span
-                        v-if="(item.audience_summary?.meta?.audience_rows || 0) > 1"
-                        class="rounded-full px-2 py-0.5 text-[11px] font-medium bg-slate-50 text-slate-token/50"
-                        :title="`${item.audience_summary?.meta?.audience_rows} audiences`"
-                      >
-                        +{{ (item.audience_summary?.meta?.audience_rows || 1) - 1 }}
-                      </span>
-                    </div>
+                    <span class="truncate max-w-[150px]">{{ item.audience_label }}</span>
                  </div>
 
                  <!-- Interaction Summary -->
@@ -254,18 +232,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                    <FeatherIcon name="users" class="h-4 w-4 text-slate-token/50" />
-                   <span
-                     class="font-medium text-slate-token/70"
-                     :title="selectedComm.audience_summary?.primary?.scope_label || ''"
-                   >
-                     <span v-if="(selectedComm.audience_summary?.primary?.recipients || []).length">
-                       {{ (selectedComm.audience_summary?.primary?.recipients || []).join(' · ') }}
-                     </span>
-                     <span v-if="selectedComm.audience_summary?.primary?.scope_value">
-                       <span v-if="(selectedComm.audience_summary?.primary?.recipients || []).length"> · </span>
-                       {{ selectedComm.audience_summary?.primary?.scope_value }}
-                     </span>
-                   </span>
+                   <span class="font-medium text-slate-token/70">{{ selectedComm.audience_label }}</span>
                 </div>
              </div>
            </div>
@@ -293,18 +260,22 @@
                     <Button
                       variant="subtle"
                       color="gray"
-                      class="gap-2"
+                      class="gap-2 whitespace-nowrap"
                       @click="openThread(selectedComm)"
                       :disabled="!canInteract(selectedComm)"
                     >
-                      <FeatherIcon name="message-square" class="h-4 w-4" />
-                      <span>Comments</span>
-                      <span
-                        v-if="selectedStats"
-                        class="ml-2 text-xs font-semibold"
-                        :title="selectedStats.comments_total > 0 ? 'Has comments' : 'No comments'"
-                      >
-                        {{ selectedStats.comments_total }}
+                      <FeatherIcon name="message-square" class="h-4 w-4 shrink-0" />
+
+                      <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                        <span>Comments</span>
+
+                        <span
+                          v-if="selectedStats"
+                          class="text-xs font-semibold tabular-nums"
+                          :title="selectedStats.comments_total > 0 ? 'Has comments' : 'No comments'"
+                        >
+                          {{ selectedStats.comments_total }}
+                        </span>
                       </span>
                     </Button>
                  </div>
@@ -350,6 +321,13 @@ const DATE_RANGES = [
   { label: 'YTD', value: 'year' },
   { label: 'All Time', value: 'all' },
 ] as const
+
+const PRIORITY_BAR_CLASS: Record<string, string> = {
+	Critical: 'bg-flame',
+	High: 'bg-jacaranda',
+	Normal: 'bg-blue-400',
+	Low: 'bg-slate-300',
+}
 
 const filters = ref<ArchiveFilters>({
 	search_text: '',
@@ -459,24 +437,16 @@ const archiveContext = createResource({
 			return true
 		})
 
-		orgChoices.value = (data.organizations || []).map((o: any) => {
-			const baseLabel = o.organization_name || o.name
-			const label = o.abbr ? `${o.abbr} — ${baseLabel}` : baseLabel
-			return {
-				label,
-				value: o.name,
-			}
-		})
+		orgChoices.value = (data.organizations || []).map((o: any) => ({
+			label: (o.abbr ? `${o.abbr} — ` : '') + (o.organization_name || o.name),
+			value: o.name,
+		}))
 
-		schoolChoices.value = (data.schools || []).map((s: any) => {
-			const baseLabel = s.school_name || s.name
-			const label = s.abbr ? `${s.abbr} — ${baseLabel}` : baseLabel
-			return {
-				label,
-				value: s.name,
-				organization: s.organization || null,
-			}
-		})
+		schoolChoices.value = (data.schools || []).map((s: any) => ({
+			label: (s.abbr ? `${s.abbr} — ` : '') + (s.school_name || s.name),
+			value: s.name,
+			organization: s.organization || null,
+		}))
 
 		if (data.defaults) {
 			filters.value.organization = data.defaults.organization || null
@@ -790,21 +760,6 @@ function formatDate(date: string | null, fmt = 'DD MMM') {
 	}
 
 	return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
-}
-
-function getPriorityClass(priority: string) {
-	switch (priority) {
-		case 'Critical':
-			return 'bg-flame'
-		case 'High':
-			return 'bg-jacaranda'
-		case 'Normal':
-			return 'bg-blue-400'
-		case 'Low':
-			return 'bg-slate-300'
-		default:
-			return 'bg-slate-200'
-	}
 }
 
 function getPriorityColor(priority: string) {
