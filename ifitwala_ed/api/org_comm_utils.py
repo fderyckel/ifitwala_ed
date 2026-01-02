@@ -26,9 +26,11 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 			- Others: must be member of that Team via Team Member child table
 
 	Strict school filter behaviour:
-	- If filter_school = X, show only audiences where audience.school is in {X} ∪ Anc(X).
+	- If filter_school = X, only School Scope rows are eligible.
+	- Match only audiences where audience.school is in {X} ∪ Anc(X).
 	- Never include descendants of X.
-	- Global (aud.school is None) is still allowed by the school filter.
+	- Org Communication Audience does not define an explicit global/organization mode,
+	  so School scope does not include global rows.
 	"""
 
 	def _as_bool(value) -> bool:
@@ -107,10 +109,19 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 	if filter_school in ("All", "", None):
 		filter_school = None
 
-	# Defensive: student_group and team filters are mutually exclusive.
-	# If both are present, student_group wins (narrower).
+	# Defensive: scope filters are mutually exclusive (student_group > team > school).
+	# NOTE: Org Communication Audience only defines School Scope / Team / Student Group.
+	# There is no explicit global/organization audience mode to include here.
+	active_scope = None
 	if filter_student_group:
+		active_scope = "Student Group"
 		filter_team = None
+		filter_school = None
+	elif filter_team:
+		active_scope = "Team"
+		filter_school = None
+	elif filter_school:
+		active_scope = "School"
 
 	is_academic_admin = "Academic Admin" in roles
 
@@ -198,9 +209,12 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 		if not target_mode:
 			continue
 
-		if filter_school_scope is not None and aud.school:
-			if aud.school not in filter_school_scope:
-				continue
+		if active_scope == "School" and target_mode != "School Scope":
+			continue
+		if active_scope == "Team" and target_mode != "Team":
+			continue
+		if active_scope == "Student Group" and target_mode != "Student Group":
+			continue
 
 		enabled_recipients = _get_enabled_recipient_flags(aud)
 		if not enabled_recipients:
@@ -227,6 +241,9 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 			continue
 
 		if target_mode == "School Scope":
+			if filter_school_scope is not None and aud.school:
+				if aud.school not in filter_school_scope:
+					continue
 			if _school_scope_match(
 				aud.school,
 				aud.include_descendants,

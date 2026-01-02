@@ -365,6 +365,25 @@ def get_org_communication_feed(
 	if isinstance(filter_team_val, str):
 		filter_team_val = filter_team_val.strip() or None
 
+	filter_school_val = filters_dict.get("school")
+	if isinstance(filter_school_val, str):
+		filter_school_val = filter_school_val.strip() or None
+
+	# Defensive mutual exclusivity (student_group > team > school)
+	if filter_sg_val:
+		filter_team_val = None
+		filter_school_val = None
+	elif filter_team_val:
+		filter_school_val = None
+		filter_sg_val = None
+	elif filter_school_val:
+		filter_team_val = None
+		filter_sg_val = None
+
+	filters_dict["student_group"] = filter_sg_val
+	filters_dict["team"] = filter_team_val
+	filters_dict["school"] = filter_school_val
+
 	frappe.logger("org_comm_archive").warning({
 		"raw_filters": raw_filters,
 		"filters_dict": filters_dict,
@@ -401,7 +420,6 @@ def get_org_communication_feed(
 		org_guard = {org_filter}
 
 	# Optional school guard for user scope (UI filter must be within allowed scope)
-	filter_school_val = filters_dict.get("school")
 	if (
 		filter_school_val
 		and school_scope
@@ -480,9 +498,8 @@ def get_org_communication_feed(
 		)
 
 	# ──────────────────────────────────────────────
-	# STRICT PREFILTERS FOR TEAM / STUDENT GROUP
+	# STRICT PREFILTERS FOR MUTUALLY-EXCLUSIVE SCOPES
 	# (speed + eliminates “matched via other audience row” confusion)
-	# Student group wins if both exist (defensive).
 	# ──────────────────────────────────────────────
 
 	if isinstance(filter_sg_val, str):
@@ -500,9 +517,6 @@ def get_org_communication_feed(
 		)
 		values["filter_student_group"] = filter_sg_val
 
-		# Enforce mutual exclusivity on the server too
-		filter_team_val = None
-
 	elif filter_team_val:
 		conditions.append(
 			"EXISTS ("
@@ -514,6 +528,16 @@ def get_org_communication_feed(
 			")"
 		)
 		values["filter_team"] = filter_team_val
+	elif filter_school_val:
+		conditions.append(
+			"EXISTS ("
+			"SELECT a.name FROM `tabOrg Communication Audience` a "
+			"WHERE a.parent = `tabOrg Communication`.name "
+			"AND a.parenttype = 'Org Communication' "
+			"AND a.parentfield = 'audiences' "
+			"AND a.target_mode = 'School Scope'"
+			")"
+		)
 
 	where_clause = " AND ".join(conditions)
 	if where_clause:
