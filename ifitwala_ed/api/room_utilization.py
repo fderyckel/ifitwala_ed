@@ -36,6 +36,27 @@ def _require_scope(filters: dict) -> None:
 		frappe.throw(_("Please select a School or Building to scope this query."))
 
 
+def _get_school_scope(school: str) -> list[str]:
+	"""Return [school] + descendant schools (NestedSet)."""
+	if not school:
+		return []
+	try:
+		doc = frappe.get_cached_doc("School", school)
+	except Exception:
+		return [school]
+
+	if getattr(doc, "lft", None) and getattr(doc, "rgt", None):
+		rows = frappe.get_all(
+			"School",
+			filters={"lft": [">=", doc.lft], "rgt": ["<=", doc.rgt]},
+			pluck="name",
+			order_by="lft",
+		)
+		return rows or [school]
+
+	return [school]
+
+
 def _normalize_date(value) -> date | None:
 	if not value:
 		return None
@@ -132,11 +153,23 @@ def _validate_date_range(from_date, to_date, *, enforce_scope: bool = True) -> t
 
 def _get_candidate_rooms(filters: dict) -> list[dict]:
 	room_filters: dict[str, Any] = {"is_group": 0}
+
 	if filters.get("school"):
-		room_filters["school"] = filters["school"]
+		scope = _get_school_scope(filters["school"])
+		if scope:
+			room_filters["school"] = ["in", scope]
+
 	if filters.get("building"):
 		# No explicit building field in Location; treat building as parent_location.
 		room_filters["parent_location"] = filters["building"]
+
+	cap = filters.get("capacity_needed")
+	try:
+		cap = int(cap) if cap not in (None, "") else None
+	except Exception:
+		cap = None
+	if cap and cap > 0:
+		room_filters["maximum_capacity"] = [">=", cap]
 
 	return frappe.get_all(
 		"Location",
@@ -205,27 +238,15 @@ def get_free_rooms(filters=None):
 		frappe.throw(_("End Time must be after Start Time."))
 
 	target_date = _normalize_date(filters.get("date"))
-	rotation_day_missing = filters.get("rotation_day") in (None, "")
 	rotation_day = _resolve_rotation_day(filters, target_date) if target_date else None
-	if rotation_day is None:
-		reason = "rotation_day missing in request; resolver could not determine it."
-		frappe.throw(
-			_(
-				"Rotation day is required for availability checks. "
-				"date={0}, start_time={1}, end_time={2}, school={3}, building={4}, reason={5}"
-			).format(
-				filters.get("date"),
-				filters.get("start_time"),
-				filters.get("end_time"),
-				filters.get("school") or "—",
-				filters.get("building") or "—",
-				reason if rotation_day_missing else "rotation_day provided but invalid.",
-			)
-		)
 
 	rooms = _get_candidate_rooms(filters)
 	if not rooms:
-		return {"window": {"start": str(window_start), "end": str(window_end)}, "rooms": []}
+		return {
+			"window": {"start": str(window_start), "end": str(window_end)},
+			"rooms": [],
+			"classes_checked": bool(rotation_day),
+		}
 
 	room_names = [r["name"] for r in rooms]
 	params = {
@@ -234,7 +255,6 @@ def get_free_rooms(filters=None):
 		"window_end": window_end,
 		"start_time": filters["start_time"],
 		"end_time": filters["end_time"],
-		"rotation_day": rotation_day,
 	}
 
 	meeting_school_clause = ""
@@ -275,18 +295,21 @@ def get_free_rooms(filters=None):
 		as_dict=True,
 	)
 
-	schedule_rows = frappe.db.sql(
-		"""
-		SELECT DISTINCT location
-		FROM `tabStudent Group Schedule`
-		WHERE location IN %(rooms)s
-			AND rotation_day = %(rotation_day)s
-			AND from_time < TIME(%(end_time)s)
-			AND to_time > TIME(%(start_time)s)
-		""",
-		params,
-		as_dict=True,
-	)
+	schedule_rows = []
+	if rotation_day is not None:
+		params["rotation_day"] = rotation_day
+		schedule_rows = frappe.db.sql(
+			"""
+			SELECT DISTINCT location
+			FROM `tabStudent Group Schedule`
+			WHERE location IN %(rooms)s
+				AND rotation_day = %(rotation_day)s
+				AND from_time < TIME(%(end_time)s)
+				AND to_time > TIME(%(start_time)s)
+			""",
+			params,
+			as_dict=True,
+		)
 
 	busy_rooms = {r["location"] for r in meeting_rows if r.get("location")}
 	busy_rooms.update({r["location"] for r in event_rows if r.get("location")})
@@ -308,6 +331,7 @@ def get_free_rooms(filters=None):
 	return {
 		"window": {"start": str(window_start), "end": str(window_end)},
 		"rooms": available_rooms,
+		"classes_checked": bool(rotation_day),
 	}
 
 

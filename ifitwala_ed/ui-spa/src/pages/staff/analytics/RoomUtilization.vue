@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/RoomUtilization.vue -->
 <template>
-  <div class="analytics-shell">
+  <div class="min-h-screen w-full px-4 py-4 sm:px-6 sm:py-6">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="type-h2 text-canopy">Room Utilization</h1>
@@ -38,17 +38,6 @@
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="type-label">Rotation Day</label>
-        <input
-          type="number"
-          min="1"
-          step="1"
-          v-model.number="filters.rotation_day"
-          class="h-9 w-28 rounded-md border px-2 text-sm"
-        />
-      </div>
-
-      <div class="flex flex-col gap-1">
         <label class="type-label">Window Start</label>
         <input
           type="time"
@@ -64,6 +53,82 @@
           v-model="filters.end_time"
           class="h-9 rounded-md border px-2 text-sm"
         />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="type-label">Capacity Needed</label>
+        <input
+          type="number"
+          min="1"
+          step="1"
+          v-model="filters.capacity_needed"
+          class="h-9 w-28 rounded-md border px-2 text-sm"
+        />
+      </div>
+    </FiltersBar>
+
+    <KpiRow :items="kpiItems" />
+
+    <section class="analytics-card">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 class="analytics-card__title">Free Rooms Finder</h3>
+          <p class="analytics-card__meta">Checks meetings and school events.</p>
+        </div>
+        <button
+          class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
+          :disabled="freeRoomsLoading || !filters.date || !filters.start_time || !filters.end_time"
+          @click="loadFreeRooms"
+        >
+          Find Free Rooms
+        </button>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <StatsTile
+          label="Free Rooms"
+          :value="freeRooms.length"
+          :tone="freeRooms.length ? 'success' : 'warning'"
+        />
+        <StatsTile label="Window" :value="freeWindowLabel" tone="info" />
+      </div>
+      <p
+        v-if="freeRoomsResource.data && freeRoomsResource.data.classes_checked === false"
+        class="mt-2 text-xs text-[rgb(var(--flame-rgb))]"
+      >
+        Note: Class timetable could not be checked for this date. Results include meetings and
+        events only.
+      </p>
+
+      <div v-if="freeRoomsLoading" class="py-6 text-center text-sm text-slate-500">
+        Loading free rooms...
+      </div>
+      <div v-else-if="!freeRooms.length" class="analytics-empty">
+        No free rooms found for this window.
+      </div>
+      <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <article
+          v-for="room in freeRooms"
+          :key="room.room"
+          class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+        >
+          <div class="text-sm font-semibold text-ink">{{ room.room_name }}</div>
+          <div class="text-xs text-slate-500">Building: {{ room.building || '—' }}</div>
+          <div class="text-xs text-slate-500">Capacity: {{ room.max_capacity ?? '—' }}</div>
+        </article>
+      </div>
+    </section>
+
+    <FiltersBar class="analytics-filters !bg-white">
+      <div class="flex flex-col gap-1">
+        <label class="type-label">School</label>
+        <select
+          v-model="filters.school"
+          class="h-9 min-w-[160px] rounded-md border px-2 text-sm"
+        >
+          <option value="">Select School</option>
+          <option v-for="s in schools" :key="s.name" :value="s.name">{{ s.label }}</option>
+        </select>
       </div>
 
       <div class="flex flex-col gap-1">
@@ -101,51 +166,6 @@
         />
       </div>
     </FiltersBar>
-
-    <KpiRow :items="kpiItems" />
-
-    <section class="analytics-card">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 class="analytics-card__title">Free Rooms Finder</h3>
-          <p class="analytics-card__meta">Checks meetings and school events.</p>
-        </div>
-        <button
-          class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
-          :disabled="freeRoomsLoading || !filters.date || !filters.start_time || !filters.end_time"
-          @click="loadFreeRooms"
-        >
-          Find Free Rooms
-        </button>
-      </div>
-
-      <div class="flex flex-wrap gap-2">
-        <StatsTile
-          label="Free Rooms"
-          :value="freeRooms.length"
-          :tone="freeRooms.length ? 'success' : 'warning'"
-        />
-        <StatsTile label="Window" :value="freeWindowLabel" tone="info" />
-      </div>
-
-      <div v-if="freeRoomsLoading" class="py-6 text-center text-sm text-slate-500">
-        Loading free rooms...
-      </div>
-      <div v-else-if="!freeRooms.length" class="analytics-empty">
-        No free rooms found for this window.
-      </div>
-      <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <article
-          v-for="room in freeRooms"
-          :key="room.room"
-          class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
-        >
-          <div class="text-sm font-semibold text-ink">{{ room.room_name }}</div>
-          <div class="text-xs text-slate-500">Building: {{ room.building || '—' }}</div>
-          <div class="text-xs text-slate-500">Capacity: {{ room.max_capacity ?? '—' }}</div>
-        </article>
-      </div>
-    </section>
 
     <section class="analytics-card">
       <div class="flex flex-wrap items-start justify-between gap-3">
@@ -299,7 +319,7 @@ const filters = ref({
   date: today,
   start_time: '09:00',
   end_time: '10:15',
-  rotation_day: null,
+  capacity_needed: '',
   from_date: today,
   to_date: today,
   day_start_time: '07:00',
@@ -426,7 +446,7 @@ async function loadFreeRooms() {
       date: filters.value.date,
       start_time: filters.value.start_time,
       end_time: filters.value.end_time,
-      rotation_day: filters.value.rotation_day ?? null,
+      capacity_needed: filters.value.capacity_needed,
     },
   })
 }
