@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue -->
 <template>
-  <div class="staff-shell space-y-6">
+  <div class="min-h-screen flex flex-col gap-6 p-6">
     <!-- Header -->
     <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
@@ -83,10 +83,10 @@
     </FiltersBar>
 
     <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-6 items-start h-[calc(100vh-14rem)]">
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-6 flex-1 min-h-0">
 
       <!-- LEFT LIST -->
-      <div class="flex flex-col h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden">
+      <div class="flex flex-col min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden">
         <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-sand/20">
 
           <div v-if="orgCommFeed.loading && !feedItems.length" class="py-12 text-center text-slate-token/60">
@@ -181,7 +181,7 @@
       </div>
 
       <!-- RIGHT DETAIL -->
-      <div class="h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative">
+      <div class="min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative">
         <div v-if="!selectedComm" class="flex flex-col items-center justify-center h-full text-center p-8 text-slate-token/40">
            <FeatherIcon name="inbox" class="h-10 w-10 mb-3 opacity-50" />
            <p class="type-h3">Select an announcement</p>
