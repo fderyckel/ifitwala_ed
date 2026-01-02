@@ -29,60 +29,62 @@
     </header>
 
     <!-- Filters Bar -->
-    <div class="analytics-filters ifit-filters flex flex-wrap items-center gap-3 rounded-xl border border-line-soft bg-surface-glass p-3 shadow-soft">
-      <div class="analytics-filters__title text-sm font-semibold text-ink mr-2">
-        Filters
+    <FiltersBar class="analytics-filters">
+      <!-- Organization -->
+      <div v-if="organizationOptions.length > 0" class="flex flex-col gap-1">
+        <label class="type-label">Organization</label>
+        <FormControl
+          type="select"
+          :options="organizationOptions"
+          v-model="filters.organization"
+          class="w-44"
+        />
       </div>
 
-      <!-- Organization -->
-      <FormControl
-        v-if="organizationOptions.length > 0"
-        type="select"
-        :options="organizationOptions"
-        v-model="filters.organization"
-        class="w-40"
-      />
-
       <!-- School -->
-      <FormControl
-        v-if="schoolOptions.length > 0"
-        type="select"
-        :options="schoolOptions"
-        v-model="filters.school"
-        class="w-40"
-      />
+      <div v-if="schoolOptions.length > 0" class="flex flex-col gap-1">
+        <label class="type-label">School</label>
+        <FormControl
+          type="select"
+          :options="schoolOptions"
+          v-model="filters.school"
+          class="w-44"
+        />
+      </div>
 
       <!-- Team -->
-			<FormControl
-				v-if="hasTeamFilter"
-				type="select"
-				:options="teamOptions"
-				v-model="filters.team"
-				class="w-40"
-			/>
+      <div v-if="hasTeamFilter" class="flex flex-col gap-1">
+        <label class="type-label">Team</label>
+        <FormControl
+          type="select"
+          :options="teamOptions"
+          v-model="filters.team"
+          class="w-44"
+        />
+      </div>
 
       <!-- Student Group -->
-      <FormControl
-        v-if="studentGroupOptions.length > 1"
-        type="select"
-        :options="studentGroupOptions"
-        v-model="filters.student_group"
-        class="w-40"
-      />
-
-      <!-- With comments toggle -->
-      <label class="flex items-center gap-2 cursor-pointer text-sm text-ink select-none px-2">
-        <input
-          type="checkbox"
-          v-model="filters.only_with_interactions"
-          class="rounded border-slate-300 text-jacaranda"
+      <div v-if="studentGroupOptions.length > 1" class="flex flex-col gap-1">
+        <label class="type-label">Student Group</label>
+        <FormControl
+          type="select"
+          :options="studentGroupOptions"
+          v-model="filters.student_group"
+          class="w-44"
         />
+      </div>
 
-        <span class="inline-flex items-center gap-1.5">
-          <span>With comments</span>
-
-          <!-- Tooltip -->
-          <span class="relative inline-flex items-center">
+      <!-- With comments -->
+      <div class="flex flex-col gap-1">
+        <label class="type-label">Interactions</label>
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-ink select-none h-9">
+          <input
+            type="checkbox"
+            v-model="filters.only_with_interactions"
+            class="rounded border-slate-300 text-jacaranda"
+          />
+          <span class="inline-flex items-center gap-1.5">
+            <span>With comments</span>
             <FeatherIcon
               name="info"
               class="h-4 w-4 text-slate-token/60 hover:text-slate-token/80"
@@ -90,9 +92,9 @@
               title="Shows only announcements that have at least one visible comment."
             />
           </span>
-        </span>
-      </label>
-    </div>
+        </label>
+      </div>
+    </FiltersBar>
 
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-6 items-start h-[calc(100vh-14rem)]">
@@ -119,8 +121,8 @@
           >
             <!-- Priority Indicator -->
             <div
-              class="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full opacity-90"
-              :class="PRIORITY_BAR_CLASS[item.priority] || 'bg-slate-200'"
+              class="absolute left-0 top-3 bottom-3 w-1 rounded-r-full"
+              :class="getPriorityClass(item.priority)"
             ></div>
 
              <div class="flex-1 pl-3 min-w-0">
@@ -308,6 +310,7 @@ import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, createResour
 import { type ArchiveFilters, type OrgCommunicationListItem } from '@/types/orgCommunication'
 import { type InteractionSummary } from '@/types/morning_brief'
 import type { ReactionCode } from '@/types/interactions'
+import FiltersBar from '@/components/analytics/FiltersBar.vue'
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue'
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue'
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats'
@@ -322,12 +325,6 @@ const DATE_RANGES = [
   { label: 'All Time', value: 'all' },
 ] as const
 
-const PRIORITY_BAR_CLASS: Record<string, string> = {
-	Critical: 'bg-flame',
-	High: 'bg-jacaranda',
-	Normal: 'bg-blue-400',
-	Low: 'bg-slate-300',
-}
 
 const filters = ref<ArchiveFilters>({
 	search_text: '',
@@ -760,6 +757,21 @@ function formatDate(date: string | null, fmt = 'DD MMM') {
 	}
 
 	return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+}
+
+function getPriorityClass(priority: string) {
+	switch (priority) {
+		case 'Critical':
+			return 'bg-flame'
+		case 'High':
+			return 'bg-jacaranda'
+		case 'Normal':
+			return 'bg-blue-400'
+		case 'Low':
+			return 'bg-slate-300'
+		default:
+			return 'bg-slate-200'
+	}
 }
 
 function getPriorityColor(priority: string) {
