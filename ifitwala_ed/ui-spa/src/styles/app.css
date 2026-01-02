@@ -707,6 +707,17 @@
     background-color: rgb(var(--ink-rgb) / 1);
   }
 
+  /* ACCENT SURFACES (ensure solid tokens for zipper + badges) */
+  .bg-jacaranda {
+    --tw-bg-opacity: 1;
+    background-color: rgb(var(--jacaranda-rgb) / var(--tw-bg-opacity));
+  }
+
+  .bg-flame {
+    --tw-bg-opacity: 1;
+    background-color: rgb(var(--flame-rgb) / var(--tw-bg-opacity));
+  }
+
   .bg-ink\/10 {
     background-color: rgb(var(--ink-rgb) / .10);
   }

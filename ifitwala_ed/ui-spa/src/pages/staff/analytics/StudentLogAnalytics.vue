@@ -11,7 +11,7 @@ import {
 import { createResource } from 'frappe-ui'
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
 import StatsTile from '@/components/analytics/StatsTile.vue'
-import FiltersBar from '@/components/analytics/FiltersBar.vue'
+import FiltersBar from '@/components/filters/FiltersBar.vue'
 
 /* ──────────────────────────────────────────────────────────────
    Shared filters state

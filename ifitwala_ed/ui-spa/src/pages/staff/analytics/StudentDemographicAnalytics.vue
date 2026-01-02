@@ -3,7 +3,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { createResource } from 'frappe-ui'
 
-import FiltersBar from '@/components/analytics/FiltersBar.vue'
+import FiltersBar from '@/components/filters/FiltersBar.vue'
 import KpiRow from '@/components/analytics/KpiRow.vue'
 import HorizontalBarTopN from '@/components/analytics/HorizontalBarTopN.vue'
 import HeatmapChart from '@/components/analytics/HeatmapChart.vue'

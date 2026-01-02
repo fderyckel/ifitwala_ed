@@ -16,7 +16,7 @@ declare module 'vue' {
     CommentThreadDrawer: typeof import('./src/components/CommentThreadDrawer.vue')['default']
     ContentDialog: typeof import('./src/components/ContentDialog.vue')['default']
     DonutSplit: typeof import('./src/components/analytics/DonutSplit.vue')['default']
-    FiltersBar: typeof import('./src/components/analytics/FiltersBar.vue')['default']
+    FiltersBar: typeof import('./src/components/filters/FiltersBar.vue')['default']
     GenericListDialog: typeof import('./src/components/GenericListDialog.vue')['default']
     HeatmapChart: typeof import('./src/components/analytics/HeatmapChart.vue')['default']
     HeatmapDialog: typeof import('./src/components/HeatmapDialog.vue')['default']

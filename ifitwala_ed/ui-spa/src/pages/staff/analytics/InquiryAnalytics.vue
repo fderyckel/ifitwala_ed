@@ -186,7 +186,7 @@ import {
   searchAdmissionUsers,
   searchAcademicYears,
 } from '@/lib/admission'
-import FiltersBar from '@/components/analytics/FiltersBar.vue'
+import FiltersBar from '@/components/filters/FiltersBar.vue'
 import KpiRow from '@/components/analytics/KpiRow.vue'
 import StatsTile from '@/components/analytics/StatsTile.vue'
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'

@@ -296,7 +296,7 @@ import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, createResour
 import { type ArchiveFilters, type OrgCommunicationListItem } from '@/types/orgCommunication'
 import { type InteractionSummary } from '@/types/morning_brief'
 import type { ReactionCode } from '@/types/interactions'
-import FiltersBar from '@/components/analytics/FiltersBar.vue'
+import FiltersBar from '@/components/filters/FiltersBar.vue'
 import DateRangePills from '@/components/filters/DateRangePills.vue'
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue'
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue'

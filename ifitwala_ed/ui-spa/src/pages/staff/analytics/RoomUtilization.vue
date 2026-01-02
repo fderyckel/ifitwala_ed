@@ -259,7 +259,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { createResource } from 'frappe-ui'
 
-import FiltersBar from '@/components/analytics/FiltersBar.vue'
+import FiltersBar from '@/components/filters/FiltersBar.vue'
 import StatsTile from '@/components/analytics/StatsTile.vue'
 import KpiRow from '@/components/analytics/KpiRow.vue'
 
