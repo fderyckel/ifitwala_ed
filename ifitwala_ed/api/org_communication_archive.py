@@ -11,7 +11,7 @@ from ifitwala_ed.utilities.employee_utils import (
 	get_user_base_school,
 )
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
-from ifitwala_ed.api.org_comm_utils import check_audience_match
+from ifitwala_ed.api.org_comm_utils import check_audience_match, build_audience_summary
 from frappe import _
 
 
@@ -239,7 +239,7 @@ def get_archive_context():
 	data["organizations"] = frappe.get_all(
 		"Organization",
 		filters=org_filters or None,
-		fields=["name", "organization_name"],
+		fields=["name", "organization_name", "abbr"],
 		order_by="lft asc",
 	)
 
@@ -255,7 +255,7 @@ def get_archive_context():
 	data["schools"] = frappe.get_all(
 		"School",
 		filters=school_filters or None,
-		fields=["name", "school_name", "organization"],
+		fields=["name", "school_name", "abbr", "organization"],
 		order_by="school_name asc",
 	)
 
@@ -302,7 +302,7 @@ def get_org_communication_item(name=None):
 		"communication_type": doc.communication_type,
 		"priority": doc.priority,
 		"publish_from": doc.publish_from,
-		"audience_label": get_audience_label(doc.name),
+		"audience_summary": build_audience_summary(doc.name),
 	}
 
 
@@ -579,7 +579,7 @@ def get_org_communication_feed(
 				"allow_public_thread": c.allow_public_thread,
 				"snippet": snippet,
 				"has_active_thread": c.allow_public_thread,
-				"audience_label": get_audience_label(c.name),
+				"audience_summary": build_audience_summary(c.name),
 			})
 
 	# Apply pagination on the filtered list
@@ -596,27 +596,3 @@ def get_org_communication_feed(
 		"has_more": (offset + page_len) < total_count,
 	}
 
-
-def get_audience_label(comm_name):
-    # Quick helper to generate a human-readable audience summary
-    # e.g. "Whole Staff · Ifitwala Secondary School"
-    audiences = frappe.get_all("Org Communication Audience", filters={"parent": comm_name}, fields=["target_group", "school", "team", "program", "student_group"])
-    if not audiences:
-        return "Whole Organization"
-
-    parts = []
-    for a in audiences:
-        label = a.target_group or a.team or "Everyone"
-        if a.student_group:
-             label = f"Student Group: {a.student_group}"
-
-        if a.school:
-            # Fix 500 error: Use get_cached_value to avoid column issues if caching is smart,
-            # OR just fetch the correct field safely.
-            # Note: frappe.db.get_value can throw if column doesn't exist in cache sometimes?
-            # Safest is get_cached_value which uses `name` lookup.
-            school_name = frappe.get_cached_value("School", a.school, "school_name")
-            label += f" · {school_name or a.school}"
-        parts.append(label)
-
-    return ", ".join(parts)

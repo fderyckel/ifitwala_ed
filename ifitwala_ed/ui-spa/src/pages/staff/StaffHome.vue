@@ -133,130 +133,129 @@
 		<!-- ============================================================
 		     ANALYTICS HUB
 		   ============================================================ -->
-		<section
-			class="rounded-2xl border border-[rgb(var(--sand-rgb)/0.35)] border-t-2 border-t-jacaranda/35
-				bg-sand/55 shadow-soft"
-		>
-			<!-- Header -->
-			<div
-				class="flex flex-col gap-4 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 pb-6 pt-7 sm:flex-row sm:items-center sm:justify-between"
-			>
-				<div class="space-y-2">
-					<p class="type-overline text-slate-token/70">
-						Analytics
-					</p>
-					<h3 class="type-h2">
-						Insights & Dashboards
-					</h3>
-					<p class="max-w-2xl type-body text-slate-token/80">
-						Jump straight into the dashboards you need. Start with the quick hitters, or browse by
-						category when you are exploring trends.
-					</p>
+		<section class="rounded-2xl bg-surface shadow-soft">
+			<div class="rounded-2xl border border-[rgb(var(--sand-rgb)/0.35)]">
+				<!-- Header -->
+				<div
+					class="flex flex-col gap-4 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 pb-6 pt-7 sm:flex-row sm:items-center sm:justify-between"
+				>
+					<div class="space-y-2">
+						<p class="type-overline text-slate-token/70">
+							Analytics
+						</p>
+						<h3 class="type-h2">
+							Insights & Dashboards
+						</h3>
+						<p class="max-w-2xl type-body text-slate-token/80">
+							Jump straight into the dashboards you need. Start with the quick hitters, or browse by
+							category when you are exploring trends.
+						</p>
+					</div>
+
+					<RouterLink
+						to="/analytics"
+						target="_blank"
+						rel="noopener"
+						class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm
+							transition hover:-translate-y-0.5 hover:border-jacaranda hover:text-jacaranda"
+					>
+						<FeatherIcon name="grid" class="h-4 w-4 text-slate-token/60" />
+						<span>View all analytics</span>
+					</RouterLink>
 				</div>
 
-				<RouterLink
-					to="/analytics"
-					target="_blank"
-					rel="noopener"
-					class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm
-						transition hover:-translate-y-0.5 hover:border-jacaranda hover:text-jacaranda"
-				>
-					<FeatherIcon name="grid" class="h-4 w-4 text-slate-token/60" />
-					<span>View all analytics</span>
-				</RouterLink>
-			</div>
-
-			<!-- Quick analytics -->
-			<div
-				class="grid grid-cols-1 gap-3 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6 lg:grid-cols-3"
-			>
-				<RouterLink
-					v-for="link in analyticsQuickLinks"
-					:key="link.label"
-					:to="link.to"
-					target="_blank"
-					rel="noopener"
-					class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
-				>
-					<div
-						class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
-					>
-						<FeatherIcon :name="link.icon" class="h-5 w-5" />
-					</div>
-
-					<div class="min-w-0 flex-1">
-						<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-							{{ link.label }}
-						</p>
-						<p class="truncate type-caption text-slate-token/70">
-							{{ link.caption }}
-						</p>
-					</div>
-
-					<span
-						v-if="link.badge"
-						class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda
-							ring-1 ring-jacaranda/25"
-					>
-						{{ link.badge }}
-					</span>
-
-					<FeatherIcon
-						name="arrow-up-right"
-						class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
-					/>
-				</RouterLink>
-			</div>
-
-			<!-- Categories grid -->
-			<div class="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
+				<!-- Quick analytics -->
 				<div
-					v-for="category in analyticsCategories"
-					:key="category.title"
-					class="group flex h-full flex-col rounded-xl border border-slate-200 bg-white/90 p-4 shadow-sm transition-all hover:-translate-y-1 hover:border-jacaranda/70 hover:shadow-md"
+					class="grid grid-cols-1 gap-3 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6 lg:grid-cols-3"
 				>
-					<div class="flex items-start justify-between gap-3">
-						<div class="flex items-start gap-3">
-							<div
-								class="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
-							>
-								<FeatherIcon :name="category.icon" class="h-5 w-5" />
-							</div>
-							<div class="space-y-1">
-								<p class="type-overline text-slate-token/70">
-									{{ category.title }}
-								</p>
-								<p class="type-meta text-slate-token/70">
-									{{ category.description }}
-								</p>
-							</div>
+					<RouterLink
+						v-for="link in analyticsQuickLinks"
+						:key="link.label"
+						:to="link.to"
+						target="_blank"
+						rel="noopener"
+						class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
+					>
+						<div
+							class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+						>
+							<FeatherIcon :name="link.icon" class="h-5 w-5" />
 						</div>
-						<span
-							class="rounded-full bg-slate-100 px-3 py-1 type-badge-label text-slate-token/70"
-						>
-							{{ category.links.length }} links
-						</span>
-					</div>
 
-					<div class="mt-4 space-y-2">
-						<RouterLink
-							v-for="link in category.links"
-							:key="link.label"
-							:to="link.to"
-							target="_blank"
-							rel="noopener"
-							class="group/link flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-sky/15"
-						>
-							<span
-								class="type-body-strong text-ink transition-colors group-hover/link:text-jacaranda"
-							>
+						<div class="min-w-0 flex-1">
+							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
 								{{ link.label }}
+							</p>
+							<p class="truncate type-caption text-slate-token/70">
+								{{ link.caption }}
+							</p>
+						</div>
+
+						<span
+							v-if="link.badge"
+							class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda
+								ring-1 ring-jacaranda/25"
+						>
+							{{ link.badge }}
+						</span>
+
+						<FeatherIcon
+							name="arrow-up-right"
+							class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
+						/>
+					</RouterLink>
+				</div>
+
+				<!-- Categories grid -->
+				<div class="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
+					<div
+						v-for="category in analyticsCategories"
+						:key="category.title"
+						class="group flex h-full flex-col rounded-xl border border-slate-200 bg-white/90 p-4 shadow-sm transition-all hover:-translate-y-1 hover:border-jacaranda/70 hover:shadow-md"
+					>
+						<div class="flex items-start justify-between gap-3">
+							<div class="flex items-start gap-3">
+								<div
+									class="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+								>
+									<FeatherIcon :name="category.icon" class="h-5 w-5" />
+								</div>
+								<div class="space-y-1">
+									<p class="type-overline text-slate-token/70">
+										{{ category.title }}
+									</p>
+									<p class="type-meta text-slate-token/70">
+										{{ category.description }}
+									</p>
+								</div>
+							</div>
+							<span
+								class="rounded-full bg-slate-100 px-3 py-1 type-badge-label text-slate-token/70"
+							>
+								{{ category.links.length }} links
 							</span>
-							<FeatherIcon
-								name="arrow-up-right"
-								class="h-4 w-4 text-slate-token/40 transition group-hover/link:text-jacaranda"
-							/>
-						</RouterLink>
+						</div>
+
+						<div class="mt-4 space-y-2">
+							<RouterLink
+								v-for="link in category.links"
+								:key="link.label"
+								:to="link.to"
+								target="_blank"
+								rel="noopener"
+								class="group/link flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-sky/15"
+							>
+								<span
+									class="type-body-strong text-ink transition-colors group-hover/link:text-jacaranda"
+								>
+									{{ link.label }}
+								</span>
+								<FeatherIcon
+									name="arrow-up-right"
+									class="h-4 w-4 text-slate-token/40 transition group-hover/link:text-jacaranda"
+								/>
+							</RouterLink>
+						</div>
 					</div>
 				</div>
 			</div>

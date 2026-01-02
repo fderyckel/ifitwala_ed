@@ -249,6 +249,155 @@ def check_audience_match(comm_name, user, roles, employee, filter_team=None, fil
 	return False
 
 
+def build_audience_summary(comm_name: str) -> dict:
+	"""Return a structured audience summary for UI chips."""
+	def _as_bool(value) -> bool:
+		return value in (1, "1", True)
+
+	def _get_cached(doctype, name, field, cache):
+		if not name:
+			return None
+		if name not in cache:
+			cache[name] = frappe.get_cached_value(doctype, name, field)
+		return cache[name]
+
+	def _get_recipients(aud) -> list[str]:
+		recipients = []
+		if _as_bool(aud.to_staff):
+			recipients.append("Staff")
+		if _as_bool(aud.to_students):
+			recipients.append("Students")
+		if _as_bool(aud.to_guardians):
+			recipients.append("Guardians")
+		if _as_bool(aud.to_community):
+			recipients.append("Community")
+		return recipients
+
+	if not comm_name:
+		comm_name = ""
+
+	audiences = frappe.get_all(
+		"Org Communication Audience",
+		filters={"parent": comm_name},
+		fields=[
+			"target_mode",
+			"school",
+			"include_descendants",
+			"team",
+			"student_group",
+			"to_staff",
+			"to_students",
+			"to_guardians",
+			"to_community",
+		],
+	)
+
+	school_abbr_cache = {}
+	school_name_cache = {}
+	org_abbr_cache = {}
+	org_name_cache = {}
+	sg_abbr_cache = {}
+	sg_name_cache = {}
+	team_code_cache = {}
+	team_name_cache = {}
+
+	rows = []
+	for aud in audiences:
+		recipients = _get_recipients(aud)
+		if not recipients:
+			continue
+
+		target_mode = (aud.target_mode or "").strip()
+		scope_type = "Global"
+		scope_value = None
+		scope_label = "Whole community"
+		include_descendants = 0
+
+		if target_mode == "Student Group" or (not target_mode and aud.student_group):
+			scope_type = "Student Group"
+			sg_name = _get_cached("Student Group", aud.student_group, "student_group_name", sg_name_cache)
+			sg_abbr = _get_cached("Student Group", aud.student_group, "student_group_abbreviation", sg_abbr_cache)
+			scope_value = sg_abbr or sg_name or aud.student_group
+			scope_label = sg_name or aud.student_group
+
+		elif target_mode == "Team" or (not target_mode and aud.team):
+			scope_type = "Team"
+			team_name = _get_cached("Team", aud.team, "team_name", team_name_cache)
+			team_code = _get_cached("Team", aud.team, "team_code", team_code_cache)
+			scope_value = team_code or team_name or aud.team
+			scope_label = team_name or aud.team
+
+		elif target_mode == "School Scope" or (not target_mode and aud.school):
+			scope_type = "School"
+			include_descendants = 1 if _as_bool(aud.include_descendants) else 0
+			school_name = _get_cached("School", aud.school, "school_name", school_name_cache)
+			school_abbr = _get_cached("School", aud.school, "abbr", school_abbr_cache)
+			scope_value = school_abbr or school_name or aud.school
+			scope_label = school_name or aud.school
+
+		elif target_mode == "Organization":
+			scope_type = "Organization"
+			org_name = _get_cached("Organization", aud.organization, "organization_name", org_name_cache)
+			org_abbr = _get_cached("Organization", aud.organization, "abbr", org_abbr_cache)
+			scope_value = org_abbr or org_name or aud.organization
+			scope_label = org_name or aud.organization
+
+		rows.append({
+			"scope_type": scope_type,
+			"scope_value": scope_value,
+			"scope_label": scope_label,
+			"recipients": recipients,
+			"include_descendants": include_descendants,
+		})
+
+	scope_priority = {
+		"Student Group": 0,
+		"Team": 1,
+		"School": 2,
+		"Organization": 2,
+		"Global": 3,
+	}
+
+	def _row_sort_key(row: dict) -> tuple:
+		priority = scope_priority.get(row.get("scope_type"), 99)
+		label = row.get("scope_label") or row.get("scope_value") or ""
+		return (priority, str(label).lower())
+
+	if rows:
+		primary = sorted(rows, key=_row_sort_key)[0]
+	else:
+		primary = {
+			"scope_type": "Global",
+			"scope_value": None,
+			"scope_label": "Whole community",
+			"recipients": [],
+			"include_descendants": 0,
+		}
+
+	chips = []
+	recipient_labels = list(primary.get("recipients") or [])
+	for label in recipient_labels[:2]:
+		chips.append({"type": "recipient", "label": label})
+	if len(recipient_labels) > 2:
+		chips.append({"type": "recipient", "label": f"+{len(recipient_labels) - 2}"})
+
+	scope_chip_label = primary.get("scope_value") or "All"
+	chips.append({"type": "scope", "label": scope_chip_label})
+
+	audience_rows = len(rows)
+	recipient_count = len(recipient_labels)
+
+	return {
+		"primary": primary,
+		"chips": chips,
+		"meta": {
+			"audience_rows": audience_rows,
+			"recipient_count": recipient_count,
+			"has_multiple_audiences": 1 if audience_rows > 1 else 0,
+		},
+	}
+
+
 def is_instructor_for_group(user, student_group):
 	"""Determine if user is an instructor for this group."""
 	employee_name = frappe.db.get_value("Employee", {"user_id": user}, "name")

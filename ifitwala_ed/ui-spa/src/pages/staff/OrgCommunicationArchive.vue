@@ -70,15 +70,28 @@
         class="w-40"
       />
 
-       <!-- Interaction Toggle -->
-			<label class="flex items-center gap-2 cursor-pointer text-sm text-ink select-none px-2">
-				<input
-					type="checkbox"
-					v-model="filters.only_with_interactions"
-					class="rounded border-slate-300 text-jacaranda"
-				/>
-				<span>With comments</span>
-			</label>
+      <!-- With comments toggle -->
+      <label class="flex items-center gap-2 cursor-pointer text-sm text-ink select-none px-2">
+        <input
+          type="checkbox"
+          v-model="filters.only_with_interactions"
+          class="rounded border-slate-300 text-jacaranda"
+        />
+
+        <span class="inline-flex items-center gap-1.5">
+          <span>With comments</span>
+
+          <!-- Tooltip -->
+          <span class="relative inline-flex items-center">
+            <FeatherIcon
+              name="info"
+              class="h-4 w-4 text-slate-token/60 hover:text-slate-token/80"
+              tabindex="0"
+              title="Shows only announcements that have at least one visible comment."
+            />
+          </span>
+        </span>
+      </label>
     </div>
 
     <!-- Main Content Grid -->
@@ -141,7 +154,29 @@
                <div class="mt-3 flex items-center gap-4">
                  <div class="flex items-center gap-1.5 text-xs text-slate-token/60">
                     <FeatherIcon name="users" class="h-3 w-3" />
-                    <span class="truncate max-w-[150px]">{{ item.audience_label }}</span>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <span
+                        v-for="(chip, idx) in (item.audience_summary?.chips || [])"
+                        :key="idx"
+                        class="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                        :class="chip.type === 'scope'
+                          ? 'bg-jacaranda/10 text-jacaranda'
+                          : 'bg-slate-100 text-slate-token/70'"
+                        :title="chip.type === 'scope'
+                          ? (item.audience_summary?.primary?.scope_label || '')
+                          : ''"
+                      >
+                        {{ chip.label }}
+                      </span>
+
+                      <span
+                        v-if="(item.audience_summary?.meta?.audience_rows || 0) > 1"
+                        class="rounded-full px-2 py-0.5 text-[11px] font-medium bg-slate-50 text-slate-token/50"
+                        :title="`${item.audience_summary?.meta?.audience_rows} audiences`"
+                      >
+                        +{{ (item.audience_summary?.meta?.audience_rows || 1) - 1 }}
+                      </span>
+                    </div>
                  </div>
 
                  <!-- Interaction Summary -->
@@ -153,7 +188,11 @@
                     <div class="flex items-center gap-1 text-xs text-slate-token/50 bg-slate-50 px-2 py-1 rounded">
                        <span>👍 {{ getInteractionStats(item).reactions_total }}</span>
                        <span class="border-l border-slate-200 h-3 mx-1"></span>
-                       <span>💬 {{ getInteractionStats(item).comments_total }}</span>
+                       <span
+                         :title="getInteractionStats(item).comments_total > 0 ? 'Has comments' : 'No comments'"
+                       >
+                         💬 {{ getInteractionStats(item).comments_total }}
+                       </span>
                     </div>
                  </div>
                </div>
@@ -215,7 +254,15 @@
                 </div>
                 <div class="flex items-center gap-2">
                    <FeatherIcon name="users" class="h-4 w-4 text-slate-token/50" />
-                   <span>{{ selectedComm.audience_label }}</span>
+                   <span
+                     class="font-medium text-slate-token/70"
+                     :title="selectedComm.audience_summary?.primary?.scope_label || ''"
+                   >
+                     {{ (selectedComm.audience_summary?.primary?.recipients || []).join(' · ') }}
+                     <span v-if="selectedComm.audience_summary?.primary?.scope_value">
+                       · {{ selectedComm.audience_summary?.primary?.scope_value }}
+                     </span>
+                   </span>
                 </div>
              </div>
            </div>
@@ -249,7 +296,11 @@
                     >
                       <FeatherIcon name="message-square" class="h-4 w-4" />
                       <span>Comments</span>
-                      <span v-if="selectedStats" class="ml-2 text-xs font-semibold">
+                      <span
+                        v-if="selectedStats"
+                        class="ml-2 text-xs font-semibold"
+                        :title="selectedStats.comments_total > 0 ? 'Has comments' : 'No comments'"
+                      >
                         {{ selectedStats.comments_total }}
                       </span>
                     </Button>
@@ -405,16 +456,24 @@ const archiveContext = createResource({
 			return true
 		})
 
-		orgChoices.value = (data.organizations || []).map((o: any) => ({
-			label: o.organization_name || o.name,
-			value: o.name,
-		}))
+		orgChoices.value = (data.organizations || []).map((o: any) => {
+			const baseLabel = o.organization_name || o.name
+			const label = o.abbr ? `${o.abbr} — ${baseLabel}` : baseLabel
+			return {
+				label,
+				value: o.name,
+			}
+		})
 
-		schoolChoices.value = (data.schools || []).map((s: any) => ({
-			label: s.school_name || s.name,
-			value: s.name,
-			organization: s.organization || null,
-		}))
+		schoolChoices.value = (data.schools || []).map((s: any) => {
+			const baseLabel = s.school_name || s.name
+			const label = s.abbr ? `${s.abbr} — ${baseLabel}` : baseLabel
+			return {
+				label,
+				value: s.name,
+				organization: s.organization || null,
+			}
+		})
 
 		if (data.defaults) {
 			filters.value.organization = data.defaults.organization || null

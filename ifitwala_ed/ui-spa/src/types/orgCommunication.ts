@@ -19,6 +19,29 @@ export const COMMUNICATION_TYPES = [
 
 export type CommunicationType = (typeof COMMUNICATION_TYPES)[number]
 
+export type AudienceChip = {
+	type: 'recipient' | 'scope'
+	label: string
+}
+
+export type AudiencePrimary = {
+	scope_type: 'School' | 'Organization' | 'Team' | 'Student Group' | 'Global'
+	scope_value: string | null
+	scope_label: string | null
+	recipients: Array<'Staff' | 'Students' | 'Guardians' | 'Community'>
+	include_descendants: 0 | 1
+}
+
+export type AudienceSummary = {
+	primary: AudiencePrimary
+	chips: AudienceChip[]
+	meta: {
+		audience_rows: number
+		recipient_count: number
+		has_multiple_audiences: 0 | 1
+	}
+}
+
 export const AUDIENCE_TARGET_MODES = [
 	'School Scope',
 	'Team',
@@ -55,7 +78,7 @@ export interface OrgCommunicationListItem {
   allow_private_notes: 0 | 1 | boolean
   allow_public_thread: 0 | 1 | boolean
   snippet: string
-  audience_label?: string
+  audience_summary?: AudienceSummary
   has_active_thread?: boolean
 }
 
