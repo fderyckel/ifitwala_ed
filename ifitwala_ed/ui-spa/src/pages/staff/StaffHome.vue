@@ -134,7 +134,8 @@
 		     ANALYTICS HUB
 		   ============================================================ -->
 		<section
-			class="rounded-2xl border border-[rgb(var(--sand-rgb)/0.35)] bg-gradient-to-br from-white via-white to-slate-50 shadow-soft"
+			class="rounded-2xl border border-[rgb(var(--sand-rgb)/0.35)] border-t-2 border-t-jacaranda/35
+				bg-sand/55 shadow-soft"
 		>
 			<!-- Header -->
 			<div
@@ -194,7 +195,8 @@
 
 					<span
 						v-if="link.badge"
-						class="rounded-full bg-jacaranda/10 px-2 py-0.5 type-badge-label text-jacaranda"
+						class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda
+							ring-1 ring-jacaranda/25"
 					>
 						{{ link.badge }}
 					</span>
