@@ -75,10 +75,10 @@ defineEmits(['close']);
 const menuItems = [
 	{ label: 'Dashboard', icon: 'home', to: '/student' }, 
   { label: 'Courses', icon: 'book', to: '/student/courses' }, 
-  { label: 'Assignments', icon: 'check-square', to: '/portal/assignments' },
-  { label: 'Grades', icon: 'bar-chart-2', to: '/portal/grades' },
-  { label: 'Attendance', icon: 'calendar', to: '/portal/attendance' },
-  { label: 'Messages', icon: 'message-square', to: '/portal/messages' },
+  { label: 'Assignments', icon: 'check-square', to: '/student/assignments' },
+  { label: 'Grades', icon: 'bar-chart-2', to: '/student/grades' },
+  { label: 'Attendance', icon: 'calendar', to: '/student/attendance' },
+  { label: 'Messages', icon: 'message-square', to: '/student/messages' },
 ];
 
 const accountItems = [

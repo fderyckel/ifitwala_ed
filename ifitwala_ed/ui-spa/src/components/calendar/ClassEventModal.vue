@@ -105,24 +105,24 @@
 							</section>
 
 							<div class="meeting-modal__actions">
-								<a
+								<RouterLink
 									class="meeting-modal__action-button"
-									:href="attendanceLink"
+									:to="attendanceLink"
 									target="_blank"
 									rel="noreferrer"
 								>
 									<FeatherIcon name="check-square" class="h-4 w-4" />
 									Take Attendance
-								</a>
-								<a
+								</RouterLink>
+								<RouterLink
 									class="meeting-modal__action-button meeting-modal__action-button--secondary"
-									:href="gradebookLink"
+									:to="gradebookLink"
 									target="_blank"
 									rel="noreferrer"
 								>
 									<FeatherIcon name="book-open" class="h-4 w-4" />
 									Open Gradebook
-								</a>
+								</RouterLink>
 								<button
 									type="button"
 									class="meeting-modal__action-button meeting-modal__action-button--secondary"
@@ -150,6 +150,7 @@ import {
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
 import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
 
 import type { ClassEventDetails } from './classEventTypes';
 
@@ -199,13 +200,19 @@ const timeLabel = computed(() => {
 });
 
 const attendanceLink = computed(() => {
-	if (!props.event?.student_group) return '/portal/staff/attendance';
-	return `/portal/staff/attendance?student_group=${encodeURIComponent(props.event.student_group)}`;
+	if (!props.event?.student_group) return { name: 'staff-attendance' };
+	return {
+		name: 'staff-attendance',
+		query: { student_group: props.event.student_group },
+	};
 });
 
 const gradebookLink = computed(() => {
-	if (!props.event?.student_group) return '/portal/staff/gradebook';
-	return `/portal/staff/gradebook?student_group=${encodeURIComponent(props.event.student_group)}`;
+	if (!props.event?.student_group) return { name: 'staff-gradebook' };
+	return {
+		name: 'staff-gradebook',
+		query: { student_group: props.event.student_group },
+	};
 });
 
 function safeDate(value?: string | null) {

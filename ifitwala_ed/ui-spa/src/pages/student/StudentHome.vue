@@ -204,13 +204,13 @@ const moreLinks = [
     title: 'Wellbeing',
     description: 'Access resources and check-ins.',
     icon: 'heart',
-    to: '/portal/wellbeing'
+    to: '/student/wellbeing'
   },
   {
     title: 'Demographics',
     description: 'Manage your profile and details.',
     icon: 'user',
-    to: '/portal/student/profile'
+    to: { name: 'student-profile' }
   },
 ];
 </script>
