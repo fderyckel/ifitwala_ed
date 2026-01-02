@@ -258,9 +258,12 @@
                      class="font-medium text-slate-token/70"
                      :title="selectedComm.audience_summary?.primary?.scope_label || ''"
                    >
-                     {{ (selectedComm.audience_summary?.primary?.recipients || []).join(' · ') }}
+                     <span v-if="(selectedComm.audience_summary?.primary?.recipients || []).length">
+                       {{ (selectedComm.audience_summary?.primary?.recipients || []).join(' · ') }}
+                     </span>
                      <span v-if="selectedComm.audience_summary?.primary?.scope_value">
-                       · {{ selectedComm.audience_summary?.primary?.scope_value }}
+                       <span v-if="(selectedComm.audience_summary?.primary?.recipients || []).length"> · </span>
+                       {{ selectedComm.audience_summary?.primary?.scope_value }}
                      </span>
                    </span>
                 </div>

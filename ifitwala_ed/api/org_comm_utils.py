@@ -292,6 +292,10 @@ def build_audience_summary(comm_name: str) -> dict:
 		],
 	)
 
+	comm_org = None
+	if comm_name:
+		comm_org = frappe.get_cached_value("Org Communication", comm_name, "organization")
+
 	school_abbr_cache = {}
 	school_name_cache = {}
 	org_abbr_cache = {}
@@ -337,10 +341,10 @@ def build_audience_summary(comm_name: str) -> dict:
 
 		elif target_mode == "Organization":
 			scope_type = "Organization"
-			org_name = _get_cached("Organization", aud.organization, "organization_name", org_name_cache)
-			org_abbr = _get_cached("Organization", aud.organization, "abbr", org_abbr_cache)
-			scope_value = org_abbr or org_name or aud.organization
-			scope_label = org_name or aud.organization
+			org_name = _get_cached("Organization", comm_org, "organization_name", org_name_cache)
+			org_abbr = _get_cached("Organization", comm_org, "abbr", org_abbr_cache)
+			scope_value = org_abbr or org_name or comm_org
+			scope_label = org_name or comm_org
 
 		rows.append({
 			"scope_type": scope_type,
