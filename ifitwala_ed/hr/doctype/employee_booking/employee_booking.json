@@ -11,6 +11,7 @@
   "blocks_availability",
   "from_datetime",
   "to_datetime",
+  "location",
   "source_doctype",
   "source_name",
   "school",
@@ -76,12 +77,18 @@
    "fieldtype": "Link",
    "label": "Academic Year",
    "options": "Academic Year"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "label": "Location",
+   "options": "Location"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-14 19:55:55",
+ "modified": "2026-01-03 17:11:15.065855",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee Booking",
