@@ -227,6 +227,17 @@ def get_room_utilization_filter_meta():
 @frappe.whitelist()
 def get_free_rooms(filters=None):
 	filters = _parse_filters(filters)
+	debug_enabled = bool(filters.get("debug"))
+	sources_used: list[str] = []
+
+	def _attach_debug(payload: dict, *, busy_count: int, candidate_count: int) -> dict:
+		if debug_enabled:
+			payload["debug"] = {
+				"sources_used": sources_used,
+				"busy_rooms_count": busy_count,
+				"candidate_rooms_count": candidate_count,
+			}
+		return payload
 
 	if not (filters.get("date") and filters.get("start_time") and filters.get("end_time")):
 		frappe.throw(_("Date, Start Time, and End Time are required."))
@@ -237,16 +248,14 @@ def get_free_rooms(filters=None):
 	if window_end <= window_start:
 		frappe.throw(_("End Time must be after Start Time."))
 
-	target_date = _normalize_date(filters.get("date"))
-	rotation_day = _resolve_rotation_day(filters, target_date) if target_date else None
-
 	rooms = _get_candidate_rooms(filters)
 	if not rooms:
-		return {
+		payload = {
 			"window": {"start": str(window_start), "end": str(window_end)},
 			"rooms": [],
-			"classes_checked": bool(rotation_day),
+			"classes_checked": False,
 		}
+		return _attach_debug(payload, busy_count=0, candidate_count=0)
 
 	room_names = [r["name"] for r in rooms]
 	params = {
@@ -257,10 +266,13 @@ def get_free_rooms(filters=None):
 		"end_time": filters["end_time"],
 	}
 
+	school_scope = _get_school_scope(filters["school"]) if filters.get("school") else None
+	school_scope_param = tuple(school_scope) if school_scope else None
+
 	meeting_school_clause = ""
-	if filters.get("school"):
-		meeting_school_clause = " AND school = %(school)s"
-		params["school"] = filters["school"]
+	if school_scope_param and frappe.db.has_column("Meeting", "school"):
+		meeting_school_clause = " AND school IN %(school_scope)s"
+		params["school_scope"] = school_scope_param
 
 	meeting_rows = frappe.db.sql(
 		f"""
@@ -276,10 +288,12 @@ def get_free_rooms(filters=None):
 		params,
 		as_dict=True,
 	)
+	sources_used.append("Meeting")
 
 	event_school_clause = ""
-	if filters.get("school"):
-		event_school_clause = " AND school = %(school)s"
+	if school_scope_param and frappe.db.has_column("School Event", "school"):
+		event_school_clause = " AND school IN %(school_scope)s"
+		params["school_scope"] = school_scope_param
 
 	event_rows = frappe.db.sql(
 		f"""
@@ -294,27 +308,41 @@ def get_free_rooms(filters=None):
 		params,
 		as_dict=True,
 	)
+	sources_used.append("School Event")
 
-	schedule_rows = []
-	if rotation_day is not None:
-		params["rotation_day"] = rotation_day
-		schedule_rows = frappe.db.sql(
-			"""
+	employee_booking_rows = []
+	employee_booking_checked = False
+	if frappe.db.table_exists("Employee Booking"):
+		employee_booking_checked = True
+		employee_school_clause = ""
+		if school_scope_param and frappe.db.has_column("Employee Booking", "school"):
+			employee_school_clause = " AND school IN %(school_scope)s"
+			params["school_scope"] = school_scope_param
+
+		employee_docstatus_clause = ""
+		if frappe.db.has_column("Employee Booking", "docstatus"):
+			employee_docstatus_clause = " AND docstatus < 2"
+
+		employee_booking_rows = frappe.db.sql(
+			f"""
 			SELECT DISTINCT location
-			FROM `tabStudent Group Schedule`
+			FROM `tabEmployee Booking`
 			WHERE location IN %(rooms)s
-				AND rotation_day = %(rotation_day)s
-				AND from_time < TIME(%(end_time)s)
-				AND to_time > TIME(%(start_time)s)
+				AND from_datetime < %(window_end)s
+				AND to_datetime > %(window_start)s
+				{employee_docstatus_clause}
+				{employee_school_clause}
 			""",
 			params,
 			as_dict=True,
 		)
+		sources_used.append("Employee Booking")
 
 	busy_rooms = {r["location"] for r in meeting_rows if r.get("location")}
 	busy_rooms.update({r["location"] for r in event_rows if r.get("location")})
-	busy_rooms.update({r["location"] for r in schedule_rows if r.get("location")})
+	busy_rooms.update({r["location"] for r in employee_booking_rows if r.get("location")})
 
+	# Guardrail: if there are no overlapping concrete bookings, all rooms are free.
 	available_rooms = []
 	for room in rooms:
 		if room["name"] in busy_rooms:
@@ -328,11 +356,16 @@ def get_free_rooms(filters=None):
 			}
 		)
 
-	return {
+	payload = {
 		"window": {"start": str(window_start), "end": str(window_end)},
 		"rooms": available_rooms,
-		"classes_checked": bool(rotation_day),
+		"classes_checked": employee_booking_checked,
 	}
+	return _attach_debug(
+		payload,
+		busy_count=len(busy_rooms),
+		candidate_count=len(rooms),
+	)
 
 
 @frappe.whitelist()
