@@ -66,70 +66,6 @@ def _normalize_date(value) -> date | None:
 		return None
 
 
-def _best_effort_rotation_day(filters: dict, target_date: date) -> int | None:
-	"""Resolve rotation_day using existing schedule utilities (no custom calendar math)."""
-	school = filters.get("school") or None
-	if not school and filters.get("building"):
-		school = frappe.db.get_value("Location", filters["building"], "school")
-	if not school:
-		return None
-
-	from ifitwala_ed.setup.doctype.meeting.meeting import get_academic_year_for_date
-	from ifitwala_ed.schedule.schedule_utils import (
-		get_effective_schedule_for_ay,
-		get_rotation_dates,
-	)
-
-	academic_year = get_academic_year_for_date(school, target_date)
-	if not academic_year:
-		return None
-
-	schedule_name = get_effective_schedule_for_ay(academic_year, school)
-	if not schedule_name:
-		return None
-
-	rotation_dates = get_rotation_dates(
-		schedule_name,
-		academic_year,
-		include_holidays=False,
-	)
-	rotation_map = {
-		getdate(row.get("date")).isoformat(): int(row["rotation_day"])
-		for row in rotation_dates
-		if row.get("date") and row.get("rotation_day") is not None
-	}
-	return rotation_map.get(target_date.isoformat())
-
-
-def _resolve_rotation_day(filters: dict, target_date: date) -> int | None:
-	if filters.get("rotation_day") not in (None, ""):
-		try:
-			rotation_day = int(filters["rotation_day"])
-		except (TypeError, ValueError):
-			frappe.throw(_("rotation_day must be an integer."))
-		if rotation_day <= 0:
-			frappe.throw(_("rotation_day must be a positive integer."))
-		return rotation_day
-
-	scope = filters.get("school") or filters.get("building")
-	if not (scope and target_date):
-		return None
-
-	cache_key = f"room_utilization:rotation_day:{scope}:{target_date.isoformat()}"
-	rc = frappe.cache()
-	cached = rc.get_value(cache_key)
-	if cached is not None:
-		return None if cached == "__none__" else int(cached)
-
-	rotation_day = _best_effort_rotation_day(filters, target_date)
-	rc.set_value(
-		cache_key,
-		rotation_day if rotation_day is not None else "__none__",
-		expires_in_sec=300,
-	)
-	return rotation_day
-
-
 def _validate_date_range(from_date, to_date, *, enforce_scope: bool = True) -> tuple[date, date, int]:
 	if not from_date or not to_date:
 		frappe.throw(_("Please provide both From Date and To Date."))
@@ -232,6 +168,7 @@ def get_free_rooms(filters=None):
 
 	def _attach_debug(payload: dict, *, busy_count: int, candidate_count: int) -> dict:
 		if debug_enabled:
+			# Debug payload is intentionally read-only and non-persistent.
 			payload["debug"] = {
 				"sources_used": sources_used,
 				"busy_rooms_count": busy_count,
@@ -359,6 +296,8 @@ def get_free_rooms(filters=None):
 	payload = {
 		"window": {"start": str(window_start), "end": str(window_end)},
 		"rooms": available_rooms,
+		# classes_checked:
+		# True if teaching bookings (Employee Booking) were queried as a concrete source.
 		"classes_checked": employee_booking_checked,
 	}
 	return _attach_debug(

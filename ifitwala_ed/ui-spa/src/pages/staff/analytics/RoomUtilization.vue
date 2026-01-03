@@ -20,7 +20,7 @@
       <div class="flex flex-col gap-1">
         <label class="type-label">School</label>
         <select
-          v-model="filters.school"
+          v-model="selectedSchool"
           class="h-9 min-w-[160px] rounded-md border px-2 text-sm"
         >
           <option value="">Select School</option>
@@ -32,7 +32,7 @@
         <label class="type-label">Free Rooms Date</label>
         <input
           type="date"
-          v-model="filters.date"
+          v-model="availabilityFilters.date"
           class="h-9 rounded-md border px-2 text-sm"
         />
       </div>
@@ -41,7 +41,7 @@
         <label class="type-label">Window Start</label>
         <input
           type="time"
-          v-model="filters.start_time"
+          v-model="availabilityFilters.start_time"
           class="h-9 rounded-md border px-2 text-sm"
         />
       </div>
@@ -50,7 +50,7 @@
         <label class="type-label">Window End</label>
         <input
           type="time"
-          v-model="filters.end_time"
+          v-model="availabilityFilters.end_time"
           class="h-9 rounded-md border px-2 text-sm"
         />
       </div>
@@ -61,7 +61,7 @@
           type="number"
           min="1"
           step="1"
-          v-model="filters.capacity_needed"
+          v-model="availabilityFilters.capacity_needed"
           class="h-9 w-28 rounded-md border px-2 text-sm"
         />
       </div>
@@ -73,11 +73,18 @@
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 class="analytics-card__title">Free Rooms Finder</h3>
-          <p class="analytics-card__meta">Checks meetings and school events.</p>
+          <p class="analytics-card__meta">
+            Checks meetings, school events, and teaching bookings.
+          </p>
         </div>
         <button
           class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
-          :disabled="freeRoomsLoading || !filters.date || !filters.start_time || !filters.end_time"
+          :disabled="
+            freeRoomsLoading ||
+            !availabilityFilters.date ||
+            !availabilityFilters.start_time ||
+            !availabilityFilters.end_time
+          "
           @click="loadFreeRooms"
         >
           Find Free Rooms
@@ -96,8 +103,7 @@
         v-if="freeRoomsResource.data && freeRoomsResource.data.classes_checked === false"
         class="mt-2 text-xs text-[rgb(var(--flame-rgb))]"
       >
-        Note: Class timetable could not be checked for this date. Results include meetings and
-        events only.
+        Note: Teaching bookings were not checked. Results include meetings and events only.
       </p>
 
       <div v-if="freeRoomsLoading" class="py-6 text-center text-sm text-slate-500">
@@ -123,7 +129,7 @@
       <div class="flex flex-col gap-1">
         <label class="type-label">School</label>
         <select
-          v-model="filters.school"
+          v-model="selectedSchool"
           class="h-9 min-w-[160px] rounded-md border px-2 text-sm"
         >
           <option value="">Select School</option>
@@ -136,13 +142,13 @@
         <div class="flex items-center gap-2">
           <input
             type="date"
-            v-model="filters.from_date"
+            v-model="timeUtilFilters.from_date"
             class="h-9 rounded-md border px-2 text-sm"
           />
           <span class="text-slate-300">-</span>
           <input
             type="date"
-            v-model="filters.to_date"
+            v-model="timeUtilFilters.to_date"
             class="h-9 rounded-md border px-2 text-sm"
           />
         </div>
@@ -152,7 +158,7 @@
         <label class="type-label">Day Start</label>
         <input
           type="time"
-          v-model="filters.day_start_time"
+          v-model="timeUtilFilters.day_start_time"
           class="h-9 rounded-md border px-2 text-sm"
         />
       </div>
@@ -161,7 +167,7 @@
         <label class="type-label">Day End</label>
         <input
           type="time"
-          v-model="filters.day_end_time"
+          v-model="timeUtilFilters.day_end_time"
           class="h-9 rounded-md border px-2 text-sm"
         />
       </div>
@@ -314,16 +320,25 @@ type CapacityRoom = {
 
 const today = new Date().toISOString().slice(0, 10)
 
-const filters = ref({
-  school: '',
+const selectedSchool = ref('')
+
+const availabilityFilters = ref({
   date: today,
   start_time: '09:00',
   end_time: '10:15',
   capacity_needed: '',
+})
+
+const timeUtilFilters = ref({
   from_date: today,
   to_date: today,
   day_start_time: '07:00',
   day_end_time: '16:00',
+})
+
+const capacityFilters = ref({
+  from_date: today,
+  to_date: today,
 })
 
 const filterMetaResource = createResource({
@@ -339,8 +354,8 @@ watch(
   filterMeta,
   (data) => {
     if (!data) return
-    if (data.default_school && !filters.value.school) {
-      filters.value.school = data.default_school
+    if (data.default_school && !selectedSchool.value) {
+      selectedSchool.value = data.default_school
     }
   },
   { immediate: true }
@@ -373,8 +388,13 @@ const timeUtilLoading = computed(() => timeUtilResource.loading)
 const capacityLoading = computed(() => capacityResource.loading)
 
 const freeWindowLabel = computed(() => {
-  if (!filters.value.date || !filters.value.start_time || !filters.value.end_time) return '—'
-  return `${filters.value.date} ${filters.value.start_time}–${filters.value.end_time}`
+  if (
+    !availabilityFilters.value.date ||
+    !availabilityFilters.value.start_time ||
+    !availabilityFilters.value.end_time
+  )
+    return '—'
+  return `${availabilityFilters.value.date} ${availabilityFilters.value.start_time}–${availabilityFilters.value.end_time}`
 })
 
 const avgUtilizationLabel = computed(() => {
@@ -398,7 +418,7 @@ const kpiItems = computed(() => [
   {
     id: 'total_rooms',
     label: 'Rooms in Scope',
-    value: timeRooms.value.length || capacityRooms.value.length || '—',
+    value: Array.isArray(timeUtilResource.data?.rooms) ? timeRooms.value.length : '—',
   },
   {
     id: 'avg_util',
@@ -440,35 +460,39 @@ function overCapBadge(count: number) {
 }
 
 async function loadFreeRooms() {
-	await freeRoomsResource.submit({
-		school: filters.value.school,
-		date: filters.value.date,
-		start_time: filters.value.start_time,
-		end_time: filters.value.end_time,
-		capacity_needed: filters.value.capacity_needed,
-	})
+  await freeRoomsResource.submit({
+    filters: {
+      school: selectedSchool.value,
+      date: availabilityFilters.value.date,
+      start_time: availabilityFilters.value.start_time,
+      end_time: availabilityFilters.value.end_time,
+      capacity_needed: availabilityFilters.value.capacity_needed,
+    },
+  })
 }
 
 async function loadTimeUtil() {
-  if (!filters.value.school || !filters.value.from_date || !filters.value.to_date) return
+  if (!selectedSchool.value || !timeUtilFilters.value.from_date || !timeUtilFilters.value.to_date)
+    return
   await timeUtilResource.submit({
     filters: {
-      school: filters.value.school,
-      from_date: filters.value.from_date,
-      to_date: filters.value.to_date,
-      day_start_time: filters.value.day_start_time,
-      day_end_time: filters.value.day_end_time,
+      school: selectedSchool.value,
+      from_date: timeUtilFilters.value.from_date,
+      to_date: timeUtilFilters.value.to_date,
+      day_start_time: timeUtilFilters.value.day_start_time,
+      day_end_time: timeUtilFilters.value.day_end_time,
     },
   })
 }
 
 async function loadCapacityUtil() {
-  if (!filters.value.school || !filters.value.from_date || !filters.value.to_date) return
+  if (!selectedSchool.value || !capacityFilters.value.from_date || !capacityFilters.value.to_date)
+    return
   await capacityResource.submit({
     filters: {
-      school: filters.value.school,
-      from_date: filters.value.from_date,
-      to_date: filters.value.to_date,
+      school: selectedSchool.value,
+      from_date: capacityFilters.value.from_date,
+      to_date: capacityFilters.value.to_date,
     },
   })
 }
@@ -492,11 +516,11 @@ function debounceCapacityUtil() {
 
 watch(
   () => [
-    filters.value.school,
-    filters.value.from_date,
-    filters.value.to_date,
-    filters.value.day_start_time,
-    filters.value.day_end_time,
+    selectedSchool.value,
+    timeUtilFilters.value.from_date,
+    timeUtilFilters.value.to_date,
+    timeUtilFilters.value.day_start_time,
+    timeUtilFilters.value.day_end_time,
   ],
   () => {
     debounceTimeUtil()
@@ -504,10 +528,19 @@ watch(
 )
 
 watch(
-  () => [filters.value.school, filters.value.from_date, filters.value.to_date],
+  () => [selectedSchool.value, capacityFilters.value.from_date, capacityFilters.value.to_date],
   () => {
     debounceCapacityUtil()
   }
+)
+
+watch(
+  () => [timeUtilFilters.value.from_date, timeUtilFilters.value.to_date],
+  ([fromDate, toDate]) => {
+    capacityFilters.value.from_date = fromDate
+    capacityFilters.value.to_date = toDate
+  },
+  { immediate: true }
 )
 
 function refreshMetrics() {
