@@ -249,7 +249,10 @@ def get_free_rooms(filters=None):
 
 	employee_booking_rows = []
 	employee_booking_checked = False
-	if frappe.db.table_exists("Employee Booking"):
+	if frappe.db.table_exists("Employee Booking") and frappe.db.has_column(
+		"Employee Booking",
+		"location",
+	):
 		employee_booking_checked = True
 		employee_school_clause = ""
 		if school_scope_param and frappe.db.has_column("Employee Booking", "school"):
