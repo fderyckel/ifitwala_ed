@@ -15,7 +15,7 @@ from frappe.model.document import Document
 from frappe.utils import get_datetime, format_datetime, getdate, today, format_date
 
 
-from ifitwala_ed.utilities.location_conflicts import find_location_conflicts
+from ifitwala_ed.utilities.location_utils import find_room_conflicts
 from ifitwala_ed.utilities.employee_booking import (
 	assert_employee_free,
 	upsert_employee_booking,
@@ -292,7 +292,7 @@ class Meeting(Document):
 	def validate_location_free(self) -> None:
 		"""
 		Ensure the selected location is not double-booked.
-		Uses the location_conflicts.find_location_conflicts engine.
+		Uses the canonical room conflict helper.
 		"""
 		if not self.location:
 			return
@@ -300,13 +300,11 @@ class Meeting(Document):
 		if not (self.from_datetime and self.to_datetime):
 			return
 
-		ignore = [(self.doctype, self.name)]
-
-		conflicts = find_location_conflicts(
-			location=self.location,
-			start=self.from_datetime,
-			end=self.to_datetime,
-			ignore_sources=ignore,
+		conflicts = find_room_conflicts(
+			self.location,
+			self.from_datetime,
+			self.to_datetime,
+			exclude={"doctype": self.doctype, "name": self.name},
 		)
 
 		if not conflicts:
@@ -316,10 +314,10 @@ class Meeting(Document):
 		for c in conflicts:
 			lines.append(
 				_("{doctype} {name} from {start} to {end}").format(
-					doctype=c.source_doctype,
-					name=c.source_name,
-					start=format_datetime(c.start),
-					end=format_datetime(c.end),
+					doctype=c.get("source_doctype"),
+					name=c.get("source_name"),
+					start=format_datetime(c.get("from")),
+					end=format_datetime(c.get("to")),
 				)
 			)
 

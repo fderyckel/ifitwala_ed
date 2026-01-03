@@ -36,7 +36,7 @@ Responsibilities:
     • iter_student_group_room_slots: expand a Student Group timetable
       into absolute room slots (location + start/end datetimes) for
       downstream systems:
-          - central location_conflicts engine
+          - canonical room conflict helper
           - employee bookings / staff calendar
 
 - Cache invalidation helpers

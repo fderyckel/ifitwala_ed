@@ -18,3 +18,4 @@ def on_doctype_update():
 
 	# For cleanup / upsert by source document
 	frappe.db.add_index("Employee Booking", fields=["source_doctype", "source_name"])
+	frappe.db.add_index("Employee Booking", fields=["location", "from_datetime", "to_datetime"])

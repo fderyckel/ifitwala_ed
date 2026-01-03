@@ -54,29 +54,34 @@ Properties:
 
 **Hard rule:**
 
-> Abstract tables MUST NEVER be queried directly to answer availability or conflict questions.
+> Abstract tables MUST NEVER be queried directly to answer availability or room-conflict questions.
 
 ---
 
-### 1.2 Layer 2 — Materialized Operational Truth
+### 1.2 Layer 2 — Operational Fact Tables
 
 **Purpose:** answer real‑world questions cheaply and correctly.
 
-Includes:
+Primary fact table:
 
-* Employee Booking
-* Meeting
-* School Event
+* **Employee Booking** — authoritative operational truth for **employee availability** and canonical source for staff teaching calendar events.
+
+Also queried by aggregators (event source tables):
+
+* **Meeting** — domain event records; may be partially materialized later
+* **School Event** — domain event records; may be partially materialized later
 
 Properties:
 
 * Datetime‑based
 * Queryable
-* Conflict‑safe
+* Conflict‑safe when merged deterministically
 
-**Invariant:**
+**Important clarification:**
 
-> Absence of a materialized row means FREE, not unknown.
+> The invariant **“absence of a row means FREE” applies ONLY to Employee Booking**.
+>
+> It does **NOT** apply to Meeting or School Event unless those are explicitly materialized into a fact table.
 
 There is no fallback to abstract logic at read time.
 
@@ -171,7 +176,7 @@ Schedule‑based IDs may appear only in:
 * dev/debug tools
 * explicit abstract schedule viewers
 
-This rule **eliminates all read‑time inference**.
+This rule **eliminates all read‑time inference** and guarantees stable event identity.
 
 ---
 
@@ -301,13 +306,13 @@ No ad‑hoc room SQL is allowed elsewhere.
 
 Calendar APIs MUST:
 
-* read only materialized fact tables
+* read only operational fact tables
 * use booking‑based IDs for teaching
 * never infer schedule context
 
 Calendars aggregate:
 
-* Employee Booking
+* Employee Booking (primary)
 * Meeting
 * School Event
 
@@ -316,6 +321,39 @@ They do NOT:
 * query Student Group Schedule
 * derive rotation/block
 * repair missing metadata
+
+### 5.1 Optional UI Labels (Explicit Rule)
+
+The UI MAY display human‑friendly labels such as:
+
+* “Block 3”
+* “Rotation Day 2”
+
+**Only if** they can be resolved **deterministically** using authoritative abstract data.
+
+Allowed inputs:
+
+* `source_doctype / source_name` (Student Group)
+* exact `from_datetime / to_datetime`
+* deterministic date → rotation_day mapping (from `schedule_utils`)
+* strict match against School Schedule Block windows for the relevant schedule
+
+**Prohibited:**
+
+* fuzzy time‑window overlap matching
+* “best‑guess” inference
+* reconstructing labels from partial data
+
+If a label cannot be resolved deterministically:
+
+* the UI MUST show **no block/rotation label**
+* the system MUST emit structured debug information
+
+**Important:**
+
+> UI labels are **presentation‑only**.
+>
+> They MUST NEVER be used for conflict detection, availability enforcement, or event identity.
 
 ---
 

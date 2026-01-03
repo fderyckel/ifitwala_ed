@@ -12,6 +12,8 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, get_datetime, getdate, time_diff_in_seconds
 
+from ifitwala_ed.utilities.location_utils import find_room_conflicts
+
 
 MAX_RANGE_DAYS = 62
 LONG_RANGE_ROLES = {"System Manager", "Administrator", "Academic Admin"}
@@ -195,92 +197,30 @@ def get_free_rooms(filters=None):
 		return _attach_debug(payload, busy_count=0, candidate_count=0)
 
 	room_names = [r["name"] for r in rooms]
-	params = {
-		"rooms": tuple(room_names),
-		"window_start": window_start,
-		"window_end": window_end,
-		"start_time": filters["start_time"],
-		"end_time": filters["end_time"],
-	}
-
-	school_scope = _get_school_scope(filters["school"]) if filters.get("school") else None
-	school_scope_param = tuple(school_scope) if school_scope else None
-
-	meeting_school_clause = ""
-	if school_scope_param and frappe.db.has_column("Meeting", "school"):
-		meeting_school_clause = " AND school IN %(school_scope)s"
-		params["school_scope"] = school_scope_param
-
-	meeting_rows = frappe.db.sql(
-		f"""
-		SELECT DISTINCT location
-		FROM `tabMeeting`
-		WHERE docstatus < 2
-			AND status != 'Cancelled'
-			AND location IN %(rooms)s
-			AND from_datetime < %(window_end)s
-			AND to_datetime > %(window_start)s
-			{meeting_school_clause}
-		""",
-		params,
-		as_dict=True,
+	employee_booking_checked = bool(
+		frappe.db.table_exists("Employee Booking")
+		and frappe.db.has_column("Employee Booking", "location")
 	)
-	sources_used.append("Meeting")
 
-	event_school_clause = ""
-	if school_scope_param and frappe.db.has_column("School Event", "school"):
-		event_school_clause = " AND school IN %(school_scope)s"
-		params["school_scope"] = school_scope_param
-
-	event_rows = frappe.db.sql(
-		f"""
-		SELECT DISTINCT location
-		FROM `tabSchool Event`
-		WHERE docstatus < 2
-			AND location IN %(rooms)s
-			AND starts_on < %(window_end)s
-			AND ends_on > %(window_start)s
-			{event_school_clause}
-		""",
-		params,
-		as_dict=True,
-	)
-	sources_used.append("School Event")
-
-	employee_booking_rows = []
-	employee_booking_checked = False
+	# Record the sources that were queried (for debug output only).
 	if frappe.db.table_exists("Employee Booking") and frappe.db.has_column(
 		"Employee Booking",
 		"location",
 	):
-		employee_booking_checked = True
-		employee_school_clause = ""
-		if school_scope_param and frappe.db.has_column("Employee Booking", "school"):
-			employee_school_clause = " AND school IN %(school_scope)s"
-			params["school_scope"] = school_scope_param
-
-		employee_docstatus_clause = ""
-		if frappe.db.has_column("Employee Booking", "docstatus"):
-			employee_docstatus_clause = " AND docstatus < 2"
-
-		employee_booking_rows = frappe.db.sql(
-			f"""
-			SELECT DISTINCT location
-			FROM `tabEmployee Booking`
-			WHERE location IN %(rooms)s
-				AND from_datetime < %(window_end)s
-				AND to_datetime > %(window_start)s
-				{employee_docstatus_clause}
-				{employee_school_clause}
-			""",
-			params,
-			as_dict=True,
-		)
 		sources_used.append("Employee Booking")
+	if frappe.db.table_exists("Meeting"):
+		sources_used.append("Meeting")
+	if frappe.db.table_exists("School Event"):
+		sources_used.append("School Event")
 
-	busy_rooms = {r["location"] for r in meeting_rows if r.get("location")}
-	busy_rooms.update({r["location"] for r in event_rows if r.get("location")})
-	busy_rooms.update({r["location"] for r in employee_booking_rows if r.get("location")})
+	conflicts = find_room_conflicts(
+		None,
+		window_start,
+		window_end,
+		locations=room_names,
+		include_children=False,
+	)
+	busy_rooms = {c["location"] for c in conflicts if c.get("location")}
 
 	# Guardrail: if there are no overlapping concrete bookings, all rooms are free.
 	available_rooms = []

@@ -16,7 +16,7 @@ If a location is considered booked:
 import frappe
 from frappe.utils import get_datetime
 from frappe.utils.caching import redis_cache
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Iterable
 
 
 # ─────────────────────────────────────────────────────────────
@@ -159,50 +159,47 @@ def is_bookable_room(location: str) -> bool:
 # Any doctype listed here:
 #   • has a field "location" (Link to Location)
 #   • has datetime fields named as below (from_field, to_field)
-#   • uses docstatus < 2 for “active” / not-cancelled
-#
-# You can change the doctype names to your actual ones if needed.
-LOCATION_SOURCES: List[Dict[str, str]] = [
-	# Future Room Booking doc
+#   • uses docstatus < 2 for “active” / not-cancelled (when column exists)
+LOCATION_SOURCES: List[Dict[str, Any]] = [
 	{
-		"doctype": "Room Booking",
+		"doctype": "Employee Booking",
 		"from_field": "from_datetime",
 		"to_field": "to_datetime",
 	},
-
-	# Your meeting doc – adjust doctype/fieldnames if different
 	{
 		"doctype": "Meeting",
 		"from_field": "from_datetime",
 		"to_field": "to_datetime",
+		"status_field": "status",
+		"status_exclude": ["Cancelled"],
 	},
-
-	# School Events – again, adjust to your schema
 	{
 		"doctype": "School Event",
-		"from_field": "from_datetime",
-		"to_field": "to_datetime",
+		"from_field": "starts_on",
+		"to_field": "ends_on",
 	},
 ]
 
 
-def find_location_conflicts(
-	location: str,
+def find_room_conflicts(
+	location: Optional[str],
 	from_dt,
 	to_dt,
 	*,
 	include_children: bool = True,
 	exclude: Optional[Dict[str, str]] = None,
+	locations: Optional[Iterable[str]] = None,
 ) -> List[Dict[str, Any]]:
 	"""
-	Central checker: return ALL datetime-based conflicts for a location.
+	Canonical checker: return ALL datetime-based conflicts for a room or room list.
 
 	Args:
-		location: base Location name
+		location: base Location name (optional if locations provided)
 		from_dt / to_dt: datetime or string; [from_dt, to_dt) interval
 		include_children: if True, booking this location also blocks all descendants
 		exclude: {"doctype": "...", "name": "..."} to ignore the current doc
 		         when checking (e.g., editing an existing Meeting)
+		locations: optional iterable of explicit Location names (already scoped)
 
 	Returns:
 		List of dicts:
@@ -217,11 +214,22 @@ def find_location_conflicts(
 	from_dt = get_datetime(from_dt)
 	to_dt = get_datetime(to_dt)
 
-	if not location or from_dt >= to_dt:
+	if from_dt >= to_dt:
 		return []
 
-	locations = get_location_scope(location, include_children=include_children)
+	if locations is None:
+		if not location:
+			return []
+		locations = get_location_scope(location, include_children=include_children)
+	else:
+		locations = list(locations)
+
 	if not locations:
+		return []
+
+	# Only real rooms participate in availability.
+	scoped_locations = [loc for loc in locations if is_bookable_room(loc)]
+	if not scoped_locations:
 		return []
 
 	conflicts: List[Dict[str, Any]] = []
@@ -232,14 +240,32 @@ def find_location_conflicts(
 				doctype=src["doctype"],
 				from_field=src["from_field"],
 				to_field=src["to_field"],
-				locations=locations,
+				locations=scoped_locations,
 				from_dt=from_dt,
 				to_dt=to_dt,
 				exclude=exclude,
+				status_field=src.get("status_field"),
+				status_exclude=src.get("status_exclude"),
 			)
 		)
 
-	return conflicts
+	# Deduplicate across sources (e.g., Meeting + its Employee Booking)
+	seen = set()
+	out: List[Dict[str, Any]] = []
+	for row in conflicts:
+		key = (
+			row.get("source_doctype"),
+			row.get("source_name"),
+			row.get("location"),
+			row.get("from"),
+			row.get("to"),
+		)
+		if key in seen:
+			continue
+		seen.add(key)
+		out.append(row)
+
+	return out
 
 
 def _conflicts_from_source(
@@ -251,6 +277,8 @@ def _conflicts_from_source(
 	from_dt,
 	to_dt,
 	exclude: Optional[Dict[str, str]] = None,
+	status_field: Optional[str] = None,
+	status_exclude: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
 	"""
 	Generic conflict finder for a single doctype that has:
@@ -266,16 +294,22 @@ def _conflicts_from_source(
 	# Coarse filter in SQL (interval overlap)
 	filters = {
 		"location": ["in", locations],
-		"docstatus": ["<", 2],
 		from_field: ["<", to_dt],
 		to_field: [">", from_dt],
 	}
+	if frappe.db.has_column(doctype, "docstatus"):
+		filters["docstatus"] = ["<", 2]
+	if status_field and status_exclude and frappe.db.has_column(doctype, status_field):
+		if len(status_exclude) == 1:
+			filters[status_field] = ["!=", status_exclude[0]]
+		else:
+			filters[status_field] = ["not in", list(status_exclude)]
 
-	rows = frappe.db.get_all(
-		doctype,
-		filters=filters,
-		fields=["name", "location", from_field, to_field],
-	)
+	fields = ["name", "location", from_field, to_field]
+	if doctype == "Employee Booking":
+		fields.extend(["source_doctype", "source_name"])
+
+	rows = frappe.db.get_all(doctype, filters=filters, fields=fields)
 
 	out: List[Dict[str, Any]] = []
 
@@ -292,14 +326,56 @@ def _conflicts_from_source(
 		if not _overlaps(from_dt, to_dt, start, end):
 			continue
 
-		out.append(
-			{
-				"source_doctype": doctype,
-				"source_name": r.name,
-				"location": r.location,
-				"from": start,
-				"to": end,
-			}
-		)
+		if doctype == "Employee Booking":
+			source_doctype = r.get("source_doctype") or doctype
+			source_name = r.get("source_name") or r.name
+			if exclude:
+				if (
+					exclude.get("source_doctype") == source_doctype
+					and exclude.get("source_name") == source_name
+				):
+					continue
+				if exclude.get("doctype") == source_doctype and exclude.get("name") == source_name:
+					continue
+			out.append(
+				{
+					"source_doctype": source_doctype,
+					"source_name": source_name,
+					"location": r.location,
+					"from": start,
+					"to": end,
+					"extra": {"booking_name": r.name},
+				}
+			)
+		else:
+			out.append(
+				{
+					"source_doctype": doctype,
+					"source_name": r.name,
+					"location": r.location,
+					"from": start,
+					"to": end,
+				}
+			)
 
 	return out
+
+
+# Backwards-compatible alias; prefer find_room_conflicts.
+def find_location_conflicts(
+	location: Optional[str],
+	from_dt,
+	to_dt,
+	*,
+	include_children: bool = True,
+	exclude: Optional[Dict[str, str]] = None,
+	locations: Optional[Iterable[str]] = None,
+) -> List[Dict[str, Any]]:
+	return find_room_conflicts(
+		location,
+		from_dt,
+		to_dt,
+		include_children=include_children,
+		exclude=exclude,
+		locations=locations,
+	)

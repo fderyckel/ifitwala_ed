@@ -7,319 +7,412 @@ This file exists primarily for **coding agents (Codex)** and reviewers.
 
 ---
 
-## 1. Core Scheduling & Room Availability Architecture
+## Locked Scheduling Decisions (Authoritative)
 
-### 1.1 Source-of-Truth Model (Critical)
+This section records final, non-negotiable architectural decisions for scheduling,
+calendars, availability, and conflict management in Ifitwala_Ed.
 
-There are **two layers**, with strictly separated responsibilities:
+These decisions resolve all previous ambiguities between hybrid vs materialized models.
 
-#### A. Abstract Layer (Declarative)
+Any implementation that deviates from these decisions is a regression.
 
-* **Student Group Schedule**
-* **School Schedule / Rotation Days**
-* **Academic Calendar**
+### Decision 1 — Room Availability Model
 
-Purpose:
+**Decision**
+Room availability is computed from materialized operational data only.
 
-* Define *intent* (who should meet, when, in theory)
-* Never answer operational questions directly
+**Authoritative sources**
+Room availability MUST be determined exclusively by:
 
-This layer is:
+- Employee Booking rows with a non-null location
+- Meeting rows with a location
+- School Event rows with a location
 
-* Declarative
-* Recomputed
-* Never queried for availability by users
+**Explicitly NOT used**
 
-#### B. Operational Layer (Computed + Materialized)
+- Student Group Schedule
+- Rotation days
+- Block numbers
+- Virtual schedule expansion
+- Any abstract or inferred logic at read time
 
-This layer answers real-world operational questions.
+**Rationale**
 
-It consists of TWO mechanisms:
+- Enables cheap, index-driven overlap queries
+- Avoids schedule expansion on every read
+- Eliminates abstract leakage into operational decisions
+- Scales under heavy read load
 
-1) **Materialized bookings**
-   * Employee Booking
-   * Meeting
-   * School Event
+**Status**
 
-2) **Computed virtual slots**
-   * Student Group Schedule expanded via
-     `iter_student_group_room_slots()`
+- Materialized-only model is LOCKED
+- Hybrid models are forbidden in production availability checks
 
-Rules:
+### Decision 2 — Employee Booking.location Rules
 
-* Staff availability → materialized bookings ONLY
-* Room availability → computed virtual slots + materialized bookings
-* Utilization analytics → materialized bookings ONLY
+**Decision**
+Employee Booking.location is conditionally mandatory, based on booking type.
 
----
+**Rules by booking type**
 
-### 1.2 Absolute Rule (No Exceptions)
+| Booking Type | Location Required | Reason |
+| --- | --- | --- |
+| Teaching | Yes (mandatory) | Teaching blocks a room |
+| Meeting | Yes (expected) | Meetings usually block a room |
+| Duty | No | Field duty / supervision may have no room |
+| Other | No | Generic commitments |
 
-❌ Student Group Schedule MUST NEVER be queried directly
-   (raw rotation_day / block_number logic in availability code)
+**Enforcement**
 
-✅ Student Group Schedule MAY ONLY be used via:
-   `iter_student_group_room_slots()`
+For booking_type == "Teaching":
 
-No other access pattern is allowed.
+- location MUST be set at materialization time
+- Missing location → hard failure (or strict debug failure in demo mode)
+- No read-time resolution from Student Group Schedule is allowed
 
+**Interpretation**
 
----
+Missing location means: blocks the employee, not a room.
 
-## 2. Student Group Schedule → Employee Booking Pipeline
+This is intentional and required for duties and non-room commitments.
 
-### 2.1 Design Intent
+**Status**
 
-Student Group Schedule is an **abstract timetable**, not a booking.
+- Teaching location mandatory is LOCKED
 
-Operational correctness is achieved by **materializing concrete bookings**.
+### Decision 3 — Teaching Materialization Strategy
 
----
+**Decision**
+Teaching sessions are fully materialized into Employee Booking.
 
-### 2.2 Materialization Strategy (Chosen)
+**Authoritative pipeline**
 
-* **Employee Booking is the operational booking layer**
-* Teaching slots are materialized as Employee Bookings
-* Each teaching occurrence:
-  * has absolute `from_datetime` / `to_datetime`
-  * references its origin (Student Group)
-  * enforces staff-level conflicts
+All teaching materialization happens in:
 
-⚠️ Location is resolved from Student Group Schedule
-   during room availability computation, not from Employee Booking.
-
-
-Required fields for teaching bookings:
-
-* `employee`
-* `from_datetime`
-* `to_datetime`
-* `location` **(mandatory)**
-* `source_doctype = "Student Group"`
-* `source_name = <Student Group name>`
-
-If a teaching slot has **no location**, it is invalid.
-
----
-
-### 2.3 Rebuild Rules (Bounded, Deterministic)
-
-Employee Bookings must be rebuilt when:
-
-* Student Group Schedule changes
-* Instructor assignment changes
-* Location changes
-* Academic Year changes (rare)
-
-Rebuild scope:
-
-* **Single Student Group**
-* **Bounded date range** (term or academic year)
-
-❌ Never rebuild globally
-❌ Never rebuild implicitly during reads
-
----
-
-## 3. Room Availability Rules
-
-### 3.1 How Availability Is Computed
-
-A room is **busy** if ANY overlap exists with:
-
-* Employee Booking
-* Meeting
-* School Event
-
-SQL overlap logic:
-
-```
-from_datetime < window_end
-AND to_datetime > window_start
+```text
+ifitwala_ed/schedule/student_group_employee_booking.py
 ```
 
+No other module may create or infer teaching bookings.
+
+**Required fields for Teaching bookings**
+
+- employee
+- from_datetime
+- to_datetime
+- location (mandatory)
+- booking_type = "Teaching"
+- source_doctype = "Student Group"
+- source_name = <student_group>
+
+**Explicit exclusions**
+
+Employee Booking MUST NOT store:
+
+- rotation_day
+- block_number
+
+Datetime is the universal operational contract.
+
+**Status**
+
+- Employee Booking is the teaching fact table
+
+### Decision 4 — Staff Calendar Event Identity
+
+**Decision**
+Staff calendars are booking-driven, not schedule-driven.
+
+**Canonical identity**
+
+For Teaching events:
+
+```text
+sg-booking::<employee_booking.name>
+```
+
+**Forbidden**
+
+- Schedule-based event IDs in staff calendars
+- Schedule fallback when bookings exist
+- Mixed ID models
+
+**Allowed**
+
+Schedule-based views ONLY in:
+
+- explicit abstract/debug viewers
+- developer tools
+- non-operational schedule previews
+
+**Status**
+
+- Booking-based IDs are LOCKED
+
+### Decision 5 — Calendar Read Rules
+
+**Decision**
+Calendar APIs are read-only aggregators.
+
+**Calendars MAY read**
+
+- Employee Booking
+- Meeting
+- School Event
+
+**Calendars MUST NOT**
+
+- Query Student Group Schedule
+- Reconstruct schedule context
+- Infer missing location, block, or rotation
+- "Repair" incomplete data
+
+**Optional UI labels**
+
+Block / Rotation labels:
+
+- MAY be displayed only if deterministically resolvable
+- MUST NOT affect conflicts, availability, or identity
+- MUST disappear if not strictly resolvable
+
+**Status**
+
+- No inference at read time is LOCKED
+
+### Decision 6 — Room Conflict Helper
+
+**Decision**
+There is exactly ONE canonical room conflict helper.
+
+**Rule**
+
+All room conflict checks MUST go through a single function, e.g.:
+
+```text
+find_room_conflicts(location, start, end)
+```
+
+**This helper merges**
+
+- Employee Booking (with location)
+- Meeting
+- School Event
+
+**Forbidden**
+
+- Ad-hoc room SQL in feature modules
+- Multiple competing conflict helpers
+- Schedule-based room conflict logic
+
+**Status**
+
+- Single helper rule is LOCKED
+
+### Decision 7 — Rebuild Triggers
+
+**Decision**
+Rebuilds are write-triggered only, never read-triggered.
+
+**Allowed triggers**
+
+- Student Group Schedule change
+- Instructor assignment change
+- Location change
+- Explicit admin action
+
+**Forbidden**
+
+- Rebuild during calendar reads
+- Rebuild during availability queries
+
+**Rebuilds MUST be**
+
+- Debounced
+- Bounded (group + date window)
+- Idempotent
+
+**Status**
+
+- No rebuild on read is LOCKED
+
+### Decision 8 — Rebuild Safety (No Transient Emptiness)
+
+**Decision**
+Rebuilds MUST NOT create "temporary free" states.
+
+**Required pattern**
+
+- Compute target slots
+- Upsert bookings
+- Delete obsolete bookings
+
+**Forbidden**
+
+- Delete-all-then-recreate for active windows
+
+**Rationale**
+
+"Absence means free" must remain safe even if rebuild fails mid-way.
+
+**Status**
+
+- No transient emptiness is LOCKED
+
+### Decision 9 — Incremental Rebuild Preference
+
+**Decision**
+Rebuilds should be incremental whenever possible.
+
+**Preferred**
+
+- Single schedule row change → rebuild affected blocks only
+
+**Allowed full rebuild**
+
+- Academic year change
+- Structural schedule change
+- Explicit admin command
+
+**Status**
+
+- Incremental rebuild preference is LOCKED
+
+### Decision 10 — Data Migration Requirement
+
+**Decision**
+A one-time backfill is REQUIRED.
+
+**Required actions**
+
+- Rebuild teaching Employee Bookings
+- Populate location for all Teaching rows
+- Remove legacy schedule-derived artifacts
+
+**Status**
+
+- Migration is REQUIRED before refactor completion
+
+### Final Authority Statement
+
+- Employee Booking is operational truth
+- Student Group Schedule is intent only
+- Calendars are aggregation only
+- Availability is materialized only
+- Inference at read time is forbidden
+
 ---
 
-### 3.2 What Is Explicitly NOT Used
+## School & Location Hierarchy Rules
 
-* ❌ `rotation_day`
-* ❌ `block_number`
-* ❌ Student Group Schedule
-* ❌ “best effort” abstract logic
+### School Scope
 
-Rotation logic belongs ONLY in the **materialization phase**, never in queries.
+- Selecting **School A** includes:
+  - School A
+  - All descendant schools (NestedSet)
 
-Important invariant:
-
-If NO virtual or materialized conflicts are found for a room
-in a given time window, the room is AVAILABLE.
-
-Empty conflict sets must NEVER be interpreted as "unavailable".
-
----
-
-### 3.3 Failure Mode Invariant (Important)
-
-If no materialized bookings exist for a time window:
-
-- The system MUST assume rooms are available
-- The system MUST NOT infer unavailability from abstract schedules
-- “No data” is treated as “free”, not “busy”
-
-If this invariant is violated, the bug is in:
-- query joins
-- scope filtering
-- or abstract data leakage
-
-Never fix this by adding more abstract logic.
-
----
-
-## 4. School & Location Hierarchy Rules
-
-### 4.1 School Scope
-
-* Selecting **School A** includes:
-
-  * School A
-  * All descendant schools (NestedSet)
-
-* Selecting **School B** includes:
-
-  * School B only
-  * NOT its parent
-  * NOT its siblings
+- Selecting **School B** includes:
+  - School B only
+  - NOT its parent
+  - NOT its siblings
 
 This applies consistently to:
 
-* Rooms
-* Bookings
-* Meetings
-* Analytics
+- Rooms
+- Bookings
+- Meetings
+- Analytics
 
----
+### Location Hierarchy
 
-### 4.2 Location Hierarchy
-
-* Location is a NestedSet
-* `is_group = 1` → structural node
-* `is_group = 0` → real room
+- Location is a NestedSet
+- is_group = 1 → structural node
+- is_group = 0 → real room
 
 Only real rooms participate in availability.
 
 ---
 
-## 5. API Design Rules (Frappe)
+## API Design Rules (Frappe)
 
-### 5.1 POST Invariant (Critical)
+### POST Invariant (Critical)
 
-When using `frappe-ui` resources:
+When using frappe-ui resources:
 
-* **POST requests MUST use** `resource.submit(payload)`
-* NEVER mix GET-style params with POST endpoints
+- POST requests MUST use resource.submit(payload)
+- NEVER mix GET-style params with POST endpoints
 
-This is a known failure mode and is treated as a **hard invariant**.
+This is a known failure mode and is treated as a hard invariant.
 
----
+### Time & Timezone Rules
 
-### 5.2 Time & Timezone Rules
-
-* Always use **Frappe site timezone** (System Settings)
-* Never rely on server OS timezone
-* Never compute availability with naive datetimes
-* Display times as `HH:MM` (no seconds)
+- Always use Frappe site timezone (System Settings)
+- Never rely on server OS timezone
+- Never compute availability with naive datetimes
+- Display times as HH:MM (no seconds)
 
 ---
 
-## 6. Vue + frappe-ui Architecture Rules
+## Vue + frappe-ui Architecture Rules
 
-### 6.1 Frontend Stack (Locked)
+### Frontend Stack (Locked)
 
-* Vue 3
-* Tailwind CSS (**only** styling system)
-* frappe-ui data utilities
+- Vue 3
+- Tailwind CSS (only styling system)
+- frappe-ui data utilities
 
 No Bootstrap. No ad-hoc CSS frameworks.
 
----
-
-### 6.2 Data Access Rules
+### Data Access Rules
 
 Preferred utilities:
 
-* `createResource`
-* `createListResource`
-* `createDocumentResource`
+- createResource
+- createListResource
+- createDocumentResource
 
 Rules:
 
-* Filters live in ONE reactive object
-* Watched with `{ deep: true }`
-* Pagination is explicit (`start`, `page_length`)
-* Changing filters resets pagination
+- Filters live in ONE reactive object
+- Watched with { deep: true }
+- Pagination is explicit (start, page_length)
+- Changing filters resets pagination
 
----
-
-### 6.3 Routing Rule (SPA)
+### Routing Rule (SPA)
 
 Inside the Vue SPA:
 
-* ❌ Never hardcode `/portal/` in routes
-* Use named routes or base-less paths
+- Never hardcode /portal/ in routes
+- Use named routes or base-less paths
 
 Reason:
 
-* Router uses `createWebHistory('/portal')`
+- Router uses createWebHistory('/portal')
 
 ---
 
-## 7. Performance & Scaling Principles
+## Performance & Scaling Principles
 
-* Optimize for **reads**, not writes
-* Reads are frequent (200+ staff)
-* Writes are rare (schedule edits)
+- Optimize for reads, not writes
+- Reads are frequent (200+ staff)
+- Writes are rare (schedule edits)
 
 Tradeoff:
 
-* Materialize once
-* Query cheaply forever
+- Materialize once
+- Query cheaply forever
 
 This is intentional and required for scale.
 
 ---
 
-## 8. Explicit Non-Goals (Prevent Drift)
-
-❌ No FULLY materialized room booking model in v1
-❌ No implicit materialization during reads
-❌ No hybrid logic hidden inside UI components
-
-Hybrid availability (virtual SG slots + materialized events)
-is explicit, centralized, and intentional.
-
----
-
-## 9. Summary (For Codex)
-
-* Student Group Schedule = abstract
-* Employee Booking = operational truth
-* Availability reads only materialized data
-* Materialization is explicit, bounded, deterministic
-* Vue + frappe-ui + Tailwind only
-* POST via `submit(payload)` only
-
-Violating these rules is a **regression**, not a feature.
-
----
-
-## 10. Debugging Rule (Non-Negotiable)
+## Debugging Rule (Non-Negotiable)
 
 When availability results are unexpected:
 
-1) Verify expanded slots from `iter_student_group_room_slots()`
+1) Verify expanded slots from iter_student_group_room_slots() (materialization input)
 2) Verify materialized Employee Booking rows
 3) Verify overlap logic
-4) NEVER "fix" availability by filtering rooms post-query
+4) Never "fix" availability by filtering rooms post-query
 
 If results look inverted (everything unavailable),
 the bug is in interpretation, not in data absence.

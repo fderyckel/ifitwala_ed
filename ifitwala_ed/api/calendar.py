@@ -40,7 +40,7 @@ What this module does NOT do
 - It does NOT own rotation/term logic or schedule resolution.
     • Rotation days and academic-year spans live in:
       ifitwala_ed.schedule.schedule_utils
-      (e.g. get_rotation_dates, get_effective_schedule_for_ay).
+      (e.g. get_effective_schedule_for_ay).
 
 - It does NOT enforce Student Group business rules or validation.
     • Those live in:
@@ -75,9 +75,7 @@ from frappe.utils import get_datetime, get_system_timezone, getdate, now_datetim
 
 from ifitwala_ed.schedule.schedule_utils import (
 	get_effective_schedule_for_ay,
-	get_rotation_dates,
 	get_weekend_days_for_calendar,
-	iter_student_group_room_slots,
 )
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
@@ -454,16 +452,7 @@ def _collect_student_group_events(
 	employee_id: Optional[str] = None,
 ) -> List[CalendarEvent]:
 	employee_id = employee_id or frappe.db.get_value("Employee", {"user_id": user}, "name")
-	booking_events = _collect_student_group_events_from_bookings(employee_id, window_start, window_end, tzinfo)
-	if booking_events:
-		return booking_events
-	return _collect_student_group_events_from_schedule(
-		user,
-		window_start,
-		window_end,
-		tzinfo,
-		employee_id=employee_id,
-	)
+	return _collect_student_group_events_from_bookings(employee_id, window_start, window_end, tzinfo)
 
 
 def _collect_student_group_events_from_bookings(
@@ -538,117 +527,6 @@ def _collect_student_group_events_from_bookings(
 				},
 			)
 		)
-
-	return events
-
-
-def _collect_student_group_events_from_schedule(
-	user: str,
-	window_start: datetime,
-	window_end: datetime,
-	tzinfo: pytz.timezone,
-	*,
-	employee_id: Optional[str] = None,
-) -> List[CalendarEvent]:
-
-	start_date, end_date = window_start.date(), window_end.date()
-
-	employee_id = employee_id or frappe.db.get_value("Employee", {"user_id": user}, "name")
-	instructor_ids = _resolve_instructor_ids(user, employee_id)
-	sgi_groups, instructor_ids = _student_group_memberships(user, employee_id, instructor_ids)
-
-	# 1) Resolve all candidate groups via schedule + SG Instructor
-	group_names: set[str] = set()
-
-	if instructor_ids:
-		sg_from_sched = frappe.get_all(
-			"Student Group Schedule",
-			filters={
-				"parenttype": "Student Group",
-				"instructor": ["in", list(instructor_ids)],
-			},
-			pluck="parent",
-			distinct=True,
-			ignore_permissions=True,
-		)
-		group_names.update(sg_from_sched or [])
-
-	group_names.update(sgi_groups)
-
-	if not group_names:
-		return []
-
-	group_docs = frappe.get_all(
-		"Student Group",
-		filters={"name": ["in", list(group_names)], "status": "Active"},
-		fields=[
-			"name",
-			"student_group_name",
-			"course",
-			"program",
-			"program_offering",
-			"school",
-			"school_schedule",
-			"academic_year",
-		],
-		ignore_permissions=True,
-	)
-
-	if not group_docs:
-		return []
-
-	course_meta = _course_meta_map(g.course for g in group_docs if g.course)
-
-	events: List[CalendarEvent] = []
-
-	for group in group_docs:
-		title, color = _student_group_title_and_color(
-			group.name,
-			group.student_group_name,
-			group.course,
-			course_meta,
-		)
-
-		# 2) Use shared room-slot expander; includes rotation logic + holiday skips.
-		slots = iter_student_group_room_slots(
-			group.name,
-			start_date=start_date,
-			end_date=end_date,
-		)
-		if not slots:
-			continue
-
-		for slot in slots:
-			start_raw = slot.get("start")
-			end_raw = slot.get("end")
-			if not start_raw:
-				continue
-
-			start_dt = _to_system_datetime(start_raw, tzinfo)
-			end_dt = _to_system_datetime(end_raw, tzinfo) if end_raw else None
-			duration = _attach_duration(start_dt, end_dt)
-			session_date = start_dt.date()
-			rotation_day = slot.get("rotation_day")
-			block_number = slot.get("block_number")
-
-			events.append(
-				CalendarEvent(
-					id=f"sg::{group.name}::{rotation_day}::{block_number}::{session_date.isoformat()}",
-					title=title,
-					start=start_dt,
-					end=start_dt + duration,
-					source="student_group",
-					color=color,
-					all_day=False,
-					meta={
-						"student_group": group.name,
-						"course": group.course,
-						"rotation_day": rotation_day,
-						"block_number": block_number,
-						"location": slot.get("location"),
-					},
-				)
-			)
 
 	return events
 
@@ -898,7 +776,8 @@ def get_student_group_event_details(
 ):
 	"""
 	Resolve a class (Student Group) calendar entry into a richer payload for the portal modal.
-	Supports both schedule-based ids (sg::...) and Employee Booking fallbacks (sg-booking::...).
+	Supports Employee Booking ids (sg-booking::...). Schedule-based ids are
+	available only in explicit debug/abstract viewers.
 	"""
 	resolved_event_id = (
 		event_id
@@ -922,8 +801,17 @@ def get_student_group_event_details(
 		frappe.form_dict.get("debug_booking")
 		or frappe.form_dict.get("debug")
 	)
+	debug_schedule = bool(
+		frappe.form_dict.get("debug_schedule")
+		or frappe.form_dict.get("debug")
+	)
 
 	if resolved_event_id.startswith("sg::"):
+		if not debug_schedule:
+			frappe.throw(
+				_("Schedule-based class events are only available in debug/abstract viewers."),
+				frappe.PermissionError,
+			)
 		context = _resolve_sg_schedule_context(resolved_event_id, tzinfo)
 	elif resolved_event_id.startswith("sg-booking::"):
 		context = _resolve_sg_booking_context(resolved_event_id, tzinfo, debug=debug_booking)
@@ -1128,6 +1016,7 @@ def _meeting_access_allowed(meeting, participants: List[Dict[str, str]], user: s
 
 
 def _resolve_sg_schedule_context(event_id: str, tzinfo: pytz.timezone) -> Dict[str, object]:
+	"""Debug/abstract schedule resolver (not for production calendar reads)."""
 	event_id = event_id.replace("sg/", "sg::", 1) if event_id.startswith("sg/") else event_id
 	parts = event_id.split("::")
 	if len(parts) < 5:
@@ -1191,172 +1080,41 @@ def _resolve_sg_booking_context(
 	row = frappe.db.get_value(
 		"Employee Booking",
 		booking_name,
-		["source_doctype", "source_name", "from_datetime", "to_datetime"],
-		as_dict=True
+		["source_doctype", "source_name", "from_datetime", "to_datetime", "location"],
+		as_dict=True,
 	)
 	if not row or row.source_doctype != "Student Group":
-		frappe.throw(_("Employee Booking {0} was not found for a class.").format(booking_name), frappe.DoesNotExistError)
+		frappe.throw(
+			_("Employee Booking {0} was not found for a class.").format(booking_name),
+			frappe.DoesNotExistError,
+		)
 
 	start_dt = _to_system_datetime(row.from_datetime, tzinfo) if row.from_datetime else None
 	end_dt = _to_system_datetime(row.to_datetime, tzinfo) if row.to_datetime else None
 
-	rotation_day = None
-	block_number = None
-	location = None
-	location_missing_reason = None
-	block_match_source = None
+	location = row.get("location") or None
+	location_missing_reason = None if location else "booking-missing-location"
 
-	def _strip_tz(value: Optional[time]) -> Optional[time]:
-		if value and value.tzinfo:
-			return value.replace(tzinfo=None)
-		return value
-
-	def _matches_booking_window(
-		window_start: Optional[time],
-		window_end: Optional[time],
-		booking_start: Optional[time],
-		booking_end: Optional[time],
-	) -> bool:
-		window_start = _strip_tz(window_start)
-		window_end = _strip_tz(window_end)
-		booking_start = _strip_tz(booking_start)
-		booking_end = _strip_tz(booking_end)
-		if not window_start or not window_end or not booking_start:
-			return False
-		if not booking_end or booking_end <= booking_start:
-			return window_start <= booking_start < window_end
-		return booking_start < window_end and booking_end > window_start
-
-	if row.source_name and start_dt:
-		group_meta = frappe.db.get_value(
-			"Student Group",
-			row.source_name,
-			["school_schedule", "academic_year", "school", "program_offering"],
-			as_dict=True,
-		)
-		schedule_name = None
-		academic_year = None
-		school = None
-		if group_meta:
-			schedule_name = group_meta.school_schedule
-			academic_year = group_meta.academic_year
-			school = group_meta.school
-			if not school and group_meta.program_offering:
-				school = frappe.db.get_value("Program Offering", group_meta.program_offering, "school")
-			if not school and academic_year:
-				school = frappe.db.get_value("Academic Year", academic_year, "school")
-			if not schedule_name and academic_year and school:
-				schedule_name = get_effective_schedule_for_ay(academic_year, school)
-			if schedule_name and not academic_year:
-				academic_year = frappe.db.get_value("School Schedule", schedule_name, "academic_year")
-
-		booking_start = start_dt.time()
-		booking_end = end_dt.time() if end_dt else None
-
-		if schedule_name and academic_year:
-			rot_dates = get_rotation_dates(schedule_name, academic_year, include_holidays=False)
-			rotation_map = {
-				getdate(rd.get("date")).isoformat(): rd.get("rotation_day")
-				for rd in rot_dates
-				if rd.get("date")
-			}
-			rotation_day = rotation_map.get(start_dt.date().isoformat())
-			if rotation_day is not None:
-				try:
-					rotation_day = int(rotation_day)
-				except Exception:
-					pass
-
-		if rotation_day is not None:
-			sg_rows = frappe.get_all(
-				"Student Group Schedule",
-				filters={
-					"parent": row.source_name,
-					"parenttype": "Student Group",
-					"parentfield": "student_group_schedule",
-					"rotation_day": rotation_day,
-				},
-				fields=["block_number", "location", "from_time", "to_time"],
-				ignore_permissions=True,
-			)
-			for sg_row in sg_rows:
-				from_time = _coerce_time(sg_row.get("from_time"))
-				to_time = _coerce_time(sg_row.get("to_time"))
-				if not _matches_booking_window(from_time, to_time, booking_start, booking_end):
-					continue
-				block_number = sg_row.get("block_number")
-				try:
-					block_number = int(block_number) if block_number is not None else None
-				except Exception:
-					pass
-				location = sg_row.get("location")
-				block_match_source = "student_group_schedule"
-				break
-
-		if schedule_name and academic_year and rotation_day is not None and block_number is None:
-			block_rows = frappe.get_all(
-				"School Schedule Block",
-				filters={"parent": schedule_name, "rotation_day": rotation_day},
-				fields=["block_number", "from_time", "to_time"],
-				ignore_permissions=True,
-			)
-			for block in block_rows:
-				from_time = _coerce_time(block.get("from_time"))
-				to_time = _coerce_time(block.get("to_time"))
-				if _matches_booking_window(from_time, to_time, booking_start, booking_end):
-					block_number = block.get("block_number")
-					try:
-						block_number = int(block_number) if block_number is not None else None
-					except Exception:
-						pass
-					block_match_source = "school_schedule_block"
-					break
-
-			if block_number is not None and not location:
-				location = frappe.db.get_value(
-					"Student Group Schedule",
-					{
-						"parent": row.source_name,
-						"parenttype": "Student Group",
-						"parentfield": "student_group_schedule",
-						"rotation_day": rotation_day,
-						"block_number": block_number,
-					},
-					"location",
-				)
-
-	if block_number is not None and not location:
-		location_missing_reason = "No location found for matched block."
-
-	if debug:
-		debug_info = {
-			"booking_name": booking_name,
-			"student_group": row.source_name if row else None,
-			"start_dt": start_dt.isoformat() if start_dt else None,
-			"end_dt": end_dt.isoformat() if end_dt else None,
-			"booking_start": booking_start.isoformat() if "booking_start" in locals() and booking_start else None,
-			"booking_end": booking_end.isoformat() if "booking_end" in locals() and booking_end else None,
-			"schedule_name": schedule_name if "schedule_name" in locals() else None,
-			"academic_year": academic_year if "academic_year" in locals() else None,
-			"rotation_day": rotation_day,
-			"block_number": block_number,
-			"location": location,
-			"block_match_source": block_match_source,
-		}
-		frappe.logger("calendar").info(f"[calendar] booking resolution {debug_info}")
-
-	return {
+	context = {
 		"student_group": row.source_name,
-		"rotation_day": rotation_day,
-		"block_number": block_number,
-		"block_label": _("Block {0}").format(block_number) if block_number is not None else None,
+		"rotation_day": None,
+		"block_number": None,
+		"block_label": None,
 		"session_date": start_dt.date().isoformat() if start_dt else None,
 		"location": location,
 		"location_missing_reason": location_missing_reason,
 		"start": start_dt,
 		"end": end_dt,
-		"_debug": debug_info if debug else None,
 	}
+
+	if debug:
+		context["_debug"] = {
+			"booking_name": booking_name,
+			"location_present": bool(location),
+			"location_missing_reason": location_missing_reason,
+		}
+
+	return context
 
 
 def _user_has_student_group_access(user: str, group_name: str) -> bool:

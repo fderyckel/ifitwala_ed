@@ -26,7 +26,7 @@ NO DocTypes live here.
 # IMPORTANT:
 # This module performs conflict detection ONLY at the timetable level.
 # It does NOT consider concrete bookings (Meetings, Events).
-# Location conflicts are delegated to the location_conflicts engine.
+# Location conflicts are delegated to the canonical room conflict helper.
 
 from __future__ import annotations
 
@@ -139,10 +139,10 @@ def check_slot_conflicts(group_doc):
 			"groups": (<student groups>, ...)
 		}
 
-	Room/location clashes are handled by the central location_conflicts engine.
+	Room/location clashes are handled by the canonical room conflict helper.
 	"""
 	# This function MUST NOT reason about rooms or locations.
-	# Room conflicts are handled exclusively by location_conflicts.py
+	# Room conflicts are handled exclusively by the canonical room conflict helper
 	# Normalize input: client calls send JSON string, server calls may send a dict/doc
 	if isinstance(group_doc, str):
 		group_doc = frappe._dict(json.loads(group_doc))

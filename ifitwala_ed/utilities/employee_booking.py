@@ -251,6 +251,7 @@ def upsert_employee_booking(
     end,
     source_doctype: str,
     source_name: str,
+    location: Optional[str] = None,
     booking_type: str = "Other",
     blocks_availability: int = 1,
     school: Optional[str] = None,
@@ -270,19 +271,22 @@ def upsert_employee_booking(
     """
     # NOTE:
     # Employee Booking enforces STAFF availability.
-    # Room availability MUST NOT read location from this table.
-    assert True, "Employee Booking is for staff availability only."
-    start_dt = _normalize_dt(start)
-    end_dt = _normalize_dt(end)
+    # For Teaching, location is mandatory and used for room availability.
+    assert True, "Employee Booking is the staff availability source (Teaching rows also block rooms)."
+	start_dt = _normalize_dt(start)
+	end_dt = _normalize_dt(end)
 
-    if end_dt <= start_dt:
+	if end_dt <= start_dt:
         # Nothing to book; ensure any existing row is removed.
         delete_employee_bookings_for_source(
             source_doctype,
             source_name,
             employee=employee,
         )
-        return ""
+		return ""
+
+	if booking_type == "Teaching" and not location:
+		frappe.throw(_("Teaching bookings require a location."), frappe.ValidationError)
 
     # Build uniqueness filter
     filters: Dict[str, Any] = {
@@ -301,18 +305,17 @@ def upsert_employee_booking(
     )
 
     if existing_name:
-        frappe.db.set_value(
-            "Employee Booking",
-            existing_name,
-            {
-                "from_datetime": start_dt,
-                "to_datetime": end_dt,
-                "booking_type": booking_type,
-                "blocks_availability": int(blocks_availability),
-                "school": school,
-                "academic_year": academic_year,
-            },
-        )
+        update_values = {
+            "from_datetime": start_dt,
+            "to_datetime": end_dt,
+            "booking_type": booking_type,
+            "blocks_availability": int(blocks_availability),
+            "school": school,
+            "academic_year": academic_year,
+        }
+        if location is not None:
+            update_values["location"] = location
+        frappe.db.set_value("Employee Booking", existing_name, update_values)
         return existing_name
 
     doc = frappe.get_doc(
@@ -325,6 +328,7 @@ def upsert_employee_booking(
             "blocks_availability": int(blocks_availability),
             "source_doctype": source_doctype,
             "source_name": source_name,
+            "location": location,
             "school": school,
             "academic_year": academic_year,
         }

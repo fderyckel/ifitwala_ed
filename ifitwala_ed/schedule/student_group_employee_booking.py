@@ -11,22 +11,22 @@ are intentionally converted into concrete bookings.
 
 If this module is not called:
 - teaching exists only as an abstract timetable
-- room and staff availability MUST remain best-effort
+- room and staff availability must treat teaching as free (no read-time inference)
 """
 
 from __future__ import annotations
 
-from datetime import date
-from typing import Dict, Optional, List
+from datetime import date, datetime
+from typing import Dict, Optional, List, Set, Tuple
 
 import frappe
-from frappe.utils import getdate
+from frappe.utils import getdate, get_datetime
 
 from ifitwala_ed.utilities.employee_booking import (
-	delete_employee_bookings_for_source,
 	upsert_employee_booking,
 )
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
+from ifitwala_ed.utilities.location_utils import is_bookable_room
 
 
 # ─────────────────────────────────────────────────────────────
@@ -34,6 +34,11 @@ from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
 # ─────────────────────────────────────────────────────────────
 
 BOOKING_SOURCE_DOCTYPE = "Student Group"
+
+def _normalize_dt(value) -> datetime:
+	if isinstance(value, datetime):
+		return value
+	return get_datetime(value)
 
 def _get_ay_date_range(academic_year: str) -> tuple[date, date]:
 	"""
@@ -76,7 +81,8 @@ def _build_schedule_index(student_group: str) -> Dict[tuple[int, int], dict]:
 			rotation_day,
 			block_number,
 			instructor,
-			employee
+			employee,
+			location
 		from `tabStudent Group Schedule`
 		where parent = %s
 		""",
@@ -118,6 +124,59 @@ def _resolve_employee_from_instructor(
 	return emp
 
 
+def _delete_obsolete_teaching_bookings(
+	*,
+	student_group: str,
+	start_dt: datetime,
+	end_dt: datetime,
+	target_keys: Set[Tuple[str, datetime, datetime]],
+) -> int:
+	"""
+	Delete Teaching bookings for this group within the window
+	that are not in target_keys.
+
+	target_keys items: (employee, from_datetime, to_datetime)
+	"""
+	rows = frappe.db.sql(
+		"""
+		select name, employee, from_datetime, to_datetime
+		from `tabEmployee Booking`
+		where source_doctype = %s
+		  and source_name = %s
+		  and booking_type = %s
+		  and from_datetime >= %s
+		  and to_datetime <= %s
+		""",
+		[BOOKING_SOURCE_DOCTYPE, student_group, "Teaching", start_dt, end_dt],
+		as_dict=True,
+	)
+
+	to_delete: List[str] = []
+	for r in rows:
+		key = (
+			r.get("employee"),
+			_normalize_dt(r.get("from_datetime")),
+			_normalize_dt(r.get("to_datetime")),
+		)
+		if key not in target_keys:
+			to_delete.append(r["name"])
+
+	if not to_delete:
+		return 0
+
+	deleted = 0
+	chunk = 200
+	for i in range(0, len(to_delete), chunk):
+		names = to_delete[i : i + chunk]
+		frappe.db.sql(
+			"delete from `tabEmployee Booking` where name in %(names)s",
+			{"names": tuple(names)},
+		)
+		deleted += len(names)
+
+	return deleted
+
+
 # ─────────────────────────────────────────────────────────────
 # Per–Student Group materialization
 # ─────────────────────────────────────────────────────────────
@@ -129,17 +188,17 @@ def rebuild_employee_bookings_for_student_group(
 	*,
 	start_date: Optional[date] = None,
 	end_date: Optional[date] = None,
+	strict_location: bool = True,
 ) -> None:
 	"""
 	Materialize all teaching slots for a given Student Group into Employee Booking.
 
-	Strategy:
+	Strategy (no transient emptiness):
 	1. Determine the date window (defaults to full Academic Year of the group).
-	2. Delete existing Employee Booking rows for this Student Group.
-	3. Preload Student Group Schedule rows (one SQL) and index by (rotation_day, block_number).
-	4. Use iter_student_group_room_slots() to expand the timetable to concrete
-	   date+time slots within [start_date, end_date].
-	5. For each slot, resolve the Instructor → Employee and upsert an Employee Booking row.
+	2. Preload Student Group Schedule rows and validate locations.
+	3. Use iter_student_group_room_slots() to expand the timetable to concrete slots.
+	4. Upsert Employee Booking rows (unique by slot).
+	5. Delete obsolete bookings in the same window only.
 
 	Notes:
 	- Call this from the Student Group controller when the schedule is “stable enough”
@@ -159,17 +218,25 @@ def rebuild_employee_bookings_for_student_group(
 		if end_date is None:
 			end_date = ay_end
 
+	start_date = getdate(start_date) if start_date else None
+	end_date = getdate(end_date) if end_date else None
+
 	if not start_date or not end_date or start_date > end_date:
 		# Nothing sensible to do
 		return
 
-	# 2) Clear existing bookings for this source
-	delete_employee_bookings_for_source(BOOKING_SOURCE_DOCTYPE, student_group)
-
-	# 3) Preload schedule rows and build index
+	# 2) Preload schedule rows and build index
 	sched_index = _build_schedule_index(student_group)
 	if not sched_index:
-		# No schedule → nothing to materialize
+		# No schedule → delete any existing bookings in window
+		window_start = _normalize_dt(get_datetime(f"{start_date} 00:00:00"))
+		window_end = _normalize_dt(get_datetime(f"{end_date} 23:59:59"))
+		_delete_obsolete_teaching_bookings(
+			student_group=student_group,
+			start_dt=window_start,
+			end_dt=window_end,
+			target_keys=set(),
+		)
 		return
 
 	instructor_cache: Dict[str, Optional[str]] = {}
@@ -179,7 +246,30 @@ def rebuild_employee_bookings_for_student_group(
 	school = sg.school or None
 	academic_year = sg.academic_year or None
 
+	# 3) Validate schedule locations up-front (Teaching requires a real room)
+	if strict_location:
+		missing = []
+		invalid = []
+		for row in sched_index.values():
+			loc = row.get("location")
+			rd = row.get("rotation_day")
+			bn = row.get("block_number")
+			label = f"rd={rd} block={bn}"
+			if not loc:
+				missing.append(label)
+				continue
+			if not is_bookable_room(loc):
+				invalid.append(f"{label} ({loc})")
+		if missing or invalid:
+			msg = []
+			if missing:
+				msg.append("Missing location for: " + ", ".join(sorted(missing)))
+			if invalid:
+				msg.append("Non-bookable location for: " + ", ".join(sorted(invalid)))
+			frappe.throw(" | ".join(msg))
+
 	# 4) Expand timetable into concrete slots
+	target_keys: Set[Tuple[str, datetime, datetime]] = set()
 	for slot in iter_student_group_room_slots(student_group, start_date, end_date):
 		rd = slot.get("rotation_day")
 		bn = slot.get("block_number")
@@ -208,19 +298,42 @@ def rebuild_employee_bookings_for_student_group(
 		if not start_dt or not end_dt:
 			continue
 
+		location = slot.get("location") or row.get("location")
+		if not location:
+			if strict_location:
+				frappe.throw(
+					f"Missing location for Teaching slot: {student_group} rd={rd} block={bn}"
+				)
+			continue
+
 		# 5) Upsert Employee Booking row
-		upsert_employee_booking(
+		booking_name = upsert_employee_booking(
 			employee=employee,
 			start=start_dt,
 			end=end_dt,
 			source_doctype=BOOKING_SOURCE_DOCTYPE,
 			source_name=student_group,
+			location=location,
 			booking_type="Teaching",
 			blocks_availability=1,
 			school=school,
 			academic_year=academic_year,
 			unique_by_slot=True,
 		)
+		if booking_name:
+			start_norm = _normalize_dt(start_dt)
+			end_norm = _normalize_dt(end_dt)
+			target_keys.add((employee, start_norm, end_norm))
+
+	# 6) Delete obsolete bookings in the window
+	window_start = _normalize_dt(get_datetime(f"{start_date} 00:00:00"))
+	window_end = _normalize_dt(get_datetime(f"{end_date} 23:59:59"))
+	_delete_obsolete_teaching_bookings(
+		student_group=student_group,
+		start_dt=window_start,
+		end_dt=window_end,
+		target_keys=target_keys,
+	)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -232,6 +345,9 @@ def rebuild_employee_bookings_for_all_student_groups(
 	academic_year: Optional[str] = None,
 	only_active: bool = True,
 	skip_archived_ay: bool = True,
+	start_date: Optional[date] = None,
+	end_date: Optional[date] = None,
+	strict_location: bool = True,
 ) -> None:
 	"""
 	Backfill Employee Booking for many Student Groups.
@@ -242,6 +358,8 @@ def rebuild_employee_bookings_for_all_student_groups(
 	    academic_year: optional filter; if given, restrict to this AY.
 	    only_active: if True, restrict to Student Groups with status = "Active".
 	    skip_archived_ay: if True, ignore Academic Years where archived = 1.
+	    start_date / end_date: optional bounded window override.
+	    strict_location: if True, missing locations raise.
 
 	Strategy:
 	    1) Select Student Groups via a single SQL with optional joins/filters.
@@ -278,7 +396,12 @@ def rebuild_employee_bookings_for_all_student_groups(
 
 	for r in rows:
 		sg_name = r["name"]
-		rebuild_employee_bookings_for_student_group(sg_name)
+		rebuild_employee_bookings_for_student_group(
+			sg_name,
+			start_date=start_date,
+			end_date=end_date,
+			strict_location=strict_location,
+		)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -290,6 +413,7 @@ def rebuild_employee_bookings_for_group(
 	*,
 	start_date: Optional[date] = None,
 	end_date: Optional[date] = None,
+	strict_location: bool = True,
 ) -> None:
 	"""
 	Alias wrapper so you can call:
@@ -303,4 +427,5 @@ def rebuild_employee_bookings_for_group(
 		student_group=student_group,
 		start_date=start_date,
 		end_date=end_date,
+		strict_location=strict_location,
 	)

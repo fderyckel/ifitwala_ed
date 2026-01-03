@@ -12,7 +12,7 @@ from ifitwala_ed.schedule.schedule_utils import get_conflict_rule, get_rotation_
 from ifitwala_ed.schedule.student_group_scheduling import check_slot_conflicts
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 from ifitwala_ed.schedule.attendance_utils import invalidate_meeting_dates
-from ifitwala_ed.utilities.location_conflicts import find_location_conflicts
+from ifitwala_ed.utilities.location_utils import find_room_conflicts
 
 from ifitwala_ed.schedule.student_group_employee_booking import (
 	rebuild_employee_bookings_for_student_group,
@@ -439,7 +439,7 @@ class StudentGroup(Document):
 		  - No student is double-booked in another Student Group
 		    at the same rotation_day + block_number.
 
-		Room conflicts are handled separately by location_conflicts.
+		Room conflicts are handled separately by the canonical room conflict helper.
 		"""
 
 		# Use a plain dict so check_slot_conflicts can be called both from
@@ -653,15 +653,13 @@ class StudentGroup(Document):
 
 	def validate_location_conflicts_absolute(self):
 		"""
-		Check this Student Group's room usage against other objects using the
-		central location_conflicts engine.
+		Check this Student Group's room usage against materialized bookings.
 
 		Compares this group's concrete sessions (absolute datetimes derived
 		from rotation days + blocks) against:
-			- other Student Groups
+			- Employee Booking (Teaching + other room-bound bookings)
 			- Meetings
 			- School Events
-			- Frappe Events
 
 		Respects the School's schedule_conflict_rule (Hard / Soft).
 		"""
@@ -755,23 +753,29 @@ class StudentGroup(Document):
 		if not slots:
 			return
 
-		ignore_sources = {("Student Group", self.name)}
+		exclude = {"source_doctype": "Student Group", "source_name": self.name}
 		all_conflicts = []
 		seen = set()
 
 		for loc, start_dt, end_dt in slots:
-			hits = find_location_conflicts(
+			hits = find_room_conflicts(
 				loc,
 				start_dt,
 				end_dt,
-				ignore_sources=ignore_sources,
+				exclude=exclude,
 			)
 			for c in hits:
 				# Extra safety: don't ever flag this group against itself
-				if c.source_doctype == "Student Group" and c.source_name == self.name:
+				if c.get("source_doctype") == "Student Group" and c.get("source_name") == self.name:
 					continue
 
-				key = (c.source_doctype, c.source_name, c.location, c.start, c.end)
+				key = (
+					c.get("source_doctype"),
+					c.get("source_name"),
+					c.get("location"),
+					c.get("from"),
+					c.get("to"),
+				)
 				if key in seen:
 					continue
 				seen.add(key)
@@ -782,14 +786,14 @@ class StudentGroup(Document):
 
 		lines = []
 		for c in all_conflicts:
-			target = get_link_to_form(c.source_doctype, c.source_name)
-			start_str = format_datetime(c.start)
-			end_str = format_datetime(c.end)
+			target = get_link_to_form(c.get("source_doctype"), c.get("source_name"))
+			start_str = format_datetime(c.get("from"))
+			end_str = format_datetime(c.get("to"))
 
 			lines.append(
 				_("{location} is already booked by {doctype} {target} from {start} to {end}.").format(
-					location=c.location,
-					doctype=c.source_doctype,
+					location=c.get("location"),
+					doctype=c.get("source_doctype"),
 					target=target,
 					start=start_str,
 					end=end_str,
