@@ -156,6 +156,22 @@ in a given time window, the room is AVAILABLE.
 
 Empty conflict sets must NEVER be interpreted as "unavailable".
 
+---
+
+### 3.3 Failure Mode Invariant (Important)
+
+If no materialized bookings exist for a time window:
+
+- The system MUST assume rooms are available
+- The system MUST NOT infer unavailability from abstract schedules
+- “No data” is treated as “free”, not “busy”
+
+If this invariant is violated, the bug is in:
+- query joins
+- scope filtering
+- or abstract data leakage
+
+Never fix this by adding more abstract logic.
 
 ---
 

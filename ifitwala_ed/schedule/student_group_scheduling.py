@@ -141,6 +141,8 @@ def check_slot_conflicts(group_doc):
 
 	Room/location clashes are handled by the central location_conflicts engine.
 	"""
+	# This function MUST NOT reason about rooms or locations.
+	# Room conflicts are handled exclusively by location_conflicts.py
 	# Normalize input: client calls send JSON string, server calls may send a dict/doc
 	if isinstance(group_doc, str):
 		group_doc = frappe._dict(json.loads(group_doc))

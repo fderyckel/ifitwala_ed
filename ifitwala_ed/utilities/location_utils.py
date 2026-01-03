@@ -15,6 +15,7 @@ If a location is considered booked:
 
 import frappe
 from frappe.utils import get_datetime
+from frappe.utils.caching import redis_cache
 from typing import List, Dict, Any, Optional
 
 
@@ -101,19 +102,53 @@ def get_location_scope(location: str, include_children: bool = True) -> List[str
 	return out
 
 
-def is_bookable_room(location_row) -> bool:
+def _get_location_flags(location: str) -> Optional[Dict[str, Any]]:
+	if not location:
+		return None
+
+	fields = ["is_group"]
+	if frappe.db.has_column("Location", "disabled"):
+		fields.append("disabled")
+
+	return frappe.db.get_value("Location", location, fields, as_dict=True)
+
+
+@redis_cache(ttl=300)
+def _is_bookable_room_cached(location: str) -> bool:
+	if not location:
+		return False
+
+	row = _get_location_flags(location)
+	if not row:
+		return False
+
+	try:
+		if int(row.get("is_group") or 0) != 0:
+			return False
+	except Exception:
+		return False
+
+	if "disabled" in row:
+		try:
+			if int(row.get("disabled") or 0) != 0:
+				return False
+		except Exception:
+			return False
+
+	return True
+
+
+def is_bookable_room(location: str) -> bool:
 	"""
 	Return True if this Location is intended to host people.
 
 	v1 rule:
-	- maximum_capacity > 0
+	- is_group = 0
+	- disabled = 0 (if field exists)
 
 	This helper is NOT yet enforced everywhere.
 	"""
-	try:
-		return int(location_row.get("maximum_capacity") or 0) > 0
-	except Exception:
-		return False
+	return _is_bookable_room_cached(location)
 
 
 # ─────────────────────────────────────────────────────────────

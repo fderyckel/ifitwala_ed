@@ -60,6 +60,7 @@ from frappe.utils.caching import redis_cache
 from collections import defaultdict
 from datetime import date
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
+from ifitwala_ed.utilities.location_utils import is_bookable_room
 from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
 from typing import Optional
 
@@ -334,6 +335,8 @@ def get_effective_schedule_for_ay(academic_year: str, school: str | None) -> str
 	return None
 
 
+# This function is the ONLY allowed bridge from
+# Student Group Schedule -> operational time slots.
 # This function EXPANDS an abstract timetable.
 # Output must NEVER be assumed to be authoritative room usage.
 def iter_student_group_room_slots(
@@ -452,6 +455,9 @@ def iter_student_group_room_slots(
 		loc = row.get("location")
 		if not loc:
 			# no room → irrelevant for room conflicts
+			continue
+		if not is_bookable_room(loc):
+			# non-bookable structural nodes must not enter availability
 			continue
 
 		rd = row.get("rotation_day")

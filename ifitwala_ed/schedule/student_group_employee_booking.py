@@ -33,6 +33,8 @@ from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
 # Helpers
 # ─────────────────────────────────────────────────────────────
 
+BOOKING_SOURCE_DOCTYPE = "Student Group"
+
 def _get_ay_date_range(academic_year: str) -> tuple[date, date]:
 	"""
 	Return [start_date, end_date] for the given Academic Year.
@@ -162,7 +164,7 @@ def rebuild_employee_bookings_for_student_group(
 		return
 
 	# 2) Clear existing bookings for this source
-	delete_employee_bookings_for_source("Student Group", student_group)
+	delete_employee_bookings_for_source(BOOKING_SOURCE_DOCTYPE, student_group)
 
 	# 3) Preload schedule rows and build index
 	sched_index = _build_schedule_index(student_group)
@@ -211,7 +213,7 @@ def rebuild_employee_bookings_for_student_group(
 			employee=employee,
 			start=start_dt,
 			end=end_dt,
-			source_doctype="Student Group",
+			source_doctype=BOOKING_SOURCE_DOCTYPE,
 			source_name=student_group,
 			booking_type="Teaching",
 			blocks_availability=1,

@@ -27,6 +27,7 @@ from typing import Iterable, List, Optional, Tuple, Callable
 from frappe.utils import get_datetime, getdate
 
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
+from ifitwala_ed.utilities.location_utils import is_bookable_room
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -108,6 +109,8 @@ def slots_from_student_groups(
 			loc = s.get("location")
 			if not loc or loc not in branch:
 				continue
+			if not is_bookable_room(loc):
+				continue
 
 			yield LocationSlot(
 				location=loc,
@@ -125,6 +128,8 @@ def slots_from_student_groups(
 def slots_from_meeting(docname: str) -> Iterable[LocationSlot]:
 	doc = frappe.get_cached_doc("Meeting", docname)
 	if not doc.location:
+		return []
+	if not is_bookable_room(doc.location):
 		return []
 
 	if not (doc.date and doc.start_time and doc.end_time):
@@ -150,6 +155,8 @@ def slots_from_meeting(docname: str) -> Iterable[LocationSlot]:
 def slots_from_school_event(docname: str) -> Iterable[LocationSlot]:
 	doc = frappe.get_cached_doc("School Event", docname)
 	if not doc.location or not doc.starts_on or not doc.ends_on:
+		return []
+	if not is_bookable_room(doc.location):
 		return []
 
 	return [

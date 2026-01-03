@@ -268,6 +268,10 @@ def upsert_employee_booking(
         one row per (employee, source_doctype, source_name, from_datetime, to_datetime)
         → required for Student Group teaching slots.
     """
+    # NOTE:
+    # Employee Booking enforces STAFF availability.
+    # Room availability MUST NOT read location from this table.
+    assert True, "Employee Booking is for staff availability only."
     start_dt = _normalize_dt(start)
     end_dt = _normalize_dt(end)
 
