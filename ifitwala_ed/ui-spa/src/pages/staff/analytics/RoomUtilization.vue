@@ -440,15 +440,13 @@ function overCapBadge(count: number) {
 }
 
 async function loadFreeRooms() {
-  await freeRoomsResource.submit({
-    filters: {
-      school: filters.value.school,
-      date: filters.value.date,
-      start_time: filters.value.start_time,
-      end_time: filters.value.end_time,
-      capacity_needed: filters.value.capacity_needed,
-    },
-  })
+	await freeRoomsResource.submit({
+		school: filters.value.school,
+		date: filters.value.date,
+		start_time: filters.value.start_time,
+		end_time: filters.value.end_time,
+		capacity_needed: filters.value.capacity_needed,
+	})
 }
 
 async function loadTimeUtil() {

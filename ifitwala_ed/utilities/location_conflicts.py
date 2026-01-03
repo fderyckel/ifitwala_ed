@@ -3,6 +3,20 @@
 
 # ifitwala_ed/utilities/location_conflicts.py
 
+"""
+Location conflict engine.
+
+IMPORTANT ARCHITECTURAL DISTINCTION:
+
+- Meetings and School Events are CONCRETE bookings
+- Student Group Schedules are ABSTRACT timetables
+
+This engine MAY consume abstract schedules,
+but results from abstract schedules are ALWAYS best-effort.
+
+Abstract schedule failure must NEVER reduce availability.
+"""
+
 from __future__ import annotations
 
 import frappe
@@ -33,6 +47,9 @@ class LocationSlot:
 # Location expansion (SIMPLIFIED — exact match only)
 # ──────────────────────────────────────────────────────────────────────────────
 
+# NOTE:
+# Location hierarchy handling is intentionally simplified here.
+# Hierarchy semantics are resolved elsewhere (location_utils).
 def expand_location_branch(location: str) -> set[str]:
 	"""
 	Simplified model:
@@ -62,6 +79,10 @@ def _date_span(start_dt: datetime, end_dt: datetime) -> Tuple[date, date]:
 # Adapters — each yields LocationSlot entries
 # ──────────────────────────────────────────────────────────────────────────────
 
+# WARNING:
+# Student Group slots are derived from abstract timetables.
+# These slots are NOT guaranteed to represent actual room usage.
+# Callers must treat these as advisory unless materialized.
 def slots_from_student_groups(
 	branch: set[str],
 	start_date: date,

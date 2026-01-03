@@ -3,6 +3,16 @@
 
 # ifitwala_ed/utilities/location_utils.py
 
+"""
+Location utilities.
+
+This module defines the CANONICAL rules for location hierarchy handling.
+
+If a location is considered booked:
+- its children are considered booked ONLY if explicitly requested
+- hierarchy expansion must always go through this module
+"""
+
 import frappe
 from frappe.utils import get_datetime
 from typing import List, Dict, Any, Optional
@@ -55,6 +65,9 @@ def _get_descendant_locations(location: str) -> List[str]:
 	return children or []
 
 
+# Canonical location hierarchy rule:
+# - Parent booking blocks children
+# - Child booking does NOT block parent
 def get_location_scope(location: str, include_children: bool = True) -> List[str]:
 	"""
 	Return the list of locations that should be considered "blocked" when a given
@@ -86,6 +99,21 @@ def get_location_scope(location: str, include_children: bool = True) -> List[str
 			out.append(loc)
 
 	return out
+
+
+def is_bookable_room(location_row) -> bool:
+	"""
+	Return True if this Location is intended to host people.
+
+	v1 rule:
+	- maximum_capacity > 0
+
+	This helper is NOT yet enforced everywhere.
+	"""
+	try:
+		return int(location_row.get("maximum_capacity") or 0) > 0
+	except Exception:
+		return False
 
 
 # ─────────────────────────────────────────────────────────────

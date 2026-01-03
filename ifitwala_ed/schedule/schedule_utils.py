@@ -4,6 +4,16 @@
 # ifitwala_ed/schedule/schedule_utils.py
 
 """
+Schedule utilities.
+
+IMPORTANT:
+All schedules in this module are ABSTRACT.
+They do NOT represent concrete bookings.
+
+Any consumer that needs real availability MUST either:
+- materialize bookings explicitly
+- or accept best-effort results
+
 Core schedule utilities for Ifitwala_Ed.
 
 Responsibilities:
@@ -324,6 +334,8 @@ def get_effective_schedule_for_ay(academic_year: str, school: str | None) -> str
 	return None
 
 
+# This function EXPANDS an abstract timetable.
+# Output must NEVER be assumed to be authoritative room usage.
 def iter_student_group_room_slots(
 	sg_name: str,
 	start_date: date | None = None,
@@ -592,4 +604,3 @@ def get_course_block_colour(school: str | None) -> str:
 		frappe.db.get_value("School", school, "course_color")
 		or get_block_colour("Course")
 	)
-

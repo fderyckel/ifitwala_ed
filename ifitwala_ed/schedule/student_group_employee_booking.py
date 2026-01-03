@@ -3,6 +3,17 @@
 
 # ifitwala_ed/schedule/student_group_employee_booking.py
 
+"""
+Student Group -> Employee Booking materialization.
+
+This module is the ONLY place where abstract schedules
+are intentionally converted into concrete bookings.
+
+If this module is not called:
+- teaching exists only as an abstract timetable
+- room and staff availability MUST remain best-effort
+"""
+
 from __future__ import annotations
 
 from datetime import date
@@ -109,6 +120,8 @@ def _resolve_employee_from_instructor(
 # Per–Student Group materialization
 # ─────────────────────────────────────────────────────────────
 
+# MATERIALIZATION BOUNDARY:
+# Calling this function commits the schedule into concrete reality.
 def rebuild_employee_bookings_for_student_group(
 	student_group: str,
 	*,

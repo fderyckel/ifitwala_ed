@@ -3,6 +3,23 @@
 
 # ifitwala_ed/utilities/employee_booking.py
 
+"""
+Employee Booking = concrete, materialized staff commitments.
+
+This table represents REAL, DATETIME-BASED bookings that:
+- always block employee availability
+- are suitable for conflict detection and calendars
+
+Sources include:
+- Meetings
+- Student Group teaching slots (when materialized)
+- Future booking types
+
+IMPORTANT:
+Employee Booking is NOT an abstract schedule.
+Absence of an Employee Booking means the employee is free.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -223,6 +240,10 @@ def assert_employee_free(
 # Upsert / cleanup helpers
 # ─────────────────────────────────────────────────────────────
 
+# Architectural note:
+# This function materializes concrete bookings.
+# It must never be called for abstract schedules unless the caller
+# has explicitly decided to materialize them.
 def upsert_employee_booking(
     *,
     employee: str,

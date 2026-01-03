@@ -23,6 +23,11 @@ Responsibilities:
 NO DocTypes live here.
 """
 
+# IMPORTANT:
+# This module performs conflict detection ONLY at the timetable level.
+# It does NOT consider concrete bookings (Meetings, Events).
+# Location conflicts are delegated to the location_conflicts engine.
+
 from __future__ import annotations
 
 import json
