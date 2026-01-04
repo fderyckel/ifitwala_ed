@@ -39,6 +39,7 @@ declare module 'vue' {
     SideDrawerList: typeof import('./src/components/analytics/SideDrawerList.vue')['default']
     StackedBarChart: typeof import('./src/components/analytics/StackedBarChart.vue')['default']
     StatsTile: typeof import('./src/components/analytics/StatsTile.vue')['default']
+    StudentCalendar: typeof import('./src/components/calendar/StudentCalendar.vue')['default']
     TagCloudBar: typeof import('./src/components/analytics/TagCloudBar.vue')['default']
   }
 }
