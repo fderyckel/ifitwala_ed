@@ -1,45 +1,36 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
- "creation": "2025-11-14 19:06:04.324183",
+ "creation": "2026-01-04 15:30:14.552023",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "employee",
-  "booking_type",
-  "blocks_availability",
+  "location",
+  "occupancy_type",
   "from_datetime",
   "to_datetime",
-  "location",
   "source_doctype",
   "source_name",
+  "source_key",
+  "slot_key",
   "school",
-  "academic_year"
+  "academic_year",
+  "organization"
  ],
  "fields": [
   {
-   "fieldname": "employee",
+   "fieldname": "location",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Employee",
-   "options": "Employee",
+   "label": "Location",
+   "options": "Location",
    "reqd": 1
   },
   {
-   "fieldname": "booking_type",
+   "fieldname": "occupancy_type",
    "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Booking Type",
-   "options": "Teaching\nMeeting\nDuty\nOther",
-   "reqd": 1
-  },
-  {
-   "default": "1",
-   "fieldname": "blocks_availability",
-   "fieldtype": "Check",
-   "label": "Blocks Availability"
+   "label": "Occupancy Type",
+   "options": "Teaching\nMeeting\nSchool Event\nRoom Booking\nDuty\nOther"
   },
   {
    "fieldname": "from_datetime",
@@ -64,13 +55,26 @@
   {
    "fieldname": "source_name",
    "fieldtype": "Dynamic Link",
-   "label": "Source Document",
+   "label": "Source Name",
    "options": "source_doctype"
+  },
+  {
+   "fieldname": "source_key",
+   "fieldtype": "Data",
+   "label": "Source Key",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "slot_key",
+   "fieldtype": "Data",
+   "label": "Slot Key",
+   "read_only": 1,
+   "reqd": 1
   },
   {
    "fieldname": "school",
    "fieldtype": "Link",
-   "in_standard_filter": 1,
    "label": "School",
    "options": "School"
   },
@@ -81,20 +85,19 @@
    "options": "Academic Year"
   },
   {
-   "fieldname": "location",
+   "fieldname": "organization",
    "fieldtype": "Link",
-   "label": "Location",
-   "options": "Location"
+   "label": "Organization",
+   "options": "Organization"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-03 17:20:54.841215",
+ "modified": "2026-01-04 15:35:45.454279",
  "modified_by": "Administrator",
- "module": "HR",
- "name": "Employee Booking",
- "naming_rule": "Random",
+ "module": "Stock",
+ "name": "Location Booking",
  "owner": "Administrator",
  "permissions": [
   {
