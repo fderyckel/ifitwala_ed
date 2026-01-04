@@ -29,16 +29,39 @@ ALLOWED_ANALYTICS_ROLES = {
 
 def _ensure_demographics_access(user: str | None = None) -> str:
 	"""Gate analytics to authorized staff roles."""
+	ctx = _get_demographics_access_context(user)
+	return ctx["user"]
+
+
+def _get_demographics_access_context(user: str | None = None) -> dict:
 	user = user or frappe.session.user
 	if not user or user == "Guest":
 		frappe.throw("You need to sign in to access Student Demographic Analytics.", frappe.PermissionError)
 
 	roles = set(frappe.get_roles(user))
 	if roles & ALLOWED_ANALYTICS_ROLES:
-		return user
+		return {"user": user, "mode": "full"}
+
+	teaching_roles = {"Instructor"}
+	if roles & teaching_roles:
+		has_students = frappe.db.sql(
+			"""
+			SELECT 1
+			FROM `tabStudent Group Instructor` sgi
+			JOIN `tabStudent Group Student` sgs ON sgi.parent = sgs.parent
+			JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+			WHERE sgi.user_id = %(user)s
+				AND COALESCE(sgs.active, 0) = 1
+				AND IFNULL(sg.status, 'Active') = 'Active'
+			LIMIT 1
+			""",
+			{"user": user},
+		)
+		if has_students:
+			return {"user": user, "mode": "instructor"}
 
 	frappe.throw("You do not have permission to access Student Demographic Analytics.", frappe.PermissionError)
-	return user
+	return {"user": user, "mode": "full"}
 
 
 def _safe_percent(part: float, total: float) -> float:
@@ -78,18 +101,34 @@ def _get_filters(filters) -> dict:
 	return filters
 
 
-def _get_active_students(filters: dict):
-	conditions = ["enabled = 1"]
+def _get_active_students(filters: dict, ctx: dict | None = None):
+	ctx = ctx or _get_demographics_access_context()
+	mode = ctx["mode"]
+	user = ctx["user"]
+
+	conditions = ["st.enabled = 1"]
 	params = {}
+	joins = ""
+
+	if mode == "instructor":
+		joins = """
+			JOIN `tabStudent Group Student` sgs ON sgs.student = st.name
+			JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sgs.parent
+			JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+		"""
+		conditions.append("sgi.user_id = %(user)s")
+		conditions.append("COALESCE(sgs.active, 0) = 1")
+		conditions.append("IFNULL(sg.status, 'Active') = 'Active'")
+		params["user"] = user
 
 	if filters.get("school"):
 		root = filters["school"]
 		descendants = get_descendant_schools(root) or [root]
-		conditions.append("anchor_school in %(schools)s")
+		conditions.append("st.anchor_school in %(schools)s")
 		params["schools"] = tuple(descendants)
 
 	if filters.get("cohort"):
-		conditions.append("cohort = %(cohort)s")
+		conditions.append("st.cohort = %(cohort)s")
 		params["cohort"] = filters["cohort"]
 
 	where = " AND ".join(conditions)
@@ -97,18 +136,19 @@ def _get_active_students(filters: dict):
 	return frappe.db.sql(
 		f"""
 		SELECT
-			name,
-			student_full_name,
-			anchor_school,
-			cohort,
-			student_gender,
-			student_nationality,
-			student_second_nationality,
-			student_first_language,
-			student_second_language,
-			residency_status,
-			student_date_of_birth
-		FROM `tabStudent`
+			DISTINCT st.name,
+			st.student_full_name,
+			st.anchor_school,
+			st.cohort,
+			st.student_gender,
+			st.student_nationality,
+			st.student_second_nationality,
+			st.student_first_language,
+			st.student_second_language,
+			st.residency_status,
+			st.student_date_of_birth
+		FROM `tabStudent` st
+		{joins}
 		WHERE {where}
 		""",
 		params,
@@ -340,7 +380,8 @@ def get_filter_meta():
 	Return filter metadata used by the demographics dashboard.
 	Scoped to the employee's base school + its descendant schools.
 	"""
-	user = _ensure_demographics_access()
+	ctx = _get_demographics_access_context()
+	user = ctx["user"]
 
 	base_school = None
 	try:
@@ -385,10 +426,10 @@ def get_dashboard(filters=None):
 	"""
 	Aggregate demographics analytics for active students.
 	"""
-	_ensure_demographics_access()
+	ctx = _get_demographics_access_context()
 	filters = _get_filters(filters)
 
-	students = _get_active_students(filters)
+	students = _get_active_students(filters, ctx)
 	if not students:
 		return _empty_dashboard()
 
@@ -672,7 +713,7 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	Drill-down implementation that returns student or guardian rows for a given slice key.
 	We *do not* depend on the precomputed hit map here; we re-interpret the slice_key structure.
 	"""
-	_ensure_demographics_access()
+	ctx = _get_demographics_access_context()
 
 	# Defensive: accept several param names if slice_key wasn't bound by name
 	if not slice_key:
@@ -691,7 +732,7 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 	# Normalize filters (string or object from frappe-ui)
 	filters = _get_filters(filters or frappe.form_dict.get("filters"))
 
-	students = _get_active_students(filters)
+	students = _get_active_students(filters, ctx)
 	if not students:
 		return []
 
@@ -879,4 +920,3 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 		pass
 
 	return results[start : start + page_length]
-

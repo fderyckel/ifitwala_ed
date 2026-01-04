@@ -95,13 +95,12 @@ watch(
 )
 
 const dashboardResource = createResource({
-  url: 'ifitwala_ed.api.student_demographics_dashboard.get_dashboard',
-  method: 'POST',
-  params: () => ({
-    filters: filters.value
-  }),
-  auto: false,
+	url: 'ifitwala_ed.api.student_demographics_dashboard.get_dashboard',
+	method: 'POST',
+	auto: false,
 })
+
+const accessDenied = ref(false)
 
 const emptyDashboard: DashboardResponse = {
 	kpis: {
@@ -149,7 +148,12 @@ function debounce(fn: () => void, delay = 400) {
 
 
 async function loadDashboard() {
-  await dashboardResource.fetch()
+	try {
+		accessDenied.value = false
+		await dashboardResource.submit({ filters: filters.value })
+	} catch (error) {
+		accessDenied.value = true
+	}
 }
 
 
@@ -303,105 +307,114 @@ function setPreset(preset: ViewPreset) {
 			</div>
 		</header>
 
-		<FiltersBar>
-			<div class="flex flex-col gap-1 w-64">
-				<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
-					School
-				</label>
-				<select
-					v-model="filters.school"
-					class="h-8 rounded-md border border-slate-200 px-3 text-xs"
-				>
-					<option
-						v-for="s in schools"
-						:key="s.name"
-						:value="s.name"
+		<div v-if="accessDenied" class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+			<h2 class="text-sm font-semibold text-amber-900">Access restricted</h2>
+			<p class="mt-1 text-xs text-amber-800">
+				You can only view demographic analytics for students you teach...
+			</p>
+		</div>
+
+		<div v-else>
+			<FiltersBar>
+				<div class="flex flex-col gap-1 w-64">
+					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
+						School
+					</label>
+					<select
+						v-model="filters.school"
+						class="h-8 rounded-md border border-slate-200 px-3 text-xs"
 					>
-						{{ s.label || s.name }}
-					</option>
-				</select>
-			</div>
-
-			<div class="flex flex-col gap-1 w-40">
-				<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
-					Cohort
-				</label>
-				<select v-model="filters.cohort" class="h-8 rounded-md border border-slate-200 px-2 text-xs">
-					<option value="">
-						All
-					</option>
-					<option v-for="c in cohorts" :key="c.name" :value="c.name">
-						{{ c.label || c.name }}
-					</option>
-				</select>
-			</div>
-
-			<div class="flex flex-col gap-1">
-				<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
-					View Preset
-				</label>
-				<div class="flex items-center gap-2">
-					<button v-for="preset in viewPresets" :key="preset.id" class="rounded-md border px-2 py-1 text-xs" :class="filters.preset === preset.id
-						? 'border-sky-500 bg-sky-50 text-sky-700'
-						: 'border-slate-200 text-slate-600 hover:bg-slate-50'
-						" @click="setPreset(preset.id)">
-						{{ preset.label }}
-					</button>
+						<option
+							v-for="s in schools"
+							:key="s.name"
+							:value="s.name"
+						>
+							{{ s.label || s.name }}
+						</option>
+					</select>
 				</div>
-			</div>
-		</FiltersBar>
 
-		<section class="mt-4 space-y-4">
-			<KpiRow :items="kpiItems" />
+				<div class="flex flex-col gap-1 w-40">
+					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
+						Cohort
+					</label>
+					<select v-model="filters.cohort" class="h-8 rounded-md border border-slate-200 px-2 text-xs">
+						<option value="">
+							All
+						</option>
+						<option v-for="c in cohorts" :key="c.name" :value="c.name">
+							{{ c.label || c.name }}
+						</option>
+					</select>
+				</div>
 
-			<div class="grid gap-4 lg:grid-cols-2">
-				<HorizontalBarTopN title="Nationality Distribution (Top 10 + Other)" :items="dashboard.nationality_distribution"
-					@select="openSliceDrawer" />
-				<HeatmapChart title="Nationality by Cohort" :rows="nationalityHeatmapRows" @select="openSliceDrawer" />
-				<StackedBarChart title="Gender Split by Cohort" :series="stackedGenderSeries" :rows="genderRows"
-					@select="openSliceDrawer" />
-				<DonutSplit title="Residency Status" :items="dashboard.residency_status" @select="openSliceDrawer" />
-				<HistogramBuckets title="Age Distribution"
-					:buckets="dashboard.age_distribution.map((b) => ({ label: b.bucket, count: b.count, sliceKey: b.sliceKey }))"
-					@select="openSliceDrawer" />
-			</div>
+				<div class="flex flex-col gap-1">
+					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
+						View Preset
+					</label>
+					<div class="flex items-center gap-2">
+						<button v-for="preset in viewPresets" :key="preset.id" class="rounded-md border px-2 py-1 text-xs" :class="filters.preset === preset.id
+							? 'border-sky-500 bg-sky-50 text-sky-700'
+							: 'border-slate-200 text-slate-600 hover:bg-slate-50'
+							" @click="setPreset(preset.id)">
+							{{ preset.label }}
+						</button>
+					</div>
+				</div>
+			</FiltersBar>
 
-			<div class="grid gap-4 lg:grid-cols-2">
-				<DonutSplit title="Home Language Distribution" :items="dashboard.home_language" @select="openSliceDrawer" />
-				<DonutSplit title="Multilingual Profile (1 / 2 / 3+)" :items="dashboard.multilingual_profile"
-					@select="openSliceDrawer" />
-			</div>
+			<section class="mt-4 space-y-4">
+				<KpiRow :items="kpiItems" />
 
-			<section class="space-y-3">
-				<h2 class="text-sm font-semibold text-slate-700">Family Structure & Sibling Analytics</h2>
-				<KpiRow :items="familyKpis" />
 				<div class="grid gap-4 lg:grid-cols-2">
-					<StackedBarChart title="Sibling Distribution" :series="siblingSeries" :rows="siblingRows"
+					<HorizontalBarTopN title="Nationality Distribution (Top 10 + Other)" :items="dashboard.nationality_distribution"
 						@select="openSliceDrawer" />
-					<HistogramBuckets title="Family Size Histogram"
-						:buckets="dashboard.family_size_histogram.map((b) => ({ label: b.bucket, count: b.count, sliceKey: b.sliceKey }))"
+					<HeatmapChart title="Nationality by Cohort" :rows="nationalityHeatmapRows" @select="openSliceDrawer" />
+					<StackedBarChart title="Gender Split by Cohort" :series="stackedGenderSeries" :rows="genderRows"
+						@select="openSliceDrawer" />
+					<DonutSplit title="Residency Status" :items="dashboard.residency_status" @select="openSliceDrawer" />
+					<HistogramBuckets title="Age Distribution"
+						:buckets="dashboard.age_distribution.map((b) => ({ label: b.bucket, count: b.count, sliceKey: b.sliceKey }))"
 						@select="openSliceDrawer" />
 				</div>
-			</section>
 
-			<section class="space-y-3">
-				<h2 class="text-sm font-semibold text-slate-700">Guardian Demographics</h2>
 				<div class="grid gap-4 lg:grid-cols-2">
-					<HorizontalBarTopN title="Guardian Nationality (Top)" :items="dashboard.guardian_nationality"
-						@select="openSliceDrawer" />
-					<DonutSplit title="Preferred Communication Language" :items="dashboard.guardian_comm_language"
-						@select="openSliceDrawer" />
-					<HorizontalBarTopN title="Guardian Residence (Country)" :items="dashboard.guardian_residence_country"
-						@select="openSliceDrawer" />
-					<TagCloudBar title="Guardian Residence (City)" :items="dashboard.guardian_residence_city" :max="12"
-						@select="openSliceDrawer" />
-					<HorizontalBarTopN title="Guardian Employment Sector" :items="dashboard.guardian_sector"
-						@select="openSliceDrawer" />
-					<DonutSplit title="Financial Guardian Spread" :items="dashboard.financial_guardian"
+					<DonutSplit title="Home Language Distribution" :items="dashboard.home_language" @select="openSliceDrawer" />
+					<DonutSplit title="Multilingual Profile (1 / 2 / 3+)" :items="dashboard.multilingual_profile"
 						@select="openSliceDrawer" />
 				</div>
+
+				<section class="space-y-3">
+					<h2 class="text-sm font-semibold text-slate-700">Family Structure & Sibling Analytics</h2>
+					<KpiRow :items="familyKpis" />
+					<div class="grid gap-4 lg:grid-cols-2">
+						<StackedBarChart title="Sibling Distribution" :series="siblingSeries" :rows="siblingRows"
+							@select="openSliceDrawer" />
+						<HistogramBuckets title="Family Size Histogram"
+							:buckets="dashboard.family_size_histogram.map((b) => ({ label: b.bucket, count: b.count, sliceKey: b.sliceKey }))"
+							@select="openSliceDrawer" />
+					</div>
+				</section>
+
+				<section class="space-y-3">
+					<h2 class="text-sm font-semibold text-slate-700">Guardian Demographics</h2>
+					<div class="grid gap-4 lg:grid-cols-2">
+						<HorizontalBarTopN title="Guardian Nationality (Top)" :items="dashboard.guardian_nationality"
+							@select="openSliceDrawer" />
+						<DonutSplit title="Preferred Communication Language" :items="dashboard.guardian_comm_language"
+							@select="openSliceDrawer" />
+						<HorizontalBarTopN title="Guardian Residence (Country)" :items="dashboard.guardian_residence_country"
+							@select="openSliceDrawer" />
+						<TagCloudBar title="Guardian Residence (City)" :items="dashboard.guardian_residence_city" :max="12"
+							@select="openSliceDrawer" />
+						<HorizontalBarTopN title="Guardian Employment Sector" :items="dashboard.guardian_sector"
+							@select="openSliceDrawer" />
+						<DonutSplit title="Financial Guardian Spread" :items="dashboard.financial_guardian"
+							@select="openSliceDrawer" />
+					</div>
+				</section>
 			</section>
-		</section>
+		</div>
 
 		<SideDrawerList :open="sliceDrawerOpen" :title="sliceMeta?.title || 'Drill-down'"
 			:entity="sliceMeta?.entity || 'student'" :rows="sliceRows" :loading="sliceResource.loading"

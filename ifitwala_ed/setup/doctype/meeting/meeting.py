@@ -84,6 +84,7 @@ class Meeting(Document):
 	def validate(self):
 		# 1) Normalize participants from Team if needed
 		self.load_team_participants_if_empty()
+		self.default_attendance_pending()
 
 		# 2) Participant integrity
 		self.ensure_unique_participants()
@@ -180,6 +181,16 @@ class Meeting(Document):
 				_("Please add at least one participant to this meeting."),
 				title=_("No Participants"),
 			)
+
+	def default_attendance_pending(self) -> None:
+		# Draft / Scheduled / Cancelled / Postponed → blanks should be Pending
+		if self.status == "Completed":
+			return
+
+		for row in self.participants or []:
+			if not (row.attendance_status or "").strip():
+				row.attendance_status = "Pending"
+
 
 	# ─────────────────────────────────────────────────────────────
 	# Time & context helpers
