@@ -21,6 +21,12 @@ from ifitwala_ed.utilities.employee_booking import (
 	upsert_employee_booking,
 	delete_employee_bookings_for_source,
 )
+from ifitwala_ed.stock.doctype.location_booking.location_booking import (
+	build_source_key,
+	build_slot_key_single,
+	delete_location_bookings_for_source,
+	upsert_location_booking,
+)
 
 
 def _combine_date_and_time(d, t) -> Optional[datetime]:
@@ -100,15 +106,19 @@ class Meeting(Document):
 
 	def after_insert(self):
 		self.sync_employee_bookings()
+		self.sync_location_booking()
 
 	def on_update(self):
 		self.sync_employee_bookings()
+		self.sync_location_booking()
 
 	def on_cancel(self):
 		delete_employee_bookings_for_source(self.doctype, self.name)
+		delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
 
 	def on_trash(self):
 		delete_employee_bookings_for_source(self.doctype, self.name)
+		delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
 
 	# ─────────────────────────────────────────────────────────────
 	# Participant helpers
@@ -473,6 +483,45 @@ class Meeting(Document):
 				school=school,
 				academic_year=academic_year,
 			)
+
+	def sync_location_booking(self) -> None:
+		"""
+		Project this Meeting into Location Booking (single stable slot).
+		"""
+		if not (self.location and self.from_datetime and self.to_datetime):
+			delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
+			return
+
+		school = getattr(self, "school", None) if hasattr(self, "school") else None
+		academic_year = (
+			getattr(self, "academic_year", None) if hasattr(self, "academic_year") else None
+		)
+
+		source_key = build_source_key(self.doctype, self.name)
+		slot_key = build_slot_key_single(source_key, self.location)
+
+		upsert_location_booking(
+			location=self.location,
+			from_datetime=self.from_datetime,
+			to_datetime=self.to_datetime,
+			occupancy_type="Meeting",
+			source_doctype=self.doctype,
+			source_name=self.name,
+			slot_key=slot_key,
+			school=school,
+			academic_year=academic_year,
+			blocks_availability=1,
+		)
+
+		# Clean up any stale rows from prior locations.
+		frappe.db.delete(
+			"Location Booking",
+			{
+				"source_doctype": self.doctype,
+				"source_name": self.name,
+				"slot_key": ["!=", slot_key],
+			},
+		)
 
 	# ─────────────────────────────────────────────────────────────
 	# Visibility / privacy layer

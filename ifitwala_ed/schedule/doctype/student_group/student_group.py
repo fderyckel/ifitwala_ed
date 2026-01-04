@@ -656,10 +656,7 @@ class StudentGroup(Document):
 		Check this Student Group's room usage against materialized bookings.
 
 		Compares this group's concrete sessions (absolute datetimes derived
-		from rotation days + blocks) against:
-			- Employee Booking (Teaching + other room-bound bookings)
-			- Meetings
-			- School Events
+		from rotation days + blocks) against Location Booking only.
 
 		Respects the School's schedule_conflict_rule (Hard / Soft).
 		"""

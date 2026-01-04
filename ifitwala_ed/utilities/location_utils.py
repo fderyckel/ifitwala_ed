@@ -23,6 +23,8 @@ from typing import List, Dict, Any, Optional, Iterable
 # Core time & tree helpers
 # ─────────────────────────────────────────────────────────────
 
+LOCATION_SCOPE_CACHE_TTL = 60 * 60 * 12  # 12 hours
+
 def _overlaps(a_start, a_end, b_start, b_end) -> bool:
 	"""
 	Return True if [a_start, a_end) overlaps [b_start, b_end).
@@ -66,6 +68,35 @@ def _get_descendant_locations(location: str) -> List[str]:
 	return children or []
 
 
+def _get_location_scope_cached(location: str, include_children: bool) -> List[str]:
+	"""
+	Cache-safe location scope expansion (root + descendants if requested).
+	"""
+	if not location:
+		return []
+
+	cache_key = f"location_scope::{location}::include_children={1 if include_children else 0}"
+	cache = frappe.cache()
+	cached = cache.get_value(cache_key)
+	if cached is not None:
+		return cached
+
+	scope = [location]
+	if include_children:
+		scope.extend(_get_descendant_locations(location))
+
+	# remove duplicates, keep order
+	seen = set()
+	out: List[str] = []
+	for loc in scope:
+		if loc and loc not in seen:
+			seen.add(loc)
+			out.append(loc)
+
+	cache.set_value(cache_key, out, expires_in=LOCATION_SCOPE_CACHE_TTL)
+	return out
+
+
 # Canonical location hierarchy rule:
 # - Parent booking blocks children
 # - Child booking does NOT block parent
@@ -86,20 +117,7 @@ def get_location_scope(location: str, include_children: bool = True) -> List[str
 	if not location:
 		return []
 
-	scope = [location]
-
-	if include_children:
-		scope.extend(_get_descendant_locations(location))
-
-	# remove duplicates, keep order
-	seen = set()
-	out: List[str] = []
-	for loc in scope:
-		if loc and loc not in seen:
-			seen.add(loc)
-			out.append(loc)
-
-	return out
+	return _get_location_scope_cached(location, include_children)
 
 
 def _get_location_flags(location: str) -> Optional[Dict[str, Any]]:
@@ -160,6 +178,8 @@ def is_bookable_room(location: str) -> bool:
 #   • has a field "location" (Link to Location)
 #   • has datetime fields named as below (from_field, to_field)
 #   • uses docstatus < 2 for “active” / not-cancelled (when column exists)
+#
+# NOTE: This is legacy-only and must not be the default path.
 LOCATION_SOURCES: List[Dict[str, Any]] = [
 	{
 		"doctype": "Employee Booking",
@@ -234,18 +254,32 @@ def find_room_conflicts(
 
 	conflicts: List[Dict[str, Any]] = []
 
-	for src in LOCATION_SOURCES:
+	if int(frappe.conf.get("legacy_room_conflicts_union") or 0) == 1:
+		frappe.logger().warning(
+			"Using legacy room conflict union (Employee Booking + Meeting + School Event). "
+			"Disable legacy_room_conflicts_union to use Location Booking only."
+		)
+		for src in LOCATION_SOURCES:
+			conflicts.extend(
+				_conflicts_from_source(
+					doctype=src["doctype"],
+					from_field=src["from_field"],
+					to_field=src["to_field"],
+					locations=scoped_locations,
+					from_dt=from_dt,
+					to_dt=to_dt,
+					exclude=exclude,
+					status_field=src.get("status_field"),
+					status_exclude=src.get("status_exclude"),
+				)
+			)
+	else:
 		conflicts.extend(
-			_conflicts_from_source(
-				doctype=src["doctype"],
-				from_field=src["from_field"],
-				to_field=src["to_field"],
+			_conflicts_from_location_booking(
 				locations=scoped_locations,
 				from_dt=from_dt,
 				to_dt=to_dt,
 				exclude=exclude,
-				status_field=src.get("status_field"),
-				status_exclude=src.get("status_exclude"),
 			)
 		)
 
@@ -264,6 +298,82 @@ def find_room_conflicts(
 			continue
 		seen.add(key)
 		out.append(row)
+
+	return out
+
+
+def _conflicts_from_location_booking(
+	*,
+	locations: List[str],
+	from_dt,
+	to_dt,
+	exclude: Optional[Dict[str, str]] = None,
+) -> List[Dict[str, Any]]:
+	"""
+	Conflict finder for Location Booking (single source of truth).
+	"""
+	if not frappe.db.table_exists("Location Booking"):
+		return []
+
+	filters = {
+		"location": ["in", locations],
+		"from_datetime": ["<", to_dt],
+		"to_datetime": [">", from_dt],
+	}
+	if frappe.db.has_column("Location Booking", "docstatus"):
+		filters["docstatus"] = ["<", 2]
+
+	fields = [
+		"name",
+		"location",
+		"from_datetime",
+		"to_datetime",
+		"source_doctype",
+		"source_name",
+		"occupancy_type",
+		"slot_key",
+	]
+
+	rows = frappe.db.get_all("Location Booking", filters=filters, fields=fields)
+
+	out: List[Dict[str, Any]] = []
+	for r in rows:
+		start = r.get("from_datetime")
+		end = r.get("to_datetime")
+		if not start or not end:
+			continue
+
+		if not _overlaps(from_dt, to_dt, start, end):
+			continue
+
+		source_doctype = r.get("source_doctype") or "Location Booking"
+		source_name = r.get("source_name") or r.name
+
+		if exclude:
+			if exclude.get("doctype") == "Location Booking" and exclude.get("name") == r.name:
+				continue
+			if (
+				exclude.get("source_doctype") == source_doctype
+				and exclude.get("source_name") == source_name
+			):
+				continue
+			if exclude.get("doctype") == source_doctype and exclude.get("name") == source_name:
+				continue
+
+		out.append(
+			{
+				"source_doctype": source_doctype,
+				"source_name": source_name,
+				"location": r.get("location"),
+				"from": start,
+				"to": end,
+				"extra": {
+					"location_booking": r.get("name"),
+					"slot_key": r.get("slot_key"),
+					"occupancy_type": r.get("occupancy_type"),
+				},
+			}
+		)
 
 	return out
 
@@ -379,3 +489,73 @@ def find_location_conflicts(
 		exclude=exclude,
 		locations=locations,
 	)
+
+
+@frappe.whitelist()
+def verify_room_conflicts_against_location_booking(
+	location: str,
+	start,
+	end,
+	include_children: int | bool = 1,
+) -> Dict[str, Any]:
+	"""
+	Verify that find_room_conflicts() matches Location Booking rows exactly.
+	"""
+	frappe.only_for("System Manager")
+
+	if int(frappe.conf.get("legacy_room_conflicts_union") or 0) == 1:
+		frappe.throw(
+			"Verification requires legacy_room_conflicts_union to be disabled."
+		)
+
+	start_dt = get_datetime(start)
+	end_dt = get_datetime(end)
+	if not start_dt or not end_dt or end_dt <= start_dt:
+		frappe.throw("Invalid datetime window for verification.")
+
+	inc_children = bool(int(include_children)) if isinstance(include_children, (int, str)) else bool(include_children)
+
+	conflicts = find_room_conflicts(
+		location,
+		start_dt,
+		end_dt,
+		include_children=inc_children,
+	)
+
+	conflict_slot_keys = {
+		(row.get("extra") or {}).get("slot_key")
+		for row in conflicts
+		if (row.get("extra") or {}).get("slot_key")
+	}
+
+	locations = get_location_scope(location, include_children=inc_children)
+	scoped_locations = [loc for loc in locations if is_bookable_room(loc)]
+
+	if not scoped_locations:
+		if conflict_slot_keys:
+			frappe.throw("Conflicts returned for non-bookable or empty scope.")
+		return {"ok": True, "count": 0, "slot_keys": []}
+
+	if not frappe.db.table_exists("Location Booking"):
+		frappe.throw("Location Booking table does not exist.")
+
+	filters = {
+		"location": ["in", scoped_locations],
+		"from_datetime": ["<", end_dt],
+		"to_datetime": [">", start_dt],
+	}
+	if frappe.db.has_column("Location Booking", "docstatus"):
+		filters["docstatus"] = ["<", 2]
+
+	rows = frappe.db.get_all("Location Booking", filters=filters, fields=["slot_key"])
+	direct_slot_keys = {r.get("slot_key") for r in rows if r.get("slot_key")}
+
+	if conflict_slot_keys != direct_slot_keys:
+		missing = sorted(direct_slot_keys - conflict_slot_keys)
+		extra = sorted(conflict_slot_keys - direct_slot_keys)
+		frappe.throw(
+			"Conflict helper mismatch: "
+			f"missing={len(missing)} extra={len(extra)}."
+		)
+
+	return {"ok": True, "count": len(conflict_slot_keys), "slot_keys": sorted(conflict_slot_keys)}

@@ -10,7 +10,7 @@
 					v-model="selectedYear"
 					@change="fetchData"
 					:disabled="loading"
-					class="block w-full sm:w-auto pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+					class="block w-full sm:w-auto pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[var(--jacaranda)] focus:border-[var(--jacaranda)] sm:text-sm rounded-md"
 				>
 					<option v-for="year in academicYears" :key="year" :value="year">
 						{{ year }}
@@ -23,13 +23,13 @@
 			<p class="text-gray-500">Loading courses...</p>
 		</div>
 
-		<div v-else-if="error" class="bg-red-50 border-l-4 border-red-400 p-4">
+		<div v-else-if="error" class="bg-[var(--flame)]/5 border-l-4 border-[var(--flame)] p-4">
 			<div class="flex">
 				<div class="flex-shrink-0">
-					<FeatherIcon name="alert-circle" class="h-5 w-5 text-red-400" />
+					<FeatherIcon name="alert-circle" class="h-5 w-5 text-[var(--flame)]" />
 				</div>
 				<div class="ml-3">
-					<p class="text-sm text-red-700">{{ error }}</p>
+					<p class="text-sm text-[var(--flame)]">{{ error }}</p>
 				</div>
 			</div>
 		</div>
@@ -57,7 +57,7 @@
 					</div>
 				</div>
 				<div class="p-4">
-					<p class="text-base font-semibold text-gray-900 truncate group-hover:text-blue-600">
+					<p class="text-base font-semibold text-gray-900 truncate group-hover:text-[var(--jacaranda)]">
 						{{ course.course_name }}
 					</p>
 					<p class="text-sm text-gray-500 mt-1">

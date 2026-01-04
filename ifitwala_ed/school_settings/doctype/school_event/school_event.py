@@ -17,6 +17,12 @@ from frappe.utils import (
 	get_system_timezone,
 )
 from frappe.utils.caching import redis_cache
+from ifitwala_ed.stock.doctype.location_booking.location_booking import (
+	build_source_key,
+	build_slot_key_single,
+	delete_location_bookings_for_source,
+	upsert_location_booking,
+)
 
 BROAD_AUDIENCE_TYPES = {
 	"Whole School Community",
@@ -51,6 +57,13 @@ class SchoolEvent(Document):
 	def after_save(self):
 		# Keep employee bookings in sync when the event changes
 		self.sync_employee_bookings()
+		self.sync_location_booking()
+
+	def on_cancel(self):
+		delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
+
+	def on_trash(self):
+		delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
 
 	def validate_date(self):
 		"""Non-'Other' categories must be in the future."""
@@ -443,6 +456,45 @@ class SchoolEvent(Document):
 				unique_by_slot=False,
 			)
 
+	def sync_location_booking(self) -> None:
+		"""
+		Project this School Event into Location Booking (single stable slot).
+		"""
+		if not (self.location and self.starts_on and self.ends_on):
+			delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
+			return
+
+		start_dt = get_datetime(self.starts_on)
+		end_dt = get_datetime(self.ends_on)
+		if not start_dt or not end_dt or end_dt <= start_dt:
+			delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
+			return
+
+		source_key = build_source_key(self.doctype, self.name)
+		slot_key = build_slot_key_single(source_key, self.location)
+
+		upsert_location_booking(
+			location=self.location,
+			from_datetime=start_dt,
+			to_datetime=end_dt,
+			occupancy_type="School Event",
+			source_doctype=self.doctype,
+			source_name=self.name,
+			slot_key=slot_key,
+			school=self.school if getattr(self, "school", None) else None,
+			academic_year=None,
+			blocks_availability=1,
+		)
+
+		# Clean up any stale rows from prior locations.
+		frappe.db.delete(
+			"Location Booking",
+			{
+				"source_doctype": self.doctype,
+				"source_name": self.name,
+				"slot_key": ["!=", slot_key],
+			},
+		)
 
 # ============================================================================
 #  USER MEMBERSHIP HELPERS (STUDENT GROUPS, TEAMS, CHILDREN) + CACHING

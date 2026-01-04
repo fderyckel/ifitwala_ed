@@ -358,8 +358,7 @@ def iter_student_group_room_slots(
 	}
 
 	This is the raw material for:
-	  • central location-conflict checker (vs Meetings / School Events / etc.)
-	  • Employee Booking materialization (teaching slots)
+	  • Employee Booking / Location Booking materialization (teaching slots)
 
 	Important: teaching slots are *not* generated on School Calendar holidays/breaks
 	(non-weekend days where weekly_off = 0).

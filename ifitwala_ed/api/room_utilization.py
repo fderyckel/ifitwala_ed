@@ -197,21 +197,11 @@ def get_free_rooms(filters=None):
 		return _attach_debug(payload, busy_count=0, candidate_count=0)
 
 	room_names = [r["name"] for r in rooms]
-	employee_booking_checked = bool(
-		frappe.db.table_exists("Employee Booking")
-		and frappe.db.has_column("Employee Booking", "location")
-	)
+	location_booking_checked = bool(frappe.db.table_exists("Location Booking"))
 
 	# Record the sources that were queried (for debug output only).
-	if frappe.db.table_exists("Employee Booking") and frappe.db.has_column(
-		"Employee Booking",
-		"location",
-	):
-		sources_used.append("Employee Booking")
-	if frappe.db.table_exists("Meeting"):
-		sources_used.append("Meeting")
-	if frappe.db.table_exists("School Event"):
-		sources_used.append("School Event")
+	if location_booking_checked:
+		sources_used.append("Location Booking")
 
 	conflicts = find_room_conflicts(
 		None,
@@ -240,8 +230,8 @@ def get_free_rooms(filters=None):
 		"window": {"start": str(window_start), "end": str(window_end)},
 		"rooms": available_rooms,
 		# classes_checked:
-		# True if teaching bookings (Employee Booking) were queried as a concrete source.
-		"classes_checked": employee_booking_checked,
+		# True if teaching bookings are available via Location Booking.
+		"classes_checked": location_booking_checked,
 	}
 	return _attach_debug(
 		payload,
@@ -269,7 +259,7 @@ def get_room_time_utilization(filters=None):
 	day_window_minutes = int(day_window_seconds / 60)
 	available_minutes = day_count * day_window_minutes
 
-	# NOTE: Student Group schedules are not included in v1 utilization windows.
+	# NOTE: Student Group schedules count only if materialized into Location Booking.
 	rooms = _get_candidate_rooms(filters)
 	if not rooms:
 		return {
@@ -280,78 +270,41 @@ def get_room_time_utilization(filters=None):
 
 	room_names = [r["name"] for r in rooms]
 	
-	# Determine if we have Employee Booking (Teaching) available
-	has_bookings = frappe.db.table_exists("Employee Booking") and frappe.db.has_column("Employee Booking", "location")
+	# Location Booking is the only source of room occupancy.
+	has_bookings = frappe.db.table_exists("Location Booking")
+	range_start = get_datetime(f"{from_date} 00:00:00")
+	range_end = get_datetime(f"{to_date} 23:59:59")
 
-	# Prepare SQL UNION parts
-	ranges_sql = []
-	params = {
-		"rooms": tuple(room_names),
-		"range_start": get_datetime(f"{from_date} 00:00:00"),
-		"range_end": get_datetime(f"{to_date} 23:59:59"),
-		"day_start": day_start,
-		"day_end": day_end,
-	}
-
-	# 1. Employee Booking (Teaching)
-	if has_bookings:
-		ranges_sql.append("""
-			SELECT location, from_datetime as start_dt, to_datetime as end_dt
-			FROM `tabEmployee Booking`
-			WHERE docstatus < 2
-			  AND booking_type = 'Teaching'
-			  AND location IN %(rooms)s
-			  AND from_datetime < %(range_end)s
-			  AND to_datetime > %(range_start)s
-		""")
-
-	# 2. Meetings
-	if frappe.db.table_exists("Meeting"):
-		meeting_school = ""
-		if filters.get("school"):
-			meeting_school = " AND school = %(school)s"
-			params["school"] = filters["school"]
-		
-		ranges_sql.append(f"""
-			SELECT location, from_datetime as start_dt, to_datetime as end_dt
-			FROM `tabMeeting`
-			WHERE docstatus < 2
-			  AND status != 'Cancelled'
-			  AND location IN %(rooms)s
-			  AND from_datetime < %(range_end)s
-			  AND to_datetime > %(range_start)s
-			  {meeting_school}
-		""")
-
-	# 3. School Events
-	if frappe.db.table_exists("School Event"):
-		event_school = ""
-		if filters.get("school"):
-			event_school = " AND school = %(school)s"
-			# param 'school' already set if meeting used it, strictly same value
-			params["school"] = filters["school"]
-
-		ranges_sql.append(f"""
-			SELECT location, starts_on as start_dt, ends_on as end_dt
-			FROM `tabSchool Event`
-			WHERE docstatus < 2
-			  AND location IN %(rooms)s
-			  AND starts_on < %(range_end)s
-			  AND ends_on > %(range_start)s
-			  {event_school}
-		""")
-
-	if not ranges_sql:
+	if not has_bookings:
 		# No tables to query
 		return {
 			"range": {"from": str(from_date), "to": str(to_date)},
 			"day_window": {"start": day_start, "end": day_end},
-			"rooms": [{"room": r["name"], "room_name": r.get("location_name") or r["name"], "booked_minutes": 0, "available_minutes": available_minutes, "utilization_pct": 0} for r in rooms],
+			"rooms": [
+				{
+					"room": r["name"],
+					"room_name": r.get("location_name") or r["name"],
+					"booked_minutes": 0,
+					"available_minutes": available_minutes,
+					"utilization_pct": 0,
+				}
+				for r in rooms
+			],
 		}
 
-	union_query = " UNION ALL ".join(ranges_sql)
+	filters_lb = {
+		"location": ["in", tuple(room_names)],
+		"from_datetime": ["<", range_end],
+		"to_datetime": [">", range_start],
+	}
+	if frappe.db.has_column("Location Booking", "docstatus"):
+		filters_lb["docstatus"] = ["<", 2]
 
-	rows = frappe.db.sql(union_query, params, as_dict=True)
+	rows = frappe.db.get_all(
+		"Location Booking",
+		filters=filters_lb,
+		fields=["location", "from_datetime", "to_datetime"],
+	)
 
 	booked_minutes = {name: 0 for name in room_names}
 
@@ -361,15 +314,15 @@ def get_room_time_utilization(filters=None):
 			continue
 		
 		# Ensure we don't crash on bad data
-		if not row.get("start_dt") or not row.get("end_dt"):
+		if not row.get("from_datetime") or not row.get("to_datetime"):
 			continue
 
-		s = get_datetime(row["start_dt"])
-		e = get_datetime(row["end_dt"])
+		s = get_datetime(row["from_datetime"])
+		e = get_datetime(row["to_datetime"])
 		
 		# Clamp to query range first
-		s = max(s, params["range_start"])
-		e = min(e, params["range_end"])
+		s = max(s, range_start)
+		e = min(e, range_end)
 
 		minutes = _window_overlap_minutes(s, e, day_start, day_end)
 		booked_minutes[loc] += minutes
@@ -413,34 +366,31 @@ def get_room_capacity_utilization(filters=None):
 	room_names = [r["name"] for r in rooms]
 	range_start = get_datetime(f"{from_date} 00:00:00")
 	range_end = get_datetime(f"{to_date} 23:59:59")
-	params = {
-		"rooms": tuple(room_names),
-		"range_start": range_start,
-		"range_end": range_end,
-	}
 
-	# 1. Meetings (Rich participant data)
-	meeting_school_clause = ""
-	if filters.get("school"):
-		meeting_school_clause = " AND school = %(school)s"
-		params["school"] = filters["school"]
+	rows = []
+	if frappe.db.table_exists("Location Booking"):
+		filters_lb = {
+			"location": ["in", tuple(room_names)],
+			"from_datetime": ["<", range_end],
+			"to_datetime": [">", range_start],
+		}
+		if frappe.db.has_column("Location Booking", "docstatus"):
+			filters_lb["docstatus"] = ["<", 2]
+		if frappe.db.has_column("Location Booking", "occupancy_type"):
+			filters_lb["occupancy_type"] = ["in", ["Meeting", "Teaching"]]
 
-	meeting_rows = frappe.db.sql(
-		f"""
-		SELECT name, location
-		FROM `tabMeeting`
-		WHERE docstatus < 2
-			AND status != 'Cancelled'
-			AND location IN %(rooms)s
-			AND from_datetime < %(range_end)s
-			AND to_datetime > %(range_start)s
-			{meeting_school_clause}
-		""",
-		params,
-		as_dict=True,
-	)
+		rows = frappe.db.get_all(
+			"Location Booking",
+			filters=filters_lb,
+			fields=["location", "source_doctype", "source_name", "occupancy_type"],
+		)
 
-	meeting_names = [row["name"] for row in meeting_rows]
+	meeting_names = [
+		r.get("source_name")
+		for r in rows
+		if (r.get("occupancy_type") == "Meeting" or r.get("source_doctype") == "Meeting")
+		and r.get("source_name")
+	]
 	participant_counts = {}
 
 	if meeting_names:
@@ -451,31 +401,10 @@ def get_room_capacity_utilization(filters=None):
 			WHERE parent IN %(meetings)s
 			GROUP BY parent
 			""",
-			{"meetings": tuple(meeting_names)},
+			{"meetings": tuple(set(meeting_names))},
 			as_dict=True,
 		)
 		participant_counts = {row["meeting"]: int(row["attendees"]) for row in participant_rows}
-
-	# 2. Teaching (Employee Booking)
-	teaching_stats = {} 
-	if frappe.db.table_exists("Employee Booking") and frappe.db.has_column("Employee Booking", "location"):
-		teaching_rows = frappe.db.sql("""
-			SELECT location, source_name 
-			FROM `tabEmployee Booking`
-			WHERE docstatus < 2
-			  AND booking_type = 'Teaching'
-			  AND location IN %(rooms)s
-			  AND from_datetime < %(range_end)s
-			  AND to_datetime > %(range_start)s
-		""", params, as_dict=True)
-		
-		# For v1: Count class as 1 event.
-		for tr in teaching_rows:
-			loc = tr.get("location")
-			if not loc: continue
-			if loc not in teaching_stats:
-				teaching_stats[loc] = {"count": 0}
-			teaching_stats[loc]["count"] += 1
 
 	capacity_by_room = {room["name"]: room.get("maximum_capacity") or 0 for room in rooms}
 	stats = {
@@ -488,24 +417,23 @@ def get_room_capacity_utilization(filters=None):
 		for room in rooms
 	}
 
-	# Process Meetings
-	for row in meeting_rows:
+	for row in rows:
 		loc = row.get("location")
 		if not loc:
 			continue
-		attendees = participant_counts.get(row["name"], 0)
+
 		stats[loc]["meetings"] += 1
+
+		if row.get("occupancy_type") != "Meeting" and row.get("source_doctype") != "Meeting":
+			continue
+
+		attendees = participant_counts.get(row.get("source_name"), 0)
 		stats[loc]["attendees_total"] += attendees
 		stats[loc]["peak_attendees"] = max(stats[loc]["peak_attendees"], attendees)
 
 		r_cap = capacity_by_room.get(loc, 0)
 		if r_cap and attendees > r_cap:
 			stats[loc]["over_capacity_count"] += 1
-
-	# Process Teaching (Merge in)
-	for loc, data in teaching_stats.items():
-		if loc in stats:
-			stats[loc]["meetings"] += data["count"]
 
 	room_payload = []
 	for room in rooms:

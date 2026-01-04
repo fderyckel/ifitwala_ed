@@ -59,7 +59,7 @@
           <div class="ml-3">
             <span
               v-if="log.is_unread"
-              class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+              class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--jacaranda)]/10 text-[var(--jacaranda)]"
               >New</span
             >
           </div>
@@ -81,7 +81,7 @@
       <button
         :disabled="moreLoading"
         @click="loadMoreLogs"
-        class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-60"
+        class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-[var(--leaf)] text-white hover:bg-[var(--leaf)]/90 disabled:opacity-60"
       >
         <span v-if="!moreLoading">Load more</span>
         <span v-else>Loading…</span>
@@ -115,7 +115,7 @@
             leave-to="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
           >
             <DialogPanel
-              class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all w-full max-w-2xl sm:p-6"
+              class="relative transform overflow-hidden rounded-2xl bg-white px-4 pb-4 pt-5 text-left shadow-2xl transition-all w-full max-w-2xl sm:p-6 border border-gray-100"
             >
               <div v-if="selectedLog">
                 <DialogTitle as="h3" class="text-lg font-semibold leading-6 text-gray-900">
@@ -127,19 +127,19 @@
                     <span>{{ formatDate(selectedLog.date) }}</span>
                     <span>By: {{ selectedLog.author_name }}</span>
                   </div>
-                  <hr class="my-4" />
+                  <hr class="my-4 border-gray-100" />
 
                   <div v-if="modalLoading" class="text-center py-8">
                     <p>Loading details...</p>
                   </div>
-                  <div v-else class="prose max-w-none" v-html="selectedLog.log" />
+                  <div v-else class="prose prose-sm max-w-none text-gray-700" v-html="selectedLog.log" />
                 </div>
               </div>
 
               <div class="mt-5 sm:mt-6">
                 <button
                   type="button"
-                  class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+                  class="inline-flex w-full justify-center rounded-lg bg-[var(--leaf)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--leaf)]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--leaf)]"
                   @click="isModalOpen = false"
                 >
                   Close
@@ -179,17 +179,17 @@ function unwrap(resp) {
   return resp && typeof resp === 'object' && 'message' in resp ? resp.message : resp
 }
 
-// --- Color helpers (elegant, pastel-leaning) ---------------------------------
+// --- Color helpers (elegant, consistent with tokens) ---------------------------------
 const PALETTE = [
-  '#0ea5e9', // sky-500
-  '#0891b2', // cyan-600
-  '#0d9488', // teal-600
-  '#10b981', // emerald-500
-  '#2563eb', // blue-600
-  '#374151', // gray-700 (neutral accent for some types)
-  '#1e40af', // blue-800
-  '#155e75', // cyan-800
-  '#065f46', // emerald-800
+  'var(--sky)',       // sky
+  'var(--leaf)',      // leaf
+  'var(--moss)',      // moss
+  'var(--jacaranda)', // jacaranda
+  'var(--bamboo)',    // (fallback/custom?) - let's stick to knowns
+  'var(--sand)',      // sand
+  'var(--flame)',     // flame
+  'var(--clay)',      // clay
+  'var(--canopy)',    // canopy
 ]
 
 function hashStr(s) {
@@ -204,11 +204,11 @@ function colorFor(key) {
 function statusStyles(status) {
   const s = String(status || '').toLowerCase()
   if (s.includes('overdue') || s.includes('escalated'))
-    return { backgroundColor: '#fee2e2', color: '#991b1b' } // red-100 / red-800
+    return { backgroundColor: 'rgb(var(--flame-rgb) / 0.15)', color: 'rgb(var(--flame-rgb))' }
   if (s.includes('pending') || s.includes('open'))
-    return { backgroundColor: '#fef3c7', color: '#92400e' } // amber-100 / amber-800
+    return { backgroundColor: 'rgb(var(--sand-rgb))', color: 'rgb(var(--clay-rgb))' }
   // default -> completed/closed
-  return { backgroundColor: '#dcfce7', color: '#166534' } // green-100 / green-800
+  return { backgroundColor: 'rgb(var(--leaf-rgb) / 0.15)', color: 'rgb(var(--leaf-rgb))' }
 }
 
 // --- Formatting ---------------------------------------------------------------

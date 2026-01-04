@@ -16,8 +16,8 @@
 			<div class="flex-1 flex flex-col">
 				<main
 					class="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-[var(--footer-h)]
-								bg-[#fcfbf9]/75 backdrop-blur-sm shadow-strong
-								sm:m-4 sm:rounded-3xl sm:border sm:border-sand-200"
+								bg-surface-soft/75 backdrop-blur-sm shadow-strong
+								sm:m-4 sm:rounded-3xl sm:border sm:border-sand"
 				>
 					<slot />
 				</main>

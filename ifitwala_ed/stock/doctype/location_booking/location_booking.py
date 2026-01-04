@@ -142,3 +142,62 @@ def delete_location_bookings_for_source(*, source_doctype: str, source_name: str
 	)
 
 	return int(cnt or 0)
+
+
+def delete_location_bookings_for_source_in_window(
+	*,
+	source_doctype: str,
+	source_name: str,
+	start_dt,
+	end_dt,
+	keep_slot_keys: set[str] | None = None,
+) -> int:
+	"""
+	Delete Location Booking rows for a source within a bounded window.
+
+	If keep_slot_keys is provided, delete only rows whose slot_key is NOT in that set.
+	Returns the number of rows deleted.
+	"""
+	if not source_doctype or not source_name:
+		return 0
+
+	fdt = get_datetime(start_dt)
+	tdt = get_datetime(end_dt)
+	if not fdt or not tdt or tdt <= fdt:
+		return 0
+
+	rows = frappe.db.get_all(
+		"Location Booking",
+		filters={
+			"source_doctype": source_doctype,
+			"source_name": source_name,
+			"from_datetime": [">=", fdt],
+			"to_datetime": ["<=", tdt],
+		},
+		fields=["name", "slot_key"],
+	)
+
+	if not rows:
+		return 0
+
+	to_delete = []
+	keep_slot_keys = set(keep_slot_keys or [])
+	for r in rows:
+		if keep_slot_keys and r.get("slot_key") in keep_slot_keys:
+			continue
+		to_delete.append(r["name"])
+
+	if not to_delete:
+		return 0
+
+	deleted = 0
+	chunk = 200
+	for i in range(0, len(to_delete), chunk):
+		names = to_delete[i : i + chunk]
+		frappe.db.sql(
+			"delete from `tabLocation Booking` where name in %(names)s",
+			{"names": tuple(names)},
+		)
+		deleted += len(names)
+
+	return deleted

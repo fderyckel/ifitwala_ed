@@ -27,6 +27,12 @@ from ifitwala_ed.utilities.employee_booking import (
 )
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
 from ifitwala_ed.utilities.location_utils import is_bookable_room
+from ifitwala_ed.stock.doctype.location_booking.location_booking import (
+	build_source_key,
+	build_slot_key_instance,
+	delete_location_bookings_for_source_in_window,
+	upsert_location_booking,
+)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -237,6 +243,13 @@ def rebuild_employee_bookings_for_student_group(
 			end_dt=window_end,
 			target_keys=set(),
 		)
+		delete_location_bookings_for_source_in_window(
+			source_doctype=BOOKING_SOURCE_DOCTYPE,
+			source_name=student_group,
+			start_dt=window_start,
+			end_dt=window_end,
+			keep_slot_keys=set(),
+		)
 		return
 
 	instructor_cache: Dict[str, Optional[str]] = {}
@@ -245,6 +258,7 @@ def rebuild_employee_bookings_for_student_group(
 	# sg.school is Data but should correspond to School.name in your setup.
 	school = sg.school or None
 	academic_year = sg.academic_year or None
+	source_key = build_source_key(BOOKING_SOURCE_DOCTYPE, student_group)
 
 	# 3) Validate schedule locations up-front (Teaching requires a real room)
 	if strict_location:
@@ -270,6 +284,7 @@ def rebuild_employee_bookings_for_student_group(
 
 	# 4) Expand timetable into concrete slots
 	target_keys: Set[Tuple[str, datetime, datetime]] = set()
+	target_location_slot_keys: Set[str] = set()
 	for slot in iter_student_group_room_slots(student_group, start_date, end_date):
 		rd = slot.get("rotation_day")
 		bn = slot.get("block_number")
@@ -280,17 +295,6 @@ def rebuild_employee_bookings_for_student_group(
 		row = sched_index.get(key)
 		if not row:
 			# No matching schedule row (shouldn't happen if schedule is consistent)
-			continue
-
-		instructor_name = row.get("instructor")
-		employee = row.get("employee")
-		if not employee:
-			if not instructor_name:
-				# No instructor assigned for this block
-				continue
-			employee = _resolve_employee_from_instructor(instructor_name, instructor_cache)
-		if not employee:
-			# Instructor without linked employee → skip for now
 			continue
 
 		start_dt = slot.get("start")
@@ -306,7 +310,34 @@ def rebuild_employee_bookings_for_student_group(
 				)
 			continue
 
-		# 5) Upsert Employee Booking row
+		# 5) Upsert Location Booking row (room truth)
+		slot_key = build_slot_key_instance(source_key, location, start_dt, end_dt)
+		upsert_location_booking(
+			location=location,
+			from_datetime=start_dt,
+			to_datetime=end_dt,
+			occupancy_type="Teaching",
+			source_doctype=BOOKING_SOURCE_DOCTYPE,
+			source_name=student_group,
+			slot_key=slot_key,
+			school=school,
+			academic_year=academic_year,
+			blocks_availability=1,
+		)
+		target_location_slot_keys.add(slot_key)
+
+		instructor_name = row.get("instructor")
+		employee = row.get("employee")
+		if not employee:
+			if not instructor_name:
+				# No instructor assigned for this block
+				continue
+			employee = _resolve_employee_from_instructor(instructor_name, instructor_cache)
+		if not employee:
+			# Instructor without linked employee → skip for now
+			continue
+
+		# 6) Upsert Employee Booking row
 		booking_name = upsert_employee_booking(
 			employee=employee,
 			start=start_dt,
@@ -325,7 +356,7 @@ def rebuild_employee_bookings_for_student_group(
 			end_norm = _normalize_dt(end_dt)
 			target_keys.add((employee, start_norm, end_norm))
 
-	# 6) Delete obsolete bookings in the window
+	# 7) Delete obsolete bookings in the window
 	window_start = _normalize_dt(get_datetime(f"{start_date} 00:00:00"))
 	window_end = _normalize_dt(get_datetime(f"{end_date} 23:59:59"))
 	_delete_obsolete_teaching_bookings(
@@ -333,6 +364,13 @@ def rebuild_employee_bookings_for_student_group(
 		start_dt=window_start,
 		end_dt=window_end,
 		target_keys=target_keys,
+	)
+	delete_location_bookings_for_source_in_window(
+		source_doctype=BOOKING_SOURCE_DOCTYPE,
+		source_name=student_group,
+		start_dt=window_start,
+		end_dt=window_end,
+		keep_slot_keys=target_location_slot_keys,
 	)
 
 
