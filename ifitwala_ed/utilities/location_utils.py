@@ -93,7 +93,7 @@ def _get_location_scope_cached(location: str, include_children: bool) -> List[st
 			seen.add(loc)
 			out.append(loc)
 
-	cache.set_value(cache_key, out, expires_in=LOCATION_SCOPE_CACHE_TTL)
+	cache.set_value(cache_key, out, expires_in_sec=LOCATION_SCOPE_CACHE_TTL)
 	return out
 
 

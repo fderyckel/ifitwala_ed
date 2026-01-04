@@ -132,7 +132,7 @@ def _fetch_classes(
     group_meta = frappe.get_all(
         "Student Group",
         filters={"name": ["in", sg_names]},
-        fields=["name", "group_name", "course", "color"],
+        fields=["name", "student_group_name", "course"],
     )
     from ifitwala_ed.api.calendar import _course_meta_map
     course_map = _course_meta_map(g.course for g in group_meta if g.course)
@@ -155,8 +155,8 @@ def _fetch_classes(
             
         # Determine Title & Color
         course = course_map.get(g_meta.course)
-        title = course.course_name if course else (g_meta.group_name or sg_name)
-        color = (course.calendar_event_color if course else g_meta.color) or "#3b82f6" # Blue default
+        title = course.course_name if course else (g_meta.student_group_name or sg_name)
+        color = (course.calendar_event_color if course else None) or "#3b82f6" # Blue default
 
         for slot in slots:
             # slot has: start (datetime), end (datetime), location, etc.
