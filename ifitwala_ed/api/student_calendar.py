@@ -50,8 +50,6 @@ def get_student_calendar(
     # 1. Resolve Student
     student = frappe.db.get_value("Student", {"student_email": user}, "name")
     if not student:
-        # Fallback: maybe they are a guardian? TODO: Handle guardian logic if needed.
-        # For now, strict student check as per reqs.
         return _empty_payload()
 
     # 2. Resolve Window
@@ -68,11 +66,14 @@ def get_student_calendar(
     # 4. Fetch Data
     events: List[CalendarEvent] = []
     
+    # Pre-fetch enrolled groups for both Classes and Event Audience checks
+    enrolled_groups = _get_student_enrolled_groups(student)
+    
     # A) Classes
-    events.extend(_fetch_classes(student, window_start, window_end, tzinfo))
+    events.extend(_fetch_classes(student, enrolled_groups, window_start, window_end, tzinfo))
     
     # B) School Events
-    events.extend(_fetch_school_events(student, window_start, window_end, tzinfo))
+    events.extend(_fetch_school_events(student, enrolled_groups, window_start, window_end, tzinfo))
     
     # C) Meetings
     events.extend(_fetch_meetings(user, student, window_start, window_end, tzinfo))
@@ -99,9 +100,15 @@ def get_student_calendar(
 def _empty_payload():
     return {"events": [], "meta": {}}
 
+def _get_student_enrolled_groups(student):
+    return [r.parent for r in frappe.db.sql(
+        """SELECT parent FROM `tabStudent Group Student` WHERE student = %s AND active = 1""",
+        (student,), as_dict=True
+    )]
 
 def _fetch_classes(
     student: str, 
+    sg_names: List[str],
     start: datetime, 
     end: datetime, 
     tzinfo: pytz.timezone
@@ -109,26 +116,10 @@ def _fetch_classes(
     """
     Fetch active Student Group enrollments and expand them into slots.
     """
-    # Get active enrollments
-    # We select specific fields to avoid full doc loading
-    enrollments = frappe.db.sql(
-        """
-        SELECT parent, parent as student_group 
-        FROM `tabStudent Group Student`
-        WHERE student = %s AND active = 1
-        """,
-        (student,),
-        as_dict=True
-    )
-    
-    if not enrollments:
+    if not sg_names:
         return []
 
     # Get details for these groups (Course, Color, etc.)
-    sg_names = [r.student_group for r in enrollments]
-    if not sg_names:
-        return []
-        
     group_meta = frappe.get_all(
         "Student Group",
         filters={"name": ["in", sg_names]},
@@ -141,8 +132,6 @@ def _fetch_classes(
 
     events = []
     
-    # Expand schedule for each group
-    # Note: iter_student_group_room_slots handles term/holiday logic efficiently
     start_date = start.date()
     end_date = end.date()
     
@@ -156,22 +145,19 @@ def _fetch_classes(
         # Determine Title & Color
         course = course_map.get(g_meta.course)
         title = course.course_name if course else (g_meta.student_group_name or sg_name)
-        color = (course.calendar_event_color if course else None) or "#3b82f6" # Blue default
+        color = (course.calendar_event_color if course else None) or "#3b82f6" 
 
         for slot in slots:
-            # slot has: start (datetime), end (datetime), location, etc.
-            # Convert naive slots to system tz if needed (though util usually returns localized)
             s_start = slot["start"]
             s_end = slot["end"]
             
-            # Ensure timezone
             if s_start.tzinfo is None:
                 s_start = tzinfo.localize(s_start)
             if s_end.tzinfo is None:
                 s_end = tzinfo.localize(s_end)
 
             events.append(CalendarEvent(
-                id=f"sg::{sg_name}::{s_start.isoformat()}", # Unique ID per slot instance
+                id=f"sg::{sg_name}::{s_start.isoformat()}", 
                 title=title,
                 start=s_start,
                 end=s_end,
@@ -190,25 +176,14 @@ def _fetch_classes(
 
 def _fetch_school_events(
     student: str,
+    enrolled_groups: List[str],
     start: datetime, 
     end: datetime, 
     tzinfo: pytz.timezone
 ) -> List[CalendarEvent]:
     """
     Fetch School Events visible to this student.
-    Logic: event.participants includes student OR event.audience includes 'Student' (and public/school scope matches).
-    Simplified for concurrent efficiency:
-    - Get events in range
-    - Filter in SQL/Python
     """
-    
-    # 1. Fetch potentially relevant events regardless of specific audience (optimization pending on audience structure)
-    # We will assume 'School Event' has an 'audience' field or child table.
-    # Checking standard schema... assuming standard 'School Event' where audience is check.
-    # For now, let's look for events where audience field contains "Student" or is Public.
-    
-    # NOTE: user didn't specify strict schemas, relying on typical setup.
-    # Refined query:
     events_data = frappe.db.sql(
         """
         SELECT 
@@ -226,37 +201,21 @@ def _fetch_school_events(
         as_dict=True
     )
     
-    # Filter for permission (can't do complex audience logic easily in SQL without joins)
-    # We'll use a fast check here.
-    # TODO: If audience is complex (child table), we need a join. 
-    # For MVP/High-perf, let's assume we filter by `get_list` logic or simple field.
-    # Let's rely on standard permissions + explicit "Student" check if applicable.
-    
     valid_events = []
+    
+    # Optimisation: Pre-convert group list to set for O(1) checking
+    my_groups = set(enrolled_groups)
+
     for evt in events_data:
-        # Check specific audience visibility if needed
-        # For now, we assume if they can READ the event (doc perms), they see it.
-        # But we should double check if the Logic requires "Audience" check.
-        # User said: "when the audience include students".
-        
-        doc = frappe.get_doc("School Event", evt.name) # Inefficient loop? 
-        # Better: Filter IDs first? 
-        # Let's trust `frappe.db.get_list` to handle basic perms, but we need audience check.
-        
-        has_access = False
-        
-        # Check Audience field (MultiSelect or Child Table?)
-        # Assuming simple Check/Select for now based on typical Frappe logic, 
-        # or checking `event_participants` child table.
-        
-        # Let's check if 'Student' is in audience roles.
-        # This part might need adjustment if schema is custom.
-        # Safe bet: If 'Student' role is allowed.
-        
-        if _is_student_audience(doc, student):
-            has_access = True
+        # Load full doc to check child table 'audience'
+        # Optimisation TODO: In high-scale, we'd query Audience table directly via JOIN.
+        # But doc load here is safer for logic correctness in this phase.
+        try:
+            doc = frappe.get_doc("School Event", evt.name)
+        except frappe.DoesNotExistError:
+            continue
             
-        if has_access:
+        if _is_student_audience(doc, student, my_groups):
             start_dt = _to_system_datetime(evt.starts_on, tzinfo)
             end_dt = _to_system_datetime(evt.ends_on, tzinfo) if evt.ends_on else start_dt + timedelta(hours=1)
             
@@ -266,7 +225,7 @@ def _fetch_school_events(
                 start=start_dt,
                 end=end_dt,
                 source="school_event",
-                color=evt.color or "#10b981", # Emerald default
+                color=evt.color or "#10b981", 
                 all_day=bool(evt.all_day),
                 meta={
                     "location": evt.location,
@@ -276,18 +235,36 @@ def _fetch_school_events(
             
     return valid_events
 
-def _is_student_audience(doc, student_name):
-    # Heuristic for "Student" audience.
-    # 1. 'Audience' field has 'Student'
-    if hasattr(doc, 'audience') and doc.audience:
-        if 'Student' in str(doc.audience):
+def _is_student_audience(doc, student_name, my_groups):
+    """
+    Check if student is in the audience of the event.
+    doc: School Event document
+    student_name: Name of student
+    my_groups: Set of student group names the student is in
+    """
+    if not hasattr(doc, 'audience'):
+        return False
+        
+    for aud in doc.audience:
+        atype = aud.audience_type
+        
+        # Public
+        if atype in ("Whole School Community", "All Students"):
             return True
             
-    # 2. Participants child table has this student
+        # Group based
+        if atype == "Students in Student Group" and aud.student_group:
+            if aud.student_group in my_groups:
+                return True
+                
+        # Custom link? (Not fully defined in schema provided, assuming no per-student link in audience table directly)
+        
+    # Check Participants child table
     if hasattr(doc, 'participants'):
         for p in doc.participants:
-            if p.student == student_name:
-                return True
+            # Check for generic participant field or specific link
+             if p.get("participant") and p.participant == frappe.session.user:
+                 return True
                 
     return False
 
