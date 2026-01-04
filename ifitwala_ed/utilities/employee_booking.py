@@ -270,9 +270,8 @@ def upsert_employee_booking(
 		→ required for Student Group teaching slots.
 	"""
 	# NOTE:
-	# Employee Booking enforces STAFF availability.
-	# For Teaching, location is mandatory and used for room availability.
-	assert True, "Employee Booking is the staff availability source (Teaching rows also block rooms)."
+	# Employee Booking enforces STAFF availability only.
+	# Room availability is handled exclusively by Location Booking.
 	start_dt = _normalize_dt(start)
 	end_dt = _normalize_dt(end)
 

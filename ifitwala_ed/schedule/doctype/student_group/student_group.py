@@ -199,15 +199,10 @@ class StudentGroup(Document):
 			invalidate_meeting_dates(self.name)
 
 		# ----- EMPLOYEE BOOKINGS materialisation -----
-		# Rebuild bookings when timetable or instructors changed.
-		# Guard: only for submitted + Active groups to avoid trash/testing noise.
+		# Rebuild bookings on save for Active groups to keep materialized facts in sync.
 		if (
 			(self.status or "Active") == "Active"
-			and (
-				bool(getattr(self.flags, "_sg_meeting_dates_changed", False))
-				or sched_changed
-				or bool(getattr(self.flags, "_sg_instructors_changed", False))
-			)
+			and bool(self.student_group_schedule)
 		):
 			rebuild_employee_bookings_for_student_group(self.name)
 
