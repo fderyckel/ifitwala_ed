@@ -258,84 +258,84 @@ def upsert_employee_booking(
     academic_year: Optional[str] = None,
     unique_by_slot: bool = False,
 ) -> str:
-    """
-    Create or update an Employee Booking row.
+	"""
+	Create or update an Employee Booking row.
 
-    Behaviour:
-    - If unique_by_slot = False (default):
-        one row per (employee, source_doctype, source_name)
-        → good for Meetings.
-    - If unique_by_slot = True:
-        one row per (employee, source_doctype, source_name, from_datetime, to_datetime)
-        → required for Student Group teaching slots.
-    """
-    # NOTE:
-    # Employee Booking enforces STAFF availability.
-    # For Teaching, location is mandatory and used for room availability.
-    assert True, "Employee Booking is the staff availability source (Teaching rows also block rooms)."
+	Behaviour:
+	- If unique_by_slot = False (default):
+		one row per (employee, source_doctype, source_name)
+		→ good for Meetings.
+	- If unique_by_slot = True:
+		one row per (employee, source_doctype, source_name, from_datetime, to_datetime)
+		→ required for Student Group teaching slots.
+	"""
+	# NOTE:
+	# Employee Booking enforces STAFF availability.
+	# For Teaching, location is mandatory and used for room availability.
+	assert True, "Employee Booking is the staff availability source (Teaching rows also block rooms)."
 	start_dt = _normalize_dt(start)
 	end_dt = _normalize_dt(end)
 
 	if end_dt <= start_dt:
-        # Nothing to book; ensure any existing row is removed.
-        delete_employee_bookings_for_source(
-            source_doctype,
-            source_name,
-            employee=employee,
-        )
+		# Nothing to book; ensure any existing row is removed.
+		delete_employee_bookings_for_source(
+			source_doctype,
+			source_name,
+			employee=employee,
+		)
 		return ""
 
 	if booking_type == "Teaching" and not location:
 		frappe.throw(_("Teaching bookings require a location."), frappe.ValidationError)
 
-    # Build uniqueness filter
-    filters: Dict[str, Any] = {
-        "employee": employee,
-        "source_doctype": source_doctype,
-        "source_name": source_name,
-    }
-    if unique_by_slot:
-        filters["from_datetime"] = start_dt
-        filters["to_datetime"] = end_dt
+	# Build uniqueness filter
+	filters: Dict[str, Any] = {
+		"employee": employee,
+		"source_doctype": source_doctype,
+		"source_name": source_name,
+	}
+	if unique_by_slot:
+		filters["from_datetime"] = start_dt
+		filters["to_datetime"] = end_dt
 
-    existing_name = frappe.db.get_value(
-        "Employee Booking",
-        filters,
-        "name",
-    )
+	existing_name = frappe.db.get_value(
+		"Employee Booking",
+		filters,
+		"name",
+	)
 
-    if existing_name:
-        update_values = {
-            "from_datetime": start_dt,
-            "to_datetime": end_dt,
-            "booking_type": booking_type,
-            "blocks_availability": int(blocks_availability),
-            "school": school,
-            "academic_year": academic_year,
-        }
-        if location is not None:
-            update_values["location"] = location
-        frappe.db.set_value("Employee Booking", existing_name, update_values)
-        return existing_name
+	if existing_name:
+		update_values = {
+			"from_datetime": start_dt,
+			"to_datetime": end_dt,
+			"booking_type": booking_type,
+			"blocks_availability": int(blocks_availability),
+			"school": school,
+			"academic_year": academic_year,
+		}
+		if location is not None:
+			update_values["location"] = location
+		frappe.db.set_value("Employee Booking", existing_name, update_values)
+		return existing_name
 
-    doc = frappe.get_doc(
-        {
-            "doctype": "Employee Booking",
-            "employee": employee,
-            "from_datetime": start_dt,
-            "to_datetime": end_dt,
-            "booking_type": booking_type,
-            "blocks_availability": int(blocks_availability),
-            "source_doctype": source_doctype,
-            "source_name": source_name,
-            "location": location,
-            "school": school,
-            "academic_year": academic_year,
-        }
-    )
-    doc.flags.ignore_permissions = True
-    doc.insert()
-    return doc.name
+	doc = frappe.get_doc(
+		{
+			"doctype": "Employee Booking",
+			"employee": employee,
+			"from_datetime": start_dt,
+			"to_datetime": end_dt,
+			"booking_type": booking_type,
+			"blocks_availability": int(blocks_availability),
+			"source_doctype": source_doctype,
+			"source_name": source_name,
+			"location": location,
+			"school": school,
+			"academic_year": academic_year,
+		}
+	)
+	doc.flags.ignore_permissions = True
+	doc.insert()
+	return doc.name
 
 
 def delete_employee_bookings_for_source(
