@@ -48,7 +48,7 @@ def get_student_calendar(
         frappe.throw(_("Please sign in to view your calendar."), frappe.PermissionError)
 
     # 1. Resolve Student
-    student = frappe.db.get_value("Student", {"user_id": user}, "name")
+    student = frappe.db.get_value("Student", {"student_email": user}, "name")
     if not student:
         # Fallback: maybe they are a guardian? TODO: Handle guardian logic if needed.
         # For now, strict student check as per reqs.
@@ -311,11 +311,11 @@ def _fetch_meetings(
         WHERE 
             m.docstatus < 2
             AND m.status != 'Cancelled'
-            AND (mp.participant = %s OR mp.student = %s)
+            AND mp.participant = %s
             AND m.from_datetime < %s
             AND m.to_datetime > %s
         """,
-        (user, student, end, start),
+        (user, end, start),
         as_dict=True
     )
     
