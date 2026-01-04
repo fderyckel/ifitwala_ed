@@ -211,6 +211,12 @@ def rebuild_employee_bookings_for_student_group(
 	  (e.g. on_update / after_save when schedule rows or instructors change).
 	- Teaching slots are always treated as blocking in Location Booking.
 	"""
+
+	frappe.logger("ifitwala.materialization").warning({
+		"event": "employee_booking_rebuild_entered",
+		"student_group": student_group,
+	})
+
 	if not student_group:
 		return
 

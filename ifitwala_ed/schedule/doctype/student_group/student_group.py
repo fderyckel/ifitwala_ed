@@ -61,6 +61,11 @@ class StudentGroup(Document):
 			ss = self._get_school_schedule()
 			self.school_schedule = ss.name
 
+		frappe.logger("ifitwala.materialization").warning({
+			"event": "student_group_rebuild_triggered",
+			"student_group": self.name,
+			"hook": "on_update",
+		})
 
 		############
 		self._validate_schedule_rows()
