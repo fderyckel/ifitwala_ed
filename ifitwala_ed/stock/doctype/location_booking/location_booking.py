@@ -70,6 +70,33 @@ def upsert_location_booking(
 
 	source_key = build_source_key(source_doctype, source_name)
 
+	update = {
+		"location": location,
+		"from_datetime": fdt,
+		"to_datetime": tdt,
+		"occupancy_type": occupancy_type,
+		"source_doctype": source_doctype,
+		"source_name": source_name,
+		"source_key": source_key,
+		"slot_key": slot_key,
+		"school": school,
+		"academic_year": academic_year,
+	}
+
+	existing = frappe.db.get_value(
+		"Location Booking",
+		{"slot_key": slot_key},
+		"name",
+	)
+	if existing:
+		frappe.db.set_value(
+			"Location Booking",
+			existing,
+			update,
+			update_modified=True,
+		)
+		return existing
+
 	# First attempt: insert
 	doc = frappe.new_doc("Location Booking")
 	doc.location = location
@@ -97,19 +124,6 @@ def upsert_location_booking(
 			# Extremely unlikely: duplicate error but no row found.
 			# Re-raise to avoid silent corruption.
 			raise
-
-		update = {
-			"location": location,
-			"from_datetime": fdt,
-			"to_datetime": tdt,
-			"occupancy_type": occupancy_type,
-			"source_doctype": source_doctype,
-			"source_name": source_name,
-			"source_key": source_key,
-			"slot_key": slot_key,
-			"school": school,
-			"academic_year": academic_year,
-		}
 
 		# Update the existing row.
 		frappe.db.set_value(

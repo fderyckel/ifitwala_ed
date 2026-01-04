@@ -117,9 +117,81 @@ All employee conflict checks must go through one canonical helper:
 
 * `find_employee_conflicts(employee, start, end, ...)`
 
-This helper queries **Employee Booking only**.
+This helper queries **Employee Booking only** and **must enforce**:
+
+* the canonical overlap predicate
+* `blocks_availability = 1`
 
 No module is allowed to run its own ad-hoc overlap SQL.
+
+---
+
+## 5.1 The role of `blocks_availability` (critical)
+
+`blocks_availability` is a **conflict‑enforcement flag**, nothing else.
+
+It answers exactly one question:
+
+> **“Does this booking make the employee unavailable for other bookings in this time window?”**
+
+It is **not**:
+
+* a room‑related field
+* a priority or importance indicator
+* a UI visibility toggle
+* a soft delete or permission flag
+
+### Why this field exists
+
+Not all employee bookings should behave the same in conflict logic.
+
+Examples:
+
+**Must block availability (`blocks_availability = 1`)**
+
+* Teaching
+* Mandatory meetings
+* Supervision / duty
+* Exams / invigilation
+* Required training
+
+**Must NOT block availability (`blocks_availability = 0`)**
+
+* Optional meetings
+* FYI / informational events
+* Observations or sit‑ins
+* Non‑exclusive advisory roles
+
+Without this flag, conflict logic becomes either:
+
+* too strict (everything blocks), or
+* too loose (nothing blocks), or
+* hard‑coded per booking type (rigid, brittle)
+
+`blocks_availability` provides a clean, orthogonal escape hatch.
+
+### Canonical rule (locked)
+
+All employee availability checks **must** apply:
+
+```
+WHERE blocks_availability = 1
+```
+
+Any employee conflict logic that ignores this flag is incorrect.
+
+### Relationship to Room Occupancy
+
+Even with:
+
+* Employee Booking = staff truth
+* Room Occupancy = room truth
+
+`blocks_availability` remains essential because **room facts cannot answer staff availability questions**.
+
+Room Occupancy never replaces Employee Booking for staff conflict logic.
+
+---
 
 ---
 

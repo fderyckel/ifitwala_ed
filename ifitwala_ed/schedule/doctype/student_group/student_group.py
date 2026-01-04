@@ -129,7 +129,7 @@ class StudentGroup(Document):
 
 		# ----- schedule rows (rotation/day/block/location/instructor/employee) -----
 		def schedule_keys(doc):
-			keys = set()
+			keys = []
 			for r in (doc.student_group_schedule or []):
 				rd = getattr(r, "rotation_day", None)
 				blk = getattr(r, "block_number", None)
@@ -144,8 +144,8 @@ class StudentGroup(Document):
 					blk = int(blk) if blk is not None else None
 				except Exception:
 					pass
-				keys.add((rd, blk, loc, ins, emp))
-			return keys
+				keys.append((rd, blk, loc, ins, emp))
+			return sorted(keys)
 
 		prev_sched = schedule_keys(old)
 		curr_sched = schedule_keys(self)
