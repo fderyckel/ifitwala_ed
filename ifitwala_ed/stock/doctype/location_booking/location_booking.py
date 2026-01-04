@@ -4,6 +4,10 @@
 
 import frappe
 from frappe.utils import get_datetime
+from frappe.model.document import Document
+
+class LocationBooking(Document):
+	pass
 
 
 def build_source_key(source_doctype: str, source_name: str) -> str:
