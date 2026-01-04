@@ -173,34 +173,6 @@ def is_bookable_room(location: str) -> bool:
 # Central conflict service (datetime-based bookings only)
 # ─────────────────────────────────────────────────────────────
 
-# Assumption / contract:
-# Any doctype listed here:
-#   • has a field "location" (Link to Location)
-#   • has datetime fields named as below (from_field, to_field)
-#   • uses docstatus < 2 for “active” / not-cancelled (when column exists)
-#
-# NOTE: This is legacy-only and must not be the default path.
-LOCATION_SOURCES: List[Dict[str, Any]] = [
-	{
-		"doctype": "Employee Booking",
-		"from_field": "from_datetime",
-		"to_field": "to_datetime",
-	},
-	{
-		"doctype": "Meeting",
-		"from_field": "from_datetime",
-		"to_field": "to_datetime",
-		"status_field": "status",
-		"status_exclude": ["Cancelled"],
-	},
-	{
-		"doctype": "School Event",
-		"from_field": "starts_on",
-		"to_field": "ends_on",
-	},
-]
-
-
 def find_room_conflicts(
 	location: Optional[str],
 	from_dt,
@@ -253,35 +225,14 @@ def find_room_conflicts(
 		return []
 
 	conflicts: List[Dict[str, Any]] = []
-
-	if int(frappe.conf.get("legacy_room_conflicts_union") or 0) == 1:
-		frappe.logger().warning(
-			"Using legacy room conflict union (Employee Booking + Meeting + School Event). "
-			"Disable legacy_room_conflicts_union to use Location Booking only."
+	conflicts.extend(
+		_conflicts_from_location_booking(
+			locations=scoped_locations,
+			from_dt=from_dt,
+			to_dt=to_dt,
+			exclude=exclude,
 		)
-		for src in LOCATION_SOURCES:
-			conflicts.extend(
-				_conflicts_from_source(
-					doctype=src["doctype"],
-					from_field=src["from_field"],
-					to_field=src["to_field"],
-					locations=scoped_locations,
-					from_dt=from_dt,
-					to_dt=to_dt,
-					exclude=exclude,
-					status_field=src.get("status_field"),
-					status_exclude=src.get("status_exclude"),
-				)
-			)
-	else:
-		conflicts.extend(
-			_conflicts_from_location_booking(
-				locations=scoped_locations,
-				from_dt=from_dt,
-				to_dt=to_dt,
-				exclude=exclude,
-			)
-		)
+	)
 
 	# Deduplicate across sources (e.g., Meeting + its Employee Booking)
 	seen = set()
@@ -378,99 +329,6 @@ def _conflicts_from_location_booking(
 	return out
 
 
-def _conflicts_from_source(
-	*,
-	doctype: str,
-	from_field: str,
-	to_field: str,
-	locations: List[str],
-	from_dt,
-	to_dt,
-	exclude: Optional[Dict[str, str]] = None,
-	status_field: Optional[str] = None,
-	status_exclude: Optional[List[str]] = None,
-) -> List[Dict[str, Any]]:
-	"""
-	Generic conflict finder for a single doctype that has:
-	  • location (Link)
-	  • from_field / to_field (Datetime)
-
-	Uses a coarse SQL filter then a precise _overlaps() check.
-	"""
-	if not frappe.db.table_exists(doctype):
-		# Allow progressive rollout; no hard failure if doc is not present yet.
-		return []
-
-	# Coarse filter in SQL (interval overlap)
-	filters = {
-		"location": ["in", locations],
-		from_field: ["<", to_dt],
-		to_field: [">", from_dt],
-	}
-	if frappe.db.has_column(doctype, "docstatus"):
-		filters["docstatus"] = ["<", 2]
-	if status_field and status_exclude and frappe.db.has_column(doctype, status_field):
-		if len(status_exclude) == 1:
-			filters[status_field] = ["!=", status_exclude[0]]
-		else:
-			filters[status_field] = ["not in", list(status_exclude)]
-
-	fields = ["name", "location", from_field, to_field]
-	if doctype == "Employee Booking":
-		fields.extend(["source_doctype", "source_name"])
-
-	rows = frappe.db.get_all(doctype, filters=filters, fields=fields)
-
-	out: List[Dict[str, Any]] = []
-
-	for r in rows:
-		if exclude and exclude.get("doctype") == doctype and exclude.get("name") == r.name:
-			continue
-
-		start = r.get(from_field)
-		end = r.get(to_field)
-
-		if not start or not end:
-			continue
-
-		if not _overlaps(from_dt, to_dt, start, end):
-			continue
-
-		if doctype == "Employee Booking":
-			source_doctype = r.get("source_doctype") or doctype
-			source_name = r.get("source_name") or r.name
-			if exclude:
-				if (
-					exclude.get("source_doctype") == source_doctype
-					and exclude.get("source_name") == source_name
-				):
-					continue
-				if exclude.get("doctype") == source_doctype and exclude.get("name") == source_name:
-					continue
-			out.append(
-				{
-					"source_doctype": source_doctype,
-					"source_name": source_name,
-					"location": r.location,
-					"from": start,
-					"to": end,
-					"extra": {"booking_name": r.name},
-				}
-			)
-		else:
-			out.append(
-				{
-					"source_doctype": doctype,
-					"source_name": r.name,
-					"location": r.location,
-					"from": start,
-					"to": end,
-				}
-			)
-
-	return out
-
-
 # Backwards-compatible alias; prefer find_room_conflicts.
 def find_location_conflicts(
 	location: Optional[str],
@@ -502,11 +360,6 @@ def verify_room_conflicts_against_location_booking(
 	Verify that find_room_conflicts() matches Location Booking rows exactly.
 	"""
 	frappe.only_for("System Manager")
-
-	if int(frappe.conf.get("legacy_room_conflicts_union") or 0) == 1:
-		frappe.throw(
-			"Verification requires legacy_room_conflicts_union to be disabled."
-		)
 
 	start_dt = get_datetime(start)
 	end_dt = get_datetime(end)

@@ -198,20 +198,26 @@ class StudentGroup(Document):
 		if bool(getattr(self.flags, "_sg_meeting_dates_changed", False)):
 			invalidate_meeting_dates(self.name)
 
-		# ----- EMPLOYEE BOOKINGS materialisation -----
-		# Rebuild bookings on save for Active groups to keep materialized facts in sync.
-		if (
-			(self.status or "Active") == "Active"
-			and bool(self.student_group_schedule)
-		):
-			rebuild_employee_bookings_for_student_group(self.name)
-
 		# cleanup flags
 		self.flags._sg_students_added = set()
 		self.flags._sg_students_removed = set()
 		self.flags._sg_instructors_changed = False
 		self.flags._sg_meeting_dates_changed = False
 		self.flags._sg_schedule_changed = False
+
+	def on_update(self):
+		# Rebuild bookings on every save for Active groups to keep materialized facts in sync.
+		if (self.status or "Active") != "Active":
+			return
+
+		has_schedule = bool(self.student_group_schedule) or frappe.db.exists(
+			"Student Group Schedule",
+			{"parent": self.name},
+		)
+		if not has_schedule:
+			return
+
+		rebuild_employee_bookings_for_student_group(self.name)
 
 
 	##################### VALIDATONS #########################
