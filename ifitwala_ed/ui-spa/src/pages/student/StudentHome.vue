@@ -6,8 +6,7 @@
       <p class="mt-1 text-md text-gray-600">Here's a quick overview of your day.</p>
     </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div class="lg:col-span-2 space-y-8">
+    <div class="space-y-8">
         <section aria-labelledby="courses-heading">
           <div class="flex items-center justify-between mb-4">
             						<h2 id="courses-heading" class="text-xl font-semibold text-gray-700">My Courses</h2>
@@ -104,12 +103,10 @@
 				<section class="grid grid-cols-1 gap-8">
 					<StudentCalendar :auto-refresh-interval="30 * 60 * 1000" />
 				</section>
-			</div>
-
-			<div class="lg:col-span-1 space-y-6">
-				<section aria-labelledby="more-heading">
+                
+				<section aria-labelledby="more-heading" class="pt-6">
 					<h2 id="more-heading" class="text-xl font-semibold text-gray-700 mb-4">Quick Links</h2>
-					<div class="space-y-4">
+					<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 						<RouterLink v-for="item in moreLinks" :key="item.title" :to="item.to" class="group flex items-center bg-white p-4 border border-gray-200 rounded-lg shadow-sm hover:border-jacaranda hover:shadow-lg transition-all">
 							<div class="mr-4 bg-sky-100 text-jacaranda rounded-lg p-2">
 								<FeatherIcon :name="item.icon" class="w-6 h-6" />
@@ -122,7 +119,7 @@
 						</RouterLink>
 					</div>
 				</section>
-			</div>
+      </div>
     </div>
   </div>
 </template>

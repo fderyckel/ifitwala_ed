@@ -75,8 +75,20 @@ def get_student_calendar(
     # B) School Events
     events.extend(_fetch_school_events(student, enrolled_groups, window_start, window_end, tzinfo))
     
-    # C) Meetings
-    events.extend(_fetch_meetings(user, student, window_start, window_end, tzinfo))
+    
+    # D) Holidays
+    # Determine applicable calendars from enrolled groups
+    calendars = set()
+    if sg_data := frappe.get_all("Student Group", filters={"name": ["in", enrolled_groups]}, fields=["school_schedule"]):
+        schedules = [d.school_schedule for d in sg_data if d.school_schedule]
+        if schedules:
+            # Get calendars for these schedules
+            # Optimization: Cache this mapping? For now, fetch.
+            cal_data = frappe.get_all("School Schedule", filters={"name": ["in", schedules]}, fields=["school_calendar"])
+            calendars.update(d.school_calendar for d in cal_data if d.school_calendar)
+            
+    if calendars:
+        events.extend(_fetch_holidays(calendars, window_start, window_end, tzinfo))
 
     # 5. Build Response
     events.sort(key=lambda x: (x.start, x.end))
@@ -99,6 +111,51 @@ def get_student_calendar(
 
 def _empty_payload():
     return {"events": [], "meta": {}}
+
+def _fetch_holidays(calendars: set[str], start: datetime, end: datetime, tzinfo: pytz.timezone) -> List[CalendarEvent]:
+    """
+    Fetch holidays with descriptions directly from School Calendar Holidays.
+    """
+    if not calendars:
+        return []
+        
+    holidays = []
+    
+    # Query School Calendar Holidays directly
+    # Filters: parent in calendars, holiday_date in window, weekly_off=0 (usually)
+    rows = frappe.db.sql(
+        """
+        SELECT parent, description, holiday_date
+        FROM `tabSchool Calendar Holidays`
+        WHERE 
+            parent IN %s
+            AND holiday_date BETWEEN %s AND %s
+            AND weekly_off = 0
+        """,
+        (tuple(calendars), start.date(), end.date()),
+        as_dict=True
+    )
+    
+    for r in rows:
+        d = r.holiday_date
+        if isinstance(d, str): 
+            d = getdate(d)
+            
+        dt_start = tzinfo.localize(datetime.combine(d, datetime.min.time()))
+        
+        holidays.append(CalendarEvent(
+            id=f"holiday::{r.parent}::{d.isoformat()}",
+            title=r.description or "Holiday",
+            start=dt_start,
+            end=dt_start,
+            source="holiday",
+            color="#ef4444", # Red for holiday
+            all_day=True,
+            meta={"calendar": r.parent}
+        ))
+        
+    return holidays
+
 
 def _get_student_enrolled_groups(student):
     return [r.parent for r in frappe.db.sql(
