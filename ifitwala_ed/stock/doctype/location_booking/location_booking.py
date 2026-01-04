@@ -88,7 +88,7 @@ def upsert_location_booking(
 	try:
 		doc.insert(ignore_permissions=True)
 		return doc.name
-	except frappe.DuplicateEntryError:
+	except (frappe.DuplicateEntryError, frappe.UniqueValidationError):
 		# Another worker inserted the same slot_key.
 		existing = frappe.db.get_value(
 			"Location Booking",
