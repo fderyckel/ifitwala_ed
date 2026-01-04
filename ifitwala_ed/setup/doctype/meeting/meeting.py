@@ -510,7 +510,6 @@ class Meeting(Document):
 			slot_key=slot_key,
 			school=school,
 			academic_year=academic_year,
-			blocks_availability=1,
 		)
 
 		# Clean up any stale rows from prior locations.

@@ -45,7 +45,6 @@ def upsert_location_booking(
 	slot_key: str,
 	school: str | None = None,
 	academic_year: str | None = None,
-	blocks_availability: int = 1,
 ) -> str:
 	"""
 	Idempotent upsert keyed by slot_key.
@@ -77,7 +76,6 @@ def upsert_location_booking(
 	doc.from_datetime = fdt
 	doc.to_datetime = tdt
 	doc.occupancy_type = occupancy_type
-	doc.blocks_availability = 1 if int(blocks_availability or 0) else 0
 	doc.source_doctype = source_doctype
 	doc.source_name = source_name
 	doc.source_key = source_key
@@ -100,23 +98,24 @@ def upsert_location_booking(
 			# Re-raise to avoid silent corruption.
 			raise
 
+		update = {
+			"location": location,
+			"from_datetime": fdt,
+			"to_datetime": tdt,
+			"occupancy_type": occupancy_type,
+			"source_doctype": source_doctype,
+			"source_name": source_name,
+			"source_key": source_key,
+			"slot_key": slot_key,
+			"school": school,
+			"academic_year": academic_year,
+		}
+
 		# Update the existing row.
 		frappe.db.set_value(
 			"Location Booking",
 			existing,
-			{
-				"location": location,
-				"from_datetime": fdt,
-				"to_datetime": tdt,
-				"occupancy_type": occupancy_type,
-				"blocks_availability": 1 if int(blocks_availability or 0) else 0,
-				"source_doctype": source_doctype,
-				"source_name": source_name,
-				"source_key": source_key,
-				"slot_key": slot_key,
-				"school": school,
-				"academic_year": academic_year,
-			},
+			update,
 			update_modified=True,
 		)
 		return existing

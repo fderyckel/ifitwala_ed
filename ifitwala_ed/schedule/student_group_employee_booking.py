@@ -209,7 +209,7 @@ def rebuild_employee_bookings_for_student_group(
 	Notes:
 	- Call this from the Student Group controller when the schedule is “stable enough”
 	  (e.g. on_update / after_save when schedule rows or instructors change).
-	- We treat all Student Group teaching as blocks_availability = 1 (hard conflicts).
+	- Teaching slots are always treated as blocking in Location Booking.
 	"""
 	if not student_group:
 		return
@@ -322,7 +322,6 @@ def rebuild_employee_bookings_for_student_group(
 			slot_key=slot_key,
 			school=school,
 			academic_year=academic_year,
-			blocks_availability=1,
 		)
 		target_location_slot_keys.add(slot_key)
 

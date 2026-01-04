@@ -483,7 +483,6 @@ class SchoolEvent(Document):
 			slot_key=slot_key,
 			school=self.school if getattr(self, "school", None) else None,
 			academic_year=None,
-			blocks_availability=1,
 		)
 
 		# Clean up any stale rows from prior locations.
