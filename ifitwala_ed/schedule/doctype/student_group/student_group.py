@@ -91,6 +91,7 @@ class StudentGroup(Document):
 			self.flags._sg_instructors_changed = False
 			# meeting dates: nothing cached yet on first save
 			self.flags._sg_meeting_dates_changed = False
+			self.flags._sg_schedule_changed = bool(self.student_group_schedule)
 			return
 
 		# ----- students (active only) -----
@@ -126,6 +127,30 @@ class StudentGroup(Document):
 		curr_instr = instructor_keys(self)
 		self.flags._sg_instructors_changed = (prev_instr != curr_instr)
 
+		# ----- schedule rows (rotation/day/block/location/instructor/employee) -----
+		def schedule_keys(doc):
+			keys = set()
+			for r in (doc.student_group_schedule or []):
+				rd = getattr(r, "rotation_day", None)
+				blk = getattr(r, "block_number", None)
+				loc = (getattr(r, "location", "") or "").strip()
+				ins = (getattr(r, "instructor", "") or "").strip()
+				emp = (getattr(r, "employee", "") or "").strip()
+				try:
+					rd = int(rd) if rd is not None else None
+				except Exception:
+					pass
+				try:
+					blk = int(blk) if blk is not None else None
+				except Exception:
+					pass
+				keys.add((rd, blk, loc, ins, emp))
+			return keys
+
+		prev_sched = schedule_keys(old)
+		curr_sched = schedule_keys(self)
+		self.flags._sg_schedule_changed = (prev_sched != curr_sched)
+
 		# ----- MEETING-DATES impact detection (NEW) -----
 		def rotation_days_set(doc):
 			return {
@@ -152,6 +177,7 @@ class StudentGroup(Document):
 		added = getattr(self.flags, "_sg_students_added", set()) or set()
 		removed = getattr(self.flags, "_sg_students_removed", set()) or set()
 		instr_changed = bool(getattr(self.flags, "_sg_instructors_changed", False))
+		sched_changed = bool(getattr(self.flags, "_sg_schedule_changed", False))
 
 		if not added and not removed and not instr_changed:
 			pass
@@ -176,10 +202,10 @@ class StudentGroup(Document):
 		# Rebuild bookings when timetable or instructors changed.
 		# Guard: only for submitted + Active groups to avoid trash/testing noise.
 		if (
-			self.docstatus == 1
-			and (self.status or "Active") == "Active"
+			(self.status or "Active") == "Active"
 			and (
 				bool(getattr(self.flags, "_sg_meeting_dates_changed", False))
+				or sched_changed
 				or bool(getattr(self.flags, "_sg_instructors_changed", False))
 			)
 		):
@@ -190,6 +216,7 @@ class StudentGroup(Document):
 		self.flags._sg_students_removed = set()
 		self.flags._sg_instructors_changed = False
 		self.flags._sg_meeting_dates_changed = False
+		self.flags._sg_schedule_changed = False
 
 
 	##################### VALIDATONS #########################
