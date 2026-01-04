@@ -99,12 +99,7 @@
         />
         <StatsTile label="Window" :value="freeWindowLabel" tone="info" />
       </div>
-      <p
-        v-if="freeRoomsResource.data && freeRoomsResource.data.classes_checked === false"
-        class="mt-2 text-xs text-[rgb(var(--flame-rgb))]"
-      >
-        Note: Teaching bookings were not checked. Results include meetings and events only.
-      </p>
+
 
       <div v-if="freeRoomsLoading" class="py-6 text-center text-sm text-slate-500">
         Loading free rooms...

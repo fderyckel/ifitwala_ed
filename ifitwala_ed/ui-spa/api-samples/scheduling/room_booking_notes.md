@@ -1,418 +1,216 @@
-# Ifitwala_Ed — Architecture Notes (Authoritative)
+# Ifitwala_Ed — Room Booking Notes (Authoritative)
 
-This document defines **non-negotiable architectural decisions** for Ifitwala_Ed.
-All future code, refactors, and features MUST respect these rules.
-
-This file exists primarily for **coding agents (Codex)** and reviewers.
+> **Status:** Locked architecture (vNext)
+>
+> This document defines the **non‑negotiable meaning and usage of room occupancy and room availability**.
+> It exists to prevent the classic failure mode where “room truth” is inferred from staff rows, schedules, or ad‑hoc merges.
 
 ---
 
-## Locked Scheduling Decisions (Authoritative)
+## 0. Core principle
 
-This section records final, non-negotiable architectural decisions for scheduling,
-calendars, availability, and conflict management in Ifitwala_Ed.
+**Rooms are operational truth only through a room fact table.**
 
-These decisions resolve all previous ambiguities between hybrid vs materialized models.
+* **Room Occupancy** (new) = **room operational truth** (free/busy + analytics)
+* Employee Booking = employee operational truth (free/busy + staff calendar)
+* Meeting / School Event / (optional) Room Booking = domain docs (workflow/audit/UI)
+* Student Group Schedule = abstract intent only (never queried for room availability)
 
-Any implementation that deviates from these decisions is a regression.
-
-### Decision 1 — Room Availability Model
-
-**Decision**
-Room availability is computed from materialized operational data only.
-
-**Authoritative sources**
-Room availability MUST be determined exclusively by:
-
-- Employee Booking rows with a non-null location
-- Meeting rows with a location
-- School Event rows with a location
-
-**Explicitly NOT used**
-
-- Student Group Schedule
-- Rotation days
-- Block numbers
-- Virtual schedule expansion
-- Any abstract or inferred logic at read time
-
-**Rationale**
-
-- Enables cheap, index-driven overlap queries
-- Avoids schedule expansion on every read
-- Eliminates abstract leakage into operational decisions
-- Scales under heavy read load
-
-**Status**
-
-- Materialized-only model is LOCKED
-- Hybrid models are forbidden in production availability checks
-
-### Decision 2 — Employee Booking.location Rules
-
-**Decision**
-Employee Booking.location is conditionally mandatory, based on booking type.
-
-**Rules by booking type**
-
-| Booking Type | Location Required | Reason |
-| --- | --- | --- |
-| Teaching | Yes (mandatory) | Teaching blocks a room |
-| Meeting | Yes (expected) | Meetings usually block a room |
-| Duty | No | Field duty / supervision may have no room |
-| Other | No | Generic commitments |
-
-**Enforcement**
-
-For booking_type == "Teaching":
-
-- location MUST be set at materialization time
-- Missing location → hard failure (or strict debug failure in demo mode)
-- No read-time resolution from Student Group Schedule is allowed
-
-**Interpretation**
-
-Missing location means: blocks the employee, not a room.
-
-This is intentional and required for duties and non-room commitments.
-
-**Status**
-
-- Teaching location mandatory is LOCKED
-
-### Decision 3 — Teaching Materialization Strategy
-
-**Decision**
-Teaching sessions are fully materialized into Employee Booking.
-
-**Authoritative pipeline**
-
-All teaching materialization happens in:
-
-```text
-ifitwala_ed/schedule/student_group_employee_booking.py
-```
-
-No other module may create or infer teaching bookings.
-
-**Required fields for Teaching bookings**
-
-- employee
-- from_datetime
-- to_datetime
-- location (mandatory)
-- booking_type = "Teaching"
-- source_doctype = "Student Group"
-- source_name = <student_group>
-
-**Explicit exclusions**
-
-Employee Booking MUST NOT store:
-
-- rotation_day
-- block_number
-
-Datetime is the universal operational contract.
-
-**Status**
-
-- Employee Booking is the teaching fact table
-
-### Decision 4 — Staff Calendar Event Identity
-
-**Decision**
-Staff calendars are booking-driven, not schedule-driven.
-
-**Canonical identity**
-
-For Teaching events:
-
-```text
-sg-booking::<employee_booking.name>
-```
-
-**Forbidden**
-
-- Schedule-based event IDs in staff calendars
-- Schedule fallback when bookings exist
-- Mixed ID models
-
-**Allowed**
-
-Schedule-based views ONLY in:
-
-- explicit abstract/debug viewers
-- developer tools
-- non-operational schedule previews
-
-**Status**
-
-- Booking-based IDs are LOCKED
-
-### Decision 5 — Calendar Read Rules
-
-**Decision**
-Calendar APIs are read-only aggregators.
-
-**Calendars MAY read**
-
-- Employee Booking
-- Meeting
-- School Event
-
-**Calendars MUST NOT**
-
-- Query Student Group Schedule
-- Reconstruct schedule context
-- Infer missing location, block, or rotation
-- "Repair" incomplete data
-
-**Optional UI labels**
-
-Block / Rotation labels:
-
-- MAY be displayed only if deterministically resolvable
-- MUST NOT affect conflicts, availability, or identity
-- MUST disappear if not strictly resolvable
-
-**Status**
-
-- No inference at read time is LOCKED
-
-### Decision 6 — Room Conflict Helper
-
-**Decision**
-There is exactly ONE canonical room conflict helper.
-
-**Rule**
-
-All room conflict checks MUST go through a single function, e.g.:
-
-```text
-find_room_conflicts(location, start, end)
-```
-
-**This helper merges**
-
-- Employee Booking (with location)
-- Meeting
-- School Event
-
-**Forbidden**
-
-- Ad-hoc room SQL in feature modules
-- Multiple competing conflict helpers
-- Schedule-based room conflict logic
-
-**Status**
-
-- Single helper rule is LOCKED
-
-### Decision 7 — Rebuild Triggers
-
-**Decision**
-Rebuilds are write-triggered only, never read-triggered.
-
-**Allowed triggers**
-
-- Student Group Schedule change
-- Instructor assignment change
-- Location change
-- Explicit admin action
-
-**Forbidden**
-
-- Rebuild during calendar reads
-- Rebuild during availability queries
-
-**Rebuilds MUST be**
-
-- Debounced
-- Bounded (group + date window)
-- Idempotent
-
-**Status**
-
-- No rebuild on read is LOCKED
-
-### Decision 8 — Rebuild Safety (No Transient Emptiness)
-
-**Decision**
-Rebuilds MUST NOT create "temporary free" states.
-
-**Required pattern**
-
-- Compute target slots
-- Upsert bookings
-- Delete obsolete bookings
-
-**Forbidden**
-
-- Delete-all-then-recreate for active windows
-
-**Rationale**
-
-"Absence means free" must remain safe even if rebuild fails mid-way.
-
-**Status**
-
-- No transient emptiness is LOCKED
-
-### Decision 9 — Incremental Rebuild Preference
-
-**Decision**
-Rebuilds should be incremental whenever possible.
-
-**Preferred**
-
-- Single schedule row change → rebuild affected blocks only
-
-**Allowed full rebuild**
-
-- Academic year change
-- Structural schedule change
-- Explicit admin command
-
-**Status**
-
-- Incremental rebuild preference is LOCKED
-
-### Decision 10 — Data Migration Requirement
-
-**Decision**
-A one-time backfill is REQUIRED.
-
-**Required actions**
-
-- Rebuild teaching Employee Bookings
-- Populate location for all Teaching rows
-- Remove legacy schedule-derived artifacts
-
-**Status**
-
-- Migration is REQUIRED before refactor completion
-
-### Final Authority Statement
-
-- Employee Booking is operational truth
-- Student Group Schedule is intent only
-- Calendars are aggregation only
-- Availability is materialized only
-- Inference at read time is forbidden
+This eliminates room conflict ambiguity permanently.
 
 ---
 
-## School & Location Hierarchy Rules
+## 1. Why we need a room fact table
 
-### School Scope
+### 1.1 The double counting problem
 
-- Selecting **School A** includes:
-  - School A
-  - All descendant schools (NestedSet)
+Meetings commonly create **N employee rows** (one per attendee). If you infer room usage from employee rows, you will:
 
-- Selecting **School B** includes:
-  - School B only
-  - NOT its parent
-  - NOT its siblings
+* double count rooms
+* inflate utilization
+* break “free room” checks
+* constantly fight dedupe bugs
 
-This applies consistently to:
+### 1.2 The inference problem
 
-- Rooms
-- Bookings
-- Meetings
-- Analytics
+If the system computes room availability by reading:
 
-### Location Hierarchy
+* Student Group Schedule
+* Employee Booking location
+* Meeting + School Event + bookings combined “on the fly”
 
-- Location is a NestedSet
-- is_group = 1 → structural node
-- is_group = 0 → real room
+…you inevitably get inconsistent answers across modules.
 
-Only real rooms participate in availability.
+**Room Occupancy makes every module ask the same question against the same truth.**
 
 ---
 
-## API Design Rules (Frappe)
+## 2. Definitions
 
-### POST Invariant (Critical)
+### 2.1 Domain docs
 
-When using frappe-ui resources:
+Domain docs are the human-facing records, e.g.
 
-- POST requests MUST use resource.submit(payload)
-- NEVER mix GET-style params with POST endpoints
+* Meeting
+* School Event
+* (optional) Room Booking (approvals/workflow)
 
-This is a known failure mode and is treated as a hard invariant.
+They are not queried for operational truth.
 
-### Time & Timezone Rules
+### 2.2 Fact tables
 
-- Always use Frappe site timezone (System Settings)
-- Never rely on server OS timezone
-- Never compute availability with naive datetimes
-- Display times as HH:MM (no seconds)
+Fact tables are operational truth for overlap queries:
 
----
+* **Employee Booking**: employee free/busy
+* **Room Occupancy**: room free/busy
 
-## Vue + frappe-ui Architecture Rules
+Fact tables must remain:
 
-### Frontend Stack (Locked)
-
-- Vue 3
-- Tailwind CSS (only styling system)
-- frappe-ui data utilities
-
-No Bootstrap. No ad-hoc CSS frameworks.
-
-### Data Access Rules
-
-Preferred utilities:
-
-- createResource
-- createListResource
-- createDocumentResource
-
-Rules:
-
-- Filters live in ONE reactive object
-- Watched with { deep: true }
-- Pagination is explicit (start, page_length)
-- Changing filters resets pagination
-
-### Routing Rule (SPA)
-
-Inside the Vue SPA:
-
-- Never hardcode /portal/ in routes
-- Use named routes or base-less paths
-
-Reason:
-
-- Router uses createWebHistory('/portal')
+* idempotent to rebuild
+* cheap to query
+* free of workflow complexity
 
 ---
 
-## Performance & Scaling Principles
+## 3. Room Occupancy — required behavior
 
-- Optimize for reads, not writes
-- Reads are frequent (200+ staff)
-- Writes are rare (schedule edits)
+### 3.1 One row means one room is busy
 
-Tradeoff:
+A single Room Occupancy row means:
 
-- Materialize once
-- Query cheaply forever
+> location L is occupied for `[from_datetime, to_datetime)`
 
-This is intentional and required for scale.
+### 3.2 What materializes into Room Occupancy
+
+Room Occupancy receives rows from:
+
+* Teaching (materialized from Student Group schedule expansion)
+* Meeting (1 row per location)
+* School Event (1 row per location)
+* Optional Room Booking domain doc (1 row per location)
+
+### 3.3 Overlap predicate
+
+Canonical overlap for `[start, end)`:
+
+* `from_datetime < end AND to_datetime > start`
+
+This is the only predicate used across the system.
 
 ---
 
-## Debugging Rule (Non-Negotiable)
+## 4. Canonical identity and idempotency (critical)
 
-When availability results are unexpected:
+Room Occupancy must support edits safely.
 
-1) Verify expanded slots from iter_student_group_room_slots() (materialization input)
-2) Verify materialized Employee Booking rows
-3) Verify overlap logic
-4) Never "fix" availability by filtering rooms post-query
+### 4.1 The identity problem
 
-If results look inverted (everything unavailable),
-the bug is in interpretation, not in data absence.
+If your “unique key” includes timestamps, editing time can create duplicate rows unless you perfectly delete the old row.
+
+### 4.2 Locked identity rules
+
+We use two concepts:
+
+* **event identity**: stable per domain doc
+* **slot identity**: stable per domain doc + location, or per teaching instance
+
+**Event identity (stable):**
+
+* `source_key = "{source_doctype}::{source_name}"`
+
+**Slot identity (stable per doc+location):**
+
+* Meeting / School Event / Room Booking: `slot_key = "{source_key}::{location}"`
+
+**Slot identity (stable per teaching instance):**
+
+* Teaching instances: `slot_key = "{source_key}::{location}::{from_iso}::{to_iso}"`
+
+This makes Meeting edits update the same row rather than creating new identities.
+
+---
+
+## 5. Write triggers (no read inference)
+
+Room Occupancy is updated only by write-triggered materialization.
+
+### 5.1 Meeting
+
+* on insert/update: upsert Room Occupancy for meeting location
+* on cancel/delete: remove the Room Occupancy row
+
+### 5.2 School Event
+
+* after_save / on_update: upsert Room Occupancy for event location
+* on cancel/delete: remove the Room Occupancy row
+
+### 5.3 Teaching
+
+Teaching is materialized in a bounded window using:
+
+1. compute target slots
+2. upsert targets
+3. delete obsolete
+
+Delete-all-then-recreate is forbidden.
+
+---
+
+## 6. Read rules (non-negotiable)
+
+### 6.1 Free rooms
+
+Free-room checks query **Room Occupancy only**.
+
+* No unions with Employee Booking
+* No unions with domain docs
+* No schedule expansion
+
+### 6.2 Room conflicts
+
+All room conflict checks go through one canonical helper:
+
+* `find_room_conflicts(location(s), start, end, ...)`
+
+This helper queries Room Occupancy only.
+
+### 6.3 Room utilization analytics
+
+Utilization queries Room Occupancy only.
+
+If you need “people count” later, join against domain docs (Meeting participants, Student Group size), but do not count employee rows.
+
+---
+
+## 7. Permissions and privacy
+
+Room Occupancy is operationally sensitive.
+
+Baseline policy:
+
+* Admin roles: full access
+* Staff roles: free/busy access (optionally hide event details)
+* Students/Guardians: off by default (only via explicit product decisions)
+
+Enforce server-side.
+
+---
+
+## 8. Debugging protocol
+
+When room availability looks wrong:
+
+1. verify Room Occupancy rows exist for the time range
+2. verify overlap predicate
+3. verify location scope expansion (children/parents)
+4. do not “fix” by querying Meeting/Employee Booking/Schedule directly
+
+---
+
+## 9. Summary
+
+* Room truth = Room Occupancy
+* Staff truth = Employee Booking
+* Domain docs materialize into facts
+* Reads never infer
+* Writes must be idempotent and rebuild-safe

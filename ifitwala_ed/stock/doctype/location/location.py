@@ -1,4 +1,4 @@
-# Copyright (c) 2025, fdR and contributors
+# Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
 # ifitwala_ed/stock/doctype/location/location.py
