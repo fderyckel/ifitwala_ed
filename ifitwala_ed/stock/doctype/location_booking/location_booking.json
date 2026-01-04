@@ -15,7 +15,8 @@
   "slot_key",
   "school",
   "academic_year",
-  "organization"
+  "organization",
+  "blocks_availability"
  ],
  "fields": [
   {
@@ -97,12 +98,17 @@
    "fieldtype": "Link",
    "label": "Organization",
    "options": "Organization"
+  },
+  {
+   "fieldname": "blocks_availability",
+   "fieldtype": "Data",
+   "label": "Blocks Availability"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-04 20:38:18.210204",
+ "modified": "2026-01-05 05:30:53.723440",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Location Booking",
@@ -119,6 +125,10 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Academic Admin"
   }
  ],
  "row_format": "Dynamic",
