@@ -101,21 +101,8 @@
 					</div>
 				</section>
 
-				<section class="grid grid-cols-1 md:grid-cols-2 gap-8">
-					<div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-						<h2 class="font-semibold text-gray-700 mb-2">My Tasks</h2>
-						<div class="h-64 bg-gray-50 rounded-md flex flex-col items-center justify-center text-center text-gray-500">
-							<FeatherIcon name="calendar" class="w-10 h-10 mb-2 text-gray-400" />
-							<span class="text-sm">Task calendar coming soon</span>
-						</div>
-					</div>
-					<div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-						<h2 class="font-semibold text-gray-700 mb-2">My Schedule</h2>
-						<div class="h-64 bg-gray-50 rounded-md flex flex-col items-center justify-center text-center text-gray-500">
-							<FeatherIcon name="clock" class="w-10 h-10 mb-2 text-gray-400" />
-							<span class="text-sm">Schedule coming soon</span>
-						</div>
-					</div>
+				<section class="grid grid-cols-1 gap-8">
+					<StudentCalendar :auto-refresh-interval="30 * 60 * 1000" />
 				</section>
 			</div>
 
@@ -144,6 +131,7 @@
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { FeatherIcon, createResource } from 'frappe-ui';
+import StudentCalendar from '@/components/calendar/StudentCalendar.vue';
 
 // Get user info from Frappe's session object for the welcome message
 const user = computed(() => {
