@@ -79,7 +79,7 @@ from ifitwala_ed.schedule.schedule_utils import (
 )
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
-VALID_SOURCES = {"student_group", "meeting", "school_event", "frappe_event"}
+VALID_SOURCES = {"student_group", "meeting", "school_event", "frappe_event", "staff_holiday"}
 
 DEFAULT_WINDOW_DAYS = 30
 LOOKBACK_DAYS = 3
@@ -158,6 +158,18 @@ def get_staff_calendar(
 			employee_id=employee_id,
 		)
 		for evt in sg_events:
+			events.append(evt)
+			source_counts[evt.source] += 1
+
+	if "staff_holiday" in source_list:
+		holiday_events = _collect_staff_holiday_events(
+			user,
+			window_start,
+			window_end,
+			tzinfo,
+			employee_id=employee_id,
+		)
+		for evt in holiday_events:
 			events.append(evt)
 			source_counts[evt.source] += 1
 
@@ -524,6 +536,123 @@ def _collect_student_group_events_from_bookings(
 					"student_group": row.student_group,
 					"course": row.course,
 					"booking": row.booking_name,
+				},
+			)
+		)
+
+	return events
+
+
+# ---------------------------------------------------------------------------
+# Staff Holidays
+# ---------------------------------------------------------------------------
+
+def _collect_staff_holiday_events(
+	user: str,
+	window_start: datetime,
+	window_end: datetime,
+	tzinfo: pytz.timezone,
+	*,
+	employee_id: Optional[str] = None,
+) -> List[CalendarEvent]:
+	if not employee_id:
+		return []
+
+	# Employee.employee_group is permlevel=1, so read via ignore_permissions.
+	emp_rows = frappe.get_all(
+		"Employee",
+		filters={"name": employee_id},
+		fields=["name", "school", "employee_group"],
+		limit=1,
+		ignore_permissions=True,
+	)
+	if not emp_rows:
+		return []
+
+	emp = emp_rows[0]
+	employee_school = emp.get("school")
+	employee_group = emp.get("employee_group")
+	if not employee_school or not employee_group:
+		return []
+
+	start_date = getdate(window_start)
+	end_date = getdate(window_end)
+
+	cal_rows = frappe.get_all(
+		"Staff Calendar",
+		filters={
+			"school": employee_school,
+			"employee_group": employee_group,
+			"from_date": ["<=", end_date],
+			"to_date": [">=", start_date],
+		},
+		fields=["name", "school", "employee_group", "from_date", "to_date"],
+		order_by="from_date desc",
+		limit=2,
+		ignore_permissions=True,
+	)
+
+	if not cal_rows:
+		return []
+
+	if len(cal_rows) > 1:
+		frappe.logger("ifitwala_ed.calendar").warning(
+			"Multiple Staff Calendar matches for employee",
+			{
+				"employee": employee_id,
+				"school": employee_school,
+				"employee_group": employee_group,
+				"window_start": str(start_date),
+				"window_end": str(end_date),
+				"matches": [row["name"] for row in cal_rows],
+			},
+		)
+
+	staff_calendar_name = cal_rows[0]["name"]
+
+	holiday_rows = frappe.get_all(
+		"Staff Calendar Holidays",
+		filters={
+			"parent": staff_calendar_name,
+			"holiday_date": ["between", [start_date, end_date]],
+		},
+		fields=["holiday_date", "description", "color", "weekly_off"],
+		order_by="holiday_date asc",
+		ignore_permissions=True,
+	)
+
+	if not holiday_rows:
+		return []
+
+	events: List[CalendarEvent] = []
+	default_color = "#64748B"
+
+	for row in holiday_rows:
+		hd = getdate(row.get("holiday_date"))
+		if not hd:
+			continue
+
+		start_dt = _combine(hd, time(0, 0, 0), tzinfo)
+		end_dt = _combine(hd + timedelta(days=1), time(0, 0, 0), tzinfo)
+
+		title = (row.get("description") or "").strip() or _("Holiday")
+		color = (row.get("color") or "").strip() or default_color
+
+		events.append(
+			CalendarEvent(
+				id=f"staff_holiday::{staff_calendar_name}::{hd.isoformat()}",
+				title=title,
+				start=start_dt,
+				end=end_dt,
+				source="staff_holiday",
+				color=color,
+				all_day=True,
+				meta={
+					"staff_calendar": staff_calendar_name,
+					"holiday_date": hd.isoformat(),
+					"weekly_off": int(row.get("weekly_off") or 0),
+					"employee_group": employee_group,
+					"school": employee_school,
 				},
 			)
 		)
@@ -1266,6 +1395,14 @@ def debug_staff_calendar_window(from_datetime: Optional[str] = None, to_datetime
 
 	# quick sample of student group events only (limit 10)
 	sample = _collect_student_group_events(user, start, end, tzinfo)[:10]
+	holiday_events = _collect_staff_holiday_events(
+		user,
+		start,
+		end,
+		tzinfo,
+		employee_id=emp,
+	)
+	holiday_sample = holiday_events[:5]
 	booking_samples = []
 	if emp and frappe.db.table_exists("Employee Booking"):
 		booking_rows = frappe.get_all(
@@ -1304,6 +1441,8 @@ def debug_staff_calendar_window(from_datetime: Optional[str] = None, to_datetime
 		"instructor_ids": sorted(instr),
 		"sg_instructor_groups": sorted(sgi),
 		"sample_events": [e.as_dict() for e in sample],
+		"staff_holiday_count": len(holiday_events),
+		"staff_holiday_sample": [e.as_dict() for e in holiday_sample],
 		"booking_samples": booking_samples,
 	}
 

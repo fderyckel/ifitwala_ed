@@ -355,6 +355,11 @@ const sourcePalette: Record<CalendarSource, { label: string; dot: string; active
 		dot: 'bg-emerald-500',
 		active: 'border-emerald-200 bg-emerald-50 text-emerald-700',
 	},
+	staff_holiday: {
+		label: 'Holidays',
+		dot: 'bg-slate-500',
+		active: 'border-slate-200 bg-slate-50 text-slate-700',
+	},
 	frappe_event: {
 		label: 'Frappe Events',
 		dot: 'bg-amber-500',
@@ -449,6 +454,13 @@ function handleEventClick(info: EventClickArg) {
 	const rawSource =
 		(info.event.extendedProps?.source as string | undefined) ||
 		((info.event as unknown as { source?: string }).source ?? undefined);
+	if (rawSource === 'staff_holiday') {
+		// Holidays are all-day blocks; no modal
+		closeMeetingModal();
+		closeSchoolEventModal();
+		closeClassEventModal();
+		return;
+	}
 	if (rawSource === 'meeting') {
 		closeSchoolEventModal();
 		closeClassEventModal();

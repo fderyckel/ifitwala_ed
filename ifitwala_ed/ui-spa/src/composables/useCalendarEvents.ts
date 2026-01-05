@@ -2,7 +2,12 @@
 import { call } from 'frappe-ui';
 import { Ref, computed, ref } from 'vue';
 
-export type CalendarSource = 'student_group' | 'meeting' | 'school_event' | 'frappe_event';
+export type CalendarSource =
+	| 'student_group'
+	| 'meeting'
+	| 'school_event'
+	| 'frappe_event'
+	| 'staff_holiday';
 
 export interface PortalCalendarEvent {
 	id: string;
@@ -24,7 +29,13 @@ export interface CalendarPayload {
 	events: PortalCalendarEvent[];
 }
 
-const DEFAULT_SOURCES: CalendarSource[] = ['student_group', 'meeting', 'school_event', 'frappe_event'];
+const DEFAULT_SOURCES: CalendarSource[] = [
+	'student_group',
+	'meeting',
+	'school_event',
+	'frappe_event',
+	'staff_holiday',
+];
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const STORAGE_PREFIX = 'ifw:calendar:';
 
