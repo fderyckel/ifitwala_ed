@@ -6,7 +6,7 @@
       <slot name="actions" />
     </header>
     <VChart
-      class="analytics-chart"
+      class="analytics-chart analytics-chart--xl"
       :option="option"
       :autoresize="{ throttle: 100 }"
       @click="handleClick"

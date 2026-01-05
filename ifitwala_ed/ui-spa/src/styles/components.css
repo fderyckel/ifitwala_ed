@@ -438,12 +438,25 @@
 	/* Avoid min-height on vue-echarts containers; it can cause ResizeObserver growth loops in grids. */
 	.analytics-chart {
 		width: 100%;
-		height: 220px; /* or whatever you like for compact cards */
+		--analytics-chart-height: 260px;
+		height: var(--analytics-chart-height) !important; /* override vue-echarts inline height */
 	}
+
+  .analytics-chart--sm {
+    --analytics-chart-height: 240px;
+  }
+
+  .analytics-chart--lg {
+    --analytics-chart-height: 280px;
+  }
+
+  .analytics-chart--xl {
+    --analytics-chart-height: 320px;
+  }
 
 	/* When the card is zoomed */
 	.analytics-chart--expanded {
-		height: min(520px, 70vh); /* grows but still bounded */
+		--analytics-chart-height: min(520px, 70vh); /* grows but still bounded */
 	}
 
   /* Empty state inside a card */
