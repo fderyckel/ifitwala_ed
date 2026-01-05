@@ -1,28 +1,8 @@
 {
- "cards": [
-  {
-   "card": "Overdue Inquiry"
-  },
-  {
-   "card": "Due Today Inquiry"
-  },
-  {
-   "card": "Upcoming Inquiry"
-  },
-  {
-   "card": "On track Inquiry"
-  }
- ],
+ "cards": [],
  "charts": [
   {
-   "width": "Half"
-  },
-  {
-   "chart": "Inquiry Workflow",
-   "width": "Half"
-  },
-  {
-   "chart": "Assignment Load Balance",
+   "chart": "Students by First Language",
    "width": "Full"
   }
  ],
@@ -33,7 +13,7 @@
  "idx": 0,
  "is_default": 0,
  "is_standard": 1,
- "modified": "2025-08-14 11:55:39.269642",
+ "modified": "2026-01-05 11:07:52.468037",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry dashboard",

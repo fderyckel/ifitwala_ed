@@ -224,7 +224,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-28 10:17:39.340397",
+ "modified": "2026-01-05 10:44:49.674484",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Meeting",
@@ -254,6 +254,15 @@
    "role": "Employee",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",
