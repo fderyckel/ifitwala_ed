@@ -6,7 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_oj5e",
-  "reporting_cyle",
+  "reporting_cycle",
   "student",
   "program_enrollment",
   "course",
@@ -40,7 +40,7 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "reporting_cyle",
+   "fieldname": "reporting_cycle",
    "fieldtype": "Link",
    "label": "Reporting cyle",
    "options": "Reporting Cycle"
@@ -188,7 +188,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-09 22:39:46.991652",
+ "modified": "2025-12-19 22:39:46",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Course Term Result",

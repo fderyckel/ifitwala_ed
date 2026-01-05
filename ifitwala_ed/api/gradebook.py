@@ -80,6 +80,7 @@ def fetch_groups(search: str | None = None, limit: int | None = 5) -> List[Dict[
 		"name",
 		"student_group_name",
 		"program",
+		"school",
 		"course",
 		"cohort",
 		"academic_year",
@@ -125,6 +126,7 @@ def fetch_groups(search: str | None = None, limit: int | None = 5) -> List[Dict[
 		{
 			"name": row.name,
 			"label": row.student_group_name or row.name,
+			"school": row.school,
 			"program": row.program,
 			"course": row.course,
 			"cohort": row.cohort,

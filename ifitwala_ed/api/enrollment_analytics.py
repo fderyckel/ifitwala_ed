@@ -200,14 +200,17 @@ def _load_academic_year_options(school_scope: list[str]) -> list[dict]:
 		"""
 		SELECT DISTINCT
 			pe.academic_year,
+			pe.school,
+			s.school_name,
 			ay.academic_year_name,
 			ay.year_start_date,
 			ay.year_end_date
 		FROM `tabProgram Enrollment` pe
+		LEFT JOIN `tabSchool` s ON s.name = pe.school
 		LEFT JOIN `tabAcademic Year` ay ON ay.name = pe.academic_year
 		WHERE pe.school IN %(schools)s
 		  AND pe.academic_year IS NOT NULL
-		ORDER BY ay.year_start_date DESC, pe.academic_year DESC
+		ORDER BY ay.year_start_date DESC, pe.academic_year DESC, pe.school ASC
 		""",
 		{"schools": tuple(school_scope)},
 		as_dict=True,
@@ -222,6 +225,7 @@ def _load_academic_year_options(school_scope: list[str]) -> list[dict]:
 				"academic_year_name",
 				"year_start_date",
 				"year_end_date",
+				"school",
 			],
 			order_by="year_start_date desc",
 		)
@@ -237,8 +241,23 @@ def _load_academic_year_options(school_scope: list[str]) -> list[dict]:
 				"label": row.get("academic_year_name") or name,
 				"year_start_date": row.get("year_start_date"),
 				"year_end_date": row.get("year_end_date"),
+				"school": row.get("school"),
+				"school_label": row.get("school_name"),
 			}
 		)
+
+	schools_missing = {opt.get("school") for opt in options if opt.get("school") and not opt.get("school_label")}
+	if schools_missing:
+		school_rows = frappe.get_all(
+			"School",
+			filters={"name": ["in", list(schools_missing)]},
+			fields=["name", "school_name"],
+		)
+		school_labels = {row.name: row.school_name for row in school_rows}
+		for opt in options:
+			if opt.get("school") and not opt.get("school_label"):
+				opt["school_label"] = school_labels.get(opt["school"])
+
 	return options
 
 
@@ -259,13 +278,40 @@ def _normalize_academic_year_selection(filters: dict, options: list[dict]) -> li
 	if len(unique) >= 2:
 		return unique[:MAX_YEARS]
 
-	available = [row["name"] for row in options if row.get("name")]
-	if len(available) >= 2:
-		return available[:2]
+	target_school = filters.get("school")
+	by_school: dict[str, list[dict]] = {}
+	for row in options or []:
+		school = row.get("school")
+		if not school:
+			continue
+		by_school.setdefault(school, []).append(row)
+
+	def _sorted_names(rows: list[dict]) -> list[str]:
+		rows = sorted(
+			rows,
+			key=lambda r: r.get("year_start_date") or r.get("name") or "",
+			reverse=True,
+		)
+		return [r["name"] for r in rows if r.get("name")]
+
+	if target_school and by_school.get(target_school):
+		names = _sorted_names(by_school[target_school])
+		if len(names) >= 2:
+			return names[:2]
+		if names:
+			return names[:1]
+
+	for school, rows in by_school.items():
+		names = _sorted_names(rows)
+		if len(names) >= 2:
+			return names[:2]
+		if names:
+			return names[:1]
 
 	if unique:
 		return unique[:MAX_YEARS]
 
+	available = [row["name"] for row in options if row.get("name")]
 	return available[:1]
 
 

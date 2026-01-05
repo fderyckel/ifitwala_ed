@@ -36,19 +36,30 @@
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Academic Years</label>
-				<select
-					v-model="filters.academic_years"
-					class="min-h-[2.25rem] min-w-[190px] rounded-md border px-2 py-1 text-xs"
-					multiple
-					size="4"
-					@change="handleAcademicYearsChange"
-				>
-					<option v-for="year in academicYearOptions" :key="year.value" :value="year.value">
-						{{ year.label }}
-					</option>
-				</select>
-				<span class="text-[0.65rem] text-slate-400">Select 2–5 years.</span>
+				<label class="type-label">Academic Year Range</label>
+				<div class="flex flex-wrap items-center gap-2">
+					<select
+						v-model="yearRange.start"
+						class="h-9 min-w-[160px] rounded-md border px-2 text-sm"
+					>
+						<option :value="null">From</option>
+						<option v-for="year in yearRangeOptions" :key="year.value" :value="year.value">
+							{{ formatAcademicYearLabel(year) }}
+						</option>
+					</select>
+					<span class="text-slate-300">to</span>
+					<select
+						v-model="yearRange.end"
+						class="h-9 min-w-[160px] rounded-md border px-2 text-sm"
+					>
+						<option :value="null">To</option>
+						<option v-for="year in yearRangeOptions" :key="year.value" :value="year.value">
+							{{ formatAcademicYearLabel(year) }}
+						</option>
+					</select>
+				</div>
+				<span v-if="yearRangeMessage" class="text-[0.65rem] text-amber-600">{{ yearRangeMessage }}</span>
+				<span v-else class="text-[0.65rem] text-slate-400">Pick 2-5 consecutive years.</span>
 			</div>
 
 			<div class="flex flex-col gap-1">
@@ -163,6 +174,15 @@ type StackedChart = {
 
 type TopNItem = { label: string; count: number; pct?: number; color?: string; sliceKey?: string }
 
+type AcademicYearOption = {
+	value: string
+	label: string
+	start?: string | null
+	end?: string | null
+	school?: string | null
+	schoolLabel?: string | null
+}
+
 type DashboardResponse = {
 	kpis: KpiResponse
 	stacked_chart: StackedChart
@@ -203,6 +223,16 @@ const filters = reactive({
 	program_offering: null as string | null,
 	top_n: 8,
 })
+
+const yearRange = reactive({
+	start: null as string | null,
+	end: null as string | null,
+})
+
+const yearRangeMessage = ref('')
+const yearRangeValid = ref(false)
+const yearRangeUpdating = ref(false)
+const yearRangeInProgress = computed(() => Boolean(yearRange.start || yearRange.end))
 
 const accessDenied = ref(false)
 const initialized = ref(false)
@@ -267,7 +297,32 @@ const academicYearOptions = computed(() => {
 		label: y.label || y.name,
 		start: y.year_start_date,
 		end: y.year_end_date,
+		school: y.school || null,
+		schoolLabel: y.school_label || y.school_name || y.school || null,
 	}))
+})
+
+const yearRangeSchool = computed(() => {
+	const start = findAcademicYear(yearRange.start)
+	if (start?.school) return start.school
+	const end = findAcademicYear(yearRange.end)
+	if (end?.school) return end.school
+	return null
+})
+
+const yearRangeOptions = computed<AcademicYearOption[]>(() => {
+	const school = yearRangeSchool.value
+	const filtered = school
+		? academicYearOptions.value.filter((y) => y.school === school)
+		: academicYearOptions.value
+	return [...filtered].sort((a, b) => yearSortKey(a) - yearSortKey(b))
+})
+
+const showYearSchoolLabel = computed(() => {
+	const schools = new Set(
+		academicYearOptions.value.map((y) => y.school).filter((s) => s)
+	)
+	return schools.size > 1
 })
 
 const chartModeOptions = computed(() =>
@@ -288,10 +343,23 @@ const scopeLabel = computed(() => {
 		schoolOptions.value.find((s) => s.value === filters.school)?.label ||
 		filters.school ||
 		'School'
-	const yearsLabel = filters.academic_years.length
-		? filters.academic_years.join(', ')
-		: 'Academic Years'
+	const yearsLabel = yearRangeLabel.value
 	return `${orgLabel} • ${schoolLabel} • ${yearsLabel}`
+})
+
+const yearRangeLabel = computed(() => {
+	const start = findAcademicYear(yearRange.start)
+	const end = findAcademicYear(yearRange.end)
+	if (start && end) {
+		return `${start.label} to ${end.label}`
+	}
+	if (yearRange.start || yearRange.end) {
+		return 'Academic Years'
+	}
+	if (filters.academic_years.length) {
+		return filters.academic_years.join(', ')
+	}
+	return 'Academic Years'
 })
 
 const kpiItems = computed(() => [
@@ -355,6 +423,103 @@ function formatRowSubtitle(row: any) {
 	return parts.join(' • ')
 }
 
+function formatAcademicYearLabel(option: AcademicYearOption) {
+	if (!showYearSchoolLabel.value) return option.label
+	const schoolLabel = option.schoolLabel || option.school
+	return schoolLabel ? `${option.label} - ${schoolLabel}` : option.label
+}
+
+function yearSortKey(option: AcademicYearOption) {
+	if (option.start) {
+		const ts = new Date(option.start).getTime()
+		if (!Number.isNaN(ts)) return ts
+	}
+	return 0
+}
+
+function findAcademicYear(value: string | null) {
+	if (!value) return null
+	return academicYearOptions.value.find((y) => y.value === value) || null
+}
+
+function applyYearRange() {
+	if (yearRangeUpdating.value) return
+	yearRangeMessage.value = ''
+	yearRangeValid.value = false
+
+	const start = yearRange.start || null
+	const end = yearRange.end || null
+
+	if (!start && !end) {
+		filters.academic_years = []
+		return
+	}
+
+	if (!start || !end) {
+		yearRangeMessage.value = 'Select both a start and end year.'
+		return
+	}
+
+	const startOption = findAcademicYear(start)
+	const endOption = findAcademicYear(end)
+	if (startOption?.school && endOption?.school && startOption.school !== endOption.school) {
+		yearRangeMessage.value = 'Pick years from the same school.'
+		yearRangeUpdating.value = true
+		yearRange.end = null
+		yearRangeUpdating.value = false
+		return
+	}
+
+	const options = yearRangeOptions.value
+	const startIndex = options.findIndex((y) => y.value === start)
+	const endIndex = options.findIndex((y) => y.value === end)
+	if (startIndex === -1 || endIndex === -1) {
+		yearRangeMessage.value = 'Selected years are out of scope.'
+		return
+	}
+
+	if (startIndex > endIndex) {
+		yearRangeUpdating.value = true
+		;[yearRange.start, yearRange.end] = [yearRange.end, yearRange.start]
+		yearRangeUpdating.value = false
+		applyYearRange()
+		return
+	}
+
+	const range = options.slice(startIndex, endIndex + 1)
+	if (range.length < 2) {
+		yearRangeMessage.value = 'Select at least two consecutive years.'
+		return
+	}
+
+	if (range.length > 5) {
+		yearRangeMessage.value = 'Select no more than five consecutive years.'
+		return
+	}
+
+	if (!areYearsConsecutive(range)) {
+		yearRangeMessage.value = 'Years must be consecutive.'
+		return
+	}
+
+	filters.academic_years = range.map((y) => y.value)
+	yearRangeValid.value = true
+}
+
+function areYearsConsecutive(range: AcademicYearOption[]) {
+	for (let i = 1; i < range.length; i += 1) {
+		const prev = range[i - 1]
+		const curr = range[i]
+		if (!prev.start || !curr.start) continue
+		const prevDate = new Date(prev.start)
+		const currDate = new Date(curr.start)
+		const diffDays = (currDate.getTime() - prevDate.getTime()) / 86400000
+		if (diffDays < 300 || diffDays > 430) {
+			return false
+		}
+	}
+	return true
+}
 function parseSliceKey(sliceKey: string): SlicePayload | null {
 	if (!sliceKey) return null
 	try {
@@ -458,12 +623,14 @@ async function applyDefaults(meta?: DashboardResponse['meta']) {
 		filters.school = defaults.school
 	}
 
-	const yearValues = new Set(academicYearOptions.value.map((y) => y.value))
-	const selectedYears = (filters.academic_years || []).filter((y) => yearValues.has(y))
-	if (selectedYears.length >= 2) {
-		filters.academic_years = selectedYears.slice(0, 5)
-	} else if (Array.isArray(defaults.academic_years)) {
-		filters.academic_years = defaults.academic_years.slice(0, 5)
+	const hasYearSelection = Boolean(yearRange.start && yearRange.end)
+	if (!hasYearSelection && Array.isArray(defaults.academic_years) && defaults.academic_years.length) {
+		const range = resolveYearRange(defaults.academic_years)
+		if (range.start || range.end) {
+			yearRange.start = range.start
+			yearRange.end = range.end
+			applyYearRange()
+		}
 	}
 
 	if (defaults.compare_dimension && ['school', 'program'].includes(defaults.compare_dimension)) {
@@ -505,16 +672,26 @@ function handleOrganizationChange() {
 	if (syncing.value) return
 	filters.school = null
 	filters.academic_years = []
+	yearRange.start = null
+	yearRange.end = null
+	yearRangeMessage.value = ''
 }
 
 function handleSchoolChange() {
 	if (syncing.value) return
 	filters.academic_years = []
+	yearRange.start = null
+	yearRange.end = null
+	yearRangeMessage.value = ''
 }
 
-function handleAcademicYearsChange() {
-	if (filters.academic_years.length > 5) {
-		filters.academic_years = filters.academic_years.slice(0, 5)
+function resolveYearRange(years: string[]) {
+	const options = academicYearOptions.value.filter((y) => years.includes(y.value))
+	if (!options.length) return { start: null, end: null }
+	const sorted = [...options].sort((a, b) => yearSortKey(a) - yearSortKey(b))
+	return {
+		start: sorted[0]?.value || null,
+		end: sorted[sorted.length - 1]?.value || null,
 	}
 }
 
@@ -523,7 +700,18 @@ watch(
 	() => {
 		if (!initialized.value || syncing.value) return
 		closeDrawer()
+		if (yearRangeInProgress.value && !yearRangeValid.value) return
 		debounceLoad()
+	},
+	{ deep: true }
+)
+
+watch(
+	[() => yearRange.start, () => yearRange.end, academicYearOptions],
+	() => {
+		if (syncing.value) return
+		closeDrawer()
+		applyYearRange()
 	},
 	{ deep: true }
 )
