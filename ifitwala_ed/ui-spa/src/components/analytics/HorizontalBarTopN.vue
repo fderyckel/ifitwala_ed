@@ -75,10 +75,3 @@ function handleClick(params: any) {
   if (sliceKey) emit('select', sliceKey)
 }
 </script>
-
-<style scoped>
-.analytics-chart {
-  width: 100%;
-  min-height: 260px;
-}
-</style>
