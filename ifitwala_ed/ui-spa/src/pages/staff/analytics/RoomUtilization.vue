@@ -9,6 +9,7 @@
         </p>
       </div>
       <button
+        v-if="canViewAnalytics"
         class="fui-btn-primary rounded-full px-5 py-2 text-sm font-medium transition-all hover:shadow-md active:scale-95"
         @click="refreshMetrics"
       >
@@ -16,7 +17,7 @@
       </button>
     </header>
 
-    <KpiRow :items="kpiItems" class="mb-2" />
+    <KpiRow v-if="canViewAnalytics" :items="kpiItems" class="mb-2" />
 
     <section class="analytics-card relative overflow-hidden">
       <!-- Decorative background blur -->
@@ -155,7 +156,7 @@
     </section>
 
     <!-- Unified Analytics Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div v-if="canViewAnalytics" class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
       <!-- Time Utilization Section -->
       <section class="analytics-card h-full">
@@ -389,6 +390,14 @@ const freeRoomsResource = createResource({
   auto: false,
 })
 
+const analyticsAccessResource = createResource({
+  url: 'ifitwala_ed.api.room_utilization.can_view_room_utilization_analytics',
+  method: 'POST',
+  auto: false,
+})
+
+const canViewAnalytics = ref(false)
+
 const timeUtilResource = createResource({
   url: 'ifitwala_ed.api.room_utilization.get_room_time_utilization',
   method: 'POST',
@@ -494,6 +503,7 @@ async function loadFreeRooms() {
 }
 
 async function loadTimeUtil() {
+  if (!canViewAnalytics.value) return
   if (!selectedSchool.value || !timeUtilFilters.value.from_date || !timeUtilFilters.value.to_date)
     return
   await timeUtilResource.submit({
@@ -508,6 +518,7 @@ async function loadTimeUtil() {
 }
 
 async function loadCapacityUtil() {
+  if (!canViewAnalytics.value) return
   if (!selectedSchool.value || !capacityFilters.value.from_date || !capacityFilters.value.to_date)
     return
   await capacityResource.submit({
@@ -523,6 +534,7 @@ let timeDebounce: number | undefined
 let capacityDebounce: number | undefined
 
 function debounceTimeUtil() {
+  if (!canViewAnalytics.value) return
   window.clearTimeout(timeDebounce)
   timeDebounce = window.setTimeout(() => {
     loadTimeUtil()
@@ -530,6 +542,7 @@ function debounceTimeUtil() {
 }
 
 function debounceCapacityUtil() {
+  if (!canViewAnalytics.value) return
   window.clearTimeout(capacityDebounce)
   capacityDebounce = window.setTimeout(() => {
     loadCapacityUtil()
@@ -545,6 +558,7 @@ watch(
     timeUtilFilters.value.day_end_time,
   ],
   () => {
+    if (!canViewAnalytics.value) return
     debounceTimeUtil()
   }
 )
@@ -552,6 +566,7 @@ watch(
 watch(
   () => [selectedSchool.value, capacityFilters.value.from_date, capacityFilters.value.to_date],
   () => {
+    if (!canViewAnalytics.value) return
     debounceCapacityUtil()
   }
 )
@@ -566,11 +581,19 @@ watch(
 )
 
 function refreshMetrics() {
+  if (!canViewAnalytics.value) return
   loadTimeUtil()
   loadCapacityUtil()
 }
 
-onMounted(() => {
+async function loadAnalyticsAccess() {
+  const result = await analyticsAccessResource.submit()
+  const allowed = result?.allowed ?? analyticsAccessResource.data?.allowed ?? 0
+  canViewAnalytics.value = Boolean(allowed)
+}
+
+onMounted(async () => {
+  await loadAnalyticsAccess()
   refreshMetrics()
 })
 </script>

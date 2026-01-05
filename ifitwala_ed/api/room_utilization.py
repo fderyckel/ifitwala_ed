@@ -17,6 +17,7 @@ from ifitwala_ed.utilities.location_utils import find_room_conflicts
 
 MAX_RANGE_DAYS = 62
 LONG_RANGE_ROLES = {"System Manager", "Administrator", "Academic Admin"}
+ANALYTICS_ROLES = {"Academic Admin", "Assistant Admin", "Curriculum Coordinator"}
 
 
 def _parse_filters(filters: Any | None) -> dict:
@@ -41,6 +42,33 @@ def _require_scope(filters: dict) -> None:
 def _require_location_booking_table() -> None:
 	if not frappe.db.table_exists("Location Booking"):
 		frappe.throw("Location Booking doctype/table missing. Migration/installation is broken.")
+
+
+def _extract_capacity_needed(filters: dict) -> int | None:
+	cap = filters.get("capacity_needed")
+	if cap in (None, ""):
+		cap = filters.get("capacity")
+	if cap in (None, ""):
+		cap = filters.get("min_capacity")
+	try:
+		cap = int(cap) if cap not in (None, "") else None
+	except Exception:
+		cap = None
+	if cap and cap > 0:
+		return cap
+	return None
+
+
+def _has_room_utilization_analytics_access(user: str | None = None) -> bool:
+	if not user:
+		user = frappe.session.user
+	roles = set(frappe.get_roles(user))
+	return bool(roles & ANALYTICS_ROLES)
+
+
+def _require_room_utilization_analytics_access() -> None:
+	if not _has_room_utilization_analytics_access():
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
 
 def _get_school_scope(school: str) -> list[str]:
@@ -106,12 +134,8 @@ def _get_candidate_rooms(filters: dict) -> list[dict]:
 		# No explicit building field in Location; treat building as parent_location.
 		room_filters["parent_location"] = filters["building"]
 
-	cap = filters.get("capacity_needed")
-	try:
-		cap = int(cap) if cap not in (None, "") else None
-	except Exception:
-		cap = None
-	if cap and cap > 0:
+	cap = _extract_capacity_needed(filters)
+	if cap:
 		room_filters["maximum_capacity"] = [">=", cap]
 
 	return frappe.get_all(
@@ -165,6 +189,11 @@ def get_room_utilization_filter_meta():
 		default_school = allowed[0]
 
 	return {"schools": school_rows, "default_school": default_school}
+
+
+@frappe.whitelist()
+def can_view_room_utilization_analytics():
+	return {"allowed": 1 if _has_room_utilization_analytics_access() else 0}
 
 
 @frappe.whitelist()
@@ -245,6 +274,7 @@ def get_free_rooms(filters=None):
 
 @frappe.whitelist()
 def get_room_time_utilization(filters=None):
+	_require_room_utilization_analytics_access()
 	filters = _parse_filters(filters)
 	_require_scope(filters)
 
@@ -340,6 +370,7 @@ def get_room_time_utilization(filters=None):
 
 @frappe.whitelist()
 def get_room_capacity_utilization(filters=None):
+	_require_room_utilization_analytics_access()
 	filters = _parse_filters(filters)
 	_require_scope(filters)
 
