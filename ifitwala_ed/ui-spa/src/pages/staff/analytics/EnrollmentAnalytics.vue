@@ -237,6 +237,8 @@ const yearRangeInProgress = computed(() => Boolean(yearRange.start || yearRange.
 const accessDenied = ref(false)
 const initialized = ref(false)
 const syncing = ref(false)
+const lastPayloadKey = ref<string | null>(null)
+const pendingPayloadKey = ref<string | null>(null)
 
 const dashboardResource = createResource({
 	url: 'ifitwala_ed.api.enrollment_analytics.get_enrollment_dashboard',
@@ -311,7 +313,12 @@ const yearRangeSchool = computed(() => {
 })
 
 const yearRangeOptions = computed<AcademicYearOption[]>(() => {
-	const school = yearRangeSchool.value
+	const explicitSchool = filters.school
+	const scopedSchool =
+		explicitSchool && academicYearOptions.value.some((y) => y.school === explicitSchool)
+			? explicitSchool
+			: null
+	const school = yearRangeSchool.value || scopedSchool
 	const filtered = school
 		? academicYearOptions.value.filter((y) => y.school === school)
 		: academicYearOptions.value
@@ -451,7 +458,9 @@ function applyYearRange() {
 	const end = yearRange.end || null
 
 	if (!start && !end) {
-		filters.academic_years = []
+		if (filters.academic_years.length) {
+			filters.academic_years = []
+		}
 		return
 	}
 
@@ -614,8 +623,7 @@ async function applyDefaults(meta?: DashboardResponse['meta']) {
 		filters.school = defaults.school
 	}
 
-	const hasYearSelection = Boolean(yearRange.start && yearRange.end)
-	if (!hasYearSelection && Array.isArray(defaults.academic_years) && defaults.academic_years.length) {
+	if (!yearRangeInProgress.value && Array.isArray(defaults.academic_years) && defaults.academic_years.length) {
 		const range = resolveYearRange(defaults.academic_years)
 		if (range.start || range.end) {
 			yearRange.start = range.start
@@ -649,13 +657,34 @@ async function applyDefaults(meta?: DashboardResponse['meta']) {
 }
 
 async function loadDashboard() {
+	const payload = buildPayload()
+	const payloadKey = JSON.stringify(payload)
+	if (dashboardResource.loading) {
+		pendingPayloadKey.value = payloadKey
+		return
+	}
+	if (lastPayloadKey.value === payloadKey && dashboardResource.data) {
+		return
+	}
+	lastPayloadKey.value = payloadKey
+
 	try {
 		accessDenied.value = false
-		await dashboardResource.submit(buildPayload())
+		await dashboardResource.submit(payload)
 		await applyDefaults(dashboard.value.meta)
 		if (!initialized.value) initialized.value = true
 	} catch (error) {
 		accessDenied.value = true
+	} finally {
+		if (pendingPayloadKey.value && pendingPayloadKey.value !== lastPayloadKey.value) {
+			const nextKey = pendingPayloadKey.value
+			pendingPayloadKey.value = null
+			if (nextKey !== lastPayloadKey.value) {
+				loadDashboard()
+			}
+		} else {
+			pendingPayloadKey.value = null
+		}
 	}
 }
 
@@ -698,7 +727,7 @@ watch(
 )
 
 watch(
-	[() => yearRange.start, () => yearRange.end, academicYearOptions],
+	[() => yearRange.start, () => yearRange.end],
 	() => {
 		if (syncing.value) return
 		closeDrawer()

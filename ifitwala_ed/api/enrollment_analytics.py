@@ -198,37 +198,21 @@ def _load_academic_year_options(school_scope: list[str]) -> list[dict]:
 
 	rows = frappe.db.sql(
 		"""
-		SELECT DISTINCT
-			pe.academic_year,
-			pe.school,
-			s.school_name,
+		SELECT
+			ay.name AS academic_year,
 			ay.academic_year_name,
 			ay.year_start_date,
-			ay.year_end_date
-		FROM `tabProgram Enrollment` pe
-		LEFT JOIN `tabSchool` s ON s.name = pe.school
-		LEFT JOIN `tabAcademic Year` ay ON ay.name = pe.academic_year
-		WHERE pe.school IN %(schools)s
-		  AND pe.academic_year IS NOT NULL
-		ORDER BY ay.year_start_date DESC, pe.academic_year DESC, pe.school ASC
+			ay.year_end_date,
+			ay.school,
+			s.school_name
+		FROM `tabAcademic Year` ay
+		LEFT JOIN `tabSchool` s ON s.name = ay.school
+		WHERE ay.school IN %(schools)s
+		ORDER BY ay.year_start_date DESC, ay.name DESC, ay.school ASC
 		""",
 		{"schools": tuple(school_scope)},
 		as_dict=True,
 	)
-
-	if not rows:
-		rows = frappe.get_all(
-			"Academic Year",
-			filters={"school": ["in", school_scope]},
-			fields=[
-				"name as academic_year",
-				"academic_year_name",
-				"year_start_date",
-				"year_end_date",
-				"school",
-			],
-			order_by="year_start_date desc",
-		)
 
 	options = []
 	for row in rows or []:
@@ -245,18 +229,6 @@ def _load_academic_year_options(school_scope: list[str]) -> list[dict]:
 				"school_label": row.get("school_name"),
 			}
 		)
-
-	schools_missing = {opt.get("school") for opt in options if opt.get("school") and not opt.get("school_label")}
-	if schools_missing:
-		school_rows = frappe.get_all(
-			"School",
-			filters={"name": ["in", list(schools_missing)]},
-			fields=["name", "school_name"],
-		)
-		school_labels = {row.name: row.school_name for row in school_rows}
-		for opt in options:
-			if opt.get("school") and not opt.get("school_label"):
-				opt["school_label"] = school_labels.get(opt["school"])
 
 	return options
 
