@@ -497,26 +497,17 @@ function applyYearRange() {
 		return
 	}
 
-	if (!areYearsConsecutive(range)) {
-		yearRangeMessage.value = 'Years must be consecutive.'
-		return
+	const rangeValues = range.map((y) => y.value)
+	if (!arraysEqual(rangeValues, filters.academic_years)) {
+		filters.academic_years = rangeValues
 	}
-
-	filters.academic_years = range.map((y) => y.value)
 	yearRangeValid.value = true
 }
 
-function areYearsConsecutive(range: AcademicYearOption[]) {
-	for (let i = 1; i < range.length; i += 1) {
-		const prev = range[i - 1]
-		const curr = range[i]
-		if (!prev.start || !curr.start) continue
-		const prevDate = new Date(prev.start)
-		const currDate = new Date(curr.start)
-		const diffDays = (currDate.getTime() - prevDate.getTime()) / 86400000
-		if (diffDays < 300 || diffDays > 430) {
-			return false
-		}
+function arraysEqual(a: string[], b: string[]) {
+	if (a.length !== b.length) return false
+	for (let i = 0; i < a.length; i += 1) {
+		if (a[i] !== b[i]) return false
 	}
 	return true
 }
