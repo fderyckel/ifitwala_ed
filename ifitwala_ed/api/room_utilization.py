@@ -38,6 +38,11 @@ def _require_scope(filters: dict) -> None:
 		frappe.throw(_("Please select a School or Building to scope this query."))
 
 
+def _require_location_booking_table() -> None:
+	if not frappe.db.table_exists("Location Booking"):
+		frappe.throw("Location Booking doctype/table missing. Migration/installation is broken.")
+
+
 def _get_school_scope(school: str) -> list[str]:
 	"""Return [school] + descendant schools (NestedSet)."""
 	if not school:
@@ -187,21 +192,19 @@ def get_free_rooms(filters=None):
 	if window_end <= window_start:
 		frappe.throw(_("End Time must be after Start Time."))
 
+	_require_location_booking_table()
+	sources_used.append("Location Booking")
+
 	rooms = _get_candidate_rooms(filters)
 	if not rooms:
 		payload = {
 			"window": {"start": str(window_start), "end": str(window_end)},
 			"rooms": [],
-			"classes_checked": False,
+			"classes_checked": True,
 		}
 		return _attach_debug(payload, busy_count=0, candidate_count=0)
 
 	room_names = [r["name"] for r in rooms]
-	location_booking_checked = bool(frappe.db.table_exists("Location Booking"))
-
-	# Record the sources that were queried (for debug output only).
-	if location_booking_checked:
-		sources_used.append("Location Booking")
 
 	conflicts = find_room_conflicts(
 		None,
@@ -231,7 +234,7 @@ def get_free_rooms(filters=None):
 		"rooms": available_rooms,
 		# classes_checked:
 		# True if teaching bookings are available via Location Booking.
-		"classes_checked": location_booking_checked,
+		"classes_checked": True,
 	}
 	return _attach_debug(
 		payload,
@@ -269,28 +272,11 @@ def get_room_time_utilization(filters=None):
 		}
 
 	room_names = [r["name"] for r in rooms]
-	
+
 	# Location Booking is the only source of room occupancy.
-	has_bookings = frappe.db.table_exists("Location Booking")
+	_require_location_booking_table()
 	range_start = get_datetime(f"{from_date} 00:00:00")
 	range_end = get_datetime(f"{to_date} 23:59:59")
-
-	if not has_bookings:
-		# No tables to query
-		return {
-			"range": {"from": str(from_date), "to": str(to_date)},
-			"day_window": {"start": day_start, "end": day_end},
-			"rooms": [
-				{
-					"room": r["name"],
-					"room_name": r.get("location_name") or r["name"],
-					"booked_minutes": 0,
-					"available_minutes": available_minutes,
-					"utilization_pct": 0,
-				}
-				for r in rooms
-			],
-		}
 
 	filters_lb = {
 		"location": ["in", tuple(room_names)],
@@ -367,23 +353,22 @@ def get_room_capacity_utilization(filters=None):
 	range_start = get_datetime(f"{from_date} 00:00:00")
 	range_end = get_datetime(f"{to_date} 23:59:59")
 
-	rows = []
-	if frappe.db.table_exists("Location Booking"):
-		filters_lb = {
-			"location": ["in", tuple(room_names)],
-			"from_datetime": ["<", range_end],
-			"to_datetime": [">", range_start],
-		}
-		if frappe.db.has_column("Location Booking", "docstatus"):
-			filters_lb["docstatus"] = ["<", 2]
-		if frappe.db.has_column("Location Booking", "occupancy_type"):
-			filters_lb["occupancy_type"] = ["in", ["Meeting", "Teaching"]]
+	_require_location_booking_table()
+	filters_lb = {
+		"location": ["in", tuple(room_names)],
+		"from_datetime": ["<", range_end],
+		"to_datetime": [">", range_start],
+	}
+	if frappe.db.has_column("Location Booking", "docstatus"):
+		filters_lb["docstatus"] = ["<", 2]
+	if frappe.db.has_column("Location Booking", "occupancy_type"):
+		filters_lb["occupancy_type"] = ["in", ["Meeting", "Teaching"]]
 
-		rows = frappe.db.get_all(
-			"Location Booking",
-			filters=filters_lb,
-			fields=["location", "source_doctype", "source_name", "occupancy_type"],
-		)
+	rows = frappe.db.get_all(
+		"Location Booking",
+		filters=filters_lb,
+		fields=["location", "source_doctype", "source_name", "occupancy_type"],
+	)
 
 	meeting_names = [
 		r.get("source_name")

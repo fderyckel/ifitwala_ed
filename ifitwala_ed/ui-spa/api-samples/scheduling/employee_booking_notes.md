@@ -19,8 +19,7 @@ It is used for:
 
 It is **not** used for:
 
-* room truth (that is Room Occupancy)
-* room analytics
+* room truth (that is Location Booking)
 * free-room checks
 
 ---
@@ -41,7 +40,7 @@ Teaching is expanded into concrete datetime slots in a bounded window, then proj
 Meeting is a domain doc.
 
 * Meeting → Employee Booking: **one row per participant**
-* Meeting → Room Occupancy: **one row per location** (separate system)
+* Meeting → Location Booking: **one row per location** (separate system)
 
 ### 1.3 School Events (domain → staff truth, only when intended)
 
@@ -180,16 +179,16 @@ WHERE blocks_availability = 1
 
 Any employee conflict logic that ignores this flag is incorrect.
 
-### Relationship to Room Occupancy
+### Relationship to Location Booking
 
 Even with:
 
 * Employee Booking = staff truth
-* Room Occupancy = room truth
+* Location Booking = room truth
 
 `blocks_availability` remains essential because **room facts cannot answer staff availability questions**.
 
-Room Occupancy never replaces Employee Booking for staff conflict logic.
+Location Booking never replaces Employee Booking for staff conflict logic.
 
 ---
 
@@ -223,7 +222,7 @@ When staff availability looks wrong:
 ## 8. Summary
 
 * Employee truth = Employee Booking
-* Room truth = Room Occupancy
+* Room truth = Location Booking
 * Domain docs materialize into facts
 * Reads never infer
 * Writes must be idempotent and rebuild-safe
