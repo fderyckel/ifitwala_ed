@@ -58,12 +58,6 @@
     "options": "Program Enrollment"
   },
   {
-    "fieldname": "program_enrollment_course",
-    "fieldtype": "Link",
-    "label": "Program Enrollment Course",
-    "options": "Program Enrollment Course"
-  },
-  {
     "fieldname": "course",
     "fieldtype": "Link",
     "label": "Course",
@@ -194,7 +188,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-19 22:39:47",
+ "modified": "2025-12-20 22:39:47",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Course Term Result",

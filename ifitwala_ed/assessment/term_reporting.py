@@ -27,7 +27,6 @@ class TaskMeta:
 @dataclass
 class Bucket:
 	program_enrollment: str
-	program_enrollment_course: str
 	student: str
 	course: str
 	school: Optional[str]
@@ -69,36 +68,37 @@ def _load_program_enrollments(rc):
 
 def _load_program_enrollment_courses(pe_by_name: Dict[str, dict]):
 	if not pe_by_name:
-		return {}, {}
+		return {}
 
 	pe_names = list(pe_by_name.keys())
 	rows = frappe.get_all(
 		"Program Enrollment Course",
 		filters={"parent": ("in", pe_names)},
-		fields=["name", "parent", "course"],
+		fields=["parent", "course"],
 	)
 
-	# Map (student, course) -> PEC name, and PEC -> PE meta
-	pec_by_student_course: Dict[Tuple[str, str], str] = {}
-	pec_info: Dict[str, dict] = {}
+	# Map (student, course) -> Program Enrollment info
+	pe_by_student_course: Dict[Tuple[str, str], dict] = {}
 
 	for r in rows:
 		pe = pe_by_name.get(r.parent)
 		if not pe:
 			continue
 		key = (pe.student, r.course)
-		# If there are duplicates, keep the first – data model should avoid this.
-		pec_by_student_course.setdefault(key, r.name)
-		pec_info[r.name] = {
-			"program_enrollment": r.parent,
-			"student": pe.student,
-			"course": r.course,
-			"program": pe.program,
-			"academic_year": pe.academic_year,
-			"school": pe.school,
-		}
+		# If there are duplicates, keep the first - data model should avoid this.
+		pe_by_student_course.setdefault(
+			key,
+			{
+				"program_enrollment": r.parent,
+				"student": pe.student,
+				"course": r.course,
+				"program": pe.program,
+				"academic_year": pe.academic_year,
+				"school": pe.school,
+			},
+		)
 
-	return pec_by_student_course, pec_info
+	return pe_by_student_course
 
 
 def _load_tasks_for_cycle(rc, term_start: Optional[str], term_end: Optional[str]) -> Dict[str, TaskMeta]:
@@ -196,7 +196,7 @@ def recalculate_course_term_results(reporting_cycle: str):
 	term_start, term_end = _get_term_window(rc.term)
 
 	pe_by_name = _load_program_enrollments(rc)
-	pec_by_student_course, pec_info = _load_program_enrollment_courses(pe_by_name)
+	pe_by_student_course = _load_program_enrollment_courses(pe_by_name)
 
 	tasks = _load_tasks_for_cycle(rc, term_start, term_end)
 	if not tasks:
@@ -215,21 +215,20 @@ def recalculate_course_term_results(reporting_cycle: str):
 			continue
 
 		key = (row.student, tmeta.course)
-		pec_name = pec_by_student_course.get(key)
-		if not pec_name:
+		info = pe_by_student_course.get(key)
+		if not info:
 			# No Program Enrollment Course row – skip for now.
 			continue
 
-		info = pec_info[pec_name]
 		pct = _compute_pct(row)
 		if pct is None:
 			continue
 
-		bucket = buckets.get(pec_name)
+		bucket_key = (info["program_enrollment"], info["course"])
+		bucket = buckets.get(bucket_key)
 		if not bucket:
 			bucket = Bucket(
 				program_enrollment=info["program_enrollment"],
-				program_enrollment_course=pec_name,
 				student=info["student"],
 				course=info["course"],
 				school=info["school"],
@@ -238,7 +237,7 @@ def recalculate_course_term_results(reporting_cycle: str):
 				grade_scale=tmeta.grade_scale,
 				pct_values=[],
 			)
-			buckets[pec_name] = bucket
+			buckets[bucket_key] = bucket
 
 		if not bucket.grade_scale and tmeta.grade_scale:
 			bucket.grade_scale = tmeta.grade_scale
@@ -248,7 +247,7 @@ def recalculate_course_term_results(reporting_cycle: str):
 	updated = 0
 	created = 0
 
-	for pec_name, bucket in buckets.items():
+	for bucket_key, bucket in buckets.items():
 		if not bucket.pct_values:
 			continue
 
@@ -259,7 +258,8 @@ def recalculate_course_term_results(reporting_cycle: str):
 			"Course Term Result",
 			{
 				"reporting_cycle": rc.name,
-				"program_enrollment_course": bucket.program_enrollment_course,
+				"program_enrollment": bucket.program_enrollment,
+				"course": bucket.course,
 			},
 			"name",
 		)
@@ -274,7 +274,6 @@ def recalculate_course_term_results(reporting_cycle: str):
 		doc.reporting_cycle = rc.name
 		doc.student = bucket.student
 		doc.program_enrollment = bucket.program_enrollment
-		doc.program_enrollment_course = bucket.program_enrollment_course
 		doc.course = bucket.course
 		doc.school = bucket.school
 		doc.academic_year = bucket.academic_year
