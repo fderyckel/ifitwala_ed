@@ -452,6 +452,97 @@ def _student_group_memberships(
 
 
 # ---------------------------------------------------------------------------
+# Staff Calendar resolution
+# ---------------------------------------------------------------------------
+
+def _resolve_staff_calendar_for_employee(
+	employee_id: str,
+	start_date: date,
+	end_date: date,
+) -> Optional[dict]:
+	"""
+	Return the single best Staff Calendar match for this employee and window.
+
+	Rule:
+	- employee_group must match
+	- calendar must overlap [start_date, end_date]
+	- calendar school is chosen by nearest match in the employee school's ancestor chain
+	  (employee school first, then parent, then grandparent...)
+
+	This enables parent-school staff calendars to apply to descendant schools,
+	while still allowing child calendars to override.
+	"""
+	if not employee_id:
+		return None
+
+	# employee_group is permlevel=1, so ignore_permissions is required here
+	emp_rows = frappe.get_all(
+		"Employee",
+		filters={"name": employee_id},
+		fields=["name", "school", "employee_group"],
+		limit=1,
+		ignore_permissions=True,
+	)
+
+	if not emp_rows:
+		return None
+
+	emp = emp_rows[0]
+	employee_school = emp.get("school")
+	employee_group = emp.get("employee_group")
+
+	if not employee_school or not employee_group:
+		return None
+
+	# Build school chain (nearest-first): [employee_school] + ancestors
+	from frappe.utils.nestedset import get_ancestors_of
+	ancestors = get_ancestors_of("School", employee_school) or []
+	school_chain = [employee_school] + ancestors
+
+	# Fetch all overlapping calendars for any school in chain
+	cals = frappe.get_all(
+		"Staff Calendar",
+		filters={
+			"employee_group": employee_group,
+			"school": ["in", school_chain],
+			"from_date": ["<=", end_date],
+			"to_date": [">=", start_date],
+		},
+		fields=["name", "school", "employee_group", "from_date", "to_date"],
+		ignore_permissions=True,
+	)
+
+	if not cals:
+		return None
+
+	# Choose nearest school match
+	rank = {school: i for i, school in enumerate(school_chain)}
+	cals.sort(key=lambda r: rank.get(r.get("school"), 10**9))
+
+	# Multiple matches should be prevented by Staff Calendar overlap validation.
+	# Still log deterministically and continue.
+	if len(cals) > 1:
+		frappe.logger("ifitwala_ed.calendar").warning(
+			"Multiple Staff Calendar matches; using nearest school match",
+			{
+				"employee": employee_id,
+				"employee_school": employee_school,
+				"employee_group": employee_group,
+				"window_start": start_date.isoformat(),
+				"window_end": end_date.isoformat(),
+				"matches": [c.get("name") for c in cals[:10]],
+			},
+		)
+
+	best = cals[0]
+	return {
+		"name": best.get("name"),
+		"school": best.get("school"),
+		"employee_group": best.get("employee_group"),
+	}
+
+
+# ---------------------------------------------------------------------------
 # Student Group slots
 # ---------------------------------------------------------------------------
 
@@ -552,68 +643,22 @@ def _collect_staff_holiday_events(
 	window_start: datetime,
 	window_end: datetime,
 	tzinfo: pytz.timezone,
-	*,
 	employee_id: Optional[str] = None,
 ) -> List[CalendarEvent]:
 	if not employee_id:
 		return []
 
-	# Employee.employee_group is permlevel=1, so read via ignore_permissions.
-	emp_rows = frappe.get_all(
-		"Employee",
-		filters={"name": employee_id},
-		fields=["name", "school", "employee_group"],
-		limit=1,
-		ignore_permissions=True,
-	)
-	if not emp_rows:
-		return []
-
-	emp = emp_rows[0]
-	employee_school = emp.get("school")
-	employee_group = emp.get("employee_group")
-	if not employee_school or not employee_group:
-		return []
-
 	start_date = getdate(window_start)
 	end_date = getdate(window_end)
 
-	cal_rows = frappe.get_all(
-		"Staff Calendar",
-		filters={
-			"school": employee_school,
-			"employee_group": employee_group,
-			"from_date": ["<=", end_date],
-			"to_date": [">=", start_date],
-		},
-		fields=["name", "school", "employee_group", "from_date", "to_date"],
-		order_by="from_date desc",
-		limit=2,
-		ignore_permissions=True,
-	)
-
-	if not cal_rows:
+	cal = _resolve_staff_calendar_for_employee(employee_id, start_date, end_date)
+	if not cal:
 		return []
-
-	if len(cal_rows) > 1:
-		frappe.logger("ifitwala_ed.calendar").warning(
-			"Multiple Staff Calendar matches for employee",
-			{
-				"employee": employee_id,
-				"school": employee_school,
-				"employee_group": employee_group,
-				"window_start": str(start_date),
-				"window_end": str(end_date),
-				"matches": [row["name"] for row in cal_rows],
-			},
-		)
-
-	staff_calendar_name = cal_rows[0]["name"]
 
 	holiday_rows = frappe.get_all(
 		"Staff Calendar Holidays",
 		filters={
-			"parent": staff_calendar_name,
+			"parent": cal["name"],
 			"holiday_date": ["between", [start_date, end_date]],
 		},
 		fields=["holiday_date", "description", "color", "weekly_off"],
@@ -624,8 +669,8 @@ def _collect_staff_holiday_events(
 	if not holiday_rows:
 		return []
 
-	events: List[CalendarEvent] = []
 	default_color = "#64748B"
+	events: List[CalendarEvent] = []
 
 	for row in holiday_rows:
 		hd = getdate(row.get("holiday_date"))
@@ -640,7 +685,7 @@ def _collect_staff_holiday_events(
 
 		events.append(
 			CalendarEvent(
-				id=f"staff_holiday::{staff_calendar_name}::{hd.isoformat()}",
+				id=f"staff_holiday::{cal['name']}::{hd.isoformat()}",
 				title=title,
 				start=start_dt,
 				end=end_dt,
@@ -648,11 +693,11 @@ def _collect_staff_holiday_events(
 				color=color,
 				all_day=True,
 				meta={
-					"staff_calendar": staff_calendar_name,
+					"staff_calendar": cal["name"],
 					"holiday_date": hd.isoformat(),
 					"weekly_off": int(row.get("weekly_off") or 0),
-					"employee_group": employee_group,
-					"school": employee_school,
+					"employee_group": cal["employee_group"],
+					"school": cal["school"],
 				},
 			)
 		)

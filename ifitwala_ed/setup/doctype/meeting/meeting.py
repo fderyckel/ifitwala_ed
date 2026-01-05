@@ -541,30 +541,48 @@ class Meeting(Document):
 		"""
 		Apply visibility_scope on top of role-based perms.
 
-		Rules (for read/print):
-		  - Administrator and System Manager: always allowed.
-		  - Public/Internal: defer to base role permissions.
-		  - Team & Participants: only participants + team members.
-		  - Participants Only: only participants.
-		  - School Staff: same school employees + participants + team members.
+		Addition:
+			- Academic Admin: can read/print any Meeting where Meeting.school is
+				their Employee.school OR a descendant of their Employee.school.
 		"""
-		# First: respect standard role-based permissions
+		user = frappe.session.user
+		roles = set(frappe.get_roles(user) or [])
+
+		# Full bypass for admin / sys mgr
+		if user == "Administrator" or "System Manager" in roles:
+			return True
+
+		# Always respect standard role-based permissions first.
+		# (So Academic Admin must also have a DocType permission row for read/print.)
 		if not super().has_permission(ptype):
 			return False
 
-		user = frappe.session.user
-
-		# Full bypass for admin / sys mgr
-		if user == "Administrator":
-			return True
-		if "System Manager" in frappe.get_roles(user):
-			return True
-
-		# For writes (create/save/delete), keep existing behaviour
+		# For non-read operations, keep base perms only (no special bypass)
 		if ptype not in ("read", "print"):
 			return True
 
+		# Academic Admin school-scope bypass (read/print)
+		if "Academic Admin" in roles:
+			meeting_school = getattr(self, "school", None)
+			if meeting_school:
+				emp_school = frappe.db.get_value(
+					"Employee",
+					{"user_id": user, "status": "Active"},
+					"school",
+				)
+
+				if emp_school:
+					# Self or descendants
+					from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
+					allowed = set(get_descendant_schools(user_school=emp_school) or [])
+					if meeting_school in allowed:
+						return True
+
+		# Fall back to visibility_scope rules for everyone else
 		return self._user_can_see(user)
+
+
 
 	def _user_can_see(self, user: str) -> bool:
 		scope = (self.visibility_scope or "").strip() or "Team & Participants"
