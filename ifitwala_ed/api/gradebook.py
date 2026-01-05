@@ -259,6 +259,7 @@ def get_task_gradebook(task: str) -> Dict[str, Any]:
 			score = score_map.get(row.student, {}).get(criterion["assessment_criteria"], {})
 			criteria_scores.append(
 				{
+					"score_name": score.get("name"),
 					"assessment_criteria": criterion["assessment_criteria"],
 					"level": score.get("level"),
 					"level_points": flt(score.get("level_points") or 0),
