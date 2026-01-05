@@ -490,19 +490,6 @@ watch(
 	}
 )
 
-watch(
-	[() => hasAllDayHeatmap.value, () => hasByCourseHeatmap.value],
-	([hasAllDay, hasByCourse]) => {
-		if (hasAllDay) {
-			attendanceView.value = 'all_day'
-			attendanceKpiSource.value = 'all_day'
-		} else if (hasByCourse) {
-			attendanceView.value = 'by_course'
-			attendanceKpiSource.value = 'by_course'
-		}
-	}
-)
-
 const permissions = computed<PermissionFlags>(() => snapshot.value.meta.permissions)
 const displayViewMode = computed<ViewMode>(() => snapshot.value.meta.view_mode || viewMode.value)
 
@@ -524,6 +511,19 @@ function formatDate(value?: string | null) {
 const hasAllDayHeatmap = computed(() => (snapshot.value.attendance.all_day_heatmap || []).length > 0)
 const hasByCourseHeatmap = computed(() => (snapshot.value.attendance.by_course_heatmap || []).length > 0)
 const hasAnyHeatmap = computed(() => hasAllDayHeatmap.value || hasByCourseHeatmap.value)
+
+watch(
+	[() => hasAllDayHeatmap.value, () => hasByCourseHeatmap.value],
+	([hasAllDay, hasByCourse]) => {
+		if (hasAllDay) {
+			attendanceView.value = 'all_day'
+			attendanceKpiSource.value = 'all_day'
+		} else if (hasByCourse) {
+			attendanceView.value = 'by_course'
+			attendanceKpiSource.value = 'by_course'
+		}
+	}
+)
 
 const attendanceSourceLabel = computed(() => {
 	if (attendanceKpiSource.value === 'all_day') return 'Whole day'

@@ -46,7 +46,10 @@ def _get_program_subtree(program: str | None) -> list[str] | None:
 	if not program:
 		return None
 
-	lft, rgt = frappe.db.get_value("Program", program, ["lft", "rgt"])
+	value = frappe.db.get_value("Program", program, ["lft", "rgt"])
+	if not value:
+		return [program]
+	lft, rgt = value
 	if lft is None or rgt is None:
 		return [program]
 
@@ -214,7 +217,10 @@ def search_students(search_text: str = "", school: str | None = None, program: s
 	def _get_program_subtree(program_name: str | None) -> list[str] | None:
 		if not program_name:
 			return None
-		lft, rgt = frappe.db.get_value("Program", program_name, ["lft", "rgt"])
+		value = frappe.db.get_value("Program", program_name, ["lft", "rgt"])
+		if not value:
+			return [program_name]
+		lft, rgt = value
 		if lft is None or rgt is None:
 			return [program_name]
 		return frappe.get_all(

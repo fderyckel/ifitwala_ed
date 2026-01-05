@@ -338,7 +338,7 @@ const analyticsQuickLinks = [
   },
   {
     label: 'Room Utilization',
-    caption: 'Which rooms are over or under-used this week',
+    caption: 'Which rooms are free, over or under-used this week',
     icon: 'clock',
     to: '/staff/room-utilization',
   },
