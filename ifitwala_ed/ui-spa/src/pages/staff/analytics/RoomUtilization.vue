@@ -1,84 +1,36 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/RoomUtilization.vue -->
 <template>
-  <div class="min-h-screen w-full px-4 py-4 sm:px-6 sm:py-6">
-    <header class="flex flex-wrap items-center justify-between gap-3">
+  <div class="analytics-shell">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="type-h2 text-canopy">Room Utilization</h1>
-        <p class="type-caption text-slate-500">
-          Find free rooms and understand usage across time and capacity.
+        <p class="type-body text-slate-500 mt-1">
+          Find free rooms and maximize space efficiency across your campus.
         </p>
       </div>
       <button
-        class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
+        class="fui-btn-primary rounded-full px-5 py-2 text-sm font-medium transition-all hover:shadow-md active:scale-95"
         @click="refreshMetrics"
       >
-        Refresh
+        Refresh Data
       </button>
     </header>
 
-    <FiltersBar class="analytics-filters !bg-white">
-      <div class="flex flex-col gap-1">
-        <label class="type-label">School</label>
-        <select
-          v-model="selectedSchool"
-          class="h-9 min-w-[160px] rounded-md border px-2 text-sm"
-        >
-          <option value="">Select School</option>
-          <option v-for="s in schools" :key="s.name" :value="s.name">{{ s.label }}</option>
-        </select>
-      </div>
+    <KpiRow :items="kpiItems" class="mb-2" />
 
-      <div class="flex flex-col gap-1">
-        <label class="type-label">Free Rooms Date</label>
-        <input
-          type="date"
-          v-model="availabilityFilters.date"
-          class="h-9 rounded-md border px-2 text-sm"
-        />
-      </div>
+    <section class="analytics-card relative overflow-hidden">
+      <!-- Decorative background blur -->
+      <div class="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-leaf/5 blur-3xl pointer-events-none"></div>
 
-      <div class="flex flex-col gap-1">
-        <label class="type-label">Window Start</label>
-        <input
-          type="time"
-          v-model="availabilityFilters.start_time"
-          class="h-9 rounded-md border px-2 text-sm"
-        />
-      </div>
-
-      <div class="flex flex-col gap-1">
-        <label class="type-label">Window End</label>
-        <input
-          type="time"
-          v-model="availabilityFilters.end_time"
-          class="h-9 rounded-md border px-2 text-sm"
-        />
-      </div>
-
-      <div class="flex flex-col gap-1">
-        <label class="type-label">Capacity Needed</label>
-        <input
-          type="number"
-          min="1"
-          step="1"
-          v-model="availabilityFilters.capacity_needed"
-          class="h-9 w-28 rounded-md border px-2 text-sm"
-        />
-      </div>
-    </FiltersBar>
-
-    <KpiRow :items="kpiItems" />
-
-    <section class="analytics-card">
-      <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="relative z-10 flex flex-wrap items-end justify-between gap-4 border-b border-slate-100 pb-5 mb-5">
         <div>
           <h3 class="analytics-card__title">Free Rooms Finder</h3>
-          <p class="analytics-card__meta">
-            Checks meetings, school events, and teaching bookings.
+          <p class="analytics-card__meta mt-1 max-w-2xl">
+            Locate available spaces by checking against all meetings, school events, and teaching bookings.
           </p>
         </div>
         <button
-          class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
+          class="fui-btn-primary rounded-full px-5 py-2 text-sm font-medium transition-all hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           :disabled="
             freeRoomsLoading ||
             !availabilityFilters.date ||
@@ -91,188 +43,263 @@
         </button>
       </div>
 
-      <div class="flex flex-wrap gap-2">
-        <StatsTile
-          label="Free Rooms"
-          :value="freeRooms.length"
-          :tone="freeRooms.length ? 'success' : 'warning'"
-        />
-        <StatsTile label="Window" :value="freeWindowLabel" tone="info" />
-      </div>
+      <div class="grid gap-6 lg:grid-cols-[280px_1fr]">
+        <!-- Search Controls -->
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/60 h-fit">
+          <div class="space-y-4">
+            <div class="flex flex-col gap-1.5">
+              <label class="type-label">School Context</label>
+              <select
+                v-model="selectedSchool"
+                class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-leaf focus:ring-leaf/20"
+              >
+                <option value="">Select School</option>
+                <option v-for="s in schools" :key="s.name" :value="s.name">{{ s.label }}</option>
+              </select>
+            </div>
 
+            <div class="flex flex-col gap-1.5">
+              <label class="type-label">Target Date</label>
+              <input
+                type="date"
+                v-model="availabilityFilters.date"
+                class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-leaf focus:ring-leaf/20"
+              />
+            </div>
 
-      <div v-if="freeRoomsLoading" class="py-6 text-center text-sm text-slate-500">
-        Loading free rooms...
-      </div>
-      <div v-else-if="!freeRooms.length" class="analytics-empty">
-        No free rooms found for this window.
-      </div>
-      <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <article
-          v-for="room in freeRooms"
-          :key="room.room"
-          class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
-        >
-          <div class="text-sm font-semibold text-ink">{{ room.room_name }}</div>
-          <div class="text-xs text-slate-500">Building: {{ room.building || '—' }}</div>
-          <div class="text-xs text-slate-500">Capacity: {{ room.max_capacity ?? '—' }}</div>
-        </article>
-      </div>
-    </section>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="flex flex-col gap-1.5">
+                <label class="type-label">Start Time</label>
+                <input
+                  type="time"
+                  v-model="availabilityFilters.start_time"
+                  class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-leaf focus:ring-leaf/20"
+                />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="type-label">End Time</label>
+                <input
+                  type="time"
+                  v-model="availabilityFilters.end_time"
+                  class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-leaf focus:ring-leaf/20"
+                />
+              </div>
+            </div>
 
-    <FiltersBar class="analytics-filters !bg-white">
-      <div class="flex flex-col gap-1">
-        <label class="type-label">School</label>
-        <select
-          v-model="selectedSchool"
-          class="h-9 min-w-[160px] rounded-md border px-2 text-sm"
-        >
-          <option value="">Select School</option>
-          <option v-for="s in schools" :key="s.name" :value="s.name">{{ s.label }}</option>
-        </select>
-      </div>
-
-      <div class="flex flex-col gap-1">
-        <label class="type-label">Utilization Range</label>
-        <div class="flex items-center gap-2">
-          <input
-            type="date"
-            v-model="timeUtilFilters.from_date"
-            class="h-9 rounded-md border px-2 text-sm"
-          />
-          <span class="text-slate-300">-</span>
-          <input
-            type="date"
-            v-model="timeUtilFilters.to_date"
-            class="h-9 rounded-md border px-2 text-sm"
-          />
+            <div class="flex flex-col gap-1.5">
+              <label class="type-label">Min Capacity</label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                v-model="availabilityFilters.capacity_needed"
+                placeholder="Optional"
+                class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-leaf focus:ring-leaf/20"
+              />
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="flex flex-col gap-1">
-        <label class="type-label">Day Start</label>
-        <input
-          type="time"
-          v-model="timeUtilFilters.day_start_time"
-          class="h-9 rounded-md border px-2 text-sm"
-        />
-      </div>
+        <!-- Results Area -->
+        <div class="min-h-[200px] relative">
+          <div class="flex items-center gap-3 mb-4">
+            <StatsTile
+              label="Available Rooms"
+              :value="freeRooms.length"
+              :tone="freeRooms.length ? 'success' : 'warning'"
+              class="!bg-white !border-slate-100"
+            />
+            <div class="h-8 w-px bg-slate-200"></div>
+            <div class="text-xs text-slate-500">
+              <span class="font-medium text-slate-700">Search Window:</span>
+              {{ freeWindowLabel }}
+            </div>
+          </div>
 
-      <div class="flex flex-col gap-1">
-        <label class="type-label">Day End</label>
-        <input
-          type="time"
-          v-model="timeUtilFilters.day_end_time"
-          class="h-9 rounded-md border px-2 text-sm"
-        />
-      </div>
-    </FiltersBar>
+          <div v-if="freeRoomsLoading" class="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10">
+             <div class="flex flex-col items-center gap-2">
+               <div class="h-6 w-6 animate-spin rounded-full border-2 border-leaf border-t-transparent"></div>
+               <span class="text-sm text-slate-500 font-medium">Checking availability...</span>
+             </div>
+          </div>
 
-    <section class="analytics-card">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 class="analytics-card__title">Time Utilization</h3>
-          <p class="analytics-card__meta">
-            Booked minutes within the day window, per room.
-          </p>
-        </div>
-        <StatsTile label="Average Utilization" :value="avgUtilizationLabel" tone="info" />
-      </div>
+          <div v-if="!freeRoomsLoading && !freeRooms.length" class="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
+            <div class="h-10 w-10 text-slate-300 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
+            <p class="text-sm font-medium text-slate-600">No free rooms found</p>
+            <p class="text-xs text-slate-400 mt-1">Try adjusting the time window or capacity.</p>
+          </div>
 
-      <div v-if="timeUtilLoading" class="py-6 text-center text-sm text-slate-500">
-        Loading time utilization...
-      </div>
-      <div v-else-if="!timeRooms.length" class="analytics-empty">
-        No utilization data yet. Select a school and date range.
-      </div>
-      <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead class="text-left text-xs uppercase tracking-wide text-slate-400">
-            <tr>
-              <th class="px-2 py-2">Room</th>
-              <th class="px-2 py-2">Booked Hours</th>
-              <th class="px-2 py-2">Available Hours</th>
-              <th class="px-2 py-2">Utilization</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="room in timeRooms"
+          <div v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <article
+              v-for="room in freeRooms"
               :key="room.room"
-              class="border-t border-slate-100"
+              class="group relative rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-leaf/50 hover:shadow-md"
             >
-              <td class="px-2 py-2 font-medium text-ink">{{ room.room_name }}</td>
-              <td class="px-2 py-2 text-slate-600">{{ minutesToHours(room.booked_minutes) }}</td>
-              <td class="px-2 py-2 text-slate-600">{{ minutesToHours(room.available_minutes) }}</td>
-              <td class="px-2 py-2">
-                <span
-                  class="rounded-full px-2 py-0.5 text-xs"
-                  :class="utilizationBadge(room.utilization_pct)"
-                >
-                  {{ room.utilization_pct.toFixed(1) }}%
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="analytics-card">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 class="analytics-card__title">Capacity Utilization</h3>
-          <p class="analytics-card__meta">
-            Meeting participants compared to room capacity.
-          </p>
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-sm font-bold text-ink group-hover:text-leaf transition-colors">{{ room.room_name }}</div>
+                  <div class="text-xs text-slate-500 mt-0.5">{{ room.building || 'Main Building' }}</div>
+                </div>
+                <div class="flex h-6 items-center justify-center rounded-full bg-slate-100 px-2 text-[10px] font-bold text-slate-600">
+                  {{ room.max_capacity ? `${room.max_capacity} pax` : '—' }}
+                </div>
+              </div>
+            </article>
+          </div>
         </div>
-        <StatsTile label="Over-Cap Rooms" :value="overCapRooms" tone="warning" />
-      </div>
-
-      <div v-if="capacityLoading" class="py-6 text-center text-sm text-slate-500">
-        Loading capacity utilization...
-      </div>
-      <div v-else-if="!capacityRooms.length" class="analytics-empty">
-        No capacity data yet. Select a school and date range.
-      </div>
-      <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead class="text-left text-xs uppercase tracking-wide text-slate-400">
-            <tr>
-              <th class="px-2 py-2">Room</th>
-              <th class="px-2 py-2">Max Cap</th>
-              <th class="px-2 py-2">Avg Attendees</th>
-              <th class="px-2 py-2">Peak Attendees</th>
-              <th class="px-2 py-2">Avg %</th>
-              <th class="px-2 py-2">Peak %</th>
-              <th class="px-2 py-2">Over-Cap</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="room in capacityRooms"
-              :key="room.room"
-              class="border-t border-slate-100"
-            >
-              <td class="px-2 py-2 font-medium text-ink">{{ room.room_name }}</td>
-              <td class="px-2 py-2 text-slate-600">{{ room.max_capacity ?? '—' }}</td>
-              <td class="px-2 py-2 text-slate-600">{{ room.avg_attendees }}</td>
-              <td class="px-2 py-2 text-slate-600">{{ room.peak_attendees }}</td>
-              <td class="px-2 py-2 text-slate-600">{{ formatPct(room.avg_capacity_pct) }}</td>
-              <td class="px-2 py-2 text-slate-600">{{ formatPct(room.peak_capacity_pct) }}</td>
-              <td class="px-2 py-2">
-                <span
-                  class="inline-flex items-center rounded-full px-2 py-0.5 text-xs"
-                  :class="overCapBadge(room.over_capacity_count)"
-                >
-                  {{ room.over_capacity_count }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </section>
+
+    <!-- Unified Analytics Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- Time Utilization Section -->
+      <section class="analytics-card h-full">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h3 class="analytics-card__title text-jacaranda">Time Utilization</h3>
+            <p class="analytics-card__meta mt-1">
+              Booked minutes vs available minutes per day.
+            </p>
+          </div>
+          <StatsTile label="Avg Utilization" :value="avgUtilizationLabel" tone="info" class="!bg-white" />
+        </div>
+
+        <div class="bg-slate-50/80 rounded-xl p-3 border border-slate-100 mb-4">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div class="space-y-1">
+               <label class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Date Range</label>
+               <div class="flex items-center gap-2">
+                  <input type="date" v-model="timeUtilFilters.from_date" class="h-8 w-full rounded border-slate-200 text-xs shadow-sm focus:border-jacaranda focus:ring-jacaranda/20" />
+                  <span class="text-slate-300">-</span>
+                  <input type="date" v-model="timeUtilFilters.to_date" class="h-8 w-full rounded border-slate-200 text-xs shadow-sm focus:border-jacaranda focus:ring-jacaranda/20" />
+               </div>
+            </div>
+            <div class="space-y-1">
+               <label class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Day Window</label>
+               <div class="flex items-center gap-2">
+                  <input type="time" v-model="timeUtilFilters.day_start_time" class="h-8 w-full rounded border-slate-200 text-xs shadow-sm focus:border-jacaranda focus:ring-jacaranda/20" />
+                  <span class="text-slate-300">-</span>
+                  <input type="time" v-model="timeUtilFilters.day_end_time" class="h-8 w-full rounded border-slate-200 text-xs shadow-sm focus:border-jacaranda focus:ring-jacaranda/20" />
+               </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="timeUtilLoading" class="flex-1 flex flex-col items-center justify-center py-12">
+            <div class="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-jacaranda"></div>
+        </div>
+
+        <div v-else-if="!timeRooms.length" class="flex-1 flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+          <p class="text-sm text-slate-500">No utilization data.</p>
+          <p class="text-xs text-slate-400">Check the school or date range.</p>
+        </div>
+
+        <div v-else class="flex-1 overflow-auto custom-scrollbar relative">
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-slate-500 uppercase bg-slate-50/50 sticky top-0 backdrop-blur-sm z-10">
+              <tr>
+                <th class="px-3 py-2 font-semibold">Room</th>
+                <th class="px-3 py-2 font-semibold text-right">Booked</th>
+                <th class="px-3 py-2 font-semibold text-right">Avail</th>
+                <th class="px-3 py-2 font-semibold text-right">Util %</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="room in timeRooms" :key="room.room" class="group hover:bg-slate-50 transition-colors">
+                <td class="px-3 py-2.5 font-medium text-ink group-hover:text-jacaranda transition-colors">{{ room.room_name }}</td>
+                <td class="px-3 py-2.5 text-right text-slate-600 font-mono text-xs">{{ minutesToHours(room.booked_minutes) }}</td>
+                <td class="px-3 py-2.5 text-right text-slate-400 font-mono text-xs">{{ minutesToHours(room.available_minutes) }}</td>
+                <td class="px-3 py-2.5 text-right">
+                  <span
+                    class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-bold min-w-[3rem]"
+                    :class="utilizationBadge(room.utilization_pct)"
+                  >
+                    {{ room.utilization_pct.toFixed(1) }}%
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Capacity Utilization Section -->
+      <section class="analytics-card h-full">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h3 class="analytics-card__title text-flame">Capacity Utilization</h3>
+            <p class="analytics-card__meta mt-1">
+              Participants vs room capacity.
+            </p>
+          </div>
+          <StatsTile label="Over-Cap Rooms" :value="overCapRooms" tone="warning" class="!bg-white"/>
+        </div>
+
+        <div class="bg-slate-50/80 rounded-xl p-3 border border-slate-100 mb-4">
+           <div class="space-y-1">
+               <label class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Date Range</label>
+               <div class="flex items-center gap-2">
+                  <input type="date" v-model="capacityFilters.from_date" class="h-8 w-full rounded border-slate-200 text-xs shadow-sm focus:border-flame focus:ring-flame/20" />
+                  <span class="text-slate-300">-</span>
+                  <input type="date" v-model="capacityFilters.to_date" class="h-8 w-full rounded border-slate-200 text-xs shadow-sm focus:border-flame focus:ring-flame/20" />
+               </div>
+            </div>
+        </div>
+
+        <div v-if="capacityLoading" class="flex-1 flex flex-col items-center justify-center py-12">
+            <div class="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-flame"></div>
+        </div>
+
+        <div v-else-if="!capacityRooms.length" class="flex-1 flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+          <p class="text-sm text-slate-500">No capacity data.</p>
+          <p class="text-xs text-slate-400">Check the school or date range.</p>
+        </div>
+
+        <div v-else class="flex-1 overflow-auto custom-scrollbar relative">
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-slate-500 uppercase bg-slate-50/50 sticky top-0 backdrop-blur-sm z-10">
+              <tr>
+                <th class="px-3 py-2 font-semibold">Room</th>
+                <th class="px-3 py-2 font-semibold text-center">Cap</th>
+                <th class="px-3 py-2 font-semibold text-center">Avg/Peak</th>
+                <th class="px-3 py-2 font-semibold text-right">Avg %</th>
+                <th class="px-3 py-2 font-semibold text-right">Count</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="room in capacityRooms" :key="room.room" class="group hover:bg-slate-50 transition-colors">
+                <td class="px-3 py-2.5 font-medium text-ink group-hover:text-flame transition-colors">
+                  <div class="leading-tight">{{ room.room_name }}</div>
+                </td>
+                <td class="px-3 py-2.5 text-center text-slate-400 text-xs">{{ room.max_capacity ?? '—' }}</td>
+                <td class="px-3 py-2.5 text-center text-slate-600 text-xs">
+                   <span class="font-medium">{{ room.avg_attendees }}</span>
+                   <span class="text-slate-300 mx-1">/</span>
+                   <span>{{ room.peak_attendees }}</span>
+                </td>
+                <td class="px-3 py-2.5 text-right text-slate-600 text-xs font-mono">
+                  {{ formatPct(room.avg_capacity_pct) }}
+                </td>
+                <td class="px-3 py-2.5 text-right">
+                  <span
+                    class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-bold"
+                    :class="overCapBadge(room.over_capacity_count)"
+                  >
+                    {{ room.over_capacity_count }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
   </div>
 </template>
 
@@ -280,7 +307,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { createResource } from 'frappe-ui'
 
-import FiltersBar from '@/components/filters/FiltersBar.vue'
+
 import StatsTile from '@/components/analytics/StatsTile.vue'
 import KpiRow from '@/components/analytics/KpiRow.vue'
 
