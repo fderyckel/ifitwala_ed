@@ -360,11 +360,6 @@ const sourcePalette: Record<CalendarSource, { label: string; dot: string; active
 		dot: 'bg-slate-500',
 		active: 'border-slate-200 bg-slate-50 text-slate-700',
 	},
-	frappe_event: {
-		label: 'Frappe Events',
-		dot: 'bg-amber-500',
-		active: 'border-amber-200 bg-amber-50 text-amber-700',
-	},
 };
 
 const sourceChips = computed(() =>

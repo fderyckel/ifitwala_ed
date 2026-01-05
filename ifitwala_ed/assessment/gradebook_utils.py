@@ -9,6 +9,7 @@ from frappe.utils.caching import redis_cache
 def get_levels_for_criterion(assessment_criteria: str) -> List[Dict]:
     """
     Return list of dicts [{level: <str>, points: <float>}, …] for one Assessment Criteria
+    Points are not stored per level; callers may map levels to points separately.
     """
     if not assessment_criteria:
         return []
@@ -57,34 +58,61 @@ def upsert_task_criterion_scores(task: str, student: str, rows: List[Dict]) -> D
     if not (task and student):
         frappe.throw(_("Task and Student are required."))
 
+    rows = frappe.parse_json(rows) if isinstance(rows, str) else (rows or [])
+    if not isinstance(rows, list):
+        frappe.throw(_("Invalid payload: rows must be a list."))
+    for r in rows:
+        if not isinstance(r, dict):
+            frappe.throw(_("Invalid payload: each row must be an object."))
+
+    criteria_on = frappe.db.get_value("Task", task, "criteria")
+    if not criteria_on:
+        frappe.throw(_("Cannot write rubric scores because Task is not in Criteria mode."))
+
     seen = set()
-    for r in rows or []:
-        crt = r.get("assessment_criteria")
+    for r in rows:
+        crt = (r.get("assessment_criteria") or "").strip()
         if not crt:
             frappe.throw(_("Assessment Criteria is required in each row."))
-        key = (student, crt)
-        if key in seen:
+        if crt in seen:
             frappe.throw(_("Duplicate criterion {0} for student {1}").format(crt, student))
-        seen.add(key)
+        seen.add(crt)
+        r["assessment_criteria"] = crt
 
-    frappe.db.delete(
-        "Task Criterion Score",
-        {"parent": task, "parenttype": "Task", "student": student}
-    )
+    sp = frappe.db.savepoint("upsert_task_criterion_scores")
+    try:
+        frappe.db.delete(
+            "Task Criterion Score",
+            {"parent": task, "parenttype": "Task", "student": student}
+        )
 
-    for r in rows or []:
-        doc = frappe.get_doc({
-            "doctype": "Task Criterion Score",
-            "parent": task,
-            "parenttype": "Task",
-            "parentfield": "task_criterion_score",
-            "student": student,
-            "assessment_criteria": r.get("assessment_criteria"),
-            "level": r.get("level"),
-            "level_points": float(r.get("level_points") or 0),
-            "feedback": r.get("feedback")
-        })
-        doc.insert(ignore_permissions=False)
+        fields = [
+            "parent",
+            "parenttype",
+            "parentfield",
+            "student",
+            "assessment_criteria",
+            "level",
+            "level_points",
+            "feedback",
+        ]
+        values = []
+        for r in rows:
+            values.append((
+                task,
+                "Task",
+                "task_criterion_score",
+                student,
+                r.get("assessment_criteria"),
+                r.get("level"),
+                float(r.get("level_points") or 0),
+                r.get("feedback"),
+            ))
+        if values:
+            frappe.db.bulk_insert("Task Criterion Score", fields=fields, values=values)
+    except Exception:
+        frappe.db.rollback(save_point=sp)
+        raise
 
     suggestion = recompute_student_rubric_suggestion(task, student)
     return {"suggestion": suggestion}

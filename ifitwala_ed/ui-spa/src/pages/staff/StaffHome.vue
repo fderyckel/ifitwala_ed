@@ -352,9 +352,6 @@ const analyticsCategories = [
     links: [
       { label: 'Demographics Overview', to: { name: 'student-demographic-analytics' } },
       { label: 'Enrollment Analytics', to: { name: 'StaffEnrollmentAnalytics' } },
-      { label: 'Enrollment Trends', to: '/analytics/enrollment/enrollment-trends' },
-      { label: 'Admissions Funnel', to: '/analytics/enrollment/admissions-funnel' },
-      { label: 'Student Churn/Withdrawal', to: '/analytics/enrollment/churn-rates' },
     ],
   },
   {
@@ -374,9 +371,7 @@ const analyticsCategories = [
     icon: 'book',
     links: [
 			{ label: 'Student Overview', to: { name: 'staff-student-overview' } },
-      { label: 'Grade Distribution', to: '/analytics/academic/grade-distribution' },
       { label: 'Assessment Trends', to: '/analytics/academic/assessment-trends' },
-      { label: 'Course Completion', to: '/analytics/academic/course-completion' },
     ],
   },
   {
@@ -395,7 +390,7 @@ const analyticsCategories = [
     description: 'Availability, development, and evaluations.',
     icon: 'users',
     links: [
-      { label: 'Staffing Levels', to: '/analytics/staff/staffing-levels' },
+      { label: 'Organizational Chart', to: '/analytics/staff/staffing-levels' },
       { label: 'Leave Balance', to: '/analytics/staff/leave-balance' },
       { label: 'Training Progress', to: '/analytics/staff/training-progress' },
       { label: 'Evaluations Summary', to: '/analytics/staff/evaluations-summary' },
@@ -406,7 +401,7 @@ const analyticsCategories = [
     description: 'Timetable load, rooms, and transport fill.',
     icon: 'calendar',
     links: [
-      { label: 'Timetable Utilization', to: '/analytics/scheduling/timetable-utilization' },
+      { label: 'Timetable Utilization', to: '../app/schedule_calendar' },
       { label: 'Room Occupancy', to: { name: 'staff-room-utilization' } },
       { label: 'Bus & Route Load', to: '/analytics/scheduling/bus-route-load' },
       { label: 'Exam Schedules', to: '/analytics/scheduling/exam-schedules' },
@@ -418,8 +413,6 @@ const analyticsCategories = [
     icon: 'message-circle',
     links: [
       { label: 'Inquiries Analytics', to: { name: 'staff-inquiry-analytics' } },
-      { label: 'Message Open Rates', to: '/analytics/engagement/message-open-rates' },
-      { label: 'Event Participation', to: '/analytics/engagement/event-participation' },
       { label: 'Survey Results', to: '/analytics/engagement/survey-results' },
     ],
   },
@@ -428,10 +421,8 @@ const analyticsCategories = [
     description: 'Safeguarding signals and audit readiness.',
     icon: 'shield',
     links: [
-      { label: 'Safeguarding Alerts', to: '/analytics/compliance/safeguarding-alerts' },
       { label: 'Audit Readiness', to: '/analytics/compliance/audit-readiness' },
       { label: 'Policy Acknowledgments', to: '/analytics/compliance/policy-acknowledgments' },
-      { label: 'Access Logs', to: '/analytics/compliance/access-logs' },
     ],
   },
 ]

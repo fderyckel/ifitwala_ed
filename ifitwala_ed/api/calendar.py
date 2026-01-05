@@ -9,7 +9,6 @@ Current scope
     • Student Group teaching slots
     • Meetings
     • School Events
-    • Frappe Events
 
 - Student / guardian views that need:
     • merged calendar feeds
@@ -79,7 +78,7 @@ from ifitwala_ed.schedule.schedule_utils import (
 )
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
-VALID_SOURCES = {"student_group", "meeting", "school_event", "frappe_event", "staff_holiday"}
+VALID_SOURCES = {"student_group", "meeting", "school_event", "staff_holiday"}
 
 DEFAULT_WINDOW_DAYS = 30
 LOOKBACK_DAYS = 3
@@ -182,12 +181,6 @@ def get_staff_calendar(
 	if "school_event" in source_list:
 		se_events = _collect_school_events(user, window_start, window_end, tzinfo)
 		for evt in se_events:
-			events.append(evt)
-			source_counts[evt.source] += 1
-
-	if "frappe_event" in source_list:
-		frappe_events = _collect_frappe_events(user, window_start, window_end, tzinfo)
-		for evt in frappe_events:
 			events.append(evt)
 			source_counts[evt.source] += 1
 
@@ -649,7 +642,7 @@ def _collect_staff_holiday_events(
 		return []
 
 	start_date = getdate(window_start)
-	end_date = getdate(window_end)
+	end_date = getdate(window_end - timedelta(seconds=1))
 
 	cal = _resolve_staff_calendar_for_employee(employee_id, start_date, end_date)
 	if not cal:
@@ -1333,72 +1326,6 @@ def _school_event_access_allowed(event_doc, user: str) -> bool:
 			return True
 
 	return False
-
-
-# ---------------------------------------------------------------------------
-# Frappe Events
-# ---------------------------------------------------------------------------
-
-def _collect_frappe_events(
-	user: str,
-	window_start: datetime,
-	window_end: datetime,
-	tzinfo: pytz.timezone,
-) -> List[CalendarEvent]:
-	rows = frappe.db.sql(
-		"""
-		SELECT
-			ev.name,
-			ev.subject,
-			ev.starts_on,
-			ev.ends_on,
-			ev.all_day,
-			ev.event_category,
-			ev.color
-		FROM `tabEvent Participants` ep
-		INNER JOIN `tabEvent` ev ON ev.name = ep.parent
-		WHERE ep.parenttype = 'Event'
-			AND ep.reference_doctype = 'User'
-			AND ep.reference_docname = %(user)s
-			AND ev.docstatus < 2
-			AND (
-				(ev.starts_on BETWEEN %(start)s AND %(end)s)
-				OR (ev.ends_on BETWEEN %(start)s AND %(end)s)
-				OR (ev.starts_on <= %(start)s AND ev.ends_on >= %(end)s)
-			)
-		""",
-		{
-			"user": user,
-			"start": window_start,
-			"end": window_end,
-		},
-		as_dict=True,
-	)
-
-	if not rows:
-		return []
-
-	events: List[CalendarEvent] = []
-	for row in rows:
-		start_dt = _to_system_datetime(row.starts_on, tzinfo) if row.starts_on else window_start
-		end_dt = _to_system_datetime(row.ends_on, tzinfo) if row.ends_on else (start_dt + CAL_MIN_DURATION)
-		if end_dt <= start_dt:
-			end_dt = start_dt + CAL_MIN_DURATION
-		color = (row.color or "").strip() or "#f59e0b"
-		events.append(
-			CalendarEvent(
-				id=f"frappe_event::{row.name}",
-				title=row.subject or _("Event"),
-				start=start_dt,
-				end=end_dt,
-				source="frappe_event",
-				color=color,
-				all_day=bool(row.all_day),
-				meta={"category": row.event_category},
-			)
-		)
-
-	return events
 
 
 # ---------------------------------------------------------------------------

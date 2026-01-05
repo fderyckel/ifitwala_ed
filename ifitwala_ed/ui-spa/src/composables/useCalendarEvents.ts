@@ -6,7 +6,6 @@ export type CalendarSource =
 	| 'student_group'
 	| 'meeting'
 	| 'school_event'
-	| 'frappe_event'
 	| 'staff_holiday';
 
 export interface PortalCalendarEvent {
@@ -33,7 +32,6 @@ const DEFAULT_SOURCES: CalendarSource[] = [
 	'student_group',
 	'meeting',
 	'school_event',
-	'frappe_event',
 	'staff_holiday',
 ];
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
