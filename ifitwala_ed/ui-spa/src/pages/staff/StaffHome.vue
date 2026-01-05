@@ -350,7 +350,8 @@ const analyticsCategories = [
     description: 'Student body profile, admissions, and retention.',
     icon: 'trending-up',
     links: [
-      { label: 'Demographics Overview', to: { name: 'student-demographic-analytics' }, badge: 'Hot', },
+      { label: 'Demographics Overview', to: { name: 'student-demographic-analytics' } },
+      { label: 'Enrollment Analytics', to: { name: 'StaffEnrollmentAnalytics' } },
       { label: 'Enrollment Trends', to: '/analytics/enrollment/enrollment-trends' },
       { label: 'Admissions Funnel', to: '/analytics/enrollment/admissions-funnel' },
       { label: 'Student Churn/Withdrawal', to: '/analytics/enrollment/churn-rates' },

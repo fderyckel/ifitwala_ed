@@ -5,6 +5,11 @@
       v-for="item in items"
       :key="item.id"
       class="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+      :class="clickable ? 'cursor-pointer transition hover:border-slate-300 hover:shadow-md' : ''"
+      :tabindex="clickable ? 0 : undefined"
+      @click="handleSelect(item)"
+      @keydown.enter.prevent="handleSelect(item)"
+      @keydown.space.prevent="handleSelect(item)"
     >
       <div class="flex items-center justify-between text-xs text-slate-500">
         <span>{{ item.label }}</span>
@@ -20,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 type KpiItem = {
   id: string
   label: string
@@ -29,5 +35,16 @@ type KpiItem = {
   subLabel?: string
 }
 
-defineProps<{ items: KpiItem[] }>()
+const props = defineProps<{ items: KpiItem[]; clickable?: boolean }>()
+
+const emit = defineEmits<{
+  (e: 'select', item: KpiItem): void
+}>()
+
+const clickable = computed(() => props.clickable ?? false)
+
+function handleSelect(item: KpiItem) {
+  if (!clickable.value) return
+  emit('select', item)
+}
 </script>
