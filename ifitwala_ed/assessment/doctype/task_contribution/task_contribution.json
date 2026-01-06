@@ -16,7 +16,12 @@
   "score",
   "grade",
   "feedback",
-  "section_break_rnqt"
+  "section_break_rnqt",
+  "student",
+  "student_group",
+  "course",
+  "academic_year",
+  "school"
  ],
  "fields": [
   {
@@ -87,12 +92,43 @@
   {
    "fieldname": "section_break_rnqt",
    "fieldtype": "Section Break"
+  },
+  {
+   "fetch_from": "task_outcome.student",
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "student_group",
+   "fieldtype": "Link",
+   "label": "Student Group",
+   "options": "Student Group"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 15:28:45.244373",
+ "modified": "2026-01-06 20:47:55.057073",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Contribution",

@@ -23,7 +23,12 @@
   "grading_mode",
   "max_points",
   "grade_scale",
-  "rubric_version"
+  "rubric_version",
+  "section_break_rwq9",
+  "course",
+  "academic_year",
+  "school",
+  "lesson_instance"
  ],
  "fields": [
   {
@@ -134,12 +139,46 @@
    "label": "Task Rubric Version",
    "options": "Task Rubric Version",
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_rwq9",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fetch_from": "student_group.course",
+   "fetch_if_empty": 1,
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fetch_from": "student_group.academic_year",
+   "fetch_if_empty": 1,
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fetch_from": "student_group.school",
+   "fetch_if_empty": 1,
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "lesson_instance",
+   "fieldtype": "Link",
+   "label": "Lesson Instance",
+   "options": "Lesson Instance"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 13:48:47.164230",
+ "modified": "2026-01-06 20:30:31.666262",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Delivery",

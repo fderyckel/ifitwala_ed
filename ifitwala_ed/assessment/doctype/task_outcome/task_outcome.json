@@ -13,7 +13,6 @@
   "grading_status",
   "column_break_7cg7",
   "student",
-  "student_group",
   "procedural_status",
   "section_break_uass",
   "has_new_submission",
@@ -26,7 +25,14 @@
   "section_break_aybc",
   "official_feedback",
   "section_break_h3i0",
-  "official_criteria"
+  "official_criteria",
+  "section_break_cdh5",
+  "student_group",
+  "school",
+  "academic_year",
+  "course",
+  "program",
+  "course_group"
  ],
  "fields": [
   {
@@ -65,8 +71,7 @@
    "in_list_view": 1,
    "label": "Student Group",
    "options": "Student Group",
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "default": "Not Submitted",
@@ -155,12 +160,52 @@
   {
    "fieldname": "column_break_7cg7",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_cdh5",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fetch_from": "student_group.school",
+   "fetch_if_empty": 1,
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fetch_from": "student_group.academic_year",
+   "fetch_if_empty": 1,
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fetch_from": "student_group.academic_year",
+   "fetch_if_empty": 1,
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
+  },
+  {
+   "fieldname": "course_group",
+   "fieldtype": "Link",
+   "label": "Course Group",
+   "options": "Course Group"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 15:06:13.696692",
+ "modified": "2026-01-06 20:35:16.733748",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Outcome",
