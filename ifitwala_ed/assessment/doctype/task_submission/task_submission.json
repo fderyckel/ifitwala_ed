@@ -15,7 +15,13 @@
   "section_break_sbox",
   "attachments",
   "link_url",
-  "text_content"
+  "text_content",
+  "section_break_hzve",
+  "student",
+  "student_group",
+  "school",
+  "course",
+  "academic_year"
  ],
  "fields": [
   {
@@ -79,12 +85,55 @@
    "fieldname": "text_content",
    "fieldtype": "Small Text",
    "label": "Text Submission"
+  },
+  {
+   "fieldname": "section_break_hzve",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fetch_from": "task_outcome.student",
+   "fetch_if_empty": 1,
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fetch_from": "task_outcome.student_group",
+   "fieldname": "student_group",
+   "fieldtype": "Link",
+   "label": "Student group",
+   "options": "Student Group"
+  },
+  {
+   "fetch_from": "student_group.school",
+   "fetch_if_empty": 1,
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fetch_from": "task_outcome.course",
+   "fetch_if_empty": 1,
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fetch_from": "task_outcome.academic_year",
+   "fetch_if_empty": 1,
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 15:22:54.041405",
+ "modified": "2026-01-06 20:39:44.811389",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Submission",
