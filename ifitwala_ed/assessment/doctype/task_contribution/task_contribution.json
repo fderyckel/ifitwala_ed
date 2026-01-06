@@ -11,12 +11,19 @@
   "task_submission",
   "contributor",
   "contribution_type",
+  "moderation_action",
+  "status",
   "submitted_on",
   "is_stale",
   "score",
   "grade",
+  "grade_value",
+  "grade_scale",
   "feedback",
+  "rubric_scores",
   "section_break_rnqt",
+  "task_delivery",
+  "task",
   "student",
   "student_group",
   "course",
@@ -41,7 +48,8 @@
    "fieldname": "task_submission",
    "fieldtype": "Link",
    "label": "Task Submission",
-   "options": "Task Submission"
+   "options": "Task Submission",
+   "reqd": 1
   },
   {
    "fieldname": "contributor",
@@ -56,8 +64,21 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Type",
-   "options": "Self\nPeer Review\nModeration",
+   "options": "Self\nPeer Review\nModerator\nOfficial Override",
    "reqd": 1
+  },
+  {
+   "fieldname": "moderation_action",
+   "fieldtype": "Select",
+   "label": "Moderation Action",
+   "options": "Approve\nAdjust\nReturn to Grader"
+  },
+  {
+   "default": "Submitted",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nSubmitted"
   },
   {
    "fieldname": "submitted_on",
@@ -85,50 +106,87 @@
    "label": "Grade"
   },
   {
+   "fieldname": "grade_value",
+   "fieldtype": "Float",
+   "label": "Grade Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grade_scale",
+   "fieldtype": "Link",
+   "label": "Grade Scale",
+   "options": "Grade Scale",
+   "read_only": 1
+  },
+  {
    "fieldname": "feedback",
    "fieldtype": "Text Editor",
    "label": "Feedback"
+  },
+  {
+   "fieldname": "rubric_scores",
+   "fieldtype": "Table",
+   "label": "Rubric Scores",
+   "options": "Task Contribution Criterion"
   },
   {
    "fieldname": "section_break_rnqt",
    "fieldtype": "Section Break"
   },
   {
-   "fetch_from": "task_outcome.student",
+   "fieldname": "task_delivery",
+   "fieldtype": "Link",
+   "label": "Task Delivery",
+   "options": "Task Delivery",
+   "read_only": 1
+  },
+  {
+   "fieldname": "task",
+   "fieldtype": "Link",
+   "label": "Task",
+   "options": "Task",
+   "read_only": 1
+  },
+  {
    "fieldname": "student",
    "fieldtype": "Link",
    "label": "Student",
-   "options": "Student"
+   "options": "Student",
+   "read_only": 1
   },
   {
    "fieldname": "student_group",
    "fieldtype": "Link",
    "label": "Student Group",
-   "options": "Student Group"
+   "options": "Student Group",
+   "read_only": 1
   },
   {
    "fieldname": "course",
    "fieldtype": "Link",
    "label": "Course",
-   "options": "Course"
+   "options": "Course",
+   "read_only": 1
   },
   {
    "fieldname": "academic_year",
    "fieldtype": "Link",
    "label": "Academic Year",
-   "options": "Academic Year"
+   "options": "Academic Year",
+   "read_only": 1
   },
   {
    "fieldname": "school",
    "fieldtype": "Link",
    "label": "School",
-   "options": "School"
+   "options": "School",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 20:47:55.057073",
+ "modified": "2026-01-06 20:47:56",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Contribution",

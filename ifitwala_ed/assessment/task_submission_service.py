@@ -5,6 +5,8 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
+from ifitwala_ed.assessment.task_contribution_service import mark_contributions_stale
+
 
 def get_next_submission_version(outcome_id):
 	if not outcome_id:
@@ -55,6 +57,7 @@ def apply_outcome_submission_effects(outcome_id, submission_id):
 			"official_feedback",
 			"has_new_submission",
 			"has_submission",
+			"is_stale",
 		],
 		as_dict=True,
 	) or {}
@@ -68,9 +71,7 @@ def apply_outcome_submission_effects(outcome_id, submission_id):
 
 	grading_started = _grading_started(outcome)
 	already_new = int(outcome.get("has_new_submission") or 0) == 1
-	updates = {
-		"submission_status": "Late" if submission.get("is_late") else "Submitted",
-	}
+	updates = {"submission_status": "Late" if submission.get("is_late") else "Submitted"}
 
 	if "has_submission" in outcome:
 		updates["has_submission"] = 1
@@ -78,7 +79,12 @@ def apply_outcome_submission_effects(outcome_id, submission_id):
 	if "has_new_submission" in outcome:
 		updates["has_new_submission"] = 1 if (grading_started or already_new) else 0
 
+	if "is_stale" in outcome:
+		updates["is_stale"] = 1 if grading_started else 0
+
 	frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
+
+	mark_contributions_stale(outcome_id, latest_submission_id=submission_id)
 
 
 def clone_group_submission(original_submission_id, outcome_ids):

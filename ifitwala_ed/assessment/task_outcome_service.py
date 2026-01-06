@@ -14,7 +14,105 @@ def apply_official_outcome_from_contributions(outcome_id, policy=None):
 
 	Full implementation is deferred to Step 5.
 	"""
-	raise NotImplementedError("apply_official_outcome_from_contributions is implemented in Step 5.")
+	if not outcome_id:
+		frappe.throw(_("Task Outcome is required."))
+
+	outcome = frappe.db.get_value(
+		"Task Outcome",
+		outcome_id,
+		[
+			"task_delivery",
+			"grade_scale",
+		],
+		as_dict=True,
+	)
+	if not outcome:
+		frappe.throw(_("Task Outcome not found."))
+
+	contributions = frappe.db.get_values(
+		"Task Contribution",
+		{"task_outcome": outcome_id, "is_stale": 0, "status": ["!=", "Draft"]},
+		[
+			"name",
+			"contribution_type",
+			"score",
+			"grade",
+			"grade_value",
+			"feedback",
+			"moderation_action",
+			"modified",
+		],
+		order_by="modified desc",
+		as_dict=True,
+	)
+
+	moderator_types = {"Moderator"}
+	self_types = {"Self", "Official Override"}
+
+	selected = None
+	for row in contributions:
+		if row.get("contribution_type") in moderator_types:
+			selected = row
+			break
+
+	if not selected:
+		for row in contributions:
+			if row.get("contribution_type") in self_types:
+				selected = row
+				break
+
+	delivery = _get_delivery_flags(outcome.get("task_delivery"))
+	require_grading = int(delivery.get("require_grading") or 0)
+	grading_mode = delivery.get("grading_mode")
+
+	if selected and selected.get("contribution_type") == "Moderator":
+		if selected.get("moderation_action") == "Return to Grader":
+			frappe.db.set_value(
+				"Task Outcome",
+				outcome_id,
+				"grading_status",
+				"In Progress",
+				update_modified=True,
+			)
+			return {"outcome": outcome_id, "grading_status": "In Progress"}
+
+	if not selected:
+		updates = {
+			"official_score": None,
+			"official_grade": None,
+			"official_grade_value": None,
+			"official_feedback": None,
+			"grading_status": "Not Applicable" if not require_grading else "Not Started",
+		}
+		frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
+		return {"outcome": outcome_id, "grading_status": updates["grading_status"]}
+
+	grade_symbol = (selected.get("grade") or "").strip()
+	grade_value = selected.get("grade_value")
+	if grade_symbol:
+		if not outcome.get("grade_scale"):
+			frappe.throw(_("Grade Scale is required to apply an official grade."))
+		if grade_value in (None, ""):
+			grade_value = resolve_grade_symbol(outcome.get("grade_scale"), grade_symbol)
+	else:
+		grade_value = None
+
+	official_fields = {
+		"official_score": selected.get("score"),
+		"official_grade": grade_symbol or None,
+		"official_grade_value": grade_value,
+		"official_feedback": selected.get("feedback"),
+	}
+
+	if selected.get("contribution_type") in moderator_types:
+		grading_status = "Moderated"
+	else:
+		grading_status = "Finalized" if require_grading else "Not Applicable"
+
+	official_fields["grading_status"] = grading_status
+	frappe.db.set_value("Task Outcome", outcome_id, official_fields, update_modified=True)
+
+	return {"outcome": outcome_id, "grading_status": grading_status}
 
 
 def get_grade_scale_map(grade_scale):
@@ -106,3 +204,10 @@ def set_procedural_status(outcome_id, status, note=None):
 	Full implementation is deferred to a later step.
 	"""
 	raise NotImplementedError("set_procedural_status is implemented in a later step.")
+
+
+def _get_delivery_flags(delivery_id):
+	if not delivery_id:
+		return {}
+	fields = ["grading_mode", "require_grading"]
+	return frappe.db.get_value("Task Delivery", delivery_id, fields, as_dict=True) or {}
