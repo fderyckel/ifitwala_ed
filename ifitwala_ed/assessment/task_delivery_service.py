@@ -184,6 +184,10 @@ def create_delivery(payload):
 		frappe.throw(_("Delivery payload must be a dict."))
 
 	doc = frappe.new_doc("Task Delivery")
+	
+	if payload.get("group_submission"):
+		frappe.throw(_("Group submission is currently disabled pending subgroup model implementation."))
+
 	allowed_fields = {
 		"task",
 		"student_group",
@@ -194,7 +198,7 @@ def create_delivery(payload):
 		"available_from",
 		"due_date",
 		"lock_date",
-		"group_submission",
+		#"group_submission", # Explicitly commented out/handled above
 		"allow_late_submission",
 		"lesson_instance",
 	}

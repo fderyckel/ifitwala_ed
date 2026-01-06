@@ -3,135 +3,84 @@
 
 # ifitwala_ed/api/task.py
 
-# Task Planning API controller (UI-facing).
-# - Task library search
-# - Task detail payload for delivery wizard
-# - Task Delivery creation via service
+# Task Planning API Controller (Teacher Planning Loop)
+# - Search / Browse Task Library
+# - Get Task Definitions
+# - Create Task Delivery (Assign)
+#
+# REGRESSION TRAP:
+# Controllers must not write official_* fields to Task Outcome. 
+# Use services (task_outcome_service, task_delivery_service) for all writes.
 
 from __future__ import annotations
 
 import frappe
 from frappe import _
-
-from ifitwala_ed.assessment.task_delivery_service import create_delivery
-
-
-def _require(value, label):
-	if not value:
-		frappe.throw(_("{0} is required.").format(label))
-
-
-def _has_role(*roles):
-	user_roles = set(frappe.get_roles(frappe.session.user))
-	return any(role in user_roles for role in roles)
-
-
-def _can_plan_tasks():
-	return _has_role("System Manager", "Academic Admin", "Curriculum Coordinator", "Instructor")
-
-
-def _normalize_payload(payload):
-	if payload is None:
-		return {}
-	if isinstance(payload, str):
-		payload = frappe.parse_json(payload)
-	if not isinstance(payload, dict):
-		frappe.throw(_("Payload must be a dict."))
-	return payload
+from ifitwala_ed.assessment import task_delivery_service
 
 
 @frappe.whitelist()
 def search_tasks(filters=None, query=None, limit=20, start=0):
-	if not _can_plan_tasks():
-		frappe.throw(_("Not permitted."), frappe.PermissionError)
-
-	filters = _normalize_payload(filters)
+	"""
+	Search for Tasks definitions (Library).
+	"""
+	filters = filters or {}
 	if query:
-		filters["title"] = ["like", f"%{query.strip()}%"]
+		filters["title"] = ["like", f"%{query}%"]
 
-	try:
-		limit = int(limit or 20)
-		start = int(start or 0)
-	except Exception:
-		limit = 20
-		start = 0
-
-	fields = [
-		"name",
-		"title",
-		"task_type",
-		"default_course",
-		"is_template",
-		"is_archived",
-	]
-
-	return frappe.get_all(
+	tasks = frappe.get_all(
 		"Task",
 		filters=filters,
-		fields=fields,
-		order_by="is_template desc, modified desc",
+		fields=["name", "title", "task_type", "default_course", "is_template", "is_archived"],
 		limit_page_length=limit,
-		limit_start=start,
+		start=start,
+		order_by="modified desc"
 	)
+	return tasks
 
 
 @frappe.whitelist()
 def get_task_for_delivery(task):
-	_require(task, "Task")
-	if not _can_plan_tasks():
-		frappe.throw(_("Not permitted."), frappe.PermissionError)
+	"""
+	Get Task details payload for the Assign Wizard.
+	"""
+	if not task:
+		frappe.throw(_("Task is required."))
 
-	fields = [
-		"name",
-		"title",
-		"task_type",
-		"default_course",
-		"learning_unit",
-		"lesson",
-		"instructions",
-		"is_template",
-		"is_archived",
-		"default_delivery_mode",
-		"default_requires_submission",
-		"default_grading_mode",
-		"default_max_points",
-		"default_grade_scale",
-		"default_rubric",
-		"prevent_late_submission",
-	]
-
-	row = frappe.db.get_value("Task", task, fields, as_dict=True)
-	if not row:
-		frappe.throw(_("Task not found."))
-
-	attachments = frappe.get_all(
-		"Attached Document",
-		filters={"parent": task, "parenttype": "Task"},
-		fields=[
-			"name",
-			"file",
-			"file_name",
-			"file_size",
-			"external_url",
-			"description",
-			"is_primary",
-		],
-		order_by="idx asc",
-	)
-
+	doc = frappe.get_doc("Task", task)
+	
+	# Minimal payload for the wizard
 	return {
-		"task": row,
-		"attachments": attachments,
+		"name": doc.name,
+		"title": doc.title,
+		"description": doc.description,
+		"task_type": doc.task_type,
+		"default_course": doc.default_course,
+		"grading_defaults": {
+			"default_max_points": doc.default_max_points,
+			"default_grade_scale": doc.default_grade_scale,
+		}
 	}
 
 
 @frappe.whitelist()
 def create_task_delivery(payload):
-	if not _can_plan_tasks():
+	"""
+	Orchestrate Task Delivery creation.
+	Delegates strictly to task_delivery_service.
+	"""
+	# Check permissions
+	if not _can_manage_tasks():
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	data = _normalize_payload(payload)
-	_require(data.get("task"), "Task")
-	_require(data.get("student_group"), "Student Group")
+	return task_delivery_service.create_delivery(payload)
 
-	return create_delivery(data)
+
+def _has_role(*roles):
+	user_roles = set(frappe.get_roles(frappe.session.user))
+	return any(r in user_roles for r in roles)
+
+
+def _can_manage_tasks():
+	# Allow Instructors, Curriculum Coordinators, Academic Admins
+	return _has_role("System Manager", "Academic Admin", "Curriculum Coordinator", "Instructor")

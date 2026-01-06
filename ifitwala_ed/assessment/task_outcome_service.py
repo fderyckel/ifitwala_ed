@@ -209,6 +209,13 @@ def set_procedural_status(outcome_id, status, note=None):
 	return frappe.db.get_value("Task Delivery", delivery_id, fields, as_dict=True) or {}
 
 
+def _get_delivery_flags(delivery_id):
+	if not delivery_id:
+		return {}
+	fields = ["grading_mode", "require_grading"]
+	return frappe.db.get_value("Task Delivery", delivery_id, fields, as_dict=True) or {}
+
+
 def update_manual_outcome_draft(outcome_id, official_score=None, official_grade=None, official_feedback=None, procedural_status=None):
 	"""
 	Handle manual draft updates from the gradebook.
