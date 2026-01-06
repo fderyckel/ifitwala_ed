@@ -135,6 +135,9 @@ class TaskDelivery(Document):
 		return context or None
 
 	def _apply_delivery_mode_defaults(self):
+		if not self.delivery_mode:
+			return
+
 		if self.delivery_mode == "Assign Only":
 			self.requires_submission = 0
 			self.require_grading = 0
@@ -149,9 +152,45 @@ class TaskDelivery(Document):
 
 		if self.delivery_mode == "Assess":
 			self.require_grading = 1
+			self._ensure_grading_mode()
+			self._set_requires_submission_from_defaults()
 
-	def _clear_grading_fields(self):
-		self.grading_mode = None
+			if self.grading_mode in ("Completion", "Binary"):
+				self._clear_grading_fields(keep_mode=True)
+
+			if self.grading_mode == "Points":
+				self.rubric_version = None
+
+			if self.grading_mode == "Criteria":
+				self.max_points = None
+
+	def _ensure_grading_mode(self):
+		if self.grading_mode and self.grading_mode != "None":
+			return
+
+		defaults = self._get_task_defaults()
+		default_mode = defaults.get("default_grading_mode")
+		if default_mode and default_mode != "None":
+			self.grading_mode = default_mode
+			return
+
+		self.grading_mode = "Completion"
+
+	def _set_requires_submission_from_defaults(self):
+		defaults = self._get_task_defaults()
+		default_requires = defaults.get("default_requires_submission")
+		if default_requires in (0, 1, "0", "1", True, False):
+			self.requires_submission = 1 if int(default_requires) else 0
+			return
+
+		if self.grading_mode in ("Points", "Criteria"):
+			self.requires_submission = 1
+		else:
+			self.requires_submission = 0
+
+	def _clear_grading_fields(self, keep_mode=False):
+		if not keep_mode:
+			self.grading_mode = None
 		self.max_points = None
 		self.grade_scale = None
 		self.rubric_version = None
@@ -183,7 +222,7 @@ class TaskDelivery(Document):
 			return
 
 		if self.delivery_mode == "Assess":
-			if not self.grading_mode:
+			if not self.grading_mode or self.grading_mode == "None":
 				frappe.throw(_("Assess deliveries require a grading mode."))
 
 			if self.grading_mode == "Points":
@@ -205,6 +244,10 @@ class TaskDelivery(Document):
 			frappe.throw(_("Group submission requires submissions to be enabled."))
 
 	def _get_task_default_rubric(self):
+		defaults = self._get_task_defaults()
+		if defaults.get("default_rubric"):
+			return defaults.get("default_rubric")
+
 		meta = frappe.get_meta("Task")
 		fieldnames = [f for f in ("default_rubric", "rubric") if meta.get_field(f)]
 		if not fieldnames:
@@ -214,6 +257,31 @@ class TaskDelivery(Document):
 			if values.get(fieldname):
 				return values.get(fieldname)
 		return None
+
+	def _get_task_defaults(self):
+		if hasattr(self, "_task_defaults"):
+			return self._task_defaults
+
+		if not self.task:
+			self._task_defaults = {}
+			return self._task_defaults
+
+		meta = frappe.get_meta("Task")
+		fields = [
+			fieldname
+			for fieldname in (
+				"default_requires_submission",
+				"default_grading_mode",
+				"default_rubric",
+			)
+			if meta.get_field(fieldname)
+		]
+		if not fields:
+			self._task_defaults = {}
+			return self._task_defaults
+
+		self._task_defaults = frappe.db.get_value("Task", self.task, fields, as_dict=True) or {}
+		return self._task_defaults
 
 	def _ensure_rubric_snapshot(self):
 		existing = frappe.db.get_value(

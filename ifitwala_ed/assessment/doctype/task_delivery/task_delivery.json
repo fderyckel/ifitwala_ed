@@ -48,7 +48,8 @@
    "fieldname": "student_group",
    "fieldtype": "Link",
    "label": "Student Group",
-   "options": "Student Group"
+   "options": "Student Group",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_sdwu",
@@ -178,7 +179,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 20:30:31.666262",
+ "modified": "2026-01-06 20:30:32",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Delivery",
