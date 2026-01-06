@@ -4,1159 +4,211 @@
 # ifitwala_ed/assessment/doctype/task/task.py
 
 import frappe
-from frappe.model.document import Document
-from frappe.utils import now_datetime, get_datetime, cint
 from frappe import _
-from typing import Optional, Dict, List
-
-# If you need the school tree guard (AY on parent vs group on leaf)
-try:
-	from ifitwala_ed.utilities.school_tree import is_descendant
-except Exception:
-	def is_descendant(*args, **kwargs):
-		return True  # soft fallback if util not available in early migrations
-
-def _is_course_scoped_group(group_row: dict) -> bool:
-	gb = group_row.get("group_based_on") or ""
-	return gb.strip().lower() == "course"
-
-def _as_dt(val):
-	"""None-safe coercion of Frappe Datetime field values to datetime."""
-	return get_datetime(val) if val else None
+from frappe.model.document import Document
 
 
 class Task(Document):
-
-	def before_insert(self):
-		# Ensure Posted Date is set if schema default didn't apply (programmatic inserts)
-		if not self.posted_date:
-			self.posted_date = now_datetime()
-		# Denorm from student_group (cheap, read-only fields in schema)
-		self._denorm_from_group()
-
-	def before_save(self):
-		self._apply_course_default_grade_scale()
+	def before_validate(self):
+		self._set_default_course_from_group()
+		self._validate_course_alignment()
 
 	def validate(self):
-		self._validate_learning_unit_belongs_to_course()
-		# --- Date sanity (parent window) ---
-		start_dt = _as_dt(self.available_from)
-		end_dt = _as_dt(self.available_until)
-		if start_dt and end_dt and start_dt > end_dt:
-			frappe.throw(_("Available From must be before Available Until."))
+		self._validate_curriculum_links()
+		self._apply_grading_defaults()
+		self._warn_if_archived_changes()
 
-		# Prevent-late requires a due date
-		if self.prevent_late_submission and not self.due_date:
-			frappe.throw(_("Prevent Late Submission requires a Due Date."))
+	def on_trash(self):
+		used = frappe.db.get_value("Task Delivery", {"task": self.name}, "name")
+		if used:
+			frappe.throw(_("This Task is already used in a delivery. Archive it instead."))
 
-		# --- Publish guard ---
-		if self.is_published and not self.student_group:
-			frappe.throw(_("Select a Student Group before publishing."))
+	def _doc_meta(self):
+		if not hasattr(self, "_task_meta"):
+			self._task_meta = frappe.get_meta(self.doctype)
+		return self._task_meta
 
-		# --- Group & course consistency ---
+	def _has_field(self, fieldname):
+		return bool(self._doc_meta().get_field(fieldname))
+
+	def _field_is_required_and_read_only(self, fieldname):
+		field = self._doc_meta().get_field(fieldname)
+		return bool(field and field.reqd and field.read_only)
+
+	def _field_is_read_only(self, fieldname):
+		field = self._doc_meta().get_field(fieldname)
+		return bool(field and field.read_only)
+
+	def _set_default_course_from_group(self):
+		locked = self._field_is_required_and_read_only("default_course")
 		if self.student_group:
-			g = frappe.db.get_value(
-				"Student Group",
-				self.student_group,
-				["group_based_on", "course", "school", "academic_year"],
-				as_dict=True,
-			) or {}
-
-			# If the group is course-scoped, ensure its course matches the task course (when both present)
-			if _is_course_scoped_group(g):
-				if g.get("course") and self.course and g["course"] != self.course:
-					frappe.throw(_("Selected Student Group belongs to a different Course."))
-
-			# Tree guard: group school must be the same as task.school or a descendant (when both present)
-			if self.school and g.get("school") and not is_descendant(
-				ancestor=self.school, node=g["school"], include_equal=True
-			):
-				frappe.throw(_("Student Group’s school must be {0} or its descendant.").format(self.school))
-
-		if not self.is_new():
-			old_criteria = frappe.db.get_value("Task", self.name, "criteria")
-			# Previously criteria=1, now criteria=0
-			if old_criteria and not self.criteria and self._grading_has_started():
+			course = frappe.db.get_value("Student Group", self.student_group, "course")
+			self.default_course = course
+			if not course and locked:
 				frappe.throw(_(
-					"Criteria-based grading has already started for this Task. "
-					"You cannot disable Criteria after grades or rubric scores exist. "
-					"Duplicate the Task if you need a different grading mode."
+					"Selected Student Group has no Course. Choose a course-based Student Group or "
+					"adjust the Task schema."
 				))
-
-		self._enforce_due_date_if_published()
-		self._validate_task_criteria()
-		self._validate_task_criterion_scores()
-		self._validate_criteria_weighting()
-
-		# Points-only clamping and totals
-		self._enforce_points_only_bounds()
-		self._enforce_criteria_bounds_and_rollup()
-		self._apply_points_totals_to_task_students()
-
-		# --- Grading requirements (when graded) ---
-		if self.points:
-				if not self.grade_scale:
-						frappe.throw(_("Grade Scale is required when points are enabled."))
-				if not self.max_points or float(self.max_points) <= 0:
-						frappe.throw(_("Max Points must be greater than 0 when points are enabled."))
-
-		# --- Submission settings sanity ---
-		if (self.submission_required or (self.submission_type and self.submission_type != "None")) and not self.is_graded:
-			# Allow ungraded submissions? If not, block; else make this a warning depending on policy.
-			pass  # keep permissive for MVP
-
-		if self.attempt_limit and self.attempt_limit < 0:
-			frappe.throw(_("Attempt Limit cannot be negative."))
-
-		self._validate_task_students()
-
-		# --- Duplicate guard (same group + lesson + title + due_date) ---
-		# Only run when we have enough context; also allow edits that don't change keys
-		if self.student_group and self.title:
-			self.validate_no_identical_clone()
-
-	def before_save(self):
-		# Keep denorm fresh if group changed or cleared
-		self._denorm_from_group()
-		self.status = self._compute_status()		# Compute status (Draft/Published/Open/Closed) for task
-		self._snapshot_task_criteria()
-		self._update_task_student_statuses()    # status engine for Task Student rows
-
-	def _apply_course_default_grade_scale(self):
-		"""
-		If points mode is enabled AND grade_scale is empty AND course has a default_grade_scale,
-		auto-fill grade_scale.
-		"""
-		# Only apply when points checkbox is ON
-		if not cint(self.points):
 			return
 
-		# Respect manually selected grade scales
-		if self.grade_scale:
+		if locked:
+			frappe.throw(_(
+				"Select a Student Group to set the creation context, or adjust the Task schema "
+				"for default_course."
+			))
+
+	def _get_lesson_from_activity(self, lesson_activity):
+		if not lesson_activity:
+			return None
+		info = frappe.db.get_value(
+			"Lesson Activity",
+			lesson_activity,
+			["parent", "parenttype"],
+			as_dict=True,
+		) or {}
+		if info.get("parenttype") and info.get("parenttype") != "Lesson":
+			return None
+		return info.get("parent")
+
+	def _get_lesson_info(self, lesson_name):
+		if not lesson_name:
+			return {}
+		return frappe.db.get_value(
+			"Lesson",
+			lesson_name,
+			["course", "learning_unit"],
+			as_dict=True,
+		) or {}
+
+	def _get_course_from_lesson(self, lesson_name):
+		info = self._get_lesson_info(lesson_name)
+		if not info:
+			return None
+		if info.get("course"):
+			return info.get("course")
+		if info.get("learning_unit"):
+			return frappe.db.get_value("Learning Unit", info["learning_unit"], "course")
+		return None
+
+	def _validate_course_alignment(self):
+		default_course = self.default_course
+		if not default_course:
 			return
 
-		# Course must exist and not be literal "NA"
-		if not self.course or self.course.strip() == "NA":
-			return
-
-		default_scale = frappe.db.get_value("Course", self.course, "default_grade_scale")
-		if default_scale:
-			self.grade_scale = default_scale
-
-	def _enforce_due_date_if_published(self):
-		"""
-		Enforce that any Task that is visible to students (Published/Open)
-		or explicitly marked as is_published must have a Due Date.
-
-		We intentionally compute the effective status here instead of relying
-		on self.status, because validate() can run before before_save()
-		has written the status field.
-		"""
-		visible_states = {"Published", "Open"}
-
-		# Compute effective status based on current fields
-		effective_status = self._compute_status()
-
-		if (effective_status in visible_states or self.is_published) and not self.due_date:
-			frappe.throw(_("Due Date is required when a Task is Published or Open."))
-
-	# --- add inside Task class in task.py ---
-	def _grading_has_started(self) -> bool:
-		"""
-		Return True if there is any meaningful grading activity:
-		- On Task Student: marks, feedback, completion, visibility, or non-Assigned status.
-		- On Task Criterion Score: chosen level OR non-zero level_points.
-		"""
-		# Check Task Student rows
-		for row in (self.get("task_student") or []):
-			if (row.get("mark_awarded") not in (None, "")) \
-				or (row.get("feedback") or "").strip() \
-				or (row.get("complete") or 0) \
-				or (row.get("visible_to_student") or 0) \
-				or (row.get("visible_to_guardian") or 0) \
-				or (row.get("status") not in (None, "", "Assigned")):
-				return True
-
-		# Check rubric rows
-		for r in (self.get("task_criterion_score") or []):
-			level = getattr(r, "level", None)
-			points = getattr(r, "level_points", None)
-			rubric_feedback = (getattr(r, "feedback", "") or "").strip()
-
-			try:
-				points_val = float(points) if points not in (None, "") else 0.0
-			except Exception:
-				points_val = 0.0
-
-			if level or points_val != 0.0 or rubric_feedback:
-				return True
-
-		return False
-
-
-	def _validate_criteria_weighting(self):
-		"""Ensure Task.assessment_criteria weightings are sensible."""
-		rows = self.get("assessment_criteria") or []
-		if not rows:
-			return
-
-		weights = []
-		for r in rows:
-			# Percent fields may be None; coerce to float
-			w = float(r.get("criteria_weighting") or 0)
-			if w < 0:
-				frappe.throw(_("Criteria weighting cannot be negative."))
-			weights.append(w)
-
-		total = sum(weights)
-
-		# If any weighting is used (>0 anywhere), enforce hard ceiling 100%
-		if any(w > 0 for w in weights):
-			if total > 100.0000001:
-				frappe.throw(_("Sum of criteria weighting is {0:.2f}%, which exceeds 100%.")
-					.format(total))
-			# Soft nudge if not exactly 100%
-			if 0 < total < 99.999:
-				frappe.msgprint(
-					_("Sum of criteria weighting is {0:.2f}%. Consider making it 100% for clarity.")
-					.format(total),
-					indicator="orange"
-				)
-
-
-	def _enforce_points_only_bounds(self):
-		"""
-		If the Task has NO criteria, clamp each Task Student.mark_awarded:
-
-			0 ≤ mark_awarded ≤ max_points (if max_points > 0),
-		otherwise prevent negatives only.
-
-		Important: do NOT auto-fill empty marks with 0.0 - we only clamp values the
-		teacher has actually entered.
-		"""
-		# Any criteria? then skip – rubric flow handles totals.
-		if any(getattr(r, "assessment_criteria", None) for r in (self.get("assessment_criteria") or [])):
-			return
-
-		cap = float(self.max_points or 0)
-
-		def clamp(val):
-			try:
-				v = float(val)
-			except Exception:
-				return val  # if it's not numeric, leave it as-is
-			if cap > 0:
-				if v < 0:
-					return 0.0
-				if v > cap:
-					return cap
-				return v
-			# no cap set -> just prevent negatives
-			return 0.0 if v < 0 else v
-
-		for row in (self.get("task_student") or []):
-			raw = row.get("mark_awarded")
-			# Only clamp if there is actually something entered
-			if raw in (None, ""):
-				continue
-			new_val = clamp(raw)
-			if new_val != raw:
-				setattr(row, "mark_awarded", new_val)
-
-	def _apply_points_totals_to_task_students(self) -> None:
-		"""Populate out_of and pct for points-only tasks (no criteria).
-
-		- out_of comes from Task.max_points
-		- pct = mark_awarded / out_of * 100 (or None if out_of == 0 or mark empty)
-
-		Does nothing in criteria mode or when points is off.
-		Works only on in-memory child rows; no extra DB trips.
-		"""
-		# Only relevant when points mode is ON and criteria mode is OFF
-		if not self.points or self.criteria:
-			return
-
-		# max_points is the canonical denominator
-		cap = float(self.max_points or 0)
-		rows = self.get("task_student") or []
-
-		if not rows:
-			return
-
-		for row in rows:
-			raw = row.get("mark_awarded")
-
-			# Always sync out_of so analytics has a consistent shape
-			row.out_of = cap
-
-			# Empty mark → clear pct
-			if raw in (None, ""):
-				row.pct = None
-				continue
-
-			# Non-empty mark: try numeric conversion
-			try:
-				mark = float(raw)
-			except Exception:
-				# If it's not numeric, don't crash; just skip pct
-				continue
-
-			# No denominator → no percentage
-			if cap <= 0:
-				row.pct = None
-				continue
-
-			row.pct = (mark / cap) * 100.0
-
-
-	def _enforce_criteria_bounds_and_rollup(self):
-		"""
-		Clamp Task Criterion Score.level_points within [0, criteria_max_points] for criteria-based tasks,
-		then recompute Task Student totals for affected students.
-		No effect if the Task has no criteria rows.
-		"""
-		crit_rows = self.get("assessment_criteria") or []
-		if not crit_rows:
-			return  # points-only mode handled elsewhere
-
-		# Build snapshot map from Task child table (fast; no joins)
-		crit_caps = {}
-		for r in crit_rows:
-			crit_id = getattr(r, "assessment_criteria", None)
-			if not crit_id:
-				continue
-			crit_caps[crit_id] = float(getattr(r, "criteria_max_points", 0) or 0)
-
-		# Nothing to clamp if we have no caps
-		if not crit_caps:
-			return
-
-		score_rows = self.get("task_criterion_score") or []
-		if not score_rows:
-			return
-
-		impacted_students = set()
-		for row in score_rows:
-			crit_id = getattr(row, "assessment_criteria", None)
-			if not crit_id:
-				continue
-			cap = crit_caps.get(crit_id, 0.0)
-			# normalize numeric
-			try:
-				val = float(getattr(row, "level_points", 0) or 0)
-			except Exception:
-				val = 0.0
-			# clamp: 0 ≤ level_points ≤ cap (if cap>0); otherwise just prevent negatives
-			if cap > 0:
-				new_val = max(0.0, min(val, cap))
-			else:
-				new_val = 0.0 if val < 0 else val
-
-			if new_val != val:
-				row.level_points = new_val  # mutate child; Frappe will persist on save
-				if getattr(row, "student", None):
-					impacted_students.add(row.student)
-			else:
-				if getattr(row, "student", None):
-					# still mark as impacted so totals stay up-to-date if caps changed
-					impacted_students.add(row.student)
-
-		# Recompute totals for all impacted students
-		if impacted_students:
-			for stu in impacted_students:
-				_recompute_student_totals(self.name, stu)
-
-	def _validate_learning_unit_belongs_to_course(self):
-		if not self.learning_unit:
-			return
-		lu_course = frappe.db.get_value("Learning Unit", self.learning_unit, "course")
-		if not lu_course:
-			frappe.throw(f"Learning Unit <b>{self.learning_unit}</b> has no Course set.")
-		if self.course and lu_course != self.course:
-			frappe.throw(
-				f"Learning Unit <b>{self.learning_unit}</b> belongs to Course "
-				f"<b>{lu_course}</b> which does not match this Task’s Course <b>{self.course}</b>."
-			)
-		# If course is somehow still empty (e.g., manual entry), set it safely
-		if not self.course:
-			self.course = lu_course
-
-	def _denorm_from_group(self) -> None:
-		"""Best-effort, cheap denormalization from Student Group. Fields are read-only in the schema."""
-		if not self.student_group:
-			return
-
-		# Pull what you actually store on Student Group (cheap lookups)
-		school, program, ay, group_course = frappe.db.get_value(
-			"Student Group",
-			self.student_group,
-			["school", "program", "academic_year", "course"],
-			as_dict=False
-		) or (None, None, None, None)
-
-		# Write denorms
-		self.school = school
-		self.program = program
-		self.academic_year = ay
-
-		# If task.course is empty and group has a course, adopt it
-		if not self.course and group_course:
-			self.course = group_course
-
-	def _compute_status(self) -> str:
-		"""Draft if not published; Published if before window; Open during window; Closed after."""
-		if not self.is_published:
-			return "Draft"
-
-		now = now_datetime()
-		start = _as_dt(self.available_from)
-		end = _as_dt(self.available_until)
-
-		if start and now < start:
-			return "Published"
-		if end and now > end:
-			return "Closed"
-		return "Open"
-
-	def _snapshot_task_criteria(self):
-		for r in (self.get("assessment_criteria") or []):
-			if not r.assessment_criteria:
-				continue
-			maxp = frappe.db.get_value(
-				"Assessment Criteria", r.assessment_criteria, "maximum_mark"
-			)
-			r.criteria_max_points = float(maxp or 0)
-
-	def _update_task_student_statuses(self) -> None:
-		"""
-		Deterministically update Task Student.status for each child row based on the Task
-		and row fields. Idempotent; safe to call on every save.
-
-		Rules:
-		- Returned: visible_to_student or visible_to_guardian
-		- Graded: binary+complete OR mark_awarded set OR feedback non-empty
-		- In Progress (criteria): at least one rubric row for this student with a chosen level
-		  or a non-zero level_points
-		- Assigned: everything else
-		"""
-		# --- Criteria activity map -------------------------------------------
-		has_criteria = any(
-			getattr(r, "assessment_criteria", None)
-			for r in (self.get("assessment_criteria") or [])
+		lesson_activity = (
+			getattr(self, "lesson_activity", None)
+			if self._has_field("lesson_activity")
+			else None
 		)
+		if lesson_activity:
+			parent_lesson = self._get_lesson_from_activity(lesson_activity)
+			if parent_lesson:
+				course = self._get_course_from_lesson(parent_lesson)
+				if course and course != default_course:
+					frappe.throw(_("Lesson Activity belongs to a different Course than the Task's Course."))
 
-		rubric_by_student = set()
-		if has_criteria:
-			for r in (self.get("task_criterion_score") or []):
-				if not getattr(r, "student", None):
-					continue
-
-				level = getattr(r, "level", None)
-				points = getattr(r, "level_points", None)
-				# normalize numeric
-				try:
-					points_val = float(points) if points not in (None, "") else 0.0
-				except Exception:
-					points_val = 0.0
-
-				# "Meaningful work" on the rubric:
-				# - a level has been selected OR
-				# - level_points is non-zero
-				if level or points_val != 0.0:
-					rubric_by_student.add(r.student)
-
-		# --- Per-student status engine ---------------------------------------
-		for row in (self.get("task_student") or []):
-			# Visibility -> Returned
-			if (row.get("visible_to_student") or 0) or (row.get("visible_to_guardian") or 0):
-				new_status = "Returned"
-
-			# Graded conditions
-			elif self.binary and (row.get("complete") or 0):
-				new_status = "Graded"
-			elif row.get("mark_awarded") not in (None, ""):
-				new_status = "Graded"
-			elif (row.get("feedback") or "").strip():
-				new_status = "Graded"
-
-			# In Progress conditions (work started but not finalized)
-			elif has_criteria and (row.get("student") in rubric_by_student):
-				# Criteria-based task: rubric edits without final grade
-				new_status = "In Progress"
-
-			else:
-				new_status = "Assigned"
-
-			# Apply only if changed
-			if row.get("status") != new_status:
-				row.status = new_status
-
-	## In class helpers
-	def validate_no_identical_clone(self) -> None:
-		"""Disallow an identical Task for the same student_group + lesson + title + due_date.
-		Excludes self when updating an existing Task.
-		"""
-		# Build filters
-		filters = [
-			["Task", "student_group", "=", self.student_group],
-			["Task", "title", "=", self.title],
-		]
-		# lesson may be optional; include when present
 		if self.lesson:
-			filters.append(["Task", "lesson", "=", self.lesson])
+			course = self._get_course_from_lesson(self.lesson)
+			if course and course != default_course:
+				frappe.throw(_("Lesson belongs to a different Course than the Task's Course."))
 
-		# due_date match: either exact datetime or both unset/null
-		if self.due_date:
-			filters.append(["Task", "due_date", "=", self.due_date])
-		else:
-			filters.append(["Task", "due_date", "is", "not set"])
-
-		# Exclude current document if it exists (updates)
-		if self.name:
-			filters.append(["Task", "name", "!=", self.name])
-
-		exists = frappe.get_all("Task", filters=filters, fields=["name"], limit=1)
-		if exists:
-			frappe.throw(_("A similar Task already exists for this group with the same due date: {0}")
-				.format(exists[0]["name"]))
-
-	def _validate_task_criteria(self) -> None:
-		"""
-		When criteria grading is enabled (criteria == 1):
-
-		1) Require at least one Assessment Criteria row.
-		2) Require a Course.
-		3) Enforce that each selected criteria belongs to the Course via
-		   Course Assessment Criteria child table.
-		"""
-		if not self.criteria:
-			return
-
-		rows = self.get("assessment_criteria") or []
-		if not rows:
-			frappe.throw(_("At least one Assessment Criteria row is required when Criteria is enabled."))
-
-		if not self.course:
-			frappe.throw(_("Course is required when Criteria grading is enabled."))
-
-		# Allowed criteria from Course → Course Assessment Criteria
-		allowed = set(
-			frappe.get_all(
-				"Course Assessment Criteria",
-				filters={"parent": self.course},
-				pluck="assessment_criteria",
-			)
+	def _validate_curriculum_links(self):
+		lesson_activity = (
+			getattr(self, "lesson_activity", None)
+			if self._has_field("lesson_activity")
+			else None
 		)
+		lesson = self.lesson or None
+		learning_unit = self.learning_unit or None
 
-		if not allowed:
-			frappe.throw(
-				_("Course {0} has no linked Assessment Criteria. "
-				  "Add criteria on the Course before using Criteria grading.").format(self.course)
-			)
+		if lesson_activity:
+			parent_lesson = self._get_lesson_from_activity(lesson_activity)
+			if lesson:
+				if parent_lesson and parent_lesson != lesson:
+					frappe.throw(_("Lesson Activity does not belong to the selected Lesson."))
+			elif parent_lesson:
+				self.lesson = parent_lesson
+				lesson = parent_lesson
 
-		illegal = []
-		for r in rows:
-			crit = getattr(r, "assessment_criteria", None)
-			if not crit:
-				continue
-			if crit not in allowed:
-				illegal.append(crit)
+		if lesson:
+			lesson_info = self._get_lesson_info(lesson)
+			lesson_unit = lesson_info.get("learning_unit")
+			if learning_unit:
+				if lesson_unit and lesson_unit != learning_unit:
+					frappe.throw(_("Lesson does not belong to the selected Learning Unit."))
+			elif lesson_unit:
+				self.learning_unit = lesson_unit
 
-		if illegal:
-			frappe.throw(
-				_("The following Assessment Criteria are not linked to Course {0}: {1}")
-				.format(self.course, ", ".join(sorted(illegal)))
-			)
+	def _clear_grading_defaults(self):
+		self.default_grade_scale = None
+		self.default_rubric = None
+		self.default_max_points = None
 
-	def _validate_task_criterion_scores(self) -> None:
-		"""
-		Keep Task Criterion Score in sync with Task:
+	def _apply_grading_defaults(self):
+		if self.default_delivery_mode and self.default_delivery_mode != "Assess":
+			self.default_grading_mode = "None"
+			self._clear_grading_defaults()
 
-		- If criteria == 0 → there should be no rubric rows.
-		- If criteria == 1:
-			* Each rubric row.student must exist in Task Student.
-			* Each rubric row.assessment_criteria must be one of the Task.assessment_criteria.
-			* At most one row per (student, assessment_criteria).
-		"""
-		rows = self.get("task_criterion_score") or []
-		if not rows:
+		grading_mode = self.default_grading_mode or "None"
+		if grading_mode in ("None", "Completion", "Binary"):
+			self._clear_grading_defaults()
+
+		if grading_mode == "Points":
+			if not self.default_max_points or float(self.default_max_points) <= 0:
+				if self._field_is_read_only("default_max_points"):
+					frappe.throw(_(
+						"Default Max Points is read-only in the schema and blocks Points grading. "
+						"Update the schema or choose a different grading mode."
+					))
+				frappe.throw(_("Default Max Points must be greater than 0 when grading mode is Points."))
+
+		if grading_mode == "Criteria":
+			if not self.default_rubric:
+				frappe.throw(_("Default Rubric is required when grading mode is Criteria."))
+
+		if (
+			self.default_delivery_mode in ("Collect Work", "Assess")
+			and self.default_requires_submission in (None, "")
+		):
+			self.default_requires_submission = 1
+
+	def _warn_if_archived_changes(self):
+		if not self.is_archived or self.is_new():
 			return
 
-		# If criteria is OFF but rubric rows exist, that's an inconsistent state.
-		if not self.criteria:
-			frappe.throw(
+		fields = [
+			"default_course",
+			"learning_unit",
+			"lesson",
+			"lesson_activity",
+			"default_delivery_mode",
+			"default_requires_submission",
+			"default_grading_mode",
+			"default_max_points",
+			"default_grade_scale",
+			"default_rubric",
+		]
+		fields = [field for field in fields if self._has_field(field)]
+		if not fields:
+			return
+
+		prior = frappe.db.get_value("Task", self.name, fields, as_dict=True) or {}
+		if not prior:
+			return
+
+		def _norm(value):
+			return None if value in ("", None) else value
+
+		changed = [
+			field
+			for field in fields
+			if _norm(prior.get(field)) != _norm(getattr(self, field, None))
+		]
+		if changed:
+			frappe.msgprint(
 				_(
-					"Task has rubric scores but Criteria is disabled. "
-					"Either re-enable Criteria or clear the rubric rows."
-				)
+					"This Task is archived. Avoid changing grading defaults or curriculum alignment; "
+					"archived tasks should be kept stable and used only for reference."
+				),
+				indicator="orange",
 			)
-
-		# Build allowed student + criteria sets from *this* Task
-		ts_rows = self.get("task_student") or []
-		allowed_students = {getattr(r, "student", None) for r in ts_rows if getattr(r, "student", None)}
-
-		ac_rows = self.get("assessment_criteria") or []
-		allowed_criteria = {
-			getattr(r, "assessment_criteria", None)
-			for r in ac_rows
-			if getattr(r, "assessment_criteria", None)
-		}
-
-		if not allowed_criteria:
-			frappe.throw(
-				_("Task has rubric scores but no Assessment Criteria rows. "
-				  "Add criteria to the Task or clear rubric scores.")
-			)
-
-		seen_pairs = set()
-		for idx, r in enumerate(rows, start=1):
-			stu = getattr(r, "student", None)
-			crit = getattr(r, "assessment_criteria", None)
-
-			# Student must be present and in Task Student table
-			if not stu:
-				frappe.throw(
-					_("Row {0} in Task Criterion Score has no student.").format(idx)
-				)
-			if stu not in allowed_students:
-				frappe.throw(
-					_("Student {0} in rubric row {1} is not in Task Student.")
-					.format(stu, idx)
-				)
-
-			# Criterion must be present and belong to this Task
-			if not crit:
-				frappe.throw(
-					_("Row {0} in Task Criterion Score has no Assessment Criteria.").format(idx)
-				)
-			if crit not in allowed_criteria:
-				frappe.throw(
-					_("Assessment Criteria {0} in rubric row {1} is not linked on this Task.")
-					.format(crit, idx)
-				)
-
-			# No duplicates per (student, criterion)
-			key = (stu, crit)
-			if key in seen_pairs:
-				frappe.throw(
-					_(
-						"Duplicate rubric entry for Student {0} and Criteria {1} "
-						"in Task Criterion Score."
-					).format(stu, crit)
-				)
-			seen_pairs.add(key)
-
-	def _validate_task_students(self) -> None:
-		"""
-		Enforce:
-		1) Each student appears at most once in Task Student child table.
-		2) Each student belongs to this Task's student_group as an *active* member.
-		"""
-		rows = self.get("task_student") or []
-		if not rows:
-			return
-
-		# If for some reason student_group is missing, the doc should already be failing elsewhere.
-		# Don't try to be clever here.
-		if not self.student_group:
-			return
-
-		# Build membership set: active students in this Student Group
-		members = {
-			r["student"]
-			for r in frappe.get_all(
-				"Student Group Student",
-				filters={"parent": self.student_group, "active": 1},
-				fields=["student"],
-			)
-			if r.get("student")
-		}
-
-		seen = set()
-		for idx, row in enumerate(rows, start=1):
-			stu = getattr(row, "student", None)
-			if not stu:
-				continue
-
-			# 1) No duplicates
-			if stu in seen:
-				frappe.throw(
-					_(
-						"Student {0} is listed more than once in Task Student (row {1}). "
-						"Each student can appear only once."
-					).format(stu, idx)
-				)
-			seen.add(stu)
-
-			# 2) Must belong to the group (active only)
-			if stu not in members:
-				frappe.throw(
-					_(
-						"Student {0} is not an active member of Student Group {1}. "
-						"You can only add students from the Task’s Student Group."
-					).format(stu, self.student_group)
-				)
-
-
-def _prefill_task_rubrics(task_doc) -> dict:
-	"""
-	For each student already in Task Student, ensure one Task Criterion Score row exists
-	per Assessment Criteria selected on the Task. Initialize with level_points = 0.
-	No weighting math here; this step only creates missing rows.
-	"""
-	# 1) Criteria chosen on this Task (from Assessment Criteria child table)
-	crit_ids = [
-		r.assessment_criteria
-		for r in (task_doc.get("assessment_criteria") or [])
-		if r.assessment_criteria
-	]
-	if not crit_ids:
-		return {"created": 0, "students": 0, "criteria": 0}
-
-	# 2) Students already loaded on this Task
-	students = frappe.get_all(
-		"Task Student",
-		filters={"parent": task_doc.name, "parenttype": "Task"},
-		fields=["student"]
-	)
-	if not students:
-		return {"created": 0, "students": 0, "criteria": len(crit_ids)}
-
-	# 3) Existing rubric rows (to avoid duplicates)
-	existing_pairs = {
-		(r.student, r.assessment_criteria)
-		for r in frappe.get_all(
-			"Task Criterion Score",
-			filters={"parent": task_doc.name, "parenttype": "Task"},
-			fields=["student", "assessment_criteria"]
-		)
-	}
-
-	# 4) Insert missing (student × criterion) rows
-	created = 0
-	for s in students:
-		for crit in crit_ids:
-			key = (s["student"], crit)
-			if key in existing_pairs:
-				continue
-			frappe.get_doc({
-				"doctype": "Task Criterion Score",
-				"parent": task_doc.name,
-				"parenttype": "Task",
-				"parentfield": "task_criterion_score",
-				"student": s["student"],
-				"assessment_criteria": crit,
-				"level": None,
-				"level_points": 0.0
-			}).insert(ignore_permissions=False)
-			created += 1
-
-	return {"created": created, "students": len(students), "criteria": len(crit_ids)}
-
-
-def _recompute_student_totals(task: str, student: str) -> None:
-	"""Roll up Task Criterion Score rows for (task, student) into Task Student.
-
-	Behaviour (criteria mode only):
-	- If any criteria on the Task have criteria_weighting > 0 -> use weighted percentage.
-	- Otherwise, use a simple unweighted sum of level_points / criteria_max_points.
-	- Writes numeric totals into:
-	    - mark_awarded (Float)  ← canonical numeric grade
-	    - out_of (Float)
-	    - pct (Percent)
-	"""
-
-	task_doc = frappe.get_doc("Task", task)
-
-	# Build a snapshot dict from Task.assessment_criteria (no extra lookups per score row)
-	crit_meta = {}
-	for r in (task_doc.get("assessment_criteria") or []):
-		if not getattr(r, "assessment_criteria", None):
-			continue
-		crit_meta[r.assessment_criteria] = {
-			"maxp": float(getattr(r, "criteria_max_points", 0) or 0),
-			"w": float(getattr(r, "criteria_weighting", 0) or 0),
-		}
-
-	# Fetch this student's rubric rows
-	rows = frappe.get_all(
-		"Task Criterion Score",
-		filters={"parent": task, "parenttype": "Task", "student": student},
-		fields=["assessment_criteria", "level_points"],
-	)
-
-	# If no rubric rows: reset totals to a clean state
-	if not rows:
-		ts = frappe.get_all(
-			"Task Student",
-			filters={"parent": task, "parenttype": "Task", "student": student},
-			fields=["name"],
-			limit=1,
-		)
-		if ts:
-			frappe.db.set_value(
-				"Task Student",
-				ts[0]["name"],
-				{
-					"mark_awarded": 0.0,
-					"out_of": 0.0,
-					"pct": None,
-					"updated_on": now_datetime(),
-				},
-				update_modified=False,
-			)
-		return
-
-	# Decide whether to use weighting or not
-	use_weighting = any(
-		(crit_meta.get(r["assessment_criteria"], {}).get("w", 0) or 0) > 0
-		for r in rows
-	)
-
-	if use_weighting:
-		# Weighted percentage: sum over criteria of (score / max * weight)
-		pct = 0.0
-		for r in rows:
-			meta = crit_meta.get(r["assessment_criteria"], {})
-			cmax = meta.get("maxp", 0.0) or 0.0
-			w = (meta.get("w", 0.0) or 0.0) / 100.0
-
-			try:
-				lp = float(r.get("level_points") or 0.0)
-			except Exception:
-				lp = 0.0
-
-			if cmax > 0 and w > 0:
-				pct += (lp / cmax) * w
-
-		pct *= 100.0
-		out_of = float(task_doc.max_points or 0.0)
-		total = (pct * out_of / 100.0) if out_of > 0 else 0.0
-
-	else:
-		# Unweighted: sum the raw level_points, and sum caps for out_of
-		total = 0.0
-		out_of = 0.0
-
-		for r in rows:
-			meta = crit_meta.get(r["assessment_criteria"], {})
-			try:
-				lp = float(r.get("level_points") or 0.0)
-			except Exception:
-				lp = 0.0
-
-			total += lp
-			out_of += float(meta.get("maxp") or 0.0)
-
-		pct = (total / out_of * 100.0) if out_of > 0 else None
-
-	ts = frappe.get_all(
-		"Task Student",
-		filters={"parent": task, "parenttype": "Task", "student": student},
-		fields=["name"],
-		limit=1,
-	)
-	if ts:
-		frappe.db.set_value(
-			"Task Student",
-			ts[0]["name"],
-			{
-				"mark_awarded": total,
-				"out_of": out_of,
-				"pct": pct,
-				"updated_on": now_datetime(),
-			},
-			update_modified=False,
-		)
-
-
-
-@frappe.whitelist()
-def duplicate_for_group(
-    source_task: str,
-    new_student_group: str,
-    available_from: Optional[str] = None,
-    due_date: Optional[str] = None,
-    available_until: Optional[str] = None,
-    is_published: Optional[int] = None,
-) -> dict:
-    """Clone a Task to a new student_group with optional new dates.
-
-    Behaviour:
-    - Copies the Task *structure* (title, course, learning_unit, lesson, grading config,
-      assessment_criteria child rows, instructions, attachments, etc.).
-    - DOES NOT copy Task Student or Task Criterion Score rows.
-      Those will be reloaded via prefill_task_students + rubric seeding.
-    - Enforces the "no identical clone" rule on (student_group, lesson, title, due_date).
-    """
-
-    if not source_task or not new_student_group:
-        frappe.throw(_("source_task and new_student_group are required"))
-
-    src = frappe.get_doc("Task", source_task)
-
-    # Fetch school/program/ay from Student Group to keep context correct
-    sg_school, sg_program, sg_ay = frappe.db.get_value(
-        "Student Group",
-        new_student_group,
-        ["school", "program", "academic_year"],
-        as_dict=False,
-    ) or (None, None, None)
-
-    # Prepare new doc as shallow clone; avoid copying system fields
-    data = src.as_dict()
-
-    # Strip system + identity fields
-    for k in ("name", "amended_from", "owner", "creation", "modified", "modified_by", "docstatus"):
-        data.pop(k, None)
-
-    # Overwrite audience-specific bits
-    data["student_group"] = new_student_group
-    data["school"] = sg_school
-    data["program"] = sg_program
-    data["academic_year"] = sg_ay
-
-    # Dates: use provided overrides, else copy from source
-    data["available_from"] = available_from or src.get("available_from")
-    data["due_date"] = due_date or src.get("due_date")
-    data["available_until"] = available_until or src.get("available_until")
-
-    # is_published override if provided (0/1), else keep source
-    if is_published is not None:
-        data["is_published"] = int(is_published)
-
-    # CRITICAL: do NOT carry over students or rubric scores from the source task
-    # Structure (assessment_criteria) stays; audience-specific tables are reset.
-    data["task_student"] = []
-    data["task_criterion_score"] = []
-
-    # Run duplicate check against current key for the target group BEFORE insert
-    dup_filters = [
-        ["Task", "student_group", "=", data.get("student_group")],
-        ["Task", "title", "=", data.get("title")],
-    ]
-    if data.get("lesson"):
-        dup_filters.append(["Task", "lesson", "=", data.get("lesson")])
-    if data.get("due_date"):
-        dup_filters.append(["Task", "due_date", "=", data.get("due_date")])
-    else:
-        dup_filters.append(["Task", "due_date", "is", "not set"])
-
-    if frappe.get_all("Task", filters=dup_filters, limit=1):
-        frappe.throw(_("A similar Task already exists for this group with the same due date."))
-
-    # Insert new Task
-    new_doc = frappe.get_doc({"doctype": "Task", **data})
-    new_doc.insert(ignore_permissions=False)  # normal perms
-    # Do NOT auto-submit; author can review first
-
-    return {"name": new_doc.name}
-
-
-@frappe.whitelist()
-def prefill_task_students(task: str):
-    """
-    Add-only prefill of Task Student rows based on the Task's Student Group.
-    - Never removes existing rows.
-    - Never duplicates students.
-    - Only inserts students who are *actually* in the Task's student_group.
-    - Returns {"inserted": <count>}
-    """
-
-    task = frappe.get_doc("Task", task)
-
-    if not task.student_group:
-        return {"inserted": 0}
-
-    # ----------------------------------------------------------------------
-    # 1) Get students from the Student Group (the only source of truth)
-    # ----------------------------------------------------------------------
-    sg_students = frappe.get_all(
-        "Student Group Student",
-        filters={"parent": task.student_group, "active": 1},
-        fields=["student"],
-        order_by="group_roll_number asc"
-    )
-    sg_ids = [s.student for s in sg_students] or []
-
-    if not sg_ids:
-        return {"inserted": 0}
-
-    # ----------------------------------------------------------------------
-    # 2) Get existing Task Student students (prevent duplicates)
-    # ----------------------------------------------------------------------
-    existing_rows = frappe.get_all(
-        "Task Student",
-        filters={"parent": task.name},
-        fields=["name", "student"]
-    )
-    existing_ids = {r.student for r in existing_rows}
-
-    # Determine which SG students are missing
-    missing = [sid for sid in sg_ids if sid not in existing_ids]
-
-    if not missing:
-        return {"inserted": 0}
-
-    # ----------------------------------------------------------------------
-    # 3) Insert missing rows (add-only)
-    # ----------------------------------------------------------------------
-    inserted = 0
-    for student_id in missing:
-        child = task.append("task_student", {
-            "student": student_id,
-            "status": "Assigned",   # always default
-            "mark_awarded": None,   # no points set
-            "pct": None,
-            "visible_to_student": 0,
-            "visible_to_guardian": 0,
-            "complete": 0,
-        })
-        inserted += 1
-
-    # Save once
-    task.save(ignore_permissions=True)
-
-    return {"inserted": inserted}
-
-
-
-@frappe.whitelist()
-def get_criterion_scores_for_student(task: str, student: str) -> Dict:
-	"""Return existing rubric rows so the dialog can preload them."""
-	if not (task and student):
-		return {"rows": []}
-
-	# Basic permission: ensure current user can read this Task
-	frappe.has_permission(doctype="Task", doc=task, ptype="read", throw=True)
-
-	rows = frappe.get_all(
-		"Task Criterion Score",
-		filters={"parent": task, "parenttype": "Task", "student": student},
-		fields=["assessment_criteria", "level", "level_points", "feedback"],
-		order_by="idx asc"
-	)
-	return {"rows": rows}
-
-
-@frappe.whitelist()
-def apply_rubric_to_awarded(task: str, students: List[str]) -> Dict:
-	"""Recompute rubric rollup for each selected student and apply it to mark_awarded.
-
-	Behaviour:
-	- For each student in the list, recompute mark_awarded / out_of / pct from rubric.
-	- Returns {"updated": <count>} – number of students processed.
-	"""
-
-	if not (task and isinstance(students, list) and students):
-		frappe.throw(_("Task and a non-empty students list are required."))
-
-	frappe.only_for(("Instructor", "Academic Admin", "Curriculum Coordinator", "System Manager"))
-	frappe.has_permission(doctype="Task", doc=task, ptype="write", throw=True)
-
-	updated = 0
-
-	for student in students:
-		_recompute_student_totals(task, student)
-		updated += 1
-
-	return {"updated": updated}
-
-
-
-@frappe.whitelist()
-def prefill_task_rubrics(task: str):
-    """
-    Creates rubric rows (Task Criterion Score) for each (student × criterion).
-    Add-only. No removals. No duplicates.
-    Returns {"created": <count>}.
-    """
-
-    task = frappe.get_doc("Task", task)
-
-    # ----------------------------------------------------------------------
-    # 1) Preconditions
-    # ----------------------------------------------------------------------
-    if not task.criteria:
-        return {"created": 0}
-
-    if not task.student_group:
-        return {"created": 0}
-
-    # Must have students in Task Student
-    students = frappe.get_all(
-        "Task Student",
-        filters={"parent": task.name},
-        fields=["student"],
-        order_by="idx asc",
-    )
-    if not students:
-        return {"created": 0}
-
-    student_ids = [s.student for s in students]
-
-    # Must have criteria rows in Task
-    criteria_rows = frappe.get_all(
-        "Task Assessment Criteria",
-        filters={"parent": task.name},
-        fields=["name", "assessment_criteria"],
-        order_by="idx asc",
-    )
-    if not criteria_rows:
-        return {"created": 0}
-
-    criterion_ids = [c.assessment_criteria for c in criteria_rows]
-
-    # ----------------------------------------------------------------------
-    # 2) Get existing rubric rows (prevent duplicates)
-    # ----------------------------------------------------------------------
-    existing = frappe.get_all(
-        "Task Criterion Score",
-        filters={"parent": task.name},
-        fields=["student", "criterion"],
-    )
-    existing_pairs = {(r.student, r.criterion) for r in existing}
-
-    # ----------------------------------------------------------------------
-    # 3) Determine missing rubric cells to create
-    # ----------------------------------------------------------------------
-    to_create = []
-    for sid in student_ids:
-        for cid in criterion_ids:
-            if (sid, cid) not in existing_pairs:
-                to_create.append((sid, cid))
-
-    if not to_create:
-        return {"created": 0}
-
-    # ----------------------------------------------------------------------
-    # 4) Insert missing rows (add-only)
-    # ----------------------------------------------------------------------
-    created = 0
-    for sid, cid in to_create:
-        task.append("task_criterion_score", {
-            "student": sid,
-            "criterion": cid,
-            "level": None,
-            "level_points": 0,
-            "feedback": "",
-        })
-        created += 1
-
-    # ----------------------------------------------------------------------
-    # 5) Save once
-    # ----------------------------------------------------------------------
-    task.save(ignore_permissions=True)
-
-    return {"created": created}
-
-
-
-
-def on_doctype_update():
-	frappe.db.add_index("Task", ["student_group", "due_date"])		# Group task lists: student/section views
-	frappe.db.add_index("Task", ["school", "academic_year", "is_graded"])	# School/AY analytics: number cards and reports
-	frappe.db.add_index("Task", ["course", "due_date"])						# Useful for course dashboards and date queries
-	frappe.db.add_index("Task Student", ["parent", "student"])
-	frappe.db.add_index("Task Criterion Score", ["parent", "student", "assessment_criteria"])
-
