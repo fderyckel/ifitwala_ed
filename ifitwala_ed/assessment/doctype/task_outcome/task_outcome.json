@@ -89,10 +89,11 @@
    "options": "Not Applicable\nNot Started\nIn Progress\nNeeds Review\nModerated\nFinalized\nReleased"
   },
   {
+   "default": "None",
    "fieldname": "procedural_status",
    "fieldtype": "Select",
    "label": "Procedural Status",
-   "options": "Excused\nAbsent\nExtension Granted\nAcademic Dishonesty"
+   "options": "None\nExcused\nAbsent\nExtension Granted\nAcademic Dishonesty"
   },
   {
    "fieldname": "section_break_uass",
@@ -166,24 +167,18 @@
    "fieldtype": "Section Break"
   },
   {
-   "fetch_from": "student_group.school",
-   "fetch_if_empty": 1,
    "fieldname": "school",
    "fieldtype": "Link",
    "label": "School",
    "options": "School"
   },
   {
-   "fetch_from": "student_group.academic_year",
-   "fetch_if_empty": 1,
    "fieldname": "academic_year",
    "fieldtype": "Link",
    "label": "Academic Year",
    "options": "Academic Year"
   },
   {
-   "fetch_from": "student_group.academic_year",
-   "fetch_if_empty": 1,
    "fieldname": "course",
    "fieldtype": "Link",
    "label": "Course",
@@ -205,7 +200,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 20:35:16.733748",
+ "modified": "2026-01-06 20:35:17",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Outcome",
