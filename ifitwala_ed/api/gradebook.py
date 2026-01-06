@@ -1,365 +1,361 @@
-# ifitwala_ed/ifitwala_ed/api/gradebook.py
+# Copyright (c) 2025, François de Ryckel and contributors
+# For license information, please see license.txt
+
+# ifitwala_ed/api/gradebook.py
+
+# Gradebook API controller (UI-facing).
+# - Grid reads Task Outcome only
+# - Drawer shows Outcome + Submission versions
+# - Contribution / moderation workflows are stubs until those doctypes are finalized
 
 from __future__ import annotations
 
-from collections import defaultdict
-from typing import Any, Dict, List
-
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
-from frappe.utils.data import flt, cint
-
-from ifitwala_ed.api.student_groups import (
-	TRIAGE_ROLES,
-	_instructor_group_names,
-	_user_roles,
-)
-from ifitwala_ed.assessment.gradebook_utils import get_levels_for_criterion
+from frappe.utils import get_datetime, now_datetime
 
 
-def _require_signed_in() -> str:
-	user = frappe.session.user
-	if not user or user == "Guest":
-		frappe.throw(_("You need to sign in to access the gradebook."))
-	return user
+# ---------------------------
+# Helpers
+# ---------------------------
+
+def _require(value, label):
+	if not value:
+		frappe.throw(_("{0} is required.").format(label))
 
 
-def _allowed_group_names(user: str) -> List[str] | None:
-	"""Return list of group names the user can access, or None for full access."""
-	roles = _user_roles(user)
-	if roles & TRIAGE_ROLES:
-		return None
-	names = sorted(_instructor_group_names(user))
-	return names or []
+def _has_role(*roles):
+	user_roles = set(frappe.get_roles(frappe.session.user))
+	return any(r in user_roles for r in roles)
 
 
-def _ensure_group_access(student_group: str) -> None:
-	user = _require_signed_in()
-	names = _allowed_group_names(user)
-	if names is None:
-		return
-	if student_group not in names:
-		frappe.throw(_("You do not have access to this student group."))
+def _is_academic_adminish():
+	return _has_role("System Manager", "Academic Admin", "Admin Assistant", "Curriculum Coordinator")
 
 
-def _ensure_task_access(task_name: str) -> frappe._dict:
-	if not task_name:
-		frappe.throw(_("Task is required."))
+def _can_write_gradebook():
+	# Tighten later if needed (e.g. only instructors assigned to delivery).
+	return _has_role("System Manager", "Academic Admin", "Curriculum Coordinator", "Instructor")
 
-	task = frappe.db.get_value(
-		"Task",
-		task_name,
-		["name", "title", "student_group"],
+
+def _get_student_display_map(student_ids):
+	"""
+	One batched lookup for student labels, to avoid N+1 in grid.
+	Adjust fields if your Student doctype differs.
+	"""
+	if not student_ids:
+		return {}
+
+	# Prefer "student_name" if present; fallback to "full_name"/"first_name last_name"
+	meta = frappe.get_meta("Student")
+	fields = ["name"]
+	if meta.get_field("student_name"):
+		fields.append("student_name")
+	elif meta.get_field("full_name"):
+		fields.append("full_name")
+	else:
+		if meta.get_field("first_name"):
+			fields.append("first_name")
+		if meta.get_field("last_name"):
+			fields.append("last_name")
+
+	rows = frappe.get_all(
+		"Student",
+		filters={"name": ["in", list(set(student_ids))]},
+		fields=fields,
+		limit_page_length=0,
+	)
+
+	out = {}
+	for r in rows:
+		label = r.get("student_name") or r.get("full_name")
+		if not label:
+			fn = (r.get("first_name") or "").strip()
+			ln = (r.get("last_name") or "").strip()
+			label = (fn + " " + ln).strip() or r["name"]
+		out[r["name"]] = label
+
+	return out
+
+
+def _apply_default_filters(filters: dict) -> dict:
+	"""
+	Enforce that callers don't accidentally pull huge cross-school datasets.
+	Your UI will pass these anyway; this just protects server load.
+	"""
+	filters = filters or {}
+
+	# If you want to force school+AY always, enforce here.
+	# For now: allow delivery-scoped calls without school/AY.
+	return filters
+
+
+# ---------------------------
+# Public endpoints (UI)
+# ---------------------------
+
+@frappe.whitelist()
+def get_gradebook_grid(task_delivery: str, include_students: int = 1):
+	"""
+	Grid = Task Outcome rows for a single Task Delivery.
+
+	Returns:
+	{
+	  task_delivery,
+	  task,
+	  student_group,
+	  grading_mode,
+	  grade_scale,
+	  rows: [{
+	    outcome, student, student_label,
+	    submission_status, grading_status, procedural_status,
+	    has_submission, has_new_submission, is_stale, is_complete,
+	    official_score, official_grade, official_grade_value
+	  }]
+	}
+	"""
+	_require(task_delivery, "Task Delivery")
+
+	# Permissions: keep simple now; tighten once instructor-delivery linking is enforced everywhere.
+	if not _can_write_gradebook() and not _is_academic_adminish():
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+	delivery = frappe.db.get_value(
+		"Task Delivery",
+		task_delivery,
+		[
+			"name", "task", "student_group",
+			"delivery_mode", "grading_mode",
+			"grade_scale", "max_points",
+			"course", "academic_year", "school",
+		],
 		as_dict=True,
 	)
-	if not task:
-		frappe.throw(_("Task {0} was not found.").format(task_name))
-		return frappe._dict()
+	if not delivery:
+		frappe.throw(_("Task Delivery not found."))
 
-	_ensure_group_access(task.student_group)
-	return task
+	outcome_fields = [
+		"name as outcome",
+		"student",
+		"submission_status",
+		"grading_status",
+		"procedural_status",
+		"has_submission",
+		"has_new_submission",
+		"is_stale",
+		"is_complete",
+		"official_score",
+		"official_grade",
+		"official_grade_value",
+	]
+
+	outcomes = frappe.get_all(
+		"Task Outcome",
+		filters={"task_delivery": task_delivery},
+		fields=outcome_fields,
+		order_by="student asc",
+		limit_page_length=0,
+	)
+
+	student_map = {}
+	if int(include_students) == 1:
+		student_map = _get_student_display_map([r.get("student") for r in outcomes])
+
+	for r in outcomes:
+		r["student_label"] = student_map.get(r.get("student")) if student_map else None
+
+	return {
+		"task_delivery": delivery["name"],
+		"task": delivery.get("task"),
+		"student_group": delivery.get("student_group"),
+		"delivery_mode": delivery.get("delivery_mode"),
+		"grading_mode": delivery.get("grading_mode"),
+		"grade_scale": delivery.get("grade_scale"),
+		"max_points": delivery.get("max_points"),
+		"course": delivery.get("course"),
+		"academic_year": delivery.get("academic_year"),
+		"school": delivery.get("school"),
+		"rows": outcomes,
+	}
 
 
 @frappe.whitelist()
-def fetch_groups(search: str | None = None, limit: int | None = 5) -> List[Dict[str, Any]]:
+def get_grading_drawer(outcome: str):
 	"""
-	Return the student groups visible to the current user with basic metadata.
-	Optional search applies to group name or label.
+	Drawer payload for a single cell.
+
+	Returns:
+	{
+	  outcome: { ...Task Outcome fields... },
+	  submissions: [ ...Task Submission versions... ],
+	  contributions: [],   # TODO Step 6/peer review model
+	  compare: { ... }     # TODO (moderator compare / history)
+	}
 	"""
-	user = _require_signed_in()
-	names = _allowed_group_names(user)
+	_require(outcome, "Task Outcome")
 
-	filters: Dict[str, Any] = {}
-	if names is not None:
-		if not names:
-			return []
-		filters["name"] = ["in", names]
+	if not _can_write_gradebook() and not _is_academic_adminish():
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	fields = [
-		"name",
-		"student_group_name",
-		"program",
-		"school",
-		"course",
-		"cohort",
-		"academic_year",
-	]
+	out_doc = frappe.get_doc("Task Outcome", outcome)
 
-	# Default ordering is latest modified first
-	order_by = "modified desc"
-	limit_value = cint(limit) if limit else 0
+	# Minimal Outcome payload (don’t dump the whole doc to avoid leaking new fields accidentally)
+	outcome_payload = {
+		"name": out_doc.name,
+		"task_delivery": out_doc.task_delivery,
+		"task": out_doc.task,
+		"student": out_doc.student,
+		"student_group": out_doc.student_group,
+		"submission_status": out_doc.submission_status,
+		"grading_status": out_doc.grading_status,
+		"procedural_status": out_doc.procedural_status,
+		"has_submission": out_doc.has_submission,
+		"has_new_submission": out_doc.has_new_submission,
+		"is_stale": out_doc.is_stale,
+		"is_complete": out_doc.is_complete,
+		"completed_on": out_doc.completed_on,
+		"official_score": out_doc.official_score,
+		"official_grade": out_doc.official_grade,
+		"official_grade_value": out_doc.official_grade_value,
+		"grade_scale": out_doc.grade_scale,
+		"official_feedback": out_doc.official_feedback,
+	}
 
-	if search:
-		search_value = search.strip()
-		if search_value:
-			filters["student_group_name"] = ["like", f"%{search_value}%"]
-			# When searching, expand the window so admins can access more rows
-			if limit_value and limit_value < 50:
-				limit_value = 50
+	# Submission versions (Task Submission doctype assumed to exist — if not, this will raise loudly)
+	# Adjust fields once you share Task Submission schema.
+	submissions = frappe.get_all(
+		"Task Submission",
+		filters={"task_outcome": out_doc.name},
+		fields=[
+			"name",
+			"version",
+			"submitted_on",
+			"submitted_by",
+			"submission_type",
+			"text_submission",
+			"link_submission",
+			"attachments",
+			"status",
+		],
+		order_by="version desc",
+		limit_page_length=50,
+	)
+
+	return {
+		"outcome": outcome_payload,
+		"submissions": submissions,
+		"contributions": [],  # Step 6: “My contribution” + peer review data model pending
+		"compare": None,      # Step 6: moderator compare/history pending
+	}
+
+
+@frappe.whitelist()
+def save_outcome_draft(
+	outcome: str,
+	official_score=None,
+	official_grade=None,
+	official_feedback=None,
+	procedural_status=None,
+):
+	"""
+	Teacher “Save draft” action.
+	Writes directly to Task Outcome for now (Contribution model plugs in later).
+
+	Status rules (minimal now):
+	- grading_status moves to "In Progress" when draft saved and previously Not Started.
+	- has_new_submission is cleared when teacher interacts (optional; we keep it unless you want clearing).
+	"""
+	_require(outcome, "Task Outcome")
+	if not _can_write_gradebook():
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+	doc = frappe.get_doc("Task Outcome", outcome)
+
+	# Optional fields
+	if official_score is not None:
+		doc.official_score = official_score
+	if official_grade is not None:
+		doc.official_grade = official_grade
+	if official_feedback is not None:
+		doc.official_feedback = official_feedback
+	if procedural_status is not None:
+		doc.procedural_status = procedural_status
+
+	if (doc.grading_status or "").strip() in ("Not Started", "", None):
+		doc.grading_status = "In Progress"
+
+	doc.save(ignore_permissions=True)
+	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
+
+
+@frappe.whitelist()
+def submit_outcome_contribution(outcome: str):
+	"""
+	Teacher “Submit contribution” action.
+	In Step 6 proper this will create/update a Contribution row and compute official.
+	For now: bumps status to "Needs Review" (signals moderation/peer review stage).
+	"""
+	_require(outcome, "Task Outcome")
+	if not _can_write_gradebook():
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+	doc = frappe.get_doc("Task Outcome", outcome)
+
+	# Minimal transition
+	doc.grading_status = "Needs Review"
+	doc.is_stale = 0
+	doc.save(ignore_permissions=True)
+
+	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
+
+
+@frappe.whitelist()
+def moderator_action(outcome: str, action: str, note: str | None = None):
+	"""
+	Moderator actions (Step 6):
+	- Approve -> grading_status = Moderated (or Finalized, depending on your policy)
+	- Adjust  -> keeps Moderated but allows changes (UI will call save_outcome_draft first)
+	- Return  -> grading_status = In Progress (back to grader)
+
+	This is intentionally simple until you finalize moderation policy + audit.
+	"""
+	_require(outcome, "Task Outcome")
+	_require(action, "Action")
+
+	if not _is_academic_adminish():
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+	doc = frappe.get_doc("Task Outcome", outcome)
+
+	action = (action or "").strip()
+	if action == "Approve":
+		doc.grading_status = "Moderated"
+	elif action == "Finalize":
+		doc.grading_status = "Finalized"
+	elif action == "Release":
+		doc.grading_status = "Released"
+	elif action == "Return":
+		doc.grading_status = "In Progress"
 	else:
-		# Without search, keep the window small for quick access
-		if not limit_value:
-			limit_value = 5
+		frappe.throw(_("Unknown action: {0}").format(action))
 
-	get_all_kwargs: Dict[str, Any] = {
-		"filters": filters,
-		"fields": fields,
-		"order_by": order_by,
-	}
-	if limit_value:
-		get_all_kwargs["limit_page_length"] = limit_value
+	# Optional audit hook (timeline comment for now)
+	if note:
+		doc.add_comment("Comment", text=f"Moderator action: {action}\n{note}")
 
-	groups = frappe.get_all("Student Group", **get_all_kwargs)
-
-	if search:
-		search_lower = search.strip().lower()
-		if search_lower:
-			groups = [
-				row
-				for row in groups
-				if search_lower in (row.student_group_name or "").lower()
-				or search_lower in (row.name or "").lower()
-			]
-
-	return [
-		{
-			"name": row.name,
-			"label": row.student_group_name or row.name,
-			"school": row.school,
-			"program": row.program,
-			"course": row.course,
-			"cohort": row.cohort,
-			"academic_year": row.academic_year,
-		}
-		for row in groups
-	]
+	doc.save(ignore_permissions=True)
+	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
 
 
 @frappe.whitelist()
-def fetch_group_tasks(student_group: str) -> Dict[str, Any]:
+def mark_new_submission_seen(outcome: str):
 	"""
-	Return tasks assigned to a student group with grading configuration.
+	UI convenience: when teacher opens drawer, they can clear the 'new evidence' flag.
+	This only flips has_new_submission; it does NOT change submission_status.
 	"""
-	if not student_group:
-		frappe.throw(_("Student Group is required."))
+	_require(outcome, "Task Outcome")
+	if not _can_write_gradebook() and not _is_academic_adminish():
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	_ensure_group_access(student_group)
-
-	tasks = frappe.get_all(
-		"Task",
-		filters={"student_group": student_group},
-		fields=[
-			"name",
-			"title",
-			"due_date",
-			"status",
-			"is_graded",
-			"points",
-			"binary",
-			"criteria",
-			"observations",
-			"max_points",
-			"grade_scale",
-			"task_type",
-			"delivery_type",
-			"available_from",
-			"available_until",
-			"is_published",
-		],
-		order_by="due_date desc, modified desc",
-	)
-
-	return {"tasks": [dict(row) for row in tasks]}
-
-
-@frappe.whitelist()
-def get_task_gradebook(task: str) -> Dict[str, Any]:
-	"""
-	Return gradebook payload for a task, including roster entries and criteria.
-	"""
-	task_info = _ensure_task_access(task)
-	doc = frappe.get_doc("Task", task_info.name)
-
-	criteria_payload: List[Dict[str, Any]] = []
-	if doc.criteria:
-		for row in doc.assessment_criteria:
-			if not row.assessment_criteria:
-				continue
-			levels = get_levels_for_criterion(row.assessment_criteria) or []
-			criteria_payload.append(
-				{
-					"name": row.name,
-					"assessment_criteria": row.assessment_criteria,
-					"criteria_name": row.criteria_name or row.assessment_criteria,
-					"criteria_weighting": flt(row.criteria_weighting or 0),
-					"levels": [
-						{
-							"level": level.get("level"),
-							"points": flt(level.get("points") or 0),
-						}
-						for level in levels
-					],
-				}
-			)
-
-	student_rows = frappe.get_all(
-		"Task Student",
-		filters={"parent": doc.name, "parenttype": "Task"},
-		fields=[
-			"name",
-			"student",
-			"status",
-			"complete",
-			"mark_awarded",
-			"feedback",
-			"visible_to_student",
-			"visible_to_guardian",
-			"updated_on",
-		],
-		order_by="idx asc",
-	)
-
-	student_ids = [row.student for row in student_rows if row.student]
-	student_meta: Dict[str, Dict[str, Any]] = {}
-	if student_ids:
-		for stu in frappe.get_all(
-			"Student",
-			filters={"name": ["in", student_ids]},
-			fields=["name", "student_full_name", "student_preferred_name", "student_id", "student_image"],
-		):
-			student_meta[stu.name] = stu
-
-	score_rows = frappe.get_all(
-		"Task Criterion Score",
-		filters={"parent": doc.name, "parenttype": "Task"},
-		fields=["name", "student", "assessment_criteria", "level", "level_points", "feedback"],
-	)
-
-	score_map: Dict[str, Dict[str, Dict[str, Any]]] = defaultdict(dict)
-	for score in score_rows:
-		score_map[score.student][score.assessment_criteria] = {
-			"name": score.name,
-			"assessment_criteria": score.assessment_criteria,
-			"level": score.level,
-			"level_points": flt(score.level_points or 0),
-			"feedback": score.feedback,
-		}
-
-	def _format_datetime(value: Any) -> str | None:
-		if not value:
-			return None
-		return str(value)
-
-	students_payload: List[Dict[str, Any]] = []
-	for row in student_rows:
-		meta = student_meta.get(row.student) or {}
-		criteria_scores: List[Dict[str, Any]] = []
-		for criterion in criteria_payload:
-			score = score_map.get(row.student, {}).get(criterion["assessment_criteria"], {})
-			criteria_scores.append(
-				{
-					"score_name": score.get("name"),
-					"assessment_criteria": criterion["assessment_criteria"],
-					"level": score.get("level"),
-					"level_points": flt(score.get("level_points") or 0),
-					"feedback": score.get("feedback"),
-				}
-			)
-
-		students_payload.append(
-			{
-				"task_student": row.name,
-				"student": row.student,
-				"student_name": meta.get("student_full_name") or meta.get("student_preferred_name") or row.student,
-				"student_preferred_name": meta.get("student_preferred_name"),
-				"student_id": meta.get("student_id"),
-				"student_image": meta.get("student_image"),
-				"status": row.status,
-				"complete": int(row.complete or 0),
-				"mark_awarded": flt(row.mark_awarded) if row.mark_awarded is not None else None,
-				"feedback": row.feedback,
-				"visible_to_student": int(row.visible_to_student or 0),
-				"visible_to_guardian": int(row.visible_to_guardian or 0),
-				"updated_on": _format_datetime(row.updated_on),
-				"criteria_scores": criteria_scores,
-			}
-		)
-
-	task_payload = {
-		"name": doc.name,
-		"title": doc.title,
-		"student_group": doc.student_group,
-		"due_date": _format_datetime(doc.due_date),
-		"is_graded": int(doc.is_graded or 0),
-		"points": int(doc.points or 0),
-		"binary": int(doc.binary or 0),
-		"criteria": int(doc.criteria or 0),
-		"observations": int(doc.observations or 0),
-		"max_points": flt(doc.max_points or 0),
-		"grade_scale": doc.grade_scale,
-		"status": doc.status,
-		"task_type": doc.task_type,
-		"delivery_type": doc.delivery_type,
-	}
-
-	return {
-		"task": task_payload,
-		"criteria": criteria_payload,
-		"students": students_payload,
-	}
-
-
-@frappe.whitelist()
-def update_task_student(task_student: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-	"""
-	Update Task Student row (status, marks, visibility, etc.).
-	"""
-	if not task_student:
-		frappe.throw(_("Task Student row is required."))
-
-	if not isinstance(updates, dict):
-		frappe.throw(_("Updates payload must be a dict."))
-
-	doc = frappe.get_doc("Task Student", task_student)
-	_ensure_task_access(doc.parent)
-
-	allowed_fields = {
-		"status",
-		"mark_awarded",
-		"feedback",
-		"visible_to_student",
-		"visible_to_guardian",
-		"complete",
-	}
-
-	changed = False
-	for field in allowed_fields:
-		if field not in updates:
-			continue
-		value = updates[field]
-		if field in {"visible_to_student", "visible_to_guardian", "complete"}:
-			value = int(value or 0)
-		if field in {"mark_awarded"}:
-			value = flt(value) if value is not None else None
-		if getattr(doc, field) != value:
-			setattr(doc, field, value)
-			changed = True
-
-	# In points mode, mark_awarded is the canonical numeric grade.
-
-	doc.updated_on = now_datetime().strftime("%Y-%m-%d %H:%M:%S")
-
-	if changed:
-		doc.save(ignore_permissions=False)
-
-	return {
-		"task_student": doc.name,
-		"mark_awarded": doc.mark_awarded,
-		"status": doc.status,
-		"feedback": doc.feedback,
-		"visible_to_student": doc.visible_to_student,
-		"visible_to_guardian": doc.visible_to_guardian,
-		"complete": doc.complete,
-		"updated_on": doc.updated_on,
-	}
+	frappe.db.set_value("Task Outcome", outcome, "has_new_submission", 0, update_modified=True)
+	return {"ok": True, "outcome": outcome, "has_new_submission": 0}
