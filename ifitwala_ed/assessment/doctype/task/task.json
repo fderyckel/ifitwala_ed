@@ -14,14 +14,9 @@
   "is_archived",
   "is_template",
   "column_break_annk",
-  "student_group",
   "default_course",
   "learning_unit",
   "lesson",
-  "column_break_godu",
-  "school",
-  "program",
-  "academic_year",
   "section_break_haua",
   "instructions",
   "attachments",
@@ -73,40 +68,6 @@
    "options": "Lesson"
   },
   {
-   "fieldname": "column_break_godu",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fetch_from": "student_group.school",
-   "fetch_if_empty": 1,
-   "fieldname": "school",
-   "fieldtype": "Link",
-   "label": "School",
-   "options": "School",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "student_group.program",
-   "fetch_if_empty": 1,
-   "fieldname": "program",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Program",
-   "options": "Program",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "student_group.academic_year",
-   "fetch_if_empty": 1,
-   "fieldname": "academic_year",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Academic Year",
-   "options": "Academic Year",
-   "read_only": 1
-  },
-  {
    "fieldname": "grading_section",
    "fieldtype": "Section Break",
    "label": "Grading"
@@ -136,12 +97,6 @@
    "fieldtype": "Table",
    "label": "Attachments",
    "options": "Attached Document"
-  },
-  {
-   "fieldname": "student_group",
-   "fieldtype": "Link",
-   "label": "Student Group",
-   "options": "Student Group"
   },
   {
    "default": "0",
@@ -215,7 +170,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 12:56:47.850166",
+ "modified": "2026-01-06 21:13:54.515310",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",
