@@ -19,3 +19,5 @@ def on_doctype_update():
 	# Optimise the common lookups used by term_reporting
 	frappe.db.add_index("Course Term Result", ["reporting_cycle", "student"])
 	frappe.db.add_index("Course Term Result", ["reporting_cycle", "program_enrollment", "course"])
+	frappe.db.add_index("Course Term Result", ["reporting_cycle", "course"])
+	frappe.db.add_index("Course Term Result", ["reporting_cycle", "program"])

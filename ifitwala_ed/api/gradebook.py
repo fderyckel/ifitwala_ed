@@ -1,18 +1,19 @@
-# Copyright (c) 2025, François de Ryckel and contributors
+# Copyright (c) 2026, François de Ryckel and contributors
 # For license information, please see license.txt
 
 # ifitwala_ed/api/gradebook.py
 
 # Gradebook API controller (UI-facing).
 # - Grid reads Task Outcome only
-# - Drawer shows Outcome + Submission versions
-# - Contribution / moderation workflows are stubs until those doctypes are finalized
+# - Drawer shows Outcome + Submissions + Contributions
+# - Contribution actions call service layer (no grade computation here)
 
 from __future__ import annotations
 
 import frappe
 from frappe import _
-from frappe.utils import get_datetime, now_datetime
+
+from ifitwala_ed.assessment import task_contribution_service
 
 
 # ---------------------------
@@ -26,7 +27,7 @@ def _require(value, label):
 
 def _has_role(*roles):
 	user_roles = set(frappe.get_roles(frappe.session.user))
-	return any(r in user_roles for r in roles)
+	return any(role in user_roles for role in roles)
 
 
 def _is_academic_adminish():
@@ -34,7 +35,6 @@ def _is_academic_adminish():
 
 
 def _can_write_gradebook():
-	# Tighten later if needed (e.g. only instructors assigned to delivery).
 	return _has_role("System Manager", "Academic Admin", "Curriculum Coordinator", "Instructor")
 
 
@@ -46,7 +46,6 @@ def _get_student_display_map(student_ids):
 	if not student_ids:
 		return {}
 
-	# Prefer "student_name" if present; fallback to "full_name"/"first_name last_name"
 	meta = frappe.get_meta("Student")
 	fields = ["name"]
 	if meta.get_field("student_name"):
@@ -67,27 +66,15 @@ def _get_student_display_map(student_ids):
 	)
 
 	out = {}
-	for r in rows:
-		label = r.get("student_name") or r.get("full_name")
+	for row in rows:
+		label = row.get("student_name") or row.get("full_name")
 		if not label:
-			fn = (r.get("first_name") or "").strip()
-			ln = (r.get("last_name") or "").strip()
-			label = (fn + " " + ln).strip() or r["name"]
-		out[r["name"]] = label
+			fn = (row.get("first_name") or "").strip()
+			ln = (row.get("last_name") or "").strip()
+			label = (fn + " " + ln).strip() or row["name"]
+		out[row["name"]] = label
 
 	return out
-
-
-def _apply_default_filters(filters: dict) -> dict:
-	"""
-	Enforce that callers don't accidentally pull huge cross-school datasets.
-	Your UI will pass these anyway; this just protects server load.
-	"""
-	filters = filters or {}
-
-	# If you want to force school+AY always, enforce here.
-	# For now: allow delivery-scoped calls without school/AY.
-	return filters
 
 
 # ---------------------------
@@ -95,28 +82,12 @@ def _apply_default_filters(filters: dict) -> dict:
 # ---------------------------
 
 @frappe.whitelist()
-def get_gradebook_grid(task_delivery: str, include_students: int = 1):
+def get_grid(task_delivery: str, include_students: int = 1):
 	"""
 	Grid = Task Outcome rows for a single Task Delivery.
-
-	Returns:
-	{
-	  task_delivery,
-	  task,
-	  student_group,
-	  grading_mode,
-	  grade_scale,
-	  rows: [{
-	    outcome, student, student_label,
-	    submission_status, grading_status, procedural_status,
-	    has_submission, has_new_submission, is_stale, is_complete,
-	    official_score, official_grade, official_grade_value
-	  }]
-	}
 	"""
 	_require(task_delivery, "Task Delivery")
 
-	# Permissions: keep simple now; tighten once instructor-delivery linking is enforced everywhere.
 	if not _can_write_gradebook() and not _is_academic_adminish():
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
@@ -124,10 +95,16 @@ def get_gradebook_grid(task_delivery: str, include_students: int = 1):
 		"Task Delivery",
 		task_delivery,
 		[
-			"name", "task", "student_group",
-			"delivery_mode", "grading_mode",
-			"grade_scale", "max_points",
-			"course", "academic_year", "school",
+			"name",
+			"task",
+			"student_group",
+			"delivery_mode",
+			"grading_mode",
+			"grade_scale",
+			"max_points",
+			"course",
+			"academic_year",
+			"school",
 		],
 		as_dict=True,
 	)
@@ -159,10 +136,10 @@ def get_gradebook_grid(task_delivery: str, include_students: int = 1):
 
 	student_map = {}
 	if int(include_students) == 1:
-		student_map = _get_student_display_map([r.get("student") for r in outcomes])
+		student_map = _get_student_display_map([row.get("student") for row in outcomes])
 
-	for r in outcomes:
-		r["student_label"] = student_map.get(r.get("student")) if student_map else None
+	for row in outcomes:
+		row["student_label"] = student_map.get(row.get("student")) if student_map else None
 
 	return {
 		"task_delivery": delivery["name"],
@@ -180,171 +157,108 @@ def get_gradebook_grid(task_delivery: str, include_students: int = 1):
 
 
 @frappe.whitelist()
-def get_grading_drawer(outcome: str):
+def get_drawer(outcome: str):
 	"""
-	Drawer payload for a single cell.
-
-	Returns:
-	{
-	  outcome: { ...Task Outcome fields... },
-	  submissions: [ ...Task Submission versions... ],
-	  contributions: [],   # TODO Step 6/peer review model
-	  compare: { ... }     # TODO (moderator compare / history)
-	}
+	Drawer payload for a single outcome.
 	"""
 	_require(outcome, "Task Outcome")
 
 	if not _can_write_gradebook() and not _is_academic_adminish():
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	out_doc = frappe.get_doc("Task Outcome", outcome)
+	outcome_fields = [
+		"name",
+		"task_delivery",
+		"task",
+		"student",
+		"student_group",
+		"submission_status",
+		"grading_status",
+		"procedural_status",
+		"has_submission",
+		"has_new_submission",
+		"is_stale",
+		"is_complete",
+		"completed_on",
+		"official_score",
+		"official_grade",
+		"official_grade_value",
+		"grade_scale",
+		"official_feedback",
+	]
 
-	# Minimal Outcome payload (don’t dump the whole doc to avoid leaking new fields accidentally)
-	outcome_payload = {
-		"name": out_doc.name,
-		"task_delivery": out_doc.task_delivery,
-		"task": out_doc.task,
-		"student": out_doc.student,
-		"student_group": out_doc.student_group,
-		"submission_status": out_doc.submission_status,
-		"grading_status": out_doc.grading_status,
-		"procedural_status": out_doc.procedural_status,
-		"has_submission": out_doc.has_submission,
-		"has_new_submission": out_doc.has_new_submission,
-		"is_stale": out_doc.is_stale,
-		"is_complete": out_doc.is_complete,
-		"completed_on": out_doc.completed_on,
-		"official_score": out_doc.official_score,
-		"official_grade": out_doc.official_grade,
-		"official_grade_value": out_doc.official_grade_value,
-		"grade_scale": out_doc.grade_scale,
-		"official_feedback": out_doc.official_feedback,
-	}
+	outcome_row = frappe.db.get_value("Task Outcome", outcome, outcome_fields, as_dict=True)
+	if not outcome_row:
+		frappe.throw(_("Task Outcome not found."))
 
-	# Submission versions (Task Submission doctype assumed to exist — if not, this will raise loudly)
-	# Adjust fields once you share Task Submission schema.
 	submissions = frappe.get_all(
 		"Task Submission",
-		filters={"task_outcome": out_doc.name},
+		filters={"task_outcome": outcome_row["name"]},
 		fields=[
 			"name",
 			"version",
 			"submitted_on",
 			"submitted_by",
-			"submission_type",
-			"text_submission",
-			"link_submission",
-			"attachments",
-			"status",
+			"is_late",
+			"is_cloned",
+			"cloned_from",
+			"link_url",
+			"text_content",
 		],
 		order_by="version desc",
 		limit_page_length=50,
 	)
 
+	contributions = frappe.get_all(
+		"Task Contribution",
+		filters={"task_outcome": outcome_row["name"]},
+		fields=[
+			"name",
+			"task_submission",
+			"contributor",
+			"contribution_type",
+			"status",
+			"submitted_on",
+			"score",
+			"grade",
+			"grade_value",
+			"feedback",
+			"is_stale",
+			"moderation_action",
+		],
+		order_by="submitted_on desc",
+		limit_page_length=100,
+	)
+
 	return {
-		"outcome": outcome_payload,
+		"outcome": outcome_row,
 		"submissions": submissions,
-		"contributions": [],  # Step 6: “My contribution” + peer review data model pending
-		"compare": None,      # Step 6: moderator compare/history pending
+		"contributions": contributions,
 	}
 
 
 @frappe.whitelist()
-def save_outcome_draft(
-	outcome: str,
-	official_score=None,
-	official_grade=None,
-	official_feedback=None,
-	procedural_status=None,
-):
-	"""
-	Teacher “Save draft” action.
-	Writes directly to Task Outcome for now (Contribution model plugs in later).
-
-	Status rules (minimal now):
-	- grading_status moves to "In Progress" when draft saved and previously Not Started.
-	- has_new_submission is cleared when teacher interacts (optional; we keep it unless you want clearing).
-	"""
-	_require(outcome, "Task Outcome")
+def save_contribution_draft(payload):
 	if not _can_write_gradebook():
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	doc = frappe.get_doc("Task Outcome", outcome)
-
-	# Optional fields
-	if official_score is not None:
-		doc.official_score = official_score
-	if official_grade is not None:
-		doc.official_grade = official_grade
-	if official_feedback is not None:
-		doc.official_feedback = official_feedback
-	if procedural_status is not None:
-		doc.procedural_status = procedural_status
-
-	if (doc.grading_status or "").strip() in ("Not Started", "", None):
-		doc.grading_status = "In Progress"
-
-	doc.save(ignore_permissions=True)
-	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
+	return task_contribution_service.save_draft_contribution(payload)
 
 
 @frappe.whitelist()
-def submit_outcome_contribution(outcome: str):
-	"""
-	Teacher “Submit contribution” action.
-	In Step 6 proper this will create/update a Contribution row and compute official.
-	For now: bumps status to "Needs Review" (signals moderation/peer review stage).
-	"""
-	_require(outcome, "Task Outcome")
+def submit_contribution(payload):
 	if not _can_write_gradebook():
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	doc = frappe.get_doc("Task Outcome", outcome)
-
-	# Minimal transition
-	doc.grading_status = "Needs Review"
-	doc.is_stale = 0
-	doc.save(ignore_permissions=True)
-
-	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
+	return task_contribution_service.submit_contribution(payload)
 
 
 @frappe.whitelist()
-def moderator_action(outcome: str, action: str, note: str | None = None):
-	"""
-	Moderator actions (Step 6):
-	- Approve -> grading_status = Moderated (or Finalized, depending on your policy)
-	- Adjust  -> keeps Moderated but allows changes (UI will call save_outcome_draft first)
-	- Return  -> grading_status = In Progress (back to grader)
-
-	This is intentionally simple until you finalize moderation policy + audit.
-	"""
-	_require(outcome, "Task Outcome")
-	_require(action, "Action")
-
+def moderator_action(payload):
 	if not _is_academic_adminish():
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	doc = frappe.get_doc("Task Outcome", outcome)
-
-	action = (action or "").strip()
-	if action == "Approve":
-		doc.grading_status = "Moderated"
-	elif action == "Finalize":
-		doc.grading_status = "Finalized"
-	elif action == "Release":
-		doc.grading_status = "Released"
-	elif action == "Return":
-		doc.grading_status = "In Progress"
-	else:
-		frappe.throw(_("Unknown action: {0}").format(action))
-
-	# Optional audit hook (timeline comment for now)
-	if note:
-		doc.add_comment("Comment", text=f"Moderator action: {action}\n{note}")
-
-	doc.save(ignore_permissions=True)
-	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
+	return task_contribution_service.apply_moderator_action(payload)
 
 
 @frappe.whitelist()

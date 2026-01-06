@@ -34,12 +34,11 @@ class ReportingCycle(Document):
 					).format(exists[0].name)
 				)
 
-		# Soft guardrail
-		if self.status == "Locked" and not self.teacher_edit_close:
-			frappe.msgprint(
-				_("Teacher edit window is not set but status is Locked."),
-				indicator="orange",
-			)
+		if self.status in ("Locked", "Published") and not self.teacher_edit_close:
+			frappe.throw(_("Instructor edit close must be set before locking or publishing."))
+
+		if self.status in ("Open", "Calculated", "Locked", "Published") and not self.task_cutoff_date:
+			frappe.throw(_("Task Cutoff Date must be set before opening a reporting cycle."))
 
 	@frappe.whitelist()
 	def recalculate_course_results(self):

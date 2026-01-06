@@ -14,6 +14,10 @@
   "name_label",
   "task_cutoff_date",
   "status",
+  "released_rule",
+  "absent_policy",
+  "dishonesty_policy",
+  "exclude_excused",
   "teacher_edit_open",
   "teacher_edit_close",
   "section_break_n5fk",
@@ -72,6 +76,33 @@
    "options": "Draft\nOpen\nCalculated\nLocked\nPublished"
   },
   {
+   "default": "Released Only",
+   "fieldname": "released_rule",
+   "fieldtype": "Select",
+   "label": "Released Rule",
+   "options": "Released Only\nFinalized + Released"
+  },
+  {
+   "default": "Exclude",
+   "fieldname": "absent_policy",
+   "fieldtype": "Select",
+   "label": "Absent Policy",
+   "options": "Exclude\nCount as Zero\nInclude as Missing"
+  },
+  {
+   "default": "Force Zero",
+   "fieldname": "dishonesty_policy",
+   "fieldtype": "Select",
+   "label": "Dishonesty Policy",
+   "options": "Force Zero\nExclude"
+  },
+  {
+   "default": "1",
+   "fieldname": "exclude_excused",
+   "fieldtype": "Check",
+   "label": "Exclude Excused"
+  },
+  {
    "fieldname": "teacher_edit_open",
    "fieldtype": "Datetime",
    "label": "Instructor Edit Open"
@@ -105,7 +136,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-09 22:04:15.766675",
+ "modified": "2025-12-09 22:04:17",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Reporting Cycle",

@@ -206,8 +206,87 @@ def set_procedural_status(outcome_id, status, note=None):
 	raise NotImplementedError("set_procedural_status is implemented in a later step.")
 
 
-def _get_delivery_flags(delivery_id):
-	if not delivery_id:
-		return {}
-	fields = ["grading_mode", "require_grading"]
 	return frappe.db.get_value("Task Delivery", delivery_id, fields, as_dict=True) or {}
+
+
+def update_manual_outcome_draft(outcome_id, official_score=None, official_grade=None, official_feedback=None, procedural_status=None):
+	"""
+	Handle manual draft updates from the gradebook.
+	"""
+	if not outcome_id:
+		frappe.throw(_("Task Outcome is required."))
+
+	doc = frappe.get_doc("Task Outcome", outcome_id)
+
+	if official_score is not None:
+		doc.official_score = official_score
+	if official_grade is not None:
+		doc.official_grade = official_grade
+	if official_feedback is not None:
+		doc.official_feedback = official_feedback
+	if procedural_status is not None:
+		doc.procedural_status = procedural_status
+
+	if (doc.grading_status or "").strip() in ("Not Started", "", None):
+		doc.grading_status = "In Progress"
+
+	doc.save(ignore_permissions=True)
+	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
+
+
+def submit_contribution_placeholder(outcome_id):
+	"""
+	Placeholder / stub for submitting a contribution.
+	Currently transitions status to 'Needs Review'.
+	"""
+	if not outcome_id:
+		frappe.throw(_("Task Outcome is required."))
+
+	doc = frappe.get_doc("Task Outcome", outcome_id)
+	doc.grading_status = "Needs Review"
+	doc.is_stale = 0
+	doc.save(ignore_permissions=True)
+
+	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
+
+
+def process_moderator_action(outcome_id, action, note=None):
+	"""
+	Handle moderator state transitions.
+	"""
+	if not outcome_id:
+		frappe.throw(_("Task Outcome is required."))
+	if not action:
+		frappe.throw(_("Action is required."))
+
+	doc = frappe.get_doc("Task Outcome", outcome_id)
+	action = action.strip()
+
+	if action == "Approve":
+		doc.grading_status = "Moderated"
+	elif action == "Finalize":
+		doc.grading_status = "Finalized"
+	elif action == "Release":
+		doc.grading_status = "Released"
+	elif action == "Return":
+		doc.grading_status = "In Progress"
+	else:
+		frappe.throw(_("Unknown action: {0}").format(action))
+
+	if note:
+		doc.add_comment("Comment", text=f"Moderator action: {action}\n{note}")
+
+	doc.save(ignore_permissions=True)
+	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
+
+
+def mark_new_submission_seen(outcome_id):
+	"""
+	Clear the has_new_submission flag.
+	"""
+	if not outcome_id:
+		frappe.throw(_("Task Outcome is required."))
+
+	frappe.db.set_value("Task Outcome", outcome_id, "has_new_submission", 0, update_modified=True)
+	return {"ok": True, "outcome": outcome_id, "has_new_submission": 0}
+

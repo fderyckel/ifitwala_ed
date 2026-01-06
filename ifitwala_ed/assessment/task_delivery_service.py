@@ -171,3 +171,42 @@ def _initial_statuses(delivery):
 			return "Not Submitted", "Not Started"
 		return "Not Required", "Not Started"
 	return "Not Required", "Not Applicable"
+
+
+def create_delivery(payload):
+	if not payload:
+		frappe.throw(_("Delivery payload is required."))
+
+	if isinstance(payload, str):
+		payload = frappe.parse_json(payload)
+
+	if not isinstance(payload, dict):
+		frappe.throw(_("Delivery payload must be a dict."))
+
+	doc = frappe.new_doc("Task Delivery")
+	allowed_fields = {
+		"task",
+		"student_group",
+		"delivery_mode",
+		"grading_mode",
+		"max_points",
+		"grade_scale",
+		"available_from",
+		"due_date",
+		"lock_date",
+		"group_submission",
+		"allow_late_submission",
+		"lesson_instance",
+	}
+	for field, value in payload.items():
+		if field in allowed_fields:
+			setattr(doc, field, value)
+
+	doc.insert(ignore_permissions=True)
+	doc.submit()
+
+	outcome_count = frappe.db.count("Task Outcome", {"task_delivery": doc.name})
+	return {
+		"task_delivery": doc.name,
+		"outcomes_created": outcome_count,
+	}
