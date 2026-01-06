@@ -1,0 +1,212 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:TOU-{YYYY}-{MM}-{#####}",
+ "creation": "2026-01-06 14:41:20.396522",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_viib",
+  "task_delivery",
+  "task",
+  "submission_status",
+  "grading_status",
+  "column_break_7cg7",
+  "student",
+  "student_group",
+  "procedural_status",
+  "section_break_uass",
+  "has_new_submission",
+  "is_stale",
+  "is_complete",
+  "completed_on",
+  "column_break_7oms",
+  "official_score",
+  "official_grade",
+  "section_break_aybc",
+  "official_feedback",
+  "section_break_h3i0",
+  "official_criteria"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_viib",
+   "fieldtype": "Section Break",
+   "label": "Outcome"
+  },
+  {
+   "fieldname": "task_delivery",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Task Delivery",
+   "options": "Task Delivery",
+   "reqd": 1
+  },
+  {
+   "fieldname": "task",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Task",
+   "options": "Task",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student Group",
+   "options": "Student Group",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "Not Submitted",
+   "fieldname": "submission_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Submission Status",
+   "options": "Not Required\nNot Submitted\nSubmitted\nLate\nResubmitted"
+  },
+  {
+   "default": "Not Applicable",
+   "fieldname": "grading_status",
+   "fieldtype": "Select",
+   "label": "Grading status",
+   "options": "Not Applicable\nNot Started\nIn Progress\nNeeds Review\nModerated\nFinalized\nReleased"
+  },
+  {
+   "fieldname": "procedural_status",
+   "fieldtype": "Select",
+   "label": "Procedural Status",
+   "options": "Excused\nAbsent\nExtension Granted\nAcademic Dishonesty"
+  },
+  {
+   "fieldname": "section_break_uass",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "has_new_submission",
+   "fieldtype": "Check",
+   "label": "New Evidence Available",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_stale",
+   "fieldtype": "Check",
+   "label": "Outcome Stale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_7oms",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_complete",
+   "fieldtype": "Check",
+   "label": "Complete"
+  },
+  {
+   "fieldname": "completed_on",
+   "fieldtype": "Datetime",
+   "label": "Completed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_aybc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "official_score",
+   "fieldtype": "Float",
+   "label": "Official Score"
+  },
+  {
+   "fieldname": "official_grade",
+   "fieldtype": "Data",
+   "label": "Official Grade"
+  },
+  {
+   "fieldname": "official_feedback",
+   "fieldtype": "Text Editor",
+   "label": "Official Feedback"
+  },
+  {
+   "fieldname": "section_break_h3i0",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "official_criteria",
+   "fieldtype": "Table",
+   "label": "Official Criteria",
+   "options": "Task Outcome Criterion"
+  },
+  {
+   "fieldname": "column_break_7cg7",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-06 15:06:13.696692",
+ "modified_by": "Administrator",
+ "module": "Assessment",
+ "name": "Task Outcome",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

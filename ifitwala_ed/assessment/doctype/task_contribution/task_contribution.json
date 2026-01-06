@@ -1,0 +1,144 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:TCO-{YYYY}-{#####}",
+ "creation": "2026-01-06 15:23:55.389142",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_thtr",
+  "task_outcome",
+  "task_submission",
+  "contributor",
+  "contribution_type",
+  "submitted_on",
+  "is_stale",
+  "score",
+  "grade",
+  "feedback",
+  "section_break_rnqt"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_thtr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "task_outcome",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Task Outcome",
+   "options": "Task Outcome",
+   "reqd": 1
+  },
+  {
+   "description": "When submission is required, contributions are tied to a specific evidence version.",
+   "fieldname": "task_submission",
+   "fieldtype": "Link",
+   "label": "Task Submission",
+   "options": "Task Submission"
+  },
+  {
+   "fieldname": "contributor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Contributor",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "contribution_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "Self\nPeer Review\nModeration",
+   "reqd": 1
+  },
+  {
+   "fieldname": "submitted_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Submitted On",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_stale",
+   "fieldtype": "Check",
+   "label": "Stale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "score",
+   "fieldtype": "Float",
+   "label": "Score"
+  },
+  {
+   "fieldname": "grade",
+   "fieldtype": "Data",
+   "label": "Grade"
+  },
+  {
+   "fieldname": "feedback",
+   "fieldtype": "Text Editor",
+   "label": "Feedback"
+  },
+  {
+   "fieldname": "section_break_rnqt",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-06 15:28:45.244373",
+ "modified_by": "Administrator",
+ "module": "Assessment",
+ "name": "Task Contribution",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
