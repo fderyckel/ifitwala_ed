@@ -15,6 +15,7 @@
   "student",
   "procedural_status",
   "section_break_uass",
+  "has_submission",
   "has_new_submission",
   "is_stale",
   "is_complete",
@@ -100,6 +101,13 @@
   {
    "fieldname": "section_break_uass",
    "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "has_submission",
+   "fieldtype": "Check",
+   "label": "Has Submission",
+   "read_only": 1
   },
   {
    "default": "0",
@@ -215,7 +223,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 20:35:19",
+ "modified": "2026-01-06 20:35:21",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Outcome",
