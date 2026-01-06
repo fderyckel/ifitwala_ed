@@ -125,6 +125,8 @@ Invariant:
 
 > **Exactly one official outcome exists per student per delivery.**
 
+> **Task Outcome stores grades as (symbol + numeric value), validated against the Grade Scale active at delivery time.  Grade Scale Intervals are never linked directly; they are interpreted, not referenced.**
+
 ---
 
 ### Layer 4 — Task Submission (Student Evidence)

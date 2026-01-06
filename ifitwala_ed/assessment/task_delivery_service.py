@@ -69,6 +69,7 @@ def bulk_create_outcomes(delivery, students, context=None):
 		"course",
 		"academic_year",
 		"school",
+		"grade_scale",
 		"submission_status",
 		"grading_status",
 		"docstatus",
@@ -81,6 +82,8 @@ def bulk_create_outcomes(delivery, students, context=None):
 		fields.append("program")
 	if meta.get_field("course_group"):
 		fields.append("course_group")
+	if not meta.get_field("grade_scale"):
+		fields.remove("grade_scale")
 
 	timestamp = now()
 	owner = frappe.session.user
@@ -97,6 +100,7 @@ def bulk_create_outcomes(delivery, students, context=None):
 			"course": context.get("course"),
 			"academic_year": context.get("academic_year"),
 			"school": context.get("school"),
+			"grade_scale": delivery.grade_scale if "grade_scale" in fields else None,
 			"submission_status": submission_status,
 			"grading_status": grading_status,
 			"docstatus": 0,

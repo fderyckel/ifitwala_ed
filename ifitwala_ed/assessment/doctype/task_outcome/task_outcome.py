@@ -5,6 +5,8 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from ifitwala_ed.assessment.task_outcome_service import resolve_grade_symbol
+
 
 class TaskOutcome(Document):
 	def before_validate(self):
@@ -17,6 +19,7 @@ class TaskOutcome(Document):
 		self._validate_procedural_status()
 		self._validate_status_coherence()
 		self._enforce_is_complete()
+		self._validate_official_grade()
 		self._capture_official_changes()
 
 	def on_update(self):
@@ -48,17 +51,21 @@ class TaskOutcome(Document):
 		]
 		return [field for field in fields if self._has_field(field)]
 
+	def _optional_denorm_fields(self):
+		fields = []
+		if self._has_field("grade_scale"):
+			fields.append("grade_scale")
+		return fields
+
 	def _backfill_denorm_fields(self):
-		fields = self._identity_fields()
-		missing = [field for field in fields if not getattr(self, field, None)]
-		if not missing:
+		required = self._identity_fields()
+		optional = self._optional_denorm_fields()
+		missing_required = [field for field in required if not getattr(self, field, None)]
+		missing_optional = [field for field in optional if not getattr(self, field, None)]
+		if not missing_required and not missing_optional:
 			return
 
-		delivery_fields = [
-			field
-			for field in ("task", "student_group", "course", "academic_year", "school")
-			if self._has_field(field)
-		]
+		delivery_fields = list({*required, *optional})
 		if not delivery_fields:
 			return
 
@@ -69,26 +76,26 @@ class TaskOutcome(Document):
 			as_dict=True,
 		) or {}
 
-		for field in missing:
+		for field in missing_required + missing_optional:
 			if not getattr(self, field, None) and delivery.get(field):
 				setattr(self, field, delivery.get(field))
 
-		still_missing = [field for field in fields if not getattr(self, field, None)]
-		if still_missing:
+		still_missing_required = [field for field in required if not getattr(self, field, None)]
+		if still_missing_required:
 			frappe.log_error(
-				message=f"Task Outcome backfill failed for {self.name or '(new)'}: {still_missing}",
+				message=f"Task Outcome backfill failed for {self.name or '(new)'}: {still_missing_required}",
 				title="Task Outcome Backfill Failure",
 			)
 			frappe.throw(
 				_("Task Outcome is missing required context fields: {0}.")
-				.format(", ".join(still_missing))
+				.format(", ".join(still_missing_required))
 			)
 
 	def _guard_identity_mutation(self):
 		if self.is_new():
 			return
 
-		fields = self._identity_fields()
+		fields = self._identity_fields() + self._optional_denorm_fields()
 		if not fields:
 			return
 
@@ -121,7 +128,14 @@ class TaskOutcome(Document):
 		if status == "Excused":
 			if self.submission_status in ("Submitted", "Late", "Resubmitted"):
 				frappe.throw(_("Excused outcomes cannot be marked as Submitted."))
-			if self.official_score not in (None, "") or (self.official_grade or "").strip():
+			if (
+				self.official_score not in (None, "")
+				or (self.official_grade or "").strip()
+				or (
+					self._has_field("official_grade_value")
+					and self.official_grade_value not in (None, "")
+				)
+			):
 				frappe.throw(_("Excused outcomes cannot carry an official score or grade."))
 			return
 
@@ -158,6 +172,33 @@ class TaskOutcome(Document):
 
 		if self.is_complete:
 			self.is_complete = 0
+
+	def _validate_official_grade(self):
+		if not self._has_field("official_grade"):
+			return
+
+		grade_symbol = (self.official_grade or "").strip()
+		if not grade_symbol:
+			if self._has_field("official_grade_value"):
+				self.official_grade_value = None
+			return
+
+		if not self.grade_scale:
+			frappe.throw(_("Grade Scale is required to set an Official Grade."))
+
+		grade_value = resolve_grade_symbol(self.grade_scale, grade_symbol)
+
+		if self._has_field("official_grade_value"):
+			if self.official_grade_value not in (None, ""):
+				try:
+					current_value = float(self.official_grade_value)
+				except Exception:
+					current_value = None
+				if current_value is None or abs(current_value - grade_value) > 1e-9:
+					frappe.throw(
+						_("Official Grade Value is system-managed and must match the Grade Scale.")
+					)
+			self.official_grade_value = grade_value
 
 	def _has_official_result(self, grading_mode=None):
 		if grading_mode in ("Completion", "Binary"):

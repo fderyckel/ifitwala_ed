@@ -22,6 +22,8 @@
   "column_break_7oms",
   "official_score",
   "official_grade",
+  "official_grade_value",
+  "grade_scale",
   "section_break_aybc",
   "official_feedback",
   "section_break_h3i0",
@@ -144,6 +146,19 @@
    "label": "Official Grade"
   },
   {
+   "fieldname": "official_grade_value",
+   "fieldtype": "Float",
+   "label": "Official Grade Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grade_scale",
+   "fieldtype": "Link",
+   "label": "Grade Scale",
+   "options": "Grade Scale",
+   "read_only": 1
+  },
+  {
    "fieldname": "official_feedback",
    "fieldtype": "Text Editor",
    "label": "Official Feedback"
@@ -200,7 +215,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 20:35:17",
+ "modified": "2026-01-06 20:35:19",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Outcome",
