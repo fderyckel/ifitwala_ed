@@ -486,3 +486,14 @@ async function submit() {
 	}
 }
 </script>
+
+<style scoped>
+:deep(.fui-dialog-panel) {
+	background:
+		radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / 0.9), transparent 65%),
+		radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / 0.9), transparent 65%),
+		#ffffff;
+	border: 1px solid rgb(var(--border-rgb) / 0.9);
+	box-shadow: 0 18px 45px rgba(7, 16, 25, 0.18);
+}
+</style>
