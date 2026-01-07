@@ -45,7 +45,7 @@ def stamp_submission_context(submission_doc, outcome_row):
 				setattr(submission_doc, field, outcome_row.get(field))
 
 
-def apply_outcome_submission_effects(outcome_id, submission_id):
+def apply_outcome_submission_effects(outcome_id, submission_id, source="student"):
 	if not outcome_id or not submission_id:
 		return
 
@@ -63,6 +63,17 @@ def apply_outcome_submission_effects(outcome_id, submission_id):
 		],
 		as_dict=True,
 	) or {}
+
+	if source == "teacher_stub":
+		updates = {"submission_status": "Submitted"}
+		if "has_submission" in outcome:
+			updates["has_submission"] = 1
+		if "has_new_submission" in outcome:
+			updates["has_new_submission"] = 0
+		if "is_stale" in outcome:
+			updates["is_stale"] = 0
+		frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
+		return
 
 	submission = frappe.db.get_value(
 		"Task Submission",
@@ -137,7 +148,7 @@ def clone_group_submission(original_submission_id, outcome_ids):
 			"attachments": _clone_attachments(original),
 		})
 		doc.insert(ignore_permissions=True)
-		apply_outcome_submission_effects(outcome_id, doc.name)
+		apply_outcome_submission_effects(outcome_id, doc.name, source="student")
 		created += 1
 
 	return created
@@ -177,6 +188,68 @@ def _clone_attachments(original):
 			"is_primary": row.get("is_primary"),
 		})
 	return attachments
+
+
+def ensure_evidence_stub_submission(outcome_id, origin="Teacher Observation", note=None):
+	if not outcome_id:
+		frappe.throw(_("Task Outcome is required."))
+
+	outcome_row = frappe.db.get_value(
+		"Task Outcome",
+		outcome_id,
+		[
+			"student",
+			"student_group",
+			"course",
+			"academic_year",
+			"school",
+			"task_delivery",
+			"task",
+		],
+		as_dict=True,
+	)
+	if not outcome_row:
+		frappe.throw(_("Task Outcome not found."))
+
+	latest_real = frappe.get_all(
+		"Task Submission",
+		filters={"task_outcome": outcome_id, "is_stub": ["!=", 1]},
+		fields=["name", "version", "is_stub", "submission_origin"],
+		order_by="version desc",
+		limit_page_length=1,
+	)
+	if latest_real:
+		return latest_real[0]["name"]
+
+	latest_stub = frappe.get_all(
+		"Task Submission",
+		filters={"task_outcome": outcome_id, "is_stub": 1},
+		fields=["name", "version", "is_stub", "submission_origin"],
+		order_by="version desc",
+		limit_page_length=1,
+	)
+	if latest_stub:
+		return latest_stub[0]["name"]
+
+	meta = frappe.get_meta("Task Submission")
+	doc = frappe.new_doc("Task Submission")
+	doc.task_outcome = outcome_id
+	doc.version = get_next_submission_version(outcome_id)
+	if meta.get_field("submitted_by"):
+		doc.submitted_by = frappe.session.user
+	if meta.get_field("submitted_on"):
+		doc.submitted_on = now_datetime()
+	if meta.get_field("submission_origin"):
+		doc.submission_origin = origin
+	if meta.get_field("is_stub"):
+		doc.is_stub = 1
+	if meta.get_field("evidence_note"):
+		doc.evidence_note = note
+
+	stamp_submission_context(doc, outcome_row)
+	doc.insert(ignore_permissions=True)
+	apply_outcome_submission_effects(outcome_id, doc.name, source="teacher_stub")
+	return doc.name
 
 
 def _grading_started(outcome):

@@ -13,6 +13,9 @@
   "version",
   "submitted_by",
   "submitted_on",
+  "submission_origin",
+  "is_stub",
+  "evidence_note",
   "is_late",
   "is_cloned",
   "cloned_from",
@@ -77,6 +80,25 @@
    "label": "Submitted On",
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "default": "Student Upload",
+   "fieldname": "submission_origin",
+   "fieldtype": "Select",
+   "label": "Submission Origin",
+   "options": "Student Upload\nStudent In-Class\nTeacher Observation\nSystem"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_stub",
+   "fieldtype": "Check",
+   "label": "Is Stub",
+   "read_only": 1
+  },
+  {
+   "fieldname": "evidence_note",
+   "fieldtype": "Small Text",
+   "label": "Evidence Note"
   },
   {
    "default": "0",

@@ -61,7 +61,13 @@ def save_draft_contribution(payload, contributor=None):
 	if not outcome_id:
 		frappe.throw(_("Task Outcome is required."))
 	if not submission_id:
-		frappe.throw(_("Task Submission is required."))
+		from ifitwala_ed.assessment.task_submission_service import ensure_evidence_stub_submission
+
+		submission_id = ensure_evidence_stub_submission(
+			outcome_id,
+			origin="Teacher Observation",
+			note=data.get("evidence_note"),
+		)
 
 	contributor = contributor or frappe.session.user
 	contribution_type = (data.get("contribution_type") or "Self").strip()
@@ -111,17 +117,28 @@ def submit_contribution(payload, contributor=None):
 			doc.task_submission = data.get("task_submission")
 		if data.get("task_outcome"):
 			doc.task_outcome = data.get("task_outcome")
+		if not doc.task_submission:
+			from ifitwala_ed.assessment.task_submission_service import ensure_evidence_stub_submission
+
+			doc.task_submission = ensure_evidence_stub_submission(
+				doc.task_outcome,
+				origin="Teacher Observation",
+				note=data.get("evidence_note"),
+			)
+		if not doc.task_submission:
+			frappe.throw(_("Task Submission is required."))
 		doc.submitted_on = now_datetime()
 		_apply_payload_fields(doc, data)
 		doc.save(ignore_permissions=True)
 		from ifitwala_ed.assessment.task_outcome_service import apply_official_outcome_from_contributions
 
-		apply_official_outcome_from_contributions(doc.task_outcome)
+		outcome_update = apply_official_outcome_from_contributions(doc.task_outcome)
 		return {
 			"contribution": doc.name,
 			"status": doc.status,
 			"task_outcome": doc.task_outcome,
 			"task_submission": doc.task_submission,
+			"outcome_update": outcome_update,
 		}
 
 	outcome_id = _get_payload_value(data, "task_outcome", "outcome")
@@ -129,7 +146,13 @@ def submit_contribution(payload, contributor=None):
 	if not outcome_id:
 		frappe.throw(_("Task Outcome is required."))
 	if not submission_id:
-		frappe.throw(_("Task Submission is required."))
+		from ifitwala_ed.assessment.task_submission_service import ensure_evidence_stub_submission
+
+		submission_id = ensure_evidence_stub_submission(
+			outcome_id,
+			origin="Teacher Observation",
+			note=data.get("evidence_note"),
+		)
 
 	contribution_type = (data.get("contribution_type") or "Self").strip()
 	if not contribution_type:
@@ -145,11 +168,15 @@ def submit_contribution(payload, contributor=None):
 	_apply_payload_fields(doc, data)
 	doc.insert(ignore_permissions=True)
 
+	from ifitwala_ed.assessment.task_outcome_service import apply_official_outcome_from_contributions
+
+	outcome_update = apply_official_outcome_from_contributions(doc.task_outcome)
 	return {
 		"contribution": doc.name,
 		"status": doc.status,
 		"task_outcome": doc.task_outcome,
 		"task_submission": doc.task_submission,
+		"outcome_update": outcome_update,
 	}
 
 
@@ -162,7 +189,13 @@ def apply_moderator_action(payload, contributor=None):
 	if not outcome_id:
 		frappe.throw(_("Task Outcome is required."))
 	if not submission_id:
-		frappe.throw(_("Task Submission is required."))
+		from ifitwala_ed.assessment.task_submission_service import ensure_evidence_stub_submission
+
+		submission_id = ensure_evidence_stub_submission(
+			outcome_id,
+			origin="Teacher Observation",
+			note=data.get("evidence_note"),
+		)
 	if not action:
 		frappe.throw(_("Moderation action is required."))
 
@@ -179,11 +212,15 @@ def apply_moderator_action(payload, contributor=None):
 	_apply_payload_fields(doc, data)
 	doc.insert(ignore_permissions=True)
 
+	from ifitwala_ed.assessment.task_outcome_service import apply_official_outcome_from_contributions
+
+	outcome_update = apply_official_outcome_from_contributions(doc.task_outcome)
 	return {
 		"contribution": doc.name,
 		"status": doc.status,
 		"task_outcome": doc.task_outcome,
 		"task_submission": doc.task_submission,
+		"outcome_update": outcome_update,
 	}
 
 

@@ -123,21 +123,48 @@ def get_drawer(outcome: str):
 		fields=[
 			"name", "version", "submitted_on", "submitted_by",
 			"is_late", "is_cloned", "cloned_from",
+			"submission_origin", "is_stub", "evidence_note",
 			"link_url", "text_content", "attachments"
 		],
 		order_by="version desc",
 		limit_page_length=20,
 	)
 
+	contributions = frappe.get_all(
+		"Task Contribution",
+		filters={"task_outcome": outcome},
+		fields=[
+			"name",
+			"contributor",
+			"contribution_type",
+			"status",
+			"is_stale",
+			"task_submission",
+			"score",
+			"grade",
+			"grade_value",
+			"feedback",
+			"moderation_action",
+			"submitted_on",
+			"modified",
+		],
+		order_by="submitted_on desc, modified desc",
+		limit_page_length=100,
+	)
+
 	return {
 		"outcome": outcome_doc,
 		"submissions": submissions,
-		"contributions": [], # contributions fetched lazily or empty for now
+		"contributions": contributions,
+		"me": {
+			"user": frappe.session.user,
+			"latest_submission_version": task_contribution_service.get_latest_submission_version(outcome),
+		},
 	}
 
 
 @frappe.whitelist()
-def save_outcome_draft(payload=None, **kwargs):
+def save_contribution_draft(payload=None, **kwargs):
 	"""
 	Save a draft contribution (no direct Outcome writes).
 	"""
@@ -147,11 +174,12 @@ def save_outcome_draft(payload=None, **kwargs):
 	data = payload or kwargs
 	if not data:
 		frappe.throw(_("Contribution payload is required."))
+	_reject_official_fields(data)
 	return task_contribution_service.save_draft_contribution(data)
 
 
 @frappe.whitelist()
-def submit_outcome_contribution(payload=None, **kwargs):
+def submit_contribution(payload=None, **kwargs):
 	"""
 	Submit a contribution (no direct Outcome writes).
 	"""
@@ -161,7 +189,13 @@ def submit_outcome_contribution(payload=None, **kwargs):
 	data = payload or kwargs
 	if not data:
 		frappe.throw(_("Contribution payload is required."))
-	return task_contribution_service.submit_contribution(data)
+	_reject_official_fields(data)
+	result = task_contribution_service.submit_contribution(data)
+	outcome_id = result.get("task_outcome") or data.get("task_outcome") or data.get("outcome")
+	return {
+		"result": result,
+		"outcome": _get_outcome_summary(outcome_id),
+	}
 
 
 @frappe.whitelist()
@@ -175,7 +209,13 @@ def moderator_action(payload=None, **kwargs):
 	data = payload or kwargs
 	if not data:
 		frappe.throw(_("Moderation payload is required."))
-	return task_contribution_service.apply_moderator_action(data)
+	_reject_official_fields(data)
+	result = task_contribution_service.apply_moderator_action(data)
+	outcome_id = result.get("task_outcome") or data.get("task_outcome") or data.get("outcome")
+	return {
+		"result": result,
+		"outcome": _get_outcome_summary(outcome_id),
+	}
 
 
 @frappe.whitelist()
@@ -245,3 +285,32 @@ def _get_student_display_map(student_ids):
 		out[row["name"]] = label
 
 	return out
+
+
+def _get_outcome_summary(outcome_id):
+	if not outcome_id:
+		return None
+
+	fields = [
+		"name",
+		"grading_status",
+		"submission_status",
+		"procedural_status",
+		"has_submission",
+		"has_new_submission",
+		"is_stale",
+		"is_complete",
+		"official_score",
+		"official_grade",
+		"official_grade_value",
+		"official_feedback",
+	]
+	return frappe.db.get_value("Task Outcome", outcome_id, fields, as_dict=True)
+
+
+def _reject_official_fields(payload):
+	if not isinstance(payload, dict):
+		return
+	for key in payload.keys():
+		if key.startswith("official_"):
+			frappe.throw(_("official_* fields are not accepted in gradebook endpoints."))

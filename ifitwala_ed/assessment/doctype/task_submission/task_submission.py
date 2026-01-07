@@ -27,7 +27,7 @@ class TaskSubmission(Document):
 		self._prevent_evidence_overwrite()
 
 	def after_insert(self):
-		apply_outcome_submission_effects(self.task_outcome, self.name)
+		apply_outcome_submission_effects(self.task_outcome, self.name, source="student")
 		self._maybe_clone_group_submission()
 
 	def _doc_meta(self):
