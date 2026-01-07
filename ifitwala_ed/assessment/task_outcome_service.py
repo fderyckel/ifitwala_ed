@@ -14,10 +14,10 @@ def apply_official_outcome_from_contributions(outcome_id, policy=None):
 	"""
 	Recompute and persist the official outcome fields from contributions.
 	"""
-	return recompute_official_outcome(outcome_id, policy=policy)
+	return _recompute_official_outcome_internal(outcome_id, policy=policy)
 
 
-def recompute_official_outcome(outcome_id, policy=None):
+def _recompute_official_outcome_internal(outcome_id, policy=None):
 	if not outcome_id:
 		frappe.throw(_("Task Outcome is required."))
 
@@ -32,6 +32,13 @@ def recompute_official_outcome(outcome_id, policy=None):
 	)
 	if not outcome:
 		frappe.throw(_("Task Outcome not found."))
+
+	delivery = _get_delivery_context(outcome.get("task_delivery"))
+	require_grading = int(delivery.get("require_grading") or 0)
+	grading_mode = delivery.get("grading_mode")
+	rubric_strategy = delivery.get("rubric_scoring_strategy")
+	grade_scale = delivery.get("grade_scale") or outcome.get("grade_scale")
+	rubric_version = delivery.get("rubric_version")
 
 	contributions = frappe.db.get_values(
 		"Task Contribution",
@@ -51,11 +58,6 @@ def recompute_official_outcome(outcome_id, policy=None):
 	)
 
 	selected = _select_official_contribution(contributions)
-	delivery = _get_delivery_context(outcome.get("task_delivery"))
-	require_grading = int(delivery.get("require_grading") or 0)
-	grading_mode = delivery.get("grading_mode")
-	rubric_strategy = delivery.get("rubric_scoring_strategy")
-	grade_scale = delivery.get("grade_scale") or outcome.get("grade_scale")
 
 	if selected and selected.get("contribution_type") == "Moderator":
 		if selected.get("moderation_action") == "Return to Grader":
@@ -82,13 +84,14 @@ def recompute_official_outcome(outcome_id, policy=None):
 		return {"outcome": outcome_id, "grading_status": updates["grading_status"]}
 
 	if grading_mode == "Criteria":
-		_update_outcome_criteria_from_contribution(outcome_id, selected.get("name"))
+		_apply_official_criteria_from_contribution(outcome_id, selected.get("name"))
 		return _apply_criteria_official_fields(
 			outcome_id=outcome_id,
 			grade_scale=grade_scale,
 			require_grading=require_grading,
 			contribution=selected,
 			rubric_scoring_strategy=rubric_strategy,
+			rubric_version=rubric_version,
 		)
 
 	return _apply_non_criteria_official_fields(
@@ -159,7 +162,13 @@ def set_procedural_status(outcome_id, status, note=None):
 def _get_delivery_flags(delivery_id):
 	if not delivery_id:
 		return {}
-	fields = ["grading_mode", "require_grading", "rubric_scoring_strategy", "grade_scale"]
+	fields = [
+		"grading_mode",
+		"require_grading",
+		"rubric_scoring_strategy",
+		"grade_scale",
+		"rubric_version",
+	]
 	return frappe.db.get_value("Task Delivery", delivery_id, fields, as_dict=True) or {}
 
 
@@ -214,6 +223,7 @@ def _apply_criteria_official_fields(
 	require_grading,
 	contribution,
 	rubric_scoring_strategy,
+	rubric_version=None,
 ):
 	strategy = (rubric_scoring_strategy or "Sum Total").strip() or "Sum Total"
 	official_feedback = contribution.get("feedback")
@@ -226,7 +236,8 @@ def _apply_criteria_official_fields(
 			"official_feedback": official_feedback,
 		}
 	else:
-		total_points = _sum_contribution_criterion_points(contribution.get("name"))
+		weights = _load_rubric_weights(rubric_version) if rubric_version else {}
+		total_points = _sum_contribution_criterion_points(contribution.get("name"), weights)
 		grade_symbol = _grade_symbol_from_score(grade_scale, total_points) if grade_scale else None
 		grade_value = resolve_grade_symbol(grade_scale, grade_symbol) if grade_symbol and grade_scale else None
 		updates = {
@@ -267,7 +278,7 @@ def _grade_symbol_from_score(grade_scale, numeric_score):
 	return selected
 
 
-def _sum_contribution_criterion_points(contribution_name):
+def _sum_contribution_criterion_points(contribution_name, weights=None):
 	if not contribution_name:
 		return 0.0
 
@@ -278,19 +289,23 @@ def _sum_contribution_criterion_points(contribution_name):
 			"parenttype": "Task Contribution",
 			"parentfield": "rubric_scores",
 		},
-		["level_points"],
+		["assessment_criteria", "level_points"],
 		as_dict=True,
 	) or []
 	total = 0.0
 	for row in rows:
+		criteria = row.get("assessment_criteria")
+		weight = 1.0
+		if weights and criteria in weights:
+			weight = weights.get(criteria) or 1.0
 		try:
-			total += float(row.get("level_points") or 0)
+			total += float(row.get("level_points") or 0) * float(weight or 1.0)
 		except Exception:
 			continue
 	return total
 
 
-def _update_outcome_criteria_from_contribution(outcome_id, contribution_name):
+def _apply_official_criteria_from_contribution(outcome_id, contribution_name):
 	if not outcome_id or not contribution_name:
 		return
 
@@ -302,25 +317,75 @@ def _update_outcome_criteria_from_contribution(outcome_id, contribution_name):
 			"parentfield": "rubric_scores",
 		},
 		["assessment_criteria", "level", "level_points", "feedback"],
+		order_by="idx asc",
 		as_dict=True,
 	) or []
 
-	doc = frappe.get_doc("Task Outcome", outcome_id)
-	doc.set("official_criteria", [])
+	frappe.db.delete(
+		"Task Outcome Criterion",
+		{
+			"parent": outcome_id,
+			"parenttype": "Task Outcome",
+			"parentfield": "official_criteria",
+		},
+	)
+	if not rows:
+		return
+
+	values = []
+	idx = 1
 	for row in rows:
-		doc.append("official_criteria", {
+		values.append({
+			"name": frappe.generate_hash(length=10),
+			"parent": outcome_id,
+			"parenttype": "Task Outcome",
+			"parentfield": "official_criteria",
+			"idx": idx,
 			"assessment_criteria": row.get("assessment_criteria"),
 			"level": row.get("level"),
 			"level_points": row.get("level_points") or 0,
 			"feedback": row.get("feedback"),
 		})
-	doc.save(ignore_permissions=True)
+		idx += 1
+
+	fields = ["name", "parent", "parenttype", "parentfield", "idx", "assessment_criteria", "level", "level_points", "feedback"]
+	frappe.db.bulk_insert(
+		doctype="Task Outcome Criterion",
+		fields=fields,
+		values=[[row.get(field) for field in fields] for row in values],
+	)
 
 
 def _clear_outcome_criteria(outcome_id):
-	doc = frappe.get_doc("Task Outcome", outcome_id)
-	doc.set("official_criteria", [])
-	doc.save(ignore_permissions=True)
+	frappe.db.delete(
+		"Task Outcome Criterion",
+		{
+			"parent": outcome_id,
+			"parenttype": "Task Outcome",
+			"parentfield": "official_criteria",
+		},
+	)
+
+
+def _load_rubric_weights(rubric_version):
+	if not rubric_version:
+		return {}
+
+	rows = frappe.db.get_values(
+		"Task Rubric Criterion",
+		{
+			"parent": rubric_version,
+			"parenttype": "Task Rubric Version",
+			"parentfield": "criteria",
+		},
+		["assessment_criteria", "criteria_weighting"],
+		as_dict=True,
+	) or []
+	return {
+		row.get("assessment_criteria"): row.get("criteria_weighting") or 1.0
+		for row in rows
+		if row.get("assessment_criteria")
+	}
 
 
 def mark_new_submission_seen(outcome_id):

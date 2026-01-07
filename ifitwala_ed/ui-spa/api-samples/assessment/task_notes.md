@@ -184,7 +184,7 @@ Evidence stubs are required for:
 * oral presentations
 * teacher observation
 
-Evidence stub ≠ “new student evidence.”  
+Evidence stub ≠ “new student evidence.”
 `has_new_submission` is reserved for student resubmits only.
 
 ---
@@ -385,4 +385,199 @@ No spreadsheets. Differences only.
 
 ---
 
-End of document.
+# Expected Behavior Matrix — Step 2
+## Outcome recompute / Official truth (Authoritative)
+
+This matrix defines the **non-negotiable expected behavior** of the Outcome recompute pipeline.
+It is written for **humans and coding agents**. Any deviation is a regression.
+
+---
+
+## Definitions (locked)
+
+### Winning contribution selection (priority order)
+1. `contribution_type = Moderator`
+2. else `contribution_type = Official Override`
+3. else `contribution_type = Self`
+
+Exclude any contribution where:
+- `status = Draft`, or
+- `is_stale = 1`
+
+### Official truth writers
+Only:
+
+apply_official_outcome_from_contributions(outcome_id)
+
+may write:
+- `Task Outcome.official_*`
+- `Task Outcome.official_criteria` (Task Outcome Criterion rows)
+
+No controllers, reports, or UI code may write official fields.
+
+### Student evidence vs stub
+- **Student evidence** (Student Upload / Student In-Class):
+  - may set `has_new_submission = 1`
+- **Teacher stubs** (`is_stub = 1`, origin Teacher Observation / System):
+  - must **never** set `has_new_submission = 1`
+
+### Criteria-first invariant
+When `grading_mode == "Criteria"`:
+- Per-criterion official truth is **always materialized**
+- Task-level totals/grade are **strategy-gated**
+
+---
+
+## A) Recompute entry behavior (always)
+
+| Condition | Expected behavior |
+|---|---|
+| Recompute called for valid outcome | Load delivery context: `grading_mode`, `rubric_scoring_strategy`, `grade_scale`, `rubric_version`, `require_grading`. |
+| No eligible contributions | Clear official fields; clear official criteria (if Criteria mode); set `grading_status` (see section D). |
+| Winning contribution exists | Apply official criteria **first**, then strategy-gated totals/grade, then grading_status. |
+| Moderator action = “Return to Grader” | Do **not** overwrite official fields or criteria; set `grading_status = "In Progress"`; return early. |
+
+---
+
+## B) Criteria mode — official criteria behavior (always)
+
+Applies when:
+
+Task Delivery.grading_mode == "Criteria"
+
+yaml
+Copy code
+
+| Condition | Task Outcome Criterion behavior |
+|---|---|
+| Winning contribution exists | Replace entire child table to exactly match the winning contribution’s criterion rows. |
+| No winning contribution | Child table must be empty (no stale rows allowed). |
+| Moderator “Return to Grader” | Do not change existing official criteria. |
+
+### Row mapping (locked)
+
+Each Task Outcome Criterion row must contain:
+- `assessment_criteria`
+- `level`
+- `level_points`
+- `feedback`
+
+Source: **winning Task Contribution Criterion rows only**.
+
+---
+
+## C) Criteria mode — strategy-gated totals and grade
+
+### C1 — Strategy = `Separate Criteria`
+
+Applies when:
+
+Task Delivery.rubric_scoring_strategy == "Separate Criteria"
+
+
+| Field | Expected value |
+|---|---|
+| `official_score` | **NULL** (never 0) |
+| `official_grade` | **NULL** |
+| `official_grade_value` | **NULL** |
+| `official_feedback` | Allowed |
+| `official_criteria` | Always refreshed from winning contribution |
+
+**Reason:**
+Prevents analytics pollution and enforces per-criterion truth.
+
+---
+
+### C2 — Strategy = `Sum Total`
+
+Applies when:
+
+Task Delivery.rubric_scoring_strategy == "Sum Total"
+
+
+| Field | Expected value |
+|---|---|
+| `official_score` | Computed numeric total (weighted if weights exist) |
+| `official_grade` | Resolved grade symbol (via grade scale) |
+| `official_grade_value` | Resolved numeric value (via grade scale mapping) |
+| `official_feedback` | Allowed |
+| `official_criteria` | Always refreshed from winning contribution |
+
+**Notes (locked):**
+- Grade resolution is **computed**, not linked to a child row.
+- If no grade scale exists, grade fields must remain NULL.
+
+---
+
+## D) Grading status outcomes (minimum policy)
+
+### D1 — No eligible contribution
+
+| Condition | grading_status |
+|---|---|
+| `require_grading = 0` | `Not Applicable` |
+| `require_grading = 1` | `Not Started` |
+
+(If Criteria mode: official criteria must be empty.)
+
+---
+
+### D2 — Winning contribution exists
+
+| Contribution type | grading_status |
+|---|---|
+| Self | `Finalized` |
+| Official Override | `Finalized` |
+| Moderator | `Moderated` |
+
+---
+
+### D3 — Moderator “Return to Grader”
+
+| Condition | grading_status |
+|---|---|
+| Moderator + Return to Grader | `In Progress` (do not overwrite official truth) |
+
+---
+
+## E) Submission + flags behavior (must not drift)
+
+### E1 — Stub grading (no student submission)
+
+| Condition | Expected behavior |
+|---|---|
+| Grading without submission id | Create/ensure stub `Task Submission`; attach contribution to it. |
+| Stub exists | `has_submission = 1` |
+| Stub exists | **Do not** set `has_new_submission = 1` |
+
+---
+
+### E2 — Student evidence
+
+| Condition | Expected behavior |
+|---|---|
+| First student submission | `has_submission = 1`, `has_new_submission = 1` |
+| Student resubmission | New version; `has_new_submission = 1`; prior contributions may become stale (policy-controlled). |
+
+**Hard rule:**
+`has_new_submission` is reserved **only** for student-originated evidence.
+
+---
+
+## F) Official field write permissions (enforced invariant)
+
+| Data | Writable by |
+|---|---|
+| `official_score`, `official_grade`, `official_grade_value`, `official_feedback` | `apply_official_outcome_from_contributions()` only |
+| `official_criteria` | `apply_official_outcome_from_contributions()` only |
+| Contributions | Contribution service |
+| Submissions | Submission service |
+
+Any other codepath writing official fields is a **regression**.
+
+---
+
+## Status
+
+This matrix is **authoritative** for Step 2.
+UI, analytics, and reporting **must trust Outcome + Outcome Criterion only**.
