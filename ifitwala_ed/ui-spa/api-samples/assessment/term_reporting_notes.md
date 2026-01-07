@@ -119,6 +119,20 @@ Criteria strategy:
 * If Criteria + Sum Total → Task Outcome totals are valid for reporting.
 * If Criteria + Separate Criteria → aggregate from Task Outcome Criterion rows (criterion-by-criterion), using a program/framework policy layer.
 
+**Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.
+
+### Golden thread
+
+If delivery strategy is **Sum Total**:
+
+* term reporting can aggregate from `Task Outcome.official_score` / `Task Outcome.official_grade_value` (as configured).
+
+If delivery strategy is **Separate Criteria**:
+
+* term reporting aggregates from **Task Outcome Criterion** per criterion.
+
+MYP‑style reporting ignores task totals entirely.
+
 ### Persisted Values
 
 Each Course Term Result stores:

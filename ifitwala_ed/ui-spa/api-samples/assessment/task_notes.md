@@ -55,6 +55,29 @@ The UI *must never* expose backend complexity.
 
 ---
 
+## 1.1 Multi-criteria tasks (locked)
+
+* Task supports multiple Assessment Criteria via `Task.task_criteria` (child table Task Template Criterion). No single default rubric link exists anymore.
+* Task stores default scoring strategy in `default_rubric_scoring_strategy`:
+
+  * Sum Total
+  * Separate Criteria
+
+**Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.
+
+---
+
+## 1.2 Rubric scoring strategy (locked)
+
+* Strategy is evaluated from Task Delivery (`rubric_scoring_strategy`).
+* Delivery snapshots the strategy from Task at creation time (historical stability).
+* Strategy determines whether a task-level total is produced:
+
+  * Sum Total: total score is computed on outcome, mapped to grade scale.
+  * Separate Criteria: no task total; only per-criterion official results exist.
+
+---
+
 ## 2. Five‑Layer Model (Locked)
 
 ### Layer 1 — Task (Definition / Library Item)
@@ -291,7 +314,7 @@ Policy toggle:
 
 ## 8. Rubric Integrity
 
-* Rubric structure is snapshotted at delivery
+* Rubric structure is snapshotted at delivery (all Task criteria rows)
 * Descriptor text governance:
 
   * minor edits allowed
@@ -305,7 +328,7 @@ Historical meaning must be preserved.
 
 ### Gradebook Rule
 
-The gradebook grid must render primarily from **Task Outcome**.
+The gradebook grid must render from **Task Outcome** plus **Task Outcome Criterion** (Outcome layer truth only).
 
 * no deep joins
 * denormalized context fields

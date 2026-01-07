@@ -152,6 +152,8 @@ Task Submission: versioned evidence
 
 Task Contribution: professional judgment (grading, feedback)
 
+**Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.
+
 Assessment can exist:
 
 with or without a lesson
@@ -187,3 +189,11 @@ planned vs taught vs assessed
 Curriculum teams gain insight without policing teachers
 
 This is learning-centered, not assignment-centered.
+
+Framework variability
+
+MYP: criteria remain separate per task; no task total; term reporting computes criterion term grades.
+
+DP / Traditional: criteria may sum to a task total; task total maps to grade.
+
+Framework logic does not live in controllers. It lives in delivery-level scoring strategy + reporting cycle aggregation policy.

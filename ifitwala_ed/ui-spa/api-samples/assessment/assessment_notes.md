@@ -109,6 +109,8 @@ Intervals must be:
 ## 4. Tasks (Assessment Evidence)
 
 Tasks define evidence intent; Delivery turns that intent into Outcomes and Submissions.
+Task supports multiple criteria via `task_criteria`, and Delivery snapshots those rows for rubric grading.
+Delivery applies `rubric_scoring_strategy` (defaulted from Task) to decide whether totals are computed.
 Evidence may be offline and is still represented via a **Submission stub**.
 
 ### Supported grading modes (exactly one active)
@@ -148,6 +150,24 @@ When `points = 1` and `criteria = 0`:
 * Grade Scale is resolved at delivery time (policy‑driven)
 
 ---
+
+## 4.5 Source of truth / layers
+
+Authoring
+
+* Students author **Task Submission** (evidence only).
+* Teachers author **Task Contribution** (+ Task Contribution Criterion rows).
+
+Derived official truth
+
+* **Task Outcome** stores status + optional scalar totals.
+* **Task Outcome Criterion** stores per‑criterion official results (always).
+
+Aggregation
+
+* Reporting uses Outcome totals where present, else Outcome Criterion rows.
+
+**Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.
 
 ### Per‑student Layers (Outcome / Submission / Contribution)
 

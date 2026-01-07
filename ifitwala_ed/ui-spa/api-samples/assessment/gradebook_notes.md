@@ -96,6 +96,18 @@ Cell content rules (one glance, no clutter):
 **Click target:** the whole cell.
 Click opens drawer.
 
+Gradebook grid reads:
+
+* Task Outcome rows (one per student × delivery)
+* per‑criterion official values from Task Outcome Criterion (flattened for UI)
+
+Strategy behavior:
+
+* Separate Criteria → show criterion values only (no total column).
+* Sum Total → show criterion values and the computed total/grade.
+
+**Warning:** Gradebook must never compute totals client‑side. It only renders derived fields from outcome services.
+
 ---
 
 ### 1.2 Grading Drawer (Secondary)
@@ -307,7 +319,7 @@ They see:
 
 ## 9. Developer Notes (Implementation Contract)
 
-* Gradebook grid queries **Task Outcome** as the fact table.
+* Gradebook grid queries **Task Outcome** + **Task Outcome Criterion** as the fact tables.
 * Drawer fetches:
 
   * Outcome
@@ -324,6 +336,8 @@ They see:
 * Gradebook API (`api/gradebook.py`) orchestrates only; it does not compute grades.
 * Writes go to services; services may create Evidence Stub submissions when missing.
 * Frontend can omit `task_submission` in grade actions; backend will attach to latest student submission if present, else create a stub.
+
+**Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.
 
 
 
@@ -528,7 +542,7 @@ Why this matters for performance and sanity
 
 One modal minimizes clicks and reduces teacher error
 
-Gradebook grid reads from Task Outcome only (fast)
+Gradebook grid reads from Task Outcome + Task Outcome Criterion only (fast)
 
 Everything else loads lazily in the drawer
 
