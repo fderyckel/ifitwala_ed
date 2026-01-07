@@ -113,6 +113,12 @@ Grades are calculated from:
 Submissions and contributions are **never** used directly in term aggregation.
 Evidence stubs do not affect reporting beyond enabling grading to occur.
 
+Criteria strategy:
+
+* If grading_mode != Criteria → aggregate from Task Outcome official fields.
+* If Criteria + Sum Total → Task Outcome totals are valid for reporting.
+* If Criteria + Separate Criteria → aggregate from Task Outcome Criterion rows (criterion-by-criterion), using a program/framework policy layer.
+
 ### Persisted Values
 
 Each Course Term Result stores:

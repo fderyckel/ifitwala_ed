@@ -13,9 +13,11 @@ _GRADE_SCALE_CACHE = {}
 def apply_official_outcome_from_contributions(outcome_id, policy=None):
 	"""
 	Recompute and persist the official outcome fields from contributions.
-
-	Full implementation is deferred to Step 5.
 	"""
+	return recompute_official_outcome(outcome_id, policy=policy)
+
+
+def recompute_official_outcome(outcome_id, policy=None):
 	if not outcome_id:
 		frappe.throw(_("Task Outcome is required."))
 
@@ -48,24 +50,12 @@ def apply_official_outcome_from_contributions(outcome_id, policy=None):
 		as_dict=True,
 	)
 
-	moderator_types = {"Moderator"}
-	self_types = {"Self", "Official Override"}
-
-	selected = None
-	for row in contributions:
-		if row.get("contribution_type") in moderator_types:
-			selected = row
-			break
-
-	if not selected:
-		for row in contributions:
-			if row.get("contribution_type") in self_types:
-				selected = row
-				break
-
-	delivery = _get_delivery_flags(outcome.get("task_delivery"))
+	selected = _select_official_contribution(contributions)
+	delivery = _get_delivery_context(outcome.get("task_delivery"))
 	require_grading = int(delivery.get("require_grading") or 0)
 	grading_mode = delivery.get("grading_mode")
+	rubric_strategy = delivery.get("rubric_scoring_strategy")
+	grade_scale = delivery.get("grade_scale") or outcome.get("grade_scale")
 
 	if selected and selected.get("contribution_type") == "Moderator":
 		if selected.get("moderation_action") == "Return to Grader":
@@ -87,34 +77,26 @@ def apply_official_outcome_from_contributions(outcome_id, policy=None):
 			"grading_status": "Not Applicable" if not require_grading else "Not Started",
 		}
 		frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
+		if grading_mode == "Criteria":
+			_clear_outcome_criteria(outcome_id)
 		return {"outcome": outcome_id, "grading_status": updates["grading_status"]}
 
-	grade_symbol = (selected.get("grade") or "").strip()
-	grade_value = selected.get("grade_value")
-	if grade_symbol:
-		if not outcome.get("grade_scale"):
-			frappe.throw(_("Grade Scale is required to apply an official grade."))
-		if grade_value in (None, ""):
-			grade_value = resolve_grade_symbol(outcome.get("grade_scale"), grade_symbol)
-	else:
-		grade_value = None
+	if grading_mode == "Criteria":
+		_update_outcome_criteria_from_contribution(outcome_id, selected.get("name"))
+		return _apply_criteria_official_fields(
+			outcome_id=outcome_id,
+			grade_scale=grade_scale,
+			require_grading=require_grading,
+			contribution=selected,
+			rubric_scoring_strategy=rubric_strategy,
+		)
 
-	official_fields = {
-		"official_score": selected.get("score"),
-		"official_grade": grade_symbol or None,
-		"official_grade_value": grade_value,
-		"official_feedback": selected.get("feedback"),
-	}
-
-	if selected.get("contribution_type") in moderator_types:
-		grading_status = "Moderated"
-	else:
-		grading_status = "Finalized" if require_grading else "Not Applicable"
-
-	official_fields["grading_status"] = grading_status
-	frappe.db.set_value("Task Outcome", outcome_id, official_fields, update_modified=True)
-
-	return {"outcome": outcome_id, "grading_status": grading_status}
+	return _apply_non_criteria_official_fields(
+		outcome_id=outcome_id,
+		grade_scale=grade_scale,
+		require_grading=require_grading,
+		contribution=selected,
+	)
 
 
 def get_grade_scale_map(grade_scale):
@@ -177,8 +159,168 @@ def set_procedural_status(outcome_id, status, note=None):
 def _get_delivery_flags(delivery_id):
 	if not delivery_id:
 		return {}
-	fields = ["grading_mode", "require_grading"]
+	fields = ["grading_mode", "require_grading", "rubric_scoring_strategy", "grade_scale"]
 	return frappe.db.get_value("Task Delivery", delivery_id, fields, as_dict=True) or {}
+
+
+def _get_delivery_context(delivery_id):
+	return _get_delivery_flags(delivery_id)
+
+
+def _select_official_contribution(contributions):
+	moderator_types = {"Moderator"}
+	self_types = {"Self", "Official Override"}
+
+	for row in contributions:
+		if row.get("contribution_type") in moderator_types:
+			return row
+	for row in contributions:
+		if row.get("contribution_type") in self_types:
+			return row
+	return None
+
+
+def _apply_non_criteria_official_fields(outcome_id, grade_scale, require_grading, contribution):
+	grade_symbol = (contribution.get("grade") or "").strip()
+	grade_value = contribution.get("grade_value")
+	if grade_symbol:
+		if not grade_scale:
+			frappe.throw(_("Grade Scale is required to apply an official grade."))
+		if grade_value in (None, ""):
+			grade_value = resolve_grade_symbol(grade_scale, grade_symbol)
+	else:
+		grade_value = None
+
+	official_fields = {
+		"official_score": contribution.get("score"),
+		"official_grade": grade_symbol or None,
+		"official_grade_value": grade_value,
+		"official_feedback": contribution.get("feedback"),
+	}
+
+	grading_status = "Moderated" if contribution.get("contribution_type") == "Moderator" else None
+	if not grading_status:
+		grading_status = "Finalized" if require_grading else "Not Applicable"
+
+	official_fields["grading_status"] = grading_status
+	frappe.db.set_value("Task Outcome", outcome_id, official_fields, update_modified=True)
+
+	return {"outcome": outcome_id, "grading_status": grading_status}
+
+
+def _apply_criteria_official_fields(
+	outcome_id,
+	grade_scale,
+	require_grading,
+	contribution,
+	rubric_scoring_strategy,
+):
+	strategy = (rubric_scoring_strategy or "Sum Total").strip() or "Sum Total"
+	official_feedback = contribution.get("feedback")
+
+	if strategy == "Separate Criteria":
+		updates = {
+			"official_score": None,
+			"official_grade": None,
+			"official_grade_value": None,
+			"official_feedback": official_feedback,
+		}
+	else:
+		total_points = _sum_contribution_criterion_points(contribution.get("name"))
+		grade_symbol = _grade_symbol_from_score(grade_scale, total_points) if grade_scale else None
+		grade_value = resolve_grade_symbol(grade_scale, grade_symbol) if grade_symbol and grade_scale else None
+		updates = {
+			"official_score": total_points,
+			"official_grade": grade_symbol,
+			"official_grade_value": grade_value,
+			"official_feedback": official_feedback,
+		}
+
+	grading_status = "Moderated" if contribution.get("contribution_type") == "Moderator" else None
+	if not grading_status:
+		grading_status = "Finalized" if require_grading else "Not Applicable"
+
+	updates["grading_status"] = grading_status
+	frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
+	return {"outcome": outcome_id, "grading_status": grading_status}
+
+
+def _grade_symbol_from_score(grade_scale, numeric_score):
+	if numeric_score is None or grade_scale is None:
+		return None
+
+	grade_map = get_grade_scale_map(grade_scale)
+	if not grade_map:
+		return None
+
+	selected = None
+	selected_boundary = None
+	for code, boundary in grade_map.items():
+		try:
+			boundary_value = float(boundary or 0)
+		except Exception:
+			boundary_value = 0.0
+		if numeric_score >= boundary_value and (selected_boundary is None or boundary_value > selected_boundary):
+			selected = code
+			selected_boundary = boundary_value
+
+	return selected
+
+
+def _sum_contribution_criterion_points(contribution_name):
+	if not contribution_name:
+		return 0.0
+
+	rows = frappe.db.get_values(
+		"Task Contribution Criterion",
+		{
+			"parent": contribution_name,
+			"parenttype": "Task Contribution",
+			"parentfield": "rubric_scores",
+		},
+		["level_points"],
+		as_dict=True,
+	) or []
+	total = 0.0
+	for row in rows:
+		try:
+			total += float(row.get("level_points") or 0)
+		except Exception:
+			continue
+	return total
+
+
+def _update_outcome_criteria_from_contribution(outcome_id, contribution_name):
+	if not outcome_id or not contribution_name:
+		return
+
+	rows = frappe.db.get_values(
+		"Task Contribution Criterion",
+		{
+			"parent": contribution_name,
+			"parenttype": "Task Contribution",
+			"parentfield": "rubric_scores",
+		},
+		["assessment_criteria", "level", "level_points", "feedback"],
+		as_dict=True,
+	) or []
+
+	doc = frappe.get_doc("Task Outcome", outcome_id)
+	doc.set("official_criteria", [])
+	for row in rows:
+		doc.append("official_criteria", {
+			"assessment_criteria": row.get("assessment_criteria"),
+			"level": row.get("level"),
+			"level_points": row.get("level_points") or 0,
+			"feedback": row.get("feedback"),
+		})
+	doc.save(ignore_permissions=True)
+
+
+def _clear_outcome_criteria(outcome_id):
+	doc = frappe.get_doc("Task Outcome", outcome_id)
+	doc.set("official_criteria", [])
+	doc.save(ignore_permissions=True)
 
 
 def mark_new_submission_seen(outcome_id):

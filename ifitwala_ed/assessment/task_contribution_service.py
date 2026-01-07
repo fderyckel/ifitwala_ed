@@ -130,9 +130,9 @@ def submit_contribution(payload, contributor=None):
 		doc.submitted_on = now_datetime()
 		_apply_payload_fields(doc, data)
 		doc.save(ignore_permissions=True)
-		from ifitwala_ed.assessment.task_outcome_service import apply_official_outcome_from_contributions
+		from ifitwala_ed.assessment.task_outcome_service import recompute_official_outcome
 
-		outcome_update = apply_official_outcome_from_contributions(doc.task_outcome)
+		outcome_update = recompute_official_outcome(doc.task_outcome)
 		return {
 			"contribution": doc.name,
 			"status": doc.status,
@@ -167,9 +167,9 @@ def submit_contribution(payload, contributor=None):
 	_apply_payload_fields(doc, data)
 	doc.insert(ignore_permissions=True)
 
-	from ifitwala_ed.assessment.task_outcome_service import apply_official_outcome_from_contributions
+	from ifitwala_ed.assessment.task_outcome_service import recompute_official_outcome
 
-	outcome_update = apply_official_outcome_from_contributions(doc.task_outcome)
+	outcome_update = recompute_official_outcome(doc.task_outcome)
 	return {
 		"contribution": doc.name,
 		"status": doc.status,
@@ -210,9 +210,9 @@ def apply_moderator_action(payload, contributor=None):
 	_apply_payload_fields(doc, data)
 	doc.insert(ignore_permissions=True)
 
-	from ifitwala_ed.assessment.task_outcome_service import apply_official_outcome_from_contributions
+	from ifitwala_ed.assessment.task_outcome_service import recompute_official_outcome
 
-	outcome_update = apply_official_outcome_from_contributions(doc.task_outcome)
+	outcome_update = recompute_official_outcome(doc.task_outcome)
 	return {
 		"contribution": doc.name,
 		"status": doc.status,

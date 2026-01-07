@@ -22,6 +22,8 @@ class OutcomeRow:
 	course: str
 	program: Optional[str]
 	task_delivery: str
+	grading_mode: Optional[str]
+	rubric_scoring_strategy: Optional[str]
 	official_score: Optional[float]
 	official_grade_value: Optional[float]
 	grade_scale: Optional[str]
@@ -102,6 +104,8 @@ def get_eligible_outcomes(ctx: dict) -> List[OutcomeRow]:
 			o.course,
 			o.program,
 			o.task_delivery,
+			d.grading_mode,
+			d.rubric_scoring_strategy,
 			o.official_score,
 			o.official_grade_value,
 			o.grade_scale,
@@ -121,6 +125,8 @@ def get_eligible_outcomes(ctx: dict) -> List[OutcomeRow]:
 			course=row.course,
 			program=row.program,
 			task_delivery=row.task_delivery,
+			grading_mode=row.grading_mode,
+			rubric_scoring_strategy=row.rubric_scoring_strategy,
 			official_score=row.official_score,
 			official_grade_value=row.official_grade_value,
 			grade_scale=row.grade_scale,
@@ -238,7 +244,7 @@ def _apply_procedural_policy(outcome: OutcomeRow, ctx: dict):
 	if status == "None":
 		status = ""
 
-	numeric_value = _numeric_value(outcome)
+	numeric_value, weight, note = _score_for_outcome(outcome)
 
 	if status == "Excused" and ctx.get("exclude_excused", True):
 		return None
@@ -259,12 +265,29 @@ def _apply_procedural_policy(outcome: OutcomeRow, ctx: dict):
 			return 0.0, 0.0, "Absent (missing)"
 
 	if numeric_value is None:
+		if note:
+			return 0.0, 0.0, note
 		return None
 
-	return numeric_value, 1.0, None
+	return numeric_value, weight, note
 
 
-def _numeric_value(outcome: OutcomeRow) -> Optional[float]:
+def _score_for_outcome(outcome: OutcomeRow):
+	if (outcome.grading_mode or "").strip() == "Criteria":
+		strategy = (outcome.rubric_scoring_strategy or "Sum Total").strip() or "Sum Total"
+		if strategy == "Sum Total":
+			return _numeric_value_from_outcome(outcome), 1.0, None
+
+		criteria_rows = _load_outcome_criteria_points(outcome.name)
+		note = "Criteria-only outcome"
+		if not criteria_rows:
+			note = "Criteria-only outcome (no criterion scores)"
+		return 0.0, 0.0, note
+
+	return _numeric_value_from_outcome(outcome), 1.0, None
+
+
+def _numeric_value_from_outcome(outcome: OutcomeRow) -> Optional[float]:
 	if outcome.official_score not in (None, ""):
 		try:
 			return float(outcome.official_score)
@@ -276,6 +299,21 @@ def _numeric_value(outcome: OutcomeRow) -> Optional[float]:
 		except Exception:
 			return None
 	return None
+
+
+def _load_outcome_criteria_points(outcome_id: str):
+	if not outcome_id:
+		return []
+	return frappe.db.get_values(
+		"Task Outcome Criterion",
+		{
+			"parent": outcome_id,
+			"parenttype": "Task Outcome",
+			"parentfield": "official_criteria",
+		},
+		["assessment_criteria", "level_points"],
+		as_dict=True,
+	) or []
 
 
 @redis_cache(ttl=86400)
