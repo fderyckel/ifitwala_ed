@@ -148,11 +148,19 @@
 			:event="classEventModal.data"
 			@close="closeClassEventModal"
 			@create-announcement="openOrgCommunicationModal"
+			@create-task="openTaskCreationModal"
 		/>
 		<OrgCommunicationQuickCreateModal
 			v-model="orgCommModal.open"
 			:event="orgCommModal.event"
 			@created="handleOrgCommCreated"
+		/>
+		<CreateTaskDeliveryModal
+			v-model="taskCreationModal.open"
+			:prefill-student-group="taskCreationModal.student_group"
+			:prefill-due-date="taskCreationModal.due_date"
+			:prefill-available-from="taskCreationModal.available_from"
+			@created="handleTaskCreated"
 		/>
 	</div>
 </template>
@@ -174,6 +182,7 @@ import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue';
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue';
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue';
 import OrgCommunicationQuickCreateModal from '@/components/calendar/OrgCommunicationQuickCreateModal.vue';
+import CreateTaskDeliveryModal from '@/components/tasks/CreateTaskDeliveryModal.vue';
 import type { MeetingDetails } from '@/components/calendar/meetingTypes';
 import type { SchoolEventDetails } from '@/components/calendar/schoolEventTypes';
 import type { ClassEventDetails } from '@/components/calendar/classEventTypes';
@@ -567,6 +576,18 @@ const orgCommModal = reactive<{
 	event: null,
 });
 
+const taskCreationModal = reactive<{
+	open: boolean;
+	student_group: string | null;
+	due_date: string | null;
+	available_from: string | null;
+}>({
+	open: false,
+	student_group: null,
+	due_date: null,
+	available_from: null,
+});
+
 let classEventRequestSeq = 0;
 
 function closeClassEventModal() {
@@ -582,8 +603,21 @@ function openOrgCommunicationModal() {
 	closeClassEventModal();
 }
 
+function openTaskCreationModal() {
+	if (!classEventModal.data) return;
+	taskCreationModal.student_group = classEventModal.data.student_group;
+	taskCreationModal.due_date = classEventModal.data.end || classEventModal.data.start || null;
+	taskCreationModal.available_from = null;
+	taskCreationModal.open = true;
+	closeClassEventModal();
+}
+
 function handleOrgCommCreated() {
 	orgCommModal.open = false;
+}
+
+function handleTaskCreated() {
+	taskCreationModal.open = false;
 }
 
 watch(
@@ -591,6 +625,17 @@ watch(
 	(open) => {
 		if (!open) {
 			orgCommModal.event = null;
+		}
+	},
+);
+
+watch(
+	() => taskCreationModal.open,
+	(open) => {
+		if (!open) {
+			taskCreationModal.student_group = null;
+			taskCreationModal.due_date = null;
+			taskCreationModal.available_from = null;
 		}
 	},
 );

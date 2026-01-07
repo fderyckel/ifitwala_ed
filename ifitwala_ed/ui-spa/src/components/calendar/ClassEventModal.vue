@@ -131,6 +131,14 @@
 									<FeatherIcon name="message-square" class="h-4 w-4" />
 									Create Announcement
 								</button>
+								<button
+									type="button"
+									class="meeting-modal__action-button meeting-modal__action-button--secondary"
+									@click="emit('create-task')"
+								>
+									<FeatherIcon name="clipboard" class="h-4 w-4" />
+									Create Task
+								</button>
 							</div>
 						</div>
 					</DialogPanel>
@@ -164,6 +172,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	(e: 'close'): void;
 	(e: 'create-announcement'): void;
+	(e: 'create-task'): void;
 }>();
 
 const courseLabel = computed(() => props.event?.course_name || props.event?.course || '—');

@@ -99,6 +99,24 @@
 				</h3>
 
 				<div class="grid gap-3">
+					<button type="button" class="action-tile group" @click="taskModalOpen = true">
+						<div class="action-tile__icon">
+							<FeatherIcon name="clipboard" class="h-6 w-6" />
+						</div>
+						<div class="flex-1 min-w-0">
+							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+								Create task
+							</p>
+							<p class="truncate type-caption text-slate-token/70">
+								Assign work to a class in seconds
+							</p>
+						</div>
+						<FeatherIcon
+							name="chevron-right"
+							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+						/>
+					</button>
+
 					<!-- Standard Quick Actions -->
 					<RouterLink
 						v-for="action in quickActions"
@@ -260,6 +278,11 @@
 				</div>
 			</div>
 		</section>
+
+		<CreateTaskDeliveryModal
+			v-model="taskModalOpen"
+			@created="handleTaskCreated"
+		/>
 	</div>
 </template>
 
@@ -269,6 +292,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { FeatherIcon } from 'frappe-ui'
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue'
+import CreateTaskDeliveryModal from '@/components/tasks/CreateTaskDeliveryModal.vue'
 
 /* USER --------------------------------------------------------- */
 const userDoc = ref<any | null>(null)
@@ -433,4 +457,10 @@ const greeting = computed(() => {
   const hour = now.getHours()
   return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 })
+
+const taskModalOpen = ref(false)
+
+function handleTaskCreated() {
+  taskModalOpen.value = false
+}
 </script>
