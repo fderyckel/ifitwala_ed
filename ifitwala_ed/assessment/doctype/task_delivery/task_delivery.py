@@ -234,14 +234,8 @@ class TaskDelivery(Document):
 					frappe.throw(_("Criteria grading requires a Task rubric."))
 
 	def _validate_group_submission(self):
-		if not self.group_submission:
-			return
-
-		if self.delivery_mode == "Assign Only":
-			frappe.throw(_("Group submission is not allowed for Assign Only deliveries."))
-
-		if not self.requires_submission:
-			frappe.throw(_("Group submission requires submissions to be enabled."))
+		if self.group_submission:
+			frappe.throw(_("Group submission is paused: subgroup model not implemented."))
 
 	def _get_task_default_rubric(self):
 		defaults = self._get_task_defaults()

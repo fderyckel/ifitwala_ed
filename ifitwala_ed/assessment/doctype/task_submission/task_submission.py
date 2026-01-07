@@ -8,7 +8,6 @@ from frappe.utils import get_datetime, now_datetime
 
 from ifitwala_ed.assessment.task_submission_service import (
 	apply_outcome_submission_effects,
-	clone_group_submission,
 	get_next_submission_version,
 	stamp_submission_context,
 )
@@ -140,28 +139,8 @@ class TaskSubmission(Document):
 			frappe.throw(_("Submissions are append-only. Create a new version instead of editing evidence."))
 
 	def _maybe_clone_group_submission(self):
-		delivery = self._get_delivery()
-		if not delivery.get("group_submission"):
-			return
-
-		group_outcomes = self.flags.get("group_member_outcomes") or []
-		if not group_outcomes:
-			return
-
-		rows = frappe.db.get_values(
-			"Task Outcome",
-			{
-				"name": ["in", group_outcomes],
-				"task_delivery": self.task_delivery,
-			},
-			"name",
-			as_list=True,
-		)
-		filtered = [row[0] for row in rows if row and row[0]]
-		if not filtered:
-			return
-
-		clone_group_submission(self.name, filtered)
+		# Group submissions are paused until subgroup membership is implemented.
+		return
 
 
 def _attachments_changed(before_rows, after_rows):

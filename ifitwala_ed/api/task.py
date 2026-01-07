@@ -9,7 +9,7 @@
 # - Create Task Delivery (Assign)
 #
 # REGRESSION TRAP:
-# Controllers must not write official_* fields to Task Outcome. 
+# Controllers must not write official_* fields to Task Outcome.
 # Use services (task_outcome_service, task_delivery_service) for all writes.
 
 from __future__ import annotations

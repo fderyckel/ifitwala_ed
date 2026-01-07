@@ -1,6 +1,8 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/assessment/task_outcome_service.py
+
 import frappe
 from frappe import _
 
@@ -163,40 +165,6 @@ def resolve_grade_symbol(grade_scale, grade_symbol):
 	return grade_map[grade_symbol]
 
 
-def set_official_grade(outcome_id, grade_symbol, actor=None, note=None):
-	outcome = frappe.get_doc("Task Outcome", outcome_id)
-
-	if not getattr(outcome, "grade_scale", None):
-		frappe.throw(_("Grade Scale is required to set an Official Grade."))
-
-	value = resolve_grade_symbol(outcome.grade_scale, grade_symbol)
-	outcome.official_grade = grade_symbol
-	if outcome.meta.get_field("official_grade_value"):
-		outcome.official_grade_value = value
-
-	outcome.save(ignore_permissions=True)
-
-	if note or actor:
-		parts = []
-		if actor:
-			parts.append(f"Actor: {actor}")
-		if note:
-			parts.append(note)
-		frappe.get_doc({
-			"doctype": "Comment",
-			"comment_type": "Info",
-			"reference_doctype": outcome.doctype,
-			"reference_name": outcome.name,
-			"content": "Official grade set via service.\n" + "\n".join(parts),
-		}).insert(ignore_permissions=True)
-
-	return {
-		"outcome": outcome.name,
-		"official_grade": outcome.official_grade,
-		"official_grade_value": outcome.official_grade_value,
-	}
-
-
 def set_procedural_status(outcome_id, status, note=None):
 	"""
 	Apply a procedural override safely and record an audit note.
@@ -206,85 +174,11 @@ def set_procedural_status(outcome_id, status, note=None):
 	raise NotImplementedError("set_procedural_status is implemented in a later step.")
 
 
-	return frappe.db.get_value("Task Delivery", delivery_id, fields, as_dict=True) or {}
-
-
 def _get_delivery_flags(delivery_id):
 	if not delivery_id:
 		return {}
 	fields = ["grading_mode", "require_grading"]
 	return frappe.db.get_value("Task Delivery", delivery_id, fields, as_dict=True) or {}
-
-
-def update_manual_outcome_draft(outcome_id, official_score=None, official_grade=None, official_feedback=None, procedural_status=None):
-	"""
-	Handle manual draft updates from the gradebook.
-	"""
-	if not outcome_id:
-		frappe.throw(_("Task Outcome is required."))
-
-	doc = frappe.get_doc("Task Outcome", outcome_id)
-
-	if official_score is not None:
-		doc.official_score = official_score
-	if official_grade is not None:
-		doc.official_grade = official_grade
-	if official_feedback is not None:
-		doc.official_feedback = official_feedback
-	if procedural_status is not None:
-		doc.procedural_status = procedural_status
-
-	if (doc.grading_status or "").strip() in ("Not Started", "", None):
-		doc.grading_status = "In Progress"
-
-	doc.save(ignore_permissions=True)
-	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
-
-
-def submit_contribution_placeholder(outcome_id):
-	"""
-	Placeholder / stub for submitting a contribution.
-	Currently transitions status to 'Needs Review'.
-	"""
-	if not outcome_id:
-		frappe.throw(_("Task Outcome is required."))
-
-	doc = frappe.get_doc("Task Outcome", outcome_id)
-	doc.grading_status = "Needs Review"
-	doc.is_stale = 0
-	doc.save(ignore_permissions=True)
-
-	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
-
-
-def process_moderator_action(outcome_id, action, note=None):
-	"""
-	Handle moderator state transitions.
-	"""
-	if not outcome_id:
-		frappe.throw(_("Task Outcome is required."))
-	if not action:
-		frappe.throw(_("Action is required."))
-
-	doc = frappe.get_doc("Task Outcome", outcome_id)
-	action = action.strip()
-
-	if action == "Approve":
-		doc.grading_status = "Moderated"
-	elif action == "Finalize":
-		doc.grading_status = "Finalized"
-	elif action == "Release":
-		doc.grading_status = "Released"
-	elif action == "Return":
-		doc.grading_status = "In Progress"
-	else:
-		frappe.throw(_("Unknown action: {0}").format(action))
-
-	if note:
-		doc.add_comment("Comment", text=f"Moderator action: {action}\n{note}")
-
-	doc.save(ignore_permissions=True)
-	return {"ok": True, "outcome": doc.name, "grading_status": doc.grading_status}
 
 
 def mark_new_submission_seen(outcome_id):
@@ -296,4 +190,3 @@ def mark_new_submission_seen(outcome_id):
 
 	frappe.db.set_value("Task Outcome", outcome_id, "has_new_submission", 0, update_modified=True)
 	return {"ok": True, "outcome": outcome_id, "has_new_submission": 0}
-

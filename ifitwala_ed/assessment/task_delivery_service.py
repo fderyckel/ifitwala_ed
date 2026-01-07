@@ -1,6 +1,8 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/assessment/task_delivery_service.py
+
 import frappe
 from frappe import _
 from frappe.model.naming import make_autoname
@@ -182,9 +184,11 @@ def create_delivery(payload):
 
 	if not isinstance(payload, dict):
 		frappe.throw(_("Delivery payload must be a dict."))
+	if payload.get("group_submission") in (1, "1", True):
+		frappe.throw(_("Group submission is paused: subgroup model not implemented."))
 
 	doc = frappe.new_doc("Task Delivery")
-	
+
 	if payload.get("group_submission"):
 		frappe.throw(_("Group submission is currently disabled pending subgroup model implementation."))
 

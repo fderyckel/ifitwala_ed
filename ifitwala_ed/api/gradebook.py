@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import frappe
 from frappe import _
+from ifitwala_ed.assessment import task_contribution_service
 from ifitwala_ed.assessment import task_outcome_service
 
 
@@ -136,46 +137,45 @@ def get_drawer(outcome: str):
 
 
 @frappe.whitelist()
-def save_outcome_draft(outcome: str, official_score=None, official_grade=None, official_feedback=None, procedural_status=None):
+def save_outcome_draft(payload=None, **kwargs):
 	"""
-	Save grading draft.
+	Save a draft contribution (no direct Outcome writes).
 	"""
-	_require(outcome, "Task Outcome")
 	if not _can_write_gradebook():
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	return task_outcome_service.update_manual_outcome_draft(
-		outcome_id=outcome,
-		official_score=official_score,
-		official_grade=official_grade,
-		official_feedback=official_feedback,
-		procedural_status=procedural_status
-	)
+	data = payload or kwargs
+	if not data:
+		frappe.throw(_("Contribution payload is required."))
+	return task_contribution_service.save_draft_contribution(data)
 
 
 @frappe.whitelist()
-def submit_outcome_contribution(outcome: str):
+def submit_outcome_contribution(payload=None, **kwargs):
 	"""
-	Submit contribution (moves to Needs Review).
+	Submit a contribution (no direct Outcome writes).
 	"""
-	_require(outcome, "Task Outcome")
 	if not _can_write_gradebook():
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	return task_outcome_service.submit_contribution_placeholder(outcome)
+	data = payload or kwargs
+	if not data:
+		frappe.throw(_("Contribution payload is required."))
+	return task_contribution_service.submit_contribution(data)
 
 
 @frappe.whitelist()
-def moderator_action(outcome: str, action: str, note: str | None = None):
+def moderator_action(payload=None, **kwargs):
 	"""
-	Moderator action (Approve/Return/etc).
+	Moderator action (Approve/Return/etc) via contributions.
 	"""
-	_require(outcome, "Task Outcome")
-	_require(action, "Action")
 	if not _is_academic_adminish():
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	return task_outcome_service.process_moderator_action(outcome, action, note)
+	data = payload or kwargs
+	if not data:
+		frappe.throw(_("Moderation payload is required."))
+	return task_contribution_service.apply_moderator_action(data)
 
 
 @frappe.whitelist()
