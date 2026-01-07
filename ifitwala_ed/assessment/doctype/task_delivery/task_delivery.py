@@ -160,9 +160,12 @@ class TaskDelivery(Document):
 
 			if self.grading_mode == "Points":
 				self.rubric_version = None
+				if self._has_field("rubric_scoring_strategy"):
+					self.rubric_scoring_strategy = None
 
 			if self.grading_mode == "Criteria":
 				self.max_points = None
+				self._set_rubric_scoring_strategy_from_defaults()
 
 	def _ensure_grading_mode(self):
 		if self.grading_mode and self.grading_mode != "None":
@@ -194,6 +197,8 @@ class TaskDelivery(Document):
 		self.max_points = None
 		self.grade_scale = None
 		self.rubric_version = None
+		if self._has_field("rubric_scoring_strategy"):
+			self.rubric_scoring_strategy = None
 
 	def _validate_dates(self):
 		available_from = get_datetime(self.available_from) if self.available_from else None
@@ -230,27 +235,34 @@ class TaskDelivery(Document):
 					frappe.throw(_("Max Points must be greater than 0 for Points grading."))
 
 			if self.grading_mode == "Criteria":
-				if not self.rubric_version and not self._get_task_default_rubric():
-					frappe.throw(_("Criteria grading requires a Task rubric."))
+				if not self.rubric_version and not self._get_task_criteria_rows():
+					frappe.throw(_("Criteria grading requires Task criteria."))
+				if self._has_field("rubric_scoring_strategy") and not self.rubric_scoring_strategy:
+					frappe.throw(_("Rubric Scoring Strategy is required for Criteria grading."))
 
 	def _validate_group_submission(self):
 		if self.group_submission:
 			frappe.throw(_("Group submission is paused: subgroup model not implemented."))
 
-	def _get_task_default_rubric(self):
-		defaults = self._get_task_defaults()
-		if defaults.get("default_rubric"):
-			return defaults.get("default_rubric")
+	def _get_task_criteria_rows(self):
+		if not self.task:
+			return []
 
-		meta = frappe.get_meta("Task")
-		fieldnames = [f for f in ("default_rubric", "rubric") if meta.get_field(f)]
-		if not fieldnames:
-			return None
-		values = frappe.db.get_value("Task", self.task, fieldnames, as_dict=True) or {}
-		for fieldname in fieldnames:
-			if values.get(fieldname):
-				return values.get(fieldname)
-		return None
+		rows = frappe.db.get_values(
+			"Task Template Criterion",
+			{
+				"parent": self.task,
+				"parenttype": "Task",
+				"parentfield": "task_criteria",
+			},
+			["assessment_criteria", "criteria_weighting", "criteria_max_points"],
+			as_dict=True,
+		) or []
+
+		return [
+			row for row in rows
+			if row.get("assessment_criteria")
+		]
 
 	def _get_task_defaults(self):
 		if hasattr(self, "_task_defaults"):
@@ -266,7 +278,7 @@ class TaskDelivery(Document):
 			for fieldname in (
 				"default_requires_submission",
 				"default_grading_mode",
-				"default_rubric",
+				"default_rubric_scoring_strategy",
 			)
 			if meta.get_field(fieldname)
 		]
@@ -288,9 +300,9 @@ class TaskDelivery(Document):
 				self.db_set("rubric_version", existing)
 			return existing
 
-		rubric = self._get_task_default_rubric()
-		if not rubric:
-			frappe.throw(_("Cannot create rubric snapshot without a Task rubric."))
+		criteria_rows = self._get_task_criteria_rows()
+		if not criteria_rows:
+			frappe.throw(_("Cannot create rubric snapshot without Task criteria."))
 
 		doc = frappe.get_doc({
 			"doctype": "Task Rubric Version",
@@ -299,14 +311,23 @@ class TaskDelivery(Document):
 			"grading_mode": "Criteria",
 			"grade_scale": self.grade_scale,
 		})
-		doc.append("criteria", {
-			"assessment_criteria": rubric,
-			"criteria_weighting": 1,
-			"criteria_max_points": 0,
-		})
+		for row in criteria_rows:
+			doc.append("criteria", {
+				"assessment_criteria": row.get("assessment_criteria"),
+				"criteria_weighting": row.get("criteria_weighting") or 1,
+				"criteria_max_points": row.get("criteria_max_points") or 0,
+			})
 		doc.insert(ignore_permissions=True)
 		self.db_set("rubric_version", doc.name)
 		return doc.name
+
+	def _set_rubric_scoring_strategy_from_defaults(self):
+		if not self._has_field("rubric_scoring_strategy"):
+			return
+		if self.rubric_scoring_strategy:
+			return
+		defaults = self._get_task_defaults()
+		self.rubric_scoring_strategy = defaults.get("default_rubric_scoring_strategy") or "Sum Total"
 
 	def _enforce_post_submit_immutability(self):
 		if self.docstatus != 1 or self.is_new():
@@ -321,7 +342,13 @@ class TaskDelivery(Document):
 				frappe.throw(_("Cannot change {0} after submission.").format(fieldname.replace("_", " ")))
 
 		if frappe.db.get_value("Task Outcome", {"task_delivery": self.name}, "name"):
-			for fieldname in ("grading_mode", "max_points", "grade_scale", "rubric_version"):
+			for fieldname in (
+				"grading_mode",
+				"max_points",
+				"grade_scale",
+				"rubric_version",
+				"rubric_scoring_strategy",
+			):
 				if self._has_field(fieldname) and getattr(before, fieldname) != getattr(self, fieldname):
 					frappe.throw(_("Cannot change grading configuration after outcomes exist."))
 

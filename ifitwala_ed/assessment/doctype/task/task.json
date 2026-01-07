@@ -22,12 +22,13 @@
   "attachments",
   "grading_section",
   "default_grading_mode",
+  "default_rubric_scoring_strategy",
   "default_max_points",
   "prevent_late_submission",
   "column_break_gi2s",
   "default_grade_scale",
-  "default_rubric"
- ],
+  "task_criteria"
+],
  "fields": [
   {
    "fieldname": "section_break_xmdr",
@@ -145,6 +146,14 @@
    "options": "None\nCompletion\nBinary\nPoints\nCriteria"
   },
   {
+   "default": "Sum Total",
+   "depends_on": "eval:doc.default_grading_mode=='Criteria'",
+   "fieldname": "default_rubric_scoring_strategy",
+   "fieldtype": "Select",
+   "label": "Default Rubric Scoring Strategy",
+   "options": "Sum Total\nSeparate Criteria"
+  },
+  {
    "default": "0",
    "depends_on": "eval:doc.default_grading_mode=='Points'",
    "fieldname": "default_max_points",
@@ -161,16 +170,16 @@
   },
   {
    "depends_on": "eval:doc.default_grading_mode=='Criteria'",
-   "fieldname": "default_rubric",
-   "fieldtype": "Link",
-   "label": "Default Rubric",
-   "options": "Assessment Criteria"
+   "fieldname": "task_criteria",
+   "fieldtype": "Table",
+   "label": "Task Criteria",
+   "options": "Task Template Criterion"
   }
- ],
+],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 21:13:54.515310",
+ "modified": "2026-01-06 21:13:55",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",

@@ -23,6 +23,7 @@
   "grading_mode",
   "max_points",
   "grade_scale",
+  "rubric_scoring_strategy",
   "rubric_version",
   "section_break_rwq9",
   "course",
@@ -135,6 +136,13 @@
   },
   {
    "depends_on": "eval:doc.grading_mode=='Criteria'",
+   "fieldname": "rubric_scoring_strategy",
+   "fieldtype": "Select",
+   "label": "Rubric Scoring Strategy",
+   "options": "Sum Total\nSeparate Criteria"
+  },
+  {
+   "depends_on": "eval:doc.grading_mode=='Criteria'",
    "fieldname": "rubric_version",
    "fieldtype": "Link",
    "label": "Task Rubric Version",
@@ -179,7 +187,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 20:30:32",
+ "modified": "2026-01-06 20:30:33",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Delivery",

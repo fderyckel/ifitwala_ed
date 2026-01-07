@@ -199,6 +199,7 @@ def create_delivery(payload):
 		"grading_mode",
 		"max_points",
 		"grade_scale",
+		"rubric_scoring_strategy",
 		"available_from",
 		"due_date",
 		"lock_date",

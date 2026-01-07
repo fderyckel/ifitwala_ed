@@ -88,7 +88,7 @@ function enforce_delivery_mode_defaults(frm) {
 }
 
 function clear_grading_defaults(frm) {
-	const fields = ["default_max_points", "default_grade_scale", "default_rubric"];
+	const fields = ["default_max_points", "default_grade_scale", "default_rubric_scoring_strategy"];
 	for (const field of fields) {
 		if (frm.doc[field]) {
 			frm.set_value(field, null);

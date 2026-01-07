@@ -14,6 +14,7 @@ class Task(Document):
 		self._validate_curriculum_alignment()
 
 	def validate(self):
+		self._validate_task_criteria_unique()
 		self._enforce_grading_defaults()
 
 	def on_trash(self):
@@ -97,7 +98,6 @@ class Task(Document):
 
 	def _clear_grading_defaults(self):
 		self.default_grade_scale = None
-		self.default_rubric = None
 		self.default_max_points = None
 
 	def _enforce_grading_defaults(self):
@@ -111,5 +111,22 @@ class Task(Document):
 				frappe.throw(_("Default Max Points must be greater than 0 when grading mode is Points."))
 
 		if self.default_grading_mode == "Criteria":
-			if not self.default_rubric:
-				frappe.throw(_("Default Rubric is required when grading mode is Criteria."))
+			if not self.default_rubric_scoring_strategy:
+				self.default_rubric_scoring_strategy = "Sum Total"
+			if not self._has_task_criteria():
+				frappe.throw(_("At least one Task Criteria row is required when grading mode is Criteria."))
+
+	def _has_task_criteria(self):
+		rows = self.get("task_criteria") or []
+		return any((row.get("assessment_criteria") or "").strip() for row in rows)
+
+	def _validate_task_criteria_unique(self):
+		rows = self.get("task_criteria") or []
+		seen = set()
+		for row in rows:
+			criteria = (row.get("assessment_criteria") or "").strip()
+			if not criteria:
+				continue
+			if criteria in seen:
+				frappe.throw(_("Duplicate Assessment Criteria in Task Criteria are not allowed."))
+			seen.add(criteria)
