@@ -18,6 +18,7 @@ import frappe
 from frappe import _
 from ifitwala_ed.assessment import task_contribution_service
 from ifitwala_ed.assessment import task_outcome_service
+from ifitwala_ed.assessment import task_submission_service
 
 
 # ---------------------------
@@ -152,19 +153,32 @@ def get_drawer(outcome: str):
 		limit_page_length=100,
 	)
 
+	current_user = frappe.session.user
+	my_draft = None
+	my_latest_submitted = None
+	for row in contributions:
+		if row.get("contributor") != current_user:
+			continue
+		if row.get("status") == "Draft" and not my_draft:
+			my_draft = row
+		if row.get("status") == "Submitted" and not my_latest_submitted:
+			my_latest_submitted = row
+		if my_draft and my_latest_submitted:
+			break
+
 	return {
 		"outcome": outcome_doc,
+		"latest_submission": submissions[0] if submissions else None,
 		"submissions": submissions,
 		"contributions": contributions,
-		"me": {
-			"user": frappe.session.user,
-			"latest_submission_version": task_contribution_service.get_latest_submission_version(outcome),
-		},
+		"my_draft": my_draft,
+		"my_latest_submitted": my_latest_submitted,
+		"compare_contributions": [],
 	}
 
 
 @frappe.whitelist()
-def save_contribution_draft(payload=None, **kwargs):
+def save_draft(payload=None, **kwargs):
 	"""
 	Save a draft contribution (no direct Outcome writes).
 	"""
@@ -175,7 +189,14 @@ def save_contribution_draft(payload=None, **kwargs):
 	if not data:
 		frappe.throw(_("Contribution payload is required."))
 	_reject_official_fields(data)
-	return task_contribution_service.save_draft_contribution(data)
+	outcome_id = _get_payload_value(data, "task_outcome", "outcome")
+	_require(outcome_id, "Task Outcome")
+	data["task_submission"] = _resolve_submission_id(outcome_id, data)
+	result = task_contribution_service.save_draft_contribution(data, contributor=frappe.session.user)
+	return {
+		"result": result,
+		"outcome": _get_outcome_summary(outcome_id),
+	}
 
 
 @frappe.whitelist()
@@ -190,12 +211,19 @@ def submit_contribution(payload=None, **kwargs):
 	if not data:
 		frappe.throw(_("Contribution payload is required."))
 	_reject_official_fields(data)
-	result = task_contribution_service.submit_contribution(data)
-	outcome_id = result.get("task_outcome") or data.get("task_outcome") or data.get("outcome")
+	outcome_id = _get_payload_value(data, "task_outcome", "outcome")
+	_require(outcome_id, "Task Outcome")
+	data["task_submission"] = _resolve_submission_id(outcome_id, data)
+	result = task_contribution_service.submit_contribution(data, contributor=frappe.session.user)
 	return {
 		"result": result,
 		"outcome": _get_outcome_summary(outcome_id),
 	}
+
+
+@frappe.whitelist()
+def save_contribution_draft(payload=None, **kwargs):
+	return save_draft(payload=payload, **kwargs)
 
 
 @frappe.whitelist()
@@ -210,8 +238,10 @@ def moderator_action(payload=None, **kwargs):
 	if not data:
 		frappe.throw(_("Moderation payload is required."))
 	_reject_official_fields(data)
-	result = task_contribution_service.apply_moderator_action(data)
-	outcome_id = result.get("task_outcome") or data.get("task_outcome") or data.get("outcome")
+	outcome_id = _get_payload_value(data, "task_outcome", "outcome")
+	_require(outcome_id, "Task Outcome")
+	data["task_submission"] = _resolve_submission_id(outcome_id, data)
+	result = task_contribution_service.apply_moderator_action(data, contributor=frappe.session.user)
 	return {
 		"result": result,
 		"outcome": _get_outcome_summary(outcome_id),
@@ -314,3 +344,32 @@ def _reject_official_fields(payload):
 	for key in payload.keys():
 		if key.startswith("official_"):
 			frappe.throw(_("official_* fields are not accepted in gradebook endpoints."))
+
+
+def _get_payload_value(data, *keys):
+	for key in keys:
+		if key in data and data.get(key) not in (None, ""):
+			return data.get(key)
+	return None
+
+
+def _resolve_submission_id(outcome_id, payload):
+	submission_id = _get_payload_value(payload, "task_submission", "submission")
+	if submission_id:
+		return submission_id
+
+	latest = frappe.get_all(
+		"Task Submission",
+		filters={"task_outcome": outcome_id},
+		fields=["name", "version", "is_stub"],
+		order_by="version desc",
+		limit_page_length=1,
+	)
+	if latest:
+		return latest[0]["name"]
+
+	return task_submission_service.create_evidence_stub(
+		outcome_id,
+		created_by=frappe.session.user,
+		note=payload.get("evidence_note"),
+	)

@@ -190,7 +190,7 @@ def _clone_attachments(original):
 	return attachments
 
 
-def ensure_evidence_stub_submission(outcome_id, origin="Teacher Observation", note=None):
+def ensure_evidence_stub_submission(outcome_id, origin="Teacher Observation", note=None, created_by=None):
 	if not outcome_id:
 		frappe.throw(_("Task Outcome is required."))
 
@@ -236,7 +236,7 @@ def ensure_evidence_stub_submission(outcome_id, origin="Teacher Observation", no
 	doc.task_outcome = outcome_id
 	doc.version = get_next_submission_version(outcome_id)
 	if meta.get_field("submitted_by"):
-		doc.submitted_by = frappe.session.user
+		doc.submitted_by = created_by or frappe.session.user
 	if meta.get_field("submitted_on"):
 		doc.submitted_on = now_datetime()
 	if meta.get_field("submission_origin"):
@@ -244,12 +244,23 @@ def ensure_evidence_stub_submission(outcome_id, origin="Teacher Observation", no
 	if meta.get_field("is_stub"):
 		doc.is_stub = 1
 	if meta.get_field("evidence_note"):
-		doc.evidence_note = note
+		doc.evidence_note = note or "Evidence stub (no student submission)"
+	elif meta.get_field("text_content"):
+		doc.text_content = note or "Evidence stub (no student submission)"
 
 	stamp_submission_context(doc, outcome_row)
 	doc.insert(ignore_permissions=True)
 	apply_outcome_submission_effects(outcome_id, doc.name, source="teacher_stub")
 	return doc.name
+
+
+def create_evidence_stub(outcome_id, created_by=None, note=None):
+	return ensure_evidence_stub_submission(
+		outcome_id,
+		origin="Teacher Observation",
+		note=note,
+		created_by=created_by,
+	)
 
 
 def _grading_started(outcome):
