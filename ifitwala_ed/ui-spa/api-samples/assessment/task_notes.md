@@ -333,6 +333,7 @@ The gradebook grid must render from **Task Outcome** plus **Task Outcome Criteri
 * no deep joins
 * denormalized context fields
 * batched lookups for names
+* instructor scope is limited to taught student groups (cannot broaden via filters)
 
 ### Query Surfaces
 

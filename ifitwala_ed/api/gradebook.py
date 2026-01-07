@@ -41,11 +41,16 @@ def get_grid(filters=None, **kwargs):
 	_require(academic_year, "Academic Year")
 
 	scope = _resolve_gradebook_scope(school, academic_year, course)
+	is_instructor_scoped = _is_instructor_scoped_user()
 	delivery_filters = {
 		"school": school,
 		"academic_year": academic_year,
 	}
-	if scope.get("student_groups"):
+	if is_instructor_scoped:
+		if not scope.get("student_groups"):
+			frappe.throw(_("No instructor teaching scope found."))
+		delivery_filters["student_group"] = ["in", scope["student_groups"]]
+	elif scope.get("student_groups"):
 		delivery_filters["student_group"] = ["in", scope["student_groups"]]
 	if scope.get("courses"):
 		delivery_filters["course"] = ["in", scope["courses"]]
@@ -372,11 +377,8 @@ def _normalize_payload(payload, kwargs):
 
 def _resolve_gradebook_scope(school, academic_year, course):
 	user = frappe.session.user
-	roles = set(frappe.get_roles(user))
-	is_adminish = bool(roles & {"System Manager", "Academic Admin", "Admin Assistant", "Curriculum Coordinator"})
-	is_instructor = "Instructor" in roles and not is_adminish
-
-	if not is_instructor:
+	is_instructor_scoped = _is_instructor_scoped_user()
+	if not is_instructor_scoped:
 		return {
 			"courses": [course] if course else [],
 			"student_groups": [],
@@ -569,6 +571,10 @@ def _has_role(*roles):
 
 def _is_academic_adminish():
 	return _has_role("System Manager", "Academic Admin", "Admin Assistant", "Curriculum Coordinator")
+
+
+def _is_instructor_scoped_user():
+	return _has_role("Instructor") and not _is_academic_adminish()
 
 
 def _can_read_gradebook():

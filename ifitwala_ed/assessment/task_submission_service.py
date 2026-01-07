@@ -26,6 +26,82 @@ def get_next_submission_version(outcome_id):
 	return max_version + 1
 
 
+def create_student_submission(payload, user=None):
+	data = _normalize_payload(payload)
+	outcome_id = _get_payload_value(data, "task_outcome", "outcome")
+	if not outcome_id:
+		frappe.throw(_("Task Outcome is required."))
+
+	outcome_row = frappe.db.get_value(
+		"Task Outcome",
+		outcome_id,
+		[
+			"student",
+			"student_group",
+			"course",
+			"academic_year",
+			"school",
+			"task_delivery",
+			"task",
+		],
+		as_dict=True,
+	)
+	if not outcome_row:
+		frappe.throw(_("Task Outcome not found."))
+
+	text_content = (data.get("text_content") or "").strip()
+	link_url = (data.get("link_url") or "").strip()
+	attachments = data.get("attachments") or []
+	if attachments and not isinstance(attachments, list):
+		attachments = [attachments]
+
+	if not text_content and not link_url and not attachments:
+		frappe.throw(_("Student evidence is required."))
+
+	next_version = get_next_submission_version(outcome_id)
+
+	doc = frappe.new_doc("Task Submission")
+	doc.task_outcome = outcome_id
+	doc.version = next_version
+	doc.submitted_by = user or frappe.session.user
+	doc.submitted_on = now_datetime()
+	doc.submission_origin = "Student Upload"
+	doc.is_stub = 0
+	doc.text_content = text_content or None
+	doc.link_url = link_url or None
+	if data.get("evidence_note"):
+		doc.evidence_note = data.get("evidence_note")
+	if attachments:
+		doc.set("attachments", attachments)
+
+	stamp_submission_context(doc, outcome_row)
+	doc.insert(ignore_permissions=True)
+
+	submission_status = "Submitted" if next_version == 1 else "Resubmitted"
+	frappe.db.set_value(
+		"Task Outcome",
+		outcome_id,
+		{
+			"has_submission": 1,
+			"has_new_submission": 1,
+			"submission_status": submission_status,
+		},
+		update_modified=True,
+	)
+
+	mark_contributions_stale(outcome_id, latest_submission_id=doc.name)
+
+	return {
+		"submission_id": doc.name,
+		"version": next_version,
+		"outcome_flags": {
+			"has_submission": True,
+			"has_new_submission": True,
+			"submission_status": submission_status,
+		},
+	}
+
+
 def stamp_submission_context(submission_doc, outcome_row):
 	if not outcome_row:
 		return
@@ -261,6 +337,23 @@ def create_evidence_stub(outcome_id, created_by=None, note=None):
 		note=note,
 		created_by=created_by,
 	)
+
+
+def _normalize_payload(payload):
+	if payload is None:
+		return {}
+	if isinstance(payload, str):
+		payload = frappe.parse_json(payload)
+	if not isinstance(payload, dict):
+		frappe.throw(_("Payload must be a dict."))
+	return payload
+
+
+def _get_payload_value(data, *keys):
+	for key in keys:
+		if key in data and data.get(key) not in (None, ""):
+			return data.get(key)
+	return None
 
 
 def _grading_started(outcome):

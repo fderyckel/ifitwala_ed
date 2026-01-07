@@ -336,6 +336,7 @@ They see:
 * Gradebook API (`api/gradebook.py`) orchestrates only; it does not compute grades.
 * Writes go to services; services may create Evidence Stub submissions when missing.
 * Frontend can omit `task_submission` in grade actions; backend will attach to latest student submission if present, else create a stub.
+* Instructor-scoped users only see deliveries for taught student groups; course filters narrow scope but never broaden it.
 
 **Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.
 
