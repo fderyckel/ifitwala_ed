@@ -555,3 +555,247 @@ If you want the next increment, I’ll write the exact modal copy (button labels
 
 - Autosave uses Draft Contributions, not Submissions. Draft save must never create evidence stubs and must never flip has_new_submission.
 - save_draft() is idempotent: it upserts the current user's draft for an outcome and returns the draft id.
+
+---
+
+Good — this is exactly the right moment to write it.
+Below is a **clean, copy-paste-ready UX Contract** you can drop straight into your notes and treat as **authoritative**.
+
+I’m deliberately writing this as something that can be enforced against code, not marketing fluff.
+
+---
+
+# 🎓 Ifitwala_Ed — Teacher UX Contract (Assessment & Gradebook)
+
+**Status:** Authoritative
+**Audience:** Teachers, UI developers, coding agents
+**Scope:** Task creation, submission, grading, moderation, release
+**Primary principle:** *Teacher clarity over system completeness*
+
+---
+
+## 1. Core Teacher Mental Model (Non-Negotiable)
+
+Teachers experience the system as **four simple concepts**:
+
+1. **Assignment** – “Something I ask students to do”
+2. **Student Work** – “What students submitted (or what I observed)”
+3. **Feedback & Grade** – “My professional judgement”
+4. **Release** – “When students and families can see it”
+
+The system **must never expose**:
+
+* internal concepts like *Outcome*, *Contribution*, *Rubric Version*
+* technical workflows (autosave, moderation precedence, staleness)
+
+> The system adapts to complexity.
+> The teacher never has to.
+
+---
+
+## 2. Vocabulary & Language Lock (i18n-Friendly)
+
+All teacher-facing strings **must** come from translation keys.
+
+### Canonical Teacher Vocabulary
+
+| Internal Concept    | Teacher-Facing Term                 | Notes                                    |
+| ------------------- | ----------------------------------- | ---------------------------------------- |
+| Task                | **Assignment**                      | Always singular in UI                    |
+| Task Delivery       | **Assignment**                      | Never surfaced separately                |
+| Task Outcome        | *Never shown*                       | Backend only                             |
+| Submission          | **Student Work**                    | Includes uploads or teacher observations |
+| Contribution        | *Never shown*                       | Backend only                             |
+| Draft Contribution  | **Saved draft**                     | Not “draft contribution”                 |
+| Submit Contribution | **Mark as ready**                   | Avoid “submit” ambiguity                 |
+| Official Grade      | **Teacher grade**                   | Not “official”                           |
+| Moderation          | **Moderation**                      | Peer check, not peer grading             |
+| Is Published        | **Released to students**            | Binary mental model                      |
+| Published           | **Visible to students & guardians** | Explicit audience                        |
+
+### Forbidden Language (Never in UI)
+
+* “Official”
+* “Contribution”
+* “Outcome”
+* “Rubric version”
+* “Stale”
+* “Override”
+* “Finalize” (unless very carefully contextualised)
+
+---
+
+## 3. Teacher Actions Model (What Teachers Can Do)
+
+Teachers have **only these actions**:
+
+### Assignment Creation
+
+* Create assignment from:
+
+  * Student Group
+  * Course
+  * Calendar event
+* Choose:
+
+  * Due date (optional)
+  * Grading type (Score / Grade / Criteria / Feedback only)
+* Save immediately (no multi-step wizard)
+
+### While Grading
+
+* View student work
+* Write feedback
+* Select grade or criteria levels
+* Autosave happens silently
+* Explicit action: **Mark as ready**
+
+### Moderation (Teacher-to-Teacher)
+
+* Moderator can:
+
+  * Approve
+  * Return to teacher with note
+* Teacher sees moderation feedback clearly
+* Moderation is **never visible to students**
+
+### Release
+
+* Teacher explicitly clicks **Release**
+* Release controls visibility to:
+
+  * Students
+  * Guardians
+* No automatic release
+
+---
+
+## 4. Autosave & Safety Guarantees (Teacher Trust)
+
+The system **must guarantee**:
+
+* Typed feedback is never lost
+* Grades are never lost
+* Network interruption does not destroy work
+
+### Autosave Rules (Teacher-Facing Behaviour)
+
+* Autosave occurs automatically
+* UI shows:
+
+  * “Saving…”
+  * “Saved”
+  * “Offline – changes will sync”
+* Teacher never needs to click “Save”
+* “Mark as ready” is **not** a save action — it is a status change
+
+> If a teacher walks away mid-grading, their work must still be there.
+
+---
+
+## 5. Visibility & Release Rules (Critical Separation)
+
+**Teacher grading ≠ Student visibility**
+
+### Internal Truth
+
+* Teacher grade & feedback exist immediately
+* Used for:
+
+  * moderation
+  * reports
+  * teacher review
+
+### External Visibility
+
+* Nothing is visible until **Release**
+* Release is:
+
+  * explicit
+  * reversible (until reporting locks)
+
+UI must clearly distinguish:
+
+> “This is saved”
+> vs
+> “This is visible to students”
+
+---
+
+## 6. Gradebook UX Principles
+
+### Grid View
+
+* Shows:
+
+  * Students × Assignments
+* Cell indicators:
+
+  * No work
+  * Student work received
+  * Teacher feedback started
+  * Ready
+  * Released
+
+No numbers unless teacher opens the cell.
+
+### Drawer View (Single Student × Assignment)
+
+* Focused
+* Calm
+* No distractions
+* One mental task at a time
+
+---
+
+## 7. Role Boundaries (Teacher-Centric)
+
+### Teachers See
+
+* Only their:
+
+  * Assignments
+  * Courses
+  * Student groups
+* No cross-course visibility
+
+### Academic Admin / Coordinators
+
+* Can see broader scope
+* UI language remains teacher-friendly
+* Extra controls are additive, not invasive
+
+---
+
+## 8. Explicit Non-Goals (Guardrails)
+
+The UI must **not**:
+
+* Expose backend architecture
+* Require teachers to understand states
+* Auto-release grades
+* Mix grading and publishing actions
+* Use technical jargon
+* Present warnings unless action is required
+
+---
+
+## 9. Enforcement Rule (For Code & Agents)
+
+Any UI, API, or Vue component that:
+
+* uses forbidden vocabulary
+* exposes internal states
+* bypasses autosave guarantees
+* releases grades implicitly
+
+👉 **is a regression and must be rejected**
+
+---
+
+## 10. One-Line Product Promise
+
+> *“Teachers can focus on feedback and judgement.
+> The system handles complexity, safety, and timing.”*
+
+---

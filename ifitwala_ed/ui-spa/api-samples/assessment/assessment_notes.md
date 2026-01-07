@@ -95,7 +95,7 @@ Grade Scales are **institutional policy**, not course logic.
 Each interval defines:
 
 * grade_code (e.g. A, 7, Distinction)
-* boundary_interval (numeric threshold)
+* boundary_interval (numeric threshold used for score-to-grade mapping and grade_value)
 * grade_descriptor
 
 Intervals must be:

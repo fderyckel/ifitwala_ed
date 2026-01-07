@@ -206,6 +206,11 @@ class TaskOutcome(Document):
 		if grading_mode in ("Completion", "Binary"):
 			return self.is_complete is not None
 
+		if grading_mode == "Criteria":
+			rows = self.get("official_criteria") or []
+			if rows:
+				return True
+
 		if self.official_score not in (None, ""):
 			return True
 		if (self.official_grade or "").strip():

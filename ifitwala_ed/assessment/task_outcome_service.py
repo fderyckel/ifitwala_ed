@@ -7,7 +7,7 @@ import frappe
 from frappe import _
 
 
-_GRADE_SCALE_CACHE = {}
+_GRADE_SCALE_THRESHOLD_CACHE = {}
 
 
 def apply_official_outcome_from_contributions(outcome_id, policy=None):
@@ -114,12 +114,15 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
 	return result
 
 
-def get_grade_scale_map(grade_scale):
+def get_grade_scale_threshold_map(grade_scale):
+	"""
+	Return grade_code -> boundary threshold mapping (Grade Scale Interval.boundary_interval).
+	"""
 	if not grade_scale:
 		frappe.throw(_("Grade Scale is required."))
 
-	if grade_scale in _GRADE_SCALE_CACHE:
-		return _GRADE_SCALE_CACHE[grade_scale]
+	if grade_scale in _GRADE_SCALE_THRESHOLD_CACHE:
+		return _GRADE_SCALE_THRESHOLD_CACHE[grade_scale]
 
 	rows = frappe.db.get_values(
 		"Grade Scale Interval",
@@ -139,7 +142,7 @@ def get_grade_scale_map(grade_scale):
 			value = 0.0
 		grade_map[code] = value
 
-	_GRADE_SCALE_CACHE[grade_scale] = grade_map
+	_GRADE_SCALE_THRESHOLD_CACHE[grade_scale] = grade_map
 	return grade_map
 
 
@@ -148,7 +151,7 @@ def resolve_grade_symbol(grade_scale, grade_symbol):
 	if not grade_symbol:
 		frappe.throw(_("Grade symbol is required."))
 
-	grade_map = get_grade_scale_map(grade_scale)
+	grade_map = get_grade_scale_threshold_map(grade_scale)
 	if grade_symbol not in grade_map:
 		allowed = sorted(grade_map.keys())
 		preview = ", ".join(allowed[:10])
@@ -272,7 +275,7 @@ def _grade_symbol_from_score(grade_scale, numeric_score):
 	if numeric_score is None or grade_scale is None:
 		return None
 
-	grade_map = get_grade_scale_map(grade_scale)
+	grade_map = get_grade_scale_threshold_map(grade_scale)
 	if not grade_map:
 		return None
 

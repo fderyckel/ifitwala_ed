@@ -590,3 +590,200 @@ UI, analytics, and reporting **must trust Outcome + Outcome Criterion only**.
 
 - Official truth is internal (Task Outcome.official_* and Task Outcome Criterion). It is computed via the truth pipeline and is not automatically visible to students/guardians.
 - Teacher submit/moderation updates official truth; draft does not.
+
+**A Task Outcome is the per-student truth for a Task Delivery; evidence is versioned as Task Submission; assessment actions are Task Contributions; official outcome truth is derived from the highest-priority non-stale contribution (Moderator > Official Override > Assessor/Self), and criteria truth is always stored per-criterion with totals only when strategy permits; peer moderation is never official.**
+
+---
+
+## Task & Assessment System — Complete Case Grid (Submission + Grading + Moderation)
+
+### Fixed definitions (non-negotiable)
+
+* **Task Delivery** defines rules: `requires_submission`, `require_grading`, `grading_mode`, `rubric_scoring_strategy`, lock/due rules.
+* **Task Outcome** is the per-student operational truth for a delivery.
+* **Task Submission** is **versioned evidence** (append-only; v1, v2…).
+* **Task Contribution** is an assessment action (scoring/grade/feedback/rubric rows), normally tied to a submission version.
+* **Moderation (Peer Review)** is **never official**: it is stored but cannot become the official outcome truth.
+* **Moderator** contribution can override and becomes official selection priority.
+* **Official truth storage rule**:
+
+  * For **Criteria grading**: **per-criterion official truth is always stored** (Task Outcome Criterion).
+  * **Totals/grade are optional** and depend on `rubric_scoring_strategy`:
+
+    * **Sum Total** → totals may exist
+    * **Separate Criteria** → totals should be blank
+
+---
+
+## Delivery configuration grid (what the system supports)
+
+### A. Ungraded deliveries (feedback-only)
+
+| ID | requires_submission | require_grading | delivery_mode | grading_mode  | What’s allowed                               | Official truth written                                      |
+| -- | ------------------: | --------------: | ------------- | ------------- | -------------------------------------------- | ----------------------------------------------------------- |
+| U1 |                   0 |               0 | Assign Only   | (any/ignored) | Feedback contributions only                  | Outcome may track `is_complete` (if used); no grades/scores |
+| U2 |                   1 |               0 | Collect Work  | (any/ignored) | Submission evidence + feedback contributions | Outcome: submission flags + `official_feedback` only        |
+
+**Notes**
+
+* These cases exist for work collection and formative feedback without scoring.
+* Submission is still versioned when required.
+
+---
+
+### B. Graded deliveries with **submission required**
+
+| ID | requires_submission | require_grading | grading_mode | rubric_scoring_strategy | Student action      | Teacher action                                     | Official truth written                                                  |
+| -- | ------------------: | --------------: | ------------ | ----------------------- | ------------------- | -------------------------------------------------- | ----------------------------------------------------------------------- |
+| G1 |                   1 |               1 | Points       | n/a                     | Submit evidence v1+ | Score contribution tied to latest submission       | Outcome `official_score` (+ optional feedback)                          |
+| G2 |                   1 |               1 | Grade        | n/a                     | Submit evidence v1+ | Grade contribution tied to latest submission       | Outcome `official_grade`, `official_grade_value` (+ feedback)           |
+| G3 |                   1 |               1 | Criteria     | Sum Total               | Submit evidence v1+ | Rubric rows contribution tied to latest submission | Outcome `official_criteria` + totals (`official_score` and maybe grade) |
+| G4 |                   1 |               1 | Criteria     | Separate Criteria       | Submit evidence v1+ | Rubric rows contribution tied to latest submission | Outcome `official_criteria` only (+ feedback); totals blank             |
+
+**Notes**
+
+* When a new submission arrives after grading started, the outcome becomes **stale** and prior contributions become stale.
+
+---
+
+### C. Graded deliveries with **submission NOT required** (teacher observation / oral / in-class)
+
+| ID | requires_submission | require_grading | grading_mode | rubric_scoring_strategy | Student action | Teacher action                                       | Official truth written                           |
+| -- | ------------------: | --------------: | ------------ | ----------------------- | -------------- | ---------------------------------------------------- | ------------------------------------------------ |
+| O1 |                   0 |               1 | Points       | n/a                     | None           | Score contribution (may attach stub evidence record) | Outcome `official_score` (+ feedback)            |
+| O2 |                   0 |               1 | Grade        | n/a                     | None           | Grade contribution                                   | Outcome `official_grade`, `official_grade_value` |
+| O3 |                   0 |               1 | Criteria     | Sum Total               | None           | Rubric rows contribution                             | Outcome `official_criteria` + totals             |
+| O4 |                   0 |               1 | Criteria     | Separate Criteria       | None           | Rubric rows contribution                             | Outcome `official_criteria` only; totals blank   |
+
+**Notes**
+
+* Evidence can be represented by a **stub submission** for audit linkage, but the delivery does not require student evidence.
+
+---
+
+## Evidence / submission grid (versioning + flags)
+
+### A. Evidence creation modes
+
+| Evidence origin     | Mechanism                                   | Creates Task Submission? | Typical usage                    |
+| ------------------- | ------------------------------------------- | -----------------------: | -------------------------------- |
+| Student Upload      | student submits via portal                  |               Yes (real) | attachments/link/text            |
+| Student In-Class    | student submits in class (teacher-assisted) |               Yes (real) | quick capture                    |
+| Teacher Observation | teacher records evidence note               |               Often stub | grading without student upload   |
+| System              | system generates                            |                    Maybe | imported evidence / placeholders |
+
+### B. Submission version lifecycle
+
+| Case                          | Trigger                             | Task Submission version | Append-only enforced | Outcome flags                                                                  |
+| ----------------------------- | ----------------------------------- | ----------------------: | -------------------: | ------------------------------------------------------------------------------ |
+| S1 First submission           | student uploads                     |                      v1 |                  Yes | `has_submission=1`, `has_new_submission=1`, `submission_status=Submitted/Late` |
+| S2 Resubmission               | student uploads again               |                     v2+ |                  Yes | `has_new_submission=1`, `submission_status=Resubmitted/Late`                   |
+| S3 No student submission ever | delivery doesn’t require submission |            none or stub |                  n/a | still can be graded                                                            |
+| S4 Teacher stub               | teacher grades without evidence     |         stub submission |                  Yes | does **not** imply student evidence; used for linkage/audit                    |
+
+### C. Locking / lateness (submission gate)
+
+| Condition                                              | Effect on submission creation                    |
+| ------------------------------------------------------ | ------------------------------------------------ |
+| `lock_date` passed and no extension + late not allowed | block new submission                             |
+| `due_date` passed and no extension                     | allow submission but mark `is_late=1` if allowed |
+| `procedural_status = Extension Granted`                | bypass lateness / lock logic as defined          |
+
+---
+
+## Contribution grid (who can write what)
+
+### A. Contribution types and meaning
+
+| contribution_type | Meaning                                                       | Can be official truth? | Priority in selection |
+| ----------------- | ------------------------------------------------------------- | ---------------------: | --------------------- |
+| Self              | assessor’s grading action (not student self-assessment label) |                    Yes | below Moderator       |
+| Peer Review       | moderation check by peer teacher                              |                 **No** | never selected        |
+| Moderator         | moderation action (approve/adjust/return)                     |                    Yes | highest               |
+| Official Override | admin/system forced override                                  |                    Yes | below Moderator       |
+
+> Naming note: if you want to eliminate confusion later, “Self” could be renamed to **Assessor**. But the rules above are the truth regardless of labels.
+
+### B. Contribution payload constraints by grading mode
+
+| grading_mode | Required in contribution         | Forbidden / irrelevant                                                       |
+| ------------ | -------------------------------- | ---------------------------------------------------------------------------- |
+| Points       | `score`                          | rubric rows required; grade optional depending on policy (usually forbidden) |
+| Grade        | `grade` (mapped via grade scale) | score optional depending on policy (usually forbidden)                       |
+| Criteria     | `rubric_scores` rows required    | score/grade may be derived only when strategy is Sum Total                   |
+| Ungraded     | only `feedback`                  | score/grade/rubric rows forbidden                                            |
+
+### C. Submission linkage rules
+
+| Delivery requires_submission | Contribution must reference Task Submission? | How handled                                             |
+| ---------------------------: | -------------------------------------------: | ------------------------------------------------------- |
+|                            1 |                                          Yes | must reference the **latest submission version**        |
+|                            0 |                                           No | may reference none, or a **stub** can be used for audit |
+
+---
+
+## Official truth computation grid (Outcome resolution)
+
+### A. Official selection priority
+
+| Available contributions for outcome                      | Selected official contribution |
+| -------------------------------------------------------- | ------------------------------ |
+| Any Moderator contribution exists (not stale, not draft) | latest Moderator               |
+| Else any Official Override exists                        | latest Official Override       |
+| Else any Self exists                                     | latest Self                    |
+| Peer Review only                                         | **none** (no official truth)   |
+
+### B. Criteria strategy effects
+
+| rubric_scoring_strategy | Outcome official_criteria | Outcome totals / grade                               |
+| ----------------------- | ------------------------- | ---------------------------------------------------- |
+| Separate Criteria       | always written            | totals blank                                         |
+| Sum Total               | always written            | compute total points (+ grade if grade_scale exists) |
+
+### C. Outcome “released” validity rule
+
+| grading_mode      | What qualifies as “official result exists”               |
+| ----------------- | -------------------------------------------------------- |
+| Criteria          | official_criteria exists (rows) OR feedback (if allowed) |
+| Points            | official_score exists                                    |
+| Grade             | official_grade exists                                    |
+| Completion/Binary | is_complete is set                                       |
+| Ungraded          | feedback exists (or completion if used)                  |
+
+---
+
+## Staleness + “new evidence” grid (what flips when)
+
+### A. New submission arrives
+
+| Situation at time of submission | Outcome `has_new_submission` | Outcome `is_stale` |                         Contributions become stale? |
+| ------------------------------- | ---------------------------: | -----------------: | --------------------------------------------------: |
+| No grading started              |                            1 |                  0 |                                                  no |
+| Grading already started         |                            1 |                  1 | yes (all contributions not tied to latest evidence) |
+
+### B. Grading action happens
+
+| Action                       | Outcome status effect                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| First contribution submitted | grading_status moves from Not Started → In Progress / Finalized / Moderated depending on type and rules |
+| Moderator “Return to Grader” | grading_status forced back to In Progress                                                               |
+| Official truth recomputed    | official fields refreshed; publish cleared if it was published                                          |
+
+### C. Teacher stub submission created
+
+| Why                                                            | Outcome flags                                                                                           |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Need an evidence anchor for grading without student submission | outcome shows submitted state for process tracking, but should not be treated as “new student evidence” |
+
+---
+
+##  Procedural overrides grid (status constraints)
+
+| procedural_status   | Allowed submission statuses                  | Allowed official results                              |
+| ------------------- | -------------------------------------------- | ----------------------------------------------------- |
+| Excused             | not Submitted/Late/Resubmitted               | no score/grade; feedback optional depending on policy |
+| Absent              | depends on policy                            | depends on policy                                     |
+| Extension Granted   | Submitted/Resubmitted allowed without “Late” | grading allowed                                       |
+| Academic Dishonesty | depends on policy                            | may force override/notes                              |
+
+---

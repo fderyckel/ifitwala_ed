@@ -143,16 +143,12 @@ class TaskContribution(Document):
 		delivery = self._get_delivery_flags()
 		grading_mode = (delivery.get("grading_mode") or "").strip()
 		requires_grading = int(delivery.get("require_grading") or 0)
-		delivery_mode = (delivery.get("delivery_mode") or "").strip()
 
-		if delivery_mode in ("Assign Only", "Collect Work"):
+		if not requires_grading:
 			if self.score not in (None, "") or (self.grade or "").strip():
 				frappe.throw(_("Ungraded deliveries only allow feedback contributions."))
 			if self.get("rubric_scores"):
 				frappe.throw(_("Ungraded deliveries only allow feedback contributions."))
-			return
-
-		if not requires_grading:
 			return
 
 		if grading_mode == "Points" and self.score in (None, ""):
