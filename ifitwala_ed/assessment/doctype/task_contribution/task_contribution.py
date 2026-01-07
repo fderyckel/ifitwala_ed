@@ -47,7 +47,7 @@ class TaskContribution(Document):
 		if not self.contributor:
 			frappe.throw(_("Contributor is required."))
 		status = (self.status or "Submitted").strip()
-		if status != "Draft" and not self.task_submission:
+		if status != "Draft" and self._delivery_requires_submission() and not self.task_submission:
 			frappe.throw(_("Task Submission is required."))
 
 	def _get_outcome_context(self):
@@ -167,7 +167,7 @@ class TaskContribution(Document):
 		status = (self.status or "Submitted").strip()
 		if status == "Draft":
 			return
-		if not self.task_submission:
+		if self._delivery_requires_submission() and not self.task_submission:
 			frappe.throw(_("Task Submission is required."))
 
 	def _get_delivery_flags(self):
@@ -175,13 +175,17 @@ class TaskContribution(Document):
 		if not outcome.get("task_delivery"):
 			return {}
 
-		fields = ["grading_mode", "require_grading", "delivery_mode"]
+		fields = ["grading_mode", "require_grading", "delivery_mode", "requires_submission"]
 		return frappe.db.get_value(
 			"Task Delivery",
 			outcome["task_delivery"],
 			fields,
 			as_dict=True,
 		) or {}
+
+	def _delivery_requires_submission(self):
+		delivery = self._get_delivery_flags()
+		return int(delivery.get("requires_submission") or 0) == 1
 
 
 def on_doctype_update():

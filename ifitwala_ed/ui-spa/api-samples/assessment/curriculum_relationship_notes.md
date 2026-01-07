@@ -78,7 +78,7 @@ Assessed curriculum (Tasks & Outcomes)
 Assessment is a mode, not an identity.
 
 Assessment can exist with or without a digital submission.
-Offline evidence is captured as a **Submission stub**, so Outcome and Contribution remain consistent and auditable.
+Offline evidence is captured as a **Submission stub** when `requires_submission = 1`, so Outcome and Contribution remain consistent and auditable.
 
 Task (definition)
 

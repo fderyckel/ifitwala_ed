@@ -131,7 +131,7 @@ If there is no submission:
 
 * Drawer shows “No digital submission”
 * Teacher can still grade
-* System auto‑creates an Evidence Stub submission behind the scenes
+* System auto‑creates an Evidence Stub submission behind the scenes when `requires_submission = 1`
 * Optional note field (e.g., “Paper collected in class”)
 
 ---
@@ -193,7 +193,7 @@ No grade, no submission required.
 
 ### Flow D — Student Resubmits
 
-Trigger: Student resubmits (new submission version created by student).
+Trigger: Student submits or resubmits (new submission version created by student).
 
 System sets on Outcome:
 
@@ -334,8 +334,8 @@ They see:
   * release_outcome
 
 * Gradebook API (`api/gradebook.py`) orchestrates only; it does not compute grades.
-* Writes go to services; services may create Evidence Stub submissions when missing.
-* Frontend can omit `task_submission` in grade actions; backend will attach to latest student submission if present, else create a stub.
+* Writes go to services; services may create Evidence Stub submissions when missing and `requires_submission = 1`.
+* Frontend can omit `task_submission` in grade actions; backend will attach to latest student submission if present, else create a stub when required.
 * Instructor-scoped users only see deliveries for taught student groups; course filters narrow scope but never broaden it.
 
 **Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.

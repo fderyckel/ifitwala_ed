@@ -115,14 +115,16 @@ def submit_contribution(payload, contributor=None):
 			doc.task_submission = data.get("task_submission")
 		if data.get("task_outcome"):
 			doc.task_outcome = data.get("task_outcome")
+		requires_submission = _delivery_requires_submission(doc.task_outcome)
 		if not doc.task_submission:
-			doc.task_submission = _ensure_evidence_stub_submission(
-				doc.task_outcome,
-				origin="Teacher Observation",
-				note=data.get("evidence_note"),
-			)
-			data["task_submission"] = doc.task_submission
-		if not doc.task_submission:
+			if requires_submission:
+				doc.task_submission = _ensure_evidence_stub_submission(
+					doc.task_outcome,
+					origin="Teacher Observation",
+					note=data.get("evidence_note"),
+				)
+				data["task_submission"] = doc.task_submission
+		if requires_submission and not doc.task_submission:
 			frappe.throw(_("Task Submission is required."))
 		doc.submitted_on = now_datetime()
 		_apply_payload_fields(doc, data)
@@ -142,7 +144,8 @@ def submit_contribution(payload, contributor=None):
 	submission_id = _get_payload_value(data, "task_submission", "submission")
 	if not outcome_id:
 		frappe.throw(_("Task Outcome is required."))
-	if not submission_id:
+	requires_submission = _delivery_requires_submission(outcome_id)
+	if not submission_id and requires_submission:
 		submission_id = _ensure_evidence_stub_submission(
 			outcome_id,
 			origin="Teacher Observation",
@@ -181,10 +184,11 @@ def apply_moderator_action(payload, contributor=None):
 	outcome_id = _get_payload_value(data, "task_outcome", "outcome")
 	submission_id = _get_payload_value(data, "task_submission", "submission")
 	action = (data.get("action") or data.get("moderation_action") or "").strip()
+	requires_submission = _delivery_requires_submission(outcome_id)
 
 	if not outcome_id:
 		frappe.throw(_("Task Outcome is required."))
-	if not submission_id:
+	if not submission_id and requires_submission:
 		submission_id = _ensure_evidence_stub_submission(
 			outcome_id,
 			origin="Teacher Observation",
@@ -268,3 +272,13 @@ def _apply_payload_fields(doc, data):
 
 	if "rubric_scores" in data:
 		doc.set("rubric_scores", data.get("rubric_scores") or [])
+
+
+def _delivery_requires_submission(outcome_id):
+	if not outcome_id:
+		return False
+	task_delivery = frappe.db.get_value("Task Outcome", outcome_id, "task_delivery")
+	if not task_delivery:
+		return False
+	requires_submission = frappe.db.get_value("Task Delivery", task_delivery, "requires_submission")
+	return int(requires_submission or 0) == 1

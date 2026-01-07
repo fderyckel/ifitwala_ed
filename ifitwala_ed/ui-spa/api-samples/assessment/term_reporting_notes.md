@@ -116,7 +116,7 @@ Evidence stubs do not affect reporting beyond enabling grading to occur.
 Criteria strategy:
 
 * If grading_mode != Criteria → aggregate from Task Outcome official fields.
-* If Criteria + Sum Total → Task Outcome totals are valid for reporting.
+* If Criteria + Sum Total → Task Outcome totals/grades are valid for reporting.
 * If Criteria + Separate Criteria → aggregate from Task Outcome Criterion rows (criterion-by-criterion), using a program/framework policy layer.
 
 **Canonical statement:** A Task Outcome always stores official results per criterion. Task totals are optional and only computed when the delivery strategy allows it.

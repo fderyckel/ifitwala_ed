@@ -171,13 +171,13 @@ Resubmission creates a new version.
 #### Evidence Stub (Teacher / Offline / No Upload)
 
 Task Submission is the evidence anchor even when evidence is offline.
-When a teacher grades without a digital upload, the system auto‑creates a new Task Submission version as a stub:
+When a teacher grades without a digital upload and the delivery requires a submission, the system auto‑creates a new Task Submission version as a stub:
 
 * `is_stub = 1`
 * optional `evidence_note` (e.g., “Paper collected in class”)
 * no score / grade / feedback stored here
 
-Evidence stubs are required for:
+Evidence stubs are used for:
 
 * paper homework collected
 * in‑class written tasks
@@ -185,7 +185,7 @@ Evidence stubs are required for:
 * teacher observation
 
 Evidence stub ≠ “new student evidence.”
-`has_new_submission` is reserved for student resubmits only.
+`has_new_submission` is reserved for student-originated submissions (first or resubmit).
 
 ---
 
@@ -418,7 +418,7 @@ No controllers, reports, or UI code may write official fields.
 
 ### Student evidence vs stub
 - **Student evidence** (Student Upload / Student In-Class):
-  - may set `has_new_submission = 1`
+  - sets `has_new_submission = 1` on any new submission
 - **Teacher stubs** (`is_stub = 1`, origin Teacher Observation / System):
   - must **never** set `has_new_submission = 1`
 
@@ -547,7 +547,8 @@ Task Delivery.rubric_scoring_strategy == "Sum Total"
 
 | Condition | Expected behavior |
 |---|---|
-| Grading without submission id | Create/ensure stub `Task Submission`; attach contribution to it. |
+| Grading without submission id, requires_submission = 1 | Create/ensure stub `Task Submission`; attach contribution to it. |
+| Grading without submission id, requires_submission = 0 | Allow contribution without a submission; do not create stub. |
 | Stub exists | `has_submission = 1` |
 | Stub exists | **Do not** set `has_new_submission = 1` |
 

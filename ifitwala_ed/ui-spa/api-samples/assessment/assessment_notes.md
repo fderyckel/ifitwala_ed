@@ -111,7 +111,7 @@ Intervals must be:
 Tasks define evidence intent; Delivery turns that intent into Outcomes and Submissions.
 Task supports multiple criteria via `task_criteria`, and Delivery snapshots those rows for rubric grading.
 Delivery applies `rubric_scoring_strategy` (defaulted from Task) to decide whether totals are computed.
-Evidence may be offline and is still represented via a **Submission stub**.
+Evidence may be offline and is represented via a **Submission stub** when `requires_submission = 1`; otherwise grading can occur without a submission.
 
 ### Supported grading modes (exactly one active)
 
@@ -178,7 +178,7 @@ Assessment evidence is represented by a **three‑layer per‑student model**:
 * **Contribution** — teacher judgment inputs (scores, rubric marks, moderation)
 
 Delivery provides context; Outcome is the official record; Submissions carry evidence.
-Evidence may be offline and still be represented via a **Submission stub**.
+Evidence may be offline and still be represented via a **Submission stub** when `requires_submission = 1`.
 
 ---
 

@@ -159,14 +159,13 @@ def apply_outcome_submission_effects(outcome_id, submission_id, source="student"
 	) or {}
 
 	grading_started = _grading_started(outcome)
-	already_new = int(outcome.get("has_new_submission") or 0) == 1
 	updates = {"submission_status": "Late" if submission.get("is_late") else "Submitted"}
 
 	if "has_submission" in outcome:
 		updates["has_submission"] = 1
 
 	if "has_new_submission" in outcome:
-		updates["has_new_submission"] = 1 if (grading_started or already_new) else 0
+		updates["has_new_submission"] = 1
 
 	if "is_stale" in outcome:
 		updates["is_stale"] = 1 if grading_started else 0
