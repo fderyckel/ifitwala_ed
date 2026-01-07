@@ -3,6 +3,8 @@
 > **Status: Authoritative / Foundational**
 >
 > This document defines the assessment architecture in Ifitwala_Ed. It explains where criteria, scales, and grading logic come from and how they interact. Written for **humans and coding agents**.
+>
+> Last updated: 2026-01-07
 
 ---
 
@@ -106,18 +108,20 @@ Intervals must be:
 
 ## 4. Tasks (Assessment Evidence)
 
-Tasks are **assessment events**, not grading rules.
+Tasks define evidence intent; Delivery turns that intent into Outcomes and Submissions.
+Evidence may be offline and is still represented via a **Submission stub**.
 
 ### Supported grading modes (exactly one active)
 
 A Task may operate in **one and only one** grading mode at a time:
 
-1. **Observations** — qualitative feedback only (no grading)
-2. **Binary** — complete / incomplete
-3. **Points** — numeric score out of max points
-4. **Criteria** — rubric‑based assessment using Assessment Criteria
+1. **None** — feedback only (ungraded)
+2. **Completion** — complete / incomplete
+3. **Binary** — yes / no
+4. **Points** — numeric score out of max points
+5. **Criteria** — rubric‑based assessment using Assessment Criteria
 
-The `is_graded` flag is **derived**, never user‑editable.
+The grading mode is **explicit**, never inferred at read time.
 
 ---
 
@@ -125,13 +129,10 @@ The `is_graded` flag is **derived**, never user‑editable.
 
 When `criteria = 1`:
 
-* The Task references **Assessment Criteria** via *Task Assessment Criteria*
-* Each criterion may define:
-
-  * weighting
-  * max points
-* Per‑student rubric data is stored in **Task Criterion Score**
-* Rubric rows are **materialized**, not inferred at read time
+* The Delivery snapshots rubric structure (Task Rubric Version)
+* Each criterion may define weighting and max points
+* Per‑student rubric marks live in **Task Contributions** (criterion rows)
+* Official result rolls up to **Task Outcome**
 
 Criteria grading is **explicit and irreversible once grading has started**.
 
@@ -141,26 +142,23 @@ Criteria grading is **explicit and irreversible once grading has started**.
 
 When `points = 1` and `criteria = 0`:
 
-* A single numeric mark is entered per student
+* A numeric score is entered via **Task Contributions**
 * `max_points` defines the denominator
-* Percentage is derived and stored
-* A **Grade Scale** is resolved from:
-
-  * Task.grade_scale (explicit)
-  * else Course.default_grade_scale (implicit)
+* Official score is stored on **Task Outcome**
+* Grade Scale is resolved at delivery time (policy‑driven)
 
 ---
 
-### Task Student (Per‑student Evidence)
+### Per‑student Layers (Outcome / Submission / Contribution)
 
-The **Task Student** table stores:
+Assessment evidence is represented by a **three‑layer per‑student model**:
 
-* raw marks (points mode)
-* completion state (binary mode)
-* feedback
-* visibility flags
+* **Outcome** — official fact table (score / grade / feedback + statuses)
+* **Submission** — versioned evidence (files / text / links)
+* **Contribution** — teacher judgment inputs (scores, rubric marks, moderation)
 
-Status (Assigned / Graded / Returned) is **derived**, not manually set.
+Delivery provides context; Outcome is the official record; Submissions carry evidence.
+Evidence may be offline and still be represented via a **Submission stub**.
 
 ---
 

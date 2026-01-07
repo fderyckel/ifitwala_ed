@@ -1,6 +1,7 @@
 Curriculum ↔ Tasks (for humans + coding agents)
 
 This is the “truth document” of the system. Read this as doctrine.
+Last updated: 2026-01-07
 
 Curriculum in Ifitwala_ed: first principles
 
@@ -75,6 +76,9 @@ never required from teachers
 Assessed curriculum (Tasks & Outcomes)
 
 Assessment is a mode, not an identity.
+
+Assessment can exist with or without a digital submission.
+Offline evidence is captured as a **Submission stub**, so Outcome and Contribution remain consistent and auditable.
 
 Task (definition)
 

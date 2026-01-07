@@ -3,6 +3,8 @@
 > **Status: Authoritative / Locked unless explicitly revised**
 >
 > This document summarizes the architectural decisions for **End‑of‑Term / Term Results Reporting** in Ifitwala_Ed. It is written for **humans and coding agents**. Any implementation that violates these principles is a regression.
+>
+> Last updated: 2026-01-07
 
 ---
 
@@ -22,7 +24,7 @@ No on‑the‑fly recalculation. No silent drift.
 
 | Layer              | Responsibility                                   |
 | ------------------ | ------------------------------------------------ |
-| Task               | Assessment evidence (raw marks, criteria scores) |
+| Task               | Assessment definitions & delivery intent         |
 | Gradebook          | Live aggregation & analytics                     |
 | Reporting Cycle    | Temporal + policy control                        |
 | Course Term Result | Frozen academic truth                            |
@@ -97,14 +99,19 @@ This protects reports from future structural changes (enrollment moves, instruct
 
 ## 5. Grade Calculation Rules
 
+**Source of truth:** Task Outcome (official fields only).
+
 ### Source Data
 
 Grades are calculated from:
 
-* Tasks linked to the course
-* Tasks belonging to the student
-* Tasks with `date ≤ task_cutoff_date`
-* Tasks that are not excluded from grading
+* **Task Outcome** official fields (score / grade / feedback)
+* Filtered by Reporting Cycle scope (school, academic_year, term, program)
+* Filtered by cutoff rules using Task Delivery dates
+* Filtered by grading_status policy (Released only, or Finalized + Released)
+
+Submissions and contributions are **never** used directly in term aggregation.
+Evidence stubs do not affect reporting beyond enabling grading to occur.
 
 ### Persisted Values
 
@@ -161,7 +168,7 @@ All generation, locking, and publishing logic lives in **term_reporting.py**.
 This layer:
 
 * Reads Reporting Cycle state
-* Calls gradebook utilities
+* Queries Task Outcome as the only grading input
 * Creates / updates Course Term Results
 * Enforces lifecycle rules
 
@@ -202,9 +209,9 @@ Any code that violates this sentence is wrong.
 ### Inputs (Read-Only)
 
 Course Term Results are generated from:
-- Gradebook aggregates
-- Which themselves are derived from Tasks
-- Filtered by Reporting Cycle.task_cutoff_date
+- Task Outcome (official fields only)
+- Filtered by Reporting Cycle scope + grading_status policy
+- Filtered by Reporting Cycle.task_cutoff_date (via Task Delivery dates)
 
 Task-level details (rubrics, marks, feedback) are never embedded here.
 

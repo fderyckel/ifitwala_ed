@@ -3,6 +3,7 @@
 Status: **UX LOCK DRAFT (Thin)**
 Audience: Product + Engineering + Codex agents
 Goal: A teacher should grade and return work with **minimum clicks** and **zero doctype awareness**.
+Last updated: 2026-01-07
 
 ---
 
@@ -114,6 +115,13 @@ Hard UX rule:
 * The grid never shows multiple teacher marks.
 * Comparisons exist only inside Compare tab.
 
+If there is no submission:
+
+* Drawer shows “No digital submission”
+* Teacher can still grade
+* System auto‑creates an Evidence Stub submission behind the scenes
+* Optional note field (e.g., “Paper collected in class”)
+
 ---
 
 ### 1.3 Student-centric View (Secondary)
@@ -173,12 +181,14 @@ No grade, no submission required.
 
 ### Flow D — Student Resubmits
 
-Trigger: New Task Submission version created.
+Trigger: Student resubmits (new submission version created by student).
 
 System sets on Outcome:
 
 * `has_new_submission = 1`
 * existing teacher Contributions flagged `is_stale = 1`
+
+Teacher‑created evidence stubs do **not** create “new evidence” badges.
 
 **Gradebook grid** must show a clear badge:
 
@@ -310,6 +320,10 @@ They see:
   * set_official_outcome (policy-driven)
   * request_review / send_for_moderation
   * release_outcome
+
+* Gradebook API (`api/gradebook.py`) orchestrates only; it does not compute grades.
+* Writes go to services; services may create Evidence Stub submissions when missing.
+* Frontend can omit `task_submission` in grade actions; backend will attach to latest student submission if present, else create a stub.
 
 
 

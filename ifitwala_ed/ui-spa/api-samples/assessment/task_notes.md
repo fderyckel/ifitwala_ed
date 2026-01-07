@@ -3,6 +3,7 @@
 Status: **ARCHITECTURE LOCK — v2 (LMS‑ready)**
 Scope: Tasks, Delivery, Outcomes, Submissions, Grading, Review & Moderation
 Audience: Humans + Coding Agents
+Last updated: 2026-01-07
 
 This document defines the **end‑state architecture** for Tasks in Ifitwala_Ed.
 It explicitly incorporates LMS‑scale realities (high volume, low friction) and replaces earlier Task‑centric designs.
@@ -144,6 +145,25 @@ Holds:
 
 Resubmission creates a new version.
 
+#### Evidence Stub (Teacher / Offline / No Upload)
+
+Task Submission is the evidence anchor even when evidence is offline.
+When a teacher grades without a digital upload, the system auto‑creates a new Task Submission version as a stub:
+
+* `is_stub = 1`
+* optional `evidence_note` (e.g., “Paper collected in class”)
+* no score / grade / feedback stored here
+
+Evidence stubs are required for:
+
+* paper homework collected
+* in‑class written tasks
+* oral presentations
+* teacher observation
+
+Evidence stub ≠ “new student evidence.”  
+`has_new_submission` is reserved for student resubmits only.
+
 ---
 
 ### Layer 5 — Task Contribution (Teacher Grading / Review)
@@ -181,6 +201,7 @@ Contributions never overwrite each other.
 
 * graded (points or criteria)
 * appears in gradebook and analytics
+* allows grading without a student upload via evidence stub
 
 Invariant:
 
@@ -254,7 +275,8 @@ Same engine, different rules.
 ## 7. Staleness & Resubmissions
 
 * Contributions are tied to a submission version
-* New submission ⇒ existing contributions flagged `is_stale`
+* **Student** resubmission ⇒ existing contributions flagged `is_stale`
+* **Teacher‑created evidence stubs** do **not** stale contributions by default
 
 UX must show:
 
