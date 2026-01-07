@@ -49,7 +49,7 @@
    "fieldtype": "Link",
    "label": "Task Submission",
    "options": "Task Submission",
-   "reqd": 1
+   "reqd": 0
   },
   {
    "fieldname": "contributor",

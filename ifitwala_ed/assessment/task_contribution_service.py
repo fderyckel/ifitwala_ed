@@ -7,8 +7,6 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
-from ifitwala_ed.assessment.task_submission_service import ensure_evidence_stub_submission
-
 
 def mark_contributions_stale(outcome_id, latest_submission_id=None):
 	if not outcome_id:
@@ -28,6 +26,12 @@ def mark_contributions_stale(outcome_id, latest_submission_id=None):
 	params["user"] = frappe.session.user or "Administrator"
 	frappe.db.sql(query, params)
 	return frappe.db.rowcount
+
+
+def _ensure_evidence_stub_submission(*args, **kwargs):
+	from ifitwala_ed.assessment.task_submission_service import ensure_evidence_stub_submission
+
+	return ensure_evidence_stub_submission(*args, **kwargs)
 
 
 def get_latest_submission_version(outcome_id):
@@ -62,13 +66,6 @@ def save_draft_contribution(payload, contributor=None):
 
 	if not outcome_id:
 		frappe.throw(_("Task Outcome is required."))
-	if not submission_id:
-		submission_id = ensure_evidence_stub_submission(
-			outcome_id,
-			origin="Teacher Observation",
-			note=data.get("evidence_note"),
-		)
-		data["task_submission"] = submission_id
 
 	contributor = contributor or frappe.session.user
 	contribution_type = (data.get("contribution_type") or "Self").strip()
@@ -119,7 +116,7 @@ def submit_contribution(payload, contributor=None):
 		if data.get("task_outcome"):
 			doc.task_outcome = data.get("task_outcome")
 		if not doc.task_submission:
-			doc.task_submission = ensure_evidence_stub_submission(
+			doc.task_submission = _ensure_evidence_stub_submission(
 				doc.task_outcome,
 				origin="Teacher Observation",
 				note=data.get("evidence_note"),
@@ -146,7 +143,7 @@ def submit_contribution(payload, contributor=None):
 	if not outcome_id:
 		frappe.throw(_("Task Outcome is required."))
 	if not submission_id:
-		submission_id = ensure_evidence_stub_submission(
+		submission_id = _ensure_evidence_stub_submission(
 			outcome_id,
 			origin="Teacher Observation",
 			note=data.get("evidence_note"),
@@ -188,7 +185,7 @@ def apply_moderator_action(payload, contributor=None):
 	if not outcome_id:
 		frappe.throw(_("Task Outcome is required."))
 	if not submission_id:
-		submission_id = ensure_evidence_stub_submission(
+		submission_id = _ensure_evidence_stub_submission(
 			outcome_id,
 			origin="Teacher Observation",
 			note=data.get("evidence_note"),

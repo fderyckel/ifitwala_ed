@@ -27,12 +27,14 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
 		[
 			"task_delivery",
 			"grade_scale",
+			"is_published",
 		],
 		as_dict=True,
 	)
 	if not outcome:
 		frappe.throw(_("Task Outcome not found."))
 
+	was_published = int(outcome.get("is_published") or 0) == 1
 	delivery = _get_delivery_context(outcome.get("task_delivery"))
 	require_grading = int(delivery.get("require_grading") or 0)
 	grading_mode = delivery.get("grading_mode")
@@ -78,6 +80,10 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
 			"official_feedback": None,
 			"grading_status": "Not Applicable" if not require_grading else "Not Started",
 		}
+		if was_published:
+			updates["is_published"] = 0
+			updates["published_on"] = None
+			updates["published_by"] = None
 		frappe.db.set_value("Task Outcome", outcome_id, updates, update_modified=True)
 		if grading_mode == "Criteria":
 			_clear_outcome_criteria(outcome_id)
@@ -85,7 +91,7 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
 
 	if grading_mode == "Criteria":
 		_apply_official_criteria_from_contribution(outcome_id, selected.get("name"))
-		return _apply_criteria_official_fields(
+		result = _apply_criteria_official_fields(
 			outcome_id=outcome_id,
 			grade_scale=grade_scale,
 			require_grading=require_grading,
@@ -93,13 +99,19 @@ def _recompute_official_outcome_internal(outcome_id, policy=None):
 			rubric_scoring_strategy=rubric_strategy,
 			rubric_version=rubric_version,
 		)
+		if was_published:
+			_clear_outcome_publish(outcome_id)
+		return result
 
-	return _apply_non_criteria_official_fields(
+	result = _apply_non_criteria_official_fields(
 		outcome_id=outcome_id,
 		grade_scale=grade_scale,
 		require_grading=require_grading,
 		contribution=selected,
 	)
+	if was_published:
+		_clear_outcome_publish(outcome_id)
+	return result
 
 
 def get_grade_scale_map(grade_scale):
@@ -364,6 +376,19 @@ def _clear_outcome_criteria(outcome_id):
 			"parenttype": "Task Outcome",
 			"parentfield": "official_criteria",
 		},
+	)
+
+
+def _clear_outcome_publish(outcome_id):
+	frappe.db.set_value(
+		"Task Outcome",
+		outcome_id,
+		{
+			"is_published": 0,
+			"published_on": None,
+			"published_by": None,
+		},
+		update_modified=True,
 	)
 
 

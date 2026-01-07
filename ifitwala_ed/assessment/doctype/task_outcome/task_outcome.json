@@ -14,6 +14,9 @@
   "column_break_7cg7",
   "student",
   "procedural_status",
+  "is_published",
+  "published_on",
+  "published_by",
   "section_break_uass",
   "has_submission",
   "has_new_submission",
@@ -97,6 +100,26 @@
    "fieldtype": "Select",
    "label": "Procedural Status",
    "options": "None\nExcused\nAbsent\nExtension Granted\nAcademic Dishonesty"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "label": "Published",
+   "read_only": 1
+  },
+  {
+   "fieldname": "published_on",
+   "fieldtype": "Datetime",
+   "label": "Published On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "published_by",
+   "fieldtype": "Link",
+   "label": "Published By",
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_uass",

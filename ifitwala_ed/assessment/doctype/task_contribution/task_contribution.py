@@ -25,11 +25,13 @@ class TaskContribution(Document):
 		self._ensure_latest_submission()
 
 	def validate(self):
+		self._validate_submission_requirement()
 		self._validate_grade_value()
 		self._validate_payload_for_grading_mode()
 
 	def after_insert(self):
-		apply_official_outcome_from_contributions(self.task_outcome)
+		if (self.status or "").strip() != "Draft":
+			apply_official_outcome_from_contributions(self.task_outcome)
 
 	def _doc_meta(self):
 		if not hasattr(self, "_contrib_meta"):
@@ -42,10 +44,11 @@ class TaskContribution(Document):
 	def _require_links(self):
 		if not self.task_outcome:
 			frappe.throw(_("Task Outcome is required."))
-		if not self.task_submission:
-			frappe.throw(_("Task Submission is required."))
 		if not self.contributor:
 			frappe.throw(_("Contributor is required."))
+		status = (self.status or "Submitted").strip()
+		if status != "Draft" and not self.task_submission:
+			frappe.throw(_("Task Submission is required."))
 
 	def _get_outcome_context(self):
 		if hasattr(self, "_outcome_row"):
@@ -87,6 +90,8 @@ class TaskContribution(Document):
 				setattr(self, field, outcome.get(field))
 
 	def _ensure_submission_matches_outcome(self):
+		if not self.task_submission:
+			return
 		submission_outcome = frappe.db.get_value(
 			"Task Submission",
 			self.task_submission,
@@ -98,6 +103,8 @@ class TaskContribution(Document):
 			frappe.throw(_("Submission does not belong to the selected outcome."))
 
 	def _ensure_latest_submission(self):
+		if not self.task_submission:
+			return
 		latest_version = get_latest_submission_version(self.task_outcome)
 		submission_version = get_submission_version(self.task_submission)
 		if submission_version < latest_version:
@@ -155,6 +162,13 @@ class TaskContribution(Document):
 			rows = self.get("rubric_scores") or []
 			if not rows:
 				frappe.throw(_("Rubric scores are required for criteria grading."))
+
+	def _validate_submission_requirement(self):
+		status = (self.status or "Submitted").strip()
+		if status == "Draft":
+			return
+		if not self.task_submission:
+			frappe.throw(_("Task Submission is required."))
 
 	def _get_delivery_flags(self):
 		outcome = self._get_outcome_context()
