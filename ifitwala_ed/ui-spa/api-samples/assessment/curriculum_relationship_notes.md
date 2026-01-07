@@ -197,3 +197,9 @@ MYP: criteria remain separate per task; no task total; term reporting computes c
 DP / Traditional: criteria may sum to a task total; task total maps to grade.
 
 Framework logic does not live in controllers. It lives in delivery-level scoring strategy + reporting cycle aggregation policy.
+
+---
+
+Architecture lock notes
+
+- Publishing is per Outcome (student x delivery). Curriculum relationships remain unchanged; publication is a visibility gate layered on top of Outcome truth.

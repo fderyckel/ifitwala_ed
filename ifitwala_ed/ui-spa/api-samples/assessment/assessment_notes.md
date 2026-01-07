@@ -257,3 +257,10 @@ We deliberately avoid:
 > **Criteria define what is assessed, scales define how scores are interpreted, tasks provide evidence, gradebooks aggregate live data, and reports freeze institutional truth.**
 
 If a piece of code mixes these responsibilities, it is wrong.
+
+---
+
+## Architecture lock notes
+
+- Draft vs Evidence is a hard boundary. Draft contributions may exist without a submission; submissions are evidence and are versioned.
+- Stubs are teacher-only evidence and are created only on submit/moderator actions when no student submission exists.

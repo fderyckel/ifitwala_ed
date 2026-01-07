@@ -581,3 +581,10 @@ Any other codepath writing official fields is a **regression**.
 
 This matrix is **authoritative** for Step 2.
 UI, analytics, and reporting **must trust Outcome + Outcome Criterion only**.
+
+---
+
+## Architecture lock notes
+
+- Official truth is internal (Task Outcome.official_* and Task Outcome Criterion). It is computed via the truth pipeline and is not automatically visible to students/guardians.
+- Teacher submit/moderation updates official truth; draft does not.

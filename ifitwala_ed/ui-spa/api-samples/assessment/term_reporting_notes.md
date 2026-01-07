@@ -238,3 +238,9 @@ Task-level details (rubrics, marks, feedback) are never embedded here.
 This is intentional:
 - Tasks may change after reporting
 - Reports must not
+
+---
+
+## Architecture lock notes
+
+- Reporting reads Outcome truth regardless of publication state. Publishing affects portal visibility, not reporting truth.

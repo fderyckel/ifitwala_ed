@@ -547,3 +547,10 @@ Gradebook grid reads from Task Outcome + Task Outcome Criterion only (fast)
 Everything else loads lazily in the drawer
 
 If you want the next increment, I’ll write the exact modal copy (button labels, help text, microcopy) so it feels premium and unambiguous for busy teachers.
+
+---
+
+## Architecture lock notes
+
+- Autosave uses Draft Contributions, not Submissions. Draft save must never create evidence stubs and must never flip has_new_submission.
+- save_draft() is idempotent: it upserts the current user's draft for an outcome and returns the draft id.
