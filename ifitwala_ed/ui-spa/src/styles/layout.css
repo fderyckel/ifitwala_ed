@@ -1,69 +1,28 @@
-@reference "tailwindcss";
+/* ui-spa/src/styles/layout.css */
 
+/* =====================================================================
+   LAYOUT LAYER - STRUCTURAL SHELLS ONLY
+   ===================================================================== */
 @layer components {
-
   /* ============================================================
-     STAFF LAYOUT (replaces staff-portal.css fully)
+     PORTAL SHELLS
      ============================================================ */
-
-  .staff-layout {
-    @apply font-sans antialiased min-h-screen flex flex-col;
-    background:
-      radial-gradient(circle at 5% 5%, rgb(var(--leaf-rgb) / .32), transparent 58%),
-      radial-gradient(circle at 95% 0%, rgb(var(--jacaranda-rgb) / .26), transparent 58%),
-      radial-gradient(circle at 90% 95%, rgb(var(--moss-rgb) / .25), transparent 60%),
-      linear-gradient(
-        180deg,
-        var(--sky) 0%,
-        #f1f6f8 45%,
-        var(--sand) 100%
-      ) !important;
+  .ifitwala-theme {
+    @apply min-h-screen flex flex-col;
+    background: var(--portal-gradient-bg) !important;
     background-attachment: fixed;
-    color: rgb(var(--ink-rgb));
+    color: rgb(var(--ink-rgb) / 1);
   }
 
   .staff-layout__header {
-    @apply w-full border-b bg-white/90 backdrop-blur-xl;
-    border-color: rgb(var(--border-rgb) / .85);
+    @apply w-full border-b backdrop-blur-xl;
+    background-color: rgb(var(--surface-strong-rgb) / 0.9);
+    border-color: rgb(var(--border-rgb) / 0.85);
   }
 
   .staff-layout__header-inner {
     @apply mx-auto max-w-6xl flex items-center justify-between gap-3
            px-5 py-3 sm:px-6;
-  }
-
-  .staff-layout__brand {
-    @apply uppercase tracking-wider text-sm font-semibold;
-    color: rgb(var(--ink-rgb));
-  }
-
-  .staff-layout__brand-link {
-    @apply transition-colors;
-  }
-
-  .staff-layout__brand-link:hover {
-    color: rgb(var(--canopy-rgb));
-  }
-
-  /* Smaller, better-proportioned Desk switch */
-  .staff-layout__desk-switch {
-    @apply inline-flex items-center gap-1.5
-           px-3 py-1.5 rounded-full
-           border
-           bg-white/95 text-xs font-medium
-           shadow-sm transition;
-    border-color: rgb(var(--border-rgb) / .95);
-    color: rgb(var(--slate-rgb) / .90);
-  }
-
-  .staff-layout__desk-switch:hover {
-    border-color: rgb(var(--leaf-rgb));
-    background-color: rgb(var(--leaf-rgb) / .10);
-    color: rgb(var(--canopy-rgb));
-  }
-
-  .staff-layout__desk-switch-icon {
-    @apply h-4 w-4;
   }
 
   .staff-layout__main {
@@ -76,101 +35,18 @@
   }
 
   /* ============================================================
-     HERO BLOCK
+     LEGACY CANDIDATES - moved for audit (do not delete yet)
+     Delete only after runtime coverage / user confirmation.
      ============================================================ */
-
-  .staff-hero {
-    background:
-      radial-gradient(circle at 0% 0%, rgb(var(--leaf-rgb) / .45), transparent 55%),
-      radial-gradient(circle at 100% 0%, rgb(var(--jacaranda-rgb) / .35), transparent 55%),
-      linear-gradient(
-        120deg,
-        rgb(var(--sand-rgb) / .96),
-        rgb(var(--leaf-rgb) / .35),
-        rgb(var(--jacaranda-rgb) / .32)
-      );
-    @apply rounded-2xl relative p-6;
-    box-shadow: var(--shadow-strong);
-  }
-
-  .staff-hero__aura {
-    @apply absolute inset-0 pointer-events-none opacity-90;
-    background:
-      radial-gradient(circle at 15% 25%, rgb(var(--sky-rgb) / .35), transparent 60%),
-      radial-gradient(circle at 85% 15%, rgb(var(--jacaranda-rgb) / .35), transparent 60%),
-      radial-gradient(circle at 60% 90%, rgb(var(--leaf-rgb) / .3), transparent 60%);
-    filter: blur(42px);
-  }
-
-  .staff-hero__grid {
-    @apply grid gap-6 items-stretch;
-  }
-  @media (min-width: 768px) {
-    .staff-hero__grid {
-      grid-template-columns: minmax(0,1.2fr) minmax(0,1fr);
-    }
-  }
-
-  /* Jacaranda pill for the Morning Brief button in the hero area */
-  .staff-hero a.morning-brief,
-  .staff-hero button.morning-brief,
-  .staff-hero a[title="Morning Brief"],
-  .staff-hero button[title="Morning Brief"] {
-    background-color: rgb(var(--jacaranda-rgb) / .15);
-    border: 1px solid rgb(var(--jacaranda-rgb) / .45);
-    color: rgb(var(--jacaranda-rgb));
-    border-radius: 999px;
-    padding: 0.4rem 0.8rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    backdrop-filter: blur(4px);
-    transition: background-color 0.18s ease,
-                border-color 0.18s ease,
-                color 0.18s ease;
-  }
-
-  .staff-hero a.morning-brief:hover,
-  .staff-hero a.morning-brief:focus-visible,
-  .staff-hero button.morning-brief:hover,
-  .staff-hero button.morning-brief:focus-visible,
-  .staff-hero a[title="Morning Brief"]:hover,
-  .staff-hero a[title="Morning Brief"]:focus-visible,
-  .staff-hero button[title="Morning Brief"]:hover,
-  .staff-hero button[title="Morning Brief"]:focus-visible {
-    background-color: rgb(var(--jacaranda-rgb) / .25);
-    border-color: rgb(var(--jacaranda-rgb) / .65);
-    color: rgb(var(--jacaranda-rgb));
-  }
-
-  /* Ensure the icon badge also takes on the Jacaranda tone */
-  .staff-hero .morning-brief .icon-wrapper,
-  .staff-hero [title="Morning Brief"] .icon-wrapper {
-    background-color: rgb(var(--jacaranda-rgb) / .25);
-    color: rgb(var(--jacaranda-rgb));
-  }
-
-  /* ============================================================
-     ACTION RAIL
-     ============================================================ */
-
-  .action-rail__grid {
-    @apply grid gap-3 mt-4 sm:gap-4
-           grid-cols-[repeat(auto-fit,minmax(14rem,1fr))];
-  }
-
-  /* ============================================================
-     FOOTER
-     ============================================================ */
-
   .staff-layout__footer {
-    @apply w-full border-t bg-white/90;
-    border-color: rgb(var(--border-rgb) / .85);
+    @apply w-full border-t;
+    background-color: rgb(var(--surface-strong-rgb) / 0.9);
+    border-color: rgb(var(--border-rgb) / 0.85);
   }
 
   .staff-layout__footer-inner {
     @apply mx-auto max-w-6xl px-5 py-3 sm:px-6
            text-[0.7rem];
-    color: rgb(var(--slate-rgb) / .70);
+    color: rgb(var(--slate-rgb) / 0.70);
   }
 }

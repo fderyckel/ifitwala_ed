@@ -28,7 +28,7 @@
             <!-- Header -->
             <div class="flex items-start justify-between gap-3 px-5 pt-5">
               <div>
-                <p class="text-xs font-semibold tracking-wider text-[rgb(var(--slate-rgb)/0.75)] uppercase">
+                <p class="type-overline">
                   Task
                 </p>
                 <DialogTitle class="type-h3 text-ink mt-1">
@@ -37,7 +37,7 @@
               </div>
               <button
                 type="button"
-                class="meeting-modal__icon-button"
+                class="if-overlay__icon-button"
                 aria-label="Close"
                 @click="handleClose"
               >
@@ -45,18 +45,220 @@
               </button>
             </div>
 
-            <!-- Body: reuse your existing content -->
-            <div class="if-overlay__body">
-              <!-- Paste your exact Step1..Step5 markup here (from your modal template),
-                   BUT remove the outer <Dialog> and keep only the inner content. -->
-              <div class="space-y-6">
-                <!-- (same sections as your current CreateTaskDeliveryModal.vue) -->
-                <!-- ... -->
-                <div v-if="errorMessage" class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame">
-                  {{ errorMessage }}
-                </div>
-              </div>
-            </div>
+						<!-- Body -->
+						<div class="if-overlay__body">
+							<div class="space-y-6">
+								<!-- Step 1 -->
+								<section class="card-panel space-y-4 p-5">
+									<div class="flex items-center gap-3">
+										<span class="chip">Step 1</span>
+										<h3 class="type-h3 text-ink">What are you giving students?</h3>
+									</div>
+
+									<div class="grid gap-4 md:grid-cols-2">
+										<div class="space-y-1">
+											<label class="type-label">Title</label>
+											<FormControl v-model="form.title" type="text" placeholder="Assignment title" />
+										</div>
+										<div class="space-y-1">
+											<label class="type-label">Type</label>
+											<FormControl
+												v-model="form.task_type"
+												type="select"
+												:options="taskTypeOptions"
+												option-label="label"
+												option-value="value"
+												placeholder="Select type (optional)"
+											/>
+										</div>
+									</div>
+
+									<div class="space-y-1">
+										<label class="type-label">Instructions</label>
+										<FormControl
+											v-model="form.instructions"
+											type="textarea"
+											:rows="4"
+											placeholder="Share directions, resources, or expectations..."
+										/>
+									</div>
+								</section>
+
+								<!-- Step 2 -->
+								<section class="card-panel space-y-4 p-5">
+									<div class="flex items-center gap-3">
+										<span class="chip">Step 2</span>
+										<h3 class="type-h3 text-ink">Which class?</h3>
+									</div>
+
+									<div class="space-y-1">
+										<label class="type-label">Class</label>
+										<div
+											v-if="isGroupLocked"
+											class="rounded-xl border border-border/80 bg-slate-50 px-3 py-2 text-sm text-ink/80"
+										>
+											{{ selectedGroupLabel || props.prefillStudentGroup || 'Class selected' }}
+										</div>
+
+										<FormControl
+											v-else
+											v-model="form.student_group"
+											type="select"
+											:options="groupOptions"
+											option-label="label"
+											option-value="value"
+											:disabled="groupsLoading"
+											placeholder="Select a class"
+										/>
+
+										<p v-if="!groupsLoading && !groupOptions.length" class="type-caption text-slate-token/70">
+											No classes available for your role yet.
+										</p>
+									</div>
+								</section>
+
+								<!-- Step 3 -->
+								<section class="card-panel space-y-4 p-5">
+									<div class="flex items-center gap-3">
+										<span class="chip">Step 3</span>
+										<h3 class="type-h3 text-ink">What will happen?</h3>
+									</div>
+
+									<div class="grid gap-3 md:grid-cols-3">
+										<button
+											v-for="option in deliveryOptions"
+											:key="option.value"
+											type="button"
+											class="rounded-2xl border px-4 py-4 text-left transition"
+											:class="form.delivery_mode === option.value
+												? 'border-leaf/60 bg-sky/20 text-ink shadow-sm'
+												: 'border-border/70 bg-white text-ink/80 hover:border-leaf/40'"
+											@click="form.delivery_mode = option.value"
+										>
+											<p class="text-sm font-semibold text-ink">{{ option.label }}</p>
+											<p class="mt-1 text-xs text-ink/60">{{ option.help }}</p>
+										</button>
+									</div>
+								</section>
+
+								<!-- Step 4 -->
+								<section class="card-panel space-y-4 p-5">
+									<div class="flex items-center gap-3">
+										<span class="chip">Step 4</span>
+										<h3 class="type-h3 text-ink">Dates</h3>
+									</div>
+
+									<div class="grid gap-4 md:grid-cols-3">
+										<div class="space-y-1">
+											<label class="type-label">Available from</label>
+											<input
+												v-model="form.available_from"
+												type="datetime-local"
+												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+											/>
+										</div>
+										<div class="space-y-1">
+											<label class="type-label">Due date</label>
+											<input
+												v-model="form.due_date"
+												type="datetime-local"
+												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+											/>
+										</div>
+										<div class="space-y-1">
+											<label class="type-label">Lock date</label>
+											<input
+												v-model="form.lock_date"
+												type="datetime-local"
+												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+											/>
+										</div>
+									</div>
+
+									<div class="grid gap-4 md:grid-cols-2">
+										<label class="flex items-center gap-2 text-sm text-ink/80">
+											<input v-model="form.allow_late_submission" type="checkbox" class="rounded border-border/70 text-jacaranda" />
+											Allow late submissions
+										</label>
+										<label class="flex items-center gap-2 text-sm text-ink/80">
+											<input v-model="form.group_submission" type="checkbox" class="rounded border-border/70 text-jacaranda" />
+											Group submission
+										</label>
+									</div>
+								</section>
+
+								<!-- Step 5 -->
+								<section class="card-panel space-y-4 p-5">
+									<div class="flex items-center gap-3">
+										<span class="chip">Step 5</span>
+										<h3 class="type-h3 text-ink">Grading (optional)</h3>
+									</div>
+
+									<div class="space-y-2">
+										<p class="type-label">Will you assess it?</p>
+										<div class="flex flex-wrap gap-2">
+											<button
+												type="button"
+												class="rounded-full border px-4 py-2 text-sm font-medium transition"
+												:class="gradingEnabled
+													? 'border-leaf/60 bg-sky/20 text-ink'
+													: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'"
+												@click="setGradingEnabled(true)"
+											>
+												Yes
+											</button>
+											<button
+												type="button"
+												class="rounded-full border px-4 py-2 text-sm font-medium transition"
+												:class="!gradingEnabled
+													? 'border-leaf/60 bg-sky/20 text-ink'
+													: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'"
+												@click="setGradingEnabled(false)"
+											>
+												No
+											</button>
+										</div>
+									</div>
+
+									<div v-if="gradingEnabled" class="space-y-4">
+										<div class="grid gap-3 md:grid-cols-3">
+											<button
+												v-for="option in gradingOptions"
+												:key="option.value"
+												type="button"
+												class="rounded-2xl border px-4 py-4 text-left transition"
+												:class="form.grading_mode === option.value
+													? 'border-leaf/60 bg-sky/20 text-ink shadow-sm'
+													: 'border-border/70 bg-white text-ink/80 hover:border-leaf/40'"
+												@click="form.grading_mode = option.value"
+											>
+												<p class="text-sm font-semibold text-ink">{{ option.label }}</p>
+												<p class="mt-1 text-xs text-ink/60">{{ option.help }}</p>
+											</button>
+										</div>
+
+										<div v-if="form.grading_mode === 'Points'" class="max-w-xs space-y-1">
+											<label class="type-label">Max points</label>
+											<FormControl
+												v-model="form.max_points"
+												type="number"
+												:min="0"
+												:step="0.5"
+												placeholder="Enter max points"
+											/>
+										</div>
+									</div>
+
+									<p class="text-xs text-ink/60">Moderation happens after grading (peer check).</p>
+								</section>
+
+								<!-- Errors -->
+								<div v-if="errorMessage" class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame">
+									{{ errorMessage }}
+								</div>
+							</div>
+						</div>
+
 
             <!-- Footer -->
             <div class="if-overlay__footer">

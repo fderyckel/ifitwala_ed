@@ -278,25 +278,74 @@ They validate:
 
 ---
 
-## 9. Capacity Modeling (Identified Gap)
+## 9. Capacity Modeling (Clarified & Locked)
 
-Current state:
+Capacity in Ifitwala_Ed exists at **two distinct, non‑interchangeable layers**.
 
-* Program Offering has a global capacity
-* Program Offering Course has **no capacity**
+### 9.1 Allocation capacity (course choice / approval)
 
-Problem:
+Allocation capacity answers:
 
-* real bottlenecks occur at course / lab / elective level
+> "How many students may choose this course *for this offering/year*?"
 
-### Required design decision
+**Locked decision**
 
-One of the following must be implemented:
+Allocation capacity belongs to **Program Offering Course** (offering‑scoped), because:
 
-* **Option A (short‑term)**: add capacity and waitlist logic to Program Offering Course
-* **Option B (long‑term)**: introduce Course Section / Course Offering
+* capacity changes year‑to‑year
+* course selection often happens *before* timetabled sections exist
+* this is the level at which approval, waitlists, and counseling decisions occur
 
-Enrollment architecture must support both paths.
+Required fields on Program Offering Course:
+
+* `capacity` (Int)
+* `waitlist_enabled` (Check)
+* optional: `reserved_seats` (Int)
+
+Allocation capacity is evaluated during **Program Enrollment Request validation**.
+
+---
+
+### 9.2 Delivery capacity (timetabled sections)
+
+Delivery capacity answers:
+
+> "How many seats exist in the actual taught sections?"
+
+**Locked decision**
+
+There is **no Course Section / Course Offering doctype**.
+
+**Student Group *is* the section.**
+
+Delivery capacity is enforced by:
+
+* `Student Group.maximum_size`
+* membership limits in `Student Group Student`
+
+Student Groups may:
+
+* represent one section of a course
+* inherit a default capacity from Program Offering Course at creation time
+* later diverge based on teacher, room, or timetable constraints
+
+---
+
+### 9.3 Inheritance & guardrails
+
+Capacity inheritance rules:
+
+* Student Group may **default** `maximum_size` from Program Offering Course.capacity
+* inheritance happens **at creation time only**
+* once students are assigned, capacity must **not auto‑sync**
+
+Guardrails:
+
+* allocation capacity ≠ section capacity
+* enrollment approval does **not** guarantee section assignment
+* section assignment is a *placement* workflow, not an enrollment rollback
+
+This separation is intentional and mirrors real institutional practice.
 
 ---
 

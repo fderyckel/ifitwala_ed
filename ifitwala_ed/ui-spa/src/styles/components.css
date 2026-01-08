@@ -1,15 +1,17 @@
-@reference "tailwindcss";
-
 /* =====================================================================
-   IFITWALA COMPONENT LIBRARY — ATOMS & MOLECULES
+   IFITWALA COMPONENT LIBRARY - ATOMS AND MOLECULES
    ===================================================================== */
 
 @layer components {
-
   /* ============================================================
-     OVERLAY SYSTEM (HeadlessUI) — single truth
+     OVERLAY SYSTEM (HeadlessUI) - single truth
      ============================================================ */
+  .if-overlay-host {
+    position: fixed;
+    inset: 0;
+  }
 
+  /* Z-index is applied inline by OverlayHost to keep the stack explicit. */
   .if-overlay {
     position: fixed;
     inset: 0;
@@ -20,7 +22,7 @@
     position: fixed;
     inset: 0;
     pointer-events: auto;
-    background: rgba(15, 23, 42, 0.45);
+    background: rgb(var(--shade-rgb) / 0.45);
     backdrop-filter: blur(6px);
   }
 
@@ -44,19 +46,21 @@
   .if-overlay__panel {
     pointer-events: auto;
     width: 100%;
-    max-width: 56rem; /* ~3xl */
+    max-width: 56rem;
     max-height: calc(100vh - 2.5rem);
     overflow: hidden;
-    border-radius: 1.5rem;
-    background:
-      radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / .9), transparent 65%),
-      radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / .9), transparent 65%),
-      #ffffff;
-    border: 1px solid rgb(var(--border-rgb) / .9);
-    box-shadow: 0 18px 45px rgba(7, 16, 25, 0.18);
-    color: rgb(var(--ink-rgb));
+    border-radius: var(--radius-xl);
+    background: var(--modal-panel-gradient-bg);
+    border: 1px solid rgb(var(--border-rgb) / 0.9);
+    box-shadow: var(--shadow-overlay);
+    color: rgb(var(--ink-rgb) / 1);
     display: flex;
     flex-direction: column;
+  }
+
+  /* Keeps legacy event modals close to their original width. */
+  .if-overlay__panel--compact {
+    max-width: 40rem;
   }
 
   .if-overlay__body {
@@ -68,11 +72,30 @@
 
   .if-overlay__footer {
     flex-shrink: 0;
-    border-top: 1px solid rgb(var(--border-rgb) / .6);
+    border-top: 1px solid rgb(var(--border-rgb) / 0.6);
     padding: 1rem 1.25rem;
     display: flex;
     justify-content: flex-end;
-    gap: .5rem;
+    gap: 0.5rem;
+  }
+
+  .if-overlay__icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2rem;
+    width: 2rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(var(--border-rgb) / 0.9);
+    background-color: rgb(var(--surface-strong-rgb) / 1);
+    color: rgb(var(--slate-rgb) / 0.9);
+    transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+  }
+
+  .if-overlay__icon-button:hover {
+    border-color: rgb(var(--leaf-rgb) / 0.9);
+    color: rgb(var(--canopy-rgb) / 1);
+    transform: translateY(-1px);
   }
 
   /* Transitions */
@@ -80,40 +103,73 @@
   .if-overlay__fade-leave {
     transition: opacity 160ms ease-out;
   }
-  .if-overlay__fade-from { opacity: 0; }
-  .if-overlay__fade-to { opacity: 1; }
+
+  .if-overlay__fade-from {
+    opacity: 0;
+  }
+
+  .if-overlay__fade-to {
+    opacity: 1;
+  }
 
   .if-overlay__panel-enter,
   .if-overlay__panel-leave {
     transition: opacity 180ms ease-out, transform 180ms ease-out;
   }
+
   .if-overlay__panel-from {
     opacity: 0;
     transform: translateY(12px) scale(0.98);
   }
+
   .if-overlay__panel-to {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 
-
-  /* ---------------------------------------------------------------
-     1. Avatar (square)
-     --------------------------------------------------------------- */
-  .avatar {
-    @apply h-16 w-16 rounded-xl overflow-hidden shadow-inner bg-slate-100 ring-1;
-    --tw-ring-color: rgb(var(--border-rgb) / .85);
+  /* Legacy Frappe UI dialogs (kept until they migrate to overlay stack). */
+  .fui-dialog-backdrop {
+    background: rgb(var(--shade-rgb) / 0.4);
+    backdrop-filter: blur(6px);
   }
 
-  .avatar img {
-    @apply h-full w-full object-cover;
+  .fui-dialog-panel {
+    background-color: rgb(var(--surface-strong-rgb) / 1);
+    border-radius: var(--radius-xl);
+    border: 1px solid rgb(var(--border-rgb) / 0.85);
+    box-shadow: var(--shadow-overlay);
+    padding: 1rem;
+    color: rgb(var(--ink-rgb) / 1);
   }
 
+  .fui-dialog-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: rgb(var(--ink-rgb) / 1);
+  }
 
-	/* ---------------------------------------------------------------
-   	 TYPOGRAPHY SCALE — SEMANTIC HELPERS
-		--------------------------------------------------------------- */
+  .fui-dialog-body {
+    font-size: 0.875rem;
+    color: rgb(var(--slate-rgb) / 0.85);
+  }
 
+  .fui-dialog-footer {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  .content-dialog .fui-dialog-header,
+  .content-dialog .fui-dialog-title,
+  .content-dialog .fui-dialog-close {
+    display: none;
+  }
+
+  /* ============================================================
+     TYPOGRAPHY HELPERS - SEMANTIC SCALE
+     ============================================================ */
   .type-display {
     @apply font-semibold tracking-tight text-3xl md:text-4xl;
   }
@@ -140,22 +196,22 @@
 
   .type-meta {
     @apply text-sm;
-    color: rgb(var(--slate-rgb) / .80);
+    color: rgb(var(--slate-rgb) / 0.80);
   }
 
   .type-caption {
     @apply text-xs;
-    color: rgb(var(--slate-rgb) / .75);
+    color: rgb(var(--slate-rgb) / 0.75);
   }
 
   .type-overline {
     @apply text-[0.7rem] font-semibold uppercase tracking-[0.16em];
-    color: rgb(var(--slate-rgb) / .75);
+    color: rgb(var(--slate-rgb) / 0.75);
   }
 
   .type-label {
     @apply text-[0.7rem] font-semibold uppercase tracking-[0.12em];
-    color: rgb(var(--slate-rgb) / .75);
+    color: rgb(var(--slate-rgb) / 0.75);
   }
 
   .type-button-label {
@@ -166,110 +222,120 @@
     @apply text-[0.65rem] font-semibold tracking-[0.08em];
   }
 
-  /* ---------------------------------------------------------------
-     Reusable card + chip shells for analytics surfaces
-     --------------------------------------------------------------- */
+  .type-empty {
+    @apply text-xs;
+    color: rgb(var(--slate-rgb) / 0.55);
+  }
+
+  .section-header {
+    @apply text-xs font-semibold uppercase tracking-wide;
+    color: rgb(var(--slate-rgb) / 0.75);
+  }
+
+  /* ============================================================
+     SURFACES AND CARDS
+     ============================================================ */
+  .avatar {
+    @apply h-16 w-16 rounded-xl overflow-hidden;
+    background-color: rgb(var(--sky-rgb) / 0.55);
+    box-shadow: inset 0 0 0 1px rgb(var(--border-rgb) / 0.85);
+  }
+
+  .avatar img {
+    @apply h-full w-full object-cover;
+  }
+
   .card-surface {
     @apply rounded-xl border shadow-sm;
-    border-color: rgb(var(--border-rgb) / .65);
-    background: rgb(var(--surface-rgb) / .92);
+    border-color: rgb(var(--border-rgb) / 0.65);
+    background: rgb(var(--surface-rgb) / 0.92);
   }
 
-  .card-surface-muted {
-    @apply rounded-xl border shadow-sm;
-    border-color: rgb(var(--border-rgb) / .65);
-    background: rgb(var(--surface-rgb) / .88);
+  .paper-card {
+    @apply border rounded-2xl shadow-sm;
+    background-color: rgb(var(--surface-strong-rgb) / 1);
+    border-color: rgb(var(--border-rgb) / 0.90);
   }
 
+  .palette-card {
+    @apply border rounded-2xl shadow-sm overflow-hidden;
+    border-color: rgb(var(--border-rgb) / 0.90);
+    background-color: rgb(var(--surface-rgb) / 0.98);
+  }
+
+  .card-panel {
+    @apply rounded-2xl border shadow-sm;
+    border-color: rgb(var(--border-rgb) / 0.80);
+    background-color: rgb(var(--surface-rgb) / 1);
+  }
+
+  .surface-toolbar {
+    @apply rounded-2xl border px-4 py-3 shadow-sm;
+    background-color: rgb(var(--surface-rgb) / 0.92);
+    border-color: rgb(var(--border-rgb) / 0.80);
+  }
+
+  /* Header controls within the staff layout. */
+  .staff-layout__brand {
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  .staff-layout__brand-link {
+    @apply transition-colors;
+  }
+
+  .staff-layout__brand-link:hover {
+    color: rgb(var(--canopy-rgb) / 1);
+  }
+
+  .staff-layout__desk-switch {
+    @apply inline-flex items-center gap-1.5
+           px-3 py-1.5 rounded-full
+           border
+           shadow-sm transition;
+    background-color: rgb(var(--surface-strong-rgb) / 0.95);
+    border-color: rgb(var(--border-rgb) / 0.95);
+    color: rgb(var(--slate-rgb) / 0.90);
+  }
+
+  .staff-layout__desk-switch:hover {
+    border-color: rgb(var(--leaf-rgb) / 1);
+    background-color: rgb(var(--leaf-rgb) / 0.10);
+    color: rgb(var(--canopy-rgb) / 1);
+  }
+
+  /* ============================================================
+     CHIPS, TOGGLES, KPI STRIPS
+     ============================================================ */
   .chip {
     @apply inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border;
-    border-color: rgb(var(--border-rgb) / .65);
-    background: rgb(var(--surface-rgb) / .65);
-    color: rgb(var(--ink-rgb) / .75);
+    border-color: rgb(var(--border-rgb) / 0.65);
+    background: rgb(var(--surface-rgb) / 0.65);
+    color: rgb(var(--ink-rgb) / 0.75);
   }
 
   .chip-active {
-    background: #1f7a45;
-    color: #fff;
+    background: rgb(var(--leaf-rgb) / 1);
+    color: rgb(var(--surface-strong-rgb) / 1);
     border-color: transparent;
     box-shadow: var(--shadow-soft);
-  }
-
-  .chip-alert {
-    background: rgb(var(--flame-rgb) / .15);
-    color: rgb(var(--flame-rgb));
-    border-color: transparent;
-  }
-
-  /* ---------------------------------------------------------------
-     Staff portal "palette card" — focus / task list container
-     Soft shell surface, not pure white
-     --------------------------------------------------------------- */
-  .palette-card {
-    @apply border rounded-2xl shadow-sm overflow-hidden;
-    border-color: rgb(var(--border-rgb) / .90);
-    background-color: rgb(var(--surface-rgb) / .98);
-  }
-
-  /* Card shell for dense tool panels */
-  .card-panel {
-    @apply rounded-2xl border shadow-sm;
-    border-color: rgb(var(--border-rgb) / .80);
-    background-color: rgb(var(--surface-rgb));
-  }
-
-  /* Toolbar strip used atop filters */
-  .surface-toolbar {
-    @apply rounded-2xl border px-4 py-3 shadow-sm;
-    background-color: rgb(var(--surface-rgb) / .92);
-    border-color: rgb(var(--border-rgb) / .80);
-  }
-
-  /* Toolbar wrapper for analytics filters */
-  .toolbar {
-    @apply rounded-2xl border px-4 py-3 shadow-sm flex flex-wrap items-center gap-3 mb-2;
-    background-color: rgb(var(--surface-rgb) / .92);
-    border-color: rgb(var(--border-rgb) / .80);
-  }
-
-  /* Calendar/attendance card */
-  .attendance-card {
-    @apply rounded-2xl border shadow-sm;
-    border-color: rgb(var(--border-rgb) / .80);
-    background-color: rgb(var(--surface-rgb));
-  }
-
-  .attendance-card-header {
-    @apply mb-2 flex items-center justify-between gap-3;
-  }
-
-  .attendance-card-body {
-    @apply rounded-xl border px-3 py-3 shadow-inner;
-    background-color: rgb(var(--surface-rgb) / .92);
-    border-color: rgb(var(--border-rgb) / .60);
-  }
-
-  .analytics-card {
-    @apply rounded-2xl border px-4 py-4 shadow-sm;
-    background-color: rgb(var(--surface-rgb) / .96);
-    border-color: rgb(var(--border-rgb) / .85);
   }
 
   .chip-toggle {
     @apply rounded-full px-4 py-1 text-xs font-semibold transition;
-    background-color: rgb(var(--surface-rgb) / .85);
-    color: rgb(var(--ink-rgb) / .75);
+    background-color: rgb(var(--surface-rgb) / 0.85);
+    color: rgb(var(--ink-rgb) / 0.75);
   }
 
   .chip-toggle-active {
-    background-color: rgb(var(--canopy-rgb));
-    color: #fff;
+    background-color: rgb(var(--canopy-rgb) / 1);
+    color: rgb(var(--surface-strong-rgb) / 1);
     box-shadow: var(--shadow-soft);
   }
 
   .chip-toggle-muted {
-    background-color: rgb(var(--surface-rgb) / .8);
-    color: rgb(var(--ink-rgb) / .6);
+    background-color: rgb(var(--surface-rgb) / 0.8);
+    color: rgb(var(--ink-rgb) / 0.6);
   }
 
   .chip-scope {
@@ -277,59 +343,54 @@
   }
 
   .chip-scope-active {
-    background-color: rgb(var(--ink-rgb));
-    color: rgb(var(--surface-rgb));
+    background-color: rgb(var(--ink-rgb) / 1);
+    color: rgb(var(--surface-rgb) / 1);
   }
 
   .chip-scope-muted {
-    background-color: rgb(var(--surface-rgb) / .85);
-    color: rgb(var(--ink-rgb) / .65);
+    background-color: rgb(var(--surface-rgb) / 0.85);
+    color: rgb(var(--ink-rgb) / 0.65);
   }
 
   .type-chip-muted {
     @apply rounded-full px-2 py-0.5 text-[11px] font-semibold;
-    background-color: rgb(var(--surface-rgb) / .8);
-    color: rgb(var(--ink-rgb) / .6);
+    background-color: rgb(var(--surface-rgb) / 0.8);
+    color: rgb(var(--ink-rgb) / 0.6);
   }
 
-  .type-empty {
-    @apply text-xs text-slate-400;
+  .inline-chip {
+    @apply inline-flex items-center gap-1 px-2 py-1 rounded-full
+           text-xs font-medium;
   }
 
   .mini-kpi-card {
     @apply rounded-xl border px-3 py-2 shadow-sm;
-    border-color: rgb(var(--border-rgb) / .70);
-    background-color: rgb(var(--surface-rgb) / .9);
+    border-color: rgb(var(--border-rgb) / 0.70);
+    background-color: rgb(var(--surface-rgb) / 0.9);
   }
 
   .mini-kpi-card-alert {
-    background-color: rgb(var(--flame-rgb) / .1);
+    background-color: rgb(var(--flame-rgb) / 0.1);
   }
 
   .mini-kpi-label {
     @apply text-[11px] uppercase tracking-wide;
-    color: rgb(var(--ink-rgb) / .6);
+    color: rgb(var(--ink-rgb) / 0.6);
   }
 
   .mini-kpi-value {
     @apply text-base font-semibold;
-    color: rgb(var(--ink-rgb));
+    color: rgb(var(--ink-rgb) / 1);
   }
 
-  /* Keep staff CTA jacaranda pills solid without affecting non-CTA badges. */
-  .staff-shell a.bg-jacaranda {
-    background-color: rgb(var(--jacaranda-rgb));
-    color: #fff;
-  }
-
-  /* ---------------------------------------------------------------
-     Staff portal quick-action tiles
-     Stronger white card on top of the shell
-     --------------------------------------------------------------- */
+  /* ============================================================
+     ACTION TILES
+     ============================================================ */
   .action-tile {
-    @apply flex items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm
+    @apply flex items-center gap-3 rounded-2xl border p-3 shadow-sm
            transition-transform hover:-translate-y-0.5;
-    border-color: rgb(var(--border-rgb) / .90);
+    background-color: rgb(var(--surface-strong-rgb) / 1);
+    border-color: rgb(var(--border-rgb) / 0.90);
   }
 
   .action-tile:hover {
@@ -338,76 +399,80 @@
 
   .action-tile__icon {
     @apply flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold;
-    background-color: rgb(var(--sky-rgb) / .40);
-    color: rgb(var(--canopy-rgb));
+    background-color: rgb(var(--sky-rgb) / 0.40);
+    color: rgb(var(--canopy-rgb) / 1);
   }
 
-  /* ---------------------------------------------------------------
-     2. Section Header
-     --------------------------------------------------------------- */
-  .section-header {
-    @apply text-xs font-semibold uppercase tracking-wide;
-    color: rgb(var(--slate-rgb) / .75);
+  /* Keep staff CTA jacaranda pills solid without affecting non-CTA badges. */
+  .staff-shell a.bg-jacaranda {
+    background-color: rgb(var(--jacaranda-rgb) / 1);
+    color: rgb(var(--surface-strong-rgb) / 1);
   }
 
-  /* ---------------------------------------------------------------
-     3. Inline Chip
-     --------------------------------------------------------------- */
-  .inline-chip {
-    @apply inline-flex items-center gap-1 px-2 py-1 rounded-full
-           text-xs font-medium;
+  /* ============================================================
+     CALENDAR AND ATTENDANCE WIDGETS
+     ============================================================ */
+  .schedule-card {
+    position: relative;
+    border-radius: 1.5rem;
+    overflow: hidden;
   }
 
-  .inline-chip--health {
-    @apply bg-red-50 text-red-600;
+  .schedule-card::before {
+    content: '';
+    position: absolute;
+    inset: -40% -20%;
+    background:
+      radial-gradient(circle at 0 0, rgb(var(--leaf-rgb) / 0.16), transparent 60%),
+      radial-gradient(circle at 100% 0, rgb(var(--jacaranda-rgb) / 0.14), transparent 55%),
+      radial-gradient(circle at 50% 100%, rgb(var(--clay-rgb) / 0.12), transparent 55%);
+    opacity: 0.95;
+    filter: blur(40px);
+    pointer-events: none;
+    z-index: 0;
   }
 
-  .inline-chip--birthday {
-    @apply bg-amber-50 text-amber-700;
+  .schedule-card > * {
+    position: relative;
+    z-index: 1;
   }
 
-  /* ---------------------------------------------------------------
-     4. Block Card (for single attendance row)
-     Slightly raised white block
-     --------------------------------------------------------------- */
-	.block-card {
-		@apply flex flex-col gap-3 p-3 rounded-xl border shadow-sm;
-    background-color: rgb(var(--surface-rgb) / .98);
-    border-color: rgb(var(--border-rgb) / .85);
-	}
+  .attendance-card {
+    @apply rounded-2xl border shadow-sm;
+    border-color: rgb(var(--border-rgb) / 0.80);
+    background-color: rgb(var(--surface-rgb) / 1);
+  }
 
-  /* ---------------------------------------------------------------
-     5. Remark Button (blue accent)
-     --------------------------------------------------------------- */
+  .attendance-card-header {
+    @apply mb-2 flex items-center justify-between gap-3;
+  }
+
+  .attendance-card-body {
+    @apply rounded-xl border px-3 py-3 shadow-inner;
+    background-color: rgb(var(--surface-rgb) / 0.92);
+    border-color: rgb(var(--border-rgb) / 0.60);
+  }
+
   .remark-btn {
     @apply !h-9 !w-9 rounded-full border border-transparent transition;
-    color: rgb(var(--slate-rgb) / .80);
+    color: rgb(var(--slate-rgb) / 0.80);
   }
 
   .remark-btn:hover {
-    border-color: rgb(var(--jacaranda-rgb) / .30);
-    background-color: rgb(var(--jacaranda-rgb) / .10);
-    color: rgb(var(--jacaranda-rgb));
+    border-color: rgb(var(--jacaranda-rgb) / 0.30);
+    background-color: rgb(var(--jacaranda-rgb) / 0.10);
+    color: rgb(var(--jacaranda-rgb) / 1);
   }
 
-  .remark-btn--active {
-    border-color: rgb(var(--jacaranda-rgb) / .40);
-    background-color: rgb(var(--jacaranda-rgb) / .15);
-    color: rgb(var(--jacaranda-rgb));
-  }
-
-  /* -------------------------------------------
-     6. Calendar Day Cell + Legend
-     ------------------------------------------- */
   .calendar-day {
     @apply flex items-center justify-center transition-transform ease-out duration-150
            border border-transparent bg-transparent;
   }
 
   .calendar-day--selected .calendar-day__badge {
-    background: rgb(var(--jacaranda-rgb));
-    color: #fff;
-    box-shadow: 0 4px 12px rgb(var(--jacaranda-rgb) / .4);
+    background: rgb(var(--jacaranda-rgb) / 1);
+    color: rgb(var(--surface-strong-rgb) / 1);
+    box-shadow: 0 4px 12px rgb(var(--jacaranda-rgb) / 0.4);
     transform: scale(1.1);
   }
 
@@ -420,160 +485,410 @@
     font-size: 0.9rem;
   }
 
-  /* Today (outline, no fill) */
   .calendar-day__badge--today {
-    color: rgb(var(--jacaranda-rgb));
-    border-color: rgb(var(--jacaranda-rgb) / .35);
+    color: rgb(var(--jacaranda-rgb) / 1);
+    border-color: rgb(var(--jacaranda-rgb) / 0.35);
     @apply font-bold;
   }
 
-  /* Future meeting */
   .calendar-day__badge--meeting {
-    background: #fff;
-    color: rgb(var(--jacaranda-rgb));
-    border-color: rgb(var(--jacaranda-rgb));
-    box-shadow: 0 1px 2px rgb(var(--jacaranda-rgb) / .15);
+    background: rgb(var(--surface-strong-rgb) / 1);
+    color: rgb(var(--jacaranda-rgb) / 1);
+    border-color: rgb(var(--jacaranda-rgb) / 1);
+    box-shadow: 0 1px 2px rgb(var(--jacaranda-rgb) / 0.15);
   }
 
-  /* Recorded attendance */
   .calendar-day__badge--recorded {
-    background: rgb(var(--leaf-rgb) / .06);
-    color: rgb(var(--leaf-rgb));
-    border-color: rgb(var(--leaf-rgb));
-    box-shadow: 0 1px 2px rgb(var(--leaf-rgb) / .18);
+    background: rgb(var(--leaf-rgb) / 0.06);
+    color: rgb(var(--leaf-rgb) / 1);
+    border-color: rgb(var(--leaf-rgb) / 1);
+    box-shadow: 0 1px 2px rgb(var(--leaf-rgb) / 0.18);
     @apply font-semibold;
   }
 
-  /* Missing */
   .calendar-day__badge--missing {
-    background: rgb(var(--flame-rgb) / .04);
-    color: rgb(var(--flame-rgb));
-    border-color: rgb(var(--flame-rgb));
-    box-shadow: 0 0 0 1px rgb(var(--flame-rgb) / .55);
+    background: rgb(var(--flame-rgb) / 0.04);
+    color: rgb(var(--flame-rgb) / 1);
+    border-color: rgb(var(--flame-rgb) / 1);
+    box-shadow: 0 0 0 1px rgb(var(--flame-rgb) / 0.55);
     @apply font-semibold;
   }
 
-  /* Muted */
   .calendar-day__badge--muted {
-    color: rgb(var(--slate-rgb) / .35);
+    color: rgb(var(--slate-rgb) / 0.35);
   }
 
-  /* Hover for clickable meeting days
-     (was rgba(255, 255, 255, 0.96) — now rgb() with / alpha)
-  */
   .calendar-day:hover .calendar-day__badge--meeting,
   .calendar-day:hover .calendar-day__badge--recorded,
   .calendar-day:hover .calendar-day__badge--missing {
-    background: rgb(255 255 255 / .96);
+    background: rgb(var(--surface-strong-rgb) / 0.96);
     transform: translateY(-1px);
   }
 
-  /* Legend dots */
   .legend-dot {
-    @apply rounded-full border-2 border-solid bg-white;
+    @apply rounded-full border-2 border-solid;
     height: 0.9rem;
     width: 0.9rem;
+    background-color: rgb(var(--surface-strong-rgb) / 1);
   }
 
   .legend-dot--recorded {
-    border-color: rgb(var(--leaf-rgb));
+    border-color: rgb(var(--leaf-rgb) / 1);
   }
 
   .legend-dot--scheduled {
-    border-color: rgb(var(--jacaranda-rgb));
+    border-color: rgb(var(--jacaranda-rgb) / 1);
   }
 
   .legend-dot--missing {
-    border-color: rgb(var(--flame-rgb));
+    border-color: rgb(var(--flame-rgb) / 1);
   }
 
+  /* Event detail overlays (calendar modals) */
+  .meeting-modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.5rem 1.5rem 0.5rem;
+    flex-shrink: 0;
+  }
+
+  @media (min-width: 768px) {
+    .meeting-modal__header {
+      padding: 1.75rem 1.75rem 0.75rem;
+    }
+  }
+
+  .meeting-modal__headline {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .meeting-modal__eyebrow {
+    color: rgb(var(--slate-rgb) / 0.75);
+  }
+
+  .meeting-modal__time {
+    color: rgb(var(--slate-rgb) / 0.9);
+  }
+
+  .meeting-modal__timezone {
+    margin-left: 0.25rem;
+    color: rgb(var(--slate-rgb) / 0.8);
+  }
+
+  .meeting-modal__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .meeting-modal__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.15rem 0.55rem;
+    border-radius: 9999px;
+    background: rgb(var(--sand-rgb) / 0.8);
+    color: rgb(var(--canopy-rgb) / 1);
+  }
+
+  .meeting-modal__desk-link,
+  .meeting-modal__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgb(var(--jacaranda-rgb) / 1);
+    text-decoration: none;
+  }
+
+  .meeting-modal__desk-link:hover,
+  .meeting-modal__link:hover {
+    text-decoration: underline;
+  }
+
+  .meeting-modal__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    padding: 1rem 1.5rem 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .meeting-modal__body {
+      padding: 1.1rem 1.75rem 1.75rem;
+    }
+  }
+
+  .meeting-modal__meta-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .meeting-modal__meta-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .meeting-modal__label {
+    color: rgb(var(--slate-rgb) / 0.7);
+    margin-bottom: 0.15rem;
+  }
+
+  .meeting-modal__value {
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  .meeting-modal__section-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .meeting-modal__agenda-content {
+    border-radius: 0.75rem;
+    border: 1px solid rgb(var(--border-rgb) / 0.85);
+    background: rgb(var(--sky-rgb) / 0.18);
+    padding: 0.75rem 0.85rem;
+    font-size: 0.85rem;
+    color: rgb(var(--slate-rgb) / 0.95);
+  }
+
+  .meeting-modal__participants {
+    margin-top: 0.25rem;
+  }
+
+  .meeting-modal__chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.45rem;
+  }
+
+  .meeting-modal__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: rgb(var(--sky-rgb) / 0.8);
+    color: rgb(var(--canopy-rgb) / 1);
+  }
+
+  .meeting-modal__chip-role {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgb(var(--slate-rgb) / 0.9);
+  }
+
+  .meeting-modal__chip--muted {
+    background: rgb(var(--sand-rgb) / 0.9);
+    color: rgb(var(--slate-rgb) / 0.95);
+  }
+
+  .meeting-modal__empty {
+    color: rgb(var(--slate-rgb) / 0.85);
+  }
+
+  .meeting-modal__loading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 0.25rem;
+  }
+
+  .meeting-modal__skeleton {
+    border-radius: 9999px;
+    background: linear-gradient(
+      90deg,
+      rgb(var(--sky-rgb) / 0.6),
+      rgb(var(--sand-rgb) / 0.8),
+      rgb(var(--sky-rgb) / 0.6)
+    );
+    background-size: 200% 100%;
+    animation: meeting-modal-skeleton-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes meeting-modal-skeleton-pulse {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 200% 50%;
+    }
+  }
+
+  .meeting-modal__error {
+    margin-top: 0.75rem;
+    border-radius: 0.9rem;
+    border: 1px solid rgb(var(--flame-rgb) / 0.35);
+    background: rgb(var(--flame-rgb) / 0.05);
+    padding: 0.75rem 0.9rem;
+    font-size: 0.85rem;
+    color: rgb(var(--flame-rgb) / 1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .meeting-modal__cta {
+    border-radius: 9999px;
+    border: 1px solid rgb(var(--flame-rgb) / 0.85);
+    padding: 0.3rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: rgb(var(--surface-strong-rgb) / 1);
+    color: rgb(var(--flame-rgb) / 1);
+  }
+
+  .meeting-modal__cta:hover {
+    background: rgb(var(--flame-rgb) / 0.06);
+  }
+
+  .meeting-modal__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .meeting-modal__action-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 9999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid rgb(var(--leaf-rgb) / 0.9);
+    background: rgb(var(--leaf-rgb) / 1);
+    color: rgb(var(--surface-strong-rgb) / 1);
+    box-shadow: 0 6px 18px rgb(var(--leaf-rgb) / 0.28);
+  }
+
+  .meeting-modal__action-button--secondary {
+    border-color: rgb(var(--border-rgb) / 0.95);
+    background: rgb(var(--surface-strong-rgb) / 1);
+    color: rgb(var(--slate-rgb) / 0.9);
+    box-shadow: 0 3px 10px rgb(var(--ink-rgb) / 0.06);
+  }
+
+  .meeting-modal__action-button:hover {
+    transform: translateY(-1px);
+  }
+
+  .meeting-modal__color-pill {
+    height: 0.3rem;
+    width: 100%;
+    border-radius: 9999px;
+    margin-bottom: 0.9rem;
+    background: rgb(var(--jacaranda-rgb) / 0.9);
+  }
+
+  .if-overlay--meeting .if-overlay__panel {
+    border-top: 4px solid rgb(var(--jacaranda-rgb) / 0.9);
+  }
+
+  .if-overlay--meeting .meeting-modal__eyebrow {
+    color: rgb(var(--jacaranda-rgb) / 0.95);
+  }
+
+  .if-overlay--class .if-overlay__panel {
+    border-top: 4px solid rgb(var(--leaf-rgb) / 0.9);
+  }
+
+  .if-overlay--class .meeting-modal__eyebrow {
+    color: rgb(var(--leaf-rgb) / 0.95);
+  }
+
+  .if-overlay--class .meeting-modal__badge {
+    background: rgb(var(--leaf-rgb) / 0.12);
+    color: rgb(var(--leaf-rgb) / 1);
+  }
+
+  .if-overlay--school .if-overlay__panel {
+    border-top: 4px solid rgb(var(--flame-rgb) / 0.9);
+  }
+
+  .if-overlay--school .meeting-modal__eyebrow {
+    color: rgb(var(--clay-rgb) / 0.95);
+  }
+
+  .if-overlay--school .meeting-modal__badge {
+    background: rgb(var(--flame-rgb) / 0.1);
+    color: rgb(var(--flame-rgb) / 1);
+  }
+
+  .if-overlay--school .meeting-modal__color-pill {
+    background: rgb(var(--flame-rgb) / 0.9);
+  }
 
   /* ============================================================
-     ANALYTICS SHELL & CARDS (shared across all dashboards)
+     ANALYTICS SYSTEM
      ============================================================ */
-
-  /* Shell wrapping analytics content inside staff layout */
   .analytics-shell {
     @apply w-full max-w-6xl mx-auto flex flex-col px-5 py-9 sm:px-6 gap-6;
   }
 
-  /* Grid for cards – auto-fit, responsive */
-  .analytics-grid {
-    @apply grid gap-4 md:gap-6
-           grid-cols-1 md:grid-cols-2 xl:grid-cols-3;
-  }
-
-  /* Base analytics card surface */
   .analytics-card {
     @apply border rounded-2xl shadow-sm overflow-hidden p-4 sm:p-5 flex flex-col gap-3;
-    border-color: rgb(var(--border-rgb) / .90);
-    background-color: rgb(var(--surface-rgb) / .98);
+    border-color: rgb(var(--border-rgb) / 0.90);
+    background-color: rgb(var(--surface-rgb) / 0.98);
   }
 
-  /* Wide variant (for time-series / tables) */
-  .analytics-card--wide {
-    @apply md:col-span-2;
-  }
-
-  /* Card header */
   .analytics-card__title {
     @apply text-xs font-semibold uppercase tracking-wide;
-    color: rgb(var(--canopy-rgb));
+    color: rgb(var(--canopy-rgb) / 1);
   }
 
   .analytics-card__meta {
     @apply text-[0.7rem];
-    color: rgb(var(--slate-rgb) / .75);
+    color: rgb(var(--slate-rgb) / 0.75);
   }
 
-	/* Default card chart */
-	/* Avoid min-height on vue-echarts containers; it can cause ResizeObserver growth loops in grids. */
-	.analytics-chart {
-		width: 100%;
-		--analytics-chart-height: 260px;
-		height: var(--analytics-chart-height) !important; /* override vue-echarts inline height */
-	}
+  /* Avoid min-height on vue-echarts containers to prevent ResizeObserver loops. */
+  .analytics-chart {
+    width: 100%;
+    height: 260px !important;
+  }
 
   .analytics-chart--sm {
-    --analytics-chart-height: 240px;
+    height: 240px !important;
   }
 
   .analytics-chart--lg {
-    --analytics-chart-height: 280px;
+    height: 280px !important;
   }
 
   .analytics-chart--xl {
-    --analytics-chart-height: 320px;
+    height: 320px !important;
   }
 
-	/* When the card is zoomed */
-	.analytics-chart--expanded {
-		--analytics-chart-height: min(520px, 70vh); /* grows but still bounded */
-	}
-
-  /* Empty state inside a card */
-  .analytics-empty {
-    @apply text-xs mt-1;
-    color: rgb(var(--slate-rgb) / .70);
+  .analytics-chart--expanded {
+    height: min(520px, 70vh) !important;
   }
 
-  /* Filters bar for analytics pages (reuses surface-toolbar aesthetics) */
   .analytics-filters {
     @apply rounded-2xl border px-4 py-3 shadow-sm flex flex-wrap items-center gap-3 mb-4;
-    background-color: rgb(var(--surface-rgb) / .92);
-    border-color: rgb(var(--border-rgb) / .80);
-  }
-
-  .analytics-filters__title {
-    @apply text-xs font-semibold uppercase tracking-wide;
-    color: rgb(var(--slate-rgb) / .80);
+    background-color: rgb(var(--surface-rgb) / 0.92);
+    border-color: rgb(var(--border-rgb) / 0.80);
   }
 
   /* ============================================================
-     CANONICAL FILTER CONTROL SKIN (OPAQUE)
-     Apply by wrapping filter bars with .ifit-filters
+     SCOPED FILTER SKIN
      ============================================================ */
-
   .ifit-filters select,
   .ifit-filters input[type="text"],
   .ifit-filters input[type="search"],
@@ -582,92 +897,173 @@
   .ifit-filters input[type="number"],
   .ifit-filters input[type="date"],
   .ifit-filters textarea {
-    background-color: rgb(var(--sand-rgb) / .98);
-    border-color: rgb(var(--border-rgb) / .90);
+    background-color: rgb(var(--sand-rgb) / 0.98);
+    border-color: rgb(var(--border-rgb) / 0.90);
     color: rgb(var(--ink-rgb) / 1);
   }
 
-  /* If frappe-ui FormControl uses internal inputs, catch common wrappers */
   .ifit-filters .form-control,
   .ifit-filters .control-input,
   .ifit-filters [role="combobox"] {
-    background-color: rgb(var(--sand-rgb) / .98);
-    border-color: rgb(var(--border-rgb) / .90);
+    background-color: rgb(var(--sand-rgb) / 0.98);
+    border-color: rgb(var(--border-rgb) / 0.90);
     color: rgb(var(--ink-rgb) / 1);
   }
 
-  /* Hover */
   .ifit-filters select:hover,
   .ifit-filters input:hover,
   .ifit-filters textarea:hover,
   .ifit-filters .form-control:hover,
   .ifit-filters .control-input:hover,
   .ifit-filters [role="combobox"]:hover {
-    border-color: rgb(var(--jacaranda-rgb) / .25);
+    border-color: rgb(var(--jacaranda-rgb) / 0.25);
   }
 
-  /* Focus (consistent with your style direction) */
   .ifit-filters select:focus,
   .ifit-filters input:focus,
   .ifit-filters textarea:focus,
   .ifit-filters .form-control:focus-within,
   .ifit-filters [role="combobox"]:focus-visible {
-    border-color: rgb(var(--jacaranda-rgb) / .55) !important;
-    box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / .22) !important;
+    border-color: rgb(var(--jacaranda-rgb) / 0.55) !important;
+    box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / 0.22) !important;
     outline: none;
   }
 
-  /* Placeholder */
   .ifit-filters input::placeholder,
   .ifit-filters textarea::placeholder {
-    color: rgb(var(--slate-rgb) / .65);
+    color: rgb(var(--slate-rgb) / 0.65);
   }
 
-  /* Checkbox consistency (don't force background, just align focus) */
   .ifit-filters input[type="checkbox"]:focus-visible {
-    box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / .22) !important;
+    box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / 0.22) !important;
     outline: none;
   }
 
   /* ============================================================
-     DROPDOWN / OPTION LIST BACKGROUNDS (opaque, minimal)
-     Needed for teleported menus (outside .ifit-filters)
+     TELEPORTED MENU SKINS
      ============================================================ */
-
-  /* Bootstrap-like dropdowns */
   .dropdown-menu {
-    background-color: rgb(var(--sand-rgb) / .98);
-    border: 1px solid rgb(var(--border-rgb) / .90);
+    background-color: rgb(var(--sand-rgb) / 0.98);
+    border: 1px solid rgb(var(--border-rgb) / 0.90);
     color: rgb(var(--ink-rgb) / 1);
   }
 
-  /* Accessible listbox/menu patterns */
   [role="listbox"],
   [role="menu"] {
-    background-color: rgb(var(--sand-rgb) / .98);
-    border: 1px solid rgb(var(--border-rgb) / .90);
+    background-color: rgb(var(--sand-rgb) / 0.98);
+    border: 1px solid rgb(var(--border-rgb) / 0.90);
     color: rgb(var(--ink-rgb) / 1);
   }
 
-  /* Hover state */
   .dropdown-item:hover,
   .dropdown-item:focus-visible,
   [role="option"]:hover,
   [role="menuitem"]:hover {
-    background-color: rgb(var(--sky-rgb) / .28);
+    background-color: rgb(var(--sky-rgb) / 0.28);
     color: rgb(var(--ink-rgb) / 1);
   }
 
-	/* Content dialog fade, shared component skin */
-	.content-dialog-fade-enter-active,
-	.content-dialog-fade-leave-active {
-		transition: opacity 0.18s ease-out;
-	}
+  /* ============================================================
+     MISC TRANSITIONS
+     ============================================================ */
+  .content-dialog-fade-enter-active,
+  .content-dialog-fade-leave-active {
+    transition: opacity 0.18s ease-out;
+  }
 
-	.content-dialog-fade-enter-from,
-	.content-dialog-fade-leave-to {
-		opacity: 0;
-	}
+  .content-dialog-fade-enter-from,
+  .content-dialog-fade-leave-to {
+    opacity: 0;
+  }
 
+  /* ============================================================
+     LEGACY CANDIDATES - moved for audit (do not delete yet)
+     Delete only after runtime coverage / user confirmation.
+     ============================================================ */
+  .card-surface-muted {
+    @apply rounded-xl border shadow-sm;
+    border-color: rgb(var(--border-rgb) / 0.65);
+    background: rgb(var(--surface-rgb) / 0.88);
+  }
 
+  .paper-card-frosted {
+    background:
+      linear-gradient(
+        180deg,
+        rgb(var(--sky-rgb) / 0.92),
+        rgb(var(--sand-rgb) / 0.9)
+      );
+    @apply border rounded-2xl shadow-sm backdrop-blur-md;
+    border-color: rgb(var(--border-rgb) / 0.85);
+  }
+
+  .toolbar {
+    @apply rounded-2xl border px-4 py-3 shadow-sm flex flex-wrap items-center gap-3 mb-2;
+    background-color: rgb(var(--surface-rgb) / 0.92);
+    border-color: rgb(var(--border-rgb) / 0.80);
+  }
+
+  .ifitwala-popover {
+    @apply fixed z-50 max-w-xl p-4 rounded-2xl border text-sm;
+    background-color: rgb(var(--surface-strong-rgb) / 1);
+    border-color: rgb(var(--border-rgb) / 0.85);
+    box-shadow: var(--shadow-strong);
+    color: rgb(var(--slate-rgb) / 0.9);
+  }
+
+  .staff-layout__desk-switch-icon {
+    @apply h-4 w-4;
+  }
+
+  .chip-alert {
+    background: rgb(var(--flame-rgb) / 0.15);
+    color: rgb(var(--flame-rgb) / 1);
+    border-color: transparent;
+  }
+
+  .inline-chip--health {
+    background-color: rgb(var(--flame-rgb) / 0.12);
+    color: rgb(var(--flame-rgb) / 1);
+  }
+
+  .inline-chip--birthday {
+    background-color: rgb(var(--sand-rgb) / 0.65);
+    color: rgb(var(--clay-rgb) / 1);
+  }
+
+  .action-rail__grid {
+    @apply grid gap-3 mt-4 sm:gap-4
+           grid-cols-[repeat(auto-fit,minmax(14rem,1fr))];
+  }
+
+  .block-card {
+    @apply flex flex-col gap-3 p-3 rounded-xl border shadow-sm;
+    background-color: rgb(var(--surface-rgb) / 0.98);
+    border-color: rgb(var(--border-rgb) / 0.85);
+  }
+
+  .remark-btn--active {
+    border-color: rgb(var(--jacaranda-rgb) / 0.40);
+    background-color: rgb(var(--jacaranda-rgb) / 0.15);
+    color: rgb(var(--jacaranda-rgb) / 1);
+  }
+
+  .analytics-grid {
+    @apply grid gap-4 md:gap-6
+           grid-cols-1 md:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .analytics-card--wide {
+    @apply md:col-span-2;
+  }
+
+  .analytics-empty {
+    @apply text-xs mt-1;
+    color: rgb(var(--slate-rgb) / 0.70);
+  }
+
+  .analytics-filters__title {
+    @apply text-xs font-semibold uppercase tracking-wide;
+    color: rgb(var(--slate-rgb) / 0.80);
+  }
 }

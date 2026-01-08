@@ -1,43 +1,47 @@
 <template>
 	<TransitionRoot as="template" :show="open">
-		<Dialog as="div" class="meeting-modal meeting-modal--meeting" @close="emitClose">
+		<Dialog as="div" class="if-overlay if-overlay--meeting" @close="emitClose">
 			<TransitionChild
 				as="template"
-				enter="meeting-modal__fade-enter"
-				enter-from="meeting-modal__fade-from"
-				enter-to="meeting-modal__fade-to"
-				leave="meeting-modal__fade-leave"
-				leave-from="meeting-modal__fade-to"
-				leave-to="meeting-modal__fade-from"
+				enter="if-overlay__fade-enter"
+				enter-from="if-overlay__fade-from"
+				enter-to="if-overlay__fade-to"
+				leave="if-overlay__fade-leave"
+				leave-from="if-overlay__fade-to"
+				leave-to="if-overlay__fade-from"
 			>
-				<div class="meeting-modal__backdrop" />
+				<div class="if-overlay__backdrop" />
 			</TransitionChild>
 
-			<div class="meeting-modal__wrapper">
+			<div class="if-overlay__wrap">
 				<TransitionChild
 					as="template"
-					enter="meeting-modal__panel-enter"
-					enter-from="meeting-modal__panel-from"
-					enter-to="meeting-modal__panel-to"
-					leave="meeting-modal__panel-leave"
-					leave-from="meeting-modal__panel-to"
-					leave-to="meeting-modal__panel-from"
+					enter="if-overlay__panel-enter"
+					enter-from="if-overlay__panel-from"
+					enter-to="if-overlay__panel-to"
+					leave="if-overlay__panel-leave"
+					leave-from="if-overlay__panel-to"
+					leave-to="if-overlay__panel-from"
 				>
-					<DialogPanel class="meeting-modal__panel">
+					<DialogPanel class="if-overlay__panel if-overlay__panel--compact">
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
-								<p class="meeting-modal__eyebrow">Meeting</p>
-								<DialogTitle as="h3">{{ meeting?.title || 'Meeting details' }}</DialogTitle>
-								<p class="meeting-modal__time" v-if="windowLabel">
+								<p class="meeting-modal__eyebrow type-overline">Meeting</p>
+								<DialogTitle as="h3" class="type-h3">
+									{{ meeting?.title || 'Meeting details' }}
+								</DialogTitle>
+								<p class="meeting-modal__time type-meta" v-if="windowLabel">
 									{{ windowLabel }}
 									<span v-if="meeting?.timezone" class="meeting-modal__timezone">({{ meeting.timezone }})</span>
 								</p>
 							</div>
 							<div class="meeting-modal__header-actions">
-								<span v-if="meeting?.status" class="meeting-modal__badge">{{ meeting.status }}</span>
+								<span v-if="meeting?.status" class="meeting-modal__badge type-badge-label">
+									{{ meeting.status }}
+								</span>
 								<a
 									v-if="meeting"
-									class="meeting-modal__desk-link"
+									class="meeting-modal__desk-link type-caption"
 									:href="`/app/meeting/${meeting.name}`"
 									target="_blank"
 									rel="noreferrer"
@@ -45,98 +49,100 @@
 									<FeatherIcon name="external-link" class="h-4 w-4" />
 									View in Desk
 								</a>
-								<button class="meeting-modal__icon-button" aria-label="Close meeting modal" @click="emitClose">
+								<button class="if-overlay__icon-button" aria-label="Close meeting modal" @click="emitClose">
 									<FeatherIcon name="x" class="h-5 w-5" />
 								</button>
 							</div>
 						</div>
 
-						<div v-if="loading" class="meeting-modal__loading">
-							<div class="meeting-modal__skeleton h-6 w-2/3"></div>
-							<div class="meeting-modal__skeleton h-4 w-full"></div>
-							<div class="meeting-modal__skeleton h-4 w-5/6"></div>
-							<div class="meeting-modal__skeleton h-32 w-full"></div>
-						</div>
+						<div class="if-overlay__body meeting-modal__body">
+							<div v-if="loading" class="meeting-modal__loading">
+								<div class="meeting-modal__skeleton h-6 w-2/3"></div>
+								<div class="meeting-modal__skeleton h-4 w-full"></div>
+								<div class="meeting-modal__skeleton h-4 w-5/6"></div>
+								<div class="meeting-modal__skeleton h-32 w-full"></div>
+							</div>
 
-						<div v-else-if="error" class="meeting-modal__error">
-							<p>{{ error }}</p>
-							<button class="meeting-modal__cta" @click="emitClose">Close</button>
-						</div>
+							<div v-else-if="error" class="meeting-modal__error">
+								<p class="type-body">{{ error }}</p>
+								<button class="meeting-modal__cta" @click="emitClose">Close</button>
+							</div>
 
-						<div v-else-if="meeting" class="meeting-modal__body">
-							<section class="meeting-modal__meta-grid">
-								<div>
-									<p class="meeting-modal__label">Location</p>
-									<p class="meeting-modal__value">
-										{{ meeting.location || 'To be announced' }}
-									</p>
-									<a
-										v-if="meeting.virtual_link"
-										:href="meeting.virtual_link"
-										target="_blank"
-										rel="noreferrer"
-										class="meeting-modal__link"
-									>
-										<FeatherIcon name="external-link" class="h-4 w-4" />
-										Join online
-									</a>
-								</div>
-								<div>
-									<p class="meeting-modal__label">Team</p>
-									<p class="meeting-modal__value">
-										{{ meeting.team_name || meeting.team || '—' }}
-									</p>
-								</div>
-								<div>
-									<p class="meeting-modal__label">Category</p>
-									<p class="meeting-modal__value">
-										{{ meeting.meeting_category || '—' }}
-									</p>
-								</div>
-							</section>
-
-							<section class="meeting-modal__agenda">
-								<header class="meeting-modal__section-heading">
+							<div v-else-if="meeting">
+								<section class="meeting-modal__meta-grid">
 									<div>
-										<p class="meeting-modal__label">Agenda</p>
-										<p class="meeting-modal__value">Shared live from Desk</p>
+										<p class="meeting-modal__label type-label">Location</p>
+										<p class="meeting-modal__value type-body">
+											{{ meeting.location || 'To be announced' }}
+										</p>
+										<a
+											v-if="meeting.virtual_link"
+											:href="meeting.virtual_link"
+											target="_blank"
+											rel="noreferrer"
+											class="meeting-modal__link type-caption"
+										>
+											<FeatherIcon name="external-link" class="h-4 w-4" />
+											Join online
+										</a>
 									</div>
-								</header>
-								<div
-									v-if="meeting.agenda"
-									class="meeting-modal__agenda-content"
-									v-html="meeting.agenda"
-								></div>
-								<p v-else class="meeting-modal__empty">
-									This meeting doesn’t have an agenda yet. Check back soon.
-								</p>
-							</section>
-
-							<section class="meeting-modal__participants">
-								<div class="meeting-modal__section-heading">
 									<div>
-										<p class="meeting-modal__label">Participants</p>
-										<p class="meeting-modal__value">
-											{{ meeting.participant_count }} invited
+										<p class="meeting-modal__label type-label">Team</p>
+										<p class="meeting-modal__value type-body">
+											{{ meeting.team_name || meeting.team || '—' }}
 										</p>
 									</div>
-								</div>
-								<ul class="meeting-modal__chip-list">
-									<li v-for="row in visibleParticipants" :key="row.participant + row.participant_name">
-										<span class="meeting-modal__chip">
-											{{ row.participant_name || row.participant || 'Participant' }}
-											<span v-if="row.role_in_meeting" class="meeting-modal__chip-role">
-												{{ row.role_in_meeting }}
+									<div>
+										<p class="meeting-modal__label type-label">Category</p>
+										<p class="meeting-modal__value type-body">
+											{{ meeting.meeting_category || '—' }}
+										</p>
+									</div>
+								</section>
+
+								<section class="meeting-modal__agenda">
+									<header class="meeting-modal__section-heading">
+										<div>
+											<p class="meeting-modal__label type-label">Agenda</p>
+											<p class="meeting-modal__value type-body">Shared live from Desk</p>
+										</div>
+									</header>
+									<div
+										v-if="meeting.agenda"
+										class="meeting-modal__agenda-content"
+										v-html="meeting.agenda"
+									></div>
+									<p v-else class="meeting-modal__empty type-body">
+										This meeting doesn’t have an agenda yet. Check back soon.
+									</p>
+								</section>
+
+								<section class="meeting-modal__participants">
+									<div class="meeting-modal__section-heading">
+										<div>
+											<p class="meeting-modal__label type-label">Participants</p>
+											<p class="meeting-modal__value type-body">
+												{{ meeting.participant_count }} invited
+											</p>
+										</div>
+									</div>
+									<ul class="meeting-modal__chip-list">
+										<li v-for="row in visibleParticipants" :key="row.participant + row.participant_name">
+											<span class="meeting-modal__chip">
+												{{ row.participant_name || row.participant || 'Participant' }}
+												<span v-if="row.role_in_meeting" class="meeting-modal__chip-role">
+													{{ row.role_in_meeting }}
+												</span>
 											</span>
-										</span>
-									</li>
-									<li v-if="overflowCount > 0">
-										<span class="meeting-modal__chip meeting-modal__chip--muted">
-											+{{ overflowCount }} more
-										</span>
-									</li>
-								</ul>
-							</section>
+										</li>
+										<li v-if="overflowCount > 0">
+											<span class="meeting-modal__chip meeting-modal__chip--muted">
+												+{{ overflowCount }} more
+											</span>
+										</li>
+									</ul>
+								</section>
+							</div>
 						</div>
 					</DialogPanel>
 				</TransitionChild>

@@ -5,14 +5,14 @@
   <div class="ifitwala-theme">
     <header class="staff-layout__header">
       <div class="staff-layout__header-inner">
-        <h1 class="staff-layout__brand">
+        <h1 class="staff-layout__brand type-overline">
           <RouterLink :to="{ name: 'staff-home' }" class="staff-layout__brand-link">
             Staff Portal
           </RouterLink>
         </h1>
 
         <div class="flex items-center gap-3">
-          <a href="/app" class="staff-layout__desk-switch">
+          <a href="/app" class="staff-layout__desk-switch type-button-label">
             <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 d="M4 4h16v10H4zm4 14h8m-4-4v4"
@@ -26,7 +26,7 @@
             <span>Switch to Desk</span>
           </a>
 
-          <a href="/?cmd=web_logout" class="staff-layout__desk-switch" title="Logout">
+          <a href="/?cmd=web_logout" class="staff-layout__desk-switch type-button-label" title="Logout">
             <FeatherIcon name="log-out" class="h-4 w-4" />
           </a>
         </div>

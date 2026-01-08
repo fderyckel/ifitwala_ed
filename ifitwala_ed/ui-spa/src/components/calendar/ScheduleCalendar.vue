@@ -6,22 +6,22 @@
 				class="flex flex-col gap-4 border-b border-[rgb(var(--border-rgb)/0.9)] pb-4 md:flex-row md:items-center md:justify-between"
 			>
 				<div>
-					<h2 class="text-xl font-semibold text-canopy">
+					<h2 class="type-h2">
 						Your upcoming commitments
 					</h2>
-					<p class="text-sm text-[rgb(var(--slate-rgb)/0.75)]">
+					<p class="type-meta">
 						{{ subtitle }}
 					</p>
 				</div>
 
-				<div class="flex items-center gap-3 text-xs text-[rgb(var(--slate-rgb)/0.7)]">
+				<div class="flex items-center gap-3 type-caption">
 					<span v-if="lastUpdatedLabel">
 						Updated {{ lastUpdatedLabel }}
 					</span>
 					<button
 						class="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--border-rgb)/0.95)]
-						       bg-white px-3 py-1.5 text-xs font-medium text-[rgb(var(--slate-rgb)/0.9)]
-						       shadow-soft transition hover:border-[rgb(var(--leaf-rgb)/0.9)] hover:text-[rgb(var(--leaf-rgb))]"
+						       bg-white px-3 py-1.5 type-button-label text-ink/70
+						       shadow-soft transition hover:border-[rgb(var(--leaf-rgb)/0.9)] hover:text-leaf"
 						@click="handleRefresh"
 					>
 						<FeatherIcon name="refresh-cw" class="h-4 w-4" />
@@ -33,13 +33,13 @@
 			<!-- Chips row -->
 			<div class="mt-4 flex flex-wrap items-center gap-3">
 				<!-- Weekend / Full-day toggles -->
-				<div class="mr-auto flex items-center gap-3 text-xs">
+				<div class="mr-auto flex items-center gap-3">
 					<button
-						class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium transition"
+						class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 type-button-label transition"
 						:class="
 							showWeekends
-								? 'border-[rgb(var(--border-rgb)/0.9)] bg-white text-[rgb(var(--slate-rgb)/0.9)]'
-								: 'border-[rgb(var(--leaf-rgb)/0.9)] bg-[rgb(var(--leaf-rgb)/0.08)] text-[rgb(var(--canopy-rgb))]'
+								? 'border-[rgb(var(--border-rgb)/0.9)] bg-white text-ink/80'
+								: 'border-[rgb(var(--leaf-rgb)/0.9)] bg-[rgb(var(--leaf-rgb)/0.08)] text-canopy'
 						"
 						@click="showWeekends = !showWeekends"
 					>
@@ -47,11 +47,11 @@
 						{{ showWeekends ? 'Show all days' : 'Hide weekends' }}
 					</button>
 					<button
-						class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium transition"
+						class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 type-button-label transition"
 						:class="
 							showFullDay
-								? 'border-[rgb(var(--border-rgb)/0.9)] bg-white/90 text-[rgb(var(--slate-rgb)/0.9)]'
-								: 'border-[rgb(var(--leaf-rgb)/0.9)] bg-[rgb(var(--leaf-rgb)/0.08)] text-[rgb(var(--canopy-rgb))]'
+								? 'border-[rgb(var(--border-rgb)/0.9)] bg-white/90 text-ink/80'
+								: 'border-[rgb(var(--leaf-rgb)/0.9)] bg-[rgb(var(--leaf-rgb)/0.08)] text-canopy'
 						"
 						@click="showFullDay = !showFullDay"
 					>
@@ -65,11 +65,11 @@
 					v-for="chip in sourceChips"
 					:key="chip.id"
 					type="button"
-					class="group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+					class="group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 type-button-label transition"
 					:class="
 						chip.active
 							? chip.activeClass
-							: 'border-[rgb(var(--border-rgb)/0.9)] bg-white/80 text-[rgb(var(--slate-rgb)/0.7)] hover:border-[rgb(var(--border-rgb)/1)]'
+							: 'border-[rgb(var(--border-rgb)/0.9)] bg-white/80 text-ink/70 hover:border-[rgb(var(--border-rgb)/1)]'
 					"
 					@click="toggleChip(chip.id)"
 				>
@@ -79,7 +79,7 @@
 					></span>
 					{{ chip.label }}
 					<span
-						class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-[rgb(var(--slate-rgb)/0.7)]"
+						class="rounded-full bg-white/70 px-2 py-0.5 type-badge-label text-ink/70"
 					>
 						{{ chip.count }}
 					</span>
@@ -102,7 +102,7 @@
 					v-if="loading"
 					class="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-white/70 backdrop-blur"
 				>
-					<div class="flex items-center gap-2 text-sm font-medium text-[rgb(var(--slate-rgb)/0.8)]">
+					<div class="flex items-center gap-2 type-body-strong text-ink/70">
 						<FeatherIcon name="loader" class="h-4 w-4 animate-spin" />
 						Loading calendar…
 					</div>
@@ -113,14 +113,14 @@
 			<div
 				v-if="error"
 				class="mt-4 rounded-2xl border border-[rgb(var(--flame-rgb)/0.25)]
-				       bg-[rgb(var(--flame-rgb)/0.05)] px-4 py-3 text-sm text-[rgb(var(--flame-rgb))]"
+				       bg-[rgb(var(--flame-rgb)/0.05)] px-4 py-3 type-body text-flame"
 			>
 				{{ error }}
 			</div>
 			<div
 				v-else-if="isEmpty"
 				class="mt-4 rounded-2xl border border-dashed border-[rgb(var(--border-rgb)/0.9)]
-				       bg-[rgb(var(--sky-rgb)/0.45)] px-4 py-6 text-center text-sm text-[rgb(var(--slate-rgb)/0.8)]"
+				       bg-[rgb(var(--sky-rgb)/0.45)] px-4 py-6 text-center type-body text-ink/70"
 			>
 				Nothing scheduled for this range. Enjoy the calm or adjust the view to a different week.
 			</div>

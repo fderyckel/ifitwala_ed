@@ -2,7 +2,7 @@
 
 <template>
   <Teleport v-if="teleportReady" to="#overlay-root">
-    <div v-if="stack.length" class="overlay-host">
+    <div v-if="stack.length" class="if-overlay-host">
       <component
         v-for="(entry, idx) in stack"
         :key="entry.id"
@@ -44,12 +44,3 @@ function handleClose(id: string) {
   close(id)
 }
 </script>
-
-<style scoped>
-.overlay-host {
-  position: fixed;
-  inset: 0;
-  z-index: 99;
-  pointer-events: auto;
-}
-</style>

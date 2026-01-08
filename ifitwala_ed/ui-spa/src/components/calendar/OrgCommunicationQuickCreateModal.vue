@@ -1,40 +1,40 @@
 <template>
 	<TransitionRoot as="template" :show="isOpen">
-		<Dialog as="div" class="meeting-modal meeting-modal--class z-[100]" @close="handleClose">
+		<Dialog as="div" class="if-overlay if-overlay--class" @close="handleClose">
 			<TransitionChild
 				as="template"
-				enter="meeting-modal__fade-enter"
-				enter-from="meeting-modal__fade-from"
-				enter-to="meeting-modal__fade-to"
-				leave="meeting-modal__fade-leave"
-				leave-from="meeting-modal__fade-to"
-				leave-to="meeting-modal__fade-from"
+				enter="if-overlay__fade-enter"
+				enter-from="if-overlay__fade-from"
+				enter-to="if-overlay__fade-to"
+				leave="if-overlay__fade-leave"
+				leave-from="if-overlay__fade-to"
+				leave-to="if-overlay__fade-from"
 			>
-				<div class="meeting-modal__backdrop" />
+				<div class="if-overlay__backdrop" />
 			</TransitionChild>
 
-			<div class="meeting-modal__wrapper">
+			<div class="if-overlay__wrap">
 				<TransitionChild
 					as="template"
-					enter="meeting-modal__panel-enter"
-					enter-from="meeting-modal__panel-from"
-					enter-to="meeting-modal__panel-to"
-					leave="meeting-modal__panel-leave"
-					leave-from="meeting-modal__panel-to"
-					leave-to="meeting-modal__panel-from"
+					enter="if-overlay__panel-enter"
+					enter-from="if-overlay__panel-from"
+					enter-to="if-overlay__panel-to"
+					leave="if-overlay__panel-leave"
+					leave-from="if-overlay__panel-to"
+					leave-to="if-overlay__panel-from"
 				>
-					<DialogPanel class="meeting-modal__panel bg-white">
+					<DialogPanel class="if-overlay__panel if-overlay__panel--compact">
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
-								<p class="meeting-modal__eyebrow">Class announcement</p>
-								<DialogTitle as="h3">Create announcement</DialogTitle>
-								<p class="meeting-modal__time">
+								<p class="meeting-modal__eyebrow type-overline">Class announcement</p>
+								<DialogTitle as="h3" class="type-h3">Create announcement</DialogTitle>
+								<p class="meeting-modal__time type-meta">
 									Student group: {{ groupLabel }}
 								</p>
 							</div>
 
 							<button
-								class="meeting-modal__icon-button"
+								class="if-overlay__icon-button"
 								aria-label="Close modal"
 								@click="handleClose"
 							>
@@ -42,7 +42,7 @@
 							</button>
 						</div>
 
-						<div class="meeting-modal__body">
+						<div class="if-overlay__body meeting-modal__body">
 							<div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
 								<section class="space-y-4">
 									<div class="space-y-1">
@@ -72,7 +72,7 @@
 						<div>
 							<div class="flex items-center justify-between">
 								<p class="type-label">Audience</p>
-								<label class="flex cursor-pointer items-center gap-2 text-sm text-ink/80 hover:text-ink">
+								<label class="flex cursor-pointer items-center gap-2 type-body text-ink/80 hover:text-ink">
 									<input
 										v-model="form.to_guardians"
 										type="checkbox"
@@ -135,7 +135,7 @@
 							</div>
 						</div>
 
-						<div class="rounded-lg border border-dashed border-border/80 bg-white/70 px-3 py-2 text-xs text-slate-token/70">
+						<div class="rounded-lg border border-dashed border-border/80 bg-white/70 px-3 py-2 type-caption text-slate-token/70">
 							Course: <span class="font-semibold text-ink">{{ courseLabel }}</span>
 							<span v-if="sessionDateLabel"> · Date: {{ sessionDateLabel }}</span>
 						</div>
@@ -143,7 +143,7 @@
 				</div>
 			</div>
 
-				<footer class="flex flex-wrap items-center justify-end gap-2 border-t border-border/70 pt-3">
+				<footer class="if-overlay__footer flex flex-wrap items-center justify-end gap-2">
 					<Button appearance="secondary" @click="handleClose">Cancel</Button>
 					<Button
 						appearance="primary"

@@ -1,133 +1,157 @@
-@reference "tailwindcss";
-
 /* ui-spa/src/styles/app.css */
 
 /* =====================================================================
-   BASE LAYER — GLOBAL RESET (no component-level styling)
+   BASE LAYER - GLOBAL ELEMENT DEFAULTS ONLY
    ===================================================================== */
 @layer base {
   html,
   body {
     font-family: var(--font-sans);
-    @apply antialiased bg-transparent;
-    color: rgb(var(--ink-rgb));
+    color: rgb(var(--ink-rgb) / 1);
+    @apply antialiased;
   }
 
   body {
     font-feature-settings: "liga" 1, "calt" 1;
-    background-color: transparent !important;
+    background-color: transparent;
   }
 
   h1,
   h2,
   h3,
   h4 {
-    @apply font-semibold;
-    color: rgb(var(--canopy-rgb));
+    font-weight: 600;
+    color: rgb(var(--canopy-rgb) / 1);
   }
 
   strong {
-    @apply font-semibold;
+    font-weight: 600;
   }
 }
 
 /* =====================================================================
-   COMPONENTS LAYER — THEME + CARDS + DIALOGS + STRUCTURAL PATTERNS
+   UTILITIES LAYER - TINY HELPERS ONLY
    ===================================================================== */
-@layer components {
-
+@layer utilities {
   /* ---------------------------------------------------------------
-     1. STAFF SPA THEME WRAPPER (only top-level container uses this)
+     TEXT HELPERS
      --------------------------------------------------------------- */
-  .ifitwala-theme {
-    background:
-      radial-gradient(circle at 5% 5%, rgb(var(--leaf-rgb) / .32), transparent 58%),
-      radial-gradient(circle at 95% 0%, rgb(var(--jacaranda-rgb) / .26), transparent 58%),
-      radial-gradient(circle at 90% 95%, rgb(var(--moss-rgb) / .25), transparent 60%),
-      linear-gradient(
-        180deg,
-        var(--sky) 0%,
-        #f1f6f8 45%,
-        var(--sand) 100%
-      ) !important;
-    background-attachment: fixed;
-    color: rgb(var(--ink-rgb));
-    @apply min-h-screen flex flex-col;
+  .text-ink {
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  .text-ink\/30 {
+    color: rgb(var(--ink-rgb) / 0.30);
+  }
+
+  .text-ink\/40 {
+    color: rgb(var(--ink-rgb) / 0.40);
+  }
+
+  .text-ink\/60 {
+    color: rgb(var(--ink-rgb) / 0.60);
+  }
+
+  .text-ink\/70 {
+    color: rgb(var(--ink-rgb) / 0.70);
+  }
+
+  .text-ink\/75 {
+    color: rgb(var(--ink-rgb) / 0.75);
+  }
+
+  .text-ink\/80 {
+    color: rgb(var(--ink-rgb) / 0.80);
+  }
+
+  .text-ink\/90 {
+    color: rgb(var(--ink-rgb) / 0.90);
+  }
+
+  .text-canopy {
+    color: rgb(var(--canopy-rgb) / 1);
+  }
+
+  .text-leaf {
+    color: rgb(var(--leaf-rgb) / 1);
+  }
+
+  .text-flame {
+    color: rgb(var(--flame-rgb) / 1);
+  }
+
+  .text-jacaranda {
+    color: rgb(var(--jacaranda-rgb) / 1);
   }
 
   /* ---------------------------------------------------------------
-     1b. FORM CONTROL OVERRIDES (Fix missing borders)
+     SURFACE HELPERS
      --------------------------------------------------------------- */
-  input[type="text"],
-  input[type="search"],
-  input[type="password"],
-  input[type="email"],
-  input[type="number"],
-  select,
-  textarea {
-    @apply !border-slate-300;
+  .bg-ink {
+    background-color: rgb(var(--ink-rgb) / 1);
   }
 
-  input:focus,
-  select:focus,
-  textarea:focus {
-    @apply !border-slate-500 !ring-1 !ring-slate-200;
+  .bg-jacaranda {
+    background-color: rgb(var(--jacaranda-rgb) / 1);
+  }
+
+  .bg-flame {
+    background-color: rgb(var(--flame-rgb) / 1);
+  }
+
+  .bg-surface {
+    background-color: rgb(var(--surface-rgb) / 1);
+  }
+
+  .bg-surface-soft {
+    background-color: rgb(var(--surface-rgb) / 0.92);
+  }
+
+  .bg-surface-glass {
+    background-color: rgb(var(--surface-rgb) / 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   /* ---------------------------------------------------------------
-     2. PAPER CARD (default neutral card surface)
+     BORDERS, RINGS, SHADOWS
      --------------------------------------------------------------- */
-  .paper-card {
-    @apply bg-white border rounded-2xl shadow-sm;
-    border-color: rgb(var(--border-rgb) / .90);
+  .border-ink\/10 {
+    border-color: rgb(var(--ink-rgb) / 0.10);
   }
 
-  /* Frosted variant */
-  .paper-card-frosted {
-    background:
-      linear-gradient(
-        180deg,
-        rgb(var(--sky-rgb) / .92),
-        rgb(var(--sand-rgb) / .9)
-      );
-    @apply border rounded-2xl shadow-sm backdrop-blur-md;
-    border-color: rgb(var(--border-rgb) / .85);
+  .border-ink\/30 {
+    border-color: rgb(var(--ink-rgb) / 0.30);
   }
 
-  /* ---------------------------------------------------------------
-     3. FRAPPE-UI DIALOG OVERRIDES (critical)
-     --------------------------------------------------------------- */
-  .fui-dialog-backdrop {
-    @apply bg-black/40 backdrop-blur-sm;
+  .border-ink\/60 {
+    border-color: rgb(var(--ink-rgb) / 0.60);
   }
 
-  .fui-dialog-panel {
-    @apply bg-white rounded-2xl shadow-2xl border p-4;
-    border-color: rgb(var(--border-rgb) / .85);
-    color: rgb(var(--ink-rgb));
+  .border-line-soft {
+    border-color: var(--border-subtle);
   }
 
-  .fui-dialog-title {
-    @apply text-base font-semibold text-slate-900 mb-2;
+  .ring-leaf {
+    outline: 2px solid rgb(var(--leaf-rgb) / 1);
+    outline-offset: -2px;
   }
 
-  .fui-dialog-body {
-    @apply text-sm text-slate-700;
+  .ring-jacaranda {
+    outline: 2px solid rgb(var(--jacaranda-rgb) / 1);
+    outline-offset: -2px;
   }
 
-  .fui-dialog-footer {
-    @apply mt-4 flex justify-end gap-2;
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
   }
 
-  /* ContentDialog specific tweaks */
-  .content-dialog .fui-dialog-header,
-  .content-dialog .fui-dialog-title,
-  .content-dialog .fui-dialog-close {
-    display: none;
+  .shadow-strong {
+    box-shadow: var(--shadow-strong);
   }
 
   /* ---------------------------------------------------------------
-     4. Utility: Custom scrollbar (global)
+     SCROLLBARS
      --------------------------------------------------------------- */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
@@ -138,678 +162,71 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
+    background-color: rgb(var(--border-rgb) / 0.9);
     border-radius: 20px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: #94a3b8;
+    background-color: rgb(var(--slate-rgb) / 0.55);
   }
 
-  /* ---------------------------------------------------------------
-     5. BUTTON OVERRIDES (follows frappe-ui but matches palette)
-     --------------------------------------------------------------- */
-  .fui-btn-primary {
-    background: rgb(var(--leaf-rgb));
-    border-color: rgb(var(--leaf-rgb));
-    @apply text-white shadow-sm;
-  }
-  .fui-btn-primary:hover {
-    background: rgb(var(--leaf-rgb) / .85);
-  }
-
-  .fui-btn-minimal:hover {
-    background-color: rgb(var(--sky-rgb) / .30);
-    color: rgb(var(--canopy-rgb));
-  }
-
-  /* ---------------------------------------------------------------
-     5. POPOVER (birthday / health notes)
-     --------------------------------------------------------------- */
-  .ifitwala-popover {
-    @apply fixed z-50 max-w-xl p-4 rounded-2xl border bg-white shadow-xl text-sm text-slate-700 ring-1 ring-black/5;
-    border-color: rgb(var(--border-rgb) / .85);
-  }
-
-  /* ---------------------------------------------------------------
-     STAFF / STUDENT PORTAL — SCHEDULE CARD AURA
-     --------------------------------------------------------------- */
-  .schedule-card {
-    position: relative;
-    border-radius: 1.5rem;
-    overflow: hidden;
-  }
-
-  .schedule-card::before {
-    content: '';
-    position: absolute;
-    inset: -40% -20%;
-    background:
-      radial-gradient(circle at 0 0, rgb(var(--leaf-rgb) / .16), transparent 60%),
-      radial-gradient(circle at 100% 0, rgb(var(--jacaranda-rgb) / .14), transparent 55%),
-      radial-gradient(circle at 50% 100%, rgb(var(--clay-rgb) / .12), transparent 55%);
-    opacity: 0.95;
-    filter: blur(40px);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .schedule-card > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  /* ---------------------------------------------------------------
-     FULLCALENDAR SKIN (shared staff / student portal)
-     --------------------------------------------------------------- */
-	.calendar-shell .fc {
-		font-family: var(--font-sans), system-ui, -apple-system,
-			BlinkMacSystemFont, "Segoe UI", sans-serif;
-		font-size: 0.85rem;
-	}
-
-
-  .calendar-shell .fc-toolbar-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: rgb(var(--ink-rgb));
-  }
-
-  .calendar-shell .fc-button {
-    border-radius: 9999px !important;
-    border: 1px solid rgb(var(--border-rgb) / .95) !important;
-    background: #ffffff !important;
-    color: rgb(var(--ink-rgb)) !important;
-    padding: 0.3rem 0.75rem !important;
-    font-size: 0.8rem !important;
-    font-weight: 500 !important;
-  }
-
-  .calendar-shell .fc-button-active,
-  .calendar-shell .fc-button-primary:not(:disabled).fc-button-active {
-    border-color: rgb(var(--canopy-rgb) / .9) !important;
-    background: rgb(var(--canopy-rgb)) !important;
-    color: #ffffff !important;
-  }
-
-  /* Day / time grid events: soft rounded pills */
-  .calendar-shell .fc-daygrid-event,
-  .calendar-shell .fc-timegrid-event {
-    border-radius: 0.85rem !important;
-    padding: 0.3rem 0.45rem !important;
-    border: none !important;
-  }
-
-  /* Hide event time labels; keep only titles in cards/list */
-  .calendar-shell .fc-event-time,
-  .calendar-shell .fc-list-event-time {
+  .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
 
-  /* Remove little dot in list view */
-  .calendar-shell .fc-list-event-dot {
-    border-color: transparent !important;
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
-  /* ---------------------------------------------------------------
-     PORTAL MODALS — MEETING / CLASS / SCHOOL EVENT
-     --------------------------------------------------------------- */
-
-  /* Root dialog wrapper */
-  .meeting-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-  }
-
-  .meeting-modal__backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.45); /* slate-ish overlay */
-    backdrop-filter: blur(6px);
-  }
-
-  .meeting-modal__wrapper {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 1.5rem 1rem;
-    pointer-events: none;
-  }
-
-  @media (min-width: 768px) {
-    .meeting-modal__wrapper {
-      align-items: center;
-      padding: 2rem;
-    }
-  }
-
-  .meeting-modal__panel {
-    pointer-events: auto;
-    width: 100%;
-    max-width: 40rem;
-    max-height: calc(100vh - 2.5rem);
-    border-radius: 1.5rem;
-    background:
-      radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / .9), transparent 65%),
-      radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / .9), transparent 65%),
-      #ffffff;
-    border: 1px solid rgb(var(--border-rgb) / .9);
-    box-shadow: 0 18px 45px rgba(7, 16, 25, 0.18);
-    padding: 1.5rem 1.5rem 1.25rem;
-    color: rgb(var(--ink-rgb));
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  @media (min-width: 768px) {
-    .meeting-modal__panel {
-      padding: 1.75rem 1.75rem 1.5rem;
-    }
-  }
-
-  .meeting-modal__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    flex-shrink: 0;
-  }
-
-  .meeting-modal__headline {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .meeting-modal__eyebrow {
-    font-size: 0.7rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    font-weight: 600;
-    color: rgb(var(--slate-rgb) / .75);
-  }
-
-  .meeting-modal__time {
-    font-size: 0.8rem;
-    color: rgb(var(--slate-rgb) / .9);
-  }
-
-  .meeting-modal__timezone {
-    margin-left: 0.25rem;
-    color: rgb(var(--slate-rgb) / .8);
-  }
-
-  .meeting-modal__header-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .meeting-modal__icon-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 2rem;
-    width: 2rem;
-    border-radius: 9999px;
-    border: 1px solid rgb(var(--border-rgb) / .9);
-    background: #ffffff;
-    color: rgb(var(--slate-rgb) / .9);
-    transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
-  }
-
-  .meeting-modal__icon-button:hover {
-    border-color: rgb(var(--leaf-rgb) / .9);
-    color: rgb(var(--canopy-rgb));
-    transform: translateY(-1px);
-  }
-
-  .meeting-modal__badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.15rem 0.55rem;
-    border-radius: 9999px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    background: rgb(var(--sand-rgb) / .8);
-    color: rgb(var(--canopy-rgb));
-  }
-
-  .meeting-modal__desk-link,
-  .meeting-modal__link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: rgb(var(--jacaranda-rgb));
-    text-decoration: none;
-  }
-
-  .meeting-modal__desk-link:hover,
-  .meeting-modal__link:hover {
-    text-decoration: underline;
-  }
-
-  .meeting-modal__body {
-    margin-top: 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.75rem;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding-right: 0.25rem;
-  }
-
-  .meeting-modal__meta-grid {
-    display: grid;
-    gap: 1rem;
-  }
-
-  @media (min-width: 640px) {
-    .meeting-modal__meta-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-  }
-
-  .meeting-modal__label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: rgb(var(--slate-rgb) / .7);
-    margin-bottom: 0.15rem;
-    font-weight: 600;
-  }
-
-  .meeting-modal__value {
-    font-size: 0.85rem;
-    color: rgb(var(--ink-rgb));
-  }
-
-  .meeting-modal__section-heading {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-bottom: 0.35rem;
-  }
-
-  .meeting-modal__agenda-content {
-    border-radius: 0.75rem;
-    border: 1px solid rgb(var(--border-rgb) / .85);
-    background: rgb(var(--sky-rgb) / .18);
-    padding: 0.75rem 0.85rem;
-    font-size: 0.85rem;
-    color: rgb(var(--slate-rgb) / .95);
-  }
-
-  .meeting-modal__participants {
-    margin-top: 0.25rem;
-  }
-
-  .meeting-modal__chip-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-top: 0.45rem;
-  }
-
-  .meeting-modal__chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.15rem 0.6rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    background: rgb(var(--sky-rgb) / .8);
-    color: rgb(var(--canopy-rgb));
-  }
-
-  .meeting-modal__chip-role {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgb(var(--slate-rgb) / .9);
-  }
-
-  .meeting-modal__chip--muted {
-    background: rgb(var(--sand-rgb) / .9);
-    color: rgb(var(--slate-rgb) / .95);
-  }
-
-  .meeting-modal__empty {
-    font-size: 0.8rem;
-    color: rgb(var(--slate-rgb) / .85);
-  }
-
-  .meeting-modal__loading {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    margin-top: 0.25rem;
-  }
-
-  .meeting-modal__skeleton {
-    border-radius: 9999px;
-    background: linear-gradient(
-      90deg,
-      rgb(var(--sky-rgb) / .6),
-      rgb(var(--sand-rgb) / .8),
-      rgb(var(--sky-rgb) / .6)
-    );
-    background-size: 200% 100%;
-    animation: meeting-modal-skeleton-pulse 1.4s ease-in-out infinite;
-  }
-
-  @keyframes meeting-modal-skeleton-pulse {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 200% 50%; }
-  }
-
-  .meeting-modal__error {
-    margin-top: 0.75rem;
-    border-radius: 0.9rem;
-    border: 1px solid rgb(var(--flame-rgb) / .35);
-    background: rgb(var(--flame-rgb) / .05);
-    padding: 0.75rem 0.9rem;
-    font-size: 0.85rem;
-    color: rgb(var(--flame-rgb));
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-
-  .meeting-modal__cta {
-    border-radius: 9999px;
-    border: 1px solid rgb(var(--flame-rgb) / .85);
-    padding: 0.3rem 0.9rem;
-    font-size: 0.8rem;
-    font-weight: 500;
-    background: #ffffff;
-    color: rgb(var(--flame-rgb));
-  }
-
-  .meeting-modal__cta:hover {
-    background: rgb(var(--flame-rgb) / .06);
-  }
-
-  /* Action row at the bottom of the class modal */
-  .meeting-modal__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-  }
-
-  .meeting-modal__action-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    border-radius: 9999px;
-    padding: 0.4rem 0.9rem;
-    font-size: 0.8rem;
-    font-weight: 500;
-    text-decoration: none;
-    border: 1px solid rgb(var(--leaf-rgb) / .9);
-    background: rgb(var(--leaf-rgb));
-    color: #ffffff;
-    box-shadow: 0 6px 18px rgba(31, 122, 69, 0.28);
-  }
-
-  .meeting-modal__action-button--secondary {
-    border-color: rgb(var(--border-rgb) / .95);
-    background: #ffffff;
-    color: rgb(var(--slate-rgb) / .9);
-    box-shadow: 0 3px 10px rgba(7, 16, 25, 0.06);
-  }
-
-  .meeting-modal__action-button:hover {
-    transform: translateY(-1px);
-  }
-
-  /* School event color pill */
-  .meeting-modal__color-pill {
-    height: 0.3rem;
-    width: 100%;
-    border-radius: 9999px;
-    margin-bottom: 0.9rem;
-    background: rgb(var(--jacaranda-rgb) / .9);
-  }
-
-  /* ---- Enter / leave transitions for overlay & panel ---- */
-
-  .meeting-modal__fade-enter,
-  .meeting-modal__fade-leave {
-    transition: opacity 160ms ease-out;
-  }
-  .meeting-modal__fade-from {
-    opacity: 0;
-  }
-  .meeting-modal__fade-to {
-    opacity: 1;
-  }
-
-  .meeting-modal__panel-enter,
-  .meeting-modal__panel-leave {
-    transition: opacity 180ms ease-out, transform 180ms ease-out;
-  }
-  .meeting-modal__panel-from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.98);
-  }
-  .meeting-modal__panel-to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-
-  /* ---------------------------------------------------------------
-     TYPE VARIANTS — DIFFERENTIATE VISUALLY BY CONTEXT
-     --------------------------------------------------------------- */
-
-  /* Meetings = jacaranda accent */
-  .meeting-modal--meeting .meeting-modal__panel {
-    border-top: 4px solid rgb(var(--jacaranda-rgb) / .9);
-  }
-  .meeting-modal--meeting .meeting-modal__eyebrow {
-    color: rgb(var(--jacaranda-rgb) / .95);
-  }
-
-  /* Scheduled class = leaf / canopy accent */
-  .meeting-modal--class .meeting-modal__panel {
-    border-top: 4px solid rgb(var(--leaf-rgb) / .9);
-  }
-  .meeting-modal--class .meeting-modal__eyebrow {
-    color: rgb(var(--leaf-rgb) / .95);
-  }
-  .meeting-modal--class .meeting-modal__badge {
-    background: rgb(var(--leaf-rgb) / .12);
-    color: rgb(var(--leaf-rgb));
-  }
-
-  /* School event = clay / flame accent */
-  .meeting-modal--school .meeting-modal__panel {
-    border-top: 4px solid rgb(var(--flame-rgb) / .9);
-  }
-  .meeting-modal--school .meeting-modal__eyebrow {
-    color: rgb(var(--clay-rgb) / .95);
-  }
-  .meeting-modal--school .meeting-modal__badge {
-    background: rgb(var(--flame-rgb) / .1);
-    color: rgb(var(--flame-rgb));
-  }
-  .meeting-modal--school .meeting-modal__color-pill {
-    /* eventColor inline style still wins; this is the fallback */
-    background: rgb(var(--flame-rgb) / .9);
-  }
-
-
-}
-
-/* =====================================================================
-   UTILITIES LAYER — REUSABLE helpers (NO component styling here)
-   ===================================================================== */
-@layer utilities {
-
-  /* TEXT HELPERS */
-  .text-ink {
-    color: rgb(var(--ink-rgb) / 1);
-  }
-
-  .text-ink\/30 {
-    color: rgb(var(--ink-rgb) / .30);
-  }
-
-  .text-ink\/40 {
-    color: rgb(var(--ink-rgb) / .40);
-  }
-
-  .text-ink\/60 {
-    color: rgb(var(--ink-rgb) / .60);
-  }
-
+  /* ============================================================
+     LEGACY CANDIDATES - moved for audit (do not delete yet)
+     Delete only after runtime coverage / user confirmation.
+     ============================================================ */
   .text-ink\/65 {
-    color: rgb(var(--ink-rgb) / .65);
-  }
-
-  .text-ink\/70 {
-    color: rgb(var(--ink-rgb) / .70);
-  }
-
-  .text-ink\/75 {
-    color: rgb(var(--ink-rgb) / .75);
-  }
-
-  .text-ink\/80 {
-    color: rgb(var(--ink-rgb) / .80);
-  }
-
-  .text-ink\/90 {
-    color: rgb(var(--ink-rgb) / .90);
-  }
-
-  .text-canopy {
-    color: rgb(var(--canopy-rgb));
-  }
-
-  /* INK SURFACES */
-  .bg-ink {
-    background-color: rgb(var(--ink-rgb) / 1);
-  }
-
-  /* ACCENT SURFACES (ensure solid tokens for zipper + badges) */
-  .bg-jacaranda {
-    --tw-bg-opacity: 1;
-    background-color: rgb(var(--jacaranda-rgb) / var(--tw-bg-opacity));
-  }
-
-  .bg-flame {
-    --tw-bg-opacity: 1;
-    background-color: rgb(var(--flame-rgb) / var(--tw-bg-opacity));
+    color: rgb(var(--ink-rgb) / 0.65);
   }
 
   .bg-ink\/10 {
-    background-color: rgb(var(--ink-rgb) / .10);
+    background-color: rgb(var(--ink-rgb) / 0.10);
   }
 
   .bg-ink\/80 {
-    background-color: rgb(var(--ink-rgb) / .80);
+    background-color: rgb(var(--ink-rgb) / 0.80);
+  }
+
+  .bg-surface-strong {
+    background-color: rgb(var(--surface-strong-rgb) / 1);
+  }
+
+  .bg-sky-gradient {
+    background: linear-gradient(
+      180deg,
+      rgb(var(--sky-rgb) / 1),
+      rgb(var(--sand-rgb) / 1)
+    );
   }
 
   .border-ink {
     border-color: rgb(var(--ink-rgb) / 1);
   }
 
-  .border-ink\/10 {
-    border-color: rgb(var(--ink-rgb) / .10);
-  }
-
-  .border-ink\/30 {
-    border-color: rgb(var(--ink-rgb) / .30);
-  }
-
-  .border-ink\/60 {
-    border-color: rgb(var(--ink-rgb) / .60);
-  }
-
-  .border-line-soft {
-    border-color: var(--border-subtle);
-  }
-
   .outline-ink {
     outline-color: rgb(var(--ink-rgb) / 1);
   }
 
-  /* GRADIENT HELPERS */
-  .bg-sky-gradient {
-    background: linear-gradient(180deg, var(--sky), var(--sand));
-  }
-
-  /* RINGS */
-  .ring-leaf {
-    outline: 2px solid rgb(var(--leaf-rgb));
-    outline-offset: -2px;
-  }
-
-  .ring-jacaranda {
-    outline: 2px solid rgb(var(--jacaranda-rgb));
-    outline-offset: -2px;
-  }
-
   .ring-flame {
-    outline: 2px solid rgb(var(--flame-rgb));
+    outline: 2px solid rgb(var(--flame-rgb) / 1);
     outline-offset: -2px;
   }
 
-  /* ELEVATION */
-  .shadow-soft {
-    box-shadow: var(--shadow-soft);
-  }
-
-  .shadow-strong {
-    box-shadow: var(--shadow-strong);
-  }
-
-  /* RADIUS TOKENS */
   .rounded-xl-token {
     border-radius: var(--radius-xl);
   }
+
   .rounded-lg-token {
     border-radius: var(--radius-lg);
-  }
-
-  /* SURFACE HELPERS (explicit classes to satisfy @apply) */
-  .bg-surface {
-    background-color: rgb(var(--surface-rgb));
-  }
-  .bg-surface-soft {
-    background-color: rgb(var(--surface-rgb) / .92);
-  }
-  .bg-surface-glass {
-    background-color: rgb(var(--surface-rgb) / .85);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-  }
-  .bg-surface-strong {
-    background-color: rgb(var(--surface-strong-rgb));
-  }
-
-  /* SCROLLBAR */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
   }
 }
