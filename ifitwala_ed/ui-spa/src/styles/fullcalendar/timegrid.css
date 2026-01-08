@@ -4,7 +4,7 @@
 @layer components {
   .calendar-shell .fc-timegrid .fc-timegrid-slot {
     border-bottom: 1px dashed rgb(var(--border-rgb) / 0.7);
-    height: 42.5px;
+    height: 56px;
   }
 
   .calendar-shell .fc-timegrid .fc-timegrid-axis-cushion {
