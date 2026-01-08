@@ -1,10 +1,11 @@
 // ui-spa/src/composables/useOverlayStack.ts
-
 import { computed, reactive } from 'vue'
 
 export type OverlayType =
   | 'create-task'
   | 'meeting-event'
+  | 'school-event'
+  | 'class-event'
 
 export type OverlayEntry = {
   id: string

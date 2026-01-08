@@ -1,7 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue -->
 <template>
 	<TransitionRoot as="template" :show="open">
-		<Dialog as="div" class="if-overlay if-overlay--class" @close="emitClose">
+		<Dialog
+			as="div"
+			class="if-overlay if-overlay--class"
+			:style="overlayStyle"
+			@close="emitClose"
+		>
 			<TransitionChild
 				as="template"
 				enter="if-overlay__fade-enter"
@@ -29,10 +34,10 @@
 							<div class="meeting-modal__headline">
 								<p class="meeting-modal__eyebrow type-overline">Class</p>
 								<DialogTitle as="h3" class="type-h3">
-									{{ event?.title || 'Class' }}
+									{{ data?.title || 'Class' }}
 								</DialogTitle>
-								<p v-if="event?.course_name" class="meeting-modal__time type-meta">
-									{{ event.course_name }}
+								<p v-if="data?.course_name" class="meeting-modal__time type-meta">
+									{{ data.course_name }}
 								</p>
 							</div>
 							<button class="if-overlay__icon-button" aria-label="Close class modal" @click="emitClose">
@@ -53,15 +58,15 @@
 								<button class="meeting-modal__cta" @click="emitClose">Close</button>
 							</div>
 
-							<div v-else-if="event">
+							<div v-else-if="data">
 								<section class="meeting-modal__meta-grid">
 									<div>
 										<p class="meeting-modal__label type-label">Type</p>
-										<p class="meeting-modal__value type-body">{{ event.class_type || 'Course' }}</p>
+										<p class="meeting-modal__value type-body">{{ data.class_type || 'Course' }}</p>
 									</div>
 									<div>
 										<p class="meeting-modal__label type-label">Program</p>
-										<p class="meeting-modal__value type-body">{{ event.program || '—' }}</p>
+										<p class="meeting-modal__value type-body">{{ data.program || '—' }}</p>
 									</div>
 									<div>
 										<p class="meeting-modal__label type-label">Course</p>
@@ -69,7 +74,7 @@
 									</div>
 									<div>
 										<p class="meeting-modal__label type-label">Cohort</p>
-										<p class="meeting-modal__value type-body">{{ event.cohort || '—' }}</p>
+										<p class="meeting-modal__value type-body">{{ data.cohort || '—' }}</p>
 									</div>
 								</section>
 
@@ -77,20 +82,20 @@
 									<div>
 										<p class="meeting-modal__label type-label">Rotation Day</p>
 										<p class="meeting-modal__value type-body">
-											{{ event.rotation_day !== null && event.rotation_day !== undefined ? `Day ${event.rotation_day}` : '—' }}
+											{{ data.rotation_day !== null && data.rotation_day !== undefined ? `Day ${data.rotation_day}` : '—' }}
 										</p>
 									</div>
 									<div>
 										<p class="meeting-modal__label type-label">Block</p>
-										<p class="meeting-modal__value type-body">{{ event.block_label || '—' }}</p>
+										<p class="meeting-modal__value type-body">{{ data.block_label || '—' }}</p>
 									</div>
 									<div>
 										<p class="meeting-modal__label type-label">Location</p>
-										<p class="meeting-modal__value type-body">{{ event.location || 'To be announced' }}</p>
+										<p class="meeting-modal__value type-body">{{ data.location || 'To be announced' }}</p>
 									</div>
 									<div>
 										<p class="meeting-modal__label type-label">School</p>
-										<p class="meeting-modal__value type-body">{{ event.school || '—' }}</p>
+										<p class="meeting-modal__value type-body">{{ data.school || '—' }}</p>
 									</div>
 								</section>
 
@@ -103,7 +108,7 @@
 									</header>
 									<p class="meeting-modal__value type-body">
 										{{ timeLabel }}
-										<span v-if="event?.timezone" class="meeting-modal__timezone">({{ event.timezone }})</span>
+										<span v-if="data?.timezone" class="meeting-modal__timezone">({{ data.timezone }})</span>
 									</p>
 								</section>
 
@@ -117,6 +122,7 @@
 										<FeatherIcon name="check-square" class="h-4 w-4" />
 										Take Attendance
 									</RouterLink>
+
 									<RouterLink
 										class="meeting-modal__action-button meeting-modal__action-button--secondary"
 										:to="gradebookLink"
@@ -126,18 +132,20 @@
 										<FeatherIcon name="book-open" class="h-4 w-4" />
 										Open Gradebook
 									</RouterLink>
+
 									<button
 										type="button"
 										class="meeting-modal__action-button meeting-modal__action-button--secondary"
-										@click="emit('create-announcement')"
+										@click="emitCreateAnnouncement"
 									>
 										<FeatherIcon name="message-square" class="h-4 w-4" />
 										Create Announcement
 									</button>
+
 									<button
 										type="button"
 										class="meeting-modal__action-button meeting-modal__action-button--secondary"
-										@click="emit('create-task')"
+										@click="emitCreateTask"
 									>
 										<FeatherIcon name="clipboard" class="h-4 w-4" />
 										Create Task
@@ -159,83 +167,135 @@ import {
 	DialogTitle,
 	TransitionChild,
 	TransitionRoot,
-} from '@headlessui/vue';
-import { FeatherIcon } from 'frappe-ui';
-import { computed } from 'vue';
-import { RouterLink } from 'vue-router';
+} from '@headlessui/vue'
+import { FeatherIcon } from 'frappe-ui'
+import { computed, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 
-import type { ClassEventDetails } from './classEventTypes';
+import { api } from '@/lib/client'
+import type { ClassEventDetails } from './classEventTypes'
 
 const props = defineProps<{
-	open: boolean;
-	loading: boolean;
-	error: string | null;
-	event: ClassEventDetails | null;
-}>();
+	open: boolean
+	zIndex?: number
+	eventId?: string | null
+}>()
 
 const emit = defineEmits<{
-	(e: 'close'): void;
-	(e: 'create-announcement'): void;
-	(e: 'create-task'): void;
-}>();
+	(e: 'close'): void
+	(e: 'create-announcement', event: ClassEventDetails): void
+	(e: 'create-task', payload: { studentGroup: string; dueDate: string | null }): void
+}>()
 
-const courseLabel = computed(() => props.event?.course_name || props.event?.course || '—');
+const overlayStyle = computed(() => {
+	return props.zIndex ? ({ zIndex: props.zIndex } as Record<string, any>) : undefined
+})
+
+const loading = ref(false)
+const error = ref<string | null>(null)
+const data = ref<ClassEventDetails | null>(null)
+
+let requestSeq = 0
+
+watch(
+	() => [props.open, props.eventId] as const,
+	async ([isOpen, eventId]) => {
+		if (!isOpen) return
+		if (!eventId) {
+			loading.value = false
+			error.value = 'Could not determine which class was clicked. Please refresh and try again.'
+			data.value = null
+			return
+		}
+
+		loading.value = true
+		error.value = null
+		data.value = null
+
+		const seq = ++requestSeq
+		try {
+			const payload = (await api('ifitwala_ed.api.calendar.get_student_group_event_details', {
+				event_id: eventId,
+			})) as ClassEventDetails
+
+			if (seq === requestSeq) {
+				data.value = payload
+			}
+		} catch (err) {
+			if (seq === requestSeq) {
+				error.value = err instanceof Error ? err.message : 'Unable to load class details right now.'
+			}
+		} finally {
+			if (seq === requestSeq) {
+				loading.value = false
+			}
+		}
+	},
+	{ immediate: true }
+)
+
+const courseLabel = computed(() => data.value?.course_name || data.value?.course || '—')
 
 const sessionDateLabel = computed(() => {
-	if (!props.event?.session_date) return '';
+	if (!data.value?.session_date) return ''
 	try {
-		const date = new Date(props.event.session_date);
+		const date = new Date(data.value.session_date)
 		return new Intl.DateTimeFormat(undefined, {
 			weekday: 'long',
 			month: 'long',
 			day: 'numeric',
 			year: 'numeric',
-		}).format(date);
+		}).format(date)
 	} catch {
-		return props.event.session_date;
+		return data.value.session_date ?? ''
 	}
-});
+})
+
+function safeDate(value?: string | null) {
+	if (!value) return null
+	const date = new Date(value)
+	if (Number.isNaN(date.getTime())) return null
+	return date
+}
 
 const timeLabel = computed(() => {
-	const start = safeDate(props.event?.start);
-	if (!start) return 'Time to be confirmed';
-	const end = safeDate(props.event?.end);
-	const timezone = props.event?.timezone || undefined;
+	const start = safeDate(data.value?.start)
+	if (!start) return 'Time to be confirmed'
+	const end = safeDate(data.value?.end)
+	const timezone = data.value?.timezone || undefined
 	const formatter = new Intl.DateTimeFormat(undefined, {
 		hour: 'numeric',
 		minute: '2-digit',
 		timeZone: timezone,
-	});
-	if (!end) {
-		return formatter.format(start);
-	}
-	return `${formatter.format(start)} – ${formatter.format(end)}`;
-});
+	})
+	if (!end) return formatter.format(start)
+	return `${formatter.format(start)} – ${formatter.format(end)}`
+})
 
 const attendanceLink = computed(() => {
-	if (!props.event?.student_group) return { name: 'staff-attendance' };
-	return {
-		name: 'staff-attendance',
-		query: { student_group: props.event.student_group },
-	};
-});
+	if (!data.value?.student_group) return { name: 'staff-attendance' }
+	return { name: 'staff-attendance', query: { student_group: data.value.student_group } }
+})
 
 const gradebookLink = computed(() => {
-	if (!props.event?.student_group) return { name: 'staff-gradebook' };
-	return {
-		name: 'staff-gradebook',
-		query: { student_group: props.event.student_group },
-	};
-});
-
-function safeDate(value?: string | null) {
-	if (!value) return null;
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) return null;
-	return date;
-}
+	if (!data.value?.student_group) return { name: 'staff-gradebook' }
+	return { name: 'staff-gradebook', query: { student_group: data.value.student_group } }
+})
 
 function emitClose() {
-	emit('close');
+	emit('close')
+}
+
+function emitCreateAnnouncement() {
+	if (!data.value) return
+	emit('create-announcement', data.value)
+}
+
+function emitCreateTask() {
+	if (!data.value?.student_group) return
+	emit('create-task', {
+		studentGroup: data.value.student_group,
+		dueDate: data.value.end || data.value.start || null,
+	})
 }
 </script>

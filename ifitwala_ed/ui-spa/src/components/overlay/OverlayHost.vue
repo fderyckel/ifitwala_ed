@@ -1,7 +1,7 @@
 <!-- ui-spa/src/components/overlay/OverlayHost.vue -->
 <template>
   <Teleport v-if="teleportReady" to="#overlay-root">
-    <div v-if="stack.length" class="overlay-host">
+    <div v-if="stack.length" class="if-overlay-host">
       <component
         v-for="(entry, idx) in stack"
         :key="entry.id"
@@ -20,10 +20,14 @@ import { onMounted, ref } from 'vue'
 import { useOverlayStack, type OverlayType } from '@/composables/useOverlayStack'
 
 import CreateTaskDeliveryOverlay from '@/components/tasks/CreateTaskDeliveryOverlay.vue'
-import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue' // ✅ now used as overlay-rendered
+import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue'
+import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue'
+import ClassEventModal from '@/components/calendar/ClassEventModal.vue'
 
 const { stack, close } = useOverlayStack()
 
+// Keep z-index explicit in the stack.
+// (Base here is higher than page content; panel z-index is set inline on each overlay root.)
 const baseZ = 60
 const zStep = 10
 
@@ -38,6 +42,10 @@ function resolveComponent(type: OverlayType) {
       return CreateTaskDeliveryOverlay
     case 'meeting-event':
       return MeetingEventModal
+    case 'school-event':
+      return SchoolEventModal
+    case 'class-event':
+      return ClassEventModal
     default:
       return CreateTaskDeliveryOverlay
   }
@@ -47,12 +55,3 @@ function handleClose(id: string) {
   close(id)
 }
 </script>
-
-<style scoped>
-.overlay-host {
-  position: fixed;
-  inset: 0;
-  z-index: 99;
-  pointer-events: auto;
-}
-</style>

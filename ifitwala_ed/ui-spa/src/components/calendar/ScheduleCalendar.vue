@@ -127,28 +127,6 @@
 		</section>
 
 		<!-- ============================================================
-		     LEGACY MODALS (PHASE 0)
-		     - Keep these as-is for now.
-		     - They are HeadlessUI already and stable.
-		     ============================================================ -->
-		<SchoolEventModal
-			:open="schoolEventModal.open"
-			:loading="schoolEventModal.loading"
-			:error="schoolEventModal.error"
-			:event="schoolEventModal.data"
-			@close="closeSchoolEventModal"
-		/>
-		<ClassEventModal
-			:open="classEventModal.open"
-			:loading="classEventModal.loading"
-			:error="classEventModal.error"
-			:event="classEventModal.data"
-			@close="closeClassEventModal"
-			@create-announcement="openOrgCommunicationModal"
-			@create-task="openTaskCreationModal"
-		/>
-
-		<!-- ============================================================
 		     LEGACY FRAPPE-UI MODAL (PHASE 0) — still OK
 		     (We did NOT refactor this to overlay stack yet.)
 		     ============================================================ -->
@@ -159,30 +137,28 @@
 		/>
 
 		<!-- ============================================================
-		     IMPORTANT (PHASE 0):
-		     Remove legacy CreateTaskDeliveryModal from this page entirely.
-		     Create-task is now rendered ONLY by OverlayHost (global).
+		     PHASE 0 RULE:
+		     - Meeting / School Event / Class Event are OVERLAYS (overlay stack).
+		     - Create-task is also an OVERLAY (overlay stack).
+		     - This page does NOT mount any HeadlessUI event dialogs anymore.
 		     ============================================================ -->
 	</div>
 </template>
 
 <script setup lang="ts">
 /**
- * ScheduleCalendar.vue (Phase 0 overlay foundation refactor)
+ * ScheduleCalendar.vue (Overlay stack refactor)
  *
- * What changes in Phase 0:
- *  - Stop mounting CreateTaskDeliveryModal here (legacy Frappe-UI dialog).
- *  - Use the global overlay stack to open the create-task overlay:
- *      overlay.open('create-task', { prefillStudentGroup, prefillDueDate, ... })
- *  - Keep all other modals unchanged for now.
+ * Truth now:
+ *  - Meeting / School Event / Class Event details open via the global overlay stack.
+ *  - Overlays fetch and own their own data (ScheduleCalendar passes only IDs).
+ *  - Create-task opens via overlay stack (rendered only by OverlayHost).
  *
- * Why:
- *  - Running two dialog systems (HeadlessUI + Frappe-UI) in the same view
- *    leads to focus-trap conflicts and "transparent / empty" overlays.
- *  - OverlayHost becomes the single renderer for create-task.
+ * Still legacy (Phase 0):
+ *  - OrgCommunicationQuickCreateModal remains a local Frappe-UI modal for now.
  */
 
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -192,19 +168,11 @@ import { FeatherIcon } from 'frappe-ui';
 
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
-import { api } from '@/lib/client';
 
-import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue';
-import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue';
-import ClassEventModal from '@/components/calendar/ClassEventModal.vue';
 import OrgCommunicationQuickCreateModal from '@/components/calendar/OrgCommunicationQuickCreateModal.vue';
 
-// ✅ Phase 0 overlay stack usage
+// ✅ Overlay stack (single renderer via OverlayHost teleported to #overlay-root)
 import { useOverlayStack } from '@/composables/useOverlayStack';
-
-import type { MeetingDetails } from '@/components/calendar/meetingTypes';
-import type { SchoolEventDetails } from '@/components/calendar/schoolEventTypes';
-import type { ClassEventDetails } from '@/components/calendar/classEventTypes';
 
 // Vendor local placeholder styles to unblock build
 import '@/styles/fullcalendar/core.css';
@@ -235,8 +203,8 @@ const {
 
 /**
  * Timezone strategy:
- *  - You already decided: safest is FullCalendar timeZone 'local'
- *  - We keep your existing syncCalendarTimezone implementation.
+ *  - You already decided: safest is FullCalendar timeZone 'local' (no plugin needed).
+ *  - We keep the existing syncCalendarTimezone behavior.
  */
 const resolveSystemTimezone = () =>
 	((window as any)?.frappe?.boot?.time_zone ||
@@ -267,7 +235,7 @@ function syncCalendarTimezone() {
 }
 
 // Calendar preferences and toggles
-const { prefs, fetch: fetchPrefs } = useCalendarPrefs();
+const { fetch: fetchPrefs } = useCalendarPrefs();
 const showWeekends = ref(false);
 const showFullDay = ref(false);
 const hiddenDays = ref<number[]>([0, 6]);
@@ -298,6 +266,7 @@ const calendarOptions = ref({
 		center: 'title',
 		right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
 	},
+	slotDuration: '00:30:00',
 	slotMinTime: slotMin.value,
 	slotMaxTime: slotMax.value,
 	dayMaxEvents: true,
@@ -426,115 +395,17 @@ function toggleChip(id: CalendarSource) {
 }
 
 /**
- * Overlay stack (Phase 0):
- * - create-task overlay is opened via overlay.open()
- * - actual rendering happens in OverlayHost (global, teleported to #overlay-root)
+ * Overlay stack:
+ * - schedule calendar never mounts event dialogs
+ * - we pass IDs only; overlays fetch and own their data
  */
 const overlay = useOverlayStack();
-
-// -----------------------------------------------------------------------------
-// Meeting modal logic (unchanged)
-// -----------------------------------------------------------------------------
-const meetingModal = reactive<{
-	open: boolean;
-	loading: boolean;
-	error: string | null;
-	data: MeetingDetails | null;
-}>({
-	open: false,
-	loading: false,
-	error: null,
-	data: null,
-});
-
-let meetingRequestSeq = 0;
-
-function closeMeetingModal() {
-	meetingModal.open = false;
-	meetingModal.data = null;
-	meetingModal.error = null;
-}
-
-async function openMeetingModal(meetingName: string) {
-	meetingModal.open = true;
-	meetingModal.loading = true;
-	meetingModal.error = null;
-	meetingModal.data = null;
-
-	const seq = ++meetingRequestSeq;
-	try {
-		const payload = (await api('ifitwala_ed.api.calendar.get_meeting_details', {
-			meeting: meetingName,
-		})) as MeetingDetails;
-		if (seq === meetingRequestSeq) {
-			meetingModal.data = payload;
-		}
-	} catch (err) {
-		if (seq === meetingRequestSeq) {
-			meetingModal.error =
-				err instanceof Error ? err.message : 'Unable to load meeting details right now.';
-		}
-	} finally {
-		if (seq === meetingRequestSeq) {
-			meetingModal.loading = false;
-		}
-	}
-}
 
 function extractMeetingName(eventId?: string | null) {
 	if (!eventId) return null;
 	const [prefix, ...rest] = eventId.split('::');
 	if (prefix !== 'meeting' || rest.length === 0) return null;
 	return rest.join('::');
-}
-
-// -----------------------------------------------------------------------------
-// School event modal logic (unchanged)
-// -----------------------------------------------------------------------------
-const schoolEventModal = reactive<{
-	open: boolean;
-	loading: boolean;
-	error: string | null;
-	data: SchoolEventDetails | null;
-}>({
-	open: false,
-	loading: false,
-	error: null,
-	data: null,
-});
-
-let schoolEventRequestSeq = 0;
-
-function closeSchoolEventModal() {
-	schoolEventModal.open = false;
-	schoolEventModal.data = null;
-	schoolEventModal.error = null;
-}
-
-async function openSchoolEventModal(eventName: string) {
-	schoolEventModal.open = true;
-	schoolEventModal.loading = true;
-	schoolEventModal.error = null;
-	schoolEventModal.data = null;
-
-	const seq = ++schoolEventRequestSeq;
-	try {
-		const payload = (await api('ifitwala_ed.api.calendar.get_school_event_details', {
-			event: eventName,
-		})) as SchoolEventDetails;
-		if (seq === schoolEventRequestSeq) {
-			schoolEventModal.data = payload;
-		}
-	} catch (err) {
-		if (seq === schoolEventRequestSeq) {
-			schoolEventModal.error =
-				err instanceof Error ? err.message : 'Unable to load event details right now.';
-		}
-	} finally {
-		if (seq === schoolEventRequestSeq) {
-			schoolEventModal.loading = false;
-		}
-	}
 }
 
 function extractSchoolEventName(eventId?: string | null) {
@@ -553,27 +424,26 @@ function resolveEventId(info: EventClickArg) {
 	);
 }
 
-// -----------------------------------------------------------------------------
-// Class event modal logic (mostly unchanged; task create now opens overlay)
-// -----------------------------------------------------------------------------
-const classEventModal = reactive<{
-	open: boolean;
-	loading: boolean;
-	error: string | null;
-	data: ClassEventDetails | null;
-}>({
-	open: false,
-	loading: false,
-	error: null,
-	data: null,
-});
+function extractClassEventId(rawId?: string | null) {
+	if (!rawId) return null;
+	if (rawId.startsWith('sg::') || rawId.startsWith('sg-booking::')) {
+		return rawId;
+	}
+	if (rawId.startsWith('sg/')) {
+		return rawId.replace('sg/', 'sg::');
+	}
+	if (rawId.startsWith('student_group::')) {
+		return rawId.replace('student_group::', 'sg::');
+	}
+	return null;
+}
 
-let classEventRequestSeq = 0;
-
-// Legacy org comm quick create (unchanged in Phase 0)
+// -----------------------------------------------------------------------------
+// Legacy org comm quick create (still local in Phase 0)
+// -----------------------------------------------------------------------------
 const orgCommModal = reactive<{
 	open: boolean;
-	event: ClassEventDetails | null;
+	event: any | null;
 }>({
 	open: false,
 	event: null,
@@ -590,119 +460,8 @@ watch(
 	}
 );
 
-/**
- * ✅ PHASE 0 CHANGE:
- * When user clicks "Create Task" from ClassEventModal:
- *  1) Close the class modal (release HeadlessUI focus trap)
- *  2) await nextTick() so DOM settles
- *  3) open create-task overlay via overlay stack
- *
- * No Frappe-UI dialog is mounted in this page anymore.
- */
-const pendingTaskOpen = ref<null | { studentGroup: string; dueDate: string | null }>(null);
-const isHandoffToTask = ref(false);
-
-watch(
-  () => classEventModal.open,
-  async (isOpen) => {
-    if (isOpen) return;
-    if (!pendingTaskOpen.value) return;
-    if (!isHandoffToTask.value) return;
-
-    const { studentGroup, dueDate } = pendingTaskOpen.value;
-    pendingTaskOpen.value = null;
-    isHandoffToTask.value = false;
-
-    // Let the modal fully unmount (including leave transition)
-    await nextTick();
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-
-    overlay.open('create-task', {
-      prefillStudentGroup: studentGroup,
-      prefillDueDate: dueDate,
-      prefillAvailableFrom: null,
-    });
-  },
-  { flush: 'post' }
-);
-
-function closeClassEventModal() {
-  classEventModal.open = false;
-  classEventModal.data = null;
-  classEventModal.error = null;
-
-  if (!isHandoffToTask.value) {
-    pendingTaskOpen.value = null;
-    isHandoffToTask.value = false;
-  }
-  // if handoff=true, watcher will reset it after opening overlay
-}
-
-
-async function openTaskCreationModal() {
-  if (!classEventModal.data) return;
-
-  isHandoffToTask.value = true;
-  pendingTaskOpen.value = {
-    studentGroup: classEventModal.data.student_group,
-    dueDate: classEventModal.data.end || classEventModal.data.start || null,
-  };
-
-  closeClassEventModal();
-}
-
-
-
-async function openClassEventModal(eventId: string | null | undefined) {
-	const resolvedId = extractClassEventId(eventId);
-	if (!resolvedId) {
-		classEventModal.open = true;
-		classEventModal.loading = false;
-		classEventModal.error = 'Could not determine which class was clicked. Please refresh and try again.';
-		return;
-	}
-	classEventModal.open = true;
-	classEventModal.loading = true;
-	classEventModal.error = null;
-	classEventModal.data = null;
-
-	const seq = ++classEventRequestSeq;
-	try {
-		const payload = (await api('ifitwala_ed.api.calendar.get_student_group_event_details', {
-			event_id: resolvedId,
-		})) as ClassEventDetails;
-		if (seq === classEventRequestSeq) {
-			classEventModal.data = payload;
-		}
-	} catch (err) {
-		if (seq === classEventRequestSeq) {
-			classEventModal.error =
-				err instanceof Error ? err.message : 'Unable to load class details right now.';
-		}
-	} finally {
-		if (seq === classEventRequestSeq) {
-			classEventModal.loading = false;
-		}
-	}
-}
-
-function extractClassEventId(rawId?: string | null) {
-	if (!rawId) return null;
-	if (rawId.startsWith('sg::') || rawId.startsWith('sg-booking::')) {
-		return rawId;
-	}
-	if (rawId.startsWith('sg/')) {
-		return rawId.replace('sg/', 'sg::');
-	}
-	if (rawId.startsWith('student_group::')) {
-		return rawId.replace('student_group::', 'sg::');
-	}
-	return null;
-}
-
 // -----------------------------------------------------------------------------
-// Central event click routing (unchanged except task path now overlay)
+// Central event click routing (overlay stack only)
 // -----------------------------------------------------------------------------
 function handleEventClick(info: EventClickArg) {
 	info.jsEvent?.preventDefault();
@@ -713,17 +472,11 @@ function handleEventClick(info: EventClickArg) {
 		((info.event as unknown as { source?: string }).source ?? undefined);
 
 	if (rawSource === 'staff_holiday') {
-		// Holidays are all-day blocks; no modal
-		closeMeetingModal();
-		closeSchoolEventModal();
-		closeClassEventModal();
+		// Holidays are all-day blocks; no overlay
 		return;
 	}
 
 	if (rawSource === 'meeting') {
-		closeSchoolEventModal();
-		closeClassEventModal();
-
 		const meetingName = extractMeetingName(info.event.id);
 		if (!meetingName) return;
 
@@ -732,19 +485,20 @@ function handleEventClick(info: EventClickArg) {
 	}
 
 	if (rawSource === 'school_event') {
-		closeMeetingModal();
-		closeClassEventModal();
 		const schoolEventName = extractSchoolEventName(info.event.id);
 		if (!schoolEventName) return;
-		openSchoolEventModal(schoolEventName);
+
+		overlay.open('school-event', { event: schoolEventName });
 		return;
 	}
 
 	if (rawSource === 'student_group') {
-		closeMeetingModal();
-		closeSchoolEventModal();
-		const eventId = resolveEventId(info);
-		openClassEventModal(eventId);
+		const rawId = resolveEventId(info);
+		const eventId = extractClassEventId(rawId);
+		if (!eventId) return;
+
+		// NOTE: requires OverlayType to include 'class-event'
+		overlay.open('class-event', { eventId });
 	}
 }
 
