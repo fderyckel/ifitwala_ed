@@ -1,6 +1,16 @@
+<!-- ui-spa/src/components/calendar/SchoolEventModal.vue -->
 <template>
-	<TransitionRoot as="template" :show="open">
-		<Dialog as="div" class="if-overlay if-overlay--school" @close="emitClose">
+	<TransitionRoot
+		as="template"
+		:show="open"
+		@after-leave="emitAfterLeave"
+	>
+		<Dialog
+			as="div"
+			class="if-overlay if-overlay--school"
+			:style="overlayStyle"
+			@close="emitClose"
+		>
 			<TransitionChild
 				as="template"
 				enter="if-overlay__fade-enter"
@@ -32,14 +42,23 @@
 								</DialogTitle>
 								<p class="meeting-modal__time type-meta" v-if="windowLabel">
 									{{ windowLabel }}
-									<span v-if="event?.timezone" class="meeting-modal__timezone">({{ event.timezone }})</span>
+									<span v-if="event?.timezone" class="meeting-modal__timezone">
+										({{ event.timezone }})
+									</span>
 								</p>
 							</div>
 							<div class="meeting-modal__header-actions">
-								<span v-if="event?.event_type" class="meeting-modal__badge type-badge-label">
+								<span
+									v-if="event?.event_type"
+									class="meeting-modal__badge type-badge-label"
+								>
 									{{ event.event_type }}
 								</span>
-								<button class="if-overlay__icon-button" aria-label="Close event modal" @click="emitClose">
+								<button
+									class="if-overlay__icon-button"
+									aria-label="Close event modal"
+									@click="emitClose"
+								>
 									<FeatherIcon name="x" class="h-5 w-5" />
 								</button>
 							</div>
@@ -143,11 +162,25 @@ const props = defineProps<{
 	loading: boolean;
 	error: string | null;
 	event: SchoolEventDetails | null;
+	zIndex?: number;
 }>();
 
 const emit = defineEmits<{
 	(e: 'close'): void;
+	(e: 'after-leave'): void;
 }>();
+
+const overlayStyle = computed(() => ({
+	zIndex: props.zIndex ?? 70,
+}));
+
+function emitAfterLeave() {
+	emit('after-leave');
+}
+
+function emitClose() {
+	emit('close');
+}
 
 const windowLabel = computed(() => {
 	const start = safeDate(props.event?.start);
@@ -169,7 +202,9 @@ const windowLabel = computed(() => {
 
 	const dateLabel = dateFormatter.format(start);
 	if (!end || props.event?.all_day) {
-		return props.event?.all_day ? `${dateLabel} · All day` : `${dateLabel} · ${timeFormatter.format(start)}`;
+		return props.event?.all_day
+			? `${dateLabel} · All day`
+			: `${dateLabel} · ${timeFormatter.format(start)}`;
 	}
 
 	const sameDay = start.toDateString() === end.toDateString();
@@ -177,9 +212,7 @@ const windowLabel = computed(() => {
 		return `${dateLabel} · ${timeFormatter.format(start)} – ${timeFormatter.format(end)}`;
 	}
 
-	return `${dateLabel} · ${timeFormatter.format(start)} → ${dateFormatter.format(end)} · ${timeFormatter.format(
-		end
-	)}`;
+	return `${dateLabel} · ${timeFormatter.format(start)} → ${dateFormatter.format(end)} · ${timeFormatter.format(end)}`;
 });
 
 const referenceLink = computed(() => {
@@ -196,9 +229,5 @@ function safeDate(value?: string | null) {
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return null;
 	return date;
-}
-
-function emitClose() {
-	emit('close');
 }
 </script>
