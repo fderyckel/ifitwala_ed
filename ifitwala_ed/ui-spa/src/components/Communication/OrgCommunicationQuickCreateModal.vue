@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ui-spa/src/components/Communication/OrgCommunicationQuickCreateModal.vue -->
+<!-- ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateModal.vue -->
 <template>
 	<TransitionRoot as="template" :show="isOpen">
 		<Dialog as="div" class="if-overlay if-overlay--class" @close="handleClose">

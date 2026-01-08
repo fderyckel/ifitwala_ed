@@ -143,9 +143,7 @@
  *  - Meeting / School Event / Class Event details open via the global overlay stack.
  *  - Overlays fetch and own their own data (ScheduleCalendar passes only IDs).
  *  - Create-task opens via overlay stack (rendered only by OverlayHost).
- *
- * Still legacy (Phase 0):
- *  - OrgCommunicationQuickCreateModal remains a local Frappe-UI modal for now.
+ *  - OrgCommunicationQuickCreateModal.
  */
 
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
@@ -159,7 +157,7 @@ import { FeatherIcon } from 'frappe-ui';
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
 
-import OrgCommunicationQuickCreateModal from '@/components/Communication/OrgCommunicationQuickCreateModal.vue';
+import OrgCommunicationQuickCreateModal from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
 
 // ✅ Overlay stack (single renderer via OverlayHost teleported to #overlay-root)
 import { useOverlayStack } from '@/composables/useOverlayStack';
