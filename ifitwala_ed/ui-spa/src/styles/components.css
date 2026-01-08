@@ -307,6 +307,103 @@
   /* ============================================================
      CHIPS, TOGGLES, KPI STRIPS
      ============================================================ */
+  .if-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(var(--border-rgb) / 0.95);
+    background-color: rgb(var(--surface-strong-rgb) / 1);
+    color: rgb(var(--ink-rgb) / 0.7);
+    box-shadow: var(--shadow-soft);
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  }
+
+  .if-action:hover {
+    border-color: rgb(var(--leaf-rgb) / 0.9);
+    color: rgb(var(--leaf-rgb) / 1);
+  }
+
+  .if-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(var(--border-rgb) / 0.85);
+    background-color: rgb(var(--surface-strong-rgb) / 0.92);
+    color: rgb(var(--ink-rgb) / 0.75);
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+
+  .if-pill--on {
+    border-color: rgb(var(--leaf-rgb) / 0.9);
+    background-color: rgb(var(--leaf-rgb) / 0.08);
+    color: rgb(var(--canopy-rgb) / 1);
+  }
+
+  .if-pill--off {
+    border-color: rgb(var(--border-rgb) / 0.9);
+    background-color: rgb(var(--surface-strong-rgb) / 0.9);
+    color: rgb(var(--ink-rgb) / 0.7);
+  }
+
+  .if-pill--class {
+    background-color: rgb(var(--jacaranda-rgb) / 0.1);
+    color: rgb(var(--jacaranda-rgb) / 1);
+    border-color: rgb(var(--jacaranda-rgb) / 0.35);
+  }
+
+  .if-pill--meeting {
+    background-color: rgb(var(--sky-rgb) / 0.1);
+    color: rgb(var(--sky-rgb) / 1);
+    border-color: rgb(var(--sky-rgb) / 0.35);
+  }
+
+  .if-pill--school {
+    background-color: rgb(var(--leaf-rgb) / 0.1);
+    color: rgb(var(--leaf-rgb) / 1);
+    border-color: rgb(var(--leaf-rgb) / 0.35);
+  }
+
+  .if-pill--holiday {
+    background-color: rgb(var(--slate-rgb) / 0.12);
+    color: rgb(var(--slate-rgb) / 0.95);
+    border-color: rgb(var(--slate-rgb) / 0.25);
+  }
+
+  .if-pill__dot {
+    display: inline-flex;
+    height: 0.625rem;
+    width: 0.625rem;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background-color: rgb(var(--border-rgb) / 0.8);
+  }
+
+  .if-pill__dot--scheduled {
+    background-color: rgb(var(--jacaranda-rgb) / 0.9);
+  }
+
+  .if-pill__dot--holiday {
+    background-color: rgb(var(--slate-rgb) / 0.75);
+  }
+
+  .if-pill__dot--muted {
+    background-color: rgb(var(--slate-rgb) / 0.35);
+  }
+
+  .if-pill__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    background-color: rgb(var(--surface-strong-rgb) / 0.7);
+    color: rgb(var(--ink-rgb) / 0.7);
+  }
+
   .chip {
     @apply inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border;
     border-color: rgb(var(--border-rgb) / 0.65);

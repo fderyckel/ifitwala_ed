@@ -19,9 +19,7 @@
 						Updated {{ lastUpdatedLabel }}
 					</span>
 					<button
-						class="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--border-rgb)/0.95)]
-						       bg-white px-3 py-1.5 type-button-label text-ink/70
-						       shadow-soft transition hover:border-[rgb(var(--leaf-rgb)/0.9)] hover:text-leaf"
+						class="if-action type-button-label"
 						@click="handleRefresh"
 					>
 						<FeatherIcon name="refresh-cw" class="h-4 w-4" />
@@ -35,11 +33,9 @@
 				<!-- Weekend / Full-day toggles -->
 				<div class="mr-auto flex items-center gap-3">
 					<button
-						class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 type-button-label transition"
+						class="if-pill type-button-label"
 						:class="
-							showWeekends
-								? 'border-[rgb(var(--border-rgb)/0.9)] bg-white text-ink/80'
-								: 'border-[rgb(var(--leaf-rgb)/0.9)] bg-[rgb(var(--leaf-rgb)/0.08)] text-canopy'
+							showWeekends ? 'if-pill--off' : 'if-pill--on'
 						"
 						@click="showWeekends = !showWeekends"
 					>
@@ -47,11 +43,9 @@
 						{{ showWeekends ? 'Show all days' : 'Hide weekends' }}
 					</button>
 					<button
-						class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 type-button-label transition"
+						class="if-pill type-button-label"
 						:class="
-							showFullDay
-								? 'border-[rgb(var(--border-rgb)/0.9)] bg-white/90 text-ink/80'
-								: 'border-[rgb(var(--leaf-rgb)/0.9)] bg-[rgb(var(--leaf-rgb)/0.08)] text-canopy'
+							showFullDay ? 'if-pill--off' : 'if-pill--on'
 						"
 						@click="showFullDay = !showFullDay"
 					>
@@ -65,17 +59,17 @@
 					v-for="chip in sourceChips"
 					:key="chip.id"
 					type="button"
-					class="group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 type-button-label transition"
-					:class="chip.active ? chip.activeClass : 'event-pill event-pill--inactive'"
+					class="if-pill type-button-label"
+					:class="chip.active ? chip.activeClass : 'if-pill--off'"
 					@click="toggleChip(chip.id)"
 				>
 					<span
-						class="mr-1 inline-flex h-2.5 w-2.5 rounded-full"
+						class="if-pill__dot"
 						:class="chip.dotClass"
 					></span>
 					{{ chip.label }}
 					<span
-						class="rounded-full bg-white/70 px-2 py-0.5 type-badge-label text-ink/70"
+						class="if-pill__count type-badge-label"
 					>
 						{{ chip.count }}
 					</span>
@@ -343,23 +337,23 @@ function handleRefresh() {
 const sourcePalette: Record<CalendarSource, { label: string; dot: string; active: string }> = {
 	student_group: {
 		label: 'Class',
-		dot: 'legend-dot--scheduled',
-		active: 'event-pill event-pill--class',
+		dot: 'if-pill__dot--scheduled',
+		active: 'if-pill--class',
 	},
 	meeting: {
 		label: 'Meeting',
-		dot: 'legend-dot--scheduled',
-		active: 'event-pill event-pill--meeting',
+		dot: 'if-pill__dot--scheduled',
+		active: 'if-pill--meeting',
 	},
 	school_event: {
 		label: 'School',
-		dot: 'legend-dot--scheduled',
-		active: 'event-pill event-pill--school',
+		dot: 'if-pill__dot--scheduled',
+		active: 'if-pill--school',
 	},
 	staff_holiday: {
 		label: 'Holidays',
-		dot: 'bg-slate-500',
-		active: 'border-slate-200 bg-slate-50 text-slate-700',
+		dot: 'if-pill__dot--holiday',
+		active: 'if-pill--holiday',
 	},
 };
 
@@ -371,7 +365,7 @@ const sourceChips = computed(() =>
 			label: palette.label,
 			active: activeSources.value.has(sourceId),
 			count: counts.value?.[sourceId] ?? 0,
-			dotClass: activeSources.value.has(sourceId) ? palette.dot : 'bg-slate-300',
+			dotClass: activeSources.value.has(sourceId) ? palette.dot : 'if-pill__dot--muted',
 			activeClass: palette.active,
 		};
 	})
