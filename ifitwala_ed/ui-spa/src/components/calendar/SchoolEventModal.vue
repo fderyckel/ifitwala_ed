@@ -24,11 +24,6 @@
 					leave-to="if-overlay__panel-from"
 				>
 					<DialogPanel class="if-overlay__panel if-overlay__panel--compact">
-						<div
-							v-if="eventColor"
-							class="meeting-modal__color-pill"
-							:style="{ backgroundColor: eventColor }"
-						></div>
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
 								<p class="meeting-modal__eyebrow type-overline">School Event</p>
@@ -195,8 +190,6 @@ const referenceLink = computed(() => {
 	const name = encodeURIComponent(props.event.reference_name);
 	return `/app/${doctype}/${name}`;
 });
-
-const eventColor = computed(() => props.event?.color || 'rgb(var(--leaf-rgb) / 1)');
 
 function safeDate(value?: string | null) {
 	if (!value) return null;

@@ -66,11 +66,7 @@
 					:key="chip.id"
 					type="button"
 					class="group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 type-button-label transition"
-					:class="
-						chip.active
-							? chip.activeClass
-							: 'border-[rgb(var(--border-rgb)/0.9)] bg-white/80 text-ink/70 hover:border-[rgb(var(--border-rgb)/1)]'
-					"
+					:class="chip.active ? chip.activeClass : 'event-pill event-pill--inactive'"
 					@click="toggleChip(chip.id)"
 				>
 					<span
@@ -345,19 +341,19 @@ function handleRefresh() {
 
 const sourcePalette: Record<CalendarSource, { label: string; dot: string; active: string }> = {
 	student_group: {
-		label: 'Classes',
-		dot: 'bg-blue-500',
-		active: 'border-blue-200 bg-blue-50 text-blue-700',
+		label: 'Class',
+		dot: 'legend-dot--scheduled',
+		active: 'event-pill event-pill--class',
 	},
 	meeting: {
-		label: 'Meetings',
-		dot: 'bg-violet-500',
-		active: 'border-violet-200 bg-violet-50 text-violet-700',
+		label: 'Meeting',
+		dot: 'legend-dot--scheduled',
+		active: 'event-pill event-pill--meeting',
 	},
 	school_event: {
-		label: 'School Events',
-		dot: 'bg-emerald-500',
-		active: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+		label: 'School',
+		dot: 'legend-dot--scheduled',
+		active: 'event-pill event-pill--school',
 	},
 	staff_holiday: {
 		label: 'Holidays',

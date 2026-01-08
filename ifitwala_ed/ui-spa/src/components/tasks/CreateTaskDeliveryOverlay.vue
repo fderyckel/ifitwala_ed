@@ -1,6 +1,10 @@
 <!-- ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue -->
 <template>
-  <TransitionRoot as="template" :show="open">
+	<TransitionRoot
+		as="template"
+		:show="open"
+		@after-leave="emitAfterLeave"
+	>
     <Dialog as="div" class="if-overlay" :style="{ zIndex }" @close="handleClose">
       <TransitionChild
         as="template"
@@ -498,4 +502,15 @@ async function submit() {
     submitting.value = false
   }
 }
+
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'created', payload: CreateTaskDeliveryPayload): void
+  (e: 'after-leave'): void
+}>()
+
+function emitAfterLeave() {
+  emit('after-leave')
+}
+
 </script>

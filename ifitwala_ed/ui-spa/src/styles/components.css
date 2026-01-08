@@ -439,6 +439,44 @@
     z-index: 1;
   }
 
+  /* ============================================================
+     CALENDAR EVENT PILLS — semantic, stable
+     ============================================================ */
+  .event-pill {
+    @apply inline-flex items-center gap-2 rounded-full border px-3 py-1.5 type-button-label transition;
+    background-color: rgb(var(--surface-strong-rgb) / 0.85);
+    color: rgb(var(--ink-rgb) / 0.75);
+    border-color: rgb(var(--border-rgb) / 0.9);
+  }
+
+  .event-pill:hover {
+    border-color: rgb(var(--border-rgb) / 1);
+  }
+
+  .event-pill--class {
+    background-color: rgb(var(--jacaranda-rgb) / 0.1);
+    color: rgb(var(--jacaranda-rgb) / 1);
+    border-color: rgb(var(--jacaranda-rgb) / 0.35);
+  }
+
+  .event-pill--meeting {
+    background-color: rgb(var(--sky-rgb) / 0.1);
+    color: rgb(var(--sky-rgb) / 1);
+    border-color: rgb(var(--sky-rgb) / 0.35);
+  }
+
+  .event-pill--school {
+    background-color: rgb(var(--leaf-rgb) / 0.1);
+    color: rgb(var(--leaf-rgb) / 1);
+    border-color: rgb(var(--leaf-rgb) / 0.35);
+  }
+
+  .event-pill--inactive {
+    background-color: rgb(var(--surface-strong-rgb) / 0.85);
+    color: rgb(var(--ink-rgb) / 0.65);
+    border-color: rgb(var(--border-rgb) / 0.85);
+  }
+
   .attendance-card {
     @apply rounded-2xl border shadow-sm;
     border-color: rgb(var(--border-rgb) / 0.80);
@@ -799,42 +837,45 @@
     background: rgb(var(--jacaranda-rgb) / 0.9);
   }
 
-  .if-overlay--meeting .if-overlay__panel {
+  /* ============================================================
+     EVENT MODAL ZIPPER LINE — canonical
+     ============================================================ */
+  .if-overlay--class .if-overlay__panel {
     border-top: 4px solid rgb(var(--jacaranda-rgb) / 0.9);
   }
 
-  .if-overlay--meeting .meeting-modal__eyebrow {
-    color: rgb(var(--jacaranda-rgb) / 0.95);
-  }
-
-  .if-overlay--class .if-overlay__panel {
-    border-top: 4px solid rgb(var(--leaf-rgb) / 0.9);
-  }
-
-  .if-overlay--class .meeting-modal__eyebrow {
-    color: rgb(var(--leaf-rgb) / 0.95);
-  }
-
-  .if-overlay--class .meeting-modal__badge {
-    background: rgb(var(--leaf-rgb) / 0.12);
-    color: rgb(var(--leaf-rgb) / 1);
+  .if-overlay--meeting .if-overlay__panel {
+    border-top: 4px solid rgb(var(--sky-rgb) / 0.9);
   }
 
   .if-overlay--school .if-overlay__panel {
-    border-top: 4px solid rgb(var(--flame-rgb) / 0.9);
+    border-top: 4px solid rgb(var(--leaf-rgb) / 0.9);
+  }
+
+  .if-overlay--meeting .meeting-modal__eyebrow {
+    color: rgb(var(--sky-rgb) / 0.95);
+  }
+
+  .if-overlay--class .meeting-modal__eyebrow {
+    color: rgb(var(--jacaranda-rgb) / 0.95);
+  }
+
+  .if-overlay--class .meeting-modal__badge {
+    background: rgb(var(--jacaranda-rgb) / 0.12);
+    color: rgb(var(--jacaranda-rgb) / 1);
   }
 
   .if-overlay--school .meeting-modal__eyebrow {
-    color: rgb(var(--clay-rgb) / 0.95);
+    color: rgb(var(--leaf-rgb) / 0.95);
   }
 
   .if-overlay--school .meeting-modal__badge {
-    background: rgb(var(--flame-rgb) / 0.1);
-    color: rgb(var(--flame-rgb) / 1);
+    background: rgb(var(--leaf-rgb) / 0.1);
+    color: rgb(var(--leaf-rgb) / 1);
   }
 
   .if-overlay--school .meeting-modal__color-pill {
-    background: rgb(var(--flame-rgb) / 0.9);
+    background: rgb(var(--leaf-rgb) / 0.9);
   }
 
   /* ============================================================

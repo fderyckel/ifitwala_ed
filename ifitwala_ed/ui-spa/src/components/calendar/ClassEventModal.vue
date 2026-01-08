@@ -1,6 +1,10 @@
 <!-- ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue -->
 <template>
-	<TransitionRoot as="template" :show="open">
+	<TransitionRoot
+		as="template"
+		:show="open"
+		@after-leave="emitAfterLeave"
+	>
 		<Dialog
 			as="div"
 			class="if-overlay if-overlay--class"
@@ -297,5 +301,16 @@ function emitCreateTask() {
 		studentGroup: data.value.student_group,
 		dueDate: data.value.end || data.value.start || null,
 	})
+}
+
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'create-announcement', event: ClassEventDetails): void
+  (e: 'create-task', payload: { studentGroup: string; dueDate: string | null }): void
+  (e: 'after-leave'): void
+}>()
+
+function emitAfterLeave() {
+  emit('after-leave')
 }
 </script>
