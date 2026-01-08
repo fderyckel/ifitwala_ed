@@ -174,7 +174,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import { DatesSetArg, EventClickArg } from '@fullcalendar/core';
 import { FeatherIcon } from 'frappe-ui';
-
+import { nextTick } from 'vue'; // add to your existing vue imports
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
 import { api } from '@/lib/client';
@@ -603,14 +603,26 @@ function openOrgCommunicationModal() {
 	closeClassEventModal();
 }
 
-function openTaskCreationModal() {
+async function openTaskCreationModal() {
 	if (!classEventModal.data) return;
-	taskCreationModal.student_group = classEventModal.data.student_group;
-	taskCreationModal.due_date = classEventModal.data.end || classEventModal.data.start || null;
+
+	// capture context BEFORE closing
+	const studentGroup = classEventModal.data.student_group;
+	const dueDate = classEventModal.data.end || classEventModal.data.start || null;
+
+	// 1) close HeadlessUI modal first
+	closeClassEventModal();
+
+	// 2) wait one tick so the DOM/focus-trap releases
+	await nextTick();
+
+	// 3) now open frappe-ui dialog
+	taskCreationModal.student_group = studentGroup;
+	taskCreationModal.due_date = dueDate;
 	taskCreationModal.available_from = null;
 	taskCreationModal.open = true;
-	closeClassEventModal();
 }
+
 
 function handleOrgCommCreated() {
 	orgCommModal.open = false;

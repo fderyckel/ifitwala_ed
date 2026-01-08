@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryModal.vue -->
 <template>
-	<Dialog v-model="isOpen" :options="{ title: 'Create task', size: '3xl' }">
+	<Dialog v-model="open" :options="{ title: 'Create task', size: '3xl' }">
 		<div class="space-y-6">
 			<section class="card-panel space-y-4 p-5">
 				<div class="flex items-center gap-3">
@@ -229,10 +229,21 @@ const emit = defineEmits<{
 	(e: 'created', payload: CreateTaskDeliveryPayload): void;
 }>();
 
-const isOpen = computed({
-	get: () => props.modelValue,
-	set: (value: boolean) => emit('update:modelValue', value),
+const open = ref(false);
+
+watch(
+	() => props.modelValue,
+	(v) => {
+		open.value = v;
+		if (v) initializeForm();
+	},
+	{ immediate: true }
+);
+
+watch(open, (v) => {
+	if (v !== props.modelValue) emit('update:modelValue', v);
 });
+
 
 const taskTypeOptions = [
 	{ label: 'Assignment', value: 'Assignment' },
@@ -355,15 +366,6 @@ const canSubmit = computed(() => {
 	return true;
 });
 
-watch(
-	() => isOpen.value,
-	(open) => {
-		if (open) {
-			initializeForm();
-		}
-	}
-);
-
 function initializeForm() {
 	form.title = '';
 	form.instructions = '';
@@ -426,7 +428,7 @@ function toFrappeDatetime(value: string) {
 }
 
 function handleClose() {
-	isOpen.value = false;
+	open.value = false;
 }
 
 async function submit() {
@@ -476,7 +478,7 @@ async function submit() {
 			throw new Error('Unexpected server response.');
 		}
 		emit('created', out);
-		isOpen.value = false;
+		open.value = false;
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Unable to create the assignment right now.';
