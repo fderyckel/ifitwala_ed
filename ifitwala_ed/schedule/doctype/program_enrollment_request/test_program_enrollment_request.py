@@ -8,6 +8,9 @@ from frappe.utils import nowdate
 from ifitwala_ed.schedule.doctype.program_enrollment_request.program_enrollment_request import (
 	validate_enrollment_request,
 )
+from ifitwala_ed.schedule.enrollment.enrollment_request_api import (
+	materialize_program_enrollment_request,
+)
 
 
 class TestProgramEnrollmentRequest(FrappeTestCase):
@@ -23,7 +26,9 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
 		request.reload()
 
 		self.assertEqual(request.validation_status, "Valid")
-		self.assertTrue(payload["courses"][context["target_course"].name]["prereq_ok"])
+		course_payload = payload["courses"][context["target_course"].name]
+		self.assertTrue(course_payload["eligible"])
+		self.assertFalse(_has_failure(course_payload, "prerequisite"))
 
 	def test_validate_request_prereq_fail(self):
 		context = _setup_enrollment_context(score=60)
@@ -37,17 +42,23 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
 		request.reload()
 
 		self.assertEqual(request.validation_status, "Invalid")
-		self.assertFalse(payload["courses"][context["target_course"].name]["prereq_ok"])
+		course_payload = payload["courses"][context["target_course"].name]
+		self.assertFalse(course_payload["eligible"])
+		self.assertTrue(_has_failure(course_payload, "prerequisite"))
 
 	def test_validate_request_capacity_exceeded(self):
-		context = _setup_enrollment_context(score=85, capacity=1)
+		context = _setup_enrollment_context(
+			score=85,
+			capacity=1,
+			seat_policy="Approved Requests Hold Seats",
+		)
 		student_two = _make_student("Capacity")
 
-		first_request = _make_enrollment_request(
+		_make_enrollment_request(
 			context,
 			student=context["student"],
 			course=context["target_course"],
-			status="Submitted",
+			status="Approved",
 		)
 		second_request = _make_enrollment_request(
 			context,
@@ -59,10 +70,73 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
 		second_request.reload()
 
 		self.assertEqual(second_request.validation_status, "Invalid")
-		self.assertFalse(payload["courses"][context["target_course"].name]["capacity_ok"])
+		course_payload = payload["courses"][context["target_course"].name]
+		self.assertEqual(course_payload["seat_status"], "full")
+		self.assertTrue(_has_failure(course_payload, "capacity"))
+
+	def test_validate_request_basket_rules(self):
+		rules = [
+			{"rule_type": "MIN_TOTAL_COURSES", "int_value_1": 2},
+			{"rule_type": "MIN_LEVEL_COUNT", "int_value_1": 1, "level": "Higher Level"},
+		]
+		context = _setup_enrollment_context(
+			score=80,
+			enrollment_rules=rules,
+			program_course_level="Higher Level",
+		)
+		request = _make_enrollment_request(
+			context,
+			student=context["student"],
+			course=context["target_course"],
+		)
+
+		payload = validate_enrollment_request(request.name)
+		request.reload()
+
+		self.assertEqual(request.validation_status, "Invalid")
+		self.assertFalse(payload["basket"]["valid"])
+		self.assertEqual(len(payload["basket"]["rules"]), 2)
+
+	def test_materialize_request_updates_enrollment(self):
+		context = _setup_enrollment_context(score=85)
+		request = _make_enrollment_request(
+			context,
+			student=context["student"],
+			course=context["target_course"],
+			status="Approved",
+		)
+
+		enrollment_name = materialize_program_enrollment_request(request.name)
+		materialize_program_enrollment_request(request.name)
+
+		count = frappe.db.count("Program Enrollment", {
+			"student": context["student"].name,
+			"program_offering": context["offering"].name,
+			"academic_year": context["academic_year"].name,
+		})
+		self.assertEqual(count, 1)
+
+		enrollment = frappe.get_doc("Program Enrollment", enrollment_name)
+		courses = {row.course: row.status for row in enrollment.courses}
+		self.assertIn(context["target_course"].name, courses)
+		self.assertEqual(courses[context["target_course"].name], "Enrolled")
 
 
-def _setup_enrollment_context(score, capacity=None):
+def _has_failure(course_payload, failure_type):
+	for failure in course_payload.get("fail_reasons") or []:
+		if failure.get("type") == failure_type:
+			return True
+	return False
+
+
+def _setup_enrollment_context(
+	score,
+	capacity=None,
+	seat_policy=None,
+	enrollment_rules=None,
+	program_course_level=None,
+	program_course_category=None,
+):
 	grade_scale = _make_grade_scale()
 	organization = _make_organization()
 	school = _make_school(organization)
@@ -76,6 +150,13 @@ def _setup_enrollment_context(score, capacity=None):
 		"doctype": "Program",
 		"program_name": f"Program {frappe.generate_hash(length=6)}",
 		"grade_scale": grade_scale.name,
+		"courses": [
+			{
+				"course": target_course.name,
+				"level": program_course_level or "None",
+				"category": program_course_category,
+			}
+		],
 		"prerequisites": [
 			{
 				"apply_to_course": target_course.name,
@@ -90,13 +171,19 @@ def _setup_enrollment_context(score, capacity=None):
 		"course_name": target_course.course_name,
 		"capacity": capacity,
 	}
-	offering = frappe.get_doc({
+	data = {
 		"doctype": "Program Offering",
 		"program": program.name,
 		"school": school.name,
 		"offering_title": f"Offering {frappe.generate_hash(length=6)}",
 		"offering_courses": [offering_course],
-	}).insert()
+	}
+	if seat_policy:
+		data["seat_policy"] = seat_policy
+	if enrollment_rules:
+		data["enrollment_rules"] = enrollment_rules
+	if data:
+		offering = frappe.get_doc(data).insert()
 
 	enrollment = frappe.get_doc({
 		"doctype": "Program Enrollment",
@@ -138,6 +225,7 @@ def _make_enrollment_request(context, student, course, status="Draft"):
 		"doctype": "Program Enrollment Request",
 		"student": student.name,
 		"program_offering": context["offering"].name,
+		"academic_year": context["academic_year"].name,
 		"status": status,
 		"courses": [
 			{

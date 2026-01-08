@@ -11,6 +11,7 @@
   "offering_academic_years",
   "column_break_y4ol",
   "offering_title",
+  "grade_scale",
   "status",
   "student_cohort",
   "section_break_ircj",
@@ -18,7 +19,11 @@
   "end_date",
   "column_break_dcmw",
   "capacity",
+  "seat_policy",
+  "seat_hold_hours",
   "allow_self_enroll",
+  "enrollment_rules_section",
+  "enrollment_rules",
   "courses_section",
   "offering_courses"
  ],
@@ -57,6 +62,13 @@
    "label": "Offering Title"
   },
   {
+   "description": "Default grade scale for this offering, used for eligibility/prerequisites and enrollment validation.",
+   "fieldname": "grade_scale",
+   "fieldtype": "Link",
+   "label": "Grade Scale (Offering Default)",
+   "options": "Grade Scale"
+  },
+  {
    "fieldname": "section_break_ircj",
    "fieldtype": "Section Break"
   },
@@ -76,10 +88,37 @@
    "label": "Capacity"
   },
   {
+   "default": "Approved Requests Hold Seats",
+   "description": "How Program Offering Course capacity is reserved during enrollment request flow.",
+   "fieldname": "seat_policy",
+   "fieldtype": "Select",
+   "label": "Seat Policy",
+   "options": "Committed Only\nApproved Requests Hold Seats\nSubmitted Holds Seats"
+  },
+  {
+   "default": "24",
+   "description": "Seat reservation expiry window (hours) for Submitted/Under Review requests.",
+   "fieldname": "seat_hold_hours",
+   "fieldtype": "Int",
+   "label": "Seat Hold Hours",
+   "non_negative": 1
+  },
+  {
    "default": "0",
    "fieldname": "allow_self_enroll",
    "fieldtype": "Check",
    "label": "Allow Self Enroll"
+  },
+  {
+   "fieldname": "enrollment_rules_section",
+   "fieldtype": "Section Break",
+   "label": "Enrollment Rules"
+  },
+  {
+   "fieldname": "enrollment_rules",
+   "fieldtype": "Table",
+   "label": "Enrollment Rules",
+   "options": "Program Offering Enrollment Rule"
   },
   {
    "fieldname": "courses_section",
@@ -120,7 +159,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-23 10:48:11.471427",
+ "modified": "2025-09-23 10:48:12",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering",
