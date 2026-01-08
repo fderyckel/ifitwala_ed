@@ -1,6 +1,7 @@
 <!-- ui-spa/src/components/overlay/OverlayHost.vue -->
+
 <template>
-  <Teleport v-if="canTeleport" to="#overlay-root">
+  <Teleport v-if="teleportReady" to="#overlay-root">
     <div v-if="stack.length" class="overlay-host">
       <component
         v-for="(entry, idx) in stack"
@@ -16,10 +17,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useOverlayStack, type OverlayType } from '@/composables/useOverlayStack'
-
-// Phase 0: only one overlay wired
 import CreateTaskDeliveryOverlay from '@/components/tasks/CreateTaskDeliveryOverlay.vue'
 
 const { stack, close } = useOverlayStack()
@@ -27,10 +26,9 @@ const { stack, close } = useOverlayStack()
 const baseZ = 60
 const zStep = 10
 
-// ✅ Safety: only teleport once target exists
-const canTeleport = computed(() => {
-  if (typeof document === 'undefined') return false
-  return !!document.getElementById('overlay-root')
+const teleportReady = ref(false)
+onMounted(() => {
+  teleportReady.value = !!document.getElementById('overlay-root')
 })
 
 function resolveComponent(type: OverlayType) {

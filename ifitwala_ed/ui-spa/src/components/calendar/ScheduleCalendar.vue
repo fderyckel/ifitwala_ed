@@ -577,12 +577,6 @@ const classEventModal = reactive<{
 
 let classEventRequestSeq = 0;
 
-function closeClassEventModal() {
-	classEventModal.open = false;
-	classEventModal.data = null;
-	classEventModal.error = null;
-}
-
 // Legacy org comm quick create (unchanged in Phase 0)
 const orgCommModal = reactive<{
 	open: boolean;
@@ -612,25 +606,60 @@ watch(
  *
  * No Frappe-UI dialog is mounted in this page anymore.
  */
-async function openTaskCreationModal() {
-	if (!classEventModal.data) return;
+const pendingTaskOpen = ref<null | { studentGroup: string; dueDate: string | null }>(null);
+const isHandoffToTask = ref(false);
 
-	const studentGroup = classEventModal.data.student_group;
-	const dueDate = classEventModal.data.end || classEventModal.data.start || null;
+watch(
+  () => classEventModal.open,
+  async (isOpen) => {
+    if (isOpen) return;
+    if (!pendingTaskOpen.value) return;
+    if (!isHandoffToTask.value) return;
 
-	// 1) close HeadlessUI modal first
-	closeClassEventModal();
+    const { studentGroup, dueDate } = pendingTaskOpen.value;
+    pendingTaskOpen.value = null;
+    isHandoffToTask.value = false;
 
-	// 2) wait one tick so the DOM/focus-trap releases
-	await nextTick();
+    // Let the modal fully unmount (including leave transition)
+    await nextTick();
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
 
-	// 3) now open overlay (rendered by OverlayHost globally)
-	overlay.open('create-task', {
-		prefillStudentGroup: studentGroup,
-		prefillDueDate: dueDate,
-		prefillAvailableFrom: null,
-	});
+    overlay.open('create-task', {
+      prefillStudentGroup: studentGroup,
+      prefillDueDate: dueDate,
+      prefillAvailableFrom: null,
+    });
+  },
+  { flush: 'post' }
+);
+
+function closeClassEventModal() {
+  classEventModal.open = false;
+  classEventModal.data = null;
+  classEventModal.error = null;
+
+  if (!isHandoffToTask.value) {
+    pendingTaskOpen.value = null;
+    isHandoffToTask.value = false;
+  }
+  // if handoff=true, watcher will reset it after opening overlay
 }
+
+
+async function openTaskCreationModal() {
+  if (!classEventModal.data) return;
+
+  isHandoffToTask.value = true;
+  pendingTaskOpen.value = {
+    studentGroup: classEventModal.data.student_group,
+    dueDate: classEventModal.data.end || classEventModal.data.start || null,
+  };
+
+  closeClassEventModal();
+}
+
+
 
 async function openClassEventModal(eventId: string | null | undefined) {
 	const resolvedId = extractClassEventId(eventId);

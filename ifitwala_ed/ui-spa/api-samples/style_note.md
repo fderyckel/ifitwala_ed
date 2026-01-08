@@ -25,6 +25,8 @@ Design choices intentionally favor:
 * consistent spacing and rhythm,
 * predictable component behavior.
 
+This is *not* a Tailwind demo. Tailwind is an implementation detail.
+
 ---
 
 ## 2. Architectural Principles (Non‑Negotiable)
@@ -183,6 +185,108 @@ Everything here lives under:
 ```css
 @layer components { … }
 ```
+
+---
+
+### 6.2 Overlay & Dialog System (HeadlessUI — Canonical)
+
+Ifitwala uses **HeadlessUI Dialog + Transition** as the *behavior layer* and a **custom CSS overlay system** as the *visual + spatial truth*.
+
+This is intentional.
+
+#### 6.2.1 Separation of concerns
+
+| Layer                      | Responsibility                                         |
+| -------------------------- | ------------------------------------------------------ |
+| HeadlessUI                 | Accessibility, focus trapping, keyboard handling, ARIA |
+| OverlayHost / OverlayStack | Z-ordering, stacking, lifecycle                        |
+| CSS (`.if-overlay*`)       | Visual appearance, spacing, motion, theming            |
+
+No visual styling is allowed inside Vue Dialog components themselves.
+
+---
+
+#### 6.2.2 Single overlay truth
+
+All dialogs, modals, and sheets must render through **one system**:
+
+* `OverlayHost.vue` — global mount point
+* `useOverlayStack.ts` — state + stacking control
+* `.if-overlay*` classes — visual shell
+
+There must **never** be:
+
+* ad-hoc modals
+* page-local dialog CSS
+* duplicated backdrops
+
+This prevents modal drift and inconsistent UX.
+
+---
+
+#### 6.2.3 Canonical CSS classes
+
+The following classes are **locked API** between Vue and CSS:
+
+* `.if-overlay`
+* `.if-overlay__backdrop`
+* `.if-overlay__wrap`
+* `.if-overlay__panel`
+* `.if-overlay__body`
+* `.if-overlay__footer`
+
+Transition hooks (used by HeadlessUI `TransitionChild`):
+
+* `.if-overlay__fade-*`
+* `.if-overlay__panel-*`
+
+These names must not change without updating both CSS **and** Vue.
+
+---
+
+#### 6.2.4 Visual & motion philosophy
+
+Overlay design follows the same calm-first principles as the rest of the UI:
+
+* soft backdrop blur (not opaque blackout)
+* centered, bounded panels (never full-screen by default)
+* subtle vertical motion + fade (no scale popping)
+* generous padding for touch + mouse
+
+Animations are:
+
+* short (≤ 180ms)
+* ease-out only
+* never chained or spring-based
+
+---
+
+#### 6.2.5 Z-order & stacking rules
+
+The overlay stack is **explicit**, not incidental.
+
+Rules:
+
+* New dialogs stack above old ones
+* Backdrops are shared but stacking-aware
+* Closing the top dialog restores focus correctly
+
+Agents must never manipulate z-index directly in CSS.
+
+---
+
+#### 6.2.6 Where NOT to style dialogs
+
+Forbidden locations:
+
+* Vue `<DialogPanel>` inline styles
+* page-level CSS files
+* Tailwind utility soup inside templates
+
+If the dialog needs a new visual variant:
+
+* extend `.if-overlay__panel` with a modifier class
+* do **not** fork the system
 
 ---
 
