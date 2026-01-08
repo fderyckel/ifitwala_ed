@@ -189,6 +189,7 @@ const emit = defineEmits<{
 	(e: 'close'): void
 	(e: 'create-announcement', event: ClassEventDetails): void
 	(e: 'create-task', payload: { studentGroup: string; dueDate: string | null }): void
+	(e: 'after-leave'): void
 }>()
 
 const overlayStyle = computed(() => {
@@ -303,14 +304,7 @@ function emitCreateTask() {
 	})
 }
 
-const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'create-announcement', event: ClassEventDetails): void
-  (e: 'create-task', payload: { studentGroup: string; dueDate: string | null }): void
-  (e: 'after-leave'): void
-}>()
-
 function emitAfterLeave() {
-  emit('after-leave')
+	emit('after-leave')
 }
 </script>
