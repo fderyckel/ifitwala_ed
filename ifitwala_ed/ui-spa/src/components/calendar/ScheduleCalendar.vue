@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ui-spa/src/components/calendar -->
+<!-- ifitwala_ed/ui-spa/src/components/calendar/ScheduleCalendar.vue -->
 <template>
 	<div class="relative">
 		<section class="paper-card schedule-card p-6">
@@ -126,7 +126,11 @@
 			</div>
 		</section>
 
-		<!-- Modals -->
+		<!-- ============================================================
+		     LEGACY MODALS (PHASE 0)
+		     - Keep these as-is for now.
+		     - They are HeadlessUI already and stable.
+		     ============================================================ -->
 		<MeetingEventModal
 			:open="meetingModal.open"
 			:loading="meetingModal.loading"
@@ -150,23 +154,41 @@
 			@create-announcement="openOrgCommunicationModal"
 			@create-task="openTaskCreationModal"
 		/>
+
+		<!-- ============================================================
+		     LEGACY FRAPPE-UI MODAL (PHASE 0) — still OK
+		     (We did NOT refactor this to overlay stack yet.)
+		     ============================================================ -->
 		<OrgCommunicationQuickCreateModal
 			v-model="orgCommModal.open"
 			:event="orgCommModal.event"
 			@created="handleOrgCommCreated"
 		/>
-		<CreateTaskDeliveryModal
-			v-model="taskCreationModal.open"
-			:prefill-student-group="taskCreationModal.student_group"
-			:prefill-due-date="taskCreationModal.due_date"
-			:prefill-available-from="taskCreationModal.available_from"
-			@created="handleTaskCreated"
-		/>
+
+		<!-- ============================================================
+		     IMPORTANT (PHASE 0):
+		     Remove legacy CreateTaskDeliveryModal from this page entirely.
+		     Create-task is now rendered ONLY by OverlayHost (global).
+		     ============================================================ -->
 	</div>
 </template>
 
-
 <script setup lang="ts">
+/**
+ * ScheduleCalendar.vue (Phase 0 overlay foundation refactor)
+ *
+ * What changes in Phase 0:
+ *  - Stop mounting CreateTaskDeliveryModal here (legacy Frappe-UI dialog).
+ *  - Use the global overlay stack to open the create-task overlay:
+ *      overlay.open('create-task', { prefillStudentGroup, prefillDueDate, ... })
+ *  - Keep all other modals unchanged for now.
+ *
+ * Why:
+ *  - Running two dialog systems (HeadlessUI + Frappe-UI) in the same view
+ *    leads to focus-trap conflicts and "transparent / empty" overlays.
+ *  - OverlayHost becomes the single renderer for create-task.
+ */
+
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -174,17 +196,23 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import { DatesSetArg, EventClickArg } from '@fullcalendar/core';
 import { FeatherIcon } from 'frappe-ui';
+
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
 import { api } from '@/lib/client';
+
 import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue';
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue';
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue';
 import OrgCommunicationQuickCreateModal from '@/components/calendar/OrgCommunicationQuickCreateModal.vue';
-import CreateTaskDeliveryModal from '@/components/tasks/CreateTaskDeliveryModal.vue';
+
+// ✅ Phase 0 overlay stack usage
+import { useOverlayStack } from '@/composables/useOverlayStack';
+
 import type { MeetingDetails } from '@/components/calendar/meetingTypes';
 import type { SchoolEventDetails } from '@/components/calendar/schoolEventTypes';
 import type { ClassEventDetails } from '@/components/calendar/classEventTypes';
+
 // Vendor local placeholder styles to unblock build
 import '@/styles/fullcalendar/core.css';
 import '@/styles/fullcalendar/daygrid.css';
@@ -212,16 +240,21 @@ const {
 	toggleSource,
 } = useCalendarEvents({ role: props.role ?? 'staff' });
 
+/**
+ * Timezone strategy:
+ *  - You already decided: safest is FullCalendar timeZone 'local'
+ *  - We keep your existing syncCalendarTimezone implementation.
+ */
 const resolveSystemTimezone = () =>
 	((window as any)?.frappe?.boot?.time_zone ||
 		(window as any)?.frappe?.boot?.timezone ||
 		timezone.value ||
 		Intl.DateTimeFormat().resolvedOptions().timeZone ||
 		'UTC') as string;
+
 const systemTimezone = ref<string>(resolveSystemTimezone());
 
 function nowProvider() {
-	// Always return the real current instant.
 	return new Date();
 }
 
@@ -240,7 +273,6 @@ function syncCalendarTimezone() {
 	}
 }
 
-
 // Calendar preferences and toggles
 const { prefs, fetch: fetchPrefs } = useCalendarPrefs();
 const showWeekends = ref(false);
@@ -255,10 +287,12 @@ const subtitle = computed(() => {
 });
 
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null);
+
 const prefersCompact =
 	typeof window !== 'undefined' && typeof window.matchMedia === 'function'
 		? window.matchMedia('(max-width: 768px)').matches
 		: false;
+
 const preferredView = ref<'timeGridWeek' | 'listWeek'>(prefersCompact ? 'listWeek' : 'timeGridWeek');
 const calendarHeight = ref<number>(computeCalendarHeight());
 
@@ -398,33 +432,16 @@ function toggleChip(id: CalendarSource) {
 	toggleSource(id);
 }
 
+/**
+ * Overlay stack (Phase 0):
+ * - create-task overlay is opened via overlay.open()
+ * - actual rendering happens in OverlayHost (global, teleported to #overlay-root)
+ */
+const overlay = useOverlayStack();
 
-function dbgTaskModal(stage: string) {
-  const el =
-    document.querySelector('.fui-dialog-panel') ||
-    document.querySelector('[data-fui-dialog-panel]') ||
-    document.querySelector('.fui-dialog');
-
-  // log what we can see in the DOM right now
-  console.log(`[task-modal] ${stage}`, {
-    open: taskCreationModal.open,
-    student_group: taskCreationModal.student_group,
-    due_date: taskCreationModal.due_date,
-    panelFound: !!el,
-    panelRect: el ? (el as HTMLElement).getBoundingClientRect() : null,
-    panelZ: el ? getComputedStyle(el as HTMLElement).zIndex : null,
-    panelDisplay: el ? getComputedStyle(el as HTMLElement).display : null,
-    panelOpacity: el ? getComputedStyle(el as HTMLElement).opacity : null,
-    activeEl: document.activeElement?.tagName,
-  });
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-
-
+// -----------------------------------------------------------------------------
+// Meeting modal logic (unchanged)
+// -----------------------------------------------------------------------------
 const meetingModal = reactive<{
 	open: boolean;
 	loading: boolean;
@@ -450,6 +467,7 @@ async function openMeetingModal(meetingName: string) {
 	meetingModal.loading = true;
 	meetingModal.error = null;
 	meetingModal.data = null;
+
 	const seq = ++meetingRequestSeq;
 	try {
 		const payload = (await api('ifitwala_ed.api.calendar.get_meeting_details', {
@@ -477,50 +495,9 @@ function extractMeetingName(eventId?: string | null) {
 	return rest.join('::');
 }
 
-function handleEventClick(info: EventClickArg) {
-	info.jsEvent?.preventDefault();
-	info.jsEvent?.stopPropagation();
-
-	const rawSource =
-		(info.event.extendedProps?.source as string | undefined) ||
-		((info.event as unknown as { source?: string }).source ?? undefined);
-	if (rawSource === 'staff_holiday') {
-		// Holidays are all-day blocks; no modal
-		closeMeetingModal();
-		closeSchoolEventModal();
-		closeClassEventModal();
-		return;
-	}
-	if (rawSource === 'meeting') {
-		closeSchoolEventModal();
-		closeClassEventModal();
-		const meetingName = extractMeetingName(info.event.id);
-		if (!meetingName) {
-			return;
-		}
-		openMeetingModal(meetingName);
-		return;
-	}
-
-	if (rawSource === 'school_event') {
-		closeMeetingModal();
-		closeClassEventModal();
-		const schoolEventName = extractSchoolEventName(info.event.id);
-		if (!schoolEventName) {
-			return;
-		}
-		openSchoolEventModal(schoolEventName);
-		return;
-	}
-
-	if (rawSource === 'student_group') {
-		closeMeetingModal();
-		closeSchoolEventModal();
-		const eventId = resolveEventId(info);
-		openClassEventModal(eventId);
-	}
-}
-
+// -----------------------------------------------------------------------------
+// School event modal logic (unchanged)
+// -----------------------------------------------------------------------------
 const schoolEventModal = reactive<{
 	open: boolean;
 	loading: boolean;
@@ -546,6 +523,7 @@ async function openSchoolEventModal(eventName: string) {
 	schoolEventModal.loading = true;
 	schoolEventModal.error = null;
 	schoolEventModal.data = null;
+
 	const seq = ++schoolEventRequestSeq;
 	try {
 		const payload = (await api('ifitwala_ed.api.calendar.get_school_event_details', {
@@ -582,6 +560,9 @@ function resolveEventId(info: EventClickArg) {
 	);
 }
 
+// -----------------------------------------------------------------------------
+// Class event modal logic (mostly unchanged; task create now opens overlay)
+// -----------------------------------------------------------------------------
 const classEventModal = reactive<{
 	open: boolean;
 	loading: boolean;
@@ -594,26 +575,6 @@ const classEventModal = reactive<{
 	data: null,
 });
 
-const orgCommModal = reactive<{
-	open: boolean;
-	event: ClassEventDetails | null;
-}>({
-	open: false,
-	event: null,
-});
-
-const taskCreationModal = reactive<{
-	open: boolean;
-	student_group: string | null;
-	due_date: string | null;
-	available_from: string | null;
-}>({
-	open: false,
-	student_group: null,
-	due_date: null,
-	available_from: null,
-});
-
 let classEventRequestSeq = 0;
 
 function closeClassEventModal() {
@@ -622,55 +583,54 @@ function closeClassEventModal() {
 	classEventModal.error = null;
 }
 
-async function openTaskCreationModal() {
-  if (!classEventModal.data) return;
-
-  const studentGroup = classEventModal.data.student_group;
-  const dueDate = classEventModal.data.end || classEventModal.data.start || null;
-
-  dbgTaskModal('before closeClassEventModal');
-
-  closeClassEventModal();
-
-  await nextTick();
-  dbgTaskModal('after nextTick, before open');
-
-  taskCreationModal.student_group = studentGroup;
-  taskCreationModal.due_date = dueDate;
-  taskCreationModal.available_from = null;
-  taskCreationModal.open = true;
-
-  await nextTick();
-  dbgTaskModal('after open + nextTick');
-}
+// Legacy org comm quick create (unchanged in Phase 0)
+const orgCommModal = reactive<{
+	open: boolean;
+	event: ClassEventDetails | null;
+}>({
+	open: false,
+	event: null,
+});
 
 function handleOrgCommCreated() {
 	orgCommModal.open = false;
 }
 
-function handleTaskCreated() {
-	taskCreationModal.open = false;
-}
-
 watch(
 	() => orgCommModal.open,
 	(open) => {
-		if (!open) {
-			orgCommModal.event = null;
-		}
-	},
+		if (!open) orgCommModal.event = null;
+	}
 );
 
-watch(
-	() => taskCreationModal.open,
-	(open) => {
-		if (!open) {
-			taskCreationModal.student_group = null;
-			taskCreationModal.due_date = null;
-			taskCreationModal.available_from = null;
-		}
-	},
-);
+/**
+ * ✅ PHASE 0 CHANGE:
+ * When user clicks "Create Task" from ClassEventModal:
+ *  1) Close the class modal (release HeadlessUI focus trap)
+ *  2) await nextTick() so DOM settles
+ *  3) open create-task overlay via overlay stack
+ *
+ * No Frappe-UI dialog is mounted in this page anymore.
+ */
+async function openTaskCreationModal() {
+	if (!classEventModal.data) return;
+
+	const studentGroup = classEventModal.data.student_group;
+	const dueDate = classEventModal.data.end || classEventModal.data.start || null;
+
+	// 1) close HeadlessUI modal first
+	closeClassEventModal();
+
+	// 2) wait one tick so the DOM/focus-trap releases
+	await nextTick();
+
+	// 3) now open overlay (rendered by OverlayHost globally)
+	overlay.open('create-task', {
+		prefillStudentGroup: studentGroup,
+		prefillDueDate: dueDate,
+		prefillAvailableFrom: null,
+	});
+}
 
 async function openClassEventModal(eventId: string | null | undefined) {
 	const resolvedId = extractClassEventId(eventId);
@@ -684,6 +644,7 @@ async function openClassEventModal(eventId: string | null | undefined) {
 	classEventModal.loading = true;
 	classEventModal.error = null;
 	classEventModal.data = null;
+
 	const seq = ++classEventRequestSeq;
 	try {
 		const payload = (await api('ifitwala_ed.api.calendar.get_student_group_event_details', {
@@ -718,6 +679,54 @@ function extractClassEventId(rawId?: string | null) {
 	return null;
 }
 
+// -----------------------------------------------------------------------------
+// Central event click routing (unchanged except task path now overlay)
+// -----------------------------------------------------------------------------
+function handleEventClick(info: EventClickArg) {
+	info.jsEvent?.preventDefault();
+	info.jsEvent?.stopPropagation();
+
+	const rawSource =
+		(info.event.extendedProps?.source as string | undefined) ||
+		((info.event as unknown as { source?: string }).source ?? undefined);
+
+	if (rawSource === 'staff_holiday') {
+		// Holidays are all-day blocks; no modal
+		closeMeetingModal();
+		closeSchoolEventModal();
+		closeClassEventModal();
+		return;
+	}
+
+	if (rawSource === 'meeting') {
+		closeSchoolEventModal();
+		closeClassEventModal();
+		const meetingName = extractMeetingName(info.event.id);
+		if (!meetingName) return;
+		openMeetingModal(meetingName);
+		return;
+	}
+
+	if (rawSource === 'school_event') {
+		closeMeetingModal();
+		closeClassEventModal();
+		const schoolEventName = extractSchoolEventName(info.event.id);
+		if (!schoolEventName) return;
+		openSchoolEventModal(schoolEventName);
+		return;
+	}
+
+	if (rawSource === 'student_group') {
+		closeMeetingModal();
+		closeSchoolEventModal();
+		const eventId = resolveEventId(info);
+		openClassEventModal(eventId);
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Responsiveness / auto-refresh / resize (unchanged)
+// -----------------------------------------------------------------------------
 function setupMediaWatcher() {
 	if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
 	const mq = window.matchMedia('(max-width: 768px)');
@@ -771,8 +780,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	cleanupFns.forEach((fn) => fn());
-	if (intervalHandle) {
-		clearInterval(intervalHandle);
-	}
+	if (intervalHandle) clearInterval(intervalHandle);
 });
 </script>

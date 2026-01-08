@@ -99,7 +99,8 @@
 				</h3>
 
 				<div class="grid gap-3">
-					<button type="button" class="action-tile group" @click="taskModalOpen = true">
+					<!-- Create task now uses overlay stack -->
+					<button type="button" class="action-tile group" @click="openCreateTask">
 						<div class="action-tile__icon">
 							<FeatherIcon name="clipboard" class="h-6 w-6" />
 						</div>
@@ -279,20 +280,16 @@
 			</div>
 		</section>
 
-		<CreateTaskDeliveryModal
-			v-model="taskModalOpen"
-			@created="handleTaskCreated"
-		/>
+		<!-- Removed CreateTaskDeliveryModal: overlay host renders overlays globally -->
 	</div>
 </template>
-
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { FeatherIcon } from 'frappe-ui'
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue'
-import CreateTaskDeliveryModal from '@/components/tasks/CreateTaskDeliveryModal.vue'
+import { useOverlayStack } from '@/composables/useOverlayStack'
 
 /* USER --------------------------------------------------------- */
 const userDoc = ref<any | null>(null)
@@ -458,9 +455,14 @@ const greeting = computed(() => {
   return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 })
 
-const taskModalOpen = ref(false)
+/* OVERLAY: Create Task ---------------------------------------- */
+const overlay = useOverlayStack()
 
-function handleTaskCreated() {
-  taskModalOpen.value = false
+function openCreateTask() {
+  overlay.open('create-task', {
+    prefillStudentGroup: null,
+    prefillDueDate: null,
+    prefillAvailableFrom: null,
+  })
 }
 </script>

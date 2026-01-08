@@ -1,6 +1,7 @@
 <!-- ifitwala_ed/ifitwala_ed/ui-spa/src/App.vue -->
 
 <template>
+  <!-- Keep layout behavior identical -->
   <component :is="layoutComponent" :key="layoutKey">
     <RouterView />
   </component>
@@ -34,4 +35,3 @@ const layoutComponent = computed(() => {
 // Force a clean remount if layout family changes (rare, but prevents DOM carryover).
 const layoutKey = computed(() => activeLayout.value)
 </script>
-
