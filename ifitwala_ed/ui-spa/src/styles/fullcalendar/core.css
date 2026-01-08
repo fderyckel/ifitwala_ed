@@ -2,19 +2,19 @@
    FULLCALENDAR CORE OVERRIDES (SCOPED TO .calendar-shell)
    ===================================================================== */
 @layer components {
-  .calendar-shell .fc {
+  .calendar-shell {
     font-family: var(--font-sans), system-ui, -apple-system,
       BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 0.85rem;
   }
 
-  .calendar-shell .fc .fc-toolbar-title {
+  .calendar-shell .fc-toolbar-title {
     font-size: 1rem;
     font-weight: 600;
     color: rgb(var(--ink-rgb) / 1);
   }
 
-  .calendar-shell .fc .fc-button {
+  .calendar-shell .fc-button {
     border-radius: 9999px;
     border: 1px solid rgb(var(--border-rgb) / 0.95);
     background: rgb(var(--surface-strong-rgb) / 1);
@@ -24,26 +24,26 @@
     font-weight: 500;
   }
 
-  .calendar-shell .fc .fc-button-active,
-  .calendar-shell .fc .fc-button-primary:not(:disabled).fc-button-active {
+  .calendar-shell .fc-button-active,
+  .calendar-shell .fc-button-primary:not(:disabled).fc-button-active {
     border-color: rgb(var(--canopy-rgb) / 0.9);
     background: rgb(var(--canopy-rgb) / 1);
     color: rgb(var(--surface-strong-rgb) / 1);
   }
 
-  .calendar-shell .fc .fc-daygrid-event,
-  .calendar-shell .fc .fc-timegrid-event {
+  .calendar-shell .fc-daygrid-event,
+  .calendar-shell .fc-timegrid-event {
     border-radius: 0.85rem;
     padding: 0.3rem 0.45rem;
     border: none;
   }
 
-  .calendar-shell .fc .fc-event-time,
-  .calendar-shell .fc .fc-list-event-time {
+  .calendar-shell .fc-event-time,
+  .calendar-shell .fc-list-event-time {
     display: none;
   }
 
-  .calendar-shell .fc .fc-list-event-dot {
+  .calendar-shell .fc-list-event-dot {
     border-color: transparent;
   }
 }
