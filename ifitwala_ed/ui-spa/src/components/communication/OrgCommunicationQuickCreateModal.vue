@@ -1,7 +1,16 @@
 <!-- ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateModal.vue -->
 <template>
-	<TransitionRoot as="template" :show="isOpen">
-		<Dialog as="div" class="if-overlay if-overlay--class" @close="handleClose">
+	<TransitionRoot
+		as="template"
+		:show="open"
+		@after-leave="emitAfterLeave"
+	>
+		<Dialog
+			as="div"
+			class="if-overlay if-overlay--class"
+			:style="overlayStyle"
+			@close="handleClose"
+		>
 			<TransitionChild
 				as="template"
 				enter="if-overlay__fade-enter"
@@ -70,91 +79,91 @@
 								</section>
 
 								<aside class="space-y-4 rounded-xl border border-border/80 bg-surface-soft p-4 shadow-sm">
-						<div>
-							<div class="flex items-center justify-between">
-								<p class="type-label">Audience</p>
-								<label class="flex cursor-pointer items-center gap-2 type-body text-ink/80 hover:text-ink">
-									<input
-										v-model="form.to_guardians"
-										type="checkbox"
-										class="rounded border-gray-300 text-jacaranda focus:ring-jacaranda"
-									/>
-									Include guardians
-								</label>
-							</div>
-							<div class="mt-2 flex flex-wrap gap-2">
-								<span class="chip">Students</span>
-								<span v-if="form.to_guardians" class="chip">Guardians</span>
-								<span class="chip">{{ groupLabel }}</span>
-								<span class="chip">{{ schoolLabel }}</span>
+									<div>
+										<div class="flex items-center justify-between">
+											<p class="type-label">Audience</p>
+											<label class="flex cursor-pointer items-center gap-2 type-body text-ink/80 hover:text-ink">
+												<input
+													v-model="form.to_guardians"
+													type="checkbox"
+													class="rounded border-gray-300 text-jacaranda focus:ring-jacaranda"
+												/>
+												Include guardians
+											</label>
+										</div>
+										<div class="mt-2 flex flex-wrap gap-2">
+											<span class="chip">Students</span>
+											<span v-if="form.to_guardians" class="chip">Guardians</span>
+											<span class="chip">{{ groupLabel }}</span>
+											<span class="chip">{{ schoolLabel }}</span>
+										</div>
+									</div>
+
+									<div>
+										<p class="type-label">Delivery</p>
+										<div class="mt-2 flex flex-wrap gap-2">
+											<span class="chip">Published</span>
+											<span class="chip">Everywhere</span>
+										</div>
+									</div>
+
+									<div class="space-y-3">
+										<div class="space-y-1">
+											<label class="type-label">Publish from</label>
+											<input
+												v-model="form.publish_from"
+												type="datetime-local"
+												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+											/>
+										</div>
+
+										<div class="space-y-1">
+											<label class="type-label">Publish until</label>
+											<input
+												v-model="form.publish_to"
+												type="datetime-local"
+												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+											/>
+										</div>
+
+										<div class="space-y-1">
+											<label class="type-label">Brief start date</label>
+											<input
+												v-model="form.brief_start_date"
+												type="date"
+												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+											/>
+										</div>
+
+										<div class="space-y-1">
+											<label class="type-label">Brief end date</label>
+											<input
+												v-model="form.brief_end_date"
+												type="date"
+												class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+											/>
+										</div>
+									</div>
+
+									<div class="rounded-lg border border-dashed border-border/80 bg-white/70 px-3 py-2 type-caption text-slate-token/70">
+										Course: <span class="font-semibold text-ink">{{ courseLabel }}</span>
+										<span v-if="sessionDateLabel"> · Date: {{ sessionDateLabel }}</span>
+									</div>
+								</aside>
 							</div>
 						</div>
 
-						<div>
-							<p class="type-label">Delivery</p>
-							<div class="mt-2 flex flex-wrap gap-2">
-								<span class="chip">Published</span>
-								<span class="chip">Everywhere</span>
-							</div>
-						</div>
-
-						<div class="space-y-3">
-							<div class="space-y-1">
-								<label class="type-label">Publish from</label>
-								<input
-									v-model="form.publish_from"
-									type="datetime-local"
-									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-								/>
-							</div>
-
-							<div class="space-y-1">
-								<label class="type-label">Publish until</label>
-								<input
-									v-model="form.publish_to"
-									type="datetime-local"
-									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-								/>
-							</div>
-
-							<div class="space-y-1">
-								<label class="type-label">Brief start date</label>
-								<input
-									v-model="form.brief_start_date"
-									type="date"
-									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-								/>
-							</div>
-
-							<div class="space-y-1">
-								<label class="type-label">Brief end date</label>
-								<input
-									v-model="form.brief_end_date"
-									type="date"
-									class="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
-								/>
-							</div>
-						</div>
-
-						<div class="rounded-lg border border-dashed border-border/80 bg-white/70 px-3 py-2 type-caption text-slate-token/70">
-							Course: <span class="font-semibold text-ink">{{ courseLabel }}</span>
-							<span v-if="sessionDateLabel"> · Date: {{ sessionDateLabel }}</span>
-						</div>
-					</aside>
-				</div>
-			</div>
-
-				<footer class="if-overlay__footer flex flex-wrap items-center justify-end gap-2">
-					<Button appearance="secondary" @click="handleClose">Cancel</Button>
-					<Button
-						appearance="primary"
-						:loading="submitting"
-						:disabled="!canSubmit"
-						@click="submit"
-					>
-						Create announcement
-					</Button>
-				</footer>
+						<footer class="if-overlay__footer flex flex-wrap items-center justify-end gap-2">
+							<Button appearance="secondary" @click="handleClose">Cancel</Button>
+							<Button
+								appearance="primary"
+								:loading="submitting"
+								:disabled="!canSubmit"
+								@click="submit"
+							>
+								Create announcement
+							</Button>
+						</footer>
 					</DialogPanel>
 				</TransitionChild>
 			</div>
@@ -182,22 +191,27 @@ import type {
 import type { ClassEventDetails } from '../calendar/classEventTypes';
 
 const props = defineProps<{
-	modelValue: boolean;
+	open: boolean;
 	event: ClassEventDetails | null;
+	zIndex?: number;
 }>();
 
 const emit = defineEmits<{
-	(e: 'update:modelValue', value: boolean): void;
+	(e: 'close'): void;
+	(e: 'after-leave'): void;
 	(e: 'created', doc: Record<string, unknown>): void;
 }>();
 
-const isOpen = computed({
-	get: () => props.modelValue,
-	set: (value: boolean) => emit('update:modelValue', value),
-});
+const overlayStyle = computed(() => ({
+	zIndex: props.zIndex ?? 70,
+}));
+
+function emitAfterLeave() {
+	emit('after-leave');
+}
 
 function handleClose() {
-	isOpen.value = false;
+	emit('close');
 }
 
 const submitting = ref(false);
@@ -244,7 +258,7 @@ const canSubmit = computed(
 );
 
 watch(
-	() => [isOpen.value, props.event?.id],
+	() => [props.open, props.event?.id],
 	([open]) => {
 		if (!open) return;
 		initializeForm();
@@ -257,7 +271,6 @@ function initializeForm() {
 	form.message = '';
 	form.publish_from = formatDateTimeInput(now);
 	form.publish_to = '';
-	// Use the event's session date if available, otherwise default to today
 	const eventDate = props.event?.session_date || formatDateInput(now);
 	form.brief_start_date = eventDate;
 	form.brief_end_date = eventDate;
@@ -349,7 +362,7 @@ async function submit() {
 			message: 'Announcement created.',
 		});
 		emit('created', doc);
-		isOpen.value = false;
+		emit('close');
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Unable to create announcement.';

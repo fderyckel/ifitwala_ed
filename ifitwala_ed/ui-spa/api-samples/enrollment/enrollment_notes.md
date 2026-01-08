@@ -191,21 +191,77 @@ Important clarification:
 
 * `min_grade` (Data, human label)
 * `min_numeric_score` (Float, hidden, resolved at save time)
+* `grade_scale_used` (Link, resolved at save time; see §5.3)
+
+Runtime evaluation must **never** parse `min_grade`.
 
 ---
 
-### 5.3 Grade scale resolution (Auditable & Deterministic)
+### 5.3 Grade scale: explicit intent vs evidence (Locked)
 
-Grade meaning depends on context and must remain auditable.
+This system must support **both**:
 
-Resolution order for **eligibility evaluation**:
+1) A **program baseline grading intent** (default expectation)
+2) A **course-specific grading override** (exceptions)
+3) A **frozen evidence grade scale** (what actually happened)
 
-1. **Course Term Result.grade_scale** (evidence always wins)
-2. Configured baseline scale (Program / Offering, if defined)
-3. School default scale (if defined)
-4. Otherwise: validation error (no silent fallback)
+Ifitwala_Ed is reality-anchored: programs declare intent, courses may override,
+and results record what was actually used.
 
-Eligibility decisions must always be explainable years later.
+#### 5.3.1 Program baseline grade scale (intent layer)
+
+**DocType + fieldname**
+
+* `Program.grade_scale` (Link → Grade Scale)
+
+Meaning:
+
+* default grade semantics for the program
+* used for prerequisite authoring and baseline comparisons
+* policy/config intent, not evidence
+
+#### 5.3.2 Course grade scale override (intent layer)
+
+**DocType + fieldname**
+
+* `Course.grade_scale` (Link → Grade Scale, optional)
+
+Meaning:
+
+* overrides the program scale for this course
+* supports pass/fail or special scales
+* policy/config intent, not evidence
+
+#### 5.3.3 Evidence grade scale (frozen truth)
+
+**DocType + fieldname**
+
+* `Course Term Result.grade_scale` (Link → Grade Scale)
+
+Meaning:
+
+* immutable, historically auditable truth
+* what was actually used for the student’s result
+* never recomputed or inferred after the fact
+
+#### 5.3.4 Resolution order (deterministic)
+
+When eligibility needs a grade scale, resolve in this order:
+
+1. `Course Term Result.grade_scale` (evidence always wins)
+2. `Course.grade_scale` (course override)
+3. `Program.grade_scale` (program baseline)
+4. otherwise: validation error (no silent fallback)
+
+#### 5.3.5 Prerequisite authoring (snapshotted)
+
+To prevent drift when grade scale configs change later:
+
+* each prerequisite row must store `grade_scale_used`
+* `min_numeric_score` is computed from (`min_grade`, `grade_scale_used`) at save time
+* eligibility evaluation compares Float → Float only
+
+This ensures prerequisite rules remain auditable years later.
 
 ---
 
@@ -214,7 +270,7 @@ Eligibility decisions must always be explainable years later.
 Eligibility checks use **official academic truth only**:
 
 * Program Enrollment (course taken / completed)
-* Course Term Result (grades)
+* Course Term Result (grades, numeric_score, and evidence grade_scale)
 * Reporting Cycle status (Locked / Published thresholds)
 
 Eligibility **never** uses:
@@ -223,7 +279,7 @@ Eligibility **never** uses:
 * unreleased tasks
 * inferred or transient data
 
-Institutions define which Reporting Cycle states are considered valid.
+Institutions define which Reporting Cycle states are considered valid evidence.
 
 ---
 
@@ -245,7 +301,7 @@ Retake behavior is **policy-driven**, not hard-coded.
 A grading / retake policy must define:
 
 * which attempts are eligible evidence
-* which reporting cycles are considered
+* which reporting cycle statuses are eligible evidence
 * how a single “counted” result is chosen
 * what numeric threshold constitutes a pass
 
@@ -355,7 +411,7 @@ Delivery capacity is enforced by:
 Student Groups may:
 
 * represent one section of a course
-* inherit default capacity from Program Offering Course at creation
+* inherit default capacity from Program Offering Course.capacity at creation
 * later diverge due to room, teacher, or timetable constraints
 
 ---
@@ -435,6 +491,7 @@ Out of scope for initial phase, but must remain possible.
 * treating activities as “simpler”
 * letting UI flows dictate data models
 * allowing enrollment logic to mutate Program Enrollment directly
+* forgetting to snapshot prerequisite grade scales (causes drift)
 
 ---
 
@@ -457,7 +514,7 @@ The correct response is:
 
 Still to be locked:
 
-1. Final Program Enrollment Request schema
+1. Final Program Enrollment Request schema (fieldnames and minimal audit payload)
 2. Location of retake / grading policy (Program vs Offering)
 3. Basket rule storage (JSON vs structured)
 4. Course equivalency abstraction

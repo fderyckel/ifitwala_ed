@@ -115,23 +115,6 @@
 				Nothing scheduled for this range. Enjoy the calm or adjust the view to a different week.
 			</div>
 		</section>
-
-		<!-- ============================================================
-		     LEGACY FRAPPE-UI MODAL (PHASE 0) — still OK
-		     (We did NOT refactor this to overlay stack yet.)
-		     ============================================================ -->
-		<OrgCommunicationQuickCreateModal
-			v-model="orgCommModal.open"
-			:event="orgCommModal.event"
-			@created="handleOrgCommCreated"
-		/>
-
-		<!-- ============================================================
-		     PHASE 0 RULE:
-		     - Meeting / School Event / Class Event are OVERLAYS (overlay stack).
-		     - Create-task is also an OVERLAY (overlay stack).
-		     - This page does NOT mount any HeadlessUI event dialogs anymore.
-		     ============================================================ -->
 	</div>
 </template>
 
