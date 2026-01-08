@@ -7,11 +7,13 @@
   /* ============================================================
      PORTAL SHELLS
      ============================================================ */
-  .ifitwala-theme {
+  .ifitwala-theme,
+  .staff-layout {
     @apply min-h-screen flex flex-col;
     background: var(--portal-gradient-bg) !important;
     background-attachment: fixed;
     color: rgb(var(--ink-rgb) / 1);
+    font-family: var(--font-sans);
   }
 
   .staff-layout__header {

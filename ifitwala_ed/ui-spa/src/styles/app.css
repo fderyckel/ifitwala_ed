@@ -6,7 +6,6 @@
 @layer base {
   html,
   body {
-    font-family: var(--font-sans);
     color: rgb(var(--ink-rgb) / 1);
     @apply antialiased;
   }
