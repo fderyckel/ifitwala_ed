@@ -98,7 +98,7 @@ watch(
         r._closeTimer = window.setTimeout(() => {
           const still = rendered.value.find((x) => x.id === r.id)
           if (still?._closing) finalizeClose(r.id)
-        }, 350) // >= leave duration
+        }, 350)
       }
     }
 
@@ -113,7 +113,7 @@ watch(
     }
     rendered.value = ordered
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 )
 
 function resolveComponent(type: OverlayType) {
