@@ -292,6 +292,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'created', payload: CreateTaskDeliveryPayload): void
+	(e: 'after-leave'): void
 }>()
 
 const open = computed(() => props.open)
@@ -502,12 +503,6 @@ async function submit() {
     submitting.value = false
   }
 }
-
-const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'created', payload: CreateTaskDeliveryPayload): void
-  (e: 'after-leave'): void
-}>()
 
 function emitAfterLeave() {
   emit('after-leave')
