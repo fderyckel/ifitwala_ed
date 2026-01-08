@@ -443,7 +443,8 @@
      CALENDAR EVENT PILLS — semantic, stable
      ============================================================ */
   .event-pill {
-    @apply inline-flex items-center gap-2 rounded-full border px-3 py-1.5 type-button-label transition;
+    @apply inline-flex items-center gap-2 rounded-full border px-3 py-1.5
+           text-xs font-semibold tracking-[0.06em] transition;
     background-color: rgb(var(--surface-strong-rgb) / 0.85);
     color: rgb(var(--ink-rgb) / 0.75);
     border-color: rgb(var(--border-rgb) / 0.9);
