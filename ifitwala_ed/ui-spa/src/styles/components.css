@@ -941,7 +941,7 @@
   }
 
   .if-overlay--meeting .if-overlay__panel {
-    border-top: 4px solid rgb(var(--sky-rgb) / 0.9);
+    border-top: 4px solid rgb(var(--flame-rgb) / 0.9);
   }
 
   .if-overlay--school .if-overlay__panel {
@@ -949,11 +949,16 @@
   }
 
   .if-overlay--meeting .meeting-modal__eyebrow {
-    color: rgb(var(--sky-rgb) / 0.95);
+    color: rgb(var(--flame-rgb) / 0.95);
   }
 
   .if-overlay--class .meeting-modal__eyebrow {
     color: rgb(var(--jacaranda-rgb) / 0.95);
+  }
+
+  .if-overlay--meeting .meeting-modal__badge {
+    background: rgb(var(--flame-rgb) / 0.12);
+    color: rgb(var(--flame-rgb) / 1);
   }
 
   .if-overlay--class .meeting-modal__badge {
@@ -968,6 +973,10 @@
   .if-overlay--school .meeting-modal__badge {
     background: rgb(var(--leaf-rgb) / 0.1);
     color: rgb(var(--leaf-rgb) / 1);
+  }
+
+  .if-overlay--meeting .meeting-modal__color-pill {
+    background: rgb(var(--flame-rgb) / 0.9);
   }
 
   .if-overlay--school .meeting-modal__color-pill {
