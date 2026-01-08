@@ -8,8 +8,11 @@
  "field_order": [
   "apply_to_course",
   "apply_to_level",
+  "prereq_group",
   "required_course",
   "min_grade",
+  "grade_scale_used",
+  "min_numeric_score",
   "concurrency_ok",
   "notes"
  ],
@@ -29,6 +32,13 @@
    "options": "Higher Level\nStandard Level\nExtended\nAdvanced\nStandard\nNone"
   },
   {
+   "default": "1",
+   "fieldname": "prereq_group",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Prereq Group"
+  },
+  {
    "fieldname": "required_course",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -41,6 +51,20 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Minimum Grade (Program)"
+  },
+  {
+   "fieldname": "grade_scale_used",
+   "fieldtype": "Link",
+   "label": "Grade Scale Used",
+   "options": "Grade Scale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "min_numeric_score",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Minimum Numeric Score",
+   "read_only": 1
   },
   {
    "default": "0",

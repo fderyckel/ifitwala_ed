@@ -90,7 +90,7 @@
 
     <!-- Modal -->
     <TransitionRoot as="template" :show="isModalOpen">
-      <Dialog as="div" class="if-overlay" @close="isModalOpen = false">
+      <Dialog as="div" class="if-overlay" :initialFocus="initialFocus" @close="isModalOpen = false">
         <TransitionChild
           as="template"
           enter="if-overlay__fade-enter"
@@ -114,6 +114,16 @@
             leave-to="if-overlay__panel-from"
           >
             <DialogPanel class="if-overlay__panel if-overlay__panel--compact">
+              <button
+                ref="initialFocus"
+                type="button"
+                class="sr-only"
+                aria-hidden="true"
+                tabindex="0"
+                @click="isModalOpen = false"
+              >
+                Close
+              </button>
               <div class="if-overlay__body">
                 <div v-if="selectedLog">
                   <DialogTitle as="h3" class="type-h3">
@@ -173,6 +183,7 @@ const start = ref(0)
 const initialLoading = ref(true)
 const moreLoading = ref(false)
 const modalLoading = ref(false)
+const initialFocus = ref(null)
 
 function unwrap(resp) {
   return resp && typeof resp === 'object' && 'message' in resp ? resp.message : resp

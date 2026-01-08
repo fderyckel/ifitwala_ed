@@ -8,6 +8,8 @@ from frappe import _
 from frappe.utils.nestedset import NestedSet
 from frappe.utils import cint
 
+from ifitwala_ed.curriculum.enrollment_utils import resolve_min_numeric_score
+
 FLOAT_EPS = 1e-6
 
 class Program(NestedSet):
@@ -17,6 +19,7 @@ class Program(NestedSet):
 		# Keep existing validations
 		self._validate_duplicate_course()
 		self._validate_active_courses()
+		self._sync_prerequisite_thresholds()
 
 		# New/updated validations for assessment model
 		self._apply_default_colors_for_assessment_categories()
@@ -49,6 +52,44 @@ class Program(NestedSet):
 		if inactive:
 			lines = "\n".join([f"Row {idx}: {name} (status: {st})" for idx, name, st in inactive])
 			frappe.throw(_("Only Active Courses can be added:\n{0}").format(lines))
+
+	def _sync_prerequisite_thresholds(self):
+		rows = self.get("prerequisites") or []
+		if not rows:
+			return
+
+		required_courses = [r.required_course for r in rows if r.required_course]
+		course_scale_map = {}
+		if required_courses:
+			course_rows = frappe.get_all(
+				"Course",
+				filters={"name": ["in", list(set(required_courses))]},
+				fields=["name", "grade_scale"],
+			)
+			course_scale_map = {r.name: r.grade_scale for r in course_rows}
+
+		scale_cache = {}
+		for row in rows:
+			grade_scale_used = None
+			if row.required_course:
+				grade_scale_used = course_scale_map.get(row.required_course) or self.grade_scale
+			else:
+				grade_scale_used = self.grade_scale
+
+			if row.min_grade:
+				if not grade_scale_used:
+					frappe.throw(
+						_("Cannot compute prerequisite threshold: no grade scale found. Set Course.grade_scale or Program.grade_scale.")
+					)
+				row.grade_scale_used = grade_scale_used
+				row.min_numeric_score = resolve_min_numeric_score(
+					row.min_grade,
+					grade_scale_used,
+					cache=scale_cache,
+				)
+			else:
+				row.min_numeric_score = None
+				row.grade_scale_used = grade_scale_used or None
 
 	# ──────────────────────────────────────────────────────────────────────────────
 	# Assessment Categories (Program Assessment Category child)

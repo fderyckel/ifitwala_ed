@@ -4,6 +4,7 @@
 			as="div"
 			class="if-overlay if-overlay--meeting"
 			:style="{ zIndex: zIndex }"
+			:initialFocus="initialFocus"
 			@close="emitClose"
 		>
 			<TransitionChild
@@ -29,6 +30,16 @@
 					leave-to="if-overlay__panel-from"
 				>
 					<DialogPanel class="if-overlay__panel if-overlay__panel--compact">
+						<button
+							ref="initialFocus"
+							type="button"
+							class="sr-only"
+							aria-hidden="true"
+							tabindex="0"
+							@click="emitClose"
+						>
+							Close
+						</button>
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
 								<p class="meeting-modal__eyebrow type-overline">Meeting</p>
@@ -277,4 +288,6 @@ function safeDate(value?: string | null) {
 function emitClose() {
 	emit('close');
 }
+
+const initialFocus = ref<HTMLElement | null>(null);
 </script>

@@ -9,6 +9,7 @@
 			as="div"
 			class="if-overlay if-overlay--school"
 			:style="overlayStyle"
+			:initialFocus="initialFocus"
 			@close="emitClose"
 		>
 			<TransitionChild
@@ -34,6 +35,16 @@
 					leave-to="if-overlay__panel-from"
 				>
 					<DialogPanel class="if-overlay__panel if-overlay__panel--compact">
+						<button
+							ref="initialFocus"
+							type="button"
+							class="sr-only"
+							aria-hidden="true"
+							tabindex="0"
+							@click="emitClose"
+						>
+							Close
+						</button>
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
 								<p class="meeting-modal__eyebrow type-overline">School Event</p>
@@ -153,7 +164,7 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import type { SchoolEventDetails } from './schoolEventTypes';
 
@@ -230,4 +241,6 @@ function safeDate(value?: string | null) {
 	if (Number.isNaN(date.getTime())) return null;
 	return date;
 }
+
+const initialFocus = ref<HTMLElement | null>(null);
 </script>

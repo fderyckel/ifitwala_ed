@@ -9,6 +9,7 @@
 			as="div"
 			class="if-overlay if-overlay--class"
 			:style="overlayStyle"
+			:initialFocus="initialFocus"
 			@close="emitClose"
 		>
 			<TransitionChild
@@ -34,6 +35,16 @@
 					leave-to="if-overlay__panel-from"
 				>
 					<DialogPanel class="if-overlay__panel if-overlay__panel--compact">
+						<button
+							ref="initialFocus"
+							type="button"
+							class="sr-only"
+							aria-hidden="true"
+							tabindex="0"
+							@click="emitClose"
+						>
+							Close
+						</button>
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
 								<p class="meeting-modal__eyebrow type-overline">Class</p>
@@ -321,4 +332,6 @@ function emitCreateTask() {
 function emitAfterLeave() {
 	emit('after-leave')
 }
+
+const initialFocus = ref<HTMLElement | null>(null)
 </script>

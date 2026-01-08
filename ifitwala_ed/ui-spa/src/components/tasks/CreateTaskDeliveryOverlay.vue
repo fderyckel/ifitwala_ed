@@ -5,7 +5,7 @@
 		:show="open"
 		@after-leave="emitAfterLeave"
 	>
-    <Dialog as="div" class="if-overlay" :style="{ zIndex }" @close="handleClose">
+    <Dialog as="div" class="if-overlay" :style="{ zIndex }" :initialFocus="initialFocus" @close="handleClose">
       <TransitionChild
         as="template"
         enter="if-overlay__fade-enter"
@@ -29,6 +29,16 @@
           leave-to="if-overlay__panel-from"
         >
           <DialogPanel class="if-overlay__panel">
+            <button
+              ref="initialFocus"
+              type="button"
+              class="sr-only"
+              aria-hidden="true"
+              tabindex="0"
+              @click="handleClose"
+            >
+              Close
+            </button>
             <!-- Header -->
             <div class="flex items-start justify-between gap-3 px-5 pt-5">
               <div>
@@ -508,4 +518,5 @@ function emitAfterLeave() {
   emit('after-leave')
 }
 
+const initialFocus = ref<HTMLElement | null>(null)
 </script>
