@@ -88,7 +88,7 @@
 
 			<!-- Calendar shell with rounded corners + clipping and breathing room -->
 			<div
-				class="mt-6 overflow-hidden rounded-2xl border border-[rgb(var(--border-rgb)/0.95)]
+				class="relative mt-6 overflow-hidden rounded-2xl border border-[rgb(var(--border-rgb)/0.95)]
 				       bg-white shadow-soft p-3 sm:p-4"
 			>
 				<FullCalendar
@@ -167,14 +167,13 @@
 
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import { DatesSetArg, EventClickArg } from '@fullcalendar/core';
 import { FeatherIcon } from 'frappe-ui';
-import { nextTick } from 'vue'; // add to your existing vue imports
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
 import { api } from '@/lib/client';
@@ -399,6 +398,33 @@ function toggleChip(id: CalendarSource) {
 	toggleSource(id);
 }
 
+
+function dbgTaskModal(stage: string) {
+  const el =
+    document.querySelector('.fui-dialog-panel') ||
+    document.querySelector('[data-fui-dialog-panel]') ||
+    document.querySelector('.fui-dialog');
+
+  // log what we can see in the DOM right now
+  console.log(`[task-modal] ${stage}`, {
+    open: taskCreationModal.open,
+    student_group: taskCreationModal.student_group,
+    due_date: taskCreationModal.due_date,
+    panelFound: !!el,
+    panelRect: el ? (el as HTMLElement).getBoundingClientRect() : null,
+    panelZ: el ? getComputedStyle(el as HTMLElement).zIndex : null,
+    panelDisplay: el ? getComputedStyle(el as HTMLElement).display : null,
+    panelOpacity: el ? getComputedStyle(el as HTMLElement).opacity : null,
+    activeEl: document.activeElement?.tagName,
+  });
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+
+
 const meetingModal = reactive<{
 	open: boolean;
 	loading: boolean;
@@ -596,33 +622,27 @@ function closeClassEventModal() {
 	classEventModal.error = null;
 }
 
-function openOrgCommunicationModal() {
-	if (!classEventModal.data) return;
-	orgCommModal.event = classEventModal.data;
-	orgCommModal.open = true;
-	closeClassEventModal();
-}
-
 async function openTaskCreationModal() {
-	if (!classEventModal.data) return;
+  if (!classEventModal.data) return;
 
-	// capture context BEFORE closing
-	const studentGroup = classEventModal.data.student_group;
-	const dueDate = classEventModal.data.end || classEventModal.data.start || null;
+  const studentGroup = classEventModal.data.student_group;
+  const dueDate = classEventModal.data.end || classEventModal.data.start || null;
 
-	// 1) close HeadlessUI modal first
-	closeClassEventModal();
+  dbgTaskModal('before closeClassEventModal');
 
-	// 2) wait one tick so the DOM/focus-trap releases
-	await nextTick();
+  closeClassEventModal();
 
-	// 3) now open frappe-ui dialog
-	taskCreationModal.student_group = studentGroup;
-	taskCreationModal.due_date = dueDate;
-	taskCreationModal.available_from = null;
-	taskCreationModal.open = true;
+  await nextTick();
+  dbgTaskModal('after nextTick, before open');
+
+  taskCreationModal.student_group = studentGroup;
+  taskCreationModal.due_date = dueDate;
+  taskCreationModal.available_from = null;
+  taskCreationModal.open = true;
+
+  await nextTick();
+  dbgTaskModal('after open + nextTick');
 }
-
 
 function handleOrgCommCreated() {
 	orgCommModal.open = false;

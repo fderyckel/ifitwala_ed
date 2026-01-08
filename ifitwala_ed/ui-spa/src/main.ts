@@ -8,7 +8,7 @@ import { setupFrappeUI } from './resources/frappe';
 
 // Tailwind entry + portal styles
 import './style.css';
-
+import './styles/app.css';
 
 // Configure real‑time to use your bench’s socket.io server.
 // Frappe’s default socket server runs on port 9000 and uses HTTP.
