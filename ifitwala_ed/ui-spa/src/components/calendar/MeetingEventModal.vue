@@ -1,6 +1,11 @@
 <template>
 	<TransitionRoot as="template" :show="open">
-		<Dialog as="div" class="if-overlay if-overlay--meeting" @close="emitClose">
+		<Dialog
+			as="div"
+			class="if-overlay if-overlay--meeting"
+			:style="{ zIndex: zIndex }"
+			@close="emitClose"
+		>
 			<TransitionChild
 				as="template"
 				enter="if-overlay__fade-enter"
@@ -160,29 +165,76 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
-import { computed } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
+import { api } from '@/lib/client';
 import type { MeetingDetails, MeetingParticipantSummary } from './meetingTypes';
 
 const MAX_PARTICIPANTS = 10;
 
 const props = defineProps<{
 	open: boolean;
-	loading: boolean;
-	error: string | null;
-	meeting: MeetingDetails | null;
+	zIndex?: number;
+	meeting: string; // meeting name/id from ScheduleCalendar extractMeetingName()
 }>();
 
 const emit = defineEmits<{
 	(e: 'close'): void;
 }>();
 
+const zIndex = computed(() => props.zIndex ?? 60);
+
+const loading = ref(false);
+const error = ref<string | null>(null);
+const meeting = ref<MeetingDetails | null>(null);
+
+let reqSeq = 0;
+
+async function fetchMeetingDetails() {
+	if (!props.meeting) return;
+	const seq = ++reqSeq;
+
+	loading.value = true;
+	error.value = null;
+	meeting.value = null;
+
+	try {
+		const payload = (await api('ifitwala_ed.api.calendar.get_meeting_details', {
+			meeting: props.meeting,
+		})) as MeetingDetails;
+
+		if (seq === reqSeq) {
+			meeting.value = payload;
+		}
+	} catch (err) {
+		if (seq === reqSeq) {
+			error.value = err instanceof Error ? err.message : 'Unable to load meeting details right now.';
+		}
+	} finally {
+		if (seq === reqSeq) {
+			loading.value = false;
+		}
+	}
+}
+
+onMounted(() => {
+	if (props.open) fetchMeetingDetails();
+});
+
+watch(
+	() => props.meeting,
+	() => {
+		if (props.open) fetchMeetingDetails();
+	}
+);
+
 const windowLabel = computed(() => {
-	const start = safeDate(props.meeting?.start);
+	const start = safeDate(meeting.value?.start);
 	if (!start) return '';
 
-	const end = safeDate(props.meeting?.end);
-	const timezone = props.meeting?.timezone || undefined;
+	const end = safeDate(meeting.value?.end);
+	const timezone = meeting.value?.timezone || undefined;
+
 	const dateFormatter = new Intl.DateTimeFormat(undefined, {
 		weekday: 'long',
 		month: 'long',
@@ -197,27 +249,21 @@ const windowLabel = computed(() => {
 	});
 
 	const dateLabel = dateFormatter.format(start);
-	if (!end) {
-		return `${dateLabel} · ${timeFormatter.format(start)}`;
-	}
+	if (!end) return `${dateLabel} · ${timeFormatter.format(start)}`;
 
 	const sameDay = start.toDateString() === end.toDateString();
-	if (sameDay) {
-		return `${dateLabel} · ${timeFormatter.format(start)} – ${timeFormatter.format(end)}`;
-	}
+	if (sameDay) return `${dateLabel} · ${timeFormatter.format(start)} – ${timeFormatter.format(end)}`;
 
-	return `${dateLabel} · ${timeFormatter.format(start)} → ${dateFormatter.format(end)} · ${timeFormatter.format(
-		end
-	)}`;
+	return `${dateLabel} · ${timeFormatter.format(start)} → ${dateFormatter.format(end)} · ${timeFormatter.format(end)}`;
 });
 
 const visibleParticipants = computed<MeetingParticipantSummary[]>(() => {
-	const list = props.meeting?.participants || [];
+	const list = meeting.value?.participants || [];
 	return list.slice(0, MAX_PARTICIPANTS);
 });
 
 const overflowCount = computed(() => {
-	const total = props.meeting?.participant_count || 0;
+	const total = meeting.value?.participant_count || 0;
 	return Math.max(0, total - MAX_PARTICIPANTS);
 });
 

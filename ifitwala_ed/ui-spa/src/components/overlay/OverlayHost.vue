@@ -1,8 +1,7 @@
 <!-- ui-spa/src/components/overlay/OverlayHost.vue -->
-
 <template>
   <Teleport v-if="teleportReady" to="#overlay-root">
-    <div v-if="stack.length" class="if-overlay-host">
+    <div v-if="stack.length" class="overlay-host">
       <component
         v-for="(entry, idx) in stack"
         :key="entry.id"
@@ -19,7 +18,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useOverlayStack, type OverlayType } from '@/composables/useOverlayStack'
+
 import CreateTaskDeliveryOverlay from '@/components/tasks/CreateTaskDeliveryOverlay.vue'
+import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue' // ✅ now used as overlay-rendered
 
 const { stack, close } = useOverlayStack()
 
@@ -35,6 +36,8 @@ function resolveComponent(type: OverlayType) {
   switch (type) {
     case 'create-task':
       return CreateTaskDeliveryOverlay
+    case 'meeting-event':
+      return MeetingEventModal
     default:
       return CreateTaskDeliveryOverlay
   }
@@ -44,3 +47,12 @@ function handleClose(id: string) {
   close(id)
 }
 </script>
+
+<style scoped>
+.overlay-host {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  pointer-events: auto;
+}
+</style>

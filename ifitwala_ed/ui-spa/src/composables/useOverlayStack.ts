@@ -3,8 +3,8 @@
 import { computed, reactive } from 'vue'
 
 export type OverlayType =
-  | 'create-task' // Phase 0: first overlay type
-  // add more later...
+  | 'create-task'
+  | 'meeting-event'
 
 export type OverlayEntry = {
   id: string

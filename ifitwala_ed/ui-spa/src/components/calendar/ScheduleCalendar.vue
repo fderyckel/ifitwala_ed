@@ -131,13 +131,6 @@
 		     - Keep these as-is for now.
 		     - They are HeadlessUI already and stable.
 		     ============================================================ -->
-		<MeetingEventModal
-			:open="meetingModal.open"
-			:loading="meetingModal.loading"
-			:error="meetingModal.error"
-			:meeting="meetingModal.data"
-			@close="closeMeetingModal"
-		/>
 		<SchoolEventModal
 			:open="schoolEventModal.open"
 			:loading="schoolEventModal.loading"
@@ -730,9 +723,11 @@ function handleEventClick(info: EventClickArg) {
 	if (rawSource === 'meeting') {
 		closeSchoolEventModal();
 		closeClassEventModal();
+
 		const meetingName = extractMeetingName(info.event.id);
 		if (!meetingName) return;
-		openMeetingModal(meetingName);
+
+		overlay.open('meeting-event', { meeting: meetingName });
 		return;
 	}
 
