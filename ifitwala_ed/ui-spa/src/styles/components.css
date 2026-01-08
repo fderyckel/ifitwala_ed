@@ -356,9 +356,9 @@
   }
 
   .if-pill--meeting {
-    background-color: rgb(var(--sky-rgb) / 0.1);
-    color: rgb(var(--sky-rgb) / 1);
-    border-color: rgb(var(--sky-rgb) / 0.35);
+    background-color: rgb(var(--flame-rgb) / 0.12);
+    color: rgb(var(--flame-rgb) / 1);
+    border-color: rgb(var(--flame-rgb) / 0.35);
   }
 
   .if-pill--school {
