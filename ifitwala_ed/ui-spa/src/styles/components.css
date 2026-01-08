@@ -9,6 +9,7 @@
   .if-overlay-host {
     position: fixed;
     inset: 0;
+		z-index: 40;
   }
 
   /* Z-index is applied inline by OverlayHost to keep the stack explicit. */
@@ -16,6 +17,7 @@
     position: fixed;
     inset: 0;
     pointer-events: none;
+		z-index: 40;
   }
 
   .if-overlay__backdrop {
