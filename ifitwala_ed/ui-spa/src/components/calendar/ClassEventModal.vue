@@ -175,7 +175,7 @@ import {
 import { FeatherIcon } from 'frappe-ui'
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-
+import { useOverlayStack } from '@/composables/useOverlayStack'
 import { api } from '@/lib/client'
 import type { ClassEventDetails } from './classEventTypes'
 
@@ -184,6 +184,9 @@ const props = defineProps<{
 	zIndex?: number
 	eventId?: string | null
 }>()
+
+const overlay = useOverlayStack()
+
 
 const emit = defineEmits<{
 	(e: 'close'): void
@@ -293,16 +296,27 @@ function emitClose() {
 
 function emitCreateAnnouncement() {
 	if (!data.value) return
-	emit('create-announcement', data.value)
+
+	// Replace current modal with announcement quick-create overlay
+	// (You must have this overlay type + component registered in OverlayHost)
+	overlay.replaceTop('org-communication-quick-create', {
+		// keep it minimal: pass what the quick-create needs
+		studentGroup: data.value.student_group || null,
+		title: data.value.title || '',
+	})
 }
 
 function emitCreateTask() {
 	if (!data.value?.student_group) return
-	emit('create-task', {
-		studentGroup: data.value.student_group,
-		dueDate: data.value.end || data.value.start || null,
+
+	// Clean handoff: class modal disappears, create-task appears as top
+	overlay.replaceTop('create-task', {
+		prefillStudentGroup: data.value.student_group,
+		prefillDueDate: data.value.end || data.value.start || null,
 	})
 }
+
+
 
 function emitAfterLeave() {
 	emit('after-leave')

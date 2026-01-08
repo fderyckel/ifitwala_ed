@@ -31,6 +31,8 @@ import CreateTaskDeliveryOverlay from '@/components/tasks/CreateTaskDeliveryOver
 import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue'
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue'
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue'
+import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCommunicationQuickCreateModal.vue'
+
 
 type RenderedEntry = OverlayEntry & {
   open: boolean
@@ -126,6 +128,8 @@ function resolveComponent(type: OverlayType) {
       return SchoolEventModal
     case 'class-event':
       return ClassEventModal
+		case 'org-communication-quick-create':
+			return OrgCommunicationQuickCreateOverlay
     default:
       return CreateTaskDeliveryOverlay
   }

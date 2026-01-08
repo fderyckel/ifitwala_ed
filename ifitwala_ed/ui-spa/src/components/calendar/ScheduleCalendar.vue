@@ -159,7 +159,7 @@ import { FeatherIcon } from 'frappe-ui';
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
 
-import OrgCommunicationQuickCreateModal from '@/components/calendar/OrgCommunicationQuickCreateModal.vue';
+import OrgCommunicationQuickCreateModal from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
 
 // ✅ Overlay stack (single renderer via OverlayHost teleported to #overlay-root)
 import { useOverlayStack } from '@/composables/useOverlayStack';

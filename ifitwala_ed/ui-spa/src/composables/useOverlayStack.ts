@@ -6,6 +6,7 @@ export type OverlayType =
   | 'meeting-event'
   | 'school-event'
   | 'class-event'
+	| 'org-communication-quick-create'
 
 export type OverlayEntry = {
   id: string

@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/ui-spa/src/components/Communication/OrgCommunicationQuickCreateModal.vue -->
 <template>
 	<TransitionRoot as="template" :show="isOpen">
 		<Dialog as="div" class="if-overlay if-overlay--class" @close="handleClose">
@@ -178,7 +179,7 @@ import type {
 	OrgCommunicationAudienceRow,
 	OrgCommunicationCreateDoc,
 } from '@/types/orgCommunication';
-import type { ClassEventDetails } from './classEventTypes';
+import type { ClassEventDetails } from '../calendar/classEventTypes';
 
 const props = defineProps<{
 	modelValue: boolean;
