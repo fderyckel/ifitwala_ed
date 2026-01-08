@@ -38,11 +38,18 @@ type RenderedEntry = OverlayEntry & {
   _closeTimer?: number | null
 }
 
-const { stack, close } = useOverlayStack()
+const overlay = useOverlayStack()
 
 const teleportReady = ref(false)
 onMounted(() => {
-  teleportReady.value = !!document.getElementById('overlay-root')
+  // Defensive: guarantee teleport target exists
+  let root = document.getElementById('overlay-root')
+  if (!root) {
+    root = document.createElement('div')
+    root.id = 'overlay-root'
+    document.body.appendChild(root)
+  }
+  teleportReady.value = true
 })
 
 // z-index policy: explicit + stable
@@ -52,13 +59,8 @@ const zStep = 10
 // Local rendered stack (includes closing entries until transitions finish)
 const rendered = ref<RenderedEntry[]>([])
 
-/**
- * IMPORTANT: watch stack.value (not stack)
- * and normalize to an array before .map/.for..of.
- * This kills the "Cannot read properties of undefined (reading 'map')" crash.
- */
 watch(
-  () => stack.value,
+  () => overlay.state.stack,
   (nextRaw) => {
     const next = Array.isArray(nextRaw) ? nextRaw : []
     const nextIds = new Set(next.map((e) => e.id))
@@ -130,7 +132,7 @@ function resolveComponent(type: OverlayType) {
 }
 
 function requestClose(id: string) {
-  close(id)
+  overlay.close(id)
 }
 
 function finalizeClose(id: string) {

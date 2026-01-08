@@ -19,9 +19,16 @@ type OverlayState = {
   stack: OverlayEntry[]
 }
 
-const state: OverlayState = reactive({
-  stack: [],
-})
+// ✅ hard guarantee: one state per browser tab, even if module is bundled twice
+function getSingletonState(): OverlayState {
+  const w = window as any
+  if (w.__ifit_overlay_state) return w.__ifit_overlay_state
+  w.__ifit_overlay_state = reactive<OverlayState>({ stack: [] })
+  return w.__ifit_overlay_state
+}
+
+const state: OverlayState =
+  typeof window !== 'undefined' ? getSingletonState() : reactive({ stack: [] })
 
 function uid() {
   return `ov_${Math.random().toString(16).slice(2)}_${Date.now()}`

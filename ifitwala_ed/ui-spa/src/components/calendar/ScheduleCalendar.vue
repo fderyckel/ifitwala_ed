@@ -175,6 +175,7 @@ import '@/styles/fullcalendar/core.css';
 import '@/styles/fullcalendar/daygrid.css';
 import '@/styles/fullcalendar/timegrid.css';
 import '@/styles/fullcalendar/list.css';
+import '@/styles/fullcalendar/ifitwala-fullcalendar.css';
 
 const props = defineProps<{
 	role?: 'staff' | 'student' | 'guardian';
