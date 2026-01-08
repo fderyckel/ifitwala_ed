@@ -65,7 +65,7 @@ function handleClose(id: string) {
 .overlay-host {
   position: fixed;
   inset: 0;
-  z-index: 1; /* actual stacking is handled by children */
+  z-index: 99;
   pointer-events: auto;
 }
 </style>

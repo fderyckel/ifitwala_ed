@@ -40,8 +40,8 @@
     </main>
 
     <!-- ✅ Overlay infra lives INSIDE the staff surface -->
-    <OverlayHost />
     <div id="overlay-root"></div>
+    <OverlayHost />
   </div>
 </template>
 
