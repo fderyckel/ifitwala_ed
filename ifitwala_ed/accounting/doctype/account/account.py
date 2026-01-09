@@ -41,15 +41,12 @@ class Account(Document):
             if parent.root_type != self.root_type:
                 frappe.throw(_("Root Type must be the same as parent account"))
                 
-            # Prevent circular parenting (handled by NestedSet usually, but extra check)
+            # Prevent circular parenting (NestedSet checks strictly, but we catch self-parent here)
             if self.name and parent.name == self.name:
                 frappe.throw(_("You cannot be your own parent"))
                 
-            # Check for circular inheritance if existing record
-            if self.name:
-                ancestors = frappe.get_all("Account", filters={"parent_account": self.name}, pluck="name")
-                if parent.name in ancestors: # Simple check, full recursive check handled by NestedSet
-                     pass # NestedSet handles this better
+            # Note: Full circular ancestor check is handled by NestedSet's validate_one_root and recursion checks.
+
 
     def validate_account_type(self):
         if not self.account_type:

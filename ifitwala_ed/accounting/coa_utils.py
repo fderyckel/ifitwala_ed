@@ -27,11 +27,10 @@ def get_minimal_coa_skeleton():
         {"account_name": "Expenses", "root_type": "Expense", "is_group": 1, "parent": None},
     ]
 
-def get_account(organization, account_name, parent=None):
+def get_account_by_name(organization, account_name, parent=None):
     """
-    Returns IF Account name (docname) for that org + name (exact match).
-    If parent is specified, we can try to be more specific, but uniqueness is primarily on name + organization.
-    The spec asks for uniqueness on (organization, account_name, parent_account).
+    Returns IF Account name (docname) for that org + name.
+    If parent is specified, we check for exact parent match.
     """
     filters = {
         "organization": organization,
@@ -51,7 +50,7 @@ def create_coa_for_organization(organization, template_name=None):
     """
     created_count = 0
     skipped_count = 0
-    root_accounts = []
+    root_accounts = [] # List of docnames
     
     # 1. Determine the list of accounts to create (rows)
     rows_to_create = []
@@ -61,23 +60,12 @@ def create_coa_for_organization(organization, template_name=None):
         for row in template.accounts:
             rows_to_create.append({
                 "account_name": row.account_name,
-                "account_number": row.account_number, # Optional
+                "account_number": row.account_number,
                 "root_type": row.root_type,
                 "account_type": row.account_type,
                 "is_group": row.is_group,
                 "parent_name_ref": row.parent_account_name # Reference name in template
             })
-            
-        # Refine structure logic for templates if needed, but for now assuming flattened list or we handle ordering.
-        # Ideally we should sort by hierarchy depth, but we don't know depth purely from rows easily without building a tree.
-        # A simple approach: First Pass -> create roots. Second Pass -> create children. 
-        # Or just retry? 
-        # Spec says "create accounts in correct parent-child order".
-        # Let's assume the template rows are reasonably ordered or we do multiple passes.
-        # Better: Build a graph or use simple depth logic if "parent_account_name" refers to names in the same list.
-        
-        # Optimistic approach: Create roots (no parent), then iterate until all created.
-        pass
     else:
         # Minimal Skeleton
         skeleton = get_minimal_coa_skeleton()
@@ -91,79 +79,104 @@ def create_coa_for_organization(organization, template_name=None):
             })
             
     # 2. Existing accounts cache for efficiency
-    # Map: name -> docname (for this org)
+    # Key: (account_name, parent_docname) -> docname
+    # Root accounts key: (account_name, None)
     existing_accounts_map = {} 
-    existing_list = frappe.get_all("Account", filters={"organization": organization}, fields=["account_name", "name", "parent_account"])
-    for acc in existing_list:
-        existing_accounts_map[acc.account_name] = acc.name
-        
-    # 3. Creation Loop
-    # We might need multiple passes to resolve parents if they appear later in the list.
-    # Logic: try to create. If parent missing, re-queue?
-    # Minimal skeleton is ordered (Roots first, then children). checking order.
-    # My skeleton definition has Roots first.
     
+    # Also keep a map of account_name -> docname (list) for loosely guessing parent checking if strict check fails?
+    # No, strictly follow (name, parent).
+    
+    existing_list = frappe.get_all("Account", filters={"organization": organization}, fields=["account_name", "name", "parent_account", "root_type"])
+    for acc in existing_list:
+        key = (acc.account_name, acc.parent_account)
+        existing_accounts_map[key] = acc.name
+        
+        if not acc.parent_account:
+            root_accounts.append(acc.name)
+        
+    # 3. Creation Loop (Multi-pass)
     queue = rows_to_create[:]
-    max_passes = 10 # Safety
+    max_passes = 15 # Allow deeper trees
     pass_count = 0
     
     while queue and pass_count < max_passes:
         pass_count += 1
         next_queue = []
+        progress_made = False
         
         for row in queue:
             acc_name = row["account_name"]
-            parent_ref = row.get("parent_name_ref")
+            parent_ref_name = row.get("parent_name_ref")
             
-            # Check if exists (Idempotency)
-            # Complex check: Exact match on org + name + parent?
-            # Or just name within org? User requirement: "Unique constraint (organization, account_name, parent_account)"
-            # But usually account names are unique per org ideally, or at least per parent.
-            # My get_minimal_coa_skeleton uses unique names globally for the skeleton.
-            
-            # Let's check based on Name + Org first.
-            if acc_name in existing_accounts_map:
-                # Already exists.
-                # Strictly speaking, we should verify parent matches too?
-                # If parent def differs, we might be creating a duplicate with same name under diff parent. 
-                # For minimal skeleton, names are unique.
-                skipped_count += 1
-                if not row.get("parent_name_ref"): # It's a root
-                     root_accounts.append(acc_name)
-                continue
-                
-            # If has parent, resolve parent
+            # Resolve Parent Docname
             parent_docname = None
-            if parent_ref:
-                if parent_ref in existing_accounts_map:
-                    parent_docname = existing_accounts_map[parent_ref]
+            if parent_ref_name:
+                # We need to find the docname of the parent in *this* organization.
+                # Since parent ref is just a name string (e.g. "Assets"), we look it up.
+                # Issue: What if multiple "Assets"? (Unlikely for roots, but possible for sub-groups).
+                # Assumption: Template structure implies unique names at least for intended parents within the scope.
+                # We scan existing_accounts_map for a match on name.
+                
+                # Heuristic: Find any account in this org with that name.
+                # Ideally, we should know the structure, but here we flat search.
+                found_parent = None
+                for (ex_name, ex_parent), ex_docname in existing_accounts_map.items():
+                    if ex_name == parent_ref_name:
+                        found_parent = ex_docname
+                        break
+                
+                if found_parent:
+                    parent_docname = found_parent
                 else:
-                    # Parent doesn't exist yet, retry next pass
+                    # Parent not created yet, or missing. Retry next pass.
                     next_queue.append(row)
                     continue
+            
+            # IDEMPOTENCY CHECK
+            # Check if (acc_name, parent_docname) exists
+            key = (acc_name, parent_docname)
+            if key in existing_accounts_map:
+                skipped_count += 1
+                if not parent_docname and existing_accounts_map[key] not in root_accounts:
+                     root_accounts.append(existing_accounts_map[key])
+                continue
             
             # Create
             new_acc = frappe.new_doc("Account")
             new_acc.organization = organization
             new_acc.account_name = acc_name
+            new_acc.account_number = row.get("account_number")
             new_acc.root_type = row["root_type"]
             new_acc.account_type = row.get("account_type")
             new_acc.is_group = row["is_group"]
             if parent_docname:
                 new_acc.parent_account = parent_docname
             
+            # Auto-set report_type handled by controller, but good to be explicit if we wanted.
+            # Controller handles it.
+            
             new_acc.flags.ignore_permissions = True
             new_acc.insert()
             
-            existing_accounts_map[acc_name] = new_acc.name
+            # Update cache
+            existing_accounts_map[key] = new_acc.name
             created_count += 1
+            progress_made = True
+            
             if not parent_docname:
-                 root_accounts.append(acc_name)
+                 root_accounts.append(new_acc.name)
                  
+        if not progress_made and next_queue:
+            # We are stuck. Parents for remaining items don't exist in existing_map.
+            # This implies broken template refs or circular deps in template.
+            # Log warning or ensure we don't loop forever.
+            print(f"Warning: Could not resolve parents for {len(next_queue)} accounts in template.")
+            break
+            
         queue = next_queue
         
     return {
         "created": created_count,
         "skipped": skipped_count,
-        "root_accounts": root_accounts
+        "root_accounts": list(set(root_accounts)) # Unique list
     }
