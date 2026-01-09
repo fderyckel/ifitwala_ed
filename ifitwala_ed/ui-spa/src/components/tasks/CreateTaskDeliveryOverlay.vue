@@ -390,6 +390,8 @@ const groupResource = createResource({
 
 const groupsLoading = computed(() => groupResource.loading)
 
+const isGroupLocked = computed(() => !!props.prefillStudentGroup)
+
 watch(
   () => [props.open, isGroupLocked.value] as const,
   ([openNow, locked]) => {
@@ -412,7 +414,6 @@ const selectedGroupLabel = computed(() => {
   return match?.label || ''
 })
 
-const isGroupLocked = computed(() => !!props.prefillStudentGroup)
 
 const canSubmit = computed(() => {
   if (!form.title.trim()) return false
@@ -486,43 +487,71 @@ function toFrappeDatetime(value: string) {
 }
 
 async function submit() {
-  if (!canSubmit.value) return
-  submitting.value = true
-  errorMessage.value = ''
+	// Never silently no-op
+	if (!canSubmit.value) {
+		const missing: string[] = []
+		if (!form.title.trim()) missing.push('Title')
+		if (!form.student_group) missing.push('Class')
+		if (gradingEnabled.value) {
+			if (!form.grading_mode) missing.push('Grading mode')
+			if (form.grading_mode === 'Points' && !String(form.max_points || '').trim()) {
+				missing.push('Max points')
+			}
+		}
 
-  const payload: CreateTaskDeliveryInput = {
-    title: form.title.trim(),
-    student_group: form.student_group,
-    delivery_mode: form.delivery_mode,
-    allow_late_submission: form.allow_late_submission ? 1 : 0,
-    group_submission: form.group_submission ? 1 : 0,
-  }
+		const msg = missing.length
+			? `Please complete: ${missing.join(', ')}.`
+			: 'Please complete the required fields.'
 
-  if (form.instructions.trim()) payload.instructions = form.instructions.trim()
-  if (form.task_type) payload.task_type = form.task_type
-  if (form.available_from) payload.available_from = toFrappeDatetime(form.available_from)
-  if (form.due_date) payload.due_date = toFrappeDatetime(form.due_date)
-  if (form.lock_date) payload.lock_date = toFrappeDatetime(form.lock_date)
+		errorMessage.value = msg
+		toast({ appearance: 'warning', message: msg })
+		return
+	}
 
-  if (gradingEnabled.value) {
-    payload.grading_mode = form.grading_mode as any
-    if (form.grading_mode === 'Points') payload.max_points = form.max_points
-  } else {
-    payload.grading_mode = 'None'
-  }
+	submitting.value = true
+	errorMessage.value = ''
 
-  try {
-    const res = await api('ifitwala_ed.assessment.task_creation_service.create_task_and_delivery', { payload })
-    const out = unwrapMessage<CreateTaskDeliveryPayload>(res)
-    if (!out?.task || !out?.task_delivery) throw new Error('Unexpected server response.')
-    emit('created', out)
-    emit('close')
-  } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Unable to create the assignment right now.'
-  } finally {
-    submitting.value = false
-  }
+	const payload: CreateTaskDeliveryInput = {
+		title: form.title.trim(),
+		student_group: form.student_group,
+		delivery_mode: form.delivery_mode,
+		allow_late_submission: form.allow_late_submission ? 1 : 0,
+		group_submission: form.group_submission ? 1 : 0,
+	}
+
+	if (form.instructions.trim()) payload.instructions = form.instructions.trim()
+	if (form.task_type) payload.task_type = form.task_type
+	if (form.available_from) payload.available_from = toFrappeDatetime(form.available_from)
+	if (form.due_date) payload.due_date = toFrappeDatetime(form.due_date)
+	if (form.lock_date) payload.lock_date = toFrappeDatetime(form.lock_date)
+
+	if (gradingEnabled.value) {
+		payload.grading_mode = form.grading_mode as any
+		if (form.grading_mode === 'Points') payload.max_points = form.max_points
+	} else {
+		payload.grading_mode = 'None'
+	}
+
+	try {
+		// ✅ Project convention: POST payload directly, no `{ payload }` wrapper
+		const res = await api(
+			'ifitwala_ed.assessment.task_creation_service.create_task_and_delivery',
+			payload
+		)
+
+		const out = unwrapMessage<CreateTaskDeliveryPayload>(res)
+		if (!out?.task || !out?.task_delivery) throw new Error('Unexpected server response.')
+
+		emit('created', out)
+		emit('close')
+	} catch (error) {
+		errorMessage.value = error instanceof Error ? error.message : 'Unable to create the assignment right now.'
+	} finally {
+		submitting.value = false
+	}
 }
+
+
 
 function emitAfterLeave() {
   emit('after-leave')
