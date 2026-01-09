@@ -68,9 +68,13 @@ const zStep = 10
 const rendered = ref<RenderedEntry[]>([])
 
 watch(
-	console.log('[OverlayHost] watch:<name>', { /* minimal values */ })
   () => overlay.state.stack,
   (nextRaw) => {
+    console.log('[OverlayHost] watch:stack', {
+      nextLen: Array.isArray(nextRaw) ? nextRaw.length : -1,
+      renderedLen: rendered.value.length,
+    })
+
     const next = Array.isArray(nextRaw) ? nextRaw : []
     const nextIds = new Set(next.map((e) => e.id))
 
@@ -124,6 +128,7 @@ watch(
   },
   { immediate: true, deep: true }
 )
+
 
 function resolveComponent(type: OverlayType) {
   switch (type) {
