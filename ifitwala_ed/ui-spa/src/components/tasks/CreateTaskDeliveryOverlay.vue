@@ -377,7 +377,7 @@ const groups = ref<Array<{ name: string; student_group_name?: string }>>([])
 const groupResource = createResource({
   url: 'ifitwala_ed.api.student_groups.fetch_groups',
   method: 'POST',
-  auto: true,
+  auto: false,
   transform: unwrapMessage,
   onSuccess: (rows: any) => {
     groups.value = Array.isArray(rows) ? rows : []
@@ -389,6 +389,16 @@ const groupResource = createResource({
 })
 
 const groupsLoading = computed(() => groupResource.loading)
+
+watch(
+  () => [props.open, isGroupLocked.value] as const,
+  ([openNow, locked]) => {
+    if (!openNow) return
+    if (locked) return
+    groupResource.submit({})
+  },
+  { immediate: true }
+)
 
 const groupOptions = computed(() =>
   groups.value.map((row) => ({
