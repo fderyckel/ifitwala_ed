@@ -5,7 +5,17 @@ def execute():
     frappe.reload_doc("accounting", "doctype", "account_holder")
     frappe.reload_doc("students", "doctype", "student")
     
-    students = frappe.get_all("Student", fields=["name", "first_name", "last_name", "anchor_school", "account_holder"])
+    students = frappe.get_all(
+        "Student",
+        fields=[
+            "name",
+            "student_first_name",
+            "student_middle_name",
+            "student_last_name",
+            "anchor_school",
+            "account_holder",
+        ],
+    )
     
     print(f"Processing {len(students)} students for Account Holder migration...")
     
@@ -37,7 +47,16 @@ def execute():
                 holder_type = "Individual"
             else:
                 # Use Student Name
-                full_name = f"{student.first_name} {student.last_name or ''}".strip()
+                full_name = " ".join(
+                    filter(
+                        None,
+                        [
+                            student.student_first_name,
+                            student.student_middle_name,
+                            student.student_last_name,
+                        ],
+                    )
+                )
                 holder_name = f"{full_name} (Payer)"
                 holder_type = "Student (Adult)"
                 
