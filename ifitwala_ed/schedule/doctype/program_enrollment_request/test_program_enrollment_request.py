@@ -24,9 +24,8 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
 		request.reload()
 
 		self.assertEqual(request.validation_status, "Valid")
-		course_payload = payload["courses"][context["target_course"].name]
-		self.assertTrue(course_payload["eligible"])
-		self.assertFalse(_has_failure(course_payload, "prerequisite"))
+		self.assertEqual(payload["overall_result"], "valid")
+		self.assertTrue(_has_prereq_result(payload, context["required_course"].name, "pass"))
 
 	def test_validate_request_prereq_fail(self):
 		context = _setup_enrollment_context(score=60)
@@ -40,9 +39,8 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
 		request.reload()
 
 		self.assertEqual(request.validation_status, "Invalid")
-		course_payload = payload["courses"][context["target_course"].name]
-		self.assertFalse(course_payload["eligible"])
-		self.assertTrue(_has_failure(course_payload, "prerequisite"))
+		self.assertEqual(payload["overall_result"], "invalid")
+		self.assertTrue(_has_prereq_result(payload, context["required_course"].name, "fail"))
 
 	def test_validate_request_capacity_exceeded(self):
 		context = _setup_enrollment_context(
@@ -68,9 +66,8 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
 		second_request.reload()
 
 		self.assertEqual(second_request.validation_status, "Invalid")
-		course_payload = payload["courses"][context["target_course"].name]
-		self.assertEqual(course_payload["seat_status"], "full")
-		self.assertTrue(_has_failure(course_payload, "capacity"))
+		self.assertEqual(payload["overall_result"], "invalid")
+		self.assertTrue(_has_rule_result(payload, context["target_course"].name, "capacity_available", "fail"))
 
 	def test_validate_request_basket_rules(self):
 		rules = [
@@ -92,8 +89,8 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
 		request.reload()
 
 		self.assertEqual(request.validation_status, "Invalid")
-		self.assertFalse(payload["basket"]["valid"])
-		self.assertEqual(len(payload["basket"]["rules"]), 2)
+		self.assertEqual(payload["overall_result"], "invalid")
+		self.assertTrue(_has_rule_result(payload, "BASKET", "basket_valid", "fail"))
 
 	def test_materialize_request_updates_enrollment(self):
 		context = _setup_enrollment_context(score=85)
@@ -120,9 +117,20 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
 		self.assertEqual(courses[context["target_course"].name], "Enrolled")
 
 
-def _has_failure(course_payload, failure_type):
-	for failure in course_payload.get("fail_reasons") or []:
-		if failure.get("type") == failure_type:
+def _has_prereq_result(payload, required_course, result):
+	for entry in payload.get("prerequisites") or []:
+		if entry.get("required_course") == required_course and entry.get("result") == result:
+			return True
+	return False
+
+
+def _has_rule_result(payload, required_course, rule, result):
+	for entry in payload.get("prerequisites") or []:
+		if (
+			entry.get("required_course") == required_course
+			and entry.get("rule") == rule
+			and entry.get("result") == result
+		):
 			return True
 	return False
 

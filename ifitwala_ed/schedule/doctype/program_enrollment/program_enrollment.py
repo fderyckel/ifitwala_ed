@@ -102,6 +102,8 @@ class ProgramEnrollment(Document):
 		self._validate_dropped_requires_date()
 		self.validate_duplicate_course()
 		self.validate_duplication()
+		self._validate_enrollment_source()
+		self._validate_course_terms()
 
 		if not self.student_name:
 			self.student_name = frappe.db.get_value("Student", self.student, "student_full_name")
@@ -121,7 +123,17 @@ class ProgramEnrollment(Document):
 						get_link_to_form("Academic Year", self.academic_year),
 						year_dates.year_end_date
 					))
-		self._validate_course_terms()
+
+	def _validate_enrollment_source(self):
+		source = (self.enrollment_source or "Admin").strip()
+		self.enrollment_source = source
+
+		if source == "Request":
+			if not self.program_enrollment_request:
+				frappe.throw(_("Program Enrollment Request is required when source is Request."))
+		else:
+			if not (self.enrollment_override_reason or "").strip():
+				frappe.throw(_("Override Reason is required when enrollment source is not Request."))
 
 
 	def before_save(self):

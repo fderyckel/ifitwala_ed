@@ -9,7 +9,8 @@ from ifitwala_ed.schedule.enrollment_request_utils import validate_program_enrol
 
 
 class ProgramEnrollmentRequest(Document):
-	pass
+	def on_submit(self):
+		validate_program_enrollment_request(self.name, force=1)
 
 
 @frappe.whitelist()
@@ -41,4 +42,4 @@ def get_offering_catalog(program_offering):
 
 @frappe.whitelist()
 def validate_enrollment_request(request_name):
-	return validate_program_enrollment_request(request_name)
+	return validate_program_enrollment_request(request_name, force=1)

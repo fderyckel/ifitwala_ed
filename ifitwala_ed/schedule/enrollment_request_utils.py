@@ -7,15 +7,25 @@ import frappe
 from frappe import _
 from frappe.utils import add_hours, now_datetime, nowdate
 
-from ifitwala_ed.schedule.grade_scale_resolver_utils import resolve_grade_scale
 
 
 @frappe.whitelist()
-def validate_program_enrollment_request(request_name):
+def validate_program_enrollment_request(request_name, force=0):
 	if not request_name:
 		frappe.throw(_("Program Enrollment Request is required."))
 
+	_assert_no_catalog_prereqs()
+
 	doc = frappe.get_doc("Program Enrollment Request", request_name)
+	force = int(force or 0)
+	if not force and doc.validation_status == "Valid":
+		if doc.validation_payload:
+			try:
+				return json.loads(doc.validation_payload)
+			except Exception:
+				return {"validation_payload": doc.validation_payload}
+		return {}
+
 	payload, is_valid = _validate_request(doc)
 
 	status = "Valid" if is_valid else "Invalid"
@@ -78,7 +88,10 @@ def materialize_program_enrollment_request(request_name):
 				existing_courses[course].status = "Enrolled"
 			else:
 				enrollment.append("courses", {"course": course, "status": "Enrolled"})
-		else:
+		enrollment.enrollment_source = "Request"
+		enrollment.program_enrollment_request = req.name
+		enrollment.enrollment_override_reason = None
+	else:
 		enrollment = frappe.get_doc({
 			"doctype": "Program Enrollment",
 			"student": req.student,
@@ -87,6 +100,8 @@ def materialize_program_enrollment_request(request_name):
 			"academic_year": req.academic_year,
 			"school": req.school or offering.get("school"),
 			"enrollment_date": nowdate(),
+			"enrollment_source": "Request",
+			"program_enrollment_request": req.name,
 			"courses": [
 				{"course": course, "status": "Enrolled"} for course in request_courses
 			],
@@ -100,17 +115,16 @@ def materialize_program_enrollment_request(request_name):
 
 def _validate_request(doc):
 	payload = {
-		"request": doc.name,
-		"student": doc.student,
-		"program_offering": doc.program_offering,
-		"courses": {},
-		"basket": {},
-		"errors": [],
+		"evaluated_at": now_datetime().isoformat(),
+		"program": None,
+		"offering": doc.program_offering,
+		"grade_scale": None,
+		"prerequisites": [],
+		"overall_result": "invalid",
 	}
 
 	request_rows = [r for r in (doc.courses or []) if r.course]
 	if not request_rows:
-		payload["errors"].append("No courses selected.")
 		return payload, False
 
 	offering = frappe.db.get_value(
@@ -120,6 +134,9 @@ def _validate_request(doc):
 		as_dict=True,
 	) or {}
 	program = doc.program or offering.get("program")
+	payload["program"] = program
+	if program:
+		payload["grade_scale"] = frappe.db.get_value("Program", program, "grade_scale")
 
 	offering_courses = _offering_courses(doc.program_offering)
 	offering_map = {r.get("course"): r for r in offering_courses if r.get("course")}
@@ -143,35 +160,30 @@ def _validate_request(doc):
 	all_valid = True
 	for row in request_rows:
 		course = row.course
-		course_payload = {
-			"eligible": True,
-			"fail_reasons": [],
-			"seat_status": "available",
-			"grade_scale_resolution": resolve_grade_scale(doc.program_offering, course),
-			"prereq_groups": [],
-		}
-
 		offering_row = offering_map.get(course)
 		if not offering_row:
-			course_payload["eligible"] = False
-			course_payload["fail_reasons"].append({
-				"type": "offering",
-				"message": "Course is not part of the Program Offering.",
-			})
-			payload["courses"][course] = course_payload
 			all_valid = False
+			payload["prerequisites"].append(_snapshot_entry(
+				required_course=course,
+				rule="offering_membership",
+				required=1,
+				achieved=0,
+				result="fail",
+			))
 			continue
 
-		_repeat_failures = _repeat_rule_failures(
+		repeat_failures = _repeat_rule_failures(
 			course,
 			program_course_map.get(course),
 			attempt_map.get(course, 0),
 			requested_counts.get(course, 0),
 		)
-		if _repeat_failures:
-			course_payload["fail_reasons"].extend(_repeat_failures)
+		if repeat_failures:
+			all_valid = False
+			for failure in repeat_failures:
+				payload["prerequisites"].append(_snapshot_entry_from_repeat_failure(failure))
 
-		prereq_ok, prereq_groups, prereq_failures = _evaluate_prereqs(
+		prereq_ok, prereq_groups, _prereq_failures = _evaluate_prereqs(
 			course=course,
 			apply_to_level=row.apply_to_level,
 			prereq_rows=prereq_rows,
@@ -179,9 +191,11 @@ def _validate_request(doc):
 			term_result_cache=term_result_cache,
 			student=doc.student,
 		)
-		course_payload["prereq_groups"] = prereq_groups
+		for group in prereq_groups:
+			for requirement in group.get("requirements") or []:
+				payload["prerequisites"].append(_snapshot_entry_from_prereq(requirement))
 		if not prereq_ok:
-			course_payload["fail_reasons"].extend(prereq_failures)
+			all_valid = False
 
 		seat_status, seat_failure = _seat_status_for_course(
 			offering_row,
@@ -189,29 +203,26 @@ def _validate_request(doc):
 			committed_counts.get(course, 0),
 			held_counts.get(course, 0),
 		)
-		course_payload["seat_status"] = seat_status
 		if seat_failure:
-			course_payload["fail_reasons"].append(seat_failure)
-
-		course_payload["eligible"] = not course_payload["fail_reasons"]
-		if not course_payload["eligible"]:
 			all_valid = False
+			payload["prerequisites"].append(_snapshot_entry_from_capacity(course, seat_failure))
 
-		payload["courses"][course] = course_payload
-
-	basket_valid, basket_details = evaluate_basket_rules(
+	basket_valid, _basket_details = evaluate_basket_rules(
 		doc.program_offering,
 		request_rows,
 		program_course_map,
 	)
-	payload["basket"] = {
-		"valid": basket_valid,
-		"rules": basket_details,
-	}
-
 	if not basket_valid:
 		all_valid = False
+		payload["prerequisites"].append(_snapshot_entry(
+			required_course="BASKET",
+			rule="basket_valid",
+			required=1,
+			achieved=0,
+			result="fail",
+		))
 
+	payload["overall_result"] = "valid" if all_valid else "invalid"
 	return payload, all_valid
 
 
@@ -478,6 +489,10 @@ def _evaluate_prereq_row(row, status_map, term_result_cache, student):
 		return False, result
 
 	statuses = status_map.get(required_course, set())
+	if not concurrency_ok and "Enrolled" in statuses:
+		result["course_status"] = sorted(statuses)
+		result["note"] = "Required course is currently enrolled; concurrency not allowed."
+		return False, result
 	if concurrency_ok:
 		eligible_statuses = {"Completed", "Enrolled"}
 	else:
@@ -713,3 +728,60 @@ def _seat_status_for_course(offering_row, requested_count, committed, held):
 		"message": "Capacity exceeded.",
 	}
 	return seat_status, failure
+
+
+def _snapshot_entry(required_course, rule, required, achieved, result):
+	return {
+		"required_course": required_course,
+		"rule": rule,
+		"required": required,
+		"achieved": achieved,
+		"result": result,
+	}
+
+
+def _snapshot_entry_from_prereq(requirement):
+	required_course = requirement.get("required_course")
+	required = requirement.get("min_numeric_score")
+	achieved = requirement.get("numeric_score")
+	rule = ">= min_numeric_score"
+	if required is None:
+		rule = "completion_required"
+	result = "pass" if requirement.get("passed") else "fail"
+	return _snapshot_entry(required_course, rule, required, achieved, result)
+
+
+def _snapshot_entry_from_repeat_failure(failure):
+	course = failure.get("course")
+	attempts = failure.get("attempts")
+	max_attempts = failure.get("max_attempts")
+	if max_attempts:
+		return _snapshot_entry(
+			course,
+			"attempts <= max_attempts",
+			max_attempts,
+			attempts,
+			"fail",
+		)
+
+	repeatable = int(failure.get("repeatable") or 0)
+	return _snapshot_entry(course, "repeatable", 1, repeatable, "fail")
+
+
+def _snapshot_entry_from_capacity(course, seat_failure):
+	required = seat_failure.get("capacity")
+	achieved = (
+		int(seat_failure.get("committed") or 0)
+		+ int(seat_failure.get("held") or 0)
+		+ int(seat_failure.get("requested") or 0)
+	)
+	return _snapshot_entry(course, "capacity_available", required, achieved, "fail")
+
+
+def _assert_no_catalog_prereqs():
+	meta = frappe.get_meta("Course")
+	if not meta:
+		return
+	if meta.has_field("prerequisites"):
+		frappe.throw(_("Catalog-level prerequisites are not supported. Use program-scoped prerequisites."))
+	assert not meta.has_field("prerequisites")

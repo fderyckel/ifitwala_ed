@@ -27,6 +27,8 @@ def evaluate_enrollment_request(payload):
 	if not requested_courses:
 		frappe.throw(_("requested_courses is required."))
 
+	_assert_no_catalog_prereqs()
+
 	if capacity_policy not in SUPPORTED_CAPACITY_POLICIES:
 		frappe.throw(_("Capacity policy '{0}' is not supported.").format(capacity_policy))
 
@@ -315,6 +317,8 @@ def _evaluate_prereq_row(row, student_history, student_results, requested_set):
 
 	history = student_history.get(required_course) or {}
 	statuses = history.get("statuses") or set()
+	if not concurrency_ok and "Enrolled" in statuses:
+		return False, f"Required course {required_course} is currently enrolled; concurrency not allowed.", None
 
 	if min_numeric_score is None:
 		if concurrency_ok:
@@ -584,3 +588,12 @@ def _capacity_unknown(policy):
 		"status": "unknown",
 		"policy": policy,
 	}
+
+
+def _assert_no_catalog_prereqs():
+	meta = frappe.get_meta("Course")
+	if not meta:
+		return
+	if meta.has_field("prerequisites"):
+		frappe.throw(_("Catalog-level prerequisites are not supported. Use program-scoped prerequisites."))
+	assert not meta.has_field("prerequisites")

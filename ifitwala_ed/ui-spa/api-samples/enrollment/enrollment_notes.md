@@ -159,6 +159,8 @@ OR (D AND NOT E)
 
 This reflects real institutional rules without requiring a full boolean parser.
 
+Prerequisites are always program-scoped. Catalog-level prerequisites do not exist.
+
 ---
 
 ### 5.2 Grade normalization (Locked Design Decision)
@@ -523,7 +525,155 @@ Still to be locked:
 
 ---
 
-## 15. Final Note
+# Enrollment Core Invariants
+
+This document defines the **non-negotiable invariants** of the Ifitwala Ed enrollment system.
+Any implementation, refactor, or future feature **must preserve these rules**.
+If an invariant is violated, the system behavior is considered incorrect.
+
+---
+
+## 1. Single Source of Truth
+
+- **All prerequisites are program-scoped.**
+- The only authoritative prerequisite definition lives in:
+
+> **Program Course Prerequisite**
+
+- Catalog-level or course-level prerequisites **must not exist**.
+- Enrollment validation **must never consult** Course, Program, or Offering metadata directly for eligibility rules.
+
+---
+
+## 2. Transactional Eligibility Evaluation
+
+- Eligibility is evaluated as a **transaction**, not a live query.
+- Validation occurs only on:
+  - Request submission
+  - Explicit revalidation action
+
+- Once evaluated, the result is **frozen**.
+- Future changes to:
+  - Grade scales
+  - Programs
+  - Offerings
+  - Rules
+  **must not retroactively affect** approved requests.
+
+---
+
+## 3. Numeric Eligibility Truth
+
+- All eligibility comparisons are performed using **numeric values**.
+- Grade labels (A, B, 4, etc.) are **presentation-only**.
+- Every prerequisite must resolve to:
+  - `grade_scale_used`
+  - `min_numeric_score`
+
+- If numeric resolution is impossible, validation **must fail**.
+
+---
+
+## 4. Immutable Validation Snapshot
+
+- Each enrollment request stores a **validation snapshot** capturing:
+  - Rules evaluated
+  - Values compared
+  - Pass/fail outcomes
+
+- The snapshot:
+  - Is immutable after validation
+  - Must not be silently recomputed
+  - Can only change via explicit revalidation with audit trail
+
+---
+
+## 5. Explicit Overrides Only
+
+- Any enrollment that violates eligibility rules requires an **explicit override**.
+- Overrides:
+  - Do **not** modify validation snapshots
+  - Must record:
+    - Approver
+    - Timestamp
+    - Reason
+  - Apply only to the specific enrollment instance
+
+- Silent or implicit overrides are forbidden.
+
+---
+
+## 6. Enrollment Is a Legal Act
+
+- A Program Enrollment represents a **committed academic decision**.
+- Every enrollment must record its provenance:
+  - Enrollment Request
+  - Administrative action
+  - Migration
+
+- Enrollments without provenance are invalid.
+
+---
+
+## 7. No Retroactive Mutation
+
+- Approved or materialized enrollments:
+  - Are never revalidated implicitly
+  - Are never invalidated by rule changes
+
+- Corrections require:
+  - A new decision
+  - A documented override
+  - A new enrollment action
+
+---
+
+## 8. Child Tables Are Passive
+
+- Child tables contain **data only**.
+- No business logic, validation, or rule enforcement may live in:
+  - Child table controllers
+  - Client scripts bound to child rows
+
+- All logic belongs to parent documents or dedicated services.
+
+---
+
+## 9. Separation of Concerns
+
+- Enrollment logic:
+  - Evaluates eligibility
+  - Records decisions
+
+- Assessment and reporting logic:
+  - Computes grades
+  - Produces Course Term Results
+
+- Enrollment must **never compute grades**.
+- Assessment must **never decide eligibility**.
+
+---
+
+## 10. Forward-Only System
+
+- System decisions move forward in time.
+- Historical decisions are preserved.
+- Corrections are additive, not mutative.
+
+---
+
+## Closing Statement
+
+These invariants intentionally favor:
+
+- Determinism over convenience
+- Auditability over flexibility
+- Explicit decisions over implicit behavior
+
+Any feature that cannot respect these invariants must be redesigned.
+
+
+## Final Note
 
 Enrollment is one of the most sensitive domains in education:
 
