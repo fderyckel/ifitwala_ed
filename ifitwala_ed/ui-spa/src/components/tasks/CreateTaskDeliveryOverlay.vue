@@ -291,12 +291,6 @@ import { Button, FormControl, createResource, toast, FeatherIcon } from 'frappe-
 import { api } from '@/lib/client'
 import type { CreateTaskDeliveryInput, CreateTaskDeliveryPayload } from '@/types/tasks'
 
-console.log('[CreateTaskDeliveryOverlay] setup:start', {
-  open: props.open,
-  prefillStudentGroup: props.prefillStudentGroup,
-})
-
-
 const props = defineProps<{
   open: boolean
   zIndex?: number
@@ -308,11 +302,13 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'created', payload: CreateTaskDeliveryPayload): void
-	(e: 'after-leave'): void
+  (e: 'after-leave'): void
 }>()
 
-console.log('[CreateTaskDeliveryOverlay] setup:after-emits')
-
+console.log('[CreateTaskDeliveryOverlay] setup:start', {
+  open: props.open,
+  prefillStudentGroup: props.prefillStudentGroup,
+})
 
 const open = computed(() => props.open)
 const zIndex = computed(() => props.zIndex ?? 60)
@@ -320,18 +316,15 @@ const zIndex = computed(() => props.zIndex ?? 60)
 const submitting = ref(false)
 const errorMessage = ref('')
 
+const initialFocus = ref<HTMLElement | null>(null)
+
 function handleClose() {
   emit('close')
 }
 
-watch(
-  () => props.open,
-  (openNow) => {
-    console.log('[CreateTaskDeliveryOverlay] watch:open', openNow)
-    if (openNow) initializeForm()
-  },
-  { immediate: true }
-)
+function emitAfterLeave() {
+  emit('after-leave')
+}
 
 const taskTypeOptions = [
   { label: 'Assignment', value: 'Assignment' },
@@ -382,6 +375,8 @@ function unwrapMessage<T>(res: any): T | undefined {
   return res as T
 }
 
+const isGroupLocked = computed(() => !!props.prefillStudentGroup)
+
 const groups = ref<Array<{ name: string; student_group_name?: string }>>([])
 
 const groupResource = createResource({
@@ -400,22 +395,6 @@ const groupResource = createResource({
 
 const groupsLoading = computed(() => groupResource.loading)
 
-const isGroupLocked = computed(() => !!props.prefillStudentGroup)
-
-watch(
-  () => props.open,
-  (openNow) => {
-    if (!openNow) return
-
-    // quick-link mode: no prefill => need dropdown options
-    if (!props.prefillStudentGroup) {
-      groupResource.submit({})
-    }
-  },
-  { immediate: true }
-)
-
-
 const groupOptions = computed(() =>
   groups.value.map((row) => ({
     label: row.student_group_name || row.name,
@@ -428,7 +407,6 @@ const selectedGroupLabel = computed(() => {
   return match?.label || ''
 })
 
-
 const canSubmit = computed(() => {
   if (!form.title.trim()) return false
   if (!form.student_group) return false
@@ -438,6 +416,27 @@ const canSubmit = computed(() => {
   if (form.grading_mode === 'Points' && !String(form.max_points || '').trim()) return false
   return true
 })
+
+watch(
+  () => props.open,
+  (openNow) => {
+    console.log('[CreateTaskDeliveryOverlay] watch:open', {
+      openNow,
+      locked: isGroupLocked.value,
+      prefillStudentGroup: props.prefillStudentGroup,
+    })
+
+    if (!openNow) return
+
+    initializeForm()
+
+    // quick-link mode (no prefill) => load dropdown list
+    if (!isGroupLocked.value) {
+      groupResource.submit({})
+    }
+  },
+  { immediate: true }
+)
 
 function initializeForm() {
   form.title = ''
@@ -501,74 +500,64 @@ function toFrappeDatetime(value: string) {
 }
 
 async function submit() {
-	console.log('[CreateTaskDeliveryOverlay] submit:clicked')
-	// Never silently no-op
-	if (!canSubmit.value) {
-		const missing: string[] = []
-		if (!form.title.trim()) missing.push('Title')
-		if (!form.student_group) missing.push('Class')
-		if (gradingEnabled.value) {
-			if (!form.grading_mode) missing.push('Grading mode')
-			if (form.grading_mode === 'Points' && !String(form.max_points || '').trim()) {
-				missing.push('Max points')
-			}
-		}
+  console.log('[CreateTaskDeliveryOverlay] submit:clicked')
 
-		const msg = missing.length
-			? `Please complete: ${missing.join(', ')}.`
-			: 'Please complete the required fields.'
+  if (!canSubmit.value) {
+    const missing: string[] = []
+    if (!form.title.trim()) missing.push('Title')
+    if (!form.student_group) missing.push('Class')
+    if (gradingEnabled.value) {
+      if (!form.grading_mode) missing.push('Grading mode')
+      if (form.grading_mode === 'Points' && !String(form.max_points || '').trim()) missing.push('Max points')
+    }
 
-		errorMessage.value = msg
-		toast({ appearance: 'warning', message: msg })
-		return
-	}
+    const msg = missing.length ? `Please complete: ${missing.join(', ')}.` : 'Please complete the required fields.'
+    errorMessage.value = msg
+    toast({ appearance: 'warning', message: msg })
+    return
+  }
 
-	submitting.value = true
-	errorMessage.value = ''
+  submitting.value = true
+  errorMessage.value = ''
 
-	const payload: CreateTaskDeliveryInput = {
-		title: form.title.trim(),
-		student_group: form.student_group,
-		delivery_mode: form.delivery_mode,
-		allow_late_submission: form.allow_late_submission ? 1 : 0,
-		group_submission: form.group_submission ? 1 : 0,
-	}
+  const payload: CreateTaskDeliveryInput = {
+    title: form.title.trim(),
+    student_group: form.student_group,
+    delivery_mode: form.delivery_mode,
+    allow_late_submission: form.allow_late_submission ? 1 : 0,
+    group_submission: form.group_submission ? 1 : 0,
+  }
 
-	if (form.instructions.trim()) payload.instructions = form.instructions.trim()
-	if (form.task_type) payload.task_type = form.task_type
-	if (form.available_from) payload.available_from = toFrappeDatetime(form.available_from)
-	if (form.due_date) payload.due_date = toFrappeDatetime(form.due_date)
-	if (form.lock_date) payload.lock_date = toFrappeDatetime(form.lock_date)
+  if (form.instructions.trim()) payload.instructions = form.instructions.trim()
+  if (form.task_type) payload.task_type = form.task_type
+  if (form.available_from) payload.available_from = toFrappeDatetime(form.available_from)
+  if (form.due_date) payload.due_date = toFrappeDatetime(form.due_date)
+  if (form.lock_date) payload.lock_date = toFrappeDatetime(form.lock_date)
 
-	if (gradingEnabled.value) {
-		payload.grading_mode = form.grading_mode as any
-		if (form.grading_mode === 'Points') payload.max_points = form.max_points
-	} else {
-		payload.grading_mode = 'None'
-	}
+  if (gradingEnabled.value) {
+    payload.grading_mode = form.grading_mode as any
+    if (form.grading_mode === 'Points') payload.max_points = form.max_points
+  } else {
+    payload.grading_mode = 'None'
+  }
 
-	try {
-		// ✅ Project convention: POST payload directly, no `{ payload }` wrapper
-		const res = await api(
-			'ifitwala_ed.assessment.task_creation_service.create_task_and_delivery',
-			payload
-		)
+  try {
+    // ✅ Project invariant: payload is passed directly
+    const res = await api('ifitwala_ed.assessment.task_creation_service.create_task_and_delivery', payload)
+    const out = unwrapMessage<CreateTaskDeliveryPayload>(res)
 
-		const out = unwrapMessage<CreateTaskDeliveryPayload>(res)
-		if (!out?.task || !out?.task_delivery) throw new Error('Unexpected server response.')
+    console.log('[CreateTaskDeliveryOverlay] submit:response', out)
 
-		emit('created', out)
-		emit('close')
-	} catch (error) {
-		errorMessage.value = error instanceof Error ? error.message : 'Unable to create the assignment right now.'
-	} finally {
-		submitting.value = false
-	}
+    if (!out?.task || !out?.task_delivery) throw new Error('Unexpected server response.')
+
+    emit('created', out)
+    emit('close')
+  } catch (error) {
+    console.error('[CreateTaskDeliveryOverlay] submit:error', error)
+    errorMessage.value = error instanceof Error ? error.message : 'Unable to create the assignment right now.'
+    toast({ appearance: 'danger', message: errorMessage.value })
+  } finally {
+    submitting.value = false
+  }
 }
-
-function emitAfterLeave() {
-  emit('after-leave')
-}
-
-const initialFocus = ref<HTMLElement | null>(null)
 </script>
