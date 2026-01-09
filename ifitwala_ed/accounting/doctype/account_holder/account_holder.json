@@ -69,7 +69,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-28 12:00:00.000000",
+ "modified": "2025-01-28 12:00:10.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Account Holder",
@@ -107,7 +107,7 @@
    "report": 1,
    "role": "Academic Admin",
    "share": 1,
-   "write": 1
+   "write": 0
   },
   {
    "email": 1,

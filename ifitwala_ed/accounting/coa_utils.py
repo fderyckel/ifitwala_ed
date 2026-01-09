@@ -167,11 +167,12 @@ def create_coa_for_organization(organization, template_name=None):
                  root_accounts.append(new_acc.name)
                  
         if not progress_made and next_queue:
-            # We are stuck. Parents for remaining items don't exist in existing_map.
-            # This implies broken template refs or circular deps in template.
-            # Log warning or ensure we don't loop forever.
-            print(f"Warning: Could not resolve parents for {len(next_queue)} accounts in template.")
-            break
+            # We are stuck. Parents for remaining items don't exist.
+            missing_parents = {r.get('parent_name_ref') for r in next_queue}
+            frappe.throw(_("Could not resolve parents for accounts: {0}. Missing parents: {1}").format(
+                ", ".join([r["account_name"] for r in next_queue]),
+                ", ".join(missing_parents)
+            ))
             
         queue = next_queue
         

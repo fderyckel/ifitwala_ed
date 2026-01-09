@@ -23,8 +23,8 @@ def execute():
                 print(f"Skipping student {student.name}: No Organization for school {student.anchor_school}")
                 continue
                 
-            # Check for Guardians
-            guardians = frappe.get_all("Student Guardian", filters={"parent": student.name}, fields=["guardian"])
+            # Check for Guardians - Deterministic Sort
+            guardians = frappe.get_all("Student Guardian", filters={"parent": student.name}, fields=["guardian", "idx"], order_by="idx asc, creation asc")
             
             holder_name = ""
             holder_type = ""
@@ -62,7 +62,11 @@ def execute():
                 holder_docname = ah.name
                 
             # Link to Student
-            frappe.db.set_value("Student", student.name, "account_holder", holder_docname)
+            # Use save() to trigger validation (Step 3 Requirement)
+            student_doc = frappe.get_doc("Student", student.name)
+            student_doc.account_holder = holder_docname
+            student_doc.save(ignore_permissions=True)
+            
             print(f"Assigned Account Holder {holder_docname} to Student {student.name}")
             
         except Exception as e:
