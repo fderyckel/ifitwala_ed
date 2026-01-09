@@ -28,7 +28,7 @@ declare module 'vue' {
     InteractionEmojiChips: typeof import('./src/components/InteractionEmojiChips.vue')['default']
     KpiRow: typeof import('./src/components/analytics/KpiRow.vue')['default']
     MeetingEventModal: typeof import('./src/components/calendar/MeetingEventModal.vue')['default']
-    OrgCommunicationQuickCreateModal: typeof import('./src/components/Communication/OrgCommunicationQuickCreateModal.vue')['default']
+    OrgCommunicationQuickCreateModal: typeof import('./src/components/communication/OrgCommunicationQuickCreateModal.vue')['default']
     OverlayHost: typeof import('./src/components/overlay/OverlayHost.vue')['default']
     PortalFooter: typeof import('./src/components/PortalFooter.vue')['default']
     PortalNavbar: typeof import('./src/components/PortalNavbar.vue')['default']
