@@ -291,6 +291,12 @@ import { Button, FormControl, createResource, toast, FeatherIcon } from 'frappe-
 import { api } from '@/lib/client'
 import type { CreateTaskDeliveryInput, CreateTaskDeliveryPayload } from '@/types/tasks'
 
+console.log('[CreateTaskDeliveryOverlay] setup:start', {
+  open: props.open,
+  prefillStudentGroup: props.prefillStudentGroup,
+})
+
+
 const props = defineProps<{
   open: boolean
   zIndex?: number
@@ -305,6 +311,9 @@ const emit = defineEmits<{
 	(e: 'after-leave'): void
 }>()
 
+console.log('[CreateTaskDeliveryOverlay] setup:after-emits')
+
+
 const open = computed(() => props.open)
 const zIndex = computed(() => props.zIndex ?? 60)
 
@@ -317,8 +326,9 @@ function handleClose() {
 
 watch(
   () => props.open,
-  (v) => {
-    if (v) initializeForm()
+  (openNow) => {
+    console.log('[CreateTaskDeliveryOverlay] watch:open', openNow)
+    if (openNow) initializeForm()
   },
   { immediate: true }
 )
@@ -491,6 +501,7 @@ function toFrappeDatetime(value: string) {
 }
 
 async function submit() {
+	console.log('[CreateTaskDeliveryOverlay] submit:clicked')
 	// Never silently no-op
 	if (!canSubmit.value) {
 		const missing: string[] = []
