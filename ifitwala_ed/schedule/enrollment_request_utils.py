@@ -5,7 +5,7 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils import add_hours, now_datetime, nowdate
+from frappe.utils import add_to_date, now_datetime, nowdate
 
 
 
@@ -618,7 +618,7 @@ def _seat_counts(program_offering, seat_policy, seat_hold_hours, exclude_request
 		return committed, held
 
 	if seat_policy == "Submitted Holds Seats":
-		since = add_hours(now_datetime(), -int(seat_hold_hours or 0))
+		since = add_to_date(now_datetime(), hours=-int(seat_hold_hours or 0))
 		held = _request_seats(
 			program_offering,
 			statuses=("Submitted", "Under Review", "Approved"),
