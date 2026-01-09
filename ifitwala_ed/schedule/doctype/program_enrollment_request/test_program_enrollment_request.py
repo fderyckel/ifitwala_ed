@@ -198,6 +198,8 @@ def _setup_enrollment_context(
 		"program_offering": offering.name,
 		"academic_year": academic_year.name,
 		"enrollment_date": nowdate(),
+		"enrollment_source": "Migration",
+		"enrollment_override_reason": "Test setup",
 	}).insert()
 	enrollment.append("courses", {"course": required_course.name, "status": "Completed"})
 	enrollment.save()

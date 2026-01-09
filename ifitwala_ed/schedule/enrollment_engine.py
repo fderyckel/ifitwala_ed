@@ -78,7 +78,6 @@ def evaluate_enrollment_request(payload):
 				prereq_rows,
 				student_history,
 				student_results,
-				requested_set=seen,
 				course_level=(program_courses.get(course) or {}).get("level"),
 			)
 			reasons.extend(prereq_result["reasons"])
@@ -246,7 +245,6 @@ def _get_prerequisite_rows(program, course):
 			"required_course",
 			"min_numeric_score",
 			"prereq_group",
-			"concurrency_ok",
 			"apply_to_level",
 		],
 		order_by="idx asc",
@@ -254,7 +252,7 @@ def _get_prerequisite_rows(program, course):
 	return rows
 
 
-def _evaluate_prerequisites(course, prereq_rows, student_history, student_results, requested_set, course_level=None):
+def _evaluate_prerequisites(course, prereq_rows, student_history, student_results, course_level=None):
 	if not prereq_rows:
 		return {"eligible": True, "reasons": [], "evidence": []}
 
@@ -284,7 +282,6 @@ def _evaluate_prerequisites(course, prereq_rows, student_history, student_result
 				row,
 				student_history,
 				student_results,
-				requested_set,
 			)
 			if row_evidence:
 				evidence.append(row_evidence)
@@ -304,28 +301,19 @@ def _evaluate_prerequisites(course, prereq_rows, student_history, student_result
 	return {"eligible": False, "reasons": reasons, "evidence": evidence}
 
 
-def _evaluate_prereq_row(row, student_history, student_results, requested_set):
+def _evaluate_prereq_row(row, student_history, student_results):
 	required_course = row.get("required_course")
 	min_numeric_score = row.get("min_numeric_score")
-	concurrency_ok = int(row.get("concurrency_ok") or 0) == 1
 
 	if not required_course:
 		return False, "Rule not supported by current schema.", None
 
-	if concurrency_ok and required_course in requested_set:
-		return True, f"Concurrent enrollment allowed for {required_course}.", None
-
 	history = student_history.get(required_course) or {}
 	statuses = history.get("statuses") or set()
-	if not concurrency_ok and "Enrolled" in statuses:
-		return False, f"Required course {required_course} is currently enrolled; concurrency not allowed.", None
+	if "Enrolled" in statuses and "Completed" not in statuses:
+		return False, f"Required course {required_course} not completed.", None
 
 	if min_numeric_score is None:
-		if concurrency_ok:
-			allowed = statuses.intersection({"Completed", "Enrolled"})
-			if allowed:
-				return True, None, None
-			return False, f"Required course {required_course} not yet taken.", None
 		if "Completed" in statuses:
 			return True, None, None
 		return False, f"Required course {required_course} not completed.", None

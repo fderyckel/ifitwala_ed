@@ -70,6 +70,7 @@
    "default": "0",
    "fieldname": "concurrency_ok",
    "fieldtype": "Check",
+   "hidden": 1,
    "label": "Allow Concurrent Enrollment"
   },
   {

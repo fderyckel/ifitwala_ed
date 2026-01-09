@@ -107,6 +107,7 @@ def materialize_program_enrollment_request(request_name):
 			],
 		})
 
+	enrollment.flags.from_enrollment_request = True
 	enrollment.save()
 	comment = _("Materialized from Program Enrollment Request {0}.").format(req.name)
 	enrollment.add_comment("Comment", comment)
@@ -349,7 +350,6 @@ def _program_prereqs(program):
 			"required_course",
 			"min_numeric_score",
 			"grade_scale_used",
-			"concurrency_ok",
 		],
 		order_by="idx asc",
 	)
@@ -468,14 +468,12 @@ def _evaluate_prereq_row(row, status_map, term_result_cache, student):
 	min_numeric_score = row.get("min_numeric_score")
 	if min_numeric_score is not None:
 		min_numeric_score = float(min_numeric_score)
-	concurrency_ok = int(row.get("concurrency_ok") or 0) == 1
 
 	result = {
 		"type": "prerequisite",
 		"required_course": required_course,
 		"min_numeric_score": min_numeric_score,
 		"grade_scale_used": row.get("grade_scale_used"),
-		"concurrency_ok": concurrency_ok,
 		"course_status": None,
 		"numeric_score": None,
 		"term": None,
@@ -489,14 +487,7 @@ def _evaluate_prereq_row(row, status_map, term_result_cache, student):
 		return False, result
 
 	statuses = status_map.get(required_course, set())
-	if not concurrency_ok and "Enrolled" in statuses:
-		result["course_status"] = sorted(statuses)
-		result["note"] = "Required course is currently enrolled; concurrency not allowed."
-		return False, result
-	if concurrency_ok:
-		eligible_statuses = {"Completed", "Enrolled"}
-	else:
-		eligible_statuses = {"Completed"}
+	eligible_statuses = {"Completed"}
 
 	if not statuses.intersection(eligible_statuses):
 		result["course_status"] = sorted(statuses)

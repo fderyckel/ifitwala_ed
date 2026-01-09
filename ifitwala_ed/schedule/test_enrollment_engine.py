@@ -76,7 +76,7 @@ class TestEnrollmentEngine(FrappeTestCase):
 		self.assertEqual(course_result["capacity"]["status"], "full")
 		self.assertFalse(course_result["eligible"])
 
-	def test_concurrency_ok(self):
+	def test_concurrency_ignored(self):
 		context = _setup_context(score=None, concurrency_ok=1, include_result=False, include_history=False)
 
 		result = evaluate_enrollment_request({
@@ -89,7 +89,8 @@ class TestEnrollmentEngine(FrappeTestCase):
 		})
 
 		course_result = _find_course(result, context["target_course"].name)
-		self.assertTrue(course_result["eligible"])
+		self.assertFalse(course_result["eligible"])
+		self.assertTrue(course_result["override_required"])
 
 
 def _find_course(result, course):
@@ -286,6 +287,8 @@ def _make_enrollment(student, program, offering, academic_year, course_rows):
 		"program_offering": offering.name,
 		"academic_year": academic_year.name,
 		"enrollment_date": nowdate(),
+		"enrollment_source": "Migration",
+		"enrollment_override_reason": "Test setup",
 	}).insert()
 	for row in course_rows:
 		enrollment.append("courses", row)
