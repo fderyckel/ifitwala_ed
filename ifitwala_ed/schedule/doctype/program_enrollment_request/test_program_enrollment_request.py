@@ -8,9 +8,7 @@ from frappe.utils import nowdate
 from ifitwala_ed.schedule.doctype.program_enrollment_request.program_enrollment_request import (
 	validate_enrollment_request,
 )
-from ifitwala_ed.schedule.enrollment.enrollment_request_api import (
-	materialize_program_enrollment_request,
-)
+from ifitwala_ed.schedule.enrollment_request_utils import materialize_program_enrollment_request
 
 
 class TestProgramEnrollmentRequest(FrappeTestCase):

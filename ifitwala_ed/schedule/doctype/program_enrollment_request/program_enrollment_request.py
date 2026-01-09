@@ -5,9 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-from ifitwala_ed.schedule.enrollment.enrollment_request_api import (
-	validate_program_enrollment_request,
-)
+from ifitwala_ed.schedule.enrollment_request_utils import validate_program_enrollment_request
 
 
 class ProgramEnrollmentRequest(Document):

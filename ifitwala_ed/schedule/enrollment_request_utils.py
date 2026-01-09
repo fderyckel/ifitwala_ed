@@ -7,7 +7,7 @@ import frappe
 from frappe import _
 from frappe.utils import add_hours, now_datetime, nowdate
 
-from ifitwala_ed.schedule.enrollment.grade_scale_resolver import resolve_grade_scale
+from ifitwala_ed.schedule.grade_scale_resolver_utils import resolve_grade_scale
 
 
 @frappe.whitelist()

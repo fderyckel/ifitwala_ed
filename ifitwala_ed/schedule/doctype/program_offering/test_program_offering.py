@@ -5,7 +5,7 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.schedule.enrollment.grade_scale_resolver import resolve_grade_scale
+from ifitwala_ed.schedule.grade_scale_resolver_utils import resolve_grade_scale
 
 
 class TestProgramOffering(FrappeTestCase):

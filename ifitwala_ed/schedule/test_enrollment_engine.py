@@ -5,7 +5,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
-from ifitwala_ed.enrollment.enrollment_engine import evaluate_enrollment_request
+from ifitwala_ed.schedule.enrollment_engine import evaluate_enrollment_request
 
 
 class TestEnrollmentEngine(FrappeTestCase):
