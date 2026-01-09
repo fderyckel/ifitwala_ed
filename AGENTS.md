@@ -221,6 +221,105 @@ Rules:
 
 ---
 
+### 7.3 Frontend Interaction & API Contract Invariants (CRITICAL)
+
+These rules exist to prevent silent UI failures, runtime-only bugs, and client/server contract drift.
+They are **non-negotiable**.
+
+---
+
+#### 7.3.1 No Silent User-Action Failures
+
+* Any user-triggered action (Create, Save, Submit, Confirm, etc.) MUST NOT fail silently.
+
+* Code patterns like:
+
+  if (!canSubmit.value) return
+
+  without user feedback are considered **bugs**.
+
+* If an action is blocked by validation, the UI MUST provide:
+
+  * an inline error message near the action area, and/or
+  * a toast explaining what is missing.
+
+Users must always understand **why nothing happened**.
+
+---
+
+#### 7.3.2 Canonical POST Payload Shape (Hard Invariant)
+
+* All POST calls via the SPA client MUST follow this rule:
+
+  api(method, payload)
+
+* The second argument is sent as the **JSON body directly**.
+
+* Payloads MUST NOT be wrapped as:
+
+  api(method, { payload })   // forbidden
+
+  unless the server method explicitly requires a named argument.
+
+* For frappe-ui resources:
+
+  * POST endpoints MUST be called with:
+
+    resource.submit(payload)
+
+  * auto: true MUST NOT be used for POST resources.
+
+Client/server payload shape drift is considered a **contract violation**.
+
+---
+
+#### 7.3.3 Watchers, Setup Order & TDZ Safety
+
+* In <script setup>, any ref() or computed() referenced by a watcher MUST be declared **before** the watcher.
+* watch(..., { immediate: true }) executes during setup and can trigger **Temporal Dead Zone (TDZ)** runtime crashes if it references later-declared constants.
+* Prefer watching **props directly** rather than derived computed values when possible.
+
+Minified runtime errors such as:
+
+Cannot access 'w' before initialization
+
+are usually TDZ issues, not naming or scoping issues.
+
+---
+
+#### 7.3.4 Modal Entry-Point Modes Must Be Explicit
+
+Any modal that can be opened from multiple entry points MUST explicitly support two modes:
+
+1. Prefilled / Locked Context Mode
+
+   * Required context (e.g. student_group) is provided
+   * Related fields are read-only or hidden
+   * Unnecessary data fetches MUST be skipped
+
+2. Unscoped / Selection Required Mode
+
+   * No context is provided (e.g. quick links)
+   * Modal MUST load selectable options
+   * Required selections MUST be enforced before submission
+
+If a modal works from one entry point but fails from another, this is a **design bug**, not a usage error.
+
+---
+
+#### 7.3.5 Debugging Minified Runtime Errors
+
+* Do NOT infer meaning from minified variable names (w, t, e, etc.).
+* When encountering runtime-only errors:
+
+  * Check immediate watchers
+  * Check setup-time evaluation
+  * Check destructuring of watched values
+
+Assume evaluation order issues before assuming logic or typing errors.
+
+---
+
 ## 8. Tailwind, Styling & Typography
 
 ### 8.1 Styling Discipline

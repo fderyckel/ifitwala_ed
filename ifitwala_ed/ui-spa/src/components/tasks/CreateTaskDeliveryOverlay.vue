@@ -393,14 +393,18 @@ const groupsLoading = computed(() => groupResource.loading)
 const isGroupLocked = computed(() => !!props.prefillStudentGroup)
 
 watch(
-  () => [props.open, isGroupLocked.value] as const,
-  ([openNow, locked]) => {
+  () => props.open,
+  (openNow) => {
     if (!openNow) return
-    if (locked) return
-    groupResource.submit({})
+
+    // quick-link mode: no prefill => need dropdown options
+    if (!props.prefillStudentGroup) {
+      groupResource.submit({})
+    }
   },
   { immediate: true }
 )
+
 
 const groupOptions = computed(() =>
   groups.value.map((row) => ({
@@ -550,8 +554,6 @@ async function submit() {
 		submitting.value = false
 	}
 }
-
-
 
 function emitAfterLeave() {
   emit('after-leave')
