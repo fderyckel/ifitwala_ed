@@ -33,6 +33,9 @@ import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue'
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue'
 import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCommunicationQuickCreateModal.vue'
 
+console.log('[OverlayHost] setup:start')
+
+
 type RenderedEntry = OverlayEntry & {
   open: boolean
   _closing?: boolean
@@ -40,6 +43,10 @@ type RenderedEntry = OverlayEntry & {
 }
 
 const overlay = useOverlayStack()
+console.log('[OverlayHost] setup:after-useOverlayStack', {
+  stackLen: overlay.state?.stack?.length,
+  top: overlay.top?.value?.type,
+})
 
 const teleportReady = ref(false)
 onMounted(() => {
@@ -61,6 +68,7 @@ const zStep = 10
 const rendered = ref<RenderedEntry[]>([])
 
 watch(
+	console.log('[OverlayHost] watch:<name>', { /* minimal values */ })
   () => overlay.state.stack,
   (nextRaw) => {
     const next = Array.isArray(nextRaw) ? nextRaw : []
