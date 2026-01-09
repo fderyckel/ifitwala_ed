@@ -61,7 +61,7 @@ def create_coa_for_organization(organization, template_name=None):
         for row in template.accounts:
             rows_to_create.append({
                 "account_name": row.account_name,
-                "account_code": row.account_code, # Optional
+                "account_number": row.account_number, # Optional
                 "root_type": row.root_type,
                 "account_type": row.account_type,
                 "is_group": row.is_group,

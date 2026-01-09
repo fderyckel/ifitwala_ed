@@ -6,7 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "account_name",
-  "account_code",
+  "account_number",
   "parent_account_name",
   "is_group",
   "root_type",
@@ -21,10 +21,10 @@
    "reqd": 1
   },
   {
-   "fieldname": "account_code",
+   "fieldname": "account_number",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Account Code"
+   "label": "Account Number"
   },
   {
    "fieldname": "parent_account_name",

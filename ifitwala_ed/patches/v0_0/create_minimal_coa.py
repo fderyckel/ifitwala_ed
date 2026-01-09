@@ -12,13 +12,6 @@ def execute():
     orgs = frappe.get_all("Organization", filters={"archived": 0}, pluck="name")
     
     print(f"Found {len(orgs)} organizations to process.")
-    
-    # Backfill Report Type if missing
-    print("Backfilling Report Types...")
-    accounts_to_fix = frappe.get_all("Account", filters={"report_type": ["is", "not set"]}, pluck="name")
-    for acc_name in accounts_to_fix:
-        doc = frappe.get_doc("Account", acc_name)
-        doc.save() # validate() will set report_type
         
     for org in orgs:
         try:
