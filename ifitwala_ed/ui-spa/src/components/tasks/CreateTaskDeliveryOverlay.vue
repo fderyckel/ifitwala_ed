@@ -288,7 +288,6 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { Button, FormControl, createResource, toast, FeatherIcon } from 'frappe-ui'
-import { api } from '@/lib/client'
 import type { CreateTaskDeliveryInput, CreateTaskDeliveryPayload } from '@/types/tasks'
 
 const props = defineProps<{
@@ -499,6 +498,22 @@ function toFrappeDatetime(value: string) {
   return value
 }
 
+/**
+ * ✅ Frappe-UI canonical mutation: use createResource + submit(payload)
+ * - This matches your groupResource pattern.
+ * - It also guarantees the request is sent as form_dict kwargs (payload key present),
+ *   which matches your current server signature: create_task_and_delivery(payload)
+ */
+const createTaskResource = createResource({
+  url: 'ifitwala_ed.assessment.task_creation_service.create_task_and_delivery',
+  method: 'POST',
+  auto: false,
+  transform: unwrapMessage,
+  onError: (err: any) => {
+    console.error('[CreateTaskDeliveryOverlay] createTaskResource:error', err)
+  },
+})
+
 async function submit() {
   console.log('[CreateTaskDeliveryOverlay] submit:clicked')
 
@@ -530,21 +545,21 @@ async function submit() {
 
   if (form.instructions.trim()) payload.instructions = form.instructions.trim()
   if (form.task_type) payload.task_type = form.task_type
-  if (form.available_from) payload.available_from = toFrappeDatetime(form.available_from)
-  if (form.due_date) payload.due_date = toFrappeDatetime(form.due_date)
-  if (form.lock_date) payload.lock_date = toFrappeDatetime(form.lock_date)
+  if (form.available_from) payload.available_from = toFrappeDatetime(form.available_from) as any
+  if (form.due_date) payload.due_date = toFrappeDatetime(form.due_date) as any
+  if (form.lock_date) payload.lock_date = toFrappeDatetime(form.lock_date) as any
 
   if (gradingEnabled.value) {
     payload.grading_mode = form.grading_mode as any
-    if (form.grading_mode === 'Points') payload.max_points = form.max_points
+    if (form.grading_mode === 'Points') payload.max_points = form.max_points as any
   } else {
-    payload.grading_mode = 'None'
+    payload.grading_mode = 'None' as any
   }
 
   try {
-    // ✅ Project invariant: payload is passed directly
-    const res = await api('ifitwala_ed.assessment.task_creation_service.create_task_and_delivery', payload)
-    const out = unwrapMessage<CreateTaskDeliveryPayload>(res)
+    // ✅ server expects `payload` argument -> submit({ payload })
+    const res = await createTaskResource.submit({ payload })
+    const out = res as CreateTaskDeliveryPayload | undefined
 
     console.log('[CreateTaskDeliveryOverlay] submit:response', out)
 
@@ -554,8 +569,9 @@ async function submit() {
     emit('close')
   } catch (error) {
     console.error('[CreateTaskDeliveryOverlay] submit:error', error)
-    errorMessage.value = error instanceof Error ? error.message : 'Unable to create the assignment right now.'
-    toast({ appearance: 'danger', message: errorMessage.value })
+    const msg = error instanceof Error ? error.message : 'Unable to create the assignment right now.'
+    errorMessage.value = msg
+    toast({ appearance: 'danger', message: msg })
   } finally {
     submitting.value = false
   }

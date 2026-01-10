@@ -3,13 +3,13 @@
 
 # ifitwala_ed/assessment/task_creation_service.py
 
+# ifitwala_ed/assessment/task_creation_service.py
+
 import frappe
 from frappe import _
 from frappe.utils import cint
 
-
 V1_GRADING_MODES = {"None", "Completion", "Binary", "Points"}
-
 
 def _parse_options(doctype, fieldname):
 	meta = frappe.get_meta(doctype)
@@ -18,18 +18,7 @@ def _parse_options(doctype, fieldname):
 		return []
 	return [opt.strip() for opt in field.options.split("\n") if opt.strip()]
 
-
-def _normalize_payload(payload):
-	if not payload:
-		frappe.throw(_("Payload is required."))
-	if isinstance(payload, str):
-		payload = frappe.parse_json(payload)
-	if not isinstance(payload, dict):
-		frappe.throw(_("Payload must be a dict."))
-	return payload
-
-
-def _validate_payload(payload):
+def _validate_payload(payload: dict) -> dict:
 	allowed_keys = {
 		"title",
 		"instructions",
@@ -109,11 +98,47 @@ def _validate_payload(payload):
 		"grade_scale": grade_scale,
 	}
 
-
 @frappe.whitelist()
-def create_task_and_delivery(payload):
-	payload = _normalize_payload(payload)
+def create_task_and_delivery(
+	title=None,
+	student_group=None,
+	delivery_mode=None,
+	instructions=None,
+	task_type=None,
+	is_template=None,
+	available_from=None,
+	due_date=None,
+	lock_date=None,
+	allow_late_submission=None,
+	group_submission=None,
+	grading_mode=None,
+	max_points=None,
+	grade_scale=None,
+	**unexpected,
+):
+	# ✅ enforce “no unknown keys” even though we accept **unexpected to catch them
+	if unexpected:
+		frappe.throw(_("Unsupported payload fields: {0}").format(", ".join(sorted(unexpected.keys()))))
+
+	payload = {
+		"title": title,
+		"instructions": instructions,
+		"task_type": task_type,
+		"is_template": is_template,
+		"student_group": student_group,
+		"delivery_mode": delivery_mode,
+		"available_from": available_from,
+		"due_date": due_date,
+		"lock_date": lock_date,
+		"allow_late_submission": allow_late_submission,
+		"group_submission": group_submission,
+		"grading_mode": grading_mode,
+		"max_points": max_points,
+		"grade_scale": grade_scale,
+	}
+
 	data = _validate_payload(payload)
+
 	frappe.db.savepoint("create_task_and_delivery")
 
 	task = None
@@ -158,8 +183,8 @@ def create_task_and_delivery(payload):
 		allow_late = data.get("allow_late_submission")
 		delivery.allow_late_submission = cint(allow_late) if allow_late is not None else 1
 
-		group_submission = data.get("group_submission")
-		delivery.group_submission = cint(group_submission) if group_submission is not None else 0
+		group_sub = data.get("group_submission")
+		delivery.group_submission = cint(group_sub) if group_sub is not None else 0
 
 		if data.get("grading_mode"):
 			delivery.grading_mode = data["grading_mode"]
@@ -169,11 +194,9 @@ def create_task_and_delivery(payload):
 			delivery.grade_scale = data["grade_scale"]
 
 		delivery.insert()
+
 	except Exception:
 		frappe.db.rollback(save_point="create_task_and_delivery")
 		raise
 
-	return {
-		"task": task.name,
-		"task_delivery": delivery.name,
-	}
+	return {"task": task.name, "task_delivery": delivery.name}
