@@ -558,7 +558,7 @@ async function submit() {
 
   try {
     // ✅ server expects `payload` argument -> submit({ payload })
-    const res = await createTaskResource.submit({ payload })
+    const res = await createTaskResource.submit(payload)
     const out = res as CreateTaskDeliveryPayload | undefined
 
     console.log('[CreateTaskDeliveryOverlay] submit:response', out)
