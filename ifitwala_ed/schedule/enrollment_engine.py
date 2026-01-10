@@ -429,12 +429,12 @@ def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
 			min_total = int(rule.get("int_value_1") or 0)
 			if len(requested_courses) < min_total:
 				status = "invalid"
-				reasons.append(f\"Minimum total courses is {min_total}.\")
+				reasons.append(f"Minimum total courses is {min_total}.")
 		elif rule_type == "MAX_TOTAL_COURSES":
 			max_total = int(rule.get("int_value_1") or 0)
 			if len(requested_courses) > max_total:
 				status = "invalid"
-				reasons.append(f\"Maximum total courses is {max_total}.\")
+				reasons.append(f"Maximum total courses is {max_total}.")
 		else:
 			status = "invalid"
 			reasons.append("Rule not supported by current schema.")
