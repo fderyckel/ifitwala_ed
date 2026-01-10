@@ -302,6 +302,7 @@ def _evaluate_prerequisites(course, prereq_rows, student_history, student_result
 
 
 def _evaluate_prereq_row(row, student_history, student_results):
+	# Option B: concurrency enforcement deferred; ignore concurrency_ok for now.
 	required_course = row.get("required_course")
 	min_numeric_score = row.get("min_numeric_score")
 
@@ -310,8 +311,6 @@ def _evaluate_prereq_row(row, student_history, student_results):
 
 	history = student_history.get(required_course) or {}
 	statuses = history.get("statuses") or set()
-	if "Enrolled" in statuses and "Completed" not in statuses:
-		return False, f"Required course {required_course} not completed.", None
 
 	if min_numeric_score is None:
 		if "Completed" in statuses:

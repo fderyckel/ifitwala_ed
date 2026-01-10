@@ -88,9 +88,8 @@ def materialize_program_enrollment_request(request_name):
 				existing_courses[course].status = "Enrolled"
 			else:
 				enrollment.append("courses", {"course": course, "status": "Enrolled"})
-		enrollment.enrollment_source = "Request"
-		enrollment.program_enrollment_request = req.name
-		enrollment.enrollment_override_reason = None
+		if (enrollment.enrollment_source or "").strip() == "Request":
+			enrollment.program_enrollment_request = req.name
 	else:
 		enrollment = frappe.get_doc({
 			"doctype": "Program Enrollment",
@@ -107,8 +106,11 @@ def materialize_program_enrollment_request(request_name):
 			],
 		})
 
-	enrollment.flags.from_enrollment_request = True
-	enrollment.save()
+	frappe.flags.enrollment_from_request = True
+	try:
+		enrollment.save()
+	finally:
+		frappe.flags.enrollment_from_request = False
 	comment = _("Materialized from Program Enrollment Request {0}.").format(req.name)
 	enrollment.add_comment("Comment", comment)
 	return enrollment.name
@@ -464,6 +466,7 @@ def _evaluate_prereqs(course, apply_to_level, prereq_rows, status_map, term_resu
 
 
 def _evaluate_prereq_row(row, status_map, term_result_cache, student):
+	# Option B: concurrency enforcement deferred; ignore concurrency_ok for now.
 	required_course = row.get("required_course")
 	min_numeric_score = row.get("min_numeric_score")
 	if min_numeric_score is not None:
@@ -487,22 +490,19 @@ def _evaluate_prereq_row(row, status_map, term_result_cache, student):
 		return False, result
 
 	statuses = status_map.get(required_course, set())
-	eligible_statuses = {"Completed"}
-
-	if not statuses.intersection(eligible_statuses):
-		result["course_status"] = sorted(statuses)
-		result["note"] = "No eligible enrollment found for required course."
-		return False, result
-
 	result["course_status"] = sorted(statuses)
 
 	if min_numeric_score is None:
+		eligible_statuses = {"Completed"}
+		if not statuses.intersection(eligible_statuses):
+			result["note"] = "No eligible enrollment found for required course."
+			return False, result
 		result["passed"] = True
 		return True, result
 
 	term_result = _best_course_term_result(student, required_course, term_result_cache)
 	if not term_result or term_result.get("numeric_score") is None:
-		result["note"] = "No numeric score evidence found."
+		result["note"] = "No term result / numeric score found"
 		return False, result
 
 	numeric_score = float(term_result.get("numeric_score"))

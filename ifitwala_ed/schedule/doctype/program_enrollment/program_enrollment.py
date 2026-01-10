@@ -12,6 +12,14 @@ from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 from typing import Optional, Sequence
 
+ADMIN_ENROLLMENT_ROLES = {"Academic Admin", "Curriculum Coordinator", "Admission Manager"}
+MIGRATION_ROLES = {"System Manager"}
+ALLOWED_SOURCES = {"Request", "Admin", "Migration"}
+
+
+def _user_has_any_role(roles: set[str]) -> bool:
+	return bool(set(frappe.get_roles(frappe.session.user)) & roles)
+
 class ProgramEnrollment(Document):
 
 	def before_insert(self):
@@ -126,59 +134,62 @@ class ProgramEnrollment(Document):
 
 	def _validate_enrollment_source(self):
 		source = (self.enrollment_source or "Admin").strip()
+		if source not in ALLOWED_SOURCES:
+			frappe.throw(_("Enrollment Source must be one of: {0}.").format(", ".join(sorted(ALLOWED_SOURCES))))
 		self.enrollment_source = source
 
 		previous_source = None
 		if self.name and not self.is_new():
-			previous_source = frappe.db.get_value("Program Enrollment", self.name, "enrollment_source")
+			previous = frappe.db.get_value(
+				"Program Enrollment",
+				self.name,
+				["enrollment_source", "program_enrollment_request"],
+				as_dict=True,
+			) or {}
+			previous_source = (previous.get("enrollment_source") or "").strip() or None
+
+			if previous_source and previous_source != source:
+				frappe.throw(_("Enrollment Source cannot be changed once set."))
+			if previous_source == "Request" and not self.program_enrollment_request:
+				frappe.throw(_("Program Enrollment Request cannot be cleared for Request-source enrollments."))
 
 		if source == "Request":
 			self._validate_request_source(previous_source)
 			return
 
-		self._validate_non_request_source(source, previous_source)
+		self._validate_non_request_source(source)
 
 	def _validate_request_source(self, previous_source):
 		if not self.program_enrollment_request:
 			frappe.throw(_("Program Enrollment Request is required when source is Request."))
 
 		if self.is_new() or (previous_source and previous_source != "Request"):
-			if not getattr(self.flags, "from_enrollment_request", False):
-				frappe.throw(_("Request-source enrollments must be system-created."))
+			if not getattr(frappe.flags, "enrollment_from_request", False):
+				frappe.throw(_("Create enrollments from an approved request via the conversion action."))
 
-		request = frappe.db.get_value(
-			"Program Enrollment Request",
-			self.program_enrollment_request,
-			["status", "student", "program_offering", "academic_year"],
-			as_dict=True,
-		)
-		if not request:
-			frappe.throw(_("Program Enrollment Request {0} was not found.").format(self.program_enrollment_request))
-		if request.status != "Approved":
+		req = frappe.get_doc("Program Enrollment Request", self.program_enrollment_request)
+		if req.status != "Approved":
 			frappe.throw(_("Program Enrollment Request must be Approved to materialize enrollment."))
-		if request.student != self.student:
+		if req.student != self.student:
 			frappe.throw(_("Program Enrollment Request student does not match enrollment student."))
-		if request.program_offering != self.program_offering:
+		if req.program_offering != self.program_offering:
 			frappe.throw(_("Program Enrollment Request offering does not match enrollment offering."))
-		if request.academic_year != self.academic_year:
+		if req.academic_year != self.academic_year:
 			frappe.throw(_("Program Enrollment Request academic year does not match enrollment academic year."))
+		if self.program and req.program and req.program != self.program:
+			frappe.throw(_("Program Enrollment Request program does not match enrollment program."))
+		if self.school and req.school and req.school != self.school:
+			frappe.throw(_("Program Enrollment Request school does not match enrollment school."))
 
-	def _validate_non_request_source(self, source, previous_source):
+	def _validate_non_request_source(self, source):
 		if not (self.enrollment_override_reason or "").strip():
 			frappe.throw(_("Override Reason is required when enrollment source is not Request."))
 
-		guard_change = self.is_new() or (previous_source and previous_source != source)
-		if not guard_change:
-			return
-
-		user = frappe.session.user
-		user_roles = set(frappe.get_roles(user))
 		if source == "Admin":
-			allowed_roles = {"Academic Admin", "Curriculum Coordinator", "Admission Manager"}
-			if not allowed_roles.intersection(user_roles):
+			if not _user_has_any_role(ADMIN_ENROLLMENT_ROLES):
 				frappe.throw(_("Only Academic Admin, Curriculum Coordinator, or Admission Manager can create Admin enrollments."))
 		elif source == "Migration":
-			if "System Manager" not in user_roles and user != "Administrator":
+			if not _user_has_any_role(MIGRATION_ROLES):
 				frappe.throw(_("Only System Manager can create Migration enrollments."))
 
 

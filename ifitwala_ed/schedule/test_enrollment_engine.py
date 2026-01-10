@@ -92,6 +92,52 @@ class TestEnrollmentEngine(FrappeTestCase):
 		self.assertFalse(course_result["eligible"])
 		self.assertTrue(course_result["override_required"])
 
+	def test_request_source_requires_flag(self):
+		context = _setup_context(score=80, include_history=False)
+		request = _make_enrollment_request(context, status="Approved")
+
+		with self.assertRaises(frappe.ValidationError):
+			frappe.get_doc({
+				"doctype": "Program Enrollment",
+				"student": context["student"].name,
+				"program": context["program"].name,
+				"program_offering": context["offering"].name,
+				"academic_year": context["academic_year"].name,
+				"enrollment_date": nowdate(),
+				"enrollment_source": "Request",
+				"program_enrollment_request": request.name,
+			}).insert()
+
+		frappe.flags.enrollment_from_request = True
+		try:
+			frappe.get_doc({
+				"doctype": "Program Enrollment",
+				"student": context["student"].name,
+				"program": context["program"].name,
+				"program_offering": context["offering"].name,
+				"academic_year": context["academic_year"].name,
+				"enrollment_date": nowdate(),
+				"enrollment_source": "Request",
+				"program_enrollment_request": request.name,
+			}).insert()
+		finally:
+			frappe.flags.enrollment_from_request = False
+
+	def test_enrollment_source_immutable(self):
+		context = _setup_context(score=80, include_history=False)
+		enrollment = _make_enrollment(
+			context["student"],
+			context["program"],
+			context["offering"],
+			context["academic_year"],
+			[{"course": context["target_course"].name, "status": "Enrolled"}],
+		)
+
+		enrollment.enrollment_source = "Admin"
+		enrollment.enrollment_override_reason = "Override for test"
+		with self.assertRaises(frappe.ValidationError):
+			enrollment.save()
+
 
 def _find_course(result, course):
 	for row in result["results"]["courses"]:
@@ -309,3 +355,16 @@ def _make_course_term_result(student, course, program, academic_year, term, grad
 	})
 	result.insert()
 	return result
+
+
+def _make_enrollment_request(context, status="Approved"):
+	request = frappe.get_doc({
+		"doctype": "Program Enrollment Request",
+		"student": context["student"].name,
+		"program_offering": context["offering"].name,
+		"academic_year": context["academic_year"].name,
+		"status": status,
+		"courses": [{"course": context["target_course"].name}],
+	})
+	request.insert()
+	return request
