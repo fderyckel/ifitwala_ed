@@ -3,8 +3,6 @@
 
 # ifitwala_ed/assessment/task_creation_service.py
 
-# ifitwala_ed/assessment/task_creation_service.py
-
 import frappe
 from frappe import _
 from frappe.utils import cint
@@ -116,6 +114,12 @@ def create_task_and_delivery(
 	grade_scale=None,
 	**unexpected,
 ):
+
+	# Frappe always injects "cmd" into form_dict for /api/method calls.
+	# We ignore it explicitly to preserve strict "no unknown keys" for everything else.
+	if unexpected:
+		unexpected.pop("cmd", None)
+
 	# ✅ enforce “no unknown keys” even though we accept **unexpected to catch them
 	if unexpected:
 		frappe.throw(_("Unsupported payload fields: {0}").format(", ".join(sorted(unexpected.keys()))))
