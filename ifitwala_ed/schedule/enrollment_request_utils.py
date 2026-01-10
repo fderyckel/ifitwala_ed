@@ -9,7 +9,6 @@ from frappe import _
 from frappe.utils import add_to_date, now_datetime, nowdate
 
 
-
 @frappe.whitelist()
 def validate_program_enrollment_request(request_name, force=0):
 	if not request_name:
@@ -19,13 +18,23 @@ def validate_program_enrollment_request(request_name, force=0):
 
 	doc = frappe.get_doc("Program Enrollment Request", request_name)
 	force = int(force or 0)
-	if not force and doc.validation_status == "Valid":
-		if doc.validation_payload:
-			try:
-				return json.loads(doc.validation_payload)
-			except Exception:
-				return {"validation_payload": doc.validation_payload}
-		return {}
+
+	# Determinism rule:
+	# - Once a request is Approved (or Rejected), we do NOT recompute validation.
+	# - Rules changing later must affect future requests only.
+	final_statuses = {"Approved", "Rejected"}
+	if (doc.status in final_statuses) and doc.validation_payload and not force:
+		try:
+			return json.loads(doc.validation_payload)
+		except Exception:
+			return {"validation_payload": doc.validation_payload}
+
+	# Existing fast-path: if already Valid and has payload, reuse unless forced
+	if not force and doc.validation_status == "Valid" and doc.validation_payload:
+		try:
+			return json.loads(doc.validation_payload)
+		except Exception:
+			return {"validation_payload": doc.validation_payload}
 
 	payload, is_valid = _validate_request(doc)
 
@@ -38,6 +47,7 @@ def validate_program_enrollment_request(request_name, force=0):
 	}
 	doc.db_set(updates, update_modified=True)
 	return payload
+
 
 
 @frappe.whitelist()

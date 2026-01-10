@@ -25,32 +25,140 @@ def _user_has_any_role(roles: set[str]) -> bool:
 class ProgramEnrollment(Document):
 
 	def before_insert(self):
+		# Canonical spine sync + optional seeding of required courses
+		self._apply_offering_spine(allow_seed_courses=True)
+
+	def validate(self):
+		"""
+		Validate invariants only.
+		Spine resolution is handled in before_insert() / _apply_offering_spine().
+		"""
+
+		# 0) Hard requirements
+		if not self.program_offering:
+			frappe.throw(_("Program Offering is required."))
+		if not self.student:
+			frappe.throw(_("Student is required."))
+
+		# 1) Load offering spine ONCE
+		off = _offering_core(self.program_offering)
+		if not off:
+			frappe.throw(
+				_("Invalid Program Offering {0}.").format(
+					get_link_to_form("Program Offering", self.program_offering)
+				)
+			)
+
+		# 2) Program / school / cohort must already match offering (never reassign here)
+		if self.program != off.program:
+			frappe.throw(
+				_("Enrollment Program {0} does not match Program Offering's Program {1}.")
+				.format(
+					get_link_to_form("Program", self.program),
+					get_link_to_form("Program", off.program),
+				)
+			)
+
+		if self.school != off.school:
+			frappe.throw(
+				_("Enrollment School does not match Program Offering School.")
+			)
+
+		if off.student_cohort and self.cohort != off.student_cohort:
+			frappe.throw(
+				_("Enrollment Cohort does not match Program Offering Cohort.")
+			)
+
+		# 3) Academic Year must be valid for offering
+		ay_names = _offering_ay_names(self.program_offering)
+		if not self.academic_year:
+			frappe.throw(_("Academic Year is required."))
+		if self.academic_year not in ay_names:
+			frappe.throw(
+				_("Academic Year {0} is not part of Program Offering {1}.")
+				.format(
+					get_link_to_form("Academic Year", self.academic_year),
+					get_link_to_form("Program Offering", self.program_offering),
+				)
+			)
+
+		# 4) Structural invariants (no mutation)
+		self._validate_school_and_cohort_lock()
+		self._validate_terms_membership_and_order()
+		self._validate_dropped_requires_date()
+		self._validate_enrollment_source()
+		self._validate_course_terms()
+
+		# 5) Duplication guards
+		self.validate_duplicate_course()
+		self.validate_duplication()
+
+		# 6) Enrollment date must fall inside academic year
+		if self.enrollment_date:
+			ay = frappe.get_doc("Academic Year", self.academic_year)
+			if getdate(self.enrollment_date) < getdate(ay.year_start_date):
+				frappe.throw(
+					_("Enrollment date is before the start of Academic Year {0}.")
+					.format(get_link_to_form("Academic Year", self.academic_year))
+				)
+			if getdate(self.enrollment_date) > getdate(ay.year_end_date):
+				frappe.throw(
+					_("Enrollment date is after the end of Academic Year {0}.")
+					.format(get_link_to_form("Academic Year", self.academic_year))
+				)
+
+		# 7) Cosmetic only (safe autofill)
+		if not self.student_name:
+			self.student_name = frappe.db.get_value(
+				"Student", self.student, "student_full_name"
+			)
+
+
+	def _apply_offering_spine(self, *, allow_seed_courses: bool):
+		"""
+		Canonical spine sync (single truth):
+		- Require + load Program Offering once
+		- Mirror authoritative values: program, school, cohort
+		- Validate/assign academic_year from offering AY spine
+		- Resolve academic_year via school-tree guard
+		- Optionally seed required courses when empty
+		- Fill student_name when missing
+		"""
 		# 0) Require + load offering
 		if not getattr(self, "program_offering", None):
 			frappe.throw(_("Program Offering is required."))
+
 		off = _offering_core(self.program_offering)
 		if not off:
 			frappe.throw(_("Invalid Program Offering {0}.").format(
-				get_link_to_form("Program Offering", self.program_offering)))
+				get_link_to_form("Program Offering", self.program_offering)
+			))
 
 		# 1) Mirror authoritative values
+		# Program must match offering program
 		if not self.program:
-			self.program = off.program
-		elif self.program != off.program:
+			self.program = off.get("program")
+		elif self.program != off.get("program"):
 			frappe.throw(_("Enrollment Program {0} does not match Program Offering's Program {1}.")
-				.format(get_link_to_form("Program", self.program), get_link_to_form("Program", off.program)))
+				.format(
+					get_link_to_form("Program", self.program),
+					get_link_to_form("Program", off.get("program"))
+				))
 
-		self.school = off.school
-		if off.student_cohort:
-			self.cohort = off.student_cohort
+		# School/cohort always mirror offering
+		self.school = off.get("school")
+		if off.get("student_cohort"):
+			self.cohort = off.get("student_cohort")
 
-		# 2) AY from offering spine (autofill when unique)
+		# 2) Academic Year must come from offering AY spine (autofill when unique)
 		ay_names = _offering_ay_names(self.program_offering)
 		if self.academic_year:
 			if self.academic_year not in ay_names:
 				frappe.throw(_("Academic Year {0} is not part of Program Offering {1}.")
-					.format(get_link_to_form("Academic Year", self.academic_year),
-									get_link_to_form("Program Offering", self.program_offering)))
+					.format(
+						get_link_to_form("Academic Year", self.academic_year),
+						get_link_to_form("Program Offering", self.program_offering)
+					))
 		else:
 			if len(ay_names) == 1:
 				self.academic_year = ay_names[0]
@@ -58,81 +166,16 @@ class ProgramEnrollment(Document):
 				frappe.throw(_("Please choose an Academic Year from this Program Offering: {0}.")
 					.format(", ".join(ay_names)))
 
-		# 3) Resolve AY via school tree guard (your helper)
+		# 3) Resolve AY via school tree guard
 		self._resolve_academic_year()
 
 		# 4) Seed required courses if empty (same behavior you had)
-		if not self.courses:
+		if allow_seed_courses and not self.courses:
 			self.extend("courses", self.get_courses())
 
-		# 5) Student name
+		# 5) Student name (only if missing)
 		if not self.student_name and self.student:
 			self.student_name = frappe.db.get_value("Student", self.student, "student_full_name")
-
-
-	def validate(self):
-
-		# 0) Require program_offering, resolve it once
-		if not getattr(self, "program_offering", None):
-			frappe.throw(_("Program Offering is required."))
-
-		off = _offering_core(self.program_offering)
-		if not off:
-			frappe.throw(_("Invalid Program Offering {0}.").format(get_link_to_form("Program Offering", self.program_offering)))
-
-		# 1) Mirror authoritative values from offering
-		if not self.program:
-			self.program = off.program
-		elif self.program != off.program:
-			frappe.throw(_("Enrollment Program {0} does not match Program Offering's Program {1}.")
-				.format(get_link_to_form("Program", self.program), get_link_to_form("Program", off.program)))
-
-		# School/cohort always mirror offering (program no longer carries school)
-		self.school = off.school
-		if off.student_cohort:
-			self.cohort = off.student_cohort
-
-		# 2) Academic Year must come from offering AY spine
-		ay_spine = _offering_ay_spine(self.program_offering)
-		ay_names = [r["academic_year"] for r in ay_spine]
-		if self.academic_year:
-			if self.academic_year not in ay_names:
-				frappe.throw(_("Academic Year {0} is not part of Program Offering {1}.")
-					.format(get_link_to_form("Academic Year", self.academic_year), get_link_to_form("Program Offering", self.program_offering)))
-		else:
-			if len(ay_names) == 1:
-				self.academic_year = ay_names[0]
-			else:
-				frappe.throw(_("Please choose an Academic Year from this Program Offering: {0}.").format(", ".join(ay_names)))
-
-		self._resolve_academic_year()
-		self._validate_offering_ay_membership()
-		self._validate_school_and_cohort_lock()
-		self._validate_terms_membership_and_order()
-		self._validate_dropped_requires_date()
-		self.validate_duplicate_course()
-		self.validate_duplication()
-		self._validate_enrollment_source()
-		self._validate_course_terms()
-
-		if not self.student_name:
-			self.student_name = frappe.db.get_value("Student", self.student, "student_full_name")
-		if not self.courses:
-			self.extend("courses", self.get_courses())
-
-		if self.academic_year:
-			year_dates = frappe.get_doc("Academic Year", self.academic_year)
-			if self.enrollment_date:
-				if getdate(self.enrollment_date) < getdate(year_dates.year_start_date):
-					frappe.throw(_("The enrollment date for this program is before the start of the academic year {0}. The academic year starts on {1}.  Please revise the date.").format(
-						get_link_to_form("Academic Year", self.academic_year),
-						year_dates.year_start_date
-					))
-				if getdate(self.enrollment_date) > getdate(year_dates.year_end_date):
-					frappe.throw(_("The enrollment date for this program is after the start of the academic year {0}. The academic year ends on {1}.  Please revise the date.").format(
-						get_link_to_form("Academic Year", self.academic_year),
-						year_dates.year_end_date
-					))
 
 	def _validate_enrollment_source(self):
 		source = (self.enrollment_source or "Admin").strip()
