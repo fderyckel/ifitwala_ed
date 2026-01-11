@@ -400,7 +400,12 @@ def submit_student_log(**payload):
 	doc.log_type = log_type
 	doc.log = log
 	doc.date = nowdate()
-	doc.time = nowtime(with_seconds=False)
+
+	# Frappe version-safe: nowtime() may not support with_seconds kwarg.
+	# Store hh:mm (no seconds) as required by project convention.
+	_now = (nowtime() or "").split(".")[0]  # defensive: drop microseconds if any
+	doc.time = ":".join(_now.split(":")[:2]) if _now else None
+
 	doc.visible_to_student = cint(payload.get("visible_to_student") or 0)
 	doc.visible_to_guardians = cint(payload.get("visible_to_guardians") or 0)
 

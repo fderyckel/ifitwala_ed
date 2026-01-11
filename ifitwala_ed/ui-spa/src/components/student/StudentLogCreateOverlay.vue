@@ -26,7 +26,7 @@
         >
           <DialogPanel class="if-overlay__panel">
             <!-- Header -->
-            <div class="if-overlay__header">
+            <div class="if-overlay__header px-6 pt-6">
               <div class="min-w-0">
                 <DialogTitle class="type-h2 text-ink">
                   {{ __('New student note') }}
@@ -42,7 +42,7 @@
             </div>
 
             <!-- Body -->
-            <div class="if-overlay__body space-y-5">
+            <div class="if-overlay__body px-6 pb-6 space-y-5">
               <!-- Student -->
               <section class="space-y-2">
                 <p class="type-caption text-ink/70">{{ __('Student') }}</p>
@@ -62,63 +62,95 @@
                   />
                 </div>
 
-                <!-- School mode: search -->
+                <!-- School mode: search OR selected card -->
                 <div v-else class="space-y-2">
-                  <FormControl
-                    type="text"
-                    size="md"
-                    :model-value="studentQuery"
-                    :disabled="submitting"
-                    placeholder="Search student name…"
-                    @update:modelValue="onStudentQuery"
-                  />
+                  <!-- Search UI: only when no student selected -->
+                  <div v-if="!form.student" class="space-y-2">
+                    <FormControl
+                      type="text"
+                      size="md"
+                      :model-value="studentQuery"
+                      :disabled="submitting"
+                      placeholder="Search student name…"
+                      @update:modelValue="onStudentQuery"
+                    />
 
-                  <div v-if="studentSearch.loading" class="flex items-center gap-2 text-ink/60">
-                    <Spinner class="h-4 w-4" />
-                    <span class="type-caption">{{ __('Searching…') }}</span>
+                    <div v-if="studentSearch.loading" class="flex items-center gap-2 text-ink/60">
+                      <Spinner class="h-4 w-4" />
+                      <span class="type-caption">{{ __('Searching…') }}</span>
+                    </div>
+
+                    <div
+                      v-if="studentCandidates.length"
+                      class="rounded-2xl border border-border/70 bg-white shadow-soft overflow-hidden"
+                    >
+                      <button
+                        v-for="c in studentCandidates"
+                        :key="c.value"
+                        type="button"
+                        class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-sky/30 transition"
+                        @click="onStudentSelected(c.value)"
+                      >
+                        <img
+                          v-if="c.image"
+                          :src="c.image"
+                          alt=""
+                          class="h-9 w-9 rounded-full object-cover ring-1 ring-black/5"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                        <div class="min-w-0 flex-1">
+                          <p class="type-body-strong text-ink truncate">{{ c.label }}</p>
+                          <p class="type-caption text-ink/55 truncate">{{ c.meta }}</p>
+                        </div>
+                        <FeatherIcon name="chevron-right" class="h-4 w-4 text-ink/40" />
+                      </button>
+                    </div>
                   </div>
 
+                  <!-- Selected student card: replaces search UI -->
                   <div
-                    v-if="studentCandidates.length"
-                    class="rounded-2xl border border-border/70 bg-white shadow-soft overflow-hidden"
+                    v-else
+                    class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft flex items-center justify-between gap-3"
                   >
-                    <button
-                      v-for="c in studentCandidates"
-                      :key="c.value"
-                      type="button"
-                      class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-sky/30 transition"
-                      @click="onStudentSelected(c.value)"
-                    >
+                    <div class="flex items-center gap-3 min-w-0">
                       <img
-                        v-if="c.image"
-                        :src="c.image"
+                        v-if="selectedStudentImage"
+                        :src="selectedStudentImage"
                         alt=""
-                        class="h-9 w-9 rounded-full object-cover ring-1 ring-black/5"
+                        class="h-10 w-10 rounded-full object-cover ring-1 ring-black/5"
                         loading="lazy"
                         decoding="async"
                       />
-                      <div class="min-w-0 flex-1">
-                        <p class="type-body-strong text-ink truncate">{{ c.label }}</p>
-                        <p class="type-caption text-ink/55 truncate">{{ c.meta }}</p>
+                      <div class="min-w-0">
+                        <p class="type-body-strong text-ink truncate">{{ selectedStudentLabel }}</p>
+                        <p v-if="selectedStudentMeta" class="type-caption text-ink/55 truncate">{{ selectedStudentMeta }}</p>
                       </div>
-                      <FeatherIcon name="chevron-right" class="h-4 w-4 text-ink/40" />
-                    </button>
-                  </div>
-                </div>
+                    </div>
 
-                <!-- Selected student preview -->
-                <div v-if="selectedStudentLabel" class="flex items-center gap-3 pt-1">
-                  <img
-                    v-if="selectedStudentImage"
-                    :src="selectedStudentImage"
-                    alt=""
-                    class="h-10 w-10 rounded-full object-cover ring-1 ring-black/5"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  <div class="min-w-0">
-                    <p class="type-body-strong text-ink truncate">{{ selectedStudentLabel }}</p>
-                    <p v-if="selectedStudentMeta" class="type-caption text-ink/55 truncate">{{ selectedStudentMeta }}</p>
+                    <button
+                      type="button"
+                      class="type-caption text-ink/70 hover:text-ink underline underline-offset-4"
+                      :disabled="submitting"
+                      @click="
+                        form.student = '';
+                        form.log_type = '';
+                        form.log = '';
+                        form.requires_follow_up = false;
+                        form.next_step = '';
+                        form.follow_up_person = '';
+                        selectedAssigneeLabel = '';
+                        assigneeQuery = '';
+                        assigneeCandidates = [];
+                        studentQuery = '';
+                        studentCandidates = [];
+                        selectedStudentLabel = '';
+                        selectedStudentImage = null;
+                        selectedStudentMeta = null;
+                      "
+                    >
+                      {{ __('Change') }}
+                    </button>
                   </div>
                 </div>
               </section>
@@ -160,32 +192,35 @@
               <!-- Visibility (defaults OFF in SPA) -->
               <section class="space-y-2">
                 <p class="type-caption text-ink/70">{{ __('Visibility') }}</p>
-                <div class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft space-y-3">
-                  <label class="flex items-start gap-3">
-                    <input
-                      v-model="form.visible_to_student"
-                      type="checkbox"
-                      class="mt-1 h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
-                      :disabled="submitting"
-                    />
-                    <div class="min-w-0">
-                      <p class="type-body-strong text-ink">{{ __('Visible to student') }}</p>
-                      <p class="type-caption text-ink/55">{{ __('Show this note in the student portal.') }}</p>
-                    </div>
-                  </label>
 
-                  <label class="flex items-start gap-3">
-                    <input
-                      v-model="form.visible_to_guardians"
-                      type="checkbox"
-                      class="mt-1 h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
-                      :disabled="submitting"
-                    />
-                    <div class="min-w-0">
-                      <p class="type-body-strong text-ink">{{ __('Visible to parents') }}</p>
-                      <p class="type-caption text-ink/55">{{ __('Show this note in the guardian portal.') }}</p>
-                    </div>
-                  </label>
+                <div class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="flex gap-3 rounded-xl border border-border/60 bg-white px-3 py-3 hover:bg-sky/20 transition">
+                      <input
+                        v-model="form.visible_to_student"
+                        type="checkbox"
+                        class="mt-1 h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
+                        :disabled="submitting"
+                      />
+                      <div class="min-w-0">
+                        <p class="type-body-strong text-ink">{{ __('Visible to student') }}</p>
+                        <p class="type-caption text-ink/55">{{ __('Show this note in the student portal.') }}</p>
+                      </div>
+                    </label>
+
+                    <label class="flex gap-3 rounded-xl border border-border/60 bg-white px-3 py-3 hover:bg-sky/20 transition">
+                      <input
+                        v-model="form.visible_to_guardians"
+                        type="checkbox"
+                        class="mt-1 h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
+                        :disabled="submitting"
+                      />
+                      <div class="min-w-0">
+                        <p class="type-body-strong text-ink">{{ __('Visible to parents') }}</p>
+                        <p class="type-caption text-ink/55">{{ __('Show this note in the guardian portal.') }}</p>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               </section>
 
@@ -282,6 +317,7 @@
     </Dialog>
   </TransitionRoot>
 </template>
+
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'

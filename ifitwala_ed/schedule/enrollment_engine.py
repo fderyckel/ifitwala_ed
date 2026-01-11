@@ -536,48 +536,34 @@ def _count_committed_seats(program_offering):
 
 
 def _count_request_seats(program_offering, statuses, request_id=None):
-	"""
-	Count held seats from Program Enrollment Request Course rows.
-
-	Important:
-	- Only count rows for requests in the given statuses.
-	- Do NOT count rows where the request course row is already marked as "Removed"/"Dropped"
-	  (if such a field exists). Since schema may vary, we defensively check for the field.
-	"""
-	conditions = [
-		"per.program_offering = %(program_offering)s",
-		"per.status IN %(statuses)s",
-	]
+	# Count seats held by requests in given statuses, per course.
+	# IMPORTANT: do not let duplicate rows in the child table inflate capacity.
+	conditions = ["per.program_offering = %(program_offering)s", "per.status in %(statuses)s"]
 	params = {"program_offering": program_offering, "statuses": tuple(statuses)}
 
 	if request_id:
 		conditions.append("per.name != %(request_id)s")
 		params["request_id"] = request_id
 
-	# Defensive: if Program Enrollment Request Course has a "status" field, exclude non-seat rows
-	perc_has_status = False
-	try:
-		meta = frappe.get_meta("Program Enrollment Request Course")
-		perc_has_status = bool(meta and meta.get_field("status"))
-	except Exception:
-		perc_has_status = False
+	where_clause = " and ".join(conditions)
 
-	if perc_has_status:
-		conditions.append("IFNULL(perc.status, '') NOT IN ('Removed', 'Dropped')")
-
-	where_clause = " AND ".join(conditions)
-
+	# DISTINCT on (request, course) to avoid duplicates inflating capacity.
 	rows = frappe.db.sql(
 		f"""
 		SELECT
-			perc.course AS course,
-			COUNT(perc.name) AS total
-		FROM `tabProgram Enrollment Request Course` perc
-		JOIN `tabProgram Enrollment Request` per
-			ON per.name = perc.parent
-		WHERE {where_clause}
-			AND IFNULL(perc.course, '') != ''
-		GROUP BY perc.course
+			x.course AS course,
+			COUNT(*) AS total
+		FROM (
+			SELECT DISTINCT
+				per.name AS request_name,
+				perc.course AS course
+			FROM `tabProgram Enrollment Request Course` perc
+			JOIN `tabProgram Enrollment Request` per
+				ON per.name = perc.parent
+			WHERE {where_clause}
+				AND IFNULL(perc.course, '') != ''
+		) x
+		GROUP BY x.course
 		""",
 		params,
 		as_dict=True,
@@ -590,7 +576,6 @@ def _count_request_seats(program_offering, statuses, request_id=None):
 			continue
 		counts[course] = int(row.get("total") or 0)
 	return counts
-
 
 
 def _capacity_unknown(policy):
