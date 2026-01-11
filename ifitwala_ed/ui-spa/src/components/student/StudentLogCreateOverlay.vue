@@ -29,10 +29,14 @@
             <div class="if-overlay__header px-6 pt-6">
               <div class="min-w-0">
                 <DialogTitle class="type-h2 text-ink">
-                  {{ __('New student note') }}
+                  {{ step === 'review' ? __('Review student note') : __('New student note') }}
                 </DialogTitle>
                 <p class="mt-1 type-caption text-ink/60">
-                  {{ mode === 'group' ? __('Fast entry for this class.') : __('Search across your school.') }}
+                  {{
+                    step === 'review'
+                      ? __('Once submitted, this note cannot be edited.')
+                      : (mode === 'group' ? __('Fast entry for this class.') : __('Search across your school.'))
+                  }}
                 </p>
               </div>
 
@@ -43,262 +47,380 @@
 
             <!-- Body -->
             <div class="if-overlay__body px-6 pb-6 space-y-5">
-              <!-- Student -->
-              <section class="space-y-2">
-                <p class="type-caption text-ink/70">{{ __('Student') }}</p>
+              <!-- EDIT STEP -->
+              <template v-if="step !== 'review'">
+                <!-- Student -->
+                <section class="space-y-2">
+                  <p class="type-caption text-ink/70">{{ __('Student') }}</p>
 
-                <!-- Group mode: roster select -->
-                <div v-if="mode === 'group'" class="space-y-2">
-                  <FormControl
-                    type="select"
-                    size="md"
-                    :options="groupStudentOptions"
-                    option-label="label"
-                    option-value="value"
-                    :model-value="form.student"
-                    :disabled="!groupStudentOptions.length || submitting"
-                    placeholder="Select student"
-                    @update:modelValue="onStudentSelected"
-                  />
-                </div>
-
-                <!-- School mode: search OR selected card -->
-                <div v-else class="space-y-2">
-                  <!-- Search UI: only when no student selected -->
-                  <div v-if="!form.student" class="space-y-2">
-                    <FormControl
-                      type="text"
-                      size="md"
-                      :model-value="studentQuery"
-                      :disabled="submitting"
-                      placeholder="Search student name…"
-                      @update:modelValue="onStudentQuery"
-                    />
-
-                    <div v-if="studentSearch.loading" class="flex items-center gap-2 text-ink/60">
-                      <Spinner class="h-4 w-4" />
-                      <span class="type-caption">{{ __('Searching…') }}</span>
-                    </div>
-
-                    <div
-                      v-if="studentCandidates.length"
-                      class="rounded-2xl border border-border/70 bg-white shadow-soft overflow-hidden"
-                    >
-                      <button
-                        v-for="c in studentCandidates"
-                        :key="c.value"
-                        type="button"
-                        class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-sky/30 transition"
-                        @click="onStudentSelected(c.value)"
-                      >
-                        <img
-                          v-if="c.image"
-                          :src="c.image"
-                          alt=""
-                          class="h-9 w-9 rounded-full object-cover ring-1 ring-black/5"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                        <div class="min-w-0 flex-1">
-                          <p class="type-body-strong text-ink truncate">{{ c.label }}</p>
-                          <p class="type-caption text-ink/55 truncate">{{ c.meta }}</p>
-                        </div>
-                        <FeatherIcon name="chevron-right" class="h-4 w-4 text-ink/40" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Selected student card: replaces search UI -->
-									<div
-										v-else
-										class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft flex items-center justify-between gap-3"
-									>
-										<div class="flex items-center gap-3 min-w-0">
-											<img
-												v-if="selectedStudentImage"
-												:src="selectedStudentImage"
-												alt=""
-												class="h-10 w-10 rounded-full object-cover ring-1 ring-black/5"
-												loading="lazy"
-												decoding="async"
-											/>
-											<div class="min-w-0">
-												<p class="type-body-strong text-ink truncate">{{ selectedStudentLabel }}</p>
-												<p v-if="selectedStudentMeta" class="type-caption text-ink/55 truncate">
-													{{ selectedStudentMeta }}
-												</p>
-											</div>
-										</div>
-
-										<button
-											type="button"
-											class="type-caption text-ink/70 hover:text-ink underline underline-offset-4"
-											:disabled="submitting"
-											@click="changeStudent()"
-										>
-											{{ __('Change') }}
-										</button>
-									</div>
-
-
-                </div>
-              </section>
-
-              <!-- Type -->
-              <section class="space-y-2">
-                <div class="flex items-center justify-between">
-                  <p class="type-caption text-ink/70">{{ __('Type') }}</p>
-                  <span v-if="options.loading" class="type-caption text-ink/55 flex items-center gap-2">
-                    <Spinner class="h-4 w-4" /> {{ __('Loading…') }}
-                  </span>
-                </div>
-
-                <FormControl
-                  type="select"
-                  size="md"
-                  :options="logTypeOptions"
-                  option-label="label"
-                  option-value="value"
-                  :model-value="form.log_type"
-                  :disabled="!form.student || options.loading || submitting"
-                  placeholder="Select type"
-                  @update:modelValue="(v) => (form.log_type = v)"
-                />
-              </section>
-
-              <!-- Note -->
-              <section class="space-y-2">
-                <p class="type-caption text-ink/70">{{ __('Note') }}</p>
-                <textarea
-                  v-model="form.log"
-                  class="w-full rounded-2xl border border-border/70 bg-white px-4 py-3 text-sm text-ink shadow-soft outline-none focus:ring-2 focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
-                  rows="6"
-                  :placeholder="__('Write what you observed…')"
-                  :disabled="submitting"
-                />
-              </section>
-
-              <!-- Visibility (defaults OFF in SPA) -->
-              <section class="space-y-2">
-                <p class="type-caption text-ink/70">{{ __('Visibility') }}</p>
-
-                <div class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft">
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <label class="flex gap-3 rounded-xl border border-border/60 bg-white px-3 py-3 hover:bg-sky/20 transition">
-                      <input
-                        v-model="form.visible_to_student"
-                        type="checkbox"
-                        class="mt-1 h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
-                        :disabled="submitting"
-                      />
-                      <div class="min-w-0">
-                        <p class="type-body-strong text-ink">{{ __('Visible to student') }}</p>
-                        <p class="type-caption text-ink/55">{{ __('Show this note in the student portal.') }}</p>
-                      </div>
-                    </label>
-
-                    <label class="flex gap-3 rounded-xl border border-border/60 bg-white px-3 py-3 hover:bg-sky/20 transition">
-                      <input
-                        v-model="form.visible_to_guardians"
-                        type="checkbox"
-                        class="mt-1 h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
-                        :disabled="submitting"
-                      />
-                      <div class="min-w-0">
-                        <p class="type-body-strong text-ink">{{ __('Visible to parents') }}</p>
-                        <p class="type-caption text-ink/55">{{ __('Show this note in the guardian portal.') }}</p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              </section>
-
-              <!-- Follow-up -->
-              <section class="space-y-2">
-                <p class="type-caption text-ink/70">{{ __('Follow-up') }}</p>
-
-                <div class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft space-y-3">
-                  <label class="flex items-start gap-3">
-                    <input
-                      v-model="form.requires_follow_up"
-                      type="checkbox"
-                      class="mt-1 h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
-                      :disabled="submitting || !form.student"
-                    />
-                    <div class="min-w-0">
-                      <p class="type-body-strong text-ink">{{ __('Needs follow-up') }}</p>
-                      <p class="type-caption text-ink/55">{{ __('Assign this note to someone else, with a clear next step.') }}</p>
-                    </div>
-                  </label>
-
-                  <div v-if="form.requires_follow_up" class="space-y-3 pt-1">
+                  <!-- Group mode: roster select -->
+                  <div v-if="mode === 'group'" class="space-y-2">
                     <FormControl
                       type="select"
                       size="md"
-                      :options="nextStepOptions"
+                      :options="groupStudentOptions"
                       option-label="label"
                       option-value="value"
-                      :model-value="form.next_step"
-                      :disabled="submitting || options.loading"
-                      placeholder="Select next step"
-                      @update:modelValue="onNextStepSelected"
+                      :model-value="form.student"
+                      :disabled="!groupStudentOptions.length || submitting"
+                      placeholder="Select student"
+                      @update:modelValue="onStudentSelected"
                     />
+                  </div>
 
-                    <div v-if="followUpRoleHint" class="type-caption text-ink/55">
-                      {{ followUpRoleHint }}
-                    </div>
+                  <!-- School mode: search OR selected card -->
+                  <div v-else class="space-y-2">
+                    <!-- Search UI: only when no student selected -->
+                    <div v-if="!form.student" class="space-y-2">
+                      <FormControl
+                        type="text"
+                        size="md"
+                        :model-value="studentQuery"
+                        :disabled="submitting"
+                        placeholder="Search student name…"
+                        @update:modelValue="onStudentQuery"
+                      />
 
-                    <FormControl
-                      type="text"
-                      size="md"
-                      :model-value="assigneeQuery"
-                      :disabled="submitting || !form.next_step"
-                      placeholder="Search staff to assign…"
-                      @update:modelValue="onAssigneeQuery"
-                    />
+                      <div v-if="studentSearch.loading" class="flex items-center gap-2 text-ink/60">
+                        <Spinner class="h-4 w-4" />
+                        <span class="type-caption">{{ __('Searching…') }}</span>
+                      </div>
 
-                    <div v-if="assigneeSearch.loading" class="flex items-center gap-2 text-ink/60">
-                      <Spinner class="h-4 w-4" />
-                      <span class="type-caption">{{ __('Searching…') }}</span>
-                    </div>
-
-                    <div
-                      v-if="assigneeCandidates.length"
-                      class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-strong-rgb))] overflow-hidden"
-                    >
-                      <button
-                        v-for="u in assigneeCandidates"
-                        :key="u.value"
-                        type="button"
-                        class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-sky/30 transition"
-                        @click="selectAssignee(u.value, u.label)"
+                      <div
+                        v-if="studentCandidates.length"
+                        class="rounded-2xl border border-border/70 bg-white shadow-soft overflow-hidden"
                       >
+                        <button
+                          v-for="c in studentCandidates"
+                          :key="c.value"
+                          type="button"
+                          class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-sky/30 transition"
+                          @click="onStudentSelected(c.value)"
+                        >
+                          <img
+                            v-if="c.image"
+                            :src="c.image"
+                            alt=""
+                            class="h-9 w-9 rounded-full object-cover ring-1 ring-black/5"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                          <div class="min-w-0 flex-1">
+                            <p class="type-body-strong text-ink truncate">{{ c.label }}</p>
+                            <p class="type-caption text-ink/55 truncate">{{ c.meta }}</p>
+                          </div>
+                          <FeatherIcon name="chevron-right" class="h-4 w-4 text-ink/40" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Selected student card: replaces search UI -->
+                    <div
+                      v-else
+                      class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft flex items-center justify-between gap-3"
+                    >
+                      <div class="flex items-center gap-3 min-w-0">
+                        <img
+                          v-if="selectedStudentImage"
+                          :src="selectedStudentImage"
+                          alt=""
+                          class="h-10 w-10 rounded-full object-cover ring-1 ring-black/5"
+                          loading="lazy"
+                          decoding="async"
+                        />
                         <div class="min-w-0">
-                          <p class="type-body-strong text-ink truncate">{{ u.label }}</p>
-                          <p class="type-caption text-ink/55 truncate">{{ u.meta }}</p>
+                          <p class="type-body-strong text-ink truncate">{{ selectedStudentLabel }}</p>
+                          <p v-if="selectedStudentMeta" class="type-caption text-ink/55 truncate">
+                            {{ selectedStudentMeta }}
+                          </p>
                         </div>
-                        <FeatherIcon name="check" class="h-4 w-4 text-leaf" v-if="form.follow_up_person === u.value" />
+                      </div>
+
+                      <button
+                        type="button"
+                        class="type-caption text-ink/70 hover:text-ink underline underline-offset-4"
+                        :disabled="submitting"
+                        @click="changeStudent()"
+                      >
+                        {{ __('Change') }}
                       </button>
                     </div>
+                  </div>
+                </section>
 
-                    <div v-if="selectedAssigneeLabel" class="type-caption text-ink/60">
-                      {{ __('Assigned to:') }} <span class="text-ink">{{ selectedAssigneeLabel }}</span>
+                <!-- Type -->
+                <section class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <p class="type-caption text-ink/70">{{ __('Type') }}</p>
+                    <span v-if="options.loading" class="type-caption text-ink/55 flex items-center gap-2">
+                      <Spinner class="h-4 w-4" /> {{ __('Loading…') }}
+                    </span>
+                  </div>
+
+                  <FormControl
+                    type="select"
+                    size="md"
+                    :options="logTypeOptions"
+                    option-label="label"
+                    option-value="value"
+                    :model-value="form.log_type"
+                    :disabled="!form.student || options.loading || submitting"
+                    placeholder="Select type"
+                    @update:modelValue="(v) => (form.log_type = v)"
+                  />
+                </section>
+
+                <!-- Note -->
+                <section class="space-y-2">
+                  <p class="type-caption text-ink/70">{{ __('Note') }}</p>
+                  <textarea
+                    v-model="form.log"
+                    class="w-full rounded-2xl border border-border/70 bg-white px-4 py-3 text-sm text-ink shadow-soft outline-none focus:ring-2 focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
+                    rows="6"
+                    :placeholder="__('Write what you observed…')"
+                    :disabled="submitting"
+                  />
+                </section>
+
+                <!-- Visibility (defaults OFF in SPA) -->
+                <section class="space-y-2">
+                  <p class="type-caption text-ink/70">{{ __('Visibility') }}</p>
+
+                  <div class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label class="flex gap-3 rounded-xl border border-border/60 bg-white px-3 py-3 hover:bg-sky/20 transition">
+                        <input
+                          v-model="form.visible_to_student"
+                          type="checkbox"
+                          class="mt-1 h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
+                          :disabled="submitting"
+                        />
+                        <div class="min-w-0">
+                          <p class="type-body-strong text-ink">{{ __('Visible to student') }}</p>
+                          <p class="type-caption text-ink/55">{{ __('Show this note in the student portal.') }}</p>
+                        </div>
+                      </label>
+
+                      <label class="flex gap-3 rounded-xl border border-border/60 bg-white px-3 py-3 hover:bg-sky/20 transition">
+                        <input
+                          v-model="form.visible_to_guardians"
+                          type="checkbox"
+                          class="mt-1 h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
+                          :disabled="submitting"
+                        />
+                        <div class="min-w-0">
+                          <p class="type-body-strong text-ink">{{ __('Visible to parents') }}</p>
+                          <p class="type-caption text-ink/55">{{ __('Show this note in the guardian portal.') }}</p>
+                        </div>
+                      </label>
                     </div>
                   </div>
-                </div>
-              </section>
+                </section>
+
+                <!-- Follow-up -->
+                <section class="space-y-2">
+                  <p class="type-caption text-ink/70">{{ __('Follow-up') }}</p>
+
+                  <div class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft space-y-3">
+                    <label class="flex items-start gap-3">
+                      <input
+                        v-model="form.requires_follow_up"
+                        type="checkbox"
+                        class="mt-1 h-4 w-4 rounded border-border/70 text-leaf focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
+                        :disabled="submitting || !form.student"
+                      />
+                      <div class="min-w-0">
+                        <p class="type-body-strong text-ink">{{ __('Needs follow-up') }}</p>
+                        <p class="type-caption text-ink/55">{{ __('Assign this note to someone else, with a clear next step.') }}</p>
+                      </div>
+                    </label>
+
+                    <div v-if="form.requires_follow_up" class="space-y-3 pt-1">
+                      <FormControl
+                        type="select"
+                        size="md"
+                        :options="nextStepOptions"
+                        option-label="label"
+                        option-value="value"
+                        :model-value="form.next_step"
+                        :disabled="submitting || options.loading"
+                        placeholder="Select next step"
+                        @update:modelValue="onNextStepSelected"
+                      />
+
+                      <div v-if="followUpRoleHint" class="type-caption text-ink/55">
+                        {{ followUpRoleHint }}
+                      </div>
+
+                      <FormControl
+                        type="text"
+                        size="md"
+                        :model-value="assigneeQuery"
+                        :disabled="submitting || !form.next_step"
+                        placeholder="Search staff to assign…"
+                        @update:modelValue="onAssigneeQuery"
+                      />
+
+                      <div v-if="assigneeSearch.loading" class="flex items-center gap-2 text-ink/60">
+                        <Spinner class="h-4 w-4" />
+                        <span class="type-caption">{{ __('Searching…') }}</span>
+                      </div>
+
+                      <div
+                        v-if="assigneeCandidates.length"
+                        class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-strong-rgb))] overflow-hidden"
+                      >
+                        <button
+                          v-for="u in assigneeCandidates"
+                          :key="u.value"
+                          type="button"
+                          class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-sky/30 transition"
+                          @click="selectAssignee(u.value, u.label)"
+                        >
+                          <div class="min-w-0">
+                            <p class="type-body-strong text-ink truncate">{{ u.label }}</p>
+                            <p class="type-caption text-ink/55 truncate">{{ u.meta }}</p>
+                          </div>
+                          <FeatherIcon name="check" class="h-4 w-4 text-leaf" v-if="form.follow_up_person === u.value" />
+                        </button>
+                      </div>
+
+                      <div v-if="selectedAssigneeLabel" class="type-caption text-ink/60">
+                        {{ __('Assigned to:') }} <span class="text-ink">{{ selectedAssigneeLabel }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </template>
+
+              <!-- REVIEW STEP -->
+              <template v-else>
+                <section class="space-y-3">
+                  <div class="rounded-2xl border border-border/70 bg-white px-5 py-4 shadow-soft space-y-4">
+                    <!-- Student + Type -->
+                    <div class="flex items-start justify-between gap-4">
+                      <div class="min-w-0">
+                        <p class="type-caption text-ink/55">{{ __('Student') }}</p>
+                        <div class="mt-1 flex items-center gap-3 min-w-0">
+                          <img
+                            v-if="selectedStudentImage"
+                            :src="selectedStudentImage"
+                            alt=""
+                            class="h-10 w-10 rounded-full object-cover ring-1 ring-black/5"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                          <div class="min-w-0">
+                            <p class="type-body-strong text-ink truncate">{{ selectedStudentLabel || form.student }}</p>
+                            <p v-if="selectedStudentMeta" class="type-caption text-ink/55 truncate">{{ selectedStudentMeta }}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="text-right shrink-0">
+                        <p class="type-caption text-ink/55">{{ __('Type') }}</p>
+                        <p class="mt-1 type-body-strong text-ink">
+                          {{ selectedLogTypeLabel || form.log_type || '—' }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- Note preview -->
+                    <div class="space-y-1">
+                      <p class="type-caption text-ink/55">{{ __('Note') }}</p>
+                      <div class="rounded-xl border border-border/60 bg-[rgb(var(--surface-strong-rgb))] px-4 py-3">
+                        <p class="text-sm text-ink/90 whitespace-pre-wrap">
+                          {{ reviewNotePreview || '—' }}
+                        </p>
+                      </div>
+                      <p v-if="isNoteTruncated" class="type-caption text-ink/55">
+                        {{ __('Preview truncated. Go back to edit to review full text.') }}
+                      </p>
+                    </div>
+
+                    <!-- Visibility + Follow-up summary -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div class="rounded-xl border border-border/60 bg-white px-4 py-3">
+                        <p class="type-caption text-ink/55">{{ __('Visibility') }}</p>
+                        <ul class="mt-2 space-y-1 text-sm text-ink/85">
+                          <li class="flex items-center justify-between gap-3">
+                            <span class="text-ink/70">{{ __('Student') }}</span>
+                            <span class="type-body-strong text-ink">{{ form.visible_to_student ? __('Yes') : __('No') }}</span>
+                          </li>
+                          <li class="flex items-center justify-between gap-3">
+                            <span class="text-ink/70">{{ __('Parents') }}</span>
+                            <span class="type-body-strong text-ink">{{ form.visible_to_guardians ? __('Yes') : __('No') }}</span>
+                          </li>
+                        </ul>
+                      </div>
+
+                      <div class="rounded-xl border border-border/60 bg-white px-4 py-3">
+                        <p class="type-caption text-ink/55">{{ __('Follow-up') }}</p>
+                        <div class="mt-2 text-sm text-ink/85 space-y-1">
+                          <p>
+                            <span class="text-ink/70">{{ __('Needs follow-up') }}:</span>
+                            <span class="type-body-strong text-ink ml-1">{{ form.requires_follow_up ? __('Yes') : __('No') }}</span>
+                          </p>
+                          <p v-if="form.requires_follow_up">
+                            <span class="text-ink/70">{{ __('Next step') }}:</span>
+                            <span class="type-body-strong text-ink ml-1">{{ selectedNextStepLabel || form.next_step || '—' }}</span>
+                          </p>
+                          <p v-if="form.requires_follow_up">
+                            <span class="text-ink/70">{{ __('Assigned to') }}:</span>
+                            <span class="type-body-strong text-ink ml-1">{{ selectedAssigneeLabel || form.follow_up_person || '—' }}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </template>
             </div>
 
             <!-- Footer -->
             <div class="if-overlay__footer">
-              <Button variant="solid" class="w-full" :loading="submitting" :disabled="!canSubmit || submitting" @click="submit">
-                <template #prefix><FeatherIcon name="send" class="h-4 w-4" /></template>
-                {{ __('Submit note') }}
-              </Button>
+              <!-- EDIT FOOTER -->
+              <div v-if="step !== 'review'">
+                <Button
+                  variant="solid"
+                  class="w-full"
+                  :loading="submitting"
+                  :disabled="!canSubmit || submitting"
+                  @click="goReview"
+                >
+                  <template #prefix><FeatherIcon name="eye" class="h-4 w-4" /></template>
+                  {{ __('Review & submit') }}
+                </Button>
 
-              <p class="mt-2 type-caption text-ink/50">
-                {{ footerHint }}
-              </p>
+                <p class="mt-2 type-caption text-ink/50 whitespace-normal break-words leading-relaxed">
+                  {{ footerHint }}
+                </p>
+              </div>
+
+              <!-- REVIEW FOOTER -->
+              <div v-else class="space-y-3">
+                <div class="flex items-center gap-3">
+                  <Button variant="outline" class="flex-1" :disabled="submitting" @click="goEdit">
+                    <template #prefix><FeatherIcon name="edit-2" class="h-4 w-4" /></template>
+                    {{ __('Go back and edit') }}
+                  </Button>
+
+                  <Button
+                    variant="solid"
+                    class="flex-1"
+                    :loading="submitting"
+                    :disabled="!canSubmit || submitting"
+                    @click="submit"
+                  >
+                    <template #prefix><FeatherIcon name="send" class="h-4 w-4" /></template>
+                    {{ __('Confirm & submit') }}
+                  </Button>
+                </div>
+
+                <p class="type-caption text-ink/50">
+                  {{ __('Submitting will create a new student log entry. You won’t be able to edit it afterwards.') }}
+                </p>
+              </div>
             </div>
           </DialogPanel>
         </TransitionChild>
@@ -306,7 +428,6 @@
     </Dialog>
   </TransitionRoot>
 </template>
-
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
@@ -345,8 +466,55 @@ const emit = defineEmits<{
 }>()
 
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }))
-function emitClose() { emit('close') }
-function emitAfterLeave() { emit('after-leave') }
+
+// Review step state
+const step = ref<'edit' | 'review'>('edit')
+
+const NOTE_PREVIEW_LEN = 220
+
+const reviewNotePreview = computed(() => {
+	const txt = (form.log || '').trim()
+	if (!txt) return ''
+	return txt.length > NOTE_PREVIEW_LEN ? txt.slice(0, NOTE_PREVIEW_LEN).trim() + '…' : txt
+})
+
+const isNoteTruncated = computed(() => {
+	const txt = (form.log || '').trim()
+	return !!txt && txt.length > NOTE_PREVIEW_LEN
+})
+
+const selectedLogTypeLabel = computed(() => {
+	if (!form.log_type) return ''
+	const row = logTypeOptions.value.find((x) => x.value === form.log_type)
+	return row?.label || ''
+})
+
+const selectedNextStepLabel = computed(() => {
+	if (!form.next_step) return ''
+	const row = nextStepOptions.value.find((x) => x.value === form.next_step)
+	return row?.label || ''
+})
+
+
+function emitClose() {
+	step.value = 'edit'
+	emit('close')
+}
+
+function emitAfterLeave() {
+	step.value = 'edit'
+	emit('after-leave')
+}
+
+function goReview() {
+	if (!canSubmit.value) return
+	step.value = 'review'
+}
+
+function goEdit() {
+	step.value = 'edit'
+}
+
 
 const mode = computed(() => props.mode)
 
@@ -533,6 +701,8 @@ function onStudentSelected(studentId: string) {
 }
 
 function changeStudent() {
+	step.value = 'edit'
+
 	// Clear student selection + anything that depends on student/options
 	form.student = ''
 
@@ -572,31 +742,41 @@ function onNextStepSelected(v: string) {
 const submitResource = createResource({
   url: 'ifitwala_ed.api.student_log.submit_student_log',
   auto: false,
-  onSuccess() {
-    toast({ title: __('Saved'), text: __('Student note submitted.'), icon: 'check' })
-    emitClose()
-  },
+	onSuccess() {
+		step.value = 'edit'
+		toast({ title: __('Saved'), text: __('Student note submitted.'), icon: 'check' })
+		emitClose()
+	},
   onError(err: any) {
     toast({ title: __('Could not submit'), text: err?.message || String(err), icon: 'x' })
   },
 })
 
 async function submit() {
-  if (!canSubmit.value) return
-  submitting.value = true
-  try {
-    await submitResource.submit({
-      student: form.student,
-      log_type: form.log_type,
-      log: form.log,
-      requires_follow_up: form.requires_follow_up ? 1 : 0,
-      next_step: form.requires_follow_up ? form.next_step : null,
-      follow_up_person: form.requires_follow_up ? form.follow_up_person : null,
-      visible_to_student: form.visible_to_student ? 1 : 0,
-      visible_to_guardians: form.visible_to_guardians ? 1 : 0,
-    })
-  } finally {
-    submitting.value = false
-  }
+	if (!canSubmit.value) return
+
+	// Only allow actual server submit from the review step.
+	// If user triggers submit while editing (e.g. Enter), push them to review instead.
+	if (step.value !== 'review') {
+		step.value = 'review'
+		return
+	}
+
+	submitting.value = true
+	try {
+		await submitResource.submit({
+			student: form.student,
+			log_type: form.log_type,
+			log: form.log,
+			requires_follow_up: form.requires_follow_up ? 1 : 0,
+			next_step: form.requires_follow_up ? form.next_step : null,
+			follow_up_person: form.requires_follow_up ? form.follow_up_person : null,
+			visible_to_student: form.visible_to_student ? 1 : 0,
+			visible_to_guardians: form.visible_to_guardians ? 1 : 0,
+		})
+	} finally {
+		submitting.value = false
+	}
 }
+
 </script>

@@ -84,7 +84,9 @@ def evaluate_enrollment_request(payload):
 		blocked = False
 		override_required = False
 
-		# stable requested count from normalized input
+		# Stable requested count from normalized input.
+		# Important: duplicates must NEVER inflate seat-hold math beyond requested_count,
+		# and requested_count must NEVER be derived from list.count() inside loops.
 		req_count = int(requested_counts.get(course, 0) or 0)
 
 		if not course_row:
@@ -147,6 +149,8 @@ def evaluate_enrollment_request(payload):
 			"reasons": reasons,
 			"evidence": evidence,
 			"capacity": capacity_result,
+			# Preserve raw duplication info without changing the canonical requested_courses contract.
+			"requested_count": req_count,
 		})
 
 	# Basket rules are offering-scoped and can invalidate the entire request.
@@ -172,7 +176,10 @@ def evaluate_enrollment_request(payload):
 	return {
 		"student": student,
 		"program_offering": program_offering,
+		# Canonical output: unique + stable order (first occurrence wins).
 		"requested_courses": unique_courses,
+		# Optional: preserve raw duplication counts for audit/debug without reintroducing O(n^2).
+		"requested_counts": requested_counts,
 		"generated_at": now_datetime(),
 		"summary": {
 			"blocked": bool(any_blocked),
@@ -184,6 +191,7 @@ def evaluate_enrollment_request(payload):
 			"basket": basket_result,
 		},
 	}
+
 
 
 def _get_student_course_history(student):
@@ -435,7 +443,6 @@ def _evaluate_capacity(course, offering_course_row, capacity_counts, requested_c
 		result["policy_unavailable"] = True
 	return result
 
-
 def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
 	"""
 	Basket rules (Option B - structured child table) evaluation.
@@ -449,98 +456,119 @@ def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
 	Inputs:
 	- requested_courses: list of unique course names (engine already de-dupes upstream).
 	- offering_course_rows: dict[course] -> Program Offering Course row (required/elective_group metadata).
-	- basket_policy: dict with "program_offering" and optionally "program_courses" (unused here for now).
+	- basket_policy: dict with "program_offering" and optionally "program_courses" (future).
 	"""
 
-	# 0) Pre-compute required courses + elective group summary from offering metadata.
+	program_offering = (basket_policy or {}).get("program_offering")
+	requested_courses = requested_courses or []
+	requested_set = set(requested_courses)
+
+	# 0) Pre-compute required courses + elective group coverage from offering metadata.
+	# Keep this deterministic: sort derived lists and never rely on dict iteration order.
 	required_courses = []
 	group_summary = {}
 
-	requested_set = set(requested_courses or [])
-
 	for course, row in (offering_course_rows or {}).items():
-		if not course:
+		c = (course or "").strip()
+		if not c:
 			continue
+
 		if int((row or {}).get("required") or 0) == 1:
-			required_courses.append(course)
+			required_courses.append(c)
 
-		group = (row or {}).get("elective_group")
+		group = ((row or {}).get("elective_group") or "").strip()
 		if group:
-			group_summary[group] = group_summary.get(group, 0) + (1 if course in requested_set else 0)
+			group_summary[group] = group_summary.get(group, 0) + (1 if c in requested_set else 0)
 
+	required_courses = sorted(set(required_courses))
 	missing_required = [c for c in required_courses if c not in requested_set]
 
-	# 1) Status + reasons accumulator.
-	reasons = []
-	status = "ok"
-
-	# Always enforce offering-level required courses first.
-	if missing_required:
-		status = "invalid"
-		reasons.append("Missing required courses in basket.")
-
-	# 2) Load structured rules (Option B). If none exist, that is a valid configuration state.
-	program_offering = (basket_policy or {}).get("program_offering")
+	# 1) Load structured rules (Option B). If none exist, that's a valid configuration state.
 	rule_rows = []
 	if program_offering:
-		# Assumption after "lock": this child doctype exists in the system.
 		rule_rows = frappe.get_all(
 			"Program Offering Enrollment Rule",
 			filters={"parent": program_offering, "parenttype": "Program Offering"},
-			fields=["rule_type", "int_value_1", "int_value_2", "course_group", "level", "notes"],
+			fields=["idx", "rule_type", "int_value_1", "int_value_2", "course_group", "level", "notes"],
 			order_by="idx asc",
 		)
 
-	# 3) Evaluate rules (pure).
-	total_courses = len(requested_courses or [])
+	# 2) Deterministic accumulators.
+	status = "ok"
+	reasons = []
+	violations = []
 
-	# Helper for adding a failure deterministically.
-	def _fail(msg):
+	def _violate(code, msg, rule=None):
 		nonlocal status
 		status = "invalid"
 		reasons.append(msg)
+		violations.append({
+			"code": code,
+			"message": msg,
+			"rule_type": (rule or {}).get("rule_type"),
+			"rule_idx": (rule or {}).get("idx"),
+		})
+
+	# 3) Always enforce offering-level required courses first (basket-level constraint).
+	if missing_required:
+		_violate("missing_required", "Missing required courses in basket.")
+
+	# 4) Evaluate rules (pure, one pass, stable order by idx asc).
+	total_courses = len(requested_courses)
 
 	for rule in (rule_rows or []):
-		rule_type = (rule.get("rule_type") or "").strip()
+		rule_type = ((rule.get("rule_type") or "").strip() or "").upper()
 
 		if rule_type == "MIN_TOTAL_COURSES":
 			min_total = int(rule.get("int_value_1") or 0)
-			if total_courses < min_total:
-				_fail(f"Minimum total courses is {min_total}.")
+			if min_total > 0 and total_courses < min_total:
+				_violate("min_total_courses", f"Minimum total courses is {min_total}.", rule)
 
 		elif rule_type == "MAX_TOTAL_COURSES":
 			max_total = int(rule.get("int_value_1") or 0)
-			if total_courses > max_total:
-				_fail(f"Maximum total courses is {max_total}.")
-
-		elif rule_type == "MIN_LEVEL_COUNT":
-			# Requires program course 'level' mapping; if you want this enabled now,
-			# pass program_courses into basket_policy and implement here.
-			# For now, treat as unsupported but explicit.
-			_fail("Basket rule MIN_LEVEL_COUNT is not supported yet (missing level mapping in engine).")
+			if max_total > 0 and total_courses > max_total:
+				_violate("max_total_courses", f"Maximum total courses is {max_total}.", rule)
 
 		elif rule_type == "REQUIRE_GROUP_COVERAGE":
 			# Uses offering elective_group summary as the lightweight group signal.
-			group = (rule.get("course_group") or "").strip()
+			group = ((rule.get("course_group") or "").strip() or "")
 			if not group:
-				_fail("Basket rule REQUIRE_GROUP_COVERAGE is misconfigured (course_group is required).")
+				_violate("misconfigured_rule", "Basket rule REQUIRE_GROUP_COVERAGE is misconfigured (course_group is required).", rule)
 			else:
 				if int(group_summary.get(group, 0) or 0) <= 0:
-					_fail(f"Basket must include at least one course from group '{group}'.")
+					_violate("require_group_coverage", f"Basket must include at least one course from group '{group}'.", rule)
+
+		elif rule_type == "MIN_LEVEL_COUNT":
+			# Structured-rule-only engine: rule exists but inputs aren't wired yet.
+			# Treat as invalid + explicit so staff notice config drift immediately.
+			_violate("unsupported_rule", "Basket rule MIN_LEVEL_COUNT is not supported yet (level mapping not provided to engine).", rule)
+
+		elif not rule_type:
+			_violate("misconfigured_rule", "Basket rule has an empty rule_type.", rule)
 
 		else:
-			_fail(f"Unknown basket rule type: {rule_type or '[empty]'}.")
+			_violate("unknown_rule_type", f"Unknown basket rule type: {rule_type}.", rule)
 
-	# 4) If no structured rules exist and we’re otherwise OK, mark explicitly configured state.
+	# 5) If no structured rules exist and we’re otherwise OK, mark explicitly.
 	if not rule_rows and status == "ok":
 		status = "not_configured"
 
+	# 6) Basket-level override truth (engine may tighten policy later, but PER needs a flag now).
+	override_required = (status == "invalid")
+
 	return {
 		"status": status,
+		"override_required": bool(override_required),
 		"reasons": reasons,
+		"violations": violations,
 		"missing_required_courses": missing_required,
 		"group_summary": group_summary,
+		"meta": {
+			"total_courses": total_courses,
+			"rules_evaluated": len(rule_rows or []),
+		},
 	}
+
 
 def _get_program_courses(program):
 	rows = frappe.get_all(
