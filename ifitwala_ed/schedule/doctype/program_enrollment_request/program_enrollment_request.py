@@ -12,39 +12,49 @@ from ifitwala_ed.schedule.enrollment_request_utils import validate_program_enrol
 class ProgramEnrollmentRequest(Document):
 	def validate(self):
 		"""
-		Server-side guardrails for override workflow.
-		- Only Academic Admin / Curriculum Coordinator / Admission Manager can approve overrides.
-		- Approval requires a reason + stamps who/when.
-		- If request doesn't require override, it cannot be approved.
+		Single enforcement point for PER workflow integrity.
+
+		Rules:
+		- If status becomes "Submitted" or "Under Review" or "Approved", we must have a fresh validation snapshot.
+		- If engine says override_required, PER.requires_override must be 1.
+		- If requires_override=1, status cannot be "Approved" unless override_approved=1.
+		- Keep server/db efficient: validate only when needed (status change or basket change).
 		"""
-		APPROVE_ROLES = {"Academic Admin", "Curriculum Coordinator", "Admission Manager"}
+		target_status = (self.status or "").strip()
+		needs_snapshot = target_status in {"Submitted", "Under Review", "Approved"}
 
-		def _user_has_any_role(roles: set[str]) -> bool:
-			return bool(set(frappe.get_roles(frappe.session.user)) & roles)
+		# Detect whether we must refresh validation
+		status_changed = self.has_value_changed("status") if not self.is_new() else True
+		basket_changed = self.has_value_changed("courses") if not self.is_new() else True
 
-		requires_override = int(self.requires_override or 0)
-		override_approved = int(self.override_approved or 0)
+		# If we're not moving into a gate state, do nothing.
+		if not needs_snapshot:
+			return
 
-		# If not required, approval cannot be set
-		if not requires_override and override_approved:
-			frappe.throw(_("Override Approved cannot be set when Requires Override is not checked."))
+		# If nothing relevant changed and we already have a Valid/Invalid snapshot, keep it.
+		if not self.is_new() and not status_changed and not basket_changed and (self.validation_status or "").strip() in {"Valid", "Invalid"} and self.validation_payload:
+			# still enforce override gate for Approved
+			if target_status == "Approved" and int(self.requires_override or 0) == 1 and int(self.override_approved or 0) != 1:
+				frappe.throw(_("This request requires an override and must be override-approved before it can be Approved."))
+			return
 
-		# If approving, enforce roles + reason + stamps
-		if override_approved:
-			if not _user_has_any_role(APPROVE_ROLES):
-				frappe.throw(_("Only Academic Admin, Curriculum Coordinator, or Admission Manager can approve overrides."))
+		# Force validation refresh via whitelisted util (single truth)
+		result = validate_program_enrollment_request(self.name, force=1) if self.name else None
 
-			if not (self.override_reason or "").strip():
-				frappe.throw(_("Override Reason is required to approve an override."))
+		# If doc is new (no name yet), we can't call validate_program_enrollment_request (needs saved doc).
+		# So we require user to save first before submitting/approving.
+		if self.is_new():
+			frappe.throw(_("Please save this request before submitting for validation."))
 
-			# Stamp who/when (idempotent)
-			if not self.override_by:
-				self.override_by = frappe.session.user
-			if not self.override_on:
-				self.override_on = now_datetime()
+		# Pull flags from stored fields (validate_program_enrollment_request db_set's them)
+		# and enforce final gates.
+		if target_status == "Approved":
+			if (self.validation_status or "").strip() != "Valid":
+				frappe.throw(_("Request must be Valid before it can be Approved."))
 
-	def on_submit(self):
-		validate_program_enrollment_request(self.name, force=1)
+			if int(self.requires_override or 0) == 1 and int(self.override_approved or 0) != 1:
+				frappe.throw(_("This request requires an override and must be override-approved before it can be Approved."))
+
 
 
 @frappe.whitelist()

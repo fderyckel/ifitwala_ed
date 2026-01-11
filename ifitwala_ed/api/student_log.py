@@ -140,10 +140,14 @@ ALLOWED_SUBMIT_KEYS = {
 def _validate_keys(payload: dict, allowed: set[str]):
 	if not isinstance(payload, dict):
 		frappe.throw(_("Payload must be a dict."))
+
+	# frappe-ui / /api/method calls can include framework routing keys in the form payload.
+	# We keep strict allowlisting, but ignore these known framework keys.
+	payload.pop("cmd", None)
+
 	unknown = set(payload.keys()) - allowed
 	if unknown:
 		frappe.throw(_("Unexpected keys: {0}").format(", ".join(sorted(list(unknown)))))
-
 
 def _get_employee_school_for_session_user() -> str | None:
 	user = frappe.session.user
