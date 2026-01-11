@@ -394,4 +394,238 @@ These rules apply consistently across:
 
 ---
 
-**End of UX Contract**
+
+
+
+## Overlay Performance Checklist (Staff SPA)
+
+This is the **non-negotiable performance checklist** for any drawer/overlay in the SPA — including StudentLogCreateOverlay.
+
+---
+
+# 1) Images (biggest silent killer)
+
+### 1.1 Always use low-res variants in overlays
+
+* Overlays must **never** load original/full-size images.
+* Always request **thumbnail/small** variants for student avatars.
+* If you use your own helper, the fallback order must be “small → original” (never medium/large in overlays).
+
+Acceptance checks
+
+* On a slow network, opening the overlay does **not** trigger multi-MB image downloads.
+* Avatar loads are **< 30–80 KB** typical (depends on your pipeline, but it must be “small”).
+
+### 1.2 Avoid layout shift
+
+* Reserve avatar box size (fixed width/height) and use object-cover.
+* Lazy-load images and fade-in (you already have this pattern).
+
+### 1.3 Cache headers / URLs
+
+* Use stable URLs for resized images so browser caching works.
+* Do not append random cache-busting params.
+
+---
+
+# 2) API Calls (batching + dedup)
+
+### 2.1 The overlay must open instantly (no blocking)
+
+* Open overlay first.
+* Show skeleton/loader for options while fetching.
+* Never wait on server to render the overlay.
+
+### 2.2 Minimize request count (target: 1–2 on open)
+
+**Best target per open:**
+
+* Attendance mode: **1 request** to fetch both:
+
+  * log types
+  * next steps
+* Home mode before student chosen: **1 request** to fetch log types + next steps for the user default school.
+
+Then only additional calls as needed:
+
+* assignee search is triggered only when:
+
+  * needs follow-up ON
+  * next step selected
+  * user types at least 2 chars (or you choose 1 char if your dataset is small)
+
+### 2.3 Batch “variants” into a single endpoint (recommended)
+
+Instead of two separate calls:
+
+* `/api/student_log/types`
+* `/api/student_log/next_steps`
+
+Prefer:
+
+* `/api/student_log/variants`
+  returns:
+
+```json
+{
+  "log_types": [...],
+  "next_steps": [...]
+}
+```
+
+This reduces latency and makes caching simpler.
+
+### 2.4 Deduplicate in-flight requests
+
+If overlay opens twice quickly (or school changes):
+
+* do not fire duplicate calls
+* keep an in-flight promise keyed by `(endpoint, school)`
+* cancel/ignore stale responses using a request token
+
+### 2.5 Debounce typeahead calls
+
+For student search / user search:
+
+* debounce 200–300ms
+* only query when:
+
+  * query length >= 2
+* always keep last result visible while loading next page of results
+
+---
+
+# 3) Caching Rules (client + server)
+
+### 3.1 Server-side caching for shared lists (Redis)
+
+These lists are **shared truth** and change rarely:
+
+* Student Log Types
+* Student Log Next Steps
+
+Server must cache them (per school) using Redis (your project rule):
+
+* `frappe.cache()` or `@redis_cache(ttl=...)`
+
+Suggested TTL:
+
+* 1 hour to 24 hours depending on how often you expect changes
+* 24h is fine if you invalidate on DocType update later (optional)
+
+Keyed by:
+
+* `school`
+* plus any “include parent/descendants” logic if you aggregate
+
+### 3.2 Client-side cache for variants (short TTL)
+
+In SPA:
+
+* cache variants response keyed by `school`
+* TTL 10–30 minutes
+* store in-memory (not localStorage) to avoid stale across sessions
+
+### 3.3 Don’t cache search results aggressively
+
+Typeahead results for:
+
+* student search
+* assignee search
+  should be cached only in-memory per query string briefly, because permissions/scope can shift.
+
+---
+
+# 4) Payload & Response Weight
+
+### 4.1 Return minimal fields only
+
+For pickers:
+
+* `id`
+* `label`
+* `image_small` (or a resolved small image url)
+  Nothing else.
+
+Avoid sending:
+
+* full Student doc
+* full User doc
+* metadata not needed for display
+
+### 4.2 Paginate large searches
+
+Student search must be paginated server-side:
+
+* `start`
+* `page_length`
+  Even if UI shows only top 10.
+
+---
+
+# 5) Rendering & Reactivity (Vue)
+
+### 5.1 Avoid deep reactive churn
+
+* Keep form state in a single `reactive({ ... })` object
+* Keep options lists in `shallowRef([])` or `ref([])` and replace arrays wholesale
+* Avoid computed that re-sorts large arrays every keystroke
+
+### 5.2 Avoid watch TDZ bugs and overlay breakage
+
+Project rule:
+
+* declare refs/computed before watchers
+* never use `console.log()` as watch argument
+* prefer watching primitives and using `immediate` carefully
+
+### 5.3 Don’t rerender heavy editors unnecessarily
+
+* Mount the rich text editor once per overlay open
+* Don’t remount it when toggling follow-up section
+* Avoid v-if toggling on the editor subtree (use v-show if needed)
+
+---
+
+# 6) UX Loading States (perceived performance)
+
+### 6.1 Skeletons, not spinners everywhere
+
+* Use skeleton rows for:
+
+  * log type options (first load)
+  * next step options (first load)
+* Use subtle inline spinner only for typeahead search
+
+### 6.2 Keep controls usable
+
+* Let teachers start typing the log while options load.
+* Only block submit until required fields are ready.
+
+---
+
+# 7) Observability (how we prove it’s fast)
+
+### 7.1 Add lightweight timing logs in dev mode
+
+In dev only:
+
+* measure time from `overlay.open()` to first paint
+* measure variants fetch time
+* measure submit latency
+
+### 7.2 Network assertions
+
+Open DevTools → Network:
+
+* opening overlay triggers ≤ 1–2 requests (excluding typeahead)
+* no image > 150KB in overlay view
+
+---
+
+# 8) Final Acceptance Targets (hard numbers)
+
+* Overlay opens and is interactive within **< 150ms** on warm load (no network wait)
+* Variants loaded within **< 400ms** typical LAN / **< 1s** moderate WAN
+* No large images requested (no original-size student photos)
+

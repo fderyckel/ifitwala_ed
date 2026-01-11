@@ -188,10 +188,10 @@
                   </div>
 
                   <div class="grid gap-4 md:grid-cols-2">
-                    <label class="flex items-center gap-2 text-sm text-ink/80">
-                      <input v-model="form.allow_late_submission" type="checkbox" class="rounded border-border/70 text-jacaranda" />
-                      Allow late submissions
-                    </label>
+										<label v-if="showLateSubmission" class="flex items-center gap-2 text-sm text-ink/80">
+											<input v-model="form.allow_late_submission" type="checkbox" class="rounded border-border/70 text-jacaranda" />
+											Allow late submissions
+										</label>
                     <label class="flex items-center gap-2 text-sm text-ink/80">
                       <input v-model="form.group_submission" type="checkbox" class="rounded border-border/70 text-jacaranda" />
                       Group submission
@@ -405,6 +405,18 @@ const selectedGroupLabel = computed(() => {
   const match = groupOptions.value.find((o) => o.value === form.student_group)
   return match?.label || ''
 })
+
+const showLateSubmission = computed(() => form.delivery_mode !== 'Assign Only')
+
+watch(
+	() => form.delivery_mode,
+	(mode) => {
+		if (mode === 'Assign Only') {
+			form.allow_late_submission = false
+		}
+	}
+)
+
 
 const canSubmit = computed(() => {
   if (!form.title.trim()) return false

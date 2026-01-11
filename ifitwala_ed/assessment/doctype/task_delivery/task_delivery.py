@@ -141,6 +141,8 @@ class TaskDelivery(Document):
 		if self.delivery_mode == "Assign Only":
 			self.requires_submission = 0
 			self.require_grading = 0
+			if self._has_field("allow_late_submission"):
+				self.allow_late_submission = 0
 			self._clear_grading_fields()
 			return
 

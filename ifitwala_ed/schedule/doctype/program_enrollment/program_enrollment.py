@@ -226,6 +226,8 @@ class ProgramEnrollment(Document):
 		if self.school and req.school and req.school != self.school:
 			frappe.throw(_("Program Enrollment Request school does not match enrollment school."))
 
+
+
 	def _validate_non_request_source(self, source):
 		if not (self.enrollment_override_reason or "").strip():
 			frappe.throw(_("Override Reason is required when enrollment source is not Request."))

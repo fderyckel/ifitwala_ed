@@ -118,6 +118,25 @@
 						/>
 					</button>
 
+					<!-- Create student log -->
+					<button type="button" class="action-tile group" @click="openStudentLog">
+						<div class="action-tile__icon">
+							<FeatherIcon name="edit-3" class="h-6 w-6" />
+						</div>
+						<div class="flex-1 min-w-0">
+							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+								Add student log
+							</p>
+							<p class="truncate type-caption text-slate-token/70">
+								Record a note, concern, or follow-up
+							</p>
+						</div>
+						<FeatherIcon
+							name="chevron-right"
+							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+						/>
+					</button>
+
 					<!-- Standard Quick Actions -->
 					<RouterLink
 						v-for="action in quickActions"
@@ -352,12 +371,6 @@ const analyticsQuickLinks = [
     badge: 'Hot',
   },
   {
-    label: 'Grade Distribution',
-    caption: 'Spot grade drift by course and cohort',
-    icon: 'bar-chart-2',
-    to: '/analytics/academic/grade-distribution',
-  },
-  {
     label: 'Room Utilization',
     caption: 'Which rooms are free, over or under-used this week',
     icon: 'clock',
@@ -465,4 +478,12 @@ function openCreateTask() {
     prefillAvailableFrom: null,
   })
 }
+
+/* OVERLAY: Student Log --------------------------------------- */
+function openStudentLog() {
+	overlay.open('student-log-create', {
+		mode: 'school',
+	})
+}
+
 </script>

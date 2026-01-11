@@ -3,9 +3,12 @@
 
 # ifitwala_ed/api/student_log.py
 
+import os
 import frappe
 from frappe import _
 from frappe.utils import strip_html
+from frappe.utils import cint, nowdate, nowtime
+from frappe.utils.nestedset import get_descendants_of
 
 LOG_DOCTYPE = "Student Log"
 PAGE_LENGTH_DEFAULT = 20
@@ -21,7 +24,7 @@ def _resolve_current_student():
 
     if not student_name:
         frappe.throw(_("No Student record found for your account."), frappe.PermissionError)
-    
+
     return student_name
 
 @frappe.whitelist()
@@ -115,3 +118,294 @@ def get_student_log_detail(log_name: str):
 			frappe.log_error(f"Read receipt create failed for {log_name}: {e}", "Student Log API")
 
 	return log
+
+
+
+
+ALLOWED_OPTIONS_KEYS = {"student"}
+ALLOWED_SEARCH_STUDENT_KEYS = {"query", "limit"}
+ALLOWED_ASSIGNEE_KEYS = {"next_step", "student", "query", "limit"}
+ALLOWED_SUBMIT_KEYS = {
+	"student",
+	"log_type",
+	"log",
+	"requires_follow_up",
+	"next_step",
+	"follow_up_person",
+	"visible_to_student",
+	"visible_to_guardians",
+}
+
+
+def _validate_keys(payload: dict, allowed: set[str]):
+	if not isinstance(payload, dict):
+		frappe.throw(_("Payload must be a dict."))
+	unknown = set(payload.keys()) - allowed
+	if unknown:
+		frappe.throw(_("Unexpected keys: {0}").format(", ".join(sorted(list(unknown)))))
+
+
+def _get_employee_school_for_session_user() -> str | None:
+	user = frappe.session.user
+	if not user or user == "Guest":
+		return None
+	return frappe.db.get_value("Employee", {"user_id": user}, "school")
+
+
+def _get_student_school(student: str) -> str | None:
+	return frappe.db.get_value("Student", student, "anchor_school")
+
+
+def _get_parent_school(school: str | None) -> str | None:
+	if not school:
+		return None
+	return frappe.db.get_value("School", school, "parent_school")
+
+
+def _allowed_next_step_schools(student_school: str | None) -> list[str]:
+	# Policy: student school + parent (+1). No siblings.
+	if not student_school:
+		return []
+	parent = _get_parent_school(student_school)
+	out = [student_school]
+	if parent and parent != student_school:
+		out.append(parent)
+	return out
+
+
+def _thumb_url(original_url: str | None) -> str | None:
+	"""
+	Return thumb_* variant url when it exists, else original.
+	image_utils generates: /files/<doctype_folder>/thumb_<base>.webp
+	For Student: doctype_folder = 'student'
+	"""
+	if not original_url:
+		return None
+	filename = os.path.basename(original_url)
+	base, _ext = os.path.splitext(filename)
+
+	# If already a generated variant, keep it
+	if filename.startswith(("hero_", "medium_", "card_", "thumb_")):
+		return original_url
+
+	variant = f"/files/student/thumb_{base}.webp"
+	if frappe.db.get_value("File", {"file_url": variant}, "name"):
+		return variant
+	return original_url
+
+
+@frappe.whitelist()
+def get_form_options(**payload):
+	_validate_keys(payload, ALLOWED_OPTIONS_KEYS)
+
+	student = payload.get("student")
+	if not student:
+		frappe.throw(_("Student is required."))
+
+	student_school = _get_student_school(student)
+	allowed_schools = _allowed_next_step_schools(student_school)
+
+	log_types = frappe.get_all(
+		"Student Log Type",
+		fields=["name as value", "log_type as label"],
+		order_by="log_type asc",
+	)
+
+	next_steps = []
+	if allowed_schools:
+		next_steps = frappe.get_all(
+			"Student Log Next Step",
+			filters={"school": ["in", allowed_schools]},
+			fields=["name as value", "next_step as label", "associated_role as role", "school"],
+			order_by="next_step asc",
+		)
+
+	return {
+		"log_types": log_types,
+		"next_steps": next_steps,
+		"student_school": student_school,
+		"allowed_next_step_schools": allowed_schools,
+	}
+
+@frappe.whitelist()
+def search_students(**payload):
+	_validate_keys(payload, ALLOWED_SEARCH_STUDENT_KEYS)
+
+	query = (payload.get("query") or "").strip()
+	limit = cint(payload.get("limit") or 10)
+
+	if not query or len(query) < 2:
+		return []
+
+	# Scope by current user's Employee.school (+ descendants) to avoid sibling leakage.
+	emp_school = _get_employee_school_for_session_user()
+	if not emp_school:
+		# Safe: if no employee school, return nothing rather than leaking data
+		return []
+
+	schools = [emp_school] + (get_descendants_of("School", emp_school) or [])
+
+	rows = frappe.get_all(
+		"Student",
+		fields=["name", "student_full_name", "student_preferred_name", "student_image", "anchor_school"],
+		filters={
+			"anchor_school": ["in", schools],
+			"enabled": 1,  # ✅ active students only
+		},
+		or_filters=[
+			["Student", "student_full_name", "like", f"%{query}%"],
+			["Student", "student_preferred_name", "like", f"%{query}%"],
+			["Student", "name", "like", f"%{query}%"],
+		],
+		limit_page_length=limit,
+	)
+
+	out = []
+	for r in rows:
+		label = (r.get("student_preferred_name") or r.get("student_full_name") or r.get("name") or "").strip()
+		meta = r.get("student_full_name") if r.get("student_preferred_name") else None
+		out.append({
+			"student": r.get("name"),
+			"label": label or r.get("name"),
+			"meta": meta,
+			"image": _thumb_url(r.get("student_image")),
+		})
+	return out
+
+
+@frappe.whitelist()
+def search_follow_up_users(**payload):
+	_validate_keys(payload, ALLOWED_ASSIGNEE_KEYS)
+
+	next_step = payload.get("next_step")
+	student = payload.get("student")
+	query = (payload.get("query") or "").strip()
+	limit = cint(payload.get("limit") or 10)
+
+	if not next_step:
+		frappe.throw(_("Next step is required."))
+	if not student:
+		frappe.throw(_("Student is required."))
+	if not query or len(query) < 2:
+		return []
+
+	ns = frappe.db.get_value(
+		"Student Log Next Step",
+		next_step,
+		["associated_role", "school"],
+		as_dict=True
+	)
+	if not ns:
+		frappe.throw(_("Next step not found."))
+
+	role = (ns.get("associated_role") or "").strip() or None
+
+	student_school = _get_student_school(student)
+	allowed_schools = _allowed_next_step_schools(student_school)
+	if not allowed_schools:
+		return []
+
+	# Employee is source of truth for school + user_id
+	# Role constraint via Has Role on User
+	params = {
+		"schools": tuple(allowed_schools),
+		"q": f"%{query}%",
+		"limit": limit,
+	}
+
+	if role:
+		sql = """
+			SELECT
+				u.name AS user_id,
+				u.full_name AS full_name,
+				e.school AS school
+			FROM `tabEmployee` e
+			INNER JOIN `tabUser` u ON u.name = e.user_id
+			INNER JOIN `tabHas Role` hr ON hr.parent = u.name
+			WHERE
+				e.user_id IS NOT NULL
+				AND e.school IN %(schools)s
+				AND hr.role = %(role)s
+				AND (
+					u.full_name LIKE %(q)s
+					OR u.name LIKE %(q)s
+				)
+			ORDER BY u.full_name ASC
+			LIMIT %(limit)s
+		"""
+		params["role"] = role
+	else:
+		sql = """
+			SELECT
+				u.name AS user_id,
+				u.full_name AS full_name,
+				e.school AS school
+			FROM `tabEmployee` e
+			INNER JOIN `tabUser` u ON u.name = e.user_id
+			WHERE
+				e.user_id IS NOT NULL
+				AND e.school IN %(schools)s
+				AND (
+					u.full_name LIKE %(q)s
+					OR u.name LIKE %(q)s
+				)
+			ORDER BY u.full_name ASC
+			LIMIT %(limit)s
+		"""
+
+	rows = frappe.db.sql(sql, params, as_dict=True)
+
+	out = []
+	for r in rows:
+		label = (r.get("full_name") or r.get("user_id") or "").strip()
+		out.append({
+			"value": r.get("user_id"),
+			"label": label or r.get("user_id"),
+			"meta": r.get("school"),
+		})
+	return out
+
+
+@frappe.whitelist()
+def submit_student_log(**payload):
+	_validate_keys(payload, ALLOWED_SUBMIT_KEYS)
+
+	student = payload.get("student")
+	log_type = payload.get("log_type")
+	log = payload.get("log")
+	requires_follow_up = cint(payload.get("requires_follow_up") or 0)
+
+	if not student:
+		frappe.throw(_("Student is required."))
+	if not log_type:
+		frappe.throw(_("Log type is required."))
+	if not log or not str(log).strip():
+		frappe.throw(_("Log text is required."))
+
+	next_step = payload.get("next_step")
+	follow_up_person = payload.get("follow_up_person")
+
+	if requires_follow_up:
+		if not next_step:
+			frappe.throw(_("Next step is required."))
+		if not follow_up_person:
+			frappe.throw(_("Follow-up person is required."))
+
+	doc = frappe.new_doc("Student Log")
+	doc.student = student
+	doc.log_type = log_type
+	doc.log = log
+	doc.date = nowdate()
+	doc.time = nowtime(with_seconds=False)
+	doc.visible_to_student = cint(payload.get("visible_to_student") or 0)
+	doc.visible_to_guardians = cint(payload.get("visible_to_guardians") or 0)
+
+	doc.requires_follow_up = requires_follow_up
+	if requires_follow_up:
+		doc.next_step = next_step
+		doc.follow_up_person = follow_up_person
+
+	doc.insert(ignore_permissions=False)
+	doc.submit()
+
+	return {"name": doc.name}

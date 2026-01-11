@@ -32,9 +32,7 @@ import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue'
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue'
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue'
 import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCommunicationQuickCreateModal.vue'
-
-console.log('[OverlayHost] setup:start')
-
+import StudentLogCreateOverlay from '@/components/student/StudentLogCreateOverlay.vue'
 
 type RenderedEntry = OverlayEntry & {
   open: boolean
@@ -43,10 +41,6 @@ type RenderedEntry = OverlayEntry & {
 }
 
 const overlay = useOverlayStack()
-console.log('[OverlayHost] setup:after-useOverlayStack', {
-  stackLen: overlay.state?.stack?.length,
-  top: overlay.top?.value?.type,
-})
 
 const teleportReady = ref(false)
 onMounted(() => {
@@ -70,11 +64,6 @@ const rendered = ref<RenderedEntry[]>([])
 watch(
   () => overlay.state.stack,
   (nextRaw) => {
-    console.log('[OverlayHost] watch:stack', {
-      nextLen: Array.isArray(nextRaw) ? nextRaw.length : -1,
-      renderedLen: rendered.value.length,
-    })
-
     const next = Array.isArray(nextRaw) ? nextRaw : []
     const nextIds = new Set(next.map((e) => e.id))
 
@@ -129,7 +118,6 @@ watch(
   { immediate: true, deep: true }
 )
 
-
 function resolveComponent(type: OverlayType) {
   switch (type) {
     case 'create-task':
@@ -142,6 +130,8 @@ function resolveComponent(type: OverlayType) {
       return ClassEventModal
     case 'org-communication-quick-create':
       return OrgCommunicationQuickCreateOverlay
+    case 'student-log-create':
+      return StudentLogCreateOverlay
     default:
       return CreateTaskDeliveryOverlay
   }
