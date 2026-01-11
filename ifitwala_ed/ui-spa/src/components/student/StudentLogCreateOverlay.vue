@@ -109,49 +109,38 @@
                   </div>
 
                   <!-- Selected student card: replaces search UI -->
-                  <div
-                    v-else
-                    class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft flex items-center justify-between gap-3"
-                  >
-                    <div class="flex items-center gap-3 min-w-0">
-                      <img
-                        v-if="selectedStudentImage"
-                        :src="selectedStudentImage"
-                        alt=""
-                        class="h-10 w-10 rounded-full object-cover ring-1 ring-black/5"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                      <div class="min-w-0">
-                        <p class="type-body-strong text-ink truncate">{{ selectedStudentLabel }}</p>
-                        <p v-if="selectedStudentMeta" class="type-caption text-ink/55 truncate">{{ selectedStudentMeta }}</p>
-                      </div>
-                    </div>
+									<div
+										v-else
+										class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft flex items-center justify-between gap-3"
+									>
+										<div class="flex items-center gap-3 min-w-0">
+											<img
+												v-if="selectedStudentImage"
+												:src="selectedStudentImage"
+												alt=""
+												class="h-10 w-10 rounded-full object-cover ring-1 ring-black/5"
+												loading="lazy"
+												decoding="async"
+											/>
+											<div class="min-w-0">
+												<p class="type-body-strong text-ink truncate">{{ selectedStudentLabel }}</p>
+												<p v-if="selectedStudentMeta" class="type-caption text-ink/55 truncate">
+													{{ selectedStudentMeta }}
+												</p>
+											</div>
+										</div>
 
-                    <button
-                      type="button"
-                      class="type-caption text-ink/70 hover:text-ink underline underline-offset-4"
-                      :disabled="submitting"
-                      @click="
-                        form.student = '';
-                        form.log_type = '';
-                        form.log = '';
-                        form.requires_follow_up = false;
-                        form.next_step = '';
-                        form.follow_up_person = '';
-                        selectedAssigneeLabel = '';
-                        assigneeQuery = '';
-                        assigneeCandidates = [];
-                        studentQuery = '';
-                        studentCandidates = [];
-                        selectedStudentLabel = '';
-                        selectedStudentImage = null;
-                        selectedStudentMeta = null;
-                      "
-                    >
-                      {{ __('Change') }}
-                    </button>
-                  </div>
+										<button
+											type="button"
+											class="type-caption text-ink/70 hover:text-ink underline underline-offset-4"
+											:disabled="submitting"
+											@click="changeStudent()"
+										>
+											{{ __('Change') }}
+										</button>
+									</div>
+
+
                 </div>
               </section>
 
@@ -542,6 +531,34 @@ function onStudentSelected(studentId: string) {
 	// load dependent options (types + next steps)
 	options.submit({ student: studentId })
 }
+
+function changeStudent() {
+	// Clear student selection + anything that depends on student/options
+	form.student = ''
+
+	form.log_type = ''
+	form.requires_follow_up = false
+	form.next_step = ''
+	form.follow_up_person = ''
+
+	// Assignee UI state
+	selectedAssigneeLabel.value = ''
+	assigneeQuery.value = ''
+	assigneeCandidates.value = []
+
+	// Student search UI state
+	studentQuery.value = ''
+	studentCandidates.value = []
+
+	// Selected student UI meta
+	selectedStudentLabel.value = ''
+	selectedStudentImage.value = null
+	selectedStudentMeta.value = null
+
+	// Clear options payload so selects don't show stale options
+	options.data = null as any
+}
+
 
 function onNextStepSelected(v: string) {
   form.next_step = v

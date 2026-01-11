@@ -52,12 +52,28 @@ def validate_program_enrollment_request(request_name, force=0):
 	})
 
 	# Determine validity + whether override is required
-	requires_override = False
+	# New rule: basket invalid blocks the request + requires override (engine sets summary)
+	summary = engine_payload.get("summary") or {}
 	all_ok = True
-	for r in (engine_payload.get("results", {}).get("courses") or []):
-		if r.get("blocked"):
+
+	# Engine summary has the authoritative blocked/override_required flags.
+	# But we still defensively compute from course rows in case older payloads exist.
+	requires_override = bool(summary.get("override_required"))
+	if bool(summary.get("blocked")):
+		all_ok = False
+
+	# Defensive fallback for older engine payloads (no summary)
+	if "summary" not in engine_payload:
+		for r in (engine_payload.get("results", {}).get("courses") or []):
+			if r.get("blocked"):
+				all_ok = False
+			if r.get("override_required"):
+				requires_override = True
+
+		# also consider basket status
+		basket_status = (engine_payload.get("results", {}).get("basket") or {}).get("status")
+		if basket_status == "invalid":
 			all_ok = False
-		if r.get("override_required"):
 			requires_override = True
 
 	validation_status = "Valid" if all_ok else "Invalid"

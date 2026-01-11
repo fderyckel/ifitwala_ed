@@ -1,135 +1,120 @@
 # enrollment_notes.md
 
-## Status
+**Authoritative Architecture & Invariants**
 
-**Draft – Critical Architecture Notes (Authoritative, Living Document)**
+**Status:**
+**Active – Locked where marked, Living elsewhere**
 
-This document defines the **intent, constraints, confirmed design decisions, open questions, and identified risks** for enrollment and self-enrollment in Ifitwala_Ed.
+This document defines the **architecture, invariants, intent, and guardrails** for enrollment and self-enrollment in **Ifitwala_Ed**.
 
-It is written for:
+It exists to:
 
-* core maintainers
-* future contributors
-* coding agents (Codex / automation)
+* prevent architectural drift
+* guide contributors and coding agents
+* preserve institutional auditability
 
-This is **not marketing** and **not a UI specification**.
-It exists to prevent architectural drift and to ensure that enrollment logic remains **correct, auditable, and institution-agnostic**.
+This is **not UI**, **not policy**, and **not marketing**.
+
+If code and this document ever disagree, **this document wins**.
 
 ---
 
-## 1. Core Intent (Non-Negotiable)
+## 1. Core Definition (Non-Negotiable)
 
-### 1.1 What enrollment actually means
+### 1.1 What enrollment is
 
 Enrollment in Ifitwala_Ed is **not a CRUD operation**.
 
-It is a **decision process** involving:
+It is a **decision system** that evaluates:
 
-* eligibility checks (prerequisites, grades, pathways)
-* structural constraints (capacity, baskets, group requirements)
-* institutional judgment (manual review and overrides)
-* final materialization into academic truth
+* eligibility (prerequisites, grades, attempts)
+* structural constraints (capacity, baskets, offerings)
+* human judgment (review, override)
+* and produces **committed academic truth**
 
-Any design that bypasses this process is considered **invalid**.
+Any implementation that bypasses this process is **invalid by design**.
 
 ---
 
 ### 1.2 Guiding principles
 
-Ifitwala_Ed enrollment must be:
+Enrollment must be:
 
 * **Curriculum-agnostic**
-  (IB, AP, BTEC, national curricula, custom pathways)
-
 * **Historically auditable**
-  Enrollment decisions must be explainable years later
-
-* **Human-overrideable**
-  Institutions may override rules, but must leave evidence
-
+* **Explicitly overrideable**
 * **Policy-driven, not hard-coded**
-  The platform provides tools, not ideology
-
 * **Reality-anchored**
-  Matches how schools, colleges, and universities actually operate
+
+Automation supports humans — it never replaces institutional judgment.
 
 ---
 
-## 2. Explicit Layer Separation (Critical)
+## 2. Layer Separation (Locked)
 
-Ifitwala_Ed enforces a strict separation of responsibilities:
+Enrollment logic is only correct when these layers remain isolated:
 
-| Layer                                | Responsibility                      |
-| ------------------------------------ | ----------------------------------- |
-| Course / Activity                    | Catalog (what exists)               |
-| Program                              | Academic structure and intent       |
-| Program Offering / Activity Context  | What is available now               |
-| Enrollment Request                   | What a user is asking for           |
-| Validation Engine                    | Eligibility & constraint evaluation |
-| Program Enrollment                   | Committed academic truth            |
-| Course Term Result                   | Outcome evidence                    |
+| Layer              | Responsibility                      |
+| ------------------ | ----------------------------------- |
+| Course / Activity  | Catalog (what exists)               |
+| Program            | Academic intent & structure         |
+| Program Offering   | What is available now               |
+| Enrollment Request | What someone is asking for          |
+| Validation Engine  | Eligibility & constraint evaluation |
+| Program Enrollment | Committed academic truth            |
+| Course Term Result | Outcome evidence                    |
 
 Any leakage across layers is a **design regression**.
 
 ---
 
-## 3. Portal Enrollment (Students & Guardians)
+## 3. Enrollment Entry Points
 
-### 3.1 Student self-enrollment (courses)
+### 3.1 Portal (Students & Guardians)
 
-Typical use cases:
+Portal users **never** write to `Program Enrollment`.
 
-* Grade 10 → DP course selection
-* University pre-registration
-* Pathway or track selection
+They create **Enrollment Requests** that:
 
-Characteristics:
+* collect a basket
+* run validation
+* wait for approval or override
+* materialize only when approved
 
-* time-bounded selection windows
-* multiple choices (sometimes ranked)
-* prerequisite validation
-* basket-level constraints
-* frequent need for counselor/admin review
+This applies to:
 
-**Portal users never write directly to Program Enrollment.**
-They submit **Enrollment Requests**.
-
-Staff tools may write directly, but must either:
-* use the same validation engine, or
-* explicitly bypass it with a logged override.
+* academic courses
+* activities
+* pathway selections
 
 ---
 
-### 3.2 Guardian self-enrollment (activities)
+### 3.2 Staff Actions
 
-Typical use cases:
+Staff may:
 
-* after-school activities
-* clubs, sports, enrichment
+* create Enrollment Requests on behalf of users
+* approve, reject, or override requests
+* create Program Enrollments directly **only with explicit provenance**
 
-Characteristics:
-
-* capacity-driven
-* age / grade / program eligibility
-* often auto-approved
-* sometimes wait-listed
-
-Same architecture, different rules.
+Bypassing validation without an override is forbidden.
 
 ---
 
-## 4. Enrollment Requests (Staging Area)
+## 4. Enrollment Request (Staging Object)
 
-### 4.1 Why a staging object is mandatory
+### 4.1 Why it is mandatory
 
-Basket selection **cannot** operate directly on Program Enrollment because:
+Direct mutation of `Program Enrollment` is invalid because:
 
-* partial selections would create dirty states
-* validation must run on an uncommitted basket
-* approval and overrides must be recorded
-* audit trails must remain clean
+* baskets are partial
+* validation must be transactional
+* overrides must be recorded
+* audit trails must remain intact
 
-Therefore, a **Program Enrollment Request** ("shopping cart") is mandatory.
+Therefore:
+
+> **Enrollment Requests are the only valid staging mechanism.**
 
 ---
 
@@ -138,547 +123,223 @@ Therefore, a **Program Enrollment Request** ("shopping cart") is mandatory.
 An Enrollment Request:
 
 * captures user intent
-* holds a draft basket of courses or activities
-* stores validation results (snapshotted)
-* records approvals and overrides
+* holds an uncommitted basket
+* stores a **frozen validation snapshot**
+* records override decisions
 * materializes into Program Enrollment only after approval
-
-This applies to **both** academic courses and activities.
 
 ---
 
-## 5. Prerequisites Engine (Eligibility Logic)
+## 5. Eligibility & Prerequisites Engine
 
-### 5.1 Constraint model
+### 5.1 Constraint model (Locked)
 
-Ifitwala_Ed uses a **DNF (OR-of-AND) model**:
+Eligibility rules use a **DNF (OR-of-AND)** model:
 
+```
 (A AND B AND min_grade(A))
 OR (C)
 OR (D AND NOT E)
+```
 
-This reflects real institutional rules without requiring a full boolean parser.
+This matches real institutional logic without boolean parsing.
 
-Prerequisites are always program-scoped. Catalog-level prerequisites do not exist.
-
----
-
-### 5.2 Grade normalization (Locked Design Decision)
-
-**Prerequisites never compare raw grade labels.**
-
-All eligibility comparisons use a **numeric comparable scalar** (`numeric_score`)
-and compare **Float → Float only**.
-
-Facts:
-
-* Course Term Result already stores `numeric_score`
-* Grade labels (`A-`, `6`, `84%`) are human-facing only
-
-Important clarification:
-
-* `numeric_score` is a **comparable scalar**
-* it is often normalized to 0–100
-* but the invariant is comparability, **not the range**
-
-#### Design consequence
-
-* Runtime logic never parses grade strings
-* Prerequisite evaluation is fast and SQL-friendly
-* Human labels exist for display and audit only
-
-#### Schema alignment (required)
-
-`Program Course Prerequisite` must include:
-
-* `min_grade` (Data, human label)
-* `min_numeric_score` (Float, hidden, resolved at save time)
-* `grade_scale_used` (Link, resolved at save time; see §5.3)
-
-Runtime evaluation must **never** parse `min_grade`.
+All prerequisites are **program-scoped**.
+Catalog-level prerequisites **must not exist**.
 
 ---
 
-### 5.3 Grade scale: explicit intent vs evidence (Locked)
+### 5.2 Numeric eligibility truth (Locked)
 
-This system must support **both**:
+Eligibility comparisons are **numeric only**.
 
-1) A **program baseline grading intent** (default expectation)
-2) A **course-specific grading override** (exceptions)
-3) A **frozen evidence grade scale** (what actually happened)
+* `numeric_score` → `numeric_score`
+* Float → Float
+* Never parse grade labels at runtime
 
-Ifitwala_Ed is reality-anchored: programs declare intent, courses may override,
-and results record what was actually used.
+Grade labels exist **only for humans**.
 
-#### 5.3.1 Program baseline grade scale (intent layer)
-
-**DocType + fieldname**
-
-* `Program.grade_scale` (Link → Grade Scale)
-
-Meaning:
-
-* default grade semantics for the program
-* used for prerequisite authoring and baseline comparisons
-* policy/config intent, not evidence
-
-#### 5.3.2 Course grade scale override (intent layer)
-
-**DocType + fieldname**
-
-* `Course.grade_scale` (Link → Grade Scale, optional)
-
-Meaning:
-
-* overrides the program scale for this course
-* supports pass/fail or special scales
-* policy/config intent, not evidence
-
-#### 5.3.3 Evidence grade scale (frozen truth)
-
-**DocType + fieldname**
-
-* `Course Term Result.grade_scale` (Link → Grade Scale)
-
-Meaning:
-
-* immutable, historically auditable truth
-* what was actually used for the student’s result
-* never recomputed or inferred after the fact
-
-#### 5.3.4 Resolution order (deterministic)
-
-When eligibility needs a grade scale, resolve in this order:
-
-1. `Course Term Result.grade_scale` (evidence always wins)
-2. `Course.grade_scale` (course override)
-3. `Program.grade_scale` (program baseline)
-4. otherwise: validation error (no silent fallback)
-
-#### 5.3.5 Prerequisite authoring (snapshotted)
-
-To prevent drift when grade scale configs change later:
-
-* each prerequisite row must store `grade_scale_used`
-* `min_numeric_score` is computed from (`min_grade`, `grade_scale_used`) at save time
-* eligibility evaluation compares Float → Float only
-
-This ensures prerequisite rules remain auditable years later.
+If numeric resolution fails → validation **fails**.
 
 ---
 
-## 6. Source of Truth for Eligibility
+### 5.3 Grade scale resolution (Locked)
 
-Eligibility checks use **official academic truth only**:
+The system explicitly separates **intent** from **evidence**.
 
-* Program Enrollment (course taken / completed)
-* Course Term Result (grades, numeric_score, and evidence grade_scale)
-* Reporting Cycle status (Locked / Published thresholds)
+Resolution order (deterministic):
 
-Eligibility **never** uses:
+1. `Course Term Result.grade_scale` (evidence)
+2. `Course.grade_scale` (override intent)
+3. `Program.grade_scale` (baseline intent)
+4. otherwise → validation error
 
-* draft teacher input
+Prerequisites **snapshot**:
+
+* `grade_scale_used`
+* `min_numeric_score`
+
+No retroactive recomputation is allowed.
+
+---
+
+## 6. Source of Academic Truth
+
+Eligibility may only consult:
+
+* `Program Enrollment`
+* `Course Term Result`
+* allowed Reporting Cycle states
+
+Eligibility **must never** consult:
+
+* draft assessments
 * unreleased tasks
 * inferred or transient data
 
-Institutions define which Reporting Cycle states are considered valid evidence.
+---
+
+## 7. Retakes, Repeats, Attempts (Policy-Driven)
+
+There is no universal rule.
+
+Institutions define:
+
+* which attempts count
+* how results are selected
+* what constitutes a pass
+
+Enrollment logic **consumes policy** — it does not encode it.
 
 ---
 
-## 7. Retakes, Repeats, and Attempts
-
-There is no universal retake rule.
-
-Institutions vary on:
-
-* best attempt vs most recent
-* first passing attempt
-* averaging attempts
-* manual decisions
-
-### Locked principle
-
-Retake behavior is **policy-driven**, not hard-coded.
-
-A grading / retake policy must define:
-
-* which attempts are eligible evidence
-* which reporting cycle statuses are eligible evidence
-* how a single “counted” result is chosen
-* what numeric threshold constitutes a pass
-
-This policy is reused across:
-
-* enrollment eligibility
-* transcript logic
-* reporting and analytics
-
----
-
-## 8. Basket-Level Constraints (DP-style rules)
+## 8. Basket-Level Constraints
 
 Prerequisites answer:
 
 > “Can you take this course?”
 
-Basket constraints answer:
+Basket rules answer:
 
-> “Is this **combination** valid?”
+> “Is this combination valid?”
 
-Examples:
-
-* exactly 6 courses
-* HL / SL counts
-* group coverage with substitution rules
-
-### Critical distinction
-
-Basket constraints are **not prerequisites**.
-
-They are:
+Basket rules are:
 
 * offering-scoped
-* evaluated against the **Enrollment Request basket**
-* independent of individual course eligibility
+* evaluated on Enrollment Requests
+* independent of course-level eligibility
 
-### Configuration (Pending Choice)
+Storage models (both allowed):
 
-Two viable storage models:
+* Option A: JSON rules
+* Option B: structured child table
 
-* **Option A** — JSON rules on Program Offering
-  * very flexible
-  * fast to evolve
-  * harder to validate in UI
-
-* **Option B** — structured child-table rules
-  * safer UI
-  * clearer validation
-  * less expressive
-
-No decision yet — both must remain viable.
+No final lock yet.
 
 ---
 
-## 9. Capacity Modeling (Clarified & Locked)
+## 9. Capacity Modeling (Locked)
 
-Capacity exists at **two distinct, non-interchangeable layers**.
+### 9.1 Allocation capacity (choice stage)
 
----
+Lives on **Program Offering Course**.
 
-### 9.1 Allocation capacity (choice / approval stage)
+Used during request validation.
 
-Allocation capacity answers:
-
-> “How many students may choose this course for this offering/year?”
-
-**Locked decision**
-
-Allocation capacity belongs to **Program Offering Course**, because:
-
-* capacity changes year-to-year
-* selection often happens before sections exist
-* approvals and waitlists live here
-
-Required fields:
-
-* `capacity` (Int)
-* `waitlist_enabled` (Check)
-* optional: `reserved_seats` (Int)
-
-Allocation capacity is enforced during **Enrollment Request validation**.
-
-**Guardrail**
-
-Allocation checks must **never** depend on Student Groups existing.
+Must never depend on Student Groups.
 
 ---
 
-### 9.2 Delivery capacity (timetabled sections)
+### 9.2 Delivery capacity (sections)
 
-Delivery capacity answers:
+There is **no Course Section doctype**.
 
-> “How many seats exist in the actual taught sections?”
+**Student Group is the section.**
 
-**Locked decision**
-
-There is **no Course Section / Course Offering doctype**.
-
-**Student Group *is* the section.**
-
-Delivery capacity is enforced by:
+Capacity enforced via:
 
 * `Student Group.maximum_size`
-* membership limits in `Student Group Student`
+* membership limits
 
-Student Groups may:
-
-* represent one section of a course
-* inherit default capacity from Program Offering Course.capacity at creation
-* later diverge due to room, teacher, or timetable constraints
+Allocation ≠ placement.
 
 ---
 
-### 9.3 Inheritance & guardrails
+## 10. Overrides (First-Class)
 
-* Capacity inheritance happens **once**, at Student Group creation
-* No auto-sync after students are assigned
-* Allocation capacity ≠ section capacity
-* Enrollment approval ≠ section placement
+Overrides are not exceptions.
 
-This separation mirrors real institutional workflows.
+Every override must record:
 
----
+* scope
+* reason
+* approver
+* timestamp
 
-## 10. Overrides (Human Reality)
-
-Overrides are first-class, not exceptions.
-
-Every constraint system must support:
-
-* authorized override
-* mandatory reason
-* timestamped audit
-* item-level or basket-level scope
-
-Ifitwala_Ed provides **guardrails and evidence**, not enforcement ideology.
+Overrides never mutate validation snapshots.
 
 ---
 
-## 11. Known Open Problems (Deferred but Acknowledged)
+## 11. Core System Invariants (Non-Negotiable)
 
-### 11.1 Activity age eligibility
+1. **Single Evaluation Service**
+   All validation goes through
+   `enrollment_engine.evaluate_enrollment_request`.
 
-`minimum_age` / `maximum_age` currently use Date fields.
+2. **Transactional Evaluation**
+   Validation runs only on submission or explicit revalidation.
 
-This is ambiguous and incorrect.
+3. **Immutable Snapshots**
+   Validation results are frozen.
 
-Deferred resolution:
+4. **No Retroactive Mutation**
+   Rule changes never invalidate past decisions.
 
-* age-in-years semantics
-* or explicit birthdate cutoffs
+5. **Explicit Overrides Only**
+   Silent bypasses are forbidden.
 
----
+6. **Enrollment Is a Legal Act**
+   Every enrollment records provenance.
 
-### 11.2 Course equivalencies
+7. **Child Tables Are Passive**
+   No logic in child controllers or scripts.
 
-Examples:
+8. **Separation of Concerns**
+   Enrollment never computes grades.
+   Assessment never decides eligibility.
 
-* “Any Math Extended”
-* “Any prior Mandarin study”
-
-Likely solution:
-
-* Course Sets / Equivalency Groups
-
-Not finalized.
-
----
-
-### 11.3 External credits and transfers
-
-Examples:
-
-* prior institutions
-* imported transcripts
-
-Out of scope for initial phase, but must remain possible.
+9. **Forward-Only System**
+   Corrections are additive, not mutative.
 
 ---
 
-## 12. Blind Spots to Watch
+## 12. Known Deferred Problems
 
-* assuming grade systems are comparable
-* encoding policy instead of configuration
-* over-automating counselor decisions
-* treating activities as “simpler”
-* letting UI flows dictate data models
-* allowing enrollment logic to mutate Program Enrollment directly
-* forgetting to snapshot prerequisite grade scales (causes drift)
+* activity age semantics
+* course equivalencies
+* external credits / transfers
+* caching strategy (engine-level)
+
+All are acknowledged, none block current architecture.
 
 ---
 
 ## 13. Architectural North Star
 
-> **Enrollment in Ifitwala_Ed is a decision system with institutional memory,**
-> **not a form that mutates tables.**
+> **Enrollment in Ifitwala_Ed is a decision system with institutional memory,
+> not a form that mutates tables.**
 
-If an institution says:
+If an institution says *“we do it differently”*:
 
-> “We do it differently.”
-
-The correct response is:
-
-> “Configure it — don’t rewrite it.”
+> **Configure it — don’t rewrite it.**
 
 ---
-
-## 14. Pending Design Decisions (Explicit)
-
-Still to be locked:
-
-1. Final Program Enrollment Request schema (fieldnames and minimal audit payload)
-2. Location of retake / grading policy (Program vs Offering)
-3. Basket rule storage (JSON vs structured)
-4. Course equivalency abstraction
-5. Guardian vs student permission boundaries
-6. Caching strategy for eligibility evaluation
-
----
-
-# Enrollment Core Invariants
-
-This document defines the **non-negotiable invariants** of the Ifitwala Ed enrollment system.
-Any implementation, refactor, or future feature **must preserve these rules**.
-If an invariant is violated, the system behavior is considered incorrect.
-
----
-
-## 1. Single Source of Truth
-
-- **All prerequisites are program-scoped.**
-- The only authoritative prerequisite definition lives in:
-
-> **Program Course Prerequisite**
-
-- Catalog-level or course-level prerequisites **must not exist**.
-- Enrollment validation **must never consult** Course, Program, or Offering metadata directly for eligibility rules.
-
----
-
-## 2. Transactional Eligibility Evaluation
-
-- Eligibility is evaluated as a **transaction**, not a live query.
-- Validation occurs only on:
-  - Request submission
-  - Explicit revalidation action
-
-- Once evaluated, the result is **frozen**.
-- Future changes to:
-  - Grade scales
-  - Programs
-  - Offerings
-  - Rules
-  **must not retroactively affect** approved requests.
-
----
-
-## 3. Numeric Eligibility Truth
-
-- All eligibility comparisons are performed using **numeric values**.
-- Grade labels (A, B, 4, etc.) are **presentation-only**.
-- Every prerequisite must resolve to:
-  - `grade_scale_used`
-  - `min_numeric_score`
-
-- If numeric resolution is impossible, validation **must fail**.
-
----
-
-## 4. Immutable Validation Snapshot
-
-- Each enrollment request stores a **validation snapshot** capturing:
-  - Rules evaluated
-  - Values compared
-  - Pass/fail outcomes
-
-- The snapshot:
-  - Is immutable after validation
-  - Must not be silently recomputed
-  - Can only change via explicit revalidation with audit trail
-
----
-
-## 5. Explicit Overrides Only
-
-- Any enrollment that violates eligibility rules requires an **explicit override**.
-- Overrides:
-  - Do **not** modify validation snapshots
-  - Must record:
-    - Approver
-    - Timestamp
-    - Reason
-  - Apply only to the specific enrollment instance
-
-- Silent or implicit overrides are forbidden.
-
----
-
-## 6. Enrollment Is a Legal Act
-
-- A Program Enrollment represents a **committed academic decision**.
-- Every enrollment must record its provenance:
-  - Enrollment Request
-  - Administrative action
-  - Migration
-
-- Enrollments without provenance are invalid.
-
----
-
-## 7. No Retroactive Mutation
-
-- Approved or materialized enrollments:
-  - Are never revalidated implicitly
-  - Are never invalidated by rule changes
-
-- Corrections require:
-  - A new decision
-  - A documented override
-  - A new enrollment action
-
----
-
-## 8. Child Tables Are Passive
-
-- Child tables contain **data only**.
-- No business logic, validation, or rule enforcement may live in:
-  - Child table controllers
-  - Client scripts bound to child rows
-
-- All logic belongs to parent documents or dedicated services.
-
----
-
-## 9. Separation of Concerns
-
-- Enrollment logic:
-  - Evaluates eligibility
-  - Records decisions
-
-- Assessment and reporting logic:
-  - Computes grades
-  - Produces Course Term Results
-
-- Enrollment must **never compute grades**.
-- Assessment must **never decide eligibility**.
-
----
-
-## 10. Forward-Only System
-
-- System decisions move forward in time.
-- Historical decisions are preserved.
-- Corrections are additive, not mutative.
-
----
-
-## Closing Statement
-
-These invariants intentionally favor:
-
-- Determinism over convenience
-- Auditability over flexibility
-- Explicit decisions over implicit behavior
-
-Any feature that cannot respect these invariants must be redesigned.
-
 
 ## Final Note
 
-Enrollment is one of the most sensitive domains in education:
-
-* academically
-* legally
-* politically
+Enrollment is academically, legally, and politically sensitive.
 
 Ifitwala_Ed treats it accordingly.
+
+---
+

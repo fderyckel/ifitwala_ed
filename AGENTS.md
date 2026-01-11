@@ -55,8 +55,7 @@ Agents MUST follow:
 * Architecture is **explicitly locked**
 * Markdown files under:
 
-  * `/docs/
-    are **authoritative**
+  * `ifitwala_ed/docs/ are **authoritative**
 * Code and documentation **must never diverge**
 * If behavior changes (when explicitly requested):
 
