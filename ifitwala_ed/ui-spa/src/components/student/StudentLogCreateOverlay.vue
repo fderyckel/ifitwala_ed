@@ -377,51 +377,53 @@
               </template>
             </div>
 
-            <!-- Footer -->
-            <div class="if-overlay__footer">
-              <!-- EDIT FOOTER -->
-              <div v-if="step !== 'review'">
-                <Button
-                  variant="solid"
-                  class="w-full"
-                  :loading="submitting"
-                  :disabled="!canSubmit || submitting"
-                  @click="goReview"
-                >
-                  <template #prefix><FeatherIcon name="eye" class="h-4 w-4" /></template>
-                  {{ __('Review & submit') }}
-                </Button>
+						<!-- Footer -->
+						<div class="if-overlay__footer">
+							<!-- EDIT FOOTER -->
+							<div v-if="step !== 'review'" class="w-full flex flex-col items-stretch gap-2">
+								<Button
+									variant="solid"
+									class="w-full"
+									:loading="submitting"
+									:disabled="!canSubmit || submitting"
+									@click="goReview"
+								>
+									<template #prefix><FeatherIcon name="eye" class="h-4 w-4" /></template>
+									{{ __('Review & submit') }}
+								</Button>
 
-                <p class="mt-2 type-caption text-ink/50 whitespace-normal break-words leading-relaxed">
-                  {{ footerHint }}
-                </p>
-              </div>
+								<p class="type-caption text-ink/50 whitespace-normal leading-snug">
+									{{ footerHint }}
+								</p>
+							</div>
 
-              <!-- REVIEW FOOTER -->
-              <div v-else class="space-y-3">
-                <div class="flex items-center gap-3">
-                  <Button variant="outline" class="flex-1" :disabled="submitting" @click="goEdit">
-                    <template #prefix><FeatherIcon name="edit-2" class="h-4 w-4" /></template>
-                    {{ __('Go back and edit') }}
-                  </Button>
+							<!-- REVIEW FOOTER -->
+							<div v-else class="w-full flex flex-col gap-3">
+								<div class="flex items-center gap-3">
+									<Button variant="outline" class="flex-1" :disabled="submitting" @click="goEdit">
+										<template #prefix><FeatherIcon name="edit-2" class="h-4 w-4" /></template>
+										{{ __('Go back and edit') }}
+									</Button>
 
-                  <Button
-                    variant="solid"
-                    class="flex-1"
-                    :loading="submitting"
-                    :disabled="!canSubmit || submitting"
-                    @click="submit"
-                  >
-                    <template #prefix><FeatherIcon name="send" class="h-4 w-4" /></template>
-                    {{ __('Confirm & submit') }}
-                  </Button>
-                </div>
+									<Button
+										variant="solid"
+										class="flex-1"
+										:loading="submitting"
+										:disabled="!canSubmit || submitting"
+										@click="submit"
+									>
+										<template #prefix><FeatherIcon name="send" class="h-4 w-4" /></template>
+										{{ __('Confirm & submit') }}
+									</Button>
+								</div>
 
-                <p class="type-caption text-ink/50">
-                  {{ __('Submitting will create a new student log entry. You won’t be able to edit it afterwards.') }}
-                </p>
-              </div>
-            </div>
+								<p class="type-caption text-ink/50 whitespace-normal leading-snug">
+									{{ __('Submitting will create a new student log entry. You won’t be able to edit it afterwards.') }}
+								</p>
+							</div>
+						</div>
+
+
           </DialogPanel>
         </TransitionChild>
       </div>
