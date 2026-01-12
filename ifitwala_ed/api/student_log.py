@@ -10,6 +10,7 @@ from frappe.utils import strip_html
 from frappe.utils import cint, nowdate, nowtime
 from frappe.utils.nestedset import get_descendants_of
 from frappe.utils.nestedset import get_ancestors_of
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 LOG_DOCTYPE = "Student Log"
 PAGE_LENGTH_DEFAULT = 20
@@ -154,66 +155,68 @@ def _get_employee_school_for_session_user() -> str | None:
 	user = frappe.session.user
 	if not user or user == "Guest":
 		return None
-	return frappe.db.get_value("Employee", {"user_id": user}, "school")
+
+	cache = frappe.cache()
+	key = f"ifitwala_ed:student_log:emp_school:{user}"
+	cached = cache.get_value(key)
+	if cached is not None:
+		return cached or None  # allow cached empty string
+
+	school = frappe.db.get_value("Employee", {"user_id": user}, "school") or ""
+	cache.set_value(key, school, expires_in_sec=300)
+	return school or None
 
 
 def _get_student_school(student: str) -> str | None:
 	return frappe.db.get_value("Student", student, "anchor_school")
 
 
-def _get_parent_school(school: str | None) -> str | None:
-	if not school:
-		return None
-	return frappe.db.get_value("School", school, "parent_school")
-
-
 def _get_school_up_chain(school: str | None) -> list[str]:
 	"""
-	Return [school] + all ancestors (walking UP only).
-	Cached for 5 minutes to reduce DB load.
+	Return [school] + all ancestors (UP only).
+	Delegates to canonical school_tree utility.
 	"""
 	if not school:
 		return []
-
-	cache = frappe.cache()
-	key = f"ifitwala_ed:school_tree:up_chain:{school}"
-	cached = cache.get_value(key)
-	if cached:
-		# stored as list directly in redis cache
-		return cached
-
-	chain = [school] + (get_ancestors_of("School", school) or [])
-	cache.set_value(key, chain, expires_in_sec=300)
-	return chain
+	return get_ancestor_schools(school)
 
 
 def _is_log_type_allowed_for_student_school(log_type: str, student_school: str | None) -> bool:
 	"""
 	Allowed if Student Log Type.school is:
 	- empty (global), OR
-	- in student's up-chain (self + ancestors)
+	- in student's UP chain (self + ancestors)
 	"""
-	row = frappe.db.get_value("Student Log Type", log_type, ["name", "school"], as_dict=True)
+	row = frappe.db.get_value(
+		"Student Log Type",
+		log_type,
+		["school"],
+		as_dict=True
+	)
 	if not row:
 		return False
 
-	school = (row.school or "").strip()
-	if not school:
+	if not row.school:
 		return True  # global
 
-	up_chain = _get_school_up_chain(student_school)
-	return bool(up_chain) and school in up_chain
+	return row.school in _get_school_up_chain(student_school)
+
 
 
 def _allowed_next_step_schools(student_school: str | None) -> list[str]:
-	# Policy: student school + parent (+1). No siblings.
+	"""
+	Allowed schools for Student Log Next Step:
+	- student school
+	- all ancestors (UP chain)
+	No siblings, no descendants.
+
+	This matches the log_type "UP chain" policy and avoids the common
+	'no next steps found' situation when steps are defined at org-level.
+	"""
 	if not student_school:
 		return []
-	parent = _get_parent_school(student_school)
-	out = [student_school]
-	if parent and parent != student_school:
-		out.append(parent)
-	return out
+	return _get_school_up_chain(student_school)
+
 
 
 def _thumb_url(original_url: str | None) -> str | None:
