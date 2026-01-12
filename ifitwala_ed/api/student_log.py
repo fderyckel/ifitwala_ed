@@ -7,9 +7,8 @@ import os
 import frappe
 from frappe import _
 from frappe.utils import strip_html
-from frappe.utils import cint, nowdate, nowtime
+from frappe.utils import cint
 from frappe.utils.nestedset import get_descendants_of
-from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 LOG_DOCTYPE = "Student Log"
@@ -448,23 +447,42 @@ def get_form_options(**payload):
 	# Next steps
 	# - Scope UP (self + ancestors)
 	# - Include global (school IS NULL / '')
+	# - Use SQL to avoid or_filters edge cases
 	# ----------------------------
 	allowed_schools = _allowed_next_step_schools(student_school)
 
 	if allowed_schools:
-		next_steps = frappe.get_all(
-			"Student Log Next Step",
-			fields=["name as value", "next_step as label", "associated_role as role", "school"],
-			filters=[["Student Log Next Step", "school", "in", allowed_schools]],
-			or_filters=[["Student Log Next Step", "school", "is", "not set"]],
-			order_by="next_step asc",
+		next_steps = frappe.db.sql(
+			"""
+			SELECT
+				name AS value,
+				next_step AS label,
+				associated_role AS role,
+				school
+			FROM `tabStudent Log Next Step`
+			WHERE (
+				school IN %(schools)s
+				OR school IS NULL
+				OR school = ''
+			)
+			ORDER BY next_step ASC
+			""",
+			{"schools": tuple(allowed_schools)},
+			as_dict=True,
 		)
 	else:
-		next_steps = frappe.get_all(
-			"Student Log Next Step",
-			fields=["name as value", "next_step as label", "associated_role as role", "school"],
-			filters=[["Student Log Next Step", "school", "is", "not set"]],
-			order_by="next_step asc",
+		next_steps = frappe.db.sql(
+			"""
+			SELECT
+				name AS value,
+				next_step AS label,
+				associated_role AS role,
+				school
+			FROM `tabStudent Log Next Step`
+			WHERE (school IS NULL OR school = '')
+			ORDER BY next_step ASC
+			""",
+			as_dict=True,
 		)
 
 	return {
