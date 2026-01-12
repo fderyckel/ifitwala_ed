@@ -251,84 +251,6 @@ def _thumb_url(original_url: str | None) -> str | None:
 		return variant
 	return original_url
 
-@frappe.whitelist()
-def get_form_options(**payload):
-	_validate_keys(payload, ALLOWED_OPTIONS_KEYS)
-
-	student = payload.get("student")
-	if not student:
-		frappe.throw(_("Student is required."))
-
-	student_school = _get_student_school(student)
-
-	# Next steps: keep existing policy (student school + parent (+1), no siblings)
-	allowed_schools = _allowed_next_step_schools(student_school)
-
-	# ----------------------------
-	# Log types: efficient + cached
-	# - Scope UP (self + ancestors), never down.
-	# - Also include global (school IS NULL / '').
-	# - Cache per student_school for 5 minutes to avoid repeat queries.
-	# ----------------------------
-	cache = frappe.cache()
-	cache_key = f"ifitwala_ed:student_log:log_types:up:{student_school or '__none__'}"
-	log_types = cache.get_value(cache_key)
-
-	if not log_types:
-		up_chain = _get_school_up_chain(student_school)
-
-		# If no student_school (or cannot resolve), be conservative: only global types.
-		if not up_chain:
-			log_types = frappe.db.sql(
-				"""
-				SELECT
-					name AS value,
-					log_type AS label
-				FROM `tabStudent Log Type`
-				WHERE (school IS NULL OR school = '')
-				ORDER BY log_type ASC
-				""",
-				as_dict=True,
-			)
-		else:
-			# One SQL pass: indexed IN + cheap global clause (no OR-filters machinery).
-			log_types = frappe.db.sql(
-				"""
-				SELECT
-					name AS value,
-					log_type AS label
-				FROM `tabStudent Log Type`
-				WHERE (
-					school IN %(schools)s
-					OR school IS NULL
-					OR school = ''
-				)
-				ORDER BY log_type ASC
-				""",
-				{"schools": tuple(up_chain)},
-				as_dict=True,
-			)
-
-		cache.set_value(cache_key, log_types, expires_in_sec=300)
-
-	# Next steps (unchanged)
-	next_steps = []
-	if allowed_schools:
-		next_steps = frappe.get_all(
-			"Student Log Next Step",
-			filters={"school": ["in", allowed_schools]},
-			fields=["name as value", "next_step as label", "associated_role as role", "school"],
-			order_by="next_step asc",
-		)
-
-	return {
-		"log_types": log_types,
-		"next_steps": next_steps,
-		"student_school": student_school,
-		"allowed_next_step_schools": allowed_schools,
-	}
-
-
 
 @frappe.whitelist()
 def search_students(**payload):
@@ -470,58 +392,84 @@ def search_follow_up_users(**payload):
 
 
 @frappe.whitelist()
-def submit_student_log(**payload):
-	_validate_keys(payload, ALLOWED_SUBMIT_KEYS)
+def get_form_options(**payload):
+	_validate_keys(payload, ALLOWED_OPTIONS_KEYS)
 
 	student = payload.get("student")
-	log_type = payload.get("log_type")
-	log = payload.get("log")
-	requires_follow_up = cint(payload.get("requires_follow_up") or 0)
-
 	if not student:
 		frappe.throw(_("Student is required."))
-	if not log_type:
-		frappe.throw(_("Log type is required."))
-	if not log or not str(log).strip():
-		frappe.throw(_("Log text is required."))
 
-	# ✅ Enforce log type visibility by student school (UP only + global)
 	student_school = _get_student_school(student)
-	if not _is_log_type_allowed_for_student_school(log_type, student_school):
-		frappe.throw(
-			_("This log type is not allowed for the student's school."),
-			title=_("Invalid Log Type")
+	up_chain = _get_school_up_chain(student_school)
+
+	# ----------------------------
+	# Log types (cached 5 min)
+	# - Scope UP (self + ancestors)
+	# - Include global (school IS NULL / '')
+	# ----------------------------
+	cache = frappe.cache()
+	cache_key = f"ifitwala_ed:student_log:log_types:up:{student_school or '__none__'}"
+	log_types = cache.get_value(cache_key)
+
+	if not log_types:
+		if not up_chain:
+			log_types = frappe.db.sql(
+				"""
+				SELECT
+					name AS value,
+					log_type AS label
+				FROM `tabStudent Log Type`
+				WHERE (school IS NULL OR school = '')
+				ORDER BY log_type ASC
+				""",
+				as_dict=True,
+			)
+		else:
+			log_types = frappe.db.sql(
+				"""
+				SELECT
+					name AS value,
+					log_type AS label
+				FROM `tabStudent Log Type`
+				WHERE (
+					school IN %(schools)s
+					OR school IS NULL
+					OR school = ''
+				)
+				ORDER BY log_type ASC
+				""",
+				{"schools": tuple(up_chain)},
+				as_dict=True,
+			)
+
+		cache.set_value(cache_key, log_types, expires_in_sec=300)
+
+	# ----------------------------
+	# Next steps
+	# - Scope UP (self + ancestors)
+	# - Include global (school IS NULL / '')
+	# ----------------------------
+	allowed_schools = _allowed_next_step_schools(student_school)
+
+	if allowed_schools:
+		next_steps = frappe.get_all(
+			"Student Log Next Step",
+			fields=["name as value", "next_step as label", "associated_role as role", "school"],
+			filters=[["Student Log Next Step", "school", "in", allowed_schools]],
+			or_filters=[["Student Log Next Step", "school", "is", "not set"]],
+			order_by="next_step asc",
+		)
+	else:
+		next_steps = frappe.get_all(
+			"Student Log Next Step",
+			fields=["name as value", "next_step as label", "associated_role as role", "school"],
+			filters=[["Student Log Next Step", "school", "is", "not set"]],
+			order_by="next_step asc",
 		)
 
-	next_step = payload.get("next_step")
-	follow_up_person = payload.get("follow_up_person")
-
-	if requires_follow_up:
-		if not next_step:
-			frappe.throw(_("Next step is required."))
-		if not follow_up_person:
-			frappe.throw(_("Follow-up person is required."))
-
-	doc = frappe.new_doc("Student Log")
-	doc.student = student
-	doc.log_type = log_type
-	doc.log = log
-	doc.date = nowdate()
-
-	# Frappe version-safe: nowtime() may not support with_seconds kwarg.
-	# Store hh:mm (no seconds) as required by project convention.
-	_now = (nowtime() or "").split(".")[0]  # defensive: drop microseconds if any
-	doc.time = ":".join(_now.split(":")[:2]) if _now else None
-
-	doc.visible_to_student = cint(payload.get("visible_to_student") or 0)
-	doc.visible_to_guardians = cint(payload.get("visible_to_guardians") or 0)
-
-	doc.requires_follow_up = requires_follow_up
-	if requires_follow_up:
-		doc.next_step = next_step
-		doc.follow_up_person = follow_up_person
-
-	doc.insert(ignore_permissions=False)
-	doc.submit()
-
-	return {"name": doc.name}
+	return {
+		"log_types": log_types,
+		"next_steps": next_steps,
+		"student_school": student_school,
+		"allowed_next_step_schools": allowed_schools,
+	}
