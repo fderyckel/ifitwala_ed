@@ -164,14 +164,17 @@ def evaluate_enrollment_request(payload):
 	)
 
 	basket_status = (basket_result or {}).get("status")
+	basket_override_required = bool((basket_result or {}).get("override_required"))
 	basket_invalid = basket_status == "invalid"
+	basket_pass = basket_status in {"ok", "valid"}  # allow either spelling if introduced later
 	basket_not_configured = basket_status == "not_configured"
 
-	# Locking decision for now:
-	# - If basket rules are invalid -> request is blocked and requires override.
-	# - If basket rules are not_configured -> do not block; surface as informational.
-	any_blocked = any_course_blocked or basket_invalid
-	requires_override = any_course_override_required or basket_invalid
+	# Engine is the single source of truth for overall request decision flags.
+	# - Basket invalidation must affect overall validity.
+	# - Basket override flags must participate in override_required.
+	overall_blocked = bool(any_course_blocked or basket_invalid)
+	overall_valid = bool((not any_course_blocked) and basket_pass)
+	overall_override_required = bool(any_course_override_required or basket_override_required)
 
 	return {
 		"student": student,
@@ -182,8 +185,10 @@ def evaluate_enrollment_request(payload):
 		"requested_counts": requested_counts,
 		"generated_at": now_datetime(),
 		"summary": {
-			"blocked": bool(any_blocked),
-			"override_required": bool(requires_override),
+			"valid": bool(overall_valid),
+			"blocked": bool(overall_blocked),
+			"override_required": bool(overall_override_required),
+			"basket_status": basket_status,
 			"basket_not_configured": bool(basket_not_configured),
 		},
 		"results": {
@@ -191,7 +196,6 @@ def evaluate_enrollment_request(payload):
 			"basket": basket_result,
 		},
 	}
-
 
 
 def _get_student_course_history(student):
@@ -442,6 +446,7 @@ def _evaluate_capacity(course, offering_course_row, capacity_counts, requested_c
 	if policy_unavailable:
 		result["policy_unavailable"] = True
 	return result
+
 
 def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
 	"""

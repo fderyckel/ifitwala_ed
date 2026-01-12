@@ -361,7 +361,7 @@ const form = reactive({
   available_from: '',
   due_date: '',
   lock_date: '',
-  allow_late_submission: true,
+  allow_late_submission: false,
   group_submission: false,
   grading_mode: '',
   max_points: '',
@@ -458,7 +458,7 @@ function initializeForm() {
   form.available_from = toDateTimeInput(props.prefillAvailableFrom)
   form.due_date = toDateTimeInput(props.prefillDueDate)
   form.lock_date = ''
-  form.allow_late_submission = true
+  form.allow_late_submission = false
   form.group_submission = false
   form.grading_mode = ''
   form.max_points = ''
@@ -547,13 +547,15 @@ async function submit() {
   submitting.value = true
   errorMessage.value = ''
 
-  const payload: CreateTaskDeliveryInput = {
-    title: form.title.trim(),
-    student_group: form.student_group,
-    delivery_mode: form.delivery_mode,
-    allow_late_submission: form.allow_late_submission ? 1 : 0,
-    group_submission: form.group_submission ? 1 : 0,
-  }
+const payload: CreateTaskDeliveryInput = {
+  title: form.title.trim(),
+  student_group: form.student_group,
+  delivery_mode: form.delivery_mode,
+  allow_late_submission:
+    form.delivery_mode === 'Assign Only' ? 0 : (form.allow_late_submission ? 1 : 0),
+  group_submission: form.group_submission ? 1 : 0,
+}
+
 
   if (form.instructions.trim()) payload.instructions = form.instructions.trim()
   if (form.task_type) payload.task_type = form.task_type

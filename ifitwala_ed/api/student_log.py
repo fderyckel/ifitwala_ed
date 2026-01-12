@@ -9,6 +9,7 @@ from frappe import _
 from frappe.utils import strip_html
 from frappe.utils import cint, nowdate, nowtime
 from frappe.utils.nestedset import get_descendants_of
+from frappe.utils.nestedset import get_ancestors_of
 
 LOG_DOCTYPE = "Student Log"
 PAGE_LENGTH_DEFAULT = 20
@@ -166,6 +167,44 @@ def _get_parent_school(school: str | None) -> str | None:
 	return frappe.db.get_value("School", school, "parent_school")
 
 
+def _get_school_up_chain(school: str | None) -> list[str]:
+	"""
+	Return [school] + all ancestors (walking UP only).
+	Cached for 5 minutes to reduce DB load.
+	"""
+	if not school:
+		return []
+
+	cache = frappe.cache()
+	key = f"ifitwala_ed:school_tree:up_chain:{school}"
+	cached = cache.get_value(key)
+	if cached:
+		# stored as list directly in redis cache
+		return cached
+
+	chain = [school] + (get_ancestors_of("School", school) or [])
+	cache.set_value(key, chain, expires_in_sec=300)
+	return chain
+
+
+def _is_log_type_allowed_for_student_school(log_type: str, student_school: str | None) -> bool:
+	"""
+	Allowed if Student Log Type.school is:
+	- empty (global), OR
+	- in student's up-chain (self + ancestors)
+	"""
+	row = frappe.db.get_value("Student Log Type", log_type, ["name", "school"], as_dict=True)
+	if not row:
+		return False
+
+	school = (row.school or "").strip()
+	if not school:
+		return True  # global
+
+	up_chain = _get_school_up_chain(student_school)
+	return bool(up_chain) and school in up_chain
+
+
 def _allowed_next_step_schools(student_school: str | None) -> list[str]:
 	# Policy: student school + parent (+1). No siblings.
 	if not student_school:
@@ -197,7 +236,6 @@ def _thumb_url(original_url: str | None) -> str | None:
 		return variant
 	return original_url
 
-
 @frappe.whitelist()
 def get_form_options(**payload):
 	_validate_keys(payload, ALLOWED_OPTIONS_KEYS)
@@ -209,12 +247,30 @@ def get_form_options(**payload):
 	student_school = _get_student_school(student)
 	allowed_schools = _allowed_next_step_schools(student_school)
 
-	log_types = frappe.get_all(
-		"Student Log Type",
-		fields=["name as value", "log_type as label"],
-		order_by="log_type asc",
-	)
+	# ----------------------------
+	# Log types: scope UP (self + ancestors), never down.
+	# Also include global (school not set).
+	# ----------------------------
+	up_chain = _get_school_up_chain(student_school)
 
+	if up_chain:
+		log_types = frappe.get_all(
+			"Student Log Type",
+			fields=["name as value", "log_type as label"],
+			filters=[["Student Log Type", "school", "in", up_chain]],
+			or_filters=[["Student Log Type", "school", "is", "not set"]],
+			order_by="log_type asc",
+		)
+	else:
+		# conservative: only global types
+		log_types = frappe.get_all(
+			"Student Log Type",
+			fields=["name as value", "log_type as label"],
+			filters=[["Student Log Type", "school", "is", "not set"]],
+			order_by="log_type asc",
+		)
+
+	# Next steps: keep your existing policy (student school + parent (+1), no siblings)
 	next_steps = []
 	if allowed_schools:
 		next_steps = frappe.get_all(
@@ -230,6 +286,9 @@ def get_form_options(**payload):
 		"student_school": student_school,
 		"allowed_next_step_schools": allowed_schools,
 	}
+
+
+
 
 @frappe.whitelist()
 def search_students(**payload):
@@ -385,6 +444,14 @@ def submit_student_log(**payload):
 		frappe.throw(_("Log type is required."))
 	if not log or not str(log).strip():
 		frappe.throw(_("Log text is required."))
+
+	# ✅ Enforce log type visibility by student school (UP only + global)
+	student_school = _get_student_school(student)
+	if not _is_log_type_allowed_for_student_school(log_type, student_school):
+		frappe.throw(
+			_("This log type is not allowed for the student's school."),
+			title=_("Invalid Log Type")
+		)
 
 	next_step = payload.get("next_step")
 	follow_up_person = payload.get("follow_up_person")
