@@ -174,11 +174,27 @@ def _get_student_school(student: str) -> str | None:
 def _get_school_up_chain(school: str | None) -> list[str]:
 	"""
 	Return [school] + all ancestors (UP only).
-	Delegates to canonical school_tree utility.
+	Uses canonical school_tree utility but guarantees 'school' itself is included.
 	"""
 	if not school:
 		return []
-	return get_ancestor_schools(school)
+
+	anc = get_ancestor_schools(school) or []
+
+	# Defensive: some helpers return ancestors only (excluding self), others may include self.
+	# Guarantee first element is the school itself and remove duplicates while preserving order.
+	out = []
+	seen = set()
+
+	for s in [school] + list(anc):
+		s = (s or "").strip()
+		if not s or s in seen:
+			continue
+		seen.add(s)
+		out.append(s)
+
+	return out
+
 
 
 def _is_log_type_allowed_for_student_school(log_type: str, student_school: str | None) -> bool:
@@ -209,13 +225,9 @@ def _allowed_next_step_schools(student_school: str | None) -> list[str]:
 	- student school
 	- all ancestors (UP chain)
 	No siblings, no descendants.
-
-	This matches the log_type "UP chain" policy and avoids the common
-	'no next steps found' situation when steps are defined at org-level.
 	"""
-	if not student_school:
-		return []
 	return _get_school_up_chain(student_school)
+
 
 
 
@@ -248,32 +260,58 @@ def get_form_options(**payload):
 		frappe.throw(_("Student is required."))
 
 	student_school = _get_student_school(student)
+
+	# Next steps: keep existing policy (student school + parent (+1), no siblings)
 	allowed_schools = _allowed_next_step_schools(student_school)
 
 	# ----------------------------
-	# Log types: scope UP (self + ancestors), never down.
-	# Also include global (school not set).
+	# Log types: efficient + cached
+	# - Scope UP (self + ancestors), never down.
+	# - Also include global (school IS NULL / '').
+	# - Cache per student_school for 5 minutes to avoid repeat queries.
 	# ----------------------------
-	up_chain = _get_school_up_chain(student_school)
+	cache = frappe.cache()
+	cache_key = f"ifitwala_ed:student_log:log_types:up:{student_school or '__none__'}"
+	log_types = cache.get_value(cache_key)
 
-	if up_chain:
-		log_types = frappe.get_all(
-			"Student Log Type",
-			fields=["name as value", "log_type as label"],
-			filters=[["Student Log Type", "school", "in", up_chain]],
-			or_filters=[["Student Log Type", "school", "is", "not set"]],
-			order_by="log_type asc",
-		)
-	else:
-		# conservative: only global types
-		log_types = frappe.get_all(
-			"Student Log Type",
-			fields=["name as value", "log_type as label"],
-			filters=[["Student Log Type", "school", "is", "not set"]],
-			order_by="log_type asc",
-		)
+	if not log_types:
+		up_chain = _get_school_up_chain(student_school)
 
-	# Next steps: keep your existing policy (student school + parent (+1), no siblings)
+		# If no student_school (or cannot resolve), be conservative: only global types.
+		if not up_chain:
+			log_types = frappe.db.sql(
+				"""
+				SELECT
+					name AS value,
+					log_type AS label
+				FROM `tabStudent Log Type`
+				WHERE (school IS NULL OR school = '')
+				ORDER BY log_type ASC
+				""",
+				as_dict=True,
+			)
+		else:
+			# One SQL pass: indexed IN + cheap global clause (no OR-filters machinery).
+			log_types = frappe.db.sql(
+				"""
+				SELECT
+					name AS value,
+					log_type AS label
+				FROM `tabStudent Log Type`
+				WHERE (
+					school IN %(schools)s
+					OR school IS NULL
+					OR school = ''
+				)
+				ORDER BY log_type ASC
+				""",
+				{"schools": tuple(up_chain)},
+				as_dict=True,
+			)
+
+		cache.set_value(cache_key, log_types, expires_in_sec=300)
+
+	# Next steps (unchanged)
 	next_steps = []
 	if allowed_schools:
 		next_steps = frappe.get_all(
@@ -289,7 +327,6 @@ def get_form_options(**payload):
 		"student_school": student_school,
 		"allowed_next_step_schools": allowed_schools,
 	}
-
 
 
 
