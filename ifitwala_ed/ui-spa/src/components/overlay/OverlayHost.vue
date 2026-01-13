@@ -138,7 +138,33 @@ function resolveComponent(type: OverlayType) {
 }
 
 function requestClose(id: string) {
-  overlay.close(id)
+  // Some refactors renamed the close method; don’t let the UI get stuck.
+  // Try the public API first, then fall back to direct state mutation (with a loud log).
+  const anyOverlay = overlay as any
+
+  if (anyOverlay && typeof anyOverlay.close === 'function') {
+    anyOverlay.close(id)
+    return
+  }
+
+  if (anyOverlay && typeof anyOverlay.remove === 'function') {
+    anyOverlay.remove(id)
+    return
+  }
+
+  if (anyOverlay && typeof anyOverlay.closeById === 'function') {
+    anyOverlay.closeById(id)
+    return
+  }
+
+  console.error('[OverlayHost] overlay.close is missing; forcing removal from stack', {
+    id,
+    overlayKeys: anyOverlay ? Object.keys(anyOverlay) : null,
+  })
+
+  // Hard fallback: remove from store stack so the watcher marks it as closing.
+  // This is better than leaving users trapped behind a stuck overlay.
+  overlay.state.stack = (overlay.state.stack || []).filter((e: any) => e.id !== id)
 }
 
 function finalizeClose(id: string) {
@@ -153,6 +179,7 @@ function finalizeClose(id: string) {
   }
   rendered.value.splice(idx, 1)
 }
+
 </script>
 
 <style scoped>
