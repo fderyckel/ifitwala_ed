@@ -491,3 +491,61 @@ def get_form_options(**payload):
 		"student_school": student_school,
 		"allowed_next_step_schools": allowed_schools,
 	}
+
+
+@frappe.whitelist()
+def submit_student_log(**payload):
+	_validate_keys(payload, ALLOWED_SUBMIT_KEYS)
+
+	student = payload.get("student")
+	log_type = payload.get("log_type")
+	log = payload.get("log")
+	requires_follow_up = cint(payload.get("requires_follow_up") or 0)
+
+	if not student:
+		frappe.throw(_("Student is required."))
+	if not log_type:
+		frappe.throw(_("Log type is required."))
+	if not log or not str(log).strip():
+		frappe.throw(_("Log text is required."))
+
+	# Enforce log type visibility by student school (UP chain + global)
+	student_school = _get_student_school(student)
+	if not _is_log_type_allowed_for_student_school(log_type, student_school):
+		frappe.throw(
+			_("This log type is not allowed for the student's school."),
+			title=_("Invalid Log Type"),
+		)
+
+	next_step = payload.get("next_step")
+	follow_up_person = payload.get("follow_up_person")
+
+	if requires_follow_up:
+		if not next_step:
+			frappe.throw(_("Next step is required."))
+		if not follow_up_person:
+			frappe.throw(_("Follow-up person is required."))
+
+	doc = frappe.new_doc("Student Log")
+	doc.student = student
+	doc.log_type = log_type
+	doc.log = log
+	doc.date = nowdate()
+
+	# Store hh:mm (no seconds) as per your convention
+	_now = (nowtime() or "").split(".")[0]
+	doc.time = ":".join(_now.split(":")[:2]) if _now else None
+
+	doc.visible_to_student = cint(payload.get("visible_to_student") or 0)
+	doc.visible_to_guardians = cint(payload.get("visible_to_guardians") or 0)
+
+	doc.requires_follow_up = requires_follow_up
+	if requires_follow_up:
+		doc.next_step = next_step
+		doc.follow_up_person = follow_up_person
+
+	doc.insert(ignore_permissions=False)
+	doc.submit()
+
+	return {"name": doc.name}
+
