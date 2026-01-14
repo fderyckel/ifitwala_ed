@@ -15,6 +15,7 @@
           v-bind="entry.props"
           :open="entry.open"
           :z-index="baseZ + idx * zStep"
+          :overlay-id="entry.id"
           @close="requestClose(entry.id)"
           @after-leave="finalizeClose(entry.id)"
         />

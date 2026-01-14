@@ -436,6 +436,7 @@ import { computed, reactive, ref } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { Button, FormControl, FeatherIcon, Spinner, toast, createResource } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
+import { useOverlayStack } from '@/composables/useOverlayStack'
 
 type Mode = 'group' | 'school'
 
@@ -460,12 +461,15 @@ const props = defineProps<{
   // in 'group' mode:
   studentGroup?: string | null
   students?: GroupStudent[] | null
+  overlayId?: string | null
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'after-leave'): void
 }>()
+
+const overlay = useOverlayStack()
 
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }))
 
@@ -500,7 +504,11 @@ const selectedNextStepLabel = computed(() => {
 
 function emitClose() {
 	step.value = 'edit'
-	emit('close')
+	if (props.overlayId) {
+		overlay.close(props.overlayId)
+	} else {
+		emit('close')
+	}
 }
 
 function emitAfterLeave() {
