@@ -6,6 +6,8 @@
  "engine": "InnoDB",
  "field_order": [
   "billable_offering",
+  "program_offering",
+  "charge_source",
   "description",
   "student",
   "qty",
@@ -19,8 +21,19 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Billable Offering",
-   "options": "Billable Offering",
-   "reqd": 1
+   "options": "Billable Offering"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "label": "Program Offering",
+   "options": "Program Offering"
+  },
+  {
+   "fieldname": "charge_source",
+   "fieldtype": "Select",
+   "label": "Charge Source",
+   "options": "Program Offering\nExtra\nManual"
   },
   {
    "fieldname": "description",

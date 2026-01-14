@@ -8,6 +8,7 @@
   "naming_series",
   "account_holder",
   "organization",
+  "program_offering",
   "posting_date",
   "due_date",
   "taxes_and_charges",
@@ -42,6 +43,12 @@
    "label": "Organization",
    "options": "Organization",
    "reqd": 1
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "label": "Program Offering",
+   "options": "Program Offering"
   },
   {
    "fieldname": "posting_date",

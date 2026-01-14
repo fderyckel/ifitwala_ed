@@ -5,10 +5,11 @@
 
 import frappe
 from frappe import _
-from frappe.utils import getdate
+from frappe.utils import getdate, flt
 from frappe.model.document import Document
 from frappe.utils import get_link_to_form
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, is_leaf_school, get_descendant_schools
+from ifitwala_ed.accounting.account_holder_utils import get_school_organization
 from typing import Optional, Union, Sequence
 
 # -------------------------
@@ -563,6 +564,80 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 		)
 	]
 
+@frappe.whitelist()
+def create_draft_tuition_invoice(program_offering: str, account_holder: str, posting_date: str, items: str):
+	if not program_offering:
+		frappe.throw(_("Program Offering is required"))
+	if not account_holder:
+		frappe.throw(_("Account Holder is required"))
+	if not posting_date:
+		frappe.throw(_("Posting Date is required"))
+
+	try:
+		item_rows = frappe.parse_json(items) or []
+	except Exception:
+		item_rows = []
+
+	if not item_rows:
+		frappe.throw(_("At least one line item is required"))
+
+	account_holder_org = frappe.db.get_value("Account Holder", account_holder, "organization")
+	if not account_holder_org:
+		frappe.throw(_("Account Holder organization is required"))
+
+	school = frappe.db.get_value("Program Offering", program_offering, "school")
+	if not school:
+		frappe.throw(_("Program Offering is missing School"))
+	offering_org = get_school_organization(school)
+	if offering_org and offering_org != account_holder_org:
+		frappe.throw(_("Program Offering must belong to the same Organization as the Account Holder"))
+
+	invoice = frappe.new_doc("Sales Invoice")
+	invoice.update(
+		{
+			"account_holder": account_holder,
+			"organization": account_holder_org,
+			"program_offering": program_offering,
+			"posting_date": posting_date,
+		}
+	)
+
+	for idx, row in enumerate(item_rows, start=1):
+		billable_offering = (row or {}).get("billable_offering")
+		if not billable_offering:
+			frappe.throw(_("Row {0}: Billable Offering is required").format(idx))
+
+		qty = flt((row or {}).get("qty") or 0)
+		if qty <= 0:
+			frappe.throw(_("Row {0}: Qty must be greater than zero").format(idx))
+
+		rate = (row or {}).get("rate")
+		if rate is None or rate == "":
+			frappe.throw(_("Row {0}: Rate is required").format(idx))
+		rate_val = flt(rate)
+		if rate_val < 0:
+			frappe.throw(_("Row {0}: Rate cannot be negative").format(idx))
+		if rate_val == 0 and not (row or {}).get("description"):
+			frappe.throw(_("Row {0}: Description is required for zero-rate lines").format(idx))
+
+		charge_source = (row or {}).get("charge_source") or "Program Offering"
+		item = invoice.append(
+			"items",
+			{
+				"billable_offering": billable_offering,
+				"qty": qty,
+				"rate": rate_val,
+				"student": (row or {}).get("student"),
+				"description": (row or {}).get("description"),
+				"charge_source": charge_source,
+			},
+		)
+		if charge_source == "Program Offering":
+			item.program_offering = program_offering
+
+	invoice.insert()
+	return {"sales_invoice": invoice.name}
+
 
 def _user_school_chain(user: str) -> list[str]:
 	"""
@@ -621,4 +696,3 @@ def has_permission(doc, ptype: str, user: str) -> bool:
 
 def on_doctype_update():
 	frappe.db.add_index("Program Offering", ["program", "school"])
-

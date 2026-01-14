@@ -247,6 +247,9 @@ Create the **primary revenue document** with immutable posting behavior.
 * `Sales Invoice` doctype (education-tailored student invoice)
 * Draft → Submit lifecycle
 * GL posting on submit
+* Optional `program_offering` on invoice header (context)
+* `program_offering` + `charge_source` on `Sales Invoice Item`
+* Manual **Create Draft Tuition Invoice** action from Program Offering (multi-line, draft only)
 
 ### Final Outcomes
 
@@ -259,6 +262,12 @@ Create the **primary revenue document** with immutable posting behavior.
 * Dr Accounts Receivable (Account Holder)
 * Cr Income accounts (per line)
 * Cr Tax Payable
+* `program_offering` must belong to the same Organization as the invoice
+* If header has `program_offering`, any line `program_offering` must match it
+* `charge_source = Program Offering` requires `program_offering` on the line
+* Students must belong to the invoice Organization and match the Account Holder
+* Billable Offering `offering_type = Program` requires a Student
+* Negative rates are invalid (zero allowed; manual action requires description)
 
 ### Edge Cases to Test
 
