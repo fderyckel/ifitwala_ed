@@ -15,6 +15,40 @@
 
 ---
 
+## ERPNext v15 Alignment Notes (Locked)
+
+* Baseline ERPNext version: v15 (accounting module only).
+* ERPNext Company doctype is used as Organization (same doctype, education naming).
+* Account Holder is the education-tailored replacement for ERPNext Customer (legal counterparty).
+* Phase 0 explicitly includes ERPNext core accounting doctypes: Account, GL Entry, Journal Entry, Payment Entry.
+* Manufacturing / production modules are explicitly out of scope.
+
+---
+
+## ERPNext v15 Doctype Mapping (Phase 0)
+
+| Ifitwala Doctype / Concept | ERPNext v15 Doctype | Notes |
+| --- | --- | --- |
+| Organization (legal entity) | Company | Same doctype; surfaced as Organization. |
+| Accounting Settings (org-level) | Accounts Settings | Org-level defaults. |
+| Chart of Accounts Template | Chart of Accounts Importer + Chart template JSON files | Templates live under `erpnext/accounts/doctype/account/chart_of_accounts`. |
+| Account | Account | ERPNext account tree. |
+| GL Entry | GL Entry | Ledger row. |
+| Journal Entry | Journal Entry | Manual accounting entry. |
+| Account Holder | Customer | Legal debtor / A/R party. |
+| Student Invoice | Sales Invoice | Education-tailored naming. |
+| Student Invoice Line | Sales Invoice Item | Invoice line table. |
+| Payment Entry | Payment Entry | Receipts and allocations. |
+| Payment Allocation | Payment Entry Reference | Invoice allocation rows. |
+| Tax Template | Sales Taxes and Charges Template | Sales tax template. |
+| Tax Line | Sales Taxes and Charges | Child table for tax lines. |
+| Tax Category | Tax Category | Tax classification. |
+| Billable Offering | Item + Item Price; Subscription Plan/Subscription (recurring) | Single education abstraction. |
+| Accounting Period | Accounting Period | Period locks. |
+| Apply Advance Tool | Payment Reconciliation | Manual allocation tool alignment. |
+
+---
+
 ## Step 0 — Project Setup & Safety Rails
 
 ### Objective
@@ -59,6 +93,8 @@ Create a **minimal but ERPNext-aligned Chart of Accounts** that can support all 
 ### Deliverables
 
 * Account doctype (lean ERPNext-style)
+* `GL Entry` doctype (core ledger row)
+* `Journal Entry` doctype (manual accounting entry)
 * Parent/child account hierarchy
 * Account types (Asset, Liability, Income, Expense, Equity)
 * Organization-level default accounts:
@@ -110,6 +146,11 @@ Lock the **legal debtor model** used for all receivables and payments.
 * Every student has **exactly one primary Account Holder**
 * One Account Holder can be linked to many students
 * All A/R truth is anchored on Account Holder
+
+### Notes
+
+* ERPNext counterpart: Customer (education-tailored naming).
+* Student is the beneficiary; Account Holder is the legal debtor.
 
 ### Validation & Checks
 
@@ -203,7 +244,7 @@ Create the **primary revenue document** with immutable posting behavior.
 
 ### Deliverables
 
-* `Student Invoice` doctype
+* `Sales Invoice` doctype (education-tailored student invoice)
 * Draft → Submit lifecycle
 * GL posting on submit
 
@@ -334,30 +375,6 @@ Prevent accidental or silent corruption.
 1. Post into locked period
 2. Cancel in locked period
 3. Unauthorized submission attempt
-
----
-
-## Step 10 — Program / Offering Cost Entries
-
-### Objective
-
-Enable early margin visibility without full budgeting.
-
-### Deliverables
-
-* Cost Entry doctype
-* GL posting to expense accounts
-
-### Final Outcomes
-
-* Income vs cost comparison possible
-* No fake or inferred costs
-
-### Edge Cases to Test
-
-1. Cost entry linked to offering
-2. Cost totals match GL
-3. Cross-org prevention
 
 ---
 

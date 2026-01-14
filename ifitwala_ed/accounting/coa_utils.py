@@ -176,8 +176,37 @@ def create_coa_for_organization(organization, template_name=None):
             
         queue = next_queue
         
+    ensure_accounts_settings(organization)
+
     return {
         "created": created_count,
         "skipped": skipped_count,
         "root_accounts": list(set(root_accounts)) # Unique list
     }
+
+
+def ensure_accounts_settings(organization):
+    """
+    Create Accounts Settings for the organization if missing.
+    """
+    if frappe.db.exists("Accounts Settings", organization):
+        return
+
+    defaults = {
+        "default_receivable_account": get_account_by_name(organization, "Accounts Receivable"),
+        "default_cash_account": get_account_by_name(organization, "Cash"),
+        "default_bank_account": get_account_by_name(organization, "Bank"),
+        "default_advance_account": get_account_by_name(organization, "Advances / Unearned Revenue"),
+        "default_tax_payable_account": get_account_by_name(organization, "Tax Payable"),
+    }
+
+    missing = [key for key, value in defaults.items() if not value]
+    if missing:
+        frappe.throw(
+            _("Missing default accounts for Accounts Settings: {0}").format(", ".join(missing))
+        )
+
+    settings = frappe.new_doc("Accounts Settings")
+    settings.organization = organization
+    settings.update(defaults)
+    settings.insert(ignore_permissions=True)

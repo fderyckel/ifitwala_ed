@@ -1,26 +1,16 @@
-frappe.ui.form.on('Account', {
-	setup: function(frm) {
-		frm.set_query('parent_account', function(doc) {
+frappe.ui.form.on("Account", {
+	setup: function (frm) {
+		frm.add_fetch("parent_account", "report_type", "report_type");
+		frm.add_fetch("parent_account", "root_type", "root_type");
+	},
+	onload: function (frm) {
+		frm.set_query("parent_account", function (doc) {
 			return {
 				filters: {
-					'is_group': 1,
-					'organization': doc.organization,
-                    'name': ['!=', doc.name]
-				}
+					is_group: 1,
+					organization: doc.organization,
+				},
 			};
 		});
-        
-        frm.set_query('organization', function(doc) {
-            // If parent is set, lock organization to parent's organization?
-            // Usually we start with Org. 
-            return {};
-        });
 	},
-    
-    refresh: function(frm) {
-        // Read-only logic for Root accounts?
-        if (!frm.is_new() && !frm.doc.parent_account) {
-            frm.set_intro(__("This is a root account."));
-        }
-    }
 });

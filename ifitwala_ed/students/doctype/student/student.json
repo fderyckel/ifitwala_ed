@@ -226,7 +226,8 @@
    "fieldname": "account_holder",
    "fieldtype": "Link",
    "label": "Account Holder",
-   "options": "Account Holder"
+   "options": "Account Holder",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_mdf1",

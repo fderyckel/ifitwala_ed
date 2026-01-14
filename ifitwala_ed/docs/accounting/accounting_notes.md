@@ -8,6 +8,33 @@ This document defines the **non‑negotiable accounting primitives and rules** f
 
 This file is the canonical reference and will be updated incrementally as decisions are locked.
 
+### ERPNext Baseline & Scope (Locked)
+
+* Baseline ERPNext version: v15 (accounting module only).
+* ERPNext Company doctype is used as Organization (same doctype, education naming).
+* Manufacturing / production modules are explicitly out of scope for education accounting.
+
+### ERPNext v15 Doctype Mapping (Accounting)
+
+| Ifitwala Doctype / Concept | ERPNext v15 Doctype | Notes |
+| --- | --- | --- |
+| Organization (legal entity) | Company | Same doctype; surfaced as Organization. |
+| Accounting Settings (org-level) | Accounts Settings | Org-level defaults. |
+| Chart of Accounts Template | Chart of Accounts Importer + Chart template JSON files | Templates live under `erpnext/accounts/doctype/account/chart_of_accounts`. |
+| Account | Account | ERPNext account tree. |
+| GL Entry | GL Entry | Ledger row. |
+| Journal Entry | Journal Entry | Manual accounting entry. |
+| Account Holder | Customer | Legal debtor / A/R party. |
+| Student Invoice | Sales Invoice | Education-tailored naming. |
+| Student Invoice Line | Sales Invoice Item | Invoice line table. |
+| Payment Entry | Payment Entry | Receipts and allocations. |
+| Payment Allocation | Payment Entry Reference | Invoice allocation rows. |
+| Tax Template | Sales Taxes and Charges Template | Sales tax template. |
+| Tax Line | Sales Taxes and Charges | Child table for tax lines. |
+| Tax Category | Tax Category | Tax classification. |
+| Billable Offering | Item + Item Price; Subscription Plan/Subscription (recurring) | Single education abstraction. |
+| Accounting Period | Accounting Period | Period locks. |
+
 ---
 
 ## 1. Core Principles (Locked)
@@ -40,7 +67,7 @@ This file is the canonical reference and will be updated incrementally as decisi
 ### 2.1 Organization (Legal Entity)
 
 * **Organization** is the legal accounting entity.
-* Equivalent to **Company** in ERPNext.
+* ERPNext **Company** doctype is used and surfaced as Organization (no separate Organization doctype).
 * Owns:
 
   * Chart of Accounts
@@ -59,6 +86,7 @@ Schools are **operational units only** and are used for analytical dimensions, n
 
 **Account Holder** is the legal counterparty responsible for payment.
 It replaces the notion of "Customer" in education context.
+ERPNext counterpart: Customer (legal debtor).
 
 ### 3.2 Properties
 
@@ -283,6 +311,7 @@ Accounting:
 
 ## 14. Non‑Goals (Phase 0)
 
+* Manufacturing / production modules
 * Payroll processing
 * Inventory valuation
 * Automated revenue schedules
