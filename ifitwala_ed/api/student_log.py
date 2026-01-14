@@ -304,14 +304,12 @@ def search_follow_up_users(**payload):
 	next_step = payload.get("next_step")
 	student = payload.get("student")
 	query = (payload.get("query") or "").strip()
-	limit = cint(payload.get("limit") or 10)
+	limit = cint(payload.get("limit") or 20)
 
 	if not next_step:
 		frappe.throw(_("Next step is required."))
 	if not student:
 		frappe.throw(_("Student is required."))
-	if not query or len(query) < 2:
-		return []
 
 	ns = frappe.db.get_value(
 		"Student Log Next Step",
@@ -329,16 +327,21 @@ def search_follow_up_users(**payload):
 	if not allowed_schools:
 		return []
 
-	# Employee is source of truth for school + user_id
-	# Role constraint via Has Role on User
 	params = {
 		"schools": tuple(allowed_schools),
-		"q": f"%{query}%",
 		"limit": limit,
 	}
 
+	# If query is present, filter by it (search mode).
+	# If query is empty, return top N alphabetically (dropdown mode).
+	if query and len(query) >= 2:
+		params["q"] = f"%{query}%"
+		name_filter_sql = "AND (u.full_name LIKE %(q)s OR u.name LIKE %(q)s)"
+	else:
+		name_filter_sql = ""
+
 	if role:
-		sql = """
+		sql = f"""
 			SELECT
 				u.name AS user_id,
 				u.full_name AS full_name,
@@ -350,16 +353,13 @@ def search_follow_up_users(**payload):
 				e.user_id IS NOT NULL
 				AND e.school IN %(schools)s
 				AND hr.role = %(role)s
-				AND (
-					u.full_name LIKE %(q)s
-					OR u.name LIKE %(q)s
-				)
+				{name_filter_sql}
 			ORDER BY u.full_name ASC
 			LIMIT %(limit)s
 		"""
 		params["role"] = role
 	else:
-		sql = """
+		sql = f"""
 			SELECT
 				u.name AS user_id,
 				u.full_name AS full_name,
@@ -369,10 +369,7 @@ def search_follow_up_users(**payload):
 			WHERE
 				e.user_id IS NOT NULL
 				AND e.school IN %(schools)s
-				AND (
-					u.full_name LIKE %(q)s
-					OR u.name LIKE %(q)s
-				)
+				{name_filter_sql}
 			ORDER BY u.full_name ASC
 			LIMIT %(limit)s
 		"""

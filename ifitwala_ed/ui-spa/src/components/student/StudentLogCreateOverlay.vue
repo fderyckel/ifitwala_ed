@@ -645,15 +645,19 @@ const assigneeSearch = createResource({
 function onAssigneeQuery(v: string) {
   assigneeQuery.value = v
   if (!form.next_step) return
+
+  // ✅ updated API supports dropdown mode when query is empty:
+  // - empty/short query => keep current list (already loaded)
+  // - 2+ chars => filtered search
   if (!v || v.trim().length < 2) {
-    assigneeCandidates.value = []
     return
   }
+
   assigneeSearch.submit({
     next_step: form.next_step,
     student: form.student,
     query: v.trim(),
-    limit: 10,
+    limit: 50,
   })
 }
 
@@ -738,6 +742,16 @@ function onNextStepSelected(v: string) {
   selectedAssigneeLabel.value = ''
   assigneeQuery.value = ''
   assigneeCandidates.value = []
+
+  // ✅ NEW: preload dropdown list (no typing required) using updated API behavior
+  if (form.next_step && form.student) {
+    assigneeSearch.submit({
+      next_step: form.next_step,
+      student: form.student,
+      query: '',
+      limit: 50,
+    })
+  }
 }
 
 /* Submit (Option A: toast + close) */
