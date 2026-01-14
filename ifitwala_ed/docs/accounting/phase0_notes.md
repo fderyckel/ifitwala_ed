@@ -406,3 +406,197 @@ Phase 0 is considered complete when:
 * Inventory and asset lifecycle
 * Online payment gateways
 * Consolidated multi-org reporting
+
+
+
+------------
+==============================================================
+
+Next
+
+
+# Phase 0.1 — Amendments to Phase 0
+
+## Tax Handling & Posting Semantics (LOCKED)
+
+### Why this amendment exists
+
+Phase 0 established the accounting skeleton (GL, AR, payments, reconciliation).
+During review of the **actual Sales Invoice posting code**, we identified a **systemic issue with inclusive taxes** that can lead to **unbalanced ledger entries**.
+
+This is not a design preference.
+It is a **ledger correctness requirement** and must be resolved before any billing automation or Program Offering linkage is layered on top.
+
+---
+
+## What changes from Phase 0
+
+### Phase 0 assumption (implicit, now corrected)
+
+Phase 0 assumed that:
+
+* Line `amount` represents revenue
+* Tax lines can always be posted “on top” of line totals
+
+This assumption is **only valid for exclusive taxes**.
+
+---
+
+### Phase 0.1 correction (explicit, mandatory)
+
+Phase 0.1 introduces **two distinct tax posting modes** with **different GL behavior**:
+
+---
+
+## 1. Exclusive Tax (unchanged behavior)
+
+**Definition**
+
+* Tax is added *on top* of the net price.
+* `included_in_print_rate = 0`
+
+**Correct posting**
+
+* Debit **Accounts Receivable** = net + tax
+* Credit **Income** = net
+* Credit **Tax Liability** = tax
+
+This is already conceptually correct and remains unchanged.
+
+---
+
+## 2. Inclusive Tax (NEW — corrected behavior)
+
+**Definition**
+
+* Tax is included *inside* the printed rate.
+* `included_in_print_rate = 1`
+* Item `amount` is **gross**, not net revenue.
+
+**Correct posting (LOCKED)**
+
+* Debit **Accounts Receivable** = gross (invoice grand total)
+* Credit **Income** = gross − inclusive_tax
+* Credit **Tax Liability** = inclusive_tax
+
+**Hard rule**
+
+> Income must always be posted **net of tax**.
+> Gross amounts must never be credited to Income accounts.
+
+---
+
+## 3. Explicit prohibition (LOCKED)
+
+The following is **forbidden** as of Phase 0.1:
+
+* Crediting **gross item amounts** to Income **and**
+* Crediting Tax Liability separately
+  → This double-counts tax and breaks Trial Balance.
+
+Any implementation producing:
+
+```
+Dr AR = gross
+Cr Income = gross
+Cr Tax = tax
+```
+
+is **invalid accounting**.
+
+---
+
+## 4. Implementation constraints (LOCKED)
+
+* The inclusive/exclusive split **must be handled in the Sales Invoice server controller** (`sales_invoice.py`)
+* Ledger logic lives only in:
+
+  * Sales Invoice posting
+  * Ledger utilities
+* No child table controller logic
+* No client-side math for GL posting
+* No “fix-up” in reports
+
+---
+
+## 5. Validation scenarios (must pass)
+
+### Scenario A — Inclusive tax (7%)
+
+* Item rate: 107 (tax included)
+* Tax rate: 7%
+
+Expected GL:
+
+```
+Dr AR              107
+Cr Income          100
+Cr Tax Payable       7
+```
+
+### Scenario B — Exclusive tax (7%)
+
+* Item rate: 100
+* Tax: 7
+
+Expected GL:
+
+```
+Dr AR              107
+Cr Income          100
+Cr Tax Payable       7
+```
+
+Both scenarios must:
+
+* Balance exactly
+* Produce identical Trial Balance results
+
+---
+
+## 6. Reporting implications (LOCKED)
+
+* P&L Income reflects **net revenue only**
+* Tax accounts are strictly Liability accounts (already enforced)
+* `grand_total` remains gross (this is correct for receivables)
+
+No report-level compensation or reinterpretation is allowed.
+
+---
+
+## 7. Relationship to Program Offering (Phase 0.1 scope)
+
+This amendment is **orthogonal** to:
+
+* Program Offering
+* Billable Offering
+* Billing plans
+
+However:
+
+> **Program Offering billing must only be built on top of a correct tax foundation.**
+
+Therefore, **Phase 0.1 is not complete** until:
+
+* Inclusive tax posting is fixed
+* Trial Balance validates under both tax modes
+
+---
+
+## 8. Phase 0.1 completion gate (updated)
+
+Phase 0.1 is complete only when:
+
+* Inclusive & exclusive tax invoices both post correctly
+* Trial Balance always balances
+* Income is net of tax
+* Program Offering links (header + line) can rely on correct revenue figures
+
+---
+
+### What did *not* change
+
+* Accounting Period locking stays as-is
+* Payment Entry & Reconciliation logic remains valid
+* Account Holder as legal debtor remains untouched
+* Student remains analytic only

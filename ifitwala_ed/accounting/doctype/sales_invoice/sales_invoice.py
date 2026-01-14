@@ -114,6 +114,8 @@ class SalesInvoice(Document):
 			total_taxes += tax_amount
 
 		self.total_taxes = total_taxes
+		if inclusive_taxes > self.total:
+			frappe.throw(_("Inclusive tax exceeds invoice total"))
 		self.grand_total = self.total + (total_taxes - inclusive_taxes)
 		if self.docstatus == 0:
 			self.outstanding_amount = self.grand_total
@@ -138,20 +140,52 @@ class SalesInvoice(Document):
 			}
 		]
 
-		for row in self.items:
-			entries.append(
-				{
-					"organization": self.organization,
-					"posting_date": self.posting_date,
-					"account": row.income_account,
-					"party_type": None,
-					"party": None,
-					"against": ar_account,
-					"remarks": self.remarks,
-					"debit": 0,
-					"credit": row.amount,
-				}
-			)
+		inclusive_tax_total = sum(
+			flt(tax.tax_amount) for tax in self.taxes if tax.included_in_print_rate
+		)
+		income_total = self.total - inclusive_tax_total
+
+		if inclusive_tax_total:
+			allocated_income = 0
+			item_count = len(self.items)
+			for index, row in enumerate(self.items):
+				if index == item_count - 1:
+					income_credit = income_total - allocated_income
+				else:
+					income_credit = flt(income_total * flt(row.amount) / self.total)
+					allocated_income += income_credit
+
+				if flt(income_credit) == 0:
+					continue
+
+				entries.append(
+					{
+						"organization": self.organization,
+						"posting_date": self.posting_date,
+						"account": row.income_account,
+						"party_type": None,
+						"party": None,
+						"against": ar_account,
+						"remarks": self.remarks,
+						"debit": 0,
+						"credit": income_credit,
+					}
+				)
+		else:
+			for row in self.items:
+				entries.append(
+					{
+						"organization": self.organization,
+						"posting_date": self.posting_date,
+						"account": row.income_account,
+						"party_type": None,
+						"party": None,
+						"against": ar_account,
+						"remarks": self.remarks,
+						"debit": 0,
+						"credit": row.amount,
+					}
+				)
 
 		for tax in self.taxes:
 			if flt(tax.tax_amount) == 0:
