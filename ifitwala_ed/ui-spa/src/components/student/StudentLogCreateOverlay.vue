@@ -503,12 +503,24 @@ const selectedNextStepLabel = computed(() => {
 
 
 function emitClose() {
-	step.value = 'edit'
-	if (props.overlayId) {
-		overlay.close(props.overlayId)
-	} else {
-		emit('close')
+	const overlayId = props.overlayId || null
+	if (overlayId) {
+		try {
+			if (typeof overlay.close === 'function') {
+				overlay.close(overlayId)
+				return
+			}
+		} catch (err) {
+			// fall through to stack mutation/emit fallback
+		}
+
+		if (overlay?.state?.stack) {
+			overlay.state.stack = overlay.state.stack.filter((e) => e.id !== overlayId)
+			return
+		}
 	}
+
+	emit('close')
 }
 
 function emitAfterLeave() {
@@ -767,9 +779,8 @@ const submitResource = createResource({
   url: 'ifitwala_ed.api.student_log.submit_student_log',
   auto: false,
 	onSuccess() {
-		step.value = 'edit'
-		toast({ title: __('Saved'), text: __('Student note submitted.'), icon: 'check' })
 		emitClose()
+		toast({ title: __('Saved'), text: __('Student note submitted.'), icon: 'check' })
 	},
   onError(err: any) {
     toast({ title: __('Could not submit'), text: err?.message || String(err), icon: 'x' })
