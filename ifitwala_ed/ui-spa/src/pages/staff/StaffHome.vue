@@ -347,7 +347,7 @@ const focusItems = ref<FocusItem[]>([])
  * - Server may cache per-user (TTL ~60s) to survive 200 staff
  */
 const focusResource = createResource({
-	url: 'ifitwala_ed.api.focus.list',
+	url: 'ifitwala_ed.api.focus.list_focus_items',
 	method: 'POST',
 	auto: false,
 	onSuccess(data: any) {

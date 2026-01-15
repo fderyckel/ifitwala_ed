@@ -22,8 +22,6 @@
           <DialogPanel class="if-overlay__panel">
             <!-- ============================================================
                  HEADER
-                 - FocusRouterOverlay is the single overlay entry point.
-                 - It renders a stable header, then mounts workflow-specific body content.
                ============================================================ -->
             <header class="if-overlay__header">
               <div class="min-w-0">
@@ -49,8 +47,6 @@
 
             <!-- ============================================================
                  BODY
-                 - No nested overlays inside FocusRouterOverlay.
-                 - Workflow body components must be "content only" components.
                ============================================================ -->
             <section class="if-overlay__body">
               <!-- Loading -->
@@ -74,11 +70,6 @@
 
               <!-- Routed content -->
               <div v-else>
-                <!-- ============================================================
-                     Student Log follow-up (Phase 1)
-                     - Content-only component (NO Dialog / overlay inside)
-                     - Server decides mode + visibility via focus.get_context
-                   ============================================================ -->
                 <StudentLogFollowUpAction
                   v-if="isStudentLogFollowUp"
                   :focus-item-id="focusItemId"
@@ -104,7 +95,6 @@
 
             <!-- ============================================================
                  FOOTER
-                 - Calm reminder: Focus is a router only.
                ============================================================ -->
             <footer class="if-overlay__footer">
               <p class="type-caption text-slate-token/60">
@@ -119,13 +109,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { Button, FeatherIcon, createResource } from 'frappe-ui'
 
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue'
 
 type Mode = 'assignee' | 'author'
+
+/**
+ * Global event contract:
+ * - Overlay emits this when a workflow is completed.
+ * - Focus list listens and refreshes immediately.
+ *
+ * Keep it stable; other workflows will reuse it.
+ */
+const FOCUS_REFRESH_EVENT = 'ifitwala:focus:refresh'
 
 const props = defineProps<{
   open: boolean
@@ -182,7 +181,9 @@ const isStudentLogFollowUp = computed(() => {
 })
 
 const focusItemId = computed(() => props.focusItemId ?? null)
-const studentLogName = computed(() => (referenceDoctype.value === 'Student Log' ? referenceName.value : null))
+const studentLogName = computed(() =>
+  referenceDoctype.value === 'Student Log' ? referenceName.value : null
+)
 
 /* API: focus.get_context -------------------------------------- */
 const ctxResource = createResource({
@@ -213,12 +214,19 @@ const ctxResource = createResource({
   },
 })
 
+function resetState() {
+  loading.value = false
+  errorText.value = null
+  actionType.value = null
+  referenceDoctype.value = null
+  referenceName.value = null
+  studentLogMode.value = 'assignee'
+}
+
 function reload() {
   errorText.value = null
   loading.value = true
 
-  // v1: prefer focus_item_id if present (deterministic ID)
-  // fallback: allow direct doctype/name open for debug
   ctxResource.submit({
     focus_item_id: props.focusItemId ?? null,
     reference_doctype: props.referenceDoctype ?? null,
@@ -231,33 +239,37 @@ function requestClose() {
 }
 
 function emitAfterLeave() {
+  // fully reset once closed (prevents stale header/body flashes on next open)
+  resetState()
   emit('after-leave')
 }
 
 function onDialogClose() {
-  // OverlayHost controls closeOnBackdrop/closeOnEsc policy.
-  // We always comply with Dialog close events by emitting close.
   requestClose()
 }
 
 /**
  * Workflow done:
- * - Content component signals it likely changed the world (submitted follow-up / completed log).
- * - Router closes. Focus list refresh is handled by StaffHome polling + visibility refresh.
+ * - Fire immediate focus refresh event (no waiting for polling).
+ * - Then close overlay.
  */
 function onWorkflowDone() {
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(FOCUS_REFRESH_EVENT))
+    }
+  } catch (e) {
+    // best-effort; never block closing
+  }
   requestClose()
 }
 
 /* LIFECYCLE ---------------------------------------------------- */
-onMounted(() => {
-  if (props.open) reload()
-})
-
 watch(
   () => props.open,
   (next) => {
     if (next) reload()
-  }
+  },
+  { immediate: true }
 )
 </script>

@@ -346,12 +346,12 @@ async function submitFollowUp() {
   busy.value = true
   try {
     // 1) insert follow-up doc (draft)
-    const doc = {
-      doctype: 'Student Log Follow Up',
-      student_log: studentLogName,
-      date: todayLocalYMD(),
-      follow_up: draftText.value,
-    }
+		const doc = {
+			doctype: 'Student Log Follow Up',
+			student_log: studentLogName,
+			follow_up: draftText.value,
+		}
+
 
     const ins = await insertDoc.submit({ doc })
     const insertedName = (ins as any)?.message?.name as string | undefined
@@ -425,15 +425,5 @@ function trustedHtml(html: string) {
   return html || ''
 }
 
-/**
- * Bangkok-safe (local) YYYY-MM-DD.
- * Avoids UTC drift from toISOString() near midnight.
- */
-function todayLocalYMD() {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+
 </script>

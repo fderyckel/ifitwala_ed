@@ -100,7 +100,7 @@ def _can_read_student_log(name: str) -> bool:
 
 
 @frappe.whitelist()
-def list(open_only: int = 1, limit: int = 20, offset: int = 0):
+def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 	"""
 	Return FocusItem[] for the current user.
 
@@ -184,7 +184,7 @@ def list(open_only: int = 1, limit: int = 20, offset: int = 0):
 		)
 
 		# next step titles (batched)
-		next_step_names = list({r.get("next_step") for r in log_rows if r.get("next_step")})
+		next_step_names = sorted({r.get("next_step") for r in log_rows if r.get("next_step")})
 		next_step_title_by_name = {}
 		if next_step_names:
 			ns = frappe.get_all(

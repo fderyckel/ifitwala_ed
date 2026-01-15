@@ -15,10 +15,53 @@ except Exception:
 
 
 class StudentLogFollowUp(Document):
+	# -----------------------------------------------------------------
+	# Internal helpers
+	# -----------------------------------------------------------------
+	def _close_open_todos_for_log(self, log_name: str):
+		"""
+		Close ALL OPEN ToDo(s) for this Student Log.
+
+		Policy:
+		- Focus "action" items are driven by OPEN ToDos.
+		- Submitting a follow-up means the assignee has acted.
+		- We close all OPEN ToDos for the log (single-open policy, but defensive).
+		"""
+		open_todos = frappe.get_all(
+			"ToDo",
+			filters={
+				"reference_type": "Student Log",
+				"reference_name": log_name,
+				"status": "Open",
+			},
+			fields=["name", "allocated_to"],
+			limit_page_length=50,
+		)
+
+		for t in open_todos:
+			allocated_to = t.get("allocated_to")
+			if assign_remove and allocated_to:
+				try:
+					assign_remove("Student Log", log_name, allocated_to)
+					continue
+				except Exception:
+					# fall back to direct close below
+					pass
+
+			if t.get("name"):
+				frappe.db.set_value("ToDo", t["name"], "status", "Closed")
+
+	# -----------------------------------------------------------------
+	# Lifecycle
+	# -----------------------------------------------------------------
 	def validate(self):
 		# Guard: must point to a parent log
 		if not self.student_log:
 			frappe.throw(_("Please link a Student Log."))
+
+		# Server authoritative date (site timezone). Client should not send date.
+		if not getattr(self, "date", None):
+			self.date = frappe.utils.today()
 
 		# Single read: parent status (only 'completed' is terminal now)
 		status = (frappe.db.get_value("Student Log", self.student_log, "follow_up_status") or "").lower()
@@ -45,11 +88,10 @@ class StudentLogFollowUp(Document):
 		if not self.follow_up_author:
 			self.follow_up_author = frappe.utils.get_fullname(frappe.session.user)
 
-
 	def on_update(self):
 		# Mapping: parent status Open → In Progress when any follow-up is edited
 		log = frappe.get_doc("Student Log", self.student_log)
-		if log.follow_up_status == "Open":
+		if (log.follow_up_status or "") == "Open":
 			log.db_set("follow_up_status", "In Progress")
 
 	def on_submit(self):
@@ -68,35 +110,8 @@ class StudentLogFollowUp(Document):
 				except Exception:
 					pass
 
-		# -----------------------------------------------------------------
-		# CLOSE OPEN ToDo(s) for this log (single-open ToDo policy)
-		# - Once a follow-up is submitted, the assignee's ToDo is considered done.
-		# - Review responsibility shifts to the author (Focus "review" item).
-		# -----------------------------------------------------------------
-		open_todos = frappe.get_all(
-			"ToDo",
-			filters={
-				"reference_type": "Student Log",
-				"reference_name": log.name,
-				"status": "Open",
-			},
-			fields=["name", "allocated_to"],
-			limit_page_length=50,
-		)
-
-		for t in open_todos:
-			allocated_to = t.get("allocated_to")
-			if assign_remove and allocated_to:
-				# Uses Frappe's assignment removal when available
-				try:
-					assign_remove("Student Log", log.name, allocated_to)
-					continue
-				except Exception:
-					pass
-
-			# Fallback: close the ToDo row directly
-			if t.get("name"):
-				frappe.db.set_value("ToDo", t["name"], "status", "Closed")
+		# Close OPEN ToDo(s) for this log (single-open policy)
+		self._close_open_todos_for_log(log.name)
 
 		# Resolve key users
 		author_user = log.owner or None
@@ -173,7 +188,7 @@ class StudentLogFollowUp(Document):
 				except Exception:
 					pass
 
-		# Single concise timeline entry on the parent (refactored wording)
+		# Single concise timeline entry on the parent
 		actor = frappe.utils.get_fullname(frappe.session.user) or frappe.session.user
 		log.add_comment(
 			comment_type="Info",
@@ -182,30 +197,3 @@ class StudentLogFollowUp(Document):
 				link=frappe.utils.get_link_to_form(self.doctype, self.name),
 			),
 		)
-
-		# ------------------------------------------------------------
-		# Close assignee ToDo on follow-up submit
-		# - Focus "action" items are driven by OPEN ToDos.
-		# - Submitting a follow-up means the assignee has acted.
-		# - Only close the OPEN ToDo if it belongs to the current user
-		#   (prevents closing a ToDo after reassignment).
-		# ------------------------------------------------------------
-		try:
-			todo_name, todo_user = frappe.db.get_value(
-				"ToDo",
-				{
-					"reference_type": "Student Log",
-					"reference_name": log.name,
-					"status": "Open",
-				},
-				["name", "allocated_to"],
-			) or (None, None)
-
-			if todo_name and todo_user and todo_user == frappe.session.user:
-				if assign_remove:
-					assign_remove("Student Log", log.name, todo_user)
-				else:
-					frappe.db.set_value("ToDo", todo_name, "status", "Closed")
-		except Exception:
-			pass
-
