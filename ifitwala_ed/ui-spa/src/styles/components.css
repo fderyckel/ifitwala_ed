@@ -1132,6 +1132,33 @@
 		cursor: not-allowed;
 	}
 
+	/* ============================================================
+		Overlay headers using meeting-modal rhythm
+		Ensures FocusRouterOverlay + StudentLogFollowUpOverlay match.
+		============================================================ */
+	.if-overlay .meeting-modal__header {
+		@apply px-5 pt-4 pb-3 flex items-start justify-between gap-4;
+		border-bottom: 1px solid rgb(var(--border-rgb) / 0.6);
+	}
+
+	.if-overlay .meeting-modal__headline .type-overline {
+		color: rgb(var(--slate-rgb) / 0.75);
+	}
+
+	/* Keep the close button feeling consistent across overlays */
+	.if-overlay .meeting-modal__header-actions .if-overlay__icon-button {
+		@apply rounded-xl border;
+		border-color: rgb(var(--border-rgb) / 0.8);
+		background: rgb(var(--surface-strong-rgb) / 0.7);
+		box-shadow: var(--shadow-soft);
+	}
+
+	.if-overlay .meeting-modal__header-actions .if-overlay__icon-button:hover {
+		background: rgb(var(--sky-rgb) / 0.75);
+		border-color: rgb(var(--jacaranda-rgb) / 0.25);
+	}
+
+
 
   /* ============================================================
      ANALYTICS SYSTEM

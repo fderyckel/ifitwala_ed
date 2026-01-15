@@ -1,5 +1,5 @@
 <!-- ui-spa/src/components/focus/FocusRouterOverlay.vue -->
- <template>
+<template>
   <TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
     <Dialog
       as="div"
@@ -21,62 +21,63 @@
         >
           <DialogPanel class="if-overlay__panel">
             <!-- ============================================================
-                 HEADER
+                 HEADER (align to meeting-modal rhythm)
                ============================================================ -->
-            <header class="if-overlay__header px-5 pt-4 pb-3 border-b border-[rgb(var(--border-rgb)/0.6)]">
-              <div class="min-w-0">
-                <p class="type-overline">
+            <div class="meeting-modal__header">
+              <div class="meeting-modal__headline min-w-0">
+                <div class="type-overline">
                   {{ headerKicker }}
-                </p>
+                </div>
 
                 <div class="mt-1 flex items-start gap-3 min-w-0">
-                  <DialogTitle class="type-h2 truncate">
+                  <DialogTitle class="type-h2 text-canopy truncate">
                     {{ headerTitle }}
                   </DialogTitle>
                 </div>
 
-                <p v-if="headerSubtitle" class="mt-1 type-caption truncate">
+                <p v-if="headerSubtitle" class="type-caption mt-1 truncate">
                   {{ headerSubtitle }}
                 </p>
               </div>
 
-              <div class="shrink-0 flex items-center gap-2">
+              <div class="meeting-modal__header-actions">
                 <Button
                   variant="ghost"
                   class="if-overlay__icon-button"
                   @click="requestClose"
+                  aria-label="Close"
                 >
                   <FeatherIcon name="x" class="h-4 w-4" />
                 </Button>
               </div>
-            </header>
+            </div>
 
             <!-- ============================================================
-                 BODY
+                 BODY (calmer spacing + surfaces)
                ============================================================ -->
-            <section class="if-overlay__body">
+            <section class="if-overlay__body custom-scrollbar">
               <!-- Loading -->
-              <div v-if="loading" class="space-y-3">
+              <div v-if="loading" class="py-10 space-y-3">
                 <div class="if-skel if-skel--title" />
                 <div class="if-skel if-skel--sub" />
                 <div class="if-skel h-28 rounded-xl" />
               </div>
 
               <!-- Error -->
-              <div v-else-if="errorText" class="paper-card-frosted p-5">
-                <p class="type-body-strong">Couldn’t open this item</p>
-                <p class="mt-2 type-body">
+              <div v-else-if="errorText" class="card-panel p-5">
+                <p class="type-body-strong text-ink">Couldn’t open this item</p>
+                <p class="mt-2 type-body text-ink/70">
                   {{ errorText }}
                 </p>
 
-                <div class="mt-4 flex flex-wrap gap-2">
-                  <Button variant="solid" @click="reload">Retry</Button>
+                <div class="mt-5 flex flex-wrap justify-end gap-2">
                   <Button variant="ghost" @click="requestClose">Close</Button>
+                  <Button variant="solid" @click="reload">Retry</Button>
                 </div>
               </div>
 
               <!-- Routed content -->
-              <div v-else class="space-y-4">
+              <div v-else class="space-y-5">
                 <StudentLogFollowUpAction
                   v-if="isStudentLogFollowUp && ctx"
                   :focus-item-id="resolvedFocusItemId"
@@ -86,14 +87,14 @@
                 />
 
                 <!-- Not implemented -->
-                <div v-else class="card-surface-muted p-5">
-                  <p class="type-body-strong">Not supported yet</p>
-                  <p class="mt-2 type-body">
+                <div v-else class="card-panel p-5">
+                  <p class="type-body-strong text-ink">Not supported yet</p>
+                  <p class="mt-2 type-body text-ink/70">
                     This focus action type isn’t wired yet:
                     <span class="type-meta">{{ actionType }}</span>
                   </p>
 
-                  <div class="mt-4">
+                  <div class="mt-5 flex justify-end">
                     <Button variant="ghost" @click="requestClose">Close</Button>
                   </div>
                 </div>
@@ -101,10 +102,10 @@
             </section>
 
             <!-- ============================================================
-                 FOOTER
+                 FOOTER (keep, just soften)
                ============================================================ -->
             <footer class="if-overlay__footer justify-between">
-              <p class="type-caption">
+              <p class="type-caption text-ink/60">
                 Focus is a router. Completion happens inside the workflow.
               </p>
 

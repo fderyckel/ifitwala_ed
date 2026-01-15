@@ -34,14 +34,15 @@
               </div>
 
               <div class="meeting-modal__header-actions">
-                <button
-                  type="button"
-                  class="if-overlay__icon-button"
-                  @click="emitClose"
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
+								<button
+									type="button"
+									class="if-overlay__icon-button"
+									@click="emitClose"
+									aria-label="Close"
+								>
+									<span class="sr-only">Close</span>
+									<span aria-hidden="true" class="text-ink/70">×</span>
+								</button>
               </div>
             </div>
 
@@ -80,9 +81,7 @@
 
                   <div v-if="log?.log_html" class="mt-5">
                     <div class="type-label mb-2">Log note</div>
-                    <div
-                      class="rounded-2xl border border-ink/10 bg-surface-soft p-4"
-                    >
+                    <div class="rounded-2xl border border-ink/10 bg-surface-soft p-4">
                       <div class="prose prose-sm max-w-none" v-html="safeHtml(log.log_html)" />
                     </div>
                   </div>
