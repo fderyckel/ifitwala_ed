@@ -19,6 +19,9 @@ declare module 'vue' {
     DateRangePills: typeof import('./src/components/filters/DateRangePills.vue')['default']
     DonutSplit: typeof import('./src/components/analytics/DonutSplit.vue')['default']
     FiltersBar: typeof import('./src/components/filters/FiltersBar.vue')['default']
+    FocusListCard: typeof import('./src/components/focus/FocusListCard.vue')['default']
+    FocusListItem: typeof import('./src/components/focus/FocusListItem.vue')['default']
+    FocusRouterOverlay: typeof import('./src/components/focus/FocusRouterOverlay.vue')['default']
     GenericListDialog: typeof import('./src/components/GenericListDialog.vue')['default']
     HeatmapChart: typeof import('./src/components/analytics/HeatmapChart.vue')['default']
     HeatmapDialog: typeof import('./src/components/HeatmapDialog.vue')['default']
@@ -42,6 +45,9 @@ declare module 'vue' {
     StackedBarChart: typeof import('./src/components/analytics/StackedBarChart.vue')['default']
     StatsTile: typeof import('./src/components/analytics/StatsTile.vue')['default']
     StudentCalendar: typeof import('./src/components/calendar/StudentCalendar.vue')['default']
+    StudentLogCreateOverlay: typeof import('./src/components/student/StudentLogCreateOverlay.vue')['default']
+    StudentLogFollowUpAction: typeof import('./src/components/focus/StudentLogFollowUpAction.vue')['default']
+    StudentLogFollowUpOverlay: typeof import('./src/components/student/StudentLogFollowUpOverlay.vue')['default']
     TagCloudBar: typeof import('./src/components/analytics/TagCloudBar.vue')['default']
   }
 }
