@@ -148,6 +148,14 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 		ignore_permissions=True,
 	)
 
+	frappe.logger("focus").info({
+		"user": user,
+		"todo_filters": todo_filters,
+		"todo_count": len(todo_rows),
+		"todo_refs": [r.get("reference_name") for r in todo_rows],
+	})
+
+
 	log_names_action = [r.get("reference_name") for r in todo_rows if r.get("reference_name")]
 	due_by_log = {
 		r.get("reference_name"): (str(r.get("date")) if r.get("date") else None)

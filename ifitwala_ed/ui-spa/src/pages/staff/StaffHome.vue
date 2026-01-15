@@ -352,12 +352,20 @@ const focusResource = createResource({
 	auto: false,
 	onSuccess(data: any) {
 		const payload = data && typeof data === 'object' && 'message' in data ? data.message : data
+
+		console.log('[Focus] response raw:', data)
+		console.log('[Focus] payload:', payload)
+		console.log('[Focus] payload length:', Array.isArray(payload) ? payload.length : 'not-array')
+
 		focusItems.value = Array.isArray(payload) ? (payload as FocusItem[]) : []
 		focusLoading.value = false
 	},
 	onError(err: any) {
 		focusLoading.value = false
 		console.error('[StaffHome] Failed to load focus list:', err)
+		console.error('[Focus] onError:', err)
+		console.error('[Focus] onError message:', err?.message)
+		console.error('[Focus] onError data:', err?.response?.data)
 	},
 })
 
