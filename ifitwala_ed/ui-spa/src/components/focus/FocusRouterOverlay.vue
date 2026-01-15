@@ -70,14 +70,14 @@
 
               <!-- Routed content -->
               <div v-else>
-                <StudentLogFollowUpAction
-                  v-if="isStudentLogFollowUp"
-                  :focus-item-id="focusItemId"
-                  :student-log="studentLogName"
-                  :mode="studentLogMode"
-                  @close="requestClose"
-                  @done="onWorkflowDone"
-                />
+								<StudentLogFollowUpAction
+									v-if="isStudentLogFollowUp && ctx"
+									:focus-item-id="resolvedFocusItemId"
+									:context="ctx"
+									@close="requestClose"
+									@done="onWorkflowDone"
+									@request-refresh="reload"
+								/>
 
                 <!-- Not implemented -->
                 <div v-else class="rounded-2xl border border-slate-200 bg-white p-5">
@@ -117,6 +117,38 @@ import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpActio
 
 type Mode = 'assignee' | 'author'
 
+type StudentLogRow = {
+  name: string
+  student?: string | null
+  student_name?: string | null
+  school?: string | null
+  log_type?: string | null
+  next_step?: string | null
+  follow_up_person?: string | null
+  follow_up_role?: string | null
+  date?: string | null
+  log_html?: string | null
+  follow_up_status?: string | null
+}
+
+type FollowUpRow = {
+  name: string
+  date?: string | null
+  follow_up_author?: string | null
+  follow_up_html?: string | null
+  docstatus: 0 | 1 | 2
+}
+
+type FocusContext = {
+  focus_item_id?: string | null
+  action_type?: string | null
+  reference_doctype: string
+  reference_name: string
+  mode: Mode
+  log: StudentLogRow
+  follow_ups: FollowUpRow[]
+}
+
 /**
  * Global event contract:
  * - Overlay emits this when a workflow is completed.
@@ -144,11 +176,19 @@ const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
 const loading = ref(false)
 const errorText = ref<string | null>(null)
 
-// resolved context (from server)
-const actionType = ref<string | null>(null)
-const referenceDoctype = ref<string | null>(null)
-const referenceName = ref<string | null>(null)
-const studentLogMode = ref<Mode>('assignee')
+// single source of truth: full context payload
+const ctx = ref<FocusContext | null>(null)
+
+// derived “routing bits” (header + switch)
+const actionType = computed(() => ctx.value?.action_type ?? null)
+const referenceDoctype = computed(() => ctx.value?.reference_doctype ?? null)
+const referenceName = computed(() => ctx.value?.reference_name ?? null)
+const studentLogMode = computed<Mode>(() => (ctx.value?.mode ?? 'assignee') as Mode)
+
+const resolvedFocusItemId = computed(() => {
+  // prefer the deterministic id returned from server, fallback to prop
+  return (ctx.value?.focus_item_id ?? props.focusItemId ?? null) as string | null
+})
 
 /* HEADER ------------------------------------------------------- */
 const headerTitle = computed(() => {
@@ -180,11 +220,6 @@ const isStudentLogFollowUp = computed(() => {
   )
 })
 
-const focusItemId = computed(() => props.focusItemId ?? null)
-const studentLogName = computed(() =>
-  referenceDoctype.value === 'Student Log' ? referenceName.value : null
-)
-
 /* API: focus.get_context -------------------------------------- */
 const ctxResource = createResource({
   url: 'ifitwala_ed.api.focus.get_focus_context',
@@ -194,18 +229,11 @@ const ctxResource = createResource({
     const payload = data && typeof data === 'object' && 'message' in data ? data.message : data
     loading.value = false
     errorText.value = null
-
-    actionType.value = payload?.action_type ?? null
-    referenceDoctype.value = payload?.reference_doctype ?? null
-    referenceName.value = payload?.reference_name ?? null
-
-    const mode = (payload?.mode ?? null) as Mode | null
-    if (mode === 'assignee' || mode === 'author') {
-      studentLogMode.value = mode
-    }
+    ctx.value = (payload ?? null) as FocusContext | null
   },
   onError(err: any) {
     loading.value = false
+    ctx.value = null
     const msg =
       err?.messages?.[0] ||
       err?.message ||
@@ -217,15 +245,13 @@ const ctxResource = createResource({
 function resetState() {
   loading.value = false
   errorText.value = null
-  actionType.value = null
-  referenceDoctype.value = null
-  referenceName.value = null
-  studentLogMode.value = 'assignee'
+  ctx.value = null
 }
 
 function reload() {
   errorText.value = null
   loading.value = true
+  ctx.value = null
 
   ctxResource.submit({
     focus_item_id: props.focusItemId ?? null,

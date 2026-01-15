@@ -32,7 +32,13 @@
           >
             Open in Desk
           </button>
-          <button type="button" class="btn btn-quiet" :disabled="loading || busy" @click="reload">
+
+          <button
+            type="button"
+            class="btn btn-quiet"
+            :disabled="busy"
+            @click="requestRefresh"
+          >
             Refresh
           </button>
         </div>
@@ -108,6 +114,9 @@
         <div class="type-meta text-muted mt-2">
           Keep it factual and actionable. No sensitive details beyond what’s necessary.
         </div>
+        <div v-if="draftText.trim().length > 0 && !canSubmit" class="type-meta text-muted mt-2">
+          Please write at least 5 characters.
+        </div>
       </div>
 
       <div class="mt-4 flex items-center justify-end gap-2">
@@ -126,30 +135,66 @@
     </div>
 
     <!-- ============================================================
-         MODE: AUTHOR (complete log)
+         MODE: AUTHOR (review outcome)
        ============================================================ -->
     <div v-else-if="modeState === 'author'" class="card-surface p-4">
-      <div class="type-body font-medium">Author actions</div>
+      <div class="type-body font-medium">Review outcome</div>
       <div class="type-meta text-muted mt-1">
-        When you’re satisfied, mark the Student Log as completed.
+        Decide whether to close the log, or reassign follow-up.
       </div>
 
-      <div class="mt-4 flex items-center justify-end gap-2">
-        <button type="button" class="btn btn-quiet" :disabled="busy" @click="emitClose">
-          Close
-        </button>
-        <button
-          type="button"
-          class="btn btn-success"
-          :disabled="busy || submittedOnce || !canComplete"
-          @click="completeParentLog"
+      <!-- Reassign -->
+      <div class="mt-4">
+        <div class="type-meta text-muted mb-1">Reassign to (User ID / email)</div>
+        <input
+          v-model="reassignTo"
+          class="if-input w-full"
+          type="text"
+          placeholder="e.g. teacher@school.org"
+          :disabled="busy"
+        />
+        <div
+          v-if="reassignTo.trim().length > 0 && reassignTo.trim().length < 3"
+          class="type-meta text-muted mt-2"
         >
-          {{ busy ? 'Completing…' : 'Complete log' }}
-        </button>
+          Please enter a valid user.
+        </div>
+
+        <div class="mt-3 flex items-center justify-end gap-2">
+          <button type="button" class="btn btn-quiet" :disabled="busy" @click="emitClose">
+            Close
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            :disabled="busy || submittedOnce || reassignTo.trim().length < 3"
+            @click="reassignFollowUp"
+          >
+            {{ busy ? 'Processing…' : 'Reassign follow-up' }}
+          </button>
+        </div>
       </div>
 
-      <div v-if="!canComplete" class="type-meta text-muted mt-2">
-        This is disabled if the log is already Completed.
+      <!-- Complete -->
+      <div class="mt-6 border-t border-ink/10 pt-4">
+        <div class="type-meta text-muted">
+          If you’re satisfied with the outcome, complete the log.
+        </div>
+
+        <div class="mt-3 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            class="btn btn-success"
+            :disabled="busy || submittedOnce || !canComplete"
+            @click="completeParentLog"
+          >
+            {{ busy ? 'Completing…' : 'Complete log' }}
+          </button>
+        </div>
+
+        <div v-if="!canComplete" class="type-meta text-muted mt-2">
+          This is disabled if the log is already Completed.
+        </div>
       </div>
     </div>
 
@@ -173,8 +218,13 @@ type Mode = 'assignee' | 'author'
 
 type StudentLogRow = {
   name: string
+  student?: string | null
   student_name?: string | null
+  school?: string | null
   log_type?: string | null
+  next_step?: string | null
+  follow_up_person?: string | null
+  follow_up_role?: string | null
   date?: string | null
   log_html?: string | null
   follow_up_status?: string | null
@@ -188,11 +238,7 @@ type FollowUpRow = {
   docstatus: 0 | 1 | 2
 }
 
-/**
- * Focus context returned by ifitwala_ed.api.focus.get_focus_context
- * - Server stays authoritative (mode, permissions, visibility).
- */
-type FocusContext = {
+export type FocusContext = {
   focus_item_id?: string | null
   action_type?: string | null
   reference_doctype: string
@@ -203,55 +249,40 @@ type FocusContext = {
 }
 
 const props = defineProps<{
-  /**
-   * Prefer focusItemId (deterministic ID). This is the stable Focus contract.
-   * studentLog is a fallback for debug / direct opening.
-   */
   focusItemId?: string | null
-  studentLog?: string | null
-
-  /**
-   * Mode is allowed as a hint, but the server can override it in get_context.
-   */
-  mode?: Mode
+  context: FocusContext
 }>()
 
 const emit = defineEmits<{
-  /**
-   * Tell FocusRouterOverlay to close itself.
-   * (FocusRouterOverlay owns the overlay; this is content-only.)
-   */
   (e: 'close'): void
-
-  /**
-   * Optional: tell parent that workflow likely completed, so parent can refresh focus list.
-   * (We keep it soft: parent decides what to do.)
-   */
   (e: 'done'): void
+  (e: 'request-refresh'): void
 }>()
 
 function emitClose() {
   emit('close')
 }
 
-const modeState = ref<Mode>(props.mode ?? 'assignee')
+function requestRefresh() {
+  emit('request-refresh')
+}
 
+/**
+ * Local view state (derived from props.context)
+ * - no auto-fetch here (router is source of truth)
+ */
+const modeState = ref<Mode>('assignee')
 const log = ref<StudentLogRow | null>(null)
 const followUps = ref<FollowUpRow[]>([])
 const loading = ref(false)
-const busy = ref(false)
 
-/**
- * Hard client-side idempotency guard per mount.
- * Prevents duplicate inserts due to UI glitches or double clicks.
- * Server must still enforce true uniqueness (Phase 2).
- */
+const busy = ref(false)
 const submittedOnce = ref(false)
 
 const draftText = ref('')
+const reassignTo = ref('')
 
-/* Derived ------------------------------------------------------ */
-const activeStudentLogName = computed(() => props.studentLog || log.value?.name || null)
+const activeStudentLogName = computed(() => log.value?.name || null)
 
 const canSubmit = computed(() => {
   return !!activeStudentLogName.value && (draftText.value || '').trim().length >= 5
@@ -262,127 +293,114 @@ const canComplete = computed(() => {
   return !!activeStudentLogName.value && s !== 'completed'
 })
 
-/* API ---------------------------------------------------------- */
-const getContext = createResource({
-  url: 'ifitwala_ed.api.focus.get_focus_context',
-  method: 'POST',
-  auto: false,
-})
-
-const insertDoc = createResource({
-  url: '/api/method/frappe.client.insert',
-  method: 'POST',
-  auto: false,
-})
-
-const submitDoc = createResource({
-  url: '/api/method/frappe.client.submit',
-  method: 'POST',
-  auto: false,
-})
-
-const completeLog = createResource({
-  url: '/api/method/ifitwala_ed.students.doctype.student_log.student_log.complete_log',
-  method: 'POST',
-  auto: false,
-})
-
-/* Load / refresh ------------------------------------------------
-   IMPORTANT:
-   - Do NOT auto-run at module evaluation time.
-   - Parent overlay controls when this content mounts; we reload when inputs change.
---------------------------------------------------------------- */
-async function reload() {
-  const fallbackName = activeStudentLogName.value
-  if (!props.focusItemId && !fallbackName) return
-
-  loading.value = true
-  try {
-    const payload = props.focusItemId
-      ? { focus_item_id: props.focusItemId }
-      : { reference_doctype: 'Student Log', reference_name: fallbackName }
-
-    const res = await getContext.submit(payload)
-    const ctx = ((res as any)?.message ?? res) as FocusContext
-
-    if (!ctx || !ctx.log) {
-      throw new Error('Missing focus context.')
-    }
-
-    log.value = ctx.log
-    followUps.value = Array.isArray(ctx.follow_ups) ? ctx.follow_ups : []
-
-    // Server is authoritative; mode prop is only a hint.
-    if (ctx.mode === 'assignee' || ctx.mode === 'author') {
-      modeState.value = ctx.mode
-    } else if (props.mode) {
-      modeState.value = props.mode
-    }
-  } catch (e: any) {
-    toast({
-      title: 'Could not load follow-up context',
-      text: e?.message || 'Please try again.',
-      icon: 'x',
-    })
-  } finally {
-    loading.value = false
-  }
+/**
+ * Sync from parent context.
+ * Parent may refresh context while overlay stays open.
+ */
+function applyContext(ctx: FocusContext | null) {
+  if (!ctx) return
+  log.value = ctx.log ?? null
+  followUps.value = Array.isArray(ctx.follow_ups) ? ctx.follow_ups : []
+  modeState.value = ctx.mode === 'author' || ctx.mode === 'assignee' ? ctx.mode : 'assignee'
 }
 
-/* Watchers ------------------------------------------------------
-   Keep it cheap:
-   - One combined watch for routing inputs.
-   - Reset local draft + guards on context changes.
---------------------------------------------------------------- */
 watch(
-  () => [props.focusItemId || null, props.studentLog || null, props.mode || null] as const,
-  () => {
+  () => props.context,
+  (next) => {
+    // reset action inputs on context change (prevents stale drafts)
     draftText.value = ''
+    reassignTo.value = ''
     submittedOnce.value = false
-    if (props.mode) modeState.value = props.mode
-    reload()
+    applyContext(next)
   },
-  { immediate: true }
+  { immediate: true, deep: false }
 )
 
-/* ACTIONS ------------------------------------------------------ */
+/* API ---------------------------------------------------------- */
+const submitFollowUpApi = createResource({
+  url: '/api/method/ifitwala_ed.api.focus.submit_student_log_follow_up',
+  method: 'POST',
+  auto: false,
+})
+
+const reviewOutcomeApi = createResource({
+  url: '/api/method/ifitwala_ed.api.focus.review_student_log_outcome',
+  method: 'POST',
+  auto: false,
+})
+
+/* Helpers ------------------------------------------------------ */
+function _newClientRequestId(prefix = 'req') {
+  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
+}
+
+function openInDesk(doctype: string, name: string) {
+  if (!doctype || !name) return
+  const route = String(doctype)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-]/g, '')
+    .replace(/\-+/g, '-')
+
+  window.open(`/app/${route}/${encodeURIComponent(name)}`, '_blank', 'noopener')
+}
+
+function trustedHtml(html: string) {
+  return html || ''
+}
+
+/* Guards ------------------------------------------------------- */
+function _requireFocusItemId(): string | null {
+  const id = (props.focusItemId || '').trim()
+  if (!id) {
+    toast({
+      title: 'Missing focus item',
+      text: 'Please close and reopen this item from the Focus list.',
+      icon: 'x',
+    })
+    return null
+  }
+  return id
+}
+
+/* Actions ------------------------------------------------------ */
 async function submitFollowUp() {
-  // Re-entry hard guards (single-fire)
   if (busy.value || submittedOnce.value) return
+  if (modeState.value !== 'assignee') return
   if (!canSubmit.value) return
 
-  const studentLogName = activeStudentLogName.value
-  if (!studentLogName) return
+  const focusItemId = _requireFocusItemId()
+  if (!focusItemId) return
+
+  const followUpText = (draftText.value || '').trim()
+  if (followUpText.length < 5) return
 
   busy.value = true
   submittedOnce.value = true
 
   try {
-    // 1) insert follow-up doc (draft)
-    const doc = {
-      doctype: 'Student Log Follow Up',
-      student_log: studentLogName,
-      follow_up: draftText.value,
-    }
+    const client_request_id = _newClientRequestId('fu')
 
-    const ins = await insertDoc.submit({ doc })
-    const insertedName = (ins as any)?.message?.name as string | undefined
-    if (!insertedName) {
-      throw new Error('Insert failed (no doc name returned).')
-    }
-
-    // 2) submit it so controller side effects run
-    await submitDoc.submit({
-      doc: { doctype: 'Student Log Follow Up', name: insertedName },
+    const res = await submitFollowUpApi.submit({
+      focus_item_id: focusItemId,
+      follow_up: followUpText,
+      client_request_id,
     })
 
-    toast({ title: 'Follow-up submitted', icon: 'check' })
+    const msg = ((res as any)?.message ?? res) as any
+    if (!msg?.ok) {
+      throw new Error(msg?.message || 'Submit failed.')
+    }
 
-    // Signal parent to refresh focus list + close router overlay
+    toast({
+      title: msg.idempotent ? 'Already submitted' : 'Follow-up submitted',
+      icon: 'check',
+    })
+
     emit('done')
     emitClose()
   } catch (e: any) {
-    // Allow retry on failure
     submittedOnce.value = false
     toast({
       title: 'Could not submit follow-up',
@@ -394,19 +412,89 @@ async function submitFollowUp() {
   }
 }
 
-async function completeParentLog() {
+async function reassignFollowUp() {
   if (busy.value || submittedOnce.value) return
-  if (!canComplete.value) return
+  if (modeState.value !== 'author') return
 
-  const studentLogName = activeStudentLogName.value
-  if (!studentLogName) return
+  const focusItemId = _requireFocusItemId()
+  if (!focusItemId) return
+
+  const target = (reassignTo.value || '').trim()
+  if (target.length < 3) {
+    toast({
+      title: 'Missing assignee',
+      text: 'Please enter a valid user (email / user id).',
+      icon: 'x',
+    })
+    return
+  }
 
   busy.value = true
   submittedOnce.value = true
 
   try {
-    await completeLog.submit({ log_name: studentLogName })
-    toast({ title: 'Log completed', icon: 'check' })
+    const client_request_id = _newClientRequestId('rvw')
+
+    const res = await reviewOutcomeApi.submit({
+      focus_item_id: focusItemId,
+      decision: 'reassign',
+      follow_up_person: target,
+      client_request_id,
+    })
+
+    const msg = ((res as any)?.message ?? res) as any
+    if (!msg?.ok) {
+      throw new Error(msg?.message || 'Reassign failed.')
+    }
+
+    toast({
+      title: msg.idempotent ? 'Already processed' : 'Reassigned',
+      icon: 'check',
+    })
+
+    emit('done')
+    emitClose()
+  } catch (e: any) {
+    submittedOnce.value = false
+    toast({
+      title: 'Could not reassign',
+      text: e?.message || 'Please try again.',
+      icon: 'x',
+    })
+  } finally {
+    busy.value = false
+  }
+}
+
+async function completeParentLog() {
+  if (busy.value || submittedOnce.value) return
+  if (modeState.value !== 'author') return
+  if (!canComplete.value) return
+
+  const focusItemId = _requireFocusItemId()
+  if (!focusItemId) return
+
+  busy.value = true
+  submittedOnce.value = true
+
+  try {
+    const client_request_id = _newClientRequestId('rvw')
+
+    const res = await reviewOutcomeApi.submit({
+      focus_item_id: focusItemId,
+      decision: 'complete',
+      client_request_id,
+    })
+
+    const msg = ((res as any)?.message ?? res) as any
+    if (!msg?.ok) {
+      throw new Error(msg?.message || 'Complete failed.')
+    }
+
+    toast({
+      title: msg.idempotent ? 'Already processed' : 'Log completed',
+      icon: 'check',
+    })
 
     emit('done')
     emitClose()
@@ -420,33 +508,5 @@ async function completeParentLog() {
   } finally {
     busy.value = false
   }
-}
-
-/* HELPERS ------------------------------------------------------ */
-function openInDesk(doctype: string, name: string) {
-  if (!doctype || !name) return
-
-  // Frappe Desk route uses kebab-case doctype, not URL-encoded label
-  // "Student Log" -> "student-log"
-  // "Student Log Follow Up" -> "student-log-follow-up"
-  const route = String(doctype)
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9\-]/g, '')
-    .replace(/\-+/g, '-')
-
-  // Leaving SPA intentionally; ok to open /app/...
-  window.open(`/app/${route}/${encodeURIComponent(name)}`, '_blank', 'noopener')
-}
-
-/**
- * IMPORTANT:
- * This is NOT a sanitizer.
- * We assume the server already stores sanitized HTML in log/follow_up fields.
- * If that assumption is not true, you MUST sanitize before rendering v-html.
- */
-function trustedHtml(html: string) {
-  return html || ''
 }
 </script>

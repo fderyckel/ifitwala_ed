@@ -82,7 +82,6 @@ def _badge_from_due_date(due_date: str | None) -> str | None:
 		# "Due soon" = within next 2 days (cheap, deterministic)
 		if frappe.utils.date_diff(due_date, today) in (1, 2):
 			return "Due soon"
-		# Keep calm: no "Overdue!" badge in v1
 	except Exception:
 		return None
 	return None
@@ -147,11 +146,6 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 	# ------------------------------------------------------------
 	# A) Assignee action items (ToDo -> Student Log)
 	# ------------------------------------------------------------
-	# Source of truth:
-	# - Open ToDo allocated to user
-	# - Linked Student Log requires follow-up
-	# - Not completed
-	# - No submitted follow-up yet
 	action_rows = frappe.db.sql(
 		"""
 		select
@@ -247,11 +241,6 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 	# ------------------------------------------------------------
 	# B) Author review items
 	# ------------------------------------------------------------
-	# Review item appears when:
-	# - log owner == current user
-	# - a submitted follow-up exists
-	# - log not completed
-	# - requires_follow_up = 1
 	review_rows = frappe.db.sql(
 		"""
 		select
@@ -313,7 +302,6 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 	return items[:limit]
 
 
-
 # ---------------------------------------------------------------------
 # Context endpoint (used by FocusRouterOverlay)
 # ---------------------------------------------------------------------
@@ -335,7 +323,6 @@ def get_focus_context(
 	- focus_item_id, if provided, must belong to frappe.session.user
 	- Doc-level read permission is always enforced
 	"""
-
 	# ------------------------------------------------------------
 	# 1) Resolve reference from focus_item_id (authoritative path)
 	# ------------------------------------------------------------
@@ -348,10 +335,7 @@ def get_focus_context(
 
 		# Hard guard: focus item must belong to current user
 		if parsed.get("user") != frappe.session.user:
-			frappe.throw(
-				_("Invalid focus item id (user mismatch)."),
-				frappe.PermissionError,
-			)
+			frappe.throw(_("Invalid focus item id (user mismatch)."), frappe.PermissionError)
 
 	# ------------------------------------------------------------
 	# 2) Validate reference
@@ -360,31 +344,18 @@ def get_focus_context(
 		frappe.throw(_("Missing reference information."), frappe.ValidationError)
 
 	if reference_doctype != STUDENT_LOG_DOCTYPE:
-		frappe.throw(
-			_("Only Student Log focus items are supported."),
-			frappe.ValidationError,
-		)
+		frappe.throw(_("Only Student Log focus items are supported."), frappe.ValidationError)
 
 	# ------------------------------------------------------------
-	# 3) Load document ONCE (used for permission + payload)
+	# 3) Load document ONCE (permission + payload)
 	# ------------------------------------------------------------
 	log_doc = frappe.get_doc(STUDENT_LOG_DOCTYPE, reference_name)
 
 	# ------------------------------------------------------------
 	# 4) Enforce doc-level permission (authoritative)
 	# ------------------------------------------------------------
-	# NOTE:
-	# - Do NOT use docname=... (not portable across Frappe versions)
-	# - doc=... is the documented, stable contract
-	if not frappe.has_permission(
-		STUDENT_LOG_DOCTYPE,
-		ptype="read",
-		doc=log_doc,
-	):
-		frappe.throw(
-			_("You are not permitted to view this log."),
-			frappe.PermissionError,
-		)
+	if not frappe.has_permission(STUDENT_LOG_DOCTYPE, ptype="read", doc=log_doc):
+		frappe.throw(_("You are not permitted to view this log."), frappe.PermissionError)
 
 	# ------------------------------------------------------------
 	# 5) Resolve workflow mode (author vs assignee)
@@ -392,18 +363,12 @@ def get_focus_context(
 	mode = _resolve_mode(action_type, log_doc)
 
 	# ------------------------------------------------------------
-	# 6) Fetch recent follow-ups (bounded, read-only)
+	# 6) Fetch recent follow-ups (bounded)
 	# ------------------------------------------------------------
 	follow_up_rows = frappe.get_all(
 		FOLLOW_UP_DOCTYPE,
 		filters={"student_log": reference_name},
-		fields=[
-			"name",
-			"date",
-			"follow_up_author",
-			"follow_up",
-			"docstatus",
-		],
+		fields=["name", "date", "follow_up_author", "follow_up", "docstatus"],
 		order_by="modified desc",
 		limit_page_length=20,
 	)
@@ -419,9 +384,6 @@ def get_focus_context(
 		for row in follow_up_rows
 	]
 
-	# ------------------------------------------------------------
-	# 7) Return minimal, explicit context payload
-	# ------------------------------------------------------------
 	return {
 		"focus_item_id": focus_item_id,
 		"action_type": action_type,
@@ -430,11 +392,273 @@ def get_focus_context(
 		"mode": mode,
 		"log": {
 			"name": log_doc.name,
+			"student": log_doc.student,
 			"student_name": log_doc.student_name,
+			"school": log_doc.school,
 			"log_type": log_doc.log_type,
+			"next_step": log_doc.next_step,
+			"follow_up_person": log_doc.follow_up_person,
+			"follow_up_role": log_doc.follow_up_role,
 			"date": str(log_doc.date) if log_doc.date else None,
 			"follow_up_status": log_doc.follow_up_status,
 			"log_html": log_doc.log or "",
 		},
 		"follow_ups": follow_ups,
 	}
+
+
+# ---------------------------------------------------------------------
+# Workflow action endpoints (Vue should call these, not frappe.client.*)
+# ---------------------------------------------------------------------
+def _require_login() -> str:
+	user = frappe.session.user
+	if not user or user == "Guest":
+		frappe.throw(_("You must be logged in."), frappe.PermissionError)
+	return user
+
+
+def _cache():
+	return frappe.cache()
+
+
+def _idempotency_key(user: str, focus_item_id: str, client_request_id: str, suffix: str | None = None) -> str:
+	sfx = f":{suffix}" if suffix else ""
+	return f"ifitwala_ed:focus:student_log:{user}:{focus_item_id}:{client_request_id}{sfx}"
+
+def _lock_key(user: str, focus_item_id: str, suffix: str | None = None) -> str:
+	sfx = f":{suffix}" if suffix else ""
+	return f"ifitwala_ed:lock:focus:student_log:{user}:{focus_item_id}{sfx}"
+
+
+@frappe.whitelist()
+def submit_student_log_follow_up(
+	focus_item_id: str,
+	follow_up: str,
+	client_request_id: str | None = None,
+):
+	"""
+	Submit a Student Log Follow Up as a Focus workflow action.
+
+	Client (Vue) sends:
+	- focus_item_id
+	- follow_up
+	- client_request_id (optional but recommended)
+
+	Server guarantees:
+	- focus_item_id belongs to session user
+	- action_type is the submit action
+	- doc-level permission enforced on the Student Log
+	- log not Completed
+	- idempotent against rapid double submits
+	- creates + submits Student Log Follow Up (so your controller side effects run)
+	"""
+	user = _require_login()
+
+	focus_item_id = (focus_item_id or "").strip()
+	follow_up = (follow_up or "").strip()
+	client_request_id = (client_request_id or "").strip() or None
+
+	if not focus_item_id:
+		frappe.throw(_("Missing focus_item_id."))
+	if not follow_up or len(follow_up) < 5:
+		frappe.throw(_("Follow-up text is too short."))
+
+	parsed = _parse_focus_item_id(focus_item_id)
+
+	# Hard guard: focus item must belong to current user
+	if parsed.get("user") != user:
+		frappe.throw(_("Invalid focus item id (user mismatch)."), frappe.PermissionError)
+
+	# Hard guard: must be Student Log submit action
+	if parsed.get("reference_doctype") != STUDENT_LOG_DOCTYPE:
+		frappe.throw(_("Invalid focus item reference."), frappe.ValidationError)
+
+	action_type = parsed.get("action_type")
+	if action_type != "student_log.follow_up.act.submit":
+		frappe.throw(_("This focus item is not a follow-up submission action."), frappe.PermissionError)
+
+	log_name = parsed.get("reference_name")
+	if not log_name:
+		frappe.throw(_("Invalid focus item reference name."), frappe.ValidationError)
+
+	# Load log ONCE (permission + state)
+	log_doc = frappe.get_doc(STUDENT_LOG_DOCTYPE, log_name)
+
+	# Doc-level permission (authoritative)
+	if not frappe.has_permission(STUDENT_LOG_DOCTYPE, ptype="read", doc=log_doc):
+		frappe.throw(_("You are not permitted to view this log."), frappe.PermissionError)
+
+	# State guard
+	if (log_doc.follow_up_status or "").lower() == "completed":
+		frappe.throw(_("This Student Log is already <b>Completed</b>."))
+
+	cache = _cache()
+
+	# Idempotency (schema-free)
+	if client_request_id:
+		key = _idempotency_key(user, focus_item_id, client_request_id, "submit_follow_up")
+		existing = cache.get_value(key)
+		if existing:
+			return {
+				"ok": True,
+				"idempotent": True,
+				"status": "already_processed",
+				"log_name": log_name,
+				"follow_up_name": existing,
+			}
+
+	lock_name = _lock_key(user, focus_item_id, "submit_follow_up")
+	with cache.lock(lock_name, timeout=10):
+		# re-check inside lock
+		if client_request_id:
+			key = _idempotency_key(user, focus_item_id, client_request_id, "submit_follow_up")
+			existing = cache.get_value(key)
+			if existing:
+				return {
+					"ok": True,
+					"idempotent": True,
+					"status": "already_processed",
+					"log_name": log_name,
+					"follow_up_name": existing,
+				}
+
+		# Create + submit follow-up: triggers your StudentLogFollowUp controller side effects
+		fu = frappe.get_doc(
+			{
+				"doctype": FOLLOW_UP_DOCTYPE,
+				"student_log": log_name,
+				"follow_up": follow_up,
+			}
+		)
+		fu.insert(ignore_permissions=False)
+		fu.submit()
+
+		if client_request_id:
+			cache.set_value(key, fu.name, expires_in_sec=60 * 10)
+
+		return {
+			"ok": True,
+			"idempotent": False,
+			"status": "created",
+			"log_name": log_name,
+			"follow_up_name": fu.name,
+		}
+
+
+@frappe.whitelist()
+def review_student_log_outcome(
+	focus_item_id: str,
+	decision: str,
+	follow_up_person: str | None = None,
+	client_request_id: str | None = None,
+):
+	"""
+	Author review action for "student_log.follow_up.review.decide".
+
+	decisions:
+	- "complete"  -> completes the parent log
+	- "reassign"  -> reassigns follow_up_person (and ToDo) via Student Log controller
+
+	Why focus_item_id:
+	- user-bound, deterministic
+	- prevents spoofing log_name/action_type
+	"""
+	user = _require_login()
+
+	focus_item_id = (focus_item_id or "").strip()
+	decision = (decision or "").strip().lower()
+	follow_up_person = (follow_up_person or "").strip() or None
+	client_request_id = (client_request_id or "").strip() or None
+
+	if not focus_item_id:
+		frappe.throw(_("Missing focus_item_id."))
+
+	if decision not in ("complete", "reassign"):
+		frappe.throw(_("Invalid decision."), frappe.ValidationError)
+
+	parsed = _parse_focus_item_id(focus_item_id)
+
+	# Hard guard: focus item must belong to current user
+	if parsed.get("user") != user:
+		frappe.throw(_("Invalid focus item id (user mismatch)."), frappe.PermissionError)
+
+	# Hard guard: must be Student Log review action
+	if parsed.get("reference_doctype") != STUDENT_LOG_DOCTYPE:
+		frappe.throw(_("Invalid focus item reference."), frappe.ValidationError)
+
+	action_type = parsed.get("action_type")
+	if action_type != "student_log.follow_up.review.decide":
+		frappe.throw(_("This focus item is not a review action."), frappe.PermissionError)
+
+	log_name = parsed.get("reference_name")
+	if not log_name:
+		frappe.throw(_("Invalid focus item reference name."), frappe.ValidationError)
+
+	# Load log ONCE (permission + state)
+	log_doc = frappe.get_doc(STUDENT_LOG_DOCTYPE, log_name)
+
+	# Doc-level permission (authoritative)
+	if not frappe.has_permission(STUDENT_LOG_DOCTYPE, ptype="read", doc=log_doc):
+		frappe.throw(_("You are not permitted to view this log."), frappe.PermissionError)
+
+	# Strong semantic guard: review outcome is for log owner
+	if (log_doc.owner or "") != user:
+		frappe.throw(_("Only the log author can review the outcome."), frappe.PermissionError)
+
+	# State guard
+	if (log_doc.follow_up_status or "").lower() == "completed":
+		frappe.throw(_("This Student Log is already <b>Completed</b>."))
+
+	if decision == "reassign" and not follow_up_person:
+		frappe.throw(_("Missing follow_up_person."), frappe.ValidationError)
+
+	cache = _cache()
+
+	# Idempotency
+	if client_request_id:
+		key = _idempotency_key(user, focus_item_id, client_request_id, f"review_{decision}")
+		existing = cache.get_value(key)
+		if existing:
+			return {
+				"ok": True,
+				"idempotent": True,
+				"status": "already_processed",
+				"log_name": log_name,
+				"result": existing,
+			}
+
+	lock_name = _lock_key(user, focus_item_id, f"review_{decision}")
+	with cache.lock(lock_name, timeout=10):
+		# re-check inside lock
+		if client_request_id:
+			key = _idempotency_key(user, focus_item_id, client_request_id, f"review_{decision}")
+			existing = cache.get_value(key)
+			if existing:
+				return {
+					"ok": True,
+					"idempotent": True,
+					"status": "already_processed",
+					"log_name": log_name,
+					"result": existing,
+				}
+
+		# Delegate to Student Log controller APIs (authoritative ToDo handling)
+		from ifitwala_ed.students.doctype.student_log.student_log import complete_log, assign_follow_up
+
+		if decision == "complete":
+			complete_log(log_name=log_name)
+			result = "completed"
+		else:
+			assign_follow_up(log_name=log_name, user=follow_up_person)
+			result = f"reassigned:{follow_up_person}"
+
+		if client_request_id:
+			cache.set_value(key, result, expires_in_sec=60 * 10)
+
+		return {
+			"ok": True,
+			"idempotent": False,
+			"status": "processed",
+			"log_name": log_name,
+			"result": result,
+		}

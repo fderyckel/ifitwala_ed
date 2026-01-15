@@ -486,12 +486,12 @@ If unsure:
 > **A correct pause beats a confident regression.**
 
 
-Never swallow framework exceptions in permission or visibility logic.
+### Never swallow framework exceptions in permission or visibility logic.
 Framework APIs must be called with documented signatures only.
 Any silent failure in permission checks is a bug.
 
 
-✅ Lesson: UI must be treated as “best effort”; invariants belong on the server
+### Lesson: UI must be treated as “best effort”; invariants belong on the server
 
 What happened is the classic trap:
 
@@ -507,6 +507,18 @@ Client-side guard = good UX.
 Server-side idempotency/uniqueness = real correctness.
 
 You’ve implemented the UX guard. Now you must add the server invariant.
+
+### Never let the client assemble a workflow out of generic CRUD calls.
+
+If an action has meaning (submit, follow up, decide, close), it deserves:
+
+a named endpoint
+
+a single transaction
+
+server-owned idempotency
+
+You just moved this feature from “it works” to production-grade.
 
 ---
 
