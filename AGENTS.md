@@ -319,6 +319,23 @@ Assume evaluation order issues before assuming logic or typing errors.
 
 ---
 
+### 7.4 Historically-Derived Invariants (Read Carefully)
+
+Some rules exist **not by design preference**, but because the team has already paid the cost of violating them.
+
+These include (non-exhaustive):
+
+* SPA payload shape rules
+* HeadlessUI overlay constraints
+* Tailwind CSS v4 single-entry discipline
+* Vue `<script setup>` declaration order rules
+
+Agents **MUST** treat these as **hard constraints**, even if they appear “over-strict” or redundant.
+
+They are locked because they prevent **silent failures** that are expensive to debug post-build and difficult to detect during review.
+
+---
+
 ## 8. Tailwind, Styling & Typography
 
 ### 8.1 Styling Discipline

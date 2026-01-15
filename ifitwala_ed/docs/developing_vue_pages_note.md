@@ -171,6 +171,28 @@ Rules:
 
 ---
 
+### 2.5 Tailwind v4 Silent Failure Class
+
+Tailwind CSS v4 failures are often **non-fatal** but highly destructive.
+
+**Common silent failures:**
+
+* Importing Tailwind more than once
+* Importing Tailwind inside components
+* Layer duplication across bundles
+
+**Effects:**
+
+* CSS size inflation
+* Order-dependent utility behavior
+* Styling bugs that are impossible to reason about
+
+**Rule:**
+
+> If Tailwind is imported anywhere except the single entrypoint, it is a **defect**, even if “it works”.
+
+---
+
 ## 3. Overlay Architecture (Critical)
 
 ### 3.1 One overlay system
@@ -189,6 +211,27 @@ Rules:
 
 ---
 
+### 3.1.1 Why frappe-ui Dialogs Are Forbidden
+
+`frappe-ui` dialogs:
+
+* manage their own focus
+* manage their own z-index
+* are unaware of `OverlayHost`
+* conflict with HeadlessUI focus traps
+
+They may appear to work in isolation, but they break:
+
+* keyboard navigation
+* stacked overlays
+* accessibility guarantees
+
+**Therefore:**
+
+> Using `frappe-ui` dialogs inside the SPA is not a shortcut — it is **technical debt**.
+
+---
+
 ### 3.2 Overlay responsibilities
 
 An overlay:
@@ -204,6 +247,33 @@ An overlay **never**:
 * infers assignment
 * mutates unrelated state
 * implements workflow rules
+
+---
+
+### 3.3 HeadlessUI Failure Modes (Non-Obvious but Critical)
+
+HeadlessUI `Dialog` components can fail **silently** under the following conditions:
+
+* No focusable element exists inside the `DialogPanel`
+* `open` becomes `true` before required props are available
+* Overlay is rendered but immediately inerted by `OverlayHost` layering
+* Dialog is mounted outside `OverlayHost`
+
+**Symptoms:**
+
+* Empty overlay
+* No Vue runtime error
+* Possibly a console warning about focus trapping (often missed)
+
+**Debug protocol (in order):**
+
+1. Verify the overlay is rendered via `OverlayHost`
+2. Verify **at least one focusable element** exists inside the dialog
+3. Verify `open` is controlled only by overlay stack state
+4. Verify required props are resolved **before** `open = true`
+
+**Do not debug styling first.**
+This is almost never a CSS issue.
 
 ---
 
@@ -251,6 +321,28 @@ If the UI needs data → the endpoint must return it **already enriched**.
 
 ---
 
+### **4.4 Server Contract Debug Checklist (Mandatory Before Client Changes)**
+
+When a POST request fails or behaves unexpectedly:
+
+1. Inspect **Network → Response Preview**
+2. Check explicitly for:
+
+   * `"Unexpected keys"`
+   * `"cmd"`
+   * missing required fields
+3. Compare payload keys **exactly** against the server method signature
+4. Confirm whether the server expects:
+
+   * `payload`
+   * named keyword arguments
+   * both (`payload=None, **kwargs`)
+5. Fix the **server contract first**, not the UI, unless proven otherwise
+
+Never “patch around” server validation from the SPA.
+
+---
+
 ## 5. State Management & Reactivity
 
 ### 5.1 No hidden inference
@@ -274,6 +366,32 @@ Rules:
 * ❌ No console.log inside watch arguments
 * ✅ Prefer computed values
 * ✅ Prefer explicit lifecycle hooks
+
+---
+
+### **5.3 TDZ Debug Playbook (Vue `<script setup>`)**
+
+If you encounter errors such as:
+
+```
+Cannot access 'x' before initialization
+```
+
+Assume **Temporal Dead Zone (TDZ)**, not logic failure.
+
+**Checklist:**
+
+1. Look for `watch(..., { immediate: true })`
+2. Identify refs or computed values referenced inside the watcher
+3. Ensure **all referenced symbols are declared above the watcher**
+4. Prefer watching `props` directly
+5. Move side effects to explicit lifecycle hooks if possible
+
+**Rules:**
+
+* Do **not** rename variables
+* Do **not** refactor logic
+* Fix declaration order first
 
 ---
 
@@ -392,3 +510,4 @@ The SPA is calm, thin, deterministic, and obedient to server truth.
 That discipline is what makes Ifitwala scalable, teachable, and safe to extend.
 
 ---
+

@@ -267,304 +267,219 @@ import type { FocusItem } from '@/types/focusItem'
 
 /* USER --------------------------------------------------------- */
 type StaffHomeHeader = {
-  user: string
-  first_name?: string | null
-  full_name?: string | null
+	user: string
+	first_name?: string | null
+	full_name?: string | null
 }
 
 const userDoc = ref<StaffHomeHeader | null>(null)
 
 const headerResource = createResource({
-  url: 'ifitwala_ed.api.portal.get_staff_home_header',
-  method: 'POST',
-  auto: false,
-  onSuccess(data: any) {
-    const payload = data && typeof data === 'object' && 'message' in data ? data.message : data
-    userDoc.value = (payload || null) as StaffHomeHeader | null
-  },
-  onError(err: any) {
-    console.error('[StaffHome] Failed to load header:', err)
-  },
+	url: 'ifitwala_ed.api.portal.get_staff_home_header',
+	method: 'POST',
+	auto: false,
+	onSuccess(data: any) {
+		const payload = data && typeof data === 'object' && 'message' in data ? data.message : data
+		userDoc.value = (payload || null) as StaffHomeHeader | null
+	},
+	onError(err: any) {
+		console.error('[StaffHome] Failed to load header:', err)
+	},
 })
 
 onMounted(async () => {
-  await headerResource.submit({})
+	await headerResource.submit({})
 })
 
 const firstName = computed(() => {
-  const doc = userDoc.value
-  if (!doc) return 'Staff'
-  if (doc.first_name) return doc.first_name
-  if (doc.full_name) return doc.full_name.split(' ')[0]
-  return 'Staff'
+	const doc = userDoc.value
+	if (!doc) return 'Staff'
+	if (doc.first_name) return doc.first_name
+	if (doc.full_name) return doc.full_name.split(' ')[0]
+	return 'Staff'
 })
 
 /* QUICK ACTIONS ------------------------------------------------ */
 const quickActions = [
-  {
-    label: 'Update Gradebook',
-    caption: 'Capture evidence, notes, and marks',
-    icon: 'edit-3',
-    to: { name: 'staff-gradebook' },
-  },
+	{
+		label: 'Update Gradebook',
+		caption: 'Capture evidence, notes, and marks',
+		icon: 'edit-3',
+		to: { name: 'staff-gradebook' },
+	},
 ]
 
 /* FOCUS -------------------------------------------------------- */
+const overlay = useOverlayStack()
 const focusLoading = ref(false)
 
+/**
+ * Phase 1: mock focus items only.
+ * Replace this array with focus.list() when the backend exists.
+ *
+ * IMPORTANT:
+ * - StaffHome does NOT interpret action_type.
+ * - StaffHome routes everything to FocusRouterOverlay via focusItemId.
+ */
 const focusItems = ref<FocusItem[]>([
-\t{
-\t\tid: 'student_log::Student Log::SLOG-202601-0001::student_log.follow_up.act.submit::mock@local',
-\t\tkind: 'action',
-\t\ttitle: 'Follow up: Parent contact needed',
-\t\tsubtitle: 'Nina K. • Next step: Call guardian (wellbeing)',
-\t\tbadge: 'Today',
-\t\tpriority: 90,
-\t\tdue_date: '2026-01-15',
-\t\taction_type: 'student_log.follow_up.act.submit',
-\t\treference_doctype: 'Student Log',
-\t\treference_name: 'SLOG-202601-0001',
-\t\tpayload: { student_name: 'Nina K.' },
-\t\tpermissions: { can_open: true },
-\t},
-\t{
-\t\tid: 'student_log::Student Log::SLOG-202601-0002::student_log.follow_up.act.submit::mock@local',
-\t\tkind: 'action',
-\t\ttitle: 'Follow up: Check-in after incident',
-\t\tsubtitle: 'Park J. • Next step: Short check-in + note',
-\t\tbadge: 'Due soon',
-\t\tpriority: 80,
-\t\tdue_date: '2026-01-16',
-\t\taction_type: 'student_log.follow_up.act.submit',
-\t\treference_doctype: 'Student Log',
-\t\treference_name: 'SLOG-202601-0002',
-\t\tpayload: { student_name: 'Park J.' },
-\t\tpermissions: { can_open: true },
-\t},
-\t{
-\t\tid: 'student_log::Student Log::SLOG-202601-0003::student_log.follow_up.act.submit::mock@local',
-\t\tkind: 'action',
-\t\ttitle: 'Follow up: Academic support conversation',
-\t\tsubtitle: 'Somchai P. • Next step: Meet student briefly',
-\t\tbadge: null,
-\t\tpriority: 60,
-\t\tdue_date: null,
-\t\taction_type: 'student_log.follow_up.act.submit',
-\t\treference_doctype: 'Student Log',
-\t\treference_name: 'SLOG-202601-0003',
-\t\tpayload: { student_name: 'Somchai P.' },
-\t\tpermissions: { can_open: true },
-\t},
-\t{
-\t\tid: 'student_log::Student Log::SLOG-202601-0004::student_log.follow_up.review.decide::mock@local',
-\t\tkind: 'review',
-\t\ttitle: 'Review outcome: Follow-up submitted',
-\t\tsubtitle: 'Mina L. • Decide: close or continue follow-up',
-\t\tbadge: 'Today',
-\t\tpriority: 70,
-\t\tdue_date: '2026-01-15',
-\t\taction_type: 'student_log.follow_up.review.decide',
-\t\treference_doctype: 'Student Log',
-\t\treference_name: 'SLOG-202601-0004',
-\t\tpayload: { student_name: 'Mina L.' },
-\t\tpermissions: { can_open: true },
-\t},
-\t{
-\t\tid: 'student_log::Student Log::SLOG-202601-0005::student_log.follow_up.review.decide::mock@local',
-\t\tkind: 'review',
-\t\ttitle: 'Review outcome: Waiting your decision',
-\t\tsubtitle: 'Arisa T. • Follow-up completed by assignee',
-\t\tbadge: 'Due soon',
-\t\tpriority: 65,
-\t\tdue_date: '2026-01-16',
-\t\taction_type: 'student_log.follow_up.review.decide',
-\t\treference_doctype: 'Student Log',
-\t\treference_name: 'SLOG-202601-0005',
-\t\tpayload: { student_name: 'Arisa T.' },
-\t\tpermissions: { can_open: true },
-\t},
-\t{
-\t\tid: 'inquiry::Inquiry::INQ-202601-0001::inquiry.follow_up.act.first_contact::mock@local',
-\t\tkind: 'action',
-\t\ttitle: 'Inquiry: First contact',
-\t\tsubtitle: 'Family: Kittipong • New inquiry needs first reply',
-\t\tbadge: 'Due soon',
-\t\tpriority: 50,
-\t\tdue_date: '2026-01-16',
-\t\taction_type: 'inquiry.follow_up.act.first_contact',
-\t\treference_doctype: 'Inquiry',
-\t\treference_name: 'INQ-202601-0001',
-\t\tpayload: { family_name: 'Kittipong' },
-\t\tpermissions: { can_open: true },
-\t},
+	{
+		id: 'student_log::Student Log::SLOG-202601-0001::student_log.follow_up.act.submit::admin@ifitwala.local',
+		kind: 'action',
+		title: 'Follow up: Parent contact needed',
+		subtitle: 'Nina K. • Next step: Call guardian (wellbeing)',
+		badge: 'Today',
+		priority: 90,
+		due_date: '2026-01-15',
+		action_type: 'student_log.follow_up.act.submit',
+		reference_doctype: 'Student Log',
+		reference_name: 'SLOG-202601-0001',
+		payload: { student_name: 'Nina K.' },
+		permissions: { can_open: true },
+	},
+	{
+		id: 'student_log::Student Log::SLOG-202601-0004::student_log.follow_up.review.decide::admin@ifitwala.local',
+		kind: 'review',
+		title: 'Review outcome: Follow-up submitted',
+		subtitle: 'Mina L. • Decide: close or continue follow-up',
+		badge: 'Today',
+		priority: 70,
+		due_date: '2026-01-15',
+		action_type: 'student_log.follow_up.review.decide',
+		reference_doctype: 'Student Log',
+		reference_name: 'SLOG-202601-0004',
+		payload: { student_name: 'Mina L.' },
+		permissions: { can_open: true },
+	},
 ])
+
+function openFocusItem(item: FocusItem) {
+	if (item.permissions?.can_open === false) return
+
+	overlay.open('focus-router', {
+		focusItemId: item.id,
+	})
+}
 
 /* ANALYTICS ---------------------------------------------------- */
 const analyticsQuickLinks = [
-  {
-    label: 'Annoucement Archive',
-    caption: 'Check all current and past announcements',
-    icon: 'activity',
-    to: '/staff/announcements',
-    badge: 'Hot',
-  },
-  {
-    label: 'Room Utilization',
-    caption: 'Which rooms are free, over or under-used this week',
-    icon: 'clock',
-    to: '/staff/room-utilization',
-  },
+	{
+		label: 'Annoucement Archive',
+		caption: 'Check all current and past announcements',
+		icon: 'activity',
+		to: '/staff/announcements',
+		badge: 'Hot',
+	},
+	{
+		label: 'Room Utilization',
+		caption: 'Which rooms are free, over or under-used this week',
+		icon: 'clock',
+		to: '/staff/room-utilization',
+	},
 ]
 
 const analyticsCategories = [
 	{
-    title: 'Enrollment & Census',
-    description: 'Student body profile, admissions, and retention.',
-    icon: 'trending-up',
-    links: [
-      { label: 'Demographics Overview', to: { name: 'student-demographic-analytics' } },
-      { label: 'Enrollment Analytics', to: { name: 'StaffEnrollmentAnalytics' } },
-    ],
-  },
-  {
-    title: 'Operations & Attendance',
-    description: 'Coverage, punctuality, and daily health of the timetable.',
-    icon: 'check-square',
-    links: [
-      { label: 'Daily Attendance', to: '/analytics/operations/daily-attendance' },
-      { label: 'Absence Trends', to: '/analytics/operations/absence-trends' },
-      { label: 'Late Arrivals', to: '/analytics/operations/late-arrivals' },
-      { label: 'Duty Coverage', to: '/analytics/operations/duty-coverage' },
-    ],
-  },
-  {
-    title: 'Academic Performance',
-    description: 'Grades, assessments, and intervention impact.',
-    icon: 'book',
-    links: [
+		title: 'Enrollment & Census',
+		description: 'Student body profile, admissions, and retention.',
+		icon: 'trending-up',
+		links: [
+			{ label: 'Demographics Overview', to: { name: 'student-demographic-analytics' } },
+			{ label: 'Enrollment Analytics', to: { name: 'StaffEnrollmentAnalytics' } },
+		],
+	},
+	{
+		title: 'Operations & Attendance',
+		description: 'Coverage, punctuality, and daily health of the timetable.',
+		icon: 'check-square',
+		links: [
+			{ label: 'Daily Attendance', to: '/analytics/operations/daily-attendance' },
+			{ label: 'Absence Trends', to: '/analytics/operations/absence-trends' },
+			{ label: 'Late Arrivals', to: '/analytics/operations/late-arrivals' },
+			{ label: 'Duty Coverage', to: '/analytics/operations/duty-coverage' },
+		],
+	},
+	{
+		title: 'Academic Performance',
+		description: 'Grades, assessments, and intervention impact.',
+		icon: 'book',
+		links: [
 			{ label: 'Student Overview', to: { name: 'staff-student-overview' } },
-      { label: 'Assessment Trends', to: '/analytics/academic/assessment-trends' },
-    ],
-  },
-  {
-    title: 'Student Wellbeing',
-    description: 'Referrals, caseloads, incidents, and follow-ups.',
-    icon: 'heart',
-    links: [
-      { label: 'Student Log Analytics', to: { name: 'staff-student-log-analytics' } },
-      { label: 'Counseling Caseload', to: '/analytics/wellbeing/counseling-caseload' },
-      { label: 'Referral Outcomes', to: '/analytics/wellbeing/referral-outcomes' },
-      { label: 'Support Plans', to: '/analytics/wellbeing/support-plans' },
-    ],
-  },
-  {
-    title: 'Staff & HR',
-    description: 'Availability, development, and evaluations.',
-    icon: 'users',
-    links: [
-      { label: 'Organizational Chart', to: '/analytics/staff/staffing-levels' },
-      { label: 'Leave Balance', to: '/analytics/staff/leave-balance' },
-      { label: 'Training Progress', to: '/analytics/staff/training-progress' },
-      { label: 'Evaluations Summary', to: '/analytics/staff/evaluations-summary' },
-    ],
-  },
-  {
-    title: 'Scheduling & Capacity',
-    description: 'Timetable load, rooms, and transport fill.',
-    icon: 'calendar',
-    links: [
-      { label: 'Timetable Utilization', to: '../app/schedule_calendar' },
-      { label: 'Room Occupancy', to: { name: 'staff-room-utilization' } },
-      { label: 'Bus & Route Load', to: '/analytics/scheduling/bus-route-load' },
-      { label: 'Exam Schedules', to: '/analytics/scheduling/exam-schedules' },
-    ],
-  },
-  {
-    title: 'Admission & Engagement',
-    description: 'Family engagement, events, and surveys.',
-    icon: 'message-circle',
-    links: [
-      { label: 'Inquiries Analytics', to: { name: 'staff-inquiry-analytics' } },
-      { label: 'Survey Results', to: '/analytics/engagement/survey-results' },
-    ],
-  },
-  {
-    title: 'Compliance & Risk',
-    description: 'Safeguarding signals and audit readiness.',
-    icon: 'shield',
-    links: [
-      { label: 'Audit Readiness', to: '/analytics/compliance/audit-readiness' },
-      { label: 'Policy Acknowledgments', to: '/analytics/compliance/policy-acknowledgments' },
-    ],
-  },
+			{ label: 'Assessment Trends', to: '/analytics/academic/assessment-trends' },
+		],
+	},
+	{
+		title: 'Student Wellbeing',
+		description: 'Referrals, caseloads, incidents, and follow-ups.',
+		icon: 'heart',
+		links: [
+			{ label: 'Student Log Analytics', to: { name: 'staff-student-log-analytics' } },
+			{ label: 'Counseling Caseload', to: '/analytics/wellbeing/counseling-caseload' },
+			{ label: 'Referral Outcomes', to: '/analytics/wellbeing/referral-outcomes' },
+			{ label: 'Support Plans', to: '/analytics/wellbeing/support-plans' },
+		],
+	},
+	{
+		title: 'Staff & HR',
+		description: 'Availability, development, and evaluations.',
+		icon: 'users',
+		links: [
+			{ label: 'Organizational Chart', to: '/analytics/staff/staffing-levels' },
+			{ label: 'Leave Balance', to: '/analytics/staff/leave-balance' },
+			{ label: 'Training Progress', to: '/analytics/staff/training-progress' },
+			{ label: 'Evaluations Summary', to: '/analytics/staff/evaluations-summary' },
+		],
+	},
+	{
+		title: 'Scheduling & Capacity',
+		description: 'Timetable load, rooms, and transport fill.',
+		icon: 'calendar',
+		links: [
+			{ label: 'Timetable Utilization', to: '../app/schedule_calendar' },
+			{ label: 'Room Occupancy', to: { name: 'staff-room-utilization' } },
+			{ label: 'Bus & Route Load', to: '/analytics/scheduling/bus-route-load' },
+			{ label: 'Exam Schedules', to: '/analytics/scheduling/exam-schedules' },
+		],
+	},
+	{
+		title: 'Admission & Engagement',
+		description: 'Family engagement, events, and surveys.',
+		icon: 'message-circle',
+		links: [
+			{ label: 'Inquiries Analytics', to: { name: 'staff-inquiry-analytics' } },
+			{ label: 'Survey Results', to: '/analytics/engagement/survey-results' },
+		],
+	},
+	{
+		title: 'Compliance & Risk',
+		description: 'Safeguarding signals and audit readiness.',
+		icon: 'shield',
+		links: [
+			{ label: 'Audit Readiness', to: '/analytics/compliance/audit-readiness' },
+			{ label: 'Policy Acknowledgments', to: '/analytics/compliance/policy-acknowledgments' },
+		],
+	},
 ]
 
 /* GREETING ----------------------------------------------------- */
 const now = new Date()
 const greeting = computed(() => {
-  const hour = now.getHours()
-  return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+	const hour = now.getHours()
+	return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 })
 
 /* OVERLAY: Create Task ---------------------------------------- */
-const overlay = useOverlayStack()
-
-function openFocusItem(item: FocusItem) {
-\tif (item.reference_doctype === 'Student Log') {
-\t\tlet mode: 'assignee' | 'author' | null = null
-
-\t\tif (item.action_type === 'student_log.follow_up.act.submit') {
-\t\t\tmode = 'assignee'
-\t\t} else if (item.action_type === 'student_log.follow_up.review.decide') {
-\t\t\tmode = 'author'
-\t\t}
-
-\t\tif (!mode) {
-\t\t\ttoast({
-\t\t\t\ttitle: 'Unknown Student Log action type',
-\t\t\t\ttext: 'This focus item is not supported yet.',
-\t\t\t\ticon: 'x',
-\t\t\t})
-\t\t\treturn
-\t\t}
-
-\t\toverlay.open('student-log-follow-up', {
-\t\t\tmode,
-\t\t\tstudentLog: item.reference_name,
-\t\t\tfocusItemId: item.id,
-\t\t})
-\t\treturn
-\t}
-
-\tif (item.reference_doctype === 'Inquiry') {
-\t\ttoast({
-\t\t\ttitle: 'Not wired yet',
-\t\t\ttext: 'Inquiry focus actions are coming next.',
-\t\t\ticon: 'info',
-\t\t})
-\t\treturn
-\t}
-
-\ttoast({
-\t\ttitle: 'Not supported yet',
-\t\ttext: 'This focus item type is not implemented.',
-\t\ticon: 'info',
-\t})
-}
-
 function openCreateTask() {
-  overlay.open('create-task', {
-    prefillStudentGroup: null,
-    prefillDueDate: null,
-    prefillAvailableFrom: null,
-  })
+	overlay.open('create-task', {
+		prefillStudentGroup: null,
+		prefillDueDate: null,
+		prefillAvailableFrom: null,
+	})
 }
 
-/* OVERLAY: Student Log --------------------------------------- */
+/* OVERLAY: Student Log ---------------------------------------- */
 function openStudentLog() {
 	overlay.open('student-log-create', {
 		mode: 'school',
 	})
 }
-
 </script>
