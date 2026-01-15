@@ -128,243 +128,161 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 	limit = min(max(limit, 1), 50)
 	offset = max(offset, 0)
 
-	log = frappe.logger("focus")
-
 	items: list[dict] = []
 
 	# ------------------------------------------------------------
 	# A) Assignee action items (ToDo -> Student Log)
 	# ------------------------------------------------------------
-	todo_filters = {
-		"allocated_to": user,
-		"reference_type": STUDENT_LOG_DOCTYPE,
-	}
-	if open_only:
-		todo_filters["status"] = "Open"
-
-	todo_rows = frappe.get_all(
-		"ToDo",
-		filters=todo_filters,
-		fields=["reference_name", "date"],
-		order_by="date asc, modified desc",
-		limit_start=offset,
-		limit_page_length=limit,
-		ignore_permissions=True,
-	)
-
-	# Debug log #1: ToDo query result (source of truth for action items)
-	log.info(
+	# Source of truth:
+	# - Open ToDo allocated to user
+	# - Linked Student Log requires follow-up
+	# - Not completed
+	# - No submitted follow-up yet
+	action_rows = frappe.db.sql(
+		"""
+		select
+			t.reference_name as log_name,
+			t.date as todo_due_date,
+			s.student_name,
+			s.next_step,
+			s.requires_follow_up,
+			s.follow_up_status,
+			s.follow_up_person
+		from `tabToDo` t
+		join `tabStudent Log` s
+		  on s.name = t.reference_name
+		where t.allocated_to = %(user)s
+		  and t.reference_type = %(ref_type)s
+		  and (%(open_only)s = 0 or t.status = 'Open')
+		  and ifnull(s.requires_follow_up, 0) = 1
+		  and lower(ifnull(s.follow_up_status, '')) != 'completed'
+		  and not exists (
+				select 1
+				from `tabStudent Log Follow Up` f
+				where f.student_log = s.name
+				  and f.docstatus = 1
+		  )
+		order by t.date asc, t.modified desc
+		limit %(limit)s offset %(offset)s
+		""",
 		{
-			"event": "focus.list.todo_rows",
 			"user": user,
+			"ref_type": STUDENT_LOG_DOCTYPE,
 			"open_only": open_only,
 			"limit": limit,
 			"offset": offset,
-			"todo_filters": todo_filters,
-			"todo_count": len(todo_rows),
-			"todo_refs": [r.get("reference_name") for r in todo_rows if r.get("reference_name")],
-		}
+		},
+		as_dict=True,
 	)
 
-	log_names_action = [r.get("reference_name") for r in todo_rows if r.get("reference_name")]
-	due_by_log = {
-		r.get("reference_name"): (str(r.get("date")) if r.get("date") else None)
-		for r in todo_rows
-		if r.get("reference_name")
-	}
-
-	if log_names_action:
-		log_rows = frappe.get_all(
-			STUDENT_LOG_DOCTYPE,
-			filters={"name": ["in", log_names_action]},
-			fields=[
-				"name",
-				"student_name",
-				"next_step",
-				"requires_follow_up",
-				"follow_up_status",
-				"follow_up_person",
-			],
+	# Resolve next-step titles in one batch (optional enrichment)
+	next_step_names = sorted({r.get("next_step") for r in action_rows if r.get("next_step")})
+	next_step_title_by_name = {}
+	if next_step_names:
+		ns = frappe.get_all(
+			"Student Log Next Step",
+			filters={"name": ["in", next_step_names]},
+			fields=["name", "next_step"],
 			limit_page_length=1000,
 			ignore_permissions=True,
 		)
-		log_by_name = {r["name"]: r for r in log_rows if r.get("name")}
+		next_step_title_by_name = {x["name"]: x.get("next_step") for x in ns}
 
-		submitted_logs = set(
-			x.get("student_log")
-			for x in frappe.get_all(
-				FOLLOW_UP_DOCTYPE,
-				filters={"student_log": ["in", log_names_action], "docstatus": 1},
-				fields=["student_log"],
-				limit_page_length=1000,
-			)
-			if x.get("student_log")
-		)
+	for r in action_rows:
+		log_name = r.get("log_name")
+		if not log_name:
+			continue
 
-		next_step_names = sorted({r.get("next_step") for r in log_rows if r.get("next_step")})
-		next_step_title_by_name = {}
-		if next_step_names:
-			ns = frappe.get_all(
-				"Student Log Next Step",
-				filters={"name": ["in", next_step_names]},
-				fields=["name", "next_step"],
-				limit_page_length=1000,
-			)
-			next_step_title_by_name = {x["name"]: x.get("next_step") for x in ns}
+		# Hard permission gate (doc-level)
+		if not _can_read_student_log(log_name):
+			continue
 
-		skipped = {
-			"no_log_row": 0,
-			"no_follow_up": 0,
-			"completed": 0,
-			"has_submitted": 0,
-			"cant_read": 0,
-			"kept": 0,
-		}
+		due = str(r.get("todo_due_date")) if r.get("todo_due_date") else None
+		badge = _badge_from_due_date(due)
 
-		for log_name in log_names_action:
-			row = log_by_name.get(log_name)
-			if not row:
-				skipped["no_log_row"] += 1
-				continue
+		next_step_title = None
+		if r.get("next_step"):
+			next_step_title = next_step_title_by_name.get(r.get("next_step"))
 
-			if not frappe.utils.cint(row.get("requires_follow_up")):
-				skipped["no_follow_up"] += 1
-				continue
+		title = "Follow up"
+		subtitle = f"{r.get('student_name') or log_name}"
+		if next_step_title:
+			subtitle = f"{subtitle} • Next step: {next_step_title}"
 
-			if (row.get("follow_up_status") or "").lower() == "completed":
-				skipped["completed"] += 1
-				continue
-
-			#if log_name in submitted_logs:
-			#	skipped["has_submitted"] += 1
-			#	continue
-
-			if not _can_read_student_log(log_name):
-				skipped["cant_read"] += 1
-				continue
-
-			skipped["kept"] += 1
-
-			due = due_by_log.get(log_name)
-			badge = _badge_from_due_date(due)
-
-			next_step_title = None
-			if row.get("next_step"):
-				next_step_title = next_step_title_by_name.get(row.get("next_step"))
-
-			title = "Follow up"
-			subtitle = f"{row.get('student_name') or log_name}"
-			if next_step_title:
-				subtitle = f"{subtitle} • Next step: {next_step_title}"
-
-			action_type = "student_log.follow_up.act.submit"
-			items.append(
-				{
-					"id": build_focus_item_id("student_log", STUDENT_LOG_DOCTYPE, log_name, action_type, user),
-					"kind": "action",
-					"title": title,
-					"subtitle": subtitle,
-					"badge": badge,
-					"priority": 80,
-					"due_date": due,
-					"action_type": action_type,
-					"reference_doctype": STUDENT_LOG_DOCTYPE,
-					"reference_name": log_name,
-					"payload": {
-						"student_name": row.get("student_name"),
-						"next_step": row.get("next_step"),
-					},
-					"permissions": {"can_open": True},
-				}
-			)
-
-		# Debug log #2: Filter summary for action items (the “WHERE???” you asked for)
-		log.info(
+		action_type = "student_log.follow_up.act.submit"
+		items.append(
 			{
-				"event": "focus.list.action_filter_summary",
-				"user": user,
-				"summary": skipped,
+				"id": build_focus_item_id("student_log", STUDENT_LOG_DOCTYPE, log_name, action_type, user),
+				"kind": "action",
+				"title": title,
+				"subtitle": subtitle,
+				"badge": badge,
+				"priority": 80,
+				"due_date": due,
+				"action_type": action_type,
+				"reference_doctype": STUDENT_LOG_DOCTYPE,
+				"reference_name": log_name,
+				"payload": {
+					"student_name": r.get("student_name"),
+					"next_step": r.get("next_step"),
+				},
+				"permissions": {"can_open": True},
 			}
 		)
 
 	# ------------------------------------------------------------
 	# B) Author review items
 	# ------------------------------------------------------------
-	author_logs = frappe.get_all(
-		STUDENT_LOG_DOCTYPE,
-		filters={
-			"owner": user,
-			"follow_up_status": ["not in", ["Completed", "completed"]],
-			"requires_follow_up": 1,
-		},
-		fields=["name", "student_name"],
-		order_by="modified desc",
-		limit_page_length=200,
+	# Review item appears when:
+	# - log owner == current user
+	# - a submitted follow-up exists
+	# - log not completed
+	# - requires_follow_up = 1
+	review_rows = frappe.db.sql(
+		"""
+		select
+			s.name as log_name,
+			s.student_name
+		from `tabStudent Log` s
+		where s.owner = %(user)s
+		  and ifnull(s.requires_follow_up, 0) = 1
+		  and lower(ifnull(s.follow_up_status, '')) != 'completed'
+		  and exists (
+				select 1
+				from `tabStudent Log Follow Up` f
+				where f.student_log = s.name
+				  and f.docstatus = 1
+		  )
+		order by s.modified desc
+		limit 200
+		""",
+		{"user": user},
+		as_dict=True,
 	)
 
-	author_log_names = [r.get("name") for r in author_logs if r.get("name")]
+	for r in review_rows:
+		log_name = r.get("log_name")
+		if not log_name:
+			continue
 
-	# Debug log #3: how many candidate author logs we found (before checking submitted follow-ups)
-	log.info(
-		{
-			"event": "focus.list.author_candidates",
-			"user": user,
-			"author_candidate_count": len(author_log_names),
-		}
-	)
+		if not _can_read_student_log(log_name):
+			continue
 
-	if author_log_names:
-		has_submitted = set(
-			x.get("student_log")
-			for x in frappe.get_all(
-				FOLLOW_UP_DOCTYPE,
-				filters={"student_log": ["in", author_log_names], "docstatus": 1},
-				fields=["student_log"],
-				limit_page_length=1000,
-			)
-			if x.get("student_log")
-		)
-
-		kept_review = 0
-		skipped_review_cant_read = 0
-
-		for r in author_logs:
-			log_name = r.get("name")
-			if not log_name or log_name not in has_submitted:
-				continue
-
-			if not _can_read_student_log(log_name):
-				skipped_review_cant_read += 1
-				continue
-
-			kept_review += 1
-
-			action_type = "student_log.follow_up.review.decide"
-			items.append(
-				{
-					"id": build_focus_item_id("student_log", STUDENT_LOG_DOCTYPE, log_name, action_type, user),
-					"kind": "review",
-					"title": "Review outcome",
-					"subtitle": f"{r.get('student_name') or log_name} • Decide: close or continue follow-up",
-					"badge": None,
-					"priority": 70,
-					"due_date": None,
-					"action_type": action_type,
-					"reference_doctype": STUDENT_LOG_DOCTYPE,
-					"reference_name": log_name,
-					"payload": {"student_name": r.get("student_name")},
-					"permissions": {"can_open": True},
-				}
-			)
-
-		# Debug log #4: review filtering summary
-		log.info(
+		action_type = "student_log.follow_up.review.decide"
+		items.append(
 			{
-				"event": "focus.list.review_filter_summary",
-				"user": user,
-				"has_submitted_count": len(has_submitted),
-				"kept_review": kept_review,
-				"skipped_review_cant_read": skipped_review_cant_read,
+				"id": build_focus_item_id("student_log", STUDENT_LOG_DOCTYPE, log_name, action_type, user),
+				"kind": "review",
+				"title": "Review outcome",
+				"subtitle": f"{r.get('student_name') or log_name} • Decide: close or continue follow-up",
+				"badge": None,
+				"priority": 70,
+				"due_date": None,
+				"action_type": action_type,
+				"reference_doctype": STUDENT_LOG_DOCTYPE,
+				"reference_name": log_name,
+				"payload": {"student_name": r.get("student_name")},
+				"permissions": {"can_open": True},
 			}
 		)
 
@@ -379,6 +297,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 
 	items.sort(key=_sort_key)
 	return items[:limit]
+
 
 
 # ---------------------------------------------------------------------
