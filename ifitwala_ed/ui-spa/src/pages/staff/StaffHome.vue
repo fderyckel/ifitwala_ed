@@ -3,6 +3,9 @@
 	<div class="staff-shell space-y-5">
 		<!-- ============================================================
 		     HEADER / GREETING
+		     Intent:
+		     - Lightweight “welcome” + one high-signal shortcut (Morning Brief)
+		     - No data-heavy calls here (header is cached server-side)
 		   ============================================================ -->
 		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 			<div>
@@ -12,6 +15,7 @@
 				</h1>
 			</div>
 
+			<!-- Morning Brief opens in a new tab by design (teacher keeps Home open) -->
 			<RouterLink
 				:to="{ name: 'MorningBriefing' }"
 				target="_blank"
@@ -25,15 +29,22 @@
 
 		<!-- ============================================================
 		     CALENDAR
+		     Intent:
+		     - Day-to-day anchor for staff
+		     - Opens overlays via the global overlay stack (not local modals)
 		   ============================================================ -->
 		<ScheduleCalendar />
 
 		<!-- ============================================================
 		     TWO-COLUMN GRID
+		     Intent:
+		     - Left: “what needs attention” (Focus)
+		     - Right: “what can I do quickly” (Quick Actions)
 		   ============================================================ -->
 		<section class="grid grid-cols-1 gap-10 lg:grid-cols-12">
 			<!-- LEFT COL: TASKS / FOCUS -------------------------------->
 			<div class="lg:col-span-8 space-y-4">
+				<!-- Focus is a read-only attention surface, not a task manager -->
 				<FocusListCard
 					:items="focusItems"
 					:loading="focusLoading"
@@ -52,7 +63,7 @@
 				</h3>
 
 				<div class="grid gap-3">
-					<!-- Create task now uses overlay stack -->
+					<!-- Create task uses overlay stack (single overlay system) -->
 					<button type="button" class="action-tile group" @click="openCreateTask">
 						<div class="action-tile__icon">
 							<FeatherIcon name="clipboard" class="h-6 w-6" />
@@ -71,7 +82,7 @@
 						/>
 					</button>
 
-					<!-- Create student log -->
+					<!-- Create student log uses overlay stack -->
 					<button type="button" class="action-tile group" @click="openStudentLog">
 						<div class="action-tile__icon">
 							<FeatherIcon name="edit-3" class="h-6 w-6" />
@@ -90,7 +101,7 @@
 						/>
 					</button>
 
-					<!-- Standard Quick Actions -->
+					<!-- Standard Quick Actions (router links, not overlays) -->
 					<RouterLink
 						v-for="action in quickActions"
 						:key="action.label"
@@ -123,6 +134,10 @@
 
 		<!-- ============================================================
 		     ANALYTICS HUB
+		     Intent:
+		     - Keep it “browseable”: quick hits + category clusters
+		     - Links open new tab by default (analytics browsing is a side-activity)
+		     - No data fetching here (it’s link-only)
 		   ============================================================ -->
 		<section class="rounded-2xl bg-surface shadow-soft">
 			<div class="rounded-2xl border border-[rgb(var(--sand-rgb)/0.35)]">
@@ -257,7 +272,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { FeatherIcon, createResource, toast } from 'frappe-ui'
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue'
@@ -265,7 +280,10 @@ import FocusListCard from '@/components/focus/FocusListCard.vue'
 import { useOverlayStack } from '@/composables/useOverlayStack'
 import type { FocusItem } from '@/types/focusItem'
 
-/* USER --------------------------------------------------------- */
+/* USER ---------------------------------------------------------
+   - Server returns a small cached header object.
+   - This keeps StaffHome fast and avoids permission-heavy queries.
+-------------------------------------------------------------- */
 type StaffHomeHeader = {
 	user: string
 	first_name?: string | null
@@ -299,7 +317,10 @@ const firstName = computed(() => {
 	return 'Staff'
 })
 
-/* QUICK ACTIONS ------------------------------------------------ */
+/* QUICK ACTIONS ------------------------------------------------
+   - These are stable shortcuts.
+   - Keep this list short and high-signal (avoid “everything”).
+-------------------------------------------------------------- */
 const quickActions = [
 	{
 		label: 'Update Gradebook',
@@ -309,58 +330,120 @@ const quickActions = [
 	},
 ]
 
-/* FOCUS -------------------------------------------------------- */
+/* FOCUS --------------------------------------------------------
+   Locked rules:
+   - StaffHome does NOT interpret action_type.
+   - StaffHome routes by focusItemId to FocusRouterOverlay.
+   - Completion is workflow-owned, not focus-owned.
+-------------------------------------------------------------- */
 const overlay = useOverlayStack()
 const focusLoading = ref(false)
+const focusItems = ref<FocusItem[]>([])
 
 /**
- * Phase 1: mock focus items only.
- * Replace this array with focus.list() when the backend exists.
- *
- * IMPORTANT:
- * - StaffHome does NOT interpret action_type.
- * - StaffHome routes everything to FocusRouterOverlay via focusItemId.
+ * Focus list resource:
+ * - Single endpoint returning already-enriched FocusItem[]
+ * - Keep limit small on StaffHome (8)
+ * - Server may cache per-user (TTL ~60s) to survive 200 staff
  */
-const focusItems = ref<FocusItem[]>([
-	{
-		id: 'student_log::Student Log::SLOG-202601-0001::student_log.follow_up.act.submit::admin@ifitwala.local',
-		kind: 'action',
-		title: 'Follow up: Parent contact needed',
-		subtitle: 'Nina K. • Next step: Call guardian (wellbeing)',
-		badge: 'Today',
-		priority: 90,
-		due_date: '2026-01-15',
-		action_type: 'student_log.follow_up.act.submit',
-		reference_doctype: 'Student Log',
-		reference_name: 'SLOG-202601-0001',
-		payload: { student_name: 'Nina K.' },
-		permissions: { can_open: true },
+const focusResource = createResource({
+	url: 'ifitwala_ed.api.focus.list',
+	method: 'POST',
+	auto: false,
+	onSuccess(data: any) {
+		const payload = data && typeof data === 'object' && 'message' in data ? data.message : data
+		focusItems.value = Array.isArray(payload) ? (payload as FocusItem[]) : []
+		focusLoading.value = false
 	},
-	{
-		id: 'student_log::Student Log::SLOG-202601-0004::student_log.follow_up.review.decide::admin@ifitwala.local',
-		kind: 'review',
-		title: 'Review outcome: Follow-up submitted',
-		subtitle: 'Mina L. • Decide: close or continue follow-up',
-		badge: 'Today',
-		priority: 70,
-		due_date: '2026-01-15',
-		action_type: 'student_log.follow_up.review.decide',
-		reference_doctype: 'Student Log',
-		reference_name: 'SLOG-202601-0004',
-		payload: { student_name: 'Mina L.' },
-		permissions: { can_open: true },
+	onError(err: any) {
+		focusLoading.value = false
+		console.error('[StaffHome] Failed to load focus list:', err)
 	},
-])
+})
+
+async function refreshFocus(reason: string) {
+	// Cheap guard: avoid stacking requests if UI triggers multiple refreshes.
+	if (focusLoading.value) return
+
+	focusLoading.value = true
+	try {
+		// Note: backend uses frappe.session.user, no user passed from client.
+		await focusResource.submit({ open_only: 1, limit: 8, offset: 0 })
+	} catch (e) {
+		// onError handles details
+	} finally {
+		focusLoading.value = false
+	}
+}
+
+/**
+ * Focus refresh policy (server-cheap):
+ * - On mount: load once
+ * - Every 120s: light polling (server should cache per-user)
+ * - On tab refocus: refresh if it’s been a while
+ *
+ * We keep this modest because 200 staff can become expensive quickly.
+ */
+let focusTimer: any = null
+const lastFocusRefreshAt = ref<number>(0)
+
+function markRefreshed() {
+	lastFocusRefreshAt.value = Date.now()
+}
+
+function shouldRefreshOnVisibility() {
+	// refresh if older than 60s (align with likely server TTL)
+	return Date.now() - lastFocusRefreshAt.value > 60_000
+}
+
+function onVisibilityChange() {
+	if (document.visibilityState === 'visible' && shouldRefreshOnVisibility()) {
+		refreshFocus('visibility').then(markRefreshed)
+	}
+}
+
+onMounted(async () => {
+	// Initial load
+	await refreshFocus('mount')
+	markRefreshed()
+
+	// Light polling while StaffHome is mounted
+	focusTimer = window.setInterval(() => {
+		// only refresh when tab is visible (avoid background churn)
+		if (document.visibilityState === 'visible') {
+			refreshFocus('interval').then(markRefreshed)
+		}
+	}, 120_000)
+
+	document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onBeforeUnmount(() => {
+	if (focusTimer) window.clearInterval(focusTimer)
+	document.removeEventListener('visibilitychange', onVisibilityChange)
+})
 
 function openFocusItem(item: FocusItem) {
-	if (item.permissions?.can_open === false) return
+	// Respect server permissions; UI remains calm (no dramatic errors)
+	if (item.permissions?.can_open === false) {
+		toast({
+			title: 'Not available',
+			text: 'You do not have access to open this item.',
+			icon: 'info',
+		})
+		return
+	}
 
+	// Single entry point: FocusRouterOverlay
 	overlay.open('focus-router', {
 		focusItemId: item.id,
 	})
 }
 
-/* ANALYTICS ---------------------------------------------------- */
+/* ANALYTICS ----------------------------------------------------
+   - Link-only. No API calls.
+   - Must remain stable; this is “browse” not “action”.
+-------------------------------------------------------------- */
 const analyticsQuickLinks = [
 	{
 		label: 'Annoucement Archive',
@@ -460,14 +543,20 @@ const analyticsCategories = [
 	},
 ]
 
-/* GREETING ----------------------------------------------------- */
+/* GREETING -----------------------------------------------------
+   Note: this is intentionally “static at load time”.
+   We don’t need a reactive clock on StaffHome.
+-------------------------------------------------------------- */
 const now = new Date()
 const greeting = computed(() => {
 	const hour = now.getHours()
 	return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 })
 
-/* OVERLAY: Create Task ---------------------------------------- */
+/* OVERLAY: Create Task ----------------------------------------
+   - Always uses overlay stack
+   - No /portal hardcoding (SPA base is handled by router history)
+-------------------------------------------------------------- */
 function openCreateTask() {
 	overlay.open('create-task', {
 		prefillStudentGroup: null,
@@ -476,7 +565,10 @@ function openCreateTask() {
 	})
 }
 
-/* OVERLAY: Student Log ---------------------------------------- */
+/* OVERLAY: Student Log ----------------------------------------
+   - Create flow is its own overlay
+   - Follow-up/review flows are routed by FocusRouterOverlay
+-------------------------------------------------------------- */
 function openStudentLog() {
 	overlay.open('student-log-create', {
 		mode: 'school',
