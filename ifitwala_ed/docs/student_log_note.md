@@ -8,19 +8,19 @@
 
 ## 1. Purpose & Philosophy
 
-The Student Log system is a **teacher‑centered observational workflow**, not a disciplinary system.
+The Student Log system is a **teacher-centered observational workflow**, not a disciplinary system.
 
 It exists to:
 
-* Capture meaningful observations (positive, neutral, concern‑based)
+* Capture meaningful observations (positive, neutral, concern-based)
 * Integrate seamlessly into daily teaching workflows (especially Attendance)
-* Route responsibility clearly when follow‑up is required
+* Route responsibility clearly when follow-up is required
 * Preserve history once action has begun
 
 **Core principle**
 
 > Capture is easy.
-> Follow‑up is structured.
+> Follow-up is structured.
 > History becomes immutable once acted upon.
 
 ---
@@ -34,12 +34,12 @@ Represents **what was observed**.
 Key characteristics:
 
 * Submittable document
-* May or may not require follow‑up
-* Can be amended **only before follow‑up exists**
-* Visibility to students/guardians is explicit and opt‑in in SPA
+* May or may not require follow-up
+* Can be amended **only before follow-up exists**
+* Visibility to students/guardians is explicit and opt-in in SPA
 * Desk logic is authoritative for state changes
 
-Key fields (non‑exhaustive):
+Key fields (non-exhaustive):
 
 * `student`
 * `date`, `time`
@@ -49,7 +49,7 @@ Key fields (non‑exhaustive):
 * `next_step`
 * `follow_up_person`
 * `follow_up_status`
-* `school` (read‑only)
+* `school` (read-only)
 * `amended_from`
 
 ---
@@ -61,14 +61,14 @@ Defines **what kind of observation** the log represents (e.g. Positive Learning 
 **Locked decision**
 
 * `school` field exists and is required
-* Log Types are **school‑scoped**
+* Log Types are **school-scoped**
 * School hierarchy rules apply
 
 ---
 
 ### 2.3 Student Log Next Step — Routing Definition
 
-Defines **what kind of follow‑up is required** when `requires_follow_up = 1`.
+Defines **what kind of follow-up is required** when `requires_follow_up = 1`.
 
 Fields:
 
@@ -79,7 +79,7 @@ Fields:
 
 Design intent:
 
-* Next Steps are school‑scoped
+* Next Steps are school-scoped
 * Responsibility is defined by **role**, not person
 * Assignee is chosen at log creation
 * SPA must never hardcode Next Steps
@@ -100,7 +100,68 @@ This document is the **action trail** and must never be broken by amendments.
 
 ---
 
-## 3. Visibility Rules (Teacher‑Safe Defaults)
+## Student Log — Follow-up Status Semantics (Authoritative)
+
+This section defines the meaning of `follow_up_status` and the only allowed transitions.
+It applies to Desk and SPA. The SPA must follow DocType controller logic and must not invent alternative rules.
+
+### Status meanings
+
+#### Open
+Meaning:
+- Follow-up is required (`requires_follow_up = 1`)
+- The log is submitted
+- Exactly one assignee exists
+- No follow-up entries exist yet (no recorded work)
+
+In other words: the work has been assigned, but no follow-up has been started/recorded.
+
+#### In Progress
+Meaning:
+- Follow-up is required
+- Work has started or evidence exists
+- At least one `Student Log Follow Up` exists (draft or submitted), OR the log has been reopened and work continues
+
+In other words: there is activity on the case, and the case is not closed.
+
+#### Completed (terminal)
+Meaning:
+- The case is closed (terminal state)
+- No more follow-ups can be added/edited
+- Assignment fields are locked
+
+Critical rule:
+- Submitting a follow-up does NOT complete the log.
+- Follow-up submission completes the assignee’s contribution and hands control back to the author for “Review outcome”.
+
+### Allowed transitions (case-state only)
+
+- (unset / None) → Open (when follow-up becomes required and an assignment exists)
+- Open → In Progress (when any follow-up exists or is submitted)
+- In Progress → Completed (explicit author/admin completion OR auto-complete policy)
+- Completed → In Progress (reopen by author/admin)
+
+There is no "Closed" status. "Completed" is the only terminal status.
+
+### Ownership and handoff (Focus model alignment)
+
+- Assignee submits follow-up → assignee’s required action ends.
+- Author receives a passive signal (timeline + bell notification) and a Focus "Review outcome" item.
+- Author decision states (in Focus layer, not in `follow_up_status`):
+  - Review outcome (default)
+  - Further action required (reassign / additional follow-up)
+  - Close case (mark Completed)
+
+### Auto-complete policy
+
+`auto_close_after_days` is a case-level policy that may auto-complete logs after inactivity.
+It must never be treated as “follow-up submitted = auto-complete”.
+
+(Review auto-dismiss is a Focus-layer concern, not a Student Log status.)
+
+---
+
+## 3. Visibility Rules (Teacher-Safe Defaults)
 
 SPA defaults (intentional override):
 
@@ -111,7 +172,7 @@ Visibility must always be a **conscious teacher decision**.
 
 ---
 
-## 4. School Hierarchy & Scoping (Non‑Negotiable)
+## 4. School Hierarchy & Scoping (Non-Negotiable)
 
 ### 4.1 School Model
 
@@ -133,7 +194,7 @@ This rule applies uniformly to:
 * student search
 * log type lists
 * next step lists
-* follow‑up assignee lists
+* follow-up assignee lists
 
 ---
 
@@ -148,7 +209,7 @@ Usage:
 * Attendance entry → school known from context (must match student scope)
 * Home entry → school resolved from selected student
 
-`Student Log.school` is derived server‑side and treated as read‑only.
+`Student Log.school` is derived server-side and treated as read-only.
 
 ---
 
@@ -158,7 +219,7 @@ Usage:
 
 * Student known and locked
 * No student picker
-* Two‑click capture flow
+* Two-click capture flow
 
 ### 6.2 Staff Home (Secondary)
 
@@ -168,29 +229,47 @@ Usage:
 
 ---
 
-## 7. Follow‑Up Lifecycle
+## 7. Follow-Up Lifecycle
 
-### 7.1 No Follow‑Up Required
+### 7.1 No Follow-Up Required
 
 If `requires_follow_up = 0`:
 
 * On submit, log is automatically marked **Completed**
 * No Follow Up records exist
 
-### 7.2 Follow‑Up Required
+### 7.2 Follow-Up Required
 
 If `requires_follow_up = 1`:
 
 * `next_step` mandatory
 * `follow_up_person` mandatory
-* Status transitions are server‑owned
+* Status transitions are server-owned
 * ToDo / notifications created by Desk logic
 
 SPA responsibilities:
 
-* Fetch Next Steps (school‑scoped)
+* Fetch Next Steps (school-scoped)
 * Fetch assignees (role + school scope)
 * Block submit until valid
+
+### 7.3 NEW — Follow-Up is a Handoff, Not Case Closure (LOCKED)
+
+When an assignee performs a follow-up, it completes **their responsibility**, but does not necessarily close the case.
+
+**Locked semantics**
+
+- Assignee completion **removes the item from the assignee’s Focus list**
+- A new Focus item is created for the original author: **Review outcome**
+- The author chooses the next step:
+  1) **Review outcome** (default state)
+  2) **Further action required** (reassign / request additional follow-up / escalate)
+  3) **Close case** (explicit close action)
+
+**Professional trust principle**
+
+> The assignee’s completion is accepted as “done” without requiring author approval,
+> but the author retains ownership of the case lifecycle.
 
 ---
 
@@ -198,9 +277,9 @@ SPA responsibilities:
 
 **Invariant**
 
-> Once follow‑up work begins, history must not be rewritten.
+> Once follow-up work begins, history must not be rewritten.
 
-### Teacher‑Facing Actions
+### Teacher-Facing Actions
 
 **Edit log**
 
@@ -210,8 +289,8 @@ SPA responsibilities:
 **Add clarification**
 
 * Allowed always
-* Append‑only (Comment / timeline note)
-* Does not alter follow‑up logic
+* Append-only (Comment / timeline note)
+* Does not alter follow-up logic
 
 ---
 
@@ -219,7 +298,7 @@ SPA responsibilities:
 
 ### 9.1 Reporting Philosophy
 
-Reports are **read‑only consumers** of Student Logs and Follow Ups.
+Reports are **read-only consumers** of Student Logs and Follow Ups.
 They never mutate or reinterpret business logic.
 
 ### 9.2 Student Logs Script Report
@@ -245,8 +324,8 @@ They never mutate or reinterpret business logic.
 
 SPA may:
 
-* Fetch Log Types (school‑scoped)
-* Fetch Next Steps (school‑scoped)
+* Fetch Log Types (school-scoped)
+* Fetch Next Steps (school-scoped)
 * Fetch assignees (role + school scope)
 * Submit logs
 * Submit clarifications
@@ -257,6 +336,23 @@ Server is authoritative for:
 * School resolution
 * Permissions
 * Status transitions
+* Follow-up enforcement
+
+### 10.1 NEW — Focus List Integration (LOCKED)
+
+Student Log generates Focus items automatically (users do not create tasks manually):
+
+- On assignment: Focus item for assignee → **Provide follow-up**
+- On follow-up submission: close assignee focus item → create author focus item → **Review outcome**
+- On author close: close remaining author focus item (case closed)
+- On further action: create a new assignee focus item (handoff repeats)
+
+Focus list is the SPA surface; underlying implementation may use native ToDo or a dedicated Focus Item layer (see focus_list_notes.md).
+
+
+
+
+
 * Follow‑up enforcement
 
 ---
@@ -379,4 +475,3 @@ It must not duplicate:
 
 ---
 
-**End

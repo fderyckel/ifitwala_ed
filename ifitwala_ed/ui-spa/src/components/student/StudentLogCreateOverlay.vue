@@ -471,6 +471,20 @@ const emit = defineEmits<{
 
 const overlay = useOverlayStack()
 
+type ToastPayload = Parameters<typeof toast>[0]
+
+function showToast(payload: ToastPayload) {
+  if (typeof toast !== 'function') {
+    console.warn('[StudentLogCreateOverlay] toast is unavailable', payload)
+    return
+  }
+  try {
+    toast(payload)
+  } catch (err) {
+    console.error('[StudentLogCreateOverlay] toast failed', err, payload)
+  }
+}
+
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }))
 
 // Review step state
@@ -609,7 +623,7 @@ const studentSearch = createResource({
     }))
   },
   onError(err: any) {
-    toast({ title: __('Could not search students'), text: err?.message || String(err), icon: 'x' })
+    showToast({ title: __('Could not search students'), text: err?.message || String(err), icon: 'x' })
   },
 })
 
@@ -627,7 +641,7 @@ const options = createResource({
   url: 'ifitwala_ed.api.student_log.get_form_options',
   auto: false,
   onError(err: any) {
-    toast({ title: __('Could not load options'), text: err?.message || String(err), icon: 'x' })
+    showToast({ title: __('Could not load options'), text: err?.message || String(err), icon: 'x' })
   },
 })
 
@@ -658,7 +672,7 @@ const assigneeSearch = createResource({
     }))
   },
   onError(err: any) {
-    toast({ title: __('Could not search staff'), text: err?.message || String(err), icon: 'x' })
+    showToast({ title: __('Could not search staff'), text: err?.message || String(err), icon: 'x' })
   },
 })
 
@@ -780,10 +794,11 @@ const submitResource = createResource({
   auto: false,
 	onSuccess() {
 		emitClose()
-		toast({ title: __('Saved'), text: __('Student note submitted.'), icon: 'check' })
+		showToast({ title: __('Saved'), text: __('Student note submitted.'), icon: 'check' })
 	},
   onError(err: any) {
-    toast({ title: __('Could not submit'), text: err?.message || String(err), icon: 'x' })
+    console.error('[StudentLogCreateOverlay] submit:error', err)
+    showToast({ title: __('Could not submit'), text: err?.message || String(err), icon: 'x' })
   },
 })
 
