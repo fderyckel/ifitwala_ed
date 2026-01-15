@@ -205,57 +205,78 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 				)
 				next_step_title_by_name = {x["name"]: x.get("next_step") for x in ns}
 
+		skipped = {
+				"no_log_row": 0,
+				"no_follow_up": 0,
+				"completed": 0,
+				"has_submitted": 0,
+				"cant_read": 0,
+				"kept": 0,
+		}
 
 		# Preserve ToDo ordering (inbox order)
+		# Preserve ToDo ordering (inbox order)
 		for log_name in log_names_action:
-			row = log_by_name.get(log_name)
-			if not row:
-				continue
+				row = log_by_name.get(log_name)
+				if not row:
+						skipped["no_log_row"] += 1
+						continue
 
-			# must be follow-up required, not completed, and no submitted follow-up yet
-			if not frappe.utils.cint(row.get("requires_follow_up")):
-				continue
-			if (row.get("follow_up_status") or "").lower() == "completed":
-				continue
-			if log_name in submitted_logs:
-				continue
+				if not frappe.utils.cint(row.get("requires_follow_up")):
+						skipped["no_follow_up"] += 1
+						continue
 
-			# permission: must be able to read the log (cheap check)
-			if not _can_read_student_log(log_name):
-				continue
+				if (row.get("follow_up_status") or "").lower() == "completed":
+						skipped["completed"] += 1
+						continue
 
-			due = due_by_log.get(log_name)
-			badge = _badge_from_due_date(due)
+				if log_name in submitted_logs:
+						skipped["has_submitted"] += 1
+						continue
 
-			next_step_title = None
-			if row.get("next_step"):
-				next_step_title = next_step_title_by_name.get(row.get("next_step"))
+				if not _can_read_student_log(log_name):
+						skipped["cant_read"] += 1
+						continue
 
-			title = "Follow up"
-			subtitle = f"{row.get('student_name') or log_name}"
-			if next_step_title:
-				subtitle = f"{subtitle} • Next step: {next_step_title}"
+				skipped["kept"] += 1
 
-			action_type = "student_log.follow_up.act.submit"
-			items.append(
-				{
-					"id": build_focus_item_id("student_log", STUDENT_LOG_DOCTYPE, log_name, action_type, user),
-					"kind": "action",
-					"title": title,
-					"subtitle": subtitle,
-					"badge": badge,
-					"priority": 80,
-					"due_date": due,
-					"action_type": action_type,
-					"reference_doctype": STUDENT_LOG_DOCTYPE,
-					"reference_name": log_name,
-					"payload": {
-						"student_name": row.get("student_name"),
-						"next_step": row.get("next_step"),
-					},
-					"permissions": {"can_open": True},
-				}
-			)
+				due = due_by_log.get(log_name)
+				badge = _badge_from_due_date(due)
+
+				next_step_title = None
+				if row.get("next_step"):
+						next_step_title = next_step_title_by_name.get(row.get("next_step"))
+
+				title = "Follow up"
+				subtitle = f"{row.get('student_name') or log_name}"
+				if next_step_title:
+						subtitle = f"{subtitle} • Next step: {next_step_title}"
+
+				action_type = "student_log.follow_up.act.submit"
+				items.append(
+						{
+								"id": build_focus_item_id("student_log", STUDENT_LOG_DOCTYPE, log_name, action_type, user),
+								"kind": "action",
+								"title": title,
+								"subtitle": subtitle,
+								"badge": badge,
+								"priority": 80,
+								"due_date": due,
+								"action_type": action_type,
+								"reference_doctype": STUDENT_LOG_DOCTYPE,
+								"reference_name": log_name,
+								"payload": {
+										"student_name": row.get("student_name"),
+										"next_step": row.get("next_step"),
+								},
+								"permissions": {"can_open": True},
+						}
+				)
+
+		frappe.logger("focus").info({
+			"user": user,
+			"assignee_summary": skipped,
+		})
 
 	# ------------------------------------------------------------
 	# B) Author review items
