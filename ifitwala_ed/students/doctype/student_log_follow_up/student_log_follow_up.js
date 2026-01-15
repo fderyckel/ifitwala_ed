@@ -1,6 +1,8 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
+// ifitwala_ed/students/doctype/student_log_follow_up/student_log_follow_up.js
+
 frappe.ui.form.on("Student Log Follow Up", {
 	onload(frm) {
 		// Set follow_up_author once (mirror current user full name)

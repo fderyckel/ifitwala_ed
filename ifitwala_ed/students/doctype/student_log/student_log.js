@@ -1,6 +1,8 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
+// ifitwala_ed/students/doctype/student_log/student_log.js
+
 frappe.ui.form.on("Student Log", {
 	onload(frm) {
 		// 1) Only enabled students selectable

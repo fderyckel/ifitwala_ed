@@ -342,18 +342,6 @@ const firstName = computed(() => {
 /* QUICK ACTIONS ------------------------------------------------ */
 const quickActions = [
   {
-    label: 'Plan Student Groups',
-    caption: 'Manage rosters, rotation days & instructors',
-    icon: 'layout',
-    to: { name: 'staff-student-groups' },
-  },
-  {
-    label: 'Take Attendance',
-    caption: 'Record attendance for classes today',
-    icon: 'check-square',
-    to: { name: 'staff-attendance' },
-  },
-  {
     label: 'Update Gradebook',
     caption: 'Capture evidence, notes, and marks',
     icon: 'edit-3',

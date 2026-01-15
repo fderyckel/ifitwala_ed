@@ -1,6 +1,8 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/students/doctype/student_log/student_log.py
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
