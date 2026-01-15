@@ -141,7 +141,7 @@ Critical rule:
 - In Progress → Completed (explicit author/admin completion OR auto-complete policy)
 - Completed → In Progress (reopen by author/admin)
 
-There is no "Closed" status. "Completed" is the only terminal status.
+Completed is the only terminal status.
 
 ### Ownership and handoff (Focus model alignment)
 
@@ -474,4 +474,3 @@ It must not duplicate:
 7. Morning Briefing is read-only and never mutates data
 
 ---
-

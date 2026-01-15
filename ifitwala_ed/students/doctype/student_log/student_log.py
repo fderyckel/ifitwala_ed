@@ -207,20 +207,19 @@ class StudentLog(Document):
 		old_status = (old.get("follow_up_status") or "").lower()
 		new_status = (self.follow_up_status or "").lower()
 
-		# Allowed transitions (Completed is terminal)
+		# Allowed transitions (Completed is terminal; reopen handled elsewhere)
 		allowed = {
-			None: {"", "open", "in progress"},
+			None: {"open", "in progress"},
 			"": {"open", "in progress"},
-			"open": {"open", "in progress", "completed"},
-			"in progress": {"in progress", "completed"},
-			"completed": {"completed"},
+			"open": {"in progress", "completed"},
+			"in progress": {"completed"},
+			"completed": set(),
 		}
 
 		# Normalize key for None/empty
 		old_key = old_status if old_status else None
-		if old_key not in allowed or new_status not in allowed[old_key]:
-			# Permit no-change; otherwise block
-			if new_status != old_status:
+		if new_status != old_status:
+			if old_key not in allowed or new_status not in allowed[old_key]:
 				frappe.throw(
 					_("Illegal follow-up status change: {0} → {1}")
 					.format(old_status or "None", new_status or "None"),
@@ -615,7 +614,7 @@ def assign_follow_up(log_name: str, user: str):
 
 	return {"ok": True, "assigned_to": user, "status": new_status}
 
-# ---------- scheduler: Completed → Closed ----------
+# ---------- scheduler: In Progress → Completed ----------
 def auto_close_completed_logs():
 	"""
 	Daily job: move 'In Progress' → 'Completed' after N days of inactivity.
@@ -693,116 +692,14 @@ def auto_close_completed_logs():
 @frappe.whitelist()
 def complete_follow_up(follow_up_name: str):
 	"""
-	Close the parent Student Log (set follow_up_status = 'Completed') from a follow-up.
-	Permissions:
-	- Parent Student Log author (owner), OR
-	- Academic Admin, OR
-	- Current OPEN ToDo assignee on the parent Student Log
+	Deprecated: completing a Student Log from a follow-up is no longer supported.
 	"""
-	if not follow_up_name:
-		frappe.throw(_("Missing follow-up name."))
-
-	fu_row = frappe.db.get_value(
-		"Student Log Follow Up",
-		follow_up_name,
-		["name", "student_log"],
-		as_dict=True
+	frappe.throw(
+		_(
+			"Completing a Student Log from a follow-up is no longer supported. "
+			"Please complete the Student Log directly (author/admin)."
+		)
 	)
-	if not fu_row:
-		frappe.throw(_("Follow-up not found: {0}").format(follow_up_name))
-	if not fu_row.student_log:
-		frappe.throw(_("This follow-up is not linked to a Student Log."))
-
-	log_row = frappe.db.get_value(
-		"Student Log",
-		fu_row.student_log,
-		["name", "owner", "author_name", "student_name", "follow_up_status"],
-		as_dict=True
-	)
-	if not log_row:
-		frappe.throw(_("Parent Student Log not found."))
-
-	# ---- Permission check (EXPANDED) ----
-	roles = set(frappe.get_roles())
-	is_admin = "Academic Admin" in roles
-	is_parent_author = (frappe.session.user == (log_row.owner or ""))
-
-	current_open_assignee = frappe.db.get_value(
-		"ToDo",
-		{"reference_type": "Student Log", "reference_name": log_row.name, "status": "Open"},
-		"allocated_to"
-	)
-	is_current_assignee = bool(current_open_assignee and current_open_assignee == frappe.session.user)
-
-	if not (is_admin or is_parent_author or is_current_assignee):
-		frappe.throw(_("Only the Student Log author, an Academic Admin, or the current assignee can complete this log."))
-
-	# Idempotent
-	if (log_row.follow_up_status or "").lower() == "completed":
-		return {"ok": True, "status": "Completed", "log": log_row.name}
-
-	# 1) Set parent status → Completed
-	frappe.db.set_value("Student Log", log_row.name, "follow_up_status", "Completed")
-
-	# 2) Close all OPEN ToDos on the parent
-	frappe.db.sql(
-		"""
-		UPDATE `tabToDo`
-		SET status = 'Closed'
-		WHERE reference_type = %s AND reference_name = %s AND status = 'Open'
-		""",
-		("Student Log", log_row.name),
-	)
-
-	# 3) Timeline entry
-	try:
-		link = frappe.utils.get_link_to_form("Student Log Follow Up", follow_up_name)
-		frappe.get_doc({
-			"doctype": "Comment",
-			"comment_type": "Info",
-			"reference_doctype": "Student Log",
-			"reference_name": log_row.name,
-			"content": _("Follow-up completed by {user} — see {link}").format(
-				user=frappe.utils.get_fullname(frappe.session.user),
-				link=link
-			),
-		}).insert(ignore_permissions=True)
-	except Exception:
-		pass
-
-	# 4) Notify the author if someone else completed
-	author_user = log_row.owner or None
-	if author_user and author_user != frappe.session.user:
-		try:
-			frappe.get_doc({
-				"doctype": "Notification Log",
-				"subject": _("Follow-up completed"),
-				"email_content": _("A follow-up for {0} has been completed. Click to review.")
-					.format(log_row.student_name or log_row.name),
-				"type": "Alert",
-				"for_user": author_user,
-				"from_user": frappe.session.user,
-				"document_type": "Student Log",
-				"document_name": log_row.name,
-			}).insert(ignore_permissions=True)
-		except Exception:
-			try:
-				frappe.publish_realtime(
-					event="inbox_notification",
-					message={
-						"type": "Alert",
-						"subject": _("Follow-up completed"),
-						"message": _("A follow-up for {0} has been completed. Click to review.")
-							.format(log_row.student_name or log_row.name),
-						"reference_doctype": "Student Log",
-						"reference_name": log_row.name
-					},
-					user=author_user
-				)
-			except Exception:
-				pass
-
-	return {"ok": True, "status": "Completed", "log": log_row.name}
 
 @frappe.whitelist()
 def complete_log(log_name: str):
