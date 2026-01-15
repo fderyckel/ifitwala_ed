@@ -307,7 +307,50 @@ Rules:
 
 Server methods should accept `payload=None, **kwargs` if needed.
 
----
+The SPA communicates only with **explicitly-defined server contracts**.
+
+> **Never validate or read `frappe.form_dict`.**
+> All `@frappe.whitelist()` methods **must declare explicit function arguments**.
+> Validation applies **only** to those arguments.
+> Any endpoint that reads raw request dictionaries is a **bug**.
+
+### Why this rule exists (do not debate)
+
+* Frappe **always injects** framework keys (e.g. `cmd`) into `/api/method` calls
+* `frappe-ui` **always POSTs JSON**
+* Bench and Frappe upgrades **will not change this behavior**
+
+Validating raw request payloads inevitably causes:
+
+* `"Unexpected keys"` errors
+* brittle APIs
+* repeated regressions across features
+
+### What this rule guarantees
+
+* Deterministic validation
+* Framework-aligned behavior
+* Future-proof endpoints
+* Zero coupling to transport internals
+
+### Client implications (SPA)
+
+* The SPA sends a **flat payload** using:
+
+  ```ts
+  resource.submit(payload)
+  ```
+
+* Payload keys must match the **server method signature exactly**
+
+* The SPA must **never** work around server validation failures
+
+If a request fails due to unexpected keys, the **server contract is wrong**.
+
+> **Fix the server. Never patch the client.**
+
+
+
 
 ### 4.3 No chatty APIs
 

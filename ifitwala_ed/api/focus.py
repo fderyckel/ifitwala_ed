@@ -235,9 +235,9 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 				skipped["completed"] += 1
 				continue
 
-			if log_name in submitted_logs:
-				skipped["has_submitted"] += 1
-				continue
+			#if log_name in submitted_logs:
+			#	skipped["has_submitted"] += 1
+			#	continue
 
 			if not _can_read_student_log(log_name):
 				skipped["cant_read"] += 1
