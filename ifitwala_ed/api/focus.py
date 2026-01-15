@@ -167,6 +167,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 				"follow_up_person",
 			],
 			limit_page_length=1000,
+			ignore_permissions=True,
 		)
 
 		log_by_name = {r["name"]: r for r in log_rows if r.get("name")}
