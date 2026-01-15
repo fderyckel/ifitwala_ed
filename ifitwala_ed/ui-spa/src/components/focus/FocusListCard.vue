@@ -1,10 +1,10 @@
 <!-- ifitwala_ed/ui-spa/src/components/focus/FocusListCard.vue -->
- <template>
+<template>
 	<section class="palette-card overflow-hidden">
 		<!-- Header -->
 		<header class="flex items-center justify-between px-5 py-4 border-b border-line-soft">
-			<div class="flex items-center gap-3">
-				<h2 class="section-header">
+			<div class="min-w-0 flex items-center gap-3">
+				<h2 class="section-header truncate">
 					{{ title }}
 				</h2>
 
@@ -19,24 +19,23 @@
 			</div>
 
 			<!-- Optional header action slot -->
-			<div v-if="$slots.action" class="flex items-center">
+			<div v-if="$slots.action" class="flex items-center gap-2 shrink-0">
 				<slot name="action" />
 			</div>
 		</header>
 
-		<!-- Body -->
-		<div class="divide-y divide-ink/10">
-			<slot />
+		<!-- Empty state -->
+		<div v-if="empty" class="px-5 py-10">
+			<div class="card-surface p-5">
+				<p class="type-empty">
+					Nothing requires your attention right now.
+				</p>
+			</div>
 		</div>
 
-		<!-- Empty state -->
-		<div
-			v-if="empty"
-			class="px-5 py-10 flex items-center justify-center"
-		>
-			<p class="type-empty text-center">
-				Nothing requires your attention right now.
-			</p>
+		<!-- Body -->
+		<div v-else class="divide-y divide-ink/10">
+			<slot />
 		</div>
 	</section>
 </template>

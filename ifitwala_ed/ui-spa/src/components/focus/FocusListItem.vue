@@ -20,11 +20,13 @@
 				<div class="if-skel if-skel--title" />
 				<div class="mt-2 if-skel if-skel--sub" />
 			</template>
+
 			<template v-else>
-				<p class="type-body-strong text-ink truncate">
+				<p class="type-body-strong text-ink leading-snug line-clamp-2">
 					{{ item.title }}
 				</p>
-				<p class="mt-1 type-caption truncate">
+
+				<p class="mt-1 type-caption text-ink/70 leading-snug line-clamp-2">
 					{{ item.subtitle }}
 				</p>
 			</template>
@@ -35,8 +37,12 @@
 			<template v-if="loading">
 				<div class="if-skel if-skel--badge" />
 			</template>
+
 			<template v-else>
-				<span v-if="item.badge" class="if-pill type-badge-label">
+				<span
+					v-if="item.badge"
+					class="if-pill type-badge-label border-ink/10 bg-surface-soft"
+				>
 					{{ item.badge }}
 				</span>
 			</template>
@@ -49,7 +55,6 @@
 		</div>
 	</button>
 </template>
-
 
 <script setup lang="ts">
 import { computed } from 'vue'
