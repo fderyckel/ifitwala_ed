@@ -15,6 +15,37 @@ ACTION_MODE = {
 	"student_log.follow_up.review.decide": "author",
 }
 
+
+def _get_user_full_names(user_ids: list[str]) -> dict[str, str]:
+	"""
+	Batch map User.name -> User.full_name using raw SQL.
+	Falls back to user id if full_name is missing.
+	"""
+	ids = sorted({(u or "").strip() for u in (user_ids or []) if (u or "").strip()})
+	if not ids:
+		return {}
+
+	rows = frappe.db.sql(
+		"""
+		select
+			name,
+			ifnull(full_name, name) as full_name
+		from `tabUser`
+		where name in %(ids)s
+		""",
+		{"ids": tuple(ids)},
+		as_dict=True,
+	)
+
+	out = {r["name"]: r["full_name"] for r in rows}
+
+	# defensive fallback
+	for u in ids:
+		out.setdefault(u, u)
+
+	return out
+
+
 # ---------------------------------------------------------------------
 # ID helpers (deterministic)
 # ---------------------------------------------------------------------
@@ -146,11 +177,23 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 	# ------------------------------------------------------------
 	# A) Assignee action items (ToDo -> Student Log)
 	# ------------------------------------------------------------
+	# IMPORTANT:
+	# - "Assigned by" must be the person who created/assigned the ToDo.
+	#   In Frappe, this is ToDo.assigned_by (with assigned_by_full_name).
+	# - We keep a fallback to ToDo.owner for older rows/edge-cases.
 	action_rows = frappe.db.sql(
 		"""
 		select
 			t.reference_name as log_name,
 			t.date as todo_due_date,
+
+			-- canonical assigner identity (can differ from Student Log.owner)
+			nullif(trim(ifnull(t.assigned_by, '')), '') as todo_assigned_by,
+			nullif(trim(ifnull(t.assigned_by_full_name, '')), '') as todo_assigned_by_full_name,
+
+			-- fallback (older ToDo rows)
+			nullif(trim(ifnull(t.owner, '')), '') as todo_owner,
+
 			s.student_name,
 			s.next_step,
 			s.requires_follow_up,
@@ -196,6 +239,20 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 		)
 		next_step_title_by_name = {x["name"]: x.get("next_step") for x in ns}
 
+	# Resolve assigner display names in one batch (only for rows where ToDo didn't already carry full name)
+	# We may have:
+	# - todo_assigned_by_full_name already (prefer it)
+	# - else resolve user.full_name via SQL
+	assigner_ids_to_resolve: set[str] = set()
+	for r in action_rows:
+		if r.get("todo_assigned_by_full_name"):
+			continue
+		assigner = r.get("todo_assigned_by") or r.get("todo_owner")
+		if assigner:
+			assigner_ids_to_resolve.add(assigner)
+
+	assigner_name_by_id = _get_user_full_names(sorted(assigner_ids_to_resolve))
+
 	for r in action_rows:
 		log_name = r.get("log_name")
 		if not log_name:
@@ -217,6 +274,20 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 		if next_step_title:
 			subtitle = f"{subtitle} • Next step: {next_step_title}"
 
+		# Assigned-by (ToDo assigner) — keep in payload always.
+		# Prefer ToDo.assigned_by; fallback to ToDo.owner if missing.
+		assigned_by = (r.get("todo_assigned_by") or r.get("todo_owner") or "").strip() or None
+
+		# Prefer ToDo.assigned_by_full_name if present, else resolve via SQL.
+		assigned_by_name = (r.get("todo_assigned_by_full_name") or "").strip() or None
+		if not assigned_by_name and assigned_by:
+			assigned_by_name = assigner_name_by_id.get(assigned_by) or assigned_by
+
+		# For now (per your earlier preference), keep it visible without Vue edits:
+		# add assigner to subtitle.
+		if assigned_by_name:
+			subtitle = f"{subtitle} • Assigned by: {assigned_by_name}"
+
 		action_type = "student_log.follow_up.act.submit"
 		items.append(
 			{
@@ -233,6 +304,8 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 				"payload": {
 					"student_name": r.get("student_name"),
 					"next_step": r.get("next_step"),
+					"assigned_by": assigned_by,
+					"assigned_by_name": assigned_by_name,
 				},
 				"permissions": {"can_open": True},
 			}
@@ -363,6 +436,12 @@ def get_focus_context(
 	mode = _resolve_mode(action_type, log_doc)
 
 	# ------------------------------------------------------------
+	# 5b) Resolve original log author (Student Log.owner) name
+	# ------------------------------------------------------------
+	log_author = (log_doc.owner or "").strip() or None
+	log_author_name_by_id = _get_user_full_names([log_author] if log_author else [])
+
+	# ------------------------------------------------------------
 	# 6) Fetch recent follow-ups (bounded)
 	# ------------------------------------------------------------
 	follow_up_rows = frappe.get_all(
@@ -402,6 +481,8 @@ def get_focus_context(
 			"date": str(log_doc.date) if log_doc.date else None,
 			"follow_up_status": log_doc.follow_up_status,
 			"log_html": log_doc.log or "",
+			"log_author": log_author,
+			"log_author_name": log_author_name_by_id.get(log_author) if log_author else None,
 		},
 		"follow_ups": follow_ups,
 	}
@@ -424,6 +505,7 @@ def _cache():
 def _idempotency_key(user: str, focus_item_id: str, client_request_id: str, suffix: str | None = None) -> str:
 	sfx = f":{suffix}" if suffix else ""
 	return f"ifitwala_ed:focus:student_log:{user}:{focus_item_id}:{client_request_id}{sfx}"
+
 
 def _lock_key(user: str, focus_item_id: str, suffix: str | None = None) -> str:
 	sfx = f":{suffix}" if suffix else ""

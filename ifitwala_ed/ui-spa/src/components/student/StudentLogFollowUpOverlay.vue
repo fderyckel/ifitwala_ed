@@ -34,15 +34,15 @@
               </div>
 
               <div class="meeting-modal__header-actions">
-								<button
-									type="button"
-									class="if-overlay__icon-button"
-									@click="emitClose"
-									aria-label="Close"
-								>
-									<span class="sr-only">Close</span>
-									<span aria-hidden="true" class="text-ink/70">×</span>
-								</button>
+                <button
+                  type="button"
+                  class="if-overlay__icon-button"
+                  @click="emitClose"
+                  aria-label="Close"
+                >
+                  <span class="sr-only">Close</span>
+                  <span aria-hidden="true" class="text-ink/70">×</span>
+                </button>
               </div>
             </div>
 
@@ -62,6 +62,13 @@
                       <div class="mt-1 type-body-strong text-ink truncate">
                         <span>Log</span>
                         <span v-if="log?.name" class="text-ink/60"> • {{ log.name }}</span>
+                      </div>
+
+                      <div v-if="log?.log_author_name || log?.log_author" class="type-caption mt-1">
+                        By:
+                        <span class="text-ink/80">
+                          {{ log?.log_author_name || log?.log_author }}
+                        </span>
                       </div>
 
                       <div v-if="log?.follow_up_status" class="type-caption mt-1">
@@ -240,11 +247,18 @@ type Mode = 'assignee' | 'author'
 
 type StudentLogRow = {
   name: string
+  student?: string | null
   student_name?: string | null
+  school?: string | null
   log_type?: string | null
+  next_step?: string | null
+  follow_up_person?: string | null
+  follow_up_role?: string | null
   date?: string | null
   log_html?: string | null
   follow_up_status?: string | null
+  log_author?: string | null
+  log_author_name?: string | null
 }
 
 type FollowUpRow = {
@@ -264,6 +278,11 @@ type FocusContext = {
   log: StudentLogRow
   follow_ups: FollowUpRow[]
 }
+
+/**
+ * Keep stable: Focus list listens and refreshes immediately after workflow completes.
+ */
+const FOCUS_REFRESH_EVENT = 'ifitwala:focus:refresh'
 
 const props = defineProps<{
   open: boolean
@@ -319,6 +338,16 @@ function emitAfterLeave() {
   emit('after-leave')
 }
 
+function fireFocusRefresh() {
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(FOCUS_REFRESH_EVENT))
+    }
+  } catch (e) {
+    // best-effort
+  }
+}
+
 const modeState = ref<Mode>(props.mode)
 
 const log = ref<StudentLogRow | null>(null)
@@ -343,6 +372,11 @@ function _newClientRequestId(prefix = 'req') {
 }
 
 /* API ---------------------------------------------------------- */
+/**
+ * Important:
+ * - Use method paths consistently (no mixing "ifitwala_ed.api.x" vs "/api/method/...").
+ * - createResource() will POST to /api/method/<url> when given a dotted path.
+ */
 const getContext = createResource({
   url: 'ifitwala_ed.api.focus.get_focus_context',
   method: 'POST',
@@ -350,13 +384,13 @@ const getContext = createResource({
 })
 
 const submitFollowUpApi = createResource({
-  url: '/api/method/ifitwala_ed.api.focus.submit_student_log_follow_up',
+  url: 'ifitwala_ed.api.focus.submit_student_log_follow_up',
   method: 'POST',
   auto: false,
 })
 
 const reviewOutcomeApi = createResource({
-  url: '/api/method/ifitwala_ed.api.focus.review_student_log_outcome',
+  url: 'ifitwala_ed.api.focus.review_student_log_outcome',
   method: 'POST',
   auto: false,
 })
@@ -365,8 +399,8 @@ async function reload() {
   if (!props.studentLog && !props.focusItemId) return
   loading.value = true
   try {
-    const payload = props.focusItemId
-      ? { focus_item_id: props.focusItemId }
+    const payload = (props.focusItemId || '').trim()
+      ? { focus_item_id: (props.focusItemId || '').trim() }
       : { reference_doctype: 'Student Log', reference_name: props.studentLog }
 
     const res = await getContext.submit(payload)
@@ -434,7 +468,10 @@ async function submitFollowUp() {
       icon: 'check',
     })
 
-    // Important: close FIRST. Reloading can keep the overlay “alive” if parent wiring is off.
+    // Trigger Focus list refresh immediately (so item disappears).
+    fireFocusRefresh()
+
+    // Close overlay.
     emitClose()
   } catch (e: any) {
     submittedOnce.value = false
@@ -480,6 +517,7 @@ async function completeParentLog() {
       icon: 'check',
     })
 
+    fireFocusRefresh()
     emitClose()
   } catch (e: any) {
     submittedOnce.value = false
@@ -495,15 +533,13 @@ async function completeParentLog() {
 
 /* Helpers ------------------------------------------------------ */
 function openInDesk(doctype: string, name: string) {
-  // leaving SPA intentionally
-  const route = String(doctype)
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9\-]/g, '')
-    .replace(/\-+/g, '-')
+  // leaving SPA intentionally (Desk route)
+  const safeDoctype = String(doctype || '').trim()
+  if (!safeDoctype || !name) return
 
-  window.open(`/app/${route}/${encodeURIComponent(name)}`, '_blank', 'noopener')
+  // Desk uses the real doctype, not a slug. Let Frappe route it.
+  const url = `/app/${encodeURIComponent(safeDoctype)}/${encodeURIComponent(name)}`
+  window.open(url, '_blank', 'noopener')
 }
 
 function safeHtml(html: string) {

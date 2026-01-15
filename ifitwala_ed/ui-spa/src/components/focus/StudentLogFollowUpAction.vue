@@ -33,10 +33,10 @@
             Open in Desk
           </button>
 
+          <!-- Advisory: does NOT block closing or workflows -->
           <button
             type="button"
             class="btn btn-quiet"
-            :disabled="busy"
             @click="requestRefresh"
           >
             Refresh
@@ -120,9 +120,11 @@
       </div>
 
       <div class="mt-4 flex items-center justify-end gap-2">
-        <button type="button" class="btn btn-quiet" :disabled="busy" @click="emitClose">
+        <!-- A+: close must NEVER be blocked by busy -->
+        <button type="button" class="btn btn-quiet" @click="emitClose">
           Cancel
         </button>
+
         <button
           type="button"
           class="btn btn-primary"
@@ -161,9 +163,11 @@
         </div>
 
         <div class="mt-3 flex items-center justify-end gap-2">
-          <button type="button" class="btn btn-quiet" :disabled="busy" @click="emitClose">
+          <!-- A+: close must NEVER be blocked by busy -->
+          <button type="button" class="btn btn-quiet" @click="emitClose">
             Close
           </button>
+
           <button
             type="button"
             class="btn btn-primary"
@@ -211,7 +215,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { createResource, toast } from 'frappe-ui'
 
 type Mode = 'assignee' | 'author'
@@ -293,10 +297,6 @@ const canComplete = computed(() => {
   return !!activeStudentLogName.value && s !== 'completed'
 })
 
-/**
- * Sync from parent context.
- * Parent may refresh context while overlay stays open.
- */
 function applyContext(ctx: FocusContext | null) {
   if (!ctx) return
   log.value = ctx.log ?? null
@@ -317,6 +317,10 @@ watch(
 )
 
 /* API ---------------------------------------------------------- */
+/**
+ * NOTE: This is still direct API usage. In A+ final state, these calls
+ * move into studentLogFollowUpService and will emit uiSignals there.
+ */
 const submitFollowUpApi = createResource({
   url: '/api/method/ifitwala_ed.api.focus.submit_student_log_follow_up',
   method: 'POST',
@@ -350,7 +354,6 @@ function trustedHtml(html: string) {
   return html || ''
 }
 
-/* Guards ------------------------------------------------------- */
 function _requireFocusItemId(): string | null {
   const id = (props.focusItemId || '').trim()
   if (!id) {
@@ -362,6 +365,23 @@ function _requireFocusItemId(): string | null {
     return null
   }
   return id
+}
+
+function _normalizeMessage(res: any) {
+  // handles: res.message, res, nested objects
+  const msg = res && typeof res === 'object' && 'message' in res ? res.message : res
+  return msg
+}
+
+async function _aPlusSuccessCloseThenDone() {
+  // A+: close immediately, then best-effort done.
+  emitClose()
+  await nextTick()
+  try {
+    emit('done')
+  } catch (e) {
+    // never block closing
+  }
 }
 
 /* Actions ------------------------------------------------------ */
@@ -388,19 +408,20 @@ async function submitFollowUp() {
       client_request_id,
     })
 
-    const msg = ((res as any)?.message ?? res) as any
+    const msg = _normalizeMessage(res) as any
     if (!msg?.ok) {
       throw new Error(msg?.message || 'Submit failed.')
     }
 
+    // Toast is best-effort; must not gate close.
     toast({
       title: msg.idempotent ? 'Already submitted' : 'Follow-up submitted',
       icon: 'check',
     })
 
-    emit('done')
-    emitClose()
+    await _aPlusSuccessCloseThenDone()
   } catch (e: any) {
+    // allow retry
     submittedOnce.value = false
     toast({
       title: 'Could not submit follow-up',
@@ -442,7 +463,7 @@ async function reassignFollowUp() {
       client_request_id,
     })
 
-    const msg = ((res as any)?.message ?? res) as any
+    const msg = _normalizeMessage(res) as any
     if (!msg?.ok) {
       throw new Error(msg?.message || 'Reassign failed.')
     }
@@ -452,8 +473,7 @@ async function reassignFollowUp() {
       icon: 'check',
     })
 
-    emit('done')
-    emitClose()
+    await _aPlusSuccessCloseThenDone()
   } catch (e: any) {
     submittedOnce.value = false
     toast({
@@ -486,7 +506,7 @@ async function completeParentLog() {
       client_request_id,
     })
 
-    const msg = ((res as any)?.message ?? res) as any
+    const msg = _normalizeMessage(res) as any
     if (!msg?.ok) {
       throw new Error(msg?.message || 'Complete failed.')
     }
@@ -496,8 +516,7 @@ async function completeParentLog() {
       icon: 'check',
     })
 
-    emit('done')
-    emitClose()
+    await _aPlusSuccessCloseThenDone()
   } catch (e: any) {
     submittedOnce.value = false
     toast({
