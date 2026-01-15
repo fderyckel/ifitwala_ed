@@ -176,7 +176,6 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 				"follow_up_person",
 			],
 			limit_page_length=1000,
-			ignore_permissions=True,
 		)
 
 		log_by_name = {r["name"]: r for r in log_rows if r.get("name")}
@@ -353,6 +352,13 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 		return (kind_rank, -pr, due)
 
 	items.sort(key=_sort_key)
+
+	frappe.logger("focus").info({
+    "user": user,
+    "result_count": len(items),
+    "returning": min(len(items), limit),
+	})
+
 	return items[:limit]
 
 
