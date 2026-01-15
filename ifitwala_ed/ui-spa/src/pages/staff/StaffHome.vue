@@ -34,62 +34,15 @@
 		<section class="grid grid-cols-1 gap-10 lg:grid-cols-12">
 			<!-- LEFT COL: TASKS / FOCUS -------------------------------->
 			<div class="lg:col-span-8 space-y-4">
-				<!-- Section Title -->
-				<div class="flex items-center justify-between px-1">
-					<h3 class="flex items-center gap-2 type-h3 text-canopy">
-						<FeatherIcon name="list" class="h-4 w-4 opacity-70" />
-						Your Focus
-					</h3>
-					<span class="type-overline">
-						Pending Tasks
-					</span>
-				</div>
-
-				<!-- Palette card wrapper -->
-				<div class="palette-card overflow-hidden">
-					<!-- Example tasks (replace with real later) -->
-					<div
-						class="group flex cursor-pointer items-start gap-4 border-b border-[rgb(var(--sand-rgb)/0.4)]
-							bg-white px-6 py-4 transition-colors hover:bg-sky/20 last:border-0"
-					>
-						<div
-							class="mt-1 h-5 w-5 rounded border-2 border-slate-token/60 transition-colors group-hover:border-jacaranda"
-						></div>
-
-						<div class="flex-1">
-							<p class="text-sm font-medium text-ink transition-colors group-hover:text-jacaranda">
-								Submit Semester Reports for Year 9
-							</p>
-							<div class="mt-1 flex items-center gap-3 text-xs text-slate-token/70">
-								<span class="flex items-center gap-1 text-flame font-medium">
-									<FeatherIcon name="alert-circle" class="h-3 w-3" />
-									Due Today
-								</span>
-								<span>•</span>
-								<span>Academics</span>
-							</div>
-						</div>
-					</div>
-
-					<div
-						class="group flex cursor-pointer items-start gap-4 bg-white px-6 py-4 transition-colors hover:bg-sky/20"
-					>
-						<div
-							class="mt-1 h-5 w-5 rounded border-2 border-slate-token/60 transition-colors group-hover:border-jacaranda"
-						></div>
-
-						<div class="flex-1">
-							<p class="text-sm font-medium text-ink transition-colors group-hover:text-jacaranda">
-								Approve Field Trip: Grade 10 Science
-							</p>
-							<div class="mt-1 flex items-center gap-3 text-xs text-slate-token/70">
-								<span>Tomorrow</span>
-								<span>•</span>
-								<span>Approval</span>
-							</div>
-						</div>
-					</div>
-				</div>
+				<FocusListCard
+					:items="focusItems"
+					:loading="focusLoading"
+					title="Your Focus"
+					meta="Pending"
+					empty-text="Nothing urgent right now."
+					:max-items="8"
+					@open="openFocusItem"
+				/>
 			</div>
 
 			<!-- RIGHT COL: QUICK ACTIONS ------------------------------->
@@ -306,29 +259,36 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { FeatherIcon } from 'frappe-ui'
+import { FeatherIcon, createResource, toast } from 'frappe-ui'
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue'
+import FocusListCard from '@/components/focus/FocusListCard.vue'
 import { useOverlayStack } from '@/composables/useOverlayStack'
+import type { FocusItem } from '@/types/focusItem'
 
 /* USER --------------------------------------------------------- */
-const userDoc = ref<any | null>(null)
+type StaffHomeHeader = {
+  user: string
+  first_name?: string | null
+  full_name?: string | null
+}
+
+const userDoc = ref<StaffHomeHeader | null>(null)
+
+const headerResource = createResource({
+  url: 'ifitwala_ed.api.portal.get_staff_home_header',
+  method: 'POST',
+  auto: false,
+  onSuccess(data: any) {
+    const payload = data && typeof data === 'object' && 'message' in data ? data.message : data
+    userDoc.value = (payload || null) as StaffHomeHeader | null
+  },
+  onError(err: any) {
+    console.error('[StaffHome] Failed to load header:', err)
+  },
+})
 
 onMounted(async () => {
-  try {
-    const whoRes = await fetch('/api/method/frappe.auth.get_logged_user', { credentials: 'include' })
-    const whoJson = await whoRes.json()
-    const userId = whoJson.message
-
-    if (!userId || userId === 'Guest') return
-
-    const userRes = await fetch(`/api/resource/User/${encodeURIComponent(userId)}`, {
-      credentials: 'include',
-    })
-    const userJson = await userRes.json()
-    userDoc.value = userJson.data || null
-  } catch (err) {
-    console.error('[StaffHome] Failed to load user doc:', err)
-  }
+  await headerResource.submit({})
 })
 
 const firstName = computed(() => {
@@ -348,6 +308,96 @@ const quickActions = [
     to: { name: 'staff-gradebook' },
   },
 ]
+
+/* FOCUS -------------------------------------------------------- */
+const focusLoading = ref(false)
+
+const focusItems = ref<FocusItem[]>([
+\t{
+\t\tid: 'student_log::Student Log::SLOG-202601-0001::student_log.follow_up.act.submit::mock@local',
+\t\tkind: 'action',
+\t\ttitle: 'Follow up: Parent contact needed',
+\t\tsubtitle: 'Nina K. • Next step: Call guardian (wellbeing)',
+\t\tbadge: 'Today',
+\t\tpriority: 90,
+\t\tdue_date: '2026-01-15',
+\t\taction_type: 'student_log.follow_up.act.submit',
+\t\treference_doctype: 'Student Log',
+\t\treference_name: 'SLOG-202601-0001',
+\t\tpayload: { student_name: 'Nina K.' },
+\t\tpermissions: { can_open: true },
+\t},
+\t{
+\t\tid: 'student_log::Student Log::SLOG-202601-0002::student_log.follow_up.act.submit::mock@local',
+\t\tkind: 'action',
+\t\ttitle: 'Follow up: Check-in after incident',
+\t\tsubtitle: 'Park J. • Next step: Short check-in + note',
+\t\tbadge: 'Due soon',
+\t\tpriority: 80,
+\t\tdue_date: '2026-01-16',
+\t\taction_type: 'student_log.follow_up.act.submit',
+\t\treference_doctype: 'Student Log',
+\t\treference_name: 'SLOG-202601-0002',
+\t\tpayload: { student_name: 'Park J.' },
+\t\tpermissions: { can_open: true },
+\t},
+\t{
+\t\tid: 'student_log::Student Log::SLOG-202601-0003::student_log.follow_up.act.submit::mock@local',
+\t\tkind: 'action',
+\t\ttitle: 'Follow up: Academic support conversation',
+\t\tsubtitle: 'Somchai P. • Next step: Meet student briefly',
+\t\tbadge: null,
+\t\tpriority: 60,
+\t\tdue_date: null,
+\t\taction_type: 'student_log.follow_up.act.submit',
+\t\treference_doctype: 'Student Log',
+\t\treference_name: 'SLOG-202601-0003',
+\t\tpayload: { student_name: 'Somchai P.' },
+\t\tpermissions: { can_open: true },
+\t},
+\t{
+\t\tid: 'student_log::Student Log::SLOG-202601-0004::student_log.follow_up.review.decide::mock@local',
+\t\tkind: 'review',
+\t\ttitle: 'Review outcome: Follow-up submitted',
+\t\tsubtitle: 'Mina L. • Decide: close or continue follow-up',
+\t\tbadge: 'Today',
+\t\tpriority: 70,
+\t\tdue_date: '2026-01-15',
+\t\taction_type: 'student_log.follow_up.review.decide',
+\t\treference_doctype: 'Student Log',
+\t\treference_name: 'SLOG-202601-0004',
+\t\tpayload: { student_name: 'Mina L.' },
+\t\tpermissions: { can_open: true },
+\t},
+\t{
+\t\tid: 'student_log::Student Log::SLOG-202601-0005::student_log.follow_up.review.decide::mock@local',
+\t\tkind: 'review',
+\t\ttitle: 'Review outcome: Waiting your decision',
+\t\tsubtitle: 'Arisa T. • Follow-up completed by assignee',
+\t\tbadge: 'Due soon',
+\t\tpriority: 65,
+\t\tdue_date: '2026-01-16',
+\t\taction_type: 'student_log.follow_up.review.decide',
+\t\treference_doctype: 'Student Log',
+\t\treference_name: 'SLOG-202601-0005',
+\t\tpayload: { student_name: 'Arisa T.' },
+\t\tpermissions: { can_open: true },
+\t},
+\t{
+\t\tid: 'inquiry::Inquiry::INQ-202601-0001::inquiry.follow_up.act.first_contact::mock@local',
+\t\tkind: 'action',
+\t\ttitle: 'Inquiry: First contact',
+\t\tsubtitle: 'Family: Kittipong • New inquiry needs first reply',
+\t\tbadge: 'Due soon',
+\t\tpriority: 50,
+\t\tdue_date: '2026-01-16',
+\t\taction_type: 'inquiry.follow_up.act.first_contact',
+\t\treference_doctype: 'Inquiry',
+\t\treference_name: 'INQ-202601-0001',
+\t\tpayload: { family_name: 'Kittipong' },
+\t\tpermissions: { can_open: true },
+\t},
+])
 
 /* ANALYTICS ---------------------------------------------------- */
 const analyticsQuickLinks = [
@@ -458,6 +508,49 @@ const greeting = computed(() => {
 
 /* OVERLAY: Create Task ---------------------------------------- */
 const overlay = useOverlayStack()
+
+function openFocusItem(item: FocusItem) {
+\tif (item.reference_doctype === 'Student Log') {
+\t\tlet mode: 'assignee' | 'author' | null = null
+
+\t\tif (item.action_type === 'student_log.follow_up.act.submit') {
+\t\t\tmode = 'assignee'
+\t\t} else if (item.action_type === 'student_log.follow_up.review.decide') {
+\t\t\tmode = 'author'
+\t\t}
+
+\t\tif (!mode) {
+\t\t\ttoast({
+\t\t\t\ttitle: 'Unknown Student Log action type',
+\t\t\t\ttext: 'This focus item is not supported yet.',
+\t\t\t\ticon: 'x',
+\t\t\t})
+\t\t\treturn
+\t\t}
+
+\t\toverlay.open('student-log-follow-up', {
+\t\t\tmode,
+\t\t\tstudentLog: item.reference_name,
+\t\t\tfocusItemId: item.id,
+\t\t})
+\t\treturn
+\t}
+
+\tif (item.reference_doctype === 'Inquiry') {
+\t\ttoast({
+\t\t\ttitle: 'Not wired yet',
+\t\t\ttext: 'Inquiry focus actions are coming next.',
+\t\t\ticon: 'info',
+\t\t})
+\t\treturn
+\t}
+
+\ttoast({
+\t\ttitle: 'Not supported yet',
+\t\ttext: 'This focus item type is not implemented.',
+\t\ticon: 'info',
+\t})
+}
 
 function openCreateTask() {
   overlay.open('create-task', {

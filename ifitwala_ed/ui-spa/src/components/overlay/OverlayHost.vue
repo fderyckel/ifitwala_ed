@@ -34,6 +34,7 @@ import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue'
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue'
 import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCommunicationQuickCreateModal.vue'
 import StudentLogCreateOverlay from '@/components/student/StudentLogCreateOverlay.vue'
+import StudentLogFollowUpOverlay from '@/components/student/StudentLogFollowUpOverlay.vue'
 
 type RenderedEntry = OverlayEntry & {
   open: boolean
@@ -133,6 +134,8 @@ function resolveComponent(type: OverlayType) {
       return OrgCommunicationQuickCreateOverlay
     case 'student-log-create':
       return StudentLogCreateOverlay
+    case 'student-log-follow-up':
+      return StudentLogFollowUpOverlay
     default:
       return CreateTaskDeliveryOverlay
   }
@@ -180,7 +183,6 @@ function finalizeClose(id: string) {
   }
   rendered.value.splice(idx, 1)
 }
-
 </script>
 
 <style scoped>

@@ -269,6 +269,98 @@
     background-color: rgb(var(--surface-rgb) / 1);
   }
 
+  /* ============================================================
+     LIST ROWS (FOCUS LIST, ETC.)
+     ============================================================ */
+  .if-list-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    width: 100%;
+    text-align: left;
+    background: white;
+    border-bottom: 1px solid rgb(var(--sand-rgb) / 0.35);
+    transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  }
+
+  .if-list-row:last-child {
+    border-bottom: 0;
+  }
+
+  .if-list-row:hover {
+    background: rgb(var(--sky-rgb) / 0.2);
+  }
+
+  .if-list-row:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / 0.25);
+  }
+
+  .if-list-row--disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .if-list-row__dot {
+    margin-top: 0.2rem;
+    height: 1.25rem;
+    width: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.35rem;
+    border: 2px solid rgb(var(--slate-token-rgb) / 0.35);
+  }
+
+  .if-list-row__dot-inner {
+    display: block;
+    height: 0.5rem;
+    width: 0.5rem;
+    border-radius: 999px;
+    background: rgb(var(--slate-token-rgb) / 0.45);
+  }
+
+  .if-list-row__right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .if-dot--action {
+    background: rgb(var(--canopy-rgb) / 0.9);
+  }
+
+  .if-dot--review {
+    background: rgb(var(--jacaranda-rgb) / 0.9);
+  }
+
+  .if-dot--muted {
+    background: rgb(var(--slate-token-rgb) / 0.35);
+  }
+
+  .if-skel {
+    border-radius: 999px;
+    background: rgb(var(--sand-rgb) / 0.55);
+  }
+
+  .if-skel--title {
+    height: 0.9rem;
+    width: 70%;
+  }
+
+  .if-skel--sub {
+    height: 0.75rem;
+    width: 55%;
+  }
+
+  .if-skel--badge {
+    height: 1.2rem;
+    width: 3.5rem;
+    border-radius: 999px;
+  }
+
   .surface-toolbar {
     @apply rounded-2xl border px-4 py-3 shadow-sm;
     background-color: rgb(var(--surface-rgb) / 0.92);
