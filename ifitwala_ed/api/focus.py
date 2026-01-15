@@ -187,13 +187,14 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 		next_step_names = sorted({r.get("next_step") for r in log_rows if r.get("next_step")})
 		next_step_title_by_name = {}
 		if next_step_names:
-			ns = frappe.get_all(
-				"Student Log Next Step",
-				filters={"name": ["in", next_step_names]},
-				fields=["name", "next_step_title"],
-				limit_page_length=1000,
-			)
-			next_step_title_by_name = {x["name"]: x.get("next_step_title") for x in ns}
+				ns = frappe.get_all(
+						"Student Log Next Step",
+						filters={"name": ["in", next_step_names]},
+						fields=["name", "next_step"],
+						limit_page_length=1000,
+				)
+				next_step_title_by_name = {x["name"]: x.get("next_step") for x in ns}
+
 
 		# Preserve ToDo ordering (inbox order)
 		for log_name in log_names_action:
