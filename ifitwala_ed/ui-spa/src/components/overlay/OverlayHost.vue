@@ -35,6 +35,8 @@ import ClassEventModal from '@/components/calendar/ClassEventModal.vue'
 import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCommunicationQuickCreateModal.vue'
 import StudentLogCreateOverlay from '@/components/student/StudentLogCreateOverlay.vue'
 import StudentLogFollowUpOverlay from '@/components/student/StudentLogFollowUpOverlay.vue'
+import FocusRouterOverlay from '@/components/focus/FocusRouterOverlay.vue'
+
 
 type RenderedEntry = OverlayEntry & {
   open: boolean
@@ -136,6 +138,8 @@ function resolveComponent(type: OverlayType) {
       return StudentLogCreateOverlay
     case 'student-log-follow-up':
       return StudentLogFollowUpOverlay
+		case 'focus-router':
+			return FocusRouterOverlay
     default:
       return CreateTaskDeliveryOverlay
   }

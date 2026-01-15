@@ -9,6 +9,7 @@ from frappe import _
 STUDENT_LOG_DOCTYPE = "Student Log"
 FOLLOW_UP_DOCTYPE = "Student Log Follow Up"
 
+# Maps action_type → mode
 ACTION_MODE = {
 	"student_log.follow_up.act.submit": "assignee",
 	"student_log.follow_up.review.decide": "author",
@@ -16,6 +17,10 @@ ACTION_MODE = {
 
 
 def _parse_focus_item_id(focus_item_id: str) -> dict:
+	"""
+	Expected canonical format:
+	<workflow>::<reference_doctype>::<reference_name>::<action_type>::<user>
+	"""
 	parts = (focus_item_id or "").split("::")
 	if len(parts) != 5:
 		frappe.throw(_("Invalid focus item id."), frappe.ValidationError)
@@ -37,7 +42,8 @@ def _resolve_mode(action_type: str | None, log_doc) -> str:
 			frappe.throw(_("Unknown Student Log action type."), frappe.ValidationError)
 		return mode
 
-	if log_doc.follow_up_person and log_doc.follow_up_person == frappe.session.user:
+	# Fallback (should not be used in normal Focus routing)
+	if log_doc.follow_up_person == frappe.session.user:
 		return "assignee"
 
 	return "author"
@@ -49,7 +55,14 @@ def get_context(
 	reference_doctype: str | None = None,
 	reference_name: str | None = None,
 ):
+	"""
+	Returns all context required to render a FocusRouterOverlay body.
+	This API is READ-ONLY orchestration. No workflow decisions here.
+	"""
+
 	action_type = None
+
+	# Preferred path: focus_item_id
 	if focus_item_id:
 		parsed = _parse_focus_item_id(focus_item_id)
 		reference_doctype = parsed["reference_doctype"]
@@ -60,18 +73,36 @@ def get_context(
 		frappe.throw(_("Missing reference info."), frappe.ValidationError)
 
 	if reference_doctype != STUDENT_LOG_DOCTYPE:
-		frappe.throw(_("Only Student Log focus items are supported."), frappe.ValidationError)
+		frappe.throw(
+			_("Only Student Log focus items are supported."),
+			frappe.ValidationError,
+		)
 
 	log_doc = frappe.get_doc(STUDENT_LOG_DOCTYPE, reference_name)
-	if not frappe.has_permission(STUDENT_LOG_DOCTYPE, doc=log_doc, ptype="read"):
-		frappe.throw(_("You are not permitted to view this log."), frappe.PermissionError)
+
+	if not frappe.has_permission(
+		STUDENT_LOG_DOCTYPE,
+		doc=log_doc,
+		ptype="read",
+	):
+		frappe.throw(
+			_("You are not permitted to view this log."),
+			frappe.PermissionError,
+		)
 
 	mode = _resolve_mode(action_type, log_doc)
 
+	# Fetch follow-ups (bounded, no N+1)
 	follow_up_rows = frappe.get_all(
 		FOLLOW_UP_DOCTYPE,
 		filters={"student_log": reference_name},
-		fields=["name", "date", "follow_up_author", "follow_up", "docstatus"],
+		fields=[
+			"name",
+			"date",
+			"follow_up_author",
+			"follow_up",
+			"docstatus",
+		],
 		order_by="modified desc",
 		limit_page_length=20,
 	)
@@ -90,6 +121,7 @@ def get_context(
 
 	return {
 		"focus_item_id": focus_item_id,
+		"action_type": action_type,
 		"reference_doctype": STUDENT_LOG_DOCTYPE,
 		"reference_name": reference_name,
 		"mode": mode,

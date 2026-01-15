@@ -9,6 +9,7 @@ export type OverlayType =
   | 'org-communication-quick-create'
   | 'student-log-create'
   | 'student-log-follow-up'
+	| 'focus-router'
 
 export type OverlayEntry = {
   id: string
