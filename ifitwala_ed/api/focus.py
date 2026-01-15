@@ -145,6 +145,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 		order_by="date asc, modified desc",
 		limit_start=offset,
 		limit_page_length=limit,
+		ignore_permissions=True,
 	)
 
 	log_names_action = [r.get("reference_name") for r in todo_rows if r.get("reference_name")]

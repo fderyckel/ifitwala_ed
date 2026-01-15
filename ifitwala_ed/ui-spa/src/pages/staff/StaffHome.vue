@@ -366,6 +366,7 @@ async function refreshFocus(reason: string) {
 	if (focusLoading.value) return
 
 	focusLoading.value = true
+	console.log('[Focus] refresh', { reason, payload: { open_only: 1, limit: 8, offset: 0 } })
 	try {
 		// Note: backend uses frappe.session.user, no user passed from client.
 		await focusResource.submit({ open_only: 1, limit: 8, offset: 0 })
