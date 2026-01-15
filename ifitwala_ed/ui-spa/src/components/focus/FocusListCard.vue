@@ -5,16 +5,20 @@
 		<header class="flex items-center justify-between px-5 py-4 border-b border-line-soft">
 			<div class="min-w-0 flex items-center gap-3">
 				<h2 class="section-header truncate">
-					{{ title }}
+					{{ titleText }}
 				</h2>
 
 				<span
-					v-if="count !== undefined"
+					v-if="showCount"
 					class="inline-flex items-center justify-center px-2 py-0.5 rounded-full
 					       text-[11px] font-semibold
 					       bg-surface-soft text-ink/70 border border-ink/10"
 				>
-					{{ count }}
+					{{ countValue }}
+				</span>
+
+				<span v-if="metaText" class="type-caption text-ink/60 truncate">
+					{{ metaText }}
 				</span>
 			</div>
 
@@ -25,24 +29,42 @@
 		</header>
 
 		<!-- Empty state -->
-		<div v-if="empty" class="px-5 py-10">
+		<div v-if="isEmpty" class="px-5 py-10">
 			<div class="card-surface p-5">
 				<p class="type-empty">
-					Nothing requires your attention right now.
+					{{ emptyText }}
 				</p>
 			</div>
 		</div>
 
 		<!-- Body -->
 		<div v-else class="divide-y divide-ink/10">
-			<slot />
+			<!-- Loading skeletons -->
+			<template v-if="loading">
+				<FocusListItem
+					v-for="n in skeletonCountValue"
+					:key="`sk_${n}`"
+					:item="skeletonItem"
+					:loading="true"
+					:disabled="true"
+				/>
+			</template>
+
+			<!-- Items -->
+			<template v-else>
+				<FocusListItem v-for="it in displayed" :key="keyFor(it)" :item="it" @open="emitOpen" />
+			</template>
+		</div>
+
+		<!-- Optional footer slot -->
+		<div v-if="$slots.footer" class="px-5 py-4 border-t border-line-soft">
+			<slot name="footer" />
 		</div>
 	</section>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FeatherIcon } from 'frappe-ui'
 import FocusListItem from './FocusListItem.vue'
 import type { FocusItem } from '@/types/focusItem'
 
@@ -54,20 +76,49 @@ const props = defineProps<{
 	emptyText?: string
 	maxItems?: number
 	skeletonCount?: number
+	/**
+	 * If provided, overrides badge count display.
+	 * If undefined, count defaults to items.length.
+	 */
+	count?: number
 }>()
 
 const emit = defineEmits<{
 	(e: 'open', item: FocusItem): void
 }>()
 
-const title = computed(() => props.title ?? 'Your Focus')
-const emptyText = computed(() => props.emptyText ?? 'Nothing urgent right now.')
-const maxItems = computed(() => props.maxItems ?? 8)
-const skeletonCount = computed(() => props.skeletonCount ?? 6)
+/* Normalized props ------------------------------------------------ */
+const loading = computed(() => !!props.loading)
+const safeItems = computed<FocusItem[]>(() => (Array.isArray(props.items) ? props.items : []))
 
-const safeItems = computed(() => (Array.isArray(props.items) ? props.items : []))
-const displayed = computed(() => safeItems.value.slice(0, maxItems.value))
+const titleText = computed(() => (props.title && String(props.title).trim() ? props.title : 'Your Focus'))
+const metaText = computed(() => (props.meta && String(props.meta).trim() ? props.meta : null))
+const emptyText = computed(() => (props.emptyText && String(props.emptyText).trim() ? props.emptyText : 'Nothing urgent right now.'))
 
+const maxItemsValue = computed(() => {
+	const n = Number(props.maxItems ?? 8)
+	return Number.isFinite(n) ? Math.min(Math.max(Math.floor(n), 1), 50) : 8
+})
+
+const skeletonCountValue = computed(() => {
+	const n = Number(props.skeletonCount ?? 6)
+	return Number.isFinite(n) ? Math.min(Math.max(Math.floor(n), 1), 12) : 6
+})
+
+const displayed = computed(() => safeItems.value.slice(0, maxItemsValue.value))
+
+/* Badge count ----------------------------------------------------- */
+const countValue = computed(() => {
+	if (typeof props.count === 'number' && Number.isFinite(props.count)) return props.count
+	return safeItems.value.length
+})
+
+const showCount = computed(() => typeof countValue.value === 'number')
+
+/* Empty logic ----------------------------------------------------- */
+const isEmpty = computed(() => !loading.value && safeItems.value.length === 0)
+
+/* Skeleton item --------------------------------------------------- */
 const skeletonItem: FocusItem = {
 	id: 'sk',
 	kind: 'action',
@@ -83,7 +134,22 @@ const skeletonItem: FocusItem = {
 	permissions: { can_open: false },
 }
 
+/* Emit ------------------------------------------------------------ */
 function emitOpen(item: FocusItem) {
 	emit('open', item)
+}
+
+/**
+ * Defensive keying:
+ * - Prefer stable server id.
+ * - Fallback to reference tuple if id missing (shouldn’t happen, but prevents silent empty list).
+ */
+function keyFor(it: FocusItem) {
+	const id = (it as any)?.id
+	if (typeof id === 'string' && id.trim()) return id
+	const a = String((it as any)?.action_type ?? '')
+	const d = String((it as any)?.reference_doctype ?? '')
+	const n = String((it as any)?.reference_name ?? '')
+	return `${a}::${d}::${n}`
 }
 </script>
