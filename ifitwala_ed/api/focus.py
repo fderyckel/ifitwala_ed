@@ -262,7 +262,7 @@ def list(open_only: int = 1, limit: int = 20, offset: int = 0):
 		STUDENT_LOG_DOCTYPE,
 		filters={
 			"owner": user,
-			"follow_up_status": ["!=", "Completed"],
+			"follow_up_status": ["not in", ["Completed", "completed"]],
 			"requires_follow_up": 1,
 		},
 		fields=["name", "student_name"],

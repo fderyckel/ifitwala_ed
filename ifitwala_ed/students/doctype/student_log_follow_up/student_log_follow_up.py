@@ -68,9 +68,39 @@ class StudentLogFollowUp(Document):
 				except Exception:
 					pass
 
+		# -----------------------------------------------------------------
+		# CLOSE OPEN ToDo(s) for this log (single-open ToDo policy)
+		# - Once a follow-up is submitted, the assignee's ToDo is considered done.
+		# - Review responsibility shifts to the author (Focus "review" item).
+		# -----------------------------------------------------------------
+		open_todos = frappe.get_all(
+			"ToDo",
+			filters={
+				"reference_type": "Student Log",
+				"reference_name": log.name,
+				"status": "Open",
+			},
+			fields=["name", "allocated_to"],
+			limit_page_length=50,
+		)
+
+		for t in open_todos:
+			allocated_to = t.get("allocated_to")
+			if assign_remove and allocated_to:
+				# Uses Frappe's assignment removal when available
+				try:
+					assign_remove("Student Log", log.name, allocated_to)
+					continue
+				except Exception:
+					pass
+
+			# Fallback: close the ToDo row directly
+			if t.get("name"):
+				frappe.db.set_value("ToDo", t["name"], "status", "Closed")
+
 		# Resolve key users
 		author_user = log.owner or None
-		if not author_user and log.author_name:
+		if not author_user and getattr(log, "author_name", None):
 			author_user = frappe.db.get_value("Employee", {"employee_full_name": log.author_name}, "user_id")
 		assignee_user = log.follow_up_person or None
 
@@ -152,3 +182,30 @@ class StudentLogFollowUp(Document):
 				link=frappe.utils.get_link_to_form(self.doctype, self.name),
 			),
 		)
+
+		# ------------------------------------------------------------
+		# Close assignee ToDo on follow-up submit
+		# - Focus "action" items are driven by OPEN ToDos.
+		# - Submitting a follow-up means the assignee has acted.
+		# - Only close the OPEN ToDo if it belongs to the current user
+		#   (prevents closing a ToDo after reassignment).
+		# ------------------------------------------------------------
+		try:
+			todo_name, todo_user = frappe.db.get_value(
+				"ToDo",
+				{
+					"reference_type": "Student Log",
+					"reference_name": log.name,
+					"status": "Open",
+				},
+				["name", "allocated_to"],
+			) or (None, None)
+
+			if todo_name and todo_user and todo_user == frappe.session.user:
+				if assign_remove:
+					assign_remove("Student Log", log.name, todo_user)
+				else:
+					frappe.db.set_value("ToDo", todo_name, "status", "Closed")
+		except Exception:
+			pass
+

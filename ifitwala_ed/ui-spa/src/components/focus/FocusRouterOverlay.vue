@@ -76,16 +76,16 @@
               <div v-else>
                 <!-- ============================================================
                      Student Log follow-up (Phase 1)
-                     - Mount the content-only action component.
-                     - It owns its own fetching/actions and tells us when to close.
+                     - Content-only component (NO Dialog / overlay inside)
+                     - Server decides mode + visibility via focus.get_context
                    ============================================================ -->
                 <StudentLogFollowUpAction
                   v-if="isStudentLogFollowUp"
-                  :focus-item-id="props.focusItemId ?? null"
+                  :focus-item-id="focusItemId"
                   :student-log="studentLogName"
                   :mode="studentLogMode"
                   @close="requestClose"
-                  @done="noop"
+                  @done="onWorkflowDone"
                 />
 
                 <!-- Not implemented -->
@@ -140,8 +140,6 @@ const emit = defineEmits<{
   (e: 'after-leave'): void
 }>()
 
-function noop() {}
-
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
 
 const loading = ref(false)
@@ -183,9 +181,8 @@ const isStudentLogFollowUp = computed(() => {
   )
 })
 
-const studentLogName = computed(() =>
-  referenceDoctype.value === 'Student Log' ? referenceName.value ?? null : null
-)
+const focusItemId = computed(() => props.focusItemId ?? null)
+const studentLogName = computed(() => (referenceDoctype.value === 'Student Log' ? referenceName.value : null))
 
 /* API: focus.get_context -------------------------------------- */
 const ctxResource = createResource({
@@ -240,6 +237,15 @@ function emitAfterLeave() {
 function onDialogClose() {
   // OverlayHost controls closeOnBackdrop/closeOnEsc policy.
   // We always comply with Dialog close events by emitting close.
+  requestClose()
+}
+
+/**
+ * Workflow done:
+ * - Content component signals it likely changed the world (submitted follow-up / completed log).
+ * - Router closes. Focus list refresh is handled by StaffHome polling + visibility refresh.
+ */
+function onWorkflowDone() {
   requestClose()
 }
 
