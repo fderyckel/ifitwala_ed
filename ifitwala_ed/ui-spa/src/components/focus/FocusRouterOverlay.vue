@@ -76,16 +76,16 @@
               <div v-else>
                 <!-- ============================================================
                      Student Log follow-up (Phase 1)
-                     - Mount the content-only workflow body (NO Dialog / NO TransitionRoot).
-                     - Server remains the authority for mode + context via focus.get_context.
+                     - Mount the content-only action component.
+                     - It owns its own fetching/actions and tells us when to close.
                    ============================================================ -->
                 <StudentLogFollowUpAction
                   v-if="isStudentLogFollowUp"
+                  :focus-item-id="props.focusItemId ?? null"
+                  :student-log="studentLogName"
                   :mode="studentLogMode"
-                  :student-log="referenceName"
-                  :focus-item-id="focusItemId"
                   @close="requestClose"
-                  @done="onWorkflowDone"
+                  @done="noop"
                 />
 
                 <!-- Not implemented -->
@@ -140,6 +140,8 @@ const emit = defineEmits<{
   (e: 'after-leave'): void
 }>()
 
+function noop() {}
+
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
 
 const loading = ref(false)
@@ -180,6 +182,10 @@ const isStudentLogFollowUp = computed(() => {
     actionType.value === 'student_log.follow_up.review.decide'
   )
 })
+
+const studentLogName = computed(() =>
+  referenceDoctype.value === 'Student Log' ? referenceName.value ?? null : null
+)
 
 /* API: focus.get_context -------------------------------------- */
 const ctxResource = createResource({
@@ -235,16 +241,6 @@ function onDialogClose() {
   // OverlayHost controls closeOnBackdrop/closeOnEsc policy.
   // We always comply with Dialog close events by emitting close.
   requestClose()
-}
-
-/**
- * Workflow completion signal.
- * Phase 1 behavior: just close the router (the workflow already requested close).
- * Next phase: StaffHome will refresh focus list after overlay closes (cheap + deterministic).
- */
-function onWorkflowDone() {
-  // Intentionally minimal here. The router should not own list refresh.
-  // We keep this hook for future expansion (telemetry / refresh trigger).
 }
 
 /* LIFECYCLE ---------------------------------------------------- */
