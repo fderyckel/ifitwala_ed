@@ -187,7 +187,7 @@ const studentLogName = computed(() =>
 
 /* API: focus.get_context -------------------------------------- */
 const ctxResource = createResource({
-  url: 'ifitwala_ed.api.focus.get_context',
+  url: 'ifitwala_ed.api.focus.get_focus_context',
   method: 'POST',
   auto: false,
   onSuccess(data: any) {

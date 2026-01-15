@@ -90,11 +90,25 @@ def _badge_from_due_date(due_date: str | None) -> str | None:
 
 def _can_read_student_log(name: str) -> bool:
 	"""
-	Cheap permission check without loading full doc.
-	Avoid N+1 get_doc() calls in list().
+	Permission-safe existence check without loading the full Document.
+
+	We intentionally avoid frappe.has_permission(..., doc=frappe.get_doc(...)) here
+	to prevent N doc loads in list_focus_items().
+
+	Instead we use frappe.get_list(), which enforces permissions.
+	If user can't read the doc, it will not be returned.
 	"""
 	try:
-		return bool(frappe.has_permission(STUDENT_LOG_DOCTYPE, ptype="read", docname=name))
+		if not name:
+			return False
+
+		rows = frappe.get_list(
+			STUDENT_LOG_DOCTYPE,
+			filters={"name": name},
+			fields=["name"],
+			limit_page_length=1,
+		)
+		return bool(rows)
 	except Exception:
 		return False
 
@@ -304,67 +318,110 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 # Context endpoint (used by FocusRouterOverlay)
 # ---------------------------------------------------------------------
 @frappe.whitelist()
-def get_context(
+def get_focus_context(
 	focus_item_id: str | None = None,
 	reference_doctype: str | None = None,
 	reference_name: str | None = None,
 	action_type: str | None = None,
 ):
 	"""
-	Return minimal routing + workflow context for a single focus item.
+	Resolve routing + workflow context for a single Focus item.
 
-	- Accepts focus_item_id (preferred)
-	- Or reference_doctype + reference_name (+ optional action_type)
+	Accepted inputs:
+	- focus_item_id (preferred, deterministic, user-bound)
+	- OR reference_doctype + reference_name (+ optional action_type)
 
-	SECURITY:
-	- If focus_item_id is provided, it must match frappe.session.user.
+	SECURITY INVARIANTS:
+	- focus_item_id, if provided, must belong to frappe.session.user
+	- Doc-level read permission is always enforced
 	"""
+
+	# ------------------------------------------------------------
+	# 1) Resolve reference from focus_item_id (authoritative path)
+	# ------------------------------------------------------------
 	if focus_item_id:
 		parsed = _parse_focus_item_id(focus_item_id)
+
 		reference_doctype = parsed["reference_doctype"]
 		reference_name = parsed["reference_name"]
 		action_type = parsed["action_type"]
 
-		# Enforce: focus_item_id must match current session user (prevents leakage)
-		if parsed.get("user") and parsed["user"] != frappe.session.user:
-			frappe.throw(_("Invalid focus item id (user mismatch)."), frappe.PermissionError)
+		# Hard guard: focus item must belong to current user
+		if parsed.get("user") != frappe.session.user:
+			frappe.throw(
+				_("Invalid focus item id (user mismatch)."),
+				frappe.PermissionError,
+			)
 
+	# ------------------------------------------------------------
+	# 2) Validate reference
+	# ------------------------------------------------------------
 	if not reference_doctype or not reference_name:
-		frappe.throw(_("Missing reference info."), frappe.ValidationError)
+		frappe.throw(_("Missing reference information."), frappe.ValidationError)
 
 	if reference_doctype != STUDENT_LOG_DOCTYPE:
-		frappe.throw(_("Only Student Log focus items are supported."), frappe.ValidationError)
+		frappe.throw(
+			_("Only Student Log focus items are supported."),
+			frappe.ValidationError,
+		)
 
-	# Permission (doc-level) is mandatory
-	if not frappe.has_permission(STUDENT_LOG_DOCTYPE, ptype="read", docname=reference_name):
-		frappe.throw(_("You are not permitted to view this log."), frappe.PermissionError)
-
+	# ------------------------------------------------------------
+	# 3) Load document ONCE (used for permission + payload)
+	# ------------------------------------------------------------
 	log_doc = frappe.get_doc(STUDENT_LOG_DOCTYPE, reference_name)
 
-	# Resolve mode (author vs assignee)
+	# ------------------------------------------------------------
+	# 4) Enforce doc-level permission (authoritative)
+	# ------------------------------------------------------------
+	# NOTE:
+	# - Do NOT use docname=... (not portable across Frappe versions)
+	# - doc=... is the documented, stable contract
+	if not frappe.has_permission(
+		STUDENT_LOG_DOCTYPE,
+		ptype="read",
+		doc=log_doc,
+	):
+		frappe.throw(
+			_("You are not permitted to view this log."),
+			frappe.PermissionError,
+		)
+
+	# ------------------------------------------------------------
+	# 5) Resolve workflow mode (author vs assignee)
+	# ------------------------------------------------------------
 	mode = _resolve_mode(action_type, log_doc)
 
-	# Minimal follow-up list (last 20)
+	# ------------------------------------------------------------
+	# 6) Fetch recent follow-ups (bounded, read-only)
+	# ------------------------------------------------------------
 	follow_up_rows = frappe.get_all(
 		FOLLOW_UP_DOCTYPE,
 		filters={"student_log": reference_name},
-		fields=["name", "date", "follow_up_author", "follow_up", "docstatus"],
+		fields=[
+			"name",
+			"date",
+			"follow_up_author",
+			"follow_up",
+			"docstatus",
+		],
 		order_by="modified desc",
 		limit_page_length=20,
 	)
 
-	follow_ups = []
-	for row in follow_up_rows:
-		follow_ups.append(
-			{
-				"name": row.get("name"),
-				"date": str(row.get("date")) if row.get("date") else None,
-				"follow_up_author": row.get("follow_up_author"),
-				"follow_up_html": row.get("follow_up") or "",
-				"docstatus": row.get("docstatus"),
-			}
-		)
+	follow_ups = [
+		{
+			"name": row.get("name"),
+			"date": str(row.get("date")) if row.get("date") else None,
+			"follow_up_author": row.get("follow_up_author"),
+			"follow_up_html": row.get("follow_up") or "",
+			"docstatus": row.get("docstatus"),
+		}
+		for row in follow_up_rows
+	]
 
+	# ------------------------------------------------------------
+	# 7) Return minimal, explicit context payload
+	# ------------------------------------------------------------
 	return {
 		"focus_item_id": focus_item_id,
 		"action_type": action_type,

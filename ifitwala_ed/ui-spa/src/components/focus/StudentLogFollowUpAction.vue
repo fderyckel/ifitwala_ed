@@ -188,7 +188,7 @@ type FollowUpRow = {
 }
 
 /**
- * Focus context returned by ifitwala_ed.api.focus.get_context
+ * Focus context returned by ifitwala_ed.api.focus.get_focus_context
  * - Server stays authoritative (mode, permissions, visibility).
  */
 type FocusContext = {
@@ -256,7 +256,7 @@ const canComplete = computed(() => {
 
 /* API ---------------------------------------------------------- */
 const getContext = createResource({
-  url: 'ifitwala_ed.api.focus.get_context',
+  url: 'ifitwala_ed.api.focus.get_focus_context',
   method: 'POST',
   auto: false,
 })

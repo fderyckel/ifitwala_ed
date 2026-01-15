@@ -261,7 +261,7 @@ const canComplete = computed(() => {
 })
 
 const getContext = createResource({
-  url: 'ifitwala_ed.api.focus.get_context',
+  url: 'ifitwala_ed.api.focus.get_focus_context',
   method: 'POST',
   auto: false,
 })
