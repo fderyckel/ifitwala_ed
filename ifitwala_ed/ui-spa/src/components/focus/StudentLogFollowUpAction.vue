@@ -40,7 +40,7 @@
 
       <div v-if="log?.log_html" class="mt-3">
         <div class="type-meta text-muted mb-1">Log note</div>
-        <div class="prose prose-sm max-w-none" v-html="safeHtml(log.log_html)" />
+        <div class="prose prose-sm max-w-none" v-html="trustedHtml(log.log_html)" />
       </div>
     </div>
 
@@ -82,7 +82,7 @@
           <div
             v-if="fu.follow_up_html"
             class="mt-2 prose prose-sm max-w-none"
-            v-html="safeHtml(fu.follow_up_html)"
+            v-html="trustedHtml(fu.follow_up_html)"
           />
         </div>
       </div>
@@ -264,21 +264,24 @@ const getContext = createResource({
 const insertDoc = createResource({
   url: '/api/method/frappe.client.insert',
   method: 'POST',
+  auto: false,
 })
 
 const submitDoc = createResource({
   url: '/api/method/frappe.client.submit',
   method: 'POST',
+  auto: false,
 })
 
 const completeLog = createResource({
   url: '/api/method/ifitwala_ed.students.doctype.student_log.student_log.complete_log',
   method: 'POST',
+  auto: false,
 })
 
 /* Load / refresh ------------------------------------------------
    IMPORTANT:
-   - Do NOT auto-run at module evaluation time (no "reload()" at bottom).
+   - Do NOT auto-run at module evaluation time.
    - Parent overlay controls when this content mounts; we reload when inputs change.
 --------------------------------------------------------------- */
 async function reload() {
@@ -346,7 +349,7 @@ async function submitFollowUp() {
     const doc = {
       doctype: 'Student Log Follow Up',
       student_log: studentLogName,
-      date: new Date().toISOString().slice(0, 10),
+      date: todayLocalYMD(),
       follow_up: draftText.value,
     }
 
@@ -412,7 +415,25 @@ function openInDesk(doctype: string, name: string) {
   window.open(`/app/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`, '_blank', 'noopener')
 }
 
-function safeHtml(html: string) {
+/**
+ * IMPORTANT:
+ * This is NOT a sanitizer.
+ * We assume the server already stores sanitized HTML in log/follow_up fields.
+ * If that assumption is not true, you MUST sanitize before rendering v-html.
+ */
+function trustedHtml(html: string) {
   return html || ''
+}
+
+/**
+ * Bangkok-safe (local) YYYY-MM-DD.
+ * Avoids UTC drift from toISOString() near midnight.
+ */
+function todayLocalYMD() {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 </script>
