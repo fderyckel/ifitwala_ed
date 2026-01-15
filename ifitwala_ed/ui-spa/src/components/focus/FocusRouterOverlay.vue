@@ -74,41 +74,19 @@
 
               <!-- Routed content -->
               <div v-else>
-                <!-- Student Log follow-up (Phase 1) -->
-                <div v-if="isStudentLogFollowUp" class="rounded-2xl border border-slate-200 bg-white p-5">
-                  <p class="type-body-strong text-ink">Student Log follow-up</p>
-                  <p class="mt-2 type-body text-slate-token/75">
-                    This is now correctly routed via FocusRouterOverlay, but the workflow body component is not
-                    mounted yet.
-                  </p>
-
-                  <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p class="type-meta text-slate-token/70">Resolved routing</p>
-                    <div class="mt-2 space-y-1 type-body text-ink">
-                      <div><span class="text-slate-token/70">action_type:</span> {{ actionType }}</div>
-                      <div><span class="text-slate-token/70">reference:</span> {{ referenceDoctype }} • {{ referenceName }}</div>
-                      <div><span class="text-slate-token/70">mode:</span> {{ studentLogMode }}</div>
-                    </div>
-                  </div>
-
-                  <div class="mt-4 flex items-center justify-end gap-2">
-                    <Button variant="ghost" @click="requestClose">Close</Button>
-                  </div>
-
-                  <!--
-                    NEXT FILE (later, not in this response):
-                    Replace this placeholder with a content-only component, e.g.:
-
-                      <StudentLogFollowUpAction
-                        :mode="studentLogMode"
-                        :student-log="referenceName"
-                        :focus-item-id="focusItemId"
-                        @done="onWorkflowDone"
-                      />
-
-                    That component MUST NOT be a Dialog / overlay.
-                  -->
-                </div>
+                <!-- ============================================================
+                     Student Log follow-up (Phase 1)
+                     - Mount the content-only workflow body (NO Dialog / NO TransitionRoot).
+                     - Server remains the authority for mode + context via focus.get_context.
+                   ============================================================ -->
+                <StudentLogFollowUpAction
+                  v-if="isStudentLogFollowUp"
+                  :mode="studentLogMode"
+                  :student-log="referenceName"
+                  :focus-item-id="focusItemId"
+                  @close="requestClose"
+                  @done="onWorkflowDone"
+                />
 
                 <!-- Not implemented -->
                 <div v-else class="rounded-2xl border border-slate-200 bg-white p-5">
@@ -144,6 +122,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { Button, FeatherIcon, createResource } from 'frappe-ui'
+
+import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue'
 
 type Mode = 'assignee' | 'author'
 
@@ -255,6 +235,16 @@ function onDialogClose() {
   // OverlayHost controls closeOnBackdrop/closeOnEsc policy.
   // We always comply with Dialog close events by emitting close.
   requestClose()
+}
+
+/**
+ * Workflow completion signal.
+ * Phase 1 behavior: just close the router (the workflow already requested close).
+ * Next phase: StaffHome will refresh focus list after overlay closes (cheap + deterministic).
+ */
+function onWorkflowDone() {
+  // Intentionally minimal here. The router should not own list refresh.
+  // We keep this hook for future expansion (telemetry / refresh trigger).
 }
 
 /* LIFECYCLE ---------------------------------------------------- */

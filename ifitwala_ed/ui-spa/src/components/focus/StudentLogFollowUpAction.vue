@@ -24,7 +24,12 @@
         </div>
 
         <div class="shrink-0 flex items-center gap-2">
-          <button v-if="log?.name" type="button" class="btn btn-quiet" @click="openInDesk('Student Log', log.name)">
+          <button
+            v-if="log?.name"
+            type="button"
+            class="btn btn-quiet"
+            @click="openInDesk('Student Log', log.name)"
+          >
             Open in Desk
           </button>
           <button type="button" class="btn btn-quiet" :disabled="loading" @click="reload">
@@ -54,11 +59,7 @@
       </div>
 
       <div v-else class="mt-3 space-y-3">
-        <div
-          v-for="fu in followUps"
-          :key="fu.name"
-          class="rounded-xl border border-ink/10 p-3"
-        >
+        <div v-for="fu in followUps" :key="fu.name" class="rounded-xl border border-ink/10 p-3">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="type-meta text-muted">
@@ -241,15 +242,16 @@ const busy = ref(false)
 
 const draftText = ref('')
 
+/* Derived ------------------------------------------------------ */
+const activeStudentLogName = computed(() => props.studentLog || log.value?.name || null)
+
 const canSubmit = computed(() => {
-  const name = props.studentLog || log.value?.name
-  return !!name && (draftText.value || '').trim().length >= 5
+  return !!activeStudentLogName.value && (draftText.value || '').trim().length >= 5
 })
 
 const canComplete = computed(() => {
-  const name = props.studentLog || log.value?.name
   const s = (log.value?.follow_up_status || '').toLowerCase()
-  return !!name && s !== 'completed'
+  return !!activeStudentLogName.value && s !== 'completed'
 })
 
 /* API ---------------------------------------------------------- */
@@ -274,15 +276,20 @@ const completeLog = createResource({
   method: 'POST',
 })
 
+/* Load / refresh ------------------------------------------------
+   IMPORTANT:
+   - Do NOT auto-run at module evaluation time (no "reload()" at bottom).
+   - Parent overlay controls when this content mounts; we reload when inputs change.
+--------------------------------------------------------------- */
 async function reload() {
-  const refName = props.studentLog || log.value?.name || null
-  if (!props.focusItemId && !refName) return
+  const fallbackName = activeStudentLogName.value
+  if (!props.focusItemId && !fallbackName) return
 
   loading.value = true
   try {
     const payload = props.focusItemId
       ? { focus_item_id: props.focusItemId }
-      : { reference_doctype: 'Student Log', reference_name: refName }
+      : { reference_doctype: 'Student Log', reference_name: fallbackName }
 
     const res = await getContext.submit(payload)
     const ctx = ((res as any)?.message ?? res) as FocusContext
@@ -294,8 +301,11 @@ async function reload() {
     log.value = ctx.log
     followUps.value = Array.isArray(ctx.follow_ups) ? ctx.follow_ups : []
 
+    // Server is authoritative; mode prop is only a hint.
     if (ctx.mode === 'assignee' || ctx.mode === 'author') {
       modeState.value = ctx.mode
+    } else if (props.mode) {
+      modeState.value = props.mode
     }
   } catch (e: any) {
     toast({
@@ -308,30 +318,26 @@ async function reload() {
   }
 }
 
+/* Watchers ------------------------------------------------------
+   Keep it cheap:
+   - One combined watch for routing inputs.
+   - Reset local draft on context changes.
+--------------------------------------------------------------- */
 watch(
-  () => props.focusItemId,
-  () => {
-    // Reset local state when routing changes
-    draftText.value = ''
-    modeState.value = props.mode ?? modeState.value
-    reload()
-  }
-)
-
-watch(
-  () => props.studentLog,
+  () => [props.focusItemId || null, props.studentLog || null, props.mode || null] as const,
   () => {
     draftText.value = ''
-    modeState.value = props.mode ?? modeState.value
+    if (props.mode) modeState.value = props.mode
     reload()
-  }
+  },
+  { immediate: true }
 )
 
 /* ACTIONS ------------------------------------------------------ */
 async function submitFollowUp() {
   if (!canSubmit.value) return
 
-  const studentLogName = props.studentLog || log.value?.name
+  const studentLogName = activeStudentLogName.value
   if (!studentLogName) return
 
   busy.value = true
@@ -360,10 +366,10 @@ async function submitFollowUp() {
     // Refresh local context (optional but nice)
     await reload()
 
-    // Notify parent that workflow likely changed state (Focus list should refresh)
+    // Tell parent list it should refresh later (soft signal)
     emit('done')
 
-    // Close the router overlay
+    // Close router overlay
     emitClose()
   } catch (e: any) {
     toast({
@@ -379,7 +385,7 @@ async function submitFollowUp() {
 async function completeParentLog() {
   if (!canComplete.value) return
 
-  const studentLogName = props.studentLog || log.value?.name
+  const studentLogName = activeStudentLogName.value
   if (!studentLogName) return
 
   busy.value = true
@@ -409,7 +415,4 @@ function openInDesk(doctype: string, name: string) {
 function safeHtml(html: string) {
   return html || ''
 }
-
-// initial load
-reload()
 </script>
