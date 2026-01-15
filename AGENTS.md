@@ -486,3 +486,27 @@ If unsure:
 > **A correct pause beats a confident regression.**
 
 
+Never swallow framework exceptions in permission or visibility logic.
+Framework APIs must be called with documented signatures only.
+Any silent failure in permission checks is a bug.
+
+
+✅ Lesson: UI must be treated as “best effort”; invariants belong on the server
+
+What happened is the classic trap:
+
+You assumed “the modal closes → user can’t click again → no duplicates”.
+
+But UI is not a security boundary, and not an invariant boundary.
+
+Any glitch (slow network, component not unmounting, rerender, user rage-clicking) can spam your API.
+
+So the rule is:
+
+Client-side guard = good UX.
+Server-side idempotency/uniqueness = real correctness.
+
+You’ve implemented the UX guard. Now you must add the server invariant.
+
+---
+

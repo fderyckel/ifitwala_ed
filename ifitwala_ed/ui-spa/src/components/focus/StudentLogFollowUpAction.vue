@@ -32,7 +32,7 @@
           >
             Open in Desk
           </button>
-          <button type="button" class="btn btn-quiet" :disabled="loading" @click="reload">
+          <button type="button" class="btn btn-quiet" :disabled="loading || busy" @click="reload">
             Refresh
           </button>
         </div>
@@ -103,6 +103,7 @@
           class="if-textarea w-full"
           rows="8"
           placeholder="Type your follow-up…"
+          :disabled="busy"
         />
         <div class="type-meta text-muted mt-2">
           Keep it factual and actionable. No sensitive details beyond what’s necessary.
@@ -116,7 +117,7 @@
         <button
           type="button"
           class="btn btn-primary"
-          :disabled="busy || !canSubmit"
+          :disabled="busy || submittedOnce || !canSubmit"
           @click="submitFollowUp"
         >
           {{ busy ? 'Submitting…' : 'Submit follow-up' }}
@@ -140,7 +141,7 @@
         <button
           type="button"
           class="btn btn-success"
-          :disabled="busy || !canComplete"
+          :disabled="busy || submittedOnce || !canComplete"
           @click="completeParentLog"
         >
           {{ busy ? 'Completing…' : 'Complete log' }}
@@ -240,6 +241,13 @@ const followUps = ref<FollowUpRow[]>([])
 const loading = ref(false)
 const busy = ref(false)
 
+/**
+ * Hard client-side idempotency guard per mount.
+ * Prevents duplicate inserts due to UI glitches or double clicks.
+ * Server must still enforce true uniqueness (Phase 2).
+ */
+const submittedOnce = ref(false)
+
 const draftText = ref('')
 
 /* Derived ------------------------------------------------------ */
@@ -324,12 +332,13 @@ async function reload() {
 /* Watchers ------------------------------------------------------
    Keep it cheap:
    - One combined watch for routing inputs.
-   - Reset local draft on context changes.
+   - Reset local draft + guards on context changes.
 --------------------------------------------------------------- */
 watch(
   () => [props.focusItemId || null, props.studentLog || null, props.mode || null] as const,
   () => {
     draftText.value = ''
+    submittedOnce.value = false
     if (props.mode) modeState.value = props.mode
     reload()
   },
@@ -338,20 +347,23 @@ watch(
 
 /* ACTIONS ------------------------------------------------------ */
 async function submitFollowUp() {
+  // Re-entry hard guards (single-fire)
+  if (busy.value || submittedOnce.value) return
   if (!canSubmit.value) return
 
   const studentLogName = activeStudentLogName.value
   if (!studentLogName) return
 
   busy.value = true
+  submittedOnce.value = true
+
   try {
     // 1) insert follow-up doc (draft)
-		const doc = {
-			doctype: 'Student Log Follow Up',
-			student_log: studentLogName,
-			follow_up: draftText.value,
-		}
-
+    const doc = {
+      doctype: 'Student Log Follow Up',
+      student_log: studentLogName,
+      follow_up: draftText.value,
+    }
 
     const ins = await insertDoc.submit({ doc })
     const insertedName = (ins as any)?.message?.name as string | undefined
@@ -366,15 +378,12 @@ async function submitFollowUp() {
 
     toast({ title: 'Follow-up submitted', icon: 'check' })
 
-    // Refresh local context (optional but nice)
-    await reload()
-
-    // Tell parent list it should refresh later (soft signal)
+    // Signal parent to refresh focus list + close router overlay
     emit('done')
-
-    // Close router overlay
     emitClose()
   } catch (e: any) {
+    // Allow retry on failure
+    submittedOnce.value = false
     toast({
       title: 'Could not submit follow-up',
       text: e?.message || 'Please try again.',
@@ -386,12 +395,15 @@ async function submitFollowUp() {
 }
 
 async function completeParentLog() {
+  if (busy.value || submittedOnce.value) return
   if (!canComplete.value) return
 
   const studentLogName = activeStudentLogName.value
   if (!studentLogName) return
 
   busy.value = true
+  submittedOnce.value = true
+
   try {
     await completeLog.submit({ log_name: studentLogName })
     toast({ title: 'Log completed', icon: 'check' })
@@ -399,6 +411,7 @@ async function completeParentLog() {
     emit('done')
     emitClose()
   } catch (e: any) {
+    submittedOnce.value = false
     toast({
       title: 'Could not complete log',
       text: e?.message || 'Please try again.',
@@ -411,8 +424,20 @@ async function completeParentLog() {
 
 /* HELPERS ------------------------------------------------------ */
 function openInDesk(doctype: string, name: string) {
+  if (!doctype || !name) return
+
+  // Frappe Desk route uses kebab-case doctype, not URL-encoded label
+  // "Student Log" -> "student-log"
+  // "Student Log Follow Up" -> "student-log-follow-up"
+  const route = String(doctype)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-]/g, '')
+    .replace(/\-+/g, '-')
+
   // Leaving SPA intentionally; ok to open /app/...
-  window.open(`/app/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`, '_blank', 'noopener')
+  window.open(`/app/${route}/${encodeURIComponent(name)}`, '_blank', 'noopener')
 }
 
 /**
@@ -424,6 +449,4 @@ function openInDesk(doctype: string, name: string) {
 function trustedHtml(html: string) {
   return html || ''
 }
-
-
 </script>
