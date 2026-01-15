@@ -69,7 +69,7 @@ website_route_rules = [
 
 # Home Pages
 # ----------
-after_login = "ifitwala_ed.api.users.redirect_student_to_portal"
+after_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
 # application home page (will override Website Settings)
 # home_page = "login"
 
