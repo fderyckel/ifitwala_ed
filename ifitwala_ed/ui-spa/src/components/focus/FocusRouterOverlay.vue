@@ -1,5 +1,5 @@
 <!-- ui-spa/src/components/focus/FocusRouterOverlay.vue -->
-<template>
+ <template>
   <TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
     <Dialog
       as="div"
@@ -23,23 +23,29 @@
             <!-- ============================================================
                  HEADER
                ============================================================ -->
-            <header class="if-overlay__header">
+            <header class="if-overlay__header px-5 pt-4 pb-3 border-b border-[rgb(var(--border-rgb)/0.6)]">
               <div class="min-w-0">
-                <p class="type-overline text-slate-token/70">
+                <p class="type-overline">
                   {{ headerKicker }}
                 </p>
 
-                <DialogTitle class="type-h2 text-ink truncate">
-                  {{ headerTitle }}
-                </DialogTitle>
+                <div class="mt-1 flex items-start gap-3 min-w-0">
+                  <DialogTitle class="type-h2 truncate">
+                    {{ headerTitle }}
+                  </DialogTitle>
+                </div>
 
-                <p v-if="headerSubtitle" class="mt-1 type-caption text-slate-token/70 truncate">
+                <p v-if="headerSubtitle" class="mt-1 type-caption truncate">
                   {{ headerSubtitle }}
                 </p>
               </div>
 
               <div class="shrink-0 flex items-center gap-2">
-                <Button variant="ghost" class="rounded-full" @click="requestClose">
+                <Button
+                  variant="ghost"
+                  class="if-overlay__icon-button"
+                  @click="requestClose"
+                >
                   <FeatherIcon name="x" class="h-4 w-4" />
                 </Button>
               </div>
@@ -57,35 +63,36 @@
               </div>
 
               <!-- Error -->
-              <div v-else-if="errorText" class="rounded-2xl border border-slate-200 bg-white p-5">
-                <p class="type-body-strong text-ink">Couldn’t open this item</p>
-                <p class="mt-2 type-body text-slate-token/75">
+              <div v-else-if="errorText" class="paper-card-frosted p-5">
+                <p class="type-body-strong">Couldn’t open this item</p>
+                <p class="mt-2 type-body">
                   {{ errorText }}
                 </p>
-                <div class="mt-4 flex gap-2">
+
+                <div class="mt-4 flex flex-wrap gap-2">
                   <Button variant="solid" @click="reload">Retry</Button>
                   <Button variant="ghost" @click="requestClose">Close</Button>
                 </div>
               </div>
 
               <!-- Routed content -->
-              <div v-else>
-								<StudentLogFollowUpAction
-									v-if="isStudentLogFollowUp && ctx"
-									:focus-item-id="resolvedFocusItemId"
-									:context="ctx"
-									@close="requestClose"
-									@done="onWorkflowDone"
-									@request-refresh="reload"
-								/>
+              <div v-else class="space-y-4">
+                <StudentLogFollowUpAction
+                  v-if="isStudentLogFollowUp && ctx"
+                  :focus-item-id="resolvedFocusItemId"
+                  :context="ctx"
+                  @close="requestClose"
+                  @done="onWorkflowDone"
+                />
 
                 <!-- Not implemented -->
-                <div v-else class="rounded-2xl border border-slate-200 bg-white p-5">
-                  <p class="type-body-strong text-ink">Not supported yet</p>
-                  <p class="mt-2 type-body text-slate-token/75">
+                <div v-else class="card-surface-muted p-5">
+                  <p class="type-body-strong">Not supported yet</p>
+                  <p class="mt-2 type-body">
                     This focus action type isn’t wired yet:
                     <span class="type-meta">{{ actionType }}</span>
                   </p>
+
                   <div class="mt-4">
                     <Button variant="ghost" @click="requestClose">Close</Button>
                   </div>
@@ -96,10 +103,16 @@
             <!-- ============================================================
                  FOOTER
                ============================================================ -->
-            <footer class="if-overlay__footer">
-              <p class="type-caption text-slate-token/60">
+            <footer class="if-overlay__footer justify-between">
+              <p class="type-caption">
                 Focus is a router. Completion happens inside the workflow.
               </p>
+
+              <div class="hidden md:flex items-center gap-2">
+                <span class="type-caption" style="color: rgb(var(--slate-rgb) / 0.65);">
+                  {{ referenceDoctype }} · {{ referenceName }}
+                </span>
+              </div>
             </footer>
           </DialogPanel>
         </TransitionChild>

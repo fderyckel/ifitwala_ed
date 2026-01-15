@@ -24,7 +24,7 @@
 				<p class="type-body-strong text-ink truncate">
 					{{ item.title }}
 				</p>
-				<p class="mt-1 type-caption text-slate-token/70 truncate">
+				<p class="mt-1 type-caption truncate">
 					{{ item.subtitle }}
 				</p>
 			</template>
@@ -36,22 +36,20 @@
 				<div class="if-skel if-skel--badge" />
 			</template>
 			<template v-else>
-				<span
-					v-if="item.badge"
-					class="rounded-full bg-slate-100 px-2 py-0.5 type-badge-label text-slate-token/80"
-				>
+				<span v-if="item.badge" class="if-pill type-badge-label">
 					{{ item.badge }}
 				</span>
 			</template>
 
 			<FeatherIcon
 				name="chevron-right"
-				class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+				class="h-4 w-4 text-ink/40 transition-colors group-hover:text-jacaranda"
 				aria-hidden="true"
 			/>
 		</div>
 	</button>
 </template>
+
 
 <script setup lang="ts">
 import { computed } from 'vue'

@@ -1,45 +1,42 @@
 <!-- ifitwala_ed/ui-spa/src/components/focus/FocusListCard.vue -->
-<template>
-	<section class="space-y-3">
+ <template>
+	<section class="palette-card overflow-hidden">
 		<!-- Header -->
-		<div class="flex items-center justify-between px-1">
-			<h3 class="flex items-center gap-2 type-h3 text-canopy">
-				<FeatherIcon name="list" class="h-4 w-4 opacity-70" />
-				{{ title }}
-			</h3>
-			<span v-if="meta" class="type-overline">
-				{{ meta }}
-			</span>
+		<header class="flex items-center justify-between px-5 py-4 border-b border-line-soft">
+			<div class="flex items-center gap-3">
+				<h2 class="section-header">
+					{{ title }}
+				</h2>
+
+				<span
+					v-if="count !== undefined"
+					class="inline-flex items-center justify-center px-2 py-0.5 rounded-full
+					       text-[11px] font-semibold
+					       bg-surface-soft text-ink/70 border border-ink/10"
+				>
+					{{ count }}
+				</span>
+			</div>
+
+			<!-- Optional header action slot -->
+			<div v-if="$slots.action" class="flex items-center">
+				<slot name="action" />
+			</div>
+		</header>
+
+		<!-- Body -->
+		<div class="divide-y divide-ink/10">
+			<slot />
 		</div>
 
-		<!-- Card -->
-		<div class="palette-card overflow-hidden">
-			<template v-if="loading">
-				<FocusListItem
-					v-for="n in skeletonCount"
-					:key="`sk_${n}`"
-					:loading="true"
-					:disabled="true"
-					:item="skeletonItem"
-				/>
-			</template>
-
-			<template v-else-if="!safeItems.length">
-				<div class="px-6 py-6 bg-white">
-					<p class="type-body text-slate-token/75">
-						{{ emptyText }}
-					</p>
-				</div>
-			</template>
-
-			<template v-else>
-				<FocusListItem
-					v-for="item in displayed"
-					:key="item.id"
-					:item="item"
-					@open="emitOpen"
-				/>
-			</template>
+		<!-- Empty state -->
+		<div
+			v-if="empty"
+			class="px-5 py-10 flex items-center justify-center"
+		>
+			<p class="type-empty text-center">
+				Nothing requires your attention right now.
+			</p>
 		</div>
 	</section>
 </template>

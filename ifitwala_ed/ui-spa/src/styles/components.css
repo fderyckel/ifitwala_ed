@@ -1075,6 +1075,64 @@
     background: rgb(var(--leaf-rgb) / 0.9);
   }
 
+	/* ============================================================
+		FOCUS + STUDENT LOG FOLLOW-UP OVERLAY SKINS (style-only)
+		============================================================ */
+
+	/* Neutral-but-signaled zipper lines for these overlays */
+	.if-overlay--focus .if-overlay__panel {
+		border-top: 4px solid rgb(var(--jacaranda-rgb) / 0.9);
+	}
+
+	.if-overlay--student-log-follow-up .if-overlay__panel {
+		/* Default to canopy (action). If you later add mode classes,
+			you can override per mode (review = jacaranda). */
+		border-top: 4px solid rgb(var(--canopy-rgb) / 0.9);
+	}
+
+	/* Optional: calmer overline tone inside these overlays */
+	.if-overlay--focus .type-overline,
+	.if-overlay--student-log-follow-up .type-overline {
+		color: rgb(var(--slate-rgb) / 0.75);
+	}
+
+	/* ============================================================
+		TEXTAREA / LONGFORM INPUT — canonical SPA skin
+		Used by StudentLogFollowUpOverlay.vue
+		============================================================ */
+	.if-textarea {
+		width: 100%;
+		border-radius: var(--radius-xl);
+		border: 1px solid rgb(var(--border-rgb) / 0.9);
+		background-color: rgb(var(--sand-rgb) / 0.98);
+		color: rgb(var(--ink-rgb) / 1);
+		padding: 0.85rem 0.95rem;
+		font-size: 0.95rem;
+		line-height: 1.5;
+		transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+	}
+
+	.if-textarea::placeholder {
+		color: rgb(var(--slate-rgb) / 0.65);
+	}
+
+	.if-textarea:hover {
+		border-color: rgb(var(--jacaranda-rgb) / 0.25);
+	}
+
+	.if-textarea:focus {
+		outline: none;
+		border-color: rgb(var(--jacaranda-rgb) / 0.55);
+		box-shadow: 0 0 0 3px rgb(var(--jacaranda-rgb) / 0.22);
+		background-color: rgb(var(--sand-rgb) / 1);
+	}
+
+	.if-textarea:disabled {
+		opacity: 0.7;
+		cursor: not-allowed;
+	}
+
+
   /* ============================================================
      ANALYTICS SYSTEM
      ============================================================ */

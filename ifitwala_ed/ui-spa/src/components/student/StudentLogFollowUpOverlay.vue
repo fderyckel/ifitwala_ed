@@ -15,42 +15,49 @@
           leave-to="if-overlay__panel-from"
         >
           <DialogPanel class="if-overlay__panel">
-            <!-- Header -->
-            <div class="if-overlay__header">
-              <div class="flex items-start justify-between gap-4">
-                <div class="min-w-0">
-                  <DialogTitle class="type-h2">
-                    {{ modeState === 'author' ? 'Review outcome' : 'Follow up' }}
-                  </DialogTitle>
-                  <div class="type-meta text-muted mt-1">
-                    <span v-if="log?.student_name">{{ log.student_name }}</span>
-                    <span v-if="log?.log_type"> • {{ log.log_type }}</span>
-                    <span v-if="log?.date"> • {{ log.date }}</span>
-                  </div>
+            <!-- Header (calm, consistent with other overlays) -->
+            <div class="meeting-modal__header">
+              <div class="meeting-modal__headline min-w-0">
+                <div class="type-overline">
+                  {{ modeState === 'author' ? 'Review' : 'Follow-up' }}
                 </div>
 
-                <button type="button" class="btn btn-quiet" @click="emitClose">
-                  Close
+                <DialogTitle class="type-h2 text-canopy truncate">
+                  {{ modeState === 'author' ? 'Review outcome' : 'Follow up' }}
+                </DialogTitle>
+
+                <div class="type-caption mt-1 truncate">
+                  <span v-if="log?.student_name">{{ log.student_name }}</span>
+                  <span v-if="log?.log_type"> • {{ log.log_type }}</span>
+                  <span v-if="log?.date"> • {{ log.date }}</span>
+                </div>
+              </div>
+
+              <div class="meeting-modal__header-actions">
+                <button type="button" class="if-overlay__icon-button" @click="emitClose" aria-label="Close">
+                  ✕
                 </button>
               </div>
             </div>
 
             <!-- Body -->
-            <div class="if-overlay__body">
-              <div v-if="loading" class="py-6">
-                <div class="type-body text-muted">Loading…</div>
+            <div class="if-overlay__body custom-scrollbar">
+              <div v-if="loading" class="py-8">
+                <div class="type-body text-ink/70">Loading…</div>
               </div>
 
-              <div v-else class="space-y-4">
+              <div v-else class="space-y-5">
                 <!-- Parent log preview -->
-                <div class="card-surface p-4">
-                  <div class="flex items-start justify-between gap-3">
+                <div class="card-panel p-5">
+                  <div class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
-                      <div class="type-body font-medium">
-                        Student Log
-                        <span v-if="log?.name" class="text-muted"> • {{ log.name }}</span>
+                      <div class="type-label">Student log</div>
+                      <div class="mt-1 type-body-strong text-ink truncate">
+                        <span>Log</span>
+                        <span v-if="log?.name" class="text-ink/60"> • {{ log.name }}</span>
                       </div>
-                      <div v-if="log?.follow_up_status" class="type-meta text-muted mt-1">
+
+                      <div v-if="log?.follow_up_status" class="type-caption mt-1">
                         Status: {{ log.follow_up_status }}
                       </div>
                     </div>
@@ -58,41 +65,45 @@
                     <button
                       v-if="log?.name"
                       type="button"
-                      class="btn btn-quiet"
+                      class="if-action"
                       @click="openInDesk('Student Log', log.name)"
                     >
                       Open in Desk
                     </button>
                   </div>
 
-                  <div v-if="log?.log_html" class="mt-3">
-                    <div class="type-meta text-muted mb-1">Log note</div>
+                  <div v-if="log?.log_html" class="mt-4">
+                    <div class="type-label mb-2">Log note</div>
                     <div class="prose prose-sm max-w-none" v-html="safeHtml(log.log_html)" />
                   </div>
                 </div>
 
                 <!-- Follow ups list (both modes can see) -->
-                <div class="card-surface p-4">
+                <div class="card-panel p-5">
                   <div class="flex items-center justify-between gap-3">
-                    <div class="type-body font-medium">Follow-ups</div>
-                    <button type="button" class="btn btn-quiet" @click="reload">
+                    <div class="min-w-0">
+                      <div class="type-label">History</div>
+                      <div class="mt-1 type-body-strong text-ink">Follow-ups</div>
+                    </div>
+
+                    <button type="button" class="if-pill type-button-label" @click="reload">
                       Refresh
                     </button>
                   </div>
 
-                  <div v-if="followUps.length === 0" class="type-body text-muted mt-3">
+                  <div v-if="followUps.length === 0" class="mt-4 type-body text-ink/70">
                     No follow-ups yet.
                   </div>
 
-                  <div v-else class="mt-3 space-y-3">
+                  <div v-else class="mt-4 space-y-3">
                     <div
                       v-for="fu in followUps"
                       :key="fu.name"
-                      class="rounded-xl border border-ink/10 p-3"
+                      class="rounded-2xl border border-ink/10 bg-surface-soft p-4"
                     >
-                      <div class="flex items-start justify-between gap-3">
+                      <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0">
-                          <div class="type-meta text-muted">
+                          <div class="type-caption">
                             <span v-if="fu.follow_up_author">{{ fu.follow_up_author }}</span>
                             <span v-if="fu.date"> • {{ fu.date }}</span>
                             <span v-if="fu.docstatus === 0"> • Draft</span>
@@ -102,7 +113,7 @@
 
                         <button
                           type="button"
-                          class="btn btn-quiet"
+                          class="if-pill type-button-label"
                           @click="openInDesk('Student Log Follow Up', fu.name)"
                         >
                           Open
@@ -111,7 +122,7 @@
 
                       <div
                         v-if="fu.follow_up_html"
-                        class="mt-2 prose prose-sm max-w-none"
+                        class="mt-3 prose prose-sm max-w-none"
                         v-html="safeHtml(fu.follow_up_html)"
                       />
                     </div>
@@ -119,31 +130,32 @@
                 </div>
 
                 <!-- Assignee action: write follow-up -->
-                <div v-if="modeState === 'assignee'" class="card-surface p-4">
-                  <div class="type-body font-medium">Your follow-up</div>
-                  <div class="type-meta text-muted mt-1">
+                <div v-if="modeState === 'assignee'" class="card-panel p-5">
+                  <div class="type-label">Your response</div>
+                  <div class="mt-1 type-body-strong text-ink">Your follow-up</div>
+                  <div class="type-caption mt-1">
                     Write what you did, what happened, and any next action.
                   </div>
 
-                  <div class="mt-3">
+                  <div class="mt-4">
                     <textarea
                       v-model="draftText"
                       class="if-textarea w-full"
                       rows="8"
                       placeholder="Type your follow-up…"
                     />
-                    <div class="type-meta text-muted mt-2">
+                    <div class="type-caption mt-2">
                       Keep it factual and actionable. No sensitive details beyond what’s necessary.
                     </div>
                   </div>
 
-                  <div class="mt-4 flex items-center justify-end gap-2">
-                    <button type="button" class="btn btn-quiet" :disabled="busy" @click="emitClose">
+                  <div class="mt-5 flex items-center justify-end gap-2">
+                    <button type="button" class="if-pill type-button-label" :disabled="busy" @click="emitClose">
                       Cancel
                     </button>
                     <button
                       type="button"
-                      class="btn btn-primary"
+                      class="if-action"
                       :disabled="busy || !canSubmit"
                       @click="submitFollowUp"
                     >
@@ -153,19 +165,20 @@
                 </div>
 
                 <!-- Author action: complete log -->
-                <div v-if="modeState === 'author'" class="card-surface p-4">
-                  <div class="type-body font-medium">Author actions</div>
-                  <div class="type-meta text-muted mt-1">
+                <div v-if="modeState === 'author'" class="card-panel p-5">
+                  <div class="type-label">Author actions</div>
+                  <div class="mt-1 type-body-strong text-ink">Complete this log</div>
+                  <div class="type-caption mt-1">
                     When you’re satisfied, mark the Student Log as completed.
                   </div>
 
-                  <div class="mt-4 flex items-center justify-end gap-2">
-                    <button type="button" class="btn btn-quiet" :disabled="busy" @click="emitClose">
+                  <div class="mt-5 flex items-center justify-end gap-2">
+                    <button type="button" class="if-pill type-button-label" :disabled="busy" @click="emitClose">
                       Close
                     </button>
                     <button
                       type="button"
-                      class="btn btn-success"
+                      class="if-action"
                       :disabled="busy || !canComplete"
                       @click="completeParentLog"
                     >
@@ -173,14 +186,14 @@
                     </button>
                   </div>
 
-                  <div v-if="!canComplete" class="type-meta text-muted mt-2">
+                  <div v-if="!canComplete" class="type-caption mt-3 text-ink/70">
                     This is disabled if the log is already Completed.
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Footer (optional; keep calm) -->
+            <!-- Footer (keep calm, no extra content) -->
             <div class="if-overlay__footer" />
           </DialogPanel>
         </TransitionChild>
