@@ -34,11 +34,7 @@
           </button>
 
           <!-- Advisory: does NOT block closing or workflows -->
-          <button
-            type="button"
-            class="btn btn-quiet"
-            @click="requestRefresh"
-          >
+          <button type="button" class="btn btn-quiet" @click="requestRefresh">
             Refresh
           </button>
         </div>
@@ -232,6 +228,8 @@ type StudentLogRow = {
   date?: string | null
   log_html?: string | null
   follow_up_status?: string | null
+  log_author?: string | null
+  log_author_name?: string | null
 }
 
 type FollowUpRow = {
@@ -271,6 +269,22 @@ function requestRefresh() {
   emit('request-refresh')
 }
 
+/* Toast safety (you hit "toast is unavailable" before) --------- */
+type ToastPayload = Parameters<typeof toast>[0]
+function showToast(payload: ToastPayload) {
+  if (typeof toast !== 'function') {
+    // eslint-disable-next-line no-console
+    console.warn('[StudentLogFollowUpAction] toast is unavailable', payload)
+    return
+  }
+  try {
+    toast(payload)
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[StudentLogFollowUpAction] toast failed', err, payload)
+  }
+}
+
 /**
  * Local view state (derived from props.context)
  * - no auto-fetch here (router is source of truth)
@@ -278,7 +292,7 @@ function requestRefresh() {
 const modeState = ref<Mode>('assignee')
 const log = ref<StudentLogRow | null>(null)
 const followUps = ref<FollowUpRow[]>([])
-const loading = ref(false)
+const loading = ref(false) // reserved: router can later drive a prop if desired
 
 const busy = ref(false)
 const submittedOnce = ref(false)
@@ -299,7 +313,7 @@ const canComplete = computed(() => {
 
 function applyContext(ctx: FocusContext | null) {
   if (!ctx) return
-  log.value = ctx.log ?? null
+  log.value = (ctx.log ?? null) as any
   followUps.value = Array.isArray(ctx.follow_ups) ? ctx.follow_ups : []
   modeState.value = ctx.mode === 'author' || ctx.mode === 'assignee' ? ctx.mode : 'assignee'
 }
@@ -318,17 +332,18 @@ watch(
 
 /* API ---------------------------------------------------------- */
 /**
- * NOTE: This is still direct API usage. In A+ final state, these calls
- * move into studentLogFollowUpService and will emit uiSignals there.
+ * Canonical client shape:
+ * - createResource uses dotted method paths (no "/api/method/..." strings).
+ * - payload is flat (matches whitelisted kwargs).
  */
 const submitFollowUpApi = createResource({
-  url: '/api/method/ifitwala_ed.api.focus.submit_student_log_follow_up',
+  url: 'ifitwala_ed.api.focus.submit_student_log_follow_up',
   method: 'POST',
   auto: false,
 })
 
 const reviewOutcomeApi = createResource({
-  url: '/api/method/ifitwala_ed.api.focus.review_student_log_outcome',
+  url: 'ifitwala_ed.api.focus.review_student_log_outcome',
   method: 'POST',
   auto: false,
 })
@@ -339,15 +354,13 @@ function _newClientRequestId(prefix = 'req') {
 }
 
 function openInDesk(doctype: string, name: string) {
-  if (!doctype || !name) return
-  const route = String(doctype)
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9\-]/g, '')
-    .replace(/\-+/g, '-')
+  // leaving SPA intentionally (Desk route)
+  const safeDoctype = String(doctype || '').trim()
+  const safeName = String(name || '').trim()
+  if (!safeDoctype || !safeName) return
 
-  window.open(`/app/${route}/${encodeURIComponent(name)}`, '_blank', 'noopener')
+  // Desk accepts /app/<Doctype>/<name> with URL encoding. Do not slugify doctypes.
+  window.open(`/app/${encodeURIComponent(safeDoctype)}/${encodeURIComponent(safeName)}`, '_blank', 'noopener')
 }
 
 function trustedHtml(html: string) {
@@ -357,7 +370,7 @@ function trustedHtml(html: string) {
 function _requireFocusItemId(): string | null {
   const id = (props.focusItemId || '').trim()
   if (!id) {
-    toast({
+    showToast({
       title: 'Missing focus item',
       text: 'Please close and reopen this item from the Focus list.',
       icon: 'x',
@@ -368,9 +381,7 @@ function _requireFocusItemId(): string | null {
 }
 
 function _normalizeMessage(res: any) {
-  // handles: res.message, res, nested objects
-  const msg = res && typeof res === 'object' && 'message' in res ? res.message : res
-  return msg
+  return res && typeof res === 'object' && 'message' in res ? res.message : res
 }
 
 async function _aPlusSuccessCloseThenDone() {
@@ -400,30 +411,24 @@ async function submitFollowUp() {
   submittedOnce.value = true
 
   try {
-    const client_request_id = _newClientRequestId('fu')
-
     const res = await submitFollowUpApi.submit({
       focus_item_id: focusItemId,
       follow_up: followUpText,
-      client_request_id,
+      client_request_id: _newClientRequestId('fu'),
     })
 
     const msg = _normalizeMessage(res) as any
-    if (!msg?.ok) {
-      throw new Error(msg?.message || 'Submit failed.')
-    }
+    if (!msg?.ok) throw new Error(msg?.message || 'Submit failed.')
 
-    // Toast is best-effort; must not gate close.
-    toast({
+    showToast({
       title: msg.idempotent ? 'Already submitted' : 'Follow-up submitted',
       icon: 'check',
     })
 
     await _aPlusSuccessCloseThenDone()
   } catch (e: any) {
-    // allow retry
     submittedOnce.value = false
-    toast({
+    showToast({
       title: 'Could not submit follow-up',
       text: e?.message || 'Please try again.',
       icon: 'x',
@@ -442,7 +447,7 @@ async function reassignFollowUp() {
 
   const target = (reassignTo.value || '').trim()
   if (target.length < 3) {
-    toast({
+    showToast({
       title: 'Missing assignee',
       text: 'Please enter a valid user (email / user id).',
       icon: 'x',
@@ -454,21 +459,17 @@ async function reassignFollowUp() {
   submittedOnce.value = true
 
   try {
-    const client_request_id = _newClientRequestId('rvw')
-
     const res = await reviewOutcomeApi.submit({
       focus_item_id: focusItemId,
       decision: 'reassign',
       follow_up_person: target,
-      client_request_id,
+      client_request_id: _newClientRequestId('rvw'),
     })
 
     const msg = _normalizeMessage(res) as any
-    if (!msg?.ok) {
-      throw new Error(msg?.message || 'Reassign failed.')
-    }
+    if (!msg?.ok) throw new Error(msg?.message || 'Reassign failed.')
 
-    toast({
+    showToast({
       title: msg.idempotent ? 'Already processed' : 'Reassigned',
       icon: 'check',
     })
@@ -476,7 +477,7 @@ async function reassignFollowUp() {
     await _aPlusSuccessCloseThenDone()
   } catch (e: any) {
     submittedOnce.value = false
-    toast({
+    showToast({
       title: 'Could not reassign',
       text: e?.message || 'Please try again.',
       icon: 'x',
@@ -498,20 +499,16 @@ async function completeParentLog() {
   submittedOnce.value = true
 
   try {
-    const client_request_id = _newClientRequestId('rvw')
-
     const res = await reviewOutcomeApi.submit({
       focus_item_id: focusItemId,
       decision: 'complete',
-      client_request_id,
+      client_request_id: _newClientRequestId('rvw'),
     })
 
     const msg = _normalizeMessage(res) as any
-    if (!msg?.ok) {
-      throw new Error(msg?.message || 'Complete failed.')
-    }
+    if (!msg?.ok) throw new Error(msg?.message || 'Complete failed.')
 
-    toast({
+    showToast({
       title: msg.idempotent ? 'Already processed' : 'Log completed',
       icon: 'check',
     })
@@ -519,7 +516,7 @@ async function completeParentLog() {
     await _aPlusSuccessCloseThenDone()
   } catch (e: any) {
     submittedOnce.value = false
-    toast({
+    showToast({
       title: 'Could not complete log',
       text: e?.message || 'Please try again.',
       icon: 'x',

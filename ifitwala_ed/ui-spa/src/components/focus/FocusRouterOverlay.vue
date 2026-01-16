@@ -128,6 +128,7 @@ import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } fro
 import { Button, FeatherIcon, createResource } from 'frappe-ui'
 
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue'
+import { uiSignals } from '@/lib/uiSignals'
 
 type Mode = 'assignee' | 'author'
 
@@ -294,6 +295,17 @@ function onDialogClose() {
  * - Then close overlay.
  */
 function onWorkflowDone() {
+  // Keep the legacy event constant for now (doc says “stable”),
+  // but migrate the implementation to uiSignals (in-memory, testable).
+  try {
+    uiSignals.emit('focus:invalidate')
+  } catch (e) {
+    // best-effort; never block closing
+  }
+
+  // Compatibility bridge (temporary):
+  // If any existing code still listens to the old window event, keep it alive.
+  // Remove once StaffHome/FocusListCard are migrated to uiSignals.
   try {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(FOCUS_REFRESH_EVENT))
@@ -301,6 +313,7 @@ function onWorkflowDone() {
   } catch (e) {
     // best-effort; never block closing
   }
+
   requestClose()
 }
 
