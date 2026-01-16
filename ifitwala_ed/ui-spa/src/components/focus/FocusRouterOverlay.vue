@@ -139,8 +139,8 @@ import type { Response as GetFocusContextResponse } from '@/types/contracts/focu
  *
  * Keep names stable; other surfaces may subscribe.
  */
-const SIGNAL_FOCUS_REFRESH = 'ifitwala:focus:refresh'
-const SIGNAL_STUDENT_LOG_REFRESH = 'ifitwala:student_log:refresh'
+const FOCUS_REFRESH_EVENT = 'ifitwala:focus:refresh'
+const STUDENT_LOG_REFRESH_EVENT = 'ifitwala:student_log:refresh'
 
 /**
  * Props (OverlayHost contract)
@@ -171,6 +171,7 @@ const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
  */
 const loading = ref(false)
 const errorText = ref<string | null>(null)
+const workflowCompleted = ref(false)
 
 // Single source of truth: full context payload from server contract
 const ctx = ref<GetFocusContextResponse | null>(null)
@@ -248,6 +249,7 @@ function resetState() {
   loading.value = false
   errorText.value = null
   ctx.value = null
+  workflowCompleted.value = false
 }
 
 function buildContextPayload() {
@@ -268,6 +270,7 @@ function reload() {
   errorText.value = null
   loading.value = true
   ctx.value = null
+  workflowCompleted.value = false
   ctxResource.submit(buildContextPayload())
 }
 
@@ -287,23 +290,19 @@ function onDialogClose() {
   requestClose()
 }
 
-/* GLOBAL SIGNAL EMISSION (LOCKED) ------------------------------ */
-/**
- * ONLY FocusRouterOverlay emits global signals.
- * Leaf components emit `done` and do not call window.dispatchEvent.
- */
-function emitGlobalSignal(name: string, detail?: Record<string, any>) {
-  try {
-    if (typeof window === 'undefined') return
-    window.dispatchEvent(new CustomEvent(name, { detail: detail || {} }))
-  } catch (e) {
-    // best-effort; never block closing
+function buildRefreshDetail() {
+  return {
+    focus_item_id: resolvedFocusItemId.value,
+    reference_doctype: referenceDoctype.value,
+    reference_name: referenceName.value,
+    action_type: actionType.value,
   }
 }
 
 /**
  * Workflow done:
- * - Emit global refresh signals immediately.
+ * - Overlay is the single owner of global refresh dispatch.
+ * - Only fire on successful workflow completion (done event).
  * - Then close overlay.
  *
  * IMPORTANT:
@@ -311,18 +310,27 @@ function emitGlobalSignal(name: string, detail?: Record<string, any>) {
  * - Close must happen even if listeners throw.
  */
 function onWorkflowDone() {
-  const detail = {
-    focus_item_id: resolvedFocusItemId.value,
-    reference_doctype: referenceDoctype.value,
-    reference_name: referenceName.value,
-    action_type: actionType.value,
-  }
+  if (workflowCompleted.value) return
+  workflowCompleted.value = true
+  const detail = buildRefreshDetail()
 
-  emitGlobalSignal(SIGNAL_FOCUS_REFRESH, detail)
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(FOCUS_REFRESH_EVENT, { detail }))
+    }
+  } catch (e) {
+    // best-effort; never block closing
+  }
 
   // Optional secondary signal: other UI surfaces can listen without depending on Focus
   if (referenceDoctype.value === 'Student Log') {
-    emitGlobalSignal(SIGNAL_STUDENT_LOG_REFRESH, detail)
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(STUDENT_LOG_REFRESH_EVENT, { detail }))
+      }
+    } catch (e) {
+      // best-effort; never block closing
+    }
   }
 
   requestClose()
