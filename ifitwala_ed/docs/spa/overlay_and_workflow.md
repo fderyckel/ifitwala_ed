@@ -535,7 +535,10 @@ Done when:
 ---
 
 A+ Governance Appendix
+All services must return already-normalized domain payloads. Components never unwrap.
+Components must not unwrap transport shapes. Ever.
 
+Services must return domain payloads. Always.
 Pages MUST subscribe to uiSignals
 Overlays MUST NOT emit refresh events
 Services MUST be the only emitters
@@ -787,3 +790,68 @@ End.
 
 ---
 
+
+
+
+
+
+
+Step 2 — Remove transport logic from FocusRouterOverlay (NEXT, highest impact)
+
+Goal: FocusRouterOverlay.vue becomes a pure overlay shell + router.
+It must not contain:
+
+createResource
+
+unwrapMessage
+
+any axios-shape handling
+
+Instead it calls:
+
+focusService.getFocusContext(payload) (service already normalizes)
+
+This step is the main source of “circles.” Fixing it stops the churn.
+
+✅ What I need from you now (no debate):
+Paste the exact current <script setup lang="ts"> from your ui-spa/src/components/focus/FocusRouterOverlay.vue.
+
+Only the script. Nothing else.
+
+Why: I will patch it precisely (no assumptions) and after you apply it, we treat it as DONE.
+
+Step 3 — OverlayHost enforcement + no direct mutation
+
+Goal:
+
+OverlayHost.requestClose() must call only overlay stack API methods.
+
+No overlay.state.stack = ... anywhere.
+
+Enforce closeOnBackdrop/closeOnEsc centrally as far as the host can.
+
+Use your new forceRemove(id) as the only emergency hatch.
+
+✅ What I need when we get there:
+Paste the current <script setup> of OverlayHost.vue from your machine (the one you actually have now).
+
+Step 4 — Done semantics Option A (child emits done only)
+
+Goal: Remove double-close risk:
+
+Child emits done (success)
+
+Router closes on done
+
+Child does not close itself on success
+
+✅ What I need when we get there:
+Paste the current <script setup> of StudentLogFollowUpAction.vue from your machine (even if you already pasted it earlier—what matters is what’s in your repo now).
+
+Non-negotiable working rules (to stop looping)
+
+I will not output patches for files you haven’t pasted in their current state.
+
+Once I output a patch and you apply it, we treat that file as authoritative and do not revisit it unless there’s a new bug report with evidence.
+
+One file per message, script-only if that’s the only change.

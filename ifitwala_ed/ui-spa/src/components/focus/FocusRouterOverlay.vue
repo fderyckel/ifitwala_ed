@@ -125,9 +125,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
-import { Button, FeatherIcon, createResource } from 'frappe-ui'
+import { Button, FeatherIcon } from 'frappe-ui'
 
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue'
+import { createFocusService } from '@/lib/services/focus/focusService'
+
 import type { Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context'
 
 /**
@@ -161,6 +163,13 @@ const emit = defineEmits<{
  * - Pages subscribe to uiSignals and refresh what they own.
  */
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
+
+/**
+ * Service (A+)
+ * - all transport normalization lives in the service
+ * - router/view never unwraps Axios-ish shapes
+ */
+const focusService = createFocusService()
 
 /**
  * State
@@ -214,37 +223,6 @@ const isStudentLogFollowUp = computed(() => {
 })
 
 /* API ---------------------------------------------------------- */
-function unwrapMessage<T>(res: any): T {
-	// frappe-ui may pass either:
-	// - { message: T }
-	// - Axios response: { data: { message: T } }
-	// - Axios response: { data: T }
-	const root = res?.data ?? res
-	if (root && typeof root === 'object' && 'message' in root) return (root as any).message as T
-	return root as T
-}
-
-const ctxResource = createResource<GetFocusContextResponse>({
-	url: 'ifitwala_ed.api.focus.get_focus_context',
-	method: 'POST',
-	auto: false,
-	transform: unwrapMessage,
-	onSuccess(payload: GetFocusContextResponse) {
-		loading.value = false
-		errorText.value = null
-		ctx.value = (payload ?? null) as GetFocusContextResponse | null
-	},
-	onError(err: any) {
-		loading.value = false
-		ctx.value = null
-		const msg =
-			err?.messages?.[0] ||
-			err?.message ||
-			'The server refused this request or the item no longer exists.'
-		errorText.value = String(msg)
-	},
-})
-
 function resetState() {
 	loading.value = false
 	errorText.value = null
@@ -269,12 +247,27 @@ function buildContextPayload() {
 	}
 }
 
-function reload() {
+async function reload() {
 	errorText.value = null
 	loading.value = true
 	ctx.value = null
 	workflowCompleted.value = false
-	ctxResource.submit(buildContextPayload())
+
+	try {
+		const payload = buildContextPayload()
+		const result = await focusService.getFocusContext(payload as any)
+		loading.value = false
+		errorText.value = null
+		ctx.value = (result ?? null) as GetFocusContextResponse | null
+	} catch (err: any) {
+		loading.value = false
+		ctx.value = null
+		const msg =
+			err?.messages?.[0] ||
+			err?.message ||
+			'The server refused this request or the item no longer exists.'
+		errorText.value = String(msg)
+	}
 }
 
 function requestClose() {

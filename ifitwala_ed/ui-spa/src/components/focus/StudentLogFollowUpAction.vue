@@ -213,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toast } from 'frappe-ui'
 
 import { __ } from '@/lib/i18n'
@@ -229,46 +229,46 @@ type FocusLog = GetFocusContextResponse['log']
 type FocusFollowUp = GetFocusContextResponse['follow_ups'][number]
 
 const props = defineProps<{
-  focusItemId?: string | null
-  context: GetFocusContextResponse
+	focusItemId?: string | null
+	context: GetFocusContextResponse
 }>()
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'done'): void
-  (e: 'request-refresh'): void
+	(e: 'close'): void
+	(e: 'done'): void
+	(e: 'request-refresh'): void
 }>()
 
 /**
  * Service layer:
  * - owns createResource + dotted endpoints
  * - returns unwrapped message payloads
- * - allows later centralization of refresh events / caching / retry
+ * - owns uiSignals emission (A+)
  */
 const focusService = createFocusService()
 
 function emitClose() {
-  emit('close')
+	emit('close')
 }
 
 function requestRefresh() {
-  emit('request-refresh')
+	emit('request-refresh')
 }
 
 /* Toast safety (you hit "toast is unavailable" before) --------- */
 type ToastPayload = Parameters<typeof toast>[0]
 function showToast(payload: ToastPayload) {
-  if (typeof toast !== 'function') {
-    // eslint-disable-next-line no-console
-    console.warn('[StudentLogFollowUpAction] toast is unavailable', payload)
-    return
-  }
-  try {
-    toast(payload)
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[StudentLogFollowUpAction] toast failed', err, payload)
-  }
+	if (typeof toast !== 'function') {
+		// eslint-disable-next-line no-console
+		console.warn('[StudentLogFollowUpAction] toast is unavailable', payload)
+		return
+	}
+	try {
+		toast(payload)
+	} catch (err) {
+		// eslint-disable-next-line no-console
+		console.error('[StudentLogFollowUpAction] toast failed', err, payload)
+	}
 }
 
 /**
@@ -290,204 +290,213 @@ const reassignTo = ref('')
 const activeStudentLogName = computed(() => log.value?.name || null)
 
 const canSubmit = computed(() => {
-  return !!activeStudentLogName.value && (draftText.value || '').trim().length >= 5
+	return !!activeStudentLogName.value && (draftText.value || '').trim().length >= 5
 })
 
 const canComplete = computed(() => {
-  const s = String(log.value?.follow_up_status || '').toLowerCase()
-  return !!activeStudentLogName.value && s !== 'completed'
+	const s = String(log.value?.follow_up_status || '').toLowerCase()
+	return !!activeStudentLogName.value && s !== 'completed'
 })
 
 function applyContext(ctx: GetFocusContextResponse | null) {
-  if (!ctx) return
-  log.value = (ctx.log ?? null) as any
-  followUps.value = Array.isArray(ctx.follow_ups) ? (ctx.follow_ups as any) : []
-  modeState.value = ctx.mode === 'author' || ctx.mode === 'assignee' ? ctx.mode : 'assignee'
+	if (!ctx) return
+	log.value = (ctx.log ?? null) as any
+	followUps.value = Array.isArray(ctx.follow_ups) ? (ctx.follow_ups as any) : []
+	modeState.value = ctx.mode === 'author' || ctx.mode === 'assignee' ? ctx.mode : 'assignee'
 }
 
 watch(
-  () => props.context,
-  (next) => {
-    // reset action inputs on context change (prevents stale drafts)
-    draftText.value = ''
-    reassignTo.value = ''
-    submittedOnce.value = false
-    applyContext(next || null)
-  },
-  { immediate: true, deep: false }
+	() => props.context,
+	(next) => {
+		// reset action inputs on context change (prevents stale drafts)
+		draftText.value = ''
+		reassignTo.value = ''
+		submittedOnce.value = false
+		applyContext(next || null)
+	},
+	{ immediate: true, deep: false }
 )
 
 /* Helpers ------------------------------------------------------ */
 function newClientRequestId(prefix = 'req') {
-  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
+	return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
 }
 
 function openInDesk(doctype: string, name: string) {
-  // leaving SPA intentionally (Desk route)
-  const safeDoctype = String(doctype || '').trim()
-  const safeName = String(name || '').trim()
-  if (!safeDoctype || !safeName) return
+	// leaving SPA intentionally (Desk route)
+	const safeDoctype = String(doctype || '').trim()
+	const safeName = String(name || '').trim()
+	if (!safeDoctype || !safeName) return
 
-  // Desk accepts /app/<Doctype>/<name> with URL encoding. Do not slugify doctypes.
-  window.open(`/app/${encodeURIComponent(safeDoctype)}/${encodeURIComponent(safeName)}`, '_blank', 'noopener')
+	// Desk accepts /app/<Doctype>/<name> with URL encoding. Do not slugify doctypes.
+	window.open(
+		`/app/${encodeURIComponent(safeDoctype)}/${encodeURIComponent(safeName)}`,
+		'_blank',
+		'noopener'
+	)
 }
 
 function trustedHtml(html: string) {
-  return html || ''
+	return html || ''
 }
 
 function requireFocusItemId(): string | null {
-  const id = String(props.focusItemId || '').trim()
-  if (!id) {
-    showToast({
-      title: __('Missing focus item'),
-      text: __('Please close and reopen this item from the Focus list.'),
-      icon: 'x',
-    })
-    return null
-  }
-  return id
+	const id = String(props.focusItemId || '').trim()
+	if (!id) {
+		showToast({
+			title: __('Missing focus item'),
+			text: __('Please close and reopen this item from the Focus list.'),
+			icon: 'x',
+		})
+		return null
+	}
+	return id
 }
 
-async function aPlusSuccessCloseThenDone() {
-  // A+: close immediately, then best-effort done.
-  emitClose()
-  await nextTick()
-  try {
-    emit('done')
-  } catch {
-    // never block closing
-  }
+/**
+ * Option A (preferred):
+ * - Child emits DONE only (success signal).
+ * - Child does NOT close overlays on success.
+ * - Router owns close on done.
+ *
+ * Note: cancel/close remains explicit via emit('close').
+ */
+function aPlusSuccessDoneOnly() {
+	try {
+		emit('done')
+	} catch {
+		// never block UX
+	}
 }
 
 /* Actions ------------------------------------------------------ */
 async function submitFollowUp() {
-  if (busy.value || submittedOnce.value) return
-  if (modeState.value !== 'assignee') return
-  if (!canSubmit.value) return
+	if (busy.value || submittedOnce.value) return
+	if (modeState.value !== 'assignee') return
+	if (!canSubmit.value) return
 
-  const focusItemId = requireFocusItemId()
-  if (!focusItemId) return
+	const focusItemId = requireFocusItemId()
+	if (!focusItemId) return
 
-  const followUpText = (draftText.value || '').trim()
-  if (followUpText.length < 5) return
+	const followUpText = (draftText.value || '').trim()
+	if (followUpText.length < 5) return
 
-  busy.value = true
-  submittedOnce.value = true
+	busy.value = true
+	submittedOnce.value = true
 
-  try {
-    const payload: SubmitStudentLogFollowUpRequest = {
-      focus_item_id: focusItemId,
-      follow_up: followUpText,
-      client_request_id: newClientRequestId('fu'),
-    }
+	try {
+		const payload: SubmitStudentLogFollowUpRequest = {
+			focus_item_id: focusItemId,
+			follow_up: followUpText,
+			client_request_id: newClientRequestId('fu'),
+		}
 
-    const msg = await focusService.submitStudentLogFollowUp(payload)
-    if (!msg?.ok) throw new Error(__('Submit failed.'))
+		const msg = await focusService.submitStudentLogFollowUp(payload)
+		if (!msg?.ok) throw new Error(__('Submit failed.'))
 
-    showToast({
-      title: msg.idempotent ? __('Already submitted') : __('Follow-up submitted'),
-      icon: 'check',
-    })
+		showToast({
+			title: msg.idempotent ? __('Already submitted') : __('Follow-up submitted'),
+			icon: 'check',
+		})
 
-    await aPlusSuccessCloseThenDone()
-  } catch (e: any) {
-    submittedOnce.value = false
-    showToast({
-      title: __('Could not submit follow-up'),
-      text: e?.message || __('Please try again.'),
-      icon: 'x',
-    })
-  } finally {
-    busy.value = false
-  }
+		aPlusSuccessDoneOnly()
+	} catch (e: any) {
+		submittedOnce.value = false
+		showToast({
+			title: __('Could not submit follow-up'),
+			text: e?.message || __('Please try again.'),
+			icon: 'x',
+		})
+	} finally {
+		busy.value = false
+	}
 }
 
 async function reassignFollowUp() {
-  if (busy.value || submittedOnce.value) return
-  if (modeState.value !== 'author') return
+	if (busy.value || submittedOnce.value) return
+	if (modeState.value !== 'author') return
 
-  const focusItemId = requireFocusItemId()
-  if (!focusItemId) return
+	const focusItemId = requireFocusItemId()
+	if (!focusItemId) return
 
-  const target = (reassignTo.value || '').trim()
-  if (target.length < 3) {
-    showToast({
-      title: __('Missing assignee'),
-      text: __('Please enter a valid user (email / user id).'),
-      icon: 'x',
-    })
-    return
-  }
+	const target = (reassignTo.value || '').trim()
+	if (target.length < 3) {
+		showToast({
+			title: __('Missing assignee'),
+			text: __('Please enter a valid user (email / user id).'),
+			icon: 'x',
+		})
+		return
+	}
 
-  busy.value = true
-  submittedOnce.value = true
+	busy.value = true
+	submittedOnce.value = true
 
-  try {
-    const payload: ReviewStudentLogOutcomeRequest = {
-      focus_item_id: focusItemId,
-      decision: 'reassign',
-      follow_up_person: target,
-      client_request_id: newClientRequestId('rvw'),
-    }
+	try {
+		const payload: ReviewStudentLogOutcomeRequest = {
+			focus_item_id: focusItemId,
+			decision: 'reassign',
+			follow_up_person: target,
+			client_request_id: newClientRequestId('rvw'),
+		}
 
-    const msg = await focusService.reviewStudentLogOutcome(payload)
-    if (!msg?.ok) throw new Error(__('Reassign failed.'))
+		const msg = await focusService.reviewStudentLogOutcome(payload)
+		if (!msg?.ok) throw new Error(__('Reassign failed.'))
 
-    showToast({
-      title: msg.idempotent ? __('Already processed') : __('Reassigned'),
-      icon: 'check',
-    })
+		showToast({
+			title: msg.idempotent ? __('Already processed') : __('Reassigned'),
+			icon: 'check',
+		})
 
-    await aPlusSuccessCloseThenDone()
-  } catch (e: any) {
-    submittedOnce.value = false
-    showToast({
-      title: __('Could not reassign'),
-      text: e?.message || __('Please try again.'),
-      icon: 'x',
-    })
-  } finally {
-    busy.value = false
-  }
+		aPlusSuccessDoneOnly()
+	} catch (e: any) {
+		submittedOnce.value = false
+		showToast({
+			title: __('Could not reassign'),
+			text: e?.message || __('Please try again.'),
+			icon: 'x',
+		})
+	} finally {
+		busy.value = false
+	}
 }
 
 async function completeParentLog() {
-  if (busy.value || submittedOnce.value) return
-  if (modeState.value !== 'author') return
-  if (!canComplete.value) return
+	if (busy.value || submittedOnce.value) return
+	if (modeState.value !== 'author') return
+	if (!canComplete.value) return
 
-  const focusItemId = requireFocusItemId()
-  if (!focusItemId) return
+	const focusItemId = requireFocusItemId()
+	if (!focusItemId) return
 
-  busy.value = true
-  submittedOnce.value = true
+	busy.value = true
+	submittedOnce.value = true
 
-  try {
-    const payload: ReviewStudentLogOutcomeRequest = {
-      focus_item_id: focusItemId,
-      decision: 'complete',
-      client_request_id: newClientRequestId('rvw'),
-    }
+	try {
+		const payload: ReviewStudentLogOutcomeRequest = {
+			focus_item_id: focusItemId,
+			decision: 'complete',
+			client_request_id: newClientRequestId('rvw'),
+		}
 
-    const msg = await focusService.reviewStudentLogOutcome(payload)
-    if (!msg?.ok) throw new Error(__('Complete failed.'))
+		const msg = await focusService.reviewStudentLogOutcome(payload)
+		if (!msg?.ok) throw new Error(__('Complete failed.'))
 
-    showToast({
-      title: msg.idempotent ? __('Already processed') : __('Log completed'),
-      icon: 'check',
-    })
+		showToast({
+			title: msg.idempotent ? __('Already processed') : __('Log completed'),
+			icon: 'check',
+		})
 
-    await aPlusSuccessCloseThenDone()
-  } catch (e: any) {
-    submittedOnce.value = false
-    showToast({
-      title: __('Could not complete log'),
-      text: e?.message || __('Please try again.'),
-      icon: 'x',
-    })
-  } finally {
-    busy.value = false
-  }
+		aPlusSuccessDoneOnly()
+	} catch (e: any) {
+		submittedOnce.value = false
+		showToast({
+			title: __('Could not complete log'),
+			text: e?.message || __('Please try again.'),
+			icon: 'x',
+		})
+	} finally {
+		busy.value = false
+	}
 }
 </script>
