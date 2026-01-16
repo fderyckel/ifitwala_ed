@@ -76,7 +76,6 @@
                 </div>
               </div>
 
-              <!-- Routed content -->
               <div v-else class="space-y-5">
                 <StudentLogFollowUpAction
                   v-if="isStudentLogFollowUp && ctx"
@@ -129,18 +128,10 @@ import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } fro
 import { Button, FeatherIcon, createResource } from 'frappe-ui'
 
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue'
-
 import type { Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context'
 
-/**
- * Global signals
- * - ONLY FocusRouterOverlay emits these.
- * - Leaf workflow components MUST NOT dispatch window events.
- *
- * Keep names stable; other surfaces may subscribe.
- */
-const FOCUS_REFRESH_EVENT = 'ifitwala:focus:refresh'
-const STUDENT_LOG_REFRESH_EVENT = 'ifitwala:student_log:refresh'
+const SIGNAL_FOCUS_REFRESH = 'ifitwala:focus:refresh'
+const SIGNAL_STUDENT_LOG_REFRESH = 'ifitwala:student_log:refresh'
 
 /**
  * Props (OverlayHost contract)
@@ -151,6 +142,9 @@ const props = defineProps<{
   focusItemId?: string | null
   referenceDoctype?: string | null
   referenceName?: string | null
+
+  // ✅ NEW: allow callers to pass action_type (helps fallback routing)
+  actionType?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -173,17 +167,17 @@ const loading = ref(false)
 const errorText = ref<string | null>(null)
 const workflowCompleted = ref(false)
 
-// Single source of truth: full context payload from server contract
 const ctx = ref<GetFocusContextResponse | null>(null)
 
-// Derived routing bits (header + switch)
-const actionType = computed(() => ctx.value?.action_type ?? null)
+// ✅ NEW: if ctx has no action_type (because caller didn't pass focusItemId),
+// fall back to prop actionType.
+const actionType = computed(() => (ctx.value?.action_type ?? props.actionType ?? null) as string | null)
+
 const referenceDoctype = computed(() => ctx.value?.reference_doctype ?? null)
 const referenceName = computed(() => ctx.value?.reference_name ?? null)
 const studentLogMode = computed<'assignee' | 'author'>(() => (ctx.value?.mode ?? 'assignee') as any)
 
 const resolvedFocusItemId = computed(() => {
-  // Prefer deterministic id returned from server, fallback to prop
   return (ctx.value?.focus_item_id ?? props.focusItemId ?? null) as string | null
 })
 
@@ -259,10 +253,13 @@ function buildContextPayload() {
   const reference_doctype = (props.referenceDoctype || '').trim()
   const reference_name = (props.referenceName || '').trim()
 
-  // Let server raise "Missing reference information." if insufficient.
+  // ✅ NEW: if we have an action type (from the list item), send it.
+  const action_type = (props.actionType || '').trim() || null
+
   return {
     reference_doctype: reference_doctype || null,
     reference_name: reference_name || null,
+    action_type,
   }
 }
 
@@ -274,20 +271,24 @@ function reload() {
   ctxResource.submit(buildContextPayload())
 }
 
-/* CLOSE + LIFECYCLE ------------------------------------------- */
 function requestClose() {
-  // A+: close is always allowed and never blocked
   emit('close')
 }
 
 function emitAfterLeave() {
-  // Fully reset once closed (prevents stale header/body flashes on next open)
   resetState()
   emit('after-leave')
 }
 
 function onDialogClose() {
   requestClose()
+}
+
+function emitGlobalSignal(name: string, detail?: Record<string, any>) {
+  try {
+    if (typeof window === 'undefined') return
+    window.dispatchEvent(new CustomEvent(name, { detail: detail || {} }))
+  } catch (e) {}
 }
 
 function buildRefreshDetail() {
@@ -299,44 +300,19 @@ function buildRefreshDetail() {
   }
 }
 
-/**
- * Workflow done:
- * - Overlay is the single owner of global refresh dispatch.
- * - Only fire on successful workflow completion (done event).
- * - Then close overlay.
- *
- * IMPORTANT:
- * - Do NOT await anything here.
- * - Close must happen even if listeners throw.
- */
 function onWorkflowDone() {
   if (workflowCompleted.value) return
   workflowCompleted.value = true
   const detail = buildRefreshDetail()
 
-  try {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent(FOCUS_REFRESH_EVENT, { detail }))
-    }
-  } catch (e) {
-    // best-effort; never block closing
-  }
-
-  // Optional secondary signal: other UI surfaces can listen without depending on Focus
+  emitGlobalSignal(SIGNAL_FOCUS_REFRESH, detail)
   if (referenceDoctype.value === 'Student Log') {
-    try {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent(STUDENT_LOG_REFRESH_EVENT, { detail }))
-      }
-    } catch (e) {
-      // best-effort; never block closing
-    }
+    emitGlobalSignal(SIGNAL_STUDENT_LOG_REFRESH, detail)
   }
 
   requestClose()
 }
 
-/* OPEN WATCHERS ------------------------------------------------- */
 watch(
   () => props.open,
   (next) => {
@@ -346,7 +322,6 @@ watch(
   { immediate: false }
 )
 
-// Optional: if the parent swaps focusItemId while overlay is open, reload.
 watch(
   () => props.focusItemId,
   (next, prev) => {
