@@ -19,11 +19,11 @@
             <div class="meeting-modal__header">
               <div class="meeting-modal__headline min-w-0">
                 <div class="type-overline">
-                  {{ modeState === 'author' ? 'Review' : 'Follow-up' }}
+                  {{ modeState === 'author' ? __('Review') : __('Follow-up') }}
                 </div>
 
                 <DialogTitle class="type-h2 text-canopy truncate">
-                  {{ modeState === 'author' ? 'Review outcome' : 'Follow up' }}
+                  {{ modeState === 'author' ? __('Review outcome') : __('Follow up') }}
                 </DialogTitle>
 
                 <div class="type-caption mt-1 truncate">
@@ -89,7 +89,7 @@
                   <div v-if="log?.log_html" class="mt-5">
                     <div class="type-label mb-2">Log note</div>
                     <div class="rounded-2xl border border-ink/10 bg-surface-soft p-4">
-                      <div class="prose prose-sm max-w-none" v-html="safeHtml(log.log_html)" />
+                      <div class="prose prose-sm max-w-none" v-html="htmlOrEmpty(log.log_html)" />
                     </div>
                   </div>
                 </div>
@@ -145,7 +145,7 @@
                         v-if="fu.follow_up_html"
                         class="mt-3 rounded-2xl border border-ink/10 bg-white/70 p-4"
                       >
-                        <div class="prose prose-sm max-w-none" v-html="safeHtml(fu.follow_up_html)" />
+                        <div class="prose prose-sm max-w-none" v-html="htmlOrEmpty(fu.follow_up_html)" />
                       </div>
                     </div>
                   </div>
@@ -240,49 +240,21 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
-import { createResource, toast } from 'frappe-ui'
+import { toast } from 'frappe-ui'
+import { __ } from '@/lib/i18n'
+import { createFocusService } from '@/lib/services/focus/focusService'
 import { useOverlayStack } from '@/composables/useOverlayStack'
+import type { Request as GetFocusContextRequest, Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context'
+import type {
+  Request as SubmitStudentLogFollowUpRequest,
+  Response as SubmitStudentLogFollowUpResponse,
+} from '@/types/contracts/focus/submit_student_log_follow_up'
+import type {
+  Request as ReviewStudentLogOutcomeRequest,
+  Response as ReviewStudentLogOutcomeResponse,
+} from '@/types/contracts/focus/review_student_log_outcome'
 
 type Mode = 'assignee' | 'author'
-
-type StudentLogRow = {
-  name: string
-  student?: string | null
-  student_name?: string | null
-  school?: string | null
-  log_type?: string | null
-  next_step?: string | null
-  follow_up_person?: string | null
-  follow_up_role?: string | null
-  date?: string | null
-  log_html?: string | null
-  follow_up_status?: string | null
-  log_author?: string | null
-  log_author_name?: string | null
-}
-
-type FollowUpRow = {
-  name: string
-  date?: string | null
-  follow_up_author?: string | null
-  follow_up_html?: string | null
-  docstatus: 0 | 1 | 2
-}
-
-type FocusContext = {
-  focus_item_id?: string | null
-  action_type?: string | null
-  reference_doctype: string
-  reference_name: string
-  mode: Mode
-  log: StudentLogRow
-  follow_ups: FollowUpRow[]
-}
-
-/**
- * Keep stable: Focus list listens and refreshes immediately after workflow completes.
- */
-const FOCUS_REFRESH_EVENT = 'ifitwala:focus:refresh'
 
 const props = defineProps<{
   open: boolean
@@ -303,6 +275,10 @@ const emit = defineEmits<{
 }>()
 
 const overlay = useOverlayStack()
+const focusService = createFocusService()
+
+type FocusLog = GetFocusContextResponse['log']
+type FocusFollowUp = GetFocusContextResponse['follow_ups'][number]
 
 type ToastPayload = Parameters<typeof toast>[0]
 function showToast(payload: ToastPayload) {
@@ -338,20 +314,10 @@ function emitAfterLeave() {
   emit('after-leave')
 }
 
-function fireFocusRefresh() {
-  try {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent(FOCUS_REFRESH_EVENT))
-    }
-  } catch (e) {
-    // best-effort
-  }
-}
-
 const modeState = ref<Mode>(props.mode)
 
-const log = ref<StudentLogRow | null>(null)
-const followUps = ref<FollowUpRow[]>([])
+const log = ref<FocusLog | null>(null)
+const followUps = ref<FocusFollowUp[]>([])
 const loading = ref(false)
 const busy = ref(false)
 const submittedOnce = ref(false)
@@ -372,49 +338,25 @@ function _newClientRequestId(prefix = 'req') {
 }
 
 /* API ---------------------------------------------------------- */
-/**
- * Important:
- * - Use method paths consistently (no mixing "ifitwala_ed.api.x" vs "/api/method/...").
- * - createResource() will POST to /api/method/<url> when given a dotted path.
- */
-const getContext = createResource({
-  url: 'ifitwala_ed.api.focus.get_focus_context',
-  method: 'POST',
-  auto: false,
-})
-
-const submitFollowUpApi = createResource({
-  url: 'ifitwala_ed.api.focus.submit_student_log_follow_up',
-  method: 'POST',
-  auto: false,
-})
-
-const reviewOutcomeApi = createResource({
-  url: 'ifitwala_ed.api.focus.review_student_log_outcome',
-  method: 'POST',
-  auto: false,
-})
-
 async function reload() {
   if (!props.studentLog && !props.focusItemId) return
   loading.value = true
   try {
-    const payload = (props.focusItemId || '').trim()
+    const payload: GetFocusContextRequest = (props.focusItemId || '').trim()
       ? { focus_item_id: (props.focusItemId || '').trim() }
       : { reference_doctype: 'Student Log', reference_name: props.studentLog }
 
-    const res = await getContext.submit(payload)
-    const ctx = ((res as any)?.message ?? res) as FocusContext
+    const ctx: GetFocusContextResponse = await focusService.getFocusContext(payload)
 
-    if (!ctx || !ctx.log) throw new Error('Missing focus context.')
+    if (!ctx || !ctx.log) throw new Error(__('Missing focus context.'))
 
     log.value = ctx.log
     followUps.value = Array.isArray(ctx.follow_ups) ? ctx.follow_ups : []
     if (ctx.mode && ctx.mode !== modeState.value) modeState.value = ctx.mode
   } catch (e: any) {
     showToast({
-      title: 'Could not load follow-up context',
-      text: e?.message || 'Please try again.',
+      title: __('Could not load follow-up context'),
+      text: e?.message || __('Please try again.'),
       icon: 'x',
     })
   } finally {
@@ -443,8 +385,8 @@ async function submitFollowUp() {
   const focusItemId = (props.focusItemId || '').trim()
   if (!focusItemId) {
     showToast({
-      title: 'Missing focus item',
-      text: 'Please close and reopen this item from the Focus list.',
+      title: __('Missing focus item'),
+      text: __('Please close and reopen this item from the Focus list.'),
       icon: 'x',
     })
     return
@@ -454,30 +396,26 @@ async function submitFollowUp() {
   submittedOnce.value = true
 
   try {
-    const res = await submitFollowUpApi.submit({
+    const payload: SubmitStudentLogFollowUpRequest = {
       focus_item_id: focusItemId,
       follow_up: (draftText.value || '').trim(),
       client_request_id: _newClientRequestId('fu'),
-    })
-
-    const msg = ((res as any)?.message ?? res) as any
-    if (!msg?.ok) throw new Error(msg?.message || 'Submit failed.')
+    }
+    const msg: SubmitStudentLogFollowUpResponse = await focusService.submitStudentLogFollowUp(payload)
+    if (!msg?.ok) throw new Error(__('Submit failed.'))
 
     showToast({
-      title: msg.idempotent ? 'Already submitted' : 'Follow-up submitted',
+      title: msg.idempotent ? __('Already submitted') : __('Follow-up submitted'),
       icon: 'check',
     })
-
-    // Trigger Focus list refresh immediately (so item disappears).
-    fireFocusRefresh()
 
     // Close overlay.
     emitClose()
   } catch (e: any) {
     submittedOnce.value = false
     showToast({
-      title: 'Could not submit follow-up',
-      text: e?.message || 'Please try again.',
+      title: __('Could not submit follow-up'),
+      text: e?.message || __('Please try again.'),
       icon: 'x',
     })
   } finally {
@@ -492,8 +430,8 @@ async function completeParentLog() {
   const focusItemId = (props.focusItemId || '').trim()
   if (!focusItemId) {
     showToast({
-      title: 'Missing focus item',
-      text: 'Please close and reopen this item from the Focus list.',
+      title: __('Missing focus item'),
+      text: __('Please close and reopen this item from the Focus list.'),
       icon: 'x',
     })
     return
@@ -503,27 +441,25 @@ async function completeParentLog() {
   submittedOnce.value = true
 
   try {
-    const res = await reviewOutcomeApi.submit({
+    const payload: ReviewStudentLogOutcomeRequest = {
       focus_item_id: focusItemId,
       decision: 'complete',
       client_request_id: _newClientRequestId('rvw'),
-    })
-
-    const msg = ((res as any)?.message ?? res) as any
-    if (!msg?.ok) throw new Error(msg?.message || 'Complete failed.')
+    }
+    const msg: ReviewStudentLogOutcomeResponse = await focusService.reviewStudentLogOutcome(payload)
+    if (!msg?.ok) throw new Error(__('Complete failed.'))
 
     showToast({
-      title: msg.idempotent ? 'Already processed' : 'Log completed',
+      title: msg.idempotent ? __('Already processed') : __('Log completed'),
       icon: 'check',
     })
 
-    fireFocusRefresh()
     emitClose()
   } catch (e: any) {
     submittedOnce.value = false
     showToast({
-      title: 'Could not complete log',
-      text: e?.message || 'Please try again.',
+      title: __('Could not complete log'),
+      text: e?.message || __('Please try again.'),
       icon: 'x',
     })
   } finally {
@@ -542,7 +478,7 @@ function openInDesk(doctype: string, name: string) {
   window.open(url, '_blank', 'noopener')
 }
 
-function safeHtml(html: string) {
+function htmlOrEmpty(html: string) {
   return html || ''
 }
 </script>
