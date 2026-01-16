@@ -84,6 +84,7 @@
                   :context="ctx"
                   @close="requestClose"
                   @done="onWorkflowDone"
+                  @request-refresh="reload"
                 />
 
                 <!-- Not implemented -->
@@ -128,7 +129,6 @@ import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } fro
 import { Button, FeatherIcon, createResource } from 'frappe-ui'
 
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue'
-import { uiSignals } from '@/lib/uiSignals'
 
 type Mode = 'assignee' | 'author'
 
@@ -144,6 +144,8 @@ type StudentLogRow = {
   date?: string | null
   log_html?: string | null
   follow_up_status?: string | null
+  log_author?: string | null
+  log_author_name?: string | null
 }
 
 type FollowUpRow = {
@@ -263,16 +265,26 @@ function resetState() {
   ctx.value = null
 }
 
+function _buildContextPayload() {
+  const focus_item_id = (props.focusItemId || '').trim()
+  if (focus_item_id) return { focus_item_id }
+
+  const reference_doctype = (props.referenceDoctype || '').trim()
+  const reference_name = (props.referenceName || '').trim()
+
+  // Let server raise "Missing reference information." if insufficient.
+  return {
+    reference_doctype: reference_doctype || null,
+    reference_name: reference_name || null,
+  }
+}
+
 function reload() {
   errorText.value = null
   loading.value = true
   ctx.value = null
 
-  ctxResource.submit({
-    focus_item_id: props.focusItemId ?? null,
-    reference_doctype: props.referenceDoctype ?? null,
-    reference_name: props.referenceName ?? null,
-  })
+  ctxResource.submit(_buildContextPayload())
 }
 
 function requestClose() {
@@ -295,17 +307,6 @@ function onDialogClose() {
  * - Then close overlay.
  */
 function onWorkflowDone() {
-  // Keep the legacy event constant for now (doc says “stable”),
-  // but migrate the implementation to uiSignals (in-memory, testable).
-  try {
-    uiSignals.emit('focus:invalidate')
-  } catch (e) {
-    // best-effort; never block closing
-  }
-
-  // Compatibility bridge (temporary):
-  // If any existing code still listens to the old window event, keep it alive.
-  // Remove once StaffHome/FocusListCard are migrated to uiSignals.
   try {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(FOCUS_REFRESH_EVENT))
@@ -313,7 +314,6 @@ function onWorkflowDone() {
   } catch (e) {
     // best-effort; never block closing
   }
-
   requestClose()
 }
 
@@ -321,8 +321,20 @@ function onWorkflowDone() {
 watch(
   () => props.open,
   (next) => {
-    if (next) reload()
+    if (!next) return
+    reload()
   },
-  { immediate: true }
+  { immediate: false }
+)
+
+// Optional: if the parent swaps focusItemId while overlay is open, reload.
+watch(
+  () => props.focusItemId,
+  (next, prev) => {
+    if (!props.open) return
+    const a = (next || '').trim()
+    const b = (prev || '').trim()
+    if (a && a !== b) reload()
+  }
 )
 </script>

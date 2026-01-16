@@ -29,6 +29,12 @@
 				<p class="mt-1 type-caption text-ink/70 leading-snug line-clamp-2">
 					{{ item.subtitle }}
 				</p>
+				<p
+					v-if="assignedByName"
+					class="mt-1 type-caption text-ink/60 leading-snug truncate"
+				>
+					Assigned by {{ assignedByName }}
+				</p>
 			</template>
 		</div>
 
@@ -60,6 +66,12 @@
 import { computed } from 'vue'
 import { FeatherIcon } from 'frappe-ui'
 import type { FocusItem } from '@/types/focusItem'
+
+const assignedByName = computed(() => {
+  const p: any = (props.item as any)?.payload
+  const name = (p?.assigned_by_name || '').trim()
+  return name || null
+})
 
 const props = defineProps<{
 	item: FocusItem

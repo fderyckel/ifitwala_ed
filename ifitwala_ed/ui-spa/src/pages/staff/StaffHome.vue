@@ -275,7 +275,11 @@ import { useOverlayStack } from '@/composables/useOverlayStack'
 import type { FocusItem } from '@/types/focusItem'
 
 // A+ integration: UI Signals (Focus invalidation)
-import { uiSignals, SIGNAL_FOCUS_INVALIDATE } from '@/services/uiSignals'
+import { uiSignals } from '@/lib/uiSignals'
+
+const SIGNAL_FOCUS_INVALIDATE = 'focus:invalidate' as const
+
+
 
 /* USER --------------------------------------------------------- */
 type StaffHomeHeader = {
@@ -450,7 +454,8 @@ onMounted(async () => {
 	document.addEventListener('visibilitychange', onVisibilityChange)
 
 	// Subscribe to UI invalidation bus
-	uiSignals.on(SIGNAL_FOCUS_INVALIDATE, onFocusInvalidateSignal)
+	const offFocusInvalidate = uiSignals.on(SIGNAL_FOCUS_INVALIDATE, onFocusInvalidateSignal)
+
 })
 
 onBeforeUnmount(() => {
@@ -458,7 +463,7 @@ onBeforeUnmount(() => {
 	document.removeEventListener('visibilitychange', onVisibilityChange)
 
 	// Unsubscribe from UI invalidation bus
-	uiSignals.off(SIGNAL_FOCUS_INVALIDATE, onFocusInvalidateSignal)
+	offFocusInvalidate()
 })
 
 function openFocusItem(item: FocusItem) {

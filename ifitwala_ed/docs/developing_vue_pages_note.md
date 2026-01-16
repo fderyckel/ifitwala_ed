@@ -67,9 +67,9 @@ ui-spa/src/
 ├─ overlays/           # overlay panels rendered via OverlayHost
 ├─ composables/        # shared reactive logic (useX)
 ├─ api/                # API wrappers (thin)
-├─ types/              # TypeScript contracts (no logic)
-├─ lib/                # framework glue, i18n, helpers
-├─ utils/              # pure functions only
+├─ types/              # TypeScript contracts only (zero runtime, zero state)
+├─ lib/                # SPA infrastructure + UI services + overlay lifecycle glue (A+ model)
+├─ utils/              # pure stateless helpers only (deterministic, easy to test)
 ├─ styles/             # tokens / app / layout / components
 ```
 
@@ -79,6 +79,9 @@ Rules:
 * ❌ No API calls inside components directly
 * ❌ No cross-importing between `pages/` and `overlays/`
 * ✅ Pages orchestrate; components render
+
+**Locked placement rule (A+ aligned):**
+Runtime orchestration modules (UI Services, invalidation bus, cross-surface coordination) go in `ui-spa/src/lib/`.
 
 ---
 
@@ -99,6 +102,28 @@ Rules:
 * ✅ Types must match **server payloads exactly**
 
 If server payload changes → types must change first.
+
+---
+
+### 1.3 Runtime boundary (A+ aligned)
+
+The folder split is not aesthetic. It enforces the A+ model:
+
+* `types/` defines contracts (safe anywhere, no runtime impact)
+* `utils/` transforms values (pure helpers, no lifecycle)
+* `lib/` orchestrates runtime behavior (services + signals), but **never** owns overlay closing
+
+If a module maintains in-memory state, subscriptions, or cross-surface invalidation, it belongs in `lib/` — not `utils/` or `types/`.
+
+---
+
+### 1.4 Folder semantics (do not drift)
+
+| Folder   | Must contain                                | Must NOT contain                                            |
+| -------- | ------------------------------------------- | ----------------------------------------------------------- |
+| `types/` | type contracts only                         | runtime behavior, state, side effects                       |
+| `utils/` | pure stateless helpers                      | registries, event buses, subscriptions, lifecycles          |
+| `lib/`   | runtime infrastructure (services + signals) | business logic, overlay-stack mutations, workflow inference |
 
 ---
 
@@ -226,9 +251,7 @@ They may appear to work in isolation, but they break:
 * stacked overlays
 * accessibility guarantees
 
-**Therefore:**
-
-> Using `frappe-ui` dialogs inside the SPA is not a shortcut — it is **technical debt**.
+> Using `frappe-ui` dialogs inside the SPA is **technical debt**.
 
 ---
 
@@ -247,6 +270,27 @@ An overlay **never**:
 * infers assignment
 * mutates unrelated state
 * implements workflow rules
+
+---
+
+### 3.4 UI Services + Overlay Lifecycle Contract (A+ model)
+
+Workflow overlays must follow the locked A+ ownership split:
+
+* **Overlay owns closing** (local, immediate, deterministic)
+* **UI Services own orchestration** (API calls, refresh policy, messaging, invalidation)
+* `OverlayHost` is the lifecycle authority (mount, inerting, after-leave cleanup)
+
+Key invariant:
+
+> A successful workflow must never depend on services, toasts, events, refresh, or reload completing in order for the overlay to close.
+
+Implementation location implications:
+
+* UI Services live in `ui-spa/src/lib/`
+* The invalidation bus (`uiSignals`) lives in `ui-spa/src/lib/`
+* Overlays never call services that mutate overlay stack
+* Services never close overlays
 
 ---
 
@@ -271,9 +315,6 @@ HeadlessUI `Dialog` components can fail **silently** under the following conditi
 2. Verify **at least one focusable element** exists inside the dialog
 3. Verify `open` is controlled only by overlay stack state
 4. Verify required props are resolved **before** `open = true`
-
-**Do not debug styling first.**
-This is almost never a CSS issue.
 
 ---
 
@@ -305,52 +346,11 @@ Rules:
 * ❌ Never send `cmd`
 * ❌ Never mix kwargs + payload conventions
 
-Server methods should accept `payload=None, **kwargs` if needed.
-
-The SPA communicates only with **explicitly-defined server contracts**.
-
 > **Never validate or read `frappe.form_dict`.**
 > All `@frappe.whitelist()` methods **must declare explicit function arguments**.
 > Validation applies **only** to those arguments.
-> Any endpoint that reads raw request dictionaries is a **bug**.
 
-### Why this rule exists (do not debate)
-
-* Frappe **always injects** framework keys (e.g. `cmd`) into `/api/method` calls
-* `frappe-ui` **always POSTs JSON**
-* Bench and Frappe upgrades **will not change this behavior**
-
-Validating raw request payloads inevitably causes:
-
-* `"Unexpected keys"` errors
-* brittle APIs
-* repeated regressions across features
-
-### What this rule guarantees
-
-* Deterministic validation
-* Framework-aligned behavior
-* Future-proof endpoints
-* Zero coupling to transport internals
-
-### Client implications (SPA)
-
-* The SPA sends a **flat payload** using:
-
-  ```ts
-  resource.submit(payload)
-  ```
-
-* Payload keys must match the **server method signature exactly**
-
-* The SPA must **never** work around server validation failures
-
-If a request fails due to unexpected keys, the **server contract is wrong**.
-
-> **Fix the server. Never patch the client.**
-
-
-
+---
 
 ### 4.3 No chatty APIs
 
@@ -360,29 +360,17 @@ Rules:
 * ❌ No “fetch details after click” chains
 * ✅ One call per user action
 
-If the UI needs data → the endpoint must return it **already enriched**.
-
 ---
 
-### **4.4 Server Contract Debug Checklist (Mandatory Before Client Changes)**
-
-When a POST request fails or behaves unexpectedly:
+### 4.4 Server Contract Debug Checklist (Mandatory Before Client Changes)
 
 1. Inspect **Network → Response Preview**
 2. Check explicitly for:
 
    * `"Unexpected keys"`
    * `"cmd"`
-   * missing required fields
-3. Compare payload keys **exactly** against the server method signature
-4. Confirm whether the server expects:
-
-   * `payload`
-   * named keyword arguments
-   * both (`payload=None, **kwargs`)
-5. Fix the **server contract first**, not the UI, unless proven otherwise
-
-Never “patch around” server validation from the SPA.
+3. Compare payload keys **exactly** against server method signature
+4. Fix the **server contract first**, not the UI
 
 ---
 
@@ -396,8 +384,6 @@ Rules:
 * ❌ No “if this field exists then…”
 * ✅ Explicit `mode`, `action_type`, or `context`
 
-If the server knows the mode, the server sends it.
-
 ---
 
 ### 5.2 Watchers are dangerous
@@ -408,33 +394,20 @@ Rules:
 * ❌ No immediate watchers touching undeclared refs (TDZ bug)
 * ❌ No console.log inside watch arguments
 * ✅ Prefer computed values
-* ✅ Prefer explicit lifecycle hooks
 
 ---
 
-### **5.3 TDZ Debug Playbook (Vue `<script setup>`)**
+### 5.3 TDZ Debug Playbook (Vue `<script setup>`)
 
-If you encounter errors such as:
+If you see:
 
 ```
 Cannot access 'x' before initialization
 ```
 
-Assume **Temporal Dead Zone (TDZ)**, not logic failure.
+Assume **Temporal Dead Zone**, not logic failure.
 
-**Checklist:**
-
-1. Look for `watch(..., { immediate: true })`
-2. Identify refs or computed values referenced inside the watcher
-3. Ensure **all referenced symbols are declared above the watcher**
-4. Prefer watching `props` directly
-5. Move side effects to explicit lifecycle hooks if possible
-
-**Rules:**
-
-* Do **not** rename variables
-* Do **not** refactor logic
-* Fix declaration order first
+Fix declaration order first.
 
 ---
 
@@ -460,14 +433,13 @@ The SPA:
 Focus List:
 
 * is **not** a task manager
-* is **not** user-editable
 * reflects server truth only
 
 Rules:
 
 * ❌ No manual FocusItem creation in SPA
 * ❌ No ToDo manipulation in SPA
-* ✅ Focus items disappear by server action, not UI hacks
+* ✅ Focus items disappear by server action
 
 ---
 
@@ -475,16 +447,12 @@ Rules:
 
 ### 7.1 Deterministic identity
 
-Any item representing workflow state must have:
-
-* a deterministic ID
-* derived from reference + role + action
+Workflow items must have reproducible IDs.
 
 Rules:
 
-* ❌ No random UUIDs for workflow items
-* ❌ No client-generated identifiers
-* ✅ IDs must be reproducible server-side
+* ❌ No random UUIDs
+* ❌ No client-generated workflow IDs
 
 ---
 
@@ -495,9 +463,6 @@ Rules:
 * ❌ Never assume permission client-side
 * ❌ Never hide data instead of enforcing access
 * ✅ Server enforces permissions
-* ✅ SPA renders only what it is given
-
-If the user shouldn’t see it — it must not be returned.
 
 ---
 
@@ -509,13 +474,7 @@ Avoid:
 
 * aggressive colors
 * flashing indicators
-* “overdue” panic language
-
-Prefer:
-
-* neutral phrasing
-* soft surfaces
-* predictable motion
+* panic language
 
 ---
 
@@ -524,23 +483,22 @@ Prefer:
 Rules:
 
 * ❌ No unbounded lists
-* ❌ No “load everything”
 * ✅ Always `limit + offset`
 
 ---
 
 ## 10. What Codex Agents Must Do
 
-Before writing any Vue code, an agent must:
+Before writing Vue code, an agent must:
 
-1. Identify the **workflow owner** (Student Log, Inquiry, etc.)
-2. Confirm the **server method** that owns state transitions
+1. Identify the **workflow owner**
+2. Confirm the **server method**
 3. Confirm the **payload contract**
 4. Confirm the **overlay mode**
-5. Confirm **no ToDo logic is required client-side**
-6. Confirm styles reuse existing components
+5. Confirm **no ToDo logic client-side**
+6. Confirm styles reuse existing patterns
 
-If any point is unclear → **stop and ask**.
+If unclear → **stop and ask**.
 
 ---
 
@@ -553,4 +511,3 @@ The SPA is calm, thin, deterministic, and obedient to server truth.
 That discipline is what makes Ifitwala scalable, teachable, and safe to extend.
 
 ---
-

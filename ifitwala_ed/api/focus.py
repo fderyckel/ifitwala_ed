@@ -283,11 +283,6 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
 		if not assigned_by_name and assigned_by:
 			assigned_by_name = assigner_name_by_id.get(assigned_by) or assigned_by
 
-		# For now (per your earlier preference), keep it visible without Vue edits:
-		# add assigner to subtitle.
-		if assigned_by_name:
-			subtitle = f"{subtitle} • Assigned by: {assigned_by_name}"
-
 		action_type = "student_log.follow_up.act.submit"
 		items.append(
 			{
