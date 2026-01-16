@@ -300,8 +300,8 @@ const canComplete = computed(() => {
 
 function applyContext(ctx: GetFocusContextResponse | null) {
 	if (!ctx) return
-	log.value = (ctx.log ?? null) as any
-	followUps.value = Array.isArray(ctx.follow_ups) ? (ctx.follow_ups as any) : []
+	log.value = ctx.log ?? null
+	followUps.value = ctx.follow_ups ?? []
 	modeState.value = ctx.mode === 'author' || ctx.mode === 'assignee' ? ctx.mode : 'assignee'
 }
 

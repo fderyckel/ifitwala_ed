@@ -19,9 +19,48 @@ async function resolveCsrfToken(): Promise<string> {
 	return '';
 }
 
+/**
+ * A++ Transport Contract (LOCKED)
+ * ------------------------------------------------------------
+ * Services must NEVER unwrap transport responses.
+ * Therefore, the resourceFetcher MUST return domain payloads only.
+ *
+ * Backend contract:
+ * - Frappe /api/method returns: { message: T }
+ *
+ * Client variance:
+ * - Some request stacks may wrap: { data: { message: T } }
+ *
+ * This adapter:
+ * - accepts unknown
+ * - enforces { message: T }
+ * - returns ONLY T
+ * - throws loudly when the backend breaks the envelope contract
+ */
+function unwrapFrappeEnvelope<T>(res: unknown): T {
+	let root: unknown = res;
+
+	// Defensive: allow axios-ish wrappers if present
+	if (root && typeof root === 'object' && 'data' in root) {
+		root = (root as { data: unknown }).data;
+	}
+
+	if (root && typeof root === 'object' && 'message' in root) {
+		return (root as { message: T }).message;
+	}
+
+	throw new Error(
+		'[frappe] Invalid response shape: expected { message: T } envelope'
+	);
+}
+
 export async function setupFrappeUI() {
-	// Use the official frappe-ui fetcher everywhere
-	setConfig('resourceFetcher', frappeRequest);
+	// Use the official frappe-ui fetcher everywhere,
+	// but enforce domain-only payloads (A++).
+	setConfig('resourceFetcher', async (opts: unknown) => {
+		const res = await (frappeRequest as (o: unknown) => Promise<unknown>)(opts);
+		return unwrapFrappeEnvelope(res);
+	});
 
 	// Ensure CSRF token accompanies every request (required for POST)
 	const csrfToken = await resolveCsrfToken();

@@ -230,9 +230,7 @@
 									</p>
 								</div>
 							</div>
-							<span
-								class="rounded-full bg-slate-100 px-3 py-1 type-badge-label text-slate-token/70"
-							>
+							<span class="rounded-full bg-slate-100 px-3 py-1 type-badge-label text-slate-token/70">
 								{{ category.links.length }} links
 							</span>
 						</div>
@@ -246,9 +244,7 @@
 								rel="noopener"
 								class="group/link flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-sky/15"
 							>
-								<span
-									class="type-body-strong text-ink transition-colors group-hover/link:text-jacaranda"
-								>
+								<span class="type-body-strong text-ink transition-colors group-hover/link:text-jacaranda">
 									{{ link.label }}
 								</span>
 								<FeatherIcon
@@ -266,7 +262,6 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import { FeatherIcon, toast } from 'frappe-ui'
 
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue'
@@ -344,7 +339,7 @@ const focusItems = ref<FocusItem[]>([])
 const lastFocusRefreshAt = ref<number>(0)
 const refreshInFlight = ref<Promise<void> | null>(null)
 let refreshQueued = false
-let refreshThrottleTimer: number | null = null
+let refreshThrottleTimer: ReturnType<typeof window.setTimeout> | null = null
 
 const FOCUS_LIMIT = 8
 const FOCUS_REFRESH_THROTTLE_MS = 800 // coalesce burst triggers
@@ -385,6 +380,22 @@ function refreshFocus(reason: string) {
 		return refreshInFlight.value ?? Promise.resolve()
 	}
 
+	// Guard: in non-browser contexts, skip throttling and run immediately.
+	if (typeof window === 'undefined') {
+		refreshInFlight.value = (async () => {
+			try {
+				await doRefreshFocus(reason)
+			} finally {
+				refreshInFlight.value = null
+				if (refreshQueued) {
+					refreshQueued = false
+					await refreshFocus('queued')
+				}
+			}
+		})()
+		return refreshInFlight.value
+	}
+
 	refreshThrottleTimer = window.setTimeout(() => {
 		refreshThrottleTimer = null
 		if (refreshQueued && !refreshInFlight.value) {
@@ -397,7 +408,7 @@ function refreshFocus(reason: string) {
 		try {
 			await doRefreshFocus(reason)
 		} catch (e) {
-			// focusResource.onError already logs; keep this calm
+			// doRefreshFocus already logs; keep this calm
 		} finally {
 			refreshInFlight.value = null
 			if (refreshQueued) {
@@ -421,7 +432,7 @@ function refreshFocus(reason: string) {
  *
  * No custom window events for SPA invalidation.
  */
-let focusTimer: number | null = null
+let focusTimer: ReturnType<typeof window.setInterval> | null = null
 let disposeFocusInvalidate: (() => void) | null = null
 
 function onVisibilityChange() {
@@ -439,11 +450,13 @@ onMounted(async () => {
 	await refreshFocus('mount')
 
 	// Poll (tab visible only)
-	focusTimer = window.setInterval(() => {
-		if (document.visibilityState === 'visible') {
-			refreshFocus('interval')
-		}
-	}, FOCUS_POLL_MS)
+	if (typeof window !== 'undefined') {
+		focusTimer = window.setInterval(() => {
+			if (document.visibilityState === 'visible') {
+				refreshFocus('interval')
+			}
+		}, FOCUS_POLL_MS)
+	}
 
 	document.addEventListener('visibilitychange', onVisibilityChange)
 
@@ -452,7 +465,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-	if (focusTimer) window.clearInterval(focusTimer)
+	if (focusTimer && typeof window !== 'undefined') window.clearInterval(focusTimer)
 	document.removeEventListener('visibilitychange', onVisibilityChange)
 	if (disposeFocusInvalidate) disposeFocusInvalidate()
 })
@@ -469,9 +482,6 @@ function openFocusItem(item: FocusItem) {
 
 	overlay.open('focus-router', {
 		focusItemId: item.id,
-		referenceDoctype: item.reference_doctype,
-		referenceName: item.reference_name,
-		actionType: item.action_type,
 	})
 }
 

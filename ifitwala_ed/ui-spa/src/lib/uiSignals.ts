@@ -49,9 +49,9 @@ export type UiSignalName =
 	| typeof SIGNAL_TOAST_SHOW
 	| (string & {}) // allow custom names while keeping known ones typed
 
-export type UiSignalHandler<TPayload = any> = (payload?: TPayload) => void
+export type UiSignalHandler<TPayload = unknown> = (payload?: TPayload) => void
 
-type HandlerSet = Set<UiSignalHandler<any>>
+type HandlerSet = Set<UiSignalHandler<unknown>>
 
 /**
  * Internal store:
@@ -62,29 +62,31 @@ const handlers: Map<string, HandlerSet> = new Map()
 /**
  * Subscribe to a signal.
  *
- * Rule:
+ * Rule (A+):
+ * - Prefer uiSignals.subscribe() in application code.
+ * - on/off are internal primitives; exporting them invites leaks.
  * - Caller must keep a stable handler reference to unsubscribe later.
  */
-function on<TPayload = any>(name: UiSignalName, handler: UiSignalHandler<TPayload>) {
+function on<TPayload = unknown>(name: UiSignalName, handler: UiSignalHandler<TPayload>) {
 	if (!name || typeof handler !== 'function') return
 
 	const key = String(name)
 	const set = handlers.get(key) ?? new Set()
-	set.add(handler as UiSignalHandler<any>)
+	set.add(handler as UiSignalHandler<unknown>)
 	handlers.set(key, set)
 }
 
 /**
  * Unsubscribe from a signal.
  */
-function off<TPayload = any>(name: UiSignalName, handler: UiSignalHandler<TPayload>) {
+function off<TPayload = unknown>(name: UiSignalName, handler: UiSignalHandler<TPayload>) {
 	if (!name || typeof handler !== 'function') return
 
 	const key = String(name)
 	const set = handlers.get(key)
 	if (!set) return
 
-	set.delete(handler as UiSignalHandler<any>)
+	set.delete(handler as UiSignalHandler<unknown>)
 	if (set.size === 0) handlers.delete(key)
 }
 
@@ -94,7 +96,7 @@ function off<TPayload = any>(name: UiSignalName, handler: UiSignalHandler<TPaylo
  * Contract:
  * - Emitting must never throw (one failing handler must not break the others).
  */
-function emit<TPayload = any>(name: UiSignalName, payload?: TPayload) {
+function emit<TPayload = unknown>(name: UiSignalName, payload?: TPayload) {
 	if (!name) return
 
 	const key = String(name)
@@ -105,7 +107,7 @@ function emit<TPayload = any>(name: UiSignalName, payload?: TPayload) {
 	const snapshot = Array.from(set)
 	for (const fn of snapshot) {
 		try {
-			fn(payload)
+			;(fn as UiSignalHandler<TPayload>)(payload)
 		} catch (err) {
 			// Best-effort: don't break emit. Keep the error visible in console.
 			// Avoid toast here (signals are infra; surfaces decide how to report).
@@ -118,8 +120,12 @@ function emit<TPayload = any>(name: UiSignalName, payload?: TPayload) {
 /**
  * Convenience: subscribe and return an unsubscribe function.
  * Useful when the handler is declared inline in a setup() block.
+ *
+ * A+ rule:
+ * - uiSignals.on() MUST NOT be used if you expect an unsubscribe function.
+ * - Use uiSignals.subscribe() instead.
  */
-function subscribe<TPayload = any>(name: UiSignalName, handler: UiSignalHandler<TPayload>) {
+function subscribe<TPayload = unknown>(name: UiSignalName, handler: UiSignalHandler<TPayload>) {
 	on(name, handler)
 	return () => off(name, handler)
 }
@@ -133,8 +139,6 @@ function _clearAllForTests() {
 }
 
 export const uiSignals = {
-	on,
-	off,
 	emit,
 	subscribe,
 	_clearAllForTests,

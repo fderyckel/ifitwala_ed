@@ -10,44 +10,29 @@ export type StaffHomeHeader = {
 }
 
 export type ListFocusItemsPayload = {
-	open_only: 1
+	open_only: number
 	limit: number
-	offset: 0
+	offset: number
 }
 
 /**
- * Transport normalization (A+)
- * - Accept unknown at the boundary.
- * - Normalize once.
- * - Return ONLY the contract type downstream (no union types).
- *
- * Handles:
- * - { message: T }
- * - Axios-ish: { data: { message: T } } / { data: T }
- * - Raw T
+ * A++ Transport Contract (LOCKED)
+ * ------------------------------------------------------------
+ * Services must NEVER unwrap transport responses.
+ * The resourceFetcher (configured in ui-spa/src/resources/frappe.ts)
+ * returns domain payloads only.
  */
-function unwrapMessage<T>(res: unknown): T {
-	const root =
-		res && typeof res === 'object' && 'data' in (res as any) ? (res as any).data : res
-
-	if (root && typeof root === 'object' && 'message' in (root as any)) {
-		return (root as any).message as T
-	}
-	return root as T
-}
 
 const staffHomeHeaderResource = createResource<StaffHomeHeader>({
 	url: 'ifitwala_ed.api.portal.get_staff_home_header',
 	method: 'POST',
 	auto: false,
-	transform: (res: unknown) => unwrapMessage<StaffHomeHeader>(res),
 })
 
 const focusItemsResource = createResource<FocusItem[]>({
 	url: 'ifitwala_ed.api.focus.list_focus_items',
 	method: 'POST',
 	auto: false,
-	transform: (res: unknown) => unwrapMessage<FocusItem[]>(res),
 })
 
 export async function getStaffHomeHeader(): Promise<StaffHomeHeader> {

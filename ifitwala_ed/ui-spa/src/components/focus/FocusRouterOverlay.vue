@@ -130,20 +130,15 @@ import { Button, FeatherIcon } from 'frappe-ui'
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue'
 import { createFocusService } from '@/lib/services/focus/focusService'
 
-import type { Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context'
+import type { Request as GetFocusContextRequest, Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context'
 
 /**
- * Props (OverlayHost contract)
+ * Props (OverlayHost contract) — A+ ID-only routing
  */
 const props = defineProps<{
 	open: boolean
 	zIndex?: number
 	focusItemId?: string | null
-	referenceDoctype?: string | null
-	referenceName?: string | null
-
-	// ✅ allow callers to pass action_type (helps fallback routing)
-	actionType?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -166,7 +161,6 @@ const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
 
 /**
  * Service (A+)
- * - all transport normalization lives in the service
  * - router/view never unwraps Axios-ish shapes
  */
 const focusService = createFocusService()
@@ -180,13 +174,11 @@ const workflowCompleted = ref(false)
 
 const ctx = ref<GetFocusContextResponse | null>(null)
 
-// If ctx has no action_type (because caller didn't pass focusItemId),
-// fall back to prop actionType.
-const actionType = computed(() => (ctx.value?.action_type ?? props.actionType ?? null) as string | null)
-
+/* Derived ------------------------------------------------------ */
+const actionType = computed(() => (ctx.value?.action_type ?? null) as string | null)
 const referenceDoctype = computed(() => ctx.value?.reference_doctype ?? null)
 const referenceName = computed(() => ctx.value?.reference_name ?? null)
-const studentLogMode = computed<'assignee' | 'author'>(() => (ctx.value?.mode ?? 'assignee') as any)
+const studentLogMode = computed<'assignee' | 'author'>(() => (ctx.value?.mode ?? 'assignee') as 'assignee' | 'author')
 
 const resolvedFocusItemId = computed(() => {
 	return (ctx.value?.focus_item_id ?? props.focusItemId ?? null) as string | null
@@ -230,21 +222,17 @@ function resetState() {
 	workflowCompleted.value = false
 }
 
-function buildContextPayload() {
-	const focus_item_id = (props.focusItemId || '').trim()
-	if (focus_item_id) return { focus_item_id }
-
-	const reference_doctype = (props.referenceDoctype || '').trim()
-	const reference_name = (props.referenceName || '').trim()
-
-	// If we have an action type (from the list item), send it.
-	const action_type = (props.actionType || '').trim() || null
-
-	return {
-		reference_doctype: reference_doctype || null,
-		reference_name: reference_name || null,
-		action_type,
+function requireFocusItemId(): string {
+	const id = String(props.focusItemId || '').trim()
+	if (!id) {
+		// A+ invariant: ID-only routing. Missing ID is a hard error.
+		throw new Error('Missing focus item id. Please reopen from the Focus list.')
 	}
+	return id
+}
+
+function buildContextPayload(): GetFocusContextRequest {
+	return { focus_item_id: requireFocusItemId() }
 }
 
 async function reload() {
@@ -255,17 +243,14 @@ async function reload() {
 
 	try {
 		const payload = buildContextPayload()
-		const result = await focusService.getFocusContext(payload as any)
+		const result = await focusService.getFocusContext(payload)
 		loading.value = false
 		errorText.value = null
 		ctx.value = (result ?? null) as GetFocusContextResponse | null
 	} catch (err: any) {
 		loading.value = false
 		ctx.value = null
-		const msg =
-			err?.messages?.[0] ||
-			err?.message ||
-			'The server refused this request or the item no longer exists.'
+		const msg = err?.message || 'The server refused this request or the item no longer exists.'
 		errorText.value = String(msg)
 	}
 }
@@ -286,8 +271,6 @@ function onDialogClose() {
 /**
  * Workflow completion handler (A+):
  * - Close immediately.
- * - Do NOT emit window events.
- * - Invalidation is emitted by the workflow service layer (uiSignals).
  */
 function onWorkflowDone() {
 	if (workflowCompleted.value) return

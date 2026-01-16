@@ -72,7 +72,7 @@ export function createFocusService() {
 		const response = await submitFollowUpResource.submit(payload)
 
 		// A+ rule: emit ONLY after a real mutation
-		if (response.ok === true) {
+		if (response.status === 'created') {
 			uiSignals.emit(SIGNAL_STUDENT_LOG_INVALIDATE)
 			uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
 		}
@@ -86,7 +86,7 @@ export function createFocusService() {
 		const response = await reviewOutcomeResource.submit(payload)
 
 		// A+ rule: emit ONLY after a real mutation
-		if (response.ok === true) {
+		if (response.status === 'processed') {
 			uiSignals.emit(SIGNAL_STUDENT_LOG_INVALIDATE)
 			uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
 		}
