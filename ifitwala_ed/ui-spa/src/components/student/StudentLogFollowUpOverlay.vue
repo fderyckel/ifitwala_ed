@@ -244,32 +244,46 @@ import { toast } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import { createFocusService } from '@/lib/services/focus/focusService'
 import { useOverlayStack } from '@/composables/useOverlayStack'
-import type { Request as GetFocusContextRequest, Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context'
 import type {
-  Request as SubmitStudentLogFollowUpRequest,
-} from '@/types/contracts/focus/submit_student_log_follow_up'
-import type {
-  Request as ReviewStudentLogOutcomeRequest,
-} from '@/types/contracts/focus/review_student_log_outcome'
+	Request as GetFocusContextRequest,
+	Response as GetFocusContextResponse,
+} from '@/types/contracts/focus/get_focus_context'
+import type { Request as SubmitStudentLogFollowUpRequest } from '@/types/contracts/focus/submit_student_log_follow_up'
+import type { Request as ReviewStudentLogOutcomeRequest } from '@/types/contracts/focus/review_student_log_outcome'
+
+/**
+ * StudentLogFollowUpOverlay (A+ workflow shell)
+ * ------------------------------------------------------------
+ * This overlay:
+ * - Loads context for display
+ * - Calls workflow actions via focusService
+ * - Closes immediately on success
+ *
+ * A+ invalidation rule (locked):
+ * - This overlay does NOT refresh pages directly
+ * - This overlay does NOT dispatch custom window events
+ * - focusService emits uiSignals on successful workflow completion
+ * - Pages subscribe to uiSignals and refresh what they own
+ */
 
 type Mode = GetFocusContextResponse['mode']
 
 const props = defineProps<{
-  open: boolean
-  zIndex?: number
-  mode: Mode
-  studentLog: string
-  focusItemId?: string | null
-  /**
-   * If this overlay is opened via OverlayHost stack, pass the overlay entry id.
-   * Closing via stack is more reliable than relying on parent emit wiring.
-   */
-  overlayId?: string | null
+	open: boolean
+	zIndex?: number
+	mode: Mode
+	studentLog: string
+	focusItemId?: string | null
+	/**
+	 * If this overlay is opened via OverlayHost stack, pass the overlay entry id.
+	 * Closing via stack is more reliable than relying on parent emit wiring.
+	 */
+	overlayId?: string | null
 }>()
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'after-leave'): void
+	(e: 'close'): void
+	(e: 'after-leave'): void
 }>()
 
 const overlay = useOverlayStack()
@@ -280,36 +294,36 @@ type FocusFollowUp = GetFocusContextResponse['follow_ups'][number]
 
 type ToastPayload = Parameters<typeof toast>[0]
 function showToast(payload: ToastPayload) {
-  // Avoid silent failures (you've seen "toast is unavailable" before)
-  if (typeof toast !== 'function') {
-    // eslint-disable-next-line no-console
-    console.warn('[StudentLogFollowUpOverlay] toast is unavailable', payload)
-    return
-  }
-  try {
-    toast(payload)
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[StudentLogFollowUpOverlay] toast failed', err, payload)
-  }
+	// Avoid silent failures (you've seen "toast is unavailable" before)
+	if (typeof toast !== 'function') {
+		// eslint-disable-next-line no-console
+		console.warn('[StudentLogFollowUpOverlay] toast is unavailable', payload)
+		return
+	}
+	try {
+		toast(payload)
+	} catch (err) {
+		// eslint-disable-next-line no-console
+		console.error('[StudentLogFollowUpOverlay] toast failed', err, payload)
+	}
 }
 
 function emitClose() {
-  // If this overlay is mounted in OverlayHost, prefer closing the stack entry.
-  const id = (props.overlayId || '').trim()
-  if (id) {
-    try {
-      overlay.close(id)
-      return
-    } catch (e) {
-      // fall back to parent emit
-    }
-  }
-  emit('close')
+	// If this overlay is mounted in OverlayHost, prefer closing the stack entry.
+	const id = (props.overlayId || '').trim()
+	if (id) {
+		try {
+			overlay.close(id)
+			return
+		} catch (e) {
+			// fall back to parent emit
+		}
+	}
+	emit('close')
 }
 
 function emitAfterLeave() {
-  emit('after-leave')
+	emit('after-leave')
 }
 
 const modeState = ref<Mode>(props.mode)
@@ -323,160 +337,163 @@ const submittedOnce = ref(false)
 const draftText = ref('')
 
 const canSubmit = computed(() => {
-  return !!props.studentLog && (draftText.value || '').trim().length >= 5
+	return !!props.studentLog && (draftText.value || '').trim().length >= 5
 })
 
 const canComplete = computed(() => {
-  const s = (log.value?.follow_up_status || '').toLowerCase()
-  return !!props.studentLog && s !== 'completed'
+	const s = (log.value?.follow_up_status || '').toLowerCase()
+	return !!props.studentLog && s !== 'completed'
 })
 
 function _newClientRequestId(prefix = 'req') {
-  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
+	return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
 }
 
 /* API ---------------------------------------------------------- */
 async function reload() {
-  if (!props.studentLog && !props.focusItemId) return
-  loading.value = true
-  try {
-    const payload: GetFocusContextRequest = (props.focusItemId || '').trim()
-      ? { focus_item_id: (props.focusItemId || '').trim() }
-      : { reference_doctype: 'Student Log', reference_name: props.studentLog }
+	if (!props.studentLog && !props.focusItemId) return
+	loading.value = true
+	try {
+		const payload: GetFocusContextRequest = (props.focusItemId || '').trim()
+			? { focus_item_id: (props.focusItemId || '').trim() }
+			: { reference_doctype: 'Student Log', reference_name: props.studentLog }
 
-    const ctx: GetFocusContextResponse = await focusService.getFocusContext(payload)
+		const ctx: GetFocusContextResponse = await focusService.getFocusContext(payload)
 
-    if (!ctx || !ctx.log) throw new Error(__('Missing focus context.'))
+		if (!ctx || !ctx.log) throw new Error(__('Missing focus context.'))
 
-    log.value = ctx.log
-    followUps.value = Array.isArray(ctx.follow_ups) ? ctx.follow_ups : []
-    if (ctx.mode && ctx.mode !== modeState.value) modeState.value = ctx.mode
-  } catch (e: any) {
-    showToast({
-      title: __('Could not load follow-up context'),
-      text: e?.message || __('Please try again.'),
-      icon: 'x',
-    })
-  } finally {
-    loading.value = false
-  }
+		log.value = ctx.log
+		followUps.value = Array.isArray(ctx.follow_ups) ? ctx.follow_ups : []
+		if (ctx.mode && ctx.mode !== modeState.value) modeState.value = ctx.mode
+	} catch (e: any) {
+		showToast({
+			title: __('Could not load follow-up context'),
+			text: e?.message || __('Please try again.'),
+			icon: 'x',
+		})
+	} finally {
+		loading.value = false
+	}
 }
 
 watch(
-  () => props.open,
-  (isOpen) => {
-    if (!isOpen) return
-    // reset local UI state each open
-    draftText.value = ''
-    submittedOnce.value = false
-    modeState.value = props.mode
-    reload()
-  },
-  { immediate: false }
+	() => props.open,
+	(isOpen) => {
+		if (!isOpen) return
+		// reset local UI state each open
+		draftText.value = ''
+		submittedOnce.value = false
+		modeState.value = props.mode
+		reload()
+	},
+	{ immediate: false }
 )
 
 /* Actions ------------------------------------------------------ */
 async function submitFollowUp() {
-  if (busy.value || submittedOnce.value) return
-  if (!canSubmit.value) return
+	if (busy.value || submittedOnce.value) return
+	if (!canSubmit.value) return
 
-  const focusItemId = (props.focusItemId || '').trim()
-  if (!focusItemId) {
-    showToast({
-      title: __('Missing focus item'),
-      text: __('Please close and reopen this item from the Focus list.'),
-      icon: 'x',
-    })
-    return
-  }
+	const focusItemId = (props.focusItemId || '').trim()
+	if (!focusItemId) {
+		showToast({
+			title: __('Missing focus item'),
+			text: __('Please close and reopen this item from the Focus list.'),
+			icon: 'x',
+		})
+		return
+	}
 
-  busy.value = true
-  submittedOnce.value = true
+	busy.value = true
+	submittedOnce.value = true
 
-  try {
-    const payload: SubmitStudentLogFollowUpRequest = {
-      focus_item_id: focusItemId,
-      follow_up: (draftText.value || '').trim(),
-      client_request_id: _newClientRequestId('fu'),
-    }
-    const msg = await focusService.submitStudentLogFollowUp(payload)
-    if (!msg?.ok) throw new Error(__('Submit failed.'))
+	try {
+		const payload: SubmitStudentLogFollowUpRequest = {
+			focus_item_id: focusItemId,
+			follow_up: (draftText.value || '').trim(),
+			client_request_id: _newClientRequestId('fu'),
+		}
 
-    showToast({
-      title: msg.idempotent ? __('Already submitted') : __('Follow-up submitted'),
-      icon: 'check',
-    })
+		// A+ invalidation happens inside focusService on success.
+		const msg = await focusService.submitStudentLogFollowUp(payload)
+		if (!msg?.ok) throw new Error(__('Submit failed.'))
 
-    // Close overlay.
-    emitClose()
-  } catch (e: any) {
-    submittedOnce.value = false
-    showToast({
-      title: __('Could not submit follow-up'),
-      text: e?.message || __('Please try again.'),
-      icon: 'x',
-    })
-  } finally {
-    busy.value = false
-  }
+		showToast({
+			title: msg.idempotent ? __('Already submitted') : __('Follow-up submitted'),
+			icon: 'check',
+		})
+
+		// Close overlay immediately; page refresh is owned by subscribers.
+		emitClose()
+	} catch (e: any) {
+		submittedOnce.value = false
+		showToast({
+			title: __('Could not submit follow-up'),
+			text: e?.message || __('Please try again.'),
+			icon: 'x',
+		})
+	} finally {
+		busy.value = false
+	}
 }
 
 async function completeParentLog() {
-  if (busy.value || submittedOnce.value) return
-  if (!canComplete.value) return
+	if (busy.value || submittedOnce.value) return
+	if (!canComplete.value) return
 
-  const focusItemId = (props.focusItemId || '').trim()
-  if (!focusItemId) {
-    showToast({
-      title: __('Missing focus item'),
-      text: __('Please close and reopen this item from the Focus list.'),
-      icon: 'x',
-    })
-    return
-  }
+	const focusItemId = (props.focusItemId || '').trim()
+	if (!focusItemId) {
+		showToast({
+			title: __('Missing focus item'),
+			text: __('Please close and reopen this item from the Focus list.'),
+			icon: 'x',
+		})
+		return
+	}
 
-  busy.value = true
-  submittedOnce.value = true
+	busy.value = true
+	submittedOnce.value = true
 
-  try {
-    const payload: ReviewStudentLogOutcomeRequest = {
-      focus_item_id: focusItemId,
-      decision: 'complete',
-      client_request_id: _newClientRequestId('rvw'),
-    }
-    const msg = await focusService.reviewStudentLogOutcome(payload)
-    if (!msg?.ok) throw new Error(__('Complete failed.'))
+	try {
+		const payload: ReviewStudentLogOutcomeRequest = {
+			focus_item_id: focusItemId,
+			decision: 'complete',
+			client_request_id: _newClientRequestId('rvw'),
+		}
 
-    showToast({
-      title: msg.idempotent ? __('Already processed') : __('Log completed'),
-      icon: 'check',
-    })
+		// A+ invalidation happens inside focusService on success.
+		const msg = await focusService.reviewStudentLogOutcome(payload)
+		if (!msg?.ok) throw new Error(__('Complete failed.'))
 
-    emitClose()
-  } catch (e: any) {
-    submittedOnce.value = false
-    showToast({
-      title: __('Could not complete log'),
-      text: e?.message || __('Please try again.'),
-      icon: 'x',
-    })
-  } finally {
-    busy.value = false
-  }
+		showToast({
+			title: msg.idempotent ? __('Already processed') : __('Log completed'),
+			icon: 'check',
+		})
+
+		emitClose()
+	} catch (e: any) {
+		submittedOnce.value = false
+		showToast({
+			title: __('Could not complete log'),
+			text: e?.message || __('Please try again.'),
+			icon: 'x',
+		})
+	} finally {
+		busy.value = false
+	}
 }
 
 /* Helpers ------------------------------------------------------ */
 function openInDesk(doctype: string, name: string) {
-  // leaving SPA intentionally (Desk route)
-  const safeDoctype = String(doctype || '').trim()
-  if (!safeDoctype || !name) return
+	// leaving SPA intentionally (Desk route)
+	const safeDoctype = String(doctype || '').trim()
+	if (!safeDoctype || !name) return
 
-  // Desk uses the real doctype, not a slug. Let Frappe route it.
-  const url = `/app/${encodeURIComponent(safeDoctype)}/${encodeURIComponent(name)}`
-  window.open(url, '_blank', 'noopener')
+	const url = `/app/${encodeURIComponent(safeDoctype)}/${encodeURIComponent(name)}`
+	window.open(url, '_blank', 'noopener')
 }
 
 function htmlOrEmpty(html: string) {
-  return html || ''
+	return html || ''
 }
 </script>

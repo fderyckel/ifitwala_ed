@@ -273,15 +273,29 @@ import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue'
 import FocusListCard from '@/components/focus/FocusListCard.vue'
 import { useOverlayStack } from '@/composables/useOverlayStack'
 import type { FocusItem } from '@/types/focusItem'
+import { uiSignals, SIGNAL_FOCUS_INVALIDATE } from '@/lib/uiSignals'
 
 /**
- * Locked rule: ONLY FocusRouterOverlay emits global signals.
- * StaffHome is a consumer only.
+ * StaffHome (A+ refresh ownership)
+ * ------------------------------------------------------------
+ * StaffHome owns:
+ * - When Focus refreshes (policy: mount + interval + visibility + invalidation)
+ * - How refresh is coalesced (dedupe + throttle to avoid stampedes)
  *
- * Legacy bridge:
- * FocusRouterOverlay dispatches this today.
+ * StaffHome does NOT own:
+ * - Workflow completion
+ * - Closing overlays
+ * - Emitting invalidation
+ *
+ * A+ contract:
+ * - Workflows/services emit uiSignals (e.g. SIGNAL_FOCUS_INVALIDATE)
+ * - Pages subscribe and refresh what they own
+ * - Overlays close independently on success; refresh is not coupled to close
+ *
+ * This file must NOT rely on custom window events for SPA invalidation.
+ * Window events are reserved only for explicit cross-runtime bridges (SPA ↔ Desk),
+ * and must live in a dedicated bridge module (not in pages).
  */
-const FOCUS_REFRESH_EVENT = 'ifitwala:focus:refresh' as const
 
 /* USER --------------------------------------------------------- */
 type StaffHomeHeader = {
@@ -352,8 +366,12 @@ const focusResource = createResource({
 
 /**
  * Refresh focus (deduped + lightly throttled)
- * - Avoid request stampedes (events, visibility, interval can collide)
- * - Policy is cheap: coalesce multiple triggers into one refresh
+ * - Avoid request stampedes (signals, visibility, interval can collide)
+ * - Coalesce burst invalidations into a single refresh
+ *
+ * A+ note:
+ * - uiSignals only triggers "something changed"
+ * - StaffHome decides whether/when to refetch and how aggressively
  */
 const lastFocusRefreshAt = ref<number>(0)
 const refreshInFlight = ref<Promise<void> | null>(null)
@@ -390,7 +408,7 @@ function refreshFocus(reason: string) {
 		return refreshInFlight.value
 	}
 
-	// Throttle bursts (events can fire rapidly after workflows)
+	// Throttle bursts (signals can fire rapidly after workflows)
 	if (refreshThrottleTimer) {
 		refreshQueued = true
 		return refreshInFlight.value ?? Promise.resolve()
@@ -423,13 +441,17 @@ function refreshFocus(reason: string) {
 }
 
 /**
- * Focus refresh policy:
+ * Focus refresh policy (A+):
  * - On mount: load once
  * - Every 120s: light polling (tab-visible only)
  * - On tab refocus: refresh if stale
- * - On workflow done: FocusRouterOverlay dispatches event → refresh (coalesced)
+ * - On workflow completion: UI Services emit SIGNAL_FOCUS_INVALIDATE
+ *   and StaffHome refreshes (coalesced)
+ *
+ * No custom window events for SPA invalidation.
  */
 let focusTimer: number | null = null
+let disposeFocusInvalidate: (() => void) | null = null
 
 function onVisibilityChange() {
 	if (document.visibilityState === 'visible' && shouldRefreshOnVisibility()) {
@@ -437,8 +459,8 @@ function onVisibilityChange() {
 	}
 }
 
-function onFocusRefreshEvent() {
-	refreshFocus('event:focus:refresh')
+function onFocusInvalidated() {
+	refreshFocus('signal:focus:invalidate')
 }
 
 onMounted(async () => {
@@ -454,14 +476,14 @@ onMounted(async () => {
 
 	document.addEventListener('visibilitychange', onVisibilityChange)
 
-	// Locked: only global event from FocusRouterOverlay
-	window.addEventListener(FOCUS_REFRESH_EVENT, onFocusRefreshEvent)
+	// A+ integration point: signals (subscribe returns disposer)
+	disposeFocusInvalidate = uiSignals.subscribe(SIGNAL_FOCUS_INVALIDATE, onFocusInvalidated)
 })
 
 onBeforeUnmount(() => {
 	if (focusTimer) window.clearInterval(focusTimer)
 	document.removeEventListener('visibilitychange', onVisibilityChange)
-	window.removeEventListener(FOCUS_REFRESH_EVENT, onFocusRefreshEvent)
+	if (disposeFocusInvalidate) disposeFocusInvalidate()
 })
 
 function openFocusItem(item: FocusItem) {
@@ -583,12 +605,6 @@ const analyticsCategories = [
 ]
 
 /* GREETING ----------------------------------------------------- */
-/**
- * NOTE:
- * Your old code used `const now = new Date()` at module load time,
- * so greeting would never update until a full reload.
- * This keeps it simple and correct.
- */
 const greeting = computed(() => {
 	const hour = new Date().getHours()
 	return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'

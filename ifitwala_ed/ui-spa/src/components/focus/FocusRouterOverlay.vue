@@ -130,26 +130,23 @@ import { Button, FeatherIcon, createResource } from 'frappe-ui'
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue'
 import type { Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context'
 
-const SIGNAL_FOCUS_REFRESH = 'ifitwala:focus:refresh'
-const SIGNAL_STUDENT_LOG_REFRESH = 'ifitwala:student_log:refresh'
-
 /**
  * Props (OverlayHost contract)
  */
 const props = defineProps<{
-  open: boolean
-  zIndex?: number
-  focusItemId?: string | null
-  referenceDoctype?: string | null
-  referenceName?: string | null
+	open: boolean
+	zIndex?: number
+	focusItemId?: string | null
+	referenceDoctype?: string | null
+	referenceName?: string | null
 
-  // ✅ NEW: allow callers to pass action_type (helps fallback routing)
-  actionType?: string | null
+	// ✅ allow callers to pass action_type (helps fallback routing)
+	actionType?: string | null
 }>()
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'after-leave'): void
+	(e: 'close'): void
+	(e: 'after-leave'): void
 }>()
 
 /**
@@ -157,6 +154,11 @@ const emit = defineEmits<{
  * - Close must NEVER be blocked by busy states.
  * - Router owns modal lifecycle; workflows own completion.
  * - Router state resets only on after-leave to prevent “flash” on next open.
+ *
+ * A+ invalidation rule (locked):
+ * - Overlays do NOT dispatch custom window events for SPA refresh.
+ * - Workflow completion emits uiSignals from the service layer.
+ * - Pages subscribe to uiSignals and refresh what they own.
  */
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
 
@@ -169,7 +171,7 @@ const workflowCompleted = ref(false)
 
 const ctx = ref<GetFocusContextResponse | null>(null)
 
-// ✅ NEW: if ctx has no action_type (because caller didn't pass focusItemId),
+// If ctx has no action_type (because caller didn't pass focusItemId),
 // fall back to prop actionType.
 const actionType = computed(() => (ctx.value?.action_type ?? props.actionType ?? null) as string | null)
 
@@ -178,162 +180,144 @@ const referenceName = computed(() => ctx.value?.reference_name ?? null)
 const studentLogMode = computed<'assignee' | 'author'>(() => (ctx.value?.mode ?? 'assignee') as any)
 
 const resolvedFocusItemId = computed(() => {
-  return (ctx.value?.focus_item_id ?? props.focusItemId ?? null) as string | null
+	return (ctx.value?.focus_item_id ?? props.focusItemId ?? null) as string | null
 })
 
 /* HEADER ------------------------------------------------------- */
 const headerTitle = computed(() => {
-  if (referenceDoctype.value === 'Student Log') {
-    return studentLogMode.value === 'assignee' ? 'Follow up' : 'Review outcome'
-  }
-  return 'Focus'
+	if (referenceDoctype.value === 'Student Log') {
+		return studentLogMode.value === 'assignee' ? 'Follow up' : 'Review outcome'
+	}
+	return 'Focus'
 })
 
 const headerSubtitle = computed(() => {
-  if (referenceDoctype.value && referenceName.value) {
-    return `${referenceDoctype.value} • ${referenceName.value}`
-  }
-  return null
+	if (referenceDoctype.value && referenceName.value) {
+		return `${referenceDoctype.value} • ${referenceName.value}`
+	}
+	return null
 })
 
 const headerKicker = computed(() => {
-  if (referenceDoctype.value === 'Student Log') return 'Student wellbeing'
-  return 'Focus'
+	if (referenceDoctype.value === 'Student Log') return 'Student wellbeing'
+	return 'Focus'
 })
 
 /* ROUTING ------------------------------------------------------ */
 const isStudentLogFollowUp = computed(() => {
-  if (referenceDoctype.value !== 'Student Log') return false
-  if (!actionType.value) return false
-  return (
-    actionType.value === 'student_log.follow_up.act.submit' ||
-    actionType.value === 'student_log.follow_up.review.decide'
-  )
+	if (referenceDoctype.value !== 'Student Log') return false
+	if (!actionType.value) return false
+	return (
+		actionType.value === 'student_log.follow_up.act.submit' ||
+		actionType.value === 'student_log.follow_up.review.decide'
+	)
 })
-
 
 /* API ---------------------------------------------------------- */
 function unwrapMessage<T>(res: any): T {
-  // frappe-ui may pass either:
-  // - { message: T }
-  // - Axios response: { data: { message: T } }
-  // - Axios response: { data: T }
-  const root = res?.data ?? res
-  if (root && typeof root === 'object' && 'message' in root) return (root as any).message as T
-  return root as T
+	// frappe-ui may pass either:
+	// - { message: T }
+	// - Axios response: { data: { message: T } }
+	// - Axios response: { data: T }
+	const root = res?.data ?? res
+	if (root && typeof root === 'object' && 'message' in root) return (root as any).message as T
+	return root as T
 }
 
 const ctxResource = createResource<GetFocusContextResponse>({
-  url: 'ifitwala_ed.api.focus.get_focus_context',
-  method: 'POST',
-  auto: false,
-  transform: unwrapMessage,
-  onSuccess(payload: GetFocusContextResponse) {
-    loading.value = false
-    errorText.value = null
-    ctx.value = (payload ?? null) as GetFocusContextResponse | null
-  },
-  onError(err: any) {
-    loading.value = false
-    ctx.value = null
-    const msg =
-      err?.messages?.[0] ||
-      err?.message ||
-      'The server refused this request or the item no longer exists.'
-    errorText.value = String(msg)
-  },
+	url: 'ifitwala_ed.api.focus.get_focus_context',
+	method: 'POST',
+	auto: false,
+	transform: unwrapMessage,
+	onSuccess(payload: GetFocusContextResponse) {
+		loading.value = false
+		errorText.value = null
+		ctx.value = (payload ?? null) as GetFocusContextResponse | null
+	},
+	onError(err: any) {
+		loading.value = false
+		ctx.value = null
+		const msg =
+			err?.messages?.[0] ||
+			err?.message ||
+			'The server refused this request or the item no longer exists.'
+		errorText.value = String(msg)
+	},
 })
 
 function resetState() {
-  loading.value = false
-  errorText.value = null
-  ctx.value = null
-  workflowCompleted.value = false
+	loading.value = false
+	errorText.value = null
+	ctx.value = null
+	workflowCompleted.value = false
 }
 
 function buildContextPayload() {
-  const focus_item_id = (props.focusItemId || '').trim()
-  if (focus_item_id) return { focus_item_id }
+	const focus_item_id = (props.focusItemId || '').trim()
+	if (focus_item_id) return { focus_item_id }
 
-  const reference_doctype = (props.referenceDoctype || '').trim()
-  const reference_name = (props.referenceName || '').trim()
+	const reference_doctype = (props.referenceDoctype || '').trim()
+	const reference_name = (props.referenceName || '').trim()
 
-  // ✅ NEW: if we have an action type (from the list item), send it.
-  const action_type = (props.actionType || '').trim() || null
+	// If we have an action type (from the list item), send it.
+	const action_type = (props.actionType || '').trim() || null
 
-  return {
-    reference_doctype: reference_doctype || null,
-    reference_name: reference_name || null,
-    action_type,
-  }
+	return {
+		reference_doctype: reference_doctype || null,
+		reference_name: reference_name || null,
+		action_type,
+	}
 }
 
 function reload() {
-  errorText.value = null
-  loading.value = true
-  ctx.value = null
-  workflowCompleted.value = false
-  ctxResource.submit(buildContextPayload())
+	errorText.value = null
+	loading.value = true
+	ctx.value = null
+	workflowCompleted.value = false
+	ctxResource.submit(buildContextPayload())
 }
 
 function requestClose() {
-  emit('close')
+	emit('close')
 }
 
 function emitAfterLeave() {
-  resetState()
-  emit('after-leave')
+	resetState()
+	emit('after-leave')
 }
 
 function onDialogClose() {
-  requestClose()
+	requestClose()
 }
 
-function emitGlobalSignal(name: string, detail?: Record<string, any>) {
-  try {
-    if (typeof window === 'undefined') return
-    window.dispatchEvent(new CustomEvent(name, { detail: detail || {} }))
-  } catch (e) {}
-}
-
-function buildRefreshDetail() {
-  return {
-    focus_item_id: resolvedFocusItemId.value,
-    reference_doctype: referenceDoctype.value,
-    reference_name: referenceName.value,
-    action_type: actionType.value,
-  }
-}
-
+/**
+ * Workflow completion handler (A+):
+ * - Close immediately.
+ * - Do NOT emit window events.
+ * - Invalidation is emitted by the workflow service layer (uiSignals).
+ */
 function onWorkflowDone() {
-  if (workflowCompleted.value) return
-  workflowCompleted.value = true
-  const detail = buildRefreshDetail()
-
-  emitGlobalSignal(SIGNAL_FOCUS_REFRESH, detail)
-  if (referenceDoctype.value === 'Student Log') {
-    emitGlobalSignal(SIGNAL_STUDENT_LOG_REFRESH, detail)
-  }
-
-  requestClose()
+	if (workflowCompleted.value) return
+	workflowCompleted.value = true
+	requestClose()
 }
 
 watch(
-  () => props.open,
-  (next) => {
-    if (!next) return
-    reload()
-  },
-  { immediate: false }
+	() => props.open,
+	(next) => {
+		if (!next) return
+		reload()
+	},
+	{ immediate: false }
 )
 
 watch(
-  () => props.focusItemId,
-  (next, prev) => {
-    if (!props.open) return
-    const a = (next || '').trim()
-    const b = (prev || '').trim()
-    if (a && a !== b) reload()
-  }
+	() => props.focusItemId,
+	(next, prev) => {
+		if (!props.open) return
+		const a = (next || '').trim()
+		const b = (prev || '').trim()
+		if (a && a !== b) reload()
+	}
 )
 </script>

@@ -426,3 +426,158 @@ Violation → **reject PR**.
 
 ---
 
+
+
+## A+ Governance Appendix
+
+### Purpose
+
+A+ exists to keep the SPA scalable by enforcing **clear ownership**:
+
+* **Pages own refresh policy**
+* **UI Services own data access + workflows**
+* **Overlays own the UX shell + close discipline**
+* **uiSignals is the single in-SPA invalidation bus**
+
+If a rule here is violated, treat it as a **defect**, not style.
+
+---
+
+## 1) Folder and ownership rules
+
+### 1.1 Pages
+
+**Pages are refresh owners.**
+
+* Pages decide *when* to refresh (stale rules, throttling, polling, visibility checks).
+* Pages must not contain business workflow logic (submit/reassign/approve).
+* Pages may call services and update local view state.
+
+**Pages may subscribe to uiSignals.**
+
+* They must unsubscribe on unmount.
+* They must coalesce refresh triggers (avoid stampedes).
+
+### 1.2 UI Services
+
+**Services are the only place that should:**
+
+* call endpoints
+* normalize/shape payloads
+* perform workflow actions (submit follow up, reassign, close, etc.)
+* emit invalidation signals after success
+
+Services must not:
+
+* manipulate overlays directly
+* call page refresh functions
+* depend on component instances
+
+### 1.3 Overlays
+
+**Overlays are workflow shells, not owners.**
+
+* Overlays call service actions.
+* On success: overlays **close immediately**.
+* After success: overlays may *request* invalidation by calling service methods that emit signals, or by emitting signals directly if the overlay is the workflow owner (temporary allowance; prefer service).
+
+Overlays must not:
+
+* refresh pages directly
+* dispatch custom SPA invalidation via window events
+* “wait for refresh to finish” before closing
+
+---
+
+## 2) Invalidation rules
+
+### 2.1 Single in-SPA invalidation bus
+
+Inside the Vue SPA, **uiSignals is the only allowed invalidation mechanism**.
+
+**Forbidden in SPA for invalidation:**
+
+* `window.dispatchEvent(new CustomEvent('ifitwala:*'))`
+* `document.dispatchEvent(...)`
+* ad-hoc event buses per module
+
+**Allowed:**
+
+* `uiSignals.emit(SIGNAL_*)` from services/workflows
+* `uiSignals.subscribe(SIGNAL_*, handler)` from pages
+
+### 2.2 Window events: allowed only as explicit bridges
+
+Window events are allowed **only** for cross-runtime bridging (SPA ↔ Desk or non-SPA surfaces).
+
+If used:
+
+* must live in a single file: `ui-spa/src/lib/bridges/windowBridge.ts`
+* must be documented as a bridge (not a primary invalidation path)
+* app code must not call window events directly
+
+---
+
+## 3) uiSignals usage rules
+
+### 3.1 Subscribe API rule (locked)
+
+**Never treat `uiSignals.on()` as returning an unsubscribe function.**
+Use:
+
+* `uiSignals.subscribe(name, handler)` → returns disposer
+
+`uiSignals.on/off` are allowed only if:
+
+* handler is a stable named function
+* unsubscribe is explicit and correct
+
+### 3.2 Signal naming rule
+
+* All shared signals must be exported constants in `uiSignals.ts`
+* No raw string literals in components/services for shared invalidation
+
+### 3.3 Payload rule
+
+* Payloads must be optional and minimal.
+* Prefer `{ id }` over dumping full objects.
+* Never require payload to avoid refresh (pages should refresh safely without it).
+
+---
+
+## 4) Refresh policy rule
+
+Pages must coalesce refresh triggers:
+
+* dedupe in-flight requests
+* throttle bursts from multiple invalidation sources
+* avoid “refresh storms” after workflows
+
+Recommended minimum:
+
+* `inFlight` gate
+* one queued refresh while in-flight
+* light throttle window (300–1000ms)
+
+---
+
+## 5) Anti-patterns (treat as defects)
+
+1. Overlay dispatches `window` event to refresh a page
+2. Page contains submit/reassign/approve logic
+3. Multiple invalidation systems inside SPA (uiSignals + window events)
+4. Services importing Vue components or overlay stack
+5. uiSignals used with inline handlers via `on()` without stable handler references
+6. Silent failures: “return null” with no structured debug when core context exists
+
+---
+
+## 6) Definition of done for A+ compliance
+
+* One invalidation path (uiSignals) for SPA refresh
+* Workflows emit invalidation from service layer
+* Pages subscribe and own refresh policy
+* Overlays close independently on success
+* No DOM event invalidation remains (except explicit bridge file)
+
+---

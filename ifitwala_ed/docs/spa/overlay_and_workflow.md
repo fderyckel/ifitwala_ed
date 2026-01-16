@@ -140,6 +140,17 @@ UI Services must **never**:
 
 ---
 
+### 5.3 Signals subscription rule (A+)
+
+**Rule:** If you need a disposer/unsubscribe function, do **not** use `uiSignals.on()`.
+
+- `uiSignals.on()` is low-level registration and requires `uiSignals.off(name, handler)`
+- `uiSignals.subscribe()` returns a disposer and is the preferred API for Vue `setup()` blocks
+
+Violations are **defects**, not style issues.
+
+---
+
 ## 6. OverlayHost Responsibilities (Non‑Negotiable)
 
 `OverlayHost` is the **single authority** for overlay existence and lifecycle.
@@ -213,6 +224,14 @@ Focus does **not**:
 
 **Overlay closure is never dependent on Focus refresh.**
 
+### 8.3 Pages own refresh (explicit)
+
+Under A+:
+
+- **Pages** subscribe to invalidation signals and decide how/when to refresh
+- **Services** emit invalidation after successful workflows
+- **Overlays** close immediately on success and must not “refresh-gate” closing
+
 ---
 
 ## 9. UX Contract (User‑Visible)
@@ -248,6 +267,26 @@ This document **subsumes** (reference only, non‑authority):
 
 * `overlay_contract_governance.md`
 * `ui_services_note.md`
+
+---
+
+## 12. Refactor guidance (A+ alignment targets)
+
+**StudentLogCreateOverlay (baseline)**
+Treat as the reference behavior: closes immediately on server success; never gated by toast/refresh/reload.
+
+**StudentLogFollowUpOverlay (must align)**
+Must:
+- emit `close` immediately on success
+- never block close behind `busy`
+- treat any reload/refresh as best-effort via signals (after close)
+
+**FocusRouterOverlay (router only)**
+Must:
+- resolve routing payload once (via service)
+- pass resolved payload down
+- avoid child overlays refetching the same payload
+- never intercept or gate overlay close
 
 ---
 
@@ -529,6 +568,36 @@ You are working in Ifitwala_Ed SPA (`ifitwala_ed/ui-spa`). Your task: implement 
    * Do not refactor unrelated styles/layout; focus only on types/contracts/service boundaries and correctness.
 
 ---
+
+# Appendix C — Implementation plan (universal A+ rollout) — Reference
+
+**Phase 1 — Lock naming + contract compliance**
+- Replace ambiguous `get_focus_context` with an explicit resolve name
+- Prefer `payload/resolved` over exported `context` naming
+
+**Phase 2 — UI Signals / Invalidation Bus**
+- Centralize signals in `ui-spa/src/lib/uiSignals.ts`
+- Pages subscribe; services emit; overlays never depend on refresh to close
+
+**Phase 3 — Thin services**
+- Move endpoint calling + normalization to `ui-spa/src/lib/services/**`
+
+**Phase 4 — Workflows into services**
+- Services emit invalidation on success
+- Overlays close immediately on success
+
+**Phase 5 — OverlayHost / stack boundary**
+- OverlayHost uses only stack public API
+- No raw stack mutations from overlays/services
+
+**Phase 6 — Hardening**
+- In-flight dedupe per service method
+- Optional signal throttling on the page side
+- Server TTL caching where safe
+
+---
+
+
 
 ## Inputs you must start from
 
