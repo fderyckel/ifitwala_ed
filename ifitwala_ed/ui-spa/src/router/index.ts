@@ -25,6 +25,7 @@ const routes: RouteRecordRaw[] = [
 
  // Staff
   { path: '/staff', name: 'staff-home', component: () => import('@/pages/staff/StaffHome.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/class/:studentGroup', name: 'ClassHub', component: () => import('@/pages/staff/ClassHub.vue'), meta: { layout: 'staff' } },
 
 	{path: '/staff/morning-brief', name: 'MorningBriefing', component: () => import('@/pages/staff/morning_brief/MorningBriefing.vue'), meta: { layout: 'staff' } },
   { path: '/staff/student-groups', name: 'staff-student-groups', component: () => import('@/pages/staff/schedule/student-groups/StudentGroups.vue'), meta: { layout: 'staff' } },

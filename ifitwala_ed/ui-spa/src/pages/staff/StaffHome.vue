@@ -279,7 +279,14 @@ import { uiSignals } from '@/lib/uiSignals'
 
 const SIGNAL_FOCUS_INVALIDATE = 'focus:invalidate' as const
 
+/**
+ * Legacy bridge (FocusRouterOverlay dispatches this today).
+ * StaffHome listens and refreshes immediately.
+ */
+const FOCUS_REFRESH_EVENT = 'ifitwala:focus:refresh' as const
 
+// Unsubscribe handle returned by uiSignals.on(...)
+let offFocusInvalidate: null | (() => void) = null
 
 /* USER --------------------------------------------------------- */
 type StaffHomeHeader = {
@@ -359,7 +366,7 @@ let refreshQueued = false
 let refreshThrottleTimer: number | null = null
 
 const FOCUS_LIMIT = 8
-const FOCUS_REFRESH_THROTTLE_MS = 800  // coalesce burst triggers
+const FOCUS_REFRESH_THROTTLE_MS = 800 // coalesce burst triggers
 const FOCUS_VISIBILITY_STALE_MS = 60_000 // align with likely server TTL
 const FOCUS_POLL_MS = 120_000
 
@@ -440,6 +447,11 @@ function onFocusInvalidateSignal() {
 	refreshFocus('signal:focus:invalidate')
 }
 
+// Legacy event bridge handler (FocusRouterOverlay dispatches today)
+function onFocusRefreshEvent() {
+	refreshFocus('event:focus:refresh')
+}
+
 onMounted(async () => {
 	// Initial load
 	await refreshFocus('mount')
@@ -454,8 +466,10 @@ onMounted(async () => {
 	document.addEventListener('visibilitychange', onVisibilityChange)
 
 	// Subscribe to UI invalidation bus
-	const offFocusInvalidate = uiSignals.on(SIGNAL_FOCUS_INVALIDATE, onFocusInvalidateSignal)
+	offFocusInvalidate = uiSignals.on(SIGNAL_FOCUS_INVALIDATE, onFocusInvalidateSignal)
 
+	// Legacy event bridge from FocusRouterOverlay
+	window.addEventListener(FOCUS_REFRESH_EVENT, onFocusRefreshEvent)
 })
 
 onBeforeUnmount(() => {
@@ -463,7 +477,13 @@ onBeforeUnmount(() => {
 	document.removeEventListener('visibilitychange', onVisibilityChange)
 
 	// Unsubscribe from UI invalidation bus
-	offFocusInvalidate()
+	if (offFocusInvalidate) {
+		offFocusInvalidate()
+		offFocusInvalidate = null
+	}
+
+	// Legacy event bridge cleanup
+	window.removeEventListener(FOCUS_REFRESH_EVENT, onFocusRefreshEvent)
 })
 
 function openFocusItem(item: FocusItem) {

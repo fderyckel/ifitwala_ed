@@ -36,6 +36,10 @@ import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCo
 import StudentLogCreateOverlay from '@/components/student/StudentLogCreateOverlay.vue'
 import StudentLogFollowUpOverlay from '@/components/student/StudentLogFollowUpOverlay.vue'
 import FocusRouterOverlay from '@/components/focus/FocusRouterOverlay.vue'
+import StudentContextOverlay from '@/components/overlays/class-hub/StudentContextOverlay.vue'
+import QuickEvidenceOverlay from '@/components/overlays/class-hub/QuickEvidenceOverlay.vue'
+import QuickCFUOverlay from '@/components/overlays/class-hub/QuickCFUOverlay.vue'
+import TaskReviewOverlay from '@/components/overlays/class-hub/TaskReviewOverlay.vue'
 
 
 type RenderedEntry = OverlayEntry & {
@@ -140,6 +144,14 @@ function resolveComponent(type: OverlayType) {
       return StudentLogFollowUpOverlay
 		case 'focus-router':
 			return FocusRouterOverlay
+    case 'class-hub-student-context':
+      return StudentContextOverlay
+    case 'class-hub-quick-evidence':
+      return QuickEvidenceOverlay
+    case 'class-hub-quick-cfu':
+      return QuickCFUOverlay
+    case 'class-hub-task-review':
+      return TaskReviewOverlay
     default:
       return CreateTaskDeliveryOverlay
   }

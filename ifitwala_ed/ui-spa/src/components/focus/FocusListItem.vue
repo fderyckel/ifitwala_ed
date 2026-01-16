@@ -68,8 +68,8 @@ import { FeatherIcon } from 'frappe-ui'
 import type { FocusItem } from '@/types/focusItem'
 
 const assignedByName = computed(() => {
-  const p: any = (props.item as any)?.payload
-  const name = (p?.assigned_by_name || '').trim()
+  const p = props.item.payload
+	const name = (p?.assigned_by_name || '').trim()
   return name || null
 })
 

@@ -7,6 +7,23 @@ export type FocusPermissions = {
 	// v1: read-only list. no dismiss/snooze/complete here.
 }
 
+/**
+ * Student Log (v1) payload contract.
+ * Keep this small: only the fields the UI actively uses.
+ * Allow extension without breaking by adding an index signature.
+ */
+export type StudentLogFocusPayload = {
+	student_name?: string | null
+	next_step?: string | null
+
+	// Assignee items (from ToDo)
+	assigned_by?: string | null
+	assigned_by_name?: string | null
+
+	// Allow future enrichment without TS fights
+	[k: string]: any
+}
+
 export type FocusItem = {
 	id: string
 	kind: FocusKind
@@ -20,6 +37,6 @@ export type FocusItem = {
 	reference_doctype: string
 	reference_name: string
 
-	payload?: Record<string, any> | null
+	payload?: StudentLogFocusPayload | null
 	permissions?: FocusPermissions | null
 }

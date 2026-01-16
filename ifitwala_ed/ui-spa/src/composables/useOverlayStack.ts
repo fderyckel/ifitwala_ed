@@ -10,6 +10,10 @@ export type OverlayType =
   | 'student-log-create'
   | 'student-log-follow-up'
 	| 'focus-router'
+  | 'class-hub-student-context'
+  | 'class-hub-quick-evidence'
+  | 'class-hub-quick-cfu'
+  | 'class-hub-task-review'
 
 export type OverlayEntry = {
   id: string
