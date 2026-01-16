@@ -82,6 +82,24 @@ function close(id?: string) {
   }
 }
 
+/**
+ * A+ hard escape hatch:
+ * - OverlayHost may call this only if overlay.close is unavailable (defect)
+ * - This keeps state mutation centralized inside the composable (single source of truth)
+ * - Semantics: remove by id without any other policy checks
+ */
+function forceRemove(id: string) {
+  const safeId = String(id || '').trim()
+  if (!safeId) return
+  const idx = state.stack.findIndex((x) => x.id === safeId)
+  if (idx >= 0) {
+    state.stack.splice(idx, 1)
+    log('forceRemove:id', safeId)
+  } else {
+    log('forceRemove:miss', safeId)
+  }
+}
+
 function closeTop() {
   const removed = state.stack.pop()
   log('closeTop', removed?.id)
@@ -94,24 +112,6 @@ function closeTopIf(id: string) {
     log('closeTopIf', removed?.id)
   } else {
     log('closeTopIf:blocked', { id, top: t?.id })
-  }
-}
-
-/**
- * A+ required: forceRemove()
- * - Removes an entry from the internal stack.
- * - OverlayHost may call this as a LAST resort.
- * - OverlayHost must never mutate state.stack directly.
- */
-function forceRemove(id: string) {
-  const safeId = String(id || '').trim()
-  if (!safeId) return
-  const idx = state.stack.findIndex((x) => x.id === safeId)
-  if (idx >= 0) {
-    state.stack.splice(idx, 1)
-    log('forceRemove', safeId)
-  } else {
-    log('forceRemove:miss', safeId)
   }
 }
 
@@ -140,9 +140,9 @@ export function useOverlayStack() {
     isOpen,
     open,
     close,
+    forceRemove,
     closeTop,
     closeTopIf,
-    forceRemove,
     replaceTop,
   }
 }
