@@ -511,3 +511,37 @@ The SPA is calm, thin, deterministic, and obedient to server truth.
 That discipline is what makes Ifitwala scalable, teachable, and safe to extend.
 
 ---
+
+New rule (important — lock this)
+
+In SPA files:
+
+❌ _ prefix must NOT be used for:
+
+lifecycle guards
+
+workflow completion logic
+
+idempotency helpers
+
+overlay close semantics
+
+✅ _ prefix is allowed only for:
+
+throwaway formatting helpers
+
+one-line transforms
+
+code you’d be OK deleting tomorrow
+
+This aligns with your broader contracts & governance direction.
+
+If you want to mark intent, use naming, not punctuation:
+
+requireFocusItemId
+
+aPlusSuccessCloseThenDone
+
+newClientRequestId
+
+Those names are explicit contracts.

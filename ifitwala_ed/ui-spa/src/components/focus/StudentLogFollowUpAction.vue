@@ -213,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { toast } from 'frappe-ui'
 
 import { __ } from '@/lib/i18n'
@@ -239,6 +239,12 @@ const emit = defineEmits<{
   (e: 'request-refresh'): void
 }>()
 
+/**
+ * Service layer:
+ * - owns createResource + dotted endpoints
+ * - returns unwrapped message payloads
+ * - allows later centralization of refresh events / caching / retry
+ */
 const focusService = createFocusService()
 
 function emitClose() {
@@ -274,6 +280,7 @@ const log = ref<FocusLog | null>(null)
 const followUps = ref<FocusFollowUp[]>([])
 const loading = ref(false) // reserved: router can later drive a prop if desired
 
+// A+ UX guards (NEVER block closing)
 const busy = ref(false)
 const submittedOnce = ref(false)
 
@@ -287,7 +294,7 @@ const canSubmit = computed(() => {
 })
 
 const canComplete = computed(() => {
-  const s = (log.value?.follow_up_status || '').toLowerCase()
+  const s = String(log.value?.follow_up_status || '').toLowerCase()
   return !!activeStudentLogName.value && s !== 'completed'
 })
 
@@ -311,7 +318,7 @@ watch(
 )
 
 /* Helpers ------------------------------------------------------ */
-function _newClientRequestId(prefix = 'req') {
+function newClientRequestId(prefix = 'req') {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
 }
 
@@ -329,8 +336,8 @@ function trustedHtml(html: string) {
   return html || ''
 }
 
-function _requireFocusItemId(): string | null {
-  const id = (props.focusItemId || '').trim()
+function requireFocusItemId(): string | null {
+  const id = String(props.focusItemId || '').trim()
   if (!id) {
     showToast({
       title: __('Missing focus item'),
@@ -342,13 +349,13 @@ function _requireFocusItemId(): string | null {
   return id
 }
 
-async function _aPlusSuccessCloseThenDone() {
+async function aPlusSuccessCloseThenDone() {
   // A+: close immediately, then best-effort done.
   emitClose()
   await nextTick()
   try {
     emit('done')
-  } catch (e) {
+  } catch {
     // never block closing
   }
 }
@@ -359,7 +366,7 @@ async function submitFollowUp() {
   if (modeState.value !== 'assignee') return
   if (!canSubmit.value) return
 
-  const focusItemId = _requireFocusItemId()
+  const focusItemId = requireFocusItemId()
   if (!focusItemId) return
 
   const followUpText = (draftText.value || '').trim()
@@ -372,7 +379,7 @@ async function submitFollowUp() {
     const payload: SubmitStudentLogFollowUpRequest = {
       focus_item_id: focusItemId,
       follow_up: followUpText,
-      client_request_id: _newClientRequestId('fu'),
+      client_request_id: newClientRequestId('fu'),
     }
 
     const msg = await focusService.submitStudentLogFollowUp(payload)
@@ -383,7 +390,7 @@ async function submitFollowUp() {
       icon: 'check',
     })
 
-    await _aPlusSuccessCloseThenDone()
+    await aPlusSuccessCloseThenDone()
   } catch (e: any) {
     submittedOnce.value = false
     showToast({
@@ -400,7 +407,7 @@ async function reassignFollowUp() {
   if (busy.value || submittedOnce.value) return
   if (modeState.value !== 'author') return
 
-  const focusItemId = _requireFocusItemId()
+  const focusItemId = requireFocusItemId()
   if (!focusItemId) return
 
   const target = (reassignTo.value || '').trim()
@@ -421,7 +428,7 @@ async function reassignFollowUp() {
       focus_item_id: focusItemId,
       decision: 'reassign',
       follow_up_person: target,
-      client_request_id: _newClientRequestId('rvw'),
+      client_request_id: newClientRequestId('rvw'),
     }
 
     const msg = await focusService.reviewStudentLogOutcome(payload)
@@ -432,7 +439,7 @@ async function reassignFollowUp() {
       icon: 'check',
     })
 
-    await _aPlusSuccessCloseThenDone()
+    await aPlusSuccessCloseThenDone()
   } catch (e: any) {
     submittedOnce.value = false
     showToast({
@@ -450,7 +457,7 @@ async function completeParentLog() {
   if (modeState.value !== 'author') return
   if (!canComplete.value) return
 
-  const focusItemId = _requireFocusItemId()
+  const focusItemId = requireFocusItemId()
   if (!focusItemId) return
 
   busy.value = true
@@ -460,7 +467,7 @@ async function completeParentLog() {
     const payload: ReviewStudentLogOutcomeRequest = {
       focus_item_id: focusItemId,
       decision: 'complete',
-      client_request_id: _newClientRequestId('rvw'),
+      client_request_id: newClientRequestId('rvw'),
     }
 
     const msg = await focusService.reviewStudentLogOutcome(payload)
@@ -471,7 +478,7 @@ async function completeParentLog() {
       icon: 'check',
     })
 
-    await _aPlusSuccessCloseThenDone()
+    await aPlusSuccessCloseThenDone()
   } catch (e: any) {
     submittedOnce.value = false
     showToast({

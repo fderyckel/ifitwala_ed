@@ -463,3 +463,21 @@ We **continue using native Frappe `ToDo`**, with strict encapsulation.
 ---
 
 
+✅ ONLY FocusRouterOverlay emits global signals
+
+Why:
+Keeps leaf components pure
+Prevents accidental double invalidation
+Centralizes refresh semantics
+Allows future batching (Focus + Morning Brief + Notifications)
+
+So:
+StudentLogFollowUpAction.vue:
+emits done
+closes immediately
+FocusRouterOverlay.vue:
+interprets done
+
+emits:
+SIGNAL_FOCUS_INVALIDATE
+SIGNAL_STUDENT_LOG_INVALIDATE

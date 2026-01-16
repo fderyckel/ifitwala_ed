@@ -1,7 +1,12 @@
 <!-- ui-spa/src/components/focus/FocusRouterOverlay.vue -->
 <template>
   <TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
-    <Dialog as="div" class="if-overlay if-overlay--focus" :style="overlayStyle" @close="onDialogClose">
+    <Dialog
+      as="div"
+      class="if-overlay if-overlay--focus"
+      :style="overlayStyle"
+      @close="onDialogClose"
+    >
       <div class="if-overlay__backdrop" />
 
       <div class="if-overlay__wrap">
@@ -124,17 +129,22 @@ import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } fro
 import { Button, FeatherIcon, createResource } from 'frappe-ui'
 
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue'
-import type { Response as FocusContext } from '@/types/contracts/focus/get_focus_context'
+
+import type { Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context'
 
 /**
- * Global event contract:
- * - Overlay emits this when a workflow is completed.
- * - Focus list listens and refreshes immediately.
+ * Global signals
+ * - ONLY FocusRouterOverlay emits these.
+ * - Leaf workflow components MUST NOT dispatch window events.
  *
- * Keep it stable; other workflows will reuse it.
+ * Keep names stable; other surfaces may subscribe.
  */
-const FOCUS_REFRESH_EVENT = 'ifitwala:focus:refresh'
+const SIGNAL_FOCUS_REFRESH = 'ifitwala:focus:refresh'
+const SIGNAL_STUDENT_LOG_REFRESH = 'ifitwala:student_log:refresh'
 
+/**
+ * Props (OverlayHost contract)
+ */
 const props = defineProps<{
   open: boolean
   zIndex?: number
@@ -150,26 +160,29 @@ const emit = defineEmits<{
 
 /**
  * A+ invariants:
- * - Overlay close must NEVER be blocked by busy states.
+ * - Close must NEVER be blocked by busy states.
  * - Router owns modal lifecycle; workflows own completion.
  * - Router state resets only on after-leave to prevent “flash” on next open.
  */
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
 
+/**
+ * State
+ */
 const loading = ref(false)
 const errorText = ref<string | null>(null)
 
-// single source of truth: full context payload from server contract
-const ctx = ref<FocusContext | null>(null)
+// Single source of truth: full context payload from server contract
+const ctx = ref<GetFocusContextResponse | null>(null)
 
-// derived “routing bits” (header + switch)
+// Derived routing bits (header + switch)
 const actionType = computed(() => ctx.value?.action_type ?? null)
 const referenceDoctype = computed(() => ctx.value?.reference_doctype ?? null)
 const referenceName = computed(() => ctx.value?.reference_name ?? null)
 const studentLogMode = computed<'assignee' | 'author'>(() => (ctx.value?.mode ?? 'assignee') as any)
 
 const resolvedFocusItemId = computed(() => {
-  // prefer deterministic id returned from server, fallback to prop
+  // Prefer deterministic id returned from server, fallback to prop
   return (ctx.value?.focus_item_id ?? props.focusItemId ?? null) as string | null
 })
 
@@ -203,23 +216,22 @@ const isStudentLogFollowUp = computed(() => {
   )
 })
 
-/* API: focus.get_context -------------------------------------- */
+/* API ---------------------------------------------------------- */
 type ResourceResponse<T> = T | { message: T }
 function unwrapMessage<T>(res: ResourceResponse<T>) {
   if (res && typeof res === 'object' && 'message' in res) return (res as { message: T }).message
   return res as T
 }
 
-const ctxResource = createResource<FocusContext>({
+const ctxResource = createResource<GetFocusContextResponse>({
   url: 'ifitwala_ed.api.focus.get_focus_context',
   method: 'POST',
   auto: false,
   transform: unwrapMessage,
-  onSuccess(payload: FocusContext) {
-    // transform already normalized; keep onSuccess minimal
+  onSuccess(payload: GetFocusContextResponse) {
     loading.value = false
     errorText.value = null
-    ctx.value = (payload ?? null) as FocusContext | null
+    ctx.value = (payload ?? null) as GetFocusContextResponse | null
   },
   onError(err: any) {
     loading.value = false
@@ -259,13 +271,14 @@ function reload() {
   ctxResource.submit(buildContextPayload())
 }
 
+/* CLOSE + LIFECYCLE ------------------------------------------- */
 function requestClose() {
   // A+: close is always allowed and never blocked
   emit('close')
 }
 
 function emitAfterLeave() {
-  // fully reset once closed (prevents stale header/body flashes on next open)
+  // Fully reset once closed (prevents stale header/body flashes on next open)
   resetState()
   emit('after-leave')
 }
@@ -274,23 +287,48 @@ function onDialogClose() {
   requestClose()
 }
 
+/* GLOBAL SIGNAL EMISSION (LOCKED) ------------------------------ */
 /**
- * Workflow done:
- * - Fire immediate focus refresh event (no waiting for polling).
- * - Then close overlay.
+ * ONLY FocusRouterOverlay emits global signals.
+ * Leaf components emit `done` and do not call window.dispatchEvent.
  */
-function onWorkflowDone() {
+function emitGlobalSignal(name: string, detail?: Record<string, any>) {
   try {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent(FOCUS_REFRESH_EVENT))
-    }
+    if (typeof window === 'undefined') return
+    window.dispatchEvent(new CustomEvent(name, { detail: detail || {} }))
   } catch (e) {
     // best-effort; never block closing
   }
+}
+
+/**
+ * Workflow done:
+ * - Emit global refresh signals immediately.
+ * - Then close overlay.
+ *
+ * IMPORTANT:
+ * - Do NOT await anything here.
+ * - Close must happen even if listeners throw.
+ */
+function onWorkflowDone() {
+  const detail = {
+    focus_item_id: resolvedFocusItemId.value,
+    reference_doctype: referenceDoctype.value,
+    reference_name: referenceName.value,
+    action_type: actionType.value,
+  }
+
+  emitGlobalSignal(SIGNAL_FOCUS_REFRESH, detail)
+
+  // Optional secondary signal: other UI surfaces can listen without depending on Focus
+  if (referenceDoctype.value === 'Student Log') {
+    emitGlobalSignal(SIGNAL_STUDENT_LOG_REFRESH, detail)
+  }
+
   requestClose()
 }
 
-/* LIFECYCLE ---------------------------------------------------- */
+/* OPEN WATCHERS ------------------------------------------------- */
 watch(
   () => props.open,
   (next) => {

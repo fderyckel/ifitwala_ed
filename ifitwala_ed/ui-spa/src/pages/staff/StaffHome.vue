@@ -274,19 +274,14 @@ import FocusListCard from '@/components/focus/FocusListCard.vue'
 import { useOverlayStack } from '@/composables/useOverlayStack'
 import type { FocusItem } from '@/types/focusItem'
 
-// A+ integration: UI Signals (Focus invalidation)
-import { uiSignals } from '@/lib/uiSignals'
-
-const SIGNAL_FOCUS_INVALIDATE = 'focus:invalidate' as const
-
 /**
- * Legacy bridge (FocusRouterOverlay dispatches this today).
- * StaffHome listens and refreshes immediately.
+ * Locked rule: ONLY FocusRouterOverlay emits global signals.
+ * StaffHome is a consumer only.
+ *
+ * Legacy bridge:
+ * FocusRouterOverlay dispatches this today.
  */
 const FOCUS_REFRESH_EVENT = 'ifitwala:focus:refresh' as const
-
-// Unsubscribe handle returned by uiSignals.on(...)
-let offFocusInvalidate: null | (() => void) = null
 
 /* USER --------------------------------------------------------- */
 type StaffHomeHeader = {
@@ -357,8 +352,8 @@ const focusResource = createResource({
 
 /**
  * Refresh focus (deduped + lightly throttled)
- * - Avoid request stampedes (signals, visibility, interval can collide)
- * - Keep policy cheap: it’s okay to coalesce multiple triggers into one refresh
+ * - Avoid request stampedes (events, visibility, interval can collide)
+ * - Policy is cheap: coalesce multiple triggers into one refresh
  */
 const lastFocusRefreshAt = ref<number>(0)
 const refreshInFlight = ref<Promise<void> | null>(null)
@@ -378,7 +373,7 @@ function shouldRefreshOnVisibility() {
 	return Date.now() - lastFocusRefreshAt.value > FOCUS_VISIBILITY_STALE_MS
 }
 
-async function _doRefreshFocus(reason: string) {
+async function doRefreshFocus(_reason: string) {
 	focusLoading.value = true
 	try {
 		await focusResource.submit({ open_only: 1, limit: FOCUS_LIMIT, offset: 0 })
@@ -395,7 +390,7 @@ function refreshFocus(reason: string) {
 		return refreshInFlight.value
 	}
 
-	// Throttle bursts (signals can fire rapidly after workflows)
+	// Throttle bursts (events can fire rapidly after workflows)
 	if (refreshThrottleTimer) {
 		refreshQueued = true
 		return refreshInFlight.value ?? Promise.resolve()
@@ -411,7 +406,7 @@ function refreshFocus(reason: string) {
 
 	refreshInFlight.value = (async () => {
 		try {
-			await _doRefreshFocus(reason)
+			await doRefreshFocus(reason)
 		} catch (e) {
 			// focusResource.onError already logs; keep this calm
 		} finally {
@@ -432,7 +427,7 @@ function refreshFocus(reason: string) {
  * - On mount: load once
  * - Every 120s: light polling (tab-visible only)
  * - On tab refocus: refresh if stale
- * - On UI signal: refresh (coalesced)
+ * - On workflow done: FocusRouterOverlay dispatches event → refresh (coalesced)
  */
 let focusTimer: number | null = null
 
@@ -442,12 +437,6 @@ function onVisibilityChange() {
 	}
 }
 
-// A+ integration: signal handler
-function onFocusInvalidateSignal() {
-	refreshFocus('signal:focus:invalidate')
-}
-
-// Legacy event bridge handler (FocusRouterOverlay dispatches today)
 function onFocusRefreshEvent() {
 	refreshFocus('event:focus:refresh')
 }
@@ -465,24 +454,13 @@ onMounted(async () => {
 
 	document.addEventListener('visibilitychange', onVisibilityChange)
 
-	// Subscribe to UI invalidation bus
-	offFocusInvalidate = uiSignals.on(SIGNAL_FOCUS_INVALIDATE, onFocusInvalidateSignal)
-
-	// Legacy event bridge from FocusRouterOverlay
+	// Locked: only global event from FocusRouterOverlay
 	window.addEventListener(FOCUS_REFRESH_EVENT, onFocusRefreshEvent)
 })
 
 onBeforeUnmount(() => {
 	if (focusTimer) window.clearInterval(focusTimer)
 	document.removeEventListener('visibilitychange', onVisibilityChange)
-
-	// Unsubscribe from UI invalidation bus
-	if (offFocusInvalidate) {
-		offFocusInvalidate()
-		offFocusInvalidate = null
-	}
-
-	// Legacy event bridge cleanup
 	window.removeEventListener(FOCUS_REFRESH_EVENT, onFocusRefreshEvent)
 })
 
@@ -602,9 +580,14 @@ const analyticsCategories = [
 ]
 
 /* GREETING ----------------------------------------------------- */
-const now = new Date()
+/**
+ * NOTE:
+ * Your old code used `const now = new Date()` at module load time,
+ * so greeting would never update until a full reload.
+ * This keeps it simple and correct.
+ */
 const greeting = computed(() => {
-	const hour = now.getHours()
+	const hour = new Date().getHours()
 	return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 })
 
