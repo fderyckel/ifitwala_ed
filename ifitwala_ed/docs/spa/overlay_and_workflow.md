@@ -800,16 +800,13 @@ Step 2 — Remove transport logic from FocusRouterOverlay (NEXT, highest impact)
 
 Goal: FocusRouterOverlay.vue becomes a pure overlay shell + router.
 It must not contain:
+	createResource
+	unwrapMessage
+	any axios-shape handling
+	Instead it calls:
+		focusService.getFocusContext(payload) (service already normalizes)
 
-createResource
-
-unwrapMessage
-
-any axios-shape handling
-
-Instead it calls:
-
-focusService.getFocusContext(payload) (service already normalizes)
+Do not reintroduce createResource/unwrap in FocusRouterOverlay.
 
 This step is the main source of “circles.” Fixing it stops the churn.
 

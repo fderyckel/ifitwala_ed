@@ -28,13 +28,20 @@ import type {
  * - Raw T
  */
 function unwrapMessage<T>(res: unknown): T {
-	const root =
-		res && typeof res === 'object' && 'data' in (res as any) ? (res as any).data : res
+	const root = (() => {
+		if (!res || typeof res !== 'object') return res
+		if ('data' in (res as Record<string, unknown>)) return (res as { data?: unknown }).data
+		return res
+	})()
 
-	if (root && typeof root === 'object' && 'message' in (root as any)) {
-		return (root as any).message as T
+	if (root && typeof root === 'object' && 'message' in (root as Record<string, unknown>)) {
+		return (root as { message?: unknown }).message as T
 	}
 	return root as T
+}
+
+function isOkResponse(value: unknown): value is { ok: true } {
+	return !!value && typeof value === 'object' && (value as { ok?: unknown }).ok === true
 }
 
 /**
@@ -69,24 +76,26 @@ export function createFocusService() {
 		transform: (res: unknown) => unwrapMessage<ReviewStudentLogOutcomeResponse>(res),
 	})
 
-	async function getFocusContext(payload: GetFocusContextRequest) {
+	async function getFocusContext(payload: GetFocusContextRequest): Promise<GetFocusContextResponse> {
 		return getFocusContextResource.submit(payload)
 	}
 
-	async function submitStudentLogFollowUp(payload: SubmitStudentLogFollowUpRequest) {
+	async function submitStudentLogFollowUp(
+		payload: SubmitStudentLogFollowUpRequest,
+	): Promise<SubmitStudentLogFollowUpResponse> {
 		const response = await submitFollowUpResource.submit(payload)
 
-		// Emit invalidation only on success
-		if ((response as any)?.ok) emitAfterStudentLogMutation()
+		if (isOkResponse(response)) emitAfterStudentLogMutation()
 
 		return response
 	}
 
-	async function reviewStudentLogOutcome(payload: ReviewStudentLogOutcomeRequest) {
+	async function reviewStudentLogOutcome(
+		payload: ReviewStudentLogOutcomeRequest,
+	): Promise<ReviewStudentLogOutcomeResponse> {
 		const response = await reviewOutcomeResource.submit(payload)
 
-		// Emit invalidation only on success
-		if ((response as any)?.ok) emitAfterStudentLogMutation()
+		if (isOkResponse(response)) emitAfterStudentLogMutation()
 
 		return response
 	}

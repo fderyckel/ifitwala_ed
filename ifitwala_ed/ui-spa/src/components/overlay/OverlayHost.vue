@@ -16,7 +16,7 @@
           :open="entry.open"
           :z-index="baseZ + idx * zStep"
           :overlay-id="entry.id"
-          @close="requestClose(entry.id, 'backdrop')"
+         	@close="requestClose(entry.id, $event ?? 'programmatic')"
           @after-leave="finalizeClose(entry.id)"
         />
       </div>
@@ -159,28 +159,37 @@ function resolveComponent(type: OverlayType) {
   }
 }
 
-type CloseReason = 'backdrop' | 'esc' | 'programmatic'
-
-function requestClose(id: string, reason: CloseReason = 'programmatic') {
-  // Only the top overlay may be interactively closed
+/**
+ * A+ central close enforcement:
+ * - Only the top overlay can be interactively closed
+ * - closeOnBackdrop / closeOnEsc enforced here (not per-overlay ad hoc)
+ * - OverlayHost NEVER mutates overlay.state.stack directly
+ * - Emergency hatch is overlay.forceRemove(id) (implemented in useOverlayStack)
+ */
+function requestClose(id: string, reason: 'backdrop' | 'esc' | 'programmatic' = 'programmatic') {
   const top = rendered.value[rendered.value.length - 1]
   if (!top || top.id !== id) return
 
-  // Enforce close flags centrally (A+)
   if (reason === 'backdrop' && top.closeOnBackdrop === false) return
   if (reason === 'esc' && top.closeOnEsc === false) return
 
-  // Use overlay stack API only (no state mutation)
+  // Primary: public API
   try {
-    ;(overlay as any).close?.(id, { reason })
-  } catch {
-    // swallow; fallback below
+    overlay.close(id)
+    return
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[OverlayHost] overlay.close failed; using forceRemove', { id, reason, err })
   }
 
-  // If close() didn’t exist (or threw), use the composable-owned escape hatch.
-  if (typeof (overlay as any).close !== 'function') {
-    ;(overlay as any).forceRemove?.(id)
+  // Emergency: API-based removal (still no direct state mutation here)
+  if (typeof (overlay as any).forceRemove === 'function') {
+    ;(overlay as any).forceRemove(id)
+    return
   }
+
+  // eslint-disable-next-line no-console
+  console.error('[OverlayHost] forceRemove is missing; overlay may remain stuck', { id, reason })
 }
 
 function finalizeClose(id: string) {

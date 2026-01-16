@@ -267,11 +267,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { FeatherIcon, createResource, toast } from 'frappe-ui'
+import { FeatherIcon, toast } from 'frappe-ui'
 
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue'
 import FocusListCard from '@/components/focus/FocusListCard.vue'
 import { useOverlayStack } from '@/composables/useOverlayStack'
+import { getStaffHomeHeader, listFocusItems, type StaffHomeHeader } from '@/lib/services/staff/staffHomeService'
 import type { FocusItem } from '@/types/focusItem'
 import { uiSignals, SIGNAL_FOCUS_INVALIDATE } from '@/lib/uiSignals'
 
@@ -298,29 +299,14 @@ import { uiSignals, SIGNAL_FOCUS_INVALIDATE } from '@/lib/uiSignals'
  */
 
 /* USER --------------------------------------------------------- */
-type StaffHomeHeader = {
-	user: string
-	first_name?: string | null
-	full_name?: string | null
-}
-
 const userDoc = ref<StaffHomeHeader | null>(null)
 
-const headerResource = createResource({
-	url: 'ifitwala_ed.api.portal.get_staff_home_header',
-	method: 'POST',
-	auto: false,
-	onSuccess(data: any) {
-		const payload = data && typeof data === 'object' && 'message' in data ? data.message : data
-		userDoc.value = (payload || null) as StaffHomeHeader | null
-	},
-	onError(err: any) {
-		console.error('[StaffHome] Failed to load header:', err)
-	},
-})
-
 onMounted(async () => {
-	await headerResource.submit({})
+	try {
+		userDoc.value = await getStaffHomeHeader()
+	} catch (err) {
+		console.error('[StaffHome] Failed to load header:', err)
+	}
 })
 
 const firstName = computed(() => {
@@ -345,24 +331,6 @@ const quickActions = [
 const overlay = useOverlayStack()
 const focusLoading = ref(false)
 const focusItems = ref<FocusItem[]>([])
-
-/**
- * Focus list resource:
- * - Single endpoint returning already-enriched FocusItem[]
- * - Keep limit small on StaffHome (8)
- */
-const focusResource = createResource({
-	url: 'ifitwala_ed.api.focus.list_focus_items',
-	method: 'POST',
-	auto: false,
-	onSuccess(data: any) {
-		const payload = data && typeof data === 'object' && 'message' in data ? data.message : data
-		focusItems.value = Array.isArray(payload) ? (payload as FocusItem[]) : []
-	},
-	onError(err: any) {
-		console.error('[StaffHome] Failed to load focus list:', err)
-	},
-})
 
 /**
  * Refresh focus (deduped + lightly throttled)
@@ -394,8 +362,11 @@ function shouldRefreshOnVisibility() {
 async function doRefreshFocus(_reason: string) {
 	focusLoading.value = true
 	try {
-		await focusResource.submit({ open_only: 1, limit: FOCUS_LIMIT, offset: 0 })
+		const items = await listFocusItems({ open_only: 1, limit: FOCUS_LIMIT, offset: 0 })
+		focusItems.value = Array.isArray(items) ? items : []
 		markRefreshed()
+	} catch (err) {
+		console.error('[StaffHome] Failed to load focus list:', err)
 	} finally {
 		focusLoading.value = false
 	}
