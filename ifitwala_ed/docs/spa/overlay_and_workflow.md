@@ -34,6 +34,22 @@ Overlay closure must be:
 
 ---
 
+## 1.1 Definitions (shared vocabulary)
+
+**Overlay**
+A top-layer UI surface rendered by `OverlayHost.vue` (HeadlessUI `Dialog + TransitionRoot`). Overlays can stack; only the top layer is active; lower layers are inert.
+
+**Workflow**
+A domain action that triggers server side-effects (ToDo open/close, notifications, Focus item changes). Workflows are owned by **UI Services + server controllers**, not by pages or Focus.
+
+**UI Services**
+Client orchestration modules in `ui-spa/src/lib/services/**` that call endpoints (via `createResource`), normalize responses/errors, emit invalidation signals, and optionally show toasts.
+
+**UI Signals / Invalidation Bus**
+Runtime infra (`ui-spa/src/lib/uiSignals.ts`) used to broadcast “a workflow happened; refresh interested surfaces.” It decouples workflow success from refresh policy.
+
+---
+
 ## 2. Ownership Matrix (Locked)
 
 | Concern                           | Owner                                      |
@@ -695,6 +711,3 @@ End.
 
 ---
 
-### What I need from you (only if missing in repo)
-
-If Codex cannot infer the exact server endpoint names from the overlay (URL strings), it must open the related server method files (likely `ifitwala_ed/api/student_log.py` or similar). If still unclear, stop and report the missing endpoint names rather than inventing.

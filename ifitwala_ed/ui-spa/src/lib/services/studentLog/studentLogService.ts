@@ -7,14 +7,18 @@ import type { Request as SearchFollowUpUsersRequest, Response as SearchFollowUpU
 import type { Request as SearchStudentsRequest, Response as SearchStudentsResponse } from '@/types/contracts/student_log/search_students'
 import type { Request as SubmitStudentLogRequest, Response as SubmitStudentLogResponse } from '@/types/contracts/student_log/submit_student_log'
 
-type ResourceResponse<T> = T | { message: T }
-
-function unwrapMessage<T>(res: ResourceResponse<T>) {
-  if (res && typeof res === 'object' && 'message' in res) {
-    return (res as { message: T }).message
+function unwrapMessage<T>(res: any): T {
+  // Normalize Frappe + Axios envelopes:
+  // - { message: T }
+  // - { data: { message: T } }
+  // - { data: T }
+  const root = res?.data ?? res
+  if (root && typeof root === 'object' && 'message' in root) {
+    return (root as any).message as T
   }
-  return res as T
+  return root as T
 }
+
 
 export function createStudentLogService() {
   const searchStudentsResource = createResource<SearchStudentsResponse>({

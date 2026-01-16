@@ -201,6 +201,45 @@ This prevents silent filter loss.
 
 ---
 
+### 3.4 UI Signals usage rule (A+ enforced)
+
+Signals are runtime infra and belong in `ui-spa/src/lib/`.
+
+**A+ rule (non-negotiable):**
+
+- `uiSignals.on()` is **low-level registration**
+  - requires explicit `uiSignals.off(name, handler)`
+  - handler reference must be stable
+  - **do not use** if you expect an unsubscribe function
+
+- `uiSignals.subscribe()` is the **ergonomic subscription API**
+  - returns a disposer (unsubscribe function)
+  - safe for inline usage
+  - **preferred in Vue `setup()` blocks**
+
+Violations are **defects**, not style issues.
+
+---
+
+### 3.5 Architectural reason (why this matters)
+
+Under the A+ model:
+
+- **Pages own refresh**
+- **Services emit signals**
+- **Signals are infra**
+
+If signal subscriptions leak:
+
+- refresh storms happen
+- throttling becomes unreliable
+- overlays/pages appear to “randomly” re-trigger refreshes
+- debugging becomes non-deterministic
+
+This sits below business logic but above rendering — exactly where silent damage accumulates.
+
+---
+
 ## 4. Overlay Architecture & A+ Lifecycle Contract
 
 ### 4.1 Core decision (A+)
@@ -300,6 +339,90 @@ If unclear → stop.
 
 ---
 
-## Appendix A — Phase-0 Source (Verbatim)
 
-Contents of `contract_and_type_phase0.md` preserved verbatim for reference.
+
+
+### 🔒 **Runtime Normalization Rule (Hard / Non-Negotiable)**
+
+#### ❌ Forbidden pattern
+
+Under no circumstances may client code represent server responses as unions such as:
+
+```ts
+T | { message: T }
+T | { data: T }
+T | { data: { message: T } }
+```
+
+This includes:
+
+* `type` definitions
+* generics
+* inline unions
+* “temporary” safety types
+
+**Any occurrence is a defect.**
+
+---
+
+#### ✅ Required pattern
+
+All server responses **must be normalized exactly once**, inside **UI Services** (`ui-spa/src/lib/services/**`), before being exposed to the rest of the application.
+
+After normalization:
+
+```ts
+// downstream code must see ONLY this
+Response
+```
+
+No overlay, page, or component may:
+
+* unwrap `{ message }`
+* check `{ data }`
+* branch on transport shape
+* compensate for framework response wrappers
+
+---
+
+#### 🧠 Rationale (binding)
+
+Types describe **contracts**, not **transport noise**.
+
+Transport wrappers (`message`, `data`, Axios envelopes, Frappe internals) are:
+
+* framework concerns
+* runtime concerns
+* **never part of the contract**
+
+Allowing union types to represent transport ambiguity:
+
+* defeats contract enforcement
+* hides server/client drift
+* causes silent routing failures
+* re-introduces “it works in network tab but not in UI” bugs
+
+---
+
+#### 🧪 Enforcement checklist (mandatory)
+
+Before merge, reviewers must verify:
+
+* [ ] No `Response | { message: Response }` types exist
+* [ ] All unwrapping happens in **services only**
+* [ ] Overlays/components consume **contract-pure DTOs**
+* [ ] Missing fields cause visible errors, not silent fallbacks
+
+Violation → **reject PR**.
+
+---
+
+#### 📌 Summary invariant
+
+> **Contracts are pure.
+> Transport is impure.
+> Services absorb impurity exactly once.
+> UI never sees it.**
+
+---
+

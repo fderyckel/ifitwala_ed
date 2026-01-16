@@ -67,17 +67,17 @@ import { computed } from 'vue'
 import { FeatherIcon } from 'frappe-ui'
 import type { FocusItem } from '@/types/focusItem'
 
-const assignedByName = computed(() => {
-  const p = props.item.payload
-	const name = (p?.assigned_by_name || '').trim()
-  return name || null
-})
-
 const props = defineProps<{
 	item: FocusItem
 	loading?: boolean
 	disabled?: boolean
 }>()
+
+const assignedByName = computed(() => {
+	const p = props.item.payload
+	const name = (p?.assigned_by_name || '').trim()
+	return name || null
+})
 
 const emit = defineEmits<{
 	(e: 'open', item: FocusItem): void
