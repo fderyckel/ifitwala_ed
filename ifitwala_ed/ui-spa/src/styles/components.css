@@ -1173,6 +1173,14 @@
     background-color: rgb(var(--surface-rgb) / 0.98);
   }
 
+  .analytics-card--interactive {
+    @apply cursor-pointer transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md;
+  }
+
+  .analytics-card--dense {
+    @apply p-3 sm:p-4;
+  }
+
   .analytics-card__title {
     @apply text-xs font-semibold uppercase tracking-wide;
     color: rgb(var(--canopy-rgb) / 1);

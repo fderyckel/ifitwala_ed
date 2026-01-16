@@ -9,6 +9,7 @@ export type OverlayType =
   | 'org-communication-quick-create'
   | 'student-log-create'
   | 'student-log-follow-up'
+  | 'student-log-analytics-expand'
 	| 'focus-router'
   | 'class-hub-student-context'
   | 'class-hub-quick-evidence'

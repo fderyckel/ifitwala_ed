@@ -334,7 +334,8 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 		f"""
 		SELECT
 			sl.date,
-			s.student_full_name AS student,
+			sl.student          AS student,
+			s.student_full_name AS student_full_name,
 			sl.program,
 			sl.log_type,
 			sl.log              AS content,
@@ -456,4 +457,3 @@ def get_filter_meta():
 		"programs": programs,
 		"authors": authors,
 	}
-

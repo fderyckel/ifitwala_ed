@@ -476,6 +476,9 @@ function openFocusItem(item: FocusItem) {
 
 	overlay.open('focus-router', {
 		focusItemId: item.id,
+		referenceDoctype: item.reference_doctype,
+		referenceName: item.reference_name,
+		actionType: item.action_type,
 	})
 }
 
