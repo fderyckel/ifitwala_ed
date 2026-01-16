@@ -211,11 +211,16 @@ const isStudentLogFollowUp = computed(() => {
   )
 })
 
+
 /* API ---------------------------------------------------------- */
-type ResourceResponse<T> = T | { message: T }
-function unwrapMessage<T>(res: ResourceResponse<T>) {
-  if (res && typeof res === 'object' && 'message' in res) return (res as { message: T }).message
-  return res as T
+function unwrapMessage<T>(res: any): T {
+  // frappe-ui may pass either:
+  // - { message: T }
+  // - Axios response: { data: { message: T } }
+  // - Axios response: { data: T }
+  const root = res?.data ?? res
+  if (root && typeof root === 'object' && 'message' in root) return (root as any).message as T
+  return root as T
 }
 
 const ctxResource = createResource<GetFocusContextResponse>({

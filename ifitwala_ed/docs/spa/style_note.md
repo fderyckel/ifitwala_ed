@@ -4,6 +4,8 @@
 >
 > **Scope**: Vue 3 + Tailwind CSS v4 + frappe-ui SPA (Staff / Admin surfaces).
 > This document defines *how* styles are structured, *why* decisions were made, and *what invariants must never be broken*.
+>
+> **Authority**: Canonical styling authority. Must be consistent with **Vue SPA Architecture & Development Rules (AUTHORITATIVE)**.
 
 ---
 
@@ -129,6 +131,8 @@ This is locked.
 
 It must remain minimal.
 
+---
+
 ### 4.2 What must NOT live here
 
 * Page layout
@@ -153,6 +157,8 @@ Examples:
 * header/footer scaffolding
 
 Layouts answer: *“Where does content live?”*
+
+---
 
 ### 5.2 What layouts are NOT
 
@@ -290,20 +296,6 @@ If the dialog needs a new visual variant:
 
 ---
 
-### 6.2 Overlay system (single truth)
-
-`.if-overlay*` is the **only** modal / overlay system.
-
-Rules:
-
-* No ad-hoc modal CSS elsewhere
-* HeadlessUI transitions hook into these classes
-* All dialogs share the same backdrop, spacing, and motion language
-
-This prevents modal fragmentation.
-
----
-
 ### 6.3 Typography helpers are semantic
 
 Classes like:
@@ -392,6 +384,8 @@ A selector may look unused but still be required for:
 * modals not opened during dev
 * responsive-only views
 
+---
+
 ### 7.2 Approved cleanup process
 
 1. **Static scan** (grep / ripgrep)
@@ -452,3 +446,11 @@ It intentionally avoids:
 > **If a style does not clearly belong to tokens, app, layout, or components — it does not belong in the codebase.**
 
 Discipline here is what keeps the UI calm, scalable, and teachable.
+
+---
+
+## 11. Subsumed Notes
+
+This document subsumes:
+
+* `style_note.md` (kept for reference, not authority)

@@ -14,26 +14,12 @@ This canonical file **subsumes** (kept for reference, not authority):
 
 * `developing_vue_pages_note.md`
 * `contract_and_type_phase0.md`
+* `overlay_contract_governance.md`
+* `ui_services_note.md`
 
 ---
 
-# Ifitwala_Ed — Vue SPA Development Rules (Authoritative)
-
-> **Scope**
->
-> These rules apply to **all Vue 3 SPA code** in `ui-spa/`:
->
-> * pages
-> * components
-> * overlays
-> * composables
-> * API usage
-> * styling
->
-> They are not suggestions.
-> They exist to prevent architectural drift, subtle bugs, performance regressions, and UX incoherence.
-
----
+# Ifitwala_Ed — Vue SPA Development Rules
 
 ## 0. First Principles (Read Before Writing Code)
 
@@ -85,275 +71,111 @@ ui-spa/src/
 ├─ components/         # reusable UI components
 ├─ overlays/           # overlay panels rendered via OverlayHost
 ├─ composables/        # shared reactive logic (useX)
-├─ api/                # API wrappers (thin)
-├─ types/              # TypeScript contracts only (zero runtime, zero state)
-├─ lib/                # SPA infrastructure + UI services + overlay lifecycle glue (A+ model)
-├─ utils/              # pure stateless helpers only (deterministic, easy to test)
+├─ api/                # API wrappers (thin, legacy-compatible)
+├─ types/              # TypeScript contracts only (zero runtime)
+├─ lib/                # SPA runtime infra + UI services + signals
+├─ utils/              # pure stateless helpers only
 ├─ styles/             # tokens / app / layout / components
 ```
 
 Rules:
 
 * ❌ No business logic in pages
-* ❌ No API calls inside components directly
+* ❌ No API calls inside components
 * ❌ No cross-importing between `pages/` and `overlays/`
 * ✅ Pages orchestrate; components render
 
-**Locked placement rule (A+ aligned):**
-Runtime orchestration modules (UI Services, invalidation bus, cross-surface coordination) go in `ui-spa/src/lib/`.
+Runtime orchestration (services, invalidation, signals) **must** live in `lib/`.
 
 ---
 
-### 1.2 Types are sacred
+### 1.2 Folder semantics (non-negotiable)
 
-`types/` contains:
-
-* interfaces
-* enums
-* discriminated unions
-* API contracts
-
-Rules:
-
-* ❌ No Vue imports
-* ❌ No reactive state
-* ❌ No functions with side effects
-* ✅ Types must match **server payloads exactly**
-
-If server payload changes → types must change first.
+| Folder   | Must contain                      | Must NOT contain                             |
+| -------- | --------------------------------- | -------------------------------------------- |
+| `types/` | contracts, DTOs, unions           | runtime code, state, constants, side effects |
+| `utils/` | pure stateless helpers            | registries, event buses, subscriptions       |
+| `lib/`   | runtime infra (services, signals) | business logic, overlay close logic          |
 
 ---
 
-### 1.3 Runtime boundary (A+ aligned)
+## 2. Contracts & Types Governance (Phase-0 — Integrated)
 
-The folder split is not aesthetic. It enforces the A+ model:
+### 2.1 Purpose
 
-* `types/` defines contracts (safe anywhere, no runtime impact)
-* `utils/` transforms values (pure helpers, no lifecycle)
-* `lib/` orchestrates runtime behavior (services + signals), but **never** owns overlay closing
+We already saw predictable drift:
 
-If a module maintains in-memory state, subscriptions, or cross-surface invalidation, it belongs in `lib/` — not `utils/` or `types/`.
+* runtime constants sneaking into `types/`
+* payload types duplicated inside Vue files
+* parallel `fetch()` usage next to `createResource`
 
----
+At scale, this causes silent contract mismatches and data leakage.
 
-### 1.4 Folder semantics (do not drift)
-
-| Folder   | Must contain                                | Must NOT contain                                            |
-| -------- | ------------------------------------------- | ----------------------------------------------------------- |
-| `types/` | type contracts only                         | runtime behavior, state, side effects                       |
-| `utils/` | pure stateless helpers                      | registries, event buses, subscriptions, lifecycles          |
-| `lib/`   | runtime infrastructure (services + signals) | business logic, overlay-stack mutations, workflow inference |
+**Goal:** make contracts enforceable, not aspirational.
 
 ---
 
-## 2. Styling Rules (Non-Negotiable)
+### 2.2 `types/` = contracts only
 
-### 2.1 Single Tailwind entrypoint
+Hard rules:
 
-Tailwind is imported **exactly once**:
+* ✅ `export type`, `export interface`, literal unions
+* ❌ `export const`, `export function`, side effects, Vue imports
 
-```css
-/* ui-spa/src/style.css */
-@import "tailwindcss";
-@import "./styles/tokens.css";
-@import "./styles/app.css";
-@import "./styles/layout.css";
-@import "./styles/components.css";
+If runtime code exists in `types/` → **FAIL review**.
+
+---
+
+### 2.3 Contract files (required structure)
+
+```
+ui-spa/src/types/contracts/
+  focus/
+    list_focus_items.ts
+    resolve_focus_item.ts
+  student_log/
+    submit_follow_up.ts
+```
+
+Each file exports **only**:
+
+```ts
+export type Request = { ... }
+export type Response = { ... }
 ```
 
 Rules:
 
-* ❌ No `@import "tailwindcss"` elsewhere
-* ❌ No `@reference "tailwindcss"`
-* ❌ No per-component Tailwind imports
+* must match server whitelisted signature **exactly**
+* no defaults, no inference
 
 ---
 
-### 2.2 Layer discipline
+### 2.4 Role-scoped DTOs (security by design)
 
-| File             | Purpose                       |
-| ---------------- | ----------------------------- |
-| `tokens.css`     | Design values only            |
-| `app.css`        | Base elements, tiny utilities |
-| `layout.css`     | Page shells, structure        |
-| `components.css` | Reusable UI patterns          |
+If the same DocType is exposed differently:
 
-If it doesn’t clearly belong — **it does not go in CSS**.
+* staff
+* student
+* guardian
 
----
+Define **separate DTOs**, even if identical today.
 
-### 2.3 Overlay styling is single-source
-
-All dialogs and overlays must use:
-
-* `OverlayHost.vue`
-* HeadlessUI `Dialog` + `Transition`
-* `.if-overlay*` CSS classes
-
-Rules:
-
-* ❌ No ad-hoc modals
-* ❌ No inline dialog styling
-* ❌ No page-local dialog CSS
-* ✅ Extend via modifier classes only
+This prevents accidental UI leakage later.
 
 ---
 
-### 2.4 Typography is semantic
+## 3. API Usage Rules (Hard-Won)
 
-Use typography helpers:
+### 3.1 One transport only
 
-* `.type-h1`
-* `.type-body`
-* `.type-meta`
-
-Rules:
-
-* ❌ No `text-sm`, `text-lg`, etc. in templates
-* ❌ No inline font decisions
-* ✅ Rhythm is global, not per component
+* ❌ `fetch()`
+* ❌ `frappe.call`
+* ✅ `createResource`
 
 ---
 
-### 2.5 Tailwind v4 Silent Failure Class
-
-Tailwind CSS v4 failures are often **non-fatal** but highly destructive.
-
-**Common silent failures:**
-
-* Importing Tailwind more than once
-* Importing Tailwind inside components
-* Layer duplication across bundles
-
-**Effects:**
-
-* CSS size inflation
-* Order-dependent utility behavior
-* Styling bugs that are impossible to reason about
-
-**Rule:**
-
-> If Tailwind is imported anywhere except the single entrypoint, it is a **defect**, even if “it works”.
-
----
-
-## 3. Overlay Architecture (Critical)
-
-### 3.1 One overlay system
-
-All overlays:
-
-* are opened via `useOverlayStack`
-* are rendered by `OverlayHost`
-* receive props + `open` + `zIndex`
-
-Rules:
-
-* ❌ No local modal state
-* ❌ No `Dialog` mounted directly in pages
-* ❌ No duplicate backdrops
-
----
-
-### 3.1.1 Why frappe-ui Dialogs Are Forbidden
-
-`frappe-ui` dialogs:
-
-* manage their own focus
-* manage their own z-index
-* are unaware of `OverlayHost`
-* conflict with HeadlessUI focus traps
-
-They may appear to work in isolation, but they break:
-
-* keyboard navigation
-* stacked overlays
-* accessibility guarantees
-
-> Using `frappe-ui` dialogs inside the SPA is **technical debt**.
-
----
-
-### 3.2 Overlay responsibilities
-
-An overlay:
-
-* renders context
-* collects user input
-* calls **one** workflow action
-* closes itself
-
-An overlay **never**:
-
-* queries ToDo
-* infers assignment
-* mutates unrelated state
-* implements workflow rules
-
----
-
-### 3.4 UI Services + Overlay Lifecycle Contract (A+ model)
-
-Workflow overlays must follow the locked A+ ownership split:
-
-* **Overlay owns closing** (local, immediate, deterministic)
-* **UI Services own orchestration** (API calls, refresh policy, messaging, invalidation)
-* `OverlayHost` is the lifecycle authority (mount, inerting, after-leave cleanup)
-
-Key invariant:
-
-> A successful workflow must never depend on services, toasts, events, refresh, or reload completing in order for the overlay to close.
-
-Implementation location implications:
-
-* UI Services live in `ui-spa/src/lib/`
-* The invalidation bus (`uiSignals`) lives in `ui-spa/src/lib/`
-* Overlays never call services that mutate overlay stack
-* Services never close overlays
-
----
-
-### 3.3 HeadlessUI Failure Modes (Non-Obvious but Critical)
-
-HeadlessUI `Dialog` components can fail **silently** under the following conditions:
-
-* No focusable element exists inside the `DialogPanel`
-* `open` becomes `true` before required props are available
-* Overlay is rendered but immediately inerted by `OverlayHost` layering
-* Dialog is mounted outside `OverlayHost`
-
-**Symptoms:**
-
-* Empty overlay
-* No Vue runtime error
-* Possibly a console warning about focus trapping (often missed)
-
-**Debug protocol (in order):**
-
-1. Verify the overlay is rendered via `OverlayHost`
-2. Verify **at least one focusable element** exists inside the dialog
-3. Verify `open` is controlled only by overlay stack state
-4. Verify required props are resolved **before** `open = true`
-
----
-
-## 4. API Usage Rules (Hard-won lessons)
-
-### 4.1 createResource is mandatory
-
-All SPA → server calls use `createResource`.
-
-Rules:
-
-* ❌ No `fetch()`
-* ❌ No `frappe.call`
-* ❌ No querystring payload hacks
-
----
-
-### 4.2 Payload shape (locked)
-
-Server methods must accept:
+### 3.2 Payload shape (locked)
 
 ```ts
 resource.submit(payload)
@@ -361,236 +183,123 @@ resource.submit(payload)
 
 Rules:
 
-* ❌ Never send `{ payload: {...} }`
-* ❌ Never send `cmd`
-* ❌ Never mix kwargs + payload conventions
+* ❌ never `{ payload: {...} }`
+* ❌ never `cmd`
+* ❌ never read or validate `frappe.form_dict`
 
-> **Never validate or read `frappe.form_dict`.**
-> All `@frappe.whitelist()` methods **must declare explicit function arguments**.
-> Validation applies **only** to those arguments.
+All server methods **must declare explicit arguments**.
 
 ---
 
-### 4.3 No chatty APIs
+### 3.3 Filters + POST rule (critical)
 
-Rules:
+If filters exist → **POST + submit(payload)**.
 
-* ❌ No N+1 calls from UI
-* ❌ No “fetch details after click” chains
-* ✅ One call per user action
+No GET param encoding. No mixing styles.
 
----
-
-### 4.4 Server Contract Debug Checklist (Mandatory Before Client Changes)
-
-1. Inspect **Network → Response Preview**
-2. Check explicitly for:
-
-   * `"Unexpected keys"`
-   * `"cmd"`
-3. Compare payload keys **exactly** against server method signature
-4. Fix the **server contract first**, not the UI
+This prevents silent filter loss.
 
 ---
 
-### 4.5 Filters + POST rule (Critical — prevent silent filter loss)
+## 4. Overlay Architecture & A+ Lifecycle Contract
 
-**If a request includes filters, it must be POST + `resource.submit(payload)`**.
+### 4.1 Core decision (A+)
 
-This includes list views, dashboards, and archives where filters are reactive.
+> **Overlay owns closing. UI Services own orchestration.**
 
-Forbidden patterns:
-
-* encoding filters in query params for correctness
-* mixing GET params with POST endpoints
-
-Required pattern:
-
-* keep all filters in one reactive object
-* POST the full filter object via `resource.submit(filtersPayload)`
-
-Reason:
-
-* GET/POST mismatches and param encoding have repeatedly caused filters to drop silently (e.g., `student_group`), creating “works sometimes” failures.
+Overlay closing is **local, immediate, deterministic**.
 
 ---
 
-## 5. State Management & Reactivity
+### 4.2 Ownership split
 
-### 5.1 No hidden inference
-
-Rules:
-
-* ❌ No “derive mode from data”
-* ❌ No “if this field exists then…”
-* ✅ Explicit `mode`, `action_type`, or `context`
-
----
-
-### 5.2 Watchers are dangerous
-
-Rules:
-
-* ❌ No `watch()` with side effects unless unavoidable
-* ❌ No immediate watchers touching undeclared refs (TDZ bug)
-* ❌ No console.log inside watch arguments
-* ✅ Prefer computed values
+| Responsibility               | Owner       |
+| ---------------------------- | ----------- |
+| API calls                    | UI Services |
+| Business rules / idempotency | Server      |
+| Refresh & invalidation       | UI Services |
+| Overlay close                | Overlay     |
+| Overlay lifecycle            | OverlayHost |
 
 ---
 
-### 5.3 TDZ Debug Playbook (Vue `<script setup>`)
+### 4.3 Mandatory overlay success sequence
 
-If you see:
+On success:
 
-```
-Cannot access 'x' before initialization
-```
+1. `emit('close')` immediately
+2. optional `emit('done')`
+3. OverlayHost handles teardown
 
-Assume **Temporal Dead Zone**, not logic failure.
-
-Fix declaration order first.
+Never wait for refresh, toast, reload.
 
 ---
 
-## 6. Workflow Boundaries (Student Log, Focus, etc.)
+### 4.4 Naming rules (collision-safe)
 
-### 6.1 SPA never closes ToDo
+Forbidden:
 
-ToDo lifecycle is handled by:
+* `get_context`
+* `context`
+* `resolve_context`
 
-* server controllers
-* workflow methods
-* scheduler jobs
+Approved patterns:
 
-The SPA:
+* `resolveFocusItemPayload`
+* `listFocusItems`
+* `submitStudentLogFollowUp`
 
-* triggers workflow endpoints
-* refreshes its own view
-
----
-
-### 6.2 Focus List rules
-
-Focus List:
-
-* is **not** a task manager
-* reflects server truth only
-
-Rules:
-
-* ❌ No manual FocusItem creation in SPA
-* ❌ No ToDo manipulation in SPA
-* ✅ Focus items disappear by server action
+If a name collides with framework semantics → rename **now**.
 
 ---
 
-## 7. Deterministic IDs & Contracts
+## 5. State, Reactivity & Watchers
 
-### 7.1 Deterministic identity
+* ❌ infer modes from data
+* ❌ immediate watchers touching undeclared refs
+* ❌ side-effect watchers
+* ✅ explicit modes, computed values
 
-Workflow items must have reproducible IDs.
-
-Rules:
-
-* ❌ No random UUIDs
-* ❌ No client-generated workflow IDs
+TDZ errors → fix declaration order first.
 
 ---
 
-## 8. Permissions & Privacy
+## 6. Workflow Boundaries
 
-Rules:
-
-* ❌ Never assume permission client-side
-* ❌ Never hide data instead of enforcing access
-* ✅ Server enforces permissions
+* SPA never closes ToDo
+* SPA never decides workflow outcome
+* Focus reflects server truth only
 
 ---
 
-## 9. Performance & UX
+## 7. Performance & UX Invariants
 
-### 9.1 Calm-first UX
-
-Avoid:
-
-* aggressive colors
-* flashing indicators
-* panic language
+* calm-first UI
+* pagination always (`limit + offset`)
+* no unbounded lists
 
 ---
 
-### 9.2 Pagination always
+## 8. Agent Checklist (Mandatory)
 
-Rules:
+Before coding:
 
-* ❌ No unbounded lists
-* ✅ Always `limit + offset`
+1. identify workflow owner
+2. confirm server method
+3. confirm contract file
+4. confirm overlay ownership
+5. confirm no ToDo logic client-side
 
----
-
-## 10. What Codex Agents Must Do
-
-Before writing Vue code, an agent must:
-
-1. Identify the **workflow owner**
-2. Confirm the **server method**
-3. Confirm the **payload contract**
-4. Confirm the **overlay mode**
-5. Confirm **no ToDo logic client-side**
-6. Confirm styles reuse existing patterns
-
-If unclear → **stop and ask**.
+If unclear → stop.
 
 ---
 
-## 11. Final Invariant (Non-Negotiable)
+## 9. Final Invariant
 
-> **If a Vue component makes business decisions, closes ToDos, infers workflow state, or styles itself ad-hoc — it is wrong.**
-
-The SPA is calm, thin, deterministic, and obedient to server truth.
-
-That discipline is what makes Ifitwala scalable, teachable, and safe to extend.
+> **If a Vue component makes business decisions, closes ToDos, infers workflow state, or invents styling — it is wrong.**
 
 ---
 
-New rule (important — lock this)
+## Appendix A — Phase-0 Source (Verbatim)
 
-In SPA files:
-
-❌ _ prefix must NOT be used for:
-
-lifecycle guards
-
-workflow completion logic
-
-idempotency helpers
-
-overlay close semantics
-
-✅ _ prefix is allowed only for:
-
-throwaway formatting helpers
-
-one-line transforms
-
-code you’d be OK deleting tomorrow
-
-This aligns with your broader contracts & governance direction.
-
-If you want to mark intent, use naming, not punctuation:
-
-requireFocusItemId
-
-aPlusSuccessCloseThenDone
-
-newClientRequestId
-
-Those names are explicit contracts.
-
----
-
-# Appendix A — Contract & Types Phase-0 (Subsumed source, kept verbatim)
-
-> This appendix preserves the Phase-0 governance content. It is subordinate to the main rules above.
-
-(Contents from `contract_and_type_phase0.md` should remain here verbatim; keep as reference-only.)
+Contents of `contract_and_type_phase0.md` preserved verbatim for reference.
