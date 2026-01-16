@@ -1,6 +1,6 @@
-<!-- ui-spa/src/layouts/StaffPortalLayout.vue -->
+<!-- ifitwala_ed/ui-spa/src/layouts/StaffPortalLayout.vue -->
 <template>
-  <!-- Single, canonical theme wrapper -->
+  <!-- Staff surface -->
   <div class="ifitwala-theme">
     <header class="staff-layout__header">
       <div class="staff-layout__header-inner">
@@ -11,6 +11,7 @@
         </h1>
 
         <div class="flex items-center gap-3">
+          <!-- Leaving SPA intentionally -->
           <a href="/app" class="staff-layout__desk-switch type-button-label">
             <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -25,11 +26,8 @@
             <span>Switch to Desk</span>
           </a>
 
-          <a
-            href="/?cmd=web_logout"
-            class="staff-layout__desk-switch type-button-label"
-            title="Logout"
-          >
+          <!-- Leaving SPA intentionally -->
+          <a href="/?cmd=web_logout" class="staff-layout__desk-switch type-button-label" title="Logout">
             <FeatherIcon name="log-out" class="h-4 w-4" />
           </a>
         </div>
@@ -37,15 +35,19 @@
     </header>
 
     <main class="staff-layout__main">
-      <!-- staff-shell handles width + padding; StaffHome already uses it -->
       <slot />
       <PortalNotification />
     </main>
+
+    <!-- A+ contract: overlay infra lives INSIDE the surface that opens overlays -->
+    <div id="overlay-root"></div>
+    <OverlayHost />
   </div>
 </template>
 
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import { FeatherIcon } from 'frappe-ui'
-import PortalNotification from '../components/PortalNotification.vue'
+import PortalNotification from '@/components/PortalNotification.vue'
+import OverlayHost from '@/components/overlay/OverlayHost.vue'
 </script>

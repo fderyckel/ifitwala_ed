@@ -1,12 +1,7 @@
 <!-- ui-spa/src/components/focus/FocusRouterOverlay.vue -->
 <template>
   <TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
-    <Dialog
-      as="div"
-      class="if-overlay if-overlay--focus"
-      :style="overlayStyle"
-      @close="onDialogClose"
-    >
+    <Dialog as="div" class="if-overlay if-overlay--focus" :style="overlayStyle" @close="onDialogClose">
       <div class="if-overlay__backdrop" />
 
       <div class="if-overlay__wrap">
@@ -111,7 +106,7 @@
               </p>
 
               <div class="hidden md:flex items-center gap-2">
-                <span class="type-caption" style="color: rgb(var(--slate-rgb) / 0.65);">
+                <span class="type-caption" style="color: rgb(var(--slate-rgb) / 0.65)">
                   {{ referenceDoctype }} · {{ referenceName }}
                 </span>
               </div>
@@ -129,42 +124,7 @@ import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } fro
 import { Button, FeatherIcon, createResource } from 'frappe-ui'
 
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue'
-
-type Mode = 'assignee' | 'author'
-
-type StudentLogRow = {
-  name: string
-  student?: string | null
-  student_name?: string | null
-  school?: string | null
-  log_type?: string | null
-  next_step?: string | null
-  follow_up_person?: string | null
-  follow_up_role?: string | null
-  date?: string | null
-  log_html?: string | null
-  follow_up_status?: string | null
-  log_author?: string | null
-  log_author_name?: string | null
-}
-
-type FollowUpRow = {
-  name: string
-  date?: string | null
-  follow_up_author?: string | null
-  follow_up_html?: string | null
-  docstatus: 0 | 1 | 2
-}
-
-type FocusContext = {
-  focus_item_id?: string | null
-  action_type?: string | null
-  reference_doctype: string
-  reference_name: string
-  mode: Mode
-  log: StudentLogRow
-  follow_ups: FollowUpRow[]
-}
+import type { Response as FocusContext } from '@/types/contracts/focus/get_focus_context'
 
 /**
  * Global event contract:
@@ -188,22 +148,28 @@ const emit = defineEmits<{
   (e: 'after-leave'): void
 }>()
 
+/**
+ * A+ invariants:
+ * - Overlay close must NEVER be blocked by busy states.
+ * - Router owns modal lifecycle; workflows own completion.
+ * - Router state resets only on after-leave to prevent “flash” on next open.
+ */
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
 
 const loading = ref(false)
 const errorText = ref<string | null>(null)
 
-// single source of truth: full context payload
+// single source of truth: full context payload from server contract
 const ctx = ref<FocusContext | null>(null)
 
 // derived “routing bits” (header + switch)
 const actionType = computed(() => ctx.value?.action_type ?? null)
 const referenceDoctype = computed(() => ctx.value?.reference_doctype ?? null)
 const referenceName = computed(() => ctx.value?.reference_name ?? null)
-const studentLogMode = computed<Mode>(() => (ctx.value?.mode ?? 'assignee') as Mode)
+const studentLogMode = computed<'assignee' | 'author'>(() => (ctx.value?.mode ?? 'assignee') as any)
 
 const resolvedFocusItemId = computed(() => {
-  // prefer the deterministic id returned from server, fallback to prop
+  // prefer deterministic id returned from server, fallback to prop
   return (ctx.value?.focus_item_id ?? props.focusItemId ?? null) as string | null
 })
 
@@ -238,12 +204,19 @@ const isStudentLogFollowUp = computed(() => {
 })
 
 /* API: focus.get_context -------------------------------------- */
-const ctxResource = createResource({
+type ResourceResponse<T> = T | { message: T }
+function unwrapMessage<T>(res: ResourceResponse<T>) {
+  if (res && typeof res === 'object' && 'message' in res) return (res as { message: T }).message
+  return res as T
+}
+
+const ctxResource = createResource<FocusContext>({
   url: 'ifitwala_ed.api.focus.get_focus_context',
   method: 'POST',
   auto: false,
-  onSuccess(data: any) {
-    const payload = data && typeof data === 'object' && 'message' in data ? data.message : data
+  transform: unwrapMessage,
+  onSuccess(payload: FocusContext) {
+    // transform already normalized; keep onSuccess minimal
     loading.value = false
     errorText.value = null
     ctx.value = (payload ?? null) as FocusContext | null
@@ -265,7 +238,7 @@ function resetState() {
   ctx.value = null
 }
 
-function _buildContextPayload() {
+function buildContextPayload() {
   const focus_item_id = (props.focusItemId || '').trim()
   if (focus_item_id) return { focus_item_id }
 
@@ -283,11 +256,11 @@ function reload() {
   errorText.value = null
   loading.value = true
   ctx.value = null
-
-  ctxResource.submit(_buildContextPayload())
+  ctxResource.submit(buildContextPayload())
 }
 
 function requestClose() {
+  // A+: close is always allowed and never blocked
   emit('close')
 }
 

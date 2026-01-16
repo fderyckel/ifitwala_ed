@@ -13,11 +13,13 @@
             Student Log
             <span v-if="log?.name" class="text-muted"> • {{ log.name }}</span>
           </div>
+
           <div class="type-meta text-muted mt-1">
             <span v-if="log?.student_name">{{ log.student_name }}</span>
             <span v-if="log?.log_type"> • {{ log.log_type }}</span>
             <span v-if="log?.date"> • {{ log.date }}</span>
           </div>
+
           <div v-if="log?.follow_up_status" class="type-meta text-muted mt-1">
             Status: {{ log.follow_up_status }}
           </div>
@@ -212,47 +214,23 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
-import { createResource, toast } from 'frappe-ui'
+import { toast } from 'frappe-ui'
+
+import { __ } from '@/lib/i18n'
+import { createFocusService } from '@/lib/services/focus/focusService'
+
+import type { Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context'
+import type { Request as SubmitStudentLogFollowUpRequest } from '@/types/contracts/focus/submit_student_log_follow_up'
+import type { Request as ReviewStudentLogOutcomeRequest } from '@/types/contracts/focus/review_student_log_outcome'
 
 type Mode = 'assignee' | 'author'
 
-type StudentLogRow = {
-  name: string
-  student?: string | null
-  student_name?: string | null
-  school?: string | null
-  log_type?: string | null
-  next_step?: string | null
-  follow_up_person?: string | null
-  follow_up_role?: string | null
-  date?: string | null
-  log_html?: string | null
-  follow_up_status?: string | null
-  log_author?: string | null
-  log_author_name?: string | null
-}
-
-type FollowUpRow = {
-  name: string
-  date?: string | null
-  follow_up_author?: string | null
-  follow_up_html?: string | null
-  docstatus: 0 | 1 | 2
-}
-
-export type FocusContext = {
-  focus_item_id?: string | null
-  action_type?: string | null
-  reference_doctype: string
-  reference_name: string
-  mode: Mode
-  log: StudentLogRow
-  follow_ups: FollowUpRow[]
-}
+type FocusLog = GetFocusContextResponse['log']
+type FocusFollowUp = GetFocusContextResponse['follow_ups'][number]
 
 const props = defineProps<{
   focusItemId?: string | null
-  context: FocusContext
+  context: GetFocusContextResponse
 }>()
 
 const emit = defineEmits<{
@@ -260,6 +238,8 @@ const emit = defineEmits<{
   (e: 'done'): void
   (e: 'request-refresh'): void
 }>()
+
+const focusService = createFocusService()
 
 function emitClose() {
   emit('close')
@@ -290,8 +270,8 @@ function showToast(payload: ToastPayload) {
  * - no auto-fetch here (router is source of truth)
  */
 const modeState = ref<Mode>('assignee')
-const log = ref<StudentLogRow | null>(null)
-const followUps = ref<FollowUpRow[]>([])
+const log = ref<FocusLog | null>(null)
+const followUps = ref<FocusFollowUp[]>([])
 const loading = ref(false) // reserved: router can later drive a prop if desired
 
 const busy = ref(false)
@@ -311,10 +291,10 @@ const canComplete = computed(() => {
   return !!activeStudentLogName.value && s !== 'completed'
 })
 
-function applyContext(ctx: FocusContext | null) {
+function applyContext(ctx: GetFocusContextResponse | null) {
   if (!ctx) return
   log.value = (ctx.log ?? null) as any
-  followUps.value = Array.isArray(ctx.follow_ups) ? ctx.follow_ups : []
+  followUps.value = Array.isArray(ctx.follow_ups) ? (ctx.follow_ups as any) : []
   modeState.value = ctx.mode === 'author' || ctx.mode === 'assignee' ? ctx.mode : 'assignee'
 }
 
@@ -325,28 +305,10 @@ watch(
     draftText.value = ''
     reassignTo.value = ''
     submittedOnce.value = false
-    applyContext(next)
+    applyContext(next || null)
   },
   { immediate: true, deep: false }
 )
-
-/* API ---------------------------------------------------------- */
-/**
- * Canonical client shape:
- * - createResource uses dotted method paths (no "/api/method/..." strings).
- * - payload is flat (matches whitelisted kwargs).
- */
-const submitFollowUpApi = createResource({
-  url: 'ifitwala_ed.api.focus.submit_student_log_follow_up',
-  method: 'POST',
-  auto: false,
-})
-
-const reviewOutcomeApi = createResource({
-  url: 'ifitwala_ed.api.focus.review_student_log_outcome',
-  method: 'POST',
-  auto: false,
-})
 
 /* Helpers ------------------------------------------------------ */
 function _newClientRequestId(prefix = 'req') {
@@ -371,17 +333,13 @@ function _requireFocusItemId(): string | null {
   const id = (props.focusItemId || '').trim()
   if (!id) {
     showToast({
-      title: 'Missing focus item',
-      text: 'Please close and reopen this item from the Focus list.',
+      title: __('Missing focus item'),
+      text: __('Please close and reopen this item from the Focus list.'),
       icon: 'x',
     })
     return null
   }
   return id
-}
-
-function _normalizeMessage(res: any) {
-  return res && typeof res === 'object' && 'message' in res ? res.message : res
 }
 
 async function _aPlusSuccessCloseThenDone() {
@@ -411,17 +369,17 @@ async function submitFollowUp() {
   submittedOnce.value = true
 
   try {
-    const res = await submitFollowUpApi.submit({
+    const payload: SubmitStudentLogFollowUpRequest = {
       focus_item_id: focusItemId,
       follow_up: followUpText,
       client_request_id: _newClientRequestId('fu'),
-    })
+    }
 
-    const msg = _normalizeMessage(res) as any
-    if (!msg?.ok) throw new Error(msg?.message || 'Submit failed.')
+    const msg = await focusService.submitStudentLogFollowUp(payload)
+    if (!msg?.ok) throw new Error(__('Submit failed.'))
 
     showToast({
-      title: msg.idempotent ? 'Already submitted' : 'Follow-up submitted',
+      title: msg.idempotent ? __('Already submitted') : __('Follow-up submitted'),
       icon: 'check',
     })
 
@@ -429,8 +387,8 @@ async function submitFollowUp() {
   } catch (e: any) {
     submittedOnce.value = false
     showToast({
-      title: 'Could not submit follow-up',
-      text: e?.message || 'Please try again.',
+      title: __('Could not submit follow-up'),
+      text: e?.message || __('Please try again.'),
       icon: 'x',
     })
   } finally {
@@ -448,8 +406,8 @@ async function reassignFollowUp() {
   const target = (reassignTo.value || '').trim()
   if (target.length < 3) {
     showToast({
-      title: 'Missing assignee',
-      text: 'Please enter a valid user (email / user id).',
+      title: __('Missing assignee'),
+      text: __('Please enter a valid user (email / user id).'),
       icon: 'x',
     })
     return
@@ -459,18 +417,18 @@ async function reassignFollowUp() {
   submittedOnce.value = true
 
   try {
-    const res = await reviewOutcomeApi.submit({
+    const payload: ReviewStudentLogOutcomeRequest = {
       focus_item_id: focusItemId,
       decision: 'reassign',
       follow_up_person: target,
       client_request_id: _newClientRequestId('rvw'),
-    })
+    }
 
-    const msg = _normalizeMessage(res) as any
-    if (!msg?.ok) throw new Error(msg?.message || 'Reassign failed.')
+    const msg = await focusService.reviewStudentLogOutcome(payload)
+    if (!msg?.ok) throw new Error(__('Reassign failed.'))
 
     showToast({
-      title: msg.idempotent ? 'Already processed' : 'Reassigned',
+      title: msg.idempotent ? __('Already processed') : __('Reassigned'),
       icon: 'check',
     })
 
@@ -478,8 +436,8 @@ async function reassignFollowUp() {
   } catch (e: any) {
     submittedOnce.value = false
     showToast({
-      title: 'Could not reassign',
-      text: e?.message || 'Please try again.',
+      title: __('Could not reassign'),
+      text: e?.message || __('Please try again.'),
       icon: 'x',
     })
   } finally {
@@ -499,17 +457,17 @@ async function completeParentLog() {
   submittedOnce.value = true
 
   try {
-    const res = await reviewOutcomeApi.submit({
+    const payload: ReviewStudentLogOutcomeRequest = {
       focus_item_id: focusItemId,
       decision: 'complete',
       client_request_id: _newClientRequestId('rvw'),
-    })
+    }
 
-    const msg = _normalizeMessage(res) as any
-    if (!msg?.ok) throw new Error(msg?.message || 'Complete failed.')
+    const msg = await focusService.reviewStudentLogOutcome(payload)
+    if (!msg?.ok) throw new Error(__('Complete failed.'))
 
     showToast({
-      title: msg.idempotent ? 'Already processed' : 'Log completed',
+      title: msg.idempotent ? __('Already processed') : __('Log completed'),
       icon: 'check',
     })
 
@@ -517,8 +475,8 @@ async function completeParentLog() {
   } catch (e: any) {
     submittedOnce.value = false
     showToast({
-      title: 'Could not complete log',
-      text: e?.message || 'Please try again.',
+      title: __('Could not complete log'),
+      text: e?.message || __('Please try again.'),
       icon: 'x',
     })
   } finally {
