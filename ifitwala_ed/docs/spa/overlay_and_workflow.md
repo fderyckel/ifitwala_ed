@@ -532,7 +532,15 @@ Done when:
 > **Services obey the truth.**
 > **UI renders the truth.**
 
-End.
+---
+
+A+ Governance Appendix
+
+Pages MUST subscribe to uiSignals
+Overlays MUST NOT emit refresh events
+Services MUST be the only emitters
+DOM events are forbidden for SPA invalidation
+Violations are defects, not stylistic differences
 
 ---
 
