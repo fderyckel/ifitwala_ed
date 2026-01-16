@@ -247,14 +247,12 @@ import { useOverlayStack } from '@/composables/useOverlayStack'
 import type { Request as GetFocusContextRequest, Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context'
 import type {
   Request as SubmitStudentLogFollowUpRequest,
-  Response as SubmitStudentLogFollowUpResponse,
 } from '@/types/contracts/focus/submit_student_log_follow_up'
 import type {
   Request as ReviewStudentLogOutcomeRequest,
-  Response as ReviewStudentLogOutcomeResponse,
 } from '@/types/contracts/focus/review_student_log_outcome'
 
-type Mode = 'assignee' | 'author'
+type Mode = GetFocusContextResponse['mode']
 
 const props = defineProps<{
   open: boolean
@@ -401,7 +399,7 @@ async function submitFollowUp() {
       follow_up: (draftText.value || '').trim(),
       client_request_id: _newClientRequestId('fu'),
     }
-    const msg: SubmitStudentLogFollowUpResponse = await focusService.submitStudentLogFollowUp(payload)
+    const msg = await focusService.submitStudentLogFollowUp(payload)
     if (!msg?.ok) throw new Error(__('Submit failed.'))
 
     showToast({
@@ -446,7 +444,7 @@ async function completeParentLog() {
       decision: 'complete',
       client_request_id: _newClientRequestId('rvw'),
     }
-    const msg: ReviewStudentLogOutcomeResponse = await focusService.reviewStudentLogOutcome(payload)
+    const msg = await focusService.reviewStudentLogOutcome(payload)
     if (!msg?.ok) throw new Error(__('Complete failed.'))
 
     showToast({

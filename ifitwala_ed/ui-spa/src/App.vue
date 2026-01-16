@@ -1,17 +1,26 @@
 <!-- ifitwala_ed/ifitwala_ed/ui-spa/src/App.vue -->
 
 <template>
+  <!-- ✅ One canonical overlay root for the whole SPA -->
+  <div id="overlay-root"></div>
+
   <!-- Keep layout behavior identical -->
   <component :is="layoutComponent" :key="layoutKey">
     <RouterView />
   </component>
+
+  <!-- ✅ One canonical overlay host for the whole SPA -->
+  <OverlayHost />
 </template>
+
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import PortalLayout from './layouts/PortalLayout.vue'
 import StaffPortalLayout from './layouts/StaffPortalLayout.vue'
+import OverlayHost from './components/overlay/OverlayHost.vue'
+
 
 const route = useRoute()
 

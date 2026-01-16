@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ifitwala_ed/ui-spa/src/layouts/PortalLayout.vue -->
+<!-- ui-spa/src/layouts/PortalLayout.vue -->
 <template>
 	<!-- Soft jacaranda / sky / sand gradient on the whole portal -->
 	<div
@@ -28,7 +28,7 @@
 	</div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import PortalNavbar from '../components/PortalNavbar.vue'
 import PortalSidebar from '../components/PortalSidebar.vue'
@@ -36,7 +36,7 @@ import PortalFooter from '../components/PortalFooter.vue'
 
 const isSidebarOpen = ref(false)
 
-const toggleSidebar = () => {
-  isSidebarOpen.value = !isSidebarOpen.value
+function toggleSidebar() {
+	isSidebarOpen.value = !isSidebarOpen.value
 }
 </script>

@@ -14,7 +14,7 @@ import type {
 
 type ResourceResponse<T> = T | { message: T }
 
-function unwrapMessage<T>(res: ResourceResponse<T>) {
+function unwrapMessage<T>(res: ResourceResponse<T>): T {
   if (res && typeof res === 'object' && 'message' in res) {
     return (res as { message: T }).message
   }

@@ -1,5 +1,4 @@
-<!-- ifitwala_ed/ui-spa/src/layouts/StaffPortalLayout.vue -->
-
+<!-- ui-spa/src/layouts/StaffPortalLayout.vue -->
 <template>
   <!-- Single, canonical theme wrapper -->
   <div class="ifitwala-theme">
@@ -26,7 +25,11 @@
             <span>Switch to Desk</span>
           </a>
 
-          <a href="/?cmd=web_logout" class="staff-layout__desk-switch type-button-label" title="Logout">
+          <a
+            href="/?cmd=web_logout"
+            class="staff-layout__desk-switch type-button-label"
+            title="Logout"
+          >
             <FeatherIcon name="log-out" class="h-4 w-4" />
           </a>
         </div>
@@ -38,10 +41,6 @@
       <slot />
       <PortalNotification />
     </main>
-
-    <!-- ✅ Overlay infra lives INSIDE the staff surface -->
-    <div id="overlay-root"></div>
-    <OverlayHost />
   </div>
 </template>
 
@@ -49,5 +48,4 @@
 import { RouterLink } from 'vue-router'
 import { FeatherIcon } from 'frappe-ui'
 import PortalNotification from '../components/PortalNotification.vue'
-import OverlayHost from '../components/overlay/OverlayHost.vue'
 </script>

@@ -2,7 +2,7 @@
 
 export type Request = {
   focus_item_id?: string | null
-  reference_doctype?: string | null
+  reference_doctype?: 'Student Log' | null
   reference_name?: string | null
   action_type?: string | null
 }
