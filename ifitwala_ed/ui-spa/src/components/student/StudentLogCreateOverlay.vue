@@ -81,7 +81,7 @@
                         @update:modelValue="onStudentQuery"
                       />
 
-                      <div v-if="studentSearch.loading" class="flex items-center gap-2 text-ink/60">
+                      <div v-if="studentSearchLoading" class="flex items-center gap-2 text-ink/60">
                         <Spinner class="h-4 w-4" />
                         <span class="type-caption">{{ __('Searching…') }}</span>
                       </div>
@@ -152,7 +152,7 @@
                 <section class="space-y-2">
                   <div class="flex items-center justify-between">
                     <p class="type-caption text-ink/70">{{ __('Type') }}</p>
-                    <span v-if="options.loading" class="type-caption text-ink/55 flex items-center gap-2">
+                    <span v-if="optionsLoading" class="type-caption text-ink/55 flex items-center gap-2">
                       <Spinner class="h-4 w-4" /> {{ __('Loading…') }}
                     </span>
                   </div>
@@ -164,7 +164,7 @@
                     option-label="label"
                     option-value="value"
                     :model-value="form.log_type"
-                    :disabled="!form.student || options.loading || submitting"
+                    :disabled="!form.student || optionsLoading || submitting"
                     placeholder="Select type"
                     @update:modelValue="(v) => (form.log_type = v)"
                   />
@@ -243,7 +243,7 @@
                         option-label="label"
                         option-value="value"
                         :model-value="form.next_step"
-                        :disabled="submitting || options.loading"
+                        :disabled="submitting || optionsLoading"
                         placeholder="Select next step"
                         @update:modelValue="onNextStepSelected"
                       />
@@ -261,7 +261,7 @@
                         @update:modelValue="onAssigneeQuery"
                       />
 
-                      <div v-if="assigneeSearch.loading" class="flex items-center gap-2 text-ink/60">
+                      <div v-if="assigneeSearchLoading" class="flex items-center gap-2 text-ink/60">
                         <Spinner class="h-4 w-4" />
                         <span class="type-caption">{{ __('Searching…') }}</span>
                       </div>
@@ -434,9 +434,14 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
-import { Button, FormControl, FeatherIcon, Spinner, toast, createResource } from 'frappe-ui'
+import { Button, FormControl, FeatherIcon, Spinner, toast } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
+import { createStudentLogService } from '@/lib/services/studentLog/studentLogService'
 import { useOverlayStack } from '@/composables/useOverlayStack'
+import type { Response as GetFormOptionsResponse } from '@/types/contracts/student_log/get_form_options'
+import type { Response as SearchFollowUpUsersResponse } from '@/types/contracts/student_log/search_follow_up_users'
+import type { Response as SearchStudentsResponse } from '@/types/contracts/student_log/search_students'
+import type { Request as SubmitStudentLogRequest } from '@/types/contracts/student_log/submit_student_log'
 
 type Mode = 'group' | 'school'
 
@@ -470,6 +475,7 @@ const emit = defineEmits<{
 }>()
 
 const overlay = useOverlayStack()
+const studentLogService = createStudentLogService()
 
 type ToastPayload = Parameters<typeof toast>[0]
 
@@ -526,11 +532,6 @@ function emitClose() {
 			}
 		} catch (err) {
 			// fall through to stack mutation/emit fallback
-		}
-
-		if (overlay?.state?.stack) {
-			overlay.state.stack = overlay.state.stack.filter((e) => e.id !== overlayId)
-			return
 		}
 	}
 
@@ -609,44 +610,41 @@ function _getGroupStudentMeta(id: string) {
 
 /* Student search (school-scoped server-side using current user's Employee.school) */
 const studentQuery = ref('')
+const studentSearchLoading = ref(false)
 const studentCandidates = ref<PickerItem[]>([])
 
-const studentSearch = createResource({
-  url: 'ifitwala_ed.api.student_log.search_students',
-  auto: false,
-  onSuccess(data: any) {
-    studentCandidates.value = (data || []).map((x: any) => ({
-      value: x.student,
-      label: x.label,
-      image: x.image || null,
-      meta: x.meta || null,
-    }))
-  },
-  onError(err: any) {
-    showToast({ title: __('Could not search students'), text: err?.message || String(err), icon: 'x' })
-  },
-})
-
-function onStudentQuery(v: string) {
+async function onStudentQuery(v: string) {
   studentQuery.value = v
   if (!v || v.trim().length < 2) {
     studentCandidates.value = []
     return
   }
-  studentSearch.submit({ query: v.trim(), limit: 10 })
+
+  studentSearchLoading.value = true
+  try {
+    const data: SearchStudentsResponse = await studentLogService.searchStudents({
+      query: v.trim(),
+      limit: 10,
+    })
+    studentCandidates.value = (data || []).map((x) => ({
+      value: x.student,
+      label: x.label,
+      image: x.image || null,
+      meta: x.meta || null,
+    }))
+  } catch (err: any) {
+    showToast({ title: __('Could not search students'), text: err?.message || String(err), icon: 'x' })
+  } finally {
+    studentSearchLoading.value = false
+  }
 }
 
 /* Form options (log types + next steps, derived from selected student) */
-const options = createResource({
-  url: 'ifitwala_ed.api.student_log.get_form_options',
-  auto: false,
-  onError(err: any) {
-    showToast({ title: __('Could not load options'), text: err?.message || String(err), icon: 'x' })
-  },
-})
+const optionsLoading = ref(false)
+const optionsData = ref<GetFormOptionsResponse | null>(null)
 
-const logTypeOptions = computed(() => (options.data?.log_types || []) as { value: string; label: string }[])
-const nextStepOptions = computed(() => (options.data?.next_steps || []) as { value: string; label: string; role?: string | null }[])
+const logTypeOptions = computed(() => optionsData.value?.log_types || [])
+const nextStepOptions = computed(() => optionsData.value?.next_steps || [])
 
 const followUpRoleHint = computed(() => {
   if (!form.next_step) return ''
@@ -658,25 +656,11 @@ const followUpRoleHint = computed(() => {
 
 /* Assignee search */
 const assigneeQuery = ref('')
-const assigneeCandidates = ref<{ value: string; label: string; meta?: string | null }[]>([])
+const assigneeSearchLoading = ref(false)
+const assigneeCandidates = ref<SearchFollowUpUsersResponse>([])
 const selectedAssigneeLabel = ref('')
 
-const assigneeSearch = createResource({
-  url: 'ifitwala_ed.api.student_log.search_follow_up_users',
-  auto: false,
-  onSuccess(data: any) {
-    assigneeCandidates.value = (data || []).map((x: any) => ({
-      value: x.value,
-      label: x.label,
-      meta: x.meta || null,
-    }))
-  },
-  onError(err: any) {
-    showToast({ title: __('Could not search staff'), text: err?.message || String(err), icon: 'x' })
-  },
-})
-
-function onAssigneeQuery(v: string) {
+async function onAssigneeQuery(v: string) {
   assigneeQuery.value = v
   if (!form.next_step) return
 
@@ -687,12 +671,20 @@ function onAssigneeQuery(v: string) {
     return
   }
 
-  assigneeSearch.submit({
-    next_step: form.next_step,
-    student: form.student,
-    query: v.trim(),
-    limit: 50,
-  })
+  assigneeSearchLoading.value = true
+  try {
+    const data: SearchFollowUpUsersResponse = await studentLogService.searchFollowUpUsers({
+      next_step: form.next_step,
+      student: form.student,
+      query: v.trim(),
+      limit: 50,
+    })
+    assigneeCandidates.value = data || []
+  } catch (err: any) {
+    showToast({ title: __('Could not search staff'), text: err?.message || String(err), icon: 'x' })
+  } finally {
+    assigneeSearchLoading.value = false
+  }
 }
 
 function selectAssignee(user: string, label: string) {
@@ -737,7 +729,19 @@ function onStudentSelected(studentId: string) {
 	}
 
 	// load dependent options (types + next steps)
-	options.submit({ student: studentId })
+	optionsLoading.value = true
+	studentLogService
+		.getFormOptions({ student: studentId })
+		.then((data: GetFormOptionsResponse) => {
+			optionsData.value = data
+		})
+		.catch((err: any) => {
+			showToast({ title: __('Could not load options'), text: err?.message || String(err), icon: 'x' })
+			optionsData.value = null
+		})
+		.finally(() => {
+			optionsLoading.value = false
+		})
 }
 
 function changeStudent() {
@@ -766,7 +770,7 @@ function changeStudent() {
 	selectedStudentMeta.value = null
 
 	// Clear options payload so selects don't show stale options
-	options.data = null as any
+	optionsData.value = null
 }
 
 
@@ -779,28 +783,26 @@ function onNextStepSelected(v: string) {
 
   // ✅ NEW: preload dropdown list (no typing required) using updated API behavior
   if (form.next_step && form.student) {
-    assigneeSearch.submit({
-      next_step: form.next_step,
-      student: form.student,
-      query: '',
-      limit: 50,
-    })
+    assigneeSearchLoading.value = true
+    studentLogService
+      .searchFollowUpUsers({
+        next_step: form.next_step,
+        student: form.student,
+        query: '',
+        limit: 50,
+      })
+      .then((data: SearchFollowUpUsersResponse) => {
+        assigneeCandidates.value = data || []
+      })
+      .catch((err: any) => {
+        showToast({ title: __('Could not search staff'), text: err?.message || String(err), icon: 'x' })
+        assigneeCandidates.value = []
+      })
+      .finally(() => {
+        assigneeSearchLoading.value = false
+      })
   }
 }
-
-/* Submit (Option A: toast + close) */
-const submitResource = createResource({
-  url: 'ifitwala_ed.api.student_log.submit_student_log',
-  auto: false,
-	onSuccess() {
-		emitClose()
-		showToast({ title: __('Saved'), text: __('Student note submitted.'), icon: 'check' })
-	},
-  onError(err: any) {
-    console.error('[StudentLogCreateOverlay] submit:error', err)
-    showToast({ title: __('Could not submit'), text: err?.message || String(err), icon: 'x' })
-  },
-})
 
 async function submit() {
 	if (!canSubmit.value) return
@@ -814,7 +816,7 @@ async function submit() {
 
 	submitting.value = true
 	try {
-		await submitResource.submit({
+		const payload: SubmitStudentLogRequest = {
 			student: form.student,
 			log_type: form.log_type,
 			log: form.log,
@@ -823,7 +825,13 @@ async function submit() {
 			follow_up_person: form.requires_follow_up ? form.follow_up_person : null,
 			visible_to_student: form.visible_to_student ? 1 : 0,
 			visible_to_guardians: form.visible_to_guardians ? 1 : 0,
-		})
+		}
+		await studentLogService.submitStudentLog(payload)
+		emitClose()
+		showToast({ title: __('Saved'), text: __('Student note submitted.'), icon: 'check' })
+	} catch (err: any) {
+		console.error('[StudentLogCreateOverlay] submit:error', err)
+		showToast({ title: __('Could not submit'), text: err?.message || String(err), icon: 'x' })
 	} finally {
 		submitting.value = false
 	}
