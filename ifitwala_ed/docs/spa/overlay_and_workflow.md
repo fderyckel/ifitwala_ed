@@ -808,17 +808,6 @@ It must not contain:
 
 Do not reintroduce createResource/unwrap in FocusRouterOverlay.
 
-This step is the main source of “circles.” Fixing it stops the churn.
-
-✅ What I need from you now (no debate):
-Paste the exact current <script setup lang="ts"> from your ui-spa/src/components/focus/FocusRouterOverlay.vue.
-
-Only the script. Nothing else.
-
-Why: I will patch it precisely (no assumptions) and after you apply it, we treat it as DONE.
-
-Step 3 — OverlayHost enforcement + no direct mutation
-
 Goal:
 
 OverlayHost.requestClose() must call only overlay stack API methods.
@@ -829,26 +818,76 @@ Enforce closeOnBackdrop/closeOnEsc centrally as far as the host can.
 
 Use your new forceRemove(id) as the only emergency hatch.
 
-✅ What I need when we get there:
-Paste the current <script setup> of OverlayHost.vue from your machine (the one you actually have now).
-
-Step 4 — Done semantics Option A (child emits done only)
 
 Goal: Remove double-close risk:
+	Child emits done (success)
+	Router closes on done
+	Child does not close itself on success
 
-Child emits done (success)
+What the A+ rule actually is (let’s say it cleanly)
+Services emit invalidation signals ONLY when a workflow mutation is confirmed successful.
+Not:
+	on submit
+	not on HTTP 200
+	not on “no error thrown”
+	Only on semantic success.
 
-Router closes on done
+You need two tiny, explicit helpers inside the service layer:
 
-Child does not close itself on success
+1. A strict envelope normalizer
 
-✅ What I need when we get there:
-Paste the current <script setup> of StudentLogFollowUpAction.vue from your machine (even if you already pasted it earlier—what matters is what’s in your repo now).
+(Not permissive, not forgiving)
 
-Non-negotiable working rules (to stop looping)
+If the envelope is wrong → throw
 
-I will not output patches for files you haven’t pasted in their current state.
+No unions leak out
 
-Once I output a patch and you apply it, we treat that file as authoritative and do not revisit it unless there’s a new bug report with evidence.
+No any
 
-One file per message, script-only if that’s the only change.
+2. A semantic success guard
+
+(Not HTTP success)
+
+Something like:
+	ok === true
+	optionally status === 'created' | 'updated' | 'processed'
+	whatever you define as “mutation happened”
+Only after that do you emit.
+This keeps the contract clean:
+	Backend controls truth
+	Service interprets truth
+	Pages react to truth
+
+No fake optimism
+
+What was missing was this explicit split:
+
+Transport correctness (normalize strictly)
+
+Semantic correctness (emit only on real mutation)
+
+
+🔒 A+ Transport & Invalidation Rule (HARD)
+
+Service-layer responsibilities (mandatory):
+Strict transport normalization
+	Boundary input is unknown
+	Normalize once
+	Return only the domain contract type
+	❌ No any
+	❌ No permissive “handles 3 shapes” comments
+	❌ No union return types
+Semantic success gating
+	Services must define what “mutation success” means (ok === true, or explicit status)
+	uiSignals.emit() is allowed ONLY after confirmed semantic success
+	❌ No emission on:
+		soft failures (ok: false)
+		idempotent no-ops
+		validation errors returned as 200
+		partial / warning responses
+Components are forbidden from deciding success
+	No unwrapping
+	No inspecting ok
+	No emitting signals
+	Components react only to normalized service results or thrown errors
+Violations are defects, not style issues.
