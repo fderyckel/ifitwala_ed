@@ -581,3 +581,40 @@ Recommended minimum:
 * No DOM event invalidation remains (except explicit bridge file)
 
 ---
+
+
+Service-layer responsibilities (mandatory):
+Strict transport normalization
+	Boundary input is unknown
+	Normalize once
+	Return only the domain contract type
+	❌ No any
+	❌ No permissive “handles 3 shapes” comments
+	❌ No union return types
+Semantic success gating
+	Services must define what “mutation success” means (ok === true, or explicit status)
+	uiSignals.emit() is allowed ONLY after confirmed semantic success
+	❌ No emission on:
+		soft failures (ok: false)
+		idempotent no-ops
+		validation errors returned as 200
+		partial / warning responses
+Components are forbidden from deciding success
+	No unwrapping
+	No inspecting ok
+	No emitting signals
+	Components react only to normalized service results or thrown errors
+Violations are defects, not style issues.
+NO DEFENSIVE ABSTRACTION LAYER!!!
+
+🔒 A+ LOCKED RULE (this is the one I recommend)
+All SPA services receive { message: T } and nothing else.
+Transport adapters must enforce this before services run.
+Services contain ZERO shape conditionals.
+Once this is locked:
+	normalizeMessage() disappears
+	All ifs disappear
+	Services become trivial
+
+A+ Transport Rule (Final Form)
+Transport normalization must happen exactly zero times in the SPA.

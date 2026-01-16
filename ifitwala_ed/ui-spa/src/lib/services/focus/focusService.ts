@@ -23,63 +23,41 @@ import type {
 } from '@/types/contracts/focus/review_student_log_outcome'
 
 /**
- * Transport normalization (A+ — LOCKED)
+ * Focus Service (A+ — LOCKED)
  * ------------------------------------------------------------
- * Boundary rules:
- * - Input is unknown
- * - Backend MUST return an envelope: { message: T }
- * - Axios shapes may wrap that envelope
- * - Raw T is NOT accepted
- *
- * If this throws, the backend contract is broken.
- * That is intentional.
+ * Rules:
+ * - Backend contracts are authoritative
+ * - No transport normalization
+ * - No envelope handling
+ * - No defensive branching
+ * - Services emit uiSignals ONLY after successful mutations
  */
-function normalizeMessage<T>(res: unknown): T {
-	// Axios-style: { data: ... }
-	const root =
-		res && typeof res === 'object' && 'data' in res
-			? (res as any).data
-			: res
-
-	if (root && typeof root === 'object' && 'message' in root) {
-		return (root as any).message as T
-	}
-
-	throw new Error(
-		'[focusService] Invalid response shape: expected { message: T } envelope'
-	)
-}
 
 export function createFocusService() {
 	/* ------------------------------------------------------------
-	 * Resources (transport owned here, nowhere else)
+	 * Resources (transport owned here, no normalization)
 	 * ---------------------------------------------------------- */
 
 	const getFocusContextResource = createResource<GetFocusContextResponse>({
 		url: 'ifitwala_ed.api.focus.get_focus_context',
 		method: 'POST',
 		auto: false,
-		transform: (res: unknown) => normalizeMessage<GetFocusContextResponse>(res),
 	})
 
 	const submitFollowUpResource = createResource<SubmitStudentLogFollowUpResponse>({
 		url: 'ifitwala_ed.api.focus.submit_student_log_follow_up',
 		method: 'POST',
 		auto: false,
-		transform: (res: unknown) =>
-			normalizeMessage<SubmitStudentLogFollowUpResponse>(res),
 	})
 
 	const reviewOutcomeResource = createResource<ReviewStudentLogOutcomeResponse>({
 		url: 'ifitwala_ed.api.focus.review_student_log_outcome',
 		method: 'POST',
 		auto: false,
-		transform: (res: unknown) =>
-			normalizeMessage<ReviewStudentLogOutcomeResponse>(res),
 	})
 
 	/* ------------------------------------------------------------
-	 * Public API (domain-only, no transport leakage)
+	 * Public API (domain-only)
 	 * ---------------------------------------------------------- */
 
 	async function getFocusContext(
@@ -93,9 +71,11 @@ export function createFocusService() {
 	): Promise<SubmitStudentLogFollowUpResponse> {
 		const response = await submitFollowUpResource.submit(payload)
 
-		// A+ rule: services emit invalidation, not views
-		uiSignals.emit(SIGNAL_STUDENT_LOG_INVALIDATE)
-		uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		// A+ rule: emit ONLY after a real mutation
+		if (response.ok === true) {
+			uiSignals.emit(SIGNAL_STUDENT_LOG_INVALIDATE)
+			uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		}
 
 		return response
 	}
@@ -105,8 +85,11 @@ export function createFocusService() {
 	): Promise<ReviewStudentLogOutcomeResponse> {
 		const response = await reviewOutcomeResource.submit(payload)
 
-		uiSignals.emit(SIGNAL_STUDENT_LOG_INVALIDATE)
-		uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		// A+ rule: emit ONLY after a real mutation
+		if (response.ok === true) {
+			uiSignals.emit(SIGNAL_STUDENT_LOG_INVALIDATE)
+			uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		}
 
 		return response
 	}

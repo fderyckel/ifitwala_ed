@@ -891,3 +891,16 @@ Components are forbidden from deciding success
 	No emitting signals
 	Components react only to normalized service results or thrown errors
 Violations are defects, not style issues.
+NO DEFENSIVE ABSTRACTION LAYER!!!
+
+🔒 A+ LOCKED RULE (this is the one I recommend)
+All SPA services receive { message: T } and nothing else.
+Transport adapters must enforce this before services run.
+Services contain ZERO shape conditionals.
+Once this is locked:
+	normalizeMessage() disappears
+	All ifs disappear
+	Services become trivial
+
+A+ Transport Rule (Final Form)
+Transport normalization must happen exactly zero times in the SPA.
