@@ -10,7 +10,7 @@ export type OverlayType =
   | 'student-log-create'
   | 'student-log-follow-up'
   | 'student-log-analytics-expand'
-	| 'focus-router'
+  | 'focus-router'
   | 'class-hub-student-context'
   | 'class-hub-quick-evidence'
   | 'class-hub-quick-cfu'
@@ -97,6 +97,24 @@ function closeTopIf(id: string) {
   }
 }
 
+/**
+ * A+ required: forceRemove()
+ * - Removes an entry from the internal stack.
+ * - OverlayHost may call this as a LAST resort.
+ * - OverlayHost must never mutate state.stack directly.
+ */
+function forceRemove(id: string) {
+  const safeId = String(id || '').trim()
+  if (!safeId) return
+  const idx = state.stack.findIndex((x) => x.id === safeId)
+  if (idx >= 0) {
+    state.stack.splice(idx, 1)
+    log('forceRemove', safeId)
+  } else {
+    log('forceRemove:miss', safeId)
+  }
+}
+
 function replaceTop(
   type: OverlayType,
   props: Record<string, any> = {},
@@ -124,6 +142,7 @@ export function useOverlayStack() {
     close,
     closeTop,
     closeTopIf,
+    forceRemove,
     replaceTop,
   }
 }

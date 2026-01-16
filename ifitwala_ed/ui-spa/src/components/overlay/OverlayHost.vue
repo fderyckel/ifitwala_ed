@@ -16,7 +16,7 @@
           :open="entry.open"
           :z-index="baseZ + idx * zStep"
           :overlay-id="entry.id"
-          @close="requestClose(entry.id)"
+          @close="requestClose(entry.id, 'backdrop')"
           @after-leave="finalizeClose(entry.id)"
         />
       </div>
@@ -160,35 +160,24 @@ function resolveComponent(type: OverlayType) {
   }
 }
 
-function requestClose(id: string) {
-  // Some refactors renamed the close method; don’t let the UI get stuck.
-  // Try the public API first, then fall back to direct state mutation (with a loud log).
-  const anyOverlay = overlay as any
+function requestClose(id: string, reason: 'backdrop' | 'esc' | 'programmatic' = 'programmatic') {
+  // Only the top overlay may be interactively closed
+  const top = rendered.value[rendered.value.length - 1]
+  if (!top || top.id !== id) return
 
-  if (anyOverlay && typeof anyOverlay.close === 'function') {
-    anyOverlay.close(id)
-    return
+  // Enforce close flags centrally (A+)
+  if (reason === 'backdrop' && top.closeOnBackdrop === false) return
+  if (reason === 'esc' && top.closeOnEsc === false) return
+
+  // Use overlay stack API only (no state mutation)
+  ;(overlay as any).close?.(id, { reason }) ?? (overlay as any).close?.(id)
+
+  // Emergency escape hatch (still API-based)
+  if (typeof (overlay as any).forceRemove === 'function') {
+    ;(overlay as any).forceRemove(id)
   }
-
-  if (anyOverlay && typeof anyOverlay.remove === 'function') {
-    anyOverlay.remove(id)
-    return
-  }
-
-  if (anyOverlay && typeof anyOverlay.closeById === 'function') {
-    anyOverlay.closeById(id)
-    return
-  }
-
-  console.error('[OverlayHost] overlay.close is missing; forcing removal from stack', {
-    id,
-    overlayKeys: anyOverlay ? Object.keys(anyOverlay) : null,
-  })
-
-  // Hard fallback: remove from store stack so the watcher marks it as closing.
-  // This is better than leaving users trapped behind a stuck overlay.
-  overlay.state.stack = (overlay.state.stack || []).filter((e: any) => e.id !== id)
 }
+
 
 function finalizeClose(id: string) {
   const idx = rendered.value.findIndex((r) => r.id === id)

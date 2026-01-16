@@ -12,11 +12,10 @@ import type {
   Response as ReviewStudentLogOutcomeResponse,
 } from '@/types/contracts/focus/review_student_log_outcome'
 
-type ResourceResponse<T> = T | { message: T }
-
-function unwrapMessage<T>(res: ResourceResponse<T>): T {
+function unwrapMessage<T>(res: unknown): T {
+  // frappe-ui may give: { message: T } OR T
   if (res && typeof res === 'object' && 'message' in res) {
-    return (res as { message: T }).message
+    return (res as any).message as T
   }
   return res as T
 }
@@ -26,21 +25,21 @@ export function createFocusService() {
     url: 'ifitwala_ed.api.focus.get_focus_context',
     method: 'POST',
     auto: false,
-    transform: unwrapMessage,
+    transform: (res: unknown) => unwrapMessage<GetFocusContextResponse>(res),
   })
 
   const submitFollowUpResource = createResource<SubmitStudentLogFollowUpResponse>({
     url: 'ifitwala_ed.api.focus.submit_student_log_follow_up',
     method: 'POST',
     auto: false,
-    transform: unwrapMessage,
+    transform: (res: unknown) => unwrapMessage<SubmitStudentLogFollowUpResponse>(res),
   })
 
   const reviewOutcomeResource = createResource<ReviewStudentLogOutcomeResponse>({
     url: 'ifitwala_ed.api.focus.review_student_log_outcome',
     method: 'POST',
     auto: false,
-    transform: unwrapMessage,
+    transform: (res: unknown) => unwrapMessage<ReviewStudentLogOutcomeResponse>(res),
   })
 
   async function getFocusContext(payload: GetFocusContextRequest) {

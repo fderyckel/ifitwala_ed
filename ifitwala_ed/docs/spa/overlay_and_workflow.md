@@ -580,7 +580,6 @@ You are working in Ifitwala_Ed SPA (`ifitwala_ed/ui-spa`). Your task: implement 
 # Appendix C — Implementation plan (universal A+ rollout) — Reference
 
 **Phase 1 — Lock naming + contract compliance**
-- Replace ambiguous `get_focus_context` with an explicit resolve name
 - Prefer `payload/resolved` over exported `context` naming
 
 **Phase 2 — UI Signals / Invalidation Bus**
