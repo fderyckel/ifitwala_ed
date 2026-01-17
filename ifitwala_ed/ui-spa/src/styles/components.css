@@ -18,13 +18,16 @@
     pointer-events: none;
   }
 
+	/*
   .if-overlay__backdrop {
     position: fixed;
     inset: 0;
     pointer-events: auto;
     background: rgb(var(--shade-rgb) / 0.45);
     backdrop-filter: blur(6px);
-  }
+  }*/
+
+	.if-overlay__backdrop { pointer-events: none !important; }
 
   .if-overlay__wrap {
     position: fixed;

@@ -1,4 +1,4 @@
-// ifitwala_ed/ifitwala_ed/ui-spa/src/resources/frappe.ts
+// ifitwala_ed/ifitwala_ed/ui-spa/src/lib/frappe.ts
 import { setConfig, frappeRequest } from 'frappe-ui'
 
 async function resolveCsrfToken(): Promise<string> {
