@@ -8,7 +8,12 @@ Used by:
 
 <template>
   <TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
-    <Dialog as="div" class="if-overlay if-overlay--student-log-follow-up" @close="emitClose">
+    <Dialog
+      as="div"
+      class="if-overlay if-overlay--student-log-follow-up"
+      :initialFocus="closeBtnEl"
+      @close="emitClose"
+    >
       <div class="if-overlay__backdrop" />
 
       <div class="if-overlay__wrap" :style="{ zIndex: zIndex ?? 3000 }">
@@ -42,6 +47,7 @@ Used by:
 
               <div class="meeting-modal__header-actions">
                 <button
+                  ref="closeBtnEl"
                   type="button"
                   class="if-overlay__icon-button"
                   @click="emitClose"
@@ -333,6 +339,13 @@ function emitAfterLeave() {
 	emit('after-leave')
 }
 
+/**
+ * FocusTrap Option B (locked)
+ * - Always provide an always-present semantic focus target.
+ * - Pass the ref itself to Dialog.initialFocus.
+ */
+const closeBtnEl = ref<HTMLButtonElement | null>(null)
+
 const modeState = ref<Mode>(props.mode)
 
 const log = ref<FocusLog | null>(null)
@@ -393,7 +406,7 @@ watch(
 		modeState.value = props.mode
 		reload()
 	},
-	{ immediate: false }
+	{ immediate: true }
 )
 
 /* Actions ------------------------------------------------------ */

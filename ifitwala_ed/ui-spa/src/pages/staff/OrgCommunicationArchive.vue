@@ -739,23 +739,38 @@ function onOrgCommInvalidated(payload?: { names?: string[] }) {
 	const names = (payload?.names || []).filter((name) => typeof name === 'string' && !!name.trim())
 	const selectedName = selectedComm.value?.name || null
 
+	// Always do the cheap, best-effort refreshes first (counts + thread)
 	if (names.length) {
 		void refreshSummary(names)
+
 		if (showThreadDrawer.value && selectedName && names.includes(selectedName)) {
 			void refreshThread(selectedName, { silent: true })
 		}
-		return
+	} else {
+		const fallbackNames = feedItems.value.map((item) => item.name).filter(Boolean)
+		if (fallbackNames.length) {
+			void refreshSummary(fallbackNames)
+		}
+
+		if (showThreadDrawer.value && selectedName) {
+			void refreshThread(selectedName, { silent: true })
+		}
 	}
 
-	const fallbackNames = feedItems.value.map((item) => item.name).filter(Boolean)
-	if (fallbackNames.length) {
-		void refreshSummary(fallbackNames)
-	}
-
-	if (showThreadDrawer.value && selectedName) {
-		void refreshThread(selectedName, { silent: true })
+	/**
+	 * Refresh-owner rule (A+):
+	 * If an interaction can change list membership under current filters,
+	 * we must refetch the feed (not just patch counts).
+	 *
+	 * Currently: only_with_interactions depends on comments existing.
+	 * A new comment can cause an item to ENTER the list (or visibility to change),
+	 * so we reload the feed in that filter mode.
+	 */
+	if (filters.value.only_with_interactions) {
+		requestFeedLoad(true)
 	}
 }
+
 
 function notifyInteractionsDisabled() {
 	toast({

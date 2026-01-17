@@ -610,3 +610,16 @@ You are working in Ifitwala_Ed SPA (`ifitwala_ed/ui-spa`). Your task: implement 
 - Server TTL caching where safe
 
 ---
+
+
+What this means (rules, in one screen)
+
+Overlays: never toast (already locked)
+
+Services: never toast; only emit uiSignals after confirmed success
+
+Pages / Shell (refresh owners):
+
+may toast for local validation + local failures
+
+should not toast global “Saved” unless they are the refresh owner for that workflow (your existing pattern)
