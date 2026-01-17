@@ -145,10 +145,24 @@
 							appearance="minimal"
 							icon="message-circle"
 							:disabled="!selectedDate || !filters.student_group || rosterLoading || bootLoading"
-							@click="openRemarksHelp"
+							@click="toggleRemarkTips"
 						>
-							{{ __('Remark tips') }}
+							{{ remarkTipsOpen ? __('Hide tips') : __('Remark tips') }}
 						</Button>
+					</div>
+				</div>
+
+				<div
+					v-if="remarkTipsOpen"
+					class="border-b border-border/60 px-5 py-4 text-xs text-ink/70"
+				>
+					<div class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-strong-rgb)/0.7)] p-4">
+						<p class="font-semibold text-ink">{{ __('Remark guidelines') }}</p>
+						<ul class="mt-2 list-disc space-y-1 pl-4">
+							<li>{{ __('Keep remarks factual and short.') }}</li>
+							<li>{{ __('Avoid sensitive medical details; use the health note workflow instead.') }}</li>
+							<li>{{ __('Stick to today\\'s context (date + block).') }}</li>
+						</ul>
 					</div>
 				</div>
 
@@ -188,47 +202,20 @@
 				</div>
 			</div>
 		</section>
-
-		<!-- Remark Dialog -->
-		<RemarkDialog
-			v-model="remarkDialog.open"
-			:student="remarkDialog.student"
-			:block="remarkDialog.block"
-			:value="remarkDialog.value"
-			@save="saveRemark"
-		/>
-
-		<!-- Health Dialog -->
-		<Dialog v-model="healthDialog.open" :options="{ title: healthDialog.title, size: 'lg' }">
-			<div class="prose max-w-none text-sm" v-html="healthDialog.html" />
-		</Dialog>
-
-		<!-- Birthday Dialog -->
-		<Dialog v-model="birthdayDialog.open" :options="{ title: __('Birthday'), size: 'sm' }">
-			<div class="space-y-2 text-sm text-ink/80">
-				<p class="font-semibold text-ink">
-					{{ birthdayDialog.name }}
-				</p>
-				<p>
-					{{ birthdayDialog.dateLabel }}
-					<span v-if="birthdayDialog.age !== null" class="text-ink/60">• {{ __('Turning {0}', [birthdayDialog.age]) }}</span>
-				</p>
-			</div>
-		</Dialog>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, FormControl, Badge, Dialog, FeatherIcon, Spinner } from 'frappe-ui'
+import { Button, FormControl, Badge, FeatherIcon, Spinner } from 'frappe-ui'
 
 import { __ } from '@/lib/i18n'
 import AttendanceCalendar from './components/AttendanceCalendar.vue'
 import AttendanceGrid from './components/AttendanceGrid.vue'
-import RemarkDialog from './components/RemarkDialog.vue'
 
 import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService'
+import { useOverlayStack } from '@/composables/useOverlayStack'
 
 // UI view-model types (page-owned)
 import type { StudentRosterEntry, BlockKey } from './student-attendance-tool/types'
@@ -242,6 +229,7 @@ import { uiSignals, SIGNAL_ATTENDANCE_INVALIDATE } from '@/lib/uiSignals'
 const SAVE_DEBOUNCE_MS = 900
 
 const service = createStudentAttendanceService()
+const overlay = useOverlayStack()
 
 const route = useRoute()
 const router = useRouter()
@@ -308,27 +296,8 @@ const groupInfo = ref<{ name?: string | null; program?: string | null; course?: 
 const lastSaved = ref<Record<string, Record<BlockKey, { code: string; remark: string }>>>({})
 const dirty = ref<Set<string>>(new Set())
 
-const remarkDialog = reactive({
-	open: false,
-	student: null as StudentRosterEntry | null,
-	block: null as BlockKey | null,
-	value: '',
-})
-
-const healthDialog = reactive({
-	open: false,
-	title: '',
-	html: '',
-})
-
-const birthdayDialog = reactive({
-	open: false,
-	name: '',
-	dateLabel: '',
-	age: null as number | null,
-})
-
 const searchTerm = ref('')
+const remarkTipsOpen = ref(false)
 
 const filteredStudents = computed(() => {
 	const q = (searchTerm.value || '').trim().toLowerCase()
@@ -609,18 +578,36 @@ function onChangeCode(payload: { studentId: string; block: BlockKey; code: strin
 }
 
 function openRemark(payload: { student: StudentRosterEntry; block: BlockKey }) {
-	remarkDialog.student = payload.student
-	remarkDialog.block = payload.block
-	remarkDialog.value = payload.student.remarks?.[payload.block] || ''
-	remarkDialog.open = true
+	if (!payload?.student || payload.block === null || payload.block === undefined) {
+		safeSetError(__('Select a student and block before adding a remark.'))
+		return
+	}
+
+	const studentId = payload.student.student
+	const block = payload.block
+	const existing = payload.student.remarks?.[block] || ''
+	const studentLabel =
+		payload.student.preferred_name || payload.student.student_name || payload.student.student
+	const studentSecondaryLabel = payload.student.preferred_name ? payload.student.student_name : null
+
+	overlay.open('attendance-remark', {
+		studentId,
+		studentLabel,
+		studentSecondaryLabel,
+		blockNumber: block,
+		value: existing,
+		maxLength: 255,
+		onSave: (nextValue: string) => applyRemarkValue(studentId, block, nextValue),
+	})
 }
 
-function saveRemark(value: string) {
-	const s = remarkDialog.student
-	const b = remarkDialog.block
-	if (!s || b === null) return
-	s.remarks[b] = value
-	markDirty(s.student, b)
+function applyRemarkValue(studentId: string, block: BlockKey, value: string) {
+	const s = students.value.find((x) => x.student === studentId)
+	if (!s) return
+	const current = s.remarks?.[block] || ''
+	if (current === value) return
+	s.remarks[block] = value
+	markDirty(studentId, block)
 }
 
 function applyDefaultCode() {
@@ -694,16 +681,8 @@ function beforeUnloadGuard(e: BeforeUnloadEvent) {
 	e.returnValue = ''
 }
 
-function openRemarksHelp() {
-	healthDialog.title = __('Remark guidelines')
-	healthDialog.html = `
-		<ul>
-			<li>${__('Keep remarks factual and short.')}</li>
-			<li>${__('Avoid sensitive medical details; use the health note workflow instead.')}</li>
-			<li>${__('Stick to today’s context (date + block).')}</li>
-		</ul>
-	`
-	healthDialog.open = true
+function toggleRemarkTips() {
+	remarkTipsOpen.value = !remarkTipsOpen.value
 }
 
 /* -------------------- Watchers (A+ filter discipline) -------------------- */

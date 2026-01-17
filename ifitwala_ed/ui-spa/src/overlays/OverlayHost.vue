@@ -42,6 +42,7 @@ import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue'
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue'
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue'
 import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCommunicationQuickCreateModal.vue'
+import AttendanceRemarkOverlay from '@/overlays/attendance/AttendanceRemarkOverlay.vue'
 import StudentLogCreateOverlay from '@/overlays/student/StudentLogCreateOverlay.vue'
 import StudentLogFollowUpOverlay from '@/overlays/student/StudentLogFollowUpOverlay.vue'
 import FocusRouterOverlay from '@/overlays/focus/FocusRouterOverlay.vue'
@@ -163,6 +164,8 @@ function resolveComponent(type: OverlayType) {
       return ClassEventModal
     case 'org-communication-quick-create':
       return OrgCommunicationQuickCreateOverlay
+    case 'attendance-remark':
+      return AttendanceRemarkOverlay
     case 'student-log-create':
       return StudentLogCreateOverlay
     case 'student-log-follow-up':

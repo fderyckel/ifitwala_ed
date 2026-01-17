@@ -7,6 +7,7 @@ export type OverlayType =
   | 'school-event'
   | 'class-event'
   | 'org-communication-quick-create'
+  | 'attendance-remark'
   | 'student-log-create'
   | 'student-log-follow-up'
   | 'student-log-analytics-expand'
