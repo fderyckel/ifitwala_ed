@@ -12,6 +12,7 @@ Used by:
       as="div"
       class="if-overlay if-overlay--focus"
       :style="overlayStyle"
+      :initialFocus="initialFocusEl"
       @close="onDialogClose"
     >
       <div class="if-overlay__backdrop" />
@@ -48,14 +49,18 @@ Used by:
               </div>
 
               <div class="meeting-modal__header-actions">
-                <Button
-                  variant="ghost"
+                <!-- A+ FocusTrap Option B:
+                     Always-present, semantic, focusable element.
+                     Use native button + initialFocus to avoid FocusTrap empty-focus warnings. -->
+                <button
+                  ref="closeBtnEl"
+                  type="button"
                   class="if-overlay__icon-button"
                   @click="requestClose"
                   aria-label="Close"
                 >
                   <FeatherIcon name="x" class="h-4 w-4" />
-                </Button>
+                </button>
               </div>
             </div>
 
@@ -165,6 +170,14 @@ const emit = defineEmits<{
  * - Pages subscribe to uiSignals and refresh what they own.
  */
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
+
+/**
+ * FocusTrap (A+ Option B)
+ * Always provide an always-present semantic focus target.
+ * HeadlessUI Dialog will try to focus it immediately on open.
+ */
+const closeBtnEl = ref<HTMLButtonElement | null>(null)
+const initialFocusEl = computed(() => closeBtnEl.value ?? undefined)
 
 /**
  * Service (A+)

@@ -1,5 +1,18 @@
 // ui-spa/src/lib/services/communicationInteraction/communicationInteractionService.ts
 
+/**
+ * Interaction workflow
+ * --------------------------------------------------
+ * Uses: communicationInteractionService
+ * Semantics:
+ * - reactToOrgCommunication → emits SIGNAL_ORG_COMMUNICATION_INVALIDATE
+ * - postOrgCommunicationComment → emits SIGNAL_ORG_COMMUNICATION_INVALIDATE
+ *
+ * Page responsibility:
+ * - call semantic method
+ * - re-fetch archive data on signal
+ */
+
 import { createResource } from 'frappe-ui'
 
 import { uiSignals, SIGNAL_ORG_COMMUNICATION_INVALIDATE } from '@/lib/uiSignals'
@@ -19,6 +32,9 @@ import type {
   Response as UpsertCommunicationInteractionResponse,
 } from '@/types/contracts/communication_interaction/upsert_communication_interaction'
 
+import type { ReactionCode } from '@/types/interactions'
+import type { OrgSurface } from '@/types/morning_brief'
+
 /**
  * Communication Interaction Service (A+ — LOCKED)
  * ------------------------------------------------------------
@@ -28,6 +44,8 @@ import type {
  * - No envelope handling
  * - Services emit uiSignals ONLY after confirmed semantic success
  */
+
+const DEFAULT_SURFACE: OrgSurface = 'Portal Feed'
 
 export function createCommunicationInteractionService() {
   const interactionSummaryResource = createResource<GetOrgCommInteractionSummaryResponse>({
@@ -60,6 +78,10 @@ export function createCommunicationInteractionService() {
     return communicationThreadResource.submit(payload)
   }
 
+  /**
+   * Low-level mutation (kept for internal reuse; app code should prefer semantic helpers below).
+   * Emits invalidate only after confirmed success.
+   */
   async function upsertCommunicationInteraction(
     payload: UpsertCommunicationInteractionRequest
   ): Promise<UpsertCommunicationInteractionResponse> {
@@ -74,9 +96,48 @@ export function createCommunicationInteractionService() {
     return response
   }
 
+  /**
+   * Semantic mutation: react to a communication.
+   * Pages should not craft upsert payloads (intent_type, etc).
+   */
+  async function reactToOrgCommunication(payload: {
+    org_communication: string
+    reaction_code: ReactionCode
+    surface?: OrgSurface | null
+  }): Promise<UpsertCommunicationInteractionResponse> {
+    return upsertCommunicationInteraction({
+      org_communication: payload.org_communication,
+      reaction_code: payload.reaction_code,
+      surface: payload.surface ?? DEFAULT_SURFACE,
+    })
+  }
+
+  /**
+   * Semantic mutation: post a comment.
+   * Pages should not craft upsert payloads (intent_type, etc).
+   */
+  async function postOrgCommunicationComment(payload: {
+    org_communication: string
+    note: string
+    surface?: OrgSurface | null
+  }): Promise<UpsertCommunicationInteractionResponse> {
+    return upsertCommunicationInteraction({
+      org_communication: payload.org_communication,
+      intent_type: 'Comment',
+      note: payload.note,
+      surface: payload.surface ?? DEFAULT_SURFACE,
+    })
+  }
+
   return {
     getOrgCommInteractionSummary,
     getCommunicationThread,
+
+    // semantic mutations (preferred)
+    reactToOrgCommunication,
+    postOrgCommunicationComment,
+
+    // low-level (avoid in pages unless truly necessary)
     upsertCommunicationInteraction,
   }
 }
