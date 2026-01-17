@@ -1,7 +1,7 @@
 <!-- ui-spa/src/overlays/analytics/StudentLogAnalyticsExpandOverlay.vue -->
 <template>
 	<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
-		<Dialog as="div" class="if-overlay if-overlay--student-log-analytics" @close="emitClose">
+		<Dialog as="div" class="if-overlay if-overlay--student-log-analytics" @close="onDialogClose">
 			<TransitionChild
 				as="template"
 				enter="if-overlay__fade-enter"
@@ -11,7 +11,7 @@
 				leave-from="if-overlay__fade-to"
 				leave-to="if-overlay__fade-from"
 			>
-				<div class="if-overlay__backdrop" />
+				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
 			</TransitionChild>
 
 			<div class="if-overlay__wrap" :style="overlayStyle">
@@ -31,7 +31,7 @@
 							class="sr-only"
 							aria-hidden="true"
 							tabindex="0"
-							@click="emitClose"
+							@click="emitClose('programmatic')"
 						>
 							Close
 						</button>
@@ -51,7 +51,7 @@
 								type="button"
 								class="if-overlay__icon-button"
 								aria-label="Close"
-								@click="emitClose"
+								@click="emitClose('programmatic')"
 							>
 								<FeatherIcon name="x" class="h-4 w-4" />
 							</button>
@@ -179,9 +179,11 @@ const props = defineProps<{
 	subtitle?: string | null
 }>()
 
+type CloseReason = 'backdrop' | 'esc' | 'programmatic'
+
 const emit = defineEmits<{
-	(e: 'close'): void
-	(e: 'after-leave'): void
+  (e: 'close', reason: CloseReason): void
+  (e: 'after-leave'): void
 }>()
 
 const initialFocus = ref<HTMLElement | null>(null)
@@ -198,8 +200,12 @@ const isRecentRows = computed(() => {
 	return !!first && isRecentRow(first)
 })
 
-function emitClose() {
-	emit('close')
+function onDialogClose(_payload: unknown) {
+  // no-op by design (A+)
+}
+
+function emitClose(reason: CloseReason = 'programmatic') {
+  emit('close', reason)
 }
 
 function emitAfterLeave() {

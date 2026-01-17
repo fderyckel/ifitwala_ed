@@ -59,7 +59,7 @@ Used by:
                   ref="closeBtnEl"
                   type="button"
                   class="if-overlay__icon-button"
-                  @click="requestClose"
+                 	@click="requestClose('programmatic')"
                   aria-label="Close"
                 >
                   <FeatherIcon name="x" class="h-4 w-4" />
@@ -86,7 +86,7 @@ Used by:
                 </p>
 
                 <div class="mt-5 flex flex-wrap justify-end gap-2">
-                  <Button variant="ghost" @click="requestClose">Close</Button>
+                  <Button variant="ghost" @click="requestClose('programmatic')">Close</Button>
                   <Button variant="solid" @click="reload">Retry</Button>
                 </div>
               </div>
@@ -156,9 +156,11 @@ const props = defineProps<{
 	focusItemId?: string | null
 }>()
 
+type CloseReason = 'backdrop' | 'esc' | 'programmatic'
+
 const emit = defineEmits<{
-	(e: 'close'): void
-	(e: 'after-leave'): void
+  (e: 'close', reason: CloseReason): void
+  (e: 'after-leave'): void
 }>()
 
 /**
@@ -278,8 +280,8 @@ async function reload() {
 	}
 }
 
-function requestClose() {
-	emit('close')
+function requestClose(reason: CloseReason = 'programmatic') {
+  emit('close', reason)
 }
 
 function emitAfterLeave() {
@@ -287,8 +289,8 @@ function emitAfterLeave() {
 	emit('after-leave')
 }
 
-function onDialogClose() {
-	requestClose()
+function onDialogClose(_payload: unknown) {
+  // no-op by design
 }
 
 /**
