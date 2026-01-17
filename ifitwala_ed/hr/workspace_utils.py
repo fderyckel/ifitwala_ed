@@ -16,12 +16,20 @@ def send_workspace_notification(user, workspace):
 		"email_content": f"Your default workspace has been updated to <b>{workspace}</b>. Please log out and log in again to see the change.",
 	}).insert(ignore_permissions=True)
 
+
 def set_default_workspace_based_on_roles(doc, method):
 	"""
 	Refactored to suggest workspace from Employee History + Designation defaults.
 	Still runs on User.validate (per hooks) as a safety net.
+
+	Portal-first rule:
+	- If a user has a portal home_page (/portal/* or /sp), do not touch Desk workspaces.
 	"""
 	if doc.user_type != "System User":
+		return
+
+	home_page = (getattr(doc, "home_page", "") or "").strip()
+	if home_page.startswith("/portal/") or home_page == "/sp":
 		return
 
 	# compute suggested workspace from effective access

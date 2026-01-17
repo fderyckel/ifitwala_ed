@@ -7,12 +7,16 @@ import frappe
 
 def redirect_user_to_entry_portal():
 	"""
-	Authoritative login routing.
+	Redirect portal users immediately after login.
 
-	Employees NEVER land in Desk.
-	Students NEVER land in Desk.
+	Policy (locked):
+	- Staff (incl. Academic Staff) -> /portal/staff
+	- Students -> /sp
+	- Others (e.g. System Manager) -> no forced redirect here
 
-	Desk remains for System Manager / Admin only.
+	Implementation notes:
+	- Desk login flows can override a weak response redirect.
+	  So we ALSO set User.home_page + response.redirect_to to make it stick.
 	"""
 	user = frappe.session.user
 	if not user or user == "Guest":
@@ -20,20 +24,46 @@ def redirect_user_to_entry_portal():
 
 	roles = set(frappe.get_roles(user))
 
-	# Active employee → staff portal
-	if (
-		"Employee" in roles
-		and frappe.db.exists("Employee", {"user_id": user, "status": "Active"})
-	):
-		frappe.db.set_value("User", user, "home_page", "/portal/staff")
-		frappe.local.response["redirect_to"] = "/portal/staff"
+	def _force_redirect(path: str):
+		# Make redirect durable across Desk /app and Website /login flows.
+		try:
+			frappe.db.set_value("User", user, "home_page", path, update_modified=False)
+		except Exception:
+			# If anything blocks setting home_page, still attempt a response redirect.
+			pass
+
+		frappe.local.response["home_page"] = path
+		frappe.local.response["redirect_to"] = path
+		frappe.local.response["type"] = "redirect"
+		frappe.local.response["location"] = path
+
+	# ---------------------------------------------------------------
+	# Staff portal eligibility
+	# - Employee role AND active Employee record
+	# - OR Academic Staff role (requested) even if Employee record is missing
+	# ---------------------------------------------------------------
+	is_active_employee = (
+		("Employee" in roles)
+		and bool(frappe.db.exists("Employee", {"user_id": user, "status": "Active"}))
+	)
+
+	is_academic_staff = ("Academic Staff" in roles)
+
+	if is_active_employee or is_academic_staff:
+		_force_redirect("/portal/staff")
 		return
 
-	# Student → student portal
-	if "Student" in roles and frappe.db.exists("Student", {"student_user_id": user}):
-		frappe.db.set_value("User", user, "home_page", "/sp")
-		frappe.local.response["redirect_to"] = "/sp"
+	# Student portal: only if Student role + linked Student profile exists
+	if "Student" not in roles:
 		return
+
+	if frappe.db.exists("Student", {"student_user_id": user}):
+		_force_redirect("/sp")
+	else:
+		frappe.logger().warning(
+			f"Student role but no Student profile found for user: {user}"
+		)
+
 
 
 @frappe.whitelist()

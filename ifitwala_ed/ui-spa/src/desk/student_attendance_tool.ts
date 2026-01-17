@@ -3,7 +3,7 @@ import { FrappeUI, setConfig, toast } from 'frappe-ui'
 import StudentAttendanceTool from '@/pages/staff/schedule/student-attendance-tool/StudentAttendanceTool.vue'
 import 'frappe-ui/style.css'
 import '@/style.css'
-import { setupFrappeUI } from '@/resources/frappe'
+import { setupFrappeUI } from '@/lib/frappe'
 
 // Ensure frappe-ui resources use the standard frappeRequest helper
 setupFrappeUI()
