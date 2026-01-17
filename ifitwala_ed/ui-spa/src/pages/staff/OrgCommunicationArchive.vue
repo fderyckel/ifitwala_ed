@@ -765,6 +765,18 @@ function notifyInteractionsDisabled() {
 	})
 }
 
+/**
+ * Interaction workflow (A+ traceability)
+ * --------------------------------------------------
+ * Uses: communicationInteractionService
+ * Semantics:
+ * - reactToOrgCommunication → emits SIGNAL_ORG_COMMUNICATION_INVALIDATE
+ * - postOrgCommunicationComment → emits SIGNAL_ORG_COMMUNICATION_INVALIDATE
+ *
+ * Page responsibility:
+ * - call semantic method only (no upsert payload crafting)
+ * - react to invalidation via uiSignals.subscribe(...)
+ */
 async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 	if (!item?.name) {
 		toast({
@@ -781,7 +793,7 @@ async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 	}
 
 	try {
-		await interactionService.upsertCommunicationInteraction({
+		await interactionService.reactToOrgCommunication({
 			org_communication: item.name,
 			reaction_code: code,
 			surface: 'Portal Feed',
@@ -841,9 +853,8 @@ async function submitComment() {
 
 	interactionActionLoading.value = true
 	try {
-		await interactionService.upsertCommunicationInteraction({
+		await interactionService.postOrgCommunicationComment({
 			org_communication: selectedComm.value.name,
-			intent_type: 'Comment',
 			note,
 			surface: 'Portal Feed',
 		})
