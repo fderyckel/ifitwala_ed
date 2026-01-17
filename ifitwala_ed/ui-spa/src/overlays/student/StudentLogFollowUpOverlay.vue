@@ -1,4 +1,4 @@
-<!-- ui-spa/src/components/student/StudentLogFollowUpOverlay.vue -->
+<!-- ui-spa/src/overlays/student/StudentLogFollowUpOverlay.vue -->
 
 <!--
 Used by:

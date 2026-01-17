@@ -1,4 +1,4 @@
-<!-- ui-spa/src/components/overlay/OverlayHost.vue -->
+<!-- ui-spa/src/overlays/OverlayHost.vue -->
 <template>
   <Teleport v-if="teleportReady" to="#overlay-root">
     <div v-if="rendered.length" class="if-overlay-host" :style="{ zIndex: baseZ }">

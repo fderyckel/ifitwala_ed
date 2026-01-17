@@ -1,4 +1,4 @@
-<!-- ui-spa/src/components/student/StudentLogCreateOverlay.vue -->
+<!-- ui-spa/src/overlays/student/StudentLogCreateOverlay.vue -->
 
 <!--
 Used by:

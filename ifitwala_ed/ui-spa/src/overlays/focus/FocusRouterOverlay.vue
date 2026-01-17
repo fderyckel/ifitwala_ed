@@ -1,4 +1,4 @@
-<!-- ui-spa/src/components/focus/FocusRouterOverlay.vue -->
+<!-- ui-spa/src/overlays/focus/FocusRouterOverlay.vue -->
 
  <!--
 Used by:
