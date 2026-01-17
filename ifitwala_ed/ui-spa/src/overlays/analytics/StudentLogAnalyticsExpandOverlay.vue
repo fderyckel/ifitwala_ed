@@ -75,7 +75,8 @@
 								</div>
 
 								<div v-else class="overflow-auto rounded-xl border border-slate-200">
-									<table class="min-w-full border-collapse type-caption text-ink/80">
+									<!-- Expanded/zoom view: body text should NOT be caption-sized -->
+									<table class="min-w-full border-collapse text-ink/90">
 										<thead class="bg-slate-50">
 											<tr v-if="isRecentRows" class="border-b border-slate-200">
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">Date</th>
@@ -93,32 +94,33 @@
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">Author</th>
 											</tr>
 										</thead>
-										<tbody>
+
+										<tbody class="type-body">
 											<tr
 												v-for="row in rows"
 												:key="rowKey(row)"
-												class="border-b border-slate-100"
+												class="border-b border-slate-100 hover:bg-slate-50"
 											>
 												<template v-if="isRecentRow(row)">
-													<td class="px-3 py-2 align-top whitespace-nowrap">
+													<td class="px-3 py-3 align-top whitespace-nowrap">
 														{{ formatDate(row.date) }}
 													</td>
-													<td class="px-3 py-2 align-top whitespace-nowrap">
+													<td class="px-3 py-3 align-top whitespace-nowrap font-medium">
 														{{ row.student_full_name || row.student }}
 													</td>
-													<td class="px-3 py-2 align-top whitespace-nowrap">
+													<td class="px-3 py-3 align-top whitespace-nowrap">
 														{{ row.program || '-' }}
 													</td>
-													<td class="px-3 py-2 align-top whitespace-nowrap">
+													<td class="px-3 py-3 align-top whitespace-nowrap">
 														{{ row.log_type }}
 													</td>
-													<td class="px-3 py-2 align-top" :title="stripHtml(row.content || '')">
+													<td class="px-3 py-3 align-top" :title="stripHtml(row.content || '')">
 														{{ truncate(stripHtml(row.content || ''), 180) }}
 													</td>
-													<td class="px-3 py-2 align-top whitespace-nowrap">
+													<td class="px-3 py-3 align-top whitespace-nowrap font-medium">
 														{{ row.author }}
 													</td>
-													<td class="px-3 py-2 align-top text-center">
+													<td class="px-3 py-3 align-top text-center">
 														<span
 															v-if="row.requires_follow_up"
 															class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 type-badge-label text-amber-700"
@@ -127,17 +129,18 @@
 														</span>
 													</td>
 												</template>
+
 												<template v-else>
-													<td class="px-3 py-2 align-top whitespace-nowrap">
+													<td class="px-3 py-3 align-top whitespace-nowrap">
 														{{ formatDate(row.date) }}
 													</td>
-													<td class="px-3 py-2 align-top whitespace-nowrap">
+													<td class="px-3 py-3 align-top whitespace-nowrap">
 														{{ row.log_type }}
 													</td>
-													<td class="px-3 py-2 align-top" :title="stripHtml(row.content || '')">
+													<td class="px-3 py-3 align-top" :title="stripHtml(row.content || '')">
 														{{ truncate(stripHtml(row.content || ''), 200) }}
 													</td>
-													<td class="px-3 py-2 align-top whitespace-nowrap">
+													<td class="px-3 py-3 align-top whitespace-nowrap font-medium">
 														{{ row.author }}
 													</td>
 												</template>
