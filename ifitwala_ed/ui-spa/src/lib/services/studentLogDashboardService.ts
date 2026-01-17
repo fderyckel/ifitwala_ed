@@ -8,8 +8,17 @@ import type {
 	StudentLogDashboardFilters,
 	StudentLogFilterMeta,
 	StudentLogRecentRow,
-	StudentSearchResult,
 } from '@/types/studentLogDashboard'
+
+import type {
+	StudentLogDashboardGetDashboardDataRequest,
+	StudentLogDashboardGetDashboardDataResponse,
+	StudentLogDashboardGetDistinctStudentsRequest,
+	StudentLogDashboardGetDistinctStudentsResponse,
+	StudentLogDashboardGetFilterMetaResponse,
+	StudentLogDashboardGetRecentLogsRequest,
+	StudentLogDashboardGetRecentLogsResponse,
+} from '@/types/contracts/student_log_dashboard'
 
 const emptyDashboard: StudentLogDashboardData = {
 	openFollowUps: 0,
@@ -43,7 +52,7 @@ export function createDebouncedRunner(delay = 400) {
 }
 
 export function useStudentLogFilterMeta() {
-	const resource = createResource<StudentLogFilterMeta>({
+	const resource = createResource<StudentLogDashboardGetFilterMetaResponse>({
 		url: 'ifitwala_ed.api.student_log_dashboard.get_filter_meta',
 		method: 'GET',
 		auto: false,
@@ -64,7 +73,7 @@ export function useStudentLogFilterMeta() {
 }
 
 export function useStudentLogDashboard(filtersRef: Ref<StudentLogDashboardFilters>) {
-	const resource = createResource<StudentLogDashboardData>({
+	const resource = createResource<StudentLogDashboardGetDashboardDataResponse>({
 		url: 'ifitwala_ed.api.student_log_dashboard.get_dashboard_data',
 		method: 'POST',
 		auto: false,
@@ -74,7 +83,10 @@ export function useStudentLogDashboard(filtersRef: Ref<StudentLogDashboardFilter
 	const loading = computed(() => resource.loading)
 
 	async function reload() {
-		return resource.submit({ filters: filtersRef.value })
+		const payload: StudentLogDashboardGetDashboardDataRequest = {
+			filters: filtersRef.value,
+		}
+		return resource.submit(payload)
 	}
 
 	return {
@@ -91,7 +103,7 @@ export function useStudentLogRecentLogs(
 	const rows = ref<StudentLogRecentRow[]>([])
 	const hasMore = ref(true)
 
-	const resource = createResource<StudentLogRecentRow[]>({
+	const resource = createResource<StudentLogDashboardGetRecentLogsResponse>({
 		url: 'ifitwala_ed.api.student_log_dashboard.get_recent_logs',
 		method: 'POST',
 		auto: false,
@@ -108,7 +120,7 @@ export function useStudentLogRecentLogs(
 
 		if (!hasMore.value) return []
 
-		const payload = {
+		const payload: StudentLogDashboardGetRecentLogsRequest = {
 			filters: filtersRef.value,
 			start: pagingRef.value.start,
 			page_length: pagingRef.value.pageLength,
@@ -137,7 +149,7 @@ export function useStudentLogRecentLogs(
 	}
 }
 
-const studentSearchResource = createResource<StudentSearchResult[]>({
+const studentSearchResource = createResource<StudentLogDashboardGetDistinctStudentsResponse>({
 	url: 'ifitwala_ed.api.student_log_dashboard.get_distinct_students',
 	method: 'POST',
 	auto: false,
@@ -147,8 +159,9 @@ export async function searchDistinctStudents(
 	filters: StudentLogDashboardFilters,
 	searchText: string
 ) {
-	return studentSearchResource.submit({
+	const payload: StudentLogDashboardGetDistinctStudentsRequest = {
 		filters,
 		search_text: searchText,
-	})
+	}
+	return studentSearchResource.submit(payload)
 }
