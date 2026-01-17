@@ -87,6 +87,8 @@ Rules:
 
 Runtime orchestration (services, invalidation, signals) **must** live in `lib/`.
 
+ui-spa/src/components/** must never contain workflow overlays. Any file named *Overlay.vue must live under ui-spa/src/overlays/**.
+
 ---
 
 ### 1.2 Folder semantics (non-negotiable)
