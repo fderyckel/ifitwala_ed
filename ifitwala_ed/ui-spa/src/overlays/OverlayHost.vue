@@ -6,9 +6,9 @@
         v-for="(entry, idx) in rendered"
         :key="entry.id"
         class="if-overlay-host__layer"
-        :class="{ 'if-overlay-host__layer--inactive': idx !== rendered.length - 1 }"
-        :aria-hidden="idx !== rendered.length - 1 ? 'true' : 'false'"
-        :inert="idx !== rendered.length - 1 ? '' : null"
+        :class="{ 'if-overlay-host__layer--inactive': idx !== activeLayerIndex }"
+        :aria-hidden="idx !== activeLayerIndex ? 'true' : 'false'"
+        :inert="idx !== activeLayerIndex ? '' : null"
       >
         <component
           :is="resolveComponent(entry.type)"
@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useOverlayStack, type OverlayEntry, type OverlayType } from '@/composables/useOverlayStack'
 
 import CreateTaskDeliveryOverlay from '@/components/tasks/CreateTaskDeliveryOverlay.vue'
@@ -68,6 +68,18 @@ const zStep = 10
 
 // Local rendered stack (includes closing entries until transitions finish)
 const rendered = ref<RenderedEntry[]>([])
+
+/**
+ * Active layer must be the top-most LIVE (open, not closing) entry.
+ * If none exists (rare), fall back to the last rendered entry.
+ */
+const activeLayerIndex = computed(() => {
+  for (let i = rendered.value.length - 1; i >= 0; i--) {
+    const r = rendered.value[i]
+    if (r.open && !r._closing) return i
+  }
+  return rendered.value.length ? rendered.value.length - 1 : -1
+})
 
 watch(
   () => overlay.state.stack,
@@ -112,15 +124,24 @@ watch(
       }
     }
 
-    // Ordering: store stack order first, then closing leftovers
+    /**
+     * CRITICAL ORDERING RULE:
+     * Closing leftovers must NEVER be stacked above live overlays.
+     * So we order: (closing leftovers in existing order) + (store stack order).
+     */
     const ordered: RenderedEntry[] = []
+
+    // 1) closing leftovers first (keep relative order)
+    for (const r of rendered.value) {
+      if (!nextIds.has(r.id)) ordered.push(r)
+    }
+
+    // 2) then the current store stack (in store order)
     for (const entry of next) {
       const match = rendered.value.find((r) => r.id === entry.id)
       if (match) ordered.push(match)
     }
-    for (const r of rendered.value) {
-      if (!nextIds.has(r.id)) ordered.push(r)
-    }
+
     rendered.value = ordered
   },
   { immediate: true, deep: true }
@@ -161,22 +182,10 @@ function resolveComponent(type: OverlayType) {
 
 function normalizeCloseReason(raw: unknown): 'backdrop' | 'esc' | 'programmatic' | null {
   if (raw === 'backdrop' || raw === 'esc' || raw === 'programmatic') return raw
-
-  // Common Vue/HeadlessUI foot-guns:
-  // - boolean (HeadlessUI Dialog @close passes nextOpen boolean)
-  // - DOM/Event objects (accidental forwarding)
   if (raw == null) return 'programmatic'
-
   return null
 }
 
-/**
- * A+ central close enforcement:
- * - Only the top overlay can be interactively closed
- * - closeOnBackdrop / closeOnEsc enforced here (not per-overlay ad hoc)
- * - OverlayHost NEVER mutates overlay.state.stack directly
- * - Emergency hatch is overlay.forceRemove(id) (implemented in useOverlayStack)
- */
 function requestClose(id: string, rawReason?: unknown) {
   const reason = normalizeCloseReason(rawReason)
   if (!reason) {
@@ -190,13 +199,12 @@ function requestClose(id: string, rawReason?: unknown) {
     return
   }
 
-  const top = rendered.value[rendered.value.length - 1]
+  const top = rendered.value[activeLayerIndex.value]
   if (!top || top.id !== id) return
 
   if (reason === 'backdrop' && top.closeOnBackdrop === false) return
   if (reason === 'esc' && top.closeOnEsc === false) return
 
-  // Primary: public API
   try {
     overlay.close(id)
     return
@@ -205,7 +213,6 @@ function requestClose(id: string, rawReason?: unknown) {
     console.error('[OverlayHost] overlay.close failed; using forceRemove', { id, reason, err })
   }
 
-  // Emergency: API-based removal (still no direct state mutation here)
   if (typeof (overlay as any).forceRemove === 'function') {
     ;(overlay as any).forceRemove(id)
     return
