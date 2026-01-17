@@ -351,7 +351,7 @@ async function doRefreshFocus(_reason: string) {
 	focusLoading.value = true
 	try {
 		const items = await listFocusItems({ open_only: 1, limit: FOCUS_LIMIT, offset: 0 })
-		focusItems.value = Array.isArray(items) ? items : []
+		focusItems.value = items
 		markRefreshed()
 	} catch (err) {
 		console.error('[StaffHome] Failed to load focus list:', err)

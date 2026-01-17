@@ -16,7 +16,7 @@ export type ListFocusItemsPayload = {
 }
 
 /**
- * A++ Transport Contract (LOCKED)
+ * A+ Transport Contract (LOCKED)
  * ------------------------------------------------------------
  * Services must NEVER unwrap transport responses.
  * The resourceFetcher (configured in ui-spa/src/resources/frappe.ts)

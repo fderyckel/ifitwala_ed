@@ -31,6 +31,7 @@ export const SIGNAL_CALENDAR_INVALIDATE = 'calendar:invalidate' as const
 export const SIGNAL_STUDENT_LOG_DASHBOARD_INVALIDATE = 'student_log_dashboard:invalidate' as const
 export const SIGNAL_STUDENT_LOG_RECENT_LOGS_INVALIDATE = 'student_log_recent_logs:invalidate' as const
 export const SIGNAL_STUDENT_LOG_FILTER_META_INVALIDATE = 'student_log_filter_meta:invalidate' as const
+export const SIGNAL_ORG_COMMUNICATION_INVALIDATE = 'org_communication:invalidate' as const
 
 /**
  * Optional: standard toast signal (only if/when you centralize toasts later).
@@ -46,6 +47,7 @@ export type UiSignalName =
 	| typeof SIGNAL_STUDENT_LOG_DASHBOARD_INVALIDATE
 	| typeof SIGNAL_STUDENT_LOG_RECENT_LOGS_INVALIDATE
 	| typeof SIGNAL_STUDENT_LOG_FILTER_META_INVALIDATE
+	| typeof SIGNAL_ORG_COMMUNICATION_INVALIDATE
 	| typeof SIGNAL_TOAST_SHOW
 	| (string & {}) // allow custom names while keeping known ones typed
 

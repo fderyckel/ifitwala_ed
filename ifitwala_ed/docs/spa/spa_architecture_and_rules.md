@@ -192,6 +192,15 @@ Rules:
 
 All server methods **must declare explicit arguments**.
 
+
+### 3.2.1 When to add a new signal vs local refresh (NEW / LOCKED)
+**Add a new `SIGNAL_*_INVALIDATE`** when a mutation can affect data shown in **other mounted surfaces** (e.g. counts, previews, list cards, Focus, dashboards, shell badges).
+
+**Local refresh only** is allowed only when the affected data is **strictly page-local** and not rendered
+anywhere else in the SPA.
+
+**Default:** if uncertain, add a signal and let Refresh Owners decide refetch policy.
+
 ---
 
 ### 3.3 Filters + POST rule (critical)

@@ -130,6 +130,15 @@ UI Services:
 > **Locked:** Transport envelope unwrapping is centralized in `ui-spa/src/resources/frappe.ts`.
 > Services return **domain payloads only**.
 
+### 5.1.1 When to introduce a new invalidate signal (NEW / LOCKED)
+
+Add a **dedicated** `uiSignals` constant (and emit it from the service) if the mutation can affect **any other mounted surface** besides the current page (counts, badges, lists, cards, focus, dashboards).
+
+Keep **local refresh only** if the mutated data is **guaranteed** to be rendered nowhere else in the SPA.
+**Default:** if uncertain, add a signal (cross-surface safety beats hidden staleness).
+**Rule:** shared invalidation signals must be exported constants in `ui-spa/src/lib/uiSignals.ts`
+(no raw string literals in services/components/pages).
+
 ### 5.2 What UI Services must never do
 
 UI Services must **never**:
@@ -257,6 +266,10 @@ Under A+:
 * **Pages/Shell** subscribe to invalidation signals and decide how/when to refresh
 * **Services** emit invalidation after *confirmed semantic success*
 * **Overlays** close immediately on success and must not “refresh-gate” closing
+
+**Signal scope rule (LOCKED):**
+If a workflow mutation can affect any other mounted surface, the service must emit a dedicated invalidate signal.
+Local refresh-only is allowed only when the mutation is strictly page-local.
 
 ---
 
