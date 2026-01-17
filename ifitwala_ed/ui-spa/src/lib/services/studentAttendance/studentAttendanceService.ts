@@ -2,7 +2,7 @@
 
 import { createResource } from 'frappe-ui'
 
-import { uiSignals, SIGNAL_CALENDAR_INVALIDATE } from '@/lib/uiSignals'
+import { uiSignals, SIGNAL_ATTENDANCE_INVALIDATE } from '@/lib/uiSignals'
 
 import type {
 	AttendanceRecordedDatesRequest,
@@ -15,7 +15,6 @@ import type {
 	FetchBlocksForDayResponse,
 	FetchExistingAttendanceRequest,
 	FetchExistingAttendanceResponse,
-	FetchMeetingDatesRequest,
 	GetMeetingDatesRequest,
 	GetMeetingDatesResponse,
 	GetWeekendDaysRequest,
@@ -176,8 +175,8 @@ export function createStudentAttendanceService() {
 	): Promise<BulkUpsertAttendanceResponse> {
 		const result = await bulkUpsertResource.submit(payload)
 
-		// A+ invalidation: mutation can affect shared calendars / dashboards
-		uiSignals.emit(SIGNAL_CALENDAR_INVALIDATE)
+		// A+ invalidation: mutation can affect multiple mounted attendance surfaces (counts, calendars, dashboards).
+		uiSignals.emit(SIGNAL_ATTENDANCE_INVALIDATE)
 
 		return result
 	}
