@@ -236,6 +236,9 @@ import type { StudentRosterEntry, BlockKey } from './student-attendance-tool/typ
 // Backend-owned contracts (service + page may use contract DTOs; services MUST use them)
 import type { StudentAttendanceCodeRow, BulkUpsertAttendanceRow } from '@/types/contracts/studentAttendance'
 
+// A+ invalidation bus (page is a refresh owner)
+import { uiSignals, SIGNAL_ATTENDANCE_INVALIDATE } from '@/lib/uiSignals'
+
 const SAVE_DEBOUNCE_MS = 900
 
 const service = createStudentAttendanceService()
@@ -472,6 +475,17 @@ async function reloadGroups() {
 		safeSetError(err?.message || err)
 	} finally {
 		groupsLoading.value = false
+	}
+}
+
+async function refreshRecordedDatesForCurrentGroup() {
+	if (!filters.student_group) return
+	try {
+		const recorded = await service.getRecordedDates({ student_group: filters.student_group })
+		recordedDates.value = Array.isArray(recorded) ? recorded : []
+	} catch (err: any) {
+		// Silent fail: this is a best-effort refresh hook; page still shows inline errors for core flows.
+		console.error('Failed to refresh recorded dates', err)
 	}
 }
 
@@ -727,13 +741,41 @@ watch(
 	}
 )
 
+/* -------------------- A+ uiSignals subscription (refresh-owner) -------------------- */
+
+let unsubscribeAttendanceInvalidate: null | (() => void) = null
+let attendanceInvalidateTimer: number | null = null
+
+function onAttendanceInvalidated() {
+	// Coalesce rapid emits (autosave can emit multiple times)
+	if (attendanceInvalidateTimer) window.clearTimeout(attendanceInvalidateTimer)
+	attendanceInvalidateTimer = window.setTimeout(() => {
+		attendanceInvalidateTimer = null
+		// Best-effort: only update the calendar badges (recorded days)
+		void refreshRecordedDatesForCurrentGroup()
+	}, 150)
+}
+
 onMounted(() => {
 	window.addEventListener('beforeunload', beforeUnloadGuard)
+
+	unsubscribeAttendanceInvalidate = uiSignals.subscribe(
+		SIGNAL_ATTENDANCE_INVALIDATE,
+		onAttendanceInvalidated,
+	)
+
 	void bootstrap()
 })
 
 onBeforeUnmount(() => {
 	if (saveTimer) window.clearTimeout(saveTimer)
+	if (attendanceInvalidateTimer) window.clearTimeout(attendanceInvalidateTimer)
+
+	if (unsubscribeAttendanceInvalidate) {
+		unsubscribeAttendanceInvalidate()
+		unsubscribeAttendanceInvalidate = null
+	}
+
 	window.removeEventListener('beforeunload', beforeUnloadGuard)
 })
 </script>

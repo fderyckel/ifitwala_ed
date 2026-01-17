@@ -1,3 +1,4 @@
+<!-- ui-spa/src/pages/staff/schedule/student-attendance-tool/components/RemarkDialog.vue -->
 <template>
 	<Dialog v-model="open" :options="{ title: dialogTitle, size: 'md' }">
 		<div class="space-y-4">
@@ -11,6 +12,7 @@
 					<span class="inline-block h-1.5 w-1.5 rounded-full bg-[rgb(var(--leaf-rgb))]" />
 					{{ studentName }}
 				</span>
+
 				<span
 					v-if="blockLabel"
 					class="inline-flex items-center gap-1 rounded-full
@@ -103,7 +105,7 @@ const localValue = ref(props.value ?? '')
  *   shows up the next time we open.
  */
 watch(
-	() => [props.modelValue, props.value],
+	() => [props.modelValue, props.value] as const,
 	async ([isOpen, nextValue], [wasOpen, prevValue]) => {
 		const opened = isOpen && !wasOpen
 		const valueChangedWhileClosed = !isOpen && nextValue !== prevValue
@@ -122,28 +124,23 @@ watch(
 )
 
 const studentName = computed(() => {
-	if (!props.student) return ''
-	return (
-		props.student.preferred_name ||
-		props.student.student_name ||
-		props.student.student
-	)
+	const s = props.student
+	if (!s) return ''
+	return s.preferred_name || s.student_name || s.student
 })
 
 const dialogTitle = computed(() => {
-	if (!studentName.value) {
-		return __('Remark')
-	}
+	if (!studentName.value) return __('Remark')
 	return __('Remark for {0}', [studentName.value])
 })
 
 const blockLabel = computed(() => {
-	if (!props.block || props.block === -1) return ''
+	if (props.block === null || props.block === -1) return ''
 	return __('Block {0}', [props.block])
 })
 
 const helperText = computed(() => {
-	if (!props.block || props.block === -1) {
+	if (props.block === null || props.block === -1) {
 		return __('Add an optional remark for this student on the selected day.')
 	}
 	return __('Add an optional remark for block {0}.', [props.block])
