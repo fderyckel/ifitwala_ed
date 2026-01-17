@@ -618,3 +618,163 @@ Once this is locked:
 
 A+ Transport Rule (Final Form)
 Transport normalization must happen exactly zero times in the SPA.
+
+Here are **10 concrete refactor rules** to *any Vue page* to make it **A+ / A++ compliant** in your codebase, with **file paths, naming, what to change, and why**.
+
+## 1) Page owns refresh, services own invalidation
+
+**Where:** any page under `ui-spa/src/pages/**`
+**Do:**
+
+* Page fetches data on mount / visibility / polling (if needed)
+* Page subscribes to `uiSignals` and decides when to refetch
+* Services never “reach into” pages
+
+**Why:** prevents “workflow close” coupling, keeps refresh policy centralized.
+
+---
+
+## 2) Never call APIs directly in pages or components
+
+**Where:** `ui-spa/src/pages/**`, `ui-spa/src/components/**`, `ui-spa/src/overlays/**`
+**Do:**
+
+* No `createResource()` in pages/components/overlays
+* No `fetch()` / `axios` / `frappe.call` in pages/components/overlays
+* All remote calls go through `ui-spa/src/lib/services/**`
+
+**Why:** stops transport drift + duplicated wrappers.
+
+---
+
+## 3) Services return domain payloads only (no envelope handling)
+
+**Where:** `ui-spa/src/lib/services/**`
+**Do:**
+
+* Services must return **contract Response types** directly
+* No `normalizeMessage/unwrapMessage/transform` in services
+* Transport envelope `{ message: T }` is owned by `ui-spa/src/resources/frappe.ts`
+
+**Why:** A++ rule: “backend contract is authoritative; no transport normalization anywhere else.”
+
+---
+
+## 4) Strict contract imports: one endpoint ↔ one Request/Response import
+
+**Where:** any service file
+**Pattern:**
+
+```ts
+import type { Request as XRequest, Response as XResponse } from '@/types/contracts/...'
+```
+
+**Do:**
+
+* Every method in a service uses explicit contract types
+* No inline ad-hoc response typing
+
+**Why:** contract discipline; prevents “shape creep”.
+
+---
+
+## 5) POST invariant: always `.submit(payload)` with flat args
+
+**Where:** services using `createResource`
+**Do:**
+
+* Always `method: 'POST'`
+* Always `resource.submit(payload)`
+* No GET-style params, no `{ payload: ... }` wrapper
+
+**Why:** your locked frappe-ui + server kwarg invariant.
+
+---
+
+## 6) Signal subscription must use `uiSignals.subscribe()` only
+
+**Where:** pages / components using signals
+**Do:**
+
+* No `uiSignals.on/off` (and you already removed them from export)
+* Always:
+
+```ts
+const dispose = uiSignals.subscribe(SIGNAL_..., handler)
+onBeforeUnmount(() => dispose())
+```
+
+**Why:** prevents leaks + refresh storms.
+
+---
+
+## 7) Overlays: close is owned by overlay infra, not by refresh
+
+**Where:** `ui-spa/src/components/**Overlay.vue` or `ui-spa/src/overlays/**`
+**Do:**
+
+* Overlay calls service mutation
+* On success: overlay closes immediately (via overlay stack / host lifecycle)
+* Overlay does NOT emit signals
+* Overlay does NOT trigger page refetch directly
+
+**Why:** decouples workflow completion from list refresh; fixes “overlay didn’t close” class of bugs.
+
+---
+
+## 8) Pages must coalesce refresh triggers (anti-stampede)
+
+**Where:** pages that poll + listen to signals (e.g. `StaffHome.vue`)
+**Do:**
+
+* Keep a `refreshInFlight` promise + `refreshQueued` boolean
+* Add a small throttle window for bursts (`~500–1000ms`)
+* Keep visibility-stale logic
+
+**Why:** signal bursts + interval + visibility can collide; page must protect the backend.
+
+---
+
+## 9) No fake safety types: ban `any`, ban permissive unions
+
+**Where:** types + services + pages
+**Do:**
+
+* No `any` in payloads (`Record<string, unknown>` or index `unknown` only)
+* No unions like `T | { message: T }`
+* No “defensive transport branching” outside transport adapter
+
+**Why:** fake safety creates ambiguity; ambiguity causes duplicated unwrappers and component drift.
+
+---
+
+## 10) File/folder naming conventions are contracts
+
+**Where:** everywhere
+**Do:**
+
+* Services live in: `ui-spa/src/lib/services/<domain>/<domain>Service.ts`
+
+  * Example: `ui-spa/src/lib/services/focus/focusService.ts`
+* Contracts live in: `ui-spa/src/types/contracts/<domain>/<endpoint>.ts`
+* Page names match route intent: `ui-spa/src/pages/<surface>/<PageName>.vue`
+* Components: `ui-spa/src/components/<domain>/<ComponentName>.vue`
+
+**Why:** keeps the architecture navigable; “where does this logic live?” becomes deterministic.
+
+---
+
+If you want, I can turn these into a short `AGENTS_UI_SPA.md` checklist later, but for now we keep moving.
+
+### Now, your `studentLogService.ts` is a textbook A++ regression
+
+It still contains:
+
+* `normalize()` (envelope handling in service)
+* `any` casts
+* `transform:` on every resource
+* emits signals unconditionally (should be gated by semantic success per your response contract)
+
+You already pasted the file, so next step is: **I refactor `ui-spa/src/lib/services/studentLog/studentLogService.ts` as one file** and output the full new version.
+
+(And yes: I will keep comments unless they’re now wrong.)

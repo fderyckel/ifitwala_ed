@@ -298,11 +298,10 @@ const canComplete = computed(() => {
 	return !!activeStudentLogName.value && s !== 'completed'
 })
 
-function applyContext(ctx: GetFocusContextResponse | null) {
-	if (!ctx) return
-	log.value = ctx.log ?? null
-	followUps.value = ctx.follow_ups ?? []
-	modeState.value = ctx.mode === 'author' || ctx.mode === 'assignee' ? ctx.mode : 'assignee'
+function applyContext(ctx: GetFocusContextResponse) {
+	log.value = ctx.log
+	followUps.value = ctx.follow_ups
+	modeState.value = ctx.mode
 }
 
 watch(
@@ -312,7 +311,7 @@ watch(
 		draftText.value = ''
 		reassignTo.value = ''
 		submittedOnce.value = false
-		applyContext(next || null)
+		applyContext(next)
 	},
 	{ immediate: true, deep: false }
 )
@@ -369,6 +368,11 @@ function aPlusSuccessDoneOnly() {
 	}
 }
 
+function errorMessage(err: unknown): string {
+	if (err instanceof Error && err.message) return err.message
+	return __('Please try again.')
+}
+
 /* Actions ------------------------------------------------------ */
 async function submitFollowUp() {
 	if (busy.value || submittedOnce.value) return
@@ -400,11 +404,11 @@ async function submitFollowUp() {
 		})
 
 		aPlusSuccessDoneOnly()
-	} catch (e: any) {
+	} catch (e: unknown) {
 		submittedOnce.value = false
 		showToast({
 			title: __('Could not submit follow-up'),
-			text: e?.message || __('Please try again.'),
+			text: errorMessage(e),
 			icon: 'x',
 		})
 	} finally {
@@ -449,11 +453,11 @@ async function reassignFollowUp() {
 		})
 
 		aPlusSuccessDoneOnly()
-	} catch (e: any) {
+	} catch (e: unknown) {
 		submittedOnce.value = false
 		showToast({
 			title: __('Could not reassign'),
-			text: e?.message || __('Please try again.'),
+			text: errorMessage(e),
 			icon: 'x',
 		})
 	} finally {
@@ -488,11 +492,11 @@ async function completeParentLog() {
 		})
 
 		aPlusSuccessDoneOnly()
-	} catch (e: any) {
+	} catch (e: unknown) {
 		submittedOnce.value = false
 		showToast({
 			title: __('Could not complete log'),
-			text: e?.message || __('Please try again.'),
+			text: errorMessage(e),
 			icon: 'x',
 		})
 	} finally {
