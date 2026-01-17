@@ -23,7 +23,7 @@
             :open="entry.open"
             :z-index="baseZ + idx * zStep"
             :overlay-id="entry.id"
-            @close="requestClose(entry.id, $event ?? 'programmatic')"
+            @close="onChildClose(entry.id, $event)"
             @after-leave="finalizeClose(entry.id)"
           />
         </div>
@@ -50,6 +50,8 @@ import StudentContextOverlay from '@/components/overlays/class-hub/StudentContex
 import QuickEvidenceOverlay from '@/components/overlays/class-hub/QuickEvidenceOverlay.vue'
 import QuickCFUOverlay from '@/components/overlays/class-hub/QuickCFUOverlay.vue'
 import TaskReviewOverlay from '@/components/overlays/class-hub/TaskReviewOverlay.vue'
+
+type CloseReason = 'backdrop' | 'esc' | 'programmatic'
 
 type RenderedEntry = OverlayEntry & {
   open: boolean
@@ -191,13 +193,40 @@ function getTopInteractive(): RenderedEntry | null {
 }
 
 /**
+ * Normalize the close payload coming from child overlays.
+ *
+ * IMPORTANT:
+ * - HeadlessUI Dialog emits boolean `false` on @close by default.
+ * - Some overlays may emit undefined or other values.
+ * - Under A+ rules, unknown payloads MUST NOT trigger a close.
+ */
+function normalizeCloseReason(payload: unknown): CloseReason | null {
+  if (payload === 'backdrop' || payload === 'esc' || payload === 'programmatic') return payload
+  return null
+}
+
+function onChildClose(id: string, payload: unknown) {
+  const reason = normalizeCloseReason(payload)
+
+  // If the child didn’t provide a valid reason, ignore.
+  // This prevents HeadlessUI’s default boolean `false` from closing overlays.
+  if (!reason) {
+    // eslint-disable-next-line no-console
+    console.warn('[OverlayHost] Ignoring invalid close payload from overlay', { id, payload })
+    return
+  }
+
+  requestClose(id, reason)
+}
+
+/**
  * A+ central close enforcement:
  * - Only the top overlay can be interactively closed
  * - closeOnBackdrop / closeOnEsc enforced here (not per-overlay ad hoc)
  * - OverlayHost NEVER mutates overlay.state.stack directly
  * - Emergency hatch is overlay.forceRemove(id) (implemented in useOverlayStack)
  */
-function requestClose(id: string, reason: 'backdrop' | 'esc' | 'programmatic' = 'programmatic') {
+function requestClose(id: string, reason: CloseReason = 'programmatic') {
   const top = getTopInteractive()
   if (!top || top.id !== id) return
 

@@ -1,4 +1,4 @@
-// apps/ifitwala_ed/ifitwala_ed/ui-spa/src/router/index.ts
+// ui-spa/src/router/index.ts
 
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
