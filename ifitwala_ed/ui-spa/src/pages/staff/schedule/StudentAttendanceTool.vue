@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ui-spa/src/pages/staff/schedule/StudentAttendanceTool.vue -->
+<!-- ui-spa/src/pages/staff/schedule/StudentAttendanceTool.vue -->
 <template>
 	<div class="staff-shell space-y-5">
 		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -229,8 +229,12 @@ import AttendanceGrid from './components/AttendanceGrid.vue'
 import RemarkDialog from './components/RemarkDialog.vue'
 
 import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService'
-import type { AttendanceCode, StudentRosterEntry, BlockKey } from './types'
-import type { BulkUpsertRow } from '@/lib/services/studentAttendance/studentAttendanceService'
+
+// UI view-model types (page-owned)
+import type { StudentRosterEntry, BlockKey } from './student-attendance-tool/types'
+
+// Backend-owned contracts (service + page may use contract DTOs; services MUST use them)
+import type { StudentAttendanceCodeRow, BulkUpsertAttendanceRow } from '@/types/contracts/studentAttendance'
 
 const SAVE_DEBOUNCE_MS = 900
 
@@ -265,7 +269,7 @@ const schoolOptions = ref<Array<{ label: string; value: string }>>([])
 const programOptions = ref<Array<{ label: string; value: string }>>([])
 const groupOptions = ref<Array<{ label: string; value: string }>>([])
 
-const attendanceCodes = ref<AttendanceCode[]>([])
+const attendanceCodes = ref<StudentAttendanceCodeRow[]>([])
 const codeColors = computed(() => {
 	const colors: Record<string, string> = {}
 	for (const c of attendanceCodes.value) {
@@ -632,7 +636,7 @@ async function persistChanges() {
 	errorBanner.value = null
 
 	try {
-		const rows: BulkUpsertRow[] = []
+		const rows: BulkUpsertAttendanceRow[] = []
 
 		for (const key of dirty.value) {
 			const [studentId, blockStr] = key.split('|')

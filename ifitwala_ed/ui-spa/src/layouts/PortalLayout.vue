@@ -25,11 +25,6 @@
       </div>
     </div>
 
-    <!-- A+ contract: overlay infra MUST exist on every surface that can open overlays.
-         Keeping this here prevents “toast works but overlay can’t mount” edge-cases when
-         a student-facing workflow later adds overlays. -->
-    <div id="overlay-root"></div>
-    <OverlayHost />
   </div>
 </template>
 
@@ -38,7 +33,6 @@ import { ref } from 'vue'
 import PortalNavbar from '@/components/PortalNavbar.vue'
 import PortalSidebar from '@/components/PortalSidebar.vue'
 import PortalFooter from '@/components/PortalFooter.vue'
-import OverlayHost from '@/overlays/OverlayHost.vue'
 
 const isSidebarOpen = ref(false)
 

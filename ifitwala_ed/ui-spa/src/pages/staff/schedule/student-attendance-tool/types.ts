@@ -1,12 +1,13 @@
-export type BlockKey = number
+// ui-spa/src/pages/staff/schedule/student-attendance-tool/types.ts
+// ------------------------------------------------------------
+// UI View-Model Types (page-owned)
+// ------------------------------------------------------------
+// - These types are projections used only by StudentAttendanceTool.vue
+// - They must NOT mirror backend payloads
+// - They must NOT be imported by services
+// ------------------------------------------------------------
 
-export interface AttendanceCode {
-	name: string
-	attendance_code: string
-	attendance_code_name: string
-	display_order?: number
-	color?: string | null
-}
+export type BlockKey = number
 
 export interface StudentRosterEntry {
 	student: string
@@ -15,18 +16,9 @@ export interface StudentRosterEntry {
 	student_image?: string | null
 	birth_date?: string | null
 	medical_info?: string | null
+
+	// UI-composed state
 	blocks: BlockKey[]
 	attendance: Record<BlockKey, string>
 	remarks: Record<BlockKey, string>
-}
-
-export interface RosterResponse {
-	students: StudentRosterEntry[]
-	blocks: BlockKey[]
-	group_info?: {
-		name?: string | null
-		program?: string | null
-		course?: string | null
-		cohort?: string | null
-	}
 }

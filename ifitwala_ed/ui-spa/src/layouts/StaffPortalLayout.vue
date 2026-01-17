@@ -39,9 +39,6 @@
       <PortalNotification />
     </main>
 
-    <!-- A+ contract: overlay infra lives INSIDE the surface that opens overlays -->
-    <div id="overlay-root"></div>
-    <OverlayHost />
   </div>
 </template>
 
@@ -49,5 +46,4 @@
 import { RouterLink } from 'vue-router'
 import { FeatherIcon } from 'frappe-ui'
 import PortalNotification from '@/components/PortalNotification.vue'
-import OverlayHost from '@/overlays/OverlayHost.vue'
 </script>

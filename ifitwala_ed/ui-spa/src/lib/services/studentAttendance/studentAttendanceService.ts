@@ -4,111 +4,80 @@ import { createResource } from 'frappe-ui'
 
 import { uiSignals, SIGNAL_CALENDAR_INVALIDATE } from '@/lib/uiSignals'
 
-import type { AttendanceCode, BlockKey } from '@/pages/staff/schedule/student-attendance-tool/types'
-
-export type SchoolFilterContext = {
-	default_school: string | null
-	schools: Array<{ name: string; school_name?: string | null }>
-}
-
-export type ProgramRow = {
-	name: string
-	program_name?: string | null
-}
-
-export type StudentGroupRow = {
-	name: string
-	student_group_name?: string | null
-	program?: string | null
-	school?: string | null
-	course?: string | null
-	cohort?: string | null
-	academic_year?: string | null
-	status?: string | null
-}
-
-export type FetchStudentsResponse = {
-	students: Array<{
-		student: string
-		student_name: string
-		preferred_name?: string | null
-		student_image?: string | null
-		birth_date?: string | null
-		medical_info?: string | null
-	}>
-	start: number
-	total: number
-	group_info: {
-		name?: string | null
-		program?: string | null
-		course?: string | null
-		cohort?: string | null
-	}
-}
-
-export type ExistingAttendanceMap = Record<string, Record<number, { code: string; remark: string }>>
-
-export type BulkUpsertRow = {
-	student: string
-	student_group: string
-	attendance_date: string
-	block_number: number
-	attendance_code: string
-	remark: string
-}
-
-export type BulkUpsertResult = {
-	created: number
-	updated: number
-}
+import type {
+	AttendanceRecordedDatesRequest,
+	AttendanceRecordedDatesResponse,
+	BulkUpsertAttendanceRequest,
+	BulkUpsertAttendanceResponse,
+	FetchActiveProgramsRequest,
+	FetchActiveProgramsResponse,
+	FetchBlocksForDayRequest,
+	FetchBlocksForDayResponse,
+	FetchExistingAttendanceRequest,
+	FetchExistingAttendanceResponse,
+	FetchMeetingDatesRequest,
+	GetMeetingDatesRequest,
+	GetMeetingDatesResponse,
+	GetWeekendDaysRequest,
+	GetWeekendDaysResponse,
+	FetchPortalStudentGroupsRequest,
+	FetchPortalStudentGroupsResponse,
+	FetchSchoolFilterContextRequest,
+	FetchSchoolFilterContextResponse,
+	FetchStudentsRequest,
+	FetchStudentsResponse,
+	ListAttendanceCodesRequest,
+	ListAttendanceCodesResponse,
+	PreviousStatusMapRequest,
+	PreviousStatusMapResponse,
+} from '@/types/contracts/studentAttendance'
 
 /**
  * Student Attendance Service (A+)
  * ------------------------------------------------------------
- * Rules:
- * - Uses frappe-ui createResource (transport handled by lib/frappe.ts resourceFetcher)
- * - Returns domain payloads only
+ * - Uses frappe-ui createResource
+ * - Returns domain payloads only (contracts)
  * - No toast here
  * - Emits invalidation signals after confirmed mutations
  */
 export function createStudentAttendanceService() {
-	const schoolContextResource = createResource<SchoolFilterContext>({
+	const schoolContextResource = createResource<FetchSchoolFilterContextResponse>({
 		url: 'ifitwala_ed.api.student_attendance.fetch_school_filter_context',
 		method: 'POST',
 		auto: false,
 	})
 
-	const programResource = createResource<ProgramRow[]>({
+	const programResource = createResource<FetchActiveProgramsResponse>({
 		url: 'ifitwala_ed.api.student_attendance.fetch_active_programs',
 		method: 'POST',
 		auto: false,
 	})
 
-	const groupResource = createResource<StudentGroupRow[]>({
+	const groupResource = createResource<FetchPortalStudentGroupsResponse>({
 		url: 'ifitwala_ed.api.student_attendance.fetch_portal_student_groups',
 		method: 'POST',
 		auto: false,
 	})
 
-	const attendanceCodesResource = createResource<AttendanceCode[]>({
+	const attendanceCodesResource = createResource<ListAttendanceCodesResponse>({
 		url: 'ifitwala_ed.schedule.attendance_utils.list_attendance_codes',
 		method: 'POST',
 		auto: false,
 	})
 
-	const weekendDaysResource = createResource<number[]>({
+	const weekendDaysResource = createResource<GetWeekendDaysResponse>({
 		url: 'ifitwala_ed.api.student_attendance.get_weekend_days',
 		method: 'POST',
 		auto: false,
 	})
 
-	const meetingDatesResource = createResource<string[]>({
+	const meetingDatesResource = createResource<GetMeetingDatesResponse>({
 		url: 'ifitwala_ed.schedule.attendance_utils.get_meeting_dates',
 		method: 'POST',
 		auto: false,
 	})
 
-	const recordedDatesResource = createResource<string[]>({
+	const recordedDatesResource = createResource<AttendanceRecordedDatesResponse>({
 		url: 'ifitwala_ed.schedule.attendance_utils.attendance_recorded_dates',
 		method: 'POST',
 		auto: false,
@@ -120,76 +89,94 @@ export function createStudentAttendanceService() {
 		auto: false,
 	})
 
-	const previousStatusResource = createResource<Record<string, string>>({
+	const previousStatusResource = createResource<PreviousStatusMapResponse>({
 		url: 'ifitwala_ed.schedule.attendance_utils.previous_status_map',
 		method: 'POST',
 		auto: false,
 	})
 
-	const existingAttendanceResource = createResource<ExistingAttendanceMap>({
+	const existingAttendanceResource = createResource<FetchExistingAttendanceResponse>({
 		url: 'ifitwala_ed.schedule.attendance_utils.fetch_existing_attendance',
 		method: 'POST',
 		auto: false,
 	})
 
-	const blocksForDayResource = createResource<BlockKey[]>({
+	const blocksForDayResource = createResource<FetchBlocksForDayResponse>({
 		url: 'ifitwala_ed.schedule.attendance_utils.fetch_blocks_for_day',
 		method: 'POST',
 		auto: false,
 	})
 
-	const bulkUpsertResource = createResource<BulkUpsertResult>({
+	const bulkUpsertResource = createResource<BulkUpsertAttendanceResponse>({
 		url: 'ifitwala_ed.schedule.attendance_utils.bulk_upsert_attendance',
 		method: 'POST',
 		auto: false,
 	})
 
-	async function fetchSchoolContext(): Promise<SchoolFilterContext> {
-		return schoolContextResource.submit({})
+	async function fetchSchoolContext(
+		payload: FetchSchoolFilterContextRequest = {},
+	): Promise<FetchSchoolFilterContextResponse> {
+		return schoolContextResource.submit(payload)
 	}
 
-	async function fetchPrograms(): Promise<ProgramRow[]> {
-		return programResource.submit({})
+	async function fetchPrograms(
+		payload: FetchActiveProgramsRequest = {},
+	): Promise<FetchActiveProgramsResponse> {
+		return programResource.submit(payload)
 	}
 
-	async function fetchStudentGroups(payload: {
-		school: string | null
-		program: string | null
-	}): Promise<StudentGroupRow[]> {
+	async function fetchStudentGroups(
+		payload: FetchPortalStudentGroupsRequest,
+	): Promise<FetchPortalStudentGroupsResponse> {
 		return groupResource.submit(payload)
 	}
 
-	async function listAttendanceCodes(): Promise<AttendanceCode[]> {
-		return attendanceCodesResource.submit({ show_in_attendance_tool: 1 })
+	async function listAttendanceCodes(
+		payload: ListAttendanceCodesRequest = { show_in_attendance_tool: 1 },
+	): Promise<ListAttendanceCodesResponse> {
+		return attendanceCodesResource.submit(payload)
 	}
 
-	async function getWeekendDays(payload: { student_group: string | null }): Promise<number[]> {
+	async function getWeekendDays(payload: GetWeekendDaysRequest): Promise<GetWeekendDaysResponse> {
 		return weekendDaysResource.submit(payload)
 	}
 
-	async function getMeetingDates(payload: { student_group: string }): Promise<string[]> {
+	async function getMeetingDates(payload: GetMeetingDatesRequest): Promise<GetMeetingDatesResponse> {
 		return meetingDatesResource.submit(payload)
 	}
 
-	async function getRecordedDates(payload: { student_group: string }): Promise<string[]> {
+	async function getRecordedDates(
+		payload: AttendanceRecordedDatesRequest,
+	): Promise<AttendanceRecordedDatesResponse> {
 		return recordedDatesResource.submit(payload)
 	}
 
 	async function fetchRosterContext(payload: { student_group: string; attendance_date: string }) {
+		const reqStudents: FetchStudentsRequest = {
+			student_group: payload.student_group,
+			start: 0,
+			page_length: 500,
+		}
+		const reqPrev: PreviousStatusMapRequest = payload
+		const reqExisting: FetchExistingAttendanceRequest = payload
+		const reqBlocks: FetchBlocksForDayRequest = payload
+
 		const [roster, prevMap, existingMap, blocks] = await Promise.all([
-			fetchStudentsResource.submit({ student_group: payload.student_group, start: 0, page_length: 500 }),
-			previousStatusResource.submit(payload),
-			existingAttendanceResource.submit(payload),
-			blocksForDayResource.submit(payload),
+			fetchStudentsResource.submit(reqStudents),
+			previousStatusResource.submit(reqPrev),
+			existingAttendanceResource.submit(reqExisting),
+			blocksForDayResource.submit(reqBlocks),
 		])
 
 		return { roster, prevMap, existingMap, blocks }
 	}
 
-	async function bulkUpsertAttendance(payload: { payload: BulkUpsertRow[] }): Promise<BulkUpsertResult> {
+	async function bulkUpsertAttendance(
+		payload: BulkUpsertAttendanceRequest,
+	): Promise<BulkUpsertAttendanceResponse> {
 		const result = await bulkUpsertResource.submit(payload)
 
-		// A+ invalidation: a mutation that can affect calendars/dashboards elsewhere
+		// A+ invalidation: mutation can affect shared calendars / dashboards
 		uiSignals.emit(SIGNAL_CALENDAR_INVALIDATE)
 
 		return result

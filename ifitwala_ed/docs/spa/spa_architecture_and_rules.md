@@ -187,6 +187,11 @@ This prevents accidental UI leakage later.
 
 ---
 
+### 2.6 UI View-Model Types (Page-Owned)
+Types that exist only to assemble UI state (view-models / projections) **must be page-owned and co-located** with the page or feature folder (e.g., pages/.../types.ts). These types must not mirror backend payloads, must not be imported by services, and are allowed to evolve with UX without triggering contract churn. If a UI type is reused across multiple pages and remains stable, it may be promoted to src/types/ui/; otherwise it stays local. Backend DTOs always live in src/types/contracts/ and are the only types services may use for request/response shapes.
+
+---
+
 ## 3. API Usage Rules (Hard-Won)
 
 ### 3.1 One transport only
