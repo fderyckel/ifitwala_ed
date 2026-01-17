@@ -1,0 +1,145 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:INVRN-{YYYY}-{####}",
+ "creation": "2026-01-14 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_main",
+  "return_to_location",
+  "returned_from_type",
+  "returned_from_employee",
+  "returned_from_student",
+  "returned_from_guardian",
+  "returned_from_location",
+  "posting_datetime",
+  "notes",
+  "section_break_items",
+  "items"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_main",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "return_to_location",
+   "fieldtype": "Link",
+   "label": "Return To Location",
+   "options": "Location",
+   "reqd": 1
+  },
+  {
+   "fieldname": "returned_from_type",
+   "fieldtype": "Select",
+   "label": "Returned From Type",
+   "options": "Employee\nStudent\nGuardian\nLocation",
+   "reqd": 1
+  },
+  {
+   "fieldname": "returned_from_employee",
+   "fieldtype": "Link",
+   "label": "Returned From Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "returned_from_student",
+   "fieldtype": "Link",
+   "label": "Returned From Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "returned_from_guardian",
+   "fieldtype": "Link",
+   "label": "Returned From Guardian",
+   "options": "Guardian"
+  },
+  {
+   "fieldname": "returned_from_location",
+   "fieldtype": "Link",
+   "label": "Returned From Location",
+   "options": "Location"
+  },
+  {
+   "default": "Now",
+   "fieldname": "posting_datetime",
+   "fieldtype": "Datetime",
+   "label": "Posting Datetime",
+   "reqd": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "section_break_items",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Inventory Return Item",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-01-14 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stock",
+ "name": "Inventory Return",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Item Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User"
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User"
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User"
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

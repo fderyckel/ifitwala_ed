@@ -43,7 +43,9 @@ A top-layer UI surface rendered by `OverlayHost.vue` (HeadlessUI `Dialog + Trans
 A domain action that triggers server side-effects (ToDo open/close, notifications, Focus item changes). Workflows are owned by **UI Services + server controllers**, not by pages or Focus.
 
 **UI Services**
-Client orchestration modules in `ui-spa/src/lib/services/**` that call endpoints (via `createResource`), normalize responses/errors, emit invalidation signals, and optionally show toasts.
+Client orchestration modules in `ui-spa/src/lib/services/**` that call endpoints (via `createResource`), normalize responses/errors, and emit invalidation signals.
+
+> **Locked:** Services do **not** toast. UX feedback is owned by refresh owners (page/shell). (See §9.2)
 
 **UI Signals / Invalidation Bus**
 Runtime infra (`ui-spa/src/lib/uiSignals.ts`) used to broadcast “a workflow happened; refresh interested surfaces.” It decouples workflow success from refresh policy.
@@ -52,15 +54,15 @@ Runtime infra (`ui-spa/src/lib/uiSignals.ts`) used to broadcast “a workflow ha
 
 ## 2. Ownership Matrix (Locked)
 
-| Concern                           | Owner                                      |
-| --------------------------------- | ------------------------------------------ |
-| API calls                         | **UI Services** (`ui-spa/src/lib/…`)       |
-| Business validation               | **Server**                                 |
-| Idempotency enforcement           | **Server**                                 |
-| Refresh policy / invalidation     | **UI Services**                            |
-| Toasts / messaging                | **UI Services** (or shared UI layer later) |
-| **Overlay close**                 | **Overlay**                                |
-| Overlay stack removal / lifecycle | **OverlayHost**                            |
+| Concern                           | Owner                                                |
+| --------------------------------- | ---------------------------------------------------- |
+| API calls                         | **UI Services** (`ui-spa/src/lib/services/**`)       |
+| Business validation               | **Server**                                           |
+| Idempotency enforcement           | **Server**                                           |
+| Refresh policy / invalidation     | **UI Services** (emit) + **Pages/Shell** (subscribe) |
+| Toasts / messaging                | **Refresh Owners** (page/shell)                      |
+| **Overlay close**                 | **Overlay**                                          |
+| Overlay stack removal / lifecycle | **OverlayHost**                                      |
 
 ---
 
@@ -104,12 +106,12 @@ On **successful workflow completion**:
 2. Optionally emit `done(payload)` (best‑effort)
 3. Return control to `OverlayHost`
 
-Everything else (toast, refresh, analytics, local reload) is **best‑effort** and must happen **after** close.
+Everything else (refresh, analytics, UX feedback) is **best‑effort** and must happen **after** close.
 
 ### 4.1 Prohibitions
 
 * Never wait for refresh before closing
-* Never wait for toast availability before closing
+* Never wait for “toast availability” before closing
 * Never block close behind `busy` cleanup
 * Never use “reload then close”
 
@@ -122,10 +124,11 @@ Everything else (toast, refresh, analytics, local reload) is **best‑effort** a
 UI Services:
 
 * call whitelisted endpoints (via `createResource`)
-* normalize responses/errors
-* generate client request ids (for server‑side idempotency)
-* emit invalidation signals (Focus refresh, list refresh, etc.)
-* show toasts/banners (optional)
+* **emit invalidation signals only after confirmed semantic success**
+* generate client request ids (for server-side idempotency) when relevant
+
+> **Locked:** Transport envelope unwrapping is centralized in `ui-spa/src/resources/frappe.ts`.
+> Services return **domain payloads only**.
 
 ### 5.2 What UI Services must never do
 
@@ -135,8 +138,9 @@ UI Services must **never**:
 * mutate the overlay stack
 * depend on HeadlessUI lifecycle timing
 * call overlay APIs
+* show toasts
 
-**Rule:** UI Services **never** call overlay stack APIs.
+**Rule:** UI Services never call overlay stack APIs.
 
 ---
 
@@ -144,10 +148,30 @@ UI Services must **never**:
 
 **Rule:** If you need a disposer/unsubscribe function, do **not** use `uiSignals.on()`.
 
-- `uiSignals.on()` is low-level registration and requires `uiSignals.off(name, handler)`
-- `uiSignals.subscribe()` returns a disposer and is the preferred API for Vue `setup()` blocks
+* `uiSignals.on()` is low-level registration and requires `uiSignals.off(name, handler)`
+* `uiSignals.subscribe()` returns a disposer and is the preferred API for Vue `setup()` blocks
 
 Violations are **defects**, not style issues.
+
+---
+
+## 5.4 Service Success Gating (semantic, not HTTP)
+
+Services may emit invalidation signals **only** after *semantic mutation success*.
+
+**Not allowed:**
+
+* emission “on submit”
+* emission on HTTP 200 alone
+* emission on “no exception thrown”
+
+**Allowed patterns:**
+
+* `ok === true`
+* explicit `status` representing mutation (`'created' | 'updated' | 'processed'`)
+* other explicit backend-owned success field
+
+> **Rule:** Components/overlays are forbidden from deciding mutation success or emitting signals.
 
 ---
 
@@ -162,7 +186,9 @@ It must guarantee:
    * becomes inactive/inert if not top
    * transitions out (`open=false`)
    * is removed after `after-leave`
+
 2. Removal must not depend on child overlay correctness
+
 3. Errors inside overlays must not trap the user
 
 OverlayHost treats overlays as potentially faulty children.
@@ -214,7 +240,7 @@ Focus does **not**:
 
 * decide outcomes
 * close overlays
-* interpret success beyond “server call succeeded”
+* interpret success beyond “service call succeeded”
 
 ### 8.2 Refresh is advisory
 
@@ -228,9 +254,9 @@ Focus does **not**:
 
 Under A+:
 
-- **Pages** subscribe to invalidation signals and decide how/when to refresh
-- **Services** emit invalidation after successful workflows
-- **Overlays** close immediately on success and must not “refresh-gate” closing
+* **Pages/Shell** subscribe to invalidation signals and decide how/when to refresh
+* **Services** emit invalidation after *confirmed semantic success*
+* **Overlays** close immediately on success and must not “refresh-gate” closing
 
 ---
 
@@ -242,7 +268,21 @@ From the user’s perspective:
 * no spinner purgatory
 * no “did it work?” ambiguity
 
-Any delay (refresh, list updates, toasts) happens **after** the overlay is gone.
+Any delay (refresh, list updates, UX feedback) happens **after** the overlay is gone.
+
+---
+
+## 9.2 UX Feedback Ownership (LOCKED)
+
+**UX feedback after success is owned by Refresh Owners (page/shell) and is triggered by signal semantics.**
+
+Meaning:
+
+* Services emit `*_invalidate` signals **only after confirmed semantic success**
+* Refresh owners (page/shell) receive the signal, refetch, and may show a “Saved” toast
+* Overlays close immediately and do **zero** UX signaling (**no toast, no signals, no refetch**)
+
+**Safeguard:** Every surface that can initiate that workflow must have a refresh owner subscribed (page or shell-level listener).
 
 ---
 
@@ -256,6 +296,9 @@ Before merging any workflow overlay:
 * [ ] Uses a UI Service for API calls
 * [ ] No forbidden naming (`get_context`, `context`, `resolve_context`)
 * [ ] OverlayHost remains lifecycle authority (no stack mutations in overlays/services)
+* [ ] Overlays do not emit signals
+* [ ] Services emit signals only after semantic success
+* [ ] Pages/Shell subscribe and own refresh + optional UX feedback
 
 If any fails → reject PR.
 
@@ -277,16 +320,18 @@ Treat as the reference behavior: closes immediately on server success; never gat
 
 **StudentLogFollowUpOverlay (must align)**
 Must:
-- emit `close` immediately on success
-- never block close behind `busy`
-- treat any reload/refresh as best-effort via signals (after close)
+
+* emit `close` immediately on success
+* never block close behind `busy`
+* treat any reload/refresh as best-effort via signals (after close)
 
 **FocusRouterOverlay (router only)**
 Must:
-- resolve routing payload once (via service)
-- pass resolved payload down
-- avoid child overlays refetching the same payload
-- never intercept or gate overlay close
+
+* resolve routing payload once (via service)
+* pass resolved payload down
+* avoid child overlays refetching the same payload
+* never intercept or gate overlay close
 
 ---
 
@@ -308,8 +353,7 @@ We already saw predictable drift:
 * duplicate “payload types” living inside Vue pages
 * a parallel `fetch()` transport existing alongside `createResource`
 
-At small scale this is tolerable.
-At scale (more modules, analytics, agents), it becomes:
+At scale, this becomes:
 
 * silent contract mismatches
 * accidental data exposure across surfaces
@@ -356,13 +400,11 @@ Hard rules:
 ### 1.4 One transport only
 
 * ❌ no `fetch()` (direct or wrapped)
-* ✅ all server calls use `createResource`
+* ✅ all server calls use `createResource` (via `ui-spa/src/resources/frappe.ts`)
 
 ---
 
 ## 2) What we mean by **Contracts** (core concept)
-
-### 2.1 Plain definition
 
 A **contract** is an explicit, named description of:
 
@@ -371,51 +413,22 @@ A **contract** is an explicit, named description of:
 
 Nothing more. Nothing less.
 
-A contract is **not**:
-
-* UI state
-* business logic
-* workflow rules
-
-It is the *boundary agreement* between SPA and server.
-
----
-
-### 2.2 Why types alone are not enough
-
-Today, many payload types live:
-
-* inside Vue pages
-* inside services
-* sometimes duplicated
-
-That means the *real contract* exists only implicitly, in the server code.
-
-Contracts make that boundary:
-
-* visible
-* reviewable
-* enforceable
-
 ---
 
 ## 3) Contract files (Phase‑0 format)
 
 Create:
 
-```
-ui-spa/src/types/contracts/
+```txt
+types/contracts/
 ```
 
 Structure by domain:
 
-```
+```txt
 types/contracts/
   focus/
-    list_focus_items.ts
-    resolve_focus_item.ts
   student_log/
-    submit_follow_up.ts
 ```
 
 Each file exports **only types**.
@@ -426,7 +439,7 @@ Each file exports **only types**.
 
 Example:
 
-```
+```ts
 export type Request = {
   open_only: 0 | 1
   limit?: number
@@ -458,15 +471,13 @@ If the same DocType is exposed differently:
 
 Then define separate DTOs:
 
-```
+```txt
 StudentLogStaffDTO
 StudentLogStudentDTO
 StudentLogGuardianDTO
 ```
 
 Even if identical today.
-
-This prevents accidental UI leakage.
 
 ---
 
@@ -486,7 +497,7 @@ Never colocate runtime data in `types/`.
 Services:
 
 * live in `lib/services/`
-* call `createResource`
+* call the transport via `resources/frappe.ts`
 * import contract types
 
 Services do NOT:
@@ -498,18 +509,10 @@ Services do NOT:
 
 ## 8) Enforcement (Phase‑0)
 
-### CI / script checks
-
 Fail build if:
 
-* `types/` contains `export const`
+* `types/` contains runtime code
 * any file contains `fetch(`
-
-### Review checklist
-
-* new endpoint → new contract file
-* no page‑local API payload types
-* role‑scoped DTOs where relevant
 
 ---
 
@@ -534,18 +537,6 @@ Done when:
 
 ---
 
-A+ Governance Appendix
-All services must return already-normalized domain payloads. Components never unwrap.
-Components must not unwrap transport shapes. Ever.
-
-Services must return domain payloads. Always.
-Pages MUST subscribe to uiSignals
-Overlays MUST NOT emit refresh events
-Services MUST be the only emitters
-DOM events are forbidden for SPA invalidation
-Violations are defects, not stylistic differences
-
----
 
 # Appendix B — Codex Prompt (Reference)
 
@@ -606,301 +597,3 @@ You are working in Ifitwala_Ed SPA (`ifitwala_ed/ui-spa`). Your task: implement 
 - Server TTL caching where safe
 
 ---
-
-
-
-## Inputs you must start from
-
-* File to refactor (authoritative):
-  `ui-spa/src/components/student_log/StudentLogCreateOverlay.vue` (use the uploaded content as baseline).
-* Existing domain types (if needed):
-  `ui-spa/src/types/focusItem.ts`, `ui-spa/src/types/interactions.ts`, etc. (do not introduce runtime into types).
-* Existing UI signals pattern (if present):
-  `ui-spa/src/lib/uiSignals.ts` (or similar).
-
----
-
-## Step 1 — Identify endpoints and payload shapes
-
-In StudentLogCreateOverlay, locate every API call (createResource / submit). For each unique server method URL, infer:
-
-* Request kwargs payload keys and types
-* Response message shape (the `message` payload after frappe standard wrapping)
-
-Do **not** “guess” new fields. Use what the overlay currently sends/reads.
-
-List the endpoints you found at the top of your PR output as comments (for review).
-
----
-
-## Step 2 — Create contract files (Phase-0)
-
-Create folder (if not exists):
-
-* `ui-spa/src/types/contracts/student_log/`
-
-For each endpoint used by this overlay, create a contract file:
-
-* `types/contracts/student_log/<action>.ts`
-
-Each contract file exports **only**:
-
-* `export type Request = { ... }`
-* `export type Response = { ... }`
-
-Rules:
-
-* Exact field names must match the payload keys used by the overlay today.
-* Use literal unions where appropriate (no const arrays).
-* No runtime exports.
-
-Example file name patterns (choose names that match what the server does):
-
-* `create_student_log.ts`
-* `submit_student_log.ts`
-* `get_student_log_context.ts`
-  (Use actual method intent from the overlay; do not invent.)
-
----
-
-## Step 3 — Create/Refactor a service (A+)
-
-Create a service module:
-
-* `ui-spa/src/lib/services/studentLog/studentLogService.ts`
-
-This service must:
-
-* Use `createResource` with `method: 'POST'`
-* Accept a `Request` type from the contract
-* Return typed `Response` message payload (normalize `data.message` if your app does that consistently)
-
-Required functions (derive from overlay needs; typical):
-
-* `submitStudentLog(payload: SubmitStudentLogRequest): Promise<SubmitStudentLogResponse>`
-
-Service rules:
-
-* No overlay closing logic.
-* No direct DOM work.
-* It MAY emit invalidation signals (see Step 4).
-* It MAY call `toast` best-effort, but overlay must not depend on toast for correctness.
-
----
-
-## Step 4 — Invalidation / UI signals (A+ correctness)
-
-On success, the service should trigger a clear invalidation event so the rest of the app can refresh:
-
-* Focus list refresh
-* Student log list refresh (if relevant)
-* Morning briefing refresh (if relevant)
-
-Use the existing signals pattern in the repo (likely `uiSignals.ts`). If none exists, create a minimal one in:
-
-* `ui-spa/src/lib/uiSignals.ts`
-
-Signals must be:
-
-* runtime only (belongs in `lib/`)
-* dumb events (e.g. `emit('student_log:created')`)
-* no business logic
-
-Overlay will call service, service emits signals, overlay closes itself.
-
----
-
-## Step 5 — Refactor StudentLogCreateOverlay.vue to consume contracts + service
-
-Update the overlay to:
-
-* Import endpoint types from `types/contracts/student_log/...` using `import type`.
-* Call the service function(s) only.
-* Maintain correct busy state; disable submit while busy.
-* Handle errors explicitly:
-
-  * Show toast error with a safe message
-  * Keep overlay open on failure
-  * If there is an inline error UI pattern in the overlay, populate it
-
-On success:
-
-* Reset local form state as needed (optional but preferred).
-* Emit `close` (or call overlay stack close callback) according to your OverlayHost pattern.
-* Do not rely on toast to decide closing.
-
-**Do not change UX layout** besides what’s needed for correct busy/error handling.
-
----
-
-## Step 6 — Remove any local “API payload” types from the overlay
-
-If StudentLogCreateOverlay currently defines request/response types inline, remove them and move to contracts.
-
-Local types are allowed only if they are purely UI internal and not server-bound.
-
----
-
-## Step 7 — Guardrails (fast enforcement)
-
-Add a lightweight check (choose one):
-A) A small script `scripts/contracts_guardrails.sh` that fails if:
-
-* any file under `ui-spa/src/types/` contains `export const`
-* any file under `ui-spa/src/` contains `fetch(`
-  OR
-  B) If the repo already has lint rules for this, extend them.
-
-Keep it minimal: Phase-0 is about drift prevention, not perfect tooling.
-
----
-
-## Deliverables (your output)
-
-1. Updated `StudentLogCreateOverlay.vue`
-2. New contract files under `types/contracts/student_log/`
-3. New/updated service file `lib/services/studentLog/studentLogService.ts`
-4. New/updated `lib/uiSignals.ts` (only if needed)
-5. Optional guardrail script/lint rule (minimal)
-
----
-
-## Acceptance tests (must pass mentally, no need to run)
-
-* Submitting a student log:
-
-  * calls service → service calls server via createResource
-  * on success: signals emitted, overlay closes reliably
-  * on failure: overlay stays open, error is visible (toast and/or inline)
-* No `fetch()` introduced
-* No runtime exports introduced in `types/`
-* Overlay close does not depend on toast existing
-
----
-
-## Output format required
-
-When you answer, output:
-
-1. A short change summary
-2. A file list (added/modified)
-3. Full code for each modified/added file (no partial snippets)
-
-End.
-
----
-
-
-
-
-
-
-
-Step 2 — Remove transport logic from FocusRouterOverlay (NEXT, highest impact)
-
-Goal: FocusRouterOverlay.vue becomes a pure overlay shell + router.
-It must not contain:
-	createResource
-	unwrapMessage
-	any axios-shape handling
-	Instead it calls:
-		focusService.getFocusContext(payload) (service already normalizes)
-
-Do not reintroduce createResource/unwrap in FocusRouterOverlay.
-
-Goal:
-
-OverlayHost.requestClose() must call only overlay stack API methods.
-
-No overlay.state.stack = ... anywhere.
-
-Enforce closeOnBackdrop/closeOnEsc centrally as far as the host can.
-
-Use your new forceRemove(id) as the only emergency hatch.
-
-
-Goal: Remove double-close risk:
-	Child emits done (success)
-	Router closes on done
-	Child does not close itself on success
-
-What the A+ rule actually is (let’s say it cleanly)
-Services emit invalidation signals ONLY when a workflow mutation is confirmed successful.
-Not:
-	on submit
-	not on HTTP 200
-	not on “no error thrown”
-	Only on semantic success.
-
-You need two tiny, explicit helpers inside the service layer:
-
-1. A strict envelope normalizer
-
-(Not permissive, not forgiving)
-
-If the envelope is wrong → throw
-
-No unions leak out
-
-No any
-
-2. A semantic success guard
-
-(Not HTTP success)
-
-Something like:
-	ok === true
-	optionally status === 'created' | 'updated' | 'processed'
-	whatever you define as “mutation happened”
-Only after that do you emit.
-This keeps the contract clean:
-	Backend controls truth
-	Service interprets truth
-	Pages react to truth
-
-No fake optimism
-
-What was missing was this explicit split:
-
-Transport correctness (normalize strictly)
-
-Semantic correctness (emit only on real mutation)
-
-
-🔒 A+ Transport & Invalidation Rule (HARD)
-
-Service-layer responsibilities (mandatory):
-Strict transport normalization
-	Boundary input is unknown
-	Normalize once
-	Return only the domain contract type
-	❌ No any
-	❌ No permissive “handles 3 shapes” comments
-	❌ No union return types
-Semantic success gating
-	Services must define what “mutation success” means (ok === true, or explicit status)
-	uiSignals.emit() is allowed ONLY after confirmed semantic success
-	❌ No emission on:
-		soft failures (ok: false)
-		idempotent no-ops
-		validation errors returned as 200
-		partial / warning responses
-Components are forbidden from deciding success
-	No unwrapping
-	No inspecting ok
-	No emitting signals
-	Components react only to normalized service results or thrown errors
-Violations are defects, not style issues.
-NO DEFENSIVE ABSTRACTION LAYER!!!
-
-🔒 A+ LOCKED RULE (this is the one I recommend)
-All SPA services receive { message: T } and nothing else.
-Transport adapters must enforce this before services run.
-Services contain ZERO shape conditionals.
-Once this is locked:
-	normalizeMessage() disappears
-	All ifs disappear
-	Services become trivial
-
-A+ Transport Rule (Final Form)
-Transport normalization must happen exactly zero times in the SPA.

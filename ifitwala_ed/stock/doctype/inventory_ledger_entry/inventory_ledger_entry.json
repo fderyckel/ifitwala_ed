@@ -1,0 +1,145 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "hash",
+ "creation": "2026-01-14 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "posting_datetime",
+  "inventory_item",
+  "inventory_unit",
+  "from_location",
+  "to_location",
+  "qty_change",
+  "voucher_type",
+  "voucher_name",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "posting_datetime",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Posting Datetime",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "inventory_item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Inventory Item",
+   "options": "Inventory Item",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "inventory_unit",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Inventory Unit",
+   "options": "Inventory Unit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "from_location",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "From Location",
+   "options": "Location",
+   "read_only": 1
+  },
+  {
+   "fieldname": "to_location",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "To Location",
+   "options": "Location",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_change",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty Change",
+   "read_only": 1
+  },
+  {
+   "fieldname": "voucher_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Voucher Type",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "voucher_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Voucher Name",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-14 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stock",
+ "name": "Inventory Ledger Entry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Item Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User"
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User"
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User"
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "posting_datetime",
+ "sort_order": "DESC",
+ "states": []
+}

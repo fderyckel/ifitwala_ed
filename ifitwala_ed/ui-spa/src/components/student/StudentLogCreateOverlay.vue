@@ -47,6 +47,20 @@
 
             <!-- Body -->
             <div class="if-overlay__body px-6 pb-6 space-y-5">
+              <!-- A+ UX: overlays never toast. Errors are shown inline. -->
+              <div
+                v-if="errorMessage"
+                class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 shadow-soft"
+                role="alert"
+              >
+                <p class="type-body-strong text-rose-900">
+                  {{ __('Something went wrong') }}
+                </p>
+                <p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">
+                  {{ errorMessage }}
+                </p>
+              </div>
+
               <!-- EDIT STEP -->
               <template v-if="step !== 'review'">
                 <!-- Student -->
@@ -377,53 +391,51 @@
               </template>
             </div>
 
-						<!-- Footer -->
-						<div class="if-overlay__footer">
-							<!-- EDIT FOOTER -->
-							<div v-if="step !== 'review'" class="w-full flex flex-col items-stretch gap-2">
-								<Button
-									variant="solid"
-									class="w-full"
-									:loading="submitting"
-									:disabled="!canSubmit || submitting"
-									@click="goReview"
-								>
-									<template #prefix><FeatherIcon name="eye" class="h-4 w-4" /></template>
-									{{ __('Review & submit') }}
-								</Button>
+            <!-- Footer -->
+            <div class="if-overlay__footer">
+              <!-- EDIT FOOTER -->
+              <div v-if="step !== 'review'" class="w-full flex flex-col items-stretch gap-2">
+                <Button
+                  variant="solid"
+                  class="w-full"
+                  :loading="submitting"
+                  :disabled="!canSubmit || submitting"
+                  @click="goReview"
+                >
+                  <template #prefix><FeatherIcon name="eye" class="h-4 w-4" /></template>
+                  {{ __('Review & submit') }}
+                </Button>
 
-								<p class="type-caption text-ink/50 whitespace-normal leading-snug">
-									{{ footerHint }}
-								</p>
-							</div>
+                <p class="type-caption text-ink/50 whitespace-normal leading-snug">
+                  {{ footerHint }}
+                </p>
+              </div>
 
-							<!-- REVIEW FOOTER -->
-							<div v-else class="w-full flex flex-col gap-3">
-								<div class="flex items-center gap-3">
-									<Button variant="outline" class="flex-1" :disabled="submitting" @click="goEdit">
-										<template #prefix><FeatherIcon name="edit-2" class="h-4 w-4" /></template>
-										{{ __('Go back and edit') }}
-									</Button>
+              <!-- REVIEW FOOTER -->
+              <div v-else class="w-full flex flex-col gap-3">
+                <div class="flex items-center gap-3">
+                  <Button variant="outline" class="flex-1" :disabled="submitting" @click="goEdit">
+                    <template #prefix><FeatherIcon name="edit-2" class="h-4 w-4" /></template>
+                    {{ __('Go back and edit') }}
+                  </Button>
 
-									<Button
-										variant="solid"
-										class="flex-1"
-										:loading="submitting"
-										:disabled="!canSubmit || submitting"
-										@click="submit"
-									>
-										<template #prefix><FeatherIcon name="send" class="h-4 w-4" /></template>
-										{{ __('Confirm & submit') }}
-									</Button>
-								</div>
+                  <Button
+                    variant="solid"
+                    class="flex-1"
+                    :loading="submitting"
+                    :disabled="!canSubmit || submitting"
+                    @click="submit"
+                  >
+                    <template #prefix><FeatherIcon name="send" class="h-4 w-4" /></template>
+                    {{ __('Confirm & submit') }}
+                  </Button>
+                </div>
 
-								<p class="type-caption text-ink/50 whitespace-normal leading-snug">
-									{{ __('Submitting will create a new student log entry. You won’t be able to edit it afterwards.') }}
-								</p>
-							</div>
-						</div>
-
-
+                <p class="type-caption text-ink/50 whitespace-normal leading-snug">
+                  {{ __('Submitting will create a new student log entry. You won’t be able to edit it afterwards.') }}
+                </p>
+              </div>
+            </div>
           </DialogPanel>
         </TransitionChild>
       </div>
@@ -434,7 +446,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
-import { Button, FormControl, FeatherIcon, Spinner, toast } from 'frappe-ui'
+import { Button, FormControl, FeatherIcon, Spinner } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import { createStudentLogService } from '@/lib/services/studentLog/studentLogService'
 import { useOverlayStack } from '@/composables/useOverlayStack'
@@ -477,21 +489,10 @@ const emit = defineEmits<{
 const overlay = useOverlayStack()
 const studentLogService = createStudentLogService()
 
-type ToastPayload = Parameters<typeof toast>[0]
-
-function showToast(payload: ToastPayload) {
-  if (typeof toast !== 'function') {
-    console.warn('[StudentLogCreateOverlay] toast is unavailable', payload)
-    return
-  }
-  try {
-    toast(payload)
-  } catch (err) {
-    console.error('[StudentLogCreateOverlay] toast failed', err, payload)
-  }
-}
-
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }))
+
+// A+ UX: overlays show errors inline (no toasts here)
+const errorMessage = ref<string>('')
 
 // Review step state
 const step = ref<'edit' | 'review'>('edit')
@@ -499,59 +500,72 @@ const step = ref<'edit' | 'review'>('edit')
 const NOTE_PREVIEW_LEN = 220
 
 const reviewNotePreview = computed(() => {
-	const txt = (form.log || '').trim()
-	if (!txt) return ''
-	return txt.length > NOTE_PREVIEW_LEN ? txt.slice(0, NOTE_PREVIEW_LEN).trim() + '…' : txt
+  const txt = (form.log || '').trim()
+  if (!txt) return ''
+  return txt.length > NOTE_PREVIEW_LEN ? txt.slice(0, NOTE_PREVIEW_LEN).trim() + '…' : txt
 })
 
 const isNoteTruncated = computed(() => {
-	const txt = (form.log || '').trim()
-	return !!txt && txt.length > NOTE_PREVIEW_LEN
+  const txt = (form.log || '').trim()
+  return !!txt && txt.length > NOTE_PREVIEW_LEN
 })
 
 const selectedLogTypeLabel = computed(() => {
-	if (!form.log_type) return ''
-	const row = logTypeOptions.value.find((x) => x.value === form.log_type)
-	return row?.label || ''
+  if (!form.log_type) return ''
+  const row = logTypeOptions.value.find((x) => x.value === form.log_type)
+  return row?.label || ''
 })
 
 const selectedNextStepLabel = computed(() => {
-	if (!form.next_step) return ''
-	const row = nextStepOptions.value.find((x) => x.value === form.next_step)
-	return row?.label || ''
+  if (!form.next_step) return ''
+  const row = nextStepOptions.value.find((x) => x.value === form.next_step)
+  return row?.label || ''
 })
 
+function setError(err: unknown, fallback: string) {
+  const msg =
+    (typeof err === 'object' && err && 'message' in (err as any) ? String((err as any).message) : '') ||
+    (typeof err === 'string' ? err : '') ||
+    fallback
+  errorMessage.value = msg
+}
+
+function clearError() {
+  errorMessage.value = ''
+}
 
 function emitClose() {
-	const overlayId = props.overlayId || null
-	if (overlayId) {
-		try {
-			if (typeof overlay.close === 'function') {
-				overlay.close(overlayId)
-				return
-			}
-		} catch (err) {
-			// fall through to stack mutation/emit fallback
-		}
-	}
+  const overlayId = props.overlayId || null
+  if (overlayId) {
+    try {
+      if (typeof overlay.close === 'function') {
+        overlay.close(overlayId)
+        return
+      }
+    } catch (err) {
+      // fall through to stack mutation/emit fallback
+    }
+  }
 
-	emit('close')
+  emit('close')
 }
 
 function emitAfterLeave() {
-	step.value = 'edit'
-	emit('after-leave')
+  step.value = 'edit'
+  clearError()
+  emit('after-leave')
 }
 
 function goReview() {
-	if (!canSubmit.value) return
-	step.value = 'review'
+  clearError()
+  if (!canSubmit.value) return
+  step.value = 'review'
 }
 
 function goEdit() {
-	step.value = 'edit'
+  clearError()
+  step.value = 'edit'
 }
-
 
 const mode = computed(() => props.mode)
 
@@ -614,6 +628,7 @@ const studentSearchLoading = ref(false)
 const studentCandidates = ref<PickerItem[]>([])
 
 async function onStudentQuery(v: string) {
+  clearError()
   studentQuery.value = v
   if (!v || v.trim().length < 2) {
     studentCandidates.value = []
@@ -633,7 +648,7 @@ async function onStudentQuery(v: string) {
       meta: x.meta || null,
     }))
   } catch (err: any) {
-    showToast({ title: __('Could not search students'), text: err?.message || String(err), icon: 'x' })
+    setError(err, __('Could not search students'))
   } finally {
     studentSearchLoading.value = false
   }
@@ -661,6 +676,7 @@ const assigneeCandidates = ref<SearchFollowUpUsersResponse>([])
 const selectedAssigneeLabel = ref('')
 
 async function onAssigneeQuery(v: string) {
+  clearError()
   assigneeQuery.value = v
   if (!form.next_step) return
 
@@ -681,13 +697,14 @@ async function onAssigneeQuery(v: string) {
     })
     assigneeCandidates.value = data || []
   } catch (err: any) {
-    showToast({ title: __('Could not search staff'), text: err?.message || String(err), icon: 'x' })
+    setError(err, __('Could not search staff'))
   } finally {
     assigneeSearchLoading.value = false
   }
 }
 
 function selectAssignee(user: string, label: string) {
+  clearError()
   form.follow_up_person = user
   selectedAssigneeLabel.value = label
   assigneeCandidates.value = []
@@ -696,85 +713,88 @@ function selectAssignee(user: string, label: string) {
 
 /* Student selection */
 function onStudentSelected(studentId: string) {
-	// capture selection meta BEFORE we clear candidates (school mode)
-	const picked =
-		mode.value === 'school'
-			? studentCandidates.value.find((x) => x.value === studentId)
-			: null
+  clearError()
 
-	form.student = studentId
+  // capture selection meta BEFORE we clear candidates (school mode)
+  const picked =
+    mode.value === 'school'
+      ? studentCandidates.value.find((x) => x.value === studentId)
+      : null
 
-	// reset dependent fields
-	form.log_type = ''
-	form.next_step = ''
-	form.follow_up_person = ''
-	selectedAssigneeLabel.value = ''
-	assigneeQuery.value = ''
-	assigneeCandidates.value = []
+  form.student = studentId
 
-	// clear student search UI
-	studentCandidates.value = []
-	studentQuery.value = ''
+  // reset dependent fields
+  form.log_type = ''
+  form.next_step = ''
+  form.follow_up_person = ''
+  selectedAssigneeLabel.value = ''
+  assigneeQuery.value = ''
+  assigneeCandidates.value = []
 
-	// fill UI meta
-	if (mode.value === 'group') {
-		const m = _getGroupStudentMeta(studentId)
-		selectedStudentLabel.value = m.label
-		selectedStudentImage.value = m.image
-		selectedStudentMeta.value = m.meta
-	} else {
-		selectedStudentLabel.value = picked?.label || studentId
-		selectedStudentImage.value = picked?.image || null
-		selectedStudentMeta.value = picked?.meta || null
-	}
+  // clear student search UI
+  studentCandidates.value = []
+  studentQuery.value = ''
 
-	// load dependent options (types + next steps)
-	optionsLoading.value = true
-	studentLogService
-		.getFormOptions({ student: studentId })
-		.then((data: GetFormOptionsResponse) => {
-			optionsData.value = data
-		})
-		.catch((err: any) => {
-			showToast({ title: __('Could not load options'), text: err?.message || String(err), icon: 'x' })
-			optionsData.value = null
-		})
-		.finally(() => {
-			optionsLoading.value = false
-		})
+  // fill UI meta
+  if (mode.value === 'group') {
+    const m = _getGroupStudentMeta(studentId)
+    selectedStudentLabel.value = m.label
+    selectedStudentImage.value = m.image
+    selectedStudentMeta.value = m.meta
+  } else {
+    selectedStudentLabel.value = picked?.label || studentId
+    selectedStudentImage.value = picked?.image || null
+    selectedStudentMeta.value = picked?.meta || null
+  }
+
+  // load dependent options (types + next steps)
+  optionsLoading.value = true
+  studentLogService
+    .getFormOptions({ student: studentId })
+    .then((data: GetFormOptionsResponse) => {
+      optionsData.value = data
+    })
+    .catch((err: any) => {
+      setError(err, __('Could not load options'))
+      optionsData.value = null
+    })
+    .finally(() => {
+      optionsLoading.value = false
+    })
 }
 
 function changeStudent() {
-	step.value = 'edit'
+  clearError()
+  step.value = 'edit'
 
-	// Clear student selection + anything that depends on student/options
-	form.student = ''
+  // Clear student selection + anything that depends on student/options
+  form.student = ''
 
-	form.log_type = ''
-	form.requires_follow_up = false
-	form.next_step = ''
-	form.follow_up_person = ''
+  form.log_type = ''
+  form.requires_follow_up = false
+  form.next_step = ''
+  form.follow_up_person = ''
 
-	// Assignee UI state
-	selectedAssigneeLabel.value = ''
-	assigneeQuery.value = ''
-	assigneeCandidates.value = []
+  // Assignee UI state
+  selectedAssigneeLabel.value = ''
+  assigneeQuery.value = ''
+  assigneeCandidates.value = []
 
-	// Student search UI state
-	studentQuery.value = ''
-	studentCandidates.value = []
+  // Student search UI state
+  studentQuery.value = ''
+  studentCandidates.value = []
 
-	// Selected student UI meta
-	selectedStudentLabel.value = ''
-	selectedStudentImage.value = null
-	selectedStudentMeta.value = null
+  // Selected student UI meta
+  selectedStudentLabel.value = ''
+  selectedStudentImage.value = null
+  selectedStudentMeta.value = null
 
-	// Clear options payload so selects don't show stale options
-	optionsData.value = null
+  // Clear options payload so selects don't show stale options
+  optionsData.value = null
 }
 
-
 function onNextStepSelected(v: string) {
+  clearError()
   form.next_step = v
   form.follow_up_person = ''
   selectedAssigneeLabel.value = ''
@@ -795,7 +815,7 @@ function onNextStepSelected(v: string) {
         assigneeCandidates.value = data || []
       })
       .catch((err: any) => {
-        showToast({ title: __('Could not search staff'), text: err?.message || String(err), icon: 'x' })
+        setError(err, __('Could not search staff'))
         assigneeCandidates.value = []
       })
       .finally(() => {
@@ -805,36 +825,41 @@ function onNextStepSelected(v: string) {
 }
 
 async function submit() {
-	if (!canSubmit.value) return
+  clearError()
+  if (!canSubmit.value) return
 
-	// Only allow actual server submit from the review step.
-	// If user triggers submit while editing (e.g. Enter), push them to review instead.
-	if (step.value !== 'review') {
-		step.value = 'review'
-		return
-	}
+  // Only allow actual server submit from the review step.
+  // If user triggers submit while editing (e.g. Enter), push them to review instead.
+  if (step.value !== 'review') {
+    step.value = 'review'
+    return
+  }
 
-	submitting.value = true
-	try {
-		const payload: SubmitStudentLogRequest = {
-			student: form.student,
-			log_type: form.log_type,
-			log: form.log,
-			requires_follow_up: form.requires_follow_up ? 1 : 0,
-			next_step: form.requires_follow_up ? form.next_step : null,
-			follow_up_person: form.requires_follow_up ? form.follow_up_person : null,
-			visible_to_student: form.visible_to_student ? 1 : 0,
-			visible_to_guardians: form.visible_to_guardians ? 1 : 0,
-		}
-		await studentLogService.submitStudentLog(payload)
-		emitClose()
-		showToast({ title: __('Saved'), text: __('Student note submitted.'), icon: 'check' })
-	} catch (err: any) {
-		console.error('[StudentLogCreateOverlay] submit:error', err)
-		showToast({ title: __('Could not submit'), text: err?.message || String(err), icon: 'x' })
-	} finally {
-		submitting.value = false
-	}
+  submitting.value = true
+  try {
+    const payload: SubmitStudentLogRequest = {
+      student: form.student,
+      log_type: form.log_type,
+      log: form.log,
+      requires_follow_up: form.requires_follow_up ? 1 : 0,
+      next_step: form.requires_follow_up ? form.next_step : null,
+      follow_up_person: form.requires_follow_up ? form.follow_up_person : null,
+      visible_to_student: form.visible_to_student ? 1 : 0,
+      visible_to_guardians: form.visible_to_guardians ? 1 : 0,
+    }
+
+    await studentLogService.submitStudentLog(payload)
+
+    // A+ contract:
+    // - overlay closes on success
+    // - services emit uiSignals (if mutation succeeded)
+    // - refresh owners decide refetch + optional toast
+    emitClose()
+  } catch (err: any) {
+    console.error('[StudentLogCreateOverlay] submit:error', err)
+    setError(err, __('Could not submit'))
+  } finally {
+    submitting.value = false
+  }
 }
-
 </script>
