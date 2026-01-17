@@ -161,7 +161,7 @@
 						<ul class="mt-2 list-disc space-y-1 pl-4">
 							<li>{{ __('Keep remarks factual and short.') }}</li>
 							<li>{{ __('Avoid sensitive medical details; use the health note workflow instead.') }}</li>
-							<li>{{ __('Stick to today\\'s context (date + block).') }}</li>
+							<li>{{ __("Stick to today's context (date + block).") }}</li>
 						</ul>
 					</div>
 				</div>
