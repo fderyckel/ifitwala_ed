@@ -14,12 +14,19 @@ Used by:
       :initialFocus="closeBtnEl"
       @close="onDialogClose"
     >
-      <!-- IMPORTANT:
-           Do NOT rely on HeadlessUI @close boolean.
-           We emit explicit reasons to OverlayHost ('backdrop' | 'esc' | 'programmatic'). -->
-      <div class="if-overlay__backdrop" @click="onBackdropClick" />
+      <!--
+        CRITICAL (A+ + HeadlessUI):
+        - Do NOT forward HeadlessUI's boolean @close payload into OverlayHost.
+        - We emit explicit close reasons ('backdrop' | 'esc' | 'programmatic').
+        - Also force z-index so the backdrop can never sit above the panel.
+      -->
+      <div
+        class="if-overlay__backdrop"
+        :style="backdropStyle"
+        @click="onBackdropClick"
+      />
 
-      <div class="if-overlay__wrap" :style="{ zIndex: zIndex ?? 3000 }">
+      <div class="if-overlay__wrap" :style="wrapStyle">
         <TransitionChild
           as="template"
           enter="if-overlay__panel-enter"
@@ -305,6 +312,15 @@ const emit = defineEmits<{
 const overlay = useOverlayStack()
 const focusService = createFocusService()
 
+/**
+ * Z-index invariants:
+ * - Backdrop must ALWAYS be under the wrap/panel.
+ * - If not, every click is "outside" => HeadlessUI closes => overlay disappears.
+ */
+const baseZ = computed(() => props.zIndex ?? 3000)
+const wrapStyle = computed(() => ({ zIndex: baseZ.value }))
+const backdropStyle = computed(() => ({ zIndex: baseZ.value - 1 }))
+
 type FocusLog = GetFocusContextResponse['log']
 type FocusFollowUp = GetFocusContextResponse['follow_ups'][number]
 
@@ -325,28 +341,27 @@ function showToast(payload: ToastPayload) {
 }
 
 /**
- * Close reason plumbing (A+):
- * OverlayHost enforces closeOnBackdrop / closeOnEsc, but only if it receives
- * explicit reason strings. HeadlessUI Dialog emits boolean; do not forward it.
+ * Close reason plumbing:
+ * - HeadlessUI Dialog @close gives a boolean. We MUST NOT forward that.
+ * - OverlayHost expects a reason string to enforce closeOnBackdrop/closeOnEsc.
  */
-const closingGuard = ref(false)
+const closing = ref(false)
 
 function emitClose(reason: 'backdrop' | 'esc' | 'programmatic' = 'programmatic') {
-	// Guard against double-firing (backdrop click + Dialog @close)
-	if (closingGuard.value) return
-	closingGuard.value = true
+	if (closing.value) return
+	closing.value = true
 
-	// If this overlay is mounted in OverlayHost, prefer closing the stack entry.
 	const id = (props.overlayId || '').trim()
 	if (id) {
 		try {
 			overlay.close(id)
+			return
 		} catch (e) {
-			emit('close', reason)
+			// fall back to parent emit
 		}
-	} else {
-		emit('close', reason)
 	}
+
+	emit('close', reason)
 }
 
 function onBackdropClick() {
@@ -354,22 +369,19 @@ function onBackdropClick() {
 }
 
 function onDialogClose(_nextOpen: boolean) {
-	// HeadlessUI calls this on ESC and on outside clicks.
-	// We already handle backdrop clicks explicitly via onBackdropClick().
-	// So if we get here and we’re not already closing, treat it as ESC.
-	if (closingGuard.value) return
+	// If we got here, it's either ESC or HeadlessUI thinks we clicked outside.
+	// Since backdrop click is handled explicitly above, treat this as ESC.
 	emitClose('esc')
 }
 
 function emitAfterLeave() {
-	closingGuard.value = false
+	closing.value = false
 	emit('after-leave')
 }
 
 /**
- * FocusTrap Option B (locked)
- * - Always provide an always-present semantic focus target.
- * - Pass the ref itself to Dialog.initialFocus.
+ * FocusTrap Option B (locked):
+ * always-present semantic focus target.
  */
 const closeBtnEl = ref<HTMLButtonElement | null>(null)
 
@@ -427,8 +439,7 @@ watch(
 	() => props.open,
 	(isOpen) => {
 		if (!isOpen) return
-		// reset local UI state each open
-		closingGuard.value = false
+		closing.value = false
 		draftText.value = ''
 		submittedOnce.value = false
 		modeState.value = props.mode
@@ -462,7 +473,6 @@ async function submitFollowUp() {
 			client_request_id: _newClientRequestId('fu'),
 		}
 
-		// A+ invalidation happens inside focusService on success.
 		const msg = await focusService.submitStudentLogFollowUp(payload)
 		if (!msg?.ok) throw new Error(__('Submit failed.'))
 
@@ -471,7 +481,6 @@ async function submitFollowUp() {
 			icon: 'check',
 		})
 
-		// Close overlay immediately; page refresh is owned by subscribers.
 		emitClose('programmatic')
 	} catch (e: any) {
 		submittedOnce.value = false
@@ -509,7 +518,6 @@ async function completeParentLog() {
 			client_request_id: _newClientRequestId('rvw'),
 		}
 
-		// A+ invalidation happens inside focusService on success.
 		const msg = await focusService.reviewStudentLogOutcome(payload)
 		if (!msg?.ok) throw new Error(__('Complete failed.'))
 
@@ -533,7 +541,6 @@ async function completeParentLog() {
 
 /* Helpers ------------------------------------------------------ */
 function openInDesk(doctype: string, name: string) {
-	// leaving SPA intentionally (Desk route)
 	const safeDoctype = String(doctype || '').trim()
 	if (!safeDoctype || !name) return
 

@@ -171,6 +171,10 @@ def get_org_comm_interaction_summary(comm_names=None):
 	"""
 	Return interaction summary for a list of Org Communication names.
 	Safe against missing/empty args (returns {}).
+
+	Semantics:
+	- comments_total = visible COMMENT entries only (intent_type='Comment')
+	- reactions_total = sum of reaction_counts
 	"""
 	# Allow comm_names passed as JSON string from the client
 	if isinstance(comm_names, str):
@@ -203,11 +207,11 @@ def get_org_comm_interaction_summary(comm_names=None):
 	# Initialise summary with a clean shape
 	summary = {
 		name: {
-			"counts": {},       # intent_type -> count
-			"reaction_counts": {},  # reaction_code -> count
-			"reactions_total": 0,   # total emoji/quick reactions
-			"comments_total": 0,    # total thread entries (Comment + Question)
-			"self": None,       # current user's row
+			"counts": {},          # intent_type -> count
+			"reaction_counts": {}, # reaction_code -> count
+			"reactions_total": 0,  # total emoji/quick reactions
+			"comments_total": 0,   # total visible COMMENT entries only
+			"self": None,          # current user's row
 		}
 		for name in clean_names
 	}
@@ -277,12 +281,13 @@ def get_org_comm_interaction_summary(comm_names=None):
 		data["reaction_counts"] = reaction_counts
 		data["reactions_total"] = sum(int(v or 0) for v in reaction_counts.values())
 
-	# 3) comments_total = interactions with non-empty note (thread entries)
+	# 3) comments_total = visible COMMENT entries only
 	comments_rows = frappe.db.sql(
 		"""
 		SELECT org_communication, COUNT(*) as cnt
 		FROM `tabCommunication Interaction`
 		WHERE org_communication IN %(comms)s
+			AND intent_type = 'Comment'
 			AND COALESCE(TRIM(note), '') != ''
 			AND visibility != 'Hidden'
 		GROUP BY org_communication
@@ -295,7 +300,6 @@ def get_org_comm_interaction_summary(comm_names=None):
 		org_comm = r.get("org_communication")
 		if org_comm in summary:
 			summary[org_comm]["comments_total"] = int(r.get("cnt") or 0)
-
 
 	# 4) current user's interaction (keep full row)
 	self_rows = frappe.db.sql(
@@ -320,12 +324,12 @@ def get_org_comm_interaction_summary(comm_names=None):
 @frappe.whitelist()
 def get_communication_thread(org_communication: str, limit_start: int = 0, limit_page_length: int = 20):
 	"""
-	Return the visible interaction thread for a given Org Communication,
-	for use on Staff Comments and Student Q&A surfaces.
+	Return the visible COMMENT thread for a given Org Communication.
 
-	- Respects interaction_mode on Org Communication
-	- Applies visibility rules based on audience and role
-	- Orders pinned items first, then by creation time
+	Semantics (LOCKED):
+	- Thread = Comment intent only (intent_type='Comment')
+	- Reactions do not appear as thread rows
+	- Hidden rows never appear
 	"""
 	if not org_communication:
 		return []
@@ -343,17 +347,17 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 
 	roles = set(frappe.get_roles(user))
 	is_staff = any(r in roles for r in ("Academic Staff", "Academic Admin", "Employee", "System Manager"))
-	is_student = "Student" in roles
-	is_guardian = "Guardian" in roles
 
 	# Structured Feedback → no public thread for non-staff
 	if mode == "Structured Feedback" and not is_staff:
 		return []
 
-	# Base conditions
+	# Base conditions (COMMENTS ONLY)
 	conditions = ["i.org_communication = %(comm)s"]
+	conditions.append("i.intent_type = 'Comment'")
 	conditions.append("COALESCE(TRIM(i.note), '') != ''")
 	conditions.append("i.visibility != 'Hidden'")
+
 	params = {
 		"comm": org_communication,
 		"user": user,
@@ -369,18 +373,16 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 
 	elif mode == "Student Q&A":
 		if is_staff:
-			# Teachers/staff: see everything except hidden
+			# Staff: see all visible comments
 			pass
 		else:
 			# Students: see public + their own (even if private)
-			conditions.append(
-				"(i.visibility = 'Public to audience' OR i.user = %(user)s)"
-			)
+			conditions.append("(i.visibility = 'Public to audience' OR i.user = %(user)s)")
 
 	elif mode == "Structured Feedback":
-		# At this point we already know user is staff (non-staff returned above).
-		# Staff can see everything except hidden.
-		pass
+		# Staff can see visible comments (still comment-only)
+		if not is_staff:
+			return []
 
 	else:
 		# Other modes: treat as no thread
@@ -389,7 +391,6 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 	where_clause = " AND ".join(conditions)
 	params["ts_fmt"] = "%Y-%m-%d %H:%i:%s"
 
-	# Single SQL with join to get user full_name (no extra calls)
 	rows = frappe.db.sql(
 		f"""
 		SELECT
@@ -416,7 +417,8 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 		as_dict=True,
 	)
 
-	return rows
+	return rows or []
+
 
 @frappe.whitelist()
 def upsert_communication_interaction(
