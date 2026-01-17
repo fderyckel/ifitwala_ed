@@ -69,14 +69,13 @@ function open(
 
 function close(id?: string) {
   if ((window as any).__overlay_debug_trace === true) {
+    // Always-visible stack, not a collapsed trace
     // eslint-disable-next-line no-console
-    console.groupCollapsed('[overlay] close()', { id, stackSize: state.stack.length })
-    // eslint-disable-next-line no-console
-    console.log('stack(before)=', state.stack.map((x) => ({ id: x.id, type: x.type })))
-    // eslint-disable-next-line no-console
-    console.trace('close() callsite')
-    // eslint-disable-next-line no-console
-    console.groupEnd()
+    console.error(
+      '[overlay] close() CALLED',
+      { id, stackSize: state.stack.length, stack: state.stack.map((x) => ({ id: x.id, type: x.type })) },
+      new Error('overlay.close() callsite')
+    )
   }
 
   if (!id) {
@@ -92,6 +91,7 @@ function close(id?: string) {
     log('close:miss', id)
   }
 }
+
 
 function forceRemove(id: string) {
   const safeId = String(id || '').trim()
