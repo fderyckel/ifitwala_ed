@@ -492,9 +492,14 @@ def get_org_communication_feed(
 		values["org_guard"] = tuple(org_guard)
 
 	if filters_dict.get("only_with_interactions"):
+		# Semantics: "only_with_interactions" means "has at least one COMMENT"
+		# (reactions alone must NOT qualify an item)
 		conditions.append(
-			"EXISTS (SELECT name FROM `tabCommunication Interaction` "
-			"WHERE org_communication = `tabOrg Communication`.name)"
+			"EXISTS ("
+			"SELECT ci.name FROM `tabCommunication Interaction` ci "
+			"WHERE ci.org_communication = `tabOrg Communication`.name "
+			"AND ci.intent_type = 'Comment'"
+			")"
 		)
 
 	# ──────────────────────────────────────────────

@@ -12,9 +12,12 @@ Used by:
       as="div"
       class="if-overlay if-overlay--student-log-follow-up"
       :initialFocus="closeBtnEl"
-      @close="emitClose"
+      @close="onDialogClose"
     >
-      <div class="if-overlay__backdrop" />
+      <!-- IMPORTANT:
+           Do NOT rely on HeadlessUI @close boolean.
+           We emit explicit reasons to OverlayHost ('backdrop' | 'esc' | 'programmatic'). -->
+      <div class="if-overlay__backdrop" @click="onBackdropClick" />
 
       <div class="if-overlay__wrap" :style="{ zIndex: zIndex ?? 3000 }">
         <TransitionChild
@@ -50,7 +53,7 @@ Used by:
                   ref="closeBtnEl"
                   type="button"
                   class="if-overlay__icon-button"
-                  @click="emitClose"
+                  @click="emitClose('programmatic')"
                   aria-label="Close"
                 >
                   <span class="sr-only">Close</span>
@@ -190,7 +193,7 @@ Used by:
                       type="button"
                       class="if-pill type-button-label"
                       :disabled="busy"
-                      @click="emitClose"
+                      @click="emitClose('programmatic')"
                     >
                       Cancel
                     </button>
@@ -219,7 +222,7 @@ Used by:
                       type="button"
                       class="if-pill type-button-label"
                       :disabled="busy"
-                      @click="emitClose"
+                      @click="emitClose('programmatic')"
                     >
                       Close
                     </button>
@@ -295,7 +298,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-	(e: 'close'): void
+	(e: 'close', reason?: 'backdrop' | 'esc' | 'programmatic'): void
 	(e: 'after-leave'): void
 }>()
 
@@ -321,21 +324,45 @@ function showToast(payload: ToastPayload) {
 	}
 }
 
-function emitClose() {
+/**
+ * Close reason plumbing (A+):
+ * OverlayHost enforces closeOnBackdrop / closeOnEsc, but only if it receives
+ * explicit reason strings. HeadlessUI Dialog emits boolean; do not forward it.
+ */
+const closingGuard = ref(false)
+
+function emitClose(reason: 'backdrop' | 'esc' | 'programmatic' = 'programmatic') {
+	// Guard against double-firing (backdrop click + Dialog @close)
+	if (closingGuard.value) return
+	closingGuard.value = true
+
 	// If this overlay is mounted in OverlayHost, prefer closing the stack entry.
 	const id = (props.overlayId || '').trim()
 	if (id) {
 		try {
 			overlay.close(id)
-			return
 		} catch (e) {
-			// fall back to parent emit
+			emit('close', reason)
 		}
+	} else {
+		emit('close', reason)
 	}
-	emit('close')
+}
+
+function onBackdropClick() {
+	emitClose('backdrop')
+}
+
+function onDialogClose(_nextOpen: boolean) {
+	// HeadlessUI calls this on ESC and on outside clicks.
+	// We already handle backdrop clicks explicitly via onBackdropClick().
+	// So if we get here and we’re not already closing, treat it as ESC.
+	if (closingGuard.value) return
+	emitClose('esc')
 }
 
 function emitAfterLeave() {
+	closingGuard.value = false
 	emit('after-leave')
 }
 
@@ -401,6 +428,7 @@ watch(
 	(isOpen) => {
 		if (!isOpen) return
 		// reset local UI state each open
+		closingGuard.value = false
 		draftText.value = ''
 		submittedOnce.value = false
 		modeState.value = props.mode
@@ -444,7 +472,7 @@ async function submitFollowUp() {
 		})
 
 		// Close overlay immediately; page refresh is owned by subscribers.
-		emitClose()
+		emitClose('programmatic')
 	} catch (e: any) {
 		submittedOnce.value = false
 		showToast({
@@ -490,7 +518,7 @@ async function completeParentLog() {
 			icon: 'check',
 		})
 
-		emitClose()
+		emitClose('programmatic')
 	} catch (e: any) {
 		submittedOnce.value = false
 		showToast({
