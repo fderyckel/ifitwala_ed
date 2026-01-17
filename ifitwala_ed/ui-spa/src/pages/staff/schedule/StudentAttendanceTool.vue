@@ -211,8 +211,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { Button, FormControl, Badge, FeatherIcon, Spinner } from 'frappe-ui'
 
 import { __ } from '@/lib/i18n'
-import AttendanceCalendar from './components/AttendanceCalendar.vue'
-import AttendanceGrid from './components/AttendanceGrid.vue'
+import AttendanceCalendar from './student-attendance-tool/components/AttendanceCalendar.vue'
+import AttendanceGrid from './student-attendance-tool/components/AttendanceGrid.vue'
 
 import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService'
 import { useOverlayStack } from '@/composables/useOverlayStack'
