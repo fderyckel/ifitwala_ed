@@ -1,31 +1,40 @@
 <!-- ui-spa/src/overlays/OverlayHost.vue -->
 <template>
   <Teleport v-if="teleportReady" to="#overlay-root">
-    <div v-if="rendered.length" class="if-overlay-host" :style="{ zIndex: baseZ }">
-      <div
-        v-for="(entry, idx) in rendered"
-        :key="entry.id"
-        class="if-overlay-host__layer"
-        :class="{ 'if-overlay-host__layer--inactive': idx !== activeLayerIndex }"
-        :aria-hidden="idx !== activeLayerIndex ? 'true' : 'false'"
-        :inert="idx !== activeLayerIndex ? '' : null"
-      >
-        <component
-          :is="resolveComponent(entry.type)"
-          v-bind="entry.props"
-          :open="entry.open"
-          :z-index="baseZ + idx * zStep"
-          :overlay-id="entry.id"
-          @close="requestClose(entry.id, $event)"
-          @after-leave="finalizeClose(entry.id)"
-        />
+    <!--
+      Critical: PortalGroup forces ANY headlessui portals created by overlay descendants
+      (Listbox/Popover/Combobox etc.) to render inside #overlay-root.
+      Without this, portals go to #headlessui-portal-root (a sibling) and Dialog will aria-hide it,
+      causing “clicks don’t work” + aria-hidden focus warnings.
+    -->
+    <PortalGroup target="#overlay-root">
+      <div v-if="rendered.length" class="if-overlay-host" :style="{ zIndex: baseZ }">
+        <div
+          v-for="(entry, idx) in rendered"
+          :key="entry.id"
+          class="if-overlay-host__layer"
+          :class="{ 'if-overlay-host__layer--inactive': idx !== rendered.length - 1 }"
+          :aria-hidden="idx !== rendered.length - 1 ? 'true' : 'false'"
+          :inert="idx !== rendered.length - 1 ? '' : null"
+        >
+          <component
+            :is="resolveComponent(entry.type)"
+            v-bind="entry.props"
+            :open="entry.open"
+            :z-index="baseZ + idx * zStep"
+            :overlay-id="entry.id"
+            @close="requestClose(entry.id, $event ?? 'programmatic')"
+            @after-leave="finalizeClose(entry.id)"
+          />
+        </div>
       </div>
-    </div>
+    </PortalGroup>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { PortalGroup } from '@headlessui/vue'
 import { useOverlayStack, type OverlayEntry, type OverlayType } from '@/composables/useOverlayStack'
 
 import CreateTaskDeliveryOverlay from '@/components/tasks/CreateTaskDeliveryOverlay.vue'
@@ -36,7 +45,7 @@ import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCo
 import StudentLogCreateOverlay from '@/overlays/student/StudentLogCreateOverlay.vue'
 import StudentLogFollowUpOverlay from '@/overlays/student/StudentLogFollowUpOverlay.vue'
 import FocusRouterOverlay from '@/overlays/focus/FocusRouterOverlay.vue'
-import StudentLogAnalyticsExpandOverlay from '@/overlays/analytics/StudentLogAnalyticsExpandOverlay.vue'
+import StudentLogAnalyticsExpandOverlay from '@/components/analytics/StudentLogAnalyticsExpandOverlay.vue'
 import StudentContextOverlay from '@/components/overlays/class-hub/StudentContextOverlay.vue'
 import QuickEvidenceOverlay from '@/components/overlays/class-hub/QuickEvidenceOverlay.vue'
 import QuickCFUOverlay from '@/components/overlays/class-hub/QuickCFUOverlay.vue'
@@ -68,18 +77,6 @@ const zStep = 10
 
 // Local rendered stack (includes closing entries until transitions finish)
 const rendered = ref<RenderedEntry[]>([])
-
-/**
- * Active layer = top-most LIVE (open, not closing) entry.
- * If none exists (rare), fall back to last rendered.
- */
-const activeLayerIndex = computed(() => {
-  for (let i = rendered.value.length - 1; i >= 0; i--) {
-    const r = rendered.value[i]
-    if (r.open && !r._closing) return i
-  }
-  return rendered.value.length ? rendered.value.length - 1 : -1
-})
 
 watch(
   () => overlay.state.stack,
@@ -124,21 +121,15 @@ watch(
       }
     }
 
-    /**
-     * CRITICAL ORDERING RULE:
-     * Closing leftovers must NEVER be stacked above live overlays.
-     * Order: (closing leftovers) + (store stack order)
-     */
+    // Ordering: store stack order first, then closing leftovers
     const ordered: RenderedEntry[] = []
-
-    for (const r of rendered.value) {
-      if (!nextIds.has(r.id)) ordered.push(r)
-    }
     for (const entry of next) {
       const match = rendered.value.find((r) => r.id === entry.id)
       if (match) ordered.push(match)
     }
-
+    for (const r of rendered.value) {
+      if (!nextIds.has(r.id)) ordered.push(r)
+    }
     rendered.value = ordered
   },
   { immediate: true, deep: true }
@@ -177,32 +168,15 @@ function resolveComponent(type: OverlayType) {
   }
 }
 
-function normalizeCloseReason(raw: unknown): 'backdrop' | 'esc' | 'programmatic' | null {
-  if (raw === 'backdrop' || raw === 'esc' || raw === 'programmatic') return raw
-  // Critical: DO NOT coerce null/undefined/booleans/events into a close reason.
-  return null
-}
-
-
 /**
  * A+ central close enforcement:
- * - Only the active (top live) overlay can be closed interactively
- * - closeOnBackdrop / closeOnEsc enforced here
+ * - Only the top overlay can be interactively closed
+ * - closeOnBackdrop / closeOnEsc enforced here (not per-overlay ad hoc)
+ * - OverlayHost NEVER mutates overlay.state.stack directly
+ * - Emergency hatch is overlay.forceRemove(id) (implemented in useOverlayStack)
  */
-function requestClose(id: string, rawReason?: unknown) {
-  const reason = normalizeCloseReason(rawReason)
-  if (!reason) {
-    // eslint-disable-next-line no-console
-    console.warn('[OverlayHost] Ignoring invalid close reason payload', {
-      id,
-      rawReason,
-      type: typeof rawReason,
-      ctor: (rawReason as any)?.constructor?.name,
-    })
-    return
-  }
-
-  const top = rendered.value[activeLayerIndex.value]
+function requestClose(id: string, reason: 'backdrop' | 'esc' | 'programmatic' = 'programmatic') {
+  const top = rendered.value[rendered.value.length - 1]
   if (!top || top.id !== id) return
 
   if (reason === 'backdrop' && top.closeOnBackdrop === false) return
