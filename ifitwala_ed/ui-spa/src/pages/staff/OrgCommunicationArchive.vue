@@ -766,16 +766,21 @@ function notifyInteractionsDisabled() {
 }
 
 /**
- * Interaction workflow (A+ traceability)
+ * Interaction workflow
  * --------------------------------------------------
- * Uses: communicationInteractionService
- * Semantics:
- * - reactToOrgCommunication → emits SIGNAL_ORG_COMMUNICATION_INVALIDATE
- * - postOrgCommunicationComment → emits SIGNAL_ORG_COMMUNICATION_INVALIDATE
+ * Used by: OrgCommunicationArchive.vue (Staff)
+ *
+ * Use ONLY semantic service methods (A+):
+ * - interactionService.reactToOrgCommunication()
+ * - interactionService.postOrgCommunicationComment()
+ *
+ * Service responsibility:
+ * - craft mutation payload (surface, intent_type)
+ * - emit SIGNAL_ORG_COMMUNICATION_INVALIDATE on success
  *
  * Page responsibility:
- * - call semantic method only (no upsert payload crafting)
- * - react to invalidation via uiSignals.subscribe(...)
+ * - call semantic intent methods
+ * - refresh owned data when signal fires
  */
 async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 	if (!item?.name) {
@@ -796,7 +801,6 @@ async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 		await interactionService.reactToOrgCommunication({
 			org_communication: item.name,
 			reaction_code: code,
-			surface: 'Portal Feed',
 		})
 	} catch (err) {
 		toast({
@@ -807,6 +811,7 @@ async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 		})
 	}
 }
+
 
 async function openThread(item: OrgCommunicationListItem) {
 	if (!item?.name) {
@@ -856,7 +861,6 @@ async function submitComment() {
 		await interactionService.postOrgCommunicationComment({
 			org_communication: selectedComm.value.name,
 			note,
-			surface: 'Portal Feed',
 		})
 		newComment.value = ''
 	} catch (err) {

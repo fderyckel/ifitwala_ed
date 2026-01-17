@@ -49,9 +49,12 @@ Used by:
               </div>
 
               <div class="meeting-modal__header-actions">
-                <!-- A+ FocusTrap Option B:
-                     Always-present, semantic, focusable element.
-                     Use native button + initialFocus to avoid FocusTrap empty-focus warnings. -->
+                <!--
+                  A+ FocusTrap Option B (locked):
+                  - Always have at least one real, semantic, always-present focusable element.
+                  - Use native <button> + initialFocus so HeadlessUI can lock focus immediately.
+                  - Avoid fake tabindex or hidden focus hacks.
+                -->
                 <button
                   ref="closeBtnEl"
                   type="button"
@@ -172,9 +175,10 @@ const emit = defineEmits<{
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
 
 /**
- * FocusTrap (A+ Option B)
- * Always provide an always-present semantic focus target.
- * HeadlessUI Dialog will try to focus it immediately on open.
+ * FocusTrap (A+ Option B):
+ * - Always provide a stable semantic focus anchor.
+ * - Explicitly pass initialFocus to HeadlessUI Dialog to avoid “no focusable elements”
+ *   and spurious close events on interaction (especially during transitions).
  */
 const closeBtnEl = ref<HTMLButtonElement | null>(null)
 const initialFocusEl = computed(() => closeBtnEl.value ?? undefined)
