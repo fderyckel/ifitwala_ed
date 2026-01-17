@@ -70,8 +70,8 @@ const zStep = 10
 const rendered = ref<RenderedEntry[]>([])
 
 /**
- * Active layer must be the top-most LIVE (open, not closing) entry.
- * If none exists (rare), fall back to the last rendered entry.
+ * Active layer = top-most LIVE (open, not closing) entry.
+ * If none exists (rare), fall back to last rendered.
  */
 const activeLayerIndex = computed(() => {
   for (let i = rendered.value.length - 1; i >= 0; i--) {
@@ -127,16 +127,13 @@ watch(
     /**
      * CRITICAL ORDERING RULE:
      * Closing leftovers must NEVER be stacked above live overlays.
-     * So we order: (closing leftovers in existing order) + (store stack order).
+     * Order: (closing leftovers) + (store stack order)
      */
     const ordered: RenderedEntry[] = []
 
-    // 1) closing leftovers first (keep relative order)
     for (const r of rendered.value) {
       if (!nextIds.has(r.id)) ordered.push(r)
     }
-
-    // 2) then the current store stack (in store order)
     for (const entry of next) {
       const match = rendered.value.find((r) => r.id === entry.id)
       if (match) ordered.push(match)
@@ -186,6 +183,11 @@ function normalizeCloseReason(raw: unknown): 'backdrop' | 'esc' | 'programmatic'
   return null
 }
 
+/**
+ * A+ central close enforcement:
+ * - Only the active (top live) overlay can be closed interactively
+ * - closeOnBackdrop / closeOnEsc enforced here
+ */
 function requestClose(id: string, rawReason?: unknown) {
   const reason = normalizeCloseReason(rawReason)
   if (!reason) {
@@ -205,6 +207,7 @@ function requestClose(id: string, rawReason?: unknown) {
   if (reason === 'backdrop' && top.closeOnBackdrop === false) return
   if (reason === 'esc' && top.closeOnEsc === false) return
 
+  // Primary: public API
   try {
     overlay.close(id)
     return
@@ -213,6 +216,7 @@ function requestClose(id: string, rawReason?: unknown) {
     console.error('[OverlayHost] overlay.close failed; using forceRemove', { id, reason, err })
   }
 
+  // Emergency: API-based removal (still no direct state mutation here)
   if (typeof (overlay as any).forceRemove === 'function') {
     ;(overlay as any).forceRemove(id)
     return
