@@ -115,4 +115,40 @@ export function useStudentLogRecentLogs(
 		}
 
 		const response = await resource.submit(payload)
-		const batch = Array.isArra
+		const batch = Array.isArray(response) ? response : []
+
+		if (batch.length) {
+			rows.value = options?.reset ? batch : [...rows.value, ...batch]
+			pagingRef.value.start += batch.length
+		}
+
+		if (batch.length < pagingRef.value.pageLength) {
+			hasMore.value = false
+		}
+
+		return batch
+	}
+
+	return {
+		rows,
+		loading,
+		hasMore,
+		reload,
+	}
+}
+
+const studentSearchResource = createResource<StudentSearchResult[]>({
+	url: 'ifitwala_ed.api.student_log_dashboard.get_distinct_students',
+	method: 'POST',
+	auto: false,
+})
+
+export async function searchDistinctStudents(
+	filters: StudentLogDashboardFilters,
+	searchText: string
+) {
+	return studentSearchResource.submit({
+		filters,
+		search_text: searchText,
+	})
+}
