@@ -5,20 +5,14 @@
 
 import frappe
 
-
-
 def redirect_user_to_entry_portal():
 	"""
-	Redirect portal users immediately after login.
+	Authoritative login routing.
 
-	Priority:
-	1) Active Employee users -> Staff Portal (/portal/staff)
-	2) Students with a linked Student profile -> Student portal (/sp)
+	Employees NEVER land in Desk.
+	Students NEVER land in Desk.
 
-	Notes:
-	- "Active Employee" rule matches /portal/index.py:
-	  role "Employee" AND linked Employee.status == "Active"
-	- We intentionally do NOT redirect everyone else (e.g. System Manager) here.
+	Desk remains for System Manager / Admin only.
 	"""
 	user = frappe.session.user
 	if not user or user == "Guest":
@@ -26,33 +20,20 @@ def redirect_user_to_entry_portal():
 
 	roles = set(frappe.get_roles(user))
 
-	# ---------------------------------------------------------------
-	# Staff portal eligibility (portal sections != frappe roles)
-	# Compromise rule:
-	#   Staff: user has role "Employee" AND linked Employee.status == "Active"
-	# ---------------------------------------------------------------
-	is_active_employee = (
-		("Employee" in roles)
-		and bool(frappe.db.exists("Employee", {"user_id": user, "status": "Active"}))
-	)
-
-	if is_active_employee:
-		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = "/portal/staff"
+	# Active employee → staff portal
+	if (
+		"Employee" in roles
+		and frappe.db.exists("Employee", {"user_id": user, "status": "Active"})
+	):
+		frappe.db.set_value("User", user, "home_page", "/portal/staff")
+		frappe.local.response["redirect_to"] = "/portal/staff"
 		return
 
-	# Student portal: only if Student role + linked Student profile exists
-	if "Student" not in roles:
+	# Student → student portal
+	if "Student" in roles and frappe.db.exists("Student", {"student_user_id": user}):
+		frappe.db.set_value("User", user, "home_page", "/sp")
+		frappe.local.response["redirect_to"] = "/sp"
 		return
-
-	if frappe.db.exists("Student", {"student_user_id": user}):
-		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = "/sp"
-	else:
-		frappe.logger().warning(
-			f"Student role but no Student profile found for user: {user}"
-		)
-
 
 
 @frappe.whitelist()

@@ -101,6 +101,14 @@ ui-spa/src/components/** must never contain workflow overlays. Any file named *O
 
 UX feedback hosts (toast/notifications) belong in the **shell/page layer** (Refresh Owners), never in overlays and never in services.
 
+---
+
+### 1.3  **Request Ownership Rule (Proposal F — LOCKED)**
+
+* **Rule:** `frappeRequest` must not be imported outside `ui-spa/src/resources/frappe.ts`.
+* **Allowed:** import `apiRequest` / `apiMethod` from `resources/frappe.ts` (or your eventual thin client module).
+* **Enforcement:** refactor any direct usage as a defect.
+* **Rationale:** one request pipe = deterministic debugging + upgrade safety.
 
 ---
 
@@ -167,6 +175,15 @@ If the same DocType is exposed differently:
 Define **separate DTOs**, even if identical today.
 
 This prevents accidental UI leakage later.
+
+---
+
+#### **2.5 Transport Boundary Rule (LOCKED)**
+
+* **Rule:** Only `ui-spa/src/resources/frappe.ts` may handle transport shapes/envelopes.
+* **Rule:** All SPA consumers receive **domain payloads only** (`T`), never `{message:T}`.
+* **Forbidden:** Unwrapping `message`, `data.message`, Axios-shapes, or any envelope handling in services/pages/components.
+* **Rationale:** prevents drift across frappe-ui versions and eliminates double-unwrapping failures.
 
 ---
 
