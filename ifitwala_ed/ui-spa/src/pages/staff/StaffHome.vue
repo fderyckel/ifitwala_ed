@@ -269,7 +269,7 @@ import FocusListCard from '@/components/focus/FocusListCard.vue'
 import { useOverlayStack } from '@/composables/useOverlayStack'
 import { getStaffHomeHeader, listFocusItems, type StaffHomeHeader } from '@/lib/services/staff/staffHomeService'
 import type { FocusItem } from '@/types/focusItem'
-import { uiSignals, SIGNAL_FOCUS_INVALIDATE } from '@/lib/uiSignals'
+import { uiSignals, SIGNAL_FOCUS_INVALIDATE, SIGNAL_STUDENT_LOG_INVALIDATE } from '@/lib/uiSignals'
 
 /**
  * StaffHome (A+ refresh ownership)
@@ -277,20 +277,17 @@ import { uiSignals, SIGNAL_FOCUS_INVALIDATE } from '@/lib/uiSignals'
  * StaffHome owns:
  * - When Focus refreshes (policy: mount + interval + visibility + invalidation)
  * - How refresh is coalesced (dedupe + throttle to avoid stampedes)
+ * - UX feedback after success when triggered by signal semantics
  *
  * StaffHome does NOT own:
  * - Workflow completion
  * - Closing overlays
  * - Emitting invalidation
  *
- * A+ contract:
- * - Workflows/services emit uiSignals (e.g. SIGNAL_FOCUS_INVALIDATE)
- * - Pages subscribe and refresh what they own
- * - Overlays close independently on success; refresh is not coupled to close
- *
- * This file must NOT rely on custom window events for SPA invalidation.
- * Window events are reserved only for explicit cross-runtime bridges (SPA ↔ Desk),
- * and must live in a dedicated bridge module (not in pages).
+ * A+ refined UX rule:
+ * - Services emit invalidate signals after confirmed success
+ * - Refresh owners refetch and may optionally show “Saved” toast after refetch success
+ * - Overlays close independently and do zero UX signaling
  */
 
 /* USER --------------------------------------------------------- */
@@ -331,10 +328,6 @@ const focusItems = ref<FocusItem[]>([])
  * Refresh focus (deduped + lightly throttled)
  * - Avoid request stampedes (signals, visibility, interval can collide)
  * - Coalesce burst invalidations into a single refresh
- *
- * A+ note:
- * - uiSignals only triggers "something changed"
- * - StaffHome decides whether/when to refetch and how aggressively
  */
 const lastFocusRefreshAt = ref<number>(0)
 const refreshInFlight = ref<Promise<void> | null>(null)
@@ -427,13 +420,16 @@ function refreshFocus(reason: string) {
  * - On mount: load once
  * - Every 120s: light polling (tab-visible only)
  * - On tab refocus: refresh if stale
- * - On workflow completion: UI Services emit SIGNAL_FOCUS_INVALIDATE
+ * - On workflow completion: UI Services emit invalidation signals
  *   and StaffHome refreshes (coalesced)
- *
- * No custom window events for SPA invalidation.
  */
 let focusTimer: ReturnType<typeof window.setInterval> | null = null
 let disposeFocusInvalidate: (() => void) | null = null
+let disposeStudentLogInvalidate: (() => void) | null = null
+
+// Local intent flag: only toast “Saved” when StaffHome initiated the workflow.
+// Avoids global spam if student_log:invalidate is emitted from other surfaces.
+const pendingStudentLogSavedToast = ref(false)
 
 function onVisibilityChange() {
 	if (document.visibilityState === 'visible' && shouldRefreshOnVisibility()) {
@@ -443,6 +439,27 @@ function onVisibilityChange() {
 
 function onFocusInvalidated() {
 	refreshFocus('signal:focus:invalidate')
+}
+
+function onStudentLogInvalidated() {
+	const shouldToast = pendingStudentLogSavedToast.value
+	// Clear immediately so we never double-toast across coalesced runs.
+	pendingStudentLogSavedToast.value = false
+
+	// Refresh what StaffHome owns (Focus). Then optionally toast after refetch success.
+	refreshFocus('signal:student_log:invalidate')
+		?.then(() => {
+			if (shouldToast) {
+				toast({
+					title: 'Saved',
+					text: 'Student note submitted.',
+					icon: 'check',
+				})
+			}
+		})
+		.catch(() => {
+			// If refresh fails, do not toast success.
+		})
 }
 
 onMounted(async () => {
@@ -462,12 +479,14 @@ onMounted(async () => {
 
 	// A+ integration point: signals (subscribe returns disposer)
 	disposeFocusInvalidate = uiSignals.subscribe(SIGNAL_FOCUS_INVALIDATE, onFocusInvalidated)
+	disposeStudentLogInvalidate = uiSignals.subscribe(SIGNAL_STUDENT_LOG_INVALIDATE, onStudentLogInvalidated)
 })
 
 onBeforeUnmount(() => {
 	if (focusTimer && typeof window !== 'undefined') window.clearInterval(focusTimer)
 	document.removeEventListener('visibilitychange', onVisibilityChange)
 	if (disposeFocusInvalidate) disposeFocusInvalidate()
+	if (disposeStudentLogInvalidate) disposeStudentLogInvalidate()
 })
 
 function openFocusItem(item: FocusItem) {
@@ -602,6 +621,11 @@ function openCreateTask() {
 
 /* OVERLAY: Student Log ---------------------------------------- */
 function openStudentLog() {
+	// Mark local intent for success feedback owned by this refresh owner.
+	// Service will emit SIGNAL_STUDENT_LOG_INVALIDATE after confirmed success.
+	// StaffHome will refetch and optionally toast after refetch success.
+	pendingStudentLogSavedToast.value = true
+
 	overlay.open('student-log-create', {
 		mode: 'school',
 	})

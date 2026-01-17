@@ -117,6 +117,11 @@
         </div>
       </div>
 
+      <!-- Inline error (A+): overlays/workflow UI do not toast -->
+      <div v-if="actionError" class="mt-3 rounded-xl border border-ink/10 bg-white p-3">
+        <p class="type-meta text-ink">{{ actionError }}</p>
+      </div>
+
       <div class="mt-4 flex items-center justify-end gap-2">
         <!-- A+: close must NEVER be blocked by busy -->
         <button type="button" class="btn btn-quiet" @click="emitClose">
@@ -158,6 +163,11 @@
           class="type-meta text-muted mt-2"
         >
           Please enter a valid user.
+        </div>
+
+        <!-- Inline error (A+): overlays/workflow UI do not toast -->
+        <div v-if="actionError" class="mt-3 rounded-xl border border-ink/10 bg-white p-3">
+          <p class="type-meta text-ink">{{ actionError }}</p>
         </div>
 
         <div class="mt-3 flex items-center justify-end gap-2">
@@ -214,7 +224,6 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { toast } from 'frappe-ui'
 
 import { __ } from '@/lib/i18n'
 import { createFocusService } from '@/lib/services/focus/focusService'
@@ -242,7 +251,7 @@ const emit = defineEmits<{
 /**
  * Service layer:
  * - owns createResource + dotted endpoints
- * - returns unwrapped message payloads
+ * - returns contract payloads (transport unwrapping is in resources/frappe.ts)
  * - owns uiSignals emission (A+)
  */
 const focusService = createFocusService()
@@ -253,22 +262,6 @@ function emitClose() {
 
 function requestRefresh() {
 	emit('request-refresh')
-}
-
-/* Toast safety (you hit "toast is unavailable" before) --------- */
-type ToastPayload = Parameters<typeof toast>[0]
-function showToast(payload: ToastPayload) {
-	if (typeof toast !== 'function') {
-		// eslint-disable-next-line no-console
-		console.warn('[StudentLogFollowUpAction] toast is unavailable', payload)
-		return
-	}
-	try {
-		toast(payload)
-	} catch (err) {
-		// eslint-disable-next-line no-console
-		console.error('[StudentLogFollowUpAction] toast failed', err, payload)
-	}
 }
 
 /**
@@ -286,6 +279,9 @@ const submittedOnce = ref(false)
 
 const draftText = ref('')
 const reassignTo = ref('')
+
+// A+ inline errors (no toast)
+const actionError = ref<string | null>(null)
 
 const activeStudentLogName = computed(() => log.value?.name || null)
 
@@ -311,6 +307,7 @@ watch(
 		draftText.value = ''
 		reassignTo.value = ''
 		submittedOnce.value = false
+		actionError.value = null
 		applyContext(next)
 	},
 	{ immediate: true, deep: false }
@@ -342,23 +339,16 @@ function trustedHtml(html: string) {
 function requireFocusItemId(): string | null {
 	const id = String(props.focusItemId || '').trim()
 	if (!id) {
-		showToast({
-			title: __('Missing focus item'),
-			text: __('Please close and reopen this item from the Focus list.'),
-			icon: 'x',
-		})
+		actionError.value = __('Missing focus item. Please close and reopen this item from the Focus list.')
 		return null
 	}
 	return id
 }
 
 /**
- * Option A (preferred):
- * - Child emits DONE only (success signal).
- * - Child does NOT close overlays on success.
- * - Router owns close on done.
- *
- * Note: cancel/close remains explicit via emit('close').
+ * Advisory signal for router:
+ * - Router owns closing the overlay.
+ * - This component must not toast / signal / refetch.
  */
 function aPlusSuccessDoneOnly() {
 	try {
@@ -379,6 +369,8 @@ async function submitFollowUp() {
 	if (modeState.value !== 'assignee') return
 	if (!canSubmit.value) return
 
+	actionError.value = null
+
 	const focusItemId = requireFocusItemId()
 	if (!focusItemId) return
 
@@ -398,19 +390,11 @@ async function submitFollowUp() {
 		const msg = await focusService.submitStudentLogFollowUp(payload)
 		if (!msg?.ok) throw new Error(__('Submit failed.'))
 
-		showToast({
-			title: msg.idempotent ? __('Already submitted') : __('Follow-up submitted'),
-			icon: 'check',
-		})
-
+		// A+ success: overlay closes immediately (via router)
 		aPlusSuccessDoneOnly()
 	} catch (e: unknown) {
 		submittedOnce.value = false
-		showToast({
-			title: __('Could not submit follow-up'),
-			text: errorMessage(e),
-			icon: 'x',
-		})
+		actionError.value = errorMessage(e)
 	} finally {
 		busy.value = false
 	}
@@ -420,16 +404,14 @@ async function reassignFollowUp() {
 	if (busy.value || submittedOnce.value) return
 	if (modeState.value !== 'author') return
 
+	actionError.value = null
+
 	const focusItemId = requireFocusItemId()
 	if (!focusItemId) return
 
 	const target = (reassignTo.value || '').trim()
 	if (target.length < 3) {
-		showToast({
-			title: __('Missing assignee'),
-			text: __('Please enter a valid user (email / user id).'),
-			icon: 'x',
-		})
+		actionError.value = __('Please enter a valid user (email / user id).')
 		return
 	}
 
@@ -447,19 +429,11 @@ async function reassignFollowUp() {
 		const msg = await focusService.reviewStudentLogOutcome(payload)
 		if (!msg?.ok) throw new Error(__('Reassign failed.'))
 
-		showToast({
-			title: msg.idempotent ? __('Already processed') : __('Reassigned'),
-			icon: 'check',
-		})
-
+		// A+ success: overlay closes immediately (via router)
 		aPlusSuccessDoneOnly()
 	} catch (e: unknown) {
 		submittedOnce.value = false
-		showToast({
-			title: __('Could not reassign'),
-			text: errorMessage(e),
-			icon: 'x',
-		})
+		actionError.value = errorMessage(e)
 	} finally {
 		busy.value = false
 	}
@@ -469,6 +443,8 @@ async function completeParentLog() {
 	if (busy.value || submittedOnce.value) return
 	if (modeState.value !== 'author') return
 	if (!canComplete.value) return
+
+	actionError.value = null
 
 	const focusItemId = requireFocusItemId()
 	if (!focusItemId) return
@@ -486,19 +462,11 @@ async function completeParentLog() {
 		const msg = await focusService.reviewStudentLogOutcome(payload)
 		if (!msg?.ok) throw new Error(__('Complete failed.'))
 
-		showToast({
-			title: msg.idempotent ? __('Already processed') : __('Log completed'),
-			icon: 'check',
-		})
-
+		// A+ success: overlay closes immediately (via router)
 		aPlusSuccessDoneOnly()
 	} catch (e: unknown) {
 		submittedOnce.value = false
-		showToast({
-			title: __('Could not complete log'),
-			text: errorMessage(e),
-			icon: 'x',
-		})
+		actionError.value = errorMessage(e)
 	} finally {
 		busy.value = false
 	}
