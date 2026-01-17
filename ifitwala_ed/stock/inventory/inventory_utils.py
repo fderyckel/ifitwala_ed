@@ -8,7 +8,18 @@ from datetime import datetime, time, timedelta
 
 import frappe
 from frappe import _
-from frappe.utils import get_datetime, now_datetime, unscrub
+from frappe.utils import get_datetime, now_datetime
+
+try:
+	from frappe.utils import unscrub
+except ImportError:
+	try:
+		from frappe.utils.data import unscrub
+	except ImportError:  # pragma: no cover - defensive fallback for older Frappe builds
+		def unscrub(value):
+			if not value:
+				return value
+			return " ".join(part.capitalize() for part in str(value).split("_"))
 
 CUSTODY_FIELDS = (
 	"current_location",
