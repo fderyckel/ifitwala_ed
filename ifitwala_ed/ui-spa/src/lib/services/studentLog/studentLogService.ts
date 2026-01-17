@@ -29,12 +29,15 @@ import type {
  * - No transport normalization
  * - No envelope handling
  * - No defensive branching
- * - Services emit uiSignals ONLY after successful mutations
+ * - Services emit uiSignals ONLY after confirmed successful mutations
  *
- * Note on UX toasts:
- * - Toast availability is a UI concern and may not exist in every runtime.
- * - Workflow success must never depend on toast.
- * - If you want success toasts, trigger them in the overlay/page after a successful await.
+ * A+ UX feedback rule (refined):
+ * - UX feedback after success is owned by Refresh Owners (page/shell)
+ *   and is triggered by signal semantics.
+ * - Service emits invalidate signals after success.
+ * - Refresh owner receives signal, refetches, and may optionally toast “Saved”
+ *   AFTER refetch success.
+ * - Overlays do zero UX signaling (no toast, no signals, no refetch).
  */
 
 export function createStudentLogService() {
@@ -85,10 +88,12 @@ export function createStudentLogService() {
 	}
 
 	async function submitStudentLog(payload: SubmitStudentLogRequest): Promise<SubmitStudentLogResponse> {
+		// Under the A+ transport contract, submit() returns domain payloads or throws.
+		// Therefore, reaching the next lines implies a confirmed success.
 		const result = await submitStudentLogResource.submit(payload)
 
-		// A+ invalidation responsibility lives in the service.
-		// Under A++: submit() throws on failure, so reaching here implies a real mutation.
+		// Invalidation is the service responsibility (A+).
+		// UX feedback is owned by Refresh Owners (page/shell) and is triggered by signal semantics.
 		uiSignals.emit(SIGNAL_STUDENT_LOG_INVALIDATE)
 		uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
 

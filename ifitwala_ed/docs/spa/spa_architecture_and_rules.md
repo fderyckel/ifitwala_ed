@@ -97,6 +97,9 @@ Runtime orchestration (services, invalidation, signals) **must** live in `lib/`.
 | `utils/` | pure stateless helpers            | registries, event buses, subscriptions       |
 | `lib/`   | runtime infra (services, signals) | business logic, overlay close logic          |
 
+UX feedback hosts (toast/notifications) belong in the **shell/page layer** (Refresh Owners), never in overlays and never in services.
+
+
 ---
 
 ## 2. Contracts & Types Governance (Phase-0 — Integrated)
@@ -240,6 +243,25 @@ This sits below business logic but above rendering — exactly where silent dama
 
 ---
 
+### 3.6 UX feedback after success (A+ — LOCKED)
+
+**UX feedback after success is owned by Refresh Owners (page/shell) and is triggered by signal semantics.**
+
+Rules:
+
+* **Overlays** must not toast, must not emit `uiSignals`, and must not refetch pages. They close immediately on success and display inline errors on failure.
+* **Services** must not toast. They call endpoints and emit `*_invalidate` signals **only after confirmed semantic success**.
+* **Refresh Owners** (pages or shell-level listeners) subscribe to `uiSignals`, decide when to refetch, and may optionally show a “Saved” toast **after refetch success**.
+
+This prevents:
+
+* toast/runtime coupling (“toast unavailable”)
+* duplicate success toasts across entry points
+* refresh storms from mixed ownership
+* workflow correctness depending on UX availability
+
+---
+
 ## 4. Overlay Architecture & A+ Lifecycle Contract
 
 ### 4.1 Core decision (A+)
@@ -251,14 +273,15 @@ Overlay closing is **local, immediate, deterministic**.
 ---
 
 ### 4.2 Ownership split
-
-| Responsibility               | Owner       |
-| ---------------------------- | ----------- |
-| API calls                    | UI Services |
-| Business rules / idempotency | Server      |
-| Refresh & invalidation       | UI Services |
-| Overlay close                | Overlay     |
-| Overlay lifecycle            | OverlayHost |
+| Responsibility                   | Owner                                |
+| -------------------------------- | ------------------------------------ |
+| API calls                        | UI Services                          |
+| Business rules / idempotency     | Server                               |
+| Invalidation signals (emit)      | UI Services                          |
+| Refresh policy / refetch timing  | Refresh Owners (page/shell)          |
+| UX feedback after success        | Refresh Owners (page/shell), via refetch semantics |
+| Overlay close                    | Overlay                              |
+| Overlay lifecycle                | OverlayHost                          |
 
 ---
 
@@ -271,6 +294,7 @@ On success:
 3. OverlayHost handles teardown
 
 Never wait for refresh, toast, reload.
+Overlay must perform **zero UX signaling**: no toast, no signal emission, no refetch calls.
 
 ---
 
@@ -365,23 +389,20 @@ This includes:
 
 ---
 
-#### ✅ Required pattern
 
-All server responses **must be normalized exactly once**, inside **UI Services** (`ui-spa/src/lib/services/**`), before being exposed to the rest of the application.
+#### ✅ Required pattern (LOCKED)
 
-After normalization:
+Transport envelope handling is owned by **one place only**:
 
-```ts
-// downstream code must see ONLY this
-Response
-```
+* `ui-spa/src/resources/frappe.ts`
 
-No overlay, page, or component may:
+After the transport adapter unwraps the framework envelope, **services and all downstream code** must see **contract-pure domain payloads only**:
 
-* unwrap `{ message }`
-* check `{ data }`
-* branch on transport shape
-* compensate for framework response wrappers
+No overlay, page, component, or service may:
+unwrap { message }
+check { data }
+branch on transport shape
+compensate for framework response wrappers
 
 ---
 
@@ -421,8 +442,9 @@ Violation → **reject PR**.
 
 > **Contracts are pure.
 > Transport is impure.
-> Services absorb impurity exactly once.
-> UI never sees it.**
+> `resources/frappe.ts` absorbs transport once.
+> Services return domain payloads only.
+> UI never sees transport.**
 
 ---
 
@@ -463,7 +485,7 @@ If a rule here is violated, treat it as a **defect**, not style.
 **Services are the only place that should:**
 
 * call endpoints
-* normalize/shape payloads
+* return contract-pure domain payloads (transport handled in `resources/frappe.ts`)
 * perform workflow actions (submit follow up, reassign, close, etc.)
 * emit invalidation signals after success
 
@@ -479,7 +501,7 @@ Services must not:
 
 * Overlays call service actions.
 * On success: overlays **close immediately**.
-* After success: overlays may *request* invalidation by calling service methods that emit signals, or by emitting signals directly if the overlay is the workflow owner (temporary allowance; prefer service).
+* After success: overlays must do **no invalidation**. Services emit signals after confirmed semantic success; pages/shell subscribe and refetch what they own.
 
 Overlays must not:
 
@@ -583,43 +605,9 @@ Recommended minimum:
 ---
 
 
-Service-layer responsibilities (mandatory):
-Strict transport normalization
-	Boundary input is unknown
-	Normalize once
-	Return only the domain contract type
-	❌ No any
-	❌ No permissive “handles 3 shapes” comments
-	❌ No union return types
-Semantic success gating
-	Services must define what “mutation success” means (ok === true, or explicit status)
-	uiSignals.emit() is allowed ONLY after confirmed semantic success
-	❌ No emission on:
-		soft failures (ok: false)
-		idempotent no-ops
-		validation errors returned as 200
-		partial / warning responses
-Components are forbidden from deciding success
-	No unwrapping
-	No inspecting ok
-	No emitting signals
-	Components react only to normalized service results or thrown errors
-Violations are defects, not style issues.
-NO DEFENSIVE ABSTRACTION LAYER!!!
 
-🔒 A+ LOCKED RULE (this is the one I recommend)
-All SPA services receive { message: T } and nothing else.
-Transport adapters must enforce this before services run.
-Services contain ZERO shape conditionals.
-Once this is locked:
-	normalizeMessage() disappears
-	All ifs disappear
-	Services become trivial
 
-A+ Transport Rule (Final Form)
-Transport normalization must happen exactly zero times in the SPA.
-
-Here are **10 concrete refactor rules** to *any Vue page* to make it **A+ / A++ compliant** in your codebase, with **file paths, naming, what to change, and why**.
+Here are **10 concrete refactor rules** to *any Vue page* to make it **A+ compliant** in your codebase, with **file paths, naming, what to change, and why**.
 
 ## 1) Page owns refresh, services own invalidation
 
@@ -656,7 +644,7 @@ Here are **10 concrete refactor rules** to *any Vue page* to make it **A+ / A++ 
 * No `normalizeMessage/unwrapMessage/transform` in services
 * Transport envelope `{ message: T }` is owned by `ui-spa/src/resources/frappe.ts`
 
-**Why:** A++ rule: “backend contract is authoritative; no transport normalization anywhere else.”
+**Why:** A+ rule: “backend contract is authoritative; no transport normalization anywhere else.”
 
 ---
 
@@ -764,17 +752,9 @@ onBeforeUnmount(() => dispose())
 
 ---
 
-If you want, I can turn these into a short `AGENTS_UI_SPA.md` checklist later, but for now we keep moving.
+### 🔒 Transport & Invalidation Rule (LOCKED)
 
-### Now, your `studentLogService.ts` is a textbook A++ regression
-
-It still contains:
-
-* `normalize()` (envelope handling in service)
-* `any` casts
-* `transform:` on every resource
-* emits signals unconditionally (should be gated by semantic success per your response contract)
-
-You already pasted the file, so next step is: **I refactor `ui-spa/src/lib/services/studentLog/studentLogService.ts` as one file** and output the full new version.
-
-(And yes: I will keep comments unless they’re now wrong.)
+* Transport envelope unwrapping happens only in `ui-spa/src/resources/frappe.ts`.
+* Services contain **zero** transport-shape branching and return **domain contract payloads only**.
+* Services may emit `*_invalidate` signals **only after confirmed semantic mutation success** (backend-owned success field like `ok === true` or explicit status).
+* Components/overlays/pages must never decide mutation success and must never emit signals.
