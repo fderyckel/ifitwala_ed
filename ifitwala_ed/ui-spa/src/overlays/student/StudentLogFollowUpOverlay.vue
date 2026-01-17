@@ -17,8 +17,9 @@ Used by:
       <!--
         A+ close semantics:
         - Backdrop clicks must be tagged as 'backdrop' so OverlayHost can enforce closeOnBackdrop.
-        - HeadlessUI @close emits a boolean; DO NOT forward that into OverlayHost.
-        - We treat @close here as 'esc' to avoid "outside click == programmatic" ambiguity.
+        - HeadlessUI @close is ambiguous (can be triggered by outside click / focus portal issues).
+          DO NOT forward it into OverlayHost or close from it.
+        - ESC is handled explicitly via document keydown.
       -->
       <div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
 
@@ -67,6 +68,20 @@ Used by:
 
             <!-- Body -->
             <div class="if-overlay__body custom-scrollbar">
+              <!-- A+ UX: overlays never toast. Errors show inline. -->
+              <div
+                v-if="errorMessage"
+                class="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 shadow-soft"
+                role="alert"
+              >
+                <p class="type-body-strong text-rose-900">
+                  {{ __('Something went wrong') }}
+                </p>
+                <p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">
+                  {{ errorMessage }}
+                </p>
+              </div>
+
               <div v-if="loading" class="py-10">
                 <div class="type-body text-ink/70">Loading…</div>
               </div>
@@ -257,9 +272,8 @@ Used by:
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
-import { toast } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
 import { createFocusService } from '@/lib/services/focus/focusService'
 import { useOverlayStack } from '@/composables/useOverlayStack'
@@ -286,6 +300,7 @@ import type { Request as ReviewStudentLogOutcomeRequest } from '@/types/contract
  */
 
 type Mode = GetFocusContextResponse['mode']
+type CloseReason = 'backdrop' | 'esc' | 'programmatic'
 
 const props = defineProps<{
 	open: boolean
@@ -293,56 +308,62 @@ const props = defineProps<{
 	mode: Mode
 	studentLog: string
 	focusItemId?: string | null
-	/**
-	 * If this overlay is opened via OverlayHost stack, pass the overlay entry id.
-	 * Closing via stack is more reliable than relying on parent emit wiring.
-	 */
 	overlayId?: string | null
 }>()
 
-/**
- * A+ Reasoned-close contract:
- * Overlay must emit close reasons so OverlayHost can enforce:
- * - closeOnBackdrop
- * - closeOnEsc
- */
 const emit = defineEmits<{
-	(e: 'close', reason?: 'backdrop' | 'esc' | 'programmatic'): void
+	(e: 'close', reason: CloseReason): void
 	(e: 'after-leave'): void
 }>()
 
 const overlay = useOverlayStack()
 const focusService = createFocusService()
 
-/**
- * z-index invariants (fixes "click inside textarea closes overlay"):
- * - Backdrop must ALWAYS sit under the wrap/panel.
- * - Do not rely on global CSS for this.
- */
 const baseZ = computed(() => props.zIndex ?? 3000)
 const wrapStyle = computed(() => ({ zIndex: baseZ.value }))
-const backdropStyle = computed(() => ({ zIndex: baseZ.value - 1 }))
 
 type FocusLog = GetFocusContextResponse['log']
 type FocusFollowUp = GetFocusContextResponse['follow_ups'][number]
 
-type ToastPayload = Parameters<typeof toast>[0]
-function showToast(payload: ToastPayload) {
-	// Avoid silent failures (you've seen "toast is unavailable" before)
-	if (typeof toast !== 'function') {
-		// eslint-disable-next-line no-console
-		console.warn('[StudentLogFollowUpOverlay] toast is unavailable', payload)
-		return
-	}
-	try {
-		toast(payload)
-	} catch (err) {
-		// eslint-disable-next-line no-console
-		console.error('[StudentLogFollowUpOverlay] toast failed', err, payload)
-	}
+const closeBtnEl = ref<HTMLButtonElement | null>(null)
+
+const modeState = ref<Mode>(props.mode)
+
+const log = ref<FocusLog | null>(null)
+const followUps = ref<FocusFollowUp[]>([])
+const loading = ref(false)
+const busy = ref(false)
+const submittedOnce = ref(false)
+
+const draftText = ref('')
+const errorMessage = ref('')
+
+const canSubmit = computed(() => {
+	return !!props.studentLog && (draftText.value || '').trim().length >= 5
+})
+
+const canComplete = computed(() => {
+	const s = (log.value?.follow_up_status || '').toLowerCase()
+	return !!props.studentLog && s !== 'completed'
+})
+
+function setError(err: unknown, fallback: string) {
+	const msg =
+		(typeof err === 'object' && err && 'message' in (err as any) ? String((err as any).message) : '') ||
+		(typeof err === 'string' ? err : '') ||
+		fallback
+	errorMessage.value = msg
 }
 
-function emitClose(reason: 'backdrop' | 'esc' | 'programmatic' = 'programmatic') {
+function clearError() {
+	errorMessage.value = ''
+}
+
+function _newClientRequestId(prefix = 'req') {
+	return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
+}
+
+function emitClose(reason: CloseReason) {
 	// If this overlay is mounted in OverlayHost, prefer closing the stack entry.
 	const id = (props.overlayId || '').trim()
 	if (id) {
@@ -361,51 +382,39 @@ function emitAfterLeave() {
 }
 
 /**
- * HeadlessUI Dialog @close emits a boolean.
- * NEVER forward that boolean into OverlayHost "reason" channel.
- * We tag it explicitly.
+ * HeadlessUI Dialog @close is ambiguous.
+ * Under A+ we DO NOT forward it or close from it.
+ * Backdrop + ESC + explicit buttons are the only closing paths.
  */
-function onDialogClose(_nextOpen: boolean) {
-	emitClose('esc')
+function onDialogClose(_payload: unknown) {
+	// no-op by design
 }
 
-function onBackdropClick() {
-	emitClose('backdrop')
+function onKeydown(e: KeyboardEvent) {
+	if (!props.open) return
+	if (e.key === 'Escape') emitClose('esc')
 }
 
-/**
- * FocusTrap Option B (locked)
- * - Always provide an always-present semantic focus target.
- * - Pass the ref itself to Dialog.initialFocus.
- */
-const closeBtnEl = ref<HTMLButtonElement | null>(null)
+watch(
+	() => props.open,
+	(isOpen) => {
+		if (isOpen) {
+			document.addEventListener('keydown', onKeydown, true)
+		} else {
+			document.removeEventListener('keydown', onKeydown, true)
+		}
+	},
+	{ immediate: true }
+)
 
-const modeState = ref<Mode>(props.mode)
-
-const log = ref<FocusLog | null>(null)
-const followUps = ref<FocusFollowUp[]>([])
-const loading = ref(false)
-const busy = ref(false)
-const submittedOnce = ref(false)
-
-const draftText = ref('')
-
-const canSubmit = computed(() => {
-	return !!props.studentLog && (draftText.value || '').trim().length >= 5
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true)
 })
-
-const canComplete = computed(() => {
-	const s = (log.value?.follow_up_status || '').toLowerCase()
-	return !!props.studentLog && s !== 'completed'
-})
-
-function _newClientRequestId(prefix = 'req') {
-	return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
-}
 
 /* API ---------------------------------------------------------- */
 async function reload() {
 	if (!props.studentLog && !props.focusItemId) return
+	clearError()
 	loading.value = true
 	try {
 		const payload: GetFocusContextRequest = (props.focusItemId || '').trim()
@@ -420,11 +429,7 @@ async function reload() {
 		followUps.value = Array.isArray(ctx.follow_ups) ? ctx.follow_ups : []
 		if (ctx.mode && ctx.mode !== modeState.value) modeState.value = ctx.mode
 	} catch (e: any) {
-		showToast({
-			title: __('Could not load follow-up context'),
-			text: e?.message || __('Please try again.'),
-			icon: 'x',
-		})
+		setError(e, __('Could not load follow-up context. Please try again.'))
 	} finally {
 		loading.value = false
 	}
@@ -435,6 +440,7 @@ watch(
 	(isOpen) => {
 		if (!isOpen) return
 		// reset local UI state each open
+		clearError()
 		draftText.value = ''
 		submittedOnce.value = false
 		modeState.value = props.mode
@@ -447,14 +453,11 @@ watch(
 async function submitFollowUp() {
 	if (busy.value || submittedOnce.value) return
 	if (!canSubmit.value) return
+	clearError()
 
 	const focusItemId = (props.focusItemId || '').trim()
 	if (!focusItemId) {
-		showToast({
-			title: __('Missing focus item'),
-			text: __('Please close and reopen this item from the Focus list.'),
-			icon: 'x',
-		})
+		setError(__('Missing focus item'), __('Please close and reopen this item from the Focus list.'))
 		return
 	}
 
@@ -468,24 +471,13 @@ async function submitFollowUp() {
 			client_request_id: _newClientRequestId('fu'),
 		}
 
-		// A+ invalidation happens inside focusService on success.
 		const msg = await focusService.submitStudentLogFollowUp(payload)
 		if (!msg?.ok) throw new Error(__('Submit failed.'))
 
-		showToast({
-			title: msg.idempotent ? __('Already submitted') : __('Follow-up submitted'),
-			icon: 'check',
-		})
-
-		// Close overlay immediately; page refresh is owned by subscribers.
 		emitClose('programmatic')
 	} catch (e: any) {
 		submittedOnce.value = false
-		showToast({
-			title: __('Could not submit follow-up'),
-			text: e?.message || __('Please try again.'),
-			icon: 'x',
-		})
+		setError(e, __('Could not submit follow-up. Please try again.'))
 	} finally {
 		busy.value = false
 	}
@@ -494,14 +486,11 @@ async function submitFollowUp() {
 async function completeParentLog() {
 	if (busy.value || submittedOnce.value) return
 	if (!canComplete.value) return
+	clearError()
 
 	const focusItemId = (props.focusItemId || '').trim()
 	if (!focusItemId) {
-		showToast({
-			title: __('Missing focus item'),
-			text: __('Please close and reopen this item from the Focus list.'),
-			icon: 'x',
-		})
+		setError(__('Missing focus item'), __('Please close and reopen this item from the Focus list.'))
 		return
 	}
 
@@ -515,23 +504,13 @@ async function completeParentLog() {
 			client_request_id: _newClientRequestId('rvw'),
 		}
 
-		// A+ invalidation happens inside focusService on success.
 		const msg = await focusService.reviewStudentLogOutcome(payload)
 		if (!msg?.ok) throw new Error(__('Complete failed.'))
-
-		showToast({
-			title: msg.idempotent ? __('Already processed') : __('Log completed'),
-			icon: 'check',
-		})
 
 		emitClose('programmatic')
 	} catch (e: any) {
 		submittedOnce.value = false
-		showToast({
-			title: __('Could not complete log'),
-			text: e?.message || __('Please try again.'),
-			icon: 'x',
-		})
+		setError(e, __('Could not complete log. Please try again.'))
 	} finally {
 		busy.value = false
 	}
@@ -539,7 +518,6 @@ async function completeParentLog() {
 
 /* Helpers ------------------------------------------------------ */
 function openInDesk(doctype: string, name: string) {
-	// leaving SPA intentionally (Desk route)
 	const safeDoctype = String(doctype || '').trim()
 	if (!safeDoctype || !name) return
 

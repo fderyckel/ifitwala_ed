@@ -8,7 +8,13 @@ Used by:
 
 <template>
   <TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
-    <Dialog as="div" class="if-overlay if-overlay--student-log" :style="overlayStyle" @close="onDialogClose">
+    <Dialog
+      as="div"
+      class="if-overlay if-overlay--student-log"
+      :style="overlayStyle"
+      :initialFocus="closeBtnEl"
+      @close="onDialogClose"
+    >
       <TransitionChild
         as="template"
         enter="if-overlay__fade-enter"
@@ -47,7 +53,13 @@ Used by:
                 </p>
               </div>
 
-              <button type="button" class="if-overlay__close" @click="emitClose('programmatic')" aria-label="Close">
+              <button
+                ref="closeBtnEl"
+                type="button"
+                class="if-overlay__close"
+                @click="emitClose('programmatic')"
+                aria-label="Close"
+              >
                 <FeatherIcon name="x" class="h-5 w-5" />
               </button>
             </div>
@@ -451,7 +463,7 @@ Used by:
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { Button, FormControl, FeatherIcon, Spinner } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
@@ -462,6 +474,7 @@ import type { Response as SearchFollowUpUsersResponse } from '@/types/contracts/
 import type { Response as SearchStudentsResponse } from '@/types/contracts/student_log/search_students'
 import type { Request as SubmitStudentLogRequest } from '@/types/contracts/student_log/submit_student_log'
 
+type CloseReason = 'backdrop' | 'esc' | 'programmatic'
 type Mode = 'group' | 'school'
 
 type GroupStudent = {
@@ -489,7 +502,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'close'): void
+  (e: 'close', reason: CloseReason): void
   (e: 'after-leave'): void
 }>()
 
@@ -497,6 +510,8 @@ const overlay = useOverlayStack()
 const studentLogService = createStudentLogService()
 
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }))
+
+const closeBtnEl = ref<HTMLButtonElement | null>(null)
 
 // A+ UX: overlays show errors inline (no toasts here)
 const errorMessage = ref<string>('')
@@ -541,7 +556,7 @@ function clearError() {
   errorMessage.value = ''
 }
 
-function emitClose() {
+function emitClose(reason: CloseReason) {
   const overlayId = props.overlayId || null
   if (overlayId) {
     try {
@@ -550,11 +565,11 @@ function emitClose() {
         return
       }
     } catch (err) {
-      // fall through to stack mutation/emit fallback
+      // fall through to emit fallback
     }
   }
 
-  emit('close')
+  emit('close', reason)
 }
 
 function emitAfterLeave() {
@@ -562,6 +577,33 @@ function emitAfterLeave() {
   clearError()
   emit('after-leave')
 }
+
+/**
+ * HeadlessUI Dialog @close is ambiguous.
+ * Under A+ we DO NOT forward it or close from it.
+ * Backdrop + ESC + explicit buttons are the only closing paths.
+ */
+function onDialogClose(_payload: unknown) {
+  // no-op by design
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (!props.open) return
+  if (e.key === 'Escape') emitClose('esc')
+}
+
+watch(
+  () => props.open,
+  (v) => {
+    if (v) document.addEventListener('keydown', onKeydown, true)
+    else document.removeEventListener('keydown', onKeydown, true)
+  },
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown, true)
+})
 
 function goReview() {
   clearError()
@@ -629,7 +671,7 @@ function _getGroupStudentMeta(id: string) {
   return { label: display, image: s.student_image || null, meta }
 }
 
-/* Student search (school-scoped server-side using current user's Employee.school) */
+/* Student search */
 const studentQuery = ref('')
 const studentSearchLoading = ref(false)
 const studentCandidates = ref<PickerItem[]>([])
@@ -661,7 +703,7 @@ async function onStudentQuery(v: string) {
   }
 }
 
-/* Form options (log types + next steps, derived from selected student) */
+/* Form options */
 const optionsLoading = ref(false)
 const optionsData = ref<GetFormOptionsResponse | null>(null)
 
@@ -686,13 +728,7 @@ async function onAssigneeQuery(v: string) {
   clearError()
   assigneeQuery.value = v
   if (!form.next_step) return
-
-  // ✅ updated API supports dropdown mode when query is empty:
-  // - empty/short query => keep current list (already loaded)
-  // - 2+ chars => filtered search
-  if (!v || v.trim().length < 2) {
-    return
-  }
+  if (!v || v.trim().length < 2) return
 
   assigneeSearchLoading.value = true
   try {
@@ -722,7 +758,6 @@ function selectAssignee(user: string, label: string) {
 function onStudentSelected(studentId: string) {
   clearError()
 
-  // capture selection meta BEFORE we clear candidates (school mode)
   const picked =
     mode.value === 'school'
       ? studentCandidates.value.find((x) => x.value === studentId)
@@ -730,7 +765,6 @@ function onStudentSelected(studentId: string) {
 
   form.student = studentId
 
-  // reset dependent fields
   form.log_type = ''
   form.next_step = ''
   form.follow_up_person = ''
@@ -738,11 +772,9 @@ function onStudentSelected(studentId: string) {
   assigneeQuery.value = ''
   assigneeCandidates.value = []
 
-  // clear student search UI
   studentCandidates.value = []
   studentQuery.value = ''
 
-  // fill UI meta
   if (mode.value === 'group') {
     const m = _getGroupStudentMeta(studentId)
     selectedStudentLabel.value = m.label
@@ -754,7 +786,6 @@ function onStudentSelected(studentId: string) {
     selectedStudentMeta.value = picked?.meta || null
   }
 
-  // load dependent options (types + next steps)
   optionsLoading.value = true
   studentLogService
     .getFormOptions({ student: studentId })
@@ -774,29 +805,23 @@ function changeStudent() {
   clearError()
   step.value = 'edit'
 
-  // Clear student selection + anything that depends on student/options
   form.student = ''
-
   form.log_type = ''
   form.requires_follow_up = false
   form.next_step = ''
   form.follow_up_person = ''
 
-  // Assignee UI state
   selectedAssigneeLabel.value = ''
   assigneeQuery.value = ''
   assigneeCandidates.value = []
 
-  // Student search UI state
   studentQuery.value = ''
   studentCandidates.value = []
 
-  // Selected student UI meta
   selectedStudentLabel.value = ''
   selectedStudentImage.value = null
   selectedStudentMeta.value = null
 
-  // Clear options payload so selects don't show stale options
   optionsData.value = null
 }
 
@@ -808,7 +833,6 @@ function onNextStepSelected(v: string) {
   assigneeQuery.value = ''
   assigneeCandidates.value = []
 
-  // ✅ NEW: preload dropdown list (no typing required) using updated API behavior
   if (form.next_step && form.student) {
     assigneeSearchLoading.value = true
     studentLogService
@@ -835,8 +859,6 @@ async function submit() {
   clearError()
   if (!canSubmit.value) return
 
-  // Only allow actual server submit from the review step.
-  // If user triggers submit while editing (e.g. Enter), push them to review instead.
   if (step.value !== 'review') {
     step.value = 'review'
     return
@@ -857,11 +879,7 @@ async function submit() {
 
     await studentLogService.submitStudentLog(payload)
 
-    // A+ contract:
-    // - overlay closes on success
-    // - services emit uiSignals (if mutation succeeded)
-    // - refresh owners decide refetch + optional toast
-    emitClose()
+    emitClose('programmatic')
   } catch (err: any) {
     console.error('[StudentLogCreateOverlay] submit:error', err)
     setError(err, __('Could not submit'))
