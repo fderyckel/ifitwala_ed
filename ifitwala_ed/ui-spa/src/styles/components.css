@@ -15,7 +15,7 @@
   .if-overlay {
     position: fixed;
     inset: 0;
-    pointer-events: none;
+    pointer-events: auto;
   }
 
   .if-overlay__backdrop {
@@ -31,7 +31,7 @@
     position: fixed;
     inset: 0;
     z-index: 10;
-    pointer-events: none;
+    pointer-events: auto;
     display: flex;
     align-items: flex-start;
     justify-content: center;
