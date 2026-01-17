@@ -36,7 +36,7 @@ import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCo
 import StudentLogCreateOverlay from '@/overlays/student/StudentLogCreateOverlay.vue'
 import StudentLogFollowUpOverlay from '@/overlays/student/StudentLogFollowUpOverlay.vue'
 import FocusRouterOverlay from '@/overlays/focus/FocusRouterOverlay.vue'
-import StudentLogAnalyticsExpandOverlay from '@/components/analytics/StudentLogAnalyticsExpandOverlay.vue'
+import StudentLogAnalyticsExpandOverlay from '@/overlays/analytics/StudentLogAnalyticsExpandOverlay.vue'
 import StudentContextOverlay from '@/components/overlays/class-hub/StudentContextOverlay.vue'
 import QuickEvidenceOverlay from '@/components/overlays/class-hub/QuickEvidenceOverlay.vue'
 import QuickCFUOverlay from '@/components/overlays/class-hub/QuickCFUOverlay.vue'
@@ -179,9 +179,10 @@ function resolveComponent(type: OverlayType) {
 
 function normalizeCloseReason(raw: unknown): 'backdrop' | 'esc' | 'programmatic' | null {
   if (raw === 'backdrop' || raw === 'esc' || raw === 'programmatic') return raw
-  if (raw == null) return 'programmatic'
+  // Critical: DO NOT coerce null/undefined/booleans/events into a close reason.
   return null
 }
+
 
 /**
  * A+ central close enforcement:

@@ -1,4 +1,4 @@
-<!-- ui-spa/src/components/analytics/StudentLogAnalyticsExpandOverlay.vue -->
+<!-- ui-spa/src/overlays/analytics/StudentLogAnalyticsExpandOverlay.vue -->
 <template>
 	<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
 		<Dialog as="div" class="if-overlay if-overlay--student-log-analytics" @close="emitClose">

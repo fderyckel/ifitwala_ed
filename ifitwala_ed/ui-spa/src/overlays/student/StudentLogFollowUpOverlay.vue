@@ -20,7 +20,7 @@ Used by:
         - HeadlessUI @close emits a boolean; DO NOT forward that into OverlayHost.
         - We treat @close here as 'esc' to avoid "outside click == programmatic" ambiguity.
       -->
-      <div class="if-overlay__backdrop" :style="backdropStyle" @click="onBackdropClick" />
+      <div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
 
       <div class="if-overlay__wrap" :style="wrapStyle">
         <TransitionChild

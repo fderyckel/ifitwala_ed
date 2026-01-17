@@ -8,7 +8,7 @@ Used by:
 
 <template>
   <TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
-    <Dialog as="div" class="if-overlay if-overlay--student-log" :style="overlayStyle" @close="emitClose">
+    <Dialog as="div" class="if-overlay if-overlay--student-log" :style="overlayStyle" @close="onDialogClose">
       <TransitionChild
         as="template"
         enter="if-overlay__fade-enter"
@@ -18,7 +18,7 @@ Used by:
         leave-from="if-overlay__fade-to"
         leave-to="if-overlay__fade-from"
       >
-        <div class="if-overlay__backdrop" />
+        <div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
       </TransitionChild>
 
       <div class="if-overlay__wrap">
@@ -47,7 +47,7 @@ Used by:
                 </p>
               </div>
 
-              <button type="button" class="if-overlay__close" @click="emitClose" aria-label="Close">
+              <button type="button" class="if-overlay__close" @click="emitClose('programmatic')" aria-label="Close">
                 <FeatherIcon name="x" class="h-5 w-5" />
               </button>
             </div>

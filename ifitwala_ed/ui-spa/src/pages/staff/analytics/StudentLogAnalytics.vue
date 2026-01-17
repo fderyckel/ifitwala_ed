@@ -343,13 +343,17 @@ function truncate(text: string, max = 140) {
 				</template>
 			</AnalyticsCard>
 
+			<!-- ============================================================
+			     TABLE 1: Recent Student Logs
+			     Change: bump body typography from caption -> body
+			   ============================================================ -->
 			<AnalyticsCard
 				title="Recent Student Logs"
 				@expand="openTableOverlay('Recent Student Logs', recentRows)"
 			>
 				<template #body>
 					<div class="max-h-[320px] overflow-auto">
-						<table class="min-w-full border-collapse type-caption text-ink/80">
+						<table class="min-w-full border-collapse text-ink/80">
 							<thead>
 								<tr class="border-b border-slate-200 bg-slate-50">
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Date</th>
@@ -361,7 +365,8 @@ function truncate(text: string, max = 140) {
 									<th class="px-2 py-2 text-center type-label text-slate-token/70">FU</th>
 								</tr>
 							</thead>
-							<tbody>
+
+							<tbody class="type-body">
 								<tr
 									v-for="row in recentRows"
 									:key="`${row.date}-${row.student}-${row.log_type}-${row.author}`"
@@ -395,6 +400,7 @@ function truncate(text: string, max = 140) {
 										</span>
 									</td>
 								</tr>
+
 								<tr v-if="!recentRows.length">
 									<td colspan="7" class="px-2 py-3 text-center type-empty">
 										No logs in this period.
@@ -417,6 +423,10 @@ function truncate(text: string, max = 140) {
 				</template>
 			</AnalyticsCard>
 
+			<!-- ============================================================
+			     TABLE 2: Selected Student Logs
+			     Change: bump body typography from caption -> body
+			   ============================================================ -->
 			<AnalyticsCard
 				title="Selected Student Logs"
 				@expand="openTableOverlay('Selected Student Logs', studentLogs, selectedStudentLabel || filters.student)"
@@ -432,7 +442,7 @@ function truncate(text: string, max = 140) {
 
 				<template #body>
 					<div class="max-h-[260px] overflow-auto">
-						<table class="min-w-full border-collapse type-caption text-ink/80">
+						<table class="min-w-full border-collapse text-ink/80">
 							<thead>
 								<tr class="border-b border-slate-200 bg-slate-50">
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Date</th>
@@ -441,7 +451,8 @@ function truncate(text: string, max = 140) {
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Author</th>
 								</tr>
 							</thead>
-							<tbody>
+
+							<tbody class="type-body">
 								<tr
 									v-for="row in studentLogs"
 									:key="`${row.date}-${row.log_type}-${row.author}`"
@@ -460,6 +471,7 @@ function truncate(text: string, max = 140) {
 										{{ row.author }}
 									</td>
 								</tr>
+
 								<tr v-if="!studentLogs.length">
 									<td colspan="4" class="px-2 py-3 text-center type-empty">
 										No logs to show yet.
