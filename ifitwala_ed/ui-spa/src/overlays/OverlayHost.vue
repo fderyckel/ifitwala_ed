@@ -13,9 +13,9 @@
           v-for="(entry, idx) in rendered"
           :key="entry.id"
           class="if-overlay-host__layer"
-          :class="{ 'if-overlay-host__layer--inactive': idx !== rendered.length - 1 }"
-          :aria-hidden="idx !== rendered.length - 1 ? 'true' : 'false'"
-          :inert="idx !== rendered.length - 1 ? '' : null"
+          :class="{ 'if-overlay-host__layer--inactive': idx !== activeIdx }"
+          :aria-hidden="idx !== activeIdx ? 'true' : 'false'"
+          :inert="idx !== activeIdx ? '' : null"
         >
           <component
             :is="resolveComponent(entry.type)"
@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { PortalGroup } from '@headlessui/vue'
 import { useOverlayStack, type OverlayEntry, type OverlayType } from '@/composables/useOverlayStack'
 
@@ -77,6 +77,20 @@ const zStep = 10
 
 // Local rendered stack (includes closing entries until transitions finish)
 const rendered = ref<RenderedEntry[]>([])
+
+/**
+ * Active layer index:
+ * - The topmost entry that is NOT closing.
+ * - Closing leftovers must never become the “active” interactive layer,
+ *   otherwise they can inert/disable the real top overlay beneath (dead clicks).
+ */
+const activeIdx = computed(() => {
+  for (let i = rendered.value.length - 1; i >= 0; i--) {
+    const entry = rendered.value[i]
+    if (!entry?._closing) return i
+  }
+  return -1
+})
 
 watch(
   () => overlay.state.stack,
@@ -168,6 +182,14 @@ function resolveComponent(type: OverlayType) {
   }
 }
 
+function getTopInteractive(): RenderedEntry | null {
+  const idx = activeIdx.value
+  if (idx < 0) return null
+  const entry = rendered.value[idx]
+  if (!entry || entry._closing) return null
+  return entry
+}
+
 /**
  * A+ central close enforcement:
  * - Only the top overlay can be interactively closed
@@ -176,7 +198,7 @@ function resolveComponent(type: OverlayType) {
  * - Emergency hatch is overlay.forceRemove(id) (implemented in useOverlayStack)
  */
 function requestClose(id: string, reason: 'backdrop' | 'esc' | 'programmatic' = 'programmatic') {
-  const top = rendered.value[rendered.value.length - 1]
+  const top = getTopInteractive()
   if (!top || top.id !== id) return
 
   if (reason === 'backdrop' && top.closeOnBackdrop === false) return
