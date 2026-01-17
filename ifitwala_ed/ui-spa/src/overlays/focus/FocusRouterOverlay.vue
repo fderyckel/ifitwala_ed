@@ -285,13 +285,19 @@ function onWorkflowDone() {
 	requestClose()
 }
 
+/**
+ * CRITICAL FIX:
+ * - When the overlay is first mounted, props.open is already true.
+ * - A non-immediate watcher will not fire, so reload() never runs.
+ * - Make it immediate so the initial open triggers get_focus_context.
+ */
 watch(
 	() => props.open,
 	(next) => {
 		if (!next) return
 		reload()
 	},
-	{ immediate: false }
+	{ immediate: true }
 )
 
 watch(
