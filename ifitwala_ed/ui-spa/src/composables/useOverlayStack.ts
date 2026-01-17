@@ -68,6 +68,17 @@ function open(
 }
 
 function close(id?: string) {
+  if ((window as any).__overlay_debug_trace === true) {
+    // eslint-disable-next-line no-console
+    console.groupCollapsed('[overlay] close()', { id, stackSize: state.stack.length })
+    // eslint-disable-next-line no-console
+    console.log('stack(before)=', state.stack.map((x) => ({ id: x.id, type: x.type })))
+    // eslint-disable-next-line no-console
+    console.trace('close() callsite')
+    // eslint-disable-next-line no-console
+    console.groupEnd()
+  }
+
   if (!id) {
     const removed = state.stack.pop()
     log('close:top', removed?.id)
@@ -82,15 +93,21 @@ function close(id?: string) {
   }
 }
 
-/**
- * A+ hard escape hatch:
- * - OverlayHost may call this only if overlay.close is unavailable (defect)
- * - This keeps state mutation centralized inside the composable (single source of truth)
- * - Semantics: remove by id without any other policy checks
- */
 function forceRemove(id: string) {
   const safeId = String(id || '').trim()
   if (!safeId) return
+
+  if ((window as any).__overlay_debug_trace === true) {
+    // eslint-disable-next-line no-console
+    console.groupCollapsed('[overlay] forceRemove()', { id: safeId, stackSize: state.stack.length })
+    // eslint-disable-next-line no-console
+    console.log('stack(before)=', state.stack.map((x) => ({ id: x.id, type: x.type })))
+    // eslint-disable-next-line no-console
+    console.trace('forceRemove() callsite')
+    // eslint-disable-next-line no-console
+    console.groupEnd()
+  }
+
   const idx = state.stack.findIndex((x) => x.id === safeId)
   if (idx >= 0) {
     state.stack.splice(idx, 1)
@@ -101,11 +118,33 @@ function forceRemove(id: string) {
 }
 
 function closeTop() {
+  if ((window as any).__overlay_debug_trace === true) {
+    // eslint-disable-next-line no-console
+    console.groupCollapsed('[overlay] closeTop()', { stackSize: state.stack.length })
+    // eslint-disable-next-line no-console
+    console.log('stack(before)=', state.stack.map((x) => ({ id: x.id, type: x.type })))
+    // eslint-disable-next-line no-console
+    console.trace('closeTop() callsite')
+    // eslint-disable-next-line no-console
+    console.groupEnd()
+  }
+
   const removed = state.stack.pop()
   log('closeTop', removed?.id)
 }
 
 function closeTopIf(id: string) {
+  if ((window as any).__overlay_debug_trace === true) {
+    // eslint-disable-next-line no-console
+    console.groupCollapsed('[overlay] closeTopIf()', { id, stackSize: state.stack.length })
+    // eslint-disable-next-line no-console
+    console.log('stack(before)=', state.stack.map((x) => ({ id: x.id, type: x.type })))
+    // eslint-disable-next-line no-console
+    console.trace('closeTopIf() callsite')
+    // eslint-disable-next-line no-console
+    console.groupEnd()
+  }
+
   const t = state.stack[state.stack.length - 1]
   if (t?.id === id) {
     const removed = state.stack.pop()
@@ -114,6 +153,7 @@ function closeTopIf(id: string) {
     log('closeTopIf:blocked', { id, top: t?.id })
   }
 }
+
 
 function replaceTop(
   type: OverlayType,
