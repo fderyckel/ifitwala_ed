@@ -16,7 +16,7 @@
           :open="entry.open"
           :z-index="baseZ + idx * zStep"
           :overlay-id="entry.id"
-         	@close="requestClose(entry.id, $event ?? 'programmatic')"
+          @close="requestClose(entry.id, $event)"
           @after-leave="finalizeClose(entry.id)"
         />
       </div>
@@ -159,6 +159,17 @@ function resolveComponent(type: OverlayType) {
   }
 }
 
+function normalizeCloseReason(raw: unknown): 'backdrop' | 'esc' | 'programmatic' | null {
+  if (raw === 'backdrop' || raw === 'esc' || raw === 'programmatic') return raw
+
+  // Common Vue/HeadlessUI foot-guns:
+  // - boolean (HeadlessUI Dialog @close passes nextOpen boolean)
+  // - DOM/Event objects (accidental forwarding)
+  if (raw == null) return 'programmatic'
+
+  return null
+}
+
 /**
  * A+ central close enforcement:
  * - Only the top overlay can be interactively closed
@@ -166,7 +177,19 @@ function resolveComponent(type: OverlayType) {
  * - OverlayHost NEVER mutates overlay.state.stack directly
  * - Emergency hatch is overlay.forceRemove(id) (implemented in useOverlayStack)
  */
-function requestClose(id: string, reason: 'backdrop' | 'esc' | 'programmatic' = 'programmatic') {
+function requestClose(id: string, rawReason?: unknown) {
+  const reason = normalizeCloseReason(rawReason)
+  if (!reason) {
+    // eslint-disable-next-line no-console
+    console.warn('[OverlayHost] Ignoring invalid close reason payload', {
+      id,
+      rawReason,
+      type: typeof rawReason,
+      ctor: (rawReason as any)?.constructor?.name,
+    })
+    return
+  }
+
   const top = rendered.value[rendered.value.length - 1]
   if (!top || top.id !== id) return
 
@@ -205,8 +228,6 @@ function finalizeClose(id: string) {
   rendered.value.splice(idx, 1)
 }
 </script>
-
-
 
 <style scoped>
 .if-overlay-host__layer--inactive {
