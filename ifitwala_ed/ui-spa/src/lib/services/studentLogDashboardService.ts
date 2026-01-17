@@ -1,4 +1,4 @@
-// ui-spa/src/services/studentLogDashboardService.ts
+// ui-spa/src/lib/services/studentLogDashboardService.ts
 
 import { computed, ref, type Ref } from 'vue'
 import { createResource } from 'frappe-ui'

@@ -13,7 +13,7 @@ import {
 	useStudentLogFilterMeta,
 	useStudentLogRecentLogs,
 	type StudentLogRecentPaging,
-} from '@/services/studentLogDashboardService'
+} from '@/lib/services/studentLogDashboardService'
 import type {
 	StudentLogChartSeries,
 	StudentLogDashboardFilters,
