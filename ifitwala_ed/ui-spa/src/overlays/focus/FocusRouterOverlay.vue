@@ -12,7 +12,7 @@ Used by:
       as="div"
       class="if-overlay if-overlay--focus"
       :style="overlayStyle"
-      :initialFocus="initialFocusEl"
+      :initialFocus="closeBtnEl"
       @close="onDialogClose"
     >
       <div class="if-overlay__backdrop" />
@@ -177,11 +177,10 @@ const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }))
 /**
  * FocusTrap (A+ Option B):
  * - Always provide a stable semantic focus anchor.
- * - Explicitly pass initialFocus to HeadlessUI Dialog to avoid “no focusable elements”
- *   and spurious close events on interaction (especially during transitions).
+ * - IMPORTANT: pass the *ref itself* to Dialog.initialFocus (no computed indirection),
+ *   because HeadlessUI reads initialFocus at open time.
  */
 const closeBtnEl = ref<HTMLButtonElement | null>(null)
-const initialFocusEl = computed(() => closeBtnEl.value ?? undefined)
 
 /**
  * Service (A+)
