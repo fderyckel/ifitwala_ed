@@ -767,3 +767,176 @@ onBeforeUnmount(() => dispose())
 * Services contain **zero** transport-shape branching and return **domain contract payloads only**.
 * Services may emit `*_invalidate` signals **only after confirmed semantic mutation success** (backend-owned success field like `ok === true` or explicit status).
 * Components/overlays/pages must never decide mutation success and must never emit signals.
+
+
+---
+
+## Overlay Boundary Rule (LOCKED)
+
+### A. Workflow Overlays (MANDATORY)
+
+A UI surface **must** be a workflow overlay rendered via `OverlayHost` **iff** it satisfies **any** of the following:
+
+1. Triggers a **server mutation**
+   (submit, create, update, approve, reassign, follow-up, decide)
+2. Can affect **other mounted surfaces**
+   (Focus, counts, dashboards, lists, badges)
+3. Participates in **A+ workflow lifecycle**
+   (service call → success → invalidation → refresh elsewhere)
+
+**Requirements:**
+
+* Lives under `ui-spa/src/overlays/**`
+* Uses UI Services
+* Closes immediately on success
+* Emits **no** toasts, **no** signals, **no** refetches
+
+**Examples (in this codebase):**
+
+* `StudentLogCreateOverlay`
+* `StudentLogFollowUpOverlay`
+* `FocusRouterOverlay`
+* `QuickCFUOverlay`
+* `TaskReviewOverlay`
+
+---
+
+### B. Non-Workflow Dialogs (ALLOWED, constrained)
+
+A UI surface **may** remain a standalone dialog **only if**:
+
+1. It is **read-only or local-only**
+2. Performs **no server mutation**
+3. Affects **no other mounted surface**
+4. Has **no workflow semantics**
+
+**Rules:**
+
+* Must not call services that emit invalidation
+* Must not close ToDos or imply completion
+* Must use controlled z-index
+* Naming must reflect intent (`*Dialog`, not `*Overlay`)
+
+**Examples (currently):**
+
+* `ContentDialog.vue`
+* `GenericListDialog.vue`
+
+If a dialog later gains workflow behavior → **it must be promoted to an Overlay**.
+
+---
+
+### C. Calendar Event Views (CLARIFIED)
+
+Calendar event views are classified as:
+
+* **Read-only event inspection** → **Non-workflow dialog**
+* **Event mutation (edit, cancel, reschedule)** → **Workflow overlay**
+
+**Current state (based on files provided):**
+
+* `MeetingEventModal`
+* `ClassEventModal`
+* `SchoolEventModal`
+
+➡️ These are **read-only detail dialogs today**
+➡️ They are **NOT workflow overlays yet**
+
+They may remain dialogs **for now**, but:
+
+* API calls inside them are still **violations**
+* If edit actions are added later → they must move to overlays
+
+---
+
+# (3) Canonical overlays folder — MINIMAL MOVE PLAN
+
+We now do **only what is required**. No overreach.
+
+## Step 3.1 — Create folder
+
+```txt
+ui-spa/src/overlays/
+```
+
+---
+
+## Step 3.2 — Move ONLY these files
+
+### A. Infrastructure (mandatory)
+
+```diff
+ui-spa/src/components/overlay/OverlayHost.vue
+→ ui-spa/src/overlays/OverlayHost.vue
+```
+
+Reason: lifecycle authority must live in canonical overlay root.
+
+---
+
+### B. Workflow overlays (mandatory)
+
+```diff
+ui-spa/src/components/student/StudentLogCreateOverlay.vue
+→ ui-spa/src/overlays/student/StudentLogCreateOverlay.vue
+
+ui-spa/src/components/student/StudentLogFollowUpOverlay.vue
+→ ui-spa/src/overlays/student/StudentLogFollowUpOverlay.vue
+
+ui-spa/src/components/focus/FocusRouterOverlay.vue
+→ ui-spa/src/overlays/focus/FocusRouterOverlay.vue
+```
+
+Nothing else moves.
+
+---
+
+## Step 3.3 — What we explicitly do **NOT** move
+
+These **stay where they are** for now:
+
+* `MeetingEventModal.vue`
+* `ClassEventModal.vue`
+* `SchoolEventModal.vue`
+* `ContentDialog.vue`
+* `GenericListDialog.vue`
+
+Reason: they are **not workflow overlays yet**.
+We do not mix concerns.
+
+---
+
+## Step 3.4 — Update imports (only)
+
+You will need to update imports in **exactly two places**:
+
+1. Wherever `OverlayHost.vue` is imported
+   (likely `App.vue` or `StaffPortalLayout.vue`)
+
+```diff
+- import OverlayHost from '@/components/overlay/OverlayHost.vue'
++ import OverlayHost from '@/overlays/OverlayHost.vue'
+```
+
+2. Wherever overlays are referenced by name/type
+   (Overlay registry / stack map if present)
+
+No logic changes. Paths only.
+
+---
+
+## Step 3.5 — Add usage comment (lightweight)
+
+At the top of each moved overlay, add:
+
+```vue
+<!--
+Used by:
+- StaffHome.vue
+- Focus list routing
+-->
+```
+
+Do **not** chase perfection. One comment is enough.
+
+---

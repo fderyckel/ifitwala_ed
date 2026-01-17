@@ -49,5 +49,5 @@
 import { RouterLink } from 'vue-router'
 import { FeatherIcon } from 'frappe-ui'
 import PortalNotification from '@/components/PortalNotification.vue'
-import OverlayHost from '@/components/overlay/OverlayHost.vue'
+import OverlayHost from '@/overlays/OverlayHost.vue'
 </script>

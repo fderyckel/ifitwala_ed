@@ -38,7 +38,7 @@ import { ref } from 'vue'
 import PortalNavbar from '@/components/PortalNavbar.vue'
 import PortalSidebar from '@/components/PortalSidebar.vue'
 import PortalFooter from '@/components/PortalFooter.vue'
-import OverlayHost from '@/components/overlay/OverlayHost.vue'
+import OverlayHost from '@/overlays/OverlayHost.vue'
 
 const isSidebarOpen = ref(false)
 

@@ -19,7 +19,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import PortalLayout from './layouts/PortalLayout.vue'
 import StaffPortalLayout from './layouts/StaffPortalLayout.vue'
-import OverlayHost from './components/overlay/OverlayHost.vue'
+import OverlayHost from '@/overlays/OverlayHost.vue'
 
 
 const route = useRoute()
