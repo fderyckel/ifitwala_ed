@@ -1,4 +1,11 @@
 <!-- ui-spa/src/components/student/StudentLogCreateOverlay.vue -->
+
+<!--
+Used by:
+- StaffHome.vue
+- Student Log quick-create flows
+-->
+
 <template>
   <TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
     <Dialog as="div" class="if-overlay if-overlay--student-log" :style="overlayStyle" @close="emitClose">

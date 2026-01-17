@@ -1,4 +1,11 @@
 <!-- ui-spa/src/components/focus/FocusRouterOverlay.vue -->
+
+ <!--
+Used by:
+- StaffHome.vue
+- FocusListItem.vue
+-->
+
 <template>
   <TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
     <Dialog

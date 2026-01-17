@@ -1,4 +1,11 @@
 <!-- ui-spa/src/components/student/StudentLogFollowUpOverlay.vue -->
+
+<!--
+Used by:
+- FocusRouterOverlay.vue
+- Student Log follow-up workflows
+-->
+
 <template>
   <TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
     <Dialog as="div" class="if-overlay if-overlay--student-log-follow-up" @close="emitClose">
