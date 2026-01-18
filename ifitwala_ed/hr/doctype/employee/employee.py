@@ -654,8 +654,8 @@ class Employee(NestedSet):
 				}
 			).insert(ignore_permissions=True)
 
-		if not self.primary_contact:
-			self.db_set("primary_contact", contact_name, update_modified=False)
+		if not self.empl_primary_contact:
+			self.db_set("empl_primary_contact", contact_name, update_modified=False)
 
 
 @frappe.whitelist()
@@ -732,26 +732,63 @@ def create_user(employee, user=None, email=None):
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, organization=None, is_root=False, is_tree=False):
+	# NOTE:
+	# - Treeview calls this often; avoid N+1 queries.
+	# - We keep the existing "All Organizations" sentinel for compatibility with current JS.
+
 	filters = [["status", "=", "Active"]]
+
+	# Organization filter (compat with current treeview default)
 	if organization and organization != "All Organizations":
 		filters.append(["organization", "=", organization])
 
 	fields = ["name as value", "employee_full_name as title"]
 
+	# Root resolution
 	if is_root:
 		parent = ""
-	if parent and organization and parent != organization:
+
+	# Children of a node vs top-level nodes
+	if parent:
 		filters.append(["reports_to", "=", parent])
 	else:
 		filters.append(["reports_to", "=", ""])
 
-	employees = frappe.get_list(doctype, fields=fields, filters=filters, order_by="name")
+	employees = frappe.get_list(
+		doctype,
+		fields=fields,
+		filters=filters,
+		order_by="name",
+	)
 
-	for employee in employees:
-		is_expandable = frappe.get_all(doctype, filters=[["reports_to", "=", employee.get("value")]])
-		employee.expandable = 1 if is_expandable else 0
+	# Nothing to expand
+	if not employees:
+		return employees
+
+	# --- Batch-expandable check (single query) -----------------------------
+	names = [e.get("value") for e in employees if e.get("value")]
+
+	# Count children per supervisor among returned names
+	# (We only care whether count > 0)
+	rows = frappe.db.sql(
+		"""
+		SELECT reports_to, COUNT(*) AS cnt
+		FROM `tabEmployee`
+		WHERE status = 'Active'
+			AND reports_to IN %(names)s
+		GROUP BY reports_to
+		""",
+		{"names": tuple(names)},
+		as_dict=True,
+	)
+
+	count_by_reports_to = {r.reports_to: int(r.cnt or 0) for r in (rows or [])}
+
+	for e in employees:
+		e.expandable = 1 if count_by_reports_to.get(e.get("value"), 0) > 0 else 0
 
 	return employees
+
 
 
 def on_doctype_update():

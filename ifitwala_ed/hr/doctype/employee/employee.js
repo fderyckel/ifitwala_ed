@@ -72,10 +72,10 @@ frappe.ui.form.on("Employee", {
   },
 
   add_contact_button(frm) {
-    if (!frm.is_new() && frm.doc.primary_contact) {
+    if (!frm.is_new() && frm.doc.empl_primary_contact) {
       frm.add_custom_button(
         __("Contact"),
-        () => frappe.set_route("Form", "Contact", frm.doc.primary_contact),
+        () => frappe.set_route("Form", "Contact", frm.doc.empl_primary_contact),
         __("View")
       );
     }
