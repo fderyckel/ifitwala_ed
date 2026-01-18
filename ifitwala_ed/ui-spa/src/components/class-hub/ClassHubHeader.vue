@@ -1,4 +1,4 @@
-<template>
+<!-- ifitwala_ed/ui-spa/src/components/class-hub/ClassHubHeader.vue -->
 <!--
   ClassHubHeader.vue
   Sticky header for the Class Hub page. Displays the current class context (Subject, Grade)
@@ -7,6 +7,7 @@
   Used by:
   - ClassHub.vue (pages/staff)
 -->
+<template>
 <!--
   ClassHubHeader.vue
   Sticky header for the Class Hub page. Displays the current class context (Subject, Grade)

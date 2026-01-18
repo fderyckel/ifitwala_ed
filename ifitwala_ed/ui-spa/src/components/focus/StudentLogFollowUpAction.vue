@@ -1,4 +1,4 @@
-<!-- ui-spa/src/components/focus/StudentLogFollowUpAction.vue -->
+<!-- ifitwala_ed/ui-spa/src/components/focus/StudentLogFollowUpAction.vue -->
 <!--
   StudentLogFollowUpAction.vue
   Handles the "Follow-up" workflow actions for a Student Log (submit, review, reassign, complete).

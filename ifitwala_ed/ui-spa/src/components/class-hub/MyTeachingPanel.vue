@@ -1,4 +1,4 @@
-<template>
+<!-- ifitwala_ed/ui-spa/src/components/class-hub/MyTeachingPanel.vue -->
 <!--
   MyTeachingPanel.vue
   Sidebar or panel in Class Hub showing the teacher's schedule/timetable, notes, and queued tasks
@@ -7,6 +7,7 @@
   Used by:
   - ClassHub.vue (pages/staff)
 -->
+<template>
 <!--
   MyTeachingPanel.vue
   Sidebar or panel in Class Hub showing the teacher's schedule/timetable, notes, and queued tasks

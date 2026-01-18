@@ -1,4 +1,4 @@
-<template>
+<!-- ifitwala_ed/ui-spa/src/components/overlays/class-hub/TaskReviewOverlay.vue -->
 <!--
   TaskReviewOverlay.vue
   A simple confirmation/action overlay for reviewing a task.
@@ -7,6 +7,7 @@
   Used by:
   - ClassHub.vue (via OverlayHost)
 -->
+<template>
   <TransitionRoot :show="open" as="template" @after-leave="$emit('after-leave')">
     <Dialog as="div" class="if-overlay if-overlay--class-hub" :style="overlayStyle" @close="emitClose">
       <TransitionChild

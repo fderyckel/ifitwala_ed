@@ -1,4 +1,4 @@
-<template>
+<!-- ifitwala_ed/ui-spa/src/components/overlays/class-hub/StudentContextOverlay.vue -->
 <!--
   StudentContextOverlay.vue
   Detail view for a specific student within the Class Hub context.
@@ -7,6 +7,7 @@
   Used by:
   - ClassHub.vue (via OverlayHost)
 -->
+<template>
   <TransitionRoot :show="open" as="template" @after-leave="$emit('after-leave')">
     <Dialog as="div" class="if-overlay if-overlay--class-hub" :style="overlayStyle" @close="emitClose">
       <TransitionChild

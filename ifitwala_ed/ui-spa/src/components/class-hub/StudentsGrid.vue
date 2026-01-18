@@ -1,4 +1,4 @@
-<template>
+<!-- ifitwala_ed/ui-spa/src/components/class-hub/StudentsGrid.vue -->
 <!--
   StudentsGrid.vue
   The main grid view in Class Hub displaying student cards with status indicators (attendance, behavior).
@@ -7,6 +7,7 @@
   Used by:
   - ClassHub.vue (pages/staff)
 -->
+<template>
 <!--
   StudentsGrid.vue
   The main grid view in Class Hub displaying student cards with status indicators (attendance, behavior).
