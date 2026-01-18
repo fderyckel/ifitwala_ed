@@ -9,6 +9,7 @@ from typing import Iterable
 
 import frappe
 from frappe import _
+from frappe.utils import formatdate, getdate
 
 from ifitwala_ed.utilities.employee_utils import (
 	get_descendant_organizations,
@@ -121,6 +122,9 @@ def _serialize_employees(rows: Iterable[dict], thumb_names: set[str]) -> list[di
 				org_abbr = frappe.db.get_value("Organization", organization, "abbr")
 				org_abbr_cache[organization] = org_abbr
 
+		joining_date = row.get("date_of_joining")
+		joining_label = formatdate(getdate(joining_date), "MMMM yyyy") if joining_date else None
+
 		connections = _connections_from_nestedset(row.get("lft"), row.get("rgt"))
 		payload.append(
 			{
@@ -137,6 +141,7 @@ def _serialize_employees(rows: Iterable[dict], thumb_names: set[str]) -> list[di
 				"professional_email": row.get("professional_email"),
 				"phone_ext": row.get("phone_ext"),
 				"date_of_joining": row.get("date_of_joining"),
+				"date_of_joining_label": joining_label,
 				"connections": connections,
 				"expandable": bool(connections),
 				"parent_id": row.get("reports_to") or None,

@@ -58,7 +58,7 @@
 				Ext: {{ node.phone_ext || '-' }}
 			</p>
 			<p class="type-caption text-slate-500">
-				Joined: {{ node.date_of_joining || '-' }}
+				Joined: {{ node.date_of_joining_label || '-' }}
 			</p>
 		</div>
 
@@ -86,6 +86,7 @@ const props = defineProps<{
 		professional_email: string | null
 		phone_ext: string | null
 		date_of_joining: string | null
+		date_of_joining_label: string | null
 		connections: number
 		expandable: boolean
 		parent_id: string | null

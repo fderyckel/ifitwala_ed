@@ -68,6 +68,7 @@ class Employee(NestedSet):
 			self.update_user()
 		self.reset_employee_emails_cache()
 		self.update_approver_role()
+		self._ensure_primary_contact()
 
 	def on_trash(self):
 		self.update_nsm_model()
@@ -526,6 +527,57 @@ class Employee(NestedSet):
 			user = frappe.get_doc("User", self.expense_approver)
 			user.flags.ignore_permissions = True
 			user.add_roles("Expense Approver")
+
+	def _ensure_primary_contact(self):
+		if not self.user_id:
+			return
+
+		# 1. Find Contact linked to this User
+		contact_name = frappe.db.get_value(
+			"Dynamic Link",
+			{
+				"link_doctype": "User",
+				"link_name": self.user_id,
+				"parenttype": "Contact",
+			},
+			"parent",
+		)
+
+		if not contact_name:
+			# This should never happen if User.after_insert hook is correct
+			frappe.log_error(
+				title="Employee Contact Link Missing",
+				message=f"No Contact found for User {self.user_id}",
+			)
+			return
+
+		# 2. Ensure Contact is linked to Employee
+		exists = frappe.db.exists(
+			"Dynamic Link",
+			{
+				"parenttype": "Contact",
+				"parent": contact_name,
+				"link_doctype": "Employee",
+				"link_name": self.name,
+			},
+		)
+
+		if not exists:
+			frappe.get_doc(
+				{
+					"doctype": "Dynamic Link",
+					"parenttype": "Contact",
+					"parentfield": "links",
+					"parent": contact_name,
+					"link_doctype": "Employee",
+					"link_name": self.name,
+				}
+			).insert(ignore_permissions=True)
+
+		# 3. Set primary_contact if not already set
+		if not self.primary_contact:
+			self.db_set("primary_contact", contact_name, update_modified=False)
+
 
 
 

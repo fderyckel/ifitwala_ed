@@ -39,6 +39,16 @@ frappe.ui.form.on("Employee", {
       frappe.contacts.clear_address_and_contact(frm);
     }
 
+		if (frm.doc.primary_contact) {
+			frm.add_custom_button(
+				__("Contact"),
+				() => {
+					frappe.set_route("Form", "Contact", frm.doc.primary_contact);
+				},
+				__("View")
+			);
+		}
+
     (frm.doc.employee_history || []).forEach(row => {
 			if (row.is_current) {
 				const grid_row = frm.get_field('employee_history').grid.grid_rows_by_docname[row.name];

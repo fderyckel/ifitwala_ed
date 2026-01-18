@@ -14,6 +14,7 @@ type OrgChartNode = {
 	professional_email: string | null
 	phone_ext: string | null
 	date_of_joining: string | null
+	date_of_joining_label: string | null
 	connections: number
 	expandable: boolean
 	parent_id: string | null

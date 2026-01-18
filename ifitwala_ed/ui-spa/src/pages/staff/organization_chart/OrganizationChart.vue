@@ -25,12 +25,11 @@
 		<section class="org-chart-panel card-surface">
 			<FiltersBar class="org-chart-toolbar">
 				<div class="org-chart-toolbar__filters">
+					<label class="type-label text-slate-600">Organization</label>
 					<FormControl
 						type="select"
 						size="md"
 						:options="orgOptions"
-						option-label="organization_name"
-						option-value="name"
 						:model-value="selectedOrganization"
 						:disabled="loadingRoots || !orgOptions.length"
 						placeholder="All Organizations"
@@ -189,7 +188,7 @@ const STACKED_BREAKPOINT = 1024
 
 const context = ref<OrgChartContextResponse | null>(null)
 const contextReady = ref(false)
-const selectedOrganization = ref('')
+const selectedOrganization = ref<string | null>(null)
 const loadingRoots = ref(false)
 const loadingChildrenId = ref<string | null>(null)
 const actionMessage = ref<string | null>(null)
@@ -220,8 +219,11 @@ const expandLimits = computed(() => context.value?.expand_limits ?? null)
 const orgOptions = computed(() => {
 	if (!organizations.value.length) return []
 	return [
-		{ name: '', organization_name: 'All Organizations' },
-		...organizations.value,
+		{ label: 'All Organizations', value: null },
+		...organizations.value.map((org) => ({
+			label: org.organization_name || org.name,
+			value: org.name,
+		})),
 	]
 })
 
@@ -311,10 +313,8 @@ const canExport = computed(() => {
 let connectorFrame: number | null = null
 
 function onOrganizationSelected(value: string | null) {
-	const nextValue = value || ''
-	if (nextValue === selectedOrganization.value) return
-
-	selectedOrganization.value = nextValue
+	if (value === selectedOrganization.value) return
+	selectedOrganization.value = value
 	if (!contextReady.value) return
 
 	childrenCache.clear()
@@ -458,7 +458,7 @@ function buildLevels() {
 async function loadContext() {
 	try {
 		context.value = await getOrganizationChartContext()
-		selectedOrganization.value = context.value.default_organization || ''
+		selectedOrganization.value = context.value.default_organization
 		contextReady.value = true
 		await loadRoots()
 	} catch (error) {

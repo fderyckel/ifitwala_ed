@@ -1420,7 +1420,8 @@
   }
 
   .org-chart-toolbar__filters {
-    @apply w-full max-w-sm;
+    @apply w-full max-w-sm flex flex-col gap-1;
+    min-width: 14rem;
   }
 
   .org-chart-toolbar__actions {
