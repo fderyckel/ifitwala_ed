@@ -533,7 +533,7 @@
 	{
 		"fieldname": "phone_ext",
 		"fieldtype": "Data",
-		"label": "Phone (or extension)",
+		"label": "Phone extension",
 		"permlevel": 1
 	},
 	{
