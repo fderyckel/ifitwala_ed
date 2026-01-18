@@ -24,7 +24,7 @@
   "column_break_jbjk",
   "employee_last_name",
   "employee_full_name",
-	"phonne_extt",
+	"phone_ext",
   "employee_date_of_birth",
   "employee_professional_email",
   "employee_image",
@@ -531,7 +531,7 @@
    "permlevel": 1
   },
 	{
-		"fieldname": "phonne_extt",
+		"fieldname": "phone_ext",
 		"fieldtype": "Data",
 		"label": "Phone extension",
 		"permlevel": 1
