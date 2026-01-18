@@ -1,4 +1,20 @@
 <template>
+<!--
+  MyTeachingPanel.vue
+  Sidebar or panel in Class Hub showing the teacher's schedule/timetable, notes, and queued tasks
+  for quick navigation.
+
+  Used by:
+  - ClassHub.vue (pages/staff)
+-->
+<!--
+  MyTeachingPanel.vue
+  Sidebar or panel in Class Hub showing the teacher's schedule/timetable, notes, and queued tasks
+  for quick navigation.
+
+  Used by:
+  - ClassHub.vue (pages/staff)
+-->
   <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <div class="card-surface p-4 space-y-3">
       <div class="flex items-center justify-between">

@@ -1,4 +1,11 @@
 <template>
+<!--
+  FocusStudentsRow.vue
+  Displays a row of chips representing students currently marked for focus/attention.
+
+  Used by:
+  - ClassHub.vue
+-->
   <section class="space-y-3">
     <p class="type-overline text-slate-token/70">Students in Focus</p>
     <div class="flex flex-wrap gap-2">

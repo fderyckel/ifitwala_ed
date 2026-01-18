@@ -1,4 +1,19 @@
 <template>
+<!--
+  StudentsGrid.vue
+  The main grid view in Class Hub displaying student cards with status indicators (attendance, behavior).
+  Each card shows the student's name, evidence count, and signal status.
+
+  Used by:
+  - ClassHub.vue (pages/staff)
+-->
+<!--
+  StudentsGrid.vue
+  The main grid view in Class Hub displaying student cards with status indicators (attendance, behavior).
+
+  Used by:
+  - ClassHub.vue (pages/staff)
+-->
   <section class="space-y-3">
     <p class="type-overline text-slate-token/70">Student Grid</p>
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

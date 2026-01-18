@@ -1,4 +1,12 @@
 <template>
+<!--
+  QuickCFUOverlay.vue
+  A specialized overlay for "Check For Understanding" (CFU) entries during a class session.
+  Allows capturing signals (Thumbs, etc.) for multiple selected students.
+
+  Used by:
+  - ClassHub.vue (via OverlayHost)
+-->
   <TransitionRoot :show="open" as="template" @after-leave="$emit('after-leave')">
     <Dialog as="div" class="if-overlay if-overlay--class-hub" :style="overlayStyle" @close="emitClose">
       <TransitionChild

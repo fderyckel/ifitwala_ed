@@ -1,4 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/components/focus/FocusListItem.vue -->
+<!--
+  FocusListItem.vue
+  Row component for FocusListCard. Displays a single actionable item with logic for "kind" (Review vs Action).
+
+  Used by:
+  - FocusListCard.vue (components/focus)
+  - FocusRouterOverlay.vue (overlays/focus)
+-->
 <template>
 	<button
 		type="button"

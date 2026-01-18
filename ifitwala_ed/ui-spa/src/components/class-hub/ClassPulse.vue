@@ -1,4 +1,11 @@
 <template>
+<!--
+  ClassPulse.vue
+  A dashboard card displaying "pulse items" or key metrics/alerts for a class.
+
+  Used by:
+  - ClassHub.vue
+-->
   <section class="space-y-3">
     <p class="type-overline text-slate-token/70">Class Pulse</p>
     <div class="space-y-2">

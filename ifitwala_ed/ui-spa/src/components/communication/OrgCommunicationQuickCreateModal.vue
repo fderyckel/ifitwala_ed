@@ -1,4 +1,11 @@
 <!-- ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateModal.vue -->
+<!--
+  OrgCommunicationQuickCreateModal.vue
+  A quick-entry dialog for creating class announcements directly from the calendar/class event context.
+
+  Used by:
+  - ClassEventModal.vue (via OverlayHost usually)
+-->
 <template>
 	<TransitionRoot
 		as="template"

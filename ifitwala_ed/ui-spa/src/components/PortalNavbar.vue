@@ -1,4 +1,11 @@
 <template>
+<!--
+  PortalNavbar.vue
+  Main top navigation bar for the Staff/Student portal layout. Handles user profile and mobile menu toggle.
+
+  Used by:
+  - PortalLayout.vue (layouts)
+-->
   <nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30">
     <div class="container mx-auto px-4">
       <div class="flex items-center justify-between h-16">

@@ -1,4 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/components/ContentDialog.vue -->
+<!--
+  ContentDialog.vue
+  A generic, high-z-index dialog for displaying rich HTML content (e.g., announcements, messages)
+  directly via Teleport to body, often bypassing the standard OverlayHost stack.
+
+  Used by:
+  - MorningBriefing.vue (pages/staff/morning_brief)
+-->
 <template>
 	<teleport to="body">
 		<transition name="content-dialog-fade">

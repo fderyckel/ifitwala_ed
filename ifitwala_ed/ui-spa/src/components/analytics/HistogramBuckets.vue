@@ -1,4 +1,11 @@
 <!-- ifitwala_ed/ui-spa/src/components/analytics/HistogramBuckets.vue -->
+<!--
+  HistogramBuckets.vue
+  Displays a column/bar chart representing distribution buckets.
+
+  Used by:
+  - EnrollmentAnalytics.vue (Age distribution)
+-->
 <template>
   <section class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
     <header class="mb-2 flex items-center justify-between">

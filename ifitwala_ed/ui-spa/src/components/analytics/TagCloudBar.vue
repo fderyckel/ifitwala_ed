@@ -1,4 +1,11 @@
 <!-- ifitwala_ed/ui-spa/src/components/analytics/TagCloudBar.vue -->
+<!--
+  TagCloudBar.vue
+  Displays a simple horizontal bar chart suited for "tag cloud" style data (high cardinality, low counts).
+
+  Used by:
+  - StudentLogAnalytics.vue (Frequency analysis)
+-->
 <template>
   <section class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
     <header class="mb-2 flex items-center justify-between">

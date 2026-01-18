@@ -1,4 +1,12 @@
 <template>
+<!--
+  StudentContextOverlay.vue
+  Detail view for a specific student within the Class Hub context.
+  Allows viewing/editing signals, evidence, and notes for that student.
+
+  Used by:
+  - ClassHub.vue (via OverlayHost)
+-->
   <TransitionRoot :show="open" as="template" @after-leave="$emit('after-leave')">
     <Dialog as="div" class="if-overlay if-overlay--class-hub" :style="overlayStyle" @close="emitClose">
       <TransitionChild

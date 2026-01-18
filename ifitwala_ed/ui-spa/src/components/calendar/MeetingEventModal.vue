@@ -1,4 +1,12 @@
 <template>
+<!--
+  MeetingEventModal.vue
+  A dialog displaying details for a scheduled meeting.
+  Shows participants, agenda, and location links.
+
+  Used by:
+  - ScheduleCalendar.vue
+-->
 	<TransitionRoot as="template" :show="open">
 		<Dialog
 			as="div"

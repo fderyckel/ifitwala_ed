@@ -1,4 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/components/analytics/StackedBarChart.vue -->
+<!--
+  StackedBarChart.vue
+  Displays a stacked bar chart to show composition across multiple categories.
+
+  Used by:
+  - StudentDemographicAnalytics.vue
+  - StudentLogAnalytics.vue
+-->
 <template>
   <section class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
     <header class="mb-2 flex items-center justify-between">

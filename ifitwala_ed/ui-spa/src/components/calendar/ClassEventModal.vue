@@ -1,4 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue -->
+<!--
+  ClassEventModal.vue
+  A dialog displaying details for a specific class event (e.g. course session, academic block).
+  Allows navigation to attendance and gradebook, and creation of follow-up tasks/announcements.
+
+  Used by:
+  - ScheduleCalendar.vue
+-->
 <template>
 	<TransitionRoot
 		as="template"

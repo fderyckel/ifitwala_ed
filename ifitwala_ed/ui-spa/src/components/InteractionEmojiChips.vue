@@ -1,4 +1,13 @@
 <!-- ifitwala_ed/ui-spa/src/components/InteractionEmojiChips.vue -->
+<!--
+  InteractionEmojiChips.vue
+  Displays reaction counts (like, love, etc.) as clickable chips.
+  Handles visual state for active/inactive reactions.
+
+  Used by:
+  - ContentDialog.vue
+  - MorningBriefing.vue
+-->
 <template>
   <div class="flex flex-wrap items-center gap-2">
     <button

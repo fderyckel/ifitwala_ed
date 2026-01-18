@@ -1,4 +1,13 @@
 <template>
+<!--
+  HeatmapDialog.vue
+  A large overlay dialog for viewing detailed student attendance heatmaps.
+  Supports filtering by code, academic year, and view mode (whole-day vs per-block).
+
+  Used by:
+  - StudentDemographicAnalytics.vue
+  - RoomUtilization.vue (potentially)
+-->
 	<Dialog
 		v-model="isOpen"
 		:options="{ size: 'xl', title: null }"

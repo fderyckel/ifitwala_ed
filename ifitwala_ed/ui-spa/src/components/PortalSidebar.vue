@@ -1,4 +1,12 @@
 <template>
+<!--
+  PortalSidebar.vue
+  Responsive sidebar navigation for the Student/Parent portal.
+  Handles mobile drawer states and routing to portal sections.
+
+  Used by:
+  - PortalLayout.vue (layouts)
+-->
   <div
     v-if="isOpen"
     @click="$emit('close')"

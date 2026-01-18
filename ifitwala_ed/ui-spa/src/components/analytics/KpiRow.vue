@@ -1,4 +1,15 @@
 <!-- ifitwala_ed/ui-spa/src/components/analytics/KpiRow.vue -->
+<!--
+  KpiRow.vue
+  Responsive grid of KPI cards displaying high-level metrics. Supports click interactions.
+
+  Used by:
+  - EnrollmentAnalytics.vue
+  - RoomUtilization.vue
+  - StudentDemographicAnalytics.vue
+  - InquiryAnalytics.vue
+  (all in pages/staff/analytics)
+-->
 <template>
   <section class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
     <article

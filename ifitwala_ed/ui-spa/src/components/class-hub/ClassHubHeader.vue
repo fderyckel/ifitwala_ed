@@ -1,4 +1,20 @@
 <template>
+<!--
+  ClassHubHeader.vue
+  Sticky header for the Class Hub page. Displays the current class context (Subject, Grade)
+  and session controls (Start/End Class, Quick Evidence).
+
+  Used by:
+  - ClassHub.vue (pages/staff)
+-->
+<!--
+  ClassHubHeader.vue
+  Sticky header for the Class Hub page. Displays the current class context (Subject, Grade)
+  and session controls (Start/End Class).
+
+  Used by:
+  - ClassHub.vue (pages/staff)
+-->
   <header class="space-y-4">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div class="space-y-2">

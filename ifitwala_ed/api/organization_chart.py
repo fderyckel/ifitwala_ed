@@ -120,6 +120,30 @@ def _serialize_employees(rows: Iterable[dict], thumb_names: set[str]) -> list[di
 	return payload
 
 
+def _get_root_employee_ids(filters: dict) -> list[str]:
+	"""
+	Compute org-scope roots: employees whose manager is missing or outside scope.
+	"""
+	rows = frappe.get_all(
+		"Employee",
+		fields=["name", "reports_to"],
+		filters=filters,
+	)
+	if not rows:
+		return []
+
+	visible_ids = {row.get("name") for row in rows if row.get("name")}
+	root_ids: list[str] = []
+	for row in rows:
+		emp_id = row.get("name")
+		if not emp_id:
+			continue
+		parent = row.get("reports_to")
+		if not parent or parent not in visible_ids:
+			root_ids.append(emp_id)
+	return root_ids
+
+
 # ---------------------------------------------------------------------------
 # API
 # ---------------------------------------------------------------------------
@@ -182,7 +206,10 @@ def get_org_chart_children(parent: str | None = None, organization: str | None =
 	if parent:
 		filters["reports_to"] = parent
 	else:
-		filters["reports_to"] = ["in", ["", None]]
+		root_ids = _get_root_employee_ids(filters)
+		if not root_ids:
+			return []
+		filters["name"] = ["in", root_ids]
 
 	rows = frappe.get_all(
 		"Employee",

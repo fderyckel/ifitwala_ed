@@ -1,4 +1,11 @@
 <!-- ui-spa/src/components/calendar/SchoolEventModal.vue -->
+<!--
+  SchoolEventModal.vue
+  A dialog displaying details for a general school event (e.g. assembly, holiday).
+
+  Used by:
+  - ScheduleCalendar.vue
+-->
 <template>
 	<TransitionRoot
 		as="template"

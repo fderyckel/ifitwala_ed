@@ -1,4 +1,15 @@
 <!-- ifitwala_ed/ui-spa/src/components/analytics/StatsTile.vue -->
+<!--
+  StatsTile.vue
+  Small, pill-shaped indicator for a single metric/status with a colored dot.
+  Used for dense displays of status counts.
+
+  Used by:
+  - StudentLogAnalytics.vue
+  - RoomUtilization.vue
+  - InquiryAnalytics.vue
+  (all in pages/staff/analytics)
+-->
 <template>
   <div :class="containerClass">
     <span :class="dotClass"></span>

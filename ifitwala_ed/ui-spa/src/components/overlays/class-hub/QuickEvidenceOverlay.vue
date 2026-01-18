@@ -1,4 +1,12 @@
 <template>
+<!--
+  QuickEvidenceOverlay.vue
+  A specialized overlay for capturing evidence (text or link) for selected students during a class session.
+
+  Used by:
+  - ClassHub.vue (via OverlayHost)
+  - StudentContextOverlay.vue
+-->
   <TransitionRoot :show="open" as="template" @after-leave="$emit('after-leave')">
     <Dialog as="div" class="if-overlay if-overlay--class-hub" :style="overlayStyle" @close="emitClose">
       <TransitionChild

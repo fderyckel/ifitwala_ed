@@ -1,4 +1,12 @@
 <!-- ui-spa/src/components/focus/StudentLogFollowUpAction.vue -->
+<!--
+  StudentLogFollowUpAction.vue
+  Handles the "Follow-up" workflow actions for a Student Log (submit, review, reassign, complete).
+  Embedded within the FocusRouterOverlay context.
+
+  Used by:
+  - FocusRouterOverlay.vue
+-->
 <template>
   <div class="space-y-4">
     <!-- ============================================================

@@ -1,4 +1,19 @@
 <template>
+<!--
+  StudentCalendar.vue
+  FullCalendar wrapper specialized for the Student portal view, showing classes and school events.
+  Handles filtering by source (Classes, Meetings, School Events) and interacting with event modals.
+
+  Used by:
+  - PortalLayout.vue (or StudentHome.vue)
+-->
+<!--
+  StudentCalendar.vue
+  FullCalendar wrapper specialized for the Student portal view, showing classes and school events.
+
+  Used by:
+  - PortalLayout.vue (or StudentHome.vue)
+-->
   <div class="relative">
     <section class="paper-card schedule-card p-6">
       <header

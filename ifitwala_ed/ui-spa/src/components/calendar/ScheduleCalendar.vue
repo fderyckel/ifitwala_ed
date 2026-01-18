@@ -1,4 +1,19 @@
 <!-- ifitwala_ed/ui-spa/src/components/calendar/ScheduleCalendar.vue -->
+<!--
+  ScheduleCalendar.vue
+  FullCalendar wrapper for displaying staff or resource schedules. Handles event rendering and interaction.
+  Supports filtering by source (Classes, Meetings, School Events, Holidays) and toggling weekends/full-day view.
+
+  Used by:
+  - StaffHome.vue (pages/staff)
+-->
+<!--
+  ScheduleCalendar.vue
+  FullCalendar wrapper for displaying staff or resource schedules. Handles event rendering and interaction.
+
+  Used by:
+  - StaffHome.vue (pages/staff)
+-->
 <template>
 	<div class="relative">
 		<section class="paper-card schedule-card p-6">

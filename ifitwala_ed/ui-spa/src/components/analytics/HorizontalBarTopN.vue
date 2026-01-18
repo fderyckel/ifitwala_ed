@@ -1,4 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/components/analytics/HorizontalBarTopN.vue -->
+<!--
+  HorizontalBarTopN.vue
+  Displays a horizontal bar chart for ranked items (Top N).
+
+  Used by:
+  - EnrollmentAnalytics.vue
+  - StudentDemographicAnalytics.vue
+-->
 <template>
   <section class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
     <header class="mb-2 flex items-center justify-between">

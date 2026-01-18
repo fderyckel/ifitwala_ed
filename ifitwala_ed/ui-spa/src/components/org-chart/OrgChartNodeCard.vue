@@ -1,4 +1,11 @@
 <!-- ifitwala_ed/ui-spa/src/components/org-chart/OrgChartNodeCard.vue -->
+<!--
+  OrgChartNodeCard.vue
+  Represents a single node (person) in the Organization Chart visualization.
+
+  Used by:
+  - OrgChart.vue (pages/staff)
+-->
 <template>
 	<button
 		type="button"
