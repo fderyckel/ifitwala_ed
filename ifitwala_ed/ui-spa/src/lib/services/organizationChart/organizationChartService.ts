@@ -1,6 +1,6 @@
 // ui-spa/src/lib/services/organizationChart/organizationChartService.ts
 
-import { createResource } from 'frappe-ui'
+import { apiMethod } from '@/lib/frappe'
 
 import type {
 	Request as OrgChartChildrenRequest,
@@ -14,32 +14,22 @@ import type {
 	Response as OrgChartTreeResponse,
 } from '@/types/contracts/organization_chart/get_org_chart_tree'
 
-const contextResource = createResource<OrgChartContextResponse>({
-	url: 'ifitwala_ed.api.organization_chart.get_org_chart_context',
-	method: 'GET',
-	auto: false,
-})
-
-const childrenResource = createResource<OrgChartChildrenResponse>({
-	url: 'ifitwala_ed.api.organization_chart.get_org_chart_children',
-	method: 'POST',
-	auto: false,
-})
-
-const treeResource = createResource<OrgChartTreeResponse>({
-	url: 'ifitwala_ed.api.organization_chart.get_org_chart_tree',
-	method: 'POST',
-	auto: false,
-})
-
 export async function getOrganizationChartContext() {
-	return contextResource.fetch()
+	return apiMethod<OrgChartContextResponse>(
+		'ifitwala_ed.api.organization_chart.get_org_chart_context'
+	)
 }
 
 export async function getOrganizationChartChildren(payload: OrgChartChildrenRequest) {
-	return childrenResource.submit(payload)
+	return apiMethod<OrgChartChildrenResponse>(
+		'ifitwala_ed.api.organization_chart.get_org_chart_children',
+		payload as Record<string, unknown>
+	)
 }
 
 export async function getOrganizationChartTree(payload: OrgChartTreeRequest) {
-	return treeResource.submit(payload)
+	return apiMethod<OrgChartTreeResponse>(
+		'ifitwala_ed.api.organization_chart.get_org_chart_tree',
+		payload as Record<string, unknown>
+	)
 }
