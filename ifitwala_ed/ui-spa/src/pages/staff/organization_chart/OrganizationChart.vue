@@ -23,7 +23,7 @@
 		</header>
 
 		<section class="org-chart-panel card-surface">
-			<div class="org-chart-toolbar">
+			<FiltersBar class="org-chart-toolbar">
 				<div class="org-chart-toolbar__filters">
 					<FormControl
 						type="select"
@@ -58,7 +58,7 @@
 						<span>Collapse</span>
 					</Button>
 				</div>
-			</div>
+			</FiltersBar>
 
 			<p v-if="limitHint" class="type-caption text-slate-500 org-chart-hint">
 				{{ limitHint }}
@@ -157,6 +157,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Button, FeatherIcon, FormControl } from 'frappe-ui'
 
 import OrgChartNodeCard from '@/components/org-chart/OrgChartNodeCard.vue'
+import FiltersBar from '@/components/filters/FiltersBar.vue'
 import {
 	getOrganizationChartChildren,
 	getOrganizationChartContext,

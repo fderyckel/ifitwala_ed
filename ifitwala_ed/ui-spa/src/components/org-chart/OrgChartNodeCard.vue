@@ -34,7 +34,7 @@
 					{{ node.name }}
 				</p>
 				<p class="type-caption text-slate-500">
-					First name: {{ node.first_name || '-' }}
+					Preferred name: {{ node.preferred_name || node.first_name || '-' }}
 				</p>
 			</div>
 
@@ -48,13 +48,17 @@
 				{{ node.title || '-' }}
 			</p>
 			<p class="type-caption text-slate-500">
-				{{ node.school || '-' }} · {{ node.organization || '-' }}
+				{{ node.school_abbr || node.school || '-' }} ·
+				{{ node.organization_abbr || node.organization || '-' }}
 			</p>
 			<p class="type-caption text-slate-500 break-all">
 				Email: {{ node.professional_email || '-' }}
 			</p>
 			<p class="type-caption text-slate-500">
 				Ext: {{ node.phone_ext || '-' }}
+			</p>
+			<p class="type-caption text-slate-500">
+				Joined: {{ node.date_of_joining || '-' }}
 			</p>
 		</div>
 
@@ -72,12 +76,16 @@ const props = defineProps<{
 		id: string
 		name: string
 		first_name: string | null
+		preferred_name: string | null
 		title: string | null
 		school: string | null
+		school_abbr: string | null
 		organization: string | null
+		organization_abbr: string | null
 		image: string | null
 		professional_email: string | null
 		phone_ext: string | null
+		date_of_joining: string | null
 		connections: number
 		expandable: boolean
 		parent_id: string | null

@@ -100,20 +100,43 @@ def _connections_from_nestedset(lft: int | None, rgt: int | None) -> int:
 
 
 def _serialize_employees(rows: Iterable[dict], thumb_names: set[str]) -> list[dict]:
+	school_abbr_cache: dict[str, str] = {}
+	org_abbr_cache: dict[str, str] = {}
 	payload: list[dict] = []
 	for row in rows:
+		school = row.get("school")
+		organization = row.get("organization")
+		school_abbr = None
+		org_abbr = None
+		if school:
+			if school in school_abbr_cache:
+				school_abbr = school_abbr_cache[school]
+			else:
+				school_abbr = frappe.db.get_value("School", school, "abbr")
+				school_abbr_cache[school] = school_abbr
+		if organization:
+			if organization in org_abbr_cache:
+				org_abbr = org_abbr_cache[organization]
+			else:
+				org_abbr = frappe.db.get_value("Organization", organization, "abbr")
+				org_abbr_cache[organization] = org_abbr
+
 		connections = _connections_from_nestedset(row.get("lft"), row.get("rgt"))
 		payload.append(
 			{
 				"id": row.get("id"),
 				"name": row.get("name"),
 				"first_name": row.get("first_name"),
+				"preferred_name": row.get("preferred_name"),
 				"title": row.get("title"),
 				"school": row.get("school"),
+				"school_abbr": school_abbr,
 				"organization": row.get("organization"),
+				"organization_abbr": org_abbr,
 				"image": _resolve_employee_image(row.get("image"), thumb_names),
 				"professional_email": row.get("professional_email"),
 				"phone_ext": row.get("phone_ext"),
+				"date_of_joining": row.get("date_of_joining"),
 				"connections": connections,
 				"expandable": bool(connections),
 				"parent_id": row.get("reports_to") or None,
@@ -127,11 +150,13 @@ def _employee_fields() -> list[str]:
 		"name as id",
 		"employee_full_name as name",
 		"employee_first_name as first_name",
+		"employee_preferred_name as preferred_name",
 		"designation as title",
 		"school",
 		"organization",
 		"employee_image as image",
 		"employee_professional_email as professional_email",
+		"date_of_joining",
 		"reports_to",
 		"lft",
 		"rgt",
