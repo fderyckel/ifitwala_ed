@@ -47,6 +47,7 @@ import StudentLogCreateOverlay from '@/overlays/student/StudentLogCreateOverlay.
 import StudentLogFollowUpOverlay from '@/overlays/student/StudentLogFollowUpOverlay.vue'
 import FocusRouterOverlay from '@/overlays/focus/FocusRouterOverlay.vue'
 import StudentLogAnalyticsExpandOverlay from '@/overlays/analytics/StudentLogAnalyticsExpandOverlay.vue'
+import OrganizationChartPersonOverlay from '@/overlays/staff/OrganizationChartPersonOverlay.vue'
 import StudentContextOverlay from '@/components/overlays/class-hub/StudentContextOverlay.vue'
 import QuickEvidenceOverlay from '@/components/overlays/class-hub/QuickEvidenceOverlay.vue'
 import QuickCFUOverlay from '@/components/overlays/class-hub/QuickCFUOverlay.vue'
@@ -172,6 +173,8 @@ function resolveComponent(type: OverlayType) {
       return StudentLogFollowUpOverlay
     case 'student-log-analytics-expand':
       return StudentLogAnalyticsExpandOverlay
+    case 'org-chart-person':
+      return OrganizationChartPersonOverlay
     case 'focus-router':
       return FocusRouterOverlay
     case 'class-hub-student-context':

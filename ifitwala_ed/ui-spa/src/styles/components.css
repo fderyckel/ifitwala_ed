@@ -1403,4 +1403,207 @@
     @apply text-xs font-semibold uppercase tracking-wide;
     color: rgb(var(--slate-rgb) / 0.80);
   }
+
+  /* ============================================================
+     ORGANIZATION CHART
+     ============================================================ */
+  .org-chart-shell {
+    @apply gap-6;
+  }
+
+  .org-chart-panel {
+    @apply p-4 sm:p-5 flex flex-col gap-4;
+  }
+
+  .org-chart-toolbar {
+    @apply flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between;
+  }
+
+  .org-chart-toolbar__filters {
+    @apply w-full max-w-sm;
+  }
+
+  .org-chart-toolbar__actions {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .org-chart-action {
+    @apply inline-flex items-center gap-2 rounded-full px-4 py-2;
+  }
+
+  .org-chart-hint {
+    @apply px-1;
+  }
+
+  .org-chart-message {
+    @apply rounded-xl border px-3 py-2;
+    background: rgb(var(--sand-rgb) / 0.55);
+    border-color: rgb(var(--border-rgb) / 0.85);
+    color: rgb(var(--canopy-rgb) / 0.95);
+  }
+
+  .org-chart-empty {
+    @apply flex flex-col items-center justify-center gap-2 text-center rounded-2xl border border-dashed;
+    min-height: 18rem;
+    background: rgb(var(--surface-strong-rgb) / 0.8);
+    border-color: rgb(var(--border-rgb) / 0.8);
+  }
+
+  .org-chart-empty__spinner {
+    @apply h-7 w-7 rounded-full border-2;
+    border-color: rgb(var(--leaf-rgb) / 0.35);
+    border-top-color: rgb(var(--leaf-rgb) / 0.8);
+    animation: org-chart-spin 0.8s linear infinite;
+  }
+
+  @keyframes org-chart-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .org-chart-stage {
+    @apply rounded-2xl border border-dashed;
+    min-height: 22rem;
+    max-height: 70vh;
+    overflow: auto;
+    background: rgb(var(--surface-strong-rgb) / 0.82);
+    border-color: rgb(var(--border-rgb) / 0.75);
+  }
+
+  .org-chart-surface {
+    position: relative;
+    display: inline-block;
+    min-width: 100%;
+    padding: 1.5rem;
+  }
+
+  .org-chart-connectors {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    color: rgb(var(--slate-rgb) / 0.45);
+    stroke-width: 1.4;
+  }
+
+  .org-chart-connector--expanded {
+    stroke: rgb(var(--slate-rgb) / 0.35);
+    color: rgb(var(--slate-rgb) / 0.35);
+  }
+
+  .org-chart-connector--path {
+    stroke: rgb(var(--leaf-rgb) / 0.5);
+    color: rgb(var(--leaf-rgb) / 0.5);
+  }
+
+  .org-chart-connector--active {
+    stroke: rgb(var(--canopy-rgb) / 0.7);
+    color: rgb(var(--canopy-rgb) / 0.7);
+  }
+
+  .org-chart-levels {
+    @apply flex items-start gap-4;
+  }
+
+  .org-chart-level {
+    @apply flex flex-col gap-3;
+    min-width: 17rem;
+  }
+
+  .org-chart-node {
+    @apply w-full text-left rounded-xl border px-3 py-3 shadow-sm transition-colors;
+    background: rgb(var(--surface-strong-rgb) / 0.95);
+    border-color: rgb(var(--border-rgb) / 0.85);
+  }
+
+  .org-chart-node:disabled {
+    opacity: 0.75;
+    cursor: default;
+  }
+
+  .org-chart-node--active {
+    border-color: rgb(var(--leaf-rgb) / 0.6);
+    box-shadow: 0 12px 30px rgb(var(--leaf-rgb) / 0.12);
+  }
+
+  .org-chart-node--path {
+    border-color: rgb(var(--border-rgb) / 1);
+    background: rgb(var(--sky-rgb) / 0.6);
+  }
+
+  .org-chart-node__header {
+    @apply flex items-start gap-3;
+  }
+
+  .org-chart-node__titles {
+    @apply flex-1 min-w-0;
+  }
+
+  .org-chart-node__count {
+    @apply whitespace-nowrap;
+    color: rgb(var(--slate-rgb) / 0.7);
+  }
+
+  .org-chart-node__meta {
+    @apply mt-3 space-y-1;
+  }
+
+  .org-chart-node__loading {
+    @apply mt-3;
+    color: rgb(var(--slate-rgb) / 0.7);
+  }
+
+  .org-chart-avatar {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.85rem;
+    overflow: hidden;
+    background: rgb(var(--sky-rgb) / 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px rgb(var(--border-rgb) / 0.8);
+  }
+
+  .org-chart-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .org-chart-avatar__fallback {
+    color: rgb(var(--slate-rgb) / 0.75);
+  }
+
+  .org-chart-person {
+    @apply flex flex-col sm:flex-row gap-4 items-start;
+  }
+
+  .org-chart-person__avatar {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: rgb(var(--sky-rgb) / 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px rgb(var(--border-rgb) / 0.8);
+  }
+
+  .org-chart-person__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @media (max-width: 1023px) {
+    .org-chart-levels {
+      @apply flex-col;
+    }
+
+    .org-chart-level {
+      min-width: 100%;
+    }
+  }
 }

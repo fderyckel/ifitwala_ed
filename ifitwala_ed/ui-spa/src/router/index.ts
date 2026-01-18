@@ -23,8 +23,9 @@ const routes: RouteRecordRaw[] = [
   { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue'), meta: { layout: 'student' } },
   { path: '/guardian/students/:student_id', name: 'guardian-student', component: () => import('@/pages/guardian/GuardianStudentShell.vue'), meta: { layout: 'student' } },
 
- // Staff
+  // Staff
   { path: '/staff', name: 'staff-home', component: () => import('@/pages/staff/StaffHome.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/organization-chart', name: 'staff-organization-chart', component: () => import('@/pages/staff/organization_chart/OrganizationChart.vue'), meta: { layout: 'staff' } },
   { path: '/staff/class/:studentGroup', name: 'ClassHub', component: () => import('@/pages/staff/ClassHub.vue'), meta: { layout: 'staff' } },
 
 	{path: '/staff/morning-brief', name: 'MorningBriefing', component: () => import('@/pages/staff/morning_brief/MorningBriefing.vue'), meta: { layout: 'staff' } },

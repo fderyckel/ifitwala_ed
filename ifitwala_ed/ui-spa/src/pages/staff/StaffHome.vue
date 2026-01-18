@@ -567,7 +567,7 @@ const analyticsCategories = [
 		description: 'Availability, development, and evaluations.',
 		icon: 'users',
 		links: [
-			{ label: 'Organizational Chart', to: '/analytics/staff/staffing-levels' },
+			{ label: 'Organizational Chart', to: { name: 'staff-organization-chart' } },
 			{ label: 'Leave Balance', to: '/analytics/staff/leave-balance' },
 			{ label: 'Training Progress', to: '/analytics/staff/training-progress' },
 			{ label: 'Evaluations Summary', to: '/analytics/staff/evaluations-summary' },
