@@ -11,6 +11,7 @@ export type OverlayType =
   | 'student-log-create'
   | 'student-log-follow-up'
   | 'student-log-analytics-expand'
+  | 'org-chart-person'
   | 'focus-router'
   | 'class-hub-student-context'
   | 'class-hub-quick-evidence'
