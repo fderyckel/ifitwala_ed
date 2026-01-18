@@ -112,6 +112,8 @@ def _serialize_employees(rows: Iterable[dict], thumb_names: set[str]) -> list[di
 				"school": row.get("school"),
 				"organization": row.get("organization"),
 				"image": _resolve_employee_image(row.get("image"), thumb_names),
+				"professional_email": row.get("professional_email"),
+				"phone_ext": row.get("phone_ext"),
 				"connections": connections,
 				"expandable": bool(connections),
 				"parent_id": row.get("reports_to") or None,
@@ -120,14 +122,35 @@ def _serialize_employees(rows: Iterable[dict], thumb_names: set[str]) -> list[di
 	return payload
 
 
+def _employee_fields() -> list[str]:
+	fields = [
+		"name as id",
+		"employee_full_name as name",
+		"employee_first_name as first_name",
+		"designation as title",
+		"school",
+		"organization",
+		"employee_image as image",
+		"employee_professional_email as professional_email",
+		"reports_to",
+		"lft",
+		"rgt",
+	]
+	if frappe.db.has_column("Employee", "phone_ext"):
+		fields.append("phone_ext")
+	return fields
+
+
 def _get_root_employee_ids(filters: dict) -> list[str]:
 	"""
 	Compute org-scope roots: employees whose manager is missing or outside scope.
+	If none exist (cycle/fully-linked), fall back to top-most by lft.
 	"""
 	rows = frappe.get_all(
 		"Employee",
-		fields=["name", "reports_to"],
+		fields=["name", "reports_to", "lft"],
 		filters=filters,
+		ignore_permissions=True,
 	)
 	if not rows:
 		return []
@@ -141,7 +164,16 @@ def _get_root_employee_ids(filters: dict) -> list[str]:
 		parent = row.get("reports_to")
 		if not parent or parent not in visible_ids:
 			root_ids.append(emp_id)
-	return root_ids
+
+	if root_ids:
+		return root_ids
+
+	min_lft = min((row.get("lft") for row in rows if row.get("lft") is not None), default=None)
+	if min_lft is None:
+		first_id = rows[0].get("name")
+		return [first_id] if first_id else []
+
+	return [row["name"] for row in rows if row.get("lft") == min_lft and row.get("name")]
 
 
 # ---------------------------------------------------------------------------
@@ -154,24 +186,14 @@ def get_org_chart_context():
 	if not user or user == "Guest":
 		frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
-	if not frappe.has_permission("Employee", "read"):
-		frappe.throw(_("Not permitted."), frappe.PermissionError)
-
-	allowed_scope = _get_allowed_org_scope(user)
-	filters = {}
-	if allowed_scope is not None:
-		if not allowed_scope:
-			frappe.throw(_("No organization access configured."), frappe.PermissionError)
-		filters["name"] = ["in", allowed_scope]
-
 	organizations = frappe.get_all(
 		"Organization",
 		fields=["name", "organization_name"],
-		filters=filters,
 		order_by="lft asc",
+		ignore_permissions=True,
 	)
 
-	default_org = None if allowed_scope is None else get_user_base_org(user)
+	default_org = get_user_base_org(user)
 
 	return {
 		"organizations": organizations,
@@ -189,18 +211,13 @@ def get_org_chart_children(parent: str | None = None, organization: str | None =
 	if not user or user == "Guest":
 		frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
-	if not frappe.has_permission("Employee", "read"):
-		frappe.throw(_("Not permitted."), frappe.PermissionError)
-
 	if organization == "All Organizations":
 		organization = None
 	organization = organization or None
-	allowed_scope = _get_allowed_org_scope(user)
-	org_scope = _resolve_org_scope(organization, allowed_scope)
 
 	filters = {"status": "Active"}
-	if org_scope is not None:
-		filters["organization"] = ["in", org_scope]
+	if organization:
+		filters["organization"] = organization
 
 	parent = parent or None
 	if parent:
@@ -213,20 +230,10 @@ def get_org_chart_children(parent: str | None = None, organization: str | None =
 
 	rows = frappe.get_all(
 		"Employee",
-		fields=[
-			"name as id",
-			"employee_full_name as name",
-			"employee_first_name as first_name",
-			"designation as title",
-			"school",
-			"organization",
-			"employee_image as image",
-			"reports_to",
-			"lft",
-			"rgt",
-		],
+		fields=_employee_fields(),
 		filters=filters,
 		order_by="employee_full_name asc",
+		ignore_permissions=True,
 	)
 
 	thumb_names = _list_employee_thumbs()
@@ -239,18 +246,13 @@ def get_org_chart_tree(organization: str | None = None):
 	if not user or user == "Guest":
 		frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
-	if not frappe.has_permission("Employee", "read"):
-		frappe.throw(_("Not permitted."), frappe.PermissionError)
-
 	if organization == "All Organizations":
 		organization = None
 	organization = organization or None
-	allowed_scope = _get_allowed_org_scope(user)
-	org_scope = _resolve_org_scope(organization, allowed_scope)
 
 	filters = {"status": "Active"}
-	if org_scope is not None:
-		filters["organization"] = ["in", org_scope]
+	if organization:
+		filters["organization"] = organization
 
 	total = frappe.db.count("Employee", filters=filters)
 	if total > EXPAND_MAX_NODES:
@@ -276,20 +278,10 @@ def get_org_chart_tree(organization: str | None = None):
 
 	rows = frappe.get_all(
 		"Employee",
-		fields=[
-			"name as id",
-			"employee_full_name as name",
-			"employee_first_name as first_name",
-			"designation as title",
-			"school",
-			"organization",
-			"employee_image as image",
-			"reports_to",
-			"lft",
-			"rgt",
-		],
+		fields=_employee_fields(),
 		filters=filters,
 		order_by="lft asc",
+		ignore_permissions=True,
 	)
 
 	thumb_names = _list_employee_thumbs()
@@ -305,6 +297,13 @@ def get_org_chart_tree(organization: str | None = None):
 			roots.append(node["id"])
 			continue
 		children_by_parent.setdefault(parent_id, []).append(node["id"])
+
+	if not roots and nodes:
+		min_lft = min((node.get("lft") for node in nodes if node.get("lft") is not None), default=None)
+		if min_lft is None:
+			roots = [nodes[0]["id"]]
+		else:
+			roots = [node["id"] for node in nodes if node.get("lft") == min_lft]
 
 	max_depth = 0
 	queue: list[tuple[str, int]] = [(root_id, 1) for root_id in roots]

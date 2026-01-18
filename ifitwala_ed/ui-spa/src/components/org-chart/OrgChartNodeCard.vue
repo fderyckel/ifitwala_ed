@@ -50,6 +50,12 @@
 			<p class="type-caption text-slate-500">
 				{{ node.school || '-' }} · {{ node.organization || '-' }}
 			</p>
+			<p class="type-caption text-slate-500 break-all">
+				Email: {{ node.professional_email || '-' }}
+			</p>
+			<p class="type-caption text-slate-500">
+				Ext: {{ node.phone_ext || '-' }}
+			</p>
 		</div>
 
 		<div v-if="loading" class="org-chart-node__loading type-caption">
@@ -70,6 +76,8 @@ const props = defineProps<{
 		school: string | null
 		organization: string | null
 		image: string | null
+		professional_email: string | null
+		phone_ext: string | null
 		connections: number
 		expandable: boolean
 		parent_id: string | null

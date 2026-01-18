@@ -8,6 +8,8 @@ type OrgChartNode = {
 	school: string | null
 	organization: string | null
 	image: string | null
+	professional_email: string | null
+	phone_ext: string | null
 	connections: number
 	expandable: boolean
 	parent_id: string | null
