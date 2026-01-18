@@ -3,7 +3,7 @@
 //ifitwala_ed/schedule/page/student_group_cards/student_group_cards.js
 
 
-frappe.require("/assets/ifitwala_ed/dist/student_group_cards.bundle.css");
+frappe.require("/assets/ifitwala_ed/css/student_group_cards.bundle.css");
 
 /* ── Helpers (now embedded directly) ───────────────────────────── */
 

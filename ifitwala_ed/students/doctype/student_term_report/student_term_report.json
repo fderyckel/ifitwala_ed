@@ -6,7 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_mfx3",
-  "reporting_cyle",
+  "reporting_cycle",
   "student",
   "program_enrollment",
   "program",
@@ -26,7 +26,7 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "reporting_cyle",
+   "fieldname": "reporting_cycle",
    "fieldtype": "Link",
    "label": "Reporting Cyle",
    "options": "Reporting Cycle"
@@ -102,7 +102,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-09 23:14:30.559847",
+ "modified": "2025-12-09 23:14:31",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Term Report",

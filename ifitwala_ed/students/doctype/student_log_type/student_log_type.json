@@ -8,7 +8,8 @@
  "field_order": [
   "section_break_ozlu",
   "log_type",
-  "abbr"
+  "abbr",
+  "school"
  ],
  "fields": [
   {
@@ -28,13 +29,20 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Log Type Abbreviation"
+  },
+  {
+   "description": "If this type is associated with a particular school; otherwise visible to all the schools. ",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
   }
  ],
  "grid_page_length": 50,
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-23 10:47:25.339592",
+ "modified": "2026-01-14 07:20:40.374725",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Type",
@@ -83,6 +91,20 @@
   {
    "read": 1,
    "role": "Instructor"
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Learning Support",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
   }
  ],
  "row_format": "Dynamic",

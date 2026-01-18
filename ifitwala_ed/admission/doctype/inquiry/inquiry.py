@@ -11,6 +11,29 @@ from datetime import datetime
 
 
 class Inquiry(Document):
+	def validate(self):
+		if not self.school:
+			return
+
+		school_org = frappe.db.get_value("School", self.school, "organization")
+		if not school_org:
+			frappe.throw(_("Selected School does not have an Organization."))
+
+		if not self.organization:
+			self.organization = school_org
+			return
+
+		if self.organization == school_org:
+			return
+
+		org_bounds = frappe.db.get_value("Organization", self.organization, ["lft", "rgt"], as_dict=True)
+		school_org_bounds = frappe.db.get_value("Organization", school_org, ["lft", "rgt"], as_dict=True)
+		if not org_bounds or not school_org_bounds:
+			frappe.throw(_("Selected School does not belong to the selected Organization."))
+
+		if not (org_bounds.lft <= school_org_bounds.lft and org_bounds.rgt >= school_org_bounds.rgt):
+			frappe.throw(_("Selected School does not belong to the selected Organization."))
+
 	def before_insert(self):
 		if not self.submitted_at:
 			self.submitted_at = frappe.utils.now()

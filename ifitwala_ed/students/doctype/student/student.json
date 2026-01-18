@@ -39,6 +39,7 @@
   "guardians_tab",
   "guardians_section",
   "guardians",
+  "account_holder",
   "siblings_section",
   "siblings",
   "home_address_section",
@@ -220,6 +221,13 @@
    "fieldtype": "Table",
    "label": "Guardians",
    "options": "Student Guardian"
+  },
+  {
+   "fieldname": "account_holder",
+   "fieldtype": "Link",
+   "label": "Account Holder",
+   "options": "Account Holder",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_mdf1",

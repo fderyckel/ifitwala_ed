@@ -3,6 +3,23 @@
 
 # ifitwala_ed/utilities/employee_booking.py
 
+"""
+Employee Booking = concrete, materialized staff commitments.
+
+This table represents REAL, DATETIME-BASED bookings that:
+- always block employee availability
+- are suitable for conflict detection and calendars
+
+Sources include:
+- Meetings
+- Student Group teaching slots (when materialized)
+- Future booking types
+
+IMPORTANT:
+Employee Booking is NOT an abstract schedule.
+Absence of an Employee Booking means the employee is free.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -223,6 +240,10 @@ def assert_employee_free(
 # Upsert / cleanup helpers
 # ─────────────────────────────────────────────────────────────
 
+# Architectural note:
+# This function materializes concrete bookings.
+# It must never be called for abstract schedules unless the caller
+# has explicitly decided to materialize them.
 def upsert_employee_booking(
     *,
     employee: str,
@@ -230,83 +251,90 @@ def upsert_employee_booking(
     end,
     source_doctype: str,
     source_name: str,
+    location: Optional[str] = None,
     booking_type: str = "Other",
     blocks_availability: int = 1,
     school: Optional[str] = None,
     academic_year: Optional[str] = None,
     unique_by_slot: bool = False,
 ) -> str:
-    """
-    Create or update an Employee Booking row.
+	"""
+	Create or update an Employee Booking row.
 
-    Behaviour:
-    - If unique_by_slot = False (default):
-        one row per (employee, source_doctype, source_name)
-        → good for Meetings.
-    - If unique_by_slot = True:
-        one row per (employee, source_doctype, source_name, from_datetime, to_datetime)
-        → required for Student Group teaching slots.
-    """
-    start_dt = _normalize_dt(start)
-    end_dt = _normalize_dt(end)
+	Behaviour:
+	- If unique_by_slot = False (default):
+		one row per (employee, source_doctype, source_name)
+		→ good for Meetings.
+	- If unique_by_slot = True:
+		one row per (employee, source_doctype, source_name, from_datetime, to_datetime)
+		→ required for Student Group teaching slots.
+	"""
+	# NOTE:
+	# Employee Booking enforces STAFF availability only.
+	# Room availability is handled exclusively by Location Booking.
+	start_dt = _normalize_dt(start)
+	end_dt = _normalize_dt(end)
 
-    if end_dt <= start_dt:
-        # Nothing to book; ensure any existing row is removed.
-        delete_employee_bookings_for_source(
-            source_doctype,
-            source_name,
-            employee=employee,
-        )
-        return ""
+	if end_dt <= start_dt:
+		# Nothing to book; ensure any existing row is removed.
+		delete_employee_bookings_for_source(
+			source_doctype,
+			source_name,
+			employee=employee,
+		)
+		return ""
 
-    # Build uniqueness filter
-    filters: Dict[str, Any] = {
-        "employee": employee,
-        "source_doctype": source_doctype,
-        "source_name": source_name,
-    }
-    if unique_by_slot:
-        filters["from_datetime"] = start_dt
-        filters["to_datetime"] = end_dt
+	if booking_type == "Teaching" and not location:
+		frappe.throw(_("Teaching bookings require a location."), frappe.ValidationError)
 
-    existing_name = frappe.db.get_value(
-        "Employee Booking",
-        filters,
-        "name",
-    )
+	# Build uniqueness filter
+	filters: Dict[str, Any] = {
+		"employee": employee,
+		"source_doctype": source_doctype,
+		"source_name": source_name,
+	}
+	if unique_by_slot:
+		filters["from_datetime"] = start_dt
+		filters["to_datetime"] = end_dt
 
-    if existing_name:
-        frappe.db.set_value(
-            "Employee Booking",
-            existing_name,
-            {
-                "from_datetime": start_dt,
-                "to_datetime": end_dt,
-                "booking_type": booking_type,
-                "blocks_availability": int(blocks_availability),
-                "school": school,
-                "academic_year": academic_year,
-            },
-        )
-        return existing_name
+	existing_name = frappe.db.get_value(
+		"Employee Booking",
+		filters,
+		"name",
+	)
 
-    doc = frappe.get_doc(
-        {
-            "doctype": "Employee Booking",
-            "employee": employee,
-            "from_datetime": start_dt,
-            "to_datetime": end_dt,
-            "booking_type": booking_type,
-            "blocks_availability": int(blocks_availability),
-            "source_doctype": source_doctype,
-            "source_name": source_name,
-            "school": school,
-            "academic_year": academic_year,
-        }
-    )
-    doc.flags.ignore_permissions = True
-    doc.insert()
-    return doc.name
+	if existing_name:
+		update_values = {
+			"from_datetime": start_dt,
+			"to_datetime": end_dt,
+			"booking_type": booking_type,
+			"blocks_availability": int(blocks_availability),
+			"school": school,
+			"academic_year": academic_year,
+		}
+		if location is not None:
+			update_values["location"] = location
+		frappe.db.set_value("Employee Booking", existing_name, update_values)
+		return existing_name
+
+	doc = frappe.get_doc(
+		{
+			"doctype": "Employee Booking",
+			"employee": employee,
+			"from_datetime": start_dt,
+			"to_datetime": end_dt,
+			"booking_type": booking_type,
+			"blocks_availability": int(blocks_availability),
+			"source_doctype": source_doctype,
+			"source_name": source_name,
+			"location": location,
+			"school": school,
+			"academic_year": academic_year,
+		}
+	)
+	doc.flags.ignore_permissions = True
+	doc.insert()
+	return doc.name
 
 
 def delete_employee_bookings_for_source(

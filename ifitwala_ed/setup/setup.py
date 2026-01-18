@@ -160,9 +160,12 @@ def add_other_records(country=None):
 		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to Grade Level Leader'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to counseling', 'associated_role': 'Counsellor'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to academic admin', 'associated_role': 'Academic Admin'},
-		{'doctype': 'Student Log Next Step', 'next_step': 'Parents meeting needed'},
-		{'doctype': 'Student Log Next Step', 'next_step': 'For information only'},
-		{'doctype': 'Student Log Next Step', 'next_step': 'No Action Required at this time'},
+		{"doctype": "Student Log Next Step", "next_step": "Parents meeting needed", "associated_role": "Admin Assistant"},
+		{"doctype": "Student Log Next Step", "next_step": "Refer to Learning Support", "associated_role": "Learning Support"},
+		{"doctype": "Student Log Next Step", "next_step": "Behaviour follow-up", "associated_role": "Grade Level Leader"},
+		{"doctype": "Student Log Next Step", "next_step": "IT / Device support", "associated_role": "IT Organization"},
+		{"doctype": "Student Log Next Step", "next_step": "Transport / Bus follow-up", "associated_role": "Transport Coordinator"},
+		{"doctype": "Student Log Next Step", "next_step": "Refer to Nurse / Health", "associated_role": "Nurse"},
 
 		# Program tree root (global)
 		{'doctype': 'Program', 'name': 'All Programs', 'program_name': 'All Programs', 'is_group': 1, 'parent_program': ''},

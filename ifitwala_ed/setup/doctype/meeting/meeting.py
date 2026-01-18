@@ -15,11 +15,17 @@ from frappe.model.document import Document
 from frappe.utils import get_datetime, format_datetime, getdate, today, format_date
 
 
-from ifitwala_ed.utilities.location_conflicts import find_location_conflicts
+from ifitwala_ed.utilities.location_utils import find_room_conflicts
 from ifitwala_ed.utilities.employee_booking import (
 	assert_employee_free,
 	upsert_employee_booking,
 	delete_employee_bookings_for_source,
+)
+from ifitwala_ed.stock.doctype.location_booking.location_booking import (
+	build_source_key,
+	build_slot_key_single,
+	delete_location_bookings_for_source,
+	upsert_location_booking,
 )
 
 
@@ -78,6 +84,7 @@ class Meeting(Document):
 	def validate(self):
 		# 1) Normalize participants from Team if needed
 		self.load_team_participants_if_empty()
+		self.default_attendance_pending()
 
 		# 2) Participant integrity
 		self.ensure_unique_participants()
@@ -100,15 +107,19 @@ class Meeting(Document):
 
 	def after_insert(self):
 		self.sync_employee_bookings()
+		self.sync_location_booking()
 
 	def on_update(self):
 		self.sync_employee_bookings()
+		self.sync_location_booking()
 
 	def on_cancel(self):
 		delete_employee_bookings_for_source(self.doctype, self.name)
+		delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
 
 	def on_trash(self):
 		delete_employee_bookings_for_source(self.doctype, self.name)
+		delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
 
 	# ─────────────────────────────────────────────────────────────
 	# Participant helpers
@@ -170,6 +181,16 @@ class Meeting(Document):
 				_("Please add at least one participant to this meeting."),
 				title=_("No Participants"),
 			)
+
+	def default_attendance_pending(self) -> None:
+		# Draft / Scheduled / Cancelled / Postponed → blanks should be Pending
+		if self.status == "Completed":
+			return
+
+		for row in self.participants or []:
+			if not (row.attendance_status or "").strip():
+				row.attendance_status = "Pending"
+
 
 	# ─────────────────────────────────────────────────────────────
 	# Time & context helpers
@@ -292,7 +313,7 @@ class Meeting(Document):
 	def validate_location_free(self) -> None:
 		"""
 		Ensure the selected location is not double-booked.
-		Uses the location_conflicts.find_location_conflicts engine.
+		Uses the canonical room conflict helper.
 		"""
 		if not self.location:
 			return
@@ -300,13 +321,11 @@ class Meeting(Document):
 		if not (self.from_datetime and self.to_datetime):
 			return
 
-		ignore = [(self.doctype, self.name)]
-
-		conflicts = find_location_conflicts(
-			location=self.location,
-			start=self.from_datetime,
-			end=self.to_datetime,
-			ignore_sources=ignore,
+		conflicts = find_room_conflicts(
+			self.location,
+			self.from_datetime,
+			self.to_datetime,
+			exclude={"doctype": self.doctype, "name": self.name},
 		)
 
 		if not conflicts:
@@ -316,10 +335,10 @@ class Meeting(Document):
 		for c in conflicts:
 			lines.append(
 				_("{doctype} {name} from {start} to {end}").format(
-					doctype=c.source_doctype,
-					name=c.source_name,
-					start=format_datetime(c.start),
-					end=format_datetime(c.end),
+					doctype=c.get("source_doctype"),
+					name=c.get("source_name"),
+					start=format_datetime(c.get("from")),
+					end=format_datetime(c.get("to")),
 				)
 			)
 
@@ -476,6 +495,44 @@ class Meeting(Document):
 				academic_year=academic_year,
 			)
 
+	def sync_location_booking(self) -> None:
+		"""
+		Project this Meeting into Location Booking (single stable slot).
+		"""
+		if not (self.location and self.from_datetime and self.to_datetime):
+			delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
+			return
+
+		school = getattr(self, "school", None) if hasattr(self, "school") else None
+		academic_year = (
+			getattr(self, "academic_year", None) if hasattr(self, "academic_year") else None
+		)
+
+		source_key = build_source_key(self.doctype, self.name)
+		slot_key = build_slot_key_single(source_key, self.location)
+
+		upsert_location_booking(
+			location=self.location,
+			from_datetime=self.from_datetime,
+			to_datetime=self.to_datetime,
+			occupancy_type="Meeting",
+			source_doctype=self.doctype,
+			source_name=self.name,
+			slot_key=slot_key,
+			school=school,
+			academic_year=academic_year,
+		)
+
+		# Clean up any stale rows from prior locations.
+		frappe.db.delete(
+			"Location Booking",
+			{
+				"source_doctype": self.doctype,
+				"source_name": self.name,
+				"slot_key": ["!=", slot_key],
+			},
+		)
+
 	# ─────────────────────────────────────────────────────────────
 	# Visibility / privacy layer
 	# ─────────────────────────────────────────────────────────────
@@ -484,30 +541,48 @@ class Meeting(Document):
 		"""
 		Apply visibility_scope on top of role-based perms.
 
-		Rules (for read/print):
-		  - Administrator and System Manager: always allowed.
-		  - Public/Internal: defer to base role permissions.
-		  - Team & Participants: only participants + team members.
-		  - Participants Only: only participants.
-		  - School Staff: same school employees + participants + team members.
+		Addition:
+			- Academic Admin: can read/print any Meeting where Meeting.school is
+				their Employee.school OR a descendant of their Employee.school.
 		"""
-		# First: respect standard role-based permissions
+		user = frappe.session.user
+		roles = set(frappe.get_roles(user) or [])
+
+		# Full bypass for admin / sys mgr
+		if user == "Administrator" or "System Manager" in roles:
+			return True
+
+		# Always respect standard role-based permissions first.
+		# (So Academic Admin must also have a DocType permission row for read/print.)
 		if not super().has_permission(ptype):
 			return False
 
-		user = frappe.session.user
-
-		# Full bypass for admin / sys mgr
-		if user == "Administrator":
-			return True
-		if "System Manager" in frappe.get_roles(user):
-			return True
-
-		# For writes (create/save/delete), keep existing behaviour
+		# For non-read operations, keep base perms only (no special bypass)
 		if ptype not in ("read", "print"):
 			return True
 
+		# Academic Admin school-scope bypass (read/print)
+		if "Academic Admin" in roles:
+			meeting_school = getattr(self, "school", None)
+			if meeting_school:
+				emp_school = frappe.db.get_value(
+					"Employee",
+					{"user_id": user, "status": "Active"},
+					"school",
+				)
+
+				if emp_school:
+					# Self or descendants
+					from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
+					allowed = set(get_descendant_schools(user_school=emp_school) or [])
+					if meeting_school in allowed:
+						return True
+
+		# Fall back to visibility_scope rules for everyone else
 		return self._user_can_see(user)
+
+
 
 	def _user_can_see(self, user: str) -> bool:
 		scope = (self.visibility_scope or "").strip() or "Team & Participants"

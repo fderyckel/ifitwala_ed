@@ -9,7 +9,7 @@ function logImageSource(employee) {
 
 frappe.pages["organizational-chart"].on_page_load = function (wrapper) { 
 
-	frappe.require('/assets/ifitwala_ed/dist/hierarchy_chart.min.css');
+	frappe.require('/assets/ifitwala_ed/css/hierarchy_chart.min.css');
 
 	frappe.ui.make_app_page({
 		parent: wrapper,

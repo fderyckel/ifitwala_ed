@@ -1,22 +1,25 @@
-/* FullCalendar timegrid tweaks (scoped to portal shell) */
-.calendar-shell .fc-timegrid .fc-timegrid-slot {
-	border-bottom: 1px dashed rgb(var(--border-rgb) / .7);
-	height: 42.5px; /* 15% shorter hour blocks (was 50px) */
-}
+/* =====================================================================
+   FULLCALENDAR TIMEGRID OVERRIDES (SCOPED TO .calendar-shell)
+   ===================================================================== */
+@layer components {
+  .calendar-shell .fc-timegrid .fc-timegrid-slot {
+    border-bottom: 1px dashed rgb(var(--border-rgb) / 0.7);
+    height: 48px;
+  }
 
-.calendar-shell .fc-timegrid .fc-timegrid-axis-cushion {
-	font-size: 0.75rem;
-	color: rgb(var(--slate-rgb) / .75);
-}
+  .calendar-shell .fc-timegrid .fc-timegrid-axis-cushion {
+    font-size: 0.75rem;
+    color: rgb(var(--slate-rgb) / 0.75);
+  }
 
-.calendar-shell .fc-timegrid .fc-timegrid-event {
-	background: rgb(var(--leaf-rgb) / .12);
-	border-left: 3px solid rgb(var(--leaf-rgb));
-	color: rgb(var(--canopy-rgb));
-}
+  .calendar-shell .fc-timegrid .fc-timegrid-event {
+    background: rgb(var(--leaf-rgb) / 0.12);
+    border-left: 3px solid rgb(var(--leaf-rgb) / 1);
+    color: rgb(var(--canopy-rgb) / 1);
+  }
 
-/* Constrain the timegrid body and allow vertical scroll while keeping toolbar static */
-.calendar-shell .fc .fc-timegrid-body {
-	max-height: 720px;
-	overflow-y: auto;
+  .calendar-shell .fc-timegrid-body {
+    max-height: 720px;
+    overflow-y: auto;
+  }
 }

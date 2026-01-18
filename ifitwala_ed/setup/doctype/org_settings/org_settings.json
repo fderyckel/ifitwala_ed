@@ -10,8 +10,15 @@
   "column_break_ng7f",
   "mobile_to_user",
   "column_break_wioa",
-  "ifitwala_initial_setup"
- ],
+   "ifitwala_initial_setup",
+   "accounting_defaults_section",
+   "default_organization",
+   "default_accounts_receivable",
+   "default_cash_account",
+   "default_bank_account",
+   "default_advances_liability_account",
+   "default_tax_payable_account"
+  ],
  "fields": [
   {
    "fieldname": "section_break_sr3p",
@@ -45,12 +52,53 @@
    "fieldtype": "Check",
    "label": "Ifitwala Initial Setup",
    "read_only": 1
+  },
+  {
+   "fieldname": "accounting_defaults_section",
+   "fieldtype": "Section Break",
+   "label": "Accounting Defaults"
+  },
+  {
+   "fieldname": "default_organization",
+   "fieldtype": "Link",
+   "label": "Default Organization",
+   "options": "Organization"
+  },
+  {
+   "fieldname": "default_accounts_receivable",
+   "fieldtype": "Link",
+   "label": "Default Receivable",
+   "options": "Account"
+  },
+  {
+   "fieldname": "default_cash_account",
+   "fieldtype": "Link",
+   "label": "Default Cash",
+   "options": "Account"
+  },
+  {
+   "fieldname": "default_bank_account",
+   "fieldtype": "Link",
+   "label": "Default Bank",
+   "options": "Account"
+  },
+  {
+   "fieldname": "default_advances_liability_account",
+   "fieldtype": "Link",
+   "label": "Default Advances (Liability)",
+   "options": "Account"
+  },
+  {
+   "fieldname": "default_tax_payable_account",
+   "fieldtype": "Link",
+   "label": "Default Tax Payable",
+   "options": "Account"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-09-23 10:52:14.139789",
+ "modified": "2025-09-23 10:52:15",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Settings",

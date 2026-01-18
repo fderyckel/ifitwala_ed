@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ui-spa/src/pages/staff/schedule/student-attendance-tool/components/AttendanceGrid.vue -->
+<!-- ui-spa/src/pages/staff/schedule/student-attendance-tool/components/AttendanceGrid.vue -->
 <template>
   <div class="flex h-full flex-col text-ink">
     <!-- Header row (desktop) -->
@@ -173,14 +173,15 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Button, FeatherIcon } from 'frappe-ui'
 import { __ } from '@/lib/i18n'
-import type { AttendanceCode, StudentRosterEntry, BlockKey } from '../types'
+import type { StudentRosterEntry, BlockKey } from '../types'
+import type { StudentAttendanceCodeRow } from '@/types/contracts/studentAttendance'
 
 const DEFAULT_AVATAR = '/assets/ifitwala_ed/images/default_student_image.png'
 
 const props = defineProps<{
   students: StudentRosterEntry[]
   blocks: BlockKey[]
-  codes: AttendanceCode[]
+  codes: StudentAttendanceCodeRow[]
   disabled?: boolean
   codeColors?: Record<string, string>
 }>()
@@ -361,7 +362,7 @@ function chipClass(isSelected: boolean) {
   return isSelected ? 'text-white shadow-sm' : 'bg-white text-ink/70 hover:bg-jacaranda/5 hover:text-jacaranda'
 }
 
-function chipStyle(code: AttendanceCode, isSelected: boolean) {
+function chipStyle(code: StudentAttendanceCodeRow, isSelected: boolean) {
   const color = props.codeColors?.[code.name] || code.color || fallbackColor
   if (isSelected) {
     return { backgroundColor: color, borderColor: color }

@@ -89,6 +89,11 @@ def get_daily_bulletin(user, roles):
 		AND portal_surface IN ('Morning Brief', 'Everywhere')
 		AND brief_start_date <= %s
 		AND (brief_end_date >= %s OR brief_end_date IS NULL)
+		AND EXISTS (
+			SELECT 1
+			FROM `tabOrg Communication Audience` aud
+			WHERE aud.parent = `tabOrg Communication`.name
+		)
 		ORDER BY priority DESC, brief_order ASC, creation DESC
 		LIMIT 50
 	"""

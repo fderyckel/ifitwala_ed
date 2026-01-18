@@ -1,37 +1,49 @@
-/* Vendor placeholder for FullCalendar core styles.
- * This minimal file unblocks Vite builds in environments where
- * @fullcalendar/core CSS cannot be resolved at bundle time.
- * Replace with the upstream stylesheet when convenient.
- *
- * Theme-safe overrides are scoped to .calendar-shell so they blend
- * into the portal palette without leaking globally.
- */
+/* =====================================================================
+   FULLCALENDAR CORE OVERRIDES (SCOPED TO .calendar-shell)
+   ===================================================================== */
+@layer components {
+  .calendar-shell {
+    font-family: var(--font-sans), system-ui, -apple-system,
+      BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 0.85rem;
+  }
 
-.calendar-shell .fc .fc-toolbar-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: rgb(var(--ink-rgb));
-}
+  .calendar-shell .fc-toolbar-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgb(var(--ink-rgb) / 1);
+  }
 
-.calendar-shell .fc .fc-button {
-  border-radius: 9999px;
-  border: 1px solid rgb(var(--border-rgb) / .95);
-  background: #ffffff;
-  color: rgb(var(--ink-rgb));
-  font-size: 0.8rem;
-  font-weight: 500;
-}
+  .calendar-shell .fc-button {
+    border-radius: 9999px;
+    border: 1px solid rgb(var(--border-rgb) / 0.95);
+    background: rgb(var(--surface-strong-rgb) / 1);
+    color: rgb(var(--ink-rgb) / 1);
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
 
-.calendar-shell .fc .fc-button-active,
-.calendar-shell .fc .fc-button-primary:not(:disabled).fc-button-active {
-  border-color: rgb(var(--canopy-rgb) / .9);
-  background: rgb(var(--canopy-rgb));
-  color: #ffffff;
-}
+  .calendar-shell .fc-button-active,
+  .calendar-shell .fc-button-primary:not(:disabled).fc-button-active {
+    border-color: rgb(var(--canopy-rgb) / 0.9);
+    background: rgb(var(--canopy-rgb) / 1);
+    color: rgb(var(--surface-strong-rgb) / 1);
+  }
 
-.calendar-shell .fc .fc-daygrid-event,
-.calendar-shell .fc .fc-timegrid-event {
-  border-radius: 0.85rem;
-  padding: 0.3rem 0.45rem;
-  border: none;
+  .calendar-shell .fc-daygrid-event,
+  .calendar-shell .fc-timegrid-event {
+    border-radius: 0.85rem;
+    padding: 0.3rem 0.45rem;
+    border: none;
+  }
+
+  .calendar-shell .fc-event-time,
+  .calendar-shell .fc-list-event-time {
+    display: none;
+  }
+
+  .calendar-shell .fc-list-event-dot {
+    border-color: transparent;
+  }
 }

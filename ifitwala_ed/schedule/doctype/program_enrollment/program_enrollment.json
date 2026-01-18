@@ -10,6 +10,9 @@
   "section_break_kcvg",
   "program",
   "program_offering",
+  "program_enrollment_request",
+  "enrollment_source",
+  "enrollment_override_reason",
   "student",
   "enrollment_date",
   "school",
@@ -118,12 +121,31 @@
    "label": "Program Offering",
    "options": "Program Offering",
    "reqd": 1
+  },
+  {
+   "fieldname": "program_enrollment_request",
+   "fieldtype": "Link",
+   "label": "Program Enrollment Request",
+   "options": "Program Enrollment Request"
+  },
+  {
+   "default": "Admin",
+   "fieldname": "enrollment_source",
+   "fieldtype": "Select",
+   "label": "Enrollment Source",
+   "options": "Request\nAdmin\nMigration"
+  },
+  {
+   "depends_on": "eval:doc.enrollment_source != 'Request'",
+   "fieldname": "enrollment_override_reason",
+   "fieldtype": "Small Text",
+   "label": "Override Reason"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-08 11:40:28.632277",
+ "modified": "2025-12-08 11:40:29",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment",

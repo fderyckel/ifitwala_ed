@@ -41,6 +41,7 @@
   },
   {
    "columns": 2,
+   "default": "Pending",
    "fieldname": "attendance_status",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -60,7 +61,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-26 08:35:15.546098",
+ "modified": "2026-01-04 21:11:26.971152",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Meeting Participant",

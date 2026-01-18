@@ -5,6 +5,22 @@
 // Domain unions and constants
 // ============================================================================
 
+import type {
+	AudienceType,
+	InteractionVisibility,
+	InteractionMode,
+	InteractionIntentType,
+	ReactionCode,
+	ReactionCounts,
+	InteractionCounts,
+} from '@/types/interactions'
+
+export { REACTION_CODES } from '@/types/interactions'
+
+// ============================================================================
+// Domain unions and constants
+// ============================================================================
+
 export const ORG_PRIORITIES = {
 	CRITICAL: 'Critical',
 	HIGH: 'High',
@@ -28,45 +44,8 @@ export const ORG_SURFACES = {
 
 export type OrgSurface = (typeof ORG_SURFACES)[keyof typeof ORG_SURFACES]
 
-export type AudienceType = 'Staff' | 'Student' | 'Guardian' | 'Community' | null
-
-export type InteractionVisibility =
-	| 'Public to audience'
-	| 'Private to school'
-	| 'Hidden'
-	| null
-
 export type ApplicationStatus = 'Applied' | 'Approved' | 'Rejected' | 'Admitted'
 
-export type InteractionMode =
-	| 'None'
-	| 'Staff Comments'
-	| 'Structured Feedback'
-	| 'Student Q&A'
-
-export type InteractionIntentType =
-	| 'Acknowledged'
-	| 'Comment'
-	| 'Appreciated'
-	| 'Support'
-	| 'Positive'
-	| 'Celebration'
-	| 'Question'
-	| 'Concern'
-	| 'Other'
-
-export const REACTION_CODES = [
-	'like',
-	'thank',
-	'heart',
-	'smile',
-	'applause',
-	'question',
-	'concern',
-	'other',
-] as const
-
-export type ReactionCode = (typeof REACTION_CODES)[number]
 
 // ============================================================================
 // Widgets: announcement + analytics payloads
@@ -75,6 +54,7 @@ export type ReactionCode = (typeof REACTION_CODES)[number]
 export interface Announcement {
 	name: string
 	title: string
+// ... rest of the file ...
 	content: string
 	type:
 		| 'Logistics'
@@ -176,9 +156,6 @@ export interface WidgetsPayload {
 // Interaction summary + thread
 // ============================================================================
 
-export type InteractionCounts = Partial<Record<InteractionIntentType, number>>
-export type ReactionCounts = Record<string, number>
-
 export interface InteractionSelf {
 	name: string
 	org_communication: string
@@ -209,6 +186,7 @@ export interface InteractionSummary {
 	reaction_counts?: ReactionCounts
 	reactions_total?: number
 	comments_total?: number
+	/** @deprecated do not use; backend no longer returns it */
 	comment_count?: number
 	self: InteractionSelf | null
 }

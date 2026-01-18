@@ -8,15 +8,20 @@ import json
 import frappe
 
 APP = "ifitwala_ed"
-DIST_DIR = os.path.join(frappe.get_app_path(APP), "public", "dist")
-MANIFEST_PATH = os.path.join(DIST_DIR, ".vite", "manifest.json")
-PUBLIC_BASE = f"/assets/{APP}/dist/"
+VITE_DIR = os.path.join(frappe.get_app_path(APP), "public", "vite")
+MANIFEST_PATHS = [
+	os.path.join(VITE_DIR, "manifest.json"),
+	os.path.join(VITE_DIR, ".vite", "manifest.json"),
+]
+PUBLIC_BASE = f"/assets/{APP}/vite/"
 
 def _load_manifest() -> dict:
-	if not os.path.exists(MANIFEST_PATH):
-		return {}
-	with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
-		return json.load(f)
+	for path in MANIFEST_PATHS:
+		if not os.path.exists(path):
+			continue
+		with open(path, "r", encoding="utf-8") as f:
+			return json.load(f)
+	return {}
 
 def _collect_assets(manifest: dict) -> tuple[str, list[str], list[str]]:
 	candidates = ["index.html", "src/main.ts", "src/main.js"]
@@ -61,6 +66,7 @@ def _redirect(to: str):
 ALLOWED_ROLES = {
 	"Student",
 	"Guardian",
+	"Employee",
 	"Instructor",
 	"Academic Staff",
 	"Academic Assistant",
@@ -78,23 +84,43 @@ def get_context(context):
 		_redirect(f"/login?redirect-to={path}")
 
 	user_roles = set(frappe.get_roles(user))
-	if not (user_roles & ALLOWED_ROLES):
+
+	# ---------------------------------------------------------------
+	# Portal section eligibility (portal sections != frappe roles)
+	# Compromise rule:
+	#   Staff: user has role "Employee" AND linked Employee.status == "Active"
+	# ---------------------------------------------------------------
+	is_employee = (
+		("Employee" in user_roles)
+		and bool(frappe.db.exists("Employee", {"user_id": user, "status": "Active"}))
+	)
+
+	is_student = "Student" in user_roles
+	is_guardian = "Guardian" in user_roles
+
+	portal_sections = []
+	if is_employee:
+		portal_sections.append("Staff")
+	if is_student:
+		portal_sections.append("Student")
+	if is_guardian:
+		portal_sections.append("Guardian")
+
+	# If user has no portal access at all, block hard.
+	if not portal_sections:
 		_redirect(f"/login?redirect-to={path}")
 
-	# Determine default portal section based on role priority: student > staff > guardian
-	if "Student" in user_roles:
+	# Default portal priority: Staff > Student > Guardian
+	if "Staff" in portal_sections:
+		default_portal = "staff"
+	elif "Student" in portal_sections:
 		default_portal = "student"
-	elif "Academic Staff" in user_roles:
-		default_portal = "staff"
-	elif "Guardian" in user_roles:
-		default_portal = "guardian"
 	else:
-		default_portal = "staff"
+		default_portal = "guardian"
 
-	portal_roles = sorted(user_roles)
 	context.default_portal = default_portal
-	context.portal_roles = portal_roles
-	context.portal_roles_json = frappe.as_json(portal_roles)
+	context.portal_roles = portal_sections
+	context.portal_roles_json = frappe.as_json(portal_sections)
 
 	manifest = _load_manifest()
 	js_entry, css_files, preload_files = _collect_assets(manifest)

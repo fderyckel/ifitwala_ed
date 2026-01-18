@@ -15,6 +15,10 @@ class CommunicationInteraction(Document):
 		self._normalize_note()
 		self._ensure_single_row_per_user()
 		self._infer_audience_type_if_missing()
+
+		if self.note and not (self.intent_type or "").strip():
+			self.intent_type = "Comment"
+
 		self._apply_mode_constraints()
 
 	def _normalize_note(self):
@@ -167,6 +171,10 @@ def get_org_comm_interaction_summary(comm_names=None):
 	"""
 	Return interaction summary for a list of Org Communication names.
 	Safe against missing/empty args (returns {}).
+
+	Semantics:
+	- comments_total = visible COMMENT entries only (intent_type='Comment')
+	- reactions_total = sum of reaction_counts
 	"""
 	# Allow comm_names passed as JSON string from the client
 	if isinstance(comm_names, str):
@@ -199,12 +207,11 @@ def get_org_comm_interaction_summary(comm_names=None):
 	# Initialise summary with a clean shape
 	summary = {
 		name: {
-			"counts": {},       # intent_type -> count
-			"reaction_counts": {},  # reaction_code -> count
-			"reactions_total": 0,   # total emoji/quick reactions
-			"comments_total": 0,    # total thread entries (Comment + Question)
-			"self": None,       # current user's row
-			"comment_count": 0  # number of interactions with non-empty note
+			"counts": {},          # intent_type -> count
+			"reaction_counts": {}, # reaction_code -> count
+			"reactions_total": 0,  # total emoji/quick reactions
+			"comments_total": 0,   # total visible COMMENT entries only
+			"self": None,          # current user's row
 		}
 		for name in clean_names
 	}
@@ -238,8 +245,7 @@ def get_org_comm_interaction_summary(comm_names=None):
 		"Positive": "smile",
 		"Celebration": "applause",
 		"Question": "question",
-		"Concern": "concern",
-		"Other": "other",
+		"Concern": "concern"
 	}
 	known_reaction_codes = set(intent_to_reaction.values())
 
@@ -275,32 +281,15 @@ def get_org_comm_interaction_summary(comm_names=None):
 		data["reaction_counts"] = reaction_counts
 		data["reactions_total"] = sum(int(v or 0) for v in reaction_counts.values())
 
-	# 3) comment_count = interactions that actually have text in `note`
-	comment_rows = frappe.db.sql(
-		"""
-		SELECT org_communication, COUNT(*) as cnt
-		FROM `tabCommunication Interaction`
-		WHERE org_communication IN %(comms)s
-		  AND COALESCE(TRIM(note), '') != ''
-		GROUP BY org_communication
-		""",
-		{"comms": comms_tuple},
-		as_dict=True,
-	)
-
-	for r in comment_rows:
-		org_comm = r.get("org_communication")
-		if org_comm in summary:
-			summary[org_comm]["comment_count"] = int(r.get("cnt") or 0)
-
-	# 4) comments_total = Comment + Question with non-empty note
+	# 3) comments_total = visible COMMENT entries only
 	comments_rows = frappe.db.sql(
 		"""
 		SELECT org_communication, COUNT(*) as cnt
 		FROM `tabCommunication Interaction`
 		WHERE org_communication IN %(comms)s
-		  AND intent_type IN ('Comment', 'Question')
-		  AND COALESCE(TRIM(note), '') != ''
+			AND intent_type = 'Comment'
+			AND COALESCE(TRIM(note), '') != ''
+			AND visibility != 'Hidden'
 		GROUP BY org_communication
 		""",
 		{"comms": comms_tuple},
@@ -312,7 +301,7 @@ def get_org_comm_interaction_summary(comm_names=None):
 		if org_comm in summary:
 			summary[org_comm]["comments_total"] = int(r.get("cnt") or 0)
 
-	# 5) current user's interaction (keep full row)
+	# 4) current user's interaction (keep full row)
 	self_rows = frappe.db.sql(
 		"""
 		SELECT *
@@ -335,12 +324,12 @@ def get_org_comm_interaction_summary(comm_names=None):
 @frappe.whitelist()
 def get_communication_thread(org_communication: str, limit_start: int = 0, limit_page_length: int = 20):
 	"""
-	Return the visible interaction thread for a given Org Communication,
-	for use on Staff Comments and Student Q&A surfaces.
+	Return the visible COMMENT thread for a given Org Communication.
 
-	- Respects interaction_mode on Org Communication
-	- Applies visibility rules based on audience and role
-	- Orders pinned items first, then by creation time
+	Semantics (LOCKED):
+	- Thread = Comment intent only (intent_type='Comment')
+	- Reactions do not appear as thread rows
+	- Hidden rows never appear
 	"""
 	if not org_communication:
 		return []
@@ -358,15 +347,17 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 
 	roles = set(frappe.get_roles(user))
 	is_staff = any(r in roles for r in ("Academic Staff", "Academic Admin", "Employee", "System Manager"))
-	is_student = "Student" in roles
-	is_guardian = "Guardian" in roles
 
 	# Structured Feedback → no public thread for non-staff
 	if mode == "Structured Feedback" and not is_staff:
 		return []
 
-	# Base conditions
+	# Base conditions (COMMENTS ONLY)
 	conditions = ["i.org_communication = %(comm)s"]
+	conditions.append("i.intent_type = 'Comment'")
+	conditions.append("COALESCE(TRIM(i.note), '') != ''")
+	conditions.append("i.visibility != 'Hidden'")
+
 	params = {
 		"comm": org_communication,
 		"user": user,
@@ -380,23 +371,18 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 		if not is_staff:
 			return []
 
-		# Staff can see everything except hidden
-		conditions.append("i.visibility != 'Hidden'")
-
 	elif mode == "Student Q&A":
 		if is_staff:
-			# Teachers/staff: see everything except hidden
-			conditions.append("i.visibility != 'Hidden'")
+			# Staff: see all visible comments
+			pass
 		else:
 			# Students: see public + their own (even if private)
-			conditions.append(
-				"(i.visibility = 'Public to audience' OR i.user = %(user)s)"
-			)
+			conditions.append("(i.visibility = 'Public to audience' OR i.user = %(user)s)")
 
 	elif mode == "Structured Feedback":
-		# At this point we already know user is staff (non-staff returned above).
-		# Staff can see everything except hidden.
-		conditions.append("i.visibility != 'Hidden'")
+		# Staff can see visible comments (still comment-only)
+		if not is_staff:
+			return []
 
 	else:
 		# Other modes: treat as no thread
@@ -405,7 +391,6 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 	where_clause = " AND ".join(conditions)
 	params["ts_fmt"] = "%Y-%m-%d %H:%i:%s"
 
-	# Single SQL with join to get user full_name (no extra calls)
 	rows = frappe.db.sql(
 		f"""
 		SELECT
@@ -432,8 +417,7 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 		as_dict=True,
 	)
 
-	return rows
-
+	return rows or []
 
 
 @frappe.whitelist()
@@ -461,7 +445,6 @@ def upsert_communication_interaction(
 	if not org_communication:
 		frappe.throw(_("org_communication is required."))
 
-	# Try to find existing interaction for this user
 	existing_name = frappe.db.get_value(
 		DOCTYPE,
 		{"org_communication": org_communication, "user": user},
@@ -476,8 +459,8 @@ def upsert_communication_interaction(
 		doc.user = user
 
 	parent = frappe.get_cached_doc("Org Communication", org_communication)
+	mode = (parent.interaction_mode or "None").strip() or "None"
 
-	# Mapping between reactions and intents for the palette
 	reaction_intent_map = {
 		"like": "Acknowledged",
 		"thank": "Appreciated",
@@ -501,7 +484,6 @@ def upsert_communication_interaction(
 	if surface is not None:
 		doc.surface = surface
 
-	# Context fields (optional, useful for Student Q&A / analytics)
 	if student_group is not None:
 		doc.student_group = student_group
 	if program is not None:
@@ -510,25 +492,27 @@ def upsert_communication_interaction(
 		doc.school = school
 
 	# Infer intent from reaction or vice-versa when one side is missing
-	if doc.reaction_code and not doc.intent_type:
+	if doc.reaction_code and not (doc.intent_type or "").strip():
 		doc.intent_type = reaction_intent_map.get(doc.reaction_code, doc.intent_type)
-	if doc.intent_type and not doc.reaction_code:
+
+	if (doc.intent_type or "").strip() and not (doc.reaction_code or "").strip():
 		doc.reaction_code = intent_reaction_map.get(doc.intent_type, doc.reaction_code)
 
-	# Default intent for staff comments when user submits a note without an explicit intent
-	if (parent.interaction_mode or "None") == "Staff Comments" and note and not doc.intent_type:
-		doc.intent_type = "Question"
+	# ✅ For Staff Comments: a note is a "Comment" unless explicitly a Question
+	if mode == "Staff Comments":
+		if doc.note and not (doc.intent_type or "").strip():
+			doc.intent_type = "Comment"
+
+	# ✅ Global normalization: note-only rows must have an intent for counting/thread consistency
+	if doc.note and not (doc.intent_type or "").strip():
+		doc.intent_type = "Comment"
 
 	# Question always requires a note
 	if doc.intent_type == "Question" and not doc.note:
 		frappe.throw(_("Please add a short comment or question."))
 
-	# Let the DocType controller enforce audience_type + mode constraints
 	doc.save(ignore_permissions=False)
-
-	# Return the saved interaction (for UI state)
 	return doc
-
 
 
 def on_doctype_update():

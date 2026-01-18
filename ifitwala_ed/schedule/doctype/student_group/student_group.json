@@ -180,8 +180,9 @@
   },
   {
    "fieldname": "school",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "label": "School",
+   "options": "School",
    "read_only": 1
   },
   {
@@ -203,7 +204,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-02 20:30:14.101119",
+ "modified": "2025-12-02 20:30:15",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",

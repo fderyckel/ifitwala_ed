@@ -8,8 +8,12 @@
  "field_order": [
   "course",
   "course_name",
+  "grade_scale",
   "elective_group",
   "required",
+  "capacity",
+  "waitlist_enabled",
+  "reserved_seats",
   "non_catalog",
   "column_break_50gf",
   "start_academic_year",
@@ -36,12 +40,35 @@
    "label": "Course Name"
   },
   {
+   "description": "Override offering grade scale for this course within this offering.",
+   "fieldname": "grade_scale",
+   "fieldtype": "Link",
+   "label": "Grade Scale Override (Offering Course)",
+   "options": "Grade Scale"
+  },
+  {
    "columns": 1,
    "default": "0",
    "fieldname": "required",
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Required"
+  },
+  {
+   "fieldname": "capacity",
+   "fieldtype": "Int",
+   "label": "Capacity"
+  },
+  {
+   "default": "0",
+   "fieldname": "waitlist_enabled",
+   "fieldtype": "Check",
+   "label": "Waitlist Enabled"
+  },
+  {
+   "fieldname": "reserved_seats",
+   "fieldtype": "Int",
+   "label": "Reserved Seats"
   },
   {
    "fieldname": "elective_group",
@@ -111,7 +138,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-10-03 14:40:08.673503",
+ "modified": "2025-10-03 14:40:10",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering Course",

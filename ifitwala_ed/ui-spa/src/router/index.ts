@@ -1,4 +1,4 @@
-// apps/ifitwala_ed/ifitwala_ed/ui-spa/src/router/index.ts
+// ui-spa/src/router/index.ts
 
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
@@ -25,16 +25,20 @@ const routes: RouteRecordRaw[] = [
 
  // Staff
   { path: '/staff', name: 'staff-home', component: () => import('@/pages/staff/StaffHome.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/class/:studentGroup', name: 'ClassHub', component: () => import('@/pages/staff/ClassHub.vue'), meta: { layout: 'staff' } },
 
 	{path: '/staff/morning-brief', name: 'MorningBriefing', component: () => import('@/pages/staff/morning_brief/MorningBriefing.vue'), meta: { layout: 'staff' } },
   { path: '/staff/student-groups', name: 'staff-student-groups', component: () => import('@/pages/staff/schedule/student-groups/StudentGroups.vue'), meta: { layout: 'staff' } },
-  { path: '/staff/attendance', name: 'staff-attendance', component: () => import('@/pages/staff/schedule/student-attendance-tool/StudentAttendanceTool.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/attendance', name: 'staff-attendance', component: () => import('@/pages/staff/schedule/StudentAttendanceTool.vue'), meta: { layout: 'staff' } },
   { path: '/staff/gradebook', name: 'staff-gradebook', component: () => import('@/pages/staff/gradebook/Gradebook.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/student-logs', name: 'staff-student-log-analytics', component: () => import('@/pages/staff/analytics/StudentLogAnalytics.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/student-demographics', name: 'student-demographic-analytics', component: () => import('@/pages/staff/analytics/StudentDemographicAnalytics.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/student-overview', name: 'staff-student-overview', component: () => import('@/pages/staff/analytics/StudentOverview.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/enrollment', name: 'StaffEnrollmentAnalytics', component: () => import('@/pages/staff/analytics/EnrollmentAnalytics.vue'), meta: { layout: 'staff' } },
   { path: '/staff/announcements', name: 'staff-announcements', component: () => import('@/pages/staff/OrgCommunicationArchive.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/inquiry', name: 'staff-inquiry-analytics', component: () => import('@/pages/staff/analytics/InquiryAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/room-utilization', name: 'staff-room-utilization', component: () => import('@/pages/staff/analytics/RoomUtilization.vue'), meta: { layout: 'staff' } },
+	{ path: '/analytics/scheduling/room-utilization', redirect: { name: 'staff-room-utilization' } },
 ]
 
 const router = createRouter({
@@ -45,12 +49,14 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const roles = (window as unknown as { portalRoles?: string[] }).portalRoles || []
+  const defaultPortal = (window as unknown as { defaultPortal?: string }).defaultPortal || 'student'
 
-  if (roles.includes('Student') && (to.path.startsWith('/staff') || to.path.startsWith('/guardian'))) {
-    return { name: 'student-home' }
+  const required = (to.meta as any)?.portal as string | undefined
+  if (required && !roles.includes(required)) {
+    return { name: `${defaultPortal}-home` }
   }
-
   return true
 })
+
 
 export default router

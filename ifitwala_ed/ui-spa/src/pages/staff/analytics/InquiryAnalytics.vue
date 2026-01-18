@@ -1,21 +1,30 @@
+<!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue -->
 <template>
   <div class="flex flex-col gap-6 p-6">
-    <header class="flex items-center justify-between">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <h1 class="type-h2 text-canopy">Inquiry Analytics</h1>
-      <button 
-        class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
-        @click="refresh"
-      >
-        Refresh
-      </button>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+        <DateRangePills
+          v-model="filters.date_preset"
+          :items="DATE_RANGES"
+          @change="handleDatePresetChange"
+        />
+        <button
+          class="fui-btn-primary rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95"
+          @click="refresh"
+        >
+          Refresh
+        </button>
+      </div>
     </header>
 
     <FiltersBar class="analytics-filters">
       <div class="flex flex-col gap-1">
         <label class="type-label">Academic Year</label>
-        <select 
-          v-model="filters.academic_year" 
+        <select
+          v-model="filters.academic_year"
           class="h-9 rounded-md border px-2 text-sm"
+          @change="handleAcademicYearChange"
         >
           <option value="">All Years</option>
           <option v-for="y in academicYears" :key="y" :value="y">{{ y }}</option>
@@ -25,23 +34,36 @@
       <div class="flex flex-col gap-1">
         <label class="type-label">Date Range</label>
         <div class="flex items-center gap-2">
-          <input 
-            type="date" 
+          <input
+            type="date"
             v-model="filters.from_date"
             class="h-9 rounded-md border px-2 text-sm"
+            @change="handleCustomDateChange"
           />
           <span class="text-slate-300">-</span>
-          <input 
-            type="date" 
+          <input
+            type="date"
             v-model="filters.to_date"
             class="h-9 rounded-md border px-2 text-sm"
+            @change="handleCustomDateChange"
           />
         </div>
       </div>
 
       <div class="flex flex-col gap-1">
+        <label class="type-label">Organization</label>
+        <select
+          v-model="filters.organization"
+          class="h-9 min-w-[160px] max-w-[220px] rounded-md border px-2 text-sm"
+        >
+          <option value="">All Organizations</option>
+          <option v-for="o in allowedOrganizations" :key="o" :value="o">{{ o }}</option>
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1">
         <label class="type-label">School</label>
-        <select 
+        <select
           v-model="filters.school"
           class="h-9 min-w-[140px] max-w-[200px] rounded-md border px-2 text-sm"
         >
@@ -52,7 +74,7 @@
 
       <div class="flex flex-col gap-1">
         <label class="type-label">Assignee</label>
-        <select 
+        <select
           v-model="filters.assigned_to"
           class="h-9 min-w-[140px] rounded-md border px-2 text-sm"
         >
@@ -63,7 +85,7 @@
 
       <div class="flex flex-col gap-1">
         <label class="type-label">Inquiry Type</label>
-        <select 
+        <select
           v-model="filters.type_of_inquiry"
           class="h-9 min-w-[140px] rounded-md border px-2 text-sm"
         >
@@ -110,26 +132,26 @@
 
       <!-- Detailed Stats & Trends -->
       <section class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        
+
         <!-- SLA & Response Stats -->
         <div class="flex flex-col gap-4 analytics-card">
            <h3 class="analytics-card__title">Performance Metrics</h3>
            <div class="flex flex-wrap gap-3">
-             <StatsTile 
-               label="SLA Compliance (30d)" 
-               :value="data?.sla?.pct_30d + '%'" 
+             <StatsTile
+               label="SLA Compliance (30d)"
+               :value="data?.sla?.pct_30d + '%'"
                :tone="slaTone"
              />
-             <StatsTile 
-               label="First Response (Avg)" 
-               :value="data?.averages?.overall?.first_contact_hours + 'h'" 
+             <StatsTile
+               label="First Response (Avg)"
+               :value="data?.averages?.overall?.first_contact_hours + 'h'"
              />
-             <StatsTile 
-               label="From Assign (Avg)" 
-               :value="data?.averages?.overall?.from_assign_hours + 'h'" 
+             <StatsTile
+               label="From Assign (Avg)"
+               :value="data?.averages?.overall?.from_assign_hours + 'h'"
              />
            </div>
-           
+
            <h4 class="mt-2 type-overline text-slate-400">Last 30 Days</h4>
            <div class="flex gap-4 text-sm">
              <div class="flex flex-col">
@@ -156,24 +178,43 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { getInquiryDashboardData, getInquiryTypes, searchAdmissionUsers, searchAcademicYears } from '@/lib/admission'
-import FiltersBar from '@/components/analytics/FiltersBar.vue'
+import {
+  getInquiryDashboardData,
+  getInquiryOrganizations,
+  getInquirySchools,
+  getInquiryTypes,
+  searchAdmissionUsers,
+  searchAcademicYears,
+} from '@/lib/admission'
+import FiltersBar from '@/components/filters/FiltersBar.vue'
 import KpiRow from '@/components/analytics/KpiRow.vue'
 import StatsTile from '@/components/analytics/StatsTile.vue'
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
 import HorizontalBarTopN from '@/components/analytics/HorizontalBarTopN.vue'
+import DateRangePills from '@/components/filters/DateRangePills.vue'
 
 // -- State --
 const loading = ref(false)
 const data = ref<any>(null)
 
+const DATE_RANGES = [
+  { label: 'Last 7 Days', value: '7d' },
+  { label: 'Last 30 Days', value: '30d' },
+  { label: 'Last 90 Days', value: '90d' },
+  { label: 'YTD', value: 'year' },
+  { label: 'All Time', value: 'all' },
+] as const
+
 const filters = ref({
+  date_mode: 'preset',
+  date_preset: '90d',
   academic_year: '',
   from_date: '',
   to_date: '',
   assigned_to: '',
   type_of_inquiry: '',
   sla_status: '',
+  organization: '',
   school: '',
 })
 
@@ -181,17 +222,23 @@ const filters = ref({
 const inquiryTypes = ref<string[]>([])
 const users = ref<{name: string, full_name: string}[]>([])
 const academicYears = ref<string[]>([])
+const allowedOrganizations = ref<string[]>([])
+const allowedSchools = ref<string[]>([])
 
 // -- Actions --
 async function loadOptions() {
-  const [types, userList, years] = await Promise.all([
+  const [types, userList, years, organizations, schools] = await Promise.all([
     getInquiryTypes(),
     searchAdmissionUsers(''),
-    searchAcademicYears('')
+    searchAcademicYears(''),
+    getInquiryOrganizations(),
+    getInquirySchools(),
   ])
   inquiryTypes.value = types || []
   if (userList) users.value = userList.map((u: any) => ({ name: u[0], full_name: u[1] }))
   if (years) academicYears.value = years.map((y: any) => y[0])
+  allowedOrganizations.value = organizations || []
+  allowedSchools.value = schools || []
 }
 
 async function refresh() {
@@ -204,6 +251,28 @@ async function refresh() {
   } finally {
     loading.value = false
   }
+}
+
+function handleDatePresetChange(value: string) {
+  if (!value) return
+  filters.value.date_mode = 'preset'
+  filters.value.date_preset = value
+  filters.value.from_date = ''
+  filters.value.to_date = ''
+  filters.value.academic_year = ''
+}
+
+function handleCustomDateChange() {
+  filters.value.date_mode = 'custom'
+  filters.value.date_preset = ''
+  filters.value.academic_year = ''
+}
+
+function handleAcademicYearChange() {
+  filters.value.date_mode = 'academic_year'
+  filters.value.date_preset = ''
+  filters.value.from_date = ''
+  filters.value.to_date = ''
 }
 
 watch(filters, () => {
@@ -231,10 +300,11 @@ const kpiItems = computed(() => {
 })
 
 const pipelineItems = computed(() => {
-  return (data.value?.pipeline || []).map((d: any) => ({
-    label: d.workflow_state,
-    value: d.count,
-    total: data.value?.summary?.total_inquiries || 1,
+  const total = data.value?.counts?.total || 0
+  return (data.value?.pipeline_by_state || []).map((d: any) => ({
+    label: d.label,
+    count: d.value,
+    pct: total ? Math.round((d.value / total) * 100) : 0,
   }))
 })
 

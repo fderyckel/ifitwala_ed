@@ -9,7 +9,6 @@ Current scope
     • Student Group teaching slots
     • Meetings
     • School Events
-    • Frappe Events
 
 - Student / guardian views that need:
     • merged calendar feeds
@@ -40,7 +39,7 @@ What this module does NOT do
 - It does NOT own rotation/term logic or schedule resolution.
     • Rotation days and academic-year spans live in:
       ifitwala_ed.schedule.schedule_utils
-      (e.g. get_rotation_dates, get_effective_schedule_for_ay).
+      (e.g. get_effective_schedule_for_ay).
 
 - It does NOT enforce Student Group business rules or validation.
     • Those live in:
@@ -73,11 +72,13 @@ import frappe
 from frappe import _
 from frappe.utils import get_datetime, get_system_timezone, getdate, now_datetime, format_datetime
 
-from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay
-from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar, iter_student_group_room_slots
+from ifitwala_ed.schedule.schedule_utils import (
+	get_effective_schedule_for_ay,
+	get_weekend_days_for_calendar,
+)
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
-VALID_SOURCES = {"student_group", "meeting", "school_event", "frappe_event"}
+VALID_SOURCES = {"student_group", "meeting", "school_event", "staff_holiday"}
 
 DEFAULT_WINDOW_DAYS = 30
 LOOKBACK_DAYS = 3
@@ -159,6 +160,18 @@ def get_staff_calendar(
 			events.append(evt)
 			source_counts[evt.source] += 1
 
+	if "staff_holiday" in source_list:
+		holiday_events = _collect_staff_holiday_events(
+			user,
+			window_start,
+			window_end,
+			tzinfo,
+			employee_id=employee_id,
+		)
+		for evt in holiday_events:
+			events.append(evt)
+			source_counts[evt.source] += 1
+
 	if "meeting" in source_list:
 		meeting_events = _collect_meeting_events(user, window_start, window_end, tzinfo)
 		for evt in meeting_events:
@@ -168,12 +181,6 @@ def get_staff_calendar(
 	if "school_event" in source_list:
 		se_events = _collect_school_events(user, window_start, window_end, tzinfo)
 		for evt in se_events:
-			events.append(evt)
-			source_counts[evt.source] += 1
-
-	if "frappe_event" in source_list:
-		frappe_events = _collect_frappe_events(user, window_start, window_end, tzinfo)
-		for evt in frappe_events:
 			events.append(evt)
 			source_counts[evt.source] += 1
 
@@ -277,6 +284,12 @@ def _coerce_time(value) -> Optional[time]:
 		return value
 	if isinstance(value, datetime):
 		return value.time()
+	if isinstance(value, timedelta):
+		total = int(value.total_seconds())
+		hours = (total // 3600) % 24
+		minutes = (total % 3600) // 60
+		seconds = total % 60
+		return time(hour=hours, minute=minutes, second=seconds)
 	if isinstance(value, (bytes, bytearray)):
 		value = value.decode()
 	if isinstance(value, str):
@@ -432,6 +445,97 @@ def _student_group_memberships(
 
 
 # ---------------------------------------------------------------------------
+# Staff Calendar resolution
+# ---------------------------------------------------------------------------
+
+def _resolve_staff_calendar_for_employee(
+	employee_id: str,
+	start_date: date,
+	end_date: date,
+) -> Optional[dict]:
+	"""
+	Return the single best Staff Calendar match for this employee and window.
+
+	Rule:
+	- employee_group must match
+	- calendar must overlap [start_date, end_date]
+	- calendar school is chosen by nearest match in the employee school's ancestor chain
+	  (employee school first, then parent, then grandparent...)
+
+	This enables parent-school staff calendars to apply to descendant schools,
+	while still allowing child calendars to override.
+	"""
+	if not employee_id:
+		return None
+
+	# employee_group is permlevel=1, so ignore_permissions is required here
+	emp_rows = frappe.get_all(
+		"Employee",
+		filters={"name": employee_id},
+		fields=["name", "school", "employee_group"],
+		limit=1,
+		ignore_permissions=True,
+	)
+
+	if not emp_rows:
+		return None
+
+	emp = emp_rows[0]
+	employee_school = emp.get("school")
+	employee_group = emp.get("employee_group")
+
+	if not employee_school or not employee_group:
+		return None
+
+	# Build school chain (nearest-first): [employee_school] + ancestors
+	from frappe.utils.nestedset import get_ancestors_of
+	ancestors = get_ancestors_of("School", employee_school) or []
+	school_chain = [employee_school] + ancestors
+
+	# Fetch all overlapping calendars for any school in chain
+	cals = frappe.get_all(
+		"Staff Calendar",
+		filters={
+			"employee_group": employee_group,
+			"school": ["in", school_chain],
+			"from_date": ["<=", end_date],
+			"to_date": [">=", start_date],
+		},
+		fields=["name", "school", "employee_group", "from_date", "to_date"],
+		ignore_permissions=True,
+	)
+
+	if not cals:
+		return None
+
+	# Choose nearest school match
+	rank = {school: i for i, school in enumerate(school_chain)}
+	cals.sort(key=lambda r: rank.get(r.get("school"), 10**9))
+
+	# Multiple matches should be prevented by Staff Calendar overlap validation.
+	# Still log deterministically and continue.
+	if len(cals) > 1:
+		frappe.logger("ifitwala_ed.calendar").warning(
+			"Multiple Staff Calendar matches; using nearest school match",
+			{
+				"employee": employee_id,
+				"employee_school": employee_school,
+				"employee_group": employee_group,
+				"window_start": start_date.isoformat(),
+				"window_end": end_date.isoformat(),
+				"matches": [c.get("name") for c in cals[:10]],
+			},
+		)
+
+	best = cals[0]
+	return {
+		"name": best.get("name"),
+		"school": best.get("school"),
+		"employee_group": best.get("employee_group"),
+	}
+
+
+# ---------------------------------------------------------------------------
 # Student Group slots
 # ---------------------------------------------------------------------------
 
@@ -444,16 +548,7 @@ def _collect_student_group_events(
 	employee_id: Optional[str] = None,
 ) -> List[CalendarEvent]:
 	employee_id = employee_id or frappe.db.get_value("Employee", {"user_id": user}, "name")
-	booking_events = _collect_student_group_events_from_bookings(employee_id, window_start, window_end, tzinfo)
-	if booking_events:
-		return booking_events
-	return _collect_student_group_events_from_schedule(
-		user,
-		window_start,
-		window_end,
-		tzinfo,
-		employee_id=employee_id,
-	)
+	return _collect_student_group_events_from_bookings(employee_id, window_start, window_end, tzinfo)
 
 
 def _collect_student_group_events_from_bookings(
@@ -532,113 +627,73 @@ def _collect_student_group_events_from_bookings(
 	return events
 
 
-def _collect_student_group_events_from_schedule(
+# ---------------------------------------------------------------------------
+# Staff Holidays
+# ---------------------------------------------------------------------------
+
+def _collect_staff_holiday_events(
 	user: str,
 	window_start: datetime,
 	window_end: datetime,
 	tzinfo: pytz.timezone,
-	*,
 	employee_id: Optional[str] = None,
 ) -> List[CalendarEvent]:
-
-	start_date, end_date = window_start.date(), window_end.date()
-
-	employee_id = employee_id or frappe.db.get_value("Employee", {"user_id": user}, "name")
-	instructor_ids = _resolve_instructor_ids(user, employee_id)
-	sgi_groups, instructor_ids = _student_group_memberships(user, employee_id, instructor_ids)
-
-	# 1) Resolve all candidate groups via schedule + SG Instructor
-	group_names: set[str] = set()
-
-	if instructor_ids:
-		sg_from_sched = frappe.get_all(
-			"Student Group Schedule",
-			filters={
-				"parenttype": "Student Group",
-				"instructor": ["in", list(instructor_ids)],
-			},
-			pluck="parent",
-			distinct=True,
-			ignore_permissions=True,
-		)
-		group_names.update(sg_from_sched or [])
-
-	group_names.update(sgi_groups)
-
-	if not group_names:
+	if not employee_id:
 		return []
 
-	group_docs = frappe.get_all(
-		"Student Group",
-		filters={"name": ["in", list(group_names)], "status": "Active"},
-		fields=[
-			"name",
-			"student_group_name",
-			"course",
-			"program",
-			"program_offering",
-			"school",
-			"school_schedule",
-			"academic_year",
-		],
+	start_date = getdate(window_start)
+	end_date = getdate(window_end - timedelta(seconds=1))
+
+	cal = _resolve_staff_calendar_for_employee(employee_id, start_date, end_date)
+	if not cal:
+		return []
+
+	holiday_rows = frappe.get_all(
+		"Staff Calendar Holidays",
+		filters={
+			"parent": cal["name"],
+			"holiday_date": ["between", [start_date, end_date]],
+		},
+		fields=["holiday_date", "description", "color", "weekly_off"],
+		order_by="holiday_date asc",
 		ignore_permissions=True,
 	)
 
-	if not group_docs:
+	if not holiday_rows:
 		return []
 
-	course_meta = _course_meta_map(g.course for g in group_docs if g.course)
-
+	default_color = "#64748B"
 	events: List[CalendarEvent] = []
 
-	for group in group_docs:
-		title, color = _student_group_title_and_color(
-			group.name,
-			group.student_group_name,
-			group.course,
-			course_meta,
-		)
-
-		# 2) Use shared room-slot expander; includes rotation logic + holiday skips.
-		slots = iter_student_group_room_slots(
-			group.name,
-			start_date=start_date,
-			end_date=end_date,
-		)
-		if not slots:
+	for row in holiday_rows:
+		hd = getdate(row.get("holiday_date"))
+		if not hd:
 			continue
 
-		for slot in slots:
-			start_raw = slot.get("start")
-			end_raw = slot.get("end")
-			if not start_raw:
-				continue
+		start_dt = _combine(hd, time(0, 0, 0), tzinfo)
+		end_dt = _combine(hd + timedelta(days=1), time(0, 0, 0), tzinfo)
 
-			start_dt = _to_system_datetime(start_raw, tzinfo)
-			end_dt = _to_system_datetime(end_raw, tzinfo) if end_raw else None
-			duration = _attach_duration(start_dt, end_dt)
-			session_date = start_dt.date()
-			rotation_day = slot.get("rotation_day")
-			block_number = slot.get("block_number")
+		title = (row.get("description") or "").strip() or _("Holiday")
+		color = (row.get("color") or "").strip() or default_color
 
-			events.append(
-				CalendarEvent(
-					id=f"sg::{group.name}::{rotation_day}::{block_number}::{session_date.isoformat()}",
-					title=title,
-					start=start_dt,
-					end=start_dt + duration,
-					source="student_group",
-					color=color,
-					all_day=False,
-					meta={
-						"student_group": group.name,
-						"course": group.course,
-						"rotation_day": rotation_day,
-						"block_number": block_number,
-						"location": slot.get("location"),
-					},
-				)
+		events.append(
+			CalendarEvent(
+				id=f"staff_holiday::{cal['name']}::{hd.isoformat()}",
+				title=title,
+				start=start_dt,
+				end=end_dt,
+				source="staff_holiday",
+				color=color,
+				all_day=True,
+				meta={
+					"staff_calendar": cal["name"],
+					"holiday_date": hd.isoformat(),
+					"weekly_off": int(row.get("weekly_off") or 0),
+					"employee_group": cal["employee_group"],
+					"school": cal["school"],
+				},
 			)
+		)
 
 	return events
 
@@ -881,18 +936,26 @@ def get_school_event_details(event: str):
 
 
 @frappe.whitelist()
-def get_student_group_event_details():
+def get_student_group_event_details(
+	event_id: Optional[str] = None,
+	eventId: Optional[str] = None,
+	id: Optional[str] = None,
+):
 	"""
 	Resolve a class (Student Group) calendar entry into a richer payload for the portal modal.
-	Supports both schedule-based ids (sg::...) and Employee Booking fallbacks (sg-booking::...).
+	Supports Employee Booking ids (sg-booking::...). Schedule-based ids are
+	available only in explicit debug/abstract viewers.
 	"""
-	event_id = (
-		frappe.form_dict.get("event_id")
+	resolved_event_id = (
+		event_id
+		or eventId
+		or id
+		or frappe.form_dict.get("event_id")
 		or frappe.form_dict.get("eventId")
 		or frappe.form_dict.get("id")
 	)
 
-	if not event_id:
+	if not resolved_event_id:
 		frappe.throw(_("Missing class event id."), frappe.ValidationError)
 
 	user = frappe.session.user
@@ -901,10 +964,24 @@ def get_student_group_event_details():
 
 	tzinfo = _system_tzinfo()
 
-	if event_id.startswith("sg::"):
-		context = _resolve_sg_schedule_context(event_id, tzinfo)
-	elif event_id.startswith("sg-booking::"):
-		context = _resolve_sg_booking_context(event_id, tzinfo)
+	debug_booking = bool(
+		frappe.form_dict.get("debug_booking")
+		or frappe.form_dict.get("debug")
+	)
+	debug_schedule = bool(
+		frappe.form_dict.get("debug_schedule")
+		or frappe.form_dict.get("debug")
+	)
+
+	if resolved_event_id.startswith("sg::"):
+		if not debug_schedule:
+			frappe.throw(
+				_("Schedule-based class events are only available in debug/abstract viewers."),
+				frappe.PermissionError,
+			)
+		context = _resolve_sg_schedule_context(resolved_event_id, tzinfo)
+	elif resolved_event_id.startswith("sg-booking::"):
+		context = _resolve_sg_booking_context(resolved_event_id, tzinfo, debug=debug_booking)
 	else:
 		frappe.throw(_("Unsupported class event format."), frappe.ValidationError)
 
@@ -943,7 +1020,7 @@ def get_student_group_event_details():
 		end_dt = start_dt + CAL_MIN_DURATION
 
 	return {
-		"id": event_id,
+		"id": resolved_event_id,
 		"student_group": group_row.name,
 		"title": group_row.student_group_name or group_row.name,
 		"class_type": group_row.group_based_on,
@@ -957,11 +1034,13 @@ def get_student_group_event_details():
 		"block_label": context.get("block_label"),
 		"session_date": context.get("session_date"),
 		"location": context.get("location"),
+		"location_missing_reason": context.get("location_missing_reason"),
 		"start": start_dt.isoformat() if start_dt else None,
 		"end": end_dt.isoformat() if end_dt else None,
 		"start_label": format_datetime(start_dt) if start_dt else None,
 		"end_label": format_datetime(end_dt) if end_dt else None,
 		"timezone": tzinfo.zone,
+		"_debug": context.get("_debug") if debug_booking else None,
 	}
 
 
@@ -1104,6 +1183,7 @@ def _meeting_access_allowed(meeting, participants: List[Dict[str, str]], user: s
 
 
 def _resolve_sg_schedule_context(event_id: str, tzinfo: pytz.timezone) -> Dict[str, object]:
+	"""Debug/abstract schedule resolver (not for production calendar reads)."""
 	event_id = event_id.replace("sg/", "sg::", 1) if event_id.startswith("sg/") else event_id
 	parts = event_id.split("::")
 	if len(parts) < 5:
@@ -1157,30 +1237,51 @@ def _resolve_sg_schedule_context(event_id: str, tzinfo: pytz.timezone) -> Dict[s
 	}
 
 
-def _resolve_sg_booking_context(event_id: str, tzinfo: pytz.timezone) -> Dict[str, object]:
+def _resolve_sg_booking_context(
+	event_id: str,
+	tzinfo: pytz.timezone,
+	*,
+	debug: bool = False,
+) -> Dict[str, object]:
 	booking_name = event_id.split("::", 1)[1]
 	row = frappe.db.get_value(
 		"Employee Booking",
 		booking_name,
-		["source_doctype", "source_name", "from_datetime", "to_datetime"],
-		as_dict=True
+		["source_doctype", "source_name", "from_datetime", "to_datetime", "location"],
+		as_dict=True,
 	)
 	if not row or row.source_doctype != "Student Group":
-		frappe.throw(_("Employee Booking {0} was not found for a class.").format(booking_name), frappe.DoesNotExistError)
+		frappe.throw(
+			_("Employee Booking {0} was not found for a class.").format(booking_name),
+			frappe.DoesNotExistError,
+		)
 
 	start_dt = _to_system_datetime(row.from_datetime, tzinfo) if row.from_datetime else None
 	end_dt = _to_system_datetime(row.to_datetime, tzinfo) if row.to_datetime else None
 
-	return {
+	location = row.get("location") or None
+	location_missing_reason = None if location else "booking-missing-location"
+
+	context = {
 		"student_group": row.source_name,
 		"rotation_day": None,
 		"block_number": None,
 		"block_label": None,
 		"session_date": start_dt.date().isoformat() if start_dt else None,
-		"location": None,
+		"location": location,
+		"location_missing_reason": location_missing_reason,
 		"start": start_dt,
 		"end": end_dt,
 	}
+
+	if debug:
+		context["_debug"] = {
+			"booking_name": booking_name,
+			"location_present": bool(location),
+			"location_missing_reason": location_missing_reason,
+		}
+
+	return context
 
 
 def _user_has_student_group_access(user: str, group_name: str) -> bool:
@@ -1228,72 +1329,6 @@ def _school_event_access_allowed(event_doc, user: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Frappe Events
-# ---------------------------------------------------------------------------
-
-def _collect_frappe_events(
-	user: str,
-	window_start: datetime,
-	window_end: datetime,
-	tzinfo: pytz.timezone,
-) -> List[CalendarEvent]:
-	rows = frappe.db.sql(
-		"""
-		SELECT
-			ev.name,
-			ev.subject,
-			ev.starts_on,
-			ev.ends_on,
-			ev.all_day,
-			ev.event_category,
-			ev.color
-		FROM `tabEvent Participants` ep
-		INNER JOIN `tabEvent` ev ON ev.name = ep.parent
-		WHERE ep.parenttype = 'Event'
-			AND ep.reference_doctype = 'User'
-			AND ep.reference_docname = %(user)s
-			AND ev.docstatus < 2
-			AND (
-				(ev.starts_on BETWEEN %(start)s AND %(end)s)
-				OR (ev.ends_on BETWEEN %(start)s AND %(end)s)
-				OR (ev.starts_on <= %(start)s AND ev.ends_on >= %(end)s)
-			)
-		""",
-		{
-			"user": user,
-			"start": window_start,
-			"end": window_end,
-		},
-		as_dict=True,
-	)
-
-	if not rows:
-		return []
-
-	events: List[CalendarEvent] = []
-	for row in rows:
-		start_dt = _to_system_datetime(row.starts_on, tzinfo) if row.starts_on else window_start
-		end_dt = _to_system_datetime(row.ends_on, tzinfo) if row.ends_on else (start_dt + CAL_MIN_DURATION)
-		if end_dt <= start_dt:
-			end_dt = start_dt + CAL_MIN_DURATION
-		color = (row.color or "").strip() or "#f59e0b"
-		events.append(
-			CalendarEvent(
-				id=f"frappe_event::{row.name}",
-				title=row.subject or _("Event"),
-				start=start_dt,
-				end=end_dt,
-				source="frappe_event",
-				color=color,
-				all_day=bool(row.all_day),
-				meta={"category": row.event_category},
-			)
-		)
-
-	return events
-
-
-# ---------------------------------------------------------------------------
 # Debug helpers
 # ---------------------------------------------------------------------------
 
@@ -1332,6 +1367,44 @@ def debug_staff_calendar_window(from_datetime: Optional[str] = None, to_datetime
 
 	# quick sample of student group events only (limit 10)
 	sample = _collect_student_group_events(user, start, end, tzinfo)[:10]
+	holiday_events = _collect_staff_holiday_events(
+		user,
+		start,
+		end,
+		tzinfo,
+		employee_id=emp,
+	)
+	holiday_sample = holiday_events[:5]
+	booking_samples = []
+	if emp and frappe.db.table_exists("Employee Booking"):
+		booking_rows = frappe.get_all(
+			"Employee Booking",
+			filters={
+				"employee": emp,
+				"source_doctype": "Student Group",
+				"docstatus": ["<", 2],
+				"from_datetime": ["<", end],
+				"to_datetime": [">", start],
+			},
+			fields=["name", "source_name", "from_datetime", "to_datetime"],
+			order_by="from_datetime desc",
+			limit=5,
+			ignore_permissions=True,
+		)
+		for row in booking_rows:
+			context = _resolve_sg_booking_context(f"sg-booking::{row.name}", tzinfo, debug=True)
+			booking_samples.append(
+				{
+					"booking": row.name,
+					"student_group": row.source_name,
+					"from": row.from_datetime,
+					"to": row.to_datetime,
+					"rotation_day": context.get("rotation_day"),
+					"block_number": context.get("block_number"),
+					"location": context.get("location"),
+					"resolution": context.get("_debug"),
+				}
+			)
 
 	return {
 		"user": user,
@@ -1340,6 +1413,9 @@ def debug_staff_calendar_window(from_datetime: Optional[str] = None, to_datetime
 		"instructor_ids": sorted(instr),
 		"sg_instructor_groups": sorted(sgi),
 		"sample_events": [e.as_dict() for e in sample],
+		"staff_holiday_count": len(holiday_events),
+		"staff_holiday_sample": [e.as_dict() for e in holiday_sample],
+		"booking_samples": booking_samples,
 	}
 
 

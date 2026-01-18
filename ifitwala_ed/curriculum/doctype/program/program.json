@@ -17,6 +17,7 @@
   "is_group",
   "archive",
   "assessments_section",
+  "grade_scale",
   "points",
   "binary",
   "column_break_yt79",
@@ -226,6 +227,12 @@
    "label": "Assessments"
   },
   {
+   "fieldname": "grade_scale",
+   "fieldtype": "Link",
+   "label": "Grade Scale",
+   "options": "Grade Scale"
+  },
+  {
    "fieldname": "courses_and_prerequisites",
    "fieldtype": "Tab Break",
    "label": "Courses & Prerequisites"
@@ -284,7 +291,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-12-08 11:39:49.024564",
+ "modified": "2025-12-08 11:39:50",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",

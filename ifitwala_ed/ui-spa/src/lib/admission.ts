@@ -1,20 +1,28 @@
+// ifitwala_ed/ui-spa/src/lib/admission.ts
+
 import { api } from './client'
 
 export const ADMISSION_API = {
   dashboard: 'ifitwala_ed.api.inquiry.get_dashboard_data',
   inquiryTypes: 'ifitwala_ed.api.inquiry.get_inquiry_types',
+  organizations: 'ifitwala_ed.api.inquiry.get_inquiry_organizations',
+  schools: 'ifitwala_ed.api.inquiry.get_inquiry_schools',
   // Reusing the existing link query if needed, though often we just want a simple list for dropdowns
   academicYears: 'ifitwala_ed.api.inquiry.academic_year_link_query',
   users: 'ifitwala_ed.api.inquiry.admission_user_link_query',
 }
 
 export type DashboardFilters = {
+  date_mode?: 'preset' | 'custom' | 'academic_year'
+  date_preset?: string
   from_date?: string
   to_date?: string
   academic_year?: string
   type_of_inquiry?: string
   assigned_to?: string
-  sla_status?: string // 'Overdue', 'Due Today', 'Upcoming' 
+  sla_status?: string // 'Overdue', 'Due Today', 'Upcoming'
+  organization?: string
+  school?: string
 }
 
 export function getInquiryDashboardData(filters: DashboardFilters = {}) {
@@ -45,4 +53,12 @@ export function searchAdmissionUsers(txt: string) {
     page_len: 20,
     filters: {},
   })
+}
+
+export function getInquiryOrganizations() {
+  return api(ADMISSION_API.organizations)
+}
+
+export function getInquirySchools() {
+  return api(ADMISSION_API.schools)
 }

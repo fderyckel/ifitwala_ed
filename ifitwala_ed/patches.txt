@@ -1,0 +1,7 @@
+ifitwala_ed.patches.migrate_org_communication_audiences
+ifitwala_ed.patches.employee_booking
+ifitwala_ed.patches.add_location_booking_indexes
+ifitwala_ed.patches.backfill_location_bookings
+ifitwala_ed.patches.v0_0.create_minimal_coa
+ifitwala_ed.patches.v0_0.create_default_account_holders
+ifitwala_ed.patches.v0_0.migrate_course_prerequisites

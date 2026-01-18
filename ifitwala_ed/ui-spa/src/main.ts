@@ -4,11 +4,11 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 import { FrappeUI, setConfig } from 'frappe-ui';
-import { setupFrappeUI } from './resources/frappe';
+import { setupFrappeUI } from './lib/frappe';
 
 // Tailwind entry + portal styles
 import './style.css';
-
+import './styles/app.css';
 
 // Configure real‑time to use your bench’s socket.io server.
 // Frappe’s default socket server runs on port 9000 and uses HTTP.
@@ -22,21 +22,22 @@ setConfig('realtime', {
   withCredentials: true,
 });
 
+
 async function bootstrap() {
-  // Set fetchOptions and CSRF token
   await setupFrappeUI();
 
-  createApp(App)
+  const app = createApp(App)
     .use(FrappeUI, {
-      // Tell Frappe‑UI to send the sid cookie on every call
       useSession: true,
-      // Disable auto‑connecting the socket on the portal; the student/staff
-      // portal doesn’t need real‑time events
       connectSocket: false,
     })
     .use(router)
-    .mount('#app');
+
+  await router.isReady()
+
+  app.mount('#app')
 }
+
 
 bootstrap().catch((err) => {
   // eslint-disable-next-line no-console

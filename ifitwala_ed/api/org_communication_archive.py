@@ -11,7 +11,7 @@ from ifitwala_ed.utilities.employee_utils import (
 	get_user_base_school,
 )
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
-from ifitwala_ed.api.org_comm_utils import check_audience_match
+from ifitwala_ed.api.org_comm_utils import check_audience_match, build_audience_summary
 from frappe import _
 
 
@@ -239,7 +239,7 @@ def get_archive_context():
 	data["organizations"] = frappe.get_all(
 		"Organization",
 		filters=org_filters or None,
-		fields=["name", "organization_name"],
+		fields=["name", "organization_name", "abbr"],
 		order_by="lft asc",
 	)
 
@@ -255,7 +255,7 @@ def get_archive_context():
 	data["schools"] = frappe.get_all(
 		"School",
 		filters=school_filters or None,
-		fields=["name", "school_name", "organization"],
+		fields=["name", "school_name", "abbr", "organization"],
 		order_by="school_name asc",
 	)
 
@@ -303,6 +303,7 @@ def get_org_communication_item(name=None):
 		"priority": doc.priority,
 		"publish_from": doc.publish_from,
 		"audience_label": get_audience_label(doc.name),
+		"audience_summary": build_audience_summary(doc.name),
 	}
 
 
@@ -364,6 +365,25 @@ def get_org_communication_feed(
 	if isinstance(filter_team_val, str):
 		filter_team_val = filter_team_val.strip() or None
 
+	filter_school_val = filters_dict.get("school")
+	if isinstance(filter_school_val, str):
+		filter_school_val = filter_school_val.strip() or None
+
+	# Defensive mutual exclusivity (student_group > team > school)
+	if filter_sg_val:
+		filter_team_val = None
+		filter_school_val = None
+	elif filter_team_val:
+		filter_school_val = None
+		filter_sg_val = None
+	elif filter_school_val:
+		filter_team_val = None
+		filter_sg_val = None
+
+	filters_dict["student_group"] = filter_sg_val
+	filters_dict["team"] = filter_team_val
+	filters_dict["school"] = filter_school_val
+
 	frappe.logger("org_comm_archive").warning({
 		"raw_filters": raw_filters,
 		"filters_dict": filters_dict,
@@ -400,7 +420,6 @@ def get_org_communication_feed(
 		org_guard = {org_filter}
 
 	# Optional school guard for user scope (UI filter must be within allowed scope)
-	filter_school_val = filters_dict.get("school")
 	if (
 		filter_school_val
 		and school_scope
@@ -473,15 +492,19 @@ def get_org_communication_feed(
 		values["org_guard"] = tuple(org_guard)
 
 	if filters_dict.get("only_with_interactions"):
+		# Semantics: "only_with_interactions" means "has at least one COMMENT"
+		# (reactions alone must NOT qualify an item)
 		conditions.append(
-			"EXISTS (SELECT name FROM `tabCommunication Interaction` "
-			"WHERE org_communication = `tabOrg Communication`.name)"
+			"EXISTS ("
+			"SELECT ci.name FROM `tabCommunication Interaction` ci "
+			"WHERE ci.org_communication = `tabOrg Communication`.name "
+			"AND ci.intent_type = 'Comment'"
+			")"
 		)
 
 	# ──────────────────────────────────────────────
-	# STRICT PREFILTERS FOR TEAM / STUDENT GROUP
+	# STRICT PREFILTERS FOR MUTUALLY-EXCLUSIVE SCOPES
 	# (speed + eliminates “matched via other audience row” confusion)
-	# Student group wins if both exist (defensive).
 	# ──────────────────────────────────────────────
 
 	if isinstance(filter_sg_val, str):
@@ -499,9 +522,6 @@ def get_org_communication_feed(
 		)
 		values["filter_student_group"] = filter_sg_val
 
-		# Enforce mutual exclusivity on the server too
-		filter_team_val = None
-
 	elif filter_team_val:
 		conditions.append(
 			"EXISTS ("
@@ -513,6 +533,16 @@ def get_org_communication_feed(
 			")"
 		)
 		values["filter_team"] = filter_team_val
+	elif filter_school_val:
+		conditions.append(
+			"EXISTS ("
+			"SELECT a.name FROM `tabOrg Communication Audience` a "
+			"WHERE a.parent = `tabOrg Communication`.name "
+			"AND a.parenttype = 'Org Communication' "
+			"AND a.parentfield = 'audiences' "
+			"AND a.target_mode = 'School Scope'"
+			")"
+		)
 
 	where_clause = " AND ".join(conditions)
 	if where_clause:
@@ -580,6 +610,7 @@ def get_org_communication_feed(
 				"snippet": snippet,
 				"has_active_thread": c.allow_public_thread,
 				"audience_label": get_audience_label(c.name),
+				"audience_summary": build_audience_summary(c.name),
 			})
 
 	# Apply pagination on the filtered list
@@ -597,26 +628,109 @@ def get_org_communication_feed(
 	}
 
 
-def get_audience_label(comm_name):
-    # Quick helper to generate a human-readable audience summary
-    # e.g. "Whole Staff · Ifitwala Secondary School"
-    audiences = frappe.get_all("Org Communication Audience", filters={"parent": comm_name}, fields=["target_group", "school", "team", "program", "student_group"])
-    if not audiences:
-        return "Whole Organization"
+def get_audience_label(comm_name: str) -> str:
+	"""
+	Human-friendly audience label for list + detail UI.
+	Uses abbreviations where possible:
+	- School.abbr
+	- Organization.abbr
+	- Student Group.student_group_abbreviation
+	- Team.team_code (fallback team_name)
+	"""
 
-    parts = []
-    for a in audiences:
-        label = a.target_group or a.team or "Everyone"
-        if a.student_group:
-             label = f"Student Group: {a.student_group}"
+	audiences = frappe.get_all(
+		"Org Communication Audience",
+		filters={"parent": comm_name},
+		fields=[
+			"target_mode",
+			"school",
+			"team",
+			"student_group",
+			"to_staff",
+			"to_students",
+			"to_guardians",
+			"to_community",
+		],
+	)
 
-        if a.school:
-            # Fix 500 error: Use get_cached_value to avoid column issues if caching is smart,
-            # OR just fetch the correct field safely.
-            # Note: frappe.db.get_value can throw if column doesn't exist in cache sometimes?
-            # Safest is get_cached_value which uses `name` lookup.
-            school_name = frappe.get_cached_value("School", a.school, "school_name")
-            label += f" · {school_name or a.school}"
-        parts.append(label)
+	if not audiences:
+		doc = frappe.db.get_value(
+			"Org Communication",
+			comm_name,
+			["school", "organization"],
+			as_dict=True,
+		) or {}
+		if doc.get("school"):
+			abbr = frappe.get_cached_value("School", doc["school"], "abbr") or doc["school"]
+			return abbr
+		if doc.get("organization"):
+			abbr = frappe.get_cached_value("Organization", doc["organization"], "abbr") or doc["organization"]
+			return abbr
+		return "Whole Organisation"
 
-    return ", ".join(parts)
+	def _as_bool(v):
+		return v in (1, "1", True)
+
+	# Recipient groups (union across all audience rows)
+	recipients = []
+	if any(_as_bool(a.get("to_staff")) for a in audiences):
+		recipients.append("Staff")
+	if any(_as_bool(a.get("to_students")) for a in audiences):
+		recipients.append("Students")
+	if any(_as_bool(a.get("to_guardians")) for a in audiences):
+		recipients.append("Guardians")
+	if any(_as_bool(a.get("to_community")) for a in audiences):
+		recipients.append("Community")
+	recipients_label = " · ".join(recipients) if recipients else "Audience"
+
+	school_abbrs = []
+	team_labels = []
+	group_labels = []
+
+	for a in audiences:
+		mode = (a.get("target_mode") or "").strip()
+
+		if mode == "Student Group" and a.get("student_group"):
+			sg = a["student_group"]
+			sg_abbr = frappe.get_cached_value("Student Group", sg, "student_group_abbreviation") or sg
+			group_labels.append(sg_abbr)
+
+		elif mode == "Team" and a.get("team"):
+			t = a["team"]
+			code = frappe.get_cached_value("Team", t, "team_code")
+			name = frappe.get_cached_value("Team", t, "team_name") or t
+			team_labels.append(code or name)
+
+		elif mode == "School Scope" and a.get("school"):
+			s = a["school"]
+			abbr = frappe.get_cached_value("School", s, "abbr") or s
+			school_abbrs.append(abbr)
+
+	def _dedupe_sorted(vals):
+		return sorted(set([v for v in vals if v]))
+
+	group_labels = _dedupe_sorted(group_labels)
+	team_labels = _dedupe_sorted(team_labels)
+	school_abbrs = _dedupe_sorted(school_abbrs)
+
+	scope_parts = []
+	if group_labels:
+		scope_parts.append(" / ".join(group_labels))
+	if team_labels:
+		scope_parts.append(" / ".join(team_labels))
+	if not scope_parts and school_abbrs:
+		if len(school_abbrs) <= 2:
+			scope_parts.append(" · ".join(school_abbrs))
+		else:
+			scope_parts.append(f"{school_abbrs[0]} · {school_abbrs[1]} +{len(school_abbrs)-2}")
+
+	if not scope_parts:
+		org = frappe.db.get_value("Org Communication", comm_name, "organization")
+		if org:
+			org_abbr = frappe.get_cached_value("Organization", org, "abbr") or org
+			scope_parts.append(org_abbr)
+		else:
+			scope_parts.append("Whole Organisation")
+
+	scope_label = " , ".join(scope_parts)
+	return f"{recipients_label} · {scope_label}"

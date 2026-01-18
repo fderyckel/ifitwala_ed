@@ -44,7 +44,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-30 10:28:03.568618",
+ "modified": "2026-01-14 07:20:19.839566",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Next Step",
@@ -80,12 +80,26 @@
    "role": "Academic Staff"
   },
   {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Learning Support",
+   "share": 1
+  },
+  {
    "read": 1,
    "role": "Instructor"
   },
   {
    "read": 1,
-   "role": "Counselor"
+   "role": "Counsellor"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
   }
  ],
  "row_format": "Dynamic",

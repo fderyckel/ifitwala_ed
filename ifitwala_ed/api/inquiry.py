@@ -13,18 +13,59 @@ def _ay_bounds(academic_year: str):
 	)
 	return start, end
 
+PRESET_ALIASES = {
+	"last_7": "7d",
+	"last_30": "30d",
+	"last_90": "90d",
+	"ytd": "year",
+	"all_time": "all",
+}
+
+def _normalize_preset(value: str | None):
+	if not value:
+		return None
+	preset = value.strip().lower()
+	return PRESET_ALIASES.get(preset, preset)
+
+def _preset_bounds(preset: str):
+	preset = _normalize_preset(preset)
+	if not preset:
+		return None, None
+
+	today = getdate(nowdate())
+	if preset == "7d":
+		return add_days(today, -7), today
+	if preset == "30d":
+		return add_days(today, -30), today
+	if preset == "90d":
+		return add_days(today, -90), today
+	if preset == "year":
+		return getdate(f"{today.year}-01-01"), today
+	if preset == "all":
+		return getdate("1900-01-01"), today
+	return None, None
+
 def _resolve_window(filters: dict):
-	# precedence: explicit dates > academic_year > last 365 days
+	mode = (filters.get("date_mode") or "").strip()
+	preset = filters.get("date_preset")
 	fd = filters.get("from_date")
 	td = filters.get("to_date")
 	ay = filters.get("academic_year")
-	if ay and not (fd and td):
-		ay_start, ay_end = _ay_bounds(ay)
-		fd = fd or ay_start
-		td = td or ay_end
+
+	if mode == "preset" and preset:
+		fd, td = _preset_bounds(preset)
+	elif mode == "academic_year" and ay:
+		fd, td = _ay_bounds(ay)
+	elif mode == "custom" and fd and td:
+		fd, td = fd, td
+	else:
+		td = getdate(nowdate())
+		fd = add_days(td, -365)
+
 	if not fd or not td:
-		td = td or nowdate()
-		fd = fd or add_days(td, -365)
+		td = getdate(nowdate())
+		fd = add_days(td, -365)
+
 	return getdate(fd), getdate(td)
 
 ALLOWED_ANALYTICS_ROLES = {
@@ -50,6 +91,43 @@ def _ensure_access(user: str | None = None) -> str:
 
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
+def _get_descendant_organizations(root_org: str):
+	if not root_org:
+		return []
+	org_bounds = frappe.db.get_value("Organization", root_org, ["lft", "rgt"], as_dict=True)
+	if not org_bounds:
+		return []
+	rows = frappe.db.sql(
+		"""
+		SELECT name
+		FROM `tabOrganization`
+		WHERE lft >= %(lft)s AND rgt <= %(rgt)s
+		ORDER BY lft ASC, name ASC
+		""",
+		{"lft": org_bounds.lft, "rgt": org_bounds.rgt},
+		as_list=True,
+	)
+	return [r[0] for r in rows]
+
+def _apply_org_school_conditions(filters: dict, conds: list, params: dict):
+	org_filter = filters.get("organization")
+	if org_filter:
+		orgs = _get_descendant_organizations(org_filter)
+		if orgs:
+			conds.append("i.organization IN %(organizations)s")
+			params["organizations"] = tuple(orgs)
+		else:
+			conds.append("1=0")
+
+	school_filter = filters.get("school")
+	if school_filter:
+		schools = get_descendant_schools(school_filter)
+		if schools:
+			conds.append("i.school IN %(schools)s")
+			params["schools"] = tuple(schools)
+		else:
+			conds.append("1=0")
+
 def _apply_common_conditions(filters: dict, site_tz: str):
 	conds = []
 	params = {}
@@ -61,34 +139,7 @@ def _apply_common_conditions(filters: dict, site_tz: str):
 		"site_tz": site_tz,
 	})
 
-	# --- NestedSet Scoping: School ---
-	# Requirement: Respect parent-child relationship.
-	# Since 'Inquiry' lacks a direct 'school' field, we limit scope by the 'assigned_to' user's school.
-	# we default to the current user's effective school context if no filter is provided.
-	
-	school_filter = filters.get("school")
-	if not school_filter:
-		from ifitwala_ed.utilities.school_tree import get_user_default_school
-		school_filter = get_user_default_school()
-	
-	if school_filter:
-		descendants = get_descendant_schools(school_filter)
-		if descendants:
-			# Find employees in these schools
-			# We join Employee to User to find relevant assigned_to
-			# This is an approximation; ideally Inquiry should have a generic organization/school link.
-			employees = frappe.db.sql("""
-				SELECT user_id FROM `tabEmployee`
-				WHERE status='Active' AND school IN %(schools)s AND user_id IS NOT NULL
-			""", {"schools": tuple(descendants)}, as_dict=True)
-			
-			allowed_users = [e.user_id for e in employees]
-			if allowed_users:
-				conds.append("i.assigned_to IN %(allowed_users)s")
-				params["allowed_users"] = tuple(allowed_users)
-			else:
-				# Selected school has no active employees with users -> no results
-				conds.append("1=0")
+	_apply_org_school_conditions(filters, conds, params)
 
 	if filters.get("type_of_inquiry"):
 		conds.append("i.type_of_inquiry = %(type)s")
@@ -106,6 +157,7 @@ def _apply_common_conditions(filters: dict, site_tz: str):
 
 def _rest_conditions(filters: dict):
 	conds, params = [], {}
+	_apply_org_school_conditions(filters, conds, params)
 	if filters.get("type_of_inquiry"):
 		conds.append("i.type_of_inquiry = %(type)s")
 		params["type"] = filters["type_of_inquiry"]
@@ -392,6 +444,34 @@ def get_dashboard_data(filters=None):
 
 
 @frappe.whitelist()
+def get_inquiry_organizations():
+	_ensure_access()
+	rows = frappe.db.sql(
+		"""
+		SELECT name
+		FROM `tabOrganization`
+		ORDER BY lft ASC, name ASC
+		""",
+		as_list=True,
+	)
+	return [r[0] for r in rows]
+
+
+@frappe.whitelist()
+def get_inquiry_schools():
+	_ensure_access()
+	rows = frappe.db.sql(
+		"""
+		SELECT name
+		FROM `tabSchool`
+		ORDER BY lft ASC, name ASC
+		""",
+		as_list=True,
+	)
+	return [r[0] for r in rows]
+
+
+@frappe.whitelist()
 def academic_year_link_query(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
 	return frappe.db.sql(
 		"""
@@ -402,6 +482,23 @@ def academic_year_link_query(doctype=None, txt=None, searchfield=None, start=0, 
 		LIMIT %(start)s, %(page_len)s
 		""",
 		{"txt": f"%{txt or ''}%", "start": int(start or 0), "page_len": int(page_len or 20)}
+	)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def inquiry_organization_link_query(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
+	return frappe.db.sql(
+		"""
+		SELECT name
+		FROM `tabOrganization`
+		WHERE name LIKE %(txt)s
+			AND get_inquiry = 1
+			AND COALESCE(archived, 0) = 0
+		ORDER BY lft ASC, name ASC
+		LIMIT %(start)s, %(page_len)s
+		""",
+		{"txt": f"%{txt or ''}%", "start": int(start or 0), "page_len": int(page_len or 20)},
 	)
 
 

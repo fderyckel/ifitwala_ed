@@ -11,8 +11,15 @@
 					<ul class="flex flex-wrap items-center justify-center md:justify-start text-xs sm:text-sm text-gray-600">
 						<li v-for="(item, i) in footerItems" :key="item.name" class="flex items-center">
 							<!-- Regular links -->
+							<RouterLink
+								v-if="item.to"
+								:to="item.to"
+								class="px-1 hover:text-blue-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 rounded-sm"
+							>
+								{{ item.name }}
+							</RouterLink>
 							<a
-								v-if="!item.help"
+								v-else-if="item.href"
 								:href="item.href"
 								class="px-1 hover:text-blue-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 rounded-sm"
 							>
@@ -140,6 +147,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue';
 import { Dialog, Button, toast } from 'frappe-ui';
+import { RouterLink } from 'vue-router';
 
 const currentYear = computed(() => new Date().getFullYear());
 const open = ref(false);
@@ -151,8 +159,8 @@ const footerItems = [
 	{ name: 'Privacy Policy', href: '/privacy' },
 	{ name: 'School Website', href: '/' },
 	{ name: 'Contact Us / Help', help: true }, // modal launcher
-	{ name: 'Calendar', href: '/portal/calendar' },
-	{ name: 'Student Handbook', href: '/portal/handbook' },
+	{ name: 'Calendar', to: '/calendar' },
+	{ name: 'Student Handbook', to: '/handbook' },
 ];
 
 const CATEGORIES = ['Social', 'Emotional', 'Pastoral', 'Academic', 'Behavior', 'Attendance'];

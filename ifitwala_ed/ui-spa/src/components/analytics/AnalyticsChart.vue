@@ -20,10 +20,3 @@ const props = defineProps<{
 
 const option = computed(() => props.option)
 </script>
-
-<style scoped>
-.analytics-chart {
-	width: 100%;
-	min-height: 260px;
-}
-</style>

@@ -7,9 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_9mwr",
-  "employee_group_name",
-  "employee_list_section",
-  "employee_list"
+  "employee_group_name"
  ],
  "fields": [
   {
@@ -21,22 +19,11 @@
    "fieldtype": "Data",
    "label": "Group Name",
    "unique": 1
-  },
-  {
-   "fieldname": "employee_list_section",
-   "fieldtype": "Section Break",
-   "label": "Employee List"
-  },
-  {
-   "fieldname": "employee_list",
-   "fieldtype": "Table",
-   "label": "Employee",
-   "options": "Employee Group Table"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-27 08:31:47.939815",
+ "modified": "2026-01-04 12:38:16.667540",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee Group",
@@ -75,8 +62,15 @@
    "report": 1,
    "role": "HR User",
    "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

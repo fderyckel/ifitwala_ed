@@ -2,14 +2,15 @@
  * Rollup build – Ifitwala Ed
  *
  * ── Public-facing assets (heavy traffic) ──────────────────────────────
- * website.js  + website.css  → public/website/website.min.{js|css}
- * school.js   + school.css   → public/website/school.min.{js|css}
+ * website.js  + website.css  → public/js/website.*.bundle.js + public/css/website.*.bundle.css
+ * school.js   + school.css   → public/js/school.*.bundle.js  + public/css/school.*.bundle.css
  *
  * ── Student-portal bundle  (authenticated traffic, cache-busted) ─────
- * index.js (+ imports)       → public/dist/student_portal.<hash>.{js|css}
+ * index.js (+ imports)       → public/js/student_portal.<hash>.bundle.js
+ * public/css/student_portal.<hash>.bundle.css
  *
  * ── Desk-only hierarchy chart (rarely used, lazy-loaded) ─────────────
- * hierarchy_chart.scss       → public/dist/hierarchy_chart.<hash>.css
+ * hierarchy_chart.scss       → public/css/hierarchy_chart.min.css
  */
 
 const path = require('path');
@@ -36,7 +37,8 @@ const appDir = candidateAppDirs.find((dir) =>
 ) || candidateAppDirs[0];
 
 const fromApp = (...segments) => path.join(appDir, ...segments);
-const dist = fromApp('public/dist');
+const jsDest = fromApp('public/js');
+const cssDest = fromApp('public/css');
 const websiteSrc = fromApp('public/website');
 const portalSrc = fromApp('public/js/student_portal');
 const fontsDir = fromApp('public/fonts');
@@ -63,9 +65,9 @@ const basePlugins = [
 module.exports = [
 	// ── js for full calendar and other utils ──
 	{
-		input: fromApp("public/js/ifitwala_ed.bundle.js"),
+		input: fromApp("public/js/ifitwala_ed.entry.js"),
 		output: {
-			file: `${dist}/ifitwala_ed.bundle.js`,
+			file: `${jsDest}/ifitwala_ed.bundle.js`,
 			format: "iife",
 			sourcemap: true,
 		},
@@ -81,7 +83,7 @@ module.exports = [
 		output: { dir: '.' },
 		plugins: [
 			postcss({
-				extract: `${dist}/fullcalendar.bundle.css`,
+				extract: `${cssDest}/fullcalendar.bundle.css`,
 				minimize: true,
 				plugins: [
 					require("postcss-import"),
@@ -100,7 +102,7 @@ module.exports = [
 	{
 		input: fromApp("public/scss/student_group_cards.scss"),
 		output: {
-			file: `${dist}/student_group_cards.bundle.css`,
+			file: `${cssDest}/student_group_cards.bundle.css`,
 			format: "es"
 		},
 		plugins: [
@@ -121,12 +123,11 @@ module.exports = [
 				targets: [
 					{
 						src: 'node_modules/bootstrap-icons/font/fonts/*',
-						/* CHANGED: put fonts in public/fonts so ../fonts resolves from dist/*.css */
 						dest: fontsDir
 					},
 					{
 						src: 'node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
-						dest: dist
+						dest: jsDest
 					}
 				],
 				verbose: true,
@@ -141,7 +142,7 @@ module.exports = [
 		output: { dir: '.' },
 		plugins: [
 			postcss({
-				extract: `${dist}/other_desk_pages.min.css`,
+				extract: `${cssDest}/other_desk_pages.min.css`,
 				minimize: true,
 				plugins: [require('autoprefixer')],
 			}),
@@ -152,7 +153,7 @@ module.exports = [
 	{
 		input: `${websiteSrc}/website.js`,
 		output: {
-			file: `${dist}/website.${websiteJsHash}.bundle.js`,
+			file: `${jsDest}/website.${websiteJsHash}.bundle.js`,
 			format: 'iife',
 			sourcemap: true,
 		},
@@ -162,7 +163,7 @@ module.exports = [
 			{
 				name: 'alias-stable-website-js',
 				writeBundle() {
-					const p = dist;
+					const p = jsDest;
 					try { fs.copyFileSync(`${p}/website.${websiteJsHash}.bundle.js`, `${p}/website.bundle.js`); } catch {}
 				}
 			}
@@ -175,14 +176,14 @@ module.exports = [
 		output: { dir: '.' },
 		plugins: [
 			postcss({
-				extract: `${dist}/website.${websiteCssHash}.bundle.css`,
+				extract: `${cssDest}/website.${websiteCssHash}.bundle.css`,
 				minimize: true,
 				plugins: [require('autoprefixer')],
 			}),
 			{
 				name: 'alias-stable-website-css',
 				writeBundle() {
-					const p = dist;
+					const p = cssDest;
 					try { fs.copyFileSync(`${p}/website.${websiteCssHash}.bundle.css`, `${p}/website.bundle.css`); } catch {}
 				}
 			}
@@ -193,7 +194,7 @@ module.exports = [
 	{
 		input: `${websiteSrc}/school.js`,
 		output: {
-			file: `${dist}/school.${schoolJsHash}.bundle.js`,
+			file: `${jsDest}/school.${schoolJsHash}.bundle.js`,
 			format: 'iife',
 			sourcemap: true,
 		},
@@ -203,7 +204,7 @@ module.exports = [
 			{
 				name: 'alias-stable-school-js',
 				writeBundle() {
-					const p = dist;
+					const p = jsDest;
 					try { fs.copyFileSync(`${p}/school.${schoolJsHash}.bundle.js`, `${p}/school.bundle.js`); } catch {}
 				}
 			}
@@ -216,14 +217,14 @@ module.exports = [
 		output: { dir: '.' },
 		plugins: [
 			postcss({
-				extract: `${dist}/school.${schoolCssHash}.bundle.css`,
+				extract: `${cssDest}/school.${schoolCssHash}.bundle.css`,
 				minimize: true,
 				plugins: [require('autoprefixer')],
 			}),
 			{
 				name: 'alias-stable-school-css',
 				writeBundle() {
-					const p = dist;
+					const p = cssDest;
 					try { fs.copyFileSync(`${p}/school.${schoolCssHash}.bundle.css`, `${p}/school.bundle.css`); } catch {}
 				}
 			}
@@ -234,16 +235,16 @@ module.exports = [
 	{
 		input: `${portalSrc}/index.js`,
 		output: {
-			file: `${dist}/student_portal.${portalHash}.bundle.js`,
+			file: `${jsDest}/student_portal.${portalHash}.bundle.js`,
 			format: 'iife',
 			sourcemap: true,
 		},
 		plugins: [
 			postcss({
-				extract: path.resolve(dist, `student_portal.${portalHash}.bundle.css`),
+				// FIX: Use simple filename. Rollup outputs this to `jsDest` (alongside the JS bundle).
+				extract: `student_portal.${portalHash}.bundle.css`,
 				minimize: true,
 				plugins: [
-					/* NEW: inline @import (bootstrap-icons.css) into the output */
 					postcssImport,
 					require('autoprefixer')
 				],
@@ -257,7 +258,6 @@ module.exports = [
 				targets: [
 					{
 						src: 'node_modules/bootstrap-icons/font/fonts/*',
-						/* CHANGED: match ../fonts from dist CSS */
 						dest: fontsDir
 					}
 				],
@@ -271,15 +271,36 @@ module.exports = [
 				name: 'alias-stable-output',
 				writeBundle() {
 					const fs = require('fs');
-					const p = dist;
-					fs.copyFileSync(
-						`${p}/student_portal.${portalHash}.bundle.css`,
-						`${p}/student_portal.bundle.css`
-					);
-					fs.copyFileSync(
-						`${p}/student_portal.${portalHash}.bundle.js`,
-						`${p}/student_portal.bundle.js`
-					);
+					const path = require('path');
+
+					// 1. Move the CSS file from jsDest to cssDest (because Extract: 'filename' puts it next to the bundle)
+					const generatedCssPath = path.join(jsDest, `student_portal.${portalHash}.bundle.css`);
+					const targetCssPath = path.join(cssDest, `student_portal.${portalHash}.bundle.css`);
+
+					if (fs.existsSync(generatedCssPath)) {
+						try {
+							fs.renameSync(generatedCssPath, targetCssPath);
+						} catch (e) {
+							console.error("Failed to move CSS file to public/css:", e);
+						}
+					}
+
+					// 2. Create stable aliases
+					try {
+						if (fs.existsSync(targetCssPath)) {
+							fs.copyFileSync(
+								targetCssPath,
+								path.join(cssDest, 'student_portal.bundle.css')
+							);
+						}
+
+						fs.copyFileSync(
+							`${jsDest}/student_portal.${portalHash}.bundle.js`,
+							`${jsDest}/student_portal.bundle.js`
+						);
+					} catch (e) {
+						console.error("Failed to create alias files:", e);
+					}
 				}
 			}
 		],
@@ -291,7 +312,7 @@ module.exports = [
 		output: { dir: '.' },
 		plugins: [
 			postcss({
-				extract: `${dist}/hierarchy_chart.min.css`,
+				extract: `${cssDest}/hierarchy_chart.min.css`,
 				minimize: true,
 				plugins: [require('autoprefixer')],
 				preprocessor: async (content, id) => {

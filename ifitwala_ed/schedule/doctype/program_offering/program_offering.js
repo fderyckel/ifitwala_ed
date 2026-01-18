@@ -377,6 +377,241 @@ function open_non_catalog_picker(frm) {
 	d.show();
 }
 
+/* ---------------- Manual Draft Tuition Invoice ---------------- */
+
+function build_invoice_row($list, rowIndex) {
+	const rowId = `line_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+	const $row = $(`
+		<div class="border rounded p-2 mb-2">
+			<div class="d-flex justify-content-between align-items-center mb-2">
+				<div class="fw-semibold">Line ${rowIndex}</div>
+			</div>
+			<div class="row g-2"></div>
+		</div>
+	`);
+
+	const $header = $row.find(".d-flex").first();
+	const $remove = $(`<button class="btn btn-sm btn-link text-danger">${__("Remove")}</button>`);
+	$header.append($remove);
+
+	const $fields = $row.find(".row").first();
+
+	function add_field(df, colClass) {
+		const $col = $(`<div class="${colClass}"></div>`);
+		$fields.append($col);
+		const control = frappe.ui.form.make_control({
+			df: {
+				...df,
+				fieldname: `${df.fieldname}_${rowId}`,
+			},
+			parent: $col,
+			render_input: true,
+		});
+		control.refresh();
+		if (df.default !== undefined) {
+			control.set_value(df.default);
+		}
+		return control;
+	}
+
+	const controls = {
+		billable_offering: add_field(
+			{
+				fieldname: "billable_offering",
+				fieldtype: "Link",
+				options: "Billable Offering",
+				label: __("Billable Offering"),
+				reqd: 1,
+			},
+			"col-md-6"
+		),
+		student: add_field(
+			{
+				fieldname: "student",
+				fieldtype: "Link",
+				options: "Student",
+				label: __("Student"),
+			},
+			"col-md-6"
+		),
+		qty: add_field(
+			{
+				fieldname: "qty",
+				fieldtype: "Float",
+				label: __("Qty"),
+				reqd: 1,
+				default: 1,
+			},
+			"col-md-2"
+		),
+		rate: add_field(
+			{
+				fieldname: "rate",
+				fieldtype: "Currency",
+				label: __("Rate"),
+				reqd: 1,
+			},
+			"col-md-3"
+		),
+		charge_source: add_field(
+			{
+				fieldname: "charge_source",
+				fieldtype: "Select",
+				label: __("Charge Source"),
+				options: "Program Offering\nExtra\nManual",
+				default: "Program Offering",
+			},
+			"col-md-3"
+		),
+		description: add_field(
+			{
+				fieldname: "description",
+				fieldtype: "Data",
+				label: __("Description"),
+			},
+			"col-md-4"
+		),
+	};
+
+	$remove.on("click", () => {
+		$row.remove();
+	});
+
+	$list.append($row);
+	return { $row, controls };
+}
+
+function open_tuition_invoice_dialog(frm) {
+	if (frm.is_new() || frm.is_dirty()) {
+		frappe.msgprint({ message: __("Please save the Program Offering before creating an invoice."), indicator: "orange" });
+		return;
+	}
+
+	const d = new frappe.ui.Dialog({
+		title: __("Create Draft Tuition Invoice"),
+		fields: [
+			{
+				fieldname: "account_holder",
+				fieldtype: "Link",
+				label: __("Account Holder"),
+				options: "Account Holder",
+				reqd: 1,
+			},
+			{
+				fieldname: "posting_date",
+				fieldtype: "Date",
+				label: __("Posting Date"),
+				reqd: 1,
+				default: frappe.datetime.get_today(),
+			},
+			{ fieldname: "items_html", fieldtype: "HTML" },
+		],
+		primary_action_label: __("Create Draft Invoice"),
+		primary_action(values) {
+			if (!values) {
+				return;
+			}
+
+			const rows = [];
+			d.$wrapper.find(".po-invoice-line").each(function () {
+				const rowData = $(this).data("rowData");
+				if (rowData) rows.push(rowData);
+			});
+
+			if (!rows.length) {
+				frappe.msgprint({ message: __("At least one line item is required."), indicator: "red" });
+				return;
+			}
+
+			const payload = [];
+			for (let i = 0; i < rows.length; i += 1) {
+				const row = rows[i];
+				const billable_offering = row.controls.billable_offering.get_value();
+				const qty = parseFloat(row.controls.qty.get_value() || 0);
+				const rate_raw = row.controls.rate.get_value();
+				const rate = rate_raw === "" || rate_raw === null ? null : parseFloat(rate_raw);
+				const description = row.controls.description.get_value();
+				const student = row.controls.student.get_value();
+				const charge_source = row.controls.charge_source.get_value() || "Program Offering";
+
+				if (!billable_offering) {
+				frappe.msgprint({ message: __("Row {0}: Billable Offering is required.", [i + 1]), indicator: "red" });
+				return;
+			}
+			if (!qty || qty <= 0) {
+				frappe.msgprint({ message: __("Row {0}: Qty must be greater than zero.", [i + 1]), indicator: "red" });
+				return;
+			}
+			if (rate === null || Number.isNaN(rate)) {
+				frappe.msgprint({ message: __("Row {0}: Rate is required.", [i + 1]), indicator: "red" });
+				return;
+			}
+			if (rate < 0) {
+				frappe.msgprint({ message: __("Row {0}: Rate cannot be negative.", [i + 1]), indicator: "red" });
+				return;
+			}
+			if (rate === 0 && !description) {
+				frappe.msgprint({ message: __("Row {0}: Description is required for zero-rate lines.", [i + 1]), indicator: "red" });
+				return;
+			}
+
+				payload.push({
+					billable_offering,
+					qty,
+					rate,
+					student,
+					description,
+					charge_source,
+				});
+			}
+
+			frappe.call({
+				method: "ifitwala_ed.schedule.doctype.program_offering.program_offering.create_draft_tuition_invoice",
+				args: {
+					program_offering: frm.doc.name,
+					account_holder: values.account_holder,
+					posting_date: values.posting_date,
+					items: JSON.stringify(payload),
+				},
+				callback: (r) => {
+					const invoice = r && r.message && r.message.sales_invoice;
+					if (invoice) {
+						frappe.set_route("Form", "Sales Invoice", invoice);
+					}
+					d.hide();
+				},
+			});
+		},
+	});
+
+	const $itemsWrapper = d.get_field("items_html").$wrapper;
+	$itemsWrapper.empty();
+
+	const $toolbar = $(`
+		<div class="d-flex justify-content-between align-items-center mb-2">
+			<div class="text-muted small">${__("Add one or more line items.")}</div>
+		</div>
+	`);
+	const $addBtn = $(`<button class="btn btn-sm btn-secondary">${__("Add Line")}</button>`);
+	$toolbar.append($addBtn);
+	$itemsWrapper.append($toolbar);
+
+	const $list = $('<div class="po-invoice-lines"></div>');
+	$itemsWrapper.append($list);
+
+	function add_row() {
+		const rowIndex = $list.find(".po-invoice-line").length + 1;
+		const rowData = build_invoice_row($list, rowIndex);
+		rowData.$row.addClass("po-invoice-line");
+		rowData.$row.data("rowData", rowData);
+	}
+
+	$addBtn.on("click", () => add_row());
+
+	add_row();
+	d.show();
+}
+
 
 
 frappe.ui.form.on("Program Offering", {
@@ -408,6 +643,12 @@ frappe.ui.form.on("Program Offering", {
 		if (addNonCat) {
 			addNonCat.removeClass("btn-default btn-secondary").addClass("btn-outline-primary");
 			addNonCat.addClass("ms-2"); // small spacing
+		}
+
+		const createInvoice = frm.add_custom_button(__("Create Draft Tuition Invoice"), () => open_tuition_invoice_dialog(frm));
+		if (createInvoice) {
+			createInvoice.removeClass("btn-default btn-secondary").addClass("btn-outline-secondary");
+			createInvoice.addClass("ms-2");
 		}
 
 		// DO NOT call set_primary_action here; it forces a right-side black button

@@ -19,7 +19,7 @@
  "list_columns": [],
  "login_required": 0,
  "max_attachment_size": 0,
- "modified": "2025-07-06 15:20:02.899964",
+ "modified": "2026-01-01 11:26:34.741387",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "inquiry",
@@ -96,6 +96,21 @@
    "precision": "",
    "read_only": 0,
    "reqd": 1,
+   "show_in_filter": 0
+  },
+  {
+   "allow_read_on_all_link_options": 0,
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "hidden": 0,
+   "label": "Organization",
+   "link_query": "ifitwala_ed.api.inquiry.inquiry_organization_link_query",
+   "max_length": 0,
+   "max_value": 0,
+   "options": "Organization",
+   "precision": "",
+   "read_only": 0,
+   "reqd": 0,
    "show_in_filter": 0
   },
   {

@@ -70,7 +70,8 @@ frappe.ui.form.on('Org Communication', {
 			frappe.msgprint({
 				message: __(
 					'For Class Announcements, please add at least one Audience row targeting ' +
-					'<strong>Students</strong> with a <strong>Student Group</strong>. Guardians are optional.'
+					'<strong>Students</strong> with a <strong>Student Group</strong>. ' +
+					'Set Target Mode to <strong>Student Group</strong> and enable <strong>To Students</strong>.'
 				),
 				indicator: 'blue',
 				title: __('Class Announcement Audience')
@@ -282,49 +283,153 @@ function archive_communication(frm) {
 // ----------------------------------------------------------
 
 frappe.ui.form.on('Org Communication Audience', {
-	target_group(frm, cdt, cdn) {
+	target_mode(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
 		apply_audience_row_visibility(frm, cdt, cdn, row);
+		apply_recipient_defaults(frm, cdt, cdn, row);
 
-		// If row.school is empty, inherit parent Issuing School
-		if (!row.school && frm.doc.school) {
+		// If row.school is empty, inherit parent Issuing School for School Scope only
+		if (row.target_mode === 'School Scope' && !row.school && frm.doc.school) {
 			frappe.model.set_value(cdt, cdn, 'school', frm.doc.school);
 		}
 	},
 
+	form_render(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		apply_audience_row_visibility(frm, cdt, cdn, row);
+		apply_recipient_defaults(frm, cdt, cdn, row);
+	},
+
 	org_communication_audience_add(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
-		if (!row.school && frm.doc.school) {
-			frappe.model.set_value(cdt, cdn, 'school', frm.doc.school);
+		if (!row.target_mode) {
+			frappe.model.set_value(cdt, cdn, 'target_mode', 'School Scope');
+			return;
 		}
+		apply_audience_row_visibility(frm, cdt, cdn, row);
+		apply_recipient_defaults(frm, cdt, cdn, row);
 	}
 });
 
 function apply_audience_row_visibility(frm, cdt, cdn, row) {
-	const target_group = (row.target_group || '').trim();
+	const target_mode = (row.target_mode || '').trim();
 	const grid_row = frm.fields_dict.audiences.grid.get_row(cdn);
 	if (!grid_row || !grid_row.grid_form) return;
 
 	const gf = grid_row.grid_form;
 
-	const show_students = ['Students', 'Guardians'].includes(target_group);
-	const show_staff = ['Whole Staff', 'Academic Staff'].includes(target_group);
+	const show_school_scope = target_mode === 'School Scope';
+	const show_team = target_mode === 'Team';
+	const show_student_group = target_mode === 'Student Group';
 
-	// school: always relevant, leave visible
-	if (gf.get_field('school')) {
-		gf.get_field('school').toggle(true);
+	toggle_grid_field(get_grid_field(gf, 'school'), show_school_scope);
+	toggle_grid_field(get_grid_field(gf, 'include_descendants'), show_school_scope);
+	toggle_grid_field(get_grid_field(gf, 'team'), show_team);
+	toggle_grid_field(get_grid_field(gf, 'student_group'), show_student_group);
+
+	update_recipient_toggle_state(gf, target_mode);
+
+	toggle_grid_field(get_grid_field(gf, 'note'), true);
+}
+
+function update_recipient_toggle_state(gf, target_mode) {
+	const allowed = get_allowed_recipient_fields(target_mode);
+	const toggle_fields = ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+
+	toggle_fields.forEach(fieldname => {
+		const field = get_grid_field(gf, fieldname);
+		if (!field) return;
+
+		toggle_grid_field(field, true);
+		field.df.read_only = allowed.length ? !allowed.includes(fieldname) : 0;
+		field.refresh && field.refresh();
+	});
+}
+
+function get_grid_field(grid_form, fieldname) {
+	if (!grid_form) return null;
+	if (grid_form.get_field) {
+		return grid_form.get_field(fieldname);
+	}
+	if (grid_form.fields_dict && grid_form.fields_dict[fieldname]) {
+		return grid_form.fields_dict[fieldname];
+	}
+	return null;
+}
+
+function toggle_grid_field(field, show) {
+	if (!field) return;
+	if (field.toggle) {
+		field.toggle(show);
+	} else if (field.$wrapper || field.wrapper) {
+		const $wrapper = field.$wrapper || $(field.wrapper);
+		$wrapper && $wrapper.toggle(show);
+	}
+	if (field.df) {
+		field.df.hidden = show ? 0 : 1;
+	}
+	field.refresh && field.refresh();
+}
+
+function get_allowed_recipient_fields(target_mode) {
+	if (target_mode === 'Team') {
+		return ['to_staff'];
+	}
+	if (target_mode === 'Student Group') {
+		return ['to_staff', 'to_students', 'to_guardians'];
+	}
+	if (target_mode === 'School Scope') {
+		return ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+	}
+	return [];
+}
+
+function is_checked(value) {
+	return value === 1 || value === '1' || value === true;
+}
+
+function apply_recipient_defaults(frm, cdt, cdn, row) {
+	if (!row) return;
+
+	const target_mode = (row.target_mode || '').trim();
+	if (!target_mode) return;
+
+	const allowed = get_allowed_recipient_fields(target_mode);
+	const toggle_fields = ['to_staff', 'to_students', 'to_guardians', 'to_community'];
+
+	const values = {
+		to_staff: is_checked(row.to_staff),
+		to_students: is_checked(row.to_students),
+		to_guardians: is_checked(row.to_guardians),
+		to_community: is_checked(row.to_community)
+	};
+
+	toggle_fields.forEach(fieldname => {
+		if (allowed.length && !allowed.includes(fieldname) && values[fieldname]) {
+			values[fieldname] = false;
+			frappe.model.set_value(cdt, cdn, fieldname, 0);
+		}
+	});
+
+	if (target_mode === 'Team') {
+		if (!values.to_staff) {
+			values.to_staff = true;
+			frappe.model.set_value(cdt, cdn, 'to_staff', 1);
+		}
+		return;
 	}
 
-	if (gf.get_field('program')) {
-		gf.get_field('program').toggle(show_students);
+	if (target_mode === 'Student Group') {
+		const has_any = toggle_fields.some(fieldname => values[fieldname]);
+		if (!has_any) {
+			frappe.model.set_value(cdt, cdn, 'to_students', 1);
+			frappe.model.set_value(cdt, cdn, 'to_guardians', 1);
+			frappe.model.set_value(cdt, cdn, 'to_staff', 0);
+		}
+		return;
 	}
-	if (gf.get_field('student_group')) {
-		gf.get_field('student_group').toggle(show_students);
-	}
-	if (gf.get_field('team')) {
-		gf.get_field('team').toggle(show_staff);
-	}
-	if (gf.get_field('note')) {
-		gf.get_field('note').toggle(true);
+
+	if (target_mode === 'School Scope') {
+		if (toggle_fields.some(fieldname => values[fieldname])) return;
 	}
 }

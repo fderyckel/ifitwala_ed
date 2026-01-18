@@ -1,4 +1,4 @@
-# Copyright (c) 2025, fdR and contributors
+# Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
 # ifitwala_ed/stock/doctype/location/location.py
@@ -7,6 +7,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 from frappe.model.document import Document
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 class Location(Document):
 	def before_insert(self):

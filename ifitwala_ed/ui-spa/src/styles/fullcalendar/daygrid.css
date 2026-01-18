@@ -1,16 +1,20 @@
-/* FullCalendar daygrid tweaks (scoped to portal shell) */
-.calendar-shell .fc-daygrid .fc-daygrid-day {
-	border: 1px solid rgb(var(--border-rgb) / .85);
-}
+/* =====================================================================
+   FULLCALENDAR DAYGRID OVERRIDES (SCOPED TO .calendar-shell)
+   ===================================================================== */
+@layer components {
+  .calendar-shell .fc-daygrid .fc-daygrid-day {
+    border: 1px solid rgb(var(--border-rgb) / 0.85);
+  }
 
-.calendar-shell .fc-daygrid .fc-daygrid-day-number {
-	padding: 0.25rem;
-	font-size: 0.75rem;
-	color: rgb(var(--canopy-rgb));
-}
+  .calendar-shell .fc-daygrid .fc-daygrid-day-number {
+    padding: 0.25rem;
+    font-size: 0.75rem;
+    color: rgb(var(--canopy-rgb) / 1);
+  }
 
-.calendar-shell .fc-daygrid .fc-daygrid-event {
-	background: rgb(var(--sky-rgb) / .45);
-	color: rgb(var(--canopy-rgb));
-	border: 1px solid rgb(var(--jacaranda-rgb) / .18);
+  .calendar-shell .fc-daygrid .fc-daygrid-event {
+    background: rgb(var(--sky-rgb) / 0.45);
+    color: rgb(var(--canopy-rgb) / 1);
+    border: 1px solid rgb(var(--jacaranda-rgb) / 0.18);
+  }
 }

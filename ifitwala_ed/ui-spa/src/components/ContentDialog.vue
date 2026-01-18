@@ -96,22 +96,14 @@
 							You responded: {{ interaction.self.intent_type || 'Commented' }}
 						</div>
 
-						<!-- Reaction summary row: emoji + count, no wording -->
-						<div class="flex flex-wrap items-center gap-2 text-[11px]">
-							<button
-								v-for="item in reactions"
-								:key="item.code"
-								type="button"
-								class="inline-flex items-center gap-1 rounded-full border border-border/60 bg-white px-2 py-1 text-slate-token/80 transition hover:border-jacaranda/40 hover:text-jacaranda"
-								@click="$emit('react', item.code)"
-							>
-								<span>{{ item.icon }}</span>
-								<span class="text-[10px] text-slate-token/60">
-									{{ getReactionCount(item.code) }}
-								</span>
-								<!-- optional accessibility label -->
-								<span class="sr-only">{{ item.label }}</span>
-							</button>
+						<!-- Reaction summary row: shared component -->
+						<div class="mt-1">
+							<InteractionEmojiChips
+								v-if="interaction"
+								:interaction="interaction"
+								:readonly="false"
+								:on-react="(code) => $emit('react', code)"
+							/>
 						</div>
 					</div>
 
@@ -128,7 +120,9 @@
 import { computed } from 'vue'
 import { Button, FeatherIcon } from 'frappe-ui'
 import { getInteractionStats } from '@/utils/interactionStats'
-import type { InteractionSummary, ReactionCode } from '@/types/morning_brief'
+import type { InteractionSummary } from '@/types/morning_brief'
+import type { ReactionCode } from '@/types/interactions'
+import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue'
 
 defineOptions({
 	inheritAttrs: false
@@ -169,7 +163,6 @@ const interaction = computed<InteractionSummary>(() => ({
   reaction_counts: {},
   reactions_total: 0,
   comments_total: 0,
-  comment_count: 0,
   ...(props.interaction ?? {})
 }))
 
@@ -181,18 +174,5 @@ const contentHtml = computed(() => props.content || '')
 // Comment count = thread entries (Comment + Question)
 const commentCount = computed(() => stats.value.comments_total ?? 0)
 
-function getReactionCount(code: ReactionCode): number {
-  return stats.value.reaction_counts?.[code] ?? 0
-}
 
-
-const reactions: Array<{ code: ReactionCode; label: string; icon: string }> = [
-	{ code: 'like', label: 'Like', icon: '👍' },
-	{ code: 'thank', label: 'Thanks', icon: '🙏' },
-	{ code: 'heart', label: 'Support', icon: '❤️' },
-	{ code: 'smile', label: 'Positive', icon: '😊' },
-	{ code: 'applause', label: 'Celebrate', icon: '👏' },
-	{ code: 'question', label: 'Question', icon: '❓' },
-	{ code: 'other', label: 'Other', icon: '💬' }
-]
 </script>

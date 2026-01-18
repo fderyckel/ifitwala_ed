@@ -6,30 +6,26 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "target_group",
-  "organization",
+  "target_mode",
   "school",
-  "program",
-  "column_break_sppw",
-  "student_group",
   "team",
+  "student_group",
+  "include_descendants",
+  "column_break_sppw",
+  "to_staff",
+  "to_students",
+  "to_guardians",
+  "to_community",
   "column_break_xeey",
   "note"
  ],
  "fields": [
   {
-   "fieldname": "target_group",
+   "fieldname": "target_mode",
    "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "Target Group",
-   "options": "Whole Staff\nAcademic Staff\nSupport Staff\nStudents\nGuardians\nWhole Community"
-  },
-  {
-   "fieldname": "organization",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Organization",
-   "options": "Organization"
+   "label": "Target Mode",
+   "options": "School Scope\nTeam\nStudent Group"
   },
   {
    "fieldname": "school",
@@ -39,14 +35,11 @@
    "options": "School"
   },
   {
-   "fieldname": "program",
+   "fieldname": "team",
    "fieldtype": "Link",
-   "label": "Program",
-   "options": "Program"
-  },
-  {
-   "fieldname": "column_break_sppw",
-   "fieldtype": "Column Break"
+   "in_list_view": 1,
+   "label": "Team",
+   "options": "Team"
   },
   {
    "fieldname": "student_group",
@@ -56,11 +49,34 @@
    "options": "Student Group"
   },
   {
-   "fieldname": "team",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Team",
-   "options": "Team"
+   "default": "1",
+   "fieldname": "include_descendants",
+   "fieldtype": "Check",
+   "label": "Include Descendants"
+  },
+  {
+   "fieldname": "column_break_sppw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "to_staff",
+   "fieldtype": "Check",
+   "label": "To Staff"
+  },
+  {
+   "fieldname": "to_students",
+   "fieldtype": "Check",
+   "label": "To Students"
+  },
+  {
+   "fieldname": "to_guardians",
+   "fieldtype": "Check",
+   "label": "To Guardians"
+  },
+  {
+   "fieldname": "to_community",
+   "fieldtype": "Check",
+   "label": "To Community"
   },
   {
    "fieldname": "column_break_xeey",

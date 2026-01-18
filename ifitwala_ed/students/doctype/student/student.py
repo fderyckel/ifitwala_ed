@@ -11,6 +11,7 @@ from frappe.utils import get_files_path
 from frappe.model.document import Document
 from frappe.desk.form.linked_with import get_linked_doctypes
 from frappe.contacts.address_and_contact import load_address_and_contact
+from ifitwala_ed.accounting.account_holder_utils import validate_account_holder_for_student
 
 
 class Student(Document):
@@ -18,6 +19,7 @@ class Student(Document):
 		load_address_and_contact(self)
 
 	def validate(self):
+		validate_account_holder_for_student(self)
 		self.student_full_name = " ".join(filter(None, [self.student_first_name, self.student_middle_name, self.student_last_name]))
 		self.validate_email()
 		self._validate_siblings_list()  

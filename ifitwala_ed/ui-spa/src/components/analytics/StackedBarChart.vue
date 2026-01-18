@@ -6,7 +6,7 @@
       <slot name="actions" />
     </header>
     <VChart
-      class="analytics-chart"
+      class="analytics-chart analytics-chart--lg"
       :option="option"
       :autoresize="{ throttle: 100 }"
       @click="handleClick"
@@ -60,10 +60,3 @@ function handleClick(params: any) {
   if (sliceKey) emit('select', sliceKey)
 }
 </script>
-
-<style scoped>
-.analytics-chart {
-  width: 100%;
-  min-height: 280px;
-}
-</style>

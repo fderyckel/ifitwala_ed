@@ -7,311 +7,481 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, Optional, Iterable
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import frappe
+from frappe import _
 from frappe.utils import getdate, now_datetime
+from frappe.utils.caching import redis_cache
 
 
 @dataclass
-class TaskMeta:
+class OutcomeRow:
 	name: str
-	course: str
-	program: Optional[str]
-	school: Optional[str]
-	academic_year: Optional[str]
-	grade_scale: Optional[str]
-	due_date: Optional[str]
-
-
-@dataclass
-class Bucket:
-	program_enrollment: str
-	program_enrollment_course: str
 	student: str
 	course: str
-	school: Optional[str]
-	academic_year: Optional[str]
 	program: Optional[str]
+	task_delivery: str
+	grading_mode: Optional[str]
+	rubric_scoring_strategy: Optional[str]
+	official_score: Optional[float]
+	official_grade_value: Optional[float]
 	grade_scale: Optional[str]
-	pct_values: List[float]
+	procedural_status: Optional[str]
+	due_date: Optional[str]
+	lock_date: Optional[str]
 
 
-def _load_reporting_cycle(reporting_cycle: str):
+@dataclass
+class AggregateRow:
+	student: str
+	program_enrollment: str
+	course: str
+	program: Optional[str]
+	academic_year: Optional[str]
+	school: Optional[str]
+	grade_scale: Optional[str]
+	numeric_total: float
+	scored_weight: float
+	task_counted: int
+	note_flags: List[str]
+	grade_scale_conflict: bool
+
+
+def get_cycle_context(reporting_cycle: str) -> dict:
 	rc = frappe.get_doc("Reporting Cycle", reporting_cycle)
 	if not (rc.school and rc.academic_year and rc.term):
-		frappe.throw("Reporting Cycle must have School, Academic Year and Term set before calculation.")
-	return rc
+		frappe.throw(_("Reporting Cycle must have School, Academic Year and Term set."))
 
+	if rc.status not in ("Open", "Calculated", "Locked", "Published"):
+		frappe.throw(_("Reporting Cycle status must allow calculation."))
 
-def _get_term_window(term: str) -> Tuple[Optional[str], Optional[str]]:
-	term_doc = frappe.get_doc("Term", term)
-	return term_doc.term_start_date, term_doc.term_end_date
-
-
-def _load_program_enrollments(rc):
-	"""Return pe_by_name for the given Reporting Cycle scope."""
-	filters = {
-		"academic_year": rc.academic_year,
+	return {
+		"name": rc.name,
 		"school": rc.school,
+		"academic_year": rc.academic_year,
+		"term": rc.term,
+		"program": getattr(rc, "program", None),
+		"task_cutoff_date": rc.task_cutoff_date,
+		"released_rule": rc.released_rule or "Released Only",
+		"absent_policy": rc.absent_policy or "Exclude",
+		"dishonesty_policy": rc.dishonesty_policy or "Force Zero",
+		"exclude_excused": int(rc.exclude_excused or 0) == 1,
 	}
-	if getattr(rc, "program", None):
-		filters["program"] = rc.program
+
+
+def get_eligible_outcomes(ctx: dict) -> List[OutcomeRow]:
+	filters = [
+		"o.school = %(school)s",
+		"o.academic_year = %(academic_year)s",
+		"o.course IS NOT NULL",
+	]
+	params = {
+		"school": ctx["school"],
+		"academic_year": ctx["academic_year"],
+	}
+	if ctx.get("program"):
+		filters.append("o.program = %(program)s")
+		params["program"] = ctx["program"]
+
+	if ctx.get("released_rule") == "Released Only":
+		filters.append("o.grading_status = 'Released'")
+	else:
+		filters.append("o.grading_status IN ('Finalized', 'Released')")
+
+	cutoff = ctx.get("task_cutoff_date")
+	if cutoff:
+		cutoff_date = getdate(cutoff)
+		params["cutoff"] = cutoff_date
+		filters.append(
+			"(d.due_date <= %(cutoff)s OR (d.due_date IS NULL AND d.lock_date <= %(cutoff)s))"
+		)
+
+	query = f"""
+		SELECT
+			o.name,
+			o.student,
+			o.course,
+			o.program,
+			o.task_delivery,
+			d.grading_mode,
+			d.rubric_scoring_strategy,
+			o.official_score,
+			o.official_grade_value,
+			o.grade_scale,
+			o.procedural_status,
+			d.due_date,
+			d.lock_date
+		FROM `tabTask Outcome` o
+		INNER JOIN `tabTask Delivery` d ON d.name = o.task_delivery
+		WHERE {' AND '.join(filters)}
+	"""
+
+	rows = frappe.db.sql(query, params, as_dict=True)
+	return [
+		OutcomeRow(
+			name=row.name,
+			student=row.student,
+			course=row.course,
+			program=row.program,
+			task_delivery=row.task_delivery,
+			grading_mode=row.grading_mode,
+			rubric_scoring_strategy=row.rubric_scoring_strategy,
+			official_score=row.official_score,
+			official_grade_value=row.official_grade_value,
+			grade_scale=row.grade_scale,
+			procedural_status=row.procedural_status,
+			due_date=row.due_date,
+			lock_date=row.lock_date,
+		)
+		for row in rows
+	]
+
+
+def _load_program_enrollments(ctx: dict) -> Dict[str, dict]:
+	filters = {
+		"academic_year": ctx["academic_year"],
+		"school": ctx["school"],
+	}
+	if ctx.get("program"):
+		filters["program"] = ctx["program"]
 
 	rows = frappe.get_all(
 		"Program Enrollment",
 		filters=filters,
 		fields=["name", "student", "program", "academic_year", "school"],
 	)
-	pe_by_name = {r.name: r for r in rows}
-	return pe_by_name
+	return {row.name: row for row in rows}
 
 
-def _load_program_enrollment_courses(pe_by_name: Dict[str, dict]):
+def _load_program_enrollment_courses(pe_by_name: Dict[str, dict]) -> Dict[Tuple[str, str], dict]:
 	if not pe_by_name:
-		return {}, {}
+		return {}
 
 	pe_names = list(pe_by_name.keys())
 	rows = frappe.get_all(
 		"Program Enrollment Course",
 		filters={"parent": ("in", pe_names)},
-		fields=["name", "parent", "course"],
+		fields=["parent", "course"],
 	)
 
-	# Map (student, course) -> PEC name, and PEC -> PE meta
-	pec_by_student_course: Dict[Tuple[str, str], str] = {}
-	pec_info: Dict[str, dict] = {}
-
-	for r in rows:
-		pe = pe_by_name.get(r.parent)
+	pe_by_student_course: Dict[Tuple[str, str], dict] = {}
+	for row in rows:
+		pe = pe_by_name.get(row.parent)
 		if not pe:
 			continue
-		key = (pe.student, r.course)
-		# If there are duplicates, keep the first – data model should avoid this.
-		pec_by_student_course.setdefault(key, r.name)
-		pec_info[r.name] = {
-			"program_enrollment": r.parent,
-			"student": pe.student,
-			"course": r.course,
-			"program": pe.program,
-			"academic_year": pe.academic_year,
-			"school": pe.school,
-		}
-
-	return pec_by_student_course, pec_info
-
-
-def _load_tasks_for_cycle(rc, term_start: Optional[str], term_end: Optional[str]) -> Dict[str, TaskMeta]:
-	filters = {
-		"school": rc.school,
-		"academic_year": rc.academic_year,
-		"is_graded": 1,
-	}
-	if getattr(rc, "program", None):
-		filters["program"] = rc.program
-
-	if term_start and term_end:
-		cutoff = rc.task_cutoff_date or term_end
-		end_date = min(getdate(term_end), getdate(cutoff))
-		filters["due_date"] = ["between", [term_start, end_date]]
-	elif term_start:
-		filters["due_date"] = [">=", term_start]
-	elif term_end:
-		cutoff = rc.task_cutoff_date or term_end
-		end_date = min(getdate(term_end), getdate(cutoff))
-		filters["due_date"] = ["<=", end_date]
-
-	rows = frappe.get_all(
-		"Task",
-		filters=filters,
-		fields=["name", "course", "program", "school", "academic_year", "grade_scale", "due_date"],
-	)
-
-	out: Dict[str, TaskMeta] = {}
-	for r in rows:
-		out[r.name] = TaskMeta(
-			name=r.name,
-			course=r.course,
-			program=r.program,
-			school=r.school,
-			academic_year=r.academic_year,
-			grade_scale=r.grade_scale,
-			due_date=r.due_date,
+		key = (pe.student, row.course)
+		pe_by_student_course.setdefault(
+			key,
+			{
+				"program_enrollment": row.parent,
+				"student": pe.student,
+				"course": row.course,
+				"program": pe.program,
+				"academic_year": pe.academic_year,
+				"school": pe.school,
+			},
 		)
-	return out
+
+	return pe_by_student_course
 
 
-def _load_task_students(task_names: Iterable[str]):
-	if not task_names:
-		return []
+def aggregate_outcomes_to_course_results(ctx: dict, outcomes: Iterable[OutcomeRow]) -> Dict[Tuple[str, str], AggregateRow]:
+	pe_by_name = _load_program_enrollments(ctx)
+	pe_by_student_course = _load_program_enrollment_courses(pe_by_name)
 
-	return frappe.get_all(
-		"Task Student",
-		filters={"parent": ("in", list(task_names)), "parenttype": "Task"},
-		fields=["parent", "student", "mark_awarded", "out_of", "pct"],
-	)
+	aggregates: Dict[Tuple[str, str], AggregateRow] = {}
+
+	for outcome in outcomes:
+		info = pe_by_student_course.get((outcome.student, outcome.course))
+		if not info:
+			continue
+
+		key = (info["program_enrollment"], outcome.course)
+		aggregate = aggregates.get(key)
+		if not aggregate:
+			aggregate = AggregateRow(
+				student=info["student"],
+				program_enrollment=info["program_enrollment"],
+				course=info["course"],
+				program=info["program"],
+				academic_year=info["academic_year"],
+				school=info["school"],
+				grade_scale=None,
+				numeric_total=0.0,
+				scored_weight=0.0,
+				task_counted=0,
+				note_flags=[],
+				grade_scale_conflict=False,
+			)
+			aggregates[key] = aggregate
+
+		apply_result = _apply_procedural_policy(outcome, ctx)
+		if not apply_result:
+			continue
+
+		numeric_value, weight, note = apply_result
+		aggregate.task_counted += 1
+
+		if weight > 0:
+			aggregate.numeric_total += numeric_value
+			aggregate.scored_weight += weight
+
+		if note:
+			aggregate.note_flags.append(note)
+
+		if outcome.grade_scale:
+			if not aggregate.grade_scale:
+				aggregate.grade_scale = outcome.grade_scale
+			elif aggregate.grade_scale != outcome.grade_scale:
+				aggregate.grade_scale_conflict = True
+
+	return aggregates
 
 
-def _compute_pct(row) -> Optional[float]:
-	"""Return a percentage for a Task Student row, or None if not computable."""
-	if row.pct is not None:
+def _apply_procedural_policy(outcome: OutcomeRow, ctx: dict):
+	status = (outcome.procedural_status or "").strip()
+	if status == "None":
+		status = ""
+
+	numeric_value, weight, note = _score_for_outcome(outcome)
+
+	if status == "Excused" and ctx.get("exclude_excused", True):
+		return None
+
+	if status == "Academic Dishonesty":
+		if ctx.get("dishonesty_policy") == "Exclude":
+			return None
+		return 0.0, 1.0, "Dishonesty forced zero"
+
+	if status == "Absent":
+		absent_policy = ctx.get("absent_policy")
+		if absent_policy == "Exclude":
+			return None
+		if absent_policy == "Count as Zero":
+			return 0.0, 1.0, None
+		if absent_policy == "Include as Missing":
+			# Counted but does not affect numeric score.
+			return 0.0, 0.0, "Absent (missing)"
+
+	if numeric_value is None:
+		if note:
+			return 0.0, 0.0, note
+		return None
+
+	return numeric_value, weight, note
+
+
+def _score_for_outcome(outcome: OutcomeRow):
+	if (outcome.grading_mode or "").strip() == "Criteria":
+		strategy = (outcome.rubric_scoring_strategy or "Sum Total").strip() or "Sum Total"
+		if strategy == "Sum Total":
+			return _numeric_value_from_outcome(outcome), 1.0, None
+
+		criteria_rows = _load_outcome_criteria_points(outcome.name)
+		note = "Criteria-only outcome"
+		if not criteria_rows:
+			note = "Criteria-only outcome (no criterion scores)"
+		return 0.0, 0.0, note
+
+	return _numeric_value_from_outcome(outcome), 1.0, None
+
+
+def _numeric_value_from_outcome(outcome: OutcomeRow) -> Optional[float]:
+	if outcome.official_score not in (None, ""):
 		try:
-			return float(row.pct)
+			return float(outcome.official_score)
 		except Exception:
-			pass
-
-	if row.mark_awarded is None or row.out_of in (None, 0):
-		return None
-
-	try:
-		ma = float(row.mark_awarded)
-		out_of = float(row.out_of)
-	except Exception:
-		return None
-
-	if out_of <= 0:
-		return None
-
-	return (ma / out_of) * 100.0
-
-
-def _compute_grade_value(pct: Optional[float], grade_scale: Optional[str]) -> Optional[str]:
-	"""Placeholder: map numeric percentage to grade value based on Grade Scale.
-
-	Wire your real Grade Scale mapping here later.
-	"""
-	if pct is None or not grade_scale:
-		return None
-	# TODO: implement mapping based on Grade Scale configuration
+			return None
+	if outcome.official_grade_value not in (None, ""):
+		try:
+			return float(outcome.official_grade_value)
+		except Exception:
+			return None
 	return None
 
 
-@frappe.whitelist()
-def recalculate_course_term_results(reporting_cycle: str):
-	"""Rebuild Course Term Result rows for a Reporting Cycle from Task / Task Student.
+def _load_outcome_criteria_points(outcome_id: str):
+	if not outcome_id:
+		return []
+	return frappe.db.get_values(
+		"Task Outcome Criterion",
+		{
+			"parent": outcome_id,
+			"parenttype": "Task Outcome",
+			"parentfield": "official_criteria",
+		},
+		["assessment_criteria", "level_points"],
+		as_dict=True,
+	) or []
 
-	Idempotent: existing rows for this cycle are updated, new ones are created.
-	"""
-	rc = _load_reporting_cycle(reporting_cycle)
-	term_start, term_end = _get_term_window(rc.term)
 
-	pe_by_name = _load_program_enrollments(rc)
-	pec_by_student_course, pec_info = _load_program_enrollment_courses(pe_by_name)
-
-	tasks = _load_tasks_for_cycle(rc, term_start, term_end)
-	if not tasks:
-		return {"updated": 0, "created": 0, "buckets": 0}
-
-	ts_rows = _load_task_students(tasks.keys())
-	if not ts_rows:
-		return {"updated": 0, "created": 0, "buckets": 0}
-
-	# Aggregate percentages per Program Enrollment Course
-	buckets: Dict[str, Bucket] = {}
-
-	for row in ts_rows:
-		tmeta = tasks.get(row.parent)
-		if not tmeta or not tmeta.course:
+@redis_cache(ttl=86400)
+def _grade_scale_intervals(grade_scale: str) -> List[Tuple[float, str]]:
+	rows = frappe.db.get_values(
+		"Grade Scale Interval",
+		{"parent": grade_scale, "parenttype": "Grade Scale"},
+		["boundary_interval", "grade_code"],
+		as_dict=True,
+	)
+	intervals: List[Tuple[float, str]] = []
+	for row in rows:
+		code = (row.get("grade_code") or "").strip()
+		if not code:
 			continue
+		try:
+			boundary = float(row.get("boundary_interval") or 0)
+		except Exception:
+			boundary = 0.0
+		intervals.append((boundary, code))
 
-		key = (row.student, tmeta.course)
-		pec_name = pec_by_student_course.get(key)
-		if not pec_name:
-			# No Program Enrollment Course row – skip for now.
-			continue
+	return sorted(intervals, key=lambda item: item[0])
 
-		info = pec_info[pec_name]
-		pct = _compute_pct(row)
-		if pct is None:
-			continue
 
-		bucket = buckets.get(pec_name)
-		if not bucket:
-			bucket = Bucket(
-				program_enrollment=info["program_enrollment"],
-				program_enrollment_course=pec_name,
-				student=info["student"],
-				course=info["course"],
-				school=info["school"],
-				academic_year=info["academic_year"],
-				program=info["program"],
-				grade_scale=tmeta.grade_scale,
-				pct_values=[],
-			)
-			buckets[pec_name] = bucket
+def _grade_label_from_score(grade_scale: Optional[str], numeric_score: Optional[float]) -> Optional[str]:
+	if numeric_score is None or not grade_scale:
+		return None
 
-		if not bucket.grade_scale and tmeta.grade_scale:
-			bucket.grade_scale = tmeta.grade_scale
+	intervals = _grade_scale_intervals(grade_scale)
+	if not intervals:
+		return None
 
-		bucket.pct_values.append(pct)
+	label = None
+	for boundary, code in intervals:
+		if numeric_score >= boundary:
+			label = code
+	return label
+
+
+def upsert_course_term_results(ctx: dict, aggregates: Dict[Tuple[str, str], AggregateRow]):
+	existing_rows = frappe.get_all(
+		"Course Term Result",
+		filters={"reporting_cycle": ctx["name"]},
+		fields=[
+			"name",
+			"student",
+			"program_enrollment",
+			"course",
+			"numeric_score",
+			"grade_value",
+			"grade_scale",
+			"task_counted",
+			"total_weight",
+			"internal_note",
+			"program",
+			"academic_year",
+			"school",
+		],
+	)
+
+	existing_by_key = {
+		(row.program_enrollment, row.course): row for row in existing_rows if row.program_enrollment and row.course
+	}
 
 	updated = 0
 	created = 0
 
-	for pec_name, bucket in buckets.items():
-		if not bucket.pct_values:
-			continue
-
-		avg_pct = sum(bucket.pct_values) / len(bucket.pct_values)
-		grade_value = _compute_grade_value(avg_pct, bucket.grade_scale)
-
-		existing_name = frappe.db.get_value(
-			"Course Term Result",
-			{
-				"reporting_cycle": rc.name,
-				"program_enrollment_course": bucket.program_enrollment_course,
-			},
-			"name",
+	for key, aggregate in aggregates.items():
+		numeric_score = (
+			aggregate.numeric_total / aggregate.scored_weight
+			if aggregate.scored_weight > 0
+			else None
 		)
+		grade_scale = None if aggregate.grade_scale_conflict else aggregate.grade_scale
+		grade_value = _grade_label_from_score(grade_scale, numeric_score)
 
-		if existing_name:
-			doc = frappe.get_doc("Course Term Result", existing_name)
-			is_new = False
+		note_flags = list(aggregate.note_flags)
+		if aggregate.grade_scale_conflict:
+			note_flags.append("Grade scale mismatch")
+		internal_note = "; ".join(sorted(set(flag for flag in note_flags if flag)))
+
+		payload = {
+			"reporting_cycle": ctx["name"],
+			"student": aggregate.student,
+			"program_enrollment": aggregate.program_enrollment,
+			"course": aggregate.course,
+			"program": aggregate.program,
+			"academic_year": aggregate.academic_year,
+			"school": aggregate.school,
+			"term": ctx["term"],
+			"grade_scale": grade_scale,
+			"numeric_score": numeric_score,
+			"grade_value": grade_value,
+			"task_counted": aggregate.task_counted,
+			"total_weight": aggregate.scored_weight,
+			"internal_note": internal_note or None,
+		}
+
+		existing = existing_by_key.get(key)
+		if existing:
+			changed = False
+			for field, value in payload.items():
+				if getattr(existing, field, None) != value:
+					changed = True
+					break
+			if not changed:
+				continue
+
+			doc = frappe.get_doc("Course Term Result", existing.name)
+			for field, value in payload.items():
+				setattr(doc, field, value)
+			doc.calculated_on = now_datetime()
+			doc.calculated_by = frappe.session.user
+			doc.save(ignore_permissions=True)
+			updated += 1
 		else:
 			doc = frappe.new_doc("Course Term Result")
-			is_new = True
-
-		doc.reporting_cycle = rc.name
-		doc.student = bucket.student
-		doc.program_enrollment = bucket.program_enrollment
-		doc.program_enrollment_course = bucket.program_enrollment_course
-		doc.course = bucket.course
-		doc.school = bucket.school
-		doc.academic_year = bucket.academic_year
-		doc.term = rc.term
-		doc.grade_scale = bucket.grade_scale
-
-		doc.numeric_score = avg_pct
-		doc.grade_value = grade_value
-		doc.tasks_counted = len(bucket.pct_values)
-		doc.total_weight = 1.0
-
-		doc.calculated_on = now_datetime()
-		doc.calculated_by = frappe.session.user
-
-		doc.is_override = 1 if doc.override_grade_value else 0
-
-		doc.save(ignore_permissions=True)
-		if is_new:
+			for field, value in payload.items():
+				setattr(doc, field, value)
+			doc.calculated_on = now_datetime()
+			doc.calculated_by = frappe.session.user
+			doc.save(ignore_permissions=True)
 			created += 1
-		else:
+
+	remaining_keys = set(existing_by_key.keys()) - set(aggregates.keys())
+	for key in remaining_keys:
+		row = existing_by_key[key]
+		doc = frappe.get_doc("Course Term Result", row.name)
+		changed = False
+		if doc.numeric_score is not None:
+			doc.numeric_score = None
+			changed = True
+		if doc.grade_value:
+			doc.grade_value = None
+			changed = True
+		if doc.task_counted:
+			doc.task_counted = 0
+			changed = True
+		if doc.total_weight:
+			doc.total_weight = 0
+			changed = True
+		if doc.internal_note != "No eligible outcomes":
+			doc.internal_note = "No eligible outcomes"
+			changed = True
+		if changed:
+			doc.calculated_on = now_datetime()
+			doc.calculated_by = frappe.session.user
+			doc.save(ignore_permissions=True)
 			updated += 1
 
-	return {
-		"updated": updated,
-		"created": created,
-		"buckets": len(buckets),
-	}
+	return {"updated": updated, "created": created, "buckets": len(aggregates)}
+
+
+@frappe.whitelist()
+def recalculate_course_term_results(reporting_cycle: str):
+	ctx = get_cycle_context(reporting_cycle)
+	outcomes = get_eligible_outcomes(ctx)
+	aggregates = aggregate_outcomes_to_course_results(ctx, outcomes)
+	return upsert_course_term_results(ctx, aggregates)
 
 
 @frappe.whitelist()
 def generate_student_term_reports(reporting_cycle: str):
-	"""Create / update Student Term Report docs from Course Term Result for a cycle."""
-	rc = _load_reporting_cycle(reporting_cycle)
+	ctx = get_cycle_context(reporting_cycle)
 
 	ctr_rows = frappe.get_all(
 		"Course Term Result",
-		filters={"reporting_cycle": rc.name},
+		filters={"reporting_cycle": ctx["name"]},
 		fields=[
 			"name",
 			"student",
@@ -328,8 +498,7 @@ def generate_student_term_reports(reporting_cycle: str):
 	if not ctr_rows:
 		return {"reports": 0}
 
-	# Preload Program Enrollment meta
-	pe_names = {r.program_enrollment for r in ctr_rows if r.program_enrollment}
+	pe_names = {row.program_enrollment for row in ctr_rows if row.program_enrollment}
 	pe_meta = {}
 	if pe_names:
 		pe_rows = frappe.get_all(
@@ -337,10 +506,9 @@ def generate_student_term_reports(reporting_cycle: str):
 			filters={"name": ("in", list(pe_names))},
 			fields=["name", "student", "program", "academic_year", "school"],
 		)
-		pe_meta = {r.name: r for r in pe_rows}
+		pe_meta = {row.name: row for row in pe_rows}
 
-	# Preload Course names
-	course_names = {r.course for r in ctr_rows if r.course}
+	course_names = {row.course for row in ctr_rows if row.course}
 	course_meta = {}
 	if course_names:
 		c_rows = frappe.get_all(
@@ -348,34 +516,30 @@ def generate_student_term_reports(reporting_cycle: str):
 			filters={"name": ("in", list(course_names))},
 			fields=["name", "course_name"],
 		)
-		course_meta = {r.name: r for r in c_rows}
+		course_meta = {row.name: row for row in c_rows}
 
-	# Group CTR rows by (student, program_enrollment)
 	grouped: Dict[Tuple[str, str], List[dict]] = defaultdict(list)
-	for r in ctr_rows:
-		key = (r.student, r.program_enrollment)
-		grouped[key].append(r)
+	for row in ctr_rows:
+		key = (row.student, row.program_enrollment)
+		grouped[key].append(row)
 
 	report_count = 0
-
 	for (student, pe_name), rows in grouped.items():
 		if not pe_name:
 			continue
 
 		existing_name = frappe.db.get_value(
 			"Student Term Report",
-			{"reporting_cycle": rc.name, "student": student, "program_enrollment": pe_name},
+			{"reporting_cycle": ctx["name"], "student": student, "program_enrollment": pe_name},
 			"name",
 		)
 
 		if existing_name:
 			report = frappe.get_doc("Student Term Report", existing_name)
-			is_new = False
 		else:
 			report = frappe.new_doc("Student Term Report")
-			is_new = True
 
-		report.reporting_cycle = rc.name
+		report.reporting_cycle = ctx["name"]
 		report.student = student
 		report.program_enrollment = pe_name
 
@@ -385,20 +549,18 @@ def generate_student_term_reports(reporting_cycle: str):
 			report.academic_year = pe.academic_year
 			report.school = pe.school
 
-		report.term = rc.term
-
-		# Rebuild child table from CTR rows
+		report.term = ctx["term"]
 		report.set("courses", [])
-		for r in rows:
+		for row in rows:
 			course_row = report.append("courses", {})
-			course_row.course_term_result = r.name
-			course_row.course = r.course
-			c = course_meta.get(r.course)
-			course_row.course_name = getattr(c, "course_name", None) if c else None
-			course_row.grade_value = r.override_grade_value or r.grade_value
-			course_row.numeric_score = r.numeric_score
-			course_row.is_override = 1 if r.override_grade_value else 0
-			course_row.teacher_comment = r.teacher_comment
+			course_row.course_term_result = row.name
+			course_row.course = row.course
+			course = course_meta.get(row.course)
+			course_row.course_name = getattr(course, "course_name", None) if course else None
+			course_row.grade_value = row.override_grade_value or row.grade_value
+			course_row.numeric_score = row.numeric_score
+			course_row.is_override = 1 if row.override_grade_value else 0
+			course_row.teacher_comment = row.teacher_comment
 
 		report.save(ignore_permissions=True)
 		report_count += 1

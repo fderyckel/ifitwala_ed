@@ -1,35 +1,12 @@
 /* =====================================================================
-   IFITWALA DESIGN TOKENS — COLORS, SURFACES, RADII, SHADOWS
+   IFITWALA DESIGN TOKENS - COLORS, SURFACES, RADII, SHADOWS, TYPE
    ===================================================================== */
 
 @layer base {
   :root {
-    /* ---------------------------------------------------------------
-       Core neutrals
-       --------------------------------------------------------------- */
-    --ink: #071019;
-    --slate: #475569;
-
-    /* Greens = bush / canopy */
-    --canopy: #0b3d2b;
-    --leaf: #1f7a45;
-    --moss: #7faa63;
-
-    /* Sky / ground */
-    --sky: #edf5f7;
-    --sand: #f4ecdd;
-    --clay: #b6522b;
-
-    /* Jacaranda & flamboyant blooms */
-    --jacaranda: #7e6bd6;
-    --flame: #f25b32;
-
-    /* Borders / lines */
-    --border: #e2e8f0;
-
-    /* ---------------------------------------------------------------
-       RGB tokens (for Tailwind + rgb(var(--token-rgb) /alpha))
-       --------------------------------------------------------------- */
+    /* ============================================================
+       Color channels (RGB triplets)
+       ============================================================ */
     --ink-rgb: 7 16 25;
     --slate-rgb: 71 85 105;
     --canopy-rgb: 11 61 43;
@@ -41,62 +18,77 @@
     --jacaranda-rgb: 126 107 214;
     --flame-rgb: 242 91 50;
     --border-rgb: 226 232 240;
+    --shade-rgb: 15 23 42;
 
-    /* ---------------------------------------------------------------
-       Surfaces — “soft shell” vs “pure white”
-       --------------------------------------------------------------- */
-    /* Soft shell surface (cards sitting on the gradient) */
-    --surface-rgb: 250 248 244; /* #faf8f4 */
+    /* ============================================================
+       Solid colors (semantic)
+       ============================================================ */
+    --ink: rgb(var(--ink-rgb) / 1);
+    --slate: rgb(var(--slate-rgb) / 1);
+    --canopy: rgb(var(--canopy-rgb) / 1);
+    --leaf: rgb(var(--leaf-rgb) / 1);
+    --moss: rgb(var(--moss-rgb) / 1);
+    --sky: rgb(var(--sky-rgb) / 1);
+    --sand: rgb(var(--sand-rgb) / 1);
+    --clay: rgb(var(--clay-rgb) / 1);
+    --jacaranda: rgb(var(--jacaranda-rgb) / 1);
+    --flame: rgb(var(--flame-rgb) / 1);
+    --border: rgb(var(--border-rgb) / 1);
 
-    /* Pure white surface (strong cards, dialogs) */
-    --surface-strong-rgb: 255 255 255; /* #ffffff */
+    /* ============================================================
+       Surface tokens
+       ============================================================ */
+    --surface-rgb: 250 248 244;
+    --surface-strong-rgb: 255 255 255;
+    --sky-mist-rgb: 241 246 248;
 
-    /* Derived border strengths */
-    --border-light: rgb(var(--border-rgb) / .85);
-    --border-subtle: rgb(var(--border-rgb) / .6);
-    --border-strong: rgb(var(--border-rgb));
+    /* ============================================================
+       Border strengths
+       ============================================================ */
+    --border-light: rgb(var(--border-rgb) / 0.85);
+    --border-subtle: rgb(var(--border-rgb) / 0.6);
+    --border-strong: rgb(var(--border-rgb) / 1);
 
-    /* ---------------------------------------------------------------
+    /* ============================================================
        Shadows & focus
-       --------------------------------------------------------------- */
-    --shadow-soft: 0 6px 20px rgb(var(--ink-rgb) / .05);
-    --shadow-strong: 0 10px 35px rgb(var(--ink-rgb) / .10);
+       ============================================================ */
+    --shadow-soft: 0 6px 20px rgb(var(--ink-rgb) / 0.05);
+    --shadow-strong: 0 10px 35px rgb(var(--ink-rgb) / 0.10);
+    --shadow-overlay: 0 18px 45px rgb(var(--ink-rgb) / 0.18);
+    --focus-ring: 0 0 0 3px rgb(var(--leaf-rgb) / 0.35);
 
-    /* Focus ring (used for inputs/buttons) */
-    --focus-ring: 0 0 0 3px rgb(var(--leaf-rgb) / .35);
-
-    /* ---------------------------------------------------------------
+    /* ============================================================
        Gradients
-       --------------------------------------------------------------- */
-    /* Portal background gradient (staff/guardian portal shell) */
+       ============================================================ */
     --portal-gradient-bg:
-      radial-gradient(circle at 5% 5%, rgb(var(--leaf-rgb) / .32), transparent 58%),
-      radial-gradient(circle at 95% 0%, rgb(var(--jacaranda-rgb) / .26), transparent 58%),
-      radial-gradient(circle at 90% 95%, rgb(var(--moss-rgb) / .25), transparent 60%),
-      linear-gradient(180deg, var(--sky) 0%, #f1f6f8 45%, var(--sand) 100%);
+      radial-gradient(circle at 5% 5%, rgb(var(--leaf-rgb) / 0.32), transparent 58%),
+      radial-gradient(circle at 95% 0%, rgb(var(--jacaranda-rgb) / 0.26), transparent 58%),
+      radial-gradient(circle at 90% 95%, rgb(var(--moss-rgb) / 0.25), transparent 60%),
+      linear-gradient(
+        180deg,
+        rgb(var(--sky-rgb) / 1) 0%,
+        rgb(var(--sky-mist-rgb) / 1) 45%,
+        rgb(var(--sand-rgb) / 1) 100%
+      );
 
-    /* Modal / panel gradient (meeting/class/school-event modals) */
     --modal-panel-gradient-bg:
-      radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / .9), transparent 65%),
-      radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / .9), transparent 65%),
-      rgb(var(--surface-strong-rgb));
+      radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / 0.9), transparent 65%),
+      radial-gradient(circle at 100% 0%, rgb(var(--sand-rgb) / 0.9), transparent 65%),
+      rgb(var(--surface-strong-rgb) / 1);
 
-    /* ---------------------------------------------------------------
+    /* ============================================================
        Radii
-       --------------------------------------------------------------- */
+       ============================================================ */
     --radius-lg: 1rem;
     --radius-xl: 1.25rem;
 
-    /* ---------------------------------------------------------------
+    /* ============================================================
        Fonts
-       --------------------------------------------------------------- */
+       ============================================================ */
     --font-sans: "Plus Jakarta Sans", system-ui, -apple-system,
       BlinkMacSystemFont, "Segoe UI", sans-serif;
-
     --font-serif: "DM Serif Display", "Georgia", "Times New Roman", serif;
-
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular,
       Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
 }
-

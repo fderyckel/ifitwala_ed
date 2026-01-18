@@ -1,6 +1,8 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/students/doctype/student_log_follow_up/student_log_follow_up.py
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -13,10 +15,53 @@ except Exception:
 
 
 class StudentLogFollowUp(Document):
+	# -----------------------------------------------------------------
+	# Internal helpers
+	# -----------------------------------------------------------------
+	def _close_open_todos_for_log(self, log_name: str):
+		"""
+		Close ALL OPEN ToDo(s) for this Student Log.
+
+		Policy:
+		- Focus "action" items are driven by OPEN ToDos.
+		- Submitting a follow-up means the assignee has acted.
+		- We close all OPEN ToDos for the log (single-open policy, but defensive).
+		"""
+		open_todos = frappe.get_all(
+			"ToDo",
+			filters={
+				"reference_type": "Student Log",
+				"reference_name": log_name,
+				"status": "Open",
+			},
+			fields=["name", "allocated_to"],
+			limit_page_length=50,
+		)
+
+		for t in open_todos:
+			allocated_to = t.get("allocated_to")
+			if assign_remove and allocated_to:
+				try:
+					assign_remove("Student Log", log_name, allocated_to)
+					continue
+				except Exception:
+					# fall back to direct close below
+					pass
+
+			if t.get("name"):
+				frappe.db.set_value("ToDo", t["name"], "status", "Closed")
+
+	# -----------------------------------------------------------------
+	# Lifecycle
+	# -----------------------------------------------------------------
 	def validate(self):
 		# Guard: must point to a parent log
 		if not self.student_log:
 			frappe.throw(_("Please link a Student Log."))
+
+		# Server authoritative date (site timezone). Client should not send date.
+		if not getattr(self, "date", None):
+			self.date = frappe.utils.today()
 
 		# Single read: parent status (only 'completed' is terminal now)
 		status = (frappe.db.get_value("Student Log", self.student_log, "follow_up_status") or "").lower()
@@ -43,11 +88,10 @@ class StudentLogFollowUp(Document):
 		if not self.follow_up_author:
 			self.follow_up_author = frappe.utils.get_fullname(frappe.session.user)
 
-
 	def on_update(self):
 		# Mapping: parent status Open → In Progress when any follow-up is edited
 		log = frappe.get_doc("Student Log", self.student_log)
-		if log.follow_up_status == "Open":
+		if (log.follow_up_status or "") == "Open":
 			log.db_set("follow_up_status", "In Progress")
 
 	def on_submit(self):
@@ -66,9 +110,12 @@ class StudentLogFollowUp(Document):
 				except Exception:
 					pass
 
+		# Close OPEN ToDo(s) for this log (single-open policy)
+		self._close_open_todos_for_log(log.name)
+
 		# Resolve key users
 		author_user = log.owner or None
-		if not author_user and log.author_name:
+		if not author_user and getattr(log, "author_name", None):
 			author_user = frappe.db.get_value("Employee", {"employee_full_name": log.author_name}, "user_id")
 		assignee_user = log.follow_up_person or None
 
@@ -141,7 +188,7 @@ class StudentLogFollowUp(Document):
 				except Exception:
 					pass
 
-		# Single concise timeline entry on the parent (refactored wording)
+		# Single concise timeline entry on the parent
 		actor = frappe.utils.get_fullname(frappe.session.user) or frappe.session.user
 		log.add_comment(
 			comment_type="Info",

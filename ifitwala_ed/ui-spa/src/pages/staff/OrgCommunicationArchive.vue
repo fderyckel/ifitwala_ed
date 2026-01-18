@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue -->
 <template>
-  <div class="staff-shell space-y-6">
+  <div class="min-h-screen flex flex-col gap-6 p-6">
     <!-- Header -->
     <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
@@ -11,80 +11,85 @@
       </div>
 
       <!-- Date Range Toggles -->
-      <div class="flex items-center gap-1 rounded-lg bg-surface-soft p-1">
-        <button
-          v-for="range in DATE_RANGES"
-          :key="range.value"
-          @click="filters.date_range = range.value"
-          class="px-3 py-1.5 text-xs font-medium rounded-md transition-all"
-          :class="
-            filters.date_range === range.value
-              ? 'bg-white text-ink shadow-sm'
-              : 'text-slate-token/60 hover:text-ink hover:bg-white/50'
-          "
-        >
-          {{ range.label }}
-        </button>
-      </div>
+      <DateRangePills v-model="filters.date_range" :items="DATE_RANGES" />
     </header>
 
     <!-- Filters Bar -->
-    <div class="analytics-filters ifit-filters flex flex-wrap items-center gap-3 rounded-xl border border-line-soft bg-surface-glass p-3 shadow-soft">
-      <div class="analytics-filters__title text-sm font-semibold text-ink mr-2">
-        Filters
+    <FiltersBar class="analytics-filters">
+      <!-- Organization -->
+      <div v-if="organizationOptions.length > 0" class="flex flex-col gap-1">
+        <label class="type-label">Organization</label>
+        <FormControl
+          type="select"
+          :options="organizationOptions"
+          v-model="filters.organization"
+          class="w-44"
+        />
       </div>
 
-      <!-- Organization -->
-      <FormControl
-        v-if="organizationOptions.length > 0"
-        type="select"
-        :options="organizationOptions"
-        v-model="filters.organization"
-        class="w-40"
-      />
-
       <!-- School -->
-      <FormControl
-        v-if="schoolOptions.length > 0"
-        type="select"
-        :options="schoolOptions"
-        v-model="filters.school"
-        class="w-40"
-      />
+      <div v-if="schoolOptions.length > 0" class="flex flex-col gap-1">
+        <label class="type-label">School</label>
+        <FormControl
+          type="select"
+          :options="schoolOptions"
+          v-model="filters.school"
+          class="w-44"
+        />
+      </div>
 
       <!-- Team -->
-			<FormControl
-				v-if="hasTeamFilter"
-				type="select"
-				:options="teamOptions"
-				v-model="filters.team"
-				class="w-40"
-			/>
+      <div v-if="hasTeamFilter" class="flex flex-col gap-1">
+        <label class="type-label">Team</label>
+        <FormControl
+          type="select"
+          :options="teamOptions"
+          v-model="filters.team"
+          class="w-44"
+        />
+      </div>
 
       <!-- Student Group -->
-      <FormControl
-        v-if="studentGroupOptions.length > 1"
-        type="select"
-        :options="studentGroupOptions"
-        v-model="filters.student_group"
-        class="w-40"
-      />
+      <div v-if="studentGroupOptions.length > 1" class="flex flex-col gap-1">
+        <label class="type-label">Student Group</label>
+        <FormControl
+          type="select"
+          :options="studentGroupOptions"
+          v-model="filters.student_group"
+          class="w-44"
+        />
+      </div>
 
-       <!-- Interaction Toggle -->
-      <label class="flex items-center gap-2 cursor-pointer text-sm text-ink select-none px-2">
-        <input type="checkbox" v-model="filters.only_with_interactions" class="rounded border-slate-300 text-jacaranda" />
-        <span>With interactions</span>
-      </label>
-    </div>
+      <!-- With comments -->
+      <div class="flex flex-col gap-1">
+        <label class="type-label">Interactions</label>
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-ink select-none h-9">
+          <input
+            type="checkbox"
+            v-model="filters.only_with_interactions"
+            class="rounded border-slate-300 text-jacaranda"
+          />
+          <span class="inline-flex items-center gap-1.5">
+            <span>With comments</span>
+            <FeatherIcon
+              name="info"
+              class="h-4 w-4 text-slate-token/60 hover:text-slate-token/80"
+              tabindex="0"
+              title="Shows only announcements that have at least one visible comment."
+            />
+          </span>
+        </label>
+      </div>
+    </FiltersBar>
 
     <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-6 items-start h-[calc(100vh-14rem)]">
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-6 flex-1 min-h-0">
 
       <!-- LEFT LIST -->
-      <div class="flex flex-col h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden">
+      <div class="flex flex-col min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden">
         <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-sand/20">
 
-          <div v-if="orgCommFeed.loading && !feedItems.length" class="py-12 text-center text-slate-token/60">
+           <div v-if="feedLoading && !feedItems.length" class="py-12 text-center text-slate-token/60">
              <LoadingIndicator />
           </div>
 
@@ -149,7 +154,11 @@
                     <div class="flex items-center gap-1 text-xs text-slate-token/50 bg-slate-50 px-2 py-1 rounded">
                        <span>👍 {{ getInteractionStats(item).reactions_total }}</span>
                        <span class="border-l border-slate-200 h-3 mx-1"></span>
-                       <span>💬 {{ getInteractionStats(item).comments_total }}</span>
+                       <span
+                         :title="getInteractionStats(item).comments_total > 0 ? 'Has comments' : 'No comments'"
+                       >
+                         💬 {{ getInteractionStats(item).comments_total }}
+                       </span>
                     </div>
                  </div>
                </div>
@@ -158,10 +167,10 @@
 
            <!-- Load More -->
           <div v-if="hasMore" class="pt-2">
-            <Button
+              <Button
               variant="subtle"
               class="w-full text-xs"
-              :loading="orgCommFeed.loading"
+              :loading="feedLoading"
               @click="loadMore"
             >
               Load More
@@ -172,7 +181,7 @@
       </div>
 
       <!-- RIGHT DETAIL -->
-      <div class="h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative">
+      <div class="min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden flex flex-col relative">
         <div v-if="!selectedComm" class="flex flex-col items-center justify-center h-full text-center p-8 text-slate-token/40">
            <FeatherIcon name="inbox" class="h-10 w-10 mb-3 opacity-50" />
            <p class="type-h3">Select an announcement</p>
@@ -211,7 +220,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                    <FeatherIcon name="users" class="h-4 w-4 text-slate-token/50" />
-                   <span>{{ selectedComm.audience_label }}</span>
+                   <span class="font-medium text-slate-token/70">{{ selectedComm.audience_label }}</span>
                 </div>
              </div>
            </div>
@@ -219,8 +228,8 @@
            <!-- Content -->
            <div class="flex-1 overflow-y-auto p-6 text-sm text-ink leading-relaxed">
               <div class="prose prose-slate max-w-none bg-white/80 rounded-2xl border border-line-soft shadow-soft p-6">
-                <div v-if="fullContent.loading" class="py-10 text-center"><LoadingIndicator /></div>
-                <div v-else v-html="fullContent.data?.message || selectedComm.snippet"></div>
+                <div v-if="fullContentLoading" class="py-10 text-center"><LoadingIndicator /></div>
+                <div v-else v-html="fullContent?.message || selectedComm.snippet"></div>
               </div>
            </div>
 
@@ -228,41 +237,35 @@
            <div class="p-4 border-t border-line-soft bg-surface-soft/80 z-10 sticky bottom-0">
               <div class="flex items-center justify-between gap-4">
 
-                 <div class="flex gap-2">
-                    <Button
-                      :variant="getInteractionFor(selectedComm).self ? 'solid' : 'subtle'"
-                      :color="getInteractionFor(selectedComm).self ? 'gray' : 'gray'"
-                      class="gap-2"
-                      @click="acknowledge(selectedComm)"
-                      :loading="interactionAction.loading"
-                      :disabled="!canInteract(selectedComm)"
-                    >
-                      <FeatherIcon name="thumbs-up" class="h-4 w-4" />
-                      <span>
-                        Reactions
-                      </span>
-                      <Badge variant="outline" class="bg-white/50 ml-1">
-                        {{ getInteractionStats(selectedComm).reactions_total }}
-                      </Badge>
-                    </Button>
+                 <InteractionEmojiChips
+                   v-if="selectedComm"
+                   :interaction="getInteractionFor(selectedComm)"
+                   :readonly="!canInteract(selectedComm)"
+                   :onReact="(code) => reactTo(selectedComm, code)"
+                 />
 
+                 <div class="flex items-center gap-3 ml-auto">
                     <Button
                       variant="subtle"
                       color="gray"
-                      class="gap-2"
+                      class="gap-2 whitespace-nowrap"
                       @click="openThread(selectedComm)"
-                      :disabled="!selectedComm.allow_public_thread"
+                      :disabled="!canInteract(selectedComm)"
                     >
-                      <FeatherIcon name="message-square" class="h-4 w-4" />
-                      Comments
-                      <Badge variant="outline" class="bg-white/50 ml-1">
-                        {{ getInteractionStats(selectedComm).comments_total }}
-                      </Badge>
-                    </Button>
-                 </div>
+                      <FeatherIcon name="message-square" class="h-4 w-4 shrink-0" />
 
-                 <div v-if="getInteractionFor(selectedComm).self" class="text-xs text-jacaranda font-medium">
-                    You responded: {{ getInteractionFor(selectedComm).self?.intent_type }}
+                      <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                        <span>Comments</span>
+
+                        <span
+                          v-if="selectedStats"
+                          class="text-xs font-semibold tabular-nums"
+                          :title="selectedStats.comments_total > 0 ? 'Has comments' : 'No comments'"
+                        >
+                          {{ selectedStats.comments_total }}
+                        </span>
+                      </span>
+                    </Button>
                  </div>
 
               </div>
@@ -275,10 +278,10 @@
     <CommentThreadDrawer
       :open="showThreadDrawer"
       title="Comments"
-      :rows="threadResource.data || []"
-      :loading="threadResource.loading"
+      :rows="threadRows"
+      :loading="threadLoading"
       v-model:comment="newComment"
-      :submit-loading="interactionAction.loading"
+      :submit-loading="interactionActionLoading"
       :format-timestamp="(value) => formatDate(value, 'DD MMM HH:mm')"
       @close="showThreadDrawer = false"
       @submit="submitComment"
@@ -288,14 +291,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, createResource } from 'frappe-ui'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, toast } from 'frappe-ui'
+import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService'
+import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService'
+import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals'
 import { type ArchiveFilters, type OrgCommunicationListItem } from '@/types/orgCommunication'
-import { type InteractionSummary } from '@/types/morning_brief'
+import { type InteractionSummary, type InteractionThreadRow } from '@/types/morning_brief'
+import type { ReactionCode } from '@/types/interactions'
+import type { Response as OrgCommunicationItemResponse } from '@/types/contracts/org_communication_archive/get_org_communication_item'
+import FiltersBar from '@/components/filters/FiltersBar.vue'
+import DateRangePills from '@/components/filters/DateRangePills.vue'
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue'
+import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue'
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats'
 
 const PAGE_LENGTH = 30
+const FEED_THROTTLE_MS = 500
 
 const DATE_RANGES = [
   { label: 'Last 7 Days', value: '7d' },
@@ -304,6 +316,9 @@ const DATE_RANGES = [
   { label: 'YTD', value: 'year' },
   { label: 'All Time', value: 'all' },
 ] as const
+
+const archiveService = createOrgCommunicationArchiveService()
+const interactionService = createCommunicationInteractionService()
 
 const filters = ref<ArchiveFilters>({
 	search_text: '',
@@ -319,8 +334,6 @@ const filters = ref<ArchiveFilters>({
 	organization: null,
 })
 
-
-
 const selectedComm = ref<OrgCommunicationListItem | null>(null)
 const showThreadDrawer = ref(false)
 const newComment = ref('')
@@ -330,13 +343,27 @@ const start = ref(0)
 const feedItems = ref<OrgCommunicationListItem[]>([])
 const hasMore = ref(false)
 const interactionSummaries = ref<Record<string, InteractionSummary>>({})
+const fullContent = ref<OrgCommunicationItemResponse | null>(null)
+const threadRows = ref<InteractionThreadRow[]>([])
+
+const contextLoading = ref(false)
+const feedLoading = ref(false)
+const fullContentLoading = ref(false)
+const threadLoading = ref(false)
+const interactionActionLoading = ref(false)
+
+const selectedStats = computed(() => {
+	if (!selectedComm.value) return null
+	return buildInteractionStats(getInteractionFor(selectedComm.value))
+})
 
 // User Context for Filters
-const hasTeamFilter = computed(() => myTeams.value.length > 0)
 const myTeams = ref<Array<{ label: string; value: string }>>([])
-const myStudentGroups = ref<Array<{ label: string; value: string }>>([])
+const myStudentGroups = ref<Array<{ label: string; value: string; school?: string | null }>>([])
 const orgChoices = ref<Array<{ label: string; value: string }>>([])
 const schoolChoices = ref<Array<{ label: string; value: string; organization?: string | null }>>([])
+
+const hasTeamFilter = computed(() => myTeams.value.length > 0)
 
 const organizationOptions = computed(() => [
 	{ label: 'All organisations', value: null },
@@ -356,66 +383,80 @@ const teamOptions = computed(() => [
 	...myTeams.value,
 ])
 
+const studentGroupOptions = computed(() => [
+	{ label: 'All groups', value: null },
+	...myStudentGroups.value,
+])
 
-const studentGroupOptions = computed(() => [{ label: 'All groups', value: null }, ...myStudentGroups.value])
+let reloadTimer: number | null = null
+let feedThrottleTimer: number | null = null
+let feedInFlight: Promise<void> | null = null
+let feedQueued = false
+let feedQueuedReset = false
+let lastFeedRun = 0
+let disposeOrgCommInvalidate: (() => void) | null = null
 
-let reloadTimer: number | undefined
 function queueReload() {
-	window.clearTimeout(reloadTimer)
+	if (typeof window === 'undefined') {
+		requestFeedLoad(true)
+		return
+	}
+	if (reloadTimer) window.clearTimeout(reloadTimer)
 	reloadTimer = window.setTimeout(() => {
-		loadFeed(true)
+		requestFeedLoad(true)
 	}, 350)
 }
 
-const archiveContext = createResource({
-	url: 'ifitwala_ed.api.org_communication_archive.get_archive_context',
-	method: 'POST',
-	auto: true,
-	onSuccess(data) {
-		if (!data) return
+function requestFeedLoad(reset: boolean) {
+	if (!initialized.value) return
+
+	if (feedInFlight) {
+		feedQueued = true
+		feedQueuedReset = feedQueuedReset || reset
+		return
+	}
+
+	const now = Date.now()
+	const waitMs = FEED_THROTTLE_MS - (now - lastFeedRun)
+	if (waitMs > 0 && typeof window !== 'undefined') {
+		if (feedThrottleTimer) window.clearTimeout(feedThrottleTimer)
+		feedThrottleTimer = window.setTimeout(() => {
+			feedThrottleTimer = null
+			requestFeedLoad(reset)
+		}, waitMs)
+		return
+	}
+
+	feedInFlight = loadFeed(reset)
+	feedInFlight.finally(() => {
+		feedInFlight = null
+		lastFeedRun = Date.now()
+		if (feedQueued) {
+			const nextReset = feedQueuedReset
+			feedQueued = false
+			feedQueuedReset = false
+			requestFeedLoad(nextReset)
+		}
+	})
+}
+
+async function loadArchiveContext() {
+	if (contextLoading.value) return
+	contextLoading.value = true
+
+	try {
+		const data = await archiveService.getArchiveContext({})
 
 		myTeams.value = Array.isArray(data.my_teams) ? data.my_teams : []
+		myStudentGroups.value = Array.isArray(data.my_groups) ? data.my_groups : []
 
-
-		// Student Groups:
-		// - Old shape: string[]
-		// - New shape: Array<{ label: string; value: string; ... }>
-		const rawGroups = data.my_groups || []
-		const normalizedGroups: Array<{ label: string; value: string }> = []
-
-		for (const g of rawGroups) {
-			// Old shape
-			if (typeof g === 'string') {
-				const v = g.trim()
-				if (v) normalizedGroups.push({ label: v, value: v })
-				continue
-			}
-
-			// New shape (must have a real value)
-			if (g && typeof g === 'object') {
-				const v = typeof g.value === 'string' ? g.value.trim() : ''
-				if (!v) continue
-
-				const l = typeof g.label === 'string' ? g.label.trim() : ''
-				normalizedGroups.push({ label: l || v, value: v })
-			}
-		}
-
-		// De-dupe by value (safety)
-		const seen = new Set<string>()
-		myStudentGroups.value = normalizedGroups.filter((x) => {
-			if (!x.value || seen.has(x.value)) return false
-			seen.add(x.value)
-			return true
-		})
-
-		orgChoices.value = (data.organizations || []).map((o: any) => ({
-			label: o.organization_name || o.name,
+		orgChoices.value = (data.organizations || []).map((o) => ({
+			label: (o.abbr ? `${o.abbr} — ` : '') + (o.organization_name || o.name),
 			value: o.name,
 		}))
 
-		schoolChoices.value = (data.schools || []).map((s: any) => ({
-			label: s.school_name || s.name,
+		schoolChoices.value = (data.schools || []).map((s) => ({
+			label: (s.abbr ? `${s.abbr} — ` : '') + (s.school_name || s.name),
 			value: s.name,
 			organization: s.organization || null,
 		}))
@@ -423,65 +464,30 @@ const archiveContext = createResource({
 		if (data.defaults) {
 			filters.value.organization = data.defaults.organization || null
 			filters.value.school = data.defaults.school || null
-			filters.value.team = data.defaults?.team || null
+			filters.value.team = data.defaults.team || null
 		}
-
-		initialized.value = true
-		loadFeed(true)
-	},
-})
-
-const orgCommFeed = createResource<{
-	items: OrgCommunicationListItem[]
-	total_count: number
-	has_more: boolean
-	start: number
-	page_length: number
-}>({
-	url: 'ifitwala_ed.api.org_communication_archive.get_org_communication_feed',
-	method: 'POST',
-	params: () => ({
-		filters: normalizeArchiveFilters(filters.value),
-		start: start.value,
-		page_length: PAGE_LENGTH,
-	}),
-	auto: false,
-})
-
-const interactionSummaryResource = createResource<Record<string, InteractionSummary>>({
-	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_org_comm_interaction_summary',
-	method: 'POST',
-	auto: false,
-	onSuccess(data) {
-		if (data) {
-			interactionSummaries.value = { ...interactionSummaries.value, ...data }
+	} catch (err) {
+		toast({
+			title: 'Unable to load archive',
+			text: 'Please refresh and try again.',
+			icon: 'alert-circle',
+			appearance: 'danger',
+		})
+	} finally {
+		contextLoading.value = false
+		if (!initialized.value) {
+			initialized.value = true
+			requestFeedLoad(true)
 		}
-	},
-})
-
-const fullContent = createResource({
-	url: 'ifitwala_ed.api.org_communication_archive.get_org_communication_item',
-	method: 'POST',
-	auto: false,
-})
-
-const threadResource = createResource({
-	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_communication_thread',
-	method: 'POST',
-	auto: false,
-})
-
-const interactionAction = createResource({
-	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
-	method: 'POST',
-	auto: false,
-})
+	}
+}
 
 watch(
 	filters,
 	() => {
 		if (!initialized.value) return
 		selectedComm.value = null
+		fullContent.value = null
 		queueReload()
 	},
 	{ deep: true },
@@ -587,16 +593,9 @@ function normalizeArchiveFilters(f: ArchiveFilters): ArchiveFilters {
 	}
 }
 
-
-
-function selectItem(item: OrgCommunicationListItem) {
-	if (!item?.name) return
-	selectedComm.value = item
-	fullContent.submit({ name: item.name })
-}
-
 async function loadFeed(reset = false) {
 	if (!initialized.value) return
+	feedLoading.value = true
 
 	if (reset) {
 		start.value = 0
@@ -604,42 +603,87 @@ async function loadFeed(reset = false) {
 		hasMore.value = false
 		interactionSummaries.value = {}
 		selectedComm.value = null
+		fullContent.value = null
+		threadRows.value = []
+		showThreadDrawer.value = false
 	}
 
-	const payload =
-		((await orgCommFeed.submit({
+	try {
+		const payload = await archiveService.getOrgCommunicationFeed({
 			filters: normalizeArchiveFilters(filters.value),
 			start: start.value,
 			page_length: PAGE_LENGTH,
-		})) as any) || {}
+		})
 
-	const items = payload.items || []
+		const items = Array.isArray(payload.items) ? payload.items : []
 
-	feedItems.value = reset ? items : [...feedItems.value, ...items]
-	hasMore.value = !!payload.has_more
+		feedItems.value = reset ? items : [...feedItems.value, ...items]
+		hasMore.value = !!payload.has_more
 
-	const responseStart = typeof payload.start === 'number' ? payload.start : start.value
-	start.value = responseStart + items.length
+		const responseStart = typeof payload.start === 'number' ? payload.start : start.value
+		start.value = responseStart + items.length
 
-	if (items.length) {
-		const commNames = items
-			.map((i: OrgCommunicationListItem) => i?.name)
-			.filter((name): name is string => typeof name === 'string' && !!name.trim())
+		if (items.length) {
+			const commNames = items
+				.map((i: OrgCommunicationListItem) => i?.name)
+				.filter((name): name is string => typeof name === 'string' && !!name.trim())
 
-		if (commNames.length) {
-			interactionSummaryResource.submit({ comm_names: commNames })
+			if (commNames.length) {
+				void refreshSummary(commNames)
+			}
 		}
-	}
 
-	if (!selectedComm.value && feedItems.value.length) {
-		selectItem(feedItems.value[0])
+		if (!selectedComm.value && feedItems.value.length) {
+			void selectItem(feedItems.value[0], { silent: true })
+		}
+	} catch (err) {
+		toast({
+			title: 'Unable to load announcements',
+			text: 'Please try again.',
+			icon: 'alert-circle',
+			appearance: 'danger',
+		})
+	} finally {
+		feedLoading.value = false
 	}
 }
 
-
 function loadMore() {
-	if (orgCommFeed.loading || !hasMore.value) return
-	loadFeed(false)
+	if (feedLoading.value || !hasMore.value) return
+	requestFeedLoad(false)
+}
+
+async function selectItem(item: OrgCommunicationListItem, opts?: { silent?: boolean }) {
+	if (!item?.name) {
+		if (!opts?.silent) {
+			toast({
+				title: 'Unable to open announcement',
+				text: 'Please try again.',
+				icon: 'alert-circle',
+				appearance: 'danger',
+			})
+		}
+		return
+	}
+
+	selectedComm.value = item
+	fullContent.value = null
+	fullContentLoading.value = true
+
+	try {
+		fullContent.value = await archiveService.getOrgCommunicationItem({ name: item.name })
+	} catch (err) {
+		if (!opts?.silent) {
+			toast({
+				title: 'Unable to load announcement',
+				text: 'Please try again.',
+				icon: 'alert-circle',
+				appearance: 'danger',
+			})
+		}
+	} finally {
+		fullContentLoading.value = false
+	}
 }
 
 function getInteractionFor(item: OrgCommunicationListItem): InteractionSummary {
@@ -655,52 +699,207 @@ function canInteract(item: OrgCommunicationListItem) {
 	return item.interaction_mode !== 'None'
 }
 
-function refreshSummary(names: string[]) {
+async function refreshSummary(names: string[]) {
 	const commNames = names.filter((name) => typeof name === 'string' && !!name.trim())
 	if (!commNames.length) return
-	interactionSummaryResource.submit({ comm_names: commNames })
+
+	try {
+		const data = await interactionService.getOrgCommInteractionSummary({ comm_names: commNames })
+		if (data) {
+			interactionSummaries.value = { ...interactionSummaries.value, ...data }
+		}
+	} catch (err) {
+		// Best-effort refresh; no user action required.
+	}
 }
 
-function acknowledge(item: OrgCommunicationListItem) {
-	if (!item?.name) return
-	interactionAction.submit(
-		{
+async function refreshThread(orgCommunication: string, opts?: { silent?: boolean }) {
+	if (!orgCommunication) return
+
+	threadLoading.value = true
+	try {
+		threadRows.value = await interactionService.getCommunicationThread({
+			org_communication: orgCommunication,
+		})
+	} catch (err) {
+		if (!opts?.silent) {
+			toast({
+				title: 'Unable to load comments',
+				text: 'Please try again.',
+				icon: 'alert-circle',
+				appearance: 'danger',
+			})
+		}
+	} finally {
+		threadLoading.value = false
+	}
+}
+
+function onOrgCommInvalidated(payload?: { names?: string[] }) {
+	const names = (payload?.names || []).filter((name) => typeof name === 'string' && !!name.trim())
+	const selectedName = selectedComm.value?.name || null
+
+	// Always do the cheap, best-effort refreshes first (counts + thread)
+	if (names.length) {
+		void refreshSummary(names)
+
+		if (showThreadDrawer.value && selectedName && names.includes(selectedName)) {
+			void refreshThread(selectedName, { silent: true })
+		}
+	} else {
+		const fallbackNames = feedItems.value.map((item) => item.name).filter(Boolean)
+		if (fallbackNames.length) {
+			void refreshSummary(fallbackNames)
+		}
+
+		if (showThreadDrawer.value && selectedName) {
+			void refreshThread(selectedName, { silent: true })
+		}
+	}
+
+	/**
+	 * Refresh-owner rule (A+):
+	 * If an interaction can change list membership under current filters,
+	 * we must refetch the feed (not just patch counts).
+	 *
+	 * Currently: only_with_interactions depends on comments existing.
+	 * A new comment can cause an item to ENTER the list (or visibility to change),
+	 * so we reload the feed in that filter mode.
+	 */
+	if (filters.value.only_with_interactions) {
+		requestFeedLoad(true)
+	}
+}
+
+
+function notifyInteractionsDisabled() {
+	toast({
+		title: 'Interactions disabled',
+		text: 'Comments and reactions are turned off for this announcement.',
+		icon: 'info',
+	})
+}
+
+/**
+ * Interaction workflow
+ * --------------------------------------------------
+ * Used by: OrgCommunicationArchive.vue (Staff)
+ *
+ * Use ONLY semantic service methods (A+):
+ * - interactionService.reactToOrgCommunication()
+ * - interactionService.postOrgCommunicationComment()
+ *
+ * Service responsibility:
+ * - craft mutation payload (surface, intent_type)
+ * - emit SIGNAL_ORG_COMMUNICATION_INVALIDATE on success
+ *
+ * Page responsibility:
+ * - call semantic intent methods
+ * - refresh owned data when signal fires
+ */
+async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
+	if (!item?.name) {
+		toast({
+			title: 'Unable to save reaction',
+			text: 'Please try again.',
+			icon: 'alert-circle',
+			appearance: 'danger',
+		})
+		return
+	}
+	if (!canInteract(item)) {
+		notifyInteractionsDisabled()
+		return
+	}
+
+	try {
+		await interactionService.reactToOrgCommunication({
 			org_communication: item.name,
-			intent_type: 'Acknowledged',
-			surface: 'Portal Feed',
-		},
-		{
-			onSuccess: () => refreshSummary([item.name]),
-		},
-	)
+			reaction_code: code,
+		})
+	} catch (err) {
+		toast({
+			title: 'Unable to save reaction',
+			text: 'Please try again.',
+			icon: 'alert-circle',
+			appearance: 'danger',
+		})
+	}
 }
 
-function openThread(item: OrgCommunicationListItem) {
-	if (!item?.name) return
+
+async function openThread(item: OrgCommunicationListItem) {
+	if (!item?.name) {
+		toast({
+			title: 'Unable to open comments',
+			text: 'Please try again.',
+			icon: 'alert-circle',
+			appearance: 'danger',
+		})
+		return
+	}
+	if (!canInteract(item)) {
+		notifyInteractionsDisabled()
+		return
+	}
 	selectedComm.value = item
 	showThreadDrawer.value = true
-	threadResource.submit({ org_communication: item.name })
+	await refreshThread(item.name)
 }
 
-function submitComment() {
-	if (!selectedComm.value?.name || !newComment.value.trim()) return
+async function submitComment() {
+	if (!selectedComm.value?.name) {
+		toast({
+			title: 'Select an announcement',
+			text: 'Choose an announcement before posting a comment.',
+			icon: 'info',
+		})
+		return
+	}
+	if (!canInteract(selectedComm.value)) {
+		notifyInteractionsDisabled()
+		return
+	}
 
-	interactionAction.submit(
-		{
+	const note = newComment.value.trim()
+	if (!note) {
+		toast({
+			title: 'Comment required',
+			text: 'Write a comment before posting.',
+			icon: 'info',
+		})
+		return
+	}
+
+	interactionActionLoading.value = true
+	try {
+		await interactionService.postOrgCommunicationComment({
 			org_communication: selectedComm.value.name,
-			intent_type: 'Comment',
-			note: newComment.value,
-			surface: 'Portal Feed',
-		},
-		{
-			onSuccess: () => {
-				newComment.value = ''
-				threadResource.reload()
-				refreshSummary([selectedComm.value!.name])
-			},
-		},
-	)
+			note,
+		})
+		newComment.value = ''
+	} catch (err) {
+		toast({
+			title: 'Unable to post comment',
+			text: 'Please try again.',
+			icon: 'alert-circle',
+			appearance: 'danger',
+		})
+	} finally {
+		interactionActionLoading.value = false
+	}
 }
+
+onMounted(() => {
+	loadArchiveContext()
+	disposeOrgCommInvalidate = uiSignals.subscribe(SIGNAL_ORG_COMMUNICATION_INVALIDATE, onOrgCommInvalidated)
+})
+
+onBeforeUnmount(() => {
+	if (reloadTimer && typeof window !== 'undefined') window.clearTimeout(reloadTimer)
+	if (feedThrottleTimer && typeof window !== 'undefined') window.clearTimeout(feedThrottleTimer)
+	if (disposeOrgCommInvalidate) disposeOrgCommInvalidate()
+})
 
 function formatDate(date: string | null, fmt = 'DD MMM') {
 	if (!date) return ''

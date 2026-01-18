@@ -12,7 +12,7 @@ from ifitwala_ed.schedule.schedule_utils import get_conflict_rule, get_rotation_
 from ifitwala_ed.schedule.student_group_scheduling import check_slot_conflicts
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 from ifitwala_ed.schedule.attendance_utils import invalidate_meeting_dates
-from ifitwala_ed.utilities.location_conflicts import find_location_conflicts
+from ifitwala_ed.utilities.location_utils import find_room_conflicts
 
 from ifitwala_ed.schedule.student_group_employee_booking import (
 	rebuild_employee_bookings_for_student_group,
@@ -61,6 +61,11 @@ class StudentGroup(Document):
 			ss = self._get_school_schedule()
 			self.school_schedule = ss.name
 
+		frappe.logger("ifitwala.materialization").warning({
+			"event": "student_group_rebuild_triggered",
+			"student_group": self.name,
+			"hook": "on_update",
+		})
 
 		############
 		self._validate_schedule_rows()
@@ -91,6 +96,7 @@ class StudentGroup(Document):
 			self.flags._sg_instructors_changed = False
 			# meeting dates: nothing cached yet on first save
 			self.flags._sg_meeting_dates_changed = False
+			self.flags._sg_schedule_changed = bool(self.student_group_schedule)
 			return
 
 		# ----- students (active only) -----
@@ -126,6 +132,30 @@ class StudentGroup(Document):
 		curr_instr = instructor_keys(self)
 		self.flags._sg_instructors_changed = (prev_instr != curr_instr)
 
+		# ----- schedule rows (rotation/day/block/location/instructor/employee) -----
+		def schedule_keys(doc):
+			keys = []
+			for r in (doc.student_group_schedule or []):
+				rd = getattr(r, "rotation_day", None)
+				blk = getattr(r, "block_number", None)
+				loc = (getattr(r, "location", "") or "").strip()
+				ins = (getattr(r, "instructor", "") or "").strip()
+				emp = (getattr(r, "employee", "") or "").strip()
+				try:
+					rd = int(rd) if rd is not None else None
+				except Exception:
+					pass
+				try:
+					blk = int(blk) if blk is not None else None
+				except Exception:
+					pass
+				keys.append((rd, blk, loc, ins, emp))
+			return sorted(keys)
+
+		prev_sched = schedule_keys(old)
+		curr_sched = schedule_keys(self)
+		self.flags._sg_schedule_changed = (prev_sched != curr_sched)
+
 		# ----- MEETING-DATES impact detection (NEW) -----
 		def rotation_days_set(doc):
 			return {
@@ -152,6 +182,7 @@ class StudentGroup(Document):
 		added = getattr(self.flags, "_sg_students_added", set()) or set()
 		removed = getattr(self.flags, "_sg_students_removed", set()) or set()
 		instr_changed = bool(getattr(self.flags, "_sg_instructors_changed", False))
+		sched_changed = bool(getattr(self.flags, "_sg_schedule_changed", False))
 
 		if not added and not removed and not instr_changed:
 			pass
@@ -172,24 +203,26 @@ class StudentGroup(Document):
 		if bool(getattr(self.flags, "_sg_meeting_dates_changed", False)):
 			invalidate_meeting_dates(self.name)
 
-		# ----- EMPLOYEE BOOKINGS materialisation -----
-		# Rebuild bookings when timetable or instructors changed.
-		# Guard: only for submitted + Active groups to avoid trash/testing noise.
-		if (
-			self.docstatus == 1
-			and (self.status or "Active") == "Active"
-			and (
-				bool(getattr(self.flags, "_sg_meeting_dates_changed", False))
-				or bool(getattr(self.flags, "_sg_instructors_changed", False))
-			)
-		):
-			rebuild_employee_bookings_for_student_group(self.name)
-
 		# cleanup flags
 		self.flags._sg_students_added = set()
 		self.flags._sg_students_removed = set()
 		self.flags._sg_instructors_changed = False
 		self.flags._sg_meeting_dates_changed = False
+		self.flags._sg_schedule_changed = False
+
+	def on_update(self):
+		# Rebuild bookings on every save for Active groups to keep materialized facts in sync.
+		if (self.status or "Active") != "Active":
+			return
+
+		has_schedule = bool(self.student_group_schedule) or frappe.db.exists(
+			"Student Group Schedule",
+			{"parent": self.name},
+		)
+		if not has_schedule:
+			return
+
+		rebuild_employee_bookings_for_student_group(self.name)
 
 
 	##################### VALIDATONS #########################
@@ -439,7 +472,7 @@ class StudentGroup(Document):
 		  - No student is double-booked in another Student Group
 		    at the same rotation_day + block_number.
 
-		Room conflicts are handled separately by location_conflicts.
+		Room conflicts are handled separately by the canonical room conflict helper.
 		"""
 
 		# Use a plain dict so check_slot_conflicts can be called both from
@@ -653,15 +686,10 @@ class StudentGroup(Document):
 
 	def validate_location_conflicts_absolute(self):
 		"""
-		Check this Student Group's room usage against other objects using the
-		central location_conflicts engine.
+		Check this Student Group's room usage against materialized bookings.
 
 		Compares this group's concrete sessions (absolute datetimes derived
-		from rotation days + blocks) against:
-			- other Student Groups
-			- Meetings
-			- School Events
-			- Frappe Events
+		from rotation days + blocks) against Location Booking only.
 
 		Respects the School's schedule_conflict_rule (Hard / Soft).
 		"""
@@ -755,23 +783,29 @@ class StudentGroup(Document):
 		if not slots:
 			return
 
-		ignore_sources = {("Student Group", self.name)}
+		exclude = {"source_doctype": "Student Group", "source_name": self.name}
 		all_conflicts = []
 		seen = set()
 
 		for loc, start_dt, end_dt in slots:
-			hits = find_location_conflicts(
+			hits = find_room_conflicts(
 				loc,
 				start_dt,
 				end_dt,
-				ignore_sources=ignore_sources,
+				exclude=exclude,
 			)
 			for c in hits:
 				# Extra safety: don't ever flag this group against itself
-				if c.source_doctype == "Student Group" and c.source_name == self.name:
+				if c.get("source_doctype") == "Student Group" and c.get("source_name") == self.name:
 					continue
 
-				key = (c.source_doctype, c.source_name, c.location, c.start, c.end)
+				key = (
+					c.get("source_doctype"),
+					c.get("source_name"),
+					c.get("location"),
+					c.get("from"),
+					c.get("to"),
+				)
 				if key in seen:
 					continue
 				seen.add(key)
@@ -782,14 +816,14 @@ class StudentGroup(Document):
 
 		lines = []
 		for c in all_conflicts:
-			target = get_link_to_form(c.source_doctype, c.source_name)
-			start_str = format_datetime(c.start)
-			end_str = format_datetime(c.end)
+			target = get_link_to_form(c.get("source_doctype"), c.get("source_name"))
+			start_str = format_datetime(c.get("from"))
+			end_str = format_datetime(c.get("to"))
 
 			lines.append(
 				_("{location} is already booked by {doctype} {target} from {start} to {end}.").format(
-					location=c.location,
-					doctype=c.source_doctype,
+					location=c.get("location"),
+					doctype=c.get("source_doctype"),
 					target=target,
 					start=start_str,
 					end=end_str,

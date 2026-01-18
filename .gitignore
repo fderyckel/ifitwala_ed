@@ -29,6 +29,12 @@ ifitwala_ed/ui-spa/node_modules/
 ifitwala_ed/ui-spa/.vite/
 ifitwala_ed/ui-spa/.DS_Store
 
-# --- Vite production output (we’ll build to public/dist)
-ifitwala_ed/public/dist/*
-!ifitwala_ed/public/dist/.gitkeep
+# --- Rollup bundle output (public/js + public/css)
+ifitwala_ed/public/js/*.bundle.js
+ifitwala_ed/public/js/*.bundle.js.map
+ifitwala_ed/public/css/*.bundle.css
+ifitwala_ed/public/css/*.bundle.css.map
+ifitwala_ed/public/css/*.min.css
+
+# --- Vite production output (we’ll build to public/vite)
+ifitwala_ed/public/vite/
