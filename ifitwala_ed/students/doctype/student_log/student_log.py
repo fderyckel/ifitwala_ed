@@ -877,5 +877,37 @@ def reopen_log(log_name: str):
 	return {"ok": True, "status": "In Progress", "log": row.name}
 
 
+def _user_is_pastoral_lead_for_student(user: str, student: str) -> bool:
+	"""
+	True if `user` is an instructor of at least one Pastoral Student Group
+	that contains `student`.
+
+	Pastoral scope is explicit: group_based_on == 'Pastoral' only.
+	"""
+	if not user or not student:
+		return False
+
+	row = frappe.db.sql(
+		"""
+		SELECT 1
+		FROM `tabStudent Group Instructor` sgi
+		INNER JOIN `tabStudent Group` sg
+			ON sg.name = sgi.parent
+		INNER JOIN `tabStudent Group Student` sgs
+			ON sgs.parent = sg.name
+		WHERE
+			sgi.user_id = %(user)s
+			AND sg.status = 'Active'
+			AND sg.group_based_on = 'Pastoral'
+			AND sgs.student = %(student)s
+		LIMIT 1
+		""",
+		{"user": user, "student": student},
+		as_dict=False,
+	)
+	return bool(row)
+
+
+
 def on_doctype_update():
 			frappe.db.add_index("Student Log", ["school"])
