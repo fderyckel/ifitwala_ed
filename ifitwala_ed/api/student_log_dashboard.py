@@ -11,7 +11,7 @@ from frappe.utils import getdate
 
 ALLOWED_ANALYTICS_ROLES = {
 	"Academic Admin",
-	"Grade Level Lead",
+	"Pastoral Lead",
 	"Counsellor",
 	"Curriculum Coordinator",
 	"System Manager",

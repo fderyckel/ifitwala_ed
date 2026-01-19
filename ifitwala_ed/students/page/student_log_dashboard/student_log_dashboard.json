@@ -4,7 +4,7 @@
  "docstatus": 0,
  "doctype": "Page",
  "idx": 43,
- "modified": "2025-11-13 11:39:48.690785",
+ "modified": "2025-11-13 11:39:55",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "student-log-dashboard",
@@ -15,7 +15,7 @@
    "role": "Academic Admin"
   },
   {
-   "role": "Grade Level Lead"
+   "role": "Pastoral Lead"
   },
   {
    "role": "Counsellor"
