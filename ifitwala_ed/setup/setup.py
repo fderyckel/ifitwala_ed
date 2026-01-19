@@ -164,7 +164,6 @@ def add_other_records(country=None):
 		{"doctype": "Student Log Next Step", "next_step": "Refer to Learning Support", "associated_role": "Learning Support"},
 		{"doctype": "Student Log Next Step", "next_step": "Behaviour follow-up", "associated_role": "Pastoral Lead"},
 		{"doctype": "Student Log Next Step", "next_step": "IT / Device support", "associated_role": "Organization IT"},
-		{"doctype": "Student Log Next Step", "next_step": "Transport / Bus follow-up", "associated_role": "Transport Coordinator"},
 		{"doctype": "Student Log Next Step", "next_step": "Refer to Nurse / Health", "associated_role": "Nurse"},
 
 		# Program tree root (global)
