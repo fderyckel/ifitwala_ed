@@ -160,7 +160,7 @@ def add_other_records(country=None):
 		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to Grade Level Leader'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to counseling', 'associated_role': 'Counsellor'},
 		{'doctype': 'Student Log Next Step', 'next_step': 'Refer to academic admin', 'associated_role': 'Academic Admin'},
-		{"doctype": "Student Log Next Step", "next_step": "Parents meeting needed", "associated_role": "Admin Assistant"},
+		{"doctype": "Student Log Next Step", "next_step": "Parents meeting needed", "associated_role": "Academic Assistant"},
 		{"doctype": "Student Log Next Step", "next_step": "Refer to Learning Support", "associated_role": "Learning Support"},
 		{"doctype": "Student Log Next Step", "next_step": "Behaviour follow-up", "associated_role": "Grade Level Leader"},
 		{"doctype": "Student Log Next Step", "next_step": "IT / Device support", "associated_role": "IT Organization"},

@@ -570,7 +570,7 @@ def _has_role(*roles):
 
 
 def _is_academic_adminish():
-	return _has_role("System Manager", "Academic Admin", "Admin Assistant", "Curriculum Coordinator")
+	return _has_role("System Manager", "Academic Admin", "Academic Assistant", "Curriculum Coordinator")
 
 
 def _is_instructor_scoped_user():
