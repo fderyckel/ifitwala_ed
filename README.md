@@ -33,6 +33,7 @@ Ifitwala_Ed uses a **Nested Set Hierarchy** to model the reality of your institu
 
 ### Visualizing the Nested Reality
 
+```mermaid
 graph TD
     %% Nodes Definition
     ORG[🏢 Parent Organization]
@@ -88,6 +89,7 @@ graph TD
     class SO1_PRI,SO2_SEC,SO2_PRI,SO2_LC lvl2Node;
     class SO2_HS,SO2_MS,SO2_UP,SO2_LP,SO2_KG,SO2_TC lvl3Node;
     class SO3_PLAY,SO3_GOLF,SO3_GYM facilityNode;
+```
 
 **Why this matters:**
 
