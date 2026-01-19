@@ -238,6 +238,7 @@
    "label": "Courses & Prerequisites"
   },
   {
+   "description": "Prerequisite Group\nUse this field to define alternative prerequisite paths.\nAll rows with the same group number must be met together (AND).\nRows with different group numbers represent alternatives (OR): meeting any one group is sufficient.",
    "fieldname": "course_prerequisites_section",
    "fieldtype": "Section Break",
    "label": "Course Prerequisites"
@@ -291,7 +292,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-12-08 11:39:50",
+ "modified": "2026-01-19 13:25:17.392480",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",

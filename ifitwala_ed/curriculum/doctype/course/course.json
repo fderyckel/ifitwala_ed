@@ -15,12 +15,8 @@
   "course_group",
   "curriculum_section",
   "default_grade_scale",
-  "grade_scale",
   "column_break_egte",
-  "observations",
-  "binary",
-  "points",
-  "criteria",
+  "grade_scale",
   "section_break_wnvl",
   "assessment_categories",
   "assessment_criteria",
@@ -182,36 +178,12 @@
   {
    "fieldname": "column_break_egte",
    "fieldtype": "Column Break"
-  },
-  {
-   "default": "0",
-   "fieldname": "binary",
-   "fieldtype": "Check",
-   "label": "Binary (Complete/Incomplete)"
-  },
-  {
-   "default": "0",
-   "fieldname": "observations",
-   "fieldtype": "Check",
-   "label": "Observations (Comments only)"
-  },
-  {
-   "default": "0",
-   "fieldname": "criteria",
-   "fieldtype": "Check",
-   "label": "Criteria"
-  },
-  {
-   "default": "0",
-   "fieldname": "points",
-   "fieldtype": "Check",
-   "label": "Points"
   }
  ],
  "image_field": "course_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-08 11:13:23",
+ "modified": "2026-01-19 15:22:24.635010",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Course",
