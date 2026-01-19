@@ -49,81 +49,80 @@ class AcademicYear(Document):
 				title=_("Date Error"),
 			)
 
-def create_calendar_events(self):
-	# Update existing linked events (dates only)
-	if self.ay_start:
-		start_ay = frappe.get_doc("School Event", self.ay_start)
-		if getdate(start_ay.starts_on) != getdate(self.year_start_date):
-			start_ay.db_set("starts_on", self.year_start_date)
-			start_ay.db_set("ends_on", self.year_start_date)
+	def create_calendar_events(self):
+		# Update existing linked events (dates only)
+		if self.ay_start:
+			start_ay = frappe.get_doc("School Event", self.ay_start)
+			if getdate(start_ay.starts_on) != getdate(self.year_start_date):
+				start_ay.db_set("starts_on", self.year_start_date)
+				start_ay.db_set("ends_on", self.year_start_date)
+				frappe.msgprint(
+					_("Date for the start of the year {0} has been updated on the School Event Calendar {1}")
+					.format(self.year_start_date, get_link_to_form("School Event", start_ay.name))
+				)
+
+		if self.ay_end:
+			end_ay = frappe.get_doc("School Event", self.ay_end)
+			if getdate(end_ay.ends_on) != getdate(self.year_end_date):
+				end_ay.db_set("starts_on", self.year_end_date)
+				end_ay.db_set("ends_on", self.year_end_date)
+				frappe.msgprint(
+					_("Date for the end of the year {0} has been updated on the School Event Calendar {1}")
+					.format(self.year_end_date, get_link_to_form("School Event", end_ay.name))
+				)
+
+		# Create missing events (MUST set school + audience)
+		if not self.ay_start:
+			start_year = frappe.get_doc({
+				"doctype": "School Event",
+				"owner": frappe.session.user,
+				"school": self.school,
+				"subject": "Start of the " + cstr(self.name) + " Academic Year",
+				"starts_on": getdate(self.year_start_date),
+				"ends_on": getdate(self.year_start_date),
+				"event_category": "Other",
+				"all_day": 1,
+				"color": "#7575ff",
+				"reference_type": "Academic Year",
+				"reference_name": self.name,
+				"audience": [
+					{"audience_type": "Whole School Community"}
+				],
+			})
+			start_year.flags.ignore_audience_permissions = True
+			start_year.insert(ignore_permissions=True)
+
+			self.db_set("ay_start", start_year.name)
 			frappe.msgprint(
-				_("Date for the start of the year {0} has been updated on the School Event Calendar {1}")
-				.format(self.year_start_date, get_link_to_form("School Event", start_ay.name))
+				_("Date for the start of the year {0} has been created on the School Event Calendar {1}")
+				.format(self.year_start_date, get_link_to_form("School Event", start_year.name))
 			)
 
-	if self.ay_end:
-		end_ay = frappe.get_doc("School Event", self.ay_end)
-		if getdate(end_ay.ends_on) != getdate(self.year_end_date):
-			end_ay.db_set("starts_on", self.year_end_date)
-			end_ay.db_set("ends_on", self.year_end_date)
+		if not self.ay_end:
+			end_year = frappe.get_doc({
+				"doctype": "School Event",
+				"owner": frappe.session.user,
+				"school": self.school,
+				"subject": "End of the " + cstr(self.name) + " Academic Year",
+				"starts_on": getdate(self.year_end_date),
+				"ends_on": getdate(self.year_end_date),
+				"event_category": "Other",
+				"all_day": 1,
+				"color": "#7575ff",
+				"reference_type": "Academic Year",
+				"reference_name": self.name,
+				"audience": [
+					{"audience_type": "Whole School Community"}
+				],
+			})
+			end_year.flags.ignore_audience_permissions = True
+			end_year.insert(ignore_permissions=True)
+
+			self.db_set("ay_end", end_year.name)
 			frappe.msgprint(
-				_("Date for the end of the year {0} has been updated on the School Event Calendar {1}")
-				.format(self.year_end_date, get_link_to_form("School Event", end_ay.name))
+				_("Date for the end of the year {0} has been created on the School Event Calendar {1}")
+				.format(self.year_end_date, get_link_to_form("School Event", end_year.name))
 			)
-
-	# Create missing events (MUST set school + audience)
-	if not self.ay_start:
-		start_year = frappe.get_doc({
-			"doctype": "School Event",
-			"owner": frappe.session.user,
-			"school": self.school,
-			"subject": "Start of the " + cstr(self.name) + " Academic Year",
-			"starts_on": getdate(self.year_start_date),
-			"ends_on": getdate(self.year_start_date),
-			"event_category": "Other",
-			"all_day": 1,
-			"color": "#7575ff",
-			"reference_type": "Academic Year",
-			"reference_name": self.name,
-			"audience": [
-				{"audience_type": "Whole School Community"}
-			],
-		})
-		start_year.flags.ignore_audience_permissions = True
-		start_year.insert(ignore_permissions=True)
-
-		self.db_set("ay_start", start_year.name)
-		frappe.msgprint(
-			_("Date for the start of the year {0} has been created on the School Event Calendar {1}")
-			.format(self.year_start_date, get_link_to_form("School Event", start_year.name))
-		)
-
-	if not self.ay_end:
-		end_year = frappe.get_doc({
-			"doctype": "School Event",
-			"owner": frappe.session.user,
-			"school": self.school,
-			"subject": "End of the " + cstr(self.name) + " Academic Year",
-			"starts_on": getdate(self.year_end_date),
-			"ends_on": getdate(self.year_end_date),
-			"event_category": "Other",
-			"all_day": 1,
-			"color": "#7575ff",
-			"reference_type": "Academic Year",
-			"reference_name": self.name,
-			"audience": [
-				{"audience_type": "Whole School Community"}
-			],
-		})
-		end_year.flags.ignore_audience_permissions = True
-		end_year.insert(ignore_permissions=True)
-
-		self.db_set("ay_end", end_year.name)
-		frappe.msgprint(
-			_("Date for the end of the year {0} has been created on the School Event Calendar {1}")
-			.format(self.year_end_date, get_link_to_form("School Event", end_year.name))
-		)
-
 
 
 
