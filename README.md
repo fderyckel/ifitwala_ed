@@ -33,51 +33,61 @@ Ifitwala_Ed uses a **Nested Set Hierarchy** to model the reality of your institu
 
 ### Visualizing the Nested Reality
 
-```mermaid
 graph TD
-    %% Nodes
-    ORG[🏢 Organization: Ifitwala Education Group]
+    %% Nodes Definition
+    ORG[🏢 Parent Organization]
 
-    %% Shared Services
-    SS[⚙️ Shared Services]
-    HR[Human Resources]
-    FIN[Finance & Assets]
-    IT[IT & Compliance]
+    %% Level 1: Sub-Organizations
+    SO1[🏫 Sub-Org 1: Standalone Primary]
+    SO2[🎓 Sub-Org 2: Complex Schools Group]
+    SO3[⚽ Sub-Org 3: Shared Facilities & Athletics]
 
-    %% Schools
-    SCH_SEC[🏫 School: Ifitwala Secondary]
-    SCH_PRI[🏫 School: Ifitwala Primary]
+    %% Level 2: Schools and Major Entities (Children of L1)
+    SO1_PRI[🎒 Primary School]
 
-    %% Sub-Schools & Departments
-    SUB_HS[High School Division]
-    SUB_MS[Middle School Division]
-    DEPT_SCI[Science Dept]
+    SO2_SEC[🏫 Secondary School]
+    SO2_PRI[🏫 Primary School]
+    SO2_LC[🧠 Learning Center]
 
-    %% Academic Entities
-    PROG_IB[🎓 Program: IB Diploma]
-    GRP_11[👥 Group: Grade 11 Cohort]
-    CRS_PHYS[physics_101: HL Physics]
+    SO3_PLAY[🛝 Playground Complex]
+    SO3_GOLF[⛳ Golf Center]
+    SO3_GYM[🏟️ Athletic Center]
 
-    %% Relationships
-    ORG --> SS
-    ORG --> SCH_SEC
-    ORG --> SCH_PRI
+    %% Level 3: Sub-Divisions (Children of L2)
+    SO2_HS[📜 High School]
+    SO2_MS[📘 Middle School]
 
-    SS --> HR & FIN & IT
+    SO2_UP[⬆️ Upper Primary]
+    SO2_LP[⬇️ Lower Primary]
+    SO2_KG[🧸 Kindergarten]
 
-    SCH_SEC --> SUB_HS & SUB_MS
-    SUB_HS --> DEPT_SCI
+    SO2_TC[📝 Testing Center]
 
-    DEPT_SCI --> PROG_IB
-    PROG_IB --> GRP_11
-    GRP_11 --> CRS_PHYS
+    %% Relationships Structure
+    ORG --> SO1 & SO2 & SO3
 
-    classDef container fill:#f9f9f9,stroke:#333,stroke-width:2px;
-    classDef component fill:#e1f5fe,stroke:#0277bd,stroke-width:1px;
-    class ORG,SCH_SEC,SCH_PRI container;
-    class SS,HR,FIN,IT,SUB_HS,SUB_MS,PROG_IB,GRP_11,CRS_PHYS,DEPT_SCI component;
+    SO1 --> SO1_PRI
 
-```
+    SO2 --> SO2_SEC & SO2_PRI & SO2_LC
+    SO2_SEC --> SO2_HS & SO2_MS
+    SO2_PRI --> SO2_UP & SO2_LP & SO2_KG
+    SO2_LC --> SO2_TC
+
+    SO3 --> SO3_PLAY & SO3_GOLF & SO3_GYM
+
+    %% Elegant Styling Definition
+    classDef rootNode fill:#2E3B55,stroke:#1B263B,stroke-width:2px,color:#fff,rx:5px,ry:5px;
+    classDef lvl1Node fill:#4A90E2,stroke:#357ABD,stroke-width:2px,color:#fff,rx:5px,ry:5px;
+    classDef lvl2Node fill:#50C878,stroke:#3DAF65,stroke-width:1px,color:#fff,rx:5px,ry:5px;
+    classDef lvl3Node fill:#A8E6CF,stroke:#8FD4BD,stroke-width:1px,color:#2E3B55,rx:5px,ry:5px;
+    classDef facilityNode fill:#F7C548,stroke:#E1B137,stroke-width:1px,color:#2E3B55,rx:5px,ry:5px;
+
+    %% Apply Styles
+    class ORG rootNode;
+    class SO1,SO2,SO3 lvl1Node;
+    class SO1_PRI,SO2_SEC,SO2_PRI,SO2_LC lvl2Node;
+    class SO2_HS,SO2_MS,SO2_UP,SO2_LP,SO2_KG,SO2_TC lvl3Node;
+    class SO3_PLAY,SO3_GOLF,SO3_GYM facilityNode;
 
 **Why this matters:**
 
