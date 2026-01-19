@@ -429,14 +429,14 @@ All rules below are enforced server-side and apply everywhere.
   * all descendant schools (NestedSet)
 * Can read logs regardless of author/assignee/pastoral grouping.
 
-#### B) Counsellor (school tree wellbeing oversight)
+#### B) Counsellor + Learning Support (school tree wellbeing oversight)
 
 * Can read **all Student Logs** for:
 
   * their `Employee.school`
   * all descendant schools (NestedSet)
 
-Counsellor visibility is broad by design, but it remains school-tree bounded.
+Counsellor + Learning Support visibility is broad by design, but it remains school-tree bounded.
 
 #### C) Pastoral Lead (group duty of care)
 
@@ -472,6 +472,12 @@ Curriculum Coordinator can read Student Logs for students enrolled in programs t
 
 **Important:** Curriculum Coordinator visibility is operational oversight, not counselling access. See §15.6 for confidentiality constraints.
 
+#### F) Accreditation Visitor (aggregate-only)
+
+* No log-level read access (Desk, SPA, API, reports).
+* May access aggregate-only analytics scoped to their school tree.
+* Recent log tables, student detail panels, and any log text must return empty.
+
 ### 15.3 Write vs read (hard rule)
 
 Visibility does not imply mutation rights.
@@ -482,6 +488,7 @@ Visibility does not imply mutation rights.
   * their own logs (pre-follow-up immutability rules still apply)
   * follow-ups assigned to them (Follow Up doctype rules)
 * Curriculum Coordinator: **read-only** by default.
+* Accreditation Visitor: **no log-level read or write** (aggregate-only analytics).
 
 ### 15.4 Why Academic Staff get “teaching context” read access
 
@@ -599,6 +606,12 @@ This applies equally to:
 * “recent logs” tables
 * “student details” panels that show full log text
 
+**Accreditation Visitor exception (aggregate-only):**
+
+* Accreditation Visitors may access aggregate charts/KPIs only.
+* Any log-level rows, student pickers, or log content must return empty.
+* Aggregate scope remains school-tree bounded (§15.2.F).
+
 ### 18.2 Analytics-role gating is insufficient (and can be dangerous)
 
 Having a role that grants access to “analytics pages” is a **UI navigation gate**, not a data-visibility gate.
@@ -674,6 +687,11 @@ There must be exactly one server utility that returns the canonical Student Log 
 Dashboards, reports, list endpoints, and detail endpoints must use it.
 
 This prevents “dashboard is correct but reports are wrong” divergence.
+
+**Accreditation Visitor note:**
+
+* The shared predicate must support an aggregate-only mode.
+* Detail endpoints must use the standard (non-aggregate) predicate.
 
 ### 19.2 Student Log dashboard endpoints must be refactored to use it
 

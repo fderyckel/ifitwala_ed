@@ -7,13 +7,20 @@ from __future__ import annotations
 
 import frappe
 from frappe.utils import getdate
+from frappe.utils.nestedset import get_descendants_of
+
+from ifitwala_ed.students.doctype.student_log.student_log import (
+	get_student_log_visibility_predicate,
+)
 
 
 ALLOWED_ANALYTICS_ROLES = {
 	"Academic Admin",
 	"Pastoral Lead",
 	"Counsellor",
+	"Learning Support",
 	"Curriculum Coordinator",
+	"Accreditation Visitor",
 	"System Manager",
 	"Administrator",
 }
@@ -93,28 +100,22 @@ def _resolve_date_window(filters):
 	return ay_start_s, ay_end_s
 
 
-def _apply_common_filters(filters, authorized_schools):
+def _apply_common_filters(filters, visibility_clause, visibility_params):
 	"""
 	Build WHERE conditions/params shared by queries, including date window.
 	"""
-	conditions, params = [], {}
+	conditions = []
+	params = dict(visibility_params or {})
 
-	# enforce access by school (uses your index on sl.school)
-	conditions.append("sl.school IN %(authorized_schools)s")
-	params["authorized_schools"] = tuple(authorized_schools)
+	if visibility_clause:
+		conditions.append(visibility_clause)
 
 	# School filter (include descendants)
 	if filters.get("school"):
-		conditions.append("""
-			sl.school IN (
-				SELECT s2.name
-				FROM `tabSchool` s1
-				JOIN `tabSchool` s2
-					ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
-				WHERE s1.name = %(field_school)s
-			)
-		""")
-		params["field_school"] = filters["school"]
+		descendants = get_descendants_of("School", filters["school"], ignore_permissions=True) or []
+		schools = [filters["school"], *descendants]
+		conditions.append("sl.school IN %(field_school)s")
+		params["field_school"] = tuple(schools)
 
 	# Direct columns in Student Log (alias sl)
 	direct_map = {
@@ -152,11 +153,14 @@ def get_dashboard_data(filters=None):
 		else:
 			filters = filters or {}
 
-		authorized_schools = get_authorized_schools(user)
-		if not authorized_schools:
-			return {"error": "No authorized schools found."}
+		visibility_clause, visibility_params = get_student_log_visibility_predicate(
+			user=user, table_alias="sl", allow_aggregate_only=True
+		)
+		detail_clause, detail_params = get_student_log_visibility_predicate(
+			user=user, table_alias="sl", allow_aggregate_only=False
+		)
 
-		where_clause, params = _apply_common_filters(filters, authorized_schools)
+		where_clause, params = _apply_common_filters(filters, visibility_clause, visibility_params)
 
 		def q(sql):
 			return frappe.db.sql(sql.format(w=where_clause), params, as_dict=True)
@@ -205,22 +209,16 @@ def get_dashboard_data(filters=None):
 		# ── Student Logs (detail for a specific student) ─────────────
 		student_logs = []
 		if filters.get("student"):
-			conds = ["sl.school IN %(authorized_schools)s", "sl.student = %(field_student)s"]
-			p = {**params, "field_student": filters["student"]}
+			conds = [detail_clause, "sl.student = %(field_student)s"]
+			p = {**detail_params, "field_student": filters["student"]}
 
 			if filters.get("school"):
-				conds.append("""
-					sl.school IN (
-						SELECT s2.name
-						FROM `tabSchool` s1
-						JOIN `tabSchool` s2
-							ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
-						WHERE s1.name = %(field_school)s
-					)
-				""")
-				p["field_school"] = filters["school"]
+				descendants = get_descendants_of("School", filters["school"], ignore_permissions=True) or []
+				schools = [filters["school"], *descendants]
+				conds.append("sl.school IN %(field_school)s")
+				p["field_school"] = tuple(schools)
 
-			where_detail = " AND ".join(conds)
+			where_detail = " AND ".join([c for c in conds if c]) if conds else "1=1"
 
 			student_logs = frappe.db.sql(
 				f"""
@@ -264,45 +262,19 @@ def get_distinct_students(filters=None, search_text: str = ""):
 
 		txt = (search_text or "").strip()
 
-		authorized_schools = get_authorized_schools(user)
-		if not authorized_schools:
-			return {"error": "No authorized schools found."}
-
-		conditions, params = [], {}
-		params["authorized_schools"] = tuple(authorized_schools)
-
-		if filters.get("school"):
-			conditions.append("""
-				pe.school IN (
-					SELECT s2.name
-					FROM `tabSchool` s1
-					JOIN `tabSchool` s2
-						ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
-					WHERE s1.name = %(field_school)s
-				)
-			""")
-			params["field_school"] = filters["school"]
-
-		if filters.get("program"):
-			conditions.append("pe.program = %(program)s")
-			params["program"] = filters["program"]
-		if filters.get("academic_year"):
-			conditions.append("pe.academic_year = %(academic_year)s")
-			params["academic_year"] = filters["academic_year"]
-
+		visibility_clause, visibility_params = get_student_log_visibility_predicate(
+			user=user, table_alias="sl", allow_aggregate_only=False
+		)
+		where_clause, params = _apply_common_filters(filters, visibility_clause, visibility_params)
 		if txt:
-			conditions.append("(pe.student LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)")
+			where_clause = f"{where_clause} AND (sl.student LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)"
 			params["txt"] = f"%{txt}%"
-
-		conditions.append("pe.school IN %(authorized_schools)s")
-
-		where_clause = " AND ".join(conditions) if conditions else "1=1"
 
 		return frappe.db.sql(
 			f"""
-			SELECT DISTINCT pe.student, s.student_full_name AS student_full_name
-			FROM `tabProgram Enrollment` pe
-			INNER JOIN `tabStudent` s ON pe.student = s.name
+			SELECT DISTINCT sl.student, s.student_full_name AS student_full_name
+			FROM `tabStudent Log` sl
+			INNER JOIN `tabStudent` s ON sl.student = s.name
 			WHERE {where_clause}
 			ORDER BY s.student_full_name
 			LIMIT 100
@@ -324,11 +296,10 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 	else:
 		filters = filters or {}
 
-	authorized_schools = get_authorized_schools(user)
-	if not authorized_schools:
-		return []
-
-	where_clause, params = _apply_common_filters(filters, authorized_schools)
+	visibility_clause, visibility_params = get_student_log_visibility_predicate(
+		user=user, table_alias="sl", allow_aggregate_only=False
+	)
+	where_clause, params = _apply_common_filters(filters, visibility_clause, visibility_params)
 
 	logs = frappe.db.sql(
 		f"""
@@ -354,25 +325,15 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 
 
 def get_authorized_schools(user):
-	"""Return user's school + all descendants using one SQL join on lft/rgt."""
+	"""Return user's school + all descendants using NestedSet helpers."""
 	default_school = frappe.defaults.get_user_default("school", user)
 	if not default_school:
 		default_school = frappe.db.get_value("Employee", {"user_id": user}, "school")
 	if not default_school:
 		return []
 
-	rows = frappe.db.sql(
-		"""
-		SELECT s2.name
-		FROM `tabSchool` s1
-		JOIN `tabSchool` s2
-			ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
-		WHERE s1.name = %s
-		""",
-		(default_school,),
-		as_list=True,
-	)
-	return [r[0] for r in rows] or [default_school]
+	descendants = get_descendants_of("School", default_school, ignore_permissions=True) or []
+	return [default_school, *descendants]
 
 
 
@@ -380,75 +341,81 @@ def get_authorized_schools(user):
 def get_filter_meta():
 	"""Return schools, academic years, programs and authors the user can filter on.
 
-	- Schools are restricted to the user's authorized school branch.
-	- Academic Years are restricted to those same schools.
-	- Programs are returned unfiltered for now (we do NOT assume Program has `school`).
-	- Authors = Employees with 'Academic Staff' role in those schools.
-	  We return their full name as the filter value, since `Student Log.author_name`
-	  stores the employee full name.
+	- Schools, Academic Years, Programs, and Authors are derived from the
+	  visible Student Log set (no leakage outside permission scope).
 	"""
 	user = _ensure_student_log_analytics_access()
-	authorized_schools = get_authorized_schools(user)
+	visibility_clause, visibility_params = get_student_log_visibility_predicate(
+		user=user, table_alias="sl", allow_aggregate_only=True
+	)
+	where_clause = visibility_clause or "1=1"
+	params = dict(visibility_params or {})
 
-	schools = []
-	default_school = None
-
-	if authorized_schools:
-		schools = frappe.get_all(
-			"School",
-			filters={"name": ["in", authorized_schools]},
-			fields=["name", "school_name as label"],
-			order_by="lft",
-		)
-		default_school = authorized_schools[0]
-
-	# Academic Years (scoped to authorized schools, not archived)
-	ay_filters = {"archived": 0}
-	if authorized_schools:
-		ay_filters["school"] = ["in", authorized_schools]
-
-	academic_years = frappe.get_all(
-		"Academic Year",
-		filters=ay_filters,
-		fields=[
-			"name",
-			"academic_year_name as label",
-			"year_start_date",
-			"year_end_date",
-			"school",
-		],
-		order_by="year_start_date desc",
+	schools = frappe.db.sql(
+		f"""
+		SELECT DISTINCT
+			sc.name,
+			sc.school_name AS label
+		FROM `tabStudent Log` sl
+		JOIN `tabSchool` sc ON sc.name = sl.school
+		WHERE {where_clause}
+		ORDER BY sc.school_name
+		""",
+		params,
+		as_dict=True,
 	)
 
-	# Programs (no school filter until Program schema is locked)
-	programs = frappe.get_all(
-		"Program",
-		fields=["name", "program_name as label"],
-		order_by="program_name",
+	default_school = frappe.defaults.get_user_default("school", user)
+	if not default_school:
+		default_school = frappe.db.get_value("Employee", {"user_id": user}, "school")
+	if default_school and default_school not in {s.get("name") for s in schools or []}:
+		default_school = None
+
+	academic_years = frappe.db.sql(
+		f"""
+		SELECT DISTINCT
+			ay.name,
+			ay.academic_year_name AS label,
+			ay.year_start_date,
+			ay.year_end_date,
+			ay.school
+		FROM `tabStudent Log` sl
+		JOIN `tabAcademic Year` ay ON ay.name = sl.academic_year
+		WHERE {where_clause}
+		ORDER BY ay.year_start_date DESC
+		""",
+		params,
+		as_dict=True,
 	)
 
-	# ── Authors: Employees with Academic Staff role in authorized schools ─────────
-	authors = []
-	if authorized_schools:
-		authors = frappe.db.sql(
-			"""
-			SELECT DISTINCT
-				e.employee_full_name AS label,
-				e.user_id            AS user_id
-			FROM `tabEmployee` e
-			INNER JOIN `tabUser` u
-				ON u.name = e.user_id
-			INNER JOIN `tabHas Role` hr
-				ON hr.parent = u.name
-			WHERE
-				hr.role = 'Academic Staff'
-				AND e.status = 'Active'
-				AND e.school IN %(authorized_schools)s
-			ORDER BY e.employee_full_name
-			""",
-			{"authorized_schools": tuple(authorized_schools)},
-			as_dict=True,
-		)
+	programs = frappe.db.sql(
+		f"""
+		SELECT DISTINCT
+			p.name,
+			p.program_name AS label
+		FROM `tabStudent Log` sl
+		JOIN `tabProgram` p ON p.name = sl.program
+		WHERE {where_clause}
+		ORDER BY p.program_name
+		""",
+		params,
+		as_dict=True,
+	)
+
+	authors = frappe.db.sql(
+		f"""
+		SELECT DISTINCT
+			e.employee_full_name AS label,
+			e.user_id            AS user_id
+		FROM `tabStudent Log` sl
+		JOIN `tabEmployee` e ON e.user_id = sl.owner
+		WHERE {where_clause}
+		  AND e.status = 'Active'
+		ORDER BY e.employee_full_name
+		""",
+		params,
+		as_dict=True,
+	)
 
 	return {
 		"schools": schools,

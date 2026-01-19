@@ -25,6 +25,7 @@
   "criteria",
   "section_break_1rlr",
   "assessment_categories",
+  "program_coordinators",
   "dashboard_tab",
   "website_tab",
   "is_published",
@@ -256,6 +257,12 @@
    "options": "Program Assessment Category"
   },
   {
+   "fieldname": "program_coordinators",
+   "fieldtype": "Table",
+   "label": "Program Coordinators",
+   "options": "Program Coordinator"
+  },
+  {
    "default": "0",
    "fieldname": "points",
    "fieldtype": "Check",
@@ -292,7 +299,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-01-19 13:25:17.392480",
+ "modified": "2026-01-19 13:25:19",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",

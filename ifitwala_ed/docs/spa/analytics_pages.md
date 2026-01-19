@@ -51,7 +51,7 @@ ui-spa/src/components/analytics/
 
 Examples:
 
-* `FilterBar.vue`
+* `FiltersBar.vue` (shared filter layout, see §2.1)
 * `MetricCard.vue`
 * `AnalyticsTable.vue`
 * `EmptyAnalyticsState.vue`
@@ -63,16 +63,20 @@ Rules:
 * Components contain **no business logic**
 * Components must be permission-agnostic
 
+Note:
+
+* `FiltersBar.vue` is a shared layout component that lives under `components/filters/`.
+
 ---
 
 ## 2. Filter Architecture (Critical)
 
-### 2.1 FilterBar is mandatory
+### 2.1 FiltersBar is mandatory
 
 All staff analytics pages MUST use the shared:
 
 ```
-components/analytics/FilterBar.vue
+components/filters/FiltersBar.vue
 ```
 
 Why this is locked:
@@ -364,7 +368,7 @@ Transport normalization happens **once**, centrally.
 ## 8. Anti-Patterns (Treat as Defects)
 
 ❌ Analytics page outside `pages/staff/analytics/`
-❌ Ad-hoc filter UI (no FilterBar)
+❌ Ad-hoc filter UI (no FiltersBar)
 ❌ GET-style filters on POST endpoints
 ❌ `auto: true` on POST analytics resources
 ❌ Reading `frappe.form_dict`
