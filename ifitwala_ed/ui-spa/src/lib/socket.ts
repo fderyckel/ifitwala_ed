@@ -2,10 +2,9 @@
 
 import { io } from 'socket.io-client'
 
-const { protocol, hostname, port } = window.location
-const serverURL = `${protocol}//${hostname}${port ? ':' + port : ''}`
-
-export const socket = io(serverURL, {
+// PRODUCTION CONFIGURATION:
+// Connect to the same origin as the browser.
+export const socket = io(window.location.origin, {
   path: '/socket.io',
   transports: ['websocket', 'polling'],
   withCredentials: true,

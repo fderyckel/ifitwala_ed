@@ -5,14 +5,14 @@ def execute():
     frappe.reload_doc("accounting", "doctype", "account")
     frappe.reload_doc("accounting", "doctype", "chart_of_accounts_template")
     frappe.reload_doc("accounting", "doctype", "coa_template_row")
-    
-    # Reload Org Settings to ensure new fields are present
-    frappe.reload_doc("setup", "doctype", "org_settings")
+
+    # Reload Org Setting to ensure new fields are present
+    frappe.reload_doc("setup", "doctype", "org_setting")
 
     orgs = frappe.get_all("Organization", filters={"archived": 0}, pluck="name")
-    
+
     print(f"Found {len(orgs)} organizations to process.")
-        
+
     for org in orgs:
         try:
             print(f"Processing Organization: {org}")

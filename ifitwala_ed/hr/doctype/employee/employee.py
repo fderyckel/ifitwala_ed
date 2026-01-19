@@ -704,7 +704,7 @@ def create_user(employee, user=None, email=None):
 		frappe.throw(_("A User with email {0} already exists.").format(frappe.bold(emp.employee_professional_email)))
 
 	# 4) Build the User document (keep your privacy handling)
-	privacy = frappe.get_single("Org Settings")
+	privacy = frappe.get_single("Org Setting")
 	birth_date = emp.employee_date_of_birth if getattr(privacy, "dob_to_user", 0) == 1 else None
 	phone = emp.employee_mobile_phone if getattr(privacy, "mobile_to_user", 0) == 1 else None
 

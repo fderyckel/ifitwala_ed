@@ -1,20 +1,20 @@
-frappe.ui.form.on('Org Settings', {
+frappe.ui.form.on('Org Setting', {
 	refresh: function(frm) {
 		frm.trigger('setup_account_filters');
 	},
-	
+
 	default_organization: function(frm) {
 		frm.trigger('setup_account_filters');
 	},
 
 	setup_account_filters: function(frm) {
 		let org = frm.doc.default_organization;
-		
+
 		let common_filters = {
 			"is_group": 0,
 			"disabled": 0
 		};
-		
+
 		if (org) {
 			common_filters["organization"] = org;
 		}

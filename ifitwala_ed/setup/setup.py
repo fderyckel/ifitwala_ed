@@ -24,7 +24,7 @@ def setup_education():
 
 def ensure_initial_setup_flag():
 	"""Ensure the Ifitwala Initial Setup flag exists on Org Setting."""
-	doc = frappe.get_single("Org Settings")
+	doc = frappe.get_single("Org Setting")
 	# safer check – explicit field lookup
 	if doc.get("ifitwala_initial_setup") is None:
 		doc.ifitwala_initial_setup = 0
