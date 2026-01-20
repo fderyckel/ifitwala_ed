@@ -46,7 +46,7 @@ def get_briefing_widgets():
 			widgets["my_student_birthdays"] = get_my_student_birthdays(my_groups)
 
 	# 5. LOGS FEED (Admin & Leads)
-	if "Academic Admin" in roles or "System Manager" in roles or "Grade Level Lead" in roles:
+	if "Academic Admin" in roles or "System Manager" in roles or "Pastoral Lead" in roles:
 		widgets["student_logs"] = get_recent_student_logs(user)
 
 	# 6. ATTENDANCE PULSE

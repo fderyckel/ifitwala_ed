@@ -1,4 +1,12 @@
 <!-- ui-spa/src/components/analytics/AnalyticsCard.vue -->
+<!--
+  AnalyticsCard.vue
+  Standard container card for analytics widgets.
+  Provides consistent title, subtitle, badge layout, and optional expand interactions.
+
+  Used by:
+  - StudentLogAnalytics.vue (pages/staff/analytics)
+-->
 <template>
 	<div
 		class="analytics-card"

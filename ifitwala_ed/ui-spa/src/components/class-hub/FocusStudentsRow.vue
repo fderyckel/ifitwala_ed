@@ -1,3 +1,11 @@
+<!-- ifitwala_ed/ui-spa/src/components/class-hub/FocusStudentsRow.vue -->
+<!--
+  FocusStudentsRow.vue
+  Displays a row of chips representing students currently marked for focus/attention.
+
+  Used by:
+  - ClassHub.vue
+-->
 <template>
   <section class="space-y-3">
     <p class="type-overline text-slate-token/70">Students in Focus</p>

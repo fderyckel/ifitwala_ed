@@ -1,4 +1,12 @@
 <template>
+<!--
+  PortalNotification.vue
+  Global notification toast component that listens to socket events.
+  Displays system-wide alerts or messages.
+
+  Used by:
+  - PortalLayout.vue
+-->
   <Transition
     enter-active-class="transform ease-out duration-300 transition"
     enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"

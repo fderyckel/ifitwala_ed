@@ -1,4 +1,4 @@
-// ui-spa/src/main.ts
+// ifitwala_ed/ui-spa/src/main.ts
 
 import { createApp } from 'vue';
 import App from './App.vue';
@@ -10,18 +10,15 @@ import { setupFrappeUI } from './lib/frappe';
 import './style.css';
 import './styles/app.css';
 
-// Configure real‑time to use your bench’s socket.io server.
-// Frappe’s default socket server runs on port 9000 and uses HTTP.
-const socketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const socketHost = window.location.hostname;
+// PRODUCTION CONFIGURATION:
+// Point to the current origin (web server).
+// Nginx will proxy '/socket.io' requests to the internal socket server (port 9000).
 setConfig('realtime', {
-  // e.g. ws://34.61.243.240:9000
-  url: `${socketProtocol}//${socketHost}:9000`,
+  url: window.location.origin,
   path: '/socket.io',
   transports: ['websocket', 'polling'],
   withCredentials: true,
 });
-
 
 async function bootstrap() {
   await setupFrappeUI();
@@ -29,7 +26,7 @@ async function bootstrap() {
   const app = createApp(App)
     .use(FrappeUI, {
       useSession: true,
-      connectSocket: false,
+      connectSocket: false, // We manually configured 'realtime' above
     })
     .use(router)
 
@@ -37,7 +34,6 @@ async function bootstrap() {
 
   app.mount('#app')
 }
-
 
 bootstrap().catch((err) => {
   // eslint-disable-next-line no-console

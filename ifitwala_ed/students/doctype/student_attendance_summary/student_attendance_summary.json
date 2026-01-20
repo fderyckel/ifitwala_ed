@@ -98,7 +98,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-02 22:32:34.999335",
+ "modified": "2025-06-02 22:32:27",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Attendance Summary",
@@ -147,7 +147,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Grade Level Lead",
+   "role": "Pastoral Lead",
    "share": 1,
    "write": 1
   }

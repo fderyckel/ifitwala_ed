@@ -24,6 +24,7 @@
   "column_break_jbjk",
   "employee_last_name",
   "employee_full_name",
+  "phone_ext",
   "employee_date_of_birth",
   "employee_professional_email",
   "employee_image",
@@ -37,6 +38,7 @@
   "preferred_email",
   "contact_html",
   "address_html",
+  "empl_primary_contact",
   "column_break_ctna",
   "emergency_contact_person",
   "emergency_contact_details",
@@ -527,6 +529,21 @@
    "label": "Internal Work History",
    "options": "Employee History",
    "permlevel": 1
+  },
+  {
+   "fieldname": "phone_ext",
+   "fieldtype": "Data",
+   "label": "Phone extension",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "empl_primary_contact",
+   "fieldtype": "Link",
+   "label": "Primary Contact",
+   "options": "Contact",
+   "hidden": 1,
+   "read_only": 1,
+   "no_copy": 1
   }
  ],
  "image_field": "employee_image",

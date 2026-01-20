@@ -397,6 +397,318 @@ Not allowed:
 
 ---
 
+Below are **drop-in sections** to add to your note. They encode **Option A** as the canonical permission
+## 15. Staff visibility and permissions policy (canonical, system-wide)
+
+### 15.1 One policy across Desk, SPA, API, Reports
+
+There is exactly **one** Student Log visibility policy.
+
+**No surface is allowed to be “more open” than another.**
+If Desk can read it, SPA can read it (given same user).
+If SPA cannot read it, Desk must not read it either.
+
+Implementation rule:
+
+* All reads must be enforced by DocType permissions:
+
+  * `get_permission_query_conditions`
+  * `has_permission`
+
+No endpoint may “hand-roll” visibility unless it is a **student/guardian portal** endpoint with an explicit, narrower rule.
+
+### 15.2 Who can see what (Option A)
+
+All rules below are enforced server-side and apply everywhere.
+
+#### A) Academic Admin (school tree oversight)
+
+* Can read **all Student Logs** for:
+
+  * their `Employee.school`
+  * all descendant schools (NestedSet)
+* Can read logs regardless of author/assignee/pastoral grouping.
+
+#### B) Counsellor + Learning Support (school tree wellbeing oversight)
+
+* Can read **all Student Logs** for:
+
+  * their `Employee.school`
+  * all descendant schools (NestedSet)
+
+Counsellor + Learning Support visibility is broad by design, but it remains school-tree bounded.
+
+#### C) Pastoral Lead (group duty of care)
+
+* Can read Student Logs for students who are members of **Pastoral** Student Groups where:
+
+  * the user is listed as an instructor in `Student Group Instructor`
+  * the group is `group_based_on = Pastoral`
+
+Pastoral visibility is **group-scoped**, not global.
+
+#### D) Academic Staff (teacher context + ownership)
+
+Academic Staff can read:
+
+1. **Authorship and assignment**
+
+   * Logs they authored (`owner`)
+   * Logs where they are the `follow_up_person`
+
+2. **Teaching context (Option A refinement)**
+
+   * Logs for students they **currently teach**, **read-only**
+   * “Currently teach” is defined by schedule / course roster truth (server), not by client guesses.
+
+Academic Staff does **not** gain broad visibility by role alone.
+
+#### E) Curriculum Coordinator (program oversight)
+
+Curriculum Coordinator can read Student Logs for students enrolled in programs they coordinate, bounded by:
+
+* coordinator assignments on Program (authoritative configuration)
+* student active enrollment truth (server)
+
+**Important:** Curriculum Coordinator visibility is operational oversight, not counselling access. See §15.6 for confidentiality constraints.
+
+#### F) Accreditation Visitor (aggregate-only)
+
+* No log-level read access (Desk, SPA, API, reports).
+* May access aggregate-only analytics scoped to their school tree.
+* Recent log tables, student detail panels, and any log text must return empty.
+
+### 15.3 Write vs read (hard rule)
+
+Visibility does not imply mutation rights.
+
+* Pastoral Lead: **read-only** unless also author/assignee or in a higher oversight role.
+* Academic Staff: can write only:
+
+  * their own logs (pre-follow-up immutability rules still apply)
+  * follow-ups assigned to them (Follow Up doctype rules)
+* Curriculum Coordinator: **read-only** by default.
+* Accreditation Visitor: **no log-level read or write** (aggregate-only analytics).
+
+### 15.4 Why Academic Staff get “teaching context” read access
+
+This is deliberate to avoid:
+
+* duplicate logs
+* escalation-by-noise (“asking admin for context”)
+* shadow systems (email/WhatsApp context)
+
+Constraints:
+
+* read-only for teaching-context access
+* no reassignment, no workflow mutation unless author/assignee.
+
+### 15.5 Visibility to students and parents remains opt-in
+
+Even if staff can see a log, student/guardian visibility is controlled only by:
+
+* `visible_to_student`
+* `visible_to_parents`
+
+No staff role can override those flags through SPA.
+
+### 15.6 Confidentiality (v1 constraint, forward compatible)
+
+Student Log is a mixed-use record. Until a dedicated case system fully owns sensitive notes:
+
+* Logs tagged/marked as “Case team only” (future field) must override staff visibility:
+
+  * Only Counsellor + Academic Admin (and explicitly configured safeguarding roles) can read.
+  * Pastoral Lead and teaching-context access are blocked.
+
+This is a planned v1.1+ control to prevent “program coordinator sees wellbeing crisis notes”.
+
+---
+
+## 16. Enforcement points (non-negotiable)
+
+### 16.1 DocType permission enforcement
+
+Student Log must implement:
+
+* `get_permission_query_conditions(user)`
+* `has_permission(doc, ptype, user)`
+
+These are the **single source of truth** for staff visibility and must encode §15 exactly.
+
+### 16.2 API enforcement
+
+All staff APIs must use one of:
+
+* `frappe.get_list` / `frappe.get_all` (preferred)
+* or SQL that explicitly applies the same permission logic
+
+No staff endpoint may bypass DocType permissions.
+
+The only allowed bypass is student/guardian portal endpoints, which are narrower by design and must be explicitly documented.
+
+### 16.3 Reports, dashboards, morning briefing
+
+All reporting surfaces must rely on server queries that inherit the same permission enforcement.
+
+No report may “show more” than the user could see in a list view.
+
+---
+
+## 17. Teaching context definition (Option A) — authoritative
+
+### 17.1 “Currently teach” is not a guess
+
+A staff member “currently teaches” a student if the server can prove one of:
+
+* active course enrollment relationship (Program Enrollment Course / Student Group membership for course-based groups)
+* active schedule relationship (Student Group Schedule / instructor mapping)
+* other authoritative roster method (future LMS delivery mapping)
+
+The client must never infer teaching relationships.
+
+### 17.2 Edge cases (explicit)
+
+* Substitute teachers: visibility only if they are assigned in schedule/roster truth.
+* Pastoral cover: visibility only if added to Pastoral Student Group Instructor.
+* Co-teaching: both instructors get teaching-context read access.
+
+---
+
+### Quick blind-spot callout (so future-you doesn’t drift)
+
+This policy only works if:
+
+* Student Groups are kept accurate (Pastoral membership + instructors)
+* Teaching relationships are computable server-side
+* Role assignment is governed (Academic Admin, Counsellor)
+
+If any of those drift, visibility drift follows.
+
+---
+
+## 18. Dashboards & analytics permissions (no leaks)
+
+### 18.1 Dashboards are read-only consumers, not alternate permission systems
+
+Dashboards (including Student Log Dashboard / Analytics pages) must **never** define their own visibility rules.
+
+They are **read-only consumers** of the canonical Student Log visibility policy (§15).
+
+Hard rule:
+
+> Any dashboard query may return only Student Logs that the requesting user could view in a normal Student Log list view.
+
+This applies equally to:
+
+* charts (aggregates)
+* KPI cards
+* “recent logs” tables
+* “student details” panels that show full log text
+
+**Accreditation Visitor exception (aggregate-only):**
+
+* Accreditation Visitors may access aggregate charts/KPIs only.
+* Any log-level rows, student pickers, or log content must return empty.
+* Aggregate scope remains school-tree bounded (§15.2.F).
+
+### 18.2 Analytics-role gating is insufficient (and can be dangerous)
+
+Having a role that grants access to “analytics pages” is a **UI navigation gate**, not a data-visibility gate.
+
+Locked rule:
+
+* “Analytics access” may allow a user to open the page.
+* It must not expand what records they can see.
+
+Visibility must still be enforced by Student Log permission truth.
+
+### 18.3 Canonical enforcement method for dashboards (implementation requirement)
+
+All analytics endpoints must enforce visibility using one of:
+
+1. **DocType permission enforcement**
+
+   * Use `frappe.get_list` / `frappe.get_all` (preferred), with normal permissions.
+
+2. **SQL with canonical visibility clause**
+
+   * If raw SQL is needed for performance, the endpoint must apply the **same visibility WHERE clause** as Student Log list permissions.
+
+Hard invariant:
+
+> A raw SQL dashboard query is a defect unless it applies the canonical Student Log visibility predicate.
+
+### 18.4 Detail cards with full log text (high-risk surface)
+
+Any dashboard component that returns full log content (e.g., “Student Logs” panel showing `log` text) must follow these rules:
+
+* It must return **only logs the user is allowed to read** under §15.
+* If the user is **not allowed** to see that student’s logs:
+
+  * return an empty list (do not reveal existence, counts, or “permission denied” hints)
+* No endpoint may accept `student` and bypass visibility under the assumption that “analytics roles are trusted.”
+
+This prevents “select a student and read everything” leakage.
+
+### 18.5 Aggregates must not leak sensitive existence
+
+Aggregations must be computed over the **visible set** only.
+
+Implication:
+
+* A Pastoral Lead’s charts show counts only for their pastoral groups.
+* A Curriculum Coordinator’s charts show counts only for students in their programs.
+* Academic Staff charts show only:
+
+  * their authored/assigned logs
+  * plus teaching-context logs (Option A) if enabled
+
+No aggregate may be based on school-tree scope unless the user has the school-tree oversight role (Academic Admin/Counsellor).
+
+### 18.6 Filter metadata must be visibility-aware
+
+Dashboard “filter dropdown options” (schools, students, authors, programs) must not reveal out-of-scope entities.
+
+Rules:
+
+* Student dropdown returns only students where the user has visibility to at least one log (or where they teach / pastoral lead / program coordinate).
+* Author dropdown returns only authors within the visible set.
+* Program dropdown may be broader for admins, but for coordinators it must be restricted to their coordinated programs.
+
+---
+
+## 19. One shared visibility predicate (prevents drift)
+
+### 19.1 Visibility predicate is a shared server utility
+
+There must be exactly one server utility that returns the canonical Student Log visibility predicate for a user.
+
+Dashboards, reports, list endpoints, and detail endpoints must use it.
+
+This prevents “dashboard is correct but reports are wrong” divergence.
+
+**Accreditation Visitor note:**
+
+* The shared predicate must support an aggregate-only mode.
+* Detail endpoints must use the standard (non-aggregate) predicate.
+
+### 19.2 Student Log dashboard endpoints must be refactored to use it
+
+Any endpoint in `api/student_log_dashboard.py` that currently scopes by “authorized schools” must instead scope by:
+
+* the canonical visibility predicate (§15 / Option A)
+
+School-tree scope is allowed only for:
+
+* Academic Admin
+* Counsellor
+
+For all other roles, school-tree scope is **not** sufficient and must not be used.
+
+---
+
+
 # Staff SPA UX Contract — Student Log Drawer Overlay (HeadlessUI) (v1)
 
 > **Component:** `StudentLogCreateOverlay.vue`

@@ -12,19 +12,35 @@ from frappe.utils import validate_email_address, add_years, cstr
 from frappe.permissions import get_doc_permissions
 from frappe.contacts.address_and_contact import load_address_and_contact
 
-from ifitwala_ed.utilities.employee_utils import get_user_base_org,	get_user_base_school,	get_descendant_organizations
+from ifitwala_ed.utilities.employee_utils import (
+	get_user_base_org,
+	get_user_base_school,
+	get_descendant_organizations,
+)
 
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
-
 from ifitwala_ed.utilities.transaction_base import delete_events
 
-class EmployeeUserDisabledError(frappe.ValidationError): pass
-class InactiveEmployeeStatusError(frappe.ValidationError): pass
+
+class EmployeeUserDisabledError(frappe.ValidationError):
+	pass
+
+
+class InactiveEmployeeStatusError(frappe.ValidationError):
+	pass
+
 
 class Employee(NestedSet):
-	nsm_parent_field = 'reports_to'
+	nsm_parent_field = "reports_to"
 
 	def onload(self):
+		"""
+		Address/Contact are rendered on the Employee form for HR convenience (one-click).
+		Employee is NOT the source of truth for any address/contact data.
+
+		Source of truth: Contact (+ Address linked to Contact).
+		Employee only maintains graph integrity (User → Contact → Employee).
+		"""
 		load_address_and_contact(self)
 
 	def validate(self):
@@ -32,16 +48,19 @@ class Employee(NestedSet):
 		validate_status(self.status, ["Active", "Temporary Leave", "Left", "Suspended"])
 
 		self.employee = self.name
-		self.employee_full_name = " ".join(filter(None, [self.employee_first_name, self.employee_middle_name, self.employee_last_name]))
+		self.employee_full_name = " ".join(filter(None, [
+			self.employee_first_name,
+			self.employee_middle_name,
+			self.employee_last_name,
+		]))
+
+		# Pure invariants only (no heavy side-effects)
 		self.validate_date()
 		self.validate_email()
 		self.validate_status()
 		self.validate_reports_to()
 		self.validate_preferred_email()
-		self.update_user_default_school()
 		self.validate_employee_history()
-		self.sync_employee_history()
-		self._sync_staff_calendar()
 
 		if self.user_id:
 			self.validate_user_details()
@@ -49,12 +68,15 @@ class Employee(NestedSet):
 			existing_user_id = frappe.db.get_value("Employee", self.name, "user_id")
 			if existing_user_id:
 				user = frappe.get_doc("User", existing_user_id)
-				validate_employee_role(user, ignore_emp_check = True)
+				validate_employee_role(user, ignore_emp_check=True)
 				user.save(ignore_permissions=True)
 
 		# Ensure the employee history is sorted before saving
 		if self.employee_history:
-			self.employee_history.sort(key=lambda row: getdate(row.to_date) if row.to_date else getdate("9999-12-31"), reverse=True)
+			self.employee_history.sort(
+				key=lambda row: getdate(row.to_date) if row.to_date else getdate("9999-12-31"),
+				reverse=True,
+			)
 
 	def after_rename(self, old, new, merge):
 		self.db_set("employee", new)
@@ -62,29 +84,59 @@ class Employee(NestedSet):
 	def update_nsm_model(self):
 		frappe.utils.nestedset.update_nsm(self)
 
+	def _reports_to_changed(self):
+		prev = self.get_doc_before_save()
+		if not prev:
+			# New doc insert or unknown state: be safe and update
+			return True
+		return (prev.reports_to or "") != (self.reports_to or "")
+
 	def on_update(self):
-		self.update_nsm_model()
+		# Step 4: Guard nested-set updates to avoid unnecessary work
+		if self._reports_to_changed():
+			self.update_nsm_model()
+
+		# Side-effects / external syncs (moved out of validate)
 		if self.user_id:
 			self.update_user()
+			self.update_user_default_school()
+
 		self.reset_employee_emails_cache()
 		self.update_approver_role()
 
+		# Employee history: maintain rows only when needed (validate enforces correctness)
+		self.sync_employee_history()
+
+		# Staff Calendar mapping: purely derived convenience field
+		self._sync_staff_calendar()
+
+		# Contact graph integrity
+		self._ensure_primary_contact()
+
 	def on_trash(self):
-		self.update_nsm_model()
+		# Keep consistency on delete; guard to avoid unnecessary work
+		if self._reports_to_changed():
+			self.update_nsm_model()
 		delete_events(self.doctype, self.name)
 
-	# call on validate.  Broad check to make sure birtdhdate, joining date are making sense.
+	# call on validate. Broad check to make sure birthdate, joining date are making sense.
 	def validate_date(self):
 		if self.employee_date_of_birth and getdate(self.employee_date_of_birth) > getdate(today()):
 			frappe.throw(_("Date of Birth cannot be after today."))
-		if self.employee_date_of_birth and getdate(self.employee_date_of_birth) > getdate(add_years(today(), - 16)):
+		if self.employee_date_of_birth and getdate(self.employee_date_of_birth) > getdate(add_years(today(), -16)):
 			frappe.throw(_("Maybe you are too young to be an employee of this school!"))
 		if self.employee_date_of_birth and self.date_of_joining and getdate(self.employee_date_of_birth) >= getdate(self.date_of_joining):
 			frappe.throw(_("Date of Joining must be after Date of Birth"))
-		if self.notice_date and self.relieving_date and getdate(self.relieving_date) <  getdate(self.notice_date):
-			frappe.throw(_("Date of Notice {0} should be before Relieving Date {1}. Please adjust dates.").format(getdate(self.notice_date), getdate(self.relieving_date)))
-		if self.relieving_date and self.date_of_joining and getdate(self.relieving_date) <  getdate(self.date_of_joining):
-			frappe.throw(_("Date of Joining {0} should be before Relieving Date {1}. Please adjust dates.").format(getdate(self.date_of_joining), getdate(self.relieving_date)))
+		if self.notice_date and self.relieving_date and getdate(self.relieving_date) < getdate(self.notice_date):
+			frappe.throw(
+				_("Date of Notice {0} should be before Relieving Date {1}. Please adjust dates.")
+				.format(getdate(self.notice_date), getdate(self.relieving_date))
+			)
+		if self.relieving_date and self.date_of_joining and getdate(self.relieving_date) < getdate(self.date_of_joining):
+			frappe.throw(
+				_("Date of Joining {0} should be before Relieving Date {1}. Please adjust dates.")
+				.format(getdate(self.date_of_joining), getdate(self.relieving_date))
+			)
 
 	# call on validate. Broad check to make sure the email address has an appropriate format.
 	def validate_email(self):
@@ -93,14 +145,23 @@ class Employee(NestedSet):
 		if self.employee_personal_email:
 			validate_email_address(self.employee_personal_email, True)
 
-	# call on validate.  If status is set to left, then need to put relieving date.
+	# call on validate. If status is set to left, then need to put relieving date.
 	# also you can not be set as left if there are people reporting to you.
 	def validate_status(self):
-		if self.status == 'Left':
-			reports_to = frappe.db.get_all("Employee", filters={"reports_to": self.name, "status": "Active"}, fields=["name","employee_full_name"])
+		if self.status == "Left":
+			reports_to = frappe.db.get_all(
+				"Employee",
+				filters={"reports_to": self.name, "status": "Active"},
+				fields=["name", "employee_full_name"],
+			)
 			if reports_to:
-				link_to_employees = [frappe.utils.get_link_to_form("Employee", employee.name, label=employee.employee_full_name) for employee in reports_to]
-				message = _("The following employees are currently still reporting to {0}:").format(frappe.bold(self.employee_full_name))
+				link_to_employees = [
+					frappe.utils.get_link_to_form("Employee", employee.name, label=employee.employee_full_name)
+					for employee in reports_to
+				]
+				message = _("The following employees are currently still reporting to {0}:").format(
+					frappe.bold(self.employee_full_name)
+				)
 				message += "<br><br><ul><li>" + "</li><li>".join(link_to_employees)
 				message += "</li></ul><br>"
 				message += _("Please make sure the employees above report to another Active employee.")
@@ -128,40 +189,52 @@ class Employee(NestedSet):
 			return
 
 		# Validate upward hierarchy
-		is_parent_org = frappe.db.sql("""
+		is_parent_org = frappe.db.sql(
+			"""
 			SELECT 1
 			FROM `tabOrganization`
 			WHERE name = %s
 			AND lft <= (SELECT lft FROM `tabOrganization` WHERE name = %s)
 			AND rgt >= (SELECT rgt FROM `tabOrganization` WHERE name = %s)
-		""", (supervisor_org, self.organization, self.organization))
+		""",
+			(supervisor_org, self.organization, self.organization),
+		)
 
 		if not is_parent_org:
-			frappe.throw(_("Employee cannot report to a supervisor from a different organization unless it is a parent organization."))
+			frappe.throw(
+				_("Employee cannot report to a supervisor from a different organization unless it is a parent organization.")
+			)
 
 		# Validate downward consistency (no cross-lineage connections)
 		# Fetch all direct reports of the current employee
 		direct_reports = frappe.db.get_values(
-			"Employee", filters={"reports_to": self.name}, fieldname=["name", "organization"],
-			as_dict=True
+			"Employee",
+			filters={"reports_to": self.name},
+			fieldname=["name", "organization"],
+			as_dict=True,
 		)
 
 		# Get the organization lineage of the current employee
-		lineage = frappe.db.sql("""
+		lineage = frappe.db.sql(
+			"""
 			SELECT name
 			FROM `tabOrganization`
 			WHERE lft <= (SELECT lft FROM `tabOrganization` WHERE name = %s)
 			AND rgt >= (SELECT rgt FROM `tabOrganization` WHERE name = %s)
-		""", (self.organization, self.organization))
+		""",
+			(self.organization, self.organization),
+		)
 
 		valid_orgs = {org[0] for org in lineage}
 
 		# Check each direct report for cross-lineage violations
 		for report in direct_reports:
 			if report["organization"] not in valid_orgs:
-				frappe.throw(_(
-					"Direct report '{0}' (Organization: {1}) cannot belong to an organization outside the hierarchy of '{2}' (Organization: {3})."
-				).format(report["name"], report["organization"], self.name, self.organization))
+				frappe.throw(
+					_(
+						"Direct report '{0}' (Organization: {1}) cannot belong to an organization outside the hierarchy of '{2}' (Organization: {3})."
+					).format(report["name"], report["organization"], self.name, self.organization)
+				)
 
 	# call on validate. Check that there is at least one email to use.
 	def validate_preferred_email(self):
@@ -194,7 +267,9 @@ class Employee(NestedSet):
 		if not current_default and self.school:
 			frappe.defaults.set_user_default("school", self.school, self.user_id)
 			frappe.cache().hdel("user:" + self.user_id, "defaults")
-			frappe.msgprint(_("Default school set to {0} for user {1} (first-time setup).").format(self.school, self.user_id))
+			frappe.msgprint(
+				_("Default school set to {0} for user {1} (first-time setup).").format(self.school, self.user_id)
+			)
 			return
 
 		# Handle clearing the default if the field is empty
@@ -217,6 +292,8 @@ class Employee(NestedSet):
 		- to_date >= from_date (if set)
 		- NO overlap ONLY when (designation, organization, school) are the same
 		- is_current is derived from dates
+
+		NOTE: employee_history is expected to remain small; O(n²) overlap check is acceptable.
 		"""
 		if not self.date_of_joining:
 			frappe.throw(_("Please set the Employee's Date of Joining before adding Employee History."))
@@ -240,8 +317,10 @@ class Employee(NestedSet):
 
 			# row.from_date >= joining date
 			if getdate(row.from_date) < join_d:
-				frappe.throw(_("Row #{0}: From Date cannot be before Date of Joining ({1}).")
-					.format(i + 1, self.date_of_joining))
+				frappe.throw(
+					_("Row #{0}: From Date cannot be before Date of Joining ({1}).")
+					.format(i + 1, self.date_of_joining)
+				)
 
 			# to_date >= from_date (if set)
 			if row.to_date and getdate(row.to_date) < getdate(row.from_date):
@@ -259,8 +338,10 @@ class Employee(NestedSet):
 				b_start, b_end = rng(b)
 				# intervals intersect?
 				if b_start <= a_end and a_start <= b_end:
-					frappe.throw(_("Overlap detected for '{0}' @ '{1}/{2}' between row #{3} and row #{4}.")
-						.format(a.designation or "-", a.organization or "-", a.school or "-", i + 1, j + 1))
+					frappe.throw(
+						_("Overlap detected for '{0}' @ '{1}/{2}' between row #{3} and row #{4}.")
+						.format(a.designation or "-", a.organization or "-", a.school or "-", i + 1, j + 1)
+					)
 
 		# compute is_current from dates
 		for row in history:
@@ -282,13 +363,16 @@ class Employee(NestedSet):
 
 		# Initial seed if no history
 		if not history:
-			self.append("employee_history", {
-				"designation": self.designation,
-				"organization": self.organization,
-				"school": self.school,
-				"from_date": self.date_of_joining,
-				# is_current will be recomputed in validate()
-			})
+			self.append(
+				"employee_history",
+				{
+					"designation": self.designation,
+					"organization": self.organization,
+					"school": self.school,
+					"from_date": self.date_of_joining,
+					# is_current will be recomputed in validate()
+				},
+			)
 			return
 
 		# Need previous values to detect a tuple change
@@ -313,8 +397,8 @@ class Employee(NestedSet):
 
 		# Change happened after joining → close previous tuple's latest row and add new one
 		new_from = getdate(today())
-		close_to = add_years(new_from, 0)
-		# correct close_to to new_from - 1 day (without importing add_days separately)
+
+		# correct close_to to new_from - 1 day
 		close_to = getdate(frappe.utils.add_days(new_from, -1))
 
 		# 1) close the latest row for the previous tuple (if open or crossing new_from)
@@ -331,44 +415,39 @@ class Employee(NestedSet):
 				return
 
 		# 3) append new row for current tuple starting today
-		self.append("employee_history", {
-			"designation": self.designation,
-			"organization": self.organization,
-			"school": self.school,
-			"from_date": new_from,
-			# is_current computed in validate()
-		})
+		self.append(
+			"employee_history",
+			{
+				"designation": self.designation,
+				"organization": self.organization,
+				"school": self.school,
+				"from_date": new_from,
+				# is_current computed in validate()
+			},
+		)
 
 		# keep your sorter
 		self._sort_employee_history()
 
-
 	def _sort_employee_history(self):
-		# Extract the history rows
 		history = self.get("employee_history", [])
 
-		# Separate current (no to_date) and past (with to_date) roles
 		current_roles = [row for row in history if not row.to_date]
 		past_roles = [row for row in history if row.to_date]
 
-		# Sort current roles by descending from_date
 		current_roles.sort(key=lambda row: getdate(row.from_date), reverse=True)
-
-		# Sort past roles by descending to_date
 		past_roles.sort(key=lambda row: getdate(row.to_date), reverse=True)
 
-		# Combine sorted current and past roles
 		sorted_history = current_roles + past_roles
 		self.set("employee_history", sorted_history)
 
-		# Ensure the idx is correctly updated
 		for idx, row in enumerate(self.employee_history, start=1):
 			row.idx = idx
 
-	# call on validate.  Check that if there is already a user, a few more checks to do.
+	# call on validate. Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):
 		if self.user_id:
-			data = frappe.db.get_value('User', self.user_id, ['enabled', 'user_image'], as_dict=1)
+			data = frappe.db.get_value("User", self.user_id, ["enabled", "user_image"], as_dict=1)
 
 		self.validate_for_enabled_user_id(data.get("enabled", 0))
 		self.validate_duplicate_user_id()
@@ -376,7 +455,7 @@ class Employee(NestedSet):
 	# call on validate through validate_user_details().
 	# If employee is referring to a user, that user has to be active.
 	def validate_for_enabled_user_id(self, enabled):
-		if not self.status == 'Active':
+		if not self.status == "Active":
 			return
 		if enabled is None:
 			frappe.throw(_("User {0} does not exist").format(self.user_id))
@@ -396,7 +475,10 @@ class Employee(NestedSet):
 			)
 		).run()
 		if employee:
-			frappe.throw(_("User {0} is already assigned to Employee {1}").format(self.user_id, employee[0][0]), frappe.DuplicateEntryError)
+			frappe.throw(
+				_("User {0} is already assigned to Employee {1}").format(self.user_id, employee[0][0]),
+				frappe.DuplicateEntryError,
+			)
 
 	# to update the user fields when employee fields are changing
 	def update_user(self):
@@ -422,37 +504,35 @@ class Employee(NestedSet):
 			if not os.path.exists(abs_path):
 				frappe.log_error(
 					title=_("Missing file on disk during update_user"),
-					message=f"{abs_path} does not exist for Employee {self.name}"
+					message=f"{abs_path} does not exist for Employee {self.name}",
 				)
-				img_path = None                # prevents 500 in attach_files_to_document
+				img_path = None  # prevents 500 in attach_files_to_document
 
-		if img_path:                           # only run if the path is valid
+		if img_path:
 			if user.user_image != img_path:
 				user.user_image = img_path
 
-			# keep / update the File row attached to User.user_image
 			existing = frappe.db.exists(
 				"File",
 				{
 					"attached_to_doctype": "User",
-					"attached_to_name":   self.user_id,
-					"attached_to_field":  "user_image",
-				}
+					"attached_to_name": self.user_id,
+					"attached_to_field": "user_image",
+				},
 			)
 
 			if not existing:
-				frappe.get_doc({
-					"doctype": "File",
-					"file_url":           img_path,
-					"attached_to_doctype":"User",
-					"attached_to_name":   self.user_id,
-					"attached_to_field":  "user_image",
-				}).insert(ignore_permissions=True, ignore_if_duplicate=True)
+				frappe.get_doc(
+					{
+						"doctype": "File",
+						"file_url": img_path,
+						"attached_to_doctype": "User",
+						"attached_to_name": self.user_id,
+						"attached_to_field": "user_image",
+					}
+				).insert(ignore_permissions=True, ignore_if_duplicate=True)
 			else:
-				frappe.db.set_value(
-					"File", existing, "file_url", img_path, update_modified=False
-				)
-
+				frappe.db.set_value("File", existing, "file_url", img_path, update_modified=False)
 
 		user.save()
 
@@ -472,7 +552,6 @@ class Employee(NestedSet):
 			return
 
 		if not self.employee_group:
-			# No group ⇒ no calendar mapping
 			self.current_holiday_lis = None
 			return
 
@@ -480,19 +559,15 @@ class Employee(NestedSet):
 
 		calendars = frappe.get_all(
 			"Staff Calendar",
-			filters={
-				"employee_group": self.employee_group,
-			},
+			filters={"employee_group": self.employee_group},
 			fields=["name", "from_date", "to_date"],
 			order_by="from_date desc",
 		)
 
 		if not calendars:
-			# Nothing configured yet for this group
 			self.current_holiday_lis = None
 			return
 
-		# 1) Prefer a calendar that actually covers "today"
 		selected = None
 		for cal in calendars:
 			from_d = getdate(cal.get("from_date")) if cal.get("from_date") else None
@@ -502,7 +577,6 @@ class Employee(NestedSet):
 				selected = cal["name"]
 				break
 
-		# 2) Fallback: latest by from_date
 		if not selected:
 			selected = calendars[0]["name"]
 
@@ -527,6 +601,61 @@ class Employee(NestedSet):
 			user.flags.ignore_permissions = True
 			user.add_roles("Expense Approver")
 
+	def _ensure_primary_contact(self):
+		"""
+		NOTE:
+		Employee does NOT own contact/address data.
+		Contact is the single source of truth.
+		This method only ensures correct graph linking:
+		User → Contact → Employee (via Dynamic Link).
+
+		Dependency:
+		User creation is expected to auto-create a Contact linked to the User (hook-level behavior).
+		"""
+		if not self.user_id:
+			return
+
+		contact_name = frappe.db.get_value(
+			"Dynamic Link",
+			{
+				"link_doctype": "User",
+				"link_name": self.user_id,
+				"parenttype": "Contact",
+			},
+			"parent",
+		)
+
+		if not contact_name:
+			frappe.log_error(
+				title="Employee Contact Link Missing",
+				message=f"No Contact found for User {self.user_id}",
+			)
+			return
+
+		exists = frappe.db.exists(
+			"Dynamic Link",
+			{
+				"parenttype": "Contact",
+				"parent": contact_name,
+				"link_doctype": "Employee",
+				"link_name": self.name,
+			},
+		)
+
+		if not exists:
+			frappe.get_doc(
+				{
+					"doctype": "Dynamic Link",
+					"parenttype": "Contact",
+					"parentfield": "links",
+					"parent": contact_name,
+					"link_doctype": "Employee",
+					"link_name": self.name,
+				}
+			).insert(ignore_permissions=True)
+
+		if not self.empl_primary_contact:
+			self.db_set("empl_primary_contact", contact_name, update_modified=False)
 
 
 @frappe.whitelist()
@@ -575,12 +704,12 @@ def create_user(employee, user=None, email=None):
 		frappe.throw(_("A User with email {0} already exists.").format(frappe.bold(emp.employee_professional_email)))
 
 	# 4) Build the User document (keep your privacy handling)
-	privacy = frappe.get_single("Org Settings")
+	privacy = frappe.get_single("Org Setting")
 	birth_date = emp.employee_date_of_birth if getattr(privacy, "dob_to_user", 0) == 1 else None
 	phone = emp.employee_mobile_phone if getattr(privacy, "mobile_to_user", 0) == 1 else None
 
 	user_doc = frappe.new_doc("User")
-	user_doc.flags.ignore_permissions = True  # ← key line
+	user_doc.flags.ignore_permissions = True
 	user_doc.update({
 		# NOTE: do NOT force 'name' here; let Frappe name it as the email
 		"email": emp.employee_professional_email,
@@ -590,13 +719,11 @@ def create_user(employee, user=None, email=None):
 		"last_name": emp.employee_last_name,
 		"gender": emp.employee_gender,
 		"birth_date": birth_date,
-		"mobile_no": phone
+		"mobile_no": phone,
 	})
 
-	# 5) Insert the User bypassing DocType perms (authorized above)
 	user_doc.insert(ignore_permissions=True)
 
-	# 6) Link back to Employee and save (you already ignore perms in update_user etc.)
 	emp.user_id = user_doc.name
 	emp.save(ignore_permissions=True)
 
@@ -605,38 +732,76 @@ def create_user(employee, user=None, email=None):
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, organization=None, is_root=False, is_tree=False):
+	# NOTE:
+	# - Treeview calls this often; avoid N+1 queries.
+	# - We keep the existing "All Organizations" sentinel for compatibility with current JS.
+
 	filters = [["status", "=", "Active"]]
+
+	# Organization filter (compat with current treeview default)
 	if organization and organization != "All Organizations":
 		filters.append(["organization", "=", organization])
 
 	fields = ["name as value", "employee_full_name as title"]
 
+	# Root resolution
 	if is_root:
 		parent = ""
-	if parent and organization and parent != organization:
+
+	# Children of a node vs top-level nodes
+	if parent:
 		filters.append(["reports_to", "=", parent])
 	else:
 		filters.append(["reports_to", "=", ""])
 
-	employees = frappe.get_list(doctype, fields=fields, filters=filters, order_by="name")
+	employees = frappe.get_list(
+		doctype,
+		fields=fields,
+		filters=filters,
+		order_by="name",
+	)
 
-	for employee in employees:
-		is_expandable = frappe.get_all(doctype, filters=[["reports_to", "=", employee.get("value")]])
-		employee.expandable = 1 if is_expandable else 0
+	# Nothing to expand
+	if not employees:
+		return employees
+
+	# --- Batch-expandable check (single query) -----------------------------
+	names = [e.get("value") for e in employees if e.get("value")]
+
+	# Count children per supervisor among returned names
+	# (We only care whether count > 0)
+	rows = frappe.db.sql(
+		"""
+		SELECT reports_to, COUNT(*) AS cnt
+		FROM `tabEmployee`
+		WHERE status = 'Active'
+			AND reports_to IN %(names)s
+		GROUP BY reports_to
+		""",
+		{"names": tuple(names)},
+		as_dict=True,
+	)
+
+	count_by_reports_to = {r.reports_to: int(r.cnt or 0) for r in (rows or [])}
+
+	for e in employees:
+		e.expandable = 1 if count_by_reports_to.get(e.get("value"), 0) > 0 else 0
 
 	return employees
+
 
 
 def on_doctype_update():
 	frappe.db.add_index("Employee", ["lft", "rgt"])
 
+
 def validate_employee_role(doc, method=None, ignore_emp_check=False):
 	# called via User hook
 	if not ignore_emp_check:
-		if frappe.db.get_value("Employee", {"user_id":doc.name}):
+		if frappe.db.get_value("Employee", {"user_id": doc.name}):
 			return
 
-	user_roles =  [d.role for d in doc.get("roles")]
+	user_roles = [d.role for d in doc.get("roles")]
 	if "Employee" in user_roles:
 		frappe.msgprint(_("User {0}: Removed Employee role as there is no mapped employee.").format(doc.name))
 		doc.get("roles").remove(doc.get("roles", {"role": "Employee"})[0])
@@ -651,13 +816,13 @@ def update_user_permissions(doc, method):
 	return
 
 
-
-def has_upload_permission(doc, ptype='read', user=None):
+def has_upload_permission(doc, ptype="read", user=None):
 	if not user:
 		user = frappe.session.user
 	if get_doc_permissions(doc, user=user, ptype=ptype).get(ptype):
 		return True
 	return doc.user_id == user
+
 
 def get_permission_query_conditions(user=None):
 	user = user or frappe.session.user
@@ -718,4 +883,3 @@ def employee_has_permission(doc, ptype, user):
 
 	# Others fall back to standard perms
 	return None
-

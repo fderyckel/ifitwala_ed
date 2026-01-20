@@ -5,7 +5,7 @@
 from frappe.model.document import Document
 
 
-class OrgSettings(Document):
+class OrgSetting(Document):
 	def validate(self):
 		self.validate_accounting_defaults()
 
@@ -30,24 +30,24 @@ class OrgSettings(Document):
 			account_name = self.get(fieldname)
 			if not account_name:
 				continue
-				
+
 			account = frappe.get_doc("Account", account_name)
-			
+
 			# Basic checks
 			if account.is_group:
 				frappe.throw(f"Default account {account_name} cannot be a Group account")
 			if account.disabled:
 				frappe.throw(f"Default account {account_name} is disabled")
-				
+
 			# Constraint checks
 			if "root_type" in constraints:
 				if account.root_type != constraints["root_type"]:
 					frappe.throw(f"Account {account_name} must be of Root Type '{constraints['root_type']}'")
-					
+
 			if "account_type" in constraints:
 				if account.account_type != constraints["account_type"]:
 					frappe.throw(f"Account {account_name} must be of Account Type '{constraints['account_type']}'")
-					
+
 			# Organization check
 			if self.default_organization and account.organization != self.default_organization:
 				frappe.throw(f"Account {account_name} does not belong to the selected Default Organization")

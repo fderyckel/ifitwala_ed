@@ -1,4 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/components/analytics/AnalyticsChart.vue -->
+<!--
+  AnalyticsChart.vue
+  A wrapper component for ECharts (VChart) to standardize configuration and resizing behavior across analytics pages.
+
+  Used by:
+  - HistoryDialog.vue
+  - Various Analytics Pages (via composition)
+-->
 <template>
 	<VChart
 		class="analytics-chart"

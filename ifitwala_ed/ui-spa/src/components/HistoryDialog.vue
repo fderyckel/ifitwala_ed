@@ -1,4 +1,14 @@
 <template>
+<!--
+  HistoryDialog.vue
+  A dialog displaying historical data (trends) and comments for a specific metric or KPI.
+  Includes an integrated chart and comment thread.
+
+  Used by:
+  - EnrollmentAnalytics.vue
+  - StudentLogAnalytics.vue
+  - RoomUtilization.vue
+-->
 	<Dialog v-model="show" :options="{ size: 'xl', title: null }">
 		<template #body-content>
 			<div class="history-dialog flex h-[640px] max-h-[85vh] flex-col gap-4">

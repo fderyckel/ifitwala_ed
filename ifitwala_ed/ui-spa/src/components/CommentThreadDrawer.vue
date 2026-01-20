@@ -1,4 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/components/CommentThreadDrawer.vue -->
+<!--
+  CommentThreadDrawer.vue
+  Slide-out drawer for viewing and replying to comment threads on generic documents/communications.
+
+  Used by:
+  - MorningBriefing.vue (pages/staff/morning_brief)
+  - OrgCommunicationArchive.vue (pages/staff)
+-->
 <template>
   <Transition name="thread-drawer-fade">
     <div

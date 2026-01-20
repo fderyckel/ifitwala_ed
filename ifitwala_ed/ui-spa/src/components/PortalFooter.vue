@@ -1,4 +1,12 @@
 <!-- ifitwala_ed/ifitwala_ed/ui-spa/src/components/PortalFooter.vue -->
+<!--
+  PortalFooter.vue
+  Global footer for the portal layout. Contains navigation links and a self-referral/help modal
+  for confidential counselor contact.
+
+  Used by:
+  - PortalLayout.vue (layouts)
+-->
  
 <template>
 	<footer

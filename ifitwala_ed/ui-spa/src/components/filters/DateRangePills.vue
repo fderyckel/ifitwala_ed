@@ -1,4 +1,12 @@
 <!-- ui-spa/src/components/filters/DateRangePills.vue -->
+<!--
+  DateRangePills.vue
+  A segmented control for selecting common date ranges (1M, 3M, YTD, etc.).
+
+  Used by:
+  - HistoryDialog.vue
+  - StatsTile.vue
+-->
 <template>
   <div class="flex items-center gap-1 rounded-lg bg-surface-soft p-1" :class="wrapClass">
     <button

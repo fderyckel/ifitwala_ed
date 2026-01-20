@@ -1,4 +1,13 @@
 <!-- ifitwala_ed/ui-spa/src/components/GenericListDialog.vue -->
+<!--
+  GenericListDialog.vue
+  A reusable dialog for displaying list data (e.g. students, logs) in a modal.
+  Supports slots for custom item rendering.
+
+  Used by:
+  - EnrollmentAnalytics.vue
+  - StudentLogAnalytics.vue
+-->
 <template>
   <Dialog v-model="show" :options="{ size: 'xl', title: null }">
     <template #body-content>

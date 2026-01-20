@@ -193,7 +193,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-12-12 12:02:52.964748",
+ "modified": "2025-12-12 12:02:55",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Team",
@@ -281,7 +281,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Grade Level Lead",
+   "role": "Pastoral Lead",
    "share": 1,
    "write": 1
   },

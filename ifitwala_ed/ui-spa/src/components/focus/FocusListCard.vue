@@ -1,4 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/components/focus/FocusListCard.vue -->
+<!--
+  FocusListCard.vue
+  A dashboard card component that displays a summary or list of active Focus items (ToDos).
+
+  Used by:
+  - StaffHome.vue (pages/staff)
+  - Focus page (if exists)
+-->
 <template>
 	<section class="palette-card overflow-hidden">
 		<!-- Header -->

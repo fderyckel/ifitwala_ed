@@ -1,4 +1,12 @@
 <!-- ifitwala_ed/ui-spa/src/components/analytics/HeatmapChart.vue -->
+<!--
+  HeatmapChart.vue
+  ECharts wrapper for rendering 2D heatmap visualizations. 
+  Expects row/bucket data structure.
+
+  Used by:
+  - StudentDemographicAnalytics.vue (pages/staff/analytics)
+-->
 <template>
   <section class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
     <header class="mb-2 flex items-center justify-between">

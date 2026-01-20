@@ -1,3 +1,12 @@
+<!-- ifitwala_ed/ui-spa/src/components/overlays/class-hub/QuickEvidenceOverlay.vue -->
+<!--
+  QuickEvidenceOverlay.vue
+  A specialized overlay for capturing evidence (text or link) for selected students during a class session.
+
+  Used by:
+  - ClassHub.vue (via OverlayHost)
+  - StudentContextOverlay.vue
+-->
 <template>
   <TransitionRoot :show="open" as="template" @after-leave="$emit('after-leave')">
     <Dialog as="div" class="if-overlay if-overlay--class-hub" :style="overlayStyle" @close="emitClose">

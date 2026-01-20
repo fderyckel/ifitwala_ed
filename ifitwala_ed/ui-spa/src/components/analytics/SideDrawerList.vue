@@ -1,4 +1,13 @@
 <!-- ifitwala_ed/ui-spa/src/components/analytics/SideDrawerList.vue -->
+<!--
+  SideDrawerList.vue
+  A slide-over drawer for displaying lists of records associated with an analytics slice.
+  Commonly triggered by clicking on chart elements.
+
+  Used by:
+  - EnrollmentAnalytics.vue
+  - StudentLogAnalytics.vue
+-->
 <template>
   <teleport to="body">
     <transition name="fade">

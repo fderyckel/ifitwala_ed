@@ -1,3 +1,11 @@
+<!-- ifitwala_ed/ui-spa/src/components/class-hub/TodayList.vue -->
+<!--
+  TodayList.vue
+  A list of today's relevant items (e.g. sessions, deadlines) for the Class Hub.
+
+  Used by:
+  - ClassHub.vue
+-->
 <template>
   <section class="space-y-3">
     <p class="type-overline text-slate-token/70">Today</p>

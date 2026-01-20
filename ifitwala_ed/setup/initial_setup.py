@@ -7,16 +7,26 @@ from frappe import _
 
 @frappe.whitelist()
 def is_setup_done():
-	"""Check for setup completion via the Org Settinsg single doctype."""
+	"""Return True once the bench/site has had initial setup applied.
+
+	We consider setup done if either:
+	- Org Setting.ifitwala_initial_setup == 1, OR
+	- the root Organization 'All Organizations' exists (installer creates it)
+	"""
+	flag = 0
 	try:
-		# Read the flag (0 or 1) from the Org Settings doctype
-		flag = frappe.db.get_single_value("Org Settings", "ifitwala_initial_setup")
-	except frappe.DoesNotExistError:
-		# Safety fallback if the field is missing (shouldn't happen after first run)
+		raw = frappe.db.get_single_value("Org Setting", "ifitwala_initial_setup")
+		if raw is not None:
+			flag = int(raw)  # raw may be 0/1 or '0'/'1'
+	except Exception:
+		# If Org Setting or field is missing for any reason, treat as not done
 		flag = 0
 
-	# If either an Organization exists OR the flag is set, return True
-	return bool(frappe.db.exists("Organization")) or flag
+	# Installer path creates this; if present, do NOT keep prompting.
+	has_root_org = bool(frappe.db.exists("Organization", "All Organizations"))
+
+	return (flag == 1) or has_root_org
+
 
 @frappe.whitelist()
 def complete_initial_setup(
@@ -83,7 +93,7 @@ def complete_initial_setup(
 	ws.save(ignore_permissions=True)
 
 	# ─── mark setup done (only after all saves succeeded) ────────────────────
-	doc = frappe.get_single("Org Settings")
+	doc = frappe.get_single("Org Setting")
 	doc.ifitwala_initial_setup = 1
 	doc.save(ignore_permissions=True)
 	# Force commit to ensure the change is persisted

@@ -1,3 +1,11 @@
+<!-- ifitwala_ed/ui-spa/src/components/class-hub/FollowUpsList.vue -->
+<!--
+  FollowUpsList.vue
+  A list of pending follow-up items for the teacher in the Class Hub.
+
+  Used by:
+  - ClassHub.vue
+-->
 <template>
   <section class="space-y-3">
     <p class="type-overline text-slate-token/70">My Follow-ups</p>

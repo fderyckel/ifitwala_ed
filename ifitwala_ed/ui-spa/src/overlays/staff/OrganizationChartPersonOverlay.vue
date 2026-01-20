@@ -74,6 +74,12 @@
 									<p class="type-caption text-slate-500">
 										{{ person.title || 'Role not specified' }}
 									</p>
+									<p class="type-caption text-slate-500 break-all">
+										Email: {{ person.professional_email || '-' }}
+									</p>
+									<p class="type-caption text-slate-500">
+										Ext: {{ person.phone_ext || '-' }}
+									</p>
 									<p class="type-caption text-slate-500">
 										{{ person.school || '-' }} · {{ person.organization || '-' }}
 									</p>
@@ -104,6 +110,8 @@ const props = defineProps<{
 		school?: string | null
 		organization?: string | null
 		image?: string | null
+		professional_email?: string | null
+		phone_ext?: string | null
 	}
 }>()
 

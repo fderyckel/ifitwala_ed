@@ -7,6 +7,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, date_diff, cint
+from frappe.utils.nestedset import get_descendants_of
 
 # Try native assign/remove; fall back to direct ToDo updates if unavailable
 try:
@@ -875,6 +876,247 @@ def reopen_log(log_name: str):
 				pass
 
 	return {"ok": True, "status": "In Progress", "log": row.name}
+
+
+def _user_is_pastoral_lead_for_student(user: str, student: str) -> bool:
+	"""
+	True if `user` is an instructor of at least one Pastoral Student Group
+	that contains `student`.
+
+	Pastoral scope is explicit: group_based_on == 'Pastoral' only.
+	"""
+	if not user or not student:
+		return False
+
+	row = frappe.db.sql(
+		"""
+		SELECT 1
+		FROM `tabStudent Group Instructor` sgi
+		INNER JOIN `tabStudent Group` sg
+			ON sg.name = sgi.parent
+		INNER JOIN `tabStudent Group Student` sgs
+			ON sgs.parent = sg.name
+		WHERE
+			sgi.user_id = %(user)s
+			AND sg.status = 'Active'
+			AND sg.group_based_on = 'Pastoral'
+			AND sgs.student = %(student)s
+		LIMIT 1
+		""",
+		{"user": user, "student": student},
+		as_dict=False,
+	)
+	return bool(row)
+
+
+ADMIN_ROLES = {"System Manager", "Administrator"}
+SCHOOL_OVERSIGHT_ROLES = {"Academic Admin", "Counsellor", "Learning Support"}
+ACADEMIC_STAFF_ROLE = "Academic Staff"
+PASTORAL_LEAD_ROLE = "Pastoral Lead"
+CURRICULUM_COORDINATOR_ROLE = "Curriculum Coordinator"
+ACCREDITATION_VISITOR_ROLE = "Accreditation Visitor"
+
+
+def _get_user_employee(user: str) -> frappe._dict:
+	if not user or user == "Guest":
+		return frappe._dict()
+
+	fields = ["name", "school"]
+	if frappe.db.has_column("Employee", "default_school"):
+		fields.insert(1, "default_school")
+
+	return (
+		frappe.db.get_value("Employee", {"user_id": user}, fields, as_dict=True)
+		or frappe._dict()
+	)
+
+
+def _get_user_school_anchor(user: str) -> str | None:
+	if not user or user == "Guest":
+		return None
+	default_school = frappe.defaults.get_user_default("school", user)
+	if default_school:
+		return default_school
+
+	emp = _get_user_employee(user)
+	return emp.get("default_school") or emp.get("school")
+
+
+def _get_user_school_tree(user: str) -> list[str]:
+	anchor = _get_user_school_anchor(user)
+	if not anchor:
+		return []
+	return [anchor] + (get_descendants_of("School", anchor, ignore_permissions=True) or [])
+
+
+def _is_accreditation_visitor_only(roles: set[str]) -> bool:
+	return ACCREDITATION_VISITOR_ROLE in roles and not (roles - {ACCREDITATION_VISITOR_ROLE})
+
+
+def _interpolate_sql_params(sql: str, params: dict) -> str:
+	"""Safely expand params for permission query conditions."""
+	out = sql
+	for key, val in (params or {}).items():
+		placeholder = f"%({key})s"
+		if isinstance(val, (list, tuple, set)):
+			items = [frappe.db.escape(v) for v in val]
+			repl = f"({', '.join(items)})" if items else "(NULL)"
+		else:
+			repl = frappe.db.escape(val)
+		out = out.replace(placeholder, repl)
+	return out
+
+
+def get_student_log_visibility_predicate(
+	user: str | None = None,
+	table_alias: str = "`tabStudent Log`",
+	allow_aggregate_only: bool = False,
+) -> tuple[str, dict]:
+	"""
+	Return (SQL, params) for Student Log visibility.
+
+	- allow_aggregate_only: when True, Accreditation Visitor is scoped for aggregates
+	  (detail views must pass False).
+	"""
+	user = user or frappe.session.user
+	if not user or user == "Guest":
+		return "0=1", {}
+
+	roles = set(frappe.get_roles(user) or [])
+	if roles & ADMIN_ROLES:
+		return "1=1", {}
+
+	if _is_accreditation_visitor_only(roles) and not allow_aggregate_only:
+		return "0=1", {}
+
+	conditions = []
+	params = {"user": user}
+
+	# Authorship / assignment are always visible
+	conditions.append(f"{table_alias}.owner = %(user)s")
+	conditions.append(f"{table_alias}.follow_up_person = %(user)s")
+
+	# School-tree oversight
+	if roles & SCHOOL_OVERSIGHT_ROLES or (_is_accreditation_visitor_only(roles) and allow_aggregate_only):
+		allowed_schools = _get_user_school_tree(user)
+		if allowed_schools:
+			params["oversight_schools"] = tuple(allowed_schools)
+			conditions.append(f"{table_alias}.school IN %(oversight_schools)s")
+
+	# Pastoral Lead (group-scoped)
+	if PASTORAL_LEAD_ROLE in roles:
+		emp = _get_user_employee(user)
+		params["employee"] = emp.get("name") or ""
+		conditions.append(
+			f"""
+			EXISTS (
+				SELECT 1
+				FROM `tabStudent Group Student` sgs
+				JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+				JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sg.name
+				LEFT JOIN `tabInstructor` ins ON ins.name = sgi.instructor
+				WHERE sgs.student = {table_alias}.student
+				  AND IFNULL(sgs.active, 1) = 1
+				  AND IFNULL(sg.status, 'Active') = 'Active'
+				  AND sg.group_based_on = 'Pastoral'
+				  AND sg.academic_year = {table_alias}.academic_year
+				  AND (
+					  sgi.user_id = %(user)s
+					  OR ins.linked_user_id = %(user)s
+					  OR sgi.employee = %(employee)s
+				  )
+			)
+			"""
+		)
+
+	# Academic Staff (teaching context)
+	if ACADEMIC_STAFF_ROLE in roles:
+		emp = _get_user_employee(user)
+		params["employee"] = emp.get("name") or params.get("employee") or ""
+		conditions.append(
+			f"""
+			EXISTS (
+				SELECT 1
+				FROM `tabStudent Group Student` sgs
+				JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+				JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sg.name
+				LEFT JOIN `tabInstructor` ins ON ins.name = sgi.instructor
+				WHERE sgs.student = {table_alias}.student
+				  AND IFNULL(sgs.active, 1) = 1
+				  AND IFNULL(sg.status, 'Active') = 'Active'
+				  AND sg.group_based_on != 'Pastoral'
+				  AND sg.academic_year = {table_alias}.academic_year
+				  AND (
+					  sgi.user_id = %(user)s
+					  OR ins.linked_user_id = %(user)s
+					  OR sgi.employee = %(employee)s
+				  )
+			)
+			"""
+		)
+
+	# Curriculum Coordinator (program oversight)
+	if CURRICULUM_COORDINATOR_ROLE in roles:
+		emp = _get_user_employee(user)
+		params["employee"] = emp.get("name") or params.get("employee") or ""
+		conditions.append(
+			f"""
+			EXISTS (
+				SELECT 1
+				FROM `tabProgram Coordinator` pc
+				JOIN `tabProgram Enrollment` pe ON pe.program = pc.parent
+				WHERE pc.parenttype = 'Program'
+				  AND pc.parentfield = 'program_coordinators'
+				  AND pc.coordinator = %(employee)s
+				  AND pe.student = {table_alias}.student
+				  AND pe.program = {table_alias}.program
+				  AND IFNULL(pe.archived, 0) = 0
+				  AND pe.academic_year = {table_alias}.academic_year
+			)
+			"""
+		)
+
+	if not conditions:
+		return "0=1", {}
+
+	return "(" + " OR ".join(conditions) + ")", params
+
+
+def get_permission_query_conditions(user: str | None = None) -> str | None:
+	sql, params = get_student_log_visibility_predicate(
+		user=user, table_alias="`tabStudent Log`", allow_aggregate_only=False
+	)
+	return _interpolate_sql_params(sql, params)
+
+
+def has_permission(doc, ptype: str = "read", user: str | None = None) -> bool:
+	user = user or frappe.session.user
+	if not user or user == "Guest":
+		return False
+
+	roles = set(frappe.get_roles(user) or [])
+	if roles & ADMIN_ROLES:
+		return True
+
+	if ptype in {"read", "select", "report"}:
+		sql, params = get_student_log_visibility_predicate(
+			user=user, table_alias="sl", allow_aggregate_only=False
+		)
+		if sql == "1=1":
+			return True
+		params = {**params, "name": doc.name}
+		row = frappe.db.sql(
+			f"SELECT 1 FROM `tabStudent Log` sl WHERE sl.name = %(name)s AND {sql} LIMIT 1",
+			params,
+		)
+		return bool(row)
+
+	# Write/submit/amend permissions are tighter than read.
+	if roles & SCHOOL_OVERSIGHT_ROLES:
+		return doc.school in set(_get_user_school_tree(user))
+
+	return bool(doc.owner == user)
+
 
 
 def on_doctype_update():

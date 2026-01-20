@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:organization_name",
  "creation": "2024-12-02 20:53:03.645837",
@@ -143,7 +144,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-01-01 11:25:06",
+ "modified": "2026-01-19 18:17:07.830673",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Organization",
