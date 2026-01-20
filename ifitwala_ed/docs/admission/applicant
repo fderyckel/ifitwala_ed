@@ -1,0 +1,323 @@
+# Admissions Canonical Contract (ACC)
+
+**Ifitwala_Ed — v1 (Living Document)**
+
+> Admissions is not a form.
+> It is a staged data-promotion pipeline with legal boundaries.
+
+This document defines the **authoritative admissions lifecycle**, invariants, and promotion rules.
+All code, doctypes, UI, workflows, and automation **must conform**.
+
+---
+
+## 0. Scope & Authority
+
+This contract governs:
+
+* Inquiry
+* Student Applicant
+* Applicant sub-domains (health, interview, documents, policies, etc.)
+* Promotion to Student
+* Admissions communication and audit
+
+This document supersedes:
+
+* UI assumptions
+* Form layouts
+* Portal workflows
+
+If code contradicts this contract, **the code is wrong**.
+
+---
+
+## 1. Canonical Objects & Boundaries
+
+### 1.1 Inquiry (Intent & Triage Object)
+
+**Purpose**
+
+* Capture initial interest
+* Support admissions triage, SLA, and assignment
+* Filter before heavy data collection
+
+**Characteristics**
+
+* Lightweight
+* Discardable
+* Operational
+
+**Invariants**
+
+* Inquiry NEVER becomes a Student
+* Inquiry data is NOT legally authoritative
+* Inquiry may be archived without consequences
+
+**Terminal outcomes**
+
+* Qualified → create Student Applicant
+* Archived → end of lifecycle
+
+---
+
+### 1.2 Student Applicant (Staging Container)
+
+**Purpose**
+
+* Sole container for **all pre-student data**
+* Aggregate forms, interviews, documents, consents
+* Enable review and decision-making
+
+**Characteristics**
+
+* Mutable (until locked)
+* Reviewable
+* Legally sensitive
+* Non-canonical
+
+**Invariants**
+
+* All intake data lives here (directly or via sub-records)
+* Families NEVER write to Student or Student Patient
+* Applicant may be rejected and deleted without polluting student records
+
+**Terminal outcomes**
+
+* Approved → Promoted to Student
+* Rejected → Archived (read-only)
+
+---
+
+### 1.3 Student (Canonical Institutional Record)
+
+**Purpose**
+
+* Represent an enrolled individual in the institution
+* Anchor enrollment, attendance, LMS, health, compliance
+
+**Characteristics**
+
+* Canonical
+* Auditable
+* Permanent
+
+**Invariants**
+
+* Student is created ONLY via promotion
+* Student data is never directly edited by families
+* Admissions logic does not live here
+
+---
+
+## 2. Applicant Sub-Domains (Satellite Records)
+
+Applicant sub-domains are **first-class**, Applicant-scoped records.
+
+They:
+
+* Mirror parts of student-level doctypes
+* Exist only pre-promotion
+* Are copy-/transform-able at promotion
+
+### Mandatory sub-domains
+
+* Applicant Identity
+* Applicant Guardians
+* Applicant Academic Background
+* Applicant Health Profile
+* Applicant Policy Acknowledgements
+* Applicant Documents
+
+### Optional / contextual
+
+* Applicant Logistics
+* Applicant Financial Responsibility
+* Applicant Language Profile
+
+---
+
+## 3. Applicant Interview (NEW — Mandatory Architectural Element)
+
+### 3.1 Purpose
+
+Applicant Interview captures **qualitative human judgment** that cannot be reduced to forms.
+
+It supports:
+
+* Family interviews
+* Student interviews
+* Joint interviews
+* Multiple interviewers
+* Multiple interview rounds
+
+### 3.2 Applicant Interview Object
+
+**Ownership**
+
+* Staff only (never editable by family)
+
+**Key properties (conceptual, not fieldnames)**
+
+* Applicant
+* Interview type
+
+  * Family
+  * Student
+  * Joint
+* Interviewers (one or many staff)
+* Date & duration
+* Mode (in-person / online / phone)
+* Notes (free text)
+* Outcome / impression (non-binding)
+* Confidentiality level (e.g. admissions only)
+
+### 3.3 Invariants
+
+* Interviews are **informational**, not decisions
+* Interview outcomes do NOT auto-approve or reject
+* Multiple interviews may exist per Applicant
+* Interview data is NOT copied to Student by default
+
+**Rationale**
+OpenApply and Veracross treat interviews as advisory signals, not state transitions.
+
+---
+
+## 4. Admissions Workflow States
+
+### 4.1 Inquiry States
+
+* New
+* Assigned
+* Contacted
+* Qualified
+* Archived
+
+### 4.2 Applicant States
+
+| State        | Family Edit | Staff Edit | Promotion Allowed |
+| ------------ | ----------- | ---------- | ----------------- |
+| Draft        | ❌           | ✅          | ❌                 |
+| Invited      | ✅           | ✅          | ❌                 |
+| In Progress  | ✅           | ✅          | ❌                 |
+| Submitted    | ❌           | ✅          | ❌                 |
+| Under Review | ❌           | ✅          | ❌                 |
+| Missing Info | ✅ (scoped)  | ✅          | ❌                 |
+| Approved     | ❌           | ✅          | ✅                 |
+| Rejected     | ❌           | ❌          | ❌                 |
+| Promoted     | ❌           | ❌          | ❌                 |
+
+**Rule**
+
+> A state that does not change permissions or behavior must not exist.
+
+---
+
+## 5. Communication as a First-Class Concern
+
+Admissions is primarily **communication**, not data entry.
+
+### 5.1 Communication Principles
+
+* Linked to Inquiry or Applicant
+* Persisted (not email-only)
+* Timestamped
+* Role-aware (family vs staff)
+* Auditable
+
+### 5.2 Communication Types
+
+* Requests for missing information
+* Interview scheduling / follow-up
+* Decisions (approval / rejection)
+* Internal admissions notes
+
+**Invariant**
+
+> No admissions decision exists without a traceable communication artifact.
+
+---
+
+## 6. Promotion Contract (Applicant → Student)
+
+### 6.1 Preconditions
+
+* Applicant state = Approved
+* Required sub-domains completed
+* Required policies acknowledged
+* Health minimums met (school-defined)
+
+### 6.2 Promotion Actions
+
+**Create**
+
+* Student
+* Student Patient
+* Required Contacts / Users (if missing)
+
+**Copy / Transform**
+
+* Identity → Student (locked)
+* Guardians → Student
+* Health → Student Patient
+* Policy acknowledgements (selective)
+
+**Do NOT copy**
+
+* Interviews
+* Internal notes
+* Rejected / withdrawn documents
+
+### 6.3 Post-Promotion Effects
+
+* Applicant becomes read-only
+* Applicant links to Student
+* Files moved or duplicated correctly
+* Promotion metadata recorded (who / when)
+
+### 6.4 Invariants
+
+* Promotion is explicit
+* Promotion is idempotent
+* Promotion is irreversible
+
+---
+
+## 7. Design Prohibitions (Hard Rules)
+
+The system must NEVER:
+
+* Merge Applicant and Student
+* Write Applicant data directly into Student Patient
+* Auto-enroll programs from Applicant intent
+* Treat interviews as decisions
+* Allow family edits post-approval
+* Create Students implicitly
+
+---
+
+## 8. Future Compatibility Guarantees
+
+This contract supports:
+
+* Sibling applications
+* Re-applications
+* Transfers
+* Mid-year admissions
+* External systems (visa, exam boards)
+* Regulatory audits
+
+Without schema rewrites.
+
+---
+
+## 9. Summary (Non-Negotiable Truth)
+
+> Inquiry filters
+> Applicant accumulates
+> Interviews inform
+> Promotion converts
+> Student operates
+
+Everything else is implementation detail.
+
+---
