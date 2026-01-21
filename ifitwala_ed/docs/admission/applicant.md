@@ -148,6 +148,12 @@ This prevents:
 * Silent data drift during review
 * Post-decision tampering
 
+**System Manager override (exception)**
+
+In terminal states (`Rejected`, `Promoted`), edits are blocked unless a System Manager
+performs an explicit override. Overrides must be intentional, audited, and include a
+reason. This is a legal escape hatch, not a normal workflow.
+
 ---
 
 ## 6. Applicant Sub-Domains (Conceptual, Not Yet Implemented)

@@ -1,3 +1,4 @@
+# ifitwala_ed/students/doctype/student/student.py
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
@@ -19,6 +20,7 @@ class Student(Document):
 		load_address_and_contact(self)
 
 	def validate(self):
+		self._validate_creation_source()
 		validate_account_holder_for_student(self)
 		self.student_full_name = " ".join(filter(None, [self.student_first_name, self.student_middle_name, self.student_last_name]))
 		self.validate_email()
@@ -39,6 +41,23 @@ class Student(Document):
 		# Enforce unique student_full_name 
 		if frappe.db.exists("Student", {"student_full_name": self.student_full_name, "name": ["!=", self.name]}): 
 			frappe.throw(_("Student Full Name '{0}' must be unique. Please choose a different name.").format(self.student_full_name))
+
+	def _validate_creation_source(self):
+		if not self.is_new():
+			return
+		if self.student_applicant:
+			return
+		if getattr(frappe.flags, "in_migration", False):
+			return
+		if getattr(frappe.flags, "allow_direct_student_create", False):
+			return
+		if getattr(frappe.flags, "in_patch", False):
+			return
+		if getattr(frappe.flags, "in_import", False) or getattr(self.flags, "in_import", False):
+			return
+		frappe.throw(
+			_("Students must be created via Applicant promotion. Set an explicit migration/import bypass flag to create directly.")
+		)
 
 
 
@@ -62,6 +81,8 @@ class Student(Document):
 						  .format(linked_doctypes[d]["child_doctype"], linked_doctypes[d]["fieldname"][0]),(self.student_full_name, self.name))
 
 	def after_insert(self):
+		if getattr(frappe.flags, "from_applicant_promotion", False):
+			return
 		self.create_student_user()
 		self.create_student_patient()
 		self.ensure_contact_and_link()
@@ -113,6 +134,10 @@ class Student(Document):
 	###### Update methods ###### 
 	def update_student_enabled_status(self): 
 		patient = frappe.db.get_value("Student Patient", {"student":self.name}, "name") 
+		if not patient:
+			if getattr(frappe.flags, "from_applicant_promotion", False) or self.student_applicant:
+				return
+			frappe.throw(_("Student Patient record is missing for this student."))
 		if self.enabled == 0: 
 			frappe.db.set_value("Student Patient", patient, "status", "Disabled") 
 		else: 
