@@ -271,6 +271,129 @@ Everything else is implementation detail.
 
 ---
 
+
+## 12. Institutional Scope & Authority (Multi-School Contract)
+
+### 12.1 Applicant Institutional Anchoring
+
+A `Student Applicant` must be **explicitly anchored** to an institutional context.
+
+Each Applicant is associated with:
+
+* exactly one **Organization**
+* exactly one **School**
+
+This association:
+
+* is set **once**, at Applicant creation
+* is immutable for the lifetime of the Applicant
+* is never inferred dynamically at runtime
+
+**Source of truth**
+
+* If created from an Inquiry, `school` and `organization` are inherited
+* If created manually, staff must explicitly choose the school
+
+**Invariant**
+
+> An Applicant always “belongs” to one School, even if academic Programs are shared across campuses.
+
+---
+
+### 12.2 Why Program Is Not Sufficient
+
+Programs may be:
+
+* shared across schools
+* migrated between schools
+* reused across academic structures
+
+Therefore:
+
+> Program affiliation is **not** a substitute for institutional scope.
+
+School anchoring exists to support:
+
+* admissions ownership
+* officer specialization
+* analytics partitioning
+* permission enforcement
+* legal accountability
+
+---
+
+### 12.3 Admissions Authority Model (Conceptual)
+
+Admissions authority is **role-based and scope-based**.
+
+* **Admission Officer**
+
+  * operates within a declared scope
+  * scope may include:
+
+    * one or more Schools
+    * optionally specific Programs
+* **Admission Manager / Director**
+
+  * has cross-school visibility within an Organization
+  * may override decisions (audited)
+
+**Invariant**
+
+> Visibility, assignment, and dashboards must respect institutional scope — not just role.
+
+---
+
+### 12.4 Applicant Lifecycle Is Global, Requirements Are Local
+
+The Applicant lifecycle (`application_status`) is **globally consistent**.
+
+However:
+
+* validation requirements
+* required interviews
+* required documents
+* approval readiness
+
+may vary **by School**.
+
+These variations must be:
+
+* declarative
+* configuration-driven
+* evaluated at lifecycle transitions
+
+**Prohibition**
+
+> School-specific rules must not be encoded as conditional logic inside Applicant lifecycle code.
+
+---
+
+### 12.5 Cross-School Oversight Guarantee
+
+Institutional leadership must be able to:
+
+* view Applicants across all Schools
+* filter by School / Program
+* audit overrides and decisions
+
+This visibility is **explicitly granted**, not emergent.
+
+---
+
+## ✅ Result
+
+After this addition, `applicant.md` now:
+
+* still treats Applicant as a **process container**
+* but no longer assumes a single-school world
+* formally supports:
+
+  * specialization
+  * oversight
+  * analytics
+  * future scaling
+
 ### ✔ Status
 
 This document is now:
@@ -281,4 +404,3 @@ This document is now:
 * Strict enough to prevent future drift
 
 ---
-

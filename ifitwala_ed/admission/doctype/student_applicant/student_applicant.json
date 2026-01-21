@@ -10,6 +10,7 @@
   "middle_name",
   "last_name",
   "inquiry",
+  "student",
   "program",
   "column_break_frwx",
   "academic_year",
@@ -45,6 +46,13 @@
    "read_only": 1
   },
   {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student",
+   "read_only": 1
+  },
+  {
    "fieldname": "program",
    "fieldtype": "Link",
    "label": "Program",
@@ -66,10 +74,12 @@
    "label": "Applicant Image"
   },
   {
+   "default": "Draft",
    "fieldname": "application_status",
    "fieldtype": "Select",
    "label": "Application Status",
-   "options": "Draft\nInvited\nIn Progress\nSubmitted\nUnder Review\nMissing Info\nApproved\nRejected\nPromoted"
+   "options": "Draft\nInvited\nIn Progress\nSubmitted\nUnder Review\nMissing Info\nApproved\nRejected\nPromoted",
+   "read_only": 1
   },
   {
    "fieldname": "term",
