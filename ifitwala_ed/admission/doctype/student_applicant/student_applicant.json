@@ -9,6 +9,7 @@
   "first_name",
   "middle_name",
   "last_name",
+  "inquiry",
   "program",
   "column_break_frwx",
   "academic_year",
@@ -37,6 +38,13 @@
    "label": "Last Name"
   },
   {
+   "fieldname": "inquiry",
+   "fieldtype": "Link",
+   "label": "Inquiry",
+   "options": "Inquiry",
+   "read_only_depends_on": "eval:doc.inquiry"
+  },
+  {
    "fieldname": "program",
    "fieldtype": "Link",
    "label": "Program",
@@ -61,7 +69,7 @@
    "fieldname": "application_status",
    "fieldtype": "Select",
    "label": "Application Status",
-   "options": "Applied\nApproved\nRejected\nAdmitted"
+   "options": "Draft\nInvited\nIn Progress\nSubmitted\nUnder Review\nMissing Info\nApproved\nRejected\nPromoted"
   },
   {
    "fieldname": "term",
@@ -72,7 +80,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-27 16:52:50.810449",
+ "modified": "2024-12-27 16:55",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",

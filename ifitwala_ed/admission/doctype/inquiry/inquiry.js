@@ -8,9 +8,8 @@ frappe.ui.form.on("Inquiry", {
 		const s = frm.doc.workflow_state;
 		const is_manager = frappe.user.has_role('Admission Manager');
 		const is_officer = frappe.user.has_role('Admission Officer');
-		const kind = frm.doc.type_of_inquiry; // 'Admission' | 'General Inquiry'
 
-		if (s === 'New Inquiry' && is_manager) {
+		if (['New', 'New Inquiry'].includes(s) && is_manager) {
 			frm.add_custom_button('Assign', () => frm.trigger('assign'));
 		}
 		// Allow reassign if already assigned
@@ -23,16 +22,8 @@ frappe.ui.form.on("Inquiry", {
 		if (s === 'Contacted' && is_officer) {
 			frm.add_custom_button('Qualify', () => frm.trigger('qualify'));
 		}
-		if (kind === 'General Inquiry' && s === 'Qualified') {
-			frm.add_custom_button('Start Nurturing', () => frm.trigger('start_nurturing'));
-		}
-		if (frm.doctype === 'Registration of Interest' && s === 'Qualified') {
-			frm.add_custom_button('Submit Application', () => frm.trigger('submit_application'));
-		}
-		// Acceptance/Disqualify after nurturing (and optionally from Qualified if you wish) 
-		if (['Nurturing'].includes(s) && is_manager) {
-			frm.add_custom_button('Accept', () => frm.trigger('accept'));
-			frm.add_custom_button('Disqualify', () => frm.trigger('disqualify'));
+		if (s !== 'Archived' && (is_manager || is_officer)) {
+			frm.add_custom_button('Archive', () => frm.trigger('archive'));
 		}
 		if (!frm.doc.contact && frm.doc.docstatus === 0) {
 			frm.add_custom_button(__('Create Contact'), () => {
@@ -165,22 +156,39 @@ frappe.ui.form.on("Inquiry", {
 	},
 
 	qualify(frm) {
-		frm.set_value('workflow_state', 'Qualified');
-		frm.save();
+		frappe.call({
+			doc: frm.doc,
+			method: "mark_qualified",
+			freeze: true,
+			callback: function () {
+				frappe.show_alert(__("Marked as qualified."));
+				frm.reload_doc();
+			},
+			error: function (err) {
+				console.error(err);
+				frappe.msgprint(__('Failed to mark qualified: {0}', [err.message || err]));
+			}
+		});
 	},
 
-	start_nurturing(frm) {
-		frm.set_value('workflow_state', 'Nurturing');
-		frm.save();
-	},
-
-	accept(frm) {
-		frm.set_value('workflow_state', 'Accepted');
-		frm.save();
-	},
-
-	disqualify(frm) {
-		frm.set_value('workflow_state', 'Unqualified');
-		frm.save();
+	archive(frm) {
+		frappe.confirm(
+			__("Archive this inquiry?"),
+			() => {
+				frappe.call({
+					doc: frm.doc,
+					method: "archive",
+					freeze: true,
+					callback: function () {
+						frappe.show_alert(__("Inquiry archived."));
+						frm.reload_doc();
+					},
+					error: function (err) {
+						console.error(err);
+						frappe.msgprint(__('Failed to archive: {0}', [err.message || err]));
+					}
+				});
+			}
+		);
 	}
 });

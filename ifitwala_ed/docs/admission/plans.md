@@ -96,7 +96,7 @@ Only **structural truth enforcement**.
 > Goal: Make the admissions pipeline *real and enforceable* even with empty data.
 >
 > Success criterion:
-> **A Student cannot exist unless promoted from a Student Applicant, and a Student Applicant cannot exist unless invited from an Inquiry.**
+> **A Student cannot exist unless promoted from a Student Applicant, and a Student Applicant may optionally link to an Inquiry (required when invited).**
 
 ---
 
@@ -433,7 +433,7 @@ Ensure **every** transition writes an artifact.
 A PR completing Phase 1 **MUST** satisfy all below:
 
 * [ ] Inquiry can exist without Applicant
-* [ ] Applicant cannot exist without Inquiry
+* [ ] Applicant may exist without Inquiry; invite-to-apply always links Inquiry ↔ Applicant
 * [ ] Student cannot exist without Applicant
 * [ ] Invitation is explicit and auditable
 * [ ] Promotion is explicit, idempotent, irreversible
@@ -497,7 +497,7 @@ Make the Inquiry → Applicant boundary explicit, enforced, and auditable.
 ### Acceptance checklist
 
 * [ ] Inquiry can exist without Applicant
-* [ ] Applicant can be created **only** via `invite_to_apply`
+* [ ] Applicants invited via `invite_to_apply` are linked to the Inquiry (direct staff creation allowed)
 * [ ] Cannot invite unless Inquiry is `Qualified`
 * [ ] Calling twice does not create duplicates
 * [ ] Audit trail is written
@@ -508,6 +508,162 @@ Make the Inquiry → Applicant boundary explicit, enforced, and auditable.
 * No portal logic
 * No Applicant sub-domains
 * No Student logic
+
+---
+
+Ambiguities of PR01 removed
+
+## ✅ 1. Student Applicant ↔ Inquiry linkage — **GREEN-LIGHT: add now, but optional**
+
+**Decision**
+
+✔ **Add the link field in PR-01**, on **Student Applicant**, but **do NOT make it mandatory**.
+
+**Canonical position**
+
+* The Inquiry → Applicant relationship is **one-to-zero-or-one**, not mandatory.
+* Applicants may be created:
+
+  * from an Inquiry (**most common**), or
+  * directly by staff (walk-ins, internal referrals, edge cases).
+
+**Exact field**
+
+* **On Student Applicant**
+  `inquiry` → Link to `Inquiry`
+
+  * optional
+  * read-only once set
+* **On Inquiry**
+  `student_applicant` → Link to `Student Applicant`
+
+  * read-only
+
+**Why now (PR-01)**
+
+* This link is part of the **handoff contract**, not Applicant lifecycle logic.
+* It allows:
+
+  * full pipeline traceability
+  * clean audit (“this applicant originated from this inquiry”)
+* Making it optional avoids over-constraining future flows.
+
+✔ **Approved to implement in PR-01**
+
+---
+
+## ✅ 2. Applicant status mismatch — **GREEN-LIGHT: update statuses now**
+
+**Decision**
+
+✔ **Yes, update Student Applicant statuses in PR-01/PR-02**, not later.
+Do **not** create Applicants without a meaningful state.
+
+**Action**
+
+Replace current:
+
+* Applied
+* Approved
+* Rejected
+* Admitted
+
+With **canonical lifecycle states** (exact names flexible, semantics not):
+
+* Draft *(staff-created, not yet sent)*
+* Invited *(family portal access granted)*
+* In Progress *(family editing)*
+* Submitted *(family done, staff review only)*
+* Under Review
+* Missing Info
+* Approved
+* Rejected
+* Promoted *(terminal)*
+
+**invite_to_apply() behavior**
+
+* Creates Student Applicant
+* Sets status = **Invited**
+* Writes audit comment
+* Does **not** imply submission or approval
+
+**Why now**
+
+* Status semantics drive **permissions, locking, and UI** later.
+* Creating Applicants without status is how pipelines rot.
+* This is a **schema correction**, not a feature change.
+
+✔ **Approved to change now**
+
+---
+
+## ✅ 3. Inquiry state alignment — **GREEN-LIGHT: align fully now**
+
+**Decision**
+
+✔ **Yes — align Inquiry states to canonical set now**
+✔ **Yes — update `admission_utils.py` and `inquiry.js` accordingly**
+
+**Canonical Inquiry states**
+
+* New
+* Assigned
+* Contacted
+* Qualified
+* Archived
+
+**Remove / deprecate**
+
+* Nurturing
+* Accepted
+* Unqualified
+  (these belong either to Applicant stage or to reporting tags, not state)
+
+**Rules**
+
+* `Qualified` → allows `invite_to_apply()`
+* `Archived` → hard stop (no Applicant creation)
+* Inquiry never represents a decision outcome
+
+**Why this is correct**
+
+* Inquiry is **triage only**
+* Decisions belong to **Applicant**, not Inquiry
+* This simplifies SLA logic and avoids semantic overlap
+
+✔ **Approved to refactor now**
+
+---
+
+## ✅ 4. Admissions permissions — **GREEN-LIGHT: explicit role set**
+
+**Decision**
+
+✔ Admissions permissions = **Admission Manager + Admission Officer**
+
+**Applies to**
+
+* `invite_to_apply()`
+* Inquiry state transitions
+* Applicant status transitions (except family-editable phases)
+* Promotion (later PR)
+
+**Explicit rule**
+
+* Guardians / Applicants: **never**
+* Teachers / Academic staff: **never**
+* IT / System Manager: only via override / debug (not normal flow)
+
+**Implementation note**
+
+* Use role checks in server methods (not client JS).
+* Prefer a small helper like `has_admissions_permission(user)` to avoid role drift.
+
+✔ **Approved**
+
+
+
+
 
 ---
 
@@ -655,5 +811,3 @@ Skipping or reordering breaks guarantees.
 This is the **foundation OpenApply-class systems rely on**.
 
 ---
-
-

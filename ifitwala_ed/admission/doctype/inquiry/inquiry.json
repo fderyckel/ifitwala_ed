@@ -23,6 +23,7 @@
   "sla_status",
   "assigned_to",
   "contact",
+  "student_applicant",
   "column_break_w8a0",
   "submitted_at",
   "first_contact_due_on",
@@ -78,7 +79,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Workflow State",
-   "options": "New Inquiry\nAssigned\nContacted\nQualified\nNurturing\nAccepted\nUnqualified",
+   "options": "New\nAssigned\nContacted\nQualified\nArchived",
    "read_only": 1
   },
   {
@@ -110,6 +111,13 @@
    "fieldtype": "Link",
    "label": "Contact",
    "options": "Contact",
+   "read_only": 1
+  },
+  {
+   "fieldname": "student_applicant",
+   "fieldtype": "Link",
+   "label": "Student Applicant",
+   "options": "Student Applicant",
    "read_only": 1
   },
   {
@@ -186,7 +194,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-01 11:28:45.999261",
+ "modified": "2026-01-01 11:28:47",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",

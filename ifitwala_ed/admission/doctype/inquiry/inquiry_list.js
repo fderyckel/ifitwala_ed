@@ -39,10 +39,12 @@ frappe.listview_settings['Inquiry'] = {
 		// colour the workflow_state column
 		workflow_state: function (value) {
 			const colourMap = {
+				'New': 'gray',
 				'New Inquiry': 'gray',
 				'Assigned': 'blue',
 				'Contacted': 'green',
 				'Qualified': 'purple',
+				'Archived': 'gray',
 				'Nurturing': 'orange',
 				'Accepted': 'green',
 				'Unqualified': 'red'

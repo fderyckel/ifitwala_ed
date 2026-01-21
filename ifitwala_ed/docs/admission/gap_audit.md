@@ -1,6 +1,6 @@
 # Gap Audit — Admissions Canonical Contract vs Current Doctypes
 
-## A) Inquiry (triage object) — Status: **mostly aligned**, missing handoff + comms anchoring
+## A) Inquiry (triage object) — Status: **aligned on handoff + transitions**, comms anchoring missing
 
 ### ✅ What already matches the contract
 
@@ -9,21 +9,12 @@
 * **SLA + deadlines** are computed on save.
 * **Assignment + “mark contacted”** logic exists and closes the correct ToDo.
 * **Contact linking** exists (`create_contact_from_inquiry`).
+* **Canonical handoff** exists (`invite_to_apply`, Inquiry ↔ Applicant link, idempotent).
+* **Canonical states + transitions** enforced (New/Assigned/Contacted/Qualified/Archived).
 
 ### ❌ Gaps (must fix)
 
-1. **No canonical handoff: Inquiry → Student Applicant**
-
-   * **Missing:** a single, explicit “Create Applicant / Invite to Application” action (server-side method + button).
-   * **Why it matters:** contract says Inquiry qualifies → creates Applicant; right now that link is absent, so the pipeline can’t be enforced.
-
-   **Acceptance criteria**
-
-   * Inquiry has a link field like `student_applicant` OR a linked record reference.
-   * A whitelisted method creates Student Applicant, links it back, and writes an audit comment.
-   * Method is idempotent: calling twice never creates two applicants for same inquiry.
-
-2. **Communication is not first-class**
+1. **Communication is not first-class**
 
    * **Missing:** a persisted “Admissions Communication” record (or at minimum a structured log object) linked to Inquiry/Applicant.
    * **Current:** comments exist, but no structured type for “message to family”, “missing info request”, “decision email sent”, etc.
@@ -32,16 +23,6 @@
 
    * There is a doctype (or pattern) that stores: direction (staff→family / family→staff), channel (email/portal/phone), subject, body/summary, sent_by, sent_at.
    * Inquiry actions write to it (not only comments).
-
-3. **Inquiry states aren’t contract-governed**
-
-   * **Current:** you set workflow_state to “New Inquiry” if missing, and `mark_contacted()` sets “Contacted”.
-   * **Missing:** canonical state set (New/Assigned/Contacted/Qualified/Archived) with enforced transitions.
-
-   **Acceptance criteria**
-
-   * A single source of truth for state transitions exists (controller methods).
-   * “Qualified” triggers/permits Applicant creation; “Archived” blocks it.
 
 ---
 
@@ -53,14 +34,14 @@ Right now it’s basically: name + (program/AY/term) + image + status. No logic.
 
 1. **Applicant is missing the “container” responsibilities**
 
-   * **Missing:** linkage, progress tracking, locking, review workflow behavior.
+   * **Missing:** progress tracking, locking, review workflow behavior (linkage is partial).
 
    **Acceptance criteria**
 
    * Student Applicant can link to:
 
-     * Origin Inquiry (`inquiry`)
-     * Resulting Student (`student`) after promotion
+     * Origin Inquiry (`inquiry`) — implemented (PR-01)
+     * Resulting Student (`student`) after promotion — pending
    * Applicant has a “lock/editability” behavior based on status (Draft/In Progress/Submitted/Under Review/Missing Info/Approved/Rejected/Promoted).
 
 2. **No Applicant sub-domains exist**
@@ -106,14 +87,15 @@ Right now it’s basically: name + (program/AY/term) + image + status. No logic.
      * A computed completion model that checks satellite records.
    * Promotion preconditions can be evaluated deterministically.
 
-5. **Applicant status options don’t match contract semantics**
+5. **Applicant status enforcement is missing**
 
-   * Current: Applied/Approved/Rejected/Admitted (too coarse, ambiguous).
-   * You need states that change editability and behavior.
+   * Status options now match the contract.
+   * Missing: controller-enforced transitions + edit-lock rules.
 
    **Acceptance criteria**
 
-   * Applicant states support: Draft/Invited/In Progress/Submitted/Under Review/Missing Info/Approved/Rejected/Promoted (names can vary, semantics can’t).
+   * Status changes only via controller methods; invalid transitions throw errors.
+   * Editability enforced by status server-side.
 
 ---
 
