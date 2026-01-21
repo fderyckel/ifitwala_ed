@@ -57,6 +57,7 @@ class StudentApplicant(Document):
 
 	def validate(self):
 		before = self.get_doc_before_save() if not self.is_new() else None
+		self._validate_institutional_anchor(before)
 		self._validate_inquiry_link(before)
 		self._validate_student_link(before)
 		self._validate_application_status(before)
@@ -65,6 +66,22 @@ class StudentApplicant(Document):
 	# ---------------------------------------------------------------------
 	# Link immutability
 	# ---------------------------------------------------------------------
+
+	def _validate_institutional_anchor(self, before):
+		# Required fields
+		if not self.organization or not self.school:
+			frappe.throw(_("Organization and School are required for a Student Applicant."))
+
+		# Immutability after creation
+		if not before:
+			return
+
+		if before.organization != self.organization:
+			frappe.throw(_("Organization is immutable once set."))
+
+		if before.school != self.school:
+			frappe.throw(_("School is immutable once set."))
+
 
 	def _validate_inquiry_link(self, before):
 		if not self.inquiry:

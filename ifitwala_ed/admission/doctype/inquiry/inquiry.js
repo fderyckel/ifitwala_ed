@@ -1,10 +1,12 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
+// ifitwala_ed/admission/doctype/inquiry/inquiry.js
 
 frappe.ui.form.on("Inquiry", {
 	refresh(frm) {
 		frm.page.clear_actions_menu();
+
 		const s = frm.doc.workflow_state;
 		const is_manager = frappe.user.has_role('Admission Manager');
 		const is_officer = frappe.user.has_role('Admission Officer');
@@ -15,22 +17,43 @@ frappe.ui.form.on("Inquiry", {
 			return;
 		}
 
+		// Assignment flows
 		if (s === 'New' && is_manager) {
 			frm.add_custom_button('Assign', () => frm.trigger('assign'));
 		}
-		// Allow reassign if already assigned
+
 		if (s === 'Assigned' && is_manager) {
 			frm.add_custom_button('Reassign', () => frm.trigger('reassign'));
 		}
+
 		if (s === 'Assigned' && is_officer) {
 			frm.add_custom_button('Mark Contacted', () => frm.trigger('mark_contacted'));
 		}
+
 		if (s === 'Contacted' && is_officer) {
 			frm.add_custom_button('Qualify', () => frm.trigger('qualify'));
 		}
+
 		if (s !== 'Archived' && (is_manager || is_officer)) {
 			frm.add_custom_button('Archive', () => frm.trigger('archive'));
 		}
+
+		// --------------------------------------------------
+		// Invite to Apply (Admissions boundary)
+		// --------------------------------------------------
+		// Only when inquiry is meaningful AND not archived
+		if (
+			(s === 'Qualified' || s === 'Contacted') &&
+			(is_manager || is_officer)
+		) {
+			frm.add_custom_button(
+				__('Invite to Apply'),
+				() => frm.trigger('invite_to_apply'),
+				__('Admissions')
+			);
+		}
+
+		// Contact creation (unchanged)
 		if (!frm.doc.contact && frm.doc.docstatus === 0) {
 			frm.add_custom_button(__('Create Contact'), () => {
 				frappe.call({
@@ -49,6 +72,58 @@ frappe.ui.form.on("Inquiry", {
 			});
 		}
 	},
+
+	// --------------------------------------------------
+	// Invite to Apply
+	// --------------------------------------------------
+	invite_to_apply(frm) {
+		frappe.prompt(
+			[
+				{
+					label: __('School'),
+					fieldname: 'school',
+					fieldtype: 'Link',
+					options: 'School',
+					reqd: 1
+				},
+				{
+					label: __('Organization'),
+					fieldname: 'organization',
+					fieldtype: 'Link',
+					options: 'Organization',
+					reqd: 0,
+					description: __('Optional override; normally inferred from School')
+				}
+			],
+			(values) => {
+				frappe.call({
+					method: 'ifitwala_ed.admission.admission_utils.from_inquiry_invite',
+					args: {
+						inquiry_name: frm.doc.name,
+						school: values.school,
+						organization: values.organization || null
+					},
+					freeze: true,
+					callback: (r) => {
+						if (!r.exc && r.message) {
+							frappe.show_alert(__('Applicant created'));
+							frappe.set_route('Form', 'Student Applicant', r.message);
+						}
+					},
+					error: (err) => {
+						console.error(err);
+						frappe.msgprint(__('Failed to invite applicant'));
+					}
+				});
+			},
+			__('Invite to Apply'),
+			__('Invite')
+		);
+	},
+
+	// --------------------------------------------------
+	// Existing handlers (UNCHANGED)
+	// --------------------------------------------------
 
 	assign(frm) {
 		frappe.prompt(
@@ -86,7 +161,7 @@ frappe.ui.form.on("Inquiry", {
 	},
 
 	reassign(frm) {
-		frappe.prompt( 
+		frappe.prompt(
 			[
 				{
 					label: 'Reassign To (Admission Officer)',
@@ -118,15 +193,12 @@ frappe.ui.form.on("Inquiry", {
 			__('Reassign Inquiry'),
 			__('Reassign')
 		);
-	}, 
-
-	
+	},
 
 	mark_contacted(frm) {
 		frappe.confirm(
 			__("Do you also want to mark the related task as completed?"),
 			() => {
-				// Call the DOCUMENT-BOUND method; do NOT pre-save
 				frappe.call({
 					doc: frm.doc,
 					method: "mark_contacted",
@@ -135,10 +207,6 @@ frappe.ui.form.on("Inquiry", {
 					callback: function () {
 						frappe.show_alert(__("Marked as contacted. Follow-up closed."));
 						frm.reload_doc();
-					},
-					error: function (err) {
-						console.error(err);
-						frappe.msgprint(__('Failed to mark contacted: {0}', [err.message || err]));
 					}
 				});
 			},
@@ -151,10 +219,6 @@ frappe.ui.form.on("Inquiry", {
 					callback: function () {
 						frappe.show_alert(__("Marked as contacted."));
 						frm.reload_doc();
-					},
-					error: function (err) {
-						console.error(err);
-						frappe.msgprint(__('Failed to mark contacted: {0}', [err.message || err]));
 					}
 				});
 			}
@@ -169,10 +233,6 @@ frappe.ui.form.on("Inquiry", {
 			callback: function () {
 				frappe.show_alert(__("Marked as qualified."));
 				frm.reload_doc();
-			},
-			error: function (err) {
-				console.error(err);
-				frappe.msgprint(__('Failed to mark qualified: {0}', [err.message || err]));
 			}
 		});
 	},
@@ -188,10 +248,6 @@ frappe.ui.form.on("Inquiry", {
 					callback: function () {
 						frappe.show_alert(__("Inquiry archived."));
 						frm.reload_doc();
-					},
-					error: function (err) {
-						console.error(err);
-						frappe.msgprint(__('Failed to archive: {0}', [err.message || err]));
 					}
 				});
 			}

@@ -1,0 +1,426 @@
+Good. This is the right moment to hard-lock it.
+# Policy & Acknowledgement Authority Matrix — v1
+
+**Ifitwala_Ed (Authoritative)**
+
+> Applies to the organization-wide policy system:
+>
+> ```
+> Institutional Policy
+> → Policy Version
+> → Policy Acknowledgement
+> ```
+
+This matrix governs **who may create, modify, acknowledge, override, or view** policy artifacts.
+
+---
+
+## 0. Role Vocabulary (Canonical)
+
+These roles already exist conceptually in your system; this matrix assumes them.
+
+| Role                   | Scope                               |
+| ---------------------- | ----------------------------------- |
+| **System Manager**     | Global, technical + legal superuser |
+| **Organization Admin** | Organization-wide governance        |
+| **School Admin**       | School-scoped governance            |
+| **Admissions Officer** | Admissions-only scope               |
+| **Academic Staff**     | Teachers, counselors                |
+| **Guardian**           | Parent / legal guardian             |
+| **Student**            | Enrolled student                    |
+| **Applicant / Family** | Pre-student (Applicant context)     |
+
+> Visibility **≠ authority**.
+> This matrix only defines authority.
+
+---
+
+## 1. Institutional Policy (semantic owner)
+
+> Represents the **existence and intent** of a policy.
+
+### Allowed actions
+
+| Action                                      | System Manager | Org Admin | School Admin | Others |
+| ------------------------------------------- | -------------- | --------- | ------------ | ------ |
+| Create policy                               | ✅              | ✅         | ❌            | ❌      |
+| Edit metadata (title, category, applies_to) | ✅              | ✅         | ❌            | ❌      |
+| Deactivate policy                           | ✅              | ✅         | ❌            | ❌      |
+| Delete policy                               | ❌              | ❌         | ❌            | ❌      |
+
+### Hard rules
+
+* Policies are **never deleted**
+* Deactivation hides future versions but preserves history
+* School-specific policies must declare `school`
+* Org-wide policies have `school = NULL`
+
+**Invariant**
+
+> Institutional Policy is *semantic*, not legal.
+> No acknowledgements attach here.
+
+---
+
+## 2. Policy Version (legal truth)
+
+> Represents the **exact text that was agreed to**.
+
+### Allowed actions
+
+| Action                            | System Manager   | Org Admin | School Admin | Others |
+| --------------------------------- | ---------------- | --------- | ------------ | ------ |
+| Create new version                | ✅                | ✅         | ❌            | ❌      |
+| Edit text (pre-acknowledgement)   | ✅                | ✅         | ❌            | ❌      |
+| Activate version                  | ✅                | ✅         | ❌            | ❌      |
+| Supersede version                 | ✅                | ✅         | ❌            | ❌      |
+| Edit after acknowledgement exists | ⚠️ Override only | ❌         | ❌            | ❌      |
+| Delete version                    | ❌                | ❌         | ❌            | ❌      |
+
+### Immutability rule (LOCKED)
+
+> Once **any** Policy Acknowledgement exists:
+>
+> * `policy_text` becomes **read-only**
+> * `version_label` becomes **read-only**
+> * Only System Manager may override (with reason)
+
+Override requires:
+
+* explicit confirmation
+* mandatory reason
+* audit trail
+
+---
+
+## 3. Policy Acknowledgement (evidence of consent)
+
+> Represents **who agreed, to what, in which context**.
+
+### Who may acknowledge
+
+| Actor                                      | Allowed   |
+| ------------------------------------------ | --------- |
+| Guardian (for Applicant / Student)         | ✅         |
+| Student (if policy applies_to = Student)   | ✅         |
+| Staff (for themselves)                     | ✅         |
+| Staff acknowledging *for someone else*     | ❌         |
+| System Manager (impersonated testing only) | ⚠️ Logged |
+
+**Invariant**
+
+> No one acknowledges on behalf of another adult.
+
+---
+
+### Who may create acknowledgements (technical authority)
+
+| Role                       | Allowed          |
+| -------------------------- | ---------------- |
+| Guardian / Student / Staff | ✅ (self only)    |
+| Admissions Officer         | ❌                |
+| School Admin               | ❌                |
+| Org Admin                  | ❌                |
+| System Manager             | ⚠️ Override only |
+
+---
+
+### Viewing acknowledgements
+
+| Role               | Scope                 |
+| ------------------ | --------------------- |
+| System Manager     | All                   |
+| Org Admin          | Org-wide              |
+| School Admin       | School-scoped         |
+| Admissions Officer | Applicant-scoped only |
+| Guardian           | Own + dependents      |
+| Student            | Own                   |
+| Academic Staff     | ❌                     |
+
+---
+
+### Editing / revoking acknowledgements
+
+| Action                 | Anyone |
+| ---------------------- | ------ |
+| Edit acknowledgement   | ❌      |
+| Revoke acknowledgement | ❌      |
+| Delete acknowledgement | ❌      |
+
+**Invariant**
+
+> Acknowledgements are **append-only evidence**.
+
+If policy wording changes → new Policy Version → new acknowledgement.
+
+---
+
+## 4. Context Binding Rules (critical)
+
+Every Policy Acknowledgement **must** declare:
+
+| Field              | Required |
+| ------------------ | -------- |
+| `policy_version`   | ✅        |
+| `acknowledged_by`  | ✅        |
+| `acknowledged_for` | ✅        |
+| `context_doctype`  | ✅        |
+| `context_name`     | ✅        |
+| `acknowledged_at`  | System   |
+
+Examples:
+
+* Applicant consent → `Student Applicant`
+* Student handbook → `Student`
+* Staff code → `Employee`
+
+**Invariant**
+
+> Same person + same policy version + different context
+> = different legal act.
+
+---
+
+## 5. Admissions-specific clarification (Phase 02)
+
+For **Applicant Policy Acknowledgement**:
+
+* Only **Guardians** acknowledge
+* Context = `Student Applicant`
+* Admissions staff **cannot** acknowledge
+* Approval logic later may *require* acknowledgement
+  (but Phase 02 does **not** enforce)
+
+---
+
+## 6. Explicit Prohibitions (non-negotiable)
+
+The system must **never**:
+
+* Auto-acknowledge policies
+* Assume consent from form submission
+* Reuse acknowledgements across contexts
+* Allow silent overrides
+* Backfill acknowledgements for legacy users
+
+Violations are **legal defects**, not bugs.
+
+---
+
+## 7. Lock Statement
+
+> This authority matrix is **locked for v1**.
+>
+> Any future change requires:
+>
+> * explicit migration reasoning
+> * legal impact review
+> * version bump of this matrix
+
+---
+
+# Policy System — Schema Lock (v1)
+
+**Applies globally across Ifitwala_Ed**
+
+```
+Institutional Policy
+→ Policy Version
+→ Policy Acknowledgement
+```
+
+No additional policy doctypes are permitted in Phase 02.
+
+---
+
+## 1️⃣ Institutional Policy — Doctype Schema (LOCKED)
+
+### Purpose
+
+Defines **what policy exists institutionally**.
+No legal meaning. No acknowledgements here.
+
+### Doctype
+
+```
+Institutional Policy
+```
+
+### Fields (authoritative)
+
+| Fieldname         | Type                | Required | Notes                                                          |
+| ----------------- | ------------------- | -------- | -------------------------------------------------------------- |
+| `policy_key`      | Data                | ✅        | Stable, machine identifier (immutable)                         |
+| `policy_title`    | Data                | ✅        | Human-readable                                                 |
+| `policy_category` | Select              | ✅        | Privacy / Safeguarding / Academic / Conduct / Handbook / Other |
+| `applies_to`      | MultiSelect         | ✅        | Applicant, Student, Guardian, Staff                            |
+| `organization`    | Link → Organization | ✅        | Immutable                                                      |
+| `school`          | Link → School       | ❌        | NULL = org-wide                                                |
+| `description`     | Small Text          | ❌        | Non-legal                                                      |
+| `is_active`       | Check               | ✅        | Controls discoverability                                       |
+
+### Immutability rules
+
+* `policy_key` → immutable after insert
+* `organization`, `school` → immutable
+* Deletion **forbidden**
+
+### Server invariants
+
+```text
+(policy_key, organization) must be unique
+```
+
+---
+
+## 2️⃣ Policy Version — Doctype Schema (LOCKED)
+
+### Purpose
+
+Defines **the exact legal text that may be acknowledged**.
+
+### Doctype
+
+```
+Policy Version
+```
+
+### Fields (authoritative)
+
+| Fieldname              | Type                        | Required | Notes                    |
+| ---------------------- | --------------------------- | -------- | ------------------------ |
+| `institutional_policy` | Link → Institutional Policy | ✅        | Immutable                |
+| `version_label`        | Data                        | ✅        | Human version identifier |
+| `policy_text`          | Text / HTML                 | ✅        | Frozen once acknowledged |
+| `effective_from`       | Date                        | ❌        | Optional                 |
+| `effective_to`         | Date                        | ❌        | Optional                 |
+| `approved_by`          | Link → User                 | ❌        | Governance metadata      |
+| `approved_on`          | Datetime                    | ❌        | Governance metadata      |
+| `is_active`            | Check                       | ✅        | Can be acknowledged      |
+
+### Immutability rules
+
+Once **any** Policy Acknowledgement exists:
+
+* `policy_text` → read-only
+* `version_label` → read-only
+* record cannot be deleted
+* only System Manager override allowed (reason required)
+
+### Server invariants
+
+```text
+(institutional_policy, version_label) must be unique
+```
+
+---
+
+## 3️⃣ Policy Acknowledgement — Doctype Schema (LOCKED)
+
+### Purpose
+
+Represents **explicit, contextual consent**.
+
+### Doctype
+
+```
+Policy Acknowledgement
+```
+
+### Fields (authoritative)
+
+| Fieldname          | Type                  | Required | Notes                                  |
+| ------------------ | --------------------- | -------- | -------------------------------------- |
+| `policy_version`   | Link → Policy Version | ✅        | Immutable                              |
+| `acknowledged_by`  | Link → User / Contact | ✅        | The person who consented               |
+| `acknowledged_for` | Select                | ✅        | Applicant / Student / Guardian / Staff |
+| `context_doctype`  | Data                  | ✅        | e.g. Student Applicant                 |
+| `context_name`     | Data                  | ✅        | Applicant ID, Student ID               |
+| `acknowledged_at`  | Datetime              | ✅        | System-set                             |
+| `ip_address`       | Data                  | ❌        | Optional (future-proof)                |
+| `user_agent`       | Small Text            | ❌        | Optional                               |
+
+### Immutability rules
+
+* Entire document is **append-only**
+* No edits
+* No deletion
+* No revocation
+
+### Server invariants
+
+```text
+(policy_version, acknowledged_by, context_doctype, context_name) must be unique
+```
+
+---
+
+## 4️⃣ Cross-Doctype Enforcement Rules (SERVER-SIDE)
+
+These are **schema-level truths**, not workflow rules.
+
+### 4.1 Creation constraints
+
+* A Policy Version **cannot exist** without Institutional Policy
+* Acknowledgement **cannot exist** unless Policy Version is active
+* Acknowledgement **cannot be created** by staff on behalf of others
+
+### 4.2 Deletion constraints
+
+| Doctype                | Deletion |
+| ---------------------- | -------- |
+| Institutional Policy   | ❌ Never  |
+| Policy Version         | ❌ Never  |
+| Policy Acknowledgement | ❌ Never  |
+
+Soft archival is allowed via `is_active = 0`.
+
+---
+
+## 5️⃣ What is intentionally NOT in schema (discipline)
+
+These are explicitly deferred:
+
+* ❌ workflow states
+* ❌ auto-blocking logic
+* ❌ promotion checks
+* ❌ UI fields (“I agree” checkboxes)
+* ❌ portal assumptions
+* ❌ school-specific enforcement
+
+All of those belong to **later phases**.
+
+---
+
+## 6️⃣ Why this matches ERP & SaaS best practice
+
+This mirrors how serious systems behave:
+
+* **SAP / Workday** → Policy + Version + Attestation
+* **Rippling / Deel** → Immutable acknowledgements
+* **PowerSchool / Infinite Campus** → Context-bound consent
+* **ISO / SOC2** → Append-only legal evidence
+
+Key best-practice traits:
+
+* Legal text is immutable once used
+* Consent is contextual
+* Policy identity is stable
+* Versioning is explicit, not inferred
+* No “latest policy” shortcuts
+
+---
+
+## 7️⃣ Lock statement (final)
+
+> This schema is **locked for Phase 02**.
+>
+> Any later change requires:
+>
+> * schema migration
+> * legal review
+> * version bump of this contract
+
+---
+
+
