@@ -1,9 +1,3 @@
-# ✅ Refactored `applicant.md`
-
-*(This is the full updated document — intended to replace the existing one verbatim)*
-
----
-
 # Student Applicant — Canonical Admissions Staging Contract
 
 **Ifitwala_Ed — v1 (Authoritative, Living Document)**
@@ -271,8 +265,18 @@ Everything else is implementation detail.
 
 ---
 
+## 12. Institutional Scope & Authority (Applicability Layer)
 
-## 12. Institutional Scope & Authority (Multi-School Contract)
+> **This section aligns the Student Applicant contract with the
+> Phase 1.5 — Multi-School Admissions Governance Contract.**
+>
+> It does **not** redefine governance.
+> It specifies how that governance **applies to the Applicant object**.
+
+If a conflict exists, **Phase 1.5 governance wins** on matters of scope,
+authority, and visibility.
+
+---
 
 ### 12.1 Applicant Institutional Anchoring
 
@@ -296,7 +300,8 @@ This association:
 
 **Invariant**
 
-> An Applicant always “belongs” to one School, even if academic Programs are shared across campuses.
+> An Applicant always “belongs” to one School,
+> even if academic Programs are shared across campuses.
 
 ---
 
@@ -322,17 +327,18 @@ School anchoring exists to support:
 
 ---
 
-### 12.3 Admissions Authority Model (Conceptual)
+### 12.3 Admissions Authority Model (Alignment)
 
-Admissions authority is **role-based and scope-based**.
+Admissions authority is **role-based and scope-based**, as defined by Phase 1.5.
 
 * **Admission Officer**
 
-  * operates within a declared scope
+  * operates within an explicitly declared scope
   * scope may include:
 
     * one or more Schools
     * optionally specific Programs
+
 * **Admission Manager / Director**
 
   * has cross-school visibility within an Organization
@@ -340,7 +346,8 @@ Admissions authority is **role-based and scope-based**.
 
 **Invariant**
 
-> Visibility, assignment, and dashboards must respect institutional scope — not just role.
+> Visibility, assignment, and dashboards must respect institutional scope —
+> not just role.
 
 ---
 
@@ -365,7 +372,8 @@ These variations must be:
 
 **Prohibition**
 
-> School-specific rules must not be encoded as conditional logic inside Applicant lifecycle code.
+> School-specific rules must not be encoded as conditional logic
+> inside Applicant lifecycle code.
 
 ---
 
@@ -378,29 +386,5 @@ Institutional leadership must be able to:
 * audit overrides and decisions
 
 This visibility is **explicitly granted**, not emergent.
-
----
-
-## ✅ Result
-
-After this addition, `applicant.md` now:
-
-* still treats Applicant as a **process container**
-* but no longer assumes a single-school world
-* formally supports:
-
-  * specialization
-  * oversight
-  * analytics
-  * future scaling
-
-### ✔ Status
-
-This document is now:
-
-* Aligned with the current `Student Applicant` schema
-* Aligned with your Inquiry → Applicant → Student pipeline
-* Forward-compatible with the gap audit and Phase plans
-* Strict enough to prevent future drift
 
 ---
