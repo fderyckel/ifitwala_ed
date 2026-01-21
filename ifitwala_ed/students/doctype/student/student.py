@@ -2,6 +2,52 @@
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/students/doctype/student/student.py
+
+"""
+Student DocType — Creation Modes & Invariants
+---------------------------------------------
+
+A Student record represents a canonical, operational learner.
+Students may be created through THREE explicit, supported pathways:
+
+1) Applicant Promotion (default, steady-state)
+   - Created via StudentApplicant.promote_to_student()
+   - `student_applicant` is set
+   - Side effects (User, Student Patient, Contact) are GATED
+     and intentionally NOT executed during Phase 1
+   - Used for all future admissions flows
+
+2) Data Import / Migration (explicit bypass)
+   - Used for onboarding existing schools or legacy data
+   - Allowed ONLY when one of the following flags is set:
+       - frappe.flags.in_import
+       - frappe.flags.in_migration
+       - frappe.flags.in_patch
+       - frappe.flags.allow_direct_student_create
+   - `student_applicant` is NOT required
+   - All standard Student behaviors DO execute:
+       - User creation
+       - Student Patient creation
+       - Contact linking
+       - Image renaming & syncing
+       - Sibling synchronization
+
+3) Manual Back-office Creation (exceptional)
+   - Allowed only for privileged staff
+   - Requires explicit bypass flag
+   - Intended for rare operational corrections, not admissions
+
+Invariant:
+-----------
+In steady state, Students MUST originate from Applicant promotion.
+All other creation paths are explicit, auditable exceptions.
+
+This file intentionally enforces that invariant in Python,
+not at schema level, to preserve import and migration safety.
+"""
+
+
 import frappe
 import os
 import random
@@ -24,7 +70,7 @@ class Student(Document):
 		validate_account_holder_for_student(self)
 		self.student_full_name = " ".join(filter(None, [self.student_first_name, self.student_middle_name, self.student_last_name]))
 		self.validate_email()
-		self._validate_siblings_list()  
+		self._validate_siblings_list()
 
 		if frappe.get_value("Student", self.name, "student_full_name") != self.student_full_name:
 			self.update_student_name_in_linked_doctype()
@@ -38,11 +84,16 @@ class Student(Document):
 		if self.student_joining_date and self.student_exit_date and getdate(self.student_joining_date) > getdate(self.student_exit_date):
 			frappe.throw(_("Check again the exit date. The joining date has to be earlier than the exit date."))
 
-		# Enforce unique student_full_name 
-		if frappe.db.exists("Student", {"student_full_name": self.student_full_name, "name": ["!=", self.name]}): 
+		# Enforce unique student_full_name
+		if frappe.db.exists("Student", {"student_full_name": self.student_full_name, "name": ["!=", self.name]}):
 			frappe.throw(_("Student Full Name '{0}' must be unique. Please choose a different name.").format(self.student_full_name))
 
 	def _validate_creation_source(self):
+		"""
+		Phase-1 rule (authoritative):
+		- In steady state: Students are created via Applicant promotion (student_applicant is set).
+		- During onboarding/migration/import: allow controlled bypass via explicit flags.
+		"""
 		if not self.is_new():
 			return
 		if self.student_applicant:
@@ -55,16 +106,14 @@ class Student(Document):
 			return
 		if getattr(frappe.flags, "in_import", False) or getattr(self.flags, "in_import", False):
 			return
+
 		frappe.throw(
 			_("Students must be created via Applicant promotion. Set an explicit migration/import bypass flag to create directly.")
 		)
 
-
-
 	def validate_email(self):
 		if self.student_email:
 			validate_email_address(self.student_email, True)
-
 
 	def update_student_name_in_linked_doctype(self):
 		linked_doctypes = get_linked_doctypes("Student")
@@ -73,30 +122,36 @@ class Student(Document):
 			if not meta.issingle:
 				if "student_name" in [f.fieldname for f in meta.fields]:
 					frappe.db.sql("""UPDATE `tab{0}` set student_name = %s where {1} = %s"""
-						 .format(d, linked_doctypes[d]["fieldname"][0]),(self.student_full_name, self.name))
+						 .format(d, linked_doctypes[d]["fieldname"][0]), (self.student_full_name, self.name))
 
 				if "child_doctype" in linked_doctypes[d].keys() and "student_name" in \
 					[f.fieldname for f in frappe.get_meta(linked_doctypes[d]["child_doctype"]).fields]:
 					frappe.db.sql("""UPDATE `tab{0}` set student_name = %s where {1} = %s"""
-						  .format(linked_doctypes[d]["child_doctype"], linked_doctypes[d]["fieldname"][0]),(self.student_full_name, self.name))
+						  .format(linked_doctypes[d]["child_doctype"], linked_doctypes[d]["fieldname"][0]), (self.student_full_name, self.name))
 
 	def after_insert(self):
+		"""
+		Phase-1 gating:
+		- If created via Applicant promotion: NO side effects (no user, no patient, no contact).
+		- For imported/onboarded/direct Students: keep existing behavior.
+		"""
 		if getattr(frappe.flags, "from_applicant_promotion", False):
 			return
 		self.create_student_user()
 		self.create_student_patient()
 		self.ensure_contact_and_link()
 
-	def on_update(self): 
+	def on_update(self):
 		self.rename_student_image()
 		self.ensure_contact_and_link()
 		self.update_student_enabled_status()
 		self.sync_student_contact_image()
 		self.sync_reciprocal_siblings()
 
-
 	# create student as website user
 	def create_student_user(self):
+		if not self.student_email:
+			return
 		if not frappe.db.exists("User", self.student_email):
 			try:
 				student_user = frappe.get_doc({
@@ -114,7 +169,7 @@ class Student(Document):
 				})
 				student_user.flags.ignore_permissions = True
 				student_user.add_roles("Student")
-				student_user.save()  
+				student_user.save()
 				frappe.msgprint(_("User {0} has been created").format(get_link_to_form("User", self.student_email)))
 			except Exception as e:
 				frappe.log_error(f"Error creating user for student {self.name}: {e}")
@@ -131,78 +186,80 @@ class Student(Document):
 			frappe.msgprint(_("Student Patient {0} linked to this student has been created").format(self.student_full_name))
 
 	############################################
-	###### Update methods ###### 
-	def update_student_enabled_status(self): 
-		patient = frappe.db.get_value("Student Patient", {"student":self.name}, "name") 
+	###### Update methods ######
+	def update_student_enabled_status(self):
+		patient = frappe.db.get_value("Student Patient", {"student": self.name}, "name")
 		if not patient:
+			# During Applicant promotion Phase-1, we intentionally do NOT create Patient.
+			# Also allow missing patient when student_applicant exists.
 			if getattr(frappe.flags, "from_applicant_promotion", False) or self.student_applicant:
 				return
 			frappe.throw(_("Student Patient record is missing for this student."))
-		if self.enabled == 0: 
-			frappe.db.set_value("Student Patient", patient, "status", "Disabled") 
-		else: 
-			frappe.db.set_value("Student Patient", patient, "status", "Active") 
+		if self.enabled == 0:
+			frappe.db.set_value("Student Patient", patient, "status", "Disabled")
+		else:
+			frappe.db.set_value("Student Patient", patient, "status", "Active")
 
-	def rename_student_image(self): 
+	def rename_student_image(self):
 		# Only proceed if there's a student_image
-		if not self.student_image: 
-			return 
-			 
-		try: 
+		if not self.student_image:
+			return
+
+		try:
 			student_id = self.name
-			current_file_name = os.path.basename(self.student_image) 
-			
+			current_file_name = os.path.basename(self.student_image)
+
 			# Check if it already has "STU-XXXX_XXXXXX.jpg" format
 			if (current_file_name.startswith(student_id + "_")
- 				and len(current_file_name.split("_")[1].split(".")[0]) == 6
- 				and current_file_name.split(".")[1].lower() in ["jpg", "jpeg", "png", "gif"]): 
-				return 
-			
-			file_extension = os.path.splitext(self.student_image)[1] 
+				and len(current_file_name.split("_")[1].split(".")[0]) == 6
+				and current_file_name.split(".")[1].lower() in ["jpg", "jpeg", "png", "gif"]):
+				return
+
+			file_extension = os.path.splitext(self.student_image)[1]
 			random_suffix = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
 			expected_file_name = f"{student_id}_{random_suffix}{file_extension}"
-			
+
 			student_folder_fm_path = "Home/student"
 			expected_file_path = os.path.join(student_folder_fm_path, expected_file_name)
- 
- 			# Check if a file with the new expected name already exists
+
+			# Check if a file with the new expected name already exists
 			if frappe.db.exists("File", {"file_url": f"/files/{expected_file_path}"}):
 				frappe.log_error(
 					title=_("Image Rename Skipped"),
 					message=_("Image {0} already exists for student {1}").format(expected_file_name, student_id),
- 				)
+				)
 				return
- 
- 			# Check if the original file doc exists
+
+			# Check if the original file doc exists
 			file_name = frappe.db.get_value("File",
 				{"file_url": self.student_image, "attached_to_doctype": "Student", "attached_to_name": self.name},
- 				"name"
+				"name"
 			)
-			
-			if not file_name: 
+
+			if not file_name:
 				frappe.log_error(
- 					title=_("Missing File Doc"),
- 					message=_("No File doc found for {0}, attached_to=Student {1}")
- 						.format(self.student_image, self.name),
- 				)
+					title=_("Missing File Doc"),
+					message=_("No File doc found for {0}, attached_to=Student {1}")
+						.format(self.student_image, self.name),
+				)
 				return
-			
+
 			file_doc = frappe.get_doc("File", file_name)
- 
- 			# Ensure the "student" folder exists
-			if not frappe.db.exists("File", {"file_name": "student", "folder": "Home"}): 
+
+			# Ensure the "student" folder exists
+			if not frappe.db.exists("File", {"file_name": "student", "folder": "Home"}):
 				student_folder = frappe.get_doc({
- 					"doctype": "File",
- 					"file_name": "student",
- 					"is_folder": 1,
- 					"folder": "Home"
+					"doctype": "File",
+					"file_name": "student",
+					"is_folder": 1,
+					"folder": "Home"
 				})
 				student_folder.insert()
- 
- 			# Rename the file on disk
+
+			# Rename the file on disk
 			new_file_path = os.path.join(get_files_path(), "student", expected_file_name)
 			old_file_path = os.path.join(get_files_path(), file_doc.file_name)
-			
+
 			if os.path.exists(old_file_path):
 				os.rename(old_file_path, new_file_path)
 				file_doc.file_name = expected_file_name
@@ -212,37 +269,37 @@ class Student(Document):
 				file_doc.save()
 			else:
 				frappe.throw(_("Original file not found: {0}").format(old_file_path))
- 
- 			# Update doc.student_image to reflect new URL
+
+			# Update doc.student_image to reflect new URL
 			self.student_image = file_doc.file_url
- 			# Don't call self.save() or self.db_update() here—on_update is already saving
-			
+			# Don't call self.save() or self.db_update() here—on_update is already saving
+
 			self.save()
-			
-			from ifitwala_ed.utilities.image_utils import process_single_file 
+
+			from ifitwala_ed.utilities.image_utils import process_single_file
 			process_single_file(file_doc)
-	
+
 			frappe.msgprint(_("Image renamed to {0} and moved to /files/student/").format(expected_file_name))
-			
+
 		except Exception as e:
-			frappe.log_error(title=_("Student Image Error"),message=f"Error handling student image for {self.name}: {e}")
+			frappe.log_error(title=_("Student Image Error"), message=f"Error handling student image for {self.name}: {e}")
 			frappe.msgprint(_("Error handling student image for {0}: {1}").format(self.name, e))
-			
-	# Sync the student image to the linked contact. This method is called after the student image is renamed		
+
+	# Sync the student image to the linked contact. This method is called after the student image is renamed
 	def sync_student_contact_image(self):
 		if not self.student_image:
 			return
-		
+
 		contact_name = frappe.db.get_value(
 			"Dynamic Link",
 			filters={
-        "link_doctype": "Student",
-        "link_name": self.name,
-        "parenttype": "Contact"
-      },
-      fieldname="parent"
+				"link_doctype": "Student",
+				"link_name": self.name,
+				"parenttype": "Contact"
+			},
+			fieldname="parent"
 		)
-		
+
 		if contact_name:
 			contact = frappe.get_doc("Contact", contact_name)
 			if contact.image != self.student_image:
@@ -400,7 +457,6 @@ class Student(Document):
 
 		contact.append("links", {"link_doctype": "Student", "link_name": self.name})
 		contact.save(ignore_permissions=True)
-
 
 
 @frappe.whitelist()

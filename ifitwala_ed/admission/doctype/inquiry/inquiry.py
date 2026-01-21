@@ -2,6 +2,8 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/admission/doctype/inquiry/inquiry.py
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -218,7 +220,7 @@ class Inquiry(Document):
 
 	def before_save(self):
 		# Only sets first_contact_due_on if missing; followup_due_on is set on (re)assignment.
-		set_inquiry_deadlines(self)		
+		set_inquiry_deadlines(self)
 		update_sla_status(self)
 
 	@staticmethod
@@ -235,15 +237,15 @@ class Inquiry(Document):
 
 		# 1) First contacted timestamp (once)
 		if not self.first_contacted_at:
-			ts = now_datetime() 
-			self.first_contacted_at = ts 
+			ts = now_datetime()
+			self.first_contacted_at = ts
 			self.db_set("first_contacted_at", ts, update_modified=False)
 
 		# 2) Hours from inquiry creation -> first contact (once)
 		if not self.response_hours_first_contact:
 			base = self.submitted_at or self.creation
-			h1 = self._hours_between(base, self.first_contacted_at) 
-			self.response_hours_first_contact = h1 
+			h1 = self._hours_between(base, self.first_contacted_at)
+			self.response_hours_first_contact = h1
 			self.db_set("response_hours_first_contact", h1, update_modified=False)
 
 		# 3) Hours from first assignment -> first contact (once, if assigned_at exists)
@@ -325,12 +327,12 @@ class Inquiry(Document):
 			self._ensure_transition_allowed(current_state, "Contacted")
 			self.db_set("workflow_state", "Contacted", update_modified=False)
 			self.workflow_state = "Contacted"  # keep in-memory doc in sync
-			
+
 		if self.get("followup_due_on"):
 			self.db_set("followup_due_on", None, update_modified=False)
 
-		# 🔎 Stamp response-time metrics immediately after state flip 
-		self.set_contact_metrics()	
+		# 🔎 Stamp response-time metrics immediately after state flip
+		self.set_contact_metrics()
 
 		# Optionally clear assignment on the doc
 		if cint(complete_todo) and prev_assignee:

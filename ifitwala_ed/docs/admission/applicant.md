@@ -229,6 +229,98 @@ Promotion does **not** automatically:
 
 ---
 
+## 8.4 Transitional Exception — Legacy Students & Institutional Onboarding
+
+The Student Applicant contract governs **steady-state admissions**.
+It does **not** invalidate the reality that institutions may enter the system
+with **pre-existing enrolled students**.
+
+### 8.4.1 Legacy Student Import (Non-Admissions Context)
+
+When an institution onboards onto Ifitwala_Ed:
+
+* Existing enrolled students **may be imported directly**
+* These Students **may not** have a corresponding Student Applicant
+* This path exists **only** for migration and onboarding
+
+This exception is:
+
+* explicit
+* intentional
+* auditable
+* non-repeatable in normal operations
+
+**Invariant**
+
+> Direct Student creation without a Student Applicant is permitted
+> **only** under an explicit migration or system-level import context.
+
+This exception must never be used to bypass admissions workflow.
+
+---
+
+### 8.4.2 Enforcement Boundary
+
+Outside of a migration or import context:
+
+* Creating a Student **without** a Student Applicant is forbidden
+* Any such attempt is a hard architecture violation
+
+Admissions-driven Students must **always** originate from:
+
+```
+Student Applicant → Promotion → Student
+```
+
+---
+
+### 8.4.3 Audit & Traceability Requirement
+
+All legacy or migration-created Students must be:
+
+* clearly marked as **imported**
+* distinguishable from admissions-promoted Students
+* traceable to an onboarding or migration event
+
+This ensures:
+
+* legal clarity
+* historical accuracy
+* protection of admissions analytics
+
+---
+
+### 8.4.4 Prohibition on Retroactive Fabrication
+
+The system must **never**:
+
+* auto-generate Student Applicants for imported Students
+* backfill admissions history artificially
+* imply that a migrated Student passed through admissions workflow
+
+**Invariant**
+
+> Absence of a Student Applicant for a legacy Student
+> is a truthful historical state — not a defect.
+
+---
+
+### 8.4.5 Steady-State Guarantee
+
+Once onboarding is complete:
+
+* the migration exception is disabled
+* all new Students must originate from Student Applicant promotion
+* no hybrid or ambiguous creation paths exist
+
+This preserves:
+
+* admissions integrity
+* legal defensibility
+* analytical correctness
+
+---
+
 ## 9. Design Prohibitions (Hard Rules)
 
 The system must **never**:

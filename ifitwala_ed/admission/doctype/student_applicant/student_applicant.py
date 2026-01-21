@@ -2,6 +2,8 @@
 # Copyright (c) 2024, fdR and contributors
 # For license information, please see license.txt
 
+# ifiwala_ed/admission/doctype/student_applicant/student_applicant.py
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -48,12 +50,21 @@ EDIT_RULES = {
 
 
 class StudentApplicant(Document):
+
+	# ---------------------------------------------------------------------
+	# Core validation
+	# ---------------------------------------------------------------------
+
 	def validate(self):
 		before = self.get_doc_before_save() if not self.is_new() else None
 		self._validate_inquiry_link(before)
 		self._validate_student_link(before)
 		self._validate_application_status(before)
 		self._validate_edit_permissions(before)
+
+	# ---------------------------------------------------------------------
+	# Link immutability
+	# ---------------------------------------------------------------------
 
 	def _validate_inquiry_link(self, before):
 		if not self.inquiry:
@@ -77,9 +88,14 @@ class StudentApplicant(Document):
 		if not previous and not getattr(self.flags, "from_promotion", False):
 			frappe.throw(_("Student link can only be set during promotion."))
 
+	# ---------------------------------------------------------------------
+	# Application status lifecycle
+	# ---------------------------------------------------------------------
+
 	def _validate_application_status(self, before):
 		if not self.application_status:
 			frappe.throw(_("Application Status is required."))
+
 		if self.application_status not in STATUS_SET:
 			frappe.throw(_("Invalid Application Status: {0}.").format(self.application_status))
 
@@ -96,6 +112,7 @@ class StudentApplicant(Document):
 
 		if not getattr(self.flags, "allow_status_change", False):
 			frappe.throw(_("Application Status must be changed via lifecycle methods."))
+
 		if getattr(self.flags, "status_change_source", None) != "lifecycle_method":
 			frappe.throw(_("Application Status must be changed via lifecycle methods."))
 
@@ -107,6 +124,10 @@ class StudentApplicant(Document):
 			frappe.throw(
 				_("Invalid Application Status transition from {0} to {1}.").format(from_status, to_status)
 			)
+
+	# ---------------------------------------------------------------------
+	# Edit permissions
+	# ---------------------------------------------------------------------
 
 	def _validate_edit_permissions(self, before):
 		user = frappe.session.user
@@ -138,9 +159,7 @@ class StudentApplicant(Document):
 			if is_system_manager and getattr(self.flags, "system_manager_override", False):
 				return
 			if self._has_changes(before):
-				frappe.throw(
-					_("Edits are not allowed when status is {0}.").format(status_for_edit)
-				)
+				frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
 			return
 
 		if not is_admissions and not is_family:
@@ -150,9 +169,7 @@ class StudentApplicant(Document):
 
 		if is_family:
 			if not rules["family"] and self._has_changes(before):
-				frappe.throw(
-					_("Family edits are not allowed when status is {0}.").format(status_for_edit)
-				)
+				frappe.throw(_("Family edits are not allowed when status is {0}.").format(status_for_edit))
 			return
 
 		if is_admissions and not rules["staff"]:
@@ -162,31 +179,33 @@ class StudentApplicant(Document):
 				frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
 
 	def _has_changes(self, before, ignore_fields=None):
-		if not before:
-			return False
-
 		ignore = set(ignore_fields or [])
 		ignore.update({"modified", "modified_by", "creation", "owner", "idx", "docstatus"})
 		for df in self.meta.fields:
-			fieldname = df.fieldname
-			if not fieldname or fieldname in ignore:
+			if not df.fieldname or df.fieldname in ignore:
 				continue
-			if self.get(fieldname) != before.get(fieldname):
+			if self.get(df.fieldname) != before.get(df.fieldname):
 				return True
 		return False
 
 	def _only_status_changed(self, before):
 		return not self._has_changes(before, ignore_fields={"application_status"})
 
+	# ---------------------------------------------------------------------
+	# Lifecycle helpers
+	# ---------------------------------------------------------------------
+
 	def _set_status(self, new_status, action_label):
 		ensure_admissions_permission()
+
 		if self.is_new():
 			frappe.throw(_("Save the Student Applicant before changing status."))
 
 		if self.application_status == new_status:
-			return {"ok": True, "changed": False, "status": new_status}
+			return {"ok": True, "changed": False}
 
 		self._validate_status_transition(self.application_status, new_status)
+
 		previous = self.application_status
 		self.flags.allow_status_change = True
 		self.flags.status_change_source = "lifecycle_method"
@@ -196,10 +215,16 @@ class StudentApplicant(Document):
 		self.add_comment(
 			"Comment",
 			text=_(
-				"{0} by {1} on {2}. Status: {3} -> {4}."
-			).format(action_label, frappe.bold(frappe.session.user), now_datetime(), previous, new_status),
+				"{0} by {1} on {2}. Status: {3} → {4}."
+			).format(
+				action_label,
+				frappe.bold(frappe.session.user),
+				now_datetime(),
+				previous,
+				new_status,
+			),
 		)
-		return {"ok": True, "changed": True, "status": new_status}
+		return {"ok": True, "changed": True}
 
 	@frappe.whitelist()
 	def mark_in_progress(self):
@@ -221,20 +246,13 @@ class StudentApplicant(Document):
 	def reject_application(self):
 		return self._set_status("Rejected", "Application rejected")
 
+	# ---------------------------------------------------------------------
+	# Promotion (Phase 1 – minimal, strict)
+	# ---------------------------------------------------------------------
+
 	@frappe.whitelist()
 	def promote_to_student(self):
 		ensure_admissions_permission()
-
-		if self.application_status == "Promoted":
-			if self.student:
-				return self.student
-			existing = frappe.db.get_value("Student", {"student_applicant": self.name}, "name")
-			if existing:
-				self.flags.from_promotion = True
-				self.student = existing
-				self.save(ignore_permissions=True)
-				return existing
-			frappe.throw(_("Applicant is already Promoted but no Student is linked."))
 
 		if self.application_status != "Approved":
 			frappe.throw(_("Applicant must be Approved before promotion."))
@@ -251,19 +269,16 @@ class StudentApplicant(Document):
 			self._set_status("Promoted", "Applicant promoted")
 			return existing
 
-		student_payload = self._build_student_payload()
-		missing = self._missing_required_student_fields(student_payload)
-		if missing:
-			frappe.throw(
-				_("Cannot promote Applicant. Missing required Student fields: {0}.").format(
-					", ".join(missing)
-				)
-			)
-
 		prev_flag = getattr(frappe.flags, "from_applicant_promotion", False)
 		frappe.flags.from_applicant_promotion = True
 		try:
-			student = frappe.get_doc(student_payload)
+			student = frappe.get_doc({
+				"doctype": "Student",
+				"student_first_name": self.first_name,
+				"student_middle_name": self.middle_name,
+				"student_last_name": self.last_name,
+				"student_applicant": self.name,
+			})
 			student.insert(ignore_permissions=True)
 		finally:
 			frappe.flags.from_applicant_promotion = prev_flag
@@ -272,37 +287,18 @@ class StudentApplicant(Document):
 		self.student = student.name
 		self.save(ignore_permissions=True)
 		self._set_status("Promoted", "Applicant promoted")
+
 		return student.name
 
-	def _build_student_payload(self):
-		return {
-			"doctype": "Student",
-			"student_first_name": self.first_name,
-			"student_middle_name": self.middle_name,
-			"student_last_name": self.last_name,
-			"student_image": self.applicant_image,
-			"student_applicant": self.name,
-		}
-
-	def _missing_required_student_fields(self, payload):
-		meta = frappe.get_meta("Student")
-		missing = []
-		for df in meta.fields:
-			if not getattr(df, "reqd", False):
-				continue
-			fieldname = df.fieldname
-			if not fieldname:
-				continue
-			value = payload.get(fieldname)
-			if value:
-				continue
-			missing.append(df.label or fieldname)
-		return missing
+	# ---------------------------------------------------------------------
+	# System Manager override (terminal states only)
+	# ---------------------------------------------------------------------
 
 	@frappe.whitelist()
 	def apply_system_manager_override(self, updates=None, reason=None):
 		user = frappe.session.user
 		roles = set(frappe.get_roles(user))
+
 		if SYSTEM_MANAGER_ROLE not in roles:
 			frappe.throw(_("Only System Managers can override terminal state locks."))
 
@@ -319,13 +315,12 @@ class StudentApplicant(Document):
 
 		for blocked in ("application_status", "student", "inquiry"):
 			if blocked in updates:
-				frappe.throw(
-					_("Field {0} cannot be changed via System Manager override.").format(blocked)
-				)
+				frappe.throw(_("Field {0} cannot be changed via override.").format(blocked))
 
 		self.flags.system_manager_override = True
 		self.update(updates)
 		self.save(ignore_permissions=True)
+
 		self.add_comment(
 			"Comment",
 			text=_(
