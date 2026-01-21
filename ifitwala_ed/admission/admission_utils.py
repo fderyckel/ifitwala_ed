@@ -2,6 +2,8 @@
 # Copyright (c) 2025, Francois de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/admission/admission_utils.py
+
 import frappe
 from frappe import _
 from frappe.utils import add_days, nowdate, now, getdate
@@ -399,21 +401,23 @@ def from_inquiry_invite(
 	"""
 	Create a Student Applicant from an Inquiry via an explicit invite-to-apply action.
 
-	Phase-1.5 invariants:
-	- Inquiry itself remains generic (no forced school/org)
+	Architectural invariants:
+	- Inquiry remains generic (no school/org forced onto it)
 	- School is REQUIRED at invite time
 	- Organization is REQUIRED (explicit or derived from School)
-	- Applicant becomes institutionally anchored and immutable
+	- Applicant becomes institutionally anchored
 	- No enrollment logic
 	- No Student creation
 	"""
 
+	# ------------------------------------------------------------------
+	# Permission
+	# ------------------------------------------------------------------
 	ensure_admissions_permission()
 
 	# ------------------------------------------------------------------
 	# Validate inputs
 	# ------------------------------------------------------------------
-
 	if not inquiry_name:
 		frappe.throw(_("Inquiry name is required."))
 
@@ -423,9 +427,14 @@ def from_inquiry_invite(
 	if not frappe.db.exists("School", school):
 		frappe.throw(_("Invalid School: {0}").format(school))
 
+	# ------------------------------------------------------------------
+	# Load Inquiry (READ-ONLY usage)
+	# ------------------------------------------------------------------
 	inquiry = frappe.get_doc("Inquiry", inquiry_name)
 
-	# Prevent duplicate Applicants for same Inquiry
+	# ------------------------------------------------------------------
+	# Prevent duplicate Applicants per Inquiry
+	# ------------------------------------------------------------------
 	existing = frappe.db.get_value(
 		"Student Applicant",
 		{"inquiry": inquiry.name},
@@ -434,32 +443,33 @@ def from_inquiry_invite(
 	if existing:
 		return existing
 
-	# Resolve organization explicitly
+	# ------------------------------------------------------------------
+	# Resolve organization (explicit or derived)
+	# ------------------------------------------------------------------
 	if not organization:
 		organization = frappe.db.get_value("School", school, "organization")
 
 	if not organization:
 		frappe.throw(
-			_("Organization must be specified or derivable from School.")
+			_("Organization must be provided or derivable from the selected School.")
 		)
 
 	# ------------------------------------------------------------------
-	# Create Applicant (institutional commitment point)
+	# Create Student Applicant (institutional commitment point)
 	# ------------------------------------------------------------------
-
 	applicant = frappe.get_doc({
 		"doctype": "Student Applicant",
 
-		# Identity (best effort, still editable)
+		# Identity (best-effort, editable later)
 		"first_name": inquiry.first_name,
 		"middle_name": inquiry.middle_name,
 		"last_name": inquiry.last_name,
 
-		# Institutional anchor (NOW explicit)
+		# Institutional anchoring (IMMUTABLE after creation)
 		"school": school,
 		"organization": organization,
 
-		# Academic intent (still admissions-level, optional)
+		# Admissions intent (NOT enrollment)
 		"program": inquiry.program,
 		"academic_year": inquiry.academic_year,
 		"term": inquiry.term,
@@ -471,13 +481,16 @@ def from_inquiry_invite(
 		"application_status": "Invited",
 	})
 
-	# Required flags to pass immutability + lifecycle guards
+	# Explicit lifecycle flags (used by Applicant controller)
 	applicant.flags.from_inquiry_invite = True
 	applicant.flags.allow_status_change = True
-	applicant.flags.status_change_source = "lifecycle_method"
+	applicant.flags.status_change_source = "from_inquiry_invite"
 
 	applicant.insert(ignore_permissions=True)
 
+	# ------------------------------------------------------------------
+	# Audit trail
+	# ------------------------------------------------------------------
 	applicant.add_comment(
 		"Comment",
 		text=_(
