@@ -40,16 +40,15 @@ frappe.listview_settings['Inquiry'] = {
 		workflow_state: function (value) {
 			const colourMap = {
 				'New': 'gray',
-				'New Inquiry': 'gray',
 				'Assigned': 'blue',
 				'Contacted': 'green',
 				'Qualified': 'purple',
-				'Archived': 'gray',
-				'Nurturing': 'orange',
-				'Accepted': 'green',
-				'Unqualified': 'red'
+				'Archived': 'gray'
 			};
-			const colour = colourMap[value] || 'gray';
+			const colour = colourMap[value];
+			if (!colour) {
+				throw new Error(`Unknown Inquiry workflow_state: ${value}`);
+			}
 			return `<span class="indicator-pill ${colour}">${__(value)}</span>`;
 		}
 	}

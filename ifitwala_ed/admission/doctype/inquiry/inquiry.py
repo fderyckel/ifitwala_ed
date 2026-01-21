@@ -22,8 +22,6 @@ CANONICAL_INQUIRY_STATES = {"New", "Assigned", "Contacted", "Qualified", "Archiv
 def _normalize_inquiry_state(state: str | None) -> str:
 	if not state:
 		return "New"
-	if state == "New Inquiry":
-		return "New"
 	return state
 
 
@@ -63,22 +61,22 @@ class Inquiry(Document):
 		if not previous_raw and not current_raw:
 			return
 
+		if current_raw and current_raw not in CANONICAL_INQUIRY_STATES:
+			frappe.throw(_("Invalid workflow state: {0}.").format(current_raw))
+
 		if previous_raw == current_raw:
 			return
 
 		if self.flags.get("allow_workflow_state_change"):
 			return
 
-		current = _normalize_inquiry_state(current_raw)
-		if current not in CANONICAL_INQUIRY_STATES:
-			frappe.throw(_("Workflow state must be changed using server methods."))
-
 		if not previous_raw:
-			if current != "New":
+			if current_raw != "New":
 				frappe.throw(_("Workflow state must start at New."))
 			return
 
 		previous = _normalize_inquiry_state(previous_raw)
+		current = _normalize_inquiry_state(current_raw)
 		self._ensure_transition_allowed(previous, current)
 
 	def _validate_student_applicant_link(self):
@@ -177,6 +175,10 @@ class Inquiry(Document):
 	def invite_to_apply(self) -> str:
 		ensure_admissions_permission()
 
+		current_state = _normalize_inquiry_state(self.workflow_state)
+		if current_state != "Qualified":
+			frappe.throw(_("Inquiry must be in the Qualified state before inviting to apply."))
+
 		if self.student_applicant:
 			return self.student_applicant
 
@@ -186,11 +188,8 @@ class Inquiry(Document):
 			self.student_applicant = existing
 			return existing
 
-		current_state = _normalize_inquiry_state(self.workflow_state)
-		if current_state != "Qualified":
-			frappe.throw(_("Inquiry must be in the Qualified state before inviting to apply."))
-
 		applicant = frappe.new_doc("Student Applicant")
+		applicant.flags.from_inquiry_invite = True
 		applicant.first_name = self.first_name
 		applicant.last_name = self.last_name
 		applicant.inquiry = self.name

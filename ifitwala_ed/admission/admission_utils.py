@@ -58,7 +58,7 @@ def check_sla_breaches():
 	logger = frappe.logger("sla_breaches", allow_site=True)
 	today = getdate()
 
-	contacted_states = ("Contacted", "Qualified", "Archived", "Nurturing", "Accepted", "Unqualified")
+	contacted_states = ("Contacted", "Qualified", "Archived")
 	doc_types = ["Inquiry", "Registration of Interest"]
 
 	for doctype in doc_types:
@@ -181,7 +181,7 @@ def update_sla_status(doc):
 	"""This per-doc method remains for form-level updates (Assign/Save)."""
 	today = getdate()
 	state = (doc.workflow_state or "New").strip()
-	contacted_states = {"Contacted", "Qualified", "Archived", "Nurturing", "Accepted", "Unqualified"}
+	contacted_states = {"Contacted", "Qualified", "Archived"}
 
 	active = []
 	if state not in contacted_states and getattr(doc, "first_contact_due_on", None):

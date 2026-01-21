@@ -8,8 +8,14 @@ frappe.ui.form.on("Inquiry", {
 		const s = frm.doc.workflow_state;
 		const is_manager = frappe.user.has_role('Admission Manager');
 		const is_officer = frappe.user.has_role('Admission Officer');
+		const canonicalStates = new Set(['New', 'Assigned', 'Contacted', 'Qualified', 'Archived']);
 
-		if (['New', 'New Inquiry'].includes(s) && is_manager) {
+		if (!canonicalStates.has(s)) {
+			console.error(`Unknown Inquiry workflow_state: ${s}`);
+			return;
+		}
+
+		if (s === 'New' && is_manager) {
 			frm.add_custom_button('Assign', () => frm.trigger('assign'));
 		}
 		// Allow reassign if already assigned

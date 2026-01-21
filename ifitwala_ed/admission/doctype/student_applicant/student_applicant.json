@@ -42,7 +42,7 @@
    "fieldtype": "Link",
    "label": "Inquiry",
    "options": "Inquiry",
-   "read_only_depends_on": "eval:doc.inquiry"
+   "read_only": 1
   },
   {
    "fieldname": "program",
@@ -80,7 +80,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-27 16:55",
+ "modified": "2024-12-27 16:57:03",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",
