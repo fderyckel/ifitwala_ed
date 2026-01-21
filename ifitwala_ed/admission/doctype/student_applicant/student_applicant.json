@@ -18,7 +18,17 @@
   "academic_year",
   "term",
   "applicant_image",
-  "application_status"
+  "application_status",
+  "review_section",
+  "review_snapshot",
+  "interviews_section",
+  "interviews_summary",
+  "health_section",
+  "health_summary",
+  "policies_section",
+  "policies_summary",
+  "documents_section",
+  "documents_summary"
  ],
  "fields": [
   {
@@ -110,6 +120,56 @@
    "label": "Application Status",
    "options": "Draft\nInvited\nIn Progress\nSubmitted\nUnder Review\nMissing Info\nApproved\nRejected\nPromoted",
    "read_only": 1
+  },
+  {
+   "fieldname": "review_section",
+   "fieldtype": "Section Break",
+   "label": "Review Snapshot"
+  },
+  {
+   "fieldname": "review_snapshot",
+   "fieldtype": "HTML",
+   "label": "Review Snapshot"
+  },
+  {
+   "fieldname": "interviews_section",
+   "fieldtype": "Section Break",
+   "label": "Interviews"
+  },
+  {
+   "fieldname": "interviews_summary",
+   "fieldtype": "HTML",
+   "label": "Interviews Summary"
+  },
+  {
+   "fieldname": "health_section",
+   "fieldtype": "Section Break",
+   "label": "Health Summary"
+  },
+  {
+   "fieldname": "health_summary",
+   "fieldtype": "HTML",
+   "label": "Health Summary"
+  },
+  {
+   "fieldname": "policies_section",
+   "fieldtype": "Section Break",
+   "label": "Policies"
+  },
+  {
+   "fieldname": "policies_summary",
+   "fieldtype": "HTML",
+   "label": "Policies Summary"
+  },
+  {
+   "fieldname": "documents_section",
+   "fieldtype": "Section Break",
+   "label": "Documents"
+  },
+  {
+   "fieldname": "documents_summary",
+   "fieldtype": "HTML",
+   "label": "Documents Summary"
   }
  ],
  "index_web_pages_for_search": 1,

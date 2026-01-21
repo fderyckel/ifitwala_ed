@@ -1,8 +1,125 @@
 // Copyright (c) 2024, fdR and contributors
 // For license information, please see license.txt
 
-// frappe.ui.form.on("Student Applicant", {
-// 	refresh(frm) {
+frappe.ui.form.on("Student Applicant", {
+	refresh(frm) {
+		if (!frm.doc || frm.is_new()) {
+			return;
+		}
+		render_review_sections(frm);
+	},
+});
 
-// 	},
-// });
+function render_review_sections(frm) {
+	frm.call("get_readiness_snapshot")
+		.then((res) => {
+			const data = res && res.message;
+			if (!data) {
+				set_html(frm, "review_snapshot", render_empty("No readiness data."));
+				return;
+			}
+			set_html(frm, "review_snapshot", render_snapshot(data));
+			set_html(frm, "interviews_summary", render_interviews(data.interviews));
+			set_html(frm, "health_summary", render_health(data.health));
+			set_html(frm, "policies_summary", render_policies(data.policies));
+			set_html(frm, "documents_summary", render_documents(data.documents));
+		})
+		.catch(() => {
+			set_html(frm, "review_snapshot", render_empty("Unable to load review snapshot."));
+		});
+}
+
+function set_html(frm, fieldname, html) {
+	if (!frm.fields_dict[fieldname]) {
+		return;
+	}
+	frm.fields_dict[fieldname].$wrapper.html(html);
+}
+
+function render_snapshot(data) {
+	const ready = data.ready ? "Yes" : "No";
+	return [
+		render_line("Ready (informational only)", escape_html(ready)),
+		render_line("Policies", render_ok_label(data.policies)),
+		render_line("Documents", render_ok_label(data.documents)),
+		render_line("Health", render_ok_label(data.health)),
+		render_line("Interviews", render_ok_label(data.interviews)),
+		"<div class='text-muted' style='margin-top: 6px;'>Readiness is informational only.</div>",
+	].join("");
+}
+
+function render_interviews(interviews) {
+	if (!interviews) {
+		return render_empty("No interview data.");
+	}
+	const count = Number(interviews.count || 0);
+	return [
+		render_line("Interview count", escape_html(String(count))),
+	].join("");
+}
+
+function render_health(health) {
+	if (!health) {
+		return render_empty("No health profile data.");
+	}
+	const label = map_health_status(health.status);
+	return [
+		render_line("Review status", escape_html(label)),
+	].join("");
+}
+
+function render_policies(policies) {
+	if (!policies) {
+		return render_empty("No policy data.");
+	}
+	if (policies.ok) {
+		return render_line("Status", "All required policies acknowledged.");
+	}
+	return render_line("Missing policies", render_list(policies.missing));
+}
+
+function render_documents(documents) {
+	if (!documents) {
+		return render_empty("No document data.");
+	}
+	if (!documents.rejected || !documents.rejected.length) {
+		return render_line("Status", "No rejected documents.");
+	}
+	return render_line("Rejected types", render_list(documents.rejected));
+}
+
+function render_ok_label(section) {
+	if (!section) {
+		return escape_html("Unknown");
+	}
+	return section.ok ? "OK" : "Needs Review";
+}
+
+function render_line(label, value) {
+	return `<div><strong>${escape_html(label)}:</strong> ${value}</div>`;
+}
+
+function render_list(items) {
+	if (!items || !items.length) {
+		return escape_html("None");
+	}
+	return items.map((item) => escape_html(String(item))).join(", ");
+}
+
+function render_empty(message) {
+	return `<div class='text-muted'>${escape_html(message)}</div>`;
+}
+
+function escape_html(value) {
+	return frappe.utils.escape_html(value || "");
+}
+
+function map_health_status(status) {
+	if (status === "complete") {
+		return "Cleared";
+	}
+	if (status === "needs_follow_up") {
+		return "Needs Follow-Up";
+	}
+	return "Pending";
+}

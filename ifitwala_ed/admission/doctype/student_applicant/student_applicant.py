@@ -345,3 +345,101 @@ class StudentApplicant(Document):
 			).format(frappe.bold(user), now_datetime(), reason),
 		)
 		return {"ok": True}
+
+	def has_required_policies(self):
+		if not self.organization:
+			return {"ok": False, "missing": []}
+
+		rows = frappe.db.sql(
+			"""
+			SELECT pv.name AS policy_version, ip.policy_key AS policy_key
+			  FROM `tabPolicy Version` pv
+			  JOIN `tabInstitutional Policy` ip
+			    ON pv.institutional_policy = ip.name
+			 WHERE pv.is_active = 1
+			   AND ip.is_active = 1
+			   AND ip.organization = %s
+			   AND ip.applies_to LIKE %s
+			""",
+			(self.organization, "%Applicant%"),
+			as_dict=True,
+		)
+
+		if not rows:
+			return {"ok": True, "missing": []}
+
+		versions = [row["policy_version"] for row in rows]
+		acknowledged = set(
+			frappe.get_all(
+				"Policy Acknowledgement",
+				filters={
+					"policy_version": ["in", versions],
+					"acknowledged_for": "Applicant",
+					"context_doctype": "Student Applicant",
+					"context_name": self.name,
+				},
+				pluck="policy_version",
+			)
+		)
+
+		missing = [
+			row["policy_key"]
+			for row in rows
+			if row["policy_version"] not in acknowledged
+		]
+		return {"ok": not missing, "missing": missing}
+
+	def has_required_documents(self):
+		rows = frappe.get_all(
+			"Applicant Document",
+			filters={"student_applicant": self.name},
+			fields=["document_type", "review_status"],
+		)
+		rejected = [
+			row["document_type"] for row in rows if row["review_status"] == "Rejected"
+		]
+		return {"ok": not rejected, "missing": [], "rejected": rejected}
+
+	def health_review_complete(self):
+		status = frappe.db.get_value(
+			"Applicant Health Profile",
+			{"student_applicant": self.name},
+			"review_status",
+		)
+		if not status:
+			return {"ok": False, "status": "missing"}
+		if status == "Cleared":
+			return {"ok": True, "status": "complete"}
+		if status == "Needs Follow-Up":
+			return {"ok": False, "status": "needs_follow_up"}
+		return {"ok": False, "status": "missing"}
+
+	def has_required_interviews(self):
+		count = frappe.db.count(
+			"Applicant Interview", {"student_applicant": self.name}
+		)
+		return {"ok": count >= 1, "count": count}
+
+	@frappe.whitelist()
+	def get_readiness_snapshot(self):
+		policies = self.has_required_policies()
+		documents = self.has_required_documents()
+		health = self.health_review_complete()
+		interviews = self.has_required_interviews()
+
+		ready = all(
+			[
+				policies.get("ok"),
+				documents.get("ok"),
+				health.get("ok"),
+				interviews.get("ok"),
+			]
+		)
+
+		return {
+			"policies": policies,
+			"documents": documents,
+			"health": health,
+			"interviews": interviews,
+			"ready": bool(ready),
+		}
