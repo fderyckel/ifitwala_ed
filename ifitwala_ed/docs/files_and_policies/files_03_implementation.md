@@ -578,3 +578,238 @@ This is **enterprise-grade**, not “edtech-grade”.
 
 ---
 
+
+NEW
+
+---
+
+## 1️⃣ Admissions uploads
+
+**Where are Applicant Document files uploaded today?**
+
+### Short answer (truthful)
+
+There is **no single authoritative upload API** today.
+Admissions uploads are currently fragmented and **implicitly rely on `File.insert()` via UI or generic attachment behavior**.
+
+That is **exactly the problem Phase 2 is meant to fix**.
+
+### Decision (LOCKED)
+
+👉 **Codex MUST introduce a new whitelisted dispatcher-backed upload method for admissions.**
+
+There is no safe legacy endpoint to reuse.
+
+### What Codex should do
+
+Add a new whitelisted method, e.g.:
+
+```
+ifitwala_ed.admissions.api.upload_applicant_document
+```
+
+This method must:
+
+* Accept raw file content or multipart upload
+* Call `create_and_classify_file(...)`
+* Attach to **Student Applicant** (or Applicant Document if already created)
+* Reject uploads that bypass classification
+
+### Explicit instruction
+
+❌ Do not try to “discover” an existing endpoint
+❌ Do not rely on Desk attachment behavior
+✅ Add a new governed API and migrate callers gradually
+
+This is **intended**, not a regression.
+
+---
+
+## 2️⃣ Admissions slot mapping
+
+**How to derive slot deterministically?**
+
+You are right: today there is **no deterministic slot source**.
+We must introduce one now.
+
+### Decision (LOCKED)
+
+👉 **Slot is derived from `Applicant Document Type.code`**
+
+Not label. Not free text. **Code only.**
+
+### Required mapping rule (v1)
+
+| Applicant Document Type.code | Slot                  |
+| ---------------------------- | --------------------- |
+| `passport`                   | `identity_passport`   |
+| `birth_certificate`          | `identity_birth_cert` |
+| `health_record`              | `health_record`       |
+| `transcript`                 | `prior_transcript`    |
+| `report_card`                | `prior_transcript`    |
+| `photo`                      | `family_photo`        |
+| `application_form`           | `application_form`    |
+
+### Enforcement rule
+
+* If `Applicant Document Type.code` is missing or unmapped → **reject upload**
+* Codex must add a **hard mapping dict**, not inference
+
+### Why this is correct
+
+* Deterministic
+* Versionable
+* Auditable
+* Future-proof (new types = explicit decision)
+
+---
+
+## 3️⃣ Task Submission attachments
+
+**What is the payload shape today?**
+
+### Current reality (important)
+
+Task submissions today typically involve one of:
+
+* A `File` created via Desk attachment
+* A `file_url` reference stored on a child row
+* Sometimes raw file upload via form POST
+
+This is inconsistent.
+
+### Decision (LOCKED)
+
+👉 **Phase 3 refactor standardizes Task Submission uploads to raw file content → dispatcher only.**
+
+### Canonical payload going forward
+
+All task submission uploads must call:
+
+```python
+create_and_classify_file(
+	file_kwargs={
+		"attached_to_doctype": "Task Submission",
+		"attached_to_name": submission.name,
+		"is_private": 1,
+		"content": <raw file bytes or uploaded file>,
+		"file_name": <original filename>,
+	},
+	classification={...}
+)
+```
+
+### Explicit rules for Codex
+
+* ❌ Do not accept pre-created `File` names
+* ❌ Do not accept bare `file_url`
+* ✅ Always create File inside dispatcher
+
+Legacy flows may temporarily break routing — that is acceptable (see Q5).
+
+---
+
+## 4️⃣ Employee documents
+
+**Where are contracts / resumes stored today?**
+
+### Current state (honest)
+
+You are correct:
+
+* Only `employee_image` exists on `Employee`
+* There is **no canonical Employee Document Doctype** yet
+
+### Decision (LOCKED)
+
+👉 **Employee documents are OUT OF SCOPE for Phase 3 enforcement.**
+
+But we still prepare the architecture.
+
+### What Codex should do now
+
+* Do **not** attempt to refactor Employee uploads
+* Do **not** add guesses for contract/resume storage
+* Leave Employee flows untouched for now
+
+### What is planned (later phase)
+
+A future `Employee Document` Doctype using:
+
+* Same dispatcher
+* Same classification
+* Primary subject = staff
+
+Codex should not invent this now.
+
+---
+
+## 5️⃣ Module placement
+
+**Where should new DocTypes live?**
+
+### Decision (LOCKED)
+
+| Item                          | Module     |
+| ----------------------------- | ---------- |
+| `File Classification`         | **Setup**  |
+| `File Classification Subject` | Setup      |
+| `Data Erasure Request`        | Setup      |
+| Dispatcher utilities          | Utilities  |
+| Admissions upload API         | Admissions |
+
+### Why
+
+* Governance objects belong to Setup
+* Utilities stay non-domain
+* Admissions API stays close to business flow
+
+No ambiguity here.
+
+---
+
+## 6️⃣ Enforcement risk confirmation
+
+**Are we OK with uploads breaking once hard gate is enabled?**
+
+### Clear answer
+
+👉 **YES. Explicitly YES.**
+
+This is **intentional and desired**.
+
+### Rationale
+
+* Ungoverned uploads are a **liability**
+* Silent misclassification is worse than rejection
+* We prefer:
+
+  * Temporary friction
+  * Explicit failures
+  * Clear TODO list
+
+### Codex instruction
+
+* Add hard gate
+* Document known broken flows
+* Do NOT add fallbacks
+* Do NOT weaken enforcement
+
+---
+
+# ✅ FINAL GO-AHEAD TO CODEX (YOU CAN COPY THIS)
+
+> You are cleared to proceed.
+>
+> Decisions are locked as follows:
+>
+> * Admissions uploads: add a new dispatcher-backed whitelisted API
+> * Slot derivation: `Applicant Document Type.code → slot` (hard mapping)
+> * Task submissions: raw file → dispatcher only (no legacy File reuse)
+> * Employee documents: explicitly out of scope for this PR
+> * New DocTypes live under Setup
+> * Hard gate enforcement is intentional even if some flows temporarily break
+>
+> Do not infer. Do not soften enforcement. Fail closed.
+
+---
