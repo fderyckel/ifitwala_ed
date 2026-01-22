@@ -63,6 +63,7 @@ class StudentApplicant(Document):
 		self._validate_student_link(before)
 		self._validate_application_status(before)
 		self._validate_edit_permissions(before)
+		self._validate_attachment_guard()
 
 	# ---------------------------------------------------------------------
 	# Link immutability
@@ -208,6 +209,26 @@ class StudentApplicant(Document):
 
 	def _only_status_changed(self, before):
 		return not self._has_changes(before, ignore_fields={"application_status"})
+
+	def _validate_attachment_guard(self):
+		if not self.name:
+			return
+		invalid = frappe.db.sql(
+			"""
+			SELECT name
+			  FROM `tabFile`
+			 WHERE attached_to_doctype = 'Student Applicant'
+			   AND attached_to_name = %s
+			   AND (attached_to_field IS NULL OR attached_to_field = '' OR attached_to_field != 'applicant_image')
+			 LIMIT 1
+			""",
+			(self.name,),
+			as_dict=True,
+		)
+		if invalid:
+			frappe.throw(
+				_("Only applicant_image can be attached directly to Student Applicant. Use Applicant Document for all other files.")
+			)
 
 	# ---------------------------------------------------------------------
 	# Lifecycle helpers
