@@ -453,7 +453,14 @@ This is the backbone. Everything else builds on this.
 
 > We denormalize `attached_*` for fast queries and GDPR sweeps.
 
----
+### 🛡️ Integrity & Lineage (New)
+
+| Field          | Type        | Notes                                |
+| -------------- | ----------- | ------------------------------------ |
+| `content_hash` | Data        | SHA-256 (tamper proofing)            |
+| `source_file`  | Link → File | Parent file (for thumbnails/derivs)  |
+
+> `content_hash` must be calculated by dispatcher on upload.
 
 ## 3. Data subject model (GDPR-critical)
 
@@ -593,7 +600,18 @@ erased
 
 ---
 
-## 8. Invariants (non-negotiable)
+## 8. Origin Context (Security)
+
+| Field           | Type   | Notes                            |
+| --------------- | ------ | -------------------------------- |
+| `upload_source` | Select | `Desk`, `SPA`, `API`, `Job`      |
+| `ip_address`    | Data   | Captured at upload time          |
+
+> Critical for forensics (who uploaded what from where).
+
+---
+
+## 9. Invariants (non-negotiable)
 
 1. A `File` **cannot exist** without a `File Classification`
 2. Dispatcher **must create both atomically**
@@ -606,7 +624,7 @@ erased
 
 ---
 
-## 9. Dispatcher enforcement (preview)
+## 10. Dispatcher enforcement (preview)
 
 When a file is uploaded, dispatcher must receive:
 
@@ -621,7 +639,10 @@ When a file is uploaded, dispatcher must receive:
   purpose,
   retention_policy,
   organization,
-  school
+  retention_policy,
+  organization,
+  school,
+  upload_source  // Inferred by dispatcher
 }
 ```
 
@@ -629,7 +650,7 @@ Missing any **mandatory** field → reject upload.
 
 ---
 
-## 10. Why this is superior (explicitly)
+## 11. Why this is superior (explicitly)
 
 With this model, you can:
 
