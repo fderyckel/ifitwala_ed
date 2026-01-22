@@ -8,6 +8,7 @@
  "field_order": [
   "code",
   "document_type_name",
+  "belongs_to",
   "organization",
   "school",
   "is_required",
@@ -27,6 +28,12 @@
    "fieldtype": "Data",
    "label": "Document Type Name",
    "reqd": 1
+  },
+  {
+   "fieldname": "belongs_to",
+   "fieldtype": "Select",
+   "label": "Belongs To",
+   "options": "student\nguardian\nfamily"
   },
   {
    "fieldname": "organization",

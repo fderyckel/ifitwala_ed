@@ -330,7 +330,16 @@ def list_applicant_document_types(student_applicant: str | None = None):
 	rows = frappe.get_all(
 		"Applicant Document Type",
 		filters={"is_active": 1},
-		fields=["name", "code", "document_type_name", "is_required", "description", "school", "organization"],
+		fields=[
+			"name",
+			"code",
+			"document_type_name",
+			"belongs_to",
+			"is_required",
+			"description",
+			"school",
+			"organization",
+		],
 		order_by="is_required desc, document_type_name asc",
 	)
 
@@ -344,6 +353,7 @@ def list_applicant_document_types(student_applicant: str | None = None):
 			"name": row_type.get("name"),
 			"code": row_type.get("code"),
 			"document_type_name": row_type.get("document_type_name"),
+			"belongs_to": row_type.get("belongs_to") or "",
 			"is_required": bool(row_type.get("is_required")),
 			"description": row_type.get("description") or "",
 		})

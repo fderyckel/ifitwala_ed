@@ -9,6 +9,7 @@ export type Response = {
     name: string
     code: string
     document_type_name: string
+    belongs_to: 'student' | 'guardian' | 'family' | ''
     is_required: boolean
     description: string
   }>

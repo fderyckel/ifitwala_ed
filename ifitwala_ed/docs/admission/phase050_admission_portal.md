@@ -313,8 +313,10 @@ This is enforced **server-side**, not via UI hiding.
 ### 9.2 GDPR alignment (baseline)
 
 * All uploads are linked to Student Applicant
+* File Classification primary subject is **Student Applicant**
 * All files are deletable via Applicant purge
 * No documents live directly on User
+* Files are never re-linked or copied on promotion
 * Identity can be erased independently of application record
 
 (Full GDPR policy handled elsewhere; this portal does not violate it.)
@@ -532,6 +534,7 @@ ApplicantDocumentType {
   name: string
   code: string
   document_type_name: string
+  belongs_to: 'student' | 'guardian' | 'family'
   is_required: boolean
   description: string
 }
@@ -542,6 +545,7 @@ ApplicantDocumentType {
 * Types are scoped to Applicant organization/school
 * Only `is_active = 1` types are returned
 * Portal may upload **only** against these types
+* `belongs_to` is semantic only (does not affect file ownership)
 
 ### A.5.2 Applicant Documents (Uploads)
 
@@ -568,6 +572,7 @@ ApplicantDocument {
 * Upload creates `Applicant Document`
 * File attached **only** to Applicant Document
 * No direct file uploads anywhere else
+* File Classification primary subject is always **Student Applicant**
 
 ---
 

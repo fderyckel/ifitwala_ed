@@ -345,7 +345,6 @@ class StudentApplicant(Document):
 			frappe.throw(_("Applicant must be Approved before promotion."))
 
 		if self.student:
-			self._copy_promotable_documents(self.student)
 			self._set_status("Promoted", "Applicant promoted")
 			return self.student
 
@@ -354,7 +353,6 @@ class StudentApplicant(Document):
 			self.flags.from_promotion = True
 			self.student = existing
 			self.save(ignore_permissions=True)
-			self._copy_promotable_documents(existing)
 			self._set_status("Promoted", "Applicant promoted")
 			return existing
 
@@ -372,8 +370,6 @@ class StudentApplicant(Document):
 			student.insert(ignore_permissions=True)
 		finally:
 			frappe.flags.from_applicant_promotion = prev_flag
-
-		self._copy_promotable_documents(student.name)
 
 		self.flags.from_promotion = True
 		self.student = student.name
@@ -581,89 +577,3 @@ class StudentApplicant(Document):
 			"ready": bool(ready),
 			"issues": issues,
 		}
-
-	def _copy_promotable_documents(self, student_name):
-		from frappe.utils.file_manager import get_file
-		from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
-		from ifitwala_ed.utilities import file_dispatcher
-
-		rows = frappe.get_all(
-			"Applicant Document",
-			filters={
-				"student_applicant": self.name,
-				"review_status": "Approved",
-				"promotion_target": "Student",
-			},
-			fields=["name"],
-		)
-
-		for row in rows:
-			file_row = frappe.get_all(
-				"File",
-				filters={
-					"attached_to_doctype": "Applicant Document",
-					"attached_to_name": row["name"],
-					"custom_is_latest": 1,
-				},
-				fields=["name", "file_url", "file_name", "is_private"],
-				order_by="creation desc",
-				limit=1,
-			)
-			if not file_row:
-				file_row = frappe.get_all(
-					"File",
-					filters={
-						"attached_to_doctype": "Applicant Document",
-						"attached_to_name": row["name"],
-					},
-					fields=["name", "file_url", "file_name", "is_private"],
-					order_by="creation desc",
-				limit=1,
-			)
-			if not file_row:
-				continue
-			file_doc = file_row[0]
-			if not file_doc.get("file_url"):
-				continue
-			doc_type = frappe.db.get_value("Applicant Document", row["name"], "document_type")
-			doc_type_code = frappe.db.get_value("Applicant Document Type", doc_type, "code") or doc_type
-			slot_spec = get_applicant_document_slot_spec(doc_type_code)
-			if not slot_spec:
-				frappe.throw(
-					_("Applicant Document Type code is not mapped for file classification: {0}.")
-					.format(doc_type_code)
-				)
-			try:
-				file_name, content = get_file(file_doc["file_url"])
-			except Exception:
-				frappe.log_error(
-					frappe.get_traceback(),
-					f"Applicant promotion file copy failed ({row['name']})",
-				)
-				continue
-
-			classification = {
-				"primary_subject_type": "Student",
-				"primary_subject_id": student_name,
-				"data_class": slot_spec["data_class"],
-				"purpose": slot_spec["purpose"],
-				"retention_policy": slot_spec["retention_policy"],
-				"slot": slot_spec["slot"],
-				"organization": self.organization,
-				"school": self.school,
-				"source_file": file_doc.get("name"),
-				"upload_source": "API",
-			}
-
-			file_kwargs = {
-				"attached_to_doctype": "Student",
-				"attached_to_name": student_name,
-				"is_private": file_doc.get("is_private", 0),
-				"file_name": file_name or file_doc.get("file_name") or "document",
-				"content": content,
-			}
-
-			file_dispatcher.create_and_classify_file(
-				file_kwargs=file_kwargs,
-				classification=classification,
-			)

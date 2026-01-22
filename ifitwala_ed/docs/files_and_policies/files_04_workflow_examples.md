@@ -141,37 +141,34 @@ This is even more sensitive.
 
 ---
 
-## 1. Admissions uploads are **not student data yet**
+## 1. Admissions uploads are **Applicant-owned**
 
 Key insight (many platforms get this wrong):
 
-> **Admissions files belong to the Applicant / Family, not the Student.**
+> **Admissions files belong to the Student Applicant, not Student or Guardian.**
 
 Until enrollment:
 
 * No Student exists
-* No academic authority
-* Data subject = **child + guardians**
+* No operational Guardian context exists
+* Admissions files are **decision evidence**, not operational records
 
 ---
 
-## 2. Primary subject logic (critical)
+## 2. Semantic ownership (belongs_to)
 
-### Default rule (v1)
+Admissions documents still carry **semantic meaning**:
 
-| Document type                | Primary subject |
-| ---------------------------- | --------------- |
-| Passport                     | student         |
-| Birth certificate            | student         |
-| Health record                | student         |
-| Parent ID                    | guardian        |
-| Family photo                 | guardian        |
-| Transcript from other school | student         |
+* Child‑focused documents
+* Guardian‑focused documents
 
-**Primary subject is NOT “Applicant”**
-Applicant is a *business container*, not a data subject.
+This meaning is stored on **Applicant Document Type**:
 
-This is a **major compliance win**.
+```
+belongs_to = student | guardian | family
+```
+
+This is **never** used for file ownership.
 
 ---
 
@@ -210,18 +207,15 @@ create_and_classify_file(
 		"is_private": 1,
 	},
 	classification={
-		"primary_subject_type": "student",
-		"primary_subject_id": applicant.provisional_student,
+		"primary_subject_type": "Student Applicant",
+		"primary_subject_id": applicant.name,
 		"data_class": "legal",
 		"purpose": "identity_verification",
 		"retention_policy": "until_school_exit_plus_6m",
 		"slot": "identity_passport",
 		"organization": org,
 		"school": school,
-	},
-	secondary_subjects=[
-		{"subject_type": "guardian", "subject_id": guardian_id, "role": "co-owner"}
-	]
+	}
 )
 ```
 
@@ -265,6 +259,34 @@ With your model:
 This is **exceptionally hard** to retrofit later — you’re doing it right now.
 
 ---
+
+NEW
+
+## Admissions Workflow — File Ownership Clarification
+
+In all admissions workflows, the **primary subject of uploaded files is always the Student Applicant**, regardless of the document’s semantic target.
+
+Examples:
+- Student passport → owned by Student Applicant
+- Parent ID document → owned by Student Applicant
+- Family consent form → owned by Student Applicant
+
+### Important Distinction
+
+Semantic meaning (e.g. “belongs to guardian”) is expressed via:
+- document_type
+- classification metadata
+- internal flags
+
+**Not via file ownership.**
+
+### Invariant
+
+At no point during admissions is a file owned by:
+- Student
+- Guardian
+- Any post-promotion entity
+
 
 # 🔎 Final Assessment (blunt)
 

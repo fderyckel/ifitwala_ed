@@ -669,3 +669,44 @@ Most ed platforms **cannot** do this cleanly.
 
 ---
 
+
+
+## Admissions File Ownership (Authoritative Rule)
+
+All files uploaded during the admissions process are **owned by the Student Applicant**.
+
+This includes:
+- child-related documents (passport, transcripts, reports, health records)
+- parent / guardian documents (IDs, consent forms, declarations)
+
+### Canonical Rule
+
+During admissions (all phases prior to promotion):
+
+owner_doctype = "Student Applicant"
+owner_name = <student_applicant.name>
+
+
+There are **no exceptions**.
+
+### Explicit Prohibitions
+
+Admissions files MUST NOT:
+- be owned by Student
+- be owned by Guardian
+- be re-linked or moved on promotion
+- be duplicated during promotion
+
+### Rationale
+
+- Student and Guardian records do not exist during admissions
+- The Student Applicant is the sole legal intake container
+- Admissions files are decision evidence, not operational student records
+- This guarantees clean GDPR erasure and auditability
+
+### Promotion Boundary
+
+Promotion from Applicant → Student:
+- does **not** move, copy, or reassign files
+- freezes Applicant files as historical admissions artefacts
+- operational records must never depend on admissions file ownership

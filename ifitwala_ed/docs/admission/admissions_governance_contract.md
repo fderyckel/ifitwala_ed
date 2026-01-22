@@ -398,3 +398,20 @@ If conflicts arise, **this document wins** on matters of scope and authority.
 > Without ownership, flow collapses under scale
 
 ---
+
+
+## Admissions File Boundary (Non-Negotiable)
+
+Admissions files belong exclusively to the Student Applicant.
+
+They are:
+- created during admissions
+- used to support decision-making
+- retained for audit and legal traceability
+
+They are **not**:
+- operational student records
+- guardian identity records
+- portable assets across lifecycle stages
+
+This boundary must be preserved across all phases and implementations.
