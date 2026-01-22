@@ -455,3 +455,40 @@ class Location(Document):
 				title=_("Stock Location Without School"),
 				indicator="orange",
 			)
+
+
+
+
+
+
+
+@frappe.whitelist()
+def get_valid_parent_locations(organization=None, school=None):
+	"""
+	Return valid parent Locations for a given Organization + School context.
+
+	Rules:
+	- is_group = 1
+	- organization must match
+	- school must be in lineage (parent_school ∈ ancestors(child_school))
+	"""
+	filters = {"is_group": 1}
+
+	if organization:
+		filters["organization"] = organization
+
+	locations = frappe.get_all(
+		"Location",
+		filters=filters,
+		fields=["name", "school"],
+	)
+
+	if not school:
+		return locations
+
+	allowed_schools = set(get_ancestor_schools(school) or [school])
+
+	return [
+		loc for loc in locations
+		if not loc.school or loc.school in allowed_schools
+	]
