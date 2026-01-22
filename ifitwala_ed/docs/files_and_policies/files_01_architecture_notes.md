@@ -468,8 +468,8 @@ This is the backbone. Everything else builds on this.
 
 | Field                  | Type                                    |
 | ---------------------- | --------------------------------------- |
-| `primary_subject_type` | Select (`student`, `guardian`, `staff`) |
-| `primary_subject_id`   | Dynamic Link                            |
+| `primary_subject_type` | Select (`Student`, `Guardian`, `Employee`, `Student Applicant`) |
+| `primary_subject_id`   | Dynamic Link                                                     |
 
 **Rules**
 
@@ -488,7 +488,7 @@ Child table: **`File Classification Subject`**
 
 | Field          | Type                                            |
 | -------------- | ----------------------------------------------- |
-| `subject_type` | Select                                          |
+| `subject_type` | Select (Same as primary)                        |
 | `subject_id`   | Dynamic Link                                    |
 | `role`         | Select (`co-owner`, `referenced`, `contextual`) |
 
@@ -526,14 +526,19 @@ operational
 
 ### `purpose` (machine-readable)
 
-Examples:
-
 ```
+identification_document
+contract
 assessment_submission
-feedback
-identity_verification
-contractual
-safeguarding_review
+assessment_feedback
+safeguarding_evidence
+medical_record
+visa_document
+policy_acknowledgement
+background_check
+academic_report
+administrative
+other
 ```
 
 > **GDPR rule:**

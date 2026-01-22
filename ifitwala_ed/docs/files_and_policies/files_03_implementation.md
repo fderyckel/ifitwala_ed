@@ -39,11 +39,11 @@ file (Link → File) [unique, required]
 attached_doctype (Data)
 attached_name (Data)
 
-primary_subject_type (Select: student | guardian | staff) [required]
+primary_subject_type (Select: Student | Guardian | Employee | Student Applicant) [required]
 primary_subject_id (Dynamic Link) [required]
 
 data_class (Select) [required]
-purpose (Select) [required]
+purpose (Select: identification_document | contract | assessment_submission | ... ) [required]
 
 retention_policy (Select) [required]
 retention_until (Date) [computed later]
@@ -331,7 +331,7 @@ def create_and_classify_file(
 		)
 
 	# Validate subject type early
-	if classification["primary_subject_type"] not in ("student", "guardian", "staff"):
+	if classification["primary_subject_type"] not in ("Student", "Guardian", "Employee", "Student Applicant"):
 		frappe.throw(_("Invalid primary_subject_type"))
 
 	# ─────────────────────────────────────────────────────────────

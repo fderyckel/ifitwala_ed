@@ -183,6 +183,75 @@ Overrides must be:
 
 ---
 
+NEW NEW NEW
+
+### **Admissions Data & File Governance**
+
+---
+
+### **Admissions Data & File Governance**
+
+Admissions data is **stage-scoped** and legally bounded.
+
+#### 1. Admissions file authority
+
+Admissions officers and systems may only interact with:
+
+* `Applicant Document`
+* Applicant-scoped files
+
+They have **no authority** over Student file structures.
+
+---
+
+#### 2. Promotion as a legal boundary
+
+Promotion marks a **legal data boundary**:
+
+* Before promotion:
+
+  * Files are admissions evidence
+  * Subject to Applicant GDPR rules
+* After promotion:
+
+  * Files become Student records
+  * Subject to Student retention rules
+
+No file may straddle both contexts.
+
+---
+
+#### 3. GDPR accountability
+
+Because Applicant and Student files are distinct records:
+
+* Applicant erasure requests:
+
+  * do not affect Student records
+* Student erasure or pseudonymization:
+
+  * does not retroactively alter admissions evidence
+
+This separation is required for compliance.
+
+---
+
+#### 4. Institutional obligation
+
+Any implementation that:
+
+* shares File records across stages
+* weakens Applicant erasure guarantees
+* blurs admissions vs student ownership
+
+is a **governance violation**, not an optimization.
+
+
+
+END OF NEW
+
+---
+
 ## 5. Applicant Lifecycle vs Local Requirements
 
 ### 5.1 Global Lifecycle (Fixed)

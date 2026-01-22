@@ -169,6 +169,93 @@ promote_applicant(applicant_name)
 
 ---
 
+NEW NEW NEW
+
+### **File Finalization & Ownership Boundary (MANDATORY)**
+
+---
+
+### **File Finalization & Ownership Boundary (MANDATORY)**
+
+> **This section is authoritative for Phase 03.**
+
+#### 1. Applicant-side ownership (pre-promotion)
+
+All admissions files **must** be attached to `Applicant Document`.
+
+* No admissions file may be attached directly to:
+
+  * `Student Applicant`
+  * `Student`
+* The only allowed file on `Student Applicant` is:
+
+  * `applicant_image` (identity scaffold only)
+
+This rule is enforced server-side.
+
+---
+
+#### 2. Promotion behavior (Applicant → Student)
+
+When promoting an Applicant:
+
+* Approved `Applicant Document` files **are copied**, not re-linked.
+* A **new `File` record** is created for the `Student`.
+* The original Applicant-side `File` record:
+
+  * remains attached to `Applicant Document`
+  * is never mutated, moved, or deleted
+
+> **Linking or re-attaching an existing File record is forbidden.**
+
+---
+
+#### 3. Student-side file routing
+
+Promoted files attach using **standard Student file routing**:
+
+```
+Home/Students/<STUDENT_ID>/
+```
+
+No dedicated “Admissions” folder exists on the Student side.
+
+Admissions semantics end at promotion.
+
+---
+
+#### 4. Rejected or non-promotable documents
+
+* Rejected documents:
+
+  * remain on Applicant only
+  * are never copied to Student
+* Promotion logic must explicitly check:
+
+  * `Applicant Document.review_status == Approved`
+
+---
+
+#### 5. GDPR consequence (normative)
+
+Because Applicant files and Student files are **separate File records**:
+
+* Applicant GDPR erasure is:
+
+  * complete
+  * local
+  * auditable
+* Student data integrity is preserved
+
+This behavior is **non-negotiable**.
+
+---
+
+
+END OF NEW NEW NEW
+
+---
+
 ## PR-03.4 — Promotion Guards (Hard Invariants)
 
 ### Purpose
@@ -572,3 +659,118 @@ def before_insert(self):
 * never expose this flag elsewhere
 
 ---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Add a **new top-level section** near the end (before implementation notes):
+
+### **Admissions Boundary Rules (Authoritative)**
+
+
+
+
+
+
+---
+
+## **Codex Instructions — Admissions File Management (Phase 03)**
+
+You must implement the following, exactly as specified in documentation.
+
+### A. Student Applicant attachment guard
+
+In `student_applicant.py`:
+
+* Reject all file attachments **except**:
+
+  * `applicant_image`
+* Server-side enforcement required
+* UI checks are insufficient
+
+---
+
+### B. Applicant → Student promotion logic
+
+When promoting an Applicant:
+
+1. Query `Applicant Document` where:
+
+   * `review_status == "Approved"`
+   * `promotion_target == "Student"` (if present)
+2. For each approved document:
+
+   * Fetch the attached `File`
+   * Create a **new `File` record**:
+
+     * `attached_to_doctype = "Student"`
+     * `attached_to_name = <student.name>`
+     * `file_url / content = same as source`
+3. Do **not**:
+
+   * re-link existing File
+   * move Applicant file
+   * delete Applicant file
+
+---
+
+### C. File routing
+
+* Applicant files:
+
+  * Must remain under `Home/Admissions/Applicant/<ID>/`
+* Student files:
+
+  * Use default Student routing
+  * No admissions-specific Student folders
+
+---
+
+### D. Rejected documents
+
+* Documents with `review_status == "Rejected"`:
+
+  * are never copied
+  * remain Applicant-only
+
+---
+
+### E. GDPR invariants
+
+Your implementation must ensure:
+
+* Applicant files can be erased independently
+* Student files remain intact
+* No shared File records exist
+
+If any File record is attached to both Applicant and Student → **implementation is invalid**.
+
+---
+
+## Final sanity check
+
+If Codex follows:
+
+* the three notes above
+* and the instruction block verbatim
+
+Then:
+
+✅ Phase 03 is compliant
+✅ GDPR workflows remain clean
+✅ No future refactor needed
+
+If you want, next step we can:
+
+* draft **GDPR Erasure Log Doctype** (schema + controller), or
+* write a **Phase 03 coding checklist** for PR review discipline

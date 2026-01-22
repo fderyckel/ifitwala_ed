@@ -486,3 +486,70 @@ Institutional leadership must be able to:
 This visibility is **explicitly granted**, not emergent.
 
 ---
+
+NEW NEW
+
+## 13
+---
+
+### **Admissions Boundary Rules (Authoritative)**
+
+These rules define **hard ownership boundaries** between admissions and student records.
+
+#### 1. Canonical owner of admissions files
+
+* All admissions files belong to `Applicant Document`.
+* Files must never be attached directly to:
+
+  * `Student Applicant`
+  * `Student`
+
+The only exception is:
+
+| Doctype           | Field             | Purpose               |
+| ----------------- | ----------------- | --------------------- |
+| Student Applicant | `applicant_image` | Identity preview only |
+
+---
+
+#### 2. File lifecycle across promotion
+
+Admissions files **do not migrate**.
+
+Instead:
+
+* Promotion creates **new File records** for Student
+* Applicant-side File records are immutable
+* No File record is shared across stages
+
+This preserves:
+
+* audit history
+* GDPR erasure safety
+* legal defensibility
+
+---
+
+#### 3. Folder semantics (normative)
+
+| Stage     | Root Folder                       |
+| --------- | --------------------------------- |
+| Applicant | `Home/Admissions/Applicant/<ID>/` |
+| Student   | `Home/Students/<ID>/`             |
+
+Folders must never overlap across stages.
+
+---
+
+#### 4. Prohibited patterns
+
+The following are architectural violations:
+
+* Re-linking a File record from Applicant to Student
+* Attaching admissions files to Student Applicant
+* Using shared folders for Applicant and Student
+* Mutating Applicant file metadata during promotion
+
+Violations are bugs, not edge cases.
+
+---
