@@ -1,0 +1,190 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-01-22 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "file",
+  "attached_doctype",
+  "attached_name",
+  "primary_subject_type",
+  "primary_subject_id",
+  "data_class",
+  "purpose",
+  "retention_policy",
+  "retention_until",
+  "slot",
+  "organization",
+  "school",
+  "legal_hold",
+  "erasure_state",
+  "version_number",
+  "is_current_version",
+  "content_hash",
+  "source_file",
+  "upload_source",
+  "ip_address",
+  "secondary_subjects"
+ ],
+ "fields": [
+  {
+   "fieldname": "file",
+   "fieldtype": "Link",
+   "label": "File",
+   "options": "File",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "attached_doctype",
+   "fieldtype": "Data",
+   "label": "Attached DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "attached_name",
+   "fieldtype": "Data",
+   "label": "Attached Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "primary_subject_type",
+   "fieldtype": "Select",
+   "label": "Primary Subject Type",
+   "options": "Student\nGuardian\nEmployee\nStudent Applicant",
+   "reqd": 1
+  },
+  {
+   "fieldname": "primary_subject_id",
+   "fieldtype": "Dynamic Link",
+   "label": "Primary Subject ID",
+   "options": "primary_subject_type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "data_class",
+   "fieldtype": "Select",
+   "label": "Data Class",
+   "options": "academic\nassessment\nsafeguarding\nadministrative\nlegal\noperational",
+   "reqd": 1
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Select",
+   "label": "Purpose",
+   "options": "text\nidentification_document\ncontract\nassessment_submission\nassessment_feedback\nsafeguarding_evidence\nmedical_record\nvisa_document\npolicy_acknowledgement\nbackground_check\nacademic_report\nadministrative\nother",
+   "reqd": 1
+  },
+  {
+   "fieldname": "retention_policy",
+   "fieldtype": "Select",
+   "label": "Retention Policy",
+   "options": "until_program_end_plus_1y\nuntil_school_exit_plus_6m\nfixed_7y\nimmediate_on_request",
+   "reqd": 1
+  },
+  {
+   "fieldname": "retention_until",
+   "fieldtype": "Date",
+   "label": "Retention Until",
+   "read_only": 1
+  },
+  {
+   "fieldname": "slot",
+   "fieldtype": "Data",
+   "label": "Slot",
+   "reqd": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "legal_hold",
+   "fieldtype": "Check",
+   "label": "Legal Hold"
+  },
+  {
+   "default": "active",
+   "fieldname": "erasure_state",
+   "fieldtype": "Select",
+   "label": "Erasure State",
+   "options": "active\npending\nblocked_legal\nerased"
+  },
+  {
+   "fieldname": "version_number",
+   "fieldtype": "Int",
+   "label": "Version Number"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_current_version",
+   "fieldtype": "Check",
+   "label": "Is Current Version"
+  },
+  {
+   "fieldname": "content_hash",
+   "fieldtype": "Data",
+   "label": "Content Hash"
+  },
+  {
+   "fieldname": "source_file",
+   "fieldtype": "Link",
+   "label": "Source File",
+   "options": "File"
+  },
+  {
+   "fieldname": "upload_source",
+   "fieldtype": "Select",
+   "label": "Upload Source",
+   "options": "Desk\nSPA\nAPI\nJob"
+  },
+  {
+   "fieldname": "ip_address",
+   "fieldtype": "Data",
+   "label": "IP Address"
+  },
+  {
+   "fieldname": "secondary_subjects",
+   "fieldtype": "Table",
+   "label": "Secondary Subjects",
+   "options": "File Classification Subject"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Setup",
+ "name": "File Classification",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

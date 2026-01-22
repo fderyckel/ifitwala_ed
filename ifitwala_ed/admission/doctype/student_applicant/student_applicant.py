@@ -541,7 +541,9 @@ class StudentApplicant(Document):
 		}
 
 	def _copy_promotable_documents(self, student_name):
-		from frappe.utils.file_manager import get_file, save_file
+		from frappe.utils.file_manager import get_file
+		from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
+		from ifitwala_ed.utilities import file_dispatcher
 
 		rows = frappe.get_all(
 			"Applicant Document",
@@ -574,13 +576,21 @@ class StudentApplicant(Document):
 					},
 					fields=["name", "file_url", "file_name", "is_private"],
 					order_by="creation desc",
-					limit=1,
-				)
+				limit=1,
+			)
 			if not file_row:
 				continue
 			file_doc = file_row[0]
 			if not file_doc.get("file_url"):
 				continue
+			doc_type = frappe.db.get_value("Applicant Document", row["name"], "document_type")
+			doc_type_code = frappe.db.get_value("Applicant Document Type", doc_type, "code") or doc_type
+			slot_spec = get_applicant_document_slot_spec(doc_type_code)
+			if not slot_spec:
+				frappe.throw(
+					_("Applicant Document Type code is not mapped for file classification: {0}.")
+					.format(doc_type_code)
+				)
 			try:
 				file_name, content = get_file(file_doc["file_url"])
 			except Exception:
@@ -589,11 +599,29 @@ class StudentApplicant(Document):
 					f"Applicant promotion file copy failed ({row['name']})",
 				)
 				continue
-			save_file(
-				filename=file_name or file_doc.get("file_name") or "document",
-				content=content,
-				doctype="Student",
-				name=student_name,
-				is_private=file_doc.get("is_private", 0),
-				decode=False,
+
+			classification = {
+				"primary_subject_type": "Student",
+				"primary_subject_id": student_name,
+				"data_class": slot_spec["data_class"],
+				"purpose": slot_spec["purpose"],
+				"retention_policy": slot_spec["retention_policy"],
+				"slot": slot_spec["slot"],
+				"organization": self.organization,
+				"school": self.school,
+				"source_file": file_doc.get("name"),
+				"upload_source": "API",
+			}
+
+			file_kwargs = {
+				"attached_to_doctype": "Student",
+				"attached_to_name": student_name,
+				"is_private": file_doc.get("is_private", 0),
+				"file_name": file_name or file_doc.get("file_name") or "document",
+				"content": content,
+			}
+
+			file_dispatcher.create_and_classify_file(
+				file_kwargs=file_kwargs,
+				classification=classification,
 			)

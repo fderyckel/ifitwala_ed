@@ -13,6 +13,59 @@ from frappe.desk.form.assign_to import add as add_assignment, remove as remove_a
 ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
 
 
+APPLICANT_DOCUMENT_SLOT_MAP = {
+	"passport": {
+		"slot": "identity_passport",
+		"data_class": "legal",
+		"purpose": "identification_document",
+		"retention_policy": "until_school_exit_plus_6m",
+	},
+	"birth_certificate": {
+		"slot": "identity_birth_cert",
+		"data_class": "legal",
+		"purpose": "identification_document",
+		"retention_policy": "until_school_exit_plus_6m",
+	},
+	"health_record": {
+		"slot": "health_record",
+		"data_class": "safeguarding",
+		"purpose": "medical_record",
+		"retention_policy": "until_school_exit_plus_6m",
+	},
+	"transcript": {
+		"slot": "prior_transcript",
+		"data_class": "academic",
+		"purpose": "academic_report",
+		"retention_policy": "until_program_end_plus_1y",
+	},
+	"report_card": {
+		"slot": "prior_transcript",
+		"data_class": "academic",
+		"purpose": "academic_report",
+		"retention_policy": "until_program_end_plus_1y",
+	},
+	"photo": {
+		"slot": "family_photo",
+		"data_class": "administrative",
+		"purpose": "administrative",
+		"retention_policy": "immediate_on_request",
+	},
+	"application_form": {
+		"slot": "application_form",
+		"data_class": "administrative",
+		"purpose": "administrative",
+		"retention_policy": "until_program_end_plus_1y",
+	},
+}
+
+
+def get_applicant_document_slot_spec(doc_type_code: str) -> dict:
+	"""Return slot classification spec for an Applicant Document Type code."""
+	if not doc_type_code:
+		return {}
+	return APPLICANT_DOCUMENT_SLOT_MAP.get(doc_type_code.strip())
+
+
 def ensure_admissions_permission(user: str | None = None) -> str:
 	"""Ensure the caller has Admission Manager or Admission Officer role."""
 	user = user or frappe.session.user

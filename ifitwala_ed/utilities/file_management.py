@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from typing import Dict, Any, Optional, Tuple
@@ -19,6 +20,30 @@ from frappe import _
 def slugify(text: str) -> str:
 	"""Lowercase, replace non-alphanums with '_', strip extra."""
 	return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
+
+
+def calculate_hash(file_doc) -> str:
+	"""Return SHA-256 hash for the File's stored content."""
+	if not file_doc:
+		frappe.throw(_("File is required for hash computation."))
+
+	file_url = (file_doc.file_url or "").strip()
+	if not file_url:
+		frappe.throw(_("File URL is required for hash computation."))
+	if file_url.startswith("http"):
+		frappe.throw(_("Cannot compute hash for remote file URLs."))
+
+	rel_path = file_url.lstrip("/")
+	abs_path = frappe.utils.get_site_path(rel_path)
+	if not os.path.exists(abs_path):
+		frappe.throw(_("File not found on disk for hash computation."))
+
+	digest = hashlib.sha256()
+	with open(abs_path, "rb") as handle:
+		for chunk in iter(lambda: handle.read(8192), b""):
+			digest.update(chunk)
+
+	return digest.hexdigest()
 
 
 def get_settings():
@@ -212,9 +237,11 @@ def _generic_context_from_doctype(parent, file_doc, settings) -> Dict[str, Any]:
 			logical_key = f"portfolio_{parent.name}"
 		else:  # Task Submission
 			task_name = getattr(parent, "task", parent.name)
-			sub = f"{student}/Tasks/Task-{task_name}"
-			file_category = "Task Submission"
-			logical_key = f"task_{task_name}"
+			return build_task_submission_context(
+				student=student,
+				task_name=task_name,
+				settings=settings,
+			)
 
 		return {
 			"root_folder": root,
@@ -262,15 +289,39 @@ def _build_full_folder_path(context: Dict[str, Any]) -> str:
 	return root
 
 
+def build_task_submission_context(*, student: str, task_name: str, settings=None) -> Dict[str, Any]:
+	"""Build deterministic routing context for Task Submission uploads."""
+	if not student:
+		frappe.throw(_("Cannot determine student for file routing."))
+	settings = settings or get_settings()
+	root = settings.students_root or "Home/Students"
+	sub = f"{student}/Tasks/Task-{task_name}"
+	return {
+		"root_folder": root,
+		"subfolder": sub,
+		"file_category": "Task Submission",
+		"logical_key": f"task_{task_name}",
+	}
+
+
 # ────────────────────────────────────────────────────────────────────────────
 # Main entrypoint for File hooks
 # ────────────────────────────────────────────────────────────────────────────
 
-def route_uploaded_file(doc, method: Optional[str] = None):
+def route_uploaded_file(doc, method: Optional[str] = None, context_override: Optional[Dict[str, Any]] = None):
 	"""
 	DocEvent hook for File.after_insert/on_update.
 	Decides where the file should live, sets versioning metadata, and renames/moves it.
 	"""
+
+	# ── HARD GDPR GATE ──────────────────────────────────────────────
+	if not frappe.db.exists(
+		"File Classification",
+		{"file": doc.name},
+	):
+		# File exists but has no governance.
+		# Do NOT route, version, rename, or finalize.
+		return
 
 	# Skip if not attached to any doc
 	if not (doc.attached_to_doctype and doc.attached_to_name):
@@ -286,16 +337,20 @@ def route_uploaded_file(doc, method: Optional[str] = None):
 		if getattr(doc, "custom_version_no", None):
 			return
 
-	parent = _get_parent_doc(doc)
-	if not parent:
-		return
-
 	settings = get_settings()
 
-	# Get context: first from parent method, then generic mapping
-	context = _context_from_parent_method(parent, doc)
-	if not context:
-		context = _generic_context_from_doctype(parent, doc, settings)
+	if context_override is not None:
+		if not isinstance(context_override, dict):
+			frappe.throw(_("Invalid routing context override."))
+		context = context_override
+	else:
+		parent = _get_parent_doc(doc)
+		if not parent:
+			return
+		# Get context: first from parent method, then generic mapping
+		context = _context_from_parent_method(parent, doc)
+		if not context:
+			context = _generic_context_from_doctype(parent, doc, settings)
 
 	# Ensure folder exists
 	folder_path = _build_full_folder_path(context)
