@@ -101,57 +101,79 @@ class Term(Document):
 			)
 
 	def create_calendar_events(self):
+		# Update existing events (dates only)
 		if self.at_start:
-			start_at = frappe.get_doc("School Event", self.at_start)
-			if getdate(start_at.starts_on) != getdate(self.term_start_date):
-				start_at.db_set("starts_on", self.term_start_date)
-				start_at.db_set("ends_on", self.term_start_date)
-				frappe.msgprint(_("Date for the start of the term {0} has been updated on the School Event Calendar {1}").format(self.term_start_date, get_link_to_form("School Event", start_at.name)))
+			start_evt = frappe.get_doc("School Event", self.at_start)
+			if getdate(start_evt.starts_on) != getdate(self.term_start_date):
+				start_evt.db_set("starts_on", self.term_start_date)
+				start_evt.db_set("ends_on", self.term_start_date)
+				frappe.msgprint(
+					_("Start of term date updated on School Event {0}")
+					.format(get_link_to_form("School Event", start_evt.name))
+				)
 
 		if self.at_end:
-			end_at = frappe.get_doc("School Event", self.at_end)
-			if getdate(end_at.ends_on) != getdate(self.term_end_date):
-				end_at.db_set("starts_on", self.term_end_date)
-				end_at.db_set("ends_on", self.term_end_date)
-				frappe.msgprint(_("Date for the end of the term {0} has been updated on the School Event Calendar {1}").format(self.term_end_date, get_link_to_form("School Event", end_at.name)))
+			end_evt = frappe.get_doc("School Event", self.at_end)
+			if getdate(end_evt.ends_on) != getdate(self.term_end_date):
+				end_evt.db_set("starts_on", self.term_end_date)
+				end_evt.db_set("ends_on", self.term_end_date)
+				frappe.msgprint(
+					_("End of term date updated on School Event {0}")
+					.format(get_link_to_form("School Event", end_evt.name))
+				)
 
-		if not self.at_start:
-			start_term = frappe.get_doc({
+		# Create missing events (MUST set school + audience)
+		if not self.at_start and self.term_start_date:
+			start_evt = frappe.get_doc({
 				"doctype": "School Event",
 				"owner": frappe.session.user,
-				"subject": "Start of the " + cstr(self.name) + " Academic Term",
+				"school": self.school,
+				"subject": _("Start of {0}").format(self.term_name),
 				"starts_on": getdate(self.term_start_date),
 				"ends_on": getdate(self.term_start_date),
-				"school": self.school if self.school else None,
 				"event_category": "Other",
-				"event_type": "Public",
-				"all_day": "1",
-				"color": "#7575ff",
+				"all_day": 1,
 				"reference_type": "Term",
-				"reference_name": self.name
+				"reference_name": self.name,
+				"audience": [
+					{"audience_type": "Whole School Community"}
+				],
 			})
-			start_term.insert()
-			self.db_set("at_start", start_term.name)
-			frappe.msgprint(_("Date for the start of the term {0} has been created on the School Event Calendar {1}").format(self.term_start_date, get_link_to_form("School Event", start_term.name)))
+			start_evt.flags.ignore_audience_permissions = True
+			start_evt.insert(ignore_permissions=True)
 
-		if not self.at_end:
-			end_term = frappe.get_doc({
+			self.db_set("at_start", start_evt.name)
+			frappe.msgprint(
+				_("Start of term event created: {0}")
+				.format(get_link_to_form("School Event", start_evt.name))
+			)
+
+		if not self.at_end and self.term_end_date:
+			end_evt = frappe.get_doc({
 				"doctype": "School Event",
 				"owner": frappe.session.user,
-				"subject": "End of the " + cstr(self.name) + " Academic Term",
+				"school": self.school,
+				"subject": _("End of {0}").format(self.term_name),
 				"starts_on": getdate(self.term_end_date),
 				"ends_on": getdate(self.term_end_date),
-				"school": self.school if self.school else None,
 				"event_category": "Other",
-				"event_type": "Public",
-				"all_day": "1",
-				"color": "#7575ff",
+				"all_day": 1,
 				"reference_type": "Term",
-				"reference_name": self.name
+				"reference_name": self.name,
+				"audience": [
+					{"audience_type": "Whole School Community"}
+				],
 			})
-			end_term.insert()
-			self.db_set("at_end", end_term.name)
-			frappe.msgprint(_("Date for the end of the term {0} has been created on the School Event Calendar {1}").format(self.term_end_date, get_link_to_form("School Event", end_term.name)))
+			end_evt.flags.ignore_audience_permissions = True
+			end_evt.insert(ignore_permissions=True)
+
+			self.db_set("at_end", end_evt.name)
+			frappe.msgprint(
+				_("End of term event created: {0}")
+				.format(get_link_to_form("School Event", end_evt.name))
+			)
+
+
 
 
 def get_schools_per_academic_year_for_terms(user_school):
