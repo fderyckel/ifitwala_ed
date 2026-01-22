@@ -1018,4 +1018,243 @@ Codex must:
 
 If this role is weakened, **every later phase becomes unsafe**.
 
+
+
 ---
+
+# Phase 5 — Admissions Portal
+
+## Canonical DTO & Implementation Addendum (LOCKED)
+
+> **Status:** Authoritative
+> **Audience:** Coding agents (SPA + backend)
+> **Precedence:**
+>
+> 1. `spa_architecture_and_rules.md`
+> 2. `admissions_governance_contract.md`
+> 3. This addendum
+> 4. `phase050.md` and `phase050_admission_portal.md`
+
+This addendum **fills all missing type and flow definitions** required to implement Phase 5 without inference.
+
+---
+
+## A. Canonical DTO Definitions (Frontend Contracts)
+
+All DTOs below are **read-only representations** derived from server truth.
+No frontend may infer or compute business logic.
+
+---
+
+### A.1 `NextAction` (LOCKED)
+
+Used by the portal to guide families toward required steps.
+
+```ts
+export type NextAction = {
+  label: string
+  route_name: string      // Vue Router named route
+  intent: 'primary' | 'secondary' | 'neutral'
+  is_blocking: boolean    // If true, prevents submission
+  icon?: string           // Optional UI icon identifier
+}
+```
+
+**Rules**
+
+* `route_name` must reference a valid admissions SPA route
+* `is_blocking = true` means submission is disabled until resolved
+* UI must not infer actions — only render what is provided
+
+---
+
+### A.2 `CompletionState` (LOCKED)
+
+Used for high-level progress indicators only.
+
+```ts
+export type CompletionState =
+  | 'pending'
+  | 'in_progress'
+  | 'complete'
+  | 'optional'
+```
+
+**Rules**
+
+* No counts or thresholds in this type
+* Specific deficiencies are expressed via `NextAction[]`
+* UI badges must map **directly** to these values
+
+---
+
+### A.3 `ApplicantStatus` (LOCKED ENUM)
+
+This enum defines **all possible Applicant lifecycle states visible to the portal**.
+
+```ts
+export type ApplicantStatus =
+  | 'Draft'
+  | 'In Review'
+  | 'Action Required'
+  | 'Accepted'
+  | 'Waitlisted'
+  | 'Rejected'
+  | 'Withdrawn'
+```
+
+**Rules**
+
+* Strings must match backend values exactly
+* No frontend remapping
+* Status transitions remain server-controlled
+
+---
+
+### A.4 `ApplicantDocument` DTO (LOCKED)
+
+```ts
+export type ApplicantDocument = {
+  name: string
+  document_type: string
+  review_status: 'Pending' | 'Approved' | 'Rejected'
+  uploaded_at: string
+  file_url: string        // Signed or private URL, server-generated
+}
+```
+
+**Rules**
+
+* `file_url` must be directly usable for preview/download
+* Frontend never queries `File` directly
+* All file access is mediated by this DTO
+
+---
+
+### A.5 `ApplicantPolicy` DTO (LOCKED)
+
+Returned by `GET /api/admissions/policies/:applicant`
+
+```ts
+export type ApplicantPolicy = {
+  name: string
+  policy_version: string
+  content_html: string
+  is_acknowledged: boolean
+  acknowledged_at?: string
+}
+```
+
+**Rules**
+
+* `content_html` is authoritative policy text
+* UI must not fetch policy content elsewhere
+* Acknowledgement is version-specific
+
+---
+
+## B. Session & Read-Only Semantics
+
+### B.1 `AdmissionsSession` Addendum (LOCKED)
+
+To explain **why** editing is disabled, the following field is mandatory:
+
+```ts
+export type AdmissionsSession = {
+  applicant: string
+  applicant_status: ApplicantStatus
+  is_read_only: boolean
+  read_only_reason: string | null
+}
+```
+
+**Examples**
+
+* `"Application submitted"`
+* `"Application under review"`
+* `"Admissions cycle closed"`
+* `"Applicant rejected"`
+
+**Rules**
+
+* If `is_read_only = true`, `read_only_reason` must be non-null
+* UI must display this explanation verbatim
+* No inferred messaging
+
+---
+
+### B.2 Read-Only Enforcement Rules
+
+Editing is blocked if **any** of the following is true:
+
+* Applicant status ∈ {In Review, Accepted, Waitlisted, Rejected, Withdrawn}
+* Submission timestamp exists
+* Admissions staff explicitly locked the Applicant
+
+Frontend must treat read-only as **absolute**.
+
+---
+
+## C. Backend Workflow Clarifications (Codex-Safe)
+
+---
+
+### C.1 Invite Applicant Workflow (MANDATORY)
+
+User creation **must never be manual**.
+
+A single server method is authoritative:
+
+```python
+invite_applicant(
+  email: str,
+  student_applicant: str
+) -> None
+```
+
+**This method must atomically:**
+
+1. Create a Frappe User
+2. Assign role: `Admissions Applicant`
+3. Link User ↔ Student Applicant
+4. Send invite communication (Phase 4 dependency)
+5. Enforce one-user-per-applicant invariant
+
+**No Desk-based user creation is allowed.**
+
+---
+
+### C.2 File Access Model (Clarified)
+
+* Applicant files are accessed **only** via:
+
+  * `ApplicantDocument.file_url`
+* No generic `/files` browsing
+* No shared access across applicants
+* File routing follows `files_01_architecture_notes.md`
+
+---
+
+### C.3 Transport Wrapper Compliance
+
+All Phase 5 endpoints must comply with:
+
+* `spa_architecture_and_rules.md` §2.5
+* Standard Ifitwala transport envelope
+* No raw Frappe responses in components
+
+SPA must consume **domain DTOs only**.
+
+---
+
+## Final Lock Statement
+
+> Phase 5 UX is now fully specified.
+>
+> * All DTOs are defined
+> * All enums are fixed
+> * All workflows are explicit
+> * No frontend inference is permitted
+>
+> Any implementation deviation is a **contract violation**, not a creative choice.
+
