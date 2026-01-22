@@ -199,6 +199,7 @@ doc_events = {
 		"after_save": "ifitwala_ed.hr.employee_access.sync_user_access_from_employee"
 	},
   "File": {
+		"validate": "ifitwala_ed.utilities.file_management.validate_admissions_attachment",
 		"after_insert": "ifitwala_ed.utilities.file_dispatcher.handle_file_after_insert",
 		"on_update": "ifitwala_ed.utilities.file_dispatcher.handle_file_on_update",
     },

@@ -7,6 +7,7 @@ frappe.ui.form.on("Student Applicant", {
 			return;
 		}
 		render_review_sections(frm);
+		add_decision_actions(frm);
 	},
 });
 
@@ -38,13 +39,14 @@ function set_html(frm, fieldname, html) {
 
 function render_snapshot(data) {
 	const ready = data.ready ? "Yes" : "No";
+	const issues = data.issues || [];
 	return [
-		render_line("Ready (informational only)", escape_html(ready)),
+		render_line("Ready for approval", escape_html(ready)),
+		render_line("Readiness issues", render_list(issues)),
 		render_line("Policies", render_ok_label(data.policies)),
 		render_line("Documents", render_ok_label(data.documents)),
 		render_line("Health", render_ok_label(data.health)),
 		render_line("Interviews", render_ok_label(data.interviews)),
-		"<div class='text-muted' style='margin-top: 6px;'>Readiness is informational only.</div>",
 	].join("");
 }
 
@@ -82,10 +84,13 @@ function render_documents(documents) {
 	if (!documents) {
 		return render_empty("No document data.");
 	}
-	if (!documents.rejected || !documents.rejected.length) {
-		return render_line("Status", "No rejected documents.");
+	if (documents.ok) {
+		return render_line("Status", "All required documents approved.");
 	}
-	return render_line("Rejected types", render_list(documents.rejected));
+	return [
+		render_line("Missing", render_list(documents.missing)),
+		render_line("Not approved", render_list(documents.unapproved)),
+	].join("");
 }
 
 function render_ok_label(section) {
@@ -122,4 +127,53 @@ function map_health_status(status) {
 		return "Needs Follow-Up";
 	}
 	return "Pending";
+}
+
+function add_decision_actions(frm) {
+	const status = frm.doc.application_status;
+	["Approve", "Reject", "Promote"].forEach((label) => frm.remove_custom_button(label));
+
+	if (status === "Under Review") {
+		frm.add_custom_button("Approve", () => {
+			frappe.confirm("Approve this applicant?", () => {
+				frm.call("approve_application")
+					.then(() => frm.reload_doc())
+					.catch((err) => {
+						frappe.msgprint(err.message || "Unable to approve applicant.");
+					});
+			});
+		});
+
+		frm.add_custom_button("Reject", () => {
+			frappe.prompt(
+				{
+					label: "Rejection Reason",
+					fieldname: "reason",
+					fieldtype: "Small Text",
+					reqd: 1,
+				},
+				(values) => {
+					frm.call("reject_application", { reason: values.reason })
+						.then(() => frm.reload_doc())
+						.catch((err) => {
+							frappe.msgprint(err.message || "Unable to reject applicant.");
+						});
+				},
+				"Reject Applicant",
+				"Reject"
+			);
+		});
+	}
+
+	if (status === "Approved") {
+		frm.add_custom_button("Promote", () => {
+			frappe.confirm("Promote this applicant to Student?", () => {
+				frm.call("promote_to_student")
+					.then(() => frm.reload_doc())
+					.catch((err) => {
+						frappe.msgprint(err.message || "Unable to promote applicant.");
+					});
+			});
+		});
+	}
 }

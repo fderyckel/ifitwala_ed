@@ -13,6 +13,7 @@ from ifitwala_ed.admission.admission_utils import ensure_admissions_permission, 
 
 FAMILY_ROLES = {"Guardian"}
 SYSTEM_MANAGER_ROLE = "System Manager"
+DECISION_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
 
 STATUS_SET = {
 	"Draft",
@@ -212,8 +213,16 @@ class StudentApplicant(Document):
 	# Lifecycle helpers
 	# ---------------------------------------------------------------------
 
-	def _set_status(self, new_status, action_label):
-		ensure_admissions_permission()
+	def _ensure_decision_permission(self):
+		user = frappe.session.user
+		roles = set(frappe.get_roles(user))
+		if roles & DECISION_ROLES:
+			return user
+		frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
+
+	def _set_status(self, new_status, action_label, permission_checker=ensure_admissions_permission, comment_suffix=None):
+		if permission_checker:
+			permission_checker()
 
 		if self.is_new():
 			frappe.throw(_("Save the Student Applicant before changing status."))
@@ -229,17 +238,21 @@ class StudentApplicant(Document):
 		self.application_status = new_status
 		self.save(ignore_permissions=True)
 
+		comment_text = _(
+			"{0} by {1} on {2}. Status: {3} → {4}."
+		).format(
+			action_label,
+			frappe.bold(frappe.session.user),
+			now_datetime(),
+			previous,
+			new_status,
+		)
+		if comment_suffix:
+			comment_text = f"{comment_text} {comment_suffix}"
+
 		self.add_comment(
 			"Comment",
-			text=_(
-				"{0} by {1} on {2}. Status: {3} → {4}."
-			).format(
-				action_label,
-				frappe.bold(frappe.session.user),
-				now_datetime(),
-				previous,
-				new_status,
-			),
+			text=comment_text,
 		)
 		return {"ok": True, "changed": True}
 
@@ -257,11 +270,26 @@ class StudentApplicant(Document):
 
 	@frappe.whitelist()
 	def approve_application(self):
-		return self._set_status("Approved", "Application approved")
+		self._ensure_decision_permission()
+		self._validate_ready_for_approval()
+		return self._set_status(
+			"Approved",
+			"Application approved",
+			permission_checker=self._ensure_decision_permission,
+		)
 
 	@frappe.whitelist()
-	def reject_application(self):
-		return self._set_status("Rejected", "Application rejected")
+	def reject_application(self, reason=None):
+		self._ensure_decision_permission()
+		if not reason:
+			frappe.throw(_("Rejection reason is required."))
+		reason_text = _("Reason: {0}.").format(reason)
+		return self._set_status(
+			"Rejected",
+			"Application rejected",
+			permission_checker=self._ensure_decision_permission,
+			comment_suffix=reason_text,
+		)
 
 	# ---------------------------------------------------------------------
 	# Promotion (Phase 1 – minimal, strict)
@@ -275,6 +303,7 @@ class StudentApplicant(Document):
 			frappe.throw(_("Applicant must be Approved before promotion."))
 
 		if self.student:
+			self._copy_promotable_documents(self.student)
 			self._set_status("Promoted", "Applicant promoted")
 			return self.student
 
@@ -283,6 +312,7 @@ class StudentApplicant(Document):
 			self.flags.from_promotion = True
 			self.student = existing
 			self.save(ignore_permissions=True)
+			self._copy_promotable_documents(existing)
 			self._set_status("Promoted", "Applicant promoted")
 			return existing
 
@@ -295,10 +325,13 @@ class StudentApplicant(Document):
 				"student_middle_name": self.middle_name,
 				"student_last_name": self.last_name,
 				"student_applicant": self.name,
+				"allow_direct_creation": 1,
 			})
 			student.insert(ignore_permissions=True)
 		finally:
 			frappe.flags.from_applicant_promotion = prev_flag
+
+		self._copy_promotable_documents(student.name)
 
 		self.flags.from_promotion = True
 		self.student = student.name
@@ -346,27 +379,39 @@ class StudentApplicant(Document):
 		)
 		return {"ok": True}
 
+	def _validate_ready_for_approval(self):
+		snapshot = self.get_readiness_snapshot()
+		if snapshot.get("ready"):
+			return
+		issues = snapshot.get("issues") or []
+		if not issues:
+			issues = ["Applicant readiness requirements are not met."]
+		frappe.throw("\n".join(issues))
+
 	def has_required_policies(self):
 		if not self.organization:
-			return {"ok": False, "missing": []}
+			return {"ok": False, "missing": [], "required": []}
 
 		rows = frappe.db.sql(
 			"""
-			SELECT pv.name AS policy_version, ip.policy_key AS policy_key
-			  FROM `tabPolicy Version` pv
-			  JOIN `tabInstitutional Policy` ip
+			SELECT ip.name AS policy_name,
+			       ip.policy_key AS policy_key,
+			       pv.name AS policy_version
+			  FROM `tabInstitutional Policy` ip
+			  JOIN `tabPolicy Version` pv
 			    ON pv.institutional_policy = ip.name
-			 WHERE pv.is_active = 1
-			   AND ip.is_active = 1
+			 WHERE ip.is_active = 1
+			   AND pv.is_active = 1
 			   AND ip.organization = %s
+			   AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
 			   AND ip.applies_to LIKE %s
 			""",
-			(self.organization, "%Applicant%"),
+			(self.organization, self.school, "%Applicant%"),
 			as_dict=True,
 		)
 
 		if not rows:
-			return {"ok": True, "missing": []}
+			return {"ok": True, "missing": [], "required": []}
 
 		versions = [row["policy_version"] for row in rows]
 		acknowledged = set(
@@ -382,23 +427,60 @@ class StudentApplicant(Document):
 			)
 		)
 
+		required = [row["policy_key"] or row["policy_name"] for row in rows]
 		missing = [
-			row["policy_key"]
+			row["policy_key"] or row["policy_name"]
 			for row in rows
 			if row["policy_version"] not in acknowledged
 		]
-		return {"ok": not missing, "missing": missing}
+		return {"ok": not missing, "missing": missing, "required": required}
 
 	def has_required_documents(self):
+		if not self.organization:
+			return {"ok": False, "missing": [], "unapproved": [], "required": []}
+
+		required_types = frappe.db.sql(
+			"""
+			SELECT name, code, document_type_name
+			  FROM `tabApplicant Document Type`
+			 WHERE is_required = 1
+			   AND is_active = 1
+			   AND (organization IS NULL OR organization = '' OR organization = %s)
+			   AND (school IS NULL OR school = '' OR school = %s)
+			""",
+			(self.organization, self.school),
+			as_dict=True,
+		)
+
+		if not required_types:
+			return {"ok": True, "missing": [], "unapproved": [], "required": []}
+
+		required_names = {
+			row["name"]: (row["code"] or row["document_type_name"] or row["name"])
+			for row in required_types
+		}
+
 		rows = frappe.get_all(
 			"Applicant Document",
-			filters={"student_applicant": self.name},
+			filters={"student_applicant": self.name, "document_type": ["in", list(required_names.keys())]},
 			fields=["document_type", "review_status"],
 		)
-		rejected = [
-			row["document_type"] for row in rows if row["review_status"] == "Rejected"
-		]
-		return {"ok": not rejected, "missing": [], "rejected": rejected}
+		status_map = {row["document_type"]: row["review_status"] for row in rows}
+
+		missing = []
+		unapproved = []
+		for doc_type, label in required_names.items():
+			if doc_type not in status_map:
+				missing.append(label)
+			elif status_map[doc_type] != "Approved":
+				unapproved.append(label)
+
+		return {
+			"ok": not missing and not unapproved,
+			"missing": missing,
+			"unapproved": unapproved,
+			"required": list(required_names.values()),
+		}
 
 	def health_review_complete(self):
 		status = frappe.db.get_value(
@@ -427,14 +509,27 @@ class StudentApplicant(Document):
 		health = self.health_review_complete()
 		interviews = self.has_required_interviews()
 
-		ready = all(
-			[
-				policies.get("ok"),
-				documents.get("ok"),
-				health.get("ok"),
-				interviews.get("ok"),
-			]
-		)
+		ready = all([policies.get("ok"), documents.get("ok"), health.get("ok")])
+		issues = []
+		if not policies.get("ok"):
+			missing = policies.get("missing") or []
+			if missing:
+				issues.append(_("Missing policy acknowledgements: {0}.").format(", ".join(missing)))
+			else:
+				issues.append(_("Missing required policy acknowledgements."))
+		if not health.get("ok"):
+			status = health.get("status") or "missing"
+			if status == "needs_follow_up":
+				issues.append(_("Health review requires follow-up."))
+			else:
+				issues.append(_("Health profile is missing or not cleared."))
+		if not documents.get("ok"):
+			missing = documents.get("missing") or []
+			unapproved = documents.get("unapproved") or []
+			if missing:
+				issues.append(_("Missing required documents: {0}.").format(", ".join(missing)))
+			if unapproved:
+				issues.append(_("Required documents not approved: {0}.").format(", ".join(unapproved)))
 
 		return {
 			"policies": policies,
@@ -442,4 +537,63 @@ class StudentApplicant(Document):
 			"health": health,
 			"interviews": interviews,
 			"ready": bool(ready),
+			"issues": issues,
 		}
+
+	def _copy_promotable_documents(self, student_name):
+		from frappe.utils.file_manager import get_file, save_file
+
+		rows = frappe.get_all(
+			"Applicant Document",
+			filters={
+				"student_applicant": self.name,
+				"review_status": "Approved",
+				"promotion_target": "Student",
+			},
+			fields=["name"],
+		)
+
+		for row in rows:
+			file_row = frappe.get_all(
+				"File",
+				filters={
+					"attached_to_doctype": "Applicant Document",
+					"attached_to_name": row["name"],
+					"custom_is_latest": 1,
+				},
+				fields=["name", "file_url", "file_name", "is_private"],
+				order_by="creation desc",
+				limit=1,
+			)
+			if not file_row:
+				file_row = frappe.get_all(
+					"File",
+					filters={
+						"attached_to_doctype": "Applicant Document",
+						"attached_to_name": row["name"],
+					},
+					fields=["name", "file_url", "file_name", "is_private"],
+					order_by="creation desc",
+					limit=1,
+				)
+			if not file_row:
+				continue
+			file_doc = file_row[0]
+			if not file_doc.get("file_url"):
+				continue
+			try:
+				file_name, content = get_file(file_doc["file_url"])
+			except Exception:
+				frappe.log_error(
+					frappe.get_traceback(),
+					f"Applicant promotion file copy failed ({row['name']})",
+				)
+				continue
+			save_file(
+				filename=file_name or file_doc.get("file_name") or "document",
+				content=content,
+				doctype="Student",
+				name=student_name,
+				is_private=file_doc.get("is_private", 0),
+				decode=False,
+			)

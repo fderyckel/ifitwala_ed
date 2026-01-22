@@ -680,3 +680,426 @@ This is how **PowerSchool, Workday, and SAP Education** actually operate:
 
 ---
 
+
+
+
+
+
+
+
+# GDPR — NEXT STEPS (EXECUTION TRACK, NO DRIFT)
+
+This is **purely operational follow-through** on what is already locked.
+
+---
+
+## ✅ STEP 4 — GDPR Erasure Log (MANDATORY)
+
+You cannot execute GDPR erasure without a **first-class audit object**.
+
+### New Doctype: `GDPR Erasure Log`
+
+**Purpose**
+Immutable legal evidence that erasure occurred.
+
+### Fields (LOCKED)
+
+| Field             | Type        | Notes                           |
+| ----------------- | ----------- | ------------------------------- |
+| `subject_type`    | Select      | `Applicant`, `Student`          |
+| `subject_doctype` | Data        | `Student Applicant` / `Student` |
+| `subject_name`    | Data        | Internal ID only                |
+| `action`          | Select      | `Erase`, `Pseudonymize`         |
+| `legal_basis`     | Data        | e.g. `GDPR Art. 17`             |
+| `reason`          | Small Text  | Required                        |
+| `executed_by`     | Link → User | DPO / System Manager            |
+| `executed_on`     | Datetime    | System                          |
+| `irreversible`    | Check       | Always true                     |
+
+**Hard rules**
+
+* ❌ No delete
+* ❌ No edit
+* ❌ No child tables
+* ❌ No file attachments
+
+This log is **never erased**.
+
+---
+
+## ✅ STEP 5 — Controller Guards (ENFORCEMENT)
+
+Contracts are useless without hard guards.
+
+### A. Student Applicant
+
+**In `student_applicant.py`:**
+
+* `before_delete` → always `frappe.throw`
+* No direct deletes allowed
+* Only erasure path:
+
+  ```python
+  erase_applicant_data(applicant_name, reason)
+  ```
+
+---
+
+### B. Student
+
+**In `student.py`:**
+
+* `before_delete` → always `frappe.throw`
+* No deletion ever
+* Only erasure path:
+
+  ```python
+  pseudonymize_student(student_name, reason)
+  ```
+
+---
+
+### C. File
+
+**Global rule**
+
+* Never cascade delete Files from ORM
+* Files deleted **only** by:
+
+  * Applicant erasure orchestration
+  * Explicit Student photo erase
+
+This preserves audit safety.
+
+---
+
+## ✅ STEP 6 — Erasure Orchestrators (CORE LOGIC)
+
+These are **the only executable GDPR actions**.
+
+### 1️⃣ `erase_applicant_data(applicant_name, reason)`
+
+**Order matters** (transactional):
+
+1. Validate:
+
+   * not promoted
+   * executor is DPO / System Manager
+2. Create `GDPR Erasure Log`
+3. Delete in strict order:
+
+   * Applicant sub-doctypes
+   * Applicant Documents
+   * Files under Applicant folder
+   * Student Applicant row
+4. Commit
+5. No background jobs
+
+Failure at any point → rollback.
+
+---
+
+### 2️⃣ `pseudonymize_student(student_name, reason)`
+
+1. Validate:
+
+   * academic records exist
+   * executor authority
+2. Create `GDPR Erasure Log`
+3. Replace personal fields
+4. Remove photos
+5. Disable linked User
+6. Set `gdpr_erased = 1`
+7. Commit
+
+**Never deletes Student row.**
+
+---
+
+## ✅ STEP 7 — Retention Enforcement (PASSIVE ONLY)
+
+Retention **never auto-erases**.
+
+### Scheduler job (daily)
+
+* Identify:
+
+  * expired applicants
+  * expired rejected applicants
+* Notify DPO
+* Show counts only
+
+❌ No delete
+❌ No auto-execute
+
+This keeps you legally safe.
+
+---
+
+## 🚦 Where we are now
+
+| GDPR Item                  | Status   |
+| -------------------------- | -------- |
+| Canonical erasure contract | ✅ Locked |
+| DPO role & authority       | ✅ Locked |
+| Retention policy schema    | ✅ Locked |
+| Erasure Log design         | 🟡 Next  |
+| Controller guards          | 🟡 Next  |
+| Orchestrator methods       | 🟡 Next  |
+
+---
+
+
+
+
+
+
+
+
+
+
+# GDPR Erasure Log — Doctype (Authoritative)
+
+## 1️⃣ Doctype JSON
+
+**File:**
+`ifitwala_ed/governance/doctype/gdpr_erasure_log/gdpr_erasure_log.json`
+
+```json
+{
+ "doctype": "DocType",
+ "name": "GDPR Erasure Log",
+ "module": "Governance",
+ "custom": 0,
+ "is_submittable": 0,
+ "allow_rename": 0,
+ "allow_import": 0,
+ "track_changes": 0,
+ "read_only": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "subject_section",
+  "subject_type",
+  "subject_doctype",
+  "subject_name",
+  "action_section",
+  "action",
+  "legal_basis",
+  "reason",
+  "execution_section",
+  "executed_by",
+  "executed_on",
+  "irreversible"
+ ],
+ "fields": [
+  {
+   "fieldname": "subject_section",
+   "fieldtype": "Section Break",
+   "label": "Data Subject"
+  },
+  {
+   "fieldname": "subject_type",
+   "fieldtype": "Select",
+   "label": "Subject Type",
+   "options": "Applicant\nStudent",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "subject_doctype",
+   "fieldtype": "Data",
+   "label": "Subject Doctype",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "subject_name",
+   "fieldtype": "Data",
+   "label": "Subject Identifier",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "action_section",
+   "fieldtype": "Section Break",
+   "label": "Erasure Action"
+  },
+  {
+   "fieldname": "action",
+   "fieldtype": "Select",
+   "label": "Action",
+   "options": "Erase\nPseudonymize",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "legal_basis",
+   "fieldtype": "Data",
+   "label": "Legal Basis",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "execution_section",
+   "fieldtype": "Section Break",
+   "label": "Execution"
+  },
+  {
+   "fieldname": "executed_by",
+   "fieldtype": "Link",
+   "label": "Executed By",
+   "options": "User",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "executed_on",
+   "fieldtype": "Datetime",
+   "label": "Executed On",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "irreversible",
+   "fieldtype": "Check",
+   "label": "Irreversible Action",
+   "default": "1",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "create": 0,
+   "write": 0,
+   "delete": 0
+  },
+  {
+   "role": "Data Protection Officer",
+   "read": 1,
+   "create": 0,
+   "write": 0,
+   "delete": 0
+  }
+ ],
+ "indexes": [
+  {
+   "fields": ["subject_type", "subject_name"]
+  }
+ ]
+}
+```
+
+---
+
+## 2️⃣ Python Controller
+
+**File:**
+`ifitwala_ed/governance/doctype/gdpr_erasure_log/gdpr_erasure_log.py`
+
+```python
+# Copyright (c) 2026
+# License: see license.txt
+
+import frappe
+from frappe.model.document import Document
+from frappe import _
+
+
+class GDPRErasureLog(Document):
+	"""
+	Immutable legal audit record for GDPR erasure and pseudonymization.
+
+	This document must:
+	- never be edited
+	- never be deleted
+	- only be created programmatically
+	"""
+
+	def before_insert(self):
+		# Enforce server-only creation
+		if not frappe.flags.in_gdpr_erasure:
+			frappe.throw(
+				_("GDPR Erasure Logs can only be created by the system."),
+				title=_("Operation Not Permitted")
+			)
+
+		self.executed_by = frappe.session.user
+		self.executed_on = frappe.utils.now_datetime()
+		self.irreversible = 1
+
+	def before_update(self):
+		frappe.throw(
+			_("GDPR Erasure Logs are immutable."),
+			title=_("Operation Not Permitted")
+		)
+
+	def before_delete(self):
+		frappe.throw(
+			_("GDPR Erasure Logs cannot be deleted."),
+			title=_("Operation Not Permitted")
+		)
+```
+
+---
+
+## 3️⃣ Mandatory Creation Pattern (LOCKED)
+
+Every erasure orchestrator **must** create the log like this:
+
+```python
+frappe.flags.in_gdpr_erasure = True
+
+frappe.get_doc({
+	"doctype": "GDPR Erasure Log",
+	"subject_type": "Applicant",
+	"subject_doctype": "Student Applicant",
+	"subject_name": applicant.name,
+	"action": "Erase",
+	"legal_basis": "GDPR Art. 17",
+	"reason": reason
+}).insert(ignore_permissions=True)
+
+frappe.flags.in_gdpr_erasure = False
+```
+
+❌ No manual creation
+❌ No UI creation
+❌ No backfilling
+❌ No edits
+
+---
+
+## 4️⃣ Why this is correct (short, blunt)
+
+* Immutable → **audit-safe**
+* Server-only → **abuse-proof**
+* Separate from subject → **GDPR-compliant**
+* No attachments → **no secondary leakage**
+* Indexed → **fast audits**
+
+This matches **EU DPA expectations**, not “checkbox GDPR”.
+
+---
+
+## 5️⃣ GDPR Task Status (Updated)
+
+| Item                  | Status |
+| --------------------- | ------ |
+| GDPR erasure contract | ✅      |
+| DPO role              | ✅      |
+| Retention config      | ✅      |
+| GDPR Erasure Log      | ✅      |
+| Controller guards     | ⏭ next |
+| Erasure orchestrators | ⏭ next |
+
+---
+

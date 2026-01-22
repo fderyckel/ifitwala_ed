@@ -8,6 +8,9 @@
  "field_order": [
   "code",
   "document_type_name",
+  "organization",
+  "school",
+  "is_required",
   "is_active",
   "description"
  ],
@@ -24,6 +27,24 @@
    "fieldtype": "Data",
    "label": "Document Type Name",
    "reqd": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_required",
+   "fieldtype": "Check",
+   "label": "Is Required"
   },
   {
    "default": "1",

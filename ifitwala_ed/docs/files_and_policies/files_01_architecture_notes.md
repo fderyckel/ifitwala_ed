@@ -372,13 +372,274 @@ Is considered **architecturally invalid** and must be refactored.
 
 We proceed in this exact order:
 
-1. Add `data_class` + `retention_policy` to File metadata
-2. Enforce dispatcher‑only uploads (all surfaces)
+1. Add `File Classification` Doctype (single, system-wide)
+2. Enforce dispatcher-only uploads (all surfaces)
 3. Separate grades / analytics from file content
 4. Implement GDPR erasure workflow
-5. Prepare crypto‑erase capability (design‑ready)
+5. Prepare crypto-erase capability (design-ready)
 
 No feature work proceeds that violates this sequence.
+
+---
+
+## 16. Decision lock
+
+**Architecture decision:**
+
+* File governance uses **one system-wide `File Classification` Doctype**
+* No domain-specific subclasses in v1
+* Schema must remain extensible without breaking contracts
+
+This decision is **locked for v1**.
+
+---
+
+**End of authoritative note.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Why this choice is correct (brief, practical)
+
+This supports **real school reality** without breaking GDPR logic:
+
+* Group assignments (3–5 students, one submission)
+* Siblings (documents referencing more than one child)
+* Safeguarding notes involving multiple students
+* Parent–student joint documents
+
+At the same time:
+
+* **One primary subject** keeps erasure deterministic
+* Secondary subjects are **referential**, not ownership chaos
+* No ambiguity about *who “owns” deletion authority*
+
+This aligns with how serious SaaS systems model *data controllers vs data subjects*.
+
+---
+
+# STEP 1 — `File Classification` Doctype (AUTHORITATIVE)
+
+Below is the **locked v1 schema**.
+This is the backbone. Everything else builds on this.
+
+---
+
+## 1. Doctype: `File Classification`
+
+**Type:** Standard (not Single)
+**Cardinality:** 1:1 with `File` (mandatory)
+
+---
+
+## 2. Core identity fields
+
+### 🔑 File linkage (mandatory)
+
+| Field              | Type        | Notes                |
+| ------------------ | ----------- | -------------------- |
+| `file`             | Link → File | **Required**, unique |
+| `attached_doctype` | Data        | Cached from File     |
+| `attached_name`    | Data        | Cached from File     |
+
+> We denormalize `attached_*` for fast queries and GDPR sweeps.
+
+---
+
+## 3. Data subject model (GDPR-critical)
+
+### 3.1 Primary subject (mandatory)
+
+| Field                  | Type                                    |
+| ---------------------- | --------------------------------------- |
+| `primary_subject_type` | Select (`student`, `guardian`, `staff`) |
+| `primary_subject_id`   | Dynamic Link                            |
+
+**Rules**
+
+* Exactly **one** primary subject
+* Primary subject determines:
+
+  * Erasure authority
+  * Retention countdown
+  * Crypto-erase scope (future)
+
+---
+
+### 3.2 Secondary subjects (optional)
+
+Child table: **`File Classification Subject`**
+
+| Field          | Type                                            |
+| -------------- | ----------------------------------------------- |
+| `subject_type` | Select                                          |
+| `subject_id`   | Dynamic Link                                    |
+| `role`         | Select (`co-owner`, `referenced`, `contextual`) |
+
+**Rules**
+
+* Secondary subjects:
+
+  * Do **not** control deletion
+  * Are included in *impact analysis*
+* Used for:
+
+  * Group work
+  * Multi-student references
+  * Safeguarding context
+
+---
+
+## 4. Data classification & purpose
+
+| Field        | Type   | Required |
+| ------------ | ------ | -------- |
+| `data_class` | Select | ✅        |
+| `purpose`    | Select | ✅        |
+
+### `data_class` (locked values)
+
+```
+academic
+assessment
+safeguarding
+administrative
+legal
+operational
+```
+
+### `purpose` (machine-readable)
+
+Examples:
+
+```
+assessment_submission
+feedback
+identity_verification
+contractual
+safeguarding_review
+```
+
+> **GDPR rule:**
+> If `purpose` expires → deletion must be possible.
+
+---
+
+## 5. Retention & deletion control
+
+| Field              | Type   | Required     |
+| ------------------ | ------ | ------------ |
+| `retention_policy` | Select | ✅            |
+| `retention_until`  | Date   | ⛔ (computed) |
+| `legal_hold`       | Check  | ⛔            |
+| `erasure_state`    | Select | ⛔            |
+
+### `retention_policy` (v1)
+
+```
+until_program_end_plus_1y
+until_school_exit_plus_6m
+fixed_7y
+immediate_on_request
+```
+
+### `erasure_state`
+
+```
+active
+pending
+blocked_legal
+erased
+```
+
+---
+
+## 6. Slot & versioning awareness
+
+| Field                | Type  | Required |
+| -------------------- | ----- | -------- |
+| `slot`               | Data  | ✅        |
+| `version_number`     | Int   | ⛔        |
+| `is_current_version` | Check | ⛔        |
+
+> Versioning remains **slot-based**, enforced by dispatcher.
+
+---
+
+## 7. Organization & school anchoring
+
+| Field          | Type                | Required |
+| -------------- | ------------------- | -------- |
+| `organization` | Link → Organization | ✅        |
+| `school`       | Link → School       | ✅        |
+
+**Rules**
+
+* `school` must be in the allowed subtree
+* Cached here for:
+
+  * Fast GDPR queries
+  * School-scoped erasure
+  * Backup key scoping (future)
+
+---
+
+## 8. Invariants (non-negotiable)
+
+1. A `File` **cannot exist** without a `File Classification`
+2. Dispatcher **must create both atomically**
+3. Direct `File.insert()` without classification = **bug**
+4. Deletion checks:
+
+   * `legal_hold = 1` → hard block
+   * `erasure_state != active` → no writes
+5. Secondary subjects never override primary subject rights
+
+---
+
+## 9. Dispatcher enforcement (preview)
+
+When a file is uploaded, dispatcher must receive:
+
+```python
+{
+  file,
+  slot,
+  primary_subject_type,
+  primary_subject_id,
+  secondary_subjects=[],
+  data_class,
+  purpose,
+  retention_policy,
+  organization,
+  school
+}
+```
+
+Missing any **mandatory** field → reject upload.
+
+---
+
+## 10. Why this is superior (explicitly)
+
+With this model, you can:
+
+* Delete **all data for one student** deterministically
+* Delete **only task files**, keep grades
+* Answer regulators in minutes, not weeks
+* Add crypto-erase later without refactor
+* Handle edge cases without schema hacks
+
+Most ed platforms **cannot** do this cleanly.
 
 ---
 

@@ -74,6 +74,17 @@ def _get_parent_doc(file_doc) -> Optional[frappe.model.document.Document]:
 	return frappe.get_doc(file_doc.attached_to_doctype, file_doc.attached_to_name)
 
 
+def validate_admissions_attachment(doc, method: Optional[str] = None):
+	"""Block direct attachments on Student Applicant except applicant_image."""
+	if doc.attached_to_doctype != "Student Applicant":
+		return
+	if doc.attached_to_field == "applicant_image":
+		return
+	frappe.throw(
+		_("Admissions files must be attached to Applicant Document (only applicant_image is allowed on Student Applicant).")
+	)
+
+
 # ────────────────────────────────────────────────────────────────────────────
 # Versioning
 # ────────────────────────────────────────────────────────────────────────────

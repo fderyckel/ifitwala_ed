@@ -94,6 +94,12 @@ class Student(Document):
 			return
 
 		# Explicit bypass for migration / import
+		if getattr(frappe.flags, "in_migration", False):
+			return
+		if getattr(frappe.flags, "in_import", False):
+			return
+		if getattr(frappe.flags, "allow_direct_student_create", False):
+			return
 		if self.allow_direct_creation:
 			return
 
