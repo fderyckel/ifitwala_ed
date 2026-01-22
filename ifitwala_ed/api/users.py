@@ -60,6 +60,18 @@ def redirect_user_to_entry_portal():
 
 		return
 
+	# ---------------------------------------------------------------
+	# 3) Admissions Applicant: always /admissions
+	# ---------------------------------------------------------------
+	roles = set(frappe.get_roles(user))
+	if "Admissions Applicant" in roles:
+		current_home = (frappe.db.get_value("User", user, "home_page") or "").strip()
+		if not current_home:
+			_force_redirect("/admissions", also_set_home_page=True)
+		else:
+			if current_home == "/admissions":
+				_force_redirect("/admissions", also_set_home_page=False)
+
 	# Others: do nothing (Desk defaults remain)
 	return
 

@@ -12,6 +12,7 @@ from ifitwala_ed.admission.admission_utils import ensure_admissions_permission, 
 
 
 FAMILY_ROLES = {"Guardian"}
+ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
 SYSTEM_MANAGER_ROLE = "System Manager"
 DECISION_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
 
@@ -61,6 +62,7 @@ class StudentApplicant(Document):
 		self._validate_institutional_anchor(before)
 		self._validate_inquiry_link(before)
 		self._validate_student_link(before)
+		self._validate_applicant_user_link(before)
 		self._validate_application_status(before)
 		self._validate_edit_permissions(before)
 		self._validate_attachment_guard()
@@ -106,6 +108,17 @@ class StudentApplicant(Document):
 
 		if not previous and not getattr(self.flags, "from_promotion", False):
 			frappe.throw(_("Student link can only be set during promotion."))
+
+	def _validate_applicant_user_link(self, before):
+		if not self.applicant_user:
+			return
+
+		previous = before.applicant_user if before else self.get_db_value("applicant_user")
+		if previous and previous != self.applicant_user:
+			frappe.throw(_("Applicant User is immutable once set."))
+
+		if not previous and not getattr(self.flags, "from_applicant_invite", False):
+			frappe.throw(_("Applicant User can only be set via invite_applicant."))
 
 	# ---------------------------------------------------------------------
 	# Application status lifecycle
@@ -153,6 +166,7 @@ class StudentApplicant(Document):
 		roles = set(frappe.get_roles(user))
 		is_admissions = bool(roles & ADMISSIONS_ROLES)
 		is_family = bool(roles & FAMILY_ROLES)
+		is_applicant = ADMISSIONS_APPLICANT_ROLE in roles
 		is_system_manager = SYSTEM_MANAGER_ROLE in roles
 
 		if self.is_new():
@@ -181,9 +195,16 @@ class StudentApplicant(Document):
 				frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
 			return
 
-		if not is_admissions and not is_family:
+		if not is_admissions and not is_family and not is_applicant:
 			if self._has_changes(before):
 				frappe.throw(_("You do not have permission to edit this Applicant."))
+			return
+
+		if is_applicant:
+			if self.applicant_user != user and self._has_changes(before):
+				frappe.throw(_("You do not have permission to edit this Applicant."))
+			if not rules["family"] and self._has_changes(before):
+				frappe.throw(_("Family edits are not allowed when status is {0}.").format(status_for_edit))
 			return
 
 		if is_family:

@@ -23,6 +23,7 @@ def upload_applicant_document(
 	applicant_document: str | None = None,
 	upload_source: str | None = "API",
 	is_private: int | None = 1,
+	ignore_permissions: int | None = 0,
 	**kwargs,
 ):
 	"""
@@ -34,6 +35,7 @@ def upload_applicant_document(
 		applicant_document=applicant_document,
 		student_applicant=student_applicant,
 		document_type=document_type,
+		ignore_permissions=ignore_permissions,
 	)
 
 	doc_type_code = frappe.db.get_value("Applicant Document Type", doc.document_type, "code") or doc.document_type
@@ -96,7 +98,7 @@ def upload_applicant_document(
 	}
 
 
-def _resolve_applicant_document(*, applicant_document=None, student_applicant=None, document_type=None):
+def _resolve_applicant_document(*, applicant_document=None, student_applicant=None, document_type=None, ignore_permissions=0):
 	if applicant_document:
 		doc = frappe.get_doc("Applicant Document", applicant_document)
 		if student_applicant and doc.student_applicant != student_applicant:
@@ -124,7 +126,7 @@ def _resolve_applicant_document(*, applicant_document=None, student_applicant=No
 		"student_applicant": student_applicant,
 		"document_type": document_type,
 	})
-	doc.insert()
+	doc.insert(ignore_permissions=bool(cint(ignore_permissions)))
 	return doc
 
 

@@ -11,6 +11,7 @@
   "last_name",
   "inquiry",
   "student",
+  "applicant_user",
   "column_break_frwx",
   "academic_year",
   "term",
@@ -68,6 +69,13 @@
    "fieldtype": "Link",
    "label": "Student",
    "options": "Student",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant_user",
+   "fieldtype": "Link",
+   "label": "Applicant User",
+   "options": "User",
    "read_only": 1
   },
   {

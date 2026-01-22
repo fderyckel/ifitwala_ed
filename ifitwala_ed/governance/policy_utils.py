@@ -10,6 +10,7 @@ ACADEMIC_ADMIN_ROLE = "Academic Admin"
 ACADEMIC_STAFF_ROLE = "Academic Staff"
 GUARDIAN_ROLE = "Guardian"
 STUDENT_ROLE = "Student"
+ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
 
 
 def _user_roles(user: str | None = None) -> set[str]:
@@ -43,6 +44,10 @@ def has_guardian_role(user: str | None = None) -> bool:
 
 def has_student_role(user: str | None = None) -> bool:
 	return STUDENT_ROLE in _user_roles(user)
+
+
+def has_admissions_applicant_role(user: str | None = None) -> bool:
+	return ADMISSIONS_APPLICANT_ROLE in _user_roles(user)
 
 
 def has_staff_role(user: str | None = None) -> bool:

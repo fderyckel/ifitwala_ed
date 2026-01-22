@@ -428,10 +428,11 @@ AdmissionsSession {
   }
   applicant: {
     name: string
-    application_status: ApplicantStatus
+    portal_status: PortalApplicantStatus
     school: string
     organization: string
     is_read_only: boolean
+    read_only_reason: string | null
   }
 }
 ```
@@ -462,7 +463,7 @@ Single authoritative read for the **Applicant Overview page**.
 ApplicantSnapshot {
   applicant: {
     name: string
-    application_status: string
+    portal_status: PortalApplicantStatus
     submitted_at?: datetime
     decision_at?: datetime
   }
@@ -499,9 +500,10 @@ POST /api/admissions/health/update
 
 ```ts
 ApplicantHealthPayload {
-  declared_conditions: string
+  health_summary: string
+  medical_conditions: string
   allergies: string
-  accommodations: string
+  medications: string
 }
 ```
 
@@ -514,6 +516,34 @@ ApplicantHealthPayload {
 ---
 
 ## A.5 Applicant Documents DTO
+
+### A.5.1 Applicant Document Types (Portal)
+
+### Endpoint
+
+```
+GET /api/admissions/documents/types
+```
+
+### DTO
+
+```ts
+ApplicantDocumentType {
+  name: string
+  code: string
+  document_type_name: string
+  is_required: boolean
+  description: string
+}
+```
+
+**Rules**
+
+* Types are scoped to Applicant organization/school
+* Only `is_active = 1` types are returned
+* Portal may upload **only** against these types
+
+### A.5.2 Applicant Documents (Uploads)
 
 ### Endpoints
 
@@ -889,7 +919,7 @@ Permissions alone are **insufficient**.
 
 * Editable **only if**:
 
-  * application_status ∈ {Draft, In Progress}
+  * application_status ∈ {Invited, In Progress, Missing Info}
 * Only specific fields writable (no status, no governance fields)
 
 #### Applicant Document
@@ -1088,26 +1118,42 @@ export type CompletionState =
 
 ---
 
-### A.3 `ApplicantStatus` (LOCKED ENUM)
+### A.3 `PortalApplicantStatus` (LOCKED ENUM)
 
 This enum defines **all possible Applicant lifecycle states visible to the portal**.
 
 ```ts
-export type ApplicantStatus =
+export type PortalApplicantStatus =
   | 'Draft'
-  | 'In Review'
+  | 'In Progress'
   | 'Action Required'
+  | 'In Review'
   | 'Accepted'
-  | 'Waitlisted'
   | 'Rejected'
   | 'Withdrawn'
+  | 'Completed'
 ```
 
 **Rules**
 
-* Strings must match backend values exactly
+* This enum is **derived server-side** (read-only projection)
+* The portal **must never** expose raw `application_status`
 * No frontend remapping
 * Status transitions remain server-controlled
+
+### A.3.1 Status Mapping (Server-Owned, LOCKED)
+
+| application_status | PortalApplicantStatus |
+| ------------------ | --------------------- |
+| Draft              | Draft                 |
+| Invited            | Draft                 |
+| In Progress        | In Progress           |
+| Missing Info       | Action Required       |
+| Submitted          | In Review             |
+| Under Review       | In Review             |
+| Approved           | Accepted              |
+| Rejected           | Rejected              |
+| Promoted           | Completed             |
 
 ---
 
@@ -1161,10 +1207,17 @@ To explain **why** editing is disabled, the following field is mandatory:
 
 ```ts
 export type AdmissionsSession = {
-  applicant: string
-  applicant_status: ApplicantStatus
-  is_read_only: boolean
-  read_only_reason: string | null
+  user: {
+    name: string
+    full_name: string
+    roles: ["Admissions Applicant"]
+  }
+  applicant: {
+    name: string
+    portal_status: PortalApplicantStatus
+    is_read_only: boolean
+    read_only_reason: string | null
+  }
 }
 ```
 
@@ -1187,7 +1240,7 @@ export type AdmissionsSession = {
 
 Editing is blocked if **any** of the following is true:
 
-* Applicant status ∈ {In Review, Accepted, Waitlisted, Rejected, Withdrawn}
+* Portal status ∈ {In Review, Accepted, Rejected, Withdrawn, Completed}
 * Submission timestamp exists
 * Admissions staff explicitly locked the Applicant
 
@@ -1257,4 +1310,3 @@ SPA must consume **domain DTOs only**.
 > * No frontend inference is permitted
 >
 > Any implementation deviation is a **contract violation**, not a creative choice.
-

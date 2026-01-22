@@ -52,6 +52,10 @@ import StudentContextOverlay from '@/components/overlays/class-hub/StudentContex
 import QuickEvidenceOverlay from '@/components/overlays/class-hub/QuickEvidenceOverlay.vue'
 import QuickCFUOverlay from '@/components/overlays/class-hub/QuickCFUOverlay.vue'
 import TaskReviewOverlay from '@/components/overlays/class-hub/TaskReviewOverlay.vue'
+import ApplicantHealthOverlay from '@/overlays/admissions/ApplicantHealthOverlay.vue'
+import ApplicantDocumentUploadOverlay from '@/overlays/admissions/ApplicantDocumentUploadOverlay.vue'
+import ApplicantPolicyAcknowledgeOverlay from '@/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue'
+import ApplicantSubmitOverlay from '@/overlays/admissions/ApplicantSubmitOverlay.vue'
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic'
 
@@ -185,6 +189,14 @@ function resolveComponent(type: OverlayType) {
       return QuickCFUOverlay
     case 'class-hub-task-review':
       return TaskReviewOverlay
+    case 'admissions-health':
+      return ApplicantHealthOverlay
+    case 'admissions-document-upload':
+      return ApplicantDocumentUploadOverlay
+    case 'admissions-policy-ack':
+      return ApplicantPolicyAcknowledgeOverlay
+    case 'admissions-submit':
+      return ApplicantSubmitOverlay
     default:
       return CreateTaskDeliveryOverlay
   }

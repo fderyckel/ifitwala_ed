@@ -605,7 +605,7 @@ There is no safe legacy endpoint to reuse.
 Add a new whitelisted method, e.g.:
 
 ```
-ifitwala_ed.admissions.api.upload_applicant_document
+ifitwala_ed.api.admissions_portal.upload_applicant_document
 ```
 
 This method must:

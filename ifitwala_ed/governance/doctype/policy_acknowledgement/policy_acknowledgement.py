@@ -8,6 +8,7 @@ from ifitwala_ed.governance.policy_utils import (
 	has_guardian_role,
 	has_student_role,
 	has_staff_role,
+	has_admissions_applicant_role,
 	is_system_manager,
 )
 
@@ -101,7 +102,7 @@ class PolicyAcknowledgement(Document):
 
 	def _is_role_allowed_for_ack(self) -> bool:
 		if self.acknowledged_for == "Applicant":
-			return has_guardian_role()
+			return has_guardian_role() or has_admissions_applicant_role()
 		if self.acknowledged_for == "Student":
 			return has_student_role()
 		if self.acknowledged_for == "Staff":

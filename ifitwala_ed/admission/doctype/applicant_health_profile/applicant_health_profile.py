@@ -8,6 +8,7 @@ from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
 
 
 FAMILY_ROLES = {"Guardian"}
+ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
 STAFF_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
 
 
@@ -20,7 +21,7 @@ class ApplicantHealthProfile(Document):
 
 	def _validate_permissions(self, before):
 		user_roles = set(frappe.get_roles(frappe.session.user))
-		is_family = bool(user_roles & FAMILY_ROLES)
+		is_family = bool(user_roles & (FAMILY_ROLES | {ADMISSIONS_APPLICANT_ROLE}))
 		is_staff = bool(user_roles & STAFF_ROLES)
 
 		if not is_family and not is_staff:

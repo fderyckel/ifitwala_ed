@@ -7,7 +7,7 @@ from frappe.utils import now_datetime
 from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
 
 
-UPLOAD_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
+UPLOAD_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager", "Admissions Applicant"}
 REVIEW_ROLES = {"Academic Admin", "System Manager"}
 
 

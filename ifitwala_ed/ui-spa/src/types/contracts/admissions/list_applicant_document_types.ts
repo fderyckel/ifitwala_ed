@@ -1,0 +1,15 @@
+// ifitwala_ed/ui-spa/src/types/contracts/admissions/list_applicant_document_types.ts
+
+export type Request = {
+  student_applicant?: string
+}
+
+export type Response = {
+  document_types: Array<{
+    name: string
+    code: string
+    document_type_name: string
+    is_required: boolean
+    description: string
+  }>
+}
