@@ -9,6 +9,24 @@ frappe.listview_settings["Student"] = {
 	// Ensure data is fetched for visible columns
 	add_fields: ["enabled", "student_preferred_name", "student_gender", "cohort"],
 
+
+	onload(listview) {
+		listview.page.set_primary_action(__("New"), () => {
+			frappe.msgprint({
+				title: __("Direct creation disabled"),
+				message: __(
+					"Students cannot be created directly.<br><br>" +
+					"Use one of the following paths:<br>" +
+					"• Admissions → Promote Student Applicant<br>" +
+					"• Data Import (migration only)<br>" +
+					"• System scripts / API (explicit bypass flag)"
+				),
+				indicator: "orange",
+			});
+		});
+	},
+
+
 	// Left-side status light
 	get_indicator(doc) {
 		return doc.enabled

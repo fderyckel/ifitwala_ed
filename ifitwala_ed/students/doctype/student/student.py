@@ -89,27 +89,19 @@ class Student(Document):
 			frappe.throw(_("Student Full Name '{0}' must be unique. Please choose a different name.").format(self.student_full_name))
 
 	def _validate_creation_source(self):
-		"""
-		Phase-1 rule (authoritative):
-		- In steady state: Students are created via Applicant promotion (student_applicant is set).
-		- During onboarding/migration/import: allow controlled bypass via explicit flags.
-		"""
-		if not self.is_new():
-			return
+		# Canonical path: Applicant promotion
 		if self.student_applicant:
 			return
-		if getattr(frappe.flags, "in_migration", False):
-			return
-		if getattr(frappe.flags, "allow_direct_student_create", False):
-			return
-		if getattr(frappe.flags, "in_patch", False):
-			return
-		if getattr(frappe.flags, "in_import", False) or getattr(self.flags, "in_import", False):
+
+		# Explicit bypass for migration / import
+		if self.allow_direct_creation:
 			return
 
 		frappe.throw(
-			_("Students must be created via Applicant promotion. Set an explicit migration/import bypass flag to create directly.")
+			_("Students must be created via Applicant promotion. "
+				"Set an explicit migration/import bypass flag to create directly.")
 		)
+
 
 	def validate_email(self):
 		if self.student_email:
