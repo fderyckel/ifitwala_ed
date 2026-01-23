@@ -121,13 +121,14 @@
   {
    "fieldname": "default_role_profile",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "label": "Default Role",
    "options": "Role"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-22 09:32:11.486137",
+ "modified": "2026-01-23 19:15:57.428976",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Designation",
