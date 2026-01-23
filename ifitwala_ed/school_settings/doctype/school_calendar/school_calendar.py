@@ -10,31 +10,39 @@ from frappe.utils import get_link_to_form, getdate, formatdate, date_diff, cint
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import ParentRuleViolation
-from ifitwala_ed.utilities.school_tree import get_descendant_schools, is_leaf_school, get_first_ancestor_with_doc
-
+from ifitwala_ed.utilities.school_tree import (
+	get_descendant_schools,
+	is_leaf_school,
+	get_first_ancestor_with_doc,
+)
+from ifitwala_ed.school_settings.school_settings_utils import (
+	resolve_terms_for_school_calendar,
+)
 
 
 class SchoolCalendar(Document):
 	def autoname(self):
-			if not self.academic_year or not self.school:
-					frappe.throw(_("Academic Year and School are required to generate the Calendar Name."))
+		if not self.academic_year or not self.school:
+			frappe.throw(_("Academic Year and School are required to generate the Calendar Name."))
 
-			abbr = frappe.db.get_value("School", self.school, "abbr") or self.school
-			ay_name = frappe.db.get_value("Academic Year", self.academic_year, "academic_year_name") or self.academic_year
+		abbr = frappe.db.get_value("School", self.school, "abbr") or self.school
+		ay_name = frappe.db.get_value(
+			"Academic Year", self.academic_year, "academic_year_name"
+		) or self.academic_year
 
-			# ensure a usable calendar_name
-			if not self.calendar_name:
-					self.calendar_name = ay_name
+		if not self.calendar_name:
+			self.calendar_name = ay_name
 
-			self.name = f"{abbr} {self.calendar_name}"
-			self.title = self.name
+		self.name = f"{abbr} {self.calendar_name}"
+		self.title = self.name
 
 	def onload(self):
 		if not self.school:
 			return
 
 		weekend_color = frappe.db.get_value("School", self.school, "weekend_color")
-		self.set_onload('weekend_color', weekend_color)
+		self.set_onload("weekend_color", weekend_color)
+
 		break_color = frappe.db.get_value("School", self.school, "break_color")
 		self.set_onload("break_color", break_color)
 
@@ -48,8 +56,12 @@ class SchoolCalendar(Document):
 
 		ay = frappe.get_doc("Academic Year", self.academic_year)
 		self.total_holiday_days = len(self.holidays)
-		self.total_number_day = date_diff(getdate(ay.year_end_date), getdate(ay.year_start_date)) + 1
-		self.total_instruction_days = self.total_number_day - self.total_holiday_days - 1
+		self.total_number_day = (
+			date_diff(getdate(ay.year_end_date), getdate(ay.year_start_date)) + 1
+		)
+		self.total_instruction_days = (
+			self.total_number_day - self.total_holiday_days - 1
+		)
 
 	# ----------------------------------------------------------------
 	def _sync_school_with_ay(self):
@@ -57,24 +69,13 @@ class SchoolCalendar(Document):
 		AY drives calendar. Rule set:
 		1. If school blank → inherit AY.school.
 		2. If filled → must be AY.school or one of its descendants.
-		3. AY must be active (archived = 0).
 		"""
-		# ensure AY is active - I think it's ok to build the calendar even if the AY is archived
-		#if frappe.db.get_value("Academic Year", self.academic_year, "archived"):
-		#	frappe.throw(
-		#		_("Academic Year {0} is archived. Choose an active AY.")
-		#		.format(self.academic_year),
-		#		title=_("Inactive AY")
-		#	)
-
 		ay_school = frappe.db.get_value("Academic Year", self.academic_year, "school")
 
-		# blank -> inherit
 		if not self.school:
 			self.school = ay_school
 			return
 
-		# validate hierarchy
 		allowed = [self.school] + get_ancestors_of("School", self.school)
 		if ay_school not in allowed:
 			raise ParentRuleViolation(
@@ -92,131 +93,170 @@ class SchoolCalendar(Document):
 				"school": self.school,
 				"name": ("!=", self.name),
 				"docstatus": ("<", 2),
-			}
+			},
 		):
-			frappe.throw(_("A School Calendar for {0} - {1} already exists.")
+			frappe.throw(
+				_("A School Calendar for {0} - {1} already exists.")
 				.format(self.school, self.academic_year),
-				title=_("Duplicate")
+				title=_("Duplicate"),
 			)
 
 	# ----------------------------------------------------------------
 	def _populate_term_table(self):
-		# Fetch all terms linked to this academic year and school
+		"""
+		Option B:
+		Terms are resolved explicitly via School Calendar,
+		not inferred from Academic Year or school hierarchy.
+		"""
+
+		term_names = resolve_terms_for_school_calendar(
+			self.school,
+			self.academic_year,
+		)
+
+		self.terms = []
+
+		if not term_names:
+			return
+
 		terms = frappe.db.get_all(
 			"Term",
 			fields=["name", "term_start_date", "term_end_date"],
-			filters={
-				"academic_year": self.academic_year,
-				"school": self.school
-			},
-			order_by="term_start_date"
+			filters={"name": ["in", term_names]},
+			order_by="term_start_date",
 		)
 
-		# Clear any existing terms in the child table
-		self.terms = []
-
-		# Fetch all holidays (including weekends) for this school calendar
 		holidays = frappe.db.get_all(
 			"School Calendar Holidays",
 			fields=["holiday_date"],
-			filters={"parent": self.name, "parenttype": "School Calendar"}
+			filters={"parent": self.name, "parenttype": "School Calendar"},
 		)
 		holiday_dates = {h["holiday_date"] for h in holidays}
 
-		# Populate the child table
 		for term in terms:
-			# Calculate total days (inclusive)
-			total_days = date_diff(term["term_end_date"], term["term_start_date"]) + 1
+			total_days = (
+				date_diff(term["term_end_date"], term["term_start_date"]) + 1
+			)
 
-			# Count non-instructional days (holidays + weekends)
-			non_instructional_days = len([
-				h for h in holiday_dates
-				if term["term_start_date"] <= h <= term["term_end_date"]
-			])
+			non_instructional_days = len(
+				[
+					h
+					for h in holiday_dates
+					if term["term_start_date"] <= h <= term["term_end_date"]
+				]
+			)
 
-			# Calculate instructional days
 			instructional_days = total_days - non_instructional_days
 
-			# Append the term
-			self.append("terms", {
-				"term": term["name"],
-				"start": term["term_start_date"],
-				"end": term["term_end_date"],
-				"number_of_instructional_days": instructional_days
-			})
+			self.append(
+				"terms",
+				{
+					"term": term["name"],
+					"start": term["term_start_date"],
+					"end": term["term_end_date"],
+					"number_of_instructional_days": instructional_days,
+				},
+			)
 
-	# Check for duplicate holidays in the list
+	# ----------------------------------------------------------------
 	def validate_holiday_uniqueness(self):
 		seen = set()
 		for h in self.get("holidays"):
 			d = getdate(h.holiday_date)
 			if d in seen:
-				frappe.throw(_("Duplicate holiday date found: {0}").format(formatdate(d)))
+				frappe.throw(
+					_("Duplicate holiday date found: {0}").format(formatdate(d))
+				)
 			seen.add(d)
 
 	def validate_dates(self):
 		"""Ensure holidays are within the academic year"""
 		ay = frappe.get_doc("Academic Year", self.academic_year)
 		for day in self.get("holidays"):
-			if not (getdate(ay.year_start_date) <= getdate(day.holiday_date) <= getdate(ay.year_end_date)):
-				frappe.throw(_("The {0} holiday is not within your school's academic year {1}").format(formatdate(day.holiday_date), get_link_to_form("Academic Year", self.academic_year)))
+			if not (
+				getdate(ay.year_start_date)
+				<= getdate(day.holiday_date)
+				<= getdate(ay.year_end_date)
+			):
+				frappe.throw(
+					_("The {0} holiday is not within your school's academic year {1}")
+					.format(
+						formatdate(day.holiday_date),
+						get_link_to_form("Academic Year", self.academic_year),
+					)
+				)
 
 	@frappe.whitelist()
 	def get_long_break_dates(self):
 		"""Logic for button to add long breaks dates to the list of holidays"""
-		ay = frappe.get_doc("Academic Year", self.academic_year)
 		self.validate_break_dates()
-		date_list = self.get_long_break_dates_list(self.start_of_break, self.end_of_break)
-		last_idx = max([cint(d.idx) for d in self.get("holidays")] or [0,])
+		date_list = self.get_long_break_dates_list(
+			self.start_of_break, self.end_of_break
+		)
+		last_idx = max([cint(d.idx) for d in self.get("holidays")] or [0])
 		for i, d in enumerate(date_list):
 			ch = self.append("holidays", {})
-			ch.description = self.break_description if self.break_description else "Break"
-			ch.color = self.break_color if self.break_color else ""
+			ch.description = self.break_description or "Break"
+			ch.color = self.break_color or ""
 			ch.holiday_date = d
 			ch.idx = last_idx + i + 1
-		frappe.msgprint(_("Break dates for '{0}' have been successfully added to the holidays table.").format(self.break_description))
+		frappe.msgprint(
+			_("Break dates for '{0}' have been successfully added to the holidays table.")
+			.format(self.break_description)
+		)
 
 	def validate_break_dates(self):
-		"""Ensure breaks dates are wihin the academic year"""
 		ay = frappe.get_doc("Academic Year", self.academic_year)
 		if not self.start_of_break or not self.end_of_break:
 			frappe.throw(_("Please select first the start and end dates of your break"))
 		if getdate(self.start_of_break) > getdate(self.end_of_break):
-			frappe.throw(_("The start date of the break must be prior to the end date of the break"))
-		if not (getdate(ay.year_start_date) <= getdate(self.start_of_break) <= getdate(ay.year_end_date)) or not (getdate(ay.year_start_date) <= getdate(self.end_of_break) <= getdate(ay.year_end_date)):
-			frappe.throw(_("The holiday called {0} should be within your academic year {1} dates.").format(self.break_description, get_link_to_form("Academic Year", self.academic_year)))
+			frappe.throw(
+				_("The start date of the break must be prior to the end date of the break")
+			)
+		if not (
+			getdate(ay.year_start_date)
+			<= getdate(self.start_of_break)
+			<= getdate(ay.year_end_date)
+			and getdate(ay.year_start_date)
+			<= getdate(self.end_of_break)
+			<= getdate(ay.year_end_date)
+		):
+			frappe.throw(
+				_("The holiday called {0} should be within your academic year {1} dates.")
+				.format(
+					self.break_description,
+					get_link_to_form("Academic Year", self.academic_year),
+				)
+			)
 
 	def get_long_break_dates_list(self, start_date, end_date):
-		start_date, end_date = getdate(start_date), getdate(end_date)
-
 		from datetime import timedelta
-		import calendar
+
+		start_date, end_date = getdate(start_date), getdate(end_date)
+		existing = [getdate(h.holiday_date) for h in self.get("holidays")]
 
 		date_list = []
-		existing_date_list = []
-
-		reference_date = start_date
-		existing_date_list = [getdate(holiday.holiday_date) for holiday in self.get("holidays")]
-
-		while reference_date <= end_date:
-			if reference_date not in existing_date_list:
-				date_list.append(reference_date)
-			reference_date += timedelta(days = 1)
+		ref = start_date
+		while ref <= end_date:
+			if ref not in existing:
+				date_list.append(ref)
+			ref += timedelta(days=1)
 
 		return date_list
 
 	@frappe.whitelist()
 	def get_weekly_off_dates(self):
-		"""Logic for button to add weekly off dates to the list of holidays"""
 		ay = frappe.get_doc("Academic Year", self.academic_year)
 		self.validate_values()
-		date_list = self.get_weekly_off_dates_list(ay.year_start_date, ay.year_end_date)
-		last_idx = max([cint(d.idx) for d in self.get("holidays")] or [0,])
+		date_list = self.get_weekly_off_dates_list(
+			ay.year_start_date, ay.year_end_date
+		)
+		last_idx = max([cint(d.idx) for d in self.get("holidays")] or [0])
 		for i, d in enumerate(date_list):
 			ch = self.append("holidays", {})
 			ch.description = _(self.weekly_off)
 			ch.holiday_date = d
-			ch.color = self.weekend_color if self.weekend_color else ""
+			ch.color = self.weekend_color or ""
 			ch.weekly_off = 1
 			ch.idx = last_idx + i + 1
 
@@ -225,23 +265,20 @@ class SchoolCalendar(Document):
 			frappe.throw(_("Please select the weekly off days."))
 
 	def get_weekly_off_dates_list(self, start_date, end_date):
-		start_date, end_date = getdate(start_date), getdate(end_date)
-
 		from dateutil import relativedelta
 		from datetime import timedelta
 		import calendar
 
+		start_date, end_date = getdate(start_date), getdate(end_date)
+		weekday = getattr(calendar, self.weekly_off.upper())
+		existing = [getdate(h.holiday_date) for h in self.get("holidays")]
+
+		ref = start_date + relativedelta.relativedelta(weekday=weekday)
 		date_list = []
-		existing_date_list = []
-
-		weekday = getattr(calendar, (self.weekly_off).upper())
-		reference_date = start_date + relativedelta.relativedelta(weekday=weekday)
-		existing_date_list = [getdate(holiday.holiday_date) for holiday in self.get("holidays")]
-
-		while reference_date <= end_date:
-			if reference_date not in existing_date_list:
-				date_list.append(reference_date)
-			reference_date += timedelta(days=7)
+		while ref <= end_date:
+			if ref not in existing:
+				date_list.append(ref)
+			ref += timedelta(days=7)
 
 		return date_list
 
@@ -257,24 +294,36 @@ def get_events(start, end, filters=None):
 		filters = []
 
 	if start:
-		filters.append(['School Calendar Holidays', 'holiday_date', '>', getdate(start)])
+		filters.append(["School Calendar Holidays", "holiday_date", ">", getdate(start)])
 	if end:
-		filters.append(['School Calendar Holidays', 'holiday_date', '<', getdate(end)])
+		filters.append(["School Calendar Holidays", "holiday_date", "<", getdate(end)])
 
-	return frappe.get_list('School Calendar',
-		fields=['name', 'academic_year', 'school', '`tabSchool Calendar Holidays`.holiday_date',
-				'`tabSchool Calendar Holidays`.description', '`tabSchool Calendar Holidays`.color'],
-		filters = filters,
-		update={"allDay": 1})
+	return frappe.get_list(
+		"School Calendar",
+		fields=[
+			"name",
+			"academic_year",
+			"school",
+			"`tabSchool Calendar Holidays`.holiday_date",
+			"`tabSchool Calendar Holidays`.description",
+			"`tabSchool Calendar Holidays`.color",
+		],
+		filters=filters,
+		update={"allDay": 1},
+	)
 
 
 @frappe.whitelist()
 def clone_calendar(source_calendar, academic_year, schools):
 	src = frappe.get_doc("School Calendar", source_calendar)
 	created = []
+
 	for school in frappe.parse_json(schools):
-		if frappe.db.exists("School Calendar", {"academic_year": academic_year, "school": school}):
-			continue  # skip existing
+		if frappe.db.exists(
+			"School Calendar",
+			{"academic_year": academic_year, "school": school},
+		):
+			continue
 
 		dup = frappe.copy_doc(src, ignore_no_copy=True)
 		dup.school = school
@@ -284,7 +333,6 @@ def clone_calendar(source_calendar, academic_year, schools):
 		created.append(get_link_to_form("School Calendar", dup.name))
 
 	return ", ".join(created) if created else "No new calendars created (already exist)."
-
 
 
 def get_permission_query_conditions(user):
@@ -302,12 +350,15 @@ def get_permission_query_conditions(user):
 
 	if not schools:
 		return "1=0"
+
 	schools_list = "', '".join(schools)
 	return f"`tabSchool Calendar`.`school` IN ('{schools_list}')"
+
 
 def has_permission(doc, ptype=None, user=None):
 	if not user:
 		user = frappe.session.user
+
 	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
 		return True
 

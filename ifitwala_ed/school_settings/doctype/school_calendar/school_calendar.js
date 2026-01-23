@@ -170,27 +170,6 @@ frappe.ui.form.on("School Calendar", {
 				frm.set_value("weekend_color", doc.weekend_color);
 			});
 	},
-
-	get_terms: function (frm) {
-
-		// Clear existing terms before re-adding
-		frm.clear_table("terms");
-		frm.refresh_field("terms");
-
-		frappe.call({
-			method: "get_terms",
-			doc: frm.doc,
-			callback: function (r) {
-				if (r.message) {
-					// Populate fresh terms
-					r.message.forEach(term => {
-						let row = frm.add_child("terms", term);
-					});
-					frm.refresh_field("terms");
-				}
-			},
-		});
-	},
 });
 
 frappe.ui.form.on("School Calendar Holidays", {
