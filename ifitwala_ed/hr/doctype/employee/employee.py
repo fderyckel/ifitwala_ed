@@ -653,7 +653,6 @@ class Employee(NestedSet):
 	# ------------------------------------------------------------------
 	# Employee Image Governance
 	# ------------------------------------------------------------------
-
 	def _govern_profile_photo(self):
 		"""
 		Ensure Employee.employee_image is always backed by a governed File.
@@ -662,10 +661,25 @@ class Employee(NestedSet):
 		- At most ONE active profile photo per Employee
 		- Slot: profile_photo
 		- Subject: Employee
-		"""
 
+		Policy:
+		- Public file (is_private=0).
+		- Governance is best-effort: if file is not yet on disk, do NOT block save.
+			Retry will happen on next save (or later scheduler if added).
+		"""
 		if not self.employee_image:
 			return
+
+		# If the file isn't materialized on disk yet, defer governance (do not block save)
+		file_url = (self.employee_image or "").strip()
+		if file_url and not file_url.startswith("http"):
+			rel_path = file_url.lstrip("/")
+			abs_path = frappe.utils.get_site_path(rel_path)
+			if not os.path.exists(abs_path):
+				frappe.logger().info(
+					f"[Employee] Profile photo not on disk yet; governance deferred: employee={self.name} url={file_url}"
+				)
+				return
 
 		# Resolve File by file_url
 		file_name = frappe.db.get_value(
@@ -733,7 +747,6 @@ class Employee(NestedSet):
 				title="Employee Image Cleanup Failed",
 				message=f"Failed to delete ungoverned File {file_name} for Employee {self.name}",
 			)
-
 
 
 @frappe.whitelist()

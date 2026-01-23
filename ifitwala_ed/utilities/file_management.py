@@ -22,21 +22,35 @@ def slugify(text: str) -> str:
 	return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
-def calculate_hash(file_doc) -> str:
-	"""Return SHA-256 hash for the File's stored content."""
+def calculate_hash(file_doc) -> Optional[str]:
+	"""
+	Return SHA-256 hash for the File's stored content.
+
+	Policy (authoritative):
+	- Hashing is best-effort.
+	- Public / URL-based or not-yet-materialized files must NOT block saves.
+	- Return None when hash cannot be computed yet.
+	"""
 	if not file_doc:
 		frappe.throw(_("File is required for hash computation."))
 
 	file_url = (file_doc.file_url or "").strip()
 	if not file_url:
-		frappe.throw(_("File URL is required for hash computation."))
+		return None
+
+	# Remote URLs are not hashable here (no disk access)
 	if file_url.startswith("http"):
-		frappe.throw(_("Cannot compute hash for remote file URLs."))
+		return None
 
 	rel_path = file_url.lstrip("/")
 	abs_path = frappe.utils.get_site_path(rel_path)
+
+	# Disk file may not exist at save-time (Attach Image timing, public files, etc.)
 	if not os.path.exists(abs_path):
-		frappe.throw(_("File not found on disk for hash computation."))
+		frappe.logger().info(
+			f"[file_management] File not on disk yet; hash deferred: file={file_doc.name} url={file_url}"
+		)
+		return None
 
 	digest = hashlib.sha256()
 	with open(abs_path, "rb") as handle:
