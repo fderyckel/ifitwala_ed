@@ -115,6 +115,10 @@ class Employee(NestedSet):
 				reverse=True,
 			)
 
+	def after_save(self):
+		self._classify_employee_image()
+
+
 	def after_rename(self, old, new, merge):
 		self.db_set("employee", new)
 
@@ -828,6 +832,59 @@ class Employee(NestedSet):
 				title="Employee Image Cleanup Failed",
 				message=f"Failed to delete ungoverned File {file_name} for Employee {self.name}",
 			)
+
+
+	def _classify_employee_image(self):
+		"""
+		Classify employee profile image uploaded via Desk.
+		Slot-based, idempotent, HR-safe.
+		"""
+
+		if not self.employee_image:
+			return
+
+		# Fetch File row
+		file_name = frappe.db.get_value(
+			"File",
+			{"file_url": self.employee_image},
+			"name",
+		)
+
+		if not file_name:
+			return
+
+		file_doc = frappe.get_doc("File", file_name)
+
+		# Skip if already classified for this slot + file
+		exists = frappe.db.exists(
+			"File Classification",
+			{
+				"file": file_doc.name,
+				"primary_subject_type": "Employee",
+				"primary_subject_id": self.name,
+				"slot": "profile_image",
+			},
+		)
+
+		if exists:
+			return
+
+		from ifitwala_ed.utilities.file_dispatcher import create_and_classify_file
+
+		create_and_classify_file(
+			file_doc=file_doc,
+			classification={
+				"primary_subject_type": "Employee",
+				"primary_subject_id": self.name,
+				"data_class": "biometric",
+				"purpose": "employee_profile_image",
+				"slot": "profile_image",
+				"organization": self.organization,
+				"school": self.school,
+				"upload_source": "Desk",
+			},
+		)
+
 
 
 @frappe.whitelist()
