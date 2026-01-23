@@ -10,6 +10,11 @@ frappe.ui.form.on("Designation", {
     refresh: function(frm) {
         set_school_filter(frm);
         set_reports_to_filter(frm);
+				frm.set_query("default_role_profile", () => {
+					return {
+					query: "ifitwala_ed.hr.doctype.designation.designation.get_assignable_roles"
+					};
+				});
     },
 
     archived: function(frm) {

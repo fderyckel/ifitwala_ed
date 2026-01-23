@@ -71,7 +71,9 @@ class Employee(NestedSet):
 			if existing_user_id:
 				user = frappe.get_doc("User", existing_user_id)
 				validate_employee_role(user, ignore_emp_check=True)
+				user.flags.ignore_permissions = True
 				user.save(ignore_permissions=True)
+
 
 		# Ensure the employee history is sorted before saving
 		if self.employee_history:
@@ -94,36 +96,30 @@ class Employee(NestedSet):
 		return (prev.reports_to or "") != (self.reports_to or "")
 
 	def on_update(self):
-		# Step 4: Guard nested-set updates to avoid unnecessary work
+		# ---------------------------------------------------------
+		# 1) Structural graph integrity (always allowed)
+		# ---------------------------------------------------------
 		if self._reports_to_changed():
 			self.update_nsm_model()
 
-		# Side-effects / external syncs (moved out of validate)
-		if self.user_id:
+		self.reset_employee_emails_cache()
+		self.sync_employee_history()
+		self._sync_staff_calendar()
+		self._ensure_primary_contact()
+		self._govern_profile_photo()
+
+		# ---------------------------------------------------------
+		# 2) Role / authority enforcement (HR-governed, safe)
+		# ---------------------------------------------------------
+		self._apply_designation_role()
+		self._apply_approver_roles()
+
+		# ---------------------------------------------------------
+		# 3) User profile sync (STRICTLY gated)
+		# ---------------------------------------------------------
+		if self.user_id and self._can_sync_user_profile():
 			self.update_user()
 			self.update_user_default_school()
-
-		self.reset_employee_emails_cache()
-		self.update_approver_role()
-
-		# Employee history: maintain rows only when needed (validate enforces correctness)
-		self.sync_employee_history()
-
-		# Staff Calendar mapping: purely derived convenience field
-		self._sync_staff_calendar()
-
-		# Contact graph integrity
-		self._ensure_primary_contact()
-
-		"""
-		Authoritative governance point for Employee profile photos.
-
-		Rationale:
-		- Employee Image is uploaded via native Attach Image (File is created first).
-		- We must immediately govern it: classify, slot, subject, retention.
-		- Ungoverned files must not survive a save cycle.
-		"""
-		self._govern_profile_photo()
 
 	def on_trash(self):
 		# Keep consistency on delete; guard to avoid unnecessary work
@@ -458,11 +454,16 @@ class Employee(NestedSet):
 
 	# call on validate. Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):
-		if self.user_id:
-			data = frappe.db.get_value("User", self.user_id, ["enabled", "user_image"], as_dict=1)
+		if not self.user_id:
+			return
 
-		self.validate_for_enabled_user_id(data.get("enabled", 0))
+		data = frappe.db.get_value("User", self.user_id, ["enabled"], as_dict=1)
+		if not data:
+			frappe.throw(_("User {0} does not exist").format(self.user_id))
+
+		self.validate_for_enabled_user_id(data.get("enabled"))
 		self.validate_duplicate_user_id()
+
 
 	# call on validate through validate_user_details().
 	# If employee is referring to a user, that user has to be active.
@@ -494,11 +495,15 @@ class Employee(NestedSet):
 
 	# to update the user fields when employee fields are changing
 	def update_user(self):
+		if not self.user_id:
+			return
+
 		user = frappe.get_doc("User", self.user_id)
 		user.flags.ignore_permissions = True
 
-		if "Employee" not in user.get("roles"):
-			user.append_roles("Employee")
+		# Ensure base role
+		if "Employee" not in {r.role for r in user.roles}:
+			user.append("roles", {"role": "Employee"})
 
 		user.first_name = self.employee_first_name
 		user.last_name = self.employee_last_name
@@ -511,23 +516,18 @@ class Employee(NestedSet):
 		img_path = self.employee_image
 		if img_path:
 			abs_path = frappe.utils.get_site_path("public", img_path.lstrip("/"))
-
-			# Skip (and log) if the file has been moved but the field wasn’t updated yet
 			if not os.path.exists(abs_path):
 				frappe.log_error(
 					title=_("Missing file on disk during update_user"),
 					message=f"{abs_path} does not exist for Employee {self.name}",
 				)
-				img_path = None  # prevents 500 in attach_files_to_document
-
-		if img_path:
-			if user.user_image != img_path:
-				user.user_image = img_path
+				img_path = None
 
 		if img_path and user.user_image != img_path:
-				user.user_image = img_path
+			user.user_image = img_path
 
-		user.save()
+		user.save(ignore_permissions=True)
+
 
 	def _sync_staff_calendar(self):
 		"""Attach the appropriate Staff Calendar to current_holiday_lis based on employee_group.
@@ -582,17 +582,6 @@ class Employee(NestedSet):
 		if (cell_number != prev_number or self.get("user_id") != prev_doc.get("user_id")):
 			frappe.cache().hdel("employees_with_number", cell_number)
 			frappe.cache().hdel("employees_with_number", prev_number)
-
-	def update_approver_role(self):
-		if self.leave_approver:
-			user = frappe.get_doc("User", self.leave_approver)
-			user.flags.ignore_permissions = True
-			user.add_roles("Leave Approver")
-
-		if self.expense_approver:
-			user = frappe.get_doc("User", self.expense_approver)
-			user.flags.ignore_permissions = True
-			user.add_roles("Expense Approver")
 
 	def _ensure_primary_contact(self):
 		"""
@@ -649,6 +638,65 @@ class Employee(NestedSet):
 
 		if not self.empl_primary_contact:
 			self.db_set("empl_primary_contact", contact_name, update_modified=False)
+
+	def _can_sync_user_profile(self) -> bool:
+		"""
+		Only System Manager or the user themself can sync Employee -> User profile fields.
+		HR should not be editing other User attributes as a side-effect of editing Employee.
+		"""
+		if frappe.session.user == "Administrator":
+			return True
+		if "System Manager" in set(frappe.get_roles()):
+			return True
+		return bool(self.user_id and self.user_id == frappe.session.user)
+
+	def _can_manage_user_roles(self) -> bool:
+		"""
+		HR Manager / System Manager can enforce roles programmatically.
+		(This does NOT grant generic User write permissions in the UI.)
+		"""
+		roles = set(frappe.get_roles())
+		return bool(roles & {"HR Manager", "System Manager"}) or frappe.session.user == "Administrator"
+
+	def _ensure_user_has_role(self, user: str, role: str):
+		"""Add role to user if missing, using ignore_permissions to avoid User doctype access issues."""
+		if not user or not role:
+			return
+
+		exists = frappe.db.exists("Has Role", {"parent": user, "role": role})
+		if exists:
+			return
+
+		u = frappe.get_doc("User", user)
+		u.flags.ignore_permissions = True
+		u.append("roles", {"role": role})
+		u.save(ignore_permissions=True)
+
+	def _apply_designation_role(self):
+		if not self.user_id or not self.designation:
+			return
+		if not self._can_manage_user_roles():
+			return
+
+		prev = self.get_doc_before_save()
+		if prev and prev.designation == self.designation:
+			return
+
+		role = frappe.db.get_value("Designation", self.designation, "default_role_profile")
+		if role:
+			self._ensure_user_has_role(self.user_id, role)
+
+	def _apply_approver_roles(self):
+		if not self._can_manage_user_roles():
+			return
+
+		prev = self.get_doc_before_save() or {}
+
+		if self.leave_approver and self.leave_approver != prev.get("leave_approver"):
+			self._ensure_user_has_role(self.leave_approver, "Leave Approver")
+
+		if self.expense_approver and self.expense_approver != prev.get("expense_approver"):
+			self._ensure_user_has_role(self.expense_approver, "Expense Approver")
 
 	# ------------------------------------------------------------------
 	# Employee Image Governance
