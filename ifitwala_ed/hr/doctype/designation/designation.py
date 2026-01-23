@@ -111,40 +111,22 @@ def get_valid_parent_organizations(organization):
 
 @frappe.whitelist()
 def get_assignable_roles(doctype, txt, searchfield, start, page_len, filters):
-	"""
-	Link field query for Designation.default_role_profile.
+	excluded_roles = ("System Manager", "Administrator", "Guest", "All")
 
-	- Bypasses Role read permissions safely
-	- Respects search text
-	- Respects pagination
-	- Works out-of-the-box on fresh installs
-	"""
+	start = int(start or 0)
+	page_len = int(page_len or 20)
+	txt = (txt or "").strip()
 
-	excluded_roles = (
-		"System Manager",
-		"Administrator",
-		"Guest",
-		"All",
+	filters = {"name": ["not in", excluded_roles]}
+	if txt:
+		filters["name"] = ["like", f"%{txt}%"]
+
+	return frappe.db.get_all(
+		"Role",
+		filters=filters,
+		fields=["name"],
+		order_by="name asc",
+		limit_start=start,
+		limit_page_length=page_len,
+		as_list=True,
 	)
-
-	# Default safety
-	searchfield = searchfield or "name"
-	txt = txt or ""
-
-	return frappe.db.sql(
-		f"""
-		SELECT name
-		FROM `tabRole`
-		WHERE name NOT IN %(excluded_roles)s
-		  AND name LIKE %(txt)s
-		ORDER BY name
-		LIMIT %(page_len)s OFFSET %(start)s
-		""",
-		{
-			"excluded_roles": excluded_roles,
-			"txt": f"%{txt}%",
-			"page_len": page_len,
-			"start": start,
-		},
-	)
-

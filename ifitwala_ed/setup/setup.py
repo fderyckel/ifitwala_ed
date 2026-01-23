@@ -172,6 +172,54 @@ def add_other_records(country=None):
 	]
 	insert_record(records)
 
+
+def ensure_hr_can_select_roles():
+	"""
+	Allow HR roles to SELECT and READ Role
+	so they can assign default_role_profile on Designation.
+
+	This mirrors ERPNext behavior and is required
+	for Link field validation to pass.
+	"""
+
+	for hr_role in ("HR Manager", "HR User"):
+		existing = frappe.db.get_value(
+			"DocPerm",
+			{
+				"parent": "Role",
+				"parenttype": "DocType",
+				"role": hr_role,
+				"permlevel": 0,
+			},
+			"name",
+		)
+
+		if existing:
+			# ensure minimum permissions
+			frappe.db.set_value("DocPerm", existing, {
+				"select": 1,
+				"read": 1,
+				"write": 0,
+				"create": 0,
+				"delete": 0,
+			})
+		else:
+			doc = frappe.get_doc({
+				"doctype": "DocPerm",
+				"parent": "Role",
+				"parenttype": "DocType",
+				"parentfield": "permissions",
+				"role": hr_role,
+				"permlevel": 0,
+				"select": 1,
+				"read": 1,
+			})
+			doc.insert(ignore_permissions=True)
+
+	frappe.clear_cache()
+
+
+
 def create_student_file_folder():
 	records = [{
 		"doctype": "File",
@@ -317,3 +365,5 @@ def grant_core_crm_permissions():
 
 			docperm.insert(ignore_permissions=True)
 		frappe.clear_cache(doctype=doctype)  # Clear cache after permission update
+
+
