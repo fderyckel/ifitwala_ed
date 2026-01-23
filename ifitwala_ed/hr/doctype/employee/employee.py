@@ -705,71 +705,52 @@ class Employee(NestedSet):
 	# ------------------------------------------------------------------
 	def _govern_profile_photo(self):
 		"""
-		Ensure Employee.employee_image is always backed by a governed File.
-
-		Invariant:
-		- At most ONE active profile photo per Employee
-		- Slot: profile_image
-		- Subject: Employee
-
-		Policy:
-		- Public file (is_private=0).
-		- Governance is deferred until after commit because File is created
-		  AFTER Employee save in Frappe.
+		Govern employee profile image after save.
+		Must run AFTER COMMIT because File row is created at commit time.
 		"""
 
 		if not self.employee_image:
 			return
 
-		file_url = (self.employee_image or "").strip()
+		file_url = self.employee_image
 
 		def _after_commit_govern():
-			# Resolve File by file_url AFTER commit
+			from ifitwala_ed.utilities.file_dispatcher import create_and_classify_file
+
 			file_name = frappe.db.get_value(
 				"File",
-				{"file_url": file_url},
+				{"file_url": file_url, "attached_to_doctype": "Employee", "attached_to_name": self.name},
 				"name",
 			)
 
 			if not file_name:
-				frappe.log_error(
-					title="Employee Image Governance Failed",
-					message=f"File not found after commit for Employee {self.name}: {file_url}",
-				)
-				return
-
-			# Skip if already governed
-			exists = frappe.db.exists(
-				"File Classification",
-				{
-					"file": file_name,
-					"primary_subject_type": "Employee",
-					"primary_subject_id": self.name,
-					"slot": "profile_image",
-					"is_current": 1,
-				},
-			)
-
-			if exists:
+				# File not found → nothing to govern
 				return
 
 			file_doc = frappe.get_doc("File", file_name)
 
+			# Enforce single authoritative classification
+			if frappe.db.exists("File Classification", {"file": file_doc.name}):
+				return
+
 			create_and_classify_file(
 				file_doc=file_doc,
-				primary_subject_type="Employee",
-				primary_subject_id=self.name,
-				data_class="biometric",
-				purpose="employee_profile_image",
-				slot="profile_image",
-				organization=self.organization,
-				school=self.school,
-				is_private=0,
+				classification={
+					"primary_subject_type": "Employee",
+					"primary_subject_id": self.name,
+					"data_class": "biometric",
+					"purpose": "employee_profile_image",
+					"retention_policy": "employment_duration",
+					"slot": "profile_image",
+					"organization": self.organization,
+					"school": getattr(self, "school", None),
+					"upload_source": "Desk",
+				},
+				secondary_subjects=None,
 			)
 
-		# IMPORTANT: defer until File exists
-		frappe.after_commit(_after_commit_govern)
-
+		# Correct Frappe v15 API
+		frappe.db.after_commit.add(_after_commit_govern)
 
 @frappe.whitelist()
 def create_user(employee, user=None, email=None):
