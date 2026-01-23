@@ -218,26 +218,59 @@ def get_schools_per_academic_year_for_terms(user_school):
 
 	return list(pairs)
 
-def get_current_term(academic_year: str) -> frappe._dict | None:
+def get_current_term(school: str, academic_year: str) -> frappe._dict | None:
 	"""
-	Returns the current active Term for the given academic_year
-	(based on today's date falling between term_start_date and term_end_date).
-	Returns a frappe._dict with term fields or None if no match.
+	Pattern B compliant.
+
+	Return the current active Term for a given (school, academic_year),
+	resolved EXCLUSIVELY via the School Calendar.
+
+	- No implicit inheritance
+	- No global term activation
+	- Calendar is the authority
 	"""
+
+	if not school or not academic_year:
+		return None
+
 	today = getdate(nowdate())
 
-	term = frappe.db.get_value(
-		"Term",
+	# 1 ▸ find the school calendar (must exist explicitly)
+	calendar = frappe.db.get_value(
+		"School Calendar",
 		{
+			"school": school,
 			"academic_year": academic_year,
-			"term_start_date": ["<=", today],
-			"term_end_date": [">=", today],
+			"docstatus": ["<", 2],
 		},
-		["name", "term_start_date", "term_end_date"],
+		"name",
+	)
+
+	if not calendar:
+		return None
+
+	# 2 ▸ resolve active term ONLY from calendar terms
+	term = frappe.db.get_value(
+		"School Calendar Term",
+		{
+			"parent": calendar,
+			"parenttype": "School Calendar",
+			"start": ["<=", today],
+			"end": [">=", today],
+		},
+		["term", "start", "end"],
 		as_dict=True,
 	)
 
-	return term
+	if not term:
+		return None
+
+	return {
+		"name": term.term,
+		"term_start_date": term.start,
+		"term_end_date": term.end,
+	}
+
 
 def get_permission_query_conditions(user):
 	if user == "Administrator" or "System Manager" in frappe.get_roles(user):

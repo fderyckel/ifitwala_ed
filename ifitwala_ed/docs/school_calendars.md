@@ -82,8 +82,7 @@ Think:
   * partial campus closures
 * Avoids forcing leaf schools into identical pedagogical structures
 
-✔ Your instinct (“I am thinking yes”) is correct
-✳ But only if we **downgrade its authority**
+✔ yes But only if we **downgrade its authority**
 
 ---
 
@@ -749,6 +748,95 @@ if not self.school → no School Event
 | Calendar explicitness    | `school_calendar.py`       | `_validate_uniqueness()`              | ✅          |
 | Parent non-instructional | `school_calendar.py`       | `validate()`                          | 🟡 pending |
 | Automation visibility    | architecture               | no mutation                           | ✅          |
+
+---
+
+Pattern B — Canonical School Calendar Resolution (Authoritative Design)
+Ifitwala_Ed adopts Pattern B for school calendar modeling. A School Calendar is always a school-scoped execution artifact, but it does not need to exist at every leaf school. Calendars may be defined at any school node (leaf or non-leaf). Leaf schools must explicitly resolve to a calendar via a deterministic ancestor lookup, never by implicit inheritance. The resolution order is: (1) calendar defined for the leaf school and academic year; (2) calendar defined for the nearest ancestor school for the same academic year; (3) configuration error if none exists. No calendar is auto-created, inferred, or silently inherited. All downstream systems (terms, events, attendance, analytics) must resolve calendars exclusively through this canonical resolver.
+
+
+When a leaf school needs a calendar for AY:
+
+1. If a calendar exists for (leaf, AY) → use it
+2. Else if a calendar exists for (nearest ancestor, AY) → use it
+3. Else → configuration error
+
+
+
+
+
+
+
+
+---
+
+## ✅ Correct usage pattern (locked)
+
+From now on, all code must follow this rule:
+
+### Rule 1 — Visibility & hierarchy
+
+Use **only** `school_tree.py`:
+
+* `get_descendant_schools`
+* `get_ancestor_schools`
+* `is_leaf_school`
+* `get_user_default_school`
+* `get_effective_record` (when allowed)
+* `get_first_ancestor_with_doc`
+
+### Rule 2 — Instructional resolution
+
+Use **only explicit resolvers**, e.g.:
+
+* `resolve_terms_for_school_calendar`
+* `resolve_school_calendar_for_attendance` (future)
+* `resolve_school_calendar_for_enrollment` (future)
+
+Never mix the two.
+
+---
+
+## Concrete impact on what we just reviewed
+
+### `SchoolCalendar` permission logic
+
+➡ **Must** use:
+
+```python
+from ifitwala_ed.utilities.school_tree import get_descendant_schools, is_leaf_school
+```
+
+and **never** call `get_ancestors_of` / `get_descendants_of` directly.
+
+### `get_permission_query_conditions`
+
+➡ Must delegate hierarchy to `school_tree.py`.
+
+### `has_permission`
+
+➡ Same.
+
+### `get_events`
+
+➡ Visibility via `school_tree.py`,
+➡ Calendar resolution via **explicit calendar lookup**, not hierarchy guessing.
+
+---
+
+## Design lock (this is now official)
+
+You can add this as a hard rule to your governance docs:
+
+> **All school hierarchy traversal and visibility decisions MUST go through `school_tree.py`.
+> Direct use of `frappe.utils.nestedset` outside this module is forbidden.**
+
+This aligns perfectly with:
+
+* Pattern B
+* Your caching strategy
+* Your permission semantics
+* Your analytics expectations
 
 ---
 
