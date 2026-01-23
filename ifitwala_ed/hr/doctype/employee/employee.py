@@ -11,6 +11,8 @@ from frappe import _, scrub
 from frappe.utils import validate_email_address, add_years, cstr
 from frappe.permissions import get_doc_permissions
 from frappe.contacts.address_and_contact import load_address_and_contact
+from ifitwala_ed.utilities.file_dispatcher import create_and_classify_file
+
 
 from ifitwala_ed.utilities.employee_utils import (
 	get_user_base_org,
@@ -112,6 +114,16 @@ class Employee(NestedSet):
 
 		# Contact graph integrity
 		self._ensure_primary_contact()
+
+		"""
+		Authoritative governance point for Employee profile photos.
+
+		Rationale:
+		- Employee Image is uploaded via native Attach Image (File is created first).
+		- We must immediately govern it: classify, slot, subject, retention.
+		- Ungoverned files must not survive a save cycle.
+		"""
+		self._govern_profile_photo()
 
 	def on_trash(self):
 		# Keep consistency on delete; guard to avoid unnecessary work
@@ -512,27 +524,8 @@ class Employee(NestedSet):
 			if user.user_image != img_path:
 				user.user_image = img_path
 
-			existing = frappe.db.exists(
-				"File",
-				{
-					"attached_to_doctype": "User",
-					"attached_to_name": self.user_id,
-					"attached_to_field": "user_image",
-				},
-			)
-
-			if not existing:
-				frappe.get_doc(
-					{
-						"doctype": "File",
-						"file_url": img_path,
-						"attached_to_doctype": "User",
-						"attached_to_name": self.user_id,
-						"attached_to_field": "user_image",
-					}
-				).insert(ignore_permissions=True, ignore_if_duplicate=True)
-			else:
-				frappe.db.set_value("File", existing, "file_url", img_path, update_modified=False)
+		if img_path and user.user_image != img_path:
+				user.user_image = img_path
 
 		user.save()
 
@@ -656,6 +649,91 @@ class Employee(NestedSet):
 
 		if not self.empl_primary_contact:
 			self.db_set("empl_primary_contact", contact_name, update_modified=False)
+
+	# ------------------------------------------------------------------
+	# Employee Image Governance
+	# ------------------------------------------------------------------
+
+	def _govern_profile_photo(self):
+		"""
+		Ensure Employee.employee_image is always backed by a governed File.
+
+		Invariant:
+		- At most ONE active profile photo per Employee
+		- Slot: profile_photo
+		- Subject: Employee
+		"""
+
+		if not self.employee_image:
+			return
+
+		# Resolve File by file_url
+		file_name = frappe.db.get_value(
+			"File",
+			{"file_url": self.employee_image},
+			"name",
+		)
+
+		if not file_name:
+			# Defensive: nothing to govern
+			return
+
+		# If already classified as profile_photo, we are done
+		existing_classification = frappe.db.get_value(
+			"File Classification",
+			{
+				"file": file_name,
+				"primary_subject_type": "Employee",
+				"primary_subject_id": self.name,
+				"slot": "profile_photo",
+			},
+			"name",
+		)
+
+		if existing_classification:
+			return
+
+		# Create governed replacement via dispatcher
+		governed_file = create_and_classify_file(
+			file_kwargs={
+				"file_url": self.employee_image,
+				"attached_to_doctype": "Employee",
+				"attached_to_name": self.name,
+				"is_private": 0,
+			},
+			classification={
+				"primary_subject_type": "Employee",
+				"primary_subject_id": self.name,
+				"data_class": "administrative",
+				"purpose": "profile_photo",
+				"retention_policy": "until_employment_end_plus_policy",
+				"slot": "profile_photo",
+				"organization": self.organization,
+				"school": self.school,
+			},
+		)
+
+		if not governed_file:
+			frappe.throw(
+				_(
+					"Employee profile photo could not be governed. "
+					"Upload was blocked to protect data integrity."
+				)
+			)
+
+		# Update employee_image to governed file
+		self.db_set("employee_image", governed_file.file_url)
+
+		# Delete the original ungoverned file
+		try:
+			frappe.delete_doc("File", file_name, ignore_permissions=True)
+		except Exception:
+			# Fail-safe: do not block save, but log loudly
+			frappe.log_error(
+				title="Employee Image Cleanup Failed",
+				message=f"Failed to delete ungoverned File {file_name} for Employee {self.name}",
+			)
+
 
 
 @frappe.whitelist()
