@@ -6,7 +6,7 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.admission.admission_utils import ensure_admissions_permission
-from ifitwala_ed.admission import api as admission_api
+from ifitwala_ed.admission import admissions_portal as admission_api
 
 
 ADMISSIONS_ROLE = "Admissions Applicant"

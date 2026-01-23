@@ -1,6 +1,8 @@
 # Copyright (c) 2024, François de Ryckel
 # For license information, please see license.txt
 
+# ifitwala_ed/school_settings/doctype/school_calendar/school_calendar.py
+
 import frappe
 import json
 from frappe import _

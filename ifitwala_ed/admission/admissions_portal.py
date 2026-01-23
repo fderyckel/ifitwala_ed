@@ -1,4 +1,4 @@
-# ifitwala_ed/admission/api.py
+# ifitwala_ed/admission/admissions_portal.py
 
 from __future__ import annotations
 

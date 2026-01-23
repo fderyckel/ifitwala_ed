@@ -1,3 +1,580 @@
+# Student Applicant & Promotion — Canonical Contracts (LOCKED)
+
+> Consolidated from:
+> - `/mnt/data/applicant.md`
+> - `/mnt/data/phase020.md`
+> - `/mnt/data/phase030.md`
+
+> Purpose: lock Applicant semantics and the Promotion boundary (server truth). Phases/steps removed; contracts preserved.
+
+
+---
+
+## 1. Student Applicant — canonical staging container
+
+
+# Student Applicant — Canonical Admissions Staging Contract
+
+**Ifitwala_Ed — v1 (Authoritative, Living Document)**
+
+> A *Student Applicant* is **not** a student, **not** an inquiry, and **not** a form submission.
+> It is a **controlled staging container** that accumulates admissions data and human judgment
+> **until** an explicit institutional decision is made.
+
+This document defines the **non-negotiable role** of the Student Applicant in the admissions pipeline.
+If implementation contradicts this document, **the implementation is wrong**.
+
+---
+
+## 1. Position in the Admissions Pipeline
+
+The admissions pipeline has **three distinct objects**, each with a different legal and operational role:
+
+```
+Inquiry → Student Applicant → Student
+```
+
+### 1.1 Inquiry (Triage Object)
+
+* Captures *intent* and *initial contact*
+* Operational, discardable
+* No legal authority
+* May or may not result in an Applicant
+
+### 1.2 Student Applicant (Staging Container)
+
+* Sole container for **all pre-student data**
+* Accumulates information, documents, interviews, and review outcomes
+* Mutable **until locked**
+* May be rejected or archived without polluting canonical student records
+
+### 1.3 Student (Canonical Record)
+
+* Created **only** by promotion
+* Permanent, auditable, institutional truth
+* Admissions logic does **not** live here
+
+**Invariant**
+
+> A Student **cannot exist** without having been a Student Applicant first.
+
+---
+
+## 2. Core Responsibilities of Student Applicant
+
+The Student Applicant exists to do **exactly four things**:
+
+1. **Aggregate** admissions data (directly or via Applicant-scoped sub-records)
+2. **Control editability** based on lifecycle state
+3. **Support human review and judgment**
+4. **Gate promotion** into the canonical Student record
+
+It must **never**:
+
+* Behave like a lightweight form
+* Auto-create students
+* Bypass review via automation
+* Leak data into Student or Student Patient prematurely
+
+---
+
+## 3. Canonical Fields & Identity
+
+At minimum, a Student Applicant contains:
+
+* Identity (name fields)
+* Optional link to originating **Inquiry**
+* Target **Program**
+* Target **Academic Year / Term**
+* `application_status` (lifecycle control)
+* Optional applicant image
+
+The Applicant **may exist without an Inquiry**
+(e.g. walk-ins, internal referrals, manual entry).
+
+**Invariant**
+
+> The Inquiry ↔ Applicant relationship is optional, one-directional, and immutable once set.
+
+---
+
+## 4. Application Status — Lifecycle Authority
+
+`application_status` is **not cosmetic**.
+It is the **primary enforcement mechanism** for permissions, editability, and promotion.
+
+### 4.1 Canonical Status Set
+
+The only allowed statuses are:
+
+```
+Draft
+Invited
+In Progress
+Submitted
+Under Review
+Missing Info
+Approved
+Rejected
+Promoted
+```
+
+Any other value is invalid.
+
+---
+
+### 4.2 Status Semantics (Behavioral Truth)
+
+| Status       | Family Edit | Staff Edit | Meaning                            |
+| ------------ | ----------- | ---------- | ---------------------------------- |
+| Draft        | ❌           | ✅          | Internal draft, not yet shared     |
+| Invited      | ✅           | ✅          | Family invited, access granted     |
+| In Progress  | ✅           | ✅          | Family actively filling data       |
+| Submitted    | ❌           | ✅          | Family finished; staff review only |
+| Under Review | ❌           | ✅          | Formal admissions review           |
+| Missing Info | ✅ (scoped)  | ✅          | Limited family edits requested     |
+| Approved     | ❌           | ✅          | Decision made; promotion allowed   |
+| Rejected     | ❌           | ❌          | Terminal, read-only                |
+| Promoted     | ❌           | ❌          | Terminal; Student exists           |
+
+**Rules**
+
+* Status changes are **server-controlled**
+* Invalid transitions must hard-fail
+* UI read-only flags are *not* enforcement
+
+---
+
+## 5. Editability Is a Server-Side Invariant
+
+Edit permissions are determined by:
+
+* `application_status`
+* User role (Admissions staff vs family)
+
+**Invariant**
+
+> No user may modify an Applicant if the status disallows it,
+> even if the UI is bypassed.
+
+This prevents:
+
+* Late edits after submission
+* Silent data drift during review
+* Post-decision tampering
+
+**System Manager override (exception)**
+
+In terminal states (`Rejected`, `Promoted`), edits are blocked unless a System Manager
+performs an explicit override. Overrides must be intentional, audited, and include a
+reason. This is a legal escape hatch, not a normal workflow.
+
+---
+
+## 6. Applicant Sub-Domains (Conceptual, Not Yet Implemented)
+
+The Student Applicant is designed to host **satellite Applicant-scoped records**, including:
+
+### Mandatory (v1+)
+
+* Applicant Guardians
+* Applicant Academic Background
+* Applicant Health Profile
+* Applicant Policy Acknowledgements
+* Applicant Documents
+
+### Optional / Contextual
+
+* Applicant Interviews
+* Applicant Language Profile
+* Applicant Logistics
+* Applicant Financial Responsibility
+
+**Invariant**
+
+> Applicant sub-domains belong to the Applicant —
+> never directly to Student or Student Patient.
+
+---
+
+## 7. Applicant Interview (Architectural Requirement)
+
+Applicant Interview is a **first-class admissions artifact**.
+
+* Staff-only
+* Informational, never decisive
+* Multiple per Applicant
+* Never copied to Student by default
+
+Interviews exist to **inform judgment**, not automate decisions.
+
+---
+
+## 8. Promotion Boundary (Applicant → Student)
+
+Promotion is the **only legal path** to Student creation.
+
+### 8.1 Preconditions
+
+* `application_status = Approved`
+* Required Applicant data complete (school-defined)
+* Required policies acknowledged
+
+### 8.2 Promotion Effects
+
+* Create Student
+* Link Student ↔ Applicant
+* Lock Applicant permanently
+* Record promotion metadata (who / when)
+
+### 8.3 Explicit Non-Effects
+
+Promotion does **not** automatically:
+
+* Enroll programs
+* Create billing records
+* Copy interviews
+* Copy rejected documents
+
+**Invariants**
+
+> Promotion is explicit
+> Promotion is idempotent
+> Promotion is irreversible
+
+---
+
+## 8.4 Transitional Exception — Legacy Students & Institutional Onboarding
+
+The Student Applicant contract governs **steady-state admissions**.
+It does **not** invalidate the reality that institutions may enter the system
+with **pre-existing enrolled students**.
+
+### 8.4.1 Legacy Student Import (Non-Admissions Context)
+
+When an institution onboards onto Ifitwala_Ed:
+
+* Existing enrolled students **may be imported directly**
+* These Students **may not** have a corresponding Student Applicant
+* This path exists **only** for migration and onboarding
+
+This exception is:
+
+* explicit
+* intentional
+* auditable
+* non-repeatable in normal operations
+
+**Invariant**
+
+> Direct Student creation without a Student Applicant is permitted
+> **only** under an explicit migration or system-level import context.
+
+This exception must never be used to bypass admissions workflow.
+
+---
+
+### 8.4.2 Enforcement Boundary
+
+Outside of a migration or import context:
+
+* Creating a Student **without** a Student Applicant is forbidden
+* Any such attempt is a hard architecture violation
+
+Admissions-driven Students must **always** originate from:
+
+```
+Student Applicant → Promotion → Student
+```
+
+---
+
+### 8.4.3 Audit & Traceability Requirement
+
+All legacy or migration-created Students must be:
+
+* clearly marked as **imported**
+* distinguishable from admissions-promoted Students
+* traceable to an onboarding or migration event
+
+This ensures:
+
+* legal clarity
+* historical accuracy
+* protection of admissions analytics
+
+---
+
+### 8.4.4 Prohibition on Retroactive Fabrication
+
+The system must **never**:
+
+* auto-generate Student Applicants for imported Students
+* backfill admissions history artificially
+* imply that a migrated Student passed through admissions workflow
+
+**Invariant**
+
+> Absence of a Student Applicant for a legacy Student
+> is a truthful historical state — not a defect.
+
+---
+
+### 8.4.5 Steady-State Guarantee
+
+Once onboarding is complete:
+
+* the migration exception is disabled
+* all new Students must originate from Student Applicant promotion
+* no hybrid or ambiguous creation paths exist
+
+This preserves:
+
+* admissions integrity
+* legal defensibility
+* analytical correctness
+
+---
+
+## 9. Design Prohibitions (Hard Rules)
+
+The system must **never**:
+
+* Merge Student Applicant and Student
+* Allow family edits post-approval
+* Create Student implicitly
+* Treat interviews as decisions
+* Write Applicant data directly into Student Patient
+* Auto-enroll from Applicant intent
+
+Violations are **architecture bugs**, not feature gaps.
+
+---
+
+## 10. Why This Structure Exists
+
+This model exists to support:
+
+* Legal defensibility
+* Multi-round review
+* Partial submissions
+* Rejections without data pollution
+* Auditable admissions decisions
+* Future re-applications
+
+Without schema rewrites.
+
+---
+
+## 11. Canonical Summary
+
+> Inquiry filters
+> Applicant accumulates
+> Interviews inform
+> Promotion converts
+> Student operates
+
+Everything else is implementation detail.
+
+---
+
+## 12. Institutional Scope & Authority (Applicability Layer)
+
+> **This section aligns the Student Applicant contract with the
+> Phase 1.5 — Multi-School Admissions Governance Contract.**
+>
+> It does **not** redefine governance.
+> It specifies how that governance **applies to the Applicant object**.
+
+If a conflict exists, **Phase 1.5 governance wins** on matters of scope,
+authority, and visibility.
+
+---
+
+### 12.1 Applicant Institutional Anchoring
+
+A `Student Applicant` must be **explicitly anchored** to an institutional context.
+
+Each Applicant is associated with:
+
+* exactly one **Organization**
+* exactly one **School**
+
+This association:
+
+* is set **once**, at Applicant creation
+* is immutable for the lifetime of the Applicant
+* is never inferred dynamically at runtime
+
+**Source of truth**
+
+* If created from an Inquiry, `school` and `organization` are inherited
+* If created manually, staff must explicitly choose the school
+
+**Invariant**
+
+> An Applicant always “belongs” to one School,
+> even if academic Programs are shared across campuses.
+
+---
+
+### 12.2 Why Program Is Not Sufficient
+
+Programs may be:
+
+* shared across schools
+* migrated between schools
+* reused across academic structures
+
+Therefore:
+
+> Program affiliation is **not** a substitute for institutional scope.
+
+School anchoring exists to support:
+
+* admissions ownership
+* officer specialization
+* analytics partitioning
+* permission enforcement
+* legal accountability
+
+---
+
+### 12.3 Admissions Authority Model (Alignment)
+
+Admissions authority is **role-based and scope-based**, as defined by Phase 1.5.
+
+* **Admission Officer**
+
+  * operates within an explicitly declared scope
+  * scope may include:
+
+    * one or more Schools
+    * optionally specific Programs
+
+* **Admission Manager / Director**
+
+  * has cross-school visibility within an Organization
+  * may override decisions (audited)
+
+**Invariant**
+
+> Visibility, assignment, and dashboards must respect institutional scope —
+> not just role.
+
+---
+
+### 12.4 Applicant Lifecycle Is Global, Requirements Are Local
+
+The Applicant lifecycle (`application_status`) is **globally consistent**.
+
+However:
+
+* validation requirements
+* required interviews
+* required documents
+* approval readiness
+
+may vary **by School**.
+
+These variations must be:
+
+* declarative
+* configuration-driven
+* evaluated at lifecycle transitions
+
+**Prohibition**
+
+> School-specific rules must not be encoded as conditional logic
+> inside Applicant lifecycle code.
+
+---
+
+### 12.5 Cross-School Oversight Guarantee
+
+Institutional leadership must be able to:
+
+* view Applicants across all Schools
+* filter by School / Program
+* audit overrides and decisions
+
+This visibility is **explicitly granted**, not emergent.
+
+---
+
+NEW NEW
+
+## 13
+---
+
+### **Admissions Boundary Rules (Authoritative)**
+
+These rules define **hard ownership boundaries** between admissions and student records.
+
+#### 1. Canonical owner of admissions files
+
+* All admissions files belong to `Applicant Document`.
+* Files must never be attached directly to:
+
+  * `Student Applicant`
+  * `Student`
+
+The only exception is:
+
+| Doctype           | Field             | Purpose               |
+| ----------------- | ----------------- | --------------------- |
+| Student Applicant | `applicant_image` | Identity preview only |
+
+---
+
+#### 2. File lifecycle across promotion
+
+Admissions files **do not migrate**.
+
+Instead:
+
+* Promotion creates **new File records** for Student
+* Applicant-side File records are immutable
+* No File record is shared across stages
+
+This preserves:
+
+* audit history
+* GDPR erasure safety
+* legal defensibility
+
+---
+
+#### 3. Folder semantics (normative)
+
+| Stage     | Root Folder                       |
+| --------- | --------------------------------- |
+| Applicant | `Home/Admissions/Applicant/<ID>/` |
+| Student   | `Home/Students/<ID>/`             |
+
+Folders must never overlap across stages.
+
+---
+
+#### 4. Prohibited patterns
+
+The following are architectural violations:
+
+* Re-linking a File record from Applicant to Student
+* Attaching admissions files to Student Applicant
+* Using shared folders for Applicant and Student
+* Mutating Applicant file metadata during promotion
+
+Violations are bugs, not edge cases.
+
+---
+
+
+---
+
+## 2. Applicant satellites & decision‑quality artifacts (source)
+
+
 # Phase 02 — Admissions Intelligence
 
 **PR Breakdown (One PR per Concern Group)**
@@ -1417,3 +1994,796 @@ Phase 02 is **done only if**:
 If Codex still asks questions after this, it is **not respecting the contract**.
 
 You are now clear to proceed.
+
+
+---
+
+## 3. Promotion — legal closure boundary (source)
+
+
+Understood. I will **not bounce decisions back to you**. I’ll make **explicit, professional calls**, justify them against your own notes, and align with **best-in-class ERP / Frappe practice**.
+No assumptions will be hidden; every choice will be **declared and defended**.
+
+Below are the **two requested deliverables**, cleanly separated.
+
+---
+
+# ✅ TASK 1 — PHASE 03 FULL PR PLANNING
+
+**Phase 03 — Admissions Decision & Promotion Control**
+
+> Phase 03 introduces **authority and enforcement**, not automation.
+> Humans decide. The system enforces correctness.
+
+---
+
+## 🔒 Phase 03 Core Intent (Derived, Not Invented)
+
+From your notes (`plans.md`, `phase015.md`, `phase020.md`, governance contracts):
+
+**Phase 03 is allowed to:**
+
+* Block invalid actions
+* Enforce readiness
+* Enforce authority
+* Execute promotion **only via explicit action**
+
+**Phase 03 is NOT allowed to:**
+
+* Auto-approve
+* Auto-promote
+* Guess outcomes
+* Collapse Applicant ↔ Student boundary
+
+This matches **PowerSchool / Workday** practice exactly.
+
+---
+
+## PR-03.1 — Approval Authority & Lifecycle Guarding
+
+### Purpose
+
+Make `application_status = Approved` **meaningful and protected**.
+
+### Changes
+
+* Introduce **server-side approval guard** on `Student Applicant`
+* Approval becomes an **explicit staff action**, not a state edit
+
+### Preconditions (must all pass)
+
+* `get_readiness_snapshot().ready == True`
+* All required policies acknowledged
+* All required documents approved
+* Health review not blocking
+* Applicant not already Rejected / Promoted
+
+### Authority
+
+* Allowed roles:
+
+  * Admissions Officer (scoped)
+  * Academic Admin
+  * System Manager (override, audited)
+
+### Enforcement
+
+* `before_update` on Student Applicant:
+
+  * Reject any direct status change to `Approved`
+* Whitelisted method:
+
+  ```python
+  approve_applicant(applicant_name, reason=None)
+  ```
+
+### Hard rules
+
+* ❌ No UI-only enforcement
+* ❌ No automatic transitions
+* ❌ No bypass via bulk edit / import
+
+### Exit criteria
+
+* Applicant cannot be Approved unless truly complete
+* All approval attempts are auditable
+
+---
+
+## PR-03.2 — Rejection Authority (Terminal State)
+
+### Purpose
+
+Make rejection **final, explicit, and safe**.
+
+### Changes
+
+* Controlled rejection action:
+
+  ```python
+  reject_applicant(applicant_name, reason)
+  ```
+
+### Effects
+
+* `application_status → Rejected`
+* Applicant becomes read-only
+* Documents retained (audit)
+* Policies retained (legal)
+
+### Hard rules
+
+* ❌ No deletion
+* ❌ No auto-cleanup
+* ❌ No reopening without System Manager override
+
+### Exit criteria
+
+* Rejected Applicants are immutable
+* No accidental data loss
+
+---
+
+## PR-03.3 — Promotion Execution (Applicant → Student)
+
+### Purpose
+
+Make promotion **irreversible, explicit, and clean**.
+
+### Preconditions
+
+* Applicant is `Approved`
+* Promotion has not already occurred
+* Promotion context is valid (School / Org)
+
+### Entry point
+
+```python
+promote_applicant(applicant_name)
+```
+
+### Effects (ONLY these)
+
+* Create `Student`
+* Link `student.student_applicant`
+* Copy allowed data only
+* Lock Applicant permanently (`Promoted`)
+
+### Explicit non-effects
+
+* ❌ No enrollment
+* ❌ No billing
+* ❌ No scheduling
+* ❌ No learning artifacts
+
+### File handling
+
+* Approved Applicant Documents:
+
+  * **Copied or re-linked**, never moved
+  * Applicant versions preserved
+* Unapproved documents ignored
+
+### Exit criteria
+
+* Promotion is idempotent
+* Promotion is auditable
+* Applicant is frozen forever
+
+---
+
+NEW NEW NEW
+
+### **File Finalization & Ownership Boundary (MANDATORY)**
+
+---
+
+### **File Finalization & Ownership Boundary (MANDATORY)**
+
+> **This section is authoritative for Phase 03.**
+
+#### 1. Applicant-side ownership (pre-promotion)
+
+All admissions files **must** be attached to `Applicant Document`.
+
+* No admissions file may be attached directly to:
+
+  * `Student Applicant`
+  * `Student`
+* The only allowed file on `Student Applicant` is:
+
+  * `applicant_image` (identity scaffold only)
+
+This rule is enforced server-side.
+
+---
+
+#### 2. Promotion behavior (Applicant → Student)
+
+When promoting an Applicant:
+
+* Approved `Applicant Document` files **are copied**, not re-linked.
+* A **new `File` record** is created for the `Student`.
+* The original Applicant-side `File` record:
+
+  * remains attached to `Applicant Document`
+  * is never mutated, moved, or deleted
+
+> **Linking or re-attaching an existing File record is forbidden.**
+
+---
+
+#### 3. Student-side file routing
+
+Promoted files attach using **standard Student file routing**:
+
+```
+Home/Students/<STUDENT_ID>/
+```
+
+No dedicated “Admissions” folder exists on the Student side.
+
+Admissions semantics end at promotion.
+
+---
+
+#### 4. Rejected or non-promotable documents
+
+* Rejected documents:
+
+  * remain on Applicant only
+  * are never copied to Student
+* Promotion logic must explicitly check:
+
+  * `Applicant Document.review_status == Approved`
+
+---
+
+#### 5. GDPR consequence (normative)
+
+Because Applicant files and Student files are **separate File records**:
+
+* Applicant GDPR erasure is:
+
+  * complete
+  * local
+  * auditable
+* Student data integrity is preserved
+
+This behavior is **non-negotiable**.
+
+---
+
+
+END OF NEW NEW NEW
+
+---
+
+## PR-03.4 — Promotion Guards (Hard Invariants)
+
+### Purpose
+
+Prevent **any other path** to Student creation.
+
+### Enforcement
+
+* Student `before_insert` guard:
+
+  * Block creation unless:
+
+    * via `promote_applicant`
+    * OR explicit migration flag
+
+### Flags respected
+
+* `frappe.flags.in_migration`
+* `frappe.flags.allow_direct_student_create`
+
+### Hard rules
+
+* ❌ No silent bypass
+* ❌ No UI loopholes
+
+### Exit criteria
+
+* Impossible to create Student accidentally
+
+---
+
+## PR-03.5 — Desk UX (Decision-Only Controls)
+
+### Purpose
+
+Expose **authority**, not logic, in UI.
+
+### Additions
+
+* Buttons:
+
+  * Approve
+  * Reject
+  * Promote
+* Read-only readiness snapshot
+* Reason prompts (required)
+
+### Hard rules
+
+* ❌ No status dropdown
+* ❌ No inline edits
+* ❌ No automation cues
+
+### Exit criteria
+
+* Desk guides correct action
+* UX cannot violate contracts
+
+---
+
+## ✅ Phase 03 Completion Gate
+
+Phase 03 is **DONE** only if:
+
+* [ ] Approval is blocked unless ready
+* [ ] Rejection is terminal
+* [ ] Promotion is explicit + irreversible
+* [ ] No other Student creation paths exist
+* [ ] Files are preserved correctly
+* [ ] All authority is server-enforced
+
+Fail one → Phase 03 rejected.
+
+---
+
+# ADMISSIONS DOCUMENT HANDLING vs FILE ARCHITECTURE AUDIT
+
+Based on `files_01_architecture_notes.md` + Applicant Document contracts.
+
+---
+
+## ✅ What is **CORRECT and COMPLIANT**
+
+### 1️⃣ Ownership model
+
+✔ Files attach to **Applicant Document**, not Applicant
+✔ Logical slot = `(Applicant, document_type)`
+✔ Versioning is explicit and preserved
+
+This matches your **GDPR + audit requirements**.
+
+---
+
+### 2️⃣ Folder strategy
+
+```text
+Home/Admissions/
+  Applicant/<APPLICANT_ID>/
+    Documents/<DOCUMENT_TYPE>/
+```
+
+✔ Deterministic
+✔ Deletable per data subject
+✔ No cross-domain leakage
+
+---
+
+### 3️⃣ Promotion behavior
+
+✔ Files are **copied or re-linked**, never moved
+✔ Applicant history preserved
+✔ Student record stays clean
+
+This is **exactly** how PowerSchool handles admissions docs.
+
+---
+
+## ⚠️ Areas that are SAFE but REQUIRE DISCIPLINE
+
+### 4️⃣ Applicant image
+
+* Allowed to remain on Student Applicant
+* Must be:
+
+  * clearly tagged (`data_class = biometric`)
+  * included in erasure routines
+
+**Recommendation:**
+Document this exception explicitly (you mostly already have).
+
+---
+
+### 5️⃣ File delete semantics
+
+* Soft-delete + retention required
+* Ensure:
+
+  * no cascading deletes from Applicant
+  * explicit erase routines for GDPR
+
+---
+
+## ❌ Hard violations to PREVENT (not yet seen, but must guard)
+
+### 🚫 Direct File attachment to Student Applicant
+
+Must be **hard-blocked server-side**, except:
+
+* `applicant_image`
+
+### 🚫 Shared folders across Applicants
+
+No:
+
+```text
+Home/Admissions/Passports/
+```
+
+Everything must stay **per Applicant**.
+
+### 🚫 Early writes into Student / Portfolio
+
+Absolutely forbidden before promotion.
+
+---
+
+## ✅ Final Audit Verdict
+
+| Area                         | Status                             |
+| ---------------------------- | ---------------------------------- |
+| Applicant Document ownership | ✅ Correct                          |
+| Versioning                   | ✅ Correct                          |
+| Foldering                    | ✅ Correct                          |
+| Promotion handling           | ✅ Correct                          |
+| GDPR erasure support         | ✅ Designed correctly               |
+| Risk of drift                | ⚠️ Only if guards are not enforced |
+
+**Conclusion:**
+Your admissions document handling **respects your file architecture**, provided Phase 03 enforces guards.
+
+---
+
+CLARIFICATION
+
+# Phase 03 — Ambiguity Resolution (LOCKED IMPLEMENTATION NOTES)
+
+These notes are now **binding** for Phase 03 implementation.
+They **do not replace** `phase03.md`; they **complete it**.
+
+A coding agent must follow these **without asking further questions**.
+
+---
+
+## 1️⃣ Readiness Snapshot — Exact Logic (LOCKED)
+
+### Canonical entry point
+
+Implement on **Student Applicant**:
+
+```python
+def get_readiness_snapshot(self) -> dict
+```
+
+No external services.
+No UI-only logic.
+
+---
+
+### Readiness dimensions (exact)
+
+#### A. Policies (MANDATORY)
+
+**Query source**
+
+* `Institutional Policy`
+
+**Filter**
+
+* `is_active = 1`
+* `organization = applicant.organization`
+* `(school IS NULL OR school = applicant.school)`
+* `applies_to` includes `"Applicant"`
+
+**Check**
+
+* For **each** policy returned:
+
+  * There **must exist** a `Policy Acknowledgement` where:
+
+    * `policy_version.policy = Institutional Policy`
+    * `context_doctype = "Student Applicant"`
+    * `context_name = applicant.name`
+
+**Failure condition**
+
+* Missing **any** acknowledgement → not ready
+
+---
+
+#### B. Health (MANDATORY)
+
+**Source**
+
+* `Applicant Health Profile`
+
+**Check**
+
+* Record must exist
+* `review_status == "Cleared"`
+
+**Notes**
+
+* Empty / missing is **not acceptable**
+* No medical interpretation
+* No auto-clearing
+
+---
+
+#### C. Documents (MANDATORY)
+
+**Source**
+
+* `Applicant Document`
+
+**Required document types**
+
+* Derived from `Applicant Document Type`
+
+  * `is_required = 1`
+  * scoped by org / school (if present)
+
+**Check**
+For each required type:
+
+* An Applicant Document exists
+* `review_status == "Approved"`
+* Latest version is approved
+
+**Rejected ≠ satisfied**
+
+---
+
+#### D. Interviews (INFORMATIONAL, NOT BLOCKING)
+
+**Source**
+
+* `Applicant Interview`
+
+**Check**
+
+* Presence only (count ≥ 1)
+
+**Important**
+
+* Interview **never blocks approval** in Phase 03
+* No outcome-based logic
+* No “completed” state
+
+---
+
+### Return shape (LOCKED)
+
+```python
+{
+  "policies": {...},
+  "health": {...},
+  "documents": {...},
+  "interviews": {...},
+  "ready": bool,   # derived ONLY from A + B + C
+  "issues": [str]  # human-readable explanations
+}
+```
+
+❌ No exceptions
+❌ No throws
+❌ No status writes
+
+---
+
+## 2️⃣ Required Policies — Source of Truth (LOCKED)
+
+There is **no admissions-specific policy list**.
+
+**Required policies are exactly:**
+
+> All active `Institutional Policy` records that apply to Applicants in the Applicant’s org/school scope.
+
+No hardcoding.
+No name-based filtering.
+No “latest policy” shortcuts.
+
+This matches:
+
+* your governance notes
+* PowerSchool practice
+* legal defensibility
+
+---
+
+## 3️⃣ Applicant Document Promotion — File Strategy (LOCKED)
+
+**Decision confirmed: COPY STRATEGY**
+
+Re-linking is **not safe enough** for audit or permissions.
+
+---
+
+### Exact promotion behavior
+
+For each `Applicant Document` where:
+
+* `review_status == "Approved"`
+* `promotion_target == "Student"`
+
+Do **all** of the following:
+
+1. Fetch the **latest File** attached to Applicant Document
+2. Create a **NEW File record**:
+
+   * `attached_to_doctype = "Student"`
+   * `attached_to_name = student.name`
+   * `file_url` / `content` = same as source
+   * `is_private` = same
+3. Do **not** delete or modify the original File
+4. Do **not** change Applicant Document history
+
+Result:
+
+* Applicant retains full audit trail
+* Student has independent ownership
+* Disk path reuse is acceptable
+* Logical separation is preserved
+
+This is **the correct Frappe + SIS pattern**.
+
+---
+
+## 4️⃣ Student Creation Guard — CONFIRMED & LOCKED
+
+You already have the right field. This just formalizes it.
+
+### Implementation
+
+In `students/doctype/student/student.py`:
+
+```python
+def before_insert(self):
+    if not (
+        frappe.flags.in_migration
+        or self.allow_direct_creation
+    ):
+        frappe.throw(_("Students must be created via Applicant promotion."))
+```
+
+### Promotion path responsibility
+
+`promote_applicant()` must:
+
+* set `allow_direct_creation = 1`
+* create Student
+* never expose this flag elsewhere
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Add a **new top-level section** near the end (before implementation notes):
+
+### **Admissions Boundary Rules (Authoritative)**
+
+
+
+
+
+
+---
+
+## **Codex Instructions — Admissions File Management (Phase 03)**
+
+You must implement the following, exactly as specified in documentation.
+
+### A. Student Applicant attachment guard
+
+In `student_applicant.py`:
+
+* Reject all file attachments **except**:
+
+  * `applicant_image`
+* Server-side enforcement required
+* UI checks are insufficient
+
+---
+
+### B. Applicant → Student promotion logic
+
+When promoting an Applicant:
+
+1. Query `Applicant Document` where:
+
+   * `review_status == "Approved"`
+   * `promotion_target == "Student"` (if present)
+2. For each approved document:
+
+   * Fetch the attached `File`
+   * Create a **new `File` record**:
+
+     * `attached_to_doctype = "Student"`
+     * `attached_to_name = <student.name>`
+     * `file_url / content = same as source`
+3. Do **not**:
+
+   * re-link existing File
+   * move Applicant file
+   * delete Applicant file
+
+---
+
+### C. File routing
+
+* Applicant files:
+
+  * Must remain under `Home/Admissions/Applicant/<ID>/`
+* Student files:
+
+  * Use default Student routing
+  * No admissions-specific Student folders
+
+---
+
+### D. Rejected documents
+
+* Documents with `review_status == "Rejected"`:
+
+  * are never copied
+  * remain Applicant-only
+
+---
+
+### E. GDPR invariants
+
+Your implementation must ensure:
+
+* Applicant files can be erased independently
+* Student files remain intact
+* No shared File records exist
+
+If any File record is attached to both Applicant and Student → **implementation is invalid**.
+
+---
+
+## Final sanity check
+
+If Codex follows:
+
+* the three notes above
+* and the instruction block verbatim
+
+Then:
+
+✅ Phase 03 is compliant
+✅ GDPR workflows remain clean
+✅ No future refactor needed
+
+If you want, next step we can:
+
+* draft **GDPR Erasure Log Doctype** (schema + controller), or
+* write a **Phase 03 coding checklist** for PR review discipline
+
+
+---
+
+## 4. Implementation invariants to verify during debugging
+
+* Promotion is **atomic** (all‑or‑nothing)
+* Promotion is **idempotent** (re‑run does not duplicate Students/Users/Contacts/Patient)
+* Applicant becomes **permanently read‑only** after promotion
+* Creation source guard: Student creation is allowed only via Applicant promotion, except explicit migration/import flags.
