@@ -42,40 +42,9 @@ class Employee(NestedSet):
 		RULE:
 		- HR can read Contact + Address
 		- HR must NOT require User read permission
-		- Therefore we resolve Contact via Employee Dynamic Link only
+		- Use the standard loader to populate __onload for the form renderer
 		"""
-		# Resolve Contact linked directly to Employee
-		contact_name = frappe.db.get_value(
-			"Dynamic Link",
-			{
-				"link_doctype": "Employee",
-				"link_name": self.name,
-				"parenttype": "Contact",
-			},
-			"parent",
-		)
-
-		if not contact_name:
-			return
-
-		# Attach contact to doc (same shape as load_address_and_contact)
-		self._contact = frappe.get_doc("Contact", contact_name)
-
-		# Load addresses linked to this Contact
-		addresses = frappe.get_all(
-			"Dynamic Link",
-			filters={
-				"link_doctype": "Contact",
-				"link_name": contact_name,
-				"parenttype": "Address",
-			},
-			fields=["parent"],
-		)
-
-		self._addresses = [
-			frappe.get_doc("Address", a.parent)
-			for a in addresses
-		]
+		load_address_and_contact(self)
 
 
 	def validate(self):
@@ -114,10 +83,6 @@ class Employee(NestedSet):
 				key=lambda row: getdate(row.to_date) if row.to_date else getdate("9999-12-31"),
 				reverse=True,
 			)
-
-	def after_save(self):
-		self._classify_employee_image()
-
 
 	def after_rename(self, old, new, merge):
 		self.db_set("employee", new)
@@ -744,13 +709,13 @@ class Employee(NestedSet):
 
 		Invariant:
 		- At most ONE active profile photo per Employee
-		- Slot: profile_photo
+		- Slot: profile_image
 		- Subject: Employee
 
 		Policy:
 		- Public file (is_private=0).
 		- Governance is best-effort: if file is not yet on disk, do NOT block save.
-			Retry will happen on next save (or later scheduler if added).
+		  Retry will happen on next save (or later scheduler if added).
 		"""
 		if not self.employee_image:
 			return
@@ -762,7 +727,8 @@ class Employee(NestedSet):
 			abs_path = frappe.utils.get_site_path(rel_path)
 			if not os.path.exists(abs_path):
 				frappe.logger().info(
-					f"[Employee] Profile photo not on disk yet; governance deferred: employee={self.name} url={file_url}"
+					f"[Employee] Profile photo not on disk yet; governance deferred: "
+					f"employee={self.name} url={file_url}"
 				)
 				return
 
@@ -777,114 +743,35 @@ class Employee(NestedSet):
 			# Defensive: nothing to govern
 			return
 
-		# If already classified as profile_photo, we are done
-		existing_classification = frappe.db.get_value(
-			"File Classification",
-			{
-				"file": file_name,
-				"primary_subject_type": "Employee",
-				"primary_subject_id": self.name,
-				"slot": "profile_photo",
-			},
-			"name",
-		)
-
-		if existing_classification:
-			return
-
-		# Create governed replacement via dispatcher
-		governed_file = create_and_classify_file(
-			file_kwargs={
-				"file_url": self.employee_image,
-				"attached_to_doctype": "Employee",
-				"attached_to_name": self.name,
-				"is_private": 0,
-			},
-			classification={
-				"primary_subject_type": "Employee",
-				"primary_subject_id": self.name,
-				"data_class": "administrative",
-				"purpose": "profile_photo",
-				"retention_policy": "until_employment_end_plus_policy",
-				"slot": "profile_photo",
-				"organization": self.organization,
-				"school": self.school,
-			},
-		)
-
-		if not governed_file:
-			frappe.throw(
-				_(
-					"Employee profile photo could not be governed. "
-					"Upload was blocked to protect data integrity."
-				)
-			)
-
-		# Update employee_image to governed file
-		self.db_set("employee_image", governed_file.file_url)
-
-		# Delete the original ungoverned file
-		try:
-			frappe.delete_doc("File", file_name, ignore_permissions=True)
-		except Exception:
-			# Fail-safe: do not block save, but log loudly
-			frappe.log_error(
-				title="Employee Image Cleanup Failed",
-				message=f"Failed to delete ungoverned File {file_name} for Employee {self.name}",
-			)
-
-
-	def _classify_employee_image(self):
-		"""
-		Classify employee profile image uploaded via Desk.
-		Slot-based, idempotent, HR-safe.
-		"""
-
-		if not self.employee_image:
-			return
-
-		# Fetch File row
-		file_name = frappe.db.get_value(
-			"File",
-			{"file_url": self.employee_image},
-			"name",
-		)
-
-		if not file_name:
-			return
-
 		file_doc = frappe.get_doc("File", file_name)
 
-		# Skip if already classified for this slot + file
-		exists = frappe.db.exists(
+		# If already classified as profile_image for this employee, we are done
+		existing_classification = frappe.db.exists(
 			"File Classification",
 			{
 				"file": file_doc.name,
 				"primary_subject_type": "Employee",
 				"primary_subject_id": self.name,
 				"slot": "profile_image",
+				"is_current": 1,
 			},
 		)
 
-		if exists:
+		if existing_classification:
 			return
 
-		from ifitwala_ed.utilities.file_dispatcher import create_and_classify_file
-
+		# Create authoritative classification via dispatcher
 		create_and_classify_file(
 			file_doc=file_doc,
-			classification={
-				"primary_subject_type": "Employee",
-				"primary_subject_id": self.name,
-				"data_class": "biometric",
-				"purpose": "employee_profile_image",
-				"slot": "profile_image",
-				"organization": self.organization,
-				"school": self.school,
-				"upload_source": "Desk",
-			},
+			primary_subject_type="Employee",
+			primary_subject_id=self.name,
+			data_class="biometric",
+			purpose="employee_profile_image",
+			slot="profile_image",
+			organization=self.organization,
+			school=self.school,
+			is_private=0,
 		)
-
 
 
 @frappe.whitelist()

@@ -82,7 +82,11 @@ def create_and_classify_file(
 ):
 	"""
 	Authoritative file creation + governance enforcement.
-	This method is the ONLY allowed entry point.
+
+	RULES:
+	- Caller MUST supply full semantic intent.
+	- Slot-based versioning (one current per subject+slot).
+	- Never guess classification fields.
 	"""
 
 	# ---- Hard validation (no defaults, no guessing)
@@ -93,32 +97,38 @@ def create_and_classify_file(
 		"purpose": purpose,
 		"slot": slot,
 		"organization": organization,
+		"school": school,
 	}
 	for k, v in required.items():
 		if not v:
 			frappe.throw(_(f"Missing required file governance field: {k}"))
 
-	# ---- Create File (transport layer)
+	if primary_subject_type not in ALLOWED_SUBJECT_TYPES:
+		frappe.throw(_("Invalid primary_subject_type: {0}").format(primary_subject_type))
+
+	# ---- Persist File (transport layer; idempotent)
 	file_doc.is_private = is_private
 	file_doc.save(ignore_permissions=True)
 
-	# ---- Load settings
-	settings = frappe.get_single("File Management Settings")
+	# ---- Resolve retention
 	retention_days = frappe.db.get_value(
 		"File Retention Policy",
-		{"data_class": data_class, "purpose": purpose},
+		{
+			"data_class": data_class,
+			"purpose": purpose,
+		},
 		"retention_days",
 	)
 
 	if retention_days is None:
 		frappe.throw(
-			_("No retention policy defined for {0} / {1}")
+			_("No retention policy defined for data_class '{0}' and purpose '{1}'")
 			.format(data_class, purpose)
 		)
 
 	retention_until = frappe.utils.add_days(frappe.utils.today(), retention_days)
 
-	# ---- Enforce single-slot versioning
+	# ---- Enforce slot-level versioning
 	existing = frappe.get_all(
 		"File Classification",
 		filters={
@@ -135,10 +145,12 @@ def create_and_classify_file(
 		old.is_current = 0
 		old.save(ignore_permissions=True)
 
-	# ---- Create authoritative classification
+	# ---- Create authoritative File Classification
 	classification = frappe.get_doc({
 		"doctype": "File Classification",
 		"file": file_doc.name,
+		"attached_doctype": file_doc.attached_to_doctype,
+		"attached_name": file_doc.attached_to_name,
 		"primary_subject_type": primary_subject_type,
 		"primary_subject_id": primary_subject_id,
 		"data_class": data_class,
@@ -148,6 +160,8 @@ def create_and_classify_file(
 		"organization": organization,
 		"school": school,
 		"retention_until": retention_until,
+		"legal_hold": 0,
+		"erasure_state": "active",
 	})
 
 	classification.insert(ignore_permissions=True)
