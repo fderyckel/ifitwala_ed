@@ -112,30 +112,39 @@ def get_valid_parent_organizations(organization):
 @frappe.whitelist()
 def get_assignable_roles(doctype, txt, searchfield, start, page_len, filters):
 	"""
-	Return a curated, read-only list of roles that HR is allowed
-	to assign via Designation.
-	This bypasses Role read permissions safely.
+	Link field query for Designation.default_role_profile.
+
+	- Bypasses Role read permissions safely
+	- Respects search text
+	- Respects pagination
+	- Works out-of-the-box on fresh installs
 	"""
 
-	# HARD RULE: never expose system / technical roles
-	excluded_roles = {
+	excluded_roles = (
 		"System Manager",
 		"Administrator",
 		"Guest",
 		"All",
-	}
-
-	# Optional: future-proofing
-	# You can later move this to Org Setting if needed
-	allowed_roles = frappe.db.get_all(
-		"Role",
-		filters={
-			"name": ["not in", excluded_roles]
-		},
-		fields=["name"],
-		start=start,
-		page_length=page_len,
-		as_list=True
 	)
 
-	return allowed_roles
+	# Default safety
+	searchfield = searchfield or "name"
+	txt = txt or ""
+
+	return frappe.db.sql(
+		f"""
+		SELECT name
+		FROM `tabRole`
+		WHERE name NOT IN %(excluded_roles)s
+		  AND name LIKE %(txt)s
+		ORDER BY name
+		LIMIT %(page_len)s OFFSET %(start)s
+		""",
+		{
+			"excluded_roles": excluded_roles,
+			"txt": f"%{txt}%",
+			"page_len": page_len,
+			"start": start,
+		},
+	)
+
