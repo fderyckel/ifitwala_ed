@@ -714,64 +714,61 @@ class Employee(NestedSet):
 
 		Policy:
 		- Public file (is_private=0).
-		- Governance is best-effort: if file is not yet on disk, do NOT block save.
-		  Retry will happen on next save (or later scheduler if added).
+		- Governance is deferred until after commit because File is created
+		  AFTER Employee save in Frappe.
 		"""
+
 		if not self.employee_image:
 			return
 
-		# If the file isn't materialized on disk yet, defer governance (do not block save)
 		file_url = (self.employee_image or "").strip()
-		if file_url and not file_url.startswith("http"):
-			rel_path = file_url.lstrip("/")
-			abs_path = frappe.utils.get_site_path(rel_path)
-			if not os.path.exists(abs_path):
-				frappe.logger().info(
-					f"[Employee] Profile photo not on disk yet; governance deferred: "
-					f"employee={self.name} url={file_url}"
+
+		def _after_commit_govern():
+			# Resolve File by file_url AFTER commit
+			file_name = frappe.db.get_value(
+				"File",
+				{"file_url": file_url},
+				"name",
+			)
+
+			if not file_name:
+				frappe.log_error(
+					title="Employee Image Governance Failed",
+					message=f"File not found after commit for Employee {self.name}: {file_url}",
 				)
 				return
 
-		# Resolve File by file_url
-		file_name = frappe.db.get_value(
-			"File",
-			{"file_url": self.employee_image},
-			"name",
-		)
+			# Skip if already governed
+			exists = frappe.db.exists(
+				"File Classification",
+				{
+					"file": file_name,
+					"primary_subject_type": "Employee",
+					"primary_subject_id": self.name,
+					"slot": "profile_image",
+					"is_current": 1,
+				},
+			)
 
-		if not file_name:
-			# Defensive: nothing to govern
-			return
+			if exists:
+				return
 
-		file_doc = frappe.get_doc("File", file_name)
+			file_doc = frappe.get_doc("File", file_name)
 
-		# If already classified as profile_image for this employee, we are done
-		existing_classification = frappe.db.exists(
-			"File Classification",
-			{
-				"file": file_doc.name,
-				"primary_subject_type": "Employee",
-				"primary_subject_id": self.name,
-				"slot": "profile_image",
-				"is_current": 1,
-			},
-		)
+			create_and_classify_file(
+				file_doc=file_doc,
+				primary_subject_type="Employee",
+				primary_subject_id=self.name,
+				data_class="biometric",
+				purpose="employee_profile_image",
+				slot="profile_image",
+				organization=self.organization,
+				school=self.school,
+				is_private=0,
+			)
 
-		if existing_classification:
-			return
-
-		# Create authoritative classification via dispatcher
-		create_and_classify_file(
-			file_doc=file_doc,
-			primary_subject_type="Employee",
-			primary_subject_id=self.name,
-			data_class="biometric",
-			purpose="employee_profile_image",
-			slot="profile_image",
-			organization=self.organization,
-			school=self.school,
-			is_private=0,
-		)
+		# IMPORTANT: defer until File exists
+		frappe.after_commit(_after_commit_govern)
 
 
 @frappe.whitelist()
