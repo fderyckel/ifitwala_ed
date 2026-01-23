@@ -12,6 +12,7 @@ def setup_education():
 	ensure_initial_setup_flag()
 	ensure_root_organization()
 	create_roles_with_homepage()
+	grant_role_read_select_to_hr()
 	create_designations()
 	create_log_type()
 	create_location_type()
@@ -173,51 +174,57 @@ def add_other_records(country=None):
 	insert_record(records)
 
 
-def ensure_hr_can_select_roles():
+def grant_role_read_select_to_hr():
+	"""Allow HR Manager / HR User to link to Role from Designation (and read role names).
+	This must be done at setup time because Frappe validates Link fields via validate_link,
+	which requires Read or Select on the target doctype (Role).
 	"""
-	Allow HR roles to SELECT and READ Role
-	so they can assign default_role_profile on Designation.
+	target_doctype = "Role"
+	target_roles = ["HR Manager", "HR User"]
 
-	This mirrors ERPNext behavior and is required
-	for Link field validation to pass.
-	"""
-
-	for hr_role in ("HR Manager", "HR User"):
-		existing = frappe.db.get_value(
-			"DocPerm",
-			{
-				"parent": "Role",
-				"parenttype": "DocType",
-				"role": hr_role,
-				"permlevel": 0,
-			},
+	# Custom permissions are stored as Custom DocPerm (safe to add; survives updates).
+	# We only grant read + select at permlevel 0.
+	for role in target_roles:
+		existing_name = frappe.db.get_value(
+			"Custom DocPerm",
+			{"parent": target_doctype, "role": role, "permlevel": 0},
 			"name",
 		)
 
-		if existing:
-			# ensure minimum permissions
-			frappe.db.set_value("DocPerm", existing, {
-				"select": 1,
-				"read": 1,
-				"write": 0,
-				"create": 0,
-				"delete": 0,
-			})
+		if existing_name:
+			doc = frappe.get_doc("Custom DocPerm", existing_name)
+			changed = False
+
+			if not int(doc.get("read") or 0):
+				doc.read = 1
+				changed = True
+
+			# 'select' exists on DocPerm/Custom DocPerm in Frappe v15+
+			if doc.meta.has_field("select") and not int(doc.get("select") or 0):
+				doc.select = 1
+				changed = True
+
+			if changed:
+				doc.save(ignore_permissions=True)
 		else:
-			doc = frappe.get_doc({
-				"doctype": "DocPerm",
-				"parent": "Role",
+			payload = {
+				"doctype": "Custom DocPerm",
+				"parent": target_doctype,
 				"parenttype": "DocType",
 				"parentfield": "permissions",
-				"role": hr_role,
+				"role": role,
 				"permlevel": 0,
-				"select": 1,
 				"read": 1,
-			})
-			doc.insert(ignore_permissions=True)
+			}
+			# Only set 'select' if field exists in this site/schema
+			meta = frappe.get_meta("Custom DocPerm")
+			if meta.has_field("select"):
+				payload["select"] = 1
 
-	frappe.clear_cache()
+			frappe.get_doc(payload).insert(ignore_permissions=True)
 
+	# Make sure the permission cache is refreshed
+	frappe.clear_cache(doctype=target_doctype)
 
 
 def create_student_file_folder():

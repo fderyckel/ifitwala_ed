@@ -108,25 +108,27 @@ def get_valid_parent_organizations(organization):
     return valid_orgs
 
 
-
 @frappe.whitelist()
 def get_assignable_roles(doctype, txt, searchfield, start, page_len, filters):
+	# Curated Role list for Link field dropdown (search + pagination)
+
 	excluded_roles = ("System Manager", "Administrator", "Guest", "All")
 
+	# Frappe passes these as strings sometimes
 	start = int(start or 0)
 	page_len = int(page_len or 20)
 	txt = (txt or "").strip()
 
-	filters = {"name": ["not in", excluded_roles]}
+	role_filters = [["name", "not in", excluded_roles]]
 	if txt:
-		filters["name"] = ["like", f"%{txt}%"]
+		role_filters.append(["name", "like", f"%{txt}%"])
 
 	return frappe.db.get_all(
 		"Role",
-		filters=filters,
+		filters=role_filters,
 		fields=["name"],
 		order_by="name asc",
 		limit_start=start,
 		limit_page_length=page_len,
-		as_list=True,
+		as_list=True,  # return list-of-lists for link queries
 	)
