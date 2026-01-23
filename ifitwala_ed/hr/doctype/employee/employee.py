@@ -37,13 +37,46 @@ class Employee(NestedSet):
 
 	def onload(self):
 		"""
-		Address/Contact are rendered on the Employee form for HR convenience (one-click).
-		Employee is NOT the source of truth for any address/contact data.
+		Load Contact and Address for HR convenience.
 
-		Source of truth: Contact (+ Address linked to Contact).
-		Employee only maintains graph integrity (User → Contact → Employee).
+		RULE:
+		- HR can read Contact + Address
+		- HR must NOT require User read permission
+		- Therefore we resolve Contact via Employee Dynamic Link only
 		"""
-		load_address_and_contact(self)
+		# Resolve Contact linked directly to Employee
+		contact_name = frappe.db.get_value(
+			"Dynamic Link",
+			{
+				"link_doctype": "Employee",
+				"link_name": self.name,
+				"parenttype": "Contact",
+			},
+			"parent",
+		)
+
+		if not contact_name:
+			return
+
+		# Attach contact to doc (same shape as load_address_and_contact)
+		self._contact = frappe.get_doc("Contact", contact_name)
+
+		# Load addresses linked to this Contact
+		addresses = frappe.get_all(
+			"Dynamic Link",
+			filters={
+				"link_doctype": "Contact",
+				"link_name": contact_name,
+				"parenttype": "Address",
+			},
+			fields=["parent"],
+		)
+
+		self._addresses = [
+			frappe.get_doc("Address", a.parent)
+			for a in addresses
+		]
+
 
 	def validate(self):
 		from ifitwala_ed.controllers.status_updater import validate_status

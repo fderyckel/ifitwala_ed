@@ -180,7 +180,8 @@ def grant_role_read_select_to_hr():
 	which requires Read or Select on the target doctype (Role).
 	"""
 	target_doctype = "Role"
-	target_roles = ["HR Manager", "HR User"]
+	# Roles that can edit Designation should be able to resolve Role links.
+	target_roles = ["HR Manager", "HR User", "Academic Admin"]
 
 	# Custom permissions are stored as Custom DocPerm (safe to add; survives updates).
 	# We only grant read + select at permlevel 0.
@@ -372,5 +373,4 @@ def grant_core_crm_permissions():
 
 			docperm.insert(ignore_permissions=True)
 		frappe.clear_cache(doctype=doctype)  # Clear cache after permission update
-
 

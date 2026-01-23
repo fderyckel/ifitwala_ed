@@ -68,94 +68,88 @@ def handle_file_on_update(doc, method=None):
 		frappe.log_error(frappe.get_traceback(), "Image Utils On Update Failed")
 
 
-@frappe.whitelist()
 def create_and_classify_file(
 	*,
-	file_kwargs: Dict[str, Any],
-	classification: Dict[str, Any],
-	secondary_subjects: Optional[List[Dict[str, Any]]] = None,
-) -> Document:
+	file_doc,
+	primary_subject_type,
+	primary_subject_id,
+	data_class,
+	purpose,
+	slot,
+	organization,
+	school,
+	is_private=0,
+):
 	"""
-	Authoritative dispatcher entry point for ALL governed file uploads.
-
-	Creates:
-	1) File
-	2) File Classification (1:1)
-
-	Then relies on File hooks to finalize routing/versioning.
+	Authoritative file creation + governance enforcement.
+	This method is the ONLY allowed entry point.
 	"""
-	from ifitwala_ed.utilities import file_management
 
-	missing = REQUIRED_CLASSIFICATION_FIELDS - set((classification or {}).keys())
-	if missing:
+	# ---- Hard validation (no defaults, no guessing)
+	required = {
+		"primary_subject_type": primary_subject_type,
+		"primary_subject_id": primary_subject_id,
+		"data_class": data_class,
+		"purpose": purpose,
+		"slot": slot,
+		"organization": organization,
+	}
+	for k, v in required.items():
+		if not v:
+			frappe.throw(_(f"Missing required file governance field: {k}"))
+
+	# ---- Create File (transport layer)
+	file_doc.is_private = is_private
+	file_doc.save(ignore_permissions=True)
+
+	# ---- Load settings
+	settings = frappe.get_single("File Management Settings")
+	retention_days = frappe.db.get_value(
+		"File Retention Policy",
+		{"data_class": data_class, "purpose": purpose},
+		"retention_days",
+	)
+
+	if retention_days is None:
 		frappe.throw(
-			_("Missing mandatory file classification fields: {0}")
-			.format(", ".join(sorted(missing)))
+			_("No retention policy defined for {0} / {1}")
+			.format(data_class, purpose)
 		)
 
-	for key in REQUIRED_CLASSIFICATION_FIELDS:
-		if classification.get(key) in (None, ""):
-			frappe.throw(_("File Classification field {0} is required.").format(key))
+	retention_until = frappe.utils.add_days(frappe.utils.today(), retention_days)
 
-	subject_type = classification.get("primary_subject_type")
-	if subject_type not in ALLOWED_SUBJECT_TYPES:
-		frappe.throw(_("Invalid primary_subject_type."))
+	# ---- Enforce single-slot versioning
+	existing = frappe.get_all(
+		"File Classification",
+		filters={
+			"primary_subject_type": primary_subject_type,
+			"primary_subject_id": primary_subject_id,
+			"slot": slot,
+			"is_current": 1,
+		},
+		pluck="name",
+	)
 
-	if not file_kwargs:
-		frappe.throw(_("file_kwargs is required."))
-	if not file_kwargs.get("attached_to_doctype") or not file_kwargs.get("attached_to_name"):
-		frappe.throw(_("File attachments must include attached_to_doctype and attached_to_name."))
+	for name in existing:
+		old = frappe.get_doc("File Classification", name)
+		old.is_current = 0
+		old.save(ignore_permissions=True)
 
-	frappe.db.savepoint("create_and_classify_file")
+	# ---- Create authoritative classification
+	classification = frappe.get_doc({
+		"doctype": "File Classification",
+		"file": file_doc.name,
+		"primary_subject_type": primary_subject_type,
+		"primary_subject_id": primary_subject_id,
+		"data_class": data_class,
+		"purpose": purpose,
+		"slot": slot,
+		"is_current": 1,
+		"organization": organization,
+		"school": school,
+		"retention_until": retention_until,
+	})
 
-	try:
-		file_doc = frappe.get_doc({
-			"doctype": "File",
-			**file_kwargs,
-		})
-		file_doc.insert(ignore_permissions=True)
-
-		if frappe.db.exists("File Classification", {"file": file_doc.name}):
-			frappe.throw(_("File already has a classification."))
-
-		fc = frappe.get_doc({
-			"doctype": "File Classification",
-			"file": file_doc.name,
-			"attached_doctype": file_doc.attached_to_doctype,
-			"attached_name": file_doc.attached_to_name,
-			"primary_subject_type": classification["primary_subject_type"],
-			"primary_subject_id": classification["primary_subject_id"],
-			"data_class": classification["data_class"],
-			"purpose": classification["purpose"],
-			"retention_policy": classification["retention_policy"],
-			"slot": classification["slot"],
-			"organization": classification["organization"],
-			"school": classification["school"],
-			"legal_hold": 0,
-			"erasure_state": "active",
-			"content_hash": file_management.calculate_hash(file_doc),
-			"source_file": classification.get("source_file"),
-			"upload_source": classification.get("upload_source", "API"),
-			"ip_address": getattr(frappe.local, "request_ip", None),
-		})
-		fc.insert(ignore_permissions=True)
-
-		if secondary_subjects:
-			for subj in secondary_subjects:
-				if not subj.get("subject_type") or not subj.get("subject_id"):
-					frappe.throw(_("Secondary subject entries must include subject_type and subject_id."))
-				fc.append("secondary_subjects", {
-					"subject_type": subj["subject_type"],
-					"subject_id": subj["subject_id"],
-					"role": subj.get("role", "referenced"),
-				})
-			fc.save(ignore_permissions=True)
-
-		# Trigger routing now that governance exists.
-		file_doc.save(ignore_permissions=True)
-
-	except Exception:
-		frappe.db.rollback(save_point="create_and_classify_file")
-		raise
+	classification.insert(ignore_permissions=True)
 
 	return file_doc
