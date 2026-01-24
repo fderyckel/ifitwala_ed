@@ -67,21 +67,21 @@
    "fieldname": "data_class",
    "fieldtype": "Select",
    "label": "Data Class",
-   "options": "academic\nassessment\nsafeguarding\nadministrative\nlegal\noperational",
+   "options": "academic\nassessment\nsafeguarding\nadministrative\nidentity_image\nlegal\noperational",
    "reqd": 1
   },
   {
    "fieldname": "purpose",
    "fieldtype": "Select",
    "label": "Purpose",
-   "options": "text\nidentification_document\ncontract\nassessment_submission\nassessment_feedback\nsafeguarding_evidence\nmedical_record\nvisa_document\npolicy_acknowledgement\nbackground_check\nacademic_report\nadministrative\nother",
+   "options": "text\nidentification_document\ncontract\nassessment_submission\nassessment_feedback\nsafeguarding_evidence\nmedical_record\nvisa_document\npolicy_acknowledgement\nbackground_check\nacademic_report\nemployee_profile_display\nadministrative\nother",
    "reqd": 1
   },
   {
    "fieldname": "retention_policy",
    "fieldtype": "Select",
    "label": "Retention Policy",
-   "options": "until_program_end_plus_1y\nuntil_school_exit_plus_6m\nfixed_7y\nimmediate_on_request",
+   "options": "until_program_end_plus_1y\nuntil_school_exit_plus_6m\nemployment_duration_plus_grace\nfixed_7y\nimmediate_on_request",
    "reqd": 1
   },
   {
@@ -107,8 +107,7 @@
    "fieldname": "school",
    "fieldtype": "Link",
    "label": "School",
-   "options": "School",
-   "reqd": 1
+   "options": "School"
   },
   {
    "default": "0",

@@ -81,11 +81,12 @@ Every file **must be classifiable** by the following dimensions:
 | Dimension           | Required | Purpose                 |
 | ------------------- | -------- | ----------------------- |
 | Organization        | Yes      | Multi‑org separation    |
-| School (tree‑aware) | Yes      | Visibility & governance |
+| School (tree‑aware) | Yes*     | Visibility & governance |
 | Business domain     | Yes      | Functional grouping     |
 | Owning document     | Yes      | Lifecycle control       |
 
-If any of these is missing, the upload is invalid.
+*Exception: org‑level employees may omit `school` if they are not school‑scoped.
+If any other dimension is missing, the upload is invalid.
 
 ---
 
@@ -184,6 +185,7 @@ data_class:
   - assessment
   - safeguarding
   - administrative
+  - identity_image
   - legal
   - operational
 ```
@@ -198,6 +200,7 @@ Classification is explicit. There is no inference.
 retention_policy:
   - until_program_end + 1y
   - until_school_exit + 6m
+  - employment_duration_plus_grace
   - fixed_7y
   - immediate_on_request
 ```
@@ -520,6 +523,7 @@ academic
 assessment
 safeguarding
 administrative
+identity_image
 legal
 operational
 ```
@@ -537,6 +541,7 @@ visa_document
 policy_acknowledgement
 background_check
 academic_report
+employee_profile_display
 administrative
 other
 ```
@@ -560,9 +565,12 @@ other
 ```
 until_program_end_plus_1y
 until_school_exit_plus_6m
+employment_duration_plus_grace
 fixed_7y
 immediate_on_request
 ```
+
+`retention_until` is computed when a File Retention Policy is configured; otherwise it remains empty until a later governance job sets it.
 
 ### `erasure_state`
 
@@ -592,11 +600,12 @@ erased
 | Field          | Type                | Required |
 | -------------- | ------------------- | -------- |
 | `organization` | Link → Organization | ✅        |
-| `school`       | Link → School       | ✅        |
+| `school`       | Link → School       | ✅*       |
 
 **Rules**
 
 * `school` must be in the allowed subtree
+* `school` may be blank for org‑level Employees without a school assignment
 * Cached here for:
 
   * Fast GDPR queries

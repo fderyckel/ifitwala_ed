@@ -155,11 +155,6 @@ def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload
 				"school": school,
 				"upload_source": source,
 			},
-		)
-
-		file_management.route_uploaded_file(
-			file_doc,
-			method="dispatcher",
 			context_override=context_override,
 		)
 

@@ -11,7 +11,7 @@ from frappe import _, scrub
 from frappe.utils import validate_email_address, add_years, cstr
 from frappe.permissions import get_doc_permissions
 from frappe.contacts.address_and_contact import load_address_and_contact
-from ifitwala_ed.utilities.file_dispatcher import create_and_classify_file
+from ifitwala_ed.utilities.file_dispatcher import classify_existing_file
 
 
 
@@ -733,19 +733,22 @@ class Employee(NestedSet):
 			if frappe.db.exists("File Classification", {"file": file_doc.name}):
 				return
 
-			create_and_classify_file(
+			classification = {
+				"primary_subject_type": "Employee",
+				"primary_subject_id": self.name,
+				"data_class": "identity_image",
+				"purpose": "employee_profile_display",
+				"retention_policy": "employment_duration_plus_grace",
+				"slot": "profile_image",
+				"organization": self.organization,
+				"upload_source": "Desk",
+			}
+			if getattr(self, "school", None):
+				classification["school"] = self.school
+
+			classify_existing_file(
 				file_doc=file_doc,
-				classification={
-					"primary_subject_type": "Employee",
-					"primary_subject_id": self.name,
-					"data_class": "biometric",
-					"purpose": "employee_profile_image",
-					"retention_policy": "employment_duration",
-					"slot": "profile_image",
-					"organization": self.organization,
-					"school": getattr(self, "school", None),
-					"upload_source": "Desk",
-				},
+				classification=classification,
 				secondary_subjects=None,
 			)
 

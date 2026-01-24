@@ -51,7 +51,7 @@ retention_until (Date) [computed later]
 slot (Data) [required]
 
 organization (Link → Organization) [required]
-school (Link → School) [required]
+school (Link → School) [required unless org‑level Employee]
 
 legal_hold (Check, default 0)
 erasure_state (Select: active | pending | blocked_legal | erased, default active)
@@ -157,7 +157,13 @@ This hook only finalizes files that already have File Classification.
 Add in `file_dispatcher.py`:
 
 ```python
-def create_and_classify_file(*, file_kwargs: dict, classification: dict) -> frappe.model.document.Document:
+def create_and_classify_file(
+	*,
+	file_kwargs: dict,
+	classification: dict,
+	secondary_subjects: list | None = None,
+	context_override: dict | None = None,
+) -> frappe.model.document.Document:
 	"""
 	The ONLY supported entry point for governed file uploads.
 	Creates File + File Classification atomically.
@@ -171,7 +177,7 @@ Responsibilities:
 3. Create `File`
 4. Create `File Classification`
 4. Commit both
-5. Let hooks finalize routing/versioning
+5. Finalize routing/versioning after classification (dispatcher-owned)
 
 Missing governance → hard error.
 
@@ -281,6 +287,7 @@ from typing import Dict, Any, List, Optional
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from ifitwala_ed.utilities import file_management
 
 
 REQUIRED_CLASSIFICATION_FIELDS = {
@@ -301,6 +308,7 @@ def create_and_classify_file(
 	file_kwargs: Dict[str, Any],
 	classification: Dict[str, Any],
 	secondary_subjects: Optional[List[Dict[str, Any]]] = None,
+	context_override: Optional[Dict[str, Any]] = None,
 ) -> Document:
 	"""
 	Authoritative dispatcher entry point for ALL governed file uploads.
@@ -309,7 +317,7 @@ def create_and_classify_file(
 	1) File
 	2) File Classification (1:1)
 
-	Then relies on File hooks to finalize routing/versioning.
+	Then finalizes routing/versioning after classification.
 
 	This function MUST be used by:
 	- Desk
@@ -324,6 +332,8 @@ def create_and_classify_file(
 	# ─────────────────────────────────────────────────────────────
 
 	missing = REQUIRED_CLASSIFICATION_FIELDS - set(classification.keys())
+	if "school" in missing and classification.get("primary_subject_type") == "Employee":
+		missing.remove("school")
 	if missing:
 		frappe.throw(
 			_("Missing mandatory file classification fields: {0}")
@@ -365,7 +375,7 @@ def create_and_classify_file(
 		"slot": classification["slot"],
 
 		"organization": classification["organization"],
-		"school": classification["school"],
+		"school": classification.get("school"),
 
 		"legal_hold": 0,
 		"erasure_state": "active",
@@ -396,10 +406,37 @@ def create_and_classify_file(
 		fc.save(ignore_permissions=True)
 
 	# ─────────────────────────────────────────────────────────────
-	# 5. Return File (hooks will finalize routing)
+	# 5. Finalize routing/versioning (classification already exists)
+	# ─────────────────────────────────────────────────────────────
+
+	file_management.route_uploaded_file(
+		file_doc,
+		method="dispatcher",
+		context_override=context_override,
+	)
+
+	# ─────────────────────────────────────────────────────────────
+	# 6. Return File
 	# ─────────────────────────────────────────────────────────────
 
 	return file_doc
+```
+
+---
+
+## Legacy attach‑image flows (framework creates File first)
+
+Some Desk fields (e.g., Attach Image) create a `File` before custom governance
+can run. Use the dispatcher helper below **after commit** to classify the
+existing file and then route it safely.
+
+```python
+from ifitwala_ed.utilities.file_dispatcher import classify_existing_file
+
+classify_existing_file(
+	file_doc=file_doc,
+	classification={...},
+)
 ```
 
 ---

@@ -30,6 +30,8 @@ class FileClassification(Document):
 
 	def _validate_required_fields(self):
 		for fieldname in REQUIRED_FIELDS:
+			if fieldname == "school" and self.primary_subject_type == "Employee":
+				continue
 			if not self.get(fieldname):
 				frappe.throw(_("{0} is required.").format(fieldname.replace("_", " ").title()))
 
