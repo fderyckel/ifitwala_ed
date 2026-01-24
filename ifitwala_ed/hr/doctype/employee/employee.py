@@ -14,6 +14,7 @@ from frappe.contacts.address_and_contact import load_address_and_contact
 from ifitwala_ed.utilities.file_dispatcher import create_and_classify_file
 
 
+
 from ifitwala_ed.utilities.employee_utils import (
 	get_user_base_org,
 	get_user_base_school,
@@ -715,7 +716,6 @@ class Employee(NestedSet):
 		file_url = self.employee_image
 
 		def _after_commit_govern():
-			from ifitwala_ed.utilities.file_dispatcher import create_and_classify_file
 
 			file_name = frappe.db.get_value(
 				"File",
