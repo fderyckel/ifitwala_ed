@@ -39,6 +39,7 @@ frappe.ui.form.on("Employee", {
     frm.trigger("render_contact_address_readonly");
     frm.trigger("add_contact_button");
     frm.trigger("style_employee_history_rows");
+    frm.trigger("setup_governed_image_upload");
   },
 
   // ------------------------------------------------------------
@@ -94,6 +95,43 @@ frappe.ui.form.on("Employee", {
         "border-left": "4px solid #00c853", // Bold green border for emphasis
       });
     });
+  },
+
+  setup_governed_image_upload(frm) {
+    const fieldname = "employee_image";
+
+    frm.set_df_property(fieldname, "read_only", 1);
+    frm.set_df_property(
+      fieldname,
+      "description",
+      __("Use the Upload Employee Image action to attach a governed file.")
+    );
+
+    frm.remove_custom_button(__("Upload Employee Image"), __("Actions"));
+    frm.add_custom_button(
+      __("Upload Employee Image"),
+      () => {
+        if (frm.is_new()) {
+          frappe.msgprint(__("Please save the Employee before uploading an image."));
+          return;
+        }
+
+        new frappe.ui.FileUploader({
+          method: "ifitwala_ed.utilities.governed_uploads.upload_employee_image",
+          args: { employee: frm.doc.name },
+          allow_multiple: false,
+          on_success(file_doc) {
+            if (!file_doc || !file_doc.file_url) {
+              frappe.msgprint(__("Upload succeeded but no file URL was returned."));
+              return;
+            }
+            frm.set_value(fieldname, file_doc.file_url);
+            frm.refresh_field(fieldname);
+          },
+        });
+      },
+      __("Actions")
+    );
   },
 
   // ------------------------------------------------------------

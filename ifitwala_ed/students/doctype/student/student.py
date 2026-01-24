@@ -204,6 +204,14 @@ class Student(Document):
 			return
 
 		try:
+			file_name = frappe.db.get_value(
+				"File",
+				{"file_url": self.student_image, "attached_to_doctype": "Student", "attached_to_name": self.name},
+				"name",
+			)
+			if file_name and frappe.db.exists("File Classification", {"file": file_name}):
+				return
+
 			student_id = self.name
 			current_file_name = os.path.basename(self.student_image)
 
@@ -229,7 +237,8 @@ class Student(Document):
 				return
 
 			# Check if the original file doc exists
-			file_name = frappe.db.get_value("File",
+			file_name = frappe.db.get_value(
+				"File",
 				{"file_url": self.student_image, "attached_to_doctype": "Student", "attached_to_name": self.name},
 				"name"
 			)

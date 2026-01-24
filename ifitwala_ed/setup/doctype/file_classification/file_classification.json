@@ -78,7 +78,7 @@
    "fieldname": "purpose",
    "fieldtype": "Select",
    "label": "Purpose",
-   "options": "text\nidentification_document\ncontract\nassessment_submission\nassessment_feedback\nsafeguarding_evidence\nmedical_record\nvisa_document\npolicy_acknowledgement\nbackground_check\nacademic_report\nemployee_profile_display\nadministrative\nother",
+   "options": "text\nidentification_document\ncontract\nassessment_submission\nassessment_feedback\nsafeguarding_evidence\nmedical_record\nvisa_document\npolicy_acknowledgement\nbackground_check\nacademic_report\nemployee_profile_display\nstudent_profile_display\napplicant_profile_display\nadministrative\nother",
    "reqd": 1
   },
   {

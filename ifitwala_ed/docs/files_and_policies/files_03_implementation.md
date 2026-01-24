@@ -150,6 +150,12 @@ This hook only finalizes files that already have File Classification.
 🚫 **Do NOT** add governance logic to hooks
 🚫 **Do NOT** infer data_class, subject, or retention here
 
+**Exception (explicit and narrow):**
+Desk Attach Image can create a `File` before a controller runs.
+For `Employee.employee_image`, a guarded hook may call
+`classify_existing_file(...)` to classify the already-created file.
+This is a legacy desk flow workaround, not a general pattern.
+
 ---
 
 ### 2.3 Introduce dispatcher API (NEW)
@@ -424,20 +430,6 @@ def create_and_classify_file(
 
 ---
 
-## Legacy attach‑image flows (framework creates File first)
-
-Some Desk fields (e.g., Attach Image) create a `File` before custom governance
-can run. Use the dispatcher helper below **after commit** to classify the
-existing file and then route it safely.
-
-```python
-from ifitwala_ed.utilities.file_dispatcher import classify_existing_file
-
-classify_existing_file(
-	file_doc=file_doc,
-	classification={...},
-)
-```
 
 ---
 
@@ -454,6 +446,29 @@ Once this is merged:
 This function becomes **institutional law**.
 
 ---
+
+## Desk governed uploads (fresh install)
+
+Desk forms MUST NOT use the generic Attach/Attach Image uploader for governed files.
+Instead, each doctype exposes a **named, whitelisted upload method** that:
+
+1) reads the uploaded file
+2) calls `create_and_classify_file(...)`
+3) updates the owning document field / attachment table
+
+Current governed Desk endpoints:
+
+* `upload_employee_image(employee)`
+* `upload_student_image(student)`
+* `upload_applicant_image(student_applicant)`
+* `upload_task_submission_attachment(task_submission)`
+
+These are the only allowed upload entry points for:
+
+* Employee `employee_image`
+* Student `student_image`
+* Student Applicant `applicant_image`
+* Task Submission attachments
 
 # 2️⃣ SECOND PR BRIEF — Phase 4: GDPR Erasure Workflow
 

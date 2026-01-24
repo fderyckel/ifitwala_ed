@@ -6,8 +6,46 @@ frappe.ui.form.on("Student Applicant", {
 		if (!frm.doc || frm.is_new()) {
 			return;
 		}
+		frm.trigger("setup_governed_image_upload");
 		render_review_sections(frm);
 		add_decision_actions(frm);
+	},
+
+	setup_governed_image_upload(frm) {
+		const fieldname = "applicant_image";
+
+		frm.set_df_property(fieldname, "read_only", 1);
+		frm.set_df_property(
+			fieldname,
+			"description",
+			__("Use the Upload Applicant Image action to attach a governed file.")
+		);
+
+		frm.remove_custom_button(__("Upload Applicant Image"), __("Actions"));
+		frm.add_custom_button(
+			__("Upload Applicant Image"),
+			() => {
+				if (frm.is_new()) {
+					frappe.msgprint(__("Please save the Student Applicant before uploading an image."));
+					return;
+				}
+
+				new frappe.ui.FileUploader({
+					method: "ifitwala_ed.utilities.governed_uploads.upload_applicant_image",
+					args: { student_applicant: frm.doc.name },
+					allow_multiple: false,
+					on_success(file_doc) {
+						if (!file_doc || !file_doc.file_url) {
+							frappe.msgprint(__("Upload succeeded but no file URL was returned."));
+							return;
+						}
+						frm.set_value(fieldname, file_doc.file_url);
+						frm.refresh_field(fieldname);
+					},
+				});
+			},
+			__("Actions")
+		);
 	},
 });
 

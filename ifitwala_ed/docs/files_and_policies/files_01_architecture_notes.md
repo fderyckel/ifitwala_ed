@@ -542,6 +542,8 @@ policy_acknowledgement
 background_check
 academic_report
 employee_profile_display
+student_profile_display
+applicant_profile_display
 administrative
 other
 ```
