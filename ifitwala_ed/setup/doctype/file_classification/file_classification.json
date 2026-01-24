@@ -2,7 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "hash",
- "creation": "2026-01-22 00:00:00.000000",
+ "creation": "2026-01-22 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -32,6 +32,7 @@
   {
    "fieldname": "file",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "File",
    "options": "File",
    "reqd": 1,
@@ -52,6 +53,7 @@
   {
    "fieldname": "primary_subject_type",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Primary Subject Type",
    "options": "Student\nGuardian\nEmployee\nStudent Applicant",
    "reqd": 1
@@ -59,6 +61,7 @@
   {
    "fieldname": "primary_subject_id",
    "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
    "label": "Primary Subject ID",
    "options": "primary_subject_type",
    "reqd": 1
@@ -66,6 +69,7 @@
   {
    "fieldname": "data_class",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Data Class",
    "options": "academic\nassessment\nsafeguarding\nadministrative\nidentity_image\nlegal\noperational",
    "reqd": 1
@@ -164,10 +168,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-22 00:05:07",
+ "modified": "2026-01-24 10:59:07.487775",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "File Classification",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {
@@ -181,8 +186,54 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
