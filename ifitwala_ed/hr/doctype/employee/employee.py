@@ -11,7 +11,6 @@ from frappe import _, scrub
 from frappe.utils import validate_email_address, add_years, cstr
 from frappe.permissions import get_doc_permissions
 from frappe.contacts.address_and_contact import load_address_and_contact
-from ifitwala_ed.utilities.file_dispatcher import classify_existing_file
 
 
 
@@ -109,7 +108,6 @@ class Employee(NestedSet):
 		self.sync_employee_history()
 		self._sync_staff_calendar()
 		self._ensure_primary_contact()
-		self._govern_profile_photo()
 
 		# ---------------------------------------------------------
 		# 2) Role / authority enforcement (HR-governed, safe)
@@ -704,57 +702,6 @@ class Employee(NestedSet):
 	# ------------------------------------------------------------------
 	# Employee Image Governance
 	# ------------------------------------------------------------------
-	def _govern_profile_photo(self):
-		"""
-		Govern employee profile image after save.
-		Must run AFTER COMMIT because File row is created at commit time.
-		"""
-
-		if not self.employee_image:
-			return
-
-		file_url = self.employee_image
-
-		def _after_commit_govern():
-
-			file_name = frappe.db.get_value(
-				"File",
-				{"file_url": file_url, "attached_to_doctype": "Employee", "attached_to_name": self.name},
-				"name",
-			)
-
-			if not file_name:
-				# File not found → nothing to govern
-				return
-
-			file_doc = frappe.get_doc("File", file_name)
-
-			# Enforce single authoritative classification
-			if frappe.db.exists("File Classification", {"file": file_doc.name}):
-				return
-
-			classification = {
-				"primary_subject_type": "Employee",
-				"primary_subject_id": self.name,
-				"data_class": "identity_image",
-				"purpose": "employee_profile_display",
-				"retention_policy": "employment_duration_plus_grace",
-				"slot": "profile_image",
-				"organization": self.organization,
-				"upload_source": "Desk",
-			}
-			if getattr(self, "school", None):
-				classification["school"] = self.school
-
-			classify_existing_file(
-				file_doc=file_doc,
-				classification=classification,
-				secondary_subjects=None,
-			)
-
-		# Correct Frappe v15 API
-		frappe.db.after_commit.add(_after_commit_govern)
-
 @frappe.whitelist()
 def create_user(employee, user=None, email=None):
 	# 0) Basic guards

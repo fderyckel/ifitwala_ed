@@ -150,12 +150,6 @@ This hook only finalizes files that already have File Classification.
 🚫 **Do NOT** add governance logic to hooks
 🚫 **Do NOT** infer data_class, subject, or retention here
 
-**Exception (explicit and narrow):**
-Desk Attach Image can create a `File` before a controller runs.
-For `Employee.employee_image`, a guarded hook may call
-`classify_existing_file(...)` to classify the already-created file.
-This is a legacy desk flow workaround, not a general pattern.
-
 ---
 
 ### 2.3 Introduce dispatcher API (NEW)
