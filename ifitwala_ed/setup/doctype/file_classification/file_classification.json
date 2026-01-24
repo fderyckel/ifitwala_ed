@@ -168,11 +168,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
-<<<<<<< Updated upstream
- "modified": "2026-01-24 10:59:07.487775",
-=======
- "modified": "2026-01-23 23:08:04.447714",
->>>>>>> Stashed changes
+ "modified": "2026-01-24 10:59:11",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "File Classification",
@@ -206,7 +202,6 @@
    "print": 1,
    "read": 1,
    "report": 1,
-<<<<<<< Updated upstream
    "role": "Admission Manager",
    "share": 1
   },
@@ -216,13 +211,10 @@
    "print": 1,
    "read": 1,
    "report": 1,
-=======
->>>>>>> Stashed changes
    "role": "Academic Admin",
    "share": 1
   },
   {
-<<<<<<< Updated upstream
    "email": 1,
    "export": 1,
    "print": 1,
@@ -239,12 +231,6 @@
    "report": 1,
    "role": "Accreditation Visitor",
    "share": 1
-=======
-   "read": 1,
-   "report": 1,
-   "role": "Accreditation Visitor",
-   "select": 1
->>>>>>> Stashed changes
   }
  ],
  "row_format": "Dynamic",
