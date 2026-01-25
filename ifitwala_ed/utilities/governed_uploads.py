@@ -23,7 +23,19 @@ def _get_uploaded_file() -> Tuple[str, bytes]:
 		frappe.throw(_("No file uploaded."))
 
 	filename = uploaded.filename or uploaded.name
-	content = uploaded.stream.read()
+	content = b""
+	if hasattr(uploaded, "stream"):
+		try:
+			if hasattr(uploaded.stream, "seek"):
+				uploaded.stream.seek(0)
+			content = uploaded.stream.read()
+		except Exception:
+			content = b""
+	if not content and hasattr(uploaded, "read"):
+		try:
+			content = uploaded.read()
+		except Exception:
+			content = b""
 	if not content:
 		frappe.throw(_("Uploaded file is empty."))
 
