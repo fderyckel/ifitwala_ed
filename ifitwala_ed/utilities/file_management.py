@@ -101,10 +101,13 @@ def ensure_folder(path: str) -> str:
 		if part == "Home":
 			continue
 		next_folder = f"{current}/{part}"
+		if frappe.db.exists("File", next_folder):
+			current = next_folder
+			continue
 		if not frappe.db.exists("File", {"file_name": part, "is_folder": 1, "folder": current}):
 			frappe.get_doc(
 				{"doctype": "File", "file_name": part, "is_folder": 1, "folder": current}
-			).insert(ignore_permissions=True)
+			).insert(ignore_permissions=True, ignore_if_duplicate=True)
 		current = next_folder
 
 	return current  # e.g. 'Home/Admissions/Applicant/SA-2025-0001'
