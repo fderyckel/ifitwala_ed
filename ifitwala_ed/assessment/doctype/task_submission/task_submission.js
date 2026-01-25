@@ -18,17 +18,20 @@ frappe.ui.form.on("Task Submission", {
 				args: { task_submission: frm.doc.name },
 				doctype: "Task Submission",
 				docname: frm.doc.name,
+				is_private: 1,
+				disable_private: true,
 				allow_multiple: false,
 				on_success(file_doc) {
 					const payload = file_doc?.message
 						|| (Array.isArray(file_doc) ? file_doc[0] : file_doc)
 						|| (typeof file_doc === "string" ? { file_url: file_doc } : null);
-					if (!payload || !payload.file_url) {
-						frappe.msgprint(__("Upload succeeded but no file URL was returned."));
-						return;
+					if (payload?.file_url) {
+						frm.refresh_field("attachments");
 					}
-
-					frm.refresh_field("attachments");
+					frm.reload_doc();
+				},
+				on_error() {
+					frappe.msgprint(__("Upload failed. Please try again."));
 				},
 			});
 		};

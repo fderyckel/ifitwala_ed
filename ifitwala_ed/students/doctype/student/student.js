@@ -67,17 +67,21 @@ frappe.ui.form.on("Student", {
 				doctype: "Student",
 				docname: frm.doc.name,
 				fieldname,
+				is_private: 0,
+				disable_private: true,
 				allow_multiple: false,
 				on_success(file_doc) {
 					const payload = file_doc?.message
 						|| (Array.isArray(file_doc) ? file_doc[0] : file_doc)
 						|| (typeof file_doc === "string" ? { file_url: file_doc } : null);
-					if (!payload || !payload.file_url) {
-						frappe.msgprint(__("Upload succeeded but no file URL was returned."));
-						return;
+					if (payload?.file_url) {
+						frm.set_value(fieldname, payload.file_url);
+						frm.refresh_field(fieldname);
 					}
-					frm.set_value(fieldname, payload.file_url);
-					frm.refresh_field(fieldname);
+					frm.reload_doc();
+				},
+				on_error() {
+					frappe.msgprint(__("Upload failed. Please try again."));
 				},
 			});
 		};
