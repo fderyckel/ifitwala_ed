@@ -27,11 +27,12 @@ frappe.ui.form.on("Student Applicant", {
 				fieldname,
 				allow_multiple: false,
 				on_success(file_doc) {
-					if (!file_doc || !file_doc.file_url) {
+					const payload = file_doc?.message || file_doc;
+					if (!payload || !payload.file_url) {
 						frappe.msgprint(__("Upload succeeded but no file URL was returned."));
 						return;
 					}
-					frm.set_value(fieldname, file_doc.file_url);
+					frm.set_value(fieldname, payload.file_url);
 					frm.refresh_field(fieldname);
 				},
 			});

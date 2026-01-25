@@ -151,7 +151,14 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
 
 
 def _is_governed_upload(file_doc) -> bool:
-	return bool(getattr(file_doc.flags, "governed_upload", False))
+	if getattr(file_doc.flags, "governed_upload", False):
+		return True
+
+	method = (frappe.form_dict or {}).get("method")
+	if method and method.startswith("ifitwala_ed.utilities.governed_uploads."):
+		return True
+
+	return False
 
 
 # ────────────────────────────────────────────────────────────────────────────

@@ -20,7 +20,8 @@ frappe.ui.form.on("Task Submission", {
 				docname: frm.doc.name,
 				allow_multiple: false,
 				on_success(file_doc) {
-					if (!file_doc || !file_doc.file_url) {
+					const payload = file_doc?.message || file_doc;
+					if (!payload || !payload.file_url) {
 						frappe.msgprint(__("Upload succeeded but no file URL was returned."));
 						return;
 					}

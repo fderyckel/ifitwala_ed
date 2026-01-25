@@ -113,11 +113,12 @@ frappe.ui.form.on("Employee", {
         fieldname,
         allow_multiple: false,
         on_success(file_doc) {
-          if (!file_doc || !file_doc.file_url) {
+          const payload = file_doc?.message || file_doc;
+          if (!payload || !payload.file_url) {
             frappe.msgprint(__("Upload succeeded but no file URL was returned."));
             return;
           }
-          frm.set_value(fieldname, file_doc.file_url);
+          frm.set_value(fieldname, payload.file_url);
           frm.refresh_field(fieldname);
         },
       });
@@ -132,10 +133,11 @@ frappe.ui.form.on("Employee", {
 
     frm.remove_custom_button(__("Upload Employee Image"), __("Actions"));
     frm.remove_custom_button(__("Upload Employee Image"));
-    frm.add_custom_button(
+    const $actionBtn = frm.add_custom_button(
       __("Upload Employee Image"),
       openUploader
     );
+    $actionBtn.addClass("btn-primary");
 
     const wrapper = frm.get_field(fieldname)?.$wrapper;
     if (wrapper?.length && !wrapper.find(".governed-upload-btn").length) {
@@ -143,7 +145,7 @@ frappe.ui.form.on("Employee", {
         ? wrapper.find(".control-input")
         : wrapper;
       const $btn = $(
-        `<button type="button" class="btn btn-xs btn-secondary governed-upload-btn">
+        `<button type="button" class="btn btn-xs btn-primary governed-upload-btn">
           ${__("Upload Employee Image")}
         </button>`
       );
