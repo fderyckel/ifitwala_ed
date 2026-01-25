@@ -189,61 +189,79 @@ frappe.ui.form.on("Employee", {
     const originalUrl = (frm.doc.employee_image || "").trim();
     if (!originalUrl) return;
 
-    const candidates = ifitwala_ed.hr.get_employee_image_variant_candidates(
-      originalUrl,
-      "thumb",
-      frm.doc.name
-    );
-    if (!candidates.length) return;
-
     const $wrapper = frm.page?.wrapper;
     if (!$wrapper) return;
 
     const filename = originalUrl.split("/").pop() || "";
     if (!filename) return;
 
-    const applyCandidate = (imgEl, index) => {
-      if (!imgEl || !imgEl.getAttribute) return;
-      const nextUrl = candidates[index];
-      if (!nextUrl) {
-        imgEl.setAttribute("src", originalUrl);
-        return;
-      }
-      imgEl.setAttribute("data-variant-index", String(index));
-      imgEl.setAttribute("src", nextUrl);
-    };
+    const applyWithCandidates = (candidates) => {
+      if (!candidates.length) return;
 
-    const setImageSrc = (imgEl) => {
-      if (!imgEl || !imgEl.getAttribute) return;
-      const current = imgEl.getAttribute("src") || "";
-      if (!current || !current.includes(filename)) return;
-      if (imgEl.getAttribute("data-original-src")) return;
-
-      imgEl.setAttribute("data-original-src", current);
-      applyCandidate(imgEl, 0);
-
-      const onError = () => {
-        const currentIndex = parseInt(imgEl.getAttribute("data-variant-index") || "0", 10);
-        const nextIndex = currentIndex + 1;
-        if (nextIndex >= candidates.length) {
-          imgEl.removeEventListener("error", onError);
+      const applyCandidate = (imgEl, index) => {
+        if (!imgEl || !imgEl.getAttribute) return;
+        const nextUrl = candidates[index];
+        if (!nextUrl) {
           imgEl.setAttribute("src", originalUrl);
           return;
         }
-        applyCandidate(imgEl, nextIndex);
+        imgEl.setAttribute("data-variant-index", String(index));
+        imgEl.setAttribute("src", nextUrl);
       };
 
-      imgEl.addEventListener("error", onError);
+      const setImageSrc = (imgEl) => {
+        if (!imgEl || !imgEl.getAttribute) return;
+        const current = imgEl.getAttribute("src") || "";
+        if (!current || !current.includes(filename)) return;
+        if (imgEl.getAttribute("data-original-src")) return;
+
+        imgEl.setAttribute("data-original-src", current);
+        applyCandidate(imgEl, 0);
+
+        const onError = () => {
+          const currentIndex = parseInt(imgEl.getAttribute("data-variant-index") || "0", 10);
+          const nextIndex = currentIndex + 1;
+          if (nextIndex >= candidates.length) {
+            imgEl.removeEventListener("error", onError);
+            imgEl.setAttribute("src", originalUrl);
+            return;
+          }
+          applyCandidate(imgEl, nextIndex);
+        };
+
+        imgEl.addEventListener("error", onError);
+      };
+
+      $wrapper.find("img").each((_, img) => setImageSrc(img));
+
+      $wrapper.find("[style]").each((_, el) => {
+        const style = window.getComputedStyle(el).backgroundImage || "";
+        if (!style.includes(filename)) return;
+        if (el.dataset && el.dataset.originalBg) return;
+        if (el.dataset) el.dataset.originalBg = style;
+        el.style.backgroundImage = `url("${candidates[0]}")`;
+      });
     };
 
-    $wrapper.find("img").each((_, img) => setImageSrc(img));
-
-    $wrapper.find("[style]").each((_, el) => {
-      const style = window.getComputedStyle(el).backgroundImage || "";
-      if (!style.includes(filename)) return;
-      if (el.dataset && el.dataset.originalBg) return;
-      if (el.dataset) el.dataset.originalBg = style;
-      el.style.backgroundImage = `url("${candidates[0]}")`;
+    frm.call({
+      method: "ifitwala_ed.utilities.governed_uploads.get_employee_image_variants",
+      args: { employee: frm.doc.name },
+    }).then((res) => {
+      const preferred = res?.message?.profile_image_thumb;
+      const candidates = ifitwala_ed.hr.get_employee_image_variant_candidates(
+        originalUrl,
+        "thumb",
+        frm.doc.name,
+        preferred
+      );
+      applyWithCandidates(candidates);
+    }).catch(() => {
+      const candidates = ifitwala_ed.hr.get_employee_image_variant_candidates(
+        originalUrl,
+        "thumb",
+        frm.doc.name
+      );
+      applyWithCandidates(candidates);
     });
   },
 
@@ -311,7 +329,7 @@ frappe.ui.form.on("Employee", {
 // Private helpers (namespaced, no globals)
 // ------------------------------------------------------------
 
-ifitwala_ed.hr.get_employee_image_variant_candidates = function (fileUrl, sizeLabel, docname) {
+ifitwala_ed.hr.get_employee_image_variant_candidates = function (fileUrl, sizeLabel, docname, preferredUrl) {
   if (!fileUrl) return [];
 
   const cleaned = String(fileUrl).trim();
@@ -344,6 +362,10 @@ ifitwala_ed.hr.get_employee_image_variant_candidates = function (fileUrl, sizeLa
   const size = sizeLabel || "thumb";
   const candidates = [];
 
+  if (preferredUrl) {
+    candidates.push(preferredUrl);
+  }
+
   if (docname) {
     candidates.push(`/files/Employee/${docname}/${size}_${slugBase}.webp`);
   }
@@ -356,7 +378,12 @@ ifitwala_ed.hr.get_employee_image_variant_candidates = function (fileUrl, sizeLa
   candidates.push(`/files/gallery_resized/employee/${size}_${slugBase}.webp`);
   candidates.push(`/files/${size}_${slugBase}.webp`);
 
-  return candidates;
+  const seen = new Set();
+  return candidates.filter((url) => {
+    if (!url || seen.has(url)) return false;
+    seen.add(url);
+    return true;
+  });
 };
 
 /**

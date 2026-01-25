@@ -281,3 +281,49 @@ def get_governed_status(doctype: str, name: str, fieldname: str | None = None):
 		"classification": classification,
 		"governed": 1 if classification else 0,
 	}
+
+
+@frappe.whitelist()
+def get_employee_image_variants(employee: str):
+	if not employee:
+		frappe.throw(_("employee is required."))
+
+	doc = frappe.get_doc("Employee", employee)
+	doc.check_permission("read")
+
+	slots = [
+		"profile_image_thumb",
+		"profile_image_card",
+		"profile_image_medium",
+		"profile_image",
+	]
+
+	rows = frappe.get_all(
+		"File Classification",
+		filters={
+			"primary_subject_type": "Employee",
+			"primary_subject_id": doc.name,
+			"slot": ("in", slots),
+			"is_current_version": 1,
+		},
+		fields=["slot", "file"],
+	)
+	if not rows:
+		return {}
+
+	file_names = [row["file"] for row in rows if row.get("file")]
+	if not file_names:
+		return {}
+
+	files = frappe.get_all(
+		"File",
+		filters={"name": ("in", file_names)},
+		fields=["name", "file_url"],
+	)
+	file_urls = {row["name"]: row.get("file_url") for row in files}
+
+	return {
+		row["slot"]: file_urls.get(row["file"])
+		for row in rows
+		if row.get("slot")
+	}
