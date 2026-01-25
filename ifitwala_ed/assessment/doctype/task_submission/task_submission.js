@@ -16,6 +16,8 @@ frappe.ui.form.on("Task Submission", {
 			new frappe.ui.FileUploader({
 				method: "ifitwala_ed.utilities.governed_uploads.upload_task_submission_attachment",
 				args: { task_submission: frm.doc.name },
+				doctype: "Task Submission",
+				docname: frm.doc.name,
 				allow_multiple: false,
 				on_success(file_doc) {
 					if (!file_doc || !file_doc.file_url) {

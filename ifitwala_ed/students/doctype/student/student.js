@@ -64,6 +64,9 @@ frappe.ui.form.on("Student", {
 			new frappe.ui.FileUploader({
 				method: "ifitwala_ed.utilities.governed_uploads.upload_student_image",
 				args: { student: frm.doc.name },
+				doctype: "Student",
+				docname: frm.doc.name,
+				fieldname,
 				allow_multiple: false,
 				on_success(file_doc) {
 					if (!file_doc || !file_doc.file_url) {
@@ -92,13 +95,16 @@ frappe.ui.form.on("Student", {
 
 		const wrapper = frm.get_field(fieldname)?.$wrapper;
 		if (wrapper?.length && !wrapper.find(".governed-upload-btn").length) {
+			const $container = wrapper.find(".control-input").length
+				? wrapper.find(".control-input")
+				: wrapper;
 			const $btn = $(
 				`<button type="button" class="btn btn-xs btn-secondary governed-upload-btn">
           ${__("Upload Student Image")}
         </button>`
 			);
 			$btn.on("click", openUploader);
-			wrapper.append($btn);
+			$container.append($btn);
 		}
 
 		if (frm.is_new()) {

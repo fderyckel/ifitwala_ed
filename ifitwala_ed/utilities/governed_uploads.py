@@ -78,8 +78,8 @@ def _response_payload(file_doc):
 
 
 @frappe.whitelist()
-def upload_employee_image(employee: str | None = None):
-	employee = employee or _get_form_arg("employee")
+def upload_employee_image(employee: str | None = None, **_kwargs):
+	employee = employee or _get_form_arg("employee") or frappe.form_dict.get("docname")
 	doc = _require_doc("Employee", employee)
 	if not doc.organization:
 		frappe.throw(_("Organization is required for file classification."))
@@ -113,8 +113,8 @@ def upload_employee_image(employee: str | None = None):
 
 
 @frappe.whitelist()
-def upload_student_image(student: str | None = None):
-	student = student or _get_form_arg("student")
+def upload_student_image(student: str | None = None, **_kwargs):
+	student = student or _get_form_arg("student") or frappe.form_dict.get("docname")
 	doc = _require_doc("Student", student)
 	if not doc.anchor_school:
 		frappe.throw(_("Anchor School is required before uploading a student image."))
@@ -151,8 +151,8 @@ def upload_student_image(student: str | None = None):
 
 
 @frappe.whitelist()
-def upload_applicant_image(student_applicant: str | None = None):
-	student_applicant = student_applicant or _get_form_arg("student_applicant")
+def upload_applicant_image(student_applicant: str | None = None, **_kwargs):
+	student_applicant = student_applicant or _get_form_arg("student_applicant") or frappe.form_dict.get("docname")
 	doc = _require_doc("Student Applicant", student_applicant)
 	if not doc.organization or not doc.school:
 		frappe.throw(_("Organization and School are required for file classification."))
@@ -186,8 +186,8 @@ def upload_applicant_image(student_applicant: str | None = None):
 
 
 @frappe.whitelist()
-def upload_task_submission_attachment(task_submission: str | None = None):
-	task_submission = task_submission or _get_form_arg("task_submission")
+def upload_task_submission_attachment(task_submission: str | None = None, **_kwargs):
+	task_submission = task_submission or _get_form_arg("task_submission") or frappe.form_dict.get("docname")
 	doc = _require_doc("Task Submission", task_submission)
 	if not doc.school or not doc.student:
 		frappe.throw(_("Student and School are required for file classification."))
