@@ -12,6 +12,12 @@ frappe.ui.form.on("Task Submission", {
 			table_field.grid.update_docfield_property("file", "read_only", 1);
 		}
 
+		frm.set_df_property(
+			"attachments",
+			"description",
+			__("Use the Upload Submission Attachment action to attach governed files.")
+		);
+
 		frm.remove_custom_button(__("Upload Submission Attachment"), __("Actions"));
 		frm.add_custom_button(
 			__("Upload Submission Attachment"),
@@ -31,12 +37,6 @@ frappe.ui.form.on("Task Submission", {
 							return;
 						}
 
-						const row = frm.add_child("attachments");
-						row.section_break_sbex = file_doc.file_name || __("Attachment");
-						row.file = file_doc.file_url;
-						row.file_name = file_doc.file_name;
-						row.file_size = file_doc.file_size;
-						row.public = 0;
 						frm.refresh_field("attachments");
 					},
 				});

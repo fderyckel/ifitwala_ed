@@ -88,5 +88,22 @@ frappe.ui.form.on("Student", {
 			},
 			__("Actions")
 		);
+
+		if (frm.is_new()) {
+			return;
+		}
+
+		frm.call({
+			method: "ifitwala_ed.utilities.governed_uploads.get_governed_status",
+			args: {
+				doctype: "Student",
+				name: frm.doc.name,
+				fieldname,
+			},
+		}).then((res) => {
+			const governed = res?.message?.governed ? __("Governed ✅") : __("Governed ❌");
+			const base = __("Use the Upload Student Image action to attach a governed file.");
+			frm.set_df_property(fieldname, "description", `${base} ${governed}`);
+		});
 	}
 });

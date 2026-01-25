@@ -115,6 +115,32 @@ def _get_parent_doc(file_doc) -> Optional[frappe.model.document.Document]:
 
 def validate_admissions_attachment(doc, method: Optional[str] = None):
 	"""Block direct attachments on Student Applicant except applicant_image."""
+	if getattr(doc, "is_folder", 0):
+		return
+	if not doc.is_new():
+		return
+
+	if _is_governed_upload(doc):
+		return
+
+	# Hard gate: governed doctypes must use dispatcher uploads.
+	if doc.attached_to_doctype in {"Employee", "Student", "Student Applicant", "Task Submission"}:
+		action_map = {
+			("Employee", "employee_image"): _("Upload Employee Image"),
+			("Student", "student_image"): _("Upload Student Image"),
+			("Student Applicant", "applicant_image"): _("Upload Applicant Image"),
+		}
+		action = action_map.get((doc.attached_to_doctype, doc.attached_to_field))
+		if doc.attached_to_doctype == "Task Submission":
+			action = _("Upload Submission Attachment")
+		if not action:
+			action = _("the governed upload action")
+
+		frappe.throw(
+			_("Governed upload required for {0}. Use {1}.")
+			.format(frappe.bold(doc.attached_to_doctype), frappe.bold(action))
+		)
+
 	if doc.attached_to_doctype != "Student Applicant":
 		return
 	if doc.attached_to_field == "applicant_image":
@@ -122,6 +148,10 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
 	frappe.throw(
 		_("Admissions files must be attached to Applicant Document (only applicant_image is allowed on Student Applicant).")
 	)
+
+
+def _is_governed_upload(file_doc) -> bool:
+	return bool(getattr(file_doc.flags, "governed_upload", False))
 
 
 # ────────────────────────────────────────────────────────────────────────────

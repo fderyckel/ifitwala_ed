@@ -464,6 +464,12 @@ These are the only allowed upload entry points for:
 * Student Applicant `applicant_image`
 * Task Submission attachments
 
+Server-side enforcement:
+
+* Any `File` attached to the doctypes above that was **not** created by the dispatcher
+  is rejected during `File.validate`.
+* This blocks sidebar uploads and prevents silent unclassified files.
+
 # 2️⃣ SECOND PR BRIEF — Phase 4: GDPR Erasure Workflow
 
 This is the **next PR**, not mixed with the above.

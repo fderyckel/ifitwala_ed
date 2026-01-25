@@ -289,6 +289,7 @@ def create_and_classify_file(
 		"doctype": "File",
 		**file_kwargs,
 	})
+	file_doc.flags.governed_upload = True
 	file_doc.insert(ignore_permissions=True)
 
 	return _classify_file_doc(

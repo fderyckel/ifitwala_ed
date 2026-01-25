@@ -200,3 +200,31 @@ def upload_task_submission_attachment(task_submission: str):
 	doc.save(ignore_permissions=True)
 
 	return _response_payload(file_doc)
+
+
+@frappe.whitelist()
+def get_governed_status(doctype: str, name: str, fieldname: str | None = None):
+	if not doctype or not name:
+		frappe.throw(_("doctype and name are required."))
+
+	doc = frappe.get_doc(doctype, name)
+	doc.check_permission("read")
+
+	filters = {
+		"attached_to_doctype": doctype,
+		"attached_to_name": name,
+	}
+	if fieldname:
+		filters["attached_to_field"] = fieldname
+
+	file_name = frappe.db.get_value("File", filters, "name")
+	if not file_name:
+		return {"has_file": 0, "governed": 0}
+
+	classification = frappe.db.get_value("File Classification", {"file": file_name}, "name")
+	return {
+		"has_file": 1,
+		"file": file_name,
+		"classification": classification,
+		"governed": 1 if classification else 0,
+	}

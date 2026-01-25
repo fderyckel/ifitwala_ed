@@ -132,6 +132,23 @@ frappe.ui.form.on("Employee", {
       },
       __("Actions")
     );
+
+    if (frm.is_new()) {
+      return;
+    }
+
+    frm.call({
+      method: "ifitwala_ed.utilities.governed_uploads.get_governed_status",
+      args: {
+        doctype: "Employee",
+        name: frm.doc.name,
+        fieldname,
+      },
+    }).then((res) => {
+      const governed = res?.message?.governed ? __("Governed ✅") : __("Governed ❌");
+      const base = __("Use the Upload Employee Image action to attach a governed file.");
+      frm.set_df_property(fieldname, "description", `${base} ${governed}`);
+    });
   },
 
   // ------------------------------------------------------------
