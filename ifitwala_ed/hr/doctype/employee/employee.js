@@ -120,6 +120,7 @@ frappe.ui.form.on("Employee", {
           }
           frm.set_value(fieldname, payload.file_url);
           frm.refresh_field(fieldname);
+          frm.reload_doc();
         },
       });
     };

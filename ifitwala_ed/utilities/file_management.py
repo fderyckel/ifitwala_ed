@@ -84,6 +84,10 @@ def ensure_folder(path: str) -> str:
 	if not path.startswith("Home/"):
 		frappe.throw(_("Folder path must start with 'Home/' (got: {0})").format(path))
 
+	# Normalize accidental double-home paths like "Home/Home/..."
+	while path.startswith("Home/Home/"):
+		path = "Home/" + path[len("Home/Home/"):]
+
 	parts = path.split("/")
 	current = "Home"
 
@@ -94,6 +98,8 @@ def ensure_folder(path: str) -> str:
 		).insert(ignore_permissions=True)
 
 	for part in parts[1:]:
+		if part == "Home":
+			continue
 		next_folder = f"{current}/{part}"
 		if not frappe.db.exists("File", {"file_name": part, "is_folder": 1, "folder": current}):
 			frappe.get_doc(
