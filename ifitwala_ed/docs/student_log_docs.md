@@ -85,7 +85,18 @@ The most critical failure point in schools is the "black hole" where notes disap
 
 ---
 
-## 4. Summary of Workflows
+## 4. Flexibility & Context Adaptation
+
+No two schools are the same. Student Log is designed to adapt to your specific context without custom code:
+
+*   **School-Scoped Taxonomy:** Define **Log Types** (e.g., "Uniform Violation", "IB Learner Profile", "Merit") specific to *your* school level. A High School can have different types than a Primary School.
+*   **Intelligent Routing:** **Next Steps** are linked to **Roles**, not specific people.
+    *   *Example:* If you select "Refer to Counselor", the system dynamically routes the task to the counselor assigned to *that* student's specific school context.
+*   **Policy Automation:** Each Next Step has its own **Auto-close** policy (e.g., "Minor incidents auto-close in 7 days involved"). This prevents backlog accumulation without administrative overhead.
+
+---
+
+## 5. Summary of Workflows
 
 | Stage | Action | System |
 | :--- | :--- | :--- |
