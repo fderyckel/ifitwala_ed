@@ -27,7 +27,9 @@ frappe.ui.form.on("Student Applicant", {
 				fieldname,
 				allow_multiple: false,
 				on_success(file_doc) {
-					const payload = file_doc?.message || file_doc;
+					const payload = file_doc?.message
+						|| (Array.isArray(file_doc) ? file_doc[0] : file_doc)
+						|| (typeof file_doc === "string" ? { file_url: file_doc } : null);
 					if (!payload || !payload.file_url) {
 						frappe.msgprint(__("Upload succeeded but no file URL was returned."));
 						return;
