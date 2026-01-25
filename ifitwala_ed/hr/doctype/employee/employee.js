@@ -189,14 +189,29 @@ frappe.ui.form.on("Employee", {
     const originalUrl = (frm.doc.employee_image || "").trim();
     if (!originalUrl) return;
 
-    const variantUrl = ifitwala_ed.hr.get_employee_image_variant(originalUrl, "thumb");
-    if (!variantUrl || variantUrl === originalUrl) return;
+    const candidates = ifitwala_ed.hr.get_employee_image_variant_candidates(
+      originalUrl,
+      "thumb",
+      frm.doc.name
+    );
+    if (!candidates.length) return;
 
     const $wrapper = frm.page?.wrapper;
     if (!$wrapper) return;
 
     const filename = originalUrl.split("/").pop() || "";
     if (!filename) return;
+
+    const applyCandidate = (imgEl, index) => {
+      if (!imgEl || !imgEl.getAttribute) return;
+      const nextUrl = candidates[index];
+      if (!nextUrl) {
+        imgEl.setAttribute("src", originalUrl);
+        return;
+      }
+      imgEl.setAttribute("data-variant-index", String(index));
+      imgEl.setAttribute("src", nextUrl);
+    };
 
     const setImageSrc = (imgEl) => {
       if (!imgEl || !imgEl.getAttribute) return;
@@ -205,14 +220,20 @@ frappe.ui.form.on("Employee", {
       if (imgEl.getAttribute("data-original-src")) return;
 
       imgEl.setAttribute("data-original-src", current);
-      imgEl.setAttribute("src", variantUrl);
-      imgEl.addEventListener(
-        "error",
-        () => {
+      applyCandidate(imgEl, 0);
+
+      const onError = () => {
+        const currentIndex = parseInt(imgEl.getAttribute("data-variant-index") || "0", 10);
+        const nextIndex = currentIndex + 1;
+        if (nextIndex >= candidates.length) {
+          imgEl.removeEventListener("error", onError);
           imgEl.setAttribute("src", originalUrl);
-        },
-        { once: true }
-      );
+          return;
+        }
+        applyCandidate(imgEl, nextIndex);
+      };
+
+      imgEl.addEventListener("error", onError);
     };
 
     $wrapper.find("img").each((_, img) => setImageSrc(img));
@@ -222,7 +243,7 @@ frappe.ui.form.on("Employee", {
       if (!style.includes(filename)) return;
       if (el.dataset && el.dataset.originalBg) return;
       if (el.dataset) el.dataset.originalBg = style;
-      el.style.backgroundImage = `url("${variantUrl}")`;
+      el.style.backgroundImage = `url("${candidates[0]}")`;
     });
   },
 
@@ -290,17 +311,17 @@ frappe.ui.form.on("Employee", {
 // Private helpers (namespaced, no globals)
 // ------------------------------------------------------------
 
-ifitwala_ed.hr.get_employee_image_variant = function (fileUrl, sizeLabel) {
-  if (!fileUrl) return null;
+ifitwala_ed.hr.get_employee_image_variant_candidates = function (fileUrl, sizeLabel, docname) {
+  if (!fileUrl) return [];
 
   const cleaned = String(fileUrl).trim();
-  if (!cleaned || cleaned.startsWith("http")) return null;
+  if (!cleaned || cleaned.startsWith("http")) return [];
 
   const filename = cleaned.split("/").pop() || "";
-  if (!filename) return null;
+  if (!filename) return [];
 
   if (cleaned.includes("/gallery_resized/")) {
-    return cleaned;
+    return [cleaned];
   }
 
   const lower = filename.toLowerCase();
@@ -310,7 +331,7 @@ ifitwala_ed.hr.get_employee_image_variant = function (fileUrl, sizeLabel) {
     || lower.startsWith("card_")
     || lower.startsWith("thumb_")
   ) {
-    return cleaned;
+    return [cleaned];
   }
 
   const base = filename.replace(/\.[^/.]+$/, "");
@@ -318,10 +339,24 @@ ifitwala_ed.hr.get_employee_image_variant = function (fileUrl, sizeLabel) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
-  if (!slugBase) return null;
+  if (!slugBase) return [];
 
   const size = sizeLabel || "thumb";
-  return `/files/gallery_resized/employee/${size}_${slugBase}.webp`;
+  const candidates = [];
+
+  if (docname) {
+    candidates.push(`/files/Employee/${docname}/${size}_${slugBase}.webp`);
+  }
+
+  if (cleaned.includes("/Employee/")) {
+    const baseDir = cleaned.substring(0, cleaned.lastIndexOf("/"));
+    candidates.push(`${baseDir}/${size}_${slugBase}.webp`);
+  }
+
+  candidates.push(`/files/gallery_resized/employee/${size}_${slugBase}.webp`);
+  candidates.push(`/files/${size}_${slugBase}.webp`);
+
+  return candidates;
 };
 
 /**

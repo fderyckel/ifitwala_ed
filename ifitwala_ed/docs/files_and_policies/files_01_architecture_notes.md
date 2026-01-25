@@ -464,6 +464,8 @@ This is the backbone. Everything else builds on this.
 | `source_file`  | Link → File | Parent file (for thumbnails/derivs)  |
 
 > `content_hash` must be calculated by dispatcher on upload.
+> Derived files (e.g. thumb/card/medium) are **full Files** with their own classifications.
+> They must set `source_file` and use explicit derivative slots (e.g. `profile_image_thumb`).
 
 ## 3. Data subject model (GDPR-critical)
 

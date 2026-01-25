@@ -216,6 +216,12 @@ def _classify_file_doc(
 		context_override=context_override,
 	)
 
+	try:
+		from ifitwala_ed.utilities import image_utils
+		image_utils.handle_governed_file_after_classification(file_doc)
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "Governed Image Derivative Failed")
+
 	return file_doc
 
 

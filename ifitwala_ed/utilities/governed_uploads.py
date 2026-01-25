@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Tuple
 import json
+import os
 
 import frappe
 from frappe import _
@@ -89,6 +90,16 @@ def _response_payload(file_doc):
 	}
 
 
+def _ensure_file_on_disk(file_doc):
+	if not file_doc or not file_doc.file_url:
+		frappe.throw(_("File URL missing after upload."))
+	if file_doc.file_url.startswith("http"):
+		return
+	abs_path = frappe.utils.get_site_path("public", file_doc.file_url.lstrip("/"))
+	if not os.path.exists(abs_path):
+		frappe.throw(_("File could not be finalized on disk. Please retry the upload."))
+
+
 @frappe.whitelist()
 def upload_employee_image(employee: str | None = None, **_kwargs):
 	employee = employee or _get_form_arg("employee") or frappe.form_dict.get("docname")
@@ -119,6 +130,7 @@ def upload_employee_image(employee: str | None = None, **_kwargs):
 			"upload_source": "Desk",
 		},
 	)
+	_ensure_file_on_disk(file_doc)
 
 	frappe.db.set_value("Employee", doc.name, "employee_image", file_doc.file_url, update_modified=False)
 	return _response_payload(file_doc)
@@ -155,6 +167,7 @@ def upload_student_image(student: str | None = None, **_kwargs):
 			"upload_source": "Desk",
 		},
 	)
+	_ensure_file_on_disk(file_doc)
 
 	frappe.db.set_value("Student", doc.name, "student_image", file_doc.file_url, update_modified=False)
 	doc.student_image = file_doc.file_url
@@ -192,6 +205,7 @@ def upload_applicant_image(student_applicant: str | None = None, **_kwargs):
 			"upload_source": "Desk",
 		},
 	)
+	_ensure_file_on_disk(file_doc)
 
 	frappe.db.set_value("Student Applicant", doc.name, "applicant_image", file_doc.file_url, update_modified=False)
 	return _response_payload(file_doc)
@@ -227,6 +241,7 @@ def upload_task_submission_attachment(task_submission: str | None = None, **_kwa
 			"upload_source": "Desk",
 		},
 	)
+	_ensure_file_on_disk(file_doc)
 
 	doc.append("attachments", {
 		"section_break_sbex": file_doc.file_name,

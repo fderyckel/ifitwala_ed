@@ -470,6 +470,40 @@ Server-side enforcement:
   is rejected during `File.validate`.
 * This blocks sidebar uploads and prevents silent unclassified files.
 
+---
+
+## Governed derivative images (Employee only)
+
+Employee profile images must generate **governed derivatives** for UI use.
+
+### Sizes (locked)
+
+* `thumb` (160px) → avatar / profile pic
+* `card` (400px) → staff listing / website card
+* `medium` (960px) → internal display where more detail is needed
+
+### Governance rules
+
+Each derivative is a **real File + File Classification** with:
+
+* `source_file` = original profile image File
+* Same `primary_subject_*`, `data_class`, `purpose`, `retention_policy`, `organization`, `school`
+* **Slot naming**: `profile_image_thumb`, `profile_image_card`, `profile_image_medium`
+* `upload_source` inherited from the original upload
+
+### Creation flow (authoritative)
+
+1) Original profile image is created via dispatcher
+2) Classification is created (slot = `profile_image`)
+3) Derivatives are generated **after classification**
+4) Each derivative is created via dispatcher and classified
+
+### Invariants
+
+* No derivative may exist without classification
+* Derivative generation is **idempotent** per source file
+* Employee derivatives are limited to the three sizes above (no hero)
+
 # 2️⃣ SECOND PR BRIEF — Phase 4: GDPR Erasure Workflow
 
 This is the **next PR**, not mixed with the above.

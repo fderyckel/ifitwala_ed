@@ -476,12 +476,52 @@ def route_uploaded_file(doc, method: Optional[str] = None, context_override: Opt
 	old_abs_path = frappe.utils.get_site_path(old_rel_path)
 
 	# Ensure destination dir
-	os.makedirs(os.path.dirname(new_abs_path), exist_ok=True)
+	moved_ok = False
+	old_exists = os.path.exists(old_abs_path)
+	new_exists = os.path.exists(new_abs_path)
 
-	# Move file if paths differ
-	if os.path.abspath(old_abs_path) != os.path.abspath(new_abs_path):
-		if os.path.exists(old_abs_path):
-			os.rename(old_abs_path, new_abs_path)
+	if os.path.abspath(old_abs_path) == os.path.abspath(new_abs_path):
+		moved_ok = old_exists or new_exists
+	else:
+		if old_exists:
+			os.makedirs(os.path.dirname(new_abs_path), exist_ok=True)
+			try:
+				os.rename(old_abs_path, new_abs_path)
+			except Exception:
+				frappe.log_error(
+					frappe.as_json(
+						{
+							"error": "file_move_failed",
+							"file": doc.name,
+							"old_abs_path": old_abs_path,
+							"new_abs_path": new_abs_path,
+						},
+						indent=2,
+					),
+					"File Routing Failed",
+				)
+				return
+			new_exists = os.path.exists(new_abs_path)
+			moved_ok = new_exists
+		elif new_exists:
+			moved_ok = True
+
+	if not moved_ok:
+		frappe.log_error(
+			frappe.as_json(
+				{
+					"error": "file_missing_after_routing",
+					"file": doc.name,
+					"old_abs_path": old_abs_path,
+					"new_abs_path": new_abs_path,
+					"old_exists": old_exists,
+					"new_exists": new_exists,
+				},
+				indent=2,
+			),
+			"File Routing Failed",
+		)
+		return
 
 	# ── Update File doc fields ─────────────────────────────────────────────
 	doc.folder = final_folder
