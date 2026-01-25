@@ -138,7 +138,7 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
 
 		frappe.throw(
 			_("Governed upload required for {0}. Use {1}.")
-			.format(frappe.bold(doc.attached_to_doctype), frappe.bold(action))
+			.format(doc.attached_to_doctype, action)
 		)
 
 	if doc.attached_to_doctype != "Student Applicant":

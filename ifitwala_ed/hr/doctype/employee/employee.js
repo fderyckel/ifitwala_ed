@@ -99,6 +99,26 @@ frappe.ui.form.on("Employee", {
 
   setup_governed_image_upload(frm) {
     const fieldname = "employee_image";
+    const openUploader = () => {
+      if (frm.is_new()) {
+        frappe.msgprint(__("Please save the Employee before uploading an image."));
+        return;
+      }
+
+      new frappe.ui.FileUploader({
+        method: "ifitwala_ed.utilities.governed_uploads.upload_employee_image",
+        args: { employee: frm.doc.name },
+        allow_multiple: false,
+        on_success(file_doc) {
+          if (!file_doc || !file_doc.file_url) {
+            frappe.msgprint(__("Upload succeeded but no file URL was returned."));
+            return;
+          }
+          frm.set_value(fieldname, file_doc.file_url);
+          frm.refresh_field(fieldname);
+        },
+      });
+    };
 
     frm.set_df_property(fieldname, "read_only", 1);
     frm.set_df_property(
@@ -108,30 +128,22 @@ frappe.ui.form.on("Employee", {
     );
 
     frm.remove_custom_button(__("Upload Employee Image"), __("Actions"));
+    frm.remove_custom_button(__("Upload Employee Image"));
     frm.add_custom_button(
       __("Upload Employee Image"),
-      () => {
-        if (frm.is_new()) {
-          frappe.msgprint(__("Please save the Employee before uploading an image."));
-          return;
-        }
-
-        new frappe.ui.FileUploader({
-          method: "ifitwala_ed.utilities.governed_uploads.upload_employee_image",
-          args: { employee: frm.doc.name },
-          allow_multiple: false,
-          on_success(file_doc) {
-            if (!file_doc || !file_doc.file_url) {
-              frappe.msgprint(__("Upload succeeded but no file URL was returned."));
-              return;
-            }
-            frm.set_value(fieldname, file_doc.file_url);
-            frm.refresh_field(fieldname);
-          },
-        });
-      },
-      __("Actions")
+      openUploader
     );
+
+    const wrapper = frm.get_field(fieldname)?.$wrapper;
+    if (wrapper?.length && !wrapper.find(".governed-upload-btn").length) {
+      const $btn = $(
+        `<button type="button" class="btn btn-xs btn-secondary governed-upload-btn">
+          ${__("Upload Employee Image")}
+        </button>`
+      );
+      $btn.on("click", openUploader);
+      wrapper.append($btn);
+    }
 
     if (frm.is_new()) {
       return;

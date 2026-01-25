@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from typing import Tuple
+import json
 
 import frappe
 from frappe import _
@@ -46,6 +47,27 @@ def _get_org_from_school(school: str) -> str:
 	return organization
 
 
+def _get_form_arg(key: str):
+	value = frappe.form_dict.get(key)
+	if value:
+		return value
+
+	args = frappe.form_dict.get("args")
+	if not args:
+		return None
+
+	if isinstance(args, str):
+		try:
+			args = json.loads(args)
+		except Exception:
+			return None
+
+	if isinstance(args, dict):
+		return args.get(key)
+
+	return None
+
+
 def _response_payload(file_doc):
 	return {
 		"file": file_doc.name,
@@ -56,7 +78,8 @@ def _response_payload(file_doc):
 
 
 @frappe.whitelist()
-def upload_employee_image(employee: str):
+def upload_employee_image(employee: str | None = None):
+	employee = employee or _get_form_arg("employee")
 	doc = _require_doc("Employee", employee)
 	if not doc.organization:
 		frappe.throw(_("Organization is required for file classification."))
@@ -90,7 +113,8 @@ def upload_employee_image(employee: str):
 
 
 @frappe.whitelist()
-def upload_student_image(student: str):
+def upload_student_image(student: str | None = None):
+	student = student or _get_form_arg("student")
 	doc = _require_doc("Student", student)
 	if not doc.anchor_school:
 		frappe.throw(_("Anchor School is required before uploading a student image."))
@@ -127,7 +151,8 @@ def upload_student_image(student: str):
 
 
 @frappe.whitelist()
-def upload_applicant_image(student_applicant: str):
+def upload_applicant_image(student_applicant: str | None = None):
+	student_applicant = student_applicant or _get_form_arg("student_applicant")
 	doc = _require_doc("Student Applicant", student_applicant)
 	if not doc.organization or not doc.school:
 		frappe.throw(_("Organization and School are required for file classification."))
@@ -161,7 +186,8 @@ def upload_applicant_image(student_applicant: str):
 
 
 @frappe.whitelist()
-def upload_task_submission_attachment(task_submission: str):
+def upload_task_submission_attachment(task_submission: str | None = None):
+	task_submission = task_submission or _get_form_arg("task_submission")
 	doc = _require_doc("Task Submission", task_submission)
 	if not doc.school or not doc.student:
 		frappe.throw(_("Student and School are required for file classification."))
