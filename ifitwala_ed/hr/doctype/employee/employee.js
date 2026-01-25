@@ -40,6 +40,7 @@ frappe.ui.form.on("Employee", {
     frm.trigger("add_contact_button");
     frm.trigger("style_employee_history_rows");
     frm.trigger("setup_governed_image_upload");
+    frm.trigger("apply_employee_image_variant");
   },
 
   // ------------------------------------------------------------
@@ -122,7 +123,12 @@ frappe.ui.form.on("Employee", {
             frm.set_value(fieldname, payload.file_url);
             frm.refresh_field(fieldname);
           }
-          frm.reload_doc();
+          const reload = frm.reload_doc();
+          if (reload && reload.then) {
+            reload.then(() => frm.trigger("apply_employee_image_variant"));
+          } else {
+            setTimeout(() => frm.trigger("apply_employee_image_variant"), 150);
+          }
         },
         on_error() {
           frappe.msgprint(__("Upload failed. Please try again."));
@@ -174,6 +180,49 @@ frappe.ui.form.on("Employee", {
       const governed = res?.message?.governed ? __("Governed ✅") : __("Governed ❌");
       const base = __("Use the Upload Employee Image action to attach a governed file.");
       frm.set_df_property(fieldname, "description", `${base} ${governed}`);
+    });
+  },
+
+  apply_employee_image_variant(frm) {
+    if (frm.is_new()) return;
+
+    const originalUrl = (frm.doc.employee_image || "").trim();
+    if (!originalUrl) return;
+
+    const variantUrl = ifitwala_ed.hr.get_employee_image_variant(originalUrl, "thumb");
+    if (!variantUrl || variantUrl === originalUrl) return;
+
+    const $wrapper = frm.page?.wrapper;
+    if (!$wrapper) return;
+
+    const filename = originalUrl.split("/").pop() || "";
+    if (!filename) return;
+
+    const setImageSrc = (imgEl) => {
+      if (!imgEl || !imgEl.getAttribute) return;
+      const current = imgEl.getAttribute("src") || "";
+      if (!current || !current.includes(filename)) return;
+      if (imgEl.getAttribute("data-original-src")) return;
+
+      imgEl.setAttribute("data-original-src", current);
+      imgEl.setAttribute("src", variantUrl);
+      imgEl.addEventListener(
+        "error",
+        () => {
+          imgEl.setAttribute("src", originalUrl);
+        },
+        { once: true }
+      );
+    };
+
+    $wrapper.find("img").each((_, img) => setImageSrc(img));
+
+    $wrapper.find("[style]").each((_, el) => {
+      const style = window.getComputedStyle(el).backgroundImage || "";
+      if (!style.includes(filename)) return;
+      if (el.dataset && el.dataset.originalBg) return;
+      if (el.dataset) el.dataset.originalBg = style;
+      el.style.backgroundImage = `url("${variantUrl}")`;
     });
   },
 
@@ -240,6 +289,40 @@ frappe.ui.form.on("Employee", {
 // ------------------------------------------------------------
 // Private helpers (namespaced, no globals)
 // ------------------------------------------------------------
+
+ifitwala_ed.hr.get_employee_image_variant = function (fileUrl, sizeLabel) {
+  if (!fileUrl) return null;
+
+  const cleaned = String(fileUrl).trim();
+  if (!cleaned || cleaned.startsWith("http")) return null;
+
+  const filename = cleaned.split("/").pop() || "";
+  if (!filename) return null;
+
+  if (cleaned.includes("/gallery_resized/")) {
+    return cleaned;
+  }
+
+  const lower = filename.toLowerCase();
+  if (
+    lower.startsWith("hero_")
+    || lower.startsWith("medium_")
+    || lower.startsWith("card_")
+    || lower.startsWith("thumb_")
+  ) {
+    return cleaned;
+  }
+
+  const base = filename.replace(/\.[^/.]+$/, "");
+  const slugBase = base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (!slugBase) return null;
+
+  const size = sizeLabel || "thumb";
+  return `/files/gallery_resized/employee/${size}_${slugBase}.webp`;
+};
 
 /**
  * Lock the rendered Contact/Address UI so it behaves as "display-only".
