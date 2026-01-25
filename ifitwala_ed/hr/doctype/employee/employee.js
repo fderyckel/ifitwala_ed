@@ -270,6 +270,16 @@ frappe.ui.form.on("Employee", {
   // ------------------------------------------------------------
 
   create_user(frm) {
+    if (frm.is_new()) {
+      frappe.msgprint(__("Please save the Employee before creating a User."));
+      return;
+    }
+
+    if (frm.is_dirty()) {
+      frappe.msgprint(__("Please save the Employee before creating a User."));
+      return;
+    }
+
     if (!frm.doc.employee_professional_email) {
       frappe.throw(__("Please enter Professional Email"));
     }
@@ -277,9 +287,15 @@ frappe.ui.form.on("Employee", {
     frappe.call({
       method: "ifitwala_ed.hr.doctype.employee.employee.create_user",
       args: { employee: frm.doc.name, email: frm.doc.employee_professional_email },
-      callback(r) {
-        frm.set_value("user_id", r.message);
-      },
+      freeze: true,
+      freeze_message: __("Creating User..."),
+    }).then((r) => {
+      if (!r?.message) {
+        frappe.msgprint(__("User creation failed. Please try again."));
+        return;
+      }
+
+      return frm.reload_doc();
     });
   },
 
