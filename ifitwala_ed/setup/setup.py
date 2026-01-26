@@ -1,3 +1,4 @@
+# ifitwala_ed/setup/setup.py
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
@@ -20,6 +21,7 @@ def setup_education():
 	create_student_file_folder()
 	setup_website_top_bar()
 	setup_web_pages()
+	setup_website_block_definitions()
 	grant_core_crm_permissions()
 
 
@@ -284,9 +286,10 @@ METADATA_FIELDS = {
 
 def setup_web_pages():
 	"""
-	Insert Web Page records from fixtures/web_page.json.
-	Any error aborts execution via frappe.throw().
+	Legacy Web Page fixtures are frozen for Builder-lite v1.
 	"""
+	return
+
 	fixture_path = frappe.get_app_path("ifitwala_ed", "setup", "data", "web_page.json")
 
 	#  Ensure the fixture file exists
@@ -337,6 +340,109 @@ def setup_web_pages():
 				title=_("Initial Setup Aborted")
 			)
 
+def setup_website_block_definitions():
+	records = [
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "hero",
+			"label": "Hero",
+			"template_path": "ifitwala_ed/website/blocks/hero.html",
+			"provider_path": "ifitwala_ed.website.providers.hero.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"title": {"type": "string"},
+					"subtitle": {"type": "string"},
+					"background_image": {"type": "string"},
+					"variant": {"type": "string", "enum": ["default", "split", "centered"]},
+					"cta_label": {"type": "string"},
+					"cta_link": {"type": "string"}
+				},
+				"required": ["title"],
+				"additionalProperties": False
+			}),
+			"seo_role": "owns_h1",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "rich_text",
+			"label": "Rich Text",
+			"template_path": "ifitwala_ed/website/blocks/rich_text.html",
+			"provider_path": "ifitwala_ed.website.providers.rich_text.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"content": {"type": "string"},
+					"max_width": {"type": "string", "enum": ["narrow", "normal", "wide"]}
+				},
+				"required": ["content"],
+				"additionalProperties": False
+			}),
+			"seo_role": "content",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "program_list",
+			"label": "Program List",
+			"template_path": "ifitwala_ed/website/blocks/program_list.html",
+			"provider_path": "ifitwala_ed.website.providers.program_list.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"title": {"type": "string"},
+					"program_category": {"type": "string"},
+					"limit": {"type": "integer", "minimum": 1},
+					"show_description": {"type": "boolean"}
+				},
+				"additionalProperties": False
+			}),
+			"seo_role": "supporting",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "leadership",
+			"label": "Leadership",
+			"template_path": "ifitwala_ed/website/blocks/leadership.html",
+			"provider_path": "ifitwala_ed.website.providers.leadership.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"title": {"type": "string"},
+					"roles": {"type": "array", "items": {"type": "string"}},
+					"limit": {"type": "integer", "minimum": 1}
+				},
+				"additionalProperties": False
+			}),
+			"seo_role": "supporting",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "cta",
+			"label": "CTA",
+			"template_path": "ifitwala_ed/website/blocks/cta.html",
+			"provider_path": "ifitwala_ed.website.providers.cta.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"title": {"type": "string"},
+					"text": {"type": "string"},
+					"button_label": {"type": "string"},
+					"button_link": {"type": "string"}
+				},
+				"required": ["button_label", "button_link"],
+				"additionalProperties": False
+			}),
+			"seo_role": "supporting",
+			"is_core": 1,
+		},
+	]
+
+	insert_record(records)
+
 def grant_core_crm_permissions():
 	"""Ensure critical roles have access to Contact and Address Doctypes."""
 
@@ -373,4 +479,3 @@ def grant_core_crm_permissions():
 
 			docperm.insert(ignore_permissions=True)
 		frappe.clear_cache(doctype=doctype)  # Clear cache after permission update
-

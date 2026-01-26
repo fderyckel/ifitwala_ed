@@ -1,0 +1,33 @@
+<!-- ifitwala_ed/website/blocks/leadership.html -->
+{% import "ifitwala_ed/templates/includes/smart_image_macro.html" as img_macro %}
+
+<section class="block block-leadership">
+	<div class="container">
+		{% if data.title %}
+			<h2 class="text-center fw-bold display-6 my-5 pd-5">{{ data.title }}</h2>
+			<div class="section-divider"></div>
+		{% endif %}
+
+		{% if data.leaders %}
+			<div class="leader-grid">
+				{% for leader in data.leaders %}
+					<div class="leader-block">
+						{% if leader.photo and leader.photo.original %}
+							{{ img_macro.smart_image(
+								card=leader.photo.card,
+								original=leader.photo.original,
+								alt=leader.name ~ " - " ~ (leader.title or ""),
+								class="lead-circle",
+								fallback="card"
+							) }}
+						{% endif %}
+						<div class="leader-name">{{ leader.name }}</div>
+						{% if leader.title %}
+							<div class="leader-role">{{ leader.title }}</div>
+						{% endif %}
+					</div>
+				{% endfor %}
+			</div>
+		{% endif %}
+	</div>
+</section>

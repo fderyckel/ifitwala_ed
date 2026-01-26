@@ -1,3 +1,4 @@
+# ifitwala_ed/hooks.py
 app_name = "ifitwala_ed"
 app_title = "Ifitwala"
 app_publisher = "François de Ryckel"
@@ -61,6 +62,10 @@ website_route_rules = [
     {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
     {"from_route": "/staff", "to_route": "/portal/staff"},
     {"from_route": "/staff/<path:subpath>", "to_route": "/portal/staff/<path:subpath>"},
+    {"from_route": "/login", "to_route": "login"},
+    {"from_route": "/update-password", "to_route": "update-password"},
+    {"from_route": "/", "to_route": "website"},
+    {"from_route": "/<path:route>", "to_route": "website"},
 ]
 
 

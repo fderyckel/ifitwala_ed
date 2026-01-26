@@ -1,0 +1,33 @@
+<!-- ifitwala_ed/website/templates/page.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+
+	<title>{{ page.title }}</title>
+
+	{% if page.meta_description %}
+	<meta name="description" content="{{ page.meta_description }}">
+	{% endif %}
+
+	<link rel="canonical" href="{{ frappe.utils.get_url(page.route) }}">
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link rel="stylesheet" href="/assets/ifitwala_ed/website/website.css">
+	<link rel="stylesheet" href="/assets/ifitwala_ed/website/school.css">
+</head>
+
+<body>
+	<main id="ifitwala-page-root">
+		{% block page_blocks %}
+			{% for block in blocks %}
+				{% include block.template with context %}
+			{% endfor %}
+		{% endblock %}
+	</main>
+
+	<script src="/assets/ifitwala_ed/website/website.js" defer></script>
+	<script src="/assets/ifitwala_ed/website/school.js" defer></script>
+</body>
+</html>

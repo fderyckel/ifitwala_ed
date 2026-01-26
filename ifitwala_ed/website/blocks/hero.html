@@ -1,0 +1,29 @@
+<!-- ifitwala_ed/website/blocks/hero.html -->
+{% import "ifitwala_ed/templates/includes/smart_image_macro.html" as img_macro %}
+
+<section class="block block-hero">
+	{% if data.image and data.image.original %}
+		<div class="hero-img-wrapper">
+			{{ img_macro.smart_image(
+				data.image.hero,
+				data.image.medium,
+				data.image.card,
+				data.image.thumb,
+				data.image.original,
+				data.title or "Hero image",
+				"hero-img hero-img-full",
+				fallback="carousel"
+			) }}
+		</div>
+	{% endif %}
+
+	<div class="container py-4 text-center">
+		<h1>{{ data.title }}</h1>
+		{% if data.subtitle %}
+			<p class="lead">{{ data.subtitle }}</p>
+		{% endif %}
+		{% if data.cta_label and data.cta_link %}
+			<a href="{{ data.cta_link }}" class="btn btn-primary btn-lg">{{ data.cta_label }}</a>
+		{% endif %}
+	</div>
+</section>

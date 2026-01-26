@@ -1,0 +1,14 @@
+<!-- ifitwala_ed/website/blocks/cta.html -->
+<section class="block block-cta">
+	<div class="container text-center my-4">
+		{% if data.title %}
+			<h2 class="fw-bold">{{ data.title }}</h2>
+		{% endif %}
+		{% if data.text %}
+			<p class="text-muted">{{ data.text }}</p>
+		{% endif %}
+		{% if data.button_label and data.button_link %}
+			<a href="{{ data.button_link }}" class="btn btn-primary btn-lg">{{ data.button_label }}</a>
+		{% endif %}
+	</div>
+</section>
