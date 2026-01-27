@@ -9,15 +9,30 @@ from ifitwala_ed.website.utils import normalize_route
 
 class SchoolWebsitePage(Document):
 	def validate(self):
-		if not self.route or not str(self.route).startswith("/"):
+		school_slug = frappe.db.get_value("School", self.school, "website_slug")
+		if not school_slug:
 			frappe.throw(
-				_("Route must start with '/'."),
+				_("School website slug is required to build routes."),
 				frappe.ValidationError,
 			)
 
-		normalized = normalize_route(self.route)
-		if normalized != self.route:
-			self.route = normalized
+		raw_route = (self.route or "").strip()
+		if not raw_route or raw_route == "/":
+			self.route = normalize_route(f"/{school_slug}")
+			frappe.msgprint(
+				_("Route is empty or '/'. This sets the root school page: {0}").format(self.route),
+				alert=True,
+			)
+		else:
+			relative = raw_route.lstrip("/").rstrip("/")
+			if not relative:
+				self.route = normalize_route(f"/{school_slug}")
+				frappe.msgprint(
+					_("Route is empty after cleanup. This sets the root school page: {0}").format(self.route),
+					alert=True,
+				)
+			else:
+				self.route = normalize_route(f"/{school_slug}/{relative}")
 
 		exists = frappe.db.exists(
 			"School Website Page",
