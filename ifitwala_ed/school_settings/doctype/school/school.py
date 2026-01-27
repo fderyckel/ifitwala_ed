@@ -30,7 +30,7 @@ class School(NestedSet):
 		NestedSet.on_update(self)
 
 	def after_save(self):
-		if self.is_dirty("abbr"):
+		if self.has_value_changed("abbr"):
 			self.update_navbar_item_for_abbreviation_change()
 
 	def on_trash(self):
@@ -126,7 +126,7 @@ class School(NestedSet):
 			return
 
 		# Only act when Organization is being changed
-		if not self.is_dirty("organization"):
+		if not self.has_value_changed("organization"):
 			return
 
 		# If this node has children, block the change.
