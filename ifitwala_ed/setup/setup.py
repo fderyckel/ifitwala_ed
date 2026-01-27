@@ -2,7 +2,6 @@
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
-import os
 import json
 import frappe
 from frappe import _
@@ -20,7 +19,6 @@ def setup_education():
 	add_other_records()
 	create_student_file_folder()
 	setup_website_top_bar()
-	setup_web_pages()
 	setup_website_block_definitions()
 	grant_core_crm_permissions()
 
@@ -173,7 +171,15 @@ def add_other_records(country=None):
 		# Program tree root (global)
 		{'doctype': 'Program', 'name': 'All Programs', 'program_name': 'All Programs', 'is_group': 1, 'parent_program': ''},
 	]
-	insert_record(records)
+	for record in records:
+		block_type = record.get("block_type")
+		if not block_type:
+			continue
+		if frappe.db.exists("Website Block Definition", {"block_type": block_type}):
+			continue
+		doc = frappe.get_doc(record)
+		doc.insert(ignore_permissions=True, ignore_if_duplicate=True)
+		frappe.db.commit()
 
 
 def grant_role_read_select_to_hr():
@@ -279,69 +285,12 @@ def setup_website_top_bar():
 
     ws.save(ignore_permissions=True)
 
-METADATA_FIELDS = {
-	"docstatus", "modified", "modified_by",
-  "owner", "creation", "idx", "_user_tags"
-}
-
-def setup_web_pages():
-	"""
-	Legacy Web Page fixtures are frozen for Builder-lite v1.
-	"""
-	return
-
-	fixture_path = frappe.get_app_path("ifitwala_ed", "setup", "data", "web_page.json")
-
-	#  Ensure the fixture file exists
-	if not os.path.exists(fixture_path):
-		frappe.throw(
-			_("Web Page fixture not found at {0}").format(fixture_path),
-			title=_("Initial Setup Aborted")
-		)
-
-	# Load JSON
-	try:
-		with open(fixture_path, encoding="utf-8") as f:
-			records = json.load(f)
-	except Exception as e:
-		frappe.throw(
-			_("Failed to load Web Page fixtures: {0}").format(str(e)),
-			title=_("Initial Setup Aborted")
-		)
-
-	#  Insert each record
-	for record in records:
-		if record.get("doctype") != "Web Page":
-			continue
-
-		identifier = record.get("name") or record.get("route") or record.get("title")
-		if not identifier:
-			frappe.throw(
-				_("Web Page record missing a unique identifier (name/route/title)."),
-				title=_("Initial Setup Aborted")
-			)
-
-		# Skip if already present – not an error
-		if frappe.db.exists("Web Page", identifier):
-			continue
-
-		filtered = {k: v for k, v in record.items() if k not in METADATA_FIELDS}
-		# Ensure required keys
-		filtered.setdefault("doctype", "Web Page")
-		filtered.setdefault("name", identifier)
-		if "name" not in filtered:
-			filtered["name"] = identifier
-
-		try:
-			frappe.get_doc(filtered).insert(ignore_permissions=True)
-		except Exception as e:
-			frappe.throw(
-				_("Failed to insert Web Page '{0}': {1}").format(identifier, str(e)),
-				title=_("Initial Setup Aborted")
-			)
-
 def setup_website_block_definitions():
-	records = [
+	records = get_website_block_definition_records()
+	insert_record(records)
+
+def get_website_block_definition_records():
+	return [
 		{
 			"doctype": "Website Block Definition",
 			"block_type": "hero",
@@ -440,8 +389,6 @@ def setup_website_block_definitions():
 			"is_core": 1,
 		},
 	]
-
-	insert_record(records)
 
 def grant_core_crm_permissions():
 	"""Ensure critical roles have access to Contact and Address Doctypes."""

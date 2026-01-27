@@ -690,7 +690,8 @@ Responsibilities:
 4. Populate blocks
 5. Verify render
 6. Disable `server_script_enabled`
-7. Delete Web Page context scripts
+7. Delete all legacy `Web Page` records (patch: `remove_legacy_web_pages`)
+8. Remove legacy Web Page fixtures (`setup/data/web_page.json`)
 
 ---
 
@@ -982,4 +983,3 @@ Example pattern:
 Hero template is the **only** one allowed to emit `<h1>`.
 
 ---
-
