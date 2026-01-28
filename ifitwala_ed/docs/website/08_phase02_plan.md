@@ -1029,3 +1029,383 @@ This design:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+# PART 1 — SERVER-SIDE VALIDATION RULES (AUTHORITATIVE)
+
+These rules live **server-side only** (Document controllers / renderer validation).
+UI validation is **assistive**, never authoritative.
+
+---
+
+## 1. Global Validation (All Website Pages)
+
+### 1.1 Page-level invariants
+
+**Applies to:** `Website Page`, `Program Website Profile`
+
+**Rules**
+
+* Exactly **one H1 per page**
+* At least **one block**
+* `school` must be set
+* `seo_profile` must exist (can be empty, but linked)
+
+**Hard failures**
+
+```text
+❌ Multiple H1 detected. Pages must contain exactly one H1.
+❌ Website Page must be linked to a School.
+❌ Website Page must contain at least one content block.
+```
+
+---
+
+## 2. Block Registry Validation
+
+### 2.1 Allowed block types
+
+Only block types registered in the **Block Registry** may be saved.
+
+```python
+ALLOWED_BLOCK_TYPES = {
+  "admissions_overview",
+  "admissions_steps",
+  "admission_cta",
+  "faq",
+  "program_list",
+  "program_intro",
+  "rich_text",
+  "content_snippet"
+}
+```
+
+**Failure**
+
+```text
+❌ Unknown block type: {block_type}
+```
+
+---
+
+## 3. `admission_cta` Validation
+
+### Required fields
+
+* `intent`
+
+### Allowed values
+
+```python
+INTENTS = {"inquire", "visit", "apply"}
+STYLES = {"primary", "secondary", "outline"}
+```
+
+### Rules
+
+* `intent` is mandatory
+* `intent` must be one of allowed values
+* No URL field allowed (enforced by schema)
+* Target URL is resolved server-side only
+
+**Failures**
+
+```text
+❌ Admission CTA requires an intent.
+❌ Invalid Admission CTA intent: {intent}
+```
+
+---
+
+## 4. `admissions_steps` Validation
+
+### Rules
+
+* Must contain **at least 2 steps**
+* Each step must include:
+
+  * `key`
+  * `title`
+* `key` must match a known admission intent
+
+```python
+VALID_KEYS = {"inquire", "visit", "apply"}
+```
+
+**Failures**
+
+```text
+❌ Admissions Steps must include at least two steps.
+❌ Invalid admissions step key: {key}
+```
+
+---
+
+## 5. `faq` Validation
+
+### Rules
+
+* At least **1 FAQ item**
+* Each item must have:
+
+  * non-empty `question`
+  * non-empty `answer_html`
+* If `enable_schema = true`:
+
+  * max **10 items** (Google guideline)
+
+**Failures**
+
+```text
+❌ FAQ must contain at least one question.
+❌ FAQ items require both question and answer.
+❌ FAQ schema limited to 10 items.
+```
+
+---
+
+## 6. `program_list` Validation
+
+### Rules
+
+* No manual program IDs allowed
+* Programs resolved dynamically by:
+
+  * `school_scope`
+  * `Program Website Profile.is_published = 1`
+
+**Failure**
+
+```text
+❌ Program List cannot accept manually selected programs.
+```
+
+---
+
+## 7. `program_intro` Validation
+
+### Rules
+
+* Only allowed on **Program pages**
+* `heading` mandatory
+* If `cta_intent` provided → must be valid admission intent
+
+**Failures**
+
+```text
+❌ Program Intro block is only allowed on Program pages.
+❌ Program Intro requires a heading.
+❌ Invalid CTA intent on Program Intro.
+```
+
+---
+
+## 8. `content_snippet` Validation
+
+### Rules
+
+* `snippet_id` must exist
+* Snippet scope must be compatible:
+
+  * global OR matching school
+
+**Failures**
+
+```text
+❌ Content snippet not found.
+❌ Content snippet not available for this school.
+```
+
+---
+
+## 9. SEO Profile Validation
+
+### Rules
+
+* `meta_title` ≤ 60 chars
+* `meta_description` ≤ 160 chars
+* If `noindex = 1`:
+
+  * warning banner shown in Desk (not a hard fail)
+
+**Hard failures**
+
+```text
+❌ Meta title exceeds 60 characters.
+❌ Meta description exceeds 160 characters.
+```
+
+---
+
+## 10. Render-time Safety Checks (Non-blocking warnings)
+
+Logged + surfaced in Desk sidebar:
+
+* Missing OG image
+* No FAQ schema on FAQ-heavy page
+* Admissions page missing CTA
+* Program page missing CTA
+
+These **never block publishing**, but guide editors.
+
+---
+
+# PART 2 — TAILWIND LAYOUT CONVENTIONS (LOCKED)
+
+These conventions ensure:
+
+* Visual consistency
+* Predictable spacing
+* SEO-safe hierarchy
+* Zero CSS drift
+
+No block may define its own spacing system.
+
+---
+
+## GLOBAL PAGE WRAPPER
+
+```html
+<main class="page-content space-y-24">
+```
+
+* `space-y-24` is **canonical**
+* No block overrides vertical rhythm
+
+---
+
+## 1. `admissions_overview`
+
+```html
+<section class="max-w-3xl mx-auto text-center space-y-6">
+  <h1 class="text-4xl font-semibold tracking-tight">
+  <div class="prose prose-lg mx-auto">
+```
+
+**Notes**
+
+* Only block allowed to render `<h1>`
+* Centered, calm, authoritative
+
+---
+
+## 2. `admissions_steps`
+
+```html
+<section class="max-w-6xl mx-auto grid gap-8 md:grid-cols-3">
+  <div class="rounded-xl border p-6 text-center space-y-4">
+```
+
+* Cards must be equal height
+* Icons use muted accent color
+* No animation required
+
+---
+
+## 3. `admission_cta`
+
+```html
+<div class="flex justify-center">
+  <a class="
+    inline-flex items-center gap-2
+    rounded-lg px-6 py-3
+    text-sm font-medium
+    transition
+  ">
+```
+
+### Styles
+
+* `primary` → `bg-primary text-white hover:bg-primary/90`
+* `secondary` → `bg-slate-100 text-slate-900 hover:bg-slate-200`
+* `outline` → `border border-slate-300 hover:bg-slate-50`
+
+---
+
+## 4. `faq`
+
+```html
+<section class="max-w-4xl mx-auto divide-y">
+  <details class="py-4">
+    <summary class="font-medium cursor-pointer">
+    <div class="prose mt-2">
+```
+
+* Use native `<details>` where possible
+* Optional JS only for animation polish
+
+---
+
+## 5. `program_list`
+
+```html
+<section class="grid gap-8 md:grid-cols-3">
+  <article class="rounded-xl border overflow-hidden">
+```
+
+* Cards must use:
+
+  * same image ratio
+  * same height
+* Titles are `<h3>` only
+
+---
+
+## 6. `program_intro`
+
+```html
+<section class="max-w-4xl mx-auto space-y-6">
+  <h1 class="text-4xl font-semibold">
+  <div class="prose prose-lg">
+```
+
+* Program pages own their own `<h1>`
+* Hero image always above text
+
+---
+
+## 7. `rich_text`
+
+```html
+<div class="prose max-w-none">
+```
+
+Width control:
+
+* `narrow` → `max-w-2xl mx-auto`
+* `normal` → `max-w-4xl mx-auto`
+* `wide` → `max-w-6xl mx-auto`
+
+---
+
+## 8. `content_snippet`
+
+```html
+<div data-snippet class="contents">
+```
+
+* Snippet must not add wrappers
+* Inherits layout from parent block
+
+---
+
+## FINAL LOCKED PRINCIPLES (DO NOT VIOLATE)
+
+* No block defines global spacing
+* No block injects inline styles
+* No block sets fonts
+* No block resolves URLs itself
+* No block mutates ERP state
+* Server validation > client validation
+* SEO correctness > visual freedom
+
+---
