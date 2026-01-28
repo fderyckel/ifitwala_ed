@@ -1,8 +1,8 @@
 <!-- ifitwala_ed/docs/website/06_block_props_guide.md -->
 # Block Props Guide (Complete)
 
-**Audience:** Website editors, implementers
-**Scope:** Builder‑lite v1 blocks (Hero, Rich Text, Program List, Leadership, CTA)
+**Audience:** Website editors, implementers  
+**Scope:** Builder‑lite v1 + Phase‑02 blocks  
 **Goal:** Exact props, types, rules, and examples for every block
 
 ---
@@ -93,85 +93,250 @@ Disallowed:
 
 ---
 
-## 2) Rich Text
+## 2) Admissions Overview
 
 ### Purpose
 
-* General content (history, mission, admissions steps)
-* HTML is rendered as‑is (editor must provide clean markup)
+* Admissions narrative anchor
+* Owns the page `<h1>` on admissions pages
 
 ### Props (schema)
 
 | prop | type | required | default | notes |
 | --- | --- | --- | --- | --- |
-| `content` | string | yes | — | HTML content (safe‑rendered) |
+| `heading` | string | yes | — | Rendered as `<h1>` |
+| `content_html` | string | yes | — | Sanitized HTML |
 | `max_width` | string | no | `"normal"` | `narrow`, `normal`, or `wide` |
 
 ### Example
 ```json
 {
-  "content": "<h2>Our History</h2><p>Founded in 1998, we serve learners from diverse backgrounds.</p>",
+  "heading": "Admissions",
+  "content_html": "<p>We welcome families who value curiosity, care, and growth.</p>",
+  "max_width": "normal"
+}
+```
+
+---
+
+## 3) Admissions Steps
+
+### Purpose
+
+* Visualize the admissions journey without exposing workflow logic
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `steps` | array | yes | — | Must include at least 2 steps |
+| `steps[].key` | string | yes | — | `inquire`, `visit`, `apply` |
+| `steps[].title` | string | yes | — | Displayed heading |
+| `steps[].description` | string | no | — | Plain text |
+| `steps[].icon` | string \| null | no | — | `mail`, `map`, `file-text`, or `null` |
+| `layout` | string | no | `"horizontal"` | `horizontal` or `vertical` |
+
+### Example
+```json
+{
+  "steps": [
+    { "key": "inquire", "title": "Inquire", "description": "Start the conversation.", "icon": "mail" },
+    { "key": "visit", "title": "Visit", "description": "Experience our campus.", "icon": "map" },
+    { "key": "apply", "title": "Apply", "description": "Begin the application.", "icon": "file-text" }
+  ],
+  "layout": "horizontal"
+}
+```
+
+---
+
+## 4) Admission CTA
+
+### Purpose
+
+* Semantic admissions entry point (intent, not URL)
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `intent` | string | yes | — | `inquire`, `visit`, `apply` |
+| `label_override` | string \| null | no | — | Optional custom label |
+| `style` | string | no | `"primary"` | `primary`, `secondary`, `outline` |
+| `icon` | string \| null | no | — | `mail`, `map`, `file-text`, or `null` |
+| `tracking_id` | string \| null | no | — | Optional analytics ID |
+
+### Example
+```json
+{
+  "intent": "inquire",
+  "label_override": null,
+  "style": "primary",
+  "icon": "mail"
+}
+```
+
+---
+
+## 5) FAQ
+
+### Purpose
+
+* Parent friction removal + SEO
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `items` | array | yes | — | At least 1 item |
+| `items[].question` | string | yes | — | Question text |
+| `items[].answer_html` | string | yes | — | Sanitized HTML |
+| `enable_schema` | boolean | no | `true` | Injects JSON‑LD if true |
+| `collapsed_by_default` | boolean | no | `true` | Uses `<details>` |
+
+### Example
+```json
+{
+  "items": [
+    { "question": "What curriculum do you offer?", "answer_html": "<p>We offer the IB continuum...</p>" }
+  ],
+  "enable_schema": true,
+  "collapsed_by_default": true
+}
+```
+
+---
+
+## 6) Program Intro
+
+### Purpose
+
+* Program detail hero + intro
+* Owns the page `<h1>` on program pages
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `heading` | string | yes | — | Rendered as `<h1>` |
+| `content_html` | string | no | — | Sanitized HTML |
+| `hero_image` | string \| null | no | — | File URL |
+| `cta_intent` | string \| null | no | — | `inquire`, `visit`, `apply`, or `null` |
+
+### Example
+```json
+{
+  "heading": "IB Diploma Programme",
+  "content_html": "<p>The IB DP prepares students...</p>",
+  "hero_image": "/files/ib_dp_hero.jpg",
+  "cta_intent": "apply"
+}
+```
+
+---
+
+## 7) Program List
+
+### Purpose
+
+* Entry point into Program pages
+* Displays only published Program Website Profiles
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `school_scope` | string | no | `"current"` | `current` or `all` |
+| `show_intro` | boolean | no | `false` | Show program intro |
+| `card_style` | string | no | `"standard"` | `standard` or `compact` |
+| `limit` | integer \| null | no | `6` | Max programs to show |
+
+### Example
+```json
+{
+  "school_scope": "current",
+  "show_intro": true,
+  "card_style": "standard",
+  "limit": 6
+}
+```
+
+---
+
+## 8) Rich Text
+
+### Purpose
+
+* General content (history, mission, admissions steps)
+* HTML is rendered as‑is (sanitized)
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `content_html` | string | yes | — | HTML content (safe‑rendered) |
+| `max_width` | string | no | `"normal"` | `narrow`, `normal`, or `wide` |
+
+### Example
+```json
+{
+  "content_html": "<h2>Our History</h2><p>Founded in 1998, we serve learners from diverse backgrounds.</p>",
   "max_width": "wide"
 }
 ```
 
 ---
 
-## 3) Program List
+## 9) Content Snippet
 
 ### Purpose
 
-* List programs **offered by this school**
-* Source of truth: Program Offering
+* Reusable editorial fragments
 
 ### Props (schema)
 
 | prop | type | required | default | notes |
 | --- | --- | --- | --- | --- |
-| `title` | string | no | — | Optional section title |
-| `program_category` | string | no | — | Filter by category if provided |
-| `limit` | integer | no | — | Max programs to show |
-| `show_description` | boolean | no | `false` | Show program description |
+| `snippet_id` | string | yes | — | Must exist |
+| `allow_override` | boolean | no | `false` | Reserved for future use |
 
 ### Example
 ```json
 {
-  "title": "Programs",
-  "program_category": null,
-  "limit": 6,
-  "show_description": true
+  "snippet_id": "ADMISSIONS-BLURB",
+  "allow_override": false
 }
 ```
 
 ---
 
-## 4) Leadership
+## 10) Leadership
 
 ### Purpose
 
 * Displays staff with `show_on_website = 1`
-* Optional department filter
+* Optional role filter
 
 ### Props (schema)
 
 | prop | type | required | default | notes |
 | --- | --- | --- | --- | --- |
 | `title` | string | no | — | Section title |
-| `department` | string | no | — | Filter by department |
+| `roles` | array | no | — | Role filter (designation) |
 | `limit` | integer | no | — | Max staff to show |
 
 ### Example
 ```json
 {
   "title": "Leadership & Administration",
-  "department": "Administration",
+  "roles": ["Head", "Principal"],
   "limit": 9
 }
 ```
 
 ---
 
-## 5) CTA
+## 11) CTA
 
 ### Purpose
 
@@ -183,8 +348,8 @@ Disallowed:
 | --- | --- | --- | --- | --- |
 | `title` | string | no | — | Heading |
 | `text` | string | no | — | Supporting text |
-| `button_label` | string | no | — | Button label |
-| `button_link` | string | no | — | CTA URL (validated) |
+| `button_label` | string | yes | — | Button label |
+| `button_link` | string | yes | — | CTA URL (validated) |
 
 ### Example
 ```json
@@ -195,27 +360,3 @@ Disallowed:
   "button_link": "https://apply.school.edu"
 }
 ```
-
----
-
-## 6) Troubleshooting
-
-**Validation error: Missing block definitions**
-
-* Run the block definition seed/patch for existing sites.
-
-**Validation error: jsonschema missing**
-
-* Install `jsonschema` in the bench env and run `bench build` if needed.
-
-**Page has no enabled blocks**
-
-* Ensure at least one block row is enabled on the School Website Page.
-
----
-
-## 7) Field‑level glossary
-
-* **props**: JSON configuration for a block (stored on `School Website Page Block`).
-* **block definition**: System record describing block schema and provider.
-* **provider**: Python function that loads/derives data for the block.

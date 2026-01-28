@@ -209,18 +209,17 @@ school
 ```json
 ProgramCard[] = {
   "title": string,
-  "slug": string,
-  "short_description": string,
-  "age_range": string,
+  "url": string,
+  "intro": string,
   "image": ImageRef
 }
 ```
 
 **Rules**
 
-* `is_published = 1`
+* Only programs with `Program Website Profile.status = "Published"`
 * Ordered
-* Description truncated server-side
+* Intro truncated server-side
 
 ---
 

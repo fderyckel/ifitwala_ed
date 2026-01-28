@@ -142,7 +142,7 @@ Each is just a **block definition**, not a new page.
 * `intro_text`
 * `blocks`
 * `seo_profile`
-* `is_published`
+* `status` (Draft / Published)
 
 ### Routing
 
@@ -152,7 +152,7 @@ Each is just a **block definition**, not a new page.
 
 **Rules**
 
-* Page exists if `is_published = 1`
+* Page exists if `status = "Published"`
 * Marketing edits *content*, not routing
 * Program Offering logic stays out of CMS
 
@@ -248,16 +248,17 @@ This is the **most important part**.
 
 ## Flow B — Publish a Program Page
 
-1. Desk → **Program**
-2. Open Program → Tab: **Website**
-3. Toggle **“Publish on Website”**
+1. Desk → **Program Website Profile**
+2. Create a new profile
+3. Select School + Program
 4. Fill:
 
    * Intro
    * Hero
    * Blocks
    * SEO Profile
-5. Save
+5. Set Status → **Published**
+6. Save
 
 **Result**
 
@@ -505,7 +506,7 @@ Before any code:
 * Fields:
 
   * program
-  * is_published
+* status (Draft / Published)
   * hero_image
   * intro_text
   * blocks
@@ -550,8 +551,8 @@ Before any code:
 **Tasks**
 
 * Draft / Published states
-* Preview tokenized URL
-* Optional scheduled publish
+* Desk-only preview (`?preview=1`)
+* No scheduling in Phase‑02
 
 **Output**
 
@@ -571,7 +572,7 @@ Before any code:
 
   * title
   * content
-  * scope (school / global)
+  * scope (school / organization / global)
 * Snippet picker in Rich Text & blocks
 
 **Output**
@@ -792,7 +793,7 @@ These schemas assume:
 
 **Rules**
 
-* Only programs with `Program Website Profile.is_published = 1`
+* Only programs with `Program Website Profile.status = "Published"`
 * Cards auto-link to program detail pages
 
 ---
@@ -950,25 +951,24 @@ A: [ Rich text editor ]
 
 ## E. Program Website Editing Flow
 
-**Desk → Program → “Website” Tab**
+**Desk → Program Website Profile**
 
 Sections:
 
-* Publish toggle
+* School + Program
+* Status (Draft / Published)
 * Hero image
 * Intro text
 * Blocks
 * SEO Profile
 
-**CTA**
+**Route**
 
 ```
-[✓] Publish on website
-Route: /{school}/programs/{slug}
+/{school}/programs/{slug}
 ```
 
-Marketing edits content.
-ERP logic stays untouched.
+Marketing edits content without changing ERP logic.
 
 ---
 
@@ -1058,7 +1058,8 @@ UI validation is **assistive**, never authoritative.
 * Exactly **one H1 per page**
 * At least **one block**
 * `school` must be set
-* `seo_profile` must exist (can be empty, but linked)
+* `seo_profile` is recommended; when missing, page-level fields are used as fallback
+* Warn (do not block) if both SEO Profile and fallback fields are missing
 
 **Hard failures**
 
@@ -1181,7 +1182,7 @@ VALID_KEYS = {"inquire", "visit", "apply"}
 * Programs resolved dynamically by:
 
   * `school_scope`
-  * `Program Website Profile.is_published = 1`
+* `Program Website Profile.status = "Published"`
 
 **Failure**
 
@@ -1325,7 +1326,7 @@ No block may define its own spacing system.
 
 ### Styles
 
-* `primary` → `bg-primary text-white hover:bg-primary/90`
+* `primary` → `bg-slate-900 text-white hover:bg-slate-800`
 * `secondary` → `bg-slate-100 text-slate-900 hover:bg-slate-200`
 * `outline` → `border border-slate-300 hover:bg-slate-50`
 

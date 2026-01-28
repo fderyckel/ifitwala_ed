@@ -43,6 +43,10 @@
   "old_parent",
   "dashboard_tab",
   "website_tab",
+  "admissions_cta_section",
+  "admissions_inquiry_route",
+  "admissions_apply_route",
+  "admissions_visit_route",
   "website_slug",
   "column_break_ztd5",
   "school_tagline",
@@ -265,6 +269,32 @@
    "fieldname": "website_tab",
    "fieldtype": "Tab Break",
    "label": "Website"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "admissions_cta_section",
+   "fieldtype": "Section Break",
+   "label": "Admissions CTA Targets"
+  },
+  {
+   "default": "/inquiry",
+   "description": "Public inquiry entry route (e.g., /inquiry).",
+   "fieldname": "admissions_inquiry_route",
+   "fieldtype": "Data",
+   "label": "Inquiry CTA Route"
+  },
+  {
+   "default": "/admissions",
+   "description": "Admissions portal entry route (e.g., /admissions).",
+   "fieldname": "admissions_apply_route",
+   "fieldtype": "Data",
+   "label": "Apply CTA Route"
+  },
+  {
+   "description": "Visit CTA route (e.g., /your-school/visit).",
+   "fieldname": "admissions_visit_route",
+   "fieldtype": "Data",
+   "label": "Visit CTA Route"
   },
   {
    "fieldname": "gallery_image",

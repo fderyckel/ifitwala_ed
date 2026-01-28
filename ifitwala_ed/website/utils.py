@@ -175,3 +175,33 @@ def build_program_url(program: dict) -> str:
 	if slug:
 		return normalize_route(f"/programs/{slug}")
 	return normalize_route(f"/programs/{program.get('name')}")
+
+
+def build_program_profile_url(*, school_slug: str, program_slug: str) -> str:
+	return normalize_route(f"/{school_slug}/programs/{program_slug}")
+
+
+def build_story_url(*, school_slug: str, story_slug: str) -> str:
+	return normalize_route(f"/{school_slug}/stories/{story_slug}")
+
+
+def resolve_admissions_cta_url(*, school, intent: str) -> str:
+	field_map = {
+		"inquire": "admissions_inquiry_route",
+		"visit": "admissions_visit_route",
+		"apply": "admissions_apply_route",
+	}
+	field = field_map.get(intent)
+	if not field:
+		frappe.throw(
+			_("Unknown admissions intent: {0}").format(intent),
+			frappe.ValidationError,
+		)
+
+	link = school.get(field)
+	if not link:
+		frappe.throw(
+			_("Admissions CTA target missing for intent: {0}.").format(intent),
+			frappe.ValidationError,
+		)
+	return validate_cta_link(link)

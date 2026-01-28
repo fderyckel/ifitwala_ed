@@ -1,0 +1,26 @@
+<!-- ifitwala_ed/website/templates/stories_index.html -->
+{% extends "ifitwala_ed/website/templates/page.html" %}
+
+{% block page_blocks %}
+<section class="block-stories-index">
+	<div class="mx-auto max-w-5xl px-6">
+		<h1 class="text-3xl font-semibold text-slate-900">Stories</h1>
+		{% if stories %}
+			<div class="mt-8 space-y-6">
+				{% for story in stories %}
+					<article class="border-b pb-6">
+						<h2 class="text-xl font-semibold text-slate-900">
+							<a href="{{ story.url }}">{{ story.title }}</a>
+						</h2>
+						{% if story.publish_date %}
+							<p class="mt-2 text-sm text-slate-500">{{ story.publish_date }}</p>
+						{% endif %}
+					</article>
+				{% endfor %}
+			</div>
+		{% else %}
+			<p class="mt-6 text-sm text-slate-600">No stories published yet.</p>
+		{% endif %}
+	</div>
+</section>
+{% endblock %}

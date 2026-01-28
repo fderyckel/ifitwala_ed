@@ -2,20 +2,18 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "hash",
- "creation": "2026-01-01 00:00:00.000000",
+ "creation": "2026-01-28 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_identity",
   "school",
-  "route",
-  "page_type",
+  "program",
   "status",
   "seo_profile",
-  "is_published",
-  "column_break_meta",
-  "title",
-  "meta_description",
+  "section_break_content",
+  "hero_image",
+  "intro_text",
   "blocks"
  ],
  "fields": [
@@ -32,17 +30,11 @@
    "reqd": 1
   },
   {
-   "fieldname": "route",
-   "fieldtype": "Data",
-   "label": "Route",
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program",
    "reqd": 1
-  },
-  {
-   "default": "Standard",
-   "fieldname": "page_type",
-   "fieldtype": "Select",
-   "label": "Page Type",
-   "options": "Standard\nAdmissions"
   },
   {
    "default": "Draft",
@@ -58,26 +50,19 @@
    "options": "Website SEO Profile"
   },
   {
-   "default": "0",
-   "fieldname": "is_published",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "Is Published",
-   "read_only": 1
+   "fieldname": "section_break_content",
+   "fieldtype": "Section Break",
+   "label": "Content"
   },
   {
-   "fieldname": "column_break_meta",
-   "fieldtype": "Column Break"
+   "fieldname": "hero_image",
+   "fieldtype": "Attach Image",
+   "label": "Hero Image"
   },
   {
-   "fieldname": "title",
-   "fieldtype": "Data",
-   "label": "Title"
-  },
-  {
-   "fieldname": "meta_description",
-   "fieldtype": "Small Text",
-   "label": "Meta Description"
+   "fieldname": "intro_text",
+   "fieldtype": "Text Editor",
+   "label": "Intro Text"
   },
   {
    "fieldname": "blocks",
@@ -89,10 +74,10 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-01 00:00:00.000000",
+ "modified": "2026-01-28 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "School Site",
- "name": "School Website Page",
+ "name": "Program Website Profile",
  "owner": "Administrator",
  "permissions": [
   {

@@ -37,7 +37,7 @@ Hero
 Rich text
 ```json
 {
-  "content": "<p>Welcome to Ifitwala Secondary School — a community where curiosity, discipline, and care meet.</p>",
+  "content_html": "<p>Welcome to Ifitwala Secondary School — a community where curiosity, discipline, and care meet.</p>",
   "max_width": "normal"
 }
 ```
@@ -45,10 +45,10 @@ Rich text
 Program list
 ```json
 {
-  "title": "Programs",
-  "program_category": null,
-  "limit": 6,
-  "show_description": true
+  "school_scope": "current",
+  "show_intro": true,
+  "card_style": "standard",
+  "limit": 6
 }
 ```
 
@@ -56,7 +56,7 @@ Leadership
 ```json
 {
   "title": "Leadership & Administration",
-  "department": "Administration",
+  "roles": ["Head", "Principal"],
   "limit": 6
 }
 ```
@@ -98,7 +98,7 @@ Hero
 Rich text
 ```json
 {
-  "content": "<h2>Our History</h2><p>Founded in 1998, we serve learners from diverse backgrounds.</p><h2>Mission</h2><p>We build confident, compassionate learners.</p>",
+  "content_html": "<h2>Our History</h2><p>Founded in 1998, we serve learners from diverse backgrounds.</p><h2>Mission</h2><p>We build confident, compassionate learners.</p>",
   "max_width": "wide"
 }
 ```
@@ -107,7 +107,7 @@ Leadership
 ```json
 {
   "title": "Leadership & Administration",
-  "department": "Administration",
+  "roles": ["Head", "Principal"],
   "limit": 12
 }
 ```
@@ -151,7 +151,7 @@ Hero
 Rich text
 ```json
 {
-  "content": "<ol><li>Submit inquiry</li><li>Schedule a visit</li><li>Complete application</li><li>Receive decision</li></ol>",
+  "content_html": "<ol><li>Submit inquiry</li><li>Schedule a visit</li><li>Complete application</li><li>Receive decision</li></ol>",
   "max_width": "narrow"
 }
 ```
@@ -159,10 +159,10 @@ Rich text
 Program list (optional)
 ```json
 {
-  "title": "Programs Open for Admission",
-  "program_category": null,
-  "limit": 6,
-  "show_description": false
+  "school_scope": "current",
+  "show_intro": false,
+  "card_style": "standard",
+  "limit": 6
 }
 ```
 

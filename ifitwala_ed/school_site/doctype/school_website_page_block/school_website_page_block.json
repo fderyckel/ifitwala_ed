@@ -15,7 +15,7 @@
    "fieldname": "block_type",
    "fieldtype": "Select",
    "label": "Block Type",
-   "options": "hero\nrich_text\nprogram_list\nleadership\ncta",
+   "options": "hero\nadmissions_overview\nadmissions_steps\nadmission_cta\nfaq\nprogram_intro\nprogram_list\nrich_text\ncontent_snippet\nleadership\ncta",
    "reqd": 1
   },
   {

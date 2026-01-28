@@ -1,0 +1,23 @@
+<!-- ifitwala_ed/website/blocks/admission_cta.html -->
+{% set style_class = "bg-slate-900 text-white hover:bg-slate-800" %}
+{% if data.style == "secondary" %}
+	{% set style_class = "bg-slate-100 text-slate-900 hover:bg-slate-200" %}
+{% elif data.style == "outline" %}
+	{% set style_class = "border border-slate-300 hover:bg-slate-50" %}
+{% endif %}
+
+<section class="block-admission-cta">
+	<div class="flex justify-center">
+		<a
+			href="{{ data.url }}"
+			class="inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition {{ style_class }}"
+			data-intent="{{ data.intent }}"
+			{% if data.tracking_id %}data-tracking-id="{{ data.tracking_id }}"{% endif %}
+		>
+			{% if data.icon %}
+				<span class="inline-flex h-5 w-5 items-center justify-center text-slate-500" data-icon="{{ data.icon }}" aria-hidden="true"></span>
+			{% endif %}
+			<span>{{ data.label }}</span>
+		</a>
+	</div>
+</section>

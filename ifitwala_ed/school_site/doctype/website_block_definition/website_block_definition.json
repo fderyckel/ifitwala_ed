@@ -9,6 +9,7 @@
   "block_type",
   "label",
   "template_path",
+  "script_path",
   "provider_path",
   "props_schema",
   "seo_role",
@@ -32,6 +33,11 @@
    "fieldtype": "Data",
    "label": "Template Path",
    "reqd": 1
+  },
+  {
+   "fieldname": "script_path",
+   "fieldtype": "Data",
+   "label": "Script Path"
   },
   {
    "fieldname": "provider_path",

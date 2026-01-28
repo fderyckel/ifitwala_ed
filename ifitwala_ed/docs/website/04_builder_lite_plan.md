@@ -189,7 +189,7 @@ Below are **exact block specs** you can implement.
 
 ```json
 {
-  "content": "HTML (sanitized)",
+  "content_html": "HTML (sanitized)",
   "max_width": "narrow | normal | wide"
 }
 ```
@@ -223,10 +223,10 @@ Below are **exact block specs** you can implement.
 
 ```json
 {
-  "title": "string",
-  "program_category": "optional",
-  "limit": "integer (default 6)",
-  "show_description": "boolean"
+  "school_scope": "current | all",
+  "show_intro": "boolean",
+  "card_style": "standard | compact",
+  "limit": "integer (default 6)"
 }
 ```
 
@@ -786,7 +786,7 @@ def get_context(*, school, page, block_props):
 	Rich text editorial content.
 	Sanitize aggressively.
 	"""
-	content = block_props.get("content") or ""
+	content = block_props.get("content_html") or ""
 
 	return {
 		"data": {
@@ -813,7 +813,7 @@ from frappe.utils import cint
 from ifitwala_ed.website.cache import redis_cache
 
 @redis_cache(ttl=3600)
-def _get_programs(school, category, limit):
+def _get_program_profiles(school_scope, school, limit):
 	# implement later
 	return []
 
@@ -822,19 +822,13 @@ def get_context(*, school, page, block_props):
 	Program list – dynamic but crawlable.
 	"""
 	limit = cint(block_props.get("limit") or 6)
-	category = block_props.get("program_category")
-
-	programs = _get_programs(
-		school=school.name,
-		category=category,
-		limit=limit,
-	)
-
+	school_scope = block_props.get("school_scope") or "current"
+	programs = _get_program_profiles(school_scope=school_scope, school=school.name, limit=limit)
 	return {
 		"data": {
-			"title": block_props.get("title"),
 			"programs": programs,
-			"show_description": bool(block_props.get("show_description")),
+			"show_intro": bool(block_props.get("show_intro")),
+			"card_style": block_props.get("card_style") or "standard",
 		}
 	}
 ```
