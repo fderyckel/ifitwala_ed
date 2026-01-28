@@ -22,6 +22,8 @@
 	<main id="ifitwala-page-root">
 		{% block page_blocks %}
 			{% for block in blocks %}
+				{% set data = block.data %}
+				{% set props = block.props %}
 				{% include block.template with context %}
 			{% endfor %}
 		{% endblock %}
