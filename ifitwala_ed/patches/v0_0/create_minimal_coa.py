@@ -1,11 +1,9 @@
+# ifitwala_ed/patches/v0_0/create_minimal_coa.py
 import frappe
 from ifitwala_ed.accounting.coa_utils import create_coa_for_organization
 
 def execute():
     frappe.reload_doc("accounting", "doctype", "account")
-    frappe.reload_doc("accounting", "doctype", "chart_of_accounts_template")
-    frappe.reload_doc("accounting", "doctype", "coa_template_row")
-
     # Reload Org Setting to ensure new fields are present
     frappe.reload_doc("setup", "doctype", "org_setting")
 
@@ -16,7 +14,9 @@ def execute():
     for org in orgs:
         try:
             print(f"Processing Organization: {org}")
-            result = create_coa_for_organization(org)
+            result = create_coa_for_organization(
+                org, template_name="standard_chart_of_accounts_with_account_number"
+            )
             print(f"  - Created: {result['created']}")
             print(f"  - Skipped: {result['skipped']}")
             print(f"  - Roots: {', '.join(result['root_accounts'])}")

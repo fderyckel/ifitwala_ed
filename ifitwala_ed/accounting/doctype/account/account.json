@@ -80,7 +80,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Account Type",
-   "options": "\nReceivable\nPayable\nBank\nCash\nTax\nStock\nFixed Asset\nCost of Goods Sold\nDirect Income\nIndirect Income\nDirect Expense\nIndirect Expense"
+   "options": "\nReceivable\nPayable\nBank\nCash\nTax\nStock\nFixed Asset\nAccumulated Depreciation\nCapital Work in Progress\nTemporary\nCost of Goods Sold\nExpenses Included In Asset Valuation\nExpenses Included In Valuation\nStock Adjustment\nDepreciation\nChargeable\nRound Off\nStock Received But Not Billed\nAsset Received But Not Billed\nEquity\nIncome Account\nExpense Account\nDirect Income\nIndirect Income\nDirect Expense\nIndirect Expense"
   },
   {
    "fieldname": "account_currency",
