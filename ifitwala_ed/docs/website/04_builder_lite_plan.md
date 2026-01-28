@@ -1,5 +1,5 @@
+<!-- ifitwala_ed/docs/website/04_builder_lite_plan.md -->
 # Builder-Lite v1 — Canonical Block Definitions & Implementation Plan
-
 **Scope:** Home / School marketing pages
 **Blocks:** Hero, Rich Text, Program List, Leadership, CTA
 **Non-goal:** visual editor UI (comes later)
@@ -356,13 +356,22 @@ Alt text matters for SEO.
 
 * CSS:
 
-  * `website.css`
-  * `school.css`
+  * `website.css` (Tailwind entrypoint)
+  * `website.bundle.css` (build output referenced by templates)
 * JS:
 
-  * `website.js`
-  * `school.js`
+  * `website.js` (built to `website.bundle.js`)
+  * `website.bundle.js` (build output referenced by templates)
+  * `image_fallback.js` (raw helper)
   * enhancement only (no data fetch)
+
+Build notes:
+
+* Tailwind config: `tailwind.website.config.js`
+* Run `yarn build` (or `bench build`) after CSS/template changes.
+* Content edits in Desk do **not** require a rebuild.
+* Tailwind is scoped to `#ifitwala-page-root` with preflight disabled (no global resets).
+* Bootstrap is not used on public website pages.
 
 Critical content **must not depend on JS**.
 
@@ -670,7 +679,7 @@ Responsibilities:
 * `<title>` from page
 * `<meta description>`
 * `<link rel="canonical">`
-* Load CSS (website.css + school.css)
+* Load CSS (`website.bundle.css`)
 * Loop blocks in order
 * **No JS data fetch**
 
@@ -929,8 +938,7 @@ This is the **only** page-level template.
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 
 	{# Core CSS #}
-	<link rel="stylesheet" href="/assets/ifitwala_ed/website/website.css">
-	<link rel="stylesheet" href="/assets/ifitwala_ed/website/school.css">
+	<link rel="stylesheet" href="/assets/ifitwala_ed/css/website.bundle.css">
 </head>
 
 <body>
@@ -943,8 +951,8 @@ This is the **only** page-level template.
 	</main>
 
 	{# Enhancement JS only – no data fetch #}
-	<script src="/assets/ifitwala_ed/website/website.js" defer></script>
-	<script src="/assets/ifitwala_ed/website/school.js" defer></script>
+	<script src="/assets/ifitwala_ed/website/image_fallback.js" defer></script>
+	<script src="/assets/ifitwala_ed/js/website.bundle.js" defer></script>
 </body>
 </html>
 ```

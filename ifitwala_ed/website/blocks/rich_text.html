@@ -1,8 +1,13 @@
 <!-- ifitwala_ed/website/blocks/rich_text.html -->
-<section class="block block-rich-text">
-	<div class="container">
-		<div class="rich-text rich-text--{{ data.max_width }}">
-			{{ data.content | safe }}
-		</div>
+{% set width_class = "max-w-4xl" %}
+{% if data.max_width == "narrow" %}
+	{% set width_class = "max-w-2xl" %}
+{% elif data.max_width == "wide" %}
+	{% set width_class = "max-w-6xl" %}
+{% endif %}
+
+<section class="block-rich-text">
+	<div class="mx-auto {{ width_class }} px-6 py-10 text-slate-700">
+		{{ data.content | safe }}
 	</div>
 </section>

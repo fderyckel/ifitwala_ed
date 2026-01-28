@@ -14,11 +14,10 @@
 
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 
-	<link rel="stylesheet" href="/assets/ifitwala_ed/website/website.css">
-	<link rel="stylesheet" href="/assets/ifitwala_ed/website/school.css">
+	<link rel="stylesheet" href="/assets/ifitwala_ed/css/website.bundle.css">
 </head>
 
-<body>
+<body class="bg-white text-slate-900">
 	<main id="ifitwala-page-root">
 		{% block page_blocks %}
 			{% for block in blocks %}
@@ -29,7 +28,7 @@
 		{% endblock %}
 	</main>
 
-	<script src="/assets/ifitwala_ed/website/website.js" defer></script>
-	<script src="/assets/ifitwala_ed/website/school.js" defer></script>
+	<script src="/assets/ifitwala_ed/website/image_fallback.js" defer></script>
+	<script src="/assets/ifitwala_ed/js/website.bundle.js" defer></script>
 </body>
 </html>

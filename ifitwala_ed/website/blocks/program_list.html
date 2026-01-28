@@ -2,17 +2,17 @@
 {% import "ifitwala_ed/templates/includes/smart_image_macro.html" as img_macro %}
 
 <section class="block block-program-list">
-	<div class="container">
+	<div class="mx-auto max-w-6xl px-6 py-10">
 		{% if data.title %}
-			<h2 class="text-center fw-bold display-6 my-5">{{ data.title }}</h2>
-			<div class="section-divider"></div>
+			<h2 class="text-center text-3xl font-semibold text-slate-900">{{ data.title }}</h2>
+			<div class="mx-auto mt-4 h-px w-24 bg-slate-200"></div>
 		{% endif %}
 
 		{% if data.programs %}
-			<div class="program-grid">
+			<div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 				{% for program in data.programs %}
-					<div class="program-block">
-						<a href="{{ program.url }}" class="card h-100 w-100 text-decoration-none border-0 shadow-sm">
+					<div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+						<a href="{{ program.url }}" class="block overflow-hidden rounded-xl">
 							{% if program.image and program.image.original %}
 								{{ img_macro.smart_image(
 									None,
@@ -21,17 +21,17 @@
 									program.image.thumb,
 									program.image.original,
 									program.title,
-									"card-img-top",
+									"h-48 w-full object-cover",
 									fallback="card"
 								) }}
 							{% endif %}
-							<div class="card-body d-flex flex-column">
-								<h3 class="card-title text-center fw-bold fs-5">{{ program.title }}</h3>
-								<div class="decor-bar mx-auto mb-2"></div>
+							<div class="px-5 py-4">
+								<h3 class="text-lg font-semibold text-slate-900">{{ program.title }}</h3>
+								<div class="mt-3 h-px w-16 bg-slate-200"></div>
 								{% if data.show_description %}
-									<p class="card-text text-muted small flex-grow-1">{{ program.description }}</p>
+									<p class="mt-3 text-sm text-slate-600">{{ program.description }}</p>
 								{% endif %}
-								<span class="mt-2 fw-bold text-primary text-end">View details &rsaquo;</span>
+								<span class="mt-4 inline-flex text-sm font-semibold text-slate-900">View details &rsaquo;</span>
 							</div>
 						</a>
 					</div>

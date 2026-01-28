@@ -25,6 +25,7 @@
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-terser": "^0.4.4",
+    "@tailwindcss/postcss": "^4.1.18",
     "autoprefixer": "^10.4.23",
     "cssnano": "^7.1.2",
     "eslint": "^9.39.2",
@@ -37,7 +38,8 @@
     "rollup": "^4.54.0",
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-postcss": "^4.0.2",
-    "sass": "^1.97.1"
+    "sass": "^1.97.1",
+    "tailwindcss": "^4.1.18"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",

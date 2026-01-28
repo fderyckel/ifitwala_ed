@@ -303,6 +303,21 @@ def get_website_block_definition_records():
 					"title": {"type": "string"},
 					"subtitle": {"type": "string"},
 					"background_image": {"type": "string"},
+					"images": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"image": {"type": "string"},
+								"alt": {"type": "string"},
+								"caption": {"type": "string"}
+							},
+							"required": ["image"],
+							"additionalProperties": False
+						}
+					},
+					"autoplay": {"type": "boolean"},
+					"interval": {"type": "integer", "minimum": 1000},
 					"variant": {"type": "string", "enum": ["default", "split", "centered"]},
 					"cta_label": {"type": "string"},
 					"cta_link": {"type": "string"}

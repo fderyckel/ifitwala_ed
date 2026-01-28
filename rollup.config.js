@@ -1,9 +1,9 @@
+// rollup.config.js
 /**
  * Rollup build – Ifitwala Ed
  *
  * ── Public-facing assets (heavy traffic) ──────────────────────────────
  * website.js  + website.css  → public/js/website.*.bundle.js + public/css/website.*.bundle.css
- * school.js   + school.css   → public/js/school.*.bundle.js  + public/css/school.*.bundle.css
  *
  * ── Student-portal bundle  (authenticated traffic, cache-busted) ─────
  * index.js (+ imports)       → public/js/student_portal.<hash>.bundle.js
@@ -21,6 +21,7 @@ const postcss = require('rollup-plugin-postcss');
 const terser = require('@rollup/plugin-terser');
 const { createHash } = require('crypto');
 const copy = require('rollup-plugin-copy');
+const tailwind = require('@tailwindcss/postcss');
 
 /* NEW: inline CSS @import (needed for bootstrap-icons.css) */
 const postcssImport = require('postcss-import');
@@ -53,8 +54,6 @@ function contentHash(file) {
 const portalHash = contentHash(path.join(portalSrc, 'index.js'));
 const websiteJsHash = contentHash(path.join(websiteSrc, 'website.js'));
 const websiteCssHash = contentHash(path.join(websiteSrc, 'website.css'));
-const schoolJsHash  = contentHash(path.join(websiteSrc, 'school.js'));
-const schoolCssHash = contentHash(path.join(websiteSrc, 'school.css'));
 
 const basePlugins = [
 	resolve(),
@@ -178,54 +177,16 @@ module.exports = [
 			postcss({
 				extract: `${cssDest}/website.${websiteCssHash}.bundle.css`,
 				minimize: true,
-				plugins: [require('autoprefixer')],
+				plugins: [
+					tailwind({ config: path.join(appDir, 'tailwind.website.config.js') }),
+					require('autoprefixer')
+				],
 			}),
 			{
 				name: 'alias-stable-website-css',
 				writeBundle() {
 					const p = cssDest;
 					try { fs.copyFileSync(`${p}/website.${websiteCssHash}.bundle.css`, `${p}/website.bundle.css`); } catch {}
-				}
-			}
-		],
-	},
-
-	// ── School JS ──
-	{
-		input: `${websiteSrc}/school.js`,
-		output: {
-			file: `${jsDest}/school.${schoolJsHash}.bundle.js`,
-			format: 'iife',
-			sourcemap: true,
-		},
-		plugins: [
-			...basePlugins,
-			terser(),
-			{
-				name: 'alias-stable-school-js',
-				writeBundle() {
-					const p = jsDest;
-					try { fs.copyFileSync(`${p}/school.${schoolJsHash}.bundle.js`, `${p}/school.bundle.js`); } catch {}
-				}
-			}
-		],
-	},
-
-	// ── School CSS ──
-	{
-		input: `${websiteSrc}/school.css`,
-		output: { dir: '.' },
-		plugins: [
-			postcss({
-				extract: `${cssDest}/school.${schoolCssHash}.bundle.css`,
-				minimize: true,
-				plugins: [require('autoprefixer')],
-			}),
-			{
-				name: 'alias-stable-school-css',
-				writeBundle() {
-					const p = cssDest;
-					try { fs.copyFileSync(`${p}/school.${schoolCssHash}.bundle.css`, `${p}/school.bundle.css`); } catch {}
 				}
 			}
 		],

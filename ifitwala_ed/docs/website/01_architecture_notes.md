@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/docs/website/01_architecture_notes.md -->
 # Website Architecture — Proposal B (A+ Canonical Design)
 
 **Ifitwala_Ed — Website System v1**
@@ -235,10 +236,10 @@ This replaces **Builder Data Scripts** safely.
 
 ### 7.1 Canonical Assets
 
-* `website.css`
-* `school.css`
+* `website.css` (Tailwind entrypoint)
+* `website.bundle.css` (build output)
 * `website.js`
-* `school.js`
+* `website.bundle.js` (build output)
 * `image_fallback.js`
 
 These are **authoritative** and reused across pages.
@@ -250,6 +251,7 @@ These are **authoritative** and reused across pages.
 * No inline JS
 * CSS scoped by convention
 * Custom CSS (if allowed) is scoped and sanitized
+* Tailwind utilities only (no Bootstrap on public website pages)
 
 ---
 
@@ -773,4 +775,3 @@ Any future feature:
 * must revise this document explicitly
 
 ---
-
