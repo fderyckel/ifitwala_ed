@@ -1,188 +1,71 @@
-# Block Props Guide (Builder-lite v1)
+<!-- ifitwala_ed/docs/website/06_block_props_guide.md -->
+# Block Props Guide (Complete)
 
-**Audience:** Website managers and implementers
-**Scope:** Public marketing pages (Builder-lite v1)
-
----
-
-## 1. What are props?
-
-**Props** are the per-block settings stored as JSON on each block row. They control:
-
-* text content (titles, labels)
-* links
-* layout options (where allowed)
-* visibility of optional fields
-
-Props are validated against a JSON schema for each block type.
+**Audience:** Website editors, implementers
+**Scope:** Builder‑lite v1 blocks (Hero, Rich Text, Program List, Leadership, CTA)
+**Goal:** Exact props, types, rules, and examples for every block
 
 ---
 
-## 2. How to enter props
+## 0) Universal rules
 
-* Props must be **valid JSON**.
-* Example JSON:
+### 0.1 Props are JSON
 
-```
-{"title": "Ifitwala Secondary School"}
-```
+* Props must be **valid JSON** (double quotes, no trailing commas).
+* Properties not defined in the schema are rejected.
 
-Common mistakes:
+### 0.2 Content vs build
 
-* Missing quotes around keys or strings
-* Trailing commas
-* Using single quotes instead of double quotes
+* Editing **props** does **not** require a build.
+* Editing **templates / CSS / JS** requires `yarn build` (or `bench build`).
 
----
+### 0.3 CTA link validation
 
-## 3. Supported blocks and their props
+Allowed values:
 
-### 3.1 `hero`
+* `/path` (internal)
+* `https://example.com` (external)
 
-**Purpose:** Page hero + SEO H1, optional carousel
+Disallowed:
 
-**Props**
+* `javascript:`
+* `data:`
+* `mailto:`
+* protocol‑relative `//example.com`
 
-| Key | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `title` | string | yes | Rendered as `<h1>` |
-| `subtitle` | string | no | Optional subtitle text |
-| `background_image` | string | no | File URL or attachment URL |
-| `images` | array | no | Carousel images (auto-fallback to `School.gallery_image` when empty) |
-| `autoplay` | boolean | no | Default true |
-| `interval` | integer | no | Default 5000 (min 1000) |
-| `variant` | string | no | One of: `default`, `split`, `centered` |
-| `cta_label` | string | no | CTA button label |
-| `cta_link` | string | no | Must be `/path` or `https://...` |
+### 0.4 Image fallback
 
-**Example (single image)**
-
-```
-{"title": "Ifitwala Secondary School", "subtitle": "A community of learners"}
-```
-
-**Example (carousel)**
-
-```
-{
-  "title": "Ifitwala Secondary School",
-  "images": [
-    {"image": "/files/hero_1.jpg", "alt": "Campus entrance"},
-    {"image": "/files/hero_2.jpg", "caption": "Student life"}
-  ],
-  "autoplay": true,
-  "interval": 5000
-}
-```
+* `hero.images` is optional.
+* If `hero.images` is **empty or missing**, the hero carousel uses `School.gallery_image` rows (field `school_image`).
 
 ---
 
-### 3.2 `rich_text`
+## 1) Hero
 
-**Purpose:** Editorial content section
+### Purpose
 
-**Props**
+* Owns the page `<h1>` and top banner
+* Can be a single image or carousel
 
-| Key | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `content` | string | yes | Sanitized HTML, headings start at `h2` |
-| `max_width` | string | no | One of: `narrow`, `normal`, `wide` |
+### Props (schema)
 
-**Example**
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `title` | string | yes | — | Rendered as `<h1>` |
+| `subtitle` | string | no | — | Optional secondary text |
+| `background_image` | string | no | — | Single image for non‑carousel mode |
+| `images` | array | no | `[]` | Carousel images; if empty, fallback to `School.gallery_image` |
+| `images[].image` | string | yes (per item) | — | File URL |
+| `images[].alt` | string | no | — | Image alt text |
+| `images[].caption` | string | no | — | Caption overlay |
+| `autoplay` | boolean | no | `true` | Carousel auto‑advance |
+| `interval` | integer | no | `5000` | Minimum `1000` ms |
+| `variant` | string | no | `"default"` | Reserved for future layout variants |
+| `cta_label` | string | no | — | Button label |
+| `cta_link` | string | no | — | CTA URL (validated) |
 
-```
-{"content": "<h2>About Us</h2><p>...</p>", "max_width": "normal"}
-```
-
----
-
-### 3.3 `program_list`
-
-**Purpose:** List programs for a school (from Program Offering)
-
-**Props**
-
-| Key | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `title` | string | no | Section heading |
-| `program_category` | string | no | Matches `Program.parent_program` |
-| `limit` | integer | no | Default 6 |
-| `show_description` | boolean | no | Show excerpt |
-
-**Example**
-
-```
-{"title": "Academic Programs", "limit": 6, "show_description": true}
-```
-
----
-
-### 3.4 `leadership`
-
-**Purpose:** Leadership grid
-
-**Props**
-
-| Key | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `title` | string | no | Section heading |
-| `roles` | array[string] | no | Filters `Employee.designation` |
-| `limit` | integer | no | Default 4 |
-
-**Example**
-
-```
-{"title": "Leadership Team", "roles": ["Principal", "Director"], "limit": 4}
-```
-
----
-
-### 3.5 `cta`
-
-**Purpose:** Primary call-to-action
-
-**Props**
-
-| Key | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `title` | string | no | Optional heading |
-| `text` | string | no | Supporting text |
-| `button_label` | string | yes | CTA label |
-| `button_link` | string | yes | Must be `/path` or `https://...` |
-
-**Example**
-
-```
-{"title": "Book a Visit", "text": "Schedule a tour.", "button_label": "Contact Us", "button_link": "/contact"}
-```
-
----
-
-## 4. Validation rules (important)
-
-* `hero` must be the **first enabled block** on the page
-* Exactly **one** block must own the H1 (the `hero` block)
-* CTA links must be internal `/...` or `https://...`
-* Props must be valid JSON
-
----
-
-## 5. Troubleshooting
-
-**Error: jsonschema is required**
-
-Install `jsonschema` in the bench environment:
-
-```
-./env/bin/pip install jsonschema
-```
-
-**Error: Page has no enabled blocks**
-
-Make sure at least one block is enabled and `hero` is first.
-
----
-
+### Example: carousel with images
+```json
 {
   "title": "Ifitwala Secondary School",
   "subtitle": "Home of the Brave",
@@ -192,6 +75,147 @@ Make sure at least one block is enabled and `hero` is first.
   ],
   "autoplay": true,
   "interval": 6000,
-  "cta_label": "Apply Now",
+  "cta_label": "Book a Visit",
   "cta_link": "/admissions"
 }
+```
+
+### Example: single image
+```json
+{
+  "title": "Admissions",
+  "subtitle": "A clear, supportive process",
+  "background_image": "/files/hero_admissions.jpg",
+  "cta_label": "Apply Now",
+  "cta_link": "https://apply.school.edu"
+}
+```
+
+---
+
+## 2) Rich Text
+
+### Purpose
+
+* General content (history, mission, admissions steps)
+* HTML is rendered as‑is (editor must provide clean markup)
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `content` | string | yes | — | HTML content (safe‑rendered) |
+| `max_width` | string | no | `"normal"` | `narrow`, `normal`, or `wide` |
+
+### Example
+```json
+{
+  "content": "<h2>Our History</h2><p>Founded in 1998, we serve learners from diverse backgrounds.</p>",
+  "max_width": "wide"
+}
+```
+
+---
+
+## 3) Program List
+
+### Purpose
+
+* List programs **offered by this school**
+* Source of truth: Program Offering
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `title` | string | no | — | Optional section title |
+| `program_category` | string | no | — | Filter by category if provided |
+| `limit` | integer | no | — | Max programs to show |
+| `show_description` | boolean | no | `false` | Show program description |
+
+### Example
+```json
+{
+  "title": "Programs",
+  "program_category": null,
+  "limit": 6,
+  "show_description": true
+}
+```
+
+---
+
+## 4) Leadership
+
+### Purpose
+
+* Displays staff with `show_on_website = 1`
+* Optional department filter
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `title` | string | no | — | Section title |
+| `department` | string | no | — | Filter by department |
+| `limit` | integer | no | — | Max staff to show |
+
+### Example
+```json
+{
+  "title": "Leadership & Administration",
+  "department": "Administration",
+  "limit": 9
+}
+```
+
+---
+
+## 5) CTA
+
+### Purpose
+
+* A focused call‑to‑action block
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `title` | string | no | — | Heading |
+| `text` | string | no | — | Supporting text |
+| `button_label` | string | no | — | Button label |
+| `button_link` | string | no | — | CTA URL (validated) |
+
+### Example
+```json
+{
+  "title": "Ready to apply?",
+  "text": "Start your admissions journey today.",
+  "button_label": "Apply Now",
+  "button_link": "https://apply.school.edu"
+}
+```
+
+---
+
+## 6) Troubleshooting
+
+**Validation error: Missing block definitions**
+
+* Run the block definition seed/patch for existing sites.
+
+**Validation error: jsonschema missing**
+
+* Install `jsonschema` in the bench env and run `bench build` if needed.
+
+**Page has no enabled blocks**
+
+* Ensure at least one block row is enabled on the School Website Page.
+
+---
+
+## 7) Field‑level glossary
+
+* **props**: JSON configuration for a block (stored on `School Website Page Block`).
+* **block definition**: System record describing block schema and provider.
+* **provider**: Python function that loads/derives data for the block.
