@@ -218,7 +218,9 @@ ProgramCard[] = {
 **Rules**
 
 * Only programs with `Program Website Profile.status = "Published"`
-* Ordered
+* Program must satisfy `is_published = 1` and `archive = 0`
+* Program must be offered by the school (Program Offering)
+* Ordered by `is_featured desc`, then `lft asc`
 * Intro truncated server-side
 
 ---

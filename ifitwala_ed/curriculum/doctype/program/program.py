@@ -17,6 +17,7 @@ class Program(NestedSet):
 		# Keep existing validations
 		self._validate_duplicate_course()
 		self._validate_active_courses()
+		self._validate_website_publication()
 
 		# New/updated validations for assessment model
 		self._apply_default_colors_for_assessment_categories()
@@ -49,6 +50,20 @@ class Program(NestedSet):
 		if inactive:
 			lines = "\n".join([f"Row {idx}: {name} (status: {st})" for idx, name, st in inactive])
 			frappe.throw(_("Only Active Courses can be added:\n{0}").format(lines))
+
+	def _validate_website_publication(self):
+		if cint(self.is_published) != 1:
+			return
+		if cint(self.archive) == 1:
+			frappe.throw(
+				_("Archived programs cannot be published."),
+				frappe.ValidationError,
+			)
+		if not (self.program_slug or "").strip():
+			frappe.throw(
+				_("Program slug is required before publishing."),
+				frappe.ValidationError,
+			)
 
 	# ──────────────────────────────────────────────────────────────────────────────
 	# Assessment Categories (Program Assessment Category child)

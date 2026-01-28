@@ -183,12 +183,39 @@ def _fetch_school_page(route: str, school, preview: bool):
 
 
 def _fetch_program_profile(school, program_slug: str, preview: bool):
-	program_name = frappe.db.get_value("Program", {"program_slug": program_slug}, "name")
+	program_name = frappe.db.get_value(
+		"Program",
+		{"program_slug": program_slug},
+		"name",
+	)
 	if not program_name:
 		frappe.throw(
 			_("Program not found for slug: {0}.").format(program_slug),
 			frappe.DoesNotExistError,
 		)
+
+	program = frappe.get_doc("Program", program_name)
+	if not preview:
+		if not getattr(program, "is_published", 0):
+			frappe.throw(
+				_("Program not published."),
+				frappe.DoesNotExistError,
+			)
+		if getattr(program, "archive", 0):
+			frappe.throw(
+				_("Program is archived."),
+				frappe.DoesNotExistError,
+			)
+
+		offered = frappe.db.exists(
+			"Program Offering",
+			{"program": program_name, "school": school.name},
+		)
+		if not offered:
+			frappe.throw(
+				_("Program not offered by this school."),
+				frappe.DoesNotExistError,
+			)
 
 	filters = {"school": school.name, "program": program_name}
 	if not preview:
@@ -203,7 +230,7 @@ def _fetch_program_profile(school, program_slug: str, preview: bool):
 	profile = frappe.get_doc("Program Website Profile", profile_name)
 	if preview and profile.status != "Published" and not _preview_allowed(profile):
 		frappe.throw(_("Preview not permitted."), frappe.PermissionError)
-	return profile, frappe.get_doc("Program", program_name)
+	return profile, program
 
 
 def _fetch_story(school, story_slug: str, preview: bool):

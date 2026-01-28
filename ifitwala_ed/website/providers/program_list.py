@@ -20,68 +20,91 @@ def _normalize_limit(raw_limit):
 
 @redis_cache(ttl=3600)
 def _get_program_profiles(school_scope: str, school_name: str, limit: int):
-	filters = {"status": "Published"}
-	if school_scope != "all":
-		filters["school"] = school_name
+	schools = []
+	if school_scope == "all":
+		schools = frappe.get_all(
+			"School",
+			filters={"is_group": 0, "website_slug": ["!=", ""]},
+			fields=["name", "school_name", "website_slug"],
+		)
+	else:
+		schools = frappe.get_all(
+			"School",
+			filters={"name": school_name},
+			fields=["name", "school_name", "website_slug"],
+		)
+
+	school_map = {row.name: row for row in schools}
+	school_names = [row.name for row in schools]
+	if not school_names:
+		return []
 
 	profiles = frappe.get_all(
 		"Program Website Profile",
-		filters=filters,
+		filters={"school": ["in", school_names], "status": "Published"},
 		fields=["name", "program", "school", "hero_image", "intro_text"],
-		order_by="modified desc",
-		limit_page_length=limit,
 	)
 	if not profiles:
 		return []
 
+	offering_rows = frappe.get_all(
+		"Program Offering",
+		filters={"school": ["in", school_names], "program": ["in", [p.program for p in profiles]]},
+		fields=["program", "school"],
+	)
+	offered_pairs = {(row.school, row.program) for row in offering_rows if row.program and row.school}
+
 	program_names = sorted({row.program for row in profiles if row.program})
 	programs = frappe.get_all(
 		"Program",
-		filters={"name": ["in", program_names]},
-		fields=["name", "program_name", "program_image", "program_slug"],
+		filters={
+			"name": ["in", program_names],
+			"is_published": 1,
+			"archive": 0,
+		},
+		fields=["name", "program_name", "program_image", "program_slug", "is_featured", "lft"],
 	)
-	program_map = {row.name: row for row in programs}
 
-	school_names = sorted({row.school for row in profiles if row.school})
-	schools = frappe.get_all(
-		"School",
-		filters={"name": ["in", school_names]},
-		fields=["name", "school_name", "website_slug"],
+	profiles_by_program = {}
+	for profile in profiles:
+		profiles_by_program.setdefault(profile.program, []).append(profile)
+
+	sorted_programs = sorted(
+		(program for program in programs if program.name in profiles_by_program),
+		key=lambda row: (-int(row.is_featured or 0), int(row.lft or 0)),
 	)
-	school_map = {row.name: row for row in schools}
 
 	items = []
-	for profile in profiles:
-		program = program_map.get(profile.program)
-		school = school_map.get(profile.school)
-		if not program or not school or not school.website_slug:
-			frappe.throw(
-				"Program profile is missing program or school slug configuration.",
-				frappe.ValidationError,
-			)
-
-		program_title = program.program_name or program.name
+	for program in sorted_programs:
 		if not program.program_slug:
-			frappe.throw(
-				"Program slug is required to build program URLs.",
-				frappe.ValidationError,
-			)
+			continue
 		program_slug = program.program_slug
-		url = build_program_profile_url(
-			school_slug=school.website_slug,
-			program_slug=program_slug,
-		)
+		program_title = program.program_name or program.name
 
-		image_source = profile.hero_image or program.program_image
-		items.append(
-			{
-				"title": program_title,
-				"url": url,
-				"intro": truncate_text(profile.intro_text or "", 160),
-				"image": build_image_variants(image_source, "program"),
-				"school_name": school.school_name if school_scope == "all" else None,
-			}
-		)
+		for profile in profiles_by_program.get(program.name, []):
+			if (profile.school, profile.program) not in offered_pairs:
+				continue
+
+			school = school_map.get(profile.school)
+			if not school or not school.website_slug:
+				continue
+
+			url = build_program_profile_url(
+				school_slug=school.website_slug,
+				program_slug=program_slug,
+			)
+			image_source = profile.hero_image or program.program_image
+			items.append(
+				{
+					"title": program_title,
+					"url": url,
+					"intro": truncate_text(profile.intro_text or "", 160),
+					"image": build_image_variants(image_source, "program"),
+					"school_name": school.school_name if school_scope == "all" else None,
+				}
+			)
+			if len(items) >= limit:
+				return items
 	return items
 
 

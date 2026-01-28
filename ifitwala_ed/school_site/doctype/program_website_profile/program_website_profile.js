@@ -30,12 +30,40 @@ frappe.ui.form.on("Program Website Profile", {
 			window.open(previewUrl, "_blank");
 		});
 
-		if (frm.dashboard && frm.dashboard.set_headline && !frm.doc.seo_profile) {
-			frm.dashboard.set_headline(
-				`<span class="text-warning">${frappe.utils.escape_html(
-					__("SEO fallback in use. Link an SEO Profile for full control.")
-				)}</span>`
-			);
+		if (frm.dashboard && frm.dashboard.set_headline) {
+			const banners = [];
+
+			if (!frm.doc.seo_profile) {
+				banners.push(__("SEO fallback in use. Link an SEO Profile for full control."));
+			}
+
+			if (frm.doc.program) {
+				Promise.all([
+					getFieldValue("Program", frm.doc.program, "is_published"),
+					getFieldValue("Program", frm.doc.program, "archive")
+				]).then(([isPublished, isArchived]) => {
+					const published = Boolean(parseInt(isPublished || 0, 10));
+					const archived = Boolean(parseInt(isArchived || 0, 10));
+					if (archived) {
+						banners.push(__("Program is archived and cannot be published."));
+					}
+					if (!published && frm.doc.status === "Published") {
+						banners.push(__("Program Website Profile is published but Program is not."));
+					}
+
+					if (banners.length) {
+						const html = banners
+							.map((msg) => `• ${frappe.utils.escape_html(msg)}`)
+							.join("<br>");
+						frm.dashboard.set_headline(`<span class="text-warning">${html}</span>`);
+					} else {
+						frm.dashboard.set_headline("");
+					}
+				});
+			} else if (banners.length) {
+				const html = banners.map((msg) => `• ${frappe.utils.escape_html(msg)}`).join("<br>");
+				frm.dashboard.set_headline(`<span class="text-warning">${html}</span>`);
+			}
 		}
 	}
 });

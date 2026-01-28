@@ -516,6 +516,7 @@ Before any code:
 **Output**
 
 * Program pages become first-class marketing assets
+* Visibility still governed by Program + Offering eligibility
 
 ---
 
@@ -532,8 +533,10 @@ Before any code:
   ```
 * Update Program List block:
 
-  * Pull only published programs
+  * Pull only published Program Website Profiles
   * Auto-link to detail pages
+  * Require Program.is_published = 1 and Program.archive = 0
+  * Require Program Offering for the school
 
 **Output**
 
@@ -1067,6 +1070,29 @@ UI validation is **assistive**, never authoritative.
 ❌ Multiple H1 detected. Pages must contain exactly one H1.
 ❌ Website Page must be linked to a School.
 ❌ Website Page must contain at least one content block.
+```
+
+---
+
+## 1.2 Program Eligibility (Public Rendering)
+
+**Applies to:** Program detail routes + Program List blocks
+
+**Rules**
+
+* Program must satisfy:
+  * `is_published = 1`
+  * `archive = 0`
+  * `program_slug` set
+* Program must be **offered by the school** (Program Offering)
+* Program Website Profile must exist and be **Published**
+
+**Failures (render‑time 404)**
+
+```text
+❌ Program not published or archived.
+❌ Program not offered by this school.
+❌ Program Website Profile not found or not published.
 ```
 
 ---
