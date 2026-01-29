@@ -30,13 +30,21 @@ This means the school is addressable under routes that start with `/iss`.
 
 ---
 
-### 1.2 `School Website Page.route` (page path)
+### 1.2 `School Website Page.route` (page path input)
 
 **What it is**
 
-* The **page path input** used by website managers
-* Stored as a **canonical full route** after auto-prefixing
-* Identifies **which page** to render for that school
+* The **page path input** typed by website managers
+* Stored **exactly as entered** (no auto-prefixing)
+
+**Rules (enforced)**
+
+* `/` is **only** for the school home page
+* All other pages must be entered **without a leading `/`**
+  * Examples: `about`, `admissions`, `about/team`
+* No trailing `/`
+* No empty segments (`//`)
+* Do **not** include the school slug
 
 **Where it lives**
 
@@ -45,35 +53,52 @@ This means the school is addressable under routes that start with `/iss`.
 
 ---
 
+### 1.3 `School Website Page.full_route` (canonical)
+
+**What it is**
+
+* The **canonical full route** used for routing and rendering
+* Computed by the system from `School.website_slug` + `route`
+* Visible but **read-only**
+
+**Where it lives**
+
+* DocType: `School Website Page`
+* Field: `full_route`
+
+---
+
 ## 2. The hard rule (enforced)
 
 **Route input is always relative to the school.**
 
-You do **not** type the school slug. The system adds it behind the scenes.
+You do **not** type the school slug. The system builds the canonical full route behind the scenes.
 
 If `School.website_slug = iss`:
 
-| User input (route) | Stored route (canonical) |
-| --- | --- |
-| `admissions` | `/iss/admissions` |
-| `/admissions` | `/iss/admissions` |
-| `academics/programs` | `/iss/academics/programs` |
-| `/` or empty | `/iss` |
-| `/iss` | `/iss/iss` (because input is treated as relative) |
+| User input (`route`) | Stored `route` | Stored `full_route` |
+| --- | --- | --- |
+| `/` | `/` | `/iss` |
+| `admissions` | `admissions` | `/iss/admissions` |
+| `about/team` | `about/team` | `/iss/about/team` |
 
-**Important:** If you type `/iss`, it becomes `/iss/iss` by design. The slug is never a user input.
+**Invalid inputs**
+
+* `/admissions` (leading `/` not allowed for non-root)
+* `iss/admissions` (school slug is never part of the input)
+* `admissions/` (trailing `/` not allowed)
 
 ---
 
 ## 3. Root page behavior
 
-If the route is **empty** or `/`, the system creates the **school root page**:
+If the route is `/`, the system creates the **school root page**:
 
 ```
 /iss
 ```
 
-A clear message is shown to the user on save.
+Only one root page is allowed per school.
 
 ---
 
@@ -82,10 +107,10 @@ A clear message is shown to the user on save.
 When a request comes in:
 
 1. The **first path segment** is used to resolve the school by `website_slug`
-2. The full path is matched against `School Website Page.route`
+2. The full path is matched against `School Website Page.full_route`
 3. The page is rendered for that school
 
-Because routes are stored with the slug prefix, the resolver is deterministic and safe.
+Because routes are stored in `full_route` with the slug prefix, the resolver is deterministic and safe.
 
 ---
 
@@ -96,7 +121,7 @@ Because routes are stored with the slug prefix, the resolver is deterministic an
 ```
 School.website_slug: iss
 User input route: /
-Stored route: /iss
+Stored full_route: /iss
 ```
 
 ### Example B - Admissions page for the same school
@@ -104,38 +129,30 @@ Stored route: /iss
 ```
 School.website_slug: iss
 User input route: admissions
-Stored route: /iss/admissions
+Stored full_route: /iss/admissions
 ```
 
-### Example C - Another school on the same site
+### Example C - A nested page
 
 ```
-School.website_slug: iis
-User input route: admissions
-Stored route: /iis/admissions
+School.website_slug: iss
+User input route: about/team
+Stored full_route: /iss/about/team
 ```
-
-These are **different schools** and must not share routes.
 
 ---
 
 ## 6. Why this separation exists
 
 * `website_slug` is **school identity**
-* `route` is **page identity input**, then normalized into a canonical route
+* `route` is **page identity input** (user-owned)
+* `full_route` is **canonical routing identity** (system-owned)
 
 This allows:
 
 * multiple pages per school
 * clear SEO-friendly URL structure
 * predictable school scoping
-
-It is **not** a duplicate source of truth - it is a hierarchy:
-
-```
-School identity (slug)
-  -> Page identity (route)
-```
 
 ---
 
@@ -144,15 +161,13 @@ School identity (slug)
 The `School Website Page` DocType:
 
 * reads the school slug
-* prefixes it to the input route
-* stores the canonical route
-
-This makes the slug the single source of truth for routing and prevents mis-routing.
+* computes `full_route`
+* never overwrites the user-entered `route`
 
 ---
 
 ## 8. Summary (one-line rule)
 
-> **School slug identifies the school; page route is a relative path that is auto-prefixed with the slug.**
+> **School slug identifies the school; page route is user input; full_route is canonical.**
 
 ---

@@ -105,6 +105,7 @@ Pages are stored as structured data:
 ```text
 School Website Page
 ├─ route
+├─ full_route
 ├─ school
 ├─ page_type
 ├─ blocks (JSON)

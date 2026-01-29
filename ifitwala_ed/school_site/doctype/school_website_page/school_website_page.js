@@ -4,14 +4,14 @@ frappe.ui.form.on("School Website Page", {
 	refresh(frm) {
 		frm.clear_custom_buttons();
 
-		if (frm.doc.route) {
+		if (frm.doc.full_route) {
 			frm.add_custom_button(__("Preview"), () => {
-				const previewUrl = `${frappe.utils.get_url(frm.doc.route)}?preview=1`;
+				const previewUrl = `${frappe.utils.get_url(frm.doc.full_route)}?preview=1`;
 				window.open(previewUrl, "_blank");
 			});
 		} else {
 			frm.add_custom_button(__("Preview"), () => {
-				frappe.msgprint(__("Save the page to generate a preview route."));
+				frappe.msgprint(__("Save the page to generate the full route for preview."));
 			});
 		}
 

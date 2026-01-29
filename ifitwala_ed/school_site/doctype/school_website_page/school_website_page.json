@@ -9,6 +9,7 @@
   "section_break_identity",
   "school",
   "route",
+  "full_route",
   "page_type",
   "status",
   "seo_profile",
@@ -39,6 +40,13 @@
    "in_list_view": 1,
    "label": "Route",
    "reqd": 1
+  },
+  {
+   "description": "Read-only canonical route with school slug.",
+   "fieldname": "full_route",
+   "fieldtype": "Data",
+   "label": "Full Route",
+   "read_only": 1
   },
   {
    "default": "Standard",

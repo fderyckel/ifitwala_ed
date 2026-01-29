@@ -456,7 +456,8 @@ Below are **authoritative coding instructions + concrete schemas** to implement 
 | Field              | Type          | Notes                              |
 | ------------------ | ------------- | ---------------------------------- |
 | `school`           | Link (School) | required                           |
-| `route`            | Data          | `/`, `/academics`, `/admissions`   |
+| `route`            | Data          | `/` (root) or `admissions`         |
+| `full_route`       | Data          | read-only canonical route          |
 | `title`            | Data          | `<title>`                          |
 | `meta_description` | Small Text    | `<meta>`                           |
 | `is_published`     | Check         |                                    |
@@ -464,7 +465,7 @@ Below are **authoritative coding instructions + concrete schemas** to implement 
 
 **Indexes**
 
-* `(school, route)` unique
+* `(school, full_route)` unique
 
 ---
 

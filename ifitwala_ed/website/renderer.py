@@ -161,7 +161,7 @@ def _fetch_school_page(route: str, school, preview: bool):
 	if preview:
 		page_name = frappe.db.get_value(
 			"School Website Page",
-			{"school": school.name, "route": route},
+			{"school": school.name, "full_route": route},
 			"name",
 		)
 		if page_name:
@@ -172,7 +172,7 @@ def _fetch_school_page(route: str, school, preview: bool):
 
 	page_name = frappe.db.get_value(
 		"School Website Page",
-		{"school": school.name, "route": route, "is_published": 1},
+		{"school": school.name, "full_route": route, "is_published": 1},
 		"name",
 	)
 	if not page_name:

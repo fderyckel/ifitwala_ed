@@ -9,7 +9,7 @@
 
 ## 1) Home Page (School Root)
 
-**Route input:** `/` (system stores `/<school-slug>` automatically)
+**Route input:** `/` (root page only; system stores `/<school-slug>` in `full_route`)
 
 **Suggested block order**
 
@@ -75,7 +75,7 @@ CTA
 
 ## 2) About Page
 
-**Route input:** `/about`
+**Route input:** `about`
 
 **Suggested block order**
 
@@ -126,7 +126,7 @@ CTA
 
 ## 3) Admissions Page
 
-**Route input:** `/admissions`
+**Route input:** `admissions`
 
 **Suggested block order**
 

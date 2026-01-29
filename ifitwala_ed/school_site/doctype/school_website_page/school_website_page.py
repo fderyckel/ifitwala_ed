@@ -23,29 +23,58 @@ class SchoolWebsitePage(Document):
 				frappe.ValidationError,
 			)
 
-		raw_route = (self.route or "").strip()
-		if not raw_route or raw_route == "/":
-			self.route = normalize_route(f"/{school_slug}")
-			frappe.msgprint(
-				_("Route is empty or '/'. This sets the root school page: {0}").format(self.route),
-				alert=True,
+		raw_value = self.route or ""
+		raw_route = raw_value.strip()
+		if raw_value != raw_route:
+			frappe.throw(
+				_("Route cannot start or end with whitespace."),
+				frappe.ValidationError,
 			)
+		if not raw_route:
+			frappe.throw(
+				_("Route is required. Use '/' for the school home page."),
+				frappe.ValidationError,
+			)
+
+		if raw_route == "/":
+			self.full_route = normalize_route(f"/{school_slug}")
 		else:
-			relative = raw_route.lstrip("/").rstrip("/")
-			if not relative:
-				self.route = normalize_route(f"/{school_slug}")
-				frappe.msgprint(
-					_("Route is empty after cleanup. This sets the root school page: {0}").format(self.route),
-					alert=True,
+			if raw_route.startswith("/"):
+				frappe.throw(
+					_("Route must not start with '/'. Use '/' only for the home page."),
+					frappe.ValidationError,
 				)
-			else:
-				self.route = normalize_route(f"/{school_slug}/{relative}")
+			if raw_route.endswith("/"):
+				frappe.throw(
+					_("Route must not end with '/'. Remove the trailing slash."),
+					frappe.ValidationError,
+				)
+			if "//" in raw_route:
+				frappe.throw(
+					_("Route must not contain empty segments ('//')."),
+					frappe.ValidationError,
+				)
+
+			relative = raw_route
+			segments = [seg for seg in relative.split("/") if seg]
+			if not segments:
+				frappe.throw(
+					_("Route is required. Use '/' for the school home page."),
+					frappe.ValidationError,
+				)
+			if segments[0] == school_slug:
+				frappe.throw(
+					_("Do not include the school slug in the route."),
+					frappe.ValidationError,
+				)
+
+			self.full_route = normalize_route(f"/{school_slug}/{relative}")
 
 		exists = frappe.db.exists(
 			"School Website Page",
 			{
 				"school": self.school,
-				"route": self.route,
+				"full_route": self.full_route,
 				"name": ["!=", self.name],
 			},
 		)
