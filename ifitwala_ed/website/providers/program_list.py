@@ -24,7 +24,7 @@ def _get_program_profiles(school_scope: str, school_name: str, limit: int):
 	if school_scope == "all":
 		schools = frappe.get_all(
 			"School",
-			filters={"is_group": 0, "website_slug": ["!=", ""]},
+			filters={"is_published": 1, "website_slug": ["!=", ""]},
 			fields=["name", "school_name", "website_slug"],
 		)
 	else:

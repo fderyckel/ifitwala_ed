@@ -21,6 +21,7 @@ class School(NestedSet):
 		self.validate_abbr()
 		self.validate_parent_school()  # parent must be group
 		self.validate_parent_school_organization()  # parent/child must share org
+		self.validate_website_publication()
 
 		# prevent changing Organization on a node that has children.
 		# Rationale: avoids accidental cross-org subtree drift and keeps "effective record" resolution sane.
@@ -32,6 +33,8 @@ class School(NestedSet):
 	def after_save(self):
 		if self.has_value_changed("abbr"):
 			self.update_navbar_item_for_abbreviation_change()
+		if self.has_value_changed("is_published") or self.has_value_changed("website_slug"):
+			self.sync_website_page_publication()
 
 	def on_trash(self):
 		NestedSet.validate_if_child_exists(self)
@@ -153,6 +156,36 @@ class School(NestedSet):
 				new_org=new_org,
 			)
 		)
+
+	def validate_website_publication(self):
+		if not getattr(self, "is_published", 0):
+			return
+		if not (self.website_slug or "").strip():
+			frappe.throw(
+				_("Website slug is required before publishing a School."),
+				frappe.ValidationError,
+			)
+
+	def sync_website_page_publication(self):
+		page_names = frappe.get_all(
+			"School Website Page",
+			filters={"school": self.name},
+			pluck="name",
+		)
+		if not page_names:
+			return
+
+		should_publish = bool((self.website_slug or "").strip()) and int(self.is_published or 0) == 1
+		status = "Published" if should_publish else "Draft"
+		is_published = 1 if should_publish else 0
+
+		for name in page_names:
+			frappe.db.set_value(
+				"School Website Page",
+				name,
+				{"status": status, "is_published": is_published},
+				update_modified=False,
+			)
 
 	def update_navbar_item_for_abbreviation_change(self):
 		old_abbr = self.get_doc_before_save().abbr

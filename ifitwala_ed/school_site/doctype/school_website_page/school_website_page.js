@@ -26,13 +26,15 @@ frappe.ui.form.on("School Website Page", {
 
 			if (frm.doc.school) {
 				frappe.db
-					.get_value("School", frm.doc.school, ["website_slug", "is_group"])
+					.get_value("School", frm.doc.school, ["website_slug", "is_published"])
 					.then((res) => {
 						const data = res && res.message ? res.message : {};
 						const slug = data.website_slug;
-						const isGroup = Boolean(parseInt(data.is_group || 0, 10));
-						if (!slug || isGroup) {
-							banners.push(__("School is not eligible for public website (slug required; groups not public)."));
+						const isPublished = Boolean(parseInt(data.is_published || 0, 10));
+						if (!slug || !isPublished) {
+							banners.push(
+								__("School is not published for the website (set Is Published and a website slug).")
+							);
 						}
 
 						if (banners.length) {

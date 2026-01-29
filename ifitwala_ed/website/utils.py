@@ -51,7 +51,7 @@ def resolve_school_from_route(route: str):
 def is_school_public(school) -> bool:
 	if not school:
 		return False
-	return bool(school.website_slug) and int(school.is_group or 0) == 0
+	return bool(school.website_slug) and int(getattr(school, "is_published", 0) or 0) == 1
 
 
 def parse_props(raw_props: Any) -> dict:

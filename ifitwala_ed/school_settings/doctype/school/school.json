@@ -12,6 +12,7 @@
   "school_name",
   "existing_school",
   "is_group",
+  "is_published",
   "abbr",
   "school_logo",
   "address__html",
@@ -80,6 +81,13 @@
    "fieldname": "is_group",
    "fieldtype": "Check",
    "label": "Is Group"
+  },
+  {
+   "default": "0",
+   "description": "Controls website publication. Requires a website slug.",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "label": "Is Published"
   },
   {
    "fieldname": "old_parent",
@@ -369,7 +377,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-09-23 10:50:04.977498",
+ "modified": "2025-09-23 10:50:07",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",

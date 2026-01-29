@@ -90,10 +90,10 @@ class SchoolWebsitePage(Document):
 			row = frappe.db.get_value(
 				"School",
 				self.school,
-				["website_slug", "is_group"],
+				["website_slug", "is_published"],
 				as_dict=True,
 			)
-			if row and row.website_slug and int(row.is_group or 0) == 0:
+			if row and row.website_slug and int(row.is_published or 0) == 1:
 				status = "Published"
 		self.status = status
 		self.is_published = 1 if status == "Published" else 0

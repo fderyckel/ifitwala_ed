@@ -553,7 +553,7 @@ Before any code:
 
 **Tasks**
 
-* Draft / Published states (School Website Page status is read-only, derived from School eligibility)
+* Draft / Published states (School Website Page status is read-only, derived from School.is_published + website_slug)
 * Desk-only preview (`?preview=1`)
 * No scheduling in Phase‑02
 
@@ -1063,7 +1063,7 @@ UI validation is **assistive**, never authoritative.
 * `school` must be set
 * `seo_profile` is recommended; when missing, page-level fields are used as fallback
 * Warn (do not block) if both SEO Profile and fallback fields are missing
-* School must be public (website_slug set, is_group = 0) for public rendering
+* School must be public (is_published = 1 and website_slug set) for public rendering
 
 **Hard failures**
 

@@ -57,7 +57,7 @@
   },
   {
    "default": "Draft",
-   "description": "Read-only. Controlled by School eligibility.",
+   "description": "Read-only. Controlled by School.is_published + website slug.",
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -106,7 +106,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-29 14:31:23",
+ "modified": "2026-01-29 14:31:27",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "School Website Page",
