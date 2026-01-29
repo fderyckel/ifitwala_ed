@@ -245,7 +245,7 @@ def get_org_chart_children(parent: str | None = None, organization: str | None =
 		organization = None
 	organization = organization or None
 
-	filters = {"status": "Active"}
+	filters = {"employment_status": "Active"}
 	if organization:
 		filters["organization"] = organization
 
@@ -280,7 +280,7 @@ def get_org_chart_tree(organization: str | None = None):
 		organization = None
 	organization = organization or None
 
-	filters = {"status": "Active"}
+	filters = {"employment_status": "Active"}
 	if organization:
 		filters["organization"] = organization
 

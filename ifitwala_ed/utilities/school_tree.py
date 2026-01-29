@@ -208,7 +208,7 @@ def get_user_default_school():
 		return school
 
 	# 2) linked Employee (common for staff)
-	row = frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, ["school"], as_dict=True)
+	row = frappe.db.get_value("Employee", {"user_id": user, "employment_status": "Active"}, ["school"], as_dict=True)
 	if row and row.school:
 		return row.school
 

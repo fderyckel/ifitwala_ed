@@ -46,7 +46,7 @@
   "professional_tab",
   "professional_section",
   "date_of_joining",
-  "status",
+  "employment_status",
   "employment_type",
   "employee_group",
   "designation",
@@ -268,11 +268,11 @@
    "reqd": 1
   },
   {
-   "fieldname": "status",
+   "fieldname": "employment_status",
    "fieldtype": "Select",
    "in_filter": 1,
    "in_standard_filter": 1,
-   "label": "Status",
+   "label": "Employment Status",
    "options": "Active\nTemporary Leave\nLeft\nSuspended",
    "permlevel": 1,
    "reqd": 1
@@ -325,7 +325,7 @@
    "permlevel": 1
   },
   {
-   "depends_on": "eval:doc.status == \"Active\"",
+   "depends_on": "eval:doc.employment_status == \"Active\"",
    "description": "Current holiday list for the employee. ",
    "fieldname": "current_holiday_lis",
    "fieldtype": "Link",

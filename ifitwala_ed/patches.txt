@@ -6,3 +6,4 @@ ifitwala_ed.patches.v0_0.create_minimal_coa
 ifitwala_ed.patches.v0_0.create_default_account_holders
 ifitwala_ed.patches.v0_0.migrate_course_prerequisites
 ifitwala_ed.patches.v0_0.remove_legacy_web_pages
+ifitwala_ed.patches.rename_employee_status_field

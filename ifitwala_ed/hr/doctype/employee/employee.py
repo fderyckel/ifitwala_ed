@@ -49,7 +49,7 @@ class Employee(NestedSet):
 
 	def validate(self):
 		from ifitwala_ed.controllers.status_updater import validate_status
-		validate_status(self.status, ["Active", "Temporary Leave", "Left", "Suspended"])
+		validate_status(self.employment_status, ["Active", "Temporary Leave", "Left", "Suspended"])
 
 		self.employee = self.name
 		self.employee_full_name = " ".join(filter(None, [
@@ -154,13 +154,13 @@ class Employee(NestedSet):
 		if self.employee_personal_email:
 			validate_email_address(self.employee_personal_email, True)
 
-	# call on validate. If status is set to left, then need to put relieving date.
+	# call on validate. If employment status is set to left, then need to put relieving date.
 	# also you can not be set as left if there are people reporting to you.
 	def validate_status(self):
-		if self.status == "Left":
+		if self.employment_status == "Left":
 			reports_to = frappe.db.get_all(
 				"Employee",
-				filters={"reports_to": self.name, "status": "Active"},
+				filters={"reports_to": self.name, "employment_status": "Active"},
 				fields=["name", "employee_full_name"],
 			)
 			if reports_to:
@@ -469,7 +469,7 @@ class Employee(NestedSet):
 	# call on validate through validate_user_details().
 	# If employee is referring to a user, that user has to be active.
 	def validate_for_enabled_user_id(self, enabled):
-		if not self.status == "Active":
+		if not self.employment_status == "Active":
 			return
 		if enabled is None:
 			frappe.throw(_("User {0} does not exist").format(self.user_id))
@@ -484,7 +484,7 @@ class Employee(NestedSet):
 			.select(Employee.name)
 			.where(
 				(Employee.user_id == self.user_id)
-				& (Employee.status == "Active")
+				& (Employee.employment_status == "Active")
 				& (Employee.name != self.name)
 			)
 		).run()
@@ -541,7 +541,7 @@ class Employee(NestedSet):
 		- If none match the date, fall back to the latest by from_date.
 		"""
 		# Only for active staff
-		if self.status != "Active":
+		if self.employment_status != "Active":
 			self.current_holiday_lis = None
 			return
 
@@ -780,7 +780,7 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
 	# - Treeview calls this often; avoid N+1 queries.
 	# - We keep the existing "All Organizations" sentinel for compatibility with current JS.
 
-	filters = [["status", "=", "Active"]]
+	filters = [["employment_status", "=", "Active"]]
 
 	# Organization filter (compat with current treeview default)
 	if organization and organization != "All Organizations":
@@ -818,7 +818,7 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
 		"""
 		SELECT reports_to, COUNT(*) AS cnt
 		FROM `tabEmployee`
-		WHERE status = 'Active'
+		WHERE employment_status = 'Active'
 			AND reports_to IN %(names)s
 		GROUP BY reports_to
 		""",

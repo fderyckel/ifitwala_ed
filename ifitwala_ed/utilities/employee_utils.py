@@ -16,7 +16,7 @@ def get_user_base_org(user: str | None = None) -> str | None:
 	user = user or frappe.session.user
 	row = frappe.db.get_value(
 		"Employee",
-		{"user_id": user, "status": "Active"},
+		{"user_id": user, "employment_status": "Active"},
 		["organization"],
 		as_dict=True,
 	)
@@ -27,7 +27,7 @@ def get_user_base_school(user: str | None = None) -> str | None:
 	user = user or frappe.session.user
 	row = frappe.db.get_value(
 		"Employee",
-		{"user_id": user, "status": "Active"},
+		{"user_id": user, "employment_status": "Active"},
 		["school"],
 		as_dict=True,
 	)
@@ -107,7 +107,7 @@ def get_all_employee_emails(organization):
     try:
         employee_data = frappe.db.get_values(
             "Employee",
-            filters={"status": "Active", "organization": organization},
+            filters={"employment_status": "Active", "organization": organization},
             fields=["user_id", "employee_professional_email", "employee_personal_email"],
             as_dict=True,  # Important for easier access to fields
         )

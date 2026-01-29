@@ -434,7 +434,7 @@ def _instructor_group_names(user):
 			names.add(row)
 
 	employee = frappe.db.get_value(
-		"Employee", {"user_id": user, "status": "Active"}, "name"
+		"Employee", {"user_id": user, "employment_status": "Active"}, "name"
 	)
 	if employee:
 		for row in frappe.get_all(

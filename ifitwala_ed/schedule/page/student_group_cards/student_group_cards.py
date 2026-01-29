@@ -34,7 +34,7 @@ def _authorized_for_group(student_group: str, user: str) -> bool:
 		return True
 
 	# optional: via Employee mapping if you store it on child
-	emp_id = frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, "name")
+	emp_id = frappe.db.get_value("Employee", {"user_id": user, "employment_status": "Active"}, "name")
 	if emp_id and frappe.db.exists("Student Group Instructor", {"parent": student_group, "employee": emp_id}):
 		return True
 

@@ -124,7 +124,7 @@ def get_staff_calendar(
 
 	employee = frappe.db.get_value(
 		"Employee",
-		{"user_id": user, "status": ["!=", "Inactive"]},
+		{"user_id": user, "employment_status": ["!=", "Inactive"]},
 		["name", "employee_full_name"],
 		as_dict=True,
 	)
@@ -839,7 +839,7 @@ def get_meeting_details(meeting: str):
 
 	employee_id = frappe.db.get_value(
 		"Employee",
-		{"user_id": user, "status": ["!=", "Inactive"]},
+		{"user_id": user, "employment_status": ["!=", "Inactive"]},
 		"name",
 	)
 
@@ -1056,7 +1056,7 @@ def _collect_school_events(
 ) -> List[CalendarEvent]:
 	emp_row = frappe.db.get_value(
 		"Employee",
-		{"user_id": user, "status": ["!=", "Inactive"]},
+		{"user_id": user, "employment_status": ["!=", "Inactive"]},
 		["name", "school"],
 		as_dict=True
 	)
@@ -1315,7 +1315,7 @@ def _school_event_access_allowed(event_doc, user: str) -> bool:
 
 	emp_row = frappe.db.get_value(
 		"Employee",
-		{"user_id": user, "status": ["!=", "Inactive"]},
+		{"user_id": user, "employment_status": ["!=", "Inactive"]},
 		["school"],
 		as_dict=True,
 	)

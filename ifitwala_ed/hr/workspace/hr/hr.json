@@ -227,7 +227,7 @@
    "doc_view": "Tree",
    "label": "Employee",
    "link_to": "Employee",
-   "stats_filter": "[[\"Employee\",\"status\",\"=\",\"Active\",false]]",
+   "stats_filter": "[[\"Employee\",\"employment_status\",\"=\",\"Active\",false]]",
    "type": "DocType"
   }
  ],

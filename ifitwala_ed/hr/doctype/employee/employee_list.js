@@ -2,11 +2,17 @@
 // For license information, please see license.txt
 
 frappe.listview_settings["Employee"] = {
-	add_fields: ["status", "department", "designation", "employee_image"],
-	filters: [["status", "=", "Active"]],
+	add_fields: ["employment_status", "department", "designation", "employee_image"],
+	filters: [["employment_status", "=", "Active"]],
 	get_indicator: function (doc) {
-		var indicator = [__(doc.status), frappe.utils.guess_colour(doc.status), "status,=," + doc.status];
-		indicator[1] = { Active: "green", Inactive: "red", Left: "gray", Suspended: "orange" }[doc.status];
+		var indicator = [
+			__(doc.employment_status),
+			frappe.utils.guess_colour(doc.employment_status),
+			"employment_status,=," + doc.employment_status,
+		];
+		indicator[1] = { Active: "green", Inactive: "red", Left: "gray", Suspended: "orange" }[
+			doc.employment_status
+		];
 		return indicator;
 	},
 };

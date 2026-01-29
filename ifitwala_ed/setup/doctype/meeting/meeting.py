@@ -361,7 +361,7 @@ class Meeting(Document):
 
 		rows = frappe.get_all(
 			"Employee",
-			filters={"status": "Active", "user_id": ("in", list(user_ids))},
+			filters={"employment_status": "Active", "user_id": ("in", list(user_ids))},
 			fields=["name", "user_id"],
 		)
 
@@ -567,7 +567,7 @@ class Meeting(Document):
 			if meeting_school:
 				emp_school = frappe.db.get_value(
 					"Employee",
-					{"user_id": user, "status": "Active"},
+					{"user_id": user, "employment_status": "Active"},
 					"school",
 				)
 
@@ -646,7 +646,7 @@ class Meeting(Document):
 
 		emp = frappe.db.get_value(
 			"Employee",
-			{"user_id": user, "status": "Active"},
+			{"user_id": user, "employment_status": "Active"},
 			["name", "school"],
 			as_dict=True,
 		)
