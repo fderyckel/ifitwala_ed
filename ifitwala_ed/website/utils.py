@@ -48,6 +48,12 @@ def resolve_school_from_route(route: str):
 	return resolve_default_school()
 
 
+def is_school_public(school) -> bool:
+	if not school:
+		return False
+	return bool(school.website_slug) and int(school.is_group or 0) == 0
+
+
 def parse_props(raw_props: Any) -> dict:
 	if not raw_props:
 		return {}

@@ -7,18 +7,15 @@ from frappe.model.document import Document
 
 class ProgramWebsiteProfile(Document):
 	def validate(self):
-		self._validate_status()
+		self._sync_status_from_program()
 		self._validate_unique_profile()
 		self._validate_program_slug()
 
-	def _validate_status(self):
-		status = (self.status or "").strip() or "Draft"
-		if status not in {"Draft", "Published"}:
-			frappe.throw(
-				_("Invalid status: {0}").format(status),
-				frappe.ValidationError,
-			)
-		self.status = status
+	def _sync_status_from_program(self):
+		if not self.program:
+			return
+		is_published = frappe.db.get_value("Program", self.program, "is_published")
+		self.status = "Published" if int(is_published or 0) == 1 else "Draft"
 
 	def _validate_unique_profile(self):
 		exists = frappe.db.exists(

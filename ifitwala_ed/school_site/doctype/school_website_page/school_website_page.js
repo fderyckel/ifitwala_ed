@@ -16,18 +16,35 @@ frappe.ui.form.on("School Website Page", {
 		}
 
 		if (frm.dashboard && frm.dashboard.set_headline) {
+			const banners = [];
+
 			if (!frm.doc.seo_profile && (frm.doc.title || frm.doc.meta_description)) {
-				frm.dashboard.set_headline(
-					`<span class="text-warning">${frappe.utils.escape_html(
-						__("SEO fallback in use. Link an SEO Profile for full control.")
-					)}</span>`
-				);
+				banners.push(__("SEO fallback in use. Link an SEO Profile for full control."));
 			} else if (!frm.doc.seo_profile) {
-				frm.dashboard.set_headline(
-					`<span class="text-danger">${frappe.utils.escape_html(
-						__("Missing SEO Profile and fallback fields.")
-					)}</span>`
-				);
+				banners.push(__("Missing SEO Profile and fallback fields."));
+			}
+
+			if (frm.doc.school) {
+				frappe.db
+					.get_value("School", frm.doc.school, ["website_slug", "is_group"])
+					.then((res) => {
+						const data = res && res.message ? res.message : {};
+						const slug = data.website_slug;
+						const isGroup = Boolean(parseInt(data.is_group || 0, 10));
+						if (!slug || isGroup) {
+							banners.push(__("School is not eligible for public website (slug required; groups not public)."));
+						}
+
+						if (banners.length) {
+							const html = banners.map((msg) => `• ${frappe.utils.escape_html(msg)}`).join("<br>");
+							frm.dashboard.set_headline(`<span class="text-warning">${html}</span>`);
+						} else {
+							frm.dashboard.set_headline("");
+						}
+					});
+			} else if (banners.length) {
+				const html = banners.map((msg) => `• ${frappe.utils.escape_html(msg)}`).join("<br>");
+				frm.dashboard.set_headline(`<span class="text-warning">${html}</span>`);
 			}
 		}
 	}

@@ -5,6 +5,7 @@ from frappe import _
 
 from ifitwala_ed.website.utils import (
 	build_story_url,
+	is_school_public,
 	normalize_route,
 	parse_props,
 	resolve_school_from_route,
@@ -345,6 +346,11 @@ def _build_story_index_context(*, route: str, school):
 def build_render_context(*, route: str, preview: bool = False):
 	route = normalize_route(route)
 	school = resolve_school_from_route(route)
+	if not preview and not is_school_public(school):
+		frappe.throw(
+			_("School not published."),
+			frappe.DoesNotExistError,
+		)
 	segments = [seg for seg in route.split("/") if seg]
 	school_slug = segments[0] if segments else None
 

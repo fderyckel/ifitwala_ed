@@ -56,12 +56,16 @@ class SchoolWebsitePage(Document):
 			)
 
 	def _sync_status_flags(self):
-		status = (self.status or "").strip() or ("Published" if self.is_published else "Draft")
-		if status not in {"Draft", "Published"}:
-			frappe.throw(
-				_("Invalid status: {0}").format(status),
-				frappe.ValidationError,
+		status = "Draft"
+		if self.school:
+			row = frappe.db.get_value(
+				"School",
+				self.school,
+				["website_slug", "is_group"],
+				as_dict=True,
 			)
+			if row and row.website_slug and int(row.is_group or 0) == 0:
+				status = "Published"
 		self.status = status
 		self.is_published = 1 if status == "Published" else 0
 

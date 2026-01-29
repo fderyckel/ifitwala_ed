@@ -47,8 +47,8 @@ frappe.ui.form.on("Program Website Profile", {
 					if (archived) {
 						banners.push(__("Program is archived and cannot be published."));
 					}
-					if (!published && frm.doc.status === "Published") {
-						banners.push(__("Program Website Profile is published but Program is not."));
+					if (!published) {
+						banners.push(__("Program is not published; profile will remain draft."));
 					}
 
 					if (banners.length) {

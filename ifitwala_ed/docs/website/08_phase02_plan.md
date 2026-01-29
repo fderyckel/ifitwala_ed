@@ -506,7 +506,7 @@ Before any code:
 * Fields:
 
   * program
-* status (Draft / Published)
+  * status (Draft / Published, read-only; controlled by Program.is_published)
   * hero_image
   * intro_text
   * blocks
@@ -553,7 +553,7 @@ Before any code:
 
 **Tasks**
 
-* Draft / Published states
+* Draft / Published states (School Website Page status is read-only, derived from School eligibility)
 * Desk-only preview (`?preview=1`)
 * No scheduling in Phase‑02
 
@@ -1063,6 +1063,7 @@ UI validation is **assistive**, never authoritative.
 * `school` must be set
 * `seo_profile` is recommended; when missing, page-level fields are used as fallback
 * Warn (do not block) if both SEO Profile and fallback fields are missing
+* School must be public (website_slug set, is_group = 0) for public rendering
 
 **Hard failures**
 
@@ -1070,6 +1071,7 @@ UI validation is **assistive**, never authoritative.
 ❌ Multiple H1 detected. Pages must contain exactly one H1.
 ❌ Website Page must be linked to a School.
 ❌ Website Page must contain at least one content block.
+❌ School is not eligible for public website rendering.
 ```
 
 ---

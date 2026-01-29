@@ -38,10 +38,12 @@
   },
   {
    "default": "Draft",
+   "description": "Read-only. Controlled by Program.is_published.",
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nPublished"
+   "options": "Draft\nPublished",
+   "read_only": 1
   },
   {
    "fieldname": "seo_profile",
