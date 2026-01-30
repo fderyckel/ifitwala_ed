@@ -1,5 +1,25 @@
 // ifitwala_ed/school_site/doctype/website_story/website_story.js
 
+function getPreviewUrl(path) {
+	if (!path) return "";
+	if (path.startsWith("http://") || path.startsWith("https://")) {
+		return path;
+	}
+	if (frappe.utils && typeof frappe.utils.get_url === "function") {
+		return frappe.utils.get_url(path);
+	}
+	if (frappe.urllib && typeof frappe.urllib.get_full_url === "function") {
+		return frappe.urllib.get_full_url(path);
+	}
+	const base =
+		frappe.urllib && typeof frappe.urllib.get_base_url === "function"
+			? frappe.urllib.get_base_url()
+			: window.location.origin;
+	if (!base) return path;
+	if (path.startsWith("/")) return `${base}${path}`;
+	return `${base}/${path}`;
+}
+
 async function getFieldValue(doctype, name, fieldname) {
 	if (!name) return null;
 	const res = await frappe.db.get_value(doctype, name, fieldname);
@@ -22,7 +42,7 @@ frappe.ui.form.on("Website Story", {
 				return;
 			}
 
-			const previewUrl = `${frappe.utils.get_url(`/${schoolSlug}/stories/${frm.doc.slug}`)}?preview=1`;
+			const previewUrl = `${getPreviewUrl(`/${schoolSlug}/stories/${frm.doc.slug}`)}?preview=1`;
 			window.open(previewUrl, "_blank");
 		});
 
