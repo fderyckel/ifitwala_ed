@@ -8,13 +8,13 @@ from ifitwala_ed.website.utils import build_image_variants
 
 
 @redis_cache(ttl=3600)
-def _get_leaders(school: str, roles: list[str], limit: int):
+def _get_leaders(school: str, roles: tuple[str, ...], limit: int):
 	filters = {
 		"school": school,
 		"show_on_website": 1,
 	}
 	if roles:
-		filters["designation"] = ["in", roles]
+		filters["designation"] = ["in", list(roles)]
 
 	leaders = frappe.get_all(
 		"Employee",
@@ -42,7 +42,7 @@ def get_context(*, school, page, block_props):
 	Leadership / authority block.
 	"""
 	limit = max(cint(block_props.get("limit") or 4), 1)
-	roles = block_props.get("roles") or []
+	roles = tuple(block_props.get("roles") or [])
 	leaders = _get_leaders(school=school.name, roles=roles, limit=limit)
 
 	return {
