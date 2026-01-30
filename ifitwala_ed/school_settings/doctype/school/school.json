@@ -12,7 +12,6 @@
   "school_name",
   "existing_school",
   "is_group",
-  "is_published",
   "abbr",
   "school_logo",
   "address__html",
@@ -45,19 +44,22 @@
   "dashboard_tab",
   "website_tab",
   "admissions_cta_section",
-  "admissions_inquiry_route",
+  "is_published",
+  "website_slug",
+  "school_tagline",
+  "column_break_ztd5",
   "admissions_apply_route",
   "admissions_visit_route",
-  "website_slug",
-  "column_break_ztd5",
-  "school_tagline",
+  "admissions_inquiry_route",
   "label_cta_inquiry",
   "label_cta_roi",
   "section_break_l0vk",
   "gallery_image",
   "web_page_content_section",
   "about_snippet",
-  "more_info"
+  "more_info",
+  "portal_calendar_start_time",
+  "portal_calendar_end_time"
  ],
  "fields": [
   {
@@ -226,18 +228,18 @@
    "label": "Default Break Color"
   },
   {
+   "default": "07:00:00",
+   "description": "Default start time for portal calendars when not showing full day.",
    "fieldname": "portal_calendar_start_time",
    "fieldtype": "Time",
-   "label": "Portal Calendar Start Time",
-   "default": "07:00:00",
-   "description": "Default start time for portal calendars when not showing full day."
+   "label": "Portal Calendar Start Time"
   },
   {
+   "default": "17:00:00",
+   "description": "Default end time for portal calendars when not showing full day.",
    "fieldname": "portal_calendar_end_time",
    "fieldtype": "Time",
-   "label": "Portal Calendar End Time",
-   "default": "17:00:00",
-   "description": "Default end time for portal calendars when not showing full day."
+   "label": "Portal Calendar End Time"
   },
   {
    "fieldname": "column_break_1mhp",
@@ -279,7 +281,6 @@
    "label": "Website"
   },
   {
-   "collapsible": 1,
    "fieldname": "admissions_cta_section",
    "fieldtype": "Section Break",
    "label": "Admissions CTA Targets"
@@ -377,7 +378,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-09-23 10:50:07",
+ "modified": "2026-01-30 06:47:13.147758",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
