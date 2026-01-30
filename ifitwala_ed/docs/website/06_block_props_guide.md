@@ -64,6 +64,11 @@ Disallowed:
 | `cta_label` | string | no | — | Button label |
 | `cta_link` | string | no | — | CTA URL (validated) |
 
+**Validation note**
+
+`hero` props are strictly validated. Only the fields listed above are allowed.  
+Legacy shapes like `primary_cta` are rejected and will throw a render error.
+
 ### Example: carousel with images
 ```json
 {
