@@ -9,8 +9,6 @@
  * index.js (+ imports)       → public/js/student_portal.<hash>.bundle.js
  * public/css/student_portal.<hash>.bundle.css
  *
- * ── Desk-only hierarchy chart (rarely used, lazy-loaded) ─────────────
- * hierarchy_chart.scss       → public/css/hierarchy_chart.min.css
  */
 
 const path = require('path');
@@ -267,21 +265,5 @@ module.exports = [
 		],
 	},
 
-	// ── Hierarchy Chart SCSS → stable min.css ──
-	{
-		input: fromApp('public/scss/hierarchy_chart.scss'),
-		output: { dir: '.' },
-		plugins: [
-			postcss({
-				extract: `${cssDest}/hierarchy_chart.min.css`,
-				minimize: true,
-				plugins: [require('autoprefixer')],
-				preprocessor: async (content, id) => {
-					const sass = await import('sass');
-					const result = await sass.compileAsync(id);
-					return { code: result.css };
-				},
-			}),
-		],
-	},
+	
 ];
