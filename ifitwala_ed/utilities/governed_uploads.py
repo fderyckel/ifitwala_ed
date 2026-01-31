@@ -95,7 +95,12 @@ def _ensure_file_on_disk(file_doc):
 		frappe.throw(_("File URL missing after upload."))
 	if file_doc.file_url.startswith("http"):
 		return
-	abs_path = frappe.utils.get_site_path("public", file_doc.file_url.lstrip("/"))
+	rel_path = file_doc.file_url.lstrip("/")
+	if rel_path.startswith("private/") or rel_path.startswith("public/"):
+		abs_path = frappe.utils.get_site_path(rel_path)
+	else:
+		base = "private" if file_doc.is_private else "public"
+		abs_path = frappe.utils.get_site_path(base, rel_path)
 	if not os.path.exists(abs_path):
 		frappe.throw(_("File could not be finalized on disk. Please retry the upload."))
 
