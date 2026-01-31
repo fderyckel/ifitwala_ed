@@ -1,11 +1,10 @@
-// ifitwala_ed/admission/doctype/student_applicant/student_applicant.js
 // Copyright (c) 2024, fdR and contributors
 // For license information, please see license.txt
 
+// ifitwala_ed/admission/doctype/student_applicant/student_applicant.js
+
+
 frappe.ui.form.on("Student Applicant", {
-	onload(frm) {
-		set_academic_year_query(frm);
-	},
 
 	refresh(frm) {
 		frm.set_query("academic_year", () => {
@@ -23,10 +22,6 @@ frappe.ui.form.on("Student Applicant", {
 		frm.trigger("setup_governed_image_upload");
 		render_review_sections(frm);
 		add_decision_actions(frm);
-	},
-
-	school(frm) {
-		set_academic_year_query(frm);
 	},
 
 	setup_governed_image_upload(frm) {
@@ -274,15 +269,4 @@ function add_decision_actions(frm) {
 			});
 		});
 	}
-}
-
-function set_academic_year_query(frm) {
-	frm.set_query("academic_year", () => {
-		return {
-			filters: [
-				["Academic Year", "archived", "=", 0],
-				["Academic Year", "visible_to_admission", "=", 1],
-			],
-		};
-	});
 }

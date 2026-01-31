@@ -387,7 +387,7 @@ class StudentApplicant(Document):
 		)
 
 	# ---------------------------------------------------------------------
-	# Promotion (Phase 1 – minimal, strict)
+	# Promotion
 	# ---------------------------------------------------------------------
 
 	@frappe.whitelist()
@@ -573,35 +573,6 @@ class StudentApplicant(Document):
 			"required": list(required_names.values()),
 		}
 
-
-@frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def academic_year_intent_query(doctype, txt, searchfield, start, page_len, filters):
-	filters = filters or {}
-	school = filters.get("school")
-	if not school:
-		return []
-
-	scope = get_school_scope_for_academic_year(school)
-	if not scope:
-		return []
-
-	search_txt = f"%{txt or ''}%"
-	placeholders = ", ".join(["%s"] * len(scope))
-	return frappe.db.sql(
-		f"""
-		SELECT name
-		  FROM `tabAcademic Year`
-		 WHERE archived = 0
-		   AND visible_to_admission = 1
-		   AND school IN ({placeholders})
-		   AND name LIKE %s
-		 ORDER BY year_start_date DESC, name DESC
-		 LIMIT %s, %s
-		""",
-		[*scope, search_txt, start, page_len],
-	)
-
 	def health_review_complete(self):
 		status = frappe.db.get_value(
 			"Applicant Health Profile",
@@ -659,3 +630,33 @@ def academic_year_intent_query(doctype, txt, searchfield, start, page_len, filte
 			"ready": bool(ready),
 			"issues": issues,
 		}
+
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def academic_year_intent_query(doctype, txt, searchfield, start, page_len, filters):
+	filters = filters or {}
+	school = filters.get("school")
+	if not school:
+		return []
+
+	scope = get_school_scope_for_academic_year(school)
+	if not scope:
+		return []
+
+	search_txt = f"%{txt or ''}%"
+	placeholders = ", ".join(["%s"] * len(scope))
+	return frappe.db.sql(
+		f"""
+		SELECT name
+		  FROM `tabAcademic Year`
+		 WHERE archived = 0
+		   AND visible_to_admission = 1
+		   AND school IN ({placeholders})
+		   AND name LIKE %s
+		 ORDER BY year_start_date DESC, name DESC
+		 LIMIT %s, %s
+		""",
+		[*scope, search_txt, start, page_len],
+	)
