@@ -132,7 +132,9 @@ Where:
 
 * `scope_schools(S)` means:
 
-  * if S is a leaf: S (or optionally nearest ancestor with AY records, if you choose inheritance)
+  * if S is a leaf:
+    * use **S** if it has any Academic Year with `visible_to_admission = 1` and `archived = 0`
+    * otherwise inherit the **nearest ancestor** that has any Academic Year with `visible_to_admission = 1` and `archived = 0`
   * if S is a parent: S + descendants
 
 The underlying school-tree resolution must use the existing utilities patterns (ancestor/descendant) to avoid bespoke logic.

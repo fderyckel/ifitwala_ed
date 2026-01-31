@@ -39,6 +39,13 @@ class TestSchoolTreeScopes(FrappeTestCase):
 		scope = get_school_scope_for_academic_year(self.leaf_school)
 		self.assertEqual(scope, [self.leaf_school])
 
+	def test_leaf_scope_inherits_when_self_not_visible(self):
+		self._create_academic_year(self.root_school, "2026-2027")
+		self._create_academic_year(self.leaf_school, "2025-2026", visible_to_admission=0)
+		self._clear_scope_cache(self.leaf_school)
+		scope = get_school_scope_for_academic_year(self.leaf_school)
+		self.assertEqual(scope, [self.root_school])
+
 	def _clear_scope_cache(self, school):
 		frappe.cache().delete_value(f"ifitwala_ed:school_tree:ay_scope:{school}")
 
@@ -64,13 +71,13 @@ class TestSchoolTreeScopes(FrappeTestCase):
 		self._created.append(("School", doc.name))
 		return doc.name
 
-	def _create_academic_year(self, school, academic_year_name):
+	def _create_academic_year(self, school, academic_year_name, archived=0, visible_to_admission=1):
 		doc = frappe.get_doc({
 			"doctype": "Academic Year",
 			"academic_year_name": academic_year_name,
 			"school": school,
-			"archived": 0,
-			"visible_to_admission": 1,
+			"archived": archived,
+			"visible_to_admission": visible_to_admission,
 		}).insert(ignore_permissions=True)
 		self._created.append(("Academic Year", doc.name))
 		return doc.name

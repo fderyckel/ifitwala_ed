@@ -183,7 +183,7 @@ def get_first_ancestor_with_doc(doctype, school, filters=None):
 def get_school_scope_for_academic_year(school: str | None) -> list[str]:
 	"""
 	Return the school scope used for Academic Year visibility:
-	- Leaf school: nearest ancestor with Academic Year records (if any), else itself
+	- Leaf school: self if it has visible, unarchived Academic Years; otherwise nearest ancestor with visible, unarchived Academic Years
 	- Parent school: self + descendants
 	Cached by school for 5 minutes.
 	"""
@@ -197,7 +197,20 @@ def get_school_scope_for_academic_year(school: str | None) -> list[str]:
 		return cached
 
 	if is_leaf_school(school):
-		scope = get_first_ancestor_with_doc("Academic Year", school) or [school]
+		if frappe.db.exists(
+			"Academic Year",
+			{"school": school, "archived": 0, "visible_to_admission": 1},
+		):
+			scope = [school]
+		else:
+			scope = (
+				get_first_ancestor_with_doc(
+					"Academic Year",
+					school,
+					filters={"archived": 0, "visible_to_admission": 1},
+				)
+				or [school]
+			)
 	else:
 		scope = get_descendant_schools(school) or [school]
 
