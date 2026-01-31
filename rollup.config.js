@@ -5,10 +5,6 @@
  * ── Public-facing assets (heavy traffic) ──────────────────────────────
  * website.js  + website.css  → public/js/website.*.bundle.js + public/css/website.*.bundle.css
  *
- * ── Student-portal bundle  (authenticated traffic, cache-busted) ─────
- * index.js (+ imports)       → public/js/student_portal.<hash>.bundle.js
- * public/css/student_portal.<hash>.bundle.css
- *
  */
 
 const path = require('path');
@@ -18,29 +14,23 @@ const commonjs = require('@rollup/plugin-commonjs');
 const postcss = require('rollup-plugin-postcss');
 const terser = require('@rollup/plugin-terser');
 const { createHash } = require('crypto');
-const copy = require('rollup-plugin-copy');
 const tailwind = require('@tailwindcss/postcss');
-
-/* NEW: inline CSS @import (needed for bootstrap-icons.css) */
-const postcssImport = require('postcss-import');
 
 // Resolve the app directory regardless of whether rollup runs from bench root
 // (/apps/ifitwala_ed) or the package directory (/apps/ifitwala_ed/ifitwala_ed).
-const portalEntry = 'public/js/student_portal/index.js';
+const appEntry = 'public/js/ifitwala_ed.entry.js';
 const candidateAppDirs = [
 	__dirname,
 	path.join(__dirname, 'ifitwala_ed'),
 ];
 const appDir = candidateAppDirs.find((dir) =>
-	fs.existsSync(path.join(dir, portalEntry))
+	fs.existsSync(path.join(dir, appEntry))
 ) || candidateAppDirs[0];
 
 const fromApp = (...segments) => path.join(appDir, ...segments);
 const jsDest = fromApp('public/js');
 const cssDest = fromApp('public/css');
 const websiteSrc = fromApp('public/website');
-const portalSrc = fromApp('public/js/student_portal');
-const fontsDir = fromApp('public/fonts');
 
 function contentHash(file) {
 	return createHash('sha256')
@@ -49,7 +39,6 @@ function contentHash(file) {
 		.slice(0, 8);
 }
 
-const portalHash = contentHash(path.join(portalSrc, 'index.js'));
 const websiteJsHash = contentHash(path.join(websiteSrc, 'website.js'));
 const websiteCssHash = contentHash(path.join(websiteSrc, 'website.css'));
 
@@ -147,81 +136,6 @@ module.exports = [
 				writeBundle() {
 					const p = cssDest;
 					try { fs.copyFileSync(`${p}/website.${websiteCssHash}.bundle.css`, `${p}/website.bundle.css`); } catch {}
-				}
-			}
-		],
-	},
-
-	// ── Student-portal bundle (hashed) ──
-	{
-		input: `${portalSrc}/index.js`,
-		output: {
-			file: `${jsDest}/student_portal.${portalHash}.bundle.js`,
-			format: 'iife',
-			sourcemap: true,
-		},
-		plugins: [
-			postcss({
-				// FIX: Use simple filename. Rollup outputs this to `jsDest` (alongside the JS bundle).
-				extract: `student_portal.${portalHash}.bundle.css`,
-				minimize: true,
-				plugins: [
-					postcssImport,
-					require('autoprefixer')
-				],
-				preprocessor: async (content, id) => {
-					const sass = await import('sass');
-					const result = await sass.compileAsync(id);
-					return { code: result.css };
-				},
-			}),
-			copy({
-				targets: [
-					{
-						src: 'node_modules/bootstrap-icons/font/fonts/*',
-						dest: fontsDir
-					}
-				],
-				verbose: true,
-				hook: 'writeBundle'
-			}),
-			...basePlugins,
-			terser(),
-			{
-				// write stable (non-hashed) aliases so templates don't need to chase hashes
-				name: 'alias-stable-output',
-				writeBundle() {
-					const fs = require('fs');
-					const path = require('path');
-
-					// 1. Move the CSS file from jsDest to cssDest (because Extract: 'filename' puts it next to the bundle)
-					const generatedCssPath = path.join(jsDest, `student_portal.${portalHash}.bundle.css`);
-					const targetCssPath = path.join(cssDest, `student_portal.${portalHash}.bundle.css`);
-
-					if (fs.existsSync(generatedCssPath)) {
-						try {
-							fs.renameSync(generatedCssPath, targetCssPath);
-						} catch (e) {
-							console.error("Failed to move CSS file to public/css:", e);
-						}
-					}
-
-					// 2. Create stable aliases
-					try {
-						if (fs.existsSync(targetCssPath)) {
-							fs.copyFileSync(
-								targetCssPath,
-								path.join(cssDest, 'student_portal.bundle.css')
-							);
-						}
-
-						fs.copyFileSync(
-							`${jsDest}/student_portal.${portalHash}.bundle.js`,
-							`${jsDest}/student_portal.bundle.js`
-						);
-					} catch (e) {
-						console.error("Failed to create alias files:", e);
-					}
 				}
 			}
 		],
