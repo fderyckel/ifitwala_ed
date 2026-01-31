@@ -9,13 +9,15 @@
   "section_break_identity",
   "school",
   "route",
-  "full_route",
   "page_type",
-  "status",
   "seo_profile",
   "is_published",
+  "show_in_navigation",
+  "navigation_order",
   "column_break_meta",
   "title",
+  "status",
+  "full_route",
   "section_break_4b4n",
   "meta_description",
   "blocks"
@@ -101,12 +103,24 @@
   {
    "fieldname": "section_break_4b4n",
    "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_in_navigation",
+   "fieldtype": "Check",
+   "label": "Show in Navigation"
+  },
+  {
+   "default": "Null",
+   "fieldname": "navigation_order",
+   "fieldtype": "Int",
+   "label": "Navigation Order"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-29 14:31:27",
+ "modified": "2026-01-31 09:58:33.459063",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "School Website Page",
