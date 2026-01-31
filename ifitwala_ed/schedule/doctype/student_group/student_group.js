@@ -100,11 +100,6 @@ frappe.ui.form.on("Student Group", {
 	refresh: function (frm) {
 		// Add buttons
 		if (!frm.doc.__islocal) {
-			frm.add_custom_button(__('Open Student Cards'), () => {
-				frappe.route_options = { student_group: frm.doc.name };
-				frappe.set_route('student_group_cards');
-			});
-
 			if (!in_list(frappe.user_roles, "Student")) {
 				frm.add_custom_button(
 					__("Add a session"),

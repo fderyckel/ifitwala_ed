@@ -95,44 +95,6 @@ module.exports = [
 		],
 	},
 
-	// ── Bootstrap 5: Student Group + Attendance styles ──
-	{
-		input: fromApp("public/scss/student_group_cards.scss"),
-		output: {
-			file: `${cssDest}/student_group_cards.bundle.css`,
-			format: "es"
-		},
-		plugins: [
-			postcss({
-				extract: true,
-				minimize: true,
-				plugins: [
-					require("autoprefixer"),
-					require("cssnano")({ preset: ["default", { normalizeUnicode: false }] }),
-				],
-				preprocessor: async (content, id) => {
-					const sass = await import('sass');
-					const result = await sass.compileAsync(id);
-					return { code: result.css };
-				},
-			}),
-			copy({
-				targets: [
-					{
-						src: 'node_modules/bootstrap-icons/font/fonts/*',
-						dest: fontsDir
-					},
-					{
-						src: 'node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
-						dest: jsDest
-					}
-				],
-				verbose: true,
-				hook: 'buildEnd'
-			})
-		]
-	},
-
 	// ── Other desk pages CSS ──
 	{
 		input: fromApp('public/css/other_desk_pages.css'),
