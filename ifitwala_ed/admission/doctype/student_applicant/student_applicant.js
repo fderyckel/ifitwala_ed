@@ -2,6 +2,10 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Student Applicant", {
+	onload(frm) {
+		set_academic_year_query(frm);
+	},
+
 	refresh(frm) {
 		if (!frm.doc || frm.is_new()) {
 			return;
@@ -9,6 +13,10 @@ frappe.ui.form.on("Student Applicant", {
 		frm.trigger("setup_governed_image_upload");
 		render_review_sections(frm);
 		add_decision_actions(frm);
+	},
+
+	school(frm) {
+		set_academic_year_query(frm);
 	},
 
 	setup_governed_image_upload(frm) {
@@ -256,4 +264,24 @@ function add_decision_actions(frm) {
 			});
 		});
 	}
+}
+
+function set_academic_year_query(frm) {
+	if (!frm.doc.school) {
+		// Fail closed: no school, no academic year
+		frm.set_query('academic_year', () => {
+			return { filters: { name: ['=', '___invalid___'] } };
+		});
+		return;
+	}
+
+	frm.set_query('academic_year', () => {
+		return {
+			filters: [
+				['Academic Year', 'archived', '=', 0],
+				['Academic Year', 'visible_to_admission', '=', 1],
+				['Academic Year', 'school', 'in', get_school_scope(frm.doc.school)]
+			]
+		};
+	});
 }

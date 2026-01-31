@@ -61,6 +61,7 @@ class StudentApplicant(Document):
 		before = self.get_doc_before_save() if not self.is_new() else None
 		self._validate_institutional_anchor(before)
 		self._validate_inquiry_link(before)
+		self._validate_academic_year()
 		self._validate_student_link(before)
 		self._validate_applicant_user_link(before)
 		self._validate_application_status(before)
@@ -97,6 +98,33 @@ class StudentApplicant(Document):
 
 		if not previous and not getattr(self.flags, "from_inquiry_invite", False):
 			frappe.throw(_("Inquiry link can only be set via invite_to_apply."))
+
+	def _validate_academic_year(self):
+		if not self.academic_year or not self.school:
+			return
+
+		ay = frappe.db.get_value(
+			'Academic Year',
+			self.academic_year,
+			['archived', 'visible_to_admission', 'school'],
+			as_dict=True
+		)
+
+		if not ay:
+			frappe.throw(_('Invalid Academic Year'))
+
+		if ay.archived:
+			frappe.throw(_('This Academic Year is archived and cannot be used for admissions'))
+
+		if not ay.visible_to_admission:
+			frappe.throw(_('This Academic Year is not open for admissions'))
+
+		from ifitwala_ed.utilities.school_tree import get_school_and_descendants
+		valid_schools = get_school_and_descendants(self.school)
+
+		if ay.school not in valid_schools:
+			frappe.throw(_('This Academic Year is not valid for the selected school'))
+
 
 	def _validate_student_link(self, before):
 		if not self.student:
