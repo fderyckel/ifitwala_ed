@@ -122,8 +122,7 @@ class StudentApplicant(Document):
 		if not ay.visible_to_admission:
 			frappe.throw(_('This Academic Year is not open for admissions'))
 
-		from ifitwala_ed.utilities.school_tree import get_school_and_descendants
-		valid_schools = get_school_and_descendants(self.school)
+		valid_schools = get_school_scope_for_academic_year(self.school)
 
 		if ay.school not in valid_schools:
 			frappe.throw(_('This Academic Year is not valid for the selected school'))
