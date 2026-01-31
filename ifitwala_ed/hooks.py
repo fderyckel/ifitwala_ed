@@ -48,7 +48,10 @@ app_include_js = [
 # include js in page
 
 # include js in doctype views
-doctype_js = {"Contact": "public/js/contact.js"}
+doctype_js = {
+	"Contact": "public/js/contact.js",
+	"School Website Page Block": "school_site/doctype/school_website_page_block/school_website_page_block.js"
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
