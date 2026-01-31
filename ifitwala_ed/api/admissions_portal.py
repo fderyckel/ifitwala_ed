@@ -7,6 +7,7 @@ from frappe import _
 
 from ifitwala_ed.admission.admission_utils import ensure_admissions_permission
 from ifitwala_ed.admission import admissions_portal as admission_api
+from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
 
 
 ADMISSIONS_ROLE = "Admissions Applicant"
@@ -417,6 +418,11 @@ def get_applicant_policies(student_applicant: str | None = None):
 
 	if not organization:
 		return {"policies": []}
+
+	ensure_policy_applies_to_column(
+		caller="admissions_portal.get_applicant_policies",
+		throw=True,
+	)
 
 	cache = frappe.cache()
 	cache_key = f"admissions:policies:{organization}:{school or 'all'}"

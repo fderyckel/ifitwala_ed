@@ -58,3 +58,21 @@ def has_staff_role(user: str | None = None) -> bool:
 			ACADEMIC_STAFF_ROLE,
 		}
 	)
+
+
+def ensure_policy_applies_to_column(*, throw: bool = False, caller: str | None = None) -> dict:
+	if frappe.db.has_column("Institutional Policy", "applies_to"):
+		return {"ok": True}
+
+	debug_payload = {
+		"doctype": "Institutional Policy",
+		"missing_column": "applies_to",
+		"caller": caller,
+		"site": getattr(frappe.local, "site", None),
+	}
+	frappe.log_error(message=frappe.as_json(debug_payload), title="Policy schema mismatch")
+
+	message = _("Institutional Policy is missing the applies_to field. Run migrations or reload the DocType.")
+	if throw:
+		frappe.throw(message)
+	return {"ok": False, "message": message}

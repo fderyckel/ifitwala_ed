@@ -9,6 +9,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 from ifitwala_ed.admission.admission_utils import ensure_admissions_permission, ADMISSIONS_ROLES
+from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
 from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
 
 
@@ -483,6 +484,15 @@ class StudentApplicant(Document):
 		if not self.organization:
 			return {"ok": False, "missing": [], "required": []}
 
+		schema_check = ensure_policy_applies_to_column(caller="StudentApplicant.has_required_policies")
+		if not schema_check.get("ok"):
+			self.flags.policy_schema_error = schema_check.get("message")
+			return {
+				"ok": False,
+				"missing": [],
+				"required": [],
+			}
+
 		rows = frappe.db.sql(
 			"""
 			SELECT ip.name AS policy_name,
@@ -603,11 +613,15 @@ class StudentApplicant(Document):
 		ready = all([policies.get("ok"), documents.get("ok"), health.get("ok")])
 		issues = []
 		if not policies.get("ok"):
-			missing = policies.get("missing") or []
-			if missing:
-				issues.append(_("Missing policy acknowledgements: {0}.").format(", ".join(missing)))
+			policy_schema_error = getattr(self.flags, "policy_schema_error", None)
+			if policy_schema_error:
+				issues.append(policy_schema_error)
 			else:
-				issues.append(_("Missing required policy acknowledgements."))
+				missing = policies.get("missing") or []
+				if missing:
+					issues.append(_("Missing policy acknowledgements: {0}.").format(", ".join(missing)))
+				else:
+					issues.append(_("Missing required policy acknowledgements."))
 		if not health.get("ok"):
 			status = health.get("status") or "missing"
 			if status == "needs_follow_up":
