@@ -9,6 +9,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 from ifitwala_ed.admission.admission_utils import ensure_admissions_permission, ADMISSIONS_ROLES
+from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
 
 
 FAMILY_ROLES = {"Guardian"}
@@ -67,6 +68,7 @@ class StudentApplicant(Document):
 		self._validate_application_status(before)
 		self._validate_edit_permissions(before)
 		self._validate_attachment_guard()
+		self._validate_academic_year_intent()
 
 	# ---------------------------------------------------------------------
 	# Link immutability
@@ -278,6 +280,29 @@ class StudentApplicant(Document):
 			frappe.throw(
 				_("Only applicant_image can be attached directly to Student Applicant. Use Applicant Document for all other files.")
 			)
+
+	def _validate_academic_year_intent(self):
+		if not self.academic_year:
+			return
+		if not self.school:
+			frappe.throw(_("School is required before selecting an Academic Year."))
+
+		ay_row = frappe.db.get_value(
+			"Academic Year",
+			self.academic_year,
+			["archived", "visible_to_admission", "school"],
+			as_dict=True,
+		)
+		if not ay_row:
+			frappe.throw(_("Selected Academic Year does not exist."))
+		if ay_row.get("archived"):
+			frappe.throw(_("Selected Academic Year is archived."))
+		if not ay_row.get("visible_to_admission"):
+			frappe.throw(_("Selected Academic Year is not visible to admissions."))
+
+		scope = get_school_scope_for_academic_year(self.school)
+		if ay_row.get("school") not in scope:
+			frappe.throw(_("Selected Academic Year is outside the applicant's school scope."))
 
 	# ---------------------------------------------------------------------
 	# Lifecycle helpers
@@ -547,6 +572,35 @@ class StudentApplicant(Document):
 			"unapproved": unapproved,
 			"required": list(required_names.values()),
 		}
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def academic_year_intent_query(doctype, txt, searchfield, start, page_len, filters):
+	filters = filters or {}
+	school = filters.get("school")
+	if not school:
+		return []
+
+	scope = get_school_scope_for_academic_year(school)
+	if not scope:
+		return []
+
+	search_txt = f"%{txt or ''}%"
+	placeholders = ", ".join(["%s"] * len(scope))
+	return frappe.db.sql(
+		f"""
+		SELECT name
+		  FROM `tabAcademic Year`
+		 WHERE archived = 0
+		   AND visible_to_admission = 1
+		   AND school IN ({placeholders})
+		   AND name LIKE %s
+		 ORDER BY year_start_date DESC, name DESC
+		 LIMIT %s, %s
+		""",
+		[*scope, search_txt, start, page_len],
+	)
 
 	def health_review_complete(self):
 		status = frappe.db.get_value(

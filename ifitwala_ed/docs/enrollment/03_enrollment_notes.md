@@ -17,6 +17,9 @@ This is **not UI**, **not policy**, and **not marketing**.
 
 If code and this document ever disagree, **this document wins**.
 
+Related architecture:
+- `docs/enrollment/academic_year_architecture.md`
+
 ---
 
 ## 1. Core Definition (Non-Negotiable)
@@ -342,4 +345,3 @@ Enrollment is academically, legally, and politically sensitive.
 Ifitwala_Ed treats it accordingly.
 
 ---
-

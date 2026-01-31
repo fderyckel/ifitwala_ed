@@ -7,7 +7,7 @@ import frappe
 from frappe.utils.nestedset import get_ancestors_of
 from frappe.utils.nestedset import get_descendants_of
 
-CACHE_TTL = 300  # seconds
+CACHE_TTL = 600  # seconds
 
 class ParentRuleViolation(frappe.ValidationError):
     """Raised when a child record violates parent↔child inheritance rules."""
@@ -178,6 +178,31 @@ def get_first_ancestor_with_doc(doctype, school, filters=None):
         if frappe.db.exists(doctype, flt):
             return [sch]
     return []
+
+
+def get_school_scope_for_academic_year(school: str | None) -> list[str]:
+	"""
+	Return the school scope used for Academic Year visibility:
+	- Leaf school: nearest ancestor with Academic Year records (if any), else itself
+	- Parent school: self + descendants
+	Cached by school for 5 minutes.
+	"""
+	if not school:
+		return []
+
+	cache = frappe.cache()
+	key = f"ifitwala_ed:school_tree:ay_scope:{school}"
+	cached = cache.get_value(key)
+	if cached is not None:
+		return cached
+
+	if is_leaf_school(school):
+		scope = get_first_ancestor_with_doc("Academic Year", school) or [school]
+	else:
+		scope = get_descendant_schools(school) or [school]
+
+	cache.set_value(key, scope, expires_in_sec=CACHE_TTL)
+	return scope
 
 
 # Usage Scenarios:

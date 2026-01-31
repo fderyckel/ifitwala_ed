@@ -7,6 +7,8 @@
 
 > Purpose: lock scope/authority/anchoring rules for Admissions. Remove execution-phase scaffolding; keep design meaning.
 
+Related architecture:
+- `docs/enrollment/academic_year_architecture.md`
 
 ---
 

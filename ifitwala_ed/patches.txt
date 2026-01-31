@@ -8,3 +8,4 @@ ifitwala_ed.patches.v0_0.migrate_course_prerequisites
 ifitwala_ed.patches.v0_0.remove_legacy_web_pages
 ifitwala_ed.patches.rename_employee_status_field
 ifitwala_ed.patches.update_website_block_definitions
+ifitwala_ed.patches.set_end_of_year_checklist_defaults

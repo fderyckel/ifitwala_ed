@@ -1,3 +1,4 @@
+// ifitwala_ed/admission/doctype/student_applicant/student_applicant.js
 // Copyright (c) 2024, fdR and contributors
 // For license information, please see license.txt
 
@@ -7,6 +8,15 @@ frappe.ui.form.on("Student Applicant", {
 	},
 
 	refresh(frm) {
+		frm.set_query("academic_year", () => {
+			if (!frm.doc.school) {
+				return { filters: { name: "" } };
+			}
+			return {
+				query: "ifitwala_ed.admission.doctype.student_applicant.student_applicant.academic_year_intent_query",
+				filters: { school: frm.doc.school },
+			};
+		});
 		if (!frm.doc || frm.is_new()) {
 			return;
 		}
@@ -267,21 +277,12 @@ function add_decision_actions(frm) {
 }
 
 function set_academic_year_query(frm) {
-	if (!frm.doc.school) {
-		// Fail closed: no school, no academic year
-		frm.set_query('academic_year', () => {
-			return { filters: { name: ['=', '___invalid___'] } };
-		});
-		return;
-	}
-
-	frm.set_query('academic_year', () => {
+	frm.set_query("academic_year", () => {
 		return {
 			filters: [
-				['Academic Year', 'archived', '=', 0],
-				['Academic Year', 'visible_to_admission', '=', 1],
-				['Academic Year', 'school', 'in', get_school_scope(frm.doc.school)]
-			]
+				["Academic Year", "archived", "=", 0],
+				["Academic Year", "visible_to_admission", "=", 1],
+			],
 		};
 	});
 }

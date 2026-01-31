@@ -1,8 +1,4 @@
-Below is the proposed **third enrollment-related architecture document** (copy/paste into your repo as a new `.md` file).
-
----
-
-<!-- /docs/enrollment/academic_year_architecture.md -->
+<!-- ifitwala_ed/docs/enrollment/academic_year_architecture.md -->
 
 # Academic Year Architecture & Design — Ifitwala_Ed
 
