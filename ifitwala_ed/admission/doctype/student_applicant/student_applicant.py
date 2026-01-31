@@ -674,3 +674,25 @@ def academic_year_intent_query(doctype, txt, searchfield, start, page_len, filte
 		""",
 		[*scope, search_txt, start, page_len],
 	)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def school_by_organization_query(doctype, txt, searchfield, start, page_len, filters):
+	filters = filters or {}
+	organization = filters.get("organization")
+	if not organization:
+		return []
+
+	search_txt = f"%{txt or ''}%"
+	return frappe.db.sql(
+		"""
+		SELECT name
+		  FROM `tabSchool`
+		 WHERE organization = %s
+		   AND name LIKE %s
+		 ORDER BY name ASC
+		 LIMIT %s, %s
+		""",
+		(organization, search_txt, start, page_len),
+	)

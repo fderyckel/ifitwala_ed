@@ -7,6 +7,15 @@
 frappe.ui.form.on("Student Applicant", {
 
 	refresh(frm) {
+		frm.set_query("school", () => {
+			if (!frm.doc.organization) {
+				return { filters: { name: "" } };
+			}
+			return {
+				query: "ifitwala_ed.admission.doctype.student_applicant.student_applicant.school_by_organization_query",
+				filters: { organization: frm.doc.organization },
+			};
+		});
 		frm.set_query("academic_year", () => {
 			if (!frm.doc.school) {
 				return { filters: { name: "" } };
