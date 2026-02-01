@@ -193,6 +193,29 @@ For **Applicant Policy Acknowledgement**:
 
 ---
 
+## 5.1 Media / Image Consent (policy_key = `media_consent`)
+
+This policy is the **sole consent gate** for publishing student profile photos.
+
+**Required configuration**
+
+* `Institutional Policy.policy_key = media_consent`
+* `policy_category = Privacy & Data Protection`
+* `applies_to` includes **Applicant**
+* `Policy Version.is_active = 1`
+
+**Acknowledgement context (locked)**
+
+* `acknowledged_for = Applicant`
+* `context_doctype = Student Applicant`
+
+**Behavior**
+
+* If acknowledged → Student image may be made public at promotion
+* If not acknowledged → Student image stays private
+
+---
+
 ## 6. Explicit Prohibitions (non-negotiable)
 
 The system must **never**:
@@ -422,5 +445,4 @@ Key best-practice traits:
 > * version bump of this contract
 
 ---
-
 

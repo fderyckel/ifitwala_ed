@@ -519,6 +519,12 @@ Public exposure is allowed **only** when the applicant has acknowledged the medi
 Promotion may **copy** `Student Applicant.applicant_image` into `Student.student_image`
 as a new File record. The public version (if consented) must use a randomized suffix.
 
+**Operational activation**
+
+1) Create an **Institutional Policy** with `policy_key = media_consent`
+2) Add an **active Policy Version** with the consent text
+3) Ensure the Applicant/Guardian acknowledges it via the admissions flow
+
 # 2️⃣ SECOND PR BRIEF — Phase 4: GDPR Erasure Workflow
 
 This is the **next PR**, not mixed with the above.
