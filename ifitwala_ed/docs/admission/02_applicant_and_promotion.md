@@ -662,33 +662,87 @@ Create a **pre-student health container** without touching `Student Patient`.
 
 ## **PR-02.3 — Applicant Policy Acknowledgements (Versioned Consent)**
 
-### Scope
+### Phased plan (authoritative)
 
-Track **explicit, versioned consent** required for approval.
+#### Phase 1 — Lock and formalize current admissions behavior (NOW)
 
-### Changes
+**What the system does**
 
-* New DocType: `Applicant Policy Acknowledgement`
-* Linked to:
+* Admissions operates with **one accountable actor**: `Admissions Applicant`
+* All admissions actions (documents, images, policy acknowledgements, submission) are performed by:
 
-  * `Student Applicant`
-  * Policy version (static reference)
-* Fields:
+  * `Student Applicant.applicant_user`
 
-  * acknowledged_at
-  * acknowledged_by (admissions applicant)
-* Immutable once acknowledged
+**Rules to enforce**
 
-### Hard rules
+* Applicant policy acknowledgements:
 
-* ❌ No “checkbox only” logic
-* ❌ No implicit consent
-* ❌ No Student writes
+  * `acknowledged_for = Applicant`
+  * Actor **must be** the Admissions Applicant user
+* **Guardian role is NOT allowed** to acknowledge for Applicant
+* No guardian authority is inferred from `applicant_user`
 
-### Acceptance
+**Why**
 
-* Approval can later assert “policy X vY acknowledged”
-* Legal traceability guaranteed
+* There is no authoritative guardian→applicant relationship in the current schema
+* Allowing Guardian-for-Applicant would be legally indefensible
+* This keeps the system internally consistent and auditable
+
+**What Codex implements**
+
+* Enforce Applicant-only acknowledgements in code
+* Update docs to explicitly state this rule
+* Remove/clarify any wording implying guardian consent during admissions
+
+#### Phase 2 — Introduce explicit Applicant–Guardian relationship (FUTURE)
+
+**What is added**
+
+* New child table on `Student Applicant`:
+
+DocType: `Student Applicant Guardian`
+
+Fields:
+
+* `guardian` (Link → Guardian, required)
+* `relationship` (Father / Mother / Legal Guardian / Other)
+* `is_primary` (checkbox)
+* `can_consent` (checkbox, default = true)
+
+**What this enables**
+
+* Explicit, auditable guardian authority during admissions
+* Support for:
+
+  * Guardian-for-Applicant acknowledgements
+  * Multiple guardians
+  * Primary vs secondary guardians
+  * Consent eligibility flags
+
+**What Codex does NOT do yet**
+
+* Do not infer guardian authority
+* Do not backfill historical data
+* Do not change Phase-1 acknowledgements
+
+#### Phase 3 — Upgrade policy enforcement logic (AFTER Phase 2)
+
+**New capabilities**
+
+* Allow Guardian-for-Applicant acknowledgements **only if**:
+
+  * Guardian is linked via `Student Applicant Guardian`
+  * `can_consent = 1`
+* (Optional, per policy)
+
+  * Require all guardians to consent
+  * Require primary guardian consent only
+
+**Outcome**
+
+* Fully defensible consent chain
+* Explicit “who consented, for whom, in what capacity”
+* No retroactive ambiguity
 
 ---
 
@@ -1078,84 +1132,70 @@ This contract:
 
 ---
 
-# PR-02.3 — Applicant Policy Acknowledgement
+## Admissions Policy Acknowledgements — Authority Model
 
-**End-to-End Contract Walkthrough (Authoritative)**
+### Current Model (Phase 1)
 
-> Goal of PR-02.3:
->
-> **Allow admissions staff to see whether required policies have been explicitly acknowledged by admissions applicants for a Student Applicant — without enforcing, automating, or mutating lifecycle.**
+During admissions, Ifitwala uses a **single accountable actor model**.
 
-Nothing more.
+* Each `Student Applicant` is associated with one **Admissions Applicant user** (`applicant_user`)
+* This user:
 
----
+  * uploads documents and images
+  * acknowledges required policies
+  * submits the application
 
-## 1️⃣ Data Model Entry Point (What actually gets created)
+Policy acknowledgements during admissions are therefore:
 
-### Doctype used
+* **Acknowledged for:** Applicant
+* **Acknowledged by:** Admissions Applicant user only
 
-✅ **`Policy Acknowledgement`** (global system)
+The system does **not** currently record guardian relationships at the applicant stage.
+As a result:
 
-No admissions-specific doctype.
-No duplication.
-No shortcuts.
+* Guardian roles are **not permitted** to acknowledge policies for Applicants
+* Guardian authority is **not inferred** from `applicant_user`
+* This behavior is intentional and enforced server-side
 
----
+This model is valid for lightweight admissions flows and ensures internal consistency and auditability.
 
-### Fields populated (exact, no extras)
+### Known Limitation (Explicit)
 
-When an Applicant policy is acknowledged, the row **must** look like this:
+The system does not currently model:
 
-```text
-policy_version        → Policy Version (required)
-acknowledged_by       → Admissions Applicant (User)
-acknowledged_for      → "Applicant"
-context_doctype       → "Student Applicant"
-context_name          → <student_applicant.name>
-acknowledged_at       → system datetime
-```
+* guardian→applicant relationships
+* multiple guardians
+* guardian-specific consent authority during admissions
 
-❌ No `student` field
-❌ No `application_status` writes
-❌ No flags on Student Applicant
+This limitation is acknowledged and documented.
 
-**Leak check**
+### Future Model (Planned)
 
-> If any field is written to `Student Applicant` → ❌ leak
-> If acknowledgement is attached to Applicant directly → ❌ leak
+A future phase will introduce an explicit **Applicant–Guardian relationship model**, enabling:
 
----
+* guardian-for-applicant policy acknowledgements
+* multi-guardian consent logic
+* stronger legal attribution of consent
 
-## 2️⃣ Who can create an acknowledgement (authority check)
+Guardian acknowledgements for Applicants will only be enabled **after** this relationship model exists.
 
-### Actor
+### Post-Promotion (Student Stage)
 
-✅ **Admissions Applicant only**
+Once an Applicant is promoted to Student:
 
-Admissions staff:
+* Guardian relationships are explicit via `Student Guardian`
+* Guardians may acknowledge policies **for Students**, subject to:
 
-* ❌ cannot acknowledge
-* ❌ cannot impersonate
-* ❌ cannot backfill
+  * verified guardian–student linkage
+  * server-side authorization checks
 
-System Manager:
+### Summary
 
-* ⚠️ override only, logged
-
----
-
-### Controller enforcement (server truth)
-
-In `PolicyAcknowledgement.before_insert`:
-
-* `acknowledged_by == frappe.session.user` **must be true**
-* role must align with `acknowledged_for = Applicant`
-* `Student Applicant.applicant_user == frappe.session.user`
-
-**Leak check**
-
-> If client-side role checks are relied on → ❌ leak
-> If staff can POST acknowledgements → ❌ leak
+* Admissions consent = **Applicant user only**
+* Student consent = **Student or linked Guardian**
+* No implicit authority
+* No retroactive inference
+* All consent rules are explicit, auditable, and enforced server-side
 
 ---
 
@@ -1826,7 +1866,10 @@ policy_text → Text Editor
 
 ### Authority rules (LOCKED)
 
-* Admissions Applicant acknowledges **as themselves**
+* Admissions Applicant acknowledges Applicant policies **as themselves**
+* Students may acknowledge Student policies **as themselves**
+* Guardians may acknowledge Student policies **only if linked to the Student**
+* Guardians may acknowledge Guardian policies **only for themselves**
 * `acknowledged_by == frappe.session.user`
 * Staff **cannot** acknowledge on behalf
 

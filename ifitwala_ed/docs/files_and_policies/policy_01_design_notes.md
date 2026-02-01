@@ -182,15 +182,70 @@ Examples:
 
 ---
 
-## 5. Admissions-specific clarification (Phase 02)
+## 5. Admissions Policy Acknowledgements — Authority Model
 
-For **Applicant Policy Acknowledgement**:
+### Current Model (Phase 1)
 
-* Only **Admissions Applicants** acknowledge via the admissions portal
-* Context = `Student Applicant`
-* Admissions staff **cannot** acknowledge
-* Approval logic later may *require* acknowledgement
-  (but Phase 02 does **not** enforce)
+During admissions, Ifitwala uses a **single accountable actor model**.
+
+* Each `Student Applicant` is associated with one **Admissions Applicant user** (`applicant_user`)
+* This user:
+
+  * uploads documents and images
+  * acknowledges required policies
+  * submits the application
+
+Policy acknowledgements during admissions are therefore:
+
+* **Acknowledged for:** Applicant
+* **Acknowledged by:** Admissions Applicant user only
+
+The system does **not** currently record guardian relationships at the applicant stage.
+As a result:
+
+* Guardian roles are **not permitted** to acknowledge policies for Applicants
+* Guardian authority is **not inferred** from `applicant_user`
+* This behavior is intentional and enforced server-side
+
+This model is valid for lightweight admissions flows and ensures internal consistency and auditability.
+
+### Known Limitation (Explicit)
+
+The system does not currently model:
+
+* guardian→applicant relationships
+* multiple guardians
+* guardian-specific consent authority during admissions
+
+This limitation is acknowledged and documented.
+
+### Future Model (Planned)
+
+A future phase will introduce an explicit **Applicant–Guardian relationship model**, enabling:
+
+* guardian-for-applicant policy acknowledgements
+* multi-guardian consent logic
+* stronger legal attribution of consent
+
+Guardian acknowledgements for Applicants will only be enabled **after** this relationship model exists.
+
+### Post-Promotion (Student Stage)
+
+Once an Applicant is promoted to Student:
+
+* Guardian relationships are explicit via `Student Guardian`
+* Guardians may acknowledge policies **for Students**, subject to:
+
+  * verified guardian–student linkage
+  * server-side authorization checks
+
+### Summary
+
+* Admissions consent = **Applicant user only**
+* Student consent = **Student or linked Guardian**
+* No implicit authority
+* No retroactive inference
+* All consent rules are explicit, auditable, and enforced server-side
 
 ---
 
