@@ -543,6 +543,16 @@ This preserves:
 * GDPR erasure safety
 * legal defensibility
 
+**Applicant image exception (promotion copy only)**
+
+* `applicant_image` may be **copied** to `Student.student_image` during promotion
+* The copy is **private by default**
+* Public exposure requires an explicit Policy Acknowledgement:
+
+  * `policy_key = media_consent`
+  * `acknowledged_for = Applicant`
+  * `context_doctype = Student Applicant`
+
 ---
 
 #### 3. Folder semantics (normative)

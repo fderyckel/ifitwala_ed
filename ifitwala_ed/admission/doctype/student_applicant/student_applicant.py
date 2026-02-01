@@ -4,12 +4,18 @@
 
 # ifiwala_ed/admission/doctype/student_applicant/student_applicant.py
 
+import os
 import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 from ifitwala_ed.admission.admission_utils import ensure_admissions_permission, ADMISSIONS_ROLES
+from ifitwala_ed.governance.policy_utils import (
+	MEDIA_CONSENT_POLICY_KEY,
+	has_applicant_policy_acknowledgement,
+)
 from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
+from ifitwala_ed.utilities import file_dispatcher
 from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
 
 
@@ -424,12 +430,125 @@ class StudentApplicant(Document):
 		finally:
 			frappe.flags.from_applicant_promotion = prev_flag
 
+		file_doc = self._copy_applicant_image_to_student(student)
+		if file_doc and self._has_media_consent():
+			try:
+				student.student_image = file_doc.file_url
+				student.rename_student_image()
+			except Exception:
+				frappe.log_error(
+					frappe.get_traceback(),
+					"Applicant Image Publish Failed",
+				)
+
 		self.flags.from_promotion = True
 		self.student = student.name
 		self.save(ignore_permissions=True)
 		self._set_status("Promoted", "Applicant promoted")
 
 		return student.name
+
+	def _has_media_consent(self) -> bool:
+		return has_applicant_policy_acknowledgement(
+			policy_key=MEDIA_CONSENT_POLICY_KEY,
+			student_applicant=self.name,
+			organization=self.organization,
+			school=self.school,
+		)
+
+	def _copy_applicant_image_to_student(self, student):
+		if not self.applicant_image:
+			return None
+
+		file_row = frappe.db.get_value(
+			"File",
+			{
+				"file_url": self.applicant_image,
+				"attached_to_doctype": "Student Applicant",
+				"attached_to_name": self.name,
+			},
+			["name", "file_url", "file_name", "is_private"],
+			as_dict=True,
+		)
+		if not file_row:
+			frappe.log_error(
+				frappe.as_json(
+					{
+						"error": "applicant_image_file_missing",
+						"student_applicant": self.name,
+						"file_url": self.applicant_image,
+					},
+					indent=2,
+				),
+				"Applicant Image Copy Failed",
+			)
+			return None
+
+		content = self._read_file_bytes(file_row)
+		if not content:
+			frappe.log_error(
+				frappe.as_json(
+					{
+						"error": "applicant_image_missing_on_disk",
+						"student_applicant": self.name,
+						"file": file_row.get("name"),
+						"file_url": file_row.get("file_url"),
+					},
+					indent=2,
+				),
+				"Applicant Image Copy Failed",
+			)
+			return None
+
+		filename = file_row.get("file_name") or os.path.basename(file_row.get("file_url") or "applicant_image")
+		file_doc = file_dispatcher.create_and_classify_file(
+			file_kwargs={
+				"attached_to_doctype": "Student",
+				"attached_to_name": student.name,
+				"attached_to_field": "student_image",
+				"file_name": filename,
+				"content": content,
+				"is_private": 1,
+			},
+			classification={
+				"primary_subject_type": "Student",
+				"primary_subject_id": student.name,
+				"data_class": "identity_image",
+				"purpose": "student_profile_display",
+				"retention_policy": "until_school_exit_plus_6m",
+				"slot": "profile_image",
+				"organization": self.organization,
+				"school": self.school,
+				"upload_source": "Promotion",
+			},
+		)
+
+		frappe.db.set_value(
+			"Student",
+			student.name,
+			"student_image",
+			file_doc.file_url,
+			update_modified=False,
+		)
+		return file_doc
+
+	def _read_file_bytes(self, file_row):
+		file_url = (file_row.get("file_url") or "").strip()
+		if not file_url or file_url.startswith("http"):
+			return None
+
+		rel_path = file_url.lstrip("/")
+		if rel_path.startswith("private/") or rel_path.startswith("public/"):
+			abs_path = frappe.utils.get_site_path(rel_path)
+		else:
+			base = "private" if file_row.get("is_private") else "public"
+			abs_path = frappe.utils.get_site_path(base, rel_path)
+
+		if not os.path.exists(abs_path):
+			return None
+
+		with open(abs_path, "rb") as handle:
+			return handle.read()
 
 	# ---------------------------------------------------------------------
 	# System Manager override (terminal states only)

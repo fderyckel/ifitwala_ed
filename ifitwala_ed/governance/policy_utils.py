@@ -11,6 +11,7 @@ ACADEMIC_STAFF_ROLE = "Academic Staff"
 GUARDIAN_ROLE = "Guardian"
 STUDENT_ROLE = "Student"
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
+MEDIA_CONSENT_POLICY_KEY = "media_consent"
 
 
 def _user_roles(user: str | None = None) -> set[str]:
@@ -76,3 +77,68 @@ def ensure_policy_applies_to_column(*, throw: bool = False, caller: str | None =
 	if throw:
 		frappe.throw(message)
 	return {"ok": False, "message": message}
+
+
+def has_applicant_policy_acknowledgement(
+	*,
+	policy_key: str,
+	student_applicant: str,
+	organization: str | None = None,
+	school: str | None = None,
+) -> bool:
+	if not policy_key or not student_applicant:
+		return False
+
+	if not organization or not school:
+		row = frappe.db.get_value(
+			"Student Applicant",
+			student_applicant,
+			["organization", "school"],
+			as_dict=True,
+		)
+		if not row:
+			return False
+		organization = organization or row.get("organization")
+		school = school or row.get("school")
+
+	if not organization:
+		return False
+
+	schema_check = ensure_policy_applies_to_column(
+		caller="has_applicant_policy_acknowledgement",
+	)
+	if not schema_check.get("ok"):
+		return False
+
+	rows = frappe.db.sql(
+		"""
+		SELECT pv.name AS policy_version
+		  FROM `tabInstitutional Policy` ip
+		  JOIN `tabPolicy Version` pv
+		    ON pv.institutional_policy = ip.name
+		 WHERE ip.is_active = 1
+		   AND pv.is_active = 1
+		   AND ip.organization = %s
+		   AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
+		   AND ip.policy_key = %s
+		   AND ip.applies_to LIKE %s
+		""",
+		(organization, school, policy_key, "%Applicant%"),
+		as_dict=True,
+	)
+
+	if not rows:
+		return False
+
+	versions = [row["policy_version"] for row in rows]
+	return bool(
+		frappe.db.exists(
+			"Policy Acknowledgement",
+			{
+				"policy_version": ["in", versions],
+				"acknowledged_for": "Applicant",
+				"context_doctype": "Student Applicant",
+				"context_name": student_applicant,
+			},
+		)
+	)

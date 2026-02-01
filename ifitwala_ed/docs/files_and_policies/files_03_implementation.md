@@ -504,6 +504,21 @@ Each derivative is a **real File + File Classification** with:
 * Derivative generation is **idempotent** per source file
 * Employee derivatives are limited to the three sizes above (no hero)
 
+---
+
+## Student image privacy (consent-gated)
+
+Student profile images are **private by default**.
+
+Public exposure is allowed **only** when the applicant has acknowledged the media consent policy:
+
+* `policy_key = media_consent`
+* `acknowledged_for = Applicant`
+* `context_doctype = Student Applicant`
+
+Promotion may **copy** `Student Applicant.applicant_image` into `Student.student_image`
+as a new File record. The public version (if consented) must use a randomized suffix.
+
 # 2️⃣ SECOND PR BRIEF — Phase 4: GDPR Erasure Workflow
 
 This is the **next PR**, not mixed with the above.

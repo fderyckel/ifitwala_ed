@@ -59,6 +59,10 @@ from frappe.model.document import Document
 from frappe.desk.form.linked_with import get_linked_doctypes
 from frappe.contacts.address_and_contact import load_address_and_contact
 from ifitwala_ed.accounting.account_holder_utils import validate_account_holder_for_student
+from ifitwala_ed.governance.policy_utils import (
+	MEDIA_CONSENT_POLICY_KEY,
+	has_applicant_policy_acknowledgement,
+)
 
 
 class Student(Document):
@@ -198,9 +202,20 @@ class Student(Document):
 		else:
 			frappe.db.set_value("Student Patient", patient, "status", "Active")
 
+	def _has_media_consent(self) -> bool:
+		if not self.student_applicant:
+			return False
+		return has_applicant_policy_acknowledgement(
+			policy_key=MEDIA_CONSENT_POLICY_KEY,
+			student_applicant=self.student_applicant,
+		)
+
 	def rename_student_image(self):
 		# Only proceed if there's a student_image
 		if not self.student_image:
+			return
+
+		if not self._has_media_consent():
 			return
 
 		try:
@@ -218,7 +233,8 @@ class Student(Document):
 			# Check if it already has "STU-XXXX_XXXXXX.jpg" format
 			if (current_file_name.startswith(student_id + "_")
 				and len(current_file_name.split("_")[1].split(".")[0]) == 6
-				and current_file_name.split(".")[1].lower() in ["jpg", "jpeg", "png", "gif"]):
+				and current_file_name.split(".")[1].lower() in ["jpg", "jpeg", "png", "gif"]
+				and self.student_image.startswith("/files/student/")):
 				return
 
 			file_extension = os.path.splitext(self.student_image)[1]
@@ -265,25 +281,42 @@ class Student(Document):
 
 			# Rename the file on disk
 			new_file_path = os.path.join(get_files_path(), "student", expected_file_name)
-			old_file_path = os.path.join(get_files_path(), file_doc.file_name)
+			os.makedirs(os.path.dirname(new_file_path), exist_ok=True)
+
+			old_rel_path = (file_doc.file_url or "").lstrip("/")
+			if not old_rel_path:
+				frappe.throw(_("Original file URL is missing."))
+			old_file_path = frappe.utils.get_site_path(old_rel_path)
 
 			if os.path.exists(old_file_path):
 				os.rename(old_file_path, new_file_path)
-				file_doc.file_name = expected_file_name
-				file_doc.file_url = f"/files/student/{expected_file_name}"
-				file_doc.folder = "Home/student"
-				file_doc.is_private = 0
-				file_doc.save()
+				new_url = f"/files/student/{expected_file_name}"
+				frappe.db.set_value(
+					"File",
+					file_doc.name,
+					{
+						"file_name": expected_file_name,
+						"file_url": new_url,
+						"folder": "Home/student",
+						"is_private": 0,
+					},
+					update_modified=False,
+				)
 			else:
 				frappe.throw(_("Original file not found: {0}").format(old_file_path))
 
 			# Update doc.student_image to reflect new URL
-			self.student_image = file_doc.file_url
-			# Don't call self.save() or self.db_update() here—on_update is already saving
-
-			self.save()
+			frappe.db.set_value(
+				"Student",
+				self.name,
+				"student_image",
+				new_url,
+				update_modified=False,
+			)
+			self.student_image = new_url
 
 			from ifitwala_ed.utilities.image_utils import process_single_file
+			file_doc.file_url = new_url
 			process_single_file(file_doc)
 
 			frappe.msgprint(_("Image renamed to {0} and moved to /files/student/").format(expected_file_name))
