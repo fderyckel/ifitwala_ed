@@ -523,7 +523,7 @@ as a new File record. The public version (if consented) must use a randomized su
 
 1) Create an **Institutional Policy** with `policy_key = media_consent`
 2) Add an **active Policy Version** with the consent text
-3) Ensure the Applicant/Guardian acknowledges it via the admissions flow
+3) Ensure the Admissions Applicant acknowledges it via the admissions flow
 
 # 2️⃣ SECOND PR BRIEF — Phase 4: GDPR Erasure Workflow
 

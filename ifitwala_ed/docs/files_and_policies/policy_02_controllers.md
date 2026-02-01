@@ -191,10 +191,17 @@ Example rules:
 | ---------------- | --------------------------- |
 | Applicant        | Student Applicant           |
 | Student          | Student                     |
-| Guardian         | Student / Student Applicant |
+| Guardian         | Guardian                    |
 | Staff            | Employee                    |
 
 Hard-fail on mismatch.
+
+Role authority (server-enforced):
+
+* Applicant → Admissions Applicant only (must match `Student Applicant.applicant_user`)
+* Student → Student OR Guardian linked to that Student
+* Guardian → Guardian acknowledging for themselves only
+* Staff → Staff only
 
 > PowerSchool does this implicitly; we make it explicit.
 

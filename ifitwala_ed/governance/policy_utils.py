@@ -12,6 +12,17 @@ GUARDIAN_ROLE = "Guardian"
 STUDENT_ROLE = "Student"
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
 MEDIA_CONSENT_POLICY_KEY = "media_consent"
+POLICY_CATEGORIES = (
+	"Safeguarding",
+	"Privacy & Data Protection",
+	"Admissions",
+	"Academic",
+	"Conduct & Behaviour",
+	"Health & Safety",
+	"Operations",
+	"Handbooks",
+	"Employment",
+)
 
 
 def _user_roles(user: str | None = None) -> set[str]:

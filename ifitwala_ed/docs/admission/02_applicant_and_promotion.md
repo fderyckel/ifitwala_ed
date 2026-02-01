@@ -676,7 +676,7 @@ Track **explicit, versioned consent** required for approval.
 * Fields:
 
   * acknowledged_at
-  * acknowledged_by (guardian)
+  * acknowledged_by (admissions applicant)
 * Immutable once acknowledged
 
 ### Hard rules
@@ -1084,7 +1084,7 @@ This contract:
 
 > Goal of PR-02.3:
 >
-> **Allow admissions staff to see whether required policies have been explicitly acknowledged by guardians for a Student Applicant — without enforcing, automating, or mutating lifecycle.**
+> **Allow admissions staff to see whether required policies have been explicitly acknowledged by admissions applicants for a Student Applicant — without enforcing, automating, or mutating lifecycle.**
 
 Nothing more.
 
@@ -1108,7 +1108,7 @@ When an Applicant policy is acknowledged, the row **must** look like this:
 
 ```text
 policy_version        → Policy Version (required)
-acknowledged_by       → Guardian (User or Contact)
+acknowledged_by       → Admissions Applicant (User)
 acknowledged_for      → "Applicant"
 context_doctype       → "Student Applicant"
 context_name          → <student_applicant.name>
@@ -1130,7 +1130,7 @@ acknowledged_at       → system datetime
 
 ### Actor
 
-✅ **Guardian only**
+✅ **Admissions Applicant only**
 
 Admissions staff:
 
@@ -1150,6 +1150,7 @@ In `PolicyAcknowledgement.before_insert`:
 
 * `acknowledged_by == frappe.session.user` **must be true**
 * role must align with `acknowledged_for = Applicant`
+* `Student Applicant.applicant_user == frappe.session.user`
 
 **Leak check**
 
@@ -1313,7 +1314,7 @@ PR-02.3 is **acceptable only if**:
 
 * [ ] Uses `Policy Acknowledgement` exactly
 * [ ] Links to `Policy Version`, not Policy
-* [ ] Guardian-only acknowledgement enforced server-side
+* [ ] Admissions Applicant-only acknowledgement enforced server-side
 * [ ] Context bound to `Student Applicant`
 * [ ] Append-only, immutable
 * [ ] No lifecycle or promotion logic touched
@@ -1818,14 +1819,14 @@ policy_text → Text Editor
 | ------------------ | ---------------------------------------- |
 | `policy_version`   | Link → Policy Version                    |
 | `acknowledged_by`  | Link → User                              |
-| `acknowledged_for` | Select (`Applicant`, `Student`, `Staff`) |
+| `acknowledged_for` | Select (`Applicant`, `Student`, `Guardian`, `Staff`) |
 | `context_doctype`  | Data                                     |
 | `context_name`     | Data                                     |
 | `acknowledged_at`  | Datetime                                 |
 
 ### Authority rules (LOCKED)
 
-* Guardian acknowledges **as themselves**
+* Admissions Applicant acknowledges **as themselves**
 * `acknowledged_by == frappe.session.user`
 * Staff **cannot** acknowledge on behalf
 

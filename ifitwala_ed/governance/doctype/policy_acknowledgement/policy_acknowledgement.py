@@ -14,9 +14,10 @@ from ifitwala_ed.governance.policy_utils import (
 
 
 ACK_CONTEXT_MAP = {
-	"Applicant": "Student Applicant",
-	"Student": "Student",
-	"Staff": "Employee",
+	"Applicant": ("Student Applicant",),
+	"Student": ("Student",),
+	"Guardian": ("Guardian",),
+	"Staff": ("Employee",),
 }
 
 
@@ -66,8 +67,8 @@ class PolicyAcknowledgement(Document):
 		if not frappe.db.exists(self.context_doctype, self.context_name):
 			frappe.throw(_("Context record does not exist."))
 
-		expected = ACK_CONTEXT_MAP.get(self.acknowledged_for)
-		if expected and self.context_doctype != expected:
+		allowed_contexts = ACK_CONTEXT_MAP.get(self.acknowledged_for)
+		if allowed_contexts and self.context_doctype not in allowed_contexts:
 			frappe.throw(_("Context DocType does not match acknowledged_for."))
 
 		if self.acknowledged_for == "Applicant":
@@ -100,18 +101,70 @@ class PolicyAcknowledgement(Document):
 		if exists:
 			frappe.throw(_("This acknowledgement already exists for the same context."))
 
-	def _is_role_allowed_for_ack(self) -> bool:
+	def _guardian_name_for_user(self) -> str | None:
+		return frappe.db.get_value("Guardian", {"user": frappe.session.user}, "name")
+
+	def _guardian_linked_to_student(self, guardian_name: str, student_name: str) -> bool:
+		return bool(
+			frappe.db.exists(
+				"Student Guardian",
+				{
+					"parent": student_name,
+					"parenttype": "Student",
+					"parentfield": "guardians",
+					"guardian": guardian_name,
+				},
+			)
+		)
+
+	def _is_applicant_user_for_context(self) -> bool:
+		if self.context_doctype != "Student Applicant":
+			return False
+		applicant_user = frappe.db.get_value(
+			"Student Applicant", self.context_name, "applicant_user"
+		)
+		return bool(applicant_user and applicant_user == frappe.session.user)
+
+	def _role_validation_error(self) -> str | None:
 		if self.acknowledged_for == "Applicant":
-			return has_guardian_role() or has_admissions_applicant_role()
+			if not has_admissions_applicant_role():
+				return _("Only Admissions Applicants can acknowledge Applicant policies.")
+			if not self._is_applicant_user_for_context():
+				return _("You do not have permission to acknowledge policies for this Applicant.")
+			return None
 		if self.acknowledged_for == "Student":
-			return has_student_role()
+			if has_student_role():
+				return None
+			if has_guardian_role():
+				guardian_name = self._guardian_name_for_user()
+				if not guardian_name:
+					return _("Guardian account is not linked to a Guardian record.")
+				if not self._guardian_linked_to_student(guardian_name, self.context_name):
+					return _("You are not a guardian of this student.")
+				return None
+			return _("You do not have permission to acknowledge student policies.")
+		if self.acknowledged_for == "Guardian":
+			if not has_guardian_role():
+				return _("Only Guardians can acknowledge Guardian policies.")
+			guardian_name = self._guardian_name_for_user()
+			if not guardian_name:
+				return _("Guardian account is not linked to a Guardian record.")
+			if self.context_name != guardian_name:
+				return _("Guardians may only acknowledge policies for themselves.")
+			return None
 		if self.acknowledged_for == "Staff":
-			return has_staff_role()
-		return False
+			if has_staff_role():
+				return None
+			return _("Only Staff may acknowledge Staff policies.")
+		return _("Invalid acknowledgement context.")
+
+	def _is_role_allowed_for_ack(self) -> bool:
+		return self._role_validation_error() is None
 
 	def _validate_role_for_acknowledgement(self):
-		if self._is_role_allowed_for_ack():
+		error = self._role_validation_error()
+		if not error:
 			return
 		if is_system_manager():
 			return
-		frappe.throw(_("You do not have permission to acknowledge this policy."))
+		frappe.throw(error)

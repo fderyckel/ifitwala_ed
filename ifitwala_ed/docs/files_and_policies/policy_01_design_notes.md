@@ -28,7 +28,7 @@ These roles already exist conceptually in your system; this matrix assumes them.
 | **Academic Staff**     | Teachers, counselors                |
 | **Guardian**           | Parent / legal guardian             |
 | **Student**            | Enrolled student                    |
-| **Applicant / Family** | Pre-student (Applicant context)     |
+| **Admissions Applicant** | Pre-student (Applicant portal user) |
 
 > Visibility **≠ authority**.
 > This matrix only defines authority.
@@ -101,7 +101,8 @@ Override requires:
 
 | Actor                                      | Allowed   |
 | ------------------------------------------ | --------- |
-| Guardian (for Applicant / Student)         | ✅         |
+| Admissions Applicant (for Applicant)       | ✅         |
+| Guardian (for Student / Guardian)          | ✅         |
 | Student (if policy applies_to = Student)   | ✅         |
 | Staff (for themselves)                     | ✅         |
 | Staff acknowledging *for someone else*     | ❌         |
@@ -115,9 +116,9 @@ Override requires:
 
 ### Who may create acknowledgements (technical authority)
 
-| Role                       | Allowed          |
-| -------------------------- | ---------------- |
-| Guardian / Student / Staff | ✅ (self only)    |
+| Role                                           | Allowed          |
+| ---------------------------------------------- | ---------------- |
+| Admissions Applicant / Guardian / Student / Staff | ✅ (self only) |
 | Admissions Officer         | ❌                |
 | School Admin               | ❌                |
 | Org Admin                  | ❌                |
@@ -185,7 +186,7 @@ Examples:
 
 For **Applicant Policy Acknowledgement**:
 
-* Only **Guardians** acknowledge
+* Only **Admissions Applicants** acknowledge via the admissions portal
 * Context = `Student Applicant`
 * Admissions staff **cannot** acknowledge
 * Approval logic later may *require* acknowledgement
@@ -275,7 +276,7 @@ Institutional Policy
 | ----------------- | ------------------- | -------- | -------------------------------------------------------------- |
 | `policy_key`      | Data                | ✅        | Stable, machine identifier (immutable)                         |
 | `policy_title`    | Data                | ✅        | Human-readable                                                 |
-| `policy_category` | Select              | ✅        | Privacy / Safeguarding / Academic / Conduct / Handbook / Other |
+| `policy_category` | Select              | ✅        | Safeguarding / Privacy & Data Protection / Admissions / Academic / Conduct & Behaviour / Health & Safety / Operations / Handbooks / Employment |
 | `applies_to`      | MultiSelect         | ✅        | Applicant, Student, Guardian, Staff                            |
 | `organization`    | Link → Organization | ✅        | Immutable                                                      |
 | `school`          | Link → School       | ❌        | NULL = org-wide                                                |
@@ -445,4 +446,3 @@ Key best-practice traits:
 > * version bump of this contract
 
 ---
-

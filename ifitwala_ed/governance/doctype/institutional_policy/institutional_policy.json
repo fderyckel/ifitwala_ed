@@ -32,7 +32,7 @@
    "fieldname": "policy_category",
    "fieldtype": "Select",
    "label": "Policy Category",
-   "options": "Privacy\nSafeguarding\nAcademic\nConduct\nHandbook\nOther",
+   "options": "Safeguarding\nPrivacy & Data Protection\nAdmissions\nAcademic\nConduct & Behaviour\nHealth & Safety\nOperations\nHandbooks\nEmployment",
    "reqd": 1
   },
   {

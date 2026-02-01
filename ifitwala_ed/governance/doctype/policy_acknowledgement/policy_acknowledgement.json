@@ -32,7 +32,7 @@
    "fieldname": "acknowledged_for",
    "fieldtype": "Select",
    "label": "Acknowledged For",
-   "options": "Applicant\nStudent\nStaff",
+   "options": "Applicant\nStudent\nGuardian\nStaff",
    "reqd": 1
   },
   {

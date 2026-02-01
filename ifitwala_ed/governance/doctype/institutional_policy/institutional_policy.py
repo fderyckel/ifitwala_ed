@@ -3,12 +3,13 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from ifitwala_ed.governance.policy_utils import ensure_policy_admin
+from ifitwala_ed.governance.policy_utils import POLICY_CATEGORIES, ensure_policy_admin
 
 
 class InstitutionalPolicy(Document):
 	def before_insert(self):
 		ensure_policy_admin()
+		self._validate_policy_category()
 		if not self.organization:
 			frappe.throw(_("Organization is required."))
 		self._validate_unique_policy_key()
@@ -16,6 +17,7 @@ class InstitutionalPolicy(Document):
 
 	def before_save(self):
 		ensure_policy_admin()
+		self._validate_policy_category()
 		if self.is_new():
 			return
 		before = self.get_doc_before_save()
@@ -51,3 +53,9 @@ class InstitutionalPolicy(Document):
 		for field in ("policy_key", "organization", "school"):
 			if before.get(field) != self.get(field):
 				frappe.throw(_("{0} is immutable once set.").format(field.replace("_", " ").title()))
+
+	def _validate_policy_category(self):
+		if not self.policy_category or self.policy_category not in POLICY_CATEGORIES:
+			frappe.throw(
+				_("Policy Category must be one of: {0}.").format(", ".join(POLICY_CATEGORIES))
+			)
