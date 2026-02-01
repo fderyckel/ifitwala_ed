@@ -21,6 +21,8 @@
   "program_offering",
   "applicant_image",
   "application_status",
+  "guardians_section",
+  "guardians",
   "review_section",
   "review_snapshot",
   "interviews_section",
@@ -135,6 +137,17 @@
    "read_only": 1
   },
   {
+   "fieldname": "guardians_section",
+   "fieldtype": "Section Break",
+   "label": "Guardians"
+  },
+  {
+   "fieldname": "guardians",
+   "fieldtype": "Table",
+   "label": "Guardians",
+   "options": "Student Applicant Guardian"
+  },
+  {
    "fieldname": "review_section",
    "fieldtype": "Section Break",
    "label": "Review Snapshot"
@@ -193,7 +206,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-22 10:55:11.581314",
+ "modified": "2026-01-22 10:55:13",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",

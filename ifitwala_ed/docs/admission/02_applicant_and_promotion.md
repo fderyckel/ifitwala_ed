@@ -705,7 +705,7 @@ DocType: `Student Applicant Guardian`
 Fields:
 
 * `guardian` (Link → Guardian, required)
-* `relationship` (Father / Mother / Legal Guardian / Other)
+* `relationship` (Select, same options as `Student Guardian.relation`)
 * `is_primary` (checkbox)
 * `can_consent` (checkbox, default = true)
 
@@ -1159,7 +1159,7 @@ As a result:
 
 This model is valid for lightweight admissions flows and ensures internal consistency and auditability.
 
-### Known Limitation (Explicit)
+### Known Limitation (Phase 1)
 
 The system does not currently model:
 
@@ -1169,15 +1169,153 @@ The system does not currently model:
 
 This limitation is acknowledged and documented.
 
-### Future Model (Planned)
+### Phase 2 — Explicit Applicant–Guardian model (definition)
 
-A future phase will introduce an explicit **Applicant–Guardian relationship model**, enabling:
+Phase 2 introduces a **new, explicit relationship** between a `Student Applicant` and one or more `Guardian` records.
 
-* guardian-for-applicant policy acknowledgements
-* multi-guardian consent logic
-* stronger legal attribution of consent
+New child table on `Student Applicant`:
 
-Guardian acknowledgements for Applicants will only be enabled **after** this relationship model exists.
+DocType: `Student Applicant Guardian`
+
+Fields:
+
+* `guardian` (Link → Guardian, required)
+* `relationship` (Select, same options as `Student Guardian.relation`)
+* `is_primary` (checkbox)
+* `can_consent` (checkbox, default = true)
+
+This mirrors the existing Student ↔ Guardian model and removes all implicit assumptions about who is allowed to act during admissions.
+
+Phase 2 **does not** change behavior by itself. It only makes authority expressible and enforceable.
+
+### Phase 3 — Policy enforcement rules (after Phase 2)
+
+Phase 3 defines **who can acknowledge**, **for whom**, and **when a policy is considered satisfied**.
+
+#### 1) Actor eligibility rules (who may click “I agree”)
+
+##### 1.1 Applicant-stage acknowledgements (`context_doctype = Student Applicant`)
+
+**Policy is “for Applicant”**
+
+* `acknowledged_for = Applicant`
+* Allowed actor:
+
+  * **Admissions Applicant** user (as today)
+  * **Guardian user** only if:
+
+    * guardian is linked via `Student Applicant Guardian`
+    * `can_consent = 1`
+
+**Policy is “for Guardian”** (e.g., Parent Handbook)
+
+* `acknowledged_for = Guardian`
+* Allowed actor:
+
+  * Guardian user only if:
+
+    * acknowledging their own Guardian record (self)
+    * guardian is linked to the applicant (Applicant Guardian table)
+
+##### 1.2 Student-stage acknowledgements (`context_doctype = Student`)
+
+**Policy is “for Student”**
+
+* `acknowledged_for = Student`
+* Allowed actor:
+
+  * Student user (self), OR
+  * Guardian user only if:
+
+    * guardian is linked via `Student Guardian`
+    * `can_consent = 1` (if added on the student-side table later; otherwise link existence is sufficient)
+
+**Policy is “for Guardian”**
+
+* `acknowledged_for = Guardian`
+* Allowed actor:
+
+  * Guardian user acknowledging for self only
+
+#### 2) Completion rules (when a policy is considered “satisfied”)
+
+This must be explicit, configurable, and policy-driven.
+
+Add one field on **Institutional Policy** or **Policy Version**:
+
+`consent_mode` (Select)
+
+* `single_actor` (default)
+* `primary_guardian_only`
+* `all_eligible_guardians`
+
+**Definitions**
+
+* `single_actor`:
+
+  * One eligible acknowledgement is enough (Admissions Applicant OR any eligible guardian)
+* `primary_guardian_only`:
+
+  * Only the guardian row with `is_primary = 1` can satisfy it
+* `all_eligible_guardians`:
+
+  * All guardians linked to the applicant with `can_consent = 1` must acknowledge
+
+**Operational notes**
+
+* If `all_eligible_guardians` and there are zero eligible guardians linked, fail closed:
+
+  * show “Guardian links required” in readiness snapshot
+* If multiple guardians exist and none is marked primary, fail closed for `primary_guardian_only`
+
+#### 3) Versioning and re-acknowledgement rules
+
+* Only **active Policy Versions** are enforceable
+* When a new version becomes active:
+
+  * acknowledgement must be collected again (per version)
+* Old acknowledgements remain as evidence but do not satisfy new version requirements
+
+#### 4) Readiness + gating rules (how admissions uses it)
+
+##### Applicant submission gating
+
+Applicant can only move to **Submitted** (or equivalent) if:
+
+* All required policies for Applicant context are “satisfied” under `consent_mode`
+
+##### Admin approval/promotion gating
+
+Admin can only approve/promote if:
+
+* All required policies for Applicant are satisfied
+* (Optional) specific `media_consent` must be satisfied before publishing images
+
+Your existing review snapshot should surface:
+
+* missing policies
+* which guardians are missing acknowledgements (for `all_eligible_guardians`)
+* primary guardian not set (for `primary_guardian_only`)
+
+#### 5) Evidence and audit rules
+
+* Every acknowledgement record must store:
+
+  * `policy_version`
+  * `acknowledged_for`
+  * `acknowledged_by` (User)
+  * `context_doctype`, `context_name`
+  * timestamp (standard)
+* Never overwrite acknowledgements
+* Never “auto-consent” from a document upload
+
+#### 6) Minimal UX rules (Portal / Desk)
+
+* Portal shows the policy list with a clear “You are acknowledging for: X”
+* If consent_mode requires multiple guardians:
+
+  * portal shows “Waiting on: <names>” (or “another guardian”) without leaking private data across guardians unless both are authenticated and linked
+* Keep the action disabled when user is not eligible; don’t rely on error popups
 
 ### Post-Promotion (Student Stage)
 

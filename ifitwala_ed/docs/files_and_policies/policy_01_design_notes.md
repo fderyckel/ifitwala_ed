@@ -209,7 +209,7 @@ As a result:
 
 This model is valid for lightweight admissions flows and ensures internal consistency and auditability.
 
-### Known Limitation (Explicit)
+### Known Limitation (Phase 1)
 
 The system does not currently model:
 
@@ -219,15 +219,50 @@ The system does not currently model:
 
 This limitation is acknowledged and documented.
 
-### Future Model (Planned)
+### Phase 2 — Explicit Applicant–Guardian model (definition)
 
-A future phase will introduce an explicit **Applicant–Guardian relationship model**, enabling:
+Phase 2 introduces a **new, explicit relationship** between a `Student Applicant` and one or more `Guardian` records.
 
-* guardian-for-applicant policy acknowledgements
-* multi-guardian consent logic
-* stronger legal attribution of consent
+New child table on `Student Applicant`:
 
-Guardian acknowledgements for Applicants will only be enabled **after** this relationship model exists.
+DocType: `Student Applicant Guardian`
+
+Fields:
+
+* `guardian` (Link → Guardian, required)
+* `relationship` (Select, same options as `Student Guardian.relation`)
+* `is_primary` (checkbox)
+* `can_consent` (checkbox, default = true)
+
+This mirrors the existing Student ↔ Guardian model and removes all implicit assumptions about who is allowed to act during admissions.
+
+Phase 2 **does not** change behavior by itself. It only makes authority expressible and enforceable.
+
+### Phase 3 — Policy enforcement rules (after Phase 2)
+
+Phase 3 defines **who can acknowledge**, **for whom**, and **when a policy is considered satisfied**.
+
+#### Actor eligibility rules (summary)
+
+* Applicant-stage (`context_doctype = Student Applicant`)
+
+  * `acknowledged_for = Applicant` → Admissions Applicant user, or Guardian user linked via `Student Applicant Guardian` with `can_consent = 1`
+  * `acknowledged_for = Guardian` → Guardian user acknowledging for self only, and linked to the applicant
+
+* Student-stage (`context_doctype = Student`)
+
+  * `acknowledged_for = Student` → Student user, or Guardian user linked via `Student Guardian` (and `can_consent = 1` if added later)
+  * `acknowledged_for = Guardian` → Guardian user acknowledging for self only
+
+#### Completion rules (summary)
+
+Add one field on **Institutional Policy** or **Policy Version**:
+
+`consent_mode` (Select)
+
+* `single_actor` (default)
+* `primary_guardian_only`
+* `all_eligible_guardians`
 
 ### Post-Promotion (Student Stage)
 
