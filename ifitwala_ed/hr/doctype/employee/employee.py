@@ -653,11 +653,11 @@ class Employee(NestedSet):
 
 	def _can_manage_user_roles(self) -> bool:
 		"""
-		HR Manager / System Manager can enforce roles programmatically.
+		HR Manager / HR User / System Manager can enforce roles programmatically.
 		(This does NOT grant generic User write permissions in the UI.)
 		"""
 		roles = set(frappe.get_roles())
-		return bool(roles & {"HR Manager", "System Manager"}) or frappe.session.user == "Administrator"
+		return bool(roles & {"HR Manager", "HR User", "System Manager"}) or frappe.session.user == "Administrator"
 
 	def _ensure_user_has_role(self, user: str, role: str):
 		"""Add role to user if missing, using ignore_permissions to avoid User doctype access issues."""
@@ -674,18 +674,20 @@ class Employee(NestedSet):
 		u.save(ignore_permissions=True)
 
 	def _apply_designation_role(self):
-		if not self.user_id or not self.designation:
+		if not self.user_id:
 			return
 		if not self._can_manage_user_roles():
 			return
 
 		prev = self.get_doc_before_save()
-		if prev and prev.designation == self.designation:
+		designation_changed = (not prev) or ((prev.designation or "") != (self.designation or ""))
+		user_linked_now = (not prev) or (not prev.user_id and bool(self.user_id))
+		if not (designation_changed or user_linked_now):
 			return
 
-		role = frappe.db.get_value("Designation", self.designation, "default_role_profile")
-		if role:
-			self._ensure_user_has_role(self.user_id, role)
+		# Keep designation-driven roles aligned with the managed sync model.
+		from ifitwala_ed.hr.employee_access import sync_user_access_from_employee
+		sync_user_access_from_employee(self)
 
 	def _apply_approver_roles(self):
 		if not self._can_manage_user_roles():
