@@ -110,7 +110,7 @@ Phase-1 must NOT implement:
 
 **Purpose:** One call returns everything needed for Guardian Home zones.
 
-* **Whitelisted method:** `ifitwala_ed.portal.api.guardian_home.get_guardian_home_snapshot`
+* **Whitelisted method:** `ifitwala_ed.api.guardian_home.get_guardian_home_snapshot`
 
 * **HTTP:** `GET` or `POST` (read-only; either is fine, but be consistent with your SPA conventions)
 

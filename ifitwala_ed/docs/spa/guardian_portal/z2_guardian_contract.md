@@ -10,7 +10,7 @@ This document defines the **single payload** returned to render Guardian Home (p
 
 ### Server method (proposed)
 
-`ifitwala_ed.portal.guardian.api.get_guardian_home_snapshot`
+`ifitwala_ed.api.guardian_home.get_guardian_home_snapshot`
 
 **Request**
 
@@ -379,7 +379,7 @@ Define the **single canonical payload** used to render **Guardian Home**, enforc
 
 ### Server method
 
-`ifitwala_ed.portal.guardian.api.get_guardian_home_snapshot`
+`ifitwala_ed.api.guardian_home.get_guardian_home_snapshot`
 
 ### Request
 
@@ -605,6 +605,7 @@ export type PublishedResultItem = {
   task_outcome: string;
   title: string;
   published_on: string;
+  published_by?: string;
 
   score?: {
     value: number | string;
@@ -709,4 +710,3 @@ Guardian Home is compliant when:
 * No sibling comparison possible
 
 ---
-

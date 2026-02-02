@@ -55,7 +55,7 @@ Ship a Guardian Home that answers in <30 seconds:
 
 ### New whitelisted method
 
-`ifitwala_ed.portal.api.guardian_home.get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0)`
+`ifitwala_ed.api.guardian_home.get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0)`
 
 **Inputs**
 
@@ -93,7 +93,7 @@ Ship a Guardian Home that answers in <30 seconds:
 
 **Backend**
 
-* Create `ifitwala_ed/portal/api/guardian_home.py`
+* Create `ifitwala_ed/api/guardian_home.py`
 * Implement `get_guardian_home_snapshot(...)` returning correct empty structure (meta + zones + counts)
 * Implement guardian → linked student list resolution (server-side enforcement)
 
@@ -313,6 +313,7 @@ export type PublishedResultItem = {
   task_outcome: string
   title: string
   published_on: string
+  published_by?: string
   score?: { value: number | string; max?: number; label?: string }
   narrative?: string
 }
@@ -336,7 +337,7 @@ export type CommunicationItem = {
 
 ---
 
-# ifitwala_ed/portal/api/guardian_home.py (backend skeleton)
+# ifitwala_ed/api/guardian_home.py (backend skeleton)
 
 ```python
 import frappe

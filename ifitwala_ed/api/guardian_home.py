@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Tuple
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, getdate, now_datetime, strip_html
+from frappe.utils import add_days, get_datetime, getdate, now_datetime, strip_html
 from frappe.utils.caching import redis_cache
 
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
@@ -165,12 +165,28 @@ def _resolve_guardian_scope(user: str) -> Tuple[str, List[Dict[str, Any]]]:
 	if not guardian_name:
 		frappe.throw(_("This account is not linked to a Guardian record."), frappe.PermissionError)
 
-	link_rows = frappe.get_all(
+	student_guardian_rows = frappe.get_all(
 		"Student Guardian",
-		filters={"guardian": guardian_name},
+		filters={"guardian": guardian_name, "parenttype": "Student"},
 		fields=["parent"],
 	)
-	linked_students = sorted({row.get("parent") for row in link_rows if row.get("parent")})
+	guardian_student_rows = frappe.get_all(
+		"Guardian Student",
+		filters={"parent": guardian_name, "parenttype": "Guardian"},
+		fields=["student"],
+	)
+	linked_students = sorted(
+		{
+			row.get("parent")
+			for row in student_guardian_rows
+			if row.get("parent")
+		}
+		| {
+			row.get("student")
+			for row in guardian_student_rows
+			if row.get("student")
+		}
+	)
 	if not linked_students:
 		return guardian_name, []
 
@@ -299,14 +315,16 @@ def _build_task_bundle(
 		}
 
 	task_names = sorted({row.get("task") for row in deliveries if row.get("task")})
-	task_map = {
-		row["name"]: row
-		for row in frappe.get_all(
-			"Task",
-			filters={"name": ["in", task_names]},
-			fields=["name", "title", "task_type"],
-		)
-	}
+	task_map = {}
+	if task_names:
+		task_map = {
+			row["name"]: row
+			for row in frappe.get_all(
+				"Task",
+				filters={"name": ["in", task_names]},
+				fields=["name", "title", "task_type"],
+			)
+		}
 
 	delivery_names = [row.get("name") for row in deliveries if row.get("name")]
 	outcome_rows = frappe.get_all(
@@ -341,7 +359,14 @@ def _build_task_bundle(
 		delivery_name = delivery.get("name")
 		student_group = delivery.get("student_group")
 		due = _coerce_to_date(delivery.get("due_date"))
+		available_from = _coerce_to_date(delivery.get("available_from"))
+		lock_date = _coerce_to_date(delivery.get("lock_date"))
 		if not delivery_name or not student_group or not due:
+			continue
+		if available_from and available_from > due:
+			debug_warnings.append(
+				f"task_delivery_invalid_window: delivery={delivery_name}, available_from={available_from}, due_date={due}"
+			)
 			continue
 
 		task = task_map.get(delivery.get("task"), {})
@@ -354,7 +379,13 @@ def _build_task_bundle(
 				continue
 
 			outcome = outcome_lookup.get((student, delivery_name))
-			status = _resolve_chip_status(outcome=outcome, due=due, anchor=anchor)
+			status = _resolve_chip_status(
+				outcome=outcome,
+				due=due,
+				anchor=anchor,
+				available_from=available_from,
+				lock_date=lock_date,
+			)
 			chip = {
 				"task_delivery": delivery_name,
 				"title": title,
@@ -386,6 +417,7 @@ def _build_task_bundle(
 			"task_delivery",
 			"task",
 			"published_on",
+			"published_by",
 			"official_score",
 			"official_grade",
 			"official_feedback",
@@ -416,6 +448,7 @@ def _build_task_bundle(
 				"task_outcome": row.get("name"),
 				"title": title,
 				"published_on": published.isoformat() if isinstance(published, datetime) else str(published),
+				"published_by": row.get("published_by"),
 				"score": score,
 				"narrative": _plain_summary(row.get("official_feedback")),
 			}
@@ -436,7 +469,13 @@ def _build_task_bundle(
 	}
 
 
-def _resolve_chip_status(outcome: Dict[str, Any] | None, due: date, anchor: date) -> str:
+def _resolve_chip_status(
+	outcome: Dict[str, Any] | None,
+	due: date,
+	anchor: date,
+	available_from: date | None,
+	lock_date: date | None,
+) -> str:
 	if outcome:
 		grading_status = (outcome.get("grading_status") or "").strip()
 		submission_status = (outcome.get("submission_status") or "").strip()
@@ -445,7 +484,11 @@ def _resolve_chip_status(outcome: Dict[str, Any] | None, due: date, anchor: date
 		if submission_status in {"Submitted", "Late", "Resubmitted"}:
 			return "submitted"
 
+	if available_from and anchor < available_from:
+		return "assigned"
 	if due < anchor:
+		if lock_date and anchor <= lock_date:
+			return "assigned"
 		return "missing"
 	return "assigned"
 
@@ -523,6 +566,13 @@ def _build_family_timeline(
 		debug_warnings.append("family_timeline_empty_school_days")
 		return []
 
+	event_blocks_by_student_date = _build_school_event_blocks(
+		family_dates=family_dates,
+		children=children,
+		membership=membership,
+		debug_warnings=debug_warnings,
+	)
+
 	out: List[Dict[str, Any]] = []
 	for day in family_dates:
 		date_key = day.isoformat()
@@ -555,6 +605,7 @@ def _build_family_timeline(
 					if block:
 						blocks.append(block)
 
+			blocks.extend(event_blocks_by_student_date.get(student, {}).get(date_key, []))
 			blocks = _dedupe_blocks(sorted(blocks, key=lambda b: (b.get("start_time"), b.get("end_time"), b.get("title"))))
 			start_time = blocks[0]["start_time"] if blocks else ""
 			end_time = blocks[-1]["end_time"] if blocks else ""
@@ -582,6 +633,139 @@ def _build_family_timeline(
 				"children": children_timeline,
 			}
 		)
+
+	return out
+
+
+def _build_school_event_blocks(
+	family_dates: List[date],
+	children: List[Dict[str, Any]],
+	membership: Dict[str, set[str]],
+	debug_warnings: List[str],
+) -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
+	out: Dict[str, Dict[str, List[Dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
+	if not family_dates:
+		return out
+
+	start_date = min(family_dates)
+	end_date = max(family_dates)
+	date_keys = {d.isoformat() for d in family_dates}
+	students = [child.get("student") for child in children if child.get("student")]
+	if not students:
+		return out
+
+	student_school = {child.get("student"): (child.get("school") or "") for child in children if child.get("student")}
+	event_rows = frappe.db.sql(
+		"""
+		SELECT
+			name,
+			subject,
+			event_category,
+			school,
+			starts_on,
+			ends_on,
+			all_day,
+			location,
+			description
+		FROM `tabSchool Event`
+		WHERE docstatus < 2
+		  AND DATE(starts_on) <= %(end_date)s
+		  AND DATE(COALESCE(ends_on, starts_on)) >= %(start_date)s
+		ORDER BY starts_on asc, creation asc
+		""",
+		{"start_date": start_date, "end_date": end_date},
+		as_dict=True,
+	)
+	if not event_rows:
+		return out
+
+	event_names = [row.get("name") for row in event_rows if row.get("name")]
+	audience_rows = frappe.get_all(
+		"School Event Audience",
+		filters={"parent": ["in", event_names]},
+		fields=[
+			"parent",
+			"audience_type",
+			"student_group",
+			"include_guardians",
+			"include_students",
+		],
+	)
+	by_event: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+	for audience in audience_rows:
+		parent = audience.get("parent")
+		if parent:
+			by_event[parent].append(audience)
+
+	def event_students_for_row(event_row: Dict[str, Any], audience: Dict[str, Any]) -> set[str]:
+		audience_type = (audience.get("audience_type") or "").strip()
+		include_guardians = int(audience.get("include_guardians") or 0) == 1
+		event_school = (event_row.get("school") or "").strip()
+		eligible_students = set(students)
+		if event_school:
+			eligible_students = {s for s in eligible_students if student_school.get(s) == event_school}
+
+		if audience_type == "Whole School Community":
+			return eligible_students
+		if audience_type == "All Guardians":
+			return eligible_students
+		if audience_type == "All Students":
+			return eligible_students if include_guardians else set()
+		if audience_type == "Students in Student Group":
+			if not include_guardians:
+				return set()
+			group = audience.get("student_group")
+			if not group:
+				return set()
+			return {s for s in eligible_students if group in membership.get(s, set())}
+		return set()
+
+	for event_row in event_rows:
+		event_name = event_row.get("name")
+		if not event_name:
+			continue
+
+		start_dt = _coerce_to_datetime(event_row.get("starts_on"))
+		end_dt = _coerce_to_datetime(event_row.get("ends_on")) or start_dt
+		if not start_dt or not end_dt:
+			debug_warnings.append(f"school_event_invalid_datetime: event={event_name}")
+			continue
+		if end_dt < start_dt:
+			end_dt = start_dt
+
+		audiences = by_event.get(event_name, [])
+		if not audiences:
+			continue
+
+		matched_students: set[str] = set()
+		for audience in audiences:
+			matched_students |= event_students_for_row(event_row, audience)
+		if not matched_students:
+			continue
+
+		title = (event_row.get("subject") or _("School event")).strip()
+		subtitle = (event_row.get("location") or "").strip() or _plain_summary(event_row.get("description"), 80) or None
+		kind = _event_kind(event_row.get("event_category"))
+		all_day = int(event_row.get("all_day") or 0) == 1
+		range_start = start_dt.date()
+		range_end = end_dt.date()
+
+		current = range_start
+		while current <= range_end:
+			date_key = current.isoformat()
+			if date_key in date_keys:
+				start_time = "00:00" if all_day else _coerce_time(start_dt, "school_event.start", debug_warnings) or "00:00"
+				end_time = "23:59" if all_day else _coerce_time(end_dt, "school_event.end", debug_warnings) or "23:59"
+				block = {
+					"start_time": start_time,
+					"end_time": end_time,
+					"title": title,
+					"subtitle": subtitle,
+					"kind": kind,
+				}
+				for student in matched_students:
+					out[student][date_key].append(block)
+			current = add_days(current, 1)
 
 	return out
 
@@ -1106,6 +1290,21 @@ def _timeline_kind(block_type: str | None) -> str:
 	return "other"
 
 
+def _event_kind(event_category: str | None) -> str:
+	value = (event_category or "").strip().lower()
+	if not value:
+		return "other"
+	if "assembly" in value:
+		return "assembly"
+	if "recess" in value or "break" in value:
+		return "recess"
+	if any(token in value for token in ("activity", "sport", "club", "trip", "event")):
+		return "activity"
+	if any(token in value for token in ("class", "course", "lesson")):
+		return "course"
+	return "other"
+
+
 def _block_title_from_type(block_type: str | None) -> str:
 	value = (block_type or "Other").strip().lower()
 	if value == "activity":
@@ -1138,6 +1337,20 @@ def _coerce_to_date(value: Any) -> date | None:
 		return value.date()
 	try:
 		return getdate(value)
+	except Exception:
+		return None
+
+
+def _coerce_to_datetime(value: Any) -> datetime | None:
+	if value is None:
+		return None
+	if isinstance(value, datetime):
+		return value
+	if isinstance(value, date):
+		return datetime.combine(value, time.min)
+	try:
+		dt = get_datetime(value)
+		return dt if isinstance(dt, datetime) else None
 	except Exception:
 		return None
 

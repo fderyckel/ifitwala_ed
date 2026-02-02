@@ -183,6 +183,9 @@
 							<span v-else-if="item.type === 'student_log'">{{ item.summary }}</span>
 							<span v-else>{{ item.title }}</span>
 						</p>
+						<p v-if="item.type === 'task_result' && item.published_by" class="type-caption text-ink/60">
+							Published by {{ item.published_by }}
+						</p>
 					</li>
 				</ul>
 			</section>

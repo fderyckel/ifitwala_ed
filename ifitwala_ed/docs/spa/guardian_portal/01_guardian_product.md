@@ -466,7 +466,7 @@ Deliverable: 1–2 server endpoints that return **all Guardian Home data in one 
 
 **Where (example):**
 
-* `ifitwala_ed/portal/api/guardian_home.py` (or your canonical API location)
+* `ifitwala_ed/api/guardian_home.py` (or your canonical API location)
 
 ### Step 5 — Implement Guardian Home page as a Refresh Owner (UI wiring)
 

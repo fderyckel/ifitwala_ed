@@ -118,6 +118,7 @@ export type PublishedResultItem = {
 	task_outcome: string
 	title: string
 	published_on: string
+	published_by?: string | null
 	score?: { value: number | string; max?: number; label?: string }
 	narrative?: string
 }
@@ -137,4 +138,3 @@ export type CommunicationItem = {
 	title: string
 	is_unread: boolean
 }
-
