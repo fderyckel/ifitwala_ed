@@ -1,6 +1,8 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# ifitwala_ed/school_settings/doctype/term/term.py
+
 import frappe
 from frappe import _
 from frappe.utils import getdate, nowdate, cstr, get_link_to_form
@@ -13,11 +15,9 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools, is_leaf_sc
 class Term(Document):
 	# create automatically the name of the term.
 	def autoname(self):
-		ay_school = frappe.db.get_value("Academic Year", self.academic_year, "school")
-		abbr = frappe.db.get_value("School", ay_school, "abbr") or ay_school
+		# Do not imply ownership for global terms
 		self.name = f"{self.academic_year} {self.term_name}"
 		self.title = f"{self.term_name}"
-
 
 	def validate(self):
 		# first, we'll check that there are no other terms that are the same.
@@ -34,28 +34,47 @@ class Term(Document):
 		if self.term_start_date and self.term_end_date and getdate(self.term_start_date) > getdate(self.term_end_date):
 			frappe.throw(_("The start of the term has to be before its end. "))
 
-		year = frappe.db.get_value("Academic Year", self.academic_year, ["year_start_date", "year_end_date"], as_dict=True)
+		year = frappe.db.get_value(
+			"Academic Year",
+			self.academic_year,
+			["year_start_date", "year_end_date"],
+			as_dict=True
+		)
+
 		# start of term can not be before start of academic year
 		if self.term_start_date and getdate(year.year_start_date) and getdate(self.term_start_date) < getdate(year.year_start_date):
-			frappe.throw(_("The start of the term cannot be before the start of the linked academic year. The start of the academic year {0} has been set to {1}.  Please adjust the dates").format(self.academic_year, year.year_start_date))
+			frappe.throw(
+				_("The start of the term cannot be before the start of the linked academic year. "
+				  "The start of the academic year {0} has been set to {1}.  Please adjust the dates")
+				.format(self.academic_year, year.year_start_date)
+			)
 
 		# end of term can not be after end of academic year
 		if self.term_end_date and getdate(year.year_end_date) and getdate(self.term_end_date) > getdate(year.year_end_date):
-			frappe.throw(_("The end of the term cannot be after the end of the linked academic year.  The end of the academic year {0} has been set to {1}. Please adjust the dates.").format(self.academic_year, year.year_end_date))
+			frappe.throw(
+				_("The end of the term cannot be after the end of the linked academic year.  "
+				  "The end of the academic year {0} has been set to {1}. Please adjust the dates.")
+				.format(self.academic_year, year.year_end_date)
+			)
 
 	def on_update(self):
+		# Global terms are templates only → no operational side effects
+		if not self.school:
+			return
+
 		if self.term_start_date and self.term_end_date:
 			self.create_calendar_events()
 
 	def _sync_school_with_ay(self):
 		ay_school = frappe.db.get_value("Academic Year", self.academic_year, "school")
 
-		# 1 ▸ If Term.school is blank → inherit from AY for clarity
+		# Option B:
+		# - Global terms (school is None) remain templates
+		# - No auto-inheritance from Academic Year
 		if not self.school:
-			self.school = ay_school
 			return
 
-		# 2 ▸ If set, it MUST be AY.school itself OR one of its descendants
+		# If set, it MUST be AY.school itself OR one of its descendants
 		ancestors = [self.school] + get_ancestors_of("School", self.school)
 		if ay_school not in ancestors:
 			frappe.throw(
@@ -95,63 +114,87 @@ class Term(Document):
 
 		if query:
 			frappe.throw(
-				_("A term with this academic year {0} and this name {1} already exists. Please adjust the name if necessary.").format(
-					self.academic_year, self.term_name
-				)
+				_("A term with this academic year {0} and this name {1} already exists. "
+				  "Please adjust the name if necessary.")
+				.format(self.academic_year, self.term_name)
 			)
 
 	def create_calendar_events(self):
+		# Safety: only school-scoped terms may create events
+		if not self.school:
+			return
+
+		# Update existing events (dates only)
 		if self.at_start:
-			start_at = frappe.get_doc("School Event", self.at_start)
-			if getdate(start_at.starts_on) != getdate(self.term_start_date):
-				start_at.db_set("starts_on", self.term_start_date)
-				start_at.db_set("ends_on", self.term_start_date)
-				frappe.msgprint(_("Date for the start of the term {0} has been updated on the School Event Calendar {1}").format(self.term_start_date, get_link_to_form("School Event", start_at.name)))
+			start_evt = frappe.get_doc("School Event", self.at_start)
+			if getdate(start_evt.starts_on) != getdate(self.term_start_date):
+				start_evt.db_set("starts_on", self.term_start_date)
+				start_evt.db_set("ends_on", self.term_start_date)
+				frappe.msgprint(
+					_("Start of term date updated on School Event {0}")
+					.format(get_link_to_form("School Event", start_evt.name))
+				)
 
 		if self.at_end:
-			end_at = frappe.get_doc("School Event", self.at_end)
-			if getdate(end_at.ends_on) != getdate(self.term_end_date):
-				end_at.db_set("starts_on", self.term_end_date)
-				end_at.db_set("ends_on", self.term_end_date)
-				frappe.msgprint(_("Date for the end of the term {0} has been updated on the School Event Calendar {1}").format(self.term_end_date, get_link_to_form("School Event", end_at.name)))
+			end_evt = frappe.get_doc("School Event", self.at_end)
+			if getdate(end_evt.ends_on) != getdate(self.term_end_date):
+				end_evt.db_set("starts_on", self.term_end_date)
+				end_evt.db_set("ends_on", self.term_end_date)
+				frappe.msgprint(
+					_("End of term date updated on School Event {0}")
+					.format(get_link_to_form("School Event", end_evt.name))
+				)
 
-		if not self.at_start:
-			start_term = frappe.get_doc({
+		# Create missing events (MUST set school + audience)
+		if not self.at_start and self.term_start_date:
+			start_evt = frappe.get_doc({
 				"doctype": "School Event",
 				"owner": frappe.session.user,
-				"subject": "Start of the " + cstr(self.name) + " Academic Term",
+				"school": self.school,
+				"subject": _("Start of {0}").format(self.term_name),
 				"starts_on": getdate(self.term_start_date),
 				"ends_on": getdate(self.term_start_date),
-				"school": self.school if self.school else None,
 				"event_category": "Other",
-				"event_type": "Public",
-				"all_day": "1",
-				"color": "#7575ff",
+				"all_day": 1,
 				"reference_type": "Term",
-				"reference_name": self.name
+				"reference_name": self.name,
+				"audience": [
+					{"audience_type": "Whole School Community"}
+				],
 			})
-			start_term.insert()
-			self.db_set("at_start", start_term.name)
-			frappe.msgprint(_("Date for the start of the term {0} has been created on the School Event Calendar {1}").format(self.term_start_date, get_link_to_form("School Event", start_term.name)))
+			start_evt.flags.ignore_audience_permissions = True
+			start_evt.insert(ignore_permissions=True)
 
-		if not self.at_end:
-			end_term = frappe.get_doc({
+			self.db_set("at_start", start_evt.name)
+			frappe.msgprint(
+				_("Start of term event created: {0}")
+				.format(get_link_to_form("School Event", start_evt.name))
+			)
+
+		if not self.at_end and self.term_end_date:
+			end_evt = frappe.get_doc({
 				"doctype": "School Event",
 				"owner": frappe.session.user,
-				"subject": "End of the " + cstr(self.name) + " Academic Term",
+				"school": self.school,
+				"subject": _("End of {0}").format(self.term_name),
 				"starts_on": getdate(self.term_end_date),
 				"ends_on": getdate(self.term_end_date),
-				"school": self.school if self.school else None,
 				"event_category": "Other",
-				"event_type": "Public",
-				"all_day": "1",
-				"color": "#7575ff",
+				"all_day": 1,
 				"reference_type": "Term",
-				"reference_name": self.name
+				"reference_name": self.name,
+				"audience": [
+					{"audience_type": "Whole School Community"}
+				],
 			})
-			end_term.insert()
-			self.db_set("at_end", end_term.name)
-			frappe.msgprint(_("Date for the end of the term {0} has been created on the School Event Calendar {1}").format(self.term_end_date, get_link_to_form("School Event", end_term.name)))
+			end_evt.flags.ignore_audience_permissions = True
+			end_evt.insert(ignore_permissions=True)
+
+			self.db_set("at_end", end_evt.name)
+			frappe.msgprint(
+				_("End of term event created: {0}")
+				.format(get_link_to_form("School Event", end_evt.name))
+			)
 
 
 def get_schools_per_academic_year_for_terms(user_school):
@@ -175,26 +218,59 @@ def get_schools_per_academic_year_for_terms(user_school):
 
 	return list(pairs)
 
-def get_current_term(academic_year: str) -> frappe._dict | None:
+def get_current_term(school: str, academic_year: str) -> frappe._dict | None:
 	"""
-	Returns the current active Term for the given academic_year
-	(based on today's date falling between term_start_date and term_end_date).
-	Returns a frappe._dict with term fields or None if no match.
+	Pattern B compliant.
+
+	Return the current active Term for a given (school, academic_year),
+	resolved EXCLUSIVELY via the School Calendar.
+
+	- No implicit inheritance
+	- No global term activation
+	- Calendar is the authority
 	"""
+
+	if not school or not academic_year:
+		return None
+
 	today = getdate(nowdate())
 
-	term = frappe.db.get_value(
-		"Term",
+	# 1 ▸ find the school calendar (must exist explicitly)
+	calendar = frappe.db.get_value(
+		"School Calendar",
 		{
+			"school": school,
 			"academic_year": academic_year,
-			"term_start_date": ["<=", today],
-			"term_end_date": [">=", today],
+			"docstatus": ["<", 2],
 		},
-		["name", "term_start_date", "term_end_date"],
+		"name",
+	)
+
+	if not calendar:
+		return None
+
+	# 2 ▸ resolve active term ONLY from calendar terms
+	term = frappe.db.get_value(
+		"School Calendar Term",
+		{
+			"parent": calendar,
+			"parenttype": "School Calendar",
+			"start": ["<=", today],
+			"end": [">=", today],
+		},
+		["term", "start", "end"],
 		as_dict=True,
 	)
 
-	return term
+	if not term:
+		return None
+
+	return {
+		"name": term.term,
+		"term_start_date": term.start,
+		"term_end_date": term.end,
+	}
+
 
 def get_permission_query_conditions(user):
 	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
@@ -220,7 +296,6 @@ def get_permission_query_conditions(user):
 			return "1=0"
 		schools_list = "', '".join(schools)
 		return f"`tabTerm`.`school` IN ('{schools_list}')"
-
 
 def has_permission(doc, ptype=None, user=None):
 	if not user:

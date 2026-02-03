@@ -96,6 +96,36 @@ frappe.ui.form.on("Program", {
 		_update_remaining_weight_badge(frm);
 	},
 
+	refresh: frappe.utils.debounce(async (frm) => {
+		if (!frm.dashboard || !frm.dashboard.set_headline) return;
+
+		const warnings = [];
+		if (frm.doc.is_published && frm.doc.archive) {
+			warnings.push(__("Program is archived and cannot be published."));
+		}
+		if (frm.doc.is_published && !frm.doc.program_slug) {
+			warnings.push(__("Program slug is required to publish."));
+		}
+
+		if (frm.doc.is_published && !frm.doc.archive) {
+			const profiles = await frappe.db.get_list("Program Website Profile", {
+				filters: { program: frm.doc.name, status: "Published" },
+				fields: ["name"],
+				limit: 1
+			});
+			if (!profiles || profiles.length === 0) {
+				warnings.push(__("Program is published but has no published Website Profile."));
+			}
+		}
+
+		if (warnings.length) {
+			const html = warnings.map((msg) => `• ${frappe.utils.escape_html(msg)}`).join("<br>");
+			frm.dashboard.set_headline(`<span class="text-warning">${html}</span>`);
+		} else {
+			frm.dashboard.set_headline("");
+		}
+	}, 300),
+
 	before_save(frm) {
 		// ALLOW multiple schemes (points/binary/criteria/feedback)
 		// Only guard weights if Points is ON.

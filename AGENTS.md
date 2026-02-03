@@ -438,6 +438,15 @@ Permissions must be enforced **server-side**.
   * folder case-sensitivity
 * Sync images with linked User / Contact when required
 
+### 13.1 File Governance (Non-Negotiable)
+
+* **Dispatcher-only**: create files via `create_and_classify_file(...)` (or a governed API); no direct `File.insert()` in business flows.
+* **Classification required**: a `File` without `File Classification` is a bug; derivatives must also be classified with `source_file`.
+* **Atomic routing**: only update `file_url` after verifying the file exists at the destination.
+* **No URL guessing in UI**: use canonical URLs returned by server/classification, then fallback safely.
+* **Slots are semantics**: use explicit slots for derivatives (e.g., `profile_image_thumb`) and keep them deterministic.
+* **Docs are authority**: follow `ifitwala_ed/docs/files_and_policies/*.md` for governance rules and allowed purposes/data classes.
+
 ---
 
 ## 14. Analytics & Reporting Rules

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from typing import Dict, Any, Optional, Tuple
@@ -19,6 +20,44 @@ from frappe import _
 def slugify(text: str) -> str:
 	"""Lowercase, replace non-alphanums with '_', strip extra."""
 	return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
+
+
+def calculate_hash(file_doc) -> Optional[str]:
+	"""
+	Return SHA-256 hash for the File's stored content.
+
+	Policy (authoritative):
+	- Hashing is best-effort.
+	- Public / URL-based or not-yet-materialized files must NOT block saves.
+	- Return None when hash cannot be computed yet.
+	"""
+	if not file_doc:
+		frappe.throw(_("File is required for hash computation."))
+
+	file_url = (file_doc.file_url or "").strip()
+	if not file_url:
+		return None
+
+	# Remote URLs are not hashable here (no disk access)
+	if file_url.startswith("http"):
+		return None
+
+	rel_path = file_url.lstrip("/")
+	abs_path = frappe.utils.get_site_path(rel_path)
+
+	# Disk file may not exist at save-time (Attach Image timing, public files, etc.)
+	if not os.path.exists(abs_path):
+		frappe.logger().info(
+			f"[file_management] File not on disk yet; hash deferred: file={file_doc.name} url={file_url}"
+		)
+		return None
+
+	digest = hashlib.sha256()
+	with open(abs_path, "rb") as handle:
+		for chunk in iter(lambda: handle.read(8192), b""):
+			digest.update(chunk)
+
+	return digest.hexdigest()
 
 
 def get_settings():
@@ -45,21 +84,34 @@ def ensure_folder(path: str) -> str:
 	if not path.startswith("Home/"):
 		frappe.throw(_("Folder path must start with 'Home/' (got: {0})").format(path))
 
+	# Normalize accidental double-home paths like "Home/Home" or "Home/Home/..."
+	while path.startswith("Home/Home"):
+		path = "Home" + path[len("Home/Home"):]
+		if path == "Home":
+			path = "Home/"
+		if not path.startswith("Home/"):
+			path = "Home/" + path.lstrip("/")
+
 	parts = path.split("/")
 	current = "Home"
 
 	# ensure root Home exists
-	if not frappe.db.exists("File", {"file_name": "Home", "is_folder": 1, "folder": ""}):
+	if not frappe.db.exists("File", "Home"):
 		frappe.get_doc(
-			{"doctype": "File", "file_name": "Home", "is_folder": 1, "folder": ""}
-		).insert(ignore_permissions=True)
+			{"doctype": "File", "name": "Home", "file_name": "Home", "is_folder": 1, "folder": ""}
+		).insert(ignore_permissions=True, ignore_if_duplicate=True)
 
 	for part in parts[1:]:
+		if part == "Home":
+			continue
 		next_folder = f"{current}/{part}"
+		if frappe.db.exists("File", next_folder):
+			current = next_folder
+			continue
 		if not frappe.db.exists("File", {"file_name": part, "is_folder": 1, "folder": current}):
 			frappe.get_doc(
 				{"doctype": "File", "file_name": part, "is_folder": 1, "folder": current}
-			).insert(ignore_permissions=True)
+			).insert(ignore_permissions=True, ignore_if_duplicate=True)
 		current = next_folder
 
 	return current  # e.g. 'Home/Admissions/Applicant/SA-2025-0001'
@@ -72,6 +124,54 @@ def _get_parent_doc(file_doc) -> Optional[frappe.model.document.Document]:
 	if not frappe.db.exists(file_doc.attached_to_doctype, file_doc.attached_to_name):
 		return None
 	return frappe.get_doc(file_doc.attached_to_doctype, file_doc.attached_to_name)
+
+
+def validate_admissions_attachment(doc, method: Optional[str] = None):
+	"""Block direct attachments on Student Applicant except applicant_image."""
+	if getattr(doc, "is_folder", 0):
+		return
+	if not doc.is_new():
+		return
+
+	if _is_governed_upload(doc):
+		return
+
+	# Hard gate: governed doctypes must use dispatcher uploads.
+	if doc.attached_to_doctype in {"Employee", "Student", "Student Applicant", "Task Submission"}:
+		action_map = {
+			("Employee", "employee_image"): _("Upload Employee Image"),
+			("Student", "student_image"): _("Upload Student Image"),
+			("Student Applicant", "applicant_image"): _("Upload Applicant Image"),
+		}
+		action = action_map.get((doc.attached_to_doctype, doc.attached_to_field))
+		if doc.attached_to_doctype == "Task Submission":
+			action = _("Upload Submission Attachment")
+		if not action:
+			action = _("the governed upload action")
+
+		frappe.throw(
+			_("Governed upload required for {0}. Use {1}.")
+			.format(doc.attached_to_doctype, action)
+		)
+
+	if doc.attached_to_doctype != "Student Applicant":
+		return
+	if doc.attached_to_field == "applicant_image":
+		return
+	frappe.throw(
+		_("Admissions files must be attached to Applicant Document (only applicant_image is allowed on Student Applicant).")
+	)
+
+
+def _is_governed_upload(file_doc) -> bool:
+	if getattr(file_doc.flags, "governed_upload", False):
+		return True
+
+	method = (frappe.form_dict or {}).get("method")
+	if method and method.startswith("ifitwala_ed.utilities.governed_uploads."):
+		return True
+
+	return False
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -201,9 +301,11 @@ def _generic_context_from_doctype(parent, file_doc, settings) -> Dict[str, Any]:
 			logical_key = f"portfolio_{parent.name}"
 		else:  # Task Submission
 			task_name = getattr(parent, "task", parent.name)
-			sub = f"{student}/Tasks/Task-{task_name}"
-			file_category = "Task Submission"
-			logical_key = f"task_{task_name}"
+			return build_task_submission_context(
+				student=student,
+				task_name=task_name,
+				settings=settings,
+			)
 
 		return {
 			"root_folder": root,
@@ -251,15 +353,39 @@ def _build_full_folder_path(context: Dict[str, Any]) -> str:
 	return root
 
 
+def build_task_submission_context(*, student: str, task_name: str, settings=None) -> Dict[str, Any]:
+	"""Build deterministic routing context for Task Submission uploads."""
+	if not student:
+		frappe.throw(_("Cannot determine student for file routing."))
+	settings = settings or get_settings()
+	root = settings.students_root or "Home/Students"
+	sub = f"{student}/Tasks/Task-{task_name}"
+	return {
+		"root_folder": root,
+		"subfolder": sub,
+		"file_category": "Task Submission",
+		"logical_key": f"task_{task_name}",
+	}
+
+
 # ────────────────────────────────────────────────────────────────────────────
 # Main entrypoint for File hooks
 # ────────────────────────────────────────────────────────────────────────────
 
-def route_uploaded_file(doc, method: Optional[str] = None):
+def route_uploaded_file(doc, method: Optional[str] = None, context_override: Optional[Dict[str, Any]] = None):
 	"""
 	DocEvent hook for File.after_insert/on_update.
 	Decides where the file should live, sets versioning metadata, and renames/moves it.
 	"""
+
+	# ── HARD GDPR GATE ──────────────────────────────────────────────
+	if not frappe.db.exists(
+		"File Classification",
+		{"file": doc.name},
+	):
+		# File exists but has no governance.
+		# Do NOT route, version, rename, or finalize.
+		return
 
 	# Skip if not attached to any doc
 	if not (doc.attached_to_doctype and doc.attached_to_name):
@@ -275,16 +401,20 @@ def route_uploaded_file(doc, method: Optional[str] = None):
 		if getattr(doc, "custom_version_no", None):
 			return
 
-	parent = _get_parent_doc(doc)
-	if not parent:
-		return
-
 	settings = get_settings()
 
-	# Get context: first from parent method, then generic mapping
-	context = _context_from_parent_method(parent, doc)
-	if not context:
-		context = _generic_context_from_doctype(parent, doc, settings)
+	if context_override is not None:
+		if not isinstance(context_override, dict):
+			frappe.throw(_("Invalid routing context override."))
+		context = context_override
+	else:
+		parent = _get_parent_doc(doc)
+		if not parent:
+			return
+		# Get context: first from parent method, then generic mapping
+		context = _context_from_parent_method(parent, doc)
+		if not context:
+			context = _generic_context_from_doctype(parent, doc, settings)
 
 	# Ensure folder exists
 	folder_path = _build_full_folder_path(context)
@@ -346,12 +476,52 @@ def route_uploaded_file(doc, method: Optional[str] = None):
 	old_abs_path = frappe.utils.get_site_path(old_rel_path)
 
 	# Ensure destination dir
-	os.makedirs(os.path.dirname(new_abs_path), exist_ok=True)
+	moved_ok = False
+	old_exists = os.path.exists(old_abs_path)
+	new_exists = os.path.exists(new_abs_path)
 
-	# Move file if paths differ
-	if os.path.abspath(old_abs_path) != os.path.abspath(new_abs_path):
-		if os.path.exists(old_abs_path):
-			os.rename(old_abs_path, new_abs_path)
+	if os.path.abspath(old_abs_path) == os.path.abspath(new_abs_path):
+		moved_ok = old_exists or new_exists
+	else:
+		if old_exists:
+			os.makedirs(os.path.dirname(new_abs_path), exist_ok=True)
+			try:
+				os.rename(old_abs_path, new_abs_path)
+			except Exception:
+				frappe.log_error(
+					frappe.as_json(
+						{
+							"error": "file_move_failed",
+							"file": doc.name,
+							"old_abs_path": old_abs_path,
+							"new_abs_path": new_abs_path,
+						},
+						indent=2,
+					),
+					"File Routing Failed",
+				)
+				return
+			new_exists = os.path.exists(new_abs_path)
+			moved_ok = new_exists
+		elif new_exists:
+			moved_ok = True
+
+	if not moved_ok:
+		frappe.log_error(
+			frappe.as_json(
+				{
+					"error": "file_missing_after_routing",
+					"file": doc.name,
+					"old_abs_path": old_abs_path,
+					"new_abs_path": new_abs_path,
+					"old_exists": old_exists,
+					"new_exists": new_exists,
+				},
+				indent=2,
+			),
+			"File Routing Failed",
+		)
+		return
 
 	# ── Update File doc fields ─────────────────────────────────────────────
 	doc.folder = final_folder

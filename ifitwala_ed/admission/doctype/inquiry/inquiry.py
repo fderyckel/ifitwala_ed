@@ -1,17 +1,39 @@
+# ifitwala_ed/admission/doctype/inquiry/inquiry.py
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
+
+# ifitwala_ed/admission/doctype/inquiry/inquiry.py
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import now_datetime, cint, get_datetime
 from frappe.desk.form.assign_to import remove as remove_assignment
-from ifitwala_ed.admission.admission_utils import notify_admission_manager, set_inquiry_deadlines, update_sla_status
+from ifitwala_ed.admission.admission_utils import (
+	ensure_admissions_permission,
+	notify_admission_manager,
+	set_inquiry_deadlines,
+	update_sla_status,
+)
 from datetime import datetime
+
+
+CANONICAL_INQUIRY_STATES = {"New", "Assigned", "Contacted", "Qualified", "Archived"}
+
+
+def _normalize_inquiry_state(state: str | None) -> str:
+	if not state:
+		return "New"
+	return state
 
 
 class Inquiry(Document):
 	def validate(self):
+		self._validate_org_consistency()
+		self._validate_state_change()
+		self._validate_student_applicant_link()
+
+	def _validate_org_consistency(self):
 		if not self.school:
 			return
 
@@ -34,20 +56,171 @@ class Inquiry(Document):
 		if not (org_bounds.lft <= school_org_bounds.lft and org_bounds.rgt >= school_org_bounds.rgt):
 			frappe.throw(_("Selected School does not belong to the selected Organization."))
 
+	def _validate_state_change(self):
+		previous_raw = self.get_db_value("workflow_state")
+		current_raw = self.workflow_state
+
+		if not previous_raw and not current_raw:
+			return
+
+		if current_raw and current_raw not in CANONICAL_INQUIRY_STATES:
+			frappe.throw(_("Invalid workflow state: {0}.").format(current_raw))
+
+		if previous_raw == current_raw:
+			return
+
+		if self.flags.get("allow_workflow_state_change"):
+			return
+
+		if not previous_raw:
+			if current_raw != "New":
+				frappe.throw(_("Workflow state must start at New."))
+			return
+
+		previous = _normalize_inquiry_state(previous_raw)
+		current = _normalize_inquiry_state(current_raw)
+		self._ensure_transition_allowed(previous, current)
+
+	def _validate_student_applicant_link(self):
+		if not self.student_applicant:
+			return
+
+		previous = self.get_db_value("student_applicant")
+		if previous and previous != self.student_applicant:
+			frappe.throw(_("Student Applicant link is immutable once set."))
+
+	def _ensure_transition_allowed(self, from_state: str, to_state: str):
+		if from_state == to_state:
+			return
+
+		if to_state == "Archived":
+			if from_state == "Archived":
+				frappe.throw(_("Inquiry is already Archived."))
+			return
+
+		allowed = {
+			"New": {"Assigned", "Contacted"},
+			"Assigned": {"Contacted"},
+			"Contacted": {"Qualified"},
+			"Qualified": set(),
+		}
+
+		if from_state not in allowed or to_state not in allowed[from_state]:
+			frappe.throw(_("Invalid workflow state transition from {0} to {1}.").format(from_state, to_state))
+
+	def _set_workflow_state(self, target_state: str, comment: str | None = None) -> bool:
+		current = _normalize_inquiry_state(self.workflow_state)
+		target = _normalize_inquiry_state(target_state)
+
+		if current == target:
+			return False
+
+		if target not in CANONICAL_INQUIRY_STATES:
+			frappe.throw(_("Invalid workflow state: {0}.").format(target))
+
+		self._ensure_transition_allowed(current, target)
+
+		self.db_set("workflow_state", target, update_modified=False)
+		self.workflow_state = target
+
+		if comment:
+			self.add_comment("Comment", text=comment)
+		return True
+
+	def mark_assigned(self, add_comment: bool = True):
+		ensure_admissions_permission()
+		current_state = _normalize_inquiry_state(self.workflow_state)
+		if current_state == "Assigned":
+			return {"ok": True}
+
+		self._ensure_transition_allowed(current_state, "Assigned")
+		self.db_set("workflow_state", "Assigned", update_modified=False)
+		self.workflow_state = "Assigned"
+
+		if not self.assigned_at:
+			ts = now_datetime()
+			self.assigned_at = ts
+			self.db_set("assigned_at", ts, update_modified=False)
+
+		if add_comment:
+			self.add_comment(
+				"Comment",
+				text=_("Inquiry marked as <b>Assigned</b> by {0} on {1}.").format(
+					frappe.bold(frappe.session.user), now_datetime()
+				),
+			)
+		return {"ok": True}
+
+	@frappe.whitelist()
+	def mark_qualified(self):
+		ensure_admissions_permission()
+		changed = self._set_workflow_state(
+			"Qualified",
+			comment=_("Inquiry marked as <b>Qualified</b> by {0} on {1}.").format(
+				frappe.bold(frappe.session.user), now_datetime()
+			),
+		)
+		return {"ok": True, "changed": changed}
+
+	@frappe.whitelist()
+	def archive(self):
+		ensure_admissions_permission()
+		changed = self._set_workflow_state(
+			"Archived",
+			comment=_("Inquiry marked as <b>Archived</b> by {0} on {1}.").format(
+				frappe.bold(frappe.session.user), now_datetime()
+			),
+		)
+		return {"ok": True, "changed": changed}
+
+	@frappe.whitelist()
+	def invite_to_apply(self) -> str:
+		ensure_admissions_permission()
+
+		current_state = _normalize_inquiry_state(self.workflow_state)
+		if current_state != "Qualified":
+			frappe.throw(_("Inquiry must be in the Qualified state before inviting to apply."))
+
+		if self.student_applicant:
+			return self.student_applicant
+
+		existing = frappe.db.get_value("Student Applicant", {"inquiry": self.name}, "name")
+		if existing:
+			self.db_set("student_applicant", existing, update_modified=False)
+			self.student_applicant = existing
+			return existing
+
+		applicant = frappe.new_doc("Student Applicant")
+		applicant.flags.from_inquiry_invite = True
+		applicant.first_name = self.first_name
+		applicant.last_name = self.last_name
+		applicant.inquiry = self.name
+		applicant.application_status = "Invited"
+		applicant.insert(ignore_permissions=True)
+
+		self.db_set("student_applicant", applicant.name, update_modified=False)
+		self.student_applicant = applicant.name
+
+		self.add_comment(
+			"Comment",
+			text=_("Applicant invited by {0}.").format(frappe.bold(frappe.session.user)),
+		)
+		return applicant.name
+
 	def before_insert(self):
 		if not self.submitted_at:
 			self.submitted_at = frappe.utils.now()
 
 	def after_insert(self):
 		if not self.workflow_state:
-			self.workflow_state = "New Inquiry"
-			self.db_set("workflow_state", "New Inquiry")
+			self.workflow_state = "New"
+			self.db_set("workflow_state", "New")
 		notify_admission_manager(self)
 
 
 	def before_save(self):
 		# Only sets first_contact_due_on if missing; followup_due_on is set on (re)assignment.
-		set_inquiry_deadlines(self)		
+		set_inquiry_deadlines(self)
 		update_sla_status(self)
 
 	@staticmethod
@@ -64,15 +237,15 @@ class Inquiry(Document):
 
 		# 1) First contacted timestamp (once)
 		if not self.first_contacted_at:
-			ts = now_datetime() 
-			self.first_contacted_at = ts 
+			ts = now_datetime()
+			self.first_contacted_at = ts
 			self.db_set("first_contacted_at", ts, update_modified=False)
 
 		# 2) Hours from inquiry creation -> first contact (once)
 		if not self.response_hours_first_contact:
 			base = self.submitted_at or self.creation
-			h1 = self._hours_between(base, self.first_contacted_at) 
-			self.response_hours_first_contact = h1 
+			h1 = self._hours_between(base, self.first_contacted_at)
+			self.response_hours_first_contact = h1
 			self.db_set("response_hours_first_contact", h1, update_modified=False)
 
 		# 3) Hours from first assignment -> first contact (once, if assigned_at exists)
@@ -138,6 +311,7 @@ class Inquiry(Document):
 
 	@frappe.whitelist()
 	def mark_contacted(self, complete_todo=False):
+		ensure_admissions_permission()
 		prev_assignee = self.assigned_to
 
 		self.add_comment(
@@ -148,15 +322,17 @@ class Inquiry(Document):
 		)
 
 		# Update fields
-		if self.workflow_state != "Contacted":
+		current_state = _normalize_inquiry_state(self.workflow_state)
+		if current_state != "Contacted":
+			self._ensure_transition_allowed(current_state, "Contacted")
 			self.db_set("workflow_state", "Contacted", update_modified=False)
 			self.workflow_state = "Contacted"  # keep in-memory doc in sync
-			
+
 		if self.get("followup_due_on"):
 			self.db_set("followup_due_on", None, update_modified=False)
 
-		# 🔎 Stamp response-time metrics immediately after state flip 
-		self.set_contact_metrics()	
+		# 🔎 Stamp response-time metrics immediately after state flip
+		self.set_contact_metrics()
 
 		# Optionally clear assignment on the doc
 		if cint(complete_todo) and prev_assignee:

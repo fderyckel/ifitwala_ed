@@ -13,7 +13,12 @@ from ifitwala_ed.assessment import task_submission_service
 def create_or_resubmit(payload=None, **kwargs):
 	_require_authenticated()
 	data = _normalize_payload(payload, kwargs)
-	result = task_submission_service.create_student_submission(data, user=frappe.session.user)
+	uploaded_files = _extract_uploaded_files()
+	result = task_submission_service.create_student_submission(
+		data,
+		user=frappe.session.user,
+		uploaded_files=uploaded_files,
+	)
 	return result
 
 
@@ -73,3 +78,29 @@ def _require_authenticated():
 	user = frappe.session.user
 	if not user or user == "Guest":
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+
+def _extract_uploaded_files():
+	uploads = []
+	if not frappe.request or not getattr(frappe.request, "files", None):
+		return uploads
+
+	files = []
+	if hasattr(frappe.request.files, "getlist"):
+		files = frappe.request.files.getlist("files") or []
+	if not files:
+		single = frappe.request.files.get("file")
+		if single:
+			files = [single]
+
+	for upload in files:
+		filename = getattr(upload, "filename", None)
+		content = upload.read()
+		if not filename or not content:
+			frappe.throw(_("Uploaded files must include a filename and content."))
+		uploads.append({
+			"file_name": filename,
+			"content": content,
+		})
+
+	return uploads

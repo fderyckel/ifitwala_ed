@@ -1,9 +1,7 @@
 // Copyright (c) 2025, François de Ryckel and contributors
 // For license information, please see license.txt
 
-// Shared JS for all Ifitwala Ed public website pages .
-import * as bootstrap from 'bootstrap';
-window.bootstrap = bootstrap;
+// Shared JS for all Ifitwala Ed public website pages.
 
 document.addEventListener("DOMContentLoaded", function () {
   // === Lazy-loaded image polish ===
@@ -20,11 +18,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  // === Bootstrap tooltip init ===
-  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
-    new bootstrap.Tooltip(el);
-  });
-
   document.querySelectorAll(".view-more-link").forEach(link => {
     link.addEventListener("click", e => {
       e.preventDefault();
@@ -32,5 +25,47 @@ document.addEventListener("DOMContentLoaded", function () {
       const expanded = target.classList.toggle("expanded");
       link.textContent = expanded ? "View less" : "View more";
     });
+  });
+
+  const carousels = document.querySelectorAll("[data-carousel]");
+  carousels.forEach((carousel) => {
+    const slides = Array.from(carousel.querySelectorAll("[data-carousel-slide]"));
+    if (!slides.length) {
+      return;
+    }
+
+    let current = slides.findIndex((slide) => slide.classList.contains("opacity-100"));
+    if (current < 0) {
+      current = 0;
+      slides[0].classList.add("opacity-100", "z-10");
+      slides[0].classList.remove("opacity-0", "z-0");
+    }
+
+    const interval = parseInt(carousel.dataset.interval || "5000", 10);
+    const autoplay = carousel.dataset.autoplay !== "False" && carousel.dataset.autoplay !== "false";
+
+    const showSlide = (index) => {
+      slides[current].classList.add("opacity-0", "z-0");
+      slides[current].classList.remove("opacity-100", "z-10");
+      current = index;
+      slides[current].classList.add("opacity-100", "z-10");
+      slides[current].classList.remove("opacity-0", "z-0");
+    };
+
+    const next = () => showSlide((current + 1) % slides.length);
+    const prev = () => showSlide((current - 1 + slides.length) % slides.length);
+
+    const nextBtn = carousel.querySelector("[data-carousel-next]");
+    const prevBtn = carousel.querySelector("[data-carousel-prev]");
+    if (nextBtn) nextBtn.addEventListener("click", next);
+    if (prevBtn) prevBtn.addEventListener("click", prev);
+
+    if (autoplay) {
+      let timer = setInterval(next, interval);
+      carousel.addEventListener("mouseenter", () => clearInterval(timer));
+      carousel.addEventListener("mouseleave", () => {
+        timer = setInterval(next, interval);
+      });
+    }
   });
 });

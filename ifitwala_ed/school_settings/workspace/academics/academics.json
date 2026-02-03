@@ -8,7 +8,7 @@
  "for_user": "",
  "hide_custom": 0,
  "icon": "heart-active",
- "idx": 0,
+ "idx": 2,
  "indicator_color": "",
  "is_hidden": 0,
  "label": "Academics",
@@ -124,8 +124,8 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Org, School & HR",
-   "link_count": 6,
+   "label": "Collaboration",
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -133,12 +133,51 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Organizational Chart",
+   "label": "Team",
    "link_count": 0,
-   "link_to": "organizational-chart",
-   "link_type": "Page",
+   "link_to": "Team",
+   "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Meeting",
+   "link_count": 0,
+   "link_to": "Meeting",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School Event",
+   "link_count": 0,
+   "link_to": "School Event",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Org Communication",
+   "link_count": 0,
+   "link_to": "Org Communication",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Org, School & HR",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
   },
   {
    "hidden": 0,
@@ -194,20 +233,10 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports & Dashboards",
-   "link_count": 4,
+   "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Student Groups Cards",
-   "link_count": 0,
-   "link_to": "student_group_cards",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
   },
   {
    "hidden": 0,
@@ -238,58 +267,9 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Collaboration",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Team",
-   "link_count": 0,
-   "link_to": "Team",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Meeting",
-   "link_count": 0,
-   "link_to": "Meeting",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "School Event",
-   "link_count": 0,
-   "link_to": "School Event",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Org Communication",
-   "link_count": 0,
-   "link_to": "Org Communication",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
   }
  ],
- "modified": "2025-12-03 22:06:43.512401",
+ "modified": "2026-01-31 11:47:13.774901",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academics",

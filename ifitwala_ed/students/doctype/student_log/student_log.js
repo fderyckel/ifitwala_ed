@@ -132,6 +132,76 @@ frappe.ui.form.on("Student Log", {
 
 		// keep field behavior consistent
 		configure_follow_up_person_field(frm);
+
+		// ── 🎙️ Voice Dictation (Client-side) ──
+		if (window.webkitSpeechRecognition && frm.fields_dict.log) {
+			const wrapper = frm.fields_dict.log.wrapper;
+			// Avoid duplicate injection
+			if (!$(wrapper).find('.voice-dictate-btn').length) {
+				const btn = $(`<button class="btn btn-xs voice-dictate-btn text-muted" style="margin-left: 8px;">
+					<svg class="icon icon-sm"><use href="#icon-mic"></use></svg> ${__('Dictate')}
+				</button>`);
+
+				$(wrapper).find('.control-label').append(btn);
+
+				btn.on('click', function (e) {
+					e.preventDefault();
+					const $this = $(this);
+
+					if ($this.hasClass('listening')) {
+						if (window._recognition) window._recognition.stop();
+						return;
+					}
+
+					try {
+						const SpeechRecognition = window.webkitSpeechRecognition;
+						const recognition = new SpeechRecognition();
+						recognition.continuous = true;
+						recognition.interimResults = false;
+						recognition.lang = 'en-US';
+
+						window._recognition = recognition;
+
+						recognition.onstart = function () {
+							$this.addClass('listening text-primary').removeClass('text-muted');
+							$this.html(`<svg class="icon icon-sm"><use href="#icon-mic"></use></svg> ${__('Listening…')}`);
+							frappe.show_alert({ message: __("Listening…"), indicator: "orange" }, 3);
+						};
+
+						recognition.onresult = function (event) {
+							const transcript = Array.from(event.results)
+								.map(result => result[0].transcript)
+								.join('');
+
+							if (transcript) {
+								let current = frm.doc.log || "";
+								if (current && !current.endsWith(" ")) current += " ";
+								frm.set_value("log", current + transcript);
+							}
+						};
+
+						recognition.onend = function () {
+							$this.removeClass('listening text-primary').addClass('text-muted');
+							$this.html(`<svg class="icon icon-sm"><use href="#icon-mic"></use></svg> ${__('Dictate')}`);
+							window._recognition = null;
+						};
+
+						recognition.onerror = function (event) {
+							// 'no-speech' is common, just ignore or stop
+							if (event.error !== 'no-speech') {
+								frappe.msgprint(__("Microphone error: {0}", [event.error]));
+							}
+							$this.removeClass('listening text-primary').addClass('text-muted');
+							$this.html(`<svg class="icon icon-sm"><use href="#icon-mic"></use></svg> ${__('Dictate')}`);
+						};
+
+						recognition.start();
+					} catch (err) {
+						console.error(err);
+					}
+				});
+			}
+		}
 	},
 
 

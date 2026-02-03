@@ -1,19 +1,22 @@
 // Copyright (c) 2024, François de Ryckel and contributors
 // For license information, please see license.txt
 
+// ifitwala_ed/school_settings/doctype/academic_year/academic_year.js
+
 frappe.ui.form.on("Academic Year", {
   refresh: function (frm) {
     // Add "Retire Academic Year" button if the document is not new and is active
     if (!frm.is_new() && frm.doc.archived == 1) {
-      frm.add_custom_button(__("Retire Academic Year"), function() {
+      frm.add_custom_button(__("Retire Academic Year (Deprecated)"), function() {
         frappe.confirm(
-          __("This will set the archived status of Program enrollment to 1 (aka archived). Are you sure you want to continue?"),
+          __("Deprecated: use End of Year Checklist for scoped closure. This will retire linked Program Enrollments and Terms. Continue?"),
           function() {
             // On confirm, call the server-side method to retire the academic year
             frappe.call({
-              method: "ifitwala_ed.school_settings.doctype.academic_year.academic_year.retire_academic_year", 
+              method: "ifitwala_ed.school_settings.doctype.academic_year.academic_year.retire_academic_year",
               args: {
-                academic_year: frm.doc.name
+                academic_year: frm.doc.name,
+                school_scope: [frm.doc.school]
               },
               callback: function(r) {
                 if (r.message) {
@@ -31,7 +34,7 @@ frappe.ui.form.on("Academic Year", {
         );
       }).addClass("btn btn-danger");
     }
-    
+
     // Custom button for creating term
     if (!frm.is_new()) {
       frm.add_custom_button(__("Create Term"), () => {
@@ -42,9 +45,9 @@ frappe.ui.form.on("Academic Year", {
 
       frm.add_custom_button(__("Create School Calendar"), () => {
         frappe.new_doc("School Calendar", {}, ay => {
-          ay.academic_year = frm.doc.name; 
+          ay.academic_year = frm.doc.name;
         })
-      }); 
+      });
     }
   },
 

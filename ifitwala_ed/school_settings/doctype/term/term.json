@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:title",
  "creation": "2024-12-03 13:02:14.593981",
@@ -135,7 +136,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-01 18:18:14.683707",
+ "modified": "2026-01-22 20:35:58.286781",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Term",

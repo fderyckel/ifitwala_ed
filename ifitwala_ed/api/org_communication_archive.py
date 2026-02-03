@@ -283,7 +283,7 @@ def get_org_communication_item(name=None):
 	# Only what we actually need here (no department)
 	employee = frappe.db.get_value(
 		"Employee",
-		{"user_id": user, "status": "Active"},
+		{"user_id": user, "employment_status": "Active"},
 		["name", "school", "organization"],
 		as_dict=True,
 	)

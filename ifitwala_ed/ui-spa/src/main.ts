@@ -4,7 +4,7 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 import { FrappeUI, setConfig } from 'frappe-ui';
-import { setupFrappeUI } from './lib/frappe';
+import { setupFrappeUI } from './resources/frappe';
 
 // Tailwind entry + portal styles
 import './style.css';

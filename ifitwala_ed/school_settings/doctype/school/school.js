@@ -44,8 +44,43 @@ function ensure_parent_is_valid(frm) {
 	});
 }
 
+function _is_published(frm) {
+	return Boolean(parseInt(frm.doc.is_published || 0, 10));
+}
+
+function _store_saved_publish_state(frm) {
+	frm._saved_is_published = _is_published(frm);
+}
+
+function _open_school_website_page(frm) {
+	const slug = (frm.doc.website_slug || "").trim();
+	if (!slug) {
+		frappe.msgprint(__("Set a Website Slug before opening the school website page."));
+		return;
+	}
+
+	frappe.db
+		.get_value("School Website Page", { school: frm.doc.name, route: "/" }, "name")
+		.then((res) => {
+			const name = res && res.message ? res.message.name : null;
+			if (name) {
+				frappe.set_route("Form", "School Website Page", name);
+				return;
+			}
+
+			frappe.new_doc("School Website Page", {}, (doc) => {
+				doc.school = frm.doc.name;
+				doc.route = "/";
+				doc.page_type = "Standard";
+				doc.title = frm.doc.school_name || frm.doc.name;
+			});
+		});
+}
+
 frappe.ui.form.on("School", {
 	onload: function (frm) {
+		_store_saved_publish_state(frm);
+
 		// On new docs, if a parent is preset, ensure it's valid.
 		if (frm.doc.__islocal && frm.doc.parent_school) {
 			ensure_parent_is_valid(frm);
@@ -111,6 +146,26 @@ frappe.ui.form.on("School", {
 				filters: { school: frm.doc.name },
 			};
 		});
+
+		_store_saved_publish_state(frm);
+	},
+
+	before_save: function (frm) {
+		frm._pre_save_is_published = frm._saved_is_published;
+	},
+
+	after_save: function (frm) {
+		const was_published = Boolean(parseInt(frm._pre_save_is_published || 0, 10));
+		const now_published = _is_published(frm);
+		if (!was_published && now_published) {
+			_open_school_website_page(frm);
+		}
+	},
+
+	is_published: function (frm) {
+		if (_is_published(frm) && !(frm.doc.website_slug || "").trim()) {
+			frappe.msgprint(__("Website Slug is required before publishing a School."));
+		}
 	},
 
 	school_name: function (frm) {

@@ -205,7 +205,19 @@ Used by:
 
                 <!-- Note -->
                 <section class="space-y-2">
-                  <p class="type-caption text-ink/70">{{ __('Note') }}</p>
+                  <div class="flex items-center justify-between">
+                    <p class="type-caption text-ink/70">{{ __('Note') }}</p>
+                    <button
+                      v-if="hasSpeechSupport"
+                      type="button"
+                      class="flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all"
+                      :class="isListening ? 'bg-flame/10 text-flame animate-pulse' : 'bg-surface-soft text-slate-token/70 hover:text-jacaranda'"
+                      @click="toggleSpeech"
+                    >
+                      <FeatherIcon name="mic" class="h-3 w-3" />
+                      {{ isListening ? __('Listening…') : __('Dictate') }}
+                    </button>
+                  </div>
                   <textarea
                     v-model="form.log"
                     class="w-full rounded-2xl border border-border/70 bg-white px-4 py-3 text-sm text-ink shadow-soft outline-none focus:ring-2 focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
@@ -799,6 +811,64 @@ function onStudentSelected(studentId: string) {
     .finally(() => {
       optionsLoading.value = false
     })
+}
+
+/* Voice to Text */
+const isListening = ref(false)
+const hasSpeechSupport = ref(!!(window as any).webkitSpeechRecognition)
+let recognition: any = null
+
+function toggleSpeech() {
+  if (!hasSpeechSupport.value) return
+
+  if (isListening.value) {
+    recognition?.stop()
+    isListening.value = false
+    return
+  }
+
+  try {
+    const SpeechRecognition = (window as any).webkitSpeechRecognition
+    recognition = new SpeechRecognition()
+    recognition.continuous = true
+    recognition.interimResults = false
+    recognition.lang = 'en-US' // default, could be configurable
+
+    recognition.onstart = () => {
+      isListening.value = true
+      clearError()
+    }
+
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0].transcript)
+        .join('')
+
+      if (transcript) {
+        // Append with space if needed
+        const current = form.log || ''
+        const spacer = current && !current.endsWith(' ') ? ' ' : ''
+        form.log = current + spacer + transcript
+      }
+    }
+
+    recognition.onerror = (event: any) => {
+      console.warn('Speech error', event)
+      isListening.value = false
+      if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        setError(event.error, __('Microphone error'))
+      }
+    }
+
+    recognition.onend = () => {
+      isListening.value = false
+    }
+
+    recognition.start()
+  } catch (e) {
+    console.error(e)
+    isListening.value = false
+  }
 }
 
 function changeStudent() {

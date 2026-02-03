@@ -7,7 +7,7 @@ import frappe
 from frappe.utils.nestedset import get_ancestors_of
 from frappe.utils.nestedset import get_descendants_of
 
-CACHE_TTL = 300  # seconds
+CACHE_TTL = 600  # seconds
 
 class ParentRuleViolation(frappe.ValidationError):
     """Raised when a child record violates parent↔child inheritance rules."""
@@ -180,6 +180,44 @@ def get_first_ancestor_with_doc(doctype, school, filters=None):
     return []
 
 
+def get_school_scope_for_academic_year(school: str | None) -> list[str]:
+	"""
+	Return the school scope used for Academic Year visibility:
+	- Leaf school: self if it has visible, unarchived Academic Years; otherwise nearest ancestor with visible, unarchived Academic Years
+	- Parent school: self + descendants
+	Cached by school for 5 minutes.
+	"""
+	if not school:
+		return []
+
+	cache = frappe.cache()
+	key = f"ifitwala_ed:school_tree:ay_scope:{school}"
+	cached = cache.get_value(key)
+	if cached is not None:
+		return cached
+
+	if is_leaf_school(school):
+		if frappe.db.exists(
+			"Academic Year",
+			{"school": school, "archived": 0, "visible_to_admission": 1},
+		):
+			scope = [school]
+		else:
+			scope = (
+				get_first_ancestor_with_doc(
+					"Academic Year",
+					school,
+					filters={"archived": 0, "visible_to_admission": 1},
+				)
+				or [school]
+			)
+	else:
+		scope = get_descendant_schools(school) or [school]
+
+	cache.set_value(key, scope, expires_in_sec=CACHE_TTL)
+	return scope
+
+
 # Usage Scenarios:
 #   - Used in permission logic (e.g., Term, Program Enrollment) to determine
 #     whether a user should see ancestor schools' data (for leaf schools) or all descendant data (for parent schools).
@@ -208,7 +246,7 @@ def get_user_default_school():
 		return school
 
 	# 2) linked Employee (common for staff)
-	row = frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, ["school"], as_dict=True)
+	row = frappe.db.get_value("Employee", {"user_id": user, "employment_status": "Active"}, ["school"], as_dict=True)
 	if row and row.school:
 		return row.school
 

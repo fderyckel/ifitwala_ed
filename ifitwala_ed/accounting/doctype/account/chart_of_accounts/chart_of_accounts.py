@@ -1,6 +1,8 @@
+# ifitwala_ed/accounting/doctype/account/chart_of_accounts/chart_of_accounts.py
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import importlib
 import json
 import os
 
@@ -8,6 +10,32 @@ import frappe
 from frappe.utils import cstr
 from frappe.utils.nestedset import rebuild_tree
 from unidecode import unidecode
+
+
+STANDARD_CHART_ALIASES = {
+	"Standard": "standard_chart_of_accounts",
+	"Standard with Numbers": "standard_chart_of_accounts_with_account_number",
+	"standard_chart_of_accounts": "standard_chart_of_accounts",
+	"standard_chart_of_accounts_with_account_number": "standard_chart_of_accounts_with_account_number",
+	"syscohada_chart_of_accounts": "syscohada_chart_of_accounts",
+}
+
+
+def _get_chart_from_python_template(chart_template):
+	module_name = STANDARD_CHART_ALIASES.get(chart_template)
+	if not module_name:
+		return None
+
+	try:
+		module = importlib.import_module(f"{__package__}.verified.{module_name}")
+	except Exception:
+		return None
+
+	get_chart = getattr(module, "get", None)
+	if not get_chart:
+		return None
+
+	return get_chart()
 
 
 def create_charts(
@@ -123,6 +151,10 @@ def get_chart(chart_template, existing_organization=None):
 		return get_account_tree_from_existing_organization(existing_organization)
 
 	else:
+		python_chart = _get_chart_from_python_template(chart_template)
+		if python_chart:
+			return python_chart
+
 		folders = ("verified",)
 		if frappe.local.flags.allow_unverified_charts:
 			folders = ("verified", "unverified")

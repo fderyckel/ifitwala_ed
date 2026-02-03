@@ -21,7 +21,7 @@ def employee_query(doctype, txt, searchfield, start, page_len, filters):
 
 	return frappe.db.sql(
 		"""select {fields} from `tabEmployee`
-		where status in ('Active', 'Suspended')
+		where employment_status in ('Active', 'Suspended')
 			and docstatus < 2
 			and ({key} like %(txt)s
 				or employee_full_name like %(txt)s)

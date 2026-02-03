@@ -44,7 +44,16 @@ export const ORG_SURFACES = {
 
 export type OrgSurface = (typeof ORG_SURFACES)[keyof typeof ORG_SURFACES]
 
-export type ApplicationStatus = 'Applied' | 'Approved' | 'Rejected' | 'Admitted'
+export type ApplicationStatus =
+	| 'Draft'
+	| 'Invited'
+	| 'In Progress'
+	| 'Submitted'
+	| 'Under Review'
+	| 'Missing Info'
+	| 'Approved'
+	| 'Rejected'
+	| 'Promoted'
 
 
 // ============================================================================

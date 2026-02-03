@@ -26,7 +26,7 @@ def get_next_submission_version(outcome_id):
 	return max_version + 1
 
 
-def create_student_submission(payload, user=None):
+def create_student_submission(payload, user=None, uploaded_files=None):
 	data = _normalize_payload(payload)
 	outcome_id = _get_payload_value(data, "task_outcome", "outcome")
 	if not outcome_id:
@@ -52,10 +52,13 @@ def create_student_submission(payload, user=None):
 	text_content = (data.get("text_content") or "").strip()
 	link_url = (data.get("link_url") or "").strip()
 	attachments = data.get("attachments") or []
-	if attachments and not isinstance(attachments, list):
-		attachments = [attachments]
+	if attachments:
+		frappe.throw(_("Attachments must be uploaded as raw files via dispatcher."))
 
-	if not text_content and not link_url and not attachments:
+	uploaded_files = uploaded_files or []
+	has_uploads = bool(uploaded_files)
+
+	if not text_content and not link_url and not has_uploads:
 		frappe.throw(_("Student evidence is required."))
 
 	next_version = get_next_submission_version(outcome_id)
@@ -71,8 +74,9 @@ def create_student_submission(payload, user=None):
 	doc.link_url = link_url or None
 	if data.get("evidence_note"):
 		doc.evidence_note = data.get("evidence_note")
-	if attachments:
-		doc.set("attachments", attachments)
+	if has_uploads:
+		doc.set_new_name()
+		_attach_submission_files(doc, outcome_row, uploaded_files, data.get("upload_source"))
 
 	stamp_submission_context(doc, outcome_row)
 	doc.insert(ignore_permissions=True)
@@ -100,6 +104,66 @@ def create_student_submission(payload, user=None):
 			"submission_status": submission_status,
 		},
 	}
+
+
+def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload_source=None):
+	from ifitwala_ed.utilities import file_dispatcher, file_management
+
+	student = outcome_row.get("student")
+	school = outcome_row.get("school")
+	task_name = outcome_row.get("task") or submission_doc.name
+
+	if not student:
+		frappe.throw(_("Student is required for file classification."))
+	if not school:
+		frappe.throw(_("School is required for file classification."))
+
+	organization = frappe.db.get_value("School", school, "organization")
+	if not organization:
+		frappe.throw(_("Organization is required for file classification."))
+
+	settings = file_management.get_settings()
+	context_override = file_management.build_task_submission_context(
+		student=student,
+		task_name=task_name,
+		settings=settings,
+	)
+
+	source = upload_source or "API"
+	for upload in uploaded_files:
+		file_name = upload.get("file_name") or upload.get("filename")
+		content = upload.get("content")
+		if not file_name or not content:
+			frappe.throw(_("Uploaded files must include file_name and content."))
+
+		file_doc = file_dispatcher.create_and_classify_file(
+			file_kwargs={
+				"attached_to_doctype": "Task Submission",
+				"attached_to_name": submission_doc.name,
+				"is_private": 1,
+				"file_name": file_name,
+				"content": content,
+			},
+			classification={
+				"primary_subject_type": "Student",
+				"primary_subject_id": student,
+				"data_class": "academic",
+				"purpose": "assessment_submission",
+				"retention_policy": "until_program_end_plus_1y",
+				"slot": "submission",
+				"organization": organization,
+				"school": school,
+				"upload_source": source,
+			},
+			context_override=context_override,
+		)
+
+		submission_doc.append("attachments", {
+			"file": file_doc.file_url,
+			"file_name": file_doc.file_name,
+			"file_size": file_doc.file_size,
+			"public": 0,
+		})
 
 
 def stamp_submission_context(submission_doc, outcome_row):

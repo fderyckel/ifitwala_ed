@@ -10,8 +10,8 @@
  "field_order": [
   "section_break_llx0",
   "academic_year_name",
-  "column_break_iudv",
   "school",
+  "column_break_iudv",
   "archived",
   "visible_to_admission",
   "section_break_eha5",
@@ -138,7 +138,7 @@
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-01 16:15:24.387684",
+ "modified": "2026-01-31 13:42:54.501377",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",

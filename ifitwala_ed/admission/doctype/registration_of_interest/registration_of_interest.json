@@ -130,7 +130,7 @@
    "fieldname": "blank_field",
    "fieldtype": "Select",
    "label": "Worflow State",
-   "options": "New Inquiry\nAssigned\nContacted\nQualified\nNurturing\nAccepted\nApplication Submitted\nAccepted\nUnqualified"
+   "options": "New Inquiry\nAssigned\nContacted\nQualified\nApplication Submitted"
   },
   {
    "fieldname": "proposed_program",
@@ -168,7 +168,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-05 13:49:53.798859",
+ "modified": "2025-09-05 13:49:55",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Registration of Interest",

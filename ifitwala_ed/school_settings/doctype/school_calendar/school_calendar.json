@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:calendar_name",
  "creation": "2024-12-03 13:33:47.840677",
@@ -187,7 +188,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2025-10-04 20:40:41.612919",
+ "modified": "2026-01-22 19:32:10.257995",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Calendar",

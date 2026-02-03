@@ -17,6 +17,10 @@ export type OverlayType =
   | 'class-hub-quick-evidence'
   | 'class-hub-quick-cfu'
   | 'class-hub-task-review'
+  | 'admissions-health'
+  | 'admissions-document-upload'
+  | 'admissions-policy-ack'
+  | 'admissions-submit'
 
 export type OverlayEntry = {
   id: string

@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"2ZEKCIFXhC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Staff Calendar\",\"col\":3}},{\"id\":\"jWVGn2pXes\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Employee\",\"col\":3}},{\"id\":\"N5HOjIizuz\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">HR</span>\",\"col\":12}},{\"id\":\"2RtsIQZnHc\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}},{\"id\":\"TWmZIg6AHQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Growth Plan\",\"col\":4}},{\"id\":\"c0fYrEvaWa\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"cQh43EktlU\",\"type\":\"card\",\"data\":{\"card_name\":\"HR Settings\",\"col\":4}},{\"id\":\"Yp4LCkAfaM\",\"type\":\"card\",\"data\":{\"card_name\":\"Communication\",\"col\":4}}]",
+ "content": "[{\"id\":\"2ZEKCIFXhC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Staff Calendar\",\"col\":3}},{\"id\":\"jWVGn2pXes\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Employee\",\"col\":3}},{\"id\":\"N5HOjIizuz\",\"type\":\"header\",\"data\":{\"text\":\"<br>\",\"col\":12}},{\"id\":\"2RtsIQZnHc\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}},{\"id\":\"TWmZIg6AHQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Growth Plan\",\"col\":4}},{\"id\":\"cQh43EktlU\",\"type\":\"card\",\"data\":{\"card_name\":\"HR Settings\",\"col\":4}},{\"id\":\"Yp4LCkAfaM\",\"type\":\"card\",\"data\":{\"card_name\":\"Communication\",\"col\":4}}]",
  "creation": "2025-04-22 08:21:35.205048",
  "custom_blocks": [],
  "docstatus": 0,
@@ -59,25 +59,6 @@
    "link_count": 0,
    "link_to": "Employment Type",
    "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Reports",
-   "link_count": 1,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Organizational Chart",
-   "link_count": 0,
-   "link_to": "organizational-chart",
-   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
@@ -189,7 +170,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-12-02 11:46:23.177846",
+ "modified": "2026-01-31 11:32:48.374438",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",
@@ -215,19 +196,19 @@
  "sequence_id": 6.0,
  "shortcuts": [
   {
+   "color": "Green",
+   "doc_view": "Tree",
+   "label": "Active Employee",
+   "link_to": "Employee",
+   "stats_filter": "[[\"Employee\",\"employment_status\",\"=\",\"Active\",false]]",
+   "type": "DocType"
+  },
+  {
    "color": "Grey",
    "doc_view": "List",
    "label": "Staff Calendar",
    "link_to": "Staff Calendar",
    "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Green",
-   "doc_view": "Tree",
-   "label": "Employee",
-   "link_to": "Employee",
-   "stats_filter": "[[\"Employee\",\"status\",\"=\",\"Active\",false]]",
    "type": "DocType"
   }
  ],

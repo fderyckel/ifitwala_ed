@@ -23,7 +23,7 @@ def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_
 	# Employee-based name (preferred)
 	emp = frappe.db.get_value(
 		"Employee",
-		{"user_id": user, "status": "Active"},
+		{"user_id": user, "employment_status": "Active"},
 		["employee_preferred_name", "employee_first_name"],
 		as_dict=True,
 	)

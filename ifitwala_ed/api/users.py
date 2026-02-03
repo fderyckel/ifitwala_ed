@@ -45,7 +45,7 @@ def redirect_user_to_entry_portal():
 	# ---------------------------------------------------------------
 	# 2) Employees: default /portal/staff (but respect explicit opt-in)
 	# ---------------------------------------------------------------
-	if frappe.db.exists("Employee", {"user_id": user, "status": "Active"}):
+	if frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}):
 		current_home = (frappe.db.get_value("User", user, "home_page") or "").strip()
 
 		# If home_page already explicitly set (e.g. /app), respect it.
@@ -59,6 +59,18 @@ def redirect_user_to_entry_portal():
 				_force_redirect("/portal/staff", also_set_home_page=False)
 
 		return
+
+	# ---------------------------------------------------------------
+	# 3) Admissions Applicant: always /admissions
+	# ---------------------------------------------------------------
+	roles = set(frappe.get_roles(user))
+	if "Admissions Applicant" in roles:
+		current_home = (frappe.db.get_value("User", user, "home_page") or "").strip()
+		if not current_home:
+			_force_redirect("/admissions", also_set_home_page=True)
+		else:
+			if current_home == "/admissions":
+				_force_redirect("/admissions", also_set_home_page=False)
 
 	# Others: do nothing (Desk defaults remain)
 	return

@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | Organization (legal entity) | Company | Same doctype; surfaced as Organization. |
 | Accounting Settings (org-level) | Accounts Settings | Org-level defaults. |
-| Chart of Accounts Template | Chart of Accounts Importer + Chart template JSON files | Templates live under `erpnext/accounts/doctype/account/chart_of_accounts`. |
+| Chart of Accounts Template | Chart of Accounts Importer + chart template JSON/Python files | Templates live under `ifitwala_ed/accounting/doctype/account/chart_of_accounts`. |
 | Account | Account | ERPNext account tree. |
 | GL Entry | GL Entry | Ledger row. |
 | Journal Entry | Journal Entry | Manual accounting entry. |

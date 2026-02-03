@@ -1,3 +1,4 @@
+# ifitwala_ed/hooks.py
 app_name = "ifitwala_ed"
 app_title = "Ifitwala"
 app_publisher = "François de Ryckel"
@@ -47,7 +48,10 @@ app_include_js = [
 # include js in page
 
 # include js in doctype views
-doctype_js = {"Contact": "public/js/contact.js"}
+doctype_js = {
+	"Contact": "public/js/contact.js",
+	"School Website Page Block": "school_site/doctype/school_website_page_block/school_website_page_block.js"
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -57,8 +61,16 @@ doctype_js = {"Contact": "public/js/contact.js"}
 website_route_rules = [
     {"from_route": "/portal", "to_route": "portal"},
     {"from_route": "/portal/<path:subpath>", "to_route": "portal"},
+    {"from_route": "/sp", "to_route": "portal"},
+    {"from_route": "/sp/<path:subpath>", "to_route": "/portal/<path:subpath>"},
+    {"from_route": "/admissions", "to_route": "admissions"},
+    {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
     {"from_route": "/staff", "to_route": "/portal/staff"},
     {"from_route": "/staff/<path:subpath>", "to_route": "/portal/staff/<path:subpath>"},
+    {"from_route": "/login", "to_route": "login"},
+    {"from_route": "/update-password", "to_route": "update-password"},
+    {"from_route": "/", "to_route": "website"},
+    {"from_route": "/<path:route>", "to_route": "website"},
 ]
 
 
@@ -199,6 +211,7 @@ doc_events = {
 		"after_save": "ifitwala_ed.hr.employee_access.sync_user_access_from_employee"
 	},
   "File": {
+		"validate": "ifitwala_ed.utilities.file_management.validate_admissions_attachment",
 		"after_insert": "ifitwala_ed.utilities.file_dispatcher.handle_file_after_insert",
 		"on_update": "ifitwala_ed.utilities.file_dispatcher.handle_file_on_update",
     },

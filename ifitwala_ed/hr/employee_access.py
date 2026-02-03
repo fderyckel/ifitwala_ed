@@ -4,20 +4,18 @@
 # ifitwala_ed/hr/employee_access.py
 
 import frappe
-from frappe.utils import nowdate
+from frappe.utils import getdate, nowdate
 from frappe.utils.redis_wrapper import redis_cache
 
 MANAGED_FLAG = "managed_by_ifitwala"  # provenance flag on User.roles children
 
 @redis_cache(ttl=86400)
-def _roles_of_profile(profile: str) -> set[str]:
-	if not profile:
+def _roles_from_role_name(role_name: str) -> set[str]:
+	if not role_name:
 		return set()
-	return set(frappe.get_all(
-		"Has Role",
-		filters={"parenttype": "Role Profile", "parent": profile},
-		pluck="role"
-	))
+	if not frappe.db.exists("Role", role_name):
+		return set()
+	return {role_name}
 
 @redis_cache(ttl=86400)
 def _designation_defaults(designation: str) -> dict:
@@ -33,7 +31,7 @@ def _designation_defaults(designation: str) -> dict:
 		"role_profile": row.get("default_role_profile"),
 		"workspace": row.get("default_workspace"),
 		"priority": int(row.get("workspace_priority") or 0),
-		"roles": _roles_of_profile(row.get("default_role_profile")),
+		"roles": _roles_from_role_name(row.get("default_role_profile")),
 	}
 
 def _resolve_row_access(h) -> dict:
@@ -44,7 +42,7 @@ def _resolve_row_access(h) -> dict:
 	mode = (h.get("access_mode") or "Follow Designation").strip()
 	if mode == "Override":
 		return {
-			"roles": _roles_of_profile(h.get("role_profile")),
+			"roles": _roles_from_role_name(h.get("role_profile")),
 			"workspace": h.get("workspace_override"),
 			"priority": int(h.get("priority") or 0),
 		}
@@ -52,7 +50,7 @@ def _resolve_row_access(h) -> dict:
 		# If row already has stored values, use them; otherwise seed from designation.
 		if h.get("role_profile") or h.get("workspace_override") or h.get("priority"):
 			return {
-				"roles": _roles_of_profile(h.get("role_profile")),
+				"roles": _roles_from_role_name(h.get("role_profile")),
 				"workspace": h.get("workspace_override"),
 				"priority": int(h.get("priority") or 0),
 			}
@@ -65,7 +63,6 @@ def _resolve_row_access(h) -> dict:
 
 def _active_history_rows(emp) -> list[dict]:
 	# You already compute is_current server-side; we trust that.
-	today = nowdate()
 	rows = []
 	for h in (emp.employee_history or []):
 		if not h.get("designation"):
@@ -76,11 +73,31 @@ def _active_history_rows(emp) -> list[dict]:
 		rows.append(h)
 	return rows
 
+def _prejoin_access_from_designation(emp) -> tuple[set[str], str | None]:
+	"""
+	Provision baseline role before joining date so newly created users are usable
+	for onboarding, but do not set workspace until active history exists.
+	"""
+	if not getattr(emp, "designation", None) or not getattr(emp, "date_of_joining", None):
+		return set(), None
+
+	try:
+		join_date = getdate(emp.date_of_joining)
+		today = getdate(nowdate())
+	except Exception:
+		return set(), None
+
+	if join_date <= today:
+		return set(), None
+
+	d = _designation_defaults(emp.designation)
+	return set(d.get("roles", set())), None
+
 def compute_effective_access_from_employee(emp) -> tuple[set[str], str | None]:
 	"""Union roles from all active rows; pick workspace from highest priority."""
 	chunks = [_resolve_row_access(h) for h in _active_history_rows(emp)]
 	if not chunks:
-		return set(), None
+		return _prejoin_access_from_designation(emp)
 	target_roles = set().union(*(c["roles"] for c in chunks))
 	best = max(chunks, key=lambda c: int(c.get("priority") or 0))
 	return target_roles, best.get("workspace")

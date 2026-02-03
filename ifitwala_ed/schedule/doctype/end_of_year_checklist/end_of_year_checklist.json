@@ -5,7 +5,14 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_gksp",
+  "scope_section",
+  "school",
+  "academic_year",
+  "column_break_scope",
+  "status",
+  "scope_preview_section",
+  "scope_preview",
+  "actions_section",
   "archive_program_enrollment",
   "archive_student_groups",
   "archive_terms",
@@ -13,8 +20,50 @@
  ],
  "fields": [
   {
-   "fieldname": "section_break_gksp",
-   "fieldtype": "Section Break"
+   "fieldname": "scope_section",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "Target School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_scope",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nIn Progress\nCompleted",
+   "reqd": 1
+  },
+  {
+   "fieldname": "scope_preview_section",
+   "fieldtype": "Section Break",
+   "label": "Resolved Scope"
+  },
+  {
+   "fieldname": "scope_preview",
+   "fieldtype": "HTML",
+   "label": "Affected Schools"
+  },
+  {
+   "fieldname": "actions_section",
+   "fieldtype": "Section Break",
+   "label": "Actions"
   },
   {
    "fieldname": "archive_program_enrollment",
@@ -41,7 +90,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-05-29 08:33:24.785017",
+ "modified": "2025-05-29 08:33:27",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "End of Year Checklist",

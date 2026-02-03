@@ -69,7 +69,7 @@ class Team(Document):
 @frappe.whitelist()
 def get_eligible_users(school=None, organization=None):
 	"""Return enabled users with linked Employee records scoped by school/org."""
-	conditions = ["u.enabled = 1", "ifnull(e.status, 'Active') = 'Active'"]
+	conditions = ["u.enabled = 1", "ifnull(e.employment_status, 'Active') = 'Active'"]
 	params = {}
 	if school:
 		conditions.append("e.school = %(school)s")

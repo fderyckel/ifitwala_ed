@@ -1,4 +1,5 @@
 // ifitwala_ed/ui-spa/src/types/interactions.ts
+
 // Shared types for interaction / reactions (used across all surfaces)
 
 export type InteractionMode =

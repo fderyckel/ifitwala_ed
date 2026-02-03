@@ -1,7 +1,7 @@
+# ifitwala_ed/setup/setup.py
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
-import os
 import json
 import frappe
 from frappe import _
@@ -12,13 +12,14 @@ def setup_education():
 	ensure_initial_setup_flag()
 	ensure_root_organization()
 	create_roles_with_homepage()
+	grant_role_read_select_to_hr()
 	create_designations()
 	create_log_type()
 	create_location_type()
 	add_other_records()
 	create_student_file_folder()
 	setup_website_top_bar()
-	setup_web_pages()
+	setup_website_block_definitions()
 	grant_core_crm_permissions()
 
 
@@ -72,6 +73,7 @@ def create_roles_with_homepage():
 	roles = [
 		{"role_name": "Student", "desk_access": 0, "home_page": "/portal/student"},
 		{"role_name": "Guardian", "desk_access": 0, "home_page": "/sp"},
+		{"role_name": "Admissions Applicant", "desk_access": 0, "home_page": "/admissions"},
 		{"role_name": "Nurse", "desk_access": 1, "home_page": "/app/health"},
 		{"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/admin"},
 		{"role_name": "Admission Officer", "desk_access": 1, "home_page": "/app/admission"},
@@ -169,7 +171,70 @@ def add_other_records(country=None):
 		# Program tree root (global)
 		{'doctype': 'Program', 'name': 'All Programs', 'program_name': 'All Programs', 'is_group': 1, 'parent_program': ''},
 	]
-	insert_record(records)
+	for record in records:
+		block_type = record.get("block_type")
+		if not block_type:
+			continue
+		if frappe.db.exists("Website Block Definition", {"block_type": block_type}):
+			continue
+		doc = frappe.get_doc(record)
+		doc.insert(ignore_permissions=True, ignore_if_duplicate=True)
+		frappe.db.commit()
+
+
+def grant_role_read_select_to_hr():
+	"""Allow HR Manager / HR User to link to Role from Designation (and read role names).
+	This must be done at setup time because Frappe validates Link fields via validate_link,
+	which requires Read or Select on the target doctype (Role).
+	"""
+	target_doctype = "Role"
+	# Roles that can edit Designation should be able to resolve Role links.
+	target_roles = ["HR Manager", "HR User", "Academic Admin"]
+
+	# Custom permissions are stored as Custom DocPerm (safe to add; survives updates).
+	# We only grant read + select at permlevel 0.
+	for role in target_roles:
+		existing_name = frappe.db.get_value(
+			"Custom DocPerm",
+			{"parent": target_doctype, "role": role, "permlevel": 0},
+			"name",
+		)
+
+		if existing_name:
+			doc = frappe.get_doc("Custom DocPerm", existing_name)
+			changed = False
+
+			if not int(doc.get("read") or 0):
+				doc.read = 1
+				changed = True
+
+			# 'select' exists on DocPerm/Custom DocPerm in Frappe v15+
+			if doc.meta.has_field("select") and not int(doc.get("select") or 0):
+				doc.select = 1
+				changed = True
+
+			if changed:
+				doc.save(ignore_permissions=True)
+		else:
+			payload = {
+				"doctype": "Custom DocPerm",
+				"parent": target_doctype,
+				"parenttype": "DocType",
+				"parentfield": "permissions",
+				"role": role,
+				"permlevel": 0,
+				"read": 1,
+			}
+			# Only set 'select' if field exists in this site/schema
+			meta = frappe.get_meta("Custom DocPerm")
+			if meta.has_field("select"):
+				payload["select"] = 1
+
+			frappe.get_doc(payload).insert(ignore_permissions=True)
+
+	# Make sure the permission cache is refreshed
+	frappe.clear_cache(doctype=target_doctype)
+
 
 def create_student_file_folder():
 	records = [{
@@ -220,65 +285,277 @@ def setup_website_top_bar():
 
     ws.save(ignore_permissions=True)
 
-METADATA_FIELDS = {
-	"docstatus", "modified", "modified_by",
-  "owner", "creation", "idx", "_user_tags"
-}
+def setup_website_block_definitions():
+	records = get_website_block_definition_records()
+	insert_record(records)
 
-def setup_web_pages():
-	"""
-	Insert Web Page records from fixtures/web_page.json.
-	Any error aborts execution via frappe.throw().
-	"""
-	fixture_path = frappe.get_app_path("ifitwala_ed", "setup", "data", "web_page.json")
-
-	#  Ensure the fixture file exists
-	if not os.path.exists(fixture_path):
-		frappe.throw(
-			_("Web Page fixture not found at {0}").format(fixture_path),
-			title=_("Initial Setup Aborted")
-		)
-
-	# Load JSON
-	try:
-		with open(fixture_path, encoding="utf-8") as f:
-			records = json.load(f)
-	except Exception as e:
-		frappe.throw(
-			_("Failed to load Web Page fixtures: {0}").format(str(e)),
-			title=_("Initial Setup Aborted")
-		)
-
-	#  Insert each record
-	for record in records:
-		if record.get("doctype") != "Web Page":
-			continue
-
-		identifier = record.get("name") or record.get("route") or record.get("title")
-		if not identifier:
-			frappe.throw(
-				_("Web Page record missing a unique identifier (name/route/title)."),
-				title=_("Initial Setup Aborted")
-			)
-
-		# Skip if already present – not an error
-		if frappe.db.exists("Web Page", identifier):
-			continue
-
-		filtered = {k: v for k, v in record.items() if k not in METADATA_FIELDS}
-		# Ensure required keys
-		filtered.setdefault("doctype", "Web Page")
-		filtered.setdefault("name", identifier)
-		if "name" not in filtered:
-			filtered["name"] = identifier
-
-		try:
-			frappe.get_doc(filtered).insert(ignore_permissions=True)
-		except Exception as e:
-			frappe.throw(
-				_("Failed to insert Web Page '{0}': {1}").format(identifier, str(e)),
-				title=_("Initial Setup Aborted")
-			)
+def get_website_block_definition_records():
+	return [
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "hero",
+			"label": "Hero",
+			"template_path": "ifitwala_ed/website/blocks/hero.html",
+			"script_path": None,
+			"provider_path": "ifitwala_ed.website.providers.hero.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"title": {"type": "string"},
+					"subtitle": {"type": "string"},
+					"background_image": {"type": "string"},
+					"images": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"image": {"type": "string"},
+								"alt": {"type": "string"},
+								"caption": {"type": "string"}
+							},
+							"required": ["image"],
+							"additionalProperties": False
+						}
+					},
+					"autoplay": {"type": "boolean"},
+					"interval": {"type": "integer", "minimum": 1000},
+					"variant": {"type": "string", "enum": ["default", "split", "centered"]},
+					"cta_label": {"type": "string"},
+					"cta_link": {"type": "string"}
+				},
+				"required": ["title"],
+				"additionalProperties": False
+			}),
+			"seo_role": "owns_h1",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "admissions_overview",
+			"label": "Admissions Overview",
+			"template_path": "ifitwala_ed/website/blocks/admissions_overview.html",
+			"script_path": None,
+			"provider_path": "ifitwala_ed.website.providers.admissions_overview.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"heading": {"type": "string"},
+					"content_html": {"type": "string"},
+					"max_width": {"type": "string", "enum": ["narrow", "normal", "wide"]}
+				},
+				"required": ["heading", "content_html"],
+				"additionalProperties": False
+			}),
+			"seo_role": "owns_h1",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "admissions_steps",
+			"label": "Admissions Steps",
+			"template_path": "ifitwala_ed/website/blocks/admissions_steps.html",
+			"script_path": None,
+			"provider_path": "ifitwala_ed.website.providers.admissions_steps.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"steps": {
+						"type": "array",
+						"minItems": 2,
+						"items": {
+							"type": "object",
+							"properties": {
+								"key": {"type": "string"},
+								"title": {"type": "string"},
+								"description": {"type": "string"},
+								"icon": {"type": ["string", "null"]}
+							},
+							"required": ["key", "title"],
+							"additionalProperties": False
+						}
+					},
+					"layout": {"type": "string", "enum": ["horizontal", "vertical"]}
+				},
+				"required": ["steps"],
+				"additionalProperties": False
+			}),
+			"seo_role": "supporting",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "admission_cta",
+			"label": "Admission CTA",
+			"template_path": "ifitwala_ed/website/blocks/admission_cta.html",
+			"script_path": None,
+			"provider_path": "ifitwala_ed.website.providers.admission_cta.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"intent": {"type": "string", "enum": ["inquire", "visit", "apply"]},
+					"label_override": {"type": ["string", "null"]},
+					"style": {"type": "string", "enum": ["primary", "secondary", "outline"]},
+					"icon": {"type": ["string", "null"], "enum": ["mail", "map", "file-text", None]},
+					"tracking_id": {"type": ["string", "null"]}
+				},
+				"required": ["intent"],
+				"additionalProperties": False
+			}),
+			"seo_role": "supporting",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "faq",
+			"label": "FAQ",
+			"template_path": "ifitwala_ed/website/blocks/faq.html",
+			"script_path": None,
+			"provider_path": "ifitwala_ed.website.providers.faq.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"items": {
+						"type": "array",
+						"minItems": 1,
+						"items": {
+							"type": "object",
+							"properties": {
+								"question": {"type": "string"},
+								"answer_html": {"type": "string"}
+							},
+							"required": ["question", "answer_html"],
+							"additionalProperties": False
+						}
+					},
+					"enable_schema": {"type": "boolean"},
+					"collapsed_by_default": {"type": "boolean"}
+				},
+				"required": ["items"],
+				"additionalProperties": False
+			}),
+			"seo_role": "supporting",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "rich_text",
+			"label": "Rich Text",
+			"template_path": "ifitwala_ed/website/blocks/rich_text.html",
+			"script_path": None,
+			"provider_path": "ifitwala_ed.website.providers.rich_text.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"content_html": {"type": "string"},
+					"max_width": {"type": "string", "enum": ["narrow", "normal", "wide"]}
+				},
+				"required": ["content_html"],
+				"additionalProperties": False
+			}),
+			"seo_role": "content",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "content_snippet",
+			"label": "Content Snippet",
+			"template_path": "ifitwala_ed/website/blocks/content_snippet.html",
+			"script_path": None,
+			"provider_path": "ifitwala_ed.website.providers.content_snippet.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"snippet_id": {"type": "string"},
+					"allow_override": {"type": "boolean"}
+				},
+				"required": ["snippet_id"],
+				"additionalProperties": False
+			}),
+			"seo_role": "content",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "program_list",
+			"label": "Program List",
+			"template_path": "ifitwala_ed/website/blocks/program_list.html",
+			"script_path": None,
+			"provider_path": "ifitwala_ed.website.providers.program_list.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"school_scope": {"type": "string", "enum": ["current", "all"]},
+					"show_intro": {"type": "boolean"},
+					"card_style": {"type": "string", "enum": ["standard", "compact"]},
+					"limit": {"type": ["integer", "null"], "minimum": 1}
+				},
+				"additionalProperties": False
+			}),
+			"seo_role": "supporting",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "program_intro",
+			"label": "Program Intro",
+			"template_path": "ifitwala_ed/website/blocks/program_intro.html",
+			"script_path": None,
+			"provider_path": "ifitwala_ed.website.providers.program_intro.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"heading": {"type": "string"},
+					"content_html": {"type": "string"},
+					"hero_image": {"type": ["string", "null"]},
+					"cta_intent": {"type": ["string", "null"], "enum": ["inquire", "visit", "apply", None]}
+				},
+				"required": ["heading"],
+				"additionalProperties": False
+			}),
+			"seo_role": "owns_h1",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "leadership",
+			"label": "Leadership",
+			"template_path": "ifitwala_ed/website/blocks/leadership.html",
+			"script_path": None,
+			"provider_path": "ifitwala_ed.website.providers.leadership.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"title": {"type": "string"},
+					"roles": {"type": "array", "items": {"type": "string"}},
+					"limit": {"type": "integer", "minimum": 1}
+				},
+				"additionalProperties": False
+			}),
+			"seo_role": "supporting",
+			"is_core": 1,
+		},
+		{
+			"doctype": "Website Block Definition",
+			"block_type": "cta",
+			"label": "CTA",
+			"template_path": "ifitwala_ed/website/blocks/cta.html",
+			"script_path": None,
+			"provider_path": "ifitwala_ed.website.providers.cta.get_context",
+			"props_schema": json.dumps({
+				"type": "object",
+				"properties": {
+					"title": {"type": "string"},
+					"text": {"type": "string"},
+					"button_label": {"type": "string"},
+					"button_link": {"type": "string"}
+				},
+				"required": ["button_label", "button_link"],
+				"additionalProperties": False
+			}),
+			"seo_role": "supporting",
+			"is_core": 1,
+		},
+	]
 
 def grant_core_crm_permissions():
 	"""Ensure critical roles have access to Contact and Address Doctypes."""

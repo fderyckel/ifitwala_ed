@@ -37,7 +37,7 @@ def _instructor_group_names(user: str) -> set[str]:
 
 	# Linked via Employee mapping
 	employee = frappe.db.get_value(
-		"Employee", {"user_id": user, "status": "Active"}, "name"
+		"Employee", {"user_id": user, "employment_status": "Active"}, "name"
 	)
 	if employee:
 		for row in frappe.get_all(
@@ -126,4 +126,3 @@ def fetch_group_students(student_group: str, start: int = 0, page_length: int = 
 		"total": total,
 		"group_info": group_info,
 	}
-

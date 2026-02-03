@@ -410,7 +410,7 @@ def get_filter_meta():
 		FROM `tabStudent Log` sl
 		JOIN `tabEmployee` e ON e.user_id = sl.owner
 		WHERE {where_clause}
-		  AND e.status = 'Active'
+		  AND e.employment_status = 'Active'
 		ORDER BY e.employee_full_name
 		""",
 		params,

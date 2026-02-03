@@ -1,3 +1,4 @@
+# ifitwala_ed/admission/admission_utils.py
 # Copyright (c) 2025, Francois de Ryckel and contributors
 # For license information, please see license.txt
 
@@ -9,9 +10,79 @@ from frappe.utils import add_days, nowdate, now, getdate
 from frappe.desk.form.assign_to import add as add_assignment, remove as remove_assignment
 
 
+ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
+
+
+APPLICANT_DOCUMENT_SLOT_MAP = {
+	"passport": {
+		"slot": "identity_passport",
+		"data_class": "legal",
+		"purpose": "identification_document",
+		"retention_policy": "until_school_exit_plus_6m",
+	},
+	"birth_certificate": {
+		"slot": "identity_birth_cert",
+		"data_class": "legal",
+		"purpose": "identification_document",
+		"retention_policy": "until_school_exit_plus_6m",
+	},
+	"health_record": {
+		"slot": "health_record",
+		"data_class": "safeguarding",
+		"purpose": "medical_record",
+		"retention_policy": "until_school_exit_plus_6m",
+	},
+	"transcript": {
+		"slot": "prior_transcript",
+		"data_class": "academic",
+		"purpose": "academic_report",
+		"retention_policy": "until_program_end_plus_1y",
+	},
+	"report_card": {
+		"slot": "prior_transcript",
+		"data_class": "academic",
+		"purpose": "academic_report",
+		"retention_policy": "until_program_end_plus_1y",
+	},
+	"photo": {
+		"slot": "family_photo",
+		"data_class": "administrative",
+		"purpose": "administrative",
+		"retention_policy": "immediate_on_request",
+	},
+	"application_form": {
+		"slot": "application_form",
+		"data_class": "administrative",
+		"purpose": "administrative",
+		"retention_policy": "until_program_end_plus_1y",
+	},
+}
+
+
+def get_applicant_document_slot_spec(doc_type_code: str) -> dict:
+	"""Return slot classification spec for an Applicant Document Type code."""
+	if not doc_type_code:
+		return {}
+	return APPLICANT_DOCUMENT_SLOT_MAP.get(doc_type_code.strip())
+
+
+def ensure_admissions_permission(user: str | None = None) -> str:
+	"""Ensure the caller has Admission Manager or Admission Officer role."""
+	user = user or frappe.session.user
+	if not user or user == "Guest":
+		frappe.throw(_("You need to sign in to perform this action."), frappe.PermissionError)
+
+	roles = set(frappe.get_roles(user))
+	if roles & ADMISSIONS_ROLES:
+		return user
+
+	frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
+	return user
+
+
 def notify_admission_manager(doc):
 	"""Realtime notify Admission Managers of a new inquiry (from webform)."""
-	if frappe.flags.in_web_form and doc.workflow_state == "New Inquiry":
+	if frappe.flags.in_web_form and doc.workflow_state in ("New", "New Inquiry"):
 		user_ids = frappe.db.get_values("Has Role",
 			{"role": "Admission Manager"}, "parent", as_dict=False
 		)
@@ -42,7 +113,7 @@ def check_sla_breaches():
 	logger = frappe.logger("sla_breaches", allow_site=True)
 	today = getdate()
 
-	contacted_states = ("Contacted", "Qualified", "Nurturing", "Accepted", "Unqualified")
+	contacted_states = ("Contacted", "Qualified", "Archived")
 	doc_types = ["Inquiry", "Registration of Interest"]
 
 	for doctype in doc_types:
@@ -164,8 +235,8 @@ def set_inquiry_deadlines(doc):
 def update_sla_status(doc):
 	"""This per-doc method remains for form-level updates (Assign/Save)."""
 	today = getdate()
-	state = (doc.workflow_state or "New Inquiry").strip()
-	contacted_states = {"Contacted", "Qualified", "Nurturing", "Accepted", "Unqualified"}
+	state = (doc.workflow_state or "New").strip()
+	contacted_states = {"Contacted", "Qualified", "Archived"}
 
 	active = []
 	if state not in contacted_states and getattr(doc, "first_contact_due_on", None):
@@ -184,6 +255,7 @@ def update_sla_status(doc):
 
 @frappe.whitelist()
 def assign_inquiry(doctype, docname, assigned_to):
+	ensure_admissions_permission()
 	doc = frappe.get_doc(doctype, docname)
 
 	# Validate role
@@ -205,14 +277,9 @@ def assign_inquiry(doctype, docname, assigned_to):
 	# Compute follow-up due and update Inquiry (in-memory only)
 	followup_due = add_days(nowdate(), settings.followup_sla_days or 1)
 	doc.assigned_to = assigned_to
-	doc.workflow_state = "Assigned"
 	doc.followup_due_on = followup_due
 
-	# stamp FIRST assignment time (never overwrite)
-	if not doc.assigned_at:
-		ts = frappe.utils.now_datetime()
-		doc.assigned_at = ts
-		doc.db_set("assigned_at", ts, update_modified=False)
+	doc.mark_assigned(add_comment=False)
 
 	# SLA + single save (avoid db_set before this)
 	update_sla_status(doc)
@@ -238,6 +305,13 @@ def assign_inquiry(doctype, docname, assigned_to):
 				f"See follow-up task: {todo_link}"
 			),
 		)
+	else:
+		doc.add_comment(
+			"Comment",
+			text=frappe._(
+				f"Assigned to <b>{assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
+			),
+		)
 
 	notify_user(assigned_to, "🆕 You have been assigned a new inquiry.", doc)
 
@@ -246,6 +320,7 @@ def assign_inquiry(doctype, docname, assigned_to):
 
 @frappe.whitelist()
 def reassign_inquiry(doctype, docname, new_assigned_to):
+	ensure_admissions_permission()
 	doc = frappe.get_doc(doctype, docname)
 
 	# Must be currently assigned
@@ -269,8 +344,9 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 	# Compute new follow-up due and update Inquiry (in-memory only)
 	followup_due = add_days(nowdate(), settings.followup_sla_days or 1)
 	doc.assigned_to = new_assigned_to
-	doc.workflow_state = "Assigned"
 	doc.followup_due_on = followup_due
+
+	doc.mark_assigned(add_comment=False)
 
 	# SLA + single save BEFORE messing with native assignments/comments
 	update_sla_status(doc)
@@ -314,6 +390,13 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 				f"New follow-up task: {todo_link}"
 			),
 		)
+	else:
+		doc.add_comment(
+			"Comment",
+			text=frappe._(
+				f"Reassigned to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
+			),
+		)
 
 	notify_user(new_assigned_to, "🆕 You have been assigned a new inquiry (reassignment).", doc)
 
@@ -347,9 +430,9 @@ def on_todo_update_close_marks_contacted(doc, method=None):
 	except frappe.DoesNotExistError:
 		return
 
-	state = (ref.workflow_state or "New Inquiry").strip()
+	state = (ref.workflow_state or "New").strip()
 	# Only flip from pre-contact states
-	if state not in ("New Inquiry", "Assigned"):
+	if state not in ("New", "New Inquiry", "Assigned"):
 		return
 
 	# Only if the closing user is the current assignee on the document
@@ -360,3 +443,116 @@ def on_todo_update_close_marks_contacted(doc, method=None):
 
 	# Reuse the doc's method; don't try to close ToDo again (avoid loops)
 	ref.mark_contacted(complete_todo=False)
+
+
+@frappe.whitelist()
+def from_inquiry_invite(
+	inquiry_name: str,
+	school: str,
+	organization: str | None = None,
+) -> str:
+	"""
+	Create a Student Applicant from an Inquiry via an explicit invite-to-apply action.
+
+	Architectural invariants:
+	- Inquiry remains generic (no school/org forced onto it)
+	- School is REQUIRED at invite time
+	- Organization is REQUIRED (explicit or derived from School)
+	- Applicant becomes institutionally anchored
+	- No enrollment logic
+	- No Student creation
+	"""
+
+	# ------------------------------------------------------------------
+	# Permission
+	# ------------------------------------------------------------------
+	ensure_admissions_permission()
+
+	# ------------------------------------------------------------------
+	# Validate inputs
+	# ------------------------------------------------------------------
+	if not inquiry_name:
+		frappe.throw(_("Inquiry name is required."))
+
+	if not school:
+		frappe.throw(_("School is required to invite an applicant."))
+
+	if not frappe.db.exists("School", school):
+		frappe.throw(_("Invalid School: {0}").format(school))
+
+	# ------------------------------------------------------------------
+	# Load Inquiry (READ-ONLY usage)
+	# ------------------------------------------------------------------
+	inquiry = frappe.get_doc("Inquiry", inquiry_name)
+
+	# ------------------------------------------------------------------
+	# Prevent duplicate Applicants per Inquiry
+	# ------------------------------------------------------------------
+	existing = frappe.db.get_value(
+		"Student Applicant",
+		{"inquiry": inquiry.name},
+		"name",
+	)
+	if existing:
+		return existing
+
+	# ------------------------------------------------------------------
+	# Resolve organization (explicit or derived)
+	# ------------------------------------------------------------------
+	if not organization:
+		organization = frappe.db.get_value("School", school, "organization")
+
+	if not organization:
+		frappe.throw(
+			_("Organization must be provided or derivable from the selected School.")
+		)
+
+	# ------------------------------------------------------------------
+	# Create Student Applicant (institutional commitment point)
+	# ------------------------------------------------------------------
+	applicant = frappe.get_doc({
+		"doctype": "Student Applicant",
+
+		# Identity (best-effort, editable later)
+		"first_name": inquiry.first_name,
+		"middle_name": inquiry.middle_name,
+		"last_name": inquiry.last_name,
+
+		# Institutional anchoring (IMMUTABLE after creation)
+		"school": school,
+		"organization": organization,
+
+		# Admissions intent (NOT enrollment)
+		"program": inquiry.program,
+		"academic_year": inquiry.academic_year,
+		"term": inquiry.term,
+
+		# Traceability
+		"inquiry": inquiry.name,
+
+		# Lifecycle
+		"application_status": "Invited",
+	})
+
+	# Explicit lifecycle flags (used by Applicant controller)
+	applicant.flags.from_inquiry_invite = True
+	applicant.flags.allow_status_change = True
+	applicant.flags.status_change_source = "from_inquiry_invite"
+
+	applicant.insert(ignore_permissions=True)
+
+	# ------------------------------------------------------------------
+	# Audit trail
+	# ------------------------------------------------------------------
+	applicant.add_comment(
+		"Comment",
+		text=_(
+			"Applicant invited from Inquiry {0} for School {1} by {2}."
+		).format(
+			frappe.bold(inquiry.name),
+			frappe.bold(school),
+			frappe.bold(frappe.session.user),
+		),
+	)
+
+	return applicant.name

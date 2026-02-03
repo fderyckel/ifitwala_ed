@@ -7,11 +7,13 @@ frappe.ui.form.on("Location", {
 	setup(frm) {
 		// Parent Location: only groups, and (if set) same organization
 		frm.set_query("parent_location", () => {
-			const filters = { is_group: 1 };
-			if (frm.doc.organization) {
-				filters.organization = frm.doc.organization;
-			}
-			return { filters };
+			return {
+				query: "ifitwala_ed.stock.doctype.location.location.get_valid_parent_locations",
+				filters: {
+					organization: frm.doc.organization || null,
+					school: frm.doc.school || null
+				}
+			};
 		});
 
 		// School: constrained by organization when present

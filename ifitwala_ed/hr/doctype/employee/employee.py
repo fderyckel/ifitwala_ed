@@ -12,6 +12,8 @@ from frappe.utils import validate_email_address, add_years, cstr
 from frappe.permissions import get_doc_permissions
 from frappe.contacts.address_and_contact import load_address_and_contact
 
+
+
 from ifitwala_ed.utilities.employee_utils import (
 	get_user_base_org,
 	get_user_base_school,
@@ -35,17 +37,19 @@ class Employee(NestedSet):
 
 	def onload(self):
 		"""
-		Address/Contact are rendered on the Employee form for HR convenience (one-click).
-		Employee is NOT the source of truth for any address/contact data.
+		Load Contact and Address for HR convenience.
 
-		Source of truth: Contact (+ Address linked to Contact).
-		Employee only maintains graph integrity (User → Contact → Employee).
+		RULE:
+		- HR can read Contact + Address
+		- HR must NOT require User read permission
+		- Use the standard loader to populate __onload for the form renderer
 		"""
 		load_address_and_contact(self)
 
+
 	def validate(self):
 		from ifitwala_ed.controllers.status_updater import validate_status
-		validate_status(self.status, ["Active", "Temporary Leave", "Left", "Suspended"])
+		validate_status(self.employment_status, ["Active", "Temporary Leave", "Left", "Suspended"])
 
 		self.employee = self.name
 		self.employee_full_name = " ".join(filter(None, [
@@ -69,7 +73,9 @@ class Employee(NestedSet):
 			if existing_user_id:
 				user = frappe.get_doc("User", existing_user_id)
 				validate_employee_role(user, ignore_emp_check=True)
+				user.flags.ignore_permissions = True
 				user.save(ignore_permissions=True)
+
 
 		# Ensure the employee history is sorted before saving
 		if self.employee_history:
@@ -92,26 +98,29 @@ class Employee(NestedSet):
 		return (prev.reports_to or "") != (self.reports_to or "")
 
 	def on_update(self):
-		# Step 4: Guard nested-set updates to avoid unnecessary work
+		# ---------------------------------------------------------
+		# 1) Structural graph integrity (always allowed)
+		# ---------------------------------------------------------
 		if self._reports_to_changed():
 			self.update_nsm_model()
 
-		# Side-effects / external syncs (moved out of validate)
-		if self.user_id:
+		self.reset_employee_emails_cache()
+		self.sync_employee_history()
+		self._sync_staff_calendar()
+		self._ensure_primary_contact()
+
+		# ---------------------------------------------------------
+		# 2) Role / authority enforcement (HR-governed, safe)
+		# ---------------------------------------------------------
+		self._apply_designation_role()
+		self._apply_approver_roles()
+
+		# ---------------------------------------------------------
+		# 3) User profile sync (STRICTLY gated)
+		# ---------------------------------------------------------
+		if self.user_id and self._can_sync_user_profile():
 			self.update_user()
 			self.update_user_default_school()
-
-		self.reset_employee_emails_cache()
-		self.update_approver_role()
-
-		# Employee history: maintain rows only when needed (validate enforces correctness)
-		self.sync_employee_history()
-
-		# Staff Calendar mapping: purely derived convenience field
-		self._sync_staff_calendar()
-
-		# Contact graph integrity
-		self._ensure_primary_contact()
 
 	def on_trash(self):
 		# Keep consistency on delete; guard to avoid unnecessary work
@@ -145,13 +154,13 @@ class Employee(NestedSet):
 		if self.employee_personal_email:
 			validate_email_address(self.employee_personal_email, True)
 
-	# call on validate. If status is set to left, then need to put relieving date.
+	# call on validate. If employment status is set to left, then need to put relieving date.
 	# also you can not be set as left if there are people reporting to you.
 	def validate_status(self):
-		if self.status == "Left":
+		if self.employment_status == "Left":
 			reports_to = frappe.db.get_all(
 				"Employee",
-				filters={"reports_to": self.name, "status": "Active"},
+				filters={"reports_to": self.name, "employment_status": "Active"},
 				fields=["name", "employee_full_name"],
 			)
 			if reports_to:
@@ -446,16 +455,21 @@ class Employee(NestedSet):
 
 	# call on validate. Check that if there is already a user, a few more checks to do.
 	def validate_user_details(self):
-		if self.user_id:
-			data = frappe.db.get_value("User", self.user_id, ["enabled", "user_image"], as_dict=1)
+		if not self.user_id:
+			return
 
-		self.validate_for_enabled_user_id(data.get("enabled", 0))
+		data = frappe.db.get_value("User", self.user_id, ["enabled"], as_dict=1)
+		if not data:
+			frappe.throw(_("User {0} does not exist").format(self.user_id))
+
+		self.validate_for_enabled_user_id(data.get("enabled"))
 		self.validate_duplicate_user_id()
+
 
 	# call on validate through validate_user_details().
 	# If employee is referring to a user, that user has to be active.
 	def validate_for_enabled_user_id(self, enabled):
-		if not self.status == "Active":
+		if not self.employment_status == "Active":
 			return
 		if enabled is None:
 			frappe.throw(_("User {0} does not exist").format(self.user_id))
@@ -470,7 +484,7 @@ class Employee(NestedSet):
 			.select(Employee.name)
 			.where(
 				(Employee.user_id == self.user_id)
-				& (Employee.status == "Active")
+				& (Employee.employment_status == "Active")
 				& (Employee.name != self.name)
 			)
 		).run()
@@ -482,11 +496,15 @@ class Employee(NestedSet):
 
 	# to update the user fields when employee fields are changing
 	def update_user(self):
+		if not self.user_id:
+			return
+
 		user = frappe.get_doc("User", self.user_id)
 		user.flags.ignore_permissions = True
 
-		if "Employee" not in user.get("roles"):
-			user.append_roles("Employee")
+		# Ensure base role
+		if "Employee" not in {r.role for r in user.roles}:
+			user.append("roles", {"role": "Employee"})
 
 		user.first_name = self.employee_first_name
 		user.last_name = self.employee_last_name
@@ -499,42 +517,18 @@ class Employee(NestedSet):
 		img_path = self.employee_image
 		if img_path:
 			abs_path = frappe.utils.get_site_path("public", img_path.lstrip("/"))
-
-			# Skip (and log) if the file has been moved but the field wasn’t updated yet
 			if not os.path.exists(abs_path):
 				frappe.log_error(
 					title=_("Missing file on disk during update_user"),
 					message=f"{abs_path} does not exist for Employee {self.name}",
 				)
-				img_path = None  # prevents 500 in attach_files_to_document
+				img_path = None
 
-		if img_path:
-			if user.user_image != img_path:
-				user.user_image = img_path
+		if img_path and user.user_image != img_path:
+			user.user_image = img_path
 
-			existing = frappe.db.exists(
-				"File",
-				{
-					"attached_to_doctype": "User",
-					"attached_to_name": self.user_id,
-					"attached_to_field": "user_image",
-				},
-			)
+		user.save(ignore_permissions=True)
 
-			if not existing:
-				frappe.get_doc(
-					{
-						"doctype": "File",
-						"file_url": img_path,
-						"attached_to_doctype": "User",
-						"attached_to_name": self.user_id,
-						"attached_to_field": "user_image",
-					}
-				).insert(ignore_permissions=True, ignore_if_duplicate=True)
-			else:
-				frappe.db.set_value("File", existing, "file_url", img_path, update_modified=False)
-
-		user.save()
 
 	def _sync_staff_calendar(self):
 		"""Attach the appropriate Staff Calendar to current_holiday_lis based on employee_group.
@@ -547,7 +541,7 @@ class Employee(NestedSet):
 		- If none match the date, fall back to the latest by from_date.
 		"""
 		# Only for active staff
-		if self.status != "Active":
+		if self.employment_status != "Active":
 			self.current_holiday_lis = None
 			return
 
@@ -589,17 +583,6 @@ class Employee(NestedSet):
 		if (cell_number != prev_number or self.get("user_id") != prev_doc.get("user_id")):
 			frappe.cache().hdel("employees_with_number", cell_number)
 			frappe.cache().hdel("employees_with_number", prev_number)
-
-	def update_approver_role(self):
-		if self.leave_approver:
-			user = frappe.get_doc("User", self.leave_approver)
-			user.flags.ignore_permissions = True
-			user.add_roles("Leave Approver")
-
-		if self.expense_approver:
-			user = frappe.get_doc("User", self.expense_approver)
-			user.flags.ignore_permissions = True
-			user.add_roles("Expense Approver")
 
 	def _ensure_primary_contact(self):
 		"""
@@ -657,7 +640,70 @@ class Employee(NestedSet):
 		if not self.empl_primary_contact:
 			self.db_set("empl_primary_contact", contact_name, update_modified=False)
 
+	def _can_sync_user_profile(self) -> bool:
+		"""
+		Only System Manager or the user themself can sync Employee -> User profile fields.
+		HR should not be editing other User attributes as a side-effect of editing Employee.
+		"""
+		if frappe.session.user == "Administrator":
+			return True
+		if "System Manager" in set(frappe.get_roles()):
+			return True
+		return bool(self.user_id and self.user_id == frappe.session.user)
 
+	def _can_manage_user_roles(self) -> bool:
+		"""
+		HR Manager / HR User / System Manager can enforce roles programmatically.
+		(This does NOT grant generic User write permissions in the UI.)
+		"""
+		roles = set(frappe.get_roles())
+		return bool(roles & {"HR Manager", "HR User", "System Manager"}) or frappe.session.user == "Administrator"
+
+	def _ensure_user_has_role(self, user: str, role: str):
+		"""Add role to user if missing, using ignore_permissions to avoid User doctype access issues."""
+		if not user or not role:
+			return
+
+		exists = frappe.db.exists("Has Role", {"parent": user, "role": role})
+		if exists:
+			return
+
+		u = frappe.get_doc("User", user)
+		u.flags.ignore_permissions = True
+		u.append("roles", {"role": role})
+		u.save(ignore_permissions=True)
+
+	def _apply_designation_role(self):
+		if not self.user_id:
+			return
+		if not self._can_manage_user_roles():
+			return
+
+		prev = self.get_doc_before_save()
+		designation_changed = (not prev) or ((prev.designation or "") != (self.designation or ""))
+		user_linked_now = (not prev) or (not prev.user_id and bool(self.user_id))
+		if not (designation_changed or user_linked_now):
+			return
+
+		# Keep designation-driven roles aligned with the managed sync model.
+		from ifitwala_ed.hr.employee_access import sync_user_access_from_employee
+		sync_user_access_from_employee(self)
+
+	def _apply_approver_roles(self):
+		if not self._can_manage_user_roles():
+			return
+
+		prev = self.get_doc_before_save() or {}
+
+		if self.leave_approver and self.leave_approver != prev.get("leave_approver"):
+			self._ensure_user_has_role(self.leave_approver, "Leave Approver")
+
+		if self.expense_approver and self.expense_approver != prev.get("expense_approver"):
+			self._ensure_user_has_role(self.expense_approver, "Expense Approver")
+
+	# ------------------------------------------------------------------
+	# Employee Image Governance
+	# ------------------------------------------------------------------
 @frappe.whitelist()
 def create_user(employee, user=None, email=None):
 	# 0) Basic guards
@@ -736,7 +782,7 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
 	# - Treeview calls this often; avoid N+1 queries.
 	# - We keep the existing "All Organizations" sentinel for compatibility with current JS.
 
-	filters = [["status", "=", "Active"]]
+	filters = [["employment_status", "=", "Active"]]
 
 	# Organization filter (compat with current treeview default)
 	if organization and organization != "All Organizations":
@@ -774,7 +820,7 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
 		"""
 		SELECT reports_to, COUNT(*) AS cnt
 		FROM `tabEmployee`
-		WHERE status = 'Active'
+		WHERE employment_status = 'Active'
 			AND reports_to IN %(names)s
 		GROUP BY reports_to
 		""",

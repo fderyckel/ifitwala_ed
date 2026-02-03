@@ -1,149 +1,28 @@
-/* =========================================
-   WEBSITE.CSS — SHARED SITE-WIDE STYLING
-   (Bootstrap 5 compliant) - TODO TO CHANGE!
-   ========================================= */
+/* ifitwala_ed/public/website/website.css */
+@import "tailwindcss";
 
-/* -----------------------------------------
-   1. HERO IMAGE CAROUSEL
-   ----------------------------------------- */
-/* Wrapper sizes at breakpoints */
-.hero-img-wrapper {
-  position: relative;
-  width: 100%;
-  height: 500px;
-  overflow: hidden;
-}
-@media (max-width: 992px) {
-  .hero-img-wrapper { height: 400px; }
-}
-@media (max-width: 768px) {
-  .hero-img-wrapper { height: 300px; }
-}
-@media (max-width: 576px) {
-  .hero-img-wrapper { height: 250px; }
+@layer base {
+	img[loading="lazy"],
+	img[fallback="carousel"] {
+		opacity: 0;
+		transition: opacity 0.6s ease-in-out;
+	}
+
+	img[loading="lazy"].loaded,
+	img[fallback="carousel"].loaded {
+		opacity: 1;
+	}
 }
 
-/* Ensure hero images fill container */
-.hero-img-wrapper img,
-.hero-img {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  object-fit: cover;
-  object-position: center;
-}
+@layer utilities {
+	.clamped-text {
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 5;
+		overflow: hidden;
+	}
 
-/* Fade-in once loaded */
-.hero-img-full {
-  opacity: 0;
-  transition: opacity 0.6s ease-in-out;
-}
-.hero-img-full.loaded {
-  opacity: 1;
-}
-
-/* -----------------------------------------
-   2. CAROUSEL FADE OVERRIDES (BS5)
-   ----------------------------------------- */
-/* Slow, smooth fade between slides */
-.carousel-fade .carousel-item {
-  opacity: 0;
-  transition: opacity 1.5s ease-in-out !important;
-}
-.carousel-fade .carousel-item.active,
-.carousel-fade .carousel-item-next.carousel-item-start,
-.carousel-fade .carousel-item-prev.carousel-item-end {
-  opacity: 1;
-}
-.carousel-fade .active.carousel-item-start,
-.carousel-fade .active.carousel-item-end {
-  opacity: 0;
-}
-
-/* Drop-shadow on next/prev icons */
-.carousel-control-prev-icon,
-.carousel-control-next-icon {
-  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
-}
-
-/* -----------------------------------------
-   3. CAROUSEL INDICATORS (STAFF CAROUSEL)
-   ----------------------------------------- */
-/* Make indicators static below slides */
-#teamCarousel .carousel-indicators {
-  position: static !important;
-  bottom: auto !important;
-  margin-top: 1rem;
-}
-
-/* -----------------------------------------
-   4. SECTION DIVIDER
-   ----------------------------------------- */
-.section-divider {
-  height: 1px;
-  width: 120px;
-  background: #e5e5e5;
-  margin: 1.5rem auto 2rem;
-}
-
-/* -----------------------------------------
-   5. LAZY-LOADED IMAGE FADE-IN
-   ----------------------------------------- */
-img[loading="lazy"] {
-  opacity: 0;
-  transition: opacity 0.6s ease-in-out;
-}
-img[loading="lazy"].loaded {
-  opacity: 1;
-}
-
-/* -----------------------------------------
-   6. TOOLTIP ENHANCEMENTS (BS5)
-   ----------------------------------------- */
-.tooltip-inner {
-  background-color: #f8f9fa !important;
-  color: #212529 !important;
-  font-size: 0.875rem;
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  max-width: 250px;
-  text-align: left;
-}
-.tooltip.bs-tooltip-top .tooltip-arrow::before,
-.tooltip.bs-tooltip-bottom .tooltip-arrow::before,
-.tooltip.bs-tooltip-start .tooltip-arrow::before,
-.tooltip.bs-tooltip-end .tooltip-arrow::before {
-  border-top-color: #f8f9fa !important;
-}
-
-/* -----------------------------------------
-   7. CARD HOVER EFFECT
-   ----------------------------------------- */
-.card:hover {
-  transform: translateY(-4px);
-  transition: transform 0.25s;
-}
-
-/* -----------------------------------------
-   8. OBJECT-FIT UTILITY
-   ----------------------------------------- */
-/* Use this class on <img> where needed */
-.object-fit-cover {
-  object-fit: cover;
-}
-
-/* -----------------------------------------
-   9. LINE-CLAMP FOR TEXT PREVIEWS
-   ----------------------------------------- */
-/* Clamp to 5 lines with ellipsis */
-.clamped-text {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 5;
-  overflow: hidden;
-}
-/* Remove clamp when expanded */
-.clamped-text.expanded {
-  -webkit-line-clamp: unset;
+	.clamped-text.expanded {
+		-webkit-line-clamp: unset;
+	}
 }

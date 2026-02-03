@@ -35,6 +35,7 @@
   "column_break_czxj",
   "additional_comment",
   "student_full_name",
+  "allow_direct_creation",
   "dashboard_tab",
   "guardians_tab",
   "guardians_section",
@@ -226,8 +227,7 @@
    "fieldname": "account_holder",
    "fieldtype": "Link",
    "label": "Account Holder",
-   "options": "Account Holder",
-   "reqd": 1
+   "options": "Account Holder"
   },
   {
    "fieldname": "column_break_mdf1",
@@ -299,12 +299,21 @@
    "fieldtype": "Select",
    "label": "Residency Status",
    "options": "Local Resident\nExpat Resident\nBoarder\nOther"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_direct_creation",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Allow Direct Creation",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-02 18:00:07.266432",
+ "modified": "2026-01-22 11:18:29.745668",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",

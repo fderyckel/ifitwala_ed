@@ -39,6 +39,8 @@ frappe.ui.form.on("Employee", {
     frm.trigger("render_contact_address_readonly");
     frm.trigger("add_contact_button");
     frm.trigger("style_employee_history_rows");
+    frm.trigger("setup_governed_image_upload");
+    frm.trigger("apply_employee_image_variant");
   },
 
   // ------------------------------------------------------------
@@ -96,11 +98,188 @@ frappe.ui.form.on("Employee", {
     });
   },
 
+  setup_governed_image_upload(frm) {
+    const fieldname = "employee_image";
+    const openUploader = () => {
+      if (frm.is_new()) {
+        frappe.msgprint(__("Please save the Employee before uploading an image."));
+        return;
+      }
+
+      new frappe.ui.FileUploader({
+        method: "ifitwala_ed.utilities.governed_uploads.upload_employee_image",
+        args: { employee: frm.doc.name },
+        doctype: "Employee",
+        docname: frm.doc.name,
+        fieldname,
+        is_private: 0,
+        disable_private: true,
+        allow_multiple: false,
+        on_success(file_doc) {
+          const payload = file_doc?.message
+            || (Array.isArray(file_doc) ? file_doc[0] : file_doc)
+            || (typeof file_doc === "string" ? { file_url: file_doc } : null);
+          if (payload?.file_url) {
+            frm.set_value(fieldname, payload.file_url);
+            frm.refresh_field(fieldname);
+          }
+          const reload = frm.reload_doc();
+          if (reload && reload.then) {
+            reload.then(() => frm.trigger("apply_employee_image_variant"));
+          } else {
+            setTimeout(() => frm.trigger("apply_employee_image_variant"), 150);
+          }
+        },
+        on_error() {
+          frappe.msgprint(__("Upload failed. Please try again."));
+        },
+      });
+    };
+
+    frm.set_df_property(fieldname, "read_only", 1);
+    frm.set_df_property(
+      fieldname,
+      "description",
+      __("Use the Upload Employee Image action to attach a governed file.")
+    );
+
+    frm.remove_custom_button(__("Upload Employee Image"), __("Actions"));
+    frm.remove_custom_button(__("Upload Employee Image"));
+    const $actionBtn = frm.add_custom_button(
+      __("Upload Employee Image"),
+      openUploader
+    );
+    $actionBtn.addClass("btn-primary");
+
+    const wrapper = frm.get_field(fieldname)?.$wrapper;
+    if (wrapper?.length && !wrapper.find(".governed-upload-btn").length) {
+      const $container = wrapper.find(".control-input").length
+        ? wrapper.find(".control-input")
+        : wrapper;
+      const $btn = $(
+        `<button type="button" class="btn btn-xs btn-primary governed-upload-btn">
+          ${__("Upload Employee Image")}
+        </button>`
+      );
+      $btn.on("click", openUploader);
+      $container.append($btn);
+    }
+
+    if (frm.is_new()) {
+      return;
+    }
+
+    frm.call({
+      method: "ifitwala_ed.utilities.governed_uploads.get_governed_status",
+      args: {
+        doctype: "Employee",
+        name: frm.doc.name,
+        fieldname,
+      },
+    }).then((res) => {
+      const governed = res?.message?.governed ? __("Governed ✅") : __("Governed ❌");
+      const base = __("Use the Upload Employee Image action to attach a governed file.");
+      frm.set_df_property(fieldname, "description", `${base} ${governed}`);
+    });
+  },
+
+  apply_employee_image_variant(frm) {
+    if (frm.is_new()) return;
+
+    const originalUrl = (frm.doc.employee_image || "").trim();
+    if (!originalUrl) return;
+
+    const $wrapper = frm.page?.wrapper;
+    if (!$wrapper) return;
+
+    const filename = originalUrl.split("/").pop() || "";
+    if (!filename) return;
+
+    const applyWithCandidates = (candidates) => {
+      if (!candidates.length) return;
+
+      const applyCandidate = (imgEl, index) => {
+        if (!imgEl || !imgEl.getAttribute) return;
+        const nextUrl = candidates[index];
+        if (!nextUrl) {
+          imgEl.setAttribute("src", originalUrl);
+          return;
+        }
+        imgEl.setAttribute("data-variant-index", String(index));
+        imgEl.setAttribute("src", nextUrl);
+      };
+
+      const setImageSrc = (imgEl) => {
+        if (!imgEl || !imgEl.getAttribute) return;
+        const current = imgEl.getAttribute("src") || "";
+        if (!current || !current.includes(filename)) return;
+        if (imgEl.getAttribute("data-original-src")) return;
+
+        imgEl.setAttribute("data-original-src", current);
+        applyCandidate(imgEl, 0);
+
+        const onError = () => {
+          const currentIndex = parseInt(imgEl.getAttribute("data-variant-index") || "0", 10);
+          const nextIndex = currentIndex + 1;
+          if (nextIndex >= candidates.length) {
+            imgEl.removeEventListener("error", onError);
+            imgEl.setAttribute("src", originalUrl);
+            return;
+          }
+          applyCandidate(imgEl, nextIndex);
+        };
+
+        imgEl.addEventListener("error", onError);
+      };
+
+      $wrapper.find("img").each((_, img) => setImageSrc(img));
+
+      $wrapper.find("[style]").each((_, el) => {
+        const style = window.getComputedStyle(el).backgroundImage || "";
+        if (!style.includes(filename)) return;
+        if (el.dataset && el.dataset.originalBg) return;
+        if (el.dataset) el.dataset.originalBg = style;
+        el.style.backgroundImage = `url("${candidates[0]}")`;
+      });
+    };
+
+    frm.call({
+      method: "ifitwala_ed.utilities.governed_uploads.get_employee_image_variants",
+      args: { employee: frm.doc.name },
+    }).then((res) => {
+      const preferred = res?.message?.profile_image_thumb;
+      const candidates = ifitwala_ed.hr.get_employee_image_variant_candidates(
+        originalUrl,
+        "thumb",
+        frm.doc.name,
+        preferred
+      );
+      applyWithCandidates(candidates);
+    }).catch(() => {
+      const candidates = ifitwala_ed.hr.get_employee_image_variant_candidates(
+        originalUrl,
+        "thumb",
+        frm.doc.name
+      );
+      applyWithCandidates(candidates);
+    });
+  },
+
   // ------------------------------------------------------------
   // Actions
   // ------------------------------------------------------------
 
   create_user(frm) {
+    if (frm.is_new()) {
+      frappe.msgprint(__("Please save the Employee before creating a User."));
+      return;
+    }
+
+    if (frm.is_dirty()) {
+      frappe.msgprint(__("Please save the Employee before creating a User."));
+      return;
+    }
+
     if (!frm.doc.employee_professional_email) {
       frappe.throw(__("Please enter Professional Email"));
     }
@@ -108,9 +287,15 @@ frappe.ui.form.on("Employee", {
     frappe.call({
       method: "ifitwala_ed.hr.doctype.employee.employee.create_user",
       args: { employee: frm.doc.name, email: frm.doc.employee_professional_email },
-      callback(r) {
-        frm.set_value("user_id", r.message);
-      },
+      freeze: true,
+      freeze_message: __("Creating User..."),
+    }).then((r) => {
+      if (!r?.message) {
+        frappe.msgprint(__("User creation failed. Please try again."));
+        return;
+      }
+
+      return frm.reload_doc();
     });
   },
 
@@ -159,6 +344,63 @@ frappe.ui.form.on("Employee", {
 // ------------------------------------------------------------
 // Private helpers (namespaced, no globals)
 // ------------------------------------------------------------
+
+ifitwala_ed.hr.get_employee_image_variant_candidates = function (fileUrl, sizeLabel, docname, preferredUrl) {
+  if (!fileUrl) return [];
+
+  const cleaned = String(fileUrl).trim();
+  if (!cleaned || cleaned.startsWith("http")) return [];
+
+  const filename = cleaned.split("/").pop() || "";
+  if (!filename) return [];
+
+  if (cleaned.includes("/gallery_resized/")) {
+    return [cleaned];
+  }
+
+  const lower = filename.toLowerCase();
+  if (
+    lower.startsWith("hero_")
+    || lower.startsWith("medium_")
+    || lower.startsWith("card_")
+    || lower.startsWith("thumb_")
+  ) {
+    return [cleaned];
+  }
+
+  const base = filename.replace(/\.[^/.]+$/, "");
+  const slugBase = base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (!slugBase) return [];
+
+  const size = sizeLabel || "thumb";
+  const candidates = [];
+
+  if (preferredUrl) {
+    candidates.push(preferredUrl);
+  }
+
+  if (docname) {
+    candidates.push(`/files/Employee/${docname}/${size}_${slugBase}.webp`);
+  }
+
+  if (cleaned.includes("/Employee/")) {
+    const baseDir = cleaned.substring(0, cleaned.lastIndexOf("/"));
+    candidates.push(`${baseDir}/${size}_${slugBase}.webp`);
+  }
+
+  candidates.push(`/files/gallery_resized/employee/${size}_${slugBase}.webp`);
+  candidates.push(`/files/${size}_${slugBase}.webp`);
+
+  const seen = new Set();
+  return candidates.filter((url) => {
+    if (!url || seen.has(url)) return false;
+    seen.add(url);
+    return true;
+  });
+};
 
 /**
  * Lock the rendered Contact/Address UI so it behaves as "display-only".

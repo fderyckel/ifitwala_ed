@@ -1,0 +1,39 @@
+<!-- ifitwala_ed/website/blocks/program_list.html -->
+{% import "ifitwala_ed/templates/includes/smart_image_macro.html" as img_macro %}
+
+<section class="block block-program-list">
+	<div class="mx-auto max-w-6xl px-6">
+		{% if data.programs %}
+			<div class="grid gap-8 md:grid-cols-3">
+				{% for program in data.programs %}
+					<article class="rounded-xl border overflow-hidden">
+						<a href="{{ program.url }}" class="block h-full">
+							{% if program.image and program.image.original %}
+								{{ img_macro.smart_image(
+									None,
+									None,
+									program.image.card,
+									program.image.thumb,
+									program.image.original,
+									program.title,
+									"h-48 w-full object-cover",
+									fallback="card"
+								) }}
+							{% endif %}
+							<div class="{{ 'px-5 py-4' if data.card_style == 'standard' else 'px-4 py-3' }}">
+								<h3 class="text-lg font-semibold text-slate-900">{{ program.title }}</h3>
+								{% if program.school_name and data.school_scope == 'all' %}
+									<p class="mt-1 text-xs text-slate-500">{{ program.school_name }}</p>
+								{% endif %}
+								{% if data.show_intro and program.intro %}
+									<p class="mt-3 text-sm text-slate-600">{{ program.intro }}</p>
+								{% endif %}
+								<span class="mt-4 inline-flex text-sm font-semibold text-slate-900">View details &rsaquo;</span>
+							</div>
+						</a>
+					</article>
+				{% endfor %}
+			</div>
+		{% endif %}
+	</div>
+</section>

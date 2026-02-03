@@ -88,11 +88,11 @@ def get_context(context):
 	# ---------------------------------------------------------------
 	# Portal section eligibility (portal sections != frappe roles)
 	# Compromise rule:
-	#   Staff: user has role "Employee" AND linked Employee.status == "Active"
+	#   Staff: user has role "Employee" AND linked Employee.employment_status == "Active"
 	# ---------------------------------------------------------------
 	is_employee = (
 		("Employee" in user_roles)
-		and bool(frappe.db.exists("Employee", {"user_id": user, "status": "Active"}))
+		and bool(frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}))
 	)
 
 	is_student = "Student" in user_roles

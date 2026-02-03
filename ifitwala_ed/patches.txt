@@ -5,3 +5,8 @@ ifitwala_ed.patches.backfill_location_bookings
 ifitwala_ed.patches.v0_0.create_minimal_coa
 ifitwala_ed.patches.v0_0.create_default_account_holders
 ifitwala_ed.patches.v0_0.migrate_course_prerequisites
+ifitwala_ed.patches.v0_0.remove_legacy_web_pages
+ifitwala_ed.patches.rename_employee_status_field
+ifitwala_ed.patches.update_website_block_definitions
+ifitwala_ed.patches.set_end_of_year_checklist_defaults
+ifitwala_ed.patches.update_policy_category_taxonomy

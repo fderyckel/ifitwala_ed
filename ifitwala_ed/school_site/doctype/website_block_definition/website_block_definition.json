@@ -1,0 +1,117 @@
+{
+ "actions": [],
+ "autoname": "field:block_type",
+ "creation": "2026-01-01 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "block_type",
+  "label",
+  "template_path",
+  "script_path",
+  "provider_path",
+  "props_schema",
+  "seo_role",
+  "is_core"
+ ],
+ "fields": [
+  {
+   "fieldname": "block_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Block Type",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label"
+  },
+  {
+   "fieldname": "template_path",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Template Path",
+   "reqd": 1
+  },
+  {
+   "fieldname": "script_path",
+   "fieldtype": "Data",
+   "label": "Script Path"
+  },
+  {
+   "fieldname": "provider_path",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Provider Path",
+   "reqd": 1
+  },
+  {
+   "fieldname": "props_schema",
+   "fieldtype": "Code",
+   "label": "Props Schema",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "seo_role",
+   "fieldtype": "Select",
+   "label": "SEO Role",
+   "options": "owns_h1\ncontent\nsupporting"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_core",
+   "fieldtype": "Check",
+   "label": "Is Core"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-29 14:40:40.051085",
+ "modified_by": "Administrator",
+ "module": "School Site",
+ "name": "Website Block Definition",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Website Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Marketing User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -43,16 +43,23 @@
   "old_parent",
   "dashboard_tab",
   "website_tab",
+  "admissions_cta_section",
+  "is_published",
   "website_slug",
-  "column_break_ztd5",
   "school_tagline",
+  "column_break_ztd5",
+  "admissions_apply_route",
+  "admissions_visit_route",
+  "admissions_inquiry_route",
   "label_cta_inquiry",
   "label_cta_roi",
   "section_break_l0vk",
   "gallery_image",
   "web_page_content_section",
   "about_snippet",
-  "more_info"
+  "more_info",
+  "portal_calendar_start_time",
+  "portal_calendar_end_time"
  ],
  "fields": [
   {
@@ -76,6 +83,13 @@
    "fieldname": "is_group",
    "fieldtype": "Check",
    "label": "Is Group"
+  },
+  {
+   "default": "0",
+   "description": "Controls website publication. Requires a website slug.",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "label": "Is Published"
   },
   {
    "fieldname": "old_parent",
@@ -214,18 +228,18 @@
    "label": "Default Break Color"
   },
   {
+   "default": "07:00:00",
+   "description": "Default start time for portal calendars when not showing full day.",
    "fieldname": "portal_calendar_start_time",
    "fieldtype": "Time",
-   "label": "Portal Calendar Start Time",
-   "default": "07:00:00",
-   "description": "Default start time for portal calendars when not showing full day."
+   "label": "Portal Calendar Start Time"
   },
   {
+   "default": "17:00:00",
+   "description": "Default end time for portal calendars when not showing full day.",
    "fieldname": "portal_calendar_end_time",
    "fieldtype": "Time",
-   "label": "Portal Calendar End Time",
-   "default": "17:00:00",
-   "description": "Default end time for portal calendars when not showing full day."
+   "label": "Portal Calendar End Time"
   },
   {
    "fieldname": "column_break_1mhp",
@@ -265,6 +279,31 @@
    "fieldname": "website_tab",
    "fieldtype": "Tab Break",
    "label": "Website"
+  },
+  {
+   "fieldname": "admissions_cta_section",
+   "fieldtype": "Section Break",
+   "label": "Admissions CTA Targets"
+  },
+  {
+   "default": "/inquiry",
+   "description": "Public inquiry entry route (e.g., /inquiry).",
+   "fieldname": "admissions_inquiry_route",
+   "fieldtype": "Data",
+   "label": "Inquiry CTA Route"
+  },
+  {
+   "default": "/admissions",
+   "description": "Admissions portal entry route (e.g., /admissions).",
+   "fieldname": "admissions_apply_route",
+   "fieldtype": "Data",
+   "label": "Apply CTA Route"
+  },
+  {
+   "description": "Visit CTA route (e.g., /your-school/visit).",
+   "fieldname": "admissions_visit_route",
+   "fieldtype": "Data",
+   "label": "Visit CTA Route"
   },
   {
    "fieldname": "gallery_image",
@@ -339,7 +378,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-09-23 10:50:04.977498",
+ "modified": "2026-01-30 06:47:13.147758",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
