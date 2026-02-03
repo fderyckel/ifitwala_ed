@@ -870,7 +870,6 @@ function toggleSpeech() {
     isListening.value = false
   }
 }
-}
 
 function changeStudent() {
   clearError()
