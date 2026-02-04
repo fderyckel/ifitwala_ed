@@ -158,7 +158,7 @@ class Guardian(Document):
 			user.save()
 
 			# Set home_page so guardian is routed to portal on login
-			frappe.db.set_value("User", user.name, "home_page", "/portal", update_modified=False)
+			frappe.db.set_value("User", user.name, "home_page", "/portal/guardian", update_modified=False)
 
 		except Exception as e:
 			frappe.log_error(f"Error creating user for guardian {self.name}: {e}")

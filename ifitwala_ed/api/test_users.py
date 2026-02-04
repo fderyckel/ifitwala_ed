@@ -39,13 +39,13 @@ class TestUserRedirect(FrappeTestCase):
 		redirect_user_to_entry_portal()
 
 		# Assert redirect to /portal
-		self.assertEqual(frappe.local.response.get("home_page"), "/portal")
-		self.assertEqual(frappe.local.response.get("redirect_to"), "/portal")
+		self.assertEqual(frappe.local.response.get("home_page"), "/portal/guardian")
+		self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/guardian")
 		self.assertEqual(frappe.local.response.get("type"), "redirect")
 
 		# Verify home_page was set on User
 		user.reload()
-		self.assertEqual(user.home_page, "/portal")
+		self.assertEqual(user.home_page, "/portal/guardian")
 
 		# Cleanup
 		frappe.set_user("Administrator")

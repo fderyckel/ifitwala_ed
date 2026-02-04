@@ -37,7 +37,7 @@ class TestGuardianUserCreation(FrappeTestCase):
 		self.assertIn("Guardian", roles)
 
 		# MOST IMPORTANT: Verify home_page is set to /portal
-		self.assertEqual(user.home_page, "/portal")
+		self.assertEqual(user.home_page, "/portal/guardian")
 
 		# Verify guardian record was updated with user link
 		guardian.reload()

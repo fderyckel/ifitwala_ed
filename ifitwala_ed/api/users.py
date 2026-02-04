@@ -13,7 +13,7 @@ def redirect_user_to_entry_portal():
 	- Real students -> /sp (always)
 	- Active employees -> default /portal/staff, but allow opt-in to Desk:
 	  If User.home_page is already set (e.g. /app), we DO NOT override it.
-	- Guardians -> /portal (will route to guardian-home via SPA router)
+	- Guardians -> /portal/guardian (will route to guardian-home via SPA router)
 
 	Why:
 	- Desk /app logins can override weak response redirects.
@@ -44,13 +44,13 @@ def redirect_user_to_entry_portal():
 		return
 
 	# ---------------------------------------------------------------
-	# 2) Guardians: /portal (SPA will route to guardian-home based on defaultPortal)
+	# 2) Guardians: /portal/guardian (SPA will route to guardian-home based on defaultPortal)
 	# ---------------------------------------------------------------
 	roles = set(frappe.get_roles(user))
 	if "Guardian" in roles:
 		current_home = (frappe.db.get_value("User", user, "home_page") or "").strip()
 		if not current_home:
-			_force_redirect("/portal", also_set_home_page=True)
+			_force_redirect("/portal/guardian", also_set_home_page=True)
 		else:
 			# If already set to portal or guardian-specific path, redirect without overwriting
 			if current_home in ("/portal", "/portal/guardian"):
