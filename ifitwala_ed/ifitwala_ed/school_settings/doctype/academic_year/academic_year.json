@@ -1,0 +1,240 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:title",
+ "creation": "2024-11-30 22:03:51.638414",
+ "default_view": "List",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_llx0",
+  "academic_year_name",
+  "school",
+  "column_break_iudv",
+  "archived",
+  "visible_to_admission",
+  "section_break_eha5",
+  "year_start_date",
+  "column_break_w4nd",
+  "year_end_date",
+  "school_events_section",
+  "ay_start",
+  "column_break_co9o",
+  "ay_end",
+  "title",
+  "dashboard_tab"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_llx0",
+   "fieldtype": "Section Break",
+   "label": "Academic Year"
+  },
+  {
+   "columns": 2,
+   "fieldname": "academic_year_name",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "label": "Academic Year Name",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "year_start_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Year Start Date"
+  },
+  {
+   "fieldname": "year_end_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Year End Date"
+  },
+  {
+   "fieldname": "section_break_eha5",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_w4nd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_iudv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Title",
+   "no_copy": 1,
+   "print_hide": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "school_events_section",
+   "fieldtype": "Section Break",
+   "label": "School Events"
+  },
+  {
+   "fieldname": "ay_start",
+   "fieldtype": "Link",
+   "label": "Start of Year Event",
+   "no_copy": 1,
+   "options": "School Event",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_co9o",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ay_end",
+   "fieldtype": "Link",
+   "label": "End of Year Event",
+   "no_copy": 1,
+   "options": "School Event",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "dashboard_tab",
+   "fieldtype": "Tab Break",
+   "label": "Dashboard"
+  },
+  {
+   "description": "Optional. Leave empty for a global Academic Year.",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "description": "Box should be checked once the Academic Year is over and the academic year should be archived. . ",
+   "fieldname": "archived",
+   "fieldtype": "Check",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Archived"
+  },
+  {
+   "default": "1",
+   "description": "Check if Academic Year should be visible in the Student Applicant admission form. ",
+   "fieldname": "visible_to_admission",
+   "fieldtype": "Check",
+   "label": "Visible to Admission"
+  }
+ ],
+ "grid_page_length": 50,
+ "icon": "fa fa-calendar",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-31 13:42:54.501377",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Academic Year",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Schedule Maker",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "year_start_date",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title"
+}

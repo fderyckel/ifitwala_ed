@@ -1,0 +1,17 @@
+<!-- ifitwala_ed/website/blocks/faq.html -->
+<section class="block-faq">
+	<div class="mx-auto max-w-4xl px-6 divide-y">
+		{% for item in data.items %}
+			<details class="py-4" {% if not data.collapsed_by_default %}open{% endif %}>
+				<summary class="font-medium cursor-pointer">{{ item.question }}</summary>
+				<div class="prose mt-2">
+					{{ item.answer_html | safe }}
+				</div>
+			</details>
+		{% endfor %}
+	</div>
+</section>
+
+{% if data.enable_schema and data.schema_json %}
+	<script type="application/ld+json">{{ data.schema_json }}</script>
+{% endif %}

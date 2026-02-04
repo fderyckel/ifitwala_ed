@@ -1,0 +1,66 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-11 16:37:38.498597",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_sxr2",
+  "student",
+  "sibling_name",
+  "sibling_gender",
+  "sibling_date_of_birth"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_sxr2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "columns": 2,
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fetch_from": "student.student_full_name",
+   "fieldname": "sibling_name",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "Sibling Name",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fetch_from": "student.student_gender",
+   "fieldname": "sibling_gender",
+   "fieldtype": "Data",
+   "label": "Sibling Gender",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sibling_date_of_birth",
+   "fieldtype": "Date",
+   "label": "Sibling Date of Birth"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-27 13:31:49.337005",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Student Sibling",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

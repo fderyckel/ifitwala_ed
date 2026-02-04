@@ -1,0 +1,28 @@
+<!-- ifitwala_ed/website/blocks/program_intro.html -->
+{% import "ifitwala_ed/templates/includes/smart_image_macro.html" as img_macro %}
+
+<section class="block-program-intro">
+	<div class="mx-auto max-w-4xl px-6 space-y-6">
+		{% if data.hero_image and data.hero_image.original %}
+			{{ img_macro.smart_image(
+				data.hero_image.hero,
+				data.hero_image.medium,
+				data.hero_image.card,
+				data.hero_image.thumb,
+				data.hero_image.original,
+				data.heading or "Program hero image",
+				"w-full h-[50vh] object-cover rounded-xl",
+				fallback="card"
+			) }}
+		{% endif %}
+		<h1 class="text-4xl font-semibold">{{ data.heading }}</h1>
+		<div class="prose prose-lg max-w-none">
+			{{ data.content | safe }}
+		</div>
+		{% if data.cta %}
+			<a href="{{ data.cta.url }}" class="inline-flex items-center rounded-lg bg-slate-900 px-6 py-3 text-sm font-medium text-white">
+				{{ data.cta.label }}
+			</a>
+		{% endif %}
+	</div>
+</section>

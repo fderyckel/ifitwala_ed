@@ -1,0 +1,253 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-23 21:31:26.785096",
+ "default_view": "List",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_xmdr",
+  "title",
+  "task_type",
+  "default_delivery_mode",
+  "default_requires_submission",
+  "is_archived",
+  "is_template",
+  "column_break_annk",
+  "default_course",
+  "learning_unit",
+  "lesson",
+  "section_break_haua",
+  "instructions",
+  "attachments",
+  "grading_section",
+  "default_grading_mode",
+  "default_rubric_scoring_strategy",
+  "default_max_points",
+  "prevent_late_submission",
+  "column_break_gi2s",
+  "default_grade_scale",
+  "task_criteria"
+],
+ "fields": [
+  {
+   "fieldname": "section_break_xmdr",
+   "fieldtype": "Section Break",
+   "label": "Identity & Context"
+  },
+  {
+   "bold": 1,
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "task_type",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Task Type",
+   "options": "Assignment\nHomework\nClasswork\nQuiz\nTest\nSummative assessment\nFormative assessment\nDiscussion\nProject\nLong Term Project\nExam\nOther"
+  },
+  {
+   "fieldname": "column_break_annk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "learning_unit",
+   "fieldtype": "Link",
+   "label": "Learning Unit",
+   "options": "Learning Unit"
+  },
+  {
+   "fieldname": "lesson",
+   "fieldtype": "Link",
+   "label": "Lesson",
+   "options": "Lesson"
+  },
+  {
+   "fieldname": "grading_section",
+   "fieldtype": "Section Break",
+   "label": "Grading"
+  },
+  {
+   "default": "0",
+   "fieldname": "prevent_late_submission",
+   "fieldtype": "Check",
+   "label": "Prevent Late Submission"
+  },
+  {
+   "fieldname": "column_break_gi2s",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_haua",
+   "fieldtype": "Section Break",
+   "label": "Instructions"
+  },
+  {
+   "fieldname": "instructions",
+   "fieldtype": "Text Editor",
+   "label": "Instructions"
+  },
+  {
+   "fieldname": "attachments",
+   "fieldtype": "Table",
+   "label": "Attachments",
+   "options": "Attached Document"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_archived",
+   "fieldtype": "Check",
+   "label": "Is archived"
+  },
+  {
+   "default": "1",
+   "description": "Templates are shown first in the delivery wizard.",
+   "fieldname": "is_template",
+   "fieldtype": "Check",
+   "label": "Is Template"
+  },
+  {
+   "default": "Assign Only",
+   "fieldname": "default_delivery_mode",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "label": "Default Delivery Mode",
+   "options": "Assign Only\nCollect Work\nAssess"
+  },
+  {
+   "fieldname": "default_course",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Course",
+   "options": "Course",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "default_requires_submission",
+   "fieldtype": "Check",
+   "label": "Submission Required"
+  },
+  {
+   "default": "None",
+   "description": "Defaults only. Activated on Task Delivery when mode is Assess.",
+   "fieldname": "default_grading_mode",
+   "fieldtype": "Select",
+   "label": "Default Grading Mode",
+   "options": "None\nCompletion\nBinary\nPoints\nCriteria"
+  },
+  {
+   "default": "Sum Total",
+   "depends_on": "eval:doc.default_grading_mode=='Criteria'",
+   "fieldname": "default_rubric_scoring_strategy",
+   "fieldtype": "Select",
+   "label": "Default Rubric Scoring Strategy",
+   "options": "Sum Total\nSeparate Criteria"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.default_grading_mode=='Points'",
+   "fieldname": "default_max_points",
+   "fieldtype": "Float",
+   "label": "Default Max Points",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.default_grading_mode!='None'",
+   "fieldname": "default_grade_scale",
+   "fieldtype": "Link",
+   "label": "Grade Scale",
+   "options": "Grade Scale"
+  },
+  {
+   "depends_on": "eval:doc.default_grading_mode=='Criteria'",
+   "fieldname": "task_criteria",
+   "fieldtype": "Table",
+   "label": "Task Criteria",
+   "options": "Task Template Criterion"
+  }
+],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-06 21:13:55",
+ "modified_by": "Administrator",
+ "module": "Assessment",
+ "name": "Task",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "default_course, task_type",
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title"
+}

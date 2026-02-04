@@ -1,0 +1,89 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-11 17:40:06.440431",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "rotation_day",
+  "block_number",
+  "instructor",
+  "employee",
+  "location",
+  "from_time",
+  "to_time"
+ ],
+ "fields": [
+  {
+   "columns": 1,
+   "fieldname": "rotation_day",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Rotation Day",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "block_number",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Block Number",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Location",
+   "options": "Location"
+  },
+  {
+   "columns": 4,
+   "fieldname": "instructor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Instructor",
+   "options": "Instructor"
+  },
+  {
+   "columns": 2,
+   "fetch_from": "instructor.employee",
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "from_time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "From Time",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "to_time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "To Time",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-16 07:17:08.758",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "Student Group Schedule",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

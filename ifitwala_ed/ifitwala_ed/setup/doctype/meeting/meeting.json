@@ -1,0 +1,273 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:MTG-{YYYY}-{#####}",
+ "creation": "2025-11-12 16:00:29.497186",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_qmya",
+  "meeting_name",
+  "meeting_code",
+  "meeting_series",
+  "series_occurrence_no",
+  "team",
+  "column_break_neve",
+  "status",
+  "visibility_scope",
+  "date",
+  "start_time",
+  "end_time",
+  "column_break_c057",
+  "location",
+  "virtual_meeting_link",
+  "meeting_category",
+  "ignore_conflict",
+  "section_break_8fkj",
+  "agenda",
+  "minutes",
+  "attachments",
+  "follow_up_due_date",
+  "attendance_section",
+  "participants",
+  "action_items_section",
+  "action_items",
+  "section_break_9cwa",
+  "from_datetime",
+  "to_datetime",
+  "column_break_bpdy",
+  "school",
+  "academic_year"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_qmya",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "meeting_name",
+   "fieldtype": "Data",
+   "label": "Meeting Name"
+  },
+  {
+   "fieldname": "meeting_code",
+   "fieldtype": "Data",
+   "label": "Meeting Code"
+  },
+  {
+   "fieldname": "meeting_series",
+   "fieldtype": "Link",
+   "label": "Meeting Series",
+   "no_copy": 1,
+   "options": "Meeting Series",
+   "read_only": 1
+  },
+  {
+   "fieldname": "series_occurrence_no",
+   "fieldtype": "Int",
+   "label": "Series Occurrence #",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date"
+  },
+  {
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Team",
+   "options": "Team"
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Start Time"
+  },
+  {
+   "fieldname": "end_time",
+   "fieldtype": "Time",
+   "label": "End Time"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "label": "Location",
+   "options": "Location"
+  },
+  {
+   "fieldname": "agenda",
+   "fieldtype": "Text Editor",
+   "label": "Agenda"
+  },
+  {
+   "fieldname": "minutes",
+   "fieldtype": "Text Editor",
+   "label": "Minutes"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Scheduled\nCompleted\nCancelled\nPostponed"
+  },
+  {
+   "fieldname": "attachments",
+   "fieldtype": "Attach",
+   "label": "Attachments"
+  },
+  {
+   "fieldname": "follow_up_due_date",
+   "fieldtype": "Date",
+   "label": "Follow-Up Due Date"
+  },
+  {
+   "fieldname": "attendance_section",
+   "fieldtype": "Section Break",
+   "label": "Attendance"
+  },
+  {
+   "fieldname": "participants",
+   "fieldtype": "Table",
+   "label": "Participants",
+   "options": "Meeting Participant"
+  },
+  {
+   "fieldname": "action_items_section",
+   "fieldtype": "Section Break",
+   "label": "Action Items"
+  },
+  {
+   "fieldname": "action_items",
+   "fieldtype": "Table",
+   "label": "Action Items",
+   "options": "Meeting Action Item"
+  },
+  {
+   "fieldname": "column_break_neve",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_c057",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "virtual_meeting_link",
+   "fieldtype": "Data",
+   "label": "Virtual Meeting Link",
+   "options": "URL"
+  },
+  {
+   "fieldname": "meeting_category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Meeting Category",
+   "options": "Department Meeting\nCurriculum Committee Meeting\nStaff Development\nLeadership Team Meeting\nWorking Group Meeting\nCommittee Meeting (non-academic)\nBoard / Governance Meeting\nStudent Services Meeting\nFaculty Review Meeting\nParent / Guardian Engagement Meeting\nAd-hoc / Special Meeting\nRetreat\nPlanning Session\nOne-to-One Review (e.g., mentor/teacher)\nStanding Team Huddle\nAction-Item Review Meeting"
+  },
+  {
+   "fieldname": "section_break_8fkj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_9cwa",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "from_datetime",
+   "fieldtype": "Datetime",
+   "label": "From Datetime",
+   "read_only": 1
+  },
+  {
+   "fieldname": "to_datetime",
+   "fieldtype": "Datetime",
+   "label": "To Datetime",
+   "read_only": 1
+  },
+  {
+   "description": "fill in auto",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "ignore_conflict",
+   "fieldtype": "Check",
+   "label": "Ignore Conflict"
+  },
+  {
+   "fieldname": "column_break_bpdy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Team & Participants",
+   "fieldname": "visibility_scope",
+   "fieldtype": "Select",
+   "label": "Visibility Scope",
+   "options": "Team & Participants\nParticipants Only\nSchool Staff\nPublic\nInternal"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-05 10:44:49.674484",
+ "modified_by": "Administrator",
+ "module": "Setup",
+ "name": "Meeting",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,107 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-30 12:17:26.060443",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "target_mode",
+  "school",
+  "team",
+  "student_group",
+  "include_descendants",
+  "column_break_sppw",
+  "to_staff",
+  "to_students",
+  "to_guardians",
+  "to_community",
+  "column_break_xeey",
+  "note"
+ ],
+ "fields": [
+  {
+   "fieldname": "target_mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Target Mode",
+   "options": "School Scope\nTeam\nStudent Group"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Team",
+   "options": "Team"
+  },
+  {
+   "fieldname": "student_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student Group",
+   "options": "Student Group"
+  },
+  {
+   "default": "1",
+   "fieldname": "include_descendants",
+   "fieldtype": "Check",
+   "label": "Include Descendants"
+  },
+  {
+   "fieldname": "column_break_sppw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "to_staff",
+   "fieldtype": "Check",
+   "label": "To Staff"
+  },
+  {
+   "fieldname": "to_students",
+   "fieldtype": "Check",
+   "label": "To Students"
+  },
+  {
+   "fieldname": "to_guardians",
+   "fieldtype": "Check",
+   "label": "To Guardians"
+  },
+  {
+   "fieldname": "to_community",
+   "fieldtype": "Check",
+   "label": "To Community"
+  },
+  {
+   "fieldname": "column_break_xeey",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Optional description of this audience row (e.g. 'G5 core staff only').",
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-12-01 15:14:59.850726",
+ "modified_by": "Administrator",
+ "module": "Setup",
+ "name": "Org Communication Audience",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

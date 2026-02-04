@@ -1,0 +1,96 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-22 00:03:13.991846",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "apply_to_course",
+  "apply_to_level",
+  "prereq_group",
+  "required_course",
+  "min_grade",
+  "grade_scale_used",
+  "min_numeric_score",
+  "concurrency_ok",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "apply_to_course",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Apply to Course",
+   "options": "Course"
+  },
+  {
+   "fieldname": "apply_to_level",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Apply to Level",
+   "options": "Higher Level\nStandard Level\nExtended\nAdvanced\nStandard\nNone"
+  },
+  {
+   "default": "1",
+   "fieldname": "prereq_group",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Prereq Group"
+  },
+  {
+   "fieldname": "required_course",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Required Course",
+   "options": "Course"
+  },
+  {
+   "description": "Use the program\u2019s grade scale (e.g., 70, B-, 4).",
+   "fieldname": "min_grade",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Minimum Grade (Program)"
+  },
+  {
+   "fieldname": "grade_scale_used",
+   "fieldtype": "Link",
+   "label": "Grade Scale Used",
+   "options": "Grade Scale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "min_numeric_score",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Minimum Numeric Score",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "concurrency_ok",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Allow Concurrent Enrollment"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-22 00:06:56",
+ "modified_by": "Administrator",
+ "module": "Curriculum",
+ "name": "Program Course Prerequisite",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,402 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:program_name",
+ "creation": "2024-12-06 07:18:22.173140",
+ "description": "Think of a program as a box that contains a list of courses.  All active students should be enrolled in a program. ",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_othe",
+  "program_name",
+  "column_break_zxmc",
+  "parent_program",
+  "program_abbreviation",
+  "column_break_yenw",
+  "is_group",
+  "archive",
+  "assessments_section",
+  "grade_scale",
+  "points",
+  "binary",
+  "column_break_yt79",
+  "observations",
+  "criteria",
+  "section_break_1rlr",
+  "assessment_categories",
+  "program_coordinators",
+  "dashboard_tab",
+  "website_tab",
+  "is_published",
+  "allow_self_enroll",
+  "is_featured",
+  "program_image",
+  "program_slug",
+  "column_break_lkjg",
+  "intro_video",
+  "description",
+  "description_section",
+  "program_overview",
+  "program_aims",
+  "visuals_section",
+  "program_gallery_image",
+  "route",
+  "courses_and_prerequisites",
+  "course_section_section",
+  "courses",
+  "course_prerequisites_section",
+  "prerequisites",
+  "old_parent",
+  "rgt",
+  "lft"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_othe",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "program_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Program Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_zxmc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "program_abbreviation",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Program Abbreviation"
+  },
+  {
+   "fieldname": "course_section_section",
+   "fieldtype": "Section Break",
+   "label": "Course Section"
+  },
+  {
+   "fieldname": "courses",
+   "fieldtype": "Table",
+   "label": "Courses",
+   "options": "Program Course"
+  },
+  {
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Published"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval: doc.is_published == 1",
+   "fieldname": "allow_self_enroll",
+   "fieldtype": "Check",
+   "label": "Allow Self Enroll"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval: doc.is_published == 1",
+   "fieldname": "is_featured",
+   "fieldtype": "Check",
+   "label": "Is Featured"
+  },
+  {
+   "fieldname": "program_image",
+   "fieldtype": "Attach Image",
+   "label": "Program Image"
+  },
+  {
+   "fieldname": "column_break_lkjg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "is_published",
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Programs Overview & Aims"
+  },
+  {
+   "depends_on": "is_published",
+   "fieldname": "intro_video",
+   "fieldtype": "Data",
+   "label": "Intro Video"
+  },
+  {
+   "fieldname": "lft",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Left",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "rgt",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Right",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_group",
+   "fieldtype": "Check",
+   "label": "Is Group"
+  },
+  {
+   "fieldname": "old_parent",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Old Parent",
+   "options": "Program"
+  },
+  {
+   "fieldname": "parent_program",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Parent Program",
+   "options": "Program"
+  },
+  {
+   "fieldname": "website_tab",
+   "fieldtype": "Tab Break",
+   "label": "Website"
+  },
+  {
+   "fieldname": "program_overview",
+   "fieldtype": "Text Editor",
+   "label": "Program Overview"
+  },
+  {
+   "fieldname": "program_aims",
+   "fieldtype": "Text Editor",
+   "label": "Program Aims"
+  },
+  {
+   "fieldname": "visuals_section",
+   "fieldtype": "Section Break",
+   "label": "Visuals"
+  },
+  {
+   "fieldname": "program_gallery_image",
+   "fieldtype": "Table",
+   "label": "Program Gallery Image",
+   "options": "Gallery Image"
+  },
+  {
+   "fieldname": "dashboard_tab",
+   "fieldtype": "Tab Break",
+   "label": "Dashboard",
+   "show_dashboard": 1
+  },
+  {
+   "fieldname": "program_slug",
+   "fieldtype": "Data",
+   "label": "URL Slug"
+  },
+  {
+   "fieldname": "route",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Route",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_yenw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "archive",
+   "fieldtype": "Check",
+   "label": "Archive"
+  },
+  {
+   "fieldname": "assessments_section",
+   "fieldtype": "Section Break",
+   "label": "Assessments"
+  },
+  {
+   "fieldname": "grade_scale",
+   "fieldtype": "Link",
+   "label": "Grade Scale",
+   "options": "Grade Scale"
+  },
+  {
+   "fieldname": "courses_and_prerequisites",
+   "fieldtype": "Tab Break",
+   "label": "Courses & Prerequisites"
+  },
+  {
+   "description": "Prerequisite Group\nUse this field to define alternative prerequisite paths.\nAll rows with the same group number must be met together (AND).\nRows with different group numbers represent alternatives (OR): meeting any one group is sufficient.",
+   "fieldname": "course_prerequisites_section",
+   "fieldtype": "Section Break",
+   "label": "Course Prerequisites"
+  },
+  {
+   "fieldname": "prerequisites",
+   "fieldtype": "Table",
+   "label": "Prerequisites",
+   "options": "Program Course Prerequisite"
+  },
+  {
+   "fieldname": "assessment_categories",
+   "fieldtype": "Table",
+   "label": "Assessment Categories",
+   "options": "Program Assessment Category"
+  },
+  {
+   "fieldname": "program_coordinators",
+   "fieldtype": "Table",
+   "label": "Program Coordinators",
+   "options": "Program Coordinator"
+  },
+  {
+   "default": "0",
+   "fieldname": "points",
+   "fieldtype": "Check",
+   "label": "Points"
+  },
+  {
+   "fieldname": "column_break_yt79",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "observations",
+   "fieldtype": "Data",
+   "label": "Observations (Comments only)"
+  },
+  {
+   "default": "0",
+   "fieldname": "criteria",
+   "fieldtype": "Check",
+   "label": "Criteria"
+  },
+  {
+   "fieldname": "section_break_1rlr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "binary",
+   "fieldtype": "Check",
+   "label": "Binary (Complete/Incomplete)"
+  }
+ ],
+ "grid_page_length": 50,
+ "image_field": "program_image",
+ "index_web_pages_for_search": 1,
+ "is_tree": 1,
+ "links": [],
+ "modified": "2026-01-19 13:25:19",
+ "modified_by": "Administrator",
+ "module": "Curriculum",
+ "name": "Program",
+ "naming_rule": "By fieldname",
+ "nsm_parent_field": "parent_program",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "program_name"
+}

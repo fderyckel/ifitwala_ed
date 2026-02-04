@@ -1,0 +1,93 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-26 22:45:50.614467",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_3dww",
+  "title",
+  "activity_type",
+  "lesson_activity_order",
+  "reading_content",
+  "video_url",
+  "external_link",
+  "discussion_prompt",
+  "is_required",
+  "estimated_duration"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_3dww",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title"
+  },
+  {
+   "fieldname": "activity_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Activity Type",
+   "options": "Reading\nVideo\nLink\nDiscussion\nInteractive"
+  },
+  {
+   "fieldname": "lesson_activity_order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Lesson Activity Order"
+  },
+  {
+   "depends_on": "eval:doc.activity_type==='Reading'",
+   "fieldname": "reading_content",
+   "fieldtype": "Text Editor",
+   "label": "Reading Content"
+  },
+  {
+   "fieldname": "video_url",
+   "fieldtype": "Data",
+   "label": "Video URL",
+   "options": "URL"
+  },
+  {
+   "fieldname": "external_link",
+   "fieldtype": "Data",
+   "label": "External Link",
+   "options": "URL"
+  },
+  {
+   "fieldname": "discussion_prompt",
+   "fieldtype": "Small Text",
+   "label": "Discussion Prompt"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_required",
+   "fieldtype": "Check",
+   "label": "Is required"
+  },
+  {
+   "fieldname": "estimated_duration",
+   "fieldtype": "Int",
+   "label": "Estimated Duration (in minutes)"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-26 22:52:30.826362",
+ "modified_by": "Administrator",
+ "module": "Curriculum",
+ "name": "Lesson Activity",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

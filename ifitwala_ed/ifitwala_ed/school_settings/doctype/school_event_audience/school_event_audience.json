@@ -1,0 +1,79 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-15 00:19:55.579603",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_yjlp",
+  "audience_type",
+  "student_group",
+  "team",
+  "include_guardians",
+  "include_students"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_yjlp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "audience_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Audience Type",
+   "options": "Whole School Community\nAll Students\nAll Guardians\nAll Employees\nStudents in Student Group\nEmployees in Team\nCustom Users",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.audience_type=='Students in Student Group'",
+   "fieldname": "student_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student Group",
+   "options": "Student Group"
+  },
+  {
+   "depends_on": "eval:doc.audience_type=='Employees in Team'",
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Team",
+   "options": "Team"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.audience_type=='All Students' || doc.audience_type=='Students in Student Group'",
+   "description": "For student-focused audiences, also show this event in linked guardians' calendars.",
+   "fieldname": "include_guardians",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Include Guardians"
+  },
+  {
+   "default": "0",
+   "description": "For guardian-focused or staff-focused audiences, also show this event to related students.",
+   "fieldname": "include_students",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Include Students"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-11-27 08:47:24.190723",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "School Event Audience",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

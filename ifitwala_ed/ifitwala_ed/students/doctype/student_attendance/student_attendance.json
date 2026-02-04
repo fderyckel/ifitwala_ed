@@ -1,0 +1,236 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-02 22:18:51.756020",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_rcnc",
+  "student",
+  "student_name",
+  "attendance_date",
+  "attendance_time",
+  "rotation_day",
+  "block_number",
+  "attendance_code",
+  "check_in_time",
+  "check_out_time",
+  "student_group",
+  "course",
+  "academic_year",
+  "term",
+  "program",
+  "school",
+  "instructor",
+  "attendance_method",
+  "location",
+  "remark",
+  "meta_locked",
+  "whole_day"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "label": "Student Name"
+  },
+  {
+   "fieldname": "attendance_date",
+   "fieldtype": "Date",
+   "label": "Attendance Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "attendance_time",
+   "fieldtype": "Time",
+   "label": "attendance Time"
+  },
+  {
+   "fieldname": "attendance_code",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Attendance Code",
+   "options": "Student Attendance Code",
+   "reqd": 1
+  },
+  {
+   "fieldname": "check_in_time",
+   "fieldtype": "Time",
+   "label": "Check in Time"
+  },
+  {
+   "fieldname": "check_out_time",
+   "fieldtype": "Time",
+   "label": "Check out Time"
+  },
+  {
+   "fieldname": "student_group",
+   "fieldtype": "Data",
+   "label": "Student Group"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Data",
+   "label": "Term"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "instructor",
+   "fieldtype": "Link",
+   "label": "Instructor",
+   "options": "Instructor"
+  },
+  {
+   "fieldname": "attendance_method",
+   "fieldtype": "Select",
+   "label": "Attendance Method",
+   "options": "Manual\nFace\nRFID\nQR\nAPI"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "label": "Location",
+   "options": "Location"
+  },
+  {
+   "fieldname": "remark",
+   "fieldtype": "Text",
+   "label": "Remark"
+  },
+  {
+   "default": "0",
+   "fieldname": "meta_locked",
+   "fieldtype": "Check",
+   "label": "Meta Locked"
+  },
+  {
+   "fieldname": "section_break_rcnc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "rotation_day",
+   "fieldtype": "Int",
+   "label": "Rotation day"
+  },
+  {
+   "fieldname": "block_number",
+   "fieldtype": "Int",
+   "label": "Block number"
+  },
+  {
+   "default": "0",
+   "description": "Checked if this is a whole day attendance (as oppose to block attendance)",
+   "fieldname": "whole_day",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Whole Day"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-04 09:13:36.964702",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Student Attendance",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counsellor",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

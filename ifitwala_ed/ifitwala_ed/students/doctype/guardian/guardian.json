@@ -1,0 +1,294 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:Guardian-{YYYY}-{####}",
+ "creation": "2024-12-11 15:57:16.365779",
+ "description": "Doctype to collect information about student's legal guardians",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_hazw",
+  "salutation",
+  "guardian_full_name",
+  "guardian_first_name",
+  "guardian_last_name",
+  "guardian_gender",
+  "guardian_mobile_phone",
+  "guardian_email",
+  "column_break_pzk5",
+  "is_primary_guardian",
+  "is_financial_guardian",
+  "contact_html",
+  "address_html",
+  "user",
+  "guardian_image",
+  "children_section",
+  "students",
+  "work_details_section",
+  "employment_sector",
+  "work_place",
+  "guardian_designation",
+  "column_break_eijl",
+  "guardian_work_email",
+  "guardian_work_phone"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_hazw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "salutation",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Salutation",
+   "options": "Salutation"
+  },
+  {
+   "fieldname": "guardian_full_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "label": "Full Name"
+  },
+  {
+   "fieldname": "guardian_first_name",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "in_global_search": 1,
+   "label": "First Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "guardian_last_name",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "in_global_search": 1,
+   "label": "Last Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "guardian_gender",
+   "fieldtype": "Select",
+   "label": "Gender",
+   "options": "Female\nMale\nOther\nPrefer Not To Say"
+  },
+  {
+   "fieldname": "guardian_mobile_phone",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Mobile Phone",
+   "options": "Phone",
+   "reqd": 1
+  },
+  {
+   "fieldname": "guardian_email",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "Personal Email",
+   "options": "Email",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User ID",
+   "options": "User"
+  },
+  {
+   "fieldname": "guardian_image",
+   "fieldtype": "Attach Image",
+   "label": "Photo"
+  },
+  {
+   "fieldname": "column_break_pzk5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "contact_html",
+   "fieldtype": "HTML",
+   "label": "Contact HTML",
+   "no_copy": 1,
+   "print_hide": 1,
+   "report_hide": 1
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "address_html",
+   "fieldtype": "HTML",
+   "label": "Address HTML",
+   "no_copy": 1,
+   "print_hide": 1,
+   "report_hide": 1
+  },
+  {
+   "fieldname": "children_section",
+   "fieldtype": "Section Break",
+   "label": "Children"
+  },
+  {
+   "fieldname": "work_details_section",
+   "fieldtype": "Section Break",
+   "label": "Work Details"
+  },
+  {
+   "fieldname": "work_place",
+   "fieldtype": "Data",
+   "label": "Work Place"
+  },
+  {
+   "fieldname": "guardian_designation",
+   "fieldtype": "Data",
+   "label": "Designation at Work"
+  },
+  {
+   "fieldname": "guardian_work_email",
+   "fieldtype": "Data",
+   "label": "Work Email"
+  },
+  {
+   "fieldname": "guardian_work_phone",
+   "fieldtype": "Data",
+   "label": "Work Phone"
+  },
+  {
+   "fieldname": "column_break_eijl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "students",
+   "fieldtype": "Table",
+   "label": "Students",
+   "options": "Guardian Student",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_primary_guardian",
+   "fieldtype": "Check",
+   "label": "Is Primary Guardian"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_financial_guardian",
+   "fieldtype": "Check",
+   "label": "Is Financial Guardian"
+  },
+  {
+   "fieldname": "employment_sector",
+   "fieldtype": "Select",
+   "label": "Employment Sector",
+   "options": "Corporate \u2013 Finance / Banking\nCorporate \u2013 Tech / IT\nCorporate \u2013 Manufacturing\nCorporate \u2013 Retail / FMCG\nCorporate \u2013 Hospitality / Tourism\nCorporate \u2013 Logistics / Transport\nCorporate \u2013 Construction / Engineering\nCorporate \u2013 Real Estate / Property\nHealthcare / Medical\nEducation\nGovernment\nEmbassy / Diplomatic Corps\nNGO / Non-Profit\nArmed Forces\nCreative Industries (Media / Design / Arts)\nSelf-Employed\nFreelance / Consultant\nHomemaker\nRetired\nOther"
+  }
+ ],
+ "image_field": "guardian_image",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-02 18:01:52.637195",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Guardian",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Nurse",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counsellor",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "guardian_first_name, guardian_last_name, guardian_email, guardian_mobile_phone",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

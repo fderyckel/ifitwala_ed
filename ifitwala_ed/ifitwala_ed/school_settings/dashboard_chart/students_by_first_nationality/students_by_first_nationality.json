@@ -1,0 +1,32 @@
+{
+ "chart_name": "Students by First Nationality",
+ "chart_type": "Group By",
+ "creation": "2025-02-04 13:00:38.772700",
+ "docstatus": 0,
+ "doctype": "Dashboard Chart",
+ "document_type": "Student",
+ "filters_json": "[[\"Student\",\"enabled\",\"=\",1,false]]",
+ "group_by_based_on": "student_nationality",
+ "group_by_type": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "last_synced_on": "2025-02-10 14:57:41.702802",
+ "modified": "2025-02-10 15:02:34.672871",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Students by First Nationality",
+ "number_of_groups": 0,
+ "owner": "Administrator",
+ "roles": [
+  {
+   "role": "Academic Admin"
+  }
+ ],
+ "time_interval": "Monthly",
+ "timeseries": 0,
+ "timespan": "Last Year",
+ "type": "Pie",
+ "use_report_chart": 0,
+ "y_axis": []
+}

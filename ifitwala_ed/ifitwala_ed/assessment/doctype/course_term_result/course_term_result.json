@@ -1,0 +1,260 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-09 22:07:55.800920",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_oj5e",
+  "reporting_cycle",
+  "student",
+  "program_enrollment",
+  "course",
+  "program",
+  "academic_year",
+  "term",
+  "instructor",
+  "grading_section",
+  "grade_scale",
+  "numeric_score",
+  "grade_value",
+  "task_counted",
+  "total_weight",
+  "section_break_vgvp",
+  "override_grade_value",
+  "moderated_by",
+  "moderated_on",
+  "is_override",
+  "column_break_vclo",
+  "override_reason",
+  "section_break_cqlx",
+  "teacher_comment",
+  "internal_note",
+  "meta_section",
+  "calculated_on",
+  "calculated_by"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_oj5e",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "reporting_cycle",
+   "fieldtype": "Link",
+   "label": "Reporting cyle",
+   "options": "Reporting Cycle"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+    "fieldname": "program_enrollment",
+    "fieldtype": "Link",
+    "label": "Program Enrollment",
+    "options": "Program Enrollment"
+  },
+  {
+    "fieldname": "course",
+    "fieldtype": "Link",
+    "label": "Course",
+    "options": "Course"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "label": "Term",
+   "options": "Term"
+  },
+  {
+   "fieldname": "instructor",
+   "fieldtype": "Link",
+   "label": "Instructor",
+   "options": "Instructor"
+  },
+  {
+   "fieldname": "grading_section",
+   "fieldtype": "Section Break",
+   "label": "Grading"
+  },
+  {
+   "fieldname": "grade_scale",
+   "fieldtype": "Link",
+   "label": "Grade Scale",
+   "options": "Grade Scale"
+  },
+  {
+   "fieldname": "numeric_score",
+   "fieldtype": "Float",
+   "label": "Numeric Score"
+  },
+  {
+   "fieldname": "grade_value",
+   "fieldtype": "Data",
+   "label": "Grade Value"
+  },
+  {
+   "fieldname": "task_counted",
+   "fieldtype": "Int",
+   "label": "Task Counted"
+  },
+  {
+   "fieldname": "total_weight",
+   "fieldtype": "Float",
+   "label": "Total Weight"
+  },
+  {
+   "fieldname": "section_break_vgvp",
+   "fieldtype": "Section Break",
+   "label": "Override & Moderation"
+  },
+  {
+   "fieldname": "override_grade_value",
+   "fieldtype": "Data",
+   "label": "Override Grade Value"
+  },
+  {
+   "fieldname": "moderated_by",
+   "fieldtype": "Link",
+   "label": "Moderated By",
+   "options": "User"
+  },
+  {
+   "fieldname": "moderated_on",
+   "fieldtype": "Datetime",
+   "label": "Moderated On"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_override",
+   "fieldtype": "Check",
+   "label": "Is Override"
+  },
+  {
+   "fieldname": "column_break_vclo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "override_reason",
+   "fieldtype": "Small Text",
+   "label": "Override Reason"
+  },
+  {
+   "fieldname": "section_break_cqlx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "teacher_comment",
+   "fieldtype": "Text Editor",
+   "label": "Teacher Comment"
+  },
+  {
+   "fieldname": "internal_note",
+   "fieldtype": "Small Text",
+   "label": "Internal Note"
+  },
+  {
+   "fieldname": "meta_section",
+   "fieldtype": "Section Break",
+   "label": "Meta"
+  },
+  {
+   "fieldname": "calculated_on",
+   "fieldtype": "Datetime",
+   "label": "Calculated On"
+  },
+  {
+   "fieldname": "calculated_by",
+   "fieldtype": "Link",
+   "label": "Calculated By",
+   "options": "User"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-20 22:39:47",
+ "modified_by": "Administrator",
+ "module": "Assessment",
+ "name": "Course Term Result",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counsellor",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

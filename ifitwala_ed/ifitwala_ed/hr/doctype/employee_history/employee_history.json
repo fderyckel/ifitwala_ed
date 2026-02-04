@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-18 13:37:19.636137",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "designation",
+  "organization",
+  "from_date",
+  "column_break_8tos",
+  "is_current",
+  "school",
+  "to_date",
+  "note",
+  "section_break_nwo6",
+  "access_mode",
+  "role_profile",
+  "workspace_override",
+  "priority"
+ ],
+ "fields": [
+  {
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Designation",
+   "options": "Designation"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "From Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "To Date"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_current",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Current"
+  },
+  {
+   "fieldname": "column_break_8tos",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_nwo6",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "Follow Designation",
+   "fieldname": "access_mode",
+   "fieldtype": "Select",
+   "label": "Access Mode",
+   "options": "Follow Designation\nSnapshot\nOverride"
+  },
+  {
+   "fieldname": "role_profile",
+   "fieldtype": "Link",
+   "label": "Role Profile",
+   "options": "Role",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "workspace_override",
+   "fieldtype": "Link",
+   "label": "Workspace Override",
+   "options": "Workspace",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Int",
+   "label": "Priority",
+   "permlevel": 1
+  },
+  {
+   "description": "Note about the position",
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-11-10 13:18:34.341602",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Employee History",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

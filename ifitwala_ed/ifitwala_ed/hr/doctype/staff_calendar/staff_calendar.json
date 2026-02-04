@@ -1,0 +1,280 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:staff_calendar_name",
+ "creation": "2025-01-18 13:05:55.504115",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_182h",
+  "staff_calendar_name",
+  "academic_year",
+  "total_working_day",
+  "from_date",
+  "column_break_loop",
+  "school",
+  "employee_group",
+  "total_holidays",
+  "to_date",
+  "add_weekly_holidays_section",
+  "weekly_off",
+  "get_weekly_off_dates",
+  "column_break_emcs",
+  "weekend_color",
+  "add_local_holiday_section",
+  "country",
+  "get_country_holidays",
+  "column_break_mjs8",
+  "subdivision",
+  "local_holiday_color",
+  "add_longer_breaks_section",
+  "start_of_break",
+  "break_description",
+  "get_break_holidays",
+  "column_break_tmxd",
+  "end_of_break",
+  "break_color",
+  "holiday_table_section",
+  "holidays",
+  "clear_table"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_182h",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "staff_calendar_name",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Staff calendar Name",
+   "no_copy": 1,
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "total_working_day",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Staff Working Day",
+   "read_only": 1
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "column_break_loop",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
+  },
+  {
+   "fieldname": "add_weekly_holidays_section",
+   "fieldtype": "Section Break",
+   "label": "Add Weekly Holidays"
+  },
+  {
+   "fieldname": "weekly_off",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "label": "Add weekly day off",
+   "options": "\nSunday\nMonday\nTuesday\nWednesday\nThursday\nFriday\nSaturday",
+   "print_hide": 1,
+   "report_hide": 1
+  },
+  {
+   "fieldname": "get_weekly_off_dates",
+   "fieldtype": "Button",
+   "label": "Add to Holidays",
+   "options": "get_weekly_off_dates"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Autocomplete",
+   "label": "Country"
+  },
+  {
+   "fieldname": "total_holidays",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Staff Holidays",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_emcs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "weekend_color",
+   "fieldtype": "Color",
+   "label": "Weekend Color"
+  },
+  {
+   "fieldname": "add_longer_breaks_section",
+   "fieldtype": "Section Break",
+   "label": "Add Longer Breaks"
+  },
+  {
+   "fieldname": "column_break_mjs8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "holiday_table_section",
+   "fieldtype": "Section Break",
+   "label": "Holiday Table"
+  },
+  {
+   "fieldname": "holidays",
+   "fieldtype": "Table",
+   "label": "Holidays",
+   "options": "Staff Calendar Holidays"
+  },
+  {
+   "fieldname": "clear_table",
+   "fieldtype": "Button",
+   "label": "Clear Table"
+  },
+  {
+   "fieldname": "break_description",
+   "fieldtype": "Data",
+   "label": "Break Description"
+  },
+  {
+   "fieldname": "break_color",
+   "fieldtype": "Color",
+   "label": "Break Color"
+  },
+  {
+   "depends_on": "country",
+   "fieldname": "subdivision",
+   "fieldtype": "Autocomplete",
+   "label": "Subdivision"
+  },
+  {
+   "fieldname": "add_local_holiday_section",
+   "fieldtype": "Section Break",
+   "label": "Add Local Holidays"
+  },
+  {
+   "fieldname": "local_holiday_color",
+   "fieldtype": "Color",
+   "label": "Break Color"
+  },
+  {
+   "fieldname": "column_break_tmxd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "get_country_holidays",
+   "fieldtype": "Button",
+   "label": "Add Local Holidays",
+   "options": "get_country_holidays"
+  },
+  {
+   "fieldname": "get_break_holidays",
+   "fieldtype": "Button",
+   "label": "Add Breaks",
+   "options": "get_break_holidays"
+  },
+  {
+   "fieldname": "start_of_break",
+   "fieldtype": "Date",
+   "label": "Start of Break"
+  },
+  {
+   "fieldname": "end_of_break",
+   "fieldtype": "Date",
+   "label": "End of Break"
+  },
+  {
+   "fieldname": "employee_group",
+   "fieldtype": "Link",
+   "label": "Employee Group",
+   "options": "Employee Group",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_calendar_and_gantt": 1,
+ "links": [],
+ "modified": "2025-12-09 22:14:07.206723",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Staff Calendar",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "from_date",
+ "sort_order": "DESC",
+ "states": []
+}

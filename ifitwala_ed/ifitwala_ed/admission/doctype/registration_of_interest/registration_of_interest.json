@@ -1,0 +1,219 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:ROI-{YY}-{MM}-{###}",
+ "creation": "2025-04-23 19:14:26.588396",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_prmb",
+  "guardian_first_name",
+  "mobile_phone",
+  "country",
+  "column_break_unhd",
+  "guardian_last_name",
+  "email",
+  "hearing_from_us",
+  "column_break_j9ax",
+  "relationship_to_student",
+  "city",
+  "preferred_mode_of_contact",
+  "student_information_section",
+  "student_first_name",
+  "student_last_name",
+  "student_nationality",
+  "academic_section_section",
+  "preferred_school",
+  "proposed_academic_year",
+  "proposed_term",
+  "proposed_program",
+  "blank_field",
+  "submitted_at",
+  "sla_status"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_prmb",
+   "fieldtype": "Section Break",
+   "label": "Parents / Guardian Information"
+  },
+  {
+   "fieldname": "relationship_to_student",
+   "fieldtype": "Select",
+   "label": "Relationship to Student",
+   "options": "Parent\nGrand-Parent\nSiblings\nAunt/Uncle\nOther Family Member\nLegual Guardian"
+  },
+  {
+   "fieldname": "mobile_phone",
+   "fieldtype": "Data",
+   "label": "Mobile Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "guardian_first_name",
+   "fieldtype": "Data",
+   "label": "First Name"
+  },
+  {
+   "fieldname": "guardian_last_name",
+   "fieldtype": "Data",
+   "label": "Last (Family) Name"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Link",
+   "label": "Country",
+   "options": "Country"
+  },
+  {
+   "fieldname": "student_information_section",
+   "fieldtype": "Section Break",
+   "label": "Student Information"
+  },
+  {
+   "fieldname": "student_first_name",
+   "fieldtype": "Data",
+   "label": "First Name"
+  },
+  {
+   "fieldname": "student_last_name",
+   "fieldtype": "Data",
+   "label": "Last (Family) Name"
+  },
+  {
+   "description": "Use Country of primary passport",
+   "fieldname": "student_nationality",
+   "fieldtype": "Link",
+   "label": "Nationality",
+   "options": "Country"
+  },
+  {
+   "fieldname": "proposed_academic_year",
+   "fieldtype": "Link",
+   "label": "Proposed Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "proposed_term",
+   "fieldtype": "Link",
+   "label": "Proposed Term",
+   "options": "Term"
+  },
+  {
+   "fieldname": "academic_section_section",
+   "fieldtype": "Section Break",
+   "label": "Academic Section"
+  },
+  {
+   "fieldname": "preferred_school",
+   "fieldtype": "Link",
+   "label": "Preferred School",
+   "options": "School"
+  },
+  {
+   "fieldname": "hearing_from_us",
+   "fieldtype": "Data",
+   "label": "How did you hear about us?"
+  },
+  {
+   "fieldname": "blank_field",
+   "fieldtype": "Select",
+   "label": "Worflow State",
+   "options": "New Inquiry\nAssigned\nContacted\nQualified\nApplication Submitted"
+  },
+  {
+   "fieldname": "proposed_program",
+   "fieldtype": "Link",
+   "label": "Proposed Program",
+   "options": "Program"
+  },
+  {
+   "default": "Phone Call",
+   "fieldname": "preferred_mode_of_contact",
+   "fieldtype": "Select",
+   "label": "Preferred Mode of contact",
+   "options": "Email\nPhone Call\nSMS\nVideo Call\nWhatsapp\nLine\nweChat\nFB Messenger"
+  },
+  {
+   "fieldname": "column_break_unhd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_j9ax",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "submitted_at",
+   "fieldtype": "Datetime",
+   "label": "Submitted at"
+  },
+  {
+   "fieldname": "sla_status",
+   "fieldtype": "Select",
+   "label": "SLA Status",
+   "options": "\ud83d\udd34 Overdue\n\ud83d\udfe1 Due Today\n\u26aa Upcoming\n\u2705 On Track"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-05 13:49:55",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Registration of Interest",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Marketing User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

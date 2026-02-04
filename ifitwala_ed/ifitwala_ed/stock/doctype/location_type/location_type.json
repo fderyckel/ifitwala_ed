@@ -1,0 +1,136 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:location_type_name",
+ "creation": "2024-12-02 21:09:41.526611",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_h5wd",
+  "location_type_name",
+  "location_description",
+	"column_break_caps",
+  "is_container",
+  "is_schedulable",
+  "can_hold_stock"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_h5wd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "location_type_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Location Type Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "location_description",
+   "fieldtype": "Small Text",
+   "label": "Location Description"
+  },
+  {
+   "fieldname": "column_break_caps",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_container",
+   "fieldtype": "Check",
+   "label": "Structural Container",
+   "description": "Campus / Building / Floor / Wing. Always a grouping node."
+  },
+  {
+   "default": "0",
+   "fieldname": "is_schedulable",
+   "fieldtype": "Check",
+   "label": "Schedulable Space",
+   "description": "Can be scheduled (classroom, lab, meeting room)."
+  },
+  {
+   "default": "0",
+   "fieldname": "can_hold_stock",
+   "fieldtype": "Check",
+   "label": "Can Hold Stock",
+   "description": "Can hold inventory or assets (storage, cabinets)."
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-10-22 09:30:43",
+ "modified_by": "Administrator",
+ "module": "Stock",
+ "name": "Location Type",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Organization IT",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "quick_entry": 1,
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

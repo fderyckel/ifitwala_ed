@@ -1,0 +1,259 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:title",
+ "creation": "2025-11-29 11:33:32.269337",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_eqvs",
+  "title",
+  "communication_type",
+  "status",
+  "priority",
+  "column_break_w2wh",
+  "brief_start_date",
+  "brief_end_date",
+  "brief_order",
+  "column_break_qwio",
+  "publish_from",
+  "publish_to",
+  "school",
+  "organization",
+  "audience_section",
+  "audiences",
+  "section_break_dcte",
+  "message",
+  "section_break_vuxv",
+  "portal_surface",
+  "internal_note",
+  "column_break_3elr",
+  "interaction_mode",
+  "allow_private_notes",
+  "allow_public_thread"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_eqvs",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Title",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "communication_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Communication Type",
+   "options": "Logistics\nReminder\nInformation\nPolicy Procedure\nCelebration\nCall to Action\nEvent Announcement\nClass Announcement\nUrgent\nAlert",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nScheduled\nPublished\nArchived",
+   "reqd": 1
+  },
+  {
+   "default": "Normal",
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Priority",
+   "options": "Low\nNormal\nHigh\nCritical"
+  },
+  {
+   "fieldname": "column_break_w2wh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "Issuing School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization"
+  },
+  {
+   "description": "Communication is visible from this time onwards.",
+   "fieldname": "publish_from",
+   "fieldtype": "Datetime",
+   "label": "Publish From"
+  },
+  {
+   "description": "Communication stops being visible after this time (optional).",
+   "fieldname": "publish_to",
+   "fieldtype": "Datetime",
+   "label": "Publish Until"
+  },
+  {
+   "fieldname": "audience_section",
+   "fieldtype": "Section Break",
+   "label": "Audience"
+  },
+  {
+   "fieldname": "section_break_vuxv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "Everywhere",
+   "description": "Controls how this communication appears on the portal surfaces. 'None' = internal only (still visible on Desk).",
+   "fieldname": "portal_surface",
+   "fieldtype": "Select",
+   "label": "Portal Surface",
+   "options": "Desk\nMorning Brief\nPortal Feed\nEverywhere"
+  },
+  {
+   "fieldname": "column_break_3elr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Context for staff managing this communication.",
+   "fieldname": "internal_note",
+   "fieldtype": "Small Text",
+   "label": "Internal Note"
+  },
+  {
+   "fieldname": "column_break_qwio",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "First date this communication should appear in the Morning Brief (if applicable).",
+   "fieldname": "brief_start_date",
+   "fieldtype": "Date",
+   "label": "Brief Start Date"
+  },
+  {
+   "description": "Last date this communication should appear in the Morning Brief. Leave blank to use only the start date.",
+   "fieldname": "brief_end_date",
+   "fieldtype": "Date",
+   "label": "Brief End Date"
+  },
+  {
+   "fieldname": "audiences",
+   "fieldtype": "Table",
+   "label": "Audiences",
+   "options": "Org Communication Audience"
+  },
+  {
+   "description": "Lower numbers appear higher in the Morning Brief for that date.",
+   "fieldname": "brief_order",
+   "fieldtype": "Int",
+   "label": "Brief Order"
+  },
+  {
+   "fieldname": "section_break_dcte",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Text Editor",
+   "label": "Message"
+  },
+  {
+   "default": "None",
+   "description": "Controls reactions/comments behaviour for this communication on portal and Morning Brief surfaces.",
+   "fieldname": "interaction_mode",
+   "fieldtype": "Select",
+   "label": "Interaction Mode",
+   "options": "None\nStaff Comments\nStructured Feedback\nStudent Q&A"
+  },
+  {
+   "default": "1",
+   "description": "If enabled, guardians/students can send private questions/concerns visible only to school staff.",
+   "fieldname": "allow_private_notes",
+   "fieldtype": "Check",
+   "label": "Allow Private Notes to School"
+  },
+  {
+   "default": "0",
+   "description": "If enabled, interactions in this communication can be visible to others in the same audience (e.g. staff or student group).",
+   "fieldname": "allow_public_thread",
+   "fieldtype": "Check",
+   "label": "Allow Public Thread"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-08 21:58:44.200581",
+ "modified_by": "Administrator",
+ "module": "Setup",
+ "name": "Org Communication",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

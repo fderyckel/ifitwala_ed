@@ -1,0 +1,250 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-20 05:43:54.178610",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_l7zl",
+  "program",
+  "school",
+  "offering_academic_years",
+  "column_break_y4ol",
+  "offering_title",
+  "grade_scale",
+  "status",
+  "student_cohort",
+  "section_break_ircj",
+  "start_date",
+  "end_date",
+  "column_break_dcmw",
+  "capacity",
+  "seat_policy",
+  "seat_hold_hours",
+  "allow_self_enroll",
+  "enrollment_rules_section",
+  "enrollment_rules",
+  "courses_section",
+  "offering_courses"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_l7zl",
+   "fieldtype": "Section Break",
+   "label": "Identity"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Program",
+   "options": "Program",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_y4ol",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Optional label e.g. IB DP class of 2029 A Campus",
+   "fieldname": "offering_title",
+   "fieldtype": "Data",
+   "label": "Offering Title"
+  },
+  {
+   "description": "Default grade scale for this offering, used for eligibility/prerequisites and enrollment validation.",
+   "fieldname": "grade_scale",
+   "fieldtype": "Link",
+   "label": "Grade Scale (Offering Default)",
+   "options": "Grade Scale"
+  },
+  {
+   "fieldname": "section_break_ircj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "fieldname": "capacity",
+   "fieldtype": "Int",
+   "label": "Capacity"
+  },
+  {
+   "default": "Approved Requests Hold Seats",
+   "description": "How Program Offering Course capacity is reserved during enrollment request flow.",
+   "fieldname": "seat_policy",
+   "fieldtype": "Select",
+   "label": "Seat Policy",
+   "options": "Committed Only\nApproved Requests Hold Seats\nSubmitted Holds Seats"
+  },
+  {
+   "default": "24",
+   "description": "Seat reservation expiry window (hours) for Submitted/Under Review requests.",
+   "fieldname": "seat_hold_hours",
+   "fieldtype": "Int",
+   "label": "Seat Hold Hours",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_self_enroll",
+   "fieldtype": "Check",
+   "label": "Allow Self Enroll"
+  },
+  {
+   "fieldname": "enrollment_rules_section",
+   "fieldtype": "Section Break",
+   "label": "Enrollment Rules"
+  },
+  {
+   "fieldname": "enrollment_rules",
+   "fieldtype": "Table",
+   "label": "Enrollment Rules",
+   "options": "Program Offering Enrollment Rule"
+  },
+  {
+   "fieldname": "courses_section",
+   "fieldtype": "Section Break",
+   "label": "Courses"
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Planned\nActive\nArchived"
+  },
+  {
+   "fieldname": "offering_academic_years",
+   "fieldtype": "Table MultiSelect",
+   "label": "Offering Academic Years",
+   "options": "Program Offering Academic Year"
+  },
+  {
+   "fieldname": "column_break_dcmw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "student_cohort",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cohort",
+   "options": "Student Cohort"
+  },
+  {
+   "fieldname": "offering_courses",
+   "fieldtype": "Table",
+   "label": "Offering Courses",
+   "options": "Program Offering Course"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-23 10:48:12",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "Program Offering",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counselor",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "offering_title",
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "offering_title"
+}

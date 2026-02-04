@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-10 23:43:16.224535",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_zikr",
+  "scaling_name",
+  "description",
+  "default",
+  "active",
+  "pgp_rating_option"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_zikr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "scaling_name",
+   "fieldtype": "Data",
+   "label": "Scaling Name"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "default": "0",
+   "fieldname": "default",
+   "fieldtype": "Check",
+   "label": "Default"
+  },
+  {
+   "default": "0",
+   "fieldname": "active",
+   "fieldtype": "Check",
+   "label": "Active"
+  },
+  {
+   "description": "Individual levels within this rating scale",
+   "fieldname": "pgp_rating_option",
+   "fieldtype": "Table",
+   "label": "PGP Rating Option",
+   "options": "PGP Rating Scale Option"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-05-11 11:17:20.587371",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "PGP Rating Scale",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

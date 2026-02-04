@@ -1,0 +1,177 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-06 08:20:38.290490",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_2pph",
+  "course",
+  "learning_unit",
+  "lesson_type",
+  "column_break_pb8x",
+  "title",
+  "lesson_order",
+  "is_published",
+  "column_break_sd7w",
+  "start_date",
+  "duration",
+  "section_break_rqla",
+  "lesson_activities"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_2pph",
+   "fieldtype": "Section Break",
+   "label": "Core"
+  },
+  {
+   "fieldname": "learning_unit",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Learning Unit",
+   "options": "Learning Unit",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "description": "How long do you estimate this lesson to take?",
+   "fieldname": "duration",
+   "fieldtype": "Int",
+   "label": "Est. Duration (in Teaching Periods)"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "label": "Lesson's Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lesson_order",
+   "fieldtype": "Int",
+   "label": "Lesson Order"
+  },
+  {
+   "fieldname": "column_break_pb8x",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_sd7w",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_rqla",
+   "fieldtype": "Section Break",
+   "label": "Activities"
+  },
+  {
+   "fieldname": "lesson_type",
+   "fieldtype": "Select",
+   "label": "Lesson Type",
+   "options": "Instruction\nPractice\nAssessment\nProject\nReview\nOther"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "label": "Is Published"
+  },
+  {
+   "fieldname": "lesson_activities",
+   "fieldtype": "Table",
+   "label": "Lesson Activities",
+   "options": "Lesson Activity"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-10-04 20:38:24.590983",
+ "modified_by": "Administrator",
+ "module": "Curriculum",
+ "name": "Lesson",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

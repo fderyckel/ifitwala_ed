@@ -1,0 +1,203 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-25 22:12:46.578651",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_hyyt",
+  "get_students_from",
+  "target_academic_year",
+  "column_break_7ta8",
+  "program_offering",
+  "student_cohort",
+  "section_break_pyyy",
+  "get_students",
+  "students",
+  "new_enrollment_details_section",
+  "new_program_offering",
+  "new_student_cohort",
+  "mark_status_as_checked",
+  "enroll_students",
+  "column_break_ekje",
+  "new_target_academic_year",
+  "new_enrollment_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_hyyt",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "get_students_from",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Get Students From",
+   "options": "Program Enrollment\nStudent Applicant\nCohort\nOthers",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student_cohort",
+   "fieldtype": "Link",
+   "label": "Student Cohort",
+   "options": "Student Cohort"
+  },
+  {
+   "fieldname": "column_break_7ta8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_pyyy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "get_students",
+   "fieldtype": "Button",
+   "label": "Get Students",
+   "options": "get_students"
+  },
+  {
+   "fieldname": "students",
+   "fieldtype": "Table",
+   "label": "Students",
+   "options": "Program Enrollment Tool Student"
+  },
+  {
+   "fieldname": "new_enrollment_details_section",
+   "fieldtype": "Section Break",
+   "label": "New Enrollment Details"
+  },
+  {
+   "description": "Only if this has not been set already.",
+   "fieldname": "new_student_cohort",
+   "fieldtype": "Link",
+   "label": "New Student Cohort",
+   "options": "Student Cohort"
+  },
+  {
+   "fieldname": "enroll_students",
+   "fieldtype": "Button",
+   "label": "Enroll Students",
+   "options": "enroll_students"
+  },
+  {
+   "fieldname": "column_break_ekje",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Indicate the date of the first day for this new enrollment. If left blank, by default, it will be the first day of the indicated academic year or academic term if indicated. ",
+   "fieldname": "new_enrollment_date",
+   "fieldtype": "Date",
+   "label": "New enrollment Date"
+  },
+  {
+   "default": "1",
+   "fieldname": "mark_status_as_checked",
+   "fieldtype": "Check",
+   "label": "Mark new enrollments as Active"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Program Offering",
+   "mandatory_depends_on": "eval: doc.get_students_from == \"Program Enrollment\"",
+   "options": "Program Offering"
+  },
+  {
+   "fieldname": "new_target_academic_year",
+   "fieldtype": "Link",
+   "label": "New Target Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "target_academic_year",
+   "fieldtype": "Link",
+   "label": "Target Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "new_program_offering",
+   "fieldtype": "Link",
+   "label": "New Program Offering",
+   "options": "Program Offering"
+  }
+ ],
+ "grid_page_length": 50,
+ "hide_toolbar": 1,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-10-03 17:05:53.912045",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "Program Enrollment Tool",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Schedule Maker",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Counselor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

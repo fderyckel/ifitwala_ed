@@ -1,0 +1,272 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:LU -{course}-{##}",
+ "creation": "2024-12-06 08:09:37.068943",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_gcbg",
+  "unit_name",
+  "course",
+  "program",
+  "column_break_bw7c",
+  "unit_code",
+  "duration",
+  "unit_order",
+  "column_break_sgpm",
+  "unit_status",
+  "version",
+  "estimated_duration",
+  "is_published",
+  "pedagogy_section",
+  "unit_overview",
+  "essential_understanding",
+  "misconceptions",
+  "standards_alignment_section",
+  "standards",
+  "content_skills_concepts",
+  "content",
+  "skills",
+  "concepts",
+  "section_break_gjxa",
+  "reflections"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_gcbg",
+   "fieldtype": "Section Break",
+   "label": "Admin"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
+  },
+  {
+   "default": "Active",
+   "fieldname": "unit_status",
+   "fieldtype": "Select",
+   "label": "Unit Status",
+   "options": "Active\nArchived"
+  },
+  {
+   "fieldname": "column_break_bw7c",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Course",
+   "options": "Course",
+   "reqd": 1
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Data",
+   "label": "Duration (in weeks)"
+  },
+  {
+   "fieldname": "unit_name",
+   "fieldtype": "Data",
+   "label": "Unit Name",
+   "no_copy": 1,
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "description": "\"Position of this unit within its course (ascending).\"",
+   "fieldname": "unit_order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Unit Order"
+  },
+  {
+   "fieldname": "unit_code",
+   "fieldtype": "Data",
+   "label": "Unit Code"
+  },
+  {
+   "fieldname": "column_break_sgpm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "label": "Is Published",
+   "options": "0"
+  },
+  {
+   "fieldname": "pedagogy_section",
+   "fieldtype": "Section Break",
+   "label": "Pedagogy"
+  },
+  {
+   "fieldname": "unit_overview",
+   "fieldtype": "Text Editor",
+   "label": "Unit Overview & Rationale"
+  },
+  {
+   "fieldname": "version",
+   "fieldtype": "Data",
+   "label": "Version"
+  },
+  {
+   "description": "e.g., 3 weeks or 8 GLH",
+   "fieldname": "estimated_duration",
+   "fieldtype": "Data",
+   "label": "Estimated Duration"
+  },
+  {
+   "fieldname": "standards_alignment_section",
+   "fieldtype": "Section Break",
+   "label": "Standards Alignment"
+  },
+  {
+   "fieldname": "standards",
+   "fieldtype": "Table",
+   "label": "Standards",
+   "options": "Learning Unit Standard Alignment"
+  },
+  {
+   "description": "Key content/skills/concepts that students will know/develop by the end of the unit.",
+   "fieldname": "essential_understanding",
+   "fieldtype": "Text Editor",
+   "label": "Essential Understanding"
+  },
+  {
+   "description": "Students will develop these skills.",
+   "fieldname": "skills",
+   "fieldtype": "Text Editor",
+   "label": "Skills"
+  },
+  {
+   "description": "Students will grasp these concepts.",
+   "fieldname": "concepts",
+   "fieldtype": "Text Editor",
+   "label": "Concepts"
+  },
+  {
+   "fieldname": "section_break_gjxa",
+   "fieldtype": "Section Break",
+   "label": "Reflections"
+  },
+  {
+   "bold": 1,
+   "fieldname": "reflections",
+   "fieldtype": "Table",
+   "label": "Reflections",
+   "options": "Curriculum Planning Reflection"
+  },
+  {
+   "fieldname": "content_skills_concepts",
+   "fieldtype": "Section Break",
+   "label": "Content, Skills & Concepts"
+  },
+  {
+   "description": "Students will know this content.",
+   "fieldname": "content",
+   "fieldtype": "Text Editor",
+   "label": "Content"
+  },
+  {
+   "description": "Likely misunderstandings students may have during the unit with relation to skills, content and concepts.",
+   "fieldname": "misconceptions",
+   "fieldtype": "Text Editor",
+   "label": "Misconceptions"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-26 22:44:38.855197",
+ "modified_by": "Administrator",
+ "module": "Curriculum",
+ "name": "Learning Unit",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Student",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Guardian",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "unit_name",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "unit_name"
+}

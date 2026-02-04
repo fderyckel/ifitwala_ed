@@ -1,0 +1,219 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:designation_name",
+ "creation": "2024-12-06 13:19:09.729469",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_qf67",
+  "organization",
+  "school",
+  "archived",
+  "collaborates_with",
+  "column_break_frxq",
+  "designation_name",
+  "reports_to",
+  "default_role_profile",
+  "default_workspace",
+  "workspace_priority",
+  "description_section",
+  "position_summary",
+  "job_description",
+  "required_qualifications",
+  "desired_competencies"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_qf67",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "All Organizations",
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization"
+  },
+  {
+   "depends_on": "eval:doc.organization != 'All Organizations';",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "column_break_frxq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "designation_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Designation Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "reports_to",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Reports to",
+   "options": "Designation"
+  },
+  {
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "fieldname": "position_summary",
+   "fieldtype": "Text Editor",
+   "label": "Position Summary"
+  },
+  {
+   "fieldname": "job_description",
+   "fieldtype": "Text Editor",
+   "label": "Main Responsibilities"
+  },
+  {
+   "fieldname": "desired_competencies",
+   "fieldtype": "Text Editor",
+   "label": "Desired Competencies"
+  },
+  {
+   "fieldname": "required_qualifications",
+   "fieldtype": "Text Editor",
+   "label": "Required Qualifications"
+  },
+  {
+   "fieldname": "collaborates_with",
+   "fieldtype": "Table MultiSelect",
+   "in_filter": 1,
+   "label": "Collaborates With",
+   "options": "Designation Collaborate"
+  },
+  {
+   "default": "0",
+   "description": "Checked if that designation is not existing anymore. ",
+   "fieldname": "archived",
+   "fieldtype": "Check",
+   "label": "Archived"
+  },
+  {
+   "fieldname": "default_workspace",
+   "fieldtype": "Link",
+   "label": "Default Workspace",
+   "options": "Workspace"
+  },
+  {
+   "description": "Higher the number, that workspace will be the default one for the users with that designation as current.",
+   "fieldname": "workspace_priority",
+   "fieldtype": "Int",
+   "label": "Workspace Priority"
+  },
+  {
+   "fieldname": "default_role_profile",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Default Role",
+   "options": "Role"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-23 19:15:57.428976",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Designation",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "show_title_field_in_link": 1,
+ "sort_field": "designation_name",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "designation_name"
+}

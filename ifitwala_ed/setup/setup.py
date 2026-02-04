@@ -72,7 +72,7 @@ def create_roles_with_homepage():
 	"""Create or update roles with home_page and desk_access."""
 	roles = [
 		{"role_name": "Student", "desk_access": 0, "home_page": "/portal/student"},
-		{"role_name": "Guardian", "desk_access": 0, "home_page": "/sp"},
+		{"role_name": "Guardian", "desk_access": 0, "home_page": "/portal/guardian"},
 		{"role_name": "Admissions Applicant", "desk_access": 0, "home_page": "/admissions"},
 		{"role_name": "Nurse", "desk_access": 1, "home_page": "/app/health"},
 		{"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/admin"},

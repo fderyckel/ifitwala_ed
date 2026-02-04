@@ -1,0 +1,207 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format: Schedule-{school_calendar}",
+ "creation": "2025-03-07 19:19:11.963992",
+ "description": "Doctype to create the schedule template for a given school",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_pgsr",
+  "column_break_ciij",
+  "schedule_name",
+  "school_calendar",
+  "school",
+  "first_day_rotation_day",
+  "column_break_fra2",
+  "first_day_of_academic_year",
+  "rotation_days",
+  "include_holidays_in_rotation",
+  "section_break_bb4r",
+  "generate_rotation_days_btn",
+  "school_schedule_day",
+  "clear_schedule_btn",
+  "section_break_llpo",
+  "generate_blocks_btn",
+  "school_schedule_block"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_pgsr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_ciij",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.school_calendar",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school_calendar",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "School Calendar",
+   "options": "School Calendar",
+   "reqd": 1
+  },
+  {
+   "description": "Set which Rotation Day corresponds to the first day of the Academic Year (e.g. Day 1, Day 2, etc.)",
+   "fieldname": "first_day_rotation_day",
+   "fieldtype": "Int",
+   "label": "Rotation Day for First Academic Day",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_fra2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "first_day_of_academic_year",
+   "fieldtype": "Date",
+   "label": "First Day of Academic Year",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rotation_days",
+   "fieldtype": "Int",
+   "label": "Number of Rotation days"
+  },
+  {
+   "default": "0",
+   "fieldname": "include_holidays_in_rotation",
+   "fieldtype": "Check",
+   "label": "Include Holidays in Rotation"
+  },
+  {
+   "fieldname": "section_break_bb4r",
+   "fieldtype": "Section Break",
+   "label": "Organize Rotation Days"
+  },
+  {
+   "fieldname": "generate_rotation_days_btn",
+   "fieldtype": "Button",
+   "label": "Generate Rotation Days",
+   "options": "generate_rotation_days"
+  },
+  {
+   "fieldname": "school_schedule_day",
+   "fieldtype": "Table",
+   "label": "School Schedule Day",
+   "options": "School Schedule Day"
+  },
+  {
+   "fieldname": "clear_schedule_btn",
+   "fieldtype": "Button",
+   "label": "Clear Schedule",
+   "options": "clear_schedule"
+  },
+  {
+   "fieldname": "section_break_llpo",
+   "fieldtype": "Section Break",
+   "label": "Organize Block Timings"
+  },
+  {
+   "fieldname": "generate_blocks_btn",
+   "fieldtype": "Button",
+   "label": "Generate Blocks",
+   "options": "generate_blocks"
+  },
+  {
+   "fieldname": "schedule_name",
+   "fieldtype": "Data",
+   "label": "Schedule Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school_schedule_block",
+   "fieldtype": "Table",
+   "label": "School Schedule Block",
+   "options": "School Schedule Block"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-10-04 20:48:55.710482",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "School Schedule",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Schedule Maker",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

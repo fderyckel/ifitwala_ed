@@ -1,0 +1,111 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:next_step",
+ "creation": "2024-12-26 08:53:09.394443",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_fypd",
+  "next_step",
+  "associated_role",
+  "school",
+  "auto_close_after_days"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_fypd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "next_step",
+   "fieldtype": "Data",
+   "label": "Next Step",
+   "unique": 1
+  },
+  {
+   "fieldname": "associated_role",
+   "fieldtype": "Link",
+   "label": "Associated Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "default": "7",
+   "fieldname": "auto_close_after_days",
+   "fieldtype": "Int",
+   "label": "Auto-Close After (Days)"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-14 07:20:19.839566",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Student Log Next Step",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Academic Staff"
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Learning Support",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "role": "Instructor"
+  },
+  {
+   "read": 1,
+   "role": "Counsellor"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "next_step",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "next_step"
+}

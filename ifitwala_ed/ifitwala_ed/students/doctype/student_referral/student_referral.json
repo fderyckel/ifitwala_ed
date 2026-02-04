@@ -1,0 +1,392 @@
+{
+ "actions": [],
+ "allow_events_in_timeline": 1,
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:SRF-{YYYY}-{####}",
+ "creation": "2025-08-14 10:24:56.908365",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_upvw",
+  "student",
+  "date",
+  "column_break_xmuo",
+  "student_name",
+  "academic_year",
+  "column_break_tuxd",
+  "program_enrollment",
+  "program",
+  "school",
+  "section_break_aksz",
+  "referral_source",
+  "referral_category",
+  "confidentiality_level",
+  "column_break_ffg0",
+  "referrer",
+  "severity",
+  "requires_immediate_action",
+  "mandated_reporting_triggered",
+  "section_break_hwzj",
+  "preferred_contact_method",
+  "okay_to_contact_guardians",
+  "reporting_for_other",
+  "subject_student_text",
+  "subject_student",
+  "column_break_jd9b",
+  "safe_times_to_contact",
+  "section_break_abal",
+  "referral_description",
+  "section_break_pl1t",
+  "sla_due",
+  "amended_from",
+  "column_break_0j6a",
+  "referral_case",
+  "assigned_case_manager"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_upvw",
+   "fieldtype": "Section Break",
+   "label": "Student Info"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fetch_from": "student.student_full_name",
+   "fetch_if_empty": 1,
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "label": "Student Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "program_enrollment",
+   "fieldtype": "Link",
+   "label": "Program Enrollment",
+   "options": "Program Enrollment"
+  },
+  {
+   "fetch_from": "program_enrollment.program",
+   "fetch_if_empty": 1,
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "program_enrollment.academic_year",
+   "fetch_if_empty": 1,
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_xmuo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_tuxd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_aksz",
+   "fieldtype": "Section Break",
+   "label": "Referral Info"
+  },
+  {
+   "fieldname": "referral_source",
+   "fieldtype": "Select",
+   "label": "Referral Source",
+   "options": "Staff\nStudent (Self)\nGuardian\nSystem"
+  },
+  {
+   "fieldname": "referrer",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_standard_filter": 1,
+   "label": "Referrer",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "referral_category",
+   "fieldtype": "Select",
+   "label": "Referral Category",
+   "options": "Social\nEmotional\nPastoral\nAcademic\nBehavior\nAttendance"
+  },
+  {
+   "fieldname": "referral_description",
+   "fieldtype": "Text Editor",
+   "label": "Referral Description"
+  },
+  {
+   "fieldname": "confidentiality_level",
+   "fieldtype": "Select",
+   "label": "Confidentiality Level",
+   "options": "Standard\nSensitive\nRestricted"
+  },
+  {
+   "fieldname": "column_break_ffg0",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "severity",
+   "fieldtype": "Select",
+   "label": "Severity",
+   "options": "Low\nModerate\nHigh\nCritical"
+  },
+  {
+   "default": "0",
+   "fieldname": "requires_immediate_action",
+   "fieldtype": "Check",
+   "label": "Requires Immediate Action"
+  },
+  {
+   "default": "0",
+   "fieldname": "mandated_reporting_triggered",
+   "fieldtype": "Check",
+   "label": "Mandated Reporting Triggered"
+  },
+  {
+   "fieldname": "section_break_abal",
+   "fieldtype": "Section Break",
+   "label": "Referral"
+  },
+  {
+   "fieldname": "section_break_pl1t",
+   "fieldtype": "Section Break",
+   "label": "SLA Info"
+  },
+  {
+   "fieldname": "sla_due",
+   "fieldtype": "Datetime",
+   "label": "SLA Due",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Student Referral",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_0j6a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "referral_case",
+   "fieldtype": "Link",
+   "label": "Referral Case",
+   "options": "Referral Case",
+   "permlevel": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "assigned_case_manager",
+   "fieldtype": "Link",
+   "label": "Assigned Case Manager",
+   "options": "User",
+   "permlevel": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_hwzj",
+   "fieldtype": "Section Break",
+   "label": "Self-Referral Info"
+  },
+  {
+   "default": "In-app",
+   "fieldname": "preferred_contact_method",
+   "fieldtype": "Select",
+   "label": "Preferred Contact Method",
+   "options": "Email\nIn-app\nPhone"
+  },
+  {
+   "default": "1",
+   "fieldname": "okay_to_contact_guardians",
+   "fieldtype": "Check",
+   "label": "Okay to Contact Guardians"
+  },
+  {
+   "fieldname": "column_break_jd9b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "safe_times_to_contact",
+   "fieldtype": "Small Text",
+   "label": "Safe Times to Contact"
+  },
+  {
+   "default": "0",
+   "fieldname": "reporting_for_other",
+   "fieldtype": "Check",
+   "label": "I\u2019m concerned for a friend (peer referral)"
+  },
+  {
+   "depends_on": "eval:doc.reporting_for_other",
+   "description": "Original free-text from the portal. Keep for audit.",
+   "fieldname": "subject_student_text",
+   "fieldtype": "Data",
+   "label": "Subject Student",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.reporting_for_other",
+   "description": "Set by counselor during triage.",
+   "fieldname": "subject_student",
+   "fieldtype": "Link",
+   "label": "Resolved Subject Student",
+   "options": "Student",
+   "permlevel": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-09-11 10:15:44.495234",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Student Referral",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "delete": 1,
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counselor",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counselor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "student_name, program, academic_year",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

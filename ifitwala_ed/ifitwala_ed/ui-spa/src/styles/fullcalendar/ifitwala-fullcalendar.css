@@ -1,0 +1,278 @@
+/* ui-spa/src/styles/fullcalendar/ifitwala-fullcalendar.css */
+@layer components {
+  /* Scope all FullCalendar skinning to this calendar instance */
+  .calendar-shell .fc {
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  /* Toolbar spacing */
+  .calendar-shell .fc .fc-toolbar {
+    margin: 0 0 0.75rem 0;
+    gap: 0.75rem;
+  }
+
+  /* Title */
+  .calendar-shell .fc .fc-toolbar-title {
+    font-size: 1.75rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  /* Shared button base */
+  .calendar-shell .fc .fc-button {
+    height: 2.25rem; /* ~36px */
+    padding: 0 0.85rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(var(--border-rgb) / 0.95);
+    background: rgb(var(--surface-strong-rgb) / 1);
+    color: rgb(var(--slate-rgb) / 0.92);
+    box-shadow: var(--shadow-soft);
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    transition: background 120ms ease, border-color 120ms ease, transform 120ms ease, color 120ms ease;
+  }
+
+  .calendar-shell .fc .fc-button:hover {
+    border-color: rgb(var(--leaf-rgb) / 0.9);
+    color: rgb(var(--canopy-rgb) / 1);
+    transform: translateY(-1px);
+  }
+
+  .calendar-shell .fc .fc-button:focus,
+  .calendar-shell .fc .fc-button:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-soft), var(--focus-ring);
+  }
+
+  /* Disabled */
+  .calendar-shell .fc .fc-button:disabled {
+    opacity: 0.45;
+    transform: none;
+    cursor: not-allowed;
+  }
+
+  /* Primary/active (FullCalendar uses these classes internally) */
+  .calendar-shell .fc .fc-button-primary {
+    background: rgb(var(--surface-strong-rgb) / 1);
+  }
+
+  .calendar-shell .fc .fc-button-primary:not(:disabled).fc-button-active,
+  .calendar-shell .fc .fc-button-primary:not(:disabled):active {
+    background: rgb(var(--ink-rgb) / 1);
+    border-color: rgb(var(--ink-rgb) / 1);
+    color: rgb(var(--surface-strong-rgb) / 1);
+    box-shadow: 0 10px 28px rgb(var(--ink-rgb) / 0.18);
+    transform: none;
+  }
+
+  /* Remove FullCalendar's default blue focus/active styling */
+  .calendar-shell .fc .fc-button-primary:focus,
+  .calendar-shell .fc .fc-button-primary:not(:disabled):active:focus {
+    box-shadow: var(--shadow-soft), var(--focus-ring);
+  }
+
+  /* --- Segmented control for view buttons (right chunk) --- */
+  .calendar-shell .fc .fc-toolbar-chunk:last-child .fc-button-group {
+    border: 1px solid rgb(var(--border-rgb) / 0.95);
+    background: rgb(var(--surface-rgb) / 0.92);
+    border-radius: 9999px;
+    padding: 0.15rem;
+    box-shadow: inset 0 0 0 1px rgb(var(--border-rgb) / 0.35);
+  }
+
+  /* Buttons inside segmented group become flat tabs */
+  .calendar-shell .fc .fc-button-group .fc-button {
+    box-shadow: none;
+    border: none;
+    background: transparent;
+    height: 2rem;
+    padding: 0 0.9rem;
+    border-radius: 9999px;
+    color: rgb(var(--slate-rgb) / 0.9);
+    transform: none;
+  }
+
+  .calendar-shell .fc .fc-button-group .fc-button:hover {
+    background: rgb(var(--leaf-rgb) / 0.10);
+    color: rgb(var(--canopy-rgb) / 1);
+  }
+
+  .calendar-shell .fc .fc-button-group .fc-button.fc-button-active {
+    background: rgb(var(--ink-rgb) / 1);
+    color: rgb(var(--surface-strong-rgb) / 1);
+  }
+
+  /* --- Prev/Next group: keep as pill pair (left chunk) --- */
+  .calendar-shell .fc .fc-toolbar-chunk:first-child .fc-button-group {
+    border: 1px solid rgb(var(--border-rgb) / 0.95);
+    background: rgb(var(--surface-rgb) / 0.92);
+    border-radius: 9999px;
+    padding: 0.15rem;
+  }
+
+  .calendar-shell .fc .fc-toolbar-chunk:first-child .fc-button-group .fc-button {
+    height: 2rem;
+    padding: 0 0.75rem;
+  }
+
+  /* Today button spacing consistency */
+  .calendar-shell .fc .fc-today-button {
+    margin-left: 0.5rem;
+  }
+}
+
+@layer components {
+  /* FullCalendar can apply its own button resets; enforce our look */
+  .calendar-shell .fc .fc-button,
+  .calendar-shell .fc .fc-button-primary {
+    background-image: none !important;
+  }
+
+  /* Remove the default FC border radius & hard edges in groups */
+  .calendar-shell .fc .fc-button-group > .fc-button {
+    border-radius: 9999px !important;
+  }
+
+  /* Some FC themes add outlines / box-shadows on active */
+  .calendar-shell .fc .fc-button:active,
+  .calendar-shell .fc .fc-button-primary:active {
+    box-shadow: var(--shadow-soft), var(--focus-ring);
+  }
+}
+
+
+@layer components {
+  /* Outer calendar frame */
+  .calendar-shell .fc .fc-view-harness {
+    background: rgb(var(--surface-strong-rgb) / 1);
+  }
+
+  /* Grid borders */
+  .calendar-shell .fc .fc-scrollgrid,
+  .calendar-shell .fc .fc-scrollgrid-section > td,
+  .calendar-shell .fc .fc-col-header-cell,
+  .calendar-shell .fc .fc-timegrid-divider {
+    border-color: rgb(var(--border-rgb) / 0.9) !important;
+  }
+
+  /* Column header cells */
+  .calendar-shell .fc .fc-col-header-cell-cushion {
+    padding: 0.65rem 0.5rem;
+    color: rgb(var(--slate-rgb) / 0.92);
+    font-weight: 650;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Time axis labels */
+  .calendar-shell .fc .fc-timegrid-slot-label {
+    color: rgb(var(--slate-rgb) / 0.85);
+    font-size: 0.8rem;
+  }
+
+  /* Slot lines */
+  .calendar-shell .fc .fc-timegrid-slot {
+    border-color: rgb(var(--border-rgb) / 0.55) !important;
+  }
+
+  /* Day cells */
+  .calendar-shell .fc .fc-daygrid-day,
+  .calendar-shell .fc .fc-timegrid-col {
+    background: rgb(var(--surface-strong-rgb) / 1);
+  }
+}
+
+
+@layer components {
+  /* Today background: soft sky wash */
+  .calendar-shell .fc .fc-day-today {
+    background: rgb(var(--sky-rgb) / 0.55) !important;
+  }
+
+  /* Today header highlight should not be neon */
+  .calendar-shell .fc .fc-col-header-cell.fc-day-today {
+    background: rgb(var(--sky-rgb) / 0.75) !important;
+  }
+
+  /* Now indicator line */
+  .calendar-shell .fc .fc-timegrid-now-indicator-line {
+    border-color: rgb(var(--flame-rgb) / 0.8) !important;
+  }
+
+  /* Now indicator arrow */
+  .calendar-shell .fc .fc-timegrid-now-indicator-arrow {
+    border-color: rgb(var(--flame-rgb) / 0.8) !important;
+  }
+}
+
+
+@layer components {
+  /* List view typography */
+  .calendar-shell .fc .fc-list-day-cushion {
+    background: rgb(var(--surface-rgb) / 0.9) !important;
+    color: rgb(var(--ink-rgb) / 1);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  .calendar-shell .fc .fc-list-event {
+    border-color: rgb(var(--border-rgb) / 0.85) !important;
+  }
+
+  .calendar-shell .fc .fc-list-event:hover td {
+    background: rgb(var(--leaf-rgb) / 0.06) !important;
+  }
+
+  .calendar-shell .fc .fc-list-event-time,
+  .calendar-shell .fc .fc-list-event-title {
+    color: rgb(var(--slate-rgb) / 0.95);
+    font-size: 0.9rem;
+  }
+}
+
+@layer components {
+  .calendar-shell .fc .fc-event {
+    border-radius: 0.85rem;
+    border: 1px solid rgb(var(--border-rgb) / 0.85);
+    box-shadow: 0 6px 16px rgb(var(--ink-rgb) / 0.06);
+    padding: 0.15rem 0.35rem;
+    overflow: hidden;
+  }
+
+  .calendar-shell .fc .fc-event .fc-event-title,
+  .calendar-shell .fc .fc-event .fc-event-time {
+    font-weight: 650;
+    font-size: 0.8rem;
+    color: rgb(var(--ink-rgb) / 0.92);
+  }
+
+  .calendar-shell .fc .fc-daygrid-event-dot {
+    display: none;
+  }
+}
+
+
+@layer components {
+  .calendar-shell .fc .event--class {
+    background: rgb(var(--leaf-rgb) / 0.10) !important;
+    border-color: rgb(var(--leaf-rgb) / 0.35) !important;
+  }
+
+  .calendar-shell .fc .event--meeting {
+    background: rgb(var(--jacaranda-rgb) / 0.10) !important;
+    border-color: rgb(var(--jacaranda-rgb) / 0.35) !important;
+  }
+
+  .calendar-shell .fc .event--school {
+    background: rgb(var(--moss-rgb) / 0.14) !important;
+    border-color: rgb(var(--moss-rgb) / 0.40) !important;
+  }
+
+  .calendar-shell .fc .event--holiday {
+    background: rgb(var(--slate-rgb) / 0.10) !important;
+    border-color: rgb(var(--slate-rgb) / 0.25) !important;
+  }
+}
