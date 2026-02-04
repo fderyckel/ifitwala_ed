@@ -17,7 +17,16 @@ frappe.ui.form.on("Guardian", {
 				frappe.call({
 					method: "ifitwala_ed.students.doctype.guardian.guardian.create_guardian_user",
 					args: { guardian: frm.doc.name }
-				}).then(() => frm.reload_doc());
+				}).then((r) => {
+					frm.reload_doc();
+					// Show portal link for convenience
+					const portal_url = "/portal";
+					frappe.msgprint({
+						title: __("Guardian Portal Ready"),
+						message: __(`Guardian user created. They can access their portal at: <a href="${portal_url}" target="_blank">${portal_url}</a>`),
+						indicator: "green"
+					});
+				});
 			});
 		}
 	},
