@@ -13,6 +13,7 @@ def redirect_user_to_entry_portal():
 	- Real students -> /sp (always)
 	- Active employees -> default /portal/staff, but allow opt-in to Desk:
 	  If User.home_page is already set (e.g. /app), we DO NOT override it.
+	- Guardians -> /portal (will route to guardian-home via SPA router)
 
 	Why:
 	- Desk /app logins can override weak response redirects.
@@ -43,7 +44,22 @@ def redirect_user_to_entry_portal():
 		return
 
 	# ---------------------------------------------------------------
-	# 2) Employees: default /portal/staff (but respect explicit opt-in)
+	# 2) Guardians: /portal (SPA will route to guardian-home based on defaultPortal)
+	# ---------------------------------------------------------------
+	roles = set(frappe.get_roles(user))
+	if "Guardian" in roles:
+		current_home = (frappe.db.get_value("User", user, "home_page") or "").strip()
+		if not current_home:
+			_force_redirect("/portal", also_set_home_page=True)
+		else:
+			# If already set to portal or guardian-specific path, redirect without overwriting
+			if current_home in ("/portal", "/portal/guardian"):
+				_force_redirect(current_home, also_set_home_page=False)
+			# Otherwise respect their explicit home_page choice
+		return
+
+	# ---------------------------------------------------------------
+	# 3) Employees: default /portal/staff (but respect explicit opt-in)
 	# ---------------------------------------------------------------
 	if frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}):
 		current_home = (frappe.db.get_value("User", user, "home_page") or "").strip()
@@ -61,9 +77,8 @@ def redirect_user_to_entry_portal():
 		return
 
 	# ---------------------------------------------------------------
-	# 3) Admissions Applicant: always /admissions
+	# 4) Admissions Applicant: always /admissions
 	# ---------------------------------------------------------------
-	roles = set(frappe.get_roles(user))
 	if "Admissions Applicant" in roles:
 		current_home = (frappe.db.get_value("User", user, "home_page") or "").strip()
 		if not current_home:
