@@ -52,14 +52,19 @@ class TestUserRedirect(FrappeTestCase):
 		frappe.delete_doc("Guardian", guardian.name, force=True)
 		frappe.delete_doc("User", user.email, force=True)
 
-	def test_guardian_respects_existing_home_page(self):
-		"""Guardians with explicit home_page choice should not be overridden."""
-		# Create test user with Guardian role and explicit home_page
+	def test_guardian_with_stale_home_page_gets_redirected(self):
+		"""Guardians with stale /app home_page should be redirected to guardian portal.
+
+		A guardian without staff roles should ALWAYS be redirected to the guardian portal,
+		even if their home_page was previously set to /app (e.g., from a previous staff role).
+		Non-staff guardians cannot access the desk, so the home_page must be updated.
+		"""
+		# Create test user with Guardian role and stale /app home_page
 		user = frappe.new_doc("User")
-		user.email = "test_guardian_custom@example.com"
+		user.email = "test_guardian_stale@example.com"
 		user.first_name = "Test"
-		user.last_name = "Guardian Custom"
-		user.home_page = "/app"
+		user.last_name = "Guardian Stale"
+		user.home_page = "/app"  # Stale home_page from previous role
 		user.enabled = 1
 		user.add_roles("Guardian")
 		user.save()
@@ -67,7 +72,7 @@ class TestUserRedirect(FrappeTestCase):
 		# Create Guardian record
 		guardian = frappe.new_doc("Guardian")
 		guardian.guardian_first_name = "Test"
-		guardian.guardian_last_name = "Guardian Custom"
+		guardian.guardian_last_name = "Guardian Stale"
 		guardian.guardian_email = user.email
 		guardian.user = user.email
 		guardian.save()
@@ -79,12 +84,50 @@ class TestUserRedirect(FrappeTestCase):
 		# Call redirect function
 		redirect_user_to_entry_portal()
 
-		# Assert NO redirect was set (respects explicit /app choice)
-		self.assertNotIn("home_page", frappe.local.response)
+		# Assert redirect to guardian portal (stale home_page should be overridden)
+		self.assertEqual(frappe.local.response.get("home_page"), "/portal/guardian")
+		self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/guardian")
+		self.assertEqual(frappe.local.response.get("type"), "redirect")
 
-		# Verify home_page was NOT changed
+		# Verify home_page was updated to guardian portal
 		user.reload()
-		self.assertEqual(user.home_page, "/app")
+		self.assertEqual(user.home_page, "/portal/guardian")
+
+		# Cleanup
+		frappe.set_user("Administrator")
+		frappe.delete_doc("Guardian", guardian.name, force=True)
+		frappe.delete_doc("User", user.email, force=True)
+
+	def test_guardian_with_portal_home_page_redirects_without_update(self):
+		"""Guardians already set to /portal/guardian should redirect without DB update."""
+		# Create test user with Guardian role and correct home_page
+		user = frappe.new_doc("User")
+		user.email = "test_guardian_correct@example.com"
+		user.first_name = "Test"
+		user.last_name = "Guardian Correct"
+		user.home_page = "/portal/guardian"
+		user.enabled = 1
+		user.add_roles("Guardian")
+		user.save()
+
+		# Create Guardian record
+		guardian = frappe.new_doc("Guardian")
+		guardian.guardian_first_name = "Test"
+		guardian.guardian_last_name = "Guardian Correct"
+		guardian.guardian_email = user.email
+		guardian.user = user.email
+		guardian.save()
+
+		# Simulate login
+		frappe.set_user(user.email)
+		frappe.local.response = {}
+
+		# Call redirect function
+		redirect_user_to_entry_portal()
+
+		# Assert redirect to guardian portal
+		self.assertEqual(frappe.local.response.get("home_page"), "/portal/guardian")
+		self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/guardian")
 
 		# Cleanup
 		frappe.set_user("Administrator")

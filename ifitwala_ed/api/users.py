@@ -89,12 +89,16 @@ def redirect_user_to_entry_portal():
 		current_home = (frappe.db.get_value("User", user, "home_page") or "").strip()
 
 		if not current_home:
+			# No home_page set - set it and redirect
 			_force_redirect("/portal/guardian", also_set_home_page=True)
+		elif current_home in ("/portal", "/portal/guardian"):
+			# Already set to guardian portal - redirect without updating
+			_force_redirect("/portal/guardian", also_set_home_page=False)
 		else:
-			if current_home in ("/portal", "/portal/guardian"):
-				_force_redirect("/portal/guardian", also_set_home_page=False)
-			# If home_page is set to something else (e.g. /app), respect it
-			# This allows guardians with desk access to opt-in
+			# Home page is set to something else (e.g., /app, /desk from previous role)
+			# Non-staff guardians MUST be redirected to guardian portal
+			# Update home_page to ensure consistent routing on future logins
+			_force_redirect("/portal/guardian", also_set_home_page=True)
 
 		return
 
