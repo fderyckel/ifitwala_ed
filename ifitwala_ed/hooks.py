@@ -288,7 +288,7 @@ scheduler_events = {
 
 # Request Events
 # ----------------
-# before_request = ["ifitwala.utils.before_request"]
+before_request = ["ifitwala_ed.auth.before_request"]
 # after_request = ["ifitwala.utils.after_request"]
 
 # Job Events
@@ -323,9 +323,9 @@ scheduler_events = {
 # Authentication and authorization
 # --------------------------------
 
-# auth_hooks = [
-# 	"ifitwala.auth.validate"
-# ]
+auth_hooks = [
+	"ifitwala_ed.auth.on_login"
+]
 
 # Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True
