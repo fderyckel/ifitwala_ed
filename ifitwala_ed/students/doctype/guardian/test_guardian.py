@@ -1,7 +1,7 @@
 # Copyright (c) 2024, François de Ryckel and Contributors
 # See license.txt
 
-# import frappe
+import frappe
 from frappe.tests.utils import FrappeTestCase
 
 
@@ -13,7 +13,7 @@ class TestGuardianUserCreation(FrappeTestCase):
 	"""Test guardian user creation and portal routing."""
 
 	def test_create_guardian_user_sets_home_page(self):
-		"""Creating a guardian user should set their home_page to /portal."""
+		"""Creating a guardian user should set their home_page to /portal/guardian."""
 		# Create a guardian without a user first
 		guardian = frappe.new_doc("Guardian")
 		guardian.guardian_first_name = "Test"
@@ -36,7 +36,7 @@ class TestGuardianUserCreation(FrappeTestCase):
 		roles = [r.role for r in user.roles]
 		self.assertIn("Guardian", roles)
 
-		# MOST IMPORTANT: Verify home_page is set to /portal
+		# MOST IMPORTANT: Verify home_page is set to /portal/guardian for automatic portal routing
 		self.assertEqual(user.home_page, "/portal/guardian")
 
 		# Verify guardian record was updated with user link
