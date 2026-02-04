@@ -78,3 +78,46 @@ class TestGuardianUserCreation(FrappeTestCase):
 		# Cleanup
 		frappe.delete_doc("Guardian", guardian.name, force=True)
 		frappe.delete_doc("User", user.email, force=True)
+
+	def test_existing_user_gets_home_page_and_role(self):
+		"""Existing users without Guardian role or home_page should get both set."""
+		# Create a user WITHOUT Guardian role and WITHOUT home_page
+		user = frappe.new_doc("User")
+		user.email = "existing_user_no_guardian@example.com"
+		user.first_name = "NoGuardian"
+		user.last_name = "Role"
+		user.enabled = 1
+		user.user_type = "Website User"
+		# Intentionally NOT adding Guardian role
+		user.save()
+
+		# Verify initial state
+		user_roles = [r.role for r in user.roles]
+		self.assertNotIn("Guardian", user_roles)
+		self.assertNotEqual(user.home_page, "/portal/guardian")
+
+		# Create guardian and link to existing user
+		guardian = frappe.new_doc("Guardian")
+		guardian.guardian_first_name = "NoGuardian"
+		guardian.guardian_last_name = "Role"
+		guardian.guardian_email = user.email
+		guardian.save()
+
+		# Create guardian user - should link existing and fix role/home_page
+		result = guardian.create_guardian_user()
+		self.assertEqual(result, user.email)
+
+		# Reload user to get updated values
+		user.reload()
+
+		# Verify Guardian role was added
+		user_roles = [r.role for r in user.roles]
+		self.assertIn("Guardian", user_roles)
+
+		# MOST IMPORTANT: Verify home_page is set for automatic portal routing
+		self.assertEqual(user.home_page, "/portal/guardian")
+
+		# Cleanup
+		guardian.reload()
+		frappe.delete_doc("Guardian", guardian.name, force=True)
+		frappe.delete_doc("User", user.email, force=True)

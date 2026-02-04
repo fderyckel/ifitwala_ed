@@ -120,10 +120,21 @@ class Guardian(Document):
 		if not self.guardian_email:
 			frappe.throw(_("Please add an email address first."))
 
-		# If a User with this email already exists, just link it
+		# If a User with this email already exists, link it and ensure proper portal setup
 		if frappe.db.exists("User", self.guardian_email):
 			if self.user != self.guardian_email:
 				self.db_set("user", self.guardian_email, update_modified=False)
+			
+			# Ensure existing user has Guardian role and correct home_page for portal routing
+			user = frappe.get_doc("User", self.guardian_email)
+			roles = [r.role for r in user.roles]
+			if "Guardian" not in roles:
+				user.add_roles("Guardian")
+			
+			# Set home_page so guardian is routed to portal/guardian on login
+			if user.home_page != "/portal/guardian":
+				frappe.db.set_value("User", user.name, "home_page", "/portal/guardian", update_modified=False)
+			
 			frappe.msgprint(
 				_("User {0} already exists and has been linked.")
 				.format(get_link_to_form("User", self.guardian_email))
@@ -176,4 +187,3 @@ class Guardian(Document):
 def create_guardian_user(guardian: str):
 	doc = frappe.get_doc("Guardian", guardian)
 	return doc.create_guardian_user()
-
