@@ -24,19 +24,76 @@ class Guardian(Document):
 		# 3) Create/reuse Contact once, then link Contact → Guardian (no contact.save here)
 		contact_name = self._get_or_create_contact()
 		self._ensure_contact_link(contact_name)
+		
+		# 4) If Guardian is created with a user already linked, ensure portal routing
+		if getattr(self, "user", None):
+			self._ensure_guardian_portal_routing(self.user)
 
 	def on_update(self):
 		# 4) Idempotent self-heal: if link missing, add it
 		contact_name = self._find_contact_name()
 		if contact_name:
 			self._ensure_contact_link(contact_name)
+		
+		# 5) If user field was changed or newly set, ensure portal routing
+		if self._has_user_changed():
+			self._ensure_guardian_portal_routing(self.user)
 
 	def onload(self):
-		# 5) Read-only helpers for form quick view
+		# 6) Read-only helpers for form quick view
 		load_address_and_contact(self)
 		self._load_students_quick_view()
 
 	# ---------------- internal helpers ----------------
+
+	def _has_user_changed(self) -> bool:
+		"""Check if the user field was changed during this save."""
+		if self.is_new():
+			return bool(getattr(self, "user", None))
+		
+		previous = self.get_doc_before_save()
+		if not previous:
+			return bool(getattr(self, "user", None))
+		
+		old_user = getattr(previous, "user", None)
+		new_user = getattr(self, "user", None)
+		return old_user != new_user and new_user
+
+	def _ensure_guardian_portal_routing(self, user_email: str):
+		"""
+		Ensure the linked user has Guardian role and correct home_page for portal routing.
+		Called when Guardian is created or user field is updated.
+		"""
+		if not user_email or not frappe.db.exists("User", user_email):
+			return
+		
+		# Check if user is a staff member - staff routing takes priority
+		staff_roles = frozenset([
+			"Academic User", "System Manager", "Teacher", "Administrator",
+			"Finance User", "HR User", "HR Manager"
+		])
+		user_roles = set(frappe.get_roles(user_email))
+		has_staff_role = bool(user_roles & staff_roles)
+		
+		# Don't override home_page for staff members - they get their own routing
+		if has_staff_role:
+			return
+		
+		# Add Guardian role if missing
+		if "Guardian" not in user_roles:
+			try:
+				user = frappe.get_doc("User", user_email)
+				user.add_roles("Guardian")
+			except Exception:
+				pass  # Continue even if role add fails
+		
+		# Set home_page for portal routing if not already set to guardian portal
+		current_home_page = frappe.db.get_value("User", user_email, "home_page")
+		if current_home_page != "/portal/guardian":
+			try:
+				frappe.db.set_value("User", user_email, "home_page", "/portal/guardian", update_modified=False)
+			except Exception:
+				pass  # Continue even if home_page update fails
 
 	def _find_contact_name(self) -> str | None:
 		# Prefer user match, then primary email match
