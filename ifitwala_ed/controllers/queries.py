@@ -1,16 +1,10 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-import json
-from collections import OrderedDict, defaultdict
 
 import frappe
-from frappe import qb, scrub
 from frappe.desk.reportview import get_filters_cond, get_match_cond
-from frappe.query_builder import Criterion, CustomFunction
-from frappe.query_builder.functions import Concat, Locate, Sum
-from frappe.utils import nowdate, today, unique
-from pypika import Order
+from frappe.utils import unique
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs

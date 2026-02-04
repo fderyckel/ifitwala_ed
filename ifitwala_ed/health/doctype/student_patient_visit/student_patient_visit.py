@@ -3,7 +3,6 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import nowtime, today
 
 class StudentPatientVisit(Document):
 	def validate(self):

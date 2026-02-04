@@ -4,7 +4,6 @@
 # ifitwala_ed/utilities/employee_utils.py
 
 import frappe
-from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
 
 CACHE_TTL = 300  # seconds
 

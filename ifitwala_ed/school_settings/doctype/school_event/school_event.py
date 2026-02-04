@@ -5,7 +5,7 @@
 
 import json
 from collections import defaultdict
-from typing import Any, Dict, Set
+from typing import Dict, Set
 
 import frappe
 from frappe import _
@@ -731,8 +731,8 @@ def get_school_events_for_user(start, end, user=None, filters=None):
 
 	filter_cond = get_filters_cond("School Event", filters, [])
 
-	start_local = f"CONVERT_TZ(`tabSchool Event`.starts_on, 'UTC', %(site_tz)s)"
-	end_local = f"CONVERT_TZ(`tabSchool Event`.ends_on, 'UTC', %(site_tz)s)"
+	start_local = "CONVERT_TZ(`tabSchool Event`.starts_on, 'UTC', %(site_tz)s)"
+	end_local = "CONVERT_TZ(`tabSchool Event`.ends_on, 'UTC', %(site_tz)s)"
 
 	# Main time-window query
 	events = frappe.db.sql(

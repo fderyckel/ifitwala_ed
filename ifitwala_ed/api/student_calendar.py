@@ -8,22 +8,20 @@ Focus: High concurrency, aggressive caching, efficient SQL.
 from __future__ import annotations
 
 import pytz
-from datetime import datetime, timedelta, date, time
-from typing import List, Optional, Tuple, Dict, Any
+from datetime import datetime, timedelta
+from typing import List, Optional
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, now_datetime, get_system_timezone
+from frappe.utils import getdate, now_datetime
 
 # Reuse existing utilities for schedule expansion
 from ifitwala_ed.api.calendar import (
     CalendarEvent,
     _system_tzinfo,
     _resolve_window,
-    _localize_datetime,
     _to_system_datetime,
     _course_meta_map,
-    _attach_duration,
 )
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
 
@@ -182,7 +180,6 @@ def _fetch_classes(
         filters={"name": ["in", sg_names]},
         fields=["name", "student_group_name", "course"],
     )
-    from ifitwala_ed.api.calendar import _course_meta_map
     course_map = _course_meta_map(g.course for g in group_meta if g.course)
     
     meta_by_name = {g.name: g for g in group_meta}

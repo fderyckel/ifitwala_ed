@@ -4,7 +4,6 @@
 
 import json
 import frappe
-from frappe import _
 from frappe.utils import getdate
 from frappe import get_cached_value
 from frappe.query_builder import DocType
@@ -13,7 +12,6 @@ from ifitwala_ed.schedule.schedule_utils import (
 	current_academic_year,
 	get_block_colour, get_course_block_colour
 )
-from ifitwala_ed.school_settings.doctype.school_calendar import school_calendar
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 # ─────────────────────────────────────────────────────────────────────

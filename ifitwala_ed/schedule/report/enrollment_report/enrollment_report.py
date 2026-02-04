@@ -392,7 +392,7 @@ def get_academic_years_for_school(doctype, txt, searchfield, start, page_len, fi
 		school_names.extend([row['name'] for row in ancestors])
 
 	# Fetch all Academic Years referenced in Program Enrollment by these schools
-	academic_years = frappe.db.sql(f"""
+	academic_years = frappe.db.sql("""
 		SELECT DISTINCT pe.academic_year
 		FROM `tabProgram Enrollment` pe
 		WHERE pe.school IN %(school_names)s

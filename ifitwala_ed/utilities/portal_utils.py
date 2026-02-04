@@ -8,7 +8,7 @@ from datetime import datetime
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime, add_to_date, today, strip_html
+from frappe.utils import now_datetime, add_to_date, today
 from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
 from frappe.exceptions import UniqueValidationError  # optional clarity (see next point)
 from frappe.utils.file_manager import save_file 

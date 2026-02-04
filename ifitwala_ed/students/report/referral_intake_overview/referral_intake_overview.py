@@ -4,7 +4,7 @@
 # ifitwala_ed/students/report/referral_intake_overview/referral_intake_overview.py
 import frappe
 from frappe import _
-from frappe.utils import cint, getdate, nowdate
+from frappe.utils import cint, getdate
 
 ALLOWED_STRICT_ROLES = {"Counselor", "Academic Admin", "System Manager"}
 

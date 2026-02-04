@@ -5,7 +5,7 @@
 
 import frappe
 from frappe.utils import today, add_days, getdate, formatdate, strip_html, now_datetime
-from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 from ifitwala_ed.api.org_comm_utils import check_audience_match
 
