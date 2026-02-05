@@ -1031,7 +1031,7 @@ def get_team_meeting_book(
 
 
 def _render_empty_meeting_book(
-	team_doc: "Team",
+	team_doc: "Team",  # noqa: F821
 	academic_year: str | None,
 	from_date: str | None,
 	to_date: str | None,

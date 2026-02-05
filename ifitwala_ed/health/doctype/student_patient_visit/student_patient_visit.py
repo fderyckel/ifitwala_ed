@@ -3,17 +3,18 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import nowtime, today
 
 class StudentPatientVisit(Document):
 	def validate(self):
 		self.set_school()
 
 	def set_school(self):
-		if self.school: return
+		if self.school:
+            return
 
 		student = frappe.db.get_value("Student Patient", self.student_patient, "student")
-		if not student: return
+		if not student:
+                return
 
 	def after_insert(self):
 		self.notify_instructor()
@@ -25,7 +26,8 @@ class StudentPatientVisit(Document):
 			from frappe.utils import get_time, getdate
 			
 			student = frappe.db.get_value("Student Patient", self.student_patient, "student")
-			if not student: return
+			if not student:
+                return
 
 			# Get student info for notification
 			student_doc = frappe.get_doc("Student", student)
@@ -52,7 +54,8 @@ class StudentPatientVisit(Document):
 					if group.academic_year and school:
 						schedule_name = get_effective_schedule_for_ay(group.academic_year, school)
 				
-				if not schedule_name: continue
+				if not schedule_name:
+                    continue
 
 				# 3. Get Rotation Day
 				# We get rotation dates for the whole year, but we only need today. 
@@ -61,7 +64,8 @@ class StudentPatientVisit(Document):
 				rot_dates = get_rotation_dates(schedule_name, group.academic_year)
 				rotation_day = next((r["rotation_day"] for r in rot_dates if getdate(r["date"]) == today_date), None)
 
-				if not rotation_day: continue
+				if not rotation_day:
+                    continue
 
 				# 4. Check Schedule for this block
 				# We check if current time falls within any block for this group
@@ -71,7 +75,8 @@ class StudentPatientVisit(Document):
 				}, fields=["from_time", "to_time", "instructor", "location"])
 
 				for row in schedule_rows:
-					if not row.from_time or not row.to_time: continue
+					if not row.from_time or not row.to_time:
+                        continue
 					
 					# Check time overlap
 					if row.from_time <= current_time <= row.to_time:
@@ -100,7 +105,8 @@ class StudentPatientVisit(Document):
 def get_student_school(student_patient, date=None):
 	# date argument is kept for compatibility but not used for anchor_school
 	student = frappe.db.get_value("Student Patient", student_patient, "student")
-	if not student: return None
+	if not student:
+        return None
 
 	return frappe.db.get_value("Student", student, "anchor_school")
 

@@ -708,8 +708,8 @@ def _collect_meeting_events(
 	window_end: datetime,
 	tzinfo: pytz.timezone,
 ) -> List[CalendarEvent]:
-	start_date = window_start.date()
-	end_date = window_end.date()
+	# start_date = window_start.date()  # noqa: F841
+	# end_date = window_end.date()  # noqa: F841
 
 	employee_id = frappe.db.get_value("Employee", {"user_id": user}, "name")
 

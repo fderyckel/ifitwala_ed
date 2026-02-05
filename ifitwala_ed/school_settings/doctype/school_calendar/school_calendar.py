@@ -18,7 +18,6 @@ from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import ParentRuleViolation
 from ifitwala_ed.utilities.school_tree import (
 	get_descendant_schools,
-	is_leaf_school,
 )
 from ifitwala_ed.school_settings.school_settings_utils import (
 	resolve_terms_for_school_calendar,

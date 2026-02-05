@@ -3,7 +3,6 @@
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
 
 def _get_student_name_for_user(user: str) -> str | None:
   """Map portal user → Student by email (lightweight, indexed)"""

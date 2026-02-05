@@ -1141,7 +1141,7 @@ def _build_preparation_items(
 					{
 						"student": student,
 						"date": day_date,
-						"label": _("Prepare for: {0}").format(chip.get("title") or _("Assessment")),
+						"label": _("Prepare for: {0}").format(chip.get("title") or _("Assessment")),  # noqa: F823
 						"source": "task",
 						"related": {"task_delivery": chip.get("task_delivery")},
 					}

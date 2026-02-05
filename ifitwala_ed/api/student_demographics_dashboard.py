@@ -218,7 +218,7 @@ def _build_family_groups(guardians: list[dict], student_dobs: dict[str, date | N
 	families = defaultdict(set)
 
 	for student, links in by_student.items():
-		primary = next((l for l in links if l.get("is_primary_guardian")), None)
+		primary = next((link for link in links if link.get("is_primary_guardian")), None)
 		if primary:
 			family_id = primary["guardian"]
 		elif links:
@@ -304,7 +304,7 @@ def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guard
 
 		# Multilingual
 		langs = [s.get("student_first_language"), s.get("student_second_language")]
-		cnt = len([l for l in langs if l])
+		cnt = len([lang for lang in langs if lang])
 		label = "3+ languages" if cnt >= 3 else "2 languages" if cnt == 2 else "1 language" if cnt >= 1 else "0"
 		add(f"student:multilingual:{label}", sid)
 
@@ -443,7 +443,7 @@ def get_dashboard(filters=None):
 
 	# Families via primary guardians
 	families, student_family, sibling_flags = _build_family_groups(guardian_links, student_dobs)
-	slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
+	_slice_hits = _build_slice_hits(students, sibling_flags, guardian_links)
 
 	# KPI counts
 	cohorts = {s["cohort"] for s in students if s.get("cohort")}
@@ -598,7 +598,7 @@ def get_dashboard(filters=None):
 	multi_counts = {"1 language": 0, "2 languages": 0, "3+ languages": 0}
 	for s in students:
 		langs = [s.get("student_first_language"), s.get("student_second_language")]
-		lang_count = len([l for l in langs if l])
+		lang_count = len([lang for lang in langs if lang])
 		if lang_count >= 3:
 			multi_counts["3+ languages"] += 1
 		elif lang_count == 2:
@@ -833,7 +833,7 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 			target = parts[2] if len(parts) > 2 else ""
 			for s in students:
 				langs = [s.get("student_first_language"), s.get("student_second_language")]
-				cnt = len([l for l in langs if l])
+				cnt = len([lang for lang in langs if lang])
 				label = (
 					"3+ languages"
 					if cnt >= 3

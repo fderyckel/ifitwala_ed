@@ -12,7 +12,6 @@ from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 from ifitwala_ed.utilities.school_tree import get_effective_record, ParentRuleViolation
 from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
-from typing import Optional, Sequence
 
 ADMIN_ENROLLMENT_ROLES = {"Academic Admin", "Curriculum Coordinator", "Admission Manager"}
 MIGRATION_ROLES = {"System Manager"}
