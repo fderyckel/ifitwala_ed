@@ -1,2 +1,0 @@
-holidays>=0.86
-jsonschema>=4.0.0

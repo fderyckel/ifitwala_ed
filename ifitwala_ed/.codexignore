@@ -1,9 +1,0 @@
-node_modules/
-__pycache__/
-ifitwala_ed/public/js/*.bundle.js
-ifitwala_ed/public/js/*.bundle.js.map
-ifitwala_ed/public/css/*.bundle.css
-ifitwala_ed/public/css/*.bundle.css.map
-ifitwala_ed/public/css/*.min.css
-ifitwala_ed/public/vite/
-.env
