@@ -4497,7 +4497,6 @@ class TestSalesInvoice(FrappeTestCase):
 		self.assertRaises(StockOverReturnError, return_doc.save)
 
 	def test_stand_alone_credit_note_valuation(self):
-		from erpnext.stock.doctype.item.test_item import make_item
 
 		item_code = "_Test Item for Credit Note Valuation"
 		make_item_for_si(
@@ -4536,7 +4535,6 @@ class TestSalesInvoice(FrappeTestCase):
 		self.assertEqual(stock_ledger_entry.stock_value_difference, 2400.0)
 
 	def test_stand_alone_credit_note_zero_valuation(self):
-		from erpnext.stock.doctype.item.test_item import make_item
 
 		item_code = "_Test Item for Credit Note Zero Valuation"
 		make_item_for_si(
@@ -4576,7 +4574,6 @@ class TestSalesInvoice(FrappeTestCase):
 		self.assertEqual(stock_ledger_entry.stock_value_difference, 0.0)
 
 	def test_non_batchwise_valuation_for_moving_average(self):
-		from erpnext.stock.doctype.item.test_item import make_item
 
 		item_code = "_Test Item for Non Batchwise Valuation"
 		make_item_for_si(

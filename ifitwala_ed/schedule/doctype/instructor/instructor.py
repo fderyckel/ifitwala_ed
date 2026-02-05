@@ -192,8 +192,9 @@ def get_permission_query_conditions(user):
 	if user in ("Administrator",) or "System Manager" in frappe.get_roles(user):
 		return ""
 
-	roles = set(frappe.get_roles(user))
-	is_academic_controller = bool(roles & {"Academic Admin", "Academic Assistant"})
+	_roles = set(frappe.get_roles(user))
+	# _is_academic_controller = bool(roles)  # noqa: F841  # noqa: F841
+# _is_academic_controller = bool(roles)  # noqa: F841 & {"Academic Admin", "Academic Assistant"})
 
 	schools = _user_allowed_schools(user)
 	user_escaped = frappe.db.escape(user, percent=False)

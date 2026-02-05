@@ -2,7 +2,6 @@
 
 import re
 
-import frappe
 from frappe.utils import sanitize_html as frappe_sanitize_html
 
 

@@ -5,7 +5,6 @@
 # Authentication hooks and access control guards
 
 import frappe
-from frappe import _
 
 # Staff roles that should NOT be redirected away from desk/app
 STAFF_ROLES = frozenset([

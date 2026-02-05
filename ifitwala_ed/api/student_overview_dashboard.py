@@ -104,7 +104,7 @@ def get_filter_meta():
 	          under those schools (archived = 0).
 	"""
 	user = _current_user()
-	roles = _user_roles(user)
+	_roles = _user_roles(user)  # noqa: F841
 	student_scope = _get_student_scope(user)
 
 	# Students / Guardians: scope is their Program Enrollments only

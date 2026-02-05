@@ -222,7 +222,7 @@ def replace_abbr(school, old, new):
 	def _rename_record(doc):
 		parts = doc[0].rsplit(" - ", 1)
 		if len(parts) == 1 or parts[1].lower() == old.lower():
-			frappe.rename_doc(dt, doc[0], parts[0] + " - " + new)
+			frappe.rename_doc(dt, doc[0], parts[0] + " - " + new)  # noqa: F821  # dt from outer scope
 
 	def _rename_records(dt):
 		# rename is expensive so let's be economical with memory usage

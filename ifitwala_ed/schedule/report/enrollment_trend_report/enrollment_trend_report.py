@@ -5,9 +5,6 @@ import frappe
 from frappe import _
 from collections import defaultdict
 
-import frappe
-from frappe import _
-from collections import defaultdict
 
 def execute(filters=None):
     filters = filters or {}

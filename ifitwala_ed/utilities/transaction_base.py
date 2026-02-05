@@ -3,8 +3,6 @@
 
 import frappe
 import frappe.share
-from frappe import _
-from frappe.utils import cint, flt, get_time, now_datetime
 
 
 def delete_events(ref_type, ref_name):

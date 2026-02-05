@@ -35,6 +35,7 @@ from collections import defaultdict
 from typing import Dict, List, Tuple
 
 import frappe
+from frappe import _
 
 
 def _extract(obj, attr):

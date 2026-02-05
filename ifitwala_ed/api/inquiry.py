@@ -1,5 +1,6 @@
 import frappe
 from frappe.utils import add_days, getdate, nowdate
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 SUBMITTED_LOCAL_EXPR = "i.submitted_at"
 
@@ -89,7 +90,6 @@ def _ensure_access(user: str | None = None) -> str:
 	frappe.throw("You do not have permission to access Inquiry Analytics.", frappe.PermissionError)
 	return user
 
-from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 def _get_descendant_organizations(root_org: str):
 	if not root_org:

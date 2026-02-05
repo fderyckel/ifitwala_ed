@@ -7,6 +7,7 @@ import frappe
 from frappe import _
 from ifitwala_ed.setup.utils import insert_record
 from frappe.utils import get_files_path
+import os
 
 def setup_education():
 	ensure_initial_setup_flag()

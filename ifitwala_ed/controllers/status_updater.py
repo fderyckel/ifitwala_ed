@@ -3,8 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.model.document import Document
-from frappe.utils import comma_or, flt, get_link_to_form, getdate, now, nowdate
+from frappe.utils import comma_or
 
 
 def validate_status(status, options):

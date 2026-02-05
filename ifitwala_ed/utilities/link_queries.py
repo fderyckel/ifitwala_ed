@@ -4,7 +4,6 @@
 # ifitwala_ed/utilities/link_queries.py
 
 import frappe
-from frappe import _
 from frappe.utils.nestedset import get_descendants_of
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 

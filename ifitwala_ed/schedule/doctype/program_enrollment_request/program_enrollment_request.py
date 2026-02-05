@@ -4,7 +4,6 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import now_datetime
 
 from ifitwala_ed.schedule.enrollment_request_utils import validate_program_enrollment_request
 

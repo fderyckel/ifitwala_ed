@@ -353,7 +353,7 @@ def schedule_recurring_meetings(
 def _generate_occurrence_dates(start_date, preset, limit, ay_end):
 	dates = []
 	current = start_date
-	for _ in range(limit):
+	for _i in range(limit):  # noqa: F402
 		if current > ay_end:
 			break
 		dates.append(current)

@@ -331,10 +331,10 @@ class ProgramOffering(Document):
 			# Set defaults only if empty—admins can still override per row later
 			if not getattr(row, "start_academic_year", None):
 				row.start_academic_year = start_ay
-				changed = True
+				changed = True  # noqa: F841
 			if not getattr(row, "end_academic_year", None):
 				row.end_academic_year = end_ay
-				changed = True
+				changed = True  # noqa: F841
 
 
 # -------------------------
