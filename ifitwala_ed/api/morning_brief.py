@@ -19,7 +19,7 @@ def get_briefing_widgets():
 
 	# Use site timezone (from System Settings) and normal Gregorian date
 	site_now = now_datetime()
-	site_today = getdate(site_now)
+	# site_today removed - unused
 	widgets["today_label"] = site_now.strftime("%A, %d %B %Y")
 
 
@@ -293,26 +293,26 @@ def get_recent_student_logs(user):
 	)
 
 	formatted_logs = []
-	for l in logs:
-		raw_text = strip_html(l.log or "")
+	for log in logs:
+		raw_text = strip_html(log.log or "")
 		snippet = (raw_text[:120] + "...") if len(raw_text) > 120 else raw_text
 
 		status_color = "gray"
-		if l.requires_follow_up:
-			if l.follow_up_status == "Open":
+		if log.requires_follow_up:
+			if log.follow_up_status == "Open":
 				status_color = "red"
-			elif l.follow_up_status == "Completed":
+			elif log.follow_up_status == "Completed":
 				status_color = "green"
 
 		formatted_logs.append(
 			{
-				"name": l.name,
-				"student_name": l.student_name,
-				"student_image": l.student_image,
-				"log_type": l.log_type,
-				"date_display": formatdate(l.date, "dd-MMM"),
+				"name": log.name,
+				"student_name": log.student_name,
+				"student_image": log.student_image,
+				"log_type": log.log_type,
+				"date_display": formatdate(log.date, "dd-MMM"),
 				"snippet": snippet,
-				"full_content": l.log,
+				"full_content": log.log,
 				"status_color": status_color,
 			}
 		)
@@ -342,7 +342,7 @@ def get_staff_birthdays():
 
 	sql = f"""
 		SELECT
-			employee_full_name as name,
+			employee_fullog.name as name,
 			employee_image as image,
 			employee_date_of_birth as date_of_birth
 		FROM
@@ -501,10 +501,10 @@ def get_critical_incidents_details():
 		order_by="date desc, creation desc",
 	)
 
-	for l in logs:
-		l.date_display = formatdate(l.date, "dd-MMM")
-		raw_text = strip_html(l.log or "")
-		l.snippet = (raw_text[:100] + "...") if len(raw_text) > 100 else raw_text
+	for log in logs:
+		log.date_display = formatdate(log.date, "dd-MMM")
+		raw_text = strip_html(log.log or "")
+		log.snippet = (raw_text[:100] + "...") if len(raw_text) > 100 else raw_text
 
 	return logs
 

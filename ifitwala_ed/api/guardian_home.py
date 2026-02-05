@@ -1178,7 +1178,6 @@ def _build_preparation_items(
 
 	# Communication-to-prep is intentionally conservative in Phase-1:
 	# no synthetic child mapping; keep communication in attention/recent only.
-	_ = communication_bundle
 
 	out.sort(key=lambda x: (x.get("date"), x.get("student"), x.get("label")))
 	return out[:80]

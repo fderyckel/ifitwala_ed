@@ -1,6 +1,7 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+from frappe.contacts.address_and_contact import has_permission as _core_has_permission
 import frappe
 
 ### THis creates quite a bit of issues in when we call the html card contact.
@@ -14,9 +15,9 @@ def update_profile_from_contact(doc, method=None):
     if frappe.flags.get("skip_contact_to_guardian_sync"):
         return
 
-    #student = next((l.link_name for l in doc.links if l.link_doctype == "Student"), None)
-    guardian = next((l.link_name for l in doc.links if l.link_doctype == "Guardian"), None)
-    #employee = next((l.link_name for l in doc.links if l.link_doctype == "Employee"), None)
+    #student = next((link.link_name for link in doc.links if link.link_doctype == "Student"), None)
+    guardian = next((link.link_name for link in doc.links if link.link_doctype == "Guardian"), None)
+    #employee = next((link.link_name for link in doc.links if link.link_doctype == "Employee"), None)
     primary_mobile = next((p.phone for p in doc.phone_nos if p.is_primary_mobile_no), None)
 
     if guardian:
@@ -26,7 +27,6 @@ def update_profile_from_contact(doc, method=None):
         guardian_doc.guardian_mobile_phone = primary_mobile
         guardian_doc.save()
 
-from frappe.contacts.address_and_contact import has_permission as _core_has_permission
 
 # ------------------------------------------------------------------ #
 #  Doc‑level gate
@@ -66,6 +66,6 @@ def contact_permission_query_conditions(user):
             SELECT 1 FROM `tabDynamic Link` dl
             WHERE dl.parent = `tabContact`.name
               AND dl.parenttype = 'Contact'
-              AND dl.link_doctype = 'Student'
+              AND dlink.link_doctype = 'Student'
         )
     """

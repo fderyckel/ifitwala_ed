@@ -158,7 +158,7 @@ def get_program_chart_data(data, filters=None):
 
 		# 2) stable chronological order then by school abbr
 		labels = sorted(totals.keys(),
-						key=lambda l: (year_start[l], label_school[l]))
+						key=lambda label: (year_start[label], label_school[label]))
 
 		# 3) colour map – first N from palette, then md5‑hash fallback
 		base_palette = ["#7cd6fd", "#00b894", "#ff9f43",
@@ -262,7 +262,7 @@ def get_cohort_chart_data(data):
 		"#7cd6fd", "#5e64ff", "#743ee2", "#ffa00a", "#00b0f0", "#ff5858", "#00a65a",
 		"#ffa3ef", "#99cc00", "#6b5b95", "#00b894", "#fab1a0"
 	]
-	color_index = 0
+	# color_index removed - unused
 
 	for program, year_counts in program_map.items():
 		values = [year_counts.get(year, 0) for year in sorted_years]

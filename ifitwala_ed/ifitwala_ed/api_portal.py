@@ -36,7 +36,8 @@ def _detail_fields() -> List[str]:
 
 def _filters(student_name: str, extra: Dict|None=None) -> Dict:
 	f = {"student": student_name, "visible_to_student": 1}
-	if extra: f.update(extra)
+	if extra:
+		f.update(extra)
 	return f
 
 @frappe.whitelist()

@@ -3,6 +3,7 @@
 # For license information, please see license.txt
 
 import json
+import os
 import frappe
 from frappe import _
 from ifitwala_ed.setup.utils import insert_record

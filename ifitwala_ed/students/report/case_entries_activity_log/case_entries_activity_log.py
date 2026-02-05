@@ -153,20 +153,44 @@ def _build_where(f, date_from, date_to, site_tz):
 	where, params = [], {}
 	params["site_tz"] = site_tz
 	if date_from:
-		where.append(f"{ENTRY_LOCAL_EXPR} >= %(df)s"); params["df"] = date_from
+		where.append(f"{ENTRY_LOCAL_EXPR} >= %(df)s")
+		params["df"] = date_from
 	if date_to:
-		where.append(f"{ENTRY_LOCAL_EXPR} <= %(dt)s"); params["dt"] = date_to
-	if f.get("student"):       where.append("rc.student = %(student)s");     params["student"] = f.student
-	if f.get("referral"):      where.append("rc.referral = %(referral)s");   params["referral"] = f.referral
-	if f.get("school"):        where.append("rc.school = %(school)s");       params["school"] = f.school
-	if f.get("program"):       where.append("rc.program = %(program)s");     params["program"] = f.program
-	if f.get("academic_year"): where.append("rc.academic_year = %(ay)s");    params["ay"] = f.academic_year
-	if f.get("case_manager"):  where.append("rc.case_manager = %(cm)s");     params["cm"] = f.case_manager
-	if f.get("assignee"):      where.append("rce.assignee = %(assignee)s");  params["assignee"] = f.assignee
-	if f.get("entry_type"):    where.append("rce.entry_type = %(et)s");      params["et"] = f.entry_type
-	if f.get("entry_status"):  where.append("rce.status = %(es)s");          params["es"] = f.entry_status
-	if f.get("case_severity"): where.append("rc.severity = %(sev)s");        params["sev"] = f.case_severity
-	if f.get("case_status"):   where.append("rc.case_status = %(cs)s");      params["cs"] = f.case_status
+		where.append(f"{ENTRY_LOCAL_EXPR} <= %(dt)s")
+		params["dt"] = date_to
+	if f.get("student"):
+		where.append("rc.student = %(student)s")
+		params["student"] = f.student
+	if f.get("referral"):
+		where.append("rc.referral = %(referral)s")
+		params["referral"] = f.referral
+	if f.get("school"):
+		where.append("rc.school = %(school)s")
+		params["school"] = f.school
+	if f.get("program"):
+		where.append("rc.program = %(program)s")
+		params["program"] = f.program
+	if f.get("academic_year"):
+		where.append("rc.academic_year = %(ay)s")
+		params["ay"] = f.academic_year
+	if f.get("case_manager"):
+		where.append("rc.case_manager = %(cm)s")
+		params["cm"] = f.case_manager
+	if f.get("assignee"):
+		where.append("rce.assignee = %(assignee)s")
+		params["assignee"] = f.assignee
+	if f.get("entry_type"):
+		where.append("rce.entry_type = %(et)s")
+		params["et"] = f.entry_type
+	if f.get("entry_status"):
+		where.append("rce.status = %(es)s")
+		params["es"] = f.entry_status
+	if f.get("case_severity"):
+		where.append("rc.severity = %(sev)s")
+		params["sev"] = f.case_severity
+	if f.get("case_status"):
+		where.append("rc.case_status = %(cs)s")
+		params["cs"] = f.case_status
 	return where, params
 
 def _chart_entries_over_time(rows, bucket="week"):
@@ -210,5 +234,5 @@ def _chart_simple_count(rows, key, title):
 	if not counts:
 		return None
 	labels = sorted(counts.keys(), key=lambda s: s.lower())
-	values = [counts[l] for l in labels]
+	values = [counts[label] for label in labels]
 	return {"data": {"labels": labels, "datasets": [{"name": title, "values": values}]}, "type": "bar"}

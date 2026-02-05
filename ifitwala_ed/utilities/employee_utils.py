@@ -158,7 +158,8 @@ def get_employee_emails(employee_list):
 
 def get_holiday_list_for_employee(employee, raise_exception=True):
 	if employee:
-		holiday_list, organization = frappe.db.get_value("Employee", employee, ["current_holiday_list", "organization"])
+		holiday_list, _org = frappe.db.get_value("Employee", employee, ["current_holiday_list", "organization"])
 	else:
 		holiday_list = ""
-		organization = frappe.db.get_value("Global Defaults", "None", "default_organization")
+		_org = frappe.db.get_value("Global Defaults", "None", "default_organization")
+	return holiday_list

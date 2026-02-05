@@ -79,7 +79,7 @@ def _students_for_student_user(user: str) -> List[str]:
 
 
 def _get_student_scope(user: str) -> List[str]:
-	roles = _user_roles(user)
+	roles = frappe.get_roles(user)
 	if "Student" in roles:
 		return _students_for_student_user(user)
 	if "Guardian" in roles:
@@ -104,7 +104,6 @@ def get_filter_meta():
 	          under those schools (archived = 0).
 	"""
 	user = _current_user()
-	roles = _user_roles(user)
 	student_scope = _get_student_scope(user)
 
 	# Students / Guardians: scope is their Program Enrollments only
@@ -210,7 +209,7 @@ def search_students(search_text: str = "", school: str | None = None, program: s
 	Blank search: up to 20 students in scope (no name filter).
 	"""
 	user = _current_user()
-	roles = _user_roles(user)
+	roles = frappe.get_roles(user)
 	visible_students = _get_student_scope(user)
 
 	# ----- Helper: program subtree (NestedSet) -----
@@ -315,7 +314,7 @@ def search_students(search_text: str = "", school: str | None = None, program: s
 
 def _ensure_can_view_student(student: str, school: str | None, program: str | None):
 	user = _current_user()
-	roles = _user_roles(user)
+	roles = frappe.get_roles(user)
 
 	# Students/Guardians: only within their scope
 	scope = _get_student_scope(user)

@@ -326,15 +326,15 @@ class ProgramOffering(Document):
 		if not start_ay or not end_ay:
 			return
 
-		changed = False
+		# changed logic removed - unused
 		for row in (self.offering_courses or []):
 			# Set defaults only if empty—admins can still override per row later
 			if not getattr(row, "start_academic_year", None):
 				row.start_academic_year = start_ay
-				changed = True
+				# changed removed - unused
 			if not getattr(row, "end_academic_year", None):
 				row.end_academic_year = end_ay
-				changed = True
+				# changed removed - unused
 
 
 # -------------------------

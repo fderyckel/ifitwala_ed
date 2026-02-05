@@ -354,7 +354,8 @@ def _fetch_meetings(
     seen = set()
     
     for m in meetings:
-        if m.name in seen: continue
+        if m.name in seen:
+            continue
         seen.add(m.name)
         
         s_dt = _to_system_datetime(m.from_datetime, tzinfo)

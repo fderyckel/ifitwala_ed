@@ -256,7 +256,7 @@ def bulk_upsert_attendance(payload=None):
 		group_school = get_school_for_student_group(sg)
 
 		# Term window (today must be within current term if one exists)
-		today = getdate()
+		# today removed - unused
 		current_term = get_current_term(sg.academic_year)
 		term_guard = None
 		if current_term:

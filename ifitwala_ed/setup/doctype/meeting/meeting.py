@@ -21,6 +21,10 @@ from ifitwala_ed.utilities.employee_booking import (
 	upsert_employee_booking,
 	delete_employee_bookings_for_source,
 )
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ifitwala_ed.setup.doctype.team.team import Team
+
 from ifitwala_ed.stock.doctype.location_booking.location_booking import (
 	build_source_key,
 	build_slot_key_single,

@@ -219,16 +219,16 @@ def replace_abbr(school, old, new):
 
 	frappe.db.set_value("School", school, "abbr", new)
 
-	def _rename_record(doc):
+	def _rename_record(doc, doctype):
 		parts = doc[0].rsplit(" - ", 1)
 		if len(parts) == 1 or parts[1].lower() == old.lower():
-			frappe.rename_doc(dt, doc[0], parts[0] + " - " + new)
+			frappe.rename_doc(doctype, doc[0], parts[0] + " - " + new)
 
 	def _rename_records(dt):
 		# rename is expensive so let's be economical with memory usage
 		doc = (d for d in frappe.db.sql("select name from `tab%s` where school=%s" % (dt, "%s"), school))
 		for d in doc:
-			_rename_record(d)
+			_rename_record(d, dt)
 
 
 def get_name_with_abbr(name, school):

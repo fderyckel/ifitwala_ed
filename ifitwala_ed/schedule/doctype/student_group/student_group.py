@@ -182,7 +182,7 @@ class StudentGroup(Document):
 		added = getattr(self.flags, "_sg_students_added", set()) or set()
 		removed = getattr(self.flags, "_sg_students_removed", set()) or set()
 		instr_changed = bool(getattr(self.flags, "_sg_instructors_changed", False))
-		sched_changed = bool(getattr(self.flags, "_sg_schedule_changed", False))
+		# sched_changed removed - unused(getattr(self.flags, "_sg_schedule_changed", False))
 
 		if not added and not removed and not instr_changed:
 			pass
