@@ -5,7 +5,7 @@
 
 import frappe
 
-# Staff roles that take priority over Guardian routing
+# Staff roles that take priority for desk access
 STAFF_ROLES = frozenset([
 	"Academic User",
 	"System Manager",
@@ -19,20 +19,21 @@ STAFF_ROLES = frozenset([
 
 def redirect_user_to_entry_portal():
 	"""
-	Authoritative login routing (Option C).
-
+	Unified login redirect: Most users go to /portal, Admissions Applicants go to /admissions.
+	
+	The Vue SPA at /portal handles role-based routing internally via
+	window.defaultPortal (set by www/portal/index.py based on user roles).
+	
+	The /admissions portal is a separate Vue SPA for the admissions workflow.
+	
 	Policy:
-	- Real students -> /sp (always)
-	- Active employees/staff -> default /portal/staff, but allow opt-in to Desk:
-	  If User.home_page is already set (e.g. /app), we DO NOT override it.
-	- Guardians (non-staff) -> /portal/guardian (staff roles take priority)
-	- Admissions Applicant -> /admissions
-
-	Priority order: Student > Staff > Guardian > Admissions Applicant
-
-	Why:
-	- Desk /app logins can override weak response redirects.
-	- Setting User.home_page is the durable source of truth.
+	- Admissions Applicants -> /admissions (separate admissions portal)
+	- All other authenticated users -> /portal
+	- The portal entry point determines which sub-portal to show
+	  (Staff > Student > Guardian priority)
+	
+	This follows the single entry point pattern: server sets context,
+	client-side router handles navigation.
 	"""
 	user = frappe.session.user
 	if not user or user == "Guest":
@@ -51,70 +52,20 @@ def redirect_user_to_entry_portal():
 		frappe.local.response["type"] = "redirect"
 		frappe.local.response["location"] = path
 
-	# ---------------------------------------------------------------
-	# 1) Students: always /sp (durable)
-	# ---------------------------------------------------------------
-	if frappe.db.exists("Student", {"student_user_id": user}):
-		_force_redirect("/sp", also_set_home_page=True)
-		return
-
-	# ---------------------------------------------------------------
-	# 2) Staff (Employees): default /portal/staff (but respect explicit opt-in)
-	# Staff roles take priority over Guardian
-	# ---------------------------------------------------------------
-	if frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}):
-		current_home = (frappe.db.get_value("User", user, "home_page") or "").strip()
-
-		# If home_page already explicitly set (e.g. /app), respect it.
-		# If empty/unset, apply portal default.
-		if not current_home:
-			_force_redirect("/portal/staff", also_set_home_page=True)
-		else:
-			# Optional: still redirect immediately if already set to portal
-			# (keeps login snappy + consistent)
-			if current_home == "/portal/staff":
-				_force_redirect("/portal/staff", also_set_home_page=False)
-
-		return
-
-	# ---------------------------------------------------------------
-	# 3) Guardians: route to /portal/guardian (if not staff)
-	# Staff check: users with staff roles should not be redirected to guardian portal
-	# ---------------------------------------------------------------
+	# Check user roles
 	roles = set(frappe.get_roles(user))
-	has_staff_role = bool(roles & STAFF_ROLES)
-	is_guardian = frappe.db.exists("Guardian", {"user": user})
 
-	if is_guardian and not has_staff_role:
-		current_home = (frappe.db.get_value("User", user, "home_page") or "").strip()
-
-		if not current_home:
-			# No home_page set - set it and redirect
-			_force_redirect("/portal/guardian", also_set_home_page=True)
-		elif current_home in ("/portal", "/portal/guardian"):
-			# Already set to guardian portal - redirect without updating
-			_force_redirect("/portal/guardian", also_set_home_page=False)
-		else:
-			# Home page is set to something else (e.g., /app, /desk from previous role)
-			# Non-staff guardians MUST be redirected to guardian portal
-			# Update home_page to ensure consistent routing on future logins
-			_force_redirect("/portal/guardian", also_set_home_page=True)
-
+	# -------------------------------------------------------------
+	# 1) Admissions Applicants: always /admissions (separate portal)
+	# -------------------------------------------------------------
+	if "Admissions Applicant" in roles:
+		_force_redirect("/admissions", also_set_home_page=True)
 		return
 
 	# ---------------------------------------------------------------
-	# 4) Admissions Applicant: always /admissions
+	# 2) All other users: /portal (unified portal with role-based routing)
 	# ---------------------------------------------------------------
-	if "Admissions Applicant" in roles:
-		current_home = (frappe.db.get_value("User", user, "home_page") or "").strip()
-		if not current_home:
-			_force_redirect("/admissions", also_set_home_page=True)
-		else:
-			if current_home == "/admissions":
-				_force_redirect("/admissions", also_set_home_page=False)
-
-	# Others: do nothing (Desk defaults remain)
-	return
+	_force_redirect("/portal", also_set_home_page=True)
 
 
 @frappe.whitelist()

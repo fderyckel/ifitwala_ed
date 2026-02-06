@@ -17,10 +17,17 @@ STAFF_ROLES = frozenset([
 	"HR Manager",
 ])
 
-# Routes that guardians should not access (redirect to portal)
-GUARDIAN_RESTRICTED_ROUTES = frozenset([
+# Routes that non-staff users should not access (redirect to portal)
+RESTRICTED_ROUTES = frozenset([
 	"/desk",
 	"/app",
+])
+
+# Roles that should be blocked from desk/app access (non-staff portal users)
+RESTRICTED_ROLES = frozenset([
+	"Student",
+	"Guardian",
+	"Admissions Applicant",
 ])
 
 
@@ -36,42 +43,47 @@ def on_login():
 def before_request():
 	"""
 	Hook called before every request.
-	Redirects guardians away from desk/app to their portal.
+	Redirects non-staff users (students, guardians, admissions applicants) away from desk/app to their portal.
 	
-	This prevents guardians from accessing staff interfaces even if they
+	This prevents portal users from accessing staff interfaces even if they
 	directly navigate to /desk or /app URLs.
 	"""
 	user = frappe.session.user
 	
-	# Skip for unauthenticated users or Administrator
+	# Skip for unauthenticated users
 	if not user or user == "Guest":
 		return
 	
 	# Get current request path
 	path = getattr(frappe.request, "path", "") or ""
 	
-	# Check if this is a restricted route for guardians
+	# Check if this is a restricted route
 	is_restricted = any(
 		path == route or path.startswith(f"{route}/")
-		for route in GUARDIAN_RESTRICTED_ROUTES
+		for route in RESTRICTED_ROUTES
 	)
 	
 	if not is_restricted:
 		return
 	
-	# Check if user is a guardian
-	is_guardian = frappe.db.exists("Guardian", {"user": user})
-	if not is_guardian:
-		return
-	
-	# Check if user has any staff role (staff takes priority)
+	# Get user roles
 	user_roles = set(frappe.get_roles(user))
-	has_staff_role = bool(user_roles & STAFF_ROLES)
 	
+	# Check if user has any staff role (staff can access desk/app)
+	has_staff_role = bool(user_roles & STAFF_ROLES)
 	if has_staff_role:
-		# Staff members can access desk/app even if they're also guardians
 		return
 	
-	# Guardian without staff role trying to access desk/app - redirect
-	frappe.local.flags.redirect_location = "/portal/guardian"
+	# Check if user has any restricted role (Student, Guardian, or Admissions Applicant)
+	has_restricted_role = bool(user_roles & RESTRICTED_ROLES)
+	if not has_restricted_role:
+		# User without restricted roles can access desk/app
+		return
+	
+	# Non-staff user with restricted role trying to access desk/app - redirect to appropriate portal
+	# Admissions Applicants go to /admissions, others go to /portal
+	if "Admissions Applicant" in user_roles:
+		frappe.local.flags.redirect_location = "/admissions"
+	else:
+		frappe.local.flags.redirect_location = "/portal"
 	raise frappe.Redirect
