@@ -346,12 +346,22 @@ def _build_story_index_context(*, route: str, school):
 def build_render_context(*, route: str, preview: bool = False):
 	route = normalize_route(route)
 	school = resolve_school_from_route(route)
+	segments = [seg for seg in route.split("/") if seg]
+	if not segments:
+		school_slug = (school.website_slug or "").strip()
+		if not school_slug:
+			frappe.throw(
+				_("Default website school is missing a website slug."),
+				frappe.DoesNotExistError,
+			)
+		route = normalize_route(f"/{school_slug}")
+		segments = [school_slug]
+
 	if not preview and not is_school_public(school):
 		frappe.throw(
 			_("School not published."),
 			frappe.DoesNotExistError,
 		)
-	segments = [seg for seg in route.split("/") if seg]
 	school_slug = segments[0] if segments else None
 
 	if school_slug and school_slug == school.website_slug:

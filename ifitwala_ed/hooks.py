@@ -60,9 +60,9 @@ doctype_js = {
 
 website_route_rules = [
     {"from_route": "/portal", "to_route": "portal"},
-    {"from_route": "/portal/<path:subpath>", "to_route": "portal"},
     {"from_route": "/sp", "to_route": "portal"},
     {"from_route": "/sp/<path:subpath>", "to_route": "/portal/<path:subpath>"},
+    {"from_route": "/portal/<path:subpath>", "to_route": "portal"},
     {"from_route": "/admissions", "to_route": "admissions"},
     {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
     {"from_route": "/staff", "to_route": "/portal/staff"},

@@ -19,6 +19,28 @@ class Organization(NestedSet):
 			if not parent_is_group:
 				frappe.throw(_("Parent Organization must be a Group. '{0}' is not a Group.")
 					.format(self.parent_organization))
+		self.validate_default_website_school()
+
+	def validate_default_website_school(self):
+		default_school = (self.default_website_school or "").strip()
+		if not default_school:
+			return
+
+		school_org = frappe.db.get_value("School", default_school, "organization")
+		if not school_org:
+			frappe.throw(
+				_("Default Website School '{0}' was not found.").format(default_school),
+				frappe.ValidationError,
+			)
+
+		if school_org != self.name:
+			frappe.throw(
+				_(
+					"Default Website School must belong to this Organization.\n"
+					"School '{0}' belongs to '{1}', not '{2}'."
+				).format(default_school, school_org, self.name),
+				frappe.ValidationError,
+			)
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, is_root=False, **kwargs):
