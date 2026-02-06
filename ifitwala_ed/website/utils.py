@@ -23,6 +23,30 @@ def normalize_route(route: str | None) -> str:
 
 
 def resolve_default_school():
+	default_org = frappe.get_all(
+		"Organization",
+		filters={"default_website_school": ["!=", ""]},
+		fields=["name", "default_website_school"],
+		order_by="lft asc",
+		limit_page_length=1,
+	)
+	if default_org:
+		org_name = default_org[0].name
+		school_name = default_org[0].default_website_school
+		matches_org = frappe.db.get_value(
+			"School",
+			{"name": school_name, "organization": org_name},
+			"name",
+		)
+		if not matches_org:
+			frappe.throw(
+				_(
+					"Default Website School '{0}' is invalid for Organization '{1}'."
+				).format(school_name, org_name),
+				frappe.ValidationError,
+			)
+		return frappe.get_doc("School", matches_org)
+
 	school = frappe.get_all(
 		"School",
 		filters={"is_group": 1},

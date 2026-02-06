@@ -5,6 +5,18 @@
 
 ---
 
+## 0. Root route ownership (`/`)
+
+The public root route `/` is resolved through Organization:
+
+* `Organization.default_website_school` points to the school that owns `/`
+* The selected school **must belong to that Organization**
+* Renderer rewrites `/` to that school root route (`/{school_slug}`)
+
+This keeps organization-level governance while preserving school-scoped page identity.
+
+---
+
 ## 1. Two different concepts (do not mix them)
 
 ### 1.1 `School.website_slug` (identity)
@@ -168,6 +180,6 @@ The `School Website Page` DocType:
 
 ## 8. Summary (one-line rule)
 
-> **School slug identifies the school; page route is user input; full_route is canonical.**
+> **`/` resolves via Organization.default_website_school; school slug identifies school pages; route is user input; full_route is canonical.**
 
 ---

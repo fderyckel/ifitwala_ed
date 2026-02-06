@@ -21,6 +21,7 @@
   "address__html",
   "organization_logo",
   "get_inquiry",
+  "default_website_school",
   "archived",
   "section_break_bvun",
   "lft",
@@ -139,6 +140,14 @@
    "fieldname": "get_inquiry",
    "fieldtype": "Check",
    "label": "Get Inquiry"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "description": "School used for website root route '/'. Must belong to this Organization.",
+   "fieldname": "default_website_school",
+   "fieldtype": "Link",
+   "label": "Default Website School",
+   "options": "School"
   }
  ],
  "index_web_pages_for_search": 1,
