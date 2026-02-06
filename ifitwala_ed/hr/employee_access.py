@@ -5,7 +5,7 @@
 
 import frappe
 from frappe.utils import getdate, nowdate
-from frappe.utils.redis_wrapper import redis_cache
+from frappe.utils.caching import redis_cache
 
 MANAGED_FLAG = "managed_by_ifitwala"  # provenance flag on User.roles children
 
