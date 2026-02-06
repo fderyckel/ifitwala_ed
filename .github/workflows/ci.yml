@@ -1,0 +1,123 @@
+name: Ifitwala CI
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  # -------------------------------
+  # 1️⃣ Backend (Frappe) Tests
+  # -------------------------------
+  backend-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: [ "3306:3306" ]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y redis-server
+
+      - name: Install Bench
+        run: pip install frappe-bench
+
+      - name: Init bench
+        run: |
+          bench init --frappe-branch version-15 frappe-bench
+          cd frappe-bench
+          bench get-app ifitwala_ed $GITHUB_WORKSPACE
+
+      - name: Create test site
+        run: |
+          cd frappe-bench
+          bench new-site test_site \
+            --db-name test_site \
+            --admin-password admin \
+            --mariadb-root-password root \
+            --install-app ifitwala_ed \
+            --force
+
+      - name: Run tests
+        run: |
+          cd frappe-bench
+          bench --site test_site run-tests
+
+
+  # -------------------------------
+  # 2️⃣ Python Lint
+  # -------------------------------
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install ruff
+      - run: ruff check .
+
+
+  # -------------------------------
+  # 3️⃣ Desk / Rollup Build
+  # -------------------------------
+  desk-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Install dependencies (root)
+        run: yarn install --frozen-lockfile
+
+      - name: Build Rollup bundles
+        run: yarn build
+
+
+  # -------------------------------
+  # 4️⃣ Vue SPA Build
+  # -------------------------------
+  spa-build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ui-spa
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: ui-spa/yarn.lock
+
+      - name: Install SPA deps
+        run: yarn install --frozen-lockfile
+
+      - name: Type check
+        run: yarn type-check
+
+      - name: Build SPA
+        run: yarn build
