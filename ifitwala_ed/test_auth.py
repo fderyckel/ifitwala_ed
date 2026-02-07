@@ -278,6 +278,75 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			frappe.delete_doc("Employee", employee.name, force=True)
 			frappe.delete_doc("User", user.email, force=True)
 
+	def test_active_employee_root_app_redirects_to_portal_staff(self):
+		"""Active Employee hitting /app without opt-in should be redirected to /portal/staff."""
+		user = frappe.new_doc("User")
+		user.email = "test_employee_root_app_redirect@example.com"
+		user.first_name = "Test"
+		user.last_name = "Employee Redirect"
+		user.enabled = 1
+		user.add_roles("Employee")
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "Employee Redirect"
+		employee.user_id = user.email
+		employee.employment_status = "Active"
+		employee.save()
+
+		frappe.set_user(user.email)
+		original_path = getattr(frappe.request, "path", None)
+		original_form_dict = getattr(frappe.local, "form_dict", None)
+		frappe.request.path = "/app"
+		frappe.local.form_dict = frappe._dict()
+
+		try:
+			with self.assertRaises(frappe.Redirect):
+				before_request()
+			self.assertEqual(frappe.local.flags.redirect_location, "/portal/staff")
+		finally:
+			frappe.set_user("Administrator")
+			if original_path:
+				frappe.request.path = original_path
+			frappe.local.form_dict = original_form_dict
+			frappe.delete_doc("Employee", employee.name, force=True)
+			frappe.delete_doc("User", user.email, force=True)
+
+	def test_active_employee_root_app_with_opt_in_can_access_desk(self):
+		"""Active Employee hitting /app with portal_desk=1 should be allowed."""
+		user = frappe.new_doc("User")
+		user.email = "test_employee_root_app_optin@example.com"
+		user.first_name = "Test"
+		user.last_name = "Employee Optin"
+		user.enabled = 1
+		user.add_roles("Employee")
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "Employee Optin"
+		employee.user_id = user.email
+		employee.employment_status = "Active"
+		employee.save()
+
+		frappe.set_user(user.email)
+		original_path = getattr(frappe.request, "path", None)
+		original_form_dict = getattr(frappe.local, "form_dict", None)
+		frappe.request.path = "/app"
+		frappe.local.form_dict = frappe._dict({"portal_desk": "1"})
+
+		try:
+			result = before_request()
+			self.assertIsNone(result)
+		finally:
+			frappe.set_user("Administrator")
+			if original_path:
+				frappe.request.path = original_path
+			frappe.local.form_dict = original_form_dict
+			frappe.delete_doc("Employee", employee.name, force=True)
+			frappe.delete_doc("User", user.email, force=True)
+
 	def test_student_with_staff_role_can_access_desk(self):
 		"""Student with staff role should be allowed to access /desk."""
 		# Create test user with Student + Teacher roles

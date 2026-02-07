@@ -32,6 +32,10 @@ RESTRICTED_ROLES = frozenset([
 ])
 
 
+def _is_truthy(value) -> bool:
+	return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def on_login():
 	"""
 	Hook called on user login.
@@ -58,6 +62,7 @@ def before_request():
 	
 	# Get current request path
 	path = getattr(frappe.request, "path", "") or ""
+	normalized_path = path.rstrip("/") or "/"
 	
 	# Check if this is a restricted route
 	is_restricted = any(
@@ -77,10 +82,16 @@ def before_request():
 			{"user_id": user, "employment_status": "Active"},
 		)
 	)
+	desk_opt_in = _is_truthy(getattr(frappe, "form_dict", {}).get("portal_desk"))
 	
 	# Check if user has any staff role (staff can access desk/app)
 	has_staff_role = bool(user_roles & STAFF_ROLES) or is_active_employee
 	if has_staff_role:
+		# Root /app is commonly used as a generic login redirect target.
+		# Keep portal-first behavior unless staff explicitly opt into Desk.
+		if normalized_path == "/app" and not desk_opt_in:
+			frappe.local.flags.redirect_location = _resolve_login_redirect_path(user, user_roles)
+			raise frappe.Redirect
 		return
 	
 	# Check if user has any restricted role (Student, Guardian, or Admissions Applicant)
