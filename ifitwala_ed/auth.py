@@ -31,11 +31,6 @@ RESTRICTED_ROLES = frozenset([
 	"Admissions Applicant",
 ])
 
-
-def _is_truthy(value) -> bool:
-	return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
-
-
 def _redirect(to: str):
 	frappe.local.flags.redirect_location = to
 	raise frappe.Redirect
@@ -66,18 +61,13 @@ def before_request():
 
 	user = frappe.session.user
 
-	# Prevent root /app from falling into website routing for guests.
+	# Skip for unauthenticated users
 	if not user or user == "Guest":
-		if normalized_path == "/app":
-			_redirect("/login?redirect-to=/portal")
 		return
 
-	# For authenticated users, root /app is portal-first unless explicit Desk opt-in.
+	# Get user roles
 	user_roles = set(frappe.get_roles(user))
-	desk_opt_in = _is_truthy(getattr(frappe, "form_dict", {}).get("portal_desk"))
-	if normalized_path == "/app" and not desk_opt_in:
-		_redirect(_resolve_login_redirect_path(user, user_roles))
-	
+
 	# Check if this is a restricted route
 	is_restricted = any(
 		path == route or path.startswith(f"{route}/")

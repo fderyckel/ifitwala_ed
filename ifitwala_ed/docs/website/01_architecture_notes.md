@@ -197,6 +197,12 @@ def get_context(school_slug):
 
 Providers are the **only** place where data access logic exists.
 
+Runtime guardrail:
+
+* If public home rendering (`/` or `/home`) fails due block/schema validation, guests fall back to `/login` instead of a raw traceback page.
+* The renderer error is logged server-side for content team follow-up.
+* Desk routes remain framework-owned: `/app` and `/app/*` must not be rendered by the website provider.
+
 ---
 
 ## 6. Dynamic Data (Without Scripts)

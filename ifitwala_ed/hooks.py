@@ -69,6 +69,8 @@ website_route_rules = [
     {"from_route": "/staff/<path:subpath>", "to_route": "/portal/staff/<path:subpath>"},
     {"from_route": "/login", "to_route": "login"},
     {"from_route": "/update-password", "to_route": "update-password"},
+    {"from_route": "/app", "to_route": "app"},
+    {"from_route": "/app/<path:subpath>", "to_route": "app"},
     {"from_route": "/", "to_route": "website"},
     {"from_route": "/<path:route>", "to_route": "website"},
 ]
