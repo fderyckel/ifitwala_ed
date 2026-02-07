@@ -32,18 +32,9 @@ def _redirect(to: str):
 def on_login():
 	"""
 	Hook called on user login.
-	Force canonical role-based landing even when core fallback prefers desk.
+	Role-based login redirect is handled by the after_login hook.
 	"""
-	user = frappe.session.user
-	if not user or user == "Guest":
-		return
-
-	user_roles = set(frappe.get_roles(user))
-	path = _resolve_login_redirect_path(user, user_roles)
-	frappe.local.response["home_page"] = path
-	frappe.local.response["redirect_to"] = path
-	frappe.local.response["type"] = "redirect"
-	frappe.local.response["location"] = path
+	return
 
 
 def before_request():

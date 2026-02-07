@@ -325,10 +325,6 @@ before_request = ["ifitwala_ed.auth.before_request"]
 # Authentication and authorization
 # --------------------------------
 
-auth_hooks = [
-	"ifitwala_ed.auth.on_login"
-]
-
 # Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True
 

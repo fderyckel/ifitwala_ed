@@ -186,6 +186,33 @@ class TestUserRedirect(FrappeTestCase):
 		frappe.delete_doc("Employee", employee.name, force=True)
 		frappe.delete_doc("User", user.email, force=True)
 
+	def test_active_employee_without_employee_role_redirects_to_staff(self):
+		"""Active employee record should route to staff portal even without Employee role."""
+		user = frappe.new_doc("User")
+		user.email = "test_staff_portal_no_employee_role@example.com"
+		user.first_name = "Test"
+		user.last_name = "Staff No Role"
+		user.enabled = 1
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "Staff No Role"
+		employee.user_id = user.email
+		employee.employment_status = "Active"
+		employee.save()
+
+		frappe.set_user(user.email)
+		frappe.local.response = {}
+		redirect_user_to_entry_portal()
+
+		self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
+		self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
+
+		frappe.set_user("Administrator")
+		frappe.delete_doc("Employee", employee.name, force=True)
+		frappe.delete_doc("User", user.email, force=True)
+
 	def test_guest_user_ignored(self):
 		"""Guest users should not trigger redirect."""
 		frappe.set_user("Guest")
