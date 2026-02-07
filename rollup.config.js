@@ -128,6 +128,9 @@ module.exports = [
 				minimize: true,
 				plugins: [
 					tailwind({ config: path.join(appDir, 'tailwind.website.config.js') }),
+					// Tailwind v4 can emit native nested rules (e.g. :where(& > ...)).
+					// Frappe's esbuild pass expects flattened CSS syntax.
+					require('postcss-nesting'),
 					require('autoprefixer')
 				],
 			}),
