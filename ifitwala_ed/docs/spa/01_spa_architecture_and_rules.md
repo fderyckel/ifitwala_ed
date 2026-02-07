@@ -366,6 +366,22 @@ TDZ errors → fix declaration order first.
 * SPA never decides workflow outcome
 * Focus reflects server truth only
 
+### 6.1 Login Routing Boundary (Locked)
+
+Post-login landing is server-owned, not client-owned.
+
+Canonical mapping:
+
+* `Admissions Applicant` → `/admissions`
+* active `Employee` → `/portal/staff`
+* `Student` → `/portal/student`
+* `Guardian` → `/portal/guardian`
+* fallback authenticated user → `/portal`
+
+When users hold multiple portal roles, precedence is:
+
+* `Staff > Student > Guardian`
+
 ---
 
 ## 7. Performance & UX Invariants

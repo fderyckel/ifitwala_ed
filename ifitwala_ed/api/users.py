@@ -17,23 +17,35 @@ STAFF_ROLES = frozenset([
 ])
 
 
+def _is_active_employee(user: str) -> bool:
+	return bool(
+		frappe.db.exists(
+			"Employee",
+			{"user_id": user, "employment_status": "Active"},
+		)
+	)
+
+
+def _resolve_login_redirect_path(user: str, roles: set[str]) -> str:
+	"""
+	Server-owned role routing after login.
+	Priority is locked: Staff > Student > Guardian.
+	"""
+	if "Admissions Applicant" in roles:
+		return "/admissions"
+	if "Employee" in roles and _is_active_employee(user):
+		return "/portal/staff"
+	if "Student" in roles:
+		return "/portal/student"
+	if "Guardian" in roles:
+		return "/portal/guardian"
+	return "/portal"
+
+
 def redirect_user_to_entry_portal():
 	"""
-	Unified login redirect: Most users go to /portal, Admissions Applicants go to /admissions.
-	
-	The Vue SPA at /portal handles role-based routing internally via
-	window.defaultPortal (set by www/portal/index.py based on user roles).
-	
-	The /admissions portal is a separate Vue SPA for the admissions workflow.
-	
-	Policy:
-	- Admissions Applicants -> /admissions (separate admissions portal)
-	- All other authenticated users -> /portal
-	- The portal entry point determines which sub-portal to show
-	  (Staff > Student > Guardian priority)
-	
-	This follows the single entry point pattern: server sets context,
-	client-side router handles navigation.
+	Role-based login redirect with explicit server routing.
+	Priority is locked: Staff > Student > Guardian.
 	"""
 	user = frappe.session.user
 	if not user or user == "Guest":
@@ -52,20 +64,9 @@ def redirect_user_to_entry_portal():
 		frappe.local.response["type"] = "redirect"
 		frappe.local.response["location"] = path
 
-	# Check user roles
 	roles = set(frappe.get_roles(user))
-
-	# -------------------------------------------------------------
-	# 1) Admissions Applicants: always /admissions (separate portal)
-	# -------------------------------------------------------------
-	if "Admissions Applicant" in roles:
-		_force_redirect("/admissions", also_set_home_page=True)
-		return
-
-	# ---------------------------------------------------------------
-	# 2) All other users: /portal (unified portal with role-based routing)
-	# ---------------------------------------------------------------
-	_force_redirect("/portal", also_set_home_page=True)
+	path = _resolve_login_redirect_path(user, roles)
+	_force_redirect(path, also_set_home_page=True)
 
 
 @frappe.whitelist()

@@ -5,6 +5,7 @@
 # Authentication hooks and access control guards
 
 import frappe
+from ifitwala_ed.api.users import _resolve_login_redirect_path
 
 # Staff roles that should NOT be redirected away from desk/app
 STAFF_ROLES = frozenset([
@@ -43,7 +44,8 @@ def on_login():
 def before_request():
 	"""
 	Hook called before every request.
-	Redirects non-staff users (students, guardians, admissions applicants) away from desk/app to their portal.
+	Redirects non-staff users (students, guardians, admissions applicants)
+	away from desk/app to their role landing portal.
 	
 	This prevents portal users from accessing staff interfaces even if they
 	directly navigate to /desk or /app URLs.
@@ -68,9 +70,16 @@ def before_request():
 	
 	# Get user roles
 	user_roles = set(frappe.get_roles(user))
+	is_active_employee = bool(
+		"Employee" in user_roles
+		and frappe.db.exists(
+			"Employee",
+			{"user_id": user, "employment_status": "Active"},
+		)
+	)
 	
 	# Check if user has any staff role (staff can access desk/app)
-	has_staff_role = bool(user_roles & STAFF_ROLES)
+	has_staff_role = bool(user_roles & STAFF_ROLES) or is_active_employee
 	if has_staff_role:
 		return
 	
@@ -80,10 +89,7 @@ def before_request():
 		# User without restricted roles can access desk/app
 		return
 	
-	# Non-staff user with restricted role trying to access desk/app - redirect to appropriate portal
-	# Admissions Applicants go to /admissions, others go to /portal
-	if "Admissions Applicant" in user_roles:
-		frappe.local.flags.redirect_location = "/admissions"
-	else:
-		frappe.local.flags.redirect_location = "/portal"
+	# Non-staff user with restricted role trying to access desk/app.
+	# Use the same server-owned login routing policy for consistency.
+	frappe.local.flags.redirect_location = _resolve_login_redirect_path(user, user_roles)
 	raise frappe.Redirect
