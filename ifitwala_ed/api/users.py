@@ -5,18 +5,6 @@
 
 import frappe
 
-# Staff roles that take priority for desk access
-STAFF_ROLES = frozenset([
-	"Academic User",
-	"System Manager",
-	"Teacher",
-	"Administrator",
-	"Finance User",
-	"HR User",
-	"HR Manager",
-])
-
-
 def _is_active_employee(user: str) -> bool:
 	return bool(
 		frappe.db.exists(
@@ -33,7 +21,7 @@ def _resolve_login_redirect_path(user: str, roles: set[str]) -> str:
 	"""
 	if "Admissions Applicant" in roles:
 		return "/admissions"
-	if "Employee" in roles and _is_active_employee(user):
+	if _is_active_employee(user):
 		return "/portal/staff"
 	if "Student" in roles:
 		return "/portal/student"

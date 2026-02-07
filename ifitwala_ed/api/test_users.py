@@ -6,7 +6,7 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.users import redirect_user_to_entry_portal, STAFF_ROLES
+from ifitwala_ed.api.users import redirect_user_to_entry_portal
 
 
 class TestUserRedirect(FrappeTestCase):
@@ -237,16 +237,3 @@ class TestUserRedirect(FrappeTestCase):
 		frappe.delete_doc("Guardian", guardian.name, force=True)
 		frappe.delete_doc("Employee", employee.name, force=True)
 		frappe.delete_doc("User", user.email, force=True)
-
-	def test_staff_roles_constant(self):
-		"""Verify STAFF_ROLES contains expected roles."""
-		expected_roles = {
-			"Academic User",
-			"System Manager",
-			"Teacher",
-			"Administrator",
-			"Finance User",
-			"HR User",
-			"HR Manager",
-		}
-		self.assertEqual(STAFF_ROLES, expected_roles)

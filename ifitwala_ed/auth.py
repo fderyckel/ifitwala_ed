@@ -7,17 +7,6 @@
 import frappe
 from ifitwala_ed.api.users import _resolve_login_redirect_path
 
-# Staff roles that should NOT be redirected away from desk/app
-STAFF_ROLES = frozenset([
-	"Academic User",
-	"System Manager",
-	"Teacher",
-	"Administrator",
-	"Finance User",
-	"HR User",
-	"HR Manager",
-])
-
 # Routes that non-staff users should not access (redirect to portal)
 RESTRICTED_ROUTES = frozenset([
 	"/desk",
@@ -32,6 +21,10 @@ RESTRICTED_ROLES = frozenset([
 ])
 
 def _redirect(to: str):
+	frappe.local.response["home_page"] = to
+	frappe.local.response["redirect_to"] = to
+	frappe.local.response["type"] = "redirect"
+	frappe.local.response["location"] = to
 	frappe.local.flags.redirect_location = to
 	raise frappe.Redirect
 
@@ -39,10 +32,18 @@ def _redirect(to: str):
 def on_login():
 	"""
 	Hook called on user login.
-	Redirect logic is handled by after_login hook in api/users.py.
-	This function exists for any additional login-time processing.
+	Force canonical role-based landing even when core fallback prefers desk.
 	"""
-	pass
+	user = frappe.session.user
+	if not user or user == "Guest":
+		return
+
+	user_roles = set(frappe.get_roles(user))
+	path = _resolve_login_redirect_path(user, user_roles)
+	frappe.local.response["home_page"] = path
+	frappe.local.response["redirect_to"] = path
+	frappe.local.response["type"] = "redirect"
+	frappe.local.response["location"] = path
 
 
 def before_request():
@@ -78,16 +79,14 @@ def before_request():
 		return
 	
 	is_active_employee = bool(
-		"Employee" in user_roles
-		and frappe.db.exists(
+		frappe.db.exists(
 			"Employee",
 			{"user_id": user, "employment_status": "Active"},
 		)
 	)
 	
-	# Check if user has any staff role (staff can access desk/app)
-	has_staff_role = bool(user_roles & STAFF_ROLES) or is_active_employee
-	if has_staff_role:
+	# Staff is defined by active Employee record, not role labels.
+	if is_active_employee:
 		return
 	
 	# Check if user has any restricted role (Student, Guardian, or Admissions Applicant)

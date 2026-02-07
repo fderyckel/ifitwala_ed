@@ -7,7 +7,7 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.auth import before_request, STAFF_ROLES, RESTRICTED_ROLES, RESTRICTED_ROUTES
+from ifitwala_ed.auth import before_request, on_login, RESTRICTED_ROLES, RESTRICTED_ROUTES
 
 
 class TestAuthBeforeRequest(FrappeTestCase):
@@ -24,21 +24,8 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		self.assertIn("Guardian", RESTRICTED_ROLES)
 		self.assertIn("Admissions Applicant", RESTRICTED_ROLES)
 
-	def test_staff_roles_defined(self):
-		"""Verify expected staff roles are defined."""
-		expected = {
-			"Academic User",
-			"System Manager",
-			"Teacher",
-			"Administrator",
-			"Finance User",
-			"HR User",
-			"HR Manager",
-		}
-		self.assertEqual(STAFF_ROLES, expected)
-
 	def test_guardian_accessing_desk_is_redirected(self):
-		"""Guardian without staff role accessing /desk should be redirected to /portal/guardian."""
+		"""Guardian without active employee record accessing /desk is redirected."""
 		# Create test user with Guardian role only
 		user = frappe.new_doc("User")
 		user.email = "test_guardian_desk@example.com"
@@ -79,7 +66,7 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			frappe.delete_doc("User", user.email, force=True)
 
 	def test_student_accessing_desk_is_redirected(self):
-		"""Student without staff role accessing /desk should be redirected to /portal/student."""
+		"""Student without active employee record accessing /desk is redirected."""
 		# Create test user with Student role only
 		user = frappe.new_doc("User")
 		user.email = "test_student_desk@example.com"
@@ -120,7 +107,7 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			frappe.delete_doc("User", user.email, force=True)
 
 	def test_student_accessing_app_is_redirected(self):
-		"""Student accessing /app should be redirected to /portal/student."""
+		"""Student accessing /app subpaths should be redirected to /portal/student."""
 		# Create test user with Student role
 		user = frappe.new_doc("User")
 		user.email = "test_student_app@example.com"
@@ -140,18 +127,21 @@ class TestAuthBeforeRequest(FrappeTestCase):
 
 		# Simulate request as student
 		frappe.set_user(user.email)
+		frappe.local.response = {}
 		
 		# Mock request path
 		original_path = getattr(frappe.request, "path", None)
-		frappe.request.path = "/app"
+		frappe.request.path = "/app/academics"
 
 		try:
 			# Should raise Redirect
 			with self.assertRaises(frappe.Redirect):
 				before_request()
 			
-			# Verify redirect location
+			# Verify redirect location and response payload used by request middleware.
 			self.assertEqual(frappe.local.flags.redirect_location, "/portal/student")
+			self.assertEqual(frappe.local.response.get("location"), "/portal/student")
+			self.assertEqual(frappe.local.response.get("type"), "redirect")
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -200,9 +190,9 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			frappe.delete_doc("Student Applicant", applicant.name, force=True)
 			frappe.delete_doc("User", user.email, force=True)
 
-	def test_guardian_with_staff_role_can_access_desk(self):
-		"""Guardian with staff role should be allowed to access /desk."""
-		# Create test user with Guardian + Teacher roles
+	def test_guardian_with_teacher_role_without_employee_is_redirected(self):
+		"""Guardian with Teacher role but no active employee record is redirected."""
+		# Create test user with Guardian + Teacher roles only
 		user = frappe.new_doc("User")
 		user.email = "test_guardian_staff@example.com"
 		user.first_name = "Test"
@@ -219,18 +209,19 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		guardian.user = user.email
 		guardian.save()
 
-		# Simulate request as guardian with staff role
+		# Simulate request as guardian
 		frappe.set_user(user.email)
+		frappe.local.response = {}
 		
 		# Mock request path
 		original_path = getattr(frappe.request, "path", None)
 		frappe.request.path = "/desk"
 
 		try:
-			# Should NOT raise Redirect (staff takes priority)
-			result = before_request()
-			# If we get here without exception, the test passes
-			self.assertIsNone(result)
+			with self.assertRaises(frappe.Redirect):
+				before_request()
+			self.assertEqual(frappe.local.flags.redirect_location, "/portal/guardian")
+			self.assertEqual(frappe.local.response.get("location"), "/portal/guardian")
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -323,9 +314,9 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			if original_path:
 				frappe.request.path = original_path
 
-	def test_student_with_staff_role_can_access_desk(self):
-		"""Student with staff role should be allowed to access /desk."""
-		# Create test user with Student + Teacher roles
+	def test_student_with_teacher_role_without_employee_is_redirected(self):
+		"""Student with Teacher role but no active employee record is redirected."""
+		# Create test user with Student + Teacher roles only
 		user = frappe.new_doc("User")
 		user.email = "test_student_staff@example.com"
 		user.first_name = "Test"
@@ -344,15 +335,17 @@ class TestAuthBeforeRequest(FrappeTestCase):
 
 		# Simulate request
 		frappe.set_user(user.email)
+		frappe.local.response = {}
 		
 		# Mock request path
 		original_path = getattr(frappe.request, "path", None)
 		frappe.request.path = "/desk"
 
 		try:
-			# Should NOT raise Redirect (staff takes priority)
-			result = before_request()
-			self.assertIsNone(result)
+			with self.assertRaises(frappe.Redirect):
+				before_request()
+			self.assertEqual(frappe.local.flags.redirect_location, "/portal/student")
+			self.assertEqual(frappe.local.response.get("location"), "/portal/student")
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -481,3 +474,74 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			frappe.set_user("Administrator")
 			if original_path:
 				frappe.request.path = original_path
+
+
+class TestAuthOnLogin(FrappeTestCase):
+	"""Test on_login hook role-based portal routing."""
+
+	def test_active_employee_redirects_to_staff_portal(self):
+		"""Users with active Employee records should land on /portal/staff."""
+		user = frappe.new_doc("User")
+		user.email = "test_on_login_employee@example.com"
+		user.first_name = "Test"
+		user.last_name = "On Login Employee"
+		user.enabled = 1
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "On Login Employee"
+		employee.user_id = user.email
+		employee.employment_status = "Active"
+		employee.save()
+
+		try:
+			frappe.set_user(user.email)
+			frappe.local.response = {}
+			on_login()
+			self.assertEqual(frappe.local.response.get("location"), "/portal/staff")
+			self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
+		finally:
+			frappe.set_user("Administrator")
+			frappe.delete_doc("Employee", employee.name, force=True)
+			frappe.delete_doc("User", user.email, force=True)
+
+	def test_student_redirects_to_student_portal(self):
+		"""Student role should land on /portal/student."""
+		user = frappe.new_doc("User")
+		user.email = "test_on_login_student@example.com"
+		user.first_name = "Test"
+		user.last_name = "On Login Student"
+		user.enabled = 1
+		user.add_roles("Student")
+		user.save()
+
+		try:
+			frappe.set_user(user.email)
+			frappe.local.response = {}
+			on_login()
+			self.assertEqual(frappe.local.response.get("location"), "/portal/student")
+			self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/student")
+		finally:
+			frappe.set_user("Administrator")
+			frappe.delete_doc("User", user.email, force=True)
+
+	def test_guardian_redirects_to_guardian_portal(self):
+		"""Guardian role should land on /portal/guardian."""
+		user = frappe.new_doc("User")
+		user.email = "test_on_login_guardian@example.com"
+		user.first_name = "Test"
+		user.last_name = "On Login Guardian"
+		user.enabled = 1
+		user.add_roles("Guardian")
+		user.save()
+
+		try:
+			frappe.set_user(user.email)
+			frappe.local.response = {}
+			on_login()
+			self.assertEqual(frappe.local.response.get("location"), "/portal/guardian")
+			self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/guardian")
+		finally:
+			frappe.set_user("Administrator")
+			frappe.delete_doc("User", user.email, force=True)
