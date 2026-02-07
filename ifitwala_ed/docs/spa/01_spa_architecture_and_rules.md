@@ -382,6 +382,7 @@ When users hold multiple portal roles, precedence is:
 
 * `Staff > Student > Guardian`
 * Root `/app` is treated as portal-first unless staff explicitly opt in via `?portal_desk=1`
+* `/logout` must normalize to `/?cmd=web_logout` (never website-rendered)
 
 ---
 

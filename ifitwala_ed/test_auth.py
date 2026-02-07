@@ -347,6 +347,34 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			frappe.delete_doc("Employee", employee.name, force=True)
 			frappe.delete_doc("User", user.email, force=True)
 
+	def test_logout_route_redirects_to_web_logout(self):
+		"""Any request to /logout should be normalized to /?cmd=web_logout."""
+		original_path = getattr(frappe.request, "path", None)
+		try:
+			frappe.set_user("Guest")
+			frappe.request.path = "/logout"
+			with self.assertRaises(frappe.Redirect):
+				before_request()
+			self.assertEqual(frappe.local.flags.redirect_location, "/?cmd=web_logout")
+		finally:
+			frappe.set_user("Administrator")
+			if original_path:
+				frappe.request.path = original_path
+
+	def test_guest_root_app_redirects_to_login_portal(self):
+		"""Guest requests to /app should go to login with portal redirect target."""
+		original_path = getattr(frappe.request, "path", None)
+		try:
+			frappe.set_user("Guest")
+			frappe.request.path = "/app"
+			with self.assertRaises(frappe.Redirect):
+				before_request()
+			self.assertEqual(frappe.local.flags.redirect_location, "/login?redirect-to=/portal")
+		finally:
+			frappe.set_user("Administrator")
+			if original_path:
+				frappe.request.path = original_path
+
 	def test_student_with_staff_role_can_access_desk(self):
 		"""Student with staff role should be allowed to access /desk."""
 		# Create test user with Student + Teacher roles
