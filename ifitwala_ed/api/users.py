@@ -17,23 +17,50 @@ STAFF_ROLES = frozenset([
 ])
 
 
+def _resolve_login_redirect_path(roles: set) -> str:
+	"""
+	Resolve the appropriate portal path based on user roles.
+	
+	Priority order (locked):
+	1. Admissions Applicant -> /admissions (separate admissions portal)
+	2. Active Employee (Staff) -> /portal/staff
+	3. Student -> /portal/student
+	4. Guardian -> /portal/guardian
+	
+	Rationale: Admissions is a separate flow; staff > student > guardian reflects
+	the portal controller's default-portal precedence.
+	"""
+	if "Admissions Applicant" in roles:
+		return "/admissions"
+	if roles & STAFF_ROLES:
+		return "/portal/staff"
+	if "Student" in roles:
+		return "/portal/student"
+	if "Guardian" in roles:
+		return "/portal/guardian"
+	# Fallback for users without recognized portal roles
+	return "/portal"
+
+
 def redirect_user_to_entry_portal():
 	"""
-	Unified login redirect: Most users go to /portal, Admissions Applicants go to /admissions.
+	Login redirect handler: Routes users to role-specific portal entry points.
 	
-	The Vue SPA at /portal handles role-based routing internally via
-	window.defaultPortal (set by www/portal/index.py based on user roles).
-	
-	The /admissions portal is a separate Vue SPA for the admissions workflow.
+	The Vue SPA at each portal path handles internal routing.
+	Website route rules in hooks.py ensure clean URL mapping.
 	
 	Policy:
 	- Admissions Applicants -> /admissions (separate admissions portal)
-	- All other authenticated users -> /portal
-	- The portal entry point determines which sub-portal to show
-	  (Staff > Student > Guardian priority)
+	- Staff -> /portal/staff
+	- Students -> /portal/student
+	- Guardians -> /portal/guardian
 	
-	This follows the single entry point pattern: server sets context,
-	client-side router handles navigation.
+	Home-page persistence note:
+	We always overwrite User.home_page with the role-specific portal path.
+	This is acceptable for fresh installations; custom home-page preferences
+	(e.g., staff setting /app) will be lost on next login.
+	Maintainer decision: "fine for fresh install" (2026-02-07).
+	TODO: User preference persistence planned for v2.
 	"""
 	user = frappe.session.user
 	if not user or user == "Guest":
@@ -55,17 +82,15 @@ def redirect_user_to_entry_portal():
 	# Check user roles
 	roles = set(frappe.get_roles(user))
 
-	# -------------------------------------------------------------
-	# 1) Admissions Applicants: always /admissions (separate portal)
-	# -------------------------------------------------------------
-	if "Admissions Applicant" in roles:
-		_force_redirect("/admissions", also_set_home_page=True)
-		return
+	# Resolve the appropriate portal path
+	path = _resolve_login_redirect_path(roles)
 
-	# ---------------------------------------------------------------
-	# 2) All other users: /portal (unified portal with role-based routing)
-	# ---------------------------------------------------------------
-	_force_redirect("/portal", also_set_home_page=True)
+	# Debug logging to confirm redirect path during login
+	frappe.logger().debug(
+		f"Login redirect for {user}: roles={roles}, path={path}"
+	)
+
+	_force_redirect(path, also_set_home_page=True)
 
 
 @frappe.whitelist()

@@ -23,6 +23,12 @@ RESTRICTED_ROUTES = frozenset([
 	"/app",
 ])
 
+# Routes that trigger the one-time post-login redirect guard
+DESK_ROUTES = frozenset([
+	"/app",
+	"/desk",
+])
+
 # Roles that should be blocked from desk/app access (non-staff portal users)
 RESTRICTED_ROLES = frozenset([
 	"Student",
@@ -30,23 +36,63 @@ RESTRICTED_ROLES = frozenset([
 	"Admissions Applicant",
 ])
 
+# Session key for one-time post-login redirect guard
+FIRST_LOGIN_FLAG = "ifitwala_first_login_redirect"
+
 
 def on_login():
 	"""
 	Hook called on user login.
-	Redirect logic is handled by after_login hook in api/users.py.
-	This function exists for any additional login-time processing.
+	Sets a session flag to enable one-time post-login redirect guard.
+	The guard ensures users land on their appropriate portal even if
+	redirect-to=/app is present in the login URL.
 	"""
-	pass
+	user = frappe.session.user
+	if not user or user == "Guest":
+		return
+
+	# Set flag for one-time redirect guard
+	# This will be checked in before_request to force portal landing
+	frappe.session.data[FIRST_LOGIN_FLAG] = True
+	frappe.logger().debug(f"Login guard activated for user: {user}")
+
+
+def _resolve_portal_path(user_roles: set) -> str:
+	"""
+	Resolve the appropriate portal path based on user roles.
+	
+	Priority order (locked):
+	1. Admissions Applicant -> /admissions (separate admissions portal)
+	2. Active Employee (Staff) -> /portal/staff
+	3. Student -> /portal/student
+	4. Guardian -> /portal/guardian
+	
+	Rationale: Admissions is a separate flow; staff > student > guardian reflects
+	the portal controller's default-portal precedence.
+	"""
+	if "Admissions Applicant" in user_roles:
+		return "/admissions"
+	if user_roles & STAFF_ROLES:
+		return "/portal/staff"
+	if "Student" in user_roles:
+		return "/portal/student"
+	if "Guardian" in user_roles:
+		return "/portal/guardian"
+	# Fallback for users without recognized portal roles
+	return "/portal"
 
 
 def before_request():
 	"""
 	Hook called before every request.
-	Redirects non-staff users (students, guardians, admissions applicants) away from desk/app to their portal.
 	
-	This prevents portal users from accessing staff interfaces even if they
-	directly navigate to /desk or /app URLs.
+	Two responsibilities:
+	1. One-time post-login redirect guard: Forces first request after login to portal
+	   (prevents redirect-to=/app from overriding portal policy)
+	2. Defensive blocking: Redirects non-staff users away from desk/app to their portal
+	
+	The one-time guard is cleared after first request, allowing staff to manually
+	navigate to /app afterward (e.g., via "Switch to Desk").
 	"""
 	user = frappe.session.user
 	
@@ -57,6 +103,37 @@ def before_request():
 	# Get current request path
 	path = getattr(frappe.request, "path", "") or ""
 	
+	# Get user roles
+	user_roles = set(frappe.get_roles(user))
+	
+	# -------------------------------------------------------------------------
+	# 1) One-time post-login redirect guard (first hop after login)
+	# -------------------------------------------------------------------------
+	# Check if this is the first request after login
+	if frappe.session.data.get(FIRST_LOGIN_FLAG):
+		# Clear the flag immediately (one-time guard)
+		frappe.session.data.pop(FIRST_LOGIN_FLAG, None)
+		
+		# Check if user is trying to access /app or /desk on first hop
+		is_desk_route = any(
+			path == route or path.startswith(f"{route}/")
+			for route in DESK_ROUTES
+		)
+		
+		if is_desk_route:
+			# Force redirect to appropriate portal based on role
+			portal_path = _resolve_portal_path(user_roles)
+			frappe.logger().debug(
+				f"Login guard redirect for {user}: {path} -> {portal_path}, roles={user_roles}"
+			)
+			frappe.local.flags.redirect_location = portal_path
+			raise frappe.Redirect
+		# If not a desk route, allow the request to proceed normally
+		return
+	
+	# -------------------------------------------------------------------------
+	# 2) Defensive blocking (ongoing: non-staff cannot access desk/app)
+	# -------------------------------------------------------------------------
 	# Check if this is a restricted route
 	is_restricted = any(
 		path == route or path.startswith(f"{route}/")
@@ -65,9 +142,6 @@ def before_request():
 	
 	if not is_restricted:
 		return
-	
-	# Get user roles
-	user_roles = set(frappe.get_roles(user))
 	
 	# Check if user has any staff role (staff can access desk/app)
 	has_staff_role = bool(user_roles & STAFF_ROLES)
@@ -81,9 +155,6 @@ def before_request():
 		return
 	
 	# Non-staff user with restricted role trying to access desk/app - redirect to appropriate portal
-	# Admissions Applicants go to /admissions, others go to /portal
-	if "Admissions Applicant" in user_roles:
-		frappe.local.flags.redirect_location = "/admissions"
-	else:
-		frappe.local.flags.redirect_location = "/portal"
+	portal_path = _resolve_portal_path(user_roles)
+	frappe.local.flags.redirect_location = portal_path
 	raise frappe.Redirect
