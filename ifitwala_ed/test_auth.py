@@ -457,7 +457,7 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			# Set up cache with first-login flag
 			frappe.set_user(user.email)
 			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, True, expires_in_sec=300)
+			frappe.cache().set(cache_key, True, expires_in=300)
 
 			# Mock request to /app
 			original_path = getattr(frappe.request, "path", None)
@@ -500,7 +500,7 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			# Set up cache with first-login flag
 			frappe.set_user(user.email)
 			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, True, expires_in_sec=300)
+			frappe.cache().set(cache_key, True, expires_in=300)
 
 			# Mock request to /app
 			original_path = getattr(frappe.request, "path", None)
@@ -544,7 +544,7 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			# Set up cache with first-login flag
 			frappe.set_user(user.email)
 			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, True, expires_in_sec=300)
+			frappe.cache().set(cache_key, True, expires_in=300)
 
 			# Mock request to /app
 			original_path = getattr(frappe.request, "path", None)
@@ -580,7 +580,7 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			# Set up cache with first-login flag
 			frappe.set_user(user.email)
 			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, True, expires_in_sec=300)
+			frappe.cache().set(cache_key, True, expires_in=300)
 
 			# Mock request to /app
 			original_path = getattr(frappe.request, "path", None)
@@ -613,7 +613,7 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			# Simulate: first request (with flag) goes to portal
 			frappe.set_user(user.email)
 			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, True, expires_in_sec=300)
+			frappe.cache().set(cache_key, True, expires_in=300)
 
 			original_path = getattr(frappe.request, "path", None)
 			frappe.request.path = "/app"
@@ -661,7 +661,7 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			# Set up cache with first-login flag
 			frappe.set_user(user.email)
 			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, True, expires_in_sec=300)
+			frappe.cache().set(cache_key, True, expires_in=300)
 
 			original_path = getattr(frappe.request, "path", None)
 			frappe.request.path = "/app"

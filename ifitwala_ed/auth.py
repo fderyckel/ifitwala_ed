@@ -59,7 +59,7 @@ def on_login():
 	# Set flag for one-time redirect guard (expires in 5 minutes)
 	# This will be checked in before_request to force portal landing
 	cache_key = _get_first_login_flag_key(user)
-	frappe.cache().set(cache_key, True, expires_in_sec=300)
+	frappe.cache().set(cache_key, True, expires_in=300)
 	frappe.logger().debug(f"Login guard activated for user: {user}")
 
 
