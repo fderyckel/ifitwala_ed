@@ -6,6 +6,7 @@
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from unittest.mock import patch
 
 from ifitwala_ed.auth import before_request, RESTRICTED_ROLES, RESTRICTED_ROUTES
 
@@ -297,6 +298,50 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			frappe.set_user("Administrator")
 			if original_path:
 				frappe.request.path = original_path
+			frappe.delete_doc("Employee", employee.name, force=True)
+			frappe.delete_doc("User", user.email, force=True)
+
+	def test_staff_first_app_hit_after_login_redirects_once_to_portal(self):
+		"""First /app hit after login should redirect to /portal/staff once."""
+		user = frappe.new_doc("User")
+		user.email = "test_employee_first_hop_override@example.com"
+		user.first_name = "Test"
+		user.last_name = "Employee First Hop"
+		user.enabled = 1
+		user.add_roles("Employee")
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "Employee First Hop"
+		employee.user_id = user.email
+		employee.employment_status = "Active"
+		employee.save()
+
+		frappe.set_user(user.email)
+		original_path = getattr(frappe.request, "path", None)
+		original_form_dict = getattr(frappe, "form_dict", None)
+		frappe.request.path = "/app/hr"
+		frappe.form_dict = frappe._dict()
+
+		try:
+			with patch(
+				"ifitwala_ed.auth._consume_post_login_portal_redirect",
+				side_effect=["/portal/staff", None],
+			):
+				with self.assertRaises(frappe.Redirect):
+					before_request()
+				self.assertEqual(frappe.local.flags.redirect_location, "/portal/staff")
+
+				frappe.local.response = {}
+				result = before_request()
+				self.assertIsNone(result)
+		finally:
+			frappe.set_user("Administrator")
+			if original_path:
+				frappe.request.path = original_path
+			if original_form_dict is not None:
+				frappe.form_dict = original_form_dict
 			frappe.delete_doc("Employee", employee.name, force=True)
 			frappe.delete_doc("User", user.email, force=True)
 

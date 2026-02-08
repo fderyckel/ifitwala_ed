@@ -5,8 +5,13 @@
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from unittest.mock import patch
 
-from ifitwala_ed.api.users import redirect_user_to_entry_portal
+from ifitwala_ed.api.users import (
+	_consume_post_login_portal_redirect,
+	_post_login_redirect_cache_key,
+	redirect_user_to_entry_portal,
+)
 
 
 class TestUserRedirect(FrappeTestCase):
@@ -349,3 +354,45 @@ class TestUserRedirect(FrappeTestCase):
 		frappe.delete_doc("Guardian", guardian.name, force=True)
 		frappe.delete_doc("Employee", employee.name, force=True)
 		frappe.delete_doc("User", user.email, force=True)
+
+	def test_login_sets_one_time_post_login_redirect_marker(self):
+		"""Login redirect should stage a one-time portal target for first-hop /app."""
+		user = frappe.new_doc("User")
+		user.email = "test_staff_login_marker@example.com"
+		user.first_name = "Test"
+		user.last_name = "Login Marker"
+		user.enabled = 1
+		user.add_roles("Employee")
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "Login Marker"
+		employee.user_id = user.email
+		employee.employment_status = "Active"
+		employee.save()
+
+		session_id = "test-session-login-marker"
+		cache_key = _post_login_redirect_cache_key(session_id)
+		frappe.cache().delete_value(cache_key)
+
+		frappe.set_user(user.email)
+		frappe.local.response = {}
+
+		try:
+			with patch("ifitwala_ed.api.users._get_session_sid", return_value=session_id):
+				redirect_user_to_entry_portal()
+				self.assertEqual(
+					frappe.cache().get_value(cache_key),
+					"/portal/staff",
+				)
+				self.assertEqual(
+					_consume_post_login_portal_redirect(),
+					"/portal/staff",
+				)
+				self.assertIsNone(_consume_post_login_portal_redirect())
+		finally:
+			frappe.cache().delete_value(cache_key)
+			frappe.set_user("Administrator")
+			frappe.delete_doc("Employee", employee.name, force=True)
+			frappe.delete_doc("User", user.email, force=True)

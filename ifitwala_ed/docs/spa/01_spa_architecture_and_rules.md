@@ -388,6 +388,8 @@ When users hold multiple portal roles, precedence is:
 
 * `Staff > Student > Guardian`
 * `/app` remains Desk-owned by Frappe (do not intercept in portal routing hooks)
+* first authenticated `/app` hit after login may be overridden once to the canonical portal target
+  (guards against `login?redirect-to=/app`; after that one hop, staff can access Desk normally)
 * `/logout` must normalize to `/?cmd=web_logout` (never website-rendered)
 
 ---

@@ -8,6 +8,60 @@ from frappe.utils import getdate, nowdate
 
 BLOCKED_EMPLOYMENT_STATUSES = frozenset(["Left", "Suspended"])
 STAFF_PORTAL_EMPLOYMENT_STATUSES = frozenset(["Active", "Temporary Leave"])
+POST_LOGIN_REDIRECT_CACHE_PREFIX = "ifitwala_ed:post_login_redirect_once"
+POST_LOGIN_REDIRECT_TTL_SECONDS = 120
+
+
+def _get_session_sid() -> str | None:
+	"""Return current session id when available."""
+	session = getattr(frappe, "session", None)
+	sid = getattr(session, "sid", None)
+	if sid:
+		return str(sid)
+
+	session_obj = getattr(frappe.local, "session_obj", None)
+	sid = getattr(session_obj, "sid", None)
+	if sid:
+		return str(sid)
+
+	return None
+
+
+def _post_login_redirect_cache_key(sid: str) -> str:
+	return f"{POST_LOGIN_REDIRECT_CACHE_PREFIX}:{sid}"
+
+
+def _set_post_login_portal_redirect(path: str):
+	"""Store one-time post-login target to override /app first-hop redirects."""
+	sid = _get_session_sid()
+	if not sid:
+		return
+	frappe.cache().set_value(
+		_post_login_redirect_cache_key(sid),
+		path,
+		expires_in_sec=POST_LOGIN_REDIRECT_TTL_SECONDS,
+	)
+
+
+def _consume_post_login_portal_redirect() -> str | None:
+	"""Consume and clear one-time post-login portal target for current session."""
+	sid = _get_session_sid()
+	if not sid:
+		return None
+	cache_key = _post_login_redirect_cache_key(sid)
+	path = frappe.cache().get_value(cache_key)
+	if not path:
+		return None
+	frappe.cache().delete_value(cache_key)
+	return path.decode("utf-8") if isinstance(path, bytes) else str(path)
+
+
+def _clear_post_login_portal_redirect():
+	"""Clear one-time post-login target for current session."""
+	sid = _get_session_sid()
+	if not sid:
+		return
+	frappe.cache().delete_value(_post_login_redirect_cache_key(sid))
 
 
 def _get_employee_access_state(user: str) -> dict:
@@ -91,6 +145,7 @@ def redirect_user_to_entry_portal():
 
 	roles = set(frappe.get_roles(user))
 	path = _resolve_login_redirect_path(user, roles)
+	_set_post_login_portal_redirect(path)
 	_force_redirect(path, also_set_home_page=True)
 
 

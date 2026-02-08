@@ -5,7 +5,12 @@
 # Authentication hooks and access control guards
 
 import frappe
-from ifitwala_ed.api.users import _get_employee_access_state, _resolve_login_redirect_path
+from ifitwala_ed.api.users import (
+	_clear_post_login_portal_redirect,
+	_consume_post_login_portal_redirect,
+	_get_employee_access_state,
+	_resolve_login_redirect_path,
+)
 
 # Routes that non-staff users should not access (redirect to portal)
 RESTRICTED_ROUTES = frozenset([
@@ -66,6 +71,19 @@ def before_request():
 		if normalized_path != "/logout" and cmd != "web_logout":
 			_redirect("/?cmd=web_logout")
 		return
+
+	# Clear stale login redirect marker once user reaches a valid portal entry.
+	if normalized_path == "/portal" or normalized_path.startswith("/portal/"):
+		_clear_post_login_portal_redirect()
+	elif normalized_path == "/admissions" or normalized_path.startswith("/admissions/"):
+		_clear_post_login_portal_redirect()
+
+	# First request after login can be forced to /app by redirect-to query.
+	# If so, consume one-time portal target and redirect once to portal.
+	if normalized_path == "/app" or normalized_path.startswith("/app/"):
+		post_login_target = _consume_post_login_portal_redirect()
+		if post_login_target and post_login_target != normalized_path:
+			_redirect(post_login_target)
 
 	# Get user roles
 	user_roles = set(frappe.get_roles(user))
