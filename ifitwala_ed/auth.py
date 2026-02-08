@@ -61,24 +61,20 @@ def _resolve_portal_path(user_roles: set) -> str:
 	"""
 	Resolve the appropriate portal path based on user roles.
 	
+	Architecture: Unified /portal entry with client-side routing (Option B).
+	The Vue SPA at /portal reads window.defaultPortal to route internally.
+	
 	Priority order (locked):
 	1. Admissions Applicant -> /admissions (separate admissions portal)
-	2. Active Employee (Staff) -> /portal/staff
-	3. Student -> /portal/student
-	4. Guardian -> /portal/guardian
+	2. All other users -> /portal (unified entry, client-side routing handles the rest)
 	
-	Rationale: Admissions is a separate flow; staff > student > guardian reflects
-	the portal controller's default-portal precedence.
+	Rationale: Admissions is a separate flow; all other users use unified /portal
+	with client-side role detection for cleaner SPA architecture.
 	"""
 	if "Admissions Applicant" in user_roles:
 		return "/admissions"
-	if user_roles & STAFF_ROLES:
-		return "/portal/staff"
-	if "Student" in user_roles:
-		return "/portal/student"
-	if "Guardian" in user_roles:
-		return "/portal/guardian"
-	# Fallback for users without recognized portal roles
+	# Unified /portal entry for all non-admissions users
+	# Client-side router handles role-specific sub-portal selection
 	return "/portal"
 
 

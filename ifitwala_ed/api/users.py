@@ -21,42 +21,40 @@ def _resolve_login_redirect_path(roles: set) -> str:
 	"""
 	Resolve the appropriate portal path based on user roles.
 	
+	Architecture: Unified /portal entry with client-side routing (Option B).
+	The Vue SPA at /portal reads window.defaultPortal to route internally.
+	
 	Priority order (locked):
 	1. Admissions Applicant -> /admissions (separate admissions portal)
-	2. Active Employee (Staff) -> /portal/staff
-	3. Student -> /portal/student
-	4. Guardian -> /portal/guardian
+	2. All other users -> /portal (unified entry, client-side routing handles the rest)
 	
-	Rationale: Admissions is a separate flow; staff > student > guardian reflects
-	the portal controller's default-portal precedence.
+	Rationale: Admissions is a separate flow; all other users use unified /portal
+	with client-side role detection for cleaner SPA architecture.
 	"""
 	if "Admissions Applicant" in roles:
 		return "/admissions"
-	if roles & STAFF_ROLES:
-		return "/portal/staff"
-	if "Student" in roles:
-		return "/portal/student"
-	if "Guardian" in roles:
-		return "/portal/guardian"
-	# Fallback for users without recognized portal roles
+	# Unified /portal entry for all non-admissions users
+	# Client-side router handles role-specific sub-portal selection
 	return "/portal"
 
 
 def redirect_user_to_entry_portal():
 	"""
-	Login redirect handler: Routes users to role-specific portal entry points.
+	Login redirect handler: Routes users to unified portal entry point.
 	
-	The Vue SPA at each portal path handles internal routing.
-	Website route rules in hooks.py ensure clean URL mapping.
+	Architecture: Unified /portal entry with client-side routing (Option B).
+	The Vue SPA at /portal reads window.defaultPortal (set by www/portal/index.py)
+	and routes internally to the appropriate sub-portal.
 	
 	Policy:
 	- Admissions Applicants -> /admissions (separate admissions portal)
-	- Staff -> /portal/staff
-	- Students -> /portal/student
-	- Guardians -> /portal/guardian
+	- All other authenticated users -> /portal (unified entry)
+	
+	The portal entry point determines which sub-portal to show via client-side logic
+	with priority: Staff > Student > Guardian.
 	
 	Home-page persistence note:
-	We always overwrite User.home_page with the role-specific portal path.
+	We always overwrite User.home_page with the unified portal path.
 	This is acceptable for fresh installations; custom home-page preferences
 	(e.g., staff setting /app) will be lost on next login.
 	Maintainer decision: "fine for fresh install" (2026-02-07).
