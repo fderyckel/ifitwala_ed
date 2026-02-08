@@ -4,6 +4,16 @@
 // Shared JS for all Ifitwala Ed public website pages.
 
 document.addEventListener("DOMContentLoaded", function () {
+  const navToggle = document.querySelector("[data-site-nav-toggle]");
+  const navPanel = document.querySelector("[data-site-nav-panel]");
+  if (navToggle && navPanel) {
+    navToggle.addEventListener("click", () => {
+      const expanded = navToggle.getAttribute("aria-expanded") === "true";
+      navToggle.setAttribute("aria-expanded", expanded ? "false" : "true");
+      navPanel.classList.toggle("hidden", expanded);
+    });
+  }
+
   // === Lazy-loaded image polish ===
   document.querySelectorAll("img[loading='lazy']").forEach((img) => {
     img.addEventListener("load", () => {

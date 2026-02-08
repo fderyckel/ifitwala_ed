@@ -372,6 +372,7 @@ Build notes:
 * Content edits in Desk do **not** require a rebuild.
 * Tailwind is scoped to `#ifitwala-page-root` with preflight disabled (no global resets).
 * Bootstrap is not used on public website pages.
+* Website catch-all routing must preserve core framework assets (at minimum `/website_script.js` and `/website_style.css`) so login and public base templates load correctly.
 
 Critical content **must not depend on JS**.
 
@@ -387,22 +388,26 @@ Critical content **must not depend on JS**.
    * `Website Block Definition`
 2. Seed block definitions for the 5 blocks
 3. Create block template files
+4. Add default new-site page scaffold:
+   * school web identity (`website_slug`, publication)
+   * `School Website Page` records for `/`, `about`, `admissions`
+   * navigation built from published page `full_route` values
 
 ### Phase 2 — Providers
 
-4. Implement providers (one file per block)
-5. Add Redis caching where safe (Program list, Leadership)
+5. Implement providers (one file per block)
+6. Add Redis caching where safe (Program list, Leadership)
 
 ### Phase 3 — Renderer
 
-6. Implement page renderer (controller or hook)
-7. Replace existing `/home` route to use new system
+7. Implement page renderer (controller or hook)
+8. Replace existing `/home` route to use new system
 
 ### Phase 4 — Migration
 
-8. Map existing Web Page content → blocks
-9. Disable `server_script_enabled`
-10. Delete old context scripts
+9. Map existing Web Page content → blocks
+10. Disable `server_script_enabled`
+11. Delete old context scripts
 
 ---
 

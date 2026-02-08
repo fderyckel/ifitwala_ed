@@ -21,6 +21,7 @@ def setup_education():
 	create_student_file_folder()
 	setup_website_top_bar()
 	setup_website_block_definitions()
+	setup_default_website_pages()
 	grant_core_crm_permissions()
 
 
@@ -289,6 +290,28 @@ def setup_website_top_bar():
 def setup_website_block_definitions():
 	records = get_website_block_definition_records()
 	insert_record(records)
+
+
+def setup_default_website_pages():
+	"""
+	Seed a usable default website for fresh installs when a School already exists.
+	Idempotent and safe to run multiple times.
+	"""
+	school_name = frappe.db.get_value(
+		"School",
+		{"is_group": 1},
+		"name",
+		order_by="lft asc",
+	)
+	if not school_name:
+		return
+
+	from ifitwala_ed.website.bootstrap import ensure_default_school_website
+
+	ensure_default_school_website(
+		school_name=school_name,
+		set_default_organization=True,
+	)
 
 def get_website_block_definition_records():
 	return [

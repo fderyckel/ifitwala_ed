@@ -185,3 +185,16 @@ CTA
 * **Program list**: only shows programs offered by the school (via Program Offering).
 * **Leadership**: only shows employees flagged for website visibility.
 * **Build**: content edits do not require a build; only CSS/template edits do.
+* **School-scoped routes**: page links should use canonical `full_route` (for example `/{school_slug}/about`) when linking between public school pages.
+
+---
+
+## 5) Fresh Install Default Scaffold
+
+For a new site, the bootstrap flow seeds these pages for the default website school:
+
+1. route `/` (home)
+2. route `about`
+3. route `admissions`
+
+All three pages are created as `School Website Page` records with canonical `full_route` values and schema-valid default blocks, so the public website has immediate structure and navigation without manual Desk setup.

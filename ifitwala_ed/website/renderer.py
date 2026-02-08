@@ -14,6 +14,66 @@ from ifitwala_ed.website.utils import (
 )
 
 
+def _fallback_nav_label(*, route: str, page_type: str | None) -> str:
+	if route == "/":
+		return _("Home")
+	if page_type == "Admissions":
+		return _("Admissions")
+	segment = route.split("/")[-1] if route else ""
+	if not segment:
+		return _("Page")
+	return segment.replace("-", " ").replace("_", " ").title()
+
+
+def _get_navigation_items(*, school):
+	rows = frappe.get_all(
+		"School Website Page",
+		filters={
+			"school": school.name,
+			"is_published": 1,
+			"show_in_navigation": 1,
+		},
+		fields=["title", "full_route", "route", "page_type", "navigation_order"],
+		order_by="ifnull(navigation_order, 9999) asc, route asc",
+	)
+
+	items = []
+	for row in rows:
+		url = normalize_route(row.full_route)
+		if row.route == "/":
+			label = _("Home")
+		else:
+			label = (row.title or "").strip() or _fallback_nav_label(
+				route=row.route,
+				page_type=row.page_type,
+			)
+		items.append({"label": label, "url": url})
+
+	if items:
+		return items
+
+	school_slug = (school.website_slug or "").strip()
+	home_url = normalize_route(f"/{school_slug}") if school_slug else "/"
+	return [{"label": _("Home"), "url": home_url}]
+
+
+def _build_site_shell_context(*, school, route: str) -> dict:
+	school_slug = (school.website_slug or "").strip()
+	brand_url = normalize_route(f"/{school_slug}") if school_slug else "/"
+	navigation = _get_navigation_items(school=school)
+	footer_links = navigation[:4]
+
+	return {
+		"brand_name": school.school_name or school.name,
+		"brand_url": brand_url,
+		"brand_logo": getattr(school, "school_logo", None),
+		"navigation": navigation,
+		"footer_links": footer_links,
+		"current_route": normalize_route(route),
+		"current_year": frappe.utils.now_datetime().year,
+	}
+
+
 def _get_block_definitions(block_types: list[str]) -> dict:
 	if not block_types:
 		return {}
@@ -267,6 +327,7 @@ def _build_school_page_context(*, route: str, school, preview: bool):
 		"blocks": blocks,
 		"block_scripts": scripts,
 		"seo": seo,
+		"site_shell": _build_site_shell_context(school=school, route=route),
 		"template": "ifitwala_ed/website/templates/page.html",
 	}
 
@@ -289,6 +350,7 @@ def _build_program_context(*, route: str, school, program_slug: str, preview: bo
 		"blocks": blocks,
 		"block_scripts": scripts,
 		"seo": seo,
+		"site_shell": _build_site_shell_context(school=school, route=route),
 		"template": "ifitwala_ed/website/templates/page.html",
 	}
 
@@ -309,6 +371,7 @@ def _build_story_context(*, route: str, school, story_slug: str, preview: bool):
 		"blocks": blocks,
 		"block_scripts": scripts,
 		"seo": seo,
+		"site_shell": _build_site_shell_context(school=school, route=route),
 		"template": "ifitwala_ed/website/templates/page.html",
 	}
 
@@ -339,6 +402,7 @@ def _build_story_index_context(*, route: str, school):
 		"blocks": [],
 		"block_scripts": [],
 		"seo": seo,
+		"site_shell": _build_site_shell_context(school=school, route=route),
 		"template": "ifitwala_ed/website/templates/stories_index.html",
 	}
 
