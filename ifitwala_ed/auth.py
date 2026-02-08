@@ -36,14 +36,19 @@ RESTRICTED_ROLES = frozenset([
 	"Admissions Applicant",
 ])
 
-# Session key for one-time post-login redirect guard
-FIRST_LOGIN_FLAG = "ifitwala_first_login_redirect"
+# Cache key prefix for one-time post-login redirect guard
+FIRST_LOGIN_FLAG_PREFIX = "ifitwala_first_login_redirect"
+
+
+def _get_first_login_flag_key(user: str) -> str:
+	"""Get cache key for user's first-login flag."""
+	return f"{FIRST_LOGIN_FLAG_PREFIX}:{user}"
 
 
 def on_login():
 	"""
 	Hook called on user login.
-	Sets a session flag to enable one-time post-login redirect guard.
+	Sets a cache flag to enable one-time post-login redirect guard.
 	The guard ensures users land on their appropriate portal even if
 	redirect-to=/app is present in the login URL.
 	"""
@@ -51,9 +56,10 @@ def on_login():
 	if not user or user == "Guest":
 		return
 
-	# Set flag for one-time redirect guard
+	# Set flag for one-time redirect guard (expires in 5 minutes)
 	# This will be checked in before_request to force portal landing
-	frappe.session.data[FIRST_LOGIN_FLAG] = True
+	cache_key = _get_first_login_flag_key(user)
+	frappe.cache().set(cache_key, True, expires_in_sec=300)
 	frappe.logger().debug(f"Login guard activated for user: {user}")
 
 
@@ -106,9 +112,12 @@ def before_request():
 	# 1) One-time post-login redirect guard (first hop after login)
 	# -------------------------------------------------------------------------
 	# Check if this is the first request after login
-	if frappe.session.data.get(FIRST_LOGIN_FLAG):
+	cache_key = _get_first_login_flag_key(user)
+	first_login_flag = frappe.cache().get(cache_key)
+	
+	if first_login_flag:
 		# Clear the flag immediately (one-time guard)
-		frappe.session.data.pop(FIRST_LOGIN_FLAG, None)
+		frappe.cache().delete(cache_key)
 		
 		# Check if user is trying to access /app or /desk on first hop
 		is_desk_route = any(

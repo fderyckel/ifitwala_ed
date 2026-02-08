@@ -11,10 +11,10 @@ from ifitwala_ed.auth import (
 	before_request,
 	on_login,
 	_resolve_portal_path,
+	_get_first_login_flag_key,
 	STAFF_ROLES,
 	RESTRICTED_ROLES,
 	RESTRICTED_ROUTES,
-	FIRST_LOGIN_FLAG,
 )
 
 
@@ -410,8 +410,8 @@ class TestAuthBeforeRequest(FrappeTestCase):
 class TestLoginRedirectGuard(FrappeTestCase):
 	"""Test one-time post-login redirect guard functionality."""
 
-	def test_on_login_sets_session_flag(self):
-		"""on_login hook should set the first-login session flag."""
+	def test_on_login_sets_cache_flag(self):
+		"""on_login hook should set the first-login cache flag."""
 		# Create test user
 		user = frappe.new_doc("User")
 		user.email = "test_login_guard@example.com"
@@ -423,14 +423,15 @@ class TestLoginRedirectGuard(FrappeTestCase):
 
 		try:
 			# Clear any existing flag
-			frappe.session.data.pop(FIRST_LOGIN_FLAG, None)
+			cache_key = _get_first_login_flag_key(user.email)
+			frappe.cache().delete(cache_key)
 
 			# Simulate login
 			frappe.set_user(user.email)
 			on_login()
 
-			# Verify flag is set
-			self.assertTrue(frappe.session.data.get(FIRST_LOGIN_FLAG))
+			# Verify flag is set in cache
+			self.assertTrue(frappe.cache().get(cache_key))
 		finally:
 			frappe.set_user("Administrator")
 			frappe.delete_doc("User", user.email, force=True)
@@ -447,9 +448,10 @@ class TestLoginRedirectGuard(FrappeTestCase):
 		user.save()
 
 		try:
-			# Set up session with first-login flag
+			# Set up cache with first-login flag
 			frappe.set_user(user.email)
-			frappe.session.data[FIRST_LOGIN_FLAG] = True
+			cache_key = _get_first_login_flag_key(user.email)
+			frappe.cache().set(cache_key, True, expires_in_sec=300)
 
 			# Mock request to /app
 			original_path = getattr(frappe.request, "path", None)
@@ -489,9 +491,10 @@ class TestLoginRedirectGuard(FrappeTestCase):
 		student.save()
 
 		try:
-			# Set up session with first-login flag
+			# Set up cache with first-login flag
 			frappe.set_user(user.email)
-			frappe.session.data[FIRST_LOGIN_FLAG] = True
+			cache_key = _get_first_login_flag_key(user.email)
+			frappe.cache().set(cache_key, True, expires_in_sec=300)
 
 			# Mock request to /app
 			original_path = getattr(frappe.request, "path", None)
@@ -532,9 +535,10 @@ class TestLoginRedirectGuard(FrappeTestCase):
 		guardian.save()
 
 		try:
-			# Set up session with first-login flag
+			# Set up cache with first-login flag
 			frappe.set_user(user.email)
-			frappe.session.data[FIRST_LOGIN_FLAG] = True
+			cache_key = _get_first_login_flag_key(user.email)
+			frappe.cache().set(cache_key, True, expires_in_sec=300)
 
 			# Mock request to /app
 			original_path = getattr(frappe.request, "path", None)
@@ -567,9 +571,10 @@ class TestLoginRedirectGuard(FrappeTestCase):
 		user.save()
 
 		try:
-			# Set up session with first-login flag
+			# Set up cache with first-login flag
 			frappe.set_user(user.email)
-			frappe.session.data[FIRST_LOGIN_FLAG] = True
+			cache_key = _get_first_login_flag_key(user.email)
+			frappe.cache().set(cache_key, True, expires_in_sec=300)
 
 			# Mock request to /app
 			original_path = getattr(frappe.request, "path", None)
@@ -582,8 +587,8 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			except frappe.Redirect:
 				pass  # Expected
 
-			# Verify flag is cleared
-			self.assertIsNone(frappe.session.data.get(FIRST_LOGIN_FLAG))
+			# Verify flag is cleared from cache
+			self.assertIsNone(frappe.cache().get(cache_key))
 
 			if original_path:
 				frappe.request.path = original_path
@@ -605,7 +610,8 @@ class TestLoginRedirectGuard(FrappeTestCase):
 		try:
 			# Simulate: first request (with flag) goes to portal
 			frappe.set_user(user.email)
-			frappe.session.data[FIRST_LOGIN_FLAG] = True
+			cache_key = _get_first_login_flag_key(user.email)
+			frappe.cache().set(cache_key, True, expires_in_sec=300)
 
 			original_path = getattr(frappe.request, "path", None)
 			frappe.request.path = "/app"
@@ -649,9 +655,10 @@ class TestLoginRedirectGuard(FrappeTestCase):
 		guardian.save()
 
 		try:
-			# Set up session with first-login flag
+			# Set up cache with first-login flag
 			frappe.set_user(user.email)
-			frappe.session.data[FIRST_LOGIN_FLAG] = True
+			cache_key = _get_first_login_flag_key(user.email)
+			frappe.cache().set(cache_key, True, expires_in_sec=300)
 
 			original_path = getattr(frappe.request, "path", None)
 			frappe.request.path = "/app"
