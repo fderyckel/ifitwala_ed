@@ -450,6 +450,34 @@ class TestAfterLoginRedirect(FrappeTestCase):
 			frappe.delete_doc("Student", student.name, force=True)
 			frappe.delete_doc("User", user.email, force=True)
 
+	def test_after_login_does_not_redirect_staff(self):
+		"""Staff should NOT be redirected by after_login - let Frappe handle to /app/{workspace}."""
+		# Create test user with staff role
+		user = frappe.new_doc("User")
+		user.email = "test_staff_after_login@example.com"
+		user.first_name = "Test"
+		user.last_name = "Staff After Login"
+		user.enabled = 1
+		user.add_roles("Academic User")
+		user.save()
+
+		try:
+			# Simulate logged-in user
+			frappe.set_user(user.email)
+			
+			# Clear any existing response
+			frappe.local.response = {}
+			
+			# Call after_login hook
+			redirect_user_to_entry_portal()
+			
+			# Verify NO redirect is set for staff (let Frappe handle it)
+			self.assertIsNone(frappe.local.response.get("redirect_to"))
+			self.assertIsNone(frappe.local.response.get("home_page"))
+		finally:
+			frappe.set_user("Administrator")
+			frappe.delete_doc("User", user.email, force=True)
+
 	def test_after_login_redirects_guardian_to_portal(self):
 		"""Guardian should be redirected to /portal via after_login hook."""
 		# Create test user with Guardian role
@@ -618,11 +646,11 @@ class TestResolveLoginRedirectPath(FrappeTestCase):
 		path = _resolve_login_redirect_path(roles)
 		self.assertEqual(path, "/portal")
 
-	def test_staff_returns_portal(self):
-		"""Staff should return /portal (unified entry)."""
+	def test_staff_returns_none(self):
+		"""Staff should return None (let Frappe handle to /app/{workspace})."""
 		roles = {"Academic User"}
 		path = _resolve_login_redirect_path(roles)
-		self.assertEqual(path, "/portal")
+		self.assertIsNone(path)
 
 	def test_admissions_takes_priority(self):
 		"""Admissions Applicant role should take priority over others."""
