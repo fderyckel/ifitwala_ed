@@ -32,8 +32,51 @@ class InactiveEmployeeStatusError(frappe.ValidationError):
 	pass
 
 
+NON_LOGIN_EMPLOYMENT_STATUSES = frozenset(["Left", "Suspended"])
+STAFF_LOGIN_EMPLOYMENT_STATUSES = frozenset(["Active", "Temporary Leave"])
+
+
 class Employee(NestedSet):
 	nsm_parent_field = "reports_to"
+
+	def _is_relieved_by_date(self) -> bool:
+		if not self.relieving_date:
+			return False
+		return getdate(self.relieving_date) <= getdate(today())
+
+	def _is_employee_login_allowed(self) -> bool:
+		status = (self.employment_status or "").strip()
+		if status in NON_LOGIN_EMPLOYMENT_STATUSES:
+			return False
+		if self._is_relieved_by_date():
+			return False
+		return status in STAFF_LOGIN_EMPLOYMENT_STATUSES
+
+	def _sync_linked_user_employee_role_state(self):
+		"""Keep linked User employee roles aligned with employment access policy."""
+		if not self.user_id:
+			return
+
+		user = frappe.get_doc("User", self.user_id)
+		user.flags.ignore_permissions = True
+		current_roles = {r.role for r in user.roles}
+		allow_employee_access = self._is_employee_login_allowed()
+		changed = False
+
+		if allow_employee_access and "Employee" not in current_roles:
+			user.append("roles", {"role": "Employee"})
+			changed = True
+
+		if not allow_employee_access:
+			rows_to_remove = [
+				r for r in list(user.roles) if r.role in {"Employee", "Employee Self Service"}
+			]
+			for row in rows_to_remove:
+				user.remove(row)
+			changed = changed or bool(rows_to_remove)
+
+		if changed:
+			user.save(ignore_permissions=True)
 
 	def onload(self):
 		"""
@@ -114,6 +157,7 @@ class Employee(NestedSet):
 		# ---------------------------------------------------------
 		self._apply_designation_role()
 		self._apply_approver_roles()
+		self._sync_linked_user_employee_role_state()
 
 		# ---------------------------------------------------------
 		# 3) User profile sync (STRICTLY gated)
@@ -502,10 +546,6 @@ class Employee(NestedSet):
 		user = frappe.get_doc("User", self.user_id)
 		user.flags.ignore_permissions = True
 
-		# Ensure base role
-		if "Employee" not in {r.role for r in user.roles}:
-			user.append("roles", {"role": "Employee"})
-
 		user.first_name = self.employee_first_name
 		user.last_name = self.employee_last_name
 		user.full_name = self.employee_full_name
@@ -774,6 +814,57 @@ def create_user(employee, user=None, email=None):
 	emp.save(ignore_permissions=True)
 
 	return user_doc.name
+
+
+@frappe.whitelist()
+def offboard_employee_access_now(employee: str):
+	"""Set relieving date to today and enforce linked User employee-role cutoff."""
+	if not employee:
+		frappe.throw(_("Missing Employee"), frappe.ValidationError)
+
+	emp = frappe.get_doc("Employee", employee)
+	if not emp.has_permission("write"):
+		frappe.throw(_("Not permitted to update Employee access."), frappe.PermissionError)
+
+	today_str = today()
+	changed = False
+	if not emp.relieving_date or getdate(emp.relieving_date) > getdate(today_str):
+		emp.relieving_date = today_str
+		changed = True
+
+	if changed:
+		emp.save()
+	else:
+		emp._sync_linked_user_employee_role_state()
+
+	return {
+		"employee": emp.name,
+		"user_id": emp.user_id,
+		"employment_status": emp.employment_status,
+		"relieving_date": emp.relieving_date,
+		"employee_access_allowed": emp._is_employee_login_allowed(),
+	}
+
+
+def enforce_employee_relieving_date_access_cutoff():
+	"""Daily guardrail to revoke Employee role access once relieving date is reached."""
+	rows = frappe.get_all(
+		"Employee",
+		filters={
+			"relieving_date": ["<=", today()],
+			"user_id": ["is", "set"],
+		},
+		fields=["name"],
+	)
+	for row in rows:
+		try:
+			emp = frappe.get_doc("Employee", row.name)
+			emp._sync_linked_user_employee_role_state()
+		except Exception:
+			frappe.log_error(
+				title="Employee Relieving-Date Access Cutoff Failed",
+				message=f"employee={row.name}\n{frappe.get_traceback()}",
+			)
 
 
 @frappe.whitelist()

@@ -186,6 +186,34 @@ class TestUserRedirect(FrappeTestCase):
 		frappe.delete_doc("Employee", employee.name, force=True)
 		frappe.delete_doc("User", user.email, force=True)
 
+	def test_temporary_leave_employee_redirects_to_staff_portal(self):
+		"""Temporary Leave employee should still be redirected to /portal/staff."""
+		user = frappe.new_doc("User")
+		user.email = "test_staff_temporary_leave_portal@example.com"
+		user.first_name = "Test"
+		user.last_name = "Staff Temp Leave"
+		user.enabled = 1
+		user.add_roles("Employee")
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "Staff Temp Leave"
+		employee.user_id = user.email
+		employee.employment_status = "Temporary Leave"
+		employee.save()
+
+		frappe.set_user(user.email)
+		frappe.local.response = {}
+		redirect_user_to_entry_portal()
+
+		self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
+		self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
+
+		frappe.set_user("Administrator")
+		frappe.delete_doc("Employee", employee.name, force=True)
+		frappe.delete_doc("User", user.email, force=True)
+
 	def test_active_employee_without_employee_role_redirects_to_staff(self):
 		"""Active employee record should route to staff portal even without Employee role."""
 		user = frappe.new_doc("User")
@@ -227,6 +255,63 @@ class TestUserRedirect(FrappeTestCase):
 
 		# Cleanup
 		frappe.set_user("Administrator")
+
+	def test_suspended_employee_redirects_to_web_logout(self):
+		"""Suspended employee should be forced to web logout after login."""
+		user = frappe.new_doc("User")
+		user.email = "test_suspended_employee_redirect@example.com"
+		user.first_name = "Test"
+		user.last_name = "Suspended Employee"
+		user.enabled = 1
+		user.add_roles("Employee")
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "Suspended Employee"
+		employee.user_id = user.email
+		employee.employment_status = "Suspended"
+		employee.save()
+
+		frappe.set_user(user.email)
+		frappe.local.response = {}
+		redirect_user_to_entry_portal()
+
+		self.assertEqual(frappe.local.response.get("redirect_to"), "/?cmd=web_logout")
+		self.assertEqual(frappe.local.response.get("type"), "redirect")
+
+		frappe.set_user("Administrator")
+		frappe.delete_doc("Employee", employee.name, force=True)
+		frappe.delete_doc("User", user.email, force=True)
+
+	def test_relieving_date_cutoff_redirects_to_web_logout(self):
+		"""Employee with reached relieving date should be forced to web logout."""
+		user = frappe.new_doc("User")
+		user.email = "test_relieving_date_cutoff_redirect@example.com"
+		user.first_name = "Test"
+		user.last_name = "Relieving Cutoff"
+		user.enabled = 1
+		user.add_roles("Employee")
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "Relieving Cutoff"
+		employee.user_id = user.email
+		employee.employment_status = "Active"
+		employee.relieving_date = frappe.utils.today()
+		employee.save()
+
+		frappe.set_user(user.email)
+		frappe.local.response = {}
+		redirect_user_to_entry_portal()
+
+		self.assertEqual(frappe.local.response.get("redirect_to"), "/?cmd=web_logout")
+		self.assertEqual(frappe.local.response.get("type"), "redirect")
+
+		frappe.set_user("Administrator")
+		frappe.delete_doc("Employee", employee.name, force=True)
+		frappe.delete_doc("User", user.email, force=True)
 
 	def test_employee_guardian_precedence_redirects_to_staff(self):
 		"""Multi-role users follow Staff > Student > Guardian priority."""

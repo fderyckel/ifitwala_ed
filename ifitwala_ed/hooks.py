@@ -252,7 +252,8 @@ scheduler_events = {
 			"ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard"
 		],
   "daily": [
-    "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs"
+    "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs",
+		"ifitwala_ed.hr.doctype.employee.employee.enforce_employee_relieving_date_access_cutoff"
   ]
 }
 

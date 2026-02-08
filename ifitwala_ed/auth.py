@@ -5,7 +5,7 @@
 # Authentication hooks and access control guards
 
 import frappe
-from ifitwala_ed.api.users import _resolve_login_redirect_path
+from ifitwala_ed.api.users import _get_employee_access_state, _resolve_login_redirect_path
 
 # Routes that non-staff users should not access (redirect to portal)
 RESTRICTED_ROUTES = frozenset([
@@ -57,6 +57,16 @@ def before_request():
 	if not user or user == "Guest":
 		return
 
+	form_dict = getattr(frappe, "form_dict", {}) or {}
+	cmd = str(form_dict.get("cmd") or "").strip()
+
+	employee_state = _get_employee_access_state(user)
+	if employee_state.get("is_blocked"):
+		# Hard cutoff for relieved/blocked employees.
+		if normalized_path != "/logout" and cmd != "web_logout":
+			_redirect("/?cmd=web_logout")
+		return
+
 	# Get user roles
 	user_roles = set(frappe.get_roles(user))
 
@@ -69,15 +79,8 @@ def before_request():
 	if not is_restricted:
 		return
 	
-	is_active_employee = bool(
-		frappe.db.exists(
-			"Employee",
-			{"user_id": user, "employment_status": "Active"},
-		)
-	)
-	
-	# Staff is defined by active Employee record, not role labels.
-	if is_active_employee:
+	# Staff eligibility is server-owned in access state helper.
+	if employee_state.get("can_access_staff_portal"):
 		return
 	
 	# Check if user has any restricted role (Student, Guardian, or Admissions Applicant)

@@ -41,6 +41,7 @@ frappe.ui.form.on("Employee", {
     frm.trigger("style_employee_history_rows");
     frm.trigger("setup_governed_image_upload");
     frm.trigger("apply_employee_image_variant");
+    frm.trigger("add_offboard_access_button");
   },
 
   // ------------------------------------------------------------
@@ -263,6 +264,34 @@ frappe.ui.form.on("Employee", {
       );
       applyWithCandidates(candidates);
     });
+  },
+
+  add_offboard_access_button(frm) {
+    if (frm.is_new() || !frm.doc.user_id) return;
+
+    const status = (frm.doc.employment_status || "").trim();
+    if (["Left", "Suspended"].includes(status)) return;
+
+    frm.remove_custom_button(__("Offboard Access Now"), __("Actions"));
+    frm.add_custom_button(
+      __("Offboard Access Now"),
+      () => {
+        frappe.confirm(
+          __(
+            "This sets relieving date to today (if needed) and removes Employee access roles from the linked User. Continue?"
+          ),
+          () => {
+            frappe.call({
+              method: "ifitwala_ed.hr.doctype.employee.employee.offboard_employee_access_now",
+              args: { employee: frm.doc.name },
+              freeze: true,
+              freeze_message: __("Applying offboarding access cutoff..."),
+            }).then(() => frm.reload_doc());
+          }
+        );
+      },
+      __("Actions")
+    );
   },
 
   // ------------------------------------------------------------

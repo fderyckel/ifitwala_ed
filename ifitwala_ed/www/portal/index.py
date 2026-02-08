@@ -6,6 +6,7 @@
 import os
 import json
 import frappe
+from ifitwala_ed.api.users import _get_employee_access_state
 
 APP = "ifitwala_ed"
 VITE_DIR = os.path.join(frappe.get_app_path(APP), "public", "vite")
@@ -84,16 +85,15 @@ def get_context(context):
 		_redirect(f"/login?redirect-to={path}")
 
 	user_roles = set(frappe.get_roles(user))
+	employee_state = _get_employee_access_state(user)
+	if employee_state.get("is_blocked"):
+		_redirect("/?cmd=web_logout")
 
 	# ---------------------------------------------------------------
 	# Portal section eligibility (portal sections != frappe roles)
-	# Compromise rule:
-	#   Staff: user has role "Employee" AND linked Employee.employment_status == "Active"
+	# Staff eligibility is server-owned by employee access state.
 	# ---------------------------------------------------------------
-	is_employee = (
-		("Employee" in user_roles)
-		and bool(frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}))
-	)
+	is_employee = bool(employee_state.get("can_access_staff_portal"))
 
 	is_student = "Student" in user_roles
 	is_guardian = "Guardian" in user_roles

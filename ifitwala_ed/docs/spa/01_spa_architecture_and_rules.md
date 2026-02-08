@@ -373,10 +373,16 @@ Post-login landing is server-owned, not client-owned.
 Canonical mapping:
 
 * `Admissions Applicant` → `/admissions`
-* active `Employee` → `/portal/staff`
+* eligible `Employee` → `/portal/staff`
+  (`employment_status` in `Active` or `Temporary Leave`, and `relieving_date` not reached)
 * `Student` → `/portal/student`
 * `Guardian` → `/portal/guardian`
 * fallback authenticated user → `/portal`
+
+Employee hard cutoffs:
+
+* `employment_status` in `Left` or `Suspended` → force `/?cmd=web_logout`
+* `relieving_date <= today (site timezone)` → force `/?cmd=web_logout`
 
 When users hold multiple portal roles, precedence is:
 

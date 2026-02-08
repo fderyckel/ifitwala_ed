@@ -300,6 +300,114 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			frappe.delete_doc("Employee", employee.name, force=True)
 			frappe.delete_doc("User", user.email, force=True)
 
+	def test_temporary_leave_employee_accessing_app_can_access_desk(self):
+		"""Temporary Leave employee should still be allowed to access /app."""
+		user = frappe.new_doc("User")
+		user.email = "test_employee_temporary_leave_access@example.com"
+		user.first_name = "Test"
+		user.last_name = "Employee Temp Leave"
+		user.enabled = 1
+		user.add_roles("Employee")
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "Employee Temp Leave"
+		employee.user_id = user.email
+		employee.employment_status = "Temporary Leave"
+		employee.save()
+
+		frappe.set_user(user.email)
+		original_path = getattr(frappe.request, "path", None)
+		original_form_dict = getattr(frappe, "form_dict", None)
+		frappe.request.path = "/app"
+		frappe.form_dict = frappe._dict()
+
+		try:
+			result = before_request()
+			self.assertIsNone(result)
+		finally:
+			frappe.set_user("Administrator")
+			if original_path:
+				frappe.request.path = original_path
+			if original_form_dict is not None:
+				frappe.form_dict = original_form_dict
+			frappe.delete_doc("Employee", employee.name, force=True)
+			frappe.delete_doc("User", user.email, force=True)
+
+	def test_suspended_employee_is_forced_to_web_logout(self):
+		"""Suspended employee must be forced to web logout from any route."""
+		user = frappe.new_doc("User")
+		user.email = "test_employee_suspended_logout@example.com"
+		user.first_name = "Test"
+		user.last_name = "Employee Suspended"
+		user.enabled = 1
+		user.add_roles("Employee")
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "Employee Suspended"
+		employee.user_id = user.email
+		employee.employment_status = "Suspended"
+		employee.save()
+
+		frappe.set_user(user.email)
+		original_path = getattr(frappe.request, "path", None)
+		original_form_dict = getattr(frappe, "form_dict", None)
+		frappe.request.path = "/portal/staff"
+		frappe.form_dict = frappe._dict()
+
+		try:
+			with self.assertRaises(frappe.Redirect):
+				before_request()
+			self.assertEqual(frappe.local.flags.redirect_location, "/?cmd=web_logout")
+		finally:
+			frappe.set_user("Administrator")
+			if original_path:
+				frappe.request.path = original_path
+			if original_form_dict is not None:
+				frappe.form_dict = original_form_dict
+			frappe.delete_doc("Employee", employee.name, force=True)
+			frappe.delete_doc("User", user.email, force=True)
+
+	def test_relieving_date_cutoff_forces_web_logout(self):
+		"""Employee with relieving date reached must be forced to web logout."""
+		user = frappe.new_doc("User")
+		user.email = "test_employee_relieving_cutoff@example.com"
+		user.first_name = "Test"
+		user.last_name = "Employee Relieving Cutoff"
+		user.enabled = 1
+		user.add_roles("Employee")
+		user.save()
+
+		employee = frappe.new_doc("Employee")
+		employee.first_name = "Test"
+		employee.last_name = "Employee Relieving Cutoff"
+		employee.user_id = user.email
+		employee.employment_status = "Active"
+		employee.relieving_date = frappe.utils.today()
+		employee.save()
+
+		frappe.set_user(user.email)
+		original_path = getattr(frappe.request, "path", None)
+		original_form_dict = getattr(frappe, "form_dict", None)
+		frappe.request.path = "/portal/staff"
+		frappe.form_dict = frappe._dict()
+
+		try:
+			with self.assertRaises(frappe.Redirect):
+				before_request()
+			self.assertEqual(frappe.local.flags.redirect_location, "/?cmd=web_logout")
+		finally:
+			frappe.set_user("Administrator")
+			if original_path:
+				frappe.request.path = original_path
+			if original_form_dict is not None:
+				frappe.form_dict = original_form_dict
+			frappe.delete_doc("Employee", employee.name, force=True)
+			frappe.delete_doc("User", user.email, force=True)
+
 	def test_logout_route_redirects_to_web_logout(self):
 		"""Any request to /logout should be normalized to /?cmd=web_logout."""
 		original_path = getattr(frappe.request, "path", None)

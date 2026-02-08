@@ -4,14 +4,45 @@
 # ifitwala_ed/api/users.py
 
 import frappe
+from frappe.utils import getdate, nowdate
 
-def _is_active_employee(user: str) -> bool:
-	return bool(
-		frappe.db.exists(
-			"Employee",
-			{"user_id": user, "employment_status": "Active"},
-		)
+BLOCKED_EMPLOYMENT_STATUSES = frozenset(["Left", "Suspended"])
+STAFF_PORTAL_EMPLOYMENT_STATUSES = frozenset(["Active", "Temporary Leave"])
+
+
+def _get_employee_access_state(user: str) -> dict:
+	"""Resolve employee-linked access state from a single DB round-trip."""
+	row = frappe.db.get_value(
+		"Employee",
+		{"user_id": user},
+		["name", "employment_status", "relieving_date"],
+		as_dict=True,
 	)
+	if not row:
+		return {
+			"has_employee_record": False,
+			"is_blocked": False,
+			"can_access_staff_portal": False,
+			"employment_status": None,
+			"relieving_date": None,
+		}
+
+	status = row.get("employment_status")
+	relieving_date = row.get("relieving_date")
+	today = getdate(nowdate())
+	is_relieved = bool(relieving_date and getdate(relieving_date) <= today)
+	is_blocked = bool(status in BLOCKED_EMPLOYMENT_STATUSES or is_relieved)
+	can_access_staff_portal = bool(
+		not is_blocked and status in STAFF_PORTAL_EMPLOYMENT_STATUSES
+	)
+
+	return {
+		"has_employee_record": True,
+		"is_blocked": is_blocked,
+		"can_access_staff_portal": can_access_staff_portal,
+		"employment_status": status,
+		"relieving_date": relieving_date,
+	}
 
 
 def _resolve_login_redirect_path(user: str, roles: set[str]) -> str:
@@ -21,7 +52,7 @@ def _resolve_login_redirect_path(user: str, roles: set[str]) -> str:
 	"""
 	if "Admissions Applicant" in roles:
 		return "/admissions"
-	if _is_active_employee(user):
+	if _get_employee_access_state(user).get("can_access_staff_portal"):
 		return "/portal/staff"
 	if "Student" in roles:
 		return "/portal/student"
@@ -51,6 +82,12 @@ def redirect_user_to_entry_portal():
 		frappe.local.response["redirect_to"] = path
 		frappe.local.response["type"] = "redirect"
 		frappe.local.response["location"] = path
+
+	employee_state = _get_employee_access_state(user)
+	if employee_state.get("is_blocked"):
+		# Trigger canonical logout endpoint for blocked employees.
+		_force_redirect("/?cmd=web_logout", also_set_home_page=False)
+		return
 
 	roles = set(frappe.get_roles(user))
 	path = _resolve_login_redirect_path(user, roles)
