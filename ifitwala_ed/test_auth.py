@@ -631,29 +631,29 @@ class TestResolveLoginRedirectPath(FrappeTestCase):
 	def test_admissions_applicant_returns_admissions(self):
 		"""Admissions Applicant should return /admissions."""
 		roles = {"Admissions Applicant"}
-		path = _resolve_login_redirect_path(roles)
+		path = _resolve_login_redirect_path("test@example.com", roles)
 		self.assertEqual(path, "/admissions")
 
 	def test_student_returns_portal(self):
 		"""Student should return /portal (unified entry)."""
 		roles = {"Student"}
-		path = _resolve_login_redirect_path(roles)
+		path = _resolve_login_redirect_path("test@example.com", roles)
 		self.assertEqual(path, "/portal")
 
 	def test_guardian_returns_portal(self):
 		"""Guardian should return /portal (unified entry)."""
 		roles = {"Guardian"}
-		path = _resolve_login_redirect_path(roles)
+		path = _resolve_login_redirect_path("test@example.com", roles)
 		self.assertEqual(path, "/portal")
 
-	def test_staff_returns_none(self):
-		"""Staff should return None (let Frappe handle to /app/{workspace})."""
+	def test_staff_without_employee_returns_none(self):
+		"""Staff without Employee record should return None (let Frappe handle)."""
 		roles = {"Academic User"}
-		path = _resolve_login_redirect_path(roles)
+		path = _resolve_login_redirect_path("test@example.com", roles)
 		self.assertIsNone(path)
 
 	def test_admissions_takes_priority(self):
 		"""Admissions Applicant role should take priority over others."""
 		roles = {"Admissions Applicant", "Student", "Academic User"}
-		path = _resolve_login_redirect_path(roles)
+		path = _resolve_login_redirect_path("test@example.com", roles)
 		self.assertEqual(path, "/admissions")

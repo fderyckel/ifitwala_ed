@@ -17,30 +17,50 @@ STAFF_ROLES = frozenset([
 ])
 
 
-def _resolve_login_redirect_path(roles: set) -> str | None:
+def _get_staff_workspace_path(user: str) -> str | None:
+	"""
+	Get the default workspace path for a staff user based on their Employee designation.
+	
+	Returns /app/{workspace} if employee has a designation with default_workspace,
+	otherwise returns None to let Frappe handle it.
+	"""
+	try:
+		employee = frappe.get_value("Employee", {"user_id": user}, ["designation"], as_dict=True)
+		if not employee or not employee.designation:
+			return None
+		
+		designation = frappe.get_doc("Designation", employee.designation)
+		if designation.default_workspace:
+			return f"/app/{designation.default_workspace.lower().replace(' ', '-')}" if not designation.default_workspace.startswith('/app/') else designation.default_workspace
+		return None
+	except Exception:
+		return None
+
+
+def _resolve_login_redirect_path(user: str, roles: set) -> str | None:
 	"""
 	Resolve the appropriate portal path based on user roles.
 	
-	Architecture: Unified /portal entry with client-side routing (Option B).
-	The Vue SPA at /portal reads window.defaultPortal to route internally.
+	Architecture: Mixed approach - staff go to /app/{workspace}, portal users to /portal.
 	
 	Priority order (locked):
 	1. Admissions Applicant -> /admissions (separate admissions portal)
-	2. Staff (Academic User, etc.) -> None (let Frappe handle to /app/{workspace})
+	2. Staff (Academic User, etc.) -> /app/{workspace} (from Employee designation)
 	3. All other users -> /portal (unified entry, client-side routing handles the rest)
-	
-	Rationale: Admissions is a separate flow; staff go to Desk with their default
-	workspace; all other users use unified /portal with client-side role detection.
 	"""
 	if "Admissions Applicant" in roles:
 		return "/admissions"
 	
-	# Check if user has any staff role - let Frappe handle their redirect
+	# Check if user has any staff role
 	if roles & STAFF_ROLES:
-		return None  # Let Frappe redirect to /app/{default_workspace}
+		# Get workspace from Employee designation
+		workspace_path = _get_staff_workspace_path(user)
+		if workspace_path:
+			return workspace_path
+		# Fallback: let Frappe handle it if no workspace found
+		return None
 	
 	# Unified /portal entry for all non-staff, non-admissions users
-	# Client-side router handles role-specific sub-portal selection
 	return "/portal"
 
 
@@ -78,12 +98,12 @@ def redirect_user_to_entry_portal():
 	roles = set(frappe.get_roles(user))
 
 	# Resolve the appropriate portal path
-	path = _resolve_login_redirect_path(roles)
+	path = _resolve_login_redirect_path(user, roles)
 
-	# If path is None, this is a staff user - let Frappe handle their redirect
-	if path is None:
+	# If path is None and user is staff, let Frappe handle their redirect
+	if path is None and (roles & STAFF_ROLES):
 		frappe.logger().info(
-			f"[AFTER_LOGIN] User {user} is staff with roles {roles} -> letting Frappe handle redirect to /app"
+			f"[AFTER_LOGIN] User {user} is staff with roles {roles} -> letting Frappe handle redirect"
 		)
 		return
 
