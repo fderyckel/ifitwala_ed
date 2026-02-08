@@ -56,10 +56,13 @@ def on_login():
 	if not user or user == "Guest":
 		return
 
-	# Set flag for one-time redirect guard (expires in 5 minutes)
+	# Set flag for one-time redirect guard with timestamp (5 minutes expiry)
 	# This will be checked in before_request to force portal landing
+	import time
 	cache_key = _get_first_login_flag_key(user)
-	frappe.cache().set(cache_key, True, expires_in=300)
+	# Store tuple of (flag_value, expiry_timestamp)
+	expiry = time.time() + 300  # 5 minutes from now
+	frappe.cache().set(cache_key, (True, expiry))
 	frappe.logger().debug(f"Login guard activated for user: {user}")
 
 
@@ -125,8 +128,16 @@ def before_request():
 	# 1) One-time post-login redirect guard (first hop after login)
 	# -------------------------------------------------------------------------
 	# Check if this is the first request after login
+	import time
 	cache_key = _get_first_login_flag_key(user)
-	first_login_flag = frappe.cache().get(cache_key)
+	cached_value = frappe.cache().get(cache_key)
+	
+	# Check if we have a valid (flag, expiry) tuple that hasn't expired
+	first_login_flag = False
+	if cached_value and isinstance(cached_value, tuple) and len(cached_value) == 2:
+		flag_value, expiry = cached_value
+		if flag_value and time.time() < expiry:
+			first_login_flag = True
 	
 	if first_login_flag:
 		# Clear the flag immediately (one-time guard)
