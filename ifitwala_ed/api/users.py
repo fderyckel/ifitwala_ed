@@ -117,36 +117,39 @@ def _resolve_login_redirect_path(user: str, roles: set[str]) -> str:
 
 def redirect_user_to_entry_portal(login_manager=None):
 	"""
-	Role-based login redirect with explicit server routing.
+	Role-based login routing with explicit server-owned target resolution.
+	For login APIs, return JSON-friendly fields only (no HTTP redirect response).
 	Priority is locked: Staff > Student > Guardian.
 	"""
 	user = getattr(login_manager, "user", None) or frappe.session.user
 	if not user or user == "Guest":
 		return
 
-	def _force_redirect(path: str, also_set_home_page: bool = True):
-		if also_set_home_page:
+	def _set_login_target(path: str, persist_home_page: bool = True):
+		if persist_home_page:
 			try:
 				frappe.db.set_value("User", user, "home_page", path, update_modified=False)
 			except Exception:
-				pass
+				# Login should remain functional even if home_page persistence fails.
+				frappe.log_error(
+					title="Login Home Page Update Failed",
+					message=f"user={user}\npath={path}",
+				)
 
-		# Immediate redirect for this request
+		# Login endpoint returns JSON payload (home_page/message), not HTTP redirects.
 		frappe.local.response["home_page"] = path
 		frappe.local.response["redirect_to"] = path
-		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = path
 
 	employee_state = _get_employee_access_state(user)
 	if employee_state.get("is_blocked"):
 		# Trigger canonical logout endpoint for blocked employees.
-		_force_redirect("/?cmd=web_logout", also_set_home_page=False)
+		_set_login_target("/?cmd=web_logout", persist_home_page=False)
 		return
 
 	roles = set(frappe.get_roles(user))
 	path = _resolve_login_redirect_path(user, roles)
 	_set_post_login_portal_redirect(path)
-	_force_redirect(path, also_set_home_page=True)
+	_set_login_target(path, persist_home_page=True)
 
 
 @frappe.whitelist()

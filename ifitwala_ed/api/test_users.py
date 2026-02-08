@@ -37,7 +37,6 @@ class TestUserRedirect(FrappeTestCase):
 		# Assert redirect to /portal
 		self.assertEqual(frappe.local.response.get("home_page"), "/portal")
 		self.assertEqual(frappe.local.response.get("redirect_to"), "/portal")
-		self.assertEqual(frappe.local.response.get("type"), "redirect")
 
 		# Verify home_page was set on User
 		user.reload()
@@ -75,7 +74,6 @@ class TestUserRedirect(FrappeTestCase):
 		# Assert redirect to /admissions (separate admissions portal)
 		self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
 		self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
-		self.assertEqual(frappe.local.response.get("type"), "redirect")
 
 		# Verify home_page was set on User
 		user.reload()
@@ -283,7 +281,6 @@ class TestUserRedirect(FrappeTestCase):
 		redirect_user_to_entry_portal()
 
 		self.assertEqual(frappe.local.response.get("redirect_to"), "/?cmd=web_logout")
-		self.assertEqual(frappe.local.response.get("type"), "redirect")
 
 		frappe.set_user("Administrator")
 		frappe.delete_doc("Employee", employee.name, force=True)
@@ -312,7 +309,6 @@ class TestUserRedirect(FrappeTestCase):
 		redirect_user_to_entry_portal()
 
 		self.assertEqual(frappe.local.response.get("redirect_to"), "/?cmd=web_logout")
-		self.assertEqual(frappe.local.response.get("type"), "redirect")
 
 		frappe.set_user("Administrator")
 		frappe.delete_doc("Employee", employee.name, force=True)
