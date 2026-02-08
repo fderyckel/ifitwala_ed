@@ -115,12 +115,12 @@ def _resolve_login_redirect_path(user: str, roles: set[str]) -> str:
 	return "/portal"
 
 
-def redirect_user_to_entry_portal():
+def redirect_user_to_entry_portal(login_manager=None):
 	"""
 	Role-based login redirect with explicit server routing.
 	Priority is locked: Staff > Student > Guardian.
 	"""
-	user = frappe.session.user
+	user = getattr(login_manager, "user", None) or frappe.session.user
 	if not user or user == "Guest":
 		return
 

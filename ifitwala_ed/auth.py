@@ -37,7 +37,7 @@ def _redirect(to: str):
 def on_login():
 	"""
 	Hook called on user login.
-	Role-based login redirect is handled by the after_login hook.
+	Role-based login redirect is handled by the on_session_creation hook.
 	"""
 	return
 
