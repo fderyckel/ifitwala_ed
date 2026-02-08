@@ -23,47 +23,12 @@ RESTRICTED_ROUTES = frozenset([
 	"/app",
 ])
 
-# Routes that trigger the one-time post-login redirect guard
-DESK_ROUTES = frozenset([
-	"/app",
-	"/desk",
-])
-
 # Roles that should be blocked from desk/app access (non-staff portal users)
 RESTRICTED_ROLES = frozenset([
 	"Student",
 	"Guardian",
 	"Admissions Applicant",
 ])
-
-# Cache key prefix for one-time post-login redirect guard
-FIRST_LOGIN_FLAG_PREFIX = "ifitwala_first_login_redirect"
-
-
-def _get_first_login_flag_key(user: str) -> str:
-	"""Get cache key for user's first-login flag."""
-	return f"{FIRST_LOGIN_FLAG_PREFIX}:{user}"
-
-
-def on_login():
-	"""
-	Hook called on user login.
-	Sets a cache flag to enable one-time post-login redirect guard.
-	The guard ensures users land on their appropriate portal even if
-	redirect-to=/app is present in the login URL.
-	"""
-	user = frappe.session.user
-	if not user or user == "Guest":
-		return
-
-	# Set flag for one-time redirect guard with timestamp (5 minutes expiry)
-	# This will be checked in before_request to force portal landing
-	import time
-	cache_key = _get_first_login_flag_key(user)
-	# Store tuple of (flag_value, expiry_timestamp)
-	expiry = time.time() + 300  # 5 minutes from now
-	frappe.cache().set(cache_key, (True, expiry))
-	frappe.logger().debug(f"Login guard activated for user: {user}")
 
 
 def _resolve_portal_path(user_roles: set) -> str:
@@ -87,30 +52,40 @@ def _resolve_portal_path(user_roles: set) -> str:
 	return "/portal"
 
 
-def _perform_redirect(path: str):
+def _force_redirect_response(path: str):
 	"""
-	Perform a redirect by setting frappe.local.response.
-	
-	This is the proper way to redirect from before_request hooks,
-	as raising frappe.Redirect before request init completes doesn't work
-	with the website renderer.
+	Force a redirect by setting frappe.local.response.
+	This overrides any redirect-to parameter from the login URL.
 	"""
-	frappe.local.response = frappe.utils.response.build_response("redirect")
+	frappe.local.response["home_page"] = path
+	frappe.local.response["redirect_to"] = path
 	frappe.local.response["location"] = path
-	frappe.local.response["http_status_code"] = 302
+	frappe.local.response["type"] = "redirect"
+
+
+def on_login():
+	"""
+	Hook called on user login (via auth_hooks).
+	
+	This hook runs during validate_auth_via_hooks() which happens early
+	in the request lifecycle. We don't set redirects here because
+	the after_login hook runs later and has final authority.
+	"""
+	# Redirect logic is handled by after_login hook in api/users.py
+	# which runs after successful authentication and has final say
+	pass
 
 
 def before_request():
 	"""
 	Hook called before every request.
 	
-	Two responsibilities:
-	1. One-time post-login redirect guard: Forces first request after login to portal
-	   (prevents redirect-to=/app from overriding portal policy)
-	2. Defensive blocking: Redirects non-staff users away from desk/app to their portal
+	Defensive blocking only: Redirects non-staff users away from desk/app.
+	This prevents portal users from accessing staff interfaces even if they
+	directly navigate to /desk or /app URLs.
 	
-	The one-time guard is cleared after first request, allowing staff to manually
-	navigate to /app afterward (e.g., via "Switch to Desk").
+	Note: This does NOT handle login redirects - those are handled by
+	the after_login hook to ensure proper override of redirect-to parameter.
 	"""
 	user = frappe.session.user
 	
@@ -121,48 +96,6 @@ def before_request():
 	# Get current request path
 	path = getattr(frappe.request, "path", "") or ""
 	
-	# Get user roles
-	user_roles = set(frappe.get_roles(user))
-	
-	# -------------------------------------------------------------------------
-	# 1) One-time post-login redirect guard (first hop after login)
-	# -------------------------------------------------------------------------
-	# Check if this is the first request after login
-	import time
-	cache_key = _get_first_login_flag_key(user)
-	cached_value = frappe.cache().get(cache_key)
-	
-	# Check if we have a valid (flag, expiry) tuple that hasn't expired
-	first_login_flag = False
-	if cached_value and isinstance(cached_value, tuple) and len(cached_value) == 2:
-		flag_value, expiry = cached_value
-		if flag_value and time.time() < expiry:
-			first_login_flag = True
-	
-	if first_login_flag:
-		# Clear the flag immediately (one-time guard)
-		frappe.cache().delete(cache_key)
-		
-		# Check if user is trying to access /app or /desk on first hop
-		is_desk_route = any(
-			path == route or path.startswith(f"{route}/")
-			for route in DESK_ROUTES
-		)
-		
-		if is_desk_route:
-			# Force redirect to appropriate portal based on role
-			portal_path = _resolve_portal_path(user_roles)
-			frappe.logger().debug(
-				f"Login guard redirect for {user}: {path} -> {portal_path}, roles={user_roles}"
-			)
-			_perform_redirect(portal_path)
-			return
-		# If not a desk route, allow the request to proceed normally
-		return
-	
-	# -------------------------------------------------------------------------
-	# 2) Defensive blocking (ongoing: non-staff cannot access desk/app)
-	# -------------------------------------------------------------------------
 	# Check if this is a restricted route
 	is_restricted = any(
 		path == route or path.startswith(f"{route}/")
@@ -171,6 +104,9 @@ def before_request():
 	
 	if not is_restricted:
 		return
+	
+	# Get user roles
+	user_roles = set(frappe.get_roles(user))
 	
 	# Check if user has any staff role (staff can access desk/app)
 	has_staff_role = bool(user_roles & STAFF_ROLES)
@@ -188,4 +124,4 @@ def before_request():
 	frappe.logger().debug(
 		f"Desk block redirect for {user}: {path} -> {portal_path}, roles={user_roles}"
 	)
-	_perform_redirect(portal_path)
+	_force_redirect_response(portal_path)

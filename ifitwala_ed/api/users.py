@@ -42,6 +42,9 @@ def redirect_user_to_entry_portal():
 	"""
 	Login redirect handler: Routes users to unified portal entry point.
 	
+	This is the PRIMARY redirect authority. It runs via the after_login hook
+	and OVERRIDES any redirect-to parameter from the login URL.
+	
 	Architecture: Unified /portal entry with client-side routing (Option B).
 	The Vue SPA at /portal reads window.defaultPortal (set by www/portal/index.py)
 	and routes internally to the appropriate sub-portal.
@@ -64,19 +67,6 @@ def redirect_user_to_entry_portal():
 	if not user or user == "Guest":
 		return
 
-	def _force_redirect(path: str, also_set_home_page: bool = True):
-		if also_set_home_page:
-			try:
-				frappe.db.set_value("User", user, "home_page", path, update_modified=False)
-			except Exception:
-				pass
-
-		# Immediate redirect for this request
-		frappe.local.response["home_page"] = path
-		frappe.local.response["redirect_to"] = path
-		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = path
-
 	# Check user roles
 	roles = set(frappe.get_roles(user))
 
@@ -84,11 +74,27 @@ def redirect_user_to_entry_portal():
 	path = _resolve_login_redirect_path(roles)
 
 	# Debug logging to confirm redirect path during login
-	frappe.logger().debug(
-		f"Login redirect for {user}: roles={roles}, path={path}"
+	frappe.logger().info(
+		f"[AFTER_LOGIN] User {user} with roles {roles} -> redirecting to {path}"
 	)
 
-	_force_redirect(path, also_set_home_page=True)
+	# Update User.home_page for persistence across sessions
+	try:
+		frappe.db.set_value("User", user, "home_page", path, update_modified=False)
+	except Exception:
+		pass
+
+	# FORCE redirect by setting all response keys
+	# This OVERRIDES any redirect-to parameter from the login URL
+	# Frappe uses the LAST value set for redirect_to, so we set it here
+	frappe.local.response["home_page"] = path
+	frappe.local.response["redirect_to"] = path
+	frappe.local.response["location"] = path
+	frappe.local.response["type"] = "redirect"
+
+	frappe.logger().info(
+		f"[AFTER_LOGIN] Response set: home_page={path}, redirect_to={path}"
+	)
 
 
 @frappe.whitelist()

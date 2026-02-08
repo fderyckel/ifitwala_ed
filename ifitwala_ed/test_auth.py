@@ -4,8 +4,6 @@
 # ifitwala_ed/test_auth.py
 # Tests for authentication hooks and access control
 
-import time
-
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -13,11 +11,12 @@ from ifitwala_ed.auth import (
 	before_request,
 	on_login,
 	_resolve_portal_path,
-	_get_first_login_flag_key,
+	_force_redirect_response,
 	STAFF_ROLES,
 	RESTRICTED_ROLES,
 	RESTRICTED_ROUTES,
 )
+from ifitwala_ed.api.users import redirect_user_to_entry_portal, _resolve_login_redirect_path
 
 
 class TestAuthBeforeRequest(FrappeTestCase):
@@ -79,7 +78,6 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			
 			# Verify redirect location
 			self.assertEqual(frappe.local.response.get("location"), "/portal")
-			self.assertEqual(frappe.local.response.get("http_status_code"), 302)
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -120,7 +118,6 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			
 			# Verify redirect location
 			self.assertEqual(frappe.local.response.get("location"), "/portal")
-			self.assertEqual(frappe.local.response.get("http_status_code"), 302)
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -161,7 +158,6 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			
 			# Verify redirect location
 			self.assertEqual(frappe.local.response.get("location"), "/portal")
-			self.assertEqual(frappe.local.response.get("http_status_code"), 302)
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -201,7 +197,6 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			
 			# Verify redirect to /admissions (not /portal)
 			self.assertEqual(frappe.local.response.get("location"), "/admissions")
-			self.assertEqual(frappe.local.response.get("http_status_code"), 302)
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -239,7 +234,6 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		try:
 			# Should NOT set redirect response (staff takes priority)
 			result = before_request()
-			# If we get here without exception, the test passes
 			self.assertIsNone(result)
 			self.assertIsNone(frappe.local.response.get("location"))
 		finally:
@@ -415,82 +409,16 @@ class TestAuthBeforeRequest(FrappeTestCase):
 				frappe.request.path = original_path
 
 
-class TestLoginRedirectGuard(FrappeTestCase):
-	"""Test one-time post-login redirect guard functionality."""
+class TestAfterLoginRedirect(FrappeTestCase):
+	"""Test after_login hook redirect functionality (Cyra Option A)."""
 
-	def test_on_login_sets_cache_flag(self):
-		"""on_login hook should set the first-login cache flag."""
-		# Create test user
-		user = frappe.new_doc("User")
-		user.email = "test_login_guard@example.com"
-		user.first_name = "Test"
-		user.last_name = "Login Guard"
-		user.enabled = 1
-		user.add_roles("Student")
-		user.save()
-
-		try:
-			# Clear any existing flag
-			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().delete(cache_key)
-
-			# Simulate login
-			frappe.set_user(user.email)
-			on_login()
-
-			# Verify flag is set in cache as (flag, expiry) tuple
-			cached_value = frappe.cache().get(cache_key)
-			self.assertIsNotNone(cached_value)
-			self.assertIsInstance(cached_value, tuple)
-			self.assertEqual(len(cached_value), 2)
-			self.assertTrue(cached_value[0])  # flag is True
-			self.assertGreater(cached_value[1], time.time())  # expiry is in future
-		finally:
-			frappe.set_user("Administrator")
-			frappe.delete_doc("User", user.email, force=True)
-
-	def test_first_login_guard_redirects_staff_to_portal(self):
-		"""Employee first request to /app should redirect to unified /portal."""
-		# Create test user with staff role
-		user = frappe.new_doc("User")
-		user.email = "test_staff_guard@example.com"
-		user.first_name = "Test"
-		user.last_name = "Staff Guard"
-		user.enabled = 1
-		user.add_roles("Academic User")
-		user.save()
-
-		try:
-			# Set up cache with first-login flag
-			frappe.set_user(user.email)
-			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, (True, time.time() + 300))
-
-			# Mock request to /app
-			original_path = getattr(frappe.request, "path", None)
-			frappe.request.path = "/app"
-
-			try:
-				# Should set redirect response
-				before_request()
-
-				# Verify redirect response is set
-				self.assertEqual(frappe.local.response.get("location"), "/portal")
-				self.assertEqual(frappe.local.response.get("http_status_code"), 302)
-			finally:
-				if original_path:
-					frappe.request.path = original_path
-		finally:
-			frappe.set_user("Administrator")
-			frappe.delete_doc("User", user.email, force=True)
-
-	def test_first_login_guard_redirects_student_to_portal(self):
-		"""Student first request to /app should redirect to unified /portal."""
+	def test_after_login_redirects_student_to_portal(self):
+		"""Student should be redirected to /portal via after_login hook."""
 		# Create test user with Student role
 		user = frappe.new_doc("User")
-		user.email = "test_student_guard@example.com"
+		user.email = "test_student_after_login@example.com"
 		user.first_name = "Test"
-		user.last_name = "Student Guard"
+		user.last_name = "Student After Login"
 		user.enabled = 1
 		user.add_roles("Student")
 		user.save()
@@ -498,43 +426,37 @@ class TestLoginRedirectGuard(FrappeTestCase):
 		# Create Student record
 		student = frappe.new_doc("Student")
 		student.first_name = "Test"
-		student.last_name = "Student Guard"
+		student.last_name = "Student After Login"
 		student.student_email = user.email
 		student.student_user_id = user.email
 		student.save()
 
 		try:
-			# Set up cache with first-login flag
+			# Simulate logged-in user
 			frappe.set_user(user.email)
-			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, (True, time.time() + 300))
-
-			# Mock request to /app
-			original_path = getattr(frappe.request, "path", None)
-			frappe.request.path = "/app"
-
-			try:
-				# Should set redirect response
-				before_request()
-
-				# Verify redirect response is set
-				self.assertEqual(frappe.local.response.get("location"), "/portal")
-				self.assertEqual(frappe.local.response.get("http_status_code"), 302)
-			finally:
-				if original_path:
-					frappe.request.path = original_path
+			
+			# Clear any existing response
+			frappe.local.response = {}
+			
+			# Call after_login hook
+			redirect_user_to_entry_portal()
+			
+			# Verify redirect is set to /portal
+			self.assertEqual(frappe.local.response.get("redirect_to"), "/portal")
+			self.assertEqual(frappe.local.response.get("home_page"), "/portal")
+			self.assertEqual(frappe.local.response.get("location"), "/portal")
 		finally:
 			frappe.set_user("Administrator")
 			frappe.delete_doc("Student", student.name, force=True)
 			frappe.delete_doc("User", user.email, force=True)
 
-	def test_first_login_guard_redirects_guardian_to_portal(self):
-		"""Guardian first request to /app should redirect to unified /portal."""
+	def test_after_login_redirects_guardian_to_portal(self):
+		"""Guardian should be redirected to /portal via after_login hook."""
 		# Create test user with Guardian role
 		user = frappe.new_doc("User")
-		user.email = "test_guardian_guard@example.com"
+		user.email = "test_guardian_after_login@example.com"
 		user.first_name = "Test"
-		user.last_name = "Guardian Guard"
+		user.last_name = "Guardian After Login"
 		user.enabled = 1
 		user.add_roles("Guardian")
 		user.save()
@@ -542,150 +464,102 @@ class TestLoginRedirectGuard(FrappeTestCase):
 		# Create Guardian record
 		guardian = frappe.new_doc("Guardian")
 		guardian.guardian_first_name = "Test"
-		guardian.guardian_last_name = "Guardian Guard"
+		guardian.guardian_last_name = "Guardian After Login"
 		guardian.guardian_email = user.email
 		guardian.user = user.email
 		guardian.save()
 
 		try:
-			# Set up cache with first-login flag
+			# Simulate logged-in user
 			frappe.set_user(user.email)
-			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, (True, time.time() + 300))
-
-			# Mock request to /app
-			original_path = getattr(frappe.request, "path", None)
-			frappe.request.path = "/app"
-
-			try:
-				# Should set redirect response
-				before_request()
-
-				# Verify redirect response is set
-				self.assertEqual(frappe.local.response.get("location"), "/portal")
-				self.assertEqual(frappe.local.response.get("http_status_code"), 302)
-			finally:
-				if original_path:
-					frappe.request.path = original_path
+			
+			# Clear any existing response
+			frappe.local.response = {}
+			
+			# Call after_login hook
+			redirect_user_to_entry_portal()
+			
+			# Verify redirect is set to /portal
+			self.assertEqual(frappe.local.response.get("redirect_to"), "/portal")
+			self.assertEqual(frappe.local.response.get("home_page"), "/portal")
+			self.assertEqual(frappe.local.response.get("location"), "/portal")
 		finally:
 			frappe.set_user("Administrator")
 			frappe.delete_doc("Guardian", guardian.name, force=True)
 			frappe.delete_doc("User", user.email, force=True)
 
-	def test_first_login_guard_clears_flag_after_redirect(self):
-		"""First-login flag should be cleared after guard processes."""
-		# Create test user
+	def test_after_login_redirects_admissions_to_admissions(self):
+		"""Admissions Applicant should be redirected to /admissions via after_login hook."""
+		# Create test user with Admissions Applicant role
 		user = frappe.new_doc("User")
-		user.email = "test_flag_clear@example.com"
+		user.email = "test_admissions_after_login@example.com"
 		user.first_name = "Test"
-		user.last_name = "Flag Clear"
+		user.last_name = "Admissions After Login"
+		user.enabled = 1
+		user.add_roles("Admissions Applicant")
+		user.save()
+
+		# Create Student Applicant record
+		applicant = frappe.new_doc("Student Applicant")
+		applicant.first_name = "Test"
+		applicant.last_name = "Admissions After Login"
+		applicant.applicant_user = user.email
+		applicant.save()
+
+		try:
+			# Simulate logged-in user
+			frappe.set_user(user.email)
+			
+			# Clear any existing response
+			frappe.local.response = {}
+			
+			# Call after_login hook
+			redirect_user_to_entry_portal()
+			
+			# Verify redirect is set to /admissions
+			self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
+			self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
+			self.assertEqual(frappe.local.response.get("location"), "/admissions")
+		finally:
+			frappe.set_user("Administrator")
+			frappe.delete_doc("Student Applicant", applicant.name, force=True)
+			frappe.delete_doc("User", user.email, force=True)
+
+	def test_after_login_sets_home_page_in_user_doc(self):
+		"""after_login hook should update User.home_page for persistence."""
+		# Create test user with Student role
+		user = frappe.new_doc("User")
+		user.email = "test_home_page@example.com"
+		user.first_name = "Test"
+		user.last_name = "Home Page"
 		user.enabled = 1
 		user.add_roles("Student")
 		user.save()
 
-		try:
-			# Set up cache with first-login flag
-			frappe.set_user(user.email)
-			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, (True, time.time() + 300))
-
-			# Mock request to /app
-			original_path = getattr(frappe.request, "path", None)
-			frappe.request.path = "/app"
-
-			# Should set redirect response
-			before_request()
-
-			# Verify flag is cleared from cache
-			self.assertIsNone(frappe.cache().get(cache_key))
-
-			if original_path:
-				frappe.request.path = original_path
-		finally:
-			frappe.set_user("Administrator")
-			frappe.delete_doc("User", user.email, force=True)
-
-	def test_second_request_allows_staff_to_access_app(self):
-		"""After first hop, staff should be able to access /app normally."""
-		# Create test user with staff role
-		user = frappe.new_doc("User")
-		user.email = "test_staff_second@example.com"
-		user.first_name = "Test"
-		user.last_name = "Staff Second"
-		user.enabled = 1
-		user.add_roles("Academic User")
-		user.save()
+		# Create Student record
+		student = frappe.new_doc("Student")
+		student.first_name = "Test"
+		student.last_name = "Home Page"
+		student.student_email = user.email
+		student.student_user_id = user.email
+		student.save()
 
 		try:
-			# Simulate: first request (with flag) goes to portal
+			# Simulate logged-in user
 			frappe.set_user(user.email)
-			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, (True, time.time() + 300))
-
-			original_path = getattr(frappe.request, "path", None)
-			frappe.request.path = "/app"
-
-			# First request should redirect
-			before_request()
-			self.assertEqual(frappe.local.response.get("location"), "/portal")
-
-			# Clear response for next request simulation
+			
+			# Clear any existing response
 			frappe.local.response = {}
-
-			# Now simulate second request (flag cleared) - staff should access /app
-			frappe.request.path = "/app/workspace/academics"
-
-			# Should NOT set redirect response (staff can access desk after first hop)
-			before_request()
-			self.assertIsNone(frappe.local.response.get("location"))
-
-			if original_path:
-				frappe.request.path = original_path
+			
+			# Call after_login hook
+			redirect_user_to_entry_portal()
+			
+			# Verify User.home_page was updated
+			user_doc = frappe.get_doc("User", user.email)
+			self.assertEqual(user_doc.home_page, "/portal")
 		finally:
 			frappe.set_user("Administrator")
-			frappe.delete_doc("User", user.email, force=True)
-
-	def test_guardian_never_lands_on_app_after_login(self):
-		"""Guardian should never reach /app on first request after login."""
-		# Create test user
-		user = frappe.new_doc("User")
-		user.email = "test_guardian_never_app@example.com"
-		user.first_name = "Test"
-		user.last_name = "Guardian Never App"
-		user.enabled = 1
-		user.add_roles("Guardian")
-		user.save()
-
-		# Create Guardian record
-		guardian = frappe.new_doc("Guardian")
-		guardian.guardian_first_name = "Test"
-		guardian.guardian_last_name = "Guardian Never App"
-		guardian.guardian_email = user.email
-		guardian.user = user.email
-		guardian.save()
-
-		try:
-			# Set up cache with first-login flag
-			frappe.set_user(user.email)
-			cache_key = _get_first_login_flag_key(user.email)
-			frappe.cache().set(cache_key, (True, time.time() + 300))
-
-			original_path = getattr(frappe.request, "path", None)
-			frappe.request.path = "/app"
-
-			# Should set redirect response
-			before_request()
-
-			# Verify redirect is NOT to /app
-			redirect_location = frappe.local.response.get("location")
-			self.assertNotEqual(redirect_location, "/app")
-			self.assertTrue(redirect_location.startswith("/portal"))
-
-			if original_path:
-				frappe.request.path = original_path
-		finally:
-			frappe.set_user("Administrator")
-			frappe.delete_doc("Guardian", guardian.name, force=True)
+			frappe.delete_doc("Student", student.name, force=True)
 			frappe.delete_doc("User", user.email, force=True)
 
 
@@ -721,3 +595,37 @@ class TestResolvePortalPath(FrappeTestCase):
 		roles = {"Some Custom Role"}
 		path = _resolve_portal_path(roles)
 		self.assertEqual(path, "/portal")
+
+
+class TestResolveLoginRedirectPath(FrappeTestCase):
+	"""Test the _resolve_login_redirect_path helper function."""
+
+	def test_admissions_applicant_returns_admissions(self):
+		"""Admissions Applicant should return /admissions."""
+		roles = {"Admissions Applicant"}
+		path = _resolve_login_redirect_path(roles)
+		self.assertEqual(path, "/admissions")
+
+	def test_student_returns_portal(self):
+		"""Student should return /portal (unified entry)."""
+		roles = {"Student"}
+		path = _resolve_login_redirect_path(roles)
+		self.assertEqual(path, "/portal")
+
+	def test_guardian_returns_portal(self):
+		"""Guardian should return /portal (unified entry)."""
+		roles = {"Guardian"}
+		path = _resolve_login_redirect_path(roles)
+		self.assertEqual(path, "/portal")
+
+	def test_staff_returns_portal(self):
+		"""Staff should return /portal (unified entry)."""
+		roles = {"Academic User"}
+		path = _resolve_login_redirect_path(roles)
+		self.assertEqual(path, "/portal")
+
+	def test_admissions_takes_priority(self):
+		"""Admissions Applicant role should take priority over others."""
+		roles = {"Admissions Applicant", "Student", "Academic User"}
+		path = _resolve_login_redirect_path(roles)
+		self.assertEqual(path, "/admissions")
