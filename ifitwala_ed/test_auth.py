@@ -72,12 +72,12 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		frappe.request.path = "/desk"
 
 		try:
-			# Should raise Redirect
-			with self.assertRaises(frappe.Redirect):
-				before_request()
+			# Should set redirect response
+			before_request()
 			
 			# Verify redirect location
-			self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+			self.assertEqual(frappe.local.response.get("location"), "/portal")
+			self.assertEqual(frappe.local.response.get("http_status_code"), 302)
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -113,12 +113,12 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		frappe.request.path = "/desk"
 
 		try:
-			# Should raise Redirect
-			with self.assertRaises(frappe.Redirect):
-				before_request()
+			# Should set redirect response
+			before_request()
 			
 			# Verify redirect location
-			self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+			self.assertEqual(frappe.local.response.get("location"), "/portal")
+			self.assertEqual(frappe.local.response.get("http_status_code"), 302)
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -154,12 +154,12 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		frappe.request.path = "/app"
 
 		try:
-			# Should raise Redirect
-			with self.assertRaises(frappe.Redirect):
-				before_request()
+			# Should set redirect response
+			before_request()
 			
 			# Verify redirect location
-			self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+			self.assertEqual(frappe.local.response.get("location"), "/portal")
+			self.assertEqual(frappe.local.response.get("http_status_code"), 302)
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -194,12 +194,12 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		frappe.request.path = "/desk"
 
 		try:
-			# Should raise Redirect
-			with self.assertRaises(frappe.Redirect):
-				before_request()
+			# Should set redirect response
+			before_request()
 			
 			# Verify redirect to /admissions (not /portal)
-			self.assertEqual(frappe.local.flags.redirect_location, "/admissions")
+			self.assertEqual(frappe.local.response.get("location"), "/admissions")
+			self.assertEqual(frappe.local.response.get("http_status_code"), 302)
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -235,10 +235,11 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		frappe.request.path = "/desk"
 
 		try:
-			# Should NOT raise Redirect (staff takes priority)
+			# Should NOT set redirect response (staff takes priority)
 			result = before_request()
 			# If we get here without exception, the test passes
 			self.assertIsNone(result)
+			self.assertIsNone(frappe.local.response.get("location"))
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -274,9 +275,10 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		frappe.request.path = "/desk"
 
 		try:
-			# Should NOT raise Redirect (staff takes priority)
+			# Should NOT set redirect response (staff takes priority)
 			result = before_request()
 			self.assertIsNone(result)
+			self.assertIsNone(frappe.local.response.get("location"))
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -304,9 +306,10 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		frappe.request.path = "/desk"
 
 		try:
-			# Should NOT raise Redirect
+			# Should NOT set redirect response
 			result = before_request()
 			self.assertIsNone(result)
+			self.assertIsNone(frappe.local.response.get("location"))
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -341,9 +344,10 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		frappe.request.path = "/portal"
 
 		try:
-			# Should NOT raise Redirect
+			# Should NOT set redirect response
 			result = before_request()
 			self.assertIsNone(result)
+			self.assertIsNone(frappe.local.response.get("location"))
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -379,9 +383,10 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		frappe.request.path = "/portal"
 
 		try:
-			# Should NOT raise Redirect
+			# Should NOT set redirect response
 			result = before_request()
 			self.assertIsNone(result)
+			self.assertIsNone(frappe.local.response.get("location"))
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -398,9 +403,10 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		frappe.request.path = "/desk"
 
 		try:
-			# Should NOT raise Redirect for Guest
+			# Should NOT set redirect response for Guest
 			result = before_request()
 			self.assertIsNone(result)
+			self.assertIsNone(frappe.local.response.get("location"))
 		finally:
 			frappe.set_user("Administrator")
 			if original_path:
@@ -458,12 +464,12 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			frappe.request.path = "/app"
 
 			try:
-				# Should raise Redirect
-				with self.assertRaises(frappe.Redirect):
-					before_request()
+				# Should set redirect response
+				before_request()
 
-				# Verify redirect to unified /portal (Option B architecture)
-				self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+				# Verify redirect response is set
+				self.assertEqual(frappe.local.response.get("location"), "/portal")
+				self.assertEqual(frappe.local.response.get("http_status_code"), 302)
 			finally:
 				if original_path:
 					frappe.request.path = original_path
@@ -501,12 +507,12 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			frappe.request.path = "/app"
 
 			try:
-				# Should raise Redirect
-				with self.assertRaises(frappe.Redirect):
-					before_request()
+				# Should set redirect response
+				before_request()
 
-				# Verify redirect to unified /portal (Option B architecture)
-				self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+				# Verify redirect response is set
+				self.assertEqual(frappe.local.response.get("location"), "/portal")
+				self.assertEqual(frappe.local.response.get("http_status_code"), 302)
 			finally:
 				if original_path:
 					frappe.request.path = original_path
@@ -545,12 +551,12 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			frappe.request.path = "/app"
 
 			try:
-				# Should raise Redirect
-				with self.assertRaises(frappe.Redirect):
-					before_request()
+				# Should set redirect response
+				before_request()
 
-				# Verify redirect to unified /portal (Option B architecture)
-				self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+				# Verify redirect response is set
+				self.assertEqual(frappe.local.response.get("location"), "/portal")
+				self.assertEqual(frappe.local.response.get("http_status_code"), 302)
 			finally:
 				if original_path:
 					frappe.request.path = original_path
@@ -580,12 +586,8 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			original_path = getattr(frappe.request, "path", None)
 			frappe.request.path = "/app"
 
-			try:
-				# Should raise Redirect
-				with self.assertRaises(frappe.Redirect):
-					before_request()
-			except frappe.Redirect:
-				pass  # Expected
+			# Should set redirect response
+			before_request()
 
 			# Verify flag is cleared from cache
 			self.assertIsNone(frappe.cache().get(cache_key))
@@ -616,18 +618,19 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			original_path = getattr(frappe.request, "path", None)
 			frappe.request.path = "/app"
 
-			try:
-				with self.assertRaises(frappe.Redirect):
-					before_request()
-			except frappe.Redirect:
-				pass
+			# First request should redirect
+			before_request()
+			self.assertEqual(frappe.local.response.get("location"), "/portal")
+
+			# Clear response for next request simulation
+			frappe.local.response = {}
 
 			# Now simulate second request (flag cleared) - staff should access /app
 			frappe.request.path = "/app/workspace/academics"
 
-			# Should NOT raise Redirect (staff can access desk after first hop)
-			result = before_request()
-			self.assertIsNone(result)
+			# Should NOT set redirect response (staff can access desk after first hop)
+			before_request()
+			self.assertIsNone(frappe.local.response.get("location"))
 
 			if original_path:
 				frappe.request.path = original_path
@@ -663,17 +666,16 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			original_path = getattr(frappe.request, "path", None)
 			frappe.request.path = "/app"
 
-			try:
-				with self.assertRaises(frappe.Redirect):
-					before_request()
+			# Should set redirect response
+			before_request()
 
-				# Verify redirect is NOT to /app
-				redirect_location = frappe.local.flags.redirect_location
-				self.assertNotEqual(redirect_location, "/app")
-				self.assertTrue(redirect_location.startswith("/portal"))
-			finally:
-				if original_path:
-					frappe.request.path = original_path
+			# Verify redirect is NOT to /app
+			redirect_location = frappe.local.response.get("location")
+			self.assertNotEqual(redirect_location, "/app")
+			self.assertTrue(redirect_location.startswith("/portal"))
+
+			if original_path:
+				frappe.request.path = original_path
 		finally:
 			frappe.set_user("Administrator")
 			frappe.delete_doc("Guardian", guardian.name, force=True)

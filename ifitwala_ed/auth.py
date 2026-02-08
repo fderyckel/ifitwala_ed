@@ -84,6 +84,19 @@ def _resolve_portal_path(user_roles: set) -> str:
 	return "/portal"
 
 
+def _perform_redirect(path: str):
+	"""
+	Perform a redirect by setting frappe.local.response.
+	
+	This is the proper way to redirect from before_request hooks,
+	as raising frappe.Redirect before request init completes doesn't work
+	with the website renderer.
+	"""
+	frappe.local.response = frappe.utils.response.build_response("redirect")
+	frappe.local.response["location"] = path
+	frappe.local.response["http_status_code"] = 302
+
+
 def before_request():
 	"""
 	Hook called before every request.
@@ -131,8 +144,8 @@ def before_request():
 			frappe.logger().debug(
 				f"Login guard redirect for {user}: {path} -> {portal_path}, roles={user_roles}"
 			)
-			frappe.local.flags.redirect_location = portal_path
-			raise frappe.Redirect
+			_perform_redirect(portal_path)
+			return
 		# If not a desk route, allow the request to proceed normally
 		return
 	
@@ -161,5 +174,7 @@ def before_request():
 	
 	# Non-staff user with restricted role trying to access desk/app - redirect to appropriate portal
 	portal_path = _resolve_portal_path(user_roles)
-	frappe.local.flags.redirect_location = portal_path
-	raise frappe.Redirect
+	frappe.logger().debug(
+		f"Desk block redirect for {user}: {path} -> {portal_path}, roles={user_roles}"
+	)
+	_perform_redirect(portal_path)
