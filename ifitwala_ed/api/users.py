@@ -17,44 +17,53 @@ STAFF_ROLES = frozenset([
 ])
 
 
-def _resolve_login_redirect_path(roles: set) -> str:
+def _has_active_employee_profile(*, user: str, roles: set) -> bool:
+	"""Return True when user has Employee role and an active Employee record."""
+	if "Employee" not in roles:
+		return False
+	return bool(
+		frappe.db.exists(
+			"Employee",
+			{"user_id": user, "employment_status": "Active"},
+		)
+	)
+
+
+def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
 	"""
 	Resolve the appropriate portal path based on user roles.
-	
-	Architecture: Unified /portal entry with client-side routing (Option B).
-	The Vue SPA at /portal reads window.defaultPortal to route internally.
-	
+
 	Priority order (locked):
-	1. Admissions Applicant -> /admissions (separate admissions portal)
-	2. All other users -> /portal (unified entry, client-side routing handles the rest)
-	
-	Rationale: Admissions is a separate flow; all other users use unified /portal
-	with client-side role detection for cleaner SPA architecture.
+	1. Admissions Applicant -> /admissions
+	2. Active Employee -> /portal/staff
+	3. Student -> /portal/student
+	4. Guardian -> /portal/guardian
+	5. Fallback -> /portal
 	"""
 	if "Admissions Applicant" in roles:
 		return "/admissions"
-	# Unified /portal entry for all non-admissions users
-	# Client-side router handles role-specific sub-portal selection
+	if _has_active_employee_profile(user=user, roles=roles):
+		return "/portal/staff"
+	if "Student" in roles:
+		return "/portal/student"
+	if "Guardian" in roles:
+		return "/portal/guardian"
 	return "/portal"
 
 
 def redirect_user_to_entry_portal():
 	"""
-	Login redirect handler: Routes users to unified portal entry point.
-	
-	Architecture: Unified /portal entry with client-side routing (Option B).
-	The Vue SPA at /portal reads window.defaultPortal (set by www/portal/index.py)
-	and routes internally to the appropriate sub-portal.
-	
+	Login redirect handler: Routes users to role-appropriate portal entry point.
+
 	Policy:
-	- Admissions Applicants -> /admissions (separate admissions portal)
-	- All other authenticated users -> /portal (unified entry)
-	
-	The portal entry point determines which sub-portal to show via client-side logic
-	with priority: Staff > Student > Guardian.
+	- Admissions Applicants -> /admissions
+	- Active Employees -> /portal/staff
+	- Students -> /portal/student
+	- Guardians -> /portal/guardian
+	- Fallback -> /portal
 	
 	Home-page persistence note:
-	We always overwrite User.home_page with the unified portal path.
+	We always overwrite User.home_page with the resolved role-specific path.
 	This is acceptable for fresh installations; custom home-page preferences
 	(e.g., staff setting /app) will be lost on next login.
 	Maintainer decision: "fine for fresh install" (2026-02-07).
@@ -81,7 +90,7 @@ def redirect_user_to_entry_portal():
 	roles = set(frappe.get_roles(user))
 
 	# Resolve the appropriate portal path
-	path = _resolve_login_redirect_path(roles)
+	path = _resolve_login_redirect_path(user=user, roles=roles)
 
 	# Debug logging to confirm redirect path during login
 	frappe.logger().debug(

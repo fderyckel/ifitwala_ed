@@ -372,7 +372,7 @@ Build notes:
 * Content edits in Desk do **not** require a rebuild.
 * Tailwind is scoped to `#ifitwala-page-root` with preflight disabled (no global resets).
 * Bootstrap is not used on public website pages.
-* Website catch-all routing must preserve core framework assets (at minimum `/website_script.js` and `/website_style.css`) so login and public base templates load correctly.
+* Website catch-all routing must preserve framework namespaces (`/app`, `/desk`, `/api`, `/assets`, `/files`) and core website assets (`/website_script.js`, `/website_style.css`) so Desk, APIs, login, and public templates all resolve correctly.
 
 Critical content **must not depend on JS**.
 

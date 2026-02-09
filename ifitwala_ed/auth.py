@@ -57,24 +57,37 @@ def on_login():
 	frappe.logger().debug(f"Login guard activated for user: {user}")
 
 
-def _resolve_portal_path(user_roles: set) -> str:
+def _has_active_employee_profile(*, user: str, user_roles: set) -> bool:
+	"""Return True when user has Employee role and an active Employee record."""
+	if "Employee" not in user_roles:
+		return False
+	return bool(
+		frappe.db.exists(
+			"Employee",
+			{"user_id": user, "employment_status": "Active"},
+		)
+	)
+
+
+def _resolve_portal_path(*, user: str, user_roles: set) -> str:
 	"""
 	Resolve the appropriate portal path based on user roles.
-	
-	Architecture: Unified /portal entry with client-side routing (Option B).
-	The Vue SPA at /portal reads window.defaultPortal to route internally.
-	
+
 	Priority order (locked):
-	1. Admissions Applicant -> /admissions (separate admissions portal)
-	2. All other users -> /portal (unified entry, client-side routing handles the rest)
-	
-	Rationale: Admissions is a separate flow; all other users use unified /portal
-	with client-side role detection for cleaner SPA architecture.
+	1. Admissions Applicant -> /admissions
+	2. Active Employee -> /portal/staff
+	3. Student -> /portal/student
+	4. Guardian -> /portal/guardian
+	5. Fallback -> /portal
 	"""
 	if "Admissions Applicant" in user_roles:
 		return "/admissions"
-	# Unified /portal entry for all non-admissions users
-	# Client-side router handles role-specific sub-portal selection
+	if _has_active_employee_profile(user=user, user_roles=user_roles):
+		return "/portal/staff"
+	if "Student" in user_roles:
+		return "/portal/student"
+	if "Guardian" in user_roles:
+		return "/portal/guardian"
 	return "/portal"
 
 
@@ -118,7 +131,7 @@ def before_request():
 		
 		if is_desk_route:
 			# Force redirect to appropriate portal based on role
-			portal_path = _resolve_portal_path(user_roles)
+			portal_path = _resolve_portal_path(user=user, user_roles=user_roles)
 			frappe.logger().debug(
 				f"Login guard redirect for {user}: {path} -> {portal_path}, roles={user_roles}"
 			)
@@ -151,6 +164,6 @@ def before_request():
 		return
 	
 	# Non-staff user with restricted role trying to access desk/app - redirect to appropriate portal
-	portal_path = _resolve_portal_path(user_roles)
+	portal_path = _resolve_portal_path(user=user, user_roles=user_roles)
 	frappe.local.flags.redirect_location = portal_path
 	raise frappe.Redirect
