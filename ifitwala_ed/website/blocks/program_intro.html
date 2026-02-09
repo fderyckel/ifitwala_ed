@@ -2,7 +2,7 @@
 {% import "ifitwala_ed/templates/includes/smart_image_macro.html" as img_macro %}
 
 <section class="block-program-intro">
-	<div class="mx-auto max-w-4xl px-6 space-y-6">
+	<div class="mx-auto flex max-w-4xl flex-col gap-6 px-6">
 		{% if data.hero_image and data.hero_image.original %}
 			{{ img_macro.smart_image(
 				data.hero_image.hero,

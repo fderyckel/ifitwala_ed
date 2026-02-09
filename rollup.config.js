@@ -39,6 +39,18 @@ function contentHash(file) {
 		.slice(0, 8);
 }
 
+function cleanupOldWebsiteBundles(dir, currentFileName, matcher) {
+	if (!fs.existsSync(dir)) return;
+	const files = fs.readdirSync(dir);
+	for (const file of files) {
+		if (!matcher.test(file)) continue;
+		if (file === currentFileName) continue;
+		try {
+			fs.unlinkSync(path.join(dir, file));
+		} catch {}
+	}
+}
+
 const websiteJsHash = contentHash(path.join(websiteSrc, 'website.js'));
 const websiteCssHash = contentHash(path.join(websiteSrc, 'website.css'));
 
@@ -112,7 +124,9 @@ module.exports = [
 				name: 'alias-stable-website-js',
 				writeBundle() {
 					const p = jsDest;
-					try { fs.copyFileSync(`${p}/website.${websiteJsHash}.bundle.js`, `${p}/website.bundle.js`); } catch {}
+					const current = `website.${websiteJsHash}.bundle.js`;
+					cleanupOldWebsiteBundles(p, current, /^website\.[a-f0-9]{8}\.bundle\.js$/);
+					try { fs.copyFileSync(`${p}/${current}`, `${p}/website.bundle.js`); } catch {}
 				}
 			}
 		],
@@ -135,7 +149,9 @@ module.exports = [
 				name: 'alias-stable-website-css',
 				writeBundle() {
 					const p = cssDest;
-					try { fs.copyFileSync(`${p}/website.${websiteCssHash}.bundle.css`, `${p}/website.bundle.css`); } catch {}
+					const current = `website.${websiteCssHash}.bundle.css`;
+					cleanupOldWebsiteBundles(p, current, /^website\.[a-f0-9]{8}\.bundle\.css$/);
+					try { fs.copyFileSync(`${p}/${current}`, `${p}/website.bundle.css`); } catch {}
 				}
 			}
 		],
