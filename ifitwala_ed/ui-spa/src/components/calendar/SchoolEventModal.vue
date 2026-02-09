@@ -17,7 +17,7 @@
 			class="if-overlay if-overlay--school"
 			:style="overlayStyle"
 			:initialFocus="initialFocus"
-			@close="emitClose"
+			@close="onDialogClose"
 		>
 			<TransitionChild
 				as="template"
@@ -28,7 +28,7 @@
 				leave-from="if-overlay__fade-to"
 				leave-to="if-overlay__fade-from"
 			>
-				<div class="if-overlay__backdrop" />
+				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
 			</TransitionChild>
 
 			<div class="if-overlay__wrap">
@@ -48,7 +48,7 @@
 							class="sr-only"
 							aria-hidden="true"
 							tabindex="0"
-							@click="emitClose"
+							@click="emitClose('programmatic')"
 						>
 							Close
 						</button>
@@ -75,7 +75,7 @@
 								<button
 									class="if-overlay__icon-button"
 									aria-label="Close event modal"
-									@click="emitClose"
+									@click="emitClose('programmatic')"
 								>
 									<FeatherIcon name="x" class="h-5 w-5" />
 								</button>
@@ -92,7 +92,7 @@
 
 							<div v-else-if="error" class="meeting-modal__error">
 								<p class="type-body">{{ error }}</p>
-								<button class="meeting-modal__cta" @click="emitClose">Close</button>
+								<button class="meeting-modal__cta" @click="emitClose('programmatic')">Close</button>
 							</div>
 
 							<div v-else-if="event">
@@ -171,7 +171,7 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import type { SchoolEventDetails } from './schoolEventTypes';
 
@@ -183,8 +183,10 @@ const props = defineProps<{
 	zIndex?: number;
 }>();
 
+type CloseReason = 'backdrop' | 'esc' | 'programmatic';
+
 const emit = defineEmits<{
-	(e: 'close'): void;
+	(e: 'close', reason: CloseReason): void;
 	(e: 'after-leave'): void;
 }>();
 
@@ -196,8 +198,8 @@ function emitAfterLeave() {
 	emit('after-leave');
 }
 
-function emitClose() {
-	emit('close');
+function emitClose(reason: CloseReason = 'programmatic') {
+	emit('close', reason);
 }
 
 const windowLabel = computed(() => {
@@ -250,4 +252,30 @@ function safeDate(value?: string | null) {
 }
 
 const initialFocus = ref<HTMLElement | null>(null);
+
+/**
+ * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
+ * Under A+, ignore it and close only via explicit backdrop/esc/button paths.
+ */
+function onDialogClose(_payload: unknown) {
+	// no-op by design
+}
+
+function onKeydown(e: KeyboardEvent) {
+	if (!props.open) return;
+	if (e.key === 'Escape') emitClose('esc');
+}
+
+watch(
+	() => props.open,
+	(v) => {
+		if (v) document.addEventListener('keydown', onKeydown, true);
+		else document.removeEventListener('keydown', onKeydown, true);
+	},
+	{ immediate: true }
+);
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true);
+});
 </script>

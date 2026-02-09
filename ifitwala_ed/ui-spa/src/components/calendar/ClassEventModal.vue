@@ -18,7 +18,7 @@
 			class="if-overlay if-overlay--class"
 			:style="overlayStyle"
 			:initialFocus="initialFocus"
-			@close="emitClose"
+			@close="onDialogClose"
 		>
 			<TransitionChild
 				as="template"
@@ -29,7 +29,7 @@
 				leave-from="if-overlay__fade-to"
 				leave-to="if-overlay__fade-from"
 			>
-				<div class="if-overlay__backdrop" />
+				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
 			</TransitionChild>
 
 			<div class="if-overlay__wrap">
@@ -49,7 +49,7 @@
 							class="sr-only"
 							aria-hidden="true"
 							tabindex="0"
-							@click="emitClose"
+							@click="emitClose('programmatic')"
 						>
 							Close
 						</button>
@@ -63,7 +63,7 @@
 									{{ data.course_name }}
 								</p>
 							</div>
-							<button class="if-overlay__icon-button" aria-label="Close class modal" @click="emitClose">
+							<button class="if-overlay__icon-button" aria-label="Close class modal" @click="emitClose('programmatic')">
 								<FeatherIcon name="x" class="h-5 w-5" />
 							</button>
 						</div>
@@ -78,7 +78,7 @@
 
 							<div v-else-if="error" class="meeting-modal__error">
 								<p class="type-body">{{ error }}</p>
-								<button class="meeting-modal__cta" @click="emitClose">Close</button>
+								<button class="meeting-modal__cta" @click="emitClose('programmatic')">Close</button>
 							</div>
 
 							<div v-else-if="data">
@@ -192,7 +192,7 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue'
 import { FeatherIcon } from 'frappe-ui'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useOverlayStack } from '@/composables/useOverlayStack'
 import { api } from '@/lib/client'
@@ -206,9 +206,10 @@ const props = defineProps<{
 
 const overlay = useOverlayStack()
 
+type CloseReason = 'backdrop' | 'esc' | 'programmatic'
 
 const emit = defineEmits<{
-	(e: 'close'): void
+	(e: 'close', reason: CloseReason): void
 	(e: 'create-announcement', event: ClassEventDetails): void
 	(e: 'create-task', payload: { studentGroup: string; dueDate: string | null }): void
 	(e: 'after-leave'): void
@@ -309,8 +310,8 @@ const gradebookLink = computed(() => {
 	return { name: 'staff-gradebook', query: { student_group: data.value.student_group } }
 })
 
-function emitClose() {
-	emit('close')
+function emitClose(reason: CloseReason = 'programmatic') {
+	emit('close', reason)
 }
 
 function emitCreateAnnouncement() {
@@ -342,4 +343,30 @@ function emitAfterLeave() {
 }
 
 const initialFocus = ref<HTMLElement | null>(null)
+
+/**
+ * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
+ * Under A+, ignore it and close only via explicit backdrop/esc/button paths.
+ */
+function onDialogClose(_payload: unknown) {
+	// no-op by design
+}
+
+function onKeydown(e: KeyboardEvent) {
+	if (!props.open) return
+	if (e.key === 'Escape') emitClose('esc')
+}
+
+watch(
+	() => props.open,
+	(v) => {
+		if (v) document.addEventListener('keydown', onKeydown, true)
+		else document.removeEventListener('keydown', onKeydown, true)
+	},
+	{ immediate: true }
+)
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true)
+})
 </script>
