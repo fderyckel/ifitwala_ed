@@ -78,13 +78,15 @@ def redirect_user_to_entry_portal():
 			try:
 				frappe.db.set_value("User", user, "home_page", path, update_modified=False)
 			except Exception:
-				pass
+				# Do not break login flow if home_page persistence fails.
+				frappe.logger().warning(
+					f"Failed to persist home_page during login redirect for {user}: {path}",
+					exc_info=True,
+				)
 
-		# Immediate redirect for this request
+		# Login response redirect contract: let Frappe login client handle navigation.
 		frappe.local.response["home_page"] = path
 		frappe.local.response["redirect_to"] = path
-		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = path
 
 	# Check user roles
 	roles = set(frappe.get_roles(user))
