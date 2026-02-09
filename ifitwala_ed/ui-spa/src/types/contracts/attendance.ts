@@ -169,6 +169,11 @@ export interface AttendanceRiskResponse {
 		warning: number
 		ok: number
 	}
+	bucket_students: {
+		critical: AttendanceRiskStudent[]
+		warning: AttendanceRiskStudent[]
+		ok: AttendanceRiskStudent[]
+	}
 	top_critical: AttendanceRiskStudent[]
 	declining_trend: AttendanceDecliningTrend[]
 	frequent_unexplained: AttendanceUnexplainedRisk[]

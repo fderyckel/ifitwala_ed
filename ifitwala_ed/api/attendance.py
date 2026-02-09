@@ -10,6 +10,7 @@ from typing import Any, Callable
 import frappe
 from frappe import _
 from frappe.utils import cint, getdate, nowdate
+from frappe.utils.nestedset import get_descendants_of
 
 from ifitwala_ed.api.student_groups import _instructor_group_names
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
@@ -184,6 +185,8 @@ def _resolve_request_context(
 	role_class = _resolve_role_class(roles)
 
 	school_scope = _resolve_school_scope(user=user, school=school)
+	program_value = _clean_optional(program)
+	program_scope = _resolve_program_scope(program_value)
 	if not school_scope:
 		return {
 			"user": user,
@@ -199,7 +202,8 @@ def _resolve_request_context(
 			"previous_date_to": getdate(nowdate()),
 			"previous_instruction_days": [],
 			"window_source": "empty_scope",
-			"program": _clean_optional(program),
+			"program": program_value,
+			"program_scope": program_scope,
 			"student_group": _clean_optional(student_group),
 			"whole_day": whole_day,
 			"activity_only": activity_only,
@@ -211,7 +215,6 @@ def _resolve_request_context(
 		school_scope=school_scope,
 	)
 
-	program_value = _clean_optional(program)
 	student_group_value = _clean_optional(student_group)
 	if student_group_value and role_class != ROLE_CLASS_ADMIN and student_group_value not in set(group_scope):
 		frappe.throw(_("You do not have access to this student group."), frappe.PermissionError)
@@ -254,6 +257,7 @@ def _resolve_request_context(
 		"previous_instruction_days": previous_instruction_days,
 		"window_source": source,
 		"program": program_value,
+		"program_scope": program_scope,
 		"student_group": student_group_value,
 		"whole_day": whole_day,
 		"activity_only": activity_only,
@@ -346,6 +350,16 @@ def _resolve_role_scope(
 	)
 
 	return group_scope, list(dict.fromkeys(student_scope)), group_rows
+
+
+def _resolve_program_scope(program: str | None) -> list[str]:
+	if not program:
+		return []
+	try:
+		descendants = get_descendants_of("Program", program) or []
+	except Exception:
+		descendants = []
+	return list(dict.fromkeys([program, *descendants]))
 
 
 def _resolve_time_window(
@@ -560,7 +574,11 @@ def _build_attendance_where(
 		conditions.append(f"{alias}.whole_day = %(whole_day)s")
 		params["whole_day"] = whole_day
 
-	if ctx.get("program"):
+	program_scope = ctx.get("program_scope") or []
+	if program_scope:
+		conditions.append(f"{alias}.program IN %(program_scope)s")
+		params["program_scope"] = tuple(program_scope)
+	elif ctx.get("program"):
 		conditions.append(f"{alias}.program = %(program)s")
 		params["program"] = ctx["program"]
 
@@ -930,6 +948,7 @@ def _get_risk_payload(
 
 	buckets = {"critical": 0, "warning": 0, "ok": 0}
 	top_critical: list[dict[str, Any]] = []
+	bucket_students: dict[str, list[dict[str, Any]]] = {"critical": [], "warning": [], "ok": []}
 	declining: list[dict[str, Any]] = []
 	frequent_unexplained: list[dict[str, Any]] = []
 	improving: list[dict[str, Any]] = []
@@ -963,23 +982,25 @@ def _get_risk_payload(
 		mismatch_days = mismatch_by_student.get(student, 0)
 
 		if current.get("expected_sessions"):
+			bucket_row = {
+				"student": student,
+				"student_name": current.get("student_name") or student,
+				"attendance_rate": current_rate,
+				"absent_count": int(current.get("absent_sessions") or 0),
+				"late_count": late_count,
+				"unexplained_absences": unexplained,
+				"mismatch_days": mismatch_days,
+			}
 			if current_rate < critical:
 				buckets["critical"] += 1
-				top_critical.append(
-					{
-						"student": student,
-						"student_name": current.get("student_name") or student,
-						"attendance_rate": current_rate,
-						"absent_count": int(current.get("absent_sessions") or 0),
-						"late_count": late_count,
-						"unexplained_absences": unexplained,
-						"mismatch_days": mismatch_days,
-					}
-				)
+				top_critical.append(bucket_row)
+				bucket_students["critical"].append(bucket_row)
 			elif current_rate < warning:
 				buckets["warning"] += 1
+				bucket_students["warning"].append(bucket_row)
 			else:
 				buckets["ok"] += 1
+				bucket_students["ok"].append(bucket_row)
 
 		if current.get("expected_sessions") and previous.get("expected_sessions"):
 			if delta <= -5.0:
@@ -1025,6 +1046,9 @@ def _get_risk_payload(
 		context = _get_context_sparkline(ctx, context_student)
 
 	top_critical = sorted(top_critical, key=lambda row: row["attendance_rate"])[:50]
+	bucket_students["critical"] = sorted(bucket_students["critical"], key=lambda row: row["attendance_rate"])[:120]
+	bucket_students["warning"] = sorted(bucket_students["warning"], key=lambda row: row["attendance_rate"])[:120]
+	bucket_students["ok"] = sorted(bucket_students["ok"], key=lambda row: row["attendance_rate"], reverse=True)[:120]
 	declining = sorted(declining, key=lambda row: row["delta"])[:50]
 	frequent_unexplained = sorted(frequent_unexplained, key=lambda row: row["unexplained_absences"], reverse=True)[:50]
 	improving = sorted(improving, key=lambda row: row["delta"], reverse=True)[:50]
@@ -1035,6 +1059,7 @@ def _get_risk_payload(
 		"meta": _response_meta(ctx),
 		"thresholds": thresholds,
 		"buckets": buckets,
+		"bucket_students": bucket_students,
 		"top_critical": top_critical,
 		"declining_trend": declining,
 		"frequent_unexplained": frequent_unexplained,
@@ -1472,7 +1497,11 @@ def _compute_teacher_exceptions(ctx: dict[str, Any]) -> list[dict[str, Any]]:
 		"whole_day": ctx["whole_day"],
 	}
 	optional_conditions = []
-	if ctx.get("program"):
+	program_scope = ctx.get("program_scope") or []
+	if program_scope:
+		optional_conditions.append("AND sg.program IN %(program_scope)s")
+		params["program_scope"] = tuple(program_scope)
+	elif ctx.get("program"):
 		optional_conditions.append("AND sg.program = %(program)s")
 		params["program"] = ctx["program"]
 	if ctx.get("student_group"):
@@ -1572,6 +1601,7 @@ def _fetch_cached_result(
 		"date_to": (ctx.get("date_to") or getdate(nowdate())).isoformat(),
 		"window_source": ctx.get("window_source"),
 		"program": ctx.get("program"),
+		"program_scope_hash": _hash_list(ctx.get("program_scope") or []),
 		"student_group": ctx.get("student_group"),
 		"whole_day": ctx.get("whole_day"),
 		"activity_only": ctx.get("activity_only"),

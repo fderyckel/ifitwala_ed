@@ -12,6 +12,7 @@
 		class="analytics-chart"
 		:option="option"
 		:autoresize="{ throttle: 100 }"
+		@click="onClick"
 	/>
 </template>
 
@@ -26,5 +27,13 @@ const props = defineProps<{
 	option: BaseChartOption
 }>()
 
+const emit = defineEmits<{
+	(event: 'click', payload: unknown): void
+}>()
+
 const option = computed(() => props.option)
+
+function onClick(payload: unknown) {
+	emit('click', payload)
+}
 </script>

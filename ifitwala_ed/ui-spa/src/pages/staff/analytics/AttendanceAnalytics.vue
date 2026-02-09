@@ -5,6 +5,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import AnalyticsCard from '@/components/analytics/AnalyticsCard.vue'
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
 import KpiRow from '@/components/analytics/KpiRow.vue'
+import SideDrawerList from '@/components/analytics/SideDrawerList.vue'
 import StatsTile from '@/components/analytics/StatsTile.vue'
 import DateRangePills from '@/components/filters/DateRangePills.vue'
 import FiltersBar from '@/components/filters/FiltersBar.vue'
@@ -34,6 +35,7 @@ import type {
 type ChartOption = Record<string, unknown>
 
 type WindowPreset = 'term' | AttendanceDatePreset
+type RiskBucket = 'critical' | 'warning' | 'ok'
 
 const attendanceService = createStudentAttendanceService()
 const analyticsService = createAttendanceAnalyticsService()
@@ -59,6 +61,8 @@ const myGroups = ref<AttendanceMyGroupsResponse | null>(null)
 const contextStudent = ref<string>('')
 const contextLoading = ref(false)
 const contextData = ref<AttendanceRiskResponse['context_sparkline']>(null)
+const riskDrawerOpen = ref(false)
+const selectedRiskBucket = ref<RiskBucket | null>(null)
 
 const thresholds: AttendanceThresholds = {
 	warning: 90,
@@ -150,7 +154,7 @@ const heatmapOption = computed<ChartOption>(() => {
 	const maxRatio = Math.max(100, ...seriesData.map((row) => row[2]))
 
 	return {
-		grid: { left: 70, right: 18, top: 24, bottom: 52 },
+		grid: { left: 70, right: 18, top: 24, bottom: 44 },
 		xAxis: {
 			type: 'category',
 			data: x,
@@ -165,6 +169,7 @@ const heatmapOption = computed<ChartOption>(() => {
 			axisLabel: { fontSize: 11 },
 		},
 		visualMap: {
+			show: false,
 			min: 0,
 			max: maxRatio,
 			orient: 'horizontal',
@@ -199,6 +204,7 @@ const riskBucketsOption = computed<ChartOption>(() => {
 			{
 				type: 'bar',
 				data: [source.buckets.critical, source.buckets.warning, source.buckets.ok],
+				cursor: 'pointer',
 				itemStyle: {
 					color: '#1f8d5b',
 				},
@@ -298,6 +304,19 @@ const contextStudentOptions = computed(() => {
 	return Array.from(options.entries()).map(([student, student_name]) => ({ student, student_name }))
 })
 
+const selectedRiskBucketLabel = computed(() => {
+	if (selectedRiskBucket.value === 'critical') return 'Critical'
+	if (selectedRiskBucket.value === 'warning') return 'Warning'
+	if (selectedRiskBucket.value === 'ok') return 'OK'
+	return 'Bucket'
+})
+
+const selectedRiskBucketRows = computed(() => {
+	if (!selectedRiskBucket.value) return []
+	const rows = risk.value?.bucket_students?.[selectedRiskBucket.value] || []
+	return rows.map((row) => ({ ...row, id: row.student, name: row.student_name }))
+})
+
 let loadRunId = 0
 let reloadTimer: number | null = null
 let disposeAttendanceInvalidate: (() => void) | null = null
@@ -329,6 +348,17 @@ function applyPreset(nextPreset: WindowPreset) {
 	filters.end_date = isoDate(end)
 }
 
+function applyCalendarRangeChange() {
+	if (filters.start_date && filters.end_date) {
+		preset.value = 'term'
+	}
+}
+
+function clearCalendarRange() {
+	filters.start_date = null
+	filters.end_date = null
+}
+
 function formatError(error: unknown): string {
 	if (error instanceof Error && error.message) return error.message
 	return 'Unable to load attendance analytics right now.'
@@ -352,6 +382,13 @@ function buildBasePayload(): Omit<AttendanceBaseParams, 'mode'> {
 
 function scheduleReload() {
 	if (!filtersReady.value) return
+	if (Boolean(filters.start_date) !== Boolean(filters.end_date)) {
+		actionError.value = 'Select both start and end dates for a calendar range.'
+		return
+	}
+	if (actionError.value === 'Select both start and end dates for a calendar range.') {
+		actionError.value = null
+	}
 	if (reloadTimer) window.clearTimeout(reloadTimer)
 	reloadTimer = window.setTimeout(() => {
 		void reloadDashboard()
@@ -391,6 +428,8 @@ async function reloadDashboard() {
 	pageError.value = null
 	actionError.value = null
 	contextData.value = null
+	riskDrawerOpen.value = false
+	selectedRiskBucket.value = null
 
 	try {
 		const basePayload = buildBasePayload()
@@ -480,6 +519,28 @@ function exceptionTone(status: AttendanceExceptionRow['status']) {
 	if (status === 'Absent') return 'text-flame bg-flame/10'
 	if (status === 'Late') return 'text-amber-700 bg-amber-100'
 	return 'text-slate-600 bg-slate-100'
+}
+
+function closeRiskDrawer() {
+	riskDrawerOpen.value = false
+}
+
+function openRiskBucket(bucket: RiskBucket) {
+	selectedRiskBucket.value = bucket
+	riskDrawerOpen.value = true
+}
+
+function onRiskRadarClick(event: unknown) {
+	const payload = event as { name?: string; dataIndex?: number } | null
+	const byName = (payload?.name || '').toLowerCase()
+	if (byName === 'critical') return openRiskBucket('critical')
+	if (byName === 'warning') return openRiskBucket('warning')
+	if (byName === 'ok') return openRiskBucket('ok')
+
+	const byIndex = Number(payload?.dataIndex)
+	if (byIndex === 0) return openRiskBucket('critical')
+	if (byIndex === 1) return openRiskBucket('warning')
+	if (byIndex === 2) return openRiskBucket('ok')
 }
 
 watch(
@@ -576,6 +637,37 @@ onBeforeUnmount(() => {
 			<div class="flex flex-col gap-1">
 				<label class="type-label">Window</label>
 				<DateRangePills :model-value="preset" :items="presetItems" size="sm" @update:model-value="applyPreset" />
+			</div>
+
+			<div class="flex flex-col gap-1">
+				<label class="type-label">From Date</label>
+				<input
+					v-model="filters.start_date"
+					type="date"
+					class="h-9 rounded-md border border-slate-200 px-2 text-sm"
+					@change="applyCalendarRangeChange"
+				/>
+			</div>
+
+			<div class="flex flex-col gap-1">
+				<label class="type-label">To Date</label>
+				<input
+					v-model="filters.end_date"
+					type="date"
+					class="h-9 rounded-md border border-slate-200 px-2 text-sm"
+					@change="applyCalendarRangeChange"
+				/>
+			</div>
+
+			<div class="flex flex-col gap-1">
+				<label class="type-label">Calendar Range</label>
+				<button
+					type="button"
+					class="h-9 rounded-md border border-slate-200 px-3 text-xs text-slate-700 hover:bg-slate-50"
+					@click="clearCalendarRange"
+				>
+					Clear Custom Range
+				</button>
 			</div>
 
 			<div class="flex flex-col gap-1">
@@ -731,7 +823,10 @@ onBeforeUnmount(() => {
 			<div class="analytics-grid">
 				<AnalyticsCard title="Chronic Absence Radar" :interactive="false">
 					<template #body>
-						<AnalyticsChart v-if="Object.keys(riskBucketsOption).length" :option="riskBucketsOption" />
+						<AnalyticsChart v-if="Object.keys(riskBucketsOption).length" :option="riskBucketsOption" @click="onRiskRadarClick" />
+						<p v-if="Object.keys(riskBucketsOption).length" class="mt-2 text-[11px] text-slate-500">
+							Click a bucket bar to open student drill-down.
+						</p>
 						<p v-else class="analytics-empty">No risk distribution available for this scope.</p>
 					</template>
 				</AnalyticsCard>
@@ -776,7 +871,20 @@ onBeforeUnmount(() => {
 
 				<AnalyticsCard v-else title="Student Details" :interactive="false">
 					<template #body>
-						<p class="analytics-empty">Admin lens intentionally keeps student-level names hidden by default.</p>
+						<div v-if="selectedRiskBucketRows.length" class="space-y-2 text-xs">
+							<p class="type-label text-slate-600">{{ selectedRiskBucketLabel }} bucket preview</p>
+							<ul class="max-h-48 space-y-2 overflow-auto">
+								<li
+									v-for="item in selectedRiskBucketRows.slice(0, 8)"
+									:key="item.student"
+									class="rounded-lg border border-slate-200 px-2 py-2"
+								>
+									<p class="font-medium text-ink">{{ item.student_name }}</p>
+									<p class="mt-1 text-slate-600">Rate {{ item.attendance_rate }}% • Abs {{ item.absent_count }} • Late {{ item.late_count }}</p>
+								</li>
+							</ul>
+						</div>
+						<p v-else class="analytics-empty">Click a radar bar to inspect student names for that bucket.</p>
 					</template>
 				</AnalyticsCard>
 			</div>
@@ -887,7 +995,24 @@ onBeforeUnmount(() => {
 					</template>
 				</AnalyticsCard>
 			</div>
-		</section>
+			</section>
+
+		<SideDrawerList
+			:open="riskDrawerOpen"
+			:title="`${selectedRiskBucketLabel} Risk Students`"
+			entity-label="Students"
+			:rows="selectedRiskBucketRows"
+			@close="closeRiskDrawer"
+		>
+			<template #row="{ row }">
+				<div class="flex flex-col gap-1">
+					<span class="font-medium text-slate-800">{{ row.student_name }}</span>
+					<span class="text-xs text-slate-500">
+						Rate {{ row.attendance_rate }}% • Abs {{ row.absent_count }} • Late {{ row.late_count }} • Unexplained {{ row.unexplained_absences }}
+					</span>
+				</div>
+			</template>
+		</SideDrawerList>
 
 		<p v-if="isLoading" class="analytics-empty">Refreshing attendance analytics...</p>
 	</div>
