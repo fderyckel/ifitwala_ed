@@ -15,7 +15,7 @@
 		:show="open"
 		@after-leave="emitAfterLeave"
 	>
-    <Dialog as="div" class="if-overlay" :style="{ zIndex }" :initialFocus="initialFocus" @close="handleClose">
+    <Dialog as="div" class="if-overlay" :style="{ zIndex }" :initialFocus="initialFocus" @close="onDialogClose">
       <TransitionChild
         as="template"
         enter="if-overlay__fade-enter"
@@ -25,7 +25,7 @@
         leave-from="if-overlay__fade-to"
         leave-to="if-overlay__fade-from"
       >
-        <div class="if-overlay__backdrop" />
+        <div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
       </TransitionChild>
 
       <div class="if-overlay__wrap">
@@ -45,7 +45,7 @@
               class="sr-only"
               aria-hidden="true"
               tabindex="0"
-              @click="handleClose"
+              @click="emitClose('programmatic')"
             >
               Close
             </button>
@@ -60,7 +60,7 @@
                 type="button"
                 class="if-overlay__icon-button"
                 aria-label="Close"
-                @click="handleClose"
+                @click="emitClose('programmatic')"
               >
                 <FeatherIcon name="x" class="h-5 w-5" />
               </button>
@@ -282,7 +282,7 @@
 
             <!-- Footer -->
             <div class="if-overlay__footer">
-              <Button appearance="secondary" @click="handleClose">Cancel</Button>
+              <Button appearance="secondary" @click="emitClose('programmatic')">Cancel</Button>
               <Button appearance="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">
                 Create
               </Button>
@@ -295,7 +295,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { Button, FormControl, createResource, toast, FeatherIcon } from 'frappe-ui'
 import type { CreateTaskDeliveryInput, CreateTaskDeliveryPayload } from '@/types/tasks'
@@ -308,8 +308,10 @@ const props = defineProps<{
   prefillAvailableFrom?: string | null
 }>()
 
+type CloseReason = 'backdrop' | 'esc' | 'programmatic'
+
 const emit = defineEmits<{
-  (e: 'close'): void
+  (e: 'close', reason: CloseReason): void
   (e: 'created', payload: CreateTaskDeliveryPayload): void
   (e: 'after-leave'): void
 }>()
@@ -327,12 +329,25 @@ const errorMessage = ref('')
 
 const initialFocus = ref<HTMLElement | null>(null)
 
-function handleClose() {
-  emit('close')
+function emitClose(reason: CloseReason = 'programmatic') {
+  emit('close', reason)
 }
 
 function emitAfterLeave() {
   emit('after-leave')
+}
+
+/**
+ * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
+ * Under A+, ignore it and close only via explicit backdrop/esc/button paths.
+ */
+function onDialogClose(_payload: unknown) {
+  // no-op by design
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (!props.open) return
+  if (e.key === 'Escape') emitClose('esc')
 }
 
 const taskTypeOptions = [
@@ -458,6 +473,19 @@ watch(
   },
   { immediate: true }
 )
+
+watch(
+  () => props.open,
+  (v) => {
+    if (v) document.addEventListener('keydown', onKeydown, true)
+    else document.removeEventListener('keydown', onKeydown, true)
+  },
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown, true)
+})
 
 function initializeForm() {
   form.title = ''
@@ -590,7 +618,7 @@ const payload: CreateTaskDeliveryInput = {
     if (!out?.task || !out?.task_delivery) throw new Error('Unexpected server response.')
 
     emit('created', out)
-    emit('close')
+    emitClose('programmatic')
   } catch (error) {
     console.error('[CreateTaskDeliveryOverlay] submit:error', error)
     const msg = error instanceof Error ? error.message : 'Unable to create the assignment right now.'
