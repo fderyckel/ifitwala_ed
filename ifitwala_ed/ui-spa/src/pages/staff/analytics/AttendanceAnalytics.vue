@@ -5,7 +5,6 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import AnalyticsCard from '@/components/analytics/AnalyticsCard.vue'
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
 import KpiRow from '@/components/analytics/KpiRow.vue'
-import SideDrawerList from '@/components/analytics/SideDrawerList.vue'
 import StatsTile from '@/components/analytics/StatsTile.vue'
 import DateRangePills from '@/components/filters/DateRangePills.vue'
 import FiltersBar from '@/components/filters/FiltersBar.vue'
@@ -61,7 +60,6 @@ const myGroups = ref<AttendanceMyGroupsResponse | null>(null)
 const contextStudent = ref<string>('')
 const contextLoading = ref(false)
 const contextData = ref<AttendanceRiskResponse['context_sparkline']>(null)
-const riskDrawerOpen = ref(false)
 const selectedRiskBucket = ref<RiskBucket | null>(null)
 
 const thresholds: AttendanceThresholds = {
@@ -313,7 +311,10 @@ const selectedRiskBucketLabel = computed(() => {
 
 const selectedRiskBucketRows = computed(() => {
 	if (!selectedRiskBucket.value) return []
-	const rows = risk.value?.bucket_students?.[selectedRiskBucket.value] || []
+	let rows = risk.value?.bucket_students?.[selectedRiskBucket.value] || []
+	if (!rows.length && selectedRiskBucket.value === 'critical') {
+		rows = risk.value?.top_critical || []
+	}
 	return rows.map((row) => ({ ...row, id: row.student, name: row.student_name }))
 })
 
@@ -428,7 +429,6 @@ async function reloadDashboard() {
 	pageError.value = null
 	actionError.value = null
 	contextData.value = null
-	riskDrawerOpen.value = false
 	selectedRiskBucket.value = null
 
 	try {
@@ -521,13 +521,8 @@ function exceptionTone(status: AttendanceExceptionRow['status']) {
 	return 'text-slate-600 bg-slate-100'
 }
 
-function closeRiskDrawer() {
-	riskDrawerOpen.value = false
-}
-
 function openRiskBucket(bucket: RiskBucket) {
 	selectedRiskBucket.value = bucket
-	riskDrawerOpen.value = true
 }
 
 function onRiskRadarClick(event: unknown) {
@@ -589,7 +584,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div class="analytics-shell">
+	<div class="analytics-shell attendance-analytics-shell">
 		<header class="flex flex-wrap items-end justify-between gap-3">
 			<div>
 				<h1 class="type-h2 text-canopy">Attendance Analytics</h1>
@@ -706,7 +701,7 @@ onBeforeUnmount(() => {
 			{{ actionError }}
 		</div>
 
-		<section class="analytics-grid">
+		<section class="analytics-grid attendance-analytics-grid">
 			<AnalyticsCard title="Universal KPIs" :interactive="false" class="analytics-card--wide">
 				<template #body>
 					<KpiRow :items="kpiItems" :clickable="false" />
@@ -738,7 +733,7 @@ onBeforeUnmount(() => {
 				<p class="type-body mt-1 text-slate-token/75">Patterns, exceptions, and turnaround signals for your groups.</p>
 			</header>
 
-			<div class="analytics-grid">
+			<div class="analytics-grid attendance-analytics-grid">
 				<AnalyticsCard title="My Groups Attendance Snapshot" :interactive="false" class="analytics-card--wide">
 					<template #body>
 						<div v-if="myGroups?.groups?.length" class="grid gap-3 md:grid-cols-2">
@@ -820,12 +815,12 @@ onBeforeUnmount(() => {
 				<p class="type-body mt-1 text-slate-token/75">Decline detection, unexplained absences, and positive turnaround.</p>
 			</header>
 
-			<div class="analytics-grid">
+			<div class="analytics-grid attendance-analytics-grid">
 				<AnalyticsCard title="Chronic Absence Radar" :interactive="false">
 					<template #body>
 						<AnalyticsChart v-if="Object.keys(riskBucketsOption).length" :option="riskBucketsOption" @click="onRiskRadarClick" />
 						<p v-if="Object.keys(riskBucketsOption).length" class="mt-2 text-[11px] text-slate-500">
-							Click a bucket bar to open student drill-down.
+							Click a bucket bar to show student details.
 						</p>
 						<p v-else class="analytics-empty">No risk distribution available for this scope.</p>
 					</template>
@@ -884,6 +879,9 @@ onBeforeUnmount(() => {
 								</li>
 							</ul>
 						</div>
+						<p v-else-if="selectedRiskBucket" class="analytics-empty">
+							No students found in the {{ selectedRiskBucketLabel }} bucket for current filters.
+						</p>
 						<p v-else class="analytics-empty">Click a radar bar to inspect student names for that bucket.</p>
 					</template>
 				</AnalyticsCard>
@@ -933,7 +931,7 @@ onBeforeUnmount(() => {
 				<p class="type-body mt-1 text-slate-token/75">School/program health, attendance method reliability, and code governance.</p>
 			</header>
 
-			<div class="analytics-grid">
+			<div class="analytics-grid attendance-analytics-grid">
 				<AnalyticsCard title="Attendance Compliance Overview" :interactive="false" class="analytics-card--wide">
 					<template #body>
 						<div v-if="risk?.compliance_by_scope?.length" class="max-h-72 overflow-auto">
@@ -997,23 +995,22 @@ onBeforeUnmount(() => {
 			</div>
 			</section>
 
-		<SideDrawerList
-			:open="riskDrawerOpen"
-			:title="`${selectedRiskBucketLabel} Risk Students`"
-			entity-label="Students"
-			:rows="selectedRiskBucketRows"
-			@close="closeRiskDrawer"
-		>
-			<template #row="{ row }">
-				<div class="flex flex-col gap-1">
-					<span class="font-medium text-slate-800">{{ row.student_name }}</span>
-					<span class="text-xs text-slate-500">
-						Rate {{ row.attendance_rate }}% • Abs {{ row.absent_count }} • Late {{ row.late_count }} • Unexplained {{ row.unexplained_absences }}
-					</span>
-				</div>
-			</template>
-		</SideDrawerList>
-
 		<p v-if="isLoading" class="analytics-empty">Refreshing attendance analytics...</p>
 	</div>
 </template>
+
+<style scoped>
+.attendance-analytics-shell {
+	max-width: none;
+}
+
+.attendance-analytics-grid {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 768px) {
+	.attendance-analytics-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+</style>

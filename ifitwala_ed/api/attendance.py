@@ -56,6 +56,8 @@ MODE_TTL_SECONDS = {
 	MODE_MY_GROUPS: 600,
 }
 
+CACHE_SCHEMA_VERSION = 2
+
 
 @frappe.whitelist()
 def get(
@@ -576,10 +578,36 @@ def _build_attendance_where(
 
 	program_scope = ctx.get("program_scope") or []
 	if program_scope:
-		conditions.append(f"{alias}.program IN %(program_scope)s")
+		conditions.append(
+			f"""(
+			{alias}.program IN %(program_scope)s
+			OR (
+				COALESCE({alias}.program, '') = ''
+				AND EXISTS (
+					SELECT 1
+					FROM `tabStudent Group` sg_program
+					WHERE sg_program.name = {alias}.student_group
+						AND sg_program.program IN %(program_scope)s
+				)
+			)
+		)"""
+		)
 		params["program_scope"] = tuple(program_scope)
 	elif ctx.get("program"):
-		conditions.append(f"{alias}.program = %(program)s")
+		conditions.append(
+			f"""(
+			{alias}.program = %(program)s
+			OR (
+				COALESCE({alias}.program, '') = ''
+				AND EXISTS (
+					SELECT 1
+					FROM `tabStudent Group` sg_program
+					WHERE sg_program.name = {alias}.student_group
+						AND sg_program.program = %(program)s
+				)
+			)
+		)"""
+		)
 		params["program"] = ctx["program"]
 
 	if ctx.get("student_group"):
@@ -1591,6 +1619,7 @@ def _fetch_cached_result(
 	compute: Callable[[], dict[str, Any]],
 ) -> dict[str, Any]:
 	cache_payload = {
+		"schema_version": CACHE_SCHEMA_VERSION,
 		"mode": mode,
 		"user": ctx.get("user"),
 		"role_class": ctx.get("role_class"),
