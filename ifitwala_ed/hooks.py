@@ -70,10 +70,10 @@ website_route_rules = [
     {"from_route": "/login", "to_route": "login"},
     {"from_route": "/update-password", "to_route": "update-password"},
     # Preserve framework namespaces so website catch-all never hijacks Desk/API/assets.
-    {"from_route": "/app", "to_route": "app"},
-    {"from_route": "/app/<path:subpath>", "to_route": "app"},
-    {"from_route": "/desk", "to_route": "desk"},
-    {"from_route": "/desk/<path:subpath>", "to_route": "desk"},
+    {"from_route": "/app", "to_route": "/app"},
+    {"from_route": "/app/<path:subpath>", "to_route": "/app/<path:subpath>"},
+    {"from_route": "/desk", "to_route": "/desk"},
+    {"from_route": "/desk/<path:subpath>", "to_route": "/desk/<path:subpath>"},
     {"from_route": "/api", "to_route": "/api"},
     {"from_route": "/api/<path:subpath>", "to_route": "/api/<path:subpath>"},
     {"from_route": "/assets/<path:subpath>", "to_route": "/assets/<path:subpath>"},
@@ -99,7 +99,8 @@ website_route_rules = [
 
 # Home Pages
 # ----------
-after_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
+# Force role-based entry path immediately after successful login/session creation.
+on_session_creation = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
 # application home page (will override Website Settings)
 # home_page = "login"
 
@@ -340,10 +341,8 @@ before_request = ["ifitwala_ed.auth.before_request"]
 
 # Authentication and authorization
 # --------------------------------
-
-auth_hooks = [
-	"ifitwala_ed.auth.on_login"
-]
+# One-time login guard for redirect-to=/app scenarios.
+on_login = "ifitwala_ed.auth.on_login"
 
 # Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True
