@@ -67,68 +67,61 @@ def _resolve_login_redirect_path(user: str, roles: set) -> str | None:
 def redirect_user_to_entry_portal():
 	"""
 	Login redirect handler: Routes users to unified portal entry point.
-	
-	This is the PRIMARY redirect authority. It runs via the after_login hook
-	and OVERRIDES any redirect-to parameter from the login URL.
-	
-	Architecture: Unified /portal entry with client-side routing (Option B).
-	The Vue SPA at /portal reads window.defaultPortal (set by www/portal/index.py)
-	and routes internally to the appropriate sub-portal.
-	
-	Policy:
-	- Admissions Applicants -> /admissions (separate admissions portal)
-	- Staff (Academic User, Teacher, etc.) -> Let Frappe handle to /app/{workspace}
-	- All other authenticated users -> /portal (unified entry)
-	
-	The portal entry point determines which sub-portal to show via client-side logic
-	with priority: Staff > Student > Guardian.
-	
-	Home-page persistence note:
-	We overwrite User.home_page with the portal path for non-staff users.
-	This is acceptable for fresh installations; custom home-page preferences
-	(e.g., staff setting /app) will be lost on next login for portal users only.
-	Maintainer decision: "fine for fresh install" (2026-02-07).
-	TODO: User preference persistence planned for v2.
 	"""
 	user = frappe.session.user
+	
+	# CRITICAL DEBUG LOGGING - These will always appear in logs
+	frappe.log_error(f"=== REDIRECT HOOK CALLED ===")
+	frappe.log_error(f"User: {user}")
+	frappe.log_error(f"Guest check: {user == 'Guest'}")
+	
 	if not user or user == "Guest":
+		frappe.log_error(f"ABORT: User is Guest or None")
 		return
 
 	# Check user roles
-	roles = set(frappe.get_roles(user))
+	try:
+		roles = set(frappe.get_roles(user))
+		frappe.log_error(f"Roles found: {roles}")
+	except Exception as e:
+		frappe.log_error(f"ERROR getting roles: {str(e)}")
+		roles = set()
 
 	# Resolve the appropriate portal path
-	path = _resolve_login_redirect_path(user, roles)
+	try:
+		path = _resolve_login_redirect_path(user, roles)
+		frappe.log_error(f"Resolved path: {path}")
+	except Exception as e:
+		frappe.log_error(f"ERROR resolving path: {str(e)}")
+		path = None
 
 	# If path is None and user is staff, let Frappe handle their redirect
-	if path is None and (roles & STAFF_ROLES):
-		frappe.logger().info(
-			f"[AFTER_LOGIN] User {user} is staff with roles {roles} -> letting Frappe handle redirect"
-		)
+	if path is None:
+		if roles & STAFF_ROLES:
+			frappe.log_error(f"Staff user - letting Frappe handle to /app/{{workspace}}")
+		else:
+			frappe.log_error(f"ERROR: No path resolved for non-staff user!")
 		return
 
-	# Debug logging to confirm redirect path during login
-	frappe.logger().info(
-		f"[AFTER_LOGIN] User {user} with roles {roles} -> redirecting to {path}"
-	)
+	# We have a path - FORCE the redirect
+	frappe.log_error(f"FORCING redirect to: {path}")
+	frappe.log_error(f"Response BEFORE: {dict(frappe.local.response)}")
 
 	# Update User.home_page for persistence across sessions
 	try:
 		frappe.db.set_value("User", user, "home_page", path, update_modified=False)
-	except Exception:
-		pass
+		frappe.log_error(f"Updated User.home_page to: {path}")
+	except Exception as e:
+		frappe.log_error(f"ERROR updating home_page: {str(e)}")
 
 	# FORCE redirect by setting all response keys
-	# This OVERRIDES any redirect-to parameter from the login URL
-	# Frappe uses the LAST value set for redirect_to, so we set it here
 	frappe.local.response["home_page"] = path
 	frappe.local.response["redirect_to"] = path
 	frappe.local.response["location"] = path
 	frappe.local.response["type"] = "redirect"
 
-	frappe.logger().info(
-		f"[AFTER_LOGIN] Response set: home_page={path}, redirect_to={path}"
-	)
+	frappe.log_error(f"Response AFTER: {dict(frappe.local.response)}")
+	frappe.log_error(f"=== REDIRECT HOOK COMPLETE ===")
 
 
 @frappe.whitelist()
