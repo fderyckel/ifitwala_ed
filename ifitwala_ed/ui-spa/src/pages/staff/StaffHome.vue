@@ -536,7 +536,7 @@ const analyticsCategories = [
 		description: 'Coverage, punctuality, and daily health of the timetable.',
 		icon: 'check-square',
 		links: [
-			{ label: 'Daily Attendance', to: '/analytics/operations/daily-attendance' },
+			{ label: 'Daily Attendance', to: { name: 'staff-attendance-analytics' } },
 			{ label: 'Absence Trends', to: '/analytics/operations/absence-trends' },
 			{ label: 'Late Arrivals', to: '/analytics/operations/late-arrivals' },
 			{ label: 'Duty Coverage', to: '/analytics/operations/duty-coverage' },
