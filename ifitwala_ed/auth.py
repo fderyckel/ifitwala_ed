@@ -50,6 +50,12 @@ def on_login():
 	if not user or user == "Guest":
 		return
 
+	# Ensure role-based login landing is always populated on the login response.
+	# This keeps behavior stable even when Frappe login flow bypasses
+	# on_session_creation in edge paths.
+	from ifitwala_ed.api.users import redirect_user_to_entry_portal
+	redirect_user_to_entry_portal()
+
 	# Set flag for one-time redirect guard
 	# This will be checked in before_request to force portal landing
 	frappe.session.data[FIRST_LOGIN_FLAG] = True
@@ -68,6 +74,13 @@ def _has_active_employee_profile(*, user: str, user_roles: set) -> bool:
 	)
 
 
+def _has_staff_portal_access(*, user: str, user_roles: set) -> bool:
+	"""Return True when user should land on staff portal routes."""
+	if user_roles & STAFF_ROLES:
+		return True
+	return _has_active_employee_profile(user=user, user_roles=user_roles)
+
+
 def _resolve_portal_path(*, user: str, user_roles: set) -> str:
 	"""
 	Resolve the appropriate portal path based on user roles.
@@ -81,7 +94,7 @@ def _resolve_portal_path(*, user: str, user_roles: set) -> str:
 	"""
 	if "Admissions Applicant" in user_roles:
 		return "/admissions"
-	if _has_active_employee_profile(user=user, user_roles=user_roles):
+	if _has_staff_portal_access(user=user, user_roles=user_roles):
 		return "/portal/staff"
 	if "Student" in user_roles:
 		return "/portal/student"
@@ -113,7 +126,7 @@ def before_request():
 	
 	# Get user roles
 	user_roles = set(frappe.get_roles(user))
-	
+
 	# -------------------------------------------------------------------------
 	# 1) One-time post-login redirect guard (first hop after login)
 	# -------------------------------------------------------------------------

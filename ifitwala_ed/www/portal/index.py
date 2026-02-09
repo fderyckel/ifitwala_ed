@@ -63,6 +63,16 @@ def _redirect(to: str):
 	frappe.local.flags.redirect_location = to
 	raise frappe.Redirect
 
+STAFF_PORTAL_ROLES = frozenset([
+	"Academic User",
+	"System Manager",
+	"Teacher",
+	"Administrator",
+	"Finance User",
+	"HR User",
+	"HR Manager",
+])
+
 ALLOWED_ROLES = {
 	"Student",
 	"Guardian",
@@ -87,19 +97,21 @@ def get_context(context):
 
 	# ---------------------------------------------------------------
 	# Portal section eligibility (portal sections != frappe roles)
-	# Compromise rule:
-	#   Staff: user has role "Employee" AND linked Employee.employment_status == "Active"
+	# Staff access rule:
+	#   Active Employee profile OR dedicated staff role.
 	# ---------------------------------------------------------------
-	is_employee = (
+	is_active_employee = (
 		("Employee" in user_roles)
 		and bool(frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}))
 	)
+	has_staff_role = bool(user_roles & STAFF_PORTAL_ROLES)
+	is_staff_portal_user = is_active_employee or has_staff_role
 
 	is_student = "Student" in user_roles
 	is_guardian = "Guardian" in user_roles
 
 	portal_sections = []
-	if is_employee:
+	if is_staff_portal_user:
 		portal_sections.append("Staff")
 	if is_student:
 		portal_sections.append("Student")

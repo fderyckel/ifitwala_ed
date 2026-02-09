@@ -435,8 +435,8 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			frappe.set_user("Administrator")
 			frappe.delete_doc("User", user.email, force=True)
 
-	def test_first_login_guard_redirects_staff_to_portal(self):
-		"""Employee first request to /app should redirect to unified /portal."""
+	def test_first_login_guard_redirects_staff_to_staff_portal(self):
+		"""Staff first request to /app should redirect to /portal/staff."""
 		# Create test user with staff role
 		user = frappe.new_doc("User")
 		user.email = "test_staff_guard@example.com"
@@ -460,8 +460,8 @@ class TestLoginRedirectGuard(FrappeTestCase):
 				with self.assertRaises(frappe.Redirect):
 					before_request()
 
-				# Verify redirect to unified /portal (Option B architecture)
-				self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+				# Verify redirect to staff portal.
+				self.assertEqual(frappe.local.flags.redirect_location, "/portal/staff")
 			finally:
 				if original_path:
 					frappe.request.path = original_path
@@ -682,11 +682,11 @@ class TestResolvePortalPath(FrappeTestCase):
 		path = _resolve_portal_path(user="test@example.com", user_roles=roles)
 		self.assertEqual(path, "/admissions")
 
-	def test_staff_unified_portal_entry(self):
-		"""Staff roles without active Employee profile should fall back to /portal."""
+	def test_staff_portal_entry(self):
+		"""Staff roles should resolve to /portal/staff."""
 		roles = {"Student", "Academic User"}
 		path = _resolve_portal_path(user="test@example.com", user_roles=roles)
-		self.assertEqual(path, "/portal")
+		self.assertEqual(path, "/portal/staff")
 
 	def test_student_role_specific_portal_entry(self):
 		"""Student should use /portal/student."""

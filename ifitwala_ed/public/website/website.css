@@ -30,3 +30,82 @@
 		-webkit-line-clamp: unset;
 	}
 }
+
+@layer components {
+	body.for-login,
+	body:has(.for-login) {
+		background-color: #f8fafc;
+		color: #0f172a;
+	}
+
+	body.for-login .navbar,
+	body:has(.for-login) .navbar {
+		position: sticky;
+		top: 0;
+		z-index: 40;
+		border-bottom: 1px solid #e2e8f0;
+		background-color: rgb(255 255 255 / 0.95);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
+	}
+
+	body.for-login .navbar .container,
+	body:has(.for-login) .navbar .container {
+		max-width: 72rem;
+		margin-inline: auto;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1rem 1.5rem;
+	}
+
+	body.for-login .navbar .navbar-brand,
+	body:has(.for-login) .navbar .navbar-brand {
+		font-size: 1.125rem;
+		font-weight: 600;
+		color: #0f172a;
+	}
+
+	body.for-login .navbar .navbar-toggler,
+	body:has(.for-login) .navbar .navbar-toggler,
+	body.for-login .navbar .dropdown-menu,
+	body:has(.for-login) .navbar .dropdown-menu {
+		display: none !important;
+	}
+
+	body.for-login .navbar .navbar-collapse,
+	body:has(.for-login) .navbar .navbar-collapse {
+		display: flex !important;
+		flex: 1 1 auto;
+		justify-content: flex-end;
+	}
+
+	body.for-login .navbar .navbar-nav,
+	body:has(.for-login) .navbar .navbar-nav {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	body.for-login .navbar .nav-link,
+	body:has(.for-login) .navbar .nav-link {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.5rem 0.75rem;
+		border-radius: 0.375rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: #334155;
+		text-decoration: none;
+	}
+
+	body.for-login .navbar .nav-link:hover,
+	body:has(.for-login) .navbar .nav-link:hover {
+		background-color: #f1f5f9;
+		color: #0f172a;
+	}
+}

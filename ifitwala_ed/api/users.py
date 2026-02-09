@@ -29,6 +29,13 @@ def _has_active_employee_profile(*, user: str, roles: set) -> bool:
 	)
 
 
+def _has_staff_portal_access(*, user: str, roles: set) -> bool:
+	"""Return True when user should land on the staff portal."""
+	if roles & STAFF_ROLES:
+		return True
+	return _has_active_employee_profile(user=user, roles=roles)
+
+
 def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
 	"""
 	Resolve the appropriate portal path based on user roles.
@@ -42,7 +49,7 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
 	"""
 	if "Admissions Applicant" in roles:
 		return "/admissions"
-	if _has_active_employee_profile(user=user, roles=roles):
+	if _has_staff_portal_access(user=user, roles=roles):
 		return "/portal/staff"
 	if "Student" in roles:
 		return "/portal/student"
