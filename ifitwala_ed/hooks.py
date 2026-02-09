@@ -69,6 +69,9 @@ website_route_rules = [
     {"from_route": "/staff/<path:subpath>", "to_route": "/portal/staff/<path:subpath>"},
     {"from_route": "/login", "to_route": "login"},
     {"from_route": "/update-password", "to_route": "update-password"},
+    {"from_route": "/home", "to_route": "website"},
+    {"from_route": "/index", "to_route": "website"},
+    {"from_route": "/index.html", "to_route": "website"},
     # Preserve core Frappe website assets and metadata routes.
     {"from_route": "/website_script.js", "to_route": "/website_script.js"},
     {"from_route": "/website_style.css", "to_route": "/website_style.css"},

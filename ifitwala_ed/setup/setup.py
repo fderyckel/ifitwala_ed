@@ -254,7 +254,7 @@ def setup_website_top_bar():
 
     top_bar_items = [
         # Primary items
-        {"label": "Home"},
+        {"label": "Home", "url": "/"},
         {"label": "About Us"},
         {"label": "Academics"},
         {"label": "Admission"},
@@ -281,6 +281,8 @@ def setup_website_top_bar():
 
     ws = frappe.get_single("Website Settings")
     ws.top_bar_items = []
+    if ws.meta.has_field("home_page"):
+        ws.home_page = "/"
 
     for item in top_bar_items:
         ws.append("top_bar_items", item)

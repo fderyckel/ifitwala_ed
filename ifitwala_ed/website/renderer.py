@@ -14,6 +14,14 @@ from ifitwala_ed.website.utils import (
 )
 
 
+ROOT_ROUTE_ALIASES = {
+	"/",
+	"/home",
+	"/index",
+	"/index.html",
+}
+
+
 def _fallback_nav_label(*, route: str, page_type: str | None) -> str:
 	if route == "/":
 		return _("Home")
@@ -457,6 +465,8 @@ def _build_story_index_context(*, route: str, school):
 
 def build_render_context(*, route: str, preview: bool = False):
 	route = normalize_route(route)
+	if route in ROOT_ROUTE_ALIASES:
+		route = "/"
 	school = resolve_school_from_route(route)
 	segments = [seg for seg in route.split("/") if seg]
 	if not segments:
