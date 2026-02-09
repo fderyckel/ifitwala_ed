@@ -13,6 +13,7 @@ The public root route `/` is resolved through Organization:
 * The selected school **must belong to that Organization**
 * Renderer rewrites `/` to that school root route (`/{school_slug}`)
 * Legacy public entry aliases `/home`, `/index`, and `/index.html` are normalized to `/`
+* Desk entry `/app` is not a public website route and is handled outside website page resolution
 
 This keeps organization-level governance while preserving school-scoped page identity.
 

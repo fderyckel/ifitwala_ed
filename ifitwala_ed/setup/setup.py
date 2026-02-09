@@ -252,31 +252,11 @@ def create_student_file_folder():
 
 def setup_website_top_bar():
 
+    # Keep login surface nav minimal and deterministic.
+    # Public school website navigation is rendered from School Website Page records.
     top_bar_items = [
-        # Primary items
         {"label": "Home", "url": "/"},
-        {"label": "About Us"},
-        {"label": "Academics"},
-        {"label": "Admission"},
-        {"label": "News & Events"},
-        {"label": "Community"},
-        {"label": "Contact Us"},
-
-        # About Us Submenu
-        {"label": "Mission & Values", "url": "/mission-values", "parent_label": "About Us"},
-        {"label": "Leadership & Administration", "url": "/leadership", "parent_label": "About Us"},
-        {"label": "Our History", "url": "/our-history", "parent_label": "About Us"},
-
-        # Academics Submenu
-        {"label": "Programs", "url": "/programs", "parent_label": "Academics"},
-        {"label": "Curriculum & Learning", "url": "/curriculum", "parent_label": "Academics"},
-        {"label": "Resources & Support", "url": "/resources", "parent_label": "Academics"},
-
-        # Community Submenu
-        {"label": "Community Engagement", "url": "/engagement", "parent_label": "Community"},
-        {"label": "Parents & Families", "url": "/parents", "parent_label": "Community"},
-        {"label": "Alumni", "url": "/alumni", "parent_label": "Community"},
-        {"label": "Recruitment", "url": "/recruitment", "parent_label": "Community"},
+        {"label": "Login", "url": "/login"},
     ]
 
     ws = frappe.get_single("Website Settings")

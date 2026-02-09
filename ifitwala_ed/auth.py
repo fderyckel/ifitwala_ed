@@ -39,6 +39,12 @@ RESTRICTED_ROLES = frozenset([
 # Session key for one-time post-login redirect guard
 FIRST_LOGIN_FLAG = "ifitwala_first_login_redirect"
 
+# Legacy root aliases that should always canonicalize to "/"
+ROOT_ROUTE_ALIASES = frozenset([
+	"/index",
+	"/index.html",
+])
+
 
 def on_login():
 	"""
@@ -103,17 +109,28 @@ def before_request():
 	The one-time guard is cleared after first request, allowing staff to manually
 	navigate to /app afterward (e.g., via "Switch to Desk").
 	"""
+	# Get current request path
+	path = getattr(frappe.request, "path", "") or ""
+
+	# Canonicalize legacy root aliases before any role handling.
+	if path in ROOT_ROUTE_ALIASES:
+		frappe.local.flags.redirect_location = "/"
+		raise frappe.Redirect
+
 	user = frappe.session.user
-	
+
 	# Skip for unauthenticated users
 	if not user or user == "Guest":
 		return
 	
-	# Get current request path
-	path = getattr(frappe.request, "path", "") or ""
-	
 	# Get user roles
 	user_roles = set(frappe.get_roles(user))
+
+	# Bare /app is not a valid destination; route users to their portal entry.
+	if path == "/app":
+		portal_path = _resolve_portal_path(user=user, user_roles=user_roles)
+		frappe.local.flags.redirect_location = portal_path
+		raise frappe.Redirect
 	
 	# -------------------------------------------------------------------------
 	# 1) One-time post-login redirect guard (first hop after login)

@@ -46,7 +46,7 @@ class TestAuthBeforeRequest(FrappeTestCase):
 		self.assertEqual(STAFF_ROLES, expected)
 
 	def test_guardian_accessing_desk_is_redirected(self):
-		"""Guardian without staff role accessing /desk should be redirected to /portal."""
+		"""Guardian without staff role accessing /desk should be redirected to /portal/guardian."""
 		# Create test user with Guardian role only
 		user = frappe.new_doc("User")
 		user.email = "test_guardian_desk@example.com"
@@ -77,7 +77,7 @@ class TestAuthBeforeRequest(FrappeTestCase):
 				before_request()
 			
 			# Verify redirect location
-			self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+			self.assertEqual(frappe.local.flags.redirect_location, "/portal/guardian")
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -87,7 +87,7 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			frappe.delete_doc("User", user.email, force=True)
 
 	def test_student_accessing_desk_is_redirected(self):
-		"""Student without staff role accessing /desk should be redirected to /portal."""
+		"""Student without staff role accessing /desk should be redirected to /portal/student."""
 		# Create test user with Student role only
 		user = frappe.new_doc("User")
 		user.email = "test_student_desk@example.com"
@@ -118,7 +118,7 @@ class TestAuthBeforeRequest(FrappeTestCase):
 				before_request()
 			
 			# Verify redirect location
-			self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+			self.assertEqual(frappe.local.flags.redirect_location, "/portal/student")
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -128,7 +128,7 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			frappe.delete_doc("User", user.email, force=True)
 
 	def test_student_accessing_app_is_redirected(self):
-		"""Student accessing /app should be redirected to /portal."""
+		"""Student accessing /app should be redirected to /portal/student."""
 		# Create test user with Student role
 		user = frappe.new_doc("User")
 		user.email = "test_student_app@example.com"
@@ -159,7 +159,7 @@ class TestAuthBeforeRequest(FrappeTestCase):
 				before_request()
 			
 			# Verify redirect location
-			self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+			self.assertEqual(frappe.local.flags.redirect_location, "/portal/student")
 		finally:
 			# Cleanup
 			frappe.set_user("Administrator")
@@ -470,7 +470,7 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			frappe.delete_doc("User", user.email, force=True)
 
 	def test_first_login_guard_redirects_student_to_portal(self):
-		"""Student first request to /app should redirect to unified /portal."""
+		"""Student first request to /app should redirect to /portal/student."""
 		# Create test user with Student role
 		user = frappe.new_doc("User")
 		user.email = "test_student_guard@example.com"
@@ -502,8 +502,8 @@ class TestLoginRedirectGuard(FrappeTestCase):
 				with self.assertRaises(frappe.Redirect):
 					before_request()
 
-				# Verify redirect to unified /portal (Option B architecture)
-				self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+				# Verify role-specific redirect path
+				self.assertEqual(frappe.local.flags.redirect_location, "/portal/student")
 			finally:
 				if original_path:
 					frappe.request.path = original_path
@@ -513,7 +513,7 @@ class TestLoginRedirectGuard(FrappeTestCase):
 			frappe.delete_doc("User", user.email, force=True)
 
 	def test_first_login_guard_redirects_guardian_to_portal(self):
-		"""Guardian first request to /app should redirect to unified /portal."""
+		"""Guardian first request to /app should redirect to /portal/guardian."""
 		# Create test user with Guardian role
 		user = frappe.new_doc("User")
 		user.email = "test_guardian_guard@example.com"
@@ -545,8 +545,8 @@ class TestLoginRedirectGuard(FrappeTestCase):
 				with self.assertRaises(frappe.Redirect):
 					before_request()
 
-				# Verify redirect to unified /portal (Option B architecture)
-				self.assertEqual(frappe.local.flags.redirect_location, "/portal")
+				# Verify role-specific redirect path
+				self.assertEqual(frappe.local.flags.redirect_location, "/portal/guardian")
 			finally:
 				if original_path:
 					frappe.request.path = original_path
@@ -674,34 +674,34 @@ class TestLoginRedirectGuard(FrappeTestCase):
 
 
 class TestResolvePortalPath(FrappeTestCase):
-	"""Test the _resolve_portal_path helper function (Option B: unified /portal)."""
+	"""Test the _resolve_portal_path helper function."""
 
 	def test_admissions_applicant_priority(self):
 		"""Admissions Applicant should go to /admissions (separate portal)."""
 		roles = {"Admissions Applicant", "Student", "Academic User"}
-		path = _resolve_portal_path(roles)
+		path = _resolve_portal_path(user="test@example.com", user_roles=roles)
 		self.assertEqual(path, "/admissions")
 
 	def test_staff_unified_portal_entry(self):
-		"""Staff should use unified /portal entry (Option B architecture)."""
+		"""Staff roles without active Employee profile should fall back to /portal."""
 		roles = {"Student", "Academic User"}
-		path = _resolve_portal_path(roles)
+		path = _resolve_portal_path(user="test@example.com", user_roles=roles)
 		self.assertEqual(path, "/portal")
 
-	def test_student_unified_portal_entry(self):
-		"""Student should use unified /portal entry (Option B architecture)."""
+	def test_student_role_specific_portal_entry(self):
+		"""Student should use /portal/student."""
 		roles = {"Guardian", "Student"}
-		path = _resolve_portal_path(roles)
-		self.assertEqual(path, "/portal")
+		path = _resolve_portal_path(user="test@example.com", user_roles=roles)
+		self.assertEqual(path, "/portal/student")
 
-	def test_guardian_unified_portal_entry(self):
-		"""Guardian should use unified /portal entry (Option B architecture)."""
+	def test_guardian_role_specific_portal_entry(self):
+		"""Guardian should use /portal/guardian."""
 		roles = {"Guardian"}
-		path = _resolve_portal_path(roles)
-		self.assertEqual(path, "/portal")
+		path = _resolve_portal_path(user="test@example.com", user_roles=roles)
+		self.assertEqual(path, "/portal/guardian")
 
-	def test_unknown_roles_unified_portal_entry(self):
-		"""Unknown roles should use unified /portal entry (Option B architecture)."""
+	def test_unknown_roles_portal_fallback(self):
+		"""Unknown roles should use /portal fallback."""
 		roles = {"Some Custom Role"}
-		path = _resolve_portal_path(roles)
+		path = _resolve_portal_path(user="test@example.com", user_roles=roles)
 		self.assertEqual(path, "/portal")

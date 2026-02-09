@@ -70,6 +70,7 @@ def _build_site_shell_context(*, school, route: str) -> dict:
 	brand_url = normalize_route(f"/{school_slug}") if school_slug else "/"
 	navigation = _get_navigation_items(school=school)
 	footer_links = navigation[:4]
+	is_guest_user = (frappe.session.user or "Guest") == "Guest"
 
 	return {
 		"brand_name": school.school_name or school.name,
@@ -79,6 +80,8 @@ def _build_site_shell_context(*, school, route: str) -> dict:
 		"footer_links": footer_links,
 		"current_route": normalize_route(route),
 		"current_year": frappe.utils.now_datetime().year,
+		"is_guest_user": is_guest_user,
+		"login_url": "/login",
 	}
 
 

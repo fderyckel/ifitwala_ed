@@ -51,15 +51,25 @@
 					<span class="text-base font-semibold tracking-tight">{{ site_shell.brand_name }}</span>
 				</a>
 
-				<button
-					type="button"
-					class="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium md:hidden"
-					data-site-nav-toggle
-					aria-expanded="false"
-					aria-controls="ifitwala-site-nav"
-				>
-					Menu
-				</button>
+				<div class="flex items-center gap-2">
+					{% if site_shell.is_guest_user %}
+						<a
+							href="{{ site_shell.login_url }}"
+							class="hidden rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 md:inline-flex"
+						>
+							Login
+						</a>
+					{% endif %}
+					<button
+						type="button"
+						class="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium"
+						data-site-nav-toggle
+						aria-expanded="false"
+						aria-controls="ifitwala-site-nav"
+					>
+						Menu
+					</button>
+				</div>
 			</div>
 
 			<nav id="ifitwala-site-nav" data-site-nav-panel class="hidden border-t border-slate-200 md:block">
@@ -76,6 +86,16 @@
 								</a>
 							</li>
 						{% endfor %}
+						{% if site_shell.is_guest_user %}
+							<li class="md:hidden">
+								<a
+									href="{{ site_shell.login_url }}"
+									class="inline-flex rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+								>
+									Login
+								</a>
+							</li>
+						{% endif %}
 					</ul>
 				</div>
 			</nav>
