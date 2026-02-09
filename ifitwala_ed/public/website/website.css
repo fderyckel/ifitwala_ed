@@ -1,5 +1,9 @@
 /* ifitwala_ed/public/website/website.css */
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "../../website/templates/**/*.html";
+@source "../../website/blocks/**/*.html";
+@source "../../www/**/*.html";
+@source "./**/*.js";
 
 @layer base {
 	img[loading="lazy"],
