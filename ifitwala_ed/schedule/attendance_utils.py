@@ -257,7 +257,7 @@ def bulk_upsert_attendance(payload=None):
 
 		# Term window (today must be within current term if one exists)
 		# today = getdate()  # noqa: F841
-		current_term = get_current_term(sg.academic_year)
+		current_term = get_current_term(group_school, sg.academic_year)
 		term_guard = None
 		if current_term:
 			term_guard = (getdate(current_term.term_start_date), getdate(current_term.term_end_date))

@@ -56,7 +56,7 @@ MODE_TTL_SECONDS = {
 	MODE_MY_GROUPS: 600,
 }
 
-CACHE_SCHEMA_VERSION = 2
+CACHE_SCHEMA_VERSION = 3
 
 
 @frappe.whitelist()
@@ -85,7 +85,6 @@ def get(
 	if mode_value not in ALLOWED_MODES:
 		frappe.throw(_("Invalid attendance mode: {0}").format(mode_value))
 
-	thresholds_map = _normalize_thresholds(thresholds)
 	heatmap_mode_value = _normalize_heatmap_mode(heatmap_mode)
 	whole_day_value = 1 if cint(whole_day) else 0
 
@@ -100,6 +99,10 @@ def get(
 		term=term,
 		whole_day=whole_day_value,
 		activity_only=1 if cint(activity_only) else 0,
+	)
+	thresholds_map = _normalize_thresholds(
+		thresholds,
+		selected_school=ctx.get("selected_school"),
 	)
 
 	cache_ttl = MODE_TTL_SECONDS.get(mode_value, 900)
@@ -187,6 +190,10 @@ def _resolve_request_context(
 	role_class = _resolve_role_class(roles)
 
 	school_scope = _resolve_school_scope(user=user, school=school)
+	selected_school = _resolve_selected_root_school(
+		requested_school=school,
+		school_scope=school_scope,
+	)
 	program_value = _clean_optional(program)
 	program_scope = _resolve_program_scope(program_value)
 	if not school_scope:
@@ -204,6 +211,7 @@ def _resolve_request_context(
 			"previous_date_to": getdate(nowdate()),
 			"previous_instruction_days": [],
 			"window_source": "empty_scope",
+			"selected_school": selected_school,
 			"program": program_value,
 			"program_scope": program_scope,
 			"student_group": _clean_optional(student_group),
@@ -258,6 +266,7 @@ def _resolve_request_context(
 		"previous_date_to": prev_to,
 		"previous_instruction_days": previous_instruction_days,
 		"window_source": source,
+		"selected_school": selected_school,
 		"program": program_value,
 		"program_scope": program_scope,
 		"student_group": student_group_value,
@@ -312,6 +321,22 @@ def _resolve_school_scope(*, user: str, school: str | None) -> list[str]:
 			frappe.PermissionError,
 		)
 	return intersected
+
+
+def _resolve_selected_root_school(
+	*,
+	requested_school: str | None,
+	school_scope: list[str],
+) -> str | None:
+	requested_value = _clean_optional(requested_school)
+	if requested_value:
+		return requested_value
+
+	default_school = _clean_optional(get_user_default_school())
+	if default_school:
+		return default_school
+
+	return school_scope[0] if school_scope else None
 
 
 def _resolve_role_scope(
@@ -915,24 +940,43 @@ def _compute_mismatch_students(ctx: dict[str, Any]) -> list[dict[str, Any]]:
 	]
 
 
-def _normalize_thresholds(thresholds: dict | str | None) -> dict[str, float]:
-	default_warning = 90.0
-	default_critical = 80.0
+def _normalize_thresholds(
+	thresholds: dict | str | None,
+	*,
+	selected_school: str | None,
+) -> dict[str, float]:
+	default_warning, default_critical = _resolve_school_threshold_defaults(selected_school)
 
-	if isinstance(thresholds, str):
-		try:
-			thresholds = frappe.parse_json(thresholds)
-		except Exception:
-			thresholds = None
-
-	if not isinstance(thresholds, dict):
-		return {"warning": default_warning, "critical": default_critical}
-
-	warning = _to_float(thresholds.get("warning"), default_warning)
-	critical = _to_float(thresholds.get("critical"), default_critical)
+	# Threshold governance is school-owned. Keep request payload accepted for compatibility,
+	# but do not allow client-side overrides.
+	_ = thresholds
+	warning = default_warning
+	critical = default_critical
 	if warning < critical:
 		warning, critical = critical, warning
 	return {"warning": warning, "critical": critical}
+
+
+def _resolve_school_threshold_defaults(selected_school: str | None) -> tuple[float, float]:
+	default_warning = 90.0
+	default_critical = 80.0
+
+	school_name = _clean_optional(selected_school)
+	if not school_name:
+		return default_warning, default_critical
+
+	row = frappe.db.get_value(
+		"School",
+		school_name,
+		["attendance_warning_threshold", "attendance_critical_threshold"],
+		as_dict=True,
+	)
+	if not row:
+		return default_warning, default_critical
+
+	warning = _to_float(row.get("attendance_warning_threshold"), default_warning)
+	critical = _to_float(row.get("attendance_critical_threshold"), default_critical)
+	return warning, critical
 
 
 def _normalize_heatmap_mode(value: str | None) -> str:
@@ -1629,6 +1673,7 @@ def _fetch_cached_result(
 		"date_from": (ctx.get("date_from") or getdate(nowdate())).isoformat(),
 		"date_to": (ctx.get("date_to") or getdate(nowdate())).isoformat(),
 		"window_source": ctx.get("window_source"),
+		"selected_school": ctx.get("selected_school"),
 		"program": ctx.get("program"),
 		"program_scope_hash": _hash_list(ctx.get("program_scope") or []),
 		"student_group": ctx.get("student_group"),

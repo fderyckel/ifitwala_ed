@@ -48,7 +48,6 @@ export interface AttendanceHeatmapParams extends AttendanceBaseParams {
 
 export interface AttendanceRiskParams extends AttendanceBaseParams {
 	mode: 'risk'
-	thresholds?: AttendanceThresholds
 	include_context?: 0 | 1
 	context_student?: string
 }
@@ -59,7 +58,6 @@ export interface AttendanceCodeUsageParams extends AttendanceBaseParams {
 
 export interface AttendanceMyGroupsParams extends AttendanceBaseParams {
 	mode: 'my_groups'
-	thresholds?: AttendanceThresholds
 }
 
 export type AttendanceRequest =

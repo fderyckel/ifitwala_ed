@@ -33,6 +33,9 @@
   "meeting_color",
   "weekend_color",
   "break_color",
+  "attendance_thresholds_section",
+  "attendance_warning_threshold",
+  "attendance_critical_threshold",
   "column_break_1mhp",
   "course_color",
   "todo_color",
@@ -226,6 +229,25 @@
    "fieldname": "break_color",
    "fieldtype": "Color",
    "label": "Default Break Color"
+  },
+  {
+   "fieldname": "attendance_thresholds_section",
+   "fieldtype": "Section Break",
+   "label": "Attendance Analytics Thresholds"
+  },
+  {
+   "default": "90",
+   "description": "Attendance % at or above this value is considered OK.",
+   "fieldname": "attendance_warning_threshold",
+   "fieldtype": "Percent",
+   "label": "Warning Threshold (%)"
+  },
+  {
+   "default": "80",
+   "description": "Attendance % below this value is considered Critical.",
+   "fieldname": "attendance_critical_threshold",
+   "fieldtype": "Percent",
+   "label": "Critical Threshold (%)"
   },
   {
    "default": "07:00:00",

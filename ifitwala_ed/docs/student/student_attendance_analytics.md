@@ -142,7 +142,22 @@ Scope:
 1. **Chronic Absence Radar**
 
    * Histogram: % attendance buckets
-   * Threshold markers (e.g. <90%, <80%)
+   * Threshold markers are resolved from **School settings** on the selected root school:
+
+     * `attendance_warning_threshold`
+     * `attendance_critical_threshold`
+   * Bucket semantics:
+
+     * Critical: rate `< critical`
+     * Warning: rate `>= critical` and `< warning`
+     * OK: rate `>= warning`
+   * Only students with expected sessions in the selected window are bucketed.
+
+### School settings governance
+
+* Threshold source is **server-owned** and read from the selected root school.
+* UI does not own threshold values.
+* On child school creation, threshold fields are copied from the parent school by default.
 
 2. **Risk Signals**
 

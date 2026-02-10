@@ -318,6 +318,8 @@ const selectedRiskBucketRows = computed(() => {
 	return rows.map((row) => ({ ...row, id: row.student, name: row.student_name }))
 })
 
+const activeRiskThresholds = computed(() => risk.value?.thresholds || thresholds)
+
 let loadRunId = 0
 let reloadTimer: number | null = null
 let disposeAttendanceInvalidate: (() => void) | null = null
@@ -450,7 +452,7 @@ async function reloadDashboard() {
 		meta.value = overviewResponse.meta
 
 		if (roleClass.value === 'instructor') {
-			const myGroupsResponse = await analyticsService.getMyGroups({ mode: 'my_groups', thresholds, ...basePayload })
+			const myGroupsResponse = await analyticsService.getMyGroups({ mode: 'my_groups', ...basePayload })
 			if (runId !== loadRunId) return
 			myGroups.value = myGroupsResponse
 			risk.value = null
@@ -459,7 +461,7 @@ async function reloadDashboard() {
 		}
 
 		if (roleClass.value === 'counselor') {
-			const riskResponse = await analyticsService.getRisk({ mode: 'risk', thresholds, ...basePayload })
+			const riskResponse = await analyticsService.getRisk({ mode: 'risk', ...basePayload })
 			if (runId !== loadRunId) return
 			risk.value = riskResponse
 			myGroups.value = null
@@ -468,7 +470,7 @@ async function reloadDashboard() {
 		}
 
 		const [riskResponse, codeUsageResponse] = await Promise.all([
-			analyticsService.getRisk({ mode: 'risk', thresholds, ...basePayload }),
+			analyticsService.getRisk({ mode: 'risk', ...basePayload }),
 			analyticsService.getCodeUsage({ mode: 'code_usage', ...basePayload }),
 		])
 		if (runId !== loadRunId) return
@@ -497,7 +499,6 @@ async function loadContextSparkline() {
 		const payload = buildBasePayload()
 		const response = await analyticsService.getRisk({
 			mode: 'risk',
-			thresholds,
 			include_context: 1,
 			context_student: contextStudent.value,
 			...payload,
@@ -822,6 +823,19 @@ onBeforeUnmount(() => {
 						<p v-if="Object.keys(riskBucketsOption).length" class="mt-2 text-[11px] text-slate-500">
 							Click a bucket bar to show student details.
 						</p>
+						<details v-if="Object.keys(riskBucketsOption).length" class="mt-2 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs text-slate-700">
+							<summary class="cursor-pointer font-medium text-slate-800">
+								What do these buckets mean?
+							</summary>
+							<ul class="mt-2 space-y-1">
+								<li>Critical: attendance rate &lt; {{ activeRiskThresholds.critical }}%</li>
+								<li>Warning: attendance rate &gt;= {{ activeRiskThresholds.critical }}% and &lt; {{ activeRiskThresholds.warning }}%</li>
+								<li>OK: attendance rate &gt;= {{ activeRiskThresholds.warning }}%</li>
+							</ul>
+							<p class="mt-2 text-[11px] text-slate-500">
+								Only students with expected sessions in the selected window are bucketed.
+							</p>
+						</details>
 						<p v-else class="analytics-empty">No risk distribution available for this scope.</p>
 					</template>
 				</AnalyticsCard>
