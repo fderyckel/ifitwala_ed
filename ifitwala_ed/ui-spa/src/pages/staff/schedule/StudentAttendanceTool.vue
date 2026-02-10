@@ -404,6 +404,22 @@ function pickInitialStudentGroupFromRoute(groups: Array<{ value: string }>) {
 	if (exists) filters.student_group = id
 }
 
+function consumeStudentGroupQueryParam() {
+	if (!route.query.student_group) return
+	const q = { ...route.query }
+	delete (q as any).student_group
+	void router.replace({ query: q })
+}
+
+async function syncSelectedGroupContext() {
+	if (!filters.student_group) return
+	consumeStudentGroupQueryParam()
+	await loadCalendarContext()
+	if (selectedDate.value) {
+		await loadRoster()
+	}
+}
+
 function pickDefaultDate(dates: string[]): string | null {
 	if (!dates.length) return null
 
@@ -453,6 +469,12 @@ async function bootstrap() {
 		safeSetError(resolveErrorMessage(err))
 	} finally {
 		bootLoading.value = false
+	}
+
+	// If the group was prefilled during boot (route param / auto-pick), watcher was gated by bootLoading.
+	// Sync explicitly once boot completes.
+	if (!errorBanner.value && filters.student_group) {
+		await syncSelectedGroupContext()
 	}
 }
 
@@ -754,17 +776,7 @@ watch(
 	async () => {
 		if (bootLoading.value) return
 
-		// Clear route param once consumed (avoid surprises when navigating back)
-		if (route.query.student_group) {
-			const q = { ...route.query }
-			delete (q as any).student_group
-			void router.replace({ query: q })
-		}
-
-		await loadCalendarContext()
-		if (selectedDate.value) {
-			await loadRoster()
-		}
+		await syncSelectedGroupContext()
 	}
 )
 

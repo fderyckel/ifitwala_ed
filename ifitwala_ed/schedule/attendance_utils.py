@@ -279,6 +279,7 @@ def bulk_upsert_attendance(payload=None):
 
 	group_names = sorted({r["student_group"] for r in payload})
 	instructor_ids = set(_get_instructor_ids(user)) if not is_admin else set()
+	ay_guard_by_year: Dict[str, tuple | None] = {}
 
 	group_ctx = {}
 	for g in group_names:
@@ -291,6 +292,25 @@ def bulk_upsert_attendance(payload=None):
 		term_guard = None
 		if current_term:
 			term_guard = (getdate(current_term.term_start_date), getdate(current_term.term_end_date))
+
+		# Academic year window fallback when no term is resolved.
+		ay_guard = None
+		ay_key = sg.academic_year or ""
+		if ay_key not in ay_guard_by_year:
+			ay_guard_by_year[ay_key] = None
+			if sg.academic_year:
+				ay_bounds = frappe.db.get_value(
+					"Academic Year",
+					sg.academic_year,
+					["year_start_date", "year_end_date"],
+					as_dict=True,
+				)
+				if ay_bounds:
+					ay_start_raw = ay_bounds.get("year_start_date")
+					ay_end_raw = ay_bounds.get("year_end_date")
+					if ay_start_raw and ay_end_raw:
+						ay_guard_by_year[ay_key] = (getdate(ay_start_raw), getdate(ay_end_raw))
+		ay_guard = ay_guard_by_year.get(ay_key)
 
 		# Student Group Schedule → (rotation_day, block_number) → row
 		schedule_rows = frappe.get_all(
@@ -319,6 +339,7 @@ def bulk_upsert_attendance(payload=None):
 			sg=sg,
 			program_school=group_school,
 			term_guard=term_guard,
+			ay_guard=ay_guard,
 			rotation_map=rotation_map,
 			sched_map=sched_map,
 			valid_meetings=valid_meetings,
@@ -372,6 +393,7 @@ def bulk_upsert_attendance(payload=None):
 		stu = row["student"]
 		grp = row["student_group"]
 		att_date = row["attendance_date"]
+		att_date_obj = getdate(att_date)
 		code = row["attendance_code"]
 		remark_txt = (row.get("remark") or "").strip()[:255]
 		block_norm = _norm_for_key(row.get("block_number"))
@@ -389,8 +411,12 @@ def bulk_upsert_attendance(payload=None):
 			if not (start_d <= getdate() <= end_d):
 				frappe.throw(_("You cannot edit attendance outside the current term."))
 		else:
-			# fallback when no term is defined
-			if att_date < nowdate():
+			# fallback when no term is defined: allow historical edits within the linked academic year.
+			if ctx["ay_guard"]:
+				ay_start, ay_end = ctx["ay_guard"]
+				if not (ay_start <= att_date_obj <= ay_end):
+					frappe.throw(_("You cannot modify attendance outside the linked academic year."))
+			elif att_date_obj < getdate(nowdate()):
 				frappe.throw(_("You cannot modify attendance for past academic years."))
 
 		# Meeting date validation

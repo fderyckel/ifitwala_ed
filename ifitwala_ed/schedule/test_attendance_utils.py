@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import call, patch
 
 from frappe.tests.utils import FrappeTestCase
-from frappe.utils import getdate, nowdate
+from frappe.utils import add_days, getdate, nowdate
 
 from ifitwala_ed.schedule import attendance_utils
 
@@ -32,6 +32,8 @@ class TestAttendanceUtils(FrappeTestCase):
 			),
 		) as current_term_mock, patch.object(
 			attendance_utils.frappe, "get_all", return_value=[]
+		), patch.object(
+			attendance_utils.frappe.db, "get_value", return_value=None
 		), patch.object(
 			attendance_utils, "get_rotation_dates", return_value=[{"date": getdate(att_date), "rotation_day": 1}]
 		), patch.object(
@@ -64,6 +66,8 @@ class TestAttendanceUtils(FrappeTestCase):
 			side_effect=lambda school, academic_year: None,
 		) as current_term_mock, patch.object(
 			attendance_utils.frappe, "get_all", return_value=[]
+		), patch.object(
+			attendance_utils.frappe.db, "get_value", return_value=None
 		), patch.object(
 			attendance_utils, "get_rotation_dates", return_value=[{"date": getdate(att_date), "rotation_day": 1}]
 		), patch.object(
@@ -100,6 +104,8 @@ class TestAttendanceUtils(FrappeTestCase):
 		) as current_term_mock, patch.object(
 			attendance_utils.frappe, "get_all", return_value=[]
 		), patch.object(
+			attendance_utils.frappe.db, "get_value", return_value=None
+		), patch.object(
 			attendance_utils, "get_rotation_dates", return_value=[{"date": getdate(att_date), "rotation_day": 1}]
 		), patch.object(
 			attendance_utils, "get_meeting_dates", return_value=[att_date]
@@ -120,6 +126,44 @@ class TestAttendanceUtils(FrappeTestCase):
 				call(None, "SCH-001", sg.academic_year),
 			],
 		)
+		bulk_insert_mock.assert_called_once()
+
+	def test_bulk_upsert_attendance_allows_past_date_within_academic_year_when_term_missing(self):
+		att_date = add_days(nowdate(), -5)
+		payload = [_attendance_payload(att_date)]
+		sg = _student_group_stub()
+
+		with patch.object(attendance_utils.frappe, "session", SimpleNamespace(user="test.user@example.com")), patch.object(
+			attendance_utils.frappe, "get_roles", return_value=["Academic Admin"]
+		), patch.object(attendance_utils.frappe, "get_cached_doc", return_value=sg), patch.object(
+			attendance_utils, "get_school_for_student_group", return_value=None
+		), patch.object(
+			attendance_utils,
+			"get_current_term",
+			return_value=None,
+		), patch.object(
+			attendance_utils.frappe, "get_all", return_value=[]
+		), patch.object(
+			attendance_utils.frappe.db,
+			"get_value",
+			return_value={
+				"year_start_date": getdate(add_days(nowdate(), -120)),
+				"year_end_date": getdate(add_days(nowdate(), 120)),
+			},
+		), patch.object(
+			attendance_utils, "get_rotation_dates", return_value=[{"date": getdate(att_date), "rotation_day": 1}]
+		), patch.object(
+			attendance_utils, "get_meeting_dates", return_value=[att_date]
+		), patch.object(
+			attendance_utils.frappe.db, "sql", return_value=[]
+		), patch.object(
+			attendance_utils.frappe.db, "bulk_insert"
+		) as bulk_insert_mock, patch.object(
+			attendance_utils.frappe.db, "commit"
+		):
+			result = attendance_utils.bulk_upsert_attendance(payload)
+
+		self.assertEqual(result, {"created": 1, "updated": 0})
 		bulk_insert_mock.assert_called_once()
 
 
