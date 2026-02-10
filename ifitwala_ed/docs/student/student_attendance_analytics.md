@@ -63,6 +63,12 @@ Use this page for desk-equivalent, row-level attendance auditing (filters, group
   * ◉ Whole Day
   * ◉ By Block / Session
 
+**Calendar inheritance rule (Academic Year / Term filters)**
+
+* If the selected school has no Academic Year or Term rows, the backend resolves the first ancestor school in the school tree that has them.
+* Resolution order is strict: self -> parent -> grandparent (first match wins).
+* This preserves sibling isolation while supporting shared parent calendars across child schools.
+
 ---
 
 ## SECTION A — Universal KPIs (everyone sees)

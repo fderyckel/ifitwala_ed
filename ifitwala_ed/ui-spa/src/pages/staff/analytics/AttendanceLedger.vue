@@ -217,7 +217,7 @@ function toggleSort(fieldname: string) {
 
 function scheduleReload() {
 	if (!filtersReady.value) return
-	if (!filters.academic_year) {
+	if (!filters.academic_year && academicYears.value.length) {
 		actionError.value = 'Academic Year is required for the ledger.'
 		return
 	}
@@ -256,7 +256,26 @@ async function loadStudentGroups() {
 
 async function loadAcademicYears() {
 	try {
-		const years = await attendanceService.fetchAcademicYears({ school: filters.school })
+		let years = await attendanceService.fetchAcademicYears({ school: filters.school })
+		if (!years.length) {
+			const groups = studentGroups.value.length
+				? studentGroups.value
+				: await attendanceService.fetchStudentGroups({
+					school: filters.school,
+					program: filters.program,
+				})
+			if (!studentGroups.value.length && groups.length) {
+				studentGroups.value = groups
+			}
+			const derivedYears = Array.from(
+				new Set(
+					groups
+						.map((group) => group.academic_year)
+						.filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+				),
+			).sort((left, right) => right.localeCompare(left))
+			years = derivedYears.map((name) => ({ name }))
+		}
 		academicYears.value = years
 		if (filters.academic_year && !years.some((year) => year.name === filters.academic_year)) {
 			filters.academic_year = years[0]?.name || null

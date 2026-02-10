@@ -165,6 +165,15 @@ def get_ancestor_schools(user_school):
 		)
 	]
 
+
+def get_school_lineage(school: str | None) -> list[str]:
+	"""
+	Return school lineage from nearest to farthest ancestor: [self, parent, grandparent...].
+	"""
+	if not school:
+		return []
+	return [school, *(get_ancestors_of("School", school) or [])]
+
 def get_first_ancestor_with_doc(doctype, school, filters=None):
     """
     Returns the first ancestor (including self) up the school tree that has a matching doctype.

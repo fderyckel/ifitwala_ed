@@ -80,6 +80,37 @@ export function createStudentAttendanceService() {
 		auto: false,
 	})
 
+	async function fetchAcademicYearsFallback(
+		payload: FetchPortalAcademicYearsRequest,
+	): Promise<FetchPortalAcademicYearsResponse> {
+		const filters: Record<string, unknown> = {}
+		if (payload.school) filters.school = payload.school
+		const raw = await academicYearFallbackResource.submit({
+			doctype: 'Academic Year',
+			fields: ['name', 'year_start_date', 'year_end_date', 'school'],
+			filters,
+			order_by: 'year_start_date desc, name desc',
+			limit_page_length: 500,
+		})
+		return normalizeListPayload<FetchPortalAcademicYearsResponse[number]>(raw)
+	}
+
+	async function fetchTermsFallback(
+		payload: FetchPortalTermsRequest,
+	): Promise<FetchPortalTermsResponse> {
+		const filters: Record<string, unknown> = {}
+		if (payload.academic_year) filters.academic_year = payload.academic_year
+		if (payload.school) filters.school = payload.school
+		const raw = await termFallbackResource.submit({
+			doctype: 'Term',
+			fields: ['name', 'academic_year', 'school', 'term_start_date', 'term_end_date'],
+			filters,
+			order_by: 'term_start_date desc, name desc',
+			limit_page_length: 500,
+		})
+		return normalizeListPayload<FetchPortalTermsResponse[number]>(raw)
+	}
+
 	const groupResource = createResource<FetchPortalStudentGroupsResponse>({
 		url: 'ifitwala_ed.api.student_attendance.fetch_portal_student_groups',
 		method: 'POST',
@@ -155,42 +186,54 @@ export function createStudentAttendanceService() {
 	async function fetchAcademicYears(
 		payload: FetchPortalAcademicYearsRequest,
 	): Promise<FetchPortalAcademicYearsResponse> {
+		let rows: FetchPortalAcademicYearsResponse = []
 		try {
-			return await academicYearResource.submit(payload)
+			rows = await academicYearResource.submit(payload)
 		} catch (error) {
 			if (!isMissingMethodError(error, 'fetch_portal_academic_years')) throw error
-			const filters: Record<string, unknown> = {}
-			if (payload.school) filters.school = payload.school
-			const raw = await academicYearFallbackResource.submit({
-				doctype: 'Academic Year',
-				fields: ['name', 'year_start_date', 'year_end_date', 'school'],
-				filters,
-				order_by: 'year_start_date desc, name desc',
-				limit_page_length: 500,
-			})
-			return normalizeListPayload<FetchPortalAcademicYearsResponse[number]>(raw)
+			rows = await fetchAcademicYearsFallback(payload)
 		}
+
+		// Compatibility guard: some sites keep Academic Year unscoped by school.
+		if (!rows.length && payload.school) {
+			const unscopedPayload: FetchPortalAcademicYearsRequest = { school: null }
+			try {
+				rows = await academicYearResource.submit(unscopedPayload)
+			} catch (error) {
+				if (!isMissingMethodError(error, 'fetch_portal_academic_years')) throw error
+				rows = await fetchAcademicYearsFallback(unscopedPayload)
+			}
+		}
+
+		return rows
 	}
 
 	async function fetchTerms(
 		payload: FetchPortalTermsRequest,
 	): Promise<FetchPortalTermsResponse> {
+		let rows: FetchPortalTermsResponse = []
 		try {
-			return await termResource.submit(payload)
+			rows = await termResource.submit(payload)
 		} catch (error) {
 			if (!isMissingMethodError(error, 'fetch_portal_terms')) throw error
-			const filters: Record<string, unknown> = {}
-			if (payload.academic_year) filters.academic_year = payload.academic_year
-			if (payload.school) filters.school = payload.school
-			const raw = await termFallbackResource.submit({
-				doctype: 'Term',
-				fields: ['name', 'academic_year', 'school', 'term_start_date', 'term_end_date'],
-				filters,
-				order_by: 'term_start_date desc, name desc',
-				limit_page_length: 500,
-			})
-			return normalizeListPayload<FetchPortalTermsResponse[number]>(raw)
+			rows = await fetchTermsFallback(payload)
 		}
+
+		// Compatibility guard: some sites keep Terms unscoped by school.
+		if (!rows.length && payload.school) {
+			const unscopedPayload: FetchPortalTermsRequest = {
+				academic_year: payload.academic_year,
+				school: null,
+			}
+			try {
+				rows = await termResource.submit(unscopedPayload)
+			} catch (error) {
+				if (!isMissingMethodError(error, 'fetch_portal_terms')) throw error
+				rows = await fetchTermsFallback(unscopedPayload)
+			}
+		}
+
+		return rows
 	}
 
 	async function fetchStudentGroups(
