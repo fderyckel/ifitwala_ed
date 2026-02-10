@@ -68,6 +68,18 @@ export function createStudentAttendanceService() {
 		auto: false,
 	})
 
+	const academicYearFallbackResource = createResource<unknown>({
+		url: 'frappe.client.get_list',
+		method: 'POST',
+		auto: false,
+	})
+
+	const termFallbackResource = createResource<unknown>({
+		url: 'frappe.client.get_list',
+		method: 'POST',
+		auto: false,
+	})
+
 	const groupResource = createResource<FetchPortalStudentGroupsResponse>({
 		url: 'ifitwala_ed.api.student_attendance.fetch_portal_student_groups',
 		method: 'POST',
@@ -143,13 +155,42 @@ export function createStudentAttendanceService() {
 	async function fetchAcademicYears(
 		payload: FetchPortalAcademicYearsRequest,
 	): Promise<FetchPortalAcademicYearsResponse> {
-		return academicYearResource.submit(payload)
+		try {
+			return await academicYearResource.submit(payload)
+		} catch (error) {
+			if (!isMissingMethodError(error, 'fetch_portal_academic_years')) throw error
+			const filters: Record<string, unknown> = {}
+			if (payload.school) filters.school = payload.school
+			const raw = await academicYearFallbackResource.submit({
+				doctype: 'Academic Year',
+				fields: ['name', 'year_start_date', 'year_end_date', 'school'],
+				filters,
+				order_by: 'year_start_date desc, name desc',
+				limit_page_length: 500,
+			})
+			return normalizeListPayload<FetchPortalAcademicYearsResponse[number]>(raw)
+		}
 	}
 
 	async function fetchTerms(
 		payload: FetchPortalTermsRequest,
 	): Promise<FetchPortalTermsResponse> {
-		return termResource.submit(payload)
+		try {
+			return await termResource.submit(payload)
+		} catch (error) {
+			if (!isMissingMethodError(error, 'fetch_portal_terms')) throw error
+			const filters: Record<string, unknown> = {}
+			if (payload.academic_year) filters.academic_year = payload.academic_year
+			if (payload.school) filters.school = payload.school
+			const raw = await termFallbackResource.submit({
+				doctype: 'Term',
+				fields: ['name', 'academic_year', 'school', 'term_start_date', 'term_end_date'],
+				filters,
+				order_by: 'term_start_date desc, name desc',
+				limit_page_length: 500,
+			})
+			return normalizeListPayload<FetchPortalTermsResponse[number]>(raw)
+		}
 	}
 
 	async function fetchStudentGroups(
@@ -222,4 +263,34 @@ export function createStudentAttendanceService() {
 		fetchRosterContext,
 		bulkUpsertAttendance,
 	}
+}
+
+function isMissingMethodError(error: unknown, methodName: string): boolean {
+	const message = extractErrorMessage(error).toLowerCase()
+	return message.includes('failed to get method for command')
+		&& message.includes(methodName.toLowerCase())
+}
+
+function extractErrorMessage(error: unknown): string {
+	if (error instanceof Error && error.message) return error.message
+	if (typeof error === 'string') return error
+	if (!error || typeof error !== 'object') return ''
+
+	const maybe = error as {
+		message?: string
+		_messages?: string
+		exception?: string
+		exc?: string
+	}
+	return maybe.message || maybe._messages || maybe.exception || maybe.exc || ''
+}
+
+function normalizeListPayload<T>(payload: unknown): T[] {
+	if (Array.isArray(payload)) return payload as T[]
+	if (payload && typeof payload === 'object') {
+		const maybe = payload as { message?: unknown; data?: unknown }
+		if (Array.isArray(maybe.message)) return maybe.message as T[]
+		if (Array.isArray(maybe.data)) return maybe.data as T[]
+	}
+	return []
 }

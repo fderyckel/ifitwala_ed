@@ -221,6 +221,36 @@ def fetch_blocks_for_day(student_group: str, attendance_date: str) -> List[int]:
     return [r.block_number for r in rows if r.block_number is not None]
 
 
+def _resolve_current_term(
+	school: str | None,
+	academic_year: str | None,
+):
+	"""
+	Resolve current term with compatibility for partially-deployed helper signatures.
+
+	Expected contract is get_current_term(school, academic_year).
+	Some live environments can momentarily expose a 3-arg helper variant while workers roll.
+	"""
+	try:
+		return get_current_term(school, academic_year)
+	except TypeError as exc:
+		message = str(exc)
+		if "missing 1 required positional argument: 'academic_year'" not in message:
+			raise
+		try:
+			return get_current_term(None, school, academic_year)
+		except TypeError:
+			frappe.log_error(
+				title="Attendance term resolution signature mismatch",
+				message=frappe.as_json({
+					"school": school,
+					"academic_year": academic_year,
+					"error": message,
+				}),
+			)
+			raise
+
+
 
 @frappe.whitelist()
 def bulk_upsert_attendance(payload=None):
@@ -257,7 +287,7 @@ def bulk_upsert_attendance(payload=None):
 
 		# Term window (today must be within current term if one exists)
 		# today = getdate()  # noqa: F841
-		current_term = get_current_term(group_school, sg.academic_year)
+		current_term = _resolve_current_term(group_school, sg.academic_year)
 		term_guard = None
 		if current_term:
 			term_guard = (getdate(current_term.term_start_date), getdate(current_term.term_end_date))

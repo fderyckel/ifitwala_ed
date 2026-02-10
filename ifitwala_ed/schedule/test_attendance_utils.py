@@ -4,7 +4,7 @@
 # ifitwala_ed/schedule/test_attendance_utils.py
 
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import getdate, nowdate
@@ -79,6 +79,47 @@ class TestAttendanceUtils(FrappeTestCase):
 
 		self.assertEqual(result, {"created": 1, "updated": 0})
 		current_term_mock.assert_called_once_with(None, sg.academic_year)
+		bulk_insert_mock.assert_called_once()
+
+	def test_bulk_upsert_attendance_tolerates_legacy_three_arg_get_current_term(self):
+		att_date = nowdate()
+		payload = [_attendance_payload(att_date)]
+		sg = _student_group_stub()
+
+		def legacy_signature(_legacy_ctx, school, academic_year):
+			return None
+
+		with patch.object(attendance_utils.frappe, "session", SimpleNamespace(user="test.user@example.com")), patch.object(
+			attendance_utils.frappe, "get_roles", return_value=["Academic Admin"]
+		), patch.object(attendance_utils.frappe, "get_cached_doc", return_value=sg), patch.object(
+			attendance_utils, "get_school_for_student_group", return_value="SCH-001"
+		), patch.object(
+			attendance_utils,
+			"get_current_term",
+			side_effect=legacy_signature,
+		) as current_term_mock, patch.object(
+			attendance_utils.frappe, "get_all", return_value=[]
+		), patch.object(
+			attendance_utils, "get_rotation_dates", return_value=[{"date": getdate(att_date), "rotation_day": 1}]
+		), patch.object(
+			attendance_utils, "get_meeting_dates", return_value=[att_date]
+		), patch.object(
+			attendance_utils.frappe.db, "sql", return_value=[]
+		), patch.object(
+			attendance_utils.frappe.db, "bulk_insert"
+		) as bulk_insert_mock, patch.object(
+			attendance_utils.frappe.db, "commit"
+		):
+			result = attendance_utils.bulk_upsert_attendance(payload)
+
+		self.assertEqual(result, {"created": 1, "updated": 0})
+		self.assertEqual(
+			current_term_mock.call_args_list,
+			[
+				call("SCH-001", sg.academic_year),
+				call(None, "SCH-001", sg.academic_year),
+			],
+		)
 		bulk_insert_mock.assert_called_once()
 
 
