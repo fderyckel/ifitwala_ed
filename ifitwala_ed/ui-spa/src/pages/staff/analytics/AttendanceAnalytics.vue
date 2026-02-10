@@ -110,11 +110,13 @@ const kpiItems = computed(() => {
 	const kpis = overview.value?.kpis
 	if (!kpis) return []
 	const expected = Math.max(kpis.expected_sessions, 1)
-	const absenceRate = Number(((kpis.absent_sessions / expected) * 100).toFixed(2))
-	const lateRate = Number(((kpis.late_sessions / expected) * 100).toFixed(2))
-	const unexplainedRate = Number(((kpis.unexplained_absent_sessions / expected) * 100).toFixed(2))
+	const oneDecimal = (value: number) => Number(value.toFixed(1))
+	const absenceRate = oneDecimal((kpis.absent_sessions / expected) * 100)
+	const lateRate = oneDecimal((kpis.late_sessions / expected) * 100)
+	const unexplainedRate = oneDecimal((kpis.unexplained_absent_sessions / expected) * 100)
+	const attendanceRate = oneDecimal(Number(kpis.attendance_rate || 0))
 	return [
-		{ id: 'attendance_rate', label: 'Attendance Rate', value: `${kpis.attendance_rate}%` },
+		{ id: 'attendance_rate', label: 'Attendance Rate', value: `${attendanceRate}%` },
 		{ id: 'absence_rate', label: 'Absence Rate', value: `${absenceRate}%` },
 		{ id: 'late_rate', label: 'Late Rate', value: `${lateRate}%` },
 		{ id: 'unexplained_rate', label: 'Unexplained Rate', value: `${unexplainedRate}%` },
@@ -152,7 +154,7 @@ const heatmapOption = computed<ChartOption>(() => {
 	const maxRatio = Math.max(100, ...seriesData.map((row) => row[2]))
 
 	return {
-		grid: { left: 70, right: 18, top: 24, bottom: 44 },
+		grid: { left: 70, right: 94, top: 24, bottom: 44 },
 		xAxis: {
 			type: 'category',
 			data: x,
@@ -167,12 +169,14 @@ const heatmapOption = computed<ChartOption>(() => {
 			axisLabel: { fontSize: 11 },
 		},
 		visualMap: {
-			show: false,
+			show: true,
 			min: 0,
 			max: maxRatio,
-			orient: 'horizontal',
-			left: 'center',
-			bottom: 6,
+			orient: 'vertical',
+			right: 10,
+			top: 'middle',
+			itemHeight: 140,
+			itemWidth: 12,
 			text: ['High', 'Low'],
 			inRange: {
 				color: ['#dff4ea', '#97d7b8', '#53b587', '#1f8d5b'],

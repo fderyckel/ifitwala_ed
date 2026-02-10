@@ -31,6 +31,30 @@ export type FetchActiveProgramsResponse = Array<{
 	program_name?: string | null
 }>
 
+export type FetchPortalAcademicYearsRequest = {
+	school: string | null
+}
+
+export type FetchPortalAcademicYearsResponse = Array<{
+	name: string
+	year_start_date?: string | null
+	year_end_date?: string | null
+	school?: string | null
+}>
+
+export type FetchPortalTermsRequest = {
+	school: string | null
+	academic_year: string | null
+}
+
+export type FetchPortalTermsResponse = Array<{
+	name: string
+	academic_year?: string | null
+	school?: string | null
+	term_start_date?: string | null
+	term_end_date?: string | null
+}>
+
 export type FetchPortalStudentGroupsRequest = {
 	school: string | null
 	program: string | null

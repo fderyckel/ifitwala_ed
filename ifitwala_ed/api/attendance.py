@@ -23,7 +23,8 @@ MODE_HEATMAP = "heatmap"
 MODE_RISK = "risk"
 MODE_CODE_USAGE = "code_usage"
 MODE_MY_GROUPS = "my_groups"
-ALLOWED_MODES = {MODE_OVERVIEW, MODE_HEATMAP, MODE_RISK, MODE_CODE_USAGE, MODE_MY_GROUPS}
+MODE_LEDGER = "ledger"
+ALLOWED_MODES = {MODE_OVERVIEW, MODE_HEATMAP, MODE_RISK, MODE_CODE_USAGE, MODE_MY_GROUPS, MODE_LEDGER}
 
 HEATMAP_MODE_BLOCK = "block"
 HEATMAP_MODE_DAY = "day"
@@ -54,9 +55,10 @@ MODE_TTL_SECONDS = {
 	MODE_RISK: 900,
 	MODE_CODE_USAGE: 1800,
 	MODE_MY_GROUPS: 600,
+	MODE_LEDGER: 900,
 }
 
-CACHE_SCHEMA_VERSION = 3
+CACHE_SCHEMA_VERSION = 4
 
 
 @frappe.whitelist()
@@ -76,6 +78,14 @@ def get(
 	activity_only: int | None = None,
 	include_context: int | None = None,
 	context_student: str | None = None,
+	course: str | None = None,
+	instructor: str | None = None,
+	student: str | None = None,
+	attendance_code: str | None = None,
+	page: int | None = None,
+	page_length: int | None = None,
+	sort_by: str | None = None,
+	sort_order: str | None = None,
 ):
 	"""Attendance analytics query engine.
 
@@ -87,6 +97,14 @@ def get(
 
 	heatmap_mode_value = _normalize_heatmap_mode(heatmap_mode)
 	whole_day_value = 1 if cint(whole_day) else 0
+	page_value = max(cint(page), 1)
+	page_length_value = min(max(cint(page_length), 1), 500) if cint(page_length) else 80
+	sort_by_value = _clean_optional(sort_by) or "student_label"
+	sort_order_value = "desc" if (sort_order or "").strip().lower() == "desc" else "asc"
+	course_value = _clean_optional(course)
+	instructor_value = _clean_optional(instructor)
+	student_value = _clean_optional(student)
+	attendance_code_value = _clean_optional(attendance_code)
 
 	ctx = _resolve_request_context(
 		academic_year=academic_year,
@@ -117,6 +135,14 @@ def get(
 		extra={
 			"thresholds": thresholds_map,
 			"heatmap_mode": heatmap_mode_value,
+			"course": course_value,
+			"instructor": instructor_value,
+			"student": student_value,
+			"attendance_code": attendance_code_value,
+			"page": page_value,
+			"page_length": page_length_value,
+			"sort_by": sort_by_value,
+			"sort_order": sort_order_value,
 			"program": program,
 			"student_group": student_group,
 			"activity_only": 1 if cint(activity_only) else 0,
@@ -131,6 +157,14 @@ def get(
 			heatmap_mode=heatmap_mode_value,
 			include_context=1 if cint(include_context) else 0,
 			context_student=context_student,
+			course=course_value,
+			instructor=instructor_value,
+			student=student_value,
+			attendance_code=attendance_code_value,
+			page=page_value,
+			page_length=page_length_value,
+			sort_by=sort_by_value,
+			sort_order=sort_order_value,
 		),
 	)
 
@@ -144,6 +178,14 @@ def _dispatch_mode(
 	heatmap_mode: str,
 	include_context: int,
 	context_student: str | None,
+	course: str | None,
+	instructor: str | None,
+	student: str | None,
+	attendance_code: str | None,
+	page: int,
+	page_length: int,
+	sort_by: str,
+	sort_order: str,
 ) -> dict[str, Any]:
 	if mode == MODE_OVERVIEW:
 		return _get_overview_payload(ctx)
@@ -164,6 +206,19 @@ def _dispatch_mode(
 
 	if mode == MODE_MY_GROUPS:
 		return _get_my_groups_payload(ctx, thresholds=thresholds)
+
+	if mode == MODE_LEDGER:
+		return _get_ledger_payload(
+			ctx,
+			course=course,
+			instructor=instructor,
+			student=student,
+			attendance_code=attendance_code,
+			page=page,
+			page_length=page_length,
+			sort_by=sort_by,
+			sort_order=sort_order,
+		)
 
 	frappe.throw(_("Unsupported attendance mode."))
 	return {}
@@ -188,6 +243,8 @@ def _resolve_request_context(
 
 	roles = set(frappe.get_roles(user))
 	role_class = _resolve_role_class(roles)
+	academic_year_value = _clean_optional(academic_year)
+	term_value = _clean_optional(term)
 
 	school_scope = _resolve_school_scope(user=user, school=school)
 	selected_school = _resolve_selected_root_school(
@@ -211,6 +268,8 @@ def _resolve_request_context(
 			"previous_date_to": getdate(nowdate()),
 			"previous_instruction_days": [],
 			"window_source": "empty_scope",
+			"academic_year": academic_year_value,
+			"term": term_value,
 			"selected_school": selected_school,
 			"program": program_value,
 			"program_scope": program_scope,
@@ -230,8 +289,8 @@ def _resolve_request_context(
 		frappe.throw(_("You do not have access to this student group."), frappe.PermissionError)
 
 	date_from, date_to, source = _resolve_time_window(
-		academic_year=_clean_optional(academic_year),
-		term=_clean_optional(term),
+		academic_year=academic_year_value,
+		term=term_value,
 		start_date=_clean_optional(start_date),
 		end_date=_clean_optional(end_date),
 		date_preset=_clean_optional(date_preset),
@@ -266,6 +325,8 @@ def _resolve_request_context(
 		"previous_date_to": prev_to,
 		"previous_instruction_days": previous_instruction_days,
 		"window_source": source,
+		"academic_year": academic_year_value,
+		"term": term_value,
 		"selected_school": selected_school,
 		"program": program_value,
 		"program_scope": program_scope,
@@ -564,6 +625,17 @@ def _resolve_previous_window(date_from: date, date_to: date) -> tuple[date, date
 	prev_to = date_from - timedelta(days=1)
 	prev_from = prev_to - timedelta(days=max(window_days - 1, 0))
 	return prev_from, prev_to
+
+
+def _date_span_iso(date_from: date, date_to: date) -> list[str]:
+	if date_to < date_from:
+		return []
+	days: list[str] = []
+	cursor = date_from
+	while cursor <= date_to:
+		days.append(cursor.isoformat())
+		cursor += timedelta(days=1)
+	return days
 
 
 def _build_attendance_where(
@@ -1425,6 +1497,312 @@ def _dominant_absence_code(codes_payload: list[dict[str, Any]]) -> str | None:
 		return None
 	absent_codes.sort(key=lambda row: row.get("count", 0), reverse=True)
 	return absent_codes[0].get("attendance_code")
+
+
+def _get_ledger_payload(
+	ctx: dict[str, Any],
+	*,
+	course: str | None,
+	instructor: str | None,
+	student: str | None,
+	attendance_code: str | None,
+	page: int,
+	page_length: int,
+	sort_by: str,
+	sort_order: str,
+) -> dict[str, Any]:
+	where_clause, params = _build_attendance_where(
+		ctx=ctx,
+		alias="a",
+		date_from=ctx["date_from"],
+		date_to=ctx["date_to"],
+		instruction_days=_date_span_iso(ctx["date_from"], ctx["date_to"]),
+		whole_day=ctx["whole_day"],
+		include_group_filter=True,
+	)
+
+	base_conditions: list[str] = []
+	if ctx.get("academic_year"):
+		base_conditions.append("a.academic_year = %(academic_year)s")
+		params["academic_year"] = ctx["academic_year"]
+	if ctx.get("term"):
+		base_conditions.append("a.term = %(term)s")
+		params["term"] = ctx["term"]
+	if attendance_code:
+		base_conditions.append("(c.attendance_code = %(attendance_code)s OR c.name = %(attendance_code)s)")
+		params["attendance_code"] = attendance_code
+
+	if ctx["whole_day"] == 0:
+		base_conditions.append("a.course IS NOT NULL")
+
+	where_for_options = where_clause
+	if base_conditions:
+		where_for_options = f"{where_for_options} AND {' AND '.join(base_conditions)}"
+
+	data_conditions: list[str] = []
+	if course:
+		data_conditions.append("a.course = %(course)s")
+		params["course"] = course
+	if instructor:
+		data_conditions.append("a.instructor = %(instructor)s")
+		params["instructor"] = instructor
+	if student:
+		data_conditions.append("a.student = %(student)s")
+		params["student"] = student
+
+	where_for_data = where_for_options
+	if data_conditions:
+		where_for_data = f"{where_for_data} AND {' AND '.join(data_conditions)}"
+
+	code_rows = frappe.get_all(
+		"Student Attendance Code",
+		filters={"show_in_reports": 1},
+		fields=["name", "attendance_code", "attendance_code_name", "count_as_present", "display_order"],
+		order_by="display_order asc, attendance_code asc",
+	)
+	if not code_rows:
+		frappe.throw(_("No Attendance Codes are flagged with 'Show in Reports'."))
+
+	code_defs: list[dict[str, Any]] = []
+	for index, row in enumerate(code_rows):
+		attendance_code_value = row.get("attendance_code") or row.get("name") or f"C{index + 1}"
+		fieldname = _safe_code_fieldname(attendance_code_value, index)
+		code_defs.append(
+			{
+				"fieldname": fieldname,
+				"attendance_code": attendance_code_value,
+				"attendance_code_name": row.get("attendance_code_name") or attendance_code_value,
+				"count_as_present": int(row.get("count_as_present") or 0),
+			}
+		)
+
+	code_columns_sql = ",\n".join(
+		[
+			f"SUM(CASE WHEN c.attendance_code = {frappe.db.escape(code['attendance_code'])} THEN 1 ELSE 0 END) AS `{code['fieldname']}`"
+			for code in code_defs
+		]
+	)
+	present_sum_sql = " + ".join(
+		[
+			f"SUM(CASE WHEN c.attendance_code = {frappe.db.escape(code['attendance_code'])} THEN 1 ELSE 0 END)"
+			for code in code_defs
+			if code["count_as_present"] == 1
+		]
+	) or "0"
+	total_sum_sql = " + ".join(
+		[
+			f"SUM(CASE WHEN c.attendance_code = {frappe.db.escape(code['attendance_code'])} THEN 1 ELSE 0 END)"
+			for code in code_defs
+		]
+	) or "1"
+	percentage_present_sql = f"COALESCE(ROUND(({present_sum_sql}) / NULLIF(({total_sum_sql}), 0) * 100, 2), 0)"
+
+	sort_expression = _ledger_sort_expression(sort_by=sort_by, sort_order=sort_order, code_defs=code_defs)
+	params_with_paging = dict(params)
+	params_with_paging["limit"] = page_length
+	params_with_paging["offset"] = (page - 1) * page_length
+
+	rows = frappe.db.sql(
+		f"""
+		SELECT
+			a.student AS student,
+			MAX(COALESCE(NULLIF(a.student_name, ''), st.student_full_name, a.student)) AS student_label,
+			IF(a.course IS NULL, 'Whole Day', 'Course') AS attendance_type,
+			a.course AS course,
+			a.student_group AS student_group,
+			{code_columns_sql},
+			{present_sum_sql} AS present_count,
+			{total_sum_sql} AS total_count,
+			{percentage_present_sql} AS percentage_present
+		FROM `tabStudent Attendance` a
+		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+		LEFT JOIN `tabStudent` st ON st.name = a.student
+		WHERE {where_for_data}
+		GROUP BY a.student, attendance_type, a.course, a.student_group
+		ORDER BY {sort_expression}
+		LIMIT %(limit)s OFFSET %(offset)s
+		""",
+		params_with_paging,
+		as_dict=True,
+	)
+
+	total_rows_result = frappe.db.sql(
+		f"""
+		SELECT COUNT(*) AS total_rows
+		FROM (
+			SELECT 1
+			FROM `tabStudent Attendance` a
+			INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+			LEFT JOIN `tabStudent` st ON st.name = a.student
+			WHERE {where_for_data}
+			GROUP BY a.student, IF(a.course IS NULL, 'Whole Day', 'Course'), a.course, a.student_group
+		) ledger_rows
+		""",
+		params,
+		as_dict=True,
+	)
+	total_rows = int((total_rows_result[0] or {}).get("total_rows") or 0) if total_rows_result else 0
+
+	summary_rows = frappe.db.sql(
+		f"""
+		SELECT
+			COUNT(*) AS raw_records,
+			COUNT(DISTINCT a.student) AS total_students,
+			SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS total_present,
+			COUNT(*) AS total_attendance
+		FROM `tabStudent Attendance` a
+		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+		WHERE {where_for_data}
+		""",
+		params,
+		as_dict=True,
+	)
+	summary_row = summary_rows[0] if summary_rows else {}
+	total_present = int(summary_row.get("total_present") or 0)
+	total_attendance = int(summary_row.get("total_attendance") or 0)
+	percentage_present = round((total_present / total_attendance) * 100, 2) if total_attendance else 0.0
+	filter_options = _get_ledger_filter_options(where_clause=where_for_options, params=params)
+
+	columns: list[dict[str, Any]] = [
+		{"fieldname": "student_label", "label": "Student", "fieldtype": "Data"},
+		{"fieldname": "attendance_type", "label": "Type", "fieldtype": "Data"},
+		{"fieldname": "course", "label": "Course", "fieldtype": "Link", "options": "Course"},
+		{"fieldname": "student_group", "label": "Student Group", "fieldtype": "Link", "options": "Student Group"},
+	]
+	for code in code_defs:
+		columns.append(
+			{
+				"fieldname": code["fieldname"],
+				"label": code["attendance_code"],
+				"fieldtype": "Int",
+				"attendance_code": code["attendance_code"],
+				"attendance_code_name": code["attendance_code_name"],
+				"count_as_present": code["count_as_present"],
+			}
+		)
+	columns.extend(
+		[
+			{"fieldname": "present_count", "label": "Total Present", "fieldtype": "Int"},
+			{"fieldname": "total_count", "label": "Total Att.", "fieldtype": "Int"},
+			{"fieldname": "percentage_present", "label": "% Present", "fieldtype": "Percent"},
+		]
+	)
+
+	total_pages = max(1, (total_rows + page_length - 1) // page_length)
+	return {
+		"meta": _response_meta(ctx),
+		"columns": columns,
+		"rows": rows,
+		"codes": [
+			{
+				"attendance_code": code["attendance_code"],
+				"attendance_code_name": code["attendance_code_name"],
+				"count_as_present": code["count_as_present"],
+			}
+			for code in code_defs
+		],
+		"pagination": {
+			"page": page,
+			"page_length": page_length,
+			"total_rows": total_rows,
+			"total_pages": total_pages,
+		},
+		"summary": {
+			"raw_records": int(summary_row.get("raw_records") or 0),
+			"total_students": int(summary_row.get("total_students") or 0),
+			"total_present": total_present,
+			"total_attendance": total_attendance,
+			"percentage_present": percentage_present,
+		},
+		"filter_options": filter_options,
+	}
+
+
+def _ledger_sort_expression(*, sort_by: str, sort_order: str, code_defs: list[dict[str, Any]]) -> str:
+	order = "DESC" if (sort_order or "").lower() == "desc" else "ASC"
+	allowed: dict[str, str] = {
+		"student_label": "student_label",
+		"attendance_type": "attendance_type",
+		"course": "course",
+		"student_group": "student_group",
+		"present_count": "present_count",
+		"total_count": "total_count",
+		"percentage_present": "percentage_present",
+	}
+	for code in code_defs:
+		fieldname = code.get("fieldname")
+		if fieldname:
+			allowed[fieldname] = f"`{fieldname}`"
+
+	sort_field = allowed.get((sort_by or "").strip(), "student_label")
+	return f"{sort_field} {order}, student_label ASC"
+
+
+def _safe_code_fieldname(attendance_code: str, index: int) -> str:
+	base = "".join(ch.lower() if ch.isalnum() else "_" for ch in (attendance_code or "code"))
+	base = base.strip("_") or "code"
+	return f"code_{base}_{index + 1}"
+
+
+def _get_ledger_filter_options(*, where_clause: str, params: dict[str, Any]) -> dict[str, Any]:
+	courses = frappe.db.sql(
+		f"""
+		SELECT DISTINCT a.course
+		FROM `tabStudent Attendance` a
+		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+		WHERE {where_clause}
+			AND COALESCE(a.course, '') != ''
+		ORDER BY a.course ASC
+		LIMIT 400
+		""",
+		params,
+		as_dict=True,
+	)
+
+	instructors = frappe.db.sql(
+		f"""
+		SELECT DISTINCT a.instructor
+		FROM `tabStudent Attendance` a
+		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+		WHERE {where_clause}
+			AND COALESCE(a.instructor, '') != ''
+		ORDER BY a.instructor ASC
+		LIMIT 400
+		""",
+		params,
+		as_dict=True,
+	)
+
+	students = frappe.db.sql(
+		f"""
+		SELECT
+			a.student,
+			MAX(COALESCE(NULLIF(a.student_name, ''), st.student_full_name, a.student)) AS student_name
+		FROM `tabStudent Attendance` a
+		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+		LEFT JOIN `tabStudent` st ON st.name = a.student
+		WHERE {where_clause}
+			AND COALESCE(a.student, '') != ''
+		GROUP BY a.student
+		ORDER BY student_name ASC
+		LIMIT 500
+		""",
+		params,
+		as_dict=True,
+	)
+
+	return {
+		"courses": [row.get("course") for row in courses if row.get("course")],
+		"instructors": [row.get("instructor") for row in instructors if row.get("instructor")],
+		"students": [
+			{
+				"student": row.get("student"),
+				"student_name": row.get("student_name") or row.get("student"),
+			}
+			for row in students
+			if row.get("student")
+		],
+	}
 
 
 def _get_my_groups_payload(ctx: dict[str, Any], *, thresholds: dict[str, float]) -> dict[str, Any]:

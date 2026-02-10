@@ -556,8 +556,8 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		description: 'Coverage, punctuality, and daily health of the timetable.',
 		icon: 'check-square',
 		links: [
-			{ label: 'Daily Attendance', to: { name: 'staff-attendance-analytics' }, capability: 'analytics_attendance' },
-			{ label: 'Absence Trends', to: '/analytics/operations/absence-trends', capability: 'analytics_attendance' },
+			{ label: 'Attendance Analytics', to: { name: 'staff-attendance-analytics' }, capability: 'analytics_attendance' },
+			{ label: 'Attendance Ledger', to: { name: 'staff-attendance-ledger' }, capability: 'analytics_attendance' },
 			{ label: 'Late Arrivals', to: '/analytics/operations/late-arrivals', capability: 'analytics_attendance' },
 			{ label: 'Duty Coverage', to: '/analytics/operations/duty-coverage', capability: 'analytics_attendance_admin' },
 		],

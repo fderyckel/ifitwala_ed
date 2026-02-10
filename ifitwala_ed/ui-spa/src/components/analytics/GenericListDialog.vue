@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ui-spa/src/components/GenericListDialog.vue -->
+<!-- ifitwala_ed/ui-spa/src/components/analytics/GenericListDialog.vue -->
 <!--
   GenericListDialog.vue
   A reusable dialog for displaying list data (e.g. students, logs) in a modal.

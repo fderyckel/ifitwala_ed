@@ -47,6 +47,14 @@ One page. Multiple lenses. No duplicated dashboards.
 /staff/analytics/attendance
 ```
 
+**Companion Ledger Route**
+
+```
+/staff/analytics/attendance-ledger
+```
+
+Use this page for desk-equivalent, row-level attendance auditing (filters, grouped rows, dynamic code columns, and pagination). Keep `/staff/analytics/attendance` as the pattern-first executive surface.
+
 **Persistent layout**
 
 * FiltersBar (date range, school, program, student_group)

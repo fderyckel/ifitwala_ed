@@ -6,6 +6,7 @@ export type AttendanceMode =
 	| 'risk'
 	| 'code_usage'
 	| 'my_groups'
+	| 'ledger'
 
 export type AttendanceHeatmapMode = 'block' | 'day'
 
@@ -60,12 +61,25 @@ export interface AttendanceMyGroupsParams extends AttendanceBaseParams {
 	mode: 'my_groups'
 }
 
+export interface AttendanceLedgerParams extends AttendanceBaseParams {
+	mode: 'ledger'
+	course?: string
+	instructor?: string
+	student?: string
+	attendance_code?: string
+	page?: number
+	page_length?: number
+	sort_by?: string
+	sort_order?: 'asc' | 'desc'
+}
+
 export type AttendanceRequest =
 	| AttendanceOverviewParams
 	| AttendanceHeatmapParams
 	| AttendanceRiskParams
 	| AttendanceCodeUsageParams
 	| AttendanceMyGroupsParams
+	| AttendanceLedgerParams
 
 export interface AttendanceMeta {
 	role_class: AttendanceRoleClass
@@ -249,9 +263,52 @@ export interface AttendanceMyGroupsResponse {
 	improving_trends: AttendanceImprovingTrend[]
 }
 
+export interface AttendanceLedgerColumn {
+	fieldname: string
+	label: string
+	fieldtype: 'Data' | 'Int' | 'Percent' | 'Link'
+	options?: string
+	attendance_code?: string
+	attendance_code_name?: string
+	count_as_present?: 0 | 1
+}
+
+export interface AttendanceLedgerResponse {
+	meta: AttendanceMeta
+	columns: AttendanceLedgerColumn[]
+	rows: Record<string, string | number | null>[]
+	codes: Array<{
+		attendance_code: string
+		attendance_code_name: string
+		count_as_present: 0 | 1
+	}>
+	pagination: {
+		page: number
+		page_length: number
+		total_rows: number
+		total_pages: number
+	}
+	summary: {
+		raw_records: number
+		total_students: number
+		total_present: number
+		total_attendance: number
+		percentage_present: number
+	}
+	filter_options: {
+		courses: string[]
+		instructors: string[]
+		students: Array<{
+			student: string
+			student_name: string
+		}>
+	}
+}
+
 export type AttendanceResponse =
 	| AttendanceOverviewResponse
 	| AttendanceHeatmapResponse
 	| AttendanceRiskResponse
 	| AttendanceCodeUsageResponse
 	| AttendanceMyGroupsResponse
+	| AttendanceLedgerResponse

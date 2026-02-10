@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/ui-spa/src/components/analytics/HeatmapDialog.vue -->
 <template>
 <!--
   HeatmapDialog.vue
@@ -787,7 +788,7 @@ function buildWholeDayOption(): ChartOption {
 		grid: {
 			top: 30,
 			left: 80,
-			right: 16,
+			right: 188,
 			bottom: 80,
 			containLabel: true
 		},
@@ -807,13 +808,14 @@ function buildWholeDayOption(): ChartOption {
 		},
 		visualMap: {
 			type: 'piecewise',
-			orient: 'horizontal',
-			left: 'center',
-			bottom: 20,
+			orient: 'vertical',
+			right: 20,
+			top: 'middle',
 			dimension: 2,
 			itemSymbol: 'rect',
 			itemWidth: 14,
 			itemHeight: 12,
+			itemGap: 8,
 			textStyle: { color: 'rgba(7,16,25,0.8)', fontSize: 11 },
 			pieces: visualPieces.value
 		},
@@ -862,7 +864,7 @@ function buildBlockOption(): ChartOption {
 		grid: {
 			top: 30,
 			left: 90,
-			right: 16,
+			right: 188,
 			bottom: 90,
 			containLabel: true
 		},
@@ -886,13 +888,14 @@ function buildBlockOption(): ChartOption {
 		},
 		visualMap: {
 			type: 'piecewise',
-			orient: 'horizontal',
-			left: 'center',
-			bottom: 30,
+			orient: 'vertical',
+			right: 20,
+			top: 'middle',
 			dimension: 2,
 			itemSymbol: 'rect',
 			itemWidth: 14,
 			itemHeight: 12,
+			itemGap: 8,
 			textStyle: { color: 'rgba(7,16,25,0.8)', fontSize: 11 },
 			pieces: visualPieces.value
 		},

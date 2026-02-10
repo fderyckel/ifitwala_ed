@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/ui-spa/src/components/analytics/HistoryDialog.vue -->
 <template>
 <!--
   HistoryDialog.vue

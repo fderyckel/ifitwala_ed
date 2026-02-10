@@ -237,6 +237,63 @@ def fetch_active_programs():
 
 
 @frappe.whitelist()
+def fetch_portal_academic_years(school: str | None = None):
+	"""Return Academic Years available to the current user within allowed school scope."""
+	user = frappe.session.user
+	if not user or user == "Guest":
+		frappe.throw(_("Please sign in to view academic years."))
+
+	filters: dict[str, object] = {}
+	school_scope = _expand_school_scope(school)
+	if school_scope:
+		filters["school"] = ["in", school_scope]
+
+	return frappe.get_all(
+		"Academic Year",
+		fields=["name", "year_start_date", "year_end_date", "school"],
+		filters=filters,
+		order_by="year_start_date desc, name desc",
+	)
+
+
+@frappe.whitelist()
+def fetch_portal_terms(academic_year: str | None = None, school: str | None = None):
+	"""Return Terms available to the current user for the selected scope."""
+	user = frappe.session.user
+	if not user or user == "Guest":
+		frappe.throw(_("Please sign in to view terms."))
+
+	params: dict[str, object] = {}
+	conditions = ["COALESCE(t.archived, 0) = 0"]
+
+	academic_year_value = (academic_year or "").strip()
+	if academic_year_value:
+		conditions.append("t.academic_year = %(academic_year)s")
+		params["academic_year"] = academic_year_value
+
+	school_scope = _expand_school_scope(school)
+	if school_scope:
+		conditions.append("(t.school IN %(school_scope)s OR COALESCE(t.school, '') = '')")
+		params["school_scope"] = tuple(school_scope)
+
+	return frappe.db.sql(
+		f"""
+		SELECT
+			t.name,
+			t.academic_year,
+			t.school,
+			t.term_start_date,
+			t.term_end_date
+		FROM `tabTerm` t
+		WHERE {' AND '.join(conditions)}
+		ORDER BY t.term_start_date DESC, t.name DESC
+		""",
+		params,
+		as_dict=True,
+	)
+
+
+@frappe.whitelist()
 @redis_cache(ttl=86400)
 def get_weekend_days(student_group: str | None = None) -> list[int]:
 	"""

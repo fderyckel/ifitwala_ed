@@ -7,6 +7,8 @@ import type {
 	AttendanceCodeUsageResponse,
 	AttendanceHeatmapParams,
 	AttendanceHeatmapResponse,
+	AttendanceLedgerParams,
+	AttendanceLedgerResponse,
 	AttendanceMyGroupsParams,
 	AttendanceMyGroupsResponse,
 	AttendanceOverviewParams,
@@ -56,6 +58,12 @@ export function createAttendanceAnalyticsService() {
 		auto: false,
 	})
 
+	const ledgerResource = createResource<AttendanceLedgerResponse>({
+		url: METHOD,
+		method: 'POST',
+		auto: false,
+	})
+
 	async function getOverview(payload: AttendanceOverviewParams): Promise<AttendanceOverviewResponse> {
 		return overviewResource.submit(payload)
 	}
@@ -76,11 +84,16 @@ export function createAttendanceAnalyticsService() {
 		return myGroupsResource.submit(payload)
 	}
 
+	async function getLedger(payload: AttendanceLedgerParams): Promise<AttendanceLedgerResponse> {
+		return ledgerResource.submit(payload)
+	}
+
 	return {
 		getOverview,
 		getHeatmap,
 		getRisk,
 		getCodeUsage,
 		getMyGroups,
+		getLedger,
 	}
 }

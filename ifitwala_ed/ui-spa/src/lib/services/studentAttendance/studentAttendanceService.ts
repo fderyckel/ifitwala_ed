@@ -11,10 +11,14 @@ import type {
 	BulkUpsertAttendanceResponse,
 	FetchActiveProgramsRequest,
 	FetchActiveProgramsResponse,
+	FetchPortalAcademicYearsRequest,
+	FetchPortalAcademicYearsResponse,
 	FetchBlocksForDayRequest,
 	FetchBlocksForDayResponse,
 	FetchExistingAttendanceRequest,
 	FetchExistingAttendanceResponse,
+	FetchPortalTermsRequest,
+	FetchPortalTermsResponse,
 	GetMeetingDatesRequest,
 	GetMeetingDatesResponse,
 	GetWeekendDaysRequest,
@@ -48,6 +52,18 @@ export function createStudentAttendanceService() {
 
 	const programResource = createResource<FetchActiveProgramsResponse>({
 		url: 'ifitwala_ed.api.student_attendance.fetch_active_programs',
+		method: 'POST',
+		auto: false,
+	})
+
+	const academicYearResource = createResource<FetchPortalAcademicYearsResponse>({
+		url: 'ifitwala_ed.api.student_attendance.fetch_portal_academic_years',
+		method: 'POST',
+		auto: false,
+	})
+
+	const termResource = createResource<FetchPortalTermsResponse>({
+		url: 'ifitwala_ed.api.student_attendance.fetch_portal_terms',
 		method: 'POST',
 		auto: false,
 	})
@@ -124,6 +140,18 @@ export function createStudentAttendanceService() {
 		return programResource.submit(payload)
 	}
 
+	async function fetchAcademicYears(
+		payload: FetchPortalAcademicYearsRequest,
+	): Promise<FetchPortalAcademicYearsResponse> {
+		return academicYearResource.submit(payload)
+	}
+
+	async function fetchTerms(
+		payload: FetchPortalTermsRequest,
+	): Promise<FetchPortalTermsResponse> {
+		return termResource.submit(payload)
+	}
+
 	async function fetchStudentGroups(
 		payload: FetchPortalStudentGroupsRequest,
 	): Promise<FetchPortalStudentGroupsResponse> {
@@ -184,6 +212,8 @@ export function createStudentAttendanceService() {
 	return {
 		fetchSchoolContext,
 		fetchPrograms,
+		fetchAcademicYears,
+		fetchTerms,
 		fetchStudentGroups,
 		listAttendanceCodes,
 		getWeekendDays,
