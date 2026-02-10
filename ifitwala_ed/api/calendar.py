@@ -72,11 +72,9 @@ import frappe
 from frappe import _
 from frappe.utils import get_datetime, get_system_timezone, getdate, now_datetime, format_datetime
 
-from ifitwala_ed.schedule.schedule_utils import (
-	get_effective_schedule_for_ay,
-	get_weekend_days_for_calendar,
-)
-from ifitwala_ed.utilities.school_tree import get_ancestor_schools
+from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
+from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_school_lineage
 
 VALID_SOURCES = {"student_group", "meeting", "school_event", "staff_holiday"}
 
@@ -488,9 +486,7 @@ def _resolve_staff_calendar_for_employee(
 		return None
 
 	# Build school chain (nearest-first): [employee_school] + ancestors
-	from frappe.utils.nestedset import get_ancestors_of
-	ancestors = get_ancestors_of("School", employee_school) or []
-	school_chain = [employee_school] + ancestors
+	school_chain = get_school_lineage(employee_school)
 
 	# Fetch all overlapping calendars for any school in chain
 	cals = frappe.get_all(
@@ -644,41 +640,113 @@ def _collect_staff_holiday_events(
 	start_date = getdate(window_start)
 	end_date = getdate(window_end - timedelta(seconds=1))
 
+	default_color = "#64748B"
+
+	# Preferred source: Staff Calendar (employee-group scoped, nearest school).
 	cal = _resolve_staff_calendar_for_employee(employee_id, start_date, end_date)
-	if not cal:
+	if cal:
+		holiday_rows = frappe.get_all(
+			"Staff Calendar Holidays",
+			filters={
+				"parent": cal["name"],
+				"holiday_date": ["between", [start_date, end_date]],
+			},
+			fields=["holiday_date", "description", "color", "weekly_off"],
+			order_by="holiday_date asc",
+			ignore_permissions=True,
+		)
+
+		if holiday_rows:
+			events: List[CalendarEvent] = []
+			for row in holiday_rows:
+				hd = getdate(row.get("holiday_date"))
+				if not hd:
+					continue
+
+				start_dt = _combine(hd, time(0, 0, 0), tzinfo)
+				end_dt = _combine(hd + timedelta(days=1), time(0, 0, 0), tzinfo)
+				title = (row.get("description") or "").strip() or _("Holiday")
+				color = (row.get("color") or "").strip() or default_color
+
+				events.append(
+					CalendarEvent(
+						id=f"staff_holiday::{cal['name']}::{hd.isoformat()}",
+						title=title,
+						start=start_dt,
+						end=end_dt,
+						source="staff_holiday",
+						color=color,
+						all_day=True,
+						meta={
+							"staff_calendar": cal["name"],
+							"holiday_date": hd.isoformat(),
+							"weekly_off": int(row.get("weekly_off") or 0),
+							"employee_group": cal["employee_group"],
+							"school": cal["school"],
+						},
+					)
+				)
+			return events
+
+	# Fallback source: nearest effective School Calendar(s) in school lineage.
+	employee_school = frappe.db.get_value("Employee", employee_id, "school")
+	if not employee_school:
 		return []
 
-	holiday_rows = frappe.get_all(
-		"Staff Calendar Holidays",
+	calendar_rows = resolve_school_calendars_for_window(employee_school, start_date, end_date)
+	if not calendar_rows:
+		frappe.logger("ifitwala_ed.calendar").info(
+			"No effective School Calendar found for staff holiday fallback",
+			{
+				"employee": employee_id,
+				"employee_school": employee_school,
+				"window_start": start_date.isoformat(),
+				"window_end": end_date.isoformat(),
+			},
+		)
+		return []
+
+	calendar_by_name = {row.get("name"): row for row in calendar_rows if row.get("name")}
+	calendar_names = list(calendar_by_name.keys())
+	if not calendar_names:
+		return []
+
+	school_holiday_rows = frappe.get_all(
+		"School Calendar Holidays",
 		filters={
-			"parent": cal["name"],
+			"parent": ["in", calendar_names],
 			"holiday_date": ["between", [start_date, end_date]],
 		},
-		fields=["holiday_date", "description", "color", "weekly_off"],
+		fields=["parent", "holiday_date", "description", "color", "weekly_off"],
 		order_by="holiday_date asc",
 		ignore_permissions=True,
 	)
-
-	if not holiday_rows:
+	if not school_holiday_rows:
 		return []
 
-	default_color = "#64748B"
 	events: List[CalendarEvent] = []
+	seen: set[tuple[str, str]] = set()
 
-	for row in holiday_rows:
+	for row in school_holiday_rows:
 		hd = getdate(row.get("holiday_date"))
-		if not hd:
+		calendar_name = (row.get("parent") or "").strip()
+		if not hd or not calendar_name:
 			continue
+
+		key = (calendar_name, hd.isoformat())
+		if key in seen:
+			continue
+		seen.add(key)
 
 		start_dt = _combine(hd, time(0, 0, 0), tzinfo)
 		end_dt = _combine(hd + timedelta(days=1), time(0, 0, 0), tzinfo)
-
 		title = (row.get("description") or "").strip() or _("Holiday")
 		color = (row.get("color") or "").strip() or default_color
 
+		calendar_meta = calendar_by_name.get(calendar_name) or {}
 		events.append(
 			CalendarEvent(
-				id=f"staff_holiday::{cal['name']}::{hd.isoformat()}",
+				id=f"staff_holiday::school_calendar::{calendar_name}::{hd.isoformat()}",
 				title=title,
 				start=start_dt,
 				end=end_dt,
@@ -686,11 +754,12 @@ def _collect_staff_holiday_events(
 				color=color,
 				all_day=True,
 				meta={
-					"staff_calendar": cal["name"],
+					"school_calendar": calendar_name,
+					"calendar_school": calendar_meta.get("school"),
+					"academic_year": calendar_meta.get("academic_year"),
 					"holiday_date": hd.isoformat(),
 					"weekly_off": int(row.get("weekly_off") or 0),
-					"employee_group": cal["employee_group"],
-					"school": cal["school"],
+					"fallback": "school_calendar",
 				},
 			)
 		)
@@ -1436,45 +1505,45 @@ def get_portal_calendar_prefs(from_datetime: Optional[str] = None, to_datetime: 
 		or frappe.db.get_value("Instructor", {"linked_user_id": user}, "school")
 	)
 
-	# Academic Year window to scope the schedule/calendar
-	try:
-		from ifitwala_ed.schedule.schedule_utils import current_academic_year
-
-		ay = current_academic_year()
-	except Exception:
-		ay = None
-
-	# Find a School Schedule → School Calendar
+	# Resolve effective School Calendar (self -> nearest ancestor) for today.
 	calendar_name = None
-	if school and ay:
-		sched = get_effective_schedule_for_ay(ay, school)
-		if sched:
-			try:
-				sched_doc = frappe.get_cached_doc("School Schedule", sched)
-				calendar_name = getattr(sched_doc, "school_calendar", None)
-			except Exception:
-				calendar_name = None
+	if school:
+		today_value = getdate(now_datetime())
+		calendar_rows = resolve_school_calendars_for_window(school, today_value, today_value)
+		if calendar_rows:
+			calendar_name = calendar_rows[0].get("name")
 
-	# Fallback: School.current_school_calendar
+	# Fallback: nearest School.current_school_calendar in lineage
 	if not calendar_name and school:
-		calendar_name = frappe.db.get_value("School", school, "current_school_calendar")
+		for school_name in get_school_lineage(school):
+			candidate = frappe.db.get_value("School", school_name, "current_school_calendar")
+			if candidate:
+				calendar_name = candidate
+				break
 
 	weekend_fc_days: List[int] = get_weekend_days_for_calendar(calendar_name) if calendar_name else get_weekend_days_for_calendar(None)
 
 
-	# Default slot window from School
+	# Default slot window from School (nearest lineage override).
 	default_min = "07:00:00"
 	default_max = "17:00:00"
 	if school:
-		row = frappe.db.get_value(
-			"School",
-			school,
-			["portal_calendar_start_time", "portal_calendar_end_time"],
-			as_dict=True,
-		)
-		if row:
-			default_min = _time_to_str(row.get("portal_calendar_start_time"), default_min)
-			default_max = _time_to_str(row.get("portal_calendar_end_time"), default_max)
+		for school_name in get_school_lineage(school):
+			row = frappe.db.get_value(
+				"School",
+				school_name,
+				["portal_calendar_start_time", "portal_calendar_end_time"],
+				as_dict=True,
+			)
+			if not row:
+				continue
+			start_raw = row.get("portal_calendar_start_time")
+			end_raw = row.get("portal_calendar_end_time")
+			if not start_raw and not end_raw:
+				continue
+			default_min = _time_to_str(start_raw, default_min)
+			default_max = _time_to_str(end_raw, default_max)
+			break
 
 	return {
 		"timezone": tzinfo.zone,

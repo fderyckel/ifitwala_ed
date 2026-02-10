@@ -292,8 +292,10 @@ export interface AttendanceLedgerResponse {
 		raw_records: number
 		total_students: number
 		total_present: number
+		total_late_present: number
 		total_attendance: number
 		percentage_present: number
+		percentage_late: number
 	}
 	filter_options: {
 		courses: string[]

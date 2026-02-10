@@ -173,6 +173,12 @@ function csvEscape(value: unknown): string {
 	return `"${text.replace(/"/g, '""')}"`
 }
 
+function formatPercent(value: unknown): string {
+	const numeric = Number(value)
+	if (!Number.isFinite(numeric)) return '0.0'
+	return numeric.toFixed(1)
+}
+
 function exportCurrentSliceCsv() {
 	if (!rows.value.length || !columns.value.length) {
 		actionError.value = 'No ledger rows to export for current filters.'
@@ -185,8 +191,13 @@ function exportCurrentSliceCsv() {
 			columns.value
 				.map((column) => {
 					const raw = row[column.fieldname]
-					if (column.fieldname === 'percentage_present' && raw !== null && raw !== undefined && raw !== '') {
-						return csvEscape(`${raw}%`)
+					if (
+						(column.fieldname === 'percentage_present' || column.fieldname === 'percentage_late')
+						&& raw !== null
+						&& raw !== undefined
+						&& raw !== ''
+					) {
+						return csvEscape(`${formatPercent(raw)}%`)
 					}
 					return csvEscape(raw)
 				})
@@ -424,7 +435,7 @@ onMounted(async () => {
 			<div>
 				<h1 class="type-h2 text-canopy">Attendance Ledger</h1>
 				<p class="type-body mt-1 text-slate-token/80">
-					Desk-equivalent attendance reporting for student-level code audits and operational follow-up.
+					Row-level attendance evidence for follow-up, compliance, and code integrity.
 				</p>
 			</div>
 		</header>
@@ -671,7 +682,10 @@ onMounted(async () => {
 											'rounded-full px-2 py-0.5 text-[11px] font-medium',
 											Number(row[col.fieldname] || 0) >= 95 ? 'bg-leaf/15 text-leaf' : Number(row[col.fieldname] || 0) < 75 ? 'bg-flame/15 text-flame' : 'bg-amber-100 text-amber-700',
 										]">
-											{{ row[col.fieldname] }}%
+											{{ formatPercent(row[col.fieldname]) }}%
+										</span>
+										<span v-else-if="col.fieldname === 'percentage_late'" class="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+											{{ formatPercent(row[col.fieldname]) }}%
 										</span>
 										<span v-else>{{ row[col.fieldname] }}</span>
 									</td>
@@ -717,8 +731,10 @@ onMounted(async () => {
 						<p><span class="font-medium text-slate-800">Raw records:</span> {{ ledger?.summary.raw_records || 0 }}</p>
 						<p><span class="font-medium text-slate-800">Distinct students:</span> {{ ledger?.summary.total_students || 0 }}</p>
 						<p><span class="font-medium text-slate-800">Present rows:</span> {{ ledger?.summary.total_present || 0 }}</p>
+						<p><span class="font-medium text-slate-800">Late rows (present):</span> {{ ledger?.summary.total_late_present || 0 }}</p>
 						<p><span class="font-medium text-slate-800">Total rows:</span> {{ ledger?.summary.total_attendance || 0 }}</p>
-						<p><span class="font-medium text-slate-800">% Present:</span> {{ ledger?.summary.percentage_present || 0 }}%</p>
+						<p><span class="font-medium text-slate-800">% Present:</span> {{ formatPercent(ledger?.summary.percentage_present) }}%</p>
+						<p><span class="font-medium text-slate-800">% Late:</span> {{ formatPercent(ledger?.summary.percentage_late) }}%</p>
 					</div>
 				</template>
 			</AnalyticsCard>

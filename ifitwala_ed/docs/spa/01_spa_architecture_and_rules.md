@@ -257,6 +257,29 @@ Violations are **defects**, not style issues.
 
 ---
 
+### 3.4.1 Portal Calendar Resolution Contract (Locked)
+
+For SPA calendar surfaces (staff, student, guardian):
+
+* Clients must treat calendar scope as **server-owned**.
+* Clients must not infer Academic Year or School Calendar from local school context.
+* Clients must call calendar APIs and render returned events/preferences as-is.
+
+Server contract for staff portal:
+
+1. Attempt `Staff Calendar` holidays using nearest lineage school match.
+2. If no Staff Calendar holidays are available, fallback to effective `School Calendar Holidays` for the same window (`self -> nearest ancestor`).
+
+Client anti-patterns (forbidden):
+
+* Building parent fallback in Vue.
+* Assuming `Employee.school` has direct `Academic Year` / `School Calendar`.
+* Hardcoding school calendar IDs in SPA state.
+
+This rule prevents silent portal drift when AY/calendar is maintained at a parent school node.
+
+---
+
 ### 3.5 Architectural reason (why this matters)
 
 Under the A+ model:

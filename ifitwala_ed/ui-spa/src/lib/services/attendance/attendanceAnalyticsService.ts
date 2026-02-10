@@ -202,17 +202,30 @@ function mapLegacyReportToLedger(
 	reportData: {
 		columns?: Array<{ fieldname?: string; label?: string; fieldtype?: string; options?: string }>
 		result?: Array<Record<string, string | number | null>>
+		data?: Array<Record<string, string | number | null>>
 		message?: {
 			columns?: Array<{ fieldname?: string; label?: string; fieldtype?: string; options?: string }>
 			result?: Array<Record<string, string | number | null>>
+			data?: Array<Record<string, string | number | null>>
 		}
 	},
 ): AttendanceLedgerResponse {
 	const { fromDate, toDate } = resolveDateRange(payload)
 	const rawColumns = reportData.columns || reportData.message?.columns || []
 	const rawRows = reportData.result || reportData.data || reportData.message?.result || reportData.message?.data || []
+	const lateFieldnames = detectLegacyLateFieldnames(rawColumns)
 	const filteredRows = applyLegacyRowFilters(rawRows, payload)
-	const sortedRows = applyLegacySort(filteredRows, payload.sort_by || 'student_label', payload.sort_order || 'asc')
+	const enrichedRows = filteredRows.map((row) => {
+		const presentCount = Number(row.present_count_debug || 0)
+		const totalCount = Number(row.total_count_debug || 0)
+		const lateCount = lateFieldnames.reduce((sum, fieldname) => sum + Number(row[fieldname] || 0), 0)
+		return {
+			...row,
+			percentage_present: totalCount > 0 ? roundOne((presentCount / totalCount) * 100) : 0,
+			percentage_late: presentCount > 0 ? roundOne((lateCount / presentCount) * 100) : 0,
+		}
+	})
+	const sortedRows = applyLegacySort(enrichedRows, payload.sort_by || 'student_label', payload.sort_order || 'asc')
 
 	const page = Math.max(payload.page || 1, 1)
 	const pageLength = Math.max(payload.page_length || 80, 1)
@@ -230,8 +243,25 @@ function mapLegacyReportToLedger(
 			fieldtype: normalizeLedgerFieldtype(column.fieldtype),
 			options: column.options,
 		}))
+	const presentColumnIndex = columns.findIndex((column) => column.fieldname === 'percentage_present')
+	const hasLatePercentColumn = columns.some((column) => column.fieldname === 'percentage_late')
+	if (!hasLatePercentColumn) {
+		const latePercentColumn: AttendanceLedgerResponse['columns'][number] = {
+			fieldname: 'percentage_late',
+			label: '% Late',
+			fieldtype: 'Percent',
+		}
+		if (presentColumnIndex >= 0) {
+			columns.splice(presentColumnIndex + 1, 0, latePercentColumn)
+		} else {
+			columns.push(latePercentColumn)
+		}
+	}
 
 	const totalPresent = sortedRows.reduce((sum, row) => sum + Number(row.present_count_debug || 0), 0)
+	const totalLatePresent = sortedRows.reduce((sum, row) => {
+		return sum + lateFieldnames.reduce((lateSum, fieldname) => lateSum + Number(row[fieldname] || 0), 0)
+	}, 0)
 	const totalAttendance = sortedRows.reduce((sum, row) => sum + Number(row.total_count_debug || 0), 0)
 	const totalStudents = new Set(sortedRows.map((row) => String(row.student || ''))).size
 
@@ -266,8 +296,10 @@ function mapLegacyReportToLedger(
 			raw_records: totalAttendance,
 			total_students: totalStudents,
 			total_present: totalPresent,
+			total_late_present: totalLatePresent,
 			total_attendance: totalAttendance,
-			percentage_present: totalAttendance > 0 ? Number(((totalPresent / totalAttendance) * 100).toFixed(2)) : 0,
+			percentage_present: totalAttendance > 0 ? roundOne((totalPresent / totalAttendance) * 100) : 0,
+			percentage_late: totalPresent > 0 ? roundOne((totalLatePresent / totalPresent) * 100) : 0,
 		},
 		filter_options: {
 			courses: Array.from(
@@ -327,4 +359,44 @@ function applyLegacyRowFilters(
 		}
 		return true
 	})
+}
+
+function roundOne(value: number): number {
+	return Number(value.toFixed(1))
+}
+
+function detectLegacyLateFieldnames(
+	columns: Array<{ fieldname?: string; label?: string; fieldtype?: string; options?: string }>,
+): string[] {
+	return columns
+		.filter((column) => isLegacyLateCodeColumn(column))
+		.map((column) => String(column.fieldname || '').trim())
+		.filter((fieldname) => !!fieldname)
+}
+
+function isLegacyLateCodeColumn(column: { fieldname?: string; label?: string; fieldtype?: string }): boolean {
+	const fieldname = String(column.fieldname || '').trim()
+	const label = String(column.label || '').trim()
+	if (!fieldname) return false
+	const knownFixed = new Set([
+		'student',
+		'student_label',
+		'attendance_type',
+		'course',
+		'student_group',
+		'present_count_debug',
+		'total_count_debug',
+		'percentage_present',
+		'percentage_late',
+	])
+	if (knownFixed.has(fieldname)) return false
+	const fieldType = String(column.fieldtype || '').toLowerCase()
+	if (fieldType !== 'int' && fieldType !== 'float') return false
+
+	const normalizedField = fieldname.toLowerCase()
+	const normalizedLabel = label.toLowerCase()
+	return normalizedField === 'l'
+		|| normalizedLabel === 'l'
+		|| normalizedField.includes('late')
+		|| normalizedLabel.includes('late')
 }

@@ -21,6 +21,21 @@ Core flow:
 
 The document acts as the authoritative HR staff record. It also drives access-related behavior through history/designation and linked user updates.
 
+### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
+
+For staff portal calendar reads, holiday resolution follows this server-owned precedence:
+
+1. Resolve `Staff Calendar` by:
+  - `employee_group` match
+  - date-window overlap
+  - nearest school in lineage (`employee.school` -> parent -> grandparent)
+2. If no Staff Calendar holidays are available, fallback to `School Calendar Holidays` from the effective School Calendar resolver for the same date window.
+
+Important:
+- This fallback is lineage-based and deterministic.
+- No sibling-school leakage is allowed.
+- SPA clients must not guess school/AY fallback; they consume API payload only.
+
 ## 2) Employee History (child table) behavior
 
 Child table: `Employee History` (`ifitwala_ed/hr/doctype/employee_history/employee_history.json`).

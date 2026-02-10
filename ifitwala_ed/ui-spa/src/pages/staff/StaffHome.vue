@@ -578,8 +578,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		links: [
 			{ label: 'Student Log Analytics', to: { name: 'staff-student-log-analytics' }, capability: 'analytics_wellbeing' },
 			{ label: 'Counseling Caseload', to: '/analytics/wellbeing/counseling-caseload', capability: 'analytics_wellbeing' },
-			{ label: 'Referral Outcomes', to: '/analytics/wellbeing/referral-outcomes', capability: 'analytics_wellbeing' },
-			{ label: 'Support Plans', to: '/analytics/wellbeing/support-plans', capability: 'analytics_wellbeing' },
 		],
 	},
 	{
@@ -598,10 +596,8 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		description: 'Timetable load, rooms, and transport fill.',
 		icon: 'calendar',
 		links: [
-			{ label: 'Timetable Utilization', to: '../app/schedule_calendar', capability: 'analytics_scheduling' },
 			{ label: 'Room Occupancy', to: { name: 'staff-room-utilization' }, capability: 'analytics_scheduling' },
 			{ label: 'Bus & Route Load', to: '/analytics/scheduling/bus-route-load', capability: 'analytics_scheduling' },
-			{ label: 'Exam Schedules', to: '/analytics/scheduling/exam-schedules', capability: 'analytics_scheduling' },
 		],
 	},
 	{

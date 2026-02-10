@@ -1595,7 +1595,9 @@ def _get_ledger_payload(
 			for code in code_defs
 		]
 	) or "1"
-	percentage_present_sql = f"COALESCE(ROUND(({present_sum_sql}) / NULLIF(({total_sum_sql}), 0) * 100, 2), 0)"
+	late_sum_sql = f"SUM(CASE WHEN c.count_as_present = 1 AND {LATE_SQL} THEN 1 ELSE 0 END)"
+	percentage_present_sql = f"COALESCE(ROUND(({present_sum_sql}) / NULLIF(({total_sum_sql}), 0) * 100, 1), 0)"
+	percentage_late_sql = f"COALESCE(ROUND(({late_sum_sql}) / NULLIF(({present_sum_sql}), 0) * 100, 1), 0)"
 
 	sort_expression = _ledger_sort_expression(sort_by=sort_by, sort_order=sort_order, code_defs=code_defs)
 	params_with_paging = dict(params)
@@ -1613,7 +1615,8 @@ def _get_ledger_payload(
 			{code_columns_sql},
 			{present_sum_sql} AS present_count,
 			{total_sum_sql} AS total_count,
-			{percentage_present_sql} AS percentage_present
+			{percentage_present_sql} AS percentage_present,
+			{percentage_late_sql} AS percentage_late
 		FROM `tabStudent Attendance` a
 		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
 		LEFT JOIN `tabStudent` st ON st.name = a.student
@@ -1649,6 +1652,7 @@ def _get_ledger_payload(
 			COUNT(*) AS raw_records,
 			COUNT(DISTINCT a.student) AS total_students,
 			SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS total_present,
+			SUM(CASE WHEN c.count_as_present = 1 AND {LATE_SQL} THEN 1 ELSE 0 END) AS total_late_present,
 			COUNT(*) AS total_attendance
 		FROM `tabStudent Attendance` a
 		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
@@ -1659,8 +1663,10 @@ def _get_ledger_payload(
 	)
 	summary_row = summary_rows[0] if summary_rows else {}
 	total_present = int(summary_row.get("total_present") or 0)
+	total_late_present = int(summary_row.get("total_late_present") or 0)
 	total_attendance = int(summary_row.get("total_attendance") or 0)
-	percentage_present = round((total_present / total_attendance) * 100, 2) if total_attendance else 0.0
+	percentage_present = round((total_present / total_attendance) * 100, 1) if total_attendance else 0.0
+	percentage_late = round((total_late_present / total_present) * 100, 1) if total_present else 0.0
 	filter_options = _get_ledger_filter_options(where_clause=where_for_options, params=params)
 
 	columns: list[dict[str, Any]] = [
@@ -1685,6 +1691,7 @@ def _get_ledger_payload(
 			{"fieldname": "present_count", "label": "Total Present", "fieldtype": "Int"},
 			{"fieldname": "total_count", "label": "Total Att.", "fieldtype": "Int"},
 			{"fieldname": "percentage_present", "label": "% Present", "fieldtype": "Percent"},
+			{"fieldname": "percentage_late", "label": "% Late", "fieldtype": "Percent"},
 		]
 	)
 
@@ -1711,8 +1718,10 @@ def _get_ledger_payload(
 			"raw_records": int(summary_row.get("raw_records") or 0),
 			"total_students": int(summary_row.get("total_students") or 0),
 			"total_present": total_present,
+			"total_late_present": total_late_present,
 			"total_attendance": total_attendance,
 			"percentage_present": percentage_present,
+			"percentage_late": percentage_late,
 		},
 		"filter_options": filter_options,
 	}
@@ -1728,6 +1737,7 @@ def _ledger_sort_expression(*, sort_by: str, sort_order: str, code_defs: list[di
 		"present_count": "present_count",
 		"total_count": "total_count",
 		"percentage_present": "percentage_present",
+		"percentage_late": "percentage_late",
 	}
 	for code in code_defs:
 		fieldname = code.get("fieldname")
