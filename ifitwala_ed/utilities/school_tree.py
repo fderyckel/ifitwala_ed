@@ -192,8 +192,8 @@ def get_first_ancestor_with_doc(doctype, school, filters=None):
 def get_school_scope_for_academic_year(school: str | None) -> list[str]:
 	"""
 	Return the school scope used for Academic Year visibility:
-	- Leaf school: self if it has visible, unarchived Academic Years; otherwise nearest ancestor with visible, unarchived Academic Years
-	- Parent school: self + descendants
+	- Prefer self + descendants when that subtree has visible, unarchived Academic Years
+	- Otherwise fallback to nearest ancestor with visible, unarchived Academic Years
 	Cached by school for 5 minutes.
 	"""
 	if not school:
@@ -205,23 +205,21 @@ def get_school_scope_for_academic_year(school: str | None) -> list[str]:
 	if cached is not None:
 		return cached
 
-	if is_leaf_school(school):
-		if frappe.db.exists(
-			"Academic Year",
-			{"school": school, "archived": 0, "visible_to_admission": 1},
-		):
-			scope = [school]
-		else:
-			scope = (
-				get_first_ancestor_with_doc(
-					"Academic Year",
-					school,
-					filters={"archived": 0, "visible_to_admission": 1},
-				)
-				or [school]
-			)
+	subtree_scope = get_descendant_schools(school) or [school]
+	if frappe.db.exists(
+		"Academic Year",
+		{"school": ["in", subtree_scope], "archived": 0, "visible_to_admission": 1},
+	):
+		scope = subtree_scope
 	else:
-		scope = get_descendant_schools(school) or [school]
+		scope = (
+			get_first_ancestor_with_doc(
+				"Academic Year",
+				school,
+				filters={"archived": 0, "visible_to_admission": 1},
+			)
+			or subtree_scope
+		)
 
 	cache.set_value(key, scope, expires_in_sec=CACHE_TTL)
 	return scope

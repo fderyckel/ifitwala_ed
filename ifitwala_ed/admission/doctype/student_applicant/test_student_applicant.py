@@ -53,6 +53,23 @@ class TestStudentApplicant(FrappeTestCase):
 		names = {r[0] for r in rows}
 		self.assertIn(parent_ay, names)
 
+	def test_academic_year_query_scope_non_leaf_child_ancestor(self):
+		intermediate_school = self._create_school("Intermediate School", "IS", self.org, parent=self.parent_school, is_group=1)
+		self._create_school("Intermediate Leaf A", "IA", self.org, parent=intermediate_school, is_group=0)
+		self._create_school("Intermediate Leaf B", "IB", self.org, parent=intermediate_school, is_group=0)
+		parent_ay = self._create_academic_year(self.parent_school, "2027-2028", archived=0, visible=1)
+
+		rows = academic_year_intent_query(
+			"Academic Year",
+			"",
+			"name",
+			0,
+			50,
+			{"school": intermediate_school},
+		)
+		names = {r[0] for r in rows}
+		self.assertIn(parent_ay, names)
+
 	def test_validation_blocks_archived_ay(self):
 		applicant = frappe.get_doc({
 			"doctype": "Student Applicant",
