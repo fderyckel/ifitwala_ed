@@ -145,7 +145,7 @@ school_slug (required)
 
 **Used by**
 
-* `/programs/<program_slug>`
+* `/{school_slug}/programs/<program_slug>`
 
 **Consumes**
 
@@ -222,6 +222,7 @@ ProgramCard[] = {
 * Program must be offered by the school (Program Offering)
 * Ordered by `is_featured desc`, then `lft asc`
 * Intro truncated server-side
+* Discoverability is school-scoped: navigation should expose a single `Programs` page (`School Website Page.route = "programs"`), and that page renders `program_list` cards that link to each program detail route.
 
 ---
 

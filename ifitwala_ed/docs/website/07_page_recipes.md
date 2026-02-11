@@ -196,5 +196,6 @@ For a new site, the bootstrap flow seeds these pages for the default website sch
 1. route `/` (home)
 2. route `about`
 3. route `admissions`
+4. route `programs`
 
-All three pages are created as `School Website Page` records with canonical `full_route` values and schema-valid default blocks, so the public website has immediate structure and navigation without manual Desk setup.
+All four pages are created as `School Website Page` records with canonical `full_route` values and schema-valid default blocks, so the public website has immediate structure and navigation without manual Desk setup.

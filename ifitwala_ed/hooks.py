@@ -52,6 +52,10 @@ doctype_js = {
 	"Contact": "public/js/contact.js",
 	"School Website Page Block": "school_site/doctype/school_website_page_block/school_website_page_block.js"
 }
+
+standard_queries = {
+	"Academic Year": "ifitwala_ed.utilities.link_queries.academic_year_global_desc_query",
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}

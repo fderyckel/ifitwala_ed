@@ -537,6 +537,11 @@ Before any code:
   * Auto-link to detail pages
   * Require Program.is_published = 1 and Program.archive = 0
   * Require Program Offering for the school
+* Guarantee school-level discoverability:
+
+  * Ensure a `School Website Page` with route `programs` exists
+  * Ensure that page is visible in navigation (`show_in_navigation = 1`)
+  * Ensure that page includes a `program_list` block so cards are rendered without manual setup
 
 **Output**
 

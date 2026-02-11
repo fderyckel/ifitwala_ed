@@ -531,38 +531,34 @@ def hydrate_non_catalog_rows(course_names: str, exception_reason: str = "") -> l
 
 
 @frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
 def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
-	txt = (txt or "").strip()
-	school = (filters or {}).get("school")
+	filters = filters or {}
+	school = filters.get("school")
+	search_txt = (txt or "").strip()
+	like_txt = f"%{search_txt}%"
 
-	conds = []
-	params = []
+	db_filters = {}
 	if school:
-		conds.append("ay.school = %s")
-		params.append(school)
-	if txt:
-		conds.append("(ay.name LIKE %(txt)s OR ay.academic_year_name LIKE %(txt)s)")
+		db_filters["school"] = school
 
-	where_sql = "WHERE " + " AND ".join(conds) if conds else ""
-	sql = f"""
-		SELECT
-			ay.name AS value,
-			ay.academic_year_name AS description
-		FROM `tabAcademic Year` ay
-		{where_sql}
-		ORDER BY ay.year_start_date DESC, ay.name DESC
-		LIMIT %(page_len)s OFFSET %(start)s
-	"""
+	or_filters = None
+	if search_txt:
+		or_filters = [
+			["Academic Year", "name", "like", like_txt],
+			["Academic Year", "academic_year_name", "like", like_txt],
+		]
 
-	return [
-		[r.get("value"), r.get("description") or r.get("value")]
-		for r in frappe.db.sql(
-			sql,
-			tuple(params),
-			as_dict=True,
-			values={"txt": f"%{txt}%", "page_len": int(page_len or 20), "start": int(start or 0)}
-		)
-	]
+	rows = frappe.get_list(
+		"Academic Year",
+		fields=["name", "academic_year_name"],
+		filters=db_filters,
+		or_filters=or_filters,
+		order_by="year_start_date DESC, name DESC",
+		start=int(start or 0),
+		page_length=int(page_len or 20),
+	)
+	return [[r.get("name"), (r.get("academic_year_name") or r.get("name"))] for r in rows]
 
 @frappe.whitelist()
 def create_draft_tuition_invoice(program_offering: str, account_holder: str, posting_date: str, items: str):

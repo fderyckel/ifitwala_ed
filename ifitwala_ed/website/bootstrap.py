@@ -210,10 +210,35 @@ def _build_admissions_blocks(*, school) -> list[dict]:
 	]
 
 
+def _build_programs_blocks(*, school) -> list[dict]:
+	return [
+		{
+			"block_type": "hero",
+			"order": 1,
+			"props": {
+				"title": "Programs",
+				"subtitle": f"Explore the programs offered at {school.school_name}.",
+				"images": [],
+			},
+		},
+		{
+			"block_type": "program_list",
+			"order": 2,
+			"props": {
+				"school_scope": "current",
+				"show_intro": True,
+				"card_style": "standard",
+				"limit": 12,
+			},
+		},
+	]
+
+
 def _default_page_specs(*, school) -> list[dict]:
 	home_meta = _trim_meta_text(school.about_snippet or school.more_info)
 	about_meta = _trim_meta_text(school.more_info or school.about_snippet)
 	admissions_meta = "Admissions information, steps, and application links."
+	programs_meta = "Explore available academic programs and pathways."
 
 	return [
 		{
@@ -239,6 +264,14 @@ def _default_page_specs(*, school) -> list[dict]:
 			"show_in_navigation": 1,
 			"navigation_order": 3,
 			"blocks": _build_admissions_blocks(school=school),
+		},
+		{
+			"route": "programs",
+			"title": "Programs",
+			"meta_description": programs_meta,
+			"show_in_navigation": 1,
+			"navigation_order": 4,
+			"blocks": _build_programs_blocks(school=school),
 		},
 	]
 
@@ -276,6 +309,93 @@ def _create_page_if_missing(*, school_name: str, spec: dict) -> str | None:
 	_append_blocks(page, spec["blocks"])
 	page.insert(ignore_permissions=True)
 	return page.name
+
+
+def ensure_programs_index_page(*, school_name: str) -> dict:
+	"""
+	Guarantee a school-scoped Programs page that is visible in navigation and
+	renders program cards via the program_list block.
+	"""
+	school = frappe.get_doc("School", school_name)
+	page_name = frappe.db.get_value(
+		"School Website Page",
+		{"school": school.name, "route": "programs"},
+		"name",
+	)
+
+	created = False
+	updated = False
+	if not page_name:
+		spec = {
+			"route": "programs",
+			"title": "Programs",
+			"meta_description": "Explore available academic programs and pathways.",
+			"show_in_navigation": 1,
+			"navigation_order": 4,
+			"blocks": _build_programs_blocks(school=school),
+		}
+		page_name = _create_page_if_missing(school_name=school.name, spec=spec)
+		if not page_name:
+			page_name = frappe.db.get_value(
+				"School Website Page",
+				{"school": school.name, "route": "programs"},
+				"name",
+			)
+		if not page_name:
+			frappe.throw(
+				f"Unable to resolve Programs page for school {school.name}.",
+				frappe.ValidationError,
+			)
+		created = bool(page_name)
+		page = frappe.get_doc("School Website Page", page_name)
+	else:
+		page = frappe.get_doc("School Website Page", page_name)
+
+	if not page.title:
+		page.title = "Programs"
+		updated = True
+
+	if int(page.show_in_navigation or 0) != 1:
+		page.show_in_navigation = 1
+		updated = True
+
+	if page.navigation_order in (None, "", "Null"):
+		page.navigation_order = 4
+		updated = True
+
+	has_program_list = any((row.block_type == "program_list") for row in (page.blocks or []))
+	if not has_program_list:
+		next_order = max(
+			[int(row.order or row.idx or 0) for row in (page.blocks or [])] or [0]
+		) + 1
+		page.append(
+			"blocks",
+			{
+				"block_type": "program_list",
+				"order": next_order,
+				"props": json.dumps(
+					{
+						"school_scope": "current",
+						"show_intro": True,
+						"card_style": "standard",
+						"limit": 12,
+					}
+				),
+				"is_enabled": 1,
+			},
+		)
+		updated = True
+
+	if updated:
+		page.save(ignore_permissions=True)
+
+	return {
+		"school": school.name,
+		"page": page.name,
+		"full_route": page.full_route,
+		"created": created,
+		"updated": updated,
+	}
 
 
 def _ensure_default_school_for_organization(*, school):

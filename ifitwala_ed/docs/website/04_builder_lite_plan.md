@@ -392,7 +392,7 @@ Critical content **must not depend on JS**.
 3. Create block template files
 4. Add default new-site page scaffold:
    * school web identity (`website_slug`, publication)
-   * `School Website Page` records for `/`, `about`, `admissions`
+   * `School Website Page` records for `/`, `about`, `admissions`, `programs`
    * navigation built from published page `full_route` values
 
 ### Phase 2 — Providers
