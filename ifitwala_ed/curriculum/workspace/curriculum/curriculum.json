@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"ORoV-qyamd\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Curriculum</span>\",\"col\":12}},{\"id\":\"o7SexzSw2d\",\"type\":\"card\",\"data\":{\"card_name\":\"Program\",\"col\":4}},{\"id\":\"yWxdh7-iFL\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"u_Dlt5hBor\",\"type\":\"card\",\"data\":{\"card_name\":\"Assessments\",\"col\":4}},{\"id\":\"oKL0uhbVgR\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Enrollment</b></span>\",\"col\":12}},{\"id\":\"H5GTRTzzKa\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"-l6YhDaF-f\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Tools\",\"col\":4}},{\"id\":\"rvQBFpS1iz\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Students &amp; Monitoring</b></span>\",\"col\":12}},{\"id\":\"_-iVGTsSnn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"LOQMhvtNgO\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Organization &amp; Schools</b></span>\",\"col\":12}},{\"id\":\"DalBqmQQSw\",\"type\":\"card\",\"data\":{\"card_name\":\"Orgs & HR\",\"col\":4}},{\"id\":\"xSi9MbWE7L\",\"type\":\"card\",\"data\":{\"card_name\":\"Collaboration\",\"col\":4}}]",
+ "content": "[{\"id\":\"_FX-g_w8DJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Portal\",\"col\":3}},{\"id\":\"ORoV-qyamd\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Curriculum</span>\",\"col\":12}},{\"id\":\"o7SexzSw2d\",\"type\":\"card\",\"data\":{\"card_name\":\"Program\",\"col\":4}},{\"id\":\"yWxdh7-iFL\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"u_Dlt5hBor\",\"type\":\"card\",\"data\":{\"card_name\":\"Assessments\",\"col\":4}},{\"id\":\"oKL0uhbVgR\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Enrollment</b></span>\",\"col\":12}},{\"id\":\"H5GTRTzzKa\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"-l6YhDaF-f\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Tools\",\"col\":4}},{\"id\":\"rvQBFpS1iz\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Students &amp; Monitoring</b></span>\",\"col\":12}},{\"id\":\"_-iVGTsSnn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"LOQMhvtNgO\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Organization &amp; Schools</b></span>\",\"col\":12}},{\"id\":\"DalBqmQQSw\",\"type\":\"card\",\"data\":{\"card_name\":\"Orgs & HR\",\"col\":4}},{\"id\":\"xSi9MbWE7L\",\"type\":\"card\",\"data\":{\"card_name\":\"Collaboration\",\"col\":4}}]",
  "creation": "2024-12-08 11:58:32.394967",
  "custom_blocks": [],
  "docstatus": 0,
@@ -386,7 +386,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-01-31 11:47:48.305481",
+ "modified": "2026-02-09 11:51:35.568226",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",
@@ -407,6 +407,14 @@
   }
  ],
  "sequence_id": 2.0,
- "shortcuts": [],
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Portal",
+   "type": "URL",
+   "url": "/portal/staff"
+  }
+ ],
  "title": "Curriculum"
 }
