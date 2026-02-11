@@ -152,7 +152,7 @@ after_install = "ifitwala_ed.setup.setup.setup_education"
 # before_app_uninstall = "ifitwala.utils.before_app_uninstall"
 # after_app_uninstall = "ifitwala.utils.after_app_uninstall"
 
-calendars = ["School Event", "School Calendar"]
+calendars = ["School Event", "School Calendar", "Leave Application"]
 
 # Desk Notifications
 # ------------------
@@ -174,6 +174,16 @@ permission_query_conditions = {
 	"Employee": "ifitwala_ed.hr.doctype.employee.employee.get_permission_query_conditions",
 	"Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.get_permission_query_conditions",
 	"Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.get_permission_query_conditions",
+	"Leave Application": "ifitwala_ed.hr.leave_permissions.leave_application_pqc",
+	"Leave Allocation": "ifitwala_ed.hr.leave_permissions.leave_allocation_pqc",
+	"Leave Policy": "ifitwala_ed.hr.leave_permissions.leave_policy_pqc",
+	"Leave Policy Assignment": "ifitwala_ed.hr.leave_permissions.leave_policy_assignment_pqc",
+	"Leave Ledger Entry": "ifitwala_ed.hr.leave_permissions.leave_ledger_entry_pqc",
+	"Leave Period": "ifitwala_ed.hr.leave_permissions.leave_period_pqc",
+	"Leave Block List": "ifitwala_ed.hr.leave_permissions.leave_block_list_pqc",
+	"Compensatory Leave Request": "ifitwala_ed.hr.leave_permissions.compensatory_leave_request_pqc",
+	"Leave Adjustment": "ifitwala_ed.hr.leave_permissions.leave_adjustment_pqc",
+	"Leave Encashment": "ifitwala_ed.hr.leave_permissions.leave_encashment_pqc",
 }
 
 has_permission = {
@@ -186,6 +196,17 @@ has_permission = {
 	"Employee": "ifitwala_ed.hr.doctype.employee.employee.employee_has_permission",
 	"Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.has_permission",
 	"Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.has_permission",
+	"Leave Application": "ifitwala_ed.hr.leave_permissions.leave_application_has_permission",
+	"Leave Allocation": "ifitwala_ed.hr.leave_permissions.leave_allocation_has_permission",
+	"Leave Policy": "ifitwala_ed.hr.leave_permissions.leave_policy_has_permission",
+	"Leave Policy Assignment": "ifitwala_ed.hr.leave_permissions.leave_policy_assignment_has_permission",
+	"Leave Ledger Entry": "ifitwala_ed.hr.leave_permissions.leave_ledger_entry_has_permission",
+	"Leave Period": "ifitwala_ed.hr.leave_permissions.leave_period_has_permission",
+	"Leave Block List": "ifitwala_ed.hr.leave_permissions.leave_block_list_has_permission",
+	"Compensatory Leave Request": "ifitwala_ed.hr.leave_permissions.compensatory_leave_request_has_permission",
+	"Leave Adjustment": "ifitwala_ed.hr.leave_permissions.leave_adjustment_has_permission",
+	"Leave Encashment": "ifitwala_ed.hr.leave_permissions.leave_encashment_has_permission",
+	"Leave Control Panel": "ifitwala_ed.hr.leave_permissions.leave_control_panel_has_permission",
 }
 
 default_roles = [
@@ -270,7 +291,10 @@ scheduler_events = {
 			"ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard"
 		],
   "daily": [
-    "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs"
+    "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs",
+		"ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.process_expired_allocation",
+		"ifitwala_ed.hr.utils.allocate_earned_leaves",
+		"ifitwala_ed.hr.utils.generate_leave_encashment"
   ]
 }
 

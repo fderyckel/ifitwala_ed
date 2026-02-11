@@ -39,3 +39,35 @@ Employee profile images uploaded via governed flow were saved, but the left colu
    - Ensure a `File Classification` exists for the original and each derivative.
 3. **UI source**:
    - Verify UI loads from `get_employee_image_variants()` and not from guessed paths.
+
+---
+
+# HR Leave Domain Integration Audit
+
+**Date:** 2026-02-11  
+**Scope:** HR leave domain import from HRMS develop into Ifitwala HR (backend + desk)
+
+## Change Summary
+1. Imported leave-domain doctypes from HRMS develop snapshot.
+2. Recorded upstream source commit for traceability (`5a3b657db2b9407f2a03ac78ce8cdf054a53bc1e`) and removed temporary vendor snapshot after stabilization.
+3. Re-mapped tenancy and employee identity fields:
+   - `company -> organization`
+   - employee status checks to `employment_status`
+   - employee display name to `employee_full_name`
+4. Added controller-owned leave approval flow on `Leave Application` (no Workflow dependency).
+5. Added `Employee Attendance` doctype for leave submit/cancel side-effects.
+6. Added centralized leave permissions in `ifitwala_ed.hr.leave_permissions`.
+7. Added scheduler hooks for expiry + earned leaves and feature-gated encashment.
+8. Added minimal `HR Settings` singleton fields required by leave flows.
+
+## Decisions Locked
+1. Tenancy is organization-first with descendant scope for HR roles.
+2. HR holiday source is Staff Calendar only (`Employee.current_holiday_lis`); no School Calendar fallback in leave logic.
+3. Leave approval authorization is server-enforced in controller transitions, with override roles including `HR User`, `HR Manager`, `Academic Admin`, and `System Manager`.
+4. Portal leave UI remains out of scope for this phase.
+5. Leave Encashment is imported but disabled by default and inaccessible when the feature flag is off (`PQC = 1=0`, `has_permission = False`).
+
+## Deferred or Follow-Up
+1. Encashment payroll/accounting production enablement after mapping validation.
+2. Expanded scenario tests for high-cardinality leave policy and scheduler cases.
+3. Portal integration once backend behavior is stabilized.

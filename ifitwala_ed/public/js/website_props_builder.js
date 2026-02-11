@@ -360,7 +360,25 @@
 				});
 
 				dialog.show();
-			});
+				});
+	}
+
+	function openPropsBuilderForRow({ frm, row }) {
+		if (!row || !row.name) {
+			frappe.msgprint(__("Select a valid block row first."));
+			return;
+		}
+		const blockType = (row.block_type || "").trim();
+		if (!blockType) {
+			frappe.msgprint(__("Select a block type first."));
+			return;
+		}
+		openPropsBuilder({
+			frm,
+			cdt: row.doctype || "School Website Page Block",
+			cdn: row.name,
+			blockType
+		});
 	}
 
 	function buildDialog({ blockType, blockLabel, schema, initial, rawText }) {
@@ -681,5 +699,8 @@
 	}
 
 	window.ifitwalaEd = window.ifitwalaEd || {};
-	window.ifitwalaEd.websitePropsBuilder = { open: openPropsBuilder };
+	window.ifitwalaEd.websitePropsBuilder = {
+		open: openPropsBuilder,
+		openForRow: openPropsBuilderForRow
+	};
 })();

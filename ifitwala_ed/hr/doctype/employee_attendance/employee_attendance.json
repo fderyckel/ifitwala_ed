@@ -1,0 +1,216 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2026-02-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "employee",
+  "employee_full_name",
+  "column_break_vrde",
+  "attendance_date",
+  "status",
+  "half_day_status",
+  "section_break_ctxu",
+  "leave_type",
+  "leave_application",
+  "attendance_method",
+  "source_transaction_type",
+  "source_transaction_name",
+  "section_break_org",
+  "organization",
+  "school",
+  "department",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "HR-EATT-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.employee_full_name",
+   "fieldname": "employee_full_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_vrde",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "attendance_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Attendance Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "On Leave\nHalf Day",
+   "reqd": 1
+  },
+  {
+   "fieldname": "half_day_status",
+   "fieldtype": "Select",
+   "label": "Half Day Status",
+   "options": "\nPresent"
+  },
+  {
+   "fieldname": "section_break_ctxu",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "leave_type",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Leave Type",
+   "options": "Leave Type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "leave_application",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Leave Application",
+   "options": "Leave Application"
+  },
+  {
+   "default": "Manual",
+   "fieldname": "attendance_method",
+   "fieldtype": "Data",
+   "label": "Attendance Method",
+   "read_only": 1
+  },
+  {
+   "default": "Leave Application",
+   "fieldname": "source_transaction_type",
+   "fieldtype": "Data",
+   "label": "Source Transaction Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_transaction_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Source Transaction Name",
+   "options": "source_transaction_type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_org",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fetch_from": "employee.organization",
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.school",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Department",
+   "options": "Department",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Employee Attendance",
+   "read_only": 1
+  }
+ ],
+ "icon": "fa fa-calendar-check-o",
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-02-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Employee Attendance",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "if_owner": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1
+  }
+ ],
+ "sort_field": "attendance_date",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "employee_full_name"
+}

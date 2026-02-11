@@ -13,11 +13,13 @@ def setup_education():
 	ensure_initial_setup_flag()
 	ensure_root_organization()
 	create_roles_with_homepage()
+	ensure_leave_roles()
 	grant_role_read_select_to_hr()
 	create_designations()
 	create_log_type()
 	create_location_type()
 	add_other_records()
+	ensure_hr_settings()
 	create_student_file_folder()
 	setup_website_top_bar()
 	setup_website_block_definitions()
@@ -102,6 +104,39 @@ def create_roles_with_homepage():
 				"doctype": "Role",
 				**role
 			}).insert(ignore_permissions=True)
+
+
+def ensure_leave_roles():
+	for role_name in ["Leave Approver"]:
+		if not frappe.db.exists("Role", role_name):
+			frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+
+
+def ensure_hr_settings():
+	if not frappe.db.exists("DocType", "HR Settings"):
+		return
+
+	settings = frappe.get_single("HR Settings")
+	defaults = {
+		"leave_approver_mandatory_in_leave_application": 1,
+		"prevent_self_leave_approval": 1,
+		"restrict_backdated_leave_application": 0,
+		"send_leave_notification": 0,
+		"show_leaves_of_all_department_members_in_calendar": 0,
+		"enable_earned_leave_scheduler": 1,
+		"enable_leave_expiry_scheduler": 1,
+		"enable_leave_encashment": 0,
+		"auto_leave_encashment": 0,
+	}
+
+	changed = False
+	for fieldname, value in defaults.items():
+		if settings.get(fieldname) is None:
+			settings.set(fieldname, value)
+			changed = True
+
+	if changed:
+		settings.save(ignore_permissions=True)
 
 
 def create_designations():

@@ -26,6 +26,38 @@ async function getFieldValue(doctype, name, fieldname) {
 	return res && res.message ? res.message[fieldname] : null;
 }
 
+function getPropsBuilder() {
+	const builder = window.ifitwalaEd && window.ifitwalaEd.websitePropsBuilder;
+	if (!builder || typeof builder.openForRow !== "function") {
+		frappe.msgprint(__("Props Builder is not available. Please refresh the page."));
+		return null;
+	}
+	return builder;
+}
+
+function getSelectedBlockRow(frm) {
+	const rows = frm.doc.blocks || [];
+	if (!rows.length) {
+		frappe.msgprint(__("Add at least one block first."));
+		return null;
+	}
+
+	const selected = (frm.get_selected && frm.get_selected().blocks) || [];
+	if (selected.length > 1) {
+		frappe.msgprint(__("Select exactly one block row."));
+		return null;
+	}
+	if (selected.length === 1) {
+		return rows.find((row) => row.name === selected[0]) || null;
+	}
+	if (rows.length === 1) {
+		return rows[0];
+	}
+
+	frappe.msgprint(__("Select one row in Blocks, then click Edit Block Props."));
+	return null;
+}
+
 frappe.ui.form.on("Website Story", {
 	refresh(frm) {
 		frm.clear_custom_buttons();
@@ -44,6 +76,14 @@ frappe.ui.form.on("Website Story", {
 
 			const previewUrl = `${getPreviewUrl(`/${schoolSlug}/stories/${frm.doc.slug}`)}?preview=1`;
 			window.open(previewUrl, "_blank");
+		});
+
+		frm.add_custom_button(__("Edit Block Props"), () => {
+			const builder = getPropsBuilder();
+			if (!builder) return;
+			const row = getSelectedBlockRow(frm);
+			if (!row) return;
+			builder.openForRow({ frm, row });
 		});
 
 		if (frm.dashboard && frm.dashboard.set_headline && !frm.doc.seo_profile) {
