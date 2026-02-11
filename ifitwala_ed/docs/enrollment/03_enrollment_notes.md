@@ -259,6 +259,24 @@ There is **no Course Section doctype**.
 
 **Student Group is the section.**
 
+---
+
+## 10. Activity Booking v2 (Implemented)
+
+Activity booking uses the same architectural discipline as enrollment requests, with dedicated lifecycle truth:
+
+1. `Activity Booking` is the booking-state source of truth.
+2. `Program Offering Activity Section` links offerings to activity `Student Group` sections.
+3. A pre-open readiness gate is mandatory before opening windows:
+   - instructor conflicts from `Employee Booking`
+   - location conflicts from `Location Booking`
+   - section schedule and materialization validity
+4. Allocation modes are explicit per offering:
+   - First Come First Serve
+   - Lottery (Preference)
+   - Manual
+5. Communication for activity events must use `Org Communication` with activity context links.
+
 Capacity enforced via:
 
 * `Student Group.maximum_size`

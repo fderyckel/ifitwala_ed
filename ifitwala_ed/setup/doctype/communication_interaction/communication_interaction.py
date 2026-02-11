@@ -9,6 +9,7 @@ from frappe.model.document import Document
 
 MAX_NOTE_LENGTH = 300
 DOCTYPE = "Communication Interaction"
+ENTRY_DOCTYPE = "Communication Interaction Entry"
 
 class CommunicationInteraction(Document):
 	def validate(self):
@@ -165,6 +166,38 @@ class CommunicationInteraction(Document):
 		if not self.student_group and parent.interaction_mode == "Student Q&A":
 			# Soft guard: you can tighten this later if needed
 			pass
+
+
+def _append_interaction_entry(doc: "CommunicationInteraction") -> None:
+	"""
+	Append-only interaction history.
+
+	Existing summary/reaction APIs continue using Communication Interaction.
+	This entry table preserves the full thread history.
+	"""
+	if not frappe.db.table_exists(ENTRY_DOCTYPE):
+		return
+
+	intent_type = (doc.intent_type or "").strip()
+	reaction_code = (doc.reaction_code or "").strip()
+	note = (doc.note or "").strip()
+	if not intent_type and not reaction_code and not note:
+		return
+
+	entry = frappe.new_doc(ENTRY_DOCTYPE)
+	entry.communication_interaction = doc.name
+	entry.org_communication = doc.org_communication
+	entry.user = doc.user
+	entry.audience_type = doc.audience_type
+	entry.surface = doc.surface
+	entry.intent_type = intent_type
+	entry.reaction_code = reaction_code
+	entry.note = note
+	entry.visibility = doc.visibility
+	entry.is_teacher_reply = int(doc.is_teacher_reply or 0)
+	entry.is_pinned = int(doc.is_pinned or 0)
+	entry.is_resolved = int(doc.is_resolved or 0)
+	entry.insert(ignore_permissions=True)
 
 @frappe.whitelist()
 def get_org_comm_interaction_summary(comm_names=None):
@@ -353,6 +386,7 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 		return []
 
 	# Base conditions (COMMENTS ONLY)
+	source_doctype = ENTRY_DOCTYPE if frappe.db.table_exists(ENTRY_DOCTYPE) else DOCTYPE
 	conditions = ["i.org_communication = %(comm)s"]
 	conditions.append("i.intent_type = 'Comment'")
 	conditions.append("COALESCE(TRIM(i.note), '') != ''")
@@ -407,7 +441,7 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 			i.is_resolved,
 			DATE_FORMAT(CONVERT_TZ(i.creation, 'UTC', @@session.time_zone), %(ts_fmt)s) as creation,
 			i.modified
-		FROM `tabCommunication Interaction` i
+		FROM `tab{source_doctype}` i
 		LEFT JOIN `tabUser` u ON u.name = i.user
 		WHERE {where_clause}
 		ORDER BY i.is_pinned DESC, i.creation ASC
@@ -512,6 +546,7 @@ def upsert_communication_interaction(
 		frappe.throw(_("Please add a short comment or question."))
 
 	doc.save(ignore_permissions=False)
+	_append_interaction_entry(doc)
 	return doc
 
 

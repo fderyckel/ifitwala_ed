@@ -296,6 +296,27 @@ Return to Awareness Mode.
 
 ---
 
+### 9.3 Activity Booking Actions (v2)
+
+**Intent**
+Allow guardians to book and manage extra-curricular activities for linked students.
+
+**Allowed actions**
+
+1. Submit booking with ranked section choices.
+2. Confirm an offered waitlist spot before expiry.
+3. Cancel booking (subject to school policy windows).
+4. View activity logistics (next slot, location, section status).
+
+**Hard constraints**
+
+1. Guardian can act only for linked students.
+2. Server enforces capacity and schedule-overlap checks.
+3. Billing requirements (account holder/invoice) are server-enforced.
+4. Communications are delivered through Org Communication audience + activity context links.
+
+---
+
 ## 10. Explicitly Forbidden Actions (Non-Negotiable)
 
 Guardians must **never** be able to:
@@ -353,4 +374,3 @@ Frontend gating is **never sufficient**.
 > * legal consideration
 
 ---
-

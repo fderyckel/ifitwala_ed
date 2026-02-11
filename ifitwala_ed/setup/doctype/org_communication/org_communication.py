@@ -78,6 +78,7 @@ class OrgCommunication(Document):
 		"""
 		self._validate_and_enforce_issuing_school_scope()
 		self._set_organization_from_school()
+		self._validate_activity_context_links()
 		self._normalize_and_validate_dates()
 		self._validate_audiences()
 		self._enforce_role_restrictions_on_audiences()
@@ -160,6 +161,73 @@ class OrgCommunication(Document):
 			)
 
 		self.organization = school_org
+
+	def _validate_activity_context_links(self):
+		"""
+		Validate optional activity context links for deterministic activity filtering.
+		"""
+		offering = (self.activity_program_offering or "").strip()
+		booking = (self.activity_booking or "").strip()
+		student_group = (self.activity_student_group or "").strip()
+
+		booking_row = None
+		if booking:
+			booking_row = frappe.db.get_value(
+				"Activity Booking",
+				booking,
+				["program_offering", "allocated_student_group"],
+				as_dict=True,
+			)
+			if not booking_row:
+				frappe.throw(
+					_("Activity Booking {0} does not exist.").format(booking),
+					title=_("Invalid Activity Context"),
+				)
+			booking_offering = (booking_row.get("program_offering") or "").strip()
+			if offering and booking_offering and offering != booking_offering:
+				frappe.throw(
+					_(
+						"Activity Program Offering does not match Activity Booking's Program Offering."
+					),
+					title=_("Invalid Activity Context"),
+				)
+			if not offering and booking_offering:
+				self.activity_program_offering = booking_offering
+
+		student_group_row = None
+		if student_group:
+			student_group_row = frappe.db.get_value(
+				"Student Group",
+				student_group,
+				["group_based_on", "program_offering"],
+				as_dict=True,
+			)
+			if not student_group_row:
+				frappe.throw(
+					_("Activity Student Group {0} does not exist.").format(student_group),
+					title=_("Invalid Activity Context"),
+				)
+			if (student_group_row.get("group_based_on") or "").strip() != "Activity":
+				frappe.throw(
+					_("Activity Student Group must be a Student Group with Group Based On = Activity."),
+					title=_("Invalid Activity Context"),
+				)
+			sg_offering = (student_group_row.get("program_offering") or "").strip()
+			if offering and sg_offering and offering != sg_offering:
+				frappe.throw(
+					_("Activity Student Group does not belong to the selected Activity Program Offering."),
+					title=_("Invalid Activity Context"),
+				)
+			if not offering and sg_offering:
+				self.activity_program_offering = sg_offering
+
+		if booking_row and student_group:
+			booking_section = (booking_row.get("allocated_student_group") or "").strip()
+			if booking_section and booking_section != student_group:
+				frappe.throw(
+					_("Activity Booking section does not match Activity Student Group."),
+					title=_("Invalid Activity Context"),
+				)
 
 	# ----------------------------------------------------------------
 	# Date / window logic
@@ -598,3 +666,16 @@ def has_permission(doc: "OrgCommunication", user: str = None, ptype: str = None)
 
 	# Default fallback
 	return True
+
+
+def on_doctype_update():
+	frappe.db.add_index(
+		"Org Communication",
+		["activity_program_offering", "publish_from"],
+		index_name="idx_org_comm_activity_offering_publish",
+	)
+	frappe.db.add_index(
+		"Org Communication",
+		["activity_student_group", "publish_from"],
+		index_name="idx_org_comm_activity_group_publish",
+	)

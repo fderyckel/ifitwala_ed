@@ -1,0 +1,122 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-02-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_defaults",
+  "default_waitlist_offer_hours",
+  "default_max_choices",
+  "column_break_defaults",
+  "default_allow_student_booking",
+  "default_allow_guardian_booking",
+  "default_allow_staff_booking",
+  "section_break_payment",
+  "default_payment_required",
+  "default_fee_amount",
+  "default_billable_offering"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_defaults",
+   "fieldtype": "Section Break",
+   "label": "Booking Defaults"
+  },
+  {
+   "default": "24",
+   "fieldname": "default_waitlist_offer_hours",
+   "fieldtype": "Int",
+   "label": "Default Waitlist Offer Hours",
+   "non_negative": 1
+  },
+  {
+   "default": "3",
+   "fieldname": "default_max_choices",
+   "fieldtype": "Int",
+   "label": "Default Max Choices",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_defaults",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "default_allow_student_booking",
+   "fieldtype": "Check",
+   "label": "Default Allow Student Booking"
+  },
+  {
+   "default": "1",
+   "fieldname": "default_allow_guardian_booking",
+   "fieldtype": "Check",
+   "label": "Default Allow Guardian Booking"
+  },
+  {
+   "default": "1",
+   "fieldname": "default_allow_staff_booking",
+   "fieldtype": "Check",
+   "label": "Default Allow Staff Booking"
+  },
+  {
+   "fieldname": "section_break_payment",
+   "fieldtype": "Section Break",
+   "label": "Payment Defaults"
+  },
+  {
+   "default": "0",
+   "fieldname": "default_payment_required",
+   "fieldtype": "Check",
+   "label": "Default Payment Required"
+  },
+  {
+   "fieldname": "default_fee_amount",
+   "fieldtype": "Currency",
+   "label": "Default Fee Amount"
+  },
+  {
+   "fieldname": "default_billable_offering",
+   "fieldtype": "Link",
+   "label": "Default Billable Offering",
+   "options": "Billable Offering"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-02-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "ECA",
+ "name": "Activity Booking Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

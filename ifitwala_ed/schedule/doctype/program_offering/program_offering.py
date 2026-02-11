@@ -5,12 +5,16 @@
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, flt
+from frappe.utils import getdate, get_datetime, now_datetime, flt, cint
 from frappe.model.document import Document
 from frappe.utils import get_link_to_form
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, is_leaf_school, get_descendant_schools
 from ifitwala_ed.accounting.account_holder_utils import get_school_organization
 from typing import Optional, Union, Sequence
+from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
+from ifitwala_ed.schedule.student_group_employee_booking import rebuild_employee_bookings_for_student_group
+from ifitwala_ed.utilities.employee_booking import find_employee_conflicts
+from ifitwala_ed.utilities.location_utils import find_room_conflicts, is_bookable_room
 
 # -------------------------
 # small DB helpers (used by validate)
@@ -71,6 +75,7 @@ class ProgramOffering(Document):
 
 		self._validate_catalog_membership()
 		self._apply_default_span_to_rows()
+		self._validate_activity_booking_configuration()
 
 	# -------------------------
 	# helpers
@@ -336,10 +341,433 @@ class ProgramOffering(Document):
 				row.end_academic_year = end_ay
 				changed = True  # noqa: F841
 
+	def _validate_activity_booking_configuration(self) -> None:
+		"""
+		Validate activity-booking specific controls stored on Program Offering.
+
+		This method intentionally does not depend on client-side behavior.
+		All booking-window gates are enforced server-side.
+		"""
+		if cint(self.activity_booking_enabled or 0) != 1:
+			return
+
+		status = (self.activity_booking_status or "Draft").strip() or "Draft"
+		allowed_status = {"Draft", "Ready", "Open", "Closed"}
+		if status not in allowed_status:
+			frappe.throw(_("Invalid Activity Booking Status: {0}").format(status))
+		self.activity_booking_status = status
+
+		min_age = self.activity_min_age_years
+		max_age = self.activity_max_age_years
+		if min_age is not None and cint(min_age) < 0:
+			frappe.throw(_("Minimum activity age cannot be negative."))
+		if max_age is not None and cint(max_age) < 0:
+			frappe.throw(_("Maximum activity age cannot be negative."))
+		if min_age is not None and max_age is not None and cint(min_age) > cint(max_age):
+			frappe.throw(_("Minimum activity age cannot be greater than maximum activity age."))
+
+		waitlist_hours = cint(self.activity_waitlist_offer_hours or 0)
+		if waitlist_hours < 0:
+			frappe.throw(_("Waitlist offer hours cannot be negative."))
+		if waitlist_hours == 0:
+			self.activity_waitlist_offer_hours = 24
+
+		if cint(self.activity_payment_required or 0) == 1 and flt(self.activity_fee_amount or 0) < 0:
+			frappe.throw(_("Activity fee amount cannot be negative."))
+
+		open_from = get_datetime(self.activity_booking_open_from) if self.activity_booking_open_from else None
+		open_to = get_datetime(self.activity_booking_open_to) if self.activity_booking_open_to else None
+		if open_from and open_to and open_to <= open_from:
+			frappe.throw(_("Activity booking close time must be after open time."))
+
+		if status == "Open" and not open_from:
+			self.activity_booking_open_from = now_datetime()
+
+		self._validate_activity_sections()
+
+		if status in {"Ready", "Open"}:
+			report = self.run_activity_preopen_readiness(raise_on_failure=False)
+			if not report.get("ok"):
+				frappe.throw(
+					self._build_activity_gate_error(report),
+					title=_("Activity Booking Readiness Failed"),
+				)
+
+	def _validate_activity_sections(self) -> None:
+		rows = [r for r in (self.activity_sections or []) if cint(getattr(r, "is_active", 1)) == 1]
+		if not rows:
+			frappe.throw(_("At least one active Activity Section is required when activity booking is enabled."))
+
+		seen = set()
+		group_names = []
+		for idx, row in enumerate(rows, start=1):
+			sg = (row.student_group or "").strip()
+			if not sg:
+				frappe.throw(_("Activity Section row {0}: Student Group is required.").format(idx))
+			if sg in seen:
+				frappe.throw(_("Duplicate Activity Section Student Group: {0}.").format(sg))
+			seen.add(sg)
+			group_names.append(sg)
+
+			if row.capacity_override is not None and cint(row.capacity_override) < 0:
+				frappe.throw(_("Activity Section row {0}: Capacity Override cannot be negative.").format(idx))
+			if row.priority_tier is not None and cint(row.priority_tier) < 0:
+				frappe.throw(_("Activity Section row {0}: Priority Tier cannot be negative.").format(idx))
+
+		group_rows = frappe.get_all(
+			"Student Group",
+			filters={"name": ["in", group_names]},
+			fields=[
+				"name",
+				"group_based_on",
+				"program_offering",
+				"student_group_name",
+				"student_group_abbreviation",
+			],
+			limit_page_length=max(200, len(group_names) + 20),
+		)
+		group_map = {g.get("name"): g for g in group_rows}
+
+		for idx, row in enumerate(rows, start=1):
+			sg = row.student_group
+			meta = group_map.get(sg)
+			if not meta:
+				frappe.throw(_("Activity Section row {0}: Student Group {1} was not found.").format(idx, sg))
+
+			if (meta.get("group_based_on") or "").strip() != "Activity":
+				frappe.throw(
+					_("Activity Section row {0}: Student Group {1} must be group type Activity.")
+					.format(idx, get_link_to_form("Student Group", sg))
+				)
+
+			sg_offering = (meta.get("program_offering") or "").strip()
+			if sg_offering and sg_offering != self.name:
+				frappe.throw(
+					_(
+						"Activity Section row {0}: Student Group {1} belongs to Program Offering {2}, not {3}."
+					).format(
+						idx,
+						get_link_to_form("Student Group", sg),
+						get_link_to_form("Program Offering", sg_offering),
+						get_link_to_form("Program Offering", self.name),
+					)
+				)
+
+			if not (row.section_label or "").strip():
+				row.section_label = (
+					(meta.get("student_group_abbreviation") or "").strip()
+					or (meta.get("student_group_name") or "").strip()
+					or sg
+				)
+
+	def _get_activity_date_window(self):
+		start_date = getdate(self.start_date) if self.start_date else None
+		end_date = getdate(self.end_date) if self.end_date else None
+
+		if start_date and end_date and start_date <= end_date:
+			return start_date, end_date
+
+		ay_names = [
+			(row.academic_year or "").strip()
+			for row in (self.offering_academic_years or [])
+			if (row.academic_year or "").strip()
+		]
+		if not ay_names:
+			return None, None
+
+		ay_rows = frappe.get_all(
+			"Academic Year",
+			filters={"name": ["in", ay_names]},
+			fields=["name", "year_start_date", "year_end_date"],
+			limit_page_length=max(200, len(ay_names) + 20),
+		)
+		dates = []
+		for row in ay_rows:
+			if row.get("year_start_date"):
+				dates.append(getdate(row.get("year_start_date")))
+			if row.get("year_end_date"):
+				dates.append(getdate(row.get("year_end_date")))
+		if not dates:
+			return None, None
+		return min(dates), max(dates)
+
+	def _build_activity_gate_error(self, report: dict) -> str:
+		sections = report.get("sections") or []
+		lines = [_("Activity booking window cannot open until section readiness issues are resolved.")]
+		for section in sections:
+			label = section.get("section_label") or section.get("student_group") or _("Unknown Section")
+			errors = section.get("errors") or []
+			room_conflicts = section.get("room_conflicts") or []
+			employee_conflicts = section.get("employee_conflicts") or []
+
+			if not errors and not room_conflicts and not employee_conflicts:
+				continue
+
+			lines.append(f"<br><b>{frappe.utils.escape_html(str(label))}</b>")
+			for err in errors:
+				lines.append(f"<br>- {frappe.utils.escape_html(str(err))}")
+			for c in room_conflicts[:8]:
+				lines.append(
+					"<br>- "
+					+ _(
+						"Room conflict: {location} overlaps with {doctype} {name} ({from_dt} → {to_dt})"
+					).format(
+						location=c.get("location"),
+						doctype=c.get("source_doctype"),
+						name=c.get("source_name"),
+						from_dt=c.get("from"),
+						to_dt=c.get("to"),
+					)
+				)
+			for c in employee_conflicts[:8]:
+				lines.append(
+					"<br>- "
+					+ _(
+						"Instructor conflict: {employee} overlaps with {doctype} {name} ({from_dt} → {to_dt})"
+					).format(
+						employee=c.get("employee"),
+						doctype=c.get("source_doctype"),
+						name=c.get("source_name"),
+						from_dt=c.get("from"),
+						to_dt=c.get("to"),
+					)
+				)
+		return "".join(lines)
+
+	def run_activity_preopen_readiness(self, raise_on_failure: bool = True) -> dict:
+		"""
+		Run section readiness checks before moving an activity booking window to Open.
+
+		Checks:
+		- linked Student Groups are schedule-valid and use bookable locations
+		- section slots have no Location Booking collisions
+		- section instructor slots have no Employee Booking collisions
+		"""
+		report = {
+			"ok": True,
+			"program_offering": self.name,
+			"window": {},
+			"sections": [],
+		}
+
+		start_date, end_date = self._get_activity_date_window()
+		report["window"] = {
+			"start_date": str(start_date) if start_date else None,
+			"end_date": str(end_date) if end_date else None,
+		}
+		if not start_date or not end_date:
+			report["ok"] = False
+			report["sections"].append(
+				{
+					"student_group": None,
+					"section_label": None,
+					"errors": [_("Program Offering requires Start/End or valid Academic Year span for readiness checks.")],
+					"room_conflicts": [],
+					"employee_conflicts": [],
+				}
+			)
+			if raise_on_failure:
+				frappe.throw(self._build_activity_gate_error(report), title=_("Activity Booking Readiness Failed"))
+			return report
+
+		rows = [r for r in (self.activity_sections or []) if cint(getattr(r, "is_active", 1)) == 1]
+		if not rows:
+			report["ok"] = False
+			report["sections"].append(
+				{
+					"student_group": None,
+					"section_label": None,
+					"errors": [_("No active activity sections found.")],
+					"room_conflicts": [],
+					"employee_conflicts": [],
+				}
+			)
+			if raise_on_failure:
+				frappe.throw(self._build_activity_gate_error(report), title=_("Activity Booking Readiness Failed"))
+			return report
+
+		instructor_cache = {}
+
+		for row in rows:
+			sg_name = (row.student_group or "").strip()
+			section_payload = {
+				"student_group": sg_name,
+				"section_label": (row.section_label or "").strip() or sg_name,
+				"errors": [],
+				"room_conflicts": [],
+				"employee_conflicts": [],
+			}
+
+			if not sg_name:
+				section_payload["errors"].append(_("Missing Student Group on activity section row."))
+				report["sections"].append(section_payload)
+				report["ok"] = False
+				continue
+
+			schedule_rows = frappe.get_all(
+				"Student Group Schedule",
+				filters={"parent": sg_name},
+				fields=[
+					"name",
+					"rotation_day",
+					"block_number",
+					"location",
+					"instructor",
+					"employee",
+				],
+				limit_page_length=5000,
+			)
+			if not schedule_rows:
+				section_payload["errors"].append(_("Student Group has no schedule rows."))
+				report["sections"].append(section_payload)
+				report["ok"] = False
+				continue
+
+			schedule_index = {}
+			instructor_names = set()
+			for srow in schedule_rows:
+				rd = srow.get("rotation_day")
+				blk = srow.get("block_number")
+				location = (srow.get("location") or "").strip()
+				if rd is None or blk is None:
+					section_payload["errors"].append(
+						_("Schedule row {0} is missing rotation day or block number.").format(srow.get("name"))
+					)
+					continue
+				key = (cint(rd), cint(blk))
+				schedule_index[key] = srow
+
+				if not location:
+					section_payload["errors"].append(
+						_("Schedule row {0} is missing location.").format(srow.get("name"))
+					)
+				elif not is_bookable_room(location):
+					section_payload["errors"].append(
+						_("Schedule row {0} uses non-bookable location {1}.").format(
+							srow.get("name"),
+							location,
+						)
+					)
+
+				if (srow.get("instructor") or "").strip() and not (srow.get("employee") or "").strip():
+					instructor_names.add((srow.get("instructor") or "").strip())
+
+			if instructor_names:
+				rows_i = frappe.get_all(
+					"Instructor",
+					filters={"name": ["in", sorted(instructor_names)]},
+					fields=["name", "employee"],
+					limit_page_length=max(200, len(instructor_names) + 20),
+				)
+				for irow in rows_i:
+					instructor_cache[irow.get("name")] = (irow.get("employee") or "").strip()
+
+			try:
+				rebuild_employee_bookings_for_student_group(
+					sg_name,
+					start_date=start_date,
+					end_date=end_date,
+					strict_location=True,
+				)
+			except Exception:
+				section_payload["errors"].append(frappe.get_traceback())
+
+			slots = iter_student_group_room_slots(sg_name, start_date, end_date)
+			seen_room_conflicts = set()
+			seen_employee_conflicts = set()
+
+			for slot in slots:
+				start_dt = slot.get("start")
+				end_dt = slot.get("end")
+				location = slot.get("location")
+				rd = cint(slot.get("rotation_day"))
+				blk = cint(slot.get("block_number"))
+
+				if not start_dt or not end_dt or not location:
+					continue
+
+				room_conflicts = find_room_conflicts(
+					location,
+					start_dt,
+					end_dt,
+					exclude={"doctype": "Student Group", "name": sg_name},
+				)
+				for conflict in room_conflicts:
+					key = (
+						conflict.get("source_doctype"),
+						conflict.get("source_name"),
+						conflict.get("location"),
+						str(conflict.get("from")),
+						str(conflict.get("to")),
+					)
+					if key in seen_room_conflicts:
+						continue
+					seen_room_conflicts.add(key)
+					section_payload["room_conflicts"].append(conflict)
+
+				srow = schedule_index.get((rd, blk))
+				if not srow:
+					continue
+				employee = (srow.get("employee") or "").strip()
+				if not employee:
+					instructor = (srow.get("instructor") or "").strip()
+					employee = instructor_cache.get(instructor) or ""
+				if not employee:
+					continue
+
+				conflicts = find_employee_conflicts(
+					employee,
+					start_dt,
+					end_dt,
+					exclude={"doctype": "Student Group", "name": sg_name},
+				)
+				for c in conflicts:
+					key = (
+						c.source_doctype,
+						c.source_name,
+						c.employee,
+						str(c.start),
+						str(c.end),
+					)
+					if key in seen_employee_conflicts:
+						continue
+					seen_employee_conflicts.add(key)
+					section_payload["employee_conflicts"].append(
+						{
+							"source_doctype": c.source_doctype,
+							"source_name": c.source_name,
+							"employee": c.employee,
+							"from": c.start,
+							"to": c.end,
+						}
+					)
+
+			if (
+				section_payload["errors"]
+				or section_payload["room_conflicts"]
+				or section_payload["employee_conflicts"]
+			):
+				report["ok"] = False
+
+			report["sections"].append(section_payload)
+
+		if raise_on_failure and not report.get("ok"):
+			frappe.throw(self._build_activity_gate_error(report), title=_("Activity Booking Readiness Failed"))
+		return report
+
 
 # -------------------------
 # one whitelisted helper used by the client
 # -------------------------
+
+@frappe.whitelist()
+def preview_activity_booking_readiness(program_offering: str):
+	if not program_offering:
+		frappe.throw(_("Program Offering is required."))
+
+	doc = frappe.get_doc("Program Offering", program_offering)
+	return doc.run_activity_preopen_readiness(raise_on_failure=False)
+
 
 @frappe.whitelist()
 def compute_program_offering_defaults(program: str, school: str, ay_names=None):

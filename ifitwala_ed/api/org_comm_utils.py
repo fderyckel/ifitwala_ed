@@ -5,6 +5,7 @@
 
 import frappe
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
+from frappe import _
 
 def check_audience_match(comm_name, user, roles, employee, filter_team=None, filter_student_group=None, filter_school=None):
 	"""
@@ -432,4 +433,116 @@ def is_instructor_for_group(user, student_group):
 	return frappe.db.exists(
 		"Student Group Instructor",
 		{"parent": student_group, "instructor": instructor_name},
+	)
+
+
+@frappe.whitelist()
+def create_activity_communication(
+	*,
+	title: str,
+	message: str,
+	school: str,
+	activity_program_offering: str | None = None,
+	activity_booking: str | None = None,
+	activity_student_group: str | None = None,
+	communication_type: str = "Information",
+	portal_surface: str = "Portal Feed",
+	to_guardians: int = 1,
+	to_students: int = 1,
+	to_staff: int = 0,
+	publish_from: str | None = None,
+	publish_to: str | None = None,
+):
+	if not title:
+		frappe.throw(_("Title is required."))
+	if not school:
+		frappe.throw(_("School is required."))
+	if not message:
+		frappe.throw(_("Message is required."))
+
+	system_write = bool(getattr(frappe.flags, "allow_activity_comm_system_write", False))
+	allowed_roles = {"System Manager", "Academic Admin", "Activity Coordinator", "Academic Staff"}
+	if not system_write and not (set(frappe.get_roles(frappe.session.user)) & allowed_roles):
+		frappe.throw(_("You are not permitted to create activity communications."), frappe.PermissionError)
+
+	doc = frappe.new_doc("Org Communication")
+	doc.title = title
+	doc.message = message
+	doc.school = school
+	doc.communication_type = communication_type or "Information"
+	doc.status = "Published"
+	doc.portal_surface = portal_surface or "Portal Feed"
+	doc.publish_from = publish_from
+	doc.publish_to = publish_to
+	doc.activity_program_offering = activity_program_offering
+	doc.activity_booking = activity_booking
+	doc.activity_student_group = activity_student_group
+
+	if activity_student_group:
+		doc.append(
+			"audiences",
+			{
+				"target_mode": "Student Group",
+				"student_group": activity_student_group,
+				"to_guardians": 1 if int(to_guardians or 0) else 0,
+				"to_students": 1 if int(to_students or 0) else 0,
+				"to_staff": 1 if int(to_staff or 0) else 0,
+			},
+		)
+	else:
+		doc.append(
+			"audiences",
+			{
+				"target_mode": "School Scope",
+				"school": school,
+				"include_descendants": 0,
+				"to_guardians": 1 if int(to_guardians or 0) else 0,
+				"to_students": 1 if int(to_students or 0) else 0,
+				"to_staff": 1 if int(to_staff or 0) else 0,
+			},
+		)
+
+	doc.insert(ignore_permissions=system_write)
+	return {"name": doc.name}
+
+
+@frappe.whitelist()
+def get_activity_communication_feed(
+	activity_program_offering: str | None = None,
+	activity_student_group: str | None = None,
+	start: int = 0,
+	page_length: int = 30,
+):
+	from ifitwala_ed.api.org_communication_archive import get_org_communication_feed
+
+	filters = {
+		"activity_program_offering": activity_program_offering,
+		"activity_student_group": activity_student_group,
+		"status": "PublishedOrArchived",
+	}
+	return get_org_communication_feed(
+		filters=filters,
+		start=start,
+		page_length=page_length,
+	)
+
+
+@frappe.whitelist()
+def post_activity_communication_interaction(
+	org_communication: str,
+	intent_type: str | None = None,
+	reaction_code: str | None = None,
+	note: str | None = None,
+	surface: str | None = "Portal Feed",
+):
+	from ifitwala_ed.setup.doctype.communication_interaction.communication_interaction import (
+		upsert_communication_interaction,
+	)
+
+	return upsert_communication_interaction(
+		org_communication=org_communication,
+		intent_type=intent_type,
+		reaction_code=reaction_code,
+		note=note,
+		surface=surface,
 	)

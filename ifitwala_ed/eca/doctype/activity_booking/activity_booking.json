@@ -1,0 +1,316 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:ABK-{YYYY}-{#####}",
+ "creation": "2026-02-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_identity",
+  "program_offering",
+  "student",
+  "allocated_student_group",
+  "status",
+  "column_break_identity",
+  "booked_by_user",
+  "booking_actor_type",
+  "request_surface",
+  "idempotency_key",
+  "section_break_choices",
+  "choices_json",
+  "allocation_mode",
+  "allocation_snapshot",
+  "column_break_choices",
+  "waitlist_position",
+  "offer_expires_on",
+  "waitlist_state",
+  "section_break_billing",
+  "payment_required",
+  "amount",
+  "account_holder",
+  "sales_invoice",
+  "column_break_billing",
+  "refund_status",
+  "section_break_audit",
+  "submitted_on",
+  "submitted_by",
+  "confirmed_on",
+  "confirmed_by",
+  "cancelled_on",
+  "cancelled_by",
+  "cancellation_reason",
+  "org_communication"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_identity",
+   "fieldtype": "Section Break",
+   "label": "Identity"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Program Offering",
+   "options": "Program Offering",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "allocated_student_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Allocated Student Group",
+   "options": "Student Group"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nSubmitted\nWaitlisted\nOffered\nConfirmed\nCancelled\nRejected\nExpired"
+  },
+  {
+   "fieldname": "column_break_identity",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "booked_by_user",
+   "fieldtype": "Link",
+   "label": "Booked By User",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "booking_actor_type",
+   "fieldtype": "Select",
+   "label": "Booking Actor Type",
+   "options": "Student\nGuardian\nStaff\nSystem",
+   "read_only": 1
+  },
+  {
+   "fieldname": "request_surface",
+   "fieldtype": "Select",
+   "label": "Request Surface",
+   "options": "Guardian Portal\nStudent Portal\nDesk\nAPI",
+   "read_only": 1
+  },
+  {
+   "fieldname": "idempotency_key",
+   "fieldtype": "Data",
+   "label": "Idempotency Key",
+   "unique": 1
+  },
+  {
+   "fieldname": "section_break_choices",
+   "fieldtype": "Section Break",
+   "label": "Allocation"
+  },
+  {
+   "description": "JSON array of ranked Student Group choices.",
+   "fieldname": "choices_json",
+   "fieldtype": "Long Text",
+   "label": "Choices JSON"
+  },
+  {
+   "fieldname": "allocation_mode",
+   "fieldtype": "Data",
+   "label": "Allocation Mode",
+   "read_only": 1
+  },
+  {
+   "fieldname": "allocation_snapshot",
+   "fieldtype": "Long Text",
+   "label": "Allocation Snapshot"
+  },
+  {
+   "fieldname": "column_break_choices",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "waitlist_position",
+   "fieldtype": "Int",
+   "label": "Waitlist Position",
+   "read_only": 1
+  },
+  {
+   "fieldname": "offer_expires_on",
+   "fieldtype": "Datetime",
+   "label": "Offer Expires On"
+  },
+  {
+   "default": "None",
+   "fieldname": "waitlist_state",
+   "fieldtype": "Select",
+   "label": "Waitlist State",
+   "options": "None\nActive\nOffered\nPromoted\nClosed"
+  },
+  {
+   "fieldname": "section_break_billing",
+   "fieldtype": "Section Break",
+   "label": "Billing"
+  },
+  {
+   "default": "0",
+   "fieldname": "payment_required",
+   "fieldtype": "Check",
+   "label": "Payment Required"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount"
+  },
+  {
+   "fieldname": "account_holder",
+   "fieldtype": "Link",
+   "label": "Account Holder",
+   "options": "Account Holder"
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "label": "Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_billing",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Not Applicable",
+   "fieldname": "refund_status",
+   "fieldtype": "Select",
+   "label": "Refund Status",
+   "options": "Not Applicable\nPending\nProcessed\nDenied"
+  },
+  {
+   "fieldname": "section_break_audit",
+   "fieldtype": "Section Break",
+   "label": "Audit"
+  },
+  {
+   "fieldname": "submitted_on",
+   "fieldtype": "Datetime",
+   "label": "Submitted On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "submitted_by",
+   "fieldtype": "Link",
+   "label": "Submitted By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "confirmed_on",
+   "fieldtype": "Datetime",
+   "label": "Confirmed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "confirmed_by",
+   "fieldtype": "Link",
+   "label": "Confirmed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancelled_on",
+   "fieldtype": "Datetime",
+   "label": "Cancelled On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancelled_by",
+   "fieldtype": "Link",
+   "label": "Cancelled By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancellation_reason",
+   "fieldtype": "Small Text",
+   "label": "Cancellation Reason"
+  },
+  {
+   "fieldname": "org_communication",
+   "fieldtype": "Link",
+   "label": "Org Communication",
+   "options": "Org Communication",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-02-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "ECA",
+ "name": "Activity Booking",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Activity Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "student,program_offering,allocated_student_group",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

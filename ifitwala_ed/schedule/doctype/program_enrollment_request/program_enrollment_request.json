@@ -10,6 +10,8 @@
   "section_break_identity",
   "student",
   "program_offering",
+  "request_kind",
+  "activity_booking",
   "program",
   "school",
   "academic_year",
@@ -50,6 +52,19 @@
    "label": "Program Offering",
    "options": "Program Offering",
    "reqd": 1
+  },
+  {
+   "default": "Academic",
+   "fieldname": "request_kind",
+   "fieldtype": "Select",
+   "label": "Request Kind",
+   "options": "Academic\nActivity"
+  },
+  {
+   "fieldname": "activity_booking",
+   "fieldtype": "Link",
+   "label": "Activity Booking",
+   "options": "Activity Booking"
   },
   {
    "fetch_from": "program_offering.program",

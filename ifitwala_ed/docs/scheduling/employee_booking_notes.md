@@ -226,3 +226,15 @@ When staff availability looks wrong:
 * Domain docs materialize into facts
 * Reads never infer
 * Writes must be idempotent and rebuild-safe
+
+---
+
+## 9. Activity Booking Gate Integration (v2)
+
+Activity booking windows now run a pre-open readiness gate that explicitly consumes `Employee Booking` via `find_employee_conflicts(...)`.
+
+This enforces:
+
+1. Linked activity sections cannot open if any instructor slot conflicts with existing staff commitments.
+2. Conflict detection uses materialized datetime rows only.
+3. Booking windows are blocked until staff collisions are resolved.
