@@ -620,8 +620,8 @@ frappe.ui.form.on("Program Offering", {
 		bind_offering_year_query(frm);
 		frm.set_query('school', () => {
 			return {
-				query: 'ifitwala_ed.utilities.school_tree.get_descendant_schools',
-				filters: { user_school: frappe.defaults.get_default('school') }
+				query: 'ifitwala_ed.utilities.school_tree.get_school_descendants',
+				filters: { root: frappe.defaults.get_default('school') }
 			};
 		});
 	},
