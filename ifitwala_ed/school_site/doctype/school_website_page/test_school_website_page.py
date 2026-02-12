@@ -8,6 +8,10 @@ import json
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.school_site.doctype.school_website_page.school_website_page import (
+	compute_school_page_publication_flags,
+	normalize_workflow_state,
+)
 from ifitwala_ed.website.seo_checks import build_seo_assistant_report
 from ifitwala_ed.website.validators import validate_page_blocks
 
@@ -35,6 +39,26 @@ def _admissions_steps_props():
 
 
 class TestSchoolWebsitePage(FrappeTestCase):
+	def test_workflow_state_normalization_rejects_invalid_state(self):
+		with self.assertRaises(frappe.ValidationError):
+			normalize_workflow_state("Invalid State")
+
+	def test_school_page_publication_flags_require_workflow_published(self):
+		status, is_published = compute_school_page_publication_flags(
+			school_is_public=True,
+			workflow_state="Approved",
+		)
+		self.assertEqual(status, "Draft")
+		self.assertEqual(is_published, 0)
+
+	def test_school_page_publication_flags_require_school_readiness(self):
+		status, is_published = compute_school_page_publication_flags(
+			school_is_public=False,
+			workflow_state="Published",
+		)
+		self.assertEqual(status, "Draft")
+		self.assertEqual(is_published, 0)
+
 	def test_validate_page_blocks_rejects_empty_enabled_set(self):
 		page = frappe._dict({"blocks": []})
 		with self.assertRaises(frappe.ValidationError):

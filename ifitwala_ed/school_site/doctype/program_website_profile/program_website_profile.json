@@ -10,6 +10,7 @@
   "school",
   "program",
   "status",
+  "workflow_state",
   "seo_profile",
   "section_break_content",
   "hero_image",
@@ -41,11 +42,19 @@
   },
   {
    "default": "Draft",
-   "description": "Read-only. Controlled by Program.is_published.",
+   "description": "Read-only. Controlled by Workflow State and Program publication readiness.",
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
    "options": "Draft\nPublished",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "label": "Workflow State",
+   "options": "Draft\nIn Review\nApproved\nPublished",
    "read_only": 1
   },
   {

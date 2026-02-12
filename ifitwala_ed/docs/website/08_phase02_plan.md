@@ -144,7 +144,8 @@ Each is just a **block definition**, not a new page.
 * `intro_text`
 * `blocks`
 * `seo_profile`
-* `status` (Draft / Published)
+* `workflow_state` (`Draft / In Review / Approved / Published`)
+* `status` (Draft / Published, read-only, derived)
 
 ### Routing
 
@@ -259,7 +260,11 @@ This is the **most important part**.
    * Hero
    * Blocks (via main-form **Add Block** modal: pick block type, fill schema-guided props, click Add to insert row)
    * SEO Profile
-5. Set Status → **Published**
+5. Move Workflow State:
+
+   * Request Review
+   * Approve
+   * Publish
 6. Save
 
 **Result**
@@ -508,7 +513,8 @@ Before any code:
 * Fields:
 
   * program
-  * status (Draft / Published, read-only; controlled by Program.is_published)
+  * workflow_state (Draft / In Review / Approved / Published, read-only in form; changed via actions)
+  * status (Draft / Published, read-only; controlled by workflow + Program publish readiness)
   * hero_image
   * intro_text
   * blocks
@@ -560,7 +566,8 @@ Before any code:
 
 **Tasks**
 
-* Draft / Published states (School Website Page status is read-only, derived from School.is_published + website_slug)
+* Workflow states: `Draft -> In Review -> Approved -> Published`
+* Keep `status` read-only and derived from workflow + publish-readiness invariants
 * Desk-only preview (`?preview=1`)
 * No scheduling in Phase‑02
 
@@ -886,12 +893,13 @@ These are **interaction-level wireframes**, not visuals — exactly what a UX de
   * Page Type (Admissions, Standard, Program)
   * School
   * Status (Draft / Published)
+  * Workflow State (Draft / In Review / Approved / Published)
   * Last Updated
 * Actions:
 
   * New Page
   * Preview
-  * Publish
+  * Request Review / Approve / Publish
 
 ---
 
@@ -966,7 +974,8 @@ A: [ Rich text editor ]
 Sections:
 
 * School + Program
-* Status (Draft / Published)
+* Workflow State (Draft / In Review / Approved / Published)
+* Status (Draft / Published, derived)
 * Hero image
 * Intro text
 * Blocks
@@ -1010,6 +1019,8 @@ Editor action:
 
 * Preview
 * Save Draft
+* Request Review
+* Approve
 * Publish
 * Schedule (Phase 2)
 

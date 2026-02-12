@@ -17,6 +17,7 @@
   "column_break_meta",
   "title",
   "status",
+  "workflow_state",
   "full_route",
   "section_break_4b4n",
   "meta_description",
@@ -59,11 +60,19 @@
   },
   {
    "default": "Draft",
-   "description": "Read-only. Controlled by School.is_published + website slug.",
+   "description": "Read-only. Controlled by Workflow State and school publication readiness.",
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
    "options": "Draft\nPublished",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "label": "Workflow State",
+   "options": "Draft\nIn Review\nApproved\nPublished",
    "read_only": 1
   },
   {
