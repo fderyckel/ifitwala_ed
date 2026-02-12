@@ -136,37 +136,37 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           python <<'PY' >> "$GITHUB_ENV"
-import os
-import subprocess
+          import os
+          import subprocess
 
-base_sha = (os.environ.get("BASE_SHA") or "").strip()
-if base_sha:
-    diff_cmd = ["git", "diff", "--name-only", f"{base_sha}...HEAD"]
-else:
-    diff_cmd = ["git", "diff", "--name-only", "HEAD~1...HEAD"]
+          base_sha = (os.environ.get("BASE_SHA") or "").strip()
+          if base_sha:
+              diff_cmd = ["git", "diff", "--name-only", f"{base_sha}...HEAD"]
+          else:
+              diff_cmd = ["git", "diff", "--name-only", "HEAD~1...HEAD"]
 
-changed = subprocess.check_output(diff_cmd, text=True).splitlines()
-python_files = [
-    f for f in changed
-    if f.startswith("ifitwala_ed/") and f.endswith(".py")
-]
+          changed = subprocess.check_output(diff_cmd, text=True).splitlines()
+          python_files = [
+              f for f in changed
+              if f.startswith("ifitwala_ed/") and f.endswith(".py")
+          ]
 
-if not python_files:
-    print("NO_PY_CHANGES=1")
-    raise SystemExit(0)
+          if not python_files:
+              print("NO_PY_CHANGES=1")
+              raise SystemExit(0)
 
-targets = set()
-for file_path in python_files:
-    rel = file_path[len("ifitwala_ed/"):]
-    if "/" in rel:
-        root = rel.split("/", 1)[0]
-        targets.add(f"ifitwala_ed.{root}")
-    else:
-        targets.add(f"ifitwala_ed.{rel[:-3]}")
+          targets = set()
+          for file_path in python_files:
+              rel = file_path[len("ifitwala_ed/"):]
+              if "/" in rel:
+                  root = rel.split("/", 1)[0]
+                  targets.add(f"ifitwala_ed.{root}")
+              else:
+                  targets.add(f"ifitwala_ed.{rel[:-3]}")
 
-print("NO_PY_CHANGES=0")
-print("TARGETS=" + ",".join(sorted(targets)))
-PY
+          print("NO_PY_CHANGES=0")
+          print("TARGETS=" + ",".join(sorted(targets)))
+          PY
 
       - name: Run domain suite for changed modules
         run: |
