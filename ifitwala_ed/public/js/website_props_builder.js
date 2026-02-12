@@ -301,13 +301,11 @@
 				const extraKeys = Object.keys(parsedProps.value || {}).filter(
 					(key) => !propsKeys.includes(key)
 				);
-				if (extraKeys.length && schema.additionalProperties === false) {
-					frappe.msgprint(
-						__(
-							"Some props are not supported and will be ignored: {0}"
-						).format(extraKeys.join(", "))
-					);
-				}
+					if (extraKeys.length && schema.additionalProperties === false) {
+						frappe.msgprint(
+							__("Some props are not supported and will be ignored: {0}", [extraKeys.join(", ")])
+						);
+					}
 				const initial = applyDefaults(schema, parsedProps.value || {}, blockType);
 				const dialog = buildDialog({
 					blockType,
@@ -344,13 +342,13 @@
 						payload = dialog.__builder.getValue();
 					}
 
-					const errors = validateAgainstSchema(schema, payload);
-					if (errors.length) {
-						frappe.msgprint({
-							message: __("Props validation failed:<br>{0}").format(errors.join("<br>")),
-							indicator: "red"
-						});
-						return;
+						const errors = validateAgainstSchema(schema, payload);
+						if (errors.length) {
+							frappe.msgprint({
+								message: __("Props validation failed:<br>{0}", [errors.join("<br>")]),
+								indicator: "red"
+							});
+							return;
 					}
 
 					frappe.model.set_value(cdt, cdn, "props", JSON.stringify(payload, null, 2));
@@ -500,7 +498,7 @@
 					currentType = blockType;
 					const parsedSchema = parseJson(definition.props_schema || "{}");
 					if (parsedSchema.error) {
-						frappe.msgprint(__("Block schema is invalid JSON for {0}.").format(blockType));
+						frappe.msgprint(__("Block schema is invalid JSON for {0}.", [blockType]));
 						currentSchema = {};
 					} else {
 						currentSchema = parsedSchema.value || {};
@@ -573,7 +571,7 @@
 					const errors = validateAgainstSchema(currentSchema, payload);
 					if (errors.length) {
 						frappe.msgprint({
-							message: __("Props validation failed:<br>{0}").format(errors.join("<br>")),
+							message: __("Props validation failed:<br>{0}", [errors.join("<br>")]),
 							indicator: "red"
 						});
 						return;
@@ -602,7 +600,7 @@
 
 	function buildDialog({ blockType, blockLabel, schema, initial, rawText }) {
 		const dialog = new frappe.ui.Dialog({
-			title: __("Props Builder: {0}").format(blockLabel || blockType),
+			title: __("Props Builder: {0}", [blockLabel || blockType]),
 			fields: [
 				{ fieldname: "builder", fieldtype: "HTML" },
 				{
