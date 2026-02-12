@@ -180,9 +180,72 @@ function validatePreviewBlockPropsJson(frm) {
 	return true;
 }
 
+const BLOCK_REGISTRY_METHOD_GET_ALLOWED =
+	"ifitwala_ed.website.block_registry.get_allowed_block_types_for_builder";
+
+function normalizeBlockTypes(value) {
+	if (!Array.isArray(value)) return [];
+	return [...new Set(value.map((entry) => String(entry || "").trim()).filter(Boolean))];
+}
+
+async function fetchAllowedBlockTypes() {
+	const res = await frappe.call({
+		method: BLOCK_REGISTRY_METHOD_GET_ALLOWED,
+		args: {
+			parent_doctype: "Program Website Profile"
+		}
+	});
+	return normalizeBlockTypes(res && res.message);
+}
+
+function applyAllowedBlockTypesToGrid(frm, allowedTypes) {
+	const grid = frm.fields_dict && frm.fields_dict.blocks && frm.fields_dict.blocks.grid;
+	if (!grid) return;
+	grid.update_docfield_property("block_type", "options", allowedTypes.join("\n"));
+	frm.refresh_field("blocks");
+}
+
+function updateDisallowedBlockWarning(frm, allowedTypes) {
+	if (typeof frm.set_intro !== "function") return;
+	const allowedSet = new Set(allowedTypes);
+	const disallowed = [
+		...new Set(
+			(frm.doc.blocks || [])
+				.map((row) => String(row.block_type || "").trim())
+				.filter((blockType) => blockType && !allowedSet.has(blockType))
+		)
+	];
+	if (!disallowed.length) {
+		frm.set_intro("");
+		return;
+	}
+	frm.set_intro(
+		__(
+			"Some existing blocks are not allowed for Program Website Profile: {0}. Replace them before saving.",
+			[disallowed.join(", ")]
+		),
+		"orange"
+	);
+}
+
+async function syncAllowedBlockTypes(frm) {
+	try {
+		const allowedTypes = await fetchAllowedBlockTypes();
+		frm.__iwAllowedBlockTypes = allowedTypes;
+		applyAllowedBlockTypesToGrid(frm, allowedTypes);
+		updateDisallowedBlockWarning(frm, allowedTypes);
+		return allowedTypes;
+	} catch (err) {
+		frm.__iwAllowedBlockTypes = [];
+		frappe.msgprint(__("Unable to load allowed block types for Program Website Profile."));
+		return [];
+	}
+}
+
 frappe.ui.form.on("Program Website Profile", {
 	refresh(frm) {
 		frm.clear_custom_buttons();
+		syncAllowedBlockTypes(frm);
 
 		frm.add_custom_button(__("Preview"), async () => {
 			if (!frm.doc.school || !frm.doc.program) {
@@ -219,7 +282,12 @@ frappe.ui.form.on("Program Website Profile", {
 				);
 				return;
 			}
-			builder.openAddBlock({ frm, childTableField: "blocks" });
+			const allowedTypes = await syncAllowedBlockTypes(frm);
+			if (!allowedTypes.length) {
+				frappe.msgprint(__("No block types are configured for Program Website Profile."));
+				return;
+			}
+			builder.openAddBlock({ frm, childTableField: "blocks", allowedTypes });
 		});
 
 		frm.add_custom_button(__("Edit Block Props"), async () => {

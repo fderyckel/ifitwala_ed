@@ -267,6 +267,22 @@ WEBSITE_BLOCK_DEFINITIONS = [
 	},
 ]
 
+BASE_SURFACE_BLOCK_TYPES = (
+	"hero",
+	"rich_text",
+	"program_list",
+	"leadership",
+	"cta",
+	"faq",
+	"content_snippet",
+)
+ADMISSIONS_SURFACE_BLOCK_TYPES = (
+	"admissions_overview",
+	"admissions_steps",
+	"admission_cta",
+)
+PROGRAM_SURFACE_BLOCK_TYPES = ("program_intro",)
+
 
 SYNC_FIELDS = (
 	"label",
@@ -322,6 +338,25 @@ def get_website_block_definition_records() -> list[dict]:
 		record["props_schema"] = _normalize_schema(record.get("props_schema"))
 		records.append(record)
 	return records
+
+
+def get_allowed_block_types(*, parent_doctype: str | None, page_type: str | None = None) -> list[str]:
+	parent_doctype = (parent_doctype or "").strip()
+	page_type = (page_type or "").strip()
+	canonical_order = [row["block_type"] for row in WEBSITE_BLOCK_DEFINITIONS]
+
+	if parent_doctype == "School Website Page":
+		allowed = set(BASE_SURFACE_BLOCK_TYPES)
+		if page_type == "Admissions":
+			allowed.update(ADMISSIONS_SURFACE_BLOCK_TYPES)
+	elif parent_doctype == "Program Website Profile":
+		allowed = set(BASE_SURFACE_BLOCK_TYPES) | set(PROGRAM_SURFACE_BLOCK_TYPES)
+	elif parent_doctype == "Website Story":
+		allowed = set(BASE_SURFACE_BLOCK_TYPES)
+	else:
+		allowed = set(canonical_order)
+
+	return [block_type for block_type in canonical_order if block_type in allowed]
 
 
 def sync_website_block_definitions() -> dict:
@@ -409,3 +444,8 @@ def get_block_definitions_for_builder(block_types=None) -> list[dict]:
 			}
 		)
 	return result
+
+
+@frappe.whitelist()
+def get_allowed_block_types_for_builder(parent_doctype: str, page_type: str | None = None) -> list[str]:
+	return get_allowed_block_types(parent_doctype=parent_doctype, page_type=page_type)

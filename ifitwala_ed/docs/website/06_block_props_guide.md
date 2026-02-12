@@ -39,6 +39,19 @@ Disallowed:
 * `hero.images` is optional.
 * If `hero.images` is **empty or missing**, the hero carousel uses `School.gallery_image` rows (field `school_image`).
 
+### 0.5 Context-aware block availability
+
+Block availability is enforced by parent DocType context (Desk picker + save-time validation).
+
+| context | allowed block types |
+| --- | --- |
+| `School Website Page` + `page_type = Standard` | `hero`, `rich_text`, `program_list`, `leadership`, `cta`, `faq`, `content_snippet` |
+| `School Website Page` + `page_type = Admissions` | all Standard blocks + `admissions_overview`, `admissions_steps`, `admission_cta` |
+| `Program Website Profile` | all Standard blocks + `program_intro` |
+| `Website Story` | Standard blocks only |
+
+If a block type is outside the allowed set for the current context, save is blocked with a validation error.
+
 ---
 
 ## 1) Hero

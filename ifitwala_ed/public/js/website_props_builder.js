@@ -416,6 +416,11 @@
 			.filter(Boolean);
 	}
 
+	function _normalizeAllowedBlockTypes(rawTypes) {
+		if (!Array.isArray(rawTypes)) return [];
+		return [...new Set(rawTypes.map((value) => String(value || "").trim()).filter(Boolean))];
+	}
+
 	function _getNextOrder(frm, childTableField) {
 		const rows = frm.doc && Array.isArray(frm.doc[childTableField]) ? frm.doc[childTableField] : [];
 		const maxOrder = rows.reduce((max, row) => {
@@ -432,19 +437,21 @@
 		return maxOrder + 1;
 	}
 
-	function openAddBlock({ frm, childTableField = "blocks" }) {
+	function openAddBlock({ frm, childTableField = "blocks", allowedTypes = null }) {
 		if (!frm || !childTableField) {
 			frappe.msgprint(__("Unable to open Add Block dialog."));
 			return;
 		}
 
-		const allowedTypes = _getAllowedBlockTypes(frm, childTableField);
-		if (!allowedTypes.length) {
+		const contextAllowedTypes = _normalizeAllowedBlockTypes(allowedTypes);
+		const fallbackAllowedTypes = _getAllowedBlockTypes(frm, childTableField);
+		const resolvedAllowedTypes = contextAllowedTypes.length ? contextAllowedTypes : fallbackAllowedTypes;
+		if (!resolvedAllowedTypes.length) {
 			frappe.msgprint(__("No block types are configured for this table."));
 			return;
 		}
 
-		fetchBlockDefinitions(allowedTypes)
+		fetchBlockDefinitions(resolvedAllowedTypes)
 			.then((rows) => {
 				const definitions = (rows || []).filter((row) => row && row.block_type);
 				if (!definitions.length) {
@@ -456,7 +463,7 @@
 				definitions.forEach((row) => {
 					definitionMap[row.block_type] = row;
 				});
-				const orderedTypes = allowedTypes.filter((type) => definitionMap[type]);
+				const orderedTypes = resolvedAllowedTypes.filter((type) => definitionMap[type]);
 				if (!orderedTypes.length) {
 					frappe.msgprint(__("No valid block types are available."));
 					return;

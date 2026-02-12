@@ -5,7 +5,7 @@ import json
 import frappe
 from frappe import _
 
-from ifitwala_ed.website.block_registry import get_block_definition_map
+from ifitwala_ed.website.block_registry import get_allowed_block_types, get_block_definition_map
 from ifitwala_ed.website.utils import parse_props, validate_props_schema
 
 
@@ -88,6 +88,45 @@ def _validate_seo_h1_rules(*, blocks: list, definitions: dict):
 		)
 
 
+def _get_parent_context(page) -> tuple[str, str]:
+	parent_doctype = (getattr(page, "doctype", None) or "").strip()
+	page_type = (getattr(page, "page_type", None) or "").strip()
+	return parent_doctype, page_type
+
+
+def _validate_context_allowed_blocks(*, page, blocks: list):
+	parent_doctype, page_type = _get_parent_context(page)
+	allowed_types = set(
+		get_allowed_block_types(parent_doctype=parent_doctype, page_type=page_type)
+	)
+	if not allowed_types:
+		return
+
+	disallowed = sorted(
+		{
+			(block.block_type or "").strip()
+			for block in blocks
+			if (block.block_type or "").strip() not in allowed_types
+		}
+	)
+	if not disallowed:
+		return
+
+	context_label = parent_doctype or _("Unknown Parent")
+	if parent_doctype == "School Website Page":
+		context_label = _("{0} ({1})").format(
+			parent_doctype,
+			page_type or _("Standard"),
+		)
+	frappe.throw(
+		_("Block type(s) not allowed for {0}: {1}").format(
+			context_label,
+			", ".join(disallowed),
+		),
+		frappe.ValidationError,
+	)
+
+
 def validate_page_blocks(page, *, normalize_legacy_props: bool = True):
 	blocks = _sorted_enabled_blocks(page)
 	definitions = get_block_definition_map()
@@ -105,6 +144,7 @@ def validate_page_blocks(page, *, normalize_legacy_props: bool = True):
 			frappe.ValidationError,
 		)
 
+	_validate_context_allowed_blocks(page=page, blocks=blocks)
 	_validate_seo_h1_rules(blocks=blocks, definitions=definitions)
 
 	for block in blocks:

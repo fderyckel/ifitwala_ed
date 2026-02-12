@@ -1108,27 +1108,44 @@ UI validation is **assistive**, never authoritative.
 
 ## 2. Block Registry Validation
 
-### 2.1 Allowed block types
+### 2.1 Allowed block types (context-aware)
 
-Only block types registered in the **Block Registry** may be saved.
+Only block types registered in the **Block Registry** may be saved, and each parent surface has a scoped allowlist.
 
 ```python
-ALLOWED_BLOCK_TYPES = {
+BASE_SURFACE_BLOCK_TYPES = {
+  "hero",
+  "rich_text",
+  "program_list",
+  "leadership",
+  "cta",
+  "faq",
+  "content_snippet",
+}
+
+ADMISSIONS_SURFACE_BLOCK_TYPES = {
   "admissions_overview",
   "admissions_steps",
   "admission_cta",
-  "faq",
-  "program_list",
+}
+
+PROGRAM_SURFACE_BLOCK_TYPES = {
   "program_intro",
-  "rich_text",
-  "content_snippet"
 }
 ```
+
+Context resolution:
+
+* `School Website Page` + `page_type = Standard` -> `BASE_SURFACE_BLOCK_TYPES`
+* `School Website Page` + `page_type = Admissions` -> `BASE_SURFACE_BLOCK_TYPES + ADMISSIONS_SURFACE_BLOCK_TYPES`
+* `Program Website Profile` -> `BASE_SURFACE_BLOCK_TYPES + PROGRAM_SURFACE_BLOCK_TYPES`
+* `Website Story` -> `BASE_SURFACE_BLOCK_TYPES`
 
 **Failure**
 
 ```text
 ❌ Unknown block type: {block_type}
+❌ Block type(s) not allowed for {context}: {block_types}
 ```
 
 ---

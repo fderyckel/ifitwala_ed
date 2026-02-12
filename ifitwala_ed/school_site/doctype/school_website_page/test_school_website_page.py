@@ -1,3 +1,5 @@
+# ifitwala_ed/school_site/doctype/school_website_page/test_school_website_page.py
+
 # Copyright (c) 2026, François de Ryckel and Contributors
 # See license.txt
 
@@ -19,6 +21,16 @@ def _row(*, block_type: str, props=None, order: int = 1, is_enabled: int = 1):
 			"props": json.dumps(props or {}),
 		}
 	)
+
+
+def _admissions_steps_props():
+	return {
+		"steps": [
+			{"key": "inquire", "title": "Inquire", "description": "", "icon": "mail"},
+			{"key": "visit", "title": "Visit", "description": "", "icon": "map"},
+		],
+		"layout": "horizontal",
+	}
 
 
 class TestSchoolWebsitePage(FrappeTestCase):
@@ -74,3 +86,80 @@ class TestSchoolWebsitePage(FrappeTestCase):
 		parsed = json.loads(legacy_cta.props)
 		self.assertEqual(parsed.get("button_label"), "Apply")
 		self.assertEqual(parsed.get("button_link"), "/admissions/apply")
+
+	def test_validate_page_blocks_rejects_admissions_block_for_standard_school_page(self):
+		page = frappe._dict(
+			{
+				"doctype": "School Website Page",
+				"page_type": "Standard",
+				"blocks": [
+					_row(block_type="hero", props={"title": "Home"}, order=1),
+					_row(
+						block_type="admissions_steps",
+						props=_admissions_steps_props(),
+						order=2,
+					),
+				],
+			}
+		)
+		with self.assertRaises(frappe.ValidationError):
+			validate_page_blocks(page)
+
+	def test_validate_page_blocks_allows_admissions_blocks_for_admissions_page(self):
+		page = frappe._dict(
+			{
+				"doctype": "School Website Page",
+				"page_type": "Admissions",
+				"blocks": [
+					_row(
+						block_type="admissions_overview",
+						props={"heading": "Admissions", "content_html": "<p>Welcome</p>"},
+						order=1,
+					),
+					_row(
+						block_type="admissions_steps",
+						props=_admissions_steps_props(),
+						order=2,
+					),
+				],
+			}
+		)
+		validate_page_blocks(page)
+
+	def test_validate_page_blocks_rejects_program_intro_for_website_story(self):
+		page = frappe._dict(
+			{
+				"doctype": "Website Story",
+				"blocks": [
+					_row(block_type="hero", props={"title": "Story"}, order=1),
+					_row(
+						block_type="program_intro",
+						props={"heading": "Program intro"},
+						order=2,
+					),
+				],
+			}
+		)
+		with self.assertRaises(frappe.ValidationError):
+			validate_page_blocks(page)
+
+	def test_validate_page_blocks_rejects_admissions_block_for_program_profile(self):
+		page = frappe._dict(
+			{
+				"doctype": "Program Website Profile",
+				"blocks": [
+					_row(
+						block_type="program_intro",
+						props={"heading": "Program"},
+						order=1,
+					),
+					_row(
+						block_type="admission_cta",
+						props={"intent": "inquire"},
+						order=2,
+					),
+				],
+			}
+		)
+		with self.assertRaises(frappe.ValidationError):
+			validate_page_blocks(page)
