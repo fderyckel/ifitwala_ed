@@ -3,6 +3,7 @@
 import frappe
 from frappe import _
 
+from ifitwala_ed.website.block_registry import get_block_definition_map
 from ifitwala_ed.website.utils import (
 	build_story_url,
 	is_school_public,
@@ -12,6 +13,7 @@ from ifitwala_ed.website.utils import (
 	truncate_text,
 	validate_props_schema,
 )
+from ifitwala_ed.website.validators import normalize_block_props
 
 
 ROOT_ROUTE_ALIASES = {
@@ -88,19 +90,14 @@ def _build_site_shell_context(*, school, route: str) -> dict:
 def _get_block_definitions(block_types: list[str]) -> dict:
 	if not block_types:
 		return {}
-	definitions = frappe.get_all(
-		"Website Block Definition",
-		filters={"block_type": ["in", block_types]},
-		fields=[
-			"block_type",
-			"template_path",
-			"provider_path",
-			"props_schema",
-			"seo_role",
-			"script_path",
-		],
-	)
-	return {row.block_type: row for row in definitions}
+	canonical = get_block_definition_map()
+	definitions = {}
+	for block_type in block_types:
+		row = canonical.get(block_type)
+		if not row:
+			continue
+		definitions[block_type] = frappe._dict(row)
+	return definitions
 
 
 def _resolve_provider(provider_path: str, block_type: str):
@@ -152,53 +149,6 @@ def _enforce_seo_rules(blocks, definitions):
 		)
 
 
-def _normalize_block_props(*, block_type: str, props: dict) -> dict:
-	"""
-	Backward-compatible prop aliases for legacy website records.
-	Normalization happens before schema validation so old pages keep rendering.
-	"""
-	normalized = dict(props or {})
-
-	if block_type == "cta":
-		if not normalized.get("button_label"):
-			normalized["button_label"] = (
-				normalized.get("cta_label")
-				or normalized.get("label")
-				or ""
-			)
-		if not normalized.get("button_link"):
-			normalized["button_link"] = (
-				normalized.get("cta_link")
-				or normalized.get("url")
-				or normalized.get("link")
-				or ""
-			)
-
-	elif block_type == "rich_text":
-		if not normalized.get("content_html") and normalized.get("content"):
-			normalized["content_html"] = normalized.get("content")
-
-	elif block_type == "admissions_overview":
-		if not normalized.get("content_html") and normalized.get("content"):
-			normalized["content_html"] = normalized.get("content")
-
-	elif block_type == "hero":
-		primary_cta = normalized.get("primary_cta")
-		cta = normalized.get("cta")
-		if isinstance(primary_cta, dict):
-			if not normalized.get("cta_label"):
-				normalized["cta_label"] = primary_cta.get("label")
-			if not normalized.get("cta_link"):
-				normalized["cta_link"] = primary_cta.get("link") or primary_cta.get("url")
-		if isinstance(cta, dict):
-			if not normalized.get("cta_label"):
-				normalized["cta_label"] = cta.get("label")
-			if not normalized.get("cta_link"):
-				normalized["cta_link"] = cta.get("link") or cta.get("url")
-
-	return normalized
-
-
 def _build_blocks(*, page, school):
 	blocks = _sorted_blocks(page)
 	block_types = [block.block_type for block in blocks]
@@ -228,7 +178,7 @@ def _build_blocks(*, page, school):
 				),
 				frappe.ValidationError,
 			)
-		props = _normalize_block_props(block_type=block.block_type, props=props)
+		props = normalize_block_props(block_type=block.block_type, props=props)
 		validate_props_schema(props, definition.props_schema, block_type=block.block_type)
 		provider = _resolve_provider(definition.provider_path, block.block_type)
 		ctx = provider(school=school, page=page, block_props=props) or {}

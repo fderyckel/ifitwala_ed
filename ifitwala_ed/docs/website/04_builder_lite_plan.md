@@ -4,6 +4,7 @@
 **Blocks:** Hero, Rich Text, Program List, Leadership, CTA
 **Non-goal:** visual editor UI (comes later)
 **Hard constraint:** **no server scripts**, no DB-stored code
+**Canonical implementation source:** `ifitwala_ed/website/block_registry.py`
 
 ---
 

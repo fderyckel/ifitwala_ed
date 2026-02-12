@@ -1,5 +1,7 @@
 # PART 1 — Phase Ranking (What ships first vs later)
 
+**Canonical implementation source:** `ifitwala_ed/website/block_registry.py` (block schemas and contracts)
+
 ### **Phase 1 (Foundational, must-have)**
 
 These unlock real marketing autonomy immediately and compound SEO value.

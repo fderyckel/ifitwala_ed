@@ -4,6 +4,7 @@
 **Audience:** Website editors, implementers  
 **Scope:** Builder‑lite v1 + Phase‑02 blocks  
 **Goal:** Exact props, types, rules, and examples for every block
+**Canonical implementation source:** `ifitwala_ed/website/block_registry.py`
 
 ---
 

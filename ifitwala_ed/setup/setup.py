@@ -2,10 +2,13 @@
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
-import json
 import frappe
 from frappe import _
 from ifitwala_ed.setup.utils import insert_record
+from ifitwala_ed.website.block_registry import (
+	get_website_block_definition_records as get_canonical_website_block_definition_records,
+	sync_website_block_definitions,
+)
 from frappe.utils import get_files_path
 import os
 
@@ -305,8 +308,7 @@ def setup_website_top_bar():
     ws.save(ignore_permissions=True)
 
 def setup_website_block_definitions():
-	records = get_website_block_definition_records()
-	insert_record(records)
+	sync_website_block_definitions()
 
 
 def setup_default_website_pages():
@@ -331,272 +333,7 @@ def setup_default_website_pages():
 	)
 
 def get_website_block_definition_records():
-	return [
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "hero",
-			"label": "Hero",
-			"template_path": "ifitwala_ed/website/blocks/hero.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.hero.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"title": {"type": "string"},
-					"subtitle": {"type": "string"},
-					"background_image": {"type": "string"},
-					"images": {
-						"type": "array",
-						"items": {
-							"type": "object",
-							"properties": {
-								"image": {"type": "string"},
-								"alt": {"type": "string"},
-								"caption": {"type": "string"}
-							},
-							"required": ["image"],
-							"additionalProperties": False
-						}
-					},
-					"autoplay": {"type": "boolean"},
-					"interval": {"type": "integer", "minimum": 1000},
-					"variant": {"type": "string", "enum": ["default", "split", "centered"]},
-					"cta_label": {"type": "string"},
-					"cta_link": {"type": "string"}
-				},
-				"required": ["title"],
-				"additionalProperties": False
-			}),
-			"seo_role": "owns_h1",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "admissions_overview",
-			"label": "Admissions Overview",
-			"template_path": "ifitwala_ed/website/blocks/admissions_overview.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.admissions_overview.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"heading": {"type": "string"},
-					"content_html": {"type": "string"},
-					"max_width": {"type": "string", "enum": ["narrow", "normal", "wide"]}
-				},
-				"required": ["heading", "content_html"],
-				"additionalProperties": False
-			}),
-			"seo_role": "owns_h1",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "admissions_steps",
-			"label": "Admissions Steps",
-			"template_path": "ifitwala_ed/website/blocks/admissions_steps.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.admissions_steps.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"steps": {
-						"type": "array",
-						"minItems": 2,
-						"items": {
-							"type": "object",
-							"properties": {
-								"key": {"type": "string"},
-								"title": {"type": "string"},
-								"description": {"type": "string"},
-								"icon": {"type": ["string", "null"]}
-							},
-							"required": ["key", "title"],
-							"additionalProperties": False
-						}
-					},
-					"layout": {"type": "string", "enum": ["horizontal", "vertical"]}
-				},
-				"required": ["steps"],
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "admission_cta",
-			"label": "Admission CTA",
-			"template_path": "ifitwala_ed/website/blocks/admission_cta.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.admission_cta.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"intent": {"type": "string", "enum": ["inquire", "visit", "apply"]},
-					"label_override": {"type": ["string", "null"]},
-					"style": {"type": "string", "enum": ["primary", "secondary", "outline"]},
-					"icon": {"type": ["string", "null"], "enum": ["mail", "map", "file-text", None]},
-					"tracking_id": {"type": ["string", "null"]}
-				},
-				"required": ["intent"],
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "faq",
-			"label": "FAQ",
-			"template_path": "ifitwala_ed/website/blocks/faq.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.faq.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"items": {
-						"type": "array",
-						"minItems": 1,
-						"items": {
-							"type": "object",
-							"properties": {
-								"question": {"type": "string"},
-								"answer_html": {"type": "string"}
-							},
-							"required": ["question", "answer_html"],
-							"additionalProperties": False
-						}
-					},
-					"enable_schema": {"type": "boolean"},
-					"collapsed_by_default": {"type": "boolean"}
-				},
-				"required": ["items"],
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "rich_text",
-			"label": "Rich Text",
-			"template_path": "ifitwala_ed/website/blocks/rich_text.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.rich_text.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"content_html": {"type": "string"},
-					"max_width": {"type": "string", "enum": ["narrow", "normal", "wide"]}
-				},
-				"required": ["content_html"],
-				"additionalProperties": False
-			}),
-			"seo_role": "content",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "content_snippet",
-			"label": "Content Snippet",
-			"template_path": "ifitwala_ed/website/blocks/content_snippet.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.content_snippet.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"snippet_id": {"type": "string"},
-					"allow_override": {"type": "boolean"}
-				},
-				"required": ["snippet_id"],
-				"additionalProperties": False
-			}),
-			"seo_role": "content",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "program_list",
-			"label": "Program List",
-			"template_path": "ifitwala_ed/website/blocks/program_list.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.program_list.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"school_scope": {"type": "string", "enum": ["current", "all"]},
-					"show_intro": {"type": "boolean"},
-					"card_style": {"type": "string", "enum": ["standard", "compact"]},
-					"limit": {"type": ["integer", "null"], "minimum": 1}
-				},
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "program_intro",
-			"label": "Program Intro",
-			"template_path": "ifitwala_ed/website/blocks/program_intro.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.program_intro.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"heading": {"type": "string"},
-					"content_html": {"type": "string"},
-					"hero_image": {"type": ["string", "null"]},
-					"cta_intent": {"type": ["string", "null"], "enum": ["inquire", "visit", "apply", None]}
-				},
-				"required": ["heading"],
-				"additionalProperties": False
-			}),
-			"seo_role": "owns_h1",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "leadership",
-			"label": "Leadership",
-			"template_path": "ifitwala_ed/website/blocks/leadership.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.leadership.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"title": {"type": "string"},
-					"roles": {"type": "array", "items": {"type": "string"}},
-					"limit": {"type": "integer", "minimum": 1}
-				},
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "cta",
-			"label": "CTA",
-			"template_path": "ifitwala_ed/website/blocks/cta.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.cta.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"title": {"type": "string"},
-					"text": {"type": "string"},
-					"button_label": {"type": "string"},
-					"button_link": {"type": "string"}
-				},
-				"required": ["button_label", "button_link"],
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-	]
+	return get_canonical_website_block_definition_records()
 
 def grant_core_crm_permissions():
 	"""Ensure critical roles have access to Contact and Address Doctypes."""

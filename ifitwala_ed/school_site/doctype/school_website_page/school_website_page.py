@@ -7,6 +7,7 @@ from frappe import _
 from frappe.model.document import Document
 
 from ifitwala_ed.website.utils import normalize_route
+from ifitwala_ed.website.validators import validate_page_blocks
 
 
 class SchoolWebsitePage(Document):
@@ -85,6 +86,7 @@ class SchoolWebsitePage(Document):
 			)
 
 		self._validate_blocks_props_json()
+		validate_page_blocks(self)
 
 	def _sync_status_flags(self):
 		status = "Draft"

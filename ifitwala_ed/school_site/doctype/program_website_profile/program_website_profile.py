@@ -6,6 +6,8 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from ifitwala_ed.website.validators import validate_page_blocks
+
 
 class ProgramWebsiteProfile(Document):
 	def validate(self):
@@ -13,6 +15,7 @@ class ProgramWebsiteProfile(Document):
 		self._validate_unique_profile()
 		self._validate_program_slug()
 		self._validate_blocks_props_json()
+		validate_page_blocks(self)
 
 	def on_update(self):
 		self._sync_website_discoverability()

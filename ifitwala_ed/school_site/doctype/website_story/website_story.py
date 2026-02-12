@@ -6,12 +6,15 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from ifitwala_ed.website.validators import validate_page_blocks
+
 
 class WebsiteStory(Document):
 	def validate(self):
 		self._validate_status()
 		self._validate_unique_slug()
 		self._validate_blocks_props_json()
+		validate_page_blocks(self)
 
 	def _validate_status(self):
 		status = (self.status or "").strip() or "Draft"

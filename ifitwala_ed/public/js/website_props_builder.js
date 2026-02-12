@@ -278,15 +278,40 @@
 		return { wrapper, input };
 	}
 
+	const BLOCK_REGISTRY_METHOD_GET_ONE =
+		"ifitwala_ed.website.block_registry.get_block_definition_for_builder";
+	const BLOCK_REGISTRY_METHOD_GET_MANY =
+		"ifitwala_ed.website.block_registry.get_block_definitions_for_builder";
+
+	function fetchBlockDefinition(blockType) {
+		return frappe
+			.call({
+				method: BLOCK_REGISTRY_METHOD_GET_ONE,
+				args: { block_type: blockType }
+			})
+			.then((res) => (res && res.message ? res.message : null));
+	}
+
+	function fetchBlockDefinitions(blockTypes) {
+		return frappe
+			.call({
+				method: BLOCK_REGISTRY_METHOD_GET_MANY,
+				args: { block_types: blockTypes || [] }
+			})
+			.then((res) => (res && Array.isArray(res.message) ? res.message : []));
+	}
+
 	function openPropsBuilder({ frm, cdt, cdn, blockType }) {
 		if (!blockType) {
 			frappe.msgprint(__("Select a block type first."));
 			return;
 		}
-		frappe.db
-			.get_value("Website Block Definition", { block_type: blockType }, ["props_schema", "label"])
-			.then((res) => {
-				const data = res && res.message ? res.message : {};
+		fetchBlockDefinition(blockType)
+			.then((data) => {
+				if (!data) {
+					frappe.msgprint(__("Block definition not found for {0}.", [blockType]));
+					return;
+				}
 				const schemaText = data.props_schema || "{}";
 				const parsedSchema = parseJson(schemaText);
 				if (parsedSchema.error) {
@@ -356,7 +381,10 @@
 				});
 
 				dialog.show();
-				});
+			})
+			.catch(() => {
+				frappe.msgprint(__("Unable to load block definition."));
+			});
 	}
 
 	function openPropsBuilderForRow({ frm, row }) {
@@ -416,12 +444,7 @@
 			return;
 		}
 
-		frappe.db
-			.get_list("Website Block Definition", {
-				fields: ["block_type", "label", "props_schema"],
-				filters: { block_type: ["in", allowedTypes] },
-				limit: allowedTypes.length
-			})
+		fetchBlockDefinitions(allowedTypes)
 			.then((rows) => {
 				const definitions = (rows || []).filter((row) => row && row.block_type);
 				if (!definitions.length) {
@@ -595,6 +618,9 @@
 				dialog.set_value("block_type", orderedTypes[0]);
 				renderBuilder(orderedTypes[0]);
 				dialog.show();
+			})
+			.catch(() => {
+				frappe.msgprint(__("Unable to load block definitions."));
 			});
 	}
 

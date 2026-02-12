@@ -1,5 +1,7 @@
 # Website Page Providers — Canonical Contracts (v1)
 
+**Canonical implementation source:** `ifitwala_ed/website/block_registry.py` (block contracts and schemas consumed by setup, renderer, and Desk props editor)
+
 **Ifitwala_Ed — Proposal B**
 
 > **Status:** Draft — pending sign-off
