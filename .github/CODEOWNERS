@@ -1,0 +1,24 @@
+# Ifitwala_Ed domain ownership
+
+# Global defaults
+* @fderyckel
+
+# Core domain modules
+/ifitwala_ed/schedule/ @fderyckel
+/ifitwala_ed/assessment/ @fderyckel
+/ifitwala_ed/students/ @fderyckel
+/ifitwala_ed/hr/ @fderyckel
+/ifitwala_ed/admission/ @fderyckel
+/ifitwala_ed/school_settings/ @fderyckel
+/ifitwala_ed/setup/ @fderyckel
+/ifitwala_ed/api/ @fderyckel
+/ifitwala_ed/website/ @fderyckel
+
+# Frontend surfaces
+/ifitwala_ed/ui-spa/ @fderyckel
+/ifitwala_ed/public/js/ @fderyckel
+
+# CI / governance
+/.github/ @fderyckel
+/scripts/ @fderyckel
+/ifitwala_ed/docs/ @fderyckel

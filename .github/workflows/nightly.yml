@@ -1,0 +1,135 @@
+name: Ifitwala Nightly
+
+on:
+  schedule:
+    - cron: "30 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ifitwala-nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.13"
+  NODE_VERSION: "20"
+
+jobs:
+  backend-full:
+    name: nightly-backend-full
+    runs-on: [self-hosted, linux, x64, ifitwala-gce]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Bench
+        run: pip install frappe-bench
+
+      - name: Init nightly bench
+        run: |
+          bench init --frappe-branch version-15 frappe-bench
+          cd frappe-bench
+          bench get-app ifitwala_ed "$GITHUB_WORKSPACE"
+
+      - name: Create ci-staging site
+        run: |
+          cd frappe-bench
+          bench new-site ci_staging \
+            --db-name ci_staging \
+            --admin-password admin \
+            --mariadb-root-password root \
+            --install-app ifitwala_ed \
+            --force
+
+      - name: Run full backend suite
+        run: |
+          cd frappe-bench
+          bench --site ci_staging run-tests --app ifitwala_ed
+
+  api-regression:
+    name: nightly-api-regression
+    runs-on: [self-hosted, linux, x64, ifitwala-gce]
+    needs: [backend-full]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Bench
+        run: pip install frappe-bench
+
+      - name: Init nightly bench
+        run: |
+          bench init --frappe-branch version-15 frappe-bench
+          cd frappe-bench
+          bench get-app ifitwala_ed "$GITHUB_WORKSPACE"
+
+      - name: Create ci-staging site
+        run: |
+          cd frappe-bench
+          bench new-site ci_staging \
+            --db-name ci_staging \
+            --admin-password admin \
+            --mariadb-root-password root \
+            --install-app ifitwala_ed \
+            --force
+
+      - name: Run targeted API regression suite
+        run: |
+          cd frappe-bench
+          set +e
+          failed=0
+          modules=(
+            "ifitwala_ed.api.test_guardian_home"
+            "ifitwala_ed.api.test_users"
+            "ifitwala_ed.api.test_attendance"
+            "ifitwala_ed.api.test_calendar"
+            "ifitwala_ed.api.test_activity_booking"
+          )
+
+          for module in "${modules[@]}"; do
+            bench --site ci_staging run-tests --app ifitwala_ed --module "$module"
+            if [ "$?" -ne 0 ]; then
+              failed=1
+            fi
+          done
+          exit "$failed"
+
+  spa-smoke:
+    name: nightly-spa-smoke
+    runs-on: [self-hosted, linux, x64, ifitwala-gce]
+
+    defaults:
+      run:
+        working-directory: ifitwala_ed/ui-spa
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+          cache-dependency-path: ifitwala_ed/ui-spa/yarn.lock
+
+      - name: Install SPA deps
+        run: yarn install --frozen-lockfile
+
+      - name: Run type-check and build
+        run: |
+          yarn type-check
+          yarn build
+
+      - name: Run optional unit smoke
+        run: |
+          if yarn run -s test:unit:run; then
+            echo "SPA unit smoke passed"
+          else
+            echo "SPA unit smoke unavailable or failing; keeping nightly non-blocking"
+          fi
