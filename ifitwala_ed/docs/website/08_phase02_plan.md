@@ -982,9 +982,9 @@ Marketing edits content without changing ERP logic.
 
 ---
 
-## F. SEO Panel (Right Sidebar)
+## F. SEO Assistant Panel (Desk Headline)
 
-Always visible on page edit.
+Always visible on page edit (rendered in the Desk form headline area).
 
 ```
 SEO Status
@@ -997,6 +997,10 @@ SEO Status
 
 [ Edit SEO Profile ]
 ```
+
+Editor action:
+
+* `SEO Check` button refreshes warnings on demand.
 
 ---
 

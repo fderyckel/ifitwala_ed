@@ -8,6 +8,7 @@ import json
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.website.seo_checks import build_seo_assistant_report
 from ifitwala_ed.website.validators import validate_page_blocks
 
 
@@ -163,3 +164,89 @@ class TestSchoolWebsitePage(FrappeTestCase):
 		)
 		with self.assertRaises(frappe.ValidationError):
 			validate_page_blocks(page)
+
+	def test_seo_assistant_reports_missing_admissions_cta(self):
+		report = build_seo_assistant_report(
+			parent_doctype="School Website Page",
+			doc_payload={
+				"page_type": "Admissions",
+				"title": "Admissions",
+				"meta_description": "Admissions overview for families.",
+				"blocks": [
+					{
+						"block_type": "admissions_overview",
+						"order": 1,
+						"idx": 1,
+						"is_enabled": 1,
+						"props": json.dumps(
+							{"heading": "Admissions", "content_html": "<p>Welcome</p>"}
+						),
+					},
+					{
+						"block_type": "faq",
+						"order": 2,
+						"idx": 2,
+						"is_enabled": 1,
+						"props": json.dumps(
+							{
+								"items": [
+									{"question": "Q1", "answer_html": "<p>A1</p>"},
+									{"question": "Q2", "answer_html": "<p>A2</p>"},
+								],
+								"enable_schema": False,
+							}
+						),
+					},
+				],
+			},
+		)
+		codes = {row["code"] for row in report["checks"]}
+		self.assertIn("cta_missing_admissions", codes)
+		self.assertIn("schema_faq_disabled", codes)
+
+	def test_seo_assistant_reports_h1_issues(self):
+		report = build_seo_assistant_report(
+			parent_doctype="School Website Page",
+			doc_payload={
+				"page_type": "Standard",
+				"title": "About",
+				"meta_description": "About our school.",
+				"blocks": [
+					{
+						"block_type": "rich_text",
+						"order": 1,
+						"idx": 1,
+						"is_enabled": 1,
+						"props": json.dumps({"content_html": "<p>Body</p>"}),
+					},
+					{
+						"block_type": "hero",
+						"order": 2,
+						"idx": 2,
+						"is_enabled": 1,
+						"props": json.dumps({"title": "About"}),
+					},
+				],
+			},
+		)
+		codes = {row["code"] for row in report["checks"]}
+		self.assertIn("h1_first_block", codes)
+
+	def test_seo_assistant_program_cta_present_clears_program_warning(self):
+		report = build_seo_assistant_report(
+			parent_doctype="Program Website Profile",
+			doc_payload={
+				"intro_text": "Program intro",
+				"blocks": [
+					{
+						"block_type": "program_intro",
+						"order": 1,
+						"idx": 1,
+						"is_enabled": 1,
+						"props": json.dumps({"heading": "Program", "cta_intent": "apply"}),
+					}
+				],
+			},
+		)
+		codes = {row["code"] for row in report["checks"]}
+		self.assertNotIn("cta_missing_program", codes)

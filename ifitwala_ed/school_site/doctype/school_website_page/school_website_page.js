@@ -86,6 +86,8 @@ function getSelectedBlockRow(frm) {
 
 const BLOCK_REGISTRY_METHOD_GET_ALLOWED =
 	"ifitwala_ed.website.block_registry.get_allowed_block_types_for_builder";
+const SEO_ASSISTANT_METHOD =
+	"ifitwala_ed.website.seo_checks.get_seo_assistant_report";
 
 function normalizeBlockTypes(value) {
 	if (!Array.isArray(value)) return [];
@@ -148,10 +150,100 @@ async function syncAllowedBlockTypes(frm) {
 	}
 }
 
+function setBaseDashboardBanners(frm, banners) {
+	frm.__iwBaseDashboardBanners = Array.isArray(banners) ? banners : [];
+	renderDashboardHeadline(frm);
+}
+
+function setSeoChecks(frm, checks) {
+	frm.__iwSeoChecks = Array.isArray(checks) ? checks : [];
+	renderDashboardHeadline(frm);
+}
+
+function renderDashboardHeadline(frm) {
+	if (!frm.dashboard || !frm.dashboard.set_headline) return;
+
+	const baseBanners = Array.isArray(frm.__iwBaseDashboardBanners)
+		? frm.__iwBaseDashboardBanners
+		: [];
+	const seoChecks = Array.isArray(frm.__iwSeoChecks) ? frm.__iwSeoChecks : [];
+
+	if (!baseBanners.length && !seoChecks.length) {
+		frm.dashboard.set_headline("");
+		return;
+	}
+
+	const sections = [];
+	if (baseBanners.length) {
+		const baseHtml = baseBanners.map((msg) => `• ${frappe.utils.escape_html(msg)}`).join("<br>");
+		sections.push(`<span class="text-warning">${baseHtml}</span>`);
+	}
+
+	if (seoChecks.length) {
+		const seoHtml = seoChecks
+			.map((check) => {
+				const severity = String(check.severity || "").toLowerCase();
+				const klass = severity === "error" ? "text-danger" : "text-warning";
+				const tag = severity === "error" ? "[SEO ERROR]" : "[SEO WARN]";
+				return `<span class="${klass}">• ${frappe.utils.escape_html(tag)} ${frappe.utils.escape_html(
+					check.message || ""
+				)}</span>`;
+			})
+			.join("<br>");
+		sections.push(
+			`<span><strong>${frappe.utils.escape_html(__("SEO Assistant"))}</strong><br>${seoHtml}</span>`
+		);
+	}
+
+	frm.dashboard.set_headline(sections.join("<br><br>"));
+}
+
+function getSeoPayload(frm) {
+	const blocks = (frm.doc.blocks || []).map((row) => ({
+		block_type: row.block_type || "",
+		order: row.order,
+		idx: row.idx,
+		is_enabled: row.is_enabled,
+		props: row.props || ""
+	}));
+	return {
+		doctype: frm.doctype,
+		name: frm.doc.name || null,
+		page_type: frm.doc.page_type || null,
+		title: frm.doc.title || null,
+		meta_description: frm.doc.meta_description || null,
+		seo_profile: frm.doc.seo_profile || null,
+		blocks
+	};
+}
+
+async function refreshSeoAssistant(frm, { showErrorToast = false } = {}) {
+	try {
+		const res = await frappe.call({
+			method: SEO_ASSISTANT_METHOD,
+			args: {
+				parent_doctype: "School Website Page",
+				doc_json: JSON.stringify(getSeoPayload(frm))
+			}
+		});
+		const report = res && res.message ? res.message : {};
+		const checks = Array.isArray(report.checks) ? report.checks : [];
+		setSeoChecks(frm, checks);
+		return report;
+	} catch (err) {
+		setSeoChecks(frm, []);
+		if (showErrorToast) {
+			frappe.msgprint(__("Unable to compute SEO checks right now."));
+		}
+		return null;
+	}
+}
+
 frappe.ui.form.on("School Website Page", {
 	refresh(frm) {
 		frm.clear_custom_buttons();
 		syncAllowedBlockTypes(frm);
+		refreshSeoAssistant(frm);
 
 		if (frm.doc.full_route) {
 			frm.add_custom_button(__("Preview"), () => {
@@ -179,6 +271,11 @@ frappe.ui.form.on("School Website Page", {
 				return;
 			}
 			builder.openAddBlock({ frm, childTableField: "blocks", allowedTypes });
+		});
+
+		frm.add_custom_button(__("SEO Check"), async () => {
+			await refreshSeoAssistant(frm, { showErrorToast: true });
+			frappe.show_alert({ message: __("SEO checks refreshed."), indicator: "green" });
 		});
 
 		frm.add_custom_button(__("Edit Block Props"), async () => {
@@ -210,22 +307,41 @@ frappe.ui.form.on("School Website Page", {
 								__("School is not published for the website (set Is Published and a website slug).")
 							);
 						}
-
-						if (banners.length) {
-							const html = banners.map((msg) => `• ${frappe.utils.escape_html(msg)}`).join("<br>");
-							frm.dashboard.set_headline(`<span class="text-warning">${html}</span>`);
-						} else {
-							frm.dashboard.set_headline("");
-						}
+						setBaseDashboardBanners(frm, banners);
+					})
+					.catch(() => {
+						setBaseDashboardBanners(frm, banners);
 					});
 			} else if (banners.length) {
-				const html = banners.map((msg) => `• ${frappe.utils.escape_html(msg)}`).join("<br>");
-				frm.dashboard.set_headline(`<span class="text-warning">${html}</span>`);
+				setBaseDashboardBanners(frm, banners);
+			} else {
+				setBaseDashboardBanners(frm, []);
 			}
 		}
 	},
 
 	page_type(frm) {
 		syncAllowedBlockTypes(frm);
+		refreshSeoAssistant(frm);
+	},
+
+	seo_profile(frm) {
+		refreshSeoAssistant(frm);
+	},
+
+	title(frm) {
+		refreshSeoAssistant(frm);
+	},
+
+	meta_description(frm) {
+		refreshSeoAssistant(frm);
+	},
+
+	blocks_add(frm) {
+		refreshSeoAssistant(frm);
+	},
+
+	blocks_remove(frm) {
+		refreshSeoAssistant(frm);
 	}
 });
