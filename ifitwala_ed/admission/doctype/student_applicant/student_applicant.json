@@ -1,7 +1,9 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:APPL-{MM}-{YYYY}-{###}",
  "creation": "2024-12-06 15:44:29.050774",
+ "default_view": "List",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -11,11 +13,11 @@
   "last_name",
   "inquiry",
   "student",
-	"applicant_image",
+  "applicant_image",
   "application_status",
-	"applicant_user",
+  "applicant_user",
   "column_break_frwx",
-	"organization",
+  "organization",
   "school",
   "academic_year",
   "term",
@@ -32,7 +34,8 @@
   "policies_section",
   "policies_summary",
   "documents_section",
-  "documents_summary"
+  "documents_summary",
+  "title"
  ],
  "fields": [
   {
@@ -202,14 +205,22 @@
    "fieldtype": "Link",
    "label": "Program Offering",
    "options": "Program Offering"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Title",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-06 07:32:37",
+ "modified": "2026-02-12 23:59:25.076674",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -223,24 +234,6 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Academic Admin",
-   "share": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Academic Assistant",
-   "share": 1
   },
   {
    "create": 1,
@@ -265,10 +258,29 @@
    "role": "Admission Officer",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "title"
 }
