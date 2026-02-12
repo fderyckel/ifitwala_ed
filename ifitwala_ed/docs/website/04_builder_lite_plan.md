@@ -1,10 +1,14 @@
 <!-- ifitwala_ed/docs/website/04_builder_lite_plan.md -->
 # Builder-Lite v1 — Canonical Block Definitions & Implementation Plan
-**Scope:** Home / School marketing pages
-**Blocks:** Hero, Rich Text, Program List, Leadership, CTA
+**Scope:** School website pages, program profiles, and stories
+**Blocks:** `hero`, `admissions_overview`, `admissions_steps`, `admission_cta`, `faq`, `rich_text`, `content_snippet`, `program_list`, `program_intro`, `leadership`, `cta`
 **Non-goal:** visual editor UI (comes later)
 **Hard constraint:** **no server scripts**, no DB-stored code
 **Canonical implementation source:** `ifitwala_ed/website/block_registry.py`
+
+**Implementation status (February 12, 2026):**
+* Implemented: A1, A2, B1, B2, C1, C2, D1, D2
+* Pending: A3 governance lock, D3 analytics attribution
 
 ---
 
@@ -31,7 +35,7 @@ All blocks must render **real HTML at request time**, not fetch content via JS.
 ### 0.2 Heading rules (non-negotiable)
 
 * Exactly **one `<h1>` per page**
-* Hero block **owns the H1**
+* H1 owner must be a block with `seo_role = "owns_h1"` (`hero`, `admissions_overview`, `program_intro`)
 * All other blocks start at `h2` or lower
 * Never let editors choose heading level freely
 
@@ -433,7 +437,9 @@ Critical content **must not depend on JS**.
 
 Approved. Moving to **execution artifacts**.
 
-Below are **authoritative coding instructions + concrete schemas** to implement **Builder-lite v1** up to the 5 canonical blocks, with SEO-first templating. This is written so you (or another agent) can implement without reinterpretation.
+The execution pack below is the original Builder-lite baseline.  
+As of February 12, 2026, runtime implementation has expanded beyond this baseline
+(admissions/program/story contexts, workflow, snippets, theme profiles, enhancement JS).
 
 ---
 
@@ -441,7 +447,7 @@ Below are **authoritative coding instructions + concrete schemas** to implement 
 
 ## Scope lock
 
-* Public marketing pages only (School/Home)
+* Public marketing pages only (school pages, program profiles, stories)
 * Native Frappe rendering (no SPA here)
 * **No `server_script`**, no DB-stored code
 * Live data, crawlable HTML, SEO-first

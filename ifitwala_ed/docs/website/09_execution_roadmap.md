@@ -1,7 +1,7 @@
 <!-- ifitwala_ed/docs/website/09_execution_roadmap.md -->
 # Website Module Execution Roadmap (Prioritized)
 
-**Status:** Proposed execution plan  
+**Status:** Partially executed (A1, A2, B1, B2, C1, C2, D1, D2 implemented on February 12, 2026; A3 and D3 pending)  
 **Scope:** `ifitwala_ed` website module (DocTypes, renderer, providers, Desk editor UX, marketing workflows)  
 **Goal:** Reduce friction and cognitive load for school marketing and website managers while preserving server-side invariants
 
@@ -26,6 +26,9 @@
 **Outcome**
 - Block schemas and metadata are defined once and reused by setup seed + validation + editor.
 
+**Implementation status (February 12, 2026)**
+- Implemented.
+
 **Files**
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/setup/setup.py`
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/website/renderer.py`
@@ -45,6 +48,9 @@
 **Outcome**
 - Editors see blocking errors on save, not later during preview/live render.
 
+**Implementation status (February 12, 2026)**
+- Implemented.
+
 **Files**
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/school_website_page/school_website_page.py`
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/program_website_profile/program_website_profile.py`
@@ -59,6 +65,9 @@
 
 **Outcome**
 - `Website Block Definition` becomes system-owned in practice, not only by convention.
+
+**Implementation status (February 12, 2026)**
+- Pending.
 
 **Files**
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/website_block_definition/website_block_definition.json`
@@ -76,6 +85,9 @@
 **Outcome**
 - Only valid blocks for page context are shown; lower cognitive load and fewer failed saves.
 
+**Implementation status (February 12, 2026)**
+- Implemented.
+
 **Files**
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/public/js/website_props_builder.js`
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/school_website_page/school_website_page.js`
@@ -89,6 +101,9 @@
 
 **Outcome**
 - Editors get immediate actionable warnings: H1 ownership, meta lengths, OG image, missing CTA, schema readiness.
+
+**Implementation status (February 12, 2026)**
+- Implemented.
 
 **Files**
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/school_website_page/school_website_page.js`
@@ -109,6 +124,9 @@
 **Outcome**
 - Marketing managers can collaborate safely: `Draft -> In Review -> Approved -> Published`.
 
+**Implementation status (February 12, 2026)**
+- Implemented.
+
 **Files**
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/school_website_page/school_website_page.json`
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/school_website_page/school_website_page.py`
@@ -124,6 +142,9 @@
 
 **Outcome**
 - School/org/global snippets behave as intended and are editable by marketing users.
+
+**Implementation status (February 12, 2026)**
+- Implemented.
 
 **Files**
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/website_snippet/website_snippet.json`
@@ -142,12 +163,16 @@
 **Outcome**
 - Brand personalization (color, type scale, spacing density, hero style) without custom CSS injection.
 
+**Implementation status (February 12, 2026)**
+- Implemented.
+
 **Files**
 - New DocType:
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/website_theme_profile/`
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/website/templates/page.html`
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/public/website/website.css`
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/website/renderer.py`
+- `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/patches/website/p09_seed_theme_profiles_k12_college.py`
 
 **Risk**
 - Must preserve Tailwind scoping and no cross-surface leakage.
@@ -157,11 +182,14 @@
 **Outcome**
 - Better motion and presentation (carousel polish, stagger reveals, CTA emphasis) while keeping content server-rendered.
 
+**Implementation status (February 12, 2026)**
+- Implemented.
+
 **Files**
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/public/website/website.js`
 - New optional scripts by block:
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/public/website/blocks/*.js`
-- `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/setup/setup.py` (block `script_path` seeding)
+- `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/website/block_registry.py` (block `script_path` registry)
 
 **Risk**
 - Must remain enhancement-only; no data dependencies in JS.
@@ -170,6 +198,9 @@
 
 **Outcome**
 - Website managers track CTA performance by intent, page, and school.
+
+**Implementation status (February 12, 2026)**
+- Pending.
 
 **Files**
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/website/blocks/admission_cta.html`
@@ -184,23 +215,29 @@
 
 ---
 
-## 2) Migration patch queue (proposed)
+## 2) Migration patch queue (current repo state)
 
-Create new patch package:
-- `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/patches/website/`
-- Register patches in `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/patches.txt`
+Patch package:
 
-Patch order:
-1. `ifitwala_ed.patches.website.p01_seed_block_registry_from_code`
-2. `ifitwala_ed.patches.website.p02_lock_block_definition_permissions`
-3. `ifitwala_ed.patches.website.p03_backfill_page_block_orders_and_missing_props`
-4. `ifitwala_ed.patches.website.p04_validate_and_normalize_legacy_block_props`
-5. `ifitwala_ed.patches.website.p05_add_workflow_fields_website_pages`
-6. `ifitwala_ed.patches.website.p06_backfill_workflow_state_from_status`
-7. `ifitwala_ed.patches.website.p07_refactor_snippet_uniqueness_to_scoped`
-8. `ifitwala_ed.patches.website.p08_rebuild_snippet_scope_indexes`
-9. `ifitwala_ed.patches.website.p09_seed_theme_profiles_k12_college`
-10. `ifitwala_ed.patches.website.p10_backfill_tracking_ids_for_admission_cta`
+* `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/patches/website/`
+* registered in `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/patches.txt`
+
+Currently registered:
+
+1. `ifitwala_ed.patches.website.p05_add_workflow_fields_website_pages`
+2. `ifitwala_ed.patches.website.p06_backfill_workflow_state_from_status`
+3. `ifitwala_ed.patches.website.p07_refactor_snippet_uniqueness_to_scoped`
+4. `ifitwala_ed.patches.website.p08_rebuild_snippet_scope_indexes`
+5. `ifitwala_ed.patches.website.p09_seed_theme_profiles_k12_college`
+
+Remaining planned patch from this roadmap:
+
+1. `ifitwala_ed.patches.website.p10_backfill_tracking_ids_for_admission_cta`
+
+Notes:
+
+* `p01` to `p04` are no longer in `patches.txt`.
+* Canonical registry + validator behavior from those early proposals is now represented directly in code paths implemented during A1/A2.
 
 ---
 
@@ -211,6 +248,7 @@ Patch order:
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/school_website_page/test_school_website_page.py`
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/program_website_profile/test_program_website_profile.py`
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/website_snippet/test_website_snippet.py`
+- `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/website_theme_profile/test_website_theme_profile.py`
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_site/doctype/website_block_definition/test_website_block_definition.py`
 - New renderer tests:
 - `/Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/website/tests/test_renderer.py`
@@ -249,12 +287,11 @@ Patch order:
 
 ---
 
-## 6) Recommended start sequence (highest ROI)
+## 6) Recommended next sequence (remaining work)
 
-1. Phase A1
-2. Phase A2
-3. Phase B1
-4. Phase B2
-5. Phase C1
+1. Complete A3 (`Website Block Definition` governance lock).
+2. Finalize D3 event schema + retention gate (Gate 3 approval).
+3. Implement `p10_backfill_tracking_ids_for_admission_cta`.
+4. Add/execute renderer/provider automated tests and acceptance checks.
 
-This sequence removes the largest daily editor pain before introducing new surface area.
+This sequence closes governance gaps first, then unlocks analytics safely.

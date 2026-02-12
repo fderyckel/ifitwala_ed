@@ -1,16 +1,16 @@
 <!-- ifitwala_ed/website/blocks/admission_cta.html -->
-{% set style_class = "bg-slate-900 text-white hover:bg-slate-800" %}
+{% set style_class = "site-cta-primary bg-slate-900 text-white hover:bg-slate-800" %}
 {% if data.style == "secondary" %}
-	{% set style_class = "bg-slate-100 text-slate-900 hover:bg-slate-200" %}
+	{% set style_class = "site-cta-secondary bg-slate-100 text-slate-900 hover:bg-slate-200" %}
 {% elif data.style == "outline" %}
-	{% set style_class = "border border-slate-300 hover:bg-slate-50" %}
+	{% set style_class = "site-cta-outline border border-slate-300 hover:bg-slate-50" %}
 {% endif %}
 
-<section class="block-admission-cta">
+<section class="block-admission-cta" data-admission-cta>
 	<div class="flex justify-center">
 		<a
 			href="{{ data.url }}"
-			class="inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition {{ style_class }}"
+			class="site-cta site-cta-link inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition {{ style_class }}"
 			data-intent="{{ data.intent }}"
 			{% if data.tracking_id %}data-tracking-id="{{ data.tracking_id }}"{% endif %}
 		>

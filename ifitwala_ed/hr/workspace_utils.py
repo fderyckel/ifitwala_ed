@@ -23,13 +23,13 @@ def set_default_workspace_based_on_roles(doc, method):
 	Still runs on User.validate (per hooks) as a safety net.
 
 	Portal-first rule:
-	- If a user has a portal home_page (/portal/* or /sp), do not touch Desk workspaces.
+	- If a user has a portal home_page (/portal/*), do not touch Desk workspaces.
 	"""
 	if doc.user_type != "System User":
 		return
 
 	home_page = (getattr(doc, "home_page", "") or "").strip()
-	if home_page.startswith("/portal/") or home_page == "/sp":
+	if home_page.startswith("/portal/"):
 		return
 
 	# compute suggested workspace from effective access

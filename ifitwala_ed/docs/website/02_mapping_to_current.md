@@ -1,3 +1,30 @@
+<!-- ifitwala_ed/docs/website/02_mapping_to_current.md -->
+# Legacy-to-Canonical Mapping Notes
+
+## Status (February 12, 2026)
+
+This note remains useful as migration history, but the codebase has moved to canonical
+block types and provider contracts.
+
+Current canonical block types (from `ifitwala_ed/website/block_registry.py`):
+
+* `hero`
+* `admissions_overview`
+* `admissions_steps`
+* `admission_cta`
+* `faq`
+* `rich_text`
+* `content_snippet`
+* `program_list`
+* `program_intro`
+* `leadership`
+* `cta`
+
+Use this file to understand legacy intent. Use the block registry and
+`ifitwala_ed/docs/website/06_block_props_guide.md` for live contracts.
+
+---
+
 # Part 1 — What you already have (decoded)
 
 From `web_page.json` and the shared assets, I see **three real pages**:

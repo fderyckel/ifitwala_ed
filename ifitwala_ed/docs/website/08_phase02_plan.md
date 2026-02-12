@@ -1,6 +1,31 @@
+<!-- ifitwala_ed/docs/website/08_phase02_plan.md -->
 # PART 1 — Phase Ranking (What ships first vs later)
 
 **Canonical implementation source:** `ifitwala_ed/website/block_registry.py` (block schemas and contracts)
+
+## Current execution checkpoint (February 12, 2026)
+
+Implemented from this plan and follow-up roadmap:
+
+* canonical block contracts and setup sync (A1)
+* save-time block validation and normalization (A2)
+* context-aware block availability and guardrails (B1)
+* SEO assistant checks in editor flows (B2)
+* workflow-state publishing model for pages/profiles (C1)
+* scoped snippet model and resolution order (C2)
+* theme profiles with scoped resolution (D1)
+* non-critical visual enhancement JS layer (D2)
+
+Pending:
+
+* block registry governance lock (A3)
+* marketing analytics attribution pipeline (D3)
+* broader phase-2 expansion items listed in this document (stories/news scale features, linking assistant, advanced scheduling)
+
+When this file conflicts with runtime behavior, defer to:
+
+* `ifitwala_ed/docs/website/09_execution_roadmap.md`
+* implementation code in `ifitwala_ed/website/` and `ifitwala_ed/school_site/doctype/`
 
 ### **Phase 1 (Foundational, must-have)**
 

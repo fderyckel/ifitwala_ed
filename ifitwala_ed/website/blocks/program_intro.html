@@ -19,10 +19,10 @@
 		<div class="prose prose-lg max-w-none">
 			{{ data.content | safe }}
 		</div>
-		{% if data.cta %}
-			<a href="{{ data.cta.url }}" class="inline-flex items-center rounded-lg bg-slate-900 px-6 py-3 text-sm font-medium text-white">
-				{{ data.cta.label }}
-			</a>
-		{% endif %}
-	</div>
+			{% if data.cta %}
+				<a href="{{ data.cta.url }}" class="site-cta site-cta-primary inline-flex items-center rounded-lg bg-slate-900 px-6 py-3 text-sm font-medium text-white">
+					{{ data.cta.label }}
+				</a>
+			{% endif %}
+		</div>
 </section>

@@ -1,5 +1,7 @@
 # ifitwala_ed/website/renderer.py
 
+import re
+
 import frappe
 from frappe import _
 
@@ -22,6 +24,147 @@ ROOT_ROUTE_ALIASES = {
 	"/index",
 	"/index.html",
 }
+
+HEX_COLOR_PATTERN = re.compile(r"^#(?:[0-9a-f]{3}|[0-9a-f]{6})$")
+THEME_DEFAULTS = {
+	"profile_name": "Default K-12 Theme",
+	"preset_type": "K-12",
+	"scope_type": "Global",
+	"primary_color": "#1d4ed8",
+	"accent_color": "#16a34a",
+	"surface_color": "#f8fafc",
+	"text_color": "#0f172a",
+	"type_scale": "standard",
+	"spacing_density": "standard",
+	"hero_style": "spotlight",
+	"enable_motion": 1,
+}
+TYPE_SCALE_FACTORS = {
+	"compact": "0.94",
+	"standard": "1.00",
+	"large": "1.10",
+}
+SPACING_GAPS = {
+	"compact": "4.5rem",
+	"standard": "6rem",
+	"relaxed": "7.5rem",
+}
+HERO_RADIUS = {
+	"classic": "0rem",
+	"split": "0.9rem",
+	"spotlight": "1.4rem",
+}
+
+
+def _coerce_theme_color(value: str | None, fallback: str) -> str:
+	text = (value or "").strip().lower()
+	if not text:
+		return fallback
+	return text if HEX_COLOR_PATTERN.match(text) else fallback
+
+
+def _pick_theme_profile_name(*, scope_type: str, organization: str | None = None, school_name: str | None = None):
+	filters = {"scope_type": scope_type}
+	if scope_type == "School":
+		school_name = (school_name or "").strip()
+		if not school_name:
+			return None
+		filters["school"] = school_name
+	elif scope_type == "Organization":
+		organization = (organization or "").strip()
+		if not organization:
+			return None
+		filters["organization"] = organization
+
+	name = frappe.db.get_value(
+		"Website Theme Profile",
+		{**filters, "is_default": 1},
+		"name",
+		order_by="modified desc",
+	)
+	if name:
+		return name
+	return frappe.db.get_value(
+		"Website Theme Profile",
+		filters,
+		"name",
+		order_by="modified desc",
+	)
+
+
+def _resolve_theme_profile(school):
+	if not frappe.db.exists("DocType", "Website Theme Profile"):
+		return None
+
+	school_name = (getattr(school, "name", None) or "").strip()
+	organization = (getattr(school, "organization", None) or "").strip()
+
+	name = _pick_theme_profile_name(scope_type="School", school_name=school_name)
+	if not name:
+		name = _pick_theme_profile_name(scope_type="Organization", organization=organization)
+	if not name:
+		name = _pick_theme_profile_name(scope_type="Global")
+	if not name:
+		return None
+	return frappe.get_doc("Website Theme Profile", name)
+
+
+def _build_theme_context(*, school) -> dict:
+	doc = _resolve_theme_profile(school)
+
+	primary_color = _coerce_theme_color(
+		getattr(doc, "primary_color", None),
+		THEME_DEFAULTS["primary_color"],
+	)
+	accent_color = _coerce_theme_color(
+		getattr(doc, "accent_color", None),
+		THEME_DEFAULTS["accent_color"],
+	)
+	surface_color = _coerce_theme_color(
+		getattr(doc, "surface_color", None),
+		THEME_DEFAULTS["surface_color"],
+	)
+	text_color = _coerce_theme_color(
+		getattr(doc, "text_color", None),
+		THEME_DEFAULTS["text_color"],
+	)
+
+	type_scale = (getattr(doc, "type_scale", None) or "").strip() or THEME_DEFAULTS["type_scale"]
+	if type_scale not in TYPE_SCALE_FACTORS:
+		type_scale = THEME_DEFAULTS["type_scale"]
+
+	spacing_density = (getattr(doc, "spacing_density", None) or "").strip() or THEME_DEFAULTS["spacing_density"]
+	if spacing_density not in SPACING_GAPS:
+		spacing_density = THEME_DEFAULTS["spacing_density"]
+
+	hero_style = (getattr(doc, "hero_style", None) or "").strip() or THEME_DEFAULTS["hero_style"]
+	if hero_style not in HERO_RADIUS:
+		hero_style = THEME_DEFAULTS["hero_style"]
+
+	enable_motion = int(getattr(doc, "enable_motion", THEME_DEFAULTS["enable_motion"]) or 0) == 1
+	css_vars = {
+		"--if-theme-primary": primary_color,
+		"--if-theme-accent": accent_color,
+		"--if-theme-surface": surface_color,
+		"--if-theme-text": text_color,
+		"--if-type-scale-factor": TYPE_SCALE_FACTORS[type_scale],
+		"--if-block-gap": SPACING_GAPS[spacing_density],
+		"--if-hero-radius": HERO_RADIUS[hero_style],
+	}
+	css_vars_inline = "; ".join(f"{key}: {value}" for key, value in css_vars.items())
+
+	return {
+		"profile_name": (getattr(doc, "profile_name", None) or "").strip() or THEME_DEFAULTS["profile_name"],
+		"preset_type": (getattr(doc, "preset_type", None) or "").strip() or THEME_DEFAULTS["preset_type"],
+		"scope_type": (getattr(doc, "scope_type", None) or "").strip() or THEME_DEFAULTS["scope_type"],
+		"type_scale": type_scale,
+		"spacing_density": spacing_density,
+		"hero_style": hero_style,
+		"enable_motion": enable_motion,
+		"motion_mode": "on" if enable_motion else "off",
+		"css_vars": css_vars,
+		"css_vars_inline": css_vars_inline,
+	}
 
 
 def _fallback_nav_label(*, route: str, page_type: str | None) -> str:
@@ -340,12 +483,14 @@ def _build_school_page_context(*, route: str, school, preview: bool):
 		fallback_description=page.meta_description,
 		seo_profile=seo_profile,
 	)
+	theme = _build_theme_context(school=school)
 	return {
 		"page": page,
 		"school": school,
 		"blocks": blocks,
 		"block_scripts": scripts,
 		"seo": seo,
+		"theme": theme,
 		"site_shell": _build_site_shell_context(school=school, route=route),
 		"template": "ifitwala_ed/website/templates/page.html",
 	}
@@ -362,6 +507,7 @@ def _build_program_context(*, route: str, school, program_slug: str, preview: bo
 		fallback_description=description,
 		seo_profile=seo_profile,
 	)
+	theme = _build_theme_context(school=school)
 	return {
 		"page": profile,
 		"school": school,
@@ -369,6 +515,7 @@ def _build_program_context(*, route: str, school, program_slug: str, preview: bo
 		"blocks": blocks,
 		"block_scripts": scripts,
 		"seo": seo,
+		"theme": theme,
 		"site_shell": _build_site_shell_context(school=school, route=route),
 		"template": "ifitwala_ed/website/templates/page.html",
 	}
@@ -384,12 +531,14 @@ def _build_story_context(*, route: str, school, story_slug: str, preview: bool):
 		fallback_description=None,
 		seo_profile=seo_profile,
 	)
+	theme = _build_theme_context(school=school)
 	return {
 		"page": story,
 		"school": school,
 		"blocks": blocks,
 		"block_scripts": scripts,
 		"seo": seo,
+		"theme": theme,
 		"site_shell": _build_site_shell_context(school=school, route=route),
 		"template": "ifitwala_ed/website/templates/page.html",
 	}
@@ -414,6 +563,7 @@ def _build_story_index_context(*, route: str, school):
 		fallback_description=None,
 		seo_profile=None,
 	)
+	theme = _build_theme_context(school=school)
 	return {
 		"page": {"route": route},
 		"school": school,
@@ -421,6 +571,7 @@ def _build_story_index_context(*, route: str, school):
 		"blocks": [],
 		"block_scripts": [],
 		"seo": seo,
+		"theme": theme,
 		"site_shell": _build_site_shell_context(school=school, route=route),
 		"template": "ifitwala_ed/website/templates/stories_index.html",
 	}

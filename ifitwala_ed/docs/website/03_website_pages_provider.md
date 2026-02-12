@@ -1,14 +1,40 @@
+<!-- ifitwala_ed/docs/website/03_website_pages_provider.md -->
 # Website Page Providers — Canonical Contracts (v1)
 
-**Canonical implementation source:** `ifitwala_ed/website/block_registry.py` (block contracts and schemas consumed by setup, renderer, and Desk props editor)
+**Canonical implementation sources:** `ifitwala_ed/website/block_registry.py`, `ifitwala_ed/website/renderer.py`, and `ifitwala_ed/website/providers/*.py`
 
 **Ifitwala_Ed — Proposal B**
 
-> **Status:** Draft — pending sign-off
+> **Status:** Core provider contract implemented as of February 12, 2026 (A1/A2 complete)
 > **Authority:** Subordinate to
-> • `website_architecture_proposal_b.md`
-> • `website_blocks_registry.md`
+> • `ifitwala_ed/docs/website/01_architecture_notes.md`
+> • `ifitwala_ed/docs/website/06_block_props_guide.md`
 > **Scope:** Public website only (unauthenticated)
+
+---
+
+## 0.1 Runtime Contract (implemented)
+
+The current renderer enforces this provider contract in runtime code:
+
+* Source of truth: `ifitwala_ed/website/block_registry.py`
+* Resolver path: `ifitwala_ed/website/renderer.py`
+* Provider signature:
+
+```python
+def get_context(*, school, page, block_props):
+    ...
+```
+
+* Required return shape:
+
+```python
+{
+    "data": {...}
+}
+```
+
+If `data` is missing, rendering fails with validation error.
 
 ---
 

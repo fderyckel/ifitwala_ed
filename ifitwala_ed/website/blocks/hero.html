@@ -2,7 +2,7 @@
 {% import "ifitwala_ed/templates/includes/smart_image_macro.html" as img_macro %}
 {% set slides = data.images or [] %}
 
-<section class="block-hero">
+<section class="block-hero" data-hero-style="{{ theme.hero_style or 'classic' }}">
 	{% if slides %}
 		<div class="relative w-full overflow-hidden" data-carousel data-interval="{{ data.interval }}" data-autoplay="{{ data.autoplay }}">
 			{% for slide in slides %}
@@ -54,7 +54,7 @@
 			<p class="mt-4 text-lg text-slate-600">{{ data.subtitle }}</p>
 		{% endif %}
 		{% if data.cta_label and data.cta_link %}
-			<a href="{{ data.cta_link }}" class="mt-6 inline-flex items-center rounded-md bg-slate-900 px-6 py-3 text-base font-semibold text-white">
+			<a href="{{ data.cta_link }}" class="site-cta site-cta-primary mt-6 inline-flex items-center rounded-md bg-slate-900 px-6 py-3 text-base font-semibold text-white">
 				{{ data.cta_label }}
 			</a>
 		{% endif %}

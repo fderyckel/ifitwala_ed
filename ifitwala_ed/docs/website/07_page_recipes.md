@@ -1,27 +1,37 @@
 <!-- ifitwala_ed/docs/website/07_page_recipes.md -->
-# Page Recipes (Home / About / Admissions)
+# Page Recipes (Current Baseline)
 
-**Audience:** Marketing, admissions, and website managers
-**Goal:** Fast, consistent page setup using the 5 canonical blocks
-**Blocks:** hero, rich_text, program_list, leadership, cta
+**Audience:** Marketing, admissions, and website managers  
+**Status (February 12, 2026):** Synced with implemented website editor and renderer behavior  
+**Goal:** Low-friction page composition using currently supported blocks
 
 ---
 
-## 1) Home Page (School Root)
+## 0) Quick Rules
 
-**Route input:** `/` (root page only; system stores `/<school-slug>` in `full_route`)
+* One H1 owner block must be first (`hero`, `admissions_overview`, or `program_intro`).
+* Route input for `School Website Page` is school-relative (`/`, `about`, `admissions`, `about/team`).
+* Publication is workflow-driven (`Draft -> In Review -> Approved -> Published`).
+* Allowed blocks depend on context:
+  * `School Website Page` (Standard): `hero`, `rich_text`, `program_list`, `leadership`, `cta`, `faq`, `content_snippet`
+  * `School Website Page` (Admissions): Standard + `admissions_overview`, `admissions_steps`, `admission_cta`
+  * `Program Website Profile`: Standard + `program_intro`
+  * `Website Story`: Standard blocks only
 
-**Suggested block order**
+---
 
-1. **hero**
-2. **rich_text** (intro)
-3. **program_list** (featured programs)
-4. **leadership** (optional)
-5. **cta** (admissions / inquiry)
+## 1) Home Page Recipe (`route = /`)
 
-**Example block props**
+Suggested block order:
 
-Hero
+1. `hero`
+2. `rich_text`
+3. `program_list`
+4. `leadership` (optional)
+5. `cta`
+
+Example `hero` props:
+
 ```json
 {
   "title": "Ifitwala Secondary School",
@@ -34,15 +44,8 @@ Hero
 }
 ```
 
-Rich text
-```json
-{
-  "content_html": "<p>Welcome to Ifitwala Secondary School — a community where curiosity, discipline, and care meet.</p>",
-  "max_width": "normal"
-}
-```
+Example `program_list` props:
 
-Program list
 ```json
 {
   "school_scope": "current",
@@ -52,150 +55,138 @@ Program list
 }
 ```
 
-Leadership
-```json
-{
-  "title": "Leadership & Administration",
-  "roles": ["Head", "Principal"],
-  "limit": 6
-}
-```
-
-CTA
-```json
-{
-  "title": "Ready to apply?",
-  "text": "Start your admissions journey today.",
-  "button_label": "Apply Now",
-  "button_link": "https://apply.school.edu"
-}
-```
-
 ---
 
-## 2) About Page
+## 2) About Page Recipe (`route = about`)
 
-**Route input:** `about`
+Suggested block order:
 
-**Suggested block order**
+1. `hero`
+2. `rich_text`
+3. `leadership`
+4. `faq` (optional)
+5. `cta`
 
-1. **hero** (short)
-2. **rich_text** (history + mission)
-3. **leadership**
-4. **cta**
+Example `rich_text` props:
 
-**Example block props**
-
-Hero
 ```json
 {
-  "title": "About Us",
-  "subtitle": "A tradition of excellence, rooted in care",
-  "images": []
-}
-```
-
-Rich text
-```json
-{
-  "content_html": "<h2>Our History</h2><p>Founded in 1998, we serve learners from diverse backgrounds.</p><h2>Mission</h2><p>We build confident, compassionate learners.</p>",
+  "content_html": "<h2>Our History</h2><p>Founded in 1998...</p><h2>Mission</h2><p>We build confident, compassionate learners.</p>",
   "max_width": "wide"
 }
 ```
 
-Leadership
+---
+
+## 3) Admissions Page Recipe (`route = admissions`, `page_type = Admissions`)
+
+Suggested block order:
+
+1. `admissions_overview` (H1 owner)
+2. `admissions_steps`
+3. `faq`
+4. one or more `admission_cta`
+5. `content_snippet` (optional reuse)
+
+Example `admissions_overview` props:
+
 ```json
 {
-  "title": "Leadership & Administration",
-  "roles": ["Head", "Principal"],
-  "limit": 12
+  "heading": "Admissions",
+  "content_html": "<p>We welcome families who value curiosity, care, and growth.</p>",
+  "max_width": "normal"
 }
 ```
 
-CTA
+Example `admissions_steps` props:
+
 ```json
 {
-  "title": "Meet our campus",
-  "text": "Schedule a tour to see the school in action.",
-  "button_label": "Book a Visit",
-  "button_link": "/admissions"
+  "steps": [
+    { "key": "inquire", "title": "Inquire", "description": "Start the conversation.", "icon": "mail" },
+    { "key": "visit", "title": "Visit", "description": "Experience our campus.", "icon": "map" },
+    { "key": "apply", "title": "Apply", "description": "Begin the application.", "icon": "file-text" }
+  ],
+  "layout": "horizontal"
+}
+```
+
+Example `admission_cta` props:
+
+```json
+{
+  "intent": "visit",
+  "style": "primary",
+  "label_override": "Book a Campus Visit"
 }
 ```
 
 ---
 
-## 3) Admissions Page
+## 4) Program Profile Recipe (`Program Website Profile`)
 
-**Route input:** `admissions`
+Suggested block order:
 
-**Suggested block order**
+1. `program_intro` (H1 owner)
+2. `rich_text`
+3. `faq` (optional)
+4. `cta`
 
-1. **hero**
-2. **rich_text** (process steps)
-3. **program_list** (if admissions by program)
-4. **cta** (apply / inquiry)
+Example `program_intro` props:
 
-**Example block props**
-
-Hero
 ```json
 {
-  "title": "Admissions",
-  "subtitle": "A clear, supportive application process",
-  "images": [],
-  "cta_label": "Start Application",
-  "cta_link": "https://apply.school.edu"
+  "heading": "IB Diploma Programme",
+  "content_html": "<p>A rigorous, globally recognized academic pathway.</p>",
+  "cta_intent": "apply"
 }
 ```
 
-Rich text
-```json
-{
-  "content_html": "<ol><li>Submit inquiry</li><li>Schedule a visit</li><li>Complete application</li><li>Receive decision</li></ol>",
-  "max_width": "narrow"
-}
-```
+Notes:
 
-Program list (optional)
-```json
-{
-  "school_scope": "current",
-  "show_intro": false,
-  "card_style": "standard",
-  "limit": 6
-}
-```
-
-CTA
-```json
-{
-  "title": "Questions?",
-  "text": "Our admissions team is here to help.",
-  "button_label": "Contact Admissions",
-  "button_link": "/contact"
-}
-```
+* Profile `status` is derived from workflow state + program publish readiness.
+* Program page route is system-generated: `/{school_slug}/programs/{program_slug}`.
 
 ---
 
-## 4) Notes & Tips
+## 5) Story Page Recipe (`Website Story`)
 
-* **Carousel images**: leave `hero.images` empty to use `School.gallery_image`.
-* **CTA links**: must start with `/` or `https://`.
-* **Program list**: only shows programs offered by the school (via Program Offering).
-* **Leadership**: only shows employees flagged for website visibility.
-* **Build**: content edits do not require a build; only CSS/template edits do.
-* **School-scoped routes**: page links should use canonical `full_route` (for example `/{school_slug}/about`) when linking between public school pages.
+Suggested block order:
+
+1. `hero`
+2. `rich_text`
+3. `content_snippet` (optional)
+4. `cta` (optional)
+
+Notes:
+
+* `Website Story` uses the same validation rules for H1 ownership and block ordering.
+* Story index route is handled at `/{school_slug}/stories`.
 
 ---
 
-## 5) Fresh Install Default Scaffold
+## 6) Editor Workflow Recipe
 
-For a new site, the bootstrap flow seeds these pages for the default website school:
+For marketing collaboration:
 
-1. route `/` (home)
-2. route `about`
-3. route `admissions`
-4. route `programs`
+1. Author saves as `Draft`.
+2. Submit for review (`In Review`).
+3. Reviewer marks `Approved`.
+4. Publish (`Published`) after final check.
 
-All four pages are created as `School Website Page` records with canonical `full_route` values and schema-valid default blocks, so the public website has immediate structure and navigation without manual Desk setup.
+Minimum pre-publish checklist:
+
+* one valid H1 owner block in first position
+* meta title/description set
+* at least one CTA for admissions and program intent pages
+* blocks valid for the current page context
+
+---
+
+## 7) Theme and Motion Recipe (D1/D2)
+
+* Theme tokens are managed in `Website Theme Profile` (scope: School -> Organization -> Global).
+* Motion enhancements are optional and non-critical:
+  * shared: `/assets/ifitwala_ed/js/website.bundle.js`
+  * block scripts: `hero`, `admission_cta`
+* Content remains fully server-rendered and SEO-safe without JS.

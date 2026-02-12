@@ -5,6 +5,7 @@
 **Scope:** Builder‑lite v1 + Phase‑02 blocks  
 **Goal:** Exact props, types, rules, and examples for every block
 **Canonical implementation source:** `ifitwala_ed/website/block_registry.py`
+**Status (February 12, 2026):** Synced with implemented A1/A2/B1/B2/C1/C2/D1/D2 baseline
 
 ---
 
@@ -51,6 +52,20 @@ Block availability is enforced by parent DocType context (Desk picker + save-tim
 | `Website Story` | Standard blocks only |
 
 If a block type is outside the allowed set for the current context, save is blocked with a validation error.
+
+### 0.6 Block script paths are system-owned
+
+* Editors do not configure block JS paths in props.
+* Optional enhancement scripts are defined in `Website Block Definition.script_path` via the canonical block registry.
+* Current enhancement scripts:
+  * `hero` -> `/assets/ifitwala_ed/website/blocks/hero.js`
+  * `admission_cta` -> `/assets/ifitwala_ed/website/blocks/admission_cta.js`
+
+### 0.7 Theme profile is separate from block props
+
+* Brand tokens (colors, type scale, spacing density, hero style, motion toggle) come from `Website Theme Profile`.
+* Theme tokens are resolved by scope (`School -> Organization -> Global`) in renderer code.
+* Block props remain content/config contracts only.
 
 ---
 

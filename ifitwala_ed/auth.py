@@ -103,6 +103,18 @@ def _resolve_portal_path(*, user: str, user_roles: set) -> str:
 	return "/portal"
 
 
+def _matches_route(path: str, route: str) -> bool:
+	"""Return True when path equals route or is a subpath of route."""
+	return path == route or path.startswith(f"{route}/")
+
+
+def _redirect_to_user_portal(*, user: str, user_roles: set):
+	"""Redirect to the canonical portal path for the authenticated user."""
+	portal_path = _resolve_portal_path(user=user, user_roles=user_roles)
+	frappe.local.flags.redirect_location = portal_path
+	raise frappe.Redirect
+
+
 def before_request():
 	"""
 	Hook called before every request.
@@ -136,30 +148,36 @@ def before_request():
 		frappe.session.data.pop(FIRST_LOGIN_FLAG, None)
 		
 		# Check if user is trying to access /app or /desk on first hop
-		is_desk_route = any(
-			path == route or path.startswith(f"{route}/")
-			for route in DESK_ROUTES
-		)
+		is_desk_route = any(_matches_route(path, route) for route in DESK_ROUTES)
 		
 		if is_desk_route:
 			# Force redirect to appropriate portal based on role
-			portal_path = _resolve_portal_path(user=user, user_roles=user_roles)
 			frappe.logger().debug(
-				f"Login guard redirect for {user}: {path} -> {portal_path}, roles={user_roles}"
+				f"Login guard redirect for {user}: {path}, roles={user_roles}"
 			)
-			frappe.local.flags.redirect_location = portal_path
-			raise frappe.Redirect
-		# If not a desk route, allow the request to proceed normally
-		return
+			_redirect_to_user_portal(user=user, user_roles=user_roles)
+
+	# -------------------------------------------------------------------------
+	# 2) Portal section authorization (ongoing)
+	# -------------------------------------------------------------------------
+	# Section-level gates are enforced server-side.
+	# A user may only open portal sections they are entitled to.
+	if _matches_route(path, "/portal/staff") and not _has_staff_portal_access(
+		user=user, user_roles=user_roles
+	):
+		_redirect_to_user_portal(user=user, user_roles=user_roles)
+
+	if _matches_route(path, "/portal/student") and "Student" not in user_roles:
+		_redirect_to_user_portal(user=user, user_roles=user_roles)
+
+	if _matches_route(path, "/portal/guardian") and "Guardian" not in user_roles:
+		_redirect_to_user_portal(user=user, user_roles=user_roles)
 	
 	# -------------------------------------------------------------------------
-	# 2) Defensive blocking (ongoing: non-staff cannot access desk/app)
+	# 3) Defensive blocking (ongoing: non-staff cannot access desk/app)
 	# -------------------------------------------------------------------------
 	# Check if this is a restricted route
-	is_restricted = any(
-		path == route or path.startswith(f"{route}/")
-		for route in RESTRICTED_ROUTES
-	)
+	is_restricted = any(_matches_route(path, route) for route in RESTRICTED_ROUTES)
 	
 	if not is_restricted:
 		return
@@ -176,6 +194,4 @@ def before_request():
 		return
 	
 	# Non-staff user with restricted role trying to access desk/app - redirect to appropriate portal
-	portal_path = _resolve_portal_path(user=user, user_roles=user_roles)
-	frappe.local.flags.redirect_location = portal_path
-	raise frappe.Redirect
+	_redirect_to_user_portal(user=user, user_roles=user_roles)

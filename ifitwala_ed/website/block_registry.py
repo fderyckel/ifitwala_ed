@@ -13,7 +13,7 @@ WEBSITE_BLOCK_DEFINITIONS = [
 		"block_type": "hero",
 		"label": "Hero",
 		"template_path": "ifitwala_ed/website/blocks/hero.html",
-		"script_path": None,
+		"script_path": "/assets/ifitwala_ed/website/blocks/hero.js",
 		"provider_path": "ifitwala_ed.website.providers.hero.get_context",
 		"props_schema": {
 			"type": "object",
@@ -101,7 +101,7 @@ WEBSITE_BLOCK_DEFINITIONS = [
 		"block_type": "admission_cta",
 		"label": "Admission CTA",
 		"template_path": "ifitwala_ed/website/blocks/admission_cta.html",
-		"script_path": None,
+		"script_path": "/assets/ifitwala_ed/website/blocks/admission_cta.js",
 		"provider_path": "ifitwala_ed.website.providers.admission_cta.get_context",
 		"props_schema": {
 			"type": "object",

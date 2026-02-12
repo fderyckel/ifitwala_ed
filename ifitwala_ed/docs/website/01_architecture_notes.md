@@ -3,10 +3,35 @@
 
 **Ifitwala_Ed — Website System v1**
 
-> **Status:** Design-locked (pending explicit revision)
+> **Status:** Baseline implemented in code as of February 12, 2026 (A1/A2/B1/B2/C1/C2/D1/D2 complete; A3 and D3 pending)
 > **Scope:** Public marketing & information pages (School, Programs, Blog, Home)
 > **Non-Goal:** LMS / Portal / authenticated app flows
 > **Audience:** Core developers, system architects, security reviewers
+
+---
+
+## Implementation Reality Snapshot (February 12, 2026)
+
+The architecture in this document is now partially implemented in production code.
+
+Implemented in code:
+
+* A1 canonical block registry source (`ifitwala_ed/website/block_registry.py`)
+* A2 save-time block validation in page/profile/story DocTypes
+* B1 context-aware allowed block types in editor + validator contracts
+* B2 SEO assistant checks and Desk integration
+* C1 workflow-state-driven publication behavior (`Draft -> In Review -> Approved -> Published`)
+* C2 scoped snippet resolution (`School -> Organization -> Global`)
+* D1 theme profiles (`Website Theme Profile`) with scoped resolution
+* D2 non-critical enhancement JS and per-block optional scripts
+
+Pending from this architecture thread:
+
+* A3 governance lock for direct edits to `Website Block Definition`
+* D3 server-side marketing analytics/attribution pipeline
+
+If any section in this file conflicts with runtime behavior, the runtime code and
+`ifitwala_ed/docs/website/09_execution_roadmap.md` are authoritative.
 
 ---
 
@@ -373,7 +398,7 @@ It is a deliberate architectural stance.
 
 **Ifitwala_Ed — Proposal B**
 
-> **Status:** Draft — pending sign-off
+> **Status:** Canonical registry concept implemented; keep this section as architecture reference
 > **Audience:** Core devs, frontend architects, content governance
 > **Scope:** Public website blocks only (marketing & informational pages)
 > **Non-goal:** Portal / LMS / authenticated experiences

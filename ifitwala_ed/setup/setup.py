@@ -5,6 +5,9 @@
 import frappe
 from frappe import _
 from ifitwala_ed.setup.utils import insert_record
+from ifitwala_ed.school_site.doctype.website_theme_profile.website_theme_profile import (
+	ensure_theme_profile_presets,
+)
 from ifitwala_ed.website.block_registry import (
 	get_website_block_definition_records as get_canonical_website_block_definition_records,
 	sync_website_block_definitions,
@@ -26,6 +29,7 @@ def setup_education():
 	create_student_file_folder()
 	setup_website_top_bar()
 	setup_website_block_definitions()
+	setup_website_theme_profiles()
 	setup_default_website_pages()
 	grant_core_crm_permissions()
 
@@ -309,6 +313,12 @@ def setup_website_top_bar():
 
 def setup_website_block_definitions():
 	sync_website_block_definitions()
+
+
+def setup_website_theme_profiles():
+	if not frappe.db.exists("DocType", "Website Theme Profile"):
+		return
+	ensure_theme_profile_presets()
 
 
 def setup_default_website_pages():

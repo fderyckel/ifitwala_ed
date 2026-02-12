@@ -1,7 +1,9 @@
+<!-- ifitwala_ed/docs/website/05_school_slug_vs_page_route.md -->
 # School Slug vs Website Page Route (Canonical)
 
 **Audience:** Website admins, implementers, and content editors
 **Scope:** Builder-lite public website routing
+**Status (February 12, 2026):** Implemented and enforced by `School Website Page` server validation and renderer resolution
 
 ---
 

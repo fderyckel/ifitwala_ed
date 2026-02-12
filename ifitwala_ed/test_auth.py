@@ -390,6 +390,93 @@ class TestAuthBeforeRequest(FrappeTestCase):
 			frappe.delete_doc("Guardian", guardian.name, force=True)
 			frappe.delete_doc("User", user.email, force=True)
 
+	def test_student_accessing_staff_portal_is_redirected(self):
+		"""Student should never be allowed to open /portal/staff routes."""
+		user = frappe.new_doc("User")
+		user.email = "test_student_staff_portal_block@example.com"
+		user.first_name = "Test"
+		user.last_name = "Student Staff Block"
+		user.enabled = 1
+		user.add_roles("Student")
+		user.save()
+
+		student = frappe.new_doc("Student")
+		student.first_name = "Test"
+		student.last_name = "Student Staff Block"
+		student.student_email = user.email
+		student.student_user_id = user.email
+		student.save()
+
+		frappe.set_user(user.email)
+		original_path = getattr(frappe.request, "path", None)
+		frappe.request.path = "/portal/staff"
+
+		try:
+			with self.assertRaises(frappe.Redirect):
+				before_request()
+			self.assertEqual(frappe.local.flags.redirect_location, "/portal/student")
+		finally:
+			frappe.set_user("Administrator")
+			if original_path:
+				frappe.request.path = original_path
+			frappe.delete_doc("Student", student.name, force=True)
+			frappe.delete_doc("User", user.email, force=True)
+
+	def test_guardian_accessing_staff_portal_is_redirected(self):
+		"""Guardian should never be allowed to open /portal/staff routes."""
+		user = frappe.new_doc("User")
+		user.email = "test_guardian_staff_portal_block@example.com"
+		user.first_name = "Test"
+		user.last_name = "Guardian Staff Block"
+		user.enabled = 1
+		user.add_roles("Guardian")
+		user.save()
+
+		guardian = frappe.new_doc("Guardian")
+		guardian.guardian_first_name = "Test"
+		guardian.guardian_last_name = "Guardian Staff Block"
+		guardian.guardian_email = user.email
+		guardian.user = user.email
+		guardian.save()
+
+		frappe.set_user(user.email)
+		original_path = getattr(frappe.request, "path", None)
+		frappe.request.path = "/portal/staff"
+
+		try:
+			with self.assertRaises(frappe.Redirect):
+				before_request()
+			self.assertEqual(frappe.local.flags.redirect_location, "/portal/guardian")
+		finally:
+			frappe.set_user("Administrator")
+			if original_path:
+				frappe.request.path = original_path
+			frappe.delete_doc("Guardian", guardian.name, force=True)
+			frappe.delete_doc("User", user.email, force=True)
+
+	def test_staff_accessing_staff_portal_is_allowed(self):
+		"""Staff should be allowed to open /portal/staff routes."""
+		user = frappe.new_doc("User")
+		user.email = "test_staff_portal_allowed@example.com"
+		user.first_name = "Test"
+		user.last_name = "Staff Portal Allowed"
+		user.enabled = 1
+		user.add_roles("Academic User")
+		user.save()
+
+		frappe.set_user(user.email)
+		original_path = getattr(frappe.request, "path", None)
+		frappe.request.path = "/portal/staff"
+
+		try:
+			result = before_request()
+			self.assertIsNone(result)
+		finally:
+			frappe.set_user("Administrator")
+			if original_path:
+				frappe.request.path = original_path
+			frappe.delete_doc("User", user.email, force=True)
+
 	def test_guest_user_ignored(self):
 		"""Guest users should be ignored by before_request."""
 		frappe.set_user("Guest")

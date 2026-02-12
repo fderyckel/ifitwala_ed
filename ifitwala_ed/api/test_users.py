@@ -115,7 +115,7 @@ class TestUserRedirect(FrappeTestCase):
 		frappe.delete_doc("User", user.email, force=True)
 
 	def test_student_redirects_to_student_portal(self):
-		"""Students should be redirected to /portal/student (not /sp)."""
+		"""Students should be redirected to /portal/student."""
 		# Create test user with Student role
 		user = frappe.new_doc("User")
 		user.email = "test_student_portal@example.com"
