@@ -1285,6 +1285,10 @@ VALID_KEYS = {"inquire", "visit", "apply"}
 * Snippet scope must be compatible:
 
   * global OR matching school
+* `snippet_id` uniqueness is scope-aware:
+
+  * unique per `(snippet_id, scope target)`
+  * duplicate IDs are allowed across different schools/organizations
 
 **Failures**
 

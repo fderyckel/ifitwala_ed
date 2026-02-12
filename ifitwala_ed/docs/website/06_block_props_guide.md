@@ -319,6 +319,14 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 | `snippet_id` | string | yes | — | Must exist |
 | `allow_override` | boolean | no | `false` | Reserved for future use |
 
+Snippet resolution order is deterministic:
+
+1. School-scoped snippet (`scope_type = School`, same school)
+2. Organization-scoped snippet (`scope_type = Organization`, same organization)
+3. Global snippet (`scope_type = Global`)
+
+`snippet_id` is unique per scope target (not globally unique across all schools/organizations).
+
 ### Example
 ```json
 {
