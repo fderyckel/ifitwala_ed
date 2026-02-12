@@ -71,8 +71,10 @@ website_route_rules = [
     {"from_route": "/staff", "to_route": "/portal/staff"},
     # Keep native Frappe web form routes reachable under website catch-all.
     {"from_route": "/inquiry", "to_route": "/inquiry"},
+    {"from_route": "/inquiry/new", "to_route": "/inquiry/new"},
     {"from_route": "/inquiry/<path:subpath>", "to_route": "/inquiry/<path:subpath>"},
     {"from_route": "/registration-of-interest", "to_route": "/registration-of-interest"},
+    {"from_route": "/registration-of-interest/new", "to_route": "/registration-of-interest/new"},
     {
         "from_route": "/registration-of-interest/<path:subpath>",
         "to_route": "/registration-of-interest/<path:subpath>",

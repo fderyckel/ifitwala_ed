@@ -30,8 +30,13 @@ class TestRoutingRules(FrappeTestCase):
 			if isinstance(rule, dict)
 		}
 		self.assertIn(("/inquiry", "/inquiry"), pairs)
+		self.assertIn(("/inquiry/new", "/inquiry/new"), pairs)
 		self.assertIn(
 			("/registration-of-interest", "/registration-of-interest"),
+			pairs,
+		)
+		self.assertIn(
+			("/registration-of-interest/new", "/registration-of-interest/new"),
 			pairs,
 		)
 
