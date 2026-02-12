@@ -413,6 +413,21 @@
     border-right: 1px solid rgb(var(--border-rgb) / 0.9);
     background: rgb(var(--surface-strong-rgb) / 0.97);
     box-shadow: var(--shadow-soft);
+    transform: translateX(-100%);
+    transition: transform 220ms ease, width 220ms ease;
+  }
+
+  .portal-sidebar--mobile-open {
+    transform: translateX(0);
+  }
+
+  .portal-sidebar--mobile-closed {
+    transform: translateX(-100%);
+  }
+
+  .portal-sidebar__brand {
+    border-bottom: 1px solid rgb(var(--border-rgb) / 0.9);
+    padding: 0.75rem;
   }
 
   .portal-sidebar__content {
@@ -522,6 +537,12 @@
   }
 
   @media (min-width: 1024px) {
+    .portal-sidebar,
+    .portal-sidebar--mobile-open,
+    .portal-sidebar--mobile-closed {
+      transform: none;
+    }
+
     .portal-sidebar--expanded {
       width: 16rem;
     }

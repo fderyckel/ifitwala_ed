@@ -70,7 +70,7 @@ import pytz
 
 import frappe
 from frappe import _
-from frappe.utils import get_datetime, get_system_timezone, getdate, now_datetime, format_datetime
+from frappe.utils import cint, format_datetime, get_datetime, get_system_timezone, getdate, now_datetime
 
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
@@ -1362,6 +1362,18 @@ def _resolve_sg_booking_context(
 def _user_has_student_group_access(user: str, group_name: str) -> bool:
 	if not user or user == "Guest":
 		return False
+
+	# Student portal access: linked student must be an active member of the group.
+	student_name = _resolve_student_for_user(user)
+	if student_name and _student_has_active_group_membership(student_name, group_name):
+		return True
+
+	# Guardian portal access: at least one linked child must be an active member.
+	guardian_students = _guardian_students_for_user(user)
+	if guardian_students and _any_student_has_active_group_membership(guardian_students, group_name):
+		return True
+
+	# Staff/desk access paths.
 	employee_id = frappe.db.get_value("Employee", {"user_id": user}, "name")
 	instructor_ids = _resolve_instructor_ids(user, employee_id)
 	group_names, _ = _student_group_memberships(user, employee_id, instructor_ids)
@@ -1375,6 +1387,87 @@ def _user_has_student_group_access(user: str, group_name: str) -> bool:
 		return False
 	# Allow if user has desk-level read permission on the group
 	return frappe.has_permission("Student Group", doc=doc, ptype="read")
+
+
+def _resolve_student_for_user(user: str) -> Optional[str]:
+	if not user or user == "Guest":
+		return None
+	student = frappe.db.get_value("Student", {"student_email": user}, "name")
+	if student:
+		return student
+	user_email = frappe.db.get_value("User", user, "email") or user
+	return frappe.db.get_value("Student", {"student_email": user_email}, "name")
+
+
+def _guardian_students_for_user(user: str) -> set[str]:
+	if not user or user == "Guest":
+		return set()
+
+	guardian_name = frappe.db.get_value("Guardian", {"user": user}, "name")
+	if not guardian_name:
+		guardian_name = frappe.db.get_value("Guardian", {"guardian_email": user}, "name")
+	if not guardian_name:
+		return set()
+
+	student_guardian_rows = frappe.get_all(
+		"Student Guardian",
+		filters={"guardian": guardian_name, "parenttype": "Student"},
+		fields=["parent"],
+		ignore_permissions=True,
+	)
+	guardian_student_rows = frappe.get_all(
+		"Guardian Student",
+		filters={"parent": guardian_name, "parenttype": "Guardian"},
+		fields=["student"],
+		ignore_permissions=True,
+	)
+
+	return {
+		*[
+			row.get("parent")
+			for row in student_guardian_rows
+			if row.get("parent")
+		],
+		*[
+			row.get("student")
+			for row in guardian_student_rows
+			if row.get("student")
+		],
+	}
+
+
+def _student_has_active_group_membership(student_name: str, group_name: str) -> bool:
+	if not student_name or not group_name:
+		return False
+	row = frappe.db.get_value(
+		"Student Group Student",
+		{
+			"parent": group_name,
+			"parenttype": "Student Group",
+			"student": student_name,
+		},
+		["active"],
+		as_dict=True,
+	)
+	return bool(row and cint(row.get("active")))
+
+
+def _any_student_has_active_group_membership(student_names: set[str], group_name: str) -> bool:
+	if not student_names or not group_name:
+		return False
+	row = frappe.get_all(
+		"Student Group Student",
+		filters={
+			"parent": group_name,
+			"parenttype": "Student Group",
+			"student": ["in", list(student_names)],
+			"active": 1,
+		},
+		fields=["name"],
+		limit_page_length=1,
+		ignore_permissions=True,
+	)
+	return bool(row)
 
 
 def _school_event_access_allowed(event_doc, user: str) -> bool:

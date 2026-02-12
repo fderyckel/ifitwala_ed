@@ -9,13 +9,21 @@
 
 	<aside
 		:class="[
-			'portal-sidebar fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out lg:static lg:inset-auto lg:translate-x-0',
-			isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+			'portal-sidebar fixed inset-y-0 left-0 z-40 lg:static lg:inset-auto lg:z-auto',
+			isMobileOpen ? 'portal-sidebar--mobile-open' : 'portal-sidebar--mobile-closed',
 			isRailExpanded ? 'portal-sidebar--expanded' : 'portal-sidebar--collapsed',
 		]"
 		aria-label="Portal navigation"
 	>
 		<div class="flex h-full flex-col">
+			<div class="portal-sidebar__brand">
+				<RouterLink :to="homeLink" class="portal-sidebar__item" :aria-label="homeLabel" @click="handleNavActivate">
+					<FeatherIcon name="book-open" class="portal-sidebar__icon" />
+					<span class="portal-sidebar__label type-body-strong" aria-hidden="true">{{ homeLabel }}</span>
+					<span class="sr-only">{{ homeLabel }}</span>
+				</RouterLink>
+			</div>
+
 			<div class="portal-sidebar__content">
 				<div>
 					<h3 class="portal-sidebar__section type-label">Menu</h3>
@@ -177,6 +185,16 @@ const switchItems = computed<MenuItem[]>(() => {
 const sidebarLabel = computed(() => {
 	if (props.activeSection === 'guardian') return 'Guardian Portal'
 	return 'Student Portal'
+})
+
+const homeLabel = computed(() => {
+	if (props.activeSection === 'guardian') return 'Guardian Home'
+	return 'Student Home'
+})
+
+const homeLink = computed<RouteLocationRaw>(() => {
+	if (props.activeSection === 'guardian') return { name: 'guardian-home' }
+	return { name: 'student-home' }
 })
 
 const accountItems = [

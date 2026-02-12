@@ -276,6 +276,8 @@ Server + client contract for student portal:
    `sg::<student_group>::<rotation_day>::<block_number>::<session_date>`.
 2. School Calendar Holidays must be returned as all-day events with source `holiday`.
 3. Student calendar source controls must expose `Holidays` as a distinct chip (not merged into `School` events).
+4. Class-detail drill-down authorization must allow Student/Guardian users when the class belongs to
+   their own active Student Group enrollment (Student) or a linked child enrollment (Guardian).
 
 Client anti-patterns (forbidden):
 
