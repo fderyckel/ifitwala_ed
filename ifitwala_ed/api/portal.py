@@ -76,6 +76,62 @@ def _build_staff_home_capabilities(roles: set[str]) -> dict[str, bool]:
 	}
 
 
+def _resolve_student_row_for_user(user: str):
+	student = frappe.db.get_value(
+		"Student",
+		{"student_email": user},
+		[
+			"name",
+			"student_preferred_name",
+			"student_first_name",
+			"student_full_name",
+			"student_image",
+		],
+		as_dict=True,
+	)
+	if student:
+		return student
+
+	user_email = frappe.db.get_value("User", user, "email") or user
+	return frappe.db.get_value(
+		"Student",
+		{"student_email": user_email},
+		[
+			"name",
+			"student_preferred_name",
+			"student_first_name",
+			"student_full_name",
+			"student_image",
+		],
+		as_dict=True,
+	)
+
+
+def _resolve_student_display_name(student_row, user_first_name: str | None, user_full_name: str | None) -> str:
+	if student_row:
+		preferred = (student_row.get("student_preferred_name") or "").strip()
+		if preferred:
+			return preferred
+
+		first = (student_row.get("student_first_name") or "").strip()
+		if first:
+			return first
+
+		full = (student_row.get("student_full_name") or "").strip()
+		if full:
+			return full.split(" ")[0].strip() or "Student"
+
+	first = (user_first_name or "").strip()
+	if first:
+		return first
+
+	full = (user_full_name or "").strip()
+	if full:
+		return full.split(" ")[0].strip() or "Student"
+
+	return "Student"
+
+
 @frappe.whitelist()
 def get_staff_home_header():
 	user = frappe.session.user
@@ -103,6 +159,46 @@ def get_staff_home_header():
 		"first_name": first_name,
 		"full_name": row.full_name,
 		"capabilities": _build_staff_home_capabilities(roles),
+	}
+
+	cache.set_value(cache_key, frappe.as_json(payload), expires_in_sec=CACHE_TTL_SECONDS)
+	return payload
+
+
+@frappe.whitelist()
+def get_student_portal_identity():
+	user = frappe.session.user
+	if not user or user == "Guest":
+		frappe.throw(_("You must be logged in."), frappe.PermissionError)
+
+	cache = frappe.cache()
+	cache_key = f"student_portal:identity:v1:{user}"
+	cached = cache.get_value(cache_key)
+	if cached:
+		try:
+			return frappe.parse_json(cached)
+		except Exception:
+			pass
+
+	user_row = frappe.db.get_value("User", user, ["name", "first_name", "full_name"], as_dict=True)
+	if not user_row:
+		frappe.throw(_("User not found."), frappe.DoesNotExistError)
+
+	student_row = _resolve_student_row_for_user(user)
+	display_name = _resolve_student_display_name(
+		student_row,
+		user_row.get("first_name"),
+		user_row.get("full_name"),
+	)
+
+	payload = {
+		"user": user_row.get("name"),
+		"student": student_row.get("name") if student_row else None,
+		"display_name": display_name,
+		"preferred_name": (student_row.get("student_preferred_name") if student_row else None) or None,
+		"first_name": (student_row.get("student_first_name") if student_row else None) or None,
+		"full_name": (student_row.get("student_full_name") if student_row else None) or user_row.get("full_name"),
+		"image_url": (student_row.get("student_image") if student_row else None) or None,
 	}
 
 	cache.set_value(cache_key, frappe.as_json(payload), expires_in_sec=CACHE_TTL_SECONDS)

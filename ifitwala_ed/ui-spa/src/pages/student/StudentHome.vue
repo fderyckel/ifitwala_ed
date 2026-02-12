@@ -5,7 +5,7 @@
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<p class="type-overline text-ink/60">Student Portal</p>
-					<h1 class="type-h1 text-ink">Welcome, {{ user.fullname }}.</h1>
+					<h1 class="type-h1 text-ink">Welcome, {{ greetingName }}.</h1>
 					<p class="type-body text-ink/70">Keep your day clear with one-click access to learning and activities.</p>
 				</div>
 				<div class="flex items-center gap-2">
@@ -85,13 +85,37 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { FeatherIcon, createResource } from 'frappe-ui'
 
 import StudentCalendar from '@/components/calendar/StudentCalendar.vue'
+import { getStudentPortalIdentity } from '@/lib/services/student/studentHomeService'
 
-const user = computed(() => window.frappe?.session?.user_info || { fullname: 'Student' })
+const sessionUser = computed(() => window.frappe?.session?.user_info || { fullname: 'Student' })
+const studentIdentity = ref(null)
+
+const greetingName = computed(() => {
+	const fromStudent = (studentIdentity.value?.display_name || '').trim()
+	if (fromStudent) return fromStudent
+
+	const fallbackFull = (sessionUser.value?.fullname || '').trim()
+	if (fallbackFull) return fallbackFull.split(' ')[0] || 'Student'
+
+	return 'Student'
+})
+
+async function loadStudentIdentity() {
+	try {
+		studentIdentity.value = await getStudentPortalIdentity()
+	} catch {
+		studentIdentity.value = null
+	}
+}
+
+onMounted(() => {
+	loadStudentIdentity()
+})
 
 const courseResource = createResource({
 	url: 'ifitwala_ed.api.course_schedule.get_today_courses',
