@@ -69,6 +69,14 @@ website_route_rules = [
     {"from_route": "/admissions", "to_route": "admissions"},
     {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
     {"from_route": "/staff", "to_route": "/portal/staff"},
+    # Keep native Frappe web form routes reachable under website catch-all.
+    {"from_route": "/inquiry", "to_route": "/inquiry"},
+    {"from_route": "/inquiry/<path:subpath>", "to_route": "/inquiry/<path:subpath>"},
+    {"from_route": "/registration-of-interest", "to_route": "/registration-of-interest"},
+    {
+        "from_route": "/registration-of-interest/<path:subpath>",
+        "to_route": "/registration-of-interest/<path:subpath>",
+    },
     {"from_route": "/login", "to_route": "login"},
     {"from_route": "/update-password", "to_route": "update-password"},
     # Preserve framework namespaces so website catch-all never hijacks Desk/API/assets.
@@ -101,8 +109,8 @@ website_route_rules = [
 
 # Home Pages
 # ----------
-# Force role-based entry path immediately after successful login/session creation.
-on_session_creation = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
+# Force role-based entry path immediately after successful login.
+on_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
 # application home page (will override Website Settings)
 # home_page = "login"
 
@@ -335,7 +343,6 @@ scheduler_events = {
 
 # Request Events
 # ----------------
-before_request = ["ifitwala_ed.auth.before_request"]
 # after_request = ["ifitwala.utils.after_request"]
 
 # Job Events
@@ -369,8 +376,6 @@ before_request = ["ifitwala_ed.auth.before_request"]
 
 # Authentication and authorization
 # --------------------------------
-# One-time login guard for redirect-to=/app scenarios.
-on_login = "ifitwala_ed.auth.on_login"
 
 # Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True

@@ -7,7 +7,7 @@
   <!-- Expose the default portal section to the SPA -->
   <!-- Force guardian as default for this route -->
   <script>window.defaultPortal = "guardian";</script>
-  <script>window.portalRoles = {{ portal_roles_json }};</script>
+  <script>window.portalRoles = {{ portal_roles_json | safe }};</script>
 {% endblock %}
 
 {% block content %}

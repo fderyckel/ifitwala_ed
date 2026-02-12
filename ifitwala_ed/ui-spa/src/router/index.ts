@@ -57,11 +57,16 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const rawRoles = (window as unknown as { portalRoles?: string[] }).portalRoles || []
-  const roles = rawRoles
+  const rawDefaultPortal = (window as unknown as { defaultPortal?: string }).defaultPortal || 'student'
+  const defaultPortal = String(rawDefaultPortal || 'student').trim().toLowerCase() || 'student'
+
+  const rawRoles = (window as unknown as { portalRoles?: unknown }).portalRoles
+  const roles = (Array.isArray(rawRoles) ? rawRoles : [])
     .map((role) => String(role || '').trim().toLowerCase())
     .filter(Boolean)
-  const defaultPortal = (window as unknown as { defaultPortal?: string }).defaultPortal || 'student'
+  if (!roles.length && defaultPortal) {
+    roles.push(defaultPortal)
+  }
 
   const required = ((to.meta as any)?.portal as string | undefined)?.trim().toLowerCase()
   if (required && !roles.includes(required)) {

@@ -378,6 +378,7 @@ Build notes:
 * Tailwind is scoped to `#ifitwala-page-root` with preflight disabled (no global resets).
 * Bootstrap is not used on public website pages.
 * Website catch-all routing must preserve framework namespaces (`/app`, `/desk`, `/api`, `/assets`, `/files`) and core website assets (`/website_script.js`, `/website_style.css`) so Desk, APIs, login, and public templates all resolve correctly.
+* Native public webform routes must remain reachable (for example `/inquiry`, `/registration-of-interest`) and must not be hijacked by the website catch-all.
 * Guest users get an explicit `Login` CTA in the custom website header (`/login`).
 * `Website Settings` top bar is intentionally minimal (`Home`, `Login`) to avoid conflicting menu trees on framework-managed login pages; public website navigation is generated from published `School Website Page.full_route` values.
 

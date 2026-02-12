@@ -2,6 +2,7 @@
 
 import os
 import json
+from urllib.parse import quote
 import frappe
 
 APP = "ifitwala_ed"
@@ -72,16 +73,28 @@ def _redirect(to: str):
 	raise frappe.Redirect
 
 
+def _login_redirect_path(path: str) -> str:
+	return f"/login?redirect-to={path}"
+
+
+def _redirect_to_login(path: str, *, clear_session: bool = False):
+	login_path = _login_redirect_path(path)
+	if clear_session:
+		encoded_login_path = quote(login_path, safe="")
+		_redirect(f"/logout?redirect-to={encoded_login_path}")
+	_redirect(login_path)
+
+
 def get_context(context):
 	user = frappe.session.user
 	path = frappe.request.path if hasattr(frappe, "request") else "/admissions"
 
 	if not user or user == "Guest":
-		_redirect(f"/login?redirect-to={path}")
+		_redirect_to_login(path)
 
 	roles = set(frappe.get_roles(user))
 	if ADMISSIONS_ROLE not in roles:
-		_redirect(f"/login?redirect-to={path}")
+		_redirect_to_login(path, clear_session=True)
 
 	applicant = frappe.db.get_value(
 		"Student Applicant",
@@ -89,7 +102,7 @@ def get_context(context):
 		"name",
 	)
 	if not applicant:
-		_redirect(f"/login?redirect-to={path}")
+		_redirect_to_login(path, clear_session=True)
 
 	context.title = "Admissions Portal"
 	context.applicant = applicant

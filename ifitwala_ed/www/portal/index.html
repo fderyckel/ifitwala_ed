@@ -6,7 +6,7 @@
   {% endif %}
   <!-- Expose the default portal section to the SPA -->
   <script>window.defaultPortal = "{{ default_portal }}";</script>
-  <script>window.portalRoles = {{ portal_roles_json }};</script>
+  <script>window.portalRoles = {{ portal_roles_json | safe }};</script>
 {% endblock %}
 
 {% block content %}
