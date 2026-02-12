@@ -4,3 +4,4 @@ ifitwala_ed.patches.website.p06_backfill_workflow_state_from_status
 ifitwala_ed.patches.website.p07_refactor_snippet_uniqueness_to_scoped
 ifitwala_ed.patches.website.p08_rebuild_snippet_scope_indexes
 ifitwala_ed.patches.website.p09_seed_theme_profiles_k12_college
+ifitwala_ed.patches.website.p10_enforce_public_admission_webforms
