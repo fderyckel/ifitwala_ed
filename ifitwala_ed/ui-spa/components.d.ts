@@ -11,6 +11,9 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ActivityCommunicationPanel: typeof import('./src/components/activity/ActivityCommunicationPanel.vue')['default']
+    ActivityOfferingCard: typeof import('./src/components/activity/ActivityOfferingCard.vue')['default']
+    ActivityStatusBadge: typeof import('./src/components/activity/ActivityStatusBadge.vue')['default']
     AnalyticsCard: typeof import('./src/components/analytics/AnalyticsCard.vue')['default']
     AnalyticsChart: typeof import('./src/components/analytics/AnalyticsChart.vue')['default']
     ClassEventModal: typeof import('./src/components/calendar/ClassEventModal.vue')['default']
@@ -42,6 +45,7 @@ declare module 'vue' {
     PortalNavbar: typeof import('./src/components/PortalNavbar.vue')['default']
     PortalNotification: typeof import('./src/components/PortalNotification.vue')['default']
     PortalSidebar: typeof import('./src/components/PortalSidebar.vue')['default']
+    PortfolioFeedSurface: typeof import('./src/components/portfolio/PortfolioFeedSurface.vue')['default']
     QuickCFUOverlay: typeof import('./src/components/overlays/class-hub/QuickCFUOverlay.vue')['default']
     QuickEvidenceOverlay: typeof import('./src/components/overlays/class-hub/QuickEvidenceOverlay.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
