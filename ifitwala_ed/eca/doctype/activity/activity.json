@@ -19,7 +19,18 @@
   "maximum_age",
   "program_allowed",
   "activity_descriptions_section",
-  "descriptions"
+  "descriptions",
+  "activity_logistics_section",
+  "logistics_location_label",
+  "logistics_pickup_instructions",
+  "logistics_dropoff_instructions",
+  "column_break_activity_logistics",
+  "logistics_map_url",
+  "logistics_notes",
+  "activity_media_section",
+  "media_cover_image",
+  "media_gallery_link",
+  "media_notes"
  ],
  "fields": [
   {
@@ -95,6 +106,62 @@
    "label": "Descriptions"
   },
   {
+   "fieldname": "activity_logistics_section",
+   "fieldtype": "Section Break",
+   "label": "Logistics"
+  },
+  {
+   "fieldname": "logistics_location_label",
+   "fieldtype": "Data",
+   "label": "Activity Location Label"
+  },
+  {
+   "fieldname": "logistics_pickup_instructions",
+   "fieldtype": "Small Text",
+   "label": "Pickup Instructions"
+  },
+  {
+   "fieldname": "logistics_dropoff_instructions",
+   "fieldtype": "Small Text",
+   "label": "Drop-off Instructions"
+  },
+  {
+   "fieldname": "column_break_activity_logistics",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "logistics_map_url",
+   "fieldtype": "Data",
+   "label": "Logistics Map URL",
+   "options": "URL"
+  },
+  {
+   "fieldname": "logistics_notes",
+   "fieldtype": "Small Text",
+   "label": "Logistics Notes"
+  },
+  {
+   "fieldname": "activity_media_section",
+   "fieldtype": "Section Break",
+   "label": "Media"
+  },
+  {
+   "fieldname": "media_cover_image",
+   "fieldtype": "Attach Image",
+   "label": "Cover Image"
+  },
+  {
+   "fieldname": "media_gallery_link",
+   "fieldtype": "Data",
+   "label": "Gallery Link",
+   "options": "URL"
+  },
+  {
+   "fieldname": "media_notes",
+   "fieldtype": "Small Text",
+   "label": "Media Notes"
+  },
+  {
    "fieldname": "column_break_bmd2",
    "fieldtype": "Column Break"
   },
@@ -105,7 +172,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-27 15:30:56.855963",
+ "modified": "2025-02-27 15:31:03",
  "modified_by": "Administrator",
  "module": "ECA",
  "name": "Activity",

@@ -12,6 +12,11 @@
   "default_allow_student_booking",
   "default_allow_guardian_booking",
   "default_allow_staff_booking",
+  "section_break_portal",
+  "default_show_waitlist_position",
+  "default_guardian_student_cancellation_mode",
+  "default_paid_booking_portal_state",
+  "default_offer_banner_hours",
   "section_break_payment",
   "default_payment_required",
   "default_fee_amount",
@@ -60,6 +65,38 @@
    "label": "Default Allow Staff Booking"
   },
   {
+   "fieldname": "section_break_portal",
+   "fieldtype": "Section Break",
+   "label": "Portal Experience Defaults"
+  },
+  {
+   "default": "1",
+   "fieldname": "default_show_waitlist_position",
+   "fieldtype": "Check",
+   "label": "Show Waitlist Position In Portal"
+  },
+  {
+   "default": "Allow Until First Session Start",
+   "fieldname": "default_guardian_student_cancellation_mode",
+   "fieldtype": "Select",
+   "label": "Guardian/Student Cancellation Mode",
+   "options": "Allow Until First Session Start\nNo Self Cancellation"
+  },
+  {
+   "default": "Confirmed + Draft Invoice",
+   "fieldname": "default_paid_booking_portal_state",
+   "fieldtype": "Select",
+   "label": "Paid Booking Portal State",
+   "options": "Confirmed + Draft Invoice\nPending Payment Label"
+  },
+  {
+   "default": "24",
+   "fieldname": "default_offer_banner_hours",
+   "fieldtype": "Int",
+   "label": "Offer Banner Threshold Hours",
+   "non_negative": 1
+  },
+  {
    "fieldname": "section_break_payment",
    "fieldtype": "Section Break",
    "label": "Payment Defaults"
@@ -85,7 +122,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-02-11 00:00:00.000000",
+ "modified": "2026-02-11 00:00:05",
  "modified_by": "Administrator",
  "module": "ECA",
  "name": "Activity Booking Settings",

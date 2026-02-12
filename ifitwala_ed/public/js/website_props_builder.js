@@ -1,8 +1,6 @@
 // ifitwala_ed/public/js/website_props_builder.js
 
 (() => {
-	if (!window.frappe) return;
-
 	const DEFAULTS_BY_BLOCK = {
 		hero: {
 			autoplay: true,
@@ -381,6 +379,227 @@
 		});
 	}
 
+	function _getAllowedBlockTypes(frm, childTableField) {
+		const grid = frm.fields_dict && frm.fields_dict[childTableField] && frm.fields_dict[childTableField].grid;
+		if (!grid) return [];
+		const blockTypeField = grid.get_field && grid.get_field("block_type");
+		const options = blockTypeField && blockTypeField.df ? blockTypeField.df.options : "";
+		return String(options || "")
+			.split("\n")
+			.map((value) => value.trim())
+			.filter(Boolean);
+	}
+
+	function _getNextOrder(frm, childTableField) {
+		const rows = frm.doc && Array.isArray(frm.doc[childTableField]) ? frm.doc[childTableField] : [];
+		const maxOrder = rows.reduce((max, row) => {
+			const numeric = Number(row.order);
+			if (Number.isFinite(numeric)) {
+				return Math.max(max, numeric);
+			}
+			const idx = Number(row.idx);
+			if (Number.isFinite(idx)) {
+				return Math.max(max, idx);
+			}
+			return max;
+		}, 0);
+		return maxOrder + 1;
+	}
+
+	function openAddBlock({ frm, childTableField = "blocks" }) {
+		if (!frm || !childTableField) {
+			frappe.msgprint(__("Unable to open Add Block dialog."));
+			return;
+		}
+
+		const allowedTypes = _getAllowedBlockTypes(frm, childTableField);
+		if (!allowedTypes.length) {
+			frappe.msgprint(__("No block types are configured for this table."));
+			return;
+		}
+
+		frappe.db
+			.get_list("Website Block Definition", {
+				fields: ["block_type", "label", "props_schema"],
+				filters: { block_type: ["in", allowedTypes] },
+				limit: allowedTypes.length
+			})
+			.then((rows) => {
+				const definitions = (rows || []).filter((row) => row && row.block_type);
+				if (!definitions.length) {
+					frappe.msgprint(__("No Website Block Definitions found for available block types."));
+					return;
+				}
+
+				const definitionMap = {};
+				definitions.forEach((row) => {
+					definitionMap[row.block_type] = row;
+				});
+				const orderedTypes = allowedTypes.filter((type) => definitionMap[type]);
+				if (!orderedTypes.length) {
+					frappe.msgprint(__("No valid block types are available."));
+					return;
+				}
+
+				const dialog = new frappe.ui.Dialog({
+					title: __("Add Block"),
+					fields: [
+						{
+							fieldname: "block_type",
+							fieldtype: "Select",
+							label: __("Block Type"),
+							options: orderedTypes.join("\n"),
+							reqd: 1
+						},
+						{
+							fieldname: "order",
+							fieldtype: "Int",
+							label: __("Order"),
+							default: _getNextOrder(frm, childTableField)
+						},
+						{
+							fieldname: "is_enabled",
+							fieldtype: "Check",
+							label: __("Is Enabled"),
+							default: 1
+						},
+						{ fieldname: "builder", fieldtype: "HTML" },
+						{
+							fieldname: "use_raw",
+							fieldtype: "Check",
+							label: __("Edit JSON manually"),
+							default: 0
+						},
+						{
+							fieldname: "raw_json",
+							fieldtype: "Code",
+							label: __("Props (JSON)"),
+							options: "JSON"
+						}
+					]
+				});
+
+				const rawField = dialog.get_field("raw_json");
+				rawField.$wrapper.hide();
+
+				let currentSchema = {};
+				let currentBuilder = null;
+				let currentType = null;
+
+				const renderBuilder = (blockType) => {
+					const definition = definitionMap[blockType];
+					if (!definition) {
+						currentType = null;
+						currentSchema = {};
+						currentBuilder = null;
+						dialog.get_field("builder").$wrapper.empty();
+						rawField.set_value("{}");
+						return;
+					}
+
+					currentType = blockType;
+					const parsedSchema = parseJson(definition.props_schema || "{}");
+					if (parsedSchema.error) {
+						frappe.msgprint(__("Block schema is invalid JSON for {0}.").format(blockType));
+						currentSchema = {};
+					} else {
+						currentSchema = parsedSchema.value || {};
+					}
+
+					const initial = applyDefaults(currentSchema, {}, blockType);
+					const builderWrapper = dialog.get_field("builder").$wrapper;
+					builderWrapper.empty();
+					currentBuilder = createBuilder({
+						container: builderWrapper.get(0),
+						schema: currentSchema,
+						initial
+					});
+					currentBuilder.onChange((value) => {
+						if (!dialog.get_value("use_raw")) {
+							rawField.set_value(JSON.stringify(value || {}, null, 2));
+						}
+					});
+
+					dialog.set_value("use_raw", 0);
+					rawField.$wrapper.hide();
+					rawField.set_value(JSON.stringify(initial || {}, null, 2));
+					currentBuilder.setDisabled(false);
+				};
+
+				const toggleRaw = () => {
+					if (!currentBuilder) return;
+					const useRaw = dialog.get_value("use_raw");
+					if (useRaw) {
+						rawField.$wrapper.show();
+						rawField.set_value(JSON.stringify(currentBuilder.getValue(), null, 2));
+						currentBuilder.setDisabled(true);
+						return;
+					}
+
+					const parsed = parseJson(rawField.get_value());
+					if (parsed.error) {
+						frappe.msgprint(__("Invalid JSON. Please fix it before switching back."));
+						dialog.set_value("use_raw", 1);
+						return;
+					}
+					currentBuilder.setValue(parsed.value || {});
+					rawField.$wrapper.hide();
+					currentBuilder.setDisabled(false);
+				};
+
+				dialog.get_field("block_type").$input.on("change", () => {
+					renderBuilder(dialog.get_value("block_type"));
+				});
+				dialog.get_field("use_raw").$input.on("change", toggleRaw);
+
+				dialog.set_primary_action(__("Add"), () => {
+					if (!currentType || !currentBuilder) {
+						frappe.msgprint(__("Select a block type first."));
+						return;
+					}
+
+					let payload;
+					if (dialog.get_value("use_raw")) {
+						const parsed = parseJson(rawField.get_value());
+						if (parsed.error) {
+							frappe.msgprint(__("Invalid JSON. Please fix it before adding."));
+							return;
+						}
+						payload = parsed.value || {};
+					} else {
+						payload = currentBuilder.getValue();
+					}
+
+					const errors = validateAgainstSchema(currentSchema, payload);
+					if (errors.length) {
+						frappe.msgprint({
+							message: __("Props validation failed:<br>{0}").format(errors.join("<br>")),
+							indicator: "red"
+						});
+						return;
+					}
+
+					const requestedOrder = Number(dialog.get_value("order"));
+					const order = Number.isFinite(requestedOrder) ? requestedOrder : _getNextOrder(frm, childTableField);
+					const isEnabled = dialog.get_value("is_enabled") ? 1 : 0;
+
+					frm.add_child(childTableField, {
+						block_type: currentType,
+						order,
+						is_enabled: isEnabled,
+						props: JSON.stringify(payload, null, 2)
+					});
+					frm.refresh_field(childTableField);
+					frappe.show_alert({ message: __("Block added."), indicator: "green" });
+					dialog.hide();
+				});
+
+				dialog.set_value("block_type", orderedTypes[0]);
+				renderBuilder(orderedTypes[0]);
+				dialog.show();
+			});
+	}
+
 	function buildDialog({ blockType, blockLabel, schema, initial, rawText }) {
 		const dialog = new frappe.ui.Dialog({
 			title: __("Props Builder: {0}").format(blockLabel || blockType),
@@ -701,6 +920,7 @@
 	window.ifitwalaEd = window.ifitwalaEd || {};
 	window.ifitwalaEd.websitePropsBuilder = {
 		open: openPropsBuilder,
-		openForRow: openPropsBuilderForRow
+		openForRow: openPropsBuilderForRow,
+		openAddBlock
 	};
 })();

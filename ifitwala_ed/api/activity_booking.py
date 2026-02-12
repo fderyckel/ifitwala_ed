@@ -32,6 +32,127 @@ RESERVED_SEAT_STATUSES = {"Offered", "Confirmed"}
 ROLE_BOOKING_ADMIN = {"System Manager", "Academic Admin", "Activity Coordinator"}
 ROLE_BOOKING_STAFF = ROLE_BOOKING_ADMIN | {"Academic Staff"}
 
+STATUS_LABELS = {
+	"Draft": _("Draft"),
+	"Submitted": _("Pending Review"),
+	"Waitlisted": _("On Waitlist"),
+	"Offered": _("Spot Available"),
+	"Confirmed": _("Booked"),
+	"Cancelled": _("Cancelled"),
+	"Rejected": _("Not Allocated"),
+	"Expired": _("Offer Expired"),
+}
+
+CANCELLATION_MODE_ALLOW_UNTIL_FIRST = "Allow Until First Session Start"
+CANCELLATION_MODE_NO_SELF = "No Self Cancellation"
+PAID_PORTAL_STATE_CONFIRMED = "Confirmed + Draft Invoice"
+PAID_PORTAL_STATE_PENDING = "Pending Payment Label"
+
+
+def _parse_name_list(value: Any, dict_key: str = "name") -> list[str]:
+	if isinstance(value, str):
+		value = value.strip()
+		if not value:
+			return []
+		try:
+			value = frappe.parse_json(value)
+		except Exception:
+			return []
+
+	if not isinstance(value, list):
+		return []
+
+	out = []
+	seen = set()
+	for row in value:
+		name = ""
+		if isinstance(row, dict):
+			name = (row.get(dict_key) or row.get("student") or row.get("name") or "").strip()
+		else:
+			name = (row or "").strip()
+		if not name or name in seen:
+			continue
+		seen.add(name)
+		out.append(name)
+	return out
+
+
+def _get_activity_booking_settings() -> dict:
+	try:
+		doc = frappe.get_cached_doc("Activity Booking Settings")
+	except Exception:
+		doc = None
+
+	if not doc:
+		return {
+			"default_waitlist_offer_hours": 24,
+			"default_max_choices": 3,
+			"default_show_waitlist_position": 1,
+			"default_guardian_student_cancellation_mode": CANCELLATION_MODE_ALLOW_UNTIL_FIRST,
+			"default_paid_booking_portal_state": PAID_PORTAL_STATE_CONFIRMED,
+			"default_offer_banner_hours": 24,
+		}
+
+	return {
+		"default_waitlist_offer_hours": cint(doc.default_waitlist_offer_hours or 24),
+		"default_max_choices": cint(doc.default_max_choices or 3),
+		"default_show_waitlist_position": cint(doc.default_show_waitlist_position or 0),
+		"default_guardian_student_cancellation_mode": (
+			doc.default_guardian_student_cancellation_mode or CANCELLATION_MODE_ALLOW_UNTIL_FIRST
+		),
+		"default_paid_booking_portal_state": (
+			doc.default_paid_booking_portal_state or PAID_PORTAL_STATE_CONFIRMED
+		),
+		"default_offer_banner_hours": cint(doc.default_offer_banner_hours or 24),
+	}
+
+
+def _should_show_waitlist_position(actor_type: str | None) -> bool:
+	if actor_type not in {"Student", "Guardian"}:
+		return True
+	settings = _get_activity_booking_settings()
+	return cint(settings.get("default_show_waitlist_position") or 0) == 1
+
+
+def _invoice_url(sales_invoice: str | None) -> str | None:
+	name = (sales_invoice or "").strip()
+	if not name:
+		return None
+	return f"/app/sales-invoice/{name}"
+
+
+def _status_label(
+	status: str | None,
+	*,
+	payment_required: int = 0,
+	amount: float = 0.0,
+	paid_portal_state: str | None = None,
+	outstanding_amount: float | None = None,
+) -> str:
+	raw_status = (status or "Draft").strip() or "Draft"
+	if (
+		raw_status == "Confirmed"
+		and cint(payment_required or 0) == 1
+		and flt(amount or 0) > 0
+		and (paid_portal_state or "") == PAID_PORTAL_STATE_PENDING
+	):
+		if outstanding_amount is None or flt(outstanding_amount) > 0:
+			return _("Payment Pending")
+	return STATUS_LABELS.get(raw_status, raw_status)
+
+
+def _sales_invoice_outstanding_map(invoice_names: list[str]) -> dict[str, float]:
+	names = sorted({(name or "").strip() for name in (invoice_names or []) if (name or "").strip()})
+	if not names:
+		return {}
+	rows = frappe.get_all(
+		"Sales Invoice",
+		filters={"name": ["in", names]},
+		fields=["name", "outstanding_amount"],
+		limit_page_length=max(50, len(names) + 10),
+	)
+	return {row.get("name"): flt(row.get("outstanding_amount") or 0) for row in rows}
+
 
 def _parse_json_list(value: Any) -> list[str]:
 	if isinstance(value, str):
@@ -339,19 +460,37 @@ def _emit_booking_communication(booking_doc, event_label: str, message: str) -> 
 	return (result or {}).get("name")
 
 
-def _booking_payload(doc) -> dict:
+def _booking_payload(
+	doc,
+	*,
+	actor_type: str | None = None,
+	paid_portal_state: str | None = None,
+	invoice_outstanding: float | None = None,
+) -> dict:
+	waitlist_position = doc.waitlist_position
+	if not _should_show_waitlist_position(actor_type):
+		waitlist_position = None
+
 	return {
 		"name": doc.name,
 		"program_offering": doc.program_offering,
 		"student": doc.student,
 		"status": doc.status,
+		"status_label": _status_label(
+			doc.status,
+			payment_required=cint(doc.payment_required or 0),
+			amount=flt(doc.amount or 0),
+			paid_portal_state=paid_portal_state,
+			outstanding_amount=invoice_outstanding,
+		),
 		"allocated_student_group": doc.allocated_student_group,
-		"waitlist_position": doc.waitlist_position,
+		"waitlist_position": waitlist_position,
 		"offer_expires_on": doc.offer_expires_on,
 		"payment_required": cint(doc.payment_required or 0),
 		"amount": flt(doc.amount or 0),
 		"account_holder": doc.account_holder,
 		"sales_invoice": doc.sales_invoice,
+		"sales_invoice_url": _invoice_url(doc.sales_invoice),
 		"org_communication": doc.org_communication,
 		"choices": _parse_json_list(doc.choices_json),
 	}
@@ -397,6 +536,8 @@ def submit_activity_booking(
 ):
 	offering = _offering_doc(program_offering)
 	_assert_window_is_open(offering)
+	settings = _get_activity_booking_settings()
+	paid_portal_state = settings.get("default_paid_booking_portal_state") or PAID_PORTAL_STATE_CONFIRMED
 
 	actor = _actor_for_student(student)
 	_assert_actor_allowed(offering, actor)
@@ -419,11 +560,21 @@ def submit_activity_booking(
 	if not clean_choices:
 		frappe.throw(_("At least one valid activity section choice is required."))
 
+	max_choices = cint(settings.get("default_max_choices") or 0)
+	if max_choices > 0 and len(clean_choices) > max_choices:
+		frappe.throw(
+			_("You can rank up to {0} activity choices for this booking.").format(max_choices)
+		)
+
 	idempotency_key = (idempotency_key or "").strip() or None
 	if idempotency_key:
 		existing = frappe.db.get_value("Activity Booking", {"idempotency_key": idempotency_key}, "name")
 		if existing:
-			return _booking_payload(frappe.get_doc("Activity Booking", existing))
+			return _booking_payload(
+				frappe.get_doc("Activity Booking", existing),
+				actor_type=actor,
+				paid_portal_state=paid_portal_state,
+			)
 
 	locked_active = _lock_student_offering(student, program_offering)
 	if locked_active:
@@ -549,7 +700,11 @@ def submit_activity_booking(
 		)
 		booking.save(ignore_permissions=True)
 
-	return _booking_payload(booking)
+	return _booking_payload(
+		booking,
+		actor_type=actor,
+		paid_portal_state=paid_portal_state,
+	)
 
 
 @frappe.whitelist()
@@ -720,6 +875,7 @@ def allocate_activity_bookings(program_offering: str, dry_run: int = 0):
 def confirm_activity_booking_offer(activity_booking: str):
 	doc = frappe.get_doc("Activity Booking", activity_booking)
 	offering = _offering_doc(doc.program_offering)
+	settings = _get_activity_booking_settings()
 
 	actor = _actor_for_student(doc.student)
 	_assert_actor_allowed(offering, actor)
@@ -763,7 +919,13 @@ def confirm_activity_booking_offer(activity_booking: str):
 		message=_("Activity booking {0} has been confirmed.").format(doc.name),
 	)
 	doc.save(ignore_permissions=True)
-	return _booking_payload(doc)
+	return _booking_payload(
+		doc,
+		actor_type=actor,
+		paid_portal_state=(
+			settings.get("default_paid_booking_portal_state") or PAID_PORTAL_STATE_CONFIRMED
+		),
+	)
 
 
 def _promote_next_waitlist(program_offering: str, section: str) -> dict | None:
@@ -804,6 +966,57 @@ def _promote_next_waitlist(program_offering: str, section: str) -> dict | None:
 	return _booking_payload(doc)
 
 
+def _first_section_slot_start(student_group: str, offering) -> Any | None:
+	section = (student_group or "").strip()
+	if not section:
+		return None
+	window_start, window_end = offering._get_activity_date_window()
+	if not window_start or not window_end:
+		return None
+
+	first_start = None
+	for slot in iter_student_group_room_slots(section, window_start, window_end):
+		start_dt = slot.get("start")
+		if not start_dt:
+			continue
+		if first_start is None or start_dt < first_start:
+			first_start = start_dt
+	return first_start
+
+
+def _assert_self_cancellation_allowed(doc, offering, actor: str) -> None:
+	if actor not in {"Student", "Guardian"}:
+		return
+
+	settings = _get_activity_booking_settings()
+	mode = (
+		settings.get("default_guardian_student_cancellation_mode")
+		or CANCELLATION_MODE_ALLOW_UNTIL_FIRST
+	)
+	if mode == CANCELLATION_MODE_NO_SELF:
+		frappe.throw(
+			_("Self-service cancellation is disabled. Please contact your school office."),
+			frappe.PermissionError,
+		)
+
+	if mode != CANCELLATION_MODE_ALLOW_UNTIL_FIRST:
+		return
+
+	target_section = (doc.allocated_student_group or "").strip()
+	if not target_section:
+		choices = _parse_json_list(doc.choices_json)
+		target_section = choices[0] if choices else ""
+	if not target_section:
+		return
+
+	first_slot_start = _first_section_slot_start(target_section, offering)
+	if first_slot_start and now_datetime() >= get_datetime(first_slot_start):
+		frappe.throw(
+			_("Self-service cancellation closed when the first session started on {0}.").format(first_slot_start),
+			frappe.PermissionError,
+		)
+
+
 @frappe.whitelist()
 def cancel_activity_booking(activity_booking: str, reason: str | None = None):
 	doc = frappe.get_doc("Activity Booking", activity_booking)
@@ -812,6 +1025,7 @@ def cancel_activity_booking(activity_booking: str, reason: str | None = None):
 	actor = _actor_for_student(doc.student)
 	if actor not in {"Student", "Guardian", "Staff"}:
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
+	_assert_self_cancellation_allowed(doc, offering, actor)
 
 	previous_status = doc.status
 	section = doc.allocated_student_group
@@ -828,7 +1042,14 @@ def cancel_activity_booking(activity_booking: str, reason: str | None = None):
 
 	return {
 		"ok": True,
-		"booking": _booking_payload(doc),
+		"booking": _booking_payload(
+			doc,
+			actor_type=actor,
+			paid_portal_state=(
+				_get_activity_booking_settings().get("default_paid_booking_portal_state")
+				or PAID_PORTAL_STATE_CONFIRMED
+			),
+		),
 		"promoted_waitlist": promoted,
 	}
 
@@ -838,6 +1059,9 @@ def get_activity_booking_logistics(student: str, program_offering: str | None = 
 	actor = _actor_for_student(student)
 	if actor not in {"Student", "Guardian", "Staff"}:
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
+	settings = _get_activity_booking_settings()
+	paid_portal_state = settings.get("default_paid_booking_portal_state") or PAID_PORTAL_STATE_CONFIRMED
+	show_waitlist = _should_show_waitlist_position(actor)
 
 	filters = {
 		"student": student,
@@ -849,10 +1073,21 @@ def get_activity_booking_logistics(student: str, program_offering: str | None = 
 	rows = frappe.get_all(
 		"Activity Booking",
 		filters=filters,
-		fields=["name", "program_offering", "allocated_student_group", "status", "offer_expires_on", "waitlist_position"],
+		fields=[
+			"name",
+			"program_offering",
+			"allocated_student_group",
+			"status",
+			"offer_expires_on",
+			"waitlist_position",
+			"payment_required",
+			"amount",
+			"sales_invoice",
+		],
 		order_by="modified desc",
 		limit_page_length=200,
 	)
+	invoice_outstanding = _sales_invoice_outstanding_map([row.get("sales_invoice") for row in rows])
 
 	out = []
 	for row in rows:
@@ -872,16 +1107,25 @@ def get_activity_booking_logistics(student: str, program_offering: str | None = 
 				}
 
 		out.append(
-			{
-				"booking": row.get("name"),
-				"program_offering": row.get("program_offering"),
-				"section": section,
-				"status": row.get("status"),
-				"offer_expires_on": row.get("offer_expires_on"),
-				"waitlist_position": row.get("waitlist_position"),
-				"next_slot": next_slot,
-			}
-		)
+				{
+					"booking": row.get("name"),
+					"program_offering": row.get("program_offering"),
+					"section": section,
+					"status": row.get("status"),
+					"status_label": _status_label(
+						row.get("status"),
+						payment_required=cint(row.get("payment_required") or 0),
+						amount=flt(row.get("amount") or 0),
+						paid_portal_state=paid_portal_state,
+						outstanding_amount=invoice_outstanding.get((row.get("sales_invoice") or "").strip()),
+					),
+					"offer_expires_on": row.get("offer_expires_on"),
+					"waitlist_position": row.get("waitlist_position") if show_waitlist else None,
+					"sales_invoice": row.get("sales_invoice"),
+					"sales_invoice_url": _invoice_url(row.get("sales_invoice")),
+					"next_slot": next_slot,
+				}
+			)
 
 	return {"items": out}
 
@@ -891,6 +1135,9 @@ def get_student_activity_bookings(student: str, program_offering: str | None = N
 	actor = _actor_for_student(student)
 	if actor not in {"Student", "Guardian", "Staff"}:
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
+	settings = _get_activity_booking_settings()
+	paid_portal_state = settings.get("default_paid_booking_portal_state") or PAID_PORTAL_STATE_CONFIRMED
+	show_waitlist = _should_show_waitlist_position(actor)
 
 	filters = {"student": student}
 	if program_offering:
@@ -916,11 +1163,560 @@ def get_student_activity_bookings(student: str, program_offering: str | None = N
 		order_by="modified desc",
 		limit_page_length=200,
 	)
+	invoice_outstanding = _sales_invoice_outstanding_map([row.get("sales_invoice") for row in rows])
 
 	for row in rows:
 		row["choices"] = _parse_json_list(row.get("choices_json"))
 		row.pop("choices_json", None)
+		row["status_label"] = _status_label(
+			row.get("status"),
+			payment_required=cint(row.get("payment_required") or 0),
+			amount=flt(row.get("amount") or 0),
+			paid_portal_state=paid_portal_state,
+			outstanding_amount=invoice_outstanding.get((row.get("sales_invoice") or "").strip()),
+		)
+		row["sales_invoice_url"] = _invoice_url(row.get("sales_invoice"))
+		if not show_waitlist:
+			row["waitlist_position"] = None
 	return {"items": rows}
+
+
+def _guardian_student_names(guardian: str) -> list[str]:
+	if not guardian:
+		return []
+	names = set(
+		frappe.get_all(
+			"Guardian Student",
+			filters={"parent": guardian, "parenttype": "Guardian"},
+			pluck="student",
+		)
+	)
+	student_guardian_rows = frappe.get_all(
+		"Student Guardian",
+		filters={"guardian": guardian, "parenttype": "Student"},
+		pluck="parent",
+	)
+	for row in student_guardian_rows:
+		names.add(row)
+	return sorted({name for name in names if name})
+
+
+def _student_rows(student_names: list[str]) -> list[dict]:
+	names = sorted({(name or "").strip() for name in (student_names or []) if (name or "").strip()})
+	if not names:
+		return []
+	rows = frappe.get_all(
+		"Student",
+		filters={"name": ["in", names]},
+		fields=[
+			"name",
+			"student_full_name",
+			"student_preferred_name",
+			"student_first_name",
+			"student_last_name",
+			"cohort",
+			"student_image",
+			"account_holder",
+			"anchor_school",
+			"enabled",
+		],
+		limit_page_length=max(100, len(names) + 20),
+	)
+	row_map = {row.get("name"): row for row in rows if cint(row.get("enabled") or 0) == 1}
+	out = []
+	for name in names:
+		row = row_map.get(name)
+		if not row:
+			continue
+		full_name = (
+			(row.get("student_preferred_name") or "").strip()
+			or (row.get("student_full_name") or "").strip()
+			or " ".join(
+				part
+				for part in [
+					(row.get("student_first_name") or "").strip(),
+					(row.get("student_last_name") or "").strip(),
+				]
+				if part
+			).strip()
+			or name
+		)
+		out.append(
+			{
+				"student": name,
+				"full_name": full_name,
+				"preferred_name": (row.get("student_preferred_name") or "").strip() or None,
+				"cohort": row.get("cohort"),
+				"student_image": row.get("student_image"),
+				"account_holder": row.get("account_holder"),
+				"anchor_school": row.get("anchor_school"),
+			}
+		)
+	return out
+
+
+def _resolve_portal_students(students=None) -> tuple[str, list[dict]]:
+	user = frappe.session.user
+	if not user or user == "Guest":
+		frappe.throw(_("Please sign in to continue."), frappe.PermissionError)
+
+	requested = _parse_name_list(students, dict_key="student")
+	roles = _get_roles()
+
+	if roles & ROLE_BOOKING_STAFF:
+		return "Staff", _student_rows(requested)
+
+	student_name = frappe.db.get_value("Student", {"student_email": user}, "name")
+	if "Student" in roles and student_name:
+		if requested and student_name not in requested:
+			frappe.throw(_("You are not permitted to access selected students."), frappe.PermissionError)
+		return "Student", _student_rows([student_name])
+
+	guardian = frappe.db.get_value("Guardian", {"user": user}, "name")
+	if guardian:
+		allowed = _guardian_student_names(guardian)
+		if requested:
+			allowed_set = set(allowed)
+			allowed = [name for name in requested if name in allowed_set]
+		return "Guardian", _student_rows(allowed)
+
+	frappe.throw(_("You are not permitted to access activity booking portal data."), frappe.PermissionError)
+
+
+def _activity_context_maps(program_names: list[str]) -> dict:
+	programs = sorted({(name or "").strip() for name in (program_names or []) if (name or "").strip()})
+	if not programs:
+		return {"by_program_school": {}, "by_program": {}}
+
+	rows = frappe.db.sql(
+		"""
+		SELECT
+			a.name AS activity,
+			a.school,
+			ap.program,
+			a.descriptions,
+			a.logistics_location_label,
+			a.logistics_pickup_instructions,
+			a.logistics_dropoff_instructions,
+			a.logistics_map_url,
+			a.logistics_notes,
+			a.media_cover_image,
+			a.media_gallery_link,
+			a.media_notes
+		FROM `tabActivity` a
+		INNER JOIN `tabActivity Program` ap
+			ON ap.parent = a.name
+			AND ap.parenttype = 'Activity'
+			AND ap.parentfield = 'program_allowed'
+		WHERE ap.program IN %(programs)s
+		  AND a.status = 1
+		ORDER BY a.modified DESC
+		""",
+		{"programs": tuple(programs)},
+		as_dict=True,
+	)
+
+	by_program_school = {}
+	by_program = {}
+	for row in rows:
+		program = (row.get("program") or "").strip()
+		school = (row.get("school") or "").strip()
+		payload = {
+			"activity": row.get("activity"),
+			"descriptions": row.get("descriptions"),
+			"logistics_location_label": row.get("logistics_location_label"),
+			"logistics_pickup_instructions": row.get("logistics_pickup_instructions"),
+			"logistics_dropoff_instructions": row.get("logistics_dropoff_instructions"),
+			"logistics_map_url": row.get("logistics_map_url"),
+			"logistics_notes": row.get("logistics_notes"),
+			"media_cover_image": row.get("media_cover_image"),
+			"media_gallery_link": row.get("media_gallery_link"),
+			"media_notes": row.get("media_notes"),
+		}
+		key = (program, school)
+		if program and school and key not in by_program_school:
+			by_program_school[key] = payload
+		if program and program not in by_program:
+			by_program[program] = payload
+	return {"by_program_school": by_program_school, "by_program": by_program}
+
+
+def _allocation_fairness_text(mode: str) -> str:
+	mode_name = (mode or "").strip()
+	if mode_name == "First Come First Serve":
+		return _("Seats are allocated by submission order with server-side capacity checks.")
+	if mode_name == "Lottery (Preference)":
+		return _("Allocation uses ranked preferences and an auditable lottery pass.")
+	if mode_name == "Manual":
+		return _("Assignments are reviewed manually by the school activity team.")
+	return _("Allocation rules are defined by the school.")
+
+
+def _next_section_slot(section: str, window_start, window_end) -> dict | None:
+	if not section:
+		return None
+	now_dt = now_datetime()
+	next_slot = None
+	for slot in iter_student_group_room_slots(section, window_start, window_end):
+		start_dt = slot.get("start")
+		end_dt = slot.get("end")
+		if not start_dt or not end_dt:
+			continue
+		if get_datetime(start_dt) < now_dt:
+			continue
+		if not next_slot or get_datetime(start_dt) < get_datetime(next_slot.get("start")):
+			location = slot.get("location")
+			next_slot = {
+				"start": start_dt,
+				"end": end_dt,
+				"location": location,
+				"map_url": f"https://www.google.com/maps/search/?api=1&query={quote_plus(str(location or ''))}",
+			}
+	return next_slot
+
+
+@frappe.whitelist()
+def get_activity_portal_board(students=None, include_inactive: int = 0):
+	actor_type, student_rows = _resolve_portal_students(students=students)
+	student_names = [row.get("student") for row in student_rows if row.get("student")]
+	settings = _get_activity_booking_settings()
+	paid_portal_state = settings.get("default_paid_booking_portal_state") or PAID_PORTAL_STATE_CONFIRMED
+	show_waitlist = _should_show_waitlist_position(actor_type)
+	now_dt = now_datetime()
+
+	booking_rows = []
+	if student_names:
+		booking_rows = frappe.get_all(
+			"Activity Booking",
+			filters={"student": ["in", student_names]},
+			fields=[
+				"name",
+				"program_offering",
+				"student",
+				"status",
+				"allocated_student_group",
+				"waitlist_position",
+				"offer_expires_on",
+				"payment_required",
+				"amount",
+				"sales_invoice",
+				"org_communication",
+				"choices_json",
+			],
+			order_by="modified desc",
+			limit_page_length=2000,
+		)
+	invoice_outstanding = _sales_invoice_outstanding_map([row.get("sales_invoice") for row in booking_rows])
+	bookings_by_student = {student: [] for student in student_names}
+	booked_offerings = set()
+
+	for row in booking_rows:
+		booking_payload = {
+			"name": row.get("name"),
+			"program_offering": row.get("program_offering"),
+			"status": row.get("status"),
+			"status_label": _status_label(
+				row.get("status"),
+				payment_required=cint(row.get("payment_required") or 0),
+				amount=flt(row.get("amount") or 0),
+				paid_portal_state=paid_portal_state,
+				outstanding_amount=invoice_outstanding.get((row.get("sales_invoice") or "").strip()),
+			),
+			"allocated_student_group": row.get("allocated_student_group"),
+			"waitlist_position": row.get("waitlist_position") if show_waitlist else None,
+			"offer_expires_on": row.get("offer_expires_on"),
+			"payment_required": cint(row.get("payment_required") or 0),
+			"amount": flt(row.get("amount") or 0),
+			"sales_invoice": row.get("sales_invoice"),
+			"sales_invoice_url": _invoice_url(row.get("sales_invoice")),
+			"org_communication": row.get("org_communication"),
+			"choices": _parse_json_list(row.get("choices_json")),
+		}
+		student_name = row.get("student")
+		if student_name in bookings_by_student:
+			bookings_by_student[student_name].append(booking_payload)
+		if row.get("program_offering"):
+			booked_offerings.add(row.get("program_offering"))
+
+	offering_rows = frappe.get_all(
+		"Program Offering",
+		filters={
+			"activity_booking_enabled": 1,
+			"status": ["in", ["Planned", "Active"]],
+		},
+		fields=[
+			"name",
+			"program",
+			"school",
+			"offering_title",
+			"start_date",
+			"end_date",
+			"capacity",
+			"activity_booking_status",
+			"activity_allocation_mode",
+			"activity_booking_open_from",
+			"activity_booking_open_to",
+			"activity_allow_student_booking",
+			"activity_allow_guardian_booking",
+			"activity_allow_staff_booking",
+			"activity_min_age_years",
+			"activity_max_age_years",
+			"activity_waitlist_enabled",
+			"activity_waitlist_offer_hours",
+			"activity_payment_required",
+			"activity_fee_amount",
+			"activity_billable_offering",
+		],
+		order_by="modified desc",
+		limit_page_length=2000,
+	)
+
+	program_names = [row.get("program") for row in offering_rows if row.get("program")]
+	school_names = [row.get("school") for row in offering_rows if row.get("school")]
+	program_rows = frappe.get_all(
+		"Program",
+		filters={"name": ["in", sorted(set(program_names))]} if program_names else {"name": ["in", [""]]},
+		fields=["name", "program_name", "program_abbreviation"],
+		limit_page_length=max(100, len(set(program_names)) + 20),
+	)
+	school_rows = frappe.get_all(
+		"School",
+		filters={"name": ["in", sorted(set(school_names))]} if school_names else {"name": ["in", [""]]},
+		fields=["name", "school_name", "abbr"],
+		limit_page_length=max(100, len(set(school_names)) + 20),
+	)
+	program_map = {row.get("name"): row for row in program_rows}
+	school_map = {row.get("name"): row for row in school_rows}
+	activity_maps = _activity_context_maps(program_names)
+
+	offerings = []
+	for row in offering_rows:
+		name = row.get("name")
+		booking_status = (row.get("activity_booking_status") or "Draft").strip() or "Draft"
+		open_from = get_datetime(row.get("activity_booking_open_from")) if row.get("activity_booking_open_from") else None
+		open_to = get_datetime(row.get("activity_booking_open_to")) if row.get("activity_booking_open_to") else None
+		in_window = True
+		if open_from and now_dt < open_from:
+			in_window = False
+		if open_to and now_dt > open_to:
+			in_window = False
+		is_open_now = booking_status == "Open" and in_window
+		is_visible = bool(name in booked_offerings or booking_status in {"Open", "Ready"})
+		if not cint(include_inactive or 0) and not is_visible:
+			continue
+
+		sections = _activity_sections(name)
+		section_names = [s.get("student_group") for s in sections if s.get("student_group")]
+		sg_rows = frappe.get_all(
+			"Student Group",
+			filters={"name": ["in", section_names]} if section_names else {"name": ["in", [""]]},
+			fields=["name", "student_group_name", "maximum_size"],
+			limit_page_length=max(100, len(section_names) + 20),
+		)
+		sg_map = {sg.get("name"): sg for sg in sg_rows}
+		reserved_rows = frappe.db.sql(
+			"""
+			SELECT allocated_student_group AS section_name, COUNT(*) AS reserved_count
+			FROM `tabActivity Booking`
+			WHERE program_offering = %(program_offering)s
+			  AND status IN ('Offered', 'Confirmed')
+			GROUP BY allocated_student_group
+			""",
+			{"program_offering": name},
+			as_dict=True,
+		)
+		reserved_map = {
+			(row.get("section_name") or "").strip(): cint(row.get("reserved_count") or 0)
+			for row in reserved_rows
+		}
+		offering_start = getdate(row.get("start_date")) if row.get("start_date") else getdate()
+		offering_end = getdate(row.get("end_date")) if row.get("end_date") else (offering_start + timedelta(days=180))
+
+		section_payload = []
+		for section_row in sections:
+			section_name = (section_row.get("student_group") or "").strip()
+			if not section_name:
+				continue
+			capacity = _section_capacity(section_row, cint(row.get("capacity") or 0))
+			reserved_count = reserved_map.get(section_name, 0)
+			remaining = None
+			if capacity is not None:
+				remaining = max(capacity - reserved_count, 0)
+			sg_meta = sg_map.get(section_name) or {}
+			section_payload.append(
+				{
+					"student_group": section_name,
+					"label": (
+						(section_row.get("section_label") or "").strip()
+						or (sg_meta.get("student_group_name") or "").strip()
+						or section_name
+					),
+					"capacity": capacity,
+					"reserved": reserved_count,
+					"remaining": remaining,
+					"allow_waitlist": cint(section_row.get("allow_waitlist") or 0),
+					"next_slot": _next_section_slot(section_name, offering_start, offering_end),
+				}
+			)
+
+		program_name = row.get("program")
+		school_name = row.get("school")
+		activity_context = (
+			activity_maps["by_program_school"].get((program_name, school_name))
+			or activity_maps["by_program"].get(program_name)
+			or {}
+		)
+		program_meta = program_map.get(program_name) or {}
+		school_meta = school_map.get(school_name) or {}
+		offerings.append(
+			{
+				"program_offering": name,
+				"program": program_name,
+				"program_label": (program_meta.get("program_name") or "").strip() or program_name,
+				"program_abbreviation": program_meta.get("program_abbreviation"),
+				"school": school_name,
+				"school_label": (school_meta.get("school_name") or "").strip() or school_name,
+				"school_abbr": school_meta.get("abbr"),
+				"title": (row.get("offering_title") or "").strip()
+				or (program_meta.get("program_name") or "").strip()
+				or name,
+				"start_date": row.get("start_date"),
+				"end_date": row.get("end_date"),
+				"booking_status": booking_status,
+				"booking_window": {
+					"open_from": row.get("activity_booking_open_from"),
+					"open_to": row.get("activity_booking_open_to"),
+					"is_open_now": 1 if is_open_now else 0,
+				},
+				"allocation_mode": row.get("activity_allocation_mode"),
+				"allocation_explanation": _allocation_fairness_text(row.get("activity_allocation_mode") or ""),
+				"booking_roles": {
+					"allow_student": cint(row.get("activity_allow_student_booking") or 0),
+					"allow_guardian": cint(row.get("activity_allow_guardian_booking") or 0),
+					"allow_staff": cint(row.get("activity_allow_staff_booking") or 0),
+				},
+				"age_limits": {
+					"min_years": row.get("activity_min_age_years"),
+					"max_years": row.get("activity_max_age_years"),
+				},
+				"waitlist": {
+					"enabled": cint(row.get("activity_waitlist_enabled") or 0),
+					"offer_hours": cint(row.get("activity_waitlist_offer_hours") or 0),
+				},
+				"payment": {
+					"required": cint(row.get("activity_payment_required") or 0),
+					"amount": flt(row.get("activity_fee_amount") or 0),
+					"billable_offering": row.get("activity_billable_offering"),
+					"portal_state_mode": paid_portal_state,
+				},
+				"activity_context": activity_context,
+				"sections": section_payload,
+			}
+		)
+
+	students_payload = []
+	for student in student_rows:
+		name = student.get("student")
+		bookings = bookings_by_student.get(name, [])
+		counts = {}
+		for booking in bookings:
+			status = booking.get("status") or "Draft"
+			counts[status] = cint(counts.get(status) or 0) + 1
+		students_payload.append(
+			{
+				**student,
+				"bookings": bookings,
+				"booking_counts": counts,
+			}
+		)
+
+	return {
+		"generated_at": now_dt,
+		"viewer": {
+			"actor_type": actor_type,
+			"user": frappe.session.user,
+		},
+		"settings": {
+			"default_max_choices": cint(settings.get("default_max_choices") or 0),
+			"default_show_waitlist_position": 1 if show_waitlist else 0,
+			"default_guardian_student_cancellation_mode": settings.get(
+				"default_guardian_student_cancellation_mode"
+			),
+			"default_paid_booking_portal_state": paid_portal_state,
+			"default_offer_banner_hours": cint(settings.get("default_offer_banner_hours") or 0),
+		},
+		"students": students_payload,
+		"offerings": offerings,
+	}
+
+
+@frappe.whitelist()
+def submit_activity_booking_batch(
+	program_offering: str,
+	requests=None,
+	request_surface: str | None = None,
+):
+	rows = requests
+	if isinstance(rows, str):
+		rows = rows.strip()
+		rows = frappe.parse_json(rows) if rows else []
+	if not isinstance(rows, list):
+		frappe.throw(_("Requests must be a JSON list."))
+	if not rows:
+		frappe.throw(_("At least one booking request is required."))
+
+	results = []
+	success = 0
+	failed = 0
+
+	for idx, row in enumerate(rows, start=1):
+		if not isinstance(row, dict):
+			failed += 1
+			results.append(
+				{
+					"ok": False,
+					"student": None,
+					"error": _("Row {0}: Invalid request payload.").format(idx),
+				}
+			)
+			continue
+
+		student = (row.get("student") or "").strip()
+		if not student:
+			failed += 1
+			results.append(
+				{
+					"ok": False,
+					"student": None,
+					"error": _("Row {0}: Student is required.").format(idx),
+				}
+			)
+			continue
+
+		savepoint = f"activity_batch_{idx}"
+		frappe.db.savepoint(savepoint)
+		try:
+			booking = submit_activity_booking(
+				program_offering=program_offering,
+				student=student,
+				choices=row.get("choices"),
+				idempotency_key=row.get("idempotency_key"),
+				request_surface=request_surface or row.get("request_surface") or "Guardian Portal",
+				account_holder=row.get("account_holder"),
+			)
+			success += 1
+			results.append({"ok": True, "student": student, "booking": booking})
+		except Exception as exc:
+			frappe.db.rollback(save_point=savepoint)
+			failed += 1
+			results.append({"ok": False, "student": student, "error": str(exc) or _("Booking failed.")})
+
+	return {
+		"ok": failed == 0,
+		"success_count": success,
+		"failed_count": failed,
+		"results": results,
+	}
 
 
 @frappe.whitelist()

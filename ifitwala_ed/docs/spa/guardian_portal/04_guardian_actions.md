@@ -315,6 +315,13 @@ Allow guardians to book and manage extra-curricular activities for linked studen
 3. Billing requirements (account holder/invoice) are server-enforced.
 4. Communications are delivered through Org Communication audience + activity context links.
 
+**Portal UX contract (implemented)**
+
+1. Guardian flow is family-board first at `/guardian/activities` (multi-child booking in one flow).
+2. Batch submit uses per-child isolated processing to avoid full-family rollback on one failure.
+3. Waitlist position visibility is settings-driven (`Activity Booking Settings`).
+4. Self-cancellation policy is server-enforced from settings (default: until first session starts).
+
 ---
 
 ## 10. Explicitly Forbidden Actions (Non-Negotiable)

@@ -94,3 +94,30 @@ Implemented in `ifitwala_ed/api/activity_booking.py`:
 9. `get_activity_booking_logistics`
 10. `get_activity_communications`
 11. `post_activity_communication_entry`
+12. `get_activity_portal_board`
+13. `submit_activity_booking_batch`
+
+## 8. Portal UX Contracts
+
+Portal routes:
+
+1. `/student/activities`
+2. `/guardian/activities`
+
+Both routes consume `get_activity_portal_board` and use:
+
+1. Humanized status labels (`Pending Review`, `Spot Available`, `Booked`, etc.).
+2. Settings-driven waitlist visibility.
+3. Settings-driven cancellation policy for guardian/student self-service.
+4. Settings-driven paid-booking label mode.
+5. Embedded activity communication panels + communication-center view.
+
+## 9. Global Booking Settings (Single Doctype)
+
+`Activity Booking Settings` controls default portal policy:
+
+1. `default_max_choices`
+2. `default_show_waitlist_position`
+3. `default_guardian_student_cancellation_mode`
+4. `default_paid_booking_portal_state`
+5. `default_offer_banner_hours`

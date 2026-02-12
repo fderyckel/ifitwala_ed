@@ -1,5 +1,36 @@
 // ifitwala_ed/school_site/doctype/school_website_page_block/school_website_page_block.js
 
+function normalizePropsBuilder(builder) {
+	if (!builder) return null;
+	const openForRow =
+		typeof builder.openForRow === "function"
+			? builder.openForRow.bind(builder)
+			: typeof builder.open === "function"
+				? ({ frm, row }) =>
+						builder.open({
+							frm,
+							cdt: row.doctype || "School Website Page Block",
+							cdn: row.name,
+							blockType: row.block_type
+						})
+				: null;
+	if (!openForRow) return null;
+	return { openForRow };
+}
+
+function getPropsBuilder() {
+	return new Promise((resolve) => {
+		const existing = normalizePropsBuilder(window.ifitwalaEd && window.ifitwalaEd.websitePropsBuilder);
+		if (existing) {
+			resolve(existing);
+			return;
+		}
+		frappe.require("/assets/ifitwala_ed/js/website_props_builder.js", () => {
+			resolve(normalizePropsBuilder(window.ifitwalaEd && window.ifitwalaEd.websitePropsBuilder));
+		});
+	});
+}
+
 frappe.ui.form.on("School Website Page Block", {
 	form_render(frm, cdt, cdn) {
 		const grid = frm.fields_dict.blocks && frm.fields_dict.blocks.grid;
@@ -16,18 +47,18 @@ frappe.ui.form.on("School Website Page Block", {
 				`${__("Edit Props")}</button>`
 		);
 
-		button.on("click", () => {
+		button.on("click", async () => {
 			const row = locals[cdt][cdn];
 			if (!row.block_type) {
 				frappe.msgprint(__("Select a block type first."));
 				return;
 			}
-			const builder = window.ifitwalaEd && window.ifitwalaEd.websitePropsBuilder;
-			if (!builder || typeof builder.open !== "function") {
+			const builder = await getPropsBuilder();
+			if (!builder) {
 				frappe.msgprint(__("Props Builder is not available. Please refresh the page."));
 				return;
 			}
-			builder.open({ frm, cdt, cdn, blockType: row.block_type });
+			builder.openForRow({ frm, row });
 		});
 
 		propsField.$wrapper.append(button);

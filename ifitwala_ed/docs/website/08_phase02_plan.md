@@ -255,7 +255,7 @@ This is the **most important part**.
 
    * Intro
    * Hero
-   * Blocks
+   * Blocks (via main-form **Add Block** modal: pick block type, fill schema-guided props, click Add to insert row)
    * SEO Profile
 5. Set Status → **Published**
 6. Save
