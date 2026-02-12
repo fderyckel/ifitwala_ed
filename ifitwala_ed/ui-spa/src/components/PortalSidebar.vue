@@ -138,11 +138,14 @@ function handleNavActivate() {
 
 const portalRoles = computed<string[]>(() => {
 	const raw = (window as unknown as { portalRoles?: string[] }).portalRoles
-	return Array.isArray(raw) ? raw : []
+	if (!Array.isArray(raw)) return []
+	return raw
+		.map((role) => String(role || '').trim().toLowerCase())
+		.filter(Boolean)
 })
 
-const hasStudentPortal = computed(() => portalRoles.value.includes('Student'))
-const hasGuardianPortal = computed(() => portalRoles.value.includes('Guardian'))
+const hasStudentPortal = computed(() => portalRoles.value.includes('student'))
+const hasGuardianPortal = computed(() => portalRoles.value.includes('guardian'))
 
 const studentMenu: MenuItem[] = [
 	{ label: 'Dashboard', icon: 'home', to: { name: 'student-home' } },

@@ -1,6 +1,7 @@
 // ui-spa/src/router/index.ts
 
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import { toast } from 'frappe-ui'
 
 const routes: RouteRecordRaw[] = [
   // redirect to a *named route* inside the /portal base, not to '/portal'
@@ -56,11 +57,15 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const roles = (window as unknown as { portalRoles?: string[] }).portalRoles || []
+  const rawRoles = (window as unknown as { portalRoles?: string[] }).portalRoles || []
+  const roles = rawRoles
+    .map((role) => String(role || '').trim().toLowerCase())
+    .filter(Boolean)
   const defaultPortal = (window as unknown as { defaultPortal?: string }).defaultPortal || 'student'
 
-  const required = (to.meta as any)?.portal as string | undefined
+  const required = ((to.meta as any)?.portal as string | undefined)?.trim().toLowerCase()
   if (required && !roles.includes(required)) {
+    toast.error(`You do not have access to the ${required} portfolio view.`)
     return { name: `${defaultPortal}-home` }
   }
   return true
