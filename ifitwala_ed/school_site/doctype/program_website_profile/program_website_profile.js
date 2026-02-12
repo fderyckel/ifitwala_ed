@@ -160,6 +160,26 @@ async function validatePreviewSeoRules(frm) {
 	return true;
 }
 
+function validatePreviewBlockPropsJson(frm) {
+	const enabledRows = (frm.doc.blocks || []).filter((row) => Boolean(Number(row.is_enabled || 0)));
+	for (const row of enabledRows) {
+		const raw = String(row.props || "").trim();
+		if (!raw) continue;
+		try {
+			JSON.parse(raw);
+		} catch (err) {
+			const rowLabel = String(row.idx || "?");
+			const blockLabel = (row.block_type || "").trim() || __("Unknown block");
+			const message = err && err.message ? err.message : String(err);
+			frappe.msgprint(
+				__("Invalid Props JSON in Blocks row {0} ({1}): {2}", [rowLabel, blockLabel, message])
+			);
+			return false;
+		}
+	}
+	return true;
+}
+
 frappe.ui.form.on("Program Website Profile", {
 	refresh(frm) {
 		frm.clear_custom_buttons();
@@ -169,6 +189,9 @@ frappe.ui.form.on("Program Website Profile", {
 				frappe.msgprint(__("Select a School and Program to preview."));
 				return;
 			}
+
+			const hasValidJson = validatePreviewBlockPropsJson(frm);
+			if (!hasValidJson) return;
 
 			const canPreview = await validatePreviewSeoRules(frm);
 			if (!canPreview) return;

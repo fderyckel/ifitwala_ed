@@ -217,7 +217,17 @@ def _build_blocks(*, page, school):
 	scripts = []
 	for block in blocks:
 		definition = definitions[block.block_type]
-		props = parse_props(block.props)
+		try:
+			props = parse_props(block.props)
+		except frappe.ValidationError as exc:
+			frappe.throw(
+				_("Invalid block props JSON in row {0} ({1}): {2}").format(
+					block.idx or "?",
+					block.block_type or _("Unknown block"),
+					frappe.as_unicode(exc),
+				),
+				frappe.ValidationError,
+			)
 		props = _normalize_block_props(block_type=block.block_type, props=props)
 		validate_props_schema(props, definition.props_schema, block_type=block.block_type)
 		provider = _resolve_provider(definition.provider_path, block.block_type)

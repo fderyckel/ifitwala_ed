@@ -84,6 +84,8 @@ class SchoolWebsitePage(Document):
 				frappe.ValidationError,
 			)
 
+		self._validate_blocks_props_json()
+
 	def _sync_status_flags(self):
 		status = "Draft"
 		if self.school:
@@ -173,3 +175,20 @@ class SchoolWebsitePage(Document):
 				"is_enabled": 1,
 			},
 		)
+
+	def _validate_blocks_props_json(self):
+		for row in self.blocks or []:
+			raw_props = (row.props or "").strip()
+			if not raw_props:
+				continue
+			try:
+				json.loads(raw_props)
+			except Exception as exc:
+				frappe.throw(
+					_("Invalid block props JSON in row {0} ({1}): {2}").format(
+						row.idx or "?",
+						row.block_type or _("Unknown block"),
+						str(exc),
+					),
+					frappe.ValidationError,
+				)
