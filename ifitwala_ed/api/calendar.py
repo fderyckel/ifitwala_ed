@@ -1012,8 +1012,7 @@ def get_student_group_event_details(
 ):
 	"""
 	Resolve a class (Student Group) calendar entry into a richer payload for the portal modal.
-	Supports Employee Booking ids (sg-booking::...). Schedule-based ids are
-	available only in explicit debug/abstract viewers.
+	Supports Employee Booking ids (sg-booking::...) and schedule ids (sg::...).
 	"""
 	resolved_event_id = (
 		event_id
@@ -1037,17 +1036,8 @@ def get_student_group_event_details(
 		frappe.form_dict.get("debug_booking")
 		or frappe.form_dict.get("debug")
 	)
-	debug_schedule = bool(
-		frappe.form_dict.get("debug_schedule")
-		or frappe.form_dict.get("debug")
-	)
 
 	if resolved_event_id.startswith("sg::"):
-		if not debug_schedule:
-			frappe.throw(
-				_("Schedule-based class events are only available in debug/abstract viewers."),
-				frappe.PermissionError,
-			)
 		context = _resolve_sg_schedule_context(resolved_event_id, tzinfo)
 	elif resolved_event_id.startswith("sg-booking::"):
 		context = _resolve_sg_booking_context(resolved_event_id, tzinfo, debug=debug_booking)
@@ -1252,9 +1242,25 @@ def _meeting_access_allowed(meeting, participants: List[Dict[str, str]], user: s
 
 
 def _resolve_sg_schedule_context(event_id: str, tzinfo: pytz.timezone) -> Dict[str, object]:
-	"""Debug/abstract schedule resolver (not for production calendar reads)."""
+	"""Resolve schedule-based Student Group ids into class modal context."""
 	event_id = event_id.replace("sg/", "sg::", 1) if event_id.startswith("sg/") else event_id
 	parts = event_id.split("::")
+	if len(parts) == 3:
+		group_name = parts[1]
+		start_dt = _to_system_datetime(parts[2], tzinfo)
+		end_dt = start_dt + CAL_MIN_DURATION if start_dt else None
+		session_date = start_dt.date() if start_dt else None
+		return {
+			"student_group": group_name,
+			"rotation_day": None,
+			"block_number": None,
+			"block_label": None,
+			"session_date": session_date.isoformat() if session_date else None,
+			"location": None,
+			"start": start_dt,
+			"end": end_dt,
+		}
+
 	if len(parts) < 5:
 		frappe.throw(_("Invalid class event id."), frappe.ValidationError)
 

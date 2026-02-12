@@ -1,0 +1,185 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "portfolio",
+  "scope",
+  "expires_on",
+  "access_mode",
+  "allowed_viewer_email",
+  "allow_download",
+  "token_hash",
+  "token_hint",
+  "idempotency_key",
+  "revoked",
+  "last_accessed_on",
+  "last_accessed_ip",
+  "created_by_user",
+  "school",
+  "organization"
+ ],
+ "fields": [
+  {
+   "fieldname": "portfolio",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Portfolio",
+   "options": "Student Portfolio",
+   "reqd": 1
+  },
+  {
+   "default": "Showcase Only",
+   "fieldname": "scope",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Scope",
+   "options": "Showcase Only",
+   "reqd": 1
+  },
+  {
+   "fieldname": "expires_on",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Expires On",
+   "reqd": 1
+  },
+  {
+   "default": "view",
+   "fieldname": "access_mode",
+   "fieldtype": "Select",
+   "label": "Access Mode",
+   "options": "view",
+   "reqd": 1
+  },
+  {
+   "fieldname": "allowed_viewer_email",
+   "fieldtype": "Data",
+   "label": "Allowed Viewer Email",
+   "options": "Email"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_download",
+   "fieldtype": "Check",
+   "label": "Allow Download"
+  },
+  {
+   "fieldname": "token_hash",
+   "fieldtype": "Data",
+   "label": "Token Hash",
+   "read_only": 1,
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "token_hint",
+   "fieldtype": "Data",
+   "label": "Token Hint",
+   "read_only": 1
+  },
+  {
+   "fieldname": "idempotency_key",
+   "fieldtype": "Data",
+   "label": "Idempotency Key"
+  },
+  {
+   "default": "0",
+   "fieldname": "revoked",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Revoked"
+  },
+  {
+   "fieldname": "last_accessed_on",
+   "fieldtype": "Datetime",
+   "label": "Last Accessed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_accessed_ip",
+   "fieldtype": "Data",
+   "label": "Last Accessed IP",
+   "read_only": 1
+  },
+  {
+   "fieldname": "created_by_user",
+   "fieldtype": "Link",
+   "label": "Created By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "module": "Students",
+ "name": "Portfolio Share Link",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "portfolio,allowed_viewer_email,idempotency_key",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

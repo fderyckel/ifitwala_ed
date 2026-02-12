@@ -7,6 +7,8 @@ from ifitwala_ed.api.calendar import (
 	CAL_MIN_DURATION,
 	_attach_duration,
 	_coerce_time,
+	_resolve_sg_schedule_context,
+	_system_tzinfo,
 	_time_to_str,
 )
 
@@ -28,3 +30,12 @@ class TestCalendarApi(TestCase):
 		self.assertEqual(_attach_duration(start_dt, None), CAL_MIN_DURATION)
 		self.assertEqual(_attach_duration(start_dt, datetime(2026, 2, 1, 9, 0, 0)), CAL_MIN_DURATION)
 		self.assertEqual(_attach_duration(start_dt, datetime(2026, 2, 1, 11, 30, 0)), timedelta(hours=1, minutes=30))
+
+	def test_resolve_sg_schedule_context_supports_legacy_event_id(self):
+		tzinfo = _system_tzinfo()
+		context = _resolve_sg_schedule_context("sg::SG-TEST::2026-02-01T10:00:00", tzinfo)
+		self.assertEqual(context["student_group"], "SG-TEST")
+		self.assertIsNone(context["rotation_day"])
+		self.assertIsNone(context["block_number"])
+		self.assertEqual(context["session_date"], "2026-02-01")
+		self.assertEqual(context["end"] - context["start"], CAL_MIN_DURATION)

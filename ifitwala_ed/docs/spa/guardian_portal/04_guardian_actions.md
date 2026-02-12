@@ -264,7 +264,7 @@ Allow the Guardian to receive **more immediate visibility and alerts** about pub
 Monitoring Mode must **never**:
 
 * expose draft or unpublished data
-* bypass `published_to_parents` gates
+* bypass `Task Outcome.is_published` gates
 * expose live gradebook views
 * compute rolling averages
 * compare siblings

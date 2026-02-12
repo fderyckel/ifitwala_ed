@@ -1,0 +1,44 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "role",
+  "can_moderate_showcase",
+  "can_moderate_reflection"
+ ],
+ "fields": [
+  {
+   "fieldname": "role",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Role",
+   "options": "Role",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "can_moderate_showcase",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Can Moderate Showcase"
+  },
+  {
+   "default": "0",
+   "fieldname": "can_moderate_reflection",
+   "fieldtype": "Check",
+   "label": "Can Moderate Reflection"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "module": "Students",
+ "name": "Portfolio Journal Setting Role",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

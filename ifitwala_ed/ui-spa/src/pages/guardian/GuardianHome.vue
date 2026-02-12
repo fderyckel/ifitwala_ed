@@ -259,10 +259,10 @@ const quickLinks = [
 		to: { name: 'guardian-home' },
 	},
 	{
-		title: 'Child Detail',
-		description: 'Open each child view in one click.',
-		icon: 'users',
-		to: { name: 'guardian-home' },
+		title: 'Showcase Portfolio',
+		description: 'View approved showcase evidence by child.',
+		icon: 'layers',
+		to: { name: 'guardian-portfolio' },
 	},
 	{
 		title: 'Updates',

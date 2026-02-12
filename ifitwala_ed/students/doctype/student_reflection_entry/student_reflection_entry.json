@@ -1,0 +1,225 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "academic_year",
+  "school",
+  "organization",
+  "entry_date",
+  "entry_type",
+  "visibility",
+  "moderation_state",
+  "mood_scale",
+  "body",
+  "course",
+  "student_group",
+  "program_enrollment",
+  "activity_booking",
+  "lesson",
+  "lesson_instance",
+  "lesson_activity",
+  "task_delivery",
+  "task_submission",
+  "attachments"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "entry_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Entry Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "entry_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Entry Type",
+   "options": "Journal\nReflection\nGoal Check-in\nAdvisory\nActivity\nProgram\nCourse",
+   "reqd": 1
+  },
+  {
+   "default": "Teacher",
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "label": "Visibility",
+   "options": "Private\nTeacher\nPortfolio",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "moderation_state",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Moderation State",
+   "options": "Draft\nSubmitted for Review\nApproved\nReturned for Edit\nHidden / Rejected"
+  },
+  {
+   "fieldname": "mood_scale",
+   "fieldtype": "Int",
+   "label": "Mood Scale"
+  },
+  {
+   "fieldname": "body",
+   "fieldtype": "Text Editor",
+   "label": "Body",
+   "reqd": 1
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fieldname": "student_group",
+   "fieldtype": "Link",
+   "label": "Student Group",
+   "options": "Student Group"
+  },
+  {
+   "fieldname": "program_enrollment",
+   "fieldtype": "Link",
+   "label": "Program Enrollment",
+   "options": "Program Enrollment"
+  },
+  {
+   "fieldname": "activity_booking",
+   "fieldtype": "Link",
+   "label": "Activity Booking",
+   "options": "Activity Booking"
+  },
+  {
+   "fieldname": "lesson",
+   "fieldtype": "Link",
+   "label": "Lesson",
+   "options": "Lesson"
+  },
+  {
+   "fieldname": "lesson_instance",
+   "fieldtype": "Link",
+   "label": "Lesson Instance",
+   "options": "Lesson Instance"
+  },
+  {
+   "fieldname": "lesson_activity",
+   "fieldtype": "Link",
+   "label": "Lesson Activity",
+   "options": "Lesson Activity"
+  },
+  {
+   "fieldname": "task_delivery",
+   "fieldtype": "Link",
+   "label": "Task Delivery",
+   "options": "Task Delivery"
+  },
+  {
+   "fieldname": "task_submission",
+   "fieldtype": "Link",
+   "label": "Task Submission",
+   "options": "Task Submission"
+  },
+  {
+   "fieldname": "attachments",
+   "fieldtype": "Table",
+   "label": "Attachments",
+   "options": "Attached Document"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "module": "Students",
+ "name": "Student Reflection Entry",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "student,entry_type,body",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

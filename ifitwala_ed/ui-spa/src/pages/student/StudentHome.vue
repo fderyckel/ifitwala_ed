@@ -17,25 +17,6 @@
 			</div>
 		</header>
 
-		<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Classes today</p>
-				<p class="mini-kpi-value">{{ todayCourses.length }}</p>
-			</article>
-			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Day label</p>
-				<p class="mini-kpi-value">{{ scheduleMeta.weekday || 'Today' }}</p>
-			</article>
-			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Activity booking</p>
-				<p class="mini-kpi-value">Open Board</p>
-			</article>
-			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Quick actions</p>
-				<p class="mini-kpi-value">{{ quickLinks.length }}</p>
-			</article>
-		</section>
-
 		<section class="card-surface p-5">
 			<div class="mb-3 flex items-center justify-between">
 				<h2 class="type-h3 text-ink">Today’s Classes</h2>
@@ -81,6 +62,11 @@
 		</section>
 
 		<section class="card-surface p-5">
+			<h2 class="mb-3 type-h3 text-ink">Calendar</h2>
+			<StudentCalendar :auto-refresh-interval="30 * 60 * 1000" />
+		</section>
+
+		<section class="card-surface p-5">
 			<h2 class="mb-3 type-h3 text-ink">Quick Links</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				<RouterLink v-for="item in quickLinks" :key="item.title" :to="item.to" class="action-tile group">
@@ -94,11 +80,6 @@
 					<FeatherIcon name="chevron-right" class="h-4 w-4 text-ink/40" />
 				</RouterLink>
 			</div>
-		</section>
-
-		<section class="card-surface p-5">
-			<h2 class="mb-3 type-h3 text-ink">Calendar</h2>
-			<StudentCalendar :auto-refresh-interval="30 * 60 * 1000" />
 		</section>
 	</div>
 </template>
@@ -163,6 +144,12 @@ const quickLinks = [
 		description: 'Open your course spaces.',
 		icon: 'book-open',
 		to: { name: 'student-courses' },
+	},
+	{
+		title: 'Portfolio & Journal',
+		description: 'Curate showcase evidence and reflections.',
+		icon: 'layers',
+		to: { name: 'student-portfolio' },
 	},
 	{
 		title: 'Student Log',

@@ -320,6 +320,12 @@ const quickActions = [
 		icon: 'edit-3',
 		to: { name: 'staff-gradebook' },
 	},
+	{
+		label: 'Portfolio Review',
+		caption: 'Review student evidence feed',
+		icon: 'layers',
+		to: { name: 'staff-portfolio' },
+	},
 ]
 
 /* FOCUS -------------------------------------------------------- */

@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_type",
+  "task_submission",
+  "student_reflection_entry",
+  "artefact_file",
+  "evidence_date",
+  "program_enrollment",
+  "caption",
+  "reflection_summary",
+  "display_order",
+  "is_showcase",
+  "show_tags",
+  "moderation_state",
+  "moderation_comment",
+  "reviewed_by",
+  "reviewed_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Item Type",
+   "options": "Task Submission\nStudent Reflection Entry\nExternal Artefact",
+   "reqd": 1
+  },
+  {
+   "fieldname": "task_submission",
+   "fieldtype": "Link",
+   "label": "Task Submission",
+   "options": "Task Submission"
+  },
+  {
+   "fieldname": "student_reflection_entry",
+   "fieldtype": "Link",
+   "label": "Student Reflection Entry",
+   "options": "Student Reflection Entry"
+  },
+  {
+   "fieldname": "artefact_file",
+   "fieldtype": "Link",
+   "label": "Artefact File",
+   "options": "File"
+  },
+  {
+   "fieldname": "evidence_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Evidence Date"
+  },
+  {
+   "fieldname": "program_enrollment",
+   "fieldtype": "Link",
+   "label": "Program Enrollment",
+   "options": "Program Enrollment"
+  },
+  {
+   "fieldname": "caption",
+   "fieldtype": "Small Text",
+   "label": "Caption"
+  },
+  {
+   "fieldname": "reflection_summary",
+   "fieldtype": "Small Text",
+   "label": "Reflection Summary"
+  },
+  {
+   "default": "0",
+   "fieldname": "display_order",
+   "fieldtype": "Int",
+   "label": "Display Order"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_showcase",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Showcase"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_tags",
+   "fieldtype": "Check",
+   "label": "Show Tags"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "moderation_state",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Moderation State",
+   "options": "Draft\nSubmitted for Review\nApproved\nReturned for Edit\nHidden / Rejected"
+  },
+  {
+   "fieldname": "moderation_comment",
+   "fieldtype": "Small Text",
+   "label": "Moderation Comment"
+  },
+  {
+   "fieldname": "reviewed_by",
+   "fieldtype": "Link",
+   "label": "Reviewed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_on",
+   "fieldtype": "Datetime",
+   "label": "Reviewed On",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "module": "Students",
+ "name": "Student Portfolio Item",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

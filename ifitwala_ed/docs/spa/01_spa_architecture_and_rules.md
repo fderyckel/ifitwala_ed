@@ -270,6 +270,13 @@ Server contract for staff portal:
 1. Attempt `Staff Calendar` holidays using nearest lineage school match.
 2. If no Staff Calendar holidays are available, fallback to effective `School Calendar Holidays` for the same window (`self -> nearest ancestor`).
 
+Server + client contract for student portal:
+
+1. Class calendar events must carry schedule-resolvable ids:
+   `sg::<student_group>::<rotation_day>::<block_number>::<session_date>`.
+2. School Calendar Holidays must be returned as all-day events with source `holiday`.
+3. Student calendar source controls must expose `Holidays` as a distinct chip (not merged into `School` events).
+
 Client anti-patterns (forbidden):
 
 * Building parent fallback in Vue.
