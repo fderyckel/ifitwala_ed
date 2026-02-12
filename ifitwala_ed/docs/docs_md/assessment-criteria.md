@@ -40,6 +40,10 @@ Criteria are curriculum truth, not one-off task notes. That keeps grading consis
   - blocks reserved/bad criteria names (`total`, `score`, `grade`, etc.)
 - **Desk UI**:
   - currently standard form/list (no active custom client script)
+- **Architecture guarantees (embedded from assessment doctrine)**:
+  - criteria are curriculum artifacts reused across tasks; they are not task-local truth
+  - criteria levels describe performance bands and descriptors only
+  - numeric-to-grade conversion belongs to Grade Scale, not Assessment Criteria
 
 ### Permission Matrix
 
@@ -49,11 +53,6 @@ Criteria are curriculum truth, not one-off task notes. That keeps grading consis
 | `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
 | `Instructor` | Yes | Yes | No | No |
 | `Academic Admin` | Yes | Yes | Yes | Yes |
-
-## Authoritative References
-
-- `ifitwala_ed/docs/assessment/01_assessment_notes.md`
-- `ifitwala_ed/docs/assessment/02_curriculum_relationship_notes.md`
 
 ## Related Docs
 

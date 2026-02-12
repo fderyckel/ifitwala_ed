@@ -1,5 +1,9 @@
 # ifitwala_ed/test_routing_rules.py
 
+import json
+import os
+
+import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed import hooks
@@ -30,3 +34,19 @@ class TestRoutingRules(FrappeTestCase):
 			("/registration-of-interest", "/registration-of-interest"),
 			pairs,
 		)
+
+	def test_public_web_forms_allow_guest_access(self):
+		"""Public admissions forms must remain anonymous for guests."""
+		app_path = frappe.get_app_path("ifitwala_ed")
+		configs = [
+			("inquiry", "admission/web_form/inquiry/inquiry.json"),
+			(
+				"registration-of-interest",
+				"admission/web_form/registration_of_interest/registration_of_interest.json",
+			),
+		]
+		for route, relative_path in configs:
+			with open(os.path.join(app_path, relative_path), "r", encoding="utf-8") as f:
+				payload = json.load(f)
+			self.assertEqual(payload.get("anonymous"), 1, f"{route} must be anonymous")
+			self.assertEqual(payload.get("published"), 1, f"{route} must stay published")

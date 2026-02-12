@@ -40,6 +40,10 @@ A reporting cycle is where mutable grading activity becomes institutional record
 - **Indexing**:
   - index on (`school`, `academic_year`, `term`, `program`)
 - **Desk client script**: stub-only (`reporting_cycle.js`)
+- **Architecture guarantees (embedded from term-reporting notes)**:
+  - reporting lifecycle is explicit (`Draft → Open → Calculated → Locked → Published`)
+  - reporting is a controlled snapshot boundary, not a live gradebook view
+  - once locked/published, recalculation and edits must follow governed override/re-open pathways only
 
 ### Permission Matrix
 

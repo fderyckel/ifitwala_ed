@@ -37,6 +37,10 @@ Course Term Result intentionally duplicates context fields (student, course, pro
   - (`reporting_cycle`, `course`)
   - (`reporting_cycle`, `program`)
 - **Desk client script**: stub-only (`course_term_result.js`)
+- **Architecture guarantees (embedded from term-reporting notes)**:
+  - one row represents one `student × course × term × reporting cycle` fact
+  - values are materialized from official Task Outcome truth and are not live-recomputed by UI views
+  - override paths retain original calculated values for auditability
 
 ### Permission Matrix
 

@@ -64,6 +64,10 @@ Teachers can reuse a strong task design across cohorts and terms, while each del
 - **Reports/analytics note**:
   - no dedicated Query/Script report object currently references `Task` directly
   - analytics is delivered through SPA/API surfaces instead
+- **Architecture guarantees (embedded from assessment doctrine)**:
+  - Task is a reusable definition artifact, not a grading fact table
+  - grading mode is explicit and single-mode (`None`, `Completion`, `Binary`, `Points`, `Criteria`)
+  - Task does not compute final course grades or reporting-cycle results
 
 ### Permission Matrix
 
@@ -74,12 +78,6 @@ Teachers can reuse a strong task design across cohorts and terms, while each del
 | `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
 | `Instructor` | Yes | Yes | Yes | Yes |
 | `Academic Staff` | Yes | No | No | No |
-
-## Authoritative References
-
-- `ifitwala_ed/docs/assessment/01_assessment_notes.md`
-- `ifitwala_ed/docs/assessment/02_curriculum_relationship_notes.md`
-- `ifitwala_ed/docs/assessment/04_task_notes.md`
 
 ## Related Docs
 

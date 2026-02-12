@@ -34,6 +34,10 @@ When categories are clean, your curriculum team can compare like-for-like eviden
 - **Linked child-table ecosystem**:
   - `Course Assessment Category`
   - `Program Assessment Category`
+- **Architecture guarantees (embedded from assessment doctrine)**:
+  - categories are semantic classification only
+  - categories do not compute grades, weights, or numeric outcomes
+  - category flags (for example summative/include-in-final) express policy intent, not calculation logic
 
 ### Permission Matrix
 
@@ -45,10 +49,6 @@ When categories are clean, your curriculum team can compare like-for-like eviden
 | `Academic Staff` | Yes | No | No | No |
 | `Instructor` | Yes | No | No | No |
 | `Accreditation Visitor` | Yes | No | No | No |
-
-## Authoritative References
-
-- `ifitwala_ed/docs/assessment/01_assessment_notes.md`
 
 ## Related Docs
 

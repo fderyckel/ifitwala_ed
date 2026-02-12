@@ -55,6 +55,10 @@ Once a delivery has outcomes/evidence, grading configuration is intentionally lo
 - **Service dependencies**:
   - `assessment/task_delivery_service.py` (`get_delivery_context`, `bulk_create_outcomes`, lesson-instance resolution)
 - **Desk client script**: currently stub-only (`task_delivery.js`)
+- **Architecture guarantees (embedded from assessment doctrine)**:
+  - delivery snapshots assessment behavior for historical stability
+  - criteria deliveries snapshot rubric rows so later task edits do not rewrite history
+  - one delivery can lead to many outcomes, but each student still gets exactly one official outcome row for that delivery
 
 ### Permission Matrix
 
@@ -63,11 +67,6 @@ Once a delivery has outcomes/evidence, grading configuration is intentionally lo
 | `System Manager` | Yes | Yes | Yes | Yes |
 | `Academic Admin` | Yes | Yes | Yes | Yes |
 | `Instructor` | Yes | Yes | Yes | Yes |
-
-## Authoritative References
-
-- `ifitwala_ed/docs/assessment/02_curriculum_relationship_notes.md`
-- `ifitwala_ed/docs/assessment/04_task_notes.md`
 
 ## Related Docs
 

@@ -49,6 +49,10 @@ Contributions are professional inputs. Official student truth is still written t
   - (`task_submission`)
   - (`contributor`, `modified`)
 - **Desk client script**: stub-only (`task_contribution.js`)
+- **Architecture guarantees (embedded from gradebook/task notes)**:
+  - contributions are non-destructive, additive records (no overwrite model)
+  - contribution rows represent professional judgment inputs; official fields are derived server-side into Task Outcome
+  - moderation and peer-review decisions stay in contribution history for audit trail continuity
 
 ### Permission Matrix
 

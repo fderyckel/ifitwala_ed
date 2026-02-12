@@ -35,6 +35,10 @@ Without snapshots, later edits to task criteria would silently rewrite grading h
   - `TaskDelivery._ensure_rubric_snapshot` builds rows at submit time
   - guards against empty criteria snapshots
 - **Desk client script**: stub-only (`task_rubric_version.js`)
+- **Architecture guarantees (embedded from assessment doctrine)**:
+  - rubric version preserves criteria structure used at grading time
+  - snapshot behavior protects auditability when Task criteria evolve after release
+  - criterion totals remain strategy-dependent (`Sum Total` vs `Separate Criteria`)
 
 ### Permission Matrix
 

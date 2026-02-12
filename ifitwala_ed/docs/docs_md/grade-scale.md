@@ -45,6 +45,10 @@ When grade boundaries live in one master place, teachers can grade quickly while
 - **Workspace surfaces**:
   - `Curriculum` workspace
   - `Admin` workspace
+- **Architecture guarantees (embedded from assessment doctrine)**:
+  - intervals are interpreted policy boundaries, not foreign-key-linked grade facts
+  - interval ranges must stay ordered and non-overlapping to keep symbol resolution deterministic
+  - grade symbol + numeric grade value are validated together when written to outcomes/contributions
 
 ### Permission Matrix
 
@@ -55,11 +59,6 @@ When grade boundaries live in one master place, teachers can grade quickly while
 | `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
 | `Academic Staff` | Yes | No | No | No |
 | `Instructor` | Yes | No | No | No |
-
-## Authoritative References
-
-- `ifitwala_ed/docs/assessment/01_assessment_notes.md`
-- `ifitwala_ed/docs/assessment/05_term_reporting_notes.md`
 
 ## Related Docs
 

@@ -57,6 +57,11 @@ Existing submission evidence cannot be overwritten. New evidence must be added a
 - **Desk client script** (`task_submission.js`):
   - governed upload button
   - direct inline file edit disabled on child attachment rows
+- **Architecture guarantees (embedded from assessment + portal/file governance notes)**:
+  - submission evidence is append-only and versioned; no in-place overwrite of prior evidence
+  - student resubmission marks prior teacher contributions as stale and raises `has_new_submission`
+  - offline evidence is supported with governed evidence stubs when submission is required
+  - uploads must follow governed file routing/classification patterns, including private handling for sensitive student evidence
 
 ### Permission Matrix
 

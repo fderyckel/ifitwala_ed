@@ -57,6 +57,10 @@ Exactly one outcome exists for each `Task Delivery × Student` pair, protected b
   - official recomputation: `assessment/task_outcome_service.py`
   - new-evidence flag handling: `mark_new_submission_seen`
 - **Desk client script**: stub-only (`task_outcome.js`)
+- **Architecture guarantees (embedded from assessment doctrine)**:
+  - outcome is the official fact table; submissions and contributions are supporting layers
+  - per-criterion official results are always preserved; task totals are strategy-dependent
+  - publication status is a visibility gate and does not redefine grading truth
 
 ### Permission Matrix
 
