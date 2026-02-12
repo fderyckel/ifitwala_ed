@@ -27,6 +27,10 @@ import type {
 	Response as SetShowcaseStateResponse,
 } from '@/types/contracts/portfolio/set_showcase_state'
 import type {
+	Request as ModeratePortfolioItemsRequest,
+	Response as ModeratePortfolioItemsResponse,
+} from '@/types/contracts/portfolio/moderate_portfolio_items'
+import type {
 	Request as ApplyEvidenceTagRequest,
 	Response as ApplyEvidenceTagResponse,
 } from '@/types/contracts/portfolio/apply_evidence_tag'
@@ -58,6 +62,7 @@ const METHODS = {
 	addPortfolioItem: 'ifitwala_ed.api.student_portfolio.add_portfolio_item',
 	updatePortfolioItem: 'ifitwala_ed.api.student_portfolio.update_portfolio_item',
 	setShowcaseState: 'ifitwala_ed.api.student_portfolio.set_showcase_state',
+	moderatePortfolioItems: 'ifitwala_ed.api.student_portfolio.moderate_portfolio_items',
 	applyEvidenceTag: 'ifitwala_ed.api.student_portfolio.apply_evidence_tag',
 	removeEvidenceTag: 'ifitwala_ed.api.student_portfolio.remove_evidence_tag',
 	createPortfolioShareLink: 'ifitwala_ed.api.student_portfolio.create_portfolio_share_link',
@@ -100,6 +105,12 @@ export async function setShowcaseState(
 	payload: SetShowcaseStateRequest
 ): Promise<SetShowcaseStateResponse> {
 	return apiMethod<SetShowcaseStateResponse>(METHODS.setShowcaseState, payload)
+}
+
+export async function moderatePortfolioItems(
+	payload: ModeratePortfolioItemsRequest
+): Promise<ModeratePortfolioItemsResponse> {
+	return apiMethod<ModeratePortfolioItemsResponse>(METHODS.moderatePortfolioItems, payload)
 }
 
 export async function applyEvidenceTag(

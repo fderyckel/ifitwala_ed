@@ -4,6 +4,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.student_portfolio import (
 	_deterministic_share_token,
+	_moderation_state_for_action,
 	_resolve_settings_for_school,
 	_token_hash,
 )
@@ -27,3 +28,8 @@ class TestStudentPortfolio(FrappeTestCase):
 		self.assertEqual(settings.get("enable_moderation"), 1)
 		self.assertEqual(settings.get("moderation_scope"), "Showcase only")
 		self.assertEqual(settings.get("allow_student_external_share"), 1)
+
+	def test_moderation_state_for_action(self):
+		self.assertEqual(_moderation_state_for_action("approve"), "Approved")
+		self.assertEqual(_moderation_state_for_action("return_for_edit"), "Returned for Edit")
+		self.assertEqual(_moderation_state_for_action("hide"), "Hidden / Rejected")

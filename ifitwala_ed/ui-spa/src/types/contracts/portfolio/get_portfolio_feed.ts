@@ -61,4 +61,6 @@ export type Response = {
 	total: number
 	page: number
 	page_length: number
+	actor_role?: 'Student' | 'Guardian' | 'Staff' | string
+	scope_students?: string[]
 }

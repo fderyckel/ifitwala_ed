@@ -171,6 +171,16 @@ def _ensure_can_write_student(student: str) -> dict[str, Any]:
 	return scope
 
 
+def _resolve_settings_doc_for_school(school: str | None) -> str | None:
+	if not school:
+		return None
+	for school_name in get_school_lineage(school):
+		name = frappe.db.get_value("Portfolio Journal Settings", {"school": school_name, "enabled": 1}, "name")
+		if name:
+			return name
+	return None
+
+
 def _resolve_settings_for_school(school: str | None) -> Dict[str, Any]:
 	defaults = {
 		"enable_moderation": 1,
@@ -186,10 +196,8 @@ def _resolve_settings_for_school(school: str | None) -> Dict[str, Any]:
 	if not school:
 		return defaults
 
-	for school_name in get_school_lineage(school):
-		name = frappe.db.get_value("Portfolio Journal Settings", {"school": school_name, "enabled": 1}, "name")
-		if not name:
-			continue
+	name = _resolve_settings_doc_for_school(school)
+	if name:
 		row = frappe.db.get_value(
 			"Portfolio Journal Settings",
 			name,
@@ -208,8 +216,100 @@ def _resolve_settings_for_school(school: str | None) -> Dict[str, Any]:
 		)
 		if row:
 			defaults.update(row)
-			break
 	return defaults
+
+
+def _resolve_moderation_policy_for_school(school: str) -> Dict[str, Any]:
+	settings = _resolve_settings_for_school(school)
+	scope = (settings.get("moderation_scope") or "Showcase only").strip()
+	policy = {
+		"enable_moderation": int(settings.get("enable_moderation") or 0) == 1,
+		"moderation_scope": scope,
+		"showcase_roles": {"Academic Admin", "Academic Staff"},
+		"reflection_roles": set(),
+	}
+
+	settings_name = _resolve_settings_doc_for_school(school)
+	if settings_name:
+		role_rows = frappe.get_all(
+			"Portfolio Journal Setting Role",
+			filters={
+				"parent": settings_name,
+				"parenttype": "Portfolio Journal Settings",
+				"parentfield": "moderation_roles",
+			},
+			fields=["role", "can_moderate_showcase", "can_moderate_reflection"],
+			limit_page_length=0,
+		)
+		showcase_roles = {
+			row.get("role")
+			for row in role_rows
+			if row.get("role") and int(row.get("can_moderate_showcase") or 0) == 1
+		}
+		reflection_roles = {
+			row.get("role")
+			for row in role_rows
+			if row.get("role") and int(row.get("can_moderate_reflection") or 0) == 1
+		}
+		if showcase_roles:
+			policy["showcase_roles"] = showcase_roles
+		if reflection_roles:
+			policy["reflection_roles"] = reflection_roles
+
+	return policy
+
+
+def _moderation_state_for_action(action: str) -> str:
+	mapping = {
+		"approve": "Approved",
+		"return_for_edit": "Returned for Edit",
+		"hide": "Hidden / Rejected",
+	}
+	key = (action or "").strip().lower()
+	state = mapping.get(key)
+	if not state:
+		frappe.throw(_("Invalid moderation action. Use approve, return_for_edit, or hide."))
+	return state
+
+
+def _ensure_can_moderate_portfolio_item(
+	*,
+	school: str,
+	student: str,
+	user_roles: set[str],
+	policy_cache: Dict[str, Dict[str, Any]],
+	visibility_cache: Dict[tuple[str, str], bool],
+) -> Dict[str, Any]:
+	if "Student" in user_roles or "Guardian" in user_roles:
+		frappe.throw(_("Only staff moderators can moderate portfolio showcase items."), frappe.PermissionError)
+
+	policy = policy_cache.get(school)
+	if policy is None:
+		policy = _resolve_moderation_policy_for_school(school)
+		policy_cache[school] = policy
+
+	if not policy.get("enable_moderation"):
+		frappe.throw(_("Moderation is disabled for this school."), frappe.PermissionError)
+	if policy.get("moderation_scope") not in {"Showcase only", "Both"}:
+		frappe.throw(_("Showcase moderation is disabled for this school."), frappe.PermissionError)
+
+	if user_roles & ADMIN_ROLES:
+		return policy
+
+	key = (student, school)
+	allowed = visibility_cache.get(key)
+	if allowed is None:
+		scope = _resolve_actor_scope(requested_students=[student], school_filter=school)
+		allowed = scope.get("role") == "Staff" and bool(scope.get("students") or scope.get("all_students"))
+		visibility_cache[key] = allowed
+	if not allowed:
+		frappe.throw(_("Not permitted to moderate this student's portfolio in the selected school."), frappe.PermissionError)
+
+	showcase_roles = set(policy.get("showcase_roles") or set())
+	if not showcase_roles or not (user_roles & showcase_roles):
+		frappe.throw(_("You are not in this school's showcase moderation roles."), frappe.PermissionError)
+
+	return policy
 
 
 def _get_or_create_portfolio(student: str, academic_year: str, school: str) -> str:
@@ -378,7 +478,14 @@ def _build_portfolio_feed(data: Dict[str, Any]) -> Dict[str, Any]:
 	allowed_students = scope.get("students") or []
 
 	if not allowed_students and not scope.get("all_students"):
-		return {"items": [], "total": 0, "page": 1, "page_length": 20}
+		return {
+			"items": [],
+			"total": 0,
+			"page": 1,
+			"page_length": 20,
+			"actor_role": role,
+			"scope_students": allowed_students,
+		}
 
 	date_from = data.get("date_from")
 	date_to = data.get("date_to")	
@@ -495,6 +602,8 @@ def _build_portfolio_feed(data: Dict[str, Any]) -> Dict[str, Any]:
 		"total": total,
 		"page": page,
 		"page_length": page_length,
+		"actor_role": role,
+		"scope_students": allowed_students,
 	}
 
 
@@ -513,9 +622,48 @@ def create_reflection_entry(payload=None, **kwargs):
 
 	_ensure_can_write_student(student)
 
-	school = (data.get("school") or "").strip() or frappe.db.get_value("Student", student, "anchor_school")
+	academic_year = (data.get("academic_year") or "").strip()
+	school = (data.get("school") or "").strip()
+
+	program_enrollment = (data.get("program_enrollment") or "").strip()
+	if program_enrollment:
+		pe_ctx = frappe.db.get_value(
+			"Program Enrollment",
+			program_enrollment,
+			["student", "academic_year", "school"],
+			as_dict=True,
+		)
+		if pe_ctx and pe_ctx.get("student") == student:
+			academic_year = academic_year or (pe_ctx.get("academic_year") or "")
+			school = school or (pe_ctx.get("school") or "")
+
+	task_submission = (data.get("task_submission") or "").strip()
+	if task_submission:
+		ts_ctx = frappe.db.get_value(
+			"Task Submission",
+			task_submission,
+			["student", "academic_year", "school"],
+			as_dict=True,
+		)
+		if ts_ctx and ts_ctx.get("student") == student:
+			academic_year = academic_year or (ts_ctx.get("academic_year") or "")
+			school = school or (ts_ctx.get("school") or "")
+
+	if not school:
+		school = frappe.db.get_value("Student", student, "anchor_school")
+	if not academic_year:
+		latest_pe = frappe.get_all(
+			"Program Enrollment",
+			filters={"student": student, "archived": 0},
+			fields=["academic_year"],
+			order_by="enrollment_date desc, modified desc",
+			limit_page_length=1,
+		)
+		academic_year = (latest_pe[0] or {}).get("academic_year") if latest_pe else None
 	if not school:
 		frappe.throw(_("School is required."))
+	if not academic_year:
+		frappe.throw(_("Academic year is required."))
 
 	settings = _resolve_settings_for_school(school)
 	organization = (data.get("organization") or "").strip() or frappe.db.get_value("School", school, "organization")
@@ -524,7 +672,7 @@ def create_reflection_entry(payload=None, **kwargs):
 		{
 			"doctype": "Student Reflection Entry",
 			"student": student,
-			"academic_year": data.get("academic_year"),
+			"academic_year": academic_year,
 			"school": school,
 			"organization": organization,
 			"entry_date": data.get("entry_date") or today(),
@@ -535,13 +683,13 @@ def create_reflection_entry(payload=None, **kwargs):
 			"body": data.get("body"),
 			"course": data.get("course"),
 			"student_group": data.get("student_group"),
-			"program_enrollment": data.get("program_enrollment"),
+			"program_enrollment": program_enrollment or None,
 			"activity_booking": data.get("activity_booking"),
 			"lesson": data.get("lesson"),
 			"lesson_instance": data.get("lesson_instance"),
 			"lesson_activity": data.get("lesson_activity"),
 			"task_delivery": data.get("task_delivery"),
-			"task_submission": data.get("task_submission"),
+			"task_submission": task_submission or None,
 		}
 	)
 	doc.insert(ignore_permissions=True)
@@ -776,6 +924,93 @@ def set_showcase_state(payload=None, **kwargs):
 		"item_name": row.name,
 		"is_showcase": int(row.is_showcase or 0) == 1,
 		"moderation_state": row.moderation_state,
+	}
+
+
+@frappe.whitelist()
+def moderate_portfolio_items(payload=None, **kwargs):
+	data = _normalize_payload(payload, kwargs)
+	action = (data.get("action") or "").strip()
+	item_names = _normalize_to_list(data.get("item_names"))
+	if not item_names:
+		frappe.throw(_("item_names is required."))
+
+	target_state = _moderation_state_for_action(action)
+	user = _require_authenticated_user()
+	user_roles = _user_roles(user)
+	if "Student" in user_roles or "Guardian" in user_roles:
+		frappe.throw(_("Only staff moderators can moderate portfolio showcase items."), frappe.PermissionError)
+
+	rows = frappe.db.sql(
+		"""
+		SELECT
+			pi.name AS item_name,
+			p.student,
+			p.school
+		FROM `tabStudent Portfolio Item` pi
+		JOIN `tabStudent Portfolio` p ON p.name = pi.parent
+		WHERE pi.name IN %(item_names)s
+		""",
+		{"item_names": tuple(item_names)},
+		as_dict=True,
+	)
+	rows_by_name = {row.get("item_name"): row for row in rows if row.get("item_name")}
+
+	moderation_comment = data.get("moderation_comment")
+	if moderation_comment is not None:
+		moderation_comment = str(moderation_comment).strip()
+
+	policy_cache: Dict[str, Dict[str, Any]] = {}
+	visibility_cache: Dict[tuple[str, str], bool] = {}
+	results = []
+	updated = 0
+
+	for item_name in item_names:
+		row = rows_by_name.get(item_name)
+		if not row:
+			results.append({"item_name": item_name, "ok": False, "error": _("Portfolio item not found.")})
+			continue
+		school = row.get("school")
+		student = row.get("student")
+		if not school or not student:
+			results.append({"item_name": item_name, "ok": False, "error": _("Portfolio item context is incomplete.")})
+			continue
+
+		try:
+			_ensure_can_moderate_portfolio_item(
+				school=school,
+				student=student,
+				user_roles=user_roles,
+				policy_cache=policy_cache,
+				visibility_cache=visibility_cache,
+			)
+			values = {
+				"moderation_state": target_state,
+				"reviewed_by": user,
+				"reviewed_on": now_datetime(),
+			}
+			if moderation_comment is not None:
+				values["moderation_comment"] = moderation_comment
+			if target_state == "Hidden / Rejected":
+				values["is_showcase"] = 0
+
+			frappe.db.set_value("Student Portfolio Item", item_name, values, update_modified=True)
+			updated += 1
+			results.append({"item_name": item_name, "ok": True, "moderation_state": target_state})
+		except Exception as exc:
+			results.append(
+				{
+					"item_name": item_name,
+					"ok": False,
+					"error": str(exc) or _("Could not moderate this item."),
+				}
+			)
+
+	return {
+		"action": action,
+		"moderation_state": target_state,
+		"updated": updated,
+		"results": results,
 	}
 
 

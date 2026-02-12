@@ -71,6 +71,12 @@ Portfolio/Journal attaches to existing ERP entities without duplication:
 
 Moderation is school-setting controlled. Default configuration is moderation enabled for showcase flow.
 
+Staff moderation workload control:
+
+- Batch moderation is supported for showcase portfolio items (`approve`, `return_for_edit`, `hide`).
+- Batch actions are blocked when school settings disable moderation or disable showcase moderation scope.
+- Moderation role checks use `Portfolio Journal Settings.moderation_roles` (with admin-role override).
+
 ## 6. API contract
 
 Backend endpoints are grouped under:
@@ -82,6 +88,7 @@ Key contracts:
 - `get_portfolio_feed`
 - `create_reflection_entry`, `list_reflection_entries`
 - `add_portfolio_item`, `update_portfolio_item`, `set_showcase_state`
+- `moderate_portfolio_items` (batch showcase moderation)
 - `apply_evidence_tag`, `remove_evidence_tag`
 - `create_portfolio_share_link`, `revoke_portfolio_share_link`
 - `export_portfolio_pdf`, `export_reflection_pdf`

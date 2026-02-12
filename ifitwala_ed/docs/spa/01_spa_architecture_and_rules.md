@@ -287,6 +287,38 @@ This rule prevents silent portal drift when AY/calendar is maintained at a paren
 
 ---
 
+### 3.4.2 Portal Navigation Shell Contract (Locked)
+
+For Student/Guardian SPA shell navigation:
+
+* `PortalLayout.vue` remains the single shell authority for Student + Guardian routes.
+* `PortalSidebar.vue` remains the single navigation component for this shell.
+* Desktop uses a persistent rail pattern (collapsed/expanded), never full hide.
+* Mobile uses an overlay drawer pattern (hamburger + backdrop), never desktop rail behavior.
+* All portal links must stay named-route based (`{ name: '...' }`) with no hardcoded `/portal/...` paths.
+
+State ownership:
+
+1. `PortalLayout` owns `isMobileSidebarOpen`.
+2. `PortalLayout` owns `isDesktopRailExpanded`.
+3. Desktop rail preference persists per section (`student` / `guardian`) via explicit local storage keys.
+4. Route changes must close only the mobile drawer.
+
+Accessibility and UX invariants:
+
+* Rail toggle must expose `aria-expanded`.
+* Collapsed rail must preserve accessible labels (screen reader-visible text + tooltip on hover/focus).
+* Active navigation must include a non-color cue in addition to color.
+* Motion for rail transitions must respect `prefers-reduced-motion`.
+
+Forbidden:
+
+* Parallel student/guardian shell implementations for sidebar behavior.
+* New icon libraries for portal navigation when `FeatherIcon` already satisfies the need.
+* Route-shape drift (hardcoded paths replacing named routes).
+
+---
+
 ### 3.5 Architectural reason (why this matters)
 
 Under the A+ model:

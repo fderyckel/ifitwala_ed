@@ -203,6 +203,35 @@
 					Portfolio: {{ portfolioFeed.items.length }} · Reflections: {{ reflectionFeed.items.length }}
 				</p>
 			</div>
+			<div
+				v-if="isStaff && moderationQueueItems.length"
+				class="mb-3 rounded-xl border border-line-soft bg-surface-soft p-3"
+			>
+				<div class="flex flex-wrap items-center justify-between gap-2">
+					<p class="type-body-strong text-ink">
+						Moderation Queue: {{ moderationQueueItems.length }} pending on this page
+					</p>
+					<p class="type-caption text-ink/70">{{ selectedModerationCount }} selected</p>
+				</div>
+				<div class="mt-2 flex flex-wrap gap-2">
+					<button type="button" class="if-action" :disabled="moderationBusy" @click="selectPendingForModeration">
+						Select all pending
+					</button>
+					<button type="button" class="if-action" :disabled="moderationBusy" @click="clearModerationSelection">
+						Clear selection
+					</button>
+					<button type="button" class="if-action" :disabled="moderationBusy" @click="onBatchModerate('approve')">
+						Approve selected
+					</button>
+					<button type="button" class="if-action" :disabled="moderationBusy" @click="onBatchModerate('return_for_edit')">
+						Return selected
+					</button>
+					<button type="button" class="if-action" :disabled="moderationBusy" @click="onBatchModerate('hide')">
+						Hide selected
+					</button>
+				</div>
+				<p v-if="moderationError" class="mt-2 type-caption text-flame" role="alert">{{ moderationError }}</p>
+			</div>
 
 			<p v-if="loading" class="type-body text-ink/70">Loading feed...</p>
 			<div v-else-if="loadError" class="rounded-lg border border-line-soft bg-white p-3">
@@ -230,6 +259,18 @@
 								<p class="mt-1 type-caption text-ink/60">Moderation: {{ row.item.moderation_state }}</p>
 							</div>
 							<div class="flex flex-wrap items-center gap-2">
+								<label
+									v-if="isStaff && canBatchModerateItem(row.item)"
+									class="inline-flex items-center gap-2 rounded-full border border-line-soft bg-white px-2 py-1"
+								>
+									<input
+										type="checkbox"
+										class="rounded border-line-soft"
+										:checked="Boolean(moderationSelection[row.item.item_name])"
+										@change="onToggleModerationSelection(row.item.item_name, $event)"
+									/>
+									<span class="type-caption text-ink/70">Queue</span>
+								</label>
 								<span
 									class="rounded-full px-2 py-1 type-badge-label"
 									:class="row.item.is_showcase ? 'bg-leaf/20 text-leaf' : 'bg-surface-soft text-ink/70'"
@@ -335,12 +376,14 @@ import {
 	exportReflectionPdf,
 	getPortfolioFeed,
 	listReflectionEntries,
+	moderatePortfolioItems,
 	removeEvidenceTag,
 	setShowcaseState,
 } from '@/lib/services/portfolio/portfolioService'
 
 import type { PortfolioFeedItem, Request as GetPortfolioFeedRequest, Response as GetPortfolioFeedResponse } from '@/types/contracts/portfolio/get_portfolio_feed'
 import type { ReflectionEntryRow, Request as ListReflectionEntriesRequest, Response as ListReflectionEntriesResponse } from '@/types/contracts/portfolio/list_reflection_entries'
+import type { ModerationAction } from '@/types/contracts/portfolio/moderate_portfolio_items'
 import type { ChildRef } from '@/types/contracts/guardian/get_guardian_home_snapshot'
 
 type Actor = 'student' | 'guardian' | 'staff'
@@ -372,6 +415,7 @@ const portalLabel = computed(() => {
 const canMutate = computed(() => actor.value !== 'guardian')
 const canExport = computed(() => actor.value !== 'guardian')
 const shareControlsEnabled = computed(() => actor.value !== 'guardian')
+const isStaff = computed(() => actor.value === 'staff')
 
 const loading = ref(false)
 const loadError = ref('')
@@ -420,6 +464,9 @@ const showcaseBusy = ref<Record<string, boolean>>({})
 const tagBusy = ref<Record<string, boolean>>({})
 const tagDraft = ref<Record<string, string>>({})
 const addToPortfolioBusy = ref<Record<string, boolean>>({})
+const moderationSelection = ref<Record<string, boolean>>({})
+const moderationBusy = ref(false)
+const moderationError = ref('')
 
 const combinedRows = computed<FeedRow[]>(() => {
 	const portfolioRows: FeedRow[] = (portfolioFeed.value.items || []).map((item) => ({
@@ -459,6 +506,15 @@ const totalPages = computed(() => {
 })
 
 const hasPaging = computed(() => totalPages.value > 1)
+const moderationQueueItems = computed(() =>
+	(portfolioFeed.value.items || []).filter((item) => canBatchModerateItem(item))
+)
+const selectedModerationNames = computed(() =>
+	moderationQueueItems.value
+		.filter((item) => Boolean(moderationSelection.value[item.item_name]))
+		.map((item) => item.item_name)
+)
+const selectedModerationCount = computed(() => selectedModerationNames.value.length)
 
 function todayIso(): string {
 	const now = new Date()
@@ -480,6 +536,11 @@ function addDaysIso(days: number): string {
 function normalizeDate(value?: string | null): string {
 	if (!value) return ''
 	return String(value)
+}
+
+function canBatchModerateItem(item: PortfolioFeedItem): boolean {
+	if (!item.is_showcase) return false
+	return item.moderation_state === 'Submitted for Review' || item.moderation_state === 'Returned for Edit'
 }
 
 function parseCsv(value: string): string[] {
@@ -533,7 +594,10 @@ function syncDerivedDefaults() {
 		shareForm.portfolio = availablePortfolioIds.value[0] || ''
 	}
 
-	const students = Array.from(new Set(portfolioFeed.value.items.map((row) => row.student).filter(Boolean)))
+	const scopedStudents = Array.isArray(portfolioFeed.value.scope_students) ? portfolioFeed.value.scope_students : []
+	const students = Array.from(
+		new Set([...scopedStudents, ...portfolioFeed.value.items.map((row) => row.student)].filter(Boolean))
+	)
 	if (actor.value === 'student' && !reflectionForm.student && students.length === 1) {
 		reflectionForm.student = students[0]
 	}
@@ -541,6 +605,17 @@ function syncDerivedDefaults() {
 		const filtered = resolvedStudentIds()
 		if (filtered.length === 1) reflectionForm.student = filtered[0]
 	}
+}
+
+function pruneModerationSelection() {
+	const allowed = new Set(moderationQueueItems.value.map((item) => item.item_name))
+	const next: Record<string, boolean> = {}
+	for (const [itemName, checked] of Object.entries(moderationSelection.value)) {
+		if (checked && allowed.has(itemName)) {
+			next[itemName] = true
+		}
+	}
+	moderationSelection.value = next
 }
 
 function messageForError(error: unknown, fallback: string): string {
@@ -573,6 +648,7 @@ async function loadFeed() {
 		portfolioFeed.value = portfolioData
 		reflectionFeed.value = reflectionData
 		syncDerivedDefaults()
+		pruneModerationSelection()
 	} catch (error) {
 		loadError.value = messageForError(error, 'Unknown error')
 	} finally {
@@ -624,6 +700,62 @@ async function onToggleShowcase(itemName: string, current: boolean) {
 		toast.error(messageForError(error, 'Could not update showcase state.'))
 	} finally {
 		showcaseBusy.value[itemName] = false
+	}
+}
+
+function onToggleModerationSelection(itemName: string, event: Event) {
+	const checked = (event.target as HTMLInputElement | null)?.checked === true
+	moderationSelection.value = {
+		...moderationSelection.value,
+		[itemName]: checked,
+	}
+}
+
+function selectPendingForModeration() {
+	const next: Record<string, boolean> = {}
+	for (const item of moderationQueueItems.value) {
+		next[item.item_name] = true
+	}
+	moderationSelection.value = next
+	moderationError.value = ''
+}
+
+function clearModerationSelection() {
+	moderationSelection.value = {}
+	moderationError.value = ''
+}
+
+async function onBatchModerate(action: ModerationAction) {
+	const itemNames = selectedModerationNames.value
+	if (!itemNames.length) {
+		moderationError.value = 'Select at least one pending showcase item for moderation.'
+		toast.error(moderationError.value)
+		return
+	}
+
+	moderationBusy.value = true
+	moderationError.value = ''
+	try {
+		const response = await moderatePortfolioItems({
+			action,
+			item_names: itemNames,
+		})
+		const failed = (response.results || []).filter((row) => !row.ok)
+		if (failed.length) {
+			const firstError = failed[0]?.error || 'Some items could not be moderated.'
+			moderationError.value = `Updated ${response.updated} item(s). ${failed.length} item(s) failed. ${firstError}`
+			toast.error(moderationError.value)
+		} else {
+			toast.success(`Updated ${response.updated} showcase item(s).`)
+		}
+		clearModerationSelection()
+		await loadFeed()
+	} catch (error) {
+		const message = messageForError(error, 'Could not run batch moderation.')
+		moderationError.value = message
+		toast.error(message)
+	} finally {
+		moderationBusy.value = false
 	}
 }
 

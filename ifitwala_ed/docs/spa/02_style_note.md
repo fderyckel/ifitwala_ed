@@ -194,6 +194,48 @@ Everything here lives under:
 
 ---
 
+### 6.1.1 Portal Sidebar Rail Contract (Student/Guardian Shell)
+
+Portal navigation for Student/Guardian surfaces uses one canonical component pair:
+
+* `PortalLayout.vue` (state ownership)
+* `PortalSidebar.vue` (rendering + interactions)
+
+Styling must be driven by tokenized component classes in `components.css`, including:
+
+* `.portal-sidebar`
+* `.portal-sidebar--expanded`
+* `.portal-sidebar--collapsed`
+* `.portal-sidebar__item`
+* `.portal-sidebar__label`
+* `.portal-sidebar__tooltip`
+* `.portal-sidebar__toggle`
+
+Behavior contract (style-coupled):
+
+1. Desktop (`lg+`) is rail mode:
+   * collapsed width + expanded width variants
+   * icons always visible
+   * labels visually collapsed in rail mode
+2. Mobile (`<lg`) is drawer mode:
+   * full-width panel + backdrop
+   * no collapsed rail treatment
+3. Tooltips appear only in collapsed desktop mode, on hover and keyboard focus.
+4. Active item state must include non-color cue (for example, inset edge marker), not color alone.
+
+Accessibility + motion:
+
+* Label text remains screen-reader available when visually collapsed.
+* Rail transitions must disable motion under `prefers-reduced-motion`.
+
+Forbidden:
+
+* ad-hoc utility-only sidebar styling inside Vue templates
+* component-level font-family overrides for sidebar typography
+* introducing a second sidebar style system parallel to the portal rail classes
+
+---
+
 ### 6.2 Overlay & Dialog System (HeadlessUI — Canonical)
 
 Ifitwala uses **HeadlessUI Dialog + Transition** as the *behavior layer* and a **custom CSS overlay system** as the *visual + spatial truth*.
