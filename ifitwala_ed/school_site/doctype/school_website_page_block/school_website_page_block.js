@@ -31,6 +31,17 @@ function getPropsBuilder() {
 	});
 }
 
+function getGridFormField(gridForm, fieldname) {
+	if (!gridForm || !fieldname) return null;
+	if (typeof gridForm.get_field === "function") {
+		return gridForm.get_field(fieldname);
+	}
+	if (gridForm.fields_dict && gridForm.fields_dict[fieldname]) {
+		return gridForm.fields_dict[fieldname];
+	}
+	return null;
+}
+
 frappe.ui.form.on("School Website Page Block", {
 	form_render(frm, cdt, cdn) {
 		const grid = frm.fields_dict.blocks && frm.fields_dict.blocks.grid;
@@ -38,7 +49,7 @@ frappe.ui.form.on("School Website Page Block", {
 		const grid_row = grid.get_row(cdn);
 		if (!grid_row || !grid_row.grid_form) return;
 
-		const propsField = grid_row.grid_form.get_field("props");
+		const propsField = getGridFormField(grid_row.grid_form, "props");
 		if (!propsField || !propsField.$wrapper) return;
 		if (propsField.$wrapper.find(".iw-props-builder-btn").length) return;
 

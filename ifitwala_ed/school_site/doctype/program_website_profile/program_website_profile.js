@@ -90,6 +90,76 @@ function getSelectedBlockRow(frm) {
 	return null;
 }
 
+function getBlockSortRank(row) {
+	const order = Number(row && row.order);
+	if (Number.isFinite(order)) return order;
+	const idx = Number(row && row.idx);
+	if (Number.isFinite(idx)) return idx;
+	return 999999;
+}
+
+async function validatePreviewSeoRules(frm) {
+	const enabledRows = (frm.doc.blocks || [])
+		.filter((row) => Boolean(Number(row.is_enabled || 0)))
+		.sort((a, b) => getBlockSortRank(a) - getBlockSortRank(b));
+
+	if (!enabledRows.length) {
+		frappe.msgprint(__("Add at least one enabled block before preview."));
+		return false;
+	}
+
+	const blockTypes = [...new Set(enabledRows.map((row) => (row.block_type || "").trim()).filter(Boolean))];
+	if (!blockTypes.length) {
+		frappe.msgprint(__("Select a block type for enabled rows before preview."));
+		return false;
+	}
+
+	let definitionRows = [];
+	try {
+		definitionRows = await frappe.db.get_list("Website Block Definition", {
+			fields: ["block_type", "seo_role"],
+			filters: { block_type: ["in", blockTypes] },
+			limit_page_length: blockTypes.length
+		});
+	} catch (err) {
+		frappe.msgprint(__("Unable to validate block SEO rules before preview."));
+		return false;
+	}
+
+	const rolesByType = {};
+	(definitionRows || []).forEach((row) => {
+		rolesByType[row.block_type] = row.seo_role;
+	});
+
+	const missing = blockTypes.filter((blockType) => !rolesByType[blockType]);
+	if (missing.length) {
+		frappe.msgprint(__("Missing block definitions for: {0}", [missing.join(", ")]));
+		return false;
+	}
+
+	const ownsH1Count = enabledRows.reduce(
+		(count, row) => count + (rolesByType[row.block_type] === "owns_h1" ? 1 : 0),
+		0
+	);
+	if (ownsH1Count !== 1) {
+		frappe.msgprint(
+			__(
+				"Preview requires exactly one enabled H1 owner block (for example Program Intro or Hero). Found {0}.",
+				[String(ownsH1Count)]
+			)
+		);
+		return false;
+	}
+
+	const firstRole = rolesByType[enabledRows[0].block_type];
+	if (firstRole !== "owns_h1") {
+		frappe.msgprint(__("The first enabled block must own the H1."));
+		return false;
+	}
+
+	return true;
+}
+
 frappe.ui.form.on("Program Website Profile", {
 	refresh(frm) {
 		frm.clear_custom_buttons();
@@ -99,6 +169,9 @@ frappe.ui.form.on("Program Website Profile", {
 				frappe.msgprint(__("Select a School and Program to preview."));
 				return;
 			}
+
+			const canPreview = await validatePreviewSeoRules(frm);
+			if (!canPreview) return;
 
 			const [schoolSlug, programSlug] = await Promise.all([
 				getFieldValue("School", frm.doc.school, "website_slug"),
