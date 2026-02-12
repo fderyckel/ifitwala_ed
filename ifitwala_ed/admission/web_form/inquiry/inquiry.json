@@ -25,7 +25,7 @@
  "name": "inquiry",
  "owner": "Administrator",
  "published": 1,
- "route": "inquiry",
+ "route": "apply/inquiry",
  "show_attachments": 0,
  "show_list": 0,
  "show_sidebar": 0,

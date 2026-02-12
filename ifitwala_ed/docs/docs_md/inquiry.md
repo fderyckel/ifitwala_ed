@@ -36,7 +36,7 @@ Inquiry gives admission leaders visibility on response speed and pipeline health
 - **Desk form + list view**:
   - custom action buttons (`Assign`, `Reassign`, `Mark Contacted`, `Qualify`, `Archive`, `Invite to Apply`)
   - colored list indicators for workflow and SLA status
-- **Public web form**: `/inquiry` creates Inquiry records.
+- **Public web form**: `/apply/inquiry` creates Inquiry records.
 - **Notifications**:
   - `Notify Admission Manager` on new Inquiry
   - `Inquiry Assigned` on assignee change
@@ -63,7 +63,7 @@ Inquiry gives admission leaders visibility on response speed and pipeline health
   - workspace shortcut/card in `ifitwala_ed/admission/workspace/admission/admission.json`
 - **Web form surface**:
   - config file `ifitwala_ed/admission/web_form/inquiry/inquiry.json`
-  - route `inquiry` (public form)
+  - route `apply/inquiry` (public form)
 - **Staff analytics (SPA)**:
   - page `ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`
   - route `/portal/staff/analytics/inquiry` via `ifitwala_ed/ui-spa/src/router/index.ts`

@@ -64,11 +64,21 @@ def resolve_default_school():
 
 def resolve_school_from_route(route: str):
 	segments = [seg for seg in route.split("/") if seg]
-	if segments:
+	slug = None
+	if len(segments) >= 2 and segments[0] == "schools":
+		slug = segments[1]
+	elif segments:
 		slug = segments[0]
+
+	if slug:
 		school_name = frappe.db.get_value("School", {"website_slug": slug}, "name")
 		if school_name:
 			return frappe.get_doc("School", school_name)
+		if segments and segments[0] == "schools":
+			frappe.throw(
+				_("School not found for slug: {0}.").format(slug),
+				frappe.DoesNotExistError,
+			)
 	return resolve_default_school()
 
 
@@ -208,11 +218,11 @@ def build_program_url(program: dict) -> str:
 
 
 def build_program_profile_url(*, school_slug: str, program_slug: str) -> str:
-	return normalize_route(f"/{school_slug}/programs/{program_slug}")
+	return normalize_route(f"/schools/{school_slug}/programs/{program_slug}")
 
 
 def build_story_url(*, school_slug: str, story_slug: str) -> str:
-	return normalize_route(f"/{school_slug}/stories/{story_slug}")
+	return normalize_route(f"/schools/{school_slug}/stories/{story_slug}")
 
 
 def resolve_admissions_cta_url(*, school, intent: str) -> str:

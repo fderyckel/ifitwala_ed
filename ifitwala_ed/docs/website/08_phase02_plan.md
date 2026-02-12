@@ -175,7 +175,7 @@ Each is just a **block definition**, not a new page.
 ### Routing
 
 ```
-/{school_slug}/programs/{program_slug}
+/schools/{school_slug}/programs/{program_slug}
 ```
 
 **Rules**
@@ -562,7 +562,7 @@ Before any code:
 * Add route resolver:
 
   ```
-  /{school_slug}/programs/{program_slug}
+  /schools/{school_slug}/programs/{program_slug}
   ```
 * Update Program List block:
 

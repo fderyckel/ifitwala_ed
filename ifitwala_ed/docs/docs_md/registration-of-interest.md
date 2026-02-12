@@ -19,7 +19,7 @@ summary: "Capture family and student intent early, route it into admissions oper
 
 ## Where It Is Used Across the ERP
 
-- **Public web form**: `/registration-of-interest`
+- **Public web form**: `/apply/registration-of-interest`
 - **SLA operations**: reuses admissions SLA helpers (`set_inquiry_deadlines`) and hourly SLA sweep job.
 - **Assignment-close automation**: ToDo close hook supports this doctype in `on_todo_update_close_marks_contacted`.
 - **Admissions intake surface**: functions as top-of-funnel input before [**Inquiry**](/docs/en/inquiry/) and [**Student Applicant**](/docs/en/student-applicant/).
@@ -34,7 +34,7 @@ Use Registration of Interest when you want broad demand capture. Use Inquiry whe
 - **Autoname**: `ROI-{YY}-{MM}-{###}`
 - **Web form surface**:
   - config file `ifitwala_ed/admission/web_form/registration_of_interest/registration_of_interest.json`
-  - route `registration-of-interest` (public form)
+  - route `apply/registration-of-interest` (public form)
 - **Desk surface**:
   - doctype JSON/UI in `ifitwala_ed/admission/doctype/registration_of_interest/registration_of_interest.json`
   - workspace visibility from Admission workspace links/shortcuts

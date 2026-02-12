@@ -173,7 +173,7 @@ school_slug (required)
 
 **Used by**
 
-* `/{school_slug}/programs/<program_slug>`
+* `/schools/{school_slug}/programs/<program_slug>`
 
 **Consumes**
 

@@ -230,7 +230,7 @@ staff_carousel
 **Where**
 
 ```html
-<a href="/registration-of-interest" class="btn btn-primary btn-lg">
+<a href="/apply/registration-of-interest" class="btn btn-primary btn-lg">
 ```
 
 **Canonical block**

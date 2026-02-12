@@ -69,38 +69,20 @@ website_route_rules = [
     {"from_route": "/admissions", "to_route": "admissions"},
     {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
     {"from_route": "/staff", "to_route": "/portal/staff"},
-    # Keep native Frappe web form routes reachable under website catch-all.
-    {"from_route": "/inquiry", "to_route": "/inquiry"},
-    {"from_route": "/inquiry/new", "to_route": "/inquiry/new"},
-    {"from_route": "/inquiry/<path:subpath>", "to_route": "/inquiry/<path:subpath>"},
-    {"from_route": "/registration-of-interest", "to_route": "/registration-of-interest"},
-    {"from_route": "/registration-of-interest/new", "to_route": "/registration-of-interest/new"},
+    # Legacy admissions form aliases now live under /apply/*.
+    {"from_route": "/inquiry", "to_route": "/apply/inquiry"},
+    {"from_route": "/inquiry/<path:subpath>", "to_route": "/apply/inquiry/<path:subpath>"},
+    {"from_route": "/registration-of-interest", "to_route": "/apply/registration-of-interest"},
     {
         "from_route": "/registration-of-interest/<path:subpath>",
-        "to_route": "/registration-of-interest/<path:subpath>",
+        "to_route": "/apply/registration-of-interest/<path:subpath>",
     },
-    {"from_route": "/login", "to_route": "login"},
-    {"from_route": "/update-password", "to_route": "update-password"},
-    # Preserve framework namespaces so website catch-all never hijacks Desk/API/assets.
-    {"from_route": "/app", "to_route": "/app"},
-    {"from_route": "/app/<path:subpath>", "to_route": "/app/<path:subpath>"},
-    {"from_route": "/desk", "to_route": "/desk"},
-    {"from_route": "/desk/<path:subpath>", "to_route": "/desk/<path:subpath>"},
-    {"from_route": "/api", "to_route": "/api"},
-    {"from_route": "/api/<path:subpath>", "to_route": "/api/<path:subpath>"},
-    {"from_route": "/assets/<path:subpath>", "to_route": "/assets/<path:subpath>"},
-    {"from_route": "/files/<path:subpath>", "to_route": "/files/<path:subpath>"},
-    {"from_route": "/private/files/<path:subpath>", "to_route": "/private/files/<path:subpath>"},
-    {"from_route": "/home", "to_route": "website"},
-    {"from_route": "/index", "to_route": "website"},
-    {"from_route": "/index.html", "to_route": "website"},
-    # Preserve core Frappe website assets and metadata routes.
-    {"from_route": "/website_script.js", "to_route": "/website_script.js"},
-    {"from_route": "/website_style.css", "to_route": "/website_style.css"},
-    {"from_route": "/favicon.ico", "to_route": "/favicon.ico"},
-    {"from_route": "/robots.txt", "to_route": "/robots.txt"},
-    {"from_route": "/", "to_route": "website"},
-    {"from_route": "/<path:route>", "to_route": "website"},
+    # Public website pages are scoped to /schools/* only.
+    {"from_route": "/schools", "to_route": "index"},
+    {"from_route": "/schools/<path:route>", "to_route": "website"},
+    # Legacy public aliases for the organization landing.
+    {"from_route": "/home", "to_route": "index"},
+    {"from_route": "/index.html", "to_route": "index"},
 ]
 
 

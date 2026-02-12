@@ -145,7 +145,7 @@ Example `program_intro` props:
 Notes:
 
 * Profile `status` is derived from workflow state + program publish readiness.
-* Program page route is system-generated: `/{school_slug}/programs/{program_slug}`.
+* Program page route is system-generated: `/schools/{school_slug}/programs/{program_slug}`.
 
 ---
 
@@ -161,7 +161,7 @@ Suggested block order:
 Notes:
 
 * `Website Story` uses the same validation rules for H1 ownership and block ordering.
-* Story index route is handled at `/{school_slug}/stories`.
+* Story index route is handled at `/schools/{school_slug}/stories`.
 
 ---
 

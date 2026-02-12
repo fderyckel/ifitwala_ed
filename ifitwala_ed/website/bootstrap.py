@@ -40,8 +40,8 @@ def _safe_link(value: str | None, *, fallback: str) -> str:
 
 def _school_page_url(*, school_slug: str, route: str) -> str:
 	if route == "/":
-		return normalize_route(f"/{school_slug}")
-	return normalize_route(f"/{school_slug}/{route}")
+		return normalize_route(f"/schools/{school_slug}")
+	return normalize_route(f"/schools/{school_slug}/{route}")
 
 
 def _build_home_blocks(*, school) -> list[dict]:
@@ -158,7 +158,7 @@ def _build_about_blocks(*, school) -> list[dict]:
 
 def _build_admissions_blocks(*, school) -> list[dict]:
 	apply_link = _safe_link(school.admissions_apply_route, fallback="/admissions")
-	inquiry_link = _safe_link(school.admissions_inquiry_route, fallback="/inquiry")
+	inquiry_link = _safe_link(school.admissions_inquiry_route, fallback="/apply/inquiry")
 
 	return [
 		{

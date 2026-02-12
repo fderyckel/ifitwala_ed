@@ -88,7 +88,7 @@ class SchoolWebsitePage(Document):
 			)
 
 		if raw_route == "/":
-			self.full_route = normalize_route(f"/{school_slug}")
+			self.full_route = normalize_route(f"/schools/{school_slug}")
 		else:
 			if raw_route.startswith("/"):
 				frappe.throw(
@@ -119,7 +119,7 @@ class SchoolWebsitePage(Document):
 					frappe.ValidationError,
 				)
 
-			self.full_route = normalize_route(f"/{school_slug}/{relative}")
+			self.full_route = normalize_route(f"/schools/{school_slug}/{relative}")
 
 		exists = frappe.db.exists(
 			"School Website Page",

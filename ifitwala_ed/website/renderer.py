@@ -24,6 +24,7 @@ ROOT_ROUTE_ALIASES = {
 	"/index",
 	"/index.html",
 }
+SCHOOL_ROUTE_PREFIX = "schools"
 
 HEX_COLOR_PATTERN = re.compile(r"^#(?:[0-9a-f]{3}|[0-9a-f]{6})$")
 THEME_DEFAULTS = {
@@ -206,13 +207,13 @@ def _get_navigation_items(*, school):
 		return items
 
 	school_slug = (school.website_slug or "").strip()
-	home_url = normalize_route(f"/{school_slug}") if school_slug else "/"
+	home_url = normalize_route(f"/{SCHOOL_ROUTE_PREFIX}/{school_slug}") if school_slug else "/"
 	return [{"label": _("Home"), "url": home_url}]
 
 
 def _build_site_shell_context(*, school, route: str) -> dict:
 	school_slug = (school.website_slug or "").strip()
-	brand_url = normalize_route(f"/{school_slug}") if school_slug else "/"
+	brand_url = normalize_route(f"/{SCHOOL_ROUTE_PREFIX}/{school_slug}") if school_slug else "/"
 	navigation = _get_navigation_items(school=school)
 	footer_links = navigation[:4]
 	is_guest_user = (frappe.session.user or "Guest") == "Guest"
@@ -577,49 +578,182 @@ def _build_story_index_context(*, route: str, school):
 	}
 
 
+def _resolve_landing_organization():
+	org = frappe.db.get_value(
+		"Organization",
+		{
+			"archived": 0,
+			"name": ["!=", "All Organizations"],
+			"parent_organization": ["in", ["All Organizations", "", None]],
+		},
+		["name", "organization_name", "organization_logo", "lft", "rgt"],
+		as_dict=True,
+		order_by="lft asc",
+	)
+	if org:
+		return org
+
+	org = frappe.db.get_value(
+		"Organization",
+		{"archived": 0, "name": ["!=", "All Organizations"]},
+		["name", "organization_name", "organization_logo", "lft", "rgt"],
+		as_dict=True,
+		order_by="lft asc",
+	)
+	if org:
+		return org
+
+	return frappe.db.get_value(
+		"Organization",
+		{"name": "All Organizations"},
+		["name", "organization_name", "organization_logo", "lft", "rgt"],
+		as_dict=True,
+	)
+
+
+def _get_descendant_organization_names(organization) -> list[str]:
+	if not organization:
+		return []
+
+	lft = organization.get("lft")
+	rgt = organization.get("rgt")
+	if lft is None or rgt is None:
+		return [organization.get("name")] if organization.get("name") else []
+
+	return frappe.get_all(
+		"Organization",
+		filters={"lft": [">=", lft], "rgt": ["<=", rgt], "archived": 0},
+		pluck="name",
+		order_by="lft asc",
+	)
+
+
+def _get_landing_school_cards(*, organization_names: list[str]) -> list[dict]:
+	if not organization_names:
+		return []
+
+	schools = frappe.get_all(
+		"School",
+		filters={
+			"organization": ["in", organization_names],
+			"is_published": 1,
+			"website_slug": ["!=", ""],
+		},
+		fields=["name", "school_name", "school_tagline", "school_logo", "website_slug", "organization"],
+		order_by="lft asc, school_name asc",
+	)
+	if not schools:
+		return []
+
+	organization_labels = {
+		row.name: (row.organization_name or row.name)
+		for row in frappe.get_all(
+			"Organization",
+			filters={"name": ["in", organization_names]},
+			fields=["name", "organization_name"],
+		)
+	}
+
+	cards = []
+	for school in schools:
+		slug = (school.website_slug or "").strip()
+		if not slug:
+			continue
+		cards.append(
+			{
+				"name": school.name,
+				"label": school.school_name or school.name,
+				"tagline": (school.school_tagline or "").strip(),
+				"logo": school.school_logo,
+				"url": normalize_route(f"/{SCHOOL_ROUTE_PREFIX}/{slug}"),
+				"organization": organization_labels.get(school.organization) or school.organization,
+			}
+		)
+	return cards
+
+
+def _build_organization_landing_context(*, route: str):
+	organization = _resolve_landing_organization() or {}
+	organization_name = (organization.get("organization_name") or organization.get("name") or _("Organization")).strip()
+	organization_names = _get_descendant_organization_names(organization)
+	school_cards = _get_landing_school_cards(organization_names=organization_names)
+
+	seo = _build_seo_context(
+		route=route,
+		fallback_title=organization_name,
+		fallback_description=_("Explore our schools and programs."),
+		seo_profile=None,
+	)
+
+	return {
+		"landing": {
+			"organization_name": organization_name,
+			"organization_logo": organization.get("organization_logo"),
+			"schools": school_cards,
+		},
+		"seo": seo,
+		"is_guest_user": (frappe.session.user or "Guest") == "Guest",
+		"login_url": "/login",
+		"current_year": frappe.utils.now_datetime().year,
+		"template": "ifitwala_ed/website/templates/organization_landing.html",
+	}
+
+
 def build_render_context(*, route: str, preview: bool = False):
 	route = normalize_route(route)
 	if route in ROOT_ROUTE_ALIASES:
 		route = "/"
-	school = resolve_school_from_route(route)
+
+	if route == "/":
+		return _build_organization_landing_context(route=route)
+
 	segments = [seg for seg in route.split("/") if seg]
 	if not segments:
-		school_slug = (school.website_slug or "").strip()
-		if not school_slug:
-			frappe.throw(
-				_("Default website school is missing a website slug."),
-				frappe.DoesNotExistError,
-			)
-		route = normalize_route(f"/{school_slug}")
-		segments = [school_slug]
+		return _build_organization_landing_context(route="/")
 
+	if segments[0] != SCHOOL_ROUTE_PREFIX:
+		frappe.throw(
+			_("Website page not found for route: {0}.").format(route),
+			frappe.DoesNotExistError,
+		)
+
+	if len(segments) < 2:
+		return _build_organization_landing_context(route="/")
+
+	school = resolve_school_from_route(route)
 	if not preview and not is_school_public(school):
 		frappe.throw(
 			_("School not published."),
 			frappe.DoesNotExistError,
 		)
-	school_slug = segments[0] if segments else None
 
-	if school_slug and school_slug == school.website_slug:
-		if len(segments) >= 3 and segments[1] == "programs":
-			return _build_program_context(
-				route=route,
-				school=school,
-				program_slug=segments[2],
-				preview=preview,
-			)
-		if len(segments) >= 2 and segments[1] == "stories":
-			if len(segments) == 2:
-				try:
-					return _build_school_page_context(route=route, school=school, preview=preview)
-				except frappe.DoesNotExistError:
-					return _build_story_index_context(route=route, school=school)
-			return _build_story_context(
-				route=route,
-				school=school,
-				story_slug=segments[2],
-				preview=preview,
-			)
+	school_slug = (school.website_slug or "").strip()
+	if segments[1] != school_slug:
+		frappe.throw(
+			_("Website page not found for route: {0}.").format(route),
+			frappe.DoesNotExistError,
+		)
+
+	if len(segments) >= 4 and segments[2] == "programs":
+		return _build_program_context(
+			route=route,
+			school=school,
+			program_slug=segments[3],
+			preview=preview,
+		)
+
+	if len(segments) >= 3 and segments[2] == "stories":
+		if len(segments) == 3:
+			try:
+				return _build_school_page_context(route=route, school=school, preview=preview)
+			except frappe.DoesNotExistError:
+				return _build_story_index_context(route=route, school=school)
+		return _build_story_context(
+			route=route,
+			school=school,
+			story_slug=segments[3],
+			preview=preview,
+		)
 
 	return _build_school_page_context(route=route, school=school, preview=preview)
 

@@ -308,8 +308,8 @@
    "label": "Admissions CTA Targets"
   },
   {
-   "default": "/inquiry",
-   "description": "Public inquiry entry route (e.g., /inquiry).",
+   "default": "/apply/inquiry",
+   "description": "Public inquiry entry route (e.g., /apply/inquiry).",
    "fieldname": "admissions_inquiry_route",
    "fieldtype": "Data",
    "label": "Inquiry CTA Route"
