@@ -1,1 +1,3 @@
 # removed most stuff
+ifitwala_ed.patches.website.p05_add_workflow_fields_website_pages
+ifitwala_ed.patches.website.p06_backfill_workflow_state_from_status
