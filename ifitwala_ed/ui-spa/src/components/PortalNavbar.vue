@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/ui-spa/src/components/PortalNavbar.vue -->
 <template>
 <!--
   PortalNavbar.vue
