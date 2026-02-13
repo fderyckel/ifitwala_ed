@@ -263,9 +263,9 @@ This replaces **Builder Data Scripts** safely.
 ### 7.1 Canonical Assets
 
 * `website.css` (Tailwind entrypoint)
-* `website.bundle.css` (build output)
+* `ifitwala_site.bundle.css` (build output)
 * `website.js`
-* `website.bundle.js` (build output)
+* `ifitwala_site.bundle.js` (build output)
 * `image_fallback.js`
 
 These are **authoritative** and reused across pages.

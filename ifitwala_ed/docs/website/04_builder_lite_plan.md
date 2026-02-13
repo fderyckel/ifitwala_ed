@@ -362,11 +362,11 @@ Alt text matters for SEO.
 * CSS:
 
   * `website.css` (Tailwind entrypoint)
-  * `website.bundle.css` (build output referenced by templates)
+  * `ifitwala_site.bundle.css` (build output referenced by templates)
 * JS:
 
-  * `website.js` (built to `website.bundle.js`)
-  * `website.bundle.js` (build output referenced by templates)
+  * `website.js` (built to `ifitwala_site.bundle.js`)
+  * `ifitwala_site.bundle.js` (build output referenced by templates)
   * `image_fallback.js` (raw helper)
   * enhancement only (no data fetch)
 
@@ -695,7 +695,7 @@ Responsibilities:
 * `<title>` from page
 * `<meta description>`
 * `<link rel="canonical">`
-* Load CSS (`website.bundle.css`)
+* Load CSS (`ifitwala_site.bundle.css`)
 * Loop blocks in order
 * **No JS data fetch**
 
@@ -948,7 +948,7 @@ This is the **only** page-level template.
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 
 	{# Core CSS #}
-	<link rel="stylesheet" href="/assets/ifitwala_ed/css/website.bundle.css">
+	<link rel="stylesheet" href="/assets/ifitwala_ed/css/ifitwala_site.bundle.css">
 </head>
 
 <body>
@@ -962,7 +962,7 @@ This is the **only** page-level template.
 
 	{# Enhancement JS only – no data fetch #}
 	<script src="/assets/ifitwala_ed/website/image_fallback.js" defer></script>
-	<script src="/assets/ifitwala_ed/js/website.bundle.js" defer></script>
+	<script src="/assets/ifitwala_ed/js/ifitwala_site.bundle.js" defer></script>
 </body>
 </html>
 ```

@@ -187,6 +187,6 @@ Minimum pre-publish checklist:
 
 * Theme tokens are managed in `Website Theme Profile` (scope: School -> Organization -> Global).
 * Motion enhancements are optional and non-critical:
-  * shared: `/assets/ifitwala_ed/js/website.bundle.js`
+  * shared: `/assets/ifitwala_ed/js/ifitwala_site.bundle.js`
   * block scripts: `hero`, `admission_cta`
 * Content remains fully server-rendered and SEO-safe without JS.
