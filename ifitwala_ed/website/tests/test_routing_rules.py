@@ -77,12 +77,11 @@ class TestRoutingRules(FrappeTestCase):
 		self.assertNotIn("/apply/<path:subpath>", from_routes)
 
 	def test_public_web_form_shell_assets_are_scoped(self):
-		expected_css = "public/css/admissions_webform_shell.css"
-		expected_js = "public/js/admissions_webform_shell.js"
+		expected_css = "/assets/ifitwala_ed/css/admissions_webform_shell.css"
+		expected_js = "/assets/ifitwala_ed/js/admissions_webform_shell.js"
 
 		css_map = getattr(hooks, "webform_include_css", {})
 		js_map = getattr(hooks, "webform_include_js", {})
 
-		for key in ("Inquiry", "inquiry", "Registration of Interest", "registration-of-interest"):
-			self.assertEqual(css_map.get(key), expected_css)
-			self.assertEqual(js_map.get(key), expected_js)
+		self.assertEqual(css_map, {"Inquiry": expected_css})
+		self.assertEqual(js_map, {"Inquiry": expected_js})

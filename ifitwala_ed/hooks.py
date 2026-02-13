@@ -45,16 +45,10 @@ app_include_js = [
 # webform_include_js = {"doctype": "public/js/doctype.js"}
 # webform_include_css = {"doctype": "public/css/doctype.css"}
 webform_include_css = {
-	"Inquiry": "public/css/admissions_webform_shell.css",
-	"inquiry": "public/css/admissions_webform_shell.css",
-	"Registration of Interest": "public/css/admissions_webform_shell.css",
-	"registration-of-interest": "public/css/admissions_webform_shell.css",
+	"Inquiry": "/assets/ifitwala_ed/css/admissions_webform_shell.css",
 }
 webform_include_js = {
-	"Inquiry": "public/js/admissions_webform_shell.js",
-	"inquiry": "public/js/admissions_webform_shell.js",
-	"Registration of Interest": "public/js/admissions_webform_shell.js",
-	"registration-of-interest": "public/js/admissions_webform_shell.js",
+	"Inquiry": "/assets/ifitwala_ed/js/admissions_webform_shell.js",
 }
 
 # include js in page
