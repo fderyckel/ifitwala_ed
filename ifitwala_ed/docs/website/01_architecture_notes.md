@@ -29,7 +29,7 @@ Rules:
 * No default-school redirect at `/`.
 * No root-level school marketing pages.
 * No exception-based router ownership for webforms.
-* Web Form branding must be delivered by static assets via `webform_include_css` / `webform_include_js` (using explicit `/assets/...` URLs), not route or controller overrides.
+* Web Form branding must be delivered by static assets via `webform_include_css` / `webform_include_js` (app `public/...` paths), not route or controller overrides.
 
 ---
 
