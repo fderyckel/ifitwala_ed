@@ -9,55 +9,23 @@ import frappe
 
 APP = "ifitwala_ed"
 VITE_DIR = os.path.join(frappe.get_app_path(APP), "public", "vite")
+from ifitwala_ed.website.vite_utils import get_vite_assets
+
+APP = "ifitwala_ed"
+VITE_DIR = os.path.join(frappe.get_app_path(APP), "public", "vite")
 MANIFEST_PATHS = [
 	os.path.join(VITE_DIR, "manifest.json"),
 	os.path.join(VITE_DIR, ".vite", "manifest.json"),
 ]
 PUBLIC_BASE = f"/assets/{APP}/vite/"
 
-def _load_manifest() -> dict:
-	for path in MANIFEST_PATHS:
-		if not os.path.exists(path):
-			continue
-		with open(path, "r", encoding="utf-8") as f:
-			return json.load(f)
-	return {}
-
-def _collect_assets(manifest: dict) -> tuple[str, list[str], list[str]]:
-	candidates = ["index.html", "src/main.ts", "src/main.js"]
-	entry = None
-	for key in candidates:
-		if key in manifest:
-			entry = manifest[key]
-			break
-	if not entry:
-		for _, v in manifest.items():
-			if isinstance(v, dict) and v.get("isEntry"):
-				entry = v
-				break
-	if not entry:
-		return (f"{PUBLIC_BASE}main.js", [], [])
-
-	def _url(p: str) -> str:
-		return f"{PUBLIC_BASE}{p}"
-
-	js_entry = _url(entry["file"])
-	css_files = [_url(p) for p in entry.get("css", [])]
-
-	preload = []
-	seen = set()
-	def walk(chunk: dict):
-		for imp in (chunk.get("imports") or []):
-			if imp in seen:
-				continue
-			seen.add(imp)
-			sub = manifest.get(imp)
-			if sub and "file" in sub:
-				preload.append(_url(sub["file"]))
-				walk(sub)
-	if isinstance(entry, dict):
-		walk(entry)
-	return (js_entry, css_files, preload)
+def _load_assets():
+	return get_vite_assets(
+		app_name=APP,
+		manifest_paths=MANIFEST_PATHS,
+		public_base=PUBLIC_BASE,
+		entry_keys=["index.html", "src/main.ts", "src/main.js"]
+	)
 
 def _redirect(to: str):
 	frappe.local.flags.redirect_location = to
@@ -134,8 +102,7 @@ def get_context(context):
 	context.portal_roles = portal_sections
 	context.portal_roles_json = frappe.as_json(portal_sections)
 
-	manifest = _load_manifest()
-	js_entry, css_files, preload_files = _collect_assets(manifest)
+	js_entry, css_files, preload_files = _load_assets()
 
 	context.csrf_token = frappe.sessions.get_csrf_token()
 	context.vite_js = js_entry

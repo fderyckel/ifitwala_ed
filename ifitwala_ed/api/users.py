@@ -69,31 +69,14 @@ def redirect_user_to_entry_portal():
 	- Guardians -> /portal/guardian
 	- Fallback -> /portal
 	
-	Home-page persistence note:
-	We always overwrite User.home_page with the resolved role-specific path.
-	This is acceptable for fresh installations; custom home-page preferences
-	(e.g., staff setting /app) will be lost on next login.
-	Maintainer decision: "fine for fresh install" (2026-02-07).
-	TODO: User preference persistence planned for v2.
+	Refactored (2026-02-13):
+	We no longer persist `User.home_page` to the database on login.
+	The redirect is calculated in-memory and returned via `frappe.local.response`.
+	This prevents database locking and performance issues during high-concurrency login events.
 	"""
 	user = frappe.session.user
 	if not user or user == "Guest":
 		return
-
-	def _force_redirect(path: str, also_set_home_page: bool = True):
-		if also_set_home_page:
-			try:
-				frappe.db.set_value("User", user, "home_page", path, update_modified=False)
-			except Exception:
-				# Do not break login flow if home_page persistence fails.
-				frappe.logger().warning(
-					f"Failed to persist home_page during login redirect for {user}: {path}",
-					exc_info=True,
-				)
-
-		# Login response redirect contract: let Frappe login client handle navigation.
-		frappe.local.response["home_page"] = path
-		frappe.local.response["redirect_to"] = path
 
 	# Check user roles
 	roles = set(frappe.get_roles(user))
@@ -101,12 +84,9 @@ def redirect_user_to_entry_portal():
 	# Resolve the appropriate portal path
 	path = _resolve_login_redirect_path(user=user, roles=roles)
 
-	# Debug logging to confirm redirect path during login
-	frappe.logger().debug(
-		f"Login redirect for {user}: roles={roles}, path={path}"
-	)
-
-	_force_redirect(path, also_set_home_page=True)
+	# Login response redirect contract: let Frappe login client handle navigation.
+	frappe.local.response["home_page"] = path
+	frappe.local.response["redirect_to"] = path
 
 
 @frappe.whitelist()

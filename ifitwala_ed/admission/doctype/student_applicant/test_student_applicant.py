@@ -100,6 +100,30 @@ class TestStudentApplicant(FrappeTestCase):
 		)
 		self.assertEqual(applicant.title, "Captain Hopper")
 
+	def test_admissions_role_takes_precedence_over_family_role_for_draft_edits(self):
+		if not frappe.db.exists("Role", "Admission Manager") or not frappe.db.exists("Role", "Guardian"):
+			self.skipTest("Required roles missing for mixed-role precedence test.")
+
+		user = self._create_user_with_roles(["Admission Manager", "Guardian"])
+		applicant = self._create_student_applicant(
+			first_name="Mixed",
+			last_name="Role",
+			middle_name="Original",
+		)
+
+		try:
+			frappe.set_user(user.email)
+			applicant.reload()
+			applicant.middle_name = "Corrected"
+			applicant.save()
+		finally:
+			frappe.set_user("Administrator")
+
+		self.assertEqual(
+			frappe.db.get_value("Student Applicant", applicant.name, "middle_name"),
+			"Corrected",
+		)
+
 	def _ensure_admissions_role(self, user, role):
 		if not frappe.db.exists("Role", role):
 			return
@@ -157,3 +181,16 @@ class TestStudentApplicant(FrappeTestCase):
 		}).insert(ignore_permissions=True)
 		self._created.append(("Student Applicant", doc.name))
 		return doc
+
+	def _create_user_with_roles(self, roles):
+		email = f"test-student-applicant-{frappe.generate_hash(length=8)}@example.com"
+		user = frappe.get_doc({
+			"doctype": "User",
+			"email": email,
+			"first_name": "Test",
+			"last_name": "MixedRole",
+			"enabled": 1,
+		}).insert(ignore_permissions=True)
+		user.add_roles(*roles)
+		self._created.append(("User", user.name))
+		return user
