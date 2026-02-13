@@ -77,15 +77,87 @@ body.ifitwala-public-webform .web-footer {
 .ifitwala-public-webform .web-form,
 .ifitwala-public-webform .web-form-container,
 .ifitwala-public-webform .page-card {
+	background: #fff;
+	border: 1px solid #e2e8f0;
 	border-radius: 0.875rem;
-	box-shadow: 0 14px 36px -24px rgba(15, 23, 42, 0.45);
+	box-shadow: 0 14px 36px -24px rgba(15, 23, 42, 0.25);
+	padding: 1.5rem;
 }
 
-.ifitwala-public-webform .web-form input,
-.ifitwala-public-webform .web-form textarea,
-.ifitwala-public-webform .web-form select {
+.ifitwala-public-webform .web-form-container .row,
+.ifitwala-public-webform .web-form .row {
+	margin-left: 0;
+	margin-right: 0;
+}
+
+.ifitwala-public-webform .section-head,
+.ifitwala-public-webform .web-form .section-head {
+	font-size: 1.125rem;
+	font-weight: 700;
+	color: #0f172a;
+	margin: 1.25rem 0 0.75rem;
+}
+
+.ifitwala-public-webform .form-group,
+.ifitwala-public-webform .web-form .form-group {
+	margin-bottom: 1rem;
+}
+
+.ifitwala-public-webform label,
+.ifitwala-public-webform .control-label {
+	display: block;
+	margin-bottom: 0.35rem;
+	font-size: 0.9rem;
+	font-weight: 600;
+	color: #334155;
+}
+
+.ifitwala-public-webform .form-control,
+.ifitwala-public-webform input[type="text"],
+.ifitwala-public-webform input[type="email"],
+.ifitwala-public-webform input[type="tel"],
+.ifitwala-public-webform input[type="number"],
+.ifitwala-public-webform textarea,
+.ifitwala-public-webform select,
+.ifitwala-public-webform .awesomplete input {
+	display: block;
+	width: 100%;
+	min-height: 2.6rem;
+	padding: 0.55rem 0.7rem;
+	font-size: 1rem;
+	line-height: 1.35;
+	color: #0f172a;
+	background-color: #fff;
+	border: 1px solid #cbd5e1;
 	border-radius: 0.5rem;
-	border-color: #cbd5e1;
+	box-shadow: none;
+}
+
+.ifitwala-public-webform select {
+	appearance: auto;
+}
+
+.ifitwala-public-webform .form-control:focus,
+.ifitwala-public-webform input:focus,
+.ifitwala-public-webform textarea:focus,
+.ifitwala-public-webform select:focus,
+.ifitwala-public-webform .awesomplete input:focus {
+	outline: 0;
+	border-color: #3b82f6;
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.ifitwala-public-webform .help-box,
+.ifitwala-public-webform .text-muted,
+.ifitwala-public-webform .text-small {
+	font-size: 0.8rem;
+	color: #64748b;
+}
+
+.ifitwala-public-webform .web-form,
+.ifitwala-public-webform .web-form-container,
+.ifitwala-public-webform .page-card {
+	font-size: 1rem;
 }
 
 .ifitwala-public-webform .btn.btn-primary {

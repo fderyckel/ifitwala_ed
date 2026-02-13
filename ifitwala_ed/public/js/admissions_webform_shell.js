@@ -7,8 +7,8 @@
 	var SHELL_ROOT_ID = "ifitwala-webform-shell-root";
 	var SHELL_FOOTER_ID = "ifitwala-webform-shell-footer";
 	var SHELL_CSS_ID = "ifitwala-webform-shell-css";
-	var SHELL_CSS_HREF = "/assets/ifitwala_ed/public/css/admissions_webform_shell.css";
-	var SHELL_CSS_FALLBACK_HREF = "/assets/ifitwala_ed/css/admissions_webform_shell.css";
+	var SHELL_CSS_HREF = "/assets/ifitwala_ed/css/admissions_webform_shell.css";
+	var SHELL_CSS_FALLBACK_HREF = "/assets/ifitwala_ed/public/css/admissions_webform_shell.css";
 
 	function createElement(tag, className, text) {
 		var el = document.createElement(tag);
