@@ -8,6 +8,10 @@ from frappe import _
 from ifitwala_ed.admission.admission_utils import ensure_admissions_permission
 from ifitwala_ed.admission import admissions_portal as admission_api
 from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
+from ifitwala_ed.governance.policy_scope_utils import (
+	get_organization_ancestors_including_self,
+	select_nearest_policy_rows_by_key,
+)
 
 
 ADMISSIONS_ROLE = "Admissions Applicant"
@@ -419,6 +423,10 @@ def get_applicant_policies(student_applicant: str | None = None):
 	if not organization:
 		return {"policies": []}
 
+	ancestor_orgs = get_organization_ancestors_including_self(organization)
+	if not ancestor_orgs:
+		return {"policies": []}
+
 	ensure_policy_applies_to_column(
 		caller="admissions_portal.get_applicant_policies",
 		throw=True,
@@ -435,11 +443,13 @@ def get_applicant_policies(student_applicant: str | None = None):
 			policies_source = None
 
 	if policies_source is None:
+		org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
 		policies_source = frappe.db.sql(
-			"""
+			f"""
 			SELECT ip.name AS policy_name,
 			       ip.policy_key AS policy_key,
 			       ip.policy_title AS policy_title,
+			       ip.organization AS policy_organization,
 			       pv.name AS policy_version,
 			       pv.policy_text AS policy_text
 			  FROM `tabInstitutional Policy` ip
@@ -447,12 +457,18 @@ def get_applicant_policies(student_applicant: str | None = None):
 			    ON pv.institutional_policy = ip.name
 			 WHERE ip.is_active = 1
 			   AND pv.is_active = 1
-			   AND ip.organization = %s
+			   AND ip.organization IN ({org_placeholders})
 			   AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
 			   AND ip.applies_to LIKE %s
 			""",
-			(organization, school, "%Applicant%"),
+			(*ancestor_orgs, school, "%Applicant%"),
 			as_dict=True,
+		)
+		policies_source = select_nearest_policy_rows_by_key(
+			rows=policies_source,
+			context_organization=organization,
+			policy_key_field="policy_key",
+			policy_organization_field="policy_organization",
 		)
 		cache.set_value(cache_key, frappe.as_json(policies_source), expires_in_sec=600)
 

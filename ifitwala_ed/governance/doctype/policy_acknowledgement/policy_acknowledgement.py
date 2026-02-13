@@ -11,6 +11,7 @@ from ifitwala_ed.governance.policy_utils import (
 	has_admissions_applicant_role,
 	is_system_manager,
 )
+from ifitwala_ed.governance.policy_scope_utils import is_policy_organization_applicable_to_context
 
 
 ACK_CONTEXT_MAP = {
@@ -71,21 +72,94 @@ class PolicyAcknowledgement(Document):
 		if allowed_contexts and self.context_doctype not in allowed_contexts:
 			frappe.throw(_("Context DocType does not match acknowledged_for."))
 
-		if self.acknowledged_for == "Applicant":
-			self._validate_applicant_policy_scope()
+		self._validate_policy_scope_for_context()
 
-	def _validate_applicant_policy_scope(self):
-		student_org = frappe.db.get_value(
-			"Student Applicant", self.context_name, "organization"
-		)
-		if not student_org:
-			return
+	def _validate_policy_scope_for_context(self):
 		policy = frappe.db.get_value(
 			"Policy Version", self.policy_version, "institutional_policy"
 		)
 		policy_org = frappe.db.get_value("Institutional Policy", policy, "organization")
-		if policy_org and student_org and policy_org != student_org:
-			frappe.throw(_("Policy does not match Applicant organization."))
+		if not policy_org:
+			return
+
+		context_orgs = self._resolve_context_organizations()
+		if not context_orgs:
+			debug_payload = {
+				"policy_version": self.policy_version,
+				"policy_organization": policy_org,
+				"acknowledged_for": self.acknowledged_for,
+				"context_doctype": self.context_doctype,
+				"context_name": self.context_name,
+			}
+			frappe.log_error(
+				message=frappe.as_json(debug_payload),
+				title="Policy acknowledgement scope resolution failed",
+			)
+			frappe.throw(_("Could not resolve Organization scope for acknowledgement context."))
+
+		if any(
+			is_policy_organization_applicable_to_context(
+				policy_organization=policy_org,
+				context_organization=context_org,
+			)
+			for context_org in context_orgs
+		):
+			return
+
+		frappe.throw(_("Policy does not apply to this acknowledgement context organization."))
+
+	def _resolve_context_organizations(self) -> list[str]:
+		if self.context_doctype == "Student Applicant":
+			org = frappe.db.get_value("Student Applicant", self.context_name, "organization")
+			return [org] if org else []
+
+		if self.context_doctype == "Employee":
+			org = frappe.db.get_value("Employee", self.context_name, "organization")
+			return [org] if org else []
+
+		if self.context_doctype == "Student":
+			return self._organizations_for_students([self.context_name])
+
+		if self.context_doctype == "Guardian":
+			student_names = frappe.get_all(
+				"Student Guardian",
+				filters={"guardian": self.context_name},
+				pluck="parent",
+			)
+			if not student_names:
+				return []
+			return self._organizations_for_students(student_names)
+
+		return []
+
+	def _organizations_for_students(self, student_names: list[str]) -> list[str]:
+		if not student_names:
+			return []
+
+		rows = frappe.get_all(
+			"Student",
+			filters={"name": ["in", student_names]},
+			fields=["anchor_school", "student_applicant"],
+		)
+
+		orgs: list[str] = []
+		seen = set()
+		for row in rows:
+			anchor_school = row.get("anchor_school")
+			if anchor_school:
+				org = frappe.db.get_value("School", anchor_school, "organization")
+				if org and org not in seen:
+					seen.add(org)
+					orgs.append(org)
+
+			student_applicant = row.get("student_applicant")
+			if student_applicant:
+				org = frappe.db.get_value("Student Applicant", student_applicant, "organization")
+				if org and org not in seen:
+					seen.add(org)
+					orgs.append(org)
+
+		return orgs
 
 	def _validate_unique_acknowledgement(self):
 		exists = frappe.db.exists(
