@@ -214,9 +214,10 @@
    "read_only": 1
   }
  ],
+ "image_field": "applicant_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-12 23:59:25.076674",
+ "modified": "2026-02-13 10:31:49.866682",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",
