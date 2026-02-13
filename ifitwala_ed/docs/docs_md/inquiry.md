@@ -31,6 +31,8 @@ Inquiry gives admission leaders visibility on response speed and pipeline health
 | `Qualified` | Strong fit, ready for invite-to-apply |
 | `Archived` | Closed terminal state |
 
+Legacy compatibility note: persisted `New Inquiry` values are normalized to canonical `New` during validation and Desk rendering.
+
 ## Where Inquiry Is Used Across the ERP
 
 - **Desk form + list view**:
@@ -64,6 +66,7 @@ Inquiry gives admission leaders visibility on response speed and pipeline health
 - **Web form surface**:
   - config file `ifitwala_ed/admission/web_form/inquiry/inquiry.json`
   - route `apply/inquiry` (public form)
+  - scoped shell assets via `hooks.py` `webform_include_css/js` (`public/css/admissions_webform_shell.css`, `public/js/admissions_webform_shell.js`)
 - **Staff analytics (SPA)**:
   - page `ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`
   - route `/portal/staff/analytics/inquiry` via `ifitwala_ed/ui-spa/src/router/index.ts`

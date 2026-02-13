@@ -1,0 +1,124 @@
+/* ifitwala_ed/public/css/admissions_webform_shell.css */
+@import url("/assets/ifitwala_ed/css/ifitwala_site.bundle.css");
+
+body.ifitwala-public-webform {
+	margin: 0;
+	background: #f8fafc;
+	color: #0f172a;
+}
+
+body.ifitwala-public-webform .navbar,
+body.ifitwala-public-webform .web-footer {
+	display: none !important;
+}
+
+.if-webform-shell-header {
+	position: sticky;
+	top: 0;
+	z-index: 40;
+	background: rgba(255, 255, 255, 0.96);
+	border-bottom: 1px solid #e2e8f0;
+	backdrop-filter: blur(8px);
+}
+
+.if-webform-shell-inner {
+	max-width: 72rem;
+	margin: 0 auto;
+	padding: 0.875rem 1.25rem;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.if-webform-shell-brand {
+	font-size: 1rem;
+	font-weight: 700;
+	letter-spacing: 0.01em;
+	color: #0f172a;
+	text-decoration: none;
+}
+
+.if-webform-shell-nav {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.if-webform-shell-link {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.4rem 0.7rem;
+	border-radius: 0.5rem;
+	font-size: 0.875rem;
+	font-weight: 500;
+	color: #334155;
+	text-decoration: none;
+}
+
+.if-webform-shell-link:hover {
+	background: #f1f5f9;
+	color: #0f172a;
+}
+
+.if-webform-shell-context {
+	max-width: 72rem;
+	margin: 0 auto;
+	padding: 0 1.25rem 0.8rem;
+	font-size: 0.75rem;
+	color: #475569;
+}
+
+.if-webform-shell-container {
+	max-width: 48rem;
+	margin: 2rem auto;
+	padding: 0 1rem;
+}
+
+.ifitwala-public-webform .web-form,
+.ifitwala-public-webform .web-form-container,
+.ifitwala-public-webform .page-card {
+	border-radius: 0.875rem;
+	box-shadow: 0 14px 36px -24px rgba(15, 23, 42, 0.45);
+}
+
+.ifitwala-public-webform .web-form input,
+.ifitwala-public-webform .web-form textarea,
+.ifitwala-public-webform .web-form select {
+	border-radius: 0.5rem;
+	border-color: #cbd5e1;
+}
+
+.ifitwala-public-webform .btn.btn-primary {
+	background: #1d4ed8;
+	border-color: #1d4ed8;
+	border-radius: 0.55rem;
+	font-weight: 600;
+}
+
+.ifitwala-public-webform .btn.btn-primary:hover,
+.ifitwala-public-webform .btn.btn-primary:focus {
+	background: #1e40af;
+	border-color: #1e40af;
+}
+
+.if-webform-shell-footer {
+	margin-top: 3rem;
+	border-top: 1px solid #e2e8f0;
+	background: #ffffff;
+}
+
+.if-webform-shell-footer-text {
+	max-width: 72rem;
+	margin: 0 auto;
+	padding: 1rem 1.25rem;
+	font-size: 0.8125rem;
+	color: #64748b;
+}
+
+@media (max-width: 768px) {
+	.if-webform-shell-inner {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+}

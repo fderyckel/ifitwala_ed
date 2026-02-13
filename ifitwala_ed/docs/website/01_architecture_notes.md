@@ -29,6 +29,7 @@ Rules:
 * No default-school redirect at `/`.
 * No root-level school marketing pages.
 * No exception-based router ownership for webforms.
+* Web Form branding must be added through `webform_include_css` / `webform_include_js`, not route or controller overrides.
 
 ---
 

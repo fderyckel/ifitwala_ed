@@ -7,7 +7,11 @@ frappe.ui.form.on("Inquiry", {
 	refresh(frm) {
 		frm.page.clear_actions_menu();
 
-		const s = frm.doc.workflow_state;
+		const rawState = String(frm.doc.workflow_state || '').trim();
+		const stateAliasMap = {
+			'New Inquiry': 'New',
+		};
+		const s = stateAliasMap[rawState] || rawState;
 		const is_manager = frappe.user.has_role('Admission Manager');
 		const is_officer = frappe.user.has_role('Admission Officer');
 		const canonicalStates = new Set(['New', 'Assigned', 'Contacted', 'Qualified', 'Archived']);
