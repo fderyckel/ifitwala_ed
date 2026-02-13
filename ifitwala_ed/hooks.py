@@ -63,13 +63,16 @@ standard_queries = {
 # ifitwala_ed/hooks.py
 
 website_route_rules = [
+    {"from_route": "/", "to_route": "index"},
+    {"from_route": "/admissions", "to_route": "admissions"},
+    {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
     {"from_route": "/portal", "to_route": "portal"},
     {"from_route": "/portal/<path:subpath>", "to_route": "portal"},
     {"from_route": "/portfolio/share/<path:token>", "to_route": "portfolio/share"},
-    {"from_route": "/admissions", "to_route": "admissions"},
-    {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
+    {"from_route": "/student", "to_route": "/portal/student"},
     {"from_route": "/staff", "to_route": "/portal/staff"},
-    # Legacy admissions form aliases now live under /apply/*.
+    {"from_route": "/guardian", "to_route": "/portal/guardian"},
+    # Legacy public form aliases redirect to canonical /apply/* forms.
     {"from_route": "/inquiry", "to_route": "/apply/inquiry"},
     {"from_route": "/inquiry/<path:subpath>", "to_route": "/apply/inquiry/<path:subpath>"},
     {"from_route": "/registration-of-interest", "to_route": "/apply/registration-of-interest"},

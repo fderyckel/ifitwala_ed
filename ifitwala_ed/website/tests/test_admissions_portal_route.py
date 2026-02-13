@@ -1,4 +1,4 @@
-# ifitwala_ed/test_admissions_route.py
+# ifitwala_ed/website/tests/test_admissions_portal_route.py
 
 from urllib.parse import quote
 
@@ -8,7 +8,7 @@ from frappe.tests.utils import FrappeTestCase
 from ifitwala_ed.www.admissions.index import get_context
 
 
-class TestAdmissionsRoute(FrappeTestCase):
+class TestAdmissionsPortalRoute(FrappeTestCase):
 	def test_guest_redirects_to_login(self):
 		frappe.set_user("Guest")
 		original_path = getattr(frappe.request, "path", None)

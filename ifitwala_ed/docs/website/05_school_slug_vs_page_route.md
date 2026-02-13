@@ -128,9 +128,14 @@ For organization landing requests:
 1. `/` (and aliases) render the organization landing page
 2. Landing lists published schools with valid `website_slug`
 
+For admissions/public form requests:
+
+1. `/apply/inquiry` and `/apply/registration-of-interest` are native Web Form routes.
+2. Legacy `/inquiry` and `/registration-of-interest` only redirect to those canonical `/apply/*` routes.
+3. Admissions applicant SPA is namespaced under `/admissions/*` and does not own `/apply/*`.
+
 ---
 
 ## 5. Summary (one-line rule)
 
 > **`/` is organization landing; school pages live under `/schools/{school_slug}/...`; `route` is user input; `full_route` is canonical.**
-

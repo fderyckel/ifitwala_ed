@@ -83,6 +83,23 @@ class TestStudentApplicant(FrappeTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			applicant.insert(ignore_permissions=True)
 
+	def test_title_autofills_from_name_parts_when_empty(self):
+		applicant = self._create_student_applicant(
+			first_name="Ada",
+			middle_name="M.",
+			last_name="Lovelace",
+		)
+		self.assertEqual(applicant.title, "Ada M. Lovelace")
+
+	def test_title_is_not_overwritten_when_already_set(self):
+		applicant = self._create_student_applicant(
+			first_name="Grace",
+			middle_name="Brewster",
+			last_name="Hopper",
+			title="Captain Hopper",
+		)
+		self.assertEqual(applicant.title, "Captain Hopper")
+
 	def _ensure_admissions_role(self, user, role):
 		if not frappe.db.exists("Role", role):
 			return
@@ -127,3 +144,16 @@ class TestStudentApplicant(FrappeTestCase):
 		}).insert(ignore_permissions=True)
 		self._created.append(("Academic Year", doc.name))
 		return doc.name
+
+	def _create_student_applicant(self, **overrides):
+		doc = frappe.get_doc({
+			"doctype": "Student Applicant",
+			"first_name": "Test",
+			"last_name": "Applicant",
+			"organization": self.org,
+			"school": self.leaf_school,
+			"application_status": "Draft",
+			**overrides,
+		}).insert(ignore_permissions=True)
+		self._created.append(("Student Applicant", doc.name))
+		return doc

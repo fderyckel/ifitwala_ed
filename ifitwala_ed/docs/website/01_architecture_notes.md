@@ -1,37 +1,34 @@
 <!-- ifitwala_ed/docs/website/01_architecture_notes.md -->
-# Website Architecture — Proposal B (A+ Canonical Design)
+# Website Architecture — Canonical
 
 **Ifitwala_Ed — Website System v1**
 
-> **Status:** Baseline implemented in code as of February 12, 2026 (A1/A2/B1/B2/C1/C2/D1/D2 complete; A3 and D3 pending)
+> **Status:** Routing ownership locked as of February 13, 2026.
 > **Scope:** Public marketing & information pages (School, Programs, Blog, Home)
 > **Non-Goal:** LMS / Portal / authenticated app flows
 > **Audience:** Core developers, system architects, security reviewers
 
 ---
 
-## Implementation Reality Snapshot (February 12, 2026)
+## Public Route Ownership (Locked)
 
-The architecture in this document is now partially implemented in production code.
+| Path | Owner | Purpose |
+| --- | --- | --- |
+| `/` | Organization Landing | Top-level marketing page |
+| `/schools/<school_slug>/...` | Custom website renderer | School marketing pages |
+| `/apply/...` | Native Frappe Web Forms | Public admissions entry forms |
+| `/inquiry` | Legacy redirect | `301` to `/apply/inquiry` |
+| `/registration-of-interest` | Legacy redirect | `301` to `/apply/registration-of-interest` |
+| `/admissions/...` | SPA | Authenticated admissions applicant portal |
+| `/student`, `/staff`, `/guardian` | Portal aliases | Post-login entrypoints |
+| `/portal/...` | SPA | Authenticated portals |
+| `/app` | Desk | ERP/desk surface |
 
-Implemented in code:
-
-* A1 canonical block registry source (`ifitwala_ed/website/block_registry.py`)
-* A2 save-time block validation in page/profile/story DocTypes
-* B1 context-aware allowed block types in editor + validator contracts
-* B2 SEO assistant checks and Desk integration
-* C1 workflow-state-driven publication behavior (`Draft -> In Review -> Approved -> Published`)
-* C2 scoped snippet resolution (`School -> Organization -> Global`)
-* D1 theme profiles (`Website Theme Profile`) with scoped resolution
-* D2 non-critical enhancement JS and per-block optional scripts
-
-Pending from this architecture thread:
-
-* A3 governance lock for direct edits to `Website Block Definition`
-* D3 server-side marketing analytics/attribution pipeline
-
-If any section in this file conflicts with runtime behavior, the runtime code and
-`ifitwala_ed/docs/website/09_execution_roadmap.md` are authoritative.
+Rules:
+* No root catch-all.
+* No default-school redirect at `/`.
+* No root-level school marketing pages.
+* No exception-based router ownership for webforms.
 
 ---
 

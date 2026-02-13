@@ -110,7 +110,7 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
   "autoplay": true,
   "interval": 6000,
   "cta_label": "Book a Visit",
-  "cta_link": "/admissions"
+  "cta_link": "/apply/inquiry"
 }
 ```
 

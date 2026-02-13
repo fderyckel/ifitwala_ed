@@ -61,6 +61,9 @@ EDIT_RULES = {
 
 class StudentApplicant(Document):
 
+	def before_save(self):
+		self._set_title_if_missing()
+
 	# ---------------------------------------------------------------------
 	# Core validation
 	# ---------------------------------------------------------------------
@@ -309,6 +312,17 @@ class StudentApplicant(Document):
 		scope = get_school_scope_for_academic_year(self.school)
 		if ay_row.get("school") not in scope:
 			frappe.throw(_("Selected Academic Year is outside the applicant's school scope."))
+
+	def _set_title_if_missing(self):
+		if (self.title or "").strip():
+			return
+
+		name_parts = [self.first_name, self.middle_name, self.last_name]
+		normalized_parts = [part.strip() for part in name_parts if isinstance(part, str) and part.strip()]
+		if not normalized_parts:
+			return
+
+		self.title = " ".join(normalized_parts)
 
 	# ---------------------------------------------------------------------
 	# Lifecycle helpers

@@ -31,7 +31,12 @@ class TestRoutingRules(FrappeTestCase):
 
 		self.assertIn(("/schools", "index"), pairs)
 		self.assertIn(("/schools/<path:route>", "website"), pairs)
-		self.assertNotIn("/", from_routes)
+		self.assertIn(("/", "index"), pairs)
+		self.assertIn(("/admissions", "admissions"), pairs)
+		self.assertIn(("/admissions/<path:subpath>", "admissions"), pairs)
+		self.assertIn(("/student", "/portal/student"), pairs)
+		self.assertIn(("/staff", "/portal/staff"), pairs)
+		self.assertIn(("/guardian", "/portal/guardian"), pairs)
 		self.assertNotIn("/<path:route>", from_routes)
 
 	def test_public_web_forms_are_namespaced_under_apply(self):
@@ -60,3 +65,13 @@ class TestRoutingRules(FrappeTestCase):
 		}
 		self.assertIn(("/inquiry", "/apply/inquiry"), pairs)
 		self.assertIn(("/registration-of-interest", "/apply/registration-of-interest"), pairs)
+
+	def test_apply_namespace_is_not_owned_by_custom_website_router(self):
+		rules = hooks.website_route_rules
+		from_routes = {
+			rule.get("from_route")
+			for rule in rules
+			if isinstance(rule, dict)
+		}
+		self.assertNotIn("/apply", from_routes)
+		self.assertNotIn("/apply/<path:subpath>", from_routes)
