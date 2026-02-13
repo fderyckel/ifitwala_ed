@@ -1,6 +1,6 @@
 // ifitwala_ed/public/js/admissions_webform_shell.js
 
-(function () {
+;(function () {
 	"use strict";
 
 	var APPLY_PREFIX = "/apply/";
