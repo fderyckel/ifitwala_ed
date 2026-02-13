@@ -16,9 +16,20 @@ summary: "Manage applicant lifecycle from invitation to promotion, with readines
 - Preserves institutional anchor (`organization`, `school`) as immutable once created.
 - Centralizes readiness checks across policies, documents, and health.
 - Links admissions to student creation and downstream enrollment operations.
+- Carries forward inquiry intent so teams do not restart data entry from zero.
 
 <Callout type="tip" title="Production value">
 This is where admissions correctness is enforced. Client UX helps, but status transitions and edit rules are ultimately server-controlled.
+</Callout>
+
+## Why Teams Feel the Difference
+
+- **Paperless edge**: policy acknowledgement is handled in-portal with a permanent `Policy Acknowledgement` record (`acknowledged_by`, `acknowledged_at`, `policy_version`, context binding).
+- **Speed edge**: inquiry invite flow pre-fills applicant identity and intent fields, then admissions staff focus on review and decision instead of retyping.
+- **Compliance edge**: admissions files are routed through governed records (`Applicant Document`) instead of random direct attachments on the applicant.
+
+<Callout type="note" title="Digital signature scope">
+Current implementation is an explicit acknowledge action with timestamped audit trail. It does not capture a handwritten/typed signature artifact field.
 </Callout>
 
 ## Lifecycle States
@@ -71,6 +82,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - policy readiness pulled from active Institutional Policy versions
 - **Operational dashboards**:
   - morning brief admissions pulse (`tabStudent Applicant` weekly status counts)
+  - staff morning brief surface (`ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`) renders applicant status breakdown
 - **Schedule module touchpoint**:
   - Program Enrollment Tool offers `Student Applicant` as a source option in UI.
 
@@ -78,9 +90,22 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
 Program Enrollment Tool currently implements fetch logic for `Cohort` and `Program Enrollment` sources. The `Student Applicant` source appears in UI options but is not yet handled in `_fetch_students`.
 </Callout>
 
+## Inquiry Carry-Over (Speed)
+
+When admissions triggers invite-to-apply from an inquiry, the applicant is prefilled with:
+
+- Identity: `first_name`, `middle_name`, `last_name`
+- Intent: `program`, `academic_year`, `term`
+- Traceability: `inquiry`
+- Lifecycle start: `application_status = Invited`
+- Institutional anchor at invite time: `school` (required) and `organization` (provided or derived)
+
+This is deterministic server-side mapping in `from_inquiry_invite`, so teams avoid duplicate entry and keep source lineage.
+
 ## Technical Notes (IT)
 
 - **DocType**: `Student Applicant` (`ifitwala_ed/admission/doctype/student_applicant/`)
+- **Naming series**: `format:APPL-{MM}-{YYYY}-{###}` (for example `APPL-02-2026-001`)
 - **Desk surfaces**:
   - form logic/buttons/readiness widgets in `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`
   - workspace cards in `ifitwala_ed/admission/workspace/admission/admission.json`
@@ -101,6 +126,11 @@ Program Enrollment Tool currently implements fetch logic for `Cohort` and `Progr
   - academic year open/visible and within school scope
   - attachment guard (only `applicant_image` directly on this doctype)
   - status transition matrix enforcement
+- **Readiness field model**:
+  - no stored `ready` field on the DocType
+  - readiness is computed on demand by `get_readiness_snapshot`
+  - `review_snapshot`, `interviews_summary`, `health_summary`, `policies_summary`, `documents_summary` are HTML UI summary fields
+  - hidden field present: `title` (system/display helper, not readiness truth)
 - **Whitelisted lifecycle methods**:
   - `mark_in_progress`
   - `submit_application`
@@ -115,6 +145,11 @@ Program Enrollment Tool currently implements fetch logic for `Cohort` and `Progr
   - `has_required_documents()` -> blocking
   - `health_review_complete()` -> blocking
   - `has_required_interviews()` -> tracked; not currently part of blocking `ready` boolean
+- **Promotion side-effects (`promote_to_student`)**:
+  - creates/links `Student`, writes `Student.student_applicant`, then sets applicant status to `Promoted`
+  - copies applicant image through governed file dispatcher into Student profile image slot
+  - does **not** send welcome email or print-format welcome kit by itself
+  - invite email behavior exists in staff portal endpoint `invite_applicant` (separate flow)
 - **Link query endpoints**:
   - `academic_year_intent_query`
   - `school_by_organization_query`
@@ -130,6 +165,11 @@ Program Enrollment Tool currently implements fetch logic for `Cohort` and `Progr
   - `acknowledge_policy`
   - `submit_application`
   - staff flow endpoint: `invite_applicant`
+- **Admissions policy overlay (SPA)**:
+  - page launcher: `ui-spa/src/pages/admissions/ApplicantPolicies.vue`
+  - overlay component: `ui-spa/src/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue`
+  - acknowledgement submit: `admissionsService.acknowledgePolicy` -> `ifitwala_ed.api.admissions_portal.acknowledge_policy`
+  - behavior is explicit acknowledge + timestamped row insert; no signature artifact capture
 
 ### Permission Matrix
 
@@ -147,6 +187,7 @@ Runtime controller rules (server):
 - Family/applicant editability depends on current status (`Invited/In Progress/Missing Info`).
 - Terminal states (`Rejected`, `Promoted`) are locked except explicit System Manager override flow.
 - `inquiry`, `student`, and `applicant_user` links are immutable and only set through named flows.
+- Direct `File` clutter is blocked on this doctype except `applicant_image`; admissions evidence belongs on [**Applicant Document**](/docs/en/applicant-document/).
 
 ## Reporting and Analytics
 
@@ -160,3 +201,4 @@ Runtime controller rules (server):
 - [**Applicant Document**](/docs/en/applicant-document/) - governed admissions files
 - [**Applicant Health Profile**](/docs/en/applicant-health-profile/) - health review component
 - [**Applicant Interview**](/docs/en/applicant-interview/) - interview evidence component
+- **Institutional Policy / Policy Version / Policy Acknowledgement** - readiness policy source chain used by `has_required_policies()` and portal policy API

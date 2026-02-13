@@ -1,17 +1,5 @@
 # Admissions Governance — Multi‑School / Multi‑Org (LOCKED)
 
-> Consolidated from:
-> - `/mnt/data/admissions_governance_contract.md`
-> - `/mnt/data/phase015.md`
-> - `/mnt/data/plans.md` (governance sections only)
-
-> Purpose: lock scope/authority/anchoring rules for Admissions. Remove execution-phase scaffolding; keep design meaning.
-
-Related architecture:
-- `docs/enrollment/academic_year_architecture.md`
-
----
-
 
 ## 0. Authority & non‑drift rule
 
@@ -57,16 +45,6 @@ This anchoring is:
 ---
 
 
-## 3. Full governance contract (verbatim source)
-
-
-Below is **Phase 1.5 written as a standalone governance contract**.
-This is meant to live as its **own markdown file** (e.g. `admissions_governance_phase_1_5.md`) and be **referenced** by `plans.md` and `applicant.md`, not duplicated inside them.
-
-Tone: firm, architectural, non-optional.
-Scope: design + authority only (no implementation).
-
----
 
 # Phase 1.5 — Multi-School Admissions Governance Contract
 
@@ -103,23 +81,6 @@ In a real ERP:
 * Analytics must partition cleanly
 
 Phase 1.5 exists to make these realities **explicit and enforceable**.
-
----
-
-### 1.2 What Phase 1.5 Is (and Is Not)
-
-**Phase 1.5 IS:**
-
-* A governance and authority contract
-* A scoping and visibility definition
-* A prerequisite for Phase 2+
-
-**Phase 1.5 IS NOT:**
-
-* A feature delivery phase
-* A portal phase
-* An automation phase
-* A schema rewrite mandate
 
 ---
 
