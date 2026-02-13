@@ -66,7 +66,7 @@ Legacy compatibility note: persisted `New Inquiry` values are normalized to cano
 - **Web form surface**:
   - config file `ifitwala_ed/admission/web_form/inquiry/inquiry.json`
   - route `apply/inquiry` (public form)
-  - scoped shell assets via `hooks.py` `webform_include_css/js` for `Inquiry` using app public paths: `public/css/admissions_webform_shell.css` and `public/js/admissions_webform_shell.js`
+  - scoped shell assets via `hooks.py` `webform_include_css/js` for both `Inquiry` and `Registration of Interest`, using app public paths: `public/css/admissions_webform_shell.css` and `public/js/admissions_webform_shell.js`
 - **Staff analytics (SPA)**:
   - page `ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`
   - route `/staff/analytics/inquiry` via `ifitwala_ed/ui-spa/src/router/index.ts`

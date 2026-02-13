@@ -6,6 +6,9 @@
 	var APPLY_PREFIX = "/apply/";
 	var SHELL_ROOT_ID = "ifitwala-webform-shell-root";
 	var SHELL_FOOTER_ID = "ifitwala-webform-shell-footer";
+	var SHELL_CSS_ID = "ifitwala-webform-shell-css";
+	var SHELL_CSS_HREF = "/assets/ifitwala_ed/public/css/admissions_webform_shell.css";
+	var SHELL_CSS_FALLBACK_HREF = "/assets/ifitwala_ed/css/admissions_webform_shell.css";
 
 	function createElement(tag, className, text) {
 		var el = document.createElement(tag);
@@ -94,6 +97,19 @@
 	function injectShell() {
 		if (!window.location.pathname || window.location.pathname.indexOf(APPLY_PREFIX) !== 0) {
 			return;
+		}
+
+		if (!document.getElementById(SHELL_CSS_ID)) {
+			var cssLink = createElement("link");
+			cssLink.id = SHELL_CSS_ID;
+			cssLink.rel = "stylesheet";
+			cssLink.href = SHELL_CSS_HREF;
+			cssLink.onerror = function () {
+				if (cssLink.href.indexOf(SHELL_CSS_FALLBACK_HREF) === -1) {
+					cssLink.href = SHELL_CSS_FALLBACK_HREF;
+				}
+			};
+			document.head.appendChild(cssLink);
 		}
 
 		document.body.classList.add("ifitwala-public-webform");

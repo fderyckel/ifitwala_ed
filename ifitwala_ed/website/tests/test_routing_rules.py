@@ -118,5 +118,17 @@ class TestRoutingRules(FrappeTestCase):
 		css_map = getattr(hooks, "webform_include_css", {})
 		js_map = getattr(hooks, "webform_include_js", {})
 
-		self.assertEqual(css_map, {"Inquiry": expected_css})
-		self.assertEqual(js_map, {"Inquiry": expected_js})
+		self.assertEqual(
+			css_map,
+			{
+				"Inquiry": expected_css,
+				"Registration of Interest": expected_css,
+			},
+		)
+		self.assertEqual(
+			js_map,
+			{
+				"Inquiry": expected_js,
+				"Registration of Interest": expected_js,
+			},
+		)
