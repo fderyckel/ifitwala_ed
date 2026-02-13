@@ -20,8 +20,8 @@
 | `/inquiry` | Legacy redirect | `301` to `/apply/inquiry` |
 | `/registration-of-interest` | Legacy redirect | `301` to `/apply/registration-of-interest` |
 | `/admissions/...` | SPA | Authenticated admissions applicant portal |
-| `/student`, `/staff`, `/guardian` | Portal aliases | Post-login entrypoints |
-| `/portal/...` | SPA | Authenticated portals |
+| `/student/...`, `/staff/...`, `/guardian/...` | Portal SPA | Canonical authenticated portals |
+| `/portal/...` | Legacy redirect | Compatibility redirects to canonical portal namespaces |
 | `/app` | Desk | ERP/desk surface |
 
 Rules:
@@ -30,6 +30,7 @@ Rules:
 * No root-level school marketing pages.
 * No exception-based router ownership for webforms.
 * Web Form branding must be delivered by static assets via `webform_include_css` / `webform_include_js` (app `public/...` paths), not route or controller overrides.
+* Legacy `/portal/*` requests are logged for cutover telemetry.
 
 ---
 

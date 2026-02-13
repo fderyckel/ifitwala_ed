@@ -4,7 +4,7 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import { toast } from 'frappe-ui'
 
 const routes: RouteRecordRaw[] = [
-  // redirect to a *named route* inside the /portal base, not to '/portal'
+  // redirect to a named canonical portal namespace
   {
     path: '/',
     redirect: () => {
@@ -51,8 +51,8 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  // important: keep base history at /portal (no trailing slash)
-  history: createWebHistory('/portal'),
+  // Canonical portal namespaces are top-level: /student, /staff, /guardian
+  history: createWebHistory('/'),
   routes,
 })
 
@@ -66,6 +66,21 @@ router.beforeEach((to) => {
     .filter(Boolean)
   if (!roles.length && defaultPortal) {
     roles.push(defaultPortal)
+  }
+
+  const routePath = String(to.path || '')
+  const sectionFromPath =
+    routePath.startsWith('/staff')
+      ? 'staff'
+      : routePath.startsWith('/guardian')
+        ? 'guardian'
+        : routePath.startsWith('/student')
+          ? 'student'
+          : null
+
+  if (sectionFromPath && !roles.includes(sectionFromPath)) {
+    toast.error(`You do not have access to the ${sectionFromPath} portal.`)
+    return { name: `${defaultPortal}-home` }
   }
 
   const required = ((to.meta as any)?.portal as string | undefined)?.trim().toLowerCase()

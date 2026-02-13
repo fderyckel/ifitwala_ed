@@ -5,35 +5,25 @@
 
 import frappe
 
-# Staff roles that take priority for desk access
-STAFF_ROLES = frozenset([
-	"Academic User",
-	"System Manager",
-	"Teacher",
-	"Administrator",
-	"Finance User",
-	"HR User",
-	"HR Manager",
-])
+from ifitwala_ed.routing.policy import (
+	STAFF_PORTAL_ROLES,
+	has_active_employee_profile,
+	has_staff_portal_access,
+	resolve_login_redirect_path,
+)
+
+# Backwards-compatible export used by existing modules/tests.
+STAFF_ROLES = STAFF_PORTAL_ROLES
 
 
 def _has_active_employee_profile(*, user: str, roles: set) -> bool:
 	"""Return True when user has Employee role and an active Employee record."""
-	if "Employee" not in roles:
-		return False
-	return bool(
-		frappe.db.exists(
-			"Employee",
-			{"user_id": user, "employment_status": "Active"},
-		)
-	)
+	return has_active_employee_profile(user=user, roles=roles)
 
 
 def _has_staff_portal_access(*, user: str, roles: set) -> bool:
 	"""Return True when user should land on the staff portal."""
-	if roles & STAFF_ROLES:
-		return True
-	return _has_active_employee_profile(user=user, roles=roles)
+	return has_staff_portal_access(user=user, roles=roles)
 
 
 def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
@@ -42,20 +32,12 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
 
 	Priority order (locked):
 	1. Admissions Applicant -> /admissions
-	2. Active Employee -> /portal/staff
-	3. Student -> /portal/student
-	4. Guardian -> /portal/guardian
-	5. Fallback -> /portal
+	2. Active Employee -> /staff
+	3. Student -> /student
+	4. Guardian -> /guardian
+	5. Fallback -> /student
 	"""
-	if "Admissions Applicant" in roles:
-		return "/admissions"
-	if _has_staff_portal_access(user=user, roles=roles):
-		return "/portal/staff"
-	if "Student" in roles:
-		return "/portal/student"
-	if "Guardian" in roles:
-		return "/portal/guardian"
-	return "/portal"
+	return resolve_login_redirect_path(user=user, roles=roles)
 
 
 def redirect_user_to_entry_portal():
@@ -64,49 +46,21 @@ def redirect_user_to_entry_portal():
 
 	Policy:
 	- Admissions Applicants -> /admissions
-	- Active Employees -> /portal/staff
-	- Students -> /portal/student
-	- Guardians -> /portal/guardian
-	- Fallback -> /portal
-	
-	Home-page persistence note:
-	We always overwrite User.home_page with the resolved role-specific path.
-	This is acceptable for fresh installations; custom home-page preferences
-	(e.g., staff setting /app) will be lost on next login.
-	Maintainer decision: "fine for fresh install" (2026-02-07).
-	TODO: User preference persistence planned for v2.
+	- Active Employees -> /staff
+	- Students -> /student
+	- Guardians -> /guardian
+	- Fallback -> /student
+
+	Login redirect is response-only (no User.home_page write in the login flow).
 	"""
 	user = frappe.session.user
 	if not user or user == "Guest":
 		return
 
-	def _force_redirect(path: str, also_set_home_page: bool = True):
-		if also_set_home_page:
-			try:
-				frappe.db.set_value("User", user, "home_page", path, update_modified=False)
-			except Exception:
-				# Do not break login flow if home_page persistence fails.
-				frappe.logger().warning(
-					f"Failed to persist home_page during login redirect for {user}: {path}",
-					exc_info=True,
-				)
-
-		# Login response redirect contract: let Frappe login client handle navigation.
-		frappe.local.response["home_page"] = path
-		frappe.local.response["redirect_to"] = path
-
-	# Check user roles
 	roles = set(frappe.get_roles(user))
-
-	# Resolve the appropriate portal path
 	path = _resolve_login_redirect_path(user=user, roles=roles)
-
-	# Debug logging to confirm redirect path during login
-	frappe.logger().debug(
-		f"Login redirect for {user}: roles={roles}, path={path}"
-	)
-
-	_force_redirect(path, also_set_home_page=True)
+	frappe.local.response["home_page"] = path
+	frappe.local.response["redirect_to"] = path
 
 
 @frappe.whitelist()

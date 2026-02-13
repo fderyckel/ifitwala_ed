@@ -547,7 +547,7 @@
    "doc_view": "List",
    "label": "Portal",
    "type": "URL",
-   "url": "/portal/staff"
+   "url": "/staff"
   },
   {
    "color": "Grey",

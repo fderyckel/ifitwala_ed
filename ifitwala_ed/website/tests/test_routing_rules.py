@@ -34,9 +34,16 @@ class TestRoutingRules(FrappeTestCase):
 		self.assertIn(("/", "index"), pairs)
 		self.assertIn(("/admissions", "admissions"), pairs)
 		self.assertIn(("/admissions/<path:subpath>", "admissions"), pairs)
-		self.assertIn(("/student", "/portal/student"), pairs)
-		self.assertIn(("/staff", "/portal/staff"), pairs)
-		self.assertIn(("/guardian", "/portal/guardian"), pairs)
+		self.assertIn(("/student", "portal"), pairs)
+		self.assertIn(("/student/<path:subpath>", "portal"), pairs)
+		self.assertIn(("/staff", "portal"), pairs)
+		self.assertIn(("/staff/<path:subpath>", "portal"), pairs)
+		self.assertIn(("/guardian", "portal"), pairs)
+		self.assertIn(("/guardian/<path:subpath>", "portal"), pairs)
+		self.assertIn(("/portal", "portal"), pairs)
+		self.assertIn(("/portal/<path:subpath>", "portal"), pairs)
+		self.assertNotIn("/inquiry", from_routes)
+		self.assertNotIn("/registration-of-interest", from_routes)
 		self.assertNotIn("/<path:route>", from_routes)
 
 	def test_public_web_forms_are_namespaced_under_apply(self):
@@ -57,14 +64,42 @@ class TestRoutingRules(FrappeTestCase):
 			self.assertEqual(payload.get("route"), expected_route, f"{route_name} route drifted")
 
 	def test_legacy_public_form_aliases_forward_to_apply_namespace(self):
-		rules = hooks.website_route_rules
+		redirects = getattr(hooks, "website_redirects", []) or []
 		pairs = {
-			(rule.get("from_route"), rule.get("to_route"))
-			for rule in rules
-			if isinstance(rule, dict)
+			(row.get("source"), row.get("target"))
+			for row in redirects
+			if isinstance(row, dict)
+		}
+		lookup = {
+			row.get("source"): row
+			for row in redirects
+			if isinstance(row, dict) and row.get("source")
 		}
 		self.assertIn(("/inquiry", "/apply/inquiry"), pairs)
 		self.assertIn(("/registration-of-interest", "/apply/registration-of-interest"), pairs)
+		self.assertEqual(lookup["/inquiry"].get("redirect_http_status"), 301)
+		self.assertEqual(lookup["/registration-of-interest"].get("redirect_http_status"), 301)
+
+	def test_legacy_portal_paths_redirect_to_canonical_portal_namespaces(self):
+		redirects = getattr(hooks, "website_redirects", []) or []
+		pairs = {
+			(row.get("source"), row.get("target"))
+			for row in redirects
+			if isinstance(row, dict)
+		}
+		lookup = {
+			row.get("source"): row
+			for row in redirects
+			if isinstance(row, dict) and row.get("source")
+		}
+		self.assertIn(("/portal", "/student"), pairs)
+		self.assertIn(("/portal/student", "/student"), pairs)
+		self.assertIn(("/portal/staff", "/staff"), pairs)
+		self.assertIn(("/portal/guardian", "/guardian"), pairs)
+		self.assertEqual(lookup["/portal"].get("redirect_http_status"), 301)
+		self.assertEqual(lookup["/portal/student"].get("redirect_http_status"), 301)
+		self.assertEqual(lookup["/portal/staff"].get("redirect_http_status"), 301)
+		self.assertEqual(lookup["/portal/guardian"].get("redirect_http_status"), 301)
 
 	def test_apply_namespace_is_not_owned_by_custom_website_router(self):
 		rules = hooks.website_route_rules

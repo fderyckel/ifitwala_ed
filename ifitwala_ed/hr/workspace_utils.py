@@ -4,6 +4,7 @@
 # ifitwala_ed/hr/workspace_utils.py
 
 import frappe
+from ifitwala_ed.routing.policy import is_portal_home_page
 
 def send_workspace_notification(user, workspace):
 	if not frappe.db.exists("User", user):
@@ -23,13 +24,13 @@ def set_default_workspace_based_on_roles(doc, method):
 	Still runs on User.validate (per hooks) as a safety net.
 
 	Portal-first rule:
-	- If a user has a portal home_page (/portal/*), do not touch Desk workspaces.
+	- If a user has a portal home_page (/student|/staff|/guardian or legacy /portal/*), do not touch Desk workspaces.
 	"""
 	if doc.user_type != "System User":
 		return
 
 	home_page = (getattr(doc, "home_page", "") or "").strip()
-	if home_page.startswith("/portal/"):
+	if is_portal_home_page(home_page):
 		return
 
 	# compute suggested workspace from effective access

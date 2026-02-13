@@ -297,6 +297,7 @@ For Student/Guardian SPA shell navigation:
 * `PortalSidebar.vue` remains the single navigation component for this shell.
 * Desktop uses a persistent rail pattern (collapsed/expanded), never full hide.
 * Mobile uses an overlay drawer pattern (hamburger + backdrop), never desktop rail behavior.
+* Canonical portal URLs are top-level (`/student/*`, `/guardian/*`, `/staff/*`) and router history base stays `/`.
 * All portal links must stay named-route based (`{ name: '...' }`) with no hardcoded `/portal/...` paths.
 
 State ownership:

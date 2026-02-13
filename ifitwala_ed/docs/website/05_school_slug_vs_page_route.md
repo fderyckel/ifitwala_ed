@@ -134,6 +134,11 @@ For admissions/public form requests:
 2. Legacy `/inquiry` and `/registration-of-interest` only redirect to those canonical `/apply/*` routes.
 3. Admissions applicant SPA is namespaced under `/admissions/*` and does not own `/apply/*`.
 
+For authenticated portal requests:
+
+1. Canonical portal namespaces are `/student/*`, `/staff/*`, and `/guardian/*`.
+2. Legacy `/portal/*` paths are compatibility redirects to the canonical namespaces.
+
 ---
 
 ## 5. Summary (one-line rule)

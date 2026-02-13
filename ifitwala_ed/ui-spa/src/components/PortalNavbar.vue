@@ -19,10 +19,10 @@
             <FeatherIcon name="menu" class="h-6 w-6" />
           </button>
 
-          <a href="/portal" class="flex items-center space-x-2 text-gray-800">
+          <RouterLink :to="{ name: `${defaultPortal}-home` }" class="flex items-center space-x-2 text-gray-800">
             <FeatherIcon name="book-open" class="h-6 w-6 text-blue-600" />
             <span class="font-semibold text-xl">Ifitwala</span>
-          </a>
+          </RouterLink>
         </div>
 
         <div class="flex items-center">
@@ -82,7 +82,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { FeatherIcon } from 'frappe-ui';
 import { getStudentPortalIdentity } from '@/lib/services/student/studentHomeService';
 
@@ -90,6 +90,11 @@ import { getStudentPortalIdentity } from '@/lib/services/student/studentHomeServ
 const isUserMenuOpen = ref(false);
 const route = useRoute();
 const studentIdentity = ref(null);
+const defaultPortal = computed(() => {
+  const raw = window.defaultPortal || 'student';
+  const normalized = String(raw || 'student').trim().toLowerCase();
+  return ['staff', 'student', 'guardian'].includes(normalized) ? normalized : 'student';
+});
 
 const isStudentPortal = computed(() => String(route.path || '').startsWith('/student'));
 

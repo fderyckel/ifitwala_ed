@@ -8,6 +8,7 @@ from ifitwala_ed.setup.utils import insert_record
 from ifitwala_ed.school_site.doctype.website_theme_profile.website_theme_profile import (
 	ensure_theme_profile_presets,
 )
+from ifitwala_ed.routing.policy import canonical_path_for_section
 from ifitwala_ed.website.block_registry import (
 	get_website_block_definition_records as get_canonical_website_block_definition_records,
 	sync_website_block_definitions,
@@ -82,8 +83,8 @@ def ensure_root_organization():
 def create_roles_with_homepage():
 	"""Create or update roles with home_page and desk_access."""
 	roles = [
-		{"role_name": "Student", "desk_access": 0, "home_page": "/portal/student"},
-		{"role_name": "Guardian", "desk_access": 0, "home_page": "/portal/guardian"},
+		{"role_name": "Student", "desk_access": 0, "home_page": canonical_path_for_section("student")},
+		{"role_name": "Guardian", "desk_access": 0, "home_page": canonical_path_for_section("guardian")},
 		{"role_name": "Admissions Applicant", "desk_access": 0, "home_page": "/admissions"},
 		{"role_name": "Nurse", "desk_access": 1, "home_page": "/app/health"},
 		{"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/admin"},
