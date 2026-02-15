@@ -94,6 +94,44 @@
 		}
 	}
 
+	function markActiveNavigationLink() {
+		var pathname = window.location.pathname || "";
+		var links = document.querySelectorAll(".if-webform-shell-link");
+
+		for (var i = 0; i < links.length; i++) {
+			var link = links[i];
+			var href = (link.getAttribute("href") || "").trim();
+			var isActive = false;
+
+			if (href && pathname.indexOf(href) === 0) {
+				isActive = true;
+			}
+
+			link.classList.toggle("is-active", isActive);
+			if (isActive) {
+				link.setAttribute("aria-current", "page");
+			} else {
+				link.removeAttribute("aria-current");
+			}
+		}
+	}
+
+	function normalizeSelectControls() {
+		var selectNodes = document.querySelectorAll(
+			".web-form select.form-control:not([multiple])"
+		);
+
+		for (var i = 0; i < selectNodes.length; i++) {
+			var select = selectNodes[i];
+			var rawSize = select.getAttribute("size");
+			var parsedSize = parseInt(rawSize || "0", 10);
+
+			if (!Number.isNaN(parsedSize) && parsedSize > 1) {
+				select.setAttribute("size", "1");
+			}
+		}
+	}
+
 	function injectShell() {
 		if (!window.location.pathname || window.location.pathname.indexOf(APPLY_PREFIX) !== 0) {
 			return;
@@ -114,11 +152,13 @@
 
 		document.body.classList.add("ifitwala-public-webform");
 		markFormContainer();
+		normalizeSelectControls();
 
 		if (!document.getElementById(SHELL_ROOT_ID)) {
 			var header = buildShellHeader();
 			document.body.insertBefore(header, document.body.firstChild);
 		}
+		markActiveNavigationLink();
 
 		if (!document.getElementById(SHELL_FOOTER_ID)) {
 			document.body.appendChild(buildShellFooter());
