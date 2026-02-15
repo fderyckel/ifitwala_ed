@@ -215,3 +215,15 @@ When room availability looks wrong:
 * Domain docs materialize into facts
 * Reads never infer
 * Writes must be idempotent and rebuild-safe
+
+---
+
+## 10. Activity Booking Gate Integration (v2)
+
+Before an activity booking window can open, linked sections are validated against `Location Booking` conflicts through `find_room_conflicts(...)`.
+
+This guarantees:
+
+1. Activity windows cannot open while any linked section overlaps existing room bookings.
+2. Only canonical room facts are used (never schedule inference).
+3. Diagnostics are returned per section for operational correction.

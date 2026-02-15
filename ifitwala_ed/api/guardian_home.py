@@ -971,7 +971,10 @@ def _build_communication_bundle(
 			title,
 			publish_from,
 			publish_to,
-			creation
+			creation,
+			activity_program_offering,
+			activity_booking,
+			activity_student_group
 		FROM `tabOrg Communication`
 		WHERE status = 'Published'
 		  AND IFNULL(portal_surface, 'Everywhere') IN ('Everywhere', 'Portal Feed', 'Guardian Portal')
@@ -1085,6 +1088,9 @@ def _build_communication_bundle(
 					"communication": comm_name,
 					"date": date_str,
 					"title": title,
+					"activity_program_offering": row.get("activity_program_offering"),
+					"activity_booking": row.get("activity_booking"),
+					"activity_student_group": row.get("activity_student_group"),
 					"is_unread": True,
 				}
 			)
@@ -1096,6 +1102,9 @@ def _build_communication_bundle(
 					"communication": comm_name,
 					"date": date_str,
 					"title": title,
+					"activity_program_offering": row.get("activity_program_offering"),
+					"activity_booking": row.get("activity_booking"),
+					"activity_student_group": row.get("activity_student_group"),
 					"is_unread": bool(is_unread),
 				}
 			)

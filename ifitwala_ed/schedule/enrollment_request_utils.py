@@ -96,6 +96,7 @@ def validate_program_enrollment_request(request_name, force=0):
 		"validation_payload": json.dumps(engine_payload, sort_keys=True, default=str),
 		"validated_on": now_datetime(),
 		"validated_by": frappe.session.user,
+		"request_kind": (doc.request_kind or "Academic").strip() or "Academic",
 		# keep PER flags aligned for workflow UX
 		"requires_override": 1 if requires_override else 0,
 	}

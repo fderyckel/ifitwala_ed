@@ -1,12 +1,36 @@
 <!-- ifitwala_ed/docs/website/01_architecture_notes.md -->
-# Website Architecture — Proposal B (A+ Canonical Design)
+# Website Architecture — Canonical
 
 **Ifitwala_Ed — Website System v1**
 
-> **Status:** Design-locked (pending explicit revision)
+> **Status:** Routing ownership locked as of February 13, 2026.
 > **Scope:** Public marketing & information pages (School, Programs, Blog, Home)
 > **Non-Goal:** LMS / Portal / authenticated app flows
 > **Audience:** Core developers, system architects, security reviewers
+
+---
+
+## Public Route Ownership (Locked)
+
+| Path | Owner | Purpose |
+| --- | --- | --- |
+| `/` | Organization Landing | Top-level marketing page |
+| `/schools/<school_slug>/...` | Custom website renderer | School marketing pages |
+| `/apply/...` | Native Frappe Web Forms | Public admissions entry forms |
+| `/inquiry` | Legacy redirect | `301` to `/apply/inquiry` |
+| `/registration-of-interest` | Legacy redirect | `301` to `/apply/registration-of-interest` |
+| `/admissions/...` | SPA | Authenticated admissions applicant portal |
+| `/student/...`, `/staff/...`, `/guardian/...` | Portal SPA | Canonical authenticated portals |
+| `/portal/...` | Legacy redirect | Compatibility redirects to canonical portal namespaces |
+| `/app` | Desk | ERP/desk surface |
+
+Rules:
+* No root catch-all.
+* No default-school redirect at `/`.
+* No root-level school marketing pages.
+* No exception-based router ownership for webforms.
+* Web Form branding must be delivered by static assets via `webform_include_css` / `webform_include_js` (app `public/...` paths), not route or controller overrides.
+* Legacy `/portal/*` requests are logged for cutover telemetry.
 
 ---
 
@@ -238,9 +262,9 @@ This replaces **Builder Data Scripts** safely.
 ### 7.1 Canonical Assets
 
 * `website.css` (Tailwind entrypoint)
-* `website.bundle.css` (build output)
+* `ifitwala_site.bundle.css` (build output)
 * `website.js`
-* `website.bundle.js` (build output)
+* `ifitwala_site.bundle.js` (build output)
 * `image_fallback.js`
 
 These are **authoritative** and reused across pages.
@@ -373,7 +397,7 @@ It is a deliberate architectural stance.
 
 **Ifitwala_Ed — Proposal B**
 
-> **Status:** Draft — pending sign-off
+> **Status:** Canonical registry concept implemented; keep this section as architecture reference
 > **Audience:** Core devs, frontend architects, content governance
 > **Scope:** Public website blocks only (marketing & informational pages)
 > **Non-goal:** Portal / LMS / authenticated experiences

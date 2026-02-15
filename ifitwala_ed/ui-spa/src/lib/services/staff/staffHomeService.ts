@@ -7,6 +7,7 @@ export type StaffHomeHeader = {
 	user: string
 	first_name?: string | null
 	full_name?: string | null
+	capabilities: Record<string, boolean>
 }
 
 export type ListFocusItemsPayload = {

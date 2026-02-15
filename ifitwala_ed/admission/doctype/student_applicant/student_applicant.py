@@ -15,6 +15,10 @@ from ifitwala_ed.governance.policy_utils import (
 	has_applicant_policy_acknowledgement,
 )
 from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
+from ifitwala_ed.governance.policy_scope_utils import (
+	get_organization_ancestors_including_self,
+	select_nearest_policy_rows_by_key,
+)
 from ifitwala_ed.utilities import file_dispatcher
 from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
 
@@ -60,6 +64,9 @@ EDIT_RULES = {
 
 
 class StudentApplicant(Document):
+
+	def before_save(self):
+		self._set_title_if_missing()
 
 	# ---------------------------------------------------------------------
 	# Core validation
@@ -309,6 +316,17 @@ class StudentApplicant(Document):
 		scope = get_school_scope_for_academic_year(self.school)
 		if ay_row.get("school") not in scope:
 			frappe.throw(_("Selected Academic Year is outside the applicant's school scope."))
+
+	def _set_title_if_missing(self):
+		if (self.title or "").strip():
+			return
+
+		name_parts = [self.first_name, self.middle_name, self.last_name]
+		normalized_parts = [part.strip() for part in name_parts if isinstance(part, str) and part.strip()]
+		if not normalized_parts:
+			return
+
+		self.title = " ".join(normalized_parts)
 
 	# ---------------------------------------------------------------------
 	# Lifecycle helpers
@@ -602,6 +620,10 @@ class StudentApplicant(Document):
 		if not self.organization:
 			return {"ok": False, "missing": [], "required": []}
 
+		ancestor_orgs = get_organization_ancestors_including_self(self.organization)
+		if not ancestor_orgs:
+			return {"ok": True, "missing": [], "required": []}
+
 		schema_check = ensure_policy_applies_to_column(caller="StudentApplicant.has_required_policies")
 		if not schema_check.get("ok"):
 			self.flags.policy_schema_error = schema_check.get("message")
@@ -611,22 +633,30 @@ class StudentApplicant(Document):
 				"required": [],
 			}
 
+		org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
 		rows = frappe.db.sql(
-			"""
+			f"""
 			SELECT ip.name AS policy_name,
 			       ip.policy_key AS policy_key,
+			       ip.organization AS policy_organization,
 			       pv.name AS policy_version
 			  FROM `tabInstitutional Policy` ip
 			  JOIN `tabPolicy Version` pv
 			    ON pv.institutional_policy = ip.name
 			 WHERE ip.is_active = 1
 			   AND pv.is_active = 1
-			   AND ip.organization = %s
+			   AND ip.organization IN ({org_placeholders})
 			   AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
 			   AND ip.applies_to LIKE %s
 			""",
-			(self.organization, self.school, "%Applicant%"),
+			(*ancestor_orgs, self.school, "%Applicant%"),
 			as_dict=True,
+		)
+		rows = select_nearest_policy_rows_by_key(
+			rows=rows,
+			context_organization=self.organization,
+			policy_key_field="policy_key",
+			policy_organization_field="policy_organization",
 		)
 
 		if not rows:

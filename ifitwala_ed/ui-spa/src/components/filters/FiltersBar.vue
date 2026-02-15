@@ -7,6 +7,7 @@
   - EnrollmentAnalytics.vue
   - StudentLogAnalytics.vue
   - RoomUtilization.vue
+  - AttendanceLedger.vue
 -->
 <template>
   <section

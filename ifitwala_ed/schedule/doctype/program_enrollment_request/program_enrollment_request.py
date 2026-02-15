@@ -19,6 +19,13 @@ class ProgramEnrollmentRequest(Document):
 		- If requires_override=1, status cannot be "Approved" unless override_approved=1.
 		"""
 		target_status = (self.status or "").strip()
+		request_kind = (self.request_kind or "Academic").strip() or "Academic"
+		if request_kind not in {"Academic", "Activity"}:
+			frappe.throw(_("Invalid Request Kind: {0}").format(request_kind))
+		self.request_kind = request_kind
+		if request_kind == "Activity" and not self.activity_booking:
+			frappe.throw(_("Activity Request Kind requires Activity Booking reference."))
+
 		needs_snapshot = target_status in {"Submitted", "Under Review", "Approved"}
 
 		if not needs_snapshot:

@@ -7,7 +7,7 @@
 <section class="block-admissions-steps">
 	<div class="mx-auto max-w-6xl px-6 grid gap-8 {{ grid_class }}">
 		{% for step in data.steps %}
-			<div class="rounded-xl border p-6 text-center space-y-4">
+			<div class="flex flex-col gap-4 rounded-xl border p-6 text-center">
 				{% if step.icon %}
 					<span class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm text-slate-500" data-icon="{{ step.icon }}" aria-hidden="true"></span>
 				{% endif %}

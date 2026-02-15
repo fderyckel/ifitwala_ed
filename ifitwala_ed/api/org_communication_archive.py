@@ -76,6 +76,9 @@ def _normalize_filters(raw_filters: dict | None) -> dict:
 		"student_group": _clean_link(raw.get("student_group")),
 		"school": _clean_link(raw.get("school")),
 		"organization": _clean_link(raw.get("organization")),
+		"activity_program_offering": _clean_link(raw.get("activity_program_offering")),
+		"activity_student_group": _clean_link(raw.get("activity_student_group")),
+		"activity_booking": _clean_link(raw.get("activity_booking")),
 		"only_with_interactions": 1 if raw.get("only_with_interactions") else 0,
 	}
 
@@ -302,6 +305,9 @@ def get_org_communication_item(name=None):
 		"communication_type": doc.communication_type,
 		"priority": doc.priority,
 		"publish_from": doc.publish_from,
+		"activity_program_offering": doc.activity_program_offering,
+		"activity_booking": doc.activity_booking,
+		"activity_student_group": doc.activity_student_group,
 		"audience_label": get_audience_label(doc.name),
 		"audience_summary": build_audience_summary(doc.name),
 	}
@@ -325,6 +331,9 @@ def get_org_communication_feed(
 	student_group: str | None = None,
 	school: str | None = None,
 	organization: str | None = None,
+	activity_program_offering: str | None = None,
+	activity_student_group: str | None = None,
+	activity_booking: str | None = None,
 	only_with_interactions: int | None = None,
 ) -> dict:
 	user = frappe.session.user
@@ -349,6 +358,9 @@ def get_org_communication_feed(
 		"student_group": student_group,
 		"school": school,
 		"organization": organization,
+		"activity_program_offering": activity_program_offering,
+		"activity_student_group": activity_student_group,
+		"activity_booking": activity_booking,
 		"only_with_interactions": only_with_interactions,
 	}
 	for key, value in legacy_overrides.items():
@@ -491,6 +503,21 @@ def get_org_communication_feed(
 		conditions.append("organization IN %(org_guard)s")
 		values["org_guard"] = tuple(org_guard)
 
+	activity_offering_val = filters_dict.get("activity_program_offering")
+	if activity_offering_val:
+		conditions.append("activity_program_offering = %(activity_program_offering)s")
+		values["activity_program_offering"] = activity_offering_val
+
+	activity_group_val = filters_dict.get("activity_student_group")
+	if activity_group_val:
+		conditions.append("activity_student_group = %(activity_student_group)s")
+		values["activity_student_group"] = activity_group_val
+
+	activity_booking_val = filters_dict.get("activity_booking")
+	if activity_booking_val:
+		conditions.append("activity_booking = %(activity_booking)s")
+		values["activity_booking"] = activity_booking_val
+
 	if filters_dict.get("only_with_interactions"):
 		# Semantics: "only_with_interactions" means "has at least one COMMENT"
 		# (reactions alone must NOT qualify an item)
@@ -565,7 +592,10 @@ def get_org_communication_feed(
 			brief_end_date,
 			interaction_mode,
 			allow_private_notes,
-			allow_public_thread
+			allow_public_thread,
+			activity_program_offering,
+			activity_booking,
+			activity_student_group
 		FROM `tabOrg Communication`
 		{where_clause}
 		ORDER BY publish_from DESC, creation DESC
@@ -607,6 +637,9 @@ def get_org_communication_feed(
 				"interaction_mode": c.interaction_mode,
 				"allow_private_notes": c.allow_private_notes,
 				"allow_public_thread": c.allow_public_thread,
+				"activity_program_offering": c.activity_program_offering,
+				"activity_booking": c.activity_booking,
+				"activity_student_group": c.activity_student_group,
 				"snippet": snippet,
 				"has_active_thread": c.allow_public_thread,
 				"audience_label": get_audience_label(c.name),

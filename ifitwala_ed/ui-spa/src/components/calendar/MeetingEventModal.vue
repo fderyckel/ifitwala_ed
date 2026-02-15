@@ -7,14 +7,14 @@
   Used by:
   - ScheduleCalendar.vue
 -->
-	<TransitionRoot as="template" :show="open">
-		<Dialog
-			as="div"
-			class="if-overlay if-overlay--meeting"
-			:style="{ zIndex: zIndex }"
-			:initialFocus="initialFocus"
-			@close="emitClose"
-		>
+		<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
+			<Dialog
+				as="div"
+				class="if-overlay if-overlay--meeting"
+				:style="{ zIndex: zIndex }"
+				:initialFocus="initialFocus"
+				@close="onDialogClose"
+			>
 			<TransitionChild
 				as="template"
 				enter="if-overlay__fade-enter"
@@ -24,8 +24,8 @@
 				leave-from="if-overlay__fade-to"
 				leave-to="if-overlay__fade-from"
 			>
-				<div class="if-overlay__backdrop" />
-			</TransitionChild>
+					<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
+				</TransitionChild>
 
 			<div class="if-overlay__wrap">
 				<TransitionChild
@@ -44,9 +44,9 @@
 							class="sr-only"
 							aria-hidden="true"
 							tabindex="0"
-							@click="emitClose"
-						>
-							Close
+								@click="emitClose('programmatic')"
+							>
+								Close
 						</button>
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
@@ -73,9 +73,9 @@
 									<FeatherIcon name="external-link" class="h-4 w-4" />
 									View in Desk
 								</a>
-								<button class="if-overlay__icon-button" aria-label="Close meeting modal" @click="emitClose">
-									<FeatherIcon name="x" class="h-5 w-5" />
-								</button>
+									<button class="if-overlay__icon-button" aria-label="Close meeting modal" @click="emitClose('programmatic')">
+										<FeatherIcon name="x" class="h-5 w-5" />
+									</button>
 							</div>
 						</div>
 
@@ -89,8 +89,8 @@
 
 							<div v-else-if="error" class="meeting-modal__error">
 								<p class="type-body">{{ error }}</p>
-								<button class="meeting-modal__cta" @click="emitClose">Close</button>
-							</div>
+									<button class="meeting-modal__cta" @click="emitClose('programmatic')">Close</button>
+								</div>
 
 							<div v-else-if="meeting">
 								<section class="meeting-modal__meta-grid">
@@ -184,7 +184,7 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { api } from '@/lib/client';
 import type { MeetingDetails, MeetingParticipantSummary } from './meetingTypes';
@@ -197,8 +197,11 @@ const props = defineProps<{
 	meeting: string; // meeting name/id from ScheduleCalendar extractMeetingName()
 }>();
 
+type CloseReason = 'backdrop' | 'esc' | 'programmatic';
+
 const emit = defineEmits<{
-	(e: 'close'): void;
+	(e: 'close', reason: CloseReason): void;
+	(e: 'after-leave'): void;
 }>();
 
 const zIndex = computed(() => props.zIndex ?? 60);
@@ -293,9 +296,39 @@ function safeDate(value?: string | null) {
 	return date;
 }
 
-function emitClose() {
-	emit('close');
+function emitClose(reason: CloseReason = 'programmatic') {
+	emit('close', reason);
 }
 
 const initialFocus = ref<HTMLElement | null>(null);
+
+function emitAfterLeave() {
+	emit('after-leave');
+}
+
+/**
+ * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
+ * Under A+, ignore it and close only via explicit backdrop/esc/button paths.
+ */
+function onDialogClose(_payload: unknown) {
+	// no-op by design
+}
+
+function onKeydown(e: KeyboardEvent) {
+	if (!props.open) return;
+	if (e.key === 'Escape') emitClose('esc');
+}
+
+watch(
+	() => props.open,
+	(v) => {
+		if (v) document.addEventListener('keydown', onKeydown, true);
+		else document.removeEventListener('keydown', onKeydown, true);
+	},
+	{ immediate: true }
+);
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true);
+});
 </script>

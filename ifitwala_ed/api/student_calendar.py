@@ -140,12 +140,13 @@ def _fetch_holidays(calendars: set[str], start: datetime, end: datetime, tzinfo:
             d = getdate(d)
             
         dt_start = tzinfo.localize(datetime.combine(d, datetime.min.time()))
+        dt_end = dt_start + timedelta(days=1)
         
         holidays.append(CalendarEvent(
             id=f"holiday::{r.parent}::{d.isoformat()}",
             title=r.description or "Holiday",
             start=dt_start,
-            end=dt_start,
+            end=dt_end,
             source="holiday",
             color="#ef4444", # Red for holiday
             all_day=True,
@@ -210,8 +211,12 @@ def _fetch_classes(
             if s_end.tzinfo is None:
                 s_end = tzinfo.localize(s_end)
 
+            rotation_day = slot.get("rotation_day")
+            block_number = slot.get("block_number")
+            session_date = s_start.date().isoformat()
+
             events.append(CalendarEvent(
-                id=f"sg::{sg_name}::{s_start.isoformat()}", 
+                id=f"sg::{sg_name}::{rotation_day}::{block_number}::{session_date}",
                 title=title,
                 start=s_start,
                 end=s_end,

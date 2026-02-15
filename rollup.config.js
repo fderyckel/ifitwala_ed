@@ -3,7 +3,7 @@
  * Rollup build – Ifitwala Ed
  *
  * ── Public-facing assets (heavy traffic) ──────────────────────────────
- * website.js  + website.css  → public/js/website.*.bundle.js + public/css/website.*.bundle.css
+ * website.js + website.css → public/js/ifitwala_site.*.bundle.js + public/css/ifitwala_site.*.bundle.css
  *
  */
 
@@ -37,6 +37,29 @@ function contentHash(file) {
 		.update(fs.readFileSync(file))
 		.digest('hex')
 		.slice(0, 8);
+}
+
+function cleanupOldWebsiteBundles(dir, currentFileName, matcher) {
+	if (!fs.existsSync(dir)) return;
+	const files = fs.readdirSync(dir);
+	for (const file of files) {
+		if (!matcher.test(file)) continue;
+		if (file === currentFileName) continue;
+		try {
+			fs.unlinkSync(path.join(dir, file));
+		} catch {}
+	}
+}
+
+function cleanupMatchingBundles(dir, matcher) {
+	if (!fs.existsSync(dir)) return;
+	const files = fs.readdirSync(dir);
+	for (const file of files) {
+		if (!matcher.test(file)) continue;
+		try {
+			fs.unlinkSync(path.join(dir, file));
+		} catch {}
+	}
 }
 
 const websiteJsHash = contentHash(path.join(websiteSrc, 'website.js'));
@@ -101,7 +124,7 @@ module.exports = [
 	{
 		input: `${websiteSrc}/website.js`,
 		output: {
-			file: `${jsDest}/website.${websiteJsHash}.bundle.js`,
+			file: `${jsDest}/ifitwala_site.${websiteJsHash}.bundle.js`,
 			format: 'iife',
 			sourcemap: true,
 		},
@@ -112,7 +135,11 @@ module.exports = [
 				name: 'alias-stable-website-js',
 				writeBundle() {
 					const p = jsDest;
-					try { fs.copyFileSync(`${p}/website.${websiteJsHash}.bundle.js`, `${p}/website.bundle.js`); } catch {}
+					const current = `ifitwala_site.${websiteJsHash}.bundle.js`;
+					cleanupOldWebsiteBundles(p, current, /^ifitwala_site\.[a-f0-9]{8}\.bundle\.js$/);
+					cleanupMatchingBundles(p, /^website\.[a-f0-9]{8}\.bundle\.js$/);
+					cleanupMatchingBundles(p, /^website\.bundle\.js$/);
+					try { fs.copyFileSync(`${p}/${current}`, `${p}/ifitwala_site.bundle.js`); } catch {}
 				}
 			}
 		],
@@ -124,7 +151,7 @@ module.exports = [
 		output: { dir: '.' },
 		plugins: [
 			postcss({
-				extract: `${cssDest}/website.${websiteCssHash}.bundle.css`,
+				extract: `${cssDest}/ifitwala_site.${websiteCssHash}.bundle.css`,
 				minimize: true,
 				plugins: [
 					tailwind({ config: path.join(appDir, 'tailwind.website.config.js') }),
@@ -135,7 +162,11 @@ module.exports = [
 				name: 'alias-stable-website-css',
 				writeBundle() {
 					const p = cssDest;
-					try { fs.copyFileSync(`${p}/website.${websiteCssHash}.bundle.css`, `${p}/website.bundle.css`); } catch {}
+					const current = `ifitwala_site.${websiteCssHash}.bundle.css`;
+					cleanupOldWebsiteBundles(p, current, /^ifitwala_site\.[a-f0-9]{8}\.bundle\.css$/);
+					cleanupMatchingBundles(p, /^website\.[a-f0-9]{8}\.bundle\.css$/);
+					cleanupMatchingBundles(p, /^website\.bundle\.css$/);
+					try { fs.copyFileSync(`${p}/${current}`, `${p}/ifitwala_site.bundle.css`); } catch {}
 				}
 			}
 		],

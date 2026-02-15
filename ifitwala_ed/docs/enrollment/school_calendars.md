@@ -790,6 +790,7 @@ Use **only** `school_tree.py`:
 Use **only explicit resolvers**, e.g.:
 
 * `resolve_terms_for_school_calendar`
+* `resolve_school_calendars_for_window` (implemented in `school_settings_utils.py`)
 * `resolve_school_calendar_for_attendance` (future)
 * `resolve_school_calendar_for_enrollment` (future)
 
@@ -839,4 +840,3 @@ This aligns perfectly with:
 * Your analytics expectations
 
 ---
-

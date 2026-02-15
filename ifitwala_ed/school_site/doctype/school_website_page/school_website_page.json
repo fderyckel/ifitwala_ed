@@ -17,6 +17,7 @@
   "column_break_meta",
   "title",
   "status",
+  "workflow_state",
   "full_route",
   "section_break_4b4n",
   "meta_description",
@@ -59,11 +60,19 @@
   },
   {
    "default": "Draft",
-   "description": "Read-only. Controlled by School.is_published + website slug.",
+   "description": "Read-only. Controlled by Workflow State and school publication readiness.",
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
    "options": "Draft\nPublished",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "label": "Workflow State",
+   "options": "Draft\nIn Review\nApproved\nPublished",
    "read_only": 1
   },
   {
@@ -120,7 +129,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-31 09:58:33.459063",
+ "modified": "2026-01-31 09:58:37",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "School Website Page",

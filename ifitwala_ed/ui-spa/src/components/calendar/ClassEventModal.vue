@@ -18,7 +18,7 @@
 			class="if-overlay if-overlay--class"
 			:style="overlayStyle"
 			:initialFocus="initialFocus"
-			@close="emitClose"
+			@close="onDialogClose"
 		>
 			<TransitionChild
 				as="template"
@@ -29,7 +29,7 @@
 				leave-from="if-overlay__fade-to"
 				leave-to="if-overlay__fade-from"
 			>
-				<div class="if-overlay__backdrop" />
+				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
 			</TransitionChild>
 
 			<div class="if-overlay__wrap">
@@ -49,7 +49,7 @@
 							class="sr-only"
 							aria-hidden="true"
 							tabindex="0"
-							@click="emitClose"
+							@click="emitClose('programmatic')"
 						>
 							Close
 						</button>
@@ -63,7 +63,7 @@
 									{{ data.course_name }}
 								</p>
 							</div>
-							<button class="if-overlay__icon-button" aria-label="Close class modal" @click="emitClose">
+							<button class="if-overlay__icon-button" aria-label="Close class modal" @click="emitClose('programmatic')">
 								<FeatherIcon name="x" class="h-5 w-5" />
 							</button>
 						</div>
@@ -78,7 +78,7 @@
 
 							<div v-else-if="error" class="meeting-modal__error">
 								<p class="type-body">{{ error }}</p>
-								<button class="meeting-modal__cta" @click="emitClose">Close</button>
+								<button class="meeting-modal__cta" @click="emitClose('programmatic')">Close</button>
 							</div>
 
 							<div v-else-if="data">
@@ -137,42 +137,54 @@
 
 								<div class="meeting-modal__actions">
 									<RouterLink
-										class="meeting-modal__action-button"
-										:to="attendanceLink"
-										target="_blank"
-										rel="noreferrer"
-									>
-										<FeatherIcon name="check-square" class="h-4 w-4" />
-										Take Attendance
-									</RouterLink>
-
-									<RouterLink
+										v-if="isStudentPortal"
 										class="meeting-modal__action-button meeting-modal__action-button--secondary"
-										:to="gradebookLink"
-										target="_blank"
-										rel="noreferrer"
+										:to="studentCourseLink"
+										@click="emitClose('programmatic')"
 									>
 										<FeatherIcon name="book-open" class="h-4 w-4" />
-										Open Gradebook
+										Open Course
 									</RouterLink>
 
-									<button
-										type="button"
-										class="meeting-modal__action-button meeting-modal__action-button--secondary"
-										@click="emitCreateAnnouncement"
-									>
-										<FeatherIcon name="message-square" class="h-4 w-4" />
-										Create Announcement
-									</button>
+									<template v-else>
+										<RouterLink
+											class="meeting-modal__action-button"
+											:to="attendanceLink"
+											target="_blank"
+											rel="noreferrer"
+										>
+											<FeatherIcon name="check-square" class="h-4 w-4" />
+											Take Attendance
+										</RouterLink>
 
-									<button
-										type="button"
-										class="meeting-modal__action-button meeting-modal__action-button--secondary"
-										@click="emitCreateTask"
-									>
-										<FeatherIcon name="clipboard" class="h-4 w-4" />
-										Create Task
-									</button>
+										<RouterLink
+											class="meeting-modal__action-button meeting-modal__action-button--secondary"
+											:to="gradebookLink"
+											target="_blank"
+											rel="noreferrer"
+										>
+											<FeatherIcon name="book-open" class="h-4 w-4" />
+											Open Gradebook
+										</RouterLink>
+
+										<button
+											type="button"
+											class="meeting-modal__action-button meeting-modal__action-button--secondary"
+											@click="emitCreateAnnouncement"
+										>
+											<FeatherIcon name="message-square" class="h-4 w-4" />
+											Create Announcement
+										</button>
+
+										<button
+											type="button"
+											class="meeting-modal__action-button meeting-modal__action-button--secondary"
+											@click="emitCreateTask"
+										>
+											<FeatherIcon name="clipboard" class="h-4 w-4" />
+											Create Task
+										</button>
+									</template>
 								</div>
 							</div>
 						</div>
@@ -192,8 +204,8 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue'
 import { FeatherIcon } from 'frappe-ui'
-import { computed, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import { useOverlayStack } from '@/composables/useOverlayStack'
 import { api } from '@/lib/client'
 import type { ClassEventDetails } from './classEventTypes'
@@ -202,13 +214,16 @@ const props = defineProps<{
 	open: boolean
 	zIndex?: number
 	eventId?: string | null
+	portalRole?: 'staff' | 'student' | 'guardian'
 }>()
 
 const overlay = useOverlayStack()
+const route = useRoute()
 
+type CloseReason = 'backdrop' | 'esc' | 'programmatic'
 
 const emit = defineEmits<{
-	(e: 'close'): void
+	(e: 'close', reason: CloseReason): void
 	(e: 'create-announcement', event: ClassEventDetails): void
 	(e: 'create-task', payload: { studentGroup: string; dueDate: string | null }): void
 	(e: 'after-leave'): void
@@ -309,8 +324,18 @@ const gradebookLink = computed(() => {
 	return { name: 'staff-gradebook', query: { student_group: data.value.student_group } }
 })
 
-function emitClose() {
-	emit('close')
+const isStudentPortal = computed(() => {
+	if (props.portalRole) return props.portalRole === 'student'
+	return typeof route.name === 'string' && route.name.startsWith('student-')
+})
+
+const studentCourseLink = computed(() => {
+	if (!data.value?.course) return { name: 'student-courses' as const }
+	return { name: 'student-course-detail' as const, params: { course_id: data.value.course } }
+})
+
+function emitClose(reason: CloseReason = 'programmatic') {
+	emit('close', reason)
 }
 
 function emitCreateAnnouncement() {
@@ -342,4 +367,30 @@ function emitAfterLeave() {
 }
 
 const initialFocus = ref<HTMLElement | null>(null)
+
+/**
+ * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
+ * Under A+, ignore it and close only via explicit backdrop/esc/button paths.
+ */
+function onDialogClose(_payload: unknown) {
+	// no-op by design
+}
+
+function onKeydown(e: KeyboardEvent) {
+	if (!props.open) return
+	if (e.key === 'Escape') emitClose('esc')
+}
+
+watch(
+	() => props.open,
+	(v) => {
+		if (v) document.addEventListener('keydown', onKeydown, true)
+		else document.removeEventListener('keydown', onKeydown, true)
+	},
+	{ immediate: true }
+)
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true)
+})
 </script>

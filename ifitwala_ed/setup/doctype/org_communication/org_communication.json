@@ -20,6 +20,11 @@
   "publish_to",
   "school",
   "organization",
+  "activity_context_section",
+  "activity_program_offering",
+  "activity_booking",
+  "column_break_activity_context",
+  "activity_student_group",
   "audience_section",
   "audiences",
   "section_break_dcte",
@@ -92,6 +97,34 @@
    "fieldtype": "Link",
    "label": "Organization",
    "options": "Organization"
+  },
+  {
+   "fieldname": "activity_context_section",
+   "fieldtype": "Section Break",
+   "label": "Activity Context"
+  },
+  {
+   "description": "Optional explicit link to activity Program Offering for feed filtering and traceability.",
+   "fieldname": "activity_program_offering",
+   "fieldtype": "Link",
+   "label": "Activity Program Offering",
+   "options": "Program Offering"
+  },
+  {
+   "fieldname": "activity_booking",
+   "fieldtype": "Link",
+   "label": "Activity Booking",
+   "options": "Activity Booking"
+  },
+  {
+   "fieldname": "column_break_activity_context",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "activity_student_group",
+   "fieldtype": "Link",
+   "label": "Activity Student Group",
+   "options": "Student Group"
   },
   {
    "description": "Communication is visible from this time onwards.",
@@ -195,7 +228,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-08 21:58:44.200581",
+ "modified": "2025-12-08 21:58:47",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Communication",

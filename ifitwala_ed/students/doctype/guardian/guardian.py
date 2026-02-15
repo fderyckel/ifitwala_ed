@@ -8,6 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.contacts.address_and_contact import load_address_and_contact
 from frappe.utils import get_link_to_form
+from ifitwala_ed.routing.policy import canonical_path_for_section, has_staff_portal_access
 
 
 class Guardian(Document):
@@ -66,16 +67,10 @@ class Guardian(Document):
 		if not user_email or not frappe.db.exists("User", user_email):
 			return
 		
-		# Check if user is a staff member - staff routing takes priority
-		staff_roles = frozenset([
-			"Academic User", "System Manager", "Teacher", "Administrator",
-			"Finance User", "HR User", "HR Manager"
-		])
 		user_roles = set(frappe.get_roles(user_email))
-		has_staff_role = bool(user_roles & staff_roles)
 		
 		# Don't override home_page for staff members - they get their own routing
-		if has_staff_role:
+		if has_staff_portal_access(user=user_email, roles=user_roles):
 			return
 		
 		# Add Guardian role if missing
@@ -84,15 +79,22 @@ class Guardian(Document):
 				user = frappe.get_doc("User", user_email)
 				user.add_roles("Guardian")
 			except Exception:
-				pass  # Continue even if role add fails
+				frappe.log_error(
+					frappe.get_traceback(),
+					f"Guardian portal routing role update failed for user {user_email}",
+				)
 		
+		guardian_home = canonical_path_for_section("guardian")
 		# Set home_page for portal routing if not already set to guardian portal
 		current_home_page = frappe.db.get_value("User", user_email, "home_page")
-		if current_home_page != "/portal/guardian":
+		if current_home_page != guardian_home:
 			try:
-				frappe.db.set_value("User", user_email, "home_page", "/portal/guardian", update_modified=False)
+				frappe.db.set_value("User", user_email, "home_page", guardian_home, update_modified=False)
 			except Exception:
-				pass  # Continue even if home_page update fails
+				frappe.log_error(
+					frappe.get_traceback(),
+					f"Guardian portal routing home_page update failed for user {user_email}",
+				)
 
 	def _find_contact_name(self) -> str | None:
 		# Prefer user match, then primary email match
@@ -187,9 +189,10 @@ class Guardian(Document):
 			if "Guardian" not in roles:
 				user.add_roles("Guardian")
 			
-			# Set home_page so guardian is routed to portal/guardian on login
-			if user.home_page != "/portal/guardian":
-				frappe.db.set_value("User", user.name, "home_page", "/portal/guardian", update_modified=False)
+			guardian_home = canonical_path_for_section("guardian")
+			# Set home_page so guardian is routed to /guardian on login
+			if user.home_page != guardian_home:
+				frappe.db.set_value("User", user.name, "home_page", guardian_home, update_modified=False)
 			
 			frappe.msgprint(
 				_("User {0} already exists and has been linked.")
@@ -224,8 +227,9 @@ class Guardian(Document):
 			user.add_roles("Guardian")
 			user.save()
 
-			# Set home_page so guardian is routed to portal/guardian on login
-			frappe.db.set_value("User", user.name, "home_page", "/portal/guardian", update_modified=False)
+			guardian_home = canonical_path_for_section("guardian")
+			# Set home_page so guardian is routed to /guardian on login
+			frappe.db.set_value("User", user.name, "home_page", guardian_home, update_modified=False)
 
 		except Exception as e:
 			frappe.log_error(f"Error creating user for guardian {self.name}: {e}")

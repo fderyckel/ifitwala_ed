@@ -137,7 +137,7 @@
 		     - Links open new tab by default (analytics browsing is a side-activity)
 		     - No data fetching here (it’s link-only)
 		   ============================================================ -->
-		<section class="rounded-2xl bg-surface shadow-soft">
+		<section v-if="hasVisibleAnalyticsLinks" class="rounded-2xl bg-surface shadow-soft">
 			<div class="rounded-2xl border border-[rgb(var(--sand-rgb)/0.35)]">
 				<div
 					class="flex flex-col gap-4 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 pb-6 pt-7 sm:flex-row sm:items-center sm:justify-between"
@@ -171,7 +171,7 @@
 					class="grid grid-cols-1 gap-3 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6 lg:grid-cols-3"
 				>
 					<RouterLink
-						v-for="link in analyticsQuickLinks"
+						v-for="link in visibleAnalyticsQuickLinks"
 						:key="link.label"
 						:to="link.to"
 						target="_blank"
@@ -210,7 +210,7 @@
 
 				<div class="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
 					<div
-						v-for="category in analyticsCategories"
+						v-for="category in visibleAnalyticsCategories"
 						:key="category.title"
 						class="group flex h-full flex-col rounded-xl border border-slate-200 bg-white/90 p-4 shadow-sm transition-all hover:-translate-y-1 hover:border-jacaranda/70 hover:shadow-md"
 					>
@@ -262,6 +262,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 import { FeatherIcon, toast } from 'frappe-ui'
 
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue'
@@ -309,6 +310,8 @@ const firstName = computed(() => {
 	return 'Staff'
 })
 
+const userCapabilities = computed<Record<string, boolean>>(() => userDoc.value?.capabilities ?? {})
+
 /* QUICK ACTIONS ------------------------------------------------ */
 const quickActions = [
 	{
@@ -316,6 +319,12 @@ const quickActions = [
 		caption: 'Capture evidence, notes, and marks',
 		icon: 'edit-3',
 		to: { name: 'staff-gradebook' },
+	},
+	{
+		label: 'Portfolio Review',
+		caption: 'Review student evidence feed',
+		icon: 'layers',
+		to: { name: 'staff-portfolio' },
 	},
 ]
 
@@ -505,7 +514,23 @@ function openFocusItem(item: FocusItem) {
 }
 
 /* ANALYTICS ---------------------------------------------------- */
-const analyticsQuickLinks = [
+type StaffHomeAnalyticsLink = {
+	label: string
+	caption: string
+	icon: string
+	to: RouteLocationRaw
+	badge?: string
+	capability?: string
+}
+
+type StaffHomeAnalyticsCategory = {
+	title: string
+	description: string
+	icon: string
+	links: StaffHomeAnalyticsLink[]
+}
+
+const analyticsQuickLinks: StaffHomeAnalyticsLink[] = [
 	{
 		label: 'Annoucement Archive',
 		caption: 'Check all current and past announcements',
@@ -518,17 +543,18 @@ const analyticsQuickLinks = [
 		caption: 'Which rooms are free, over or under-used this week',
 		icon: 'clock',
 		to: '/staff/room-utilization',
+		capability: 'analytics_scheduling',
 	},
 ]
 
-const analyticsCategories = [
+const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 	{
 		title: 'Enrollment & Census',
 		description: 'Student body profile, admissions, and retention.',
 		icon: 'trending-up',
 		links: [
-			{ label: 'Demographics Overview', to: { name: 'student-demographic-analytics' } },
-			{ label: 'Enrollment Analytics', to: { name: 'StaffEnrollmentAnalytics' } },
+			{ label: 'Demographics Overview', to: { name: 'student-demographic-analytics' }, capability: 'analytics_admissions' },
+			{ label: 'Enrollment Analytics', to: { name: 'StaffEnrollmentAnalytics' }, capability: 'analytics_admissions' },
 		],
 	},
 	{
@@ -536,10 +562,10 @@ const analyticsCategories = [
 		description: 'Coverage, punctuality, and daily health of the timetable.',
 		icon: 'check-square',
 		links: [
-			{ label: 'Daily Attendance', to: '/analytics/operations/daily-attendance' },
-			{ label: 'Absence Trends', to: '/analytics/operations/absence-trends' },
-			{ label: 'Late Arrivals', to: '/analytics/operations/late-arrivals' },
-			{ label: 'Duty Coverage', to: '/analytics/operations/duty-coverage' },
+			{ label: 'Attendance Analytics', to: { name: 'staff-attendance-analytics' }, capability: 'analytics_attendance' },
+			{ label: 'Attendance Ledger', to: { name: 'staff-attendance-ledger' }, capability: 'analytics_attendance' },
+			{ label: 'Late Arrivals', to: '/analytics/operations/late-arrivals', capability: 'analytics_attendance' },
+			{ label: 'Duty Coverage', to: '/analytics/operations/duty-coverage', capability: 'analytics_attendance_admin' },
 		],
 	},
 	{
@@ -547,8 +573,8 @@ const analyticsCategories = [
 		description: 'Grades, assessments, and intervention impact.',
 		icon: 'book',
 		links: [
-			{ label: 'Student Overview', to: { name: 'staff-student-overview' } },
-			{ label: 'Assessment Trends', to: '/analytics/academic/assessment-trends' },
+			{ label: 'Student Overview', to: { name: 'staff-student-overview' }, capability: 'analytics_attendance' },
+			{ label: 'Assessment Trends', to: '/analytics/academic/assessment-trends', capability: 'analytics_attendance' },
 		],
 	},
 	{
@@ -556,10 +582,8 @@ const analyticsCategories = [
 		description: 'Referrals, caseloads, incidents, and follow-ups.',
 		icon: 'heart',
 		links: [
-			{ label: 'Student Log Analytics', to: { name: 'staff-student-log-analytics' } },
-			{ label: 'Counseling Caseload', to: '/analytics/wellbeing/counseling-caseload' },
-			{ label: 'Referral Outcomes', to: '/analytics/wellbeing/referral-outcomes' },
-			{ label: 'Support Plans', to: '/analytics/wellbeing/support-plans' },
+			{ label: 'Student Log Analytics', to: { name: 'staff-student-log-analytics' }, capability: 'analytics_wellbeing' },
+			{ label: 'Counseling Caseload', to: '/analytics/wellbeing/counseling-caseload', capability: 'analytics_wellbeing' },
 		],
 	},
 	{
@@ -567,10 +591,10 @@ const analyticsCategories = [
 		description: 'Availability, development, and evaluations.',
 		icon: 'users',
 		links: [
-			{ label: 'Organizational Chart', to: { name: 'staff-organization-chart' } },
-			{ label: 'Leave Balance', to: '/analytics/staff/leave-balance' },
-			{ label: 'Training Progress', to: '/analytics/staff/training-progress' },
-			{ label: 'Evaluations Summary', to: '/analytics/staff/evaluations-summary' },
+			{ label: 'Organizational Chart', to: { name: 'staff-organization-chart' }, capability: 'analytics_hr' },
+			{ label: 'Leave Balance', to: '/analytics/staff/leave-balance', capability: 'analytics_hr' },
+			{ label: 'Training Progress', to: '/analytics/staff/training-progress', capability: 'analytics_hr' },
+			{ label: 'Evaluations Summary', to: '/analytics/staff/evaluations-summary', capability: 'analytics_hr' },
 		],
 	},
 	{
@@ -578,10 +602,8 @@ const analyticsCategories = [
 		description: 'Timetable load, rooms, and transport fill.',
 		icon: 'calendar',
 		links: [
-			{ label: 'Timetable Utilization', to: '../app/schedule_calendar' },
-			{ label: 'Room Occupancy', to: { name: 'staff-room-utilization' } },
-			{ label: 'Bus & Route Load', to: '/analytics/scheduling/bus-route-load' },
-			{ label: 'Exam Schedules', to: '/analytics/scheduling/exam-schedules' },
+			{ label: 'Room Occupancy', to: { name: 'staff-room-utilization' }, capability: 'analytics_scheduling' },
+			{ label: 'Bus & Route Load', to: '/analytics/scheduling/bus-route-load', capability: 'analytics_scheduling' },
 		],
 	},
 	{
@@ -589,8 +611,8 @@ const analyticsCategories = [
 		description: 'Family engagement, events, and surveys.',
 		icon: 'message-circle',
 		links: [
-			{ label: 'Inquiries Analytics', to: { name: 'staff-inquiry-analytics' } },
-			{ label: 'Survey Results', to: '/analytics/engagement/survey-results' },
+			{ label: 'Inquiries Analytics', to: { name: 'staff-inquiry-analytics' }, capability: 'analytics_admissions' },
+			{ label: 'Survey Results', to: '/analytics/engagement/survey-results', capability: 'analytics_admissions' },
 		],
 	},
 	{
@@ -598,11 +620,29 @@ const analyticsCategories = [
 		description: 'Safeguarding signals and audit readiness.',
 		icon: 'shield',
 		links: [
-			{ label: 'Audit Readiness', to: '/analytics/compliance/audit-readiness' },
-			{ label: 'Policy Acknowledgments', to: '/analytics/compliance/policy-acknowledgments' },
+			{ label: 'Audit Readiness', to: '/analytics/compliance/audit-readiness', capability: 'analytics_attendance_admin' },
+			{ label: 'Policy Acknowledgments', to: '/analytics/compliance/policy-acknowledgments', capability: 'analytics_attendance_admin' },
 		],
 	},
 ]
+
+function isAnalyticsLinkVisible(link: StaffHomeAnalyticsLink) {
+	if (!link.capability) return true
+	return Boolean(userCapabilities.value[link.capability])
+}
+
+const visibleAnalyticsQuickLinks = computed(() => analyticsQuickLinks.filter(isAnalyticsLinkVisible))
+const visibleAnalyticsCategories = computed<StaffHomeAnalyticsCategory[]>(() =>
+	analyticsCategories
+		.map((category) => ({
+			...category,
+			links: category.links.filter(isAnalyticsLinkVisible),
+		}))
+		.filter((category) => category.links.length > 0)
+)
+const hasVisibleAnalyticsLinks = computed(
+	() => visibleAnalyticsQuickLinks.value.length > 0 || visibleAnalyticsCategories.value.length > 0
+)
 
 /* GREETING ----------------------------------------------------- */
 const greeting = computed(() => {

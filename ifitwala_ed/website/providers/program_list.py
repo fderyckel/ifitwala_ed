@@ -108,6 +108,12 @@ def _get_program_profiles(school_scope: str, school_name: str, limit: int):
 	return items
 
 
+def invalidate_program_list_cache():
+	clear_cache = getattr(_get_program_profiles, "clear_cache", None)
+	if callable(clear_cache):
+		clear_cache()
+
+
 def get_context(*, school, page, block_props):
 	"""
 	Program list - dynamic but crawlable.

@@ -401,6 +401,228 @@
   }
 
   /* ============================================================
+     PORTAL SIDEBAR RAIL
+     ============================================================ */
+  .portal-sidebar__backdrop {
+    background: rgb(var(--shade-rgb) / 0.32);
+    backdrop-filter: blur(2px);
+  }
+
+  .portal-sidebar {
+    width: 16rem;
+    border-right: 1px solid rgb(var(--border-rgb) / 0.9);
+    background: rgb(var(--surface-strong-rgb) / 0.97);
+    box-shadow: var(--shadow-soft);
+    transform: translateX(-100%);
+    transition: transform 220ms ease, width 220ms ease;
+  }
+
+  .portal-sidebar--mobile-open {
+    transform: translateX(0);
+  }
+
+  .portal-sidebar--mobile-closed {
+    transform: translateX(-100%);
+  }
+
+  .portal-sidebar__brand {
+    border-bottom: 1px solid rgb(var(--border-rgb) / 0.9);
+    padding: 0.75rem;
+  }
+
+  .portal-sidebar__content {
+    @apply flex-1 space-y-4 p-4;
+    overflow-y: auto;
+  }
+
+  .portal-sidebar__section {
+    padding: 0 0.75rem;
+    color: rgb(var(--slate-rgb) / 0.72);
+    transition: opacity 180ms ease, max-height 180ms ease, padding 180ms ease, margin 180ms ease;
+  }
+
+  .portal-sidebar__item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: 0.8rem;
+    border: 1px solid transparent;
+    padding: 0.52rem 0.75rem;
+    color: rgb(var(--slate-rgb) / 0.9);
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .portal-sidebar__item:hover {
+    border-color: rgb(var(--border-rgb) / 0.95);
+    background: rgb(var(--sky-rgb) / 0.35);
+    color: rgb(var(--ink-rgb) / 0.95);
+  }
+
+  .portal-sidebar__item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(var(--leaf-rgb) / 0.28);
+  }
+
+  .portal-sidebar__item--active {
+    border-color: rgb(var(--leaf-rgb) / 0.25);
+    background: rgb(var(--leaf-rgb) / 0.12);
+    color: rgb(var(--canopy-rgb) / 1);
+    box-shadow: inset 3px 0 0 rgb(var(--leaf-rgb) / 0.95);
+  }
+
+  .portal-sidebar__icon {
+    height: 1.1rem;
+    width: 1.1rem;
+    flex-shrink: 0;
+    color: rgb(var(--slate-rgb) / 0.72);
+    transition: color 150ms ease;
+  }
+
+  .portal-sidebar__item:hover .portal-sidebar__icon,
+  .portal-sidebar__item--active .portal-sidebar__icon {
+    color: rgb(var(--canopy-rgb) / 1);
+  }
+
+  .portal-sidebar__label {
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 12rem;
+    opacity: 1;
+    transition: max-width 220ms ease, opacity 220ms ease;
+  }
+
+  .portal-sidebar__tooltip {
+    display: none;
+  }
+
+  .portal-sidebar__footer {
+    border-top: 1px solid rgb(var(--border-rgb) / 0.9);
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .portal-sidebar__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgb(var(--slate-rgb) / 0.78);
+  }
+
+  .portal-sidebar__toggle {
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(var(--border-rgb) / 0.92);
+    background: rgb(var(--surface-rgb) / 0.94);
+    color: rgb(var(--ink-rgb) / 0.75);
+    padding: 0.4rem 0.7rem;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  }
+
+  .portal-sidebar__toggle:hover {
+    border-color: rgb(var(--leaf-rgb) / 0.38);
+    background: rgb(var(--leaf-rgb) / 0.12);
+    color: rgb(var(--canopy-rgb) / 1);
+  }
+
+  .portal-sidebar__toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(var(--leaf-rgb) / 0.28);
+  }
+
+  @media (min-width: 1024px) {
+    .portal-sidebar,
+    .portal-sidebar--mobile-open,
+    .portal-sidebar--mobile-closed {
+      transform: none;
+    }
+
+    .portal-sidebar--expanded {
+      width: 16rem;
+    }
+
+    .portal-sidebar--collapsed {
+      width: 5rem;
+    }
+
+    /* Keep rail tooltips visible outside the scroll container. */
+    .portal-sidebar--collapsed .portal-sidebar__content {
+      overflow: visible;
+    }
+
+    .portal-sidebar--collapsed .portal-sidebar__section {
+      max-height: 0;
+      margin: 0;
+      padding: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+
+    .portal-sidebar--collapsed .portal-sidebar__item {
+      justify-content: center;
+      padding-left: 0.6rem;
+      padding-right: 0.6rem;
+    }
+
+    .portal-sidebar--collapsed .portal-sidebar__label {
+      max-width: 0;
+      opacity: 0;
+    }
+
+    .portal-sidebar--collapsed .portal-sidebar__meta {
+      justify-content: center;
+    }
+
+    .portal-sidebar--collapsed .portal-sidebar__toggle {
+      justify-content: center;
+      padding-left: 0.6rem;
+      padding-right: 0.6rem;
+    }
+
+    .portal-sidebar--collapsed .portal-sidebar__tooltip {
+      position: absolute;
+      top: 50%;
+      left: calc(100% + 0.5rem);
+      z-index: 50;
+      display: inline-flex;
+      border-radius: 0.55rem;
+      border: 1px solid rgb(var(--border-rgb) / 0.95);
+      background: rgb(var(--surface-strong-rgb) / 1);
+      color: rgb(var(--ink-rgb) / 0.9);
+      padding: 0.3rem 0.5rem;
+      box-shadow: var(--shadow-soft);
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-4px, -50%);
+      transition: opacity 130ms ease, transform 130ms ease;
+    }
+
+    .portal-sidebar--collapsed .portal-sidebar__item:hover .portal-sidebar__tooltip,
+    .portal-sidebar--collapsed .portal-sidebar__item:focus-visible .portal-sidebar__tooltip {
+      opacity: 1;
+      transform: translate(0, -50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .portal-sidebar,
+    .portal-sidebar__section,
+    .portal-sidebar__item,
+    .portal-sidebar__icon,
+    .portal-sidebar__label,
+    .portal-sidebar__tooltip,
+    .portal-sidebar__toggle {
+      transition: none !important;
+    }
+  }
+
+  /* ============================================================
      CHIPS, TOGGLES, KPI STRIPS
      ============================================================ */
   .if-action {

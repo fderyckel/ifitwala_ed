@@ -225,12 +225,17 @@ function normalizeCloseReason(payload: unknown): CloseReason | null {
 
 function onChildClose(id: string, payload: unknown) {
   const reason = normalizeCloseReason(payload)
+  const entry = rendered.value.find((r) => r.id === id)
 
   // If the child didn’t provide a valid reason, ignore.
   // This prevents HeadlessUI’s default boolean `false` from closing overlays.
   if (!reason) {
     // eslint-disable-next-line no-console
-    console.warn('[OverlayHost] Ignoring invalid close payload from overlay', { id, payload })
+    console.warn('[OverlayHost] Ignoring invalid close payload from overlay', {
+      id,
+      type: entry?.type ?? 'unknown',
+      payload,
+    })
     return
   }
 

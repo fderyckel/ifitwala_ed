@@ -44,7 +44,7 @@ Many records exist **before** they are visible.
 
 Visibility depends on:
 
-* explicit flags (e.g. `published_to_parents`)
+* explicit flags (e.g. `is_published`)
 * reporting cycle state
 * policy acknowledgement state
 * audience scoping
@@ -141,7 +141,7 @@ A Task appears to Guardians **only if**:
 
 A Guardian may see Task results **only if**:
 
-* the Task Outcome is marked `published_to_parents = 1`
+* the Task Outcome is marked `is_published = 1`
 
 Before publication:
 
@@ -325,4 +325,3 @@ Frontend hiding is **never sufficient**.
 > * legal consideration
 
 ---
-

@@ -1,7 +1,39 @@
 /* ifitwala_ed/public/website/website.css */
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "../../website/templates/**/*.html";
+@source "../../website/blocks/**/*.html";
+@source "../../www/**/*.html";
+@source "./**/*.js";
 
 @layer base {
+	body.ifitwala-theme {
+		--if-theme-primary: #1d4ed8;
+		--if-theme-accent: #16a34a;
+		--if-theme-surface: #f8fafc;
+		--if-theme-text: #0f172a;
+		--if-type-scale-factor: 1;
+		--if-block-gap: 6rem;
+		--if-hero-radius: 1.4rem;
+		background-color: var(--if-theme-surface);
+		color: var(--if-theme-text);
+	}
+
+	#ifitwala-page-root h1 {
+		font-size: calc(2.25rem * var(--if-type-scale-factor));
+	}
+
+	#ifitwala-page-root h2 {
+		font-size: calc(1.875rem * var(--if-type-scale-factor));
+	}
+
+	#ifitwala-page-root h3 {
+		font-size: calc(1.25rem * var(--if-type-scale-factor));
+	}
+
+	#ifitwala-page-root main a:not(.site-cta):not(.site-nav-link):not(.site-login-link):not(.site-footer-link) {
+		color: var(--if-theme-accent);
+	}
+
 	img[loading="lazy"],
 	img[fallback="carousel"] {
 		opacity: 0;
@@ -11,6 +43,17 @@
 	img[loading="lazy"].loaded,
 	img[fallback="carousel"].loaded {
 		opacity: 1;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		#ifitwala-page-root *,
+		#ifitwala-page-root *::before,
+		#ifitwala-page-root *::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
 	}
 }
 
@@ -24,5 +67,186 @@
 
 	.clamped-text.expanded {
 		-webkit-line-clamp: unset;
+	}
+
+	.reveal-ready {
+		opacity: 0;
+		transform: translateY(1rem);
+		transition: opacity 520ms ease, transform 520ms ease;
+		transition-delay: var(--if-reveal-delay, 0ms);
+	}
+
+	.reveal-ready.is-revealed {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@layer components {
+	body.ifitwala-theme[data-theme-motion="off"] .reveal-ready {
+		opacity: 1;
+		transform: none;
+		transition: none;
+	}
+
+	#ifitwala-page-root .site-page-content {
+		gap: var(--if-block-gap);
+	}
+
+	#ifitwala-page-root .site-header {
+		border-color: color-mix(in srgb, var(--if-theme-primary) 12%, #e2e8f0);
+		background-color: rgb(255 255 255 / 0.94);
+	}
+
+	#ifitwala-page-root .site-brand-link,
+	#ifitwala-page-root .site-brand-link span {
+		color: var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .site-nav-link.is-active {
+		background-color: var(--if-theme-primary);
+		color: #fff;
+	}
+
+	#ifitwala-page-root .site-nav-link:hover,
+	#ifitwala-page-root .site-footer-link:hover {
+		background-color: color-mix(in srgb, var(--if-theme-primary) 8%, #fff);
+		color: var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .site-login-link,
+	#ifitwala-page-root .site-nav-toggle {
+		border-color: color-mix(in srgb, var(--if-theme-primary) 18%, #e2e8f0);
+		color: var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .site-login-link:hover,
+	#ifitwala-page-root .site-nav-toggle:hover {
+		background-color: color-mix(in srgb, var(--if-theme-primary) 8%, #fff);
+	}
+
+	#ifitwala-page-root .site-cta {
+		will-change: transform;
+	}
+
+	#ifitwala-page-root .site-cta-primary {
+		background-color: var(--if-theme-primary) !important;
+		color: #fff !important;
+	}
+
+	#ifitwala-page-root .site-cta-primary:hover {
+		filter: brightness(0.95);
+	}
+
+	#ifitwala-page-root .site-cta-secondary {
+		background-color: color-mix(in srgb, var(--if-theme-accent) 12%, #fff) !important;
+		color: var(--if-theme-primary) !important;
+	}
+
+	#ifitwala-page-root .site-cta-outline {
+		border-color: color-mix(in srgb, var(--if-theme-primary) 18%, #cbd5e1);
+		color: var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .site-cta.is-emphasized {
+		transform: translateY(-2px) scale(1.01);
+		box-shadow: 0 12px 28px -16px color-mix(in srgb, var(--if-theme-primary) 55%, #111827);
+	}
+
+	#ifitwala-page-root .block-hero [data-carousel] {
+		border-radius: var(--if-hero-radius);
+	}
+
+	#ifitwala-page-root .block-hero[data-hero-style="split"] .mx-auto.max-w-5xl {
+		max-width: 64rem;
+		text-align: left;
+	}
+
+	#ifitwala-page-root .block-hero[data-hero-style="spotlight"] .mx-auto.max-w-5xl {
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--if-theme-primary) 4%, #fff) 0%,
+			transparent 100%
+		);
+		border-radius: 1rem;
+		padding-top: 2rem;
+		padding-bottom: 2.25rem;
+	}
+
+	body.for-login,
+	body:has(.for-login) {
+		background-color: #f8fafc;
+		color: #0f172a;
+	}
+
+	body.for-login .navbar,
+	body:has(.for-login) .navbar {
+		position: sticky;
+		top: 0;
+		z-index: 40;
+		border-bottom: 1px solid #e2e8f0;
+		background-color: rgb(255 255 255 / 0.95);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
+	}
+
+	body.for-login .navbar .container,
+	body:has(.for-login) .navbar .container {
+		max-width: 72rem;
+		margin-inline: auto;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1rem 1.5rem;
+	}
+
+	body.for-login .navbar .navbar-brand,
+	body:has(.for-login) .navbar .navbar-brand {
+		font-size: 1.125rem;
+		font-weight: 600;
+		color: #0f172a;
+	}
+
+	body.for-login .navbar .navbar-toggler,
+	body:has(.for-login) .navbar .navbar-toggler,
+	body.for-login .navbar .dropdown-menu,
+	body:has(.for-login) .navbar .dropdown-menu {
+		display: none !important;
+	}
+
+	body.for-login .navbar .navbar-collapse,
+	body:has(.for-login) .navbar .navbar-collapse {
+		display: flex !important;
+		flex: 1 1 auto;
+		justify-content: flex-end;
+	}
+
+	body.for-login .navbar .navbar-nav,
+	body:has(.for-login) .navbar .navbar-nav {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	body.for-login .navbar .nav-link,
+	body:has(.for-login) .navbar .nav-link {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.5rem 0.75rem;
+		border-radius: 0.375rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: #334155;
+		text-decoration: none;
+	}
+
+	body.for-login .navbar .nav-link:hover,
+	body:has(.for-login) .navbar .nav-link:hover {
+		background-color: #f1f5f9;
+		color: #0f172a;
 	}
 }

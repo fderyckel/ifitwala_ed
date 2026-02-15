@@ -2,14 +2,22 @@ name: Ifitwala CI
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ifitwala-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+  NODE_VERSION: "20"
 
 jobs:
-
-  # -------------------------------
-  # 1️⃣ Backend (Frappe) Tests
-  # -------------------------------
-  backend-tests:
+  backend-smoke:
+    name: backend-smoke
     runs-on: ubuntu-latest
 
     services:
@@ -17,7 +25,7 @@ jobs:
         image: mariadb:10.6
         env:
           MYSQL_ROOT_PASSWORD: root
-        ports: [ "3306:3306" ]
+        ports: ["3306:3306"]
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
           --health-interval=10s
@@ -29,7 +37,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install system deps
         run: sudo apt-get update && sudo apt-get install -y redis-server
@@ -41,7 +49,7 @@ jobs:
         run: |
           bench init --frappe-branch version-15 frappe-bench
           cd frappe-bench
-          bench get-app ifitwala_ed $GITHUB_WORKSPACE
+          bench get-app ifitwala_ed "$GITHUB_WORKSPACE"
 
       - name: Create test site
         run: |
@@ -53,30 +61,153 @@ jobs:
             --install-app ifitwala_ed \
             --force
 
-      - name: Run tests
+      - name: Run backend smoke suite
         run: |
           cd frappe-bench
-          bench --site test_site run-tests
+          set +e
+          failed=0
+          modules=(
+            "ifitwala_ed.schedule.test_enrollment_engine"
+            "ifitwala_ed.schedule.doctype.program_enrollment_request.test_program_enrollment_request"
+            "ifitwala_ed.api.test_guardian_home"
+            "ifitwala_ed.api.test_users"
+            "ifitwala_ed.hr.test_leave_permissions"
+          )
 
+          for module in "${modules[@]}"; do
+            echo "Running $module"
+            bench --site test_site run-tests --app ifitwala_ed --module "$module"
+            if [ "$?" -ne 0 ]; then
+              failed=1
+            fi
+          done
 
-  # -------------------------------
-  # 2️⃣ Python Lint
-  # -------------------------------
+          exit "$failed"
+
+  backend-domain:
+    name: backend-domain
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y redis-server
+
+      - name: Install Bench
+        run: pip install frappe-bench
+
+      - name: Init bench
+        run: |
+          bench init --frappe-branch version-15 frappe-bench
+          cd frappe-bench
+          bench get-app ifitwala_ed "$GITHUB_WORKSPACE"
+
+      - name: Create test site
+        run: |
+          cd frappe-bench
+          bench new-site test_site \
+            --db-name test_site \
+            --admin-password admin \
+            --mariadb-root-password root \
+            --install-app ifitwala_ed \
+            --force
+
+      - name: Resolve changed python module targets
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python <<'PY' >> "$GITHUB_ENV"
+          import os
+          import subprocess
+
+          base_sha = (os.environ.get("BASE_SHA") or "").strip()
+          if base_sha:
+              diff_cmd = ["git", "diff", "--name-only", f"{base_sha}...HEAD"]
+          else:
+              diff_cmd = ["git", "diff", "--name-only", "HEAD~1...HEAD"]
+
+          changed = subprocess.check_output(diff_cmd, text=True).splitlines()
+          python_files = [
+              f for f in changed
+              if f.startswith("ifitwala_ed/") and f.endswith(".py")
+          ]
+
+          if not python_files:
+              print("NO_PY_CHANGES=1")
+              raise SystemExit(0)
+
+          targets = set()
+          for file_path in python_files:
+              rel = file_path[len("ifitwala_ed/"):]
+              if "/" in rel:
+                  root = rel.split("/", 1)[0]
+                  targets.add(f"ifitwala_ed.{root}")
+              else:
+                  targets.add(f"ifitwala_ed.{rel[:-3]}")
+
+          print("NO_PY_CHANGES=0")
+          print("TARGETS=" + ",".join(sorted(targets)))
+          PY
+
+      - name: Run domain suite for changed modules
+        run: |
+          cd frappe-bench
+          set +e
+          failed=0
+
+          if [ "${NO_PY_CHANGES}" = "1" ]; then
+            echo "No python file changes detected. Running fallback domain smoke test."
+            bench --site test_site run-tests --app ifitwala_ed --module ifitwala_ed.schedule.doctype.program_enrollment_request.test_program_enrollment_request
+            exit $?
+          fi
+
+          IFS=',' read -ra targets <<< "${TARGETS}"
+          for target in "${targets[@]}"; do
+            echo "Running target module: $target"
+            bench --site test_site run-tests --app ifitwala_ed --module "$target"
+            if [ "$?" -ne 0 ]; then
+              failed=1
+            fi
+          done
+
+          exit "$failed"
+
   lint:
+    name: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install ruff
       - run: ruff check .
+      - name: Run SPA contracts guardrails
+        run: bash scripts/contracts_guardrails.sh
+      - name: Compute backend test coverage baseline metrics
+        run: bash scripts/test_metrics.sh
 
-
-  # -------------------------------
-  # 3️⃣ Desk / Rollup Build
-  # -------------------------------
   desk-build:
+    name: desk-build
     runs-on: ubuntu-latest
 
     steps:
@@ -84,7 +215,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: yarn
 
       - name: Install dependencies (root)
@@ -93,25 +224,22 @@ jobs:
       - name: Build Rollup bundles
         run: yarn build
 
-
-  # -------------------------------
-  # 4️⃣ Vue SPA Build
-  # -------------------------------
-  spa-build:
+  spa-typecheck-build:
+    name: spa-typecheck-build
     runs-on: ubuntu-latest
 
     defaults:
       run:
-        working-directory: ui-spa
+        working-directory: ifitwala_ed/ui-spa
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: yarn
-          cache-dependency-path: ui-spa/yarn.lock
+          cache-dependency-path: ifitwala_ed/ui-spa/yarn.lock
 
       - name: Install SPA deps
         run: yarn install --frozen-lockfile

@@ -287,6 +287,78 @@ At no point during admissions is a file owned by:
 - Guardian
 - Any post-promotion entity
 
+---
+
+# C️⃣ Student Portfolio + Journal (Students Module)
+
+## 1. Portfolio/journal upload governance
+
+All portfolio and journal artefacts are governed files.
+
+Required purposes:
+
+- `portfolio_evidence`
+- `journal_attachment`
+- `portfolio_export`
+- `journal_export`
+
+Required slots:
+
+- `portfolio_artefact`
+- `journal_attachment`
+- `portfolio_export_pdf`
+- `journal_export_pdf`
+
+## 2. Dispatcher payload (portfolio evidence upload)
+
+```python
+create_and_classify_file(
+	file_kwargs={
+		"attached_to_doctype": "Student Portfolio",
+		"attached_to_name": portfolio.name,
+		"is_private": 1,
+	},
+	classification={
+		"primary_subject_type": "Student",
+		"primary_subject_id": student,
+		"data_class": "academic",
+		"purpose": "portfolio_evidence",
+		"retention_policy": "until_school_exit_plus_6m",
+		"slot": "portfolio_artefact",
+		"organization": org,
+		"school": school,
+	}
+)
+```
+
+## 3. Dispatcher payload (portfolio export PDF)
+
+```python
+create_and_classify_file(
+	file_kwargs={
+		"attached_to_doctype": "Student",
+		"attached_to_name": student,
+		"is_private": 1,
+	},
+	classification={
+		"primary_subject_type": "Student",
+		"primary_subject_id": student,
+		"data_class": "academic",
+		"purpose": "portfolio_export",
+		"retention_policy": "immediate_on_request",
+		"slot": "portfolio_export_pdf",
+		"organization": org,
+		"school": school,
+	}
+)
+```
+
+## 4. Portfolio rule
+
+Portfolio items reference evidence sources.
+
+Do not duplicate evidence blobs from Task Submission into portfolio storage.
+
 
 # 🔎 Final Assessment (blunt)
 

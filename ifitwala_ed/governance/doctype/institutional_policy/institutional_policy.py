@@ -4,6 +4,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from ifitwala_ed.governance.policy_utils import POLICY_CATEGORIES, ensure_policy_admin
+from ifitwala_ed.governance.policy_scope_utils import is_school_within_policy_organization_scope
 
 
 class InstitutionalPolicy(Document):
@@ -45,9 +46,21 @@ class InstitutionalPolicy(Document):
 	def _validate_school_organization(self):
 		if not self.school:
 			return
-		org = frappe.db.get_value("School", self.school, "organization")
-		if org and self.organization and org != self.organization:
-			frappe.throw(_("School must belong to the same Organization as the policy."))
+		if not self.organization:
+			return
+		if is_school_within_policy_organization_scope(
+			policy_organization=self.organization,
+			school=self.school,
+		):
+			return
+
+		school_org = frappe.db.get_value("School", self.school, "organization")
+		frappe.throw(
+			_(
+				"School Organization '{0}' is outside Policy Organization scope '{1}'. "
+				"Scope includes the Policy Organization and its descendants."
+			).format(school_org or _("Unknown"), self.organization)
+		)
 
 	def _enforce_immutability(self, before):
 		for field in ("policy_key", "organization", "school"):

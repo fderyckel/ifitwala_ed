@@ -237,7 +237,7 @@ Hidden by default:
 
 ### 5.2 Results Visibility (Locked)
 
-* Guardians see results **only if explicitly published to parents**
+* Guardians see results **only if explicitly published (`Task Outcome.is_published = 1`)**
 * Live gradebook data is never shown
 * Term results appear only after Reporting Cycle publication
 

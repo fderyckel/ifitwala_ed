@@ -1,3 +1,4 @@
+<!-- ifitwala_ed/ui-spa/src/components/PortalNavbar.vue -->
 <template>
 <!--
   PortalNavbar.vue
@@ -18,10 +19,10 @@
             <FeatherIcon name="menu" class="h-6 w-6" />
           </button>
 
-          <a href="/portal" class="flex items-center space-x-2 text-gray-800">
+          <RouterLink :to="{ name: `${defaultPortal}-home` }" class="flex items-center space-x-2 text-gray-800">
             <FeatherIcon name="book-open" class="h-6 w-6 text-blue-600" />
             <span class="font-semibold text-xl">Ifitwala</span>
-          </a>
+          </RouterLink>
         </div>
 
         <div class="flex items-center">
@@ -31,7 +32,13 @@
               class="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 focus:outline-none"
             >
               <span class="text-sm font-medium text-gray-700 hidden sm:block">{{ user.fullname }}</span>
-              <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+              <img
+                v-if="user.avatarImage"
+                :src="user.avatarImage"
+                :alt="`${user.fullname} avatar`"
+                class="h-8 w-8 rounded-full object-cover border border-gray-200"
+              />
+              <div v-else class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
                 {{ user.initials }}
               </div>
             </button>
@@ -74,24 +81,58 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
 import { FeatherIcon } from 'frappe-ui';
+import { getStudentPortalIdentity } from '@/lib/services/student/studentHomeService';
 
 // Reactive state for user menu visibility
 const isUserMenuOpen = ref(false);
+const route = useRoute();
+const studentIdentity = ref(null);
+const defaultPortal = computed(() => {
+  const raw = window.defaultPortal || 'student';
+  const normalized = String(raw || 'student').trim().toLowerCase();
+  return ['staff', 'student', 'guardian'].includes(normalized) ? normalized : 'student';
+});
+
+const isStudentPortal = computed(() => String(route.path || '').startsWith('/student'));
+
+watch(
+  isStudentPortal,
+  async (active) => {
+    if (!active) {
+      studentIdentity.value = null;
+      return;
+    }
+
+    try {
+      studentIdentity.value = await getStudentPortalIdentity();
+    } catch {
+      studentIdentity.value = null;
+    }
+  },
+  { immediate: true }
+);
 
 // Get user info from Frappe's session object
 const user = computed(() => {
   const userInfo = window.frappe?.session?.user_info || { fullname: 'Guest', email: 'guest@example.com' };
-  const nameParts = userInfo.fullname.split(' ');
+  const resolvedFullName = (
+    (isStudentPortal.value && studentIdentity.value?.display_name) ||
+    userInfo.fullname ||
+    'Guest'
+  ).trim();
+  const nameParts = resolvedFullName.split(' ').filter(Boolean);
   const initials = nameParts.length > 1
     ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
-    : userInfo.fullname.substring(0, 2);
+    : resolvedFullName.substring(0, 2);
   
   return {
-    fullname: userInfo.fullname,
+    fullname: resolvedFullName,
     email: userInfo.email,
     initials: initials.toUpperCase(),
+    avatarImage: isStudentPortal.value ? (studentIdentity.value?.image_url || null) : null,
   };
 });
 

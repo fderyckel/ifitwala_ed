@@ -348,12 +348,76 @@ function safeSetError(message: unknown) {
 	errorBanner.value = typeof message === 'string' && message ? message : __('Unexpected error')
 }
 
+function parseFrappeServerMessages(value: unknown): string | null {
+	if (typeof value !== 'string' || !value.trim()) return null
+	try {
+		const parsed = JSON.parse(value)
+		if (!Array.isArray(parsed)) return null
+		const lines = parsed
+			.map((entry) => {
+				if (typeof entry !== 'string') return ''
+				try {
+					const decoded = JSON.parse(entry)
+					if (decoded && typeof decoded === 'object' && typeof decoded.message === 'string') {
+						return decoded.message
+					}
+				} catch {
+					// keep raw entry when nested JSON parsing fails
+				}
+				return entry
+			})
+			.filter((line) => typeof line === 'string' && line.trim())
+		return lines.length ? lines.join('\n') : null
+	} catch {
+		return null
+	}
+}
+
+function resolveErrorMessage(error: unknown): string {
+	if (!error) return __('Unexpected error')
+	if (typeof error === 'string') return error
+
+	const maybe = error as {
+		message?: string
+		_server_messages?: string
+		_messages?: string
+		exception?: string
+		exc?: string
+	}
+
+	const serverMessage =
+		parseFrappeServerMessages(maybe._server_messages)
+		|| parseFrappeServerMessages(maybe._messages)
+	if (serverMessage) return serverMessage
+
+	if (typeof maybe.message === 'string' && maybe.message.trim()) return maybe.message
+	if (typeof maybe.exception === 'string' && maybe.exception.trim()) return maybe.exception
+	if (typeof maybe.exc === 'string' && maybe.exc.trim()) return maybe.exc
+	return __('Unexpected error')
+}
+
 function pickInitialStudentGroupFromRoute(groups: Array<{ value: string }>) {
 	const v = route.query.student_group
 	const id = typeof v === 'string' && v ? v : null
 	if (!id) return
 	const exists = groups.some((g) => g.value === id)
 	if (exists) filters.student_group = id
+}
+
+function consumeStudentGroupQueryParam() {
+	if (!route.query.student_group) return
+	const q = { ...route.query }
+	delete (q as any).student_group
+	void router.replace({ query: q })
+}
+
+async function syncSelectedGroupContext() {
+	if (!filters.student_group) return
+	consumeStudentGroupQueryParam()
+	await loadCalendarContext()
+	if (selectedDate.value) {
+		await loadRoster()
+	}
 }
 
 function pickDefaultDate(dates: string[]): string | null {
@@ -402,9 +466,15 @@ async function bootstrap() {
 		await reloadGroups()
 	} catch (err: any) {
 		console.error('Attendance tool bootstrap failed', err)
-		safeSetError(err?.message || err)
+		safeSetError(resolveErrorMessage(err))
 	} finally {
 		bootLoading.value = false
+	}
+
+	// If the group was prefilled during boot (route param / auto-pick), watcher was gated by bootLoading.
+	// Sync explicitly once boot completes.
+	if (!errorBanner.value && filters.student_group) {
+		await syncSelectedGroupContext()
 	}
 }
 
@@ -441,7 +511,7 @@ async function reloadGroups() {
 		}
 	} catch (err: any) {
 		console.error('Failed to load student groups', err)
-		safeSetError(err?.message || err)
+		safeSetError(resolveErrorMessage(err))
 	} finally {
 		groupsLoading.value = false
 	}
@@ -485,7 +555,7 @@ async function loadCalendarContext() {
 		}
 	} catch (err: any) {
 		console.error('Failed to load calendar context', err)
-		safeSetError(err?.message || err)
+		safeSetError(resolveErrorMessage(err))
 	} finally {
 		calendarLoading.value = false
 	}
@@ -548,7 +618,7 @@ async function loadRoster() {
 		dirty.value = new Set()
 	} catch (err: any) {
 		console.error('Failed to load roster', err)
-		safeSetError(err?.message || err)
+		safeSetError(resolveErrorMessage(err))
 	} finally {
 		rosterLoading.value = false
 	}
@@ -669,7 +739,7 @@ async function persistChanges() {
 		window.setTimeout(() => (justSaved.value = false), 1200)
 	} catch (err: any) {
 		console.error('Attendance autosave failed', err)
-		safeSetError(err?.message || err)
+		safeSetError(resolveErrorMessage(err))
 	} finally {
 		saving.value = false
 	}
@@ -706,17 +776,7 @@ watch(
 	async () => {
 		if (bootLoading.value) return
 
-		// Clear route param once consumed (avoid surprises when navigating back)
-		if (route.query.student_group) {
-			const q = { ...route.query }
-			delete (q as any).student_group
-			void router.replace({ query: q })
-		}
-
-		await loadCalendarContext()
-		if (selectedDate.value) {
-			await loadRoster()
-		}
+		await syncSelectedGroupContext()
 	}
 )
 

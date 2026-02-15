@@ -1,0 +1,154 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:school",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "school",
+  "organization",
+  "enabled",
+  "enable_moderation",
+  "moderation_scope",
+  "moderation_roles",
+  "default_visibility_for_reflection",
+  "allow_student_external_share",
+  "allow_pdf_export",
+  "allow_external_download",
+  "share_link_max_days",
+  "require_teacher_approval_for_showcase",
+  "export_purge_days"
+ ],
+ "fields": [
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "default": "1",
+   "fieldname": "enable_moderation",
+   "fieldtype": "Check",
+   "label": "Enable Moderation"
+  },
+  {
+   "default": "Showcase only",
+   "fieldname": "moderation_scope",
+   "fieldtype": "Select",
+   "label": "Moderation Scope",
+   "options": "Journal only\nShowcase only\nBoth"
+  },
+  {
+   "fieldname": "moderation_roles",
+   "fieldtype": "Table",
+   "label": "Moderation Roles",
+   "options": "Portfolio Journal Setting Role"
+  },
+  {
+   "default": "Teacher",
+   "fieldname": "default_visibility_for_reflection",
+   "fieldtype": "Select",
+   "label": "Default Visibility For Reflection",
+   "options": "Private\nTeacher\nPortfolio"
+  },
+  {
+   "default": "1",
+   "fieldname": "allow_student_external_share",
+   "fieldtype": "Check",
+   "label": "Allow Student External Share"
+  },
+  {
+   "default": "1",
+   "fieldname": "allow_pdf_export",
+   "fieldtype": "Check",
+   "label": "Allow PDF Export"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_external_download",
+   "fieldtype": "Check",
+   "label": "Allow External Download"
+  },
+  {
+   "default": "30",
+   "fieldname": "share_link_max_days",
+   "fieldtype": "Int",
+   "label": "Share Link Max Days",
+   "non_negative": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "require_teacher_approval_for_showcase",
+   "fieldtype": "Check",
+   "label": "Require Teacher Approval For Showcase"
+  },
+  {
+   "default": "30",
+   "fieldname": "export_purge_days",
+   "fieldtype": "Int",
+   "label": "Export Purge Days",
+   "non_negative": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "module": "Students",
+ "name": "Portfolio Journal Settings",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "search_fields": "school,organization",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

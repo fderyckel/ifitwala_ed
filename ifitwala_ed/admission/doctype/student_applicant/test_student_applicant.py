@@ -53,6 +53,23 @@ class TestStudentApplicant(FrappeTestCase):
 		names = {r[0] for r in rows}
 		self.assertIn(parent_ay, names)
 
+	def test_academic_year_query_scope_non_leaf_child_ancestor(self):
+		intermediate_school = self._create_school("Intermediate School", "IS", self.org, parent=self.parent_school, is_group=1)
+		self._create_school("Intermediate Leaf A", "IA", self.org, parent=intermediate_school, is_group=0)
+		self._create_school("Intermediate Leaf B", "IB", self.org, parent=intermediate_school, is_group=0)
+		parent_ay = self._create_academic_year(self.parent_school, "2027-2028", archived=0, visible=1)
+
+		rows = academic_year_intent_query(
+			"Academic Year",
+			"",
+			"name",
+			0,
+			50,
+			{"school": intermediate_school},
+		)
+		names = {r[0] for r in rows}
+		self.assertIn(parent_ay, names)
+
 	def test_validation_blocks_archived_ay(self):
 		applicant = frappe.get_doc({
 			"doctype": "Student Applicant",
@@ -65,6 +82,23 @@ class TestStudentApplicant(FrappeTestCase):
 		})
 		with self.assertRaises(frappe.ValidationError):
 			applicant.insert(ignore_permissions=True)
+
+	def test_title_autofills_from_name_parts_when_empty(self):
+		applicant = self._create_student_applicant(
+			first_name="Ada",
+			middle_name="M.",
+			last_name="Lovelace",
+		)
+		self.assertEqual(applicant.title, "Ada M. Lovelace")
+
+	def test_title_is_not_overwritten_when_already_set(self):
+		applicant = self._create_student_applicant(
+			first_name="Grace",
+			middle_name="Brewster",
+			last_name="Hopper",
+			title="Captain Hopper",
+		)
+		self.assertEqual(applicant.title, "Captain Hopper")
 
 	def _ensure_admissions_role(self, user, role):
 		if not frappe.db.exists("Role", role):
@@ -110,3 +144,16 @@ class TestStudentApplicant(FrappeTestCase):
 		}).insert(ignore_permissions=True)
 		self._created.append(("Academic Year", doc.name))
 		return doc.name
+
+	def _create_student_applicant(self, **overrides):
+		doc = frappe.get_doc({
+			"doctype": "Student Applicant",
+			"first_name": "Test",
+			"last_name": "Applicant",
+			"organization": self.org,
+			"school": self.leaf_school,
+			"application_status": "Draft",
+			**overrides,
+		}).insert(ignore_permissions=True)
+		self._created.append(("Student Applicant", doc.name))
+		return doc

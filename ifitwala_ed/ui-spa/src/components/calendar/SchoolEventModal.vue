@@ -17,7 +17,7 @@
 			class="if-overlay if-overlay--school"
 			:style="overlayStyle"
 			:initialFocus="initialFocus"
-			@close="emitClose"
+			@close="onDialogClose"
 		>
 			<TransitionChild
 				as="template"
@@ -28,7 +28,7 @@
 				leave-from="if-overlay__fade-to"
 				leave-to="if-overlay__fade-from"
 			>
-				<div class="if-overlay__backdrop" />
+				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
 			</TransitionChild>
 
 			<div class="if-overlay__wrap">
@@ -48,7 +48,7 @@
 							class="sr-only"
 							aria-hidden="true"
 							tabindex="0"
-							@click="emitClose"
+							@click="emitClose('programmatic')"
 						>
 							Close
 						</button>
@@ -56,26 +56,26 @@
 							<div class="meeting-modal__headline">
 								<p class="meeting-modal__eyebrow type-overline">School Event</p>
 								<DialogTitle as="h3" class="type-h3">
-									{{ event?.subject || 'School Event' }}
+									{{ resolvedEvent?.subject || 'School Event' }}
 								</DialogTitle>
 								<p class="meeting-modal__time type-meta" v-if="windowLabel">
 									{{ windowLabel }}
-									<span v-if="event?.timezone" class="meeting-modal__timezone">
-										({{ event.timezone }})
+									<span v-if="resolvedEvent?.timezone" class="meeting-modal__timezone">
+										({{ resolvedEvent.timezone }})
 									</span>
 								</p>
 							</div>
 							<div class="meeting-modal__header-actions">
 								<span
-									v-if="event?.event_type"
+									v-if="resolvedEvent?.event_type"
 									class="meeting-modal__badge type-badge-label"
 								>
-									{{ event.event_type }}
+									{{ resolvedEvent.event_type }}
 								</span>
 								<button
 									class="if-overlay__icon-button"
 									aria-label="Close event modal"
-									@click="emitClose"
+									@click="emitClose('programmatic')"
 								>
 									<FeatherIcon name="x" class="h-5 w-5" />
 								</button>
@@ -83,36 +83,36 @@
 						</div>
 
 						<div class="if-overlay__body meeting-modal__body">
-							<div v-if="loading" class="meeting-modal__loading">
+							<div v-if="resolvedLoading" class="meeting-modal__loading">
 								<div class="meeting-modal__skeleton h-6 w-2/3"></div>
 								<div class="meeting-modal__skeleton h-4 w-full"></div>
 								<div class="meeting-modal__skeleton h-4 w-5/6"></div>
 								<div class="meeting-modal__skeleton h-32 w-full"></div>
 							</div>
 
-							<div v-else-if="error" class="meeting-modal__error">
-								<p class="type-body">{{ error }}</p>
-								<button class="meeting-modal__cta" @click="emitClose">Close</button>
+							<div v-else-if="resolvedError" class="meeting-modal__error">
+								<p class="type-body">{{ resolvedError }}</p>
+								<button class="meeting-modal__cta" @click="emitClose('programmatic')">Close</button>
 							</div>
 
-							<div v-else-if="event">
+							<div v-else-if="resolvedEvent">
 								<section class="meeting-modal__meta-grid">
 									<div>
 										<p class="meeting-modal__label type-label">Location</p>
 										<p class="meeting-modal__value type-body">
-											{{ event.location || 'To be announced' }}
+											{{ resolvedEvent.location || 'To be announced' }}
 										</p>
 									</div>
 									<div>
 										<p class="meeting-modal__label type-label">School</p>
 										<p class="meeting-modal__value type-body">
-											{{ event.school || '—' }}
+											{{ resolvedEvent.school || '—' }}
 										</p>
 									</div>
 									<div>
 										<p class="meeting-modal__label type-label">Category</p>
 										<p class="meeting-modal__value type-body">
-											{{ event.event_category || '—' }}
+											{{ resolvedEvent.event_category || '—' }}
 										</p>
 									</div>
 								</section>
@@ -125,9 +125,9 @@
 										</div>
 									</header>
 									<div
-										v-if="event.description"
+										v-if="resolvedEvent.description"
 										class="meeting-modal__agenda-content"
-										v-html="event.description"
+										v-html="resolvedEvent.description"
 									></div>
 									<p v-else class="meeting-modal__empty type-body">
 										This event doesn’t have a description yet. Check back soon.
@@ -139,7 +139,7 @@
 										<div>
 											<p class="meeting-modal__label type-label">Reference</p>
 											<p class="meeting-modal__value type-body">
-												{{ event.reference_type }} · {{ event.reference_name }}
+												{{ resolvedEvent.reference_type }} · {{ resolvedEvent.reference_name }}
 											</p>
 										</div>
 									</div>
@@ -171,20 +171,23 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
+import { api } from '@/lib/client';
 import type { SchoolEventDetails } from './schoolEventTypes';
 
 const props = defineProps<{
 	open: boolean;
-	loading: boolean;
-	error: string | null;
-	event: SchoolEventDetails | null;
+	loading?: boolean;
+	error?: string | null;
+	event?: SchoolEventDetails | string | null;
 	zIndex?: number;
 }>();
 
+type CloseReason = 'backdrop' | 'esc' | 'programmatic';
+
 const emit = defineEmits<{
-	(e: 'close'): void;
+	(e: 'close', reason: CloseReason): void;
 	(e: 'after-leave'): void;
 }>();
 
@@ -196,16 +199,80 @@ function emitAfterLeave() {
 	emit('after-leave');
 }
 
-function emitClose() {
-	emit('close');
+function emitClose(reason: CloseReason = 'programmatic') {
+	emit('close', reason);
 }
 
+const resolvedEvent = ref<SchoolEventDetails | null>(null);
+const localLoading = ref(false);
+const localError = ref<string | null>(null);
+
+let reqSeq = 0;
+
+function isEventPayload(value: unknown): value is SchoolEventDetails {
+	return Boolean(value && typeof value === 'object' && 'subject' in (value as Record<string, unknown>));
+}
+
+async function fetchSchoolEventDetails(eventName: string) {
+	const seq = ++reqSeq;
+	localLoading.value = true;
+	localError.value = null;
+	resolvedEvent.value = null;
+
+	try {
+		const payload = (await api('ifitwala_ed.api.calendar.get_school_event_details', {
+			event: eventName,
+		})) as SchoolEventDetails;
+
+		if (seq === reqSeq) {
+			resolvedEvent.value = payload;
+		}
+	} catch (err) {
+		if (seq === reqSeq) {
+			localError.value = err instanceof Error ? err.message : 'Unable to load school event details right now.';
+		}
+	} finally {
+		if (seq === reqSeq) {
+			localLoading.value = false;
+		}
+	}
+}
+
+const resolvedLoading = computed(() => Boolean(props.loading) || localLoading.value);
+const resolvedError = computed(() => props.error || localError.value);
+
+watch(
+	() => [props.open, props.event] as const,
+	([isOpen, eventInput]) => {
+		if (!isOpen) return;
+
+		if (isEventPayload(eventInput)) {
+			reqSeq += 1;
+			localLoading.value = false;
+			localError.value = null;
+			resolvedEvent.value = eventInput;
+			return;
+		}
+
+		if (typeof eventInput === 'string' && eventInput) {
+			void fetchSchoolEventDetails(eventInput);
+			return;
+		}
+
+		reqSeq += 1;
+		localLoading.value = false;
+		localError.value = 'Could not determine which school event was clicked. Please refresh and try again.';
+		resolvedEvent.value = null;
+	},
+	{ immediate: true }
+);
+
 const windowLabel = computed(() => {
-	const start = safeDate(props.event?.start);
+	const start = safeDate(resolvedEvent.value?.start);
 	if (!start) return '';
 
-	const end = safeDate(props.event?.end);
-	const timezone = props.event?.timezone || undefined;
+	const end = safeDate(resolvedEvent.value?.end);
+	const timezone = resolvedEvent.value?.timezone || undefined;
 	const dateFormatter = new Intl.DateTimeFormat(undefined, {
 		weekday: 'long',
 		month: 'long',
@@ -219,8 +286,8 @@ const windowLabel = computed(() => {
 	});
 
 	const dateLabel = dateFormatter.format(start);
-	if (!end || props.event?.all_day) {
-		return props.event?.all_day
+	if (!end || resolvedEvent.value?.all_day) {
+		return resolvedEvent.value?.all_day
 			? `${dateLabel} · All day`
 			: `${dateLabel} · ${timeFormatter.format(start)}`;
 	}
@@ -234,11 +301,11 @@ const windowLabel = computed(() => {
 });
 
 const referenceLink = computed(() => {
-	if (!props.event?.reference_type || !props.event.reference_name) {
+	if (!resolvedEvent.value?.reference_type || !resolvedEvent.value.reference_name) {
 		return '';
 	}
-	const doctype = encodeURIComponent(props.event.reference_type);
-	const name = encodeURIComponent(props.event.reference_name);
+	const doctype = encodeURIComponent(resolvedEvent.value.reference_type);
+	const name = encodeURIComponent(resolvedEvent.value.reference_name);
 	return `/app/${doctype}/${name}`;
 });
 
@@ -250,4 +317,30 @@ function safeDate(value?: string | null) {
 }
 
 const initialFocus = ref<HTMLElement | null>(null);
+
+/**
+ * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
+ * Under A+, ignore it and close only via explicit backdrop/esc/button paths.
+ */
+function onDialogClose(_payload: unknown) {
+	// no-op by design
+}
+
+function onKeydown(e: KeyboardEvent) {
+	if (!props.open) return;
+	if (e.key === 'Escape') emitClose('esc');
+}
+
+watch(
+	() => props.open,
+	(v) => {
+		if (v) document.addEventListener('keydown', onKeydown, true);
+		else document.removeEventListener('keydown', onKeydown, true);
+	},
+	{ immediate: true }
+);
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true);
+});
 </script>

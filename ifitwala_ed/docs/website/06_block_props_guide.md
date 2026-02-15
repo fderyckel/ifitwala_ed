@@ -4,6 +4,8 @@
 **Audience:** Website editors, implementers  
 **Scope:** Builder‑lite v1 + Phase‑02 blocks  
 **Goal:** Exact props, types, rules, and examples for every block
+**Canonical implementation source:** `ifitwala_ed/website/block_registry.py`
+**Status (February 12, 2026):** Synced with implemented A1/A2/B1/B2/C1/C2/D1/D2 baseline
 
 ---
 
@@ -37,6 +39,33 @@ Disallowed:
 
 * `hero.images` is optional.
 * If `hero.images` is **empty or missing**, the hero carousel uses `School.gallery_image` rows (field `school_image`).
+
+### 0.5 Context-aware block availability
+
+Block availability is enforced by parent DocType context (Desk picker + save-time validation).
+
+| context | allowed block types |
+| --- | --- |
+| `School Website Page` + `page_type = Standard` | `hero`, `rich_text`, `program_list`, `leadership`, `cta`, `faq`, `content_snippet` |
+| `School Website Page` + `page_type = Admissions` | all Standard blocks + `admissions_overview`, `admissions_steps`, `admission_cta` |
+| `Program Website Profile` | all Standard blocks + `program_intro` |
+| `Website Story` | Standard blocks only |
+
+If a block type is outside the allowed set for the current context, save is blocked with a validation error.
+
+### 0.6 Block script paths are system-owned
+
+* Editors do not configure block JS paths in props.
+* Optional enhancement scripts are defined in `Website Block Definition.script_path` via the canonical block registry.
+* Current enhancement scripts:
+  * `hero` -> `/assets/ifitwala_ed/website/blocks/hero.js`
+  * `admission_cta` -> `/assets/ifitwala_ed/website/blocks/admission_cta.js`
+
+### 0.7 Theme profile is separate from block props
+
+* Brand tokens (colors, type scale, spacing density, hero style, motion toggle) come from `Website Theme Profile`.
+* Theme tokens are resolved by scope (`School -> Organization -> Global`) in renderer code.
+* Block props remain content/config contracts only.
 
 ---
 
@@ -81,7 +110,7 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
   "autoplay": true,
   "interval": 6000,
   "cta_label": "Book a Visit",
-  "cta_link": "/admissions"
+  "cta_link": "/apply/inquiry"
 }
 ```
 
@@ -304,6 +333,14 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 | --- | --- | --- | --- | --- |
 | `snippet_id` | string | yes | — | Must exist |
 | `allow_override` | boolean | no | `false` | Reserved for future use |
+
+Snippet resolution order is deterministic:
+
+1. School-scoped snippet (`scope_type = School`, same school)
+2. Organization-scoped snippet (`scope_type = Organization`, same organization)
+3. Global snippet (`scope_type = Global`)
+
+`snippet_id` is unique per scope target (not globally unique across all schools/organizations).
 
 ### Example
 ```json

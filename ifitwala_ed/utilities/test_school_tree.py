@@ -46,6 +46,20 @@ class TestSchoolTreeScopes(FrappeTestCase):
 		scope = get_school_scope_for_academic_year(self.leaf_school)
 		self.assertEqual(scope, [self.root_school])
 
+	def test_non_leaf_child_scope_inherits_nearest_ancestor_when_subtree_empty(self):
+		self._create_academic_year(self.root_school, "2026-2027")
+		self._clear_scope_cache(self.child_school)
+		scope = get_school_scope_for_academic_year(self.child_school)
+		self.assertEqual(scope, [self.root_school])
+
+	def test_non_leaf_child_scope_prefers_subtree_when_subtree_has_ay(self):
+		self._create_academic_year(self.leaf_school, "2026-2027")
+		self._clear_scope_cache(self.child_school)
+		scope = get_school_scope_for_academic_year(self.child_school)
+		self.assertIn(self.child_school, scope)
+		self.assertIn(self.leaf_school, scope)
+		self.assertNotIn(self.root_school, scope)
+
 	def _clear_scope_cache(self, school):
 		frappe.cache().delete_value(f"ifitwala_ed:school_tree:ay_scope:{school}")
 

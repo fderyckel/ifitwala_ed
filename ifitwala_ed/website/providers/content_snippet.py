@@ -6,35 +6,51 @@ from frappe import _
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 
+def _find_snippet_name(filters: dict) -> str | None:
+	rows = frappe.get_all(
+		"Website Snippet",
+		filters=filters,
+		fields=["name"],
+		order_by="modified desc",
+		limit_page_length=2,
+	)
+	if len(rows) > 1:
+		frappe.log_error(
+			title="Website Snippet Scope Collision",
+			message=(
+				f"Multiple Website Snippets found for filters={filters}. "
+				"Using most recently modified."
+			),
+		)
+	return rows[0].name if rows else None
+
+
 def _get_snippet(snippet_id: str, school):
+	snippet_id = (snippet_id or "").strip()
 	if not snippet_id:
 		return None
 
 	organization = school.organization if school else None
 
 	if school:
-		name = frappe.db.get_value(
-			"Website Snippet",
-			{"snippet_id": snippet_id, "scope_type": "School", "school": school.name},
-			"name",
+		name = _find_snippet_name(
+			{"snippet_id": snippet_id, "scope_type": "School", "school": school.name}
 		)
 		if name:
 			return frappe.get_doc("Website Snippet", name)
 
 	if organization:
-		name = frappe.db.get_value(
-			"Website Snippet",
-			{"snippet_id": snippet_id, "scope_type": "Organization", "organization": organization},
-			"name",
+		name = _find_snippet_name(
+			{
+				"snippet_id": snippet_id,
+				"scope_type": "Organization",
+				"organization": organization,
+			}
 		)
 		if name:
 			return frappe.get_doc("Website Snippet", name)
 
-	name = frappe.db.get_value(
-		"Website Snippet",
-		{"snippet_id": snippet_id, "scope_type": "Global"},
-		"name",
-	)
+	name = _find_snippet_name({"snippet_id": snippet_id, "scope_type": "Global"})
 	if name:
 		return frappe.get_doc("Website Snippet", name)
 	return None

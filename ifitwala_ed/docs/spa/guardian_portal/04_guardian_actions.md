@@ -264,7 +264,7 @@ Allow the Guardian to receive **more immediate visibility and alerts** about pub
 Monitoring Mode must **never**:
 
 * expose draft or unpublished data
-* bypass `published_to_parents` gates
+* bypass `Task Outcome.is_published` gates
 * expose live gradebook views
 * compute rolling averages
 * compare siblings
@@ -293,6 +293,34 @@ Return to Awareness Mode.
 * Immediate effect
 * No historical data deleted
 * No penalty or restriction
+
+---
+
+### 9.3 Activity Booking Actions (v2)
+
+**Intent**
+Allow guardians to book and manage extra-curricular activities for linked students.
+
+**Allowed actions**
+
+1. Submit booking with ranked section choices.
+2. Confirm an offered waitlist spot before expiry.
+3. Cancel booking (subject to school policy windows).
+4. View activity logistics (next slot, location, section status).
+
+**Hard constraints**
+
+1. Guardian can act only for linked students.
+2. Server enforces capacity and schedule-overlap checks.
+3. Billing requirements (account holder/invoice) are server-enforced.
+4. Communications are delivered through Org Communication audience + activity context links.
+
+**Portal UX contract (implemented)**
+
+1. Guardian flow is family-board first at `/guardian/activities` (multi-child booking in one flow).
+2. Batch submit uses per-child isolated processing to avoid full-family rollback on one failure.
+3. Waitlist position visibility is settings-driven (`Activity Booking Settings`).
+4. Self-cancellation policy is server-enforced from settings (default: until first session starts).
 
 ---
 
@@ -353,4 +381,3 @@ Frontend gating is **never sufficient**.
 > * legal consideration
 
 ---
-

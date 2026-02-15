@@ -6,6 +6,8 @@ app_description = "School management System"
 app_email = "f.deryckel@gmail.com"
 app_license = "MIT"
 
+from ifitwala_ed.routing.policy import WEBSITE_REDIRECTS, WEBSITE_ROUTE_RULES
+
 # Apps
 # ------------------
 
@@ -44,6 +46,14 @@ app_include_js = [
 # include js, css files in header of web form
 # webform_include_js = {"doctype": "public/js/doctype.js"}
 # webform_include_css = {"doctype": "public/css/doctype.css"}
+webform_include_css = {
+	"Inquiry": "public/css/admissions_webform_shell.css",
+	"Registration of Interest": "public/css/admissions_webform_shell.css",
+}
+webform_include_js = {
+	"Inquiry": "public/js/admissions_webform_shell.js",
+	"Registration of Interest": "public/js/admissions_webform_shell.js",
+}
 
 # include js in page
 
@@ -52,26 +62,18 @@ doctype_js = {
 	"Contact": "public/js/contact.js",
 	"School Website Page Block": "school_site/doctype/school_website_page_block/school_website_page_block.js"
 }
+
+standard_queries = {
+	"Academic Year": "ifitwala_ed.utilities.link_queries.academic_year_global_desc_query",
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
 # ifitwala_ed/hooks.py
 
-website_route_rules = [
-    {"from_route": "/portal", "to_route": "portal"},
-    {"from_route": "/sp", "to_route": "portal"},
-    {"from_route": "/sp/<path:subpath>", "to_route": "/portal/<path:subpath>"},
-    {"from_route": "/portal/<path:subpath>", "to_route": "portal"},
-    {"from_route": "/admissions", "to_route": "admissions"},
-    {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
-    {"from_route": "/staff", "to_route": "/portal/staff"},
-    {"from_route": "/staff/<path:subpath>", "to_route": "/portal/staff/<path:subpath>"},
-    {"from_route": "/login", "to_route": "login"},
-    {"from_route": "/update-password", "to_route": "update-password"},
-    {"from_route": "/", "to_route": "website"},
-    {"from_route": "/<path:route>", "to_route": "website"},
-]
+website_route_rules = WEBSITE_ROUTE_RULES
+website_redirects = WEBSITE_REDIRECTS
 
 
 # Svg Icons
@@ -81,7 +83,8 @@ website_route_rules = [
 
 # Home Pages
 # ----------
-after_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
+# Force role-based entry path immediately after successful login.
+on_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
 # application home page (will override Website Settings)
 # home_page = "login"
 
@@ -132,7 +135,7 @@ after_install = "ifitwala_ed.setup.setup.setup_education"
 # before_app_uninstall = "ifitwala.utils.before_app_uninstall"
 # after_app_uninstall = "ifitwala.utils.after_app_uninstall"
 
-calendars = ["School Event", "School Calendar"]
+calendars = ["School Event", "School Calendar", "Leave Application"]
 
 # Desk Notifications
 # ------------------
@@ -153,7 +156,18 @@ permission_query_conditions = {
 	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.get_permission_query_conditions",
 	"Employee": "ifitwala_ed.hr.doctype.employee.employee.get_permission_query_conditions",
 	"Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.get_permission_query_conditions",
+	"Activity Booking": "ifitwala_ed.eca.doctype.activity_booking.activity_booking.get_permission_query_conditions",
 	"Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.get_permission_query_conditions",
+	"Leave Application": "ifitwala_ed.hr.leave_permissions.leave_application_pqc",
+	"Leave Allocation": "ifitwala_ed.hr.leave_permissions.leave_allocation_pqc",
+	"Leave Policy": "ifitwala_ed.hr.leave_permissions.leave_policy_pqc",
+	"Leave Policy Assignment": "ifitwala_ed.hr.leave_permissions.leave_policy_assignment_pqc",
+	"Leave Ledger Entry": "ifitwala_ed.hr.leave_permissions.leave_ledger_entry_pqc",
+	"Leave Period": "ifitwala_ed.hr.leave_permissions.leave_period_pqc",
+	"Leave Block List": "ifitwala_ed.hr.leave_permissions.leave_block_list_pqc",
+	"Compensatory Leave Request": "ifitwala_ed.hr.leave_permissions.compensatory_leave_request_pqc",
+	"Leave Adjustment": "ifitwala_ed.hr.leave_permissions.leave_adjustment_pqc",
+	"Leave Encashment": "ifitwala_ed.hr.leave_permissions.leave_encashment_pqc",
 }
 
 has_permission = {
@@ -165,7 +179,19 @@ has_permission = {
 	"Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.has_permission",
 	"Employee": "ifitwala_ed.hr.doctype.employee.employee.employee_has_permission",
 	"Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.has_permission",
+	"Activity Booking": "ifitwala_ed.eca.doctype.activity_booking.activity_booking.has_permission",
 	"Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.has_permission",
+	"Leave Application": "ifitwala_ed.hr.leave_permissions.leave_application_has_permission",
+	"Leave Allocation": "ifitwala_ed.hr.leave_permissions.leave_allocation_has_permission",
+	"Leave Policy": "ifitwala_ed.hr.leave_permissions.leave_policy_has_permission",
+	"Leave Policy Assignment": "ifitwala_ed.hr.leave_permissions.leave_policy_assignment_has_permission",
+	"Leave Ledger Entry": "ifitwala_ed.hr.leave_permissions.leave_ledger_entry_has_permission",
+	"Leave Period": "ifitwala_ed.hr.leave_permissions.leave_period_has_permission",
+	"Leave Block List": "ifitwala_ed.hr.leave_permissions.leave_block_list_has_permission",
+	"Compensatory Leave Request": "ifitwala_ed.hr.leave_permissions.compensatory_leave_request_has_permission",
+	"Leave Adjustment": "ifitwala_ed.hr.leave_permissions.leave_adjustment_has_permission",
+	"Leave Encashment": "ifitwala_ed.hr.leave_permissions.leave_encashment_has_permission",
+	"Leave Control Panel": "ifitwala_ed.hr.leave_permissions.leave_control_panel_has_permission",
 }
 
 default_roles = [
@@ -250,7 +276,10 @@ scheduler_events = {
 			"ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard"
 		],
   "daily": [
-    "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs"
+    "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs",
+		"ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.process_expired_allocation",
+		"ifitwala_ed.hr.utils.allocate_earned_leaves",
+		"ifitwala_ed.hr.utils.generate_leave_encashment"
   ]
 }
 
@@ -288,7 +317,6 @@ scheduler_events = {
 
 # Request Events
 # ----------------
-before_request = ["ifitwala_ed.auth.before_request"]
 # after_request = ["ifitwala.utils.after_request"]
 
 # Job Events
@@ -322,10 +350,6 @@ before_request = ["ifitwala_ed.auth.before_request"]
 
 # Authentication and authorization
 # --------------------------------
-
-auth_hooks = [
-	"ifitwala_ed.auth.on_login"
-]
 
 # Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True

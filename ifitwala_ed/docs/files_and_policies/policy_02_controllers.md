@@ -29,7 +29,9 @@ institutional_policy.py
 
 1. `policy_key` must be unique within `organization`
 2. `organization` must be set
-3. `school`, if set, must belong to `organization`
+3. `school`, if set, must belong to the Policy Organization scope:
+   School.organization must be either the same Organization or a descendant
+   Organization in the Organization NestedSet.
 
 **Hard-fail** if violated.
 

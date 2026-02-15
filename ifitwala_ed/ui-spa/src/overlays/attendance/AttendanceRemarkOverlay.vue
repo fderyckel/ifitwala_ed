@@ -222,8 +222,10 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 watch(
-  () => [props.open, props.value],
-  async ([isOpen, nextValue], [wasOpen]) => {
+  () => [props.open, props.value] as const,
+  async (nextState, previousState) => {
+    const [isOpen, nextValue] = nextState
+    const wasOpen = previousState?.[0] ?? false
     if (isOpen && !wasOpen) {
       localValue.value = nextValue ?? ''
       await nextTick()

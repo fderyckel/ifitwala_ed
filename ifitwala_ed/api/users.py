@@ -5,67 +5,62 @@
 
 import frappe
 
-# Staff roles that take priority for desk access
-STAFF_ROLES = frozenset([
-	"Academic User",
-	"System Manager",
-	"Teacher",
-	"Administrator",
-	"Finance User",
-	"HR User",
-	"HR Manager",
-])
+from ifitwala_ed.routing.policy import (
+	STAFF_PORTAL_ROLES,
+	has_active_employee_profile,
+	has_staff_portal_access,
+	resolve_login_redirect_path,
+)
+
+# Backwards-compatible export used by existing modules/tests.
+STAFF_ROLES = STAFF_PORTAL_ROLES
+
+
+def _has_active_employee_profile(*, user: str, roles: set) -> bool:
+	"""Return True when user has Employee role and an active Employee record."""
+	return has_active_employee_profile(user=user, roles=roles)
+
+
+def _has_staff_portal_access(*, user: str, roles: set) -> bool:
+	"""Return True when user should land on the staff portal."""
+	return has_staff_portal_access(user=user, roles=roles)
+
+
+def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
+	"""
+	Resolve the appropriate portal path based on user roles.
+
+	Priority order (locked):
+	1. Admissions Applicant -> /admissions
+	2. Active Employee -> /staff
+	3. Student -> /student
+	4. Guardian -> /guardian
+	5. Fallback -> /student
+	"""
+	return resolve_login_redirect_path(user=user, roles=roles)
 
 
 def redirect_user_to_entry_portal():
 	"""
-	Unified login redirect: Most users go to /portal, Admissions Applicants go to /admissions.
-	
-	The Vue SPA at /portal handles role-based routing internally via
-	window.defaultPortal (set by www/portal/index.py based on user roles).
-	
-	The /admissions portal is a separate Vue SPA for the admissions workflow.
-	
+	Login redirect handler: Routes users to role-appropriate portal entry point.
+
 	Policy:
-	- Admissions Applicants -> /admissions (separate admissions portal)
-	- All other authenticated users -> /portal
-	- The portal entry point determines which sub-portal to show
-	  (Staff > Student > Guardian priority)
-	
-	This follows the single entry point pattern: server sets context,
-	client-side router handles navigation.
+	- Admissions Applicants -> /admissions
+	- Active Employees -> /staff
+	- Students -> /student
+	- Guardians -> /guardian
+	- Fallback -> /student
+
+	Login redirect is response-only (no User.home_page write in the login flow).
 	"""
 	user = frappe.session.user
 	if not user or user == "Guest":
 		return
 
-	def _force_redirect(path: str, also_set_home_page: bool = True):
-		if also_set_home_page:
-			try:
-				frappe.db.set_value("User", user, "home_page", path, update_modified=False)
-			except Exception:
-				pass
-
-		# Immediate redirect for this request
-		frappe.local.response["home_page"] = path
-		frappe.local.response["redirect_to"] = path
-		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = path
-
-	# Check user roles
 	roles = set(frappe.get_roles(user))
-
-	# -------------------------------------------------------------
-	# 1) Admissions Applicants: always /admissions (separate portal)
-	# -------------------------------------------------------------
-	if "Admissions Applicant" in roles:
-		_force_redirect("/admissions", also_set_home_page=True)
-		return
-
-	# ---------------------------------------------------------------
-	# 2) All other users: /portal (unified portal with role-based routing)
-	# ---------------------------------------------------------------
-	_force_redirect("/portal", also_set_home_page=True)
+	path = _resolve_login_redirect_path(user=user, roles=roles)
+	frappe.local.response["home_page"] = path
+	frappe.local.response["redirect_to"] = path
 
 
 @frappe.whitelist()

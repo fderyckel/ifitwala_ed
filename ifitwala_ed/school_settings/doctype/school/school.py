@@ -6,6 +6,7 @@
 import frappe
 from frappe import _
 from frappe.utils.nestedset import NestedSet
+from frappe.utils import flt
 from frappe.cache_manager import clear_defaults_cache
 from frappe.contacts.address_and_contact import load_address_and_contact
 
@@ -21,6 +22,8 @@ class School(NestedSet):
 		self.validate_abbr()
 		self.validate_parent_school()  # parent must be group
 		self.validate_parent_school_organization()  # parent/child must share org
+		self.apply_parent_attendance_threshold_defaults()
+		self.validate_attendance_thresholds()
 		self.validate_website_publication()
 
 		# prevent changing Organization on a node that has children.
@@ -165,6 +168,43 @@ class School(NestedSet):
 				_("Website slug is required before publishing a School."),
 				frappe.ValidationError,
 			)
+
+	def apply_parent_attendance_threshold_defaults(self):
+		"""
+		On child-school creation, inherit attendance thresholds from parent school.
+		"""
+		if not self.parent_school:
+			return
+		if not self.get("__islocal"):
+			return
+
+		parent_row = frappe.db.get_value(
+			"School",
+			self.parent_school,
+			["attendance_warning_threshold", "attendance_critical_threshold"],
+			as_dict=True,
+		)
+		if not parent_row:
+			return
+
+		if parent_row.get("attendance_warning_threshold") is not None:
+			self.attendance_warning_threshold = parent_row.get("attendance_warning_threshold")
+		if parent_row.get("attendance_critical_threshold") is not None:
+			self.attendance_critical_threshold = parent_row.get("attendance_critical_threshold")
+
+	def validate_attendance_thresholds(self):
+		warning = flt(self.attendance_warning_threshold or 0)
+		critical = flt(self.attendance_critical_threshold or 0)
+
+		if warning < 0 or warning > 100:
+			frappe.throw(_("Warning Threshold (%) must be between 0 and 100."))
+		if critical < 0 or critical > 100:
+			frappe.throw(_("Critical Threshold (%) must be between 0 and 100."))
+		if warning < critical:
+			frappe.throw(_("Warning Threshold (%) must be greater than or equal to Critical Threshold (%)."))
+
+		self.attendance_warning_threshold = warning
+		self.attendance_critical_threshold = critical
 
 	def sync_website_page_publication(self):
 		page_names = frappe.get_all(

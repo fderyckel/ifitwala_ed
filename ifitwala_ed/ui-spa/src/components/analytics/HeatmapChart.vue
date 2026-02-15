@@ -64,7 +64,7 @@ const option = computed<ChartOption>(() => {
         return `${rowLabel} - ${colLabel}: ${count}`
       },
     },
-    grid: { top: 10, right: 10, bottom: 40, left: 120 },
+    grid: { top: 10, right: 10, bottom: 24, left: 120 },
     xAxis: {
       type: 'category',
       data: columns,
@@ -77,9 +77,9 @@ const option = computed<ChartOption>(() => {
       splitArea: { show: true },
     },
     visualMap: {
+      show: false,
       min: 0,
       max: Math.max(...data.map((d) => d[2] as number), 1),
-      calculable: true,
       orient: 'horizontal',
       left: 'center',
       bottom: 0,

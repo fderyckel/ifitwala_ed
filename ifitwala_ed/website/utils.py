@@ -22,54 +22,22 @@ def normalize_route(route: str | None) -> str:
 	return route
 
 
-def resolve_default_school():
-	default_org = frappe.get_all(
-		"Organization",
-		filters={"default_website_school": ["!=", ""]},
-		fields=["name", "default_website_school"],
-		order_by="lft asc",
-		limit_page_length=1,
-	)
-	if default_org:
-		org_name = default_org[0].name
-		school_name = default_org[0].default_website_school
-		matches_org = frappe.db.get_value(
-			"School",
-			{"name": school_name, "organization": org_name},
-			"name",
-		)
-		if not matches_org:
-			frappe.throw(
-				_(
-					"Default Website School '{0}' is invalid for Organization '{1}'."
-				).format(school_name, org_name),
-				frappe.ValidationError,
-			)
-		return frappe.get_doc("School", matches_org)
-
-	school = frappe.get_all(
-		"School",
-		filters={"is_group": 1},
-		fields=["name"],
-		order_by="lft asc",
-		limit_page_length=1,
-	)
-	if not school:
-		frappe.throw(
-			_("No root School found. Create a School group to serve as website root."),
-			frappe.DoesNotExistError,
-		)
-	return frappe.get_doc("School", school[0].name)
-
-
 def resolve_school_from_route(route: str):
 	segments = [seg for seg in route.split("/") if seg]
-	if segments:
-		slug = segments[0]
-		school_name = frappe.db.get_value("School", {"website_slug": slug}, "name")
-		if school_name:
-			return frappe.get_doc("School", school_name)
-	return resolve_default_school()
+	if len(segments) < 2 or segments[0] != "schools":
+		frappe.throw(
+			_("Website page not found for route: {0}.").format(normalize_route(route)),
+			frappe.DoesNotExistError,
+		)
+
+	slug = segments[1]
+	school_name = frappe.db.get_value("School", {"website_slug": slug}, "name")
+	if not school_name:
+		frappe.throw(
+			_("School not found for slug: {0}.").format(slug),
+			frappe.DoesNotExistError,
+		)
+	return frappe.get_doc("School", school_name)
 
 
 def is_school_public(school) -> bool:
@@ -208,11 +176,11 @@ def build_program_url(program: dict) -> str:
 
 
 def build_program_profile_url(*, school_slug: str, program_slug: str) -> str:
-	return normalize_route(f"/{school_slug}/programs/{program_slug}")
+	return normalize_route(f"/schools/{school_slug}/programs/{program_slug}")
 
 
 def build_story_url(*, school_slug: str, story_slug: str) -> str:
-	return normalize_route(f"/{school_slug}/stories/{story_slug}")
+	return normalize_route(f"/schools/{school_slug}/stories/{story_slug}")
 
 
 def resolve_admissions_cta_url(*, school, intent: str) -> str:

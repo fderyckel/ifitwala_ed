@@ -6,6 +6,7 @@
   Used by:
   - HistoryDialog.vue
   - StatsTile.vue
+  - AttendanceLedger.vue
 -->
 <template>
   <div class="flex items-center gap-1 rounded-lg bg-surface-soft p-1" :class="wrapClass">

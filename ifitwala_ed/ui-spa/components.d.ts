@@ -11,6 +11,9 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ActivityCommunicationPanel: typeof import('./src/components/activity/ActivityCommunicationPanel.vue')['default']
+    ActivityOfferingCard: typeof import('./src/components/activity/ActivityOfferingCard.vue')['default']
+    ActivityStatusBadge: typeof import('./src/components/activity/ActivityStatusBadge.vue')['default']
     AnalyticsCard: typeof import('./src/components/analytics/AnalyticsCard.vue')['default']
     AnalyticsChart: typeof import('./src/components/analytics/AnalyticsChart.vue')['default']
     ClassEventModal: typeof import('./src/components/calendar/ClassEventModal.vue')['default']
@@ -26,11 +29,11 @@ declare module 'vue' {
     FocusListItem: typeof import('./src/components/focus/FocusListItem.vue')['default']
     FocusStudentsRow: typeof import('./src/components/class-hub/FocusStudentsRow.vue')['default']
     FollowUpsList: typeof import('./src/components/class-hub/FollowUpsList.vue')['default']
-    GenericListDialog: typeof import('./src/components/GenericListDialog.vue')['default']
+    GenericListDialog: typeof import('./src/components/analytics/GenericListDialog.vue')['default']
     HeatmapChart: typeof import('./src/components/analytics/HeatmapChart.vue')['default']
-    HeatmapDialog: typeof import('./src/components/HeatmapDialog.vue')['default']
+    HeatmapDialog: typeof import('./src/components/analytics/HeatmapDialog.vue')['default']
     HistogramBuckets: typeof import('./src/components/analytics/HistogramBuckets.vue')['default']
-    HistoryDialog: typeof import('./src/components/HistoryDialog.vue')['default']
+    HistoryDialog: typeof import('./src/components/analytics/HistoryDialog.vue')['default']
     HorizontalBarTopN: typeof import('./src/components/analytics/HorizontalBarTopN.vue')['default']
     InteractionEmojiChips: typeof import('./src/components/InteractionEmojiChips.vue')['default']
     KpiRow: typeof import('./src/components/analytics/KpiRow.vue')['default']
@@ -42,6 +45,7 @@ declare module 'vue' {
     PortalNavbar: typeof import('./src/components/PortalNavbar.vue')['default']
     PortalNotification: typeof import('./src/components/PortalNotification.vue')['default']
     PortalSidebar: typeof import('./src/components/PortalSidebar.vue')['default']
+    PortfolioFeedSurface: typeof import('./src/components/portfolio/PortfolioFeedSurface.vue')['default']
     QuickCFUOverlay: typeof import('./src/components/overlays/class-hub/QuickCFUOverlay.vue')['default']
     QuickEvidenceOverlay: typeof import('./src/components/overlays/class-hub/QuickEvidenceOverlay.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

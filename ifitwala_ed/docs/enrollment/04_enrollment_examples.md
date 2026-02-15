@@ -258,6 +258,49 @@ Override required with justification.
 * Group 5 ✔
 * Extra Group 4 ✔
 
+---
+
+## 6. Activity Booking Examples (v2)
+
+### 6.1 Pre-open gate blocks on instructor conflict
+
+Context:
+
+1. Program Offering has `activity_booking_status = Ready`.
+2. Linked activity section has teaching slots.
+3. Instructor already has overlapping `Employee Booking` row.
+
+Outcome:
+
+1. Readiness report returns `ok = false`.
+2. Opening window is blocked.
+3. Diagnostics identify section + conflicting source.
+
+### 6.2 FCFS booking with hard overlap guard
+
+Context:
+
+1. Student attempts to book activity section A.
+2. Student already has confirmed activity section B with overlapping slots.
+
+Outcome:
+
+1. Section assignment is rejected server-side.
+2. Booking falls back to next choice or waitlist policy.
+
+### 6.3 Waitlist auto-promotion
+
+Context:
+
+1. Confirmed booking is cancelled.
+2. Offering has `activity_auto_promote_waitlist = 1`.
+
+Outcome:
+
+1. Next waitlisted booking for that section is promoted to `Offered`.
+2. Offer expiry is computed from `activity_waitlist_offer_hours`.
+3. Event communication is published through `Org Communication`.
+
 **Outcome**
 
 ✅ Valid basket

@@ -6,7 +6,7 @@ from frappe.utils.caching import redis_cache
 from frappe.utils.nestedset import get_descendants_of
 
 from ifitwala_ed.api.student_groups import _user_roles, _instructor_group_names
-from ifitwala_ed.utilities.school_tree import get_user_default_school,_is_adminish
+from ifitwala_ed.utilities.school_tree import _is_adminish, get_school_lineage, get_user_default_school
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 
 
@@ -237,6 +237,83 @@ def fetch_active_programs():
 
 
 @frappe.whitelist()
+def fetch_portal_academic_years(school: str | None = None):
+	"""Return Academic Years visible in scope, with nearest-ancestor calendar fallback."""
+	user = frappe.session.user
+	if not user or user == "Guest":
+		frappe.throw(_("Please sign in to view academic years."))
+
+	filters: dict[str, object] = {}
+	school_scope = _expand_school_scope(school)
+	if school_scope is not None and not school_scope:
+		return []
+
+	if school_scope:
+		filters["school"] = ["in", school_scope]
+
+	rows = frappe.get_all(
+		"Academic Year",
+		fields=["name", "year_start_date", "year_end_date", "school"],
+		filters=filters,
+		order_by="year_start_date desc, name desc",
+	)
+	if rows or school_scope is None:
+		return rows
+
+	anchor_school = _resolve_lineage_anchor_school(school, school_scope)
+	if not anchor_school:
+		return rows
+
+	for ancestor_school in get_school_lineage(anchor_school):
+		ancestor_rows = frappe.get_all(
+			"Academic Year",
+			fields=["name", "year_start_date", "year_end_date", "school"],
+			filters={"school": ancestor_school},
+			order_by="year_start_date desc, name desc",
+		)
+		if ancestor_rows:
+			return ancestor_rows
+
+	return rows
+
+
+@frappe.whitelist()
+def fetch_portal_terms(academic_year: str | None = None, school: str | None = None):
+	"""Return Terms visible in scope, with nearest-ancestor calendar fallback."""
+	user = frappe.session.user
+	if not user or user == "Guest":
+		frappe.throw(_("Please sign in to view terms."))
+
+	school_scope = _expand_school_scope(school)
+	if school_scope is not None and not school_scope:
+		return []
+
+	academic_year_value = (academic_year or "").strip()
+	rows = _query_terms(
+		academic_year=academic_year_value,
+		school_scope=school_scope,
+		include_global=True,
+	)
+	if rows or school_scope is None:
+		return rows
+
+	anchor_school = _resolve_lineage_anchor_school(school, school_scope)
+	if not anchor_school:
+		return rows
+
+	for ancestor_school in get_school_lineage(anchor_school):
+		ancestor_rows = _query_terms(
+			academic_year=academic_year_value,
+			school_scope=[ancestor_school],
+			include_global=False,
+		)
+		if ancestor_rows:
+			return ancestor_rows
+
+	return rows
+
+
+@frappe.whitelist()
 @redis_cache(ttl=86400)
 def get_weekend_days(student_group: str | None = None) -> list[int]:
 	"""
@@ -256,3 +333,68 @@ def get_weekend_days(student_group: str | None = None) -> list[int]:
 
 	calendar_name = frappe.db.get_value("School Schedule", schedule_name, "school_calendar")
 	return get_weekend_days_for_calendar(calendar_name)
+
+
+def _resolve_lineage_anchor_school(
+	school: str | None,
+	school_scope: list[str] | None,
+) -> str | None:
+	"""
+	Resolve which school to use for ancestor fallback.
+	- explicit school when it is permitted
+	- otherwise the user default school when it is in scope
+	- otherwise a single scoped school
+	"""
+	school_value = (school or "").strip() or None
+	if school_value:
+		if school_scope is None or school_value in school_scope:
+			return school_value
+		return None
+
+	default_school = get_user_default_school()
+	if default_school and (school_scope is None or default_school in school_scope):
+		return default_school
+
+	if school_scope and len(school_scope) == 1:
+		return school_scope[0]
+
+	return None
+
+
+def _query_terms(
+	*,
+	academic_year: str | None,
+	school_scope: list[str] | None,
+	include_global: bool,
+) -> list[dict]:
+	params: dict[str, object] = {}
+	conditions = ["COALESCE(t.archived, 0) = 0"]
+
+	if academic_year:
+		conditions.append("t.academic_year = %(academic_year)s")
+		params["academic_year"] = academic_year
+
+	if school_scope:
+		if include_global:
+			conditions.append("(t.school IN %(school_scope)s OR COALESCE(t.school, '') = '')")
+		else:
+			conditions.append("t.school IN %(school_scope)s")
+		params["school_scope"] = tuple(school_scope)
+	elif school_scope == []:
+		return []
+
+	return frappe.db.sql(
+		f"""
+		SELECT
+			t.name,
+			t.academic_year,
+			t.school,
+			t.term_start_date,
+			t.term_end_date
+		FROM `tabTerm` t
+		WHERE {' AND '.join(conditions)}
+		ORDER BY t.term_start_date DESC, t.name DESC
+		""",
+		params,
+		as_dict=True,
+	)

@@ -54,6 +54,10 @@ These roles already exist conceptually in your system; this matrix assumes them.
 * Deactivation hides future versions but preserves history
 * School-specific policies must declare `school`
 * Org-wide policies have `school = NULL`
+* Organization-scoped policies cascade to descendant Organizations
+  (Organization NestedSet only; School tree is not used for policy ancestry)
+* Applicability is nearest-only by `policy_key`:
+  when parent and child define the same key, the nearest Organization wins
 
 **Invariant**
 

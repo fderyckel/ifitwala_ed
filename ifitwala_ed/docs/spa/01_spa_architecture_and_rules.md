@@ -257,6 +257,71 @@ Violations are **defects**, not style issues.
 
 ---
 
+### 3.4.1 Portal Calendar Resolution Contract (Locked)
+
+For SPA calendar surfaces (staff, student, guardian):
+
+* Clients must treat calendar scope as **server-owned**.
+* Clients must not infer Academic Year or School Calendar from local school context.
+* Clients must call calendar APIs and render returned events/preferences as-is.
+
+Server contract for staff portal:
+
+1. Attempt `Staff Calendar` holidays using nearest lineage school match.
+2. If no Staff Calendar holidays are available, fallback to effective `School Calendar Holidays` for the same window (`self -> nearest ancestor`).
+
+Server + client contract for student portal:
+
+1. Class calendar events must carry schedule-resolvable ids:
+   `sg::<student_group>::<rotation_day>::<block_number>::<session_date>`.
+2. School Calendar Holidays must be returned as all-day events with source `holiday`.
+3. Student calendar source controls must expose `Holidays` as a distinct chip (not merged into `School` events).
+4. Class-detail drill-down authorization must allow Student/Guardian users when the class belongs to
+   their own active Student Group enrollment (Student) or a linked child enrollment (Guardian).
+
+Client anti-patterns (forbidden):
+
+* Building parent fallback in Vue.
+* Assuming `Employee.school` has direct `Academic Year` / `School Calendar`.
+* Hardcoding school calendar IDs in SPA state.
+
+This rule prevents silent portal drift when AY/calendar is maintained at a parent school node.
+
+---
+
+### 3.4.2 Portal Navigation Shell Contract (Locked)
+
+For Student/Guardian SPA shell navigation:
+
+* `PortalLayout.vue` remains the single shell authority for Student + Guardian routes.
+* `PortalSidebar.vue` remains the single navigation component for this shell.
+* Desktop uses a persistent rail pattern (collapsed/expanded), never full hide.
+* Mobile uses an overlay drawer pattern (hamburger + backdrop), never desktop rail behavior.
+* Canonical portal URLs are top-level (`/student/*`, `/guardian/*`, `/staff/*`) and router history base stays `/`.
+* All portal links must stay named-route based (`{ name: '...' }`) with no hardcoded `/portal/...` paths.
+
+State ownership:
+
+1. `PortalLayout` owns `isMobileSidebarOpen`.
+2. `PortalLayout` owns `isDesktopRailExpanded`.
+3. Desktop rail preference persists per section (`student` / `guardian`) via explicit local storage keys.
+4. Route changes must close only the mobile drawer.
+
+Accessibility and UX invariants:
+
+* Rail toggle must expose `aria-expanded`.
+* Collapsed rail must preserve accessible labels (screen reader-visible text + tooltip on hover/focus).
+* Active navigation must include a non-color cue in addition to color.
+* Motion for rail transitions must respect `prefers-reduced-motion`.
+
+Forbidden:
+
+* Parallel student/guardian shell implementations for sidebar behavior.
+* New icon libraries for portal navigation when `FeatherIcon` already satisfies the need.
+* Route-shape drift (hardcoded paths replacing named routes).
+
+---
+
 ### 3.5 Architectural reason (why this matters)
 
 Under the A+ model:

@@ -32,22 +32,125 @@
 
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 
-	<link rel="stylesheet" href="/assets/ifitwala_ed/css/website.bundle.css">
+	<link rel="stylesheet" href="/assets/ifitwala_ed/css/ifitwala_site.bundle.css">
 </head>
 
-<body class="bg-white text-slate-900">
-	<main id="ifitwala-page-root" class="page-content space-y-24">
-		{% block page_blocks %}
-			{% for block in blocks %}
-				{% set data = block.data %}
-				{% set props = block.props %}
-				{% include block.template with context %}
-			{% endfor %}
-		{% endblock %}
-	</main>
+<body
+	class="ifitwala-theme bg-slate-50 text-slate-900"
+	data-theme-preset="{{ (theme.preset_type or 'k-12') | lower | replace(' ', '-') }}"
+	data-theme-density="{{ theme.spacing_density or 'standard' }}"
+	data-theme-scale="{{ theme.type_scale or 'standard' }}"
+	data-theme-hero="{{ theme.hero_style or 'classic' }}"
+	data-theme-motion="{{ theme.motion_mode or 'on' }}"
+	{% if theme and theme.css_vars_inline %}style="{{ theme.css_vars_inline }}"{% endif %}
+>
+	<div id="ifitwala-page-root" class="ifitwala-page-shell min-h-screen flex flex-col">
+		<header class="site-header sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+			<div class="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+				<a href="{{ site_shell.brand_url }}" class="site-brand-link inline-flex items-center gap-3 text-slate-900">
+					{% if site_shell.brand_logo %}
+						<img
+							src="{{ site_shell.brand_logo }}"
+							alt="{{ site_shell.brand_name }}"
+							class="h-10 w-10 rounded-md object-cover"
+							loading="lazy"
+						>
+					{% endif %}
+					<span class="text-base font-semibold tracking-tight">{{ site_shell.brand_name }}</span>
+				</a>
+
+				<div class="flex items-center gap-2">
+					{% if site_shell.is_guest_user %}
+						<a
+							href="{{ site_shell.login_url }}"
+							class="site-login-link hidden rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 md:inline-flex"
+						>
+							Login
+						</a>
+					{% endif %}
+					<button
+						type="button"
+						class="site-nav-toggle inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium"
+						data-site-nav-toggle
+						aria-expanded="false"
+						aria-controls="ifitwala-site-nav"
+					>
+						Menu
+					</button>
+				</div>
+			</div>
+
+			<nav id="ifitwala-site-nav" data-site-nav-panel class="site-nav-panel hidden border-t border-slate-200 md:block">
+				<div class="mx-auto max-w-6xl px-6">
+					<ul class="flex flex-col gap-1 py-3 md:flex-row md:items-center md:gap-2 md:py-2">
+						{% for item in site_shell.navigation %}
+							{% set is_active = site_shell.current_route == item.url or (item.url != site_shell.brand_url and site_shell.current_route.startswith(item.url ~ '/')) %}
+							<li>
+								<a
+									href="{{ item.url }}"
+									class="site-nav-link inline-flex rounded-md px-3 py-2 text-sm font-medium transition {{ 'is-active bg-slate-900 text-white' if is_active else 'text-slate-700 hover:bg-slate-100 hover:text-slate-900' }}"
+								>
+									{{ item.label }}
+								</a>
+							</li>
+						{% endfor %}
+						{% if site_shell.is_guest_user %}
+							<li class="md:hidden">
+								<a
+									href="{{ site_shell.login_url }}"
+									class="site-login-link inline-flex rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+								>
+									Login
+								</a>
+							</li>
+						{% endif %}
+					</ul>
+				</div>
+			</nav>
+		</header>
+
+		<main class="site-page-content page-content flex flex-1 flex-col gap-24 py-10">
+			{% block page_blocks %}
+				{% for block in blocks %}
+					{% set data = block.data %}
+					{% set props = block.props %}
+					<div class="site-block" data-reveal data-reveal-index="{{ loop.index0 }}">
+						{% include block.template with context %}
+					</div>
+				{% endfor %}
+			{% endblock %}
+		</main>
+
+		<footer class="site-footer mt-12 border-t border-slate-200 bg-white">
+			<div class="mx-auto max-w-6xl px-6 py-8">
+				<div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+					<div>
+						<p class="text-sm font-semibold text-slate-900">{{ site_shell.brand_name }}</p>
+						<p class="mt-2 text-sm text-slate-600">
+							&copy; {{ site_shell.current_year }} {{ site_shell.brand_name }}. All rights reserved.
+						</p>
+					</div>
+					{% if site_shell.footer_links %}
+						<ul class="flex flex-wrap gap-2">
+							{% for item in site_shell.footer_links %}
+								<li>
+									<a
+										href="{{ item.url }}"
+										class="site-footer-link inline-flex rounded-md px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+									>
+										{{ item.label }}
+									</a>
+								</li>
+							{% endfor %}
+						</ul>
+					{% endif %}
+				</div>
+			</div>
+		</footer>
+	</div>
 
 	<script src="/assets/ifitwala_ed/website/image_fallback.js" defer></script>
-	<script src="/assets/ifitwala_ed/js/website.bundle.js" defer></script>
+	<script src="/assets/ifitwala_ed/js/ifitwala_site.bundle.js" defer></script>
 	{% for script in block_scripts %}
 		<script src="{{ script }}" defer></script>
 	{% endfor %}

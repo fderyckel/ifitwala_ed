@@ -1,0 +1,187 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-02-12 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "profile_name",
+  "scope_type",
+  "organization",
+  "school",
+  "preset_type",
+  "is_default",
+  "appearance_section",
+  "primary_color",
+  "accent_color",
+  "surface_color",
+  "text_color",
+  "layout_section",
+  "type_scale",
+  "spacing_density",
+  "hero_style",
+  "enable_motion"
+ ],
+ "fields": [
+  {
+   "fieldname": "profile_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Profile Name",
+   "reqd": 1
+  },
+  {
+   "default": "Global",
+   "fieldname": "scope_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Scope Type",
+   "options": "Global\nOrganization\nSchool"
+  },
+  {
+   "depends_on": "eval:doc.scope_type === 'Organization'",
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization"
+  },
+  {
+   "depends_on": "eval:doc.scope_type === 'School'",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "default": "Custom",
+   "fieldname": "preset_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Preset Type",
+   "options": "K-12\nCollege\nCustom"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_default",
+   "fieldtype": "Check",
+   "label": "Is Default"
+  },
+  {
+   "fieldname": "appearance_section",
+   "fieldtype": "Section Break",
+   "label": "Appearance"
+  },
+  {
+   "default": "#0f172a",
+   "fieldname": "primary_color",
+   "fieldtype": "Color",
+   "label": "Primary Color"
+  },
+  {
+   "default": "#0ea5e9",
+   "fieldname": "accent_color",
+   "fieldtype": "Color",
+   "label": "Accent Color"
+  },
+  {
+   "default": "#f8fafc",
+   "fieldname": "surface_color",
+   "fieldtype": "Color",
+   "label": "Surface Color"
+  },
+  {
+   "default": "#0f172a",
+   "fieldname": "text_color",
+   "fieldtype": "Color",
+   "label": "Text Color"
+  },
+  {
+   "fieldname": "layout_section",
+   "fieldtype": "Section Break",
+   "label": "Layout"
+  },
+  {
+   "default": "standard",
+   "fieldname": "type_scale",
+   "fieldtype": "Select",
+   "label": "Type Scale",
+   "options": "compact\nstandard\nlarge"
+  },
+  {
+   "default": "standard",
+   "fieldname": "spacing_density",
+   "fieldtype": "Select",
+   "label": "Spacing Density",
+   "options": "compact\nstandard\nrelaxed"
+  },
+  {
+   "default": "classic",
+   "fieldname": "hero_style",
+   "fieldtype": "Select",
+   "label": "Hero Style",
+   "options": "classic\nsplit\nspotlight"
+  },
+  {
+   "default": "1",
+   "fieldname": "enable_motion",
+   "fieldtype": "Check",
+   "label": "Enable Motion Enhancements"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-02-12 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "School Site",
+ "name": "Website Theme Profile",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Website Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Marketing User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Academic Admin",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -33,6 +33,9 @@
   "meeting_color",
   "weekend_color",
   "break_color",
+  "attendance_thresholds_section",
+  "attendance_warning_threshold",
+  "attendance_critical_threshold",
   "column_break_1mhp",
   "course_color",
   "todo_color",
@@ -228,6 +231,25 @@
    "label": "Default Break Color"
   },
   {
+   "fieldname": "attendance_thresholds_section",
+   "fieldtype": "Section Break",
+   "label": "Attendance Analytics Thresholds"
+  },
+  {
+   "default": "90",
+   "description": "Attendance % at or above this value is considered OK.",
+   "fieldname": "attendance_warning_threshold",
+   "fieldtype": "Percent",
+   "label": "Warning Threshold (%)"
+  },
+  {
+   "default": "80",
+   "description": "Attendance % below this value is considered Critical.",
+   "fieldname": "attendance_critical_threshold",
+   "fieldtype": "Percent",
+   "label": "Critical Threshold (%)"
+  },
+  {
    "default": "07:00:00",
    "description": "Default start time for portal calendars when not showing full day.",
    "fieldname": "portal_calendar_start_time",
@@ -286,8 +308,8 @@
    "label": "Admissions CTA Targets"
   },
   {
-   "default": "/inquiry",
-   "description": "Public inquiry entry route (e.g., /inquiry).",
+   "default": "/apply/inquiry",
+   "description": "Public inquiry entry route (e.g., /apply/inquiry).",
    "fieldname": "admissions_inquiry_route",
    "fieldtype": "Data",
    "label": "Inquiry CTA Route"
@@ -378,7 +400,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-01-30 06:47:13.147758",
+ "modified": "2026-02-11 10:35:24.397722",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
@@ -440,6 +462,16 @@
    "read": 1,
    "report": 1,
    "role": "Academic Staff",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
    "select": 1,
    "share": 1
   },

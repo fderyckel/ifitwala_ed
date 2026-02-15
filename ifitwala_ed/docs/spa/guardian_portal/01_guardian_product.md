@@ -234,7 +234,7 @@ Monitoring Mode:
 
 Monitoring Mode must never:
 - expose live gradebook or draft grading
-- bypass `published_to_parents` gates
+- bypass `Task Outcome.is_published` gates
 - compare siblings
 - impose default thresholds
 - be enabled implicitly by staff or system actions
@@ -529,7 +529,7 @@ You already uploaded:
 
 7. **Communication** DocType JSON + server code that determines audience scoping
 8. **Student Log** DocType JSON + fields controlling guardian visibility (`visible_to_guardians` etc.)
-9. **Task / Task Outcome** doctypes (or your current equivalents) including `published_to_parents` mechanism
+9. **Task / Task Outcome** doctypes (or your current equivalents) including `is_published` publication mechanism
 10. **School Calendar** doctype (holidays/weekends/events)
 11. The doctype(s) for Guardian↔Student relationship (how we derive “my children”)
 

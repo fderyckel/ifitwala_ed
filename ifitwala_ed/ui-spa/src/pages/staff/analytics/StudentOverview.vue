@@ -721,7 +721,7 @@ const byCourseHeatmapOption = computed(() => {
 	const minSeverity = Math.min(...data.map((d) => d.value[2]))
 	const maxSeverity = Math.max(...data.map((d) => d.value[2]))
 	return {
-		grid: { left: 120, right: 10, top: 10, bottom: 70 },
+		grid: { left: 120, right: 10, top: 10, bottom: 48 },
 		xAxis: { type: 'category', data: weeks, axisLabel: { rotate: 30 } },
 		yAxis: { type: 'category', data: courses },
 		tooltip: {
@@ -734,6 +734,7 @@ const byCourseHeatmapOption = computed(() => {
 			},
 		},
 		visualMap: {
+			show: false,
 			min: minSeverity,
 			max: maxSeverity,
 			orient: 'horizontal',

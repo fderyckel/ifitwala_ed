@@ -2,6 +2,10 @@
 
 import frappe
 from frappe import _
+from ifitwala_ed.governance.policy_scope_utils import (
+	get_organization_ancestors_including_self,
+	select_nearest_policy_rows_by_key,
+)
 
 SYSTEM_MANAGER_ROLE = "System Manager"
 ORG_ADMIN_ROLE = "Organization Admin"
@@ -115,33 +119,46 @@ def has_applicant_policy_acknowledgement(
 	if not organization:
 		return False
 
+	ancestor_orgs = get_organization_ancestors_including_self(organization)
+	if not ancestor_orgs:
+		return False
+
 	schema_check = ensure_policy_applies_to_column(
 		caller="has_applicant_policy_acknowledgement",
 	)
 	if not schema_check.get("ok"):
 		return False
 
+	org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
 	rows = frappe.db.sql(
-		"""
+		f"""
 		SELECT pv.name AS policy_version
+		     , ip.policy_key AS policy_key
+		     , ip.organization AS policy_organization
 		  FROM `tabInstitutional Policy` ip
 		  JOIN `tabPolicy Version` pv
 		    ON pv.institutional_policy = ip.name
 		 WHERE ip.is_active = 1
 		   AND pv.is_active = 1
-		   AND ip.organization = %s
+		   AND ip.organization IN ({org_placeholders})
 		   AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
 		   AND ip.policy_key = %s
 		   AND ip.applies_to LIKE %s
 		""",
-		(organization, school, policy_key, "%Applicant%"),
+		(*ancestor_orgs, school, policy_key, "%Applicant%"),
 		as_dict=True,
 	)
 
-	if not rows:
+	candidate_rows = select_nearest_policy_rows_by_key(
+		rows=rows,
+		context_organization=organization,
+		policy_key_field="policy_key",
+		policy_organization_field="policy_organization",
+	)
+	if not candidate_rows:
 		return False
 
-	versions = [row["policy_version"] for row in rows]
+	versions = [row["policy_version"] for row in candidate_rows]
 	return bool(
 		frappe.db.exists(
 			"Policy Acknowledgement",

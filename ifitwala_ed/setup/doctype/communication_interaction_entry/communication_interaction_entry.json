@@ -1,0 +1,164 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-02-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_linkage",
+  "communication_interaction",
+  "org_communication",
+  "user",
+  "audience_type",
+  "surface",
+  "section_break_payload",
+  "intent_type",
+  "reaction_code",
+  "note",
+  "visibility",
+  "is_teacher_reply",
+  "is_pinned",
+  "is_resolved"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_linkage",
+   "fieldtype": "Section Break",
+   "label": "Linkage"
+  },
+  {
+   "fieldname": "communication_interaction",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Communication Interaction",
+   "options": "Communication Interaction",
+   "reqd": 1
+  },
+  {
+   "fieldname": "org_communication",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Org Communication",
+   "options": "Org Communication",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "User",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "audience_type",
+   "fieldtype": "Select",
+   "label": "Audience Type",
+   "options": "Staff\nStudent\nGuardian\nCommunity"
+  },
+  {
+   "fieldname": "surface",
+   "fieldtype": "Select",
+   "label": "Surface",
+   "options": "Desk\nMorning Brief\nPortal Feed\nStudent Portal\nGuardian Portal\nOther"
+  },
+  {
+   "fieldname": "section_break_payload",
+   "fieldtype": "Section Break",
+   "label": "Payload"
+  },
+  {
+   "fieldname": "intent_type",
+   "fieldtype": "Select",
+   "label": "Intent Type",
+   "options": "Comment\nAcknowledged\nAppreciated\nSupport\nPositive\nCelebration\nQuestion\nConcern\nOther"
+  },
+  {
+   "fieldname": "reaction_code",
+   "fieldtype": "Select",
+   "label": "Reaction Code",
+   "options": "like\nthank\nheart\nsmile\napplause\nquestion\nconcern\nother"
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note"
+  },
+  {
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "label": "Visibility",
+   "options": "Public to audience\nPrivate to school\nHidden"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_teacher_reply",
+   "fieldtype": "Check",
+   "label": "Is Teacher Reply"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_pinned",
+   "fieldtype": "Check",
+   "label": "Pinned"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_resolved",
+   "fieldtype": "Check",
+   "label": "Resolved"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-02-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Setup",
+ "name": "Communication Interaction Entry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

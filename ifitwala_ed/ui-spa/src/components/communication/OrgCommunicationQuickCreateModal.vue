@@ -17,7 +17,7 @@
 			class="if-overlay if-overlay--class"
 			:style="overlayStyle"
 			:initialFocus="initialFocus"
-			@close="handleClose"
+			@close="onDialogClose"
 		>
 			<TransitionChild
 				as="template"
@@ -28,7 +28,7 @@
 				leave-from="if-overlay__fade-to"
 				leave-to="if-overlay__fade-from"
 			>
-				<div class="if-overlay__backdrop" />
+				<div class="if-overlay__backdrop" @click="handleClose('backdrop')" />
 			</TransitionChild>
 
 			<div class="if-overlay__wrap">
@@ -48,7 +48,7 @@
 							class="sr-only"
 							aria-hidden="true"
 							tabindex="0"
-							@click="handleClose"
+							@click="handleClose('programmatic')"
 						>
 							Close
 						</button>
@@ -64,8 +64,8 @@
 							<button
 								class="if-overlay__icon-button"
 								aria-label="Close modal"
-								@click="handleClose"
-							>
+									@click="handleClose('programmatic')"
+								>
 								<FeatherIcon name="x" class="h-5 w-5" />
 							</button>
 						</div>
@@ -172,7 +172,7 @@
 						</div>
 
 						<footer class="if-overlay__footer flex flex-wrap items-center justify-end gap-2">
-							<Button appearance="secondary" @click="handleClose">Cancel</Button>
+							<Button appearance="secondary" @click="handleClose('programmatic')">Cancel</Button>
 							<Button
 								appearance="primary"
 								:loading="submitting"
@@ -190,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import {
 	Dialog,
 	DialogPanel,
@@ -214,8 +214,10 @@ const props = defineProps<{
 	zIndex?: number;
 }>();
 
+type CloseReason = 'backdrop' | 'esc' | 'programmatic';
+
 const emit = defineEmits<{
-	(e: 'close'): void;
+	(e: 'close', reason: CloseReason): void;
 	(e: 'after-leave'): void;
 	(e: 'created', doc: Record<string, unknown>): void;
 }>();
@@ -228,8 +230,21 @@ function emitAfterLeave() {
 	emit('after-leave');
 }
 
-function handleClose() {
-	emit('close');
+function handleClose(reason: CloseReason = 'programmatic') {
+	emit('close', reason);
+}
+
+/**
+ * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
+ * Under A+, ignore it and close only via explicit backdrop/esc/button paths.
+ */
+function onDialogClose(_payload: unknown) {
+	// no-op by design
+}
+
+function onKeydown(e: KeyboardEvent) {
+	if (!props.open) return;
+	if (e.key === 'Escape') handleClose('esc');
 }
 
 const submitting = ref(false);
@@ -282,6 +297,19 @@ watch(
 		initializeForm();
 	},
 );
+
+watch(
+	() => props.open,
+	(v) => {
+		if (v) document.addEventListener('keydown', onKeydown, true);
+		else document.removeEventListener('keydown', onKeydown, true);
+	},
+	{ immediate: true }
+);
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true);
+});
 
 function initializeForm() {
 	const now = new Date();
@@ -375,12 +403,12 @@ async function submit() {
 			string,
 			unknown
 		>;
-		toast({
-			appearance: 'success',
-			message: 'Announcement created.',
-		});
-		emit('created', doc);
-		emit('close');
+			toast({
+				appearance: 'success',
+				message: 'Announcement created.',
+			});
+			emit('created', doc);
+			handleClose('programmatic');
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Unable to create announcement.';

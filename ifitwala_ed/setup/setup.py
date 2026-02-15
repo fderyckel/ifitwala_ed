@@ -2,10 +2,17 @@
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
-import json
 import frappe
 from frappe import _
 from ifitwala_ed.setup.utils import insert_record
+from ifitwala_ed.school_site.doctype.website_theme_profile.website_theme_profile import (
+	ensure_theme_profile_presets,
+)
+from ifitwala_ed.routing.policy import canonical_path_for_section
+from ifitwala_ed.website.block_registry import (
+	get_website_block_definition_records as get_canonical_website_block_definition_records,
+	sync_website_block_definitions,
+)
 from frappe.utils import get_files_path
 import os
 
@@ -13,14 +20,18 @@ def setup_education():
 	ensure_initial_setup_flag()
 	ensure_root_organization()
 	create_roles_with_homepage()
+	ensure_leave_roles()
 	grant_role_read_select_to_hr()
 	create_designations()
 	create_log_type()
 	create_location_type()
 	add_other_records()
+	ensure_hr_settings()
 	create_student_file_folder()
 	setup_website_top_bar()
 	setup_website_block_definitions()
+	setup_website_theme_profiles()
+	setup_default_website_pages()
 	grant_core_crm_permissions()
 
 
@@ -72,8 +83,8 @@ def ensure_root_organization():
 def create_roles_with_homepage():
 	"""Create or update roles with home_page and desk_access."""
 	roles = [
-		{"role_name": "Student", "desk_access": 0, "home_page": "/portal/student"},
-		{"role_name": "Guardian", "desk_access": 0, "home_page": "/portal/guardian"},
+		{"role_name": "Student", "desk_access": 0, "home_page": canonical_path_for_section("student")},
+		{"role_name": "Guardian", "desk_access": 0, "home_page": canonical_path_for_section("guardian")},
 		{"role_name": "Admissions Applicant", "desk_access": 0, "home_page": "/admissions"},
 		{"role_name": "Nurse", "desk_access": 1, "home_page": "/app/health"},
 		{"role_name": "Academic Admin", "desk_access": 1, "home_page": "/app/admin"},
@@ -101,6 +112,39 @@ def create_roles_with_homepage():
 				"doctype": "Role",
 				**role
 			}).insert(ignore_permissions=True)
+
+
+def ensure_leave_roles():
+	for role_name in ["Leave Approver"]:
+		if not frappe.db.exists("Role", role_name):
+			frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+
+
+def ensure_hr_settings():
+	if not frappe.db.exists("DocType", "HR Settings"):
+		return
+
+	settings = frappe.get_single("HR Settings")
+	defaults = {
+		"leave_approver_mandatory_in_leave_application": 1,
+		"prevent_self_leave_approval": 1,
+		"restrict_backdated_leave_application": 0,
+		"send_leave_notification": 0,
+		"show_leaves_of_all_department_members_in_calendar": 0,
+		"enable_earned_leave_scheduler": 1,
+		"enable_leave_expiry_scheduler": 1,
+		"enable_leave_encashment": 0,
+		"auto_leave_encashment": 0,
+	}
+
+	changed = False
+	for fieldname, value in defaults.items():
+		if settings.get(fieldname) is None:
+			settings.set(fieldname, value)
+			changed = True
+
+	if changed:
+		settings.save(ignore_permissions=True)
 
 
 def create_designations():
@@ -251,35 +295,17 @@ def create_student_file_folder():
 
 def setup_website_top_bar():
 
+    # Keep login surface nav minimal and deterministic.
+    # Public school website navigation is rendered from School Website Page records.
     top_bar_items = [
-        # Primary items
-        {"label": "Home"},
-        {"label": "About Us"},
-        {"label": "Academics"},
-        {"label": "Admission"},
-        {"label": "News & Events"},
-        {"label": "Community"},
-        {"label": "Contact Us"},
-
-        # About Us Submenu
-        {"label": "Mission & Values", "url": "/mission-values", "parent_label": "About Us"},
-        {"label": "Leadership & Administration", "url": "/leadership", "parent_label": "About Us"},
-        {"label": "Our History", "url": "/our-history", "parent_label": "About Us"},
-
-        # Academics Submenu
-        {"label": "Programs", "url": "/programs", "parent_label": "Academics"},
-        {"label": "Curriculum & Learning", "url": "/curriculum", "parent_label": "Academics"},
-        {"label": "Resources & Support", "url": "/resources", "parent_label": "Academics"},
-
-        # Community Submenu
-        {"label": "Community Engagement", "url": "/engagement", "parent_label": "Community"},
-        {"label": "Parents & Families", "url": "/parents", "parent_label": "Community"},
-        {"label": "Alumni", "url": "/alumni", "parent_label": "Community"},
-        {"label": "Recruitment", "url": "/recruitment", "parent_label": "Community"},
+        {"label": "Home", "url": "/"},
+        {"label": "Login", "url": "/login"},
     ]
 
     ws = frappe.get_single("Website Settings")
     ws.top_bar_items = []
+    if ws.meta.has_field("home_page"):
+        ws.home_page = "/"
 
     for item in top_bar_items:
         ws.append("top_bar_items", item)
@@ -287,276 +313,38 @@ def setup_website_top_bar():
     ws.save(ignore_permissions=True)
 
 def setup_website_block_definitions():
-	records = get_website_block_definition_records()
-	insert_record(records)
+	sync_website_block_definitions()
+
+
+def setup_website_theme_profiles():
+	if not frappe.db.exists("DocType", "Website Theme Profile"):
+		return
+	ensure_theme_profile_presets()
+
+
+def setup_default_website_pages():
+	"""
+	Seed a usable default website for fresh installs when a School already exists.
+	Idempotent and safe to run multiple times.
+	"""
+	school_name = frappe.db.get_value(
+		"School",
+		{"is_group": 1},
+		"name",
+		order_by="lft asc",
+	)
+	if not school_name:
+		return
+
+	from ifitwala_ed.website.bootstrap import ensure_default_school_website
+
+	ensure_default_school_website(
+		school_name=school_name,
+		set_default_organization=True,
+	)
 
 def get_website_block_definition_records():
-	return [
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "hero",
-			"label": "Hero",
-			"template_path": "ifitwala_ed/website/blocks/hero.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.hero.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"title": {"type": "string"},
-					"subtitle": {"type": "string"},
-					"background_image": {"type": "string"},
-					"images": {
-						"type": "array",
-						"items": {
-							"type": "object",
-							"properties": {
-								"image": {"type": "string"},
-								"alt": {"type": "string"},
-								"caption": {"type": "string"}
-							},
-							"required": ["image"],
-							"additionalProperties": False
-						}
-					},
-					"autoplay": {"type": "boolean"},
-					"interval": {"type": "integer", "minimum": 1000},
-					"variant": {"type": "string", "enum": ["default", "split", "centered"]},
-					"cta_label": {"type": "string"},
-					"cta_link": {"type": "string"}
-				},
-				"required": ["title"],
-				"additionalProperties": False
-			}),
-			"seo_role": "owns_h1",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "admissions_overview",
-			"label": "Admissions Overview",
-			"template_path": "ifitwala_ed/website/blocks/admissions_overview.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.admissions_overview.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"heading": {"type": "string"},
-					"content_html": {"type": "string"},
-					"max_width": {"type": "string", "enum": ["narrow", "normal", "wide"]}
-				},
-				"required": ["heading", "content_html"],
-				"additionalProperties": False
-			}),
-			"seo_role": "owns_h1",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "admissions_steps",
-			"label": "Admissions Steps",
-			"template_path": "ifitwala_ed/website/blocks/admissions_steps.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.admissions_steps.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"steps": {
-						"type": "array",
-						"minItems": 2,
-						"items": {
-							"type": "object",
-							"properties": {
-								"key": {"type": "string"},
-								"title": {"type": "string"},
-								"description": {"type": "string"},
-								"icon": {"type": ["string", "null"]}
-							},
-							"required": ["key", "title"],
-							"additionalProperties": False
-						}
-					},
-					"layout": {"type": "string", "enum": ["horizontal", "vertical"]}
-				},
-				"required": ["steps"],
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "admission_cta",
-			"label": "Admission CTA",
-			"template_path": "ifitwala_ed/website/blocks/admission_cta.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.admission_cta.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"intent": {"type": "string", "enum": ["inquire", "visit", "apply"]},
-					"label_override": {"type": ["string", "null"]},
-					"style": {"type": "string", "enum": ["primary", "secondary", "outline"]},
-					"icon": {"type": ["string", "null"], "enum": ["mail", "map", "file-text", None]},
-					"tracking_id": {"type": ["string", "null"]}
-				},
-				"required": ["intent"],
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "faq",
-			"label": "FAQ",
-			"template_path": "ifitwala_ed/website/blocks/faq.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.faq.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"items": {
-						"type": "array",
-						"minItems": 1,
-						"items": {
-							"type": "object",
-							"properties": {
-								"question": {"type": "string"},
-								"answer_html": {"type": "string"}
-							},
-							"required": ["question", "answer_html"],
-							"additionalProperties": False
-						}
-					},
-					"enable_schema": {"type": "boolean"},
-					"collapsed_by_default": {"type": "boolean"}
-				},
-				"required": ["items"],
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "rich_text",
-			"label": "Rich Text",
-			"template_path": "ifitwala_ed/website/blocks/rich_text.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.rich_text.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"content_html": {"type": "string"},
-					"max_width": {"type": "string", "enum": ["narrow", "normal", "wide"]}
-				},
-				"required": ["content_html"],
-				"additionalProperties": False
-			}),
-			"seo_role": "content",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "content_snippet",
-			"label": "Content Snippet",
-			"template_path": "ifitwala_ed/website/blocks/content_snippet.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.content_snippet.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"snippet_id": {"type": "string"},
-					"allow_override": {"type": "boolean"}
-				},
-				"required": ["snippet_id"],
-				"additionalProperties": False
-			}),
-			"seo_role": "content",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "program_list",
-			"label": "Program List",
-			"template_path": "ifitwala_ed/website/blocks/program_list.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.program_list.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"school_scope": {"type": "string", "enum": ["current", "all"]},
-					"show_intro": {"type": "boolean"},
-					"card_style": {"type": "string", "enum": ["standard", "compact"]},
-					"limit": {"type": ["integer", "null"], "minimum": 1}
-				},
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "program_intro",
-			"label": "Program Intro",
-			"template_path": "ifitwala_ed/website/blocks/program_intro.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.program_intro.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"heading": {"type": "string"},
-					"content_html": {"type": "string"},
-					"hero_image": {"type": ["string", "null"]},
-					"cta_intent": {"type": ["string", "null"], "enum": ["inquire", "visit", "apply", None]}
-				},
-				"required": ["heading"],
-				"additionalProperties": False
-			}),
-			"seo_role": "owns_h1",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "leadership",
-			"label": "Leadership",
-			"template_path": "ifitwala_ed/website/blocks/leadership.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.leadership.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"title": {"type": "string"},
-					"roles": {"type": "array", "items": {"type": "string"}},
-					"limit": {"type": "integer", "minimum": 1}
-				},
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-		{
-			"doctype": "Website Block Definition",
-			"block_type": "cta",
-			"label": "CTA",
-			"template_path": "ifitwala_ed/website/blocks/cta.html",
-			"script_path": None,
-			"provider_path": "ifitwala_ed.website.providers.cta.get_context",
-			"props_schema": json.dumps({
-				"type": "object",
-				"properties": {
-					"title": {"type": "string"},
-					"text": {"type": "string"},
-					"button_label": {"type": "string"},
-					"button_link": {"type": "string"}
-				},
-				"required": ["button_label", "button_link"],
-				"additionalProperties": False
-			}),
-			"seo_role": "supporting",
-			"is_core": 1,
-		},
-	]
+	return get_canonical_website_block_definition_records()
 
 def grant_core_crm_permissions():
 	"""Ensure critical roles have access to Contact and Address Doctypes."""

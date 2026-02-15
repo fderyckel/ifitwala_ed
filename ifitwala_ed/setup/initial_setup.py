@@ -49,6 +49,7 @@ def complete_initial_setup(
 			"parent_organization": "",
 			"archived": 0
 		}).insert(ignore_permissions=True)
+	root_org_name = root_org.name if hasattr(root_org, "name") else root_org
 
 	# ─── Create initial organization and school if provided ─────────────────
 	if org_name and org_abbr:
@@ -68,10 +69,18 @@ def complete_initial_setup(
 			"school_name": school_name.strip(),
 			"abbr": school_abbr.strip().upper(),
 			"is_group": 1,
-			"organization": org.name if org else root_org.name,
+			"organization": org.name if org else root_org_name,
 		}).insert(ignore_permissions=True)
 	else:
 		school = None
+
+	if school:
+		from ifitwala_ed.website.bootstrap import ensure_default_school_website
+
+		ensure_default_school_website(
+			school_name=school.name,
+			set_default_organization=True,
+		)
 
 	# ─── update Website Settings ─────────────────────────────────────────────
 	ws = frappe.get_single("Website Settings")

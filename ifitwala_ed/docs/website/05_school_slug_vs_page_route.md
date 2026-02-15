@@ -1,19 +1,22 @@
+<!-- ifitwala_ed/docs/website/05_school_slug_vs_page_route.md -->
 # School Slug vs Website Page Route (Canonical)
 
-**Audience:** Website admins, implementers, and content editors
-**Scope:** Builder-lite public website routing
+**Audience:** Website admins, implementers, and content editors  
+**Scope:** Builder-lite public website routing  
+**Status (February 13, 2026):** Implemented and enforced by route rules, renderer resolution, and `School Website Page` validation
 
 ---
 
 ## 0. Root route ownership (`/`)
 
-The public root route `/` is resolved through Organization:
+The public root route `/` is the **Organization Landing**.
 
-* `Organization.default_website_school` points to the school that owns `/`
-* The selected school **must belong to that Organization**
-* Renderer rewrites `/` to that school root route (`/{school_slug}`)
+* `/` is not rewritten to a default school anymore.
+* Legacy aliases `/home`, `/index`, and `/index.html` resolve to the same landing.
+* School websites are scoped under `/schools/...`.
+* Desk entry `/app` remains framework-owned and outside website page resolution.
 
-This keeps organization-level governance while preserving school-scoped page identity.
+This keeps organization-level discovery separate from school-level website pages.
 
 ---
 
@@ -24,7 +27,7 @@ This keeps organization-level governance while preserving school-scoped page ide
 **What it is**
 
 * The unique URL identity for a school
-* Used to **resolve which school** a request belongs to
+* Used to resolve which school owns `/schools/{school_slug}/...`
 
 **Where it lives**
 
@@ -38,7 +41,7 @@ School: Ifitwala Secondary School
 website_slug: iss
 ```
 
-This means the school is addressable under routes that start with `/iss`.
+This means the school home is `/schools/iss`.
 
 ---
 
@@ -46,17 +49,17 @@ This means the school is addressable under routes that start with `/iss`.
 
 **What it is**
 
-* The **page path input** typed by website managers
-* Stored **exactly as entered** (no auto-prefixing)
+* The page path input typed by website managers
+* Stored exactly as entered (no slug prefixing)
 
 **Rules (enforced)**
 
-* `/` is **only** for the school home page
-* All other pages must be entered **without a leading `/`**
+* `/` is only for the school home page
+* All other pages must be entered without a leading `/`
   * Examples: `about`, `admissions`, `about/team`
 * No trailing `/`
 * No empty segments (`//`)
-* Do **not** include the school slug
+* Do not include the school slug
 
 **Where it lives**
 
@@ -69,9 +72,9 @@ This means the school is addressable under routes that start with `/iss`.
 
 **What it is**
 
-* The **canonical full route** used for routing and rendering
+* The canonical route used for matching and rendering
 * Computed by the system from `School.website_slug` + `route`
-* Visible but **read-only**
+* Read-only and system-owned
 
 **Where it lives**
 
@@ -82,17 +85,15 @@ This means the school is addressable under routes that start with `/iss`.
 
 ## 2. The hard rule (enforced)
 
-**Route input is always relative to the school.**
-
-You do **not** type the school slug. The system builds the canonical full route behind the scenes.
+Route input is always school-relative, and canonical full routes are always under `/schools/{school_slug}`.
 
 If `School.website_slug = iss`:
 
 | User input (`route`) | Stored `route` | Stored `full_route` |
 | --- | --- | --- |
-| `/` | `/` | `/iss` |
-| `admissions` | `admissions` | `/iss/admissions` |
-| `about/team` | `about/team` | `/iss/about/team` |
+| `/` | `/` | `/schools/iss` |
+| `admissions` | `admissions` | `/schools/iss/admissions` |
+| `about/team` | `about/team` | `/schools/iss/about/team` |
 
 **Invalid inputs**
 
@@ -104,82 +105,42 @@ If `School.website_slug = iss`:
 
 ## 3. Root page behavior
 
-If the route is `/`, the system creates the **school root page**:
+If the route is `/`, the system creates the school home page:
 
 ```
-/iss
+/schools/{school_slug}
 ```
 
 Only one root page is allowed per school.
 
 ---
 
-## 4. Routing resolution model (how requests are matched)
+## 4. Routing resolution model
 
-When a request comes in:
+For school website requests:
 
-1. The **first path segment** is used to resolve the school by `website_slug`
-2. The full path is matched against `School Website Page.full_route`
+1. `/schools/{school_slug}/...` resolves the school by `website_slug`
+2. Full path is matched against `School Website Page.full_route`
 3. The page is rendered for that school
 
-Because routes are stored in `full_route` with the slug prefix, the resolver is deterministic and safe.
+For organization landing requests:
+
+1. `/` (and aliases) render the organization landing page
+2. Landing lists published schools with valid `website_slug`
+
+For admissions/public form requests:
+
+1. `/apply/inquiry` and `/apply/registration-of-interest` are native Web Form routes.
+2. Legacy `/inquiry` and `/registration-of-interest` only redirect to those canonical `/apply/*` routes.
+3. Admissions applicant SPA is namespaced under `/admissions/*` and does not own `/apply/*`.
+
+For authenticated portal requests:
+
+1. Canonical portal namespaces are `/student/*`, `/staff/*`, and `/guardian/*`.
+2. Legacy `/portal/*` paths are compatibility redirects to the canonical namespaces.
 
 ---
 
-## 5. Practical examples
+## 5. Summary (one-line rule)
 
-### Example A - Home page for a school
-
-```
-School.website_slug: iss
-User input route: /
-Stored full_route: /iss
-```
-
-### Example B - Admissions page for the same school
-
-```
-School.website_slug: iss
-User input route: admissions
-Stored full_route: /iss/admissions
-```
-
-### Example C - A nested page
-
-```
-School.website_slug: iss
-User input route: about/team
-Stored full_route: /iss/about/team
-```
-
----
-
-## 6. Why this separation exists
-
-* `website_slug` is **school identity**
-* `route` is **page identity input** (user-owned)
-* `full_route` is **canonical routing identity** (system-owned)
-
-This allows:
-
-* multiple pages per school
-* clear SEO-friendly URL structure
-* predictable school scoping
-
----
-
-## 7. Implementation guardrail
-
-The `School Website Page` DocType:
-
-* reads the school slug
-* computes `full_route`
-* never overwrites the user-entered `route`
-
----
-
-## 8. Summary (one-line rule)
-
-> **`/` resolves via Organization.default_website_school; school slug identifies school pages; route is user input; full_route is canonical.**
-
----
+> **`/` is organization landing; school pages live under `/schools/{school_slug}/...`; `route` is user input; `full_route` is canonical.**

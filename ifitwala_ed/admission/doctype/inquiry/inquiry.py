@@ -19,12 +19,18 @@ from datetime import datetime
 
 
 CANONICAL_INQUIRY_STATES = {"New", "Assigned", "Contacted", "Qualified", "Archived"}
+LEGACY_INQUIRY_STATE_ALIASES = {
+	"New Inquiry": "New",
+}
 
 
 def _normalize_inquiry_state(state: str | None) -> str:
 	if not state:
 		return "New"
-	return state
+	normalized = str(state).strip()
+	if not normalized:
+		return "New"
+	return LEGACY_INQUIRY_STATE_ALIASES.get(normalized, normalized)
 
 
 class Inquiry(Document):
@@ -59,26 +65,30 @@ class Inquiry(Document):
 	def _validate_state_change(self):
 		previous_raw = self.get_db_value("workflow_state")
 		current_raw = self.workflow_state
+		previous = _normalize_inquiry_state(previous_raw)
+		current = _normalize_inquiry_state(current_raw)
 
 		if not previous_raw and not current_raw:
 			return
 
-		if current_raw and current_raw not in CANONICAL_INQUIRY_STATES:
-			frappe.throw(_("Invalid workflow state: {0}.").format(current_raw))
+		if current not in CANONICAL_INQUIRY_STATES:
+			frappe.throw(_("Invalid workflow state: {0}.").format(current_raw or current))
 
-		if previous_raw == current_raw:
+		# Backfill legacy values to canonical state on first save.
+		if current_raw != current:
+			self.workflow_state = current
+
+		if previous == current:
 			return
 
 		if self.flags.get("allow_workflow_state_change"):
 			return
 
 		if not previous_raw:
-			if current_raw != "New":
+			if current != "New":
 				frappe.throw(_("Workflow state must start at New."))
 			return
 
-		previous = _normalize_inquiry_state(previous_raw)
-		current = _normalize_inquiry_state(current_raw)
 		self._ensure_transition_allowed(previous, current)
 
 	def _validate_student_applicant_link(self):

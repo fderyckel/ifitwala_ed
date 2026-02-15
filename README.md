@@ -195,6 +195,46 @@ Ifitwala_Ed is **Open Source by design**. We believe institutions should own the
 
 ---
 
+## ✅ Testing & CI
+
+The repository includes a phased testing program with strict CI quality gates.
+
+### Local backend smoke tests (bench)
+
+```bash
+bench --site <your-site> run-tests --app ifitwala_ed --module ifitwala_ed.schedule.test_enrollment_engine
+bench --site <your-site> run-tests --app ifitwala_ed --module ifitwala_ed.schedule.doctype.program_enrollment_request.test_program_enrollment_request
+bench --site <your-site> run-tests --app ifitwala_ed --module ifitwala_ed.api.test_guardian_home
+```
+
+### Local quality checks
+
+```bash
+ruff check .
+bash scripts/contracts_guardrails.sh
+bash scripts/test_metrics.sh
+```
+
+### SPA checks
+
+```bash
+cd ifitwala_ed/ui-spa
+yarn type-check
+yarn build
+```
+
+### Required PR checks
+
+1. `backend-smoke`
+2. `backend-domain`
+3. `lint`
+4. `desk-build`
+5. `spa-typecheck-build`
+
+Nightly heavy suites are defined separately in `.github/workflows/nightly.yml`.
+
+---
+
 ## 🎯 Who is this for?
 
 * **Schools & Colleges** tired of maintaining fragile integrations between 5+ systems.
@@ -209,4 +249,3 @@ Ifitwala_Ed is **Open Source by design**. We believe institutions should own the
 If you are exploring **modern, open, analytics-driven infrastructure for education**:
 
 📧 **Email:** [f.deryckel@gmail.com](mailto:f.deryckel@gmail.com)
-
